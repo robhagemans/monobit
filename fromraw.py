@@ -38,11 +38,21 @@ parser.add_argument(
     help='number of scanlines between characters to discard'
 )
 parser.add_argument(
+    '--clip-x', default=0, type=int,
+    help='number of pixels on the left of character to discard'
+)
+parser.add_argument(
     '--mirror', action='store_true', default=False,
     help='reverse bits horizontally'
 )
+parser.add_argument(
+    '--invert', action='store_true', default=False,
+    help='invert foreground and background'
+)
 args = parser.parse_args()
 
+if args.invert:
+    FGCHAR, BGCHAR = BGCHAR, FGCHAR
 
 rombytes = args.infile.read()
 rombytes = rombytes[args.offset:]
@@ -50,7 +60,10 @@ rows = [u'{:08b}'.format(_c) for _c in bytearray(rombytes)]
 drawn = [_row.replace(u'0', BGCHAR).replace(u'1', FGCHAR) for _row in rows]
 
 full_height = args.height + args.padding
-n_chars = args.number[0] or (len(rows) + args.padding) // full_height
+if args.number:
+    n_chars = args.number[0]
+else:
+    n_chars = (len(rows) + args.padding) // full_height
 width_bytes = (args.width+7) // 8
 
 
@@ -66,7 +79,7 @@ for ordinal in range(n_chars):
     if args.mirror:
         char = [_row[::-1] for _row in char]
     # remove horizontal padding
-    char = [_row[:args.width] for _row in char]
+    char = [_row[args.clip_x:args.clip_x+args.width] for _row in char]
     # output
     args.outfile.write(u'{:02x}:\n\t'.format(ordinal))
     args.outfile.write(u'\n\t'.join(char))
