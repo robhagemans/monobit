@@ -49,6 +49,10 @@ parser.add_argument(
     '--invert', action='store_true', default=False,
     help='invert foreground and background'
 )
+parser.add_argument(
+    '--first', default=0, type=lambda _s: int(_s, 0),
+    help='code point of first glyph in image'
+)
 args = parser.parse_args()
 
 if args.invert:
@@ -81,6 +85,6 @@ for ordinal in range(n_chars):
     # remove horizontal padding
     char = [_row[args.clip_x:args.clip_x+args.width] for _row in char]
     # output
-    args.outfile.write(u'{:02x}:\n\t'.format(ordinal))
+    args.outfile.write(u'{:02x}:\n\t'.format(args.first+ordinal))
     args.outfile.write(u'\n\t'.join(char))
     args.outfile.write(u'\n\n')
