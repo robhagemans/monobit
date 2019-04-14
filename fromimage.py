@@ -6,12 +6,14 @@ Extract monospace bitmap font from monochrome image file and output as hexdraw t
 
 import sys
 import argparse
+import logging
 from PIL import Image
 
+logging.basicConfig(level=logging.DEBUG, format='%(levelname)s: %(message)s')
 
 # background and foreground symbols in .draw file
-BGCHAR = b'-'
-FGCHAR = b'#'
+BGCHAR = u'-'
+FGCHAR = u'#'
 
 
 # parse command line
@@ -21,11 +23,11 @@ parser.add_argument('outfile', nargs='?', type=argparse.FileType('w'), default=s
 # dimensions of cell, in pixels
 parser.add_argument(
     '-y', '--height', default=8, type=int,
-    help='pixel height of the character cell'
+    help='pixel height of the output character cell (after scaling)'
 )
 parser.add_argument(
     '-x', '--width', default=8, type=int,
-    help='pixel width of the character cell'
+    help='pixel width of the output character cell (after scaling)'
 )
 parser.add_argument(
     '--padding-x', default=0, type=int,
@@ -55,67 +57,65 @@ parser.add_argument(
     '--invert', action='store_true', default=False,
     help='invert foreground and background'
 )
+parser.add_argument(
+    '--first', default=0, type=int,
+    help='code point of first glyph in image'
+)
 args = parser.parse_args()
 
 
+img = Image.open(args.infile)
+
+# work out image geometry
+step_x = args.width*args.scale_x + args.padding_x
+step_y = args.height*args.scale_y + args.padding_y
+# maximum number of cells that fits
+ncells_x = (img.width - args.margin_x) // step_x
+ncells_y = (img.height - args.margin_y) // step_y
+
+# extract sub-images
+# assume row-major left-to-right top-to-bottom
+crops = [
+    img.crop((
+        args.margin_x + _col*step_x,
+        args.margin_y + _row*step_y,
+        args.margin_x + _col*step_x + args.width*args.scale_x,
+        args.margin_y + _row*step_y + args.height*args.scale_y,
+    ))
+    for _row in range(ncells_y)
+    for _col in range(ncells_x)
+]
+
+# scale
+crops = [_crop.resize((args.width, args.height)) for _crop in crops]
+
+# get pixels
+crops = [list(_crop.getdata()) for _crop in crops]
+
+# check that cells are monochrome
+colourset = set.union(*(set(_data) for _data in crops))
+if len(colourset) > 2:
+    logging.warning('image payload is not monochrome, results will be bad')
+
+# replace colours with characters
+# top-left pixel of first char assumed to be background colour
+bg = crops[0][0]
 if args.invert:
     BGCHAR, FGCHAR = FGCHAR, BGCHAR
-
-# read image and convert to palette bitmap
-img = Image.open(args.infile).convert('P')
-
-if args.margin_x or args.margin_y:
-    # leave any margin on the right orbottom - we'll ignore it anyway
-    img = img.crop((args.margin_x, args.margin_y, img.width, img.height))
-
-# resize if needed
-# FIXME: this won't work correctly with margin or padding
-if args.scale_x != 1 or args.scale_y != 1:
-    img = img.resize((img.width // args.scale_x, img.height // args.scale_y))
-
-imgbytes = img.tobytes()
-
-# assume top-left pixel of first character is background colour
-bg = bytes([img.getpixel((0,0))])
-# everything else is foreground
-non_bg = set(imgbytes) - {bg}
-
-
-# replace byte values with representations
-imgbytes = imgbytes.replace(bg, BGCHAR)
-for fg in non_bg:
-    imgbytes = imgbytes.replace(bytes([fg]), FGCHAR)
-
-
-full_width = args.width + args.padding_x
-full_height = args.height + args.padding_y
-
-rows = [
-    imgbytes[_offset:_offset+img.width]
-    for _offset in range(0, len(imgbytes), img.width)
+crops = [
+    [BGCHAR if _c == bg else FGCHAR for _c in _cell]
+    for _cell in crops
 ]
-chunkrows = [
+
+# reshape cells
+crops = [
     [
-        _row[_offset : _offset+full_width]
-        for _offset in range(0, len(_row), full_width)
+        u''.join(_cell[_offs: _offs+args.width])
+        for _offs in range(0, len(_cell), args.height)
     ]
-    for _row in rows
+    for _cell in crops
 ]
-
-n_char_cols = len(chunkrows[0])
-# add one additional padding as it's only between the chars, not after
-n_char_rows = (len(chunkrows) + args.padding_y) // full_height
-# assume characters are arranged consecutively in rows
-for crow in range(n_char_rows):
-    for ccol in range(n_char_cols):
-        char = [
-            _chunkrow[ccol]
-            for _chunkrow in chunkrows[crow*full_height : (crow+1)*full_height]
-        ]
-        # remove padding
-        char = char[:args.height]
-        char = [_row[:args.width] for _row in char]
-        ordinal = crow * n_char_cols + ccol
-        args.outfile.write('{:02x}:\n\t'.format(ordinal))
-        args.outfile.write(b'\n\t'.join(char).decode('ascii'))
-        args.outfile.write('\n\n')
+for ordinal, char in enumerate(crops):
+    args.outfile.write(u'{:02x}:\n\t'.format(args.first + ordinal))
+    args.outfile.write(u'\n\t'.join(char))
+    args.outfile.write(u'\n\n')
