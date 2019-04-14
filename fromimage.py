@@ -92,6 +92,7 @@ crops = [_crop.resize((args.width, args.height)) for _crop in crops]
 # get pixels
 crops = [list(_crop.getdata()) for _crop in crops]
 
+
 # check that cells are monochrome
 colourset = set.union(*(set(_data) for _data in crops))
 if len(colourset) > 2:
@@ -111,10 +112,11 @@ crops = [
 crops = [
     [
         u''.join(_cell[_offs: _offs+args.width])
-        for _offs in range(0, len(_cell), args.height)
+        for _offs in range(0, len(_cell), args.width)
     ]
     for _cell in crops
 ]
+
 for ordinal, char in enumerate(crops):
     args.outfile.write(u'{:02x}:\n\t'.format(args.first + ordinal))
     args.outfile.write(u'\n\t'.join(char))
