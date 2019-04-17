@@ -7,18 +7,11 @@ Draw monospace bitmap font to image
 import sys
 import argparse
 import logging
-import string
-from PIL import Image
+
+import monobit
+
 
 logging.basicConfig(level=logging.DEBUG, format='%(levelname)s: %(message)s')
-
-# background and foreground symbols in .draw file
-BGCHAR = u'-'
-FGCHAR = u'#'
-
-BG = (0, 0, 0)
-FG = (255, 255, 255)
-
 
 # parse command line
 parser = argparse.ArgumentParser()
@@ -57,62 +50,16 @@ parser.add_argument(
     help='number of columns in output'
 )
 args = parser.parse_args()
-
-# drop all comments
-codelines = [
-    _line
-    for _line in args.infile.readlines()
-    if _line and _line[0] in ' \t' + string.hexdigits
-]
-
-# cluster by character
-# assuming only one code point per glyph, for now
-clusters = []
-for line in codelines:
-    if line[0] in string.hexdigits:
-        cp, rest = line.strip().split(':')
-        if rest:
-            clusters.append((cp, [rest.strip()]))
-        else:
-            clusters.append((cp, []))
-    else:
-        clusters[-1][1].append(line.strip())
-
-glyphs = {int(_cluster[0], 16): _cluster[1] for _cluster in clusters}
+kwargs = dict(
+    columns=args.columns, margin=(args.margin_x, args.margin_y), padding=(args.padding_x, args.padding_y),
+    scale=(args.scale_x, args.scale_y),
+    border=(32, 32, 32), back=(0, 0, 0), fore=(255, 255, 255),
+)
 
 
-# work out image geometry
-# assume all glyphs have the same size, for now.
-step_x = len(clusters[0][1][0])*args.scale_x + args.padding_x
-step_y = len(clusters[0][1])*args.scale_y + args.padding_y
-
-# ceildiv
-rows = -(-(max(glyphs.keys())+1) // args.columns)
-
-width = args.columns * step_x + 2 * args.margin_x - args.padding_x
-height = rows * step_y + 2* args.margin_y - args.padding_y
-
-img = Image.new('RGB', (width, height), (32, 32, 32))
-
-for row in range(rows):
-    for col in range(args.columns):
-        ordinal = row * args.columns + col
-        try:
-            glyph = glyphs[ordinal]
-        except KeyError:
-            continue
-        charimg = Image.new('RGB', (len(glyph[0]), len(glyph)))
-        data = [
-            BG if _c == BGCHAR else FG
-            for _row in glyph
-            for _c in _row
-        ]
-        charimg.putdata(data)
-        charimg = charimg.resize((charimg.width * args.scale_x, charimg.height * args.scale_y))
-        lefttop = (args.margin_x+col*step_x, args.margin_y + row*step_y)
-        img.paste(charimg, lefttop)
+font = monobit.hexdraw.load(args.infile)
 
 if not args.outfile:
-    img.show()
+    monobit.show(font, **kwargs)
 else:
-    img.save(args.outfile)
+    monobit.image.save(font, args.outfile, **kwargs)

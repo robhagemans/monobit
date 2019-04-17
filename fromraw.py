@@ -7,10 +7,7 @@ Extract monospace bitmap font from raw binary and output as hexdraw text file
 import sys
 import argparse
 
-# background and foreground symbols in .draw file
-BGCHAR = u'-'
-FGCHAR = u'#'
-
+import monobit
 
 # parse command line
 parser = argparse.ArgumentParser()
@@ -55,36 +52,10 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-if args.invert:
-    FGCHAR, BGCHAR = BGCHAR, FGCHAR
 
-rombytes = args.infile.read()
-rombytes = rombytes[args.offset:]
-rows = [u'{:08b}'.format(_c) for _c in bytearray(rombytes)]
-drawn = [_row.replace(u'0', BGCHAR).replace(u'1', FGCHAR) for _row in rows]
-
-full_height = args.height + args.padding
-if args.number:
-    n_chars = args.number[0]
-else:
-    n_chars = (len(rows) + args.padding) // full_height
-width_bytes = (args.width+7) // 8
-
-
-for ordinal in range(n_chars):
-    char = drawn[ordinal*width_bytes*full_height : (ordinal+1)*width_bytes*full_height]
-    # remove vertical padding
-    char = char[:args.height*width_bytes]
-    char = [
-        u''.join(char[_offset:_offset+width_bytes])
-        for _offset in range(0, len(char), width_bytes)
-    ]
-    # mirror if necessary
-    if args.mirror:
-        char = [_row[::-1] for _row in char]
-    # remove horizontal padding
-    char = [_row[args.clip_x:args.clip_x+args.width] for _row in char]
-    # output
-    args.outfile.write(u'{:02x}:\n\t'.format(args.first+ordinal))
-    args.outfile.write(u'\n\t'.join(char))
-    args.outfile.write(u'\n\n')
+font = monobit.raw.load(
+    args.infile, cell=(args.width, args.height), n_chars=args.number,
+    offset=args.offset, padding=args.padding, clip=args.clip_x, mirror=args.mirror,
+    invert=args.invert, first=args.first,
+)
+monobit.hexdraw.save(font, args.outfile)

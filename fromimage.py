@@ -7,13 +7,10 @@ Extract monospace bitmap font from monochrome image file and output as hexdraw t
 import sys
 import argparse
 import logging
-from PIL import Image
+
+import monobit
 
 logging.basicConfig(level=logging.DEBUG, format='%(levelname)s: %(message)s')
-
-# background and foreground symbols in .draw file
-BGCHAR = u'-'
-FGCHAR = u'#'
 
 
 # parse command line
@@ -63,61 +60,9 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-
-img = Image.open(args.infile)
-
-# work out image geometry
-step_x = args.width*args.scale_x + args.padding_x
-step_y = args.height*args.scale_y + args.padding_y
-# maximum number of cells that fits
-ncells_x = (img.width - args.margin_x) // step_x
-ncells_y = (img.height - args.margin_y) // step_y
-
-# extract sub-images
-# assume row-major left-to-right top-to-bottom
-crops = [
-    img.crop((
-        args.margin_x + _col*step_x,
-        args.margin_y + _row*step_y,
-        args.margin_x + _col*step_x + args.width*args.scale_x,
-        args.margin_y + _row*step_y + args.height*args.scale_y,
-    ))
-    for _row in range(ncells_y)
-    for _col in range(ncells_x)
-]
-
-# scale
-crops = [_crop.resize((args.width, args.height)) for _crop in crops]
-
-# get pixels
-crops = [list(_crop.getdata()) for _crop in crops]
-
-
-# check that cells are monochrome
-colourset = set.union(*(set(_data) for _data in crops))
-if len(colourset) > 2:
-    logging.warning('image payload is not monochrome, results will be bad')
-
-# replace colours with characters
-# top-left pixel of first char assumed to be background colour
-bg = crops[0][0]
-if args.invert:
-    BGCHAR, FGCHAR = FGCHAR, BGCHAR
-crops = [
-    [BGCHAR if _c == bg else FGCHAR for _c in _cell]
-    for _cell in crops
-]
-
-# reshape cells
-crops = [
-    [
-        u''.join(_cell[_offs: _offs+args.width])
-        for _offs in range(0, len(_cell), args.width)
-    ]
-    for _cell in crops
-]
-
-for ordinal, char in enumerate(crops):
-    args.outfile.write(u'{:02x}:\n\t'.format(args.first + ordinal))
-    args.outfile.write(u'\n\t'.join(char))
-    args.outfile.write(u'\n\n')
+font = monobit.image.load(
+    args.infile, cell=(args.width, args.height),
+    margin=(args.margin_x, args.margin_y), padding=(args.padding_x, args.padding_y), scale=(args.scale_x, args.scale_y),
+    invert=args.invert, first=args.first,
+)
+monobit.hexdraw.save(font, args.outfile)
