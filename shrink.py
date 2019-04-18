@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Extract monospace bitmap font from monochrome image file and output as hexdraw text file
+Shrink font in a hexdraw text file
 (c) 2019 Rob Hagemans, licence: https://opensource.org/licenses/MIT
 """
 
