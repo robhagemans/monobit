@@ -54,7 +54,7 @@ args = parser.parse_args()
 
 
 font = monobit.raw.load(
-    args.infile, cell=(args.width, args.height), n_chars=args.number,
+    args.infile, cell=(args.width, args.height), n_chars=args.number[0] if args.number else None,
     offset=args.offset, padding=args.padding, clip=args.clip_x, mirror=args.mirror,
     invert=args.invert, first=args.first,
 )
