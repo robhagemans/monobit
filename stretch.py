@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Shrink font in a hexdraw text file
+Stretch font in a hexdraw text file
 (c) 2019 Rob Hagemans, licence: https://opensource.org/licenses/MIT
 """
 
@@ -19,18 +19,14 @@ parser.add_argument('infile', nargs='?', type=argparse.FileType('r'), default=sy
 parser.add_argument('outfile', nargs='?', type=argparse.FileType('w'), default=sys.stdout)
 parser.add_argument(
     '-x', '--factor-x', default=1, type=int,
-    help='horizontal shrink factor, must be integer >= 1'
+    help='horizontal stretch factor, must be integer >= 1'
 )
 parser.add_argument(
     '-y', '--factor-y', default=1, type=int,
-    help='vertical shrink factor, must be integer >= 1'
-)
-parser.add_argument(
-    '-f', '--force', action='store_true',
-    help='shrink even if this causes loss of information'
+    help='vertical stretch factor, must be integer >= 1'
 )
 args = parser.parse_args()
 
 font = monobit.hexdraw.load(args.infile)
-font = monobit.shrink(font, factor_x=args.factor_x, factor_y=args.factor_y, force=args.force)
+font = monobit.stretch(font, factor_x=args.factor_x, factor_y=args.factor_y)
 monobit.hexdraw.save(font, args.outfile)
