@@ -9,6 +9,7 @@ from . import hexdraw
 from . import image
 from . import raw
 from . import bdf
+from . import c
 
 from .image import show
 from .operations import *
