@@ -70,6 +70,9 @@ def load(infile):
             meta[keyword] = values
             width, height, _, _ = meta['BBX'].split(' ')
             width, height = int(width), int(height)
+            # fix for ami2bdf fonts
+            #if width > 65534:
+            #    width -= 65534
             # convert from hex-string to list of bools
             data = [instream.readline()[:-1] for _ in range(height)]
             bytewidth = len(data[0]) // 2

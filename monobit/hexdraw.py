@@ -9,6 +9,8 @@ import string
 
 from .base import ensure_stream
 
+# TODO: preserve comments, maybe metadata
+
 
 def load(infile, back='-'):
     """Read a hexdraw plaintext font file."""
