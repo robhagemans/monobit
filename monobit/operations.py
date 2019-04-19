@@ -84,7 +84,11 @@ def shrink(glyphs, factor_x=1, factor_y=1, force=False):
                 for _key, _char in glyphs.items()
             }
             if shrunk_glyphs != alt:
-                raise ValueError("can't shrink without loss.")
+                nomatch = [
+                    hex(_key) for _key, _glyph in shrunk_glyphs.items()
+                    if _glyph != alt[_key]
+                ]
+                raise ValueError("can't shrink without loss: {}".format(nomatch))
     # horizontal stretch
     glyphs = {
         _key: [_row[::factor_x] for _row in _char]
