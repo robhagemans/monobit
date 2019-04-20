@@ -34,6 +34,10 @@ parser.add_argument(
     help='number of vertical pixels above first character cell'
 )
 parser.add_argument(
+    '--scale', default=1, type=int,
+    help='number of horizontal and vertical pixels in image that make up a pixel in the font'
+)
+parser.add_argument(
     '--scale-x', default=1, type=int,
     help='number of horizontal pixels in image that make up a pixel in the font'
 )
@@ -50,6 +54,8 @@ parser.add_argument(
     help='number of columns in output'
 )
 args = parser.parse_args()
+if args.scale:
+    args.scale_x = args.scale_y = args.scale
 kwargs = dict(
     columns=args.columns, margin=(args.margin_x, args.margin_y), padding=(args.padding_x, args.padding_y),
     scale=(args.scale_x, args.scale_y),
