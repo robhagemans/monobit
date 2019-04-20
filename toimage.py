@@ -34,15 +34,15 @@ parser.add_argument(
     help='number of vertical pixels above first character cell'
 )
 parser.add_argument(
-    '--scale', default=1, type=int,
+    '--scale', default=None, type=int,
     help='number of horizontal and vertical pixels in image that make up a pixel in the font'
 )
 parser.add_argument(
-    '--scale-x', default=1, type=int,
+    '--scale-x', default=4, type=int,
     help='number of horizontal pixels in image that make up a pixel in the font'
 )
 parser.add_argument(
-    '--scale-y', default=1, type=int,
+    '--scale-y', default=4, type=int,
     help='number of vertical pixels in image that make up a pixel in the font'
 )
 parser.add_argument(
