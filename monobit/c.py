@@ -14,7 +14,7 @@ def load(infile, identifier, width, height):
     """Load font from a .c file."""
     payload = _get_payload(infile, identifier)
     # c bytes are python bytes, except 0777-style octal (which we therefore don't support correctly)
-    bytelist = [int(_s, 0) for _s in payload.split(',')]
+    bytelist = [int(_s, 0) for _s in payload.split(',') if _s]
     bitrows = ['{:08b}'.format(_n) for _n in bytelist]
     bytewidth = -(-width//8)
     bitrows = [
@@ -31,6 +31,8 @@ def _get_payload(infile, identifier):
     """Find the identifier and get the part between {curly brackets}."""
     with ensure_stream(infile, 'r') as instream:
         for line in infile:
+            if '//' in line:
+                line, _ = line.split('//', 1)
             line = line.strip(' \r\n')
             # for this to work the declaration must be at the start of the line
             # (whitespace excluded). compound statements would break this.
@@ -41,16 +43,21 @@ def _get_payload(infile, identifier):
         if '{' in line[len(identifier):]:
             _, line = line.split('{')
             if '}' in line:
-                line, _ = line.split('}')
+                line, _ = line.split('}', 1)
                 return line
             payload = [line]
         else:
             payload = []
         for line in infile:
+            if '//' in line:
+                line, _ = line.split('//', 1)
             line = line.strip(' \r\n')
+            if '{' in line:
+                _, line = line.split('{', 1)
             if '}' in line:
-                line, _ = line.split('}')
+                line, _ = line.split('}', 1)
                 payload.append(line)
                 break
-            payload.append(line)
+            if line:
+                payload.append(line)
         return ''.join(payload)
