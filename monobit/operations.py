@@ -23,7 +23,7 @@ def flip(glyphs):
 def transpose(glyphs):
     """Transpose glyphs."""
     return {
-        _key: [list(_x) for _x in zip(*a)]
+        _key: [list(_x) for _x in zip(*_char)]
         for _key, _char in glyphs.items()
     }
 
@@ -45,10 +45,27 @@ def invert(glyphs):
         for _key, _char in glyphs.items()
     }
 
-def crop(glyphs, left=0, top=0, right=None, bottom=None):
+def crop(glyphs, left=0, top=0, right=0, bottom=0):
     """Crop glyphs, inclusive bounds."""
     return {
-        _key: [_row[left: right] for _row in _char[top:bottom]]
+        _key: [
+            _row[left : (-right if right else None)]
+            for _row in _char[top : (-bottom if bottom else None)]
+        ]
+        for _key, _char in glyphs.items()
+    }
+
+def expand(glyphs, left=0, top=0, right=0, bottom=0):
+    """Add empty space."""
+    return {
+        _key: (
+            [[False] * (left + len(_char[0]) + right)] * top
+            + [
+                [False] * left + _row + [False] * right
+                for _row in _char
+            ]
+            + [[False] * (left + len(_char[0]) + right)] * bottom
+        )
         for _key, _char in glyphs.items()
     }
 
