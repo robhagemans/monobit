@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Hoard of bitfonts</title>
+</head>
+
+<body>
+
+<p style="font-family: sans; margin: 1em;">
+    Choose a bitmap font from <a href="https://github.com/robhagemans/hoard-of-bitfonts">the hoard</a>
+    to see its character set:
+</p>
+
+<form onchange="updateSettings();" style="float:left; margin:1em;">
+    <select name="font" size="10" id="fontselector">
+    </select>
+</form>
+
+<canvas id="fontcanvas" width=1px height=1px style="float:left; margin: 1em;"></canvas>
+
+
+<script>
+
+    SCALE = 2;
+    GRID = 0;
+    FORE = "black";
+    BACK = "#e0e0e0";
+    BORDER = "#f0f0f0";
+
+
+    function getList() {
+        var url = "https://api.github.com/repos/robhagemans/hoard-of-bitfonts/git/trees/master?recursive=1";
+        if (url !== undefined && url !== null && url) {
+            var request1 = new XMLHttpRequest();
+            request1.open("GET", url, true);
+            request1.onreadystatechange = function() {
+                if (request1.readyState === 4 && request1.status === 200) {
+                    dir = JSON.parse(request1.responseText);
+                    files = [];
+                    for (var i = 0; i < dir.tree.length; ++i) {
+                        if (dir.tree[i].path.endsWith(".draw")) {
+                            files.push(dir.tree[i].path);
+                        }
+                    }
+                    select = document.getElementById("fontselector");
+                    for (var i = 0; i < files.length; i++) {
+                        var el = document.createElement("option");
+                        el.text = files[i];
+                        el.value = files[i];
+                        select.add(el);
+                    }
+                }
+            };
+            request1.send(null);
+        }
+    }
+
+    function updateSettings() {
+        fontpath = document.getElementById("fontselector").value;
+        loadFont(fontpath);
+    }
+
+    function loadFont(path) {
+        var url = "https://raw.githubusercontent.com/robhagemans/hoard-of-bitfonts/master/" + path;
+        if (url !== undefined && url !== null && url) {
+            var request = new XMLHttpRequest();
+            request.open("GET", url, true);
+            request.onreadystatechange = function() {
+                if (request.readyState === 4 && request.status === 200) {
+                    var fontfile = request.responseText;
+                    glyphs = parseFont(fontfile);
+                    show(glyphs);
+                }
+            };
+            request.send(null);
+        }
+    }
+
+    function parseFont(fontfile) {
+        preglyph = fontfile.split('\n');
+        glyphs = {};
+        current = 0;
+        for (var i=0; i < preglyph.length; ++i) {
+            row = preglyph[i]
+            if (!row) continue;
+            if (row[0] == "#") continue;
+            row = row.trim();
+            if (row.includes(":")) {
+                split = row.split(":");
+                current = parseInt(split[0].trim(), 16);
+                row = split.slice(1).join("").trim();
+                glyphs[current] = [];
+            }
+            if (row) {
+                glyphs[current].push(row);
+            }
+        }
+        return (glyphs);
+    }
+
+
+    function showGlyph(ord, context, x, y) {
+        var glyph = glyphs[ord];
+        if (glyph && glyph[0]) {
+            var k=0;
+            var font_width = glyph[0].length;
+
+            for (var i=0; i < glyph.length; ++i) {
+                for (var j=0; j < glyph[i].length; ++j) {
+                    // grid
+                    context.fillStyle = BORDER;
+                    context.fillRect((x+k*font_width+j)*SCALE, (y+i)*SCALE, SCALE, SCALE);
+                    if (glyph[i][j] != '-') context.fillStyle = FORE;
+                    else context.fillStyle = BACK;
+                    context.fillRect((x+k*font_width+j)*SCALE, (y+i)*SCALE, SCALE-GRID, SCALE-GRID);
+                }
+            }
+        }
+    }
+
+
+    function show(glyphs) {
+        var width = 0;
+        var height = 0;
+        var nchar = 0;
+        console.log(glyphs)
+        for (var ord in glyphs) {
+            glyph = glyphs[ord];
+            console.log(ord)
+            if (!glyph) continue;
+            if (glyph.length > height) height = glyph.length;
+            if (!glyph.length) continue;
+            if (glyph[0].length > width) width = glyph[0].length;
+            if (parseInt(ord) > nchar) nchar = parseInt(ord);
+        }
+        //var nchar = 256;
+        var columns = 32;
+
+        var padding = 1;
+        var margin = 1;
+
+        var rows = Math.ceil(nchar / columns);
+        var canvas = document.getElementById("fontcanvas");
+        canvas_width = (width*columns + 2*margin + (columns-1)*padding);
+        canvas_height = (height*rows + 2*margin + (rows-1)*padding);
+        canvas.width = SCALE * canvas_width;
+        canvas.height = SCALE * canvas_height;
+        canvas.style.width = (2*canvas_width) + "px";
+        canvas.style.height = (2*canvas_height) + "px";
+
+        // set the context on the resized canvas
+        var context = canvas.getContext("2d");
+        context.fillStyle = BORDER;
+        context.fillRect(0, 0, canvas.width, canvas.height);
+
+        for (var ord = 0; ord < nchar; ++ord) {
+            var col = ord % columns;
+            var row = (ord - col) / columns;
+            showGlyph(
+                ord, context,
+                margin + col*(width+padding),
+                margin + row*(height+padding)
+            );
+        }
+    }
+
+
+    getList();
+</script>
+
+</body>
+</thml>
