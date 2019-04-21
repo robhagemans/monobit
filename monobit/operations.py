@@ -28,7 +28,7 @@ def transpose(glyphs):
     }
 
 def rotate(glyphs, turns):
-    """Rotate by 90-degree turns; positive is counterclockwise."""
+    """Rotate by 90-degree turns; positive is clockwise."""
     turns %= 4
     if turns == 3:
         return flip(transpose(glyphs))
