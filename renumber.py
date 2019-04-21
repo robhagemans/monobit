@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Take glyphs from a hexdraw text file
+Renumber glyphs in a hexdraw text file
 (c) 2019 Rob Hagemans, licence: https://opensource.org/licenses/MIT
 """
 
@@ -18,18 +18,12 @@ anyint = lambda _s: int(_s, 0)
 parser = argparse.ArgumentParser()
 parser.add_argument('infile', nargs='?', type=argparse.FileType('r'), default=sys.stdin)
 parser.add_argument('outfile', nargs='?', type=argparse.FileType('w'), default=sys.stdout)
-parser.add_argument(
-    '--from', default=0, dest='from_', type=anyint, help='first character to take'
-)
-parser.add_argument(
-    '--to', default=-1, dest='to_', type=anyint, help='last character to take (inclusive)'
-)
+parser.add_argument('--add', default=0, type=anyint, help='value to add to each ordinal')
 args = parser.parse_args()
 
 font = monobit.hexdraw.load(args.infile)
 font = {
-    _k: _v
+    _k+args.add: _v
     for _k, _v in font.items()
-    if _k >= args.from_ and args.to_ < 0 or _k <= args.to_
 }
 monobit.hexdraw.save(font, args.outfile)
