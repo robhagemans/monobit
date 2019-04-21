@@ -50,12 +50,16 @@ parser.add_argument(
     '--first', default=0, type=lambda _s: int(_s, 0),
     help='code point of first glyph in image'
 )
+parser.add_argument(
+    '--strike', action='store_true', default=False,
+    help='font is soted in strike order (sideways). Must provide number of chars as well'
+)
 args = parser.parse_args()
 
 
 font = monobit.raw.load(
     args.infile, cell=(args.width, args.height), n_chars=args.number[0] if args.number else None,
     offset=args.offset, padding=args.padding, clip=args.clip_x, mirror=args.mirror,
-    invert=args.invert, first=args.first,
+    invert=args.invert, first=args.first, strike=args.strike
 )
 monobit.hexdraw.save(font, args.outfile)
