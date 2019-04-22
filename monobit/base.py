@@ -7,7 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 from contextlib import contextmanager
 
-DEFAULT_FORMAT = 'txt'
+DEFAULT_FORMAT = 'text'
 
 
 @contextmanager
@@ -19,6 +19,10 @@ def ensure_stream(infile, mode):
         instream = infile
     with instream:
         yield instream
+
+def ceildiv(num, den):
+    """Integer division, rounding up."""
+    return -(-num // den)
 
 
 class Font:
@@ -47,7 +51,7 @@ class Font:
             except ValueError:
                 pass
         try:
-            loader = cls._loaders[format]
+            loader = cls._loaders[format.lower()]
         except KeyError:
             raise ValueError('Cannot load from format `{}`'.format(format))
         return loader(infile, **kwargs)
@@ -65,23 +69,25 @@ class Font:
             except ValueError:
                 pass
         try:
-            saver = self._savers[format]
+            saver = self._savers[format.lower()]
         except KeyError:
             raise ValueError('Cannot save to format `{}`'.format(format))
         return saver(self, outfile, **kwargs)
 
     @classmethod
-    def loads(cls, format):
+    def loads(cls, *formats):
         """Decorator to register font loader."""
         def _loadfunc(fn):
-            cls._loaders[format] = fn
+            for format in formats:
+                cls._loaders[format.lower()] = fn
             return fn
         return _loadfunc
 
     @classmethod
-    def saves(cls, format):
+    def saves(cls, *formats):
         """Decorator to register font saver."""
         def _savefunc(fn):
-            cls._savers[format] = fn
+            for format in formats:
+                cls._savers[format.lower()] = fn
             return fn
         return _savefunc

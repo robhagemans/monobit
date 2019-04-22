@@ -7,7 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 import binascii
 
-from .base import ensure_stream
+from .base import Font, ensure_stream
 
 
 def _read_dict(instream, until=None):
@@ -24,6 +24,8 @@ def _read_dict(instream, until=None):
             break
     return result
 
+
+@Font.loads('bdf')
 def load(infile):
     """Load font from a .bdf file."""
     with ensure_stream(infile, 'r') as instream:
@@ -86,7 +88,5 @@ def load(infile):
             glyph_meta[encvalue] = meta
             if not instream.readline().startswith('ENDCHAR'):
                 raise('Expected ENDCHAR')
-        #print(comments)
-        #print(metadata)
         #print(glyph_meta)
-        return glyphs
+        return Font(glyphs, comments, metadata)

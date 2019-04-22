@@ -19,9 +19,7 @@ _BACK = "_.-`'0"
 #_FORE = '@#*1'
 
 
-@Font.loads('txt')
-@Font.loads('draw')
-@Font.loads('yaff')
+@Font.loads('text', 'txt', 'draw', 'yaff')
 def load(infile, back=_BACK):
     """Read a hexdraw plaintext font file."""
     with ensure_stream(infile, 'r') as instream:
@@ -62,9 +60,7 @@ def load(infile, back=_BACK):
         return Font(glyphs, comments)
 
 
-@Font.saves('txt')
-@Font.saves('draw')
-@Font.saves('yaff')
+@Font.saves('text', 'txt', 'draw', 'yaff')
 def save(font, outfile, fore='@', back='.', comment='#'):
     """Write font to hexdraw file."""
     with ensure_stream(outfile, 'w') as outstream:

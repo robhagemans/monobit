@@ -7,16 +7,17 @@ licence: https://opensource.org/licenses/MIT
 
 import binascii
 
-from .base import ensure_stream
+from .base import Font, ensure_stream, ceildiv
 
 
+@Font.loads('c', 'cc', 'cpp', 'h')
 def load(infile, identifier, width, height):
     """Load font from a .c file."""
     payload = _get_payload(infile, identifier)
     # c bytes are python bytes, except 0777-style octal (which we therefore don't support correctly)
     bytelist = [int(_s, 0) for _s in payload.split(',') if _s]
     bitrows = ['{:08b}'.format(_n) for _n in bytelist]
-    bytewidth = -(-width//8)
+    bytewidth = ceildiv(width, 8)
     bitrows = [
         ''.join(_row for _row in bitrows[_offs:_offs+bytewidth])
         for _offs in range(0, len(bitrows), bytewidth)

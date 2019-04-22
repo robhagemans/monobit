@@ -6,6 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 from PIL import Image
+from .base import Font
 
 
 def _ceildiv(num, den):
@@ -13,6 +14,7 @@ def _ceildiv(num, den):
     return -((-num) // den)
 
 
+@Font.loads('png', 'bmp', 'gif', 'image')
 def load(
         infile, cell=(8, 8),
         margin=(0, 0), padding=(0, 0), scale=(1, 1),
@@ -113,7 +115,7 @@ def _to_image(
             img.paste(charimg, lefttop)
     return img
 
-
+@Font.saves('png', 'bmp', 'gif', 'image')
 def save(
         glyphs, outfile, format=None,
         columns=32, margin=(0, 0), padding=(0, 0), scale=(1, 1),

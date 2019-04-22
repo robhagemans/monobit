@@ -8,7 +8,7 @@ licence: https://opensource.org/licenses/MIT
 import struct
 import logging
 
-from .base import ensure_stream
+from .base import Font, ensure_stream
 
 
 # amiga header constants
@@ -183,9 +183,11 @@ def _read_font_hunk(f):
             for _char, _width in zip(font, spacing)
         ]
     logging.info('kerning table: %r', kerning)
-    return dict(enumerate(font, lochar))
+    glyphs = dict(enumerate(font, lochar))
+    return Font(glyphs)
 
 
+@Font.loads('amiga')
 def load(f):
     """Read Amiga disk font file."""
     with ensure_stream(f, 'rb'):
