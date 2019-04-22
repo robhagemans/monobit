@@ -6,6 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 from . import hexdraw
+from . import amiga
 from . import image
 from . import raw
 from . import bdf
