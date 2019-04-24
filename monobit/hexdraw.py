@@ -5,6 +5,7 @@ monobit.hexdraw - read and write .draw files
 licence: https://opensource.org/licenses/MIT
 """
 
+import logging
 import string
 
 from .base import ensure_stream, Font
@@ -14,9 +15,9 @@ _WHITESPACE = ' \t'
 _CODESTART = _WHITESPACE + string.digits + string.ascii_letters
 
 # default background characters
-_BACK = "_.-`'0"
+_BACK = "_.-"
 # for now, anything else is foreground
-#_FORE = '@#*1'
+#_FORE = '@#*'
 
 
 @Font.loads('text', 'txt', 'draw', 'yaff')
@@ -29,6 +30,8 @@ def load(infile, back=_BACK):
             for _line in lines
             if _line.rstrip('\r\n') and _line[0] not in _CODESTART
         ]
+        if all(_line[0] == ' ' for _line in comments):
+            comments = [_line[1:] for _line in comments]
         # drop all comments
         codelines = (
             _line
@@ -39,7 +42,7 @@ def load(infile, back=_BACK):
         # assuming only one code point per glyph, for now
         clusters = []
         for line in codelines:
-            if line[0] in string.hexdigits:
+            if line[0] not in _WHITESPACE:
                 cp, rest = line.strip().split(':')
                 if rest:
                     clusters.append((cp, [rest.strip()]))
@@ -48,25 +51,38 @@ def load(infile, back=_BACK):
             else:
                 clusters[-1][1].append(line.strip())
         # text version of glyphs
+        # a glyph is any key/value where the value contains no alphanumerics
         glyphs = {
             int(_cluster[0], 16): _cluster[1]
             for _cluster in clusters
+            if not set(''.join(_cluster[1])) & set(string.digits + string.ascii_letters)
         }
+        # properties: anything that does contain alphanumerics
+        properties = {
+            _cluster[0]: ' '.join(_cluster[1])
+            for _cluster in clusters
+            if set(''.join(_cluster[1])) & set(string.digits + string.ascii_letters)
+        }
+        logging.info(properties)
         # convert to bitlist
         glyphs = {
             _key: [[_c not in back for _c in _row] for _row in _value]
             for _key, _value in glyphs.items()
         }
-        return Font(glyphs, comments)
+        return Font(glyphs, comments, properties)
 
 
 @Font.saves('text', 'txt', 'draw', 'yaff')
 def save(font, outfile, fore='@', back='.', comment='#'):
     """Write font to hexdraw file."""
     with ensure_stream(outfile, 'w') as outstream:
-        for line in font._comments:
-            outstream.write('{}{}\n'.format(comment, line))
         if font._comments:
+            for line in font._comments:
+                outstream.write('{} {}\n'.format(comment, line))
+            outstream.write('\n')
+        if font._properties:
+            for key, value in font._properties.items():
+                outstream.write('{}: {}\n'.format(key, value))
             outstream.write('\n')
         for ordinal, char in font._glyphs.items():
             char = [''.join((fore if _b else back) for _b in _row) for _row in char]
