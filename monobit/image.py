@@ -6,12 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 from PIL import Image
-from .base import Font
-
-
-def _ceildiv(num, den):
-    """Integer diviion, rounding up."""
-    return -((-num) // den)
+from .base import Font, ceildiv
 
 
 @Font.loads('png', 'bmp', 'gif', 'image')
@@ -73,11 +68,12 @@ def load(
 
 
 def _to_image(
-        glyphs,
+        font,
         columns=32, margin=(0, 0), padding=(0, 0), scale=(1, 1),
         border=(32, 32, 32), back=(0, 0, 0), fore=(255, 255, 255),
     ):
     """Dump font to image."""
+    glyphs = font._glyphs
     scale_x, scale_y = scale
     padding_x, padding_y = padding
     margin_x, margin_y = margin
@@ -87,8 +83,7 @@ def _to_image(
     anyglyph = next(iter(glyphs.values()))
     step_x = len(anyglyph[0]) * scale_x + padding_x
     step_y = len(anyglyph) * scale_y + padding_y
-    # ceildiv
-    rows = _ceildiv(max(glyphs.keys())+1, columns)
+    rows = ceildiv(max(glyphs.keys())+1, columns)
     # determine image geometry
     width = columns * step_x + 2 * margin_x - padding_x
     height = rows * step_y + 2 * margin_y - padding_y
@@ -115,22 +110,23 @@ def _to_image(
             img.paste(charimg, lefttop)
     return img
 
+
 @Font.saves('png', 'bmp', 'gif', 'image')
 def save(
-        glyphs, outfile, format=None,
+        font, outfile, format=None,
         columns=32, margin=(0, 0), padding=(0, 0), scale=(1, 1),
         border=(32, 32, 32), back=(0, 0, 0), fore=(255, 255, 255),
     ):
     """Export font to image."""
-    img = _to_image(glyphs, columns, margin, padding, scale, border, back, fore)
+    img = _to_image(font, columns, margin, padding, scale, border, back, fore)
     img.save(outfile, format)
 
 
 def show(
-        glyphs,
+        font,
         columns=32, margin=(0, 0), padding=(0, 0), scale=(1, 1),
         border=(32, 32, 32), back=(0, 0, 0), fore=(255, 255, 255),
     ):
     """Show font as image."""
-    img = _to_image(glyphs, columns, margin, padding, scale, border, back, fore)
+    img = _to_image(font, columns, margin, padding, scale, border, back, fore)
     img.show()
