@@ -87,12 +87,13 @@ def _read_font_hunk(f):
     # struct Node
     # pln_succ, pln_pred, ln_type, ln_pri, pln_name
     reader.unpack('>IIBbI') # 14b
-    # in theory this is font/file metadata
-    # but name is only a placeholder, seems to be empty
+    # rev may be the revision number of the font
+    # but name is only a placeholder, usually seems to be empty, but some of the bytes get used for versioning tags
+    # fileid == 0f80, like a magic number for font files
     fileid, rev, seg, name = reader.unpack('>HHi%ds' % (_MAXFONTNAME,)) # 8+32b
     if b'\0' in name:
-        name, _ = name.split(b'\0', 1)
-    logging.info('id: %d revision: %d name: "%s"', fileid, rev, name.decode('latin-1'))
+        name, name2 = name.split(b'\0', 1)
+    logging.info('id: %d revision: %d name: "%s" name2: %r', fileid, rev, name.decode('latin-1'), name2)
     # struct Message at start of struct TextFont
     # pln_succ, pln_pred, ln_type, ln_pri, pln_name, pmn_replyport, mn_length
     reader.unpack('>IIBbIIH') # 20b
