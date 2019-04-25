@@ -86,6 +86,9 @@ def save(font, outfile, fore='@', back='.', comment='#'):
             outstream.write('\n')
         for ordinal, char in font._glyphs.items():
             char = [''.join((fore if _b else back) for _b in _row) for _row in char]
-            outstream.write('{:02x}:\n\t'.format(ordinal))
+            if isinstance(ordinal, int):
+                outstream.write('{:02x}:\n\t'.format(ordinal))
+            else:
+                outstream.write('{}:\n\t'.format(ordinal))
             outstream.write('\n\t'.join(char))
             outstream.write('\n\n')
