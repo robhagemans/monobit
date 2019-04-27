@@ -193,12 +193,15 @@ def _read_font_hunk(f):
     else:
         spacing = (xsize,) * len(font)
     for i, sp in enumerate(kerning):
-        if sp < 0:
-            logging.warning('negative kerning of %d in %dth character' % (sp, i,))
         if abs(sp) > xsize*2:
             logging.error('very high values in kerning table')
             kerning = (0,) * len(font)
             break
+    # deal with negative kerning by turning it into a global negative offset
+    min_kern = min(kerning)
+    if min_kern < 0:
+        props['offset-before'] = min_kern
+        kerning = (_kern - min_kern for _kern in kerning)
     font = [
         [[False] * _kern + _row + [False] * (_width - _kern - len(_row)) for _row in _char]
         for _char, _width, _kern in zip(font, spacing, kerning)
