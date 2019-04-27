@@ -53,7 +53,7 @@ def load(infile, back=_BACK):
         # text version of glyphs
         # a glyph is any key/value where the value contains no alphanumerics
         glyphs = {
-            int(_cluster[0], 16): _cluster[1]
+            _cluster[0]: _cluster[1]
             for _cluster in clusters
             if not set(''.join(_cluster[1])) & set(string.digits + string.ascii_letters)
         }
@@ -68,6 +68,14 @@ def load(infile, back=_BACK):
             _key: [[_c not in back for _c in _row] for _row in _value]
             for _key, _value in glyphs.items()
         }
+
+        def _toint(key):
+            try:
+                return int(key, 16)
+            except ValueError:
+                return key
+
+        glyphs = {_toint(_key): _value for _key, _value in glyphs.items()}
         return Font(glyphs, comments, properties)
 
 

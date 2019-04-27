@@ -83,7 +83,7 @@ def _to_image(
     anyglyph = next(iter(glyphs.values()))
     step_x = len(anyglyph[0]) * scale_x + padding_x
     step_y = len(anyglyph) * scale_y + padding_y
-    rows = ceildiv(max(glyphs.keys())+1, columns)
+    rows = ceildiv(max(_key for _key in glyphs.keys() if isinstance(_key, int))+1, columns)
     # determine image geometry
     width = columns * step_x + 2 * margin_x - padding_x
     height = rows * step_y + 2 * margin_y - padding_y

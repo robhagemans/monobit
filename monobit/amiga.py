@@ -122,12 +122,9 @@ def _read_font_hunk(f):
     # pln_succ, pln_pred, ln_type, ln_pri, pln_name, pmn_replyport, mn_length
     reader.unpack('>IIBbIIH') # 20b
     # font properties
-    # tf_BoldSmear; /* smear to affect a bold enhancement */
     ysize, style, flags, xsize, baseline, boldsmear, accessors, lochar, hichar = reader.unpack('>HBBHHHHBB') #, f.read(2+2+4*2+2))
     props['bottom'] = -(ysize-baseline)
     props['size'] = ysize
-
-    # style & 0x01: underlined
     props['weight'] = 'bold' if style & 0x02 else 'medium'
     props['slant'] = 'italic' if style & 0x04 else 'roman'
     props['setwidth'] = 'expanded' if style & 0x08 else 'medium'
@@ -137,6 +134,7 @@ def _read_font_hunk(f):
     # preserve unparsed properties
     if style & 0x01:
         props['_STYLE'] = 'UNDERLINED'
+    # tf_BoldSmear; /* smear to affect a bold enhancement */
     props['_BOLDSMEAR'] = boldsmear
     # preserve tags stored in name field after \0
     if name2:
@@ -206,6 +204,11 @@ def _read_font_hunk(f):
         for _char, _width, _kern in zip(font, spacing, kerning)
     ]
     glyphs = dict(enumerate(font, lochar))
+    # default glyph doesn't have an encoding value
+    default = max(glyphs)
+    glyphs['default'] = glyphs[default]
+    del glyphs[default]
+    props['default-char'] = 'default'
     return Font(glyphs, properties=props)
 
 
