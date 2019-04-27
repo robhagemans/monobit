@@ -30,7 +30,7 @@ _FLAGS_MAP = {
     0x04: 'REVPATH', # This font is designed to be printed from from right to left
     0x08: 'TALLDOT', # This font was designed for a Hires screen (640x200 NTSC, non-interlaced)
     0x10: 'WIDEDOT', # This font was designed for a Lores Interlaced screen (320x400 NTSC)
-    0x20: 'PROPORTIONAL', # character sizes can vary from nominal
+    #0x20: 'PROPORTIONAL', # character sizes can vary from nominal
     0x40: 'DESIGNED', # size explicitly designed, not constructed
     0x80: 'REMOVED', # the font has been removed
 }
@@ -130,18 +130,18 @@ def _read_font_hunk(f):
     props['setwidth'] = 'expanded' if style & 0x08 else 'medium'
     proportional = bool(flags & 0x20)
     props['spacing'] = 'proportional' if proportional else 'monospace'
-    flag_tags = ' '.join(tag for mask, tag in _FLAGS_MAP.items() if flags & mask)
     # preserve unparsed properties
-    if style & 0x01:
-        props['_STYLE'] = 'UNDERLINED'
     # tf_BoldSmear; /* smear to affect a bold enhancement */
     props['_BOLDSMEAR'] = boldsmear
     # preserve tags stored in name field after \0
-    if name2:
+    if name2.replace(b'\0', b''):
         props['_TAG'] = name2.replace(b'\0', b'').decode('latin-1')
     # preserve unparsed flags
+    flag_tags = ' '.join(tag for mask, tag in _FLAGS_MAP.items() if flags & mask)
+    if style & 0x01:
+        flag_tags = ' '.join('UNDERLINED', flag_tags)
     if flag_tags:
-        props['_FLAGS'] = flag_tags
+        props['_PROPERTIES'] = flag_tags
     # data structure parameters
     tf_chardata, tf_modulo, tf_charloc, tf_charspace, tf_charkern = reader.unpack('>IHIII') #, f.read(18))
     # char data
@@ -185,7 +185,7 @@ def _read_font_hunk(f):
     if proportional:
         for i, sp in enumerate(spacing):
             if sp < 0:
-                logging.warning('negative spacing in %dth character' % (i,))
+                logging.warning('negative spacing of %d in %dth character' % (sp, i,))
             if abs(sp) > xsize*2:
                 logging.error('very high values in spacing table')
                 spacing = (xsize,) * len(font)
@@ -194,7 +194,7 @@ def _read_font_hunk(f):
         spacing = (xsize,) * len(font)
     for i, sp in enumerate(kerning):
         if sp < 0:
-            logging.warning('negative kerning in %dth character' % (i,))
+            logging.warning('negative kerning of %d in %dth character' % (sp, i,))
         if abs(sp) > xsize*2:
             logging.error('very high values in kerning table')
             kerning = (0,) * len(font)
