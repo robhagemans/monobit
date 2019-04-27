@@ -133,6 +133,32 @@ _SPACING_MAP = {
     'C': 'cell',
 }
 
+_SETWIDTH_MAP = {
+    '0': '', # Undefined or unknown
+    '10': 'ultra-condensed',
+    '20': 'extra-condensed',
+    '30': 'condensed', # Condensed, Narrow, Compressed, ...
+    '40': 'semi-condensed',
+    '50': 'medium', # Medium, Normal, Regular, ...
+    '60': 'semi-expanded', # SemiExpanded, DemiExpanded, ...
+    '70': 'expanded',
+    '80': 'extra-expanded', # ExtraExpanded, Wide, ...
+    '90': 'ultra-expanded',
+}
+
+_WEIGHT_MAP = {
+    '0': '', # Undefined or unknown
+    '10': 'ultra-light',
+    '20': 'extra-light',
+    '30': 'light',
+    '40': 'semi-light', # SemiLight, Book, ...
+    '50': 'medium', # Medium, Normal, Regular,...
+    '60': 'semi-bold', # SemiBold, DemiBold, ...
+    '70': 'bold',
+    '80': 'extra-bold', #ExtraBold, Heavy, ...
+    '90': 'ultra-bold', #UltraBold, Black, ...,
+}
+
 def _parse_properties(glyphs, glyph_props, bdf_props, x_props, filename):
     """Parse metrics and metadata."""
     logging.info('bdf properties:')
@@ -151,11 +177,9 @@ def _parse_properties(glyphs, glyph_props, bdf_props, x_props, filename):
     properties.update(bdf_properties)
     properties.update(_parse_xlfd_properties(x_props, xlfd_name))
     # check if default har exists, remove otherwise
-    if 'DEFAULT_CHAR' in x_props:
-        defaultchar = x_props['DEFAULT_CHAR']
+    if 'default-char' in properties and not int(properties['default-char'], 0) in glyphs:
         # if the number doesn't occur, no default is set.
-        if int(defaultchar) in glyphs:
-            properties['default-char'] = hex(int(defaultchar))
+        del properties['default-char']
     return properties
 
 
@@ -257,16 +281,14 @@ def _parse_xlfd_name(xlfd_str):
         'family': 2,
         'weight': 3,
         'slant': 4,
-        'width': 5,
+        'setwidth': 5,
         'style': 6,
         #'size': 7, # pixel-size already specified in bdf props
-        #'points': 8, can be calculated?
-        # DeciPointsPerInch = 722.7
-        # PIXEL_SIZE = ROUND ((RESOLUTION_Y * POINT_SIZE) / DeciPointsPerInch)
+        #'points': 8, # can be calculated?
         #'resolution-x': 9, # dpi already specified in bdf props
-        #'resolution-y': 10,
+        #'resolution-y': 10, # dpi already specified in bdf props
         'spacing': 11,
-        # 'average-width': 12,
+        # 'average-width': 12, # can be calculated
         'charset-registry': 13,
         'charset-encoding': 14,
     }
@@ -278,9 +300,7 @@ def _parse_xlfd_name(xlfd_str):
                 properties[key] = xlfd[index]
     else:
         logging.warning('Could not parse X font name string `%s`', xlfd_str)
-        return {
-            'xlfd-name': xlfd_str
-        }
+        return {}
     return properties
 
 
@@ -298,6 +318,8 @@ def _parse_xlfd_properties(x_props, xlfd_name):
         #'RESOLUTION_X': 'resolution-x',
         #'RESOLUTION_Y': 'resolution-y',
         #'RESOLUTION': 'resolution',
+        #'POINT_SIZE': 'points',
+        # can be calculated: PIXEL_SIZE = ROUND((RESOLUTION_Y * POINT_SIZE) / 722.7)
         # description
         'FACE_NAME': 'name',
         'FULL_NAME': 'name',
@@ -307,19 +329,22 @@ def _parse_xlfd_properties(x_props, xlfd_name):
         'FOUNDRY': 'foundry',
         'FAMILY_NAME': 'family',
         'WEIGHT_NAME': 'weight',
+        'RELATIVE_WEIGHT': 'rel-weight',
         'SLANT': 'slant',
         'SPACING': 'spacing',
-        'SETWIDTH_NAME': 'width',
-        'STYLE_NAME': 'style',
+        'SETWIDTH_NAME': 'setwidth',
+        'RELATIVE_SETWIDTH': 'rel-setwidth',
+        'ADD_STYLE_NAME': 'style',
         'PIXEL_SIZE': 'size',
         # encoding
         'CHARSET_REGISTRY': 'charset-registry',
-        'CHARSET_ENCODING': 'charset-encoding'
+        'CHARSET_ENCODING': 'charset-encoding',
+        'DEFAULT_CHAR': 'default-char',
     }
     properties = {}
     for xkey, key in mapping.items():
         try:
-            value = x_props[xkey].strip('"')
+            value = x_props.pop(xkey).strip('"')
         except KeyError:
             value = xlfd_name_props.get(key, '')
         if value:
@@ -327,6 +352,12 @@ def _parse_xlfd_properties(x_props, xlfd_name):
     # modify/summarise values
     if 'descent' in properties:
         properties['descent'] = -int(properties['descent'])
+    # remove properties we think should be taken from bdf props or calculated from the others
+    x_props.pop('RESOLUTION', None)
+    x_props.pop('RESOLUTION_X', None)
+    x_props.pop('RESOLUTION_Y', None)
+    x_props.pop('AVERAGE_WIDTH', None)
+    x_props.pop('POINT_SIZE', None)
     #if 'resolution-x' in properties and 'resolution-y' in properties:
     #    properties['dpi'] = '{} {}'.format(properties.pop('resolution-x'), properties.pop('resolution-y'))
     #elif 'resolution' in properties:
@@ -335,6 +366,11 @@ def _parse_xlfd_properties(x_props, xlfd_name):
         properties['slant'] = _SLANT_MAP[properties['slant']]
     if 'spacing' in properties and properties['spacing']:
         properties['spacing'] = _SPACING_MAP[properties['spacing']]
+    # prefer the more precise relative weight and setwidth measures
+    if 'rel-setwidth' in properties and properties['rel-setwidth']:
+        properties['setwidth'] = _SETWIDTH_MAP[properties.pop('rel-setwidth')]
+    if 'rel-weight' in properties and properties['rel-weight']:
+        properties['weight'] = _WEIGHT_MAP[properties.pop('rel-weight')]
     # encoding
     try:
         registry = properties.pop('charset-registry')
@@ -342,7 +378,20 @@ def _parse_xlfd_properties(x_props, xlfd_name):
     except KeyError:
         pass
     else:
-        properties['encoding'] = registry + '-' + encoding
+        properties['encoding'] = (registry + '-' + encoding).lower()
+    try:
+        properties['default-char'] = hex(int(properties['default-char']))
+    except KeyError:
+        pass
+    for key in ('weight', 'slant', 'spacing', 'setwidth'):
+        try:
+            properties[key] = properties[key].lower()
+        except KeyError:
+            pass
+    # keep unparsed properties
+    if not xlfd_name_props:
+        properties['FONT'] = xlfd_name
+    properties.update({ _k: _v.strip('"') for _k, _v in x_props.items()})
     return properties
 
 
