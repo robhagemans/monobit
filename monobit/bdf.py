@@ -191,6 +191,8 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
         'size': bdf_props['SIZE'].split(' ')[0],
         'dpi': ' '.join((xdpi, ydpi)) if xdpi != ydpi else xdpi,
     }
+    if 'CONTENTVERSION' in bdf_props:
+        properties['revision'] = bdf_props['CONTENTVERSION']
     # global settings, tend to be overridden by per-glyph settings
     global_bbx = bdf_props['FONTBOUNDINGBOX']
     # not supported: METRICSSET !=0, DWIDTH1, SWIDTH1
@@ -323,7 +325,7 @@ def _parse_xlfd_properties(x_props, xlfd_name):
         # description
         'FACE_NAME': 'name',
         'FULL_NAME': 'name',
-        'FONT_VERSION': 'revision',
+        'FONT_VERSION': 'version',
         'COPYRIGHT': 'copyright',
         'NOTICE': 'notice',
         'FOUNDRY': 'foundry',
