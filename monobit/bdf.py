@@ -21,20 +21,7 @@ def load(infile):
         # check number of characters, but don't break if no match
         if nchars != len(glyphs):
             logging.warning('Possibly corrupted BDF file: number of characters found does not match CHARS declaration.')
-        # parse meaningful metadata
-        # converter-supplied metadata
-        properties = {
-            'source-format': 'BDF {}'.format(bdf_props['STARTFONT']),
-            'source-name': os.path.basename(instream.name),
-        }
-        if 'DEFAULT_CHAR' in x_props:
-            defaultchar = x_props['DEFAULT_CHAR']
-            # if the number doesn't occur, no default is set.
-            if int(defaultchar) in glyphs:
-                properties['default-glyph'] = hex(int(defaultchar))
-        # FIXME: parse per-glyph geometry ... we need BBX and the offsets in swidth (I think)
-        # modify glyphs if necessary to get to one global offset value
-        # TODO: get metadata (foundry, name, ..) from xlfd or x props
+        properties = _parse_properties(glyphs, glyph_props, bdf_props, x_props, instream.name)
         return Font(glyphs, comments, properties)
 
 
@@ -127,6 +114,175 @@ def _read_bdf_global(instream):
                 bdf_props[keyword] = values
     raise ValueError('No character information found in BDF file.')
 
+def _parse_properties(glyphs, glyph_props, bdf_props, x_props, filename):
+    """Parse metrics and metadata."""
+    logging.info('bdf properties:')
+    for name, value in bdf_props.items():
+        logging.info('    %s: %s', name, value)
+    logging.info('x properties:')
+    for name, value in x_props.items():
+        logging.info('    %s: %s', name, value)
+    # converter-supplied metadata
+    properties = {
+        'source-name': os.path.basename(filename),
+    }
+    # parse meaningful metadata
+    glyphs, bdf_properties = _parse_bdf_properties(glyphs, glyph_props, bdf_props)
+    properties.update(bdf_properties)
+    properties.update(_parse_xlfd_properties(x_props))
+    if 'slant' in properties and properties['slant']:
+        properties['slant'] = {
+            'R': 'roman', 'I': 'italic', 'O': 'oblique', 'RO': 'reverse-oblique',
+            'RI': 'reverse-italic', 'OT': 'other'
+        }[properties['slant']]
+    # encoding
+    try:
+        registry = properties.pop('charset-registry')
+        encoding = properties.pop('charset-encoding')
+    except KeyError:
+        pass
+    else:
+        properties['encoding'] = registry + '-' + encoding
+    #'spacing': {
+    #    'P': 'proportional', 'M': 'monospace', 'C': 'cell',
+    #}[xlfd[11]] if xlfd[11] else '',
+    if 'DEFAULT_CHAR' in x_props:
+        defaultchar = x_props['DEFAULT_CHAR']
+        # if the number doesn't occur, no default is set.
+        if int(defaultchar) in glyphs:
+            properties['default-char'] = hex(int(defaultchar))
+    return properties
+
+
+def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
+    """Parse BDF global and per-glyph geometry."""
+    # FIXME: parse per-glyph geometry ... we need BBX and the offsets in swidth (I think)
+    # modify glyphs if necessary to get to one global offset value
+    properties = {
+        'source-format': 'BDF ' + bdf_props['STARTFONT'],
+    }
+    # we ignore SIZE and FONTBOUNDINGBOX as they are overridden by per-glyph metrics
+    properties.update(_parse_xlfd_string(bdf_props['FONT']))
+    #
+    # DWIDTH dwx0 dwy0
+    # DWIDTH specifies the widths in x and y, dwx0 and dwy0, in device pixels.
+    # Like SWIDTH , this width information is a vector indicating the position of
+    # the next glyph’s origin relative to the origin of this glyph. DWIDTH is manda-
+    # tory for all writing mode 0 fonts.
+    #
+    # BBX BBw BBh BBxoff0x BByoff0y
+    # BBX is followed by BBw, the width of the black pixels in x, and BBh, the
+    # height in y. These are followed by the x and y displacement, BBxoff0 and
+    # BByoff0, of the lower left corner of the bitmap from origin 0. All values are
+    # are an integer number of pixels.
+    # If the font specifies metrics for writing direction 1, VVECTOR specifies the
+    # offset from origin 0 to origin 1. For example, for writing direction 1, the
+    # offset from origin 1 to the lower left corner of the bitmap would be:
+    # BBxoff1x,y = BBxoff0x,y – VVECTOR
+    offsets_x = []
+    offsets_y = []
+    overshoots = []
+    heights = []
+    for ordinal, glyph in glyphs.items():
+        props = glyph_props[ordinal]
+        bbx_width, bbx_height, offset_x, offset_y = (int(_p) for _p in props['BBX'].split(' '))
+        dwidth_x, dwidth_y = (int(_p) for _p in props['DWIDTH'].split(' '))
+        offsets_x.append(offset_x)
+        offsets_y.append(offset_y)
+        overshoots.append((offset_x + bbx_width) - dwidth_x)
+        heights.append(bbx_height + offset_y)
+    leftmost = min(offsets_x)
+    rightmost = max(overshoots)
+    bottommost = min(offsets_y)
+    topmost = max(heights)
+    properties['bearing-before'] = -leftmost
+    properties['bearing-after'] = rightmost
+    properties['baseline'] = -bottommost
+    for ordinal, glyph in glyphs.items():
+        props = glyph_props[ordinal]
+        bbx_width, bbx_height, offset_x, offset_y = (int(_p) for _p in props['BBX'].split(' '))
+        dwidth_x, dwidth_y = (int(_p) for _p in props['DWIDTH'].split(' '))
+        overshoot = (offset_x + bbx_width) - dwidth_x
+        padding_right = rightmost - overshoot
+        padding_left = offset_x - leftmost
+        padding_bottom = offset_y - bottommost
+        padding_top = topmost - bbx_height - offset_y
+        glyph = [
+            [False] * padding_left
+            + _row[:bbx_width]
+            + [False] * padding_right
+            for _row in glyph[:bbx_height]
+        ]
+        matrix_width = padding_left + bbx_width + padding_right
+        glyph = (
+            [[False] * matrix_width for _ in range(padding_top)]
+            + glyph
+            + [[False] * matrix_width for _ in range(padding_bottom)]
+        )
+        glyphs[ordinal] = glyph
+    return glyphs, properties
+
+def _parse_xlfd_string(xlfd_str):
+    """Parse X logical font description font name string."""
+    mapping = {
+        'foundry': 1,
+        'family': 2,
+        'weight': 3,
+        'slant': 4,
+        'width': 5,
+        'style': 6,
+        # pixel-size
+        # point-size
+        # resolution-x
+        # resolution-y
+        # spacing
+        # average-width
+        'charset-registry': 13,
+        'charset-encoding': 14,
+    }
+    xlfd = xlfd_str.split('-')
+    properties = {}
+    if len(xlfd) >= 15:
+        for key, index in mapping.items():
+            if xlfd[index]:
+                properties[key] = xlfd[index]
+    else:
+        logging.warning('Could not parse X font name string `%s`', xlfd_str)
+    return properties
+
+
+def _parse_xlfd_properties(x_props):
+    """Parse X metadata."""
+    mapping = {
+        'ascent': 'FONT_ASCENT',
+        'descent': 'FONT_DESCENT',
+        'x-height': 'X_HEIGHT',
+        'cap-height': 'CAP_HEIGHT',
+        'copyright': 'COPYRIGHT',
+        'notice': 'NOTICE',
+        'foundry': 'FOUNDRY',
+        'family': 'FAMILY_NAME',
+        'weight': 'WEIGHT_NAME',
+        'slant': 'SLANT',
+        'width': 'SETWIDTH_NAME',
+        'style': 'STYLE_NAME',
+        # SPACING can be deducted from bitmaps
+        #'spacing': 'SPACING',
+        # we ignore AVERAGE_WIDTH
+        'charset-registry': 'CHARSET_REGISTRY',
+        'charset-encoding': 'CHARSET_ENCODING',
+    }
+    properties = {}
+    for key, xkey in mapping.items():
+        try:
+            value = x_props[xkey].strip('"')
+        except KeyError:
+            pass
+        else:
+            if value:
+                properties[key] = value
+    return properties
+
 
 # from:  Glyph Bitmap Distribution Format (BDF) Specification 2.2 (22 Mar 93)
 #
@@ -212,12 +368,6 @@ def _read_bdf_global(instream):
 # The result is a real number giving the ideal width in device pixels. The actual
 # device width must be an integral number of device pixels and is given by the
 #
-# DWIDTH dwx0 dwy0
-# DWIDTH specifies the widths in x and y, dwx0 and dwy0, in device pixels.
-# Like SWIDTH , this width information is a vector indicating the position of
-# the next glyph’s origin relative to the origin of this glyph. DWIDTH is manda-
-# tory for all writing mode 0 fonts.
-#
 # SWIDTH1 swx1 swy1
 # SWIDTH 1 is followed by the values for swx1 and swy1, the scalable width of
 # the glyph in x and y, for writing mode 1 (vertical direction). The values are of
@@ -241,13 +391,3 @@ def _read_bdf_global(instream):
 # the VVECTOR is the same for all glyphs, though the inclusion of this
 # keyword in an individual glyph has the effect of overriding the bal value for
 # that specific glyph.
-#
-# BBX BBw BBh BBxoff0x BByoff0y
-# BBX is followed by BBw, the width of the black pixels in x, and BBh, the
-# height in y. These are followed by the x and y displacement, BBxoff0 and
-# BByoff0, of the lower left corner of the bitmap from origin 0. All values are
-# are an integer number of pixels.
-# If the font specifies metrics for writing direction 1, VVECTOR specifies the
-# offset from origin 0 to origin 1. For example, for writing direction 1, the
-# offset from origin 1 to the lower left corner of the bitmap would be:
-# BBxoff1x,y = BBxoff0x,y – VVECTOR

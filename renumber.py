@@ -22,8 +22,8 @@ parser.add_argument('--add', default=0, type=anyint, help='value to add to each 
 args = parser.parse_args()
 
 font = monobit.hexdraw.load(args.infile)
-font = {
+font._glyphs = {
     _k+args.add: _v
-    for _k, _v in font.items()
+    for _k, _v in font._glyphs.items()
 }
 monobit.hexdraw.save(font, args.outfile)

@@ -6,8 +6,12 @@ Extract bitmap font from .bdf and output as hexdraw text file
 
 import sys
 import argparse
+import logging
 
 import monobit
+
+
+logging.basicConfig(level=logging.DEBUG, format='%(levelname)s: %(message)s')
 
 # parse command line
 parser = argparse.ArgumentParser()

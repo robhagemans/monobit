@@ -63,7 +63,6 @@ def load(infile, back=_BACK):
             for _cluster in clusters
             if set(''.join(_cluster[1])) & set(string.digits + string.ascii_letters)
         }
-        logging.info(properties)
         # convert to bitlist
         glyphs = {
             _key: [[_c not in back for _c in _row] for _row in _value]
