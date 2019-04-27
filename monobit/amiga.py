@@ -5,10 +5,11 @@ monobit.amiga - read Amiga font files
 licence: https://opensource.org/licenses/MIT
 """
 
+import os
 import struct
 import logging
 
-from .base import Font, ensure_stream
+from .base import VERSION, Font, ensure_stream
 
 
 # amiga header constants
@@ -21,6 +22,18 @@ _HUNK_HEADER = 0x3f3
 _HUNK_CODE = 0x3e9
 _HUNK_RELOC32 = 0x3ec
 _HUNK_END = 0x3f2
+
+
+_FLAGS_MAP = {
+    0x01: 'ROMFONT', # font is in rom
+    0x02: 'DISKFONT', # font is from diskfont.library
+    0x04: 'REVPATH', # This font is designed to be printed from from right to left
+    0x08: 'TALLDOT', # This font was designed for a Hires screen (640x200 NTSC, non-interlaced)
+    0x10: 'WIDEDOT', # This font was designed for a Lores Interlaced screen (320x400 NTSC)
+    0x20: 'PROPORTIONAL', # character sizes can vary from nominal
+    0x40: 'DESIGNED', # size explicitly designed, not constructed
+    0x80: 'REMOVED', # the font has been removed
+}
 
 
 class _FileUnpacker:
@@ -73,6 +86,13 @@ def _read_header(f):
 
 def _read_font_hunk(f):
     """Parse the font data blob."""
+    props = {
+        'converter': 'monobit v{}'.format(VERSION),
+        'source-name': '/'.join(f.name.split(os.sep)[-2:]),
+        'source-format': 'Amiga',
+    }
+    # the file name tends to be the name as given in the .font anyway
+    props['name'] = props['source-name']
     reader = _FileUnpacker(f)
     # number of longs in this hunk
     # ? apparently this is also ULONG dfh_NextSegment;
@@ -93,53 +113,42 @@ def _read_font_hunk(f):
     fileid, rev, seg, name = reader.unpack('>HHi%ds' % (_MAXFONTNAME,)) # 8+32b
     if b'\0' in name:
         name, name2 = name.split(b'\0', 1)
-    logging.info('id: %d revision: %d name: "%s" name2: %r', fileid, rev, name.decode('latin-1'), name2)
+    if name:
+        props['name'] = name.decode('latin-1')
+    props['revision'] = rev
     # struct Message at start of struct TextFont
+    # struct TextFont http://amigadev.elowar.com/read/ADCD_2.1/Libraries_Manual_guide/node03DE.html
+    # struct Message http://amigadev.elowar.com/read/ADCD_2.1/Libraries_Manual_guide/node02EF.html
     # pln_succ, pln_pred, ln_type, ln_pri, pln_name, pmn_replyport, mn_length
     reader.unpack('>IIBbIIH') # 20b
-    # http://amigadev.elowar.com/read/ADCD_2.1/Libraries_Manual_guide/node03DE.html
-    # struct TextFont {
-    #     struct Message tf_Message;  /* reply message for font removal */
-    #     UWORD   tf_YSize;
-    #     UBYTE   tf_Style;
-    #     UBYTE   tf_Flags;
-    #     UWORD   tf_XSize;
-    #     UWORD   tf_Baseline;
-    #     UWORD   tf_BoldSmear; /* smear to affect a bold enhancement */
-    #
-    #     UWORD   tf_Accessors;
-    #     UBYTE   tf_LoChar;
-    #     UBYTE   tf_HiChar;
-    #     APTR    tf_CharData;  /* the bit character data */
-    #
-    #     UWORD   tf_Modulo;  /* the row modulo for the strike font data  */
-    #     APTR    tf_CharLoc; /* ptr to location data for the strike font */
-    #                         /*   2 words: bit offset then size          */
-    #     APTR    tf_CharSpace;
-    #                        /* ptr to words of proportional spacing data */
-    #     APTR    tf_CharKern; /* ptr to words of kerning data            */
-    # };
-
-    # struct Message
-    # http://amigadev.elowar.com/read/ADCD_2.1/Libraries_Manual_guide/node02EF.html
-    # struct Message {
-    #     struct Node     mn_Node;
-    #     struct MsgPort *mn_ReplyPort;
-    #     UWORD           mn_Length;
-    # };
     # font properties
+    # tf_BoldSmear; /* smear to affect a bold enhancement */
     ysize, style, flags, xsize, baseline, boldsmear, accessors, lochar, hichar = reader.unpack('>HBBHHHHBB') #, f.read(2+2+4*2+2))
-    logging.info(
-        'x: %d y: %d style: %02x flags: %02x baseline: %d boldsmear: %d',
-        xsize, ysize, style, flags, baseline, boldsmear
-    )
+    props['bottom'] = -(ysize-baseline)
+    props['size'] = ysize
+
+    # style & 0x01: underlined
+    props['weight'] = 'bold' if style & 0x02 else 'medium'
+    props['slant'] = 'italic' if style & 0x04 else 'roman'
+    props['setwidth'] = 'expanded' if style & 0x08 else 'medium'
     proportional = bool(flags & 0x20)
-    logging.info('proportional: %r', proportional)
+    props['spacing'] = 'proportional' if proportional else 'monospace'
+    flag_tags = ' '.join(tag for mask, tag in _FLAGS_MAP.items() if flags & mask)
+    # preserve unparsed properties
+    if style & 0x01:
+        props['_STYLE'] = 'UNDERLINED'
+    props['_BOLDSMEAR'] = boldsmear
+    # preserve tags stored in name field after \0
+    if name2:
+        props['_TAG'] = name2.replace(b'\0', b'').decode('latin-1')
+    # preserve unparsed flags
+    if flag_tags:
+        props['_FLAGS'] = flag_tags
     # data structure parameters
     tf_chardata, tf_modulo, tf_charloc, tf_charspace, tf_charkern = reader.unpack('>IHIII') #, f.read(18))
     # char data
     f.seek(tf_chardata+loc, 0)
-    assert f.tell() - loc == tf_chardata
+    #assert f.tell() - loc == tf_chardata
     rows = [
         ''.join(
             '{:08b}'.format(_c)
@@ -174,18 +183,30 @@ def _read_font_hunk(f):
         [_row[_offs: _offs+_width] for _row in rows]
         for _offs, _width in locs
     ]
+    # apply spacing
     if proportional:
-        # apply spacing
         for i, sp in enumerate(spacing):
             if sp < 0:
-                logging.info('warning: negative spacing in %dth character' % (i,))
-        font = [
-            [_row + [False] * (_width - len(_row)) for _row in _char]
-            for _char, _width in zip(font, spacing)
-        ]
-    logging.info('kerning table: %r', kerning)
+                logging.warning('negative spacing in %dth character' % (i,))
+            if abs(sp) > xsize*2:
+                logging.error('very high values in spacing table')
+                spacing = (xsize,) * len(font)
+                break
+    else:
+        spacing = (xsize,) * len(font)
+    for i, sp in enumerate(kerning):
+        if sp < 0:
+            logging.warning('negative kerning in %dth character' % (i,))
+        if abs(sp) > xsize*2:
+            logging.error('very high values in kerning table')
+            kerning = (0,) * len(font)
+            break
+    font = [
+        [[False] * _kern + _row + [False] * (_width - _kern - len(_row)) for _row in _char]
+        for _char, _width, _kern in zip(font, spacing, kerning)
+    ]
     glyphs = dict(enumerate(font, lochar))
-    return Font(glyphs)
+    return Font(glyphs, properties=props)
 
 
 @Font.loads('amiga')
