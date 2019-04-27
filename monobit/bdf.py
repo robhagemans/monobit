@@ -199,37 +199,6 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
     # global DWIDTH; use boundix box as fallback if not specified
     global_dwidth = bdf_props.get('DWIDTH', global_bbx[:2])
     # ignore SWIDTH, can be calculated - SWIDTH = DWIDTH / ( points/1000 * dpi / 72 )
-    #
-    # SWIDTH swx0 swy0
-    # SWIDTH is followed by swx0 and swy0, the scalable width of the glyph in x
-    # and y for writing mode 0. The scalable widths are of type Number and are in
-    # units of 1/1000th of the size of the glyph and correspond to the widths found
-    # in AFM files (for outline fonts). If the size of the glyph is p points, the width
-    # information must be scaled by p /1000 to get the width of the glyph in
-    # printer’s points. This width information should be regarded as a vector indi-
-    # cating the position of the next glyph’s origin relative to the origin of this
-    # glyph. SWIDTH is mandatory for all writing mode 0 fonts.
-    # To convert the scalable width to the width in device pixels, multiply SWIDTH
-    # times p /1000 times r /72, where r is the device resolution in pixels per inch.
-    # The result is a real number giving the ideal width in device pixels. The actual
-    # device width must be an integral number of device pixels and is given by the
-    # DWIDTH entry.
-    #
-    # DWIDTH dwx0 dwy0
-    # DWIDTH specifies the widths in x and y, dwx0 and dwy0, in device pixels.
-    # Like SWIDTH , this width information is a vector indicating the position of
-    # the next glyph’s origin relative to the origin of this glyph. DWIDTH is manda-
-    # tory for all writing mode 0 fonts.
-    #
-    # BBX BBw BBh BBxoff0x BByoff0y
-    # BBX is followed by BBw, the width of the black pixels in x, and BBh, the
-    # height in y. These are followed by the x and y displacement, BBxoff0 and
-    # BByoff0, of the lower left corner of the bitmap from origin 0. All values are
-    # are an integer number of pixels.
-    # If the font specifies metrics for writing direction 1, VVECTOR specifies the
-    # offset from origin 0 to origin 1. For example, for writing direction 1, the
-    # offset from origin 1 to the lower left corner of the bitmap would be:
-    # BBxoff1x,y = BBxoff0x,y – VVECTOR
     offsets_x = []
     offsets_y = []
     overshoots = []
@@ -399,50 +368,11 @@ def _parse_xlfd_properties(x_props, xlfd_name):
 
 # from:  Glyph Bitmap Distribution Format (BDF) Specification 2.2 (22 Mar 93)
 #
-# global font information
-#
-# COMMENT string
-# One or more lines beginning with the word COMMENT . These lines can be
-# ignored by any program reading the file.
-#
-# CONTENTVERSION integer
-# (Optional) The value of CONTENTVERSION is an integer which can be
-# assigned by an installer program to keep track of the version of the included
-# data. The value is intended to be valid only in a single environment, under the
-# control of a single installer. The value of CONTENTVERSION should only
-# reflect upgrades to the quality of the bitmap images, not to the glyph comple-
-# ment or encoding.
-#
-# FONT string
-# FONT is followed by the font name, which should exactly match the Post-
-# Script TM language FontName in the corresponding outline font program.
-# SIZE PointSize Xres Yres
-# SIZE is followed by the point size of the glyphs and the x and y resolutions of
-# the device for which the font is intended.
-#
-# FONTBOUNDINGBOX FBBx FBBy Xoff Yoff
-# FONTBOUNDINGBOX is followed by the width in x and the height in y, and
-# the x and y displacement of the lower left corner from origin 0 (for horizontal
-# writing direction); all in integer pixel values. (See the examples in section 4.)
-#
 # METRICSSET integer
 # (Optional) The integer value of METRICSSET may be 0, 1, or 2, which corre-
 # spond to writing direction 0 only, 1 only, or both (respectively). If not
 # present, METRICSSET 0 is implied. If METRICSSET is 1, DWIDTH and
 # SWIDTH keywords are optional.
-#
-# SWIDTH
-# DWIDTH
-# SWIDTH1
-# DWIDTH1
-# VVECTOR
-# These metrics keywords may be present at the global level to define a single
-# value for the whole font. The values may be defined at this level, yet over-
-# ridden for individual glyphs by including the same keyword and a value in
-# the information for an individual glyph. For a composite font containing a
-# large number of ideographic glyphs with identical metrics, defining those
-# values at the global level can provide a significant savings in the size of the
-# resulting file.
 #
 # Note
 # Version 2.1 of this document only allowed the metrics keywords SWIDTH and
@@ -453,19 +383,6 @@ def _parse_xlfd_properties(x_props, xlfd_name):
 
 
 # per-glyph info:
-# STARTCHAR string
-# The word STARTCHAR followed by a string containing the name for the
-# glyph. In base fonts, this should correspond to the name in the PostScript
-# language outline font’s encoding vector. In a Composite font (Type 0), the
-# value may be a numeric offset or glyph ID.
-# Note: In versions of this document prior to 2.2, this value was limited to a string of
-# 14 characters.
-#
-# ENCODING integer (integer)
-# ENCODING is followed by a positive integer representing the Adobe Stan-
-# dard Encoding value. If the character is not in the Adobe Standard Encoding,
-# ENCODING is followed by –1 and optionally by another integer specifying
-# the glyph index for the non-standard encoding.
 #
 # SWIDTH swx0 swy0
 # SWIDTH is followed by swx0 and swy0, the scalable width of the glyph in x
@@ -504,3 +421,13 @@ def _parse_xlfd_properties(x_props, xlfd_name):
 # the VVECTOR is the same for all glyphs, though the inclusion of this
 # keyword in an individual glyph has the effect of overriding the bal value for
 # that specific glyph.
+#
+# BBX BBw BBh BBxoff0x BByoff0y
+# BBX is followed by BBw, the width of the black pixels in x, and BBh, the
+# height in y. These are followed by the x and y displacement, BBxoff0 and
+# BByoff0, of the lower left corner of the bitmap from origin 0. All values are
+# are an integer number of pixels.
+# If the font specifies metrics for writing direction 1, VVECTOR specifies the
+# offset from origin 0 to origin 1. For example, for writing direction 1, the
+# offset from origin 1 to the lower left corner of the bitmap would be:
+# BBxoff1x,y = BBxoff0x,y – VVECTOR
