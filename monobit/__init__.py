@@ -6,6 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 from .base import Font
+from .base import VERSION as __version__
 
 from . import hexdraw
 from . import amiga

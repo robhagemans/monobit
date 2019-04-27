@@ -9,7 +9,7 @@ import os
 import logging
 import binascii
 
-from .base import Font, ensure_stream
+from .base import VERSION, Font, ensure_stream
 
 
 @Font.loads('bdf')
@@ -114,6 +114,25 @@ def _read_bdf_global(instream):
                 bdf_props[keyword] = values
     raise ValueError('No character information found in BDF file.')
 
+
+##############################################################################
+# properties
+
+_SLANT_MAP = {
+    'R': 'roman',
+    'I': 'italic',
+    'O': 'oblique',
+    'RO': 'reverse-oblique',
+    'RI': 'reverse-italic',
+    'OT': '', # 'other'
+}
+
+_SPACING_MAP = {
+    'P': 'proportional',
+    'M': 'monospace',
+    'C': 'cell',
+}
+
 def _parse_properties(glyphs, glyph_props, bdf_props, x_props, filename):
     """Parse metrics and metadata."""
     logging.info('bdf properties:')
@@ -124,28 +143,14 @@ def _parse_properties(glyphs, glyph_props, bdf_props, x_props, filename):
         logging.info('    %s: %s', name, value)
     # converter-supplied metadata
     properties = {
+        'converter': 'monobit v{}'.format(VERSION),
         'source-name': os.path.basename(filename),
     }
     # parse meaningful metadata
-    glyphs, bdf_properties = _parse_bdf_properties(glyphs, glyph_props, bdf_props)
+    glyphs, bdf_properties, xlfd_name = _parse_bdf_properties(glyphs, glyph_props, bdf_props)
     properties.update(bdf_properties)
-    properties.update(_parse_xlfd_properties(x_props))
-    if 'slant' in properties and properties['slant']:
-        properties['slant'] = {
-            'R': 'roman', 'I': 'italic', 'O': 'oblique', 'RO': 'reverse-oblique',
-            'RI': 'reverse-italic', 'OT': 'other'
-        }[properties['slant']]
-    # encoding
-    try:
-        registry = properties.pop('charset-registry')
-        encoding = properties.pop('charset-encoding')
-    except KeyError:
-        pass
-    else:
-        properties['encoding'] = registry + '-' + encoding
-    #'spacing': {
-    #    'P': 'proportional', 'M': 'monospace', 'C': 'cell',
-    #}[xlfd[11]] if xlfd[11] else '',
+    properties.update(_parse_xlfd_properties(x_props, xlfd_name))
+    # check if default har exists, remove otherwise
     if 'DEFAULT_CHAR' in x_props:
         defaultchar = x_props['DEFAULT_CHAR']
         # if the number doesn't occur, no default is set.
@@ -156,13 +161,33 @@ def _parse_properties(glyphs, glyph_props, bdf_props, x_props, filename):
 
 def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
     """Parse BDF global and per-glyph geometry."""
-    # FIXME: parse per-glyph geometry ... we need BBX and the offsets in swidth (I think)
-    # modify glyphs if necessary to get to one global offset value
+    xdpi, ydpi = bdf_props['SIZE'].split(' ')[1:]
     properties = {
         'source-format': 'BDF ' + bdf_props['STARTFONT'],
+        'size': bdf_props['SIZE'].split(' ')[0],
+        'dpi': ' '.join((xdpi, ydpi)) if xdpi != ydpi else xdpi,
     }
-    # we ignore SIZE and FONTBOUNDINGBOX as they are overridden by per-glyph metrics
-    properties.update(_parse_xlfd_string(bdf_props['FONT']))
+    # global settings, tend to be overridden by per-glyph settings
+    global_bbx = bdf_props['FONTBOUNDINGBOX']
+    # not supported: METRICSSET !=0, DWIDTH1, SWIDTH1
+    # global DWIDTH; use boundix box as fallback if not specified
+    global_dwidth = bdf_props.get('DWIDTH', global_bbx[:2])
+    # ignore SWIDTH, can be calculated - SWIDTH = DWIDTH / ( points/1000 * dpi / 72 )
+    #
+    # SWIDTH swx0 swy0
+    # SWIDTH is followed by swx0 and swy0, the scalable width of the glyph in x
+    # and y for writing mode 0. The scalable widths are of type Number and are in
+    # units of 1/1000th of the size of the glyph and correspond to the widths found
+    # in AFM files (for outline fonts). If the size of the glyph is p points, the width
+    # information must be scaled by p /1000 to get the width of the glyph in
+    # printer’s points. This width information should be regarded as a vector indi-
+    # cating the position of the next glyph’s origin relative to the origin of this
+    # glyph. SWIDTH is mandatory for all writing mode 0 fonts.
+    # To convert the scalable width to the width in device pixels, multiply SWIDTH
+    # times p /1000 times r /72, where r is the device resolution in pixels per inch.
+    # The result is a real number giving the ideal width in device pixels. The actual
+    # device width must be an integral number of device pixels and is given by the
+    # DWIDTH entry.
     #
     # DWIDTH dwx0 dwy0
     # DWIDTH specifies the widths in x and y, dwx0 and dwy0, in device pixels.
@@ -185,6 +210,8 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
     heights = []
     for ordinal, glyph in glyphs.items():
         props = glyph_props[ordinal]
+        props['BBX'] = props.get('BBX', global_bbx)
+        props['DWIDTH'] = props.get('DWIDTH', global_dwidth)
         bbx_width, bbx_height, offset_x, offset_y = (int(_p) for _p in props['BBX'].split(' '))
         dwidth_x, dwidth_y = (int(_p) for _p in props['DWIDTH'].split(' '))
         offsets_x.append(offset_x)
@@ -195,9 +222,9 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
     rightmost = max(overshoots)
     bottommost = min(offsets_y)
     topmost = max(heights)
-    properties['bearing-before'] = -leftmost
-    properties['bearing-after'] = rightmost
-    properties['baseline'] = -bottommost
+    properties['offset-before'] = leftmost
+    properties['offset-after'] = -rightmost
+    properties['bottom'] = bottommost
     for ordinal, glyph in glyphs.items():
         props = glyph_props[ordinal]
         bbx_width, bbx_height, offset_x, offset_y = (int(_p) for _p in props['BBX'].split(' '))
@@ -220,9 +247,10 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
             + [[False] * matrix_width for _ in range(padding_bottom)]
         )
         glyphs[ordinal] = glyph
-    return glyphs, properties
+    xlfd_name = bdf_props['FONT']
+    return glyphs, properties, xlfd_name
 
-def _parse_xlfd_string(xlfd_str):
+def _parse_xlfd_name(xlfd_str):
     """Parse X logical font description font name string."""
     mapping = {
         'foundry': 1,
@@ -231,12 +259,14 @@ def _parse_xlfd_string(xlfd_str):
         'slant': 4,
         'width': 5,
         'style': 6,
-        # pixel-size
-        # point-size
-        # resolution-x
-        # resolution-y
-        # spacing
-        # average-width
+        #'size': 7, # pixel-size already specified in bdf props
+        #'points': 8, can be calculated?
+        # DeciPointsPerInch = 722.7
+        # PIXEL_SIZE = ROUND ((RESOLUTION_Y * POINT_SIZE) / DeciPointsPerInch)
+        #'resolution-x': 9, # dpi already specified in bdf props
+        #'resolution-y': 10,
+        'spacing': 11,
+        # 'average-width': 12,
         'charset-registry': 13,
         'charset-encoding': 14,
     }
@@ -248,39 +278,71 @@ def _parse_xlfd_string(xlfd_str):
                 properties[key] = xlfd[index]
     else:
         logging.warning('Could not parse X font name string `%s`', xlfd_str)
+        return {
+            'xlfd-name': xlfd_str
+        }
     return properties
 
 
-def _parse_xlfd_properties(x_props):
+def _parse_xlfd_properties(x_props, xlfd_name):
     """Parse X metadata."""
+    xlfd_name_props = _parse_xlfd_name(xlfd_name)
+    # we ignore AVERAGE_WIDTH, can be calculated
     mapping = {
-        'ascent': 'FONT_ASCENT',
-        'descent': 'FONT_DESCENT',
-        'x-height': 'X_HEIGHT',
-        'cap-height': 'CAP_HEIGHT',
-        'copyright': 'COPYRIGHT',
-        'notice': 'NOTICE',
-        'foundry': 'FOUNDRY',
-        'family': 'FAMILY_NAME',
-        'weight': 'WEIGHT_NAME',
-        'slant': 'SLANT',
-        'width': 'SETWIDTH_NAME',
-        'style': 'STYLE_NAME',
-        # SPACING can be deducted from bitmaps
-        #'spacing': 'SPACING',
-        # we ignore AVERAGE_WIDTH
-        'charset-registry': 'CHARSET_REGISTRY',
-        'charset-encoding': 'CHARSET_ENCODING',
+        # rendering hints
+        'FONT_ASCENT': 'ascent',
+        'FONT_DESCENT': 'descent',
+        'X_HEIGHT': 'x-height',
+        'CAP_HEIGHT': 'cap-height',
+        # display characteristics - already specified in bdf props
+        #'RESOLUTION_X': 'resolution-x',
+        #'RESOLUTION_Y': 'resolution-y',
+        #'RESOLUTION': 'resolution',
+        # description
+        'FACE_NAME': 'name',
+        'FULL_NAME': 'name',
+        'FONT_VERSION': 'revision',
+        'COPYRIGHT': 'copyright',
+        'NOTICE': 'notice',
+        'FOUNDRY': 'foundry',
+        'FAMILY_NAME': 'family',
+        'WEIGHT_NAME': 'weight',
+        'SLANT': 'slant',
+        'SPACING': 'spacing',
+        'SETWIDTH_NAME': 'width',
+        'STYLE_NAME': 'style',
+        'PIXEL_SIZE': 'size',
+        # encoding
+        'CHARSET_REGISTRY': 'charset-registry',
+        'CHARSET_ENCODING': 'charset-encoding'
     }
     properties = {}
-    for key, xkey in mapping.items():
+    for xkey, key in mapping.items():
         try:
             value = x_props[xkey].strip('"')
         except KeyError:
-            pass
-        else:
-            if value:
-                properties[key] = value
+            value = xlfd_name_props.get(key, '')
+        if value:
+            properties[key] = value
+    # modify/summarise values
+    if 'descent' in properties:
+        properties['descent'] = -int(properties['descent'])
+    #if 'resolution-x' in properties and 'resolution-y' in properties:
+    #    properties['dpi'] = '{} {}'.format(properties.pop('resolution-x'), properties.pop('resolution-y'))
+    #elif 'resolution' in properties:
+    #    properties['dpi'] = '{} {}'.format(properties['resolution'], properties['resolution'])
+    if 'slant' in properties and properties['slant']:
+        properties['slant'] = _SLANT_MAP[properties['slant']]
+    if 'spacing' in properties and properties['spacing']:
+        properties['spacing'] = _SPACING_MAP[properties['spacing']]
+    # encoding
+    try:
+        registry = properties.pop('charset-registry')
+        encoding = properties.pop('charset-encoding')
+    except KeyError:
+        pass
+    else:
+        properties['encoding'] = registry + '-' + encoding
     return properties
 
 

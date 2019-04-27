@@ -8,7 +8,7 @@ licence: https://opensource.org/licenses/MIT
 from contextlib import contextmanager
 
 DEFAULT_FORMAT = 'text'
-
+VERSION = '0.2'
 
 @contextmanager
 def ensure_stream(infile, mode):
