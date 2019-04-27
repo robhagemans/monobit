@@ -10,11 +10,12 @@ from contextlib import contextmanager
 DEFAULT_FORMAT = 'text'
 VERSION = '0.2'
 
+
 @contextmanager
-def ensure_stream(infile, mode):
+def ensure_stream(infile, mode, encoding=None):
     """If argument is a string, open as file."""
     if isinstance(infile, str) or isinstance(infile, bytes):
-        instream = open(infile, mode)
+        instream = open(infile, mode, encoding=encoding)
     else:
         instream = infile
     with instream:

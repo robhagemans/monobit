@@ -82,7 +82,7 @@ def load(infile, back=_BACK):
 @Font.saves('text', 'txt', 'draw', 'yaff')
 def save(font, outfile, fore='@', back='.', comment='#'):
     """Write font to hexdraw file."""
-    with ensure_stream(outfile, 'w') as outstream:
+    with ensure_stream(outfile, 'w', encoding='utf-8-sig') as outstream:
         if font._comments:
             for line in font._comments:
                 outstream.write('{} {}\n'.format(comment, line))
