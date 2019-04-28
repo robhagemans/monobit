@@ -153,10 +153,12 @@ def _read_font_hunk(f):
         props['_PROPERTIES'] = flag_tags
     # data structure parameters
     tf_chardata, tf_modulo, tf_charloc, tf_charspace, tf_charkern = reader.unpack('>IHIII') #, f.read(18))
-    glyphs = _read_strike(
+    glyphs, min_kern = _read_strike(
         f, xsize, ysize, proportional, tf_modulo, lochar, hichar,
         tf_chardata+loc, tf_charloc+loc, tf_charspace+loc, tf_charkern+loc
     )
+    if min_kern < 0:
+        props['offset-before'] = min_kern
     # default glyph doesn't have an encoding value
     default = max(glyphs)
     glyphs['default'] = glyphs[default]
@@ -217,14 +219,13 @@ def _read_strike(
     # deal with negative kerning by turning it into a global negative offset
     min_kern = min(kerning)
     if min_kern < 0:
-        props['offset-before'] = min_kern
         kerning = (_kern - min_kern for _kern in kerning)
     font = [
         [[False] * _kern + _row + [False] * (_width - _kern - len(_row)) for _row in _char]
         for _char, _width, _kern in zip(font, spacing, kerning)
     ]
     glyphs = dict(enumerate(font, lochar))
-    return glyphs
+    return glyphs, min_kern
 
 
 @Font.loads('amiga')
