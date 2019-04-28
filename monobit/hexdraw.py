@@ -43,7 +43,7 @@ def load(infile, back=_BACK):
         clusters = []
         for line in codelines:
             if line[0] not in _WHITESPACE:
-                cp, rest = line.strip().split(':')
+                cp, rest = line.strip().split(':', 1)
                 if rest:
                     clusters.append((cp, [rest.strip()]))
                 else:
