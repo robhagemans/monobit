@@ -25,14 +25,19 @@ _HUNK_END = 0x3f2
 
 
 _FLAGS_MAP = {
-    0x01: 'ROMFONT', # font is in rom
-    0x02: 'DISKFONT', # font is from diskfont.library
-    0x04: 'REVPATH', # This font is designed to be printed from from right to left
+    # I don't think the rom/disk flags are relevant
+    #0x01: 'ROMFONT', # font is in rom
+    #0x02: 'DISKFONT', # font is from diskfont.library
+    # accounted for in direction variable
+    #0x04: 'REVPATH', # This font is designed to be printed from from right to left
     0x08: 'TALLDOT', # This font was designed for a Hires screen (640x200 NTSC, non-interlaced)
     0x10: 'WIDEDOT', # This font was designed for a Lores Interlaced screen (320x400 NTSC)
+    # this is accounted for in the spacing variable
     #0x20: 'PROPORTIONAL', # character sizes can vary from nominal
-    0x40: 'DESIGNED', # size explicitly designed, not constructed
-    0x80: 'REMOVED', # the font has been removed
+    # this is always set
+    #0x40: 'DESIGNED', # size explicitly designed, not constructed
+    # not relevant
+    #0x80: 'REMOVED', # the font has been removed
 }
 
 
@@ -130,9 +135,14 @@ def _read_font_hunk(f):
     props['setwidth'] = 'expanded' if style & 0x08 else 'medium'
     proportional = bool(flags & 0x20)
     props['spacing'] = 'proportional' if proportional else 'monospace'
+    if flags & 0x04:
+        props['direction'] = 'right-to-left'
+        logging.warning('right-to-left fonts are not correctly implemented yet')
     # preserve unparsed properties
     # tf_BoldSmear; /* smear to affect a bold enhancement */
-    props['_BOLDSMEAR'] = boldsmear
+    # use the most common value 1 as a default
+    if boldsmear != 1:
+        props['_BOLDSMEAR'] = boldsmear
     # preserve tags stored in name field after \0
     if name2.replace(b'\0', b''):
         props['_TAG'] = name2.replace(b'\0', b'').decode('latin-1')
