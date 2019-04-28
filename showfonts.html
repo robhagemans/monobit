@@ -8,8 +8,7 @@
 <body>
 
 <p style="font-family: sans; margin: 1em;">
-    Choose a bitmap font from <a href="https://github.com/robhagemans/hoard-of-bitfonts">the hoard</a>
-    to see its character set:
+    Choose a bitmap font from <a href="https://github.com/robhagemans/hoard-of-bitfonts">the hoard</a>:
 </p>
 
 <form onchange="updateSettings();" style="float:left; margin:1em;">
@@ -48,14 +47,14 @@
                     dir = JSON.parse(request1.responseText);
                     files = [];
                     for (var i = 0; i < dir.tree.length; ++i) {
-                        if (dir.tree[i].path.endsWith(".draw")) {
+                        if (dir.tree[i].path.endsWith(".draw") || dir.tree[i].path.endsWith(".yaff")) {
                             files.push(dir.tree[i].path);
                         }
                     }
                     select = document.getElementById("fontselector");
                     for (var i = 0; i < files.length; i++) {
                         var el = document.createElement("option");
-                        el.text = files[i];
+                        el.text = files[i].split("/").join(": ").split(".")[0];
                         el.value = files[i];
                         select.add(el);
                     }
@@ -96,12 +95,12 @@
     }
 
     function parseFont(fontfile) {
-        preglyph = fontfile.split('\n');
-        glyphs = {};
-        current_key = 0;
-        current_value = []
+        var preglyph = fontfile.split('\n');
+        var glyphs = {};
+        var current_key = 0;
+        var current_value = []
         for (var i=0; i < preglyph.length; ++i) {
-            row = preglyph[i]
+            var row = preglyph[i]
             if (!row) continue;
             // ignore comments
             if (!YAFF_CODE.includes(row[0])) continue;
@@ -109,11 +108,18 @@
             if (row.includes(":")) {
                 // store whatever we were working on, if it's a glyph
                 // i.e if it contains no alphanumerics
-                if (current_key && current_value && !current_value.join("").match(/[a-z0-9]+/)) {
+                if (current_key && current_value && !current_value.join("").match(/[A-Za-z0-9]+/)) {
                     glyphs[current_key] = current_value
                 }
-                split = row.split(":");
-                current_key = parseInt(split[0].trim(), 16);
+                var split = row.split(":");
+                var key = split[0].trim();
+                // non-hex or too long ('beef' will still work...)
+                if (key.length > 4 || !key.match(/^[0-9A-Fa-f]+$/)) {
+                    current_key = key;
+                }
+                else {
+                    current_key = parseInt(key, 16);
+                }
                 current_value = [];
                 row = split.slice(1).join("").trim();
             }
@@ -121,7 +127,7 @@
                 current_value.push(row);
             }
         }
-        if (current_key && current_value && !current_value.join("").match(/[a-z0-9]+/)) {
+        if (current_key && current_value && !current_value.join("").match(/[A-Za-z0-9]+/)) {
             glyphs[current_key] = current_value
         }
         return (glyphs);
@@ -154,10 +160,13 @@
         for (var ord in glyphs) {
             glyph = glyphs[ord];
             if (!glyph) continue;
+            // ord is a strin representation of a decimal number
+            // because object keys must be str
+            if (!ord.match(/^[0-9]+$/)) continue;
             if (glyph.length > height) height = glyph.length;
             if (!glyph.length) continue;
             if (glyph[0].length > width) width = glyph[0].length;
-            if (parseInt(ord) > nchar) nchar = parseInt(ord) + 1;
+            if (parseInt(ord) >= nchar) nchar = parseInt(ord) + 1;
         }
         //var nchar = 256;
         var columns = 32;
