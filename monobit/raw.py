@@ -23,7 +23,7 @@ def load(
         instream.read(offset)
         full_height = height + padding
         # width in bytes, for byte-aligned fonts
-        width_bytes = ceildiv(7, 8)
+        width_bytes = ceildiv(width, 8)
         if n_chars is None:
             rombytes = instream.read()
         elif not strike:
@@ -53,15 +53,23 @@ def load(
             ]
         else:
             # get number of chars in extract
-            n_chars = (len(rows) + padding) // full_height
+            n_chars = (len(rows) + padding) // (width_bytes*full_height)
             # cut raw cells out of bitmap
             cells = [
                 drawn[_ord*width_bytes*full_height : (_ord+1)*width_bytes*full_height]
                 for _ord in range(n_chars)
             ]
+            # concatenate rows
+            cells = [
+                [
+                    [_bit for _byte in _cell[_row*width_bytes:(_row+1)*width_bytes] for _bit in _byte]
+                    for _row in range(height)
+                ]
+                for _cell in cells
+            ]
         # remove vertical padding
         cells = [
-            _cell[:height*width_bytes] for _cell in cells
+            _cell[:height] for _cell in cells
         ]
         # mirror if necessary
         if mirror:

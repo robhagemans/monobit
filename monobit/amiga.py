@@ -149,7 +149,7 @@ def _read_font_hunk(f):
     # preserve unparsed flags
     flag_tags = ' '.join(tag for mask, tag in _FLAGS_MAP.items() if flags & mask)
     if style & 0x01:
-        flag_tags = ' '.join('UNDERLINED', flag_tags)
+        flag_tags = ' '.join(('UNDERLINED', flag_tags))
     if flag_tags:
         props['_PROPERTIES'] = flag_tags
     # data structure parameters

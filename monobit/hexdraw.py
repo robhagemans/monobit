@@ -23,7 +23,7 @@ _BACK = "_.-"
 @Font.loads('text', 'txt', 'draw', 'yaff')
 def load(infile, back=_BACK):
     """Read a hexdraw plaintext font file."""
-    with ensure_stream(infile, 'r') as instream:
+    with ensure_stream(infile, 'r', encoding='utf-8-sig') as instream:
         lines = list(instream)
         comments = [
             _line[1:].rstrip('\r\n')
@@ -33,11 +33,11 @@ def load(infile, back=_BACK):
         if all(_line[0] == ' ' for _line in comments):
             comments = [_line[1:] for _line in comments]
         # drop all comments
-        codelines = (
+        codelines = [
             _line
             for _line in lines
             if _line and _line[0] in _CODESTART
-        )
+        ]
         # cluster by character
         # assuming only one code point per glyph, for now
         clusters = []
@@ -82,7 +82,7 @@ def load(infile, back=_BACK):
 @Font.saves('text', 'txt', 'draw', 'yaff')
 def save(font, outfile, fore='@', back='.', comment='#'):
     """Write font to hexdraw file."""
-    with ensure_stream(outfile, 'w', encoding='utf-8-sig') as outstream:
+    with ensure_stream(outfile, 'w') as outstream:
         if font._comments:
             for line in font._comments:
                 outstream.write('{} {}\n'.format(comment, line))

@@ -20,12 +20,14 @@ def flip(glyphs):
         for _key, _char in glyphs.items()
     }
 
-def transpose(glyphs):
+def transpose(font):
     """Transpose glyphs."""
-    return {
+    glyphs = font._glyphs
+    font._glyphs = {
         _key: [list(_x) for _x in zip(*_char)]
         for _key, _char in glyphs.items()
     }
+    return font
 
 def rotate(glyphs, turns):
     """Rotate by 90-degree turns; positive is clockwise."""
