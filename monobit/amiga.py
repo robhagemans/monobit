@@ -47,7 +47,6 @@ class _FileUnpacker:
     def __init__(self, stream):
         """Start at start."""
         self._stream = stream
-        self._offset = 0
 
     def unpack(self, format):
         """Read the next data specified by format string."""
@@ -154,39 +153,47 @@ def _read_font_hunk(f):
         props['_PROPERTIES'] = flag_tags
     # data structure parameters
     tf_chardata, tf_modulo, tf_charloc, tf_charspace, tf_charkern = reader.unpack('>IHIII') #, f.read(18))
+    glyphs = _read_strike(
+        f, xsize, ysize, proportional, tf_modulo, lochar, hichar,
+        tf_chardata+loc, tf_charloc+loc, tf_charspace+loc, tf_charkern+loc
+    )
+    # default glyph doesn't have an encoding value
+    default = max(glyphs)
+    glyphs['default'] = glyphs[default]
+    del glyphs[default]
+    props['encoding'] = 'iso8859-1'
+    props['default-char'] = 'default'
+    return Font(glyphs, properties=props)
+
+def _read_strike(
+        f, xsize, ysize, proportional, modulo, lochar, hichar,
+        pos_chardata, pos_charloc, pos_charspace, pos_charkern
+    ):
+    """Read and interpret the font strike and related tables."""
+    reader = _FileUnpacker(f)
     # char data
-    f.seek(tf_chardata+loc, 0)
-    #assert f.tell() - loc == tf_chardata
+    f.seek(pos_chardata, 0)
     rows = [
         ''.join(
             '{:08b}'.format(_c)
-            for _c in reader.read(tf_modulo)
+            for _c in reader.read(modulo)
         )
         for _ in range(ysize)
     ]
     rows = [
-        [
-            _c != '0'
-            for _c in _row
-        ]
+        [_c != '0' for _c in _row]
         for _row in rows
     ]
     # location data
-    f.seek(tf_charloc+loc, 0)
-    #assert f.tell() - loc == tf_charloc
+    f.seek(pos_charloc, 0)
     nchars = hichar - lochar + 1 + 1 # one additional glyph at end for undefined chars
     locs = [reader.unpack('>HH') for  _ in range(nchars)]
     # spacing data, can be negative
-    f.seek(tf_charspace+loc, 0)
-    #assert f.tell() - loc == tf_charspace
+    f.seek(pos_charspace, 0)
     spacing = reader.unpack('>%dh' % (nchars,))
     # kerning data, can be negative
-    f.seek(tf_charkern+loc, 0)
-    #assert f.tell() - loc == tf_charkern
+    f.seek(pos_charkern, 0)
     kerning = reader.unpack('>%dh' % (nchars,))
-    #assert reader.unpack('>H') == (0,)
-    #assert f.tell() - loc == num_longs*4
-    # apparently followed by _HUNK_RELOC32 and _HUNK_END
     font = [
         [_row[_offs: _offs+_width] for _row in rows]
         for _offs, _width in locs
@@ -217,13 +224,7 @@ def _read_font_hunk(f):
         for _char, _width, _kern in zip(font, spacing, kerning)
     ]
     glyphs = dict(enumerate(font, lochar))
-    # default glyph doesn't have an encoding value
-    default = max(glyphs)
-    glyphs['default'] = glyphs[default]
-    del glyphs[default]
-    props['encoding'] = 'iso8859-1'
-    props['default-char'] = 'default'
-    return Font(glyphs, properties=props)
+    return glyphs
 
 
 @Font.loads('amiga')
