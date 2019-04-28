@@ -211,7 +211,7 @@ def _read_font_hunk(f):
     default = max(glyphs)
     glyphs['default'] = glyphs[default]
     del glyphs[default]
-    props['encoding'] = 'amiga-1251'
+    props['encoding'] = 'iso8859-1'
     props['default-char'] = 'default'
     return Font(glyphs, properties=props)
 
