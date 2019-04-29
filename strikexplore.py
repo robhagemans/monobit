@@ -56,7 +56,7 @@ padding = args.padding
 
 images = []
 if args.stride_to is None:
-    args.stride_to = args.sride_from + 1
+    args.stride_to = args.stride_from + 1
 for stride in range(args.stride_from, args.stride_to):
     width = stride * 8
     height = ceildiv(len(rombytes), stride)
@@ -88,7 +88,7 @@ fullimage = Image.new(
 draw = ImageDraw.Draw(fullimage)
 left, top = margin, 0
 for stride, img in images:
-    draw.text((0, top), str(stride), font=font)
+    draw.text((0, top), str(stride), font=font, fill=(128, 255, 128))
     fullimage.paste(img, (left, top))
     top += img.height + padding
 

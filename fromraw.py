@@ -52,7 +52,7 @@ parser.add_argument(
 )
 parser.add_argument(
     '--strike', action='store_true', default=False,
-    help='font is soted in strike order (sideways). Must provide number of chars as well'
+    help='font is sorted in strike order (sideways). Must provide number of chars as well'
 )
 args = parser.parse_args()
 
