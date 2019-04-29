@@ -117,6 +117,8 @@ def _read_font_hunk(f):
     fileid, rev, seg, name = reader.unpack('>HHi%ds' % (_MAXFONTNAME,)) # 8+32b
     if b'\0' in name:
         name, name2 = name.split(b'\0', 1)
+    else:
+        name2 = b''
     if name:
         props['name'] = name.decode('latin-1')
     props['revision'] = rev
