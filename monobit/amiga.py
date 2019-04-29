@@ -192,18 +192,15 @@ def _read_strike(
     f.seek(pos_charloc, 0)
     nchars = hichar - lochar + 1 + 1 # one additional glyph at end for undefined chars
     locs = [reader.unpack('>HH') for  _ in range(nchars)]
-    # spacing data, can be negative
-    f.seek(pos_charspace, 0)
-    spacing = reader.unpack('>%dh' % (nchars,))
-    # kerning data, can be negative
-    f.seek(pos_charkern, 0)
-    kerning = reader.unpack('>%dh' % (nchars,))
     font = [
         [_row[_offs: _offs+_width] for _row in rows]
         for _offs, _width in locs
     ]
-    # apply spacing
+    # spacing data, can be negative
     if proportional:
+        f.seek(pos_charspace, 0)
+        spacing = reader.unpack('>%dh' % (nchars,))
+        # apply spacing
         for i, sp in enumerate(spacing):
             if sp < 0:
                 logging.warning('negative spacing of %d in %dth character' % (sp, i,))
@@ -213,11 +210,18 @@ def _read_strike(
                 break
     else:
         spacing = (xsize,) * len(font)
-    for i, sp in enumerate(kerning):
-        if abs(sp) > xsize*2:
-            logging.error('very high values in kerning table')
-            kerning = (0,) * len(font)
-            break
+    if pos_charkern is not None:
+        # kerning data, can be negative
+        f.seek(pos_charkern, 0)
+        kerning = reader.unpack('>%dh' % (nchars,))
+
+        for i, sp in enumerate(kerning):
+            if abs(sp) > xsize*2:
+                logging.error('very high values in kerning table')
+                kerning = (0,) * len(font)
+                break
+    else:
+        kerning = (0,) * len(font)
     # deal with negative kerning by turning it into a global negative offset
     min_kern = min(kerning)
     if min_kern < 0:
