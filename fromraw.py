@@ -60,6 +60,12 @@ args = parser.parse_args()
 font = monobit.raw.load(
     args.infile, cell=(args.width, args.height), n_chars=args.number[0] if args.number else None,
     offset=args.offset, padding=args.padding, clip=args.clip_x, mirror=args.mirror,
-    invert=args.invert, first=args.first, strike=args.strike
+    strike=args.strike
 )
-monobit.hexdraw.save(font, args.outfile)
+font = monobit.renumber(font, add=args.first)
+if args.invert:
+    font = monobit.invert(font)
+if args.mirror:
+    font = monobit.mirror(font)
+font = monobit.crop(font, 0, 0, args.clip_x, args.padding)
+monobit.save(font, args.outfile)

@@ -63,6 +63,8 @@ args = parser.parse_args()
 font = monobit.image.load(
     args.infile, cell=(args.width, args.height),
     margin=(args.margin_x, args.margin_y), padding=(args.padding_x, args.padding_y), scale=(args.scale_x, args.scale_y),
-    invert=args.invert, first=args.first,
 )
-monobit.hexdraw.save(font, args.outfile)
+font = monobit.renumber(font, add=args.first)
+if args.invert:
+    font = monobit.invert(font)
+monobit.save(font, args.outfile)

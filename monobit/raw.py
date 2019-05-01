@@ -10,18 +10,14 @@ from .base import ensure_stream, Font, ceildiv
 
 
 @Font.loads('fnt', 'bin', 'rom', encoding=None)
-def load(
-        infile, cell=(8, 8), n_chars=None,
-        offset=0, padding=0, clip=0, mirror=False,
-        invert=False, first=0, strike=False
-    ):
+def load(infile, cell=(8, 8), n_chars=None, offset=0, strike=False):
     """Load font from raw binary."""
     with ensure_stream(infile, 'rb') as instream:
         width, height = cell
         # read the necessary bytes
         # we don't assume instream is seekable - it may be sys.stdin
         instream.read(offset)
-        full_height = height + padding
+        full_height = height
         # width in bytes, for byte-aligned fonts
         width_bytes = ceildiv(width, 8)
         if n_chars is None:
@@ -35,7 +31,7 @@ def load(
         # extract binary representation
         rows = [u'{:08b}'.format(_c) for _c in bytearray(rombytes)]
         drawn = [
-            [(_c == '1') != invert for _c in _row]
+            [_c == '1' for _c in _row]
             for _row in rows
         ]
         if strike:
@@ -54,7 +50,7 @@ def load(
             ]
         else:
             # get number of chars in extract
-            n_chars = (len(rows) + padding) // (width_bytes*full_height)
+            n_chars = len(rows) // (width_bytes*full_height)
             # cut raw cells out of bitmap
             cells = [
                 drawn[_ord*width_bytes*full_height : (_ord+1)*width_bytes*full_height]
@@ -72,27 +68,13 @@ def load(
                 ]
                 for _cell in cells
             ]
-        # remove vertical padding
-        cells = [
-            _cell[:height] for _cell in cells
         ]
-        # mirror if necessary
-        if mirror:
-            cells = [
-                [_row[::-1] for _row in _char]
-                for _char in cells
-            ]
-        # remove horizontal padding
-        cells = [
-            [_row[clip: clip+width] for _row in _char]
-            for _char in cells
-        ]
-        glyphs = dict(enumerate(cells, first))
+        glyphs = dict(enumerate(cells))
         return Font(glyphs)
 
 
 @Font.saves('fnt', 'bin', 'rom')
-def save(font, outfile, format):
+def save(font, outfile):
     """Save font to raw binary."""
     glyphs = font._glyphs
     with ensure_stream(outfile, 'w') as outstream:

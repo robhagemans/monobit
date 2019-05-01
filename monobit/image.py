@@ -13,7 +13,6 @@ from .base import Font, ceildiv
 def load(
         infile, cell=(8, 8),
         margin=(0, 0), padding=(0, 0), scale=(1, 1),
-        invert=False, first=0,
     ):
     """Import font from image."""
     width, height = cell
@@ -51,7 +50,7 @@ def load(
     # top-left pixel of first char assumed to be background colour
     bg = crops[0][0]
     crops = [
-        [(_c != bg) != bool(invert) for _c in _cell]
+        [_c != bg for _c in _cell]
         for _cell in crops
     ]
     # reshape cells
@@ -63,8 +62,7 @@ def load(
         for _cell in crops
     ]
     # set code points
-    glyphs = {first + _ord: _crop for _ord, _crop in enumerate(crops)}
-    return glyphs
+    return Font(enumerate(glyphs))
 
 
 def _to_image(
