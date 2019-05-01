@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Renumber glyphs in a hexdraw text file
+Renumber glyphs in a font file
 (c) 2019 Rob Hagemans, licence: https://opensource.org/licenses/MIT
 """
 
@@ -21,9 +21,6 @@ parser.add_argument('outfile', nargs='?', type=argparse.FileType('w'), default=s
 parser.add_argument('--add', default=0, type=anyint, help='value to add to each ordinal')
 args = parser.parse_args()
 
-font = monobit.hexdraw.load(args.infile)
-font._glyphs = {
-    _k+args.add: _v
-    for _k, _v in font._glyphs.items()
-}
-monobit.hexdraw.save(font, args.outfile)
+font = monobit.load(args.infile)
+font = monobit.renumber(font, args.add)
+font.save(args.outfile)

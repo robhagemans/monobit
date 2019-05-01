@@ -8,6 +8,7 @@ licence: https://opensource.org/licenses/MIT
 from .base import Font
 from .base import VERSION as __version__
 
+from . import operations
 from . import hexdraw
 from . import amiga
 from . import image
@@ -16,6 +17,25 @@ from . import bdf
 from . import c
 
 from .image import show
-from .operations import *
 
 load = Font.load
+
+
+# inject per-glyph operations
+
+def _modifier(func):
+    """Return modified version of font."""
+    def modify(font, *args, **kwargs):
+        return font.modified(func, *args, **kwargs)
+    return modify
+
+globals().update({
+    _name: _modifier(_func)
+    for _name, _func in operations.__dict__.items()
+})
+
+
+# other operations
+
+renumber = Font.renumbered
+subset = Font.subset

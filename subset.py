@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Take glyphs from a hexdraw text file
+Take glyphs from a font file
 (c) 2019 Rob Hagemans, licence: https://opensource.org/licenses/MIT
 """
 
@@ -26,10 +26,8 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-font = monobit.hexdraw.load(args.infile)
-font = {
-    _k: _v
-    for _k, _v in font.items()
-    if _k >= args.from_ and args.to_ < 0 or _k <= args.to_
-}
-monobit.hexdraw.save(font, args.outfile)
+font = monobit.load(args.infile)
+if args.to_ < 0:
+    args.to_ = font.get_max_key()
+font = monobit.subset(font, range(args.from_, args._to+1))
+font.save(args.outfile)

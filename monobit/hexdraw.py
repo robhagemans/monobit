@@ -5,7 +5,6 @@ monobit.hexdraw - read and write .draw files
 licence: https://opensource.org/licenses/MIT
 """
 
-import logging
 import string
 
 from .base import ensure_stream, Font

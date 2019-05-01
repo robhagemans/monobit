@@ -7,6 +7,8 @@ licence: https://opensource.org/licenses/MIT
 
 from contextlib import contextmanager
 
+from . import operations
+
 DEFAULT_FORMAT = 'text'
 VERSION = '0.2'
 
@@ -94,3 +96,32 @@ class Font:
                 cls._savers[format.lower()] = fn
             return fn
         return _savefunc
+
+    def modified(self, operation, *args, **kwargs):
+        """Return a font with modified glyphs."""
+        glyphs = {
+            _key: operation(_glyph, *args, **kwargs)
+            for _key, _glyph in self._glyphs.items()
+        }
+        return Font(glyphs, self._comments, self._properties)
+
+    def renumbered(self, add):
+        """Return a font with renumbered keys."""
+        glyphs = {
+            (_k + add if isinstance(_k, int) else _k): _v
+            for _k, _v in self._glyphs.items()
+        }
+        return Font(glyphs, self._comments, self._properties)
+
+    def subset(self, range):
+        """Return a subset of the font."""
+        glyphs = {
+            _k: _v
+            for _k, _v in self._glyphs.items()
+            if _k in range
+        }
+        return Font(glyphs, self._comments, self._properties)
+
+    def get_max_key(self):
+        """Get maximum key in font."""
+        return max(_k for _k in self._glyphs.keys() if isinstance(_k, int))
