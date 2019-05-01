@@ -18,7 +18,7 @@ def transpose(glyph):
     """Transpose glyph."""
     return [list(_x) for _x in zip(*glyph)]
 
-def rotate(glyph, turns):
+def rotate(glyph, turns=1):
     """Rotate by 90-degree turns; positive is clockwise."""
     turns %= 4
     if turns == 3:
