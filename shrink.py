@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Shrink font in a hexdraw text file
+Shrink font
 (c) 2019 Rob Hagemans, licence: https://opensource.org/licenses/MIT
 """
 
@@ -31,6 +31,6 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-font = monobit.hexdraw.load(args.infile)
+font = monobit.load(args.infile)
 font = monobit.shrink(font, factor_x=args.factor_x, factor_y=args.factor_y, force=args.force)
-monobit.hexdraw.save(font, args.outfile)
+font.save(args.outfile)
