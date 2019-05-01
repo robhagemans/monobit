@@ -15,9 +15,23 @@ VERSION = '0.2'
 
 @contextmanager
 def ensure_stream(infile, mode, encoding=None):
-    """If argument is a string, open as file."""
-    if isinstance(infile, (str, bytes)):
-        instream = open(infile, mode, encoding=encoding)
+    """
+    If argument is a string, open as file.
+    Mode should be 'w' or 'r'. For binary, use encoding=None
+    """
+    if not infile:
+        if mode.startswith('w'):
+            infile = sys.stdout.buffer
+        else:
+            infile = sys.stdin.buffer
+        # we take encoding == None to mean binary
+        if encoding:
+            io.TextIOWrapper(infile, encoding=encoding)
+    elif isinstance(infile, (str, bytes)):
+        if encoding:
+            instream = open(infile, mode, encoding=encoding)
+        else:
+            instream = open(infile, mode + 'b')
     else:
         instream = infile
     with instream:
@@ -33,6 +47,7 @@ class Font:
 
     _loaders = {}
     _savers = {}
+    _encodings = {}
 
     def __init__(self, glyphs, comments=(), properties=None):
         """Create new font."""
@@ -47,18 +62,20 @@ class Font:
             infile = infile.decode('ascii')
         if not format:
             format = DEFAULT_FORMAT
+            # if filename given, try to use it to infer format
             if isinstance(infile, str):
                 try:
                     _, format = infile.rsplit('.', 1)
-                    if format not in cls._loaders:
-                        format = DEFAULT_FORMAT
                 except ValueError:
                     pass
+        format = format.lower()
         try:
-            loader = cls._loaders[format.lower()]
+            loader = cls._loaders[format]
+            encoding = cls._encodings[format]
         except KeyError:
             raise ValueError('Cannot load from format `{}`'.format(format))
-        return loader(infile, **kwargs)
+        with ensure_stream(infile, 'r', encoding=encoding) as instream:
+            return loader(instream, **kwargs)
 
     def save(self, outfile, format=None, **kwargs):
         """Load from file."""
@@ -66,34 +83,38 @@ class Font:
             outfile = outfile.decode('ascii')
         if not format:
             format = DEFAULT_FORMAT
+            # if filename given, try to use it to infer format
             if isinstance(outfile, str):
                 try:
                     _, format = outfile.rsplit('.', 1)
-                    if format not in self._savers:
-                        format = DEFAULT_FORMAT
                 except ValueError:
                     pass
+        format = format.lower()
         try:
-            saver = self._savers[format.lower()]
+            saver = self._savers[format]
+            encoding = self._encodings[format]
         except KeyError:
             raise ValueError('Cannot save to format `{}`'.format(format))
-        return saver(self, outfile, **kwargs)
+        with ensure_stream(outfile, 'w', encoding=encoding) as outstream:
+            return saver(self, outstream, **kwargs)
 
     @classmethod
-    def loads(cls, *formats):
+    def loads(cls, *formats, encoding='utf-8-sig'):
         """Decorator to register font loader."""
         def _loadfunc(fn):
             for format in formats:
                 cls._loaders[format.lower()] = fn
+                cls._encodings[format.lower()] = encoding
             return fn
         return _loadfunc
 
     @classmethod
-    def saves(cls, *formats):
+    def saves(cls, *formats, encoding='utf-8'):
         """Decorator to register font saver."""
         def _savefunc(fn):
             for format in formats:
                 cls._savers[format.lower()] = fn
+                cls._encodings[format.lower()] = encoding
             return fn
         return _savefunc
 

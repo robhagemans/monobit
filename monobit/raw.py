@@ -9,7 +9,7 @@ licence: https://opensource.org/licenses/MIT
 from .base import ensure_stream, Font, ceildiv
 
 
-@Font.loads('fnt', 'bin', 'rom')
+@Font.loads('fnt', 'bin', 'rom', encoding=None)
 def load(
         infile, cell=(8, 8), n_chars=None,
         offset=0, padding=0, clip=0, mirror=False,

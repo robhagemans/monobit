@@ -9,7 +9,7 @@ from PIL import Image
 from .base import Font, ceildiv
 
 
-@Font.loads('png', 'bmp', 'gif', 'image')
+@Font.loads('png', 'bmp', 'gif', 'image', encoding=None)
 def load(
         infile, cell=(8, 8),
         margin=(0, 0), padding=(0, 0), scale=(1, 1),

@@ -25,9 +25,9 @@ load = Font.load
 
 def _modifier(func):
     """Return modified version of font."""
-    def modify(font, *args, **kwargs):
+    def _modify(font, *args, **kwargs):
         return font.modified(func, *args, **kwargs)
-    return modify
+    return _modify
 
 globals().update({
     _name: _modifier(_func)

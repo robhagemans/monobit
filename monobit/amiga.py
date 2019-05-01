@@ -41,6 +41,19 @@ _FLAGS_MAP = {
 }
 
 
+
+@Font.loads('amiga', encoding=None)
+def load(f):
+    """Read Amiga disk font file."""
+    with ensure_stream(f, 'rb'):
+        # read & ignore header
+        _read_header(f)
+        hunk_id = _read_ulong(f)
+        if hunk_id != _HUNK_CODE:
+            raise ValueError('Not an Amiga font data file: no code hunk found (id %04x)' % hunk_id)
+        return _read_font_hunk(f)
+
+
 class _FileUnpacker:
     """Wrapper for struct.unpack."""
 
@@ -232,15 +245,3 @@ def _read_strike(
     ]
     glyphs = dict(enumerate(font, lochar))
     return glyphs, min_kern
-
-
-@Font.loads('amiga')
-def load(f):
-    """Read Amiga disk font file."""
-    with ensure_stream(f, 'rb'):
-        # read & ignore header
-        _read_header(f)
-        hunk_id = _read_ulong(f)
-        if hunk_id != _HUNK_CODE:
-            raise ValueError('Not an Amiga font data file: no code hunk found (id %04x)' % hunk_id)
-        return _read_font_hunk(f)

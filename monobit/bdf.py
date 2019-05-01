@@ -11,7 +11,7 @@ import logging
 from .base import VERSION, Font, ensure_stream
 
 
-@Font.loads('bdf')
+@Font.loads('bdf', encoding='iso8859-1')
 def load(infile):
     """Load font from a .bdf file."""
     # BDF is specified as ASCII only
