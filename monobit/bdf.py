@@ -7,7 +7,6 @@ licence: https://opensource.org/licenses/MIT
 
 import os
 import logging
-import binascii
 
 from .base import VERSION, Font, ensure_stream
 
@@ -43,9 +42,6 @@ def _read_dict(instream, until=None):
 
 def _read_bdf_characters(instream):
     """Read character section."""
-    # state
-    current_char = None
-    bitmap = False
     # output
     glyphs = {}
     glyph_meta = {}
@@ -364,7 +360,7 @@ def _parse_xlfd_properties(x_props, xlfd_name):
     # keep unparsed properties
     if not xlfd_name_props:
         properties['FONT'] = xlfd_name
-    properties.update({ _k: _v.strip('"') for _k, _v in x_props.items()})
+    properties.update({_k: _v.strip('"') for _k, _v in x_props.items()})
     return properties
 
 

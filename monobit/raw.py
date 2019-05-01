@@ -40,7 +40,8 @@ def load(
         ]
         if strike:
             # flatten strikes
-            drawn = [[
+            drawn = [
+                [
                     _bit
                     for _byte in drawn[_strike*strike_bytes : (_strike+1)*strike_bytes]
                     for _bit in _byte
@@ -62,7 +63,11 @@ def load(
             # concatenate rows
             cells = [
                 [
-                    [_bit for _byte in _cell[_row*width_bytes:(_row+1)*width_bytes] for _bit in _byte]
+                    [
+                        _bit
+                        for _byte in _cell[_row*width_bytes:(_row+1)*width_bytes]
+                        for _bit in _byte
+                    ]
                     for _row in range(height)
                 ]
                 for _cell in cells

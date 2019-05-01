@@ -57,7 +57,9 @@ args = parser.parse_args()
 if args.scale:
     args.scale_x = args.scale_y = args.scale
 kwargs = dict(
-    columns=args.columns, margin=(args.margin_x, args.margin_y), padding=(args.padding_x, args.padding_y),
+    columns=args.columns,
+    margin=(args.margin_x, args.margin_y),
+    padding=(args.padding_x, args.padding_y),
     scale=(args.scale_x, args.scale_y),
     border=(32, 32, 32), back=(0, 0, 0), fore=(255, 255, 255),
 )

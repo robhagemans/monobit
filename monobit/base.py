@@ -14,7 +14,7 @@ VERSION = '0.2'
 @contextmanager
 def ensure_stream(infile, mode, encoding=None):
     """If argument is a string, open as file."""
-    if isinstance(infile, str) or isinstance(infile, bytes):
+    if isinstance(infile, (str, bytes)):
         instream = open(infile, mode, encoding=encoding)
     else:
         instream = infile
@@ -43,14 +43,15 @@ class Font:
         """Load from file."""
         if isinstance(infile, bytes):
             infile = infile.decode('ascii')
-        if not format and isinstance(infile, str):
+        if not format:
             format = DEFAULT_FORMAT
-            try:
-                _, format = infile.rsplit('.', 1)
-                if format not in cls._loaders:
-                    format = DEFAULT_FORMAT
-            except ValueError:
-                pass
+            if isinstance(infile, str):
+                try:
+                    _, format = infile.rsplit('.', 1)
+                    if format not in cls._loaders:
+                        format = DEFAULT_FORMAT
+                except ValueError:
+                    pass
         try:
             loader = cls._loaders[format.lower()]
         except KeyError:
@@ -61,14 +62,15 @@ class Font:
         """Load from file."""
         if isinstance(outfile, bytes):
             outfile = outfile.decode('ascii')
-        if not format and isinstance(outfile, str):
+        if not format:
             format = DEFAULT_FORMAT
-            try:
-                _, format = outfile.rsplit('.', 1)
-                if format not in self._savers:
-                    format = DEFAULT_FORMAT
-            except ValueError:
-                pass
+            if isinstance(outfile, str):
+                try:
+                    _, format = outfile.rsplit('.', 1)
+                    if format not in self._savers:
+                        format = DEFAULT_FORMAT
+                except ValueError:
+                    pass
         try:
             saver = self._savers[format.lower()]
         except KeyError:

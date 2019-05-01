@@ -5,8 +5,6 @@ monobit.hexdraw - read and write .c source files
 licence: https://opensource.org/licenses/MIT
 """
 
-import binascii
-
 from .base import Font, ensure_stream, ceildiv
 
 
@@ -31,7 +29,7 @@ def load(infile, identifier, width, height):
 def _get_payload(infile, identifier):
     """Find the identifier and get the part between {curly brackets}."""
     with ensure_stream(infile, 'r') as instream:
-        for line in infile:
+        for line in instream:
             if '//' in line:
                 line, _ = line.split('//', 1)
             line = line.strip(' \r\n')
@@ -49,7 +47,7 @@ def _get_payload(infile, identifier):
             payload = [line]
         else:
             payload = []
-        for line in infile:
+        for line in instream:
             if '//' in line:
                 line, _ = line.split('//', 1)
             line = line.strip(' \r\n')

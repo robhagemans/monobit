@@ -240,6 +240,7 @@ def load(f):
     with ensure_stream(f, 'rb'):
         # read & ignore header
         _read_header(f)
-        if _read_ulong(f) != _HUNK_CODE:
+        hunk_id = _read_ulong(f)
+        if hunk_id != _HUNK_CODE:
             raise ValueError('Not an Amiga font data file: no code hunk found (id %04x)' % hunk_id)
         return _read_font_hunk(f)
