@@ -28,4 +28,4 @@ parser.add_argument(
 args = parser.parse_args()
 
 font = monobit.c.load(args.infile, args.id, args.width, args.height)
-monobit.save(font, args.outfile)
+font.save(args.outfile)

@@ -67,4 +67,4 @@ font = monobit.image.load(
 font = monobit.renumber(font, add=args.first)
 if args.invert:
     font = monobit.invert(font)
-monobit.save(font, args.outfile)
+font.save(args.outfile)

@@ -68,4 +68,4 @@ if args.invert:
 if args.mirror:
     font = monobit.mirror(font)
 font = monobit.crop(font, 0, 0, args.clip_x, args.padding)
-monobit.save(font, args.outfile)
+font.save(args.outfile)
