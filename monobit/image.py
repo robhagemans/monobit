@@ -10,10 +10,7 @@ from .base import Font, ceildiv
 
 
 @Font.loads('png', 'bmp', 'gif', 'image', encoding=None)
-def load(
-        infile, cell=(8, 8),
-        margin=(0, 0), padding=(0, 0), scale=(1, 1),
-    ):
+def load(infile, cell=(8, 8), margin=(0, 0), padding=(0, 0), scale=(1, 1)):
     """Import font from image."""
     width, height = cell
     scale_x, scale_y = scale

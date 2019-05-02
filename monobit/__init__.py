@@ -5,20 +5,18 @@ monobit - tools for working with monochrome, monospaced bitmap fonts
 licence: https://opensource.org/licenses/MIT
 """
 
-from .base import Font
 from .base import VERSION as __version__
+from .base import Font
 
 from . import operations
-from . import hexdraw
 from . import amiga
 from . import image
+from . import text
 from . import raw
 from . import bdf
 from . import c
 
 from .image import show
-
-load = Font.load
 
 
 # inject per-glyph operations
@@ -37,5 +35,6 @@ globals().update({
 
 # other operations
 
+load = Font.load
 renumber = Font.renumbered
 subset = Font.subset

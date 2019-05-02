@@ -1,5 +1,5 @@
 """
-monobit.hexdraw - read and write .c source files
+monobit.c - read and write .c source files
 
 (c) 2019 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.DEBUG, format='%(levelname)s: %(message)s')
 
 # parse command line
 parser = argparse.ArgumentParser()
-parser.add_argument('infile', nargs='?', type=argparse.FileType('r'), default=sys.stdin)
+parser.add_argument('infile', nargs='?', type=str, default='')
 parser.add_argument('outfile', nargs='?', default=None)
 parser.add_argument(
     '--padding-x', default=0, type=int,
@@ -65,7 +65,7 @@ kwargs = dict(
 )
 
 
-font = monobit.hexdraw.load(args.infile)
+font = monobit.load(args.infile)
 
 if not args.outfile:
     monobit.show(font, **kwargs)

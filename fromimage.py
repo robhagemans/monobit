@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Extract monospace bitmap font from monochrome image file and output as hexdraw text file
+Extract monospace bitmap font from monochrome image file
 (c) 2019 Rob Hagemans, licence: https://opensource.org/licenses/MIT
 """
 
@@ -16,7 +16,7 @@ logging.basicConfig(level=logging.DEBUG, format='%(levelname)s: %(message)s')
 # parse command line
 parser = argparse.ArgumentParser()
 parser.add_argument('infile')
-parser.add_argument('outfile', nargs='?', type=argparse.FileType('w'), default=sys.stdout)
+parser.add_argument('outfile', nargs='?', type=str, default='')
 # dimensions of cell, in pixels
 parser.add_argument(
     '-y', '--height', default=8, type=int,

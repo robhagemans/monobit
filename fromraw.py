@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Extract monospace bitmap font from raw binary and output as hexdraw text file
+Extract monospace bitmap font from raw binary
 (c) 2019 Rob Hagemans, licence: https://opensource.org/licenses/MIT
 """
 

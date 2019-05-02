@@ -1,5 +1,5 @@
 """
-monobit.hexdraw - read and write .draw files
+monobit.text - read and write hexdraw and yaff files
 
 (c) 2019 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -21,7 +21,7 @@ _BACK = "_.-"
 
 @Font.loads('text', 'txt', 'draw', 'yaff')
 def load(infile, back=_BACK):
-    """Read a hexdraw plaintext font file."""
+    """Read a plaintext font file."""
     with ensure_stream(infile, 'r', encoding='utf-8-sig') as instream:
         lines = list(instream)
         comments = [
@@ -80,7 +80,7 @@ def load(infile, back=_BACK):
 
 @Font.saves('text', 'txt', 'draw', 'yaff')
 def save(font, outfile, fore='@', back='.', comment='#'):
-    """Write font to hexdraw file."""
+    """Write font to a plaintext file."""
     with ensure_stream(outfile, 'w') as outstream:
         if font._comments:
             for line in font._comments:
