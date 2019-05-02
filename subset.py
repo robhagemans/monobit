@@ -29,5 +29,5 @@ args = parser.parse_args()
 font = monobit.load(args.infile)
 if args.to_ < 0:
     args.to_ = font.get_max_key()
-font = monobit.subset(font, range(args.from_, args._to+1))
+font = monobit.subset(font, range(args.from_, args.to_+1))
 font.save(args.outfile)

@@ -29,7 +29,7 @@ def load(infile, back=_BACK):
             for _line in lines
             if _line.rstrip('\r\n') and _line[0] not in _CODESTART
         ]
-        if all(_line[0] == ' ' for _line in comments):
+        if all(_line.startswith(' ') for _line in comments):
             comments = [_line[1:] for _line in comments]
         # drop all comments
         codelines = [

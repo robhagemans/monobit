@@ -5,9 +5,10 @@ monobit.base - shared utilities
 licence: https://opensource.org/licenses/MIT
 """
 
+import io
+import sys
 from contextlib import contextmanager
 
-from . import operations
 
 DEFAULT_FORMAT = 'text'
 VERSION = '0.2'
@@ -21,12 +22,12 @@ def ensure_stream(infile, mode, encoding=None):
     """
     if not infile:
         if mode.startswith('w'):
-            infile = sys.stdout.buffer
+            instream = sys.stdout.buffer
         else:
-            infile = sys.stdin.buffer
+            instream = sys.stdin.buffer
         # we take encoding == None to mean binary
         if encoding:
-            io.TextIOWrapper(infile, encoding=encoding)
+            instream = io.TextIOWrapper(instream, encoding=encoding)
     elif isinstance(infile, (str, bytes)):
         if encoding:
             instream = open(infile, mode, encoding=encoding)
