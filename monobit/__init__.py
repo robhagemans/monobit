@@ -5,6 +5,8 @@ monobit - tools for working with monochrome, monospaced bitmap fonts
 licence: https://opensource.org/licenses/MIT
 """
 
+from functools import partial
+
 from .base import VERSION as __version__
 from .base import Font
 
@@ -19,22 +21,22 @@ from . import c
 from .image import show
 
 
-# inject per-glyph operations
+# apply per-glyph operations to whole font
 
-def _modifier(func):
-    """Return modified version of font."""
-    def _modify(font, *args, **kwargs):
-        return font.modified(func, *args, **kwargs)
-    return _modify
-
-globals().update({
-    _name: _modifier(_func)
+OPERATIONS = {
+    _name: partial(Font.modified, operation=_func)
     for _name, _func in operations.__dict__.items()
-})
-
+    if not _name.startswith('_')
+}
 
 # other operations
 
-load = Font.load
-renumber = Font.renumbered
-subset = Font.subset
+OPERATIONS. update(dict(
+    load=Font.load,
+    renumber=Font.renumbered,
+    subset=Font.subset,
+    subrange=Font.subrange,
+))
+
+# inject operations into main module namespace
+globals().update(OPERATIONS)

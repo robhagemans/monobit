@@ -9,6 +9,7 @@ import io
 import sys
 from contextlib import contextmanager
 
+from . import glyph
 
 DEFAULT_FORMAT = 'text'
 VERSION = '0.2'
@@ -56,8 +57,11 @@ class Font:
         self._comments = comments
         self._properties = properties or {}
 
+
+    ##########################################################################
+
     @classmethod
-    def load(cls, infile, format=None, **kwargs):
+    def load(cls, infile:str, format:str='', **kwargs):
         """Load from file."""
         if isinstance(infile, bytes):
             infile = infile.decode('ascii')
@@ -78,7 +82,7 @@ class Font:
         with ensure_stream(infile, 'r', encoding=encoding) as instream:
             return loader(instream, **kwargs)
 
-    def save(self, outfile, format=None, **kwargs):
+    def save(self, outfile:str, format:str='', **kwargs):
         """Load from file."""
         if isinstance(outfile, bytes):
             outfile = outfile.decode('ascii')
@@ -99,6 +103,52 @@ class Font:
         with ensure_stream(outfile, 'w', encoding=encoding) as outstream:
             return saver(self, outstream, **kwargs)
 
+    def renumbered(self, add:int=0):
+        """Return a font with renumbered keys."""
+        glyphs = {
+            (_k + add if isinstance(_k, int) else _k): _v
+            for _k, _v in self._glyphs.items()
+        }
+        return Font(glyphs, self._comments, self._properties)
+
+    def subrange(self, from_:int=0, to_:int=None):
+        """Return a continuous subrange of the font."""
+        return self.subset(range(from_, to_))
+
+    def subset(self, keys:set=None):
+        """Return a subset of the font."""
+        if keys is None:
+            keys = self._glyphs.keys()
+        glyphs = {
+            _k: _v
+            for _k, _v in self._glyphs.items()
+            if _k in keys
+        }
+        return Font(glyphs, self._comments, self._properties)
+
+    ##########################################################################
+    # apply per-glyph operations to whole font
+
+    def modified(self, operation, *args, **kwargs):
+        """Return a font with modified glyphs."""
+        glyphs = {
+            _key: operation(_glyph, *args, **kwargs)
+            for _key, _glyph in self._glyphs.items()
+        }
+        return Font(glyphs, self._comments, self._properties)
+
+    #_glyph_operations = {
+    #    _name: partial(Font.modified, operation=_func)
+    #    for _name, _func in operations.__dict__.items()
+    #    if not _name.startswith('_')
+    #}
+
+    ##########################################################################
+
+    def get_max_key(self):
+        """Get maximum key in font."""
+        return max(_k for _k in self._glyphs.keys() if isinstance(_k, int))
+
     @classmethod
     def loads(cls, *formats, encoding='utf-8-sig'):
         """Decorator to register font loader."""
@@ -118,32 +168,3 @@ class Font:
                 cls._encodings[format.lower()] = encoding
             return fn
         return _savefunc
-
-    def modified(self, operation, *args, **kwargs):
-        """Return a font with modified glyphs."""
-        glyphs = {
-            _key: operation(_glyph, *args, **kwargs)
-            for _key, _glyph in self._glyphs.items()
-        }
-        return Font(glyphs, self._comments, self._properties)
-
-    def renumbered(self, add):
-        """Return a font with renumbered keys."""
-        glyphs = {
-            (_k + add if isinstance(_k, int) else _k): _v
-            for _k, _v in self._glyphs.items()
-        }
-        return Font(glyphs, self._comments, self._properties)
-
-    def subset(self, range):
-        """Return a subset of the font."""
-        glyphs = {
-            _k: _v
-            for _k, _v in self._glyphs.items()
-            if _k in range
-        }
-        return Font(glyphs, self._comments, self._properties)
-
-    def get_max_key(self):
-        """Get maximum key in font."""
-        return max(_k for _k in self._glyphs.keys() if isinstance(_k, int))

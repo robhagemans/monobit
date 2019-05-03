@@ -18,7 +18,7 @@ def transpose(glyph):
     """Transpose glyph."""
     return [list(_x) for _x in zip(*glyph)]
 
-def rotate(glyph, turns=1):
+def rotate(glyph, turns:int=1):
     """Rotate by 90-degree turns; positive is clockwise."""
     turns %= 4
     if turns == 3:
@@ -33,14 +33,14 @@ def invert(glyph):
     """Reverse video."""
     return [[(not _col) for _col in _row] for _row in glyph]
 
-def crop(glyph, left=0, top=0, right=0, bottom=0):
+def crop(glyph, left:int=0, top:int=0, right:int=0, bottom:int=0):
     """Crop glyph, inclusive bounds."""
     return [
         _row[left : (-right if right else None)]
         for _row in glyph[top : (-bottom if bottom else None)]
     ]
 
-def expand(glyph, left=0, top=0, right=0, bottom=0):
+def expand(glyph, left:int=0, top:int=0, right:int=0, bottom:int=0):
     """Add empty space."""
     if glyph:
         old_width = len(glyph[0])
@@ -53,7 +53,7 @@ def expand(glyph, left=0, top=0, right=0, bottom=0):
         + [[False] * new_width for _ in range(bottom)]
     )
 
-def stretch(glyph, factor_x=1, factor_y=1):
+def stretch(glyph, factor_x:int=1, factor_y:int=1):
     """Repeat rows and/or columns."""
     # vertical stretch
     glyph = [_row for _row in glyph for _ in range(factor_y)]
@@ -64,7 +64,7 @@ def stretch(glyph, factor_x=1, factor_y=1):
     ]
     return glyph
 
-def shrink(glyph, factor_x=1, factor_y=1, force=False):
+def shrink(glyph, factor_x:int=1, factor_y:int=1, force:bool=False):
     """Remove rows and/or columns."""
     # vertical shrink
     shrunk_glyph = glyph[::factor_y]
