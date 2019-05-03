@@ -7,7 +7,6 @@ Apply operation to bitmap font
 import sys
 import argparse
 import logging
-import inspect
 
 import monobit
 
@@ -44,6 +43,7 @@ args = parser.parse_args()
 fargs = {
     _name: _conv(args.__dict__[_name])
     for _name, _conv in converters.items()
+    if args.__dict__[_name] is not None
 }
 
 # load, modify, save

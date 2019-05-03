@@ -8,6 +8,7 @@ licence: https://opensource.org/licenses/MIT
 import io
 import sys
 from contextlib import contextmanager
+from functools import partial
 
 from . import glyph
 
@@ -103,7 +104,7 @@ class Font:
         with ensure_stream(outfile, 'w', encoding=encoding) as outstream:
             return saver(self, outstream, **kwargs)
 
-    def renumbered(self, add:int=0):
+    def renumber(self, add:int=0):
         """Return a font with renumbered keys."""
         glyphs = {
             (_k + add if isinstance(_k, int) else _k): _v
@@ -129,7 +130,7 @@ class Font:
     ##########################################################################
     # apply per-glyph operations to whole font
 
-    def modified(self, operation, *args, **kwargs):
+    def modify(self, operation, *args, **kwargs):
         """Return a font with modified glyphs."""
         glyphs = {
             _key: operation(_glyph, *args, **kwargs)
@@ -137,11 +138,10 @@ class Font:
         }
         return Font(glyphs, self._comments, self._properties)
 
-    #_glyph_operations = {
-    #    _name: partial(Font.modified, operation=_func)
-    #    for _name, _func in operations.__dict__.items()
-    #    if not _name.startswith('_')
-    #}
+    for _name, _func in glyph.__dict__.items():
+        if not _name.startswith('_'):
+            locals()[_name] = partial(modify, operation=_func)
+            locals()[_name].__annotations__ = _func.__annotations__
 
     ##########################################################################
 

@@ -21,22 +21,14 @@ from . import c
 from .image import show
 
 
-# apply per-glyph operations to whole font
-
+# get font operations
 OPERATIONS = {
-    _name: partial(Font.modified, operation=_func)
-    for _name, _func in operations.__dict__.items()
+    _name: _func
+    for _name, _func in Font.__dict__.items()
     if not _name.startswith('_')
 }
-
-# other operations
-
-OPERATIONS. update(dict(
-    load=Font.load,
-    renumber=Font.renumbered,
-    subset=Font.subset,
-    subrange=Font.subrange,
-))
+# doesn't work for classmethod
+OPERATIONS['load'] = Font.load
 
 # inject operations into main module namespace
 globals().update(OPERATIONS)
