@@ -5,12 +5,9 @@ monobit - tools for working with monochrome, monospaced bitmap fonts
 licence: https://opensource.org/licenses/MIT
 """
 
-from functools import partial
-
 from .base import VERSION as __version__
 from .base import Font
 
-from . import glyph as operations
 from . import amiga
 from . import image
 from . import text
