@@ -12,7 +12,7 @@ from functools import partial
 
 
 DEFAULT_FORMAT = 'text'
-VERSION = '0.2'
+VERSION = '0.3'
 
 
 @contextmanager
