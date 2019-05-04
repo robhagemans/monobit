@@ -22,7 +22,7 @@ from .image import show
 OPERATIONS = {
     _name: _func
     for _name, _func in Font.__dict__.items()
-    if not _name.startswith('_')
+    if hasattr(_func, 'scriptable')
 }
 # doesn't work for classmethod
 OPERATIONS['load'] = Font.load

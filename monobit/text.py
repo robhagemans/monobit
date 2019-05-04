@@ -98,3 +98,4 @@ def save(font, outfile, fore='@', back='.', comment='#'):
                 outstream.write('{}:\n\t'.format(ordinal))
             outstream.write('\n\t'.join(char))
             outstream.write('\n\n')
+    return font

@@ -115,6 +115,7 @@ def save(
     """Export font to image."""
     img = _to_image(font, columns, margin, padding, scale, border, back, fore)
     img.save(outfile, format)
+    return font
 
 
 def show(
@@ -125,3 +126,4 @@ def show(
     """Show font as image."""
     img = _to_image(font, columns, margin, padding, scale, border, back, fore)
     img.show()
+    return font

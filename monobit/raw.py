@@ -87,3 +87,4 @@ def save(font, outfile):
                 for _row in glyph
             )
             outstream.write(glyph_bytes)
+    return font

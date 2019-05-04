@@ -44,6 +44,12 @@ def ceildiv(num, den):
     """Integer division, rounding up."""
     return -(-num // den)
 
+def scriptable(fn):
+    """Decorator to register operation for scripting."""
+    fn.scriptable = True
+    fn.script_args = fn.__annotations__
+    return fn
+
 
 class Font:
     """Glyphs and metadata."""
@@ -63,7 +69,7 @@ class Font:
 
     @classmethod
     def load(cls, infile:str, format:str='', **kwargs):
-        """Load from file."""
+        """Read new font from file."""
         if isinstance(infile, bytes):
             infile = infile.decode('ascii')
         if not format:
@@ -83,8 +89,9 @@ class Font:
         with ensure_stream(infile, 'r', encoding=encoding) as instream:
             return loader(instream, **kwargs)
 
+    @scriptable
     def save(self, outfile:str, format:str='', **kwargs):
-        """Load from file."""
+        """Write to file, return unchanged."""
         if isinstance(outfile, bytes):
             outfile = outfile.decode('ascii')
         if not format:
@@ -102,8 +109,10 @@ class Font:
         except KeyError:
             raise ValueError('Cannot save to format `{}`'.format(format))
         with ensure_stream(outfile, 'w', encoding=encoding) as outstream:
-            return saver(self, outstream, **kwargs)
+            saver(self, outstream, **kwargs)
+            return self
 
+    @scriptable
     def renumber(self, add:int=0):
         """Return a font with renumbered keys."""
         glyphs = {
@@ -112,10 +121,12 @@ class Font:
         }
         return Font(glyphs, self._comments, self._properties)
 
+    @scriptable
     def subrange(self, from_:int=0, to_:int=None):
         """Return a continuous subrange of the font."""
         return self.subset(range(from_, to_))
 
+    @scriptable
     def subset(self, keys:set=None):
         """Return a subset of the font."""
         if keys is None:
@@ -127,10 +138,11 @@ class Font:
         }
         return Font(glyphs, self._comments, self._properties)
 
+
     ##########################################################################
     # apply per-glyph operations to whole font
 
-    def modify(self, operation, *args, **kwargs):
+    def _modify(self, operation, *args, **kwargs):
         """Return a font with modified glyphs."""
         glyphs = {
             _key: operation(_glyph, *args, **kwargs)
@@ -140,8 +152,10 @@ class Font:
 
     for _name, _func in glyph.__dict__.items():
         if not _name.startswith('_'):
-            locals()[_name] = partial(modify, operation=_func)
-            locals()[_name].__annotations__ = _func.__annotations__
+            operation = partial(_modify, operation=_func)
+            operation.__annotations__ = _func.__annotations__
+            locals()[_name] = scriptable(operation)
+
 
     ##########################################################################
 
