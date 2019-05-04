@@ -52,6 +52,9 @@ fargs = {
 }
 
 # load, modify, save
-font = monobit.load(args.infile)
-font = operation(font, **fargs)
-font.save(args.outfile)
+try:
+    font = monobit.load(args.infile)
+    font = operation(font, **fargs)
+    font.save(args.outfile)
+except Exception as exc:
+    logging.error(exc)
