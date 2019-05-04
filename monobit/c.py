@@ -5,7 +5,7 @@ monobit.c - read and write .c source files
 licence: https://opensource.org/licenses/MIT
 """
 
-from .base import Font, ensure_stream, ceildiv
+from .base import Glyph, Font, ensure_stream, ceildiv
 
 
 @Font.loads('c', 'cc', 'cpp', 'h')
@@ -21,9 +21,12 @@ def load(infile, identifier, width, height):
         for _offs in range(0, len(bitrows), bytewidth)
     ]
     bitrows = [[(_c == '1') for _c in _row] for _row in bitrows]
-    bitrows = [_row[:width] for _row in bitrows]
-    font = {_key: bitrows[_key*height:(_key+1)*height] for _key in range(len(bitrows)//height)}
-    return font
+    bitrows = tuple(_row[:width] for _row in bitrows)
+    font = {
+        _key: Glyph(bitrows[_key*height:(_key+1)*height])
+        for _key in range(len(bitrows)//height)
+    }
+    return Font(font)
 
 
 def _get_payload(infile, identifier):

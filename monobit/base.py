@@ -10,7 +10,6 @@ import sys
 from contextlib import contextmanager
 from functools import partial
 
-from . import glyph
 
 DEFAULT_FORMAT = 'text'
 VERSION = '0.2'
@@ -49,6 +48,94 @@ def scriptable(fn):
     fn.scriptable = True
     fn.script_args = fn.__annotations__
     return fn
+
+
+class Glyph:
+    """Single glyph."""
+
+    def __init__(self, pixels=((),)):
+        self._rows = pixels
+
+    @scriptable
+    def mirror(self):
+        """Reverse pixels horizontally."""
+        return Glyph(tuple(_row[::-1] for _row in self._rows))
+
+    @scriptable
+    def flip(self):
+        """Reverse pixels vertically."""
+        return Glyph(self._rows[::-1])
+
+    @scriptable
+    def transpose(self):
+        """Transpose glyph."""
+        return Glyph(tuple(tuple(_x) for _x in zip(*self._rows)))
+
+    @scriptable
+    def rotate(self, turns:int=1):
+        """Rotate by 90-degree turns; positive is clockwise."""
+        turns %= 4
+        if turns == 3:
+            return self.transpose().flip()
+        elif turns == 2:
+            return self.mirror().flip()
+        elif turns == 1:
+            return self.transpose().mirror()
+        return glyph
+
+    @scriptable
+    def invert(self):
+        """Reverse video."""
+        return Glyph(tuple(tuple((not _col) for _col in _row) for _row in self._rows))
+
+    @scriptable
+    def crop(self, left:int=0, top:int=0, right:int=0, bottom:int=0):
+        """Crop glyph, inclusive bounds."""
+        return Glyph(tuple(
+            _row[left : (-right if right else None)]
+            for _row in self._rows[top : (-bottom if bottom else None)]
+        ))
+
+    @scriptable
+    def expand(self, left:int=0, top:int=0, right:int=0, bottom:int=0):
+        """Add empty space."""
+        if glyph:
+            old_width = len(self[0])
+        else:
+            old_width = 0
+        new_width = left + old_width + right
+        return Glyph(
+            ((False,)*new_width, ) * top
+            + tuple((False,)*left + _row + (False,)*right for _row in self._rows)
+            + ((False,)*new_width, ) * bottom
+        )
+
+    @scriptable
+    def stretch(self, factor_x:int=1, factor_y:int=1):
+        """Repeat rows and/or columns."""
+        # vertical stretch
+        glyph = tuple(_row for _row in self._rows for _ in range(factor_y))
+        # horizontal stretch
+        glyph = tuple(
+            tuple(_col for _col in _row for _ in range(factor_x))
+            for _row in glyph
+        )
+        return Glyph(glyph)
+
+    @scriptable
+    def shrink(self, factor_x:int=1, factor_y:int=1, force:bool=False):
+        """Remove rows and/or columns."""
+        # vertical shrink
+        shrunk_glyph = self._rows[::factor_y]
+        if not force:
+            # check we're not throwing away stuff
+            for offs in range(1, factor_y):
+                alt = glyph[offs::factor_y]
+                if shrunk_glyph != alt:
+                    raise ValueError("can't shrink glyph without loss")
+        # horizontal stretch
+        glyph = tuple(_row[::factor_x] for _row in self._rows)
+        return Glyph(glyph)
 
 
 class Font:
@@ -150,11 +237,12 @@ class Font:
         }
         return Font(glyphs, self._comments, self._properties)
 
-    for _name, _func in glyph.__dict__.items():
-        if not _name.startswith('_'):
+    for _name, _func in Glyph.__dict__.items():
+        if hasattr(_func, 'scriptable'):
             operation = partial(_modify, operation=_func)
-            operation.__annotations__ = _func.__annotations__
-            locals()[_name] = scriptable(operation)
+            operation.scriptable = True
+            operation.script_args = _func.script_args
+            locals()[_name] = operation
 
 
     ##########################################################################

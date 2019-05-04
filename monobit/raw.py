@@ -58,14 +58,14 @@ def load(infile, cell=(8, 8), n_chars=None, offset=0, strike=False):
             ]
             # concatenate rows
             cells = [
-                [
-                    [
+                Glyph(tuple(
+                    tuple(
                         _bit
                         for _byte in _cell[_row*width_bytes:(_row+1)*width_bytes]
                         for _bit in _byte
-                    ]
+                    )
                     for _row in range(height)
-                ]
+                ))
                 for _cell in cells
             ]
         glyphs = dict(enumerate(cells))
@@ -84,7 +84,7 @@ def save(font, outfile):
                 continue
             glyph_bytes = bytes(
                 int(''.join(_row), 2)
-                for _row in glyph
+                for _row in glyph._rows
             )
             outstream.write(glyph_bytes)
     return font

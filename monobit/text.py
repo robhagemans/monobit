@@ -7,7 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 import string
 
-from .base import ensure_stream, Font
+from .base import ensure_stream, Font, Glyph
 
 
 _WHITESPACE = ' \t'
@@ -64,7 +64,7 @@ def load(infile, back=_BACK):
         }
         # convert to bitlist
         glyphs = {
-            _key: [[_c not in back for _c in _row] for _row in _value]
+            _key: Glyph(tuple(tuple(_c not in back for _c in _row) for _row in _value))
             for _key, _value in glyphs.items()
         }
 
@@ -91,7 +91,7 @@ def save(font, outfile, fore='@', back='.', comment='#'):
                 outstream.write('{}: {}\n'.format(key, value))
             outstream.write('\n')
         for ordinal, char in font._glyphs.items():
-            char = [''.join((fore if _b else back) for _b in _row) for _row in char]
+            char = [''.join((fore if _b else back) for _b in _row) for _row in char._rows]
             if isinstance(ordinal, int):
                 outstream.write('{:02x}:\n\t'.format(ordinal))
             else:

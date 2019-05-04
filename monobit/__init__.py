@@ -24,8 +24,8 @@ OPERATIONS = {
     for _name, _func in Font.__dict__.items()
     if hasattr(_func, 'scriptable')
 }
-# doesn't work for classmethod
-OPERATIONS['load'] = Font.load
 
 # inject operations into main module namespace
 globals().update(OPERATIONS)
+
+load = Font.load

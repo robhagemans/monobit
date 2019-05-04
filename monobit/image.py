@@ -46,16 +46,16 @@ def load(infile, cell=(8, 8), margin=(0, 0), padding=(0, 0), scale=(1, 1)):
     # replace colours with characters
     # top-left pixel of first char assumed to be background colour
     bg = crops[0][0]
-    crops = [
+    crops = tuple(
         [_c != bg for _c in _cell]
         for _cell in crops
-    ]
+    )
     # reshape cells
     crops = [
-        [
+        Glyph(tuple(
             _cell[_offs: _offs+width]
             for _offs in range(0, len(_cell), width)
-        ]
+        ))
         for _cell in crops
     ]
     # set code points
@@ -88,7 +88,7 @@ def _to_image(
         for col in range(columns):
             ordinal = row * columns + col
             try:
-                glyph = glyphs[ordinal]
+                glyph = glyphs[ordinal]._rows
             except KeyError:
                 continue
             if not glyph or not glyph[0]:

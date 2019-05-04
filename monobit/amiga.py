@@ -9,7 +9,7 @@ import os
 import struct
 import logging
 
-from .base import VERSION, Font, ensure_stream
+from .base import VERSION, Glyph, Font, ensure_stream
 
 
 # amiga header constants
@@ -51,7 +51,8 @@ def load(f):
         hunk_id = _read_ulong(f)
         if hunk_id != _HUNK_CODE:
             raise ValueError('Not an Amiga font data file: no code hunk found (id %04x)' % hunk_id)
-        return _read_font_hunk(f)
+        glyphs, props = _read_font_hunk(f)
+        return Font(glyphs, properties=props)
 
 
 class _FileUnpacker:
@@ -180,7 +181,7 @@ def _read_font_hunk(f):
     del glyphs[default]
     props['encoding'] = 'iso8859-1'
     props['default-char'] = 'default'
-    return Font(glyphs, properties=props)
+    return glyphs, props
 
 def _read_strike(
         f, xsize, ysize, proportional, modulo, lochar, hichar,
@@ -240,7 +241,7 @@ def _read_strike(
     if min_kern < 0:
         kerning = (_kern - min_kern for _kern in kerning)
     font = [
-        [[False] * _kern + _row + [False] * (_width - _kern - len(_row)) for _row in _char]
+        Glyph(tuple((False,) * _kern + _row + (False,) * (_width-_kern-len(_row)) for _row in _char))
         for _char, _width, _kern in zip(font, spacing, kerning)
     ]
     glyphs = dict(enumerate(font, lochar))

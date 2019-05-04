@@ -8,7 +8,7 @@ licence: https://opensource.org/licenses/MIT
 import os
 import logging
 
-from .base import VERSION, Font, ensure_stream
+from .base import VERSION, Glyph, Font, ensure_stream
 
 
 @Font.loads('bdf', encoding='iso8859-1')
@@ -66,14 +66,14 @@ def _read_bdf_characters(instream):
         bytewidth = len(data[0]) // 2
         fmt = '{:0%db}' % (bytewidth*8,)
         glyphstrs = [fmt.format(int(_row, 16)).ljust(width, '\0')[:width] for _row in data]
-        glyph = [[_c == '1' for _c in _row] for _row in glyphstrs]
+        glyph = tuple((_c == '1' for _c in _row) for _row in glyphstrs)
         # store in dict
         # ENCODING must be single integer or -1 followed by integer
         encvalue = int(meta['ENCODING'].split(' ')[-1])
         # no encoding number found
         if encvalue == -1 or encvalue in glyphs:
             encvalue = meta['STARTCHAR']
-        glyphs[encvalue] = glyph
+        glyphs[encvalue] = Glyph(glyph)
         glyph_meta[encvalue] = meta
         if not instream.readline().startswith('ENDCHAR'):
             raise('Expected ENDCHAR')
