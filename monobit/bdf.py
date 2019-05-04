@@ -58,9 +58,6 @@ def _read_bdf_characters(instream):
         meta[keyword] = values
         width, height, _, _ = meta['BBX'].split(' ')
         width, height = int(width), int(height)
-        # fix for ami2bdf fonts
-        #if width > 65534:
-        #    width -= 65534
         # convert from hex-string to list of bools
         data = [instream.readline()[:-1] for _ in range(height)]
         bytewidth = len(data[0]) // 2
@@ -186,6 +183,7 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
     xdpi, ydpi = bdf_props['SIZE'].split(' ')[1:]
     properties = {
         'source-format': 'BDF ' + bdf_props['STARTFONT'],
+        # FIXME: bdf spec says this is point size
         'size': bdf_props['SIZE'].split(' ')[0],
         'dpi': ' '.join((xdpi, ydpi)) if xdpi != ydpi else xdpi,
     }
@@ -298,11 +296,11 @@ def _parse_xlfd_properties(x_props, xlfd_name):
         'FOUNDRY': 'foundry',
         'FAMILY_NAME': 'family',
         'WEIGHT_NAME': 'weight',
-        'RELATIVE_WEIGHT': 'rel-weight',
+        'RELATIVE_WEIGHT': '_rel-weight',
         'SLANT': 'slant',
         'SPACING': 'spacing',
         'SETWIDTH_NAME': 'setwidth',
-        'RELATIVE_SETWIDTH': 'rel-setwidth',
+        'RELATIVE_SETWIDTH': '_rel-setwidth',
         'ADD_STYLE_NAME': 'style',
         'PIXEL_SIZE': 'size',
         # encoding
@@ -336,10 +334,10 @@ def _parse_xlfd_properties(x_props, xlfd_name):
     if 'spacing' in properties and properties['spacing']:
         properties['spacing'] = _SPACING_MAP[properties['spacing']]
     # prefer the more precise relative weight and setwidth measures
-    if 'rel-setwidth' in properties and properties['rel-setwidth']:
-        properties['setwidth'] = _SETWIDTH_MAP[properties.pop('rel-setwidth')]
-    if 'rel-weight' in properties and properties['rel-weight']:
-        properties['weight'] = _WEIGHT_MAP[properties.pop('rel-weight')]
+    if '_rel-setwidth' in properties and properties['_rel-setwidth']:
+        properties['setwidth'] = _SETWIDTH_MAP[properties.pop('_rel-setwidth')]
+    if '_rel-weight' in properties and properties['_rel-weight']:
+        properties['weight'] = _WEIGHT_MAP[properties.pop('_rel-weight')]
     # encoding
     try:
         registry = properties.pop('_charset-registry')
