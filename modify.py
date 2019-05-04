@@ -11,13 +11,14 @@ import logging
 import monobit
 
 
-def anyint(instr):
+def str_to_int(instr):
     """Convert dec/hex/oct string to integer."""
     return int(instr, 0)
 
+
 CONVERTERS = {
-    int: anyint,
-    #bool
+    int: str_to_int,
+    bool: bool,
     #dict
 }
 
@@ -33,20 +34,21 @@ parser.add_argument('--outfile', type=str, default='')
 # find out which operation we're asked to perform
 args, unknown = parser.parse_known_args()
 
-
 # get arguments for this operation
 operation = monobit.OPERATIONS[args.operation[0]]
-converters = {_arg: CONVERTERS[_type] for _arg, _type in operation.script_args.items()}
+for arg, _type in operation.script_args.items():
+    if _type == bool:
+        parser.add_argument('--' + arg.strip('_'), dest=arg, action='store_true')
+    else:
+        parser.add_argument('--' + arg.strip('_'), dest=arg, type=CONVERTERS[_type])
 
-for arg in converters:
-    parser.add_argument('--' + arg.strip('_'), dest=arg)
 args = parser.parse_args()
 
 # convert arguments to type accepted by operation
 fargs = {
-    _name: _conv(args.__dict__[_name])
-    for _name, _conv in converters.items()
-    if args.__dict__[_name] is not None
+    _name: _arg
+    for _name, _arg in args.__dict__.items()
+    if _arg is not None and _name in operation.script_args
 }
 
 # load, modify, save

@@ -130,7 +130,7 @@ class Glyph:
         if not force:
             # check we're not throwing away stuff
             for offs in range(1, factor_y):
-                alt = glyph[offs::factor_y]
+                alt = self._rows[offs::factor_y]
                 if shrunk_glyph != alt:
                     raise ValueError("can't shrink glyph without loss")
         # horizontal stretch
