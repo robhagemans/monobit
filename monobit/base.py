@@ -148,7 +148,12 @@ class Font:
     def __init__(self, glyphs, comments=(), properties=None):
         """Create new font."""
         self._glyphs = glyphs
-        self._comments = comments
+        if isinstance(comments, dict):
+            # per-key comments
+            self._comments = comments
+        else:
+            # global comments only
+            self._comments = {None: comments}
         self._properties = properties or {}
 
 

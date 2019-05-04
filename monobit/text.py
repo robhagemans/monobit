@@ -50,31 +50,48 @@ def load(infile, back=_BACK):
     """Read a plaintext font file."""
     with ensure_stream(infile, 'r', encoding='utf-8-sig') as instream:
         lines = list(instream)
-        comments = [
-            _line[1:].rstrip('\r\n')
-            for _line in lines
-            if _line.rstrip('\r\n') and _line[0] not in _CODESTART
-        ]
-        if all(_line.startswith(' ') for _line in comments):
-            comments = [_line[1:] for _line in comments]
-        # drop all comments
-        codelines = [
-            _line
-            for _line in lines
-            if _line and _line[0] in _CODESTART
-        ]
+        comments = {None: []}
+        current_comment = []
         # cluster by character
         # assuming only one code point per glyph, for now
         clusters = []
-        for line in codelines:
-            if line[0] not in _WHITESPACE:
+        cp = None
+        for line in lines:
+            if not line.rstrip('\r\n'):
+                # preserve empty lines if they separate comments
+                if current_comment and current_comment[-1] != '':
+                    current_comment.append(None)
+            elif line[0] not in _CODESTART:
+                current_comment.append(line[1:].rstrip('\r\n'))
+            elif line[0] not in _WHITESPACE:
+                while current_comment and not current_comment[-1]:
+                    current_comment = current_comment[:-1]
+                # split out global comment
+                if cp is None and current_comment:
+                    try:
+                        splitter = current_comment[::-1].index(None)
+                    except ValueError:
+                        comments[None] = current_comment
+                        current_comment = []
+                    else:
+                        comments[None] = current_comment[:-splitter-1]
+                        current_comment = current_comment[-splitter:]
                 cp, rest = line.strip().split(':', 1)
+                current = cp
+                comments[cp] = current_comment
+                current_comment = []
                 if rest:
                     clusters.append((cp, [rest.strip()]))
                 else:
                     clusters.append((cp, []))
             else:
                 clusters[-1][1].append(line.strip())
+        comments[cp].extend(current_comment)
+        # normalise comment spacing
+        for key in comments:
+            comments[key] = [(_line if _line else '') for _line in comments[key]]
+            if all(_line.startswith(' ') for _line in comments[key] if _line):
+                comments[key] = [_line[1:] for _line in comments[key]]
         # text version of glyphs
         # a glyph is any key/value where the value contains no alphanumerics
         glyphs = {
@@ -97,32 +114,42 @@ def load(infile, back=_BACK):
         def _toint(key):
             try:
                 return int(key, 16)
-            except ValueError:
+            except (TypeError, ValueError):
                 return key
 
         glyphs = {_toint(_key): _value for _key, _value in glyphs.items()}
+        comments = {_toint(_key): _value for _key, _value in comments.items()}
         return Font(glyphs, comments, properties)
 
+
+def _write_comments(outstream, comments, key, comm_char='#'):
+    if comments and key in comments and comments[key]:
+        if key is not None:
+            outstream.write('\n')
+        for line in comments[key]:
+            outstream.write('{} {}\n'.format(comm_char, line))
+        if key is None:
+            outstream.write('\n')
 
 @Font.saves('text', 'txt', 'draw', 'yaff')
 def save(font, outfile, fore='@', back='.', comment='#'):
     """Write font to a plaintext file."""
     with ensure_stream(outfile, 'w') as outstream:
-        if font._comments:
-            for line in font._comments:
-                outstream.write('{} {}\n'.format(comment, line))
-            outstream.write('\n')
+        _write_comments(outstream, font._comments, None, comm_char=comment)
         if font._properties:
             for key in PROPERTIES:
+                _write_comments(outstream, font._comments, key, comm_char=comment)
                 try:
                     value = font._properties.pop(key)
                     outstream.write('{}: {}\n'.format(key, value))
                 except KeyError:
                     pass
             for key, value in font._properties.items():
+                _write_comments(outstream, font._comments, key, comm_char=comment)
                 outstream.write('{}: {}\n'.format(key, value))
             outstream.write('\n')
         for ordinal, char in font._glyphs.items():
+            _write_comments(outstream, font._comments, ordinal, comm_char=comment)
             char = [''.join((fore if _b else back) for _b in _row) for _row in char._rows]
             if isinstance(ordinal, int):
                 outstream.write('{:02x}:\n\t'.format(ordinal))
