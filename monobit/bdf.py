@@ -258,8 +258,8 @@ def _parse_xlfd_name(xlfd_str):
         #'resolution-y': 10, # dpi already specified in bdf props
         'spacing': 11,
         # 'average-width': 12, # can be calculated
-        'charset-registry': 13,
-        'charset-encoding': 14,
+        '_charset-registry': 13,
+        '_charset-encoding': 14,
     }
     xlfd = xlfd_str.split('-')
     properties = {}
@@ -306,8 +306,8 @@ def _parse_xlfd_properties(x_props, xlfd_name):
         'ADD_STYLE_NAME': 'style',
         'PIXEL_SIZE': 'size',
         # encoding
-        'CHARSET_REGISTRY': 'charset-registry',
-        'CHARSET_ENCODING': 'charset-encoding',
+        'CHARSET_REGISTRY': '_charset-registry',
+        'CHARSET_ENCODING': '_charset-encoding',
         'DEFAULT_CHAR': 'default-char',
     }
     properties = {}
@@ -342,8 +342,8 @@ def _parse_xlfd_properties(x_props, xlfd_name):
         properties['weight'] = _WEIGHT_MAP[properties.pop('rel-weight')]
     # encoding
     try:
-        registry = properties.pop('charset-registry')
-        encoding = properties.pop('charset-encoding')
+        registry = properties.pop('_charset-registry')
+        encoding = properties.pop('_charset-encoding')
     except KeyError:
         pass
     else:

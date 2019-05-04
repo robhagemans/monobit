@@ -18,6 +18,32 @@ _BACK = "_.-"
 # for now, anything else is foreground
 #_FORE = '@#*'
 
+# default order of known properties
+PROPERTIES = [
+    'name',
+    'foundry',
+    'copyright',
+    'notice',
+    'revision',
+    'size',
+    'family',
+    'weight',
+    'slant',
+    'setwidth',
+    'style',
+    'direction',
+    'spacing',
+    'bottom',
+    'offset-before',
+    'offset-after',
+    'dpi',
+    'encoding',
+    'default-char',
+    'converter',
+    'source-name',
+    'source-format',
+]
+
 
 @Font.loads('text', 'txt', 'draw', 'yaff')
 def load(infile, back=_BACK):
@@ -87,6 +113,12 @@ def save(font, outfile, fore='@', back='.', comment='#'):
                 outstream.write('{} {}\n'.format(comment, line))
             outstream.write('\n')
         if font._properties:
+            for key in PROPERTIES:
+                try:
+                    value = font._properties.pop(key)
+                    outstream.write('{}: {}\n'.format(key, value))
+                except KeyError:
+                    pass
             for key, value in font._properties.items():
                 outstream.write('{}: {}\n'.format(key, value))
             outstream.write('\n')
