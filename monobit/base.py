@@ -148,10 +148,6 @@ class Glyph:
 class Font:
     """Glyphs and metadata."""
 
-    _loaders = {}
-    _savers = {}
-    _encodings = {}
-
     def __init__(self, glyphs, comments=(), properties=None):
         """Create new font."""
         self._glyphs = glyphs
@@ -163,8 +159,62 @@ class Font:
             self._comments = {None: comments}
         self._properties = properties or {}
 
+    def get_max_key(self):
+        """Get maximum key in font."""
+        return max(_k for _k in self._glyphs.keys() if isinstance(_k, int))
 
-    ##########################################################################
+    @scriptable
+    def renumber(self, add:int=0):
+        """Return a font with renumbered keys."""
+        glyphs = {
+            (_k + add if isinstance(_k, int) else _k): _v
+            for _k, _v in self._glyphs.items()
+        }
+        return Font(glyphs, self._comments, self._properties)
+
+    @scriptable
+    def subrange(self, from_:int=0, to_:int=None):
+        """Return a continuous subrange of the font."""
+        return self.subset(range(from_, to_))
+
+    @scriptable
+    def subset(self, keys:set=None):
+        """Return a subset of the font."""
+        if keys is None:
+            keys = self._glyphs.keys()
+        glyphs = {
+            _k: _v
+            for _k, _v in self._glyphs.items()
+            if _k in keys
+        }
+        return Font(glyphs, self._comments, self._properties)
+
+    def _modify(self, operation, *args, **kwargs):
+        """Return a font with modified glyphs."""
+        glyphs = {
+            _key: operation(_glyph, *args, **kwargs)
+            for _key, _glyph in self._glyphs.items()
+        }
+        return Font(glyphs, self._comments, self._properties)
+
+    for _name, _func in Glyph.__dict__.items():
+        if hasattr(_func, 'scriptable'):
+            operation = partial(_modify, operation=_func)
+            operation.scriptable = True
+            operation.script_args = _func.script_args
+            locals()[_name] = operation
+
+
+class Typeface:
+    """One or more fonts."""
+
+    _loaders = {}
+    _savers = {}
+    _encodings = {}
+
+    def __init__(self, fonts=()):
+        """Create typeface from sequence of fonts."""
+        self._fonts = tuple(fonts)
 
     @classmethod
     def load(cls, infile:str, format:str='', **kwargs):
@@ -211,58 +261,6 @@ class Font:
             saver(self, outstream, **kwargs)
             return self
 
-    @scriptable
-    def renumber(self, add:int=0):
-        """Return a font with renumbered keys."""
-        glyphs = {
-            (_k + add if isinstance(_k, int) else _k): _v
-            for _k, _v in self._glyphs.items()
-        }
-        return Font(glyphs, self._comments, self._properties)
-
-    @scriptable
-    def subrange(self, from_:int=0, to_:int=None):
-        """Return a continuous subrange of the font."""
-        return self.subset(range(from_, to_))
-
-    @scriptable
-    def subset(self, keys:set=None):
-        """Return a subset of the font."""
-        if keys is None:
-            keys = self._glyphs.keys()
-        glyphs = {
-            _k: _v
-            for _k, _v in self._glyphs.items()
-            if _k in keys
-        }
-        return Font(glyphs, self._comments, self._properties)
-
-
-    ##########################################################################
-    # apply per-glyph operations to whole font
-
-    def _modify(self, operation, *args, **kwargs):
-        """Return a font with modified glyphs."""
-        glyphs = {
-            _key: operation(_glyph, *args, **kwargs)
-            for _key, _glyph in self._glyphs.items()
-        }
-        return Font(glyphs, self._comments, self._properties)
-
-    for _name, _func in Glyph.__dict__.items():
-        if hasattr(_func, 'scriptable'):
-            operation = partial(_modify, operation=_func)
-            operation.scriptable = True
-            operation.script_args = _func.script_args
-            locals()[_name] = operation
-
-
-    ##########################################################################
-
-    def get_max_key(self):
-        """Get maximum key in font."""
-        return max(_k for _k in self._glyphs.keys() if isinstance(_k, int))
-
     @classmethod
     def loads(cls, *formats, encoding='utf-8-sig'):
         """Decorator to register font loader."""
@@ -282,3 +280,18 @@ class Font:
                 cls._encodings[format.lower()] = encoding
             return fn
         return _savefunc
+
+    def _modify(self, operation, *args, **kwargs):
+        """Return a typeface with modified fonts."""
+        fonts = [
+            operation(_font, *args, **kwargs)
+            for _font in self._fonts
+        ]
+        return Typeface(fonts)
+
+    for _name, _func in Font.__dict__.items():
+        if hasattr(_func, 'scriptable'):
+            operation = partial(_modify, operation=_func)
+            operation.scriptable = True
+            operation.script_args = _func.script_args
+            locals()[_name] = operation

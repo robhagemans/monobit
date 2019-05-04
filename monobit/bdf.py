@@ -8,10 +8,10 @@ licence: https://opensource.org/licenses/MIT
 import os
 import logging
 
-from .base import VERSION, Glyph, Font, ensure_stream
+from .base import VERSION, Glyph, Font, Typeface, ensure_stream
 
 
-@Font.loads('bdf', encoding='iso8859-1')
+@Typeface.loads('bdf', encoding='iso8859-1')
 def load(infile):
     """Load font from a .bdf file."""
     # BDF is specified as ASCII only
@@ -23,7 +23,7 @@ def load(infile):
         if nchars != len(glyphs):
             logging.warning('Possibly corrupted BDF file: number of characters found does not match CHARS declaration.')
         properties = _parse_properties(glyphs, glyph_props, bdf_props, x_props, instream.name)
-        return Font(glyphs, comments, properties)
+        return Typeface([Font(glyphs, comments, properties)])
 
 
 def _read_dict(instream, until=None):

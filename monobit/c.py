@@ -5,10 +5,10 @@ monobit.c - read and write .c source files
 licence: https://opensource.org/licenses/MIT
 """
 
-from .base import Glyph, Font, ensure_stream, ceildiv
+from .base import Glyph, Font, Typeface, ensure_stream, ceildiv
 
 
-@Font.loads('c', 'cc', 'cpp', 'h')
+@Typeface.loads('c', 'cc', 'cpp', 'h')
 def load(infile, identifier, width, height):
     """Load font from a .c file."""
     payload = _get_payload(infile, identifier)
@@ -26,7 +26,7 @@ def load(infile, identifier, width, height):
         _key: Glyph(bitrows[_key*height:(_key+1)*height])
         for _key in range(len(bitrows)//height)
     }
-    return Font(font)
+    return Typeface([Font(font)])
 
 
 def _get_payload(infile, identifier):

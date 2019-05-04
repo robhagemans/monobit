@@ -6,10 +6,10 @@ licence: https://opensource.org/licenses/MIT
 """
 
 from PIL import Image
-from .base import Font, ceildiv
+from .base import Typeface, Font, Glyph, ceildiv
 
 
-@Font.loads('png', 'bmp', 'gif', 'image', encoding=None)
+@Typeface.loads('png', 'bmp', 'gif', 'image', encoding=None)
 def load(infile, cell=(8, 8), margin=(0, 0), padding=(0, 0), scale=(1, 1)):
     """Import font from image."""
     width, height = cell
@@ -59,7 +59,7 @@ def load(infile, cell=(8, 8), margin=(0, 0), padding=(0, 0), scale=(1, 1)):
         for _cell in crops
     ]
     # set code points
-    return Font(enumerate(glyphs))
+    return Typeface([Font(enumerate(glyphs))])
 
 
 def _to_image(
@@ -75,7 +75,7 @@ def _to_image(
     # work out image geometry
     # assume all glyphs have the same size, for now.
     # get an item - any item
-    anyglyph = next(iter(glyphs.values()))
+    anyglyph = next(iter(glyphs.values()))._rows
     step_x = len(anyglyph[0]) * scale_x + padding_x
     step_y = len(anyglyph) * scale_y + padding_y
     rows = ceildiv(max(_key for _key in glyphs.keys() if isinstance(_key, int))+1, columns)
@@ -106,24 +106,28 @@ def _to_image(
     return img
 
 
-@Font.saves('png', 'bmp', 'gif', 'image')
+@Typeface.saves('png', 'bmp', 'gif', 'image')
 def save(
-        font, outfile, format=None,
+        typeface, outfile, format=None,
         columns=32, margin=(0, 0), padding=(0, 0), scale=(1, 1),
         border=(32, 32, 32), back=(0, 0, 0), fore=(255, 255, 255),
     ):
     """Export font to image."""
+    if len(typeface._fonts) > 1:
+        raise ValueError("Saving multiple fonts to image not implemented")
+    font = typeface._fonts[0]
     img = _to_image(font, columns, margin, padding, scale, border, back, fore)
     img.save(outfile, format)
-    return font
+    return typeface
 
 
 def show(
-        font,
+        typeface,
         columns=32, margin=(0, 0), padding=(0, 0), scale=(1, 1),
         border=(32, 32, 32), back=(0, 0, 0), fore=(255, 255, 255),
     ):
     """Show font as image."""
-    img = _to_image(font, columns, margin, padding, scale, border, back, fore)
-    img.show()
-    return font
+    for font in typeface._fonts:
+        img = _to_image(font, columns, margin, padding, scale, border, back, fore)
+        img.show()
+    return typeface

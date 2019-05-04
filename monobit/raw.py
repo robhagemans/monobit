@@ -6,10 +6,10 @@ licence: https://opensource.org/licenses/MIT
 """
 
 
-from .base import ensure_stream, Font, ceildiv
+from .base import ensure_stream, Glyph, Font, Typeface, ceildiv
 
 
-@Font.loads('dos', 'bin', 'rom', encoding=None)
+@Typeface.loads('dos', 'bin', 'rom', encoding=None)
 def load(infile, cell=(8, 8), n_chars=None, offset=0, strike=False):
     """Load font from raw binary."""
     with ensure_stream(infile, 'rb') as instream:
@@ -69,12 +69,15 @@ def load(infile, cell=(8, 8), n_chars=None, offset=0, strike=False):
                 for _cell in cells
             ]
         glyphs = dict(enumerate(cells))
-        return Font(glyphs)
+        return typeface([Font(glyphs)])
 
 
-@Font.saves('fnt', 'bin', 'rom')
-def save(font, outfile):
+@Typeface.saves('fnt', 'bin', 'rom')
+def save(typeface, outfile):
     """Save font to raw binary."""
+    if len(typeface._fonts) > 1:
+        raise ValueError("Saving multiple fonts to raw binary not implemented")
+    font = typeface._fonts[0]
     glyphs = font._glyphs
     with ensure_stream(outfile, 'w') as outstream:
         for ordinal in range(0, max(glyphs.keys()) + 1):
@@ -87,4 +90,4 @@ def save(font, outfile):
                 for _row in glyph._rows
             )
             outstream.write(glyph_bytes)
-    return font
+    return typeface

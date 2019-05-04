@@ -32,7 +32,7 @@ import string
 import struct
 import logging
 
-from .base import VERSION, Glyph, Font, ensure_stream, bytes_to_bits, ceildiv
+from .base import VERSION, Glyph, Font, Typeface, ensure_stream, bytes_to_bits, ceildiv
 
  # https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-wmf/0d0b32ac-a836-4bd2-a112-b6000a1b4fc9
  # typedef  enum
@@ -136,7 +136,8 @@ def asciz(s):
             break
     return s[:length].decode("ASCII")
 
-def dofnt(fnt):
+
+def _read_fnt(fnt):
     """Create an internal font description from a .FNT-shaped string."""
     properties = {}
     version = fromword(fnt[0:])
@@ -204,8 +205,8 @@ def dofnt(fnt):
             glyphs[i] = Glyph(tuple(rows))
     return Font(glyphs, comments={}, properties=properties)
 
-def nefon(fon, neoff):
-    "Finish splitting up a NE-format FON file."
+def _read_ne_fon(fon, neoff):
+    """Finish splitting up a NE-format FON file."""
     ret = []
     # Find the resource table.
     rtable = fromword(fon[neoff + 0x24:])
@@ -227,15 +228,15 @@ def nefon(fon, neoff):
                 raise ValueError('Resource overruns file boundaries')
             if rtype == 0x8008: # this is an actual font
                 try:
-                    font = dofnt(fon[start:start+size])
+                    font = _read_fnt(fon[start:start+size])
                 except Exception as e:
                     raise ValueError('Failed to read font resource at {:x}: {}'.format(start, e))
                 ret = ret + [font]
             p = p + 12 # start, size, flags, name/id, 4 bytes reserved
     return ret
 
-def pefon(fon, peoff):
-    "Finish splitting up a PE-format FON file."
+def _read_pe_fon(fon, peoff):
+    """Finish splitting up a PE-format FON file."""
     dirtables=[]
     dataentries=[]
     def gotoffset(off,dirtables=dirtables,dataentries=dataentries):
@@ -296,42 +297,35 @@ def pefon(fon, peoff):
         start = rva - secrva
         size = fromdword(rsrc[off+4:])
         try:
-            font = dofnt(rsrc[start:start+size])
+            font = _read_fnt(rsrc[start:start+size])
         except Exception as e:
             raise ValueError('Failed to read font resource at {:x}: {}'.format(start, e))
         ret = ret + [font]
     return ret
 
-def dofon(fon):
-    "Split a .FON up into .FNTs and pass each to dofnt."
+def _read_fon(fon):
+    """Split a .FON up into .FNTs and pass each to _read_fnt."""
     # Check the MZ header.
     if fon[0:2] != b'MZ':
         raise ValueError('MZ signature not found')
     # Find the NE header.
     neoff = fromdword(fon[0x3C:])
     if fon[neoff:neoff+2] == b'NE':
-        return nefon(fon, neoff)
+        return _read_ne_fon(fon, neoff)
     elif fon[neoff:neoff+4] == b'PE\0\0':
-        return pefon(fon, neoff)
+        return _read_pe_fon(fon, neoff)
     else:
         raise ValueError('NE or PE signature not found')
 
-def isfon(data):
-    """Determine if a file is a .FON (True) or a .FNT (False) format font."""
-    return data[0:2] == b'MZ'
 
-
-@Font.loads('fnt', 'fon', encoding=None)
+@Typeface.loads('fnt', 'fon', encoding=None)
 def load(infile):
     """Load a Windows .FON or .FNT file."""
     with ensure_stream(infile, 'rb') as instream:
         data = instream.read()
-    if isfon(data):
-        print('fon')
-        fonts = dofon(data)
+    # determine if a file is a .FON or a .FNT format font
+    if data[0:2] == b'MZ':
+        fonts = _read_fon(data)
     else:
-        print('fnt')
-        fonts = [dofnt(data)]
-    if len(fonts) > 1:
-        raise ValueError("More than one font in file; not yet supported")
-    return fonts[0]
+        fonts = [_read_fnt(data)]
+    return Typeface(fonts)

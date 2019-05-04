@@ -9,7 +9,7 @@ import os
 import struct
 import logging
 
-from .base import VERSION, Glyph, Font, ensure_stream
+from .base import VERSION, Glyph, Font, Typeface, ensure_stream
 
 
 # amiga header constants
@@ -42,7 +42,7 @@ _FLAGS_MAP = {
 
 
 
-@Font.loads('amiga', encoding=None)
+@Typeface.loads('amiga', encoding=None)
 def load(f):
     """Read Amiga disk font file."""
     with ensure_stream(f, 'rb'):
@@ -52,7 +52,7 @@ def load(f):
         if hunk_id != _HUNK_CODE:
             raise ValueError('Not an Amiga font data file: no code hunk found (id %04x)' % hunk_id)
         glyphs, props = _read_font_hunk(f)
-        return Font(glyphs, properties=props)
+        return Typeface([Font(glyphs, properties=props)])
 
 
 class _FileUnpacker:

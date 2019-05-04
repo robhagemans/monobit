@@ -31,5 +31,5 @@ args = parser.parse_args()
 try:
     font = monobit.load(args.infile, format=args.format_in)
     font.save(args.outfile, format=args.format_out)
-except Exception as exc:
+except ValueError as exc:
     logging.error(exc)

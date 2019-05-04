@@ -56,5 +56,5 @@ try:
     font = monobit.load(args.infile)
     font = operation(font, **fargs)
     font.save(args.outfile)
-except Exception as exc:
+except ValueError as exc:
     logging.error(exc)

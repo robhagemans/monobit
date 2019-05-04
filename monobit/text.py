@@ -7,7 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 import string
 
-from .base import ensure_stream, Font, Glyph
+from .base import ensure_stream, Typeface, Font, Glyph
 
 
 _WHITESPACE = ' \t'
@@ -63,7 +63,7 @@ PROPERTIES = [
 ]
 
 
-@Font.loads('text', 'txt', 'draw', 'yaff')
+@Typeface.loads('text', 'txt', 'draw', 'yaff')
 def load(infile, back=_BACK):
     """Read a plaintext font file."""
     with ensure_stream(infile, 'r', encoding='utf-8-sig') as instream:
@@ -137,7 +137,7 @@ def load(infile, back=_BACK):
 
         glyphs = {_toint(_key): _value for _key, _value in glyphs.items()}
         comments = {_toint(_key): _value for _key, _value in comments.items()}
-        return Font(glyphs, comments, properties)
+        return Typeface([Font(glyphs, comments, properties)])
 
 
 def _write_comments(outstream, comments, key, comm_char='#'):
@@ -149,30 +149,35 @@ def _write_comments(outstream, comments, key, comm_char='#'):
         if key is None:
             outstream.write('\n')
 
-@Font.saves('text', 'txt', 'draw', 'yaff')
-def save(font, outfile, fore='@', back='.', comment='#'):
+@Typeface.saves('text', 'txt', 'draw', 'yaff')
+def save(typeface, outfile, fore='@', back='.', comment='#'):
     """Write font to a plaintext file."""
     with ensure_stream(outfile, 'w') as outstream:
-        _write_comments(outstream, font._comments, None, comm_char=comment)
-        if font._properties:
-            for key in PROPERTIES:
-                _write_comments(outstream, font._comments, key, comm_char=comment)
-                try:
-                    value = font._properties.pop(key)
-                    outstream.write('{}: {}\n'.format(key, value))
-                except KeyError:
-                    pass
-            for key, value in font._properties.items():
-                _write_comments(outstream, font._comments, key, comm_char=comment)
-                outstream.write('{}: {}\n'.format(key, value))
-            outstream.write('\n')
-        for ordinal, char in font._glyphs.items():
-            _write_comments(outstream, font._comments, ordinal, comm_char=comment)
-            char = [''.join((fore if _b else back) for _b in _row) for _row in char._rows]
-            if isinstance(ordinal, int):
-                outstream.write('{:02x}:\n\t'.format(ordinal))
-            else:
-                outstream.write('{}:\n\t'.format(ordinal))
-            outstream.write('\n\t'.join(char))
-            outstream.write('\n\n')
-    return font
+        for i, font in enumerate(typeface._fonts):
+            if i > 0:
+                outstream.write('---\n\n')
+            _write_comments(outstream, font._comments, None, comm_char=comment)
+            if font._properties:
+                for key in PROPERTIES:
+                    _write_comments(outstream, font._comments, key, comm_char=comment)
+                    try:
+                        value = font._properties.pop(key)
+                        if value:
+                            outstream.write('{}: {}\n'.format(key, value))
+                    except KeyError:
+                        pass
+                for key, value in font._properties.items():
+                    _write_comments(outstream, font._comments, key, comm_char=comment)
+                    if value:
+                        outstream.write('{}: {}\n'.format(key, value))
+                outstream.write('\n')
+            for ordinal, char in font._glyphs.items():
+                _write_comments(outstream, font._comments, ordinal, comm_char=comment)
+                char = [''.join((fore if _b else back) for _b in _row) for _row in char._rows]
+                if isinstance(ordinal, int):
+                    outstream.write('{:02x}:\n\t'.format(ordinal))
+                else:
+                    outstream.write('{}:\n\t'.format(ordinal))
+                outstream.write('\n\t'.join(char))
+                outstream.write('\n\n')
+    return typeface
