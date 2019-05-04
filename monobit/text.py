@@ -20,29 +20,39 @@ _BACK = "_.-"
 
 # default order of known properties
 PROPERTIES = [
-    'name',
-    'foundry',
-    'copyright',
-    'notice',
-    'revision',
-    'size',
-    'family',
-    'weight',
-    'slant',
-    'setwidth',
-    'style',
-    'direction',
-    'spacing',
+
+    # informational:
+    'name', # full human name
+    'foundry', # author or issuer
+    'copyright', # copyright string
+    'notice', # e.g. license string
+    'revision', # font version
+    'points', # point size
+    'dpi', # target resolution in dots per inch
+    'family', # typeface/font family
+    'weight', # normal, bold, light, etc.
+    'slant', # roman, italic, oblique, etc
+    'setwidth', # normal, condensed, expanded, etc.
+    'style', # serif, sans, etc.
+    'decoration', # underline, strikethrough, etc.
+    'spacing', # proportional, monospace, cell
+
+    # metrics:
+    'direction', # left-to-right, right-to-left
+    'size', # pixel height
     'ascent',
     'descent',
     'x-height',
     'cap-height',
-    'bottom',
-    'offset-before',
-    'offset-after',
-    'dpi',
+    'bottom', # bottom line of matrix relative to baseline
+    'offset-before', # horizontal offset from origin to matrix start
+    'offset-after', # horizontal offset from matrix end to next origin
+
+    # character set:
     'encoding',
     'default-char',
+
+    # conversion metadata:
     'converter',
     'source-name',
     'source-format',

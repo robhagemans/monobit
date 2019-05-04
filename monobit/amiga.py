@@ -163,10 +163,10 @@ def _read_font_hunk(f):
         props['_TAG'] = name2.replace(b'\0', b'').decode('latin-1')
     # preserve unparsed flags
     flag_tags = ' '.join(tag for mask, tag in _FLAGS_MAP.items() if flags & mask)
-    if style & 0x01:
-        flag_tags = ' '.join(('UNDERLINED', flag_tags))
     if flag_tags:
         props['_PROPERTIES'] = flag_tags
+    if style & 0x01:
+        properties['decoration'] = 'underline'
     # data structure parameters
     tf_chardata, tf_modulo, tf_charloc, tf_charspace, tf_charkern = reader.unpack('>IHIII') #, f.read(18))
     glyphs, min_kern = _read_strike(

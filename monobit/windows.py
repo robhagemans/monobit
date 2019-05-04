@@ -102,13 +102,13 @@ def dofnt(fnt):
     height = fromword(fnt[0x58:])
     properties['size'] = height
     properties['slant'] = 'italic' if frombyte(fnt[0x50:]) else 'roman'
-    flags = []
+    deco = []
     if frombyte(fnt[0x51:]):
-        flags.append('UNDERLINE')
+        deco.append('underline')
     if frombyte(fnt[0x52:]):
-        flags.append('STRIKEOUT')
-    if flags:
-        properties['_PROPERTIES'] = ' '.join(flags)
+        deco.append('strikethrough')
+    if deco:
+        properties['decoration'] = ' '.join(deco)
     properties['_WEIGHT'] = fromword(fnt[0x53:])
     properties['_CHARSET'] = frombyte(fnt[0x55:])
     # Read the char table.
