@@ -107,7 +107,7 @@ def _read_font_hunk(f):
     props = {
         'converter': 'monobit v{}'.format(VERSION),
         'source-name': '/'.join(f.name.split(os.sep)[-2:]),
-        'source-format': 'Amiga',
+        'source-format': 'AmigaFont',
     }
     # the file name tends to be the name as given in the .font anyway
     props['name'] = props['source-name']
