@@ -21,13 +21,15 @@ _BACK = "_.-"
 # default order of known properties
 PROPERTIES = [
 
-    # informational:
+    # font metadata:
     'name', # full human name
     'foundry', # author or issuer
     'copyright', # copyright string
     'notice', # e.g. license string
     'revision', # font version
-    'points', # point size
+
+    # descriptive:
+    'points', # nominal point size
     'dpi', # target resolution in dots per inch
     'family', # typeface/font family
     'weight', # normal, bold, light, etc.
@@ -37,16 +39,18 @@ PROPERTIES = [
     'decoration', # underline, strikethrough, etc.
     'spacing', # proportional, monospace, cell
 
-    # metrics:
+    # positioning relative to origin:
     'direction', # left-to-right, right-to-left
-    'size', # pixel height
-    'ascent',
-    'descent',
-    'x-height',
-    'cap-height',
     'bottom', # bottom line of matrix relative to baseline
     'offset-before', # horizontal offset from origin to matrix start
     'offset-after', # horizontal offset from matrix end to next origin
+
+    # other metrics (may affect interline spacing):
+    'size', # pixel height == top - bottom
+    'ascent', # recommended typographic ascent relative to baseline (not necessarily equal to top)
+    'descent', # recommended typographic descent relative to baseline (not necessarily equal to bottom)
+    'x-height', # height of lowercase x relative to baseline
+    'cap-height', # height of capital relative to baseline
 
     # character set:
     'encoding',

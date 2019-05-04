@@ -31,7 +31,6 @@ import sys
 import string
 import struct
 import logging
-from types import SimpleNamespace
 
 from .base import VERSION, Glyph, Font, ensure_stream, bytes_to_bits, ceildiv
 
@@ -59,6 +58,64 @@ from .base import VERSION, Glyph, Font, ensure_stream, bytes_to_bits, ceildiv
  #   OEM_CHARSET = 0x000000FF
  # } CharacterSet;
 
+# this is a guess, I can't find a more precise definition
+_CHARSET_MAP = {
+    0x00: 'windows-1252', # 'ANSI' - maybe 'iso-8859-1' but I think Windows would use this instead
+    0x01: 'windows-1252', # locale dependent :/ ??
+    0x02: 'symbol', # don't think this is defined
+    0x4d: 'mac-roman',
+    0x80: 'windows-932', # shift-jis, but MS probably mean their own extension?
+    0x81: 'windows-949', # hangul, assuming euc-kr
+    0x82: 'johab',
+    0x86: 'windows-936', # gb2312
+    0x88: 'windows-950', # big5
+    0xa1: 'windows-1253', # greek
+    0xa2: 'windows-1254', # turkish
+    0xa3: 'windows-1258', # vietnamese
+    0xb1: 'windows-1255', # hebrew
+    0xb2: 'windows-1256', # arabic
+    0xba: 'windows-1257', # baltic
+    0xcc: 'windows-1251', # russian
+    0xee: 'windows-1250', # eastern europe
+    0xff: 'cp437', # 'OEM' - but also "the IBM PC hardware font" as per windows 1.03 sdk docs
+}
+
+# https://web.archive.org/web/20120215123301/http://support.microsoft.com/kb/65123
+# dfWeight: 2 bytes specifying the weight of the characters in the character definition data, on a scale of 1 to 1000.
+# A dfWeight of 400 specifies a regular weight.
+#
+# https://docs.microsoft.com/en-gb/windows/desktop/api/wingdi/ns-wingdi-taglogfonta
+# The weight of the font in the range 0 through 1000. For example, 400 is normal and 700 is bold.
+# If this value is zero, a default weight is used.
+# Value	Weight
+# FW_DONTCARE	0
+# FW_THIN	100
+# FW_EXTRALIGHT	200
+# FW_ULTRALIGHT	200
+# FW_LIGHT	300
+# FW_NORMAL	400
+# FW_REGULAR	400
+# FW_MEDIUM	500
+# FW_SEMIBOLD	600
+# FW_DEMIBOLD	600
+# FW_BOLD	700
+# FW_EXTRABOLD	800
+# FW_ULTRABOLD	800
+# FW_HEAVY	900
+# FW_BLACK	900
+#
+_WEIGHT_MAP = {
+    0: '', # undefined/unknown
+    100: 'thin', # bdf 'ultra-light' is windows' 'thin'
+    200: 'extra-light', # windows 'ultralight' equals 'extralight'
+    300: 'light',
+    400: 'regular', # 'regular' is 'normal' but less than 'medium' :/ ... bdf has a semi-light here
+    500: 'medium',
+    600: 'semi-bold',
+    700: 'bold',
+    800: 'extra-bold', # windows 'ultrabold' equals 'extrabold'
+    900: 'heavy', # bdf 'ultra-bold' is 'heavy'
+}
 
 
 
@@ -78,9 +135,6 @@ def asciz(s):
         if frombyte(s[length:length+1]) == 0:
             break
     return s[:length].decode("ASCII")
-
-class char(SimpleNamespace):
-    pass
 
 def dofnt(fnt):
     """Create an internal font description from a .FNT-shaped string."""
@@ -109,8 +163,15 @@ def dofnt(fnt):
         deco.append('strikethrough')
     if deco:
         properties['decoration'] = ' '.join(deco)
-    properties['_WEIGHT'] = fromword(fnt[0x53:])
-    properties['_CHARSET'] = frombyte(fnt[0x55:])
+    weight = fromword(fnt[0x53:])
+    if weight:
+        weight = max(100, min(900, weight))
+        properties['weight'] = _WEIGHT_MAP[round(weight, -2)]
+    charset = frombyte(fnt[0x55:])
+    if charset in _CHARSET_MAP:
+        properties['encoding'] = _CHARSET_MAP[charset]
+    else:
+        properties['_CHARSET'] = str(charset)
     # Read the char table.
     if version == 0x200:
         ctstart = 0x76

@@ -143,7 +143,7 @@ _SETWIDTH_MAP = {
 
 _WEIGHT_MAP = {
     '0': '', # Undefined or unknown
-    '10': 'ultra-light',
+    '10': 'thin', # UltraLight
     '20': 'extra-light',
     '30': 'light',
     '40': 'semi-light', # SemiLight, Book, ...
@@ -151,7 +151,7 @@ _WEIGHT_MAP = {
     '60': 'semi-bold', # SemiBold, DemiBold, ...
     '70': 'bold',
     '80': 'extra-bold', #ExtraBold, Heavy, ...
-    '90': 'ultra-bold', #UltraBold, Black, ...,
+    '90': 'heavy', #UltraBold, Black, ...,
 }
 
 def _parse_properties(glyphs, glyph_props, bdf_props, x_props, filename):
