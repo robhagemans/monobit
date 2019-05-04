@@ -8,6 +8,7 @@ licence: https://opensource.org/licenses/MIT
 from .base import VERSION as __version__
 from .base import Font
 
+from . import windows
 from . import amiga
 from . import image
 from . import text
