@@ -43,6 +43,13 @@ def ceildiv(num, den):
     """Integer division, rounding up."""
     return -(-num // den)
 
+def bytes_to_bits(inbytes, width=None):
+    """Convert bytes/bytearray/sequence of int to tuple of bits."""
+    bitstr = ''.join('{:08b}'.format(_b) for _b in inbytes)
+    bits = tuple(_c == '1' for _c in bitstr)
+    return bits[:width]
+
+
 def scriptable(fn):
     """Decorator to register operation for scripting."""
     fn.scriptable = True
