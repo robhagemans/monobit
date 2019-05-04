@@ -130,9 +130,11 @@ def _read_font_hunk(f):
     # fileid == 0f80, like a magic number for font files
     fileid, rev, seg, name = reader.unpack('>HHi%ds' % (_MAXFONTNAME,)) # 8+32b
     if b'\0' in name:
-        name, name2 = name.split(b'\0', 1)
-    else:
-        name2 = b''
+        name, tag = name.split(b'\0', 1)
+        # preserve tags stored in name field after \0
+        tag = tag.replace(b'\0', b'')
+        if tag:
+            props['_TAG'] = tag.decode('latin-1')
     if name:
         props['name'] = name.decode('latin-1')
     props['revision'] = rev
@@ -158,9 +160,6 @@ def _read_font_hunk(f):
     # use the most common value 1 as a default
     if boldsmear != 1:
         props['_BOLDSMEAR'] = boldsmear
-    # preserve tags stored in name field after \0
-    if name2.replace(b'\0', b''):
-        props['_TAG'] = name2.replace(b'\0', b'').decode('latin-1')
     # preserve unparsed flags
     flag_tags = ' '.join(tag for mask, tag in _FLAGS_MAP.items() if flags & mask)
     if flag_tags:
