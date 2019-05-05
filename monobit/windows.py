@@ -162,7 +162,52 @@ def _read_fnt_header(fnt):
     win_props.update(struct_to_dict(version_fmt, version_keys, fnt, common_size))
     return win_props
 
+
 def _read_fnt_chartable(fnt, win_props):
+    """Read a WinFont character table."""
+    if win_props['dfVersion'] == 0x100:
+        return _read_fnt_chartable_v1(fnt, win_props)
+    return _read_fnt_chartable_v2(fnt, win_props)
+
+def _read_fnt_chartable_v1(fnt, win_props):
+    """Read a WinFont 1.0 character table."""
+    n_chars = win_props['dfLastChar'] - win_props['dfFirstChar'] + 1
+    if not win_props['dfPixWidth']:
+        # proportional font
+        ct_start = 0x75
+        ct_fmt = '<H'
+        ct_size = 2
+        offsets = [
+            struct.unpack_from(ct_fmt, fnt, ct_start + _ord * ct_size)[0]
+            for _ord in range(n_chars+1)
+        ]
+    else:
+        offsets = [
+            win_props['dfPixWidth'] * _ord
+            for _ord in range(n_chars+1)
+        ]
+    height = win_props['dfPixHeight']
+    bytewidth = win_props['dfWidthBytes']
+    offset = win_props['dfBitsOffset']
+    strikerows = tuple(
+        bytes_to_bits(fnt[offset+_row*bytewidth : offset+(_row+1)*bytewidth])
+        for _row in range(height)
+    )
+    glyphs = {}
+    for ord in range(n_chars):
+        offset = offsets[ord]
+        width = offsets[ord+1] - offset
+        if not width:
+            continue
+        rows = tuple(
+            _srow[offset:offset+width]
+            for _srow in strikerows
+        )
+        if rows:
+            glyphs[win_props['dfFirstChar'] + ord] = Glyph(rows)
+    return glyphs
+
+def _read_fnt_chartable_v2(fnt, win_props):
     """Read a WinFont 2.0 or 3.0 character table."""
     if win_props['dfVersion'] == 0x200:
         ct_start = 0x76
