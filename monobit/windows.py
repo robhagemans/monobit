@@ -179,15 +179,15 @@ def _read_fnt_chartable(fnt, win_props):
         if not width:
             continue
         bytewidth = ceildiv(width, 8)
-        rows = []
-        for row in range(height):
-            rowbytes = []
-            for col in range(bytewidth):
-                bytepos = offset + col * height + row
-                rowbytes.append(fnt[bytepos])
-            rows.append(bytes_to_bits(rowbytes, width))
+        rows = tuple(
+            bytes_to_bits(
+                [fnt[offset + _col * height + _row] for _col in range(bytewidth)],
+                width
+            )
+            for _row in range(height)
+        )
         if rows:
-            glyphs[ord] = Glyph(tuple(rows))
+            glyphs[ord] = Glyph(rows)
     return glyphs
 
 def _parse_win_props(fnt, win_props):
