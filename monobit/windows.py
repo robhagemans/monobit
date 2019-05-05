@@ -142,10 +142,6 @@ _FNT_VERSION_KEYS = {
     )
 }
 
-_BYTE = 'B'
-_WORD = '<H'
-_LONG = '<L'
-
 
 def unpack(format, buffer, offset):
     """Unpack a single value from bytes."""
@@ -296,20 +292,20 @@ def _read_ne_fon(fon, neoff):
     """Finish splitting up a NE-format FON file."""
     ret = []
     # Find the resource table.
-    rtable = neoff + unpack(_WORD, fon, neoff + 0x24)
+    rtable = neoff + unpack('<H', fon, neoff + 0x24)
     # Read the shift count out of the resource table.
-    shift = unpack(_WORD, fon, rtable)
+    shift = unpack('<H', fon, rtable)
     # Now loop over the rest of the resource table.
     p = rtable + 2
     while True:
-        rtype = unpack(_WORD, fon, p)
+        rtype = unpack('<H', fon, p)
         if rtype == 0:
             break  # end of resource table
-        count = unpack(_WORD, fon, p+2)
+        count = unpack('<H', fon, p+2)
         p += 8  # type, count, 4 bytes reserved
         for i in range(count):
-            start = unpack(_WORD, fon, p) << shift
-            size = unpack(_WORD, fon, p+2) << shift
+            start = unpack('<H', fon, p) << shift
+            size = unpack('<H', fon, p+2) << shift
             if start < 0 or size < 0 or start+size > len(fon):
                 raise ValueError('Resource overruns file boundaries')
             if rtype == 0x8008: # this is an actual font
@@ -334,11 +330,11 @@ def _read_pe_fon(fon, peoff):
             dataentries.append(off)
 
     def dodirtable(rsrc, off, rtype, gotoffset=gotoffset):
-        number = unpack(_WORD, rsrc, off+12) + unpack(_WORD, rsrc, off+14)
+        number = unpack('<H', rsrc, off+12) + unpack('<H', rsrc, off+14)
         for i in range(number):
             entry = off + 16 + 8*i
-            thetype = unpack(_LONG, rsrc, entry)
-            theoff = unpack(_LONG, rsrc, entry+4)
+            thetype = unpack('<L', rsrc, entry)
+            theoff = unpack('<L', rsrc, entry+4)
             if rtype == -1 or rtype == thetype:
                 gotoffset(theoff)
 
@@ -347,14 +343,14 @@ def _read_pe_fon(fon, peoff):
     # it's probably easiest just to go straight to the section table.
     # So let's find the size of the Optional Header, which we can
     # then skip over to find the section table.
-    secentries = unpack(_WORD, fon, peoff+0x06)
-    sectable = peoff + 0x18 + unpack(_WORD, fon, peoff+0x14)
+    secentries = unpack('<H', fon, peoff+0x06)
+    sectable = peoff + 0x18 + unpack('<H', fon, peoff+0x14)
     for i in range(secentries):
         secentry = sectable + i * 0x28
         secname = bytes_to_str(fon[secentry:secentry+8])
-        secrva = unpack(_LONG, fon, secentry+0x0C)
-        secsize = unpack(_LONG, fon, secentry+0x10)
-        secptr = unpack(_LONG, fon, secentry+0x14)
+        secrva = unpack('<L', fon, secentry+0x0C)
+        secsize = unpack('<L', fon, secentry+0x10)
+        secptr = unpack('<L', fon, secentry+0x14)
         if secname == '.rsrc':
             break
     else:
@@ -380,8 +376,8 @@ def _read_pe_fon(fon, peoff):
     # describes a font.
     ret = []
     for off in dataentries:
-        rva = unpack(_LONG, rsrc, off)
-        size = unpack(_LONG, rsrc, off+4)
+        rva = unpack('<L', rsrc, off)
+        size = unpack('<L', rsrc, off+4)
         start = rva - secrva
         try:
             font = _read_fnt(rsrc[start:start+size])
@@ -393,7 +389,7 @@ def _read_pe_fon(fon, peoff):
 def _read_fon(fon):
     """Split a .FON up into .FNTs and pass each to _read_fnt."""
     # Find the NE header.
-    neoff = unpack(_LONG, fon, 0x3C)
+    neoff = unpack('<L', fon, 0x3C)
     if fon[neoff:neoff+2] == b'NE':
         return _read_ne_fon(fon, neoff)
     elif fon[neoff:neoff+4] == b'PE\0\0':
