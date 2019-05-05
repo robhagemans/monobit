@@ -9,7 +9,7 @@ import os
 import struct
 import logging
 
-from .base import VERSION, Glyph, Font, Typeface, ensure_stream
+from .base import VERSION, Glyph, Font, Typeface, ensure_stream, struct_to_dict, bytes_to_bits
 
 
 # amiga header constants
@@ -23,23 +23,61 @@ _HUNK_CODE = 0x3e9
 _HUNK_RELOC32 = 0x3ec
 _HUNK_END = 0x3f2
 
+# tf_Flags values
+# font is in rom
+_FPF_ROMFONT = 0x01
+# font is from diskfont.library
+_FPF_DISKFONT = 0x02
+# This font is designed to be printed from from right to left
+_FPF_REVPATH = 0x04
+# This font was designed for a Hires screen (640x200 NTSC, non-interlaced)
+_FPF_TALLDOT = 0x08
+# This font was designed for a Lores Interlaced screen (320x400 NTSC)
+_FPF_WIDEDOT = 0x10
+# character sizes can vary from nominal
+_FPF_PROPORTIONAL = 0x20
+# size explicitly designed, not constructed
+_FPF_DESIGNED = 0x40
+# the font has been removed
+_FPF_REMOVED = 0x80
 
-_FLAGS_MAP = {
-    # I don't think the rom/disk flags are relevant
-    #0x01: 'ROMFONT', # font is in rom
-    #0x02: 'DISKFONT', # font is from diskfont.library
-    # accounted for in direction variable
-    #0x04: 'REVPATH', # This font is designed to be printed from from right to left
-    0x08: 'TALLDOT', # This font was designed for a Hires screen (640x200 NTSC, non-interlaced)
-    0x10: 'WIDEDOT', # This font was designed for a Lores Interlaced screen (320x400 NTSC)
-    # this is accounted for in the spacing variable
-    #0x20: 'PROPORTIONAL', # character sizes can vary from nominal
-    # this is always set
-    #0x40: 'DESIGNED', # size explicitly designed, not constructed
-    # not relevant
-    #0x80: 'REMOVED', # the font has been removed
-}
+# tf_Style values
+# underlined (under baseline)
+_FSF_UNDERLINED	= 0x01
+# bold face text (ORed w/ shifted)
+_FSF_BOLD = 0x02
+# italic (slanted 1:2 right)
+_FSF_ITALIC	= 0x04
+# extended face (wider than normal)
+_FSF_EXTENDED = 0x08
+# this uses ColorTextFont structure
+_FSF_COLORFONT = 0x40
+# the TextAttr is really a TTextAttr
+_FSF_TAGGED = 0x80
 
+# disk font header
+
+_AMIGA_HEADER_FMT = (
+    '>II' + 'IIBbI' + 'HHi%ds' % (_MAXFONTNAME,) + 'IIBbIIH'
+    + 'HBBHHHHBB' + 'IHIII'
+)
+_AMIGA_HEADER_KEYS = (
+    # struct DiskFontHeader
+    # http://amigadev.elowar.com/read/ADCD_2.1/Libraries_Manual_guide/node05F9.html#line61
+    'dfh_NextSegment', 'dfh_ReturnCode',
+    # struct Node
+    # http://amigadev.elowar.com/read/ADCD_2.1/Libraries_Manual_guide/node02EF.html
+    'dfh_ln_Succ', 'dfh_ln_Pred', 'dfh_ln_Type', 'dfh_ln_Pri', 'dfh_ln_Name',
+    'dfh_FileID', 'dfh_Revision', 'dfh_Segment', 'dfh_Name',
+    # struct Message at start of struct TextFont
+    # struct Message http://amigadev.elowar.com/read/ADCD_2.1/Libraries_Manual_guide/node02EF.html
+    'tf_ln_Succ', 'tf_ln_Pred', 'tf_ln_Type', 'tf_ln_Pri', 'tf_ln_Name',
+    'tf_mn_ReplyPort', 'tf_mn_Length',
+    # struct TextFont http://amigadev.elowar.com/read/ADCD_2.1/Libraries_Manual_guide/node03DE.html
+    'tf_YSize', 'tf_Style', 'tf_Flags', 'tf_XSize', 'tf_Baseline', 'tf_BoldSmear',
+    'tf_Accessors', 'tf_LoChar', 'tf_HiChar',
+    'tf_CharData', 'tf_Modulo', 'tf_CharLoc', 'tf_CharSpace', 'tf_CharKern'
+)
 
 
 @Typeface.loads('amiga', encoding=None)
@@ -104,83 +142,76 @@ def _read_header(f):
 
 def _read_font_hunk(f):
     """Parse the font data blob."""
+    loc = f.tell() + 4
+    amiga_props = struct_to_dict(
+        _AMIGA_HEADER_FMT, _AMIGA_HEADER_KEYS, f.read(struct.calcsize(_AMIGA_HEADER_FMT))
+    )
+    # read character data
+    glyphs, min_kern = _read_strike(
+        f, amiga_props['tf_XSize'], amiga_props['tf_YSize'],
+        amiga_props['tf_Flags'] & _FPF_PROPORTIONAL,
+        amiga_props['tf_Modulo'], amiga_props['tf_LoChar'], amiga_props['tf_HiChar'],
+        amiga_props['tf_CharData']+loc, amiga_props['tf_CharLoc']+loc,
+        amiga_props['tf_CharSpace']+loc, amiga_props['tf_CharKern']+loc
+    )
+    props = _parse_amiga_props(amiga_props, min_kern)
+    props['source-name'] = '/'.join(f.name.split(os.sep)[-2:])
+    # the file name tends to be the name as given in the .font anyway
+    if 'name' not in props:
+        props['name'] = props['source-name']
+    return glyphs, props
+
+def _parse_amiga_props(amiga_props, min_kern):
+    """Convert AmigaFont properties into yaff properties."""
+    if amiga_props['tf_Style'] & _FSF_COLORFONT:
+        raise ValueError('Amiga ColorFont not supported')
     props = {
         'converter': 'monobit v{}'.format(VERSION),
-        'source-name': '/'.join(f.name.split(os.sep)[-2:]),
         'source-format': 'AmigaFont',
     }
-    # the file name tends to be the name as given in the .font anyway
-    props['name'] = props['source-name']
-    reader = _FileUnpacker(f)
-    # number of longs in this hunk
-    # ? apparently this is also ULONG dfh_NextSegment;
-    # ? as per http://amigadev.elowar.com/read/ADCD_2.1/Libraries_Manual_guide/node05F9.html#line61
-    num_longs, = reader.unpack('>I') # 4 bytes
-    loc = f.tell()
-    # immediate return code for accidental runs
-    # this is ULONG dfh_ReturnCode;
-    # MOVEQ  #-1,D0    ; Provide an easy exit in case this file is
-    # RTS              ; "Run" instead of merely loaded.
-    reader.unpack('>HH') # 2 statements: 4 bytes
-    # struct Node
-    # pln_succ, pln_pred, ln_type, ln_pri, pln_name
-    reader.unpack('>IIBbI') # 14b
-    # rev may be the revision number of the font
-    # but name is only a placeholder, usually seems to be empty, but some of the bytes get used for versioning tags
-    # fileid == 0f80, like a magic number for font files
-    fileid, rev, seg, name = reader.unpack('>HHi%ds' % (_MAXFONTNAME,)) # 8+32b
-    if b'\0' in name:
-        name, tag = name.split(b'\0', 1)
+    name = amiga_props['dfh_Name'].decode('latin-1')
+    if '\0' in name:
         # preserve tags stored in name field after \0
-        tag = tag.replace(b'\0', b'')
+        name, tag = name.split('\0', 1)
+        tag = tag.replace('\0', '')
         if tag:
-            props['_TAG'] = tag.decode('latin-1')
+            props['_TAG'] = tag
     if name:
-        props['name'] = name.decode('latin-1')
-    props['revision'] = rev
-    # struct Message at start of struct TextFont
-    # struct TextFont http://amigadev.elowar.com/read/ADCD_2.1/Libraries_Manual_guide/node03DE.html
-    # struct Message http://amigadev.elowar.com/read/ADCD_2.1/Libraries_Manual_guide/node02EF.html
-    # pln_succ, pln_pred, ln_type, ln_pri, pln_name, pmn_replyport, mn_length
-    reader.unpack('>IIBbIIH') # 20b
-    # font properties
-    ysize, style, flags, xsize, baseline, boldsmear, accessors, lochar, hichar = reader.unpack('>HBBHHHHBB') #, f.read(2+2+4*2+2))
-    props['bottom'] = -(ysize-baseline)
-    props['size'] = ysize
-    props['weight'] = 'bold' if style & 0x02 else 'medium'
-    props['slant'] = 'italic' if style & 0x04 else 'roman'
-    props['setwidth'] = 'expanded' if style & 0x08 else 'medium'
-    proportional = bool(flags & 0x20)
-    props['spacing'] = 'proportional' if proportional else 'monospace'
-    if flags & 0x04:
+        props['name'] = name
+    props['revision'] = amiga_props['dfh_Revision']
+    props['bottom'] = -(amiga_props['tf_YSize'] - amiga_props['tf_Baseline'])
+    props['size'] = amiga_props['tf_YSize']
+    # tf_Style
+    props['weight'] = 'bold' if amiga_props['tf_Style'] & _FSF_BOLD else 'medium'
+    props['slant'] = 'italic' if amiga_props['tf_Style'] & _FSF_ITALIC else 'roman'
+    props['setwidth'] = 'expanded' if amiga_props['tf_Style'] & _FSF_EXTENDED else 'medium'
+    if amiga_props['tf_Style'] & _FSF_UNDERLINED:
+        props['decoration'] = 'underline'
+    # tf_Flags
+    props['spacing'] = (
+        'proportional' if amiga_props['tf_Flags'] & _FPF_PROPORTIONAL else 'monospace'
+    )
+    if amiga_props['tf_Flags'] & _FPF_REVPATH:
         props['direction'] = 'right-to-left'
         logging.warning('right-to-left fonts are not correctly implemented yet')
+    if amiga_props['tf_Flags'] & _FPF_TALLDOT and not amiga_props['tf_Flags'] & _FPF_WIDEDOT:
+        # TALLDOT: This font was designed for a Hires screen (640x200 NTSC, non-interlaced)
+        props['dpi'] = '96 48'
+    elif amiga_props['tf_Flags'] & _FPF_WIDEDOT and not amiga_props['tf_Flags'] & _FPF_TALLDOT:
+        # WIDEDOT: This font was designed for a Lores Interlaced screen (320x400 NTSC)
+        props['dpi'] = '48 96'
+    else:
+        props['dpi'] = 96
+    if min_kern < 0:
+        props['offset-before'] = min_kern
+    props['encoding'] = 'iso8859-1'
+    props['default-char'] = 'default'
     # preserve unparsed properties
     # tf_BoldSmear; /* smear to affect a bold enhancement */
     # use the most common value 1 as a default
-    if boldsmear != 1:
-        props['_BOLDSMEAR'] = boldsmear
-    # preserve unparsed flags
-    flag_tags = ' '.join(tag for mask, tag in _FLAGS_MAP.items() if flags & mask)
-    if flag_tags:
-        props['_PROPERTIES'] = flag_tags
-    if style & 0x01:
-        properties['decoration'] = 'underline'
-    # data structure parameters
-    tf_chardata, tf_modulo, tf_charloc, tf_charspace, tf_charkern = reader.unpack('>IHIII') #, f.read(18))
-    glyphs, min_kern = _read_strike(
-        f, xsize, ysize, proportional, tf_modulo, lochar, hichar,
-        tf_chardata+loc, tf_charloc+loc, tf_charspace+loc, tf_charkern+loc
-    )
-    if min_kern < 0:
-        props['offset-before'] = min_kern
-    # default glyph doesn't have an encoding value
-    default = max(glyphs)
-    glyphs['default'] = glyphs[default]
-    del glyphs[default]
-    props['encoding'] = 'iso8859-1'
-    props['default-char'] = 'default'
-    return glyphs, props
+    if amiga_props['tf_BoldSmear'] != 1:
+        props['_tf_BoldSmear'] = amiga_props['tf_BoldSmear']
+    return props
 
 def _read_strike(
         f, xsize, ysize, proportional, modulo, lochar, hichar,
@@ -191,15 +222,8 @@ def _read_strike(
     # char data
     f.seek(pos_chardata, 0)
     rows = [
-        ''.join(
-            '{:08b}'.format(_c)
-            for _c in reader.read(modulo)
-        )
+        bytes_to_bits(reader.read(modulo))
         for _ in range(ysize)
-    ]
-    rows = [
-        [_c != '0' for _c in _row]
-        for _row in rows
     ]
     # location data
     f.seek(pos_charloc, 0)
@@ -244,4 +268,8 @@ def _read_strike(
         for _char, _width, _kern in zip(font, spacing, kerning)
     ]
     glyphs = dict(enumerate(font, lochar))
+    # default glyph doesn't have an encoding value
+    default = max(glyphs)
+    glyphs['default'] = glyphs[default]
+    del glyphs[default]
     return glyphs, min_kern

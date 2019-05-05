@@ -124,7 +124,7 @@ _WEIGHT_MAP = {
 
 # FNT header, common to v1.0, v2.0, v3.0
 _FNT_COMMON_FMT ='<HL60s7H3BHBHHBHH4BH4L'
-_FNT_COMMON_KEYS = [
+_FNT_COMMON_KEYS = (
     'dfVersion', 'dfSize', 'dfCopyright', 'dfType', 'dfPoints', 'dfVertRes', 'dfHorizRes',
     'dfAscent', 'dfInternalLeading', 'dfExternalLeading',
     'dfItalic', 'dfUnderline', 'dfStrikeOut', 'dfWeight',
@@ -132,14 +132,14 @@ _FNT_COMMON_KEYS = [
     'dfFirstChar', 'dfLastChar', 'dfDefaultChar', 'dfBreakChar',
     'dfWidthBytes', 'dfDevice', 'dfFace',
     'dfBitsPointer', 'dfBitsOffset'
-]
+)
 # FNT header, version specific
 _FNT_VERSION_FMT = {0x100: '<L', 0x200: 'B', 0x300: '<BL3HL16s'}
 _FNT_VERSION_KEYS = {
-    0x100: ['dfCharOffset'], 0x200: ['dfReserved'],
-    0x300: [
+    0x100: ('dfCharOffset',), 0x200: ('dfReserved',),
+    0x300: (
         'dfReserved', 'dfFlags', 'dfAspace', 'dfBspace', 'dfCspace', 'dfColorPointer', 'dfReserved1'
-    ]
+    )
 }
 
 _BYTE = 'B'

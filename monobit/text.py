@@ -162,13 +162,13 @@ def save(typeface, outfile, fore='@', back='.', comment='#'):
                     _write_comments(outstream, font._comments, key, comm_char=comment)
                     try:
                         value = font._properties.pop(key)
-                        if value:
+                        if value not in ('', None):
                             outstream.write('{}: {}\n'.format(key, value))
                     except KeyError:
                         pass
                 for key, value in font._properties.items():
                     _write_comments(outstream, font._comments, key, comm_char=comment)
-                    if value:
+                    if value not in ('', None):
                         outstream.write('{}: {}\n'.format(key, value))
                 outstream.write('\n')
             for ordinal, char in font._glyphs.items():
