@@ -135,7 +135,6 @@ def asciz(s):
 
 def _read_fnt(fnt):
     """Create an internal font description from a .FNT-shaped string."""
-    properties = {}
     version = unpack(_WORD, fnt, 0)
     ftype = unpack(_WORD, fnt, 0x42)
     if ftype & 1:
@@ -144,14 +143,16 @@ def _read_fnt(fnt):
     if off_facename < 0 or off_facename > len(fnt):
         raise ValueError('Face name not contained within font data')
     properties = {
+        'converter': 'monobit v{}'.format(VERSION),
         'source-format': 'WindowsFont [0x{:04x}]'.format(version),
         'name': asciz(fnt[off_facename:]),
         'copyright': asciz(fnt[6:66]),
         'points': unpack(_WORD, fnt, 0x44),
-        'ascent': unpack(_WORD, fnt, 0x4A),
     }
-    height = unpack(_WORD, fnt, 0x58)
-    properties['size'] = height
+    xdpi, ydpi = struct.unpack_from('<HH', fnt, 0x46)
+    properties['dpi'] = ' '.join((str(xdpi), str(ydpi))) if xdpi != ydpi else str(xdpi)
+    ascent, int_lead, ext_lead = struct.unpack_from('<HHH', fnt, 0x4A)
+    properties['ascent'] = ascent - int_lead
     properties['slant'] = 'italic' if unpack(_BYTE, fnt, 0x50) else 'roman'
     deco = []
     if unpack(_BYTE, fnt, 0x51):
@@ -170,6 +171,10 @@ def _read_fnt(fnt):
     else:
         properties['_CHARSET'] = str(charset)
     # Read the char table.
+    height = unpack(_WORD, fnt, 0x58)
+    properties['size'] = height
+    # Windows 'ascent' means distance between matrix top and baseline
+    properties['bottom'] = ascent - height
     if version == 0x200:
         ctstart = 0x76
         ctsize = 4
@@ -178,8 +183,8 @@ def _read_fnt(fnt):
         ctsize = 6
     maxwidth = 0
     glyphs = {}
-    firstchar = unpack(_BYTE, fnt, 0x5F)
-    lastchar = unpack(_BYTE, fnt, 0x60)
+    firstchar, lastchar, defaultchar = struct.unpack_from('BBB', fnt, 0x5F)
+    properties['default-char'] = '0x{:x}'.format(defaultchar)
     for i in range(firstchar, lastchar+1):
         entry = ctstart + ctsize * (i-firstchar)
         width = unpack(_WORD, fnt, entry)
@@ -316,9 +321,12 @@ def load(infile):
     """Load a Windows .FON or .FNT file."""
     with ensure_stream(infile, 'rb') as instream:
         data = instream.read()
+        name = instream.name
     # determine if a file is a .FON or a .FNT format font
     if data[0:2] == b'MZ':
         fonts = _read_fon(data)
     else:
         fonts = [_read_fnt(data)]
+    for font in fonts:
+        font._properties['source-name'] = name
     return Typeface(fonts)
