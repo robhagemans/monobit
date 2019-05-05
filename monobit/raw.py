@@ -69,7 +69,7 @@ def load(infile, cell=(8, 8), n_chars=None, offset=0, strike=False):
                 for _cell in cells
             ]
         glyphs = dict(enumerate(cells))
-        return typeface([Font(glyphs)])
+        return Typeface([Font(glyphs)])
 
 
 @Typeface.saves('fnt', 'bin', 'rom')
