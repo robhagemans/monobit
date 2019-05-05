@@ -122,6 +122,19 @@ _WEIGHT_MAP = {
     900: 'heavy', # bdf 'ultra-bold' is 'heavy'
 }
 
+# pitch and family
+# low bit: 1 - proportional 0 - monospace
+# upper bits: family (like bdf add_style_name)
+_STYLE_MAP = {
+    0: '', #FF_DONTCARE (0<<4)   Don't care or don't know.
+    1: 'serif', # FF_ROMAN (1<<4)      Proportionally spaced fonts with serifs.
+    2: 'sans serif', # FF_SWISS (2<<4)      Proportionally spaced fonts without serifs.
+    3: '', # FF_MODERN (3<<4)     Fixed-pitch fonts. - but this is covered by `spacing`
+    4: 'script', # FF_SCRIPT (4<<4)
+    5: 'decorated', # FF_DECORATIVE (5<<4)
+}
+
+
 # FNT header, common to v1.0, v2.0, v3.0
 _FNT_COMMON_FMT ='<HL60s7H3BHBHHBHH4BH4L'
 _FNT_COMMON_KEYS = (
@@ -239,16 +252,26 @@ def _parse_win_props(fnt, win_props):
     properties = {
         'converter': 'monobit v{}'.format(VERSION),
         'source-format': 'WinFont v{}.{}'.format(*divmod(version, 256)),
-        'name': bytes_to_str(fnt[win_props['dfFace']:]),
+        'family': bytes_to_str(fnt[win_props['dfFace']:]),
         'copyright': bytes_to_str(win_props['dfCopyright']),
         'points': win_props['dfPoints'],
         'slant': 'italic' if win_props['dfItalic'] else 'roman',
-        'size': win_props['dfPixHeight'],
         # Windows dfAscent means distance between matrix top and baseline
         'ascent': win_props['dfAscent'] - win_props['dfInternalLeading'],
         'bottom': win_props['dfAscent'] - win_props['dfPixHeight'],
-        'default-char': win_props['dfDefaultChar'],
+        'leading': win_props['dfExternalLeading'],
+        'default-char': '0x{:x}'.format(win_props['dfDefaultChar']),
     }
+    if win_props['dfPixWidth']:
+        properties['spacing'] = 'monospace'
+        properties['size'] = '{} {}'.format(win_props['dfPixWidth'], win_props['dfPixHeight'])
+    else:
+        properties['spacing'] = 'proportional'
+        properties['size'] = win_props['dfPixHeight']
+        properties['x-width'] = win_props['dfAvgWidth']
+    proportional = bool(win_props['dfPitchAndFamily'] & 1)
+    if proportional != properties['spacing'] == 'proportional':
+        logging.warning('inconsistent spacing properties.')
     if win_props['dfHorizRes'] != win_props['dfVertRes']:
         properties['dpi'] = '{dfHorizRes} {dfVertRes}'.format(**win_props)
     else:
@@ -269,16 +292,26 @@ def _parse_win_props(fnt, win_props):
         properties['encoding'] = _CHARSET_MAP[charset]
     else:
         properties['_dfCharSet'] = str(charset)
+    properties['style'] = _STYLE_MAP[win_props['dfPitchAndFamily'] >> 4]
+    properties['space-char'] = '0x{:x}'.format(win_props['dfFirstChar'] + win_props['dfBreakChar'])
     # append unparsed properties
     # TODO: parse these
     properties['_DeviceName'] = bytes_to_str(fnt[win_props['dfDevice']:])
-    for prop in (
-            'dfExternalLeading', 'dfPitchAndFamily', 'dfAvgWidth', 'dfMaxWidth', 'dfBreakChar'
-        ):
-        properties['_' + prop] = win_props[prop]
+    # dfMaxWidth - but this can be calculated from the matrices
     if version == 0x300:
         for prop in _FNT_VERSION_KEYS[0x300]:
             properties['_' + prop] = win_props[prop]
+    name = [properties['family']]
+    if properties['weight'] != 'regular':
+        name.append(properties['weight'])
+    if properties['slant'] != 'roman':
+        name.append(properties['slant'])
+    name.append('{}pt'.format(properties['points']))
+    if properties['spacing'] == 'proportional':
+        name.append('{}px'.format(properties['size']))
+    else:
+        name.append('{}x{}px'.format(*properties['size'].split(' ')))
+    properties['name'] = ' '.join(name)
     return properties
 
 def _read_fnt(fnt):

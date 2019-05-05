@@ -38,15 +38,17 @@ PROPERTIES = [
     'style', # serif, sans, etc.
     'decoration', # underline, strikethrough, etc.
     'spacing', # proportional, monospace, cell
+    'x-width', # width of lowercase x (in proportional font)
 
     # positioning relative to origin:
     'direction', # left-to-right, right-to-left
     'bottom', # bottom line of matrix relative to baseline
     'offset-before', # horizontal offset from origin to matrix start
     'offset-after', # horizontal offset from matrix end to next origin
+    'leading', # vertical leading, defined as (pixels between baselines) - (pixel height)
 
     # other metrics (may affect interline spacing):
-    'size', # pixel height == top - bottom
+    'size', # pixel height == top - bottom (can be 'width height' for fixed-width)
     'ascent', # recommended typographic ascent relative to baseline (not necessarily equal to top)
     'descent', # recommended typographic descent relative to baseline (not necessarily equal to bottom)
     'x-height', # height of lowercase x relative to baseline
@@ -55,6 +57,7 @@ PROPERTIES = [
     # character set:
     'encoding',
     'default-char',
+    'space-char',
 
     # conversion metadata:
     'converter',
