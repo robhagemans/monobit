@@ -134,6 +134,20 @@ _STYLE_MAP = {
     5: 'decorated', # FF_DECORATIVE (5<<4)
 }
 
+# dfFlags
+_DFF_FIXED = 0x01 # font is fixed pitch
+_DFF_PROPORTIONAL = 0x02 # font is proportional pitch
+_DFF_ABCFIXED = 0x04 # font is an ABC fixed font
+_DFF_ABCPROPORTIONAL = 0x08 # font is an ABC proportional font
+_DFF_1COLOR = 0x10 # font is one color
+_DFF_16COLOR = 0x20 # font is 16 color
+_DFF_256COLOR = 0x40 # font is 256 color
+_DFF_RGBCOLOR = 0x80 # font is RGB color
+# convenience
+_DFF_PROP = _DFF_PROPORTIONAL | _DFF_ABCPROPORTIONAL
+_DFF_COLORFONT = _DFF_16COLOR | _DFF_256COLOR | _DFF_RGBCOLOR
+_DFF_ABC = _DFF_ABCFIXED | _DFF_ABCPROPORTIONAL
+
 
 # FNT header, common to v1.0, v2.0, v3.0
 _FNT_COMMON_FMT ='<HL60s7H3BHBHHBHH4BH4L'
@@ -269,8 +283,8 @@ def _parse_win_props(fnt, win_props):
         properties['spacing'] = 'proportional'
         properties['size'] = win_props['dfPixHeight']
         properties['x-width'] = win_props['dfAvgWidth']
-    proportional = bool(win_props['dfPitchAndFamily'] & 1)
-    if proportional != properties['spacing'] == 'proportional':
+    # check prop/fixed flag
+    if bool(win_props['dfPitchAndFamily'] & 1) != properties['spacing'] == 'proportional':
         logging.warning('inconsistent spacing properties.')
     if win_props['dfHorizRes'] != win_props['dfVertRes']:
         properties['dpi'] = '{dfHorizRes} {dfVertRes}'.format(**win_props)
@@ -299,8 +313,16 @@ def _parse_win_props(fnt, win_props):
     properties['_DeviceName'] = bytes_to_str(fnt[win_props['dfDevice']:])
     # dfMaxWidth - but this can be calculated from the matrices
     if version == 0x300:
-        for prop in _FNT_VERSION_KEYS[0x300]:
-            properties['_' + prop] = win_props[prop]
+        if win_props['dfFlags'] & _DFF_COLORFONT:
+            raise ValueError('ColorFont not supported')
+        # yet another prop/fixed flag
+        if bool(win_props['dfFlags'] & _DFF_PROP) != properties['spacing'] == 'proportional':
+            logging.warning('inconsistent spacing properties.')
+        if win_props['dfFlags'] & _DFF_ABC:
+            properties['offset-before'] = win_props['dfAspace']
+            properties['offset-after'] = win_props['dfCspace']
+            # dfBspace - 'width of the character' - i assume not used for proportional
+            # and duplicated for fixed-width
     name = [properties['family']]
     if properties['weight'] != 'regular':
         name.append(properties['weight'])
