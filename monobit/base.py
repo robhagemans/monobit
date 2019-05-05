@@ -7,8 +7,10 @@ licence: https://opensource.org/licenses/MIT
 
 import io
 import sys
+import struct
 from contextlib import contextmanager
 from functools import partial
+from collections import namedtuple
 
 
 DEFAULT_FORMAT = 'text'
@@ -48,6 +50,18 @@ def bytes_to_bits(inbytes, width=None):
     bitstr = ''.join('{:08b}'.format(_b) for _b in inbytes)
     bits = tuple(_c == '1' for _c in bitstr)
     return bits[:width]
+
+def struct_to_dict(fmt, keys, buffer, offset=0):
+    """Unpack from buffer into dict."""
+    rec_tuple = struct.unpack_from(fmt, buffer, offset)
+    record = namedtuple('Record', keys)._make(rec_tuple)
+    return record._asdict()
+
+def bytes_to_str(s, encoding='latin-1'):
+    """Extract null-terminated string from bytes."""
+    if b'\0' in s:
+        s, _ = s.split(b'\0', 1)
+    return s.decode(encoding, errors='replace')
 
 
 def scriptable(fn):

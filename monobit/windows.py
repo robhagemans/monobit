@@ -27,12 +27,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
+import os
 import sys
 import string
 import struct
 import logging
 
-from .base import VERSION, Glyph, Font, Typeface, ensure_stream, bytes_to_bits, ceildiv
+from .base import (
+    VERSION, Glyph, Font, Typeface,
+    ensure_stream, bytes_to_bits, ceildiv, struct_to_dict, bytes_to_str
+)
+
 
  # https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-wmf/0d0b32ac-a836-4bd2-a112-b6000a1b4fc9
  # typedef  enum
@@ -117,6 +122,26 @@ _WEIGHT_MAP = {
     900: 'heavy', # bdf 'ultra-bold' is 'heavy'
 }
 
+# FNT header, common to v1.0, v2.0, v3.0
+_FNT_COMMON_FMT ='<HL60s7H3BHBHHBHH4BH4L'
+_FNT_COMMON_KEYS = [
+    'dfVersion', 'dfSize', 'dfCopyright', 'dfType', 'dfPoints', 'dfVertRes', 'dfHorizRes',
+    'dfAscent', 'dfInternalLeading', 'dfExternalLeading',
+    'dfItalic', 'dfUnderline', 'dfStrikeOut', 'dfWeight',
+    'dfCharSet', 'dfPixWidth', 'dfPixHeight', 'dfPitchAndFamily', 'dfAvgWidth', 'dfMaxWidth',
+    'dfFirstChar', 'dfLastChar', 'dfDefaultChar', 'dfBreakChar',
+    'dfWidthBytes', 'dfDevice', 'dfFace',
+    'dfBitsPointer', 'dfBitsOffset'
+]
+# FNT header, version specific
+_FNT_VERSION_FMT = {0x100: '<L', 0x200: 'B', 0x300: '<BL3HL16s'}
+_FNT_VERSION_KEYS = {
+    0x100: ['dfCharOffset'], 0x200: ['dfReserved'],
+    0x300: [
+        'dfReserved', 'dfFlags', 'dfAspace', 'dfBspace', 'dfCspace', 'dfColorPointer', 'dfReserved1'
+    ]
+}
+
 _BYTE = 'B'
 _WORD = '<H'
 _LONG = '<L'
@@ -126,84 +151,100 @@ def unpack(format, buffer, offset):
     """Unpack a single value from bytes."""
     return struct.unpack_from(format, buffer, offset)[0]
 
-def asciz(s):
-    """Extract null-terminated string from bytes."""
-    if b'\0' in s:
-        s, _ = s.split(b'\0', 1)
-    return s.decode('ascii')
 
+def _read_fnt_header(fnt):
+    """Read the header information in the FNT resource."""
+    win_props = struct_to_dict(_FNT_COMMON_FMT, _FNT_COMMON_KEYS, fnt)
+    common_size = struct.calcsize(_FNT_COMMON_FMT)
+    version = win_props['dfVersion']
+    version_fmt = _FNT_VERSION_FMT[version]
+    version_keys = _FNT_VERSION_KEYS[version]
+    win_props.update(struct_to_dict(version_fmt, version_keys, fnt, common_size))
+    return win_props
 
-def _read_fnt(fnt):
-    """Create an internal font description from a .FNT-shaped string."""
-    version = unpack(_WORD, fnt, 0)
-    ftype = unpack(_WORD, fnt, 0x42)
-    if ftype & 1:
-        raise ValueError('This font is a vector font')
-    off_facename = unpack(_LONG, fnt, 0x69)
-    if off_facename < 0 or off_facename > len(fnt):
-        raise ValueError('Face name not contained within font data')
+def _read_fnt_chartable(fnt, win_props):
+    """Read a WinFont 2.0 or 3.0 character table."""
+    if win_props['dfVersion'] == 0x200:
+        ct_start = 0x76
+        ct_fmt = '<HH'
+    else:
+        ct_start = 0x94
+        ct_fmt = '<HL'
+    ct_size = struct.calcsize(ct_fmt)
+    glyphs = {}
+    height = win_props['dfPixHeight']
+    for ord in range(win_props['dfFirstChar'], win_props['dfLastChar']+1):
+        entry = ct_start + ct_size * (ord-win_props['dfFirstChar'])
+        width, offset = struct.unpack_from(ct_fmt, fnt, entry)
+        if not width:
+            continue
+        bytewidth = ceildiv(width, 8)
+        rows = []
+        for row in range(height):
+            rowbytes = []
+            for col in range(bytewidth):
+                bytepos = offset + col * height + row
+                rowbytes.append(fnt[bytepos])
+            rows.append(bytes_to_bits(rowbytes, width))
+        if rows:
+            glyphs[ord] = Glyph(tuple(rows))
+    return glyphs
+
+def _parse_win_props(fnt, win_props):
+    """Convert WinFont properties to yaff properties."""
+    version = win_props['dfVersion']
+    if win_props['dfType'] & 1:
+        raise ValueError('Not a bitmap font')
     properties = {
         'converter': 'monobit v{}'.format(VERSION),
-        'source-format': 'WindowsFont [0x{:04x}]'.format(version),
-        'name': asciz(fnt[off_facename:]),
-        'copyright': asciz(fnt[6:66]),
-        'points': unpack(_WORD, fnt, 0x44),
+        'source-format': 'WinFont v{}.{}'.format(*divmod(version, 256)),
+        'name': bytes_to_str(fnt[win_props['dfFace']:]),
+        'copyright': bytes_to_str(win_props['dfCopyright']),
+        'points': win_props['dfPoints'],
+        'slant': 'italic' if win_props['dfItalic'] else 'roman',
+        'size': win_props['dfPixHeight'],
+        # Windows dfAscent means distance between matrix top and baseline
+        'ascent': win_props['dfAscent'] - win_props['dfInternalLeading'],
+        'bottom': win_props['dfAscent'] - win_props['dfPixHeight'],
+        'default-char': win_props['dfDefaultChar'],
     }
-    xdpi, ydpi = struct.unpack_from('<HH', fnt, 0x46)
-    properties['dpi'] = ' '.join((str(xdpi), str(ydpi))) if xdpi != ydpi else str(xdpi)
-    ascent, int_lead, ext_lead = struct.unpack_from('<HHH', fnt, 0x4A)
-    properties['ascent'] = ascent - int_lead
-    properties['slant'] = 'italic' if unpack(_BYTE, fnt, 0x50) else 'roman'
+    if win_props['dfHorizRes'] != win_props['dfVertRes']:
+        properties['dpi'] = '{dfHorizRes} {dfVertRes}'.format(**win_props)
+    else:
+        properties['dpi'] = win_props['dfHorizRes']
     deco = []
-    if unpack(_BYTE, fnt, 0x51):
+    if win_props['dfUnderline']:
         deco.append('underline')
-    if unpack(_BYTE, fnt, 0x52):
+    if win_props['dfStrikeOut']:
         deco.append('strikethrough')
     if deco:
         properties['decoration'] = ' '.join(deco)
-    weight = unpack(_WORD, fnt, 0x53)
+    weight = win_props['dfWeight']
     if weight:
         weight = max(100, min(900, weight))
         properties['weight'] = _WEIGHT_MAP[round(weight, -2)]
-    charset = unpack(_BYTE, fnt, 0x55)
+    charset = win_props['dfCharSet']
     if charset in _CHARSET_MAP:
         properties['encoding'] = _CHARSET_MAP[charset]
     else:
-        properties['_CHARSET'] = str(charset)
-    # Read the char table.
-    height = unpack(_WORD, fnt, 0x58)
-    properties['size'] = height
-    # Windows 'ascent' means distance between matrix top and baseline
-    properties['bottom'] = ascent - height
-    if version == 0x200:
-        ctstart = 0x76
-        ctsize = 4
-    else:
-        ctstart = 0x94
-        ctsize = 6
-    maxwidth = 0
-    glyphs = {}
-    firstchar, lastchar, defaultchar = struct.unpack_from('BBB', fnt, 0x5F)
-    properties['default-char'] = '0x{:x}'.format(defaultchar)
-    for i in range(firstchar, lastchar+1):
-        entry = ctstart + ctsize * (i-firstchar)
-        width = unpack(_WORD, fnt, entry)
-        if not width:
-            continue
-        if ctsize == 4:
-            off = unpack(_WORD, fnt, entry+2)
-        else:
-            off = unpack(_LONG, fnt, entry+2)
-        rows = []
-        bytewidth = ceildiv(width, 8)
-        for j in range(height):
-            rowbytes = []
-            for k in range(bytewidth):
-                bytepos = off + k * height + j
-                rowbytes.append(unpack(_BYTE, fnt, bytepos))
-            rows.append(bytes_to_bits(rowbytes, width))
-        if rows:
-            glyphs[i] = Glyph(tuple(rows))
+        properties['_dfCharSet'] = str(charset)
+    # append unparsed properties
+    # TODO: parse these
+    properties['_DeviceName'] = bytes_to_str(fnt[win_props['dfDevice']:])
+    for prop in (
+            'dfExternalLeading', 'dfPitchAndFamily', 'dfAvgWidth', 'dfMaxWidth', 'dfBreakChar'
+        ):
+        properties['_' + prop] = win_props[prop]
+    if version == 0x300:
+        for prop in _FNT_VERSION_KEYS[0x300]:
+            properties['_' + prop] = win_props[prop]
+    return properties
+
+def _read_fnt(fnt):
+    """Create an internal font description from a .FNT-shaped string."""
+    win_props = _read_fnt_header(fnt)
+    properties = _parse_win_props(fnt, win_props)
+    glyphs = _read_fnt_chartable(fnt, win_props)
     return Font(glyphs, comments={}, properties=properties)
 
 def _read_ne_fon(fon, neoff):
@@ -265,7 +306,7 @@ def _read_pe_fon(fon, peoff):
     sectable = peoff + 0x18 + unpack(_WORD, fon, peoff+0x14)
     for i in range(secentries):
         secentry = sectable + i * 0x28
-        secname = asciz(fon[secentry:secentry+8])
+        secname = bytes_to_str(fon[secentry:secentry+8])
         secrva = unpack(_LONG, fon, secentry+0x0C)
         secsize = unpack(_LONG, fon, secentry+0x10)
         secptr = unpack(_LONG, fon, secentry+0x14)
@@ -328,5 +369,5 @@ def load(infile):
     else:
         fonts = [_read_fnt(data)]
     for font in fonts:
-        font._properties['source-name'] = name
+        font._properties['source-name'] = os.path.basename(name)
     return Typeface(fonts)

@@ -155,7 +155,7 @@ def save(typeface, outfile, fore='@', back='.', comment='#'):
     with ensure_stream(outfile, 'w') as outstream:
         for i, font in enumerate(typeface._fonts):
             if i > 0:
-                outstream.write('---\n\n')
+                outstream.write('---\n')
             _write_comments(outstream, font._comments, None, comm_char=comment)
             if font._properties:
                 for key in PROPERTIES:
