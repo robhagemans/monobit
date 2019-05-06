@@ -22,13 +22,50 @@ _ACCEPTED_BACK = "_.-"
 
 _SEPARATOR = '---'
 
+
+def yaff_input_key(key):
+    """Convert keys on input from .yaff."""
+    # if all keys are hex
+    try:
+        return int(key, 0)
+    except (TypeError, ValueError):
+        try:
+            # accept decimals with leading zeros
+            return int(key.lstrip('0'))
+        except (TypeError, ValueError, AttributeError):
+            return key
+
+def yaff_output_key(key):
+    """Convert keys for output to .yaff"""
+    if isinstance(key, int):
+        return '0x{:02x}'.format(key)
+    else:
+        return str(key)
+
+
+def draw_input_key(key):
+    """Convert keys on input from .draw."""
+    try:
+        return int(key, 16)
+    except (TypeError, ValueError):
+        return key
+
+def draw_output_key(key):
+    """Convert keys on input from .draw."""
+    try:
+        return '{:04x}'.format(key)
+    except ValueError:
+        raise ValueError('.draw format only supports integer keys')
+
+
+
 # defaults
 yaff_parameters = {
     'fore': '@',
     'back': '.',
     'comment': '#',
     'tab': '    ',
-    'int_format': '0x{:02x}',
+    'key_format': yaff_output_key,
     'key_sep': ':\n'
 }
 draw_parameters = {
@@ -36,7 +73,7 @@ draw_parameters = {
     'back': '-',
     'comment': '%',
     'tab': '\t',
-    'int_format': '{:04x}',
+    'key_format': draw_output_key,
     'key_sep': ':'
 }
 
@@ -89,13 +126,13 @@ PROPERTIES = [
 ]
 
 
-@Typeface.loads('text', 'txt', 'yaff', 'draw', encoding='utf-8-sig')
+@Typeface.loads('text', 'txt', 'yaff', encoding='utf-8-sig')
 def load(infile):
     """Read a plaintext font file."""
     with ensure_stream(infile, 'r', encoding='utf-8-sig') as instream:
         fonts = []
         while True:
-            font = _load_font(infile, back=_ACCEPTED_BACK)
+            font = _load_font(infile, back=_ACCEPTED_BACK, key_format=yaff_input_key)
             if font is None:
                 break
             fonts.append(font)
@@ -113,6 +150,14 @@ def save(typeface, outfile):
             _save_font(font, outstream, **yaff_parameters)
     return typeface
 
+
+@Typeface.loads('draw', encoding='utf-8-sig')
+def load_draw(infile):
+    """Read a hexdraw font file."""
+    with ensure_stream(infile, 'r', encoding='utf-8-sig') as instream:
+        fonts = [_load_font(infile, back=_ACCEPTED_BACK, key_format=draw_input_key)]
+        return Typeface(fonts)
+
 @Typeface.saves('draw', encoding='utf-8')
 def save_draw(typeface, outfile):
     """Write font to a hexdraw file."""
@@ -127,14 +172,7 @@ def save_draw(typeface, outfile):
 ##############################################################################
 # read file
 
-def _toint(key):
-    """Convert hex label to int or keep as-is if not hex."""
-    try:
-        return int(key, 16)
-    except (TypeError, ValueError):
-        return key
-
-def _load_font(instream, back):
+def _load_font(instream, back, key_format):
     """Read a plaintext font file."""
     comments = {}
     current_comment = []
@@ -176,7 +214,7 @@ def _load_font(instream, back):
     # text version of glyphs
     # a glyph is any key/value where the value contains no alphanumerics
     glyphs = {
-        _toint(_cluster[0]): Glyph.from_text(_cluster[1], background=back)
+        key_format(_cluster[0]): Glyph.from_text(_cluster[1], background=back)
         for _cluster in clusters
         if not set(''.join(_cluster[1])) & set(string.digits + string.ascii_letters)
     }
@@ -186,14 +224,14 @@ def _load_font(instream, back):
         for _cluster in clusters
         if set(''.join(_cluster[1])) & set(string.digits + string.ascii_letters)
     }
-    comments = {_toint(_key): _value for _key, _value in comments.items()}
+    comments = {key_format(_key): _value for _key, _value in comments.items()}
     return Font(glyphs, comments, properties)
 
 
 ##############################################################################
 # write file
 
-def _save_font(font, outstream, fore, back, comment, tab, int_format, key_sep):
+def _save_font(font, outstream, fore, back, comment, tab, key_format, key_sep):
     """Write one font to a plaintext stream."""
     write_comments(outstream, font._comments, None, comm_char=comment)
     if font._properties:
@@ -212,10 +250,6 @@ def _save_font(font, outstream, fore, back, comment, tab, int_format, key_sep):
         outstream.write('\n')
     for ordinal, char in font._glyphs.items():
         write_comments(outstream, font._comments, ordinal, comm_char=comment)
-        if isinstance(ordinal, int):
-            outstream.write(int_format.format(ordinal))
-        else:
-            outstream.write(str(ordinal))
-        outstream.write(key_sep + tab)
+        outstream.write(key_format(ordinal) + key_sep + tab)
         outstream.write(('\n' + tab).join(char.as_text(foreground=fore, background=back)))
         outstream.write('\n\n')

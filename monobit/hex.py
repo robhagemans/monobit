@@ -1,5 +1,5 @@
 """
-monobit.hex - read and write .hex and files
+monobit.hex - read and write .hex files
 
 (c) 2019 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
