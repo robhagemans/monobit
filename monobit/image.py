@@ -5,7 +5,10 @@ monobit.image - read and write image files
 licence: https://opensource.org/licenses/MIT
 """
 
-from PIL import Image
+try:
+    from PIL import Image
+except ImportError:
+    Image = None
 from .base import Typeface, Font, Glyph, ceildiv
 
 

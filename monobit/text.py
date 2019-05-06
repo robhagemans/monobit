@@ -25,7 +25,6 @@ _SEPARATOR = '---'
 
 def yaff_input_key(key):
     """Convert keys on input from .yaff."""
-    # if all keys are hex
     try:
         return int(key, 0)
     except (TypeError, ValueError):
@@ -175,6 +174,7 @@ def save_draw(typeface, outfile):
 def _load_font(instream, back, key_format):
     """Read a plaintext font file."""
     comments = {}
+    global_comment = []
     current_comment = []
     # cluster by character
     # assuming only one code point per glyph, for now
@@ -194,7 +194,7 @@ def _load_font(instream, back, key_format):
             # split out global comment
             if cp is None and current_comment:
                 global_comment, current_comment = split_global_comment(current_comment)
-                comments[None] = clean_comment(global_comment)
+                global_comment = clean_comment(global_comment)
             cp, rest = line.strip().split(':', 1)
             current = cp
             comments[cp] = clean_comment(current_comment)
@@ -208,7 +208,7 @@ def _load_font(instream, back, key_format):
     # preserve any comment at end of file
     comments[cp] = comments.get(cp, [])
     comments[cp].extend(clean_comment(current_comment))
-    if not clusters and not comments or comments == {None: []}:
+    if not clusters and not comments and not global_comments:
         # no font to read, no comments to keep
         return None
     # text version of glyphs
@@ -225,6 +225,7 @@ def _load_font(instream, back, key_format):
         if set(''.join(_cluster[1])) & set(string.digits + string.ascii_letters)
     }
     comments = {key_format(_key): _value for _key, _value in comments.items()}
+    comments[None] = global_comment
     return Font(glyphs, comments, properties)
 
 

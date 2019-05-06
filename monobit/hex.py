@@ -21,6 +21,7 @@ def load(infile):
     with ensure_stream(infile, 'r', encoding='utf-8-sig') as instream:
         glyphs = {}
         comments = {}
+        global_comment = []
         key = None
         current_comment = []
         for line in instream:
@@ -35,7 +36,7 @@ def load(infile):
                 continue
             if key is None:
                 global_comment, current_comment = split_global_comment(current_comment)
-                comments[None] = clean_comment(global_comment)
+                global_comment = clean_comment(global_comment)
             # parse code line
             key, value = line.split(':', 1)
             value = value.strip()
@@ -56,6 +57,7 @@ def load(infile):
             current_comment = []
         # preserve any comment at end of file
         comments[key].extend(clean_comment(current_comment))
+        comments[None] = global_comment
     return Typeface([Font(glyphs, comments)])
 
 

@@ -334,20 +334,22 @@ class Font:
         }
         return Font(glyphs, self._comments, self._properties)
 
-    def _modify(self, *args, operation=None, **kwargs):
-        """Return a font with modified glyphs."""
-        glyphs = {
-            _key: operation(_glyph, *args, **kwargs)
-            for _key, _glyph in self._glyphs.items()
-        }
-        return Font(glyphs, self._comments, self._properties)
+    # inject Glyph operations into Font
 
     for _name, _func in Glyph.__dict__.items():
         if hasattr(_func, 'scriptable'):
-            operation = partial(_modify, operation=_func)
-            operation.scriptable = True
-            operation.script_args = _func.script_args
-            locals()[_name] = operation
+
+            def _modify(self, *args, operation=_func, **kwargs):
+                """Return a font with modified glyphs."""
+                glyphs = {
+                    _key: operation(_glyph, *args, **kwargs)
+                    for _key, _glyph in self._glyphs.items()
+                }
+                return Font(glyphs, self._comments, self._properties)
+
+            _modify.scriptable = True
+            _modify.script_args = _func.script_args
+            locals()[_name] = _modify
 
 
 ##############################################################################
@@ -428,17 +430,19 @@ class Typeface:
             return fn
         return _savefunc
 
-    def _modify(self, *args, operation=None, **kwargs):
-        """Return a typeface with modified fonts."""
-        fonts = [
-            operation(_font, *args, **kwargs)
-            for _font in self._fonts
-        ]
-        return Typeface(fonts)
+    # inject Font operations into Typeface
 
     for _name, _func in Font.__dict__.items():
         if hasattr(_func, 'scriptable'):
-            operation = partial(_modify, operation=_func)
-            operation.scriptable = True
-            operation.script_args = _func.script_args
-            locals()[_name] = operation
+
+            def _modify(self, *args, operation=_func, **kwargs):
+                """Return a typeface with modified fonts."""
+                fonts = [
+                    operation(_font, *args, **kwargs)
+                    for _font in self._fonts
+                ]
+                return Typeface(fonts)
+
+            _modify.scriptable = True
+            _modify.script_args = _func.script_args
+            locals()[_name] = _modify
