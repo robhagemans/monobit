@@ -100,9 +100,12 @@ class Glyph:
         )
 
     @staticmethod
-    def from_bytes(rows, background):
-        """Create glyph from sequence of bytes/bytearray/int sequence."""
-        return Glyph(tuple(bytes_to_bits(_row) for _row in rows))
+    def from_bytes(byteseq, width=None):
+        """Create glyph from bytes/bytearray/int sequence."""
+        bytewidth = ceildiv(width, 8)
+        byteseq = list(byteseq)
+        rows = [byteseq[_offs:_offs+bytewidth] for _offs in range(0, len(byteseq), bytewidth]
+        return Glyph(tuple(bytes_to_bits(_row)[:width] for _row in rows))
 
     ##########################################################################
 

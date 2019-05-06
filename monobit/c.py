@@ -25,7 +25,7 @@ def load(infile, identifier, width, height):
         for _ord in range(n_glyphs)
     ]
     font = {
-        _key: Glyph.from_bytes(_value)
+        _key: Glyph.from_bytes(_value, width)
         for _key, _value in enumerate(glyphbytes)
     }
     return Typeface([Font(font)])
