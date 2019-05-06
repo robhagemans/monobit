@@ -30,6 +30,7 @@ parser.add_argument(
     '--offset', default=0, type=lambda _s: int(_s, 0),
     help='bytes offset into binary'
 )
+
 parser.add_argument(
     '--padding', default=0, type=int,
     help='number of scanlines between characters to discard'
@@ -59,8 +60,7 @@ args = parser.parse_args()
 
 font = monobit.raw.load(
     args.infile, cell=(args.width, args.height), n_chars=args.number[0] if args.number else None,
-    offset=args.offset, padding=args.padding, clip=args.clip_x, mirror=args.mirror,
-    strike=args.strike
+    offset=args.offset, strike=args.strike
 )
 font = monobit.renumber(font, add=args.first)
 if args.invert:

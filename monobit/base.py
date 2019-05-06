@@ -237,7 +237,7 @@ class Font:
         }
         return Font(glyphs, self._comments, self._properties)
 
-    def _modify(self, operation, *args, **kwargs):
+    def _modify(self, *args, operation=None, **kwargs):
         """Return a font with modified glyphs."""
         glyphs = {
             _key: operation(_glyph, *args, **kwargs)
@@ -331,7 +331,7 @@ class Typeface:
             return fn
         return _savefunc
 
-    def _modify(self, operation, *args, **kwargs):
+    def _modify(self, *args, operation=None, **kwargs):
         """Return a typeface with modified fonts."""
         fonts = [
             operation(_font, *args, **kwargs)
