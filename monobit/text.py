@@ -13,7 +13,7 @@ from .base import (
 
 
 _WHITESPACE = ' \t'
-_CODESTART = _WHITESPACE + string.digits + string.ascii_letters
+_CODESTART = _WHITESPACE + string.digits + string.ascii_letters +'_'
 
 # default background characters
 _ACCEPTED_BACK = "_.-"
