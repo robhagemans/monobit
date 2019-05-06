@@ -38,8 +38,12 @@ def ensure_stream(infile, mode, encoding=None):
             instream = open(infile, mode + 'b')
     else:
         instream = infile
-    with instream:
-        yield instream
+    try:
+        with instream:
+            yield instream
+    except BrokenPipeError:
+        # ignore broken pipes
+        pass
 
 def ceildiv(num, den):
     """Integer division, rounding up."""
@@ -71,11 +75,36 @@ def scriptable(fn):
     return fn
 
 
+##############################################################################
+
 class Glyph:
     """Single glyph."""
 
     def __init__(self, pixels=((),)):
+        """Create glyph from tuple of tuples."""
         self._rows = pixels
+
+    @staticmethod
+    def from_text(rows, background):
+        """Create glyph from sequence of str."""
+        return Glyph(tuple(
+            tuple(_char not in background for _char in _row)
+            for _row in rows
+        ))
+
+    def as_text(self, foreground, background):
+        """Convert glyph to tuple of str."""
+        return tuple(
+            ''.join((foreground if _bit else background) for _bit in _row)
+            for _row in self._rows
+        )
+
+    @staticmethod
+    def from_bytes(rows, background):
+        """Create glyph from sequence of bytes/bytearray/int sequence."""
+        return Glyph(tuple(bytes_to_bits(_row) for _row in rows))
+
+    ##########################################################################
 
     @scriptable
     def mirror(self):
@@ -159,6 +188,8 @@ class Glyph:
         return Glyph(glyph)
 
 
+##############################################################################
+
 class Font:
     """Glyphs and metadata."""
 
@@ -218,6 +249,8 @@ class Font:
             operation.script_args = _func.script_args
             locals()[_name] = operation
 
+
+##############################################################################
 
 class Typeface:
     """One or more fonts."""
