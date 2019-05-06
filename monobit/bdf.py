@@ -8,22 +8,22 @@ licence: https://opensource.org/licenses/MIT
 import os
 import logging
 
-from .base import VERSION, Glyph, Font, Typeface, ensure_stream
+from .base import VERSION, Glyph, Font, Typeface
 
+
+# BDF is specified as ASCII only
+# but the XLFD atoms are specified as iso8859-1, so this seems the best choice
 
 @Typeface.loads('bdf', encoding='iso8859-1')
-def load(infile):
+def load(instream):
     """Load font from a .bdf file."""
-    # BDF is specified as ASCII only
-    # but the XLFD atoms are specified as iso8859-1,so this seems the best choice
-    with ensure_stream(infile, 'r', encoding='iso8859-1') as instream:
-        nchars, comments, bdf_props, x_props = _read_bdf_global(instream)
-        glyphs, glyph_props = _read_bdf_characters(instream)
-        # check number of characters, but don't break if no match
-        if nchars != len(glyphs):
-            logging.warning('Possibly corrupted BDF file: number of characters found does not match CHARS declaration.')
-        properties = _parse_properties(glyphs, glyph_props, bdf_props, x_props, instream.name)
-        return Typeface([Font(glyphs, comments, properties)])
+    nchars, comments, bdf_props, x_props = _read_bdf_global(instream)
+    glyphs, glyph_props = _read_bdf_characters(instream)
+    # check number of characters, but don't break if no match
+    if nchars != len(glyphs):
+        logging.warning('Possibly corrupted BDF file: number of characters found does not match CHARS declaration.')
+    properties = _parse_properties(glyphs, glyph_props, bdf_props, x_props, instream.name)
+    return Typeface([Font(glyphs, comments, properties)])
 
 
 def _read_dict(instream, until=None):

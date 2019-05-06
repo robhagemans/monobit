@@ -35,7 +35,7 @@ import logging
 
 from .base import (
     VERSION, Glyph, Font, Typeface,
-    ensure_stream, bytes_to_bits, ceildiv, struct_to_dict, bytes_to_str
+    bytes_to_bits, ceildiv, struct_to_dict, bytes_to_str
 )
 
 
@@ -454,11 +454,10 @@ def _read_fon(fon):
 
 
 @Typeface.loads('fnt', 'fon', encoding=None)
-def load(infile):
+def load(instream):
     """Load a Windows .FON or .FNT file."""
-    with ensure_stream(infile, 'rb') as instream:
-        data = instream.read()
-        name = instream.name
+    data = instream.read()
+    name = instream.name
     # determine if a file is a .FON or a .FNT format font
     if data[0:2] == b'MZ':
         fonts = _read_fon(data)

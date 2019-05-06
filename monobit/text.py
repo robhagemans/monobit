@@ -8,7 +8,7 @@ licence: https://opensource.org/licenses/MIT
 import string
 
 from .base import (
-    ensure_stream, Typeface, Font, Glyph, clean_comment, write_comments, split_global_comment
+    Typeface, Font, Glyph, clean_comment, write_comments, split_global_comment
 )
 
 
@@ -126,45 +126,41 @@ PROPERTIES = [
 
 
 @Typeface.loads('text', 'txt', 'yaff', encoding='utf-8-sig')
-def load(infile):
+def load(instream):
     """Read a plaintext font file."""
-    with ensure_stream(infile, 'r', encoding='utf-8-sig') as instream:
-        fonts = []
-        while True:
-            font = _load_font(infile, back=_ACCEPTED_BACK, key_format=yaff_input_key)
-            if font is None:
-                break
-            fonts.append(font)
-        if fonts:
-            return Typeface(fonts)
-        raise ValueError('No fonts found in file.')
+    fonts = []
+    while True:
+        font = _load_font(instream, back=_ACCEPTED_BACK, key_format=yaff_input_key)
+        if font is None:
+            break
+        fonts.append(font)
+    if fonts:
+        return Typeface(fonts)
+    raise ValueError('No fonts found in file.')
 
 @Typeface.saves('text', 'txt', 'yaff', encoding='utf-8')
-def save(typeface, outfile):
+def save(typeface, outstream):
     """Write fonts to a yaff file."""
-    with ensure_stream(outfile, 'w', encoding='utf-8') as outstream:
-        for i, font in enumerate(typeface._fonts):
-            if i:
-                outstream.write(_SEPARATOR + '\n')
-            _save_font(font, outstream, **yaff_parameters)
+    for i, font in enumerate(typeface._fonts):
+        if i:
+            outstream.write(_SEPARATOR + '\n')
+        _save_font(font, outstream, **yaff_parameters)
     return typeface
 
 
 @Typeface.loads('draw', encoding='utf-8-sig')
-def load_draw(infile):
+def load_draw(instream):
     """Read a hexdraw font file."""
-    with ensure_stream(infile, 'r', encoding='utf-8-sig') as instream:
-        fonts = [_load_font(infile, back=_ACCEPTED_BACK, key_format=draw_input_key)]
-        return Typeface(fonts)
+    fonts = [_load_font(instream, back=_ACCEPTED_BACK, key_format=draw_input_key)]
+    return Typeface(fonts)
 
 @Typeface.saves('draw', encoding='utf-8')
-def save_draw(typeface, outfile):
+def save_draw(typeface, outstream):
     """Write font to a hexdraw file."""
-    with ensure_stream(outfile, 'w', encoding='utf-8') as outstream:
-        if len(typeface._fonts) > 1:
-            raise ValueError('Saving multiple fonts to .draw not possible')
-        font = typeface._fonts[0]
-        _save_font(font, outstream, **draw_parameters)
+    if len(typeface._fonts) > 1:
+        raise ValueError('Saving multiple fonts to .draw not possible')
+    font = typeface._fonts[0]
+    _save_font(font, outstream, **draw_parameters)
     return typeface
 
 
@@ -196,7 +192,6 @@ def _load_font(instream, back, key_format):
                 global_comment, current_comment = split_global_comment(current_comment)
                 global_comment = clean_comment(global_comment)
             cp, rest = line.strip().split(':', 1)
-            current = cp
             comments[cp] = clean_comment(current_comment)
             current_comment = []
             if rest:
@@ -205,12 +200,12 @@ def _load_font(instream, back, key_format):
                 clusters.append((cp, []))
         else:
             clusters[-1][1].append(line.strip())
+    if not clusters and not comments and not global_comment:
+        # no font to read, no comments to keep
+        return None
     # preserve any comment at end of file
     comments[cp] = comments.get(cp, [])
     comments[cp].extend(clean_comment(current_comment))
-    if not clusters and not comments and not global_comments:
-        # no font to read, no comments to keep
-        return None
     # text version of glyphs
     # a glyph is any key/value where the value contains no alphanumerics
     glyphs = {

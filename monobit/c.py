@@ -7,7 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 import string
 
-from .base import Glyph, Font, Typeface, ensure_stream, ceildiv
+from .base import Glyph, Font, Typeface, ceildiv
 
 
 @Typeface.loads('c', 'cc', 'cpp', 'h')
@@ -42,37 +42,36 @@ def _int_from_c(cvalue):
     # 0x, 0b, decimals - like Python
     return int(cvalue, 0)
 
-def _get_payload(infile, identifier):
+def _get_payload(instream, identifier):
     """Find the identifier and get the part between {curly brackets}."""
-    with ensure_stream(infile, 'r') as instream:
-        for line in instream:
-            if '//' in line:
-                line, _ = line.split('//', 1)
-            line = line.strip(' \r\n')
-            # for this to work the declaration must be at the start of the line
-            # (whitespace excluded). compound statements would break this.
-            if line.startswith(identifier):
-                break
-        else:
-            raise ValueError('Identifier `{}` not found in file'.format(identifier))
-        if '{' in line[len(identifier):]:
-            _, line = line.split('{')
-            if '}' in line:
-                line, _ = line.split('}', 1)
-                return line
-            payload = [line]
-        else:
-            payload = []
-        for line in instream:
-            if '//' in line:
-                line, _ = line.split('//', 1)
-            line = line.strip(' \r\n')
-            if '{' in line:
-                _, line = line.split('{', 1)
-            if '}' in line:
-                line, _ = line.split('}', 1)
-                payload.append(line)
-                break
-            if line:
-                payload.append(line)
-        return ''.join(payload)
+    for line in instream:
+        if '//' in line:
+            line, _ = line.split('//', 1)
+        line = line.strip(' \r\n')
+        # for this to work the declaration must be at the start of the line
+        # (whitespace excluded). compound statements would break this.
+        if line.startswith(identifier):
+            break
+    else:
+        raise ValueError('Identifier `{}` not found in file'.format(identifier))
+    if '{' in line[len(identifier):]:
+        _, line = line.split('{')
+        if '}' in line:
+            line, _ = line.split('}', 1)
+            return line
+        payload = [line]
+    else:
+        payload = []
+    for line in instream:
+        if '//' in line:
+            line, _ = line.split('//', 1)
+        line = line.strip(' \r\n')
+        if '{' in line:
+            _, line = line.split('{', 1)
+        if '}' in line:
+            line, _ = line.split('}', 1)
+            payload.append(line)
+            break
+        if line:
+            payload.append(line)
+    return ''.join(payload)

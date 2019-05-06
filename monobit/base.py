@@ -11,7 +11,6 @@ import struct
 import binascii
 import string
 from contextlib import contextmanager
-from functools import partial
 from collections import namedtuple
 
 
@@ -381,11 +380,9 @@ class Typeface:
         format = format.lower()
         try:
             loader = cls._loaders[format]
-            encoding = cls._encodings[format]
         except KeyError:
             raise ValueError('Cannot load from format `{}`'.format(format))
-        with ensure_stream(infile, 'r', encoding=encoding) as instream:
-            return loader(instream, **kwargs)
+        return loader(infile, **kwargs)
 
     @scriptable
     def save(self, outfile:str, format:str='', **kwargs):
@@ -403,32 +400,48 @@ class Typeface:
         format = format.lower()
         try:
             saver = self._savers[format]
-            encoding = self._encodings[format]
         except KeyError:
             raise ValueError('Cannot save to format `{}`'.format(format))
-        with ensure_stream(outfile, 'w', encoding=encoding) as outstream:
-            saver(self, outstream, **kwargs)
-            return self
+        return saver(self, outfile, **kwargs)
 
     @classmethod
     def loads(cls, *formats, encoding='utf-8-sig'):
         """Decorator to register font loader."""
-        def _loadfunc(fn):
+        def _load_decorator(load):
+
+            # stream input wrapper
+            def _load_func(infile, **kwargs):
+                with ensure_stream(infile, 'r', encoding=encoding) as instream:
+                    return load(instream, **kwargs)
+            _load_func.__doc__ = load.__doc__
+            _load_func.__name__ = load.__name__
+
+            # register loader
             for format in formats:
-                cls._loaders[format.lower()] = fn
-                cls._encodings[format.lower()] = encoding
-            return fn
-        return _loadfunc
+                cls._loaders[format.lower()] = _load_func
+
+            return _load_func
+        return _load_decorator
 
     @classmethod
     def saves(cls, *formats, encoding='utf-8'):
         """Decorator to register font saver."""
-        def _savefunc(fn):
+        def _save_decorator(save):
+
+            # stream output wrapper
+            def _save_func(typeface, outfile, **kwargs):
+                with ensure_stream(outfile, 'w', encoding=encoding) as outstream:
+                    save(typeface, outstream, **kwargs)
+                return typeface
+            _save_func.__doc__ = save.__doc__
+            _save_func.__name__ = save.__name__
+
+            # register saver
             for format in formats:
-                cls._savers[format.lower()] = fn
-                cls._encodings[format.lower()] = encoding
-            return fn
-        return _savefunc
+                cls._savers[format.lower()] = _save_func
+
+            return _save_func
+        return _save_decorator
 
     # inject Font operations into Typeface
 

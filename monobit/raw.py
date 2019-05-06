@@ -5,26 +5,25 @@ monobit.raw - read and write raw binary font files
 licence: https://opensource.org/licenses/MIT
 """
 
-from .base import ensure_stream, Glyph, Font, Typeface, ceildiv
+from .base import Glyph, Font, Typeface, ceildiv
 
 
 @Typeface.loads('dos', 'bin', 'rom', 'raw', encoding=None)
-def load(infile, cell=(8, 8), n_chars=None, offset=0, strike=False):
+def load(instream, cell=(8, 8), n_chars=None, offset=0, strike=False):
     """Load font from raw binary."""
-    with ensure_stream(infile, 'rb') as instream:
-        # get through the offset
-        # we don't assume instream is seekable - it may be sys.stdin
-        instream.read(offset)
-        if strike:
-            cells = _load_strike(instream, cell, n_chars)
-        else:
-            cells = _load_aligned(instream, cell, n_chars)
+    # get through the offset
+    # we don't assume instream is seekable - it may be sys.stdin
+    instream.read(offset)
+    if strike:
+        cells = _load_strike(instream, cell, n_chars)
+    else:
+        cells = _load_aligned(instream, cell, n_chars)
     glyphs = dict(enumerate(cells))
     return Typeface([Font(glyphs)])
 
 
 @Typeface.saves('dos', 'bin', 'rom', 'raw', encoding=None)
-def save(typeface, outfile):
+def save(typeface, outstream):
     """Save font to raw byte-aligned binary (DOS font)."""
     if len(typeface._fonts) > 1:
         raise ValueError('Saving multiple fonts to raw binary not implemented')
@@ -45,10 +44,9 @@ def save(typeface, outfile):
         default = glyphs[default_key]
     except KeyError:
         default = Glyph.empty(*size)
-    with ensure_stream(outfile, 'wb') as outstream:
-        for ordinal in range(0, max(keys) + 1):
-            glyph = glyphs.get(ordinal, default)
-            outstream.write(glyph.as_bytes())
+    for ordinal in range(0, max(keys) + 1):
+        glyph = glyphs.get(ordinal, default)
+        outstream.write(glyph.as_bytes())
     return typeface
 
 
