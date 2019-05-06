@@ -5,6 +5,8 @@ monobit.c - read and write .c source files
 licence: https://opensource.org/licenses/MIT
 """
 
+import string
+
 from .base import Glyph, Font, Typeface, ensure_stream, ceildiv
 
 
@@ -13,21 +15,32 @@ def load(infile, identifier, width, height):
     """Load font from a .c file."""
     payload = _get_payload(infile, identifier)
     # c bytes are python bytes, except 0777-style octal (which we therefore don't support correctly)
-    bytelist = [int(_s, 0) for _s in payload.split(',') if _s]
-    bitrows = ['{:08b}'.format(_n) for _n in bytelist]
+    bytelist = [_int_from_c(_s, 0) for _s in payload.split(',') if _s]
+    # split into chunks
     bytewidth = ceildiv(width, 8)
-    bitrows = [
-        ''.join(_row for _row in bitrows[_offs:_offs+bytewidth])
-        for _offs in range(0, len(bitrows), bytewidth)
+    bytesize = bytewidth * height
+    n_glyphs = ceildiv(len(bytelist), bytesize)
+    glyphbytes = [
+        bytelist[_ord*bytesize:(_ord+1)*bytesize]
+        for _ord in range(n_glyphs)
     ]
-    bitrows = [[(_c == '1') for _c in _row] for _row in bitrows]
-    bitrows = tuple(_row[:width] for _row in bitrows)
     font = {
-        _key: Glyph(bitrows[_key*height:(_key+1)*height])
-        for _key in range(len(bitrows)//height)
+        _key: Glyph.from_bytes(_value)
+        for _key, _value in enumerate(glyphbytes)
     }
     return Typeface([Font(font)])
 
+
+def _int_from_c(cvalue):
+    """Parse integer from c code."""
+    # suffixes
+    while cvalue[-1:].lower() in ('u', 'l'):
+        cvalue = cvalue[:-1]
+    if cvalue.startswith('0') and cvalue[1:2] and cvalue[1:2] in string.digits:
+        # c-style octal 0777
+        cvalue = '0o' + cvalue[1:]
+    # 0x, 0b, decimals - like Python
+    return int(cvalue, 0)
 
 def _get_payload(infile, identifier):
     """Find the identifier and get the part between {curly brackets}."""
