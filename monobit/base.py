@@ -85,6 +85,11 @@ class Glyph:
         self._rows = pixels
 
     @staticmethod
+    def empty(width=0, height=0):
+        """Create whitespace glyph."""
+        return Glyph((() * width) * height)
+
+    @staticmethod
     def from_text(rows, background):
         """Create glyph from sequence of str."""
         return Glyph(tuple(
@@ -100,12 +105,48 @@ class Glyph:
         )
 
     @staticmethod
-    def from_bytes(byteseq, width=None):
+    def from_bytes(byteseq, width):
         """Create glyph from bytes/bytearray/int sequence."""
         bytewidth = ceildiv(width, 8)
         byteseq = list(byteseq)
-        rows = [byteseq[_offs:_offs+bytewidth] for _offs in range(0, len(byteseq), bytewidth]
+        rows = [byteseq[_offs:_offs+bytewidth] for _offs in range(0, len(byteseq), bytewidth)]
         return Glyph(tuple(bytes_to_bits(_row)[:width] for _row in rows))
+
+    def to_bytes(self):
+        """Convert glyph to flat bytes."""
+        if not self._rows:
+            return b''
+        width = len(self._rows[0])
+        bytewidth = ceildiv(width, 8)
+        # byte-align rows
+        rows = [
+            _row + (False,) * (bytewidth*8 - width)
+            for _row in self._rows
+        ]
+        # chunk by byte and flatten
+        glyph_bytes = [
+            _row[_offs:_offs+8]
+            for _row in rows
+            for _offs in range(0, len(_row), 8)
+        ]
+        # convert to binary strings
+        glyph_bytes = [
+            ''.join(str(int(_bit)) for _bit in _byte)
+            for _byte in glyph_bytes
+        ]
+        return bytes(int(_bitstr, 2) for _bitstr in glyph_bytes)
+
+    @property
+    def width(self):
+        """Pixel width of glyph."""
+        if not self._rows:
+            return 0
+        return len(self._rows[0])
+
+    @property
+    def height(self):
+        """Pixel height of glyph."""
+        return len(self._rows)
 
     ##########################################################################
 
