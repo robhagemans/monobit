@@ -46,7 +46,7 @@ def _read_bdf_characters(instream):
     glyphs = {}
     glyph_meta = {}
     for line in instream:
-        line = line[:-1]
+        line = line.rstrip('\r\n')
         if not line:
             continue
         if line.startswith('ENDFONT'):
@@ -59,18 +59,15 @@ def _read_bdf_characters(instream):
         width, height, _, _ = meta['BBX'].split(' ')
         width, height = int(width), int(height)
         # convert from hex-string to list of bools
-        data = [instream.readline()[:-1] for _ in range(height)]
-        bytewidth = len(data[0]) // 2
-        fmt = '{:0%db}' % (bytewidth*8,)
-        glyphstrs = [fmt.format(int(_row, 16)).ljust(width, '\0')[:width] for _row in data]
-        glyph = tuple((_c == '1' for _c in _row) for _row in glyphstrs)
+        hexstr = ''.join(instream.readline().strip() for _ in range(height))
+        glyph = Glyph.from_hex(hexstr, width)
         # store in dict
         # ENCODING must be single integer or -1 followed by integer
         encvalue = int(meta['ENCODING'].split(' ')[-1])
         # no encoding number found
         if encvalue == -1 or encvalue in glyphs:
             encvalue = meta['STARTCHAR']
-        glyphs[encvalue] = Glyph(glyph)
+        glyphs[encvalue] = glyph
         glyph_meta[encvalue] = meta
         if not instream.readline().startswith('ENDCHAR'):
             raise('Expected ENDCHAR')

@@ -8,6 +8,8 @@ licence: https://opensource.org/licenses/MIT
 import io
 import sys
 import struct
+import binascii
+import string
 from contextlib import contextmanager
 from functools import partial
 from collections import namedtuple
@@ -68,6 +70,51 @@ def bytes_to_str(s, encoding='latin-1'):
     return s.decode(encoding, errors='replace')
 
 
+##############################################################################
+# text-file comments
+
+def clean_comment(comment):
+    """Remove leading characters from comment."""
+    while comment and not comment[-1]:
+        comment = comment[:-1]
+    if not comment:
+        return []
+    comment = [(_line if _line else '') for _line in comment]
+    # remove "comment char" - non-alphanumeric shared first character
+    firsts = [_line[0:1] for _line in comment if _line]
+    if len(set(firsts)) == 1 and firsts[0] not in string.ascii_letters + string.digits:
+        comment = [_line[1:] for _line in comment]
+    # normalise leading whitespace
+    if all(_line.startswith(' ') for _line in comment if _line):
+        comment = [_line[1:] for _line in comment]
+    return comment
+
+def split_global_comment(comment):
+    while comment and not comment[-1]:
+        comment = comment[:-1]
+    try:
+        splitter = comment[::-1].index(None)
+    except ValueError:
+        global_comment = comment
+        comment = []
+    else:
+        global_comment = comment[:-splitter-1]
+        comment = comment[-splitter:]
+    return global_comment, comment
+
+def write_comments(outstream, comments, key, comm_char):
+    """Write out the comments attached to a given font item."""
+    if comments and key in comments and comments[key]:
+        if key is not None:
+            outstream.write('\n')
+        for line in comments[key]:
+            outstream.write('{} {}\n'.format(comm_char, line))
+        if key is None:
+            outstream.write('\n')
+
+
+##############################################################################
+
 def scriptable(fn):
     """Decorator to register operation for scripting."""
     fn.scriptable = True
@@ -112,7 +159,7 @@ class Glyph:
         rows = [byteseq[_offs:_offs+bytewidth] for _offs in range(0, len(byteseq), bytewidth)]
         return Glyph(tuple(bytes_to_bits(_row)[:width] for _row in rows))
 
-    def to_bytes(self):
+    def as_bytes(self):
         """Convert glyph to flat bytes."""
         if not self._rows:
             return b''
@@ -135,6 +182,15 @@ class Glyph:
             for _byte in glyph_bytes
         ]
         return bytes(int(_bitstr, 2) for _bitstr in glyph_bytes)
+
+    @staticmethod
+    def from_hex(hexstr, width):
+        """Create glyph from hex string."""
+        return Glyph.from_bytes(binascii.unhexlify(hexstr.encode('ascii')), width)
+
+    def as_hex(self):
+        """Convert glyph to hex string."""
+        return binascii.hexlify(self.as_bytes()).decode('ascii')
 
     @property
     def width(self):

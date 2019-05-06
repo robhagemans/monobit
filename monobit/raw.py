@@ -48,7 +48,7 @@ def save(typeface, outfile):
     with ensure_stream(outfile, 'wb') as outstream:
         for ordinal in range(0, max(keys) + 1):
             glyph = glyphs.get(ordinal, default)
-            outstream.write(glyph.to_bytes())
+            outstream.write(glyph.as_bytes())
     return typeface
 
 
