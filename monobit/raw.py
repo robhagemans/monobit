@@ -15,9 +15,9 @@ def load(instream, cell=(8, 8), n_chars=None, offset=0, strike=False):
     # we don't assume instream is seekable - it may be sys.stdin
     instream.read(offset)
     if strike:
-        cells = _load_strike(instream, cell, n_chars)
+        cells = load_strike(instream, cell, n_chars)
     else:
-        cells = _load_aligned(instream, cell, n_chars)
+        cells = load_aligned(instream, cell, n_chars)
     glyphs = dict(enumerate(cells))
     return Typeface([Font(glyphs)])
 
@@ -28,29 +28,24 @@ def save(typeface, outstream):
     if len(typeface._fonts) > 1:
         raise ValueError('Saving multiple fonts to raw binary not implemented')
     font = typeface._fonts[0]
-    glyphs = font._glyphs
-    # check if font is fixed-width and fixed-height
-    sizes = set((_glyph.width, _glyph.height) for _glyph in glyphs.values())
-    if len(sizes) > 1:
-        raise ValueError('Saving proportional or variable-height font to binary not implemented')
-    size = list(sizes)[0]
-    # can only save numeric glyphs
-    keys = [_key for _key in glyphs if isinstance(_key, int)]
-    default_key = font._properties.get('default-char', None)
-    non_numeric = [_key for _key in glyphs if not isinstance(_key, int) and _key != default_key]
-    if non_numeric and non_numeric != []:
-        logging.warning('Named glyphs not saved: {}'.format(' '.join(non_numeric)))
-    try:
-        default = glyphs[default_key]
-    except KeyError:
-        default = Glyph.empty(*size)
-    for ordinal in range(0, max(keys) + 1):
-        glyph = glyphs.get(ordinal, default)
-        outstream.write(glyph.as_bytes())
+    save_aligned(outstream, font)
     return typeface
 
 
-def _load_strike(instream, cell, n_chars):
+def save_aligned(outstream, font):
+    """Save fixed-width font to byte-aligned bitmap."""
+    # check if font is fixed-width and fixed-height
+    if not font.fixed:
+        raise ValueError(
+            'This format does not support proportional or variable-height fonts.'
+        )
+    if not font.all_ordinal:
+        logging.warning('Glyphs without ordinal values not saved.')
+    outstream.write(font.get_glyph(ordinal).as_bytes())
+
+
+
+def load_strike(instream, cell, n_chars):
     """Load fixed-width font from bitmap strike."""
     width, height = cell
     # n_chars must be given for strikes
@@ -71,7 +66,7 @@ def _load_strike(instream, cell, n_chars):
     ]
     return cells
 
-def _load_aligned(instream, cell, n_chars):
+def load_aligned(instream, cell, n_chars):
     """Load fixed-width font from byte-aligned bitmap."""
     width, height = cell
     width_bytes = ceildiv(width, 8)

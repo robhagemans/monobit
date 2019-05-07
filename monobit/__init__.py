@@ -14,6 +14,7 @@ from . import image
 from . import text
 from . import raw
 from . import bdf
+from . import psf
 from . import hex
 from . import c
 

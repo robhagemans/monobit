@@ -62,6 +62,11 @@ def struct_to_dict(fmt, keys, buffer, offset=0):
     record = namedtuple('Record', keys)._make(rec_tuple)
     return record._asdict()
 
+def dict_to_struct(dict, fmt, keys):
+    """Unpack from buffer into dict."""
+    record = namedtuple('Record', keys)(**dict)
+    return struct.pack(fmt, *record)
+
 def bytes_to_str(s, encoding='latin-1'):
     """Extract null-terminated string from bytes."""
     if b'\0' in s:
@@ -240,6 +245,7 @@ class Glyph:
     @scriptable
     def crop(self, left:int=0, top:int=0, right:int=0, bottom:int=0):
         """Crop glyph, inclusive bounds."""
+        # FIXME: adjust offsets?
         return Glyph(tuple(
             _row[left : (-right if right else None)]
             for _row in self._rows[top : (-bottom if bottom else None)]
@@ -248,6 +254,7 @@ class Glyph:
     @scriptable
     def expand(self, left:int=0, top:int=0, right:int=0, bottom:int=0):
         """Add empty space."""
+        # FIXME: adjust offsets?
         if self._rows:
             old_width = len(self._rows[0])
         else:
@@ -262,6 +269,7 @@ class Glyph:
     @scriptable
     def stretch(self, factor_x:int=1, factor_y:int=1):
         """Repeat rows and/or columns."""
+        # FIXME: adjust offsets?
         # vertical stretch
         glyph = tuple(_row for _row in self._rows for _ in range(factor_y))
         # horizontal stretch
@@ -303,10 +311,57 @@ class Font:
             self._comments = {None: comments}
         self._properties = properties or {}
 
-    def get_max_key(self):
-        """Get maximum key in font."""
+    @property
+    def max_ordinal(self):
+        """Get maximum ordinal in font."""
         return max(_k for _k in self._glyphs.keys() if isinstance(_k, int))
 
+    @property
+    def ordinal_range(self):
+        """Get maximum key in font."""
+        return range(0, self.max_ordinal + 1)
+
+    @property
+    def all_ordinal(self):
+        """All glyphs except the default have ordinals."""
+        default_key = self._properties.get('default-char', None)
+        return not [_key for _key in glyphs if not isinstance(_key, int) and _key != default_key]
+
+    @property
+    def number_glyphs(self):
+        """Get number of glyphs in font."""
+        return len(self._glyphs)
+
+    @property
+    def fixed(self):
+        """Font is fixed width."""
+        sizes = set((_glyph.width, _glyph.height) for _glyph in glyphs.values())
+        return len(sizes) <= 1
+
+    @property
+    def max_width(self):
+        """Get maximum width."""
+        return max(_glyph.width for _glyph in glyphs.values())
+
+    @property
+    def max_height(self):
+        """Get maximum height."""
+        return max(_glyph.height for _glyph in glyphs.values())
+
+    def get_glyph(self, key):
+        """Get glyph by key, default if not present."""
+        return glyphs.get(ordinal, self.get_default_glyph())
+
+    def get_default_glyph(self):
+        """Get default glyph."""
+        default_key = self._properties.get('default-char', None)
+        try:
+            return glyphs[default_key]
+        except KeyError:
+            return Glyph.empty(self.max_width, self.max_height)
+
+
+    ##########################################################################
     @scriptable
     def renumber(self, add:int=0):
         """Return a font with renumbered keys."""
