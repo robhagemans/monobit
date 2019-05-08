@@ -34,8 +34,8 @@ import struct
 import logging
 
 from .base import (
-    VERSION, Glyph, Font, Typeface,
-    bytes_to_bits, ceildiv, struct_to_dict, bytes_to_str
+    VERSION, Glyph, Font, Typeface, Struct,
+    bytes_to_bits, ceildiv, bytes_to_str
 )
 
 
@@ -150,25 +150,79 @@ _DFF_ABC = _DFF_ABCFIXED | _DFF_ABCPROPORTIONAL
 
 
 # FNT header, common to v1.0, v2.0, v3.0
-_FNT_COMMON_FMT ='<HL60s7H3BHBHHBHH4BH4L'
-_FNT_COMMON_KEYS = (
-    'dfVersion', 'dfSize', 'dfCopyright', 'dfType', 'dfPoints', 'dfVertRes', 'dfHorizRes',
-    'dfAscent', 'dfInternalLeading', 'dfExternalLeading',
-    'dfItalic', 'dfUnderline', 'dfStrikeOut', 'dfWeight',
-    'dfCharSet', 'dfPixWidth', 'dfPixHeight', 'dfPitchAndFamily', 'dfAvgWidth', 'dfMaxWidth',
-    'dfFirstChar', 'dfLastChar', 'dfDefaultChar', 'dfBreakChar',
-    'dfWidthBytes', 'dfDevice', 'dfFace',
-    'dfBitsPointer', 'dfBitsOffset'
+_FNT_HEADER = Struct(
+    '<',
+    dfVersion='H',
+    dfSize='L',
+    dfCopyright='60s',
+    dfType='H',
+    dfPoints='H',
+    dfVertRes='H',
+    dfHorizRes='H',
+    dfAscent='H',
+    dfInternalLeading='H',
+    dfExternalLeading='H',
+    dfItalic='B',
+    dfUnderline='B',
+    dfStrikeOut='B',
+    dfWeight='H',
+    dfCharSet='B',
+    dfPixWidth='H',
+    dfPixHeight='H',
+    dfPitchAndFamily='B',
+    dfAvgWidth='H',
+    dfMaxWidth='H',
+    dfFirstChar='B',
+    dfLastChar='B',
+    dfDefaultChar='B',
+    dfBreakChar='B',
+    dfWidthBytes='H',
+    dfDevice='L',
+    dfFace='L',
+    dfBitsPointer='L',
+    dfBitsOffset='L',
 )
-# FNT header, version specific
-_FNT_VERSION_FMT = {0x100: '<L', 0x200: 'B', 0x300: '<BL3HL16s'}
-_FNT_VERSION_KEYS = {
-    0x100: ('dfCharOffset',), 0x200: ('dfReserved',),
-    0x300: (
-        'dfReserved', 'dfFlags', 'dfAspace', 'dfBspace', 'dfCspace', 'dfColorPointer', 'dfReserved1'
-    )
+
+# version-specific header extensions
+_FNT_HEADER_1 = Struct('<', dfCharOffset='L')
+_FNT_HEADER_2 = Struct('<', dfReserved='B')
+_FNT_HEADER_3 = Struct(
+    '<',
+    dfReserved='B',
+    dfFlags='L',
+    dfAspace='H',
+    dfBspace='H',
+    dfCspace='H',
+    dfColorPointer='L',
+    dfReserved1='16s',
+)
+_FNT_VERSION_HEADER = {
+    0x100: _FNT_HEADER_1,
+    0x200: _FNT_HEADER_2,
+    0x300: _FNT_HEADER_3,
+}
+# total size
+# {'0x100': '0x79', '0x200': '0x76', '0x300': '0x94'}
+_FNT_HEADER_SIZE = {
+    _ver: _FNT_HEADER.size + _header.size
+    for _ver, _header in _FNT_VERSION_HEADER.items()
 }
 
+# char table header
+_CT_HEADER_2 = Struct(
+    '<',
+    width='H',
+    offset='H',
+)
+_CT_HEADER_3 = Struct(
+    '<',
+    width='H',
+    offset='L',
+)
+_CT_VERSION_HEADER = {
+    0x200: _CT_HEADER_2,
+    0x300: _CT_HEADER_3,
+}
 
 def unpack(format, buffer, offset):
     """Unpack a single value from bytes."""
@@ -177,12 +231,10 @@ def unpack(format, buffer, offset):
 
 def _read_fnt_header(fnt):
     """Read the header information in the FNT resource."""
-    win_props = struct_to_dict(_FNT_COMMON_FMT, _FNT_COMMON_KEYS, fnt)
-    common_size = struct.calcsize(_FNT_COMMON_FMT)
+    win_props = _FNT_HEADER.to_dict(fnt)
     version = win_props['dfVersion']
-    version_fmt = _FNT_VERSION_FMT[version]
-    version_keys = _FNT_VERSION_KEYS[version]
-    win_props.update(struct_to_dict(version_fmt, version_keys, fnt, common_size))
+    header_ext = _FNT_VERSION_HEADER[version]
+    win_props.update(header_ext.to_dict(fnt, offset=_FNT_HEADER.size))
     return win_props
 
 
@@ -197,7 +249,7 @@ def _read_fnt_chartable_v1(fnt, win_props):
     n_chars = win_props['dfLastChar'] - win_props['dfFirstChar'] + 1
     if not win_props['dfPixWidth']:
         # proportional font
-        ct_start = 0x75
+        ct_start = 0x75 # should be 0x79??
         ct_fmt = '<H'
         ct_size = 2
         offsets = [

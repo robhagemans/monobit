@@ -9,7 +9,7 @@ import os
 import struct
 import logging
 
-from .base import VERSION, Glyph, Font, Typeface, struct_to_dict, bytes_to_bits
+from .base import VERSION, Glyph, Font, Typeface, Struct, bytes_to_bits
 
 
 # amiga header constants
@@ -56,27 +56,47 @@ _FSF_COLORFONT = 0x40
 _FSF_TAGGED = 0x80
 
 # disk font header
-
-_AMIGA_HEADER_FMT = (
-    '>II' + 'IIBbI' + 'HHi%ds' % (_MAXFONTNAME,) + 'IIBbIIH'
-    + 'HBBHHHHBB' + 'IHIII'
-)
-_AMIGA_HEADER_KEYS = (
+_AMIGA_HEADER = Struct(
+    '>',
     # struct DiskFontHeader
     # http://amigadev.elowar.com/read/ADCD_2.1/Libraries_Manual_guide/node05F9.html#line61
-    'dfh_NextSegment', 'dfh_ReturnCode',
+    dfh_NextSegment='I',
+    dfh_ReturnCode='I',
     # struct Node
     # http://amigadev.elowar.com/read/ADCD_2.1/Libraries_Manual_guide/node02EF.html
-    'dfh_ln_Succ', 'dfh_ln_Pred', 'dfh_ln_Type', 'dfh_ln_Pri', 'dfh_ln_Name',
-    'dfh_FileID', 'dfh_Revision', 'dfh_Segment', 'dfh_Name',
+    dfh_ln_Succ='I',
+    dfh_ln_Pred='I',
+    dfh_ln_Type='B',
+    dfh_ln_Pri='b',
+    dfh_ln_Name='I',
+    dfh_FileID='H',
+    dfh_Revision='H',
+    dfh_Segment='i',
+    dfh_Name='{}s'.format(_MAXFONTNAME),
     # struct Message at start of struct TextFont
     # struct Message http://amigadev.elowar.com/read/ADCD_2.1/Libraries_Manual_guide/node02EF.html
-    'tf_ln_Succ', 'tf_ln_Pred', 'tf_ln_Type', 'tf_ln_Pri', 'tf_ln_Name',
-    'tf_mn_ReplyPort', 'tf_mn_Length',
+    tf_ln_Succ='I',
+    tf_ln_Pred='I',
+    tf_ln_Type='B',
+    tf_ln_Pri='b',
+    tf_ln_Name='I',
+    tf_mn_ReplyPort='I',
+    tf_mn_Length='H',
     # struct TextFont http://amigadev.elowar.com/read/ADCD_2.1/Libraries_Manual_guide/node03DE.html
-    'tf_YSize', 'tf_Style', 'tf_Flags', 'tf_XSize', 'tf_Baseline', 'tf_BoldSmear',
-    'tf_Accessors', 'tf_LoChar', 'tf_HiChar',
-    'tf_CharData', 'tf_Modulo', 'tf_CharLoc', 'tf_CharSpace', 'tf_CharKern'
+    tf_YSize='H',
+    tf_Style='B',
+    tf_Flags='B',
+    tf_XSize='H',
+    tf_Baseline='H',
+    tf_BoldSmear='H',
+    tf_Accessors='H',
+    tf_LoChar='B',
+    tf_HiChar='B',
+    tf_CharData='I',
+    tf_Modulo='H',
+    tf_CharLoc='I',
+    tf_CharSpace='I',
+    tf_CharKern='I',
 )
 
 
@@ -142,9 +162,7 @@ def _read_header(f):
 def _read_font_hunk(f):
     """Parse the font data blob."""
     loc = f.tell() + 4
-    amiga_props = struct_to_dict(
-        _AMIGA_HEADER_FMT, _AMIGA_HEADER_KEYS, f.read(struct.calcsize(_AMIGA_HEADER_FMT))
-    )
+    amiga_props = _AMIGA_HEADER.to_dict(f.read(_AMIGA_HEADER.size))
     # read character data
     glyphs, min_kern = _read_strike(
         f, amiga_props['tf_XSize'], amiga_props['tf_YSize'],

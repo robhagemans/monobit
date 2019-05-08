@@ -5,9 +5,6 @@ monobit.psf - read and write .psf font files
 licence: https://opensource.org/licenses/MIT
 """
 
-import struct
-#from collections import SimpleNamespace as bag
-
 from .base import Glyph, Font, Typeface, ceildiv, Struct
 from .raw import load_aligned, save_aligned
 

@@ -64,12 +64,6 @@ def struct_to_dict(fmt, keys, buffer, offset=0):
     record = namedtuple('Record', keys)._make(rec_tuple)
     return record._asdict()
 
-#D
-def dict_to_struct(dict, fmt, keys):
-    """Unpack from buffer into dict."""
-    record = namedtuple('Record', keys)(**dict)
-    return struct.pack(fmt, *record)
-
 def bytes_to_str(s, encoding='latin-1'):
     """Extract null-terminated string from bytes."""
     if b'\0' in s:
@@ -78,6 +72,19 @@ def bytes_to_str(s, encoding='latin-1'):
 
 ##############################################################################
 # binary structs
+
+class Bag(SimpleNamespace):
+    """Namespace."""
+
+    def __add__(self, bag):
+        """Merge two bags."""
+        return Bag(**self.__dict__, **bag.__dict__)
+
+    def __iadd__(self, bag):
+        """Marge another bag into this one."""
+        self.__dict__.update(bag._dict__)
+        return self
+
 
 class Struct:
     """Binary struct factory."""
@@ -95,25 +102,35 @@ class Struct:
         """Blob size."""
         return struct.calcsize(self._format)
 
-    def unpack(self, blob):
+    def unpack(self, blob, offset=0):
         """Unpack binary blob to namedtuple."""
-        return self._namedtuple(*struct.unpack_from(self._format, blob))
+        return self._namedtuple(*struct.unpack_from(self._format, blob, offset))
 
-    def to_dict(self, blob):
+    def to_dict(self, blob, offset=0):
         """Unpack binary blob to dict."""
-        return self.unpack(blob)._asdict()
+        return self.unpack(blob, offset)._asdict()
 
-    def to_bag(self, blob):
+    def to_bag(self, blob, offset=0):
         """Unpack binary blob to namespace."""
-        return SimpleNamespace(**self.to_dict(blob))
+        return Bag(**self.to_dict(blob, offset))
 
     def pack(self, data):
         """Pack tuple/namedtuple/dict into blob."""
         try:
+            # try dict expansion first, as a dict is also a sequence
             tup = self._namedtuple(**data)
             return struct.pack(self._format, *tup)
         except TypeError:
+            pass
+        # sequences: tuples/lists/namedtuples
+        try:
             return struct.pack(self._format, *data)
+        except TypeError:
+            pass
+        # namespace oject?
+        tup = self._namedtuple(**data.__dict__)
+        return struct.pack(self._format, *tup)
+
 
 
 ##############################################################################
