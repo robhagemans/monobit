@@ -11,7 +11,8 @@ import struct
 import binascii
 import string
 from contextlib import contextmanager
-from collections import namedtuple
+from collections import namedtuple, OrderedDict
+from types import SimpleNamespace
 
 
 DEFAULT_FORMAT = 'text'
@@ -56,12 +57,14 @@ def bytes_to_bits(inbytes, width=None):
     bits = tuple(_c == '1' for _c in bitstr)
     return bits[:width]
 
+#D
 def struct_to_dict(fmt, keys, buffer, offset=0):
     """Unpack from buffer into dict."""
     rec_tuple = struct.unpack_from(fmt, buffer, offset)
     record = namedtuple('Record', keys)._make(rec_tuple)
     return record._asdict()
 
+#D
 def dict_to_struct(dict, fmt, keys):
     """Unpack from buffer into dict."""
     record = namedtuple('Record', keys)(**dict)
@@ -72,6 +75,45 @@ def bytes_to_str(s, encoding='latin-1'):
     if b'\0' in s:
         s, _ = s.split(b'\0', 1)
     return s.decode(encoding, errors='replace')
+
+##############################################################################
+# binary structs
+
+class Struct:
+    """Binary struct factory."""
+
+    def __init__(self, _endian, **description):
+        """Create struct type."""
+        # requires Python 3.6 - preserve dict order
+        desc = OrderedDict(**description)
+        self._fields = desc.keys()
+        self._format = _endian + ''.join(desc.values())
+        self._namedtuple = namedtuple('Record', self._fields)
+
+    @property
+    def size(self):
+        """Blob size."""
+        return struct.calcsize(self._format)
+
+    def unpack(self, blob):
+        """Unpack binary blob to namedtuple."""
+        return self._namedtuple(*struct.unpack_from(self._format, blob))
+
+    def to_dict(self, blob):
+        """Unpack binary blob to dict."""
+        return self.unpack(blob)._asdict()
+
+    def to_bag(self, blob):
+        """Unpack binary blob to namespace."""
+        return SimpleNamespace(**self.to_dict(blob))
+
+    def pack(self, data):
+        """Pack tuple/namedtuple/dict into blob."""
+        try:
+            tup = self._namedtuple(**data)
+            return struct.pack(self._format, *tup)
+        except TypeError:
+            return struct.pack(self._format, *data)
 
 
 ##############################################################################
@@ -314,7 +356,10 @@ class Font:
     @property
     def max_ordinal(self):
         """Get maximum ordinal in font."""
-        return max(_k for _k in self._glyphs.keys() if isinstance(_k, int))
+        ordinals = [_k for _k in self._glyphs.keys() if isinstance(_k, int)]
+        if ordinals:
+            return max(ordinals)
+        return -1
 
     @property
     def ordinal_range(self):
@@ -325,7 +370,9 @@ class Font:
     def all_ordinal(self):
         """All glyphs except the default have ordinals."""
         default_key = self._properties.get('default-char', None)
-        return not [_key for _key in glyphs if not isinstance(_key, int) and _key != default_key]
+        return not [
+            _key for _key in self._glyphs if not isinstance(_key, int) and _key != default_key
+        ]
 
     @property
     def number_glyphs(self):
@@ -335,18 +382,18 @@ class Font:
     @property
     def fixed(self):
         """Font is fixed width."""
-        sizes = set((_glyph.width, _glyph.height) for _glyph in glyphs.values())
+        sizes = set((_glyph.width, _glyph.height) for _glyph in self._glyphs.values())
         return len(sizes) <= 1
 
     @property
     def max_width(self):
         """Get maximum width."""
-        return max(_glyph.width for _glyph in glyphs.values())
+        return max(_glyph.width for _glyph in self._glyphs.values())
 
     @property
     def max_height(self):
         """Get maximum height."""
-        return max(_glyph.height for _glyph in glyphs.values())
+        return max(_glyph.height for _glyph in self._glyphs.values())
 
     def get_glyph(self, key):
         """Get glyph by key, default if not present."""

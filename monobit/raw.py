@@ -5,6 +5,8 @@ monobit.raw - read and write raw binary font files
 licence: https://opensource.org/licenses/MIT
 """
 
+import logging
+
 from .base import Glyph, Font, Typeface, ceildiv
 
 
@@ -41,7 +43,8 @@ def save_aligned(outstream, font):
         )
     if not font.all_ordinal:
         logging.warning('Glyphs without ordinal values not saved.')
-    outstream.write(font.get_glyph(ordinal).as_bytes())
+    for ordinal in font.ordinal_range:
+        outstream.write(font.get_glyph(ordinal).as_bytes())
 
 
 
