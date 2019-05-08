@@ -184,7 +184,7 @@ _FNT_HEADER = Struct(
 )
 
 # version-specific header extensions
-_FNT_HEADER_1 = Struct('<', dfCharOffset='L')
+_FNT_HEADER_1 = Struct('<')
 _FNT_HEADER_2 = Struct('<', dfReserved='B')
 _FNT_HEADER_3 = Struct(
     '<',
@@ -202,13 +202,17 @@ _FNT_VERSION_HEADER = {
     0x300: _FNT_HEADER_3,
 }
 # total size
-# {'0x100': '0x79', '0x200': '0x76', '0x300': '0x94'}
+# {'0x100': '0x75', '0x200': '0x76', '0x300': '0x94'}
 _FNT_HEADER_SIZE = {
     _ver: _FNT_HEADER.size + _header.size
     for _ver, _header in _FNT_VERSION_HEADER.items()
 }
 
 # char table header
+_CT_HEADER_1 = Struct(
+    '<',
+    offset='H',
+)
 _CT_HEADER_2 = Struct(
     '<',
     width='H',
@@ -249,11 +253,10 @@ def _read_fnt_chartable_v1(fnt, win_props):
     n_chars = win_props['dfLastChar'] - win_props['dfFirstChar'] + 1
     if not win_props['dfPixWidth']:
         # proportional font
-        ct_start = 0x75 # should be 0x79??
-        ct_fmt = '<H'
-        ct_size = 2
+        ct_start = _FNT_HEADER_SIZE[0x100]
+        ct_size = _CT_HEADER_1.size
         offsets = [
-            struct.unpack_from(ct_fmt, fnt, ct_start + _ord * ct_size)[0]
+            _CT_HEADER_1.unpack(fnt, ct_start + _ord * ct_size)[0]
             for _ord in range(n_chars+1)
         ]
     else:
@@ -284,18 +287,14 @@ def _read_fnt_chartable_v1(fnt, win_props):
 
 def _read_fnt_chartable_v2(fnt, win_props):
     """Read a WinFont 2.0 or 3.0 character table."""
-    if win_props['dfVersion'] == 0x200:
-        ct_start = 0x76
-        ct_fmt = '<HH'
-    else:
-        ct_start = 0x94
-        ct_fmt = '<HL'
-    ct_size = struct.calcsize(ct_fmt)
+    ct_start = _FNT_HEADER_SIZE[win_props['dfVersion']]
+    ct_header = _CT_VERSION_HEADER[win_props['dfVersion']]
+    ct_size = ct_header.size
     glyphs = {}
     height = win_props['dfPixHeight']
     for ord in range(win_props['dfFirstChar'], win_props['dfLastChar']+1):
         entry = ct_start + ct_size * (ord-win_props['dfFirstChar'])
-        width, offset = struct.unpack_from(ct_fmt, fnt, entry)
+        width, offset = ct_header.unpack(fnt, entry)
         if not width:
             continue
         bytewidth = ceildiv(width, 8)
