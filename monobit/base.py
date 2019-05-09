@@ -57,13 +57,6 @@ def bytes_to_bits(inbytes, width=None):
     bits = tuple(_c == '1' for _c in bitstr)
     return bits[:width]
 
-#D
-def struct_to_dict(fmt, keys, buffer, offset=0):
-    """Unpack from buffer into dict."""
-    rec_tuple = struct.unpack_from(fmt, buffer, offset)
-    record = namedtuple('Record', keys)._make(rec_tuple)
-    return record._asdict()
-
 def bytes_to_str(s, encoding='latin-1'):
     """Extract null-terminated string from bytes."""
     if b'\0' in s:
@@ -156,7 +149,7 @@ def split_global_comment(comment):
     while comment and not comment[-1]:
         comment = comment[:-1]
     try:
-        splitter = comment[::-1].index(None)
+        splitter = comment[::-1].index('')
     except ValueError:
         global_comment = comment
         comment = []
@@ -165,14 +158,14 @@ def split_global_comment(comment):
         comment = comment[-splitter:]
     return global_comment, comment
 
-def write_comments(outstream, comments, key, comm_char):
+def write_comments(outstream, comments, comm_char, is_global=False):
     """Write out the comments attached to a given font item."""
-    if comments and key in comments and comments[key]:
-        if key is not None:
+    if comments:
+        if not is_global:
             outstream.write('\n')
-        for line in comments[key]:
+        for line in comments:
             outstream.write('{} {}\n'.format(comm_char, line))
-        if key is None:
+        if is_global:
             outstream.write('\n')
 
 
@@ -190,9 +183,23 @@ def scriptable(fn):
 class Glyph:
     """Single glyph."""
 
-    def __init__(self, pixels=((),)):
+    def __init__(self, pixels=((),), comments=()):
         """Create glyph from tuple of tuples."""
         self._rows = pixels
+        self._comments = comments
+
+    def __repr__(self):
+        """Text representation."""
+        return 'Glyph(\n  {}\n)'.format('\n  '.join(self.as_text(foreground='@', background='.')))
+
+    def add_comments(self, comments):
+        """Return a copy of the glyph with added comments."""
+        return Glyph(self._rows, self._comments + tuple(comments))
+
+    @property
+    def comments(self):
+        """Extract comments."""
+        return self._comments
 
     @staticmethod
     def empty(width=0, height=0):
@@ -359,37 +366,47 @@ class Glyph:
 class Font:
     """Glyphs and metadata."""
 
-    def __init__(self, glyphs, comments=(), properties=None):
+    def __init__(self, glyphs, labels, comments=(), properties=None):
         """Create new font."""
-        self._glyphs = glyphs
+        self._glyphs = tuple(glyphs)
+        self._labels = labels
         if isinstance(comments, dict):
-            # per-key comments
+            # per-property comments
             self._comments = comments
         else:
             # global comments only
             self._comments = {None: comments}
         self._properties = properties or {}
 
+    def __iter__(self):
+        """Iterate over labels, glyph pairs."""
+        for index, glyph in enumerate(self._glyphs):
+            labels = tuple(_label for _label, _index in self._labels.items() if _index == index)
+            yield labels, glyph
+
     @property
     def max_ordinal(self):
         """Get maximum ordinal in font."""
-        ordinals = [_k for _k in self._glyphs.keys() if isinstance(_k, int)]
+        ordinals = self.ordinals
         if ordinals:
             return max(ordinals)
         return -1
 
     @property
     def ordinal_range(self):
-        """Get maximum key in font."""
+        """Get range of ordinals."""
         return range(0, self.max_ordinal + 1)
+
+    @property
+    def ordinals(self):
+        """Get tuple of defined ordinals."""
+        return tuple(_k for _k in self._labels if isinstance(_k, int) and _key != default_key)
 
     @property
     def all_ordinal(self):
         """All glyphs except the default have ordinals."""
-        default_key = self._properties.get('default-char', None)
-        return not [
-            _key for _key in self._glyphs if not isinstance(_key, int) and _key != default_key
-        ]
+        default_key = self._labels[None]
+        return set(self._labels) - set(self.ordinals) <= set([default_key])
 
     @property
     def number_glyphs(self):
@@ -399,27 +416,31 @@ class Font:
     @property
     def fixed(self):
         """Font is fixed width."""
-        sizes = set((_glyph.width, _glyph.height) for _glyph in self._glyphs.values())
+        sizes = set((_glyph.width, _glyph.height) for _glyph in self._glyphs)
         return len(sizes) <= 1
 
     @property
     def max_width(self):
         """Get maximum width."""
-        return max(_glyph.width for _glyph in self._glyphs.values())
+        return max(_glyph.width for _glyph in self._glyphs)
 
     @property
     def max_height(self):
         """Get maximum height."""
-        return max(_glyph.height for _glyph in self._glyphs.values())
+        return max(_glyph.height for _glyph in self._glyphs)
 
     def get_glyph(self, key):
         """Get glyph by key, default if not present."""
-        return glyphs.get(ordinal, self.get_default_glyph())
+        try:
+            index = self._labels[key]
+        except KeyError:
+            return self.get_default_glyph()
+        return glyphs[index]
 
     def get_default_glyph(self):
         """Get default glyph."""
-        default_key = self._properties.get('default-char', None)
         try:
+            default_key = self._labels[None]
             return glyphs[default_key]
         except KeyError:
             return Glyph.empty(self.max_width, self.max_height)
@@ -429,11 +450,11 @@ class Font:
     @scriptable
     def renumber(self, add:int=0):
         """Return a font with renumbered keys."""
-        glyphs = {
+        labels = {
             (_k + add if isinstance(_k, int) else _k): _v
-            for _k, _v in self._glyphs.items()
+            for _k, _v in self._labels.items()
         }
-        return Font(glyphs, self._comments, self._properties)
+        return Font(self._glyphs, labels, self._comments, self._properties)
 
     @scriptable
     def subrange(self, from_:int=0, to_:int=None):
@@ -444,13 +465,11 @@ class Font:
     def subset(self, keys:set=None):
         """Return a subset of the font."""
         if keys is None:
-            keys = self._glyphs.keys()
-        glyphs = {
-            _k: _v
-            for _k, _v in self._glyphs.items()
-            if _k in keys
-        }
-        return Font(glyphs, self._comments, self._properties)
+            keys = self._labels.keys()
+        labels = {_k: _v for _k, _v in self._labels.items() if _k in keys}
+        indexes = sorted(set(_v for _k, _v in self._labels.items()))
+        glyphs = [self._glyphs[i] for _i in indexes]
+        return Font(glyphs, labels, self._comments, self._properties)
 
     # inject Glyph operations into Font
 
@@ -459,10 +478,10 @@ class Font:
 
             def _modify(self, *args, operation=_func, **kwargs):
                 """Return a font with modified glyphs."""
-                glyphs = {
-                    _key: operation(_glyph, *args, **kwargs)
-                    for _key, _glyph in self._glyphs.items()
-                }
+                glyphs = [
+                    operation(_glyph, *args, **kwargs)
+                    for _glyph in self._glyphs
+                ]
                 return Font(glyphs, self._comments, self._properties)
 
             _modify.scriptable = True

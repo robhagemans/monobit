@@ -66,9 +66,9 @@ def save(typeface, outstream):
     if len(typeface._fonts) > 1:
         raise ValueError('Saving multiple fonts to .hex or not possible')
     font = typeface._fonts[0]
-    write_comments(outstream, font._comments, None, comm_char='#')
+    write_comments(outstream, font._comments[None], comm_char='#', is_global=True)
     for ordinal, char in font._glyphs.items():
-        write_comments(outstream, font._comments, ordinal, comm_char='#')
+        write_comments(outstream, char.comments, comm_char='#')
         if isinstance(ordinal, int):
             outstream.write('{:04x}:'.format(ordinal))
         else:

@@ -6,6 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import string
+from types import SimpleNamespace
 
 from .base import (
     Typeface, Font, Glyph, clean_comment, write_comments, split_global_comment
@@ -13,7 +14,7 @@ from .base import (
 
 
 _WHITESPACE = ' \t'
-_CODESTART = _WHITESPACE + string.digits + string.ascii_letters +'_'
+_CODESTART = _WHITESPACE + string.digits + string.ascii_letters + '_'
 
 # default background characters
 _ACCEPTED_BACK = "_.-"
@@ -167,15 +168,22 @@ def save_draw(typeface, outstream):
 ##############################################################################
 # read file
 
+class Cluster(SimpleNamespace):
+    """Bag of elements relating to one glyph."""
+
+def new_cluster(**kwargs):
+    return Cluster(
+        labels=[],
+        clusters=[],
+        comments=[]
+    )
+
 def _load_font(instream, back, key_format):
     """Read a plaintext font file."""
-    comments = {}
     global_comment = []
     current_comment = []
     # cluster by character
-    # assuming only one code point per glyph, for now
-    clusters = []
-    cp = None
+    elements = []
     for line in instream:
         if not line.rstrip('\r\n'):
             # preserve empty lines if they separate comments
@@ -188,40 +196,66 @@ def _load_font(instream, back, key_format):
             current_comment.append(line.rstrip('\r\n'))
         elif line[0] not in _WHITESPACE:
             # split out global comment
-            if cp is None and current_comment:
-                global_comment, current_comment = split_global_comment(current_comment)
-                global_comment = clean_comment(global_comment)
-            cp, rest = line.strip().split(':', 1)
-            comments[cp] = clean_comment(current_comment)
+            if not elements and current_comment:
+                global_comm, current_comment = split_global_comment(current_comment)
+                global_comment.extend(global_comm)
+                elements.append(new_cluster())
+            label, rest = line.strip().split(':', 1)
+            if elements[-1].clusters:
+                # we already have stuff for the last key, so this is a new one
+                elements.append(new_cluster())
+            elements[-1].comments.extend(clean_comment(current_comment))
             current_comment = []
+            elements[-1].labels.append(label)
+            # remainder of label line after : is glyph row or property value
+            rest = rest.strip()
             if rest:
-                clusters.append((cp, [rest.strip()]))
-            else:
-                clusters.append((cp, []))
+                elements[-1].clusters.append(rest)
         else:
-            clusters[-1][1].append(line.strip())
-    if not clusters and not comments and not global_comment:
+            elements[-1].clusters.append(line.strip())
+    if not elements and not global_comment:
         # no font to read, no comments to keep
         return None
     # preserve any comment at end of file
-    comments[cp] = comments.get(cp, [])
-    comments[cp].extend(clean_comment(current_comment))
+    current_comment = clean_comment(current_comment)
+    if current_comment:
+        elements.append(new_cluster())
+        elements[-1].comments = current_comment
+    # properties: anything that contains alphanumerics
+    property_elements = [
+        _el for _el in elements
+        if set(''.join(_el.clusters)) & set(string.digits + string.ascii_letters)
+    ]
+    # multiple labels translate into multiple keys with the same value
+    properties = {
+        _key: ''.join(_el.clusters)
+        for _el in property_elements
+        for _key in _el.labels
+    }
     # text version of glyphs
     # a glyph is any key/value where the value contains no alphanumerics
-    glyphs = {
-        key_format(_cluster[0]): Glyph.from_text(_cluster[1], background=back)
-        for _cluster in clusters
-        if not set(''.join(_cluster[1])) & set(string.digits + string.ascii_letters)
+    glyph_elements = [
+        _el for _el in elements
+        if not set(''.join(_el.clusters)) & set(string.digits + string.ascii_letters)
+    ]
+    labels = {
+        key_format(_lab): _index
+        for _index, _el in enumerate(glyph_elements)
+        for _lab in _el.labels
     }
-    # properties: anything that does contain alphanumerics
-    properties = {
-        _cluster[0]: ' '.join(_cluster[1])
-        for _cluster in clusters
-        if set(''.join(_cluster[1])) & set(string.digits + string.ascii_letters)
+    # convert text representation to glyph
+    glyphs = [
+        Glyph.from_text(_el.clusters, background=back).add_comments(_el.comments)
+        for _el in glyph_elements
+    ]
+    # extract property comments
+    comments = {
+        key_format(_key): _el.comments
+        for _el in property_elements
+        for _key in _el.labels
     }
-    comments = {key_format(_key): _value for _key, _value in comments.items()}
-    comments[None] = global_comment
-    return Font(glyphs, comments, properties)
+    comments[None] = clean_comment(global_comment)
+    return Font(glyphs, labels, comments, properties)
 
 
 ##############################################################################
@@ -229,10 +263,10 @@ def _load_font(instream, back, key_format):
 
 def _save_font(font, outstream, fore, back, comment, tab, key_format, key_sep):
     """Write one font to a plaintext stream."""
-    write_comments(outstream, font._comments, None, comm_char=comment)
+    write_comments(outstream, font._comments.get(None, []), comm_char=comment, is_global=True)
     if font._properties:
         for key in PROPERTIES:
-            write_comments(outstream, font._comments, key, comm_char=comment)
+            write_comments(outstream, font._comments.get(key, []), comm_char=comment)
             try:
                 value = font._properties.pop(key)
                 if value not in ('', None):
@@ -240,12 +274,14 @@ def _save_font(font, outstream, fore, back, comment, tab, key_format, key_sep):
             except KeyError:
                 pass
         for key, value in font._properties.items():
-            write_comments(outstream, font._comments, key, comm_char=comment)
+            write_comments(outstream, font._comments.get(key, []), comm_char=comment)
             if value not in ('', None):
                 outstream.write('{}: {}\n'.format(key, value))
         outstream.write('\n')
-    for ordinal, char in font._glyphs.items():
-        write_comments(outstream, font._comments, ordinal, comm_char=comment)
-        outstream.write(key_format(ordinal) + key_sep + tab)
+    for labels, char in font:
+        write_comments(outstream, char.comments, comm_char=comment)
+        for ordinal in labels:
+            outstream.write(key_format(ordinal) + key_sep)
+        outstream.write(tab)
         outstream.write(('\n' + tab).join(char.as_text(foreground=fore, background=back)))
         outstream.write('\n\n')
