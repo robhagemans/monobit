@@ -196,10 +196,11 @@ def _load_font(instream, back, key_format):
             current_comment.append(line.rstrip('\r\n'))
         elif line[0] not in _WHITESPACE:
             # split out global comment
-            if not elements and current_comment:
-                global_comm, current_comment = split_global_comment(current_comment)
-                global_comment.extend(global_comm)
+            if not elements:
                 elements.append(new_cluster())
+                if current_comment:
+                    global_comm, current_comment = split_global_comment(current_comment)
+                    global_comment.extend(global_comm)
             label, rest = line.strip().split(':', 1)
             if elements[-1].clusters:
                 # we already have stuff for the last key, so this is a new one

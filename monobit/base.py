@@ -400,12 +400,13 @@ class Font:
     @property
     def ordinals(self):
         """Get tuple of defined ordinals."""
-        return tuple(_k for _k in self._labels if isinstance(_k, int) and _key != default_key)
+        default_key = self._labels.get(None, None)
+        return tuple(_k for _k in self._labels if isinstance(_k, int) and _k != default_key)
 
     @property
     def all_ordinal(self):
         """All glyphs except the default have ordinals."""
-        default_key = self._labels[None]
+        default_key = self._labels.get(None, None)
         return set(self._labels) - set(self.ordinals) <= set([default_key])
 
     @property
@@ -435,7 +436,7 @@ class Font:
             index = self._labels[key]
         except KeyError:
             return self.get_default_glyph()
-        return glyphs[index]
+        return self._glyphs[index]
 
     def get_default_glyph(self):
         """Get default glyph."""

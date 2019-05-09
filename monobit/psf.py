@@ -5,6 +5,8 @@ monobit.psf - read and write .psf font files
 licence: https://opensource.org/licenses/MIT
 """
 
+import logging
+
 from .base import Glyph, Font, Typeface, ceildiv, Struct
 from .raw import load_aligned, save_aligned
 
@@ -69,7 +71,8 @@ def load(instream):
         encoding = 'utf-16le'
     elif magic + instream.read(2) == _PSF2_MAGIC:
         header_size = _PSF2_HEADER.size
-        psf_props = _PSF2_HEADER.to_bag(instream.read(header_size))
+        hdr = instream.read(header_size)
+        psf_props = _PSF2_HEADER.to_bag(hdr)
         charsize = psf_props.height * ceildiv(psf_props.width, 8)
         if psf_props.charsize != charsize:
             logging.warning('Ingnoring inconsistent char size in PSF header.')
@@ -83,21 +86,24 @@ def load(instream):
         encoding = 'utf-8'
     cells = load_aligned(instream, (psf_props.width, psf_props.height), psf_props.length)
     table = _read_unicode_table(instream, separator, startseq, encoding)
-    # convert unicode table to labels
-    # FIXME: deal with empty labels; include ordinal value as additional label
-    glyphs = {
-        _format_cluster(_seq, 'unnamed'): _glyph
-        for _seq, _glyph in zip(table, cells)
+    # set ordinals as labels
+    labels = {
+        _index: _index
+        for _index in range(len(cells))
     }
-    return Typeface([Font(glyphs)])
+    # convert unicode table to labels
+    labels.update({
+        _format_cluster(_seq): _index
+        for _index, _seq in enumerate(table)
+        if _seq
+    })
+    return Typeface([Font(cells, labels)])
 
-def _format_cluster(sequence, default):
-    if sequence:
-        return ','.join(
-            'u+{:04x}'.format(ord(_uc))
-            for _uc in sequence
-        )
-    return default
+def _format_cluster(sequence):
+    return ','.join(
+        'u+{:04x}'.format(ord(_uc))
+        for _uc in sequence
+    )
 
 def _read_unicode_table(instream, separator, startseq, encoding):
     """Read the Unicode table in a PSF2 file."""
@@ -112,7 +118,6 @@ def _read_unicode_table(instream, separator, startseq, encoding):
     return table
 
 
-
 @Typeface.saves('psf', encoding=None)
 def save(typeface, outstream):
     """Save font to raw byte-aligned binary (DOS font)."""
@@ -124,12 +129,39 @@ def save(typeface, outstream):
         height=font.max_height,
         charsize=font.max_height * ceildiv(font.max_width, 8),
         version=0,
-        flags=0, #_PSF2_HAS_UNICODE_TABLE,
+        flags=_PSF2_HAS_UNICODE_TABLE,
         length=font.max_ordinal + 1,
         headersize=_PSF2_HEADER.size + len(_PSF2_MAGIC)
     )
     outstream.write(_PSF2_MAGIC)
     outstream.write(_PSF2_HEADER.pack(psf_props))
     save_aligned(outstream, font)
-    ... # unicode table
+    # we need to create a dictionary of unicode keys
+    # that point to the same glyphs as ordinal keys
+    ordinal_for_index = {
+        _v: _k
+        for _k, _v in font._labels.items()
+        if isinstance(_k, int)
+    }
+    unicode_dict = {
+        ordinal_for_index[_v]: _k
+        for _k, _v in font._labels.items()
+        if _v in ordinal_for_index
+        if isinstance(_k, str) and _k.startswith('u+')
+    }
+    unicode_strings = [
+        unicode_dict.get(_i, '') for _i in font.ordinal_range
+    ]
+    unicode_seq = [
+        [chr(int(_cp[2:], 16)) for _cp in _str.split(',') if _cp]
+        for _str in unicode_strings
+    ]
+    _write_unicode_table(outstream, unicode_seq, _PSF2_SEPARATOR, _PSF2_STARTSEQ, 'utf-8')
     return typeface
+
+
+def _write_unicode_table(outstream, unicode_seq, separator, startseq, encoding):
+    """Write the Unicode table to a PSF2 file."""
+    seq = [startseq.join(_c.encode(encoding) for _c in _seq) for _seq in unicode_seq]
+    blob = separator.join(seq) + separator
+    outstream.write(blob)

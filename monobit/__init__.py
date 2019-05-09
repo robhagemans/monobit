@@ -5,6 +5,10 @@ monobit - tools for working with monochrome, monospaced bitmap fonts
 licence: https://opensource.org/licenses/MIT
 """
 
+# we need at least Python 3.6
+import sys as _sys
+assert _sys.version_info >= (3, 6)
+
 from .base import VERSION as __version__
 from .base import Typeface
 
