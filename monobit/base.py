@@ -442,7 +442,7 @@ class Font:
         """Get default glyph."""
         try:
             default_key = self._labels[None]
-            return glyphs[default_key]
+            return self._glyphs[default_key]
         except KeyError:
             return Glyph.empty(self.max_width, self.max_height)
 
@@ -469,7 +469,7 @@ class Font:
             keys = self._labels.keys()
         labels = {_k: _v for _k, _v in self._labels.items() if _k in keys}
         indexes = sorted(set(_v for _k, _v in self._labels.items()))
-        glyphs = [self._glyphs[i] for _i in indexes]
+        glyphs = [self._glyphs[_i] for _i in indexes]
         return Font(glyphs, labels, self._comments, self._properties)
 
     # inject Glyph operations into Font

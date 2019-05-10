@@ -271,7 +271,8 @@ def _read_fnt_chartable_v1(fnt, win_props):
         bytes_to_bits(fnt[offset+_row*bytewidth : offset+(_row+1)*bytewidth])
         for _row in range(height)
     )
-    glyphs = {}
+    glyphs = []
+    labels = {}
     for ord in range(n_chars):
         offset = offsets[ord]
         width = offsets[ord+1] - offset
@@ -282,15 +283,17 @@ def _read_fnt_chartable_v1(fnt, win_props):
             for _srow in strikerows
         )
         if rows:
-            glyphs[win_props['dfFirstChar'] + ord] = Glyph(rows)
-    return glyphs
+            glyphs.append(Glyph(rows))
+            labels[win_props['dfFirstChar'] + ord] = len(glyphs) - 1
+    return glyphs, labels
 
 def _read_fnt_chartable_v2(fnt, win_props):
     """Read a WinFont 2.0 or 3.0 character table."""
     ct_start = _FNT_HEADER_SIZE[win_props['dfVersion']]
     ct_header = _CT_VERSION_HEADER[win_props['dfVersion']]
     ct_size = ct_header.size
-    glyphs = {}
+    glyphs = []
+    labels = {}
     height = win_props['dfPixHeight']
     for ord in range(win_props['dfFirstChar'], win_props['dfLastChar']+1):
         entry = ct_start + ct_size * (ord-win_props['dfFirstChar'])
@@ -306,8 +309,9 @@ def _read_fnt_chartable_v2(fnt, win_props):
             for _row in range(height)
         )
         if rows:
-            glyphs[ord] = Glyph(rows)
-    return glyphs
+            glyphs.append(Glyph(rows))
+            labels[win_props['dfFirstChar'] + ord] = len(glyphs) - 1
+    return glyphs, labels
 
 def _parse_win_props(fnt, win_props):
     """Convert WinFont properties to yaff properties."""
@@ -391,8 +395,8 @@ def _read_fnt(fnt):
     """Create an internal font description from a .FNT-shaped string."""
     win_props = _read_fnt_header(fnt)
     properties = _parse_win_props(fnt, win_props)
-    glyphs = _read_fnt_chartable(fnt, win_props)
-    return Font(glyphs, comments={}, properties=properties)
+    glyphs, labels = _read_fnt_chartable(fnt, win_props)
+    return Font(glyphs, labels, comments={}, properties=properties)
 
 def _read_ne_fon(fon, neoff):
     """Finish splitting up a NE-format FON file."""

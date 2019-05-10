@@ -15,7 +15,7 @@ def load(infile, identifier, width, height):
     """Load font from a .c file."""
     payload = _get_payload(infile, identifier)
     # c bytes are python bytes, except 0777-style octal (which we therefore don't support correctly)
-    bytelist = [_int_from_c(_s, 0) for _s in payload.split(',') if _s]
+    bytelist = [_int_from_c(_s) for _s in payload.split(',') if _s]
     # split into chunks
     bytewidth = ceildiv(width, 8)
     bytesize = bytewidth * height
@@ -24,11 +24,12 @@ def load(infile, identifier, width, height):
         bytelist[_ord*bytesize:(_ord+1)*bytesize]
         for _ord in range(n_glyphs)
     ]
-    font = {
-        _key: Glyph.from_bytes(_value, width)
-        for _key, _value in enumerate(glyphbytes)
-    }
-    return Typeface([Font(font)])
+    glyphs = [
+        Glyph.from_bytes(_bytes, width)
+        for _bytes in glyphbytes
+    ]
+    labels = {_i: _i for _i in range(len(glyphs))}
+    return Typeface([Font(glyphs, labels)])
 
 
 def _int_from_c(cvalue):

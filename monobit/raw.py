@@ -7,7 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
-from .base import Glyph, Font, Typeface, ceildiv
+from .base import Glyph, Font, Typeface, ceildiv, bytes_to_bits
 
 
 @Typeface.loads('dos', 'bin', 'rom', 'raw', encoding=None)
@@ -57,11 +57,11 @@ def load_strike(instream, cell, n_chars):
     rombytes = instream.read(strike_bytes * height)
     # flatten strikes
     rows = [
-        rows[_strike*strike_bytes : (_strike+1)*strike_bytes]
+        rombytes[_strike*strike_bytes : (_strike+1)*strike_bytes]
         for _strike in range(height)
     ]
     # convert to bits
-    drawn = [bytes_to_bits(_row) for _row in _rows]
+    drawn = [bytes_to_bits(_row) for _row in rows]
     # clip out glyphs
     cells = [
         [_strike[_n*width:(_n+1)*width] for _strike in drawn]

@@ -54,7 +54,7 @@ def load(infile, cell=(8, 8), margin=(0, 0), padding=(0, 0), scale=(1, 1)):
         for _cell in crops
     )
     # reshape cells
-    crops = [
+    glyphs = [
         Glyph(tuple(
             _cell[_offs: _offs+width]
             for _offs in range(0, len(_cell), width)
@@ -62,7 +62,8 @@ def load(infile, cell=(8, 8), margin=(0, 0), padding=(0, 0), scale=(1, 1)):
         for _cell in crops
     ]
     # set code points
-    return Typeface([Font(enumerate(crops))])
+    labels = {_i: _i for _i in range(len(glyphs))}
+    return Typeface([Font(glyphs, labels)])
 
 
 def _to_image(

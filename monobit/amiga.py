@@ -108,8 +108,8 @@ def load(f):
     hunk_id = _read_ulong(f)
     if hunk_id != _HUNK_CODE:
         raise ValueError('Not an Amiga font data file: no code hunk found (id %04x)' % hunk_id)
-    glyphs, props = _read_font_hunk(f)
-    return Typeface([Font(glyphs, properties=props)])
+    glyphs, labels, props = _read_font_hunk(f)
+    return Typeface([Font(glyphs, labels, properties=props)])
 
 
 class _FileUnpacker:
@@ -164,7 +164,7 @@ def _read_font_hunk(f):
     loc = f.tell() + 4
     amiga_props = _AMIGA_HEADER.to_dict(f.read(_AMIGA_HEADER.size))
     # read character data
-    glyphs, min_kern = _read_strike(
+    glyphs, labels, min_kern = _read_strike(
         f, amiga_props['tf_XSize'], amiga_props['tf_YSize'],
         amiga_props['tf_Flags'] & _FPF_PROPORTIONAL,
         amiga_props['tf_Modulo'], amiga_props['tf_LoChar'], amiga_props['tf_HiChar'],
@@ -176,7 +176,7 @@ def _read_font_hunk(f):
     # the file name tends to be the name as given in the .font anyway
     if 'name' not in props:
         props['name'] = props['source-name']
-    return glyphs, props
+    return glyphs, labels, props
 
 def _parse_amiga_props(amiga_props, min_kern):
     """Convert AmigaFont properties into yaff properties."""
@@ -280,13 +280,13 @@ def _read_strike(
     min_kern = min(kerning)
     if min_kern < 0:
         kerning = (_kern - min_kern for _kern in kerning)
-    font = [
+    glyphs = [
         Glyph(tuple((False,) * _kern + _row + (False,) * (_width-_kern-len(_row)) for _row in _char))
         for _char, _width, _kern in zip(font, spacing, kerning)
     ]
-    glyphs = dict(enumerate(font, lochar))
     # default glyph doesn't have an encoding value
-    default = max(glyphs)
-    glyphs['default'] = glyphs[default]
-    del glyphs[default]
-    return glyphs, min_kern
+    labels = {
+        _i + lochar: _i for _i in range(len(glyphs)-1)
+    }
+    labels['default'] = max(glyphs)
+    return glyphs, labels, min_kern
