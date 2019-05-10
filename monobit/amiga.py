@@ -9,7 +9,7 @@ import os
 import struct
 import logging
 
-from .base import VERSION, Glyph, Font, Typeface, Struct, bytes_to_bits
+from .base import VERSION, Glyph, Font, Typeface, friendlystruct, bytes_to_bits
 
 
 # amiga header constants
@@ -56,7 +56,7 @@ _FSF_COLORFONT = 0x40
 _FSF_TAGGED = 0x80
 
 # disk font header
-_AMIGA_HEADER = Struct(
+_AMIGA_HEADER = friendlystruct(
     '>',
     # struct DiskFontHeader
     # http://amigadev.elowar.com/read/ADCD_2.1/Libraries_Manual_guide/node05F9.html#line61
@@ -162,7 +162,7 @@ def _read_header(f):
 def _read_font_hunk(f):
     """Parse the font data blob."""
     loc = f.tell() + 4
-    amiga_props = _AMIGA_HEADER.to_dict(f.read(_AMIGA_HEADER.size))
+    amiga_props = _AMIGA_HEADER.read_from(f)
     # read character data
     glyphs, labels, min_kern = _read_strike(
         f, amiga_props['tf_XSize'], amiga_props['tf_YSize'],
@@ -288,5 +288,5 @@ def _read_strike(
     labels = {
         _i + lochar: _i for _i in range(len(glyphs)-1)
     }
-    labels['default'] = max(glyphs)
+    labels['default'] = len(glyphs) - 1
     return glyphs, labels, min_kern

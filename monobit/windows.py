@@ -34,7 +34,7 @@ import struct
 import logging
 
 from .base import (
-    VERSION, Glyph, Font, Typeface, Struct,
+    VERSION, Glyph, Font, Typeface, friendlystruct,
     bytes_to_bits, ceildiv, bytes_to_str
 )
 
@@ -150,7 +150,7 @@ _DFF_ABC = _DFF_ABCFIXED | _DFF_ABCPROPORTIONAL
 
 
 # FNT header, common to v1.0, v2.0, v3.0
-_FNT_HEADER = Struct(
+_FNT_HEADER = friendlystruct(
     '<',
     dfVersion='H',
     dfSize='L',
@@ -184,9 +184,9 @@ _FNT_HEADER = Struct(
 )
 
 # version-specific header extensions
-_FNT_HEADER_1 = Struct('<')
-_FNT_HEADER_2 = Struct('<', dfReserved='B')
-_FNT_HEADER_3 = Struct(
+_FNT_HEADER_1 = friendlystruct('<')
+_FNT_HEADER_2 = friendlystruct('<', dfReserved='B')
+_FNT_HEADER_3 = friendlystruct(
     '<',
     dfReserved='B',
     dfFlags='L',
@@ -209,16 +209,16 @@ _FNT_HEADER_SIZE = {
 }
 
 # char table header
-_CT_HEADER_1 = Struct(
+_CT_HEADER_1 = friendlystruct(
     '<',
     offset='H',
 )
-_CT_HEADER_2 = Struct(
+_CT_HEADER_2 = friendlystruct(
     '<',
     width='H',
     offset='H',
 )
-_CT_HEADER_3 = Struct(
+_CT_HEADER_3 = friendlystruct(
     '<',
     width='H',
     offset='L',
@@ -235,10 +235,10 @@ def unpack(format, buffer, offset):
 
 def _read_fnt_header(fnt):
     """Read the header information in the FNT resource."""
-    win_props = _FNT_HEADER.to_dict(fnt)
-    version = win_props['dfVersion']
+    win_props = _FNT_HEADER.from_bytes(fnt)
+    version = win_props.dfVersion
     header_ext = _FNT_VERSION_HEADER[version]
-    win_props.update(header_ext.to_dict(fnt, offset=_FNT_HEADER.size))
+    win_props += header_ext.from_bytes(fnt, offset=_FNT_HEADER.size)
     return win_props
 
 
@@ -256,7 +256,7 @@ def _read_fnt_chartable_v1(fnt, win_props):
         ct_start = _FNT_HEADER_SIZE[0x100]
         ct_size = _CT_HEADER_1.size
         offsets = [
-            _CT_HEADER_1.unpack(fnt, ct_start + _ord * ct_size)[0]
+            _CT_HEADER_1.from_bytes(fnt, offset=ct_start + _ord * ct_size)[0]
             for _ord in range(n_chars+1)
         ]
     else:
@@ -298,7 +298,7 @@ def _read_fnt_chartable_v2(fnt, win_props):
     height = win_props['dfPixHeight']
     for ord in range(win_props['dfFirstChar'], win_props['dfLastChar']+1):
         entry = ct_start + ct_size * (ord-win_props['dfFirstChar'])
-        width, offset = ct_header.unpack(fnt, entry)
+        width, offset = ct_header.from_bytes(fnt, offset=entry)
         if not width:
             continue
         bytewidth = ceildiv(width, 8)
@@ -344,7 +344,7 @@ def _parse_win_props(fnt, win_props):
     if bool(win_props['dfPitchAndFamily'] & 1) != properties['spacing'] == 'proportional':
         logging.warning('inconsistent spacing properties.')
     if win_props['dfHorizRes'] != win_props['dfVertRes']:
-        properties['dpi'] = '{dfHorizRes} {dfVertRes}'.format(**win_props)
+        properties['dpi'] = '{} {}'.format(win_props.dfHorizRes, win_props.dfVertRes)
     else:
         properties['dpi'] = win_props['dfHorizRes']
     deco = []

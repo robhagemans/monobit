@@ -79,50 +79,133 @@ class Bag(SimpleNamespace):
         return self
 
 
-class Struct:
-    """Binary struct factory."""
+def friendlystruct(_endian, **description):
+    """A slightly less clunky interface to struct."""
 
-    def __init__(self, _endian, **description):
-        """Create struct type."""
-        # requires Python 3.6 - preserve dict order
-        desc = OrderedDict(**description)
-        self._fields = desc.keys()
-        self._format = _endian + ''.join(desc.values())
-        self._namedtuple = namedtuple('Record', self._fields)
 
-    @property
-    def size(self):
-        """Blob size."""
-        return struct.calcsize(self._format)
+    class Struct:
+        """Struct with binary representation."""
 
-    def unpack(self, blob, offset=0):
-        """Unpack binary blob to namedtuple."""
-        return self._namedtuple(*struct.unpack_from(self._format, blob, offset))
+        # this requires Python 3.6+ - assumes preservation of dict and kwarg order
+        _description = OrderedDict(**description)
+        _keys = _description.keys()
+        _format = _endian + ''.join(_description.values())
+        _namedtuple = namedtuple('Record', _description.keys())
+        size = struct.calcsize(_format)
 
-    def to_dict(self, blob, offset=0):
-        """Unpack binary blob to dict."""
-        return self.unpack(blob, offset)._asdict()
+        def __init__(self, *args, **kwargs):
+            """Create struct."""
+            if args:
+                self._data = self._namedtuple(*args)._asdict()
+            else:
+                self._data = {}
+            self._data.update(**kwargs)
 
-    def to_bag(self, blob, offset=0):
-        """Unpack binary blob to namespace."""
-        return Bag(**self.to_dict(blob, offset))
+        def __repr__(self):
+            """String representation."""
+            return 'Struct({})'.format(', '.join(
+                '{}={}'.format(*_item)
+                for _item in self._iteritems()
+            ))
 
-    def pack(self, data):
-        """Pack tuple/namedtuple/dict into blob."""
-        try:
-            # try dict expansion first, as a dict is also a sequence
-            tup = self._namedtuple(**data)
-            return struct.pack(self._format, *tup)
-        except TypeError:
-            pass
-        # sequences: tuples/lists/namedtuples
-        try:
-            return struct.pack(self._format, *data)
-        except TypeError:
-            pass
-        # namespace oject?
-        tup = self._namedtuple(**data.__dict__)
-        return struct.pack(self._format, *tup)
+        @property
+        def __dict__(self):
+            """Dict representation."""
+            return self._data
+
+        def __bytes__(self):
+            """Bytes representation of core struct - missing or extra values not allowed."""
+            return struct.pack(self._format, *self._namedtuple(**self._data))
+
+        def __len__(self):
+            """Number of elements."""
+            return len(self._data)
+
+        def __iter__(self):
+            """Iterate over all values, starting with core tuple"""
+            for key in self._keys:
+                yield self._data[key]
+            for key in self._data:
+                if key not in self._keys:
+                    yield self._data[key]
+
+        def _iteritems(self):
+            """Iterate over all key-value pairs, starting with core tuple"""
+            for key in self._keys:
+                yield key, self._data[key]
+            for key in self._data:
+                if key not in self._keys:
+                    yield key, self._data[key]
+
+        def __getattribute__(self, attr):
+            """Retrive a value from the struct."""
+            if not attr.startswith('_'):
+                return object.__getattribute__(self, '_data')[attr]
+            return object.__getattribute__(self, attr)
+
+        def __setattr__(self, attr, value):
+            """Set a value in the struct."""
+            if not attr.startswith('_'):
+                #FIXME: enforce struct order
+                object.__getattribute__(self, '_data')[attr] = value
+            else:
+                object.__setattr__(self, attr, value)
+
+        def __delattr__(self, attr):
+            """Deleyte an entry in the struct."""
+            if not attr.startswith('_'):
+                del object.__getattribute__(self, '_data')[attr]
+            else:
+                object.__delattr__(self, attr)
+
+        def __getitem__(self, key):
+            """Retrieve item by key or tuple index."""
+            try:
+                return list(self._data.values())[key]
+            except TypeError:
+                return self._data[key]
+
+        def __setitem__(self, key, value):
+            """Set item by key or tuple index. Only the core struct items have tuple indices."""
+            try:
+                key = list(self._data.keys())[key]
+            except TypeError:
+                pass
+            self._data[key] = value
+
+        def __delitem__(self, key):
+            """Delete item by key or tuple index. Only the core struct items have tuple indices."""
+            try:
+                key = list(self._data.keys())[key]
+            except TypeError:
+                pass
+            del self._data[key]
+
+        def __add__(self, other):
+            """Concatenate with another struct."""
+            if other._format[0] != self._format[0]:
+                raise TypeError("Can't concatenate structs with different byte order.")
+            added_type = friendlystruct(self._format[0], **self._description, **other._description)
+            return added_type(**self.__dict__, **other.__dict__)
+
+        # note that we override getattribute/setattr for this to work like a namespace
+        # - it is not possible to call static/class methods on instances
+        # unless they start with _
+        # this also means we can't use ** as this requires a .keys function on the instance
+        # which collides with our bag namespace
+
+        @classmethod
+        def from_bytes(cls, blob, offset=0):
+            """Unpack binary blob."""
+            return cls(*cls._namedtuple(*struct.unpack_from(cls._format, blob, offset)))
+
+        @classmethod
+        def read_from(cls, stream):
+            """Read blob from stream and unpack."""
+            blob = stream.read(cls.size)
+            return cls.from_bytes(blob)
+
+    return Struct
 
 
 

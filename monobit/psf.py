@@ -7,7 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
-from .base import Glyph, Font, Typeface, ceildiv, Struct
+from .base import Glyph, Font, Typeface, ceildiv, friendlystruct
 from .raw import load_aligned, save_aligned
 
 
@@ -16,7 +16,7 @@ from .raw import load_aligned, save_aligned
 
 # PSF1 header
 _PSF1_MAGIC = b'\x36\x04'
-_PSF1_HEADER = Struct(
+_PSF1_HEADER = friendlystruct(
     '<',
     mode='B',
     charsize='B',
@@ -33,7 +33,7 @@ _PSF1_STARTSEQ =  b'\xFF\xFE'
 
 # PSF2 header
 _PSF2_MAGIC = b'\x72\xb5\x4a\x86'
-_PSF2_HEADER = Struct(
+_PSF2_HEADER = friendlystruct(
     '<',
     version='L',
     headersize='L',
@@ -60,26 +60,23 @@ def load(instream):
     """Load font from raw binary."""
     magic = instream.read(2)
     if magic == _PSF1_MAGIC:
-        header_size = _PSF1_HEADER.size
-        psf_props = _PSF1_HEADER.to_bag(instream.read(header_size))
+        psf_props = _PSF1_HEADER.read_from(instream)
         psf_props.width, psf_props.height = 8, psf_props.charsize
-        psf_props.headersize = header_size + len(_PSF1_MAGIC)
+        psf_props.headersize =  _PSF1_HEADER.size + len(_PSF1_MAGIC)
         psf_props.length = 512 if (psf_props.mode & _PSF1_MODE512) else 256
         psf_props.has_unicode_table = bool(psf_props.mode & _PSF1_MODEHASTAB)
         separator = _PSF1_SEPARATOR
         startseq = _PSF1_STARTSEQ
         encoding = 'utf-16le'
     elif magic + instream.read(2) == _PSF2_MAGIC:
-        header_size = _PSF2_HEADER.size
-        hdr = instream.read(header_size)
-        psf_props = _PSF2_HEADER.to_bag(hdr)
+        psf_props = _PSF2_HEADER.read_from(instream)
         charsize = psf_props.height * ceildiv(psf_props.width, 8)
         if psf_props.charsize != charsize:
             logging.warning('Ingnoring inconsistent char size in PSF header.')
             psf_props.charsize = charsize
         psf_props.has_unicode_table = bool(psf_props.flags & _PSF2_HAS_UNICODE_TABLE)
         # ignore any padding after header
-        padding = psf_props.headersize - (header_size + len(_PSF2_MAGIC))
+        padding = psf_props.headersize - (_PSF2_HEADER.size + len(_PSF2_MAGIC))
         instream.read(padding)
         separator = _PSF2_SEPARATOR
         startseq = _PSF2_STARTSEQ
@@ -134,7 +131,7 @@ def save(typeface, outstream):
         headersize=_PSF2_HEADER.size + len(_PSF2_MAGIC)
     )
     outstream.write(_PSF2_MAGIC)
-    outstream.write(_PSF2_HEADER.pack(psf_props))
+    outstream.write(bytes(_PSF2_HEADER(**psf_props)))
     save_aligned(outstream, font)
     # we need to create a dictionary of unicode keys
     # that point to the same glyphs as ordinal keys
