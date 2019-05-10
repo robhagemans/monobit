@@ -62,8 +62,7 @@ def load(infile, cell=(8, 8), margin=(0, 0), padding=(0, 0), scale=(1, 1)):
         for _cell in crops
     ]
     # set code points
-    labels = {_i: _i for _i in range(len(glyphs))}
-    return Typeface([Font(glyphs, labels)])
+    return Typeface([Font(glyphs)])
 
 
 def _to_image(

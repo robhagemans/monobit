@@ -282,6 +282,7 @@ def _read_fnt_chartable_v1(fnt, win_props):
             _srow[offset:offset+width]
             for _srow in strikerows
         )
+        # don't store empty glyphs but count them for ordinals
         if rows:
             glyphs.append(Glyph(rows))
             labels[win_props['dfFirstChar'] + ord] = len(glyphs) - 1
@@ -308,6 +309,7 @@ def _read_fnt_chartable_v2(fnt, win_props):
             )
             for _row in range(height)
         )
+        # don't store empty glyphs but count them for ordinals
         if rows:
             glyphs.append(Glyph(rows))
             labels[win_props['dfFirstChar'] + ord] = len(glyphs) - 1

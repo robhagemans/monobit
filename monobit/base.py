@@ -185,12 +185,14 @@ class Glyph:
 
     def __init__(self, pixels=((),), comments=()):
         """Create glyph from tuple of tuples."""
-        self._rows = pixels
+        self._rows = tuple(tuple(_row) for _row in pixels)
         self._comments = comments
 
     def __repr__(self):
         """Text representation."""
-        return 'Glyph(\n  {}\n)'.format('\n  '.join(self.as_text(foreground='@', background='.')))
+        return "Glyph(\n  '{}'\n)".format(
+            "'\n  '".join(self.as_text(foreground='@', background='.'))
+        )
 
     def add_comments(self, comments):
         """Return a copy of the glyph with added comments."""
@@ -366,9 +368,11 @@ class Glyph:
 class Font:
     """Glyphs and metadata."""
 
-    def __init__(self, glyphs, labels, comments=(), properties=None):
+    def __init__(self, glyphs, labels=None, comments=(), properties=None):
         """Create new font."""
         self._glyphs = tuple(glyphs)
+        if not labels:
+            labels = {_i: _i for _i in range(len(glyphs))}
         self._labels = labels
         if isinstance(comments, dict):
             # per-property comments

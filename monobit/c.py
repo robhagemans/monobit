@@ -28,8 +28,7 @@ def load(infile, identifier, width, height):
         Glyph.from_bytes(_bytes, width)
         for _bytes in glyphbytes
     ]
-    labels = {_i: _i for _i in range(len(glyphs))}
-    return Typeface([Font(glyphs, labels)])
+    return Typeface([Font(glyphs)])
 
 
 def _int_from_c(cvalue):

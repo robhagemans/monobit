@@ -20,8 +20,7 @@ def load(instream, cell=(8, 8), n_chars=None, offset=0, strike=False):
         cells = load_strike(instream, cell, n_chars)
     else:
         cells = load_aligned(instream, cell, n_chars)
-    labels = {_i: _i for _i in range(len(cells))}
-    return Typeface([Font(cells, labels)])
+    return Typeface([Font(cells)])
 
 
 @Typeface.saves('dos', 'bin', 'rom', 'raw', encoding=None)
