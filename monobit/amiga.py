@@ -161,15 +161,19 @@ def _read_header(f):
 
 def _read_font_hunk(f):
     """Parse the font data blob."""
-    loc = f.tell() + 4
+    #loc = f.tell() + 4
     amiga_props = _AMIGA_HEADER.read_from(f)
+    # the reference point for locations in the hunk is just after the ReturnCode
+    loc = - _AMIGA_HEADER.size + 4
+    # remainder is the font strike
+    data = f.read()
     # read character data
     glyphs, labels, min_kern = _read_strike(
-        f, amiga_props['tf_XSize'], amiga_props['tf_YSize'],
-        amiga_props['tf_Flags'] & _FPF_PROPORTIONAL,
-        amiga_props['tf_Modulo'], amiga_props['tf_LoChar'], amiga_props['tf_HiChar'],
-        amiga_props['tf_CharData']+loc, amiga_props['tf_CharLoc']+loc,
-        amiga_props['tf_CharSpace']+loc, amiga_props['tf_CharKern']+loc
+        data, amiga_props.tf_XSize, amiga_props.tf_YSize,
+        amiga_props.tf_Flags & _FPF_PROPORTIONAL,
+        amiga_props.tf_Modulo, amiga_props.tf_LoChar, amiga_props.tf_HiChar,
+        amiga_props.tf_CharData + loc, amiga_props.tf_CharLoc + loc,
+        amiga_props.tf_CharSpace + loc, amiga_props.tf_CharKern + loc
     )
     props = _parse_amiga_props(amiga_props, min_kern)
     props['source-name'] = '/'.join(f.name.split(os.sep)[-2:])
@@ -231,29 +235,32 @@ def _parse_amiga_props(amiga_props, min_kern):
     return props
 
 def _read_strike(
-        f, xsize, ysize, proportional, modulo, lochar, hichar,
+        data, xsize, ysize, proportional, modulo, lochar, hichar,
         pos_chardata, pos_charloc, pos_charspace, pos_charkern
     ):
     """Read and interpret the font strike and related tables."""
-    reader = _FileUnpacker(f)
-    # char data
-    f.seek(pos_chardata, 0)
     rows = [
-        bytes_to_bits(reader.read(modulo))
-        for _ in range(ysize)
+        bytes_to_bits(data[pos_chardata + _item*modulo : pos_chardata + (_item+1)*+modulo])
+        for _item in range(ysize)
     ]
     # location data
-    f.seek(pos_charloc, 0)
     nchars = hichar - lochar + 1 + 1 # one additional glyph at end for undefined chars
-    locs = [reader.unpack('>HH') for  _ in range(nchars)]
+    loc_struct = friendlystruct('>', offset='H', width='H')
+    locs = [
+        loc_struct.from_bytes(data, offset=pos_charloc+_i*loc_struct.size)
+        for _i in range(nchars)
+    ]
     font = [
-        [_row[_offs: _offs+_width] for _row in rows]
-        for _offs, _width in locs
+        [_row[_loc.offset: _loc.offset+_loc.width] for _row in rows]
+        for _loc in locs
     ]
     # spacing data, can be negative
     if proportional:
-        f.seek(pos_charspace, 0)
-        spacing = reader.unpack('>%dh' % (nchars,))
+        spc_struct = friendlystruct('>', space='h')
+        spacing = [
+            spc_struct.from_bytes(data, offset=pos_charspace+_i*spc_struct.size).space
+            for _i in range(nchars)
+        ]
         # apply spacing
         for i, sp in enumerate(spacing):
             if sp < 0:
@@ -266,9 +273,11 @@ def _read_strike(
         spacing = (xsize,) * len(font)
     if pos_charkern is not None:
         # kerning data, can be negative
-        f.seek(pos_charkern, 0)
-        kerning = reader.unpack('>%dh' % (nchars,))
-
+        kern_struct = friendlystruct('>', kern='h')
+        kerning = [
+            kern_struct.from_bytes(data, offset=pos_charkern+_i*kern_struct.size).kern
+            for _i in range(nchars)
+        ]
         for i, sp in enumerate(kerning):
             if abs(sp) > xsize*2:
                 logging.error('very high values in kerning table')
