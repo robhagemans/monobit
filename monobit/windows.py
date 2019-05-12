@@ -39,50 +39,51 @@ from .base import (
 )
 
 
- # https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-wmf/0d0b32ac-a836-4bd2-a112-b6000a1b4fc9
- # typedef  enum
- # {
- #   ANSI_CHARSET = 0x00000000,
- #   DEFAULT_CHARSET = 0x00000001,
- #   SYMBOL_CHARSET = 0x00000002,
- #   MAC_CHARSET = 0x0000004D,
- #   SHIFTJIS_CHARSET = 0x00000080,
- #   HANGUL_CHARSET = 0x00000081,
- #   JOHAB_CHARSET = 0x00000082,
- #   GB2312_CHARSET = 0x00000086,
- #   CHINESEBIG5_CHARSET = 0x00000088,
- #   GREEK_CHARSET = 0x000000A1,
- #   TURKISH_CHARSET = 0x000000A2,
- #   VIETNAMESE_CHARSET = 0x000000A3,
- #   HEBREW_CHARSET = 0x000000B1,
- #   ARABIC_CHARSET = 0x000000B2,
- #   BALTIC_CHARSET = 0x000000BA,
- #   RUSSIAN_CHARSET = 0x000000CC,
- #   THAI_CHARSET = 0x000000DE,
- #   EASTEUROPE_CHARSET = 0x000000EE,
- #   OEM_CHARSET = 0x000000FF
- # } CharacterSet;
+##############################################################################
+# windows .FON and .FNT format definitions
 
-# this is a guess, I can't find a more precise definition
+
+# https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-wmf/0d0b32ac-a836-4bd2-a112-b6000a1b4fc9
+# most of this is a guess, I can't find a more precise definition
 _CHARSET_MAP = {
-    0x00: 'windows-1252', # 'ANSI' - maybe 'iso-8859-1' but I think Windows would use this instead
-    0x01: 'windows-1252', # locale dependent :/ ??
-    0x02: 'symbol', # don't think this is defined
+    # ANSI_CHARSET = 0x00000000 - maybe 'iso-8859-1' but I think Windows would use this instead
+    0x00: 'windows-1252',
+    # DEFAULT_CHARSET = 0x00000001 - locale dependent :/ ??
+    0x01: 'windows-1252',
+    # SYMBOL_CHARSET = 0x00000002
+    0x02: 'symbol',
+    # MAC_CHARSET = 0x0000004D
     0x4d: 'mac-roman',
-    0x80: 'windows-932', # shift-jis, but MS probably mean their own extension?
-    0x81: 'windows-949', # hangul, assuming euc-kr
+    # SHIFTJIS_CHARSET = 0x00000080 - MS probably mean their own Shift-JIS extension?
+    0x80: 'windows-932',
+    # HANGUL_CHARSET = 0x00000081 - assuming euc-kr
+    0x81: 'windows-949',
+    # JOHAB_CHARSET = 0x00000082
     0x82: 'johab',
-    0x86: 'windows-936', # gb2312
-    0x88: 'windows-950', # big5
-    0xa1: 'windows-1253', # greek
-    0xa2: 'windows-1254', # turkish
-    0xa3: 'windows-1258', # vietnamese
-    0xb1: 'windows-1255', # hebrew
-    0xb2: 'windows-1256', # arabic
-    0xba: 'windows-1257', # baltic
-    0xcc: 'windows-1251', # russian
-    0xee: 'windows-1250', # eastern europe
-    0xff: 'cp437', # 'OEM' - but also "the IBM PC hardware font" as per windows 1.03 sdk docs
+    # GB2312_CHARSET = 0x00000086,
+    0x86: 'windows-936',
+    # CHINESEBIG5_CHARSET = 0x00000088
+    0x88: 'windows-950',
+    # GREEK_CHARSET = 0x000000A1
+    0xa1: 'windows-1253',
+    # TURKISH_CHARSET = 0x000000A2
+    0xa2: 'windows-1254',
+    # VIETNAMESE_CHARSET = 0x000000A3
+    0xa3: 'windows-1258',
+    # HEBREW_CHARSET = 0x000000B1
+    0xb1: 'windows-1255',
+    # ARABIC_CHARSET = 0x000000B2
+    0xb2: 'windows-1256',
+    # BALTIC_CHARSET = 0x000000BA
+    0xba: 'windows-1257',
+    # RUSSIAN_CHARSET = 0x000000CC
+    0xcc: 'windows-1251',
+    # THAI_CHARSET = 0x000000DE
+    0xde: 'windows-874',
+    # EASTEUROPE_CHARSET = 0x000000EE
+    0xee: 'windows-1250',
+    # OEM_CHARSET = 0x000000FF - also "the IBM PC hardware font" as per windows 1.03 sdk docs
+    0xff: 'cp437',
 }
 
 # https://web.archive.org/web/20120215123301/http://support.microsoft.com/kb/65123
@@ -227,6 +228,28 @@ _CT_VERSION_HEADER = {
     0x200: _CT_HEADER_2,
     0x300: _CT_HEADER_3,
 }
+
+
+##############################################################################
+# top level functions
+
+@Typeface.loads('fnt', 'fon', encoding=None)
+def load(instream):
+    """Load a Windows .FON or .FNT file."""
+    data = instream.read()
+    name = instream.name
+    # determine if a file is a .FON or a .FNT format font
+    if data[0:2] == b'MZ':
+        fonts = _read_fon(data)
+    else:
+        fonts = [_read_fnt(data)]
+    for font in fonts:
+        font._properties['source-name'] = os.path.basename(name)
+    return Typeface(fonts)
+
+
+##############################################################################
+# windows font reader and parser
 
 def unpack(format, buffer, offset):
     """Unpack a single value from bytes."""
@@ -400,6 +423,7 @@ def _read_fnt(fnt):
     glyphs, labels = _read_fnt_chartable(fnt, win_props)
     return Font(glyphs, labels, comments={}, properties=properties)
 
+
 def _read_ne_fon(fon, neoff):
     """Finish splitting up a NE-format FON file."""
     ret = []
@@ -510,16 +534,6 @@ def _read_fon(fon):
         raise ValueError('NE or PE signature not found')
 
 
-@Typeface.loads('fnt', 'fon', encoding=None)
-def load(instream):
-    """Load a Windows .FON or .FNT file."""
-    data = instream.read()
-    name = instream.name
-    # determine if a file is a .FON or a .FNT format font
-    if data[0:2] == b'MZ':
-        fonts = _read_fon(data)
-    else:
-        fonts = [_read_fnt(data)]
-    for font in fonts:
-        font._properties['source-name'] = os.path.basename(name)
-    return Typeface(fonts)
+
+##############################################################################
+# windows font writer
