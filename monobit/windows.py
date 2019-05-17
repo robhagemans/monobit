@@ -249,7 +249,7 @@ def load(instream):
 
 
 ##############################################################################
-# windows font reader and parser
+# windows .FNT resource reader and parser
 
 def unpack(format, buffer, offset):
     """Unpack a single value from bytes."""
@@ -362,6 +362,7 @@ def _parse_win_props(fnt, win_props):
     else:
         properties['spacing'] = 'proportional'
         properties['size'] = win_props['dfPixHeight']
+        # this can all be extracted from the font - drop if consistent?
         properties['x-width'] = win_props['dfAvgWidth']
     # check prop/fixed flag
     if bool(win_props['dfPitchAndFamily'] & 1) != properties['spacing'] == 'proportional':
@@ -389,8 +390,7 @@ def _parse_win_props(fnt, win_props):
     properties['style'] = _STYLE_MAP[win_props['dfPitchAndFamily'] >> 4]
     properties['space-char'] = '0x{:x}'.format(win_props['dfFirstChar'] + win_props['dfBreakChar'])
     # append unparsed properties
-    # TODO: parse these
-    properties['_DeviceName'] = bytes_to_str(fnt[win_props['dfDevice']:])
+    properties['device-name'] = bytes_to_str(fnt[win_props['dfDevice']:])
     # dfMaxWidth - but this can be calculated from the matrices
     if version == 0x300:
         if win_props['dfFlags'] & _DFF_COLORFONT:
@@ -423,6 +423,9 @@ def _read_fnt(fnt):
     glyphs, labels = _read_fnt_chartable(fnt, win_props)
     return Font(glyphs, labels, comments={}, properties=properties)
 
+
+##############################################################################
+# .FON (NE/PE executable) file reader
 
 def _read_ne_fon(fon, neoff):
     """Finish splitting up a NE-format FON file."""

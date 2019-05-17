@@ -98,7 +98,7 @@ PROPERTIES = [
     'style', # serif, sans, etc.
     'decoration', # underline, strikethrough, etc.
     'spacing', # proportional, monospace, cell
-    'x-width', # width of lowercase x (in proportional font)
+    'x-width', # ink width of lowercase x (in proportional font)
 
     # positioning relative to origin:
     'direction', # left-to-right, right-to-left
