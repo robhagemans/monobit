@@ -12,7 +12,8 @@ assert _sys.version_info >= (3, 6)
 from .base import VERSION as __version__
 from .base import Typeface
 
-from . import windows
+from . import winfon
+from . import winfnt
 from . import amiga
 from . import image
 from . import text
