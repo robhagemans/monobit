@@ -28,9 +28,7 @@ SOFTWARE.
 """
 
 import os
-import sys
 import string
-import struct
 import logging
 import itertools
 
@@ -110,7 +108,6 @@ _CHARSET_MAP = {
 # FW_ULTRABOLD	800
 # FW_HEAVY	900
 # FW_BLACK	900
-#
 _WEIGHT_MAP = {
     0: '', # undefined/unknown
     100: 'thin', # bdf 'ultra-light' is windows' 'thin'
@@ -127,13 +124,25 @@ _WEIGHT_MAP = {
 # pitch and family
 # low bit: 1 - proportional 0 - monospace
 # upper bits: family (like bdf add_style_name)
+#
+# Don't care or don't know.
+_FF_DONTCARE = 0<<4
+# Proportionally spaced fonts with serifs.
+_FF_ROMAN = 1<<4
+# Proportionally spaced fonts without serifs.
+_FF_SWISS = 2<<4
+# Fixed-pitch fonts.
+_FF_MODERN = 3<<4
+_FF_SCRIPT = 4<<4
+_FF_DECORATIVE = 5<<4
+# map to yaff styles
 _STYLE_MAP = {
-    0: '', #FF_DONTCARE (0<<4)   Don't care or don't know.
-    1: 'serif', # FF_ROMAN (1<<4)      Proportionally spaced fonts with serifs.
-    2: 'sans serif', # FF_SWISS (2<<4)      Proportionally spaced fonts without serifs.
-    3: '', # FF_MODERN (3<<4)     Fixed-pitch fonts. - but this is covered by `spacing`?
-    4: 'script', # FF_SCRIPT (4<<4)
-    5: 'decorated', # FF_DECORATIVE (5<<4)
+    _FF_DONTCARE: '',
+    _FF_ROMAN: 'serif',
+    _FF_SWISS: 'sans serif',
+    _FF_MODERN: 'modern',
+    _FF_SCRIPT: 'script',
+    _FF_DECORATIVE: 'decorated',
 }
 
 # dfFlags
@@ -197,19 +206,19 @@ _FNT_HEADER = friendlystruct(
 )
 
 # version-specific header extensions
-_FNT_HEADER_1 = friendlystruct('<')
-_FNT_HEADER_2 = friendlystruct('<', dfReserved='B')
+_FNT_HEADER_1 = friendlystruct('le')
+_FNT_HEADER_2 = friendlystruct('le', dfReserved='byte')
 _FNT_HEADER_3 = friendlystruct(
-    '<',
-    dfReserved='B',
-    dfFlags='L',
-    dfAspace='H',
-    dfBspace='H',
-    dfCspace='H',
-    dfColorPointer='L',
+    'le',
+    dfReserved='byte',
+    dfFlags='dword',
+    dfAspace='word',
+    dfBspace='word',
+    dfCspace='word',
+    dfColorPointer='dword',
     dfReserved1='16s',
 )
-_FNT_VERSION_HEADER = {
+_FNT_HEADER_EXT = {
     0x100: _FNT_HEADER_1,
     0x200: _FNT_HEADER_2,
     0x300: _FNT_HEADER_3,
@@ -218,7 +227,7 @@ _FNT_VERSION_HEADER = {
 # {'0x100': '0x75', '0x200': '0x76', '0x300': '0x94'}
 _FNT_HEADER_SIZE = {
     _ver: _FNT_HEADER.size + _header.size
-    for _ver, _header in _FNT_VERSION_HEADER.items()
+    for _ver, _header in _FNT_HEADER_EXT.items()
 }
 
 
@@ -273,44 +282,48 @@ def save(typeface, outstream):
     return typeface
 
 
-
 ##############################################################################
-# windows .FNT resource reader and parser
+# windows .FNT reader
 
-def _read_fnt_header(fnt):
+def parse_fnt(fnt):
+    """Create an internal font description from a .FNT-shaped string."""
+    win_props = _parse_header(fnt)
+    properties = _parse_win_props(fnt, win_props)
+    glyphs, labels = _parse_chartable(fnt, win_props)
+    return Font(glyphs, labels, comments={}, properties=properties)
+
+def _parse_header(fnt):
     """Read the header information in the FNT resource."""
     win_props = _FNT_HEADER.from_bytes(fnt)
-    header_ext = _FNT_VERSION_HEADER[win_props.dfVersion]
+    header_ext = _FNT_HEADER_EXT[win_props.dfVersion]
     win_props += header_ext.from_bytes(fnt, _FNT_HEADER.size)
     return win_props
 
-def _read_fnt_chartable(fnt, win_props):
+def _parse_chartable(fnt, win_props):
     """Read a WinFont character table."""
     if win_props.dfVersion == 0x100:
-        return _read_fnt_chartable_v1(fnt, win_props)
-    return _read_fnt_chartable_v2(fnt, win_props)
+        return _parse_chartable_v1(fnt, win_props)
+    return _parse_chartable_v2(fnt, win_props)
 
-def _read_fnt_chartable_v1(fnt, win_props):
+def _parse_chartable_v1(fnt, win_props):
     """Read a WinFont 1.0 character table."""
     n_chars = win_props.dfLastChar - win_props.dfFirstChar + 1
     if not win_props.dfPixWidth:
         # proportional font
-        ct_start = _FNT_HEADER_SIZE[0x100]
-        offsets = [
-            _GLYPH_ENTRY_1.from_bytes(fnt, ct_start + _ord*_GLYPH_ENTRY_1.size).geOffset
-            for _ord in range(n_chars+1)
-        ]
+        ct_start = _FNT_HEADER_SIZE[win_props.dfVersion]
+        glyph_entry_array = _GLYPH_ENTRY[win_props.dfVersion] * (n_chars+1)
+        entries = glyph_entry_array.from_buffer_copy(fnt, ct_start)
+        offsets = [_entry.geOffset for _entry in entries]
     else:
         offsets = [
             win_props.dfPixWidth * _ord
             for _ord in range(n_chars+1)
         ]
-    height = win_props.dfPixHeight
     bytewidth = win_props.dfWidthBytes
     offset = win_props.dfBitsOffset
     strikerows = tuple(
         bytes_to_bits(fnt[offset+_row*bytewidth : offset+(_row+1)*bytewidth])
-        for _row in range(height)
+        for _row in range(win_props.dfPixHeight)
     )
     glyphs = []
     labels = {}
@@ -329,9 +342,9 @@ def _read_fnt_chartable_v1(fnt, win_props):
             labels[win_props.dfFirstChar + ord] = len(glyphs) - 1
     return glyphs, labels
 
-def _read_fnt_chartable_v2(fnt, win_props):
+def _parse_chartable_v2(fnt, win_props):
     """Read a WinFont 2.0 or 3.0 character table."""
-    n_chars = -win_props.dfFirstChar + win_props.dfLastChar + 1
+    n_chars = win_props.dfLastChar - win_props.dfFirstChar + 1
     glyph_entry_array = _GLYPH_ENTRY[win_props.dfVersion] * n_chars
     ct_start = _FNT_HEADER_SIZE[win_props.dfVersion]
     glyphs = []
@@ -380,8 +393,12 @@ def _parse_win_props(fnt, win_props):
         # this can all be extracted from the font - drop if consistent?
         properties['x-width'] = win_props.dfAvgWidth
     # check prop/fixed flag
-    if bool(win_props.dfPitchAndFamily & 1) != bool(properties['spacing'] == 'proportional'):
-        logging.warning('inconsistent spacing properties.')
+    if bool(win_props.dfPitchAndFamily & 1) == bool(win_props.dfPixWidth):
+        logging.warning(
+            'Inconsistent spacing properties: dfPixWidth=={} dfPitchAndFamily=={:04x}'.format(
+                win_props.dfPixWidth, win_props.dfPitchAndFamily
+            )
+        )
     if win_props.dfHorizRes != win_props.dfVertRes:
         properties['dpi'] = '{} {}'.format(win_props.dfHorizRes, win_props.dfVertRes)
     else:
@@ -402,7 +419,7 @@ def _parse_win_props(fnt, win_props):
         properties['encoding'] = _CHARSET_MAP[charset]
     else:
         properties['windows.dfCharSet'] = str(charset)
-    properties['style'] = _STYLE_MAP[win_props.dfPitchAndFamily >> 4]
+    properties['style'] = _STYLE_MAP[win_props.dfPitchAndFamily & 0xff00]
     properties['word-boundary'] = '0x{:x}'.format(win_props.dfFirstChar + win_props.dfBreakChar)
     properties['device'] = bytes_to_str(fnt[win_props.dfDevice:])
     # unparsed properties: dfMaxWidth - but this can be calculated from the matrices
@@ -441,13 +458,6 @@ def _parse_win_props(fnt, win_props):
     properties['name'] = ' '.join(name)
     return properties
 
-def parse_fnt(fnt):
-    """Create an internal font description from a .FNT-shaped string."""
-    win_props = _read_fnt_header(fnt)
-    properties = _parse_win_props(fnt, win_props)
-    glyphs, labels = _read_fnt_chartable(fnt, win_props)
-    return Font(glyphs, labels, comments={}, properties=properties)
-
 
 ##############################################################################
 # windows .FNT writer
@@ -473,7 +483,7 @@ def create_fnt(font):
         x_width = int(properties['x-width'])
     except KeyError:
         # get width of uppercase X
-        # TODO: this is correct for monospace but for proportional commonly the ink width is chosen
+        # CHECK: this is correct for monospace but for proportional commonly the ink width is chosen
         # also, for fixed this should take into account pre- and post-offsets?
         xord = ord('X')
         try:
@@ -486,18 +496,17 @@ def create_fnt(font):
             except KeyError:
                 x_width = 0
     if not font.fixed:
-        pitch_and_family = style_map.get(properties['style'], 0) << 4
-        pitch_and_family |= 1 # low bit set for proportional
+        # low bit set for proportional
+        pitch_and_family = 0x01 | style_map.get(properties.get('style', ''), 0)
         pix_width = 0
         v3_flags = _DFF_PROPORTIONAL
     else:
-        # FF_MODERN - FIXME: is this really always set for fixed-pitch?
-        pitch_and_family = 3<<4
+        # CHECK: is this really always set for fixed-pitch?
+        pitch_and_family = _FF_MODERN
         # x_with should equal average width
-        # FIXME: take from glyph diemnsions
+        # FIXME: take from glyph dimensions
         x_width = pix_width = _get_prop_x(properties['size'])
         v3_flags = _DFF_FIXED
-    # FIXME: set ABC flag if offsets are nonzero
     # FIXME: get from glyphs
     pix_height = _get_prop_y(properties['size'])
     # FIXME: find ordinal of space character (word-boundary); here we assume font starts at 32
@@ -509,14 +518,8 @@ def create_fnt(font):
     ]
     # add the guaranteed-blank glyph
     ord_glyphs.append(Glyph.empty(pix_width, pix_height))
-    offset_chartbl = _FNT_HEADER.size + _FNT_HEADER_3.size
-    ct_header = _GLYPH_ENTRY[0x300]
-    offset_bitmaps = offset_chartbl + len(ord_glyphs) * ct_header.size
-
-    bitmaps = [
-        _glyph.as_bytes()
-        for _glyph in ord_glyphs
-    ]
+    # create the bitmaps
+    bitmaps = [_glyph.as_bytes() for _glyph in ord_glyphs]
     # bytewise transpose - .FNT stores as contiguous 8-pixel columns
     bitmaps = [
         b''.join(
@@ -526,23 +529,23 @@ def create_fnt(font):
         for _glyph, _bm in zip(ord_glyphs, bitmaps)
     ]
     glyph_offsets = [0] + list(itertools.accumulate(len(_bm) for _bm in bitmaps))
+    glyph_entry = _GLYPH_ENTRY[0x300]
+    offset_bitmaps = _FNT_HEADER.size + _FNT_HEADER_3.size + len(ord_glyphs)*glyph_entry.size
     char_table = [
-        bytes(ct_header(_glyph.width, offset_bitmaps + _glyph_offset))
+        bytes(glyph_entry(_glyph.width, offset_bitmaps + _glyph_offset))
         for _glyph, _glyph_offset in zip(ord_glyphs, glyph_offsets)
     ]
-    file_size = offset_bitmaps + glyph_offsets[-1] #+ len(bitmaps[-1]) ## WHY NOT??
-
+    file_size = offset_bitmaps + glyph_offsets[-1]
+    # add name and device strings
     face_name_offset = file_size
     face_name = properties['family'].encode('latin-1', 'replace') + b'\0'
     device_name_offset = face_name_offset + len(face_name)
-    device_name = b'' #properties.get('device', '').encode('latin-1', 'replace') + b'\0'
-
+    device_name = properties.get('device', '').encode('latin-1', 'replace') + b'\0'
     file_size = device_name_offset + len(device_name)
-
-    if not device_name:
-        # set device name pointer to zero for 'generic font'
+    # set device name pointer to zero for 'generic font'
+    if not device_name or device_name == b'\0':
         device_name_offset = 0
-
+    # create FNT file
     win_props = _FNT_HEADER(
         dfVersion=0x300,
         dfSize=file_size,
@@ -575,13 +578,13 @@ def create_fnt(font):
         dfBitsPointer=0, # used on loading
         dfBitsOffset=offset_bitmaps,
     )
-    # version-specific header extensions
+    # version-specific header extension
     v3_header_ext = _FNT_HEADER_3(
         dfReserved=0,
         dfFlags=v3_flags,
-        dfAspace=properties.get('offset-before', 0),
+        dfAspace=0,
         dfBspace=0,
-        dfCspace=properties.get('offset-after', 0),
+        dfCspace=0,
         dfColorPointer=0,
         dfReserved1=b'\0'*16,
     )
