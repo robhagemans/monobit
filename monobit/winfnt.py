@@ -472,7 +472,7 @@ def _get_prop_y(prop):
     split = str(prop).split(' ', 1)
     return int(split[-1])
 
-def create_fnt(font):
+def create_fnt(font, version=0x200):
     """Create .FNT from properties."""
     weight_map = dict(reversed(_item) for _item in _WEIGHT_MAP.items())
     charset_map = dict(reversed(_item) for _item in _CHARSET_MAP.items())
@@ -529,8 +529,9 @@ def create_fnt(font):
         for _glyph, _bm in zip(ord_glyphs, bitmaps)
     ]
     glyph_offsets = [0] + list(itertools.accumulate(len(_bm) for _bm in bitmaps))
-    glyph_entry = _GLYPH_ENTRY[0x300]
-    offset_bitmaps = _FNT_HEADER.size + _FNT_HEADER_3.size + len(ord_glyphs)*glyph_entry.size
+    glyph_entry = _GLYPH_ENTRY[version]
+    fnt_header_ext = _FNT_HEADER_EXT[version]
+    offset_bitmaps = _FNT_HEADER.size + fnt_header_ext.size + len(ord_glyphs)*glyph_entry.size
     char_table = [
         bytes(glyph_entry(_glyph.width, offset_bitmaps + _glyph_offset))
         for _glyph, _glyph_offset in zip(ord_glyphs, glyph_offsets)
@@ -547,7 +548,7 @@ def create_fnt(font):
         device_name_offset = 0
     # create FNT file
     win_props = _FNT_HEADER(
-        dfVersion=0x300,
+        dfVersion=version,
         dfSize=file_size,
         dfCopyright=properties['copyright'].encode('ascii', 'replace')[:60].ljust(60, b'\0'),
         dfType=0, # raster, not in memory
@@ -579,17 +580,12 @@ def create_fnt(font):
         dfBitsOffset=offset_bitmaps,
     )
     # version-specific header extension
-    v3_header_ext = _FNT_HEADER_3(
-        dfReserved=0,
-        dfFlags=v3_flags,
-        dfAspace=0,
-        dfBspace=0,
-        dfCspace=0,
-        dfColorPointer=0,
-        dfReserved1=b'\0'*16,
-    )
+    header_ext = fnt_header_ext()
+    if version == 0x300:
+        # all are zeroes (default) except the flags for v3
+        header_ext.dfFlags = v3_flags
     fnt = (
-        bytes(win_props) + bytes(v3_header_ext) + b''.join(char_table)
+        bytes(win_props) + bytes(header_ext) + b''.join(char_table)
         + b''.join(bitmaps)
         + face_name + device_name
     )
