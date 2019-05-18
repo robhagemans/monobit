@@ -289,7 +289,7 @@ class Glyph:
     @staticmethod
     def empty(width=0, height=0):
         """Create whitespace glyph."""
-        return Glyph((() * width) * height)
+        return Glyph(((0,) * width,) * height)
 
     @staticmethod
     def from_text(rows, background):
@@ -312,7 +312,7 @@ class Glyph:
         bytewidth = ceildiv(width, 8)
         byteseq = list(byteseq)
         rows = [byteseq[_offs:_offs+bytewidth] for _offs in range(0, len(byteseq), bytewidth)]
-        return Glyph(tuple(bytes_to_bits(_row)[:width] for _row in rows))
+        return Glyph(tuple(bytes_to_bits(_row, width) for _row in rows))
 
     def as_bytes(self):
         """Convert glyph to flat bytes."""
