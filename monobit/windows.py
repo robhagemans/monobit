@@ -591,11 +591,11 @@ def _create_fnt(font):
         xord = ord('X')
         try:
             #FIXME: convert all labels / props to lowercase?
-            x_width = glyphs['u+{:04x}'.format(xord)].width
+            x_width = font.get_glyph('u+{:04x}'.format(xord)).width
         except KeyError:
             # assume ascii-based encoding
             try:
-                x_width = glyphs[xord].width
+                x_width = font.get_glyph(xord).width
             except KeyError:
                 x_width = 0
     if not font.fixed:

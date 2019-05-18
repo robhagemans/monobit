@@ -523,11 +523,13 @@ class Font:
         """Get maximum height."""
         return max(_glyph.height for _glyph in self._glyphs)
 
-    def get_glyph(self, key):
+    def get_glyph(self, key, default=True):
         """Get glyph by key, default if not present."""
         try:
             index = self._labels[key]
         except KeyError:
+            if not default:
+                raise
             return self.get_default_glyph()
         return self._glyphs[index]
 
