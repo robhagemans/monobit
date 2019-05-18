@@ -276,7 +276,7 @@ def _read_fnt_header(fnt):
     win_props = _FNT_HEADER.from_bytes(fnt)
     version = win_props.dfVersion
     header_ext = _FNT_VERSION_HEADER[version]
-    win_props += header_ext.from_bytes(fnt, offset=_FNT_HEADER.size)
+    win_props += header_ext.from_bytes(fnt, _FNT_HEADER.size)
     return win_props
 
 
@@ -294,7 +294,7 @@ def _read_fnt_chartable_v1(fnt, win_props):
         ct_start = _FNT_HEADER_SIZE[0x100]
         ct_size = _CT_HEADER_1.size
         offsets = [
-            _CT_HEADER_1.from_bytes(fnt, offset=ct_start + _ord * ct_size)[0]
+            _CT_HEADER_1.from_bytes(fnt, ct_start + _ord * ct_size).offset
             for _ord in range(n_chars+1)
         ]
     else:
@@ -336,7 +336,7 @@ def _read_fnt_chartable_v2(fnt, win_props):
     height = win_props.dfPixHeight
     for ord in range(win_props.dfFirstChar, win_props.dfLastChar+1):
         entry = ct_start + ct_size * (ord-win_props.dfFirstChar)
-        width, offset = ct_header.from_bytes(fnt, offset=entry)
+        width, offset = ct_header.from_bytes(fnt, entry)
         # don't store empty glyphs but count them for ordinals
         if not width:
             continue

@@ -13,6 +13,7 @@ import string
 from contextlib import contextmanager
 from collections import namedtuple, OrderedDict
 from types import SimpleNamespace
+import ctypes
 
 
 DEFAULT_FORMAT = 'text'
@@ -87,130 +88,83 @@ class Bag(SimpleNamespace):
 def friendlystruct(_endian, **description):
     """A slightly less clunky interface to struct."""
 
+    if _endian.lower() in ('<', 'little', 'le'):
+        base = ctypes.LittleEndianStructure
+    elif _endian.lower() in ('>', 'big', 'be'):
+        base = ctypes.BigEndianStructure
+    else:
+        raise ValueError('Endianness `{}` not understood'.format(_endian))
 
-    class Struct:
+    typemap = {
+        'byte': ctypes.c_uint8,
+        'uint8': ctypes.c_uint8,
+        'B': ctypes.c_uint8,
+
+        'int8': ctypes.c_int8,
+        'b': ctypes.c_int8,
+
+        'word': ctypes.c_uint16,
+        'uint16': ctypes.c_uint16,
+        'H': ctypes.c_uint16,
+
+        'int16': ctypes.c_int16,
+        'h': ctypes.c_int16,
+
+        'dword': ctypes.c_uint32,
+        'uint32': ctypes.c_uint32,
+        'I': ctypes.c_uint32,
+        'L': ctypes.c_uint32,
+
+        'int32': ctypes.c_int32,
+        'i': ctypes.c_int32,
+        'l': ctypes.c_int32,
+
+        'char': ctypes.c_char,
+        's': ctypes.c_char,
+    }
+
+    def _parse_type(atype):
+        if isinstance(atype, type):
+            return atype
+        try:
+            return typemap[atype]
+        except KeyError:
+            pass
+        if isinstance(atype, str) and atype.endswith('s'):
+            return ctypes.c_char * int(atype[:-1])
+        raise ValueError('Field type `{}` not understood'.format(atype))
+
+    description = {
+        _key: _parse_type(_value)
+        for _key, _value in description.items()
+    }
+
+    class Struct(base):
         """Struct with binary representation."""
-
-        # this requires Python 3.6+ - assumes preservation of dict and kwarg order
-        _description = OrderedDict(**description)
-        _keys = _description.keys()
-        _format = _endian + ''.join(_description.values())
-        _namedtuple = namedtuple('Record', _description.keys())
-        size = struct.calcsize(_format)
-
-        def __init__(self, *args, **kwargs):
-            """Create struct."""
-            if args:
-                self._data = self._namedtuple(*args)._asdict()
-            else:
-                self._data = {}
-            self._data.update(**kwargs)
+        _fields_ = tuple(OrderedDict(**description).items())
+        _pack_ = True
 
         def __repr__(self):
-            """String representation."""
-            return 'Struct({})'.format(', '.join(
-                '{}={}'.format(*_item)
-                for _item in self._iteritems()
-            ))
+            return 'Struct({})'.format(
+                ', '.join(
+                    '{}={}'.format(field, getattr(self, field))
+                    for field, _ in self._fields_
+                )
+            )
 
         @property
         def __dict__(self):
-            """Dict representation."""
-            return self._data
-
-        def __bytes__(self):
-            """Bytes representation of core struct - missing or extra values not allowed."""
-            return struct.pack(self._format, *self._namedtuple(**self._data))
-
-        def __len__(self):
-            """Number of elements."""
-            return len(self._data)
-
-        def __iter__(self):
-            """Iterate over all values, starting with core tuple"""
-            for key in self._keys:
-                yield self._data[key]
-            for key in self._data:
-                if key not in self._keys:
-                    yield self._data[key]
-
-        def _iteritems(self):
-            """Iterate over all key-value pairs, starting with core tuple"""
-            for key in self._keys:
-                yield key, self._data[key]
-            for key in self._data:
-                if key not in self._keys:
-                    yield key, self._data[key]
-
-        def __getattribute__(self, attr):
-            """Retrive a value from the struct."""
-            if not attr.startswith('_'):
-                return object.__getattribute__(self, '_data')[attr]
-            return object.__getattribute__(self, attr)
-
-        def __setattr__(self, attr, value):
-            """Set a value in the struct."""
-            if not attr.startswith('_'):
-                #FIXME: enforce struct order
-                object.__getattribute__(self, '_data')[attr] = value
-            else:
-                object.__setattr__(self, attr, value)
-
-        def __delattr__(self, attr):
-            """Deleyte an entry in the struct."""
-            if not attr.startswith('_'):
-                del object.__getattribute__(self, '_data')[attr]
-            else:
-                object.__delattr__(self, attr)
-
-        def __getitem__(self, key):
-            """Retrieve item by key or tuple index."""
-            try:
-                return list(self._data.values())[key]
-            except TypeError:
-                return self._data[key]
-
-        def __setitem__(self, key, value):
-            """Set item by key or tuple index. Only the core struct items have tuple indices."""
-            try:
-                key = list(self._data.keys())[key]
-            except TypeError:
-                pass
-            self._data[key] = value
-
-        def __delitem__(self, key):
-            """Delete item by key or tuple index. Only the core struct items have tuple indices."""
-            try:
-                key = list(self._data.keys())[key]
-            except TypeError:
-                pass
-            del self._data[key]
+            return OrderedDict(
+                (field, getattr(self, field))
+                for field, _ in self._fields_
+            )
 
         def __add__(self, other):
-            """Concatenate with another struct."""
-            # FIXME - this doesn't actually work the way I need it, can't concat types themselves
-            if other._format[0] != self._format[0]:
-                raise TypeError("Can't concatenate structs with different byte order.")
-            added_type = friendlystruct(self._format[0], **self._description, **other._description)
-            return added_type(**self.__dict__, **other.__dict__)
+            addedstruct = friendlystruct(_endian, **OrderedDict(self._fields_ + other._fields_))
+            return addedstruct(**self.__dict__, **other.__dict__)
 
-        # note that we override getattribute/setattr for this to work like a namespace
-        # - it is not possible to call static/class methods on instances
-        # unless they start with _
-        # this also means we can't use ** as this requires a .keys function on the instance
-        # which collides with our bag namespace
-
-        @classmethod
-        def from_bytes(cls, blob, offset=0):
-            """Unpack binary blob."""
-            return cls(*cls._namedtuple(*struct.unpack_from(cls._format, blob, offset)))
-
-        @classmethod
-        def read_from(cls, stream):
-            """Read blob from stream and unpack."""
-            blob = stream.read(cls.size)
-            return cls.from_bytes(blob)
-
+    Struct.size = ctypes.sizeof(Struct)
+    Struct.from_bytes = Struct.from_buffer_copy
     return Struct
 
 
