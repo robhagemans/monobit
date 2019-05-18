@@ -15,11 +15,11 @@ parser = argparse.ArgumentParser()
 parser.add_argument('infile', nargs='?', type=str, default='')
 parser.add_argument('outfile', nargs='?', type=str, default='')
 parser.add_argument(
-    '--format-in', default='', type=str,
+    '--from', dest='from_', default='', type=str,
     help='input format (default: infer from filename)'
 )
 parser.add_argument(
-    '--format-out', default='', type=str,
+    '--to', dest='to_', default='', type=str,
     help='output format (default: infer from filename)'
 )
 parser.add_argument(
@@ -36,8 +36,8 @@ else:
 logging.basicConfig(level=loglevel, format='%(levelname)s: %(message)s')
 
 try:
-    font = monobit.load(args.infile, format=args.format_in)
-    font.save(args.outfile, format=args.format_out)
+    font = monobit.load(args.infile, format=args.from_)
+    font.save(args.outfile, format=args.to_)
 except Exception as exc:
     logging.error(exc)
     if args.debug:
