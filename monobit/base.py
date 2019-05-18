@@ -51,6 +51,11 @@ def ceildiv(num, den):
     """Integer division, rounding up."""
     return -(-num // den)
 
+def pad(num, exp):
+    """Round up to multiple of 2**exp."""
+    mask = 2**exp - 1
+    return (num + mask) & ~mask
+
 def bytes_to_bits(inbytes, width=None):
     """Convert bytes/bytearray/sequence of int to tuple of bits."""
     bitstr = ''.join('{:08b}'.format(_b) for _b in inbytes)
@@ -183,6 +188,7 @@ def friendlystruct(_endian, **description):
 
         def __add__(self, other):
             """Concatenate with another struct."""
+            # FIXME - this doesn't actually work the way I need it, can't concat types themselves
             if other._format[0] != self._format[0]:
                 raise TypeError("Can't concatenate structs with different byte order.")
             added_type = friendlystruct(self._format[0], **self._description, **other._description)

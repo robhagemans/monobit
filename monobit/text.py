@@ -97,6 +97,7 @@ PROPERTIES = [
     'setwidth', # normal, condensed, expanded, etc.
     'style', # serif, sans, etc.
     'decoration', # underline, strikethrough, etc.
+    # these can be determined from the bitmaps
     'spacing', # proportional, monospace, cell
     'x-width', # ink width of lowercase x (in proportional font)
 
@@ -107,7 +108,10 @@ PROPERTIES = [
     'offset-after', # horizontal offset from matrix end to next origin
 
     # other metrics (may affect interline spacing):
+
+    # can be determined from bitmap? except if there are marks above the top
     'size', # pixel height == top - bottom (can be 'width height' for fixed-width)
+
     'ascent', # recommended typographic ascent relative to baseline (not necessarily equal to top)
     'descent', # recommended typographic descent relative to baseline (not necessarily equal to bottom)
     'leading', # vertical leading, defined as (pixels between baselines) - (pixel height)
@@ -117,7 +121,10 @@ PROPERTIES = [
     # character set:
     'encoding',
     'default-char',
-    'space-char',
+    'word-boundary', # word-break character (usually space)
+
+    # other
+    'device', # target device name
 
     # conversion metadata:
     'converter',

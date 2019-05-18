@@ -32,10 +32,11 @@ import sys
 import string
 import struct
 import logging
+import itertools
 
 from .base import (
     VERSION, Glyph, Font, Typeface, friendlystruct,
-    bytes_to_bits, ceildiv, bytes_to_str
+    bytes_to_bits, ceildiv, pad, bytes_to_str
 )
 
 
@@ -130,7 +131,7 @@ _STYLE_MAP = {
     0: '', #FF_DONTCARE (0<<4)   Don't care or don't know.
     1: 'serif', # FF_ROMAN (1<<4)      Proportionally spaced fonts with serifs.
     2: 'sans serif', # FF_SWISS (2<<4)      Proportionally spaced fonts without serifs.
-    3: '', # FF_MODERN (3<<4)     Fixed-pitch fonts. - but this is covered by `spacing`
+    3: '', # FF_MODERN (3<<4)     Fixed-pitch fonts. - but this is covered by `spacing`?
     4: 'script', # FF_SCRIPT (4<<4)
     5: 'decorated', # FF_DECORATIVE (5<<4)
 }
@@ -150,9 +151,10 @@ _DFF_COLORFONT = _DFF_16COLOR | _DFF_256COLOR | _DFF_RGBCOLOR
 _DFF_ABC = _DFF_ABCFIXED | _DFF_ABCPROPORTIONAL
 
 
-# FNT header, common to v1.0, v2.0, v3.0
+# FNT header - the part common to v1.0, v2.0, v3.0
 _FNT_HEADER = friendlystruct(
     '<',
+### this part is also common to FontDirEntry
     dfVersion='H',
     dfSize='L',
     dfCopyright='60s',
@@ -180,6 +182,7 @@ _FNT_HEADER = friendlystruct(
     dfWidthBytes='H',
     dfDevice='L',
     dfFace='L',
+###
     dfBitsPointer='L',
     dfBitsOffset='L',
 )
@@ -246,6 +249,18 @@ def load(instream):
     for font in fonts:
         font._properties['source-name'] = os.path.basename(name)
     return Typeface(fonts)
+
+@Typeface.saves('fnt', 'fon', encoding=None)
+def save(typeface, outstream):
+    """Write fonts to a Windows .FON or .FNT file."""
+    if outstream.name.endswith('.fnt'):
+        if len(typeface._fonts) > 1:
+            raise ValueError('Saving multiple fonts to Windows .fnt not possible')
+        outstream.write(_create_fnt(typeface._fonts[0]))
+    else:
+        outstream.write(_create_fon(typeface))
+    return typeface
+
 
 
 ##############################################################################
@@ -322,20 +337,20 @@ def _read_fnt_chartable_v2(fnt, win_props):
     for ord in range(win_props['dfFirstChar'], win_props['dfLastChar']+1):
         entry = ct_start + ct_size * (ord-win_props['dfFirstChar'])
         width, offset = ct_header.from_bytes(fnt, offset=entry)
+        # don't store empty glyphs but count them for ordinals
         if not width:
             continue
         bytewidth = ceildiv(width, 8)
         rows = tuple(
+            #FIXME: replace with Glyph.from_bytes
             bytes_to_bits(
                 [fnt[offset + _col * height + _row] for _col in range(bytewidth)],
                 width
             )
             for _row in range(height)
         )
-        # don't store empty glyphs but count them for ordinals
-        if rows:
-            glyphs.append(Glyph(rows))
-            labels[win_props['dfFirstChar'] + ord] = len(glyphs) - 1
+        glyphs.append(Glyph(rows))
+        labels[ord] = len(glyphs) - 1
     return glyphs, labels
 
 def _parse_win_props(fnt, win_props):
@@ -365,7 +380,7 @@ def _parse_win_props(fnt, win_props):
         # this can all be extracted from the font - drop if consistent?
         properties['x-width'] = win_props['dfAvgWidth']
     # check prop/fixed flag
-    if bool(win_props['dfPitchAndFamily'] & 1) != properties['spacing'] == 'proportional':
+    if bool(win_props['dfPitchAndFamily'] & 1) != bool(properties['spacing'] == 'proportional'):
         logging.warning('inconsistent spacing properties.')
     if win_props['dfHorizRes'] != win_props['dfVertRes']:
         properties['dpi'] = '{} {}'.format(win_props.dfHorizRes, win_props.dfVertRes)
@@ -388,9 +403,9 @@ def _parse_win_props(fnt, win_props):
     else:
         properties['_dfCharSet'] = str(charset)
     properties['style'] = _STYLE_MAP[win_props['dfPitchAndFamily'] >> 4]
-    properties['space-char'] = '0x{:x}'.format(win_props['dfFirstChar'] + win_props['dfBreakChar'])
+    properties['word-boundary'] = '0x{:x}'.format(win_props['dfFirstChar'] + win_props['dfBreakChar'])
     # append unparsed properties
-    properties['device-name'] = bytes_to_str(fnt[win_props['dfDevice']:])
+    properties['device'] = bytes_to_str(fnt[win_props['dfDevice']:])
     # dfMaxWidth - but this can be calculated from the matrices
     if version == 0x300:
         if win_props['dfFlags'] & _DFF_COLORFONT:
@@ -539,4 +554,466 @@ def _read_fon(fon):
 
 
 ##############################################################################
-# windows font writer
+# windows .FNT writer
+
+# dfType field values
+# vector font, else raster
+_FNT_TYPE_VECTOR = 0x0001
+# font is in ROM
+_FNT_TYPE_MEMORY = 0x0004
+# 'realised by a device' - maybe printer font?
+_FNT_TYPE_DEVICE = 0x0080
+
+
+def _get_prop_x(prop):
+    """Get x of property coordinate ('x y' or single size)."""
+    split = str(prop).split(' ', 1)
+    return int(split[0])
+
+def _get_prop_y(prop):
+    """Get y of property coordinate ('x y' or single size)."""
+    split = str(prop).split(' ', 1)
+    return int(split[-1])
+
+def _create_fnt(font):
+    """Create .FNT from properties."""
+    weight_map = dict(reversed(_item) for _item in _WEIGHT_MAP.items())
+    charset_map = dict(reversed(_item) for _item in _CHARSET_MAP.items())
+    style_map = dict(reversed(_item) for _item in _STYLE_MAP.items())
+    glyphs = font._glyphs
+    properties = font._properties
+    try:
+        x_width = int(properties['x-width'])
+    except KeyError:
+        # get width of uppercase X
+        # TODO: this is correct for monospace but for proportional commonly the ink width is chosen
+        # also, for fixed this should take into account pre- and post-offsets?
+        xord = ord('X')
+        try:
+            #FIXME: convert all labels / props to lowercase?
+            x_width = glyphs['u+{:04x}'.format(xord)].width
+        except KeyError:
+            # assume ascii-based encoding
+            try:
+                x_width = glyphs[xord].width
+            except KeyError:
+                x_width = 0
+    if not font.fixed:
+        pitch_and_family = style_map.get(properties['style'], 0) << 4
+        pitch_and_family |= 1 # low bit set for proportional
+        pix_width = 0
+        v3_flags = _DFF_PROPORTIONAL
+    else:
+        # FF_MODERN - FIXME: is this really always set for fixed-pitch?
+        pitch_and_family = 3<<4
+        # x_with should equal average width
+        # FIXME: take from glyph diemnsions
+        x_width = pix_width = _get_prop_x(properties['size'])
+        v3_flags = _DFF_FIXED
+    # FIXME: set ABC flag if offsets are nonzero
+    # FIXME: get from glyphs
+    pix_height = _get_prop_y(properties['size'])
+    # FIXME: find ordinal of space character (word-boundary); here we assume font starts at 32
+    space_index = 0
+    # char table
+    ord_glyphs = [
+        font.get_glyph(_ord)
+        for _ord in range(min(font.ordinals), max(font.ordinals)+1)
+    ]
+    # add the guaranteed-blank glyph
+    ord_glyphs.append(Glyph.empty(pix_width, pix_height))
+    offset_chartbl = _FNT_HEADER.size + _FNT_HEADER_3.size
+    ct_header = _CT_VERSION_HEADER[0x300]
+
+    #face_name_offset = offset_chartbl + len(ord_glyphs) * ct_header.size
+    #face_name = properties['family'].encode('latin-1', 'replace') + b'\0'
+    #device_name_offset = face_name_offset + len(face_name)
+    #device_name = b'' #properties.get('device', '').encode('latin-1', 'replace') + b'\0'
+    #offset_bitmaps = device_name_offset + len(device_name)
+
+    offset_bitmaps = offset_chartbl + len(ord_glyphs) * ct_header.size
+
+    # set device name pointer to zero for 'generic font'
+    # round up to multiple of 2 (FIXME - why?) (only used for v1?)
+    width_bytes = pad(ceildiv(font.max_width, 8), 1)
+    # enforce width_bytes for each glyph, maybe windows likes this?
+    bitmaps = [
+        _glyph.as_bytes().ljust(width_bytes*_glyph.height, b'\0') for _glyph in ord_glyphs
+    ]
+
+    glyph_offsets = [0] + list(itertools.accumulate(len(_bm) for _bm in bitmaps))
+    char_table = [
+        bytes(ct_header(_glyph.width, offset_bitmaps + _glyph_offset))
+        for _glyph, _glyph_offset in zip(ord_glyphs, glyph_offsets)
+    ]
+    file_size = offset_bitmaps + glyph_offsets[-1] #+ len(bitmaps[-1]) ## WHY NOT??
+
+    print((offset_bitmaps, file_size, glyph_offsets[-1], len(bitmaps[-1])))
+
+    face_name_offset = file_size
+    face_name = properties['family'].encode('latin-1', 'replace') + b'\0'
+    device_name_offset = face_name_offset + len(face_name)
+    device_name = b'' #properties.get('device', '').encode('latin-1', 'replace') + b'\0'
+
+    file_size = device_name_offset + len(device_name)
+
+    if not device_name:
+        device_name_offset = 0
+
+    win_props = _FNT_HEADER(
+        dfVersion=0x300,
+        dfSize=file_size,
+        dfCopyright=properties['copyright'].encode('ascii', 'replace')[:60].ljust(60, b'\0'),
+        dfType=0, # raster, not in memory
+        dfPoints=int(properties['points']),
+        dfVertRes=_get_prop_y(properties['dpi']),
+        dfHorizRes=_get_prop_x(properties['dpi']),
+        dfAscent=int(properties['ascent']),
+        dfInternalLeading=0,
+        dfExternalLeading=int(properties['leading']),
+        dfItalic=(properties['slant'] in ('italic', 'oblique')),
+        dfUnderline=('decoration' in properties and 'underline' in properties['decoration']),
+        dfStrikeOut=('decoration' in properties and 'strikethrough' in properties['decoration']),
+        dfWeight=weight_map.get(properties['weight'], weight_map['regular']),
+        dfCharSet=charset_map.get(properties['encoding'], properties['encoding']),
+        dfPixWidth=pix_width,
+        dfPixHeight=pix_height,
+        dfPitchAndFamily=pitch_and_family,
+        dfAvgWidth=x_width,
+        dfMaxWidth=font.max_width,
+        dfFirstChar=min(font.ordinals),
+        dfLastChar=max(font.ordinals),
+        dfDefaultChar=int(properties.get('default-char', 0), 0), # 0 is default if none provided
+        dfBreakChar=int(properties.get('word-boundary', 0), space_index),
+        dfWidthBytes=width_bytes,
+        dfDevice=device_name_offset,
+        dfFace=face_name_offset,
+        dfBitsPointer=0, # used on loading
+        dfBitsOffset=offset_bitmaps,
+    )
+    # version-specific header extensions
+    v3_header_ext = _FNT_HEADER_3(
+        dfReserved=0,
+        dfFlags=v3_flags,
+        dfAspace=properties.get('offset-before', 0),
+        dfBspace=0,
+        dfCspace=properties.get('offset-after', 0),
+        dfColorPointer=0,
+        dfReserved1=b'\0'*16,
+    )
+    fnt = (
+        bytes(win_props) + bytes(v3_header_ext) + b''.join(char_table)
+        + b''.join(bitmaps)
+        + face_name + device_name
+    )
+    assert offset_chartbl == len(bytes(win_props) + bytes(v3_header_ext)), 'chtblofs'
+    assert offset_bitmaps == len(bytes(win_props) + bytes(v3_header_ext) + b''.join(char_table)), 'btmofs'
+
+    assert len(fnt) == file_size, repr((len(fnt), file_size))
+    return fnt
+
+
+
+
+##############################################################################
+# windows .FON writer
+
+
+_STUB_CODE = bytes((
+  0xBA, 0x0E, 0x00, # mov dx,0xe
+  0x0E,             # push cs
+  0x1F,             # pop ds
+  0xB4, 0x09,       # mov ah,0x9
+  0xCD, 0x21,       # int 0x21
+  0xB8, 0x01, 0x4C, # mov ax,0x4c01
+  0xCD, 0x21        # int 0x21
+))
+_STUB_MSG = b'This is a Windows font file.\r\n'
+
+_MZ_HEADER = friendlystruct(
+    '<',
+    # EXE signature, 'MZ' or 'ZM'
+    magic='2s',
+    # number of bytes in last 512-byte page of executable
+    last_page_length='H',
+    # total number of 512-byte pages in executable
+    num_pages='H',
+    num_relocations='H',
+    header_size='H',
+    min_allocation='H',
+    max_allocation='H',
+    initial_ss='H',
+    initial_sp='H',
+    checksum='H',
+    initial_csip='L',
+    relocation_table_offset='H',
+    overlay_number='H',
+    reserved_0='4s',
+    behavior_bits='H',
+    reserved_1='26s',
+    # NE offset is at 0x3c
+    ne_offset='L',
+)
+
+_NE_HEADER = friendlystruct(
+    '<',
+    magic='2s',
+    linker_major_version='B',
+    linker_minor_version='B',
+    entry_table_offset='H',
+    entry_table_length='H',
+    file_load_crc='L',
+    program_flags='B',
+    application_flags='B',
+    auto_data_seg_index='H', # says 1 byte in table, but offsets make it clear it should be 2 bytes
+    initial_heap_size='H',
+    initial_stack_size='H',
+    entry_point_csip='L',
+    initial_stack_pointer_sssp='L',
+    segment_count='H',
+    module_ref_count='H',
+    nonresident_names_table_size='H',
+    seg_table_offset='H',
+    res_table_offset='H',
+    resident_names_table_offset='H',
+    module_ref_table_offset='H',
+    imp_names_table_offset='H',
+    nonresident_names_table_offset='L',
+    movable_entry_point_count='H',
+    file_alignment_size_shift_count='H',
+    number_res_table_entries='H',
+    target_os='B',
+    other_os2_exe_flags='B',
+    return_thunks_offset='H',
+    seg_ref_thunks_offset='H',
+    min_code_swap_size='H',
+    expected_windows_version='H',
+)
+
+def _dos_stub():
+    """Create a small MZ executable."""
+    dos_stub_size = _MZ_HEADER.size + len(_STUB_CODE) + len(_STUB_MSG) + 1
+    num_pages = ceildiv(dos_stub_size, 512)
+    last_page_length = dos_stub_size % 512
+    mod = dos_stub_size % 16
+    if mod:
+        padding = b'\0' * (16-mod)
+    else:
+        padding = b''
+    ne_offset = dos_stub_size + len(padding)
+    mz_header = _MZ_HEADER(
+        magic=b'MZ',
+        last_page_length=last_page_length,
+        num_pages=num_pages,
+        num_relocations=0,
+        header_size=4,
+        # 16 extra para for stack
+        min_allocation=0x10,
+        # maximum extra paras: LOTS
+        max_allocation=0xffff,
+        initial_ss=0,
+        initial_sp=0x100,
+        checksum=0,
+        # CS:IP = 0:0, start at beginning
+        initial_csip=0,
+        relocation_table_offset=0x40,
+        overlay_number=0,
+        reserved_0=b'\0'*4,
+        behavior_bits=0,
+        reserved_1=b'\0'*26,
+        ne_offset=ne_offset
+    )
+    dos_stub = bytes(mz_header) + _STUB_CODE + _STUB_MSG + b'$' + padding
+    return dos_stub
+
+
+_TYPEINFO = friendlystruct(
+    '<',
+    rtTypeID='H',
+    rtResourceCount='H',
+    rtReserved='L',
+    #rtNameInfo=_NAMEINFO * rtResourceCount
+)
+
+_NAMEINFO = friendlystruct(
+    '<',
+    rnOffset='H',
+    rnLength='H',
+    rnFlags='H',
+    rnID='H',
+    rnHandle='H',
+    rnUsage='H',
+)
+# type ID values that matter to us
+_RT_FONTDIR = 0x8007
+_RT_FONT = 0x8008
+
+
+def _create_fontdirentry(fnt, properties):
+    """Return the FONTDIRENTRY, given the data in a .FNT file."""
+    face_name = properties['family'].encode('latin-1', 'replace') + b'\0'
+    device_name = properties.get('device', '').encode('latin-1', 'replace') + b'\0'
+    return (
+        fnt[0:0x71] +
+        device_name +
+        face_name
+    )
+
+def _create_fon(typeface):
+    """Create a .FON font library, given a bunch of .FNT file contents."""
+
+    # use font-familt name of first font
+    name = typeface._fonts[0]._properties['family']
+
+    # construct the FNT resources
+    fonts = [_create_fnt(_font) for _font in typeface._fonts]
+
+    # The MZ stub.
+    stubdata = _dos_stub()
+
+    # Non-resident name table should contain a FONTRES line.
+    # FIXME: are these dpi numbers?
+    nonres = b'FONTRES 100,96,96 : ' + name.encode('ascii')
+    nonres = struct.pack('B', len(nonres)) + nonres + b'\0\0\0'
+
+    # Resident name table should just contain a module name.
+    mname = bytes(
+        _c for _c in name.encode('ascii', 'ignore')
+        if _c in set(string.ascii_letters + string.digits)
+    )
+    res = struct.pack('B', len(mname)) + mname + b'\0\0\0'
+
+    # Entry table / imported names table should contain a zero word.
+    entry = struct.pack('<H', 0)
+
+    # Compute length of resource table.
+    # 12 (2 for the shift count, plus 2 for end-of-table, plus 8 for the
+    #    "FONTDIR" resource name), plus
+    # 20 for FONTDIR (TYPEINFO and NAMEINFO), plus
+    # 8 for font entry TYPEINFO, plus
+    # 12 for each font's NAMEINFO
+
+    # Resources are currently one FONTDIR plus n fonts.
+    resrcsize = 12 + 20 + 8 + 12 * len(fonts)
+    resrcpad = ((resrcsize + 15) & ~15) - resrcsize
+
+    # Now position all of this after the NE header.
+    off_segtable = off_restable = _NE_HEADER.size # 0x40
+    off_res = off_restable + resrcsize + resrcpad
+    off_modref = off_import = off_entry = off_res + len(res)
+    off_nonres = off_modref + len(entry)
+    size_unpadded = off_nonres + len(nonres)
+    pad = ((size_unpadded + 15) & ~15) - size_unpadded
+    # Now q is file offset where the real resources begin.
+    real_resource_offset = size_unpadded + pad + len(stubdata)
+
+    # Construct the FONTDIR.
+    fontdir = struct.pack('<H', len(fonts))
+    for i in range(len(fonts)):
+        fontdir += struct.pack('<H', i+1) + _create_fontdirentry(
+            fonts[i], typeface._fonts[i]._properties
+        )
+    resdata = fontdir
+    while len(resdata) % 16: # 2 << rscAlignShift
+        resdata = resdata + b'\0'
+    font_start = [len(resdata)]
+
+    # The FONT resources.
+    for i in range(len(fonts)):
+        resdata = resdata + fonts[i]
+        while len(resdata) % 16:
+            resdata = resdata + b'\0'
+        font_start.append(len(resdata))
+
+
+    # The FONTDIR resource table entry
+    typeinfo_fontdir = _TYPEINFO(
+        rtTypeID=_RT_FONTDIR,
+        rtResourceCount=1,
+        rtReserved=0,
+    )
+    # this should be an array, but with only one element...
+    nameinfo_fontdir = _NAMEINFO(
+        rnOffset=real_resource_offset >> 4, # >> rscAlignShift
+        rnLength=len(resdata) >> 4,
+        rnFlags=0x0c50, # PRELOAD=0x0040 | MOVEABLE=0x0010 | 0x0c00
+        rnID=resrcsize-8,
+        rnHandle=0,
+        rnUsage=0,
+    )
+
+    # FONT resource table entry
+    typeinfo_font = _TYPEINFO(
+        rtTypeID=_RT_FONT,
+        rtResourceCount=len(fonts),
+        rtReserved=0,
+    )
+    nameinfo_font = [
+        _NAMEINFO(
+            rnOffset=(real_resource_offset+font_start[_i]) >> 4, # >> rscAlignShift
+            rnLength=(font_start[_i+1]-font_start[_i]) >> 4,
+            rnFlags=0x1c30, # PURE=0x0020 | MOVEABLE=0x0010 | 0x1c00
+            rnID=0x8001+_i,
+            rnHandle=0,
+            rnUsage=0,
+        )
+        for _i in range(len(fonts))
+    ]
+
+    # construct the resource table
+    rscAlignShift = struct.pack('<H', 4) # rscAlignShift: shift count 2<<n
+    rscTypes = (
+        bytes(typeinfo_fontdir) + bytes(nameinfo_fontdir)
+        + bytes(typeinfo_font) + b''.join(bytes(_ni) for _ni in nameinfo_font)
+    )
+    rscEndTypes = b'\0\0' # The zero word.
+    rscResourceNames = b'\x07FONTDIR'
+    rscEndNames = b'\0'
+    restable = rscAlignShift + rscTypes + rscEndTypes + rscResourceNames + rscEndNames
+
+    # resrcsize underestimates struct length by 1
+    restable = restable + b'\0' * (resrcpad-1)
+
+    assert resrcsize == (
+        12 + # len(rscAlignShift) + len(rscEndTypes) + len(rscResourceNames)
+        20 +  #_TYPEINFO.size + _NAMEINFO.size * 1 (for FONTDIR)
+        8 + # TYPEINFO.size (for FONTS)
+        12 * len(fonts) # _NAMEINFO.size * len(fonts)
+    )
+
+    ne_header = _NE_HEADER(
+        magic=b'NE',
+        linker_major_version=5,
+        linker_minor_version=10,
+        entry_table_offset=off_entry,
+        entry_table_length=len(entry),
+        file_load_crc=0,
+        program_flags=0x08,
+        application_flags=0x83,
+        auto_data_seg_index=0,
+        initial_heap_size=0,
+        initial_stack_size=0,
+        entry_point_csip=0,
+        initial_stack_pointer_sssp=0,
+        segment_count=0,
+        module_ref_count=0,
+        nonresident_names_table_size=len(nonres),
+        seg_table_offset=off_segtable,
+        res_table_offset=off_restable,
+        resident_names_table_offset=off_res,
+        module_ref_table_offset=off_modref,
+        imp_names_table_offset=off_import,
+        nonresident_names_table_offset=len(stubdata) + off_nonres,
+        movable_entry_point_count=0,
+        file_alignment_size_shift_count=4,
+        number_res_table_entries=0,
+        target_os=2,
+        other_os2_exe_flags=8,
+        return_thunks_offset=0,
+        seg_ref_thunks_offset=0,
+        min_code_swap_size=0,
+        expected_windows_version=0x300
+    )
+
+    file = stubdata + bytes(ne_header) + restable + res + entry + nonres + b'\0' * pad + resdata
+    return file
