@@ -180,45 +180,43 @@ def _read_font_hunk(f):
     # the file name tends to be the name as given in the .font anyway
     if 'name' not in props:
         props['name'] = props['source-name']
+    props['family'] = props['name'].split('/')[0].split(' ')[0]
     return glyphs, labels, props
 
 def _parse_amiga_props(amiga_props, min_kern):
     """Convert AmigaFont properties into yaff properties."""
-    if amiga_props['tf_Style'] & _FSF_COLORFONT:
+    if amiga_props.tf_Style & _FSF_COLORFONT:
         raise ValueError('Amiga ColorFont not supported')
     props = {
         'converter': 'monobit v{}'.format(VERSION),
         'source-format': 'AmigaFont',
     }
-    name = amiga_props['dfh_Name'].decode('latin-1')
-    if '\0' in name:
-        # preserve tags stored in name field after \0
-        name, tag = name.split('\0', 1)
-        tag = tag.replace('\0', '')
-        if tag:
-            props['_TAG'] = tag
+    # preserve tags stored in name field after \0
+    name, *tags = amiga_props.dfh_Name.decode('latin-1').split('\0')
+    for i, tag in enumerate(tags):
+        props['amiga.dfh_Name.{}'.format(i+1)] = tag
     if name:
         props['name'] = name
-    props['revision'] = amiga_props['dfh_Revision']
-    props['bottom'] = -(amiga_props['tf_YSize'] - amiga_props['tf_Baseline'])
-    props['size'] = amiga_props['tf_YSize']
+    props['revision'] = amiga_props.dfh_Revision
+    props['bottom'] = -(amiga_props.tf_YSize - amiga_props.tf_Baseline)
+    props['size'] = amiga_props.tf_YSize
     # tf_Style
-    props['weight'] = 'bold' if amiga_props['tf_Style'] & _FSF_BOLD else 'medium'
-    props['slant'] = 'italic' if amiga_props['tf_Style'] & _FSF_ITALIC else 'roman'
-    props['setwidth'] = 'expanded' if amiga_props['tf_Style'] & _FSF_EXTENDED else 'medium'
-    if amiga_props['tf_Style'] & _FSF_UNDERLINED:
+    props['weight'] = 'bold' if amiga_props.tf_Style & _FSF_BOLD else 'medium'
+    props['slant'] = 'italic' if amiga_props.tf_Style & _FSF_ITALIC else 'roman'
+    props['setwidth'] = 'expanded' if amiga_props.tf_Style & _FSF_EXTENDED else 'medium'
+    if amiga_props.tf_Style & _FSF_UNDERLINED:
         props['decoration'] = 'underline'
     # tf_Flags
     props['spacing'] = (
-        'proportional' if amiga_props['tf_Flags'] & _FPF_PROPORTIONAL else 'monospace'
+        'proportional' if amiga_props.tf_Flags & _FPF_PROPORTIONAL else 'monospace'
     )
-    if amiga_props['tf_Flags'] & _FPF_REVPATH:
+    if amiga_props.tf_Flags & _FPF_REVPATH:
         props['direction'] = 'right-to-left'
         logging.warning('right-to-left fonts are not correctly implemented yet')
-    if amiga_props['tf_Flags'] & _FPF_TALLDOT and not amiga_props['tf_Flags'] & _FPF_WIDEDOT:
+    if amiga_props.tf_Flags & _FPF_TALLDOT and not amiga_props.tf_Flags & _FPF_WIDEDOT:
         # TALLDOT: This font was designed for a Hires screen (640x200 NTSC, non-interlaced)
         props['dpi'] = '96 48'
-    elif amiga_props['tf_Flags'] & _FPF_WIDEDOT and not amiga_props['tf_Flags'] & _FPF_TALLDOT:
+    elif amiga_props.tf_Flags & _FPF_WIDEDOT and not amiga_props.tf_Flags & _FPF_TALLDOT:
         # WIDEDOT: This font was designed for a Lores Interlaced screen (320x400 NTSC)
         props['dpi'] = '48 96'
     else:
@@ -230,8 +228,8 @@ def _parse_amiga_props(amiga_props, min_kern):
     # preserve unparsed properties
     # tf_BoldSmear; /* smear to affect a bold enhancement */
     # use the most common value 1 as a default
-    if amiga_props['tf_BoldSmear'] != 1:
-        props['_tf_BoldSmear'] = amiga_props['tf_BoldSmear']
+    if amiga_props.tf_BoldSmear != 1:
+        props['amiga.tf_BoldSmear'] = amiga_props.tf_BoldSmear
     return props
 
 def _read_strike(

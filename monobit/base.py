@@ -16,7 +16,7 @@ from types import SimpleNamespace
 
 
 DEFAULT_FORMAT = 'text'
-VERSION = '0.4'
+VERSION = '0.5'
 
 
 @contextmanager

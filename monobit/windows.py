@@ -282,14 +282,14 @@ def _read_fnt_header(fnt):
 
 def _read_fnt_chartable(fnt, win_props):
     """Read a WinFont character table."""
-    if win_props['dfVersion'] == 0x100:
+    if win_props.dfVersion == 0x100:
         return _read_fnt_chartable_v1(fnt, win_props)
     return _read_fnt_chartable_v2(fnt, win_props)
 
 def _read_fnt_chartable_v1(fnt, win_props):
     """Read a WinFont 1.0 character table."""
-    n_chars = win_props['dfLastChar'] - win_props['dfFirstChar'] + 1
-    if not win_props['dfPixWidth']:
+    n_chars = win_props.dfLastChar - win_props.dfFirstChar + 1
+    if not win_props.dfPixWidth:
         # proportional font
         ct_start = _FNT_HEADER_SIZE[0x100]
         ct_size = _CT_HEADER_1.size
@@ -299,12 +299,12 @@ def _read_fnt_chartable_v1(fnt, win_props):
         ]
     else:
         offsets = [
-            win_props['dfPixWidth'] * _ord
+            win_props.dfPixWidth * _ord
             for _ord in range(n_chars+1)
         ]
-    height = win_props['dfPixHeight']
-    bytewidth = win_props['dfWidthBytes']
-    offset = win_props['dfBitsOffset']
+    height = win_props.dfPixHeight
+    bytewidth = win_props.dfWidthBytes
+    offset = win_props.dfBitsOffset
     strikerows = tuple(
         bytes_to_bits(fnt[offset+_row*bytewidth : offset+(_row+1)*bytewidth])
         for _row in range(height)
@@ -323,19 +323,19 @@ def _read_fnt_chartable_v1(fnt, win_props):
         # don't store empty glyphs but count them for ordinals
         if rows:
             glyphs.append(Glyph(rows))
-            labels[win_props['dfFirstChar'] + ord] = len(glyphs) - 1
+            labels[win_props.dfFirstChar + ord] = len(glyphs) - 1
     return glyphs, labels
 
 def _read_fnt_chartable_v2(fnt, win_props):
     """Read a WinFont 2.0 or 3.0 character table."""
-    ct_start = _FNT_HEADER_SIZE[win_props['dfVersion']]
-    ct_header = _CT_VERSION_HEADER[win_props['dfVersion']]
+    ct_start = _FNT_HEADER_SIZE[win_props.dfVersion]
+    ct_header = _CT_VERSION_HEADER[win_props.dfVersion]
     ct_size = ct_header.size
     glyphs = []
     labels = {}
-    height = win_props['dfPixHeight']
-    for ord in range(win_props['dfFirstChar'], win_props['dfLastChar']+1):
-        entry = ct_start + ct_size * (ord-win_props['dfFirstChar'])
+    height = win_props.dfPixHeight
+    for ord in range(win_props.dfFirstChar, win_props.dfLastChar+1):
+        entry = ct_start + ct_size * (ord-win_props.dfFirstChar)
         width, offset = ct_header.from_bytes(fnt, offset=entry)
         # don't store empty glyphs but count them for ordinals
         if not width:
@@ -355,67 +355,66 @@ def _read_fnt_chartable_v2(fnt, win_props):
 
 def _parse_win_props(fnt, win_props):
     """Convert WinFont properties to yaff properties."""
-    version = win_props['dfVersion']
-    if win_props['dfType'] & 1:
+    version = win_props.dfVersion
+    if win_props.dfType & 1:
         raise ValueError('Not a bitmap font')
     properties = {
         'converter': 'monobit v{}'.format(VERSION),
         'source-format': 'WinFont v{}.{}'.format(*divmod(version, 256)),
-        'family': bytes_to_str(fnt[win_props['dfFace']:]),
-        'copyright': bytes_to_str(win_props['dfCopyright']),
-        'points': win_props['dfPoints'],
-        'slant': 'italic' if win_props['dfItalic'] else 'roman',
+        'family': bytes_to_str(fnt[win_props.dfFace:]),
+        'copyright': bytes_to_str(win_props.dfCopyright),
+        'points': win_props.dfPoints,
+        'slant': 'italic' if win_props.dfItalic else 'roman',
         # Windows dfAscent means distance between matrix top and baseline
-        'ascent': win_props['dfAscent'] - win_props['dfInternalLeading'],
-        'bottom': win_props['dfAscent'] - win_props['dfPixHeight'],
-        'leading': win_props['dfExternalLeading'],
-        'default-char': '0x{:x}'.format(win_props['dfDefaultChar']),
+        'ascent': win_props.dfAscent - win_props.dfInternalLeading,
+        'bottom': win_props.dfAscent - win_props.dfPixHeight,
+        'leading': win_props.dfExternalLeading,
+        'default-char': '0x{:x}'.format(win_props.dfDefaultChar),
     }
-    if win_props['dfPixWidth']:
+    if win_props.dfPixWidth:
         properties['spacing'] = 'monospace'
-        properties['size'] = '{} {}'.format(win_props['dfPixWidth'], win_props['dfPixHeight'])
+        properties['size'] = '{} {}'.format(win_props.dfPixWidth, win_props.dfPixHeight)
     else:
         properties['spacing'] = 'proportional'
-        properties['size'] = win_props['dfPixHeight']
+        properties['size'] = win_props.dfPixHeight
         # this can all be extracted from the font - drop if consistent?
-        properties['x-width'] = win_props['dfAvgWidth']
+        properties['x-width'] = win_props.dfAvgWidth
     # check prop/fixed flag
-    if bool(win_props['dfPitchAndFamily'] & 1) != bool(properties['spacing'] == 'proportional'):
+    if bool(win_props.dfPitchAndFamily & 1) != bool(properties['spacing'] == 'proportional'):
         logging.warning('inconsistent spacing properties.')
-    if win_props['dfHorizRes'] != win_props['dfVertRes']:
+    if win_props.dfHorizRes != win_props.dfVertRes:
         properties['dpi'] = '{} {}'.format(win_props.dfHorizRes, win_props.dfVertRes)
     else:
-        properties['dpi'] = win_props['dfHorizRes']
+        properties['dpi'] = win_props.dfHorizRes
     deco = []
-    if win_props['dfUnderline']:
+    if win_props.dfUnderline:
         deco.append('underline')
-    if win_props['dfStrikeOut']:
+    if win_props.dfStrikeOut:
         deco.append('strikethrough')
     if deco:
         properties['decoration'] = ' '.join(deco)
-    weight = win_props['dfWeight']
+    weight = win_props.dfWeight
     if weight:
         weight = max(100, min(900, weight))
         properties['weight'] = _WEIGHT_MAP[round(weight, -2)]
-    charset = win_props['dfCharSet']
+    charset = win_props.dfCharSet
     if charset in _CHARSET_MAP:
         properties['encoding'] = _CHARSET_MAP[charset]
     else:
-        properties['_dfCharSet'] = str(charset)
-    properties['style'] = _STYLE_MAP[win_props['dfPitchAndFamily'] >> 4]
-    properties['word-boundary'] = '0x{:x}'.format(win_props['dfFirstChar'] + win_props['dfBreakChar'])
-    # append unparsed properties
-    properties['device'] = bytes_to_str(fnt[win_props['dfDevice']:])
-    # dfMaxWidth - but this can be calculated from the matrices
+        properties['windows.dfCharSet'] = str(charset)
+    properties['style'] = _STYLE_MAP[win_props.dfPitchAndFamily >> 4]
+    properties['word-boundary'] = '0x{:x}'.format(win_props.dfFirstChar + win_props.dfBreakChar)
+    properties['device'] = bytes_to_str(fnt[win_props.dfDevice:])
+    # unparsed properties: dfMaxWidth - but this can be calculated from the matrices
     if version == 0x300:
-        if win_props['dfFlags'] & _DFF_COLORFONT:
+        if win_props.dfFlags & _DFF_COLORFONT:
             raise ValueError('ColorFont not supported')
         # yet another prop/fixed flag
-        if bool(win_props['dfFlags'] & _DFF_PROP) != properties['spacing'] == 'proportional':
+        if bool(win_props.dfFlags & _DFF_PROP) != properties['spacing'] == 'proportional':
             logging.warning('inconsistent spacing properties.')
-        if win_props['dfFlags'] & _DFF_ABC:
-            properties['offset-before'] = win_props['dfAspace']
-            properties['offset-after'] = win_props['dfCspace']
+        if win_props.dfFlags & _DFF_ABC:
+            properties['offset-before'] = win_props.dfAspace
+            properties['offset-after'] = win_props.dfCspace
             # dfBspace - 'width of the character' - i assume not used for proportional
             # and duplicated for fixed-width
     name = [properties['family']]
