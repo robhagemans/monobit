@@ -859,23 +859,29 @@ def _create_fontdirentry(fnt, properties):
 def _create_fon(typeface):
     """Create a .FON font library, given a bunch of .FNT file contents."""
 
-    # use font-familt name of first font
-    name = typeface._fonts[0]._properties['family']
-
-    # construct the FNT resources
-    fonts = [_create_fnt(_font) for _font in typeface._fonts]
+    # use font-family name and dpi of first font
+    name = typeface._fonts[0]._properties.get('family', 'NoName')
+    dpi = typeface._fonts[0]._properties.get('dpi', 96)
+    xdpi, ydpi = _get_prop_x(dpi), _get_prop_y(dpi)
+    points = [
+        int(_font._properties['points'])
+        for _font in typeface._fonts if 'points' in _font._properties
+    ]
 
     # The MZ stub.
     stubdata = _dos_stub()
 
     # Non-resident name table should contain a FONTRES line.
-    # FIXME: are these dpi numbers?
-    nonres = b'FONTRES 100,96,96 : ' + name.encode('ascii')
+    # FONTRES Aspect, LogPixelsX, LogPixelsY : Name Pts0,Pts1,... (Device res.)
+    nonres = ('FONTRES %d,%d,%d : %s %s' % (
+        (100 * xdpi) // ydpi, xdpi, ydpi,
+        name, ','.join(str(_pt) for _pt in sorted(points))
+    )).encode('ascii', 'ignore')
     nonres = struct.pack('B', len(nonres)) + nonres + b'\0\0\0'
 
     # Resident name table should just contain a module name.
     mname = bytes(
-        _c for _c in name.encode('ascii', 'ignore')
+        _c for _c in name.encode('ascii')
         if _c in set(string.ascii_letters + string.digits)
     )
     res = struct.pack('B', len(mname)) + mname + b'\0\0\0'
@@ -891,7 +897,7 @@ def _create_fon(typeface):
     # 12 for each font's NAMEINFO
 
     # Resources are currently one FONTDIR plus n fonts.
-    resrcsize = 12 + 20 + 8 + 12 * len(fonts)
+    resrcsize = 12 + 20 + 8 + 12 * len(typeface._fonts)
     resrcpad = ((resrcsize + 15) & ~15) - resrcsize
 
     # Now position all of this after the NE header.
@@ -901,9 +907,12 @@ def _create_fon(typeface):
     off_nonres = off_modref + len(entry)
     size_unpadded = off_nonres + len(nonres)
     pad = ((size_unpadded + 15) & ~15) - size_unpadded
-    # Now q is file offset where the real resources begin.
+
+    # file offset where the real resources begin.
     real_resource_offset = size_unpadded + pad + len(stubdata)
 
+    # construct the FNT resources
+    fonts = [_create_fnt(_font) for _font in typeface._fonts]
     # Construct the FONTDIR.
     fontdir = struct.pack('<H', len(fonts))
     for i in range(len(fonts)):
@@ -972,10 +981,9 @@ def _create_fon(typeface):
     restable = restable + b'\0' * (resrcpad-1)
 
     assert resrcsize == (
-        12 + # len(rscAlignShift) + len(rscEndTypes) + len(rscResourceNames)
-        20 +  #_TYPEINFO.size + _NAMEINFO.size * 1 (for FONTDIR)
-        8 + # TYPEINFO.size (for FONTS)
-        12 * len(fonts) # _NAMEINFO.size * len(fonts)
+        len(rscAlignShift) + len(rscEndTypes) + len(rscResourceNames)
+        + _TYPEINFO.size + _NAMEINFO.size * 1 #(for FONTDIR)
+        + _TYPEINFO.size + _NAMEINFO.size * len(fonts) #(for FONTS)
     )
 
     ne_header = _NE_HEADER(
