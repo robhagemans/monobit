@@ -339,27 +339,25 @@ def _read_fnt_chartable_v1(fnt, win_props):
 
 def _read_fnt_chartable_v2(fnt, win_props):
     """Read a WinFont 2.0 or 3.0 character table."""
+    n_chars = -win_props.dfFirstChar + win_props.dfLastChar + 1
+    glyph_entry_array = _GLYPH_ENTRY[win_props.dfVersion] * n_chars
     ct_start = _FNT_HEADER_SIZE[win_props.dfVersion]
-    glyph_entry = _GLYPH_ENTRY[win_props.dfVersion]
     glyphs = []
     labels = {}
     height = win_props.dfPixHeight
-    for ord in range(win_props.dfFirstChar, win_props.dfLastChar+1):
-        entry_start = ct_start + glyph_entry.size * (ord-win_props.dfFirstChar)
-        entry = glyph_entry.from_bytes(fnt, entry_start)
+    entries = glyph_entry_array.from_buffer_copy(fnt, ct_start)
+    for ord, entry in enumerate(entries, win_props.dfFirstChar):
         # don't store empty glyphs but count them for ordinals
         if not entry.geWidth:
             continue
         bytewidth = ceildiv(entry.geWidth, 8)
-        rows = tuple(
-            #FIXME: replace with Glyph.from_bytes
-            bytes_to_bits(
-                [fnt[entry.geOffset + _col * height + _row] for _col in range(bytewidth)],
-                entry.geWidth
-            )
+        # transpose byte-columns to contiguous rows
+        glyph_data = bytes(
+            fnt[entry.geOffset + _col * height + _row]
             for _row in range(height)
+            for _col in range(bytewidth)
         )
-        glyphs.append(Glyph(rows))
+        glyphs.append(Glyph.from_bytes(glyph_data, entry.geWidth))
         labels[ord] = len(glyphs) - 1
     return glyphs, labels
 
