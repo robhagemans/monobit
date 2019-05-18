@@ -64,7 +64,7 @@ def load(instream):
 def save(typeface, outstream):
     """Write fonts to a .hex file."""
     if len(typeface._fonts) > 1:
-        raise ValueError('Saving multiple fonts to .hex or not possible')
+        raise ValueError('Saving multiple fonts to .hex not possible')
     font = typeface._fonts[0]
     write_comments(outstream, font._comments[None], comm_char='#', is_global=True)
     for ordinal, char in font._glyphs.items():
