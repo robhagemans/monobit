@@ -145,6 +145,7 @@ def friendlystruct(_endian, **description):
         _pack_ = True
 
         def __repr__(self):
+            """String representation."""
             return 'Struct({})'.format(
                 ', '.join(
                     '{}={}'.format(field, getattr(self, field))
@@ -154,14 +155,21 @@ def friendlystruct(_endian, **description):
 
         @property
         def __dict__(self):
+            """Fields as dict."""
             return OrderedDict(
                 (field, getattr(self, field))
                 for field, _ in self._fields_
             )
 
         def __add__(self, other):
+            """Concatenate structs."""
             addedstruct = friendlystruct(_endian, **OrderedDict(self._fields_ + other._fields_))
             return addedstruct(**self.__dict__, **other.__dict__)
+
+        @classmethod
+        def read_from(cls, stream):
+            """Read struct from file."""
+            return cls.from_buffer_copy(stream.read(ctypes.sizeof(cls)))
 
     Struct.size = ctypes.sizeof(Struct)
     Struct.from_bytes = Struct.from_buffer_copy

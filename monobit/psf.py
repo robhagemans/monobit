@@ -17,9 +17,9 @@ from .raw import load_aligned, save_aligned
 # PSF1 header
 _PSF1_MAGIC = b'\x36\x04'
 _PSF1_HEADER = friendlystruct(
-    '<',
-    mode='B',
-    charsize='B',
+    'le',
+    mode='uint8',
+    charsize='uint8',
 )
 
 # mode field
@@ -34,14 +34,14 @@ _PSF1_STARTSEQ =  b'\xFF\xFE'
 # PSF2 header
 _PSF2_MAGIC = b'\x72\xb5\x4a\x86'
 _PSF2_HEADER = friendlystruct(
-    '<',
-    version='L',
-    headersize='L',
-    flags='L',
-    length='L',
-    charsize='L',
-    height='L',
-    width='L',
+    'le',
+    version='uint32',
+    headersize='uint32',
+    flags='uint32',
+    length='uint32',
+    charsize='uint32',
+    height='uint32',
+    width='uint32',
 )
 
 # flags field
@@ -57,14 +57,13 @@ _PSF2_STARTSEQ = b'\xFE'
 
 @Typeface.loads('psf', encoding=None)
 def load(instream):
-    """Load font from raw binary."""
+    """Load font from psf file."""
     magic = instream.read(2)
     if magic == _PSF1_MAGIC:
         psf_props = _PSF1_HEADER.read_from(instream)
-        psf_props.width, psf_props.height = 8, psf_props.charsize
-        psf_props.headersize =  _PSF1_HEADER.size + len(_PSF1_MAGIC)
-        psf_props.length = 512 if (psf_props.mode & _PSF1_MODE512) else 256
-        psf_props.has_unicode_table = bool(psf_props.mode & _PSF1_MODEHASTAB)
+        width, height = 8, psf_props.charsize
+        length = 512 if (psf_props.mode & _PSF1_MODE512) else 256
+        has_unicode_table = bool(psf_props.mode & _PSF1_MODEHASTAB)
         separator = _PSF1_SEPARATOR
         startseq = _PSF1_STARTSEQ
         encoding = 'utf-16le'
@@ -74,26 +73,28 @@ def load(instream):
         if psf_props.charsize != charsize:
             logging.warning('Ingnoring inconsistent char size in PSF header.')
             psf_props.charsize = charsize
-        psf_props.has_unicode_table = bool(psf_props.flags & _PSF2_HAS_UNICODE_TABLE)
+        width, height, length = psf_props.width, psf_props.height, psf_props.length
+        has_unicode_table = bool(psf_props.flags & _PSF2_HAS_UNICODE_TABLE)
         # ignore any padding after header
         padding = psf_props.headersize - (_PSF2_HEADER.size + len(_PSF2_MAGIC))
         instream.read(padding)
         separator = _PSF2_SEPARATOR
         startseq = _PSF2_STARTSEQ
         encoding = 'utf-8'
-    cells = load_aligned(instream, (psf_props.width, psf_props.height), psf_props.length)
-    table = _read_unicode_table(instream, separator, startseq, encoding)
+    cells = load_aligned(instream, (width, height), length)
     # set ordinals as labels
     labels = {
         _index: _index
         for _index in range(len(cells))
     }
-    # convert unicode table to labels
-    labels.update({
-        _format_cluster(_seq): _index
-        for _index, _seq in enumerate(table)
-        if _seq
-    })
+    if has_unicode_table:
+        table = _read_unicode_table(instream, separator, startseq, encoding)
+        # convert unicode table to labels
+        labels.update({
+            _format_cluster(_seq): _index
+            for _index, _seq in enumerate(table)
+            if _seq
+        })
     return Typeface([Font(cells, labels)])
 
 def _format_cluster(sequence):
