@@ -624,31 +624,26 @@ def _create_fnt(font):
     ord_glyphs.append(Glyph.empty(pix_width, pix_height))
     offset_chartbl = _FNT_HEADER.size + _FNT_HEADER_3.size
     ct_header = _CT_VERSION_HEADER[0x300]
-
-    #face_name_offset = offset_chartbl + len(ord_glyphs) * ct_header.size
-    #face_name = properties['family'].encode('latin-1', 'replace') + b'\0'
-    #device_name_offset = face_name_offset + len(face_name)
-    #device_name = b'' #properties.get('device', '').encode('latin-1', 'replace') + b'\0'
-    #offset_bitmaps = device_name_offset + len(device_name)
-
     offset_bitmaps = offset_chartbl + len(ord_glyphs) * ct_header.size
 
-    # set device name pointer to zero for 'generic font'
-    # round up to multiple of 2 (FIXME - why?) (only used for v1?)
-    width_bytes = pad(ceildiv(font.max_width, 8), 1)
-    # enforce width_bytes for each glyph, maybe windows likes this?
     bitmaps = [
-        _glyph.as_bytes().ljust(width_bytes*_glyph.height, b'\0') for _glyph in ord_glyphs
+        _glyph.as_bytes()
+        for _glyph in ord_glyphs
     ]
-
+    # bytewise transpose - .FNT stores as contiguous 8-pixel columns
+    bitmaps = [
+        b''.join(
+            _bm[_col::len(_bm)//_glyph.height]
+            for _col in range(len(_bm)//_glyph.height)
+        )
+        for _glyph, _bm in zip(ord_glyphs, bitmaps)
+    ]
     glyph_offsets = [0] + list(itertools.accumulate(len(_bm) for _bm in bitmaps))
     char_table = [
         bytes(ct_header(_glyph.width, offset_bitmaps + _glyph_offset))
         for _glyph, _glyph_offset in zip(ord_glyphs, glyph_offsets)
     ]
     file_size = offset_bitmaps + glyph_offsets[-1] #+ len(bitmaps[-1]) ## WHY NOT??
-
-    print((offset_bitmaps, file_size, glyph_offsets[-1], len(bitmaps[-1])))
 
     face_name_offset = file_size
     face_name = properties['family'].encode('latin-1', 'replace') + b'\0'
@@ -658,6 +653,7 @@ def _create_fnt(font):
     file_size = device_name_offset + len(device_name)
 
     if not device_name:
+        # set device name pointer to zero for 'generic font'
         device_name_offset = 0
 
     win_props = _FNT_HEADER(
@@ -685,7 +681,8 @@ def _create_fnt(font):
         dfLastChar=max(font.ordinals),
         dfDefaultChar=int(properties.get('default-char', 0), 0), # 0 is default if none provided
         dfBreakChar=int(properties.get('word-boundary', 0), space_index),
-        dfWidthBytes=width_bytes,
+        # round up to multiple of 2 bytes to word-align v1.0 strikes (not used for v2.0+ ?)
+        dfWidthBytes=pad(ceildiv(font.max_width, 8), 1),
         dfDevice=device_name_offset,
         dfFace=face_name_offset,
         dfBitsPointer=0, # used on loading
