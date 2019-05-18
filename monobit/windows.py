@@ -212,24 +212,36 @@ _FNT_HEADER_SIZE = {
     for _ver, _header in _FNT_VERSION_HEADER.items()
 }
 
-# char table header
-_CT_HEADER_1 = friendlystruct(
-    '<',
-    offset='H',
+
+# GlyphEntry structures for char table
+# see e.g. https://web.archive.org/web/20120215123301/http://support.microsoft.com/kb/65123
+_GLYPH_ENTRY_1 = friendlystruct(
+    'le',
+    geOffset='word',
 )
-_CT_HEADER_2 = friendlystruct(
-    '<',
-    width='H',
-    offset='H',
+_GLYPH_ENTRY_2 = friendlystruct(
+    'le',
+    geWidth='word',
+    geOffset='word',
 )
-_CT_HEADER_3 = friendlystruct(
-    '<',
-    width='H',
-    offset='L',
+_GLYPH_ENTRY_3 = friendlystruct(
+    'le',
+    geWidth='word',
+    geOffset='dword',
 )
-_CT_VERSION_HEADER = {
-    0x200: _CT_HEADER_2,
-    0x300: _CT_HEADER_3,
+# for ABCFIXED and ABCPROPORTIONAL; for reference, not used in v3.00 (i.e. not used at all)
+_GLYPH_ENTRY_3ABC = friendlystruct(
+    '<',
+    geWidth='word',
+    geOffset='dword',
+    geAspace='dword',
+    geBspace='dword',
+    geCspace='word',
+)
+_GLYPH_ENTRY = {
+    0x100: _GLYPH_ENTRY_1,
+    0x200: _GLYPH_ENTRY_2,
+    0x300: _GLYPH_ENTRY_3,
 }
 
 
@@ -292,9 +304,8 @@ def _read_fnt_chartable_v1(fnt, win_props):
     if not win_props.dfPixWidth:
         # proportional font
         ct_start = _FNT_HEADER_SIZE[0x100]
-        ct_size = _CT_HEADER_1.size
         offsets = [
-            _CT_HEADER_1.from_bytes(fnt, ct_start + _ord * ct_size).offset
+            _GLYPH_ENTRY_1.from_bytes(fnt, ct_start + _ord*_GLYPH_ENTRY_1.size).geOffset
             for _ord in range(n_chars+1)
         ]
     else:
@@ -329,23 +340,22 @@ def _read_fnt_chartable_v1(fnt, win_props):
 def _read_fnt_chartable_v2(fnt, win_props):
     """Read a WinFont 2.0 or 3.0 character table."""
     ct_start = _FNT_HEADER_SIZE[win_props.dfVersion]
-    ct_header = _CT_VERSION_HEADER[win_props.dfVersion]
-    ct_size = ct_header.size
+    glyph_entry = _GLYPH_ENTRY[win_props.dfVersion]
     glyphs = []
     labels = {}
     height = win_props.dfPixHeight
     for ord in range(win_props.dfFirstChar, win_props.dfLastChar+1):
-        entry = ct_start + ct_size * (ord-win_props.dfFirstChar)
-        width, offset = ct_header.from_bytes(fnt, entry)
+        entry_start = ct_start + glyph_entry.size * (ord-win_props.dfFirstChar)
+        entry = glyph_entry.from_bytes(fnt, entry_start)
         # don't store empty glyphs but count them for ordinals
-        if not width:
+        if not entry.geWidth:
             continue
-        bytewidth = ceildiv(width, 8)
+        bytewidth = ceildiv(entry.geWidth, 8)
         rows = tuple(
             #FIXME: replace with Glyph.from_bytes
             bytes_to_bits(
-                [fnt[offset + _col * height + _row] for _col in range(bytewidth)],
-                width
+                [fnt[entry.geOffset + _col * height + _row] for _col in range(bytewidth)],
+                entry.geWidth
             )
             for _row in range(height)
         )
@@ -407,16 +417,27 @@ def _parse_win_props(fnt, win_props):
     properties['device'] = bytes_to_str(fnt[win_props.dfDevice:])
     # unparsed properties: dfMaxWidth - but this can be calculated from the matrices
     if version == 0x300:
+        # https://github.com/letolabs/fontforge/blob/master/fontforge/winfonts.c
+        # /* These fields are not present in 2.0 and are not meaningful in 3.0 */
+        # /*  they are there for future expansion */
+        # yet another prop/fixed flag
+        if bool(win_props.dfFlags & _DFF_PROP) != (win_props.dfPixWidth == 0):
+            logging.warning(
+                'Inconsistent spacing properties: dfPixWidth=={} dfFlags=={:04x}'.format(
+                    win_props.dfPixWidth, win_props.dfFlags
+                )
+            )
+        # https://web.archive.org/web/20120215123301/http://support.microsoft.com/kb/65123
+        # NOTE: The only formats supported in Windows 3.0 will be DFF_FIXED and DFF_PROPORTIONAL.
         if win_props.dfFlags & _DFF_COLORFONT:
             raise ValueError('ColorFont not supported')
-        # yet another prop/fixed flag
-        if bool(win_props.dfFlags & _DFF_PROP) != properties['spacing'] == 'proportional':
-            logging.warning('inconsistent spacing properties.')
         if win_props.dfFlags & _DFF_ABC:
-            properties['offset-before'] = win_props.dfAspace
-            properties['offset-after'] = win_props.dfCspace
-            # dfBspace - 'width of the character' - i assume not used for proportional
-            # and duplicated for fixed-width
+            # https://ffenc.blogspot.com/2008/04/fnt-font-file-format.html
+            # For Windows 3.00, the font-file header includes six new fields:
+            # dFlags, dfAspace, dfBspace, dfCspace, dfColorPointer, and dfReserved1.
+            # These fields are not used in Windows 3.00. To ensure compatibility with future
+            # versions of Windows, these fields should be set to zero.
+            raise ValueError('ABC spacing properties not supported')
     name = [properties['family']]
     if properties['weight'] != 'regular':
         name.append(properties['weight'])
@@ -622,7 +643,7 @@ def _create_fnt(font):
     # add the guaranteed-blank glyph
     ord_glyphs.append(Glyph.empty(pix_width, pix_height))
     offset_chartbl = _FNT_HEADER.size + _FNT_HEADER_3.size
-    ct_header = _CT_VERSION_HEADER[0x300]
+    ct_header = _GLYPH_ENTRY[0x300]
     offset_bitmaps = offset_chartbl + len(ord_glyphs) * ct_header.size
 
     bitmaps = [
