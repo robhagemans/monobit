@@ -21,6 +21,7 @@ from . import raw
 from . import bdf
 from . import psf
 from . import hex
+from . import cpi
 from . import c
 
 from .image import show

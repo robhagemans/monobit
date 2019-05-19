@@ -107,6 +107,7 @@ def friendlystruct(_endian, **description):
         'uint16': ctypes.c_uint16,
         'H': ctypes.c_uint16,
 
+        'short': ctypes.c_int16,
         'int16': ctypes.c_int16,
         'h': ctypes.c_int16,
 
@@ -115,6 +116,7 @@ def friendlystruct(_endian, **description):
         'I': ctypes.c_uint32,
         'L': ctypes.c_uint32,
 
+        'long': ctypes.c_int32,
         'int32': ctypes.c_int32,
         'i': ctypes.c_int32,
         'l': ctypes.c_int32,
@@ -184,7 +186,6 @@ friendlystruct.int16 = ctypes.c_int16
 friendlystruct.uint32 = ctypes.c_uint32
 friendlystruct.int32 = ctypes.c_int32
 friendlystruct.sizeof = ctypes.sizeof
-
 
 
 ##############################################################################

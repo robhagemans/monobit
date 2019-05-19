@@ -74,14 +74,18 @@ def load_aligned(instream, cell, n_chars):
     width_bytes = ceildiv(width, 8)
     if n_chars is None:
         rombytes = instream.read()
+        # get number of chars in extract
+        n_chars = ceildiv(len(rombytes), bytesize)
     else:
         rombytes = instream.read(n_chars * width_bytes * height)
-    bytesize = width_bytes * height
-    # get number of chars in extract
-    n_chars = ceildiv(len(rombytes), bytesize)
+    return parse_aligned(rombytes, width, height, n_chars)
+
+def parse_aligned(rombytes, width, height, n_chars, offset=0):
+    """Load fixed-width font from byte-aligned bitmap."""
+    bytesize = ceildiv(width, 8) * height
     # get chunks
     glyphbytes = [
-        rombytes[_ord*bytesize : (_ord+1)*bytesize]
+        rombytes[offset+_ord*bytesize : offset+(_ord+1)*bytesize]
         for _ord in range(n_chars)
     ]
     # concatenate rows

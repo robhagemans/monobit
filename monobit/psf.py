@@ -118,7 +118,7 @@ def _read_unicode_table(instream, separator, startseq, encoding):
 
 @Typeface.saves('psf', encoding=None)
 def save(typeface, outstream):
-    """Save font to raw byte-aligned binary (DOS font)."""
+    """Save font to PSF file."""
     if len(typeface._fonts) > 1:
         raise ValueError('Saving multiple fonts to .psf not possible')
     font = typeface._fonts[0]
