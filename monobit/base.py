@@ -176,6 +176,16 @@ def friendlystruct(_endian, **description):
     return Struct
 
 
+friendlystruct.char = ctypes.c_char
+friendlystruct.uint8 = ctypes.c_uint8
+friendlystruct.int8 = ctypes.c_int8
+friendlystruct.uint16 = ctypes.c_uint16
+friendlystruct.int16 = ctypes.c_int16
+friendlystruct.uint32 = ctypes.c_uint32
+friendlystruct.int32 = ctypes.c_int32
+friendlystruct.sizeof = ctypes.sizeof
+
+
 
 ##############################################################################
 # text-file comments
