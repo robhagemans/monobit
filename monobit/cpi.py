@@ -127,10 +127,14 @@ def _parse_cpi(data):
     # run through the linked list and parse fonts
     fonts = []
     for cp in range(fih.num_codepages):
-        font, cpeh_offset = _parse_cp(
-            data, cpeh_offset, cpi_header.id, drdos_effh=drdos_effh
-        )
-        fonts.append(font)
+        try:
+            font, cpeh_offset = _parse_cp(
+                data, cpeh_offset, cpi_header.id, drdos_effh=drdos_effh
+            )
+        except ValueError as e:
+            logging.error('Could not parse font in CPI file: %s', e)
+        else:
+            fonts.append(font)
     return fonts
 
 def _parse_cp(data, cpeh_offset, header_id=_ID_MS, drdos_effh=None):
@@ -149,9 +153,13 @@ def _parse_cp(data, cpeh_offset, header_id=_ID_MS, drdos_effh=None):
     # printer CPs have one font only
     if cpeh.device_type == _DT_PRINTER:
         cpih.num_fonts = 1
-        # TODO: parse printer font
-        props = {}
-        cells = []
+        # could we parse printer fonts? are they device specific?
+        # if not, what are the dimensions?
+        raise ValueError(
+            'Printer codepages not supported - codepage {} device `{}`'.format(
+                cpeh.codepage, cpeh.device_name
+            )
+        )
     else:
         # char table offset for drfont
         if cpih.version ==_CP_DRFONT:
