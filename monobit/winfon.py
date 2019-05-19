@@ -351,7 +351,7 @@ def _create_fontdirentry(fnt, properties):
         face_name
     )
 
-def _create_resource_table(real_resource_offset, resrcsize, resdata_size, n_fonts, font_start):
+def _create_resource_table(resdata_offset, resdata_size, n_fonts, font_start):
     """Build the resource table."""
     # FONTDIR resource table entry
     typeinfo_fontdir_struct = type_info_struct(1)
@@ -360,12 +360,11 @@ def _create_resource_table(real_resource_offset, resrcsize, resdata_size, n_font
         rtResourceCount=1,
         rtNameInfo=(_NAMEINFO*1)(
             _NAMEINFO(
-                rnOffset=real_resource_offset >> _ALIGN_SHIFT,
+                rnOffset=resdata_offset >> _ALIGN_SHIFT,
                 rnLength=resdata_size >> _ALIGN_SHIFT,
                 # PRELOAD=0x0040 | MOVEABLE=0x0010 | 0x0c00 ?
                 rnFlags=0x0c50,
-                #FIXME: why? should this be -9 as we added 1 to resrcsize?
-                rnID=resrcsize-8,
+                # rnID is set below
             )
         )
     )
@@ -376,11 +375,11 @@ def _create_resource_table(real_resource_offset, resrcsize, resdata_size, n_font
         rtResourceCount=n_fonts,
         rtNameInfo=(_NAMEINFO*n_fonts)(*(
             _NAMEINFO(
-                rnOffset=(real_resource_offset+font_start[_i]) >> _ALIGN_SHIFT,
+                rnOffset=(resdata_offset+font_start[_i]) >> _ALIGN_SHIFT,
                 rnLength=(font_start[_i+1]-font_start[_i]) >> _ALIGN_SHIFT,
                 # PURE=0x0020 | MOVEABLE=0x0010 | 0x1c00 ?
                 rnFlags=0x1c30,
-                rnID=0x8001+_i,
+                rnID=0x8001 + _i,
             )
             for _i in range(n_fonts)
         ))
@@ -397,8 +396,13 @@ def _create_resource_table(real_resource_offset, resrcsize, resdata_size, n_font
         rscResourceNames=friendlystruct.char * len(res_names),
         rscEndNames='byte', # 0
     )
+    # Resource ID. This is an integer type if the high-order
+    # bit is set (8000h), otherwise it is the offset to the
+    # resource string, the offset is relative to the
+    # beginning of the resource table.
+    # -- i.e. offset to FONTDIR string
+    typeinfo_fontdir.rtNameInfo[0].rnID = res_table_struct.size - len(res_names) - 1
     res_table = res_table_struct(
-        # rscAlignShift: shift count 2<<n
         rscAlignShift=_ALIGN_SHIFT,
         rscTypes_fontdir=typeinfo_fontdir,
         rscTypes_font=typeinfo_font,
@@ -453,16 +457,14 @@ def _create_fon(typeface):
     resrcsize_aligned = align(resrcsize, _ALIGN_SHIFT)
 
     # Now position all of this after the NE header.
-    off_segtable = off_restable = _NE_HEADER.size
-    off_res = off_restable + resrcsize_aligned
-    off_modref = off_import = off_entry = off_res + len(res)
-    off_nonres = off_modref + len(entry)
-    size_unpadded = off_nonres + len(nonres)
+    off_res = _NE_HEADER.size + resrcsize_aligned
+    off_entry = off_res + len(res)
+    off_nonres = off_entry + len(entry)
     # align on 16-byte boundary
-    padding = align(size_unpadded, _ALIGN_SHIFT) - size_unpadded
+    size_aligned = align(off_nonres + len(nonres), _ALIGN_SHIFT)
 
     # file offset where the real resources begin.
-    real_resource_offset = size_unpadded + padding + len(stubdata)
+    resdata_offset = len(stubdata) + size_aligned
 
     # construct the FNT resources
     fonts = [create_fnt(_font) for _font in typeface._fonts]
@@ -483,7 +485,7 @@ def _create_fon(typeface):
         font_start.append(len(resdata))
 
     # create resource table and align
-    restable = _create_resource_table(real_resource_offset, resrcsize, len(resdata), len(fonts), font_start)
+    restable = _create_resource_table(resdata_offset, len(resdata), len(fonts), font_start)
     assert resrcsize == len(restable)
     restable = restable.ljust(resrcsize_aligned, b'\0')
 
@@ -493,33 +495,26 @@ def _create_fon(typeface):
         linker_minor_version=10,
         entry_table_offset=off_entry,
         entry_table_length=len(entry),
-        file_load_crc=0,
         program_flags=0x08,
         application_flags=0x83,
-        auto_data_seg_index=0,
-        initial_heap_size=0,
-        initial_stack_size=0,
-        entry_point_csip=0,
-        initial_stack_pointer_sssp=0,
-        segment_count=0,
-        module_ref_count=0,
         nonresident_names_table_size=len(nonres),
-        seg_table_offset=off_segtable,
-        res_table_offset=off_restable,
+        # seg table is empty
+        seg_table_offset=_NE_HEADER.size,
+        res_table_offset=_NE_HEADER.size,
         resident_names_table_offset=off_res,
-        module_ref_table_offset=off_modref,
-        imp_names_table_offset=off_import,
+        # empty
+        module_ref_table_offset=off_entry,
+        # empty
+        imp_names_table_offset=off_entry,
+        # nonresident names table offset is w.r.t. file start
         nonresident_names_table_offset=len(stubdata) + off_nonres,
-        movable_entry_point_count=0,
         file_alignment_size_shift_count=_ALIGN_SHIFT,
-        number_res_table_entries=0,
+        # target Windows 3.0
         target_os=2,
-        other_os2_exe_flags=8,
-        return_thunks_offset=0,
-        seg_ref_thunks_offset=0,
-        min_code_swap_size=0,
         expected_windows_version=0x300
     )
-
-    file = stubdata + bytes(ne_header) + restable + res + entry + nonres + b'\0'*padding + resdata
-    return file
+    return (
+        stubdata
+        + (bytes(ne_header) + restable + res + entry + nonres).ljust(size_aligned, b'\0')
+        + resdata
+    )
