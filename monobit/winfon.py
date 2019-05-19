@@ -351,6 +351,62 @@ def _create_fontdirentry(fnt, properties):
         face_name
     )
 
+def _create_resource_table(real_resource_offset, resrcsize, resdata_size, n_fonts, font_start):
+    """Build the resource table."""
+    # FONTDIR resource table entry
+    typeinfo_fontdir_struct = type_info_struct(1)
+    typeinfo_fontdir = typeinfo_fontdir_struct(
+        rtTypeID=_RT_FONTDIR,
+        rtResourceCount=1,
+        rtNameInfo=(_NAMEINFO*1)(
+            _NAMEINFO(
+                rnOffset=real_resource_offset >> _ALIGN_SHIFT,
+                rnLength=resdata_size >> _ALIGN_SHIFT,
+                # PRELOAD=0x0040 | MOVEABLE=0x0010 | 0x0c00 ?
+                rnFlags=0x0c50,
+                #FIXME: why? should this be -9 as we added 1 to resrcsize?
+                rnID=resrcsize-8,
+            )
+        )
+    )
+    # FONT resource table entry
+    typeinfo_font_struct = type_info_struct(n_fonts)
+    typeinfo_font = typeinfo_font_struct(
+        rtTypeID=_RT_FONT,
+        rtResourceCount=n_fonts,
+        rtNameInfo=(_NAMEINFO*n_fonts)(*(
+            _NAMEINFO(
+                rnOffset=(real_resource_offset+font_start[_i]) >> _ALIGN_SHIFT,
+                rnLength=(font_start[_i+1]-font_start[_i]) >> _ALIGN_SHIFT,
+                # PURE=0x0020 | MOVEABLE=0x0010 | 0x1c00 ?
+                rnFlags=0x1c30,
+                rnID=0x8001+_i,
+            )
+            for _i in range(n_fonts)
+        ))
+    )
+    # construct the resource table
+    res_names = b'\x07FONTDIR'
+    res_table_struct = friendlystruct(
+        'le',
+        rscAlignShift='word',
+        # rscTypes is a list of non-equal TYPEINFO entries
+        rscTypes_fontdir=typeinfo_fontdir_struct,
+        rscTypes_font=typeinfo_font_struct,
+        rscEndTypes='word', # 0
+        rscResourceNames=friendlystruct.char * len(res_names),
+        rscEndNames='byte', # 0
+    )
+    res_table = res_table_struct(
+        # rscAlignShift: shift count 2<<n
+        rscAlignShift=_ALIGN_SHIFT,
+        rscTypes_fontdir=typeinfo_fontdir,
+        rscTypes_font=typeinfo_font,
+        rscResourceNames=res_names,
+    )
+    return bytes(res_table)
+
+
 def _create_fon(typeface):
     """Create a .FON font library, given a bunch of .FNT file contents."""
 
@@ -394,11 +450,11 @@ def _create_fon(typeface):
 
     # Resources are currently one FONTDIR plus n fonts.
     resrcsize = 12 + 20 + 8 + 12 * len(typeface._fonts) + 1
-    resrcpad = align(resrcsize, _ALIGN_SHIFT) - resrcsize
+    resrcsize_aligned = align(resrcsize, _ALIGN_SHIFT)
 
     # Now position all of this after the NE header.
     off_segtable = off_restable = _NE_HEADER.size
-    off_res = off_restable + resrcsize + resrcpad
+    off_res = off_restable + resrcsize_aligned
     off_modref = off_import = off_entry = off_res + len(res)
     off_nonres = off_modref + len(entry)
     size_unpadded = off_nonres + len(nonres)
@@ -410,6 +466,7 @@ def _create_fon(typeface):
 
     # construct the FNT resources
     fonts = [create_fnt(_font) for _font in typeface._fonts]
+
     # Construct the FONTDIR.
     fontdir = struct.pack('<H', len(fonts))
     for i in range(len(fonts)):
@@ -417,75 +474,18 @@ def _create_fon(typeface):
             fonts[i], typeface._fonts[i]._properties
         )
     resdata = fontdir.ljust(align(len(fontdir), _ALIGN_SHIFT), b'\0')
-    font_start = [len(resdata)]
 
+    font_start = [len(resdata)]
     # The FONT resources.
     for i in range(len(fonts)):
         resdata = resdata + fonts[i]
         resdata = resdata.ljust(align(len(resdata), _ALIGN_SHIFT), b'\0')
         font_start.append(len(resdata))
 
-    # FONTDIR resource table entry
-    typeinfo_fontdir_struct = type_info_struct(1)
-    typeinfo_fontdir = typeinfo_fontdir_struct(
-        rtTypeID=_RT_FONTDIR,
-        rtResourceCount=1,
-        rtReserved=0,
-        rtNameInfo=(_NAMEINFO*1)(
-            _NAMEINFO(
-                rnOffset=real_resource_offset >> _ALIGN_SHIFT,
-                rnLength=len(resdata) >> _ALIGN_SHIFT,
-                # PRELOAD=0x0040 | MOVEABLE=0x0010 | 0x0c00 ?
-                rnFlags=0x0c50,
-                rnID=resrcsize-8,
-                rnHandle=0,
-                rnUsage=0,
-            )
-        )
-    )
-    # FONT resource table entry
-    typeinfo_font_struct = type_info_struct(len(fonts))
-    typeinfo_font = typeinfo_font_struct(
-        rtTypeID=_RT_FONT,
-        rtResourceCount=len(fonts),
-        rtReserved=0,
-        rtNameInfo=(_NAMEINFO*len(fonts))(*(
-            _NAMEINFO(
-                rnOffset=(real_resource_offset+font_start[_i]) >> _ALIGN_SHIFT,
-                rnLength=(font_start[_i+1]-font_start[_i]) >> _ALIGN_SHIFT,
-                # PURE=0x0020 | MOVEABLE=0x0010 | 0x1c00 ?
-                rnFlags=0x1c30,
-                rnID=0x8001+_i,
-                rnHandle=0,
-                rnUsage=0,
-            )
-            for _i in range(len(fonts))
-        ))
-    )
-    # construct the resource table
-    res_names = b'\x07FONTDIR'
-    res_table_struct = friendlystruct(
-        'le',
-        rscAlignShift='word',
-        # rscTypes is a list of non-equal TYPEINFO entries
-        rscTypes_fontdir=typeinfo_fontdir_struct,
-        rscTypes_font=typeinfo_font_struct,
-        rscEndTypes='word',
-        rscResourceNames=friendlystruct.char * len(res_names),
-        rscEndNames='byte',
-    )
-    res_table = res_table_struct(
-        # rscAlignShift: shift count 2<<n
-        rscAlignShift=_ALIGN_SHIFT,
-        rscTypes_fontdir=typeinfo_fontdir,
-        rscTypes_font=typeinfo_font,
-        rscEndTypes=0,
-        rscResourceNames=res_names,
-        rscEndNames=0,
-    )
-    # resrcsize underestimates struct length by 1
-    assert resrcsize == res_table.size, repr((resrcsize, res_table.size))
-    restable = bytes(res_table) + b'\0' * resrcpad
+    # create resource table and align
+    restable = _create_resource_table(real_resource_offset, resrcsize, len(resdata), len(fonts), font_start)
+    assert resrcsize == len(restable)
+    restable = restable.ljust(resrcsize_aligned, b'\0')
 
     ne_header = _NE_HEADER(
         magic=b'NE',
