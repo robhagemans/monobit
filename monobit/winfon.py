@@ -45,7 +45,7 @@ from .winfnt import parse_fnt, create_fnt, _get_prop_x, _get_prop_y
 ##############################################################################
 # MZ/NE/PE executable headers
 
-# align on 16-byte (2<<4) boundaries
+# align on 16-byte (1<<4) boundaries
 _ALIGN_SHIFT = 4
 
 # stub 16-bit DOS executable
@@ -147,6 +147,7 @@ def type_info_struct(rtResourceCount=0):
     )
 
 # type ID values that matter to us
+# https://docs.microsoft.com/en-us/windows/desktop/menurc/resource-types
 _RT_FONTDIR = 0x8007
 _RT_FONT = 0x8008
 
@@ -327,6 +328,17 @@ def _parse_pe(fon, peoff):
 
 ##############################################################################
 # windows .FON (NE executable) writer
+#
+# NE format:
+#   http://www.csn.ul.ie/~caolan/pub/winresdump/winresdump/doc/winexe.txt
+#   http://www.fileformat.info/format/exe/corion-ne.htm
+#   https://wiki.osdev.org/NE
+#   http://benoit.papillault.free.fr/c/disc2/exefmt.txt
+#
+# MZ header:
+#   http://www.delorie.com/djgpp/doc/exe/
+#   https://wiki.osdev.org/MZ
+
 
 def _create_mz_stub():
     """Create a small MZ executable."""
@@ -518,7 +530,9 @@ def _create_fon(typeface):
         linker_minor_version=10,
         entry_table_offset=off_entry,
         entry_table_length=len(entry),
+        # 1<<3: protected mode only
         program_flags=0x08,
+        # 0x03: uses windows/p.m. api | 1<<7: dll or driver
         application_flags=0x83,
         nonresident_names_table_size=len(nonres),
         # seg table is empty

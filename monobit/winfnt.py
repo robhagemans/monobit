@@ -40,6 +40,9 @@ from .base import (
 
 ##############################################################################
 # windows .FNT format definitions
+#
+# https://web.archive.org/web/20120215123301/http://support.microsoft.com/kb/65123
+# https://ffenc.blogspot.com/2008/04/fnt-font-file-format.html
 
 
 # https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-wmf/0d0b32ac-a836-4bd2-a112-b6000a1b4fc9
