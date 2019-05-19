@@ -308,30 +308,8 @@ _IMAGE_RESOURCE_DATA_ENTRY = friendlystruct(
     Reserved='dword',
 )
 
-
 def _parse_pe(fon, peoff):
-    """Finish splitting up a PE-format FON file."""
-    dirtables = []
-    dataentries = []
-
-    def gotoffset(off, dirtables=dirtables, dataentries=dataentries):
-        # high bit set: it's a subdirectory
-        if off & (1<<31):
-            dirtables.append(off & ~(1<<31))
-        else:
-            dataentries.append(off)
-
-    def dodirtable(rsrc, off, rtype, gotoffset=gotoffset):
-        # resource directory header
-        resdir = _IMAGE_RESOURCE_DIRECTORY.from_bytes(rsrc, off)
-        number = resdir.NumberOfNamedEntries + resdir.NumberOfIdEntries
-        # followed by resource directory entries
-        direntry_array = _IMAGE_RESOURCE_DIRECTORY_ENTRY * number
-        direntries = direntry_array.from_buffer_copy(rsrc, off+_IMAGE_RESOURCE_DIRECTORY.size)
-        for entry in direntries:
-            if rtype in (entry.Id, -1):
-                gotoffset(entry.OffsetToData)
-
+    """Parse a PE-format FON file."""
     # We could try finding the Resource Table entry in the Optional
     # Header, but it talks about RVAs instead of file offsets, so
     # it's probably easiest just to go straight to the section table.
@@ -351,24 +329,12 @@ def _parse_pe(fon, peoff):
     rsrc = fon[section.PointerToRawData : section.PointerToRawData+section.SizeOfRawData]
     # Now the fun begins. To start with, we must find the initial
     # Resource Directory Table and look up type 0x08 (font) in it.
-    # If it yields another Resource Directory Table, we stick the
-    # address of that on a list. If it gives a Data Entry, we put
-    # that in another list.
-    dodirtable(rsrc, 0, _ID_FONT)
-    # Now process Resource Directory Tables until no more remain
-    # in the list. For each of these tables, we accept _all_ entries
-    # in it, and if they point to subtables we stick the subtables in
-    # the list, and if they point to Data Entries we put those in
-    # the other list.
-    while len(dirtables) > 0:
-        table = dirtables[0]
-        del dirtables[0]
-        dodirtable(rsrc, table, -1) # accept all entries
-    # Now we should be left with Resource Data Entries. Each of these
-    # describes a font.
+    # If it yields another Resource Directory Table, we recurse
+    # into that; below the top level of type font we accept all Ids
+    dataentries = _traverse_dirtable(rsrc, 0, _ID_FONT)
+    # Each of these describes a font.
     ret = []
-    for off in dataentries:
-        data_entry = _IMAGE_RESOURCE_DATA_ENTRY.from_bytes(rsrc, off)
+    for data_entry in dataentries:
         start = data_entry.OffsetToData - section.VirtualAddress
         try:
             font = parse_fnt(rsrc[start : start+data_entry.Size])
@@ -376,6 +342,28 @@ def _parse_pe(fon, peoff):
             raise ValueError('Failed to read font resource at {:x}: {}'.format(start, e))
         ret = ret + [font]
     return ret
+
+def _traverse_dirtable(rsrc, off, rtype):
+    """Recursively traverse the dirtable, returning all data entries under the given type id."""
+    # resource directory header
+    resdir = _IMAGE_RESOURCE_DIRECTORY.from_bytes(rsrc, off)
+    number = resdir.NumberOfNamedEntries + resdir.NumberOfIdEntries
+    # followed by resource directory entries
+    direntry_array = _IMAGE_RESOURCE_DIRECTORY_ENTRY * number
+    direntries = direntry_array.from_buffer_copy(rsrc, off+_IMAGE_RESOURCE_DIRECTORY.size)
+    dataentries = []
+    for entry in direntries:
+        if rtype in (entry.Id, None):
+            off = entry.OffsetToData
+            if off & (1<<31):
+                # if it's a subdir, traverse recursively
+                dataentries.extend(_traverse_dirtable(rsrc, off & ~(1<<31), None))
+            else:
+                # if it's a data entry, get the data
+                dataentries.append(
+                    _IMAGE_RESOURCE_DATA_ENTRY.from_bytes(rsrc, off)
+                )
+    return dataentries
 
 
 ##############################################################################
