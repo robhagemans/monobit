@@ -319,7 +319,7 @@ def _parse_pe(fon, peoff):
         size = unpack('<L', rsrc, off+4)
         start = rva - secrva
         try:
-            font = _read_fnt(rsrc[start:start+size])
+            font = parse_fnt(rsrc[start:start+size])
         except Exception as e:
             raise ValueError('Failed to read font resource at {:x}: {}'.format(start, e))
         ret = ret + [font]
