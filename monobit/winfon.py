@@ -42,10 +42,9 @@ from .winfnt import parse_fnt, create_fnt, _get_prop_x, _get_prop_y
 
 
 ##############################################################################
-# MZ/NE/PE executable headers
+# MZ (DOS) executable headers
 
-# align on 16-byte (1<<4) boundaries
-_ALIGN_SHIFT = 4
+_STUB_MSG = b'This is a Windows font file.\r\n'
 
 # stub 16-bit DOS executable
 _STUB_CODE = bytes((
@@ -57,8 +56,6 @@ _STUB_CODE = bytes((
     0xB8, 0x01, 0x4C, # mov ax,0x4c01
     0xCD, 0x21        # int 0x21
 ))
-_STUB_MSG = b'This is a Windows font file.\r\n'
-
 
 # DOS executable (MZ) header
 _MZ_HEADER = friendlystruct(
@@ -85,6 +82,12 @@ _MZ_HEADER = friendlystruct(
     # NE offset is at 0x3c
     ne_offset='L',
 )
+
+##############################################################################
+# NE (16-bit) executable structures
+
+# align on 16-byte (1<<4) boundaries
+_ALIGN_SHIFT = 4
 
 # Windows executable (NE) header
 _NE_HEADER = friendlystruct(
@@ -122,7 +125,6 @@ _NE_HEADER = friendlystruct(
     expected_windows_version='H',
 )
 
-
 # TYPEINFO structure and components
 
 _NAMEINFO = friendlystruct(
@@ -150,7 +152,6 @@ def type_info_struct(rtResourceCount=0):
 _RT_FONTDIR = 0x8007
 _RT_FONT = 0x8008
 
-
 # resource table structure (fixed head only)
 _RES_TABLE_HEAD = friendlystruct(
     'le',
@@ -175,81 +176,7 @@ _MODULE_NAME = b'FONTLIB'
 
 
 ##############################################################################
-# top level functions
-
-@Typeface.loads('fon', encoding=None)
-def load(instream):
-    """Load a Windows .FON file."""
-    data = instream.read()
-    mz_header = _MZ_HEADER.from_bytes(data)
-    if mz_header.magic not in (b'MZ', b'ZM'):
-        raise ValueError('MZ signature not found. Not a Windows .FON file')
-    ne_magic = data[mz_header.ne_offset:mz_header.ne_offset+2]
-    if ne_magic == b'NE':
-        fonts = _parse_ne(data, mz_header.ne_offset)
-    elif ne_magic == b'PE':
-        # PE magic should be padded by \0\0 but I'll believe it at this stage
-        fonts = _parse_pe(data, mz_header.ne_offset)
-    else:
-        raise ValueError(
-            'Executable signature is `{}`, not NE or PE. Not a Windows .FON file'.format(
-                ne_magic.decode('latin-1', 'replace')
-            )
-        )
-    for font in fonts:
-        font._properties['source-name'] = os.path.basename(instream.name)
-    return Typeface(fonts)
-
-@Typeface.saves('fon', encoding=None)
-def save(typeface, outstream):
-    """Write fonts to a Windows .FON file."""
-    outstream.write(_create_fon(typeface))
-    return typeface
-
-
-
-##############################################################################
-# .FON (NE executable) file reader
-
-def _parse_ne(data, ne_offset):
-    """Parse an NE-format FON file."""
-    header = _NE_HEADER.from_bytes(data, ne_offset)
-    # parse the first elements of the resource table
-    res_table = _RES_TABLE_HEAD.from_bytes(data, ne_offset+header.res_table_offset)
-    # loop over the rest of the resource table until exhausted - we don't know the number of entries
-    fonts = []
-    # skip over rscAlignShift word
-    ti_offset = ne_offset + header.res_table_offset + _RES_TABLE_HEAD.size
-    while True:
-        # parse typeinfo excluding nameinfo array (of as yet unknown size)
-        type_info_head = type_info_struct(0)
-        type_info = type_info_head.from_bytes(data, ti_offset)
-        if type_info.rtTypeID == 0:
-            # end of resource table
-            break
-        # type, count, 4 bytes reserved
-        nameinfo_array = (_NAMEINFO * type_info.rtResourceCount)
-        for name_info in nameinfo_array.from_buffer_copy(data, ti_offset + type_info_head.size):
-            # the are offsets w.r.t. the file start, not the NE header
-            # they could be *before* the NE header for all we know
-            start = name_info.rnOffset << res_table.rscAlignShift
-            size = name_info.rnLength << res_table.rscAlignShift
-            if start < 0 or size < 0 or start + size > len(data):
-                raise ValueError('Resource overruns file boundaries')
-            if type_info.rtTypeID == _RT_FONT:
-                try:
-                    fonts.append(parse_fnt(data[start : start+size]))
-                except ValueError as e:
-                    # e.g. not a bitmap font
-                    # don't raise exception so we can continue with other resources
-                    logging.error('Failed to read font resource at {:x}: {}'.format(start, e))
-        # rtResourceCount * 12
-        ti_offset += type_info_head.size + friendlystruct.sizeof(nameinfo_array)
-    return fonts
-
-
-##############################################################################
-# .FON (PE executable) file reader
+# PE (32-bit) executable structures
 
 # PE header (winnt.h _IMAGE_FILE_HEADER)
 _PE_HEADER = friendlystruct(
@@ -308,6 +235,83 @@ _IMAGE_RESOURCE_DATA_ENTRY = friendlystruct(
     Reserved='dword',
 )
 
+
+##############################################################################
+# top level functions
+
+@Typeface.loads('fon', encoding=None)
+def load(instream):
+    """Load a Windows .FON file."""
+    data = instream.read()
+    mz_header = _MZ_HEADER.from_bytes(data)
+    if mz_header.magic not in (b'MZ', b'ZM'):
+        raise ValueError('MZ signature not found. Not a Windows .FON file')
+    ne_magic = data[mz_header.ne_offset:mz_header.ne_offset+2]
+    if ne_magic == b'NE':
+        fonts = _parse_ne(data, mz_header.ne_offset)
+    elif ne_magic == b'PE':
+        # PE magic should be padded by \0\0 but I'll believe it at this stage
+        fonts = _parse_pe(data, mz_header.ne_offset)
+    else:
+        raise ValueError(
+            'Executable signature is `{}`, not NE or PE. Not a Windows .FON file'.format(
+                ne_magic.decode('latin-1', 'replace')
+            )
+        )
+    for font in fonts:
+        font._properties['source-name'] = os.path.basename(instream.name)
+    return Typeface(fonts)
+
+@Typeface.saves('fon', encoding=None)
+def save(typeface, outstream):
+    """Write fonts to a Windows .FON file."""
+    outstream.write(_create_fon(typeface))
+    return typeface
+
+
+##############################################################################
+# .FON (NE executable) file reader
+
+def _parse_ne(data, ne_offset):
+    """Parse an NE-format FON file."""
+    header = _NE_HEADER.from_bytes(data, ne_offset)
+    # parse the first elements of the resource table
+    res_table = _RES_TABLE_HEAD.from_bytes(data, ne_offset+header.res_table_offset)
+    # loop over the rest of the resource table until exhausted - we don't know the number of entries
+    fonts = []
+    # skip over rscAlignShift word
+    ti_offset = ne_offset + header.res_table_offset + _RES_TABLE_HEAD.size
+    while True:
+        # parse typeinfo excluding nameinfo array (of as yet unknown size)
+        type_info_head = type_info_struct(0)
+        type_info = type_info_head.from_bytes(data, ti_offset)
+        if type_info.rtTypeID == 0:
+            # end of resource table
+            break
+        # type, count, 4 bytes reserved
+        nameinfo_array = (_NAMEINFO * type_info.rtResourceCount)
+        for name_info in nameinfo_array.from_buffer_copy(data, ti_offset + type_info_head.size):
+            # the are offsets w.r.t. the file start, not the NE header
+            # they could be *before* the NE header for all we know
+            start = name_info.rnOffset << res_table.rscAlignShift
+            size = name_info.rnLength << res_table.rscAlignShift
+            if start < 0 or size < 0 or start + size > len(data):
+                raise ValueError('Resource overruns file boundaries')
+            if type_info.rtTypeID == _RT_FONT:
+                try:
+                    fonts.append(parse_fnt(data[start : start+size]))
+                except ValueError as e:
+                    # e.g. not a bitmap font
+                    # don't raise exception so we can continue with other resources
+                    logging.error('Failed to read font resource at {:x}: {}'.format(start, e))
+        # rtResourceCount * 12
+        ti_offset += type_info_head.size + friendlystruct.sizeof(nameinfo_array)
+    return fonts
+
+
+##############################################################################
+# .FON (PE executable) file reader
+
 def _parse_pe(fon, peoff):
     """Parse a PE-format FON file."""
     # We could try finding the Resource Table entry in the Optional
@@ -357,7 +361,9 @@ def _traverse_dirtable(rsrc, off, rtype):
             off = entry.OffsetToData
             if off & (1<<31):
                 # if it's a subdir, traverse recursively
-                dataentries.extend(_traverse_dirtable(rsrc, off & ~(1<<31), None))
+                dataentries.extend(
+                    _traverse_dirtable(rsrc, off & ~(1<<31), None)
+                )
             else:
                 # if it's a data entry, get the data
                 dataentries.append(
