@@ -11,6 +11,9 @@ import logging
 from .base import Glyph, Font, Typeface, ceildiv, friendlystruct, VERSION
 from .raw import parse_aligned
 
+_ID_MS = b'FONT   '
+_ID_NT = b'FONT.NT'
+_ID_DR = b'DRFONT '
 
 _CPI_HEADER = friendlystruct(
     'le',
@@ -79,6 +82,13 @@ _CHARACTER_INDEX_TABLE = friendlystruct(
     FontIndex=friendlystruct.int16 * 256,
 )
 
+# friendly format name
+_FORMAT_NAME = {
+    _ID_NT: 'Windows NT',
+    _ID_DR: 'DR-DOS',
+    _ID_MS: 'MS-DOS',
+}
+
 
 @Typeface.loads('cpi', encoding=None)
 def load(instream):
@@ -98,19 +108,13 @@ def save(typeface, outstream):
 def _parse_cpi(data):
     """Parse CPI data."""
     cpi_header = _CPI_HEADER.from_bytes(data)
-    logging.info(cpi_header.id)
-    if cpi_header.id0 == 0xff and cpi_header.id == b'FONT   ':
-        return _parse_font(data)
-    if cpi_header.id0 == 0xff and cpi_header.id == b'FONT.NT':
-        return _parse_font(data, nt=True)
-    if cpi_header.id0 == 0x7f and cpi_header.id == b'DRFONT ':
-        return _parse_font(data, dr=True)
-    raise ValueError('Unrecognised CPI signature. Not a valid CPI file.')
-
-def _parse_font(data, nt=False, dr=False):
-    """Parse CPI data in FONT, FONT.NT or DRFONT format."""
-    cpi_header = _CPI_HEADER.from_bytes(data)
-    if dr:
+    if not (
+            (cpi_header.id0 == 0xff and cpi_header.id == _ID_MS)
+            or (cpi_header.id0 == 0xff and cpi_header.id == _ID_NT)
+            or (cpi_header.id0 == 0x7f and cpi_header.id == _ID_DR)
+        ):
+        raise ValueError('Unrecognised CPI signature. Not a valid CPI file.')
+    if cpi_header.id == _ID_DR:
         # read the extended DRFONT header - determine size first
         drdos_effh = drdos_ext_header().from_bytes(data, _CPI_HEADER.size)
         drdos_effh = drdos_ext_header(drdos_effh.num_fonts_per_codepage).from_bytes(
@@ -123,22 +127,19 @@ def _parse_font(data, nt=False, dr=False):
     # run through the linked list and parse fonts
     fonts = []
     for cp in range(fih.num_codepages):
-        font, cpeh_offset = _parse_cp(data, cpeh_offset, nt=nt, drdos_effh=drdos_effh)
+        font, cpeh_offset = _parse_cp(
+            data, cpeh_offset, cpi_header.id, drdos_effh=drdos_effh
+        )
         fonts.append(font)
     return fonts
 
-def _parse_cp(data, cpeh_offset, drdos_effh=None, nt=False):
+def _parse_cp(data, cpeh_offset, header_id=_ID_MS, drdos_effh=None):
     """Parse a .CP codepage."""
     cpeh = _CODEPAGE_ENTRY_HEADER.from_bytes(data, cpeh_offset)
-    if nt:
+    if header_id == _ID_NT:
         # fix relative offsets in FONT.NT
         cpeh.cpih_offset += cpeh_offset
         cpeh.next_cpeh_offset += cpeh_offset
-        fmt_id = 'Windows NT'
-    elif drdos_effh:
-        fmt_id = 'DR-DOS'
-    else:
-        fmt_id = 'MS-DOS'
     cpih = _CODEPAGE_INFO_HEADER.from_bytes(data, cpeh.cpih_offset)
     # offset to the first font header
     fh_offset = cpeh.cpih_offset + _CODEPAGE_INFO_HEADER.size
@@ -163,7 +164,7 @@ def _parse_cp(data, cpeh_offset, drdos_effh=None, nt=False):
                 'device': cpeh.device_name.strip().decode('ascii', 'replace'),
                 'size': '{} {}'.format(fh.width, fh.height),
                 'converter': 'monobit v{}'.format(VERSION),
-                'source-format': 'CPI ({})'.format(fmt_id),
+                'source-format': 'CPI ({})'.format(_FORMAT_NAME[header_id]),
             }
             # apparently never used
             if fh.xaspect or fh.yaspect:
