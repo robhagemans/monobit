@@ -161,6 +161,9 @@ _RES_TABLE_HEAD = friendlystruct(
     #rscEndNames='byte'
 )
 
+# default module name in resident names table
+_MODULE_NAME = b'FONTLIB'
+
 
 ##############################################################################
 # top level functions
@@ -411,38 +414,50 @@ def _create_resource_table(resdata_offset, resdata_size, n_fonts, font_start):
     return bytes(res_table)
 
 
-def _create_fon(typeface):
-    """Create a .FON font library, given a bunch of .FNT file contents."""
-
-    # use font-family name and dpi of first font
-    name = typeface._fonts[0]._properties.get('family', 'NoName')
+def _create_nonresident_name_table(typeface):
+    """Non-resident name tabe containing the FONTRES line."""
+    # get name, dpi of first font
+    # FIXME: assuming all the same here, but FONTRES is probably largely ignored anyway
+    name = typeface._fonts[0]._properties.get('family', '')
+    if not name:
+        name, *_ = typeface._fonts[0]._properties.get('name', '').split(' ')
+    if not name:
+        name = 'NoName'
     dpi = typeface._fonts[0]._properties.get('dpi', 96)
     xdpi, ydpi = _get_prop_x(dpi), _get_prop_y(dpi)
     points = [
         int(_font._properties['points'])
         for _font in typeface._fonts if 'points' in _font._properties
     ]
-
-    # The MZ stub.
-    stubdata = _create_mz_stub()
-
-    # Non-resident name table should contain a FONTRES line.
     # FONTRES Aspect, LogPixelsX, LogPixelsY : Name Pts0,Pts1,... (Device res.)
     nonres = ('FONTRES %d,%d,%d : %s %s' % (
         (100 * xdpi) // ydpi, xdpi, ydpi,
         name, ','.join(str(_pt) for _pt in sorted(points))
     )).encode('ascii', 'ignore')
-    nonres = bytes([len(nonres)]) + nonres + b'\0\0\0'
+    return bytes([len(nonres)]) + nonres + b'\0\0\0'
 
+
+def _create_resident_name_table(typeface):
+    """Resident name tabe containing the module name."""
+    # use font-family name of first font
+    name = typeface._fonts[0]._properties.get('family', _MODULE_NAME).upper()
     # Resident name table should just contain a module name.
-    mname = bytes(
-        _c for _c in name.encode('ascii')
+    mname = ''.join(
+        _c for _c in name
         if _c in set(string.ascii_letters + string.digits)
     )
-    res = bytes([len(mname)]) + mname + b'\0\0\0'
+    return bytes([len(mname)]) + mname.encode('ascii') + b'\0\0\0'
 
+
+def _create_fon(typeface):
+    """Create a .FON font library, given a bunch of .FNT file contents."""
+    # MZ DOS executable stub
+    stubdata = _create_mz_stub()
+    # (non)resident name tables
+    nonres = _create_nonresident_name_table(typeface)
+    res = _create_resident_name_table(typeface)
     # Entry table / imported names table should contain a zero word.
-    entry = struct.pack('<H', 0)
+    entry = b'\0\0'
 
     # Compute length of resource table.
     # 12 (2 for the shift count, plus 2 for end-of-table, plus 8 for the
