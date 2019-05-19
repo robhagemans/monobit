@@ -365,10 +365,26 @@ def _create_fontdirentry(ordinal, fnt, properties):
         + face_name
     )
 
-def _create_resource_table(resdata_offset, resdata_size, n_fonts, font_start):
+def _create_resource_table(header_size, post_size, resdata_size, n_fonts, font_start):
     """Build the resource table."""
-    # FONTDIR resource table entry
+    res_names = b'\x07FONTDIR'
+    # dynamic-size struct types
     typeinfo_fontdir_struct = type_info_struct(1)
+    typeinfo_font_struct = type_info_struct(n_fonts)
+    res_table_struct = friendlystruct(
+        'le',
+        rscAlignShift='word',
+        # rscTypes is a list of non-equal TYPEINFO entries
+        rscTypes_fontdir=typeinfo_fontdir_struct,
+        rscTypes_font=typeinfo_font_struct,
+        rscEndTypes='word', # 0
+        rscResourceNames=friendlystruct.char * len(res_names),
+        rscEndNames='byte', # 0
+    )
+    # calculate offset to resource data
+    res_size_aligned = align(res_table_struct.size, _ALIGN_SHIFT)
+    resdata_offset = align(header_size + res_size_aligned + post_size, _ALIGN_SHIFT)
+    # FONTDIR resource table entry
     typeinfo_fontdir = typeinfo_fontdir_struct(
         rtTypeID=_RT_FONTDIR,
         rtResourceCount=1,
@@ -383,7 +399,6 @@ def _create_resource_table(resdata_offset, resdata_size, n_fonts, font_start):
         )
     )
     # FONT resource table entry
-    typeinfo_font_struct = type_info_struct(n_fonts)
     typeinfo_font = typeinfo_font_struct(
         rtTypeID=_RT_FONT,
         rtResourceCount=n_fonts,
@@ -398,18 +413,6 @@ def _create_resource_table(resdata_offset, resdata_size, n_fonts, font_start):
             for _i in range(n_fonts)
         ))
     )
-    # construct the resource table
-    res_names = b'\x07FONTDIR'
-    res_table_struct = friendlystruct(
-        'le',
-        rscAlignShift='word',
-        # rscTypes is a list of non-equal TYPEINFO entries
-        rscTypes_fontdir=typeinfo_fontdir_struct,
-        rscTypes_font=typeinfo_font_struct,
-        rscEndTypes='word', # 0
-        rscResourceNames=friendlystruct.char * len(res_names),
-        rscEndNames='byte', # 0
-    )
     # Resource ID. This is an integer type if the high-order
     # bit is set (8000h), otherwise it is the offset to the
     # resource string, the offset is relative to the
@@ -422,7 +425,6 @@ def _create_resource_table(resdata_offset, resdata_size, n_fonts, font_start):
         rscTypes_font=typeinfo_font,
         rscResourceNames=res_names,
     )
-    res_size_aligned = align(res_table_struct.size, _ALIGN_SHIFT)
     return bytes(res_table).ljust(res_size_aligned, b'\0')
 
 
@@ -450,7 +452,7 @@ def _create_nonresident_name_table(typeface):
 
 
 def _create_resident_name_table(typeface):
-    """Resident name tabe containing the module name."""
+    """Resident name table containing the module name."""
     # use font-family name of first font
     name = typeface._fonts[0]._properties.get('family', _MODULE_NAME).upper()
     # Resident name table should just contain a module name.
@@ -462,6 +464,7 @@ def _create_resident_name_table(typeface):
 
 
 def _create_resource_data(typeface):
+    """Store the actual font resources."""
     # construct the FNT resources
     fonts = [create_fnt(_font) for _font in typeface._fonts]
     # construct the FONTDIR (FONTGROUPHDR)
@@ -488,7 +491,7 @@ def _create_resource_data(typeface):
 
 
 def _create_fon(typeface):
-    """Create a .FON font library, given a bunch of .FNT file contents."""
+    """Create a .FON font library."""
     n_fonts = len(typeface._fonts)
     # MZ DOS executable stub
     stubdata = _create_mz_stub()
@@ -499,34 +502,16 @@ def _create_fon(typeface):
     entry = b'\0\0'
     # the actual font data
     resdata, font_start = _create_resource_data(typeface)
-
-    # Compute length of resource table.
-    # 12 (2 for the shift count, plus 2 for end-of-table, plus 8 for the
-    #    "FONTDIR" resource name), plus
-    # 20 for FONTDIR (TYPEINFO and NAMEINFO), plus
-    # 8 for font entry TYPEINFO, plus
-    # 12 for each font's NAMEINFO
-    # 1 for zero byte at end
-    # Resources are currently one FONTDIR plus n fonts.
-    resrcsize = 12 + 20 + 8 + 12 * n_fonts + 1
-    resrcsize_aligned = align(resrcsize, _ALIGN_SHIFT)
-
-    # Now position all of this after the NE header.
-    off_res = _NE_HEADER.size + resrcsize_aligned
+    # create resource table and align
+    header_size = len(stubdata) + _NE_HEADER.size
+    post_size = len(res) + len(entry) + len(nonres)
+    restable = _create_resource_table(header_size, post_size, len(resdata), n_fonts, font_start)
+    # calculate offsets of stuff after the NE header.
+    off_res = _NE_HEADER.size + len(restable)
     off_entry = off_res + len(res)
     off_nonres = off_entry + len(entry)
-    # align on 16-byte boundary
     size_aligned = align(off_nonres + len(nonres), _ALIGN_SHIFT)
-    # file offset where the real resources begin.
-    resdata_offset = len(stubdata) + size_aligned
-
-    #header_size = len(stubdata) + _NE_HEADER.size
-    #post_size = len(res) + len(entry)
-
-    # create resource table and align
-    restable = _create_resource_table(resdata_offset, len(resdata), n_fonts, font_start)
-    assert len(restable) == resrcsize_aligned
-
+    # create the NE header and put everything in place
     ne_header = _NE_HEADER(
         magic=b'NE',
         linker_major_version=5,
@@ -540,9 +525,9 @@ def _create_fon(typeface):
         seg_table_offset=_NE_HEADER.size,
         res_table_offset=_NE_HEADER.size,
         resident_names_table_offset=off_res,
-        # empty
+        # point to empty table
         module_ref_table_offset=off_entry,
-        # empty
+        # point to empty table
         imp_names_table_offset=off_entry,
         # nonresident names table offset is w.r.t. file start
         nonresident_names_table_offset=len(stubdata) + off_nonres,
