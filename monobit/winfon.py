@@ -121,40 +121,42 @@ _NE_HEADER = friendlystruct(
 )
 
 
-_TYPEINFO = friendlystruct(
+# TYPEINFO structure and components
+
+_NAMEINFO = friendlystruct(
     'le',
-    rtTypeID='word',
-    rtResourceCount='word',
-    rtReserved='dword',
-    # this is part of struct TYPEINFO in MS docs but we treat it separately
-    # note that we use .size below assuming only the three above, so don't just add this
-    #rtNameInfo=_NAMEINFO * rtResourceCount
+    rnOffset='word',
+    rnLength='word',
+    rnFlags='word',
+    rnID='word',
+    rnHandle='word',
+    rnUsage='word',
 )
+
+def type_info_struct(rtResourceCount=0):
+    """TYPEINFO structure."""
+    return friendlystruct(
+        'le',
+        rtTypeID='word',
+        rtResourceCount='word',
+        rtReserved='dword',
+        rtNameInfo=_NAMEINFO * rtResourceCount
+    )
+
 # type ID values that matter to us
 _RT_FONTDIR = 0x8007
 _RT_FONT = 0x8008
 
-_NAMEINFO = friendlystruct(
-    '<',
-    rnOffset='H',
-    rnLength='H',
-    rnFlags='H',
-    rnID='H',
-    rnHandle='H',
-    rnUsage='H',
+
+# resource table structure (fixed head only)
+_RES_TABLE_HEAD = friendlystruct(
+    'le',
+    rscAlignShift='word',
+    #rscTypes=[type_info ...],
+    #rscEndTypes='word',
+    #rscResourceNames=friendlystruct.char * len_names,
+    #rscEndNames='byte'
 )
-
-
-def resource_table(n_resources=0, len_names=0):
-    """Resource table structure."""
-    return friendlystruct(
-        'le',
-        rscAlignShift='word',
-        rscTypes=_TYPEINFO * n_resources,
-        rscEndTypes='word',
-        rscResourceNames=friendlystruct.char * len_names,
-        rscEndNames='byte'
-    )
 
 
 ##############################################################################
@@ -198,19 +200,21 @@ def _parse_ne(data, ne_offset):
     """Parse an NE-format FON file."""
     header = _NE_HEADER.from_bytes(data, ne_offset)
     # parse the first elements of the resource table
-    res_table = resource_table().from_bytes(data, ne_offset+header.res_table_offset)
+    res_table = _RES_TABLE_HEAD.from_bytes(data, ne_offset+header.res_table_offset)
     # loop over the rest of the resource table until exhausted - we don't know the number of entries
     fonts = []
     # skip over rscAlignShift word
-    ti_offset = ne_offset + header.res_table_offset + 2
+    ti_offset = ne_offset + header.res_table_offset + _RES_TABLE_HEAD.size
     while True:
-        type_info = _TYPEINFO.from_bytes(data, ti_offset)
+        # parse typeinfo excluding nameinfo array (of as yet unknown size)
+        type_info_head = type_info_struct(0)
+        type_info = type_info_head.from_bytes(data, ti_offset)
         if type_info.rtTypeID == 0:
             # end of resource table
             break
         # type, count, 4 bytes reserved
         nameinfo_array = (_NAMEINFO * type_info.rtResourceCount)
-        for name_info in nameinfo_array.from_buffer_copy(data, ti_offset + _TYPEINFO.size):
+        for name_info in nameinfo_array.from_buffer_copy(data, ti_offset + type_info_head.size):
             # the are offsets w.r.t. the file start, not the NE header
             # they could be *before* the NE header for all we know
             start = name_info.rnOffset << res_table.rscAlignShift
@@ -225,7 +229,7 @@ def _parse_ne(data, ne_offset):
                     # don't raise exception so we can continue with other resources
                     logging.error('Failed to read font resource at {:x}: {}'.format(start, e))
         # rtResourceCount * 12
-        ti_offset += _TYPEINFO.size + friendlystruct.sizeof(nameinfo_array)
+        ti_offset += type_info_head.size + friendlystruct.sizeof(nameinfo_array)
     return fonts
 
 
@@ -378,14 +382,14 @@ def _create_fon(typeface):
         (100 * xdpi) // ydpi, xdpi, ydpi,
         name, ','.join(str(_pt) for _pt in sorted(points))
     )).encode('ascii', 'ignore')
-    nonres = struct.pack('B', len(nonres)) + nonres + b'\0\0\0'
+    nonres = bytes([len(nonres)]) + nonres + b'\0\0\0'
 
     # Resident name table should just contain a module name.
     mname = bytes(
         _c for _c in name.encode('ascii')
         if _c in set(string.ascii_letters + string.digits)
     )
-    res = struct.pack('B', len(mname)) + mname + b'\0\0\0'
+    res = bytes([len(mname)]) + mname + b'\0\0\0'
 
     # Entry table / imported names table should contain a zero word.
     entry = struct.pack('<H', 0)
@@ -396,21 +400,23 @@ def _create_fon(typeface):
     # 20 for FONTDIR (TYPEINFO and NAMEINFO), plus
     # 8 for font entry TYPEINFO, plus
     # 12 for each font's NAMEINFO
+    # 1 for zero byte at end
 
     # Resources are currently one FONTDIR plus n fonts.
-    resrcsize = 12 + 20 + 8 + 12 * len(typeface._fonts)
-    resrcpad = ((resrcsize + 15) & ~15) - resrcsize
+    resrcsize = 12 + 20 + 8 + 12 * len(typeface._fonts) + 1
+    resrcpad = pad(resrcsize, 4) - resrcsize
 
     # Now position all of this after the NE header.
-    off_segtable = off_restable = _NE_HEADER.size # 0x40
+    off_segtable = off_restable = _NE_HEADER.size
     off_res = off_restable + resrcsize + resrcpad
     off_modref = off_import = off_entry = off_res + len(res)
     off_nonres = off_modref + len(entry)
     size_unpadded = off_nonres + len(nonres)
-    pad = ((size_unpadded + 15) & ~15) - size_unpadded
+    # align on 16-byte boundary
+    padding = pad(size_unpadded, 4) - size_unpadded
 
     # file offset where the real resources begin.
-    real_resource_offset = size_unpadded + pad + len(stubdata)
+    real_resource_offset = size_unpadded + padding + len(stubdata)
 
     # construct the FNT resources
     fonts = [create_fnt(_font) for _font in typeface._fonts]
@@ -432,60 +438,69 @@ def _create_fon(typeface):
             resdata = resdata + b'\0'
         font_start.append(len(resdata))
 
-
-    # The FONTDIR resource table entry
-    typeinfo_fontdir = _TYPEINFO(
+    # FONTDIR resource table entry
+    typeinfo_fontdir_struct = type_info_struct(1)
+    typeinfo_fontdir = typeinfo_fontdir_struct(
         rtTypeID=_RT_FONTDIR,
         rtResourceCount=1,
         rtReserved=0,
+        rtNameInfo=(_NAMEINFO*1)(
+            _NAMEINFO(
+                # >> rscAlignShift
+                rnOffset=real_resource_offset >> 4,
+                rnLength=len(resdata) >> 4,
+                # PRELOAD=0x0040 | MOVEABLE=0x0010 | 0x0c00 ?
+                rnFlags=0x0c50,
+                rnID=resrcsize-8,
+                rnHandle=0,
+                rnUsage=0,
+            )
+        )
     )
-    # this should be an array, but with only one element...
-    nameinfo_fontdir = _NAMEINFO(
-        rnOffset=real_resource_offset >> 4, # >> rscAlignShift
-        rnLength=len(resdata) >> 4,
-        rnFlags=0x0c50, # PRELOAD=0x0040 | MOVEABLE=0x0010 | 0x0c00
-        rnID=resrcsize-8,
-        rnHandle=0,
-        rnUsage=0,
-    )
-
     # FONT resource table entry
-    typeinfo_font = _TYPEINFO(
+    typeinfo_font_struct = type_info_struct(len(fonts))
+    typeinfo_font = typeinfo_font_struct(
         rtTypeID=_RT_FONT,
         rtResourceCount=len(fonts),
         rtReserved=0,
+        rtNameInfo=(_NAMEINFO*len(fonts))(*(
+            _NAMEINFO(
+                # >> rscAlignShift
+                rnOffset=(real_resource_offset+font_start[_i]) >> 4,
+                rnLength=(font_start[_i+1]-font_start[_i]) >> 4,
+                # PURE=0x0020 | MOVEABLE=0x0010 | 0x1c00 ?
+                rnFlags=0x1c30,
+                rnID=0x8001+_i,
+                rnHandle=0,
+                rnUsage=0,
+            )
+            for _i in range(len(fonts))
+        ))
     )
-    nameinfo_font = [
-        _NAMEINFO(
-            rnOffset=(real_resource_offset+font_start[_i]) >> 4, # >> rscAlignShift
-            rnLength=(font_start[_i+1]-font_start[_i]) >> 4,
-            rnFlags=0x1c30, # PURE=0x0020 | MOVEABLE=0x0010 | 0x1c00
-            rnID=0x8001+_i,
-            rnHandle=0,
-            rnUsage=0,
-        )
-        for _i in range(len(fonts))
-    ]
-
     # construct the resource table
-    rscAlignShift = struct.pack('<H', 4) # rscAlignShift: shift count 2<<n
-    rscTypes = (
-        bytes(typeinfo_fontdir) + bytes(nameinfo_fontdir)
-        + bytes(typeinfo_font) + b''.join(bytes(_ni) for _ni in nameinfo_font)
+    res_names = b'\x07FONTDIR'
+    res_table_struct = friendlystruct(
+        'le',
+        rscAlignShift='word',
+        # rscTypes is a list of non-equal TYPEINFO entries
+        rscTypes_fontdir=typeinfo_fontdir_struct,
+        rscTypes_font=typeinfo_font_struct,
+        rscEndTypes='word',
+        rscResourceNames=friendlystruct.char * len(res_names),
+        rscEndNames='byte',
     )
-    rscEndTypes = b'\0\0' # The zero word.
-    rscResourceNames = b'\x07FONTDIR'
-    rscEndNames = b'\0'
-    restable = rscAlignShift + rscTypes + rscEndTypes + rscResourceNames + rscEndNames
-
+    res_table = res_table_struct(
+        # rscAlignShift: shift count 2<<n
+        rscAlignShift=4,
+        rscTypes_fontdir=typeinfo_fontdir,
+        rscTypes_font=typeinfo_font,
+        rscEndTypes=0,
+        rscResourceNames=res_names,
+        rscEndNames=0,
+    )
     # resrcsize underestimates struct length by 1
-    restable = restable + b'\0' * (resrcpad-1)
-
-    assert resrcsize == (
-        len(rscAlignShift) + len(rscEndTypes) + len(rscResourceNames)
-        + _TYPEINFO.size + _NAMEINFO.size * 1 #(for FONTDIR)
-        + _TYPEINFO.size + _NAMEINFO.size * len(fonts) #(for FONTS)
-    )
+    assert resrcsize == res_table.size, repr((resrcsize, res_table.size))
+    restable = bytes(res_table) + b'\0' * resrcpad
 
     ne_header = _NE_HEADER(
         magic=b'NE',
@@ -521,5 +536,5 @@ def _create_fon(typeface):
         expected_windows_version=0x300
     )
 
-    file = stubdata + bytes(ne_header) + restable + res + entry + nonres + b'\0' * pad + resdata
+    file = stubdata + bytes(ne_header) + restable + res + entry + nonres + b'\0'*padding + resdata
     return file
