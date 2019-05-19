@@ -311,6 +311,10 @@ def _parse_ne(data, ne_offset):
 
 ##############################################################################
 # .FON (PE executable) file reader
+#
+# https://docs.microsoft.com/en-gb/windows/desktop/Debug/pe-format
+# https://github.com/deptofdefense/SalSA/wiki/PE-File-Format
+# https://source.winehq.org/source/include/winnt.h
 
 def _parse_pe(fon, peoff):
     """Parse a PE-format FON file."""
