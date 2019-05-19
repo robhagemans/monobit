@@ -30,7 +30,6 @@ SOFTWARE.
 import os
 import sys
 import string
-import struct
 import logging
 import itertools
 
@@ -252,9 +251,63 @@ def _parse_ne(data, ne_offset):
 ##############################################################################
 # .FON (PE executable) file reader
 
-def unpack(format, buffer, offset):
-    """Unpack a single value from bytes."""
-    return struct.unpack_from(format, buffer, offset)[0]
+# PE header (winnt.h _IMAGE_FILE_HEADER)
+_PE_HEADER = friendlystruct(
+    'le',
+    # PE\0\0 magic:
+    Signature='4s',
+    # struct _IMAGE_FILE_HEADER:
+    Machine='word',
+    NumberOfSections='word',
+    TimeDateStamp='dword',
+    PointerToSymbolTable='dword',
+    NumberOfSymbols='dword',
+    SizeOfOptionalHeader='word',
+    Characteristics='word',
+    # followed by the non-optional Optional Header
+    # which we don't care about for now
+)
+
+_IMAGE_SECTION_HEADER = friendlystruct(
+    'le',
+    Name='8s',
+    VirtualSize='dword',
+    VirtualAddress='dword',
+    SizeOfRawData='dword',
+    PointerToRawData='dword',
+    PointerToRelocations='dword',
+    PointerToLinenumbers='dword',
+    NumberOfRelocations='word',
+    NumberOfLinenumbers='word',
+    Characteristics='dword',
+)
+
+_IMAGE_RESOURCE_DIRECTORY = friendlystruct(
+    'le',
+    Characteristics='dword',
+    TimeDateStamp='dword',
+    MajorVersion='word',
+    MinorVersion='word',
+    NumberOfNamedEntries='word',
+    NumberOfIdEntries='word',
+)
+_IMAGE_RESOURCE_DIRECTORY_ENTRY = friendlystruct(
+    'le',
+    Id='dword', # technically a union with NameOffset, but meh
+    OffsetToData='dword', # or OffsetToDirectory, if high bit set
+)
+
+_ID_FONTDIR = 0x07
+_ID_FONT = 0x08
+
+_IMAGE_RESOURCE_DATA_ENTRY = friendlystruct(
+    'le',
+    OffsetToData='dword',
+    Size='dword',
+    CodePage='dword',
+    Reserved='dword',
+)
+
 
 def _parse_pe(fon, peoff):
     """Finish splitting up a PE-format FON file."""
@@ -262,46 +315,46 @@ def _parse_pe(fon, peoff):
     dataentries = []
 
     def gotoffset(off, dirtables=dirtables, dataentries=dataentries):
-        if off & 0x80000000:
-            off &= ~0x80000000
-            dirtables.append(off)
+        # high bit set: it's a subdirectory
+        if off & (1<<31):
+            dirtables.append(off & ~(1<<31))
         else:
             dataentries.append(off)
 
     def dodirtable(rsrc, off, rtype, gotoffset=gotoffset):
-        number = unpack('<H', rsrc, off+12) + unpack('<H', rsrc, off+14)
-        for i in range(number):
-            entry = off + 16 + 8*i
-            thetype = unpack('<L', rsrc, entry)
-            theoff = unpack('<L', rsrc, entry+4)
-            if rtype == -1 or rtype == thetype:
-                gotoffset(theoff)
+        # resource directory header
+        resdir = _IMAGE_RESOURCE_DIRECTORY.from_bytes(rsrc, off)
+        number = resdir.NumberOfNamedEntries + resdir.NumberOfIdEntries
+        # followed by resource directory entries
+        direntry_array = _IMAGE_RESOURCE_DIRECTORY_ENTRY * number
+        direntries = direntry_array.from_buffer_copy(rsrc, off+_IMAGE_RESOURCE_DIRECTORY.size)
+        for entry in direntries:
+            if rtype in (entry.Id, -1):
+                gotoffset(entry.OffsetToData)
 
     # We could try finding the Resource Table entry in the Optional
     # Header, but it talks about RVAs instead of file offsets, so
     # it's probably easiest just to go straight to the section table.
     # So let's find the size of the Optional Header, which we can
     # then skip over to find the section table.
-    secentries = unpack('<H', fon, peoff+0x06)
-    sectable = peoff + 0x18 + unpack('<H', fon, peoff+0x14)
-    for i in range(secentries):
-        secentry = sectable + i * 0x28
-        secname = bytes_to_str(fon[secentry:secentry+8])
-        secrva = unpack('<L', fon, secentry+0x0C)
-        secsize = unpack('<L', fon, secentry+0x10)
-        secptr = unpack('<L', fon, secentry+0x14)
-        if secname == '.rsrc':
+    pe_header = _PE_HEADER.from_bytes(fon, peoff)
+    section_table_offset = peoff + _PE_HEADER.size + pe_header.SizeOfOptionalHeader
+    section_table_array = _IMAGE_SECTION_HEADER * pe_header.NumberOfSections
+    section_table = section_table_array.from_buffer_copy(fon, section_table_offset)
+    # find the resource section
+    for section in section_table:
+        if section.Name == b'.rsrc':
             break
     else:
         raise ValueError('Unable to locate resource section')
     # Now we've found the resource section, let's throw away the rest.
-    rsrc = fon[secptr:secptr+secsize]
+    rsrc = fon[section.PointerToRawData : section.PointerToRawData+section.SizeOfRawData]
     # Now the fun begins. To start with, we must find the initial
     # Resource Directory Table and look up type 0x08 (font) in it.
     # If it yields another Resource Directory Table, we stick the
     # address of that on a list. If it gives a Data Entry, we put
     # that in another list.
-    dodirtable(rsrc, 0, 0x08)
+    dodirtable(rsrc, 0, _ID_FONT)
     # Now process Resource Directory Tables until no more remain
     # in the list. For each of these tables, we accept _all_ entries
     # in it, and if they point to subtables we stick the subtables in
@@ -315,12 +368,11 @@ def _parse_pe(fon, peoff):
     # describes a font.
     ret = []
     for off in dataentries:
-        rva = unpack('<L', rsrc, off)
-        size = unpack('<L', rsrc, off+4)
-        start = rva - secrva
+        data_entry = _IMAGE_RESOURCE_DATA_ENTRY.from_bytes(rsrc, off)
+        start = data_entry.OffsetToData - section.VirtualAddress
         try:
-            font = parse_fnt(rsrc[start:start+size])
-        except Exception as e:
+            font = parse_fnt(rsrc[start : start+data_entry.Size])
+        except ValueError as e:
             raise ValueError('Failed to read font resource at {:x}: {}'.format(start, e))
         ret = ret + [font]
     return ret
