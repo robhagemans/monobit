@@ -260,6 +260,7 @@ def load(instream):
         )
     for font in fonts:
         font._properties['source-name'] = os.path.basename(instream.name)
+        font._properties['source-format'] += ' ({} container)'.format(ne_magic.decode('ascii'))
     return Typeface(fonts)
 
 @Typeface.saves('fon', encoding=None)

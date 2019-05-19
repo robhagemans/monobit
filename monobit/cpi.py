@@ -134,11 +134,11 @@ def _parse_cp(data, cpeh_offset, drdos_effh=None, nt=False):
         # fix relative offsets in FONT.NT
         cpeh.cpih_offset += cpeh_offset
         cpeh.next_cpeh_offset += cpeh_offset
-        fmt_id = 'FONT.NT'
+        fmt_id = 'Windows NT'
     elif drdos_effh:
-        fmt_id = 'DRFONT'
+        fmt_id = 'DR-DOS'
     else:
-        fmt_id = 'FONT'
+        fmt_id = 'MS-DOS'
     cpih = _CODEPAGE_INFO_HEADER.from_bytes(data, cpeh.cpih_offset)
     # offset to the first font header
     fh_offset = cpeh.cpih_offset + _CODEPAGE_INFO_HEADER.size
