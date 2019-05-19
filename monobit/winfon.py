@@ -319,12 +319,12 @@ def _parse_pe(fon, peoff):
 def _create_mz_stub():
     """Create a small MZ executable."""
     dos_stub_size = _MZ_HEADER.size + len(_STUB_CODE) + len(_STUB_MSG) + 1
-    padding = align(dos_stub_size, _ALIGN_SHIFT) - dos_stub_size
+    ne_offset = align(dos_stub_size, _ALIGN_SHIFT)
     mz_header = _MZ_HEADER(
         magic=b'MZ',
         last_page_length=dos_stub_size % 512,
         num_pages=ceildiv(dos_stub_size, 512),
-        num_relocations=0,
+        # 4-para header - FIXME: calculate?
         header_size=4,
         # 16 extra para for stack
         min_allocation=0x10,
@@ -332,17 +332,13 @@ def _create_mz_stub():
         max_allocation=0xffff,
         initial_ss=0,
         initial_sp=0x100,
-        checksum=0,
         # CS:IP = 0:0, start at beginning
         initial_csip=0,
-        relocation_table_offset=0x40,
-        overlay_number=0,
-        reserved_0=b'\0'*4,
-        behavior_bits=0,
-        reserved_1=b'\0'*26,
-        ne_offset=dos_stub_size + padding,
+        # we have no relocations, but if we did, they'd be right after this header
+        relocation_table_offset=_MZ_HEADER.size,
+        ne_offset=ne_offset,
     )
-    return bytes(mz_header) + _STUB_CODE + _STUB_MSG + b'$' + b'\0'*padding
+    return (bytes(mz_header) + _STUB_CODE + _STUB_MSG + b'$').ljust(ne_offset, b'\0')
 
 
 def _create_fontdirentry(fnt, properties):
@@ -420,13 +416,13 @@ def _create_fon(typeface):
         fontdir += struct.pack('<H', i+1) + _create_fontdirentry(
             fonts[i], typeface._fonts[i]._properties
         )
-    resdata = fontdir + b'\0' * (align(len(fontdir), _ALIGN_SHIFT) - len(fontdir))
+    resdata = fontdir.ljust(align(len(fontdir), _ALIGN_SHIFT), b'\0')
     font_start = [len(resdata)]
 
     # The FONT resources.
     for i in range(len(fonts)):
         resdata = resdata + fonts[i]
-        resdata += b'\0' * (align(len(resdata), _ALIGN_SHIFT) - len(resdata))
+        resdata = resdata.ljust(align(len(resdata), _ALIGN_SHIFT), b'\0')
         font_start.append(len(resdata))
 
     # FONTDIR resource table entry
