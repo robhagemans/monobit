@@ -52,7 +52,7 @@ def ceildiv(num, den):
     """Integer division, rounding up."""
     return -(-num // den)
 
-def pad(num, exp):
+def align(num, exp):
     """Round up to multiple of 2**exp."""
     mask = 2**exp - 1
     return (num + mask) & ~mask

@@ -34,7 +34,7 @@ import itertools
 
 from .base import (
     VERSION, Glyph, Font, Typeface, friendlystruct,
-    bytes_to_bits, ceildiv, pad, bytes_to_str
+    bytes_to_bits, ceildiv, align, bytes_to_str
 )
 
 
@@ -573,7 +573,7 @@ def create_fnt(font, version=0x200):
         dfDefaultChar=int(properties.get('default-char', 0), 0), # 0 is default if none provided
         dfBreakChar=int(properties.get('word-boundary', 0), space_index),
         # round up to multiple of 2 bytes to word-align v1.0 strikes (not used for v2.0+ ?)
-        dfWidthBytes=pad(ceildiv(font.max_width, 8), 1),
+        dfWidthBytes=align(ceildiv(font.max_width, 8), 1),
         dfDevice=device_name_offset,
         dfFace=face_name_offset,
         dfBitsPointer=0, # used on loading

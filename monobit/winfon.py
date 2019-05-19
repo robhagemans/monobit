@@ -36,7 +36,7 @@ import itertools
 
 from .base import (
     VERSION, Glyph, Font, Typeface, friendlystruct,
-    bytes_to_bits, ceildiv, pad, bytes_to_str
+    bytes_to_bits, ceildiv, align, bytes_to_str
 )
 
 from .winfnt import parse_fnt, create_fnt, _get_prop_x, _get_prop_y
@@ -44,6 +44,9 @@ from .winfnt import parse_fnt, create_fnt, _get_prop_x, _get_prop_y
 
 ##############################################################################
 # MZ/NE/PE executable headers
+
+# align on 16-byte (2<<4) boundaries
+_ALIGN_SHIFT = 4
 
 # stub 16-bit DOS executable
 _STUB_CODE = bytes((
@@ -236,7 +239,6 @@ def _parse_ne(data, ne_offset):
 ##############################################################################
 # .FON (PE executable) file reader
 
-
 def unpack(format, buffer, offset):
     """Unpack a single value from bytes."""
     return struct.unpack_from(format, buffer, offset)[0]
@@ -317,18 +319,11 @@ def _parse_pe(fon, peoff):
 def _create_mz_stub():
     """Create a small MZ executable."""
     dos_stub_size = _MZ_HEADER.size + len(_STUB_CODE) + len(_STUB_MSG) + 1
-    num_pages = ceildiv(dos_stub_size, 512)
-    last_page_length = dos_stub_size % 512
-    mod = dos_stub_size % 16
-    if mod:
-        padding = b'\0' * (16-mod)
-    else:
-        padding = b''
-    ne_offset = dos_stub_size + len(padding)
+    padding = align(dos_stub_size, _ALIGN_SHIFT) - dos_stub_size
     mz_header = _MZ_HEADER(
         magic=b'MZ',
-        last_page_length=last_page_length,
-        num_pages=num_pages,
+        last_page_length=dos_stub_size % 512,
+        num_pages=ceildiv(dos_stub_size, 512),
         num_relocations=0,
         header_size=4,
         # 16 extra para for stack
@@ -345,10 +340,9 @@ def _create_mz_stub():
         reserved_0=b'\0'*4,
         behavior_bits=0,
         reserved_1=b'\0'*26,
-        ne_offset=ne_offset
+        ne_offset=dos_stub_size + padding,
     )
-    dos_stub = bytes(mz_header) + _STUB_CODE + _STUB_MSG + b'$' + padding
-    return dos_stub
+    return bytes(mz_header) + _STUB_CODE + _STUB_MSG + b'$' + b'\0'*padding
 
 
 def _create_fontdirentry(fnt, properties):
@@ -404,7 +398,7 @@ def _create_fon(typeface):
 
     # Resources are currently one FONTDIR plus n fonts.
     resrcsize = 12 + 20 + 8 + 12 * len(typeface._fonts) + 1
-    resrcpad = pad(resrcsize, 4) - resrcsize
+    resrcpad = align(resrcsize, _ALIGN_SHIFT) - resrcsize
 
     # Now position all of this after the NE header.
     off_segtable = off_restable = _NE_HEADER.size
@@ -413,7 +407,7 @@ def _create_fon(typeface):
     off_nonres = off_modref + len(entry)
     size_unpadded = off_nonres + len(nonres)
     # align on 16-byte boundary
-    padding = pad(size_unpadded, 4) - size_unpadded
+    padding = align(size_unpadded, _ALIGN_SHIFT) - size_unpadded
 
     # file offset where the real resources begin.
     real_resource_offset = size_unpadded + padding + len(stubdata)
@@ -426,16 +420,13 @@ def _create_fon(typeface):
         fontdir += struct.pack('<H', i+1) + _create_fontdirentry(
             fonts[i], typeface._fonts[i]._properties
         )
-    resdata = fontdir
-    while len(resdata) % 16: # 2 << rscAlignShift
-        resdata = resdata + b'\0'
+    resdata = fontdir + b'\0' * (align(len(fontdir), _ALIGN_SHIFT) - len(fontdir))
     font_start = [len(resdata)]
 
     # The FONT resources.
     for i in range(len(fonts)):
         resdata = resdata + fonts[i]
-        while len(resdata) % 16:
-            resdata = resdata + b'\0'
+        resdata += b'\0' * (align(len(resdata), _ALIGN_SHIFT) - len(resdata))
         font_start.append(len(resdata))
 
     # FONTDIR resource table entry
@@ -446,9 +437,8 @@ def _create_fon(typeface):
         rtReserved=0,
         rtNameInfo=(_NAMEINFO*1)(
             _NAMEINFO(
-                # >> rscAlignShift
-                rnOffset=real_resource_offset >> 4,
-                rnLength=len(resdata) >> 4,
+                rnOffset=real_resource_offset >> _ALIGN_SHIFT,
+                rnLength=len(resdata) >> _ALIGN_SHIFT,
                 # PRELOAD=0x0040 | MOVEABLE=0x0010 | 0x0c00 ?
                 rnFlags=0x0c50,
                 rnID=resrcsize-8,
@@ -465,9 +455,8 @@ def _create_fon(typeface):
         rtReserved=0,
         rtNameInfo=(_NAMEINFO*len(fonts))(*(
             _NAMEINFO(
-                # >> rscAlignShift
-                rnOffset=(real_resource_offset+font_start[_i]) >> 4,
-                rnLength=(font_start[_i+1]-font_start[_i]) >> 4,
+                rnOffset=(real_resource_offset+font_start[_i]) >> _ALIGN_SHIFT,
+                rnLength=(font_start[_i+1]-font_start[_i]) >> _ALIGN_SHIFT,
                 # PURE=0x0020 | MOVEABLE=0x0010 | 0x1c00 ?
                 rnFlags=0x1c30,
                 rnID=0x8001+_i,
@@ -491,7 +480,7 @@ def _create_fon(typeface):
     )
     res_table = res_table_struct(
         # rscAlignShift: shift count 2<<n
-        rscAlignShift=4,
+        rscAlignShift=_ALIGN_SHIFT,
         rscTypes_fontdir=typeinfo_fontdir,
         rscTypes_font=typeinfo_font,
         rscEndTypes=0,
@@ -526,7 +515,7 @@ def _create_fon(typeface):
         imp_names_table_offset=off_import,
         nonresident_names_table_offset=len(stubdata) + off_nonres,
         movable_entry_point_count=0,
-        file_alignment_size_shift_count=4,
+        file_alignment_size_shift_count=_ALIGN_SHIFT,
         number_res_table_entries=0,
         target_os=2,
         other_os2_exe_flags=8,
