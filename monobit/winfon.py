@@ -422,7 +422,8 @@ def _create_resource_table(resdata_offset, resdata_size, n_fonts, font_start):
         rscTypes_font=typeinfo_font,
         rscResourceNames=res_names,
     )
-    return bytes(res_table)
+    res_size_aligned = align(res_table_struct.size, _ALIGN_SHIFT)
+    return bytes(res_table).ljust(res_size_aligned, b'\0')
 
 
 def _create_nonresident_name_table(typeface):
@@ -494,8 +495,10 @@ def _create_fon(typeface):
     # (non)resident name tables
     nonres = _create_nonresident_name_table(typeface)
     res = _create_resident_name_table(typeface)
-    # Entry table / imported names table should contain a zero word.
+    # entry table / imported names table should contain a zero word.
     entry = b'\0\0'
+    # the actual font data
+    resdata, font_start = _create_resource_data(typeface)
 
     # Compute length of resource table.
     # 12 (2 for the shift count, plus 2 for end-of-table, plus 8 for the
@@ -507,6 +510,7 @@ def _create_fon(typeface):
     # Resources are currently one FONTDIR plus n fonts.
     resrcsize = 12 + 20 + 8 + 12 * n_fonts + 1
     resrcsize_aligned = align(resrcsize, _ALIGN_SHIFT)
+
     # Now position all of this after the NE header.
     off_res = _NE_HEADER.size + resrcsize_aligned
     off_entry = off_res + len(res)
@@ -516,12 +520,12 @@ def _create_fon(typeface):
     # file offset where the real resources begin.
     resdata_offset = len(stubdata) + size_aligned
 
-    resdata, font_start = _create_resource_data(typeface)
+    #header_size = len(stubdata) + _NE_HEADER.size
+    #post_size = len(res) + len(entry)
 
     # create resource table and align
     restable = _create_resource_table(resdata_offset, len(resdata), n_fonts, font_start)
-    assert resrcsize == len(restable)
-    restable = restable.ljust(resrcsize_aligned, b'\0')
+    assert len(restable) == resrcsize_aligned
 
     ne_header = _NE_HEADER(
         magic=b'NE',
