@@ -161,6 +161,15 @@ _RES_TABLE_HEAD = friendlystruct(
     #rscEndNames='byte'
 )
 
+# https://docs.microsoft.com/en-us/windows/desktop/menurc/direntry
+# this is immediately followed by FONTDIRENTRY
+# https://docs.microsoft.com/en-us/windows/desktop/menurc/fontdirentry
+# which is just a copy of part of the FNT header, plus name and device
+_DIRENTRY = friendlystruct(
+    'le',
+    fontOrdinal='word',
+)
+
 # default module name in resident names table
 _MODULE_NAME = b'FONTLIB'
 
@@ -344,14 +353,16 @@ def _create_mz_stub():
     return (bytes(mz_header) + _STUB_CODE + _STUB_MSG + b'$').ljust(ne_offset, b'\0')
 
 
-def _create_fontdirentry(fnt, properties):
-    """Return the FONTDIRENTRY, given the data in a .FNT file."""
+def _create_fontdirentry(ordinal, fnt, properties):
+    """Return the DIRENTRY+FONTDIRENTRY, given the data in a .FNT file."""
+    direntry = _DIRENTRY(ordinal)
     face_name = properties['family'].encode('latin-1', 'replace') + b'\0'
     device_name = properties.get('device', '').encode('latin-1', 'replace') + b'\0'
     return (
-        fnt[0:0x71] +
-        device_name +
-        face_name
+        bytes(direntry)
+        + fnt[0:0x71]
+        + device_name
+        + face_name
     )
 
 def _create_resource_table(resdata_offset, resdata_size, n_fonts, font_start):
@@ -449,8 +460,35 @@ def _create_resident_name_table(typeface):
     return bytes([len(mname)]) + mname.encode('ascii') + b'\0\0\0'
 
 
+def _create_resource_data(typeface):
+    # construct the FNT resources
+    fonts = [create_fnt(_font) for _font in typeface._fonts]
+    # construct the FONTDIR (FONTGROUPHDR)
+    # https://docs.microsoft.com/en-us/windows/desktop/menurc/fontgrouphdr
+    fontdir_struct = friendlystruct(
+        'le',
+        NumberOfFonts='word',
+        # + array of DIRENTRY/FONTDIRENTRY structs
+    )
+    fontdir = bytes(fontdir_struct(len(fonts))) + b''.join(
+        _create_fontdirentry(
+            i+1, fonts[i], typeface._fonts[i]._properties
+        )
+        for i in range(len(fonts))
+    )
+    resdata = fontdir.ljust(align(len(fontdir), _ALIGN_SHIFT), b'\0')
+    font_start = [len(resdata)]
+    # append FONT resources
+    for i in range(len(fonts)):
+        resdata = resdata + fonts[i]
+        resdata = resdata.ljust(align(len(resdata), _ALIGN_SHIFT), b'\0')
+        font_start.append(len(resdata))
+    return resdata, font_start
+
+
 def _create_fon(typeface):
     """Create a .FON font library, given a bunch of .FNT file contents."""
+    n_fonts = len(typeface._fonts)
     # MZ DOS executable stub
     stubdata = _create_mz_stub()
     # (non)resident name tables
@@ -466,41 +504,22 @@ def _create_fon(typeface):
     # 8 for font entry TYPEINFO, plus
     # 12 for each font's NAMEINFO
     # 1 for zero byte at end
-
     # Resources are currently one FONTDIR plus n fonts.
-    resrcsize = 12 + 20 + 8 + 12 * len(typeface._fonts) + 1
+    resrcsize = 12 + 20 + 8 + 12 * n_fonts + 1
     resrcsize_aligned = align(resrcsize, _ALIGN_SHIFT)
-
     # Now position all of this after the NE header.
     off_res = _NE_HEADER.size + resrcsize_aligned
     off_entry = off_res + len(res)
     off_nonres = off_entry + len(entry)
     # align on 16-byte boundary
     size_aligned = align(off_nonres + len(nonres), _ALIGN_SHIFT)
-
     # file offset where the real resources begin.
     resdata_offset = len(stubdata) + size_aligned
 
-    # construct the FNT resources
-    fonts = [create_fnt(_font) for _font in typeface._fonts]
-
-    # Construct the FONTDIR.
-    fontdir = struct.pack('<H', len(fonts))
-    for i in range(len(fonts)):
-        fontdir += struct.pack('<H', i+1) + _create_fontdirentry(
-            fonts[i], typeface._fonts[i]._properties
-        )
-    resdata = fontdir.ljust(align(len(fontdir), _ALIGN_SHIFT), b'\0')
-
-    font_start = [len(resdata)]
-    # The FONT resources.
-    for i in range(len(fonts)):
-        resdata = resdata + fonts[i]
-        resdata = resdata.ljust(align(len(resdata), _ALIGN_SHIFT), b'\0')
-        font_start.append(len(resdata))
+    resdata, font_start = _create_resource_data(typeface)
 
     # create resource table and align
-    restable = _create_resource_table(resdata_offset, len(resdata), len(fonts), font_start)
+    restable = _create_resource_table(resdata_offset, len(resdata), n_fonts, font_start)
     assert resrcsize == len(restable)
     restable = restable.ljust(resrcsize_aligned, b'\0')
 
