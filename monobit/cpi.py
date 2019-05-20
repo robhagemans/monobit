@@ -6,6 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import os
+import string
 import logging
 
 from .base import Glyph, Font, Typeface, ceildiv, friendlystruct, VERSION
@@ -135,6 +136,14 @@ def _parse_cpi(data):
             logging.error('Could not parse font in CPI file: %s', e)
         else:
             fonts.append(font)
+    if cpeh_offset:
+        notice = data[cpeh_offset:].decode('ascii', 'ignore')
+        notice = '\n'.join(notice.strip().splitlines())
+        notice = ''.join(
+            _c for _c in notice if _c in string.printable
+        )
+        for font in fonts:
+            font._properties['notice'] = notice
     return fonts
 
 def _parse_cp(data, cpeh_offset, header_id=_ID_MS, drdos_effh=None):
