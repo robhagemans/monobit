@@ -138,12 +138,12 @@ def _parse_cpi(data):
             fonts.append(font)
     if cpeh_offset:
         notice = data[cpeh_offset:].decode('ascii', 'ignore')
-        notice = '\n'.join(notice.strip().splitlines())
+        notice = '\n'.join(notice.splitlines())
         notice = ''.join(
             _c for _c in notice if _c in string.printable
         )
         for font in fonts:
-            font._properties['notice'] = notice
+            font._properties['notice'] = notice.strip()
     return fonts
 
 def _parse_cp(data, cpeh_offset, header_id=_ID_MS, drdos_effh=None):
