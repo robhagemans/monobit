@@ -278,7 +278,7 @@ def _save_font(font, outstream, fore, back, comment, tab, key_format, key_sep):
             try:
                 value = font._properties.pop(key)
                 if value not in ('', None):
-                    if '\n' not in value:
+                    if not isinstance(value, str) or '\n' not in value:
                         outstream.write('{}: {}\n'.format(key, value))
                     else:
                         outstream.write('{}:\n    {}\n'.format(

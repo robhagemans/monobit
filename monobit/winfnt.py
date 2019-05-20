@@ -274,7 +274,7 @@ def load(instream):
     """Load a Windows .FNT file."""
     font = parse_fnt(instream.read())
     font._properties['source-name'] = os.path.basename(instream.name)
-    return Typeface([fonts])
+    return Typeface([font])
 
 @Typeface.saves('fnt', encoding=None)
 def save(typeface, outstream):
@@ -423,7 +423,8 @@ def _parse_win_props(fnt, win_props):
     else:
         properties['windows.dfCharSet'] = str(charset)
     properties['style'] = _STYLE_MAP[win_props.dfPitchAndFamily & 0xff00]
-    properties['word-boundary'] = '0x{:x}'.format(win_props.dfFirstChar + win_props.dfBreakChar)
+    if win_props.dfBreakChar:
+        properties['word-boundary'] = '0x{:x}'.format(win_props.dfFirstChar + win_props.dfBreakChar)
     properties['device'] = bytes_to_str(fnt[win_props.dfDevice:])
     # unparsed properties: dfMaxWidth - but this can be calculated from the matrices
     if version == 0x300:
@@ -457,7 +458,7 @@ def _parse_win_props(fnt, win_props):
     if properties['spacing'] == 'proportional':
         name.append('{}px'.format(properties['size']))
     else:
-        name.append('{}x{}px'.format(*properties['size'].split(' ')))
+        name.append('{}x{}'.format(*properties['size'].split(' ')))
     properties['name'] = ' '.join(name)
     return properties
 
