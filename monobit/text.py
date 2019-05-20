@@ -236,7 +236,7 @@ def _load_font(instream, back, key_format):
     ]
     # multiple labels translate into multiple keys with the same value
     properties = {
-        _key: ''.join(_el.clusters)
+        _key: '\n'.join(_el.clusters)
         for _el in property_elements
         for _key in _el.labels
     }
@@ -278,7 +278,12 @@ def _save_font(font, outstream, fore, back, comment, tab, key_format, key_sep):
             try:
                 value = font._properties.pop(key)
                 if value not in ('', None):
-                    outstream.write('{}: {}\n'.format(key, value))
+                    if '\n' not in value:
+                        outstream.write('{}: {}\n'.format(key, value))
+                    else:
+                        outstream.write('{}:\n    {}\n'.format(
+                            key, '\n    '.join(value.split('\n')))
+                        )
             except KeyError:
                 pass
         for key, value in font._properties.items():
