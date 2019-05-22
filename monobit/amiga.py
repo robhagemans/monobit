@@ -245,7 +245,7 @@ def _read_strike(
     nchars = hichar - lochar + 1 + 1 # one additional glyph at end for undefined chars
     loc_struct = friendlystruct('>', offset='H', width='H')
     locs = [
-        loc_struct.from_bytes(data, offset=pos_charloc+_i*loc_struct.size)
+        loc_struct.from_bytes(data, pos_charloc+_i*loc_struct.size)
         for _i in range(nchars)
     ]
     font = [
@@ -256,7 +256,7 @@ def _read_strike(
     if proportional:
         spc_struct = friendlystruct('>', space='h')
         spacing = [
-            spc_struct.from_bytes(data, offset=pos_charspace+_i*spc_struct.size).space
+            spc_struct.from_bytes(data, pos_charspace+_i*spc_struct.size).space
             for _i in range(nchars)
         ]
         # apply spacing
@@ -273,7 +273,7 @@ def _read_strike(
         # kerning data, can be negative
         kern_struct = friendlystruct('>', kern='h')
         kerning = [
-            kern_struct.from_bytes(data, offset=pos_charkern+_i*kern_struct.size).kern
+            kern_struct.from_bytes(data, pos_charkern+_i*kern_struct.size).kern
             for _i in range(nchars)
         ]
         for i, sp in enumerate(kerning):
