@@ -34,9 +34,12 @@ import logging
 import itertools
 
 from .base import (
-    VERSION, Glyph, Font, Typeface, friendlystruct,
+    VERSION, friendlystruct,
     bytes_to_bits, ceildiv, align, bytes_to_str
 )
+from .typeface import Typeface
+from .font import Font
+from .glyph import Glyph
 
 from .winfnt import parse_fnt, create_fnt, _get_prop_x, _get_prop_y
 

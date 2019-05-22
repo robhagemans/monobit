@@ -9,7 +9,10 @@ import os
 import struct
 import logging
 
-from .base import VERSION, Glyph, Font, Typeface, friendlystruct, bytes_to_bits
+from .base import VERSION, friendlystruct, bytes_to_bits
+from .typeface import Typeface
+from .font import Font
+from .glyph import Glyph
 
 
 # amiga header constants

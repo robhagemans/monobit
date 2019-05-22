@@ -8,9 +8,10 @@ licence: https://opensource.org/licenses/MIT
 import string
 from types import SimpleNamespace
 
-from .base import (
-    Typeface, Font, Glyph, clean_comment, write_comments, split_global_comment
-)
+from .base import clean_comment, write_comments, split_global_comment
+from .typeface import Typeface
+from .font import Font
+from .glyph import Glyph
 
 
 _WHITESPACE = ' \t'

@@ -9,7 +9,10 @@ try:
     from PIL import Image
 except ImportError:
     Image = None
-from .base import Typeface, Font, Glyph, ceildiv
+from .base import ceildiv
+from .typeface import Typeface
+from .font import Font
+from .glyph import Glyph
 
 
 @Typeface.loads('png', 'bmp', 'gif', 'image', encoding=None)

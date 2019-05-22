@@ -7,7 +7,10 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
-from .base import Glyph, Font, Typeface, ceildiv, bytes_to_bits
+from .base import ceildiv, bytes_to_bits
+from .typeface import Typeface
+from .font import Font
+from .glyph import Glyph
 
 
 @Typeface.loads('dos', 'bin', 'rom', 'raw', encoding=None)

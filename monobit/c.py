@@ -7,7 +7,10 @@ licence: https://opensource.org/licenses/MIT
 
 import string
 
-from .base import Glyph, Font, Typeface, ceildiv
+from .base import ceildiv
+from .typeface import Typeface
+from .font import Font
+from .glyph import Glyph
 
 
 @Typeface.loads('c', 'cc', 'cpp', 'h')

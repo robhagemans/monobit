@@ -8,7 +8,10 @@ licence: https://opensource.org/licenses/MIT
 import os
 import logging
 
-from .base import VERSION, Glyph, Font, Typeface
+from .base import VERSION
+from .typeface import Typeface
+from .font import Font
+from .glyph import Glyph
 
 
 # BDF is specified as ASCII only

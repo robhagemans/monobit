@@ -33,9 +33,12 @@ import logging
 import itertools
 
 from .base import (
-    VERSION, Glyph, Font, Typeface, friendlystruct,
+    VERSION, friendlystruct,
     bytes_to_bits, ceildiv, align, bytes_to_str
 )
+from .typeface import Typeface
+from .font import Font
+from .glyph import Glyph
 
 
 ##############################################################################

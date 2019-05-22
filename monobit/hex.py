@@ -9,10 +9,10 @@ import os
 import logging
 import string
 
-from .base import (
-    Glyph, Font, Typeface,
-    clean_comment, split_global_comment, write_comments
-)
+from .base import clean_comment, split_global_comment, write_comments
+from .typeface import Typeface
+from .font import Font
+from .glyph import Glyph
 
 
 @Typeface.loads('hex', encoding='utf-8-sig')

@@ -10,7 +10,7 @@ import sys as _sys
 assert _sys.version_info >= (3, 6)
 
 from .base import VERSION as __version__
-from .base import Typeface
+from .typeface import Typeface
 
 from . import winfon
 from . import winfnt

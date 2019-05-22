@@ -9,8 +9,12 @@ import os
 import string
 import logging
 
-from .base import Glyph, Font, Typeface, ceildiv, friendlystruct, VERSION
+from .base import ceildiv, friendlystruct, VERSION
+from .typeface import Typeface
+from .font import Font
+from .glyph import Glyph
 from .raw import parse_aligned
+
 
 _ID_MS = b'FONT   '
 _ID_NT = b'FONT.NT'
