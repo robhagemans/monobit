@@ -49,7 +49,7 @@ class Font:
     def ordinals(self):
         """Get tuple of defined ordinals."""
         default_key = self._labels.get(None, None)
-        return tuple(_k for _k in self._labels if isinstance(_k, int) and _k != default_key)
+        return sorted(_k for _k in self._labels if isinstance(_k, int) and _k != default_key)
 
     @property
     def all_ordinal(self):

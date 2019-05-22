@@ -61,22 +61,23 @@ def draw_output_key(key):
 
 
 # defaults
-yaff_parameters = {
-    'fore': '@',
-    'back': '.',
-    'comment': '#',
-    'tab': '    ',
-    'key_format': yaff_output_key,
-    'key_sep': ':\n'
-}
-draw_parameters = {
-    'fore': '#',
-    'back': '-',
-    'comment': '%',
-    'tab': '\t',
-    'key_format': draw_output_key,
-    'key_sep': ':'
-}
+_YAFF_PARAMETERS = dict(
+    fore='@',
+    back='.',
+    comment='#',
+    tab='    ',
+    key_format=yaff_output_key,
+    key_sep=':\n',
+)
+
+_DRAW_PARAMETERS = dict(
+    fore='#',
+    back='-',
+    comment='%',
+    tab='\t',
+    key_format=draw_output_key,
+    key_sep=':',
+)
 
 
 # default order of known yaff properties
@@ -153,7 +154,7 @@ def save(typeface, outstream):
     for i, font in enumerate(typeface._fonts):
         if i:
             outstream.write(_SEPARATOR + '\n')
-        _save_font(font, outstream, **yaff_parameters)
+        _save_yaff(font, outstream, **_YAFF_PARAMETERS)
     return typeface
 
 
@@ -169,7 +170,7 @@ def save_draw(typeface, outstream):
     if len(typeface._fonts) > 1:
         raise ValueError('Saving multiple fonts to .draw not possible')
     font = typeface._fonts[0]
-    _save_font(font, outstream, **draw_parameters)
+    _save_draw(font, outstream, **_DRAW_PARAMETERS)
     return typeface
 
 
@@ -270,7 +271,16 @@ def _load_font(instream, back, key_format):
 ##############################################################################
 # write file
 
-def _save_font(font, outstream, fore, back, comment, tab, key_format, key_sep):
+def _write_glyph(outstream, labels, glyph, fore, back, comment, tab, key_format, key_sep):
+    """Rrite out a single glyph in text format."""
+    write_comments(outstream, glyph.comments, comm_char=comment)
+    for ordinal in labels:
+        outstream.write(key_format(ordinal) + key_sep)
+    outstream.write(tab)
+    outstream.write(('\n' + tab).join(glyph.as_text(foreground=fore, background=back)))
+    outstream.write('\n\n')
+
+def _save_yaff(font, outstream, fore, back, comment, tab, key_format, key_sep):
     """Write one font to a plaintext stream."""
     write_comments(outstream, font._comments.get(None, []), comm_char=comment, is_global=True)
     if font._properties:
@@ -282,8 +292,8 @@ def _save_font(font, outstream, fore, back, comment, tab, key_format, key_sep):
                     if not isinstance(value, str) or '\n' not in value:
                         outstream.write('{}: {}\n'.format(key, value))
                     else:
-                        outstream.write('{}:\n    {}\n'.format(
-                            key, '\n    '.join(value.split('\n')))
+                        outstream.write('{}:\n' + tab + '{}\n'.format(
+                            key, ('\n' + tab).join(value.splitlines()))
                         )
             except KeyError:
                 pass
@@ -292,10 +302,13 @@ def _save_font(font, outstream, fore, back, comment, tab, key_format, key_sep):
             if value not in ('', None):
                 outstream.write('{}: {}\n'.format(key, value))
         outstream.write('\n')
-    for labels, char in font:
-        write_comments(outstream, char.comments, comm_char=comment)
-        for ordinal in labels:
-            outstream.write(key_format(ordinal) + key_sep)
-        outstream.write(tab)
-        outstream.write(('\n' + tab).join(char.as_text(foreground=fore, background=back)))
-        outstream.write('\n\n')
+    for labels, glyph in font:
+        _write_glyph(outstream, labels, glyph, fore, back, comment, tab, key_format, key_sep)
+        write_comments(outstream, glyph.comments, comm_char=comment)
+
+def _save_draw(font, outstream, fore, back, comment, tab, key_format, key_sep):
+    """Write one font to a plaintext stream."""
+    write_comments(outstream, font._comments.get(None, []), comm_char=comment, is_global=True)
+    for ordinal in font.ordinals:
+        glyph = font.get_glyph(ordinal)
+        _write_glyph(outstream, [ordinal], glyph, fore, back, comment, tab, key_format, key_sep)
