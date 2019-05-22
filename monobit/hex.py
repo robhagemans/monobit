@@ -9,7 +9,7 @@ import os
 import logging
 import string
 
-from .base import clean_comment, split_global_comment, write_comments
+from .text import clean_comment, split_global_comment, write_comments
 from .typeface import Typeface
 from .font import Font
 from .glyph import Glyph

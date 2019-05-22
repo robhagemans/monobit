@@ -16,7 +16,7 @@ from . import winfon
 from . import winfnt
 from . import amiga
 from . import image
-from . import text
+from . import yaff
 from . import raw
 from . import bdf
 from . import psf
