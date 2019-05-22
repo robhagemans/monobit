@@ -75,7 +75,7 @@ def load_aligned(instream, cell, n_chars):
     if n_chars is None:
         rombytes = instream.read()
         # get number of chars in extract
-        n_chars = ceildiv(len(rombytes), bytesize)
+        n_chars = ceildiv(len(rombytes), width_bytes * height)
     else:
         rombytes = instream.read(n_chars * width_bytes * height)
     return parse_aligned(rombytes, width, height, n_chars)
