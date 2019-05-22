@@ -32,10 +32,8 @@ import string
 import logging
 import itertools
 
-from .base import (
-    VERSION, friendlystruct,
-    bytes_to_bits, ceildiv, align, bytes_to_str
-)
+from .base import VERSION
+from .binary import friendlystruct, bytes_to_bits, ceildiv, align, bytes_to_str
 from .typeface import Typeface
 from .font import Font
 from .glyph import Glyph

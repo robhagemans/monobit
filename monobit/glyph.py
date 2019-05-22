@@ -7,7 +7,8 @@ licence: https://opensource.org/licenses/MIT
 
 import binascii
 
-from .base import scriptable, ceildiv, bytes_to_bits
+from .base import scriptable
+from .binary import ceildiv, bytes_to_bits
 
 
 class Glyph:

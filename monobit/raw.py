@@ -7,7 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
-from .base import ceildiv, bytes_to_bits
+from .binary import ceildiv, bytes_to_bits
 from .typeface import Typeface
 from .font import Font
 from .glyph import Glyph
@@ -47,7 +47,6 @@ def save_aligned(outstream, font):
         logging.warning('Glyphs without ordinal values not saved.')
     for ordinal in font.ordinal_range:
         outstream.write(font.get_glyph(ordinal).as_bytes())
-
 
 
 def load_strike(instream, cell, n_chars):

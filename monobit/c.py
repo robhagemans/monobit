@@ -7,7 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 import string
 
-from .base import ceildiv
+from .binary import ceildiv
 from .typeface import Typeface
 from .font import Font
 from .glyph import Glyph

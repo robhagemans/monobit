@@ -28,18 +28,11 @@ SOFTWARE.
 """
 
 import os
-import sys
 import string
 import logging
-import itertools
 
-from .base import (
-    VERSION, friendlystruct,
-    bytes_to_bits, ceildiv, align, bytes_to_str
-)
+from .binary import friendlystruct, ceildiv, align
 from .typeface import Typeface
-from .font import Font
-from .glyph import Glyph
 
 from .winfnt import parse_fnt, create_fnt, _get_prop_x, _get_prop_y
 

@@ -292,8 +292,10 @@ def _save_yaff(font, outstream, fore, back, comment, tab, key_format, key_sep):
                     if not isinstance(value, str) or '\n' not in value:
                         outstream.write('{}: {}\n'.format(key, value))
                     else:
-                        outstream.write('{}:\n' + tab + '{}\n'.format(
-                            key, ('\n' + tab).join(value.splitlines()))
+                        outstream.write(
+                            ('{}:\n' + tab + '{}\n').format(
+                                key, ('\n' + tab).join(value.splitlines())
+                            )
                         )
             except KeyError:
                 pass

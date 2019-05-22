@@ -7,7 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
-from .base import ceildiv, friendlystruct
+from .binary import ceildiv, friendlystruct
 from .raw import load_aligned, save_aligned
 from .typeface import Typeface
 from .font import Font
