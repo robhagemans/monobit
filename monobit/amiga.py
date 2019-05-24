@@ -9,7 +9,6 @@ import os
 import struct
 import logging
 
-from .base import VERSION
 from .binary import friendlystruct, bytes_to_bits
 from .typeface import Typeface
 from .font import Font
@@ -192,7 +191,6 @@ def _parse_amiga_props(amiga_props, min_kern):
     if amiga_props.tf_Style & _FSF_COLORFONT:
         raise ValueError('Amiga ColorFont not supported')
     props = {
-        'converter': 'monobit v{}'.format(VERSION),
         'source-format': 'AmigaFont',
     }
     # preserve tags stored in name field after \0

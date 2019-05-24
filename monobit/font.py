@@ -5,8 +5,12 @@ monobit.font - representation of font
 licence: https://opensource.org/licenses/MIT
 """
 
-from .base import scriptable
+from functools import wraps
+
+from .base import scriptable, VERSION
 from .glyph import Glyph
+
+
 
 
 class Font:
@@ -26,11 +30,47 @@ class Font:
             self._comments = {None: comments}
         self._properties = properties or {}
 
+    ##########################################################################
+    # glyph access
+
     def __iter__(self):
         """Iterate over labels, glyph pairs."""
         for index, glyph in enumerate(self._glyphs):
             labels = tuple(_label for _label, _index in self._labels.items() if _index == index)
             yield labels, glyph
+
+    def get_glyph(self, key, default=True):
+        """Get glyph by key, default if not present."""
+        try:
+            index = self._labels[key]
+        except KeyError:
+            if not default:
+                raise
+            return self.get_default_glyph()
+        return self._glyphs[index]
+
+    def get_default_glyph(self):
+        """Get default glyph."""
+        try:
+            default_key = self._labels[None]
+            return self._glyphs[default_key]
+        except KeyError:
+            return Glyph.empty(self.max_width, self.max_height)
+
+    def get_char(self, key):
+        """Get glyph by unicode character."""
+        # TODO: , errors='strict' (raise), 'replace' (with default), 'ignore' (replace with space)
+        xord = ord(key)
+        try:
+            #FIXME: convert all labels / props to lowercase?
+            return self.get_glyph('u+{:04x}'.format(xord))
+        except KeyError:
+            pass
+        # FIXME: assuming ascii-based encoding here, use explicit encoding
+        return self.get_glyph(xord)
+
+    ##########################################################################
+    # labels
 
     @property
     def max_ordinal(self):
@@ -62,42 +102,188 @@ class Font:
         """Get number of glyphs in font."""
         return len(self._glyphs)
 
-    @property
-    def fixed(self):
-        """Font is fixed width."""
-        sizes = set((_glyph.width, _glyph.height) for _glyph in self._glyphs)
-        return len(sizes) <= 1
+    ##########################################################################
+    # properties
 
-    @property
-    def max_width(self):
-        """Get maximum width."""
-        return max(_glyph.width for _glyph in self._glyphs)
+    # yaff recognised properties
 
-    @property
-    def max_height(self):
-        """Get maximum height."""
-        return max(_glyph.height for _glyph in self._glyphs)
-
-    def get_glyph(self, key, default=True):
-        """Get glyph by key, default if not present."""
+    def __getattr__(self, attr):
+        """Take property from property table."""
         try:
-            index = self._labels[key]
-        except KeyError:
-            if not default:
-                raise
-            return self.get_default_glyph()
-        return self._glyphs[index]
-
-    def get_default_glyph(self):
-        """Get default glyph."""
+            return self._properties[attr.replace('_', '-')]
+        except KeyError as e:
+            pass
         try:
-            default_key = self._labels[None]
-            return self._glyphs[default_key]
-        except KeyError:
-            return Glyph.empty(self.max_width, self.max_height)
+            return self._yaff_properties[attr.replace('_', '-')]
+        except KeyError as e:
+            # fixme: if in yaff property list, return default
+            raise AttributeError from e
 
+    def yaffproperty(fn):
+        """Take properrty from property table, if defined; calculate otherwise."""
+        @wraps(fn)
+        def _cached_fn(self, *args, **kwargs):
+            try:
+                return self._properties[fn.__name__.replace('_', '-')]
+            except KeyError:
+                pass
+            return fn(self, *args, **kwargs)
+        return property(_cached_fn)
+
+    # yaff recognised properties and their defaults
+
+    _yaff_properties = {
+        ##'name': '', # full human name
+        'foundry': '', # author or issuer
+        'copyright': '', # copyright string
+        'notice': '', # e.g. license string
+        'revision': 0, # font version
+
+        # descriptive:
+        ##'points', # nominal point size
+        ##'dpi', # target resolution in dots per inch
+        ##'family', # typeface/font family
+        'weight': 'normal', # normal, bold, light, etc.
+        'slant': 'roman', # roman, italic, oblique, etc
+        'setwidth': 'normal', # normal, condensed, expanded, etc.
+        'style': '', # serif, sans, etc.
+        'decoration': '', # underline, strikethrough, etc.
+
+        # these can be determined from the bitmaps
+        ##'spacing', # proportional, monospace, cell
+        ##'x-width', # ink width of lowercase x (in proportional font)
+
+        # positioning relative to origin:
+        'direction': 'left-to-right', # left-to-right, right-to-left
+        'bottom': 0, # bottom line of matrix relative to baseline ## `drop`/`lift`? `offset-y`? `offset-transverse`?
+        'offset-before': 0, # horizontal offset from origin to matrix start
+        'offset-after': 0, # horizontal offset from matrix end to next origin
+
+        # other metrics (may affect interline spacing):
+
+        # can be determined from bitmap? except if there are marks above the top
+        # FIXME- needs clearer definition. is this the minimum font bounding box less "internal leading"?
+        ##'size', # pixel height == top - bottom (can be 'width height' for fixed-width)
+        ##'bounding-box', # maximum ink width/height
+
+        #'ascent', # recommended typographic ascent relative to baseline (not necessarily equal to top)
+        #'descent', # recommended typographic descent relative to baseline (not necessarily equal to bottom)
+        'leading': 0, # vertical leading, defined as (pixels between baselines) - (pixel height)
+        ##'x-height', # height of lowercase x relative to baseline
+        ##'cap-height', # height of capital relative to baseline
+
+        # character set:
+        #'encoding',
+        'default-char': 0,
+        'word-boundary': 'u+0020', # word-break character (usually space)
+
+        # other
+        'device': '', # target device name
+
+        # conversion metadata:
+        'converter': 'monobit v{}'.format(VERSION),
+        'source-name': '',
+        'source-format': '',
+    }
+
+
+    @yaffproperty
+    def name(self):
+        """Name of font."""
+        # maybe include slant, weight?
+        return '{} {}px'.format(self.family, self.size[1]).strip()
+
+    @yaffproperty
+    def family(self):
+        """Name of font family."""
+        if 'name' in self._properties:
+            return self._properties['name'].split(' ')[0]
+        # use source name if no family name or name defined
+        if 'source-name' in self._properties:
+            return self.source_name
+        return ''
+
+    @yaffproperty
+    def points(self):
+        """Nominal point height."""
+        if 'dpi' in self._properties:
+            return int(self.size[1] * self.dpi[1] / 96.)
+        # default: 96 dpi; 1 point == 1 pixel
+        # TODO: make namedtuples so we can do dpi.x dpi.y 
+        return self.size[1]
+
+    @yaffproperty
+    def dpi(self):
+        """Target screen resolution in dots per inch."""
+        if 'points' in self._properties:
+            dpi = (96 * self.size[1]) // self.points
+            return (dpi, dpi)
+        # default: 96 dpi; 1 point == 1 pixel
+        return (96, 96)
+
+    # FIXME - decide on what `size` means
+    @yaffproperty
+    def size(self):
+        """Get maximum raster width and height, in pixels."""
+        # FIXME: any effect of offsets? internal leading?
+        if not self._glyphs:
+            return (0, 0)
+        # the max raster width/height and max *ink* width/height *should* be the same
+        return (
+            max(_glyph.width for _glyph in self._glyphs),
+            max(_glyph.height for _glyph in self._glyphs)
+        )
+
+    @property
+    def bounding_box(self):
+        """Get maximum ink width and height, in pixels."""
+        if not self._glyphs:
+            return (0, 0)
+        # the max raster width/hieght and max *ink* width/height *should* be the same
+        return (
+            max(_glyph.ink_width for _glyph in self._glyphs),
+            max(_glyph.ink_height for _glyph in self._glyphs)
+        )
+
+    @yaffproperty
+    def spacing(self):
+        """Monospace or proportional spacing."""
+        if not self._glyphs:
+            fixed = True
+        else:
+            sizes = set((_glyph.width, _glyph.height) for _glyph in self._glyphs)
+            fixed = len(sizes) <= 1
+        if fixed:
+            return 'monospace'
+        return 'proportional'
+
+    @yaffproperty
+    def x_width(self):
+        """Width of uppercase X."""
+        try:
+            return self.get_char('X').ink_width
+        except KeyError:
+            return 0
+
+    @yaffproperty
+    def x_height(self):
+        """Ink height of lowercase x."""
+        try:
+            return self.get_char('x').ink_height
+        except KeyError:
+            return 0
+
+    @yaffproperty
+    def cap_height(self):
+        """Ink height of uppercase X."""
+        try:
+            return self.get_char('X').ink_height
+        except KeyError:
+            return 0
 
     ##########################################################################
+    # font operations
+
     @scriptable
     def renumber(self, add:int=0):
         """Return a font with renumbered keys."""
@@ -122,6 +308,7 @@ class Font:
         glyphs = [self._glyphs[_i] for _i in indexes]
         return Font(glyphs, labels, self._comments, self._properties)
 
+    ##########################################################################
     # inject Glyph operations into Font
 
     for _name, _func in Glyph.__dict__.items():

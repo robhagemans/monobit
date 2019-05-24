@@ -8,7 +8,6 @@ licence: https://opensource.org/licenses/MIT
 import os
 import logging
 
-from .base import VERSION
 from .typeface import Typeface
 from .font import Font
 from .glyph import Glyph
@@ -164,7 +163,6 @@ def _parse_properties(glyphs, glyph_props, bdf_props, x_props, filename):
         logging.info('    %s: %s', name, value)
     # converter-supplied metadata
     properties = {
-        'converter': 'monobit v{}'.format(VERSION),
         'source-name': os.path.basename(filename),
     }
     # parse meaningful metadata

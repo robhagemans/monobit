@@ -16,7 +16,7 @@ class Glyph:
 
     def __init__(self, pixels=((),), comments=()):
         """Create glyph from tuple of tuples."""
-        self._rows = tuple(tuple(_row) for _row in pixels)
+        self._rows = tuple(tuple(bool(_bit) for _bit in _row) for _row in pixels)
         self._comments = comments
 
     def __repr__(self):
@@ -97,15 +97,35 @@ class Glyph:
 
     @property
     def width(self):
-        """Pixel width of glyph."""
+        """Raster width of glyph."""
         if not self._rows:
             return 0
         return len(self._rows[0])
 
     @property
     def height(self):
-        """Pixel height of glyph."""
+        """Raster height of glyph."""
         return len(self._rows)
+
+    @property
+    def ink_width(self):
+        """Ink width of glyph."""
+        if not self._rows:
+            return 0
+        # maximum row inkwidth
+        return max(
+            len(_row) - _row.index(True) - list(reversed(_row)).index(True)
+            for _row in self._rows
+        )
+
+    @property
+    def ink_height(self):
+        """Ink height of glyph."""
+        if not self._rows:
+            return 0
+        inked = [True in _row for _row in self._rows]
+        return len(inked) - inked.index(True) - list(reversed(inked)).index(True)
+
 
     ##########################################################################
 

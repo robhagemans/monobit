@@ -39,7 +39,7 @@ def save(typeface, outstream):
 def save_aligned(outstream, font):
     """Save fixed-width font to byte-aligned bitmap."""
     # check if font is fixed-width and fixed-height
-    if not font.fixed:
+    if font.spacing != 'monospace':
         raise ValueError(
             'This format does not support proportional or variable-height fonts.'
         )

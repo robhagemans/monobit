@@ -9,7 +9,6 @@ import os
 import string
 import logging
 
-from .base import VERSION
 from .binary import ceildiv, friendlystruct
 from .raw import parse_aligned
 from .typeface import Typeface
@@ -185,7 +184,6 @@ def _parse_cp(data, cpeh_offset, header_id=_ID_MS, drdos_effh=None):
                 'encoding': 'cp{}'.format(cpeh.codepage),
                 'device': cpeh.device_name.strip().decode('ascii', 'replace'),
                 'size': '{} {}'.format(fh.width, fh.height),
-                'converter': 'monobit v{}'.format(VERSION),
                 'source-format': 'CPI ({})'.format(_FORMAT_NAME[header_id]),
             }
             # apparently never used

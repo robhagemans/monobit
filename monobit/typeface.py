@@ -39,6 +39,7 @@ class Typeface:
         except KeyError:
             raise ValueError('Cannot load from format `{}`'.format(format))
         return loader(infile, **kwargs)
+        # TODO: set source-name and source-format (add a human name for each format in the decorator)
 
     @scriptable
     def save(self, outfile:str, format:str='', **kwargs):

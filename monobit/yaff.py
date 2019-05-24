@@ -81,6 +81,7 @@ _DRAW_PARAMETERS = dict(
 
 
 # default order of known yaff properties
+# TODO: get from tale in Font class
 PROPERTIES = [
 
     # font metadata:

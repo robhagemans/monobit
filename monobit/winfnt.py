@@ -32,7 +32,6 @@ import string
 import logging
 import itertools
 
-from .base import VERSION
 from .binary import friendlystruct, bytes_to_bits, ceildiv, align, bytes_to_str
 from .typeface import Typeface
 from .font import Font
@@ -376,7 +375,6 @@ def _parse_win_props(fnt, win_props):
     if win_props.dfType & 1:
         raise ValueError('Not a bitmap font')
     properties = {
-        'converter': 'monobit v{}'.format(VERSION),
         'source-format': 'WinFont v{}.{}'.format(*divmod(version, 256)),
         'family': bytes_to_str(fnt[win_props.dfFace:]),
         'copyright': bytes_to_str(win_props.dfCopyright),
@@ -484,23 +482,9 @@ def create_fnt(font, version=0x200):
     style_map = dict(reversed(_item) for _item in _STYLE_MAP.items())
     glyphs = font._glyphs
     properties = font._properties
-    try:
-        x_width = int(properties['x-width'])
-    except KeyError:
-        # get width of uppercase X
-        # CHECK: this is correct for monospace but for proportional commonly the ink width is chosen
-        # also, for fixed this should take into account pre- and post-offsets?
-        xord = ord('X')
-        try:
-            #FIXME: convert all labels / props to lowercase?
-            x_width = font.get_glyph('u+{:04x}'.format(xord)).width
-        except KeyError:
-            # assume ascii-based encoding
-            try:
-                x_width = font.get_glyph(xord).width
-            except KeyError:
-                x_width = 0
-    if not font.fixed:
+    if font.spacing == 'proportional':
+        # width of uppercase X
+        x_width = font.x_width
         # low bit set for proportional
         pitch_and_family = 0x01 | style_map.get(properties.get('style', ''), 0)
         pix_width = 0
@@ -508,7 +492,7 @@ def create_fnt(font, version=0x200):
     else:
         # CHECK: is this really always set for fixed-pitch?
         pitch_and_family = _FF_MODERN
-        # x_with should equal average width
+        # x_width should equal average width
         # FIXME: take from glyph dimensions
         x_width = pix_width = _get_prop_x(properties['size'])
         v3_flags = _DFF_FIXED
