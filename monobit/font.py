@@ -60,19 +60,25 @@ class Font:
             default_key = self._labels[None]
             return self._glyphs[default_key]
         except KeyError:
-            return Glyph.empty(self.max_width, self.max_height)
+            return Glyph.empty(*self.bounding_box)
 
-    def get_char(self, key):
+    def get_char(self, key, errors='strict'):
         """Get glyph by unicode character."""
-        # TODO: , errors='strict' (raise), 'replace' (with default), 'ignore' (replace with space)
-        xord = ord(key)
         try:
             #FIXME: convert all labels / props to lowercase?
-            return self.get_glyph('u+{:04x}'.format(xord))
+            return self.get_glyph('u+{:04x}'.format(ord(key)))
         except KeyError:
             pass
-        # FIXME: assuming ascii-based encoding here, use explicit encoding
-        return self.get_glyph(xord)
+        try:
+            return self.get_glyph(key.encode(self.encoding))
+        except UnicodeEncodeError:
+            # errors='strict' (raise), 'replace' (with default), 'ignore' (replace with space)
+            if errors == 'strict':
+                raise
+            elif errors == 'ignore':
+                return self.get_glyph(' '.encode(self.encoding))
+            return self.get_default_glyph()
+
 
     ##########################################################################
     # labels
@@ -178,7 +184,7 @@ class Font:
         ##'cap-height', # height of capital relative to baseline
 
         # character set:
-        #'encoding',
+        'encoding': 'ascii',
         'default-char': 0,
         'word-boundary': 'u+0020', # word-break character (usually space)
 
