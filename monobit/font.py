@@ -6,11 +6,16 @@ licence: https://opensource.org/licenses/MIT
 """
 
 from functools import wraps
+from typing import NamedTuple
 
 from .base import scriptable, VERSION
 from .glyph import Glyph
 
 
+class Coord(NamedTuple):
+    """Coordinate tuple."""
+    x: int
+    y: int
 
 
 class Font:
@@ -191,7 +196,7 @@ class Font:
     def name(self):
         """Name of font."""
         # maybe include slant, weight?
-        return '{} {}px'.format(self.family, self.size[1]).strip()
+        return '{} {}px'.format(self.family, self.size.y).strip()
 
     @yaffproperty
     def family(self):
@@ -207,19 +212,18 @@ class Font:
     def points(self):
         """Nominal point height."""
         if 'dpi' in self._properties:
-            return int(self.size[1] * self.dpi[1] / 96.)
+            return int(self.size.y * self.dpi.y / 96.)
         # default: 96 dpi; 1 point == 1 pixel
-        # TODO: make namedtuples so we can do dpi.x dpi.y 
-        return self.size[1]
+        return self.size.y
 
     @yaffproperty
     def dpi(self):
         """Target screen resolution in dots per inch."""
         if 'points' in self._properties:
-            dpi = (96 * self.size[1]) // self.points
-            return (dpi, dpi)
+            dpi = (96 * self.size.y) // self.points
+            return Coord(dpi, dpi)
         # default: 96 dpi; 1 point == 1 pixel
-        return (96, 96)
+        return Coord(96, 96)
 
     # FIXME - decide on what `size` means
     @yaffproperty
@@ -227,9 +231,9 @@ class Font:
         """Get maximum raster width and height, in pixels."""
         # FIXME: any effect of offsets? internal leading?
         if not self._glyphs:
-            return (0, 0)
+            return Coord(0, 0)
         # the max raster width/height and max *ink* width/height *should* be the same
-        return (
+        return Coord(
             max(_glyph.width for _glyph in self._glyphs),
             max(_glyph.height for _glyph in self._glyphs)
         )
