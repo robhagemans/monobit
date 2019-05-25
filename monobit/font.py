@@ -55,9 +55,9 @@ class Font:
         return self._glyphs[index]
 
     def get_default_glyph(self):
-        """Get default glyph."""
+        """Get default glyph; empty if not defined"""
         try:
-            default_key = self._labels[None]
+            default_key = self._labels[self.default_char]
             return self._glyphs[default_key]
         except KeyError:
             return Glyph.empty(*self.bounding_box)
@@ -112,6 +112,24 @@ class Font:
     def number_glyphs(self):
         """Get number of glyphs in font."""
         return len(self._glyphs)
+
+    def get_ordinal_for_label(self, key):
+        """Get ordinal for given label, if defined."""
+        try:
+            index = self._labels[key]
+        except KeyError:
+            if key.startswith('u+'):
+                # get ordinal for unicode by encoding
+                unicode = int(key[2:], 16)
+                byte = chr(unicode).encode(self.encoding, errors='ignore')
+                if byte:
+                    return byte[0]
+            raise
+        for label, lindex in self._labels.items():
+            if index == lindex and isinstance(label, int):
+                return label
+        raise KeyError(key)
+
 
     ##########################################################################
     # properties
@@ -180,7 +198,7 @@ class Font:
 
         # character set:
         'encoding': 'ascii',
-        'default-char': 0,
+        'default-char': 'u+003f', # use question mark to replace missing glyph
         'word-boundary': 'u+0020', # word-break character (usually space)
 
         # other

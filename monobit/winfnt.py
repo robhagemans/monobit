@@ -486,11 +486,9 @@ def create_fnt(font, version=0x200):
         # CHECK: is this really always set for fixed-pitch?
         pitch_and_family = _FF_MODERN
         # x_width should equal average width
-        x_width = pix_width = _get_prop_x(font.bounding_box)
+        x_width = pix_width = font.bounding_box.x
         v3_flags = _DFF_FIXED
-    # FIXME: get from glyphs
-    pix_height = _get_prop_y(font.bounding_box)
-    # FIXME: find ordinal of space character (word-boundary); here we assume font starts at 32
+    pix_height = font.bounding_box.y
     space_index = 0
     # char table
     ord_glyphs = [
@@ -551,8 +549,8 @@ def create_fnt(font, version=0x200):
         dfMaxWidth=font.max_width,
         dfFirstChar=min(font.ordinals),
         dfLastChar=max(font.ordinals),
-        dfDefaultChar=int(properties.get('default-char', 0), 0), # 0 is default if none provided
-        dfBreakChar=int(properties.get('word-boundary', 0), space_index),
+        dfDefaultChar=font.get_ordinal_for_label(font.default_char) - min(font.ordinals),
+        dfBreakChar=font.get_ordinal_for_label(font.word_boundary) - min(font.ordinals),
         # round up to multiple of 2 bytes to word-align v1.0 strikes (not used for v2.0+ ?)
         dfWidthBytes=align(ceildiv(font.max_width, 8), 1),
         dfDevice=device_name_offset,
