@@ -67,14 +67,11 @@ def save(typeface, outstream):
         raise ValueError('Saving multiple fonts to .hex not possible')
     font = typeface._fonts[0]
     write_comments(outstream, font._comments[None], comm_char='#', is_global=True)
-    for ordinal, char in font._glyphs.items():
+    for label, char in font.iter_unicode():
         write_comments(outstream, char.comments, comm_char='#')
-        if isinstance(ordinal, int):
-            outstream.write('{:04x}:'.format(ordinal))
-        else:
-            raise ValueError('Font has non-integer keys')
         if char.height != 16 or char.width not in (8, 16):
             raise ValueError('Hex format only supports 8x16 or 16x16 glyphs.')
-        outstream.write(char.as_hex().upper())
+        # omit the 'u+' for .hex
+        outstream.write('{}:{}'.format(label[2:].upper(), char.as_hex().upper()))
         outstream.write('\n')
     return typeface

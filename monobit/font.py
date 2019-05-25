@@ -79,6 +79,26 @@ class Font:
                 return self.get_glyph(' '.encode(self.encoding))
             return self.get_default_glyph()
 
+    def iter_unicode(self):
+        """Iterate over fonts with unicode labels."""
+        for index, glyph in enumerate(self._glyphs):
+            labels = tuple(
+                _label for _label, _index in self._labels.items()
+                if _index == index
+            )
+            for label in labels:
+                if isinstance(label, str) and label.startswith('u+'):
+                    yield label, glyph
+                elif isinstance(label, int):
+                    if self.encoding.lower() == 'unicode' or self.encoding.lower().startswith('iso10646'):
+                        yield 'u+{:04x}'.format(label), glyph
+                    else:
+                        try:
+                            unicode = ord(bytes([label]).decode(self.encoding))
+                            yield 'u+{:04x}'.format(unicode), glyph
+                        except UnicodeError:
+                            pass
+
 
     ##########################################################################
     # labels
