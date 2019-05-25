@@ -55,9 +55,14 @@ class Glyph:
         )
 
     @staticmethod
-    def from_bytes(byteseq, width):
+    def from_bytes(byteseq, width, height=None):
         """Create glyph from bytes/bytearray/int sequence."""
-        bytewidth = ceildiv(width, 8)
+        if not width:
+            return Glyph()
+        if height is not None:
+            bytewidth = len(byteseq) // height
+        else:
+            bytewidth = ceildiv(width, 8)
         byteseq = list(byteseq)
         rows = [byteseq[_offs:_offs+bytewidth] for _offs in range(0, len(byteseq), bytewidth)]
         return Glyph(tuple(bytes_to_bits(_row, width) for _row in rows))
@@ -87,9 +92,9 @@ class Glyph:
         return bytes(int(_bitstr, 2) for _bitstr in glyph_bytes)
 
     @staticmethod
-    def from_hex(hexstr, width):
+    def from_hex(hexstr, width, height):
         """Create glyph from hex string."""
-        return Glyph.from_bytes(binascii.unhexlify(hexstr.encode('ascii')), width)
+        return Glyph.from_bytes(binascii.unhexlify(hexstr.encode('ascii')), width, height)
 
     def as_hex(self):
         """Convert glyph to hex string."""

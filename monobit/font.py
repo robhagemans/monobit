@@ -218,7 +218,7 @@ class Font:
         if 'dpi' in self._properties:
             return int(self.size.y * self.dpi.y / 96.)
         # default: 96 dpi; 1 point == 1 pixel
-        # this means these are not "pica points" (72.27 pica points per inch). what are they?    
+        # this means these are not "pica points" (72.27 pica points per inch). what are they?
         return self.size.y
 
     @yaffproperty

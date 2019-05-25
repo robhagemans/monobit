@@ -19,12 +19,12 @@ from .glyph import Glyph
 def load(instream):
     """Load font from a .bdf file."""
     nchars, comments, bdf_props, x_props = _read_bdf_global(instream)
-    glyphs, glyph_props = _read_bdf_characters(instream)
+    glyphs, glyph_props, labels = _read_bdf_characters(instream)
     # check number of characters, but don't break if no match
     if nchars != len(glyphs):
         logging.warning('Possibly corrupted BDF file: number of characters found does not match CHARS declaration.')
-    properties = _parse_properties(glyphs, glyph_props, bdf_props, x_props, instream.name)
-    return Typeface([Font(glyphs, comments, properties)])
+    glyphs, properties = _parse_properties(glyphs, glyph_props, bdf_props, x_props, instream.name)
+    return Typeface([Font(glyphs, labels, comments=comments, properties=properties)])
 
 
 def _read_dict(instream, until=None):
@@ -44,8 +44,9 @@ def _read_dict(instream, until=None):
 def _read_bdf_characters(instream):
     """Read character section."""
     # output
-    glyphs = {}
-    glyph_meta = {}
+    glyphs = []
+    labels = {}
+    glyph_meta = []
     for line in instream:
         line = line.rstrip('\r\n')
         if not line:
@@ -61,18 +62,22 @@ def _read_bdf_characters(instream):
         width, height = int(width), int(height)
         # convert from hex-string to list of bools
         hexstr = ''.join(instream.readline().strip() for _ in range(height))
-        glyph = Glyph.from_hex(hexstr, width)
-        # store in dict
+        glyph = Glyph.from_hex(hexstr, width, height)
+        # store labels, if they're not just ordinals
+        try:
+            int(meta['STARTCHAR'])
+        except ValueError:
+            labels[meta['STARTCHAR']] = len(glyphs)
         # ENCODING must be single integer or -1 followed by integer
         encvalue = int(meta['ENCODING'].split(' ')[-1])
         # no encoding number found
-        if encvalue == -1 or encvalue in glyphs:
-            encvalue = meta['STARTCHAR']
-        glyphs[encvalue] = glyph
-        glyph_meta[encvalue] = meta
+        if encvalue != -1:
+            labels[encvalue] = len(glyphs)
+        glyphs.append(glyph)
+        glyph_meta.append(meta)
         if not instream.readline().startswith('ENDCHAR'):
             raise('Expected ENDCHAR')
-    return glyphs, glyph_meta
+    return glyphs, glyph_meta, labels
 
 def _read_bdf_global(instream):
     """Read global section of BDF file."""
@@ -167,36 +172,44 @@ def _parse_properties(glyphs, glyph_props, bdf_props, x_props, filename):
     if 'default-char' in properties and not int(properties['default-char'], 0) in glyphs:
         # if the number doesn't occur, no default is set.
         del properties['default-char']
-    return properties
+    return glyphs, properties
 
 
 def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
     """Parse BDF global and per-glyph geometry."""
-    xdpi, ydpi = bdf_props['SIZE'].split(' ')[1:]
+    size, xdpi, ydpi = bdf_props.pop('SIZE').split(' ')
     properties = {
-        'source-format': 'BDF ' + bdf_props['STARTFONT'],
+        'source-format': 'BDF v{}'.format(bdf_props.pop('STARTFONT')),
         # FIXME: bdf spec says this is point size
-        'size': bdf_props['SIZE'].split(' ')[0],
+        'size': size,
         'dpi': ' '.join((xdpi, ydpi)) if xdpi != ydpi else xdpi,
     }
-    if 'CONTENTVERSION' in bdf_props:
-        properties['revision'] = bdf_props['CONTENTVERSION']
+    try:
+        properties['revision'] = bdf_props.pop('CONTENTVERSION')
+    except KeyError:
+        pass
     # global settings, tend to be overridden by per-glyph settings
-    global_bbx = bdf_props['FONTBOUNDINGBOX']
+    global_bbx = bdf_props.pop('FONTBOUNDINGBOX')
     # not supported: METRICSSET !=0, DWIDTH1, SWIDTH1
-    # global DWIDTH; use boundix box as fallback if not specified
-    global_dwidth = bdf_props.get('DWIDTH', global_bbx[:2])
-    # ignore SWIDTH, can be calculated - SWIDTH = DWIDTH / ( points/1000 * dpi / 72 )
+    # global DWIDTH; use bounding box as fallback if not specified
+    global_dwidth = bdf_props.pop('DWIDTH', global_bbx[:2])
+    global_swidth = bdf_props.pop('SWIDTH', 0)
     offsets_x = []
     offsets_y = []
     overshoots = []
     heights = []
-    for ordinal, glyph in glyphs.items():
-        props = glyph_props[ordinal]
+    for glyph, props in zip(glyphs, glyph_props):
         props['BBX'] = props.get('BBX', global_bbx)
         props['DWIDTH'] = props.get('DWIDTH', global_dwidth)
         bbx_width, bbx_height, offset_x, offset_y = (int(_p) for _p in props['BBX'].split(' '))
         dwidth_x, dwidth_y = (int(_p) for _p in props['DWIDTH'].split(' '))
+        try:
+            # ignore SWIDTH, can be calculated - SWIDTH = DWIDTH / ( points/1000 * dpi / 72 )
+            swidth_x, swidth_y = (int(_x) for _x in props.get('SWIDTH', global_swidth).split(' '))
+            #logging.info('x swidth: %s dwidth: %s', swidth_x*int(size)*int(xdpi) / 72000, dwidth_x)
+            #logging.info('y swidth: %s dwidth: %s', swidth_y*int(size)*int(ydpi) / 72000, dwidth_y)
+        except KeyError:
+            pass
         offsets_x.append(offset_x)
         offsets_y.append(offset_y)
         overshoots.append((offset_x + bbx_width) - dwidth_x)
@@ -208,8 +221,8 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
     properties['offset-before'] = leftmost
     properties['offset-after'] = -rightmost
     properties['bottom'] = bottommost
-    for ordinal, glyph in glyphs.items():
-        props = glyph_props[ordinal]
+    mod_glyphs = []
+    for glyph, props in zip(glyphs, glyph_props):
         bbx_width, bbx_height, offset_x, offset_y = (int(_p) for _p in props['BBX'].split(' '))
         dwidth_x, dwidth_y = (int(_p) for _p in props['DWIDTH'].split(' '))
         overshoot = (offset_x + bbx_width) - dwidth_x
@@ -218,20 +231,25 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
         padding_bottom = offset_y - bottommost
         padding_top = topmost - bbx_height - offset_y
         glyph = [
-            [False] * padding_left
+            (False,) * padding_left
             + _row[:bbx_width]
-            + [False] * padding_right
-            for _row in glyph[:bbx_height]
+            + (False,) * padding_right
+            for _row in glyph._rows[:bbx_height]
         ]
         matrix_width = padding_left + bbx_width + padding_right
         glyph = (
-            [[False] * matrix_width for _ in range(padding_top)]
+            [(False,) * matrix_width for _ in range(padding_top)]
             + glyph
-            + [[False] * matrix_width for _ in range(padding_bottom)]
+            + [(False,) * matrix_width for _ in range(padding_bottom)]
         )
-        glyphs[ordinal] = glyph
-    xlfd_name = bdf_props['FONT']
-    return glyphs, properties, xlfd_name
+        mod_glyphs.append(Glyph(glyph))
+    xlfd_name = bdf_props.pop('FONT')
+    # keep unparsed bdf props
+    properties.update({
+        'bdf.' + _key: _value
+        for _key, _value in bdf_props.items()
+    })
+    return mod_glyphs, properties, xlfd_name
 
 def _parse_xlfd_name(xlfd_str):
     """Parse X logical font description font name string."""
@@ -349,8 +367,8 @@ def _parse_xlfd_properties(x_props, xlfd_name):
             pass
     # keep unparsed properties
     if not xlfd_name_props:
-        properties['FONT'] = xlfd_name
-    properties.update({_k: _v.strip('"') for _k, _v in x_props.items()})
+        properties['bdf.FONT'] = xlfd_name
+    properties.update({'xlfd.' + _k: _v.strip('"') for _k, _v in x_props.items()})
     return properties
 
 

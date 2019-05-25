@@ -51,7 +51,7 @@ def load(instream):
             width, height = 16, 16
         else:
             raise ValueError('Hex strings must be 32 or 64 characters long.')
-        glyphs[key] = Glyph.from_hex(value, width)
+        glyphs[key] = Glyph.from_hex(value, width, height)
         comments[key] = clean_comment(current_comment)
         current_comment = []
     # preserve any comment at end of file
