@@ -66,7 +66,7 @@ def save(typeface, outstream):
     if len(typeface._fonts) > 1:
         raise ValueError('Saving multiple fonts to .hex not possible')
     font = typeface._fonts[0]
-    write_comments(outstream, font._comments[None], comm_char='#', is_global=True)
+    write_comments(outstream, font.get_comments(), comm_char='#', is_global=True)
     for label, char in font.iter_unicode():
         write_comments(outstream, char.comments, comm_char='#')
         if char.height != 16 or char.width not in (8, 16):

@@ -111,7 +111,6 @@ class Font:
                     except UnicodeError:
                         pass
 
-
     ##########################################################################
     # labels
 
@@ -164,6 +163,14 @@ class Font:
             if index == lindex and isinstance(label, int):
                 return label
         raise KeyError(key)
+
+
+    ##########################################################################
+    # comments
+
+    def get_comments(self, key=None):
+        """Get a comment for a key, or global comment if no key provided."""
+        return self._comments.get(key, [])
 
 
     ##########################################################################

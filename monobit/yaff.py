@@ -281,10 +281,10 @@ def _write_glyph(outstream, labels, glyph, fore, back, comment, tab, key_format,
 
 def _save_yaff(font, outstream, fore, back, comment, tab, key_format, key_sep):
     """Write one font to a plaintext stream."""
-    write_comments(outstream, font._comments.get(None, []), comm_char=comment, is_global=True)
+    write_comments(outstream, font.get_comments(), comm_char=comment, is_global=True)
     if font._properties:
         for key in PROPERTIES:
-            write_comments(outstream, font._comments.get(key, []), comm_char=comment)
+            write_comments(outstream, font.get_comments(key), comm_char=comment)
             try:
                 value = font._properties.pop(key)
                 if value not in ('', None):
@@ -299,7 +299,7 @@ def _save_yaff(font, outstream, fore, back, comment, tab, key_format, key_sep):
             except KeyError:
                 pass
         for key, value in font._properties.items():
-            write_comments(outstream, font._comments.get(key, []), comm_char=comment)
+            write_comments(outstream, font.get_comments(key), comm_char=comment)
             if value not in ('', None):
                 outstream.write('{}: {}\n'.format(key, value))
         outstream.write('\n')
@@ -309,7 +309,7 @@ def _save_yaff(font, outstream, fore, back, comment, tab, key_format, key_sep):
 
 def _save_draw(font, outstream, fore, back, comment, tab, key_format, key_sep):
     """Write one font to a plaintext stream."""
-    write_comments(outstream, font._comments.get(None, []), comm_char=comment, is_global=True)
+    write_comments(outstream, font.get_comments(), comm_char=comment, is_global=True)
     for ordinal in font.ordinals:
         glyph = font.get_glyph(ordinal)
         _write_glyph(outstream, [ordinal], glyph, fore, back, comment, tab, key_format, key_sep)
