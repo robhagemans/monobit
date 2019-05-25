@@ -11,7 +11,7 @@ from contextlib import contextmanager
 
 
 DEFAULT_FORMAT = 'text'
-VERSION = '0.6'
+VERSION = '0.7'
 
 
 @contextmanager

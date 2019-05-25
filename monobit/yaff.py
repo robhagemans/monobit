@@ -92,7 +92,8 @@ PROPERTIES = [
     'revision', # font version
 
     # descriptive:
-    'points', # nominal point size
+    'point-size', # nominal point size
+    'pixel-size', # nominal pixel size
     'dpi', # target resolution in dots per inch
     'family', # typeface/font family
     'weight', # normal, bold, light, etc.
@@ -103,6 +104,7 @@ PROPERTIES = [
     # these can be determined from the bitmaps
     'spacing', # proportional, monospace, cell
     'x-width', # ink width of lowercase x (in proportional font)
+    'average-width', # average ink width, rounded to whole pixels
 
     # positioning relative to origin:
     'direction', # left-to-right, right-to-left
@@ -111,10 +113,6 @@ PROPERTIES = [
     'offset-after', # horizontal offset from matrix end to next origin
 
     # other metrics (may affect interline spacing):
-
-    # can be determined from bitmap? except if there are marks above the top
-    'size', # pixel height == top - bottom (can be 'width height' for fixed-width)
-
     'ascent', # recommended typographic ascent relative to baseline (not necessarily equal to top)
     'descent', # recommended typographic descent relative to baseline (not necessarily equal to bottom)
     'leading', # vertical leading, defined as (pixels between baselines) - (pixel height)

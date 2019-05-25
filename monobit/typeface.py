@@ -8,7 +8,7 @@ licence: https://opensource.org/licenses/MIT
 from os.path import basename
 from functools import wraps
 
-from .base import DEFAULT_FORMAT, scriptable, ensure_stream
+from .base import VERSION, DEFAULT_FORMAT, scriptable, ensure_stream
 from .font import Font
 
 
@@ -81,6 +81,7 @@ class Typeface:
                             font._properties['source-name'] = basename(instream.name)
                         if 'source-format' not in font._properties:
                             font._properties['source-format'] = name
+                        font._properties['converter'] = 'monobit v{}'.format(VERSION)
                     return typeface
             # register loader
             for format in formats:

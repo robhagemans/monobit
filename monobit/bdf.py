@@ -167,7 +167,16 @@ def _parse_properties(glyphs, glyph_props, bdf_props, x_props, filename):
         logging.info('    %s: %s', name, value)
     # parse meaningful metadata
     glyphs, properties, xlfd_name = _parse_bdf_properties(glyphs, glyph_props, bdf_props)
-    properties.update(_parse_xlfd_properties(x_props, xlfd_name))
+    xlfd_props = _parse_xlfd_properties(x_props, xlfd_name)
+    for key, value in xlfd_props.items():
+        if key in properties and properties[key] != value:
+            logging.warning(
+                'Inconsistency between BDF and XLFD properties: '
+                '%s=%s (XLFD) but %s=%s (BDF). Taking BDF property.',
+                key, value, key, properties[key]
+            )
+        else:
+            properties[key] = value
     # check if default har exists, remove otherwise
     if 'default-char' in properties and not int(properties['default-char'], 0) in glyphs:
         # if the number doesn't occur, no default is set.
@@ -180,8 +189,7 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
     size, xdpi, ydpi = bdf_props.pop('SIZE').split(' ')
     properties = {
         'source-format': 'BDF v{}'.format(bdf_props.pop('STARTFONT')),
-        # FIXME: bdf spec says this is point size
-        'size': size,
+        'point-size': size,
         'dpi': ' '.join((xdpi, ydpi)) if xdpi != ydpi else xdpi,
     }
     try:
@@ -260,12 +268,12 @@ def _parse_xlfd_name(xlfd_str):
         'slant': 4,
         'setwidth': 5,
         'style': 6,
-        #'size': 7, # pixel-size already specified in bdf props
-        #'points': 8, # can be calculated?
-        #'resolution-x': 9, # dpi already specified in bdf props
-        #'resolution-y': 10, # dpi already specified in bdf props
+        'pixel-size': 7,
+        'point-size': 8,
+        '_dpi-x': 9,
+        '_dpi-y': 10,
         'spacing': 11,
-        # 'average-width': 12, # can be calculated
+        'average-width': 12,
         '_charset-registry': 13,
         '_charset-encoding': 14,
     }
@@ -292,10 +300,10 @@ def _parse_xlfd_properties(x_props, xlfd_name):
         'X_HEIGHT': 'x-height',
         'CAP_HEIGHT': 'cap-height',
         # display characteristics - already specified in bdf props
-        #'RESOLUTION_X': 'resolution-x',
-        #'RESOLUTION_Y': 'resolution-y',
-        #'RESOLUTION': 'resolution',
-        #'POINT_SIZE': 'points',
+        'RESOLUTION_X': '_dpi-x',
+        'RESOLUTION_Y': '_dpi-y',
+        'RESOLUTION': 'dpi',
+        'POINT_SIZE': 'point-size',
         # can be calculated: PIXEL_SIZE = ROUND((RESOLUTION_Y * POINT_SIZE) / 722.7)
         # description
         'FACE_NAME': 'name',
@@ -312,7 +320,8 @@ def _parse_xlfd_properties(x_props, xlfd_name):
         'SETWIDTH_NAME': 'setwidth',
         'RELATIVE_SETWIDTH': '_rel-setwidth',
         'ADD_STYLE_NAME': 'style',
-        'PIXEL_SIZE': 'size',
+        'PIXEL_SIZE': 'pixel-size',
+        'AVERAGE_WIDTH': 'average-width',
         # encoding
         'CHARSET_REGISTRY': '_charset-registry',
         'CHARSET_ENCODING': '_charset-encoding',
@@ -329,12 +338,6 @@ def _parse_xlfd_properties(x_props, xlfd_name):
     # modify/summarise values
     if 'descent' in properties:
         properties['descent'] = -int(properties['descent'])
-    # remove properties we think should be taken from bdf props or calculated from the others
-    x_props.pop('RESOLUTION', None)
-    x_props.pop('RESOLUTION_X', None)
-    x_props.pop('RESOLUTION_Y', None)
-    x_props.pop('AVERAGE_WIDTH', None)
-    x_props.pop('POINT_SIZE', None)
     #if 'resolution-x' in properties and 'resolution-y' in properties:
     #    properties['dpi'] = '{} {}'.format(properties.pop('resolution-x'), properties.pop('resolution-y'))
     #elif 'resolution' in properties:
@@ -348,6 +351,16 @@ def _parse_xlfd_properties(x_props, xlfd_name):
         properties['setwidth'] = _SETWIDTH_MAP[properties.pop('_rel-setwidth')]
     if '_rel-weight' in properties and properties['_rel-weight']:
         properties['weight'] = _WEIGHT_MAP[properties.pop('_rel-weight')]
+    if 'average-width' in properties:
+        properties['average-width'] = int(properties['average-width']) / 10
+    if '_dpi-x' in properties and '_dpi-y' in properties:
+        xdpi, ydpi = properties.pop('_dpi-x'), properties.pop('_dpi-y')
+        if 'dpi' in properties and not (properties['dpi'] == xdpi == ydpi):
+            logging.warning(
+                'Inconsistent XLFD dpi properties: dpi={} but dpi-x={} and dpi-y={}.',
+                properties['dpi'], xdpi, ydpi
+            )
+        properties['dpi'] = ' '.join((xdpi, ydpi)) if xdpi != ydpi else xdpi
     # encoding
     try:
         registry = properties.pop('_charset-registry')

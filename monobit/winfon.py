@@ -497,8 +497,8 @@ def _create_nonresident_name_table(typeface):
     dpi = typeface._fonts[0]._properties.get('dpi', 96)
     xdpi, ydpi = _get_prop_x(dpi), _get_prop_y(dpi)
     points = [
-        int(_font._properties['points'])
-        for _font in typeface._fonts if 'points' in _font._properties
+        int(_font._properties['point-size'])
+        for _font in typeface._fonts if 'point-size' in _font._properties
     ]
     # FONTRES Aspect, LogPixelsX, LogPixelsY : Name Pts0,Pts1,... (Device res.)
     nonres = ('FONTRES %d,%d,%d : %s %s' % (

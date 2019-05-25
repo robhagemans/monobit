@@ -8,7 +8,7 @@ licence: https://opensource.org/licenses/MIT
 from functools import wraps
 from typing import NamedTuple
 
-from .base import scriptable, VERSION
+from .base import scriptable
 from .glyph import Glyph
 
 
@@ -149,7 +149,8 @@ class Font:
         'revision': 0, # font version
 
         # descriptive:
-        ##'points', # nominal point size
+        ##'point-size', # nominal point size
+        ##'pixel-size', # nominal pixel size
         ##'dpi', # target resolution in dots per inch
         ##'family', # typeface/font family
         'weight': 'normal', # normal, bold, light, etc.
@@ -161,6 +162,8 @@ class Font:
         # these can be determined from the bitmaps
         ##'spacing', # proportional, monospace, cell
         ##'x-width', # ink width of lowercase x (in proportional font)
+        ##'average-width', # average ink width, rounded to tenths
+        ##'bounding-box', # maximum ink width/height
 
         # positioning relative to origin:
         'direction': 'left-to-right', # left-to-right, right-to-left
@@ -169,12 +172,6 @@ class Font:
         'offset-after': 0, # horizontal offset from matrix end to next origin
 
         # other metrics (may affect interline spacing):
-
-        # can be determined from bitmap? except if there are marks above the top
-        # FIXME- needs clearer definition. is this the minimum font bounding box less "internal leading"?
-        ##'size', # pixel height == top - bottom (can be 'width height' for fixed-width)
-        ##'bounding-box', # maximum ink width/height
-
         #'ascent', # recommended typographic ascent relative to baseline (not necessarily equal to top)
         #'descent', # recommended typographic descent relative to baseline (not necessarily equal to bottom)
         'leading': 0, # vertical leading, defined as (pixels between baselines) - (pixel height)
@@ -190,7 +187,7 @@ class Font:
         'device': '', # target device name
 
         # conversion metadata:
-        'converter': 'monobit v{}'.format(VERSION),
+        'converter': '',
         'source-name': '',
         'source-format': '',
     }
@@ -213,45 +210,58 @@ class Font:
         return ''
 
     @yaffproperty
-    def points(self):
+    def point_size(self):
         """Nominal point height."""
-        if 'dpi' in self._properties:
-            return int(self.size.y * self.dpi.y / 96.)
-        # default: 96 dpi; 1 point == 1 pixel
-        # this means these are not "pica points" (72.27 pica points per inch). what are they?
-        return self.size.y
+        if 'dpi' in self._properties and 'pixel-size' in self._properties:
+            # assume 72 points per inch (officially 72.27 pica points per inch)
+            return int(self.pixel_size * self.dpi.y / 72.)
+        # if dpi not given assume 72 dpi?
+        return self.pixel_size
+
+    @yaffproperty
+    def pixel_size(self):
+        """Get nominal pixel size (defaults to ascent)."""
+        if not self._glyphs:
+            return 0
+        return self.ascent
+
+    @yaffproperty
+    def ascent(self):
+        """Get ascent (defaults to max ink height above baseline)."""
+        if not self._glyphs:
+            return 0
+        # this assumes matrix does not extend beyond font bounding box (no empty lines)
+        # but using ink_height would assume there's a glyph that both fully ascends and fully descends
+        return max(_glyph.height for _glyph in self._glyphs) + self.bottom
 
     @yaffproperty
     def dpi(self):
         """Target screen resolution in dots per inch."""
-        if 'points' in self._properties:
-            dpi = (96 * self.size.y) // self.points
+        if 'point-size' in self._properties and 'pixel-size' in self._properties:
+            dpi = (72 * self.pixel_size) // self.point_size
             return Coord(dpi, dpi)
-        # default: 96 dpi; 1 point == 1 pixel
-        return Coord(96, 96)
-
-    # FIXME - decide on what `size` means
-    @yaffproperty
-    def size(self):
-        """Get maximum raster width and height, in pixels."""
-        # FIXME: any effect of offsets? internal leading?
-        if not self._glyphs:
-            return Coord(0, 0)
-        # the max raster width/height and max *ink* width/height *should* be the same
-        return Coord(
-            max(_glyph.width for _glyph in self._glyphs),
-            max(_glyph.height for _glyph in self._glyphs)
-        )
+        # default: 72 dpi; 1 point == 1 pixel
+        return Coord(72, 72)
 
     @property
     def bounding_box(self):
         """Get maximum ink width and height, in pixels."""
         if not self._glyphs:
             return (0, 0)
-        # the max raster width/hieght and max *ink* width/height *should* be the same
+        # the max raster width/height and max *ink* width/height *should* be the same
         return (
-            max(_glyph.ink_width for _glyph in self._glyphs),
-            max(_glyph.ink_height for _glyph in self._glyphs)
+            max(_glyph.width for _glyph in self._glyphs),
+            max(_glyph.height for _glyph in self._glyphs)
+        )
+
+    @property
+    def average_width(self):
+        """Get average ink width, rounded to tenths of pixels."""
+        if not self._glyphs:
+            return 0
+        return round(
+            sum(_glyph.ink_width for _glyph in self._glyphs) / len(self._glyphs),
+            1
         )
 
     @yaffproperty

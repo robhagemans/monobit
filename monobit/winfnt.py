@@ -376,7 +376,8 @@ def _parse_win_props(fnt, win_props):
         'source-format': 'Windows FNT v{}.{}'.format(*divmod(version, 256)),
         'family': bytes_to_str(fnt[win_props.dfFace:]),
         'copyright': bytes_to_str(win_props.dfCopyright),
-        'points': win_props.dfPoints,
+        'point-size': win_props.dfPoints,
+        'pixel-size': win_props.dfPixHeight,
         'slant': 'italic' if win_props.dfItalic else 'roman',
         # Windows dfAscent means distance between matrix top and baseline
         'ascent': win_props.dfAscent - win_props.dfInternalLeading,
@@ -386,11 +387,9 @@ def _parse_win_props(fnt, win_props):
     }
     if win_props.dfPixWidth:
         properties['spacing'] = 'monospace'
-        properties['size'] = '{} {}'.format(win_props.dfPixWidth, win_props.dfPixHeight)
     else:
         properties['spacing'] = 'proportional'
-        properties['size'] = win_props.dfPixHeight
-        # this can all be extracted from the font - drop if consistent?
+        # this can be extracted from the font - drop if consistent?
         properties['x-width'] = win_props.dfAvgWidth
     # check prop/fixed flag
     if bool(win_props.dfPitchAndFamily & 1) == bool(win_props.dfPixWidth):
@@ -451,11 +450,7 @@ def _parse_win_props(fnt, win_props):
         name.append(properties['weight'])
     if properties['slant'] != 'roman':
         name.append(properties['slant'])
-    name.append('{}pt'.format(properties['points']))
-    if properties['spacing'] == 'proportional':
-        name.append('{}px'.format(properties['size']))
-    else:
-        name.append('{}x{}'.format(*properties['size'].split(' ')))
+    name.append('{}pt'.format(properties['point-size']))
     properties['name'] = ' '.join(name)
     return properties
 
@@ -491,11 +486,10 @@ def create_fnt(font, version=0x200):
         # CHECK: is this really always set for fixed-pitch?
         pitch_and_family = _FF_MODERN
         # x_width should equal average width
-        # FIXME: take from glyph dimensions
-        x_width = pix_width = _get_prop_x(properties['size'])
+        x_width = pix_width = _get_prop_x(font.bounding_box)
         v3_flags = _DFF_FIXED
     # FIXME: get from glyphs
-    pix_height = _get_prop_y(properties['size'])
+    pix_height = _get_prop_y(font.bounding_box)
     # FIXME: find ordinal of space character (word-boundary); here we assume font starts at 32
     space_index = 0
     # char table

@@ -184,7 +184,6 @@ def _parse_cp(data, cpeh_offset, header_id=_ID_MS, drdos_effh=None):
             props = {
                 'encoding': 'cp{}'.format(cpeh.codepage),
                 'device': cpeh.device_name.strip().decode('ascii', 'replace'),
-                'size': '{} {}'.format(fh.width, fh.height),
                 'source-format': 'CPI ({})'.format(_FORMAT_NAME[header_id]),
             }
             # apparently never used

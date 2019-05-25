@@ -199,7 +199,6 @@ def _parse_amiga_props(amiga_props, min_kern):
         props['name'] = name
     props['revision'] = amiga_props.dfh_Revision
     props['bottom'] = -(amiga_props.tf_YSize - amiga_props.tf_Baseline)
-    props['size'] = amiga_props.tf_YSize
     # tf_Style
     props['weight'] = 'bold' if amiga_props.tf_Style & _FSF_BOLD else 'medium'
     props['slant'] = 'italic' if amiga_props.tf_Style & _FSF_ITALIC else 'roman'
