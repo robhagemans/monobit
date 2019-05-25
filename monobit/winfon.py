@@ -234,7 +234,7 @@ _IMAGE_RESOURCE_DATA_ENTRY = friendlystruct(
 ##############################################################################
 # top level functions
 
-@Typeface.loads('fon', encoding=None)
+@Typeface.loads('fon', name='Windows FON', encoding=None)
 def load(instream):
     """Load a Windows .FON file."""
     data = instream.read()
@@ -254,7 +254,7 @@ def load(instream):
             )
         )
     for font in fonts:
-        font._properties['source-format'] += ' ({} container)'.format(ne_magic.decode('ascii'))
+        font._properties['source-format'] += ' ({} FON container)'.format(ne_magic.decode('ascii'))
     return Typeface(fonts)
 
 @Typeface.saves('fon', encoding=None)

@@ -136,7 +136,7 @@ PROPERTIES = [
 ]
 
 
-@Typeface.loads('text', 'txt', 'yaff', encoding='utf-8-sig')
+@Typeface.loads('text', 'txt', 'yaff', name='monobit-yaff', encoding='utf-8-sig')
 def load(instream):
     """Read a plaintext font file."""
     fonts = []
@@ -159,7 +159,7 @@ def save(typeface, outstream):
     return typeface
 
 
-@Typeface.loads('draw', encoding='utf-8-sig')
+@Typeface.loads('draw', name='hexdraw', encoding='utf-8-sig')
 def load_draw(instream):
     """Read a hexdraw font file."""
     fonts = [_load_font(instream, back=_ACCEPTED_BACK, key_format=draw_input_key)]

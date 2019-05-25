@@ -58,7 +58,7 @@ _PSF2_SEPARATOR = b'\xFF'
 _PSF2_STARTSEQ = b'\xFE'
 
 
-@Typeface.loads('psf', encoding=None)
+@Typeface.loads('psf', name='PSF', encoding=None)
 def load(instream):
     """Load font from psf file."""
     magic = instream.read(2)
@@ -70,11 +70,12 @@ def load(instream):
         separator = _PSF1_SEPARATOR
         startseq = _PSF1_STARTSEQ
         encoding = 'utf-16le'
+        properties = {'source-format': 'PSF v1'}
     elif magic + instream.read(2) == _PSF2_MAGIC:
         psf_props = _PSF2_HEADER.read_from(instream)
         charsize = psf_props.height * ceildiv(psf_props.width, 8)
         if psf_props.charsize != charsize:
-            logging.warning('Ingnoring inconsistent char size in PSF header.')
+            logging.warning('Ignoring inconsistent char size in PSF header.')
             psf_props.charsize = charsize
         width, height, length = psf_props.width, psf_props.height, psf_props.length
         has_unicode_table = bool(psf_props.flags & _PSF2_HAS_UNICODE_TABLE)
@@ -84,6 +85,7 @@ def load(instream):
         separator = _PSF2_SEPARATOR
         startseq = _PSF2_STARTSEQ
         encoding = 'utf-8'
+        properties = {'source-format': 'PSF v2'}
     cells = load_aligned(instream, (width, height), length)
     # set ordinals as labels
     labels = {
@@ -98,7 +100,7 @@ def load(instream):
             for _index, _seq in enumerate(table)
             if _seq
         })
-    return Typeface([Font(cells, labels)])
+    return Typeface([Font(cells, labels, properties=properties)])
 
 def _format_cluster(sequence):
     return ','.join(

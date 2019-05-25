@@ -15,7 +15,7 @@ from .glyph import Glyph
 # BDF is specified as ASCII only
 # but the XLFD atoms are specified as iso8859-1, so this seems the best choice
 
-@Typeface.loads('bdf', encoding='iso8859-1')
+@Typeface.loads('bdf', name='BDF', encoding='iso8859-1')
 def load(instream):
     """Load font from a .bdf file."""
     nchars, comments, bdf_props, x_props = _read_bdf_global(instream)

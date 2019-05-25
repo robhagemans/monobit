@@ -64,45 +64,47 @@ class Typeface:
         return saver(self, outfile, **kwargs)
 
     @classmethod
-    def loads(cls, *formats, encoding='utf-8-sig'):
+    def loads(cls, *formats, name=None, encoding='utf-8-sig'):
         """Decorator to register font loader."""
-        def _load_decorator(load):
+        if name is None:
+            name = formats[0]
 
+        def _load_decorator(load):
             # stream input wrapper
             @wraps(load)
             def _load_func(infile, **kwargs):
                 with ensure_stream(infile, 'r', encoding=encoding) as instream:
                     typeface = load(instream, **kwargs)
-                    # TODO: set source-name and source-format (add a human name for each format in the decorator)
+                    # set source-name and source-format
                     for font in typeface._fonts:
-                        if 'source-name' not in font:
+                        if 'source-name' not in font._properties:
                             font._properties['source-name'] = basename(instream.name)
+                        if 'source-format' not in font._properties:
+                            font._properties['source-format'] = name
                     return typeface
-
             # register loader
             for format in formats:
                 cls._loaders[format.lower()] = _load_func
-
             return _load_func
+
         return _load_decorator
 
     @classmethod
     def saves(cls, *formats, encoding='utf-8'):
         """Decorator to register font saver."""
-        def _save_decorator(save):
 
+        def _save_decorator(save):
             # stream output wrapper
             @wraps(save)
             def _save_func(typeface, outfile, **kwargs):
                 with ensure_stream(outfile, 'w', encoding=encoding) as outstream:
                     save(typeface, outstream, **kwargs)
                 return typeface
-
             # register saver
             for format in formats:
                 cls._savers[format.lower()] = _save_func
-
             return _save_func
+
         return _save_decorator
 
     # inject Font operations into Typeface

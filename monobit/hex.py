@@ -15,7 +15,7 @@ from .font import Font
 from .glyph import Glyph
 
 
-@Typeface.loads('hex', encoding='utf-8-sig')
+@Typeface.loads('hex', name='Unifont HEX', encoding='utf-8-sig')
 def load(instream):
     """Load font from a .hex file."""
     glyphs = {}

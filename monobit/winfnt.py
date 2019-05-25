@@ -268,7 +268,7 @@ _GLYPH_ENTRY = {
 ##############################################################################
 # top level functions
 
-@Typeface.loads('fnt', encoding=None)
+@Typeface.loads('fnt', name='Windows FNT', encoding=None)
 def load(instream):
     """Load a Windows .FNT file."""
     font = parse_fnt(instream.read())
@@ -373,7 +373,7 @@ def _parse_win_props(fnt, win_props):
     if win_props.dfType & 1:
         raise ValueError('Not a bitmap font')
     properties = {
-        'source-format': 'WinFont v{}.{}'.format(*divmod(version, 256)),
+        'source-format': 'Windows FNT v{}.{}'.format(*divmod(version, 256)),
         'family': bytes_to_str(fnt[win_props.dfFace:]),
         'copyright': bytes_to_str(win_props.dfCopyright),
         'points': win_props.dfPoints,

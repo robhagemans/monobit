@@ -13,7 +13,7 @@ from .font import Font
 from .glyph import Glyph
 
 
-@Typeface.loads('dos', 'bin', 'rom', 'raw', encoding=None)
+@Typeface.loads('dos', 'bin', 'rom', 'raw', name='raw binary', encoding=None)
 def load(instream, cell=(8, 8), n_chars=None, offset=0, strike=False):
     """Load font from raw binary."""
     # get through the offset

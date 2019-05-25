@@ -103,7 +103,7 @@ _AMIGA_HEADER = friendlystruct(
 )
 
 
-@Typeface.loads('amiga', encoding=None)
+@Typeface.loads('amiga', name='Amiga Font', encoding=None)
 def load(f):
     """Read Amiga disk font file."""
     # read & ignore header
@@ -190,9 +190,7 @@ def _parse_amiga_props(amiga_props, min_kern):
     """Convert AmigaFont properties into yaff properties."""
     if amiga_props.tf_Style & _FSF_COLORFONT:
         raise ValueError('Amiga ColorFont not supported')
-    props = {
-        'source-format': 'AmigaFont',
-    }
+    props = {}
     # preserve tags stored in name field after \0
     name, *tags = amiga_props.dfh_Name.decode('latin-1').split('\0')
     for i, tag in enumerate(tags):

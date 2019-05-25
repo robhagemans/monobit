@@ -15,7 +15,7 @@ from .font import Font
 from .glyph import Glyph
 
 
-@Typeface.loads('png', 'bmp', 'gif', 'image', encoding=None)
+@Typeface.loads('png', 'bmp', 'gif', 'image', name='Bitmap Image', encoding=None)
 def load(infile, cell=(8, 8), margin=(0, 0), padding=(0, 0), scale=(1, 1)):
     """Import font from image."""
     width, height = cell

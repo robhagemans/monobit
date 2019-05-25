@@ -13,7 +13,7 @@ from .font import Font
 from .glyph import Glyph
 
 
-@Typeface.loads('c', 'cc', 'cpp', 'h')
+@Typeface.loads('c', 'cc', 'cpp', 'h', name='C-source')
 def load(infile, identifier, width, height):
     """Load font from a .c file."""
     payload = _get_payload(infile, identifier)
