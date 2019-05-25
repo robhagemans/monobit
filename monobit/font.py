@@ -116,6 +116,11 @@ class Font:
     def get_ordinal_for_label(self, key):
         """Get ordinal for given label, if defined."""
         try:
+            # maybe it's an ordinal already
+            return int(key, 0)
+        except ValueError:
+            pass
+        try:
             index = self._labels[key]
         except KeyError:
             if key.startswith('u+'):
@@ -267,7 +272,7 @@ class Font:
         if not self._glyphs:
             return (0, 0)
         # the max raster width/height and max *ink* width/height *should* be the same
-        return (
+        return Coord(
             max(_glyph.width for _glyph in self._glyphs),
             max(_glyph.height for _glyph in self._glyphs)
         )

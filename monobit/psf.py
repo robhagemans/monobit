@@ -128,9 +128,9 @@ def save(typeface, outstream):
         raise ValueError('Saving multiple fonts to .psf not possible')
     font = typeface._fonts[0]
     psf_props = dict(
-        width=font.max_width,
-        height=font.max_height,
-        charsize=font.max_height * ceildiv(font.max_width, 8),
+        width=font.bounding_box.x,
+        height=font.bounding_box.y,
+        charsize=font.bounding_box.y * ceildiv(font.bounding_box.x, 8),
         version=0,
         flags=_PSF2_HAS_UNICODE_TABLE,
         length=font.max_ordinal + 1,

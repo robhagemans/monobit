@@ -477,7 +477,7 @@ def create_fnt(font, version=0x200):
     properties = font._properties
     if font.spacing == 'proportional':
         # width of uppercase X
-        x_width = font.x_width
+        x_width = int(font.x_width)
         # low bit set for proportional
         pitch_and_family = 0x01 | style_map.get(properties.get('style', ''), 0)
         pix_width = 0
@@ -531,7 +531,7 @@ def create_fnt(font, version=0x200):
         dfSize=file_size,
         dfCopyright=properties['copyright'].encode('ascii', 'replace')[:60].ljust(60, b'\0'),
         dfType=0, # raster, not in memory
-        dfPoints=int(properties['points']),
+        dfPoints=int(properties['point-size']),
         dfVertRes=_get_prop_y(properties['dpi']),
         dfHorizRes=_get_prop_x(properties['dpi']),
         dfAscent=int(properties['ascent']),
@@ -546,13 +546,13 @@ def create_fnt(font, version=0x200):
         dfPixHeight=pix_height,
         dfPitchAndFamily=pitch_and_family,
         dfAvgWidth=x_width,
-        dfMaxWidth=font.max_width,
+        dfMaxWidth=font.bounding_box.x,
         dfFirstChar=min(font.ordinals),
         dfLastChar=max(font.ordinals),
         dfDefaultChar=font.get_ordinal_for_label(font.default_char) - min(font.ordinals),
         dfBreakChar=font.get_ordinal_for_label(font.word_boundary) - min(font.ordinals),
         # round up to multiple of 2 bytes to word-align v1.0 strikes (not used for v2.0+ ?)
-        dfWidthBytes=align(ceildiv(font.max_width, 8), 1),
+        dfWidthBytes=align(ceildiv(font.bounding_box.x, 8), 1),
         dfDevice=device_name_offset,
         dfFace=face_name_offset,
         dfBitsPointer=0, # used on loading
