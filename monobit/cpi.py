@@ -100,8 +100,6 @@ def load(instream):
     """Load fonts from CPI file."""
     data = instream.read()
     fonts = _parse_cpi(data)
-    for font in fonts:
-        font._properties['source-name'] = os.path.basename(instream.name)
     return Typeface(fonts)
 
 @Typeface.saves('cpi', encoding=None)

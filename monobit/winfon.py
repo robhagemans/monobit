@@ -27,7 +27,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-import os
 import string
 import logging
 
@@ -255,7 +254,6 @@ def load(instream):
             )
         )
     for font in fonts:
-        font._properties['source-name'] = os.path.basename(instream.name)
         font._properties['source-format'] += ' ({} container)'.format(ne_magic.decode('ascii'))
     return Typeface(fonts)
 

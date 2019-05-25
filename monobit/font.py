@@ -116,8 +116,6 @@ class Font:
     ##########################################################################
     # properties
 
-    # yaff recognised properties
-
     def __getattr__(self, attr):
         """Take property from property table."""
         try:
@@ -125,9 +123,9 @@ class Font:
         except KeyError as e:
             pass
         try:
+            # if in yaff property list, return default
             return self._yaff_properties[attr.replace('_', '-')]
         except KeyError as e:
-            # fixme: if in yaff property list, return default
             raise AttributeError from e
 
     def yaffproperty(fn):
@@ -220,6 +218,7 @@ class Font:
         if 'dpi' in self._properties:
             return int(self.size.y * self.dpi.y / 96.)
         # default: 96 dpi; 1 point == 1 pixel
+        # this means these are not "pica points" (72.27 pica points per inch). what are they?    
         return self.size.y
 
     @yaffproperty

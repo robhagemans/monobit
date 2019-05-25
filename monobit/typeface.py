@@ -5,6 +5,9 @@ monobit.typeface - representation of collection of fonts
 licence: https://opensource.org/licenses/MIT
 """
 
+from os.path import basename
+from functools import wraps
+
 from .base import DEFAULT_FORMAT, scriptable, ensure_stream
 from .font import Font
 
@@ -39,7 +42,6 @@ class Typeface:
         except KeyError:
             raise ValueError('Cannot load from format `{}`'.format(format))
         return loader(infile, **kwargs)
-        # TODO: set source-name and source-format (add a human name for each format in the decorator)
 
     @scriptable
     def save(self, outfile:str, format:str='', **kwargs):
@@ -67,11 +69,15 @@ class Typeface:
         def _load_decorator(load):
 
             # stream input wrapper
+            @wraps(load)
             def _load_func(infile, **kwargs):
                 with ensure_stream(infile, 'r', encoding=encoding) as instream:
-                    return load(instream, **kwargs)
-            _load_func.__doc__ = load.__doc__
-            _load_func.__name__ = load.__name__
+                    typeface = load(instream, **kwargs)
+                    # TODO: set source-name and source-format (add a human name for each format in the decorator)
+                    for font in typeface._fonts:
+                        if 'source-name' not in font:
+                            font._properties['source-name'] = basename(instream.name)
+                    return typeface
 
             # register loader
             for format in formats:
@@ -86,12 +92,11 @@ class Typeface:
         def _save_decorator(save):
 
             # stream output wrapper
+            @wraps(save)
             def _save_func(typeface, outfile, **kwargs):
                 with ensure_stream(outfile, 'w', encoding=encoding) as outstream:
                     save(typeface, outstream, **kwargs)
                 return typeface
-            _save_func.__doc__ = save.__doc__
-            _save_func.__name__ = save.__name__
 
             # register saver
             for format in formats:

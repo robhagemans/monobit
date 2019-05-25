@@ -27,7 +27,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-import os
 import string
 import logging
 import itertools
@@ -273,7 +272,6 @@ _GLYPH_ENTRY = {
 def load(instream):
     """Load a Windows .FNT file."""
     font = parse_fnt(instream.read())
-    font._properties['source-name'] = os.path.basename(instream.name)
     return Typeface([font])
 
 @Typeface.saves('fnt', encoding=None)

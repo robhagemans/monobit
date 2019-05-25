@@ -5,7 +5,6 @@ monobit.bdf - read and write .bdf files
 licence: https://opensource.org/licenses/MIT
 """
 
-import os
 import logging
 
 from .typeface import Typeface
@@ -161,13 +160,8 @@ def _parse_properties(glyphs, glyph_props, bdf_props, x_props, filename):
     logging.info('x properties:')
     for name, value in x_props.items():
         logging.info('    %s: %s', name, value)
-    # converter-supplied metadata
-    properties = {
-        'source-name': os.path.basename(filename),
-    }
     # parse meaningful metadata
-    glyphs, bdf_properties, xlfd_name = _parse_bdf_properties(glyphs, glyph_props, bdf_props)
-    properties.update(bdf_properties)
+    glyphs, properties, xlfd_name = _parse_bdf_properties(glyphs, glyph_props, bdf_props)
     properties.update(_parse_xlfd_properties(x_props, xlfd_name))
     # check if default har exists, remove otherwise
     if 'default-char' in properties and not int(properties['default-char'], 0) in glyphs:
