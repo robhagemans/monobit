@@ -478,7 +478,7 @@ def create_fnt(font, version=0x200):
         # width of uppercase X
         x_width = int(font.x_width)
         # low bit set for proportional
-        pitch_and_family = 0x01 | style_map.get(properties.get('style', ''), 0)
+        pitch_and_family = 0x01 | style_map.get(font.style, 0)
         pix_width = 0
         v3_flags = _DFF_PROPORTIONAL
     else:
@@ -517,9 +517,9 @@ def create_fnt(font, version=0x200):
     file_size = offset_bitmaps + glyph_offsets[-1]
     # add name and device strings
     face_name_offset = file_size
-    face_name = properties['family'].encode('latin-1', 'replace') + b'\0'
+    face_name = font.family.encode('latin-1', 'replace') + b'\0'
     device_name_offset = face_name_offset + len(face_name)
-    device_name = properties.get('device', '').encode('latin-1', 'replace') + b'\0'
+    device_name = font.device.encode('latin-1', 'replace') + b'\0'
     file_size = device_name_offset + len(device_name)
     # set device name pointer to zero for 'generic font'
     if not device_name or device_name == b'\0':
@@ -528,19 +528,19 @@ def create_fnt(font, version=0x200):
     win_props = _FNT_HEADER(
         dfVersion=version,
         dfSize=file_size,
-        dfCopyright=properties['copyright'].encode('ascii', 'replace')[:60].ljust(60, b'\0'),
+        dfCopyright=font.copyright.encode('ascii', 'replace')[:60].ljust(60, b'\0'),
         dfType=0, # raster, not in memory
-        dfPoints=int(properties['point-size']),
+        dfPoints=int(font.point_size),
         dfVertRes=_get_prop_y(properties['dpi']),
         dfHorizRes=_get_prop_x(properties['dpi']),
-        dfAscent=int(properties['ascent']),
+        dfAscent=int(font.ascent),
         dfInternalLeading=0,
-        dfExternalLeading=int(properties['leading']),
-        dfItalic=(properties['slant'] in ('italic', 'oblique')),
-        dfUnderline=('decoration' in properties and 'underline' in properties['decoration']),
-        dfStrikeOut=('decoration' in properties and 'strikethrough' in properties['decoration']),
-        dfWeight=weight_map.get(properties['weight'], weight_map['regular']),
-        dfCharSet=charset_map.get(properties['encoding'], properties['encoding']),
+        dfExternalLeading=int(font.leading),
+        dfItalic=(font.slant in ('italic', 'oblique')),
+        dfUnderline=('underline' in font.decoration),
+        dfStrikeOut=('strikethrough' in font.decoration),
+        dfWeight=weight_map.get(font.weight, weight_map['regular']),
+        dfCharSet=charset_map.get(font.encoding, font.encoding),
         dfPixWidth=pix_width,
         dfPixHeight=pix_height,
         dfPitchAndFamily=pitch_and_family,
