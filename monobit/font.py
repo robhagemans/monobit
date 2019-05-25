@@ -18,6 +18,22 @@ class Coord(NamedTuple):
     y: int
 
 
+def ord_to_unicode(ordinal, encoding):
+    """Convert ordinal to unicode label."""
+    if encoding.lower() == 'unicode' or encoding.lower().startswith('iso10646'):
+        return 'u+{:04x}'.format(ordinal)
+    unicode = ord(bytes([ordinal]).decode(encoding))
+    return 'u+{:04x}'.format(unicode)
+
+def unicode_to_ord(key, encoding):
+    """Convert ordinal to unicode label."""
+    unicode = int(key[2:], 16)
+    if encoding.lower() == 'unicode' or encoding.lower().startswith('iso10646'):
+        return unicode
+    ordinal = chr(unicode).encode(encoding)[0]
+    return ordinal
+
+
 class Font:
     """Representation of font glyphs and metadata."""
 
@@ -70,7 +86,7 @@ class Font:
         except KeyError:
             pass
         try:
-            return self.get_glyph(key.encode(self.encoding))
+            return self.get_glyph(unicode_to_ord(key, self.encoding))
         except UnicodeEncodeError:
             # errors='strict' (raise), 'replace' (with default), 'ignore' (replace with space)
             if errors == 'strict':
@@ -90,14 +106,10 @@ class Font:
                 if isinstance(label, str) and label.startswith('u+'):
                     yield label, glyph
                 elif isinstance(label, int):
-                    if self.encoding.lower() == 'unicode' or self.encoding.lower().startswith('iso10646'):
-                        yield 'u+{:04x}'.format(label), glyph
-                    else:
-                        try:
-                            unicode = ord(bytes([label]).decode(self.encoding))
-                            yield 'u+{:04x}'.format(unicode), glyph
-                        except UnicodeError:
-                            pass
+                    try:
+                        yield ord_to_unicode(label, self.encoding), glyph
+                    except UnicodeError:
+                        pass
 
 
     ##########################################################################
