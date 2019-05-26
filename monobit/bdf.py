@@ -107,6 +107,39 @@ _XLFD_PROPERTIES = {
     'DEFAULT_CHAR': 'default-char',
 }
 
+# unparsed xlfd properties, for reference
+_XLFD_UNPARSED = {
+    'MIN_SPACE',
+    'NORM_SPACE',
+    'MAX_SPACE',
+    'END_SPACE',
+    'AVG_CAPITAL_WIDTH',
+    'AVG_LOWERCASE_WIDTH',
+    'QUAD_WIDTH',
+    'FIGURE_WIDTH',
+    'SUPERSCRIPT_X',
+    'SUPERSCRIPT_Y',
+    'SUBSCRIPT_X',
+    'SUBSCRIPT_Y',
+    'SUPERSCRIPT_SIZE',
+    'SUBSCRIPT_SIZE',
+    'SMALL_CAP_SIZE',
+    'UNDERLINE_POSITION',
+    'UNDERLINE_THICKNESS',
+    'STRIKEOUT_ASCENT',
+    'STRIKEOUT_DESCENT',
+    'ITALIC_ANGLE',
+    'WEIGHT',
+    'DESTINATION',
+    'FONT_TYPE',
+    'RASTERIZER_NAME',
+    'RASTERIZER_VERSION',
+    #'RAW_*',
+    'AXIS_NAMES',
+    'AXIS_LIMITS',
+    'AXIS_TYPES',
+}
+
 
 # BDF is specified as ASCII only
 # but the XLFD atoms are specified as iso8859-1, so this seems the best choice
