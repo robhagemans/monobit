@@ -144,9 +144,9 @@ PROPERTIES = {
 
     # positioning relative to origin:
     'direction': str, # left-to-right, right-to-left
-    'bottom': int, # bottom line of matrix relative to baseline ## `drop`/`lift`? `offset-y`? `offset-transverse`?
-    'offset-before': int, # horizontal offset from origin to matrix start
-    'offset-after': int, # horizontal offset from matrix end to next origin
+    'offset': int, # transverse offset: bottom line of matrix relative to baseline
+    'bearing-before': int, # horizontal offset from origin to matrix start
+    'bearing-after': int, # horizontal offset from matrix end to next origin
 
     # other metrics (may affect interline spacing):
     'ascent': int, # recommended typographic ascent relative to baseline (not necessarily equal to top)
@@ -415,15 +415,15 @@ class Font:
         # this assumes matrix does not extend beyond font bounding box (no empty lines)
         # but using ink_height would assume there's a glyph that both fully ascends and fully descends
         # FIXME: need something like Glyph.bounding_box
-        return max(_glyph.height for _glyph in self._glyphs) + self.bottom
+        return max(_glyph.height for _glyph in self._glyphs) + self.offset
 
     @yaffproperty
     def descent(self):
-        """Get descent (defaults to bottom)."""
+        """Get descent (defaults to bottom/vertical offset)."""
         if not self._glyphs:
             return 0
         # this assumes matrix does not extend beyond font bounding box (no empty lines)
-        return self.bottom
+        return self.offset
 
     @yaffproperty
     def dpi(self):

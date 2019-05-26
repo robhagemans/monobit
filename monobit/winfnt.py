@@ -381,7 +381,7 @@ def _parse_win_props(fnt, win_props):
         'slant': 'italic' if win_props.dfItalic else 'roman',
         # Windows dfAscent means distance between matrix top and baseline
         'ascent': win_props.dfAscent - win_props.dfInternalLeading,
-        'bottom': win_props.dfAscent - win_props.dfPixHeight,
+        'offset': win_props.dfAscent - win_props.dfPixHeight,
         'leading': win_props.dfExternalLeading,
         'default-char': win_props.dfDefaultChar,
     }

@@ -198,7 +198,7 @@ def _parse_amiga_props(amiga_props, min_kern):
     if name:
         props['name'] = name
     props['revision'] = amiga_props.dfh_Revision
-    props['bottom'] = -(amiga_props.tf_YSize - amiga_props.tf_Baseline)
+    props['offset'] = -(amiga_props.tf_YSize - amiga_props.tf_Baseline)
     # tf_Style
     props['weight'] = 'bold' if amiga_props.tf_Style & _FSF_BOLD else 'medium'
     props['slant'] = 'italic' if amiga_props.tf_Style & _FSF_ITALIC else 'roman'
@@ -221,7 +221,7 @@ def _parse_amiga_props(amiga_props, min_kern):
     else:
         props['dpi'] = 96
     if min_kern < 0:
-        props['offset-before'] = min_kern
+        props['bearing-before'] = min_kern
     props['encoding'] = 'iso8859-1'
     props['default-char'] = 'default'
     # preserve unparsed properties

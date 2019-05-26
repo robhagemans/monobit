@@ -327,9 +327,9 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
     rightmost = max(overshoots)
     bottommost = min(offsets_y)
     topmost = max(heights)
-    properties['offset-before'] = leftmost
-    properties['offset-after'] = -rightmost
-    properties['bottom'] = bottommost
+    properties['bearing-before'] = leftmost
+    properties['bearing-after'] = -rightmost
+    properties['offset'] = bottommost
     mod_glyphs = []
     for glyph, props in zip(glyphs, glyph_props):
         bbx_width, bbx_height, offset_x, offset_y = (int(_p) for _p in props['BBX'].split(' '))
