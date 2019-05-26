@@ -54,7 +54,7 @@ _WEIGHT_MAP = {
 }
 
 # fields of the xlfd font name
-_XLFD_NAME_FIELDS = [
+_XLFD_NAME_FIELDS = (
     None,
     'foundry',
     'family',
@@ -70,7 +70,7 @@ _XLFD_NAME_FIELDS = [
     'average-width',
     '_charset-registry',
     '_charset-encoding',
-]
+)
 
 _XLFD_PROPERTIES = {
     # rendering hints
@@ -141,6 +141,9 @@ _XLFD_UNPARSED = {
 }
 
 
+##############################################################################
+# top-level calls
+
 # BDF is specified as ASCII only
 # but the XLFD atoms are specified as iso8859-1, so this seems the best choice
 
@@ -155,6 +158,9 @@ def load(instream):
     glyphs, properties = _parse_properties(glyphs, glyph_props, bdf_props, x_props, instream.name)
     return Typeface([Font(glyphs, labels, comments=comments, properties=properties)])
 
+
+##############################################################################
+# BDF reader
 
 def _read_dict(instream, until=None):
     """Read key-value pairs."""
