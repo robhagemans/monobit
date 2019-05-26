@@ -282,23 +282,21 @@ def _write_glyph(outstream, labels, glyph, fore, back, comment, tab, key_format,
 def _save_yaff(font, outstream, fore, back, comment, tab, key_format, key_sep):
     """Write one font to a plaintext stream."""
     write_comments(outstream, font.get_comments(), comm_char=comment, is_global=True)
-    if font._properties:
+    props = {**font._properties}
+    if props:
         for key in PROPERTIES:
             write_comments(outstream, font.get_comments(key), comm_char=comment)
-            try:
-                value = font._properties.pop(key)
-                if value not in ('', None):
-                    if not isinstance(value, str) or '\n' not in value:
-                        outstream.write('{}: {}\n'.format(key, value))
-                    else:
-                        outstream.write(
-                            ('{}:\n' + tab + '{}\n').format(
-                                key, ('\n' + tab).join(value.splitlines())
-                            )
+            value = props.pop(key, '')
+            if value not in ('', None):
+                if not isinstance(value, str) or '\n' not in value:
+                    outstream.write('{}: {}\n'.format(key, value))
+                else:
+                    outstream.write(
+                        ('{}:\n' + tab + '{}\n').format(
+                            key, ('\n' + tab).join(value.splitlines())
                         )
-            except KeyError:
-                pass
-        for key, value in font._properties.items():
+                    )
+        for key, value in props.items():
             write_comments(outstream, font.get_comments(key), comm_char=comment)
             if value not in ('', None):
                 outstream.write('{}: {}\n'.format(key, value))

@@ -22,7 +22,7 @@ def load(instream):
     glyphs, glyph_props, labels = _read_bdf_characters(instream)
     # check number of characters, but don't break if no match
     if nchars != len(glyphs):
-        logging.warning('Possibly corrupted BDF file: number of characters found does not match CHARS declaration.')
+        logging.warning('Number of characters found does not match CHARS declaration.')
     glyphs, properties = _parse_properties(glyphs, glyph_props, bdf_props, x_props, instream.name)
     return Typeface([Font(glyphs, labels, comments=comments, properties=properties)])
 
@@ -153,8 +153,8 @@ _WEIGHT_MAP = {
     '50': 'medium', # Medium, Normal, Regular,...
     '60': 'semi-bold', # SemiBold, DemiBold, ...
     '70': 'bold',
-    '80': 'extra-bold', #ExtraBold, Heavy, ...
-    '90': 'heavy', #UltraBold, Black, ...,
+    '80': 'extra-bold', # ExtraBold, Heavy, ...
+    '90': 'heavy', # UltraBold, Black, ...,
 }
 
 def _parse_properties(glyphs, glyph_props, bdf_props, x_props, filename):
@@ -198,10 +198,19 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
         pass
     # global settings, tend to be overridden by per-glyph settings
     global_bbx = bdf_props.pop('FONTBOUNDINGBOX')
-    # not supported: METRICSSET !=0, DWIDTH1, SWIDTH1
+    # not supported: METRICSSET != 0
+    writing_direction = bdf_props.pop('METRICSSET', 0)
+    if writing_direction == 1:
+        # top-to-bottom only
+        raise ValueError('Top-to-bottom fonts not yet supported.')
+    elif writing_direction == 2:
+        logging.warning(
+            'Top-to-bottom fonts not yet supported. Preserving horizontal metrics only.'
+        )
     # global DWIDTH; use bounding box as fallback if not specified
     global_dwidth = bdf_props.pop('DWIDTH', global_bbx[:2])
     global_swidth = bdf_props.pop('SWIDTH', 0)
+    # ignored: for METRICSSET in 1, 2: DWIDTH1, SWIDTH1, VVECTOR
     offsets_x = []
     offsets_y = []
     overshoots = []
@@ -212,16 +221,18 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
         bbx_width, bbx_height, offset_x, offset_y = (int(_p) for _p in props['BBX'].split(' '))
         dwidth_x, dwidth_y = (int(_p) for _p in props['DWIDTH'].split(' '))
         try:
-            # ignore SWIDTH, can be calculated - SWIDTH = DWIDTH / ( points/1000 * dpi / 72 )
+            # ideally, SWIDTH = DWIDTH / ( points/1000 * dpi / 72 )
             swidth_x, swidth_y = (int(_x) for _x in props.get('SWIDTH', global_swidth).split(' '))
             #logging.info('x swidth: %s dwidth: %s', swidth_x*int(size)*int(xdpi) / 72000, dwidth_x)
             #logging.info('y swidth: %s dwidth: %s', swidth_y*int(size)*int(ydpi) / 72000, dwidth_y)
         except KeyError:
             pass
+        # ignored: for METRICSSET in 1, 2: DWIDTH1, SWIDTH1, VVECTOR
         offsets_x.append(offset_x)
         offsets_y.append(offset_y)
         overshoots.append((offset_x + bbx_width) - dwidth_x)
         heights.append(bbx_height + offset_y)
+    # shift/resize all glyphs to font bounding box
     leftmost = min(offsets_x)
     rightmost = max(overshoots)
     bottommost = min(offsets_y)
@@ -383,70 +394,3 @@ def _parse_xlfd_properties(x_props, xlfd_name):
         properties['bdf.FONT'] = xlfd_name
     properties.update({'xlfd.' + _k: _v.strip('"') for _k, _v in x_props.items()})
     return properties
-
-
-# from:  Glyph Bitmap Distribution Format (BDF) Specification 2.2 (22 Mar 93)
-#
-# METRICSSET integer
-# (Optional) The integer value of METRICSSET may be 0, 1, or 2, which corre-
-# spond to writing direction 0 only, 1 only, or both (respectively). If not
-# present, METRICSSET 0 is implied. If METRICSSET is 1, DWIDTH and
-# SWIDTH keywords are optional.
-#
-# Note
-# Version 2.1 of this document only allowed the metrics keywords SWIDTH and
-# DWIDTH , and only at the glyph level. If compatibility with 2.1 is an issue,
-# metrics should not be specified as global values.
-# These keywords all have the same meanings as specified in section 3.2, Indi-
-# vidual Glyph Information.
-
-
-# per-glyph info:
-#
-# SWIDTH swx0 swy0
-# SWIDTH is followed by swx0 and swy0, the scalable width of the glyph in x
-# and y for writing mode 0. The scalable widths are of type Number and are in
-# units of 1/1000th of the size of the glyph and correspond to the widths found
-# in AFM files (for outline fonts). If the size of the glyph is p points, the width
-# information must be scaled by p /1000 to get the width of the glyph in
-# printer’s points. This width information should be regarded as a vector indi-
-# cating the position of the next glyph’s origin relative to the origin of this
-# glyph. SWIDTH is mandatory for all writing mode 0 fonts.
-# To convert the scalable width to the width in device pixels, multiply SWIDTH
-# times p /1000 times r /72, where r is the device resolution in pixels per inch.
-# The result is a real number giving the ideal width in device pixels. The actual
-# device width must be an integral number of device pixels and is given by the
-#
-# SWIDTH1 swx1 swy1
-# SWIDTH 1 is followed by the values for swx1 and swy1, the scalable width of
-# the glyph in x and y, for writing mode 1 (vertical direction). The values are of
-# type Number , and represent the widths in glyph space coordinates.
-#
-# DWIDTH1 dwx1 dwy1
-# DWIDTH1 specifies the integer pixel width of the glyph in x and y. Like
-# SWIDTH 1, this width information is a vector indicating the position of the
-# next glyph’s origin relative to the origin of this glyph. DWIDTH1 is manda-
-# tory for all writing mode 1 fonts.
-#
-# Note
-# If METRICSSET is 1 or 2, both SWIDTH1 and DWIDTH1 must be present; if
-# METRICSSET is 0, both should be absent.
-#
-# VVECTOR xoff yoff
-# VVECTOR (optional) specifies the components of a vector from origin 0 (the
-# origin for writing direction 0) to origin 1 (the origin for writing direction 1).
-# If the value of METRICSSET is 1 or 2, VVECTOR must be specified either at
-# the global level, or for each individual glyph. If specified at the global level,
-# the VVECTOR is the same for all glyphs, though the inclusion of this
-# keyword in an individual glyph has the effect of overriding the bal value for
-# that specific glyph.
-#
-# BBX BBw BBh BBxoff0x BByoff0y
-# BBX is followed by BBw, the width of the black pixels in x, and BBh, the
-# height in y. These are followed by the x and y displacement, BBxoff0 and
-# BByoff0, of the lower left corner of the bitmap from origin 0. All values are
-# are an integer number of pixels.
-# If the font specifies metrics for writing direction 1, VVECTOR specifies the
-# offset from origin 0 to origin 1. For example, for writing direction 1, the
-# offset from origin 1 to the lower left corner of the bitmap would be:
-# BBxoff1x,y = BBxoff0x,y – VVECTOR
