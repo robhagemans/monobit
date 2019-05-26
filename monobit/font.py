@@ -72,6 +72,15 @@ class Label:
             return '0x{:02x}'.format(self._value)
         return self._value
 
+    def __eq__(self, other):
+        try:
+            return self._value == other._value
+        except AttributeError:
+            return False
+
+    def __hash__(self):
+        return hash(self._value)
+
     @property
     def is_unicode(self):
         return isinstance(self._value, str) and self._value.startswith('u+')
@@ -161,13 +170,13 @@ PROPERTIES = {
 def ord_to_unicode(ordinal, encoding):
     """Convert ordinal to unicode label."""
     if encoding.lower() == 'unicode' or encoding.lower().startswith('iso10646'):
-        return 'u+{:04x}'.format(ordinal)
-    unicode = ord(bytes([ordinal]).decode(encoding))
+        return 'u+{:04x}'.format(int(ordinal))
+    unicode = ord(bytes([int(ordinal)]).decode(encoding))
     return 'u+{:04x}'.format(unicode)
 
 def unicode_to_ord(key, encoding):
     """Convert ordinal to unicode label."""
-    unicode = int(key[2:], 16)
+    unicode = int(str(key)[2:], 16)
     if encoding.lower() == 'unicode' or encoding.lower().startswith('iso10646'):
         return unicode
     ordinal = chr(unicode).encode(encoding)[0]
@@ -215,7 +224,7 @@ class Font:
     def get_glyph(self, key, default=True):
         """Get glyph by key, default if not present."""
         try:
-            index = self._labels[key]
+            index = self._labels[Label(key)]
         except KeyError:
             if not default:
                 raise
@@ -233,7 +242,6 @@ class Font:
     def get_char(self, key, errors='strict'):
         """Get glyph by unicode character."""
         try:
-            #FIXME: convert all labels / props to lowercase?
             return self.get_glyph('u+{:04x}'.format(ord(key)))
         except KeyError:
             pass
@@ -282,7 +290,7 @@ class Font:
     @property
     def ordinals(self):
         """Get tuple of defined ordinals."""
-        return sorted(_k for _k in self._labels if _k.is_ordinal)
+        return sorted(int(_k) for _k in self._labels if _k.is_ordinal)
 
     @property
     def all_ordinal(self):
@@ -296,20 +304,17 @@ class Font:
 
     def get_ordinal_for_label(self, key):
         """Get ordinal for given label, if defined."""
+        key = Label(key)
         try:
             # maybe it's an ordinal already
-            return int(key, 0)
-        except ValueError:
+            return int(key)
+        except TypeError:
             pass
         try:
             index = self._labels[key]
         except KeyError:
-            if key.startswith('u+'):
-                # get ordinal for unicode by encoding
-                unicode = int(key[2:], 16)
-                byte = chr(unicode).encode(self.encoding, errors='ignore')
-                if byte:
-                    return byte[0]
+            if key.is_unicode:
+                return unicode_to_ord(key, self.encoding)
             raise
         for label, lindex in self._labels.items():
             if index == lindex and label.is_ordinal:
