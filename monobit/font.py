@@ -171,16 +171,26 @@ def ord_to_unicode(ordinal, encoding):
     """Convert ordinal to unicode label."""
     if encoding.lower() == 'unicode' or encoding.lower().startswith('iso10646'):
         return 'u+{:04x}'.format(int(ordinal))
-    unicode = ord(bytes([int(ordinal)]).decode(encoding))
-    return 'u+{:04x}'.format(unicode)
+    byte = bytes([int(ordinal)])
+    try:
+        unicode = byte.decode(encoding)
+    except LookupError:
+        # assume the codec is an ascii superset?
+        unicode = byte.decode('ascii')
+    return 'u+{:04x}'.format(ord(unicode))
 
 def unicode_to_ord(key, encoding):
     """Convert ordinal to unicode label."""
-    unicode = int(str(key)[2:], 16)
+    uniord = int(str(key)[2:], 16)
     if encoding.lower() == 'unicode' or encoding.lower().startswith('iso10646'):
-        return unicode
-    ordinal = chr(unicode).encode(encoding)[0]
-    return ordinal
+        return uniord
+    unicode = chr(uniord)
+    try:
+        byte = unicode.encode(encoding)
+    except LookupError:
+        # assume the codec is an ascii superset?
+        byte = unicode.encode('ascii')
+    return byte[0]
 
 
 class Font:
