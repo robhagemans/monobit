@@ -410,11 +410,11 @@ def _create_mz_stub():
     return (bytes(mz_header) + _STUB_CODE + _STUB_MSG + b'$').ljust(ne_offset, b'\0')
 
 
-def _create_fontdirentry(ordinal, fnt, properties):
+def _create_fontdirentry(ordinal, fnt, font):
     """Return the DIRENTRY+FONTDIRENTRY, given the data in a .FNT file."""
     direntry = _DIRENTRY(ordinal)
-    face_name = properties['family'].encode('latin-1', 'replace') + b'\0'
-    device_name = properties.get('device', '').encode('latin-1', 'replace') + b'\0'
+    face_name = font.family.encode('latin-1', 'replace') + b'\0'
+    device_name = font.device.encode('latin-1', 'replace') + b'\0'
     return (
         bytes(direntry)
         + fnt[0:0x71]
@@ -489,17 +489,14 @@ def _create_nonresident_name_table(typeface):
     """Non-resident name tabe containing the FONTRES line."""
     # get name, dpi of first font
     # FIXME: assuming all the same here, but FONTRES is probably largely ignored anyway
-    name = typeface._fonts[0]._properties.get('family', '')
+    name = typeface._fonts[0].family
     if not name:
-        name, *_ = typeface._fonts[0]._properties.get('name', '').split(' ')
+        name, *_ = typeface._fonts[0].name.split(' ')
     if not name:
         name = 'NoName'
-    dpi = typeface._fonts[0]._properties.get('dpi', 96)
-    xdpi, ydpi = _get_prop_x(dpi), _get_prop_y(dpi)
-    points = [
-        int(_font._properties['point-size'])
-        for _font in typeface._fonts if 'point-size' in _font._properties
-    ]
+    dpi = typeface._fonts[0].dpi
+    xdpi, ydpi = dpi.x, dpi.y
+    points = [_font.point_size for _font in typeface._fonts]
     # FONTRES Aspect, LogPixelsX, LogPixelsY : Name Pts0,Pts1,... (Device res.)
     nonres = ('FONTRES %d,%d,%d : %s %s' % (
         (100 * xdpi) // ydpi, xdpi, ydpi,
@@ -511,7 +508,9 @@ def _create_nonresident_name_table(typeface):
 def _create_resident_name_table(typeface):
     """Resident name table containing the module name."""
     # use font-family name of first font
-    name = typeface._fonts[0]._properties.get('family', _MODULE_NAME).upper()
+    name = typeface._fonts[0].family.upper()
+    if not name:
+        name = _MODULE_NAME.upper()
     # Resident name table should just contain a module name.
     mname = ''.join(
         _c for _c in name
@@ -533,7 +532,7 @@ def _create_resource_data(typeface):
     )
     fontdir = bytes(fontdir_struct(len(fonts))) + b''.join(
         _create_fontdirentry(
-            i+1, fonts[i], typeface._fonts[i]._properties
+            i+1, fonts[i], typeface._fonts[i]
         )
         for i in range(len(fonts))
     )

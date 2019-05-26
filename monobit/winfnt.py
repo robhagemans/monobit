@@ -383,7 +383,7 @@ def _parse_win_props(fnt, win_props):
         'ascent': win_props.dfAscent - win_props.dfInternalLeading,
         'bottom': win_props.dfAscent - win_props.dfPixHeight,
         'leading': win_props.dfExternalLeading,
-        'default-char': '0x{:x}'.format(win_props.dfDefaultChar),
+        'default-char': win_props.dfDefaultChar,
     }
     if win_props.dfPixWidth:
         properties['spacing'] = 'monospace'
@@ -398,10 +398,7 @@ def _parse_win_props(fnt, win_props):
                 win_props.dfPixWidth, win_props.dfPitchAndFamily
             )
         )
-    if win_props.dfHorizRes != win_props.dfVertRes:
-        properties['dpi'] = '{} {}'.format(win_props.dfHorizRes, win_props.dfVertRes)
-    else:
-        properties['dpi'] = win_props.dfHorizRes
+    properties['dpi'] = (win_props.dfHorizRes, win_props.dfVertRes)
     deco = []
     if win_props.dfUnderline:
         deco.append('underline')
@@ -420,7 +417,7 @@ def _parse_win_props(fnt, win_props):
         properties['windows.dfCharSet'] = str(charset)
     properties['style'] = _STYLE_MAP[win_props.dfPitchAndFamily & 0xff00]
     if win_props.dfBreakChar:
-        properties['word-boundary'] = '0x{:x}'.format(win_props.dfFirstChar + win_props.dfBreakChar)
+        properties['word-boundary'] = win_props.dfFirstChar + win_props.dfBreakChar
     properties['device'] = bytes_to_str(fnt[win_props.dfDevice:])
     # unparsed properties: dfMaxWidth - but this can be calculated from the matrices
     if version == 0x300:
