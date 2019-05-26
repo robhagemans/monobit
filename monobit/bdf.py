@@ -87,7 +87,7 @@ _XLFD_PROPERTIES = {
     # description
     'FACE_NAME': 'name',
     'FULL_NAME': 'name',
-    'FONT_VERSION': 'version',
+    'FONT_VERSION': 'revision',
     'COPYRIGHT': 'copyright',
     'NOTICE': 'notice',
     'FOUNDRY': 'foundry',
