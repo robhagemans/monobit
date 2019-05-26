@@ -253,8 +253,12 @@ def load(instream):
                 ne_magic.decode('latin-1', 'replace')
             )
         )
-    for font in fonts:
-        font._properties['source-format'] += ' ({} FON container)'.format(ne_magic.decode('ascii'))
+    fonts = [
+        font.set_properties(
+            source_format=font.source_format+' ({} FON container)'.format(ne_magic.decode('ascii'))
+        )
+        for font in fonts
+    ]
     return Typeface(fonts)
 
 @Typeface.saves('fon', encoding=None)

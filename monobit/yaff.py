@@ -211,7 +211,7 @@ def _write_glyph(outstream, labels, glyph, fore, back, comment, tab, key_format,
 def _save_yaff(font, outstream, fore, back, comment, tab, key_format, key_sep):
     """Write one font to a plaintext stream."""
     write_comments(outstream, font.get_comments(), comm_char=comment, is_global=True)
-    props = {**font._properties}
+    props = font.nondefault_properties
     if props:
         for key in PROPERTIES:
             write_comments(outstream, font.get_comments(key), comm_char=comment)

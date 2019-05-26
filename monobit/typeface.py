@@ -76,13 +76,17 @@ class Typeface:
                 with ensure_stream(infile, 'r', encoding=encoding) as instream:
                     typeface = load(instream, **kwargs)
                     # set source-name and source-format
+                    fonts = []
                     for font in typeface._fonts:
-                        if 'source-name' not in font._properties:
-                            font._properties['source-name'] = basename(instream.name)
-                        if 'source-format' not in font._properties:
-                            font._properties['source-format'] = name
-                        font._properties['converter'] = 'monobit v{}'.format(VERSION)
-                    return typeface
+                        new_props = {
+                            'converter': 'monobit v{}'.format(VERSION),
+                        }
+                        if not font.source_name:
+                            new_props['source-name'] = basename(instream.name)
+                        if not font.source_format:
+                            new_props['source-format'] = name
+                        fonts.append(font.set_properties(**new_props))
+                    return Typeface(fonts)
             # register loader
             for format in formats:
                 cls._loaders[format.lower()] = _load_func

@@ -200,6 +200,7 @@ class Font:
             self._comments = {None: comments}
         self._properties = {}
         if properties:
+            properties = {_k.replace('_', '-'): _v for _k, _v in properties.items()}
             for key, converter in PROPERTIES.items():
                 try:
                     value = converter(properties.pop(key))
@@ -211,6 +212,7 @@ class Font:
                 default_value = getattr(self, key)
                 if value != default_value:
                     self._properties[key] = value
+
 
     ##########################################################################
     # glyph access
@@ -332,6 +334,17 @@ class Font:
 
     ##########################################################################
     # properties
+
+    def set_properties(self, **kwargs):
+        """Return a copy with amended properties."""
+        return Font(
+            self._glyphs, self._labels, self._comments, {**self._properties, **kwargs}
+        )
+
+    @property
+    def nondefault_properties(self):
+        """Non-default properties."""
+        return {**self._properties}
 
     def __getattr__(self, attr):
         """Take property from property table."""

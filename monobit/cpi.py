@@ -147,8 +147,10 @@ def _parse_cpi(data):
         notice = ''.join(
             _c for _c in notice if _c in string.printable
         )
-        for font in fonts:
-            font._properties['notice'] = notice.strip()
+        fonts = [
+            font.set_properties(notice=notice.strip())
+            for font in fonts
+        ]
     return fonts
 
 def _parse_cp(data, cpeh_offset, header_id=_ID_MS, drdos_effh=None):
