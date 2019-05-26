@@ -194,7 +194,7 @@ def _load_font(instream, back, key_format):
 # write file
 
 def _write_glyph(outstream, labels, glyph, fore, back, comment, tab, key_format, key_sep):
-    """Rrite out a single glyph in text format."""
+    """Write out a single glyph in text format."""
     if not labels:
         logging.warning('No labels for glyph')
         return
@@ -210,6 +210,19 @@ def _write_glyph(outstream, labels, glyph, fore, back, comment, tab, key_format,
     outstream.write(('\n' + tab).join(glyphtxt))
     outstream.write('\n\n')
 
+def _write_prop(outstream, key, value, tab):
+    """Write out a property."""
+    if value not in ('', None):
+        if not isinstance(value, str) or '\n' not in value:
+            # this may use custom string converter (e.g ordinal labels)
+            outstream.write('{}: {}\n'.format(key, value))
+        else:
+            outstream.write(
+                ('{}:\n' + tab + '{}\n').format(
+                    key, ('\n' + tab).join(value.splitlines())
+                )
+            )
+
 def _save_yaff(font, outstream, fore, back, comment, tab, key_format, key_sep):
     """Write one font to a plaintext stream."""
     write_comments(outstream, font.get_comments(), comm_char=comment, is_global=True)
@@ -218,20 +231,10 @@ def _save_yaff(font, outstream, fore, back, comment, tab, key_format, key_sep):
         for key in PROPERTIES:
             write_comments(outstream, font.get_comments(key), comm_char=comment)
             value = props.pop(key, '')
-            if value not in ('', None):
-                if not isinstance(value, str) or '\n' not in value:
-                    # this may use custom string converter (e.g ordinal labels)
-                    outstream.write('{}: {}\n'.format(key, value))
-                else:
-                    outstream.write(
-                        ('{}:\n' + tab + '{}\n').format(
-                            key, ('\n' + tab).join(value.splitlines())
-                        )
-                    )
+            _write_prop(outstream, key, value, tab)
         for key, value in props.items():
             write_comments(outstream, font.get_comments(key), comm_char=comment)
-            if value not in ('', None):
-                outstream.write('{}: {}\n'.format(key, value))
+            _write_prop(outstream, key, value, tab)
         outstream.write('\n')
     for labels, glyph in font:
         _write_glyph(outstream, labels, glyph, fore, back, comment, tab, key_format, key_sep)

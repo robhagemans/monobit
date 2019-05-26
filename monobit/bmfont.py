@@ -17,7 +17,7 @@ except ImportError:
 
 from .binary import friendlystruct
 from .typeface import Typeface
-from .font import Font
+from .font import Font, Label
 from .glyph import Glyph
 
 
@@ -299,6 +299,7 @@ def _extract(zipfile, info, common, pages, chars, kernings=()):
         'weight': 'bold' if bmfont_props.pop('bold') == '1' else 'regular',
         'slant': 'italic' if bmfont_props.pop('italic') == '1' else 'roman',
         'encoding': 'unicode' if bmfont_props.pop('unicode') == '1' else bmfont_props.pop('charset'),
+        'kerning': '\n'.join('{} {} {}'.format(Label(_kern.first), Label(_kern.second), _kern.amount) for _kern in kernings),
     }
     properties.update({'bmfont.' + _k: _v for _k, _v in bmfont_props.items()})
     # TODO: preserve kerning pairs
