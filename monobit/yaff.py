@@ -201,8 +201,13 @@ def _write_glyph(outstream, labels, glyph, fore, back, comment, tab, key_format,
     write_comments(outstream, glyph.comments, comm_char=comment)
     for ordinal in labels:
         outstream.write(key_format(ordinal) + key_sep)
+    glyphtxt = glyph.as_text(foreground=fore, background=back)
+    # replace zero-sized glyph with 1x1 empty
+    # TODO: better solution?
+    if not glyph.width or not glyph.height:
+        glyphtxt = ['.']
     outstream.write(tab)
-    outstream.write(('\n' + tab).join(glyph.as_text(foreground=fore, background=back)))
+    outstream.write(('\n' + tab).join(glyphtxt))
     outstream.write('\n\n')
 
 def _save_yaff(font, outstream, fore, back, comment, tab, key_format, key_sep):
