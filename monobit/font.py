@@ -222,6 +222,8 @@ class Font:
                 default_value = getattr(self, key)
                 if value != default_value:
                     self._properties[key] = value
+            # append nonstandard properties
+            self._properties.update(properties)
 
 
     ##########################################################################
