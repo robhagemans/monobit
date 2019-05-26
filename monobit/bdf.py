@@ -366,6 +366,8 @@ def _parse_xlfd_properties(x_props, xlfd_name):
         properties['setwidth'] = _SETWIDTH_MAP[properties.pop('_rel-setwidth')]
     if '_rel-weight' in properties and properties['_rel-weight']:
         properties['weight'] = _WEIGHT_MAP[properties.pop('_rel-weight')]
+    if 'point-size' in properties:
+        properties['point-size'] = str(round(int(properties['point-size']) / 10))
     if 'average-width' in properties:
         properties['average-width'] = int(properties['average-width']) / 10
     if '_dpi-x' in properties and '_dpi-y' in properties:
