@@ -54,6 +54,10 @@ class Glyph:
             for _row in self._rows
         )
 
+    def as_bits(self):
+        """Return bit matrix."""
+        return self._rows
+
     @staticmethod
     def from_bytes(byteseq, width, height=None):
         """Create glyph from bytes/bytearray/int sequence."""

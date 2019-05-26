@@ -74,18 +74,13 @@ def _to_image(
         border=(32, 32, 32), back=(0, 0, 0), fore=(255, 255, 255),
     ):
     """Dump font to image."""
-    # FIXME - assumes _glyphs is still a dict
-    glyphs = font._glyphs
     scale_x, scale_y = scale
     padding_x, padding_y = padding
     margin_x, margin_y = margin
     # work out image geometry
-    # assume all glyphs have the same size, for now.
-    # get an item - any item
-    anyglyph = next(iter(glyphs.values()))._rows
-    step_x = len(anyglyph[0]) * scale_x + padding_x
-    step_y = len(anyglyph) * scale_y + padding_y
-    rows = ceildiv(max(_key for _key in glyphs.keys() if isinstance(_key, int))+1, columns)
+    step_x = font.bounding_box.x * scale_x + padding_x
+    step_y = font.bounding_box.y * scale_y + padding_y
+    rows = ceildiv(font.max_ordinal, columns)
     # determine image geometry
     width = columns * step_x + 2 * margin_x - padding_x
     height = rows * step_y + 2 * margin_y - padding_y
@@ -95,7 +90,7 @@ def _to_image(
         for col in range(columns):
             ordinal = row * columns + col
             try:
-                glyph = glyphs[ordinal]._rows
+                glyph = font.get_glyph(ordinal).as_bits()
             except KeyError:
                 continue
             if not glyph or not glyph[0]:
@@ -113,7 +108,7 @@ def _to_image(
     return img
 
 
-@Typeface.saves('png', 'bmp', 'gif', 'image')
+@Typeface.saves('png', 'bmp', 'gif', 'image', encoding=None)
 def save(
         typeface, outfile, format=None,
         columns=32, margin=(0, 0), padding=(0, 0), scale=(1, 1),

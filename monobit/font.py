@@ -543,7 +543,7 @@ class Font:
                     operation(_glyph, *args, **kwargs)
                     for _glyph in self._glyphs
                 ]
-                return Font(glyphs, self._comments, self._properties)
+                return Font(glyphs, self._labels, self._comments, self._properties)
 
             _modify.scriptable = True
             _modify.script_args = _func.script_args
