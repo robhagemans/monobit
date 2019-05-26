@@ -81,9 +81,6 @@ class Label:
         return isinstance(self._value, int)
 
 
-#TODO: skip properties that equal default
-
-
 class Coord(NamedTuple):
     """Coordinate tuple."""
     x: int
@@ -196,11 +193,15 @@ class Font:
         if properties:
             for key, converter in PROPERTIES.items():
                 try:
-                    self._properties[key] = converter(properties.pop(key))
+                    value = converter(properties.pop(key))
                 except KeyError:
-                    pass
+                    continue
                 except ValueError as e:
                     logging.error('Could not set property %s: %s', key, e)
+                # don't set property values that equal the default
+                default_value = getattr(self, key)
+                if value != default_value:
+                    self._properties[key] = value
 
     ##########################################################################
     # glyph access
@@ -360,7 +361,7 @@ class Font:
 
     _yaff_properties = {
         'revision': '0', # font version
-        'weight': 'normal', # normal, bold, light, etc.
+        'weight': 'regular', # normal, bold, light, etc.
         'slant': 'roman', # roman, italic, oblique, etc
         'setwidth': 'normal', # normal, condensed, expanded, etc.
         'direction': 'left-to-right', # left-to-right, right-to-left
