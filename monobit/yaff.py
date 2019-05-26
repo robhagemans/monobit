@@ -90,13 +90,10 @@ def load_draw(instream):
     return Typeface(fonts)
 
 @Typeface.saves('draw', encoding='utf-8', multi=False)
-def save_draw(typeface, outstream):
+def save_draw(font, outstream):
     """Write font to a hexdraw file."""
-    if len(typeface._fonts) > 1:
-        raise ValueError('Saving multiple fonts to .draw not possible')
-    font = typeface._fonts[0]
     _save_draw(font, outstream, **_DRAW_PARAMETERS)
-    return typeface
+    return font
 
 
 ##############################################################################

@@ -110,17 +110,14 @@ def _to_image(
 
 @Typeface.saves('png', 'bmp', 'gif', 'image', encoding=None, multi=False)
 def save(
-        typeface, outfile, format=None,
+        font, outfile, format=None,
         columns=32, margin=(0, 0), padding=(0, 0), scale=(1, 1),
         border=(32, 32, 32), back=(0, 0, 0), fore=(255, 255, 255),
     ):
     """Export font to image."""
-    if len(typeface._fonts) > 1:
-        raise ValueError("Saving multiple fonts to image not implemented")
-    font = typeface._fonts[0]
     img = _to_image(font, columns, margin, padding, scale, border, back, fore)
     img.save(outfile, format)
-    return typeface
+    return font
 
 
 def show(

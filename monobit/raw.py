@@ -27,13 +27,10 @@ def load(instream, cell=(8, 8), n_chars=None, offset=0, strike=False):
 
 
 @Typeface.saves('dos', 'bin', 'rom', 'raw', encoding=None, multi=False)
-def save(typeface, outstream):
+def save(font, outstream):
     """Save font to raw byte-aligned binary (DOS font)."""
-    if len(typeface._fonts) > 1:
-        raise ValueError('Saving multiple fonts to raw binary not implemented')
-    font = typeface._fonts[0]
     save_aligned(outstream, font)
-    return typeface
+    return font
 
 
 def save_aligned(outstream, font):

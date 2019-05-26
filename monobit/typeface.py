@@ -109,7 +109,7 @@ class Typeface:
                 else:
                     for font, stream in zip_streams(outfile, typeface._fonts, formats[0], encoding):
                         try:
-                            save(Typeface([font]), stream, **kwargs)
+                            save(font, stream, **kwargs)
                         except Exception as e:
                             logging.error('Could not save %s: %s', stream.name, e)
                 return typeface

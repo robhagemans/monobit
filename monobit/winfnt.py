@@ -275,12 +275,10 @@ def load(instream):
     return Typeface([font])
 
 @Typeface.saves('fnt', encoding=None, multi=False)
-def save(typeface, outstream):
-    """Write fonts to a Windows .FNT file."""
-    if len(typeface._fonts) > 1:
-        raise ValueError('Saving multiple fonts to Windows .fnt not possible')
-    outstream.write(create_fnt(typeface._fonts[0]))
-    return typeface
+def save(font, outstream):
+    """Write font to a Windows .FNT file."""
+    outstream.write(create_fnt(font))
+    return font
 
 
 ##############################################################################

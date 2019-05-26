@@ -122,11 +122,8 @@ def _read_unicode_table(instream, separator, startseq, encoding):
 
 
 @Typeface.saves('psf', encoding=None, multi=False)
-def save(typeface, outstream):
+def save(font, outstream):
     """Save font to PSF file."""
-    if len(typeface._fonts) > 1:
-        raise ValueError('Saving multiple fonts to .psf not possible')
-    font = typeface._fonts[0]
     psf_props = dict(
         width=font.bounding_box.x,
         height=font.bounding_box.y,
@@ -161,7 +158,7 @@ def save(typeface, outstream):
         for _str in unicode_strings
     ]
     _write_unicode_table(outstream, unicode_seq, _PSF2_SEPARATOR, _PSF2_STARTSEQ, 'utf-8')
-    return typeface
+    return font
 
 
 def _write_unicode_table(outstream, unicode_seq, separator, startseq, encoding):

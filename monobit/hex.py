@@ -61,11 +61,8 @@ def load(instream):
 
 
 @Typeface.saves('hex', encoding='utf-8', multi=False)
-def save(typeface, outstream):
-    """Write fonts to a .hex file."""
-    if len(typeface._fonts) > 1:
-        raise ValueError('Saving multiple fonts to .hex not possible')
-    font = typeface._fonts[0]
+def save(font, outstream):
+    """Write font to a .hex file."""
     write_comments(outstream, font.get_comments(), comm_char='#', is_global=True)
     for label, char in font.iter_unicode():
         write_comments(outstream, char.comments, comm_char='#')
@@ -78,4 +75,4 @@ def save(typeface, outstream):
         # omit the 'u+' for .hex
         outstream.write('{}:{}'.format(label[2:].upper(), char.as_hex().upper()))
         outstream.write('\n')
-    return typeface
+    return font
