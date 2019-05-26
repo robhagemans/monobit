@@ -1,5 +1,5 @@
 """
-monobit - tools for working with monochrome, monospaced bitmap fonts
+monobit - tools for working with monochrome bitmap fonts
 
 (c) 2019 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

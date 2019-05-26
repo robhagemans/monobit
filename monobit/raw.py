@@ -1,5 +1,5 @@
 """
-monobit.raw - read and write raw binary font files
+monobit.raw - raw binary font files
 
 (c) 2019 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

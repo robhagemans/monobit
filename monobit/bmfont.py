@@ -1,5 +1,5 @@
 """
-monobit.bmfont - read and write bmfont pacakages
+monobit.bmfont - AngelCode BMFont format
 
 (c) 2019 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

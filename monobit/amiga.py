@@ -1,5 +1,5 @@
 """
-monobit.amiga - read Amiga font files
+monobit.amiga - Amiga font format
 
 (c) 2019 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

@@ -1,5 +1,5 @@
 """
-monobit.cpi - read and write .cpi font files
+monobit.cpi - DOS Codepage Information format
 
 (c) 2019 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

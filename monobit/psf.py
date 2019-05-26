@@ -1,5 +1,5 @@
 """
-monobit.psf - read and write .psf font files
+monobit.psf - PC Screen Font format
 
 (c) 2019 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

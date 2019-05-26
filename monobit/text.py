@@ -8,9 +8,6 @@ licence: https://opensource.org/licenses/MIT
 import string
 
 
-##############################################################################
-# text-file comments
-
 def clean_comment(comment):
     """Remove leading characters from comment."""
     while comment and not comment[-1]:

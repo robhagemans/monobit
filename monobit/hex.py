@@ -1,6 +1,5 @@
 """
-monobit.hex - read and write .hex files
-
+monobit.hex - Unifont Hex format
 (c) 2019 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """

@@ -1,5 +1,5 @@
 """
-monobit.bdf - read and write .bdf files
+monobit.bdf - Adobe Glyph Bitmap Distribution Format
 
 (c) 2019 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

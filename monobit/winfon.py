@@ -1,5 +1,5 @@
 """
-monobit.winfon - read and write windows .fon files
+monobit.winfon - windows .FON files
 
 based on Simon Tatham's dewinfont; see MIT-style licence below.
 changes (c) 2019 Rob Hagemans and released under the same licence.
