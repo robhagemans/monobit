@@ -103,10 +103,10 @@ def load(instream):
     return Typeface(fonts)
 
 @Typeface.loads('cp', name='Codepage', encoding=None)
-def load(instream):
+def load_cp(instream):
     """Load fonts from CP file."""
     data = instream.read()
-    font = _parse_cp(data)
+    font = _parse_cp(data, 0)
     return Typeface([font])
 
 
@@ -176,7 +176,7 @@ def _parse_cp(data, cpeh_offset, header_id=_ID_MS, drdos_effh=None):
         )
     else:
         # char table offset for drfont
-        if cpih.version ==_CP_DRFONT:
+        if cpih.version == _CP_DRFONT:
             cit_offset = fh_offset + cpih.num_fonts * _SCREEN_FONT_HEADER.size
         for cp_index in range(cpih.num_fonts):
             fh = _SCREEN_FONT_HEADER.from_bytes(data, fh_offset)

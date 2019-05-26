@@ -158,7 +158,7 @@ class Font:
                 except KeyError:
                     pass
                 except ValueError as e:
-                    logging.error('Could not set property {}: {}', key, e)
+                    logging.error('Could not set property %s: %s', key, e)
 
     ##########################################################################
     # glyph access
@@ -304,7 +304,7 @@ class Font:
             raise AttributeError from e
 
     def yaffproperty(fn):
-        """Take properrty from property table, if defined; calculate otherwise."""
+        """Take property from property table, if defined; calculate otherwise."""
         @wraps(fn)
         def _cached_fn(self, *args, **kwargs):
             try:

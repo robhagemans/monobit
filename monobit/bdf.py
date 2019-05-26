@@ -155,7 +155,7 @@ def load(instream):
     # check number of characters, but don't break if no match
     if nchars != len(glyphs):
         logging.warning('Number of characters found does not match CHARS declaration.')
-    glyphs, properties = _parse_properties(glyphs, glyph_props, bdf_props, x_props, instream.name)
+    glyphs, properties = _parse_properties(glyphs, glyph_props, bdf_props, x_props)
     return Typeface([Font(glyphs, labels, comments=comments, properties=properties)])
 
 
@@ -251,7 +251,7 @@ def _read_bdf_global(instream):
 ##############################################################################
 # properties
 
-def _parse_properties(glyphs, glyph_props, bdf_props, x_props, filename):
+def _parse_properties(glyphs, glyph_props, bdf_props, x_props):
     """Parse metrics and metadata."""
     logging.info('bdf properties:')
     for name, value in bdf_props.items():
@@ -405,7 +405,7 @@ def _parse_xlfd_properties(x_props, xlfd_name):
         xdpi, ydpi = properties.pop('_dpi-x'), properties.pop('_dpi-y')
         if 'dpi' in properties and not (properties['dpi'] == xdpi == ydpi):
             logging.warning(
-                'Inconsistent XLFD dpi properties: dpi={} but dpi-x={} and dpi-y={}.',
+                'Inconsistent XLFD dpi properties: dpi=%s but dpi-x=%s and dpi-y=%s.',
                 properties['dpi'], xdpi, ydpi
             )
         properties['dpi'] = (xdpi, ydpi)
