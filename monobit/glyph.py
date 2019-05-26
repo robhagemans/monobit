@@ -173,7 +173,6 @@ class Glyph:
     @scriptable
     def crop(self, left:int=0, top:int=0, right:int=0, bottom:int=0):
         """Crop glyph, inclusive bounds."""
-        # FIXME: adjust offsets?
         return Glyph(tuple(
             _row[left : (-right if right else None)]
             for _row in self._rows[top : (-bottom if bottom else None)]
@@ -182,7 +181,6 @@ class Glyph:
     @scriptable
     def expand(self, left:int=0, top:int=0, right:int=0, bottom:int=0):
         """Add empty space."""
-        # FIXME: adjust offsets?
         if self._rows:
             old_width = len(self._rows[0])
         else:
@@ -197,7 +195,6 @@ class Glyph:
     @scriptable
     def stretch(self, factor_x:int=1, factor_y:int=1):
         """Repeat rows and/or columns."""
-        # FIXME: adjust offsets?
         # vertical stretch
         glyph = tuple(_row for _row in self._rows for _ in range(factor_y))
         # horizontal stretch
