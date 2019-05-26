@@ -26,7 +26,7 @@ def load(instream, cell=(8, 8), n_chars=None, offset=0, strike=False):
     return Typeface([Font(cells)])
 
 
-@Typeface.saves('dos', 'bin', 'rom', 'raw', encoding=None)
+@Typeface.saves('dos', 'bin', 'rom', 'raw', encoding=None, multi=False)
 def save(typeface, outstream):
     """Save font to raw byte-aligned binary (DOS font)."""
     if len(typeface._fonts) > 1:

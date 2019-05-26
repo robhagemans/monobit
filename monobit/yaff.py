@@ -89,7 +89,7 @@ def load_draw(instream):
     fonts = [_load_font(instream, back=_ACCEPTED_BACK, key_format=draw_input_key)]
     return Typeface(fonts)
 
-@Typeface.saves('draw', encoding='utf-8')
+@Typeface.saves('draw', encoding='utf-8', multi=False)
 def save_draw(typeface, outstream):
     """Write font to a hexdraw file."""
     if len(typeface._fonts) > 1:

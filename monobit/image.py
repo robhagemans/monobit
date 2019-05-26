@@ -108,7 +108,7 @@ def _to_image(
     return img
 
 
-@Typeface.saves('png', 'bmp', 'gif', 'image', encoding=None)
+@Typeface.saves('png', 'bmp', 'gif', 'image', encoding=None, multi=False)
 def save(
         typeface, outfile, format=None,
         columns=32, margin=(0, 0), padding=(0, 0), scale=(1, 1),

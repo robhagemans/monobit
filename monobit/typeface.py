@@ -5,10 +5,11 @@ monobit.typeface - representation of collection of fonts
 licence: https://opensource.org/licenses/MIT
 """
 
+import logging
 from os.path import basename
 from functools import wraps
 
-from .base import VERSION, DEFAULT_FORMAT, scriptable, ensure_stream
+from .base import VERSION, DEFAULT_FORMAT, scriptable, ensure_stream, zip_streams
 from .font import Font
 
 
@@ -95,15 +96,22 @@ class Typeface:
         return _load_decorator
 
     @classmethod
-    def saves(cls, *formats, encoding='utf-8'):
+    def saves(cls, *formats, encoding='utf-8', multi=True):
         """Decorator to register font saver."""
 
         def _save_decorator(save):
             # stream output wrapper
             @wraps(save)
             def _save_func(typeface, outfile, **kwargs):
-                with ensure_stream(outfile, 'w', encoding=encoding) as outstream:
-                    save(typeface, outstream, **kwargs)
+                if multi:
+                    with ensure_stream(outfile, 'w', encoding=encoding) as outstream:
+                        save(typeface, outstream, **kwargs)
+                else:
+                    for font, stream in zip_streams(outfile, typeface._fonts, formats[0], encoding):
+                        try:
+                            save(Typeface([font]), stream, **kwargs)
+                        except Exception as e:
+                            logging.error('Could not save %s: %s', stream.name, e)
                 return typeface
             # register saver
             for format in formats:

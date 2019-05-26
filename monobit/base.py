@@ -6,8 +6,11 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import io
+import os
 import sys
+import logging
 from contextlib import contextmanager
+from zipfile import ZipFile
 
 
 DEFAULT_FORMAT = 'text'
@@ -41,6 +44,38 @@ def ensure_stream(infile, mode, encoding=None):
     except BrokenPipeError:
         # ignore broken pipes
         pass
+
+def zip_streams(outfile, sequence, ext='', encoding=None):
+    """Generate streams that write to zip container."""
+    if isinstance(outfile, str):
+        name = os.path.basename(outfile)
+        outfile += '.zip'
+    else:
+        name = os.path.basename(outfile.name)
+    if '.' in name:
+        ext = name.split('.')[-1]
+    if not ext:
+        ext = 'fontdata'
+    with ensure_stream(outfile, 'w', encoding=None) as outstream:
+        names_used = []
+        with ZipFile(outstream, 'w') as zipfile:
+            for i, item in enumerate(sequence):
+                if encoding is None:
+                    singlestream = io.BytesIO()
+                else:
+                    singlestream = io.StringIO()
+                filename = '{}.{}'.format(item.name.replace(' ', '_'), ext)
+                if filename in names_used:
+                    filename = '{}.{}.{}'.format(item.name.replace(' ', '_'), i, ext)
+                names_used.append(filename)
+                singlestream.name = filename
+                yield item, singlestream
+                if encoding is None:
+                    data = singlestream.getvalue()
+                else:
+                    data = singlestream.getvalue().encode(encoding)
+                if data:
+                    zipfile.writestr(filename, data)
 
 def scriptable(fn):
     """Decorator to register operation for scripting."""

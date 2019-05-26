@@ -60,7 +60,7 @@ def load(instream):
     return Typeface([Font(glyphs, comments)])
 
 
-@Typeface.saves('hex', encoding='utf-8')
+@Typeface.saves('hex', encoding='utf-8', multi=False)
 def save(typeface, outstream):
     """Write fonts to a .hex file."""
     if len(typeface._fonts) > 1:
@@ -70,7 +70,11 @@ def save(typeface, outstream):
     for label, char in font.iter_unicode():
         write_comments(outstream, char.comments, comm_char='#')
         if char.height != 16 or char.width not in (8, 16):
-            raise ValueError('Hex format only supports 8x16 or 16x16 glyphs.')
+            raise ValueError(
+                'Hex format only supports 8x16 or 16x16 glyphs, not {}x{}.'.format(
+                    char.width, char.height
+                )
+            )
         # omit the 'u+' for .hex
         outstream.write('{}:{}'.format(label[2:].upper(), char.as_hex().upper()))
         outstream.write('\n')

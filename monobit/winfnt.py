@@ -274,7 +274,7 @@ def load(instream):
     font = parse_fnt(instream.read())
     return Typeface([font])
 
-@Typeface.saves('fnt', encoding=None)
+@Typeface.saves('fnt', encoding=None, multi=False)
 def save(typeface, outstream):
     """Write fonts to a Windows .FNT file."""
     if len(typeface._fonts) > 1:

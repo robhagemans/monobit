@@ -121,7 +121,7 @@ def _read_unicode_table(instream, separator, startseq, encoding):
     return table
 
 
-@Typeface.saves('psf', encoding=None)
+@Typeface.saves('psf', encoding=None, multi=False)
 def save(typeface, outstream):
     """Save font to PSF file."""
     if len(typeface._fonts) > 1:
