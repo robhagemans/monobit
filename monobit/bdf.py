@@ -12,6 +12,102 @@ from .font import Font
 from .glyph import Glyph
 
 
+_SLANT_MAP = {
+    'R': 'roman',
+    'I': 'italic',
+    'O': 'oblique',
+    'RO': 'reverse-oblique',
+    'RI': 'reverse-italic',
+    'OT': '', # 'other'
+}
+
+_SPACING_MAP = {
+    'P': 'proportional',
+    'M': 'monospace',
+    'C': 'cell',
+}
+
+_SETWIDTH_MAP = {
+    '0': '', # Undefined or unknown
+    '10': 'ultra-condensed',
+    '20': 'extra-condensed',
+    '30': 'condensed', # Condensed, Narrow, Compressed, ...
+    '40': 'semi-condensed',
+    '50': 'medium', # Medium, Normal, Regular, ...
+    '60': 'semi-expanded', # SemiExpanded, DemiExpanded, ...
+    '70': 'expanded',
+    '80': 'extra-expanded', # ExtraExpanded, Wide, ...
+    '90': 'ultra-expanded',
+}
+
+_WEIGHT_MAP = {
+    '0': '', # Undefined or unknown
+    '10': 'thin', # UltraLight
+    '20': 'extra-light',
+    '30': 'light',
+    '40': 'semi-light', # SemiLight, Book, ...
+    '50': 'medium', # Medium, Normal, Regular,...
+    '60': 'semi-bold', # SemiBold, DemiBold, ...
+    '70': 'bold',
+    '80': 'extra-bold', # ExtraBold, Heavy, ...
+    '90': 'heavy', # UltraBold, Black, ...,
+}
+
+# fields of the xlfd font name
+_XLFD_NAME_FIELDS = [
+    None,
+    'foundry',
+    'family',
+    'weight',
+    'slant',
+    'setwidth',
+    'style',
+    'pixel-size',
+    'point-size',
+    '_dpi-x',
+    '_dpi-y',
+    'spacing',
+    'average-width',
+    '_charset-registry',
+    '_charset-encoding',
+]
+
+_XLFD_PROPERTIES = {
+    # rendering hints
+    'FONT_ASCENT': 'ascent',
+    'FONT_DESCENT': 'descent',
+    'X_HEIGHT': 'x-height',
+    'CAP_HEIGHT': 'cap-height',
+    # display characteristics - already specified in bdf props
+    'RESOLUTION_X': '_dpi-x',
+    'RESOLUTION_Y': '_dpi-y',
+    'RESOLUTION': 'dpi',
+    'POINT_SIZE': 'point-size',
+    # can be calculated: PIXEL_SIZE = ROUND((RESOLUTION_Y * POINT_SIZE) / 722.7)
+    # description
+    'FACE_NAME': 'name',
+    'FULL_NAME': 'name',
+    'FONT_VERSION': 'version',
+    'COPYRIGHT': 'copyright',
+    'NOTICE': 'notice',
+    'FOUNDRY': 'foundry',
+    'FAMILY_NAME': 'family',
+    'WEIGHT_NAME': 'weight',
+    'RELATIVE_WEIGHT': '_rel-weight',
+    'SLANT': 'slant',
+    'SPACING': 'spacing',
+    'SETWIDTH_NAME': 'setwidth',
+    'RELATIVE_SETWIDTH': '_rel-setwidth',
+    'ADD_STYLE_NAME': 'style',
+    'PIXEL_SIZE': 'pixel-size',
+    'AVERAGE_WIDTH': 'average-width',
+    # encoding
+    'CHARSET_REGISTRY': '_charset-registry',
+    'CHARSET_ENCODING': '_charset-encoding',
+    'DEFAULT_CHAR': 'default-char',
+}
+
+
 # BDF is specified as ASCII only
 # but the XLFD atoms are specified as iso8859-1, so this seems the best choice
 
@@ -115,47 +211,6 @@ def _read_bdf_global(instream):
 
 ##############################################################################
 # properties
-
-_SLANT_MAP = {
-    'R': 'roman',
-    'I': 'italic',
-    'O': 'oblique',
-    'RO': 'reverse-oblique',
-    'RI': 'reverse-italic',
-    'OT': '', # 'other'
-}
-
-_SPACING_MAP = {
-    'P': 'proportional',
-    'M': 'monospace',
-    'C': 'cell',
-}
-
-_SETWIDTH_MAP = {
-    '0': '', # Undefined or unknown
-    '10': 'ultra-condensed',
-    '20': 'extra-condensed',
-    '30': 'condensed', # Condensed, Narrow, Compressed, ...
-    '40': 'semi-condensed',
-    '50': 'medium', # Medium, Normal, Regular, ...
-    '60': 'semi-expanded', # SemiExpanded, DemiExpanded, ...
-    '70': 'expanded',
-    '80': 'extra-expanded', # ExtraExpanded, Wide, ...
-    '90': 'ultra-expanded',
-}
-
-_WEIGHT_MAP = {
-    '0': '', # Undefined or unknown
-    '10': 'thin', # UltraLight
-    '20': 'extra-light',
-    '30': 'light',
-    '40': 'semi-light', # SemiLight, Book, ...
-    '50': 'medium', # Medium, Normal, Regular,...
-    '60': 'semi-bold', # SemiBold, DemiBold, ...
-    '70': 'bold',
-    '80': 'extra-bold', # ExtraBold, Heavy, ...
-    '90': 'heavy', # UltraBold, Black, ...,
-}
 
 def _parse_properties(glyphs, glyph_props, bdf_props, x_props, filename):
     """Parse metrics and metadata."""
@@ -270,30 +325,12 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
     })
     return mod_glyphs, properties, xlfd_name
 
+
 def _parse_xlfd_name(xlfd_str):
     """Parse X logical font description font name string."""
-    mapping = {
-        'foundry': 1,
-        'family': 2,
-        'weight': 3,
-        'slant': 4,
-        'setwidth': 5,
-        'style': 6,
-        'pixel-size': 7,
-        'point-size': 8,
-        '_dpi-x': 9,
-        '_dpi-y': 10,
-        'spacing': 11,
-        'average-width': 12,
-        '_charset-registry': 13,
-        '_charset-encoding': 14,
-    }
     xlfd = xlfd_str.split('-')
-    properties = {}
-    if len(xlfd) >= 15:
-        for key, index in mapping.items():
-            if xlfd[index]:
-                properties[key] = xlfd[index]
+    if len(xlfd) == 15:
+        properties = {_key: _value for _key, _value in zip(_XLFD_NAME_FIELDS, xlfd) if _key}
     else:
         logging.warning('Could not parse X font name string `%s`', xlfd_str)
         return {}
@@ -304,40 +341,7 @@ def _parse_xlfd_properties(x_props, xlfd_name):
     """Parse X metadata."""
     xlfd_name_props = _parse_xlfd_name(xlfd_name)
     # we ignore AVERAGE_WIDTH, can be calculated
-    mapping = {
-        # rendering hints
-        'FONT_ASCENT': 'ascent',
-        'FONT_DESCENT': 'descent',
-        'X_HEIGHT': 'x-height',
-        'CAP_HEIGHT': 'cap-height',
-        # display characteristics - already specified in bdf props
-        'RESOLUTION_X': '_dpi-x',
-        'RESOLUTION_Y': '_dpi-y',
-        'RESOLUTION': 'dpi',
-        'POINT_SIZE': 'point-size',
-        # can be calculated: PIXEL_SIZE = ROUND((RESOLUTION_Y * POINT_SIZE) / 722.7)
-        # description
-        'FACE_NAME': 'name',
-        'FULL_NAME': 'name',
-        'FONT_VERSION': 'version',
-        'COPYRIGHT': 'copyright',
-        'NOTICE': 'notice',
-        'FOUNDRY': 'foundry',
-        'FAMILY_NAME': 'family',
-        'WEIGHT_NAME': 'weight',
-        'RELATIVE_WEIGHT': '_rel-weight',
-        'SLANT': 'slant',
-        'SPACING': 'spacing',
-        'SETWIDTH_NAME': 'setwidth',
-        'RELATIVE_SETWIDTH': '_rel-setwidth',
-        'ADD_STYLE_NAME': 'style',
-        'PIXEL_SIZE': 'pixel-size',
-        'AVERAGE_WIDTH': 'average-width',
-        # encoding
-        'CHARSET_REGISTRY': '_charset-registry',
-        'CHARSET_ENCODING': '_charset-encoding',
-        'DEFAULT_CHAR': 'default-char',
-    }
+    mapping = _XLFD_PROPERTIES
     properties = {}
     for xkey, key in mapping.items():
         try:
