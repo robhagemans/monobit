@@ -183,10 +183,12 @@ def _parse_cp(data, cpeh_offset, header_id=_ID_MS, drdos_effh=None):
         for cp_index in range(cpih.num_fonts):
             fh = _SCREEN_FONT_HEADER.from_bytes(data, fh_offset)
             # extract font properties
+            device = cpeh.device_name.strip().decode('ascii', 'replace')
             props = {
                 'encoding': 'cp{}'.format(cpeh.codepage),
-                'device': cpeh.device_name.strip().decode('ascii', 'replace'),
+                'device': device,
                 'source-format': 'CPI ({})'.format(_FORMAT_NAME[header_id]),
+                'name': '{} {}'.format(device, cpeh.codepage),
             }
             # apparently never used
             if fh.xaspect or fh.yaspect:
