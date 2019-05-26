@@ -271,10 +271,6 @@ def _parse_properties(glyphs, glyph_props, bdf_props, x_props, filename):
             )
         else:
             properties[key] = value
-    # check if default har exists, remove otherwise
-    if 'default-char' in properties and not int(properties['default-char'], 0) in glyphs:
-        # if the number doesn't occur, no default is set.
-        del properties['default-char']
     return glyphs, properties
 
 
@@ -284,7 +280,7 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
     properties = {
         'source-format': 'BDF v{}'.format(bdf_props.pop('STARTFONT')),
         'point-size': size,
-        'dpi': ' '.join((xdpi, ydpi)) if xdpi != ydpi else xdpi,
+        'dpi': (xdpi, ydpi),
     }
     try:
         properties['revision'] = bdf_props.pop('CONTENTVERSION')
@@ -392,10 +388,6 @@ def _parse_xlfd_properties(x_props, xlfd_name):
     # modify/summarise values
     if 'descent' in properties:
         properties['descent'] = -int(properties['descent'])
-    #if 'resolution-x' in properties and 'resolution-y' in properties:
-    #    properties['dpi'] = '{} {}'.format(properties.pop('resolution-x'), properties.pop('resolution-y'))
-    #elif 'resolution' in properties:
-    #    properties['dpi'] = '{} {}'.format(properties['resolution'], properties['resolution'])
     if 'slant' in properties and properties['slant']:
         properties['slant'] = _SLANT_MAP[properties['slant']]
     if 'spacing' in properties and properties['spacing']:
@@ -416,7 +408,7 @@ def _parse_xlfd_properties(x_props, xlfd_name):
                 'Inconsistent XLFD dpi properties: dpi={} but dpi-x={} and dpi-y={}.',
                 properties['dpi'], xdpi, ydpi
             )
-        properties['dpi'] = ' '.join((xdpi, ydpi)) if xdpi != ydpi else xdpi
+        properties['dpi'] = (xdpi, ydpi)
     # encoding
     try:
         registry = properties.pop('_charset-registry')
@@ -425,10 +417,6 @@ def _parse_xlfd_properties(x_props, xlfd_name):
         pass
     else:
         properties['encoding'] = (registry + '-' + encoding).lower()
-    try:
-        properties['default-char'] = hex(int(properties['default-char']))
-    except KeyError:
-        pass
     for key in ('weight', 'slant', 'spacing', 'setwidth'):
         try:
             properties[key] = properties[key].lower()

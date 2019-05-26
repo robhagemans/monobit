@@ -10,7 +10,7 @@ from types import SimpleNamespace
 
 from .text import clean_comment, write_comments, split_global_comment
 from .typeface import Typeface
-from .font import Font
+from .font import PROPERTIES, Font
 from .glyph import Glyph
 
 
@@ -78,60 +78,6 @@ _DRAW_PARAMETERS = dict(
     key_format=draw_output_key,
     key_sep=':',
 )
-
-
-# default order of known yaff properties
-# TODO: get from tale in Font class
-PROPERTIES = [
-
-    # font metadata:
-    'name', # full human name
-    'foundry', # author or issuer
-    'copyright', # copyright string
-    'notice', # e.g. license string
-    'revision', # font version
-
-    # descriptive:
-    'point-size', # nominal point size
-    'pixel-size', # nominal pixel size
-    'dpi', # target resolution in dots per inch
-    'family', # typeface/font family
-    'weight', # normal, bold, light, etc.
-    'slant', # roman, italic, oblique, etc
-    'setwidth', # normal, condensed, expanded, etc.
-    'style', # serif, sans, etc.
-    'decoration', # underline, strikethrough, etc.
-    # these can be determined from the bitmaps
-    'spacing', # proportional, monospace, cell
-    'x-width', # ink width of lowercase x (in proportional font)
-    'average-width', # average ink width, rounded to whole pixels
-
-    # positioning relative to origin:
-    'direction', # left-to-right, right-to-left
-    'bottom', # bottom line of matrix relative to baseline
-    'offset-before', # horizontal offset from origin to matrix start
-    'offset-after', # horizontal offset from matrix end to next origin
-
-    # other metrics (may affect interline spacing):
-    'ascent', # recommended typographic ascent relative to baseline (not necessarily equal to top)
-    'descent', # recommended typographic descent relative to baseline (not necessarily equal to bottom)
-    'leading', # vertical leading, defined as (pixels between baselines) - (pixel height)
-    'x-height', # height of lowercase x relative to baseline
-    'cap-height', # height of capital relative to baseline
-
-    # character set:
-    'encoding',
-    'default-char',
-    'word-boundary', # word-break character (usually space)
-
-    # other
-    'device', # target device name
-
-    # conversion metadata:
-    'converter',
-    'source-name',
-    'source-format',
-]
 
 
 @Typeface.loads('text', 'txt', 'yaff', name='monobit-yaff', encoding='utf-8-sig')

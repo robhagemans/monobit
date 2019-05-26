@@ -7,15 +7,116 @@ licence: https://opensource.org/licenses/MIT
 
 from functools import wraps
 from typing import NamedTuple
+import numbers
 
 from .base import scriptable
 from .glyph import Glyph
+
+
+def number(value=0):
+    """Convert to int or float."""
+    if isinstance(value, str):
+        value = float(value)
+        if value == int(value):
+            value = int(value)
+    if not isinstance(value, numbers.Real):
+        raise ValueError("Can't convert `{}` to number.".format(value))
+    return value
+
+def label(value):
+    """Convert to int/unicode label as appropriate."""
+    try:
+        # check for ordinal (anything convertible to int)
+        int(value)
+        return int(value)
+    except ValueError:
+        pass
+    if value.lower().startswith('u+'):
+        try:
+            int(value[2:], 16)
+        except ValueError as e:
+            raise ValueError("'{}' is not a valid unicode label.".format(value)) from e
+    # 'namespace' labels with a dot are not converted to lowercase
+    if '.' in value:
+        return value
+    return value.lower()
 
 
 class Coord(NamedTuple):
     """Coordinate tuple."""
     x: int
     y: int
+
+    def __str__(self):
+        return '{} {}'.format(self.x, self.y)
+
+    @classmethod
+    def create(cls, coord=0):
+        if isinstance(coord, numbers.Real):
+            return cls(coord, coord)
+        if isinstance(coord, str):
+            splits = coord.split(' ')
+            if len(splits) == 1:
+                return cls(number(splits[0]), number(splits[0]))
+            elif len(splits) == 2:
+                return cls(number(splits[0]), number(splits[1]))
+        if isinstance(coord, tuple):
+            if len(coord) == 2:
+                return cls(number(coord[0]), number(coord[1]))
+        raise ValueError("Can't convert `{}` to coordinate pair.".format(coord))
+
+
+# recognised yaff properties and converters from str
+# this also defines the default order in yaff files
+PROPERTIES = {
+    # font metadata
+    'name': str, # full human name
+    'foundry': str, # author or issuer
+    'copyright': str, # copyright string
+    'notice': str, # e.g. license string
+    'revision': str, # font version
+    'device': str, # target device name
+
+    # descriptive:
+    'point-size': number, # nominal point size
+    'pixel-size': int, # nominal pixel size
+    'dpi': Coord.create, # target resolution in dots per inch
+    'family': str, # typeface/font family
+    'weight': str, # normal, bold, light, etc.
+    'slant': str, # roman, italic, oblique, etc
+    'setwidth': str, # normal, condensed, expanded, etc.
+    'style': str, # serif, sans, etc.
+    'decoration': str, # underline, strikethrough, etc.
+
+    # these can be determined from the bitmaps
+    'spacing': str, # proportional, monospace, cell
+    'x-width': int, # ink width of lowercase x (in proportional font)
+    'average-width': number, # average ink width, rounded to tenths
+    'bounding-box': Coord.create, # maximum ink width/height
+
+    # positioning relative to origin:
+    'direction': str, # left-to-right, right-to-left
+    'bottom': int, # bottom line of matrix relative to baseline ## `drop`/`lift`? `offset-y`? `offset-transverse`?
+    'offset-before': int, # horizontal offset from origin to matrix start
+    'offset-after': int, # horizontal offset from matrix end to next origin
+
+    # other metrics (may affect interline spacing):
+    'ascent': int, # recommended typographic ascent relative to baseline (not necessarily equal to top)
+    'descent': int, # recommended typographic descent relative to baseline (not necessarily equal to bottom)
+    'leading': int, # vertical leading, defined as (pixels between baselines) - (pixel height)
+    'x-height': int, # height of lowercase x relative to baseline
+    'cap-height': int, # height of capital relative to baseline
+
+    # character set:
+    'encoding': str,
+    'default-char': label, # use question mark to replace missing glyph
+    'word-boundary': label, # word-break character (usually space)
+
+    # conversion metadata:
+    'converter': str,
+    'source-name': str,
+    'source-format': str,
+}
 
 
 def ord_to_unicode(ordinal, encoding):
@@ -49,7 +150,15 @@ class Font:
         else:
             # global comments only
             self._comments = {None: comments}
-        self._properties = properties or {}
+        self._properties = {}
+        if properties:
+            for key, converter in PROPERTIES.items():
+                try:
+                    self._properties[key] = converter(properties.pop(key))
+                except KeyError:
+                    pass
+                except ValueError as e:
+                    logging.error('Could not set property {}: {}', key, e)
 
     ##########################################################################
     # glyph access
@@ -178,13 +287,19 @@ class Font:
 
     def __getattr__(self, attr):
         """Take property from property table."""
+        attr = attr.replace('_', '-')
         try:
-            return self._properties[attr.replace('_', '-')]
-        except KeyError as e:
+            return self._properties[attr]
+        except KeyError:
             pass
         try:
             # if in yaff property list, return default
-            return self._yaff_properties[attr.replace('_', '-')]
+            return self._yaff_properties[attr]
+        except KeyError:
+            pass
+        try:
+            # if in yaff property list, return default
+            return PROPERTIES[attr]()
         except KeyError as e:
             raise AttributeError from e
 
@@ -199,59 +314,18 @@ class Font:
             return fn(self, *args, **kwargs)
         return property(_cached_fn)
 
-    # yaff recognised properties and their defaults
+    # default properties
 
     _yaff_properties = {
-        ##'name': '', # full human name
-        'foundry': '', # author or issuer
-        'copyright': '', # copyright string
-        'notice': '', # e.g. license string
-        'revision': 0, # font version
-
-        # descriptive:
-        ##'point-size', # nominal point size
-        ##'pixel-size', # nominal pixel size
-        ##'dpi', # target resolution in dots per inch
-        ##'family', # typeface/font family
+        'revision': '0', # font version
         'weight': 'normal', # normal, bold, light, etc.
         'slant': 'roman', # roman, italic, oblique, etc
         'setwidth': 'normal', # normal, condensed, expanded, etc.
-        'style': '', # serif, sans, etc.
-        'decoration': '', # underline, strikethrough, etc.
-
-        # these can be determined from the bitmaps
-        ##'spacing', # proportional, monospace, cell
-        ##'x-width', # ink width of lowercase x (in proportional font)
-        ##'average-width', # average ink width, rounded to tenths
-        ##'bounding-box', # maximum ink width/height
-
-        # positioning relative to origin:
         'direction': 'left-to-right', # left-to-right, right-to-left
-        'bottom': 0, # bottom line of matrix relative to baseline ## `drop`/`lift`? `offset-y`? `offset-transverse`?
-        'offset-before': 0, # horizontal offset from origin to matrix start
-        'offset-after': 0, # horizontal offset from matrix end to next origin
-
-        # other metrics (may affect interline spacing):
-        #'ascent', # recommended typographic ascent relative to baseline (not necessarily equal to top)
-        #'descent', # recommended typographic descent relative to baseline (not necessarily equal to bottom)
-        'leading': 0, # vertical leading, defined as (pixels between baselines) - (pixel height)
-        ##'x-height', # height of lowercase x relative to baseline
-        ##'cap-height', # height of capital relative to baseline
-
-        # character set:
         'encoding': 'ascii',
         'default-char': 'u+003f', # use question mark to replace missing glyph
         'word-boundary': 'u+0020', # word-break character (usually space)
-
-        # other
-        'device': '', # target device name
-
-        # conversion metadata:
-        'converter': '',
-        'source-name': '',
-        'source-format': '',
     }
-
 
     @yaffproperty
     def name(self):
@@ -285,6 +359,7 @@ class Font:
             return 0
         return self.ascent
 
+    # FIXME: need descent too
     @yaffproperty
     def ascent(self):
         """Get ascent (defaults to max ink height above baseline)."""
