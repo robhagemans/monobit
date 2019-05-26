@@ -263,8 +263,9 @@ def _extract(zipfile, info, common, pages, chars, kernings=()):
     min_after = 0
     if chars:
         # determine bearings
-        min_after = min((char.xadvance - char.width) for char in chars)
-        max_height = max(char.height for char in chars)
+        min_after = min((char.xadvance - char.xoffset - char.width) for char in chars)
+        min_before = min((char.xoffset) for char in chars)
+        max_height = max(char.height + char.yoffset for char in chars)
         for char in chars:
             crop = sheets[char.page].crop((
                 char.x, char.y, char.x + char.width, char.y + char.height
@@ -280,9 +281,11 @@ def _extract(zipfile, info, common, pages, chars, kernings=()):
                     crop[_offs: _offs+char.width]
                     for _offs in range(0, len(crop), char.width)
                 ))
-                after = char.xadvance - char.width
+                after = char.xadvance - char.xoffset - char.width
+                before = char.xoffset
+                height = char.height + char.yoffset
                 # bring to equal height, equal bearings
-                glyph = glyph.expand(0, max_height - char.height, after - min_after, 0)
+                glyph = glyph.expand(before - min_before, char.yoffset, after - min_after, max_height - height)
             else:
                 glyph = Glyph.empty(char.xadvance - min_after, max_height)
             labels[char.id] = len(glyphs)
