@@ -123,7 +123,7 @@ class Glyph:
             return 0
         # maximum row inkwidth
         return max(
-            len(_row) - _row.index(True) - list(reversed(_row)).index(True)
+            (len(_row) - _row.index(True) - list(reversed(_row)).index(True)) if True in _row else 0
             for _row in self._rows
         )
 

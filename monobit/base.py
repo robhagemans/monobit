@@ -48,8 +48,11 @@ def ensure_stream(infile, mode, encoding=None):
 def zip_streams(outfile, sequence, ext='', encoding=None):
     """Generate streams that write to zip container."""
     if isinstance(outfile, str):
-        name = os.path.basename(outfile)
-        outfile += '.zip'
+        if outfile:
+            name = os.path.basename(outfile)
+            outfile += '.zip'
+        else:
+            name = ''
     else:
         name = os.path.basename(outfile.name)
     if '.' in name:
