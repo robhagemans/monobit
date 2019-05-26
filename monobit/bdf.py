@@ -339,19 +339,8 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
         padding_left = offset_x - leftmost
         padding_bottom = offset_y - bottommost
         padding_top = topmost - bbx_height - offset_y
-        glyph = [
-            (False,) * padding_left
-            + _row[:bbx_width]
-            + (False,) * padding_right
-            for _row in glyph._rows[:bbx_height]
-        ]
-        matrix_width = padding_left + bbx_width + padding_right
-        glyph = (
-            [(False,) * matrix_width for _ in range(padding_top)]
-            + glyph
-            + [(False,) * matrix_width for _ in range(padding_bottom)]
-        )
-        mod_glyphs.append(Glyph(glyph))
+        glyph = glyph.expand(padding_left, padding_top, padding_right, padding_bottom)
+        mod_glyphs.append(glyph)
     xlfd_name = bdf_props.pop('FONT')
     # keep unparsed bdf props
     properties.update({

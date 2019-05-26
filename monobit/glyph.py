@@ -187,9 +187,9 @@ class Glyph:
             old_width = 0
         new_width = left + old_width + right
         return Glyph(
-            ((False,)*new_width, ) * top
+            ((False,) * new_width,) * top
             + tuple((False,)*left + _row + (False,)*right for _row in self._rows)
-            + ((False,)*new_width, ) * bottom
+            + ((False,) * new_width,) * bottom
         )
 
     @scriptable
