@@ -372,6 +372,9 @@ def _parse_win_props(fnt, win_props):
     version = win_props.dfVersion
     if win_props.dfType & 1:
         raise ValueError('Not a bitmap font')
+    logging.info('Windows FNT properties:')
+    for key, value in win_props.__dict__.items():
+        logging.info('    {}: {}'.format(key, value))
     properties = {
         'source-format': 'Windows FNT v{}.{}'.format(*divmod(version, 256)),
         'family': bytes_to_str(fnt[win_props.dfFace:]),
@@ -470,7 +473,6 @@ def create_fnt(font, version=0x200):
     weight_map = dict(reversed(_item) for _item in _WEIGHT_MAP.items())
     charset_map = dict(reversed(_item) for _item in _CHARSET_MAP.items())
     style_map = dict(reversed(_item) for _item in _STYLE_MAP.items())
-    properties = font._properties
     if font.spacing == 'proportional':
         # width of uppercase X
         x_width = int(font.x_width)
@@ -528,11 +530,13 @@ def create_fnt(font, version=0x200):
         dfCopyright=font.copyright.encode('ascii', 'replace')[:60].ljust(60, b'\0'),
         dfType=0, # raster, not in memory
         dfPoints=int(font.point_size),
-        dfVertRes=_get_prop_y(properties['dpi']),
-        dfHorizRes=_get_prop_x(properties['dpi']),
-        dfAscent=int(font.ascent),
-        dfInternalLeading=0,
-        dfExternalLeading=int(font.leading),
+        dfVertRes=font.dpi.y,
+        dfHorizRes=font.dpi.x,
+        # Windows dfAscent means distance between matrix top and baseline
+        dfAscent=font.offset + pix_height,
+        #'ascent': win_props.dfAscent - win_props.dfInternalLeading,
+        dfInternalLeading=font.offset + pix_height - font.ascent,
+        dfExternalLeading=font.leading,
         dfItalic=(font.slant in ('italic', 'oblique')),
         dfUnderline=('underline' in font.decoration),
         dfStrikeOut=('strikethrough' in font.decoration),
