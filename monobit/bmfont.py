@@ -65,7 +65,7 @@ if Image:
                     fontinfo = _parse_xml(data)
                 else:
                     logging.info('found text: %s', desc)
-                    #fontinfo = _parse_text(data)
+                    fontinfo = _parse_text(data)
             if fontinfo:
                 fonts.append(_extract(zipfile, **fontinfo))
         return Typeface(fonts)
@@ -74,7 +74,6 @@ if Image:
 def _parse_xml(data):
     """Parse XML bmfont description."""
     root = etree.fromstring(data.decode('utf-8-sig'))
-    #root = tree.getroot()
     if root.tag != 'font':
         raise ValueError(
             'Not a valid BMFont XML file: root should be <font>, not <{}>'.format(root.tag)
@@ -93,13 +92,48 @@ def _parse_xml(data):
         ],
     )
 
+
+def _parse_text_dict(line):
+    """Parse space separated key=value pairs."""
+    textdict = dict(_item.split('=') for _item in line.split(' '))
+    return {
+        _key: _value.strip('"')
+        for _key, _value in textdict.items()
+    }
+
+def _parse_text(data):
+    """Parse text bmfont description."""
+    fontinfo = {
+        'pages': [],
+        'chars': [],
+        'kernings': [],
+    }
+    for line in data.decode('utf-8-sig').splitlines():
+        if not line or ' ' not in line:
+            continue
+        tag, textdict = line.split(' ', 1)
+        textdict = _parse_text_dict(textdict)
+        if tag in ('info', 'common'):
+            fontinfo[tag] = textdict
+        elif tag == 'page':
+            fontinfo['pages'].append(textdict)
+        elif tag == 'char':
+            fontinfo['chars'].append(
+                _CHAR(**{_k: int(_attr) for _k, _attr in textdict.items()})
+            )
+        elif tag == 'kerning':
+            fontinfo['kernings'].append(
+                _KERNING(**{_k: int(_attr) for _k, _attr in textdict.items()})
+            )
+    return fontinfo
+
+
 def _extract(zipfile, info, common, pages, chars, kernings):
     """Extract characters."""
     sheets = {
         int(_page['id']): Image.open(zipfile.open(_page['file'])).convert('RGBA')
         for _page in pages
     }
-    #sheets[0].show()
     glyphs = []
     labels = {}
     # determine bearings
