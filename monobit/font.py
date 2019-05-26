@@ -8,6 +8,7 @@ licence: https://opensource.org/licenses/MIT
 from functools import wraps
 from typing import NamedTuple
 import numbers
+import logging
 
 from .base import scriptable
 from .glyph import Glyph
@@ -23,23 +24,64 @@ def number(value=0):
         raise ValueError("Can't convert `{}` to number.".format(value))
     return value
 
-def label(value):
-    """Convert to int/unicode label as appropriate."""
-    try:
-        # check for ordinal (anything convertible to int)
-        int(value)
-        return int(value)
-    except ValueError:
-        pass
-    if value.lower().startswith('u+'):
+
+class Label:
+    """Glyph label."""
+
+    def __init__(self, value):
+        """Convert to int/unicode label as appropriate."""
+        if isinstance(value, Label):
+            self._value = value._value
+            return
+        if isinstance(value, int):
+            self._value = value
+            return
         try:
-            int(value[2:], 16)
-        except ValueError as e:
-            raise ValueError("'{}' is not a valid unicode label.".format(value)) from e
-    # 'namespace' labels with a dot are not converted to lowercase
-    if '.' in value:
-        return value
-    return value.lower()
+            # check for ordinal (anything convertible to int)
+            self._value = int(value, 0)
+            return
+        except ValueError:
+            pass
+        try:
+            # accept decimals with leading zeros
+            self._value = int(value.lstrip('0'))
+            return
+        except ValueError:
+            pass
+        # see if it counts as unicode label
+        if value.lower().startswith('u+'):
+            try:
+                int(value[2:], 16)
+            except ValueError as e:
+                raise ValueError("'{}' is not a valid unicode label.".format(value)) from e
+        # 'namespace' labels with a dot are not converted to lowercase
+        if '.' in value:
+            self._value = value
+        else:
+            self._value = value.lower()
+
+    def __int__(self):
+        """Convert to int if ordinal."""
+        if self.is_ordinal:
+            return self._value
+        raise TypeError("Label is not an ordinal.")
+
+    def __str__(self):
+        """Convert label to str."""
+        if self.is_ordinal:
+            return '0x{:02x}'.format(self._value)
+        return self._value
+
+    @property
+    def is_unicode(self):
+        return isinstance(self._value, str) and self._value.startswith('u+')
+
+    @property
+    def is_ordinal(self):
+        return isinstance(self._value, int)
+
+
+#TODO: skip properties that equal default
 
 
 class Coord(NamedTuple):
@@ -109,8 +151,8 @@ PROPERTIES = {
 
     # character set:
     'encoding': str,
-    'default-char': label, # use question mark to replace missing glyph
-    'word-boundary': label, # word-break character (usually space)
+    'default-char': Label, # use question mark to replace missing glyph
+    'word-boundary': Label, # word-break character (usually space)
 
     # conversion metadata:
     'converter': str,
@@ -143,7 +185,7 @@ class Font:
         self._glyphs = tuple(glyphs)
         if not labels:
             labels = {_i: _i for _i in range(len(glyphs))}
-        self._labels = labels
+        self._labels = {Label(_k): _v for _k, _v in labels.items()}
         if isinstance(comments, dict):
             # per-property comments
             self._comments = comments
@@ -205,16 +247,16 @@ class Font:
             return self.get_default_glyph()
 
     def iter_unicode(self):
-        """Iterate over fonts with unicode labels."""
+        """Iterate over glyphs with unicode labels."""
         for index, glyph in enumerate(self._glyphs):
             labels = tuple(
                 _label for _label, _index in self._labels.items()
                 if _index == index
             )
             for label in labels:
-                if isinstance(label, str) and label.startswith('u+'):
+                if label.is_unicode:
                     yield label, glyph
-                elif isinstance(label, int):
+                elif label.is_ordinal:
                     try:
                         yield ord_to_unicode(label, self.encoding), glyph
                     except UnicodeError:
@@ -239,7 +281,7 @@ class Font:
     @property
     def ordinals(self):
         """Get tuple of defined ordinals."""
-        return sorted(_k for _k in self._labels if isinstance(_k, int))
+        return sorted(_k for _k in self._labels if _k.is_ordinal)
 
     @property
     def all_ordinal(self):
@@ -269,7 +311,7 @@ class Font:
                     return byte[0]
             raise
         for label, lindex in self._labels.items():
-            if index == lindex and isinstance(label, int):
+            if index == lindex and label.is_ordinal:
                 return label
         raise KeyError(key)
 
@@ -442,7 +484,7 @@ class Font:
     def renumber(self, add:int=0):
         """Return a font with renumbered keys."""
         labels = {
-            (_k + add if isinstance(_k, int) else _k): _v
+            (Label(int(_k) + add) if _k.is_ordinal else _k): _v
             for _k, _v in self._labels.items()
         }
         return Font(self._glyphs, labels, self._comments, self._properties)

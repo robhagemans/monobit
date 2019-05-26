@@ -74,6 +74,7 @@ def _to_image(
         border=(32, 32, 32), back=(0, 0, 0), fore=(255, 255, 255),
     ):
     """Dump font to image."""
+    # FIXME - assumes _glyphs is still a dict
     glyphs = font._glyphs
     scale_x, scale_y = scale
     padding_x, padding_y = padding

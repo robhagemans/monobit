@@ -144,13 +144,14 @@ def save(typeface, outstream):
     ordinal_for_index = {
         _v: _k
         for _k, _v in font._labels.items()
-        if isinstance(_k, int)
+        if _k.is_ordinal
     }
     unicode_dict = {
         ordinal_for_index[_v]: _k
         for _k, _v in font._labels.items()
         if _v in ordinal_for_index
-        if isinstance(_k, str) and _k.startswith('u+')
+        if _k.is_unicode
+        # FIXME: use iter_unicode, iter_ordinals
     }
     unicode_strings = [
         unicode_dict.get(_i, '') for _i in font.ordinal_range

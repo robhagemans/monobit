@@ -5,12 +5,13 @@ monobit.yaff - read and write yaff and hexdraw files
 licence: https://opensource.org/licenses/MIT
 """
 
+import logging
 import string
 from types import SimpleNamespace
 
 from .text import clean_comment, write_comments, split_global_comment
 from .typeface import Typeface
-from .font import PROPERTIES, Font
+from .font import PROPERTIES, Font, Label
 from .glyph import Glyph
 
 
@@ -18,30 +19,10 @@ _WHITESPACE = ' \t'
 _CODESTART = _WHITESPACE + string.digits + string.ascii_letters + '_'
 
 # default background characters
+# anything else is foreground
 _ACCEPTED_BACK = "_.-"
-# for now, anything else is foreground
-#_ACEPTED_FORE = '@#*'
 
 _SEPARATOR = '---'
-
-
-def yaff_input_key(key):
-    """Convert keys on input from .yaff."""
-    try:
-        return int(key, 0)
-    except (TypeError, ValueError):
-        try:
-            # accept decimals with leading zeros
-            return int(key.lstrip('0'))
-        except (TypeError, ValueError, AttributeError):
-            return key
-
-def yaff_output_key(key):
-    """Convert keys for output to .yaff"""
-    if isinstance(key, int):
-        return '0x{:02x}'.format(key)
-    else:
-        return str(key)
 
 
 def draw_input_key(key):
@@ -49,15 +30,14 @@ def draw_input_key(key):
     try:
         return int(key, 16)
     except (TypeError, ValueError):
-        return key
+        return Label(key)
 
 def draw_output_key(key):
     """Convert keys on input from .draw."""
     try:
-        return '{:04x}'.format(key)
+        return '{:04x}'.format(int(key))
     except ValueError:
         raise ValueError('.draw format only supports integer keys')
-
 
 
 # defaults
@@ -66,7 +46,7 @@ _YAFF_PARAMETERS = dict(
     back='.',
     comment='#',
     tab='    ',
-    key_format=yaff_output_key,
+    key_format=str,
     key_sep=':\n',
 )
 
@@ -85,7 +65,7 @@ def load(instream):
     """Read a plaintext font file."""
     fonts = []
     while True:
-        font = _load_font(instream, back=_ACCEPTED_BACK, key_format=yaff_input_key)
+        font = _load_font(instream, back=_ACCEPTED_BACK, key_format=Label)
         if font is None:
             break
         fonts.append(font)
@@ -218,6 +198,9 @@ def _load_font(instream, back, key_format):
 
 def _write_glyph(outstream, labels, glyph, fore, back, comment, tab, key_format, key_sep):
     """Rrite out a single glyph in text format."""
+    if not labels:
+        logging.warning('No labels for glyph')
+        return
     write_comments(outstream, glyph.comments, comm_char=comment)
     for ordinal in labels:
         outstream.write(key_format(ordinal) + key_sep)
@@ -235,6 +218,7 @@ def _save_yaff(font, outstream, fore, back, comment, tab, key_format, key_sep):
             value = props.pop(key, '')
             if value not in ('', None):
                 if not isinstance(value, str) or '\n' not in value:
+                    # this may use custom string converter (e.g ordinal labels)
                     outstream.write('{}: {}\n'.format(key, value))
                 else:
                     outstream.write(
