@@ -44,7 +44,7 @@ if Image:
     def save(typeface, outstream, size=(256, 256), packed=True, imageformat='png'):
         """Save fonts to bmfonts in zip container."""
         with ZipContainer(outstream, 'w') as container:
-            for font in typeface._fonts:
+            for font in typeface:
                 _create_bmfont(container, font, size, packed, imageformat)
 
 

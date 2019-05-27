@@ -24,6 +24,14 @@ class Typeface:
         """Create typeface from sequence of fonts."""
         self._fonts = tuple(fonts)
 
+    def __iter__(self):
+        """Iterate over fonts in typeface."""
+        return iter(self._fonts)
+
+    def __len__(self):
+        """Number of fonts in typeface."""
+        return len(self._fonts)
+
     @classmethod
     def load(cls, infile:str, format:str='', **kwargs):
         """Read new font from file."""
@@ -106,6 +114,9 @@ class Typeface:
                 if multi:
                     with ensure_stream(outfile, 'w', encoding=encoding) as outstream:
                         save(typeface, outstream, **kwargs)
+                elif len(typeface._fonts) == 1:
+                    with ensure_stream(outfile, 'w', encoding=encoding) as outstream:
+                        save(typeface._fonts[0], outstream, **kwargs)
                 else:
                     for font, stream in zip_streams(outfile, typeface._fonts, formats[0], encoding):
                         try:

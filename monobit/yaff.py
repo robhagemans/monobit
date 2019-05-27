@@ -76,7 +76,7 @@ def load(instream):
 @Typeface.saves('text', 'txt', 'yaff', encoding='utf-8')
 def save(typeface, outstream):
     """Write fonts to a yaff file."""
-    for i, font in enumerate(typeface._fonts):
+    for i, font in enumerate(typeface):
         if i:
             outstream.write(_SEPARATOR + '\n')
         _save_yaff(font, outstream, **_YAFF_PARAMETERS)

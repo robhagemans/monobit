@@ -124,7 +124,7 @@ def show(
         border=(32, 32, 32), back=(0, 0, 0), fore=(255, 255, 255),
     ):
     """Show font as image."""
-    for font in typeface._fonts:
+    for font in typeface:
         img = _to_image(font, columns, margin, padding, scale, border, back, fore)
         img.show()
     return typeface

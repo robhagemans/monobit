@@ -492,15 +492,24 @@ def _create_resource_table(header_size, post_size, resdata_size, n_fonts, font_s
 def _create_nonresident_name_table(typeface):
     """Non-resident name tabe containing the FONTRES line."""
     # get name, dpi of first font
-    # FIXME: assuming all the same here, but FONTRES is probably largely ignored anyway
-    name = typeface._fonts[0].family
-    if not name:
-        name, *_ = typeface._fonts[0].name.split(' ')
-    if not name:
-        name = 'NoName'
-    dpi = typeface._fonts[0].dpi
+    # FONTRES is probably largely ignored anyway
+    families = list(set(font.family for font in typeface if font.family))
+    if not families:
+        names = list(set(font.name for font in typeface if font.name))
+        if not names:
+            name = 'NoName'
+        else:
+            name, *_ = names[0].split(' ')
+    else:
+        name = families[0]
+        if len(families) > 1:
+            logging.warning('More than one font family name in container. Using `%s`.', name)
+    resolutions = list(set(font.dpi for font in typeface))
+    if len(resolutions) > 1:
+        logging.warning('More than one resolution in container. Using `%s`.', resolutions[0])
+    dpi = resolutions[0]
     xdpi, ydpi = dpi.x, dpi.y
-    points = [_font.point_size for _font in typeface._fonts]
+    points = [_font.point_size for _font in typeface]
     # FONTRES Aspect, LogPixelsX, LogPixelsY : Name Pts0,Pts1,... (Device res.)
     nonres = ('FONTRES %d,%d,%d : %s %s' % (
         (100 * xdpi) // ydpi, xdpi, ydpi,
@@ -512,9 +521,11 @@ def _create_nonresident_name_table(typeface):
 def _create_resident_name_table(typeface):
     """Resident name table containing the module name."""
     # use font-family name of first font
-    name = typeface._fonts[0].family.upper()
-    if not name:
+    families = list(set(font.family.upper() for font in typeface if font.family))
+    if not families:
         name = _MODULE_NAME.upper()
+    else:
+        name = families[0]
     # Resident name table should just contain a module name.
     mname = ''.join(
         _c for _c in name
@@ -526,7 +537,9 @@ def _create_resident_name_table(typeface):
 def _create_resource_data(typeface):
     """Store the actual font resources."""
     # construct the FNT resources
-    fonts = [create_fnt(_font) for _font in typeface._fonts]
+    for _font in typeface:
+        print(_font)
+    fonts = [create_fnt(_font) for _font in typeface]
     # construct the FONTDIR (FONTGROUPHDR)
     # https://docs.microsoft.com/en-us/windows/desktop/menurc/fontgrouphdr
     fontdir_struct = friendlystruct(
@@ -535,10 +548,8 @@ def _create_resource_data(typeface):
         # + array of DIRENTRY/FONTDIRENTRY structs
     )
     fontdir = bytes(fontdir_struct(len(fonts))) + b''.join(
-        _create_fontdirentry(
-            i+1, fonts[i], typeface._fonts[i]
-        )
-        for i in range(len(fonts))
+        _create_fontdirentry(i+1, fntdata, font)
+        for fntdata, font in zip(fonts, typeface)
     )
     resdata = fontdir.ljust(align(len(fontdir), _ALIGN_SHIFT), b'\0')
     font_start = [len(resdata)]
@@ -552,7 +563,7 @@ def _create_resource_data(typeface):
 
 def _create_fon(typeface):
     """Create a .FON font library."""
-    n_fonts = len(typeface._fonts)
+    n_fonts = len(typeface)
     # MZ DOS executable stub
     stubdata = _create_mz_stub()
     # (non)resident name tables
