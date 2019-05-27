@@ -66,7 +66,9 @@ _COMMON = friendlystruct(
     scaleW='uint16',
     scaleH='uint16',
     pages='uint16',
-    bitField='uint8',
+    # spec says next field is bitField, with 0-6 reserved, 7 packed
+    # but this choice aligns text formats with binary, and we can use as bool in either case
+    packed='uint8',
     alphaChnl='uint8',
     redChnl='uint8',
     greenChnl='uint8',
@@ -93,6 +95,13 @@ _CHAR = friendlystruct(
     page='uint8',
     chnl='uint8',
 )
+
+# channel bifield
+_CHNL_R = 1 << 2
+_CHNL_G = 1 << 1
+_CHNL_B = 1 << 0
+_CHNL_A = 1 << 3
+
 
 def _chars(size):
     return friendlystruct(
@@ -138,13 +147,22 @@ if Image:
                     else:
                         logging.info('found text: %s', desc)
                         fontinfo = _parse_text(data)
+                fonts.append(_extract(zipfile, **fontinfo))
             except Exception as e:
                 logging.error('Could not extract %s: %s', desc, e)
-            else:
-                if fontinfo:
-                    fonts.append(_extract(zipfile, **fontinfo))
         return Typeface(fonts)
 
+def _str_to_int(str):
+    if str == 'true':
+        return 1
+    elif str == 'false':
+        return 0
+    else:
+        return int(str)
+
+def _dict_to_ints(strdict):
+    """Convert all dict values to int."""
+    return {_k: _str_to_int(_attr) for _k, _attr in strdict.items()}
 
 def _parse_xml(data):
     """Parse XML bmfont description."""
@@ -155,14 +173,14 @@ def _parse_xml(data):
         )
     return dict(
         info=root.find('info').attrib,
-        common=root.find('common').attrib,
+        common=_COMMON(**_dict_to_ints(root.find('common').attrib)),
         pages=[_elem.attrib for _elem in root.find('pages').iterfind('page')],
         chars=[
-            _CHAR(**{_k: int(_attr) for _k, _attr in _elem.attrib.items()})
+            _CHAR(**_dict_to_ints(_elem.attrib))
             for _elem in root.find('chars').iterfind('char')
         ],
         kernings=[
-            _KERNING(**{_k: int(_attr) for _k, _attr in _elem.attrib.items()})
+            _KERNING(**_dict_to_ints(_elem.attrib))
             for _elem in root.find('kernings').iterfind('kerning')
         ],
     )
@@ -170,7 +188,7 @@ def _parse_xml(data):
 
 def _parse_text_dict(line):
     """Parse space separated key=value pairs."""
-    textdict = dict(_item.split('=') for _item in line.split(' '))
+    textdict = dict(_item.split('=') for _item in line.split())
     return {
         _key: _value.strip('"')
         for _key, _value in textdict.items()
@@ -188,17 +206,19 @@ def _parse_text(data):
             continue
         tag, textdict = line.split(' ', 1)
         textdict = _parse_text_dict(textdict)
-        if tag in ('info', 'common'):
+        if tag == 'info':
             fontinfo[tag] = textdict
+        if tag == 'common':
+            fontinfo[tag] = _COMMON(**_dict_to_ints(textdict))
         elif tag == 'page':
             fontinfo['pages'].append(textdict)
         elif tag == 'char':
             fontinfo['chars'].append(
-                _CHAR(**{_k: int(_attr) for _k, _attr in textdict.items()})
+                _CHAR(**_dict_to_ints(textdict))
             )
         elif tag == 'kerning':
             fontinfo['kernings'].append(
-                _KERNING(**{_k: int(_attr) for _k, _attr in textdict.items()})
+                _KERNING(**_dict_to_ints(textdict))
             )
     return fontinfo
 
@@ -250,6 +270,10 @@ def _parse_binary(data):
         for _id, _name in enumerate(props['pages'].pageNames)
     ]
     props['chars'] = props['chars'].chars
+    if 'kernings' in props:
+        props['kernings'] = props['kernings'].kernings
+    else:
+        props['kernings'] = []
     return props
 
 def _extract(zipfile, info, common, pages, chars, kernings=()):
@@ -266,20 +290,56 @@ def _extract(zipfile, info, common, pages, chars, kernings=()):
         min_after = min((char.xadvance - char.xoffset - char.width) for char in chars)
         min_before = min((char.xoffset) for char in chars)
         max_height = max(char.height + char.yoffset for char in chars)
+        # outline channel
+        if 1 in (common.redChnl, common.greenChnl, common.blueChnl, common.alphaChnl):
+            logging.warning('Outline channel not preserved.')
+        # extract channel masked sprites
+        sprites = []
         for char in chars:
             crop = sheets[char.page].crop((
                 char.x, char.y, char.x + char.width, char.y + char.height
             ))
-            masks = [bool(char.chnl&4), bool(char.chnl&2), bool(char.chnl&1), bool(char.chnl&8)]
+            # keep only channels that hold this char
+            # drop any zeroed/oned channels and the outline channel
+            masks = (
+                bool(char.chnl & _CHNL_R) and common.redChnl in (0, 2),
+                bool(char.chnl & _CHNL_G) and common.greenChnl in (0, 2),
+                bool(char.chnl & _CHNL_B) and common.blueChnl in (0, 2),
+                bool(char.chnl & _CHNL_A) and common.alphaChnl in (0, 2),
+            )
             if char.width and char.height:
-                # require fully saturated - we could set a threshold here
-                crop = tuple(
-                    all((not _mask or (_pix>127)) for _pix, _mask in zip(_rgba, masks))
-                    for _rgba in crop.getdata()
+                # require all glyph channels above threshold
+                imgdata = crop.getdata()
+                masked = tuple(
+                    tuple(_pix for _pix, _mask in zip(_rgba, masks) if _mask)
+                    for _rgba in imgdata
                 )
+            else:
+                masked = ()
+            sprites.append(masked)
+        # check if font is monochromatic
+        colourset = list(set(_tup for _sprite in sprites for _tup in _sprite))
+        if len(colourset) == 1:
+            logging.warning('All glyphs are empty.')
+            # only one colour found
+            bg, fg = colourset[0], None
+            # note that if colourset is empty, all char widths/heights must be zero
+        elif len(colourset) > 2:
+            raise ValueError(
+                'Greyscale, colour and antialiased fonts not supported.'
+            )
+        elif len(colourset) == 2:
+            # use highesr intensity (sum of channels) as foreground
+            bg, fg = colourset
+            if sum(bg) > sum(fg):
+                bg, fg = fg, bg
+        # extract glyphs
+        for char, sprite in zip(chars, sprites):
+            if char.width and char.height:
+                bits = tuple(_c == fg for _c in sprite)
                 glyph = Glyph(tuple(
-                    crop[_offs: _offs+char.width]
-                    for _offs in range(0, len(crop), char.width)
+                    bits[_offs: _offs+char.width]
+                    for _offs in range(0, len(bits), char.width)
                 ))
                 after = char.xadvance - char.xoffset - char.width
                 before = char.xoffset
