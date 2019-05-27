@@ -50,6 +50,10 @@ class ZipContainer:
                 encoding = 'utf-8'
             return io.TextIOWrapper(stream, encoding)
 
+    def namelist(self):
+        """List contents."""
+        return self._zip.namelist()
+
 
 ##############################################################################
 # top-level calls
@@ -58,36 +62,39 @@ if Image:
     @Typeface.loads('bmfzip', name='BMFont', encoding=None)
     def load(instream):
         """Load fonts from bmfont in zip container."""
-        zipfile = ZipFile(io.BytesIO(instream.read()))
-        descriptions = [
-            _name for _name in zipfile.namelist()
-            if _name.lower().endswith(('.fnt', '.json', '.xml'))
-        ]
-        fonts = []
-        for desc in descriptions:
-            data = zipfile.open(desc, 'r').read()
-            fontinfo = {}
-            try:
-                if data[:3] == b'BMF':
-                    logging.debug('found binary: %s', desc)
-                    fontinfo = _parse_binary(data)
-                else:
-                    for line in data.splitlines():
-                        if line:
-                            break
-                    line = line.decode('utf-8-sig').strip()
-                    if line.startswith('<?xml'):
-                        logging.debug('found xml: %s', desc)
-                        fontinfo = _parse_xml(data)
-                    elif line.startswith('{'):
-                        logging.debug('found json: %s', desc)
-                        fontinfo = _parse_json(data)
+        with ZipContainer(instream, 'r') as zipfile:
+            descriptions = [
+                _name for _name in zipfile.namelist()
+                if _name.lower().endswith(('.fnt', '.json', '.xml'))
+            ]
+            fonts = []
+            for desc in descriptions:
+                with zipfile.open(desc, 'rb') as fnt:
+                    magic = fnt.read(3)
+                fontinfo = {}
+                try:
+                    if magic == b'BMF':
+                        logging.debug('found binary: %s', desc)
+                        with zipfile.open(desc, 'rb') as fnt:
+                            fontinfo = _parse_binary(fnt.read())
                     else:
-                        logging.debug('found text: %s', desc)
-                        fontinfo = _parse_text(data)
-                fonts.append(_extract(zipfile, **fontinfo))
-            except Exception as e:
-                logging.error('Could not extract %s: %s', desc, e)
+                        with zipfile.open(desc, 'r') as fnt:
+                            for line in fnt:
+                                if line:
+                                    break
+                            data = line + '\n' + fnt.read()
+                            if line.startswith('<'):
+                                logging.debug('found xml: %s', desc)
+                                fontinfo = _parse_xml(data)
+                            elif line.startswith('{'):
+                                logging.debug('found json: %s', desc)
+                                fontinfo = _parse_json(data)
+                            else:
+                                logging.debug('found text: %s', desc)
+                                fontinfo = _parse_text(data)
+                    fonts.append(_extract(zipfile, **fontinfo))
+                except Exception as e:
+                    logging.error('Could not extract %s: %s', desc, e)
         return Typeface(fonts)
 
     @Typeface.saves('bmfzip', encoding=None, multi=True)
@@ -267,7 +274,7 @@ def _dict_to_ints(strdict):
 
 def _parse_xml(data):
     """Parse XML bmfont description."""
-    root = etree.fromstring(data.decode('utf-8-sig'))
+    root = etree.fromstring(data)
     if root.tag != 'font':
         raise ValueError(
             'Not a valid BMFont XML file: root should be <font>, not <{}>'.format(root.tag)
@@ -290,7 +297,7 @@ def _parse_xml(data):
 def _parse_json(data):
     """Parse JSON bmfont description."""
     # https://github.com/Jam3/load-bmfont/blob/master/json-spec.md
-    tree = json.loads(data.decode('utf-8-sig'))
+    tree = json.loads(data)
     return dict(
         bmformat='json',
         info=tree['info'],
@@ -316,7 +323,7 @@ def _parse_text(data):
         'chars': [],
         'kernings': [],
     }
-    for line in data.decode('utf-8-sig').splitlines():
+    for line in data.splitlines():
         if not line or ' ' not in line:
             continue
         tag, textdict = line.split(' ', 1)
@@ -394,7 +401,7 @@ def _parse_binary(data):
 def _extract(zipfile, bmformat, info, common, pages, chars, kernings=()):
     """Extract characters."""
     sheets = {
-        int(_page['id']): Image.open(zipfile.open(_page['file']))
+        int(_page['id']): Image.open(zipfile.open(_page['file'], 'rb'))
         for _page in pages
     }
     imgformats = set(str(_img.format) for _img in sheets.values())
