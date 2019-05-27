@@ -24,6 +24,33 @@ from .glyph import Glyph
 from .winfnt import _CHARSET_MAP
 
 
+class ZipContainer:
+    """Zip-file wrapper"""
+
+    def __init__(self, stream, mode='r'):
+        """Create wrapper."""
+        self._mode = mode
+        self._zip = ZipFile(stream, mode)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, one, two, three):
+        self._zip.close()
+
+    def open(self, name, mode):
+        """Open a stream in the container."""
+        if mode.endswith('b'):
+            return self._zip.open(name, mode[:-1])
+        else:
+            stream = self._zip.open(name, mode)
+            if mode == 'r':
+                encoding = 'utf-8-sig'
+            else:
+                encoding = 'utf-8'
+            return io.TextIOWrapper(stream, encoding)
+
+
 ##############################################################################
 # top-level calls
 
@@ -62,6 +89,13 @@ if Image:
             except Exception as e:
                 logging.error('Could not extract %s: %s', desc, e)
         return Typeface(fonts)
+
+    @Typeface.saves('bmfzip', encoding=None, multi=True)
+    def save(typeface, outstream, size=(256, 256), packed=True, imageformat='png'):
+        """Save fonts to bmfonts in zip container."""
+        with ZipContainer(outstream, 'w') as container:
+            for font in typeface._fonts:
+                _create_bmfont(container, font, size, packed, imageformat)
 
 
 ##############################################################################
@@ -560,8 +594,7 @@ def _create_textdict(name, dict):
         for _k, _v in dict.items())
     )
 
-
-def _create_bmfont(font, size=(256, 256), packed=False, imageformat='png'):
+def _create_bmfont(container, font, size=(256, 256), packed=False, imageformat='png'):
     """Create a bmfont package."""
     # create images
     pages, chars = _create_spritesheets(font, size, packed)
@@ -571,7 +604,8 @@ def _create_bmfont(font, size=(256, 256), packed=False, imageformat='png'):
     props['pages'] = []
     for page_id, page in enumerate(pages):
         name = '{}_{}.{}'.format(font.family, page_id, imageformat)
-        page.save(name)
+        with container.open(name, 'wb') as imgfile:
+            page.save(imgfile, format=imageformat)
         props['pages'].append({'id': page_id, 'file': name})
     props['info'] = {
         'face': font.family,
@@ -613,7 +647,7 @@ def _create_bmfont(font, size=(256, 256), packed=False, imageformat='png'):
         props['kernings'] = []
     # write the .fnt description
     bmfontname = '{}.fnt'.format(font.family)
-    with open(bmfontname, 'w') as bmf:
+    with container.open(bmfontname, 'w') as bmf:
         bmf.write(_create_textdict('info', props['info']))
         bmf.write(_create_textdict('common', props['common']))
         for page in props['pages']:
