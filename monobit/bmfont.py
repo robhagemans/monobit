@@ -468,21 +468,31 @@ def _extract(zipfile, bmformat, info, common, pages, chars, kernings=()):
 ##############################################################################
 # bmfont writer
 
-def _create_spritesheets(font, size=(256, 256)):
+def _create_spritesheets(font, size=(256, 256), packed=False):
     """Dump font to sprite sheets."""
     # use all channels
-    channels = 15
-    back = 0 #(0, 0, 0, 0)
-    fore = 255 #(255, 255, 255, 255)
-    border = 0 #(0, 0, 0, 0)
+    if not packed:
+        channels = 15
+        n_layers = 1
+    else:
+        n_layers = 4
+    back = 0
+    fore = 255
+    border = 0
     width, height = size
-    pages = []
     chars = []
+    pages = []
+    empty = Image.new('L', (width, height), border)
+    sheets = [empty] * n_layers
+    pages.append(sheets)
     iter_unicode = font.iter_unicode()
     page_id = 0
+    layer = 0
     while True:
+        if packed:
+            channels = 1 << layer
         img = Image.new('L', (width, height), border)
-        pages.append(img)
+        sheets[layer] = img
         # output glyphs
         x, y = 0, 0
         next_x, next_y = 0, 0
@@ -517,5 +527,18 @@ def _create_spritesheets(font, size=(256, 256)):
             })
         else:
             # iter_unicode runs out, get out
-            return pages, chars
-        page_id += 1
+            break
+        # move to next layer or page
+        if layer == n_layers - 1:
+            page_id += 1
+            layer = 0
+            sheets = [empty] * n_layers
+            pages.append(sheets)
+        else:
+            layer += 1
+    if packed:
+        # bmfont channel order is B, G, R, A
+        pages = [Image.merge('RGBA', [_sh[2], _sh[1], _sh[0], _sh[3]]) for _sh in pages]
+    else:
+        pages = [Image.merge('RGBA', _sh*4) for _sh in pages]
+    return pages, chars
