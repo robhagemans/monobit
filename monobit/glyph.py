@@ -42,6 +42,8 @@ class Glyph:
     @staticmethod
     def from_text(rows, background):
         """Create glyph from sequence of str."""
+        #TODO: rename - this could work on any sequence of objects  (e.g. image matrix)
+        # e.g. from_matrix and from_tuple?
         return Glyph(tuple(
             tuple(_char not in background for _char in _row)
             for _row in rows
@@ -54,9 +56,20 @@ class Glyph:
             for _row in self._rows
         )
 
-    def as_bits(self):
-        """Return bit matrix."""
-        return self._rows
+    def as_matrix(self, fore=1, back=0):
+        """Return matrix of user-specified forground and background objects."""
+        return tuple(
+            tuple(fore if _c else back for _c in _row)
+            for _row in self._rows
+        )
+
+    def as_tuple(self, fore=1, back=0):
+        """Return flat tuple of user-specified forground and background objects."""
+        return tuple(
+            fore if _c else back
+            for _row in self._rows
+            for _c in _row
+        )
 
     @staticmethod
     def from_bytes(byteseq, width, height=None):

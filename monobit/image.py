@@ -5,6 +5,8 @@ monobit.image - fonts stored in image files
 licence: https://opensource.org/licenses/MIT
 """
 
+import logging
+
 try:
     from PIL import Image
 except ImportError:
@@ -49,7 +51,7 @@ if Image:
         # check that cells are monochrome
         colourset = set.union(*(set(_data) for _data in crops))
         if len(colourset) > 2:
-            raise ValueError('image payload is not monochrome')
+            raise ValueError('Colour, greyscale and antialiased glyphs not supported.')
         # replace colours with characters
         # top-left pixel of first char assumed to be background colour
         bg = crops[0][0]
@@ -103,23 +105,18 @@ def _to_image(
         for col in range(columns):
             ordinal = row * columns + col
             try:
-                glyph = font.get_glyph(ordinal).as_bits()
+                glyph = font.get_glyph(ordinal)
             except KeyError:
                 continue
-            if not glyph or not glyph[0]:
+            if not glyph.width or not glyph.height:
                 continue
-            charimg = Image.new('RGB', (len(glyph[0]), len(glyph)))
-            data = [
-                fore if _c else back
-                for _row in glyph
-                for _c in _row
-            ]
+            charimg = Image.new('RGB', (glyph.width, glyph.height))
+            data = glyph.as_tuple(fore, back)
             charimg.putdata(data)
             charimg = charimg.resize((charimg.width * scale_x, charimg.height * scale_y))
             lefttop = (margin_x + col*step_x, margin_y + row*step_y)
             img.paste(charimg, lefttop)
     return img
-
 
 def show(
         typeface,

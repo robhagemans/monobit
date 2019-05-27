@@ -463,3 +463,59 @@ def _extract(zipfile, bmformat, info, common, pages, chars, kernings=()):
     }
     properties.update({'bmfont.' + _k: _v for _k, _v in bmfont_props.items()})
     return Font(glyphs, labels, (), properties)
+
+
+##############################################################################
+# bmfont writer
+
+def _create_spritesheets(font, size=(256, 256)):
+    """Dump font to sprite sheets."""
+    # use all channels
+    channels = 15
+    back = 0 #(0, 0, 0, 0)
+    fore = 255 #(255, 255, 255, 255)
+    border = 0 #(0, 0, 0, 0)
+    width, height = size
+    pages = []
+    chars = []
+    iter_unicode = font.iter_unicode()
+    page_id = 0
+    while True:
+        img = Image.new('L', (width, height), border)
+        pages.append(img)
+        # output glyphs
+        x, y = 0, 0
+        next_x, next_y = 0, 0
+        for label, glyph in iter_unicode:
+            if glyph.height and glyph.width:
+                if next_x + glyph.width > width:
+                    x, y = 0, next_y
+                else:
+                    x = next_x
+                if y + glyph.height > height:
+                    # next sheet
+                    break
+                # put sequentially in straight rows, we can be clever some other time
+                next_y = max(y + glyph.height, next_y)
+                charimg = Image.new('L', (glyph.width, glyph.height))
+                data = glyph.as_tuple(fore, back)
+                charimg.putdata(data)
+                img.paste(charimg, (x, y))
+                next_x = x + glyph.width
+            chars.append({
+                'id': int(label[2:], 16),
+                'x': x,
+                'y': y,
+                'width': glyph.width,
+                'height': glyph.height,
+                'xoffset': font.bearing_before,
+                'yoffset': font.bounding_box.y - glyph.height, #-font.offset - glyph.height,
+                # not sure how these are really interpreted
+                'xadvance': font.bearing_before + glyph.width + font.bearing_after,
+                'page': page_id,
+                'chnl': channels,
+            })
+        else:
+            # iter_unicode runs out, get out
+            return pages, chars
+        page_id += 1
