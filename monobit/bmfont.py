@@ -5,12 +5,13 @@ monobit.bmfont - AngelCode BMFont format
 licence: https://opensource.org/licenses/MIT
 """
 
-import logging
 import io
+import os
 from zipfile import ZipFile
 import xml.etree.ElementTree as etree
 import json
 import shlex
+import logging
 
 try:
     from PIL import Image
@@ -371,10 +372,10 @@ def _parse_binary(data):
         props['kernings'] = []
     return props
 
-def _extract(zipfile, bmformat, info, common, pages, chars, kernings=()):
+def _extract(zipfile, path, bmformat, info, common, pages, chars, kernings=()):
     """Extract characters."""
     sheets = {
-        int(_page['id']): Image.open(zipfile.open(_page['file'], 'rb'))
+        int(_page['id']): Image.open(zipfile.open(os.path.join(path, _page['file']), 'rb'))
         for _page in pages
     }
     imgformats = set(str(_img.format) for _img in sheets.values())
@@ -504,7 +505,8 @@ def _read_bmfont(container, name):
                 else:
                     logging.debug('found text: %s', name)
                     fontinfo = _parse_text(data)
-        return _extract(container, **fontinfo)
+        path = os.path.dirname(name)
+        return _extract(container, path, **fontinfo)
     except Exception as e:
         logging.error('Could not extract %s: %s', name, e)
 
