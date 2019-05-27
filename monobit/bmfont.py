@@ -24,10 +24,49 @@ from .glyph import Glyph
 from .winfnt import _CHARSET_MAP
 
 
+##############################################################################
+# top-level calls
+
+if Image:
+    @Typeface.loads('bmfzip', name='BMFont', encoding=None)
+    def load(instream):
+        """Load fonts from bmfont in zip container."""
+        zipfile = ZipFile(io.BytesIO(instream.read()))
+        descriptions = [
+            _name for _name in zipfile.namelist()
+            if _name.lower().endswith(('.fnt', '.json', '.xml'))
+        ]
+        fonts = []
+        for desc in descriptions:
+            data = zipfile.open(desc, 'r').read()
+            fontinfo = {}
+            try:
+                if data[:3] == b'BMF':
+                    logging.debug('found binary: %s', desc)
+                    fontinfo = _parse_binary(data)
+                else:
+                    for line in data.splitlines():
+                        if line:
+                            break
+                    line = line.decode('utf-8-sig').strip()
+                    if line.startswith('<?xml'):
+                        logging.debug('found xml: %s', desc)
+                        fontinfo = _parse_xml(data)
+                    elif line.startswith('{'):
+                        logging.debug('found json: %s', desc)
+                        fontinfo = _parse_json(data)
+                    else:
+                        logging.debug('found text: %s', desc)
+                        fontinfo = _parse_text(data)
+                fonts.append(_extract(zipfile, **fontinfo))
+            except Exception as e:
+                logging.error('Could not extract %s: %s', desc, e)
+        return Typeface(fonts)
+
+
+##############################################################################
 # BMFont spec
-# http://www.angelcode.com/products/bmfont/doc/file_format.html
-
-
+# see http://www.angelcode.com/products/bmfont/doc/file_format.html
 
 _HEAD = friendlystruct(
     'le',
@@ -48,6 +87,8 @@ _BLK_PAGES = 3
 _BLK_CHARS = 4
 _BLK_KERNINGS = 5
 
+
+# info struct
 
 def _info(size):
     return friendlystruct(
@@ -100,6 +141,8 @@ _CHARSET_STR_MAP = {
 }
 
 
+# common struct
+
 _COMMON = friendlystruct(
     'le',
     lineHeight='uint16',
@@ -122,6 +165,9 @@ def _pages(npages, size):
         'le',
         pageNames=(friendlystruct.char * strlen) * int(npages)
     )
+
+
+# char struct
 
 _CHAR = friendlystruct(
     'le',
@@ -150,6 +196,9 @@ def _chars(size):
         chars=_CHAR * (size // _CHAR.size)
     )
 
+
+# kerning struct
+
 _KERNING = friendlystruct(
     'le',
     first='uint32',
@@ -164,41 +213,8 @@ def _kernings(size):
     )
 
 
-if Image:
-    @Typeface.loads('bmfzip', name='BMFont', encoding=None)
-    def load(instream):
-        """Load fonts from bmfont in zip container."""
-        zipfile = ZipFile(io.BytesIO(instream.read()))
-        descriptions = [
-            _name for _name in zipfile.namelist()
-            if _name.lower().endswith(('.fnt', '.json', '.xml'))
-        ]
-        fonts = []
-        for desc in descriptions:
-            data = zipfile.open(desc, 'r').read()
-            fontinfo = {}
-            try:
-                if data[:3] == b'BMF':
-                    logging.debug('found binary: %s', desc)
-                    fontinfo = _parse_binary(data)
-                else:
-                    for line in data.splitlines():
-                        if line:
-                            break
-                    line = line.decode('utf-8-sig').strip()
-                    if line.startswith('<?xml'):
-                        logging.debug('found xml: %s', desc)
-                        fontinfo = _parse_xml(data)
-                    elif line.startswith('{'):
-                        logging.debug('found json: %s', desc)
-                        fontinfo = _parse_json(data)
-                    else:
-                        logging.debug('found text: %s', desc)
-                        fontinfo = _parse_text(data)
-                fonts.append(_extract(zipfile, **fontinfo))
-            except Exception as e:
-                logging.error('Could not extract %s: %s', desc, e)
-        return Typeface(fonts)
+##############################################################################
+# bmfont readers
 
 def _to_int(value):
     """Convert str or numeric value to int."""
