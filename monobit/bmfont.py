@@ -460,6 +460,7 @@ def _extract(zipfile, bmformat, info, common, pages, chars, kernings=()):
             '{} {} {}'.format(Label(_kern.first), Label(_kern.second), _kern.amount)
             for _kern in kernings
         ),
+        # TODO: offset from common.base
     }
     properties.update({'bmfont.' + _k: _v for _k, _v in bmfont_props.items()})
     return Font(glyphs, labels, (), properties)
@@ -512,19 +513,19 @@ def _create_spritesheets(font, size=(256, 256), packed=False):
                 charimg.putdata(data)
                 img.paste(charimg, (x, y))
                 next_x = x + glyph.width
-            chars.append({
-                'id': int(label[2:], 16),
-                'x': x,
-                'y': y,
-                'width': glyph.width,
-                'height': glyph.height,
-                'xoffset': font.bearing_before,
-                'yoffset': font.bounding_box.y - glyph.height, #-font.offset - glyph.height,
+            chars.append(dict(
+                id=int(label[2:], 16),
+                x=x,
+                y=y,
+                width=glyph.width,
+                height=glyph.height,
+                xoffset=font.bearing_before,
+                yoffset=font.bounding_box.y - glyph.height, #-font.offset - glyph.height,
                 # not sure how these are really interpreted
-                'xadvance': font.bearing_before + glyph.width + font.bearing_after,
-                'page': page_id,
-                'chnl': channels,
-            })
+                xadvance=font.bearing_before + glyph.width + font.bearing_after,
+                page=page_id,
+                chnl=channels,
+            ))
         else:
             # iter_unicode runs out, get out
             break
@@ -542,3 +543,84 @@ def _create_spritesheets(font, size=(256, 256), packed=False):
     else:
         pages = [Image.merge('RGBA', _sh*4) for _sh in pages]
     return pages, chars
+
+
+def _to_str(value):
+    """Convert value to str for bmfont file."""
+    if isinstance(value, str) :
+        return '"{}"'.format(value)
+    if isinstance(value, (list, tuple)):
+        return ','.join(str(_item) for _item in value)
+    return str(int(value))
+
+def _create_textdict(name, dict):
+    """Create a text-dictionary line for bmfontfile."""
+    return '{} {}\n'.format(name, ' '.join(
+        '{}={}'.format(_k, _to_str(_v))
+        for _k, _v in dict.items())
+    )
+
+
+def _create_bmfont(font, size=(256, 256), packed=False, imageformat='png'):
+    """Create a bmfont package."""
+    # create images
+    pages, chars = _create_spritesheets(font, size, packed)
+    props = {}
+    props['chars'] = chars
+    # save images; create page table
+    props['pages'] = []
+    for page_id, page in enumerate(pages):
+        name = '{}_{}.{}'.format(font.family, page_id, imageformat)
+        page.save(name)
+        props['pages'].append({'id': page_id, 'file': name})
+    props['info'] = {
+        'face': font.family,
+        'size': font.pixel_size,
+        'bold': font.weight == 'bold',
+        'italic': font.slant in ('italic', 'oblique'),
+        'charset': '',
+        'unicode': True,
+        'stretchH': 100,
+        'smooth': False,
+        'aa': 1,
+        'padding': (0, 0, 0, 0),
+        'spacing': (0, 0),
+        'outline': 0,
+    }
+    props['common'] = {
+        'lineHeight': font.bounding_box.y + font.leading,
+        'base': font.bounding_box.y + font.offset,
+        'scaleW': size[0],
+        'scaleH': size[1],
+        'pages': len(pages),
+        'packed': packed,
+        'alphaChnl': 0,
+        'redChnl': 0,
+        'greenChnl': 0,
+        'blueChnl': 0,
+    }
+    if hasattr(font, 'kerning'):
+        # FIXME: we're saving glyphs iterating over unicode, but this table has ordinal labels...
+        props['kernings'] = [{
+                'first': int(_first, 0),
+                'second': int(_second, 0),
+                'amount': int(_amount)
+            }
+            for _kernline in font.kerning.splitlines()
+            for _first, _second, _amount in _kernline.split()
+        ]
+    else:
+        props['kernings'] = []
+    # write the .fnt description
+    bmfontname = '{}.fnt'.format(font.family)
+    with open(bmfontname, 'w') as bmf:
+        bmf.write(_create_textdict('info', props['info']))
+        bmf.write(_create_textdict('common', props['common']))
+        for page in props['pages']:
+            bmf.write(_create_textdict('page', page))
+        bmf.write('chars count={}\n'.format(len(chars)))
+        for char in chars:
+            bmf.write(_create_textdict('char', char))
+        bmf.write('kernings count={}\n'.format(len(props['kernings'])))
+        for kern in props['kernings']:
+            bmf.write(_create_textdict('kerning', kern))
