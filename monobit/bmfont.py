@@ -19,6 +19,12 @@ from .binary import friendlystruct
 from .typeface import Typeface
 from .font import Font, Label
 from .glyph import Glyph
+from .winfnt import _CHARSET_MAP
+
+
+# BMFont spec
+# http://www.angelcode.com/products/bmfont/doc/file_format.html
+
 
 
 _HEAD = friendlystruct(
@@ -59,6 +65,39 @@ def _info(size):
         fontName = friendlystruct.char * (size-14),
     )
 
+# info bitfield
+_INFO_BOLD = 1 << 3
+_INFO_ITALIC = 1 << 2
+_INFO_UNICODE = 1 << 1
+_INFO_SMOOTH = 1 << 0
+
+# BMFont charset constants seem to be undocumented, but a list is here:
+# https://github.com/vladimirgamalyan/fontbm/blob/master/src/FontInfo.cpp
+# looks like these are equal to the Windows OEM ones
+# mapping of those is a guess, see _CHARSET_MAP in winfnt.py
+_CHARSET_STR_MAP = {
+    'ANSI': 'windows-1252',
+    'DEFAULT': 'windows-1252', # ?
+    'SYMBOL': 'symbol',
+    'MAC': 'mac-roman',
+    'SHIFTJIS': 'windows-932',
+    'HANGUL': 'windows-949',
+    'JOHAB': 'johab',
+    'GB2312': 'windows-936',
+    'CHINESEBIG5': 'windows-950',
+    'GREEK': 'windows-1253',
+    'TURKISH': 'windows-1254',
+    'VIETNAMESE': 'windows-1258',
+    'HEBREW': 'windows-1255',
+    'ARABIC': 'windows-1256',
+    'BALTIC': 'windows-1257',
+    'RUSSIAN': 'windows-1251',
+    'THAI': 'windows-874',
+    'EASTEUROPE': 'windows-1250',
+    'OEM': 'cp437', # ?
+}
+
+
 _COMMON = friendlystruct(
     'le',
     lineHeight='uint16',
@@ -96,7 +135,7 @@ _CHAR = friendlystruct(
     chnl='uint8',
 )
 
-# channel bifield
+# channel bitfield
 _CHNL_R = 1 << 2
 _CHNL_G = 1 << 1
 _CHNL_B = 1 << 0
@@ -135,34 +174,37 @@ if Image:
             fontinfo = {}
             try:
                 if data[:3] == b'BMF':
-                    logging.info('found binary: %s', desc)
+                    logging.debug('found binary: %s', desc)
                     fontinfo = _parse_binary(data)
                 else:
                     for line in data.splitlines():
                         if line:
                             break
                     if line.decode('utf-8-sig').strip().startswith('<?xml'):
-                        logging.info('found xml: %s', desc)
+                        logging.debug('found xml: %s', desc)
                         fontinfo = _parse_xml(data)
                     else:
-                        logging.info('found text: %s', desc)
+                        logging.debug('found text: %s', desc)
                         fontinfo = _parse_text(data)
                 fonts.append(_extract(zipfile, **fontinfo))
             except Exception as e:
                 logging.error('Could not extract %s: %s', desc, e)
         return Typeface(fonts)
 
-def _str_to_int(str):
-    if str == 'true':
+def _to_int(value):
+    """Convert str or int value to int."""
+    if isinstance(value, str):
+        value = value.lower()
+    if value == 'true':
         return 1
-    elif str == 'false':
+    elif value == 'false':
         return 0
     else:
-        return int(str)
+        return int(value)
 
 def _dict_to_ints(strdict):
     """Convert all dict values to int."""
-    return {_k: _str_to_int(_attr) for _k, _attr in strdict.items()}
+    return {_k: _to_int(_attr) for _k, _attr in strdict.items()}
 
 def _parse_xml(data):
     """Parse XML bmfont description."""
@@ -172,6 +214,7 @@ def _parse_xml(data):
             'Not a valid BMFont XML file: root should be <font>, not <{}>'.format(root.tag)
         )
     return dict(
+        bmformat='xml',
         info=root.find('info').attrib,
         common=_COMMON(**_dict_to_ints(root.find('common').attrib)),
         pages=[_elem.attrib for _elem in root.find('pages').iterfind('page')],
@@ -197,6 +240,7 @@ def _parse_text_dict(line):
 def _parse_text(data):
     """Parse text bmfont description."""
     fontinfo = {
+        'bmformat': 'text',
         'pages': [],
         'chars': [],
         'kernings': [],
@@ -227,7 +271,7 @@ def _parse_binary(data):
     """Parse binary bmfont description."""
     head = _HEAD.from_bytes(data, 0)
     offset = _HEAD.size
-    props = {}
+    props = {'bmformat': 'binary'}
     while offset < len(data):
         blkhead = _BLKHEAD.from_bytes(data, offset)
         if blkhead.typeId == _BLK_INFO:
@@ -252,11 +296,11 @@ def _parse_binary(data):
     props['info'] = {
         'face': bininfo.fontName.decode('ascii', 'replace'),
         'size': bininfo.fontSize,
-        'bold': bininfo.bitField & 8,
-        'italic': '1' if bininfo.bitField & 4 else '0',
-        'unicode': '1' if bininfo.bitField & 2 else '0',
-        'smooth': '1' if bininfo.bitField & 1 else '0',
-        'charset': bininfo.charSet,
+        'bold': bininfo.bitField & _INFO_BOLD,
+        'italic': bininfo.bitField & _INFO_ITALIC,
+        'unicode': bininfo.bitField & _INFO_UNICODE,
+        'smooth': bininfo.bitField & _INFO_SMOOTH,
+        'charset': _CHARSET_MAP.get(bininfo.charSet, ''),
         'aa': bininfo.aa,
         'padding': ','.join((
             str(bininfo.paddingUp), str(bininfo.paddingRight),
@@ -276,12 +320,15 @@ def _parse_binary(data):
         props['kernings'] = []
     return props
 
-def _extract(zipfile, info, common, pages, chars, kernings=()):
+def _extract(zipfile, bmformat, info, common, pages, chars, kernings=()):
     """Extract characters."""
     sheets = {
-        int(_page['id']): Image.open(zipfile.open(_page['file'])).convert('RGBA')
+        int(_page['id']): Image.open(zipfile.open(_page['file']))
         for _page in pages
     }
+    imgformats = set(str(_img.format) for _img in sheets.values())
+    # ensure we have RGBA channels
+    sheets = {_k: _v.convert('RGBA') for _k, _v in sheets.items()}
     glyphs = []
     labels = {}
     min_after = 0
@@ -345,22 +392,34 @@ def _extract(zipfile, info, common, pages, chars, kernings=()):
                 before = char.xoffset
                 height = char.height + char.yoffset
                 # bring to equal height, equal bearings
-                glyph = glyph.expand(before - min_before, char.yoffset, after - min_after, max_height - height)
+                glyph = glyph.expand(
+                    before - min_before, char.yoffset, after - min_after, max_height - height
+                )
             else:
                 glyph = Glyph.empty(char.xadvance - min_after, max_height)
             labels[char.id] = len(glyphs)
             glyphs.append(glyph)
     # parse properties
-    bmfont_props = {**info} #, **common}
+    bmfont_props = {**info}
+    # encoding
+    if _to_int(bmfont_props.pop('unicode')):
+        encoding = 'unicode'
+    else:
+        # if props are from binary, this has already been converted through _CHARSET_MAP
+        charset = bmfont_props.pop('charset')
+        encoding = _CHARSET_STR_MAP.get(charset.upper(), charset)
     properties = {
+        'source-format': 'BMFont ({} .fnt; {} sprites)'.format(bmformat, ','.join(imgformats)),
         'bearing-after': min_after,
         'family': bmfont_props.pop('face'),
         'pixel-size': bmfont_props.pop('size'),
-        'weight': 'bold' if bmfont_props.pop('bold') == '1' else 'regular',
-        'slant': 'italic' if bmfont_props.pop('italic') == '1' else 'roman',
-        'encoding': 'unicode' if bmfont_props.pop('unicode') == '1' else bmfont_props.pop('charset'),
-        'kerning': '\n'.join('{} {} {}'.format(Label(_kern.first), Label(_kern.second), _kern.amount) for _kern in kernings),
+        'weight': 'bold' if _to_int(bmfont_props.pop('bold')) else 'regular',
+        'slant': 'italic' if _to_int(bmfont_props.pop('italic')) else 'roman',
+        'encoding': encoding,
+        'kerning': '\n'.join(
+            '{} {} {}'.format(Label(_kern.first), Label(_kern.second), _kern.amount)
+            for _kern in kernings
+        ),
     }
     properties.update({'bmfont.' + _k: _v for _k, _v in bmfont_props.items()})
-    # TODO: preserve kerning pairs
     return Font(glyphs, labels, (), properties)

@@ -83,7 +83,9 @@ _CHARSET_MAP = {
     0xde: 'windows-874',
     # EASTEUROPE_CHARSET = 0x000000EE
     0xee: 'windows-1250',
-    # OEM_CHARSET = 0x000000FF - also "the IBM PC hardware font" as per windows 1.03 sdk docs
+    # OEM_CHARSET = 0x000000FF
+    # Specifies a mapping to one of the OEM code pages, according to the current system locale setting
+    # - also "the IBM PC hardware font" as per windows 1.03 sdk docs
     0xff: 'cp437',
 }
 
