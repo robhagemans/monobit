@@ -367,6 +367,9 @@ def _extract(zipfile, bmformat, info, common, pages, chars, kernings=()):
             crop = sheets[char.page].crop((
                 char.x, char.y, char.x + char.width, char.y + char.height
             ))
+            # deal with faulty .fnt's
+            if not char.chnl:
+                char.chnl = 15
             # keep only channels that hold this char
             # drop any zeroed/oned channels and the outline channel
             masks = (
