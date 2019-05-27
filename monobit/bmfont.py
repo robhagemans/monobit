@@ -67,34 +67,7 @@ if Image:
                 _name for _name in zipfile.namelist()
                 if _name.lower().endswith(('.fnt', '.json', '.xml'))
             ]
-            fonts = []
-            for desc in descriptions:
-                with zipfile.open(desc, 'rb') as fnt:
-                    magic = fnt.read(3)
-                fontinfo = {}
-                try:
-                    if magic == b'BMF':
-                        logging.debug('found binary: %s', desc)
-                        with zipfile.open(desc, 'rb') as fnt:
-                            fontinfo = _parse_binary(fnt.read())
-                    else:
-                        with zipfile.open(desc, 'r') as fnt:
-                            for line in fnt:
-                                if line:
-                                    break
-                            data = line + '\n' + fnt.read()
-                            if line.startswith('<'):
-                                logging.debug('found xml: %s', desc)
-                                fontinfo = _parse_xml(data)
-                            elif line.startswith('{'):
-                                logging.debug('found json: %s', desc)
-                                fontinfo = _parse_json(data)
-                            else:
-                                logging.debug('found text: %s', desc)
-                                fontinfo = _parse_text(data)
-                    fonts.append(_extract(zipfile, **fontinfo))
-                except Exception as e:
-                    logging.error('Could not extract %s: %s', desc, e)
+            fonts = [_read_bmfont(zipfile, desc) for desc in descriptions]
         return Typeface(fonts)
 
     @Typeface.saves('bmfzip', encoding=None, multi=True)
@@ -506,6 +479,34 @@ def _extract(zipfile, bmformat, info, common, pages, chars, kernings=()):
     properties.update({'bmfont.' + _k: _v for _k, _v in bmfont_props.items()})
     return Font(glyphs, labels, (), properties)
 
+def _read_bmfont(container, name):
+    """Read a bmfont from a container."""
+    with container.open(name, 'rb') as fnt:
+        magic = fnt.read(3)
+    fontinfo = {}
+    try:
+        if magic == b'BMF':
+            logging.debug('found binary: %s', name)
+            with container.open(name, 'rb') as fnt:
+                fontinfo = _parse_binary(fnt.read())
+        else:
+            with container.open(name, 'r') as fnt:
+                for line in fnt:
+                    if line:
+                        break
+                data = line + '\n' + fnt.read()
+                if line.startswith('<'):
+                    logging.debug('found xml: %s', name)
+                    fontinfo = _parse_xml(data)
+                elif line.startswith('{'):
+                    logging.debug('found json: %s', name)
+                    fontinfo = _parse_json(data)
+                else:
+                    logging.debug('found text: %s', name)
+                    fontinfo = _parse_text(data)
+        return _extract(container, **fontinfo)
+    except Exception as e:
+        logging.error('Could not extract %s: %s', name, e)
 
 ##############################################################################
 # bmfont writer
