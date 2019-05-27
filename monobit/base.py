@@ -17,6 +17,13 @@ DEFAULT_FORMAT = 'text'
 VERSION = '0.8'
 
 
+def scriptable(fn):
+    """Decorator to register operation for scripting."""
+    fn.scriptable = True
+    fn.script_args = fn.__annotations__
+    return fn
+
+
 @contextmanager
 def ensure_stream(infile, mode, encoding=None):
     """
@@ -80,8 +87,70 @@ def zip_streams(outfile, sequence, ext='', encoding=None):
                 if data:
                     zipfile.writestr(filename, data)
 
-def scriptable(fn):
-    """Decorator to register operation for scripting."""
-    fn.scriptable = True
-    fn.script_args = fn.__annotations__
-    return fn
+
+class ZipContainer:
+    """Zip-file wrapper"""
+
+    def __init__(self, stream, mode='r'):
+        """Create wrapper."""
+        self._mode = mode
+        self._zip = ZipFile(stream, mode)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, one, two, three):
+        self._zip.close()
+
+    def open(self, name, mode):
+        """Open a stream in the container."""
+        if mode.endswith('b'):
+            return self._zip.open(name, mode[:-1])
+        else:
+            stream = self._zip.open(name, mode)
+            if mode == 'r':
+                encoding = 'utf-8-sig'
+            else:
+                encoding = 'utf-8'
+            return io.TextIOWrapper(stream, encoding)
+
+    def namelist(self):
+        """List contents."""
+        return self._zip.namelist()
+
+
+class DirContainer:
+    """Treat directory tree as a container."""
+
+    def __init__(self, path, mode='r'):
+        """Create wrapper."""
+        self._path = path
+        if mode == 'w':
+            try:
+                os.makedirs(path)
+            except EnvironmentError:
+                pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, one, two, three):
+        pass
+
+    def open(self, name, mode):
+        """Open a stream in the container."""
+        if mode.startswith('w'):
+            path = os.path.dirname(name)
+            try:
+                os.makedirs(os.path.join(self._path, path))
+            except EnvironmentError:
+                pass
+        return open(os.path.join(self._path, name), mode)
+
+    def namelist(self):
+        """List contents."""
+        return [
+            os.path.join(_r, _f)[len(self._path):]
+            for _r, _, _files in os.walk(self._path)
+            for _f in _files
+        ]

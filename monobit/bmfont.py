@@ -5,55 +5,24 @@ monobit.bmfont - AngelCode BMFont format
 licence: https://opensource.org/licenses/MIT
 """
 
-import io
 import os
-from zipfile import ZipFile
-import xml.etree.ElementTree as etree
 import json
 import shlex
 import logging
+import xml.etree.ElementTree as etree
 
 try:
     from PIL import Image
 except ImportError:
     Image = None
 
+from .base import ZipContainer
 from .binary import friendlystruct
 from .typeface import Typeface
 from .font import Font, Label
 from .glyph import Glyph
 from .winfnt import _CHARSET_MAP
 
-
-class ZipContainer:
-    """Zip-file wrapper"""
-
-    def __init__(self, stream, mode='r'):
-        """Create wrapper."""
-        self._mode = mode
-        self._zip = ZipFile(stream, mode)
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, one, two, three):
-        self._zip.close()
-
-    def open(self, name, mode):
-        """Open a stream in the container."""
-        if mode.endswith('b'):
-            return self._zip.open(name, mode[:-1])
-        else:
-            stream = self._zip.open(name, mode)
-            if mode == 'r':
-                encoding = 'utf-8-sig'
-            else:
-                encoding = 'utf-8'
-            return io.TextIOWrapper(stream, encoding)
-
-    def namelist(self):
-        """List contents."""
-        return self._zip.namelist()
 
 
 ##############################################################################
