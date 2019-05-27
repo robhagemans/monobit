@@ -9,6 +9,8 @@ import logging
 import io
 from zipfile import ZipFile
 import xml.etree.ElementTree as etree
+import json
+import shlex
 
 try:
     from PIL import Image
@@ -167,7 +169,10 @@ if Image:
     def load(instream):
         """Load fonts from bmfont in zip container."""
         zipfile = ZipFile(io.BytesIO(instream.read()))
-        descriptions = [_name for _name in zipfile.namelist() if _name.lower().endswith('.fnt')]
+        descriptions = [
+            _name for _name in zipfile.namelist()
+            if _name.lower().endswith(('.fnt', '.json', '.xml'))
+        ]
         fonts = []
         for desc in descriptions:
             data = zipfile.open(desc, 'r').read()
@@ -180,9 +185,13 @@ if Image:
                     for line in data.splitlines():
                         if line:
                             break
-                    if line.decode('utf-8-sig').strip().startswith('<?xml'):
+                    line = line.decode('utf-8-sig').strip()
+                    if line.startswith('<?xml'):
                         logging.debug('found xml: %s', desc)
                         fontinfo = _parse_xml(data)
+                    elif line.startswith('{'):
+                        logging.debug('found json: %s', desc)
+                        fontinfo = _parse_json(data)
                     else:
                         logging.debug('found text: %s', desc)
                         fontinfo = _parse_text(data)
@@ -192,7 +201,7 @@ if Image:
         return Typeface(fonts)
 
 def _to_int(value):
-    """Convert str or int value to int."""
+    """Convert str or numeric value to int."""
     if isinstance(value, str):
         value = value.lower()
     if value == 'true':
@@ -228,12 +237,24 @@ def _parse_xml(data):
         ],
     )
 
+def _parse_json(data):
+    """Parse JSON bmfont description."""
+    # https://github.com/Jam3/load-bmfont/blob/master/json-spec.md
+    tree = json.loads(data.decode('utf-8-sig'))
+    return dict(
+        bmformat='json',
+        info=tree['info'],
+        common=_COMMON(**_dict_to_ints(tree['common'])),
+        pages=[{'id': _i, 'file': _page} for _i, _page in enumerate(tree['pages'])],
+        chars=[_CHAR(**_dict_to_ints(_elem)) for _elem in tree['chars']],
+        kernings=[_KERNING(**_dict_to_ints(_elem)) for _elem in tree['kernings']],
+    )
 
 def _parse_text_dict(line):
     """Parse space separated key=value pairs."""
-    textdict = dict(_item.split('=') for _item in line.split())
+    textdict = dict(_item.split('=') for _item in shlex.split(line) if _item)
     return {
-        _key: _value.strip('"')
+        _key: _value
         for _key, _value in textdict.items()
     }
 
