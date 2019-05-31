@@ -34,13 +34,13 @@ if Image:
         """Load fonts from bmfont in zip container."""
         with ZipContainer(instream, 'r') as zipfile:
             descriptions = [
-                _name for _name in zipfile.namelist()
+                _name for _name in zipfile
                 if _name.lower().endswith(('.fnt', '.json', '.xml'))
             ]
             fonts = [_read_bmfont(zipfile, desc) for desc in descriptions]
         return Typeface(fonts)
 
-    @Typeface.saves('bmfzip', encoding=None, multi=True)
+    @Typeface.saves('bmfzip', encoding=None, multi=True, container=True)
     def save(typeface, outstream, size=(256, 256), packed=True, imageformat='png'):
         """Save fonts to bmfonts in zip container."""
         with ZipContainer(outstream, 'w') as container:

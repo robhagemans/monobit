@@ -24,99 +24,79 @@ def scriptable(fn):
     return fn
 
 
-@contextmanager
-def ensure_stream(infile, mode, encoding=None):
-    """
-    If argument is a string, open as file.
-    Mode should be 'w' or 'r'. For binary, use encoding=None
-    """
-    if not infile:
-        if mode.startswith('w'):
-            instream = sys.stdout.buffer
-        else:
-            instream = sys.stdin.buffer
-        # we take encoding == None to mean binary
-        if encoding:
-            instream = io.TextIOWrapper(instream, encoding=encoding)
-    elif isinstance(infile, (str, bytes)):
-        if encoding:
-            instream = open(infile, mode, encoding=encoding)
-        else:
-            instream = open(infile, mode + 'b')
-    else:
-        instream = infile
-    try:
-        with instream:
-            yield instream
-    except BrokenPipeError:
-        # ignore broken pipes
-        pass
-
-def zip_streams(outfile, sequence, ext='', encoding=None):
-    """Generate streams that write to zip container."""
-    if isinstance(outfile, str):
-        if outfile:
-            name = os.path.basename(outfile)
-            outfile += '.zip'
-        else:
-            name = ''
-    else:
-        name = os.path.basename(outfile.name)
-    if '.' in name:
-        ext = name.split('.')[-1]
-    if not ext:
-        ext = 'fontdata'
-    with ensure_stream(outfile, 'w', encoding=None) as outstream:
-        names_used = []
-        with ZipFile(outstream, 'w') as zipfile:
-            for i, item in enumerate(sequence):
-                if encoding is None:
-                    singlestream = io.BytesIO()
-                else:
-                    singlestream = io.StringIO()
-                filename = '{}.{}'.format(item.name.replace(' ', '_'), ext)
-                if filename in names_used:
-                    filename = '{}.{}.{}'.format(item.name.replace(' ', '_'), i, ext)
-                names_used.append(filename)
-                singlestream.name = filename
-                yield item, singlestream
-                if encoding is None:
-                    data = singlestream.getvalue()
-                else:
-                    data = singlestream.getvalue().encode(encoding)
-                if data:
-                    zipfile.writestr(filename, data)
-
-
 class ZipContainer:
     """Zip-file wrapper"""
 
-    def __init__(self, stream, mode='r'):
+    def __init__(self, stream_or_name, mode='r'):
         """Create wrapper."""
+        # append .zip to zip filename, but leave out of root dir name
+        name = ''
+        if isinstance(stream_or_name, (str, bytes)):
+            name = stream_or_name
+            if not stream_or_name.endswith('.zip'):
+                stream_or_name += '.zip'
+        else:
+            # try to get stream name. Not all streams have one (e.g. BytesIO)
+            try:
+                name = stream_or_name.name
+            except AttributeError:
+                pass
+        # if name ends up empty, replace
+        name = os.path.basename(name or 'fontdata')
+        if name.endswith('.zip'):
+            name = name[:-4]
+        # create the zipfile
+        self._zip = ZipFile(stream_or_name, mode)
+        if mode == 'w':
+            # if creating a new container, put everything in a directory inside it
+            self._root = name
+        else:
+            self._root = ''
         self._mode = mode
-        self._zip = ZipFile(stream, mode)
 
     def __enter__(self):
         return self
 
-    def __exit__(self, one, two, three):
-        self._zip.close()
+    def __exit__(self, exc_type, exc_value, traceback):
+        if exc_type == BrokenPipeError:
+            return True
+        try:
+            self._zip.close()
+        except EnvironmentError:
+            pass
 
-    def open(self, name, mode):
+    def open(self, name, mode, encoding=None):
         """Open a stream in the container."""
-        if mode.endswith('b'):
-            return self._zip.open(name, mode[:-1])
+        # TODO: forward slash should always work? e.g. backslash doesn't for TarFile.
+        # or shld use os.path? or is there a zipfile.path.join?
+        # ALSO: will this actually work with the .. returned by __iter__ ?
+        if self._root:
+            filename = '/'.join((self._root, name))
         else:
-            stream = self._zip.open(name, mode)
+            filename = name
+        if mode.endswith('b'):
+            return self._zip.open(filename, mode[:-1])
+        else:
+            stream = self._zip.open(filename, mode)
             if mode == 'r':
-                encoding = 'utf-8-sig'
+                encoding = encoding or 'utf-8-sig'
             else:
-                encoding = 'utf-8'
+                encoding = encoding or 'utf-8'
             return io.TextIOWrapper(stream, encoding)
 
-    def namelist(self):
+    def __iter__(self):
         """List contents."""
-        return self._zip.namelist()
+        if self._root:
+            return (
+                _name[len(self._root):] if _name.startswith(self._root) else '../'+_name
+                for _name in self._zip.namelist()
+            )
+        else:
+            return iter(self._zip.namelist())
+
+    def __contains__(self, name):
+        """File exists in container."""
+        return name in self._zip.namelist()
 
 
 class DirContainer:
@@ -137,7 +117,7 @@ class DirContainer:
     def __exit__(self, one, two, three):
         pass
 
-    def open(self, name, mode):
+    def open(self, name, mode, encoding=None):
         """Open a stream in the container."""
         if mode.startswith('w'):
             path = os.path.dirname(name)
@@ -145,12 +125,16 @@ class DirContainer:
                 os.makedirs(os.path.join(self._path, path))
             except EnvironmentError:
                 pass
-        return open(os.path.join(self._path, name), mode)
+        return open(os.path.join(self._path, name), mode, encoding=encoding)
 
-    def namelist(self):
+    def __iter__(self):
         """List contents."""
-        return [
+        return (
             os.path.join(_r, _f)[len(self._path):]
             for _r, _, _files in os.walk(self._path)
             for _f in _files
-        ]
+        )
+
+    def __contains__(self, name):
+        """File exists in container."""
+        return os.path.exists(os.path.join(self._path, name))

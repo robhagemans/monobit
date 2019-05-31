@@ -33,8 +33,8 @@ class Label:
         if isinstance(value, Label):
             self._value = value._value
             return
-        if isinstance(value, int):
-            self._value = value
+        if isinstance(value, (int, float)):
+            self._value = int(value)
             return
         try:
             # check for ordinal (anything convertible to int)
