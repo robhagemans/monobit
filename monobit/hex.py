@@ -53,10 +53,13 @@ def load(instream):
         glyphs[key] = Glyph.from_hex(value, width, height)
         comments[key] = clean_comment(current_comment)
         current_comment = []
+    comments[None] = global_comment
     # preserve any comment at end of file
     comments[key].extend(clean_comment(current_comment))
-    comments[None] = global_comment
-    return Typeface([Font(glyphs, comments)])
+    # convert to unicode labels
+    labels = {'u+{:04x}'.format(_key): _i for _i, _key in enumerate(glyphs.keys())}
+    glyphs = list(glyphs.values())
+    return Typeface([Font(glyphs, labels, comments=comments)])
 
 
 @Typeface.saves('hex', encoding='utf-8', multi=False)
