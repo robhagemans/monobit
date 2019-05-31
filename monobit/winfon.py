@@ -537,8 +537,6 @@ def _create_resident_name_table(typeface):
 def _create_resource_data(typeface):
     """Store the actual font resources."""
     # construct the FNT resources
-    for _font in typeface:
-        print(_font)
     fonts = [create_fnt(_font) for _font in typeface]
     # construct the FONTDIR (FONTGROUPHDR)
     # https://docs.microsoft.com/en-us/windows/desktop/menurc/fontgrouphdr
