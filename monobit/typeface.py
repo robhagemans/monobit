@@ -17,6 +17,9 @@ from .base import VERSION, DEFAULT_FORMAT, scriptable, DirContainer, ZipContaine
 from .font import Font
 
 
+_ZIP_MAGIC = b'PK\x03\x04'
+
+
 def _open_stream(on, outfile, mode, encoding):
     """Open a binary or encoded text stream."""
     # we take encoding == None to mean binary
@@ -88,9 +91,6 @@ def _single_saver(save, typeface, outfile, encoding, ext, **kwargs):
                     logging.error('Could not save %s: %s', filename, e)
 
 
-_ZIP_MAGIC = b'PK\x03\x04'
-
-
 def _container_loader(load, infile, encoding, **kwargs):
     """Open a container and provide to font loader."""
     if isinstance(infile, (str, bytes)):
@@ -140,56 +140,6 @@ def _stream_loader(load, infile, encoding, **kwargs):
                 with _open_stream(zip_con, name, 'r', encoding) as stream:
                     faces.append(load(stream, **kwargs))
             return Typeface([_font for _face in faces for _font in _face])
-
-
-
-def _call_loader(load, infile, encoding, container, **kwargs):
-    if isinstance(infile, (str, bytes)):
-        # string provided; open stream or container as appropriate
-        if container:
-            if os.path.isdir(infile):
-                container_type = DirContainer
-            else:
-                container_type = ZipContainer
-            with container_type(infile, 'r') as zip_con:
-                return load(zip_con, **kwargs)
-        else:
-            if os.path.isdir(infile):
-                container_type = DirContainer
-            else:
-                # open file to read magic
-                with _open_stream(io, infile, 'r', encoding=None) as instream:
-                    if instream.peek(4).startswith(_ZIP_MAGIC):
-                        container_type = ZipContainer
-                    else:
-                        with _open_stream(io, infile, 'r', encoding) as instream:
-                            return load(instream, **kwargs)
-            with container_type(infile, 'r') as zip_con:
-                faces = []
-                for name in zip_con:
-                    with _open_stream(zip_con, name, 'r', encoding) as stream:
-                        faces.append(load(stream, **kwargs))
-                return Typeface([_font for _face in faces for _font in _face])
-    else:
-        with infile:
-            # check if text stream
-            streamcontent = infile.read(0)
-            # binary stream, is it a zip container?
-            if isinstance(streamcontent, bytes) and infile.peek(4) == _ZIP_MAGIC:
-                with ZipContainer(infile, 'r') as zip_con:
-                    if container:
-                        return load(zip_con, **kwargs)
-                    else:
-                        faces = [load(_stream, **kwargs) for _stream in zip_con]
-                        return Typeface([_font for _face in faces for _font in _face])
-            else:
-                # just a binary or text stream
-                if container:
-                    raise ValueError(
-                        'Container format expected but encountering non-container stream'
-                    )
-                # loader will provide single- or multi-font typeface
-                return load(infile, **kwargs)
 
 
 class Typeface:
