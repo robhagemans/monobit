@@ -34,6 +34,63 @@ def _open_container(outfile, mode):
 
 
 @contextmanager
+def _container_saver(save, typeface, outfile, **kwargs):
+    """Call a typeface or font saving function, providing a container."""
+    # use standard streams if none provided
+    if not outfile or outfile=='-':
+        outfile = sys.stdout.buffer
+    with _open_container(outfile, 'w') as out:
+        save(typeface, out, **kwargs)
+
+@contextmanager
+def _multi_saver(save, typeface, outfile, encoding, **kwargs):
+    """Call a typeface saving function, providing a stream."""
+    # use standard streams if none provided
+    if not outfile or outfile=='-':
+        outfile = sys.stdout.buffer
+        # we take encoding == None to mean binary
+        if encoding:
+            outfile = io.TextIOWrapper(outfile, encoding=encoding)
+    if isinstance(outfile, (str, bytes)):
+        outfile = _open_stream(io, outfile, 'w', encoding)
+    try:
+        with outfile:
+            save(typeface, outfile, **kwargs)
+    except BrokenPipeError:
+        # ignore broken pipes
+        pass
+
+@contextmanager
+def _single_saver(save, typeface, outfile, encoding, ext, **kwargs):
+    """Call a font saving function, providing a stream."""
+    print(repr((save, typeface, outfile, encoding, ext, kwargs)))
+    # use standard streams if none provided
+    if not outfile or outfile=='-':
+        outfile = sys.stdout.buffer
+    if len(typeface) == 1:
+        # we have only one font to deal with, no need to create container
+        _multi_saver(save, [*typeface][0], outfile, encoding)
+    else:
+        # create container and call saver for each font in the typeface
+        with _open_container(outfile, 'w') as out:
+            # save fonts one-by-one
+            for font in typeface:
+                # generate unique filename
+                name = font.name.replace(' ', '_')
+                filename = '{}.{}'.format(name, ext)
+                i = 0
+                print('\n', repr(filename), filename in out, list(out))
+                while filename in out:
+                    i += 1
+                    filename = '{}.{}.{}'.format(name, i, ext)
+                try:
+                    with _open_stream(out, filename, 'w', encoding) as stream:
+                        save(font, stream, **kwargs)
+                except Exception as e:
+                    logging.error('Could not save %s: %s', filename, e)
+
+
+@contextmanager
 def _call_saver(save, typeface, outfile, encoding, container, multi, ext, **kwargs):
     """
     Call a typeface or font saving function. Provide stream or container as needed.
@@ -42,46 +99,12 @@ def _call_saver(save, typeface, outfile, encoding, container, multi, ext, **kwar
         multi: True - saver saves a typeface; False - one font only
         ext: extension of individual file names created (format name)
     """
-    # use standard streams if none provided
-    if not outfile or outfile=='-':
-        outfile = sys.stdout.buffer
-        # we take encoding == None to mean binary
-        if encoding:
-            outfile = io.TextIOWrapper(outfile, encoding=encoding)
     if container:
-        # case 3 - saver expects container
-        with _open_container(outfile, 'w') as out:
-            save(typeface, out, **kwargs)
-    elif multi or len(typeface) == 1:
-        # case 2 - saver expects stream, can handle multiple fonts
-        if isinstance(outfile, (str, bytes)):
-            outfile = _open_stream(io, outfile, 'w', encoding)
-        try:
-            with outfile:
-                if multi:
-                    save(typeface, outfile, **kwargs)
-                else:
-                    save([*typeface][0], outfile, **kwargs)
-        except BrokenPipeError:
-            # ignore broken pipes
-            pass
+        _container_saver(save, typeface, outfile, **kwargs)
+    elif multi:
+        _multi_saver(save, typeface, outfile, encoding, **kwargs)
     else:
-        # case 1 - saver expects stream, single font only
-        with _open_container(outfile, 'w') as out:
-            # save fonts one-by-one
-            for font in typeface:
-                # generate unique filename
-                name = font.name.replace(' ', '_')
-                filename = '{}.{}'.format(name, ext)
-                i = 0
-                while filename in out:
-                    i += 1
-                    filename = '{}.{}.{}'.format(name, i, ext)
-                try:
-                    with _open_stream(out, filename, 'w', encoding) as stream:
-                        save(font, stream, **kwargs)
-                except Exception as e:
-                    logging.error('Could not save %s: %s', stream.name, e)
+        _single_saver(save, typeface, outfile, encoding, ext, **kwargs)
     return typeface
 
 
@@ -198,7 +221,25 @@ class Typeface:
             saver = self._savers[format]
         except KeyError:
             raise ValueError('Cannot save to format `{}`'.format(format))
-        return saver(self, outfile, **kwargs)
+        saver(self, outfile, **kwargs)
+        return self
+
+    def _set_extraction_props(self, infile):
+        """Return copy with source-name and source-format set."""
+        fonts = []
+        for font in self:
+            new_props = {
+                'converter': 'monobit v{}'.format(VERSION),
+            }
+            if not font.source_name:
+                if isinstance(infile, (str, bytes)):
+                    new_props['source-name'] = basename(infile)
+                else:
+                    new_props['source-name'] = basename(infile.name)
+            if not font.source_format:
+                new_props['source-format'] = name
+            fonts.append(font.set_properties(**new_props))
+        return Typeface(fonts)
 
     @classmethod
     def loads(cls, *formats, name=None, encoding='utf-8-sig', container=False):
@@ -212,20 +253,7 @@ class Typeface:
             def _load_func(infile, **kwargs):
                 typeface = _call_loader(load, infile, encoding, container, **kwargs)
                 # set source-name and source-format
-                fonts = []
-                for font in typeface:
-                    new_props = {
-                        'converter': 'monobit v{}'.format(VERSION),
-                    }
-                    if not font.source_name:
-                        if isinstance(infile, (str, bytes)):
-                            new_props['source-name'] = basename(infile)
-                        else:
-                            new_props['source-name'] = basename(infile.name)
-                    if not font.source_format:
-                        new_props['source-format'] = name
-                    fonts.append(font.set_properties(**new_props))
-                return Typeface(fonts)
+                return typeface._set_extraction_props(infile)
             # register loader
             for format in formats:
                 cls._loaders[format.lower()] = _load_func
@@ -241,9 +269,13 @@ class Typeface:
             # stream output wrapper
             @wraps(save)
             def _save_func(typeface, outfile, **kwargs):
-                # use first extension provided by saver function
-                _call_saver(save, typeface, outfile, encoding, container, multi, ext=formats[0], **kwargs)
-                return typeface
+                if container:
+                    _container_saver(save, typeface, outfile, **kwargs)
+                elif multi:
+                    _multi_saver(save, typeface, outfile, encoding, **kwargs)
+                else:
+                    # use first extension provided by saver function
+                    _single_saver(save, typeface, outfile, encoding, formats[0], **kwargs)
             # register saver
             for format in formats:
                 cls._savers[format.lower()] = _save_func

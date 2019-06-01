@@ -9,6 +9,7 @@ import io
 import os
 import sys
 import logging
+import posixpath
 from contextlib import contextmanager
 from zipfile import ZipFile
 
@@ -69,7 +70,7 @@ class ZipContainer:
         """Open a stream in the container."""
         # using posixpath for internal paths in the archive
         # as forward slash should always work, but backslash would fail on unix
-        filename = os.posixpath.join(self._root, name)
+        filename = posixpath.join(self._root, name)
         if mode.endswith('b'):
             return self._zip.open(filename, mode[:-1])
         else:
@@ -83,13 +84,13 @@ class ZipContainer:
     def __iter__(self):
         """List contents."""
         return (
-            os.posixpath.relpath(_name, self._root)
+            posixpath.relpath(_name, self._root)
             for _name in self._zip.namelist()
         )
 
     def __contains__(self, name):
         """File exists in container."""
-        return name in self._zip.namelist()
+        return name in list(self)
 
 
 class DirContainer:
