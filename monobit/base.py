@@ -67,13 +67,9 @@ class ZipContainer:
 
     def open(self, name, mode, encoding=None):
         """Open a stream in the container."""
-        # TODO: forward slash should always work? e.g. backslash doesn't for TarFile.
-        # or shld use os.path? or is there a zipfile.path.join?
-        # ALSO: will this actually work with the .. returned by __iter__ ?
-        if self._root:
-            filename = '/'.join((self._root, name))
-        else:
-            filename = name
+        # using posixpath for internal paths in the archive
+        # as forward slash should always work, but backslash would fail on unix
+        filename = os.posixpath.join(self._root, name)
         if mode.endswith('b'):
             return self._zip.open(filename, mode[:-1])
         else:
@@ -86,13 +82,10 @@ class ZipContainer:
 
     def __iter__(self):
         """List contents."""
-        if self._root:
-            return (
-                _name[len(self._root):] if _name.startswith(self._root) else '../'+_name
-                for _name in self._zip.namelist()
-            )
-        else:
-            return iter(self._zip.namelist())
+        return (
+            os.posixpath.relpath(_name, self._root)
+            for _name in self._zip.namelist()
+        )
 
     def __contains__(self, name):
         """File exists in container."""
@@ -105,7 +98,7 @@ class DirContainer:
     def __init__(self, path, mode='r'):
         """Create wrapper."""
         self._path = path
-        if mode == 'w':
+        if mode == 'w' and path:
             try:
                 os.makedirs(path)
             except EnvironmentError:
@@ -130,7 +123,7 @@ class DirContainer:
     def __iter__(self):
         """List contents."""
         return (
-            os.path.join(_r, _f)[len(self._path):]
+            os.path.relpath(os.path.join(_r, _f), self._path)
             for _r, _, _files in os.walk(self._path)
             for _f in _files
         )

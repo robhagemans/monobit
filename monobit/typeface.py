@@ -11,6 +11,7 @@ from functools import wraps
 from contextlib import contextmanager
 import io
 import sys
+import os
 
 from .base import VERSION, DEFAULT_FORMAT, scriptable, DirContainer, ZipContainer
 from .font import Font
@@ -84,7 +85,7 @@ def _call_saver(save, typeface, outfile, encoding, container, multi, ext, **kwar
     return typeface
 
 
-#TODDO: maybe use separate loads/saves wrappers instead of this mess,
+#TODO: maybe use separate loads/saves wrappers instead of this mess,
 # e.g @loads_single, @loads_multiple, @loads_container, @loads_text etc
 
 _ZIP_MAGIC = b'PK\x03\x04'
@@ -93,23 +94,29 @@ def _call_loader(load, infile, encoding, container, **kwargs):
     if isinstance(infile, (str, bytes)):
         # string provided; open stream or container as appropriate
         if container:
-            with ZipContainer(infile, 'r') as zip_con:
+            if os.path.isdir(infile):
+                container_type = DirContainer
+            else:
+                container_type = ZipContainer
+            with container_type(infile, 'r') as zip_con:
                 return load(zip_con, **kwargs)
         else:
-            instream = _open_stream(io, infile, 'r', encoding=None)
-            if instream.peek(4).startswith(_ZIP_MAGIC):
-                with instream:
-                    with ZipContainer(instream, 'r') as zip_con:
-                        faces = []
-                        for name in zip_con:
-                            with _open_stream(zip_con, name, 'r', encoding) as stream:
-                                faces.append(load(stream, **kwargs))
-                        return Typeface([_font for _face in faces for _font in _face])
+            if os.path.isdir(infile):
+                container_type = DirContainer
             else:
-                # re-open as text if needed
-                instream.close()
-                with _open_stream(io, infile, 'r', encoding) as instream:
-                    return load(instream, **kwargs)
+                # open file to read magic
+                with _open_stream(io, infile, 'r', encoding=None) as instream:
+                    if instream.peek(4).startswith(_ZIP_MAGIC):
+                        container_type = ZipContainer
+                    else:
+                        with _open_stream(io, infile, 'r', encoding) as instream:
+                            return load(instream, **kwargs)
+            with container_type(infile, 'r') as zip_con:
+                faces = []
+                for name in zip_con:
+                    with _open_stream(zip_con, name, 'r', encoding) as stream:
+                        faces.append(load(stream, **kwargs))
+                return Typeface([_font for _face in faces for _font in _face])
     else:
         with infile:
             # check if text stream
