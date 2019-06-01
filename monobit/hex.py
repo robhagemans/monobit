@@ -17,10 +17,11 @@ from .glyph import Glyph
 @Typeface.loads('hex', name='Unifont HEX', encoding='utf-8-sig')
 def load(instream):
     """Load font from a .hex file."""
-    glyphs = {}
+    label = None
+    glyphs = []
     comments = {}
+    labels = {}
     global_comment = []
-    key = None
     current_comment = []
     for line in instream:
         line = line.rstrip('\r\n')
@@ -32,7 +33,7 @@ def load(instream):
         if line[0] not in string.hexdigits:
             current_comment.append(line)
             continue
-        if key is None:
+        if label is None:
             global_comment, current_comment = split_global_comment(current_comment)
             global_comment = clean_comment(global_comment)
         # parse code line
@@ -41,24 +42,24 @@ def load(instream):
         # may be on one of next lines
         while not value:
             value = instream.readline.strip()
-        if (set(value) | set(key)) - set(string.hexdigits):
-            raise ValueError('Keys and values must be hexadecimal.')
-        key = int(key, 16)
         if len(value) == 32:
             width, height = 8, 16
         elif len(value) == 64:
             width, height = 16, 16
         else:
             raise ValueError('Hex strings must be 32 or 64 characters long.')
-        glyphs[key] = Glyph.from_hex(value, width, height)
-        comments[key] = clean_comment(current_comment)
+        current = len(glyphs)
+        if (set(value) | set(key)) - set(string.hexdigits):
+            raise ValueError('Keys and values must be hexadecimal.')
+        # unicode label
+        label = 'u+{}'.format(key)
+        labels[label] = len(glyphs)
+        glyphs.append(Glyph.from_hex(value, width, height))
+        comments[label] = clean_comment(current_comment)
         current_comment = []
     comments[None] = global_comment
     # preserve any comment at end of file
-    comments[key].extend(clean_comment(current_comment))
-    # convert to unicode labels
-    labels = {'u+{:04x}'.format(_key): _i for _i, _key in enumerate(glyphs.keys())}
-    glyphs = list(glyphs.values())
+    comments[label].extend(clean_comment(current_comment))
     return Typeface([Font(glyphs, labels, comments=comments)])
 
 
