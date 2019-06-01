@@ -34,7 +34,7 @@ class ZipContainer:
         name = ''
         if isinstance(stream_or_name, (str, bytes)):
             name = stream_or_name
-            if not stream_or_name.endswith('.zip'):
+            if mode == 'w' and not stream_or_name.endswith('.zip'):
                 stream_or_name += '.zip'
         else:
             # try to get stream name. Not all streams have one (e.g. BytesIO)

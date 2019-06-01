@@ -63,7 +63,6 @@ def _multi_saver(save, typeface, outfile, encoding, **kwargs):
 @contextmanager
 def _single_saver(save, typeface, outfile, encoding, ext, **kwargs):
     """Call a font saving function, providing a stream."""
-    print(repr((save, typeface, outfile, encoding, ext, kwargs)))
     # use standard streams if none provided
     if not outfile or outfile=='-':
         outfile = sys.stdout.buffer
@@ -79,7 +78,6 @@ def _single_saver(save, typeface, outfile, encoding, ext, **kwargs):
                 name = font.name.replace(' ', '_')
                 filename = '{}.{}'.format(name, ext)
                 i = 0
-                print('\n', repr(filename), filename in out, list(out))
                 while filename in out:
                     i += 1
                     filename = '{}.{}.{}'.format(name, i, ext)
@@ -90,28 +88,60 @@ def _single_saver(save, typeface, outfile, encoding, ext, **kwargs):
                     logging.error('Could not save %s: %s', filename, e)
 
 
-@contextmanager
-def _call_saver(save, typeface, outfile, encoding, container, multi, ext, **kwargs):
-    """
-    Call a typeface or font saving function. Provide stream or container as needed.
-        encoding: stream text encoding. None for binary or container
-        container: saver expexts a container, not a stream
-        multi: True - saver saves a typeface; False - one font only
-        ext: extension of individual file names created (format name)
-    """
-    if container:
-        _container_saver(save, typeface, outfile, **kwargs)
-    elif multi:
-        _multi_saver(save, typeface, outfile, encoding, **kwargs)
-    else:
-        _single_saver(save, typeface, outfile, encoding, ext, **kwargs)
-    return typeface
-
-
-#TODO: maybe use separate loads/saves wrappers instead of this mess,
-# e.g @loads_single, @loads_multiple, @loads_container, @loads_text etc
-
 _ZIP_MAGIC = b'PK\x03\x04'
+
+
+def _container_loader(load, infile, encoding, **kwargs):
+    """Open a container and provide to font loader."""
+    if isinstance(infile, (str, bytes)):
+        # string provided; open stream or container as appropriate
+        if os.path.isdir(infile):
+            container_type = DirContainer
+        else:
+            container_type = ZipContainer
+    else:
+        # stream - is it a zip container?
+        with infile:
+            if isinstance(infile.read(0), bytes) and infile.peek(4) == _ZIP_MAGIC:
+                container_type = ZipContainer
+            else:
+                raise ValueError(
+                    'Container format expected but encountering non-container stream'
+                )
+    with container_type(infile, 'r') as zip_con:
+        return load(zip_con, **kwargs)
+
+
+def _stream_loader(load, infile, encoding, **kwargs):
+    """Open a single- or multifont format."""
+    container_type = None
+    if isinstance(infile, (str, bytes)):
+        # string provided; open stream or container as appropriate
+        if os.path.isdir(infile):
+            container_type = DirContainer
+        else:
+            with _open_stream(io, infile, 'r', encoding=None) as instream:
+                if isinstance(instream.read(0), bytes) and instream.peek(4) == _ZIP_MAGIC:
+                    container_type = ZipContainer
+    else:
+        # stream - is it a zip container?
+        if isinstance(infile.read(0), bytes) and infile.peek(4) == _ZIP_MAGIC:
+            container_type = ZipContainer
+    if not container_type:
+        if isinstance(infile, (str, bytes)):
+            with _open_stream(io, infile, 'r', encoding) as instream:
+                return load(instream, **kwargs)
+        else:
+            return load(infile, **kwargs)
+    else:
+        with container_type(infile, 'r') as zip_con:
+            faces = []
+            for name in zip_con:
+                with _open_stream(zip_con, name, 'r', encoding) as stream:
+                    faces.append(load(stream, **kwargs))
+            return Typeface([_font for _face in faces for _font in _face])
+
+
 
 def _call_loader(load, infile, encoding, container, **kwargs):
     if isinstance(infile, (str, bytes)):
@@ -251,7 +281,10 @@ class Typeface:
             # stream input wrapper
             @wraps(load)
             def _load_func(infile, **kwargs):
-                typeface = _call_loader(load, infile, encoding, container, **kwargs)
+                if container:
+                    typeface = _container_loader(load, infile, encoding, **kwargs)
+                else:
+                    typeface = _stream_loader(load, infile, encoding, **kwargs)
                 # set source-name and source-format
                 return typeface._set_extraction_props(infile)
             # register loader
