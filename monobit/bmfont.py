@@ -508,23 +508,18 @@ def _create_spritesheets(font, size=(256, 256), packed=False):
         sheets[layer] = img
         # output glyphs
         x, y = 0, 0
-        next_x, next_y = 0, 0
+        tree = SpriteNode(x, y, width, height)
         for label, glyph in iter_unicode:
             if glyph.height and glyph.width:
-                if next_x + glyph.width > width:
-                    x, y = 0, next_y
-                else:
-                    x = next_x
-                if y + glyph.height > height:
-                    # next sheet
+                try:
+                    x, y = tree.insert(glyph)
+                except ValueError:
+                    # we don't fit, get next sheet
                     break
-                # put sequentially in straight rows, we can be clever some other time
-                next_y = max(y + glyph.height, next_y)
                 charimg = Image.new('L', (glyph.width, glyph.height))
                 data = glyph.as_tuple(fore, back)
                 charimg.putdata(data)
                 img.paste(charimg, (x, y))
-                next_x = x + glyph.width
             chars.append(dict(
                 id=int(label[2:], 16),
                 x=x,
@@ -638,3 +633,43 @@ def _create_bmfont(container, font, size=(256, 256), packed=False, imageformat='
         bmf.write('kernings count={}\n'.format(len(props['kernings'])))
         for kern in props['kernings']:
             bmf.write(_create_textdict('kerning', kern))
+
+
+class SpriteNode:
+    """Tree structure to fill up spritesheet."""
+    # see http://blackpawn.com/texts/lightmaps/
+
+    def __init__(self, left, top, right, bottom):
+        """Create a new node."""
+        self._left, self._top, self._right, self._bottom = left, top, right, bottom
+        self._children = None
+        self._image = None
+
+    def insert(self, img):
+        """Insert an image into this node or descendant node."""
+        width = self._right - self._left
+        height = self._bottom - self._top
+        if self._children:
+            try:
+                return self._children[0].insert(img)
+            except ValueError:
+                return self._children[1].insert(img)
+        if self._image or img.width > width or img.height > height:
+            raise ValueError("Image doesn't fit.")
+        if img.width == width and img.height == height:
+            self._image = img
+            return self._left, self._top
+        else:
+            dw = width - img.width
+            dh = height - img.height
+            if dw > dh:
+                self._children = (
+                    SpriteNode(self._left, self._top, self._left + img.width, self._bottom),
+                    SpriteNode(self._left + img.width, self._top, self._right, self._bottom)
+                )
+            else:
+                self._children = (
+                    SpriteNode(self._left, self._top, self._right, self._top + img.height),
+                    SpriteNode(self._left, self._top + img.height, self._right, self._bottom)
+                )
+            return self._children[0].insert(img)
