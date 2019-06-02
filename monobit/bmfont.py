@@ -29,23 +29,22 @@ from .winfnt import _CHARSET_MAP
 # top-level calls
 
 if Image:
-    @Typeface.loads('bmfzip', name='BMFont', encoding=None)
-    def load(instream):
-        """Load fonts from bmfont in zip container."""
-        with ZipContainer(instream, 'r') as zipfile:
-            descriptions = [
-                _name for _name in zipfile
-                if _name.lower().endswith(('.fnt', '.json', '.xml'))
-            ]
-            fonts = [_read_bmfont(zipfile, desc) for desc in descriptions]
-        return Typeface(fonts)
+    @Typeface.loads('bmf', name='BMFont', encoding=None, container=True)
+    def load(container):
+        """Load fonts from bmfont in container."""
+        print([_name for _name in container])
+        print(container)
+        descriptions = [
+            _name for _name in container
+            if _name.lower().endswith(('.fnt', '.json', '.xml'))
+        ]
+        return Typeface([_read_bmfont(container, desc) for desc in descriptions])
 
-    @Typeface.saves('bmfzip', encoding=None, multi=True, container=True)
-    def save(typeface, outstream, size=(256, 256), packed=True, imageformat='png'):
-        """Save fonts to bmfonts in zip container."""
-        with ZipContainer(outstream, 'w') as container:
-            for font in typeface:
-                _create_bmfont(container, font, size, packed, imageformat)
+    @Typeface.saves('bmf', encoding=None, multi=True, container=True)
+    def save(typeface, container, size=(256, 256), packed=True, imageformat='png'):
+        """Save fonts to bmfonts in container."""
+        for font in typeface:
+            _create_bmfont(container, font, size, packed, imageformat)
 
 
 ##############################################################################
@@ -341,10 +340,10 @@ def _parse_binary(data):
         props['kernings'] = []
     return props
 
-def _extract(zipfile, path, bmformat, info, common, pages, chars, kernings=()):
+def _extract(container, path, bmformat, info, common, pages, chars, kernings=()):
     """Extract characters."""
     sheets = {
-        int(_page['id']): Image.open(zipfile.open(os.path.join(path, _page['file']), 'rb'))
+        int(_page['id']): Image.open(container.open(os.path.join(path, _page['file']), 'rb'))
         for _page in pages
     }
     imgformats = set(str(_img.format) for _img in sheets.values())
