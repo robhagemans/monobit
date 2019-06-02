@@ -233,17 +233,20 @@ class Codepage:
                 # extract codepage point
                 cp_point = int(splitline[0].strip(), 16)
                 # allow sequence of code points separated by commas
-                grapheme_cluster = ''.join(
-                    chr(int(ucs_str.strip(), 16)) for ucs_str in splitline[1].split(',')
-                )
-                self._mapping[cp_point] = grapheme_cluster
+                #grapheme_cluster = ','.join(
+                #    str(int(ucs_str.strip(), 16)) for ucs_str in splitline[1].split(',')
+                #)
+                self._mapping[cp_point] = int(splitline[1], 16)
             except (ValueError, TypeError):
                 logging.warning('Could not parse line in codepage file: %s', repr(line))
         self._inv_mapping = {_v: _k for _k, _v in self._mapping.items()}
 
     def ord_to_unicode(self, ordinal):
         """Convert ordinal to unicode label."""
-        return 'u+{:04x}'.format(self._mapping[ordinal])
+        try:
+            return 'u+{:04x}'.format(self._mapping[int(ordinal)])
+        except KeyError as e:
+            raise ValueError(str(e)) from e
 
     def unicode_to_ord(self, key, errors='strict'):
         """Convert ordinal to unicode label."""
@@ -252,7 +255,7 @@ class Codepage:
             return self._inv_mapping[uniord]
         except KeyError as e:
             if errors == 'strict':
-                raise UnicodeEncodeError(str(e)) from e
+                raise ValueError(str(e)) from e
             if errors == 'ignore':
                 return self._inv_mapping[ord(' ')]
             # TODO: should we use replacement char? default-char?
@@ -277,11 +280,11 @@ def _get_encoding(enc):
     if enc in ('unicode', 'ucs', 'iso10646', 'iso_10646', 'iso10646_1'):
         return Unicode()
     try:
-        return Codec(enc.lower())
+        return Codepage(enc.lower())
     except LookupError:
         pass
     try:
-        return Codepage(enc.lower())
+        return Codec(enc.lower())
     except LookupError:
         pass
     logging.warning('Unknown encoding `%s`, assuming ascii.', enc)
@@ -327,7 +330,7 @@ class Font:
                 continue
             try:
                 label = Label(self._encoding.ord_to_unicode(_k))
-            except UnicodeError:
+            except ValueError:
                 pass
             else:
                 uni_labels[label] = _v
@@ -390,7 +393,7 @@ class Font:
                 elif label.is_ordinal:
                     try:
                         yield self._encoding.ord_to_unicode(label), glyph
-                    except UnicodeError:
+                    except ValueError:
                         pass
 
     ##########################################################################
