@@ -220,7 +220,7 @@ class Typeface:
         saver(self, outfile, **kwargs)
         return self
 
-    def _set_extraction_props(self, infile):
+    def _set_extraction_props(self, infile, format):
         """Return copy with source-name and source-format set."""
         fonts = []
         for font in self:
@@ -233,7 +233,7 @@ class Typeface:
                 else:
                     new_props['source-name'] = basename(infile.name)
             if not font.source_format:
-                new_props['source-format'] = name
+                new_props['source-format'] = format
             fonts.append(font.set_properties(**new_props))
         return Typeface(fonts)
 
@@ -252,7 +252,7 @@ class Typeface:
                 else:
                     typeface = _stream_loader(load, infile, encoding, **kwargs)
                 # set source-name and source-format
-                return typeface._set_extraction_props(infile)
+                return typeface._set_extraction_props(infile, name)
             # register loader
             _load_func.script_args = load.__annotations__
             for format in formats:

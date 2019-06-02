@@ -534,10 +534,10 @@ def _create_resident_name_table(typeface):
     return bytes([len(mname)]) + mname.encode('ascii') + b'\0\0\0'
 
 
-def _create_resource_data(typeface):
+def _create_resource_data(typeface, version):
     """Store the actual font resources."""
     # construct the FNT resources
-    fonts = [create_fnt(_font) for _font in typeface]
+    fonts = [create_fnt(_font, version) for _font in typeface]
     # construct the FONTDIR (FONTGROUPHDR)
     # https://docs.microsoft.com/en-us/windows/desktop/menurc/fontgrouphdr
     fontdir_struct = friendlystruct(
@@ -546,8 +546,8 @@ def _create_resource_data(typeface):
         # + array of DIRENTRY/FONTDIRENTRY structs
     )
     fontdir = bytes(fontdir_struct(len(fonts))) + b''.join(
-        _create_fontdirentry(i+1, fntdata, font)
-        for fntdata, font in zip(fonts, typeface)
+        _create_fontdirentry(_i+1, fonts[_i], _font)
+        for _i, _font in enumerate(typeface)
     )
     resdata = fontdir.ljust(align(len(fontdir), _ALIGN_SHIFT), b'\0')
     font_start = [len(resdata)]
@@ -559,7 +559,7 @@ def _create_resource_data(typeface):
     return resdata, font_start
 
 
-def _create_fon(typeface):
+def _create_fon(typeface, version=0x200):
     """Create a .FON font library."""
     n_fonts = len(typeface)
     # MZ DOS executable stub
@@ -570,7 +570,7 @@ def _create_fon(typeface):
     # entry table / imported names table should contain a zero word.
     entry = b'\0\0'
     # the actual font data
-    resdata, font_start = _create_resource_data(typeface)
+    resdata, font_start = _create_resource_data(typeface, version)
     # create resource table and align
     header_size = len(stubdata) + _NE_HEADER.size
     post_size = len(res) + len(entry) + len(nonres)

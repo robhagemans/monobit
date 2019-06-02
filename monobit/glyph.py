@@ -151,7 +151,7 @@ class Glyph:
     @property
     def bounding_box(self):
         """Dimensions of tightest box to fit glyph."""
-        return self.ink_width, self._ink_height
+        return self.ink_width, self.ink_height
 
     @property
     def ink_offsets(self):
