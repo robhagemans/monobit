@@ -93,6 +93,8 @@ def _single_saver(save, typeface, outfile, encoding, ext, **kwargs):
 
 def _container_loader(load, infile, encoding, **kwargs):
     """Open a container and provide to font loader."""
+    if not infile or infile=='-':
+        infile = sys.stdin.buffer
     if isinstance(infile, (str, bytes)):
         # string provided; open stream or container as appropriate
         if os.path.isdir(infile):
@@ -114,6 +116,8 @@ def _container_loader(load, infile, encoding, **kwargs):
 
 def _stream_loader(load, infile, encoding, **kwargs):
     """Open a single- or multifont format."""
+    if not infile or infile=='-':
+        infile = sys.stdin.buffer
     container_type = None
     if isinstance(infile, (str, bytes)):
         # string provided; open stream or container as appropriate
@@ -132,6 +136,13 @@ def _stream_loader(load, infile, encoding, **kwargs):
             with _open_stream(io, infile, 'r', encoding) as instream:
                 return load(instream, **kwargs)
         else:
+            # check text/binary
+            if isinstance(infile.read(0), bytes):
+                if encoding:
+                    infile = io.TextIOWrapper(infile, encoding)
+            else:
+                if not encoding:
+                    raise ValueError('This format requires a binary stream, not a text stream.')
             return load(infile, **kwargs)
     else:
         with container_type(infile, 'r') as zip_con:
