@@ -14,7 +14,7 @@ from .glyph import Glyph
 
 
 @Typeface.loads('c', 'cc', 'cpp', 'h', name='C-source')
-def load(infile, identifier, width, height):
+def load(infile, identifier:str, width:int, height:int):
     """Load font from a .c file."""
     payload = _get_payload(infile, identifier)
     # c bytes are python bytes, except 0777-style octal (which we therefore don't support correctly)

@@ -10,13 +10,6 @@ import logging
 
 import monobit
 
-
-CONVERTERS = {
-    int: int,
-    bool: lambda _s: _s.lower() == 'true',
-    str: str,
-}
-
 # parse command line
 parser = argparse.ArgumentParser(add_help=False)
 parser.add_argument('infile', nargs='?', type=str, default='')
@@ -43,12 +36,12 @@ args, unknown = parser.parse_known_args()
 # get loader arguments
 loader = monobit.Typeface.get_loader(args.infile, format=args.from_)
 for arg, _type in loader.script_args.items():
-    parser.add_argument('--' + arg.strip('_'), dest=arg, type=CONVERTERS[_type])
+    parser.add_argument('--' + arg.replace('_', '-'), dest=arg, type=_type)
 
 # get loader arguments
 saver = monobit.Typeface.get_saver(args.outfile, format=args.to_)
 for arg, _type in saver.script_args.items():
-    parser.add_argument('--' + arg.strip('_'), dest=arg, type=CONVERTERS[_type])
+    parser.add_argument('--' + arg.replace('_', '-'), dest=arg, type=_type)
 
 args = parser.parse_args()
 

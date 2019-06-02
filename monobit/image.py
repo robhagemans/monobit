@@ -11,6 +11,7 @@ try:
     from PIL import Image
 except ImportError:
     Image = None
+from .base import pair, rgb
 from .binary import ceildiv
 from .typeface import Typeface
 from .font import Font
@@ -19,7 +20,13 @@ from .glyph import Glyph
 
 if Image:
     @Typeface.loads('png', 'bmp', 'gif', 'image', name='Bitmap Image', encoding=None)
-    def load(infile, cell=(8, 8), margin=(0, 0), padding=(0, 0), scale=(1, 1)):
+    def load(
+            infile,
+            cell:pair=(8, 8),
+            margin:pair=(0, 0),
+            padding:pair=(0, 0),
+            scale:pair=(1, 1)
+        ):
         """Import font from image."""
         width, height = cell
         scale_x, scale_y = scale
@@ -73,9 +80,13 @@ if Image:
 
     @Typeface.saves('png', 'bmp', 'gif', 'image', encoding=None, multi=False)
     def save(
-            font, outfile, format=None,
-            columns=32, margin=(0, 0), padding=(0, 0), scale=(1, 1),
-            border=(32, 32, 32), back=(0, 0, 0), fore=(255, 255, 255),
+            font, outfile,
+            format:str=None,
+            columns:int=32,
+            margin:pair=(0, 0),
+            padding:pair=(0, 0),
+            scale:pair=(1, 1),
+            border:rgb=(32, 32, 32), back:rgb=(0, 0, 0), fore:rgb=(255, 255, 255),
         ):
         """Export font to image."""
         img = _to_image(font, columns, margin, padding, scale, border, back, fore)

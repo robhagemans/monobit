@@ -16,7 +16,7 @@ try:
 except ImportError:
     Image = None
 
-from .base import ZipContainer
+from .base import ZipContainer, boolean, pair
 from .binary import friendlystruct
 from .typeface import Typeface
 from .font import Font, Label
@@ -41,13 +41,13 @@ if Image:
     @Typeface.saves('bmf', encoding=None, multi=True, container=True)
     def save(
             typeface, container,
-            image_width:int=256, image_height:int=256,
+            image_size:pair=(256, 256),
             image_format:str='png',
-            packed:bool=True,
+            packed:boolean=True,
         ):
         """Save fonts to bmfonts in container."""
         for font in typeface:
-            _create_bmfont(container, font, (image_width, image_height), packed, image_format)
+            _create_bmfont(container, font, image_size, packed, image_format)
 
 
 ##############################################################################
