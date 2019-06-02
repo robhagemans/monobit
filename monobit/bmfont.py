@@ -32,8 +32,6 @@ if Image:
     @Typeface.loads('bmf', name='BMFont', encoding=None, container=True)
     def load(container):
         """Load fonts from bmfont in container."""
-        print([_name for _name in container])
-        print(container)
         descriptions = [
             _name for _name in container
             if _name.lower().endswith(('.fnt', '.json', '.xml'))
@@ -41,10 +39,15 @@ if Image:
         return Typeface([_read_bmfont(container, desc) for desc in descriptions])
 
     @Typeface.saves('bmf', encoding=None, multi=True, container=True)
-    def save(typeface, container, size=(256, 256), packed=True, imageformat='png'):
+    def save(
+            typeface, container,
+            image_width:int=256, image_height:int=256,
+            image_format:str='png',
+            packed:bool=True,
+        ):
         """Save fonts to bmfonts in container."""
         for font in typeface:
-            _create_bmfont(container, font, size, packed, imageformat)
+            _create_bmfont(container, font, (image_width, image_height), packed, image_format)
 
 
 ##############################################################################

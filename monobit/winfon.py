@@ -262,9 +262,9 @@ def load(instream):
     return Typeface(fonts)
 
 @Typeface.saves('fon', encoding=None)
-def save(typeface, outstream):
+def save(typeface, outstream, version:int=2):
     """Write fonts to a Windows .FON file."""
-    outstream.write(_create_fon(typeface))
+    outstream.write(_create_fon(typeface, version*0x100))
     return typeface
 
 

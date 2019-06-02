@@ -172,9 +172,9 @@ class Typeface:
         """Number of fonts in typeface."""
         return len(self._fonts)
 
-    @classmethod
-    def load(cls, infile:str, format:str='', **kwargs):
-        """Read new font from file."""
+    @staticmethod
+    def get_format(infile, format=''):
+        """Get format name."""
         if isinstance(infile, bytes):
             infile = infile.decode('ascii')
         if not format:
@@ -187,31 +187,36 @@ class Typeface:
                         _, format = base.rsplit('.', 1)
                 except ValueError:
                     pass
-        format = format.lower()
+        return format.lower()
+
+    @classmethod
+    def get_loader(cls, infile, format=''):
+        """Get loader function for this format."""
+        format = cls.get_format(infile, format)
         try:
-            loader = cls._loaders[format]
+            return cls._loaders[format]
         except KeyError:
             raise ValueError('Cannot load from format `{}`'.format(format))
+
+    @classmethod
+    def load(cls, infile:str, format:str='', **kwargs):
+        """Read new font from file."""
+        loader = cls.get_loader(infile, format)
         return loader(infile, **kwargs)
+
+    @classmethod
+    def get_saver(cls, outfile, format=''):
+        """Get saver function for this format."""
+        format = cls.get_format(outfile, format)
+        try:
+            return cls._savers[format]
+        except KeyError:
+            raise ValueError('Cannot save to format `{}`'.format(format))
 
     @scriptable
     def save(self, outfile:str, format:str='', **kwargs):
         """Write to file, return unchanged."""
-        if isinstance(outfile, bytes):
-            outfile = outfile.decode('ascii')
-        if not format:
-            format = DEFAULT_FORMAT
-            # if filename given, try to use it to infer format
-            if isinstance(outfile, str):
-                try:
-                    _, format = outfile.rsplit('.', 1)
-                except ValueError:
-                    pass
-        format = format.lower()
-        try:
-            saver = self._savers[format]
-        except KeyError:
-            raise ValueError('Cannot save to format `{}`'.format(format))
+        saver = self.get_saver(outfile, format)
         saver(self, outfile, **kwargs)
         return self
 
@@ -249,6 +254,7 @@ class Typeface:
                 # set source-name and source-format
                 return typeface._set_extraction_props(infile)
             # register loader
+            _load_func.script_args = load.__annotations__
             for format in formats:
                 cls._loaders[format.lower()] = _load_func
             return _load_func
@@ -271,6 +277,7 @@ class Typeface:
                     # use first extension provided by saver function
                     _single_saver(save, typeface, outfile, encoding, formats[0], **kwargs)
             # register saver
+            _save_func.script_args = save.__annotations__
             for format in formats:
                 cls._savers[format.lower()] = _save_func
             return _save_func

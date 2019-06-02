@@ -10,8 +10,15 @@ import logging
 
 import monobit
 
+
+CONVERTERS = {
+    int: int,
+    bool: lambda _s: _s.lower() == 'true',
+    str: str,
+}
+
 # parse command line
-parser = argparse.ArgumentParser()
+parser = argparse.ArgumentParser(add_help=False)
 parser.add_argument('infile', nargs='?', type=str, default='')
 parser.add_argument('outfile', nargs='?', type=str, default='')
 parser.add_argument(
@@ -26,7 +33,41 @@ parser.add_argument(
     '--debug', action='store_true',
     help='show debugging output'
 )
+parser.add_argument(
+    '-h', '--help', action='store_true',
+    help='show this help message and exit'
+)
+# find out which operation we're asked to perform
+args, unknown = parser.parse_known_args()
+
+# get loader arguments
+loader = monobit.Typeface.get_loader(args.infile, format=args.from_)
+for arg, _type in loader.script_args.items():
+    parser.add_argument('--' + arg.strip('_'), dest=arg, type=CONVERTERS[_type])
+
+# get loader arguments
+saver = monobit.Typeface.get_saver(args.outfile, format=args.to_)
+for arg, _type in saver.script_args.items():
+    parser.add_argument('--' + arg.strip('_'), dest=arg, type=CONVERTERS[_type])
+
 args = parser.parse_args()
+
+if args.help:
+    parser.print_help()
+    sys.exit(0)
+
+# convert arguments to type accepted by operation
+load_args = {
+    _name: _arg
+    for _name, _arg in vars(args).items()
+    if _arg is not None and _name in loader.script_args
+}
+save_args = {
+    _name: _arg
+    for _name, _arg in vars(args).items()
+    if _arg is not None and _name in saver.script_args
+}
+
 
 if args.debug:
     loglevel = logging.DEBUG
@@ -36,8 +77,8 @@ else:
 logging.basicConfig(level=loglevel, format='%(levelname)s: %(message)s')
 
 try:
-    font = monobit.load(args.infile, format=args.from_)
-    font.save(args.outfile, format=args.to_)
+    font = monobit.load(args.infile, format=args.from_, **load_args)
+    font.save(args.outfile, format=args.to_, **save_args)
 except Exception as exc:
     logging.error(exc)
     if args.debug:

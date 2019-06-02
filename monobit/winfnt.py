@@ -277,9 +277,9 @@ def load(instream):
     return Typeface([font])
 
 @Typeface.saves('fnt', encoding=None, multi=False)
-def save(font, outstream):
+def save(font, outstream, version:int=2):
     """Write font to a Windows .FNT file."""
-    outstream.write(create_fnt(font))
+    outstream.write(create_fnt(font, version*0x100))
     return font
 
 
