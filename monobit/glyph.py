@@ -148,6 +148,32 @@ class Glyph:
         inked = [True in _row for _row in self._rows]
         return len(inked) - inked.index(True) - list(reversed(inked)).index(True)
 
+    @property
+    def bounding_box(self):
+        """Dimensions of tightest box to fit glyph."""
+        return self.ink_width, self._ink_height
+
+    @property
+    def ink_offsets(self):
+        """Offset from sides to bounding box. Left, bottom, right, top."""
+        if not self._rows:
+            return 0, 0
+        row_inked = [True in _row for _row in self._rows]
+        if True not in row_inked:
+            return self.width, self.height, 0, 0
+        bottom = list(reversed(row_inked)).index(True)
+        top = row_inked.index(True)
+        col_inked = [bool(sum(_row[_i] for _row in self._rows)) for _i in range(self.width)]
+        left = col_inked.index(True)
+        right = list(reversed(col_inked)).index(True)
+        return left, bottom, right, top
+
+    def reduce(self):
+        """Return a gyph reduced to the bounding box."""
+        left, bottom, right, top = self.ink_offsets
+        rows = self._rows[top:self.height-bottom]
+        rows = tuple(_row[left:self.width-right] for _row in rows)
+        return Glyph(rows)
 
     ##########################################################################
 

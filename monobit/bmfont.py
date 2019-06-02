@@ -443,7 +443,7 @@ def _extract(container, path, bmformat, info, common, pages, chars, kernings=())
             '{} {} {}'.format(Label(_kern.first), Label(_kern.second), _kern.amount)
             for _kern in kernings
         ),
-        # TODO: offset from common.base
+        'offset': common.base - max_height
     }
     properties.update({'bmfont.' + _k: _v for _k, _v in bmfont_props.items()})
     return Font(glyphs, labels, (), properties)
@@ -510,24 +510,27 @@ def _create_spritesheets(font, size=(256, 256), packed=False):
         x, y = 0, 0
         tree = SpriteNode(x, y, width, height)
         for label, glyph in iter_unicode:
-            if glyph.height and glyph.width:
+            left, bottom, right, top = glyph.ink_offsets
+            cropped = glyph.reduce()
+            if cropped.height and cropped.width:
                 try:
-                    x, y = tree.insert(glyph)
+                    x, y = tree.insert(cropped)
                 except ValueError:
                     # we don't fit, get next sheet
                     break
-                charimg = Image.new('L', (glyph.width, glyph.height))
-                data = glyph.as_tuple(fore, back)
+                charimg = Image.new('L', (cropped.width, cropped.height))
+                data = cropped.as_tuple(fore, back)
                 charimg.putdata(data)
                 img.paste(charimg, (x, y))
             chars.append(dict(
                 id=int(label[2:], 16),
                 x=x,
                 y=y,
-                width=glyph.width,
-                height=glyph.height,
-                xoffset=font.bearing_before,
-                yoffset=font.bounding_box.y - glyph.height, #-font.offset - glyph.height,
+                width=cropped.width,
+                height=cropped.height,
+                xoffset=font.bearing_before + left,
+                # y offset from top line
+                yoffset=font.bounding_box.y - glyph.height + top,
                 # not sure how these are really interpreted
                 xadvance=font.bearing_before + glyph.width + font.bearing_after,
                 page=page_id,
