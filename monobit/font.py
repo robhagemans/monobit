@@ -9,6 +9,7 @@ from functools import wraps
 from typing import NamedTuple
 import numbers
 import logging
+import pkgutil
 
 from .base import scriptable
 from .glyph import Glyph
@@ -167,30 +168,108 @@ PROPERTIES = {
 }
 
 
-def ord_to_unicode(ordinal, encoding):
-    """Convert ordinal to unicode label."""
-    if encoding.lower() == 'unicode' or encoding.lower().startswith('iso10646'):
-        return 'u+{:04x}'.format(int(ordinal))
-    byte = bytes([int(ordinal)])
-    try:
-        unicode = byte.decode(encoding)
-    except LookupError:
-        # assume the codec is an ascii superset?
-        unicode = byte.decode('ascii')
-    return 'u+{:04x}'.format(ord(unicode))
+class Codec:
+    """Convert between unicode and ordinals using python codec."""
 
-def unicode_to_ord(key, encoding):
-    """Convert ordinal to unicode label."""
-    uniord = int(str(key)[2:], 16)
-    if encoding.lower() == 'unicode' or encoding.lower().startswith('iso10646'):
-        return uniord
-    unicode = chr(uniord)
+    def __init__(self, encoding):
+        """Set up codec."""
+        # force early LookupError if not known
+        b'x'.decode(encoding)
+        'x'.encode(encoding)
+        self._encoding = encoding
+
+    def ord_to_unicode(self, ordinal):
+        """Convert ordinal to unicode label."""
+        byte = bytes([int(ordinal)])
+        unicode = byte.decode(self._encoding)
+        return 'u+{:04x}'.format(ord(unicode))
+
+    def unicode_to_ord(self, key, errors='strict'):
+        """Convert ordinal to unicode label."""
+        uniord = int(str(key)[2:], 16)
+        unicode = chr(uniord)
+        byte = unicode.encode(self._encoding, errors=errors)
+        if not byte:
+            # happens for errors='ignore'
+            return ' '.encode(self._encoding)[0]
+        return byte[0]
+
+
+class Codepage:
+    """Convert between unicode and ordinals."""
+
+    def __init__(self, codepage_name):
+        """Read a codepage file and convert to codepage dict."""
+        self._mapping = {}
+        data = pkgutil.get_data(__name__, 'codepages/{}.ucp'.format(codepage_name))
+        if data is None:
+            raise LookupError(codepage_name)
+        for line in data.decode('utf-8-sig').splitlines():
+            # ignore empty lines and comment lines (first char is #)
+            if (not line) or (line[0] == '#'):
+                continue
+            # strip off comments; split unicodepoint and hex string
+            splitline = line.split('#')[0].split(':')
+            # ignore malformed lines
+            if len(splitline) < 2:
+                continue
+            try:
+                # extract codepage point
+                cp_point = int(splitline[0].strip(), 16)
+                # allow sequence of code points separated by commas
+                grapheme_cluster = ''.join(
+                    chr(int(ucs_str.strip(), 16)) for ucs_str in splitline[1].split(',')
+                )
+                self._mapping[cp_point] = grapheme_cluster
+            except (ValueError, TypeError):
+                logging.warning('Could not parse line in codepage file: %s', repr(line))
+        self._inv_mapping = {_v: _k for _k, _v in self._mapping.items()}
+
+    def ord_to_unicode(self, ordinal):
+        """Convert ordinal to unicode label."""
+        return 'u+{:04x}'.format(self._mapping[ordinal])
+
+    def unicode_to_ord(self, key, errors='strict'):
+        """Convert ordinal to unicode label."""
+        uniord = int(str(key)[2:], 16)
+        try:
+            return self._inv_mapping[uniord]
+        except KeyError as e:
+            if errors == 'strict':
+                raise UnicodeEncodeError(str(e)) from e
+            if errors == 'ignore':
+                return self._inv_mapping[ord(' ')]
+            # TODO: should we use replacement char? default-char?
+            return self._inv_mapping[ord('?')]
+
+
+class Unicode:
+    """Convert between unicode and ordinals."""
+
+    def ord_to_unicode(self, ordinal):
+        """Convert ordinal to unicode label."""
+        return 'u+{:04x}'.format(int(ordinal))
+
+    def unicode_to_ord(self, key, errors='strict'):
+        """Convert ordinal to unicode label."""
+        return int(str(key)[2:], 16)
+
+
+def _get_encoding(enc):
+    """Find an encoding by name."""
+    enc = enc.lower().replace('-', '_')
+    if enc in ('unicode', 'ucs', 'iso10646', 'iso_10646', 'iso10646_1'):
+        return Unicode()
     try:
-        byte = unicode.encode(encoding)
+        return Codec(enc.lower())
     except LookupError:
-        # assume the codec is an ascii superset?
-        byte = unicode.encode('ascii')
-    return byte[0]
+        pass
+    try:
+        return Codepage(enc.lower())
+    except LookupError:
+        pass
+    logging.warning('Unknown encoding `%s`, assuming ascii.', enc)
+    return Codec('ascii')
 
 
 class Font:
@@ -224,6 +303,7 @@ class Font:
                     self._properties[key] = value
             # append nonstandard properties
             self._properties.update(properties)
+        self._encoding = _get_encoding(self._properties['encoding'])
 
 
     ##########################################################################
@@ -259,15 +339,7 @@ class Font:
             return self.get_glyph('u+{:04x}'.format(ord(key)))
         except KeyError:
             pass
-        try:
-            return self.get_glyph(unicode_to_ord(key, self.encoding))
-        except UnicodeEncodeError:
-            # errors='strict' (raise), 'replace' (with default), 'ignore' (replace with space)
-            if errors == 'strict':
-                raise
-            elif errors == 'ignore':
-                return self.get_glyph(' '.encode(self.encoding))
-            return self.get_default_glyph()
+        return self.get_glyph(self._encoding.unicode_to_ord(key, errors=errors))
 
     def iter_unicode(self):
         """Iterate over glyphs with unicode labels."""
@@ -281,7 +353,7 @@ class Font:
                     yield label, glyph
                 elif label.is_ordinal:
                     try:
-                        yield ord_to_unicode(label, self.encoding), glyph
+                        yield self._encoding.ord_to_unicode(label), glyph
                     except UnicodeError:
                         pass
 
@@ -328,7 +400,7 @@ class Font:
             index = self._labels[key]
         except KeyError:
             if key.is_unicode:
-                return unicode_to_ord(key, self.encoding)
+                return self._encoding.unicode_to_ord(key)
             raise
         for label, lindex in self._labels.items():
             if index == lindex and label.is_ordinal:
