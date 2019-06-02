@@ -238,7 +238,6 @@ def _save_yaff(font, outstream, fore, back, comment, tab, key_format, key_sep):
         outstream.write('\n')
     for labels, glyph in font:
         _write_glyph(outstream, labels, glyph, fore, back, comment, tab, key_format, key_sep)
-        write_comments(outstream, glyph.comments, comm_char=comment)
 
 def _save_draw(font, outstream, fore, back, comment, tab, key_format, key_sep):
     """Write one font to a plaintext stream."""

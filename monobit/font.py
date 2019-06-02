@@ -10,6 +10,7 @@ from typing import NamedTuple
 import numbers
 import logging
 import pkgutil
+import unicodedata
 
 from .base import scriptable
 from .glyph import Glyph
@@ -67,7 +68,7 @@ class Label:
             return self._value
         raise TypeError("Label is not an ordinal.")
 
-    def __str__(self):
+    def __repr__(self):
         """Convert label to str."""
         if self.is_ordinal:
             return '0x{:02x}'.format(self._value)
@@ -89,6 +90,21 @@ class Label:
     @property
     def is_ordinal(self):
         return isinstance(self._value, int)
+
+    @property
+    def unicode(self):
+        if self.is_unicode:
+            return chr(int(self._value[2:], 16))
+        return ''
+
+    @property
+    def unicode_name(self):
+        if self.is_unicode:
+            try:
+                return unicodedata.name(self.unicode)
+            except ValueError:
+                pass
+        return ''
 
 
 class Coord(NamedTuple):
@@ -304,6 +320,26 @@ class Font:
             # append nonstandard properties
             self._properties.update(properties)
         self._encoding = _get_encoding(self._properties['encoding'])
+        # add unicode labels for ordinals
+        uni_labels = {}
+        for _k, _v in self._labels.items():
+            if not _k.is_ordinal:
+                continue
+            try:
+                label = Label(self._encoding.ord_to_unicode(_k))
+            except UnicodeError:
+                pass
+            else:
+                uni_labels[label] = _v
+        # add unicode glyph namr as comment
+        self._glyphs = list(self._glyphs)
+        for label, index in self._labels.items():
+            if label.is_unicode and label.unicode_name and not self._glyphs[index].comments:
+                self._glyphs[index] = self._glyphs[index].add_comments((label.unicode_name,))
+        self._glyphs = tuple(self._glyphs)
+        # override with explicit unicode labels, if given
+        uni_labels.update(self._labels)
+        self._labels = uni_labels
 
 
     ##########################################################################
