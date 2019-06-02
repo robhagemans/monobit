@@ -276,7 +276,12 @@ def _parse_properties(glyphs, glyph_props, bdf_props, x_props):
 
 def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
     """Parse BDF global and per-glyph geometry."""
-    size, xdpi, ydpi = bdf_props.pop('SIZE').split(' ')
+    size_prop = bdf_props.pop('SIZE').split()
+    if len(size_prop) > 3:
+        if size_prop[3] != 1:
+            raise ValueError('Anti-aliasing and colour not supported.')
+        size_prop = size_prop[:3]
+    size, xdpi, ydpi = size_prop
     properties = {
         'source-format': 'BDF v{}'.format(bdf_props.pop('STARTFONT')),
         'point-size': size,
