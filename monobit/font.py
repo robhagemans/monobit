@@ -265,11 +265,13 @@ class Codepage:
 class Unicode:
     """Convert between unicode and ordinals."""
 
-    def ord_to_unicode(self, ordinal):
+    @staticmethod
+    def ord_to_unicode(ordinal):
         """Convert ordinal to unicode label."""
         return 'u+{:04x}'.format(int(ordinal))
 
-    def unicode_to_ord(self, key, errors='strict'):
+    @staticmethod
+    def unicode_to_ord(key, errors='strict'):
         """Convert ordinal to unicode label."""
         return int(str(key)[2:], 16)
 
@@ -278,7 +280,7 @@ def _get_encoding(enc):
     """Find an encoding by name."""
     enc = enc.lower().replace('-', '_')
     if enc in ('unicode', 'ucs', 'iso10646', 'iso_10646', 'iso10646_1'):
-        return Unicode()
+        return Unicode
     try:
         return Codepage(enc.lower())
     except LookupError:
@@ -334,6 +336,12 @@ class Font:
                 pass
             else:
                 uni_labels[label] = _v
+        # remove ordinal labels if encoding is unicode
+        if self._encoding == Unicode:
+            self._labels = {
+                _k: _v for _k, _v in self._labels.items()
+                if not _k.is_ordinal
+            }
         # add unicode glyph namr as comment
         self._glyphs = list(self._glyphs)
         for label, index in self._labels.items():
