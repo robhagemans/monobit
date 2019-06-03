@@ -383,18 +383,10 @@ class Font:
     def iter_unicode(self):
         """Iterate over glyphs with unicode labels."""
         for index, glyph in enumerate(self._glyphs):
-            labels = tuple(
-                _label for _label, _index in self._labels.items()
-                if _index == index
+            yield from (
+                (str(_label), glyph) for _label, _index in self._labels.items()
+                if _index == index and _label.is_unicode
             )
-            for label in labels:
-                if label.is_unicode:
-                    yield label, glyph
-                elif label.is_ordinal:
-                    try:
-                        yield self._encoding.ord_to_unicode(label), glyph
-                    except ValueError:
-                        pass
 
     ##########################################################################
     # labels
