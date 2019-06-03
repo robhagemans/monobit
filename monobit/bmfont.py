@@ -430,6 +430,7 @@ def _extract(container, path, bmformat, info, common, pages, chars, kernings=())
     # encoding
     if _to_int(bmfont_props.pop('unicode')):
         encoding = 'unicode'
+        bmfont_props.pop('charset')
     else:
         # if props are from binary, this has already been converted through _CHARSET_MAP
         charset = bmfont_props.pop('charset')
@@ -448,7 +449,20 @@ def _extract(container, path, bmformat, info, common, pages, chars, kernings=())
         ),
         'offset': common.base - max_height
     }
-    properties.update({'bmfont.' + _k: _v for _k, _v in bmfont_props.items()})
+    # drop other props if they're default value
+    default_bmfont_props = {
+        'stretchH': '100',
+        'smooth': '0',
+        'aa': '1',
+        'padding': '0,0,0,0',
+        'spacing': '0,0',
+        'outline': '0',
+    }
+    properties.update({
+        'bmfont.' + _k: ' '.join(_v.split(','))
+        for _k, _v in bmfont_props.items()
+        if _v != default_bmfont_props[_k]
+    })
     return Font(glyphs, labels, (), properties)
 
 def _read_bmfont(container, name):
