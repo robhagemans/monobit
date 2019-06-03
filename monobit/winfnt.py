@@ -458,16 +458,6 @@ def _parse_win_props(fnt, win_props):
 ##############################################################################
 # windows .FNT writer
 
-def _get_prop_x(prop):
-    """Get x of property coordinate ('x y' or single size)."""
-    split = str(prop).split(' ', 1)
-    return int(split[0])
-
-def _get_prop_y(prop):
-    """Get y of property coordinate ('x y' or single size)."""
-    split = str(prop).split(' ', 1)
-    return int(split[-1])
-
 def create_fnt(font, version=0x200):
     """Create .FNT from properties."""
     weight_map = dict(reversed(_item) for _item in _WEIGHT_MAP.items())

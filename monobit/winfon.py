@@ -33,7 +33,7 @@ import logging
 from .binary import friendlystruct, ceildiv, align
 from .typeface import Typeface
 
-from .winfnt import parse_fnt, create_fnt, _get_prop_x, _get_prop_y
+from .winfnt import parse_fnt, create_fnt
 
 
 ##############################################################################
