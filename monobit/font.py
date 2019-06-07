@@ -362,14 +362,16 @@ class Font:
             labels = tuple(_label for _label, _index in self._labels.items() if _index == index)
             yield labels, glyph
 
-    def get_glyph(self, key, default=True):
+    def get_glyph(self, key, *, missing='raise'):
         """Get glyph by key, default if not present."""
         try:
             index = self._labels[Label(key)]
         except KeyError:
-            if not default:
-                raise
-            return self.get_default_glyph()
+            if missing == 'default':
+                return self.get_default_glyph()
+            if missing == 'empty':
+                return Glyph.empty(*self.bounding_box)
+            raise
         return self._glyphs[index]
 
     def get_default_glyph(self):

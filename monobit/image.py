@@ -116,7 +116,7 @@ def _to_image(
         for col in range(columns):
             ordinal = row * columns + col
             try:
-                glyph = font.get_glyph(ordinal)
+                glyph = font.get_glyph(ordinal, missing='default')
             except KeyError:
                 continue
             if not glyph.width or not glyph.height:

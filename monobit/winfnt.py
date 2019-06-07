@@ -480,7 +480,7 @@ def create_fnt(font, version=0x200):
     space_index = 0
     # char table
     ord_glyphs = [
-        font.get_glyph(_ord)
+        font.get_glyph(_ord, missing='default')
         for _ord in range(min(font.ordinals), max(font.ordinals)+1)
     ]
     # add the guaranteed-blank glyph
