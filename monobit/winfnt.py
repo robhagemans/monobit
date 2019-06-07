@@ -460,6 +460,8 @@ def _parse_win_props(fnt, win_props):
 
 def create_fnt(font, version=0x200):
     """Create .FNT from properties."""
+    if not font.ordinals:
+        raise ValueError('No ordinal encoding available.')
     weight_map = dict(reversed(_item) for _item in _WEIGHT_MAP.items())
     charset_map = dict(reversed(_item) for _item in _CHARSET_MAP.items())
     style_map = dict(reversed(_item) for _item in _STYLE_MAP.items())
