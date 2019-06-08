@@ -356,12 +356,6 @@ class Font:
     ##########################################################################
     # glyph access
 
-    def __iter__(self):
-        """Iterate over labels, glyph pairs."""
-        for index, glyph in enumerate(self._glyphs):
-            labels = tuple(_label for _label, _index in self._labels.items() if _index == index)
-            yield labels, glyph
-
     def get_glyph(self, key, *, missing='raise'):
         """Get glyph by key, default if not present."""
         try:
@@ -370,7 +364,7 @@ class Font:
             if missing == 'default':
                 return self.get_default_glyph()
             if missing == 'empty':
-                return Glyph.empty(*self.bounding_box)
+                return self.get_empty_glyph()
             raise
         return self._glyphs[index]
 
@@ -380,7 +374,11 @@ class Font:
             default_key = self._labels[self.default_char]
             return self._glyphs[default_key]
         except KeyError:
-            return Glyph.empty(*self.bounding_box)
+            return self.get_empty_glyph()
+
+    def get_empty_glyph(self):
+        """Get empty glyph with minimal advance (zero if bearing 0 or negative)."""
+        return Glyph.empty(self.bounding_box[0], max(0, -self.bearing_before - self.bearing_after))
 
     def get_char(self, key, errors='strict'):
         """Get glyph by unicode character."""
@@ -389,6 +387,12 @@ class Font:
         except KeyError:
             pass
         return self.get_glyph(self._encoding.unicode_to_ord(key, errors=errors))
+
+    def __iter__(self):
+        """Iterate over labels, glyph pairs."""
+        for index, glyph in enumerate(self._glyphs):
+            labels = tuple(_label for _label, _index in self._labels.items() if _index == index)
+            yield labels, glyph
 
     def iter_unicode(self):
         """Iterate over glyphs with unicode labels."""
