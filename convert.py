@@ -38,7 +38,7 @@ loader = monobit.Typeface.get_loader(args.infile, format=args.from_)
 for arg, _type in loader.script_args.items():
     parser.add_argument('--' + arg.replace('_', '-'), dest=arg, type=_type)
 
-# get loader arguments
+# get saver arguments
 saver = monobit.Typeface.get_saver(args.outfile, format=args.to_)
 for arg, _type in saver.script_args.items():
     parser.add_argument('--' + arg.replace('_', '-'), dest=arg, type=_type)

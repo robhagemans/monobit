@@ -205,8 +205,7 @@ def _write_glyph(outstream, labels, glyph, fore, back, comment, tab, key_format,
     for ordinal in labels:
         outstream.write(key_format(ordinal) + key_sep)
     glyphtxt = glyph.as_text(foreground=fore, background=back)
-    # replace zero-sized glyph with 1x1 empty
-    # TODO: better solution?
+    # empty glyphs are stored as 0x0, not 0xm or nx0
     if not glyph.width or not glyph.height:
         glyphtxt = [empty]
     outstream.write(tab)
@@ -242,9 +241,11 @@ def _save_yaff(font, outstream, fore, back, comment, tab, key_format, key_sep, e
     for labels, glyph in font:
         _write_glyph(outstream, labels, glyph, fore, back, comment, tab, key_format, key_sep, empty)
 
-def _save_draw(font, outstream, fore, back, comment, tab, key_format, key_sep):
+def _save_draw(font, outstream, fore, back, comment, tab, key_format, key_sep, empty):
     """Write one font to a plaintext stream."""
     write_comments(outstream, font.get_comments(), comm_char=comment, is_global=True)
-    for ordinal in font.ordinals:
-        glyph = font.get_glyph(ordinal)
-        _write_glyph(outstream, [ordinal], glyph, fore, back, comment, tab, key_format, key_sep, empty)
+    for label, glyph in font.iter_unicode():
+        uni_ord = int(label[2:], 16)
+        _write_glyph(
+            outstream, [uni_ord], glyph, fore, back, comment, tab, key_format, key_sep, empty
+        )
