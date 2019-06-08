@@ -217,7 +217,12 @@ class Codepage:
     def __init__(self, codepage_name):
         """Read a codepage file and convert to codepage dict."""
         self._mapping = {}
-        data = pkgutil.get_data(__name__, 'codepages/{}.ucp'.format(codepage_name))
+        try:
+            data = pkgutil.get_data(__name__, 'codepages/{}.ucp'.format(codepage_name))
+        except EnvironmentError:
+            # "If the package cannot be located or loaded, then None is returned." say the docs
+            # but it seems to raise FileNotFoundError if the *resource* isn't there
+            data = None
         if data is None:
             raise LookupError(codepage_name)
         for line in data.decode('utf-8-sig').splitlines():
@@ -324,7 +329,7 @@ class Font:
                     self._properties[key] = value
             # append nonstandard properties
             self._properties.update(properties)
-        self._encoding = _get_encoding(self._properties['encoding'])
+        self._encoding = _get_encoding(self.encoding)
         # add unicode labels for ordinals
         uni_labels = {}
         for _k, _v in self._labels.items():

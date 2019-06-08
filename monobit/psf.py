@@ -86,6 +86,8 @@ def load(instream):
         startseq = _PSF2_STARTSEQ
         encoding = 'utf-8'
         properties = {'source-format': 'PSF v2'}
+    else:
+        raise ValueError('Not a PSF file.')
     cells = load_aligned(instream, (width, height), length)
     # set ordinals as labels
     labels = {
