@@ -48,6 +48,7 @@ _YAFF_PARAMETERS = dict(
     tab='    ',
     key_format=str,
     key_sep=':\n',
+    empty='-',
 )
 
 _DRAW_PARAMETERS = dict(
@@ -57,6 +58,7 @@ _DRAW_PARAMETERS = dict(
     tab='\t',
     key_format=draw_output_key,
     key_sep=':',
+    empty='-',
 )
 
 
@@ -186,6 +188,7 @@ def _load_font(instream, back, key_format):
         for _el in property_elements
         for _key in _el.labels
     }
+    # TODO: deal with empty values (-)
     comments[None] = clean_comment(global_comment)
     return Font(glyphs, labels, comments, properties)
 
@@ -193,7 +196,7 @@ def _load_font(instream, back, key_format):
 ##############################################################################
 # write file
 
-def _write_glyph(outstream, labels, glyph, fore, back, comment, tab, key_format, key_sep):
+def _write_glyph(outstream, labels, glyph, fore, back, comment, tab, key_format, key_sep, empty):
     """Write out a single glyph in text format."""
     if not labels:
         logging.warning('No labels for glyph')
@@ -205,7 +208,7 @@ def _write_glyph(outstream, labels, glyph, fore, back, comment, tab, key_format,
     # replace zero-sized glyph with 1x1 empty
     # TODO: better solution?
     if not glyph.width or not glyph.height:
-        glyphtxt = ['.']
+        glyphtxt = [empty]
     outstream.write(tab)
     outstream.write(('\n' + tab).join(glyphtxt))
     outstream.write('\n\n')
@@ -223,7 +226,7 @@ def _write_prop(outstream, key, value, tab):
                 )
             )
 
-def _save_yaff(font, outstream, fore, back, comment, tab, key_format, key_sep):
+def _save_yaff(font, outstream, fore, back, comment, tab, key_format, key_sep, empty):
     """Write one font to a plaintext stream."""
     write_comments(outstream, font.get_comments(), comm_char=comment, is_global=True)
     props = font.nondefault_properties
@@ -237,11 +240,11 @@ def _save_yaff(font, outstream, fore, back, comment, tab, key_format, key_sep):
             _write_prop(outstream, key, value, tab)
         outstream.write('\n')
     for labels, glyph in font:
-        _write_glyph(outstream, labels, glyph, fore, back, comment, tab, key_format, key_sep)
+        _write_glyph(outstream, labels, glyph, fore, back, comment, tab, key_format, key_sep, empty)
 
 def _save_draw(font, outstream, fore, back, comment, tab, key_format, key_sep):
     """Write one font to a plaintext stream."""
     write_comments(outstream, font.get_comments(), comm_char=comment, is_global=True)
     for ordinal in font.ordinals:
         glyph = font.get_glyph(ordinal)
-        _write_glyph(outstream, [ordinal], glyph, fore, back, comment, tab, key_format, key_sep)
+        _write_glyph(outstream, [ordinal], glyph, fore, back, comment, tab, key_format, key_sep, empty)
