@@ -49,6 +49,28 @@ Work is underway to add:
 - write support for more formats
 
 
+Licence
+=======
+
+`monobit` is released under the [Expat MIT licence](https://opensource.org/licenses/MIT).
+
+
+Acknowledgements
+================
+
+`monobit` contains code from Simon Tatham's `mkwinfont` and `dewinfont`.
+
+Other software
+==============
+
+Other bitmap font tools you could use in conjunction with (or instead of) `monobit` include:
+- [FontForge](http://fontforge.github.io/en-US/)
+- Rebecca Bettencourt's [Bits'n'Picas](https://github.com/kreativekorp/bitsnpicas)
+- John Elliott's [PSFTools](http://www.seasip.info/Unix/PSF/)
+- Mark Leisher's [`gbdfed`](http://sofia.nmsu.edu/~mleisher/Software/gbdfed/)
+- Simon Tatham's [`mkwinfont`/`dewinfont`](https://www.chiark.greenend.org.uk/~sgtatham/fonts/)
+
+
 The `yaff` format
 =================
 
