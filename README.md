@@ -50,18 +50,20 @@ Work is underway to add:
 
 
 Licence
-=======
+-------
 
-`monobit` is released under the [Expat MIT licence](https://opensource.org/licenses/MIT).
+`monobit` and the `yaff` specification are is released under the
+[Expat MIT licence](https://opensource.org/licenses/MIT).
 
 
 Acknowledgements
-================
+----------------
 
 `monobit` contains code from Simon Tatham's `mkwinfont` and `dewinfont`.
 
+
 Other software
-==============
+--------------
 
 Other bitmap font tools you could use in conjunction with (or instead of) `monobit` include:
 - [FontForge](http://fontforge.github.io/en-US/)
