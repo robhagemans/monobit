@@ -1,12 +1,12 @@
 
-`monobit`: tools for manipulating monochrome bitmap fonts
-=========================================================
+Tools for working with monochrome bitmap fonts
+==============================================
 
-These tools let you modify bitmap fonts and convert between several formats.
+The `monobit` tools let you modify bitmap fonts and convert between several formats.
 They are currently in alpha stage.
 
-`monobit`'s native format is `yaff`, a human-friendly, text-based visual format similar to that used by
-Roman Czyborra's `hexdraw`, Simon Tatham's `mkwinfont` and John Elliott's `psftools`. A definition
+`monobit`'s native format is `yaff`, a human-friendly, text-based visual format similar to the ones used by
+Roman Czyborra's `hexdraw`, Simon Tatham's `mkwinfont` and John Elliott's `psftools`. A specification
 of the font format follows below.
 
 Supported formats
@@ -18,10 +18,11 @@ Supported formats
 | hexdraw               |          | `.draw`             |             | ✔      | ✔       |
 | GNU Unifont           |          | `.hex`              |             | ✔      | ✔       |
 | PC Screen Font        |          | `.psf`              | Linux       | ✔      | ✔       |
-| Raw binary            |          | `.fnt` `.rom`       | DOS         | ✔      | ✔       |
+| Raw binary            |          | `.fnt` `.rom` `.f??`| DOS         | ✔      | ✔       |
+| Bitmap image          |          | `.png`, `.gif`      |             | ✔      | ✔       |
 | C or C++ source code  |          | `.c` `.cpp` `.h`    |             | ✔      |         |
 | AngelCode BMFont      | Text     | `.fnt` + images     |             | ✔      | ✔       |
-| AngelCode BMFont      | Binary   | `.fnt`+ images      |             | ✔      |         |
+| AngelCode BMFont      | Binary   | `.fnt` + images     |             | ✔      |         |
 | AngelCode BMFont      | XML      | `.fnt` `.xml` + images |          | ✔      |         |
 | AngelCode BMFont      | JSON     | `.json` + images    |             | ✔      |         |
 | X11/Adobe BDF         |          | `.bdf`              | Unix        | ✔      |         |
@@ -34,10 +35,10 @@ Supported formats
 | Windows resource      | 2.0      | `.fnt`              | Windows 2.x | ✔      | ✔       |
 | Windows resource      | 3.0      | `.fnt`              | Windows 3.x | ✔      | ✔       |
 | Windows font          | 1.0 NE   | `.fon`              | Windows 1.x | ✔      |         |
-| Windows font          | 2.0 NE   | `.fon`              | Windows 1.x | ✔      | ✔       |
-| Windows font          | 3.0 NE   | `.fon`              | Windows 1.x | ✔      | ✔       |
-| Windows font          | 2.0 PE   | `.fon`              | Windows 1.x | ✔      |         |
-| Windows font          | 3.0 PE   | `.fon`              | Windows 1.x | ✔      |         |  
+| Windows font          | 2.0 NE   | `.fon`              | Windows 2.x | ✔      | ✔       |
+| Windows font          | 3.0 NE   | `.fon`              | Windows 3.x | ✔      | ✔       |
+| Windows font          | 2.0 PE   | `.fon`              | Windows 2.x | ✔      |         |
+| Windows font          | 3.0 PE   | `.fon`              | Windows 3.x | ✔      |         |  
 
 
 Work is underway to add:
@@ -149,10 +150,10 @@ Specification
 - Lines must be terminated by one of the following line endings:
   `LF` (`u+000a`), `CR LF` (`u+000d u+000a`), or `CR` (`u+000d`).
 - *Whitespace* consists of spaces (`u+0020`) and tabs (`u+0009`).
-- Other than whitespace and line endings as defined above, `yaff` files must not include:
-  * C0 and C1 control characters,
-  * the line separators `u+2028` and `u+2029`, or
-  * Unicode non-characters.
+- `yaff` files must not include:
+  * C0 and C1 control characters other than whitespace and line endings as defined above,
+  * The line separators `u+2028` and `u+2029`, or
+  * Any of the 66 Unicode *noncharacters*.
 
 #### Components
 `yaff` files consist of *glyph definitions*, *properties* and *comments*.
@@ -162,7 +163,7 @@ A line starting with a hash `#` contains a *comment* only.
 * `#` must be the first character of the line; inline comments are not allowed.
 * If the first character after `#` is whitespace, it does not form part of the comment.
 * Further whitespace characters do form part of the comment.
-* the line ending does not form part of the comment.
+* The line ending does not form part of the comment.
 * The comment may contain any character that is allowed in a `yaff` file.
 
 #### Properties
