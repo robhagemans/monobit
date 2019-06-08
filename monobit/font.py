@@ -407,31 +407,26 @@ class Font:
                 if _index == index and _label.is_unicode
             )
 
+    def iter_ordinal(self, encoding=None, start=0, stop=None, missing='empty'):
+        """Iterate over glyphs by ordinal; contiguous range."""
+        start = start or 0
+        stop = stop or 1 + max(int(_k) for _k in self._labels if _k.is_ordinal)
+        if encoding:
+            encoding = _get_encoding(encoding)
+        for ordinal in range(start, stop):
+            if not encoding:
+                # use only whatever ordinal was provided
+                label = ordinal
+                unicode = self._encoding.ord_to_unicode(ordinal)
+            else:
+                # transcode from unicode labels
+                label = encoding.ord_to_unicode(ordinal)
+                unicode = label
+            yield str(unicode), self.get_glyph(label, missing=missing)
+
+
     ##########################################################################
     # labels
-
-    @property
-    def max_ordinal(self):
-        """Get maximum ordinal in font."""
-        ordinals = self.ordinals
-        if ordinals:
-            return max(ordinals)
-        return -1
-
-    @property
-    def ordinal_range(self):
-        """Get range of ordinals."""
-        return range(0, self.max_ordinal + 1)
-
-    @property
-    def ordinals(self):
-        """Get tuple of defined ordinals."""
-        return sorted(int(_k) for _k in self._labels if _k.is_ordinal)
-
-    @property
-    def all_ordinal(self):
-        """All glyphs except the default have ordinals."""
-        return set(self._labels) <= set(self.ordinals)
 
     @property
     def number_glyphs(self):
@@ -518,7 +513,7 @@ class Font:
         'setwidth': 'normal', # normal, condensed, expanded, etc.
         'direction': 'left-to-right', # left-to-right, right-to-left
         'encoding': 'ascii',
-        'default-char': 'u+003f', # use question mark to replace missing glyph
+        'default-char': 'u+fffd', # use replacement char if not defined
         'word-boundary': 'u+0020', # word-break character (usually space)
     }
 

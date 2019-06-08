@@ -8,7 +8,7 @@ licence: https://opensource.org/licenses/MIT
 import logging
 
 from .binary import ceildiv, friendlystruct
-from .raw import load_aligned, save_aligned
+from .raw import load_aligned
 from .typeface import Typeface
 from .font import Font
 from .glyph import Glyph
@@ -126,35 +126,28 @@ def _read_unicode_table(instream, separator, startseq, encoding):
 @Typeface.saves('psf', encoding=None, multi=False)
 def save(font, outstream):
     """Save font to PSF file."""
+    # check if font is fixed-width and fixed-height
+    if font.spacing != 'monospace':
+        raise ValueError(
+            'This format does not support proportional or variable-height fonts.'
+        )
+    # use native encoding for now
+    encoding = None
+    unicode_strings, glyphs = zip(*font.iter_ordinal(encoding=encoding))
     psf_props = dict(
         width=font.bounding_box.x,
         height=font.bounding_box.y,
         charsize=font.bounding_box.y * ceildiv(font.bounding_box.x, 8),
         version=0,
         flags=_PSF2_HAS_UNICODE_TABLE,
-        length=font.max_ordinal + 1,
+        length=len(glyphs),
         headersize=_PSF2_HEADER.size + len(_PSF2_MAGIC)
     )
     outstream.write(_PSF2_MAGIC)
     outstream.write(bytes(_PSF2_HEADER(**psf_props)))
-    save_aligned(outstream, font)
-    # we need to create a dictionary of unicode keys
-    # that point to the same glyphs as ordinal keys
-    ordinal_for_index = {
-        _v: _k
-        for _k, _v in font._labels.items()
-        if _k.is_ordinal
-    }
-    unicode_dict = {
-        ordinal_for_index[_v]: _k
-        for _k, _v in font._labels.items()
-        if _v in ordinal_for_index
-        if _k.is_unicode
-        # FIXME: use iter_unicode, iter_ordinals
-    }
-    unicode_strings = [
-        unicode_dict.get(_i, '') for _i in font.ordinal_range
-    ]
+    # save_aligned
+    for glyph in glyphs:
+        outstream.write(glyph.as_bytes())
     unicode_seq = [
         [chr(int(_cp[2:], 16)) for _cp in _str.split(',') if _cp]
         for _str in unicode_strings

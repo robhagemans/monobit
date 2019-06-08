@@ -34,17 +34,15 @@ def save(font, outstream):
     return font
 
 
-def save_aligned(outstream, font):
+def save_aligned(outstream, font, encoding=None):
     """Save fixed-width font to byte-aligned bitmap."""
     # check if font is fixed-width and fixed-height
     if font.spacing != 'monospace':
         raise ValueError(
             'This format does not support proportional or variable-height fonts.'
         )
-    if not font.all_ordinal:
-        logging.warning('Glyphs without ordinal values not saved.')
-    for ordinal in font.ordinal_range:
-        outstream.write(font.get_glyph(ordinal, missing='default').as_bytes())
+    for _, glyph in font.iter_ordinal(encoding=encoding):
+        outstream.write(glyph.as_bytes())
 
 
 def load_strike(instream, cell, n_chars):

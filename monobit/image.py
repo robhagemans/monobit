@@ -89,7 +89,9 @@ if Image:
             border:rgb=(32, 32, 32), back:rgb=(0, 0, 0), fore:rgb=(255, 255, 255),
         ):
         """Export font to image."""
-        img = _to_image(font, columns, margin, padding, scale, border, back, fore)
+        # save as native encoding, for now
+        encoding = None
+        img = _to_image(font, columns, margin, padding, scale, border, back, fore, encoding)
         img.save(outfile, format)
         return font
 
@@ -98,6 +100,7 @@ def _to_image(
         font,
         columns=32, margin=(0, 0), padding=(0, 0), scale=(1, 1),
         border=(32, 32, 32), back=(0, 0, 0), fore=(255, 255, 255),
+        encoding=None
     ):
     """Dump font to image."""
     scale_x, scale_y = scale
@@ -106,36 +109,33 @@ def _to_image(
     # work out image geometry
     step_x = font.bounding_box.x * scale_x + padding_x
     step_y = font.bounding_box.y * scale_y + padding_y
-    rows = ceildiv(font.max_ordinal, columns)
+    glyphs = [_glyph for _, _glyph in font.iter_ordinals(encoding=encoding)]
+    rows = ceildiv(len(glyphs), columns)
     # determine image geometry
     width = columns * step_x + 2 * margin_x - padding_x
     height = rows * step_y + 2 * margin_y - padding_y
     img = Image.new('RGB', (width, height), border)
     # output glyphs
-    for row in range(rows):
-        for col in range(columns):
-            ordinal = row * columns + col
-            try:
-                glyph = font.get_glyph(ordinal, missing='default')
-            except KeyError:
-                continue
-            if not glyph.width or not glyph.height:
-                continue
-            charimg = Image.new('RGB', (glyph.width, glyph.height))
-            data = glyph.as_tuple(fore, back)
-            charimg.putdata(data)
-            charimg = charimg.resize((charimg.width * scale_x, charimg.height * scale_y))
-            lefttop = (margin_x + col*step_x, margin_y + row*step_y)
-            img.paste(charimg, lefttop)
+    for ordinal, glyph in enumerate(glyphs):
+        if not glyph.width or not glyph.height:
+            continue
+        row, col = divmod(ordinal, columns)
+        charimg = Image.new('RGB', (glyph.width, glyph.height))
+        data = glyph.as_tuple(fore, back)
+        charimg.putdata(data)
+        charimg = charimg.resize((charimg.width * scale_x, charimg.height * scale_y))
+        lefttop = (margin_x + col*step_x, margin_y + row*step_y)
+        img.paste(charimg, lefttop)
     return img
 
 def show(
         typeface,
         columns=32, margin=(0, 0), padding=(0, 0), scale=(1, 1),
         border=(32, 32, 32), back=(0, 0, 0), fore=(255, 255, 255),
+        encoding=None
     ):
     """Show font as image."""
     for font in typeface:
-        img = _to_image(font, columns, margin, padding, scale, border, back, fore)
+        img = _to_image(font, columns, margin, padding, scale, border, back, fore, encoding)
         img.show()
     return typeface

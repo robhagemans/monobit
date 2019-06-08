@@ -460,8 +460,6 @@ def _parse_win_props(fnt, win_props):
 
 def create_fnt(font, version=0x200):
     """Create .FNT from properties."""
-    if not font.ordinals:
-        raise ValueError('No ordinal encoding available.')
     weight_map = dict(reversed(_item) for _item in _WEIGHT_MAP.items())
     charset_map = dict(reversed(_item) for _item in _CHARSET_MAP.items())
     style_map = dict(reversed(_item) for _item in _STYLE_MAP.items())
@@ -480,11 +478,12 @@ def create_fnt(font, version=0x200):
         v3_flags = _DFF_FIXED
     pix_height = font.bounding_box.y
     space_index = 0
+    # use only native encoding for now
+    encoding = None
     # char table
-    ord_glyphs = [
-        font.get_glyph(_ord, missing='default')
-        for _ord in range(min(font.ordinals), max(font.ordinals)+1)
-    ]
+    ord_glyphs = [_glyph for _, _glyph in font.iter_ordinal(encoding=encoding)]
+    min_ord = 0
+    max_ord = len(ord_glyphs) - 1
     # add the guaranteed-blank glyph
     ord_glyphs.append(Glyph.empty(pix_width, pix_height))
     # create the bitmaps
@@ -539,10 +538,10 @@ def create_fnt(font, version=0x200):
         dfPitchAndFamily=pitch_and_family,
         dfAvgWidth=x_width,
         dfMaxWidth=font.bounding_box.x,
-        dfFirstChar=min(font.ordinals),
-        dfLastChar=max(font.ordinals),
-        dfDefaultChar=font.get_ordinal_for_label(font.default_char) - min(font.ordinals),
-        dfBreakChar=font.get_ordinal_for_label(font.word_boundary) - min(font.ordinals),
+        dfFirstChar=min_ord,
+        dfLastChar=max_ord,
+        dfDefaultChar=font.get_ordinal_for_label(font.default_char) - min_ord,
+        dfBreakChar=font.get_ordinal_for_label(font.word_boundary) - min_ord,
         # round up to multiple of 2 bytes to word-align v1.0 strikes (not used for v2.0+ ?)
         dfWidthBytes=align(ceildiv(font.bounding_box.x, 8), 1),
         dfDevice=device_name_offset,
