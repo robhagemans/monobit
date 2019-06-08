@@ -19,7 +19,7 @@ Supported formats
 | GNU Unifont           |          | `.hex`              |             | ✔      | ✔       |
 | PC Screen Font        |          | `.psf`              | Linux       | ✔      | ✔       |
 | Raw binary            |          | `.fnt` `.rom` `.f??`| DOS         | ✔      | ✔       |
-| Bitmap image          |          | `.png`, `.gif`      |             | ✔      | ✔       |
+| Bitmap image          |          | `.png` `.gif` `.bmp`|             | ✔      | ✔       |
 | C or C++ source code  |          | `.c` `.cpp` `.h`    |             | ✔      |         |
 | AngelCode BMFont      | Text     | `.fnt` + images     |             | ✔      | ✔       |
 | AngelCode BMFont      | Binary   | `.fnt` + images     |             | ✔      |         |
@@ -157,6 +157,7 @@ Specification
 
 #### Components
 `yaff` files consist of *glyph definitions*, *properties* and *comments*.
+Each of these components is optional; an empty file is a valid (if pointless) `yaff` file.
 
 #### Comments
 A line starting with a hash `#` contains a *comment* only.
