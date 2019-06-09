@@ -183,7 +183,7 @@ Specification
   `LF` (`u+000a`), `CR LF` (`u+000d u+000a`), or `CR` (`u+000d`).
 - *Whitespace* consists of spaces (`u+0020`) and tabs (`u+0009`).
 - `yaff` files must not include:
-  * C0 and C1 control characters other than whitespace and line endings as defined above,
+  * Control characters (Unicode category Cc) other than whitespace and line endings as defined above,
   * The line separators `u+2028` and `u+2029`, or
   * Any of the 66 Unicode *noncharacters*.
 
