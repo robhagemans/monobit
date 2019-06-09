@@ -75,14 +75,11 @@ def load(instream):
         return Typeface(fonts)
     raise ValueError('No fonts found in file.')
 
-@Typeface.saves('text', 'txt', 'yaff')
-def save(typeface, outstream):
+@Typeface.saves('text', 'txt', 'yaff', multi=False)
+def save(font, outstream):
     """Write fonts to a yaff file."""
-    for i, font in enumerate(typeface):
-        if i:
-            outstream.write(_SEPARATOR + '\n')
-        _save_yaff(font, outstream, **_YAFF_PARAMETERS)
-    return typeface
+    _save_yaff(font, outstream, **_YAFF_PARAMETERS)
+    return font
 
 
 @Typeface.loads('draw', name='hexdraw')

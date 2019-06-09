@@ -13,11 +13,9 @@ import io
 import sys
 import os
 
-from .base import VERSION, DEFAULT_FORMAT, scriptable, DirContainer, ZipContainer
+from .base import VERSION, DEFAULT_FORMAT, scriptable, DirContainer, ZipContainer, TextMultiStream
 from .font import Font
 
-
-_ZIP_MAGIC = b'PK\x03\x04'
 
 
 def _open_stream(on, outfile, mode, binary=False):
@@ -28,13 +26,18 @@ def _open_stream(on, outfile, mode, binary=False):
     else:
         return on.open(outfile, mode + 'b')
 
-def _open_container(outfile, mode):
+def _open_container(outfile, mode, binary=True):
     """Open a zip or directory container."""
     if isinstance(outfile, (str, bytes)):
         return DirContainer(outfile, mode)
-    else:
+    elif binary:
         return ZipContainer(outfile, mode)
+    else:
+        return TextMultiStream(outfile, mode)
 
+def _has_magic(instream, magic):
+    """Check if a binary stream matches the given signature."""
+    return instream.peek(len(magic)).startswith(magic)
 
 @contextmanager
 def _container_saver(save, typeface, outfile, **kwargs):
@@ -42,7 +45,7 @@ def _container_saver(save, typeface, outfile, **kwargs):
     # use standard streams if none provided
     if not outfile or outfile=='-':
         outfile = sys.stdout.buffer
-    with _open_container(outfile, 'w') as out:
+    with _open_container(outfile, 'w', binary=True) as out:
         save(typeface, out, **kwargs)
 
 @contextmanager
@@ -73,7 +76,7 @@ def _single_saver(save, typeface, outfile, binary, ext, **kwargs):
         _multi_saver(save, [*typeface][0], outfile, binary)
     else:
         # create container and call saver for each font in the typeface
-        with _open_container(outfile, 'w') as out:
+        with _open_container(outfile, 'w', binary) as out:
             # save fonts one-by-one
             for font in typeface:
                 # generate unique filename
@@ -88,6 +91,7 @@ def _single_saver(save, typeface, outfile, binary, ext, **kwargs):
                         save(font, stream, **kwargs)
                 except Exception as e:
                     logging.error('Could not save %s: %s', filename, e)
+                    raise
 
 
 def _container_loader(load, infile, binary, **kwargs):
@@ -103,7 +107,7 @@ def _container_loader(load, infile, binary, **kwargs):
     else:
         # stream - is it a zip container?
         with infile:
-            if isinstance(infile.read(0), bytes) and infile.peek(4) == _ZIP_MAGIC:
+            if isinstance(infile.read(0), bytes) and _has_magic(infile, ZipContainer.magic):
                 container_type = ZipContainer
             else:
                 raise ValueError(
@@ -124,12 +128,15 @@ def _stream_loader(load, infile, binary, **kwargs):
             container_type = DirContainer
         else:
             with _open_stream(io, infile, 'r', binary=True) as instream:
-                if isinstance(instream.read(0), bytes) and instream.peek(4) == _ZIP_MAGIC:
+                if _has_magic(instream, ZipContainer.magic):
                     container_type = ZipContainer
     else:
-        # stream - is it a zip container?
-        if isinstance(infile.read(0), bytes) and infile.peek(4) == _ZIP_MAGIC:
-            container_type = ZipContainer
+        if isinstance(infile.read(0), bytes):
+            # binary stream - is it a zip container?
+            if _has_magic(infile, ZipContainer.magic):
+                container_type = ZipContainer
+            elif not binary and _has_magic(infile, TextMultiStream.magic):
+                container_type = TextMultiStream
     if not container_type:
         if isinstance(infile, (str, bytes)):
             with _open_stream(io, infile, 'r', binary) as instream:

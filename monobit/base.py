@@ -10,6 +10,7 @@ import os
 import sys
 import logging
 import posixpath
+import itertools
 from contextlib import contextmanager
 from zipfile import ZipFile
 
@@ -38,6 +39,8 @@ rgb = pair
 
 class ZipContainer:
     """Zip-file wrapper"""
+
+    magic = b'PK\x03\x04'
 
     def __init__(self, stream_or_name, mode='r'):
         """Create wrapper."""
@@ -143,3 +146,66 @@ class DirContainer:
     def __contains__(self, name):
         """File exists in container."""
         return os.path.exists(os.path.join(self._path, name))
+
+
+class TextMultiStream:
+    """Container of concatenated text files. This is a bit hacky."""
+
+    separator = b'---'
+    magic = separator
+
+    def __init__(self, stream, mode='r'):
+        """Create wrapper."""
+        self._stream = stream
+        self.closed = False
+        self._mode = mode
+        if self._mode.startswith('r'):
+            if self._stream.readline().strip() != self.separator:
+                raise ValueError('Not a text multistream.')
+        else:
+            self._stream.write(b'%s\n' % (self.separator,))
+
+    def __iter__(self):
+        """Dummy content lister."""
+        for i in itertools.count():
+            if self.closed or self._stream.closed:
+                return
+            yield str(i)
+
+    def __contains__(self, name):
+        return False
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, one, two, three):
+        pass
+
+    @contextmanager
+    def open(self, name, mode, encoding=None):
+        """Open a single stream. Arguments are dummies"""
+        encoding = encoding or 'utf-8'
+
+        class _TextStream:
+            """Wrapper object to emulate a single text stream."""
+
+            def __init__(self, parent, stream):
+                self._stream = io.TextIOWrapper(stream, encoding=encoding)
+                self._stream.close = lambda: None
+                self._parent = parent
+
+            def __iter__(self):
+                """Iterate over lines until next separator."""
+                for line in self._stream:
+                    if line.strip() == self._parent.separator:
+                        return
+                    yield line[:-1]
+                self._parent.closed = True
+
+            def write(self, s):
+                """Write to stream."""
+                self._stream.write(s)
+
+        yield _TextStream(self, self._stream)
+        if self._mode.startswith('w'):
+            self._stream.write(b'\n%s\n' % (self.separator, ))
