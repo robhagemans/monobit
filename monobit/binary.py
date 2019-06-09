@@ -24,12 +24,6 @@ def bytes_to_bits(inbytes, width=None):
     bits = tuple(_c == '1' for _c in bitstr)
     return bits[:width]
 
-def bytes_to_str(s, encoding='latin-1'):
-    """Extract null-terminated string from bytes."""
-    if b'\0' in s:
-        s, _ = s.split(b'\0', 1)
-    return s.decode(encoding, errors='replace')
-
 
 ##############################################################################
 # binary structs

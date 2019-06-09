@@ -31,7 +31,7 @@ import string
 import logging
 import itertools
 
-from .binary import friendlystruct, bytes_to_bits, ceildiv, align, bytes_to_str
+from .binary import friendlystruct, bytes_to_bits, ceildiv, align
 from .typeface import Typeface
 from .font import Font
 from .glyph import Glyph
@@ -366,6 +366,12 @@ def _parse_chartable_v2(fnt, win_props):
         glyphs.append(Glyph.from_bytes(glyph_data, entry.geWidth))
         labels[ord] = len(glyphs) - 1
     return glyphs, labels
+
+def bytes_to_str(s, encoding='latin-1'):
+    """Extract null-terminated string from bytes."""
+    if b'\0' in s:
+        s, _ = s.split(b'\0', 1)
+    return s.decode(encoding, errors='replace')
 
 def _parse_win_props(fnt, win_props):
     """Convert WinFont properties to yaff properties."""
