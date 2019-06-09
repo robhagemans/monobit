@@ -3,7 +3,6 @@ Tools for working with monochrome bitmap fonts
 ==============================================
 
 The `monobit` tools let you modify bitmap fonts and convert between several formats.
-They are currently in alpha stage.
 
 `monobit`'s native format is `yaff`, a human-friendly, text-based visual format similar to the ones used by
 Roman Czyborra's `hexdraw`, Simon Tatham's `mkwinfont` and John Elliott's `psftools`. A specification
@@ -17,7 +16,8 @@ Supported formats
 | monobit yaff          |          | `.yaff`             |             | ✔      | ✔       |
 | hexdraw               |          | `.draw`             |             | ✔      | ✔       |
 | GNU Unifont           |          | `.hex`              |             | ✔      | ✔       |
-| PC Screen Font        |          | `.psf`              | Linux       | ✔      | ✔       |
+| PC Screen Font        | 1        | `.psf`              | Linux       | ✔      |         |
+| PC Screen Font        | 2        | `.psf`              | Linux       | ✔      | ✔       |
 | Raw binary            |          | `.fnt` `.rom` `.f??`| DOS         | ✔      | ✔       |
 | Bitmap image          |          | `.png` `.gif` `.bmp`|             | ✔      | ✔       |
 | C or C++ source code  |          | `.c` `.cpp` `.h`    |             | ✔      |         |
@@ -29,7 +29,7 @@ Supported formats
 | Codepage Information  | FONT     | `.cpi`              | MS-DOS      | ✔      |         |
 | Codepage Information  | FONT.NT  | `.cpi`              | Windows NT  | ✔      |         |
 | Codepage Information  | DRFONT   | `.cpi`              | DR-DOS      | ✔      |         |
-| `kbd` Codepage        | FONT     | `.cp`               | Linux       | ✔      |         |
+| `kbd` Codepage        |          | `.cp`               | Linux       | ✔      |         |
 | Amiga Font            |          |                     | Amiga OS    | ✔      |         |
 | Windows resource      | 1.0      | `.fnt`              | Windows 1.x | ✔      |         |
 | Windows resource      | 2.0      | `.fnt`              | Windows 2.x | ✔      | ✔       |
@@ -41,12 +41,20 @@ Supported formats
 | Windows font          | 3.0 PE   | `.fon`              | Windows 3.x | ✔      |         |  
 
 
+Roadmap
+-------
+
+**Warning**: `monobit` is currently in alpha stage and most likely broken at any point in time.
+
 Work is underway to add:
 - PCF
 - MacOS (`FONT`, `NFNT`, `FOND`) resources and `.dfont` suitcases
 - OS/2 font files
 - common font formats for GEM, Atari, C64, and ZX Spectrum
 - write support for more formats
+- write support for FontForge sfd and maybe ttf
+- testing
+- a simple REPL interface for manipulating fonts
 
 
 Licence
