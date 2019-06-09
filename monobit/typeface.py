@@ -238,10 +238,14 @@ class Typeface:
         return Typeface(fonts)
 
     @classmethod
-    def loads(cls, *formats, name=None, encoding='utf-8-sig', container=False):
+    def loads(cls, *formats, name=None, binary=False, container=False):
         """Decorator to register font loader."""
         if name is None:
             name = formats[0]
+        if binary:
+            encoding = None
+        else:
+            encoding = 'utf-8-sig'
 
         def _load_decorator(load):
             # stream input wrapper
@@ -262,8 +266,12 @@ class Typeface:
         return _load_decorator
 
     @classmethod
-    def saves(cls, *formats, encoding='utf-8', multi=True, container=False):
+    def saves(cls, *formats, binary=False, multi=True, container=False):
         """Decorator to register font saver."""
+        if binary:
+            encoding = None
+        else:
+            encoding = 'utf-8'
 
         def _save_decorator(save):
             # stream output wrapper

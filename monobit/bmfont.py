@@ -29,7 +29,7 @@ from .winfnt import _CHARSET_MAP
 # top-level calls
 
 if Image:
-    @Typeface.loads('bmf', name='BMFont', encoding=None, container=True)
+    @Typeface.loads('bmf', name='BMFont', binary=True, container=True)
     def load(container):
         """Load fonts from bmfont in container."""
         descriptions = [
@@ -38,7 +38,7 @@ if Image:
         ]
         return Typeface([_read_bmfont(container, desc) for desc in descriptions])
 
-    @Typeface.saves('bmf', encoding=None, multi=True, container=True)
+    @Typeface.saves('bmf', binary=True, multi=True, container=True)
     def save(
             typeface, container,
             image_size:pair=(256, 256),

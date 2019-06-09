@@ -19,7 +19,7 @@ from .glyph import Glyph
 
 
 if Image:
-    @Typeface.loads('png', 'bmp', 'gif', 'image', name='Bitmap Image', encoding=None)
+    @Typeface.loads('png', 'bmp', 'gif', 'image', name='Bitmap Image', binary=True)
     def load(
             infile,
             cell:pair=(8, 8),
@@ -78,7 +78,7 @@ if Image:
         return Typeface([Font(glyphs)])
 
 
-    @Typeface.saves('png', 'bmp', 'gif', 'image', encoding=None, multi=False)
+    @Typeface.saves('png', 'bmp', 'gif', 'image', binary=True, multi=False)
     def save(
             font, outfile,
             format:str=None,

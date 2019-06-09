@@ -14,7 +14,7 @@ from .font import Font, Label
 from .glyph import Glyph
 
 
-@Typeface.loads('hex', name='Unifont HEX', encoding='utf-8-sig')
+@Typeface.loads('hex', name='Unifont HEX')
 def load(instream):
     """Load font from a .hex file."""
     label = None
@@ -63,7 +63,7 @@ def load(instream):
     return Typeface([Font(glyphs, labels, comments=comments)])
 
 
-@Typeface.saves('hex', encoding='utf-8', multi=False)
+@Typeface.saves('hex', multi=False)
 def save(font, outstream):
     """Write font to a .hex file."""
     write_comments(outstream, font.get_comments(), comm_char='#', is_global=True)

@@ -103,7 +103,7 @@ _AMIGA_HEADER = friendlystruct(
 )
 
 
-@Typeface.loads('amiga', name='Amiga Font', encoding=None)
+@Typeface.loads('amiga', name='Amiga Font', binary=True)
 def load(f):
     """Read Amiga disk font file."""
     # read & ignore header

@@ -62,7 +62,7 @@ _DRAW_PARAMETERS = dict(
 )
 
 
-@Typeface.loads('text', 'txt', 'yaff', name='monobit-yaff', encoding='utf-8-sig')
+@Typeface.loads('text', 'txt', 'yaff', name='monobit-yaff')
 def load(instream):
     """Read a plaintext font file."""
     fonts = []
@@ -75,7 +75,7 @@ def load(instream):
         return Typeface(fonts)
     raise ValueError('No fonts found in file.')
 
-@Typeface.saves('text', 'txt', 'yaff', encoding='utf-8')
+@Typeface.saves('text', 'txt', 'yaff')
 def save(typeface, outstream):
     """Write fonts to a yaff file."""
     for i, font in enumerate(typeface):
@@ -85,13 +85,13 @@ def save(typeface, outstream):
     return typeface
 
 
-@Typeface.loads('draw', name='hexdraw', encoding='utf-8-sig')
+@Typeface.loads('draw', name='hexdraw')
 def load_draw(instream):
     """Read a hexdraw font file."""
     fonts = [_load_font(instream, back=_ACCEPTED_BACK, key_format=draw_input_key)]
     return Typeface(fonts)
 
-@Typeface.saves('draw', encoding='utf-8', multi=False)
+@Typeface.saves('draw', multi=False)
 def save_draw(font, outstream):
     """Write font to a hexdraw file."""
     _save_draw(font, outstream, **_DRAW_PARAMETERS)

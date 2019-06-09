@@ -58,7 +58,7 @@ _PSF2_SEPARATOR = b'\xFF'
 _PSF2_STARTSEQ = b'\xFE'
 
 
-@Typeface.loads('psf', name='PSF', encoding=None)
+@Typeface.loads('psf', name='PSF', binary=True)
 def load(instream):
     """Load font from psf file."""
     magic = instream.read(2)
@@ -117,7 +117,7 @@ def _read_unicode_table(instream, separator, startseq, encoding):
     return table
 
 
-@Typeface.saves('psf', encoding=None, multi=False)
+@Typeface.saves('psf', binary=True, multi=False)
 def save(font, outstream):
     """Save font to PSF2 file."""
     # check if font is fixed-width and fixed-height

@@ -270,13 +270,13 @@ _GLYPH_ENTRY = {
 ##############################################################################
 # top level functions
 
-@Typeface.loads('fnt', name='Windows FNT', encoding=None)
+@Typeface.loads('fnt', name='Windows FNT', binary=True)
 def load(instream):
     """Load a Windows .FNT file."""
     font = parse_fnt(instream.read())
     return Typeface([font])
 
-@Typeface.saves('fnt', encoding=None, multi=False)
+@Typeface.saves('fnt', binary=True, multi=False)
 def save(font, outstream, version:int=2):
     """Write font to a Windows .FNT file."""
     outstream.write(create_fnt(font, version*0x100))

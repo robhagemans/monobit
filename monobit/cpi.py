@@ -95,14 +95,14 @@ _FORMAT_NAME = {
 }
 
 
-@Typeface.loads('cpi', name='CPI', encoding=None)
+@Typeface.loads('cpi', name='CPI', binary=True)
 def load(instream):
     """Load fonts from CPI file."""
     data = instream.read()
     fonts = _parse_cpi(data)
     return Typeface(fonts)
 
-@Typeface.loads('cp', name='Codepage', encoding=None)
+@Typeface.loads('cp', name='Codepage', binary=True)
 def load_cp(instream):
     """Load fonts from CP file."""
     data = instream.read()

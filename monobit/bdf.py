@@ -144,7 +144,7 @@ _XLFD_UNPARSED = {
 ##############################################################################
 # top-level calls
 
-@Typeface.loads('bdf', name='BDF', encoding='ascii')
+@Typeface.loads('bdf', name='BDF')
 def load(instream):
     """Load font from a .bdf file."""
     nchars, comments, bdf_props, x_props = _read_bdf_global(instream)

@@ -14,7 +14,7 @@ from .glyph import Glyph
 from .base import boolean, pair
 
 
-@Typeface.loads('dos', 'bin', 'rom', 'raw', name='raw binary', encoding=None)
+@Typeface.loads('dos', 'bin', 'rom', 'raw', name='raw binary', binary=True)
 def load(instream, cell:pair=(8, 8), n_chars:int=None, offset:int=0, strike:boolean=False):
     """Load font from raw binary."""
     # get through the offset
@@ -27,7 +27,7 @@ def load(instream, cell:pair=(8, 8), n_chars:int=None, offset:int=0, strike:bool
     return Typeface([Font(cells)])
 
 
-@Typeface.saves('dos', 'bin', 'rom', 'raw', encoding=None, multi=False)
+@Typeface.saves('dos', 'bin', 'rom', 'raw', binary=True, multi=False)
 def save(font, outstream):
     """Save font to raw byte-aligned binary (DOS font)."""
     save_aligned(outstream, font)
