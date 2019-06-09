@@ -52,7 +52,7 @@ Work is underway to add:
 Licence
 -------
 
-`monobit` and the `yaff` specification are is released under the
+`monobit` and the `yaff` specification are released under the
 [Expat MIT licence](https://opensource.org/licenses/MIT).
 
 
