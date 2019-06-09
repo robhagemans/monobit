@@ -53,7 +53,7 @@ class Label:
         # see if it counts as unicode label
         if value.lower().startswith('u+'):
             try:
-                int(value[2:], 16)
+                [int(_elem.strip()[2:], 16) for _elem in value.split(',')]
             except ValueError as e:
                 raise ValueError("'{}' is not a valid unicode label.".format(value)) from e
         # 'namespace' labels with a dot are not converted to lowercase
@@ -65,11 +65,10 @@ class Label:
     @classmethod
     def from_unicode(cls, unicode):
         """Convert ordinal to unicode label."""
-        return cls('u+{:04x}'.format(ord(unicode)))
-        #     return ','.join(
-        #         'u+{:04x}'.format(ord(_uc))
-        #         for _uc in sequence
-        #     )
+        return ','.join(
+            'u+{:04x}'.format(ord(_uc))
+            for _uc in unicode
+        )
 
     def __int__(self):
         """Convert to int if ordinal."""
@@ -103,15 +102,14 @@ class Label:
     @property
     def unicode(self):
         if self.is_unicode:
-            # [chr(int(_cp[2:], 16)) for _cp in _str.split(',') if _cp]
-            return chr(int(self._value[2:], 16))
+            return ''.join(chr(int(_cp.strip()[2:], 16)) for _cp in self._value.split(',') if _cp)
         return ''
 
     @property
     def unicode_name(self):
         if self.is_unicode:
             try:
-                return unicodedata.name(self.unicode)
+                return ', '.join(unicodedata.name(_cp) for _cp in self.unicode)
             except ValueError:
                 pass
         return ''
@@ -361,7 +359,10 @@ class Font:
         self._glyphs = list(self._glyphs)
         for label, index in self._labels.items():
             if label.is_unicode and label.unicode_name and not self._glyphs[index].comments:
-                description = '[{}] {}'.format(label.unicode, label.unicode_name)
+                if unicodedata.category(label.unicode).startswith('C'):
+                    description = '{}'.format(label.unicode_name)
+                else:
+                    description = '[{}] {}'.format(label.unicode, label.unicode_name)
                 self._glyphs[index] = self._glyphs[index].add_comments((description,))
         self._glyphs = tuple(self._glyphs)
         # override with explicit unicode labels, if given

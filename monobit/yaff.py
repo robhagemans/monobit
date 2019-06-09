@@ -245,7 +245,9 @@ def _save_draw(font, outstream, fore, back, comment, tab, key_format, key_sep, e
     """Write one font to a plaintext stream."""
     write_comments(outstream, font.get_comments(), comm_char=comment, is_global=True)
     for label, glyph in font.iter_unicode():
-        uni_ord = ord(label.unicode)
+        if len(label.unicode) > 1:
+            logging.warning("Can't encode grapheme cluster %s in .draw file; skipping.", str(label))
+            continue
         _write_glyph(
-            outstream, [uni_ord], glyph, fore, back, comment, tab, key_format, key_sep, empty
+            outstream, [ord(label.unicode)], glyph, fore, back, comment, tab, key_format, key_sep, empty
         )

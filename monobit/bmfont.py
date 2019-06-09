@@ -527,6 +527,11 @@ def _create_spritesheets(font, size=(256, 256), packed=False):
         x, y = 0, 0
         tree = SpriteNode(x, y, width, height)
         for label, glyph in iter_unicode:
+            if len(label.unicode) > 1:
+                logging.warning(
+                    "Can't encode grapheme cluster %s in bmfont file; skipping.", str(label)
+                )
+                continue
             left, bottom, right, top = glyph.ink_offsets
             cropped = glyph.reduce()
             if cropped.height and cropped.width:

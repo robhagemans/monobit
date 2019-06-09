@@ -68,13 +68,17 @@ def save(font, outstream):
     """Write font to a .hex file."""
     write_comments(outstream, font.get_comments(), comm_char='#', is_global=True)
     for label, char in font.iter_unicode():
-        write_comments(outstream, char.comments, comm_char='#')
+        if len(label.unicode) > 1:
+            logging.warning("Can't encode grapheme cluster %s in .draw file; skipping.", str(label))
+            continue
         if char.height != 16 or char.width not in (8, 16):
-            raise ValueError(
-                'Hex format only supports 8x16 or 16x16 glyphs, not {}x{}.'.format(
+            logging.warning(
+                'Hex format only supports 8x16 or 16x16 glyphs, not {}x{}; skipping.'.format(
                     char.width, char.height
                 )
             )
+            continue
+        write_comments(outstream, char.comments, comm_char='#')
         outstream.write('{:04X}:{}'.format(ord(label.unicode), char.as_hex().upper()))
         outstream.write('\n')
     return font
