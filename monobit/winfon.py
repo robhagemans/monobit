@@ -397,7 +397,7 @@ def _create_mz_stub():
         magic=b'MZ',
         last_page_length=dos_stub_size % 512,
         num_pages=ceildiv(dos_stub_size, 512),
-        # 4-para header - FIXME: calculate?
+        # 4-para header - TODO: calculate?
         header_size=4,
         # 16 extra para for stack
         min_allocation=0x10,

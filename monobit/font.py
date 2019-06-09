@@ -568,7 +568,7 @@ class Font:
             return 0
         # this assumes matrix does not extend beyond font bounding box (no empty lines)
         # but using ink_height would assume there's a glyph that both fully ascends and fully descends
-        # FIXME: need something like Glyph.bounding_box
+        # FIXME: need something like Glyph.bounding_box and .offset
         return max(_glyph.height for _glyph in self._glyphs) + self.offset
 
     @yaffproperty

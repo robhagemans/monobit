@@ -115,7 +115,7 @@ def _container_loader(load, infile, binary, **kwargs):
 
 def _stream_loader(load, infile, binary, **kwargs):
     """Open a single- or multifont format."""
-    if not infile or infile=='-':
+    if not infile or infile == '-':
         infile = sys.stdin.buffer
     container_type = None
     if isinstance(infile, (str, bytes)):
