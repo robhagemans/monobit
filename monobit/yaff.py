@@ -179,7 +179,11 @@ def _load_font(instream, back, key_format):
     }
     # convert text representation to glyph
     glyphs = [
-        Glyph.from_text(_el.clusters, background=back).add_comments(_el.comments)
+        (
+            Glyph.from_text(_el.clusters, background=back).add_comments(_el.comments)
+            if _el.clusters != ['-']
+            else Glyph.empty().add_comments(_el.comments)
+        )
         for _el in glyph_elements
     ]
     # extract property comments
@@ -188,7 +192,6 @@ def _load_font(instream, back, key_format):
         for _el in property_elements
         for _key in _el.labels
     }
-    # TODO: deal with empty values (-)
     comments[None] = clean_comment(global_comment)
     return Font(glyphs, labels, comments, properties)
 
