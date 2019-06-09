@@ -15,7 +15,7 @@ from zipfile import ZipFile
 
 
 DEFAULT_FORMAT = 'text'
-VERSION = '0.8'
+VERSION = '0.9'
 
 
 def scriptable(fn):
