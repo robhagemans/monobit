@@ -10,7 +10,7 @@ import string
 
 from .text import clean_comment, split_global_comment, write_comments
 from .typeface import Typeface
-from .font import Font
+from .font import Font, Label
 from .glyph import Glyph
 
 
@@ -52,7 +52,7 @@ def load(instream):
         if (set(value) | set(key)) - set(string.hexdigits):
             raise ValueError('Keys and values must be hexadecimal.')
         # unicode label
-        label = 'u+{}'.format(key)
+        label = Label.from_unicode(int(key, 16))
         labels[label] = len(glyphs)
         glyphs.append(Glyph.from_hex(value, width, height))
         comments[label] = clean_comment(current_comment)
@@ -75,7 +75,6 @@ def save(font, outstream):
                     char.width, char.height
                 )
             )
-        # omit the 'u+' for .hex
-        outstream.write('{}:{}'.format(label[2:].upper(), char.as_hex().upper()))
+        outstream.write('{:04X}:{}'.format(ord(label.unicode), char.as_hex().upper()))
         outstream.write('\n')
     return font

@@ -540,7 +540,7 @@ def _create_spritesheets(font, size=(256, 256), packed=False):
                 charimg.putdata(data)
                 img.paste(charimg, (x, y))
             chars.append(dict(
-                id=int(label[2:], 16),
+                id=ord(label.unicode),
                 x=x,
                 y=y,
                 width=cropped.width,

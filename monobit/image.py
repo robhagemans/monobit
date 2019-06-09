@@ -109,7 +109,7 @@ def _to_image(
     # work out image geometry
     step_x = font.bounding_box.x * scale_x + padding_x
     step_y = font.bounding_box.y * scale_y + padding_y
-    glyphs = [_glyph for _, _glyph in font.iter_ordinals(encoding=encoding)]
+    glyphs = [_glyph for _, _glyph in font.iter_ordinal(encoding=encoding)]
     rows = ceildiv(len(glyphs), columns)
     # determine image geometry
     width = columns * step_x + 2 * margin_x - padding_x

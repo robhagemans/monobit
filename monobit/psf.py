@@ -10,7 +10,7 @@ import logging
 from .binary import ceildiv, friendlystruct
 from .raw import load_aligned
 from .typeface import Typeface
-from .font import Font
+from .font import Font, Label
 from .glyph import Glyph
 
 
@@ -98,17 +98,11 @@ def load(instream):
         table = _read_unicode_table(instream, separator, startseq, encoding)
         # convert unicode table to labels
         labels.update({
-            _format_cluster(_seq): _index
+            Label.from_unicode(_seq): _index
             for _index, _seq in enumerate(table)
             if _seq
         })
     return Typeface([Font(cells, labels, properties=properties)])
-
-def _format_cluster(sequence):
-    return ','.join(
-        'u+{:04x}'.format(ord(_uc))
-        for _uc in sequence
-    )
 
 def _read_unicode_table(instream, separator, startseq, encoding):
     """Read the Unicode table in a PSF2 file."""
@@ -125,7 +119,7 @@ def _read_unicode_table(instream, separator, startseq, encoding):
 
 @Typeface.saves('psf', encoding=None, multi=False)
 def save(font, outstream):
-    """Save font to PSF file."""
+    """Save font to PSF2 file."""
     # check if font is fixed-width and fixed-height
     if font.spacing != 'monospace':
         raise ValueError(
@@ -133,7 +127,7 @@ def save(font, outstream):
         )
     # use native encoding for now
     encoding = None
-    unicode_strings, glyphs = zip(*font.iter_ordinal(encoding=encoding))
+    labels, glyphs = zip(*font.iter_ordinal(encoding=encoding))
     psf_props = dict(
         width=font.bounding_box.x,
         height=font.bounding_box.y,
@@ -148,10 +142,7 @@ def save(font, outstream):
     # save_aligned
     for glyph in glyphs:
         outstream.write(glyph.as_bytes())
-    unicode_seq = [
-        [chr(int(_cp[2:], 16)) for _cp in _str.split(',') if _cp]
-        for _str in unicode_strings
-    ]
+    unicode_seq = [_label.unicode for _label in labels]
     _write_unicode_table(outstream, unicode_seq, _PSF2_SEPARATOR, _PSF2_STARTSEQ, 'utf-8')
     return font
 

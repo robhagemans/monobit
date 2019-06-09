@@ -62,6 +62,15 @@ class Label:
         else:
             self._value = value.lower()
 
+    @classmethod
+    def from_unicode(cls, unicode):
+        """Convert ordinal to unicode label."""
+        return cls('u+{:04x}'.format(ord(unicode)))
+        #     return ','.join(
+        #         'u+{:04x}'.format(ord(_uc))
+        #         for _uc in sequence
+        #     )
+
     def __int__(self):
         """Convert to int if ordinal."""
         if self.is_ordinal:
@@ -94,6 +103,7 @@ class Label:
     @property
     def unicode(self):
         if self.is_unicode:
+            # [chr(int(_cp[2:], 16)) for _cp in _str.split(',') if _cp]
             return chr(int(self._value[2:], 16))
         return ''
 
@@ -198,12 +208,12 @@ class Codec:
         """Convert ordinal to unicode label."""
         byte = bytes([int(ordinal)])
         unicode = byte.decode(self._encoding)
-        return 'u+{:04x}'.format(ord(unicode))
+        return str(Label.from_unicode(unicode))
 
     def unicode_to_ord(self, key, errors='strict'):
         """Convert ordinal to unicode label."""
-        uniord = int(str(key)[2:], 16)
-        unicode = chr(uniord)
+        unicode = Label(key).unicode
+        uniord = ord(unicode)
         byte = unicode.encode(self._encoding, errors=errors)
         if not byte:
             # happens for errors='ignore'
@@ -249,13 +259,13 @@ class Codepage:
     def ord_to_unicode(self, ordinal):
         """Convert ordinal to unicode label."""
         try:
-            return 'u+{:04x}'.format(self._mapping[int(ordinal)])
+            return str(Label.from_unicode(chr(self._mapping[int(ordinal)])))
         except KeyError as e:
             raise ValueError(str(e)) from e
 
     def unicode_to_ord(self, key, errors='strict'):
         """Convert ordinal to unicode label."""
-        uniord = int(str(key)[2:], 16)
+        uniord = ord(Label(key).unicode)
         try:
             return self._inv_mapping[uniord]
         except KeyError as e:
@@ -273,12 +283,12 @@ class Unicode:
     @staticmethod
     def ord_to_unicode(ordinal):
         """Convert ordinal to unicode label."""
-        return 'u+{:04x}'.format(int(ordinal))
+        return str(Label.from_unicode(chr(int(ordinal))))
 
     @staticmethod
     def unicode_to_ord(key, errors='strict'):
         """Convert ordinal to unicode label."""
-        return int(str(key)[2:], 16)
+        return ord(Label(key).unicode)
 
 
 def _get_encoding(enc):
@@ -351,7 +361,8 @@ class Font:
         self._glyphs = list(self._glyphs)
         for label, index in self._labels.items():
             if label.is_unicode and label.unicode_name and not self._glyphs[index].comments:
-                self._glyphs[index] = self._glyphs[index].add_comments((label.unicode_name,))
+                description = '[{}] {}'.format(label.unicode, label.unicode_name)
+                self._glyphs[index] = self._glyphs[index].add_comments((description,))
         self._glyphs = tuple(self._glyphs)
         # override with explicit unicode labels, if given
         uni_labels.update(self._labels)
@@ -388,7 +399,7 @@ class Font:
     def get_char(self, key, errors='strict'):
         """Get glyph by unicode character."""
         try:
-            return self.get_glyph('u+{:04x}'.format(ord(key)))
+            return self.get_glyph(Label.from_unicode(key))
         except KeyError:
             pass
         return self.get_glyph(self._encoding.unicode_to_ord(key, errors=errors))
@@ -403,7 +414,7 @@ class Font:
         """Iterate over glyphs with unicode labels."""
         for index, glyph in enumerate(self._glyphs):
             yield from (
-                (str(_label), glyph) for _label, _index in self._labels.items()
+                (_label, glyph) for _label, _index in self._labels.items()
                 if _index == index and _label.is_unicode
             )
 
@@ -422,7 +433,7 @@ class Font:
                 # transcode from unicode labels
                 label = encoding.ord_to_unicode(ordinal)
                 unicode = label
-            yield str(unicode), self.get_glyph(label, missing=missing)
+            yield Label(unicode), self.get_glyph(label, missing=missing)
 
 
     ##########################################################################
