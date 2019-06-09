@@ -20,10 +20,10 @@ from .font import Font
 _ZIP_MAGIC = b'PK\x03\x04'
 
 
-def _open_stream(on, outfile, mode, encoding):
+def _open_stream(on, outfile, mode, binary=False):
     """Open a binary or encoded text stream."""
-    # we take encoding == None to mean binary
-    if encoding:
+    if not binary:
+        encoding = 'utf-8-sig' if mode == 'r' else 'utf-8'
         return on.open(outfile, mode, encoding=encoding)
     else:
         return on.open(outfile, mode + 'b')
@@ -46,16 +46,15 @@ def _container_saver(save, typeface, outfile, **kwargs):
         save(typeface, out, **kwargs)
 
 @contextmanager
-def _multi_saver(save, typeface, outfile, encoding, **kwargs):
+def _multi_saver(save, typeface, outfile, binary, **kwargs):
     """Call a typeface saving function, providing a stream."""
     # use standard streams if none provided
     if not outfile or outfile=='-':
         outfile = sys.stdout.buffer
-        # we take encoding == None to mean binary
-        if encoding:
-            outfile = io.TextIOWrapper(outfile, encoding=encoding)
+        if not binary:
+            outfile = io.TextIOWrapper(outfile, encoding='utf-8')
     if isinstance(outfile, (str, bytes)):
-        outfile = _open_stream(io, outfile, 'w', encoding)
+        outfile = _open_stream(io, outfile, 'w', binary)
     try:
         with outfile:
             save(typeface, outfile, **kwargs)
@@ -64,14 +63,14 @@ def _multi_saver(save, typeface, outfile, encoding, **kwargs):
         pass
 
 @contextmanager
-def _single_saver(save, typeface, outfile, encoding, ext, **kwargs):
+def _single_saver(save, typeface, outfile, binary, ext, **kwargs):
     """Call a font saving function, providing a stream."""
     # use standard streams if none provided
     if not outfile or outfile=='-':
         outfile = sys.stdout.buffer
     if len(typeface) == 1:
         # we have only one font to deal with, no need to create container
-        _multi_saver(save, [*typeface][0], outfile, encoding)
+        _multi_saver(save, [*typeface][0], outfile, binary)
     else:
         # create container and call saver for each font in the typeface
         with _open_container(outfile, 'w') as out:
@@ -85,13 +84,13 @@ def _single_saver(save, typeface, outfile, encoding, ext, **kwargs):
                     i += 1
                     filename = '{}.{}.{}'.format(name, i, ext)
                 try:
-                    with _open_stream(out, filename, 'w', encoding) as stream:
+                    with _open_stream(out, filename, 'w', binary) as stream:
                         save(font, stream, **kwargs)
                 except Exception as e:
                     logging.error('Could not save %s: %s', filename, e)
 
 
-def _container_loader(load, infile, encoding, **kwargs):
+def _container_loader(load, infile, binary, **kwargs):
     """Open a container and provide to font loader."""
     if not infile or infile=='-':
         infile = sys.stdin.buffer
@@ -114,7 +113,7 @@ def _container_loader(load, infile, encoding, **kwargs):
         return load(zip_con, **kwargs)
 
 
-def _stream_loader(load, infile, encoding, **kwargs):
+def _stream_loader(load, infile, binary, **kwargs):
     """Open a single- or multifont format."""
     if not infile or infile=='-':
         infile = sys.stdin.buffer
@@ -124,7 +123,7 @@ def _stream_loader(load, infile, encoding, **kwargs):
         if os.path.isdir(infile):
             container_type = DirContainer
         else:
-            with _open_stream(io, infile, 'r', encoding=None) as instream:
+            with _open_stream(io, infile, 'r', binary=True) as instream:
                 if isinstance(instream.read(0), bytes) and instream.peek(4) == _ZIP_MAGIC:
                     container_type = ZipContainer
     else:
@@ -133,22 +132,22 @@ def _stream_loader(load, infile, encoding, **kwargs):
             container_type = ZipContainer
     if not container_type:
         if isinstance(infile, (str, bytes)):
-            with _open_stream(io, infile, 'r', encoding) as instream:
+            with _open_stream(io, infile, 'r', binary) as instream:
                 return load(instream, **kwargs)
         else:
             # check text/binary
             if isinstance(infile.read(0), bytes):
-                if encoding:
-                    infile = io.TextIOWrapper(infile, encoding)
+                if not binary:
+                    infile = io.TextIOWrapper(infile, encoding='utf-8-sig')
             else:
-                if not encoding:
+                if binary:
                     raise ValueError('This format requires a binary stream, not a text stream.')
             return load(infile, **kwargs)
     else:
         with container_type(infile, 'r') as zip_con:
             faces = []
             for name in zip_con:
-                with _open_stream(zip_con, name, 'r', encoding) as stream:
+                with _open_stream(zip_con, name, 'r', binary) as stream:
                     faces.append(load(stream, **kwargs))
             return Typeface([_font for _face in faces for _font in _face])
 
@@ -158,7 +157,6 @@ class Typeface:
 
     _loaders = {}
     _savers = {}
-    _encodings = {}
 
     def __init__(self, fonts=()):
         """Create typeface from sequence of fonts."""
@@ -242,19 +240,15 @@ class Typeface:
         """Decorator to register font loader."""
         if name is None:
             name = formats[0]
-        if binary:
-            encoding = None
-        else:
-            encoding = 'utf-8-sig'
 
         def _load_decorator(load):
             # stream input wrapper
             @wraps(load)
             def _load_func(infile, **kwargs):
                 if container:
-                    typeface = _container_loader(load, infile, encoding, **kwargs)
+                    typeface = _container_loader(load, infile, binary, **kwargs)
                 else:
-                    typeface = _stream_loader(load, infile, encoding, **kwargs)
+                    typeface = _stream_loader(load, infile, binary, **kwargs)
                 # set source-name and source-format
                 return typeface._set_extraction_props(infile, name)
             # register loader
@@ -268,10 +262,6 @@ class Typeface:
     @classmethod
     def saves(cls, *formats, binary=False, multi=True, container=False):
         """Decorator to register font saver."""
-        if binary:
-            encoding = None
-        else:
-            encoding = 'utf-8'
 
         def _save_decorator(save):
             # stream output wrapper
@@ -280,10 +270,10 @@ class Typeface:
                 if container:
                     _container_saver(save, typeface, outfile, **kwargs)
                 elif multi:
-                    _multi_saver(save, typeface, outfile, encoding, **kwargs)
+                    _multi_saver(save, typeface, outfile, binary, **kwargs)
                 else:
                     # use first extension provided by saver function
-                    _single_saver(save, typeface, outfile, encoding, formats[0], **kwargs)
+                    _single_saver(save, typeface, outfile, binary, formats[0], **kwargs)
             # register saver
             _save_func.script_args = save.__annotations__
             for format in formats:
