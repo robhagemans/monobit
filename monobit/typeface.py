@@ -43,7 +43,7 @@ def _has_magic(instream, magic):
 def _container_saver(save, typeface, outfile, **kwargs):
     """Call a typeface or font saving function, providing a container."""
     # use standard streams if none provided
-    if not outfile or outfile=='-':
+    if not outfile or outfile == '-':
         outfile = sys.stdout.buffer
     with _open_container(outfile, 'w', binary=True) as out:
         save(typeface, out, **kwargs)
@@ -52,7 +52,7 @@ def _container_saver(save, typeface, outfile, **kwargs):
 def _multi_saver(save, typeface, outfile, binary, **kwargs):
     """Call a typeface saving function, providing a stream."""
     # use standard streams if none provided
-    if not outfile or outfile=='-':
+    if not outfile or outfile == '-':
         outfile = sys.stdout.buffer
         if not binary:
             outfile = io.TextIOWrapper(outfile, encoding='utf-8')
@@ -69,7 +69,7 @@ def _multi_saver(save, typeface, outfile, binary, **kwargs):
 def _single_saver(save, typeface, outfile, binary, ext, **kwargs):
     """Call a font saving function, providing a stream."""
     # use standard streams if none provided
-    if not outfile or outfile=='-':
+    if not outfile or outfile == '-':
         outfile = sys.stdout.buffer
     if len(typeface) == 1:
         # we have only one font to deal with, no need to create container
@@ -96,7 +96,7 @@ def _single_saver(save, typeface, outfile, binary, ext, **kwargs):
 
 def _container_loader(load, infile, binary, **kwargs):
     """Open a container and provide to font loader."""
-    if not infile or infile=='-':
+    if not infile or infile == '-':
         infile = sys.stdin.buffer
     if isinstance(infile, (str, bytes)):
         # string provided; open stream or container as appropriate
