@@ -12,6 +12,26 @@ from .font import Font, encoding_is_unicode
 from .glyph import Glyph
 
 
+# x11 encodings e.g.
+# ISO10646-1 = unicode
+# ISO8859-1 (etc)  = latin-1
+# KOI8-R (-U -RU -UNI -E)
+# fontspecific-0
+# microsoft-symbol
+# apple-roman
+# ibm-cp437
+# adobe-standard
+# adobe-dingbats
+# adobe-symbol
+# adobe-fontspecific
+# microsoft-cp1252
+# microsoft-win3.1
+# jisx0208.1990-0
+# jisx0201.1976-0
+# big5.eten-0
+# gb2312.1980-0
+
+
 _SLANT_MAP = {
     'R': 'roman',
     'I': 'italic',
@@ -388,15 +408,17 @@ def _parse_xlfd_properties(x_props, xlfd_name):
     # encoding
     registry = _from_quoted_string(x_props.pop('CHARSET_REGISTRY', '')).lower()
     encoding = _from_quoted_string(x_props.pop('CHARSET_ENCODING', '')).lower()
-    if encoding:
-        if registry:
-            properties['encoding'] = f'{registry}-{encoding}'
-        else:
-            properties['encoding'] = encoding
+    if registry and encoding and encoding != '0':
+        properties['encoding'] = f'{registry}-{encoding}'
+    elif registry:
+        properties['encoding'] = registry
+    else:
+        properties['encoding'] = encoding
     properties = {_k: _v for _k, _v in properties.items() if _v is not None and _v != ''}
     # keep unparsed properties
     if not xlfd_name_props:
-        properties['bdf.FONT'] = xlfd_name
+        if 'name' not in properties:
+            properties['name'] = xlfd_name
     properties.update({'bdf.' + _k: _v for _k, _v in x_props.items()})
     return properties
 
@@ -456,11 +478,16 @@ def _create_xlfd_properties(font):
     if encoding_is_unicode(font.encoding):
         xlfd_props['CHARSET_REGISTRY'] = '"ISO10646"'
         xlfd_props['CHARSET_ENCODING'] = '"1"'
+    elif font.encoding == 'ascii':
+        xlfd_props['CHARSET_REGISTRY'] = '"ISO646"'
+        xlfd_props['CHARSET_ENCODING'] = '"US"'
     else:
         registry, *encoding = font.encoding.split('-', 1)
         xlfd_props['CHARSET_REGISTRY'] = _quoted_string(registry.upper())
         if encoding:
             xlfd_props['CHARSET_ENCODING'] = _quoted_string(encoding[0].upper())
+        else:
+            xlfd_props['CHARSET_ENCODING'] = '"0"'
     # remove empty properties
     xlfd_props = {_k: _v for _k, _v in xlfd_props.items() if _v}
     # keep unparsed BDF properties
