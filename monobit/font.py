@@ -30,7 +30,7 @@ def number(value=0):
 class Label:
     """Glyph label."""
 
-    def __init__(self, value):
+    def __init__(self, value=''):
         """Convert to int/unicode label as appropriate."""
         if isinstance(value, Label):
             self._value = value._value
