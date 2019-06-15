@@ -19,6 +19,7 @@ from . import amiga
 from . import image
 from . import yaff
 from . import raw
+from . import mac
 from . import bdf
 from . import psf
 from . import hex
