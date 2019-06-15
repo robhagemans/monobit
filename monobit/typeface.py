@@ -5,17 +5,15 @@ monobit.typeface - representation of collection of fonts
 licence: https://opensource.org/licenses/MIT
 """
 
-import logging
-from os.path import basename
-from functools import wraps
-from contextlib import contextmanager
 import io
 import sys
-import os
+import logging
+from functools import wraps
+from contextlib import contextmanager
+from pathlib import Path
 
 from .base import VERSION, DEFAULT_FORMAT, scriptable, DirContainer, ZipContainer, TextMultiStream
 from .font import Font
-
 
 
 def _open_stream(on, outfile, mode, binary=False):
@@ -54,10 +52,11 @@ def _multi_saver(save, typeface, outfile, binary, **kwargs):
     # use standard streams if none provided
     if not outfile or outfile == '-':
         outfile = sys.stdout.buffer
-        if not binary:
-            outfile = io.TextIOWrapper(outfile, encoding='utf-8')
     if isinstance(outfile, (str, bytes)):
         outfile = _open_stream(io, outfile, 'w', binary)
+    else:
+        if not binary:
+            outfile = io.TextIOWrapper(outfile, encoding='utf-8')
     try:
         with outfile:
             save(typeface, outfile, **kwargs)
@@ -100,7 +99,7 @@ def _container_loader(load, infile, binary, **kwargs):
         infile = sys.stdin.buffer
     if isinstance(infile, (str, bytes)):
         # string provided; open stream or container as appropriate
-        if os.path.isdir(infile):
+        if Path(infile).is_dir():
             container_type = DirContainer
         else:
             container_type = ZipContainer
@@ -124,7 +123,7 @@ def _stream_loader(load, infile, binary, **kwargs):
     container_type = None
     if isinstance(infile, (str, bytes)):
         # string provided; open stream or container as appropriate
-        if os.path.isdir(infile):
+        if Path(infile).is_dir():
             container_type = DirContainer
         else:
             with _open_stream(io, infile, 'r', binary=True) as instream:
@@ -186,12 +185,12 @@ class Typeface:
             format = DEFAULT_FORMAT
             # if filename given, try to use it to infer format
             if isinstance(infile, str):
-                try:
-                    base, format = infile.rsplit('.', 1)
-                    if format == 'zip':
-                        _, format = base.rsplit('.', 1)
-                except ValueError:
-                    pass
+                suffixes = Path(infile).suffixes
+                if suffixes:
+                    if suffixes[-1] == '.zip' and len(suffixes) > 2:
+                        format = suffixes[-2][1:]
+                    else:
+                        format = suffixes[-1][1:]
         return format.lower()
 
     @classmethod
@@ -234,9 +233,9 @@ class Typeface:
             }
             if not font.source_name:
                 if isinstance(infile, (str, bytes)):
-                    new_props['source-name'] = basename(infile)
+                    new_props['source-name'] = Path(infile).name
                 else:
-                    new_props['source-name'] = basename(infile.name)
+                    new_props['source-name'] = Path(infile.name).name
             if not font.source_format:
                 new_props['source-format'] = format
             fonts.append(font.set_properties(**new_props))
