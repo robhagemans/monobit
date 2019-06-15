@@ -164,11 +164,12 @@ PROPERTIES = {
     # these can be determined from the bitmaps
     'spacing': str, # proportional, monospace, cell
     'x-width': int, # ink width of lowercase x (in proportional font)
-    'average-width': number, # average ink width, rounded to tenths
+    'average-advance': number, # average advance width, rounded to tenths
     'bounding-box': Coord.create, # maximum ink width/height
 
     # positioning relative to origin:
     'direction': str, # left-to-right, right-to-left
+    #TODO: change to offset (x y) and bearing (=bearing-after) ?
     'offset': int, # transverse offset: bottom line of matrix relative to baseline
     'bearing-before': int, # horizontal offset from origin to matrix start
     'bearing-after': int, # horizontal offset from matrix end to next origin
@@ -289,10 +290,17 @@ class Unicode:
         return ord(Label(key).unicode)
 
 
+_UNICODE_ALIASES = ('unicode', 'ucs', 'iso10646', 'iso_10646', 'iso10646_1')
+
+def encoding_is_unicode(encoding):
+    """Check if an encoding name implies unicode."""
+    return encoding.replace('-', '_') in _UNICODE_ALIASES
+
+
 def _get_encoding(enc):
     """Find an encoding by name."""
     enc = enc.lower().replace('-', '_')
-    if enc in ('unicode', 'ucs', 'iso10646', 'iso_10646', 'iso10646_1'):
+    if encoding_is_unicode(enc):
         return Unicode
     try:
         return Codepage(enc.lower())
@@ -601,13 +609,19 @@ class Font:
 
     @property
     def average_width(self):
-        """Get average ink width, rounded to tenths of pixels."""
+        """Get average glyph width, rounded to tenths of pixels."""
         if not self._glyphs:
             return 0
         return round(
-            sum(_glyph.ink_width for _glyph in self._glyphs) / len(self._glyphs),
+            # ink_width ?
+            sum(_glyph.width for _glyph in self._glyphs) / len(self._glyphs),
             1
-        )
+        ) + self.bearing_before + self.bearing_after
+
+    @yaffproperty
+    def average_advance(self):
+        """Get average advance width, rounded to tenths of pixels."""
+        return self.average_width + self.bearing_before + self.bearing_after
 
     @yaffproperty
     def spacing(self):
@@ -619,6 +633,7 @@ class Font:
             fixed = len(sizes) <= 1
         if fixed:
             return 'monospace'
+        # TODO - distinguish "cell" spacing; e.g. equal widths, equal heights, no negative bearings
         return 'proportional'
 
     @yaffproperty

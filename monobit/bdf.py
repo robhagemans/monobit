@@ -8,7 +8,7 @@ licence: https://opensource.org/licenses/MIT
 import logging
 
 from .typeface import Typeface
-from .font import Font
+from .font import Font, encoding_is_unicode
 from .glyph import Glyph
 
 
@@ -55,21 +55,21 @@ _WEIGHT_MAP = {
 
 # fields of the xlfd font name
 _XLFD_NAME_FIELDS = (
-    None,
-    'foundry',
-    'family',
-    'weight',
-    'slant',
-    'setwidth',
-    'style',
-    'pixel-size',
-    'point-size',
-    '_dpi-x',
-    '_dpi-y',
-    'spacing',
-    'average-width',
-    '_charset-registry',
-    '_charset-encoding',
+    '',
+    'FOUNDRY',
+    'FAMILY_NAME',
+    'WEIGHT_NAME',
+    'SLANT',
+    'SETWIDTH_NAME',
+    'ADD_STYLE_NAME',
+    'PIXEL_SIZE',
+    'POINT_SIZE',
+    'RESOLUTION_X',
+    'RESOLUTION_Y',
+    'SPACING',
+    'AVERAGE_WIDTH',
+    'CHARSET_REGISTRY',
+    'CHARSET_ENCODING',
 )
 
 _XLFD_PROPERTIES = {
@@ -81,11 +81,13 @@ _XLFD_PROPERTIES = {
     # display characteristics - already specified in bdf props
     'RESOLUTION_X': '_dpi-x',
     'RESOLUTION_Y': '_dpi-y',
+    # deprecated
     'RESOLUTION': 'dpi',
     'POINT_SIZE': 'point-size',
     # can be calculated: PIXEL_SIZE = ROUND((RESOLUTION_Y * POINT_SIZE) / 722.7)
     # description
     'FACE_NAME': 'name',
+    # deprecated
     'FULL_NAME': 'name',
     'FONT_VERSION': 'revision',
     'COPYRIGHT': 'copyright',
@@ -100,7 +102,7 @@ _XLFD_PROPERTIES = {
     'RELATIVE_SETWIDTH': '_rel-setwidth',
     'ADD_STYLE_NAME': 'style',
     'PIXEL_SIZE': 'pixel-size',
-    'AVERAGE_WIDTH': 'average-width',
+    'AVERAGE_WIDTH': 'average-advance',
     # encoding
     'CHARSET_REGISTRY': '_charset-registry',
     'CHARSET_ENCODING': '_charset-encoding',
@@ -154,6 +156,13 @@ def load(instream):
         logging.warning('Number of characters found does not match CHARS declaration.')
     glyphs, properties = _parse_properties(glyphs, glyph_props, bdf_props, x_props)
     return Typeface([Font(glyphs, labels, comments=comments, properties=properties)])
+
+
+@Typeface.saves('bdf', multi=False)
+def save(font, outstream):
+    """Write fonts to a .bdf file."""
+    _save_bdf(font, outstream)
+    return font
 
 
 ##############################################################################
@@ -366,14 +375,12 @@ def _parse_xlfd_name(xlfd_str):
 def _parse_xlfd_properties(x_props, xlfd_name):
     """Parse X metadata."""
     xlfd_name_props = _parse_xlfd_name(xlfd_name)
-    # we ignore AVERAGE_WIDTH, can be calculated
-    mapping = _XLFD_PROPERTIES
     properties = {}
-    for xkey, key in mapping.items():
+    for xkey, key in _XLFD_PROPERTIES.items():
         try:
             value = x_props.pop(xkey).strip('"')
         except KeyError:
-            value = xlfd_name_props.get(key, '')
+            value = xlfd_name_props.get(xkey, '')
         if value:
             properties[key] = value
     # modify/summarise values
@@ -390,8 +397,8 @@ def _parse_xlfd_properties(x_props, xlfd_name):
         properties['weight'] = _WEIGHT_MAP[properties.pop('_rel-weight')]
     if 'point-size' in properties:
         properties['point-size'] = str(round(int(properties['point-size']) / 10))
-    if 'average-width' in properties:
-        properties['average-width'] = int(properties['average-width']) / 10
+    if 'average-advance' in properties:
+        properties['average-advance'] = int(properties['average-advance']) / 10
     if '_dpi-x' in properties and '_dpi-y' in properties:
         xdpi, ydpi = properties.pop('_dpi-x'), properties.pop('_dpi-y')
         if 'dpi' in properties and not (properties['dpi'] == xdpi == ydpi):
@@ -418,3 +425,144 @@ def _parse_xlfd_properties(x_props, xlfd_name):
         properties['bdf.FONT'] = xlfd_name
     properties.update({'xlfd.' + _k: _v.strip('"') for _k, _v in x_props.items()})
     return properties
+
+
+##############################################################################
+# BDF writer
+
+def _create_xlfd_name(xlfd_props):
+    """Construct XLFD name from properties."""
+    xlfd_fields = [xlfd_props.get(prop, '') for prop in _XLFD_NAME_FIELDS]
+    return '-'.join(str(_field).strip('"') for _field in xlfd_fields)
+
+def _quoted_string(unquoted):
+    """Return quoted version of string, if any."""
+    if unquoted:
+        return f'"{unquoted}"'
+    return ''
+
+def _create_xlfd_properties(font):
+    """Construct XLFD properties."""
+    xlfd_props = {
+        # rendering hints
+        'FONT_ASCENT': font.ascent,
+        'FONT_DESCENT': -int(font.descent),
+        'X_HEIGHT': font.x_height,
+        'CAP_HEIGHT': font.cap_height,
+        'RESOLUTION_X': font.dpi.x,
+        'RESOLUTION_Y': font.dpi.y,
+        'POINT_SIZE': int(font.point_size) * 10,
+        'FACE_NAME': _quoted_string(font.name),
+        'FONT_VERSION': _quoted_string(font.revision),
+        'COPYRIGHT': _quoted_string(font.copyright),
+        'NOTICE': _quoted_string(font.notice),
+        'FOUNDRY': _quoted_string(font.foundry),
+        'FAMILY_NAME': _quoted_string(font.family),
+        'WEIGHT_NAME': _quoted_string(font.weight.title()),
+        'RELATIVE_WEIGHT': (
+            {_v: _k for _k, _v in _WEIGHT_MAP.items()}.get(font.weight, 50)
+        ),
+        'SLANT': _quoted_string(
+            {_v: _k for _k, _v in _SLANT_MAP.items()}.get(font.slant, 'R')
+        ),
+        'SPACING': _quoted_string(
+            {_v: _k for _k, _v in _SPACING_MAP.items()}.get(font.spacing, 'P')
+        ),
+        'SETWIDTH_NAME': _quoted_string(font.setwidth.title()),
+        'RELATIVE_SETWIDTH': (
+            # 50 is medium
+            {_v: _k for _k, _v in _SETWIDTH_MAP.items()}.get(font.setwidth, 50)
+        ),
+        'ADD_STYLE_NAME': _quoted_string(font.style.title()),
+        'PIXEL_SIZE': font.pixel_size,
+        'AVERAGE_WIDTH': int(float(font.average_advance) * 10),
+        'DEFAULT_CHAR': font.default_char,
+    }
+    # modify/summarise values
+    if encoding_is_unicode(font.encoding):
+        xlfd_props['CHARSET_REGISTRY'] = '"ISO10646"'
+        xlfd_props['CHARSET_ENCODING'] = '"1"'
+    else:
+        registry, *encoding = font.encoding.split('-', 1)
+        xlfd_props['CHARSET_REGISTRY'] = _quoted_string(registry.upper())
+        if encoding:
+            xlfd_props['CHARSET_ENCODING'] = _quoted_string(encoding[0].upper())
+    # remove empty properties
+    xlfd_props = {_k: _v for _k, _v in xlfd_props.items() if _v}
+    # TODO: keep unparsed properties
+    return xlfd_props
+
+def _save_bdf(font, outstream):
+    """Write one font to X11 BDF 2.1."""
+    # property table
+    xlfd_props = _create_xlfd_properties(font)
+    bdf_props = [
+        ('STARTFONT', '2.1'),
+    ] + [
+        ('COMMENT', _comment) for _comment in font.get_comments()
+    ] + [
+        ('FONT', _create_xlfd_name(xlfd_props)),
+        ('SIZE', f'{font.point_size} {font.dpi.x} {font.dpi.y}'),
+        (
+            'FONTBOUNDINGBOX',
+            f'{font.bounding_box.x} {font.bounding_box.y} {font.bearing_before} {font.offset}'
+        )
+    ]
+    # labels
+    glyphs = []
+    is_unicode = encoding_is_unicode(font.encoding)
+    for labels, glyph in font:
+        # default: no encoding, first label
+        encoding = -1
+        name = labels[0]
+        for label in labels:
+            # keep the first unicode value encountered
+            # FIXME: we can't deal with multiple unicode lables for the same glyph
+            if is_unicode and label.is_unicode:
+                encoding = ord(label.unicode)
+                break
+            elif not is_unicode and label.is_ordinal:
+                encoding = int(label)
+                break
+        for label in labels:
+            # keep the first text label
+            if not label.is_unicode and not label.is_ordinal:
+                name = label
+                break
+        # "The SWIDTH y value should always be zero for a standard X font."
+        # "The DWIDTH y value should always be zero for a standard X font."
+        swidth_y, dwidth_y = 0, 0
+        # SWIDTH = DWIDTH / ( points/1000 * dpi / 72 )
+        # DWIDTH specifies the widths in x and y, dwx0 and dwy0, in device pixels.
+        # Like SWIDTH , this width information is a vector indicating the position of
+        # the next glyph’s origin relative to the origin of this glyph.
+        dwidth_x = glyph.width + font.bearing_before + font.bearing_after
+        swidth_x = int(round(dwidth_x / (font.point_size / 1000) / (font.dpi.y / 72)))
+        # TODO: minimize glyphs to bbx before storing, except "cell" fonts
+        offset_x, offset_y = font.bearing_before, font.offset
+        hex = glyph.as_hex().upper()
+        width = len(hex) // glyph.height
+        split_hex = [hex[_offs:_offs+width] for _offs in range(0, len(hex), width)]
+        glyphs.append([
+            ('STARTCHAR', name),
+            ('ENCODING', str(encoding)),
+            ('SWIDTH', f'{swidth_x} {swidth_y}'),
+            ('DWIDTH', f'{dwidth_x} {dwidth_y}'),
+            ('BBX', f'{glyph.width} {glyph.height} {offset_x} {offset_y}'),
+            ('BITMAP', '\n' + '\n'.join(split_hex)),
+        ])
+    # write out
+    for key, value in bdf_props:
+        if value:
+            outstream.write(f'{key} {value}\n')
+    if xlfd_props:
+        outstream.write(f'STARTPROPERTIES {len(xlfd_props)}\n')
+        for key, value in xlfd_props.items():
+            outstream.write(f'{key} {value}\n')
+        outstream.write('ENDPROPERTIES\n')
+    outstream.write(f'CHARS {len(glyphs)}\n')
+    for glyph in glyphs:
+        for key, value in glyph:
+            outstream.write(f'{key} {value}\n')
+        outstream.write('ENDCHAR\n')
+    outstream.write('ENDFONT\n')
