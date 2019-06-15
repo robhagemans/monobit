@@ -334,6 +334,9 @@ def _parse_xlfd_name(xlfd_str):
         return {}
     return properties
 
+def _from_quoted_string(quoted):
+    """Strip quotes"""
+    return quoted.strip('"').replace('""', '"')
 
 def _parse_xlfd_properties(x_props, xlfd_name):
     """Parse X metadata."""
@@ -342,13 +345,13 @@ def _parse_xlfd_properties(x_props, xlfd_name):
     # PIXEL_SIZE = ROUND((RESOLUTION_Y * POINT_SIZE) / 722.7)
     properties = {
         # FULL_NAME is deprecated
-        'name': x_props.pop('FACE_NAME', x_props.pop('FULL_NAME', '')).strip('"'),
-        'revision': x_props.pop('FONT_VERSION', '').strip('"'),
-        'foundry': x_props.pop('FOUNDRY', '').strip('"'),
-        'copyright': x_props.pop('COPYRIGHT', '').strip('"'),
-        'notice': x_props.pop('NOTICE', '').strip('"'),
-        'family': x_props.pop('FAMILY_NAME', '').strip('"'),
-        'style': x_props.pop('ADD_STYLE_NAME', '').strip('"').lower(),
+        'name': _from_quoted_string(x_props.pop('FACE_NAME', x_props.pop('FULL_NAME', ''))),
+        'revision': _from_quoted_string(x_props.pop('FONT_VERSION', '')),
+        'foundry': _from_quoted_string(x_props.pop('FOUNDRY', '')),
+        'copyright': _from_quoted_string(x_props.pop('COPYRIGHT', '')),
+        'notice': _from_quoted_string(x_props.pop('NOTICE', '')),
+        'family': _from_quoted_string(x_props.pop('FAMILY_NAME', '')),
+        'style': _from_quoted_string(x_props.pop('ADD_STYLE_NAME', '')).lower(),
         'ascent': x_props.pop('FONT_ASCENT', None),
         'x-height': x_props.pop('X_HEIGHT', None),
         'cap-height': x_props.pop('CAP_HEIGHT', None),
@@ -362,18 +365,19 @@ def _parse_xlfd_properties(x_props, xlfd_name):
     if 'POINT_SIZE' in x_props:
         properties['point-size'] = str(round(int(x_props.pop('POINT_SIZE')) / 10))
     if 'AVERAGE_WIDTH' in x_props:
-        properties['average-advance'] = int(x_props.pop('AVERAGE_WIDTH')) / 10
+        # average width can have a tilde for negative - because it occurs in the xlfd font name
+        properties['average-advance'] = int(x_props.pop('AVERAGE_WIDTH').replace('~', '-')) / 10
     # prefer the more precise relative weight and setwidth measures
     if 'RELATIVE_SETWIDTH' in x_props:
         properties['setwidth'] = _SETWIDTH_MAP.get(x_props.pop('RELATIVE_SETWIDTH'), None)
         x_props.pop('SETWIDTH_NAME', None)
     if 'setwidth' not in properties or not properties['setwidth']:
-        properties['setwidth'] = x_props.pop('SETWIDTH_NAME', '').strip('"').lower()
+        properties['setwidth'] = _from_quoted_string(x_props.pop('SETWIDTH_NAME', '')).lower()
     if 'RELATIVE_WEIGHT' in x_props:
         properties['weight'] = _WEIGHT_MAP.get(x_props.pop('RELATIVE_WEIGHT'), None)
         x_props.pop('WEIGHT_NAME', None)
     if 'weight' not in properties or not properties['weight']:
-        properties['weight'] = x_props.pop('WEIGHT_NAME', '').strip('"').lower()
+        properties['weight'] = _from_quoted_string(x_props.pop('WEIGHT_NAME', '')).lower()
     # resolution
     if 'RESOLUTION_X' in x_props and 'RESOLUTION_Y' in x_props:
         properties['dpi'] = (x_props.pop('RESOLUTION_X'), x_props.pop('RESOLUTION_Y'))
@@ -382,8 +386,8 @@ def _parse_xlfd_properties(x_props, xlfd_name):
         # deprecated
         properties['dpi'] = (x_props.get('RESOLUTION'), x_props.pop('RESOLUTION'))
     # encoding
-    registry = x_props.pop('CHARSET_REGISTRY', '').strip('"').lower()
-    encoding = x_props.pop('CHARSET_ENCODING', '').strip('"').lower()
+    registry = _from_quoted_string(x_props.pop('CHARSET_REGISTRY', '')).lower()
+    encoding = _from_quoted_string(x_props.pop('CHARSET_ENCODING', '')).lower()
     if encoding:
         if registry:
             properties['encoding'] = f'{registry}-{encoding}'
@@ -408,7 +412,7 @@ def _create_xlfd_name(xlfd_props):
 def _quoted_string(unquoted):
     """Return quoted version of string, if any."""
     if unquoted:
-        return f'"{unquoted}"'
+        return '"{}"'.format(unquoted.replace('"', '""'))
     return ''
 
 def _create_xlfd_properties(font):
@@ -445,7 +449,7 @@ def _create_xlfd_properties(font):
         ),
         'ADD_STYLE_NAME': _quoted_string(font.style.title()),
         'PIXEL_SIZE': font.pixel_size,
-        'AVERAGE_WIDTH': int(float(font.average_advance) * 10),
+        'AVERAGE_WIDTH': str(int(float(font.average_advance) * 10)).replace('-', '~'),
         'DEFAULT_CHAR': font.default_char,
     }
     # modify/summarise values
