@@ -534,7 +534,6 @@ class Font:
         'setwidth': 'normal', # normal, condensed, expanded, etc.
         'direction': 'left-to-right', # left-to-right, right-to-left
         'encoding': 'ascii',
-        'default-char': 'u+fffd', # use replacement char if not defined
         'word-boundary': 'u+0020', # word-break character (usually space)
     }
 
@@ -607,6 +606,14 @@ class Font:
             max(_glyph.width for _glyph in self._glyphs),
             max(_glyph.height for _glyph in self._glyphs)
         )
+
+    @yaffproperty
+    def default_char(self):
+        """Default character."""
+        repl = Label('u+fffd')
+        if repl in self._labels:
+            return str(repl)
+        return ''
 
     @property
     def average_width(self):
