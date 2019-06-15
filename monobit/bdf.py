@@ -72,43 +72,6 @@ _XLFD_NAME_FIELDS = (
     'CHARSET_ENCODING',
 )
 
-_XLFD_PROPERTIES = {
-    # rendering hints
-    'FONT_ASCENT': 'ascent',
-    'FONT_DESCENT': 'descent',
-    'X_HEIGHT': 'x-height',
-    'CAP_HEIGHT': 'cap-height',
-    # display characteristics - already specified in bdf props
-    'RESOLUTION_X': '_dpi-x',
-    'RESOLUTION_Y': '_dpi-y',
-    # deprecated
-    'RESOLUTION': 'dpi',
-    'POINT_SIZE': 'point-size',
-    # can be calculated: PIXEL_SIZE = ROUND((RESOLUTION_Y * POINT_SIZE) / 722.7)
-    # description
-    'FACE_NAME': 'name',
-    # deprecated
-    'FULL_NAME': 'name',
-    'FONT_VERSION': 'revision',
-    'COPYRIGHT': 'copyright',
-    'NOTICE': 'notice',
-    'FOUNDRY': 'foundry',
-    'FAMILY_NAME': 'family',
-    'WEIGHT_NAME': 'weight',
-    'RELATIVE_WEIGHT': '_rel-weight',
-    'SLANT': 'slant',
-    'SPACING': 'spacing',
-    'SETWIDTH_NAME': 'setwidth',
-    'RELATIVE_SETWIDTH': '_rel-setwidth',
-    'ADD_STYLE_NAME': 'style',
-    'PIXEL_SIZE': 'pixel-size',
-    'AVERAGE_WIDTH': 'average-advance',
-    # encoding
-    'CHARSET_REGISTRY': '_charset-registry',
-    'CHARSET_ENCODING': '_charset-encoding',
-    'DEFAULT_CHAR': 'default-char',
-}
-
 # unparsed xlfd properties, for reference
 _XLFD_UNPARSED = {
     'MIN_SPACE',
@@ -375,55 +338,62 @@ def _parse_xlfd_name(xlfd_str):
 def _parse_xlfd_properties(x_props, xlfd_name):
     """Parse X metadata."""
     xlfd_name_props = _parse_xlfd_name(xlfd_name)
-    properties = {}
-    for xkey, key in _XLFD_PROPERTIES.items():
-        try:
-            value = x_props.pop(xkey).strip('"')
-        except KeyError:
-            value = xlfd_name_props.get(xkey, '')
-        if value:
-            properties[key] = value
-    # modify/summarise values
-    if 'descent' in properties:
-        properties['descent'] = -int(properties['descent'])
-    if 'slant' in properties and properties['slant']:
-        properties['slant'] = _SLANT_MAP[properties['slant']]
-    if 'spacing' in properties and properties['spacing']:
-        properties['spacing'] = _SPACING_MAP[properties['spacing']]
+    x_props = {**xlfd_name_props, **x_props}
+    # PIXEL_SIZE = ROUND((RESOLUTION_Y * POINT_SIZE) / 722.7)
+    properties = {
+        # FULL_NAME is deprecated
+        'name': x_props.pop('FACE_NAME', x_props.pop('FULL_NAME', '')).strip('"'),
+        'revision': x_props.pop('FONT_VERSION', '').strip('"'),
+        'foundry': x_props.pop('FOUNDRY', '').strip('"'),
+        'copyright': x_props.pop('COPYRIGHT', '').strip('"'),
+        'notice': x_props.pop('NOTICE', '').strip('"'),
+        'family': x_props.pop('FAMILY_NAME', '').strip('"'),
+        'style': x_props.pop('ADD_STYLE_NAME', '').strip('"').lower(),
+        'ascent': x_props.pop('FONT_ASCENT', None),
+        'x-height': x_props.pop('X_HEIGHT', None),
+        'cap-height': x_props.pop('CAP_HEIGHT', None),
+        'pixel-size': x_props.pop('PIXEL_SIZE', None),
+        'default-char': x_props.pop('DEFAULT_CHAR', None),
+        'slant': _SLANT_MAP.get(x_props.pop('SLANT', ''), None),
+        'spacing': _SPACING_MAP.get(x_props.pop('SPACING', ''), None),
+    }
+    if 'FONT_DESCENT' in x_props:
+        properties['descent'] = -int(x_props.pop('FONT_DESCENT'))
+    if 'POINT_SIZE' in x_props:
+        properties['point-size'] = str(round(int(x_props.pop('POINT_SIZE')) / 10))
+    if 'AVERAGE_WIDTH' in x_props:
+        properties['average-advance'] = int(x_props.pop('AVERAGE_WIDTH')) / 10
     # prefer the more precise relative weight and setwidth measures
-    if '_rel-setwidth' in properties and properties['_rel-setwidth']:
-        properties['setwidth'] = _SETWIDTH_MAP[properties.pop('_rel-setwidth')]
-    if '_rel-weight' in properties and properties['_rel-weight']:
-        properties['weight'] = _WEIGHT_MAP[properties.pop('_rel-weight')]
-    if 'point-size' in properties:
-        properties['point-size'] = str(round(int(properties['point-size']) / 10))
-    if 'average-advance' in properties:
-        properties['average-advance'] = int(properties['average-advance']) / 10
-    if '_dpi-x' in properties and '_dpi-y' in properties:
-        xdpi, ydpi = properties.pop('_dpi-x'), properties.pop('_dpi-y')
-        if 'dpi' in properties and not (properties['dpi'] == xdpi == ydpi):
-            logging.warning(
-                'Inconsistent XLFD dpi properties: dpi=%s but dpi-x=%s and dpi-y=%s.',
-                properties['dpi'], xdpi, ydpi
-            )
-        properties['dpi'] = (xdpi, ydpi)
+    if 'RELATIVE_SETWIDTH' in x_props:
+        properties['setwidth'] = _SETWIDTH_MAP.get(x_props.pop('RELATIVE_SETWIDTH'), None)
+        x_props.pop('SETWIDTH_NAME', None)
+    if 'setwidth' not in properties or not properties['setwidth']:
+        properties['setwidth'] = x_props.pop('SETWIDTH_NAME', '').strip('"').lower()
+    if 'RELATIVE_WEIGHT' in x_props:
+        properties['weight'] = _WEIGHT_MAP.get(x_props.pop('RELATIVE_WEIGHT'), None)
+        x_props.pop('WEIGHT_NAME', None)
+    if 'weight' not in properties or not properties['weight']:
+        properties['weight'] = x_props.pop('WEIGHT_NAME', '').strip('"').lower()
+    # resolution
+    if 'RESOLUTION_X' in x_props and 'RESOLUTION_Y' in x_props:
+        properties['dpi'] = (x_props.pop('RESOLUTION_X'), x_props.pop('RESOLUTION_Y'))
+        x_props.pop('RESOLUTION', None)
+    elif 'RESOLUTION' in x_props:
+        # deprecated
+        properties['dpi'] = (x_props.get('RESOLUTION'), x_props.pop('RESOLUTION'))
     # encoding
-    try:
-        registry = properties.pop('_charset-registry')
-        encoding = properties.pop('_charset-encoding')
-    except KeyError:
-        pass
-    else:
-        properties['encoding'] = (registry + '-' + encoding).lower()
-    for key in ('weight', 'slant', 'spacing', 'setwidth'):
-        try:
-            properties[key] = properties[key].lower()
-        except KeyError:
-            pass
+    registry = x_props.pop('CHARSET_REGISTRY', '').strip('"').lower()
+    encoding = x_props.pop('CHARSET_ENCODING', '').strip('"').lower()
+    if encoding:
+        if registry:
+            properties['encoding'] = f'{registry}-{encoding}'
+        else:
+            properties['encoding'] = encoding
+    properties = {_k: _v for _k, _v in properties.items() if _v is not None and _v != ''}
     # keep unparsed properties
     if not xlfd_name_props:
         properties['bdf.FONT'] = xlfd_name
-    properties.update({'xlfd.' + _k: _v.strip('"') for _k, _v in x_props.items()})
+    properties.update({'bdf.' + _k: _v.strip('"') for _k, _v in x_props.items()})
     return properties
 
 
