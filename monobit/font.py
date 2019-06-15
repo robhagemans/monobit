@@ -50,6 +50,7 @@ class Label:
             return
         except ValueError:
             pass
+        value = value.strip()
         # see if it counts as unicode label
         if value.lower().startswith('u+'):
             try:

@@ -131,7 +131,9 @@ def _load_font(instream, back, key_format):
                 if current_comment:
                     global_comm, current_comment = split_global_comment(current_comment)
                     global_comment.extend(global_comm)
-            label, rest = line.strip().split(':', 1)
+            label, sep, rest = line.partition(':')
+            if sep != ':':
+                raise ValueError(f'Invalid yaff file: key `{label.strip()}` not followed by :')
             if elements[-1].clusters:
                 # we already have stuff for the last key, so this is a new one
                 elements.append(new_cluster())
