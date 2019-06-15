@@ -18,12 +18,6 @@ from .glyph import Glyph
 _WHITESPACE = ' \t'
 _CODESTART = _WHITESPACE + string.digits + string.ascii_letters + '_'
 
-# default background characters
-# anything else is foreground
-_ACCEPTED_BACK = "_.-"
-
-_SEPARATOR = '---'
-
 
 def draw_input_key(key):
     """Convert keys on input from .draw."""
@@ -67,7 +61,7 @@ def load(instream):
     """Read a plaintext font file."""
     fonts = []
     while True:
-        font = _load_font(instream, back=_ACCEPTED_BACK, key_format=Label)
+        font = _load_font(instream, fore='@', back='.', key_format=Label)
         if font is None:
             break
         fonts.append(font)
@@ -85,7 +79,7 @@ def save(font, outstream):
 @Typeface.loads('draw', name='hexdraw')
 def load_draw(instream):
     """Read a hexdraw font file."""
-    fonts = [_load_font(instream, back=_ACCEPTED_BACK, key_format=draw_input_key)]
+    fonts = [_load_font(instream, fore='#', back='-', key_format=draw_input_key)]
     return Typeface(fonts)
 
 @Typeface.saves('draw', multi=False)
@@ -108,7 +102,11 @@ def new_cluster(**kwargs):
         comments=[]
     )
 
-def _load_font(instream, back, key_format):
+def _is_glyph(value, fore, back):
+    """Value is a glyph."""
+    return not(set(value) - set(fore) - set(back))
+
+def _load_font(instream, fore, back, key_format):
     """Read a plaintext font file."""
     global_comment = []
     current_comment = []
@@ -119,9 +117,6 @@ def _load_font(instream, back, key_format):
             # preserve empty lines if they separate comments
             if current_comment and current_comment[-1] != '':
                 current_comment.append('')
-        elif line.startswith(_SEPARATOR):
-            # stream separator, end of Font
-            break
         elif line[0] not in _CODESTART:
             current_comment.append(line.rstrip('\r\n'))
         elif line[0] not in _WHITESPACE:
@@ -154,10 +149,10 @@ def _load_font(instream, back, key_format):
     if current_comment:
         elements.append(new_cluster())
         elements[-1].comments = current_comment
-    # properties: anything that contains alphanumerics
+    # properties: anything that contains more than .@
     property_elements = [
         _el for _el in elements
-        if set(''.join(_el.clusters)) & set(string.digits + string.ascii_letters)
+        if not _is_glyph(''.join(_el.clusters), fore, back)
     ]
     # multiple labels translate into multiple keys with the same value
     properties = {
@@ -169,7 +164,7 @@ def _load_font(instream, back, key_format):
     # a glyph is any key/value where the value contains no alphanumerics
     glyph_elements = [
         _el for _el in elements
-        if not set(''.join(_el.clusters)) & set(string.digits + string.ascii_letters)
+        if _is_glyph(''.join(_el.clusters), fore, back)
     ]
     labels = {
         key_format(_lab): _index

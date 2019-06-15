@@ -393,7 +393,7 @@ def _parse_xlfd_properties(x_props, xlfd_name):
     # keep unparsed properties
     if not xlfd_name_props:
         properties['bdf.FONT'] = xlfd_name
-    properties.update({'bdf.' + _k: _v.strip('"') for _k, _v in x_props.items()})
+    properties.update({'bdf.' + _k: _v for _k, _v in x_props.items()})
     return properties
 
 
@@ -459,7 +459,11 @@ def _create_xlfd_properties(font):
             xlfd_props['CHARSET_ENCODING'] = _quoted_string(encoding[0].upper())
     # remove empty properties
     xlfd_props = {_k: _v for _k, _v in xlfd_props.items() if _v}
-    # TODO: keep unparsed properties
+    # keep unparsed BDF properties
+    xlfd_props.update({
+        _k[len('bdf.'):].replace('-', '_'): _v
+        for _k, _v in font.nondefault_properties.items() if _k.startswith('bdf.')
+    })
     return xlfd_props
 
 def _save_bdf(font, outstream):
