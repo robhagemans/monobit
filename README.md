@@ -25,7 +25,7 @@ Supported formats
 | AngelCode BMFont      | Binary   | `.fnt` + images     |             | ✔      |         |
 | AngelCode BMFont      | XML      | `.fnt` `.xml` + images |          | ✔      |         |
 | AngelCode BMFont      | JSON     | `.json` + images    |             | ✔      |         |
-| X11/Adobe BDF         |          | `.bdf`              | Unix        | ✔      |         |
+| X11/Adobe BDF         |          | `.bdf`              | Unix        | ✔      | ✔       |
 | Codepage Information  | FONT     | `.cpi`              | MS-DOS      | ✔      |         |
 | Codepage Information  | FONT.NT  | `.cpi`              | Windows NT  | ✔      |         |
 | Codepage Information  | DRFONT   | `.cpi`              | DR-DOS      | ✔      |         |
