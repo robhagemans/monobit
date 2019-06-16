@@ -385,7 +385,6 @@ def _parse_nfnt(data, offset, properties):
     """Parse a MacOS NFNT or FONT resource."""
     fontrec = _NFNT_HEADER.from_bytes(data, offset)
     if not (fontrec.rowWords and fontrec.widMax and fontrec.fRectWidth and fontrec.fRectHeight):
-        # empty FONT used as directory entry in old mac fonts
         raise ValueError('Empty FONT/NFNT resource.')
     # extract bit fields
     has_height_table = bool(fontrec.fontType & 0x1)
@@ -410,16 +409,16 @@ def _parse_nfnt(data, offset, properties):
     # width offset table
     # https://developer.apple.com/library/archive/documentation/mac/Text/Text-252.html
     if fontrec.nDescent > 0:
-        wo_offset = fontrec.nDescent << 16 + fontrec.owTLoc
+        wo_offset = fontrec.nDescent << 16 + fontrec.owTLoc*2
     else:
-        wo_offset = fontrec.owTLoc
+        wo_offset = fontrec.owTLoc*2
     wo_table = (_WO_ENTRY * n_chars).from_buffer_copy(data, wo_offset)
+    # width and height tables
     width_offset = wo_offset + _WO_ENTRY.size * n_chars
     if has_width_table:
         width_table = (_WIDTH_ENTRY * n_chars).from_buffer_copy(data, width_offset)
         height_offset = width_offset + _WIDTH_ENTRY.size * n_chars
     else:
-        # FIXME: get width table from the "font family glyph-width table" (?)
         height_offset = width_offset
     if has_height_table:
         height_table = (_HEIGHT_ENTRY * n_chars).from_buffer_copy(data, height_offset)
