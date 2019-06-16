@@ -266,14 +266,25 @@ def load(instream):
 def _parse_apple(data):
     """Parse an AppleSingle or AppleDouble file."""
     header = _APPLE_HEADER.from_bytes(data)
-    if header.magic not in (_APPLESINGLE_MAGIC, _APPLEDOUBLE_MAGIC):
+    if header.magic == _APPLESINGLE_MAGIC:
+        container = 'AppleSingle'
+    elif header.magic == _APPLEDOUBLE_MAGIC:
+        container = 'AppleDouble'
+    else:
         raise ValueError('Not an AppleSingle or AppleDouble file.')
     entry_array = _APPLE_ENTRY * header.number_entities
     entries = entry_array.from_buffer_copy(data, _APPLE_HEADER.size)
     for entry in entries:
         if entry.entry_id == _ID_RESOURCE:
             fork_data = data[entry.offset:entry.offset+entry.length]
-            return _parse_resource_fork(fork_data)
+            fonts = _parse_resource_fork(fork_data)
+            fonts = [
+                font.set_properties(
+                    source_format=f'MacOS {font.source_format} ({container} container)'
+                )
+                for font in fonts
+            ]
+            return Typeface(fonts)
     raise ValueError('No resource fork found.')
 
 
@@ -324,7 +335,8 @@ def _parse_resource_fork(data):
     for rsrc_type, rsrc_id, offset, name in resources:
         if rsrc_type in (b'FONT', b'NFNT'):
             props = {
-                'family': name if name else f'{rsrc_id}'
+                'family': name if name else f'{rsrc_id}',
+                'source-format': rsrc_type.decode('ascii'),
             }
             if rsrc_type == b'FONT':
                 font_number, font_size = divmod(rsrc_id, 128)
@@ -332,10 +344,10 @@ def _parse_resource_fork(data):
                     # directory entry only
                     continue
                 if font_number in info:
-                    props = {
+                    props.update({
                         **info[font_number],
                         'point-size': font_size,
-                    }
+                    })
             if rsrc_id in info:
                 props.update(info[rsrc_id])
             try:
@@ -343,7 +355,7 @@ def _parse_resource_fork(data):
             except ValueError as e:
                 logging.error('Could not load font: %s', e)
             fonts.append(font)
-    return Typeface(fonts)
+    return fonts
 
 
 def _parse_fond(data, offset, name):
