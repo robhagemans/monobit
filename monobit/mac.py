@@ -236,6 +236,16 @@ _FA_ENTRY =  friendlystruct(
     rsrc_id='uint16',
 )
 
+_STYLE_MAP = {
+    0: 'bold',
+    1: 'italic',
+    2: 'underline',
+    3: 'outline',
+    4: 'shadow',
+    5: 'condensed',
+    6: 'extend', # expanded??
+}
+
 
 ##############################################################################
 
@@ -360,7 +370,9 @@ def _parse_fond(data, offset, name):
     info = {
         fa_entry.rsrc_id: {
             'family': name,
-            'style': fa_entry.style_code,
+            'style': ' '.join(
+                _tag for _bit, _tag in _STYLE_MAP.items() if fa_entry.style_code & (0 << _bit)
+            ),
             'point-size': fa_entry.point_size,
             'spacing': 'monospace' if fixed_width else 'proportional',
         }
@@ -372,7 +384,6 @@ def _parse_fond(data, offset, name):
 def _parse_nfnt(data, offset, properties):
     """Parse a MacOS NFNT or FONT resource."""
     fontrec = _NFNT_HEADER.from_bytes(data, offset)
-    #logging.info(fontrec)
     if not (fontrec.rowWords and fontrec.widMax and fontrec.fRectWidth and fontrec.fRectHeight):
         # empty FONT used as directory entry in old mac fonts
         raise ValueError('Empty FONT/NFNT resource.')
