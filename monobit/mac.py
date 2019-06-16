@@ -188,15 +188,64 @@ _HEIGHT_ENTRY = friendlystruct(
     height='uint8',
 )
 
+
+##############################################################################
+# FOND resource
+
+_FOND_HEADER = friendlystruct(
+    'be',
+   # {flags for family}
+   ffFlags='uint16',
+   # {family ID number}
+   ffFamID='uint16',
+   # {ASCII code of first character}
+   ffFirstChar='uint16',
+   # {ASCII code of last character}
+   ffLastChar='uint16',
+   # {maximum ascent for 1-pt font}
+   ffAscent='uint16',
+   # {maximum descent for 1-pt font}
+   ffDescent='uint16',
+   # {maximum leading for 1-pt font}
+   ffLeading='uint16',
+   # {maximum glyph width for 1-pt font}
+   ffWidMax='uint16',
+   # {offset to family glyph-width table}
+   ffWTabOff='uint32',
+   # {offset to kerning table}
+   ffKernOff='uint32',
+   # {offset to style-mapping table}
+   ffStylOff='uint32',
+   # {style properties info}
+   ffProperty=friendlystruct.uint16 * 9,
+   # {for international use}
+   ffIntl=friendlystruct.uint16 * 2,
+   # {version number}
+   ffVersion='uint16',
+)
+
+# font association table
+_FA_HEADER = friendlystruct(
+    'be',
+    max_entry='uint16',
+)
+_FA_ENTRY =  friendlystruct(
+    'be',
+    point_size='uint16',
+    style_code='uint16',
+    rsrc_id='uint16',
+)
+
+
 ##############################################################################
 
-@Typeface.loads('dfont', 'suit', name='MacOS resource fork', binary=True)
+@Typeface.loads('dfont', 'suit', name='MacOS resource', binary=True)
 def load(instream):
     """Load a MacOS suitcase."""
     data = instream.read()
     return _parse_resource_fork(data)
 
-@Typeface.loads('apple', name='AppleSingle/AppleDouble', binary=True)
+@Typeface.loads('apple', name='MacOS resource (AppleSingle/AppleDouble container)', binary=True)
 def load(instream):
     """Load an AppleSingle or AppleDouble file."""
     data = instream.read()
@@ -226,32 +275,107 @@ def _parse_resource_fork(data):
     # +2 because the length field is considered part of the type list
     type_list_offset = rsrc_header.map_offset + map_header.type_list_offset + 2
     type_list = type_array.from_buffer_copy(data, type_list_offset)
-    fonts = []
+    resources = []
     for type_entry in type_list:
         ref_array = _REF_ENTRY * (type_entry.last_rsrc + 1)
         ref_list = ref_array.from_buffer_copy(
             data, type_list_offset -2 + type_entry.ref_list_offset
         )
-        # TODO: FOND
-        if type_entry.rsrc_type in (b'FONT', b'NFNT'):
-            for ref_entry in ref_list:
-                # TODO: get name from name list
-                # construct the 3-byte integer
-                data_offset = ref_entry.data_offset_hi * 0x10000 + ref_entry.data_offset
-                try:
-                    fonts.append(_parse_nfnt(
-                        data, rsrc_header.data_offset + _DATA_HEADER.size
-                        + data_offset
-                    ))
-                except ValueError as e:
-                    logging.error('Could not load font: %s', e)
+        for ref_entry in ref_list:
+            # get name from name list
+            if ref_entry.name_offset == 0xffff:
+                name = ''
+            else:
+                name_offset = (
+                    rsrc_header.map_offset + map_header.name_list_offset
+                    + ref_entry.name_offset
+                )
+                name_length = data[name_offset]
+                name = data[name_offset+1:name_offset+name_length+1].decode('ascii', 'replace')
+            # construct the 3-byte integer
+            data_offset = ref_entry.data_offset_hi * 0x10000 + ref_entry.data_offset
+            offset = rsrc_header.data_offset + _DATA_HEADER.size + data_offset
+            if type_entry.rsrc_type in (b'FONT', b'NFNT', b'FOND'):
+                resources.append((type_entry.rsrc_type, ref_entry.rsrc_id, offset, name))
+    # construct directory
+    info = {}
+    for rsrc_type, rsrc_id, offset, name in resources:
+        if rsrc_type == b'FOND':
+            info.update(_parse_fond(data, offset, name))
+        else:
+            if rsrc_type == b'FONT':
+                font_number, font_size = divmod(rsrc_id, 128)
+                if not font_size:
+                    info[font_number] = {
+                        'family': name,
+                    }
+    # parse fonts
+    fonts = []
+    for rsrc_type, rsrc_id, offset, _ in resources:
+        if rsrc_type in (b'FONT', b'NFNT'):
+            props = {
+                'family': f'{rsrc_id}'
+            }
+            if rsrc_type == b'FONT':
+                font_number, font_size = divmod(rsrc_id, 128)
+                if not font_size:
+                    # directory entry only
+                    continue
+                if font_number in info:
+                    props = {
+                        **info[font_number],
+                        'point-size': font_size,
+                    }
+            if rsrc_id in info:
+                props.update(info[rsrc_id])
+            try:
+                font = _parse_nfnt(data, offset, props)
+            except ValueError as e:
+                logging.error('Could not load font: %s', e)
+            fonts.append(font)
     return Typeface(fonts)
 
-def _parse_nfnt(data, offset):
+
+def _parse_fond(data, offset, name):
+    """Parse a MacOS FOND resource."""
+    family_header = _FOND_HEADER.from_bytes(data, offset)
+    # bitfield
+    #has_width_table = bool(family_header.ffFlags & (1 << 1))
+    #ignore_global_fract_enable = bool(family_header.ffFlags & (1 << 12))
+    #use_int_extra_width = bool(family_header.ffFlags & (1 << 13))
+    #frac_width_unused = bool(family_header.ffFlags & (1 << 14))
+    fixed_width = bool(family_header.ffFlags & (1 << 15))
+    # things we will want initially:
+    # the script
+    # the point size and style (font association table)
+    # the postscript glyph name table
+    #
+    # other stuff:
+    # family fractional width table
+    # kerning table
+    fa_header = _FA_HEADER.from_bytes(data, offset + _FOND_HEADER.size)
+    fa_list = (_FA_ENTRY * (fa_header.max_entry+1)).from_buffer_copy(
+        data, offset + _FOND_HEADER.size + _FA_HEADER.size
+    )
+    info = {
+        fa_entry.rsrc_id: {
+            'family': name,
+            'style': fa_entry.style_code,
+            'point-size': fa_entry.point_size,
+            'spacing': 'monospace' if fixed_width else 'proportional',
+        }
+        for fa_entry in fa_list
+    }
+    return info
+
+
+def _parse_nfnt(data, offset, properties):
     """Parse a MacOS NFNT or FONT resource."""
     fontrec = _NFNT_HEADER.from_bytes(data, offset)
-    if not fontrec.rowWords:
-        raise ValueError('Empty NFNT resource.')
+    #logging.info(fontrec)
+    if not (fontrec.rowWords and fontrec.widMax and fontrec.fRectWidth and fontrec.fRectHeight):
+        # empty FONT used as directory entry in old mac fonts
+        raise ValueError('Empty FONT/NFNT resource.')
     # extract bit fields
     has_height_table = bool(fontrec.fontType & 0x1)
     has_width_table = bool(fontrec.fontType & 0x2)
@@ -260,14 +384,16 @@ def _parse_nfnt(data, offset):
     has_ftcb = bool(fontrec.fontType & 0x80)
     if depth or has_ftcb:
         raise ValueError('Anti-aliased or colour fonts not supported.')
-    # bit 13: is fixed-width; ignored by Font Manager (and us)
+    # bit 13: is fixed-width; ignored by Font Manager
+    is_fixed = bool(fontrec.fontType & 1 << 13)
     # table offsets
     strike_offset = offset + _NFNT_HEADER.size
     loc_offset = offset + _NFNT_HEADER.size + fontrec.fRectHeight * fontrec.rowWords * 2
     # bitmap strike
     strike = data[strike_offset:loc_offset]
     # location table
-    n_chars = fontrec.lastChar - fontrec.firstChar + 1
+    # number of chars: coded chars plus missing symbol
+    n_chars = fontrec.lastChar - fontrec.firstChar + 2
     # loc table should have one extra entry to be able to determine widths
     loc_table = (_LOC_ENTRY * (n_chars+1)).from_buffer_copy(data, loc_offset)
     # width offset table
@@ -301,6 +427,16 @@ def _parse_nfnt(data, offset):
     ]
     # ordinal labels
     labels = {_l: _i for _i, _l in enumerate(range(fontrec.firstChar, fontrec.lastChar+1))}
+    labels['missing'] = n_chars-1
     # TODO: parse the width/offset table
-    # TODO: store properties
-    return Font(glyphs, labels, comments=(), properties=())
+    # store properties
+    properties.update({
+        'name': '{} {}px'.format(properties['family'], fontrec.fRectHeight),
+        'pixel-size': fontrec.fRectHeight,
+        'spacing': 'monospace' if is_fixed else 'proportional',
+        'default-char': 'missing',
+        'ascent': fontrec.ascent,
+        'descent': fontrec.descent,
+        'leading': fontrec.leading,
+    })
+    return Font(glyphs, labels, comments=(), properties=properties)
