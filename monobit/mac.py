@@ -243,7 +243,7 @@ _STYLE_MAP = {
     3: 'outline',
     4: 'shadow',
     5: 'condensed',
-    6: 'extend', # expanded??
+    6: 'extended',
 }
 
 _MAC_ENCODING = {
@@ -491,7 +491,6 @@ def _parse_nfnt(data, offset, properties):
     wo_table = (_WO_ENTRY * n_chars).from_buffer_copy(data, offset + 16 + wo_offset)
     widths = [_entry.width for _entry in wo_table]
     offsets = [_entry.offset for _entry in wo_table]
-
     # scalable width table
     # TODO: we're ignoring this for now - could perhaps map to bdf's SWIDTH ?
     width_offset = wo_offset + _WO_ENTRY.size * n_chars
