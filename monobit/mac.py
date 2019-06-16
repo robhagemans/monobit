@@ -545,8 +545,12 @@ def _parse_nfnt(data, offset, properties):
         'bearing-before': fontrec.kernMax,
         'offset': -fontrec.descent,
     })
+
     if 'point-size' in properties:
-        properties['name'] = '{} {}pt'.format(properties['family'], properties['point-size'])
+        size = '{}pt'.format(properties['point-size'])
     else:
-        properties['name'] = '{} {}px'.format(properties['family'], fontrec.fRectHeight)
+        size = '{}px'.format(fontrec.fRectHeight)
+    properties['name'] = ' '.join(
+        _elem for _elem in (properties['family'], properties.get('style', ''), size) if _elem
+    )
     return Font(glyphs, labels, comments=(), properties=properties)
