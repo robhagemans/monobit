@@ -124,7 +124,7 @@ _NFNT_HEADER = friendlystruct(
     #    {maximum glyph width}
     widMax='uint16',
     #    {maximum glyph kern}
-    kernMax='uint16',
+    kernMax='int16',
     #    {negative of descent}
     nDescent='int16',
     #    {width of font rectangle}
@@ -321,10 +321,10 @@ def _parse_resource_fork(data):
                     }
     # parse fonts
     fonts = []
-    for rsrc_type, rsrc_id, offset, _ in resources:
+    for rsrc_type, rsrc_id, offset, name in resources:
         if rsrc_type in (b'FONT', b'NFNT'):
             props = {
-                'family': f'{rsrc_id}'
+                'family': name if name else f'{rsrc_id}'
             }
             if rsrc_type == b'FONT':
                 font_number, font_size = divmod(rsrc_id, 128)
@@ -409,19 +409,20 @@ def _parse_nfnt(data, offset, properties):
     # width offset table
     # https://developer.apple.com/library/archive/documentation/mac/Text/Text-252.html
     if fontrec.nDescent > 0:
-        wo_offset = fontrec.nDescent << 16 + fontrec.owTLoc*2
+        wo_offset = fontrec.nDescent << 16 + fontrec.owTLoc * 2
     else:
-        wo_offset = fontrec.owTLoc*2
-    wo_table = (_WO_ENTRY * n_chars).from_buffer_copy(data, wo_offset)
-    # width and height tables
+        wo_offset = fontrec.owTLoc * 2
+    # owtTLoc is offset "from itself" to table
+    wo_table = (_WO_ENTRY * n_chars).from_buffer_copy(data, offset + 16 + wo_offset)
+    widths = [_entry.width for _entry in wo_table]
+    offsets = [_entry.offset for _entry in wo_table]
+
+    # scalable width table
+    # TODO: we're ignoring this for now - could perhaps map to bdf's SWIDTH ?
     width_offset = wo_offset + _WO_ENTRY.size * n_chars
     if has_width_table:
         width_table = (_WIDTH_ENTRY * n_chars).from_buffer_copy(data, width_offset)
-        height_offset = width_offset + _WIDTH_ENTRY.size * n_chars
-    else:
-        height_offset = width_offset
-    if has_height_table:
-        height_table = (_HEIGHT_ENTRY * n_chars).from_buffer_copy(data, height_offset)
+    # image height table: ignore, this can be deduced from the bitmaps
     # parse bitmap strike
     bitmap_strike = bytes_to_bits(strike)
     rows = [
@@ -430,23 +431,46 @@ def _parse_nfnt(data, offset, properties):
     ]
     # extract width from width/offset table
     # (do we need to consider the width table, if defined?)
-    offsets = [_loc.offset for _loc in loc_table]
+    locs = [_loc.offset for _loc in loc_table]
     glyphs = [
         Glyph([_row[_offs:_next] for _row in rows])
-        for _offs, _next in zip(offsets[:-1], offsets[1:])
+        for _offs, _next in zip(locs[:-1], locs[1:])
+    ]
+    # pad to apply width and offset
+    # the 'width' in the width/offset table is the pen advance
+    # while the 'offset' is the (positive) offset after applying the
+    # (positive or negative) 'kernMax' (==left-bearing) global offset
+    # since advance = left-bearing + grid-width + right-bearing
+    # after this transformation we should have
+    #   grid-width = advance - left-bearing - right-bearing = 'width' - kernMax - right-bearing
+    # and it sees we can set right-bearing=0
+    glyphs = [
+        (
+            _glyph.expand(left=_offset, right=(_width-fontrec.kernMax)-(_glyph.width+_offset))
+            if _width != 0xff and _offset != 0xff else _glyph
+        )
+        for _glyph, _width, _offset in zip(glyphs, widths, offsets)
     ]
     # ordinal labels
-    labels = {_l: _i for _i, _l in enumerate(range(fontrec.firstChar, fontrec.lastChar+1))}
-    labels['missing'] = n_chars-1
+    labelled = list(zip(range(fontrec.firstChar, fontrec.lastChar+1), glyphs))
+    labelled.append(('missing', glyphs[-1]))
+    # drop empty glyphs
+    labelled = [(_l, _g) for _l, _g in labelled if _g.width and _g.height]
+    glyphs = [_g for _, _g in labelled]
+    labels = {_l: _i for _i, _l in enumerate(_l for _l, _ in labelled)}
     # TODO: parse the width/offset table
     # store properties
     properties.update({
-        'name': '{} {}px'.format(properties['family'], fontrec.fRectHeight),
         'pixel-size': fontrec.fRectHeight,
         'spacing': 'monospace' if is_fixed else 'proportional',
         'default-char': 'missing',
         'ascent': fontrec.ascent,
         'descent': fontrec.descent,
         'leading': fontrec.leading,
+        'bearing-before': fontrec.kernMax,
     })
+    if 'point-size' in properties:
+        properties['name'] = '{} {}pt'.format(properties['family'], properties['point-size'])
+    else:
+        properties['name'] = '{} {}px'.format(properties['family'], fontrec.fRectHeight)
     return Font(glyphs, labels, comments=(), properties=properties)
