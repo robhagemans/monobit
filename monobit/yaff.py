@@ -56,7 +56,7 @@ _DRAW_PARAMETERS = dict(
 )
 
 
-@Typeface.loads('text', 'txt', 'yaff', name='monobit-yaff')
+@Typeface.loads('yaff', 'text', 'txt', name='monobit-yaff')
 def load(instream):
     """Read a plaintext font file."""
     fonts = []
@@ -69,7 +69,7 @@ def load(instream):
         return Typeface(fonts)
     raise ValueError('No fonts found in file.')
 
-@Typeface.saves('text', 'txt', 'yaff', multi=False)
+@Typeface.saves('yaff', 'text', 'txt', multi=False)
 def save(font, outstream):
     """Write fonts to a yaff file."""
     _save_yaff(font, outstream, **_YAFF_PARAMETERS)

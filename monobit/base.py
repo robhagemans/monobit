@@ -15,7 +15,7 @@ from contextlib import contextmanager
 from zipfile import ZipFile
 
 
-DEFAULT_FORMAT = 'text'
+DEFAULT_FORMAT = 'yaff'
 VERSION = '0.9'
 
 
@@ -190,7 +190,7 @@ class TextMultiStream:
             """Wrapper object to emulate a single text stream."""
 
             def __init__(self, parent, stream):
-                self._stream = io.TextIOWrapper(stream, encoding=encoding)
+                self._stream = stream
                 self._stream.close = lambda: None
                 self._parent = parent
 
@@ -206,6 +206,8 @@ class TextMultiStream:
                 """Write to stream."""
                 self._stream.write(s)
 
-        yield _TextStream(self, self._stream)
+        textstream = io.TextIOWrapper(self._stream, encoding=encoding)
+        yield _TextStream(self, textstream)
+        textstream.flush()
         if self._mode.startswith('w'):
             self._stream.write(b'\n%s\n' % (self.separator, ))
