@@ -438,11 +438,18 @@ class Font:
             if not encoding:
                 # use only whatever ordinal was provided
                 label = ordinal
-                unicode = self._encoding.ord_to_unicode(ordinal)
+                try:
+                    unicode = self._encoding.ord_to_unicode(ordinal)
+                except ValueError:
+                    unicode = ''
             else:
                 # transcode from unicode labels
-                label = encoding.ord_to_unicode(ordinal)
-                unicode = label
+                try:
+                    label = encoding.ord_to_unicode(ordinal)
+                    unicode = label
+                except ValueError:
+                    # not in target encoding
+                    continue
             yield Label(unicode), self.get_glyph(label, missing=missing)
 
 

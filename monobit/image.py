@@ -81,7 +81,7 @@ if Image:
     @Typeface.saves('png', 'bmp', 'gif', 'image', binary=True, multi=False)
     def save(
             font, outfile,
-            format:str=None,
+            format:str='png',
             columns:int=32,
             margin:pair=(0, 0),
             padding:pair=(0, 0),
