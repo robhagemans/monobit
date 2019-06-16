@@ -246,6 +246,63 @@ _STYLE_MAP = {
     6: 'extend', # expanded??
 }
 
+_MAC_ENCODING = {
+    0: 'mac-roman',
+    1: 'mac-japanese',
+    2: 'mac-trad-chinese',
+    3: 'mac-korean',
+    4: 'mac-arabic',
+    5: 'mac-hebrew',
+    6: 'mac-greek',
+    7: 'mac-russian',
+    # 8: right-to-left symbols
+    9: 'mac-devanagari',
+    10: 'mac-gurmukhi',
+    11: 'mac-gujarati',
+    12: 'mac-oriya',
+    13: 'mac-bengali',
+    14: 'mac-tamil',
+    15: 'mac-telugu',
+    16: 'mac-kannada',
+    17: 'mac-malayalam',
+    18: 'mac-sinhalese',
+    19: 'mac-burmese',
+    20: 'mac-khmer',
+    21: 'mac-thai',
+    22: 'mac-laotian',
+    23: 'mac-georgian',
+    24: 'mac-armenian',
+    25: 'mac-simp-chinese', # in early docs, maldivian...
+    26: 'mac-tibetan',
+    27: 'mac-mongolian',
+    28: 'mac-ethiopian', # aka geez
+    29: 'mac-latin2', # "non-cyrillic slavic", mac-centeuro
+    30: 'mac-vietnamese',
+    31: 'mac-sindhi', # == extended arabic
+    # 32: uninterpreted symbols
+}
+
+# font names for system fonts in FONT resources
+_FONT_NAMES = {
+    0: 'System',
+    1: 'Application',
+    2: 'New York',
+    3: 'Geneva',
+    4: 'Monaco',
+    5: 'Venice',
+    6: 'London',
+    7: 'Athens',
+    8: 'San Francisco',
+    9: 'Totonto',
+    11: 'Cairo',
+    12: 'Los Angeles',
+    16: 'Palatino', # found experimentally
+    20: 'Times',
+    21: 'Helvetica',
+    22: 'Courier',
+    23: 'Symbol',
+    24: 'Taliesin',
+}
 
 ##############################################################################
 
@@ -343,6 +400,10 @@ def _parse_resource_fork(data):
                 if not font_size:
                     # directory entry only
                     continue
+                if font_number in _FONT_NAMES:
+                    props['family'] = _FONT_NAMES[font_number]
+                else:
+                    props['family'] = f'Family {font_number}'
                 if font_number in info:
                     props.update({
                         **info[font_number],
@@ -379,6 +440,7 @@ def _parse_fond(data, offset, name):
     fa_list = (_FA_ENTRY * (fa_header.max_entry+1)).from_buffer_copy(
         data, offset + _FOND_HEADER.size + _FA_HEADER.size
     )
+    encoding = _MAC_ENCODING.get(max(0, 1 + (family_header.ffFamID - 16384) // 512))
     info = {
         fa_entry.rsrc_id: {
             'family': name,
@@ -387,6 +449,7 @@ def _parse_fond(data, offset, name):
             ),
             'point-size': fa_entry.point_size,
             'spacing': 'monospace' if fixed_width else 'proportional',
+            'encoding': encoding,
         }
         for fa_entry in fa_list
     }
@@ -480,6 +543,7 @@ def _parse_nfnt(data, offset, properties):
         'descent': fontrec.descent,
         'leading': fontrec.leading,
         'bearing-before': fontrec.kernMax,
+        'offset': -fontrec.descent,
     })
     if 'point-size' in properties:
         properties['name'] = '{} {}pt'.format(properties['family'], properties['point-size'])
