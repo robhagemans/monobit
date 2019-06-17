@@ -9,7 +9,7 @@ import logging
 import string
 from types import SimpleNamespace
 
-from .text import clean_comment, write_comments, split_global_comment
+from .text import clean_comment, write_comments, split_global_comment, to_text
 from .typeface import Typeface
 from .font import PROPERTIES, Font, Label
 from .glyph import Glyph
@@ -201,12 +201,12 @@ def _write_glyph(outstream, labels, glyph, fore, back, comment, tab, key_format,
     write_comments(outstream, glyph.comments, comm_char=comment)
     for ordinal in labels:
         outstream.write(key_format(ordinal) + key_sep)
-    glyphtxt = glyph.as_text(foreground=fore, background=back)
+    glyphtxt = to_text(glyph.as_matrix(fore, back), line_break='\n'+tab)
     # empty glyphs are stored as 0x0, not 0xm or nx0
     if not glyph.width or not glyph.height:
         glyphtxt = [empty]
     outstream.write(tab)
-    outstream.write(('\n' + tab).join(glyphtxt))
+    outstream.write(glyphtxt)
     outstream.write('\n\n')
 
 def _write_prop(outstream, key, value, tab):

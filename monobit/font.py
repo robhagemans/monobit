@@ -288,7 +288,9 @@ class Unicode:
     @staticmethod
     def unicode_to_ord(key, errors='strict'):
         """Convert ordinal to unicode label."""
-        return ord(Label(key).unicode)
+        uc = Label(key).unicode
+        # FIXME: deal with multichar grapheme clusters
+        return ord(uc)
 
 
 _UNICODE_ALIASES = ('unicode', 'ucs', 'iso10646', 'iso_10646', 'iso10646_1')
@@ -404,15 +406,16 @@ class Font:
 
     def get_empty_glyph(self):
         """Get empty glyph with minimal advance (zero if bearing 0 or negative)."""
-        return Glyph.empty(self.bounding_box[0], max(0, -self.bearing_before - self.bearing_after))
+        return Glyph.empty(max(0, -self.bearing_before - self.bearing_after), self.bounding_box.y)
 
-    def get_char(self, key, errors='strict'):
+    def get_char(self, key, missing='raise'):
         """Get glyph by unicode character."""
+        label = Label.from_unicode(key)
         try:
-            return self.get_glyph(Label.from_unicode(key))
+            return self.get_glyph(label)
         except KeyError:
             pass
-        return self.get_glyph(self._encoding.unicode_to_ord(key, errors=errors))
+        return self.get_glyph(self._encoding.unicode_to_ord(label), missing=missing)
 
     def __iter__(self):
         """Iterate over labels, glyph pairs."""
@@ -607,7 +610,7 @@ class Font:
     def bounding_box(self):
         """Get maximum ink width and height, in pixels."""
         if not self._glyphs:
-            return (0, 0)
+            return Coord(0, 0)
         # the max raster width/height and max *ink* width/height *should* be the same
         return Coord(
             max(_glyph.width for _glyph in self._glyphs),
@@ -677,6 +680,46 @@ class Font:
 
     ##########################################################################
     # font operations
+
+    def render(self, text, fore=1, back=0, *, x=0, y=0, missing='raise'):
+        """Render text string to bitmap."""
+        output = []
+        line = text
+        #for line in text.splitlines():
+        # TODO: deal with grapheme clusters
+        glyphs = [self.get_char(_c, missing=missing) for _c in line]
+        # determine dimensions
+        width = (
+            sum(_glyph.width for _glyph in glyphs)
+            + (self.bearing_before + self.bearing_after) * (len(glyphs))
+        )
+        height = max(_glyph.height for _glyph in glyphs)
+        line_output = [
+            [0 for _ in range(width)]
+            for _ in range(height)
+        ]
+        for glyph in glyphs:
+            matrix = glyph.as_matrix(1, 0)
+            # apply pre-offset
+            x, y = x + self.bearing_before, y + self.offset
+            # grid coordinates
+            grid_x, grid_y = x, height - y - 1
+            # add ink, taking into account there may be ink already in case of negtive bearings
+            for work_y, row in enumerate(line_output):
+                if 0 <= work_y < glyph.height:
+                    for work_x, ink in enumerate(matrix[work_y]):
+                        if 0 <= grid_x + work_x < width:
+                            row[grid_x + work_x] |= ink
+            # advance
+            x += glyph.width
+            # apply post-offset
+            x, y = x + self.bearing_after, y - self.offset
+        output.extend(line_output)
+        output = tuple(
+            tuple((fore if _item else back) for _item in _row)
+            for _row in output
+        )
+        return output
 
     @scriptable
     def renumber(self, add:int=0):

@@ -176,6 +176,10 @@ class Typeface:
         """Number of fonts in typeface."""
         return len(self._fonts)
 
+    def __getitem__(self, item):
+        """Get a font by number."""
+        return self._fonts[item]
+
     @staticmethod
     def get_format(infile, format=''):
         """Get format name."""

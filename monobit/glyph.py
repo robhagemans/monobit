@@ -9,7 +9,7 @@ import binascii
 
 from .base import scriptable
 from .binary import ceildiv, bytes_to_bits
-
+from .text import to_text
 
 class Glyph:
     """Single glyph."""
@@ -22,7 +22,7 @@ class Glyph:
     def __repr__(self):
         """Text representation."""
         return "Glyph(\n  '{}'\n)".format(
-            "'\n  '".join(self.as_text(foreground='@', background='.'))
+            to_text(self.as_matrix(fore='@', back='.'), line_break="'\n  '")
         )
 
     def add_comments(self, comments):
@@ -48,13 +48,6 @@ class Glyph:
             tuple(_char not in background for _char in _row)
             for _row in rows
         ))
-
-    def as_text(self, foreground, background):
-        """Convert glyph to tuple of str."""
-        return tuple(
-            ''.join((foreground if _bit else background) for _bit in _row)
-            for _row in self._rows
-        )
 
     def as_matrix(self, fore=1, back=0):
         """Return matrix of user-specified forground and background objects."""

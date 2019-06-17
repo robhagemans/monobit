@@ -7,6 +7,9 @@ licence: https://opensource.org/licenses/MIT
 
 import string
 
+def to_text(matrix, line_break='\n'):
+    """Convert matrix to text."""
+    return line_break.join(''.join(_row) for _row in matrix)
 
 def clean_comment(comment):
     """Remove leading characters from comment."""

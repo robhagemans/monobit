@@ -11,6 +11,7 @@ assert _sys.version_info >= (3, 6)
 
 from .base import VERSION as __version__
 from .typeface import Typeface
+from .text import to_text as _to_text
 
 from . import bmfont
 from . import winfon
@@ -40,3 +41,7 @@ OPERATIONS = {
 globals().update(OPERATIONS)
 
 load = Typeface.load
+
+def banner(font, text, fore='@', back='.', missing='default', stream=_sys.stdout):
+    """Print a banner."""
+    stream.write(_to_text(font.render(text, fore, back, missing=missing)) + '\n')
