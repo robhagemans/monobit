@@ -139,3 +139,27 @@ def show(
         img = _to_image(font, columns, margin, padding, scale, border, back, fore, encoding)
         img.show()
     return typeface
+
+
+def render(
+        font, text, *,
+        back=(0, 0, 0), fore=(255, 255, 255),
+        offset_x=0, offset_y=0,
+        missing='default',
+        filename=None,
+    ):
+    """Render text to image."""
+    #TODO: scale; use pair input for offset
+    grid = font.render(
+        text, fore, back, offset_x=offset_x, offset_y=offset_y, missing=missing
+    )
+    if not grid:
+        return
+    width, height = len(grid[0]), len(grid)
+    img = Image.new('RGB', (width, height), back)
+    data = [_c for _row in grid for _c in _row]
+    img.putdata(data)
+    if filename:
+        img.save(filename)
+    else:
+        img.show()

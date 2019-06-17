@@ -27,7 +27,7 @@ from . import hex
 from . import cpi
 from . import c
 
-from .image import show
+from .image import show, render
 
 
 # get font operations

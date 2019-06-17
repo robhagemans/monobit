@@ -389,15 +389,19 @@ class Font:
         try:
             index = self._labels[Label(key)]
         except KeyError:
-            if missing == 'default':
-                return self.get_default_glyph()
-            if missing == 'empty':
-                return self.get_empty_glyph()
-            raise
+            return self._get_fallback_glyph(key, missing)
         return self._glyphs[index]
 
+    def _get_fallback_glyph(self, key='', missing='raise'):
+        """Get the fallback glyph."""
+        if missing == 'default':
+            return self.get_default_glyph()
+        if missing == 'empty':
+            return self.get_empty_glyph()
+        raise KeyError(f'No glyph found matching {key}.')
+
     def get_default_glyph(self):
-        """Get default glyph; empty if not defined"""
+        """Get default glyph; empty if not defined."""
         try:
             default_key = self._labels[self.default_char]
             return self._glyphs[default_key]
@@ -457,9 +461,13 @@ class Font:
             return self.get_glyph(label)
         except KeyError:
             pass
-        return self.get_glyph(self._encoding.unicode_to_ord(label), missing=missing)
+        try:
+            ordinal = self._encoding.unicode_to_ord(label)
+        except ValueError:
+            return self._get_fallback_glyph(key, missing)
+        return self.get_glyph(ordinal, missing=missing)
 
-    def render(self, text, fore=1, back=0, *, offset_x=0, offset_y=0, missing='raise'):
+    def render(self, text, fore=1, back=0, *, offset_x=0, offset_y=0, missing='default'):
         """Render text string to bitmap."""
         if not text:
             return []
