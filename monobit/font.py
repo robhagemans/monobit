@@ -153,7 +153,6 @@ PROPERTIES = {
 
     # descriptive:
     'point-size': number, # nominal point size
-    'pixel-size': int, # nominal pixel size
     'dpi': Coord.create, # target resolution in dots per inch
     'family': str, # typeface/font family
     'weight': str, # normal, bold, light, etc.
@@ -161,6 +160,8 @@ PROPERTIES = {
     'setwidth': str, # normal, condensed, expanded, etc.
     'style': str, # serif, sans, etc.
     'decoration': str, # underline, strikethrough, etc.
+    'x-height': int, # height of lowercase x relative to baseline
+    'cap-height': int, # height of capital relative to baseline
 
     # these can be determined from the bitmaps
     'spacing': str, # proportional, monospace, cell
@@ -175,12 +176,11 @@ PROPERTIES = {
     'bearing-before': int, # horizontal offset from origin to matrix start
     'bearing-after': int, # horizontal offset from matrix end to next origin
 
-    # other metrics (may affect interline spacing):
+    # vertical metrics - affect interline spacing:
+    'pixel-size': int, # nominal pixel size
     'ascent': int, # recommended typographic ascent relative to baseline (not necessarily equal to top)
     'descent': int, # recommended typographic descent relative to baseline (not necessarily equal to bottom)
     'leading': int, # vertical leading, defined as (pixels between baselines) - (pixel height)
-    'x-height': int, # height of lowercase x relative to baseline
-    'cap-height': int, # height of capital relative to baseline
 
     # character set:
     'encoding': str,
@@ -408,15 +408,6 @@ class Font:
         """Get empty glyph with minimal advance (zero if bearing 0 or negative)."""
         return Glyph.empty(max(0, -self.bearing_before - self.bearing_after), self.bounding_box.y)
 
-    def get_char(self, key, missing='raise'):
-        """Get glyph by unicode character."""
-        label = Label.from_unicode(key)
-        try:
-            return self.get_glyph(label)
-        except KeyError:
-            pass
-        return self.get_glyph(self._encoding.unicode_to_ord(label), missing=missing)
-
     def __iter__(self):
         """Iterate over labels, glyph pairs."""
         for index, glyph in enumerate(self._glyphs):
@@ -455,6 +446,71 @@ class Font:
                     continue
             yield Label(unicode), self.get_glyph(label, missing=missing)
 
+
+    ##########################################################################
+    # text / character access
+
+    def get_char(self, key, missing='raise'):
+        """Get glyph by unicode character."""
+        label = Label.from_unicode(key)
+        try:
+            return self.get_glyph(label)
+        except KeyError:
+            pass
+        return self.get_glyph(self._encoding.unicode_to_ord(label), missing=missing)
+
+    def render(self, text, fore=1, back=0, *, offset_x=0, offset_y=0, missing='raise'):
+        """Render text string to bitmap."""
+        if not text:
+            return []
+        # TODO: deal with grapheme clusters
+        glyphs = [
+            [self.get_char(_c, missing=missing) for _c in _line]
+            for _line in text.splitlines()
+        ]
+        # determine dimensions
+        width = offset_x + max(
+            (
+                sum(_glyph.width for _glyph in _row)
+                + (self.bearing_before + self.bearing_after) * len(_row)
+            )
+            for _row in glyphs
+        )
+        height = offset_y + (self.pixel_size + self.leading) * len(glyphs)
+        line_output = [
+            [0 for _ in range(width)]
+            for _ in range(height)
+        ]
+        # get to initial origin
+        grid_top = offset_y
+        for row in glyphs:
+            x, y = 0, 0
+            for glyph in row:
+                matrix = glyph.as_matrix(1, 0)
+                # apply pre-offset so that x,y is logical coordinate of grid origin
+                x, y = x + self.bearing_before, y + self.offset
+                # grid coordinates of grid origin
+                grid_x, grid_y = offset_x + x, grid_top + self.ascent - y
+                # add ink, taking into account there may be ink already in case of negtive bearings
+                #for work_y, row in enumerate(line_output[grid_y-glyph.height:grid_y]):
+                for work_y in range(glyph.height):
+                    if 0 <= grid_y - work_y < height:
+                        row = line_output[grid_y - work_y]
+                        for work_x, ink in enumerate(matrix[glyph.height - work_y - 1]):
+                            if 0 <= grid_x + work_x < width:
+                                row[grid_x + work_x] |= ink
+                # advance
+                x += glyph.width
+                # apply post-offset
+                x, y = x + self.bearing_after, y - self.offset
+            grid_top += self.leading + self.pixel_size
+        output = []
+        output.extend(line_output)
+        output = tuple(
+            tuple((fore if _item else back) for _item in _row)
+            for _row in output
+        )
+        return output
 
     ##########################################################################
     # labels
@@ -680,46 +736,6 @@ class Font:
 
     ##########################################################################
     # font operations
-
-    def render(self, text, fore=1, back=0, *, x=0, y=0, missing='raise'):
-        """Render text string to bitmap."""
-        output = []
-        line = text
-        #for line in text.splitlines():
-        # TODO: deal with grapheme clusters
-        glyphs = [self.get_char(_c, missing=missing) for _c in line]
-        # determine dimensions
-        width = (
-            sum(_glyph.width for _glyph in glyphs)
-            + (self.bearing_before + self.bearing_after) * (len(glyphs))
-        )
-        height = max(_glyph.height for _glyph in glyphs)
-        line_output = [
-            [0 for _ in range(width)]
-            for _ in range(height)
-        ]
-        for glyph in glyphs:
-            matrix = glyph.as_matrix(1, 0)
-            # apply pre-offset
-            x, y = x + self.bearing_before, y + self.offset
-            # grid coordinates
-            grid_x, grid_y = x, height - y - 1
-            # add ink, taking into account there may be ink already in case of negtive bearings
-            for work_y, row in enumerate(line_output):
-                if 0 <= work_y < glyph.height:
-                    for work_x, ink in enumerate(matrix[work_y]):
-                        if 0 <= grid_x + work_x < width:
-                            row[grid_x + work_x] |= ink
-            # advance
-            x += glyph.width
-            # apply post-offset
-            x, y = x + self.bearing_after, y - self.offset
-        output.extend(line_output)
-        output = tuple(
-            tuple((fore if _item else back) for _item in _row)
-            for _row in output
-        )
-        return output
 
     @scriptable
     def renumber(self, add:int=0):
