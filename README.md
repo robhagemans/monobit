@@ -11,36 +11,36 @@ of the font format follows below.
 Supported formats
 -----------------
 
-| Format                | Version  | Typical Extension   | Native OS   | Read   | Write   |
-|-----------------------|----------|---------------------|-------------|--------|---------|
-| monobit yaff          |          | `.yaff`             |             | ✔      | ✔       |
-| hexdraw               |          | `.draw`             |             | ✔      | ✔       |
-| GNU Unifont           |          | `.hex`              |             | ✔      | ✔       |
-| PC Screen Font        | 1        | `.psf`              | Linux       | ✔      |         |
-| PC Screen Font        | 2        | `.psf`              | Linux       | ✔      | ✔       |
-| Raw binary            |          | `.fnt` `.rom` `.f??`| DOS         | ✔      | ✔       |
-| Bitmap image          |          | `.png` `.gif` `.bmp`|             | ✔      | ✔       |
-| C or C++ source code  |          | `.c` `.cpp` `.h`    |             | ✔      |         |
-| AngelCode BMFont      | Text     | `.fnt` + images     |             | ✔      | ✔       |
-| AngelCode BMFont      | Binary   | `.fnt` + images     |             | ✔      |         |
-| AngelCode BMFont      | XML      | `.fnt` `.xml` + images |          | ✔      |         |
-| AngelCode BMFont      | JSON     | `.json` + images    |             | ✔      |         |
-| X11/Adobe BDF         |          | `.bdf`              | Unix        | ✔      | ✔       |
-| Codepage Information  | FONT     | `.cpi`              | MS-DOS      | ✔      |         |
-| Codepage Information  | FONT.NT  | `.cpi`              | Windows NT  | ✔      |         |
-| Codepage Information  | DRFONT   | `.cpi`              | DR-DOS      | ✔      |         |
-| `kbd` Codepage        |          | `.cp`               | Linux       | ✔      |         |
-| Amiga Font            |          |                     | Amiga OS    | ✔      |         |
-| MacOS font            | FONT     |                     | MacOS       | ✔      |         |
-| MacOS font            | NFNT/FOND|                     | MacOS       | ✔      |         |
-| Windows resource      | 1.0      | `.fnt`              | Windows 1.x | ✔      |         |
-| Windows resource      | 2.0      | `.fnt`              | Windows 2.x | ✔      | ✔       |
-| Windows resource      | 3.0      | `.fnt`              | Windows 3.x | ✔      | ✔       |
-| Windows font          | 1.0 NE   | `.fon`              | Windows 1.x | ✔      |         |
-| Windows font          | 2.0 NE   | `.fon`              | Windows 2.x | ✔      | ✔       |
-| Windows font          | 3.0 NE   | `.fon`              | Windows 3.x | ✔      | ✔       |
-| Windows font          | 2.0 PE   | `.fon`              | Windows 2.x | ✔      |         |
-| Windows font          | 3.0 PE   | `.fon`              | Windows 3.x | ✔      |         |  
+| Format                | Version  | Typical Extension           | Native OS   | Read  | Write |
+|-----------------------|----------|-----------------------------|-------------|-------|-------|
+| monobit yaff          |          | `.yaff`                     |             | ✔     | ✔     |
+| hexdraw               |          | `.draw`                     |             | ✔     | ✔     |
+| GNU Unifont           |          | `.hex`                      |             | ✔     | ✔     |
+| PC Screen Font        | 1        | `.psf`                      | Linux       | ✔     |       |
+| PC Screen Font        | 2        | `.psf`                      | Linux       | ✔     | ✔     |
+| Raw binary            |          | `.fnt` `.rom` `.f??` `.ch8` |             | ✔     | ✔     |
+| Bitmap image          |          | `.png` `.gif` `.bmp`        |             | ✔     | ✔     |
+| C or C++ source code  |          | `.c` `.cpp` `.h`            |             | ✔     |       |
+| AngelCode BMFont      | Text     | `.fnt` + images             |             | ✔     | ✔     |
+| AngelCode BMFont      | Binary   | `.fnt` + images             |             | ✔     |       |
+| AngelCode BMFont      | XML      | `.fnt` `.xml` + images      |             | ✔     |       |
+| AngelCode BMFont      | JSON     | `.json` + images            |             | ✔     |       |
+| X11/Adobe BDF         |          | `.bdf`                      | Unix        | ✔     | ✔     |
+| Codepage Information  | FONT     | `.cpi`                      | MS-DOS      | ✔     |       |
+| Codepage Information  | FONT.NT  | `.cpi`                      | Windows NT  | ✔     |       |
+| Codepage Information  | DRFONT   | `.cpi`                      | DR-DOS      | ✔     |       |
+| `kbd` Codepage        |          | `.cp`                       | Linux       | ✔     |       |
+| Amiga Font            |          |                             | Amiga OS    | ✔     |       |
+| MacOS font            | FONT     |                             | MacOS       | ✔     |       |
+| MacOS font            | NFNT/FOND|                             | MacOS       | ✔     |       |
+| Windows resource      | 1.0      | `.fnt`                      | Windows 1.x | ✔     |       |
+| Windows resource      | 2.0      | `.fnt`                      | Windows 2.x | ✔     | ✔     |
+| Windows resource      | 3.0      | `.fnt`                      | Windows 3.x | ✔     | ✔     |
+| Windows font          | 1.0 NE   | `.fon`                      | Windows 1.x | ✔     |       |
+| Windows font          | 2.0 NE   | `.fon`                      | Windows 2.x | ✔     | ✔     |
+| Windows font          | 3.0 NE   | `.fon`                      | Windows 3.x | ✔     | ✔     |
+| Windows font          | 2.0 PE   | `.fon`                      | Windows 2.x | ✔     |       |
+| Windows font          | 3.0 PE   | `.fon`                      | Windows 3.x | ✔     |       |  
 
 
 Roadmap
@@ -50,11 +50,7 @@ Roadmap
 
 Work is underway to add:
 - PCF
-- MacOS (`FONT`, `NFNT`, `FOND`) resources and `.dfont` suitcases
-- OS/2 font files
-- common font formats for GEM, Atari, C64, and ZX Spectrum
-- write support for more formats
-- write support for FontForge sfd and maybe ttf
+- OS/2, GEM, Atari, C64, GEOS, and ZX Spectrum font files
 - testing
 - a simple REPL interface for manipulating fonts
 
