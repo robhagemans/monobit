@@ -310,7 +310,7 @@ _FONT_NAMES = {
 def load(instream):
     """Load a MacOS suitcase."""
     data = instream.read()
-    return _parse_resource_fork(data)
+    return Typeface(_parse_resource_fork(data))
 
 @Typeface.loads('apple', name='MacOS resource (AppleSingle/AppleDouble container)', binary=True)
 def load(instream):
@@ -373,6 +373,8 @@ def _parse_resource_fork(data):
             # construct the 3-byte integer
             data_offset = ref_entry.data_offset_hi * 0x10000 + ref_entry.data_offset
             offset = rsrc_header.data_offset + _DATA_HEADER.size + data_offset
+            if type_entry.rsrc_type == b'sfnt':
+                logging.warning('sfnt resources (vector or bitmap) not supported')
             if type_entry.rsrc_type in (b'FONT', b'NFNT', b'FOND'):
                 resources.append((type_entry.rsrc_type, ref_entry.rsrc_id, offset, name))
     # construct directory
@@ -415,7 +417,8 @@ def _parse_resource_fork(data):
                 font = _parse_nfnt(data, offset, props)
             except ValueError as e:
                 logging.error('Could not load font: %s', e)
-            fonts.append(font)
+            else:
+                fonts.append(font)
     return fonts
 
 
