@@ -176,9 +176,25 @@ class Typeface:
         """Number of fonts in typeface."""
         return len(self._fonts)
 
+    def __repr__(self):
+        """Representation."""
+        if self.names:
+            return "<Typeface \n    '" + "'\n    '".join(self.names) + "'\n>"
+        return '<empty Typeface>'
+
     def __getitem__(self, item):
         """Get a font by number."""
+        if isinstance(item, str):
+            for _font in self._fonts:
+                if _font.name == item:
+                    return _font
+            raise KeyError(f'No font named {item} in collection.')
         return self._fonts[item]
+
+    @property
+    def names(self):
+        """List names of fonts in collection."""
+        return [_font.name for _font in self._fonts]
 
     @staticmethod
     def get_format(infile, format=''):

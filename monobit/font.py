@@ -380,6 +380,9 @@ class Font:
         uni_labels.update(self._labels)
         self._labels = uni_labels
 
+    def __repr__(self):
+        """Representation."""
+        return f"<Font '{self.name}'>"
 
     ##########################################################################
     # glyph access
