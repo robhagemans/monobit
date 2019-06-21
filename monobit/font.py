@@ -361,7 +361,7 @@ class Font:
                 _k: _v for _k, _v in self._labels.items()
                 if not _k.is_ordinal
             }
-        # add unicode glyph namr as comment
+        # add unicode glyph name as comment
         self._glyphs = list(self._glyphs)
         for label, index in self._labels.items():
             if label.is_unicode and label.unicode_name and not self._glyphs[index].comments:
@@ -374,6 +374,12 @@ class Font:
         # override with explicit unicode labels, if given
         uni_labels.update(self._labels)
         self._labels = uni_labels
+        # identify multi-codepoint clusters
+        # we've already added unicode labels for codepage ordinals, so those should be included.
+        self._grapheme_clusters = set(
+            _label.unicode for _label in self._labels
+            if _label.is_unicode and len(_label.unicode) > 1
+        )
 
     def __repr__(self):
         """Representation."""
@@ -459,19 +465,34 @@ class Font:
             return self.get_glyph(label)
         except KeyError:
             pass
+        # if we don't have the unicode codepoint, see if we have it in the codepage
+        # TODO - not necessary as these have already been added in __init__ ?
         try:
             ordinal = self._encoding.unicode_to_ord(label)
         except ValueError:
             return self._get_fallback_glyph(key, missing)
         return self.get_glyph(ordinal, missing=missing)
 
+    def _iter_string(self, string, missing='raise'):
+        """Iterate over string, yielding unicode characters."""
+        remaining = string
+        while remaining:
+            # try grapheme clusters first
+            for cluster in self._grapheme_clusters:
+                if remaining.startswith(cluster):
+                    unicode = cluster
+                    remaining = remaining[len(cluster):]
+                    break
+            else:
+                unicode, remaining = remaining[0], remaining[1:]
+            yield unicode
+
     def render(self, text, fore=1, back=0, *, offset_x=0, offset_y=0, missing='default'):
         """Render text string to bitmap."""
         if not text:
             return []
-        # TODO: deal with grapheme clusters
         glyphs = [
-            [self.get_char(_c, missing=missing) for _c in _line]
+            [self.get_char(_c, missing=missing) for _c in self._iter_string(text)]
             for _line in text.splitlines()
         ]
         # determine dimensions
