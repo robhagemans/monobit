@@ -210,14 +210,11 @@ class Codec:
         unicode = byte.decode(self._encoding)
         return str(Label.from_unicode(unicode))
 
-    def unicode_to_ord(self, key, errors='strict'):
+    def unicode_to_ord(self, key):
         """Convert ordinal to unicode label."""
         unicode = Label(key).unicode
         uniord = ord(unicode)
-        byte = unicode.encode(self._encoding, errors=errors)
-        if not byte:
-            # happens for errors='ignore'
-            return ' '.encode(self._encoding)[0]
+        byte = unicode.encode(self._encoding, errors='strict')
         return byte[0]
 
 
@@ -248,10 +245,9 @@ class Codepage:
                 # extract codepage point
                 cp_point = int(splitline[0].strip(), 16)
                 # allow sequence of code points separated by commas
-                #grapheme_cluster = ','.join(
-                #    str(int(ucs_str.strip(), 16)) for ucs_str in splitline[1].split(',')
-                #)
-                self._mapping[cp_point] = int(splitline[1], 16)
+                self._mapping[cp_point] = ''.join(
+                    chr(int(ucs_str.strip(), 16)) for ucs_str in splitline[1].split(',')
+                )
             except (ValueError, TypeError):
                 logging.warning('Could not parse line in codepage file: %s', repr(line))
         self._inv_mapping = {_v: _k for _k, _v in self._mapping.items()}
@@ -259,22 +255,17 @@ class Codepage:
     def ord_to_unicode(self, ordinal):
         """Convert ordinal to unicode label."""
         try:
-            return str(Label.from_unicode(chr(self._mapping[int(ordinal)])))
+            return str(Label.from_unicode(self._mapping[int(ordinal)]))
         except KeyError as e:
             raise ValueError(str(e)) from e
 
-    def unicode_to_ord(self, key, errors='strict'):
+    def unicode_to_ord(self, key):
         """Convert ordinal to unicode label."""
-        uniord = ord(Label(key).unicode)
+        unicode = Label(key).unicode
         try:
-            return self._inv_mapping[uniord]
+            return self._inv_mapping[unicode]
         except KeyError as e:
-            if errors == 'strict':
-                raise ValueError(str(e)) from e
-            if errors == 'ignore':
-                return self._inv_mapping[ord(' ')]
-            # TODO: should we use replacement char? default-char?
-            return self._inv_mapping[ord('?')]
+            raise ValueError(str(e)) from e
 
 
 class Unicode:
@@ -289,7 +280,11 @@ class Unicode:
     def unicode_to_ord(key, errors='strict'):
         """Convert ordinal to unicode label."""
         uc = Label(key).unicode
-        # FIXME: deal with multichar grapheme clusters
+        if len(uc) > 1:
+            # grapheme clusters
+            # when encoding == Unicode we shouldn't really need unicode_to_ord
+            # however if we do, grapheme clusters are not supported
+            raise ValueError(str(key))
         return ord(uc)
 
 
@@ -543,7 +538,10 @@ class Font:
             index = self._labels[key]
         except KeyError:
             if key.is_unicode:
-                return self._encoding.unicode_to_ord(key)
+                try:
+                    return self._encoding.unicode_to_ord(key)
+                except ValueError:
+                    pass
             raise
         for label, lindex in self._labels.items():
             if index == lindex and label.is_ordinal:
