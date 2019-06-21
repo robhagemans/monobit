@@ -307,13 +307,13 @@ _FONT_NAMES = {
 ##############################################################################
 
 @Typeface.loads('dfont', 'suit', name='MacOS resource', binary=True)
-def load(instream):
+def load_dfont(instream):
     """Load a MacOS suitcase."""
     data = instream.read()
     return Typeface(_parse_resource_fork(data))
 
 @Typeface.loads('apple', name='MacOS resource (AppleSingle/AppleDouble container)', binary=True)
-def load(instream):
+def load_apple(instream):
     """Load an AppleSingle or AppleDouble file."""
     data = instream.read()
     return _parse_apple(data)
@@ -495,7 +495,7 @@ def _parse_nfnt(data, offset, properties):
     widths = [_entry.width for _entry in wo_table]
     offsets = [_entry.offset for _entry in wo_table]
     # scalable width table
-    # TODO: we're ignoring this for now - could perhaps map to bdf's SWIDTH ?
+    # TODO: we're ignoring the scalable width table for now - could perhaps map to bdf's SWIDTH ?
     width_offset = wo_offset + _WO_ENTRY.size * n_chars
     if has_width_table:
         width_table = (_WIDTH_ENTRY * n_chars).from_buffer_copy(data, width_offset)
@@ -535,7 +535,6 @@ def _parse_nfnt(data, offset, properties):
     labelled = [(_l, _g) for _l, _g in labelled if _g.width and _g.height]
     glyphs = [_g for _, _g in labelled]
     labels = {_l: _i for _i, _l in enumerate(_l for _l, _ in labelled)}
-    # TODO: parse the width/offset table
     # store properties
     properties.update({
         'pixel-size': fontrec.fRectHeight,
