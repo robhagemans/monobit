@@ -437,7 +437,7 @@ def _extract(container, path, bmformat, info, common, pages, chars, kernings=())
         encoding = _CHARSET_STR_MAP.get(charset.upper(), charset)
     properties = {
         'source-format': 'BMFont ({} .fnt; {} sprites)'.format(bmformat, ','.join(imgformats)),
-        'bearing-after': min_after,
+        'tracking': min_after,
         'family': bmfont_props.pop('face'),
         'pixel-size': bmfont_props.pop('size'),
         'weight': 'bold' if _to_int(bmfont_props.pop('bold')) else 'regular',
@@ -554,7 +554,7 @@ def _create_spritesheets(font, size=(256, 256), packed=False):
                 # y offset from top line
                 yoffset=font.bounding_box.y - glyph.height + top,
                 # not sure how these are really interpreted
-                xadvance=font.bearing_before + glyph.width + font.bearing_after,
+                xadvance=font.bearing_before + glyph.width + font.tracking,
                 page=page_id,
                 chnl=channels,
             ))

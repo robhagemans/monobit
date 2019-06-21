@@ -171,10 +171,10 @@ PROPERTIES = {
 
     # positioning relative to origin:
     'direction': str, # left-to-right, right-to-left
-    #TODO: change to offset (x y) and bearing (=bearing-after) ?
+    #TODO: change to offset (x y)
     'offset': int, # transverse offset: bottom line of matrix relative to baseline
     'bearing-before': int, # horizontal offset from origin to matrix start
-    'bearing-after': int, # horizontal offset from matrix end to next origin
+    'tracking': int, # horizontal offset from matrix end to next origin
 
     # vertical metrics - affect interline spacing:
     'pixel-size': int, # nominal pixel size
@@ -414,7 +414,7 @@ class Font:
 
     def get_empty_glyph(self):
         """Get empty glyph with minimal advance (zero if bearing 0 or negative)."""
-        return Glyph.empty(max(0, -self.bearing_before - self.bearing_after), self.bounding_box.y)
+        return Glyph.empty(max(0, -self.bearing_before - self.tracking), self.bounding_box.y)
 
     def __iter__(self):
         """Iterate over labels, glyph pairs."""
@@ -499,7 +499,7 @@ class Font:
         width = offset_x + max(
             (
                 sum(_glyph.width for _glyph in _row)
-                + (self.bearing_before + self.bearing_after) * len(_row)
+                + (self.bearing_before + self.tracking) * len(_row)
             )
             for _row in glyphs
         )
@@ -518,7 +518,7 @@ class Font:
                 x, y = x + self.bearing_before, y + self.offset
                 # grid coordinates of grid origin
                 grid_x, grid_y = offset_x + x, grid_top + self.ascent - y
-                # add ink, taking into account there may be ink already in case of negtive bearings
+                # add ink, taking into account there may be ink already in case of negative bearings
                 #for work_y, row in enumerate(line_output[grid_y-glyph.height:grid_y]):
                 for work_y in range(glyph.height):
                     if 0 <= grid_y - work_y < height:
@@ -529,7 +529,7 @@ class Font:
                 # advance
                 x += glyph.width
                 # apply post-offset
-                x, y = x + self.bearing_after, y - self.offset
+                x, y = x + self.tracking, y - self.offset
             grid_top += self.leading + self.pixel_size
         output = []
         output.extend(line_output)
@@ -720,12 +720,12 @@ class Font:
             # ink_width ?
             sum(_glyph.width for _glyph in self._glyphs) / len(self._glyphs),
             1
-        ) + self.bearing_before + self.bearing_after
+        ) + self.bearing_before + self.tracking
 
     @yaffproperty
     def average_advance(self):
         """Get average advance width, rounded to tenths of pixels."""
-        return self.average_width + self.bearing_before + self.bearing_after
+        return self.average_width + self.bearing_before + self.tracking
 
     @yaffproperty
     def spacing(self):
