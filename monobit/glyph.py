@@ -160,11 +160,8 @@ class Glyph:
         return left, bottom, right, top
 
     def reduce(self):
-        """Return a gyph reduced to the bounding box."""
-        left, bottom, right, top = self.ink_offsets
-        rows = self._rows[top:self.height-bottom]
-        rows = tuple(_row[left:self.width-right] for _row in rows)
-        return Glyph(rows)
+        """Return a glyph reduced to the bounding box."""
+        return self.crop(*self.ink_offsets)
 
     ##########################################################################
 
@@ -201,7 +198,7 @@ class Glyph:
         return Glyph(tuple(tuple((not _col) for _col in _row) for _row in self._rows))
 
     @scriptable
-    def crop(self, left:int=0, top:int=0, right:int=0, bottom:int=0):
+    def crop(self, left:int=0, bottom:int=0, right:int=0, top:int=0):
         """Crop glyph, inclusive bounds."""
         return Glyph(tuple(
             _row[left : (-right if right else None)]

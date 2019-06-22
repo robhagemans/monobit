@@ -552,9 +552,16 @@ def _save_bdf(font, outstream):
         # the next glyph’s origin relative to the origin of this glyph.
         dwidth_x = font.offset.x + glyph.width + font.tracking
         swidth_x = int(round(dwidth_x / (font.point_size / 1000) / (font.dpi.y / 72)))
-        # TODO: minimize glyphs to bbx before storing, except "cell" fonts
         offset_x, offset_y = font.offset.x, font.offset.y
-        hex = glyph.as_hex().upper()
+        # minimize glyphs to bbx before storing, except "cell" fonts
+        if font.spacing not in ('character-cell', 'multi-cell'):
+            offset_x, offset_y = offset_x + glyph.ink_offsets[0], offset_y + glyph.ink_offsets[1]
+            glyph = glyph.reduce()
+        # replace empty glyph with 1x1
+        if not glyph.height or not glyph.width:
+            glyph = Glyph(((0,),))
+            offset_x, offset_y = 0, 0
+        hex = glyph.as_hex()
         width = len(hex) // glyph.height
         split_hex = [hex[_offs:_offs+width] for _offs in range(0, len(hex), width)]
         glyphs.append([
