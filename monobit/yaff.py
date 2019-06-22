@@ -174,7 +174,7 @@ def _load_font(instream, fore, back, key_format):
     # convert text representation to glyph
     glyphs = [
         (
-            Glyph.from_text(_el.clusters, background=back).add_comments(_el.comments)
+            Glyph.from_matrix(_el.clusters, background=back).add_comments(_el.comments)
             if _el.clusters != ['-']
             else Glyph.empty().add_comments(_el.comments)
         )

@@ -40,10 +40,8 @@ class Glyph:
         return Glyph(((0,) * width,) * height)
 
     @staticmethod
-    def from_text(rows, background):
-        """Create glyph from sequence of str."""
-        #TODO: rename - this could work on any sequence of objects  (e.g. image matrix)
-        # e.g. from_matrix and from_tuple?
+    def from_matrix(rows, background):
+        """Create glyph from sequence of sequence of objects."""
         return Glyph(tuple(
             tuple(_char not in background for _char in _row)
             for _row in rows
