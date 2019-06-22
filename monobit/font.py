@@ -172,23 +172,25 @@ PROPERTIES = {
     'bounding-box': Coord.create, # maximum ink width/height
     'average-advance': number, # average advance width, rounded to tenths
 
-    # descriptive quantities
+    # descriptive typographic quantities
     # can be calculated
     'x-height': int, # height of lowercase x relative to baseline
     'cap-height': int, # height of capital relative to baseline
-    'x-width': int, # ink width of lowercase x (in proportional font)
+    'x-width': int, # ink width (not advance width) of lowercase x (in proportional font)
     'pixel-size': int, # nominal pixel size, should equal ascent + descent
+    # can't be calculated, don't currently affect rendering
+    # might affect e.g. composition of characters
+    'ascent': int, # recommended typographic ascent relative to baseline (not necessarily equal to top)
+    'descent': int, # recommended typographic descent relative to baseline (not necessarily equal to bottom)
 
     # metrics
     # can't be calculated, affect rendering
     # positioning relative to origin
     'direction': str, # left-to-right, right-to-left
-    'offset': Coord.create, # offset from origin to matrix start
+    'offset': Coord.create, # (horiz, vert) offset from origin to matrix start
     'tracking': int, # horizontal offset from matrix end to next origin
-    # vertical metrics (affect interline spacing)
-    'ascent': int, # recommended typographic ascent relative to baseline (not necessarily equal to top)
-    'descent': int, # recommended typographic descent relative to baseline (not necessarily equal to bottom)
-    'leading': int, # vertical leading, defined as (pixels between baselines) - (pixel height)
+    'leading': int, # interline spacing, defined as (pixels between baselines) - (bounding box height)
+
 
     # character set
     # can't be calculated, affect rendering
@@ -517,7 +519,7 @@ class Font:
             )
             for _row in glyphs
         )
-        line_height = self.ascent + self.descent + self.leading
+        line_height = self.bounding_box.y + self.leading
         height = offset_y + line_height * len(glyphs)
         line_output = [
             [0 for _ in range(width)]
