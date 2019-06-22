@@ -471,8 +471,9 @@ def _create_xlfd_properties(font):
         'ADD_STYLE_NAME': _quoted_string(font.style.title()),
         'PIXEL_SIZE': font.pixel_size,
         'AVERAGE_WIDTH': str(int(float(font.average_advance) * 10)).replace('-', '~'),
-        'DEFAULT_CHAR': font.default_char,
+        'DEFAULT_CHAR': font.get_ordinal_for_label(font.default_char),
     }
+    logging.info(xlfd_props)
     # modify/summarise values
     if encoding_is_unicode(font.encoding):
         xlfd_props['CHARSET_REGISTRY'] = '"ISO10646"'

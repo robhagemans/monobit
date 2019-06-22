@@ -581,19 +581,11 @@ class Font:
             return int(key)
         except TypeError:
             pass
-        try:
-            index = self._labels[key]
-        except KeyError:
-            if key.is_unicode:
-                try:
-                    return self._encoding.unicode_to_ord(key)
-                except ValueError:
-                    pass
-            raise
+        index = self._labels[key]
         for label, lindex in self._labels.items():
             if index == lindex and label.is_ordinal:
-                return label
-        raise KeyError(key)
+                return int(label)
+        raise KeyError(f'No ordinal found for label `{key}`')
 
 
     ##########################################################################
