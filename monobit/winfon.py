@@ -397,8 +397,8 @@ def _create_mz_stub():
         magic=b'MZ',
         last_page_length=dos_stub_size % 512,
         num_pages=ceildiv(dos_stub_size, 512),
-        # 4-para header - TODO: calculate?
-        header_size=4,
+        # 4-para header, where a paragraph == 16 bytes
+        header_size=ceildiv(_MZ_HEADER.size, 16),
         # 16 extra para for stack
         min_allocation=0x10,
         # maximum extra paras: LOTS
