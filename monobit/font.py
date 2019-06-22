@@ -191,7 +191,6 @@ PROPERTIES = {
     'tracking': int, # horizontal offset from matrix end to next origin
     'leading': int, # interline spacing, defined as (pixels between baselines) - (bounding box height)
 
-
     # character set
     # can't be calculated, affect rendering
     'encoding': str,

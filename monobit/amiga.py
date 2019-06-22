@@ -282,10 +282,7 @@ def _read_strike(
         kerning = (0,) * len(font)
     # deal with negative kerning by turning it into a global negative offset
     offset_x = min(kerning)
-    if offset_x < 0:
-        kerning = (_kern - offset_x for _kern in kerning)
-    else:
-        offset_x = 0
+    kerning = (_kern - offset_x for _kern in kerning)
     glyphs = [
         Glyph(tuple((False,) * _kern + _row + (False,) * (_width-_kern-len(_row)) for _row in _char))
         for _char, _width, _kern in zip(font, spacing, kerning)

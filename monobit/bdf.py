@@ -297,7 +297,7 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
     # ignored: for METRICSSET in 1, 2: DWIDTH1, SWIDTH1, VVECTOR
     offsets_x = []
     offsets_y = []
-    overshoots = []
+    right_bearings = []
     heights = []
     for glyph, props in zip(glyphs, glyph_props):
         props['BBX'] = props.get('BBX', global_bbx)
@@ -314,11 +314,11 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
         # ignored: for METRICSSET in 1, 2: DWIDTH1, SWIDTH1, VVECTOR
         offsets_x.append(offset_x)
         offsets_y.append(offset_y)
-        overshoots.append((offset_x + bbx_width) - dwidth_x)
+        right_bearings.append((offset_x + bbx_width) - dwidth_x)
         heights.append(bbx_height + offset_y)
     # shift/resize all glyphs to font bounding box
     leftmost = min(offsets_x)
-    rightmost = max(overshoots)
+    rightmost = max(right_bearings)
     bottommost = min(offsets_y)
     topmost = max(heights)
     properties['tracking'] = -rightmost
@@ -327,8 +327,8 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
     for glyph, props in zip(glyphs, glyph_props):
         bbx_width, bbx_height, offset_x, offset_y = (int(_p) for _p in props['BBX'].split(' '))
         dwidth_x, dwidth_y = (int(_p) for _p in props['DWIDTH'].split(' '))
-        overshoot = (offset_x + bbx_width) - dwidth_x
-        padding_right = rightmost - overshoot
+        right_bearing = (offset_x + bbx_width) - dwidth_x
+        padding_right = rightmost - right_bearing
         padding_left = offset_x - leftmost
         padding_bottom = offset_y - bottommost
         padding_top = topmost - bbx_height - offset_y
