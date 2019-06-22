@@ -16,7 +16,7 @@ from zipfile import ZipFile
 
 
 DEFAULT_FORMAT = 'yaff'
-VERSION = '0.9'
+VERSION = '0.10'
 
 
 def scriptable(fn):
