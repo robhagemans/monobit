@@ -506,7 +506,7 @@ class Font:
         if not text:
             return []
         glyphs = [
-            [self.get_char(_c, missing=missing) for _c in self._iter_string(text)]
+            [self.get_char(_c, missing=missing) for _c in self._iter_string(_line)]
             for _line in text.splitlines()
         ]
         # determine dimensions
