@@ -144,48 +144,60 @@ class Coord(NamedTuple):
 # this also defines the default order in yaff files
 PROPERTIES = {
     # font metadata
+    # can't be calculated
     'name': str, # full human name
     'foundry': str, # author or issuer
     'copyright': str, # copyright string
     'notice': str, # e.g. license string
     'revision': str, # font version
-    'device': str, # target device name
 
-    # descriptive:
-    'point-size': number, # nominal point size
-    'dpi': Coord.create, # target resolution in dots per inch
+    # font description
+    # can't be calculated
     'family': str, # typeface/font family
+    'style': str, # serif, sans, etc.
+    'point-size': number, # nominal point size
     'weight': str, # normal, bold, light, etc.
     'slant': str, # roman, italic, oblique, etc
     'setwidth': str, # normal, condensed, expanded, etc.
-    'style': str, # serif, sans, etc.
     'decoration': str, # underline, strikethrough, etc.
+
+    # target info
+    # can't be calculated
+    'device': str, # target device name
+    'dpi': Coord.create, # target resolution in dots per inch
+
+    # summarising quantities
+    # can be determined from the bitmaps
+    'spacing': str, # proportional, monospace, cell
+    'bounding-box': Coord.create, # maximum ink width/height
+    'average-advance': number, # average advance width, rounded to tenths
+
+    # descriptive quantities
+    # can be calculated
     'x-height': int, # height of lowercase x relative to baseline
     'cap-height': int, # height of capital relative to baseline
-
-    # these can be determined from the bitmaps
-    'spacing': str, # proportional, monospace, cell
     'x-width': int, # ink width of lowercase x (in proportional font)
-    'average-advance': number, # average advance width, rounded to tenths
-    'bounding-box': Coord.create, # maximum ink width/height
 
-    # positioning relative to origin:
+    # metrics
+    # can't be calculated, affect rendering
+    # positioning relative to origin
     'direction': str, # left-to-right, right-to-left
     'offset': Coord.create, # offset from origin to matrix start
     'tracking': int, # horizontal offset from matrix end to next origin
-
-    # vertical metrics - affect interline spacing:
+    # vertical metrics (affect interline spacing)
     'pixel-size': int, # nominal pixel size
     'ascent': int, # recommended typographic ascent relative to baseline (not necessarily equal to top)
     'descent': int, # recommended typographic descent relative to baseline (not necessarily equal to bottom)
     'leading': int, # vertical leading, defined as (pixels between baselines) - (pixel height)
 
-    # character set:
+    # character set
+    # can't be calculated, affect rendering
     'encoding': str,
     'default-char': Label, # use question mark to replace missing glyph
     'word-boundary': Label, # word-break character (usually space)
 
-    # conversion metadata:
+    # conversion metadata
+    # can't be calculated, informational
     'converter': str,
     'source-name': str,
     'source-format': str,
