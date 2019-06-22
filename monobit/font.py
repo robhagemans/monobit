@@ -479,12 +479,8 @@ class Font:
         try:
             return self.get_glyph(label)
         except KeyError:
-            pass
-        # if we don't have the unicode codepoint, see if we have it in the codepage
-        # TODO - not necessary as these have already been added in __init__ ?
-        try:
-            ordinal = self._encoding.unicode_to_ord(label)
-        except ValueError:
+            # we don't check ordinals and codepage
+            # as we have already added unicode labels for ordinals in __init__
             return self._get_fallback_glyph(key, missing)
         return self.get_glyph(ordinal, missing=missing)
 
