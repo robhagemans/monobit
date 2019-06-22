@@ -502,30 +502,32 @@ class Font:
                 unicode, remaining = remaining[0], remaining[1:]
             yield unicode
 
-    def render(self, text, fore=1, back=0, *, offset_x=0, offset_y=0, missing='default'):
+    def render(self, text, fore=1, back=0, *, margin=(0, 0), scale=(1, 1), missing='default'):
         """Render text string to bitmap."""
-        if not text:
-            return []
+        margin_x, margin_y = margin
         glyphs = [
             [self.get_char(_c, missing=missing) for _c in self._iter_string(_line)]
             for _line in text.splitlines()
         ]
         # determine dimensions
-        width = offset_x + max(
-            (
-                sum(_glyph.width for _glyph in _row)
-                + (self.offset.x + self.tracking) * len(_row)
+        if not glyphs:
+            width = 2 * margin_x
+        else:
+            width = 2 * margin_x + max(
+                (
+                    sum(_glyph.width for _glyph in _row)
+                    + (self.offset.x + self.tracking) * len(_row)
+                )
+                for _row in glyphs
             )
-            for _row in glyphs
-        )
         line_height = self.bounding_box.y + self.leading
-        height = offset_y + line_height * len(glyphs)
+        height = 2 * margin_y + line_height * len(glyphs)
         line_output = [
             [0 for _ in range(width)]
             for _ in range(height)
         ]
         # get to initial origin
-        grid_top = offset_y
+        grid_top = margin_y
         for row in glyphs:
             x, y = 0, 0
             for glyph in row:
@@ -533,9 +535,8 @@ class Font:
                 # apply pre-offset so that x,y is logical coordinate of grid origin
                 x, y = x + self.offset.x, y + self.offset.y
                 # grid coordinates of grid origin
-                grid_x, grid_y = offset_x + x, grid_top + self.ascent - y
+                grid_x, grid_y = margin_x + x, grid_top + self.ascent - y
                 # add ink, taking into account there may be ink already in case of negative bearings
-                #for work_y, row in enumerate(line_output[grid_y-glyph.height:grid_y]):
                 for work_y in range(glyph.height):
                     if 0 <= grid_y - work_y < height:
                         row = line_output[grid_y - work_y]
@@ -549,9 +550,10 @@ class Font:
             grid_top += line_height
         output = []
         output.extend(line_output)
+        scale_x, scale_y = scale
         output = tuple(
-            tuple((fore if _item else back) for _item in _row)
-            for _row in output
+            tuple((fore if _item else back) for _item in _row for _ in range(scale_x))
+            for _row in output for _ in range(scale_y)
         )
         return output
 

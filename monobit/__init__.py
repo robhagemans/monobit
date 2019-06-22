@@ -42,8 +42,11 @@ globals().update(OPERATIONS)
 
 load = Typeface.load
 
-def banner(font, text, fore='@', back='.', offset_x=0, offset_y=0, missing='default', stream=_sys.stdout):
+def banner(
+        font, text, fore='@', back='.',
+        margin=(0, 0), scale=(1, 1), missing='default', stream=_sys.stdout
+    ):
     """Print a banner."""
     stream.write(_to_text(font.render(
-        text, fore, back, offset_x=offset_x, offset_y=offset_y, missing=missing
+        text, fore, back, margin=margin, scale=scale, missing=missing
     )) + '\n')

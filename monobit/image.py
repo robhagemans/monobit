@@ -144,14 +144,13 @@ def show(
 def render(
         font, text, *,
         back=(0, 0, 0), fore=(255, 255, 255),
-        offset_x=0, offset_y=0,
+        margin=(0, 0), scale=(1, 1),
         missing='default',
         filename=None,
     ):
     """Render text to image."""
-    #TODO: scale; use pair input for offset
     grid = font.render(
-        text, fore, back, offset_x=offset_x, offset_y=offset_y, missing=missing
+        text, fore, back, margin=margin, scale=scale, missing=missing
     )
     if not grid:
         return
