@@ -686,18 +686,21 @@ class Font:
         """Get ascent (defaults to max ink height above baseline)."""
         if not self._glyphs:
             return 0
-        # this assumes matrix does not extend beyond font bounding box (no empty lines)
-        # but using ink_height would assume there's a glyph that both fully ascends and fully descends
-        # FIXME: need something like Glyph.bounding_box and .offset
-        return max(_glyph.height for _glyph in self._glyphs) + self.offset.y
+        return self.offset.y + max(
+            # ink_offsets[3] is offset from top
+            _glyph.height - _glyph.ink_offsets[3]
+            for _glyph in self._glyphs
+        )
 
     @yaffproperty
     def descent(self):
         """Get descent (defaults to bottom/vertical offset)."""
         if not self._glyphs:
             return 0
-        # this assumes matrix does not extend beyond font bounding box (no empty lines)
-        return -self.offset.y
+        # ink_offsets[1] is offset from bottom
+        # usually, descent is positive and offset is negative
+        # negative descent would mean font descenders are all above baseline
+        return -self.offset.y - min(_glyph.ink_offsets[1] for _glyph in self._glyphs)
 
     @yaffproperty
     def dpi(self):
