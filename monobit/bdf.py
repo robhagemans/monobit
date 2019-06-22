@@ -513,26 +513,36 @@ def _save_bdf(font, outstream):
         )
     ]
     # labels
-    glyphs = []
     is_unicode = encoding_is_unicode(font.encoding)
+    # get glyphs for encoding values
+    encoded_glyphs = []
     for labels, glyph in font:
-        # default: no encoding, first label
-        encoding = -1
-        name = labels[0]
+        name = ''
+        # keep the first text label as the glyph name
         for label in labels:
-            # keep the first unicode value encountered
-            # FIXME: we can't deal with multiple unicode lables for the same glyph
-            if is_unicode and label.is_unicode:
-                encoding = ord(label.unicode)
-                break
-            elif not is_unicode and label.is_ordinal:
-                encoding = int(label)
-                break
-        for label in labels:
-            # keep the first text label
             if not label.is_unicode and not label.is_ordinal:
                 name = label
                 break
+        included = False
+        for label in labels:
+            if is_unicode and label.is_unicode:
+                encoding = ord(label.unicode)
+                if not name:
+                    name = f'uni{encoding:04X}'
+                encoded_glyphs.append((encoding, name, glyph))
+                included = True
+            elif not is_unicode and label.is_ordinal:
+                encoding = int(label)
+                if not name:
+                    name = f'char{encoding:02X}'
+                encoded_glyphs.append((encoding, name, glyph))
+                included = True
+        if not included:
+            # glyph has no encoding value
+            # must have a name - else it has no labels referring to it!
+            encoded_glyphs.append((-1, name, glyph))
+    glyphs = []
+    for encoding, name, glyph in encoded_glyphs:
         # "The SWIDTH y value should always be zero for a standard X font."
         # "The DWIDTH y value should always be zero for a standard X font."
         swidth_y, dwidth_y = 0, 0
