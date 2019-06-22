@@ -482,7 +482,6 @@ def create_fnt(font, version=0x200):
         # x_width should equal average width
         x_width = pix_width = font.bounding_box.x
         v3_flags = _DFF_FIXED
-    pix_height = font.bounding_box.y
     space_index = 0
     # use only native encoding for now
     encoding = None
@@ -491,7 +490,7 @@ def create_fnt(font, version=0x200):
     min_ord = 0
     max_ord = len(ord_glyphs) - 1
     # add the guaranteed-blank glyph
-    ord_glyphs.append(Glyph.empty(pix_width, pix_height))
+    ord_glyphs.append(Glyph.empty(pix_width, font.bounding_box.y))
     # create the bitmaps
     bitmaps = [_glyph.as_bytes() for _glyph in ord_glyphs]
     # bytewise transpose - .FNT stores as contiguous 8-pixel columns
@@ -530,9 +529,9 @@ def create_fnt(font, version=0x200):
         dfVertRes=font.dpi.y,
         dfHorizRes=font.dpi.x,
         # Windows dfAscent means distance between matrix top and baseline
-        dfAscent=font.offset.y + pix_height,
+        dfAscent=font.offset.y + font.bounding_box.y,
         #'ascent': win_props.dfAscent - win_props.dfInternalLeading,
-        dfInternalLeading=font.offset.y + pix_height - font.ascent,
+        dfInternalLeading=font.offset.y + font.bounding_box.y - font.ascent,
         dfExternalLeading=font.leading,
         dfItalic=(font.slant in ('italic', 'oblique')),
         dfUnderline=('underline' in font.decoration),
@@ -540,7 +539,7 @@ def create_fnt(font, version=0x200):
         dfWeight=weight_map.get(font.weight, weight_map['regular']),
         dfCharSet=charset_map.get(font.encoding, 0xff),
         dfPixWidth=pix_width,
-        dfPixHeight=pix_height,
+        dfPixHeight=font.bounding_box.y,
         dfPitchAndFamily=pitch_and_family,
         dfAvgWidth=x_width,
         dfMaxWidth=font.bounding_box.x,
