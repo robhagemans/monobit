@@ -494,8 +494,7 @@ def _parse_nfnt(data, offset, properties):
     wo_table = (_WO_ENTRY * n_chars).from_buffer_copy(data, offset + 16 + wo_offset)
     widths = [_entry.width for _entry in wo_table]
     offsets = [_entry.offset for _entry in wo_table]
-    # scalable width table
-    # TODO: we're ignoring the scalable width table for now - could perhaps map to bdf's SWIDTH ?
+    # scalable width table - ignoring for now
     width_offset = wo_offset + _WO_ENTRY.size * n_chars
     if has_width_table:
         width_table = (_WIDTH_ENTRY * n_chars).from_buffer_copy(data, width_offset)
