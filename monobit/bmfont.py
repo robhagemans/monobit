@@ -447,7 +447,6 @@ def _extract(container, path, bmformat, info, common, pages, chars, kernings=())
             '{} {} {}'.format(Label(_kern.first), Label(_kern.second), _kern.amount)
             for _kern in kernings
         ),
-        'bearing-before': min_before,
         'offset': Coord(min_before, common.base - max_height)
     }
     # drop other props if they're default value
@@ -551,11 +550,11 @@ def _create_spritesheets(font, size=(256, 256), packed=False):
                 y=y,
                 width=cropped.width,
                 height=cropped.height,
-                xoffset=font.bearing_before + left,
+                xoffset=font.offset.x + left,
                 # y offset from top line
                 yoffset=font.bounding_box.y - glyph.height + top,
                 # not sure how these are really interpreted
-                xadvance=font.bearing_before + glyph.width + font.tracking,
+                xadvance=font.offset.x + glyph.width + font.tracking,
                 page=page_id,
                 chnl=channels,
             ))

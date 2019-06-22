@@ -172,7 +172,6 @@ PROPERTIES = {
     # positioning relative to origin:
     'direction': str, # left-to-right, right-to-left
     'offset': Coord.create, # offset from origin to matrix start
-    'bearing-before': int, # FIXME remove
     'tracking': int, # horizontal offset from matrix end to next origin
 
     # vertical metrics - affect interline spacing:
@@ -413,7 +412,7 @@ class Font:
 
     def get_empty_glyph(self):
         """Get empty glyph with minimal advance (zero if bearing 0 or negative)."""
-        return Glyph.empty(max(0, -self.bearing_before - self.tracking), self.bounding_box.y)
+        return Glyph.empty(max(0, -self.offset.x - self.tracking), self.bounding_box.y)
 
     def __iter__(self):
         """Iterate over labels, glyph pairs."""
@@ -498,7 +497,7 @@ class Font:
         width = offset_x + max(
             (
                 sum(_glyph.width for _glyph in _row)
-                + (self.bearing_before + self.tracking) * len(_row)
+                + (self.offset.x + self.tracking) * len(_row)
             )
             for _row in glyphs
         )
@@ -514,7 +513,7 @@ class Font:
             for glyph in row:
                 matrix = glyph.as_matrix(1, 0)
                 # apply pre-offset so that x,y is logical coordinate of grid origin
-                x, y = x + self.bearing_before, y + self.offset.y
+                x, y = x + self.offset.x, y + self.offset.y
                 # grid coordinates of grid origin
                 grid_x, grid_y = offset_x + x, grid_top + self.ascent - y
                 # add ink, taking into account there may be ink already in case of negative bearings
@@ -719,12 +718,12 @@ class Font:
             # ink_width ?
             sum(_glyph.width for _glyph in self._glyphs) / len(self._glyphs),
             1
-        ) + self.bearing_before + self.tracking
+        ) + self.offset.x + self.tracking
 
     @yaffproperty
     def average_advance(self):
         """Get average advance width, rounded to tenths of pixels."""
-        return self.average_width + self.bearing_before + self.tracking
+        return self.offset.x + self.average_width + self.tracking
 
     @yaffproperty
     def spacing(self):

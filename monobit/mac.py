@@ -520,7 +520,7 @@ def _parse_nfnt(data, offset, properties):
     # since advance = left-bearing + grid-width + right-bearing
     # after this transformation we should have
     #   grid-width = advance - left-bearing - right-bearing = 'width' - kernMax - right-bearing
-    # and it sees we can set right-bearing=0
+    # and it seems we can set right-bearing=0
     glyphs = [
         (
             _glyph.expand(left=_offset, right=(_width-fontrec.kernMax)-(_glyph.width+_offset))
@@ -543,7 +543,6 @@ def _parse_nfnt(data, offset, properties):
         'ascent': fontrec.ascent,
         'descent': fontrec.descent,
         'leading': fontrec.leading,
-        'bearing-before': fontrec.kernMax,
         'offset': Coord(fontrec.kernMax, -fontrec.descent),
     })
 

@@ -171,14 +171,14 @@ def _read_font_hunk(f):
     # remainder is the font strike
     data = f.read()
     # read character data
-    glyphs, labels, min_kern = _read_strike(
+    glyphs, labels, offset_x = _read_strike(
         data, amiga_props.tf_XSize, amiga_props.tf_YSize,
         amiga_props.tf_Flags & _FPF_PROPORTIONAL,
         amiga_props.tf_Modulo, amiga_props.tf_LoChar, amiga_props.tf_HiChar,
         amiga_props.tf_CharData + loc, amiga_props.tf_CharLoc + loc,
         amiga_props.tf_CharSpace + loc, amiga_props.tf_CharKern + loc
     )
-    props = _parse_amiga_props(amiga_props, min_kern)
+    props = _parse_amiga_props(amiga_props, offset_x)
     props['source-name'] = '/'.join(f.name.split(os.sep)[-2:])
     # the file name tends to be the name as given in the .font anyway
     if 'name' not in props:
@@ -186,7 +186,7 @@ def _read_font_hunk(f):
     props['family'] = props['name'].split('/')[0].split(' ')[0]
     return glyphs, labels, props
 
-def _parse_amiga_props(amiga_props, min_kern):
+def _parse_amiga_props(amiga_props, offset_x):
     """Convert AmigaFont properties into yaff properties."""
     if amiga_props.tf_Style & _FSF_COLORFONT:
         raise ValueError('Amiga ColorFont not supported')
@@ -198,9 +198,7 @@ def _parse_amiga_props(amiga_props, min_kern):
     if name:
         props['name'] = name
     props['revision'] = amiga_props.dfh_Revision
-    props['offset'] = Coord(min(min_kern, 0), -(amiga_props.tf_YSize - amiga_props.tf_Baseline))
-    if min_kern < 0:
-        props['bearing-before'] = min_kern
+    props['offset'] = Coord(offset_x, -(amiga_props.tf_YSize - amiga_props.tf_Baseline))
     # tf_Style
     props['weight'] = 'bold' if amiga_props.tf_Style & _FSF_BOLD else 'medium'
     props['slant'] = 'italic' if amiga_props.tf_Style & _FSF_ITALIC else 'roman'
@@ -283,9 +281,11 @@ def _read_strike(
     else:
         kerning = (0,) * len(font)
     # deal with negative kerning by turning it into a global negative offset
-    min_kern = min(kerning)
-    if min_kern < 0:
-        kerning = (_kern - min_kern for _kern in kerning)
+    offset_x = min(kerning)
+    if offset_x < 0:
+        kerning = (_kern - offset_x for _kern in kerning)
+    else:
+        offset_x = 0
     glyphs = [
         Glyph(tuple((False,) * _kern + _row + (False,) * (_width-_kern-len(_row)) for _row in _char))
         for _char, _width, _kern in zip(font, spacing, kerning)
@@ -295,4 +295,4 @@ def _read_strike(
         _i + lochar: _i for _i in range(len(glyphs)-1)
     }
     labels['default'] = len(glyphs) - 1
-    return glyphs, labels, min_kern
+    return glyphs, labels, offset_x
