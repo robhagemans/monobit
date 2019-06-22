@@ -350,6 +350,10 @@ class Font:
                 # don't set property values that equal the default
                 default_value = getattr(self, key)
                 if value != default_value:
+                    logging.info(
+                        'Property `%s` value set to %s (default or calculated value %s).',
+                        key, str(value), str(default_value)
+                    )
                     self._properties[key] = value
             # append nonstandard properties
             self._properties.update(properties)
