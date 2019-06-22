@@ -44,7 +44,7 @@ _SLANT_MAP = {
 _SPACING_MAP = {
     'P': 'proportional',
     'M': 'monospace',
-    'C': 'cell',
+    'C': 'character-cell',
 }
 
 _SETWIDTH_MAP = {
@@ -376,8 +376,8 @@ def _parse_xlfd_properties(x_props, xlfd_name):
         'cap-height': x_props.pop('CAP_HEIGHT', None),
         'pixel-size': x_props.pop('PIXEL_SIZE', None),
         'default-char': x_props.pop('DEFAULT_CHAR', None),
-        'slant': _SLANT_MAP.get(x_props.pop('SLANT', ''), None),
-        'spacing': _SPACING_MAP.get(x_props.pop('SPACING', ''), None),
+        'slant': _SLANT_MAP.get(_from_quoted_string(x_props.pop('SLANT', '')), None),
+        'spacing': _SPACING_MAP.get(_from_quoted_string(x_props.pop('SPACING', '')), None),
     }
     if 'FONT_DESCENT' in x_props:
         properties['descent'] = -int(x_props.pop('FONT_DESCENT'))

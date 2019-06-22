@@ -121,9 +121,9 @@ def _read_unicode_table(instream, separator, startseq, encoding):
 def save(font, outstream):
     """Save font to PSF2 file."""
     # check if font is fixed-width and fixed-height
-    if font.spacing != 'monospace':
+    if font.spacing != 'character-cell':
         raise ValueError(
-            'This format does not support proportional or variable-height fonts.'
+            'This format only supports character-cell fonts.'
         )
     # use native encoding for now
     encoding = None

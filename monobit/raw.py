@@ -37,9 +37,9 @@ def save(font, outstream):
 def save_aligned(outstream, font, encoding=None):
     """Save fixed-width font to byte-aligned bitmap."""
     # check if font is fixed-width and fixed-height
-    if font.spacing != 'monospace':
+    if font.spacing != 'character-cell':
         raise ValueError(
-            'This format does not support proportional or variable-height fonts.'
+            'This format only supports character-cell fonts.'
         )
     for _, glyph in font.iter_ordinal(encoding=encoding):
         outstream.write(glyph.as_bytes())

@@ -398,7 +398,7 @@ def _parse_win_props(fnt, win_props):
         properties['spacing'] = 'monospace'
     else:
         properties['spacing'] = 'proportional'
-        # this can be extracted from the font - drop if consistent?
+        # this can be extracted from the font - will be dropped if consistent
         properties['x-width'] = win_props.dfAvgWidth
     # check prop/fixed flag
     if bool(win_props.dfPitchAndFamily & 1) == bool(win_props.dfPixWidth):

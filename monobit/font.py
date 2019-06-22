@@ -168,7 +168,7 @@ PROPERTIES = {
 
     # summarising quantities
     # can be determined from the bitmaps
-    'spacing': str, # proportional, monospace, cell
+    'spacing': str, # proportional, monospace, character-cell, multi-cell
     'bounding-box': Coord.create, # maximum ink width/height
     'average-advance': number, # average advance width, rounded to tenths
 
@@ -203,6 +203,11 @@ PROPERTIES = {
     'source-name': str,
     'source-format': str,
 }
+
+# calculated properties
+# properties that must have the calculated value
+_NON_OVERRIDABLE = ('spacing', 'bounding-box')
+_OVERRIDABLE = ('average-advance', 'x-height', 'cap-height', 'x-width', 'pixel-size')
 
 
 class Codec:
@@ -351,11 +356,18 @@ class Font:
                 # don't set property values that equal the default
                 default_value = getattr(self, key)
                 if value != default_value:
-                    logging.info(
-                        'Property `%s` value set to %s (default or calculated value %s).',
-                        key, str(value), str(default_value)
-                    )
-                    self._properties[key] = value
+                    if key in _NON_OVERRIDABLE:
+                        logging.warning(
+                            "Property `%s` value can't be set to %s. Keeping calculated value %s.",
+                            key, str(value), str(default_value)
+                        )
+                    else:
+                        self._properties[key] = value
+                        if key in _OVERRIDABLE:
+                            logging.info(
+                                'Property `%s` value set to %s, while calculated value is %s.',
+                                key, str(value), str(default_value)
+                            )
             # append nonstandard properties
             self._properties.update(properties)
         self._encoding = _get_encoding(self.encoding)
@@ -748,13 +760,22 @@ class Font:
     def spacing(self):
         """Monospace or proportional spacing."""
         if not self._glyphs:
-            fixed = True
-        else:
-            sizes = set((_glyph.width, _glyph.height) for _glyph in self._glyphs)
-            fixed = len(sizes) <= 1
-        if fixed:
+            return 'character-cell'
+        widths = set(_glyph.width for _glyph in self._glyphs)
+        heights = set(_glyph.height for _glyph in self._glyphs)
+        min_width = min(widths)
+        # mono- or multi-cell fonts: equal heights, no ink outside cell, widths are fixed multiples
+        charcell = (
+            len(heights) == 1
+            and self.offset.x >= 0 and self.tracking >= 0 and self.leading >= 0
+            and not any(_width % min_width for _width in widths)
+        )
+        if charcell:
+            if len(widths) == 1:
+                return 'character-cell'
+            return 'multi-cell'
+        if len(widths) == 1:
             return 'monospace'
-        # TODO - distinguish "cell" spacing; e.g. equal widths, equal heights, no negative bearings
         return 'proportional'
 
     @yaffproperty
