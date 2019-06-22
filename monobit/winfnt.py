@@ -33,7 +33,7 @@ import itertools
 
 from .binary import friendlystruct, bytes_to_bits, ceildiv, align
 from .typeface import Typeface
-from .font import Font
+from .font import Font, Coord
 from .glyph import Glyph
 
 
@@ -390,7 +390,7 @@ def _parse_win_props(fnt, win_props):
         'slant': 'italic' if win_props.dfItalic else 'roman',
         # Windows dfAscent means distance between matrix top and baseline
         'ascent': win_props.dfAscent - win_props.dfInternalLeading,
-        'offset': win_props.dfAscent - win_props.dfPixHeight,
+        'offset': Coord(0, win_props.dfAscent - win_props.dfPixHeight),
         'leading': win_props.dfExternalLeading,
         'default-char': win_props.dfDefaultChar,
     }
@@ -530,9 +530,9 @@ def create_fnt(font, version=0x200):
         dfVertRes=font.dpi.y,
         dfHorizRes=font.dpi.x,
         # Windows dfAscent means distance between matrix top and baseline
-        dfAscent=font.offset + pix_height,
+        dfAscent=font.offset.y + pix_height,
         #'ascent': win_props.dfAscent - win_props.dfInternalLeading,
-        dfInternalLeading=font.offset + pix_height - font.ascent,
+        dfInternalLeading=font.offset.y + pix_height - font.ascent,
         dfExternalLeading=font.leading,
         dfItalic=(font.slant in ('italic', 'oblique')),
         dfUnderline=('underline' in font.decoration),

@@ -171,9 +171,8 @@ PROPERTIES = {
 
     # positioning relative to origin:
     'direction': str, # left-to-right, right-to-left
-    #TODO: change to offset (x y)
-    'offset': int, # transverse offset: bottom line of matrix relative to baseline
-    'bearing-before': int, # horizontal offset from origin to matrix start
+    'offset': Coord.create, # offset from origin to matrix start
+    'bearing-before': int, # FIXME remove
     'tracking': int, # horizontal offset from matrix end to next origin
 
     # vertical metrics - affect interline spacing:
@@ -515,7 +514,7 @@ class Font:
             for glyph in row:
                 matrix = glyph.as_matrix(1, 0)
                 # apply pre-offset so that x,y is logical coordinate of grid origin
-                x, y = x + self.bearing_before, y + self.offset
+                x, y = x + self.bearing_before, y + self.offset.y
                 # grid coordinates of grid origin
                 grid_x, grid_y = offset_x + x, grid_top + self.ascent - y
                 # add ink, taking into account there may be ink already in case of negative bearings
@@ -529,7 +528,7 @@ class Font:
                 # advance
                 x += glyph.width
                 # apply post-offset
-                x, y = x + self.tracking, y - self.offset
+                x, y = x + self.tracking, y - self.offset.y
             grid_top += self.leading + self.pixel_size
         output = []
         output.extend(line_output)
@@ -673,7 +672,7 @@ class Font:
         # this assumes matrix does not extend beyond font bounding box (no empty lines)
         # but using ink_height would assume there's a glyph that both fully ascends and fully descends
         # FIXME: need something like Glyph.bounding_box and .offset
-        return max(_glyph.height for _glyph in self._glyphs) + self.offset
+        return max(_glyph.height for _glyph in self._glyphs) + self.offset.y
 
     @yaffproperty
     def descent(self):
@@ -681,7 +680,7 @@ class Font:
         if not self._glyphs:
             return 0
         # this assumes matrix does not extend beyond font bounding box (no empty lines)
-        return self.offset
+        return self.offset.y
 
     @yaffproperty
     def dpi(self):

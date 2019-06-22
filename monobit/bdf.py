@@ -8,7 +8,7 @@ licence: https://opensource.org/licenses/MIT
 import logging
 
 from .typeface import Typeface
-from .font import Font, encoding_is_unicode
+from .font import Font, Coord, encoding_is_unicode
 from .glyph import Glyph
 
 
@@ -321,9 +321,9 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
     rightmost = max(overshoots)
     bottommost = min(offsets_y)
     topmost = max(heights)
-    properties['bearing-before'] = leftmost
     properties['tracking'] = -rightmost
-    properties['offset'] = bottommost
+    properties['bearing-before'] = leftmost
+    properties['offset'] = Coord(leftmost, bottommost)
     mod_glyphs = []
     for glyph, props in zip(glyphs, glyph_props):
         bbx_width, bbx_height, offset_x, offset_y = (int(_p) for _p in props['BBX'].split(' '))
@@ -510,7 +510,7 @@ def _save_bdf(font, outstream):
         ('SIZE', f'{font.point_size} {font.dpi.x} {font.dpi.y}'),
         (
             'FONTBOUNDINGBOX',
-            f'{font.bounding_box.x} {font.bounding_box.y} {font.bearing_before} {font.offset}'
+            f'{font.bounding_box.x} {font.bounding_box.y} {font.bearing_before} {font.offset.y}'
         )
     ]
     # labels
@@ -544,7 +544,7 @@ def _save_bdf(font, outstream):
         dwidth_x = glyph.width + font.bearing_before + font.tracking
         swidth_x = int(round(dwidth_x / (font.point_size / 1000) / (font.dpi.y / 72)))
         # TODO: minimize glyphs to bbx before storing, except "cell" fonts
-        offset_x, offset_y = font.bearing_before, font.offset
+        offset_x, offset_y = font.bearing_before, font.offset.y
         hex = glyph.as_hex().upper()
         width = len(hex) // glyph.height
         split_hex = [hex[_offs:_offs+width] for _offs in range(0, len(hex), width)]

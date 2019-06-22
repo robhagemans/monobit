@@ -19,7 +19,7 @@ except ImportError:
 from .base import ZipContainer, boolean, pair
 from .binary import friendlystruct
 from .typeface import Typeface
-from .font import Font, Label
+from .font import Font, Label, Coord
 from .glyph import Glyph
 from .winfnt import _CHARSET_MAP
 
@@ -447,7 +447,8 @@ def _extract(container, path, bmformat, info, common, pages, chars, kernings=())
             '{} {} {}'.format(Label(_kern.first), Label(_kern.second), _kern.amount)
             for _kern in kernings
         ),
-        'offset': common.base - max_height
+        'bearing-before': min_before,
+        'offset': Coord(min_before, common.base - max_height)
     }
     # drop other props if they're default value
     default_bmfont_props = {
@@ -623,7 +624,7 @@ def _create_bmfont(container, font, size=(256, 256), packed=False, imageformat='
     }
     props['common'] = {
         'lineHeight': font.bounding_box.y + font.leading,
-        'base': font.bounding_box.y + font.offset,
+        'base': font.bounding_box.y + font.offset.y,
         'scaleW': size[0],
         'scaleH': size[1],
         'pages': len(pages),

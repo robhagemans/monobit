@@ -11,7 +11,7 @@ import logging
 
 from .binary import friendlystruct, bytes_to_bits
 from .typeface import Typeface
-from .font import Font
+from .font import Font, Coord
 from .glyph import Glyph
 
 
@@ -198,7 +198,9 @@ def _parse_amiga_props(amiga_props, min_kern):
     if name:
         props['name'] = name
     props['revision'] = amiga_props.dfh_Revision
-    props['offset'] = -(amiga_props.tf_YSize - amiga_props.tf_Baseline)
+    props['offset'] = Coord(min(min_kern, 0), -(amiga_props.tf_YSize - amiga_props.tf_Baseline))
+    if min_kern < 0:
+        props['bearing-before'] = min_kern
     # tf_Style
     props['weight'] = 'bold' if amiga_props.tf_Style & _FSF_BOLD else 'medium'
     props['slant'] = 'italic' if amiga_props.tf_Style & _FSF_ITALIC else 'roman'
@@ -220,8 +222,6 @@ def _parse_amiga_props(amiga_props, min_kern):
         props['dpi'] = '48 96'
     else:
         props['dpi'] = 96
-    if min_kern < 0:
-        props['bearing-before'] = min_kern
     props['encoding'] = 'iso8859-1'
     props['default-char'] = 'default'
     # preserve unparsed properties

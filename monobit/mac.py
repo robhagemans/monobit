@@ -9,7 +9,7 @@ import logging
 
 from .binary import friendlystruct, bytes_to_bits
 from .typeface import Typeface
-from .font import Font, Glyph
+from .font import Font, Glyph, Coord
 
 
 ##############################################################################
@@ -544,7 +544,7 @@ def _parse_nfnt(data, offset, properties):
         'descent': fontrec.descent,
         'leading': fontrec.leading,
         'bearing-before': fontrec.kernMax,
-        'offset': -fontrec.descent,
+        'offset': Coord(fontrec.kernMax, -fontrec.descent),
     })
 
     if 'point-size' in properties:
