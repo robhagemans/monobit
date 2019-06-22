@@ -177,6 +177,7 @@ PROPERTIES = {
     'x-height': int, # height of lowercase x relative to baseline
     'cap-height': int, # height of capital relative to baseline
     'x-width': int, # ink width of lowercase x (in proportional font)
+    'pixel-size': int, # nominal pixel size, should equal ascent + descent
 
     # metrics
     # can't be calculated, affect rendering
@@ -185,7 +186,6 @@ PROPERTIES = {
     'offset': Coord.create, # offset from origin to matrix start
     'tracking': int, # horizontal offset from matrix end to next origin
     # vertical metrics (affect interline spacing)
-    'pixel-size': int, # nominal pixel size
     'ascent': int, # recommended typographic ascent relative to baseline (not necessarily equal to top)
     'descent': int, # recommended typographic descent relative to baseline (not necessarily equal to bottom)
     'leading': int, # vertical leading, defined as (pixels between baselines) - (pixel height)
@@ -513,7 +513,8 @@ class Font:
             )
             for _row in glyphs
         )
-        height = offset_y + (self.pixel_size + self.leading) * len(glyphs)
+        line_height = self.ascent + self.descent + self.leading
+        height = offset_y + line_height * len(glyphs)
         line_output = [
             [0 for _ in range(width)]
             for _ in range(height)
@@ -540,7 +541,7 @@ class Font:
                 x += glyph.width
                 # apply post-offset
                 x, y = x + self.tracking, y - self.offset.y
-            grid_top += self.leading + self.pixel_size
+            grid_top += line_height
         output = []
         output.extend(line_output)
         output = tuple(
