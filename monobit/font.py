@@ -696,7 +696,7 @@ class Font:
         if not self._glyphs:
             return 0
         # this assumes matrix does not extend beyond font bounding box (no empty lines)
-        return self.offset.y
+        return -self.offset.y
 
     @yaffproperty
     def dpi(self):
