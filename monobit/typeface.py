@@ -92,7 +92,27 @@ def _single_saver(save, typeface, outfile, binary, ext, **kwargs):
                     raise
 
 
-def _container_loader(load, infile, binary, **kwargs):
+def _set_extraction_props(typeface, infile, format):
+    """Return copy with source-name and source-format set."""
+    fonts = []
+    for font in typeface:
+        new_props = {
+            'converter': 'monobit v{}'.format(VERSION),
+        }
+        if not font.source_name:
+            if isinstance(infile, (str, bytes)):
+                new_props['source-name'] = Path(infile).name
+            else:
+                new_props['source-name'] = Path(infile.name).name
+        else:
+            logging.info(font.source_name)
+        if not font.source_format:
+            new_props['source-format'] = format
+        fonts.append(font.set_properties(**new_props))
+    return Typeface(fonts)
+
+
+def _container_loader(load, infile, binary, format, **kwargs):
     """Open a container and provide to font loader."""
     if not infile or infile == '-':
         infile = sys.stdin.buffer
@@ -112,10 +132,11 @@ def _container_loader(load, infile, binary, **kwargs):
                     'Container format expected but encountering non-container stream'
                 )
     with container_type(infile, 'r') as zip_con:
-        return load(zip_con, **kwargs)
+        typeface = load(zip_con, **kwargs)
+        return _set_extraction_props(typeface, infile, format)
 
 
-def _stream_loader(load, infile, binary, **kwargs):
+def _stream_loader(load, infile, binary, format, **kwargs):
     """Open a single- or multifont format."""
     if not infile or infile == '-':
         infile = sys.stdin.buffer
@@ -138,7 +159,8 @@ def _stream_loader(load, infile, binary, **kwargs):
     if not container_type:
         if isinstance(infile, (str, bytes)):
             with _open_stream(io, infile, 'r', binary) as instream:
-                return load(instream, **kwargs)
+                typeface = load(instream, **kwargs)
+                return _set_extraction_props(typeface, infile, format)
         else:
             # check text/binary
             if isinstance(infile.read(0), bytes):
@@ -147,13 +169,15 @@ def _stream_loader(load, infile, binary, **kwargs):
             else:
                 if binary:
                     raise ValueError('This format requires a binary stream, not a text stream.')
-            return load(infile, **kwargs)
+            typeface = load(infile, **kwargs)
+            return _set_extraction_props(typeface, infile, format)
     else:
         with container_type(infile, 'r') as zip_con:
             faces = []
             for name in zip_con:
                 with _open_stream(zip_con, name, 'r', binary) as stream:
-                    faces.append(load(stream, **kwargs))
+                    typeface = load(stream, **kwargs)
+                    faces.append(_set_extraction_props(typeface, name, format))
             return Typeface([_font for _face in faces for _font in _face])
 
 
@@ -243,23 +267,6 @@ class Typeface:
         saver(self, outfile, **kwargs)
         return self
 
-    def _set_extraction_props(self, infile, format):
-        """Return copy with source-name and source-format set."""
-        fonts = []
-        for font in self:
-            new_props = {
-                'converter': 'monobit v{}'.format(VERSION),
-            }
-            if not font.source_name:
-                if isinstance(infile, (str, bytes)):
-                    new_props['source-name'] = Path(infile).name
-                else:
-                    new_props['source-name'] = Path(infile.name).name
-            if not font.source_format:
-                new_props['source-format'] = format
-            fonts.append(font.set_properties(**new_props))
-        return Typeface(fonts)
-
     @classmethod
     def loads(cls, *formats, name=None, binary=False, container=False):
         """Decorator to register font loader."""
@@ -271,11 +278,9 @@ class Typeface:
             @wraps(load)
             def _load_func(infile, **kwargs):
                 if container:
-                    typeface = _container_loader(load, infile, binary, **kwargs)
+                    return _container_loader(load, infile, binary, name, **kwargs)
                 else:
-                    typeface = _stream_loader(load, infile, binary, **kwargs)
-                # set source-name and source-format
-                return typeface._set_extraction_props(infile, name)
+                    return _stream_loader(load, infile, binary, name, **kwargs)
             # register loader
             _load_func.script_args = load.__annotations__
             for format in formats:

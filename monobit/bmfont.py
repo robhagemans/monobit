@@ -349,8 +349,9 @@ def _parse_binary(data):
         props['kernings'] = []
     return props
 
-def _extract(container, path, bmformat, info, common, pages, chars, kernings=()):
+def _extract(container, name, bmformat, info, common, pages, chars, kernings=()):
     """Extract characters."""
+    path = os.path.dirname(name)
     sheets = {
         int(_page['id']): Image.open(container.open(os.path.join(path, _page['file']), 'rb'))
         for _page in pages
@@ -445,6 +446,7 @@ def _extract(container, path, bmformat, info, common, pages, chars, kernings=())
         encoding = _CHARSET_STR_MAP.get(charset.upper(), charset)
     properties = {
         'source-format': 'BMFont ({} descriptor; {} spritesheet)'.format(bmformat, ','.join(imgformats)),
+        'source-name': os.path.basename(name),
         'tracking': min_after,
         'family': bmfont_props.pop('face'),
         'pixel-size': bmfont_props.pop('size'),
@@ -494,8 +496,7 @@ def _read_bmfont(container, name):
             else:
                 logging.debug('found text: %s', name)
                 fontinfo = _parse_text(data)
-    path = os.path.dirname(name)
-    return _extract(container, path, **fontinfo)
+    return _extract(container, name, **fontinfo)
 
 
 ##############################################################################
