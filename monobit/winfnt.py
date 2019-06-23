@@ -392,7 +392,7 @@ def _parse_win_props(fnt, win_props):
         'ascent': win_props.dfAscent - win_props.dfInternalLeading,
         'offset': Coord(0, win_props.dfAscent - win_props.dfPixHeight),
         'leading': win_props.dfExternalLeading,
-        'default-char': win_props.dfDefaultChar,
+        'default-char': win_props.dfDefaultChar + win_props.dfFirstChar,
     }
     if win_props.dfPixWidth:
         properties['spacing'] = 'monospace'
