@@ -512,6 +512,21 @@ def _parse_nfnt(data, offset, properties):
         Glyph([_row[_offs:_next] for _row in rows])
         for _offs, _next in zip(locs[:-1], locs[1:])
     ]
+    # pad to apply width and offset
+    # the 'width' in the width/offset table is the pen advance
+    # while the 'offset' is the (positive) offset after applying the
+    # (positive or negative) 'kernMax' (==left-bearing) global offset
+    # since advance = left-bearing + grid-width + right-bearing
+    # after this transformation we should have
+    #   grid-width = advance - left-bearing - right-bearing = 'width' - kernMax - right-bearing
+    # and it seems we can set right-bearing=0
+    glyphs = [
+    (
+            _glyph.expand(left=_offset, right=(_width-fontrec.kernMax)-(_glyph.width+_offset))
+            if _width != 0xff and _offset != 0xff else _glyph
+        )
+        for _glyph, _width, _offset in zip(glyphs, widths, offsets)
+    ]
     # ordinal labels
     labelled = list(zip(range(fontrec.firstChar, fontrec.lastChar+1), glyphs))
     # last glyph is the "missing" glyph
@@ -523,21 +538,6 @@ def _parse_nfnt(data, offset, properties):
     ]
     glyphs = [_g for _, _g in labelled]
     labels = {_l: _i for _i, _l in enumerate(_l for _l, _ in labelled)}
-    # pad to apply width and offset
-    # the 'width' in the width/offset table is the pen advance
-    # while the 'offset' is the (positive) offset after applying the
-    # (positive or negative) 'kernMax' (==left-bearing) global offset
-    # since advance = left-bearing + grid-width + right-bearing
-    # after this transformation we should have
-    #   grid-width = advance - left-bearing - right-bearing = 'width' - kernMax - right-bearing
-    # and it seems we can set right-bearing=0
-    glyphs = [
-        (
-            _glyph.expand(left=_offset, right=(_width-fontrec.kernMax)-(_glyph.width+_offset))
-            if _width != 0xff and _offset != 0xff else _glyph
-        )
-        for _glyph, _width, _offset in zip(glyphs, widths, offsets)
-    ]
     # store properties
     properties.update({
         'pixel-size': fontrec.fRectHeight,
