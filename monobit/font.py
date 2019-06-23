@@ -548,10 +548,28 @@ class Font:
     def render(self, text, fore=1, back=0, *, margin=(0, 0), scale=(1, 1), missing='default'):
         """Render text string to bitmap."""
         margin_x, margin_y = margin
-        glyphs = [
-            [self.get_char(_c, missing=missing) for _c in self._iter_string(_line)]
+        chars = [
+            list(self._iter_string(_line))
             for _line in text.splitlines()
         ]
+        glyphs = [
+            [self.get_char(_c, missing=missing) for _c in _line]
+            for _line in chars
+        ]
+        if self.kerning:
+            kerning = {
+                (self.get_unicode_for_label(_key[0]), self.get_unicode_for_label(_key[1])): _value
+                for _key, _value in self.kerning.items()
+            }
+            kernings = [
+                [
+                    kerning.get((_char, _next), 0)
+                    for _char, _next in zip(_line[:-1], _line[1:])
+                ] + [0]
+                for _line in chars
+            ]
+        else:
+            kernings = [[0] * len(_line) for _line in chars]
         # determine dimensions
         if not glyphs:
             width = 2 * margin_x
@@ -571,9 +589,9 @@ class Font:
         ]
         # get to initial origin
         grid_top = margin_y
-        for row in glyphs:
+        for row, kernrow in zip(glyphs, kernings):
             x, y = 0, 0
-            for glyph in row:
+            for glyph, kerning in zip(row, kernrow):
                 matrix = glyph.as_matrix(1, 0)
                 # apply pre-offset so that x,y is logical coordinate of grid origin
                 x, y = x + self.offset.x, y + self.offset.y
@@ -589,7 +607,7 @@ class Font:
                 # advance
                 x += glyph.width
                 # apply post-offset
-                x, y = x + self.tracking, y - self.offset.y
+                x, y = x + self.tracking + kerning, y - self.offset.y
             grid_top += line_height
         output = []
         output.extend(line_output)
@@ -626,7 +644,7 @@ class Font:
         if key.is_unicode:
             return key.unicode
         if key.is_ordinal and self._encoding == Unicode:
-            return int(key)
+            return chr(int(key))
         index = self._labels[key]
         for label, lindex in self._labels.items():
             if index == lindex and label.is_unicode:

@@ -639,8 +639,8 @@ def _create_bmfont(container, font, size=(256, 256), packed=False, imageformat='
     }
     if hasattr(font, 'kerning'):
         props['kernings'] = [{
-                'first': font.get_unicode_for_label(_key[0]),
-                'second': font.get_unicode_for_label(_key[1]),
+                'first': ord(font.get_unicode_for_label(_key[0])),
+                'second': ord(font.get_unicode_for_label(_key[1])),
                 'amount': int(_amount)
             }
             for _key, _amount in font.kerning.items()
