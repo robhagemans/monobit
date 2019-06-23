@@ -54,7 +54,7 @@
                     select = document.getElementById("fontselector");
                     for (var i = 0; i < files.length; i++) {
                         var el = document.createElement("option");
-                        el.text = files[i].split("/").join(": ").split(".")[0];
+                        el.text = files[i].split("/").join(": ");
                         el.value = files[i];
                         select.add(el);
                     }
@@ -113,6 +113,9 @@
                 }
                 var split = row.split(":");
                 var key = split[0].trim();
+                if (key.startsWith("0x")) {
+                    key = key.split("0x")[1];
+                }
                 // non-hex or too long ('beef' will still work...)
                 if (key.length > 4 || !key.match(/^[0-9A-Fa-f]+$/)) {
                     current_key = key;
