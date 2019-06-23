@@ -512,6 +512,17 @@ def _parse_nfnt(data, offset, properties):
         Glyph([_row[_offs:_next] for _row in rows])
         for _offs, _next in zip(locs[:-1], locs[1:])
     ]
+    # ordinal labels
+    labelled = list(zip(range(fontrec.firstChar, fontrec.lastChar+1), glyphs))
+    # last glyph is the "missing" glyph
+    labelled.append(('missing', glyphs[-1]))
+    # drop undefined glyphs & their labels, so long as they're empty
+    labelled = [
+        _pair for _pair, _width, _offset in zip(labelled, widths, offsets)
+        if (_width != 0xff and _offset != 0xff) or (_pair[1].width and _pair[1].height)
+    ]
+    glyphs = [_g for _, _g in labelled]
+    labels = {_l: _i for _i, _l in enumerate(_l for _l, _ in labelled)}
     # pad to apply width and offset
     # the 'width' in the width/offset table is the pen advance
     # while the 'offset' is the (positive) offset after applying the
@@ -527,13 +538,6 @@ def _parse_nfnt(data, offset, properties):
         )
         for _glyph, _width, _offset in zip(glyphs, widths, offsets)
     ]
-    # ordinal labels
-    labelled = list(zip(range(fontrec.firstChar, fontrec.lastChar+1), glyphs))
-    labelled.append(('missing', glyphs[-1]))
-    # drop empty glyphs
-    labelled = [(_l, _g) for _l, _g in labelled if _g.width and _g.height]
-    glyphs = [_g for _, _g in labelled]
-    labels = {_l: _i for _i, _l in enumerate(_l for _l, _ in labelled)}
     # store properties
     properties.update({
         'pixel-size': fontrec.fRectHeight,
@@ -544,7 +548,6 @@ def _parse_nfnt(data, offset, properties):
         'leading': fontrec.leading,
         'offset': Coord(fontrec.kernMax, -fontrec.descent),
     })
-
     if 'point-size' in properties:
         size = '{}pt'.format(properties['point-size'])
     else:
