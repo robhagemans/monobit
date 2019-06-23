@@ -207,7 +207,7 @@ PROPERTIES = {
     'x-height': int, # height of lowercase x relative to baseline
     'cap-height': int, # height of capital relative to baseline
     'x-width': int, # ink width (not advance width) of lowercase x (in proportional font)
-    'pixel-size': int, # nominal pixel size, should equal ascent + descent
+    'pixel-size': int, # nominal pixel size, equals ascent + descent
     # can't be calculated, don't currently affect rendering
     # might affect e.g. composition of characters
     'ascent': int, # recommended typographic ascent relative to baseline (not necessarily equal to top)
@@ -240,8 +240,8 @@ PROPERTIES = {
 
 # calculated properties
 # properties that must have the calculated value
-_NON_OVERRIDABLE = ('spacing', 'bounding-box')
-_OVERRIDABLE = ('average-advance', 'x-height', 'cap-height', 'x-width', 'pixel-size')
+_NON_OVERRIDABLE = ('spacing', 'bounding-box', 'pixel-size')
+_OVERRIDABLE = ('average-advance', 'x-height', 'cap-height', 'x-width')
 
 
 class Codec:
@@ -758,15 +758,13 @@ class Font:
     @yaffproperty
     def point_size(self):
         """Nominal point height."""
-        if 'dpi' in self._properties and 'pixel-size' in self._properties:
-            # assume 72 points per inch (officially 72.27 pica points per inch)
-            return int(self.pixel_size * self.dpi.y / 72.)
-        # if dpi not given assume 72 dpi?
-        return self.pixel_size
+        # assume 72 points per inch (officially 72.27 pica points per inch)
+        # if dpi not given assumes 72 dpi, so point-size == pixel-size
+        return int(self.pixel_size * self.dpi.y / 72.)
 
     @yaffproperty
     def pixel_size(self):
-        """Get nominal pixel size (defaults to ascent+descent)."""
+        """Get nominal pixel size (ascent + descent)."""
         if not self._glyphs:
             return 0
         return self.ascent + self.descent
@@ -795,7 +793,8 @@ class Font:
     @yaffproperty
     def dpi(self):
         """Target screen resolution in dots per inch."""
-        if 'point-size' in self._properties and 'pixel-size' in self._properties:
+        # if point-size has been overridden and dpi not set, determine from pixel-size & point-size
+        if 'point-size' in self._properties:
             dpi = (72 * self.pixel_size) // self.point_size
             return Coord(dpi, dpi)
         # default: 72 dpi; 1 point == 1 pixel

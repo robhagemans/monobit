@@ -386,10 +386,10 @@ def _parse_win_props(fnt, win_props):
         'family': bytes_to_str(fnt[win_props.dfFace:]),
         'copyright': bytes_to_str(win_props.dfCopyright),
         'point-size': win_props.dfPoints,
-        'pixel-size': win_props.dfPixHeight,
         'slant': 'italic' if win_props.dfItalic else 'roman',
         # Windows dfAscent means distance between matrix top and baseline
         'ascent': win_props.dfAscent - win_props.dfInternalLeading,
+        'descent': win_props.dfPixHeight - win_props.dfAscent,
         'offset': Coord(0, win_props.dfAscent - win_props.dfPixHeight),
         'leading': win_props.dfExternalLeading,
         'default-char': win_props.dfDefaultChar + win_props.dfFirstChar,

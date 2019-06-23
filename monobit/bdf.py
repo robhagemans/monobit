@@ -375,6 +375,7 @@ def _parse_xlfd_properties(x_props, xlfd_name):
         'family': _from_quoted_string(x_props.pop('FAMILY_NAME', '')),
         'style': _from_quoted_string(x_props.pop('ADD_STYLE_NAME', '')).lower(),
         'ascent': x_props.pop('FONT_ASCENT', None),
+        'descent': x_props.pop('FONT_DESCENT', None),
         'x-height': x_props.pop('X_HEIGHT', None),
         'cap-height': x_props.pop('CAP_HEIGHT', None),
         'pixel-size': x_props.pop('PIXEL_SIZE', None),
@@ -382,8 +383,6 @@ def _parse_xlfd_properties(x_props, xlfd_name):
         'slant': _SLANT_MAP.get(_from_quoted_string(x_props.pop('SLANT', '')), None),
         'spacing': _SPACING_MAP.get(_from_quoted_string(x_props.pop('SPACING', '')), None),
     }
-    if 'FONT_DESCENT' in x_props:
-        properties['descent'] = -int(x_props.pop('FONT_DESCENT'))
     if 'POINT_SIZE' in x_props:
         properties['point-size'] = str(round(int(x_props.pop('POINT_SIZE')) / 10))
     if 'AVERAGE_WIDTH' in x_props:
@@ -444,7 +443,8 @@ def _create_xlfd_properties(font):
     xlfd_props = {
         # rendering hints
         'FONT_ASCENT': font.ascent,
-        'FONT_DESCENT': -int(font.descent),
+        'FONT_DESCENT': font.descent,
+        'PIXEL_SIZE': font.pixel_size,
         'X_HEIGHT': font.x_height,
         'CAP_HEIGHT': font.cap_height,
         'RESOLUTION_X': font.dpi.x,
@@ -472,7 +472,6 @@ def _create_xlfd_properties(font):
             {_v: _k for _k, _v in _SETWIDTH_MAP.items()}.get(font.setwidth, 50)
         ),
         'ADD_STYLE_NAME': _quoted_string(font.style.title()),
-        'PIXEL_SIZE': font.pixel_size,
         'AVERAGE_WIDTH': str(int(float(font.average_advance) * 10)).replace('-', '~'),
     }
     try:

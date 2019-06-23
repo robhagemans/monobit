@@ -449,7 +449,10 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=())
         'source-name': os.path.basename(name),
         'tracking': min_after,
         'family': bmfont_props.pop('face'),
-        'pixel-size': bmfont_props.pop('size'),
+        # assume size == pixel-size == ascent + descent
+        # size can be given as negative for an undocumented reason, maybe if "match char height" set
+        'ascent': abs(int(bmfont_props.pop('size'))) - (max_height - common.base),
+        'descent': max_height - common.base,
         'weight': 'bold' if _to_int(bmfont_props.pop('bold')) else 'regular',
         'slant': 'italic' if _to_int(bmfont_props.pop('italic')) else 'roman',
         'encoding': encoding,
@@ -613,6 +616,7 @@ def _create_bmfont(container, font, size=(256, 256), packed=False, imageformat='
         props['pages'].append({'id': page_id, 'file': name})
     props['info'] = {
         'face': font.family,
+        # or bounding_box.y ?
         'size': font.pixel_size,
         'bold': font.weight == 'bold',
         'italic': font.slant in ('italic', 'oblique'),

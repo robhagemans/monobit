@@ -531,7 +531,7 @@ def _parse_nfnt(data, offset, properties):
     #   grid-width = advance - left-bearing - right-bearing = 'width' - kernMax - right-bearing
     # and it seems we can set right-bearing=0
     glyphs = [
-    (
+        (
             _glyph.expand(left=_offset, right=(_width-fontrec.kernMax)-(_glyph.width+_offset))
             if _width != 0xff and _offset != 0xff else _glyph
         )
@@ -550,7 +550,6 @@ def _parse_nfnt(data, offset, properties):
     labels = {_l: _i for _i, _l in enumerate(_l for _l, _ in labelled)}
     # store properties
     properties.update({
-        'pixel-size': fontrec.fRectHeight,
         'spacing': 'monospace' if is_fixed else 'proportional',
         'default-char': 'missing',
         'ascent': fontrec.ascent,
@@ -558,8 +557,4 @@ def _parse_nfnt(data, offset, properties):
         'leading': fontrec.leading,
         'offset': Coord(fontrec.kernMax, -fontrec.descent),
     })
-    if 'point-size' in properties:
-        size = '{}pt'.format(properties['point-size'])
-    else:
-        size = '{}px'.format(fontrec.fRectHeight)
     return Font(glyphs, labels, comments=(), properties=properties)
