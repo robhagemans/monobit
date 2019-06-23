@@ -380,7 +380,7 @@ class Font:
         self._properties = {}
         if properties:
             properties = {_k.replace('_', '-'): _v for _k, _v in properties.items()}
-            for key, converter in PROPERTIES.items():
+            for key, converter in reversed(list(PROPERTIES.items())):
                 try:
                     value = converter(properties.pop(key))
                 except KeyError:
@@ -388,7 +388,8 @@ class Font:
                 except ValueError as e:
                     logging.error('Could not set property %s: %s', key, e)
                 # don't set property values that equal the default
-                default_value = getattr(self, key)
+                # we need to ensure we use underscore variants, or default functions won't get called
+                default_value = getattr(self, key.replace('-', '_'))
                 if value != default_value:
                     if key in _NON_OVERRIDABLE:
                         logging.warning(
@@ -725,10 +726,10 @@ class Font:
 
     @yaffproperty
     def pixel_size(self):
-        """Get nominal pixel size (defaults to ascent)."""
+        """Get nominal pixel size (defaults to ascent+descent)."""
         if not self._glyphs:
             return 0
-        return self.ascent
+        return self.ascent + self.descent
 
     @yaffproperty
     def ascent(self):
@@ -807,7 +808,7 @@ class Font:
         charcell = (
             len(heights) == 1
             and self.offset.x >= 0 and self.tracking >= 0 and self.leading >= 0
-            and not any(_width % min_width for _width in widths)
+            and min_width and not any(_width % min_width for _width in widths)
         )
         if charcell:
             if len(widths) == 1:

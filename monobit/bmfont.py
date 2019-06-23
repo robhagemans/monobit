@@ -40,7 +40,7 @@ if Image:
         for desc in descriptions:
             try:
                 fonts.append(_read_bmfont(container, desc))
-            except Exception as e:
+            except ValueError as e:
                 logging.error('Could not extract %s: %s', desc, e)
         return Typeface(fonts)
 
