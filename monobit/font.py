@@ -220,7 +220,6 @@ PROPERTIES = {
     'offset': Coord.create, # (horiz, vert) offset from origin to matrix start
     'tracking': int, # horizontal offset from matrix end to next origin
     'leading': int, # interline spacing, defined as (pixels between baselines) - (bounding box height)
-    'kerning': KerningTable, # pairwise kerning (defined as adjustment to tracking)
 
     # character set
     # can't be calculated, affect rendering
@@ -233,6 +232,10 @@ PROPERTIES = {
     'converter': str,
     'source-name': str,
     'source-format': str,
+
+    # kerning table (at the end because it's long)
+    # pairwise kerning (defined as adjustment to tracking)
+    'kerning': KerningTable,
 }
 
 # calculated properties
