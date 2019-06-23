@@ -421,9 +421,8 @@ def _parse_resource_fork(data):
                     })
             if rsrc_id in info:
                 props.update(info[rsrc_id])
-            if 'encoding' not in props:
+            if 'encoding' not in props or props.get('family', '') in _NON_ROMAN_NAMES:
                 props['encoding'] = _NON_ROMAN_NAMES.get(props.get('family', ''), 'mac-roman')
-                logging.info('setting %s', props['encoding'])
             try:
                 font = _parse_nfnt(data, offset, props)
             except ValueError as e:

@@ -2,6 +2,7 @@
 # based on ftp://ftp.unicode.org/Public/MAPPINGS/VENDORS/APPLE/ROMAN.TXT
 # changes:
 #   - added mapping for 0x11-0x14 based on http://www.weihenstephan.org/~michaste/pagetable/mac/Inside_Macintosh.pdf page I-221
+#   - for 0xdb, use CURRENCY SIGN instead of EURO SIGN, as in MacOS before version 8.5
 #
 # from ROMAN.TXT:
 #
@@ -264,7 +265,7 @@ d7:25ca    # LOZENGE
 d8:00ff    # LATIN SMALL LETTER Y WITH DIAERESIS
 d9:0178    # LATIN CAPITAL LETTER Y WITH DIAERESIS
 da:2044    # FRACTION SLASH
-db:20ac    # EURO SIGN
+db:00A4    # CURRENCY SIGN (newer: EURO SIGN)
 dc:2039    # SINGLE LEFT-POINTING ANGLE QUOTATION MARK
 dd:203a    # SINGLE RIGHT-POINTING ANGLE QUOTATION MARK
 de:fb01    # LATIN SMALL LIGATURE FI
