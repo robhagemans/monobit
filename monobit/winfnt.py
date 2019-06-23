@@ -451,13 +451,6 @@ def _parse_win_props(fnt, win_props):
             # These fields are not used in Windows 3.00. To ensure compatibility with future
             # versions of Windows, these fields should be set to zero.
             raise ValueError('ABC spacing properties not supported')
-    name = [properties['family']]
-    if properties['weight'] != 'regular':
-        name.append(properties['weight'])
-    if properties['slant'] != 'roman':
-        name.append(properties['slant'])
-    name.append('{}pt'.format(properties['point-size']))
-    properties['name'] = ' '.join(name)
     return properties
 
 

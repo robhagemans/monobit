@@ -188,7 +188,7 @@ def _parse_cp(data, cpeh_offset, header_id=_ID_MS, drdos_effh=None):
                 'encoding': 'cp{}'.format(cpeh.codepage),
                 'device': device,
                 'source-format': 'CPI ({})'.format(_FORMAT_NAME[header_id]),
-                'name': '{} {}'.format(device, cpeh.codepage),
+                'family': device,
             }
             # apparently never used
             if fh.xaspect or fh.yaspect:

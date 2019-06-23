@@ -549,7 +549,4 @@ def _parse_nfnt(data, offset, properties):
         size = '{}pt'.format(properties['point-size'])
     else:
         size = '{}px'.format(fontrec.fRectHeight)
-    properties['name'] = ' '.join(
-        _elem for _elem in (properties['family'], properties.get('style', ''), size) if _elem
-    )
     return Font(glyphs, labels, comments=(), properties=properties)

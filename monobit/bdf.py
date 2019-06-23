@@ -414,10 +414,10 @@ def _parse_xlfd_properties(x_props, xlfd_name):
     else:
         properties['encoding'] = encoding
     properties = {_k: _v for _k, _v in properties.items() if _v is not None and _v != ''}
-    # keep unparsed properties
+    # invalid xlfd name: keep but with changed property name
     if not xlfd_name_props:
-        if 'name' not in properties:
-            properties['name'] = xlfd_name
+        properties['bdf._FONT'] = xlfd_name
+    # keep unparsed properties
     properties.update({'bdf.' + _k: _v for _k, _v in x_props.items()})
     return properties
 
