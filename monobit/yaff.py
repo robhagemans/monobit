@@ -212,8 +212,9 @@ def _write_glyph(outstream, labels, glyph, fore, back, comment, tab, key_format,
 def _write_prop(outstream, key, value, tab):
     """Write out a property."""
     if value not in ('', None):
-        if not isinstance(value, str) or '\n' not in value:
-            # this may use custom string converter (e.g ordinal labels)
+        # this may use custom string converter (e.g ordinal labels)
+        value = str(value)
+        if '\n' not in value:
             outstream.write('{}: {}\n'.format(key, value))
         else:
             outstream.write(
