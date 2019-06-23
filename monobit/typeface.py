@@ -12,7 +12,10 @@ from functools import wraps
 from contextlib import contextmanager
 from pathlib import Path
 
-from .base import VERSION, DEFAULT_FORMAT, scriptable, DirContainer, ZipContainer, TextMultiStream
+from .base import (
+    VERSION, DEFAULT_FORMAT, scriptable,
+    DirContainer, ZipContainer, TextMultiStream, unique_name
+)
 from .font import Font
 
 
@@ -80,11 +83,7 @@ def _single_saver(save, typeface, outfile, binary, ext, **kwargs):
             for font in typeface:
                 # generate unique filename
                 name = font.name.replace(' ', '_')
-                filename = '{}.{}'.format(name, ext)
-                i = 0
-                while filename in out:
-                    i += 1
-                    filename = '{}.{}.{}'.format(name, i, ext)
+                filename = unique_name(out, name, ext)
                 try:
                     with _open_stream(out, filename, 'w', binary) as stream:
                         save(font, stream, **kwargs)

@@ -16,7 +16,7 @@ try:
 except ImportError:
     Image = None
 
-from .base import ZipContainer, boolean, pair
+from .base import ZipContainer, boolean, pair, unique_name
 from .binary import friendlystruct
 from .typeface import Typeface
 from .font import Font, Coord
@@ -606,8 +606,8 @@ def _create_bmfont(container, font, size=(256, 256), packed=False, imageformat='
     # save images; create page table
     props['pages'] = []
     for page_id, page in enumerate(pages):
-        name = '{}_{}.{}'.format(fontname, page_id, imageformat)
-        with container.open(os.path.join(path, name), 'wb') as imgfile:
+        name = unique_name(container, f'{path}/{fontname}_{page_id}', imageformat)
+        with container.open(name, 'wb') as imgfile:
             page.save(imgfile, format=imageformat)
         props['pages'].append({'id': page_id, 'file': name})
     props['info'] = {
@@ -647,8 +647,8 @@ def _create_bmfont(container, font, size=(256, 256), packed=False, imageformat='
     else:
         props['kernings'] = []
     # write the .fnt description
-    bmfontname = '{}.fnt'.format(fontname)
-    with container.open(os.path.join(path, bmfontname), 'w') as bmf:
+    bmfontname = unique_name(container, f'{path}/{fontname}', 'fnt')
+    with container.open(bmfontname, 'w') as bmf:
         bmf.write(_create_textdict('info', props['info']))
         bmf.write(_create_textdict('common', props['common']))
         for page in props['pages']:

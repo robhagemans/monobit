@@ -37,6 +37,16 @@ def pair(pairstr):
 rgb = pair
 
 
+def unique_name(container, name, ext):
+    """Generate unique name for container file."""
+    filename = '{}.{}'.format(name, ext)
+    i = 0
+    while filename in container:
+        i += 1
+        filename = '{}.{}.{}'.format(name, i, ext)
+    return filename
+
+
 class ZipContainer:
     """Zip-file wrapper"""
 

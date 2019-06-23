@@ -696,15 +696,14 @@ class Font:
     @yaffproperty
     def name(self):
         """Name of font."""
-        # maybe include slant, weight?
-        return '{} {}px'.format(self.family, self.size.y).strip()
+        weight = '' if self.weight == self._yaff_properties['weight'] else self.weight.title()
+        slant = '' if self.slant == self._yaff_properties['slant'] else self.slant.title()
+        return ' '.join(str(_x) for _x in (self.family, weight, slant, self.point_size) if _x)
 
     @yaffproperty
     def family(self):
         """Name of font family."""
-        if 'name' in self._properties:
-            return self._properties['name'].split(' ')[0]
-        # use source name if no family name or name defined
+        # use source name if no family name defined
         if 'source-name' in self._properties:
             return self.source_name
         return ''
