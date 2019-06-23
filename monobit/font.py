@@ -338,17 +338,25 @@ class Unicode:
         return ord(uc)
 
 
-_UNICODE_ALIASES = ('unicode', 'ucs', 'iso10646', 'iso_10646', 'iso10646_1')
+_ENCODING_ALIASES = {
+    'ucs': 'unicode',
+    'iso10646': 'unicode',
+    'iso10646-1': 'unicode',
+    'iso8859-1': 'latin-1',
+    'iso646-us': 'ascii',
+    'ascii-0': 'ascii',
+}
 
-def encoding_is_unicode(encoding):
-    """Check if an encoding name implies unicode."""
-    return encoding.replace('-', '_') in _UNICODE_ALIASES
+def normalise_encoding(encoding):
+    """Replace encoding name with normalised variant."""
+    encoding = encoding.lower().replace('_', '-')
+    return _ENCODING_ALIASES.get(encoding, encoding)
 
 
 def _get_encoding(enc):
     """Find an encoding by name."""
     enc = enc.lower().replace('-', '_')
-    if encoding_is_unicode(enc):
+    if normalise_encoding(enc) == 'unicode':
         return Unicode
     try:
         return Codepage(enc.lower())
@@ -405,6 +413,8 @@ class Font:
                             )
             # append nonstandard properties
             self._properties.update(properties)
+        if 'encoding' in self._properties:
+            self._properties['encoding'] = normalise_encoding(self._properties['encoding'])
         self._encoding = _get_encoding(self.encoding)
         # add unicode labels for ordinals
         uni_labels = {}

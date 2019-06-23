@@ -8,7 +8,7 @@ licence: https://opensource.org/licenses/MIT
 import logging
 
 from .typeface import Typeface
-from .font import Font, Coord, encoding_is_unicode
+from .font import Font, Coord
 from .glyph import Glyph
 
 
@@ -481,12 +481,9 @@ def _create_xlfd_properties(font):
         pass
     logging.info(xlfd_props)
     # modify/summarise values
-    if encoding_is_unicode(font.encoding):
+    if font.encoding == 'unicode':
         xlfd_props['CHARSET_REGISTRY'] = '"ISO10646"'
         xlfd_props['CHARSET_ENCODING'] = '"1"'
-    elif font.encoding == 'ascii':
-        xlfd_props['CHARSET_REGISTRY'] = '"ISO646"'
-        xlfd_props['CHARSET_ENCODING'] = '"US"'
     else:
         registry, *encoding = font.encoding.split('-', 1)
         xlfd_props['CHARSET_REGISTRY'] = _quoted_string(registry.upper())
@@ -520,7 +517,7 @@ def _save_bdf(font, outstream):
         )
     ]
     # labels
-    is_unicode = encoding_is_unicode(font.encoding)
+    is_unicode = font.encoding == 'unicode'
     # get glyphs for encoding values
     encoded_glyphs = []
     for labels, glyph in font:
