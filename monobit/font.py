@@ -742,9 +742,9 @@ class Font:
         """Name of font."""
         weight = '' if self.weight == self._yaff_properties['weight'] else self.weight.title()
         slant = '' if self.slant == self._yaff_properties['slant'] else self.slant.title()
-        encoding = '' if self.encoding == self._yaff_properties['encoding'] else f'({self.encoding})'
+        #encoding = '' if self.encoding == self._yaff_properties['encoding'] else f'({self.encoding})'
         return ' '.join(
-            str(_x) for _x in (self.family, weight, slant, self.point_size, encoding) if _x
+            str(_x) for _x in (self.family, weight, slant, self.point_size) if _x
         )
 
     @yaffproperty
