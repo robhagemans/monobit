@@ -848,7 +848,7 @@ class Font:
         charcell = (
             len(heights) == 1
             and self.offset.x >= 0 and self.tracking >= 0 and self.leading >= 0
-            and min_width and not any(_width % min_width for _width in widths)
+            and min_width > 3 and not any(_width % min_width for _width in widths)
         )
         if charcell:
             if len(widths) == 1:

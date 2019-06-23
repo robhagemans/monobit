@@ -229,7 +229,12 @@ def _write_prop(outstream, key, value, tab):
 def _save_yaff(font, outstream, fore, back, comment, tab, key_format, key_sep, empty):
     """Write one font to a plaintext stream."""
     write_comments(outstream, font.get_comments(), comm_char=comment, is_global=True)
-    props = font.nondefault_properties
+    props = {
+        'name': font.name,
+        'point-size': font.point_size,
+        'spacing': font.spacing,
+        **font.nondefault_properties
+    }
     if props:
         for key in PROPERTIES:
             write_comments(outstream, font.get_comments(key), comm_char=comment)
