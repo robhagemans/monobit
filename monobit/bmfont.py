@@ -468,7 +468,7 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=())
     properties.update({
         'bmfont.' + _k: ' '.join(str(_v).split(','))
         for _k, _v in bmfont_props.items()
-        if _v != default_bmfont_props[_k]
+        if str(_v) != default_bmfont_props[_k]
     })
     return Font(glyphs, labels, (), properties)
 
