@@ -295,45 +295,48 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
     global_dwidth = bdf_props.pop('DWIDTH', global_bbx[:2])
     global_swidth = bdf_props.pop('SWIDTH', 0)
     # ignored: for METRICSSET in 1, 2: DWIDTH1, SWIDTH1, VVECTOR
-    offsets_x = []
-    offsets_y = []
-    right_bearings = []
-    heights = []
-    for glyph, props in zip(glyphs, glyph_props):
-        props['BBX'] = props.get('BBX', global_bbx)
-        props['DWIDTH'] = props.get('DWIDTH', global_dwidth)
-        bbx_width, bbx_height, offset_x, offset_y = (int(_p) for _p in props['BBX'].split(' '))
-        dwidth_x, dwidth_y = (int(_p) for _p in props['DWIDTH'].split(' '))
-        try:
-            # ideally, SWIDTH = DWIDTH / ( points/1000 * dpi / 72 )
-            swidth_x, swidth_y = (int(_x) for _x in props.get('SWIDTH', global_swidth).split(' '))
-            #logging.info('x swidth: %s dwidth: %s', swidth_x*int(size)*int(xdpi) / 72000, dwidth_x)
-            #logging.info('y swidth: %s dwidth: %s', swidth_y*int(size)*int(ydpi) / 72000, dwidth_y)
-        except KeyError:
-            pass
-        # ignored: for METRICSSET in 1, 2: DWIDTH1, SWIDTH1, VVECTOR
-        offsets_x.append(offset_x)
-        offsets_y.append(offset_y)
-        right_bearings.append((offset_x + bbx_width) - dwidth_x)
-        heights.append(bbx_height + offset_y)
-    # shift/resize all glyphs to font bounding box
-    leftmost = min(offsets_x)
-    rightmost = max(right_bearings)
-    bottommost = min(offsets_y)
-    topmost = max(heights)
-    properties['tracking'] = -rightmost
-    properties['offset'] = Coord(leftmost, bottommost)
-    mod_glyphs = []
-    for glyph, props in zip(glyphs, glyph_props):
-        bbx_width, bbx_height, offset_x, offset_y = (int(_p) for _p in props['BBX'].split(' '))
-        dwidth_x, dwidth_y = (int(_p) for _p in props['DWIDTH'].split(' '))
-        right_bearing = (offset_x + bbx_width) - dwidth_x
-        padding_right = rightmost - right_bearing
-        padding_left = offset_x - leftmost
-        padding_bottom = offset_y - bottommost
-        padding_top = topmost - bbx_height - offset_y
-        glyph = glyph.expand(padding_left, padding_top, padding_right, padding_bottom)
-        mod_glyphs.append(glyph)
+    if not glyphs:
+        mod_glyphs = glyphs
+    else:
+        offsets_x = []
+        offsets_y = []
+        right_bearings = []
+        heights = []
+        for glyph, props in zip(glyphs, glyph_props):
+            props['BBX'] = props.get('BBX', global_bbx)
+            props['DWIDTH'] = props.get('DWIDTH', global_dwidth)
+            bbx_width, bbx_height, offset_x, offset_y = (int(_p) for _p in props['BBX'].split(' '))
+            dwidth_x, dwidth_y = (int(_p) for _p in props['DWIDTH'].split(' '))
+            try:
+                # ideally, SWIDTH = DWIDTH / ( points/1000 * dpi / 72 )
+                swidth_x, swidth_y = (int(_x) for _x in props.get('SWIDTH', global_swidth).split(' '))
+                #logging.info('x swidth: %s dwidth: %s', swidth_x*int(size)*int(xdpi) / 72000, dwidth_x)
+                #logging.info('y swidth: %s dwidth: %s', swidth_y*int(size)*int(ydpi) / 72000, dwidth_y)
+            except KeyError:
+                pass
+            # ignored: for METRICSSET in 1, 2: DWIDTH1, SWIDTH1, VVECTOR
+            offsets_x.append(offset_x)
+            offsets_y.append(offset_y)
+            right_bearings.append((offset_x + bbx_width) - dwidth_x)
+            heights.append(bbx_height + offset_y)
+        # shift/resize all glyphs to font bounding box
+        leftmost = min(offsets_x)
+        rightmost = max(right_bearings)
+        bottommost = min(offsets_y)
+        topmost = max(heights)
+        properties['tracking'] = -rightmost
+        properties['offset'] = Coord(leftmost, bottommost)
+        mod_glyphs = []
+        for glyph, props in zip(glyphs, glyph_props):
+            bbx_width, bbx_height, offset_x, offset_y = (int(_p) for _p in props['BBX'].split(' '))
+            dwidth_x, dwidth_y = (int(_p) for _p in props['DWIDTH'].split(' '))
+            right_bearing = (offset_x + bbx_width) - dwidth_x
+            padding_right = rightmost - right_bearing
+            padding_left = offset_x - leftmost
+            padding_bottom = offset_y - bottommost
+            padding_top = topmost - bbx_height - offset_y
+            glyph = glyph.expand(padding_left, padding_top, padding_right, padding_bottom)
+            mod_glyphs.append(glyph)
     xlfd_name = bdf_props.pop('FONT')
     # keep unparsed bdf props
     properties.update({
@@ -471,8 +474,11 @@ def _create_xlfd_properties(font):
         'ADD_STYLE_NAME': _quoted_string(font.style.title()),
         'PIXEL_SIZE': font.pixel_size,
         'AVERAGE_WIDTH': str(int(float(font.average_advance) * 10)).replace('-', '~'),
-        'DEFAULT_CHAR': font.get_ordinal_for_label(font.default_char),
     }
+    try:
+        xlfd_props['DEFAULT_CHAR'] = font.get_ordinal_for_label(font.default_char)
+    except KeyError:
+        pass
     logging.info(xlfd_props)
     # modify/summarise values
     if encoding_is_unicode(font.encoding):
