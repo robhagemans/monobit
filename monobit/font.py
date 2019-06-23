@@ -140,6 +140,36 @@ class Coord(NamedTuple):
         raise ValueError("Can't convert `{}` to coordinate pair.".format(coord))
 
 
+class KerningTable:
+    """(Label, Label) -> int."""
+
+    def __init__(self, table=None):
+        """Set up kerning table."""
+        if not table:
+            table = {}
+        if isinstance(table, str):
+            table = {
+                tuple(_row.split()[:2]): _row.split()[2]
+                for _row in table.splitlines()
+            }
+        self._table = {
+            (Label(_k[0]), Label(_k[1])): int(_v)
+            for _k, _v in table.items()
+        }
+
+    def __str__(self):
+        """Convert kerning table to multiline string."""
+        return '\n'.join(
+            f'{_k[0]} {_k[1]} {_v}'
+            for _k, _v in self._table.items()
+        )
+
+    def items(self):
+        """Iterate over items."""
+        return self._table.items()
+
+
+
 # recognised yaff properties and converters from str
 # this also defines the default order in yaff files
 PROPERTIES = {
@@ -190,6 +220,7 @@ PROPERTIES = {
     'offset': Coord.create, # (horiz, vert) offset from origin to matrix start
     'tracking': int, # horizontal offset from matrix end to next origin
     'leading': int, # interline spacing, defined as (pixels between baselines) - (bounding box height)
+    'kerning': KerningTable, # pairwise kerning (defined as adjustment to tracking)
 
     # character set
     # can't be calculated, affect rendering
@@ -576,16 +607,27 @@ class Font:
     def get_ordinal_for_label(self, key):
         """Get ordinal for given label, if defined."""
         key = Label(key)
-        try:
-            # maybe it's an ordinal already
+        # maybe it's an ordinal already
+        if key.is_ordinal:
             return int(key)
-        except TypeError:
-            pass
         index = self._labels[key]
         for label, lindex in self._labels.items():
             if index == lindex and label.is_ordinal:
                 return int(label)
         raise KeyError(f'No ordinal found for label `{key}`')
+
+    def get_unicode_for_label(self, key):
+        """Get unicode for given label, if defined."""
+        key = Label(key)
+        if key.is_unicode:
+            return key.unicode
+        if key.is_ordinal and self._encoding == Unicode:
+            return int(key)
+        index = self._labels[key]
+        for label, lindex in self._labels.items():
+            if index == lindex and label.is_unicode:
+                return label.unicode
+        raise KeyError(f'No unicode codepoint found for label `{key}`')
 
 
     ##########################################################################

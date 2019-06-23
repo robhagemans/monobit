@@ -19,7 +19,7 @@ except ImportError:
 from .base import ZipContainer, boolean, pair
 from .binary import friendlystruct
 from .typeface import Typeface
-from .font import Font, Label, Coord
+from .font import Font, Coord
 from .glyph import Glyph
 from .winfnt import _CHARSET_MAP
 
@@ -451,10 +451,7 @@ def _extract(container, path, bmformat, info, common, pages, chars, kernings=())
         'weight': 'bold' if _to_int(bmfont_props.pop('bold')) else 'regular',
         'slant': 'italic' if _to_int(bmfont_props.pop('italic')) else 'roman',
         'encoding': encoding,
-        'kerning': '\n'.join(
-            '{} {} {}'.format(Label(_kern.first), Label(_kern.second), _kern.amount)
-            for _kern in kernings
-        ),
+        'kerning': {(_kern.first, _kern.second): _kern.amount for _kern in kernings},
         'offset': Coord(min_before, common.base - max_height)
     }
     # drop other props if they're default value
@@ -640,14 +637,12 @@ def _create_bmfont(container, font, size=(256, 256), packed=False, imageformat='
         'blueChnl': 0,
     }
     if hasattr(font, 'kerning'):
-        # FIXME: we're saving glyphs iterating over unicode, but this table has ordinal labels...
         props['kernings'] = [{
-                'first': int(_first, 0),
-                'second': int(_second, 0),
+                'first': font.get_unicode_for_label(_key[0]),
+                'second': font.get_unicode_for_label(_key[1]),
                 'amount': int(_amount)
             }
-            for _kernline in font.kerning.splitlines()
-            for _first, _second, _amount in _kernline.split()
+            for _key, _amount in font.kerning.items()
         ]
     else:
         props['kernings'] = []

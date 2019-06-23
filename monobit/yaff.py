@@ -211,17 +211,20 @@ def _write_glyph(outstream, labels, glyph, fore, back, comment, tab, key_format,
 
 def _write_prop(outstream, key, value, tab):
     """Write out a property."""
-    if value not in ('', None):
-        # this may use custom string converter (e.g ordinal labels)
-        value = str(value)
-        if '\n' not in value:
-            outstream.write('{}: {}\n'.format(key, value))
-        else:
-            outstream.write(
-                ('{}:\n' + tab + '{}\n').format(
-                    key, ('\n' + tab).join(value.splitlines())
-                )
+    if value is None:
+        return
+    # this may use custom string converter (e.g ordinal labels)
+    value = str(value)
+    if not value:
+        return
+    if '\n' not in value:
+        outstream.write('{}: {}\n'.format(key, value))
+    else:
+        outstream.write(
+            ('{}:\n' + tab + '{}\n').format(
+                key, ('\n' + tab).join(value.splitlines())
             )
+        )
 
 def _save_yaff(font, outstream, fore, back, comment, tab, key_format, key_sep, empty):
     """Write one font to a plaintext stream."""
