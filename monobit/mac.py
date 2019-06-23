@@ -301,7 +301,15 @@ _FONT_NAMES = {
     21: 'Helvetica',
     22: 'Courier',
     23: 'Symbol',
-    24: 'Taliesin',
+    24: 'Taliesin', # later named Mobile, but it's have a FOND entry then.
+}
+
+# fonts which clain mac-roman encoding but aren't
+_NON_ROMAN_NAMES = {
+    'Symbol': 'mac-symbol',
+    'Cairo': '',
+    'Taliesin': '',
+    'Mobile': '',
 }
 
 ##############################################################################
@@ -413,6 +421,9 @@ def _parse_resource_fork(data):
                     })
             if rsrc_id in info:
                 props.update(info[rsrc_id])
+            if 'encoding' not in props:
+                props['encoding'] = _NON_ROMAN_NAMES.get(props.get('family', ''), 'mac-roman')
+                logging.info('setting %s', props['encoding'])
             try:
                 font = _parse_nfnt(data, offset, props)
             except ValueError as e:

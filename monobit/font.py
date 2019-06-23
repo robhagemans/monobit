@@ -273,6 +273,7 @@ class Codepage:
 
     def __init__(self, codepage_name):
         """Read a codepage file and convert to codepage dict."""
+        codepage_name = codepage_name.replace('_', '-')
         self._mapping = {}
         try:
             data = pkgutil.get_data(__name__, 'codepages/{}.ucp'.format(codepage_name))
@@ -327,7 +328,7 @@ class Unicode:
         return str(Label.from_unicode(chr(int(ordinal))))
 
     @staticmethod
-    def unicode_to_ord(key, errors='strict'):
+    def unicode_to_ord(key):
         """Convert ordinal to unicode label."""
         uc = Label(key).unicode
         if len(uc) > 1:
@@ -336,6 +337,17 @@ class Unicode:
             # however if we do, grapheme clusters are not supported
             raise ValueError(str(key))
         return ord(uc)
+
+
+class NoEncoding:
+
+    @staticmethod
+    def ord_to_unicode(ordinal):
+        raise ValueError(ordinal)
+
+    @staticmethod
+    def unicode_to_ord(key):
+        raise ValueError(str(key))
 
 
 _ENCODING_ALIASES = {
@@ -366,8 +378,8 @@ def _get_encoding(enc):
         return Codec(enc.lower())
     except LookupError:
         pass
-    logging.warning('Unknown encoding `%s`, assuming ascii.', enc)
-    return Codec('ascii')
+    logging.warning('Unknown encoding `%s`.', enc)
+    return NoEncoding
 
 
 class Font:
@@ -721,7 +733,7 @@ class Font:
         'slant': 'roman', # roman, italic, oblique, etc
         'setwidth': 'normal', # normal, condensed, expanded, etc.
         'direction': 'left-to-right', # left-to-right, right-to-left
-        'encoding': 'ascii',
+        'encoding': '',
         'word-boundary': 'u+0020', # word-break character (usually space)
     }
 
