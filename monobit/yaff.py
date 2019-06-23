@@ -196,7 +196,7 @@ def _load_font(instream, fore, back, key_format):
 def _write_glyph(outstream, labels, glyph, fore, back, comment, tab, key_format, key_sep, empty):
     """Write out a single glyph in text format."""
     if not labels:
-        logging.warning('No labels for glyph')
+        logging.warning('No labels for glyph: %s', glyph)
         return
     write_comments(outstream, glyph.comments, comm_char=comment)
     for ordinal in labels:
@@ -204,7 +204,7 @@ def _write_glyph(outstream, labels, glyph, fore, back, comment, tab, key_format,
     glyphtxt = to_text(glyph.as_matrix(fore, back), line_break='\n'+tab)
     # empty glyphs are stored as 0x0, not 0xm or nx0
     if not glyph.width or not glyph.height:
-        glyphtxt = [empty]
+        glyphtxt = empty
     outstream.write(tab)
     outstream.write(glyphtxt)
     outstream.write('\n\n')

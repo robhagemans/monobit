@@ -207,7 +207,7 @@ class TextMultiStream:
             def __iter__(self):
                 """Iterate over lines until next separator."""
                 for line in self._stream:
-                    if line.strip() == self._parent.separator:
+                    if line.strip() == self._parent.separator.decode('ascii'):
                         return
                     yield line[:-1]
                 self._parent.closed = True
