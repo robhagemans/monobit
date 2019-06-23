@@ -48,11 +48,11 @@ from .glyph import Glyph
 # most of this is a guess, I can't find a more precise definition
 _CHARSET_MAP = {
     # ANSI_CHARSET = 0x00000000 - maybe 'iso-8859-1' but I think Windows would use this instead
-    0x00: 'windows-1252',
+    0x00: 'windows-ansi-2.0',
     # DEFAULT_CHARSET = 0x00000001 - locale dependent :/ ??
-    0x01: 'windows-1252',
+    0x01: 'windows-ansi-2.0',
     # SYMBOL_CHARSET = 0x00000002
-    0x02: 'symbol',
+    0x02: 'mac-symbol',
     # MAC_CHARSET = 0x0000004D
     0x4d: 'mac-roman',
     # SHIFTJIS_CHARSET = 0x00000080 - MS probably mean their own Shift-JIS extension?
