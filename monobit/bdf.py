@@ -472,7 +472,7 @@ def _create_xlfd_properties(font):
             {_v: _k for _k, _v in _SETWIDTH_MAP.items()}.get(font.setwidth, 50)
         ),
         'ADD_STYLE_NAME': _quoted_string(font.style.title()),
-        'AVERAGE_WIDTH': str(int(float(font.average_advance) * 10)).replace('-', '~'),
+        'AVERAGE_WIDTH': str(round(float(font.average_advance) * 10)).replace('-', '~'),
     }
     try:
         xlfd_props['DEFAULT_CHAR'] = font.get_ordinal_for_label(font.default_char)

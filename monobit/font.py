@@ -197,21 +197,21 @@ PROPERTIES = {
     'dpi': Coord.create, # target resolution in dots per inch
 
     # summarising quantities
-    # can be determined from the bitmaps
+    # determined from the bitmaps only
     'spacing': str, # proportional, monospace, character-cell, multi-cell
     'bounding-box': Coord.create, # maximum ink width/height
     'average-advance': number, # average advance width, rounded to tenths
+    'cap-advance': int, # advance width of LATIN CAPITAL LETTER X
 
     # descriptive typographic quantities
-    # can be calculated
+    # can be calculated or given
     'x-height': int, # height of lowercase x relative to baseline
     'cap-height': int, # height of capital relative to baseline
-    'x-width': int, # ink width (not advance width) of lowercase x (in proportional font)
-    'pixel-size': int, # nominal pixel size, equals ascent + descent
     # can't be calculated, don't currently affect rendering
     # might affect e.g. composition of characters
     'ascent': int, # recommended typographic ascent relative to baseline (not necessarily equal to top)
     'descent': int, # recommended typographic descent relative to baseline (not necessarily equal to bottom)
+    'pixel-size': int, # nominal pixel size, always equals ascent + descent
 
     # metrics
     # can't be calculated, affect rendering
@@ -240,8 +240,9 @@ PROPERTIES = {
 
 # calculated properties
 # properties that must have the calculated value
-_NON_OVERRIDABLE = ('spacing', 'bounding-box', 'pixel-size')
-_OVERRIDABLE = ('average-advance', 'x-height', 'cap-height', 'x-width')
+_NON_OVERRIDABLE = ('spacing', 'bounding-box', 'pixel-size', 'average-advance', 'cap-advance',)
+# properties where the calculated vale may be overridden
+_OVERRIDABLE = ('x-height', 'cap-height',)
 
 
 class Codec:
@@ -398,35 +399,9 @@ class Font:
             # global comments only
             self._comments = {None: comments}
         self._properties = {}
-        if properties:
-            properties = {_k.replace('_', '-'): _v for _k, _v in properties.items()}
-            for key, converter in reversed(list(PROPERTIES.items())):
-                try:
-                    value = converter(properties.pop(key))
-                except KeyError:
-                    continue
-                except ValueError as e:
-                    logging.error('Could not set property %s: %s', key, e)
-                # don't set property values that equal the default
-                # we need to ensure we use underscore variants, or default functions won't get called
-                default_value = getattr(self, key.replace('-', '_'))
-                if value != default_value:
-                    if key in _NON_OVERRIDABLE:
-                        logging.warning(
-                            "Property `%s` value can't be set to %s. Keeping calculated value %s.",
-                            key, str(value), str(default_value)
-                        )
-                    else:
-                        self._properties[key] = value
-                        if key in _OVERRIDABLE:
-                            logging.info(
-                                'Property `%s` value set to %s, while calculated value is %s.',
-                                key, str(value), str(default_value)
-                            )
-            # append nonstandard properties
-            self._properties.update(properties)
-        if 'encoding' in self._properties:
-            self._properties['encoding'] = normalise_encoding(self._properties['encoding'])
+        # set encoding first so we can set labels
+        if 'encoding' in properties:
+            self._properties['encoding'] = normalise_encoding(properties['encoding'])
         self._encoding = _get_encoding(self.encoding)
         # add unicode labels for ordinals
         uni_labels = {}
@@ -464,6 +439,37 @@ class Font:
             _label.unicode for _label in self._labels
             if _label.is_unicode and len(_label.unicode) > 1
         )
+        # update properties
+        if properties:
+            properties = {_k.replace('_', '-'): _v for _k, _v in properties.items()}
+            for key, converter in reversed(list(PROPERTIES.items())):
+                # we've already set the encoding
+                if key == 'encoding':
+                    continue
+                try:
+                    value = converter(properties.pop(key))
+                except KeyError:
+                    continue
+                except ValueError as e:
+                    logging.error('Could not set property %s: %s', key, e)
+                # don't set property values that equal the default
+                # we need to ensure we use underscore variants, or default functions won't get called
+                default_value = getattr(self, key.replace('-', '_'))
+                if value != default_value:
+                    if key in _NON_OVERRIDABLE:
+                        logging.warning(
+                            "Property `%s` value can't be set to %s. Keeping calculated value %s.",
+                            key, str(value), str(default_value)
+                        )
+                    else:
+                        self._properties[key] = value
+                        if key in _OVERRIDABLE:
+                            logging.info(
+                                'Property `%s` value set to %s, while calculated value is %s.',
+                                key, str(value), str(default_value)
+                            )
+            # append nonstandard properties
+            self._properties.update(properties)
 
     def __repr__(self):
         """Representation."""
@@ -819,21 +825,16 @@ class Font:
             return str(repl)
         return ''
 
-    @property
-    def average_width(self):
-        """Get average glyph width, rounded to tenths of pixels."""
-        if not self._glyphs:
-            return 0
-        return round(
-            # ink_width ?
-            sum(_glyph.width for _glyph in self._glyphs) / len(self._glyphs),
-            1
-        ) + self.offset.x + self.tracking
-
     @yaffproperty
     def average_advance(self):
-        """Get average advance width, rounded to tenths of pixels."""
-        return self.offset.x + self.average_width + self.tracking
+        """Get average glyph advance width, rounded to tenths of pixels."""
+        if not self._glyphs:
+            return self.offset.x + self.tracking
+        return (
+            self.offset.x
+            + sum(_glyph.width for _glyph in self._glyphs) / len(self._glyphs)
+            + self.tracking
+        )
 
     @yaffproperty
     def spacing(self):
@@ -858,10 +859,10 @@ class Font:
         return 'proportional'
 
     @yaffproperty
-    def x_width(self):
-        """Width of uppercase X."""
+    def cap_advance(self):
+        """Advance width of uppercase X."""
         try:
-            return self.get_char('X').ink_width
+            return self.get_char('X').width + self.offset.x + self.tracking
         except KeyError:
             return 0
 

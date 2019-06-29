@@ -146,7 +146,7 @@ _STYLE_MAP = {
     _FF_SWISS: 'sans serif',
     _FF_MODERN: 'modern',
     _FF_SCRIPT: 'script',
-    _FF_DECORATIVE: 'decorated',
+    _FF_DECORATIVE: 'decorative',
 }
 
 # dfFlags
@@ -399,7 +399,15 @@ def _parse_win_props(fnt, win_props):
     else:
         properties['spacing'] = 'proportional'
         # this can be extracted from the font - will be dropped if consistent
-        properties['x-width'] = win_props.dfAvgWidth
+        # Windows documentation defines this as 'width of the character "X."'
+        # for 1.0 system fonts, it is consistent with the advance width of LATIN CAPITAL LETTER X.
+        # for 2.0+ system fonts, this appears to be set to the average advance width.
+        # fontforge follows the "new" definition while mkwinfont follows the "old".
+        # we'll make it depend on the version
+        if version == 0x100:
+            properties['cap-advance'] = win_props.dfAvgWidth
+        else:
+            properties['average-advance'] = win_props.dfAvgWidth
     # check prop/fixed flag
     if bool(win_props.dfPitchAndFamily & 1) == bool(win_props.dfPixWidth):
         logging.warning(
@@ -534,8 +542,10 @@ def create_fnt(font, version=0x200):
         dfPixWidth=pix_width,
         dfPixHeight=font.bounding_box.y,
         dfPitchAndFamily=pitch_and_family,
-        dfAvgWidth=x_width,
-        dfMaxWidth=font.bounding_box.x,
+        # for 2.0+, we use actual average advance here (like fontforge but unlike mkwinfont)
+        dfAvgWidth=round(font.average_advance),
+        # max advance width
+        dfMaxWidth=font.bounding_box.x + font.tracking + font.offset_x,
         dfFirstChar=min_ord,
         dfLastChar=max_ord,
         dfDefaultChar=font.get_ordinal_for_label(font.default_char) - min_ord,
