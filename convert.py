@@ -23,6 +23,10 @@ parser.add_argument(
     help='output format (default: infer from filename)'
 )
 parser.add_argument(
+    '--codepage', default='', type=str,
+    help='override codepage (default: infer from metadata in file)'
+)
+parser.add_argument(
     '--debug', action='store_true',
     help='show debugging output'
 )
@@ -71,6 +75,8 @@ logging.basicConfig(level=loglevel, format='%(levelname)s: %(message)s')
 
 try:
     font = monobit.load(args.infile, format=args.from_, **load_args)
+    if args.codepage:
+        font = font.set_encoding(args.codepage)
     font.save(args.outfile, format=args.to_, **save_args)
 except Exception as exc:
     logging.error(exc)

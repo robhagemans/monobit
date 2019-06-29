@@ -400,39 +400,7 @@ class Font:
             self._comments = {None: comments}
         self._properties = {}
         # set encoding first so we can set labels
-        if 'encoding' in properties:
-            self._properties['encoding'] = normalise_encoding(properties['encoding'])
-        self._encoding = _get_encoding(self.encoding)
-        # add unicode labels for ordinals
-        uni_labels = {}
-        for _k, _v in self._labels.items():
-            if not _k.is_ordinal:
-                continue
-            try:
-                label = Label(self._encoding.ord_to_unicode(_k))
-            except ValueError:
-                pass
-            else:
-                uni_labels[label] = _v
-        # remove ordinal labels if encoding is unicode
-        if self._encoding == Unicode:
-            self._labels = {
-                _k: _v for _k, _v in self._labels.items()
-                if not _k.is_ordinal
-            }
-        # add unicode glyph name as comment
-        self._glyphs = list(self._glyphs)
-        for label, index in self._labels.items():
-            if label.is_unicode and label.unicode_name and not self._glyphs[index].comments:
-                if unicodedata.category(label.unicode).startswith('C'):
-                    description = '{}'.format(label.unicode_name)
-                else:
-                    description = '[{}] {}'.format(label.unicode, label.unicode_name)
-                self._glyphs[index] = self._glyphs[index].add_comments((description,))
-        self._glyphs = tuple(self._glyphs)
-        # override with explicit unicode labels, if given
-        uni_labels.update(self._labels)
-        self._labels = uni_labels
+        self._add_unicode_data(properties.get('encoding', None))
         # identify multi-codepoint clusters
         # we've already added unicode labels for codepage ordinals, so those should be included.
         self._grapheme_clusters = set(
@@ -474,6 +442,43 @@ class Font:
     def __repr__(self):
         """Representation."""
         return f"<Font '{self.name}'>"
+
+    def _add_unicode_data(self, encoding=None):
+        """Add unicode labels and comments."""
+        if encoding:
+            self._properties['encoding'] = normalise_encoding(encoding)
+        self._encoding = _get_encoding(self.encoding)
+        # add unicode labels for ordinals
+        uni_labels = {}
+        for _k, _v in self._labels.items():
+            if not _k.is_ordinal:
+                continue
+            try:
+                label = Label(self._encoding.ord_to_unicode(_k))
+            except ValueError:
+                pass
+            else:
+                uni_labels[label] = _v
+        # remove ordinal labels if encoding is unicode
+        if self._encoding == Unicode:
+            self._labels = {
+                _k: _v for _k, _v in self._labels.items()
+                if not _k.is_ordinal
+            }
+        # override with explicit unicode labels, if given
+        uni_labels.update(self._labels)
+        self._labels = uni_labels
+        # add unicode glyph name as comment
+        self._glyphs = list(self._glyphs)
+        for label, index in self._labels.items():
+            if label.is_unicode and label.unicode_name and not self._glyphs[index].comments:
+                if unicodedata.category(label.unicode).startswith('C'):
+                    description = '{}'.format(label.unicode_name)
+                else:
+                    description = '[{}] {}'.format(label.unicode, label.unicode_name)
+                self._glyphs[index] = self._glyphs[index].add_comments((description,))
+        self._glyphs = tuple(self._glyphs)
+
 
     ##########################################################################
     # glyph access
@@ -690,6 +695,18 @@ class Font:
 
     ##########################################################################
     # properties
+
+    @scriptable
+    def set_encoding(self, encoding:str=''):
+        """
+        Return a copy with ordinals relabelled through a different codepage.
+        Text and unicode labels and glyph comments are dropped.
+        """
+        labels = {_k: _v for _k,_v in self._labels.items() if _k.is_ordinal}
+        glyphs = [_glyph.drop_comments() for _glyph in self._glyphs]
+        properties = {**self._properties}
+        properties['encoding'] = encoding
+        return Font(glyphs, labels, self._comments, properties)
 
     def set_properties(self, **kwargs):
         """Return a copy with amended properties."""

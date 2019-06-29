@@ -29,6 +29,10 @@ class Glyph:
         """Return a copy of the glyph with added comments."""
         return Glyph(self._rows, self._comments + tuple(comments))
 
+    def drop_comments(self):
+        """Return a copy of the glyph without comments."""
+        return Glyph(self._rows)
+
     @property
     def comments(self):
         """Extract comments."""
