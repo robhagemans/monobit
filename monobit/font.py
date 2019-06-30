@@ -692,6 +692,15 @@ class Font:
         """Get a comment for a key, or global comment if no key provided."""
         return self._comments.get(key, [])
 
+    @scriptable
+    def add_comments(self, new_comment:str='', key:str=None):
+        """Get a comment for a key, or global comment if no key provided."""
+        comments = {**self._comments}
+        if key not in comments:
+            comments[key] = []
+        comments[key] = list(comments[key]) + new_comment.splitlines()
+        return Font(self._glyphs, self._labels, comments, self._properties)
+
 
     ##########################################################################
     # properties

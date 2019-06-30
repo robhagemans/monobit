@@ -42,16 +42,13 @@ def load(instream):
     """Load font from FZX file."""
     data = instream.read()
     header = _FZX_HEADER.from_bytes(data)
-    logging.info(header)
     n_chars = header.lastchar - 32 + 1
     char_table = (_CHAR_ENTRY * n_chars).from_buffer_copy(data, _FZX_HEADER.size)
-    logging.info(list((x.kern, x.width, x.shift) for x in char_table))
     # offsets seem to be given relative to the entry in the char table; convert to absolute offsets
     offsets = [
         _FZX_HEADER.size + ctypes.sizeof(_CHAR_ENTRY) * _i + _entry.offset
         for _i, _entry in enumerate(char_table)
     ] + [None]
-    logging.info(offsets)
     glyph_bytes = [data[_offs:_next] for _offs, _next in zip(offsets[:-1], offsets[1:])]
     glyphs = [
         Glyph.from_bytes(_glyph, _entry.width+1)
