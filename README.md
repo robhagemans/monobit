@@ -18,7 +18,7 @@ Supported formats
 | GNU Unifont           |          | `.hex`                      |             | ✔     | ✔     |
 | PC Screen Font        | 1        | `.psf`                      | Linux       | ✔     |       |
 | PC Screen Font        | 2        | `.psf`                      | Linux       | ✔     | ✔     |
-| Raw binary            |          | `.fnt` `.rom` `.f??` `.ch8` |             | ✔     | ✔     |
+| Raw binary            |          | `.fnt` `.rom` `.f??` `.ch8` `.64c` |             | ✔     | ✔     |
 | Bitmap image          |          | `.png` `.gif` `.bmp`        |             | ✔     | ✔     |
 | C or C++ source code  |          | `.c` `.cpp` `.h`            |             | ✔     |       |
 | AngelCode BMFont      | Text     | `.fnt` + images             |             | ✔     | ✔     |
