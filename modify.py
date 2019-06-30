@@ -19,7 +19,7 @@ def str_to_int(instr):
 CONVERTERS = {
     int: str_to_int,
     bool: bool,
-    #dict
+    str: str,
 }
 
 

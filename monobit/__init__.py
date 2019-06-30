@@ -25,6 +25,7 @@ from . import bdf
 from . import psf
 from . import hex
 from . import cpi
+from . import fzx
 from . import c
 
 from .image import show, render

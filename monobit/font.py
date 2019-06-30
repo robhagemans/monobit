@@ -775,7 +775,7 @@ class Font:
         """Name of font family."""
         # use source name if no family name defined
         if 'source-name' in self._properties:
-            return self.source_name
+            return self.source_name.split('.')[0]
         return ''
 
     @yaffproperty

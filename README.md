@@ -31,6 +31,7 @@ Supported formats
 | Codepage Information  | DRFONT   | `.cpi`                      | DR-DOS      | ✔     |       |
 | `kbd` Codepage        |          | `.cp`                       | Linux       | ✔     |       |
 | Amiga Font            |          |                             | Amiga OS    | ✔     |       |
+| FZX Font              |          | `.fzx`                      | ZX Spectrum | ✔     |       |
 | MacOS font            | FONT     |                             | MacOS       | ✔     |       |
 | MacOS font            | NFNT/FOND|                             | MacOS       | ✔     |       |
 | Windows resource      | 1.0      | `.fnt`                      | Windows 1.x | ✔     |       |
