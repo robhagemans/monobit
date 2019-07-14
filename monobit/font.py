@@ -372,11 +372,11 @@ def _get_encoding(enc):
     if normalise_encoding(enc) == 'unicode':
         return Unicode
     try:
-        return Codepage(enc.lower())
+        return Codepage(enc)
     except LookupError:
         pass
     try:
-        return Codec(enc.lower())
+        return Codec(enc)
     except LookupError:
         pass
     logging.warning('Unknown encoding `%s`.', enc)
