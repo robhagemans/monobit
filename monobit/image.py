@@ -87,10 +87,9 @@ if Image:
             padding:pair=(0, 0),
             scale:pair=(1, 1),
             border:rgb=(32, 32, 32), back:rgb=(0, 0, 0), fore:rgb=(255, 255, 255),
+            encoding:str=None,
         ):
         """Export font to image."""
-        # save as native encoding, for now
-        encoding = None
         img = _to_image(font, columns, margin, padding, scale, border, back, fore, encoding)
         img.save(outfile, format)
         return font
