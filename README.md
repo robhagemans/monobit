@@ -20,6 +20,7 @@ Supported formats
 | PC Screen Font        | 2        | `.psf`                      | Linux       | ✔     | ✔     |
 | Raw binary            |          | `.fnt` `.rom` `.f??` `.ch8` `.64c` |             | ✔     | ✔     |
 | Bitmap image          |          | `.png` `.gif` `.bmp`        |             | ✔     | ✔     |
+| PDF chart             |          | `.pdf`                      |             |       | ✔     |
 | C or C++ source code  |          | `.c` `.cpp` `.h`            |             | ✔     |       |
 | AngelCode BMFont      | Text     | `.fnt` + images             |             | ✔     | ✔     |
 | AngelCode BMFont      | Binary   | `.fnt` + images             |             | ✔     |       |
@@ -51,7 +52,7 @@ Roadmap
 
 Work is underway to add:
 - PCF
-- OS/2, GEM, Atari, C64, GEOS, and ZX Spectrum font files
+- OS/2, GEM, Atari, GEOS font files
 - testing
 - a simple REPL interface for manipulating fonts
 
