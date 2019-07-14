@@ -26,6 +26,7 @@ from . import psf
 from . import hex
 from . import cpi
 from . import fzx
+from . import pdf
 from . import c
 
 from .image import show, render
