@@ -106,8 +106,8 @@ def load(instream):
 def load_cp(instream):
     """Load fonts from CP file."""
     data = instream.read()
-    font = _parse_cp(data, 0)
-    return Typeface([font])
+    fonts, _ = _parse_cp(data, 0)
+    return Typeface(fonts)
 
 
 
@@ -134,13 +134,13 @@ def _parse_cpi(data):
     fonts = []
     for cp in range(fih.num_codepages):
         try:
-            font, cpeh_offset = _parse_cp(
+            cp_fonts, cpeh_offset = _parse_cp(
                 data, cpeh_offset, cpi_header.id, drdos_effh=drdos_effh
             )
         except ValueError as e:
             logging.error('Could not parse font in CPI file: %s', e)
         else:
-            fonts.append(font)
+            fonts += cp_fonts
     if cpeh_offset:
         notice = data[cpeh_offset:].decode('ascii', 'ignore')
         notice = '\n'.join(notice.splitlines())
@@ -148,8 +148,8 @@ def _parse_cpi(data):
             _c for _c in notice if _c in string.printable
         )
         fonts = [
-            font.set_properties(notice=notice.strip())
-            for font in fonts
+            _font.set_properties(notice=notice.strip())
+            for _font in fonts
         ]
     return fonts
 
@@ -177,6 +177,7 @@ def _parse_cp(data, cpeh_offset, header_id=_ID_MS, drdos_effh=None):
             )
         )
     else:
+        fonts = []
         # char table offset for drfont
         if cpih.version == _CP_DRFONT:
             cit_offset = fh_offset + cpih.num_fonts * _SCREEN_FONT_HEADER.size
@@ -214,5 +215,5 @@ def _parse_cp(data, cpeh_offset, header_id=_ID_MS, drdos_effh=None):
                         fh.width
                     ))
                 fh_offset += _SCREEN_FONT_HEADER.size
-    font = Font(cells, properties=props)
-    return font, cpeh.next_cpeh_offset
+            fonts.append(Font(cells, properties=props))
+    return fonts, cpeh.next_cpeh_offset
