@@ -388,6 +388,8 @@ class Font:
 
     def __init__(self, glyphs, labels=None, comments=(), properties=None):
         """Create new font."""
+        if not properties:
+            properties = {}
         self._glyphs = tuple(glyphs)
         if not labels:
             labels = {_i: _i for _i in range(len(glyphs))}
@@ -472,7 +474,12 @@ class Font:
         self._glyphs = list(self._glyphs)
         for label, index in self._labels.items():
             if label.is_unicode and label.unicode_name and not self._glyphs[index].comments:
-                if unicodedata.category(label.unicode).startswith('C'):
+                try:
+                    category = unicodedata.category(label.unicode)
+                except TypeError:
+                    # multi-codepoint glyphs
+                    category = ''
+                if category.startswith('C'):
                     description = '{}'.format(label.unicode_name)
                 else:
                     description = '[{}] {}'.format(label.unicode, label.unicode_name)
