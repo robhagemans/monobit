@@ -643,6 +643,18 @@ class Font:
         )
         return output
 
+    def merge_glyphs_from(self, other):
+        """Merge glyphs from other font into this one. Existing glyphs have preference."""
+        glyphs = list(self._glyphs)
+        labels = {**self._labels}
+        for label, index in other._labels.items():
+            if label not in labels:
+                print(label, '... merging')
+                labels[label] = len(glyphs)
+                glyphs.append(other._glyphs[index])
+        return Font(glyphs, labels, self._comments, self._properties)
+
+
     ##########################################################################
     # labels
 
