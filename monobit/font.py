@@ -661,13 +661,12 @@ class Font:
         )
         return output
 
-    def merge_glyphs_from(self, other):
+    def merged_with(self, other):
         """Merge glyphs from other font into this one. Existing glyphs have preference."""
         glyphs = list(self._glyphs)
         labels = {**self._labels}
         for label, index in other._labels.items():
             if label not in labels:
-                print(label, '... merging')
                 labels[label] = len(glyphs)
                 glyphs.append(other._glyphs[index])
         return Font(glyphs, labels, self._comments, self._properties)
@@ -970,9 +969,14 @@ class Font:
         """Return a subset of the font."""
         if keys is None:
             keys = self._labels.keys()
+        else:
+            keys = [Label(_k) for _k in keys]
         labels = {_k: _v for _k, _v in self._labels.items() if _k in keys}
-        indexes = sorted(set(_v for _k, _v in self._labels.items()))
+        indexes = sorted(set(_v for _k, _v in labels.items()))
         glyphs = [self._glyphs[_i] for _i in indexes]
+        # redefine indexes
+        new_index = {_old: _new for _new, _old in enumerate(indexes)}
+        labels = {_label: new_index[_old] for _label, _old in labels.items()}
         return Font(glyphs, labels, self._comments, self._properties)
 
 
