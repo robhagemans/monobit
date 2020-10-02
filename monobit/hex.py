@@ -72,7 +72,7 @@ def save(font, outstream):
     write_comments(outstream, font.get_comments(), comm_char='#', is_global=True)
     for label, char in font.iter_unicode():
         if len(label.unicode) > 1:
-            logging.warning("Can't encode grapheme cluster %s in .draw file; skipping.", str(label))
+            logging.warning("Can't encode grapheme cluster %s in .hex file; skipping.", str(label))
             continue
         if char.height != 16 or char.width not in (8, 16):
             logging.warning(
@@ -80,8 +80,33 @@ def save(font, outstream):
                     char.width, char.height
                 )
             )
+            logging.warning('%s %s', label, char.as_hex())
             continue
-        write_comments(outstream, char.comments, comm_char='#')
-        outstream.write('{:04X}:{}'.format(ord(label.unicode), char.as_hex().upper()))
-        outstream.write('\n')
+        _write_hex_extended(outstream, label, char)
     return font
+
+
+@Typeface.saves('hext', multi=False)
+def save(font, outstream):
+    """Write font to a .hex file."""
+    write_comments(outstream, font.get_comments(), comm_char='#', is_global=True)
+    for label, char in font.iter_unicode():
+        if char.width not in (8, 16):
+            logging.warning(
+                'Hex format only supports 8x or 16x glyphs, not {}x{}; skipping.'.format(
+                    char.width, char.height
+                )
+            )
+            logging.warning('%s %s', label, char.as_hex())
+            continue
+        _write_hex_extended(outstream, label, char)
+    return font
+
+def _write_hex_extended(outstream, label, char):
+    """Write font to a .hex file, extended syntax."""
+    write_comments(outstream, char.comments, comm_char='#')
+    hexlabel = u','.join(f'{ord(_c):04X}' for _c in label.unicode)
+    hex = char.as_hex().upper()
+    hex = hex.ljust(2*char.width, '0')
+    outstream.write('{}:{}'.format(hexlabel, hex))
+    outstream.write('\n')
