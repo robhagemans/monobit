@@ -5,6 +5,10 @@ monobit.cpi - DOS Codepage Information format
 licence: https://opensource.org/licenses/MIT
 """
 
+# CPI format documentation
+# https://www.seasip.info/DOS/CPI/cpi.html
+# https://www.win.tue.nl/~aeb/linux/kbd/font-formats-3.html
+
 import os
 import string
 import logging
