@@ -661,16 +661,6 @@ class Font:
         )
         return output
 
-    def merged_with(self, other):
-        """Merge glyphs from other font into this one. Existing glyphs have preference."""
-        glyphs = list(self._glyphs)
-        labels = {**self._labels}
-        for label, index in other._labels.items():
-            if label not in labels:
-                labels[label] = len(glyphs)
-                glyphs.append(other._glyphs[index])
-        return Font(glyphs, labels, self._comments, self._properties)
-
 
     ##########################################################################
     # labels
@@ -968,7 +958,7 @@ class Font:
     def subset(self, keys:set=None):
         """Return a subset of the font."""
         if keys is None:
-            keys = self._labels.keys()
+            return self
         else:
             keys = [Label(_k) for _k in keys]
         labels = {_k: _v for _k, _v in self._labels.items() if _k in keys}
@@ -977,6 +967,26 @@ class Font:
         # redefine indexes
         new_index = {_old: _new for _new, _old in enumerate(indexes)}
         labels = {_label: new_index[_old] for _label, _old in labels.items()}
+        return Font(glyphs, labels, self._comments, self._properties)
+
+    @scriptable
+    def without(self, keys:set=None):
+        """Return a font excluding a subset."""
+        if keys is None:
+            return self
+        else:
+            keys = [Label(_k) for _k in keys]
+        remaining_keys = [_k for _k in self._labels.keys() if _k not in keys]
+        return self.subset(remaining_keys)
+
+    def merged_with(self, other):
+        """Merge glyphs from other font into this one. Existing glyphs have preference."""
+        glyphs = list(self._glyphs)
+        labels = {**self._labels}
+        for label, index in other._labels.items():
+            if label not in labels:
+                labels[label] = len(glyphs)
+                glyphs.append(other._glyphs[index])
         return Font(glyphs, labels, self._comments, self._properties)
 
 
