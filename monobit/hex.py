@@ -4,6 +4,9 @@ monobit.hex - Unifont Hex format
 licence: https://opensource.org/licenses/MIT
 """
 
+# HEX format documentation
+# http://czyborra.com/unifont/
+
 import os
 import logging
 import string
@@ -50,9 +53,9 @@ def load(instream):
             raise ValueError('Hex strings must be 32 or 64 characters long.')
         current = len(glyphs)
         if (set(value) | set(key)) - set(string.hexdigits):
-            raise ValueError('Keys and values must be hexadecimal.')
+            raise ValueError(f'Keys and values must be hexadecimal, found {key}:{value}')
         # unicode label
-        label = Label.from_unicode(int(key, 16))
+        label = Label.from_unicode(chr(int(key, 16)))
         labels[label] = len(glyphs)
         glyphs.append(Glyph.from_hex(value, width, height))
         comments[label] = clean_comment(current_comment)
