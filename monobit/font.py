@@ -446,7 +446,7 @@ class Font:
         return f"<Font '{self.name}'>"
 
     def _add_unicode_data(self, encoding=None):
-        """Add unicode labels and comments."""
+        """Add unicode labels."""
         if encoding:
             self._properties['encoding'] = normalise_encoding(encoding)
         self._encoding = _get_encoding(self.encoding)
@@ -470,21 +470,6 @@ class Font:
         # override with explicit unicode labels, if given
         uni_labels.update(self._labels)
         self._labels = uni_labels
-        # add unicode glyph name as comment
-        self._glyphs = list(self._glyphs)
-        for label, index in self._labels.items():
-            if label.is_unicode and label.unicode_name and not self._glyphs[index].comments:
-                try:
-                    category = unicodedata.category(label.unicode)
-                except TypeError:
-                    # multi-codepoint glyphs
-                    category = ''
-                if category.startswith('C'):
-                    description = '{}'.format(label.unicode_name)
-                else:
-                    description = '[{}] {}'.format(label.unicode, label.unicode_name)
-                self._glyphs[index] = self._glyphs[index].add_comments((description,))
-        self._glyphs = tuple(self._glyphs)
 
 
     ##########################################################################
@@ -707,6 +692,24 @@ class Font:
             comments[key] = []
         comments[key] = list(comments[key]) + new_comment.splitlines()
         return Font(self._glyphs, self._labels, comments, self._properties)
+
+    @scriptable
+    def add_glyph_names(self):
+        """Add unicode glyph names as comments, if no comment already exists."""
+        glyphs = list(self._glyphs)
+        for label, index in self._labels.items():
+            if label.is_unicode and label.unicode_name and not self._glyphs[index].comments:
+                try:
+                    category = unicodedata.category(label.unicode)
+                except TypeError:
+                    # multi-codepoint glyphs
+                    category = ''
+                if category.startswith('C'):
+                    description = '{}'.format(label.unicode_name)
+                else:
+                    description = '[{}] {}'.format(label.unicode, label.unicode_name)
+                glyphs[index] = glyphs[index].add_comments((description,))
+        return Font(glyphs, self._labels, self._comments, self._properties)
 
 
     ##########################################################################
@@ -941,6 +944,7 @@ class Font:
         indexes = sorted(set(_v for _k, _v in self._labels.items()))
         glyphs = [self._glyphs[_i] for _i in indexes]
         return Font(glyphs, labels, self._comments, self._properties)
+
 
     ##########################################################################
     # inject Glyph operations into Font
