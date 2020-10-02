@@ -269,21 +269,34 @@ class Codec:
         return byte[0]
 
 
+
 class Codepage:
     """Convert between unicode and ordinals."""
 
+    # table of user-registered or -overridden codepages
+    _registered = {}
+
     def __init__(self, codepage_name):
         """Read a codepage file and convert to codepage dict."""
-        codepage_name = codepage_name.replace('_', '-')
-        self._mapping = {}
-        try:
-            data = pkgutil.get_data(__name__, 'codepages/{}.ucp'.format(codepage_name))
-        except EnvironmentError:
-            # "If the package cannot be located or loaded, then None is returned." say the docs
-            # but it seems to raise FileNotFoundError if the *resource* isn't there
-            data = None
-        if data is None:
-            raise LookupError(codepage_name)
+        codepage_name = codepage_name.lower().replace('_', '-')
+        if codepage_name in self._registered:
+            with open(self._registered[codepage_name], 'rb') as custom_cp:
+                data = custom_cp.read()
+        else:
+            try:
+                data = pkgutil.get_data(__name__, 'codepages/{}.ucp'.format(codepage_name))
+            except EnvironmentError:
+                # "If the package cannot be located or loaded, then None is returned." say the docs
+                # but it seems to raise FileNotFoundError if the *resource* isn't there
+                data = None
+            if data is None:
+                raise LookupError(codepage_name)
+        self._mapping = self._mapping_from_ucp_data(data)
+        self._inv_mapping = {_v: _k for _k, _v in self._mapping.items()}
+
+    def _mapping_from_ucp_data(self, data):
+        """Extract codepage mapping from ucp file data (as bytes)."""
+        mapping = {}
         for line in data.decode('utf-8-sig').splitlines():
             # ignore empty lines and comment lines (first char is #)
             if (not line) or (line[0] == '#'):
@@ -297,12 +310,12 @@ class Codepage:
                 # extract codepage point
                 cp_point = int(splitline[0].strip(), 16)
                 # allow sequence of code points separated by commas
-                self._mapping[cp_point] = ''.join(
+                mapping[cp_point] = ''.join(
                     chr(int(ucs_str.strip(), 16)) for ucs_str in splitline[1].split(',')
                 )
             except (ValueError, TypeError):
                 logging.warning('Could not parse line in codepage file: %s', repr(line))
-        self._inv_mapping = {_v: _k for _k, _v in self._mapping.items()}
+        return mapping
 
     def ord_to_unicode(self, ordinal):
         """Convert ordinal to unicode label."""
@@ -318,6 +331,11 @@ class Codepage:
             return self._inv_mapping[unicode]
         except KeyError as e:
             raise ValueError(str(e)) from e
+
+    @classmethod
+    def override(cls, name, filename):
+        """Override an existing codepage or register an unknown one."""
+        cls._registered[name] = filename
 
 
 class Unicode:
@@ -400,8 +418,8 @@ class Font:
         else:
             # global comments only
             self._comments = {None: comments}
-        self._properties = {}
         # set encoding first so we can set labels
+        self._properties = {}
         self._add_unicode_data(properties.get('encoding', None))
         # identify multi-codepoint clusters
         # we've already added unicode labels for codepage ordinals, so those should be included.
