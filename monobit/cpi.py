@@ -39,7 +39,7 @@ _CODEPAGE_ENTRY_HEADER = friendlystruct(
     next_cpeh_offset='long',
     device_type='short',
     device_name='8s',
-    codepage='short',
+    codepage='uint16',
     reserved='6s',
     cpih_offset='long',
 )
