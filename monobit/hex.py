@@ -16,8 +16,14 @@ from .typeface import Typeface
 from .font import Font, Label
 from .glyph import Glyph
 
+@Typeface.loads('hext', name='PC-BASIC Extended HEX')
+def load_hext(instream):
+    return load(instream)
 
 @Typeface.loads('hex', name='Unifont HEX')
+def load_hex(instream):
+    return load(instream)
+
 def load(instream):
     """Load font from a .hex file."""
     label = None
@@ -45,17 +51,16 @@ def load(instream):
         # may be on one of next lines
         while not value:
             value = instream.readline.strip()
-        if len(value) == 32:
-            width, height = 8, 16
-        elif len(value) == 64:
-            width, height = 16, 16
+        if len(value) < 64:
+            # must be less than 32 pixels high, or we confuse it with 16-pixels wide standard
+            width, height = 8, int(len(value)/2)
         else:
-            raise ValueError('Hex strings must be 32 or 64 characters long.')
+            width, height = 16, int(len(value)/4)
         current = len(glyphs)
-        if (set(value) | set(key)) - set(string.hexdigits):
+        if (set(value) | set(key)) - set(string.hexdigits + ','):
             raise ValueError(f'Keys and values must be hexadecimal, found {key}:{value}')
         # unicode label
-        label = Label.from_unicode(chr(int(key, 16)))
+        label = Label.from_unicode(''.join(chr(int(_key, 16)) for _key in key.split(',')))
         labels[label] = len(glyphs)
         glyphs.append(Glyph.from_hex(value, width, height))
         comments[label] = clean_comment(current_comment)
@@ -87,7 +92,7 @@ def save(font, outstream):
 
 
 @Typeface.saves('hext', multi=False)
-def save(font, outstream):
+def save_hext(font, outstream):
     """Write font to a .hex file."""
     write_comments(outstream, font.get_comments(), comm_char='#', is_global=True)
     for label, char in font.iter_unicode():
@@ -107,6 +112,5 @@ def _write_hex_extended(outstream, label, char):
     write_comments(outstream, char.comments, comm_char='#')
     hexlabel = u','.join(f'{ord(_c):04X}' for _c in label.unicode)
     hex = char.as_hex().upper()
-    hex = hex.ljust(4*char.width, '0')
     outstream.write('{}:{}'.format(hexlabel, hex))
     outstream.write('\n')
