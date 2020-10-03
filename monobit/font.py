@@ -386,18 +386,19 @@ def normalise_encoding(encoding):
 
 def _get_encoding(enc):
     """Find an encoding by name."""
-    enc = enc.lower().replace('-', '_')
-    if normalise_encoding(enc) == 'unicode':
-        return Unicode
-    try:
-        return Codepage(enc)
-    except LookupError:
-        pass
-    try:
-        return Codec(enc)
-    except LookupError:
-        pass
-    logging.warning('Unknown encoding `%s`.', enc)
+    if enc:
+        enc = enc.lower().replace('-', '_')
+        if normalise_encoding(enc) == 'unicode':
+            return Unicode
+        try:
+            return Codepage(enc)
+        except LookupError:
+            pass
+        try:
+            return Codec(enc)
+        except LookupError:
+            pass
+        logging.warning('Unknown encoding `%s`.', enc)
     return NoEncoding
 
 
