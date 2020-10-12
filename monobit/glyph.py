@@ -17,6 +17,10 @@ class Glyph:
     def __init__(self, pixels=((),), comments=()):
         """Create glyph from tuple of tuples."""
         self._rows = tuple(tuple(bool(_bit) for _bit in _row) for _row in pixels)
+        if len(set(len(_r) for _r in self._rows)) > 1:
+            raise ValueError(
+                f'All rows in a glyph must be of the same width: {repr(self)}'
+            )
         self._comments = comments
 
     def __repr__(self):
