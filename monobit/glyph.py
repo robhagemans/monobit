@@ -33,6 +33,7 @@ class Glyph:
         """Return a copy of the glyph with added comments."""
         return Glyph(self._rows, self._comments + tuple(comments))
 
+    @scriptable
     def drop_comments(self):
         """Return a copy of the glyph without comments."""
         return Glyph(self._rows)
@@ -170,6 +171,28 @@ class Glyph:
     def reduce(self):
         """Return a glyph reduced to the bounding box."""
         return self.crop(*self.ink_offsets)
+
+    def superimposed(self, other):
+        """Superimpose another glyph of the same size."""
+        return Glyph(
+            tuple(
+                _pix or _pix1
+                for _pix, _pix1 in zip(_row, _row1)
+            )
+            for _row, _row1 in zip(self._rows, other._rows)
+        )
+
+    @classmethod
+    def superimpose(cls, glyphs):
+        glyph_iter = iter(glyphs)
+        try:
+            combined = next(glyph_iter)
+        except StopIteration:
+            return cls.empty()
+        for glyph in glyph_iter:
+            combined = combined.superimposed(glyph)
+        return combined
+
 
     ##########################################################################
 
