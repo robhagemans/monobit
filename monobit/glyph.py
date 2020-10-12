@@ -156,7 +156,7 @@ class Glyph:
     def ink_offsets(self):
         """Offset from sides to bounding box. Left, bottom, right, top."""
         if not self._rows:
-            return 0, 0
+            return 0, 0, 0, 0
         row_inked = [True in _row for _row in self._rows]
         if True not in row_inked:
             return self.width, self.height, 0, 0
