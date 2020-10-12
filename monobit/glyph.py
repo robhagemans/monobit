@@ -42,15 +42,15 @@ class Glyph:
         """Extract comments."""
         return self._comments
 
-    @staticmethod
-    def empty(width=0, height=0):
+    @classmethod
+    def empty(cls, width=0, height=0):
         """Create whitespace glyph."""
-        return Glyph(((0,) * width,) * height)
+        return cls(((0,) * width,) * height)
 
-    @staticmethod
-    def from_matrix(rows, background):
+    @classmethod
+    def from_matrix(cls, rows, background):
         """Create glyph from sequence of sequence of objects."""
-        return Glyph(tuple(
+        return cls(tuple(
             tuple(_char not in background for _char in _row)
             for _row in rows
         ))
