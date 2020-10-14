@@ -956,6 +956,11 @@ class Font:
         return self.subset(range(from_, to_))
 
     @scriptable
+    def subrange_unicode(self, from_:int=0, to_:int=None):
+        """Return a continuous subrange of the font in terms of unicode labels."""
+        return self.subset(Label.from_unicode(chr(_cp)) for _cp in range(from_, to_))
+
+    @scriptable
     def subset(self, keys:set=None):
         """Return a subset of the font."""
         if keys is None:
@@ -988,6 +993,15 @@ class Font:
             if label not in labels:
                 labels[label] = len(glyphs)
                 glyphs.append(other._glyphs[index])
+        return Font(glyphs, labels, self._comments, self._properties)
+
+    def with_glyph(self, glyph, label):
+        """Return a font with a glyph added."""
+        glyphs = list(self._glyphs)
+        index = len(glyphs)
+        labels = {**self._labels}
+        glyphs.append(glyph)
+        labels[label] = index
         return Font(glyphs, labels, self._comments, self._properties)
 
 
