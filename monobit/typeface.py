@@ -104,8 +104,6 @@ def _set_extraction_props(typeface, infile, format):
                 new_props['source-name'] = Path(infile).name
             else:
                 new_props['source-name'] = Path(infile.name).name
-        else:
-            logging.info(font.source_name)
         if not font.source_format:
             new_props['source-format'] = format
         fonts.append(font.set_properties(**new_props))
