@@ -567,13 +567,7 @@ class Font:
     def get_char(self, key, missing='raise'):
         """Get glyph by unicode character."""
         label = Label.from_unicode(key)
-        try:
-            return self.get_glyph(label)
-        except KeyError:
-            # we don't check ordinals and codepage
-            # as we have already added unicode labels for ordinals in __init__
-            return self._get_fallback_glyph(key, missing)
-        return self.get_glyph(ordinal, missing=missing)
+        return self.get_glyph(label, missing=missing)
 
     def _iter_string(self, string, missing='raise'):
         """Iterate over string, yielding unicode characters."""
@@ -740,6 +734,7 @@ class Font:
         """
         Return a copy with ordinals relabelled through a different codepage.
         Text and unicode labels and glyph comments are dropped.
+        Note that this takes the *ordinal values* as authoritative and relabels *unicode keys*
         """
         labels = {_k: _v for _k,_v in self._labels.items() if _k.is_ordinal}
         glyphs = [_glyph.drop_comments() for _glyph in self._glyphs]
