@@ -11,6 +11,7 @@ assert _sys.version_info >= (3, 6)
 
 from .base import VERSION as __version__
 from .typeface import Typeface
+from .formats import Loaders, Savers
 from .text import to_text as _to_text
 
 from . import bmfont
@@ -42,7 +43,9 @@ OPERATIONS = {
 # inject operations into main module namespace
 globals().update(OPERATIONS)
 
-load = Typeface.load
+save = Savers().save
+load = Loaders().load
+
 
 def banner(
         font, text, fore='@', back='.',

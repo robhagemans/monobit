@@ -13,14 +13,16 @@ import string
 
 from .text import clean_comment, split_global_comment, write_comments
 from .typeface import Typeface
+from .formats import Loaders, Savers
 from .font import Font, Label
 from .glyph import Glyph
 
-@Typeface.loads('hext', name='PC-BASIC Extended HEX')
+
+@Loaders.register('hext', name='PC-BASIC Extended HEX')
 def load_hext(instream):
     return load(instream)
 
-@Typeface.loads('hex', name='Unifont HEX')
+@Loaders.register('hex', name='Unifont HEX')
 def load_hex(instream):
     return load(instream)
 
@@ -71,7 +73,7 @@ def load(instream):
     return Typeface([Font(glyphs, labels, comments=comments)])
 
 
-@Typeface.saves('hex', multi=False)
+@Savers.register('hex', multi=False)
 def save(font, outstream):
     """Write font to a .hex file."""
     write_comments(outstream, font.get_comments(), comm_char='#', is_global=True)
@@ -91,7 +93,7 @@ def save(font, outstream):
     return font
 
 
-@Typeface.saves('hext', multi=False)
+@Savers.register('hext', multi=False)
 def save_hext(font, outstream):
     """Write font to a .hex file."""
     write_comments(outstream, font.get_comments(), comm_char='#', is_global=True)

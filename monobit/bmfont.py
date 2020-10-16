@@ -18,6 +18,7 @@ except ImportError:
 
 from .base import ZipContainer, boolean, pair, unique_name
 from .binary import friendlystruct
+from .formats import Loaders, Savers
 from .typeface import Typeface
 from .font import Font, Coord
 from .glyph import Glyph
@@ -29,7 +30,7 @@ from .winfnt import _CHARSET_MAP
 # top-level calls
 
 if Image:
-    @Typeface.loads('bmf', name='BMFont', binary=True, container=True)
+    @Loaders.register('bmf', name='BMFont', binary=True, container=True)
     def load(container):
         """Load fonts from bmfont in container."""
         descriptions = [
@@ -44,7 +45,7 @@ if Image:
                 logging.error('Could not extract %s: %s', desc, e)
         return Typeface(fonts)
 
-    @Typeface.saves('bmf', binary=True, multi=True, container=True)
+    @Savers.register('bmf', binary=True, multi=True, container=True)
     def save(
             typeface, container,
             image_size:pair=(256, 256),

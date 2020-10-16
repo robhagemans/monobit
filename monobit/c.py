@@ -8,12 +8,13 @@ licence: https://opensource.org/licenses/MIT
 import string
 
 from .binary import ceildiv
+from .formats import Loaders, Savers
 from .typeface import Typeface
 from .font import Font
 from .glyph import Glyph
 
 
-@Typeface.loads('c', 'cc', 'cpp', 'h', name='C-source')
+@Loaders.register('c', 'cc', 'cpp', 'h', name='C-source')
 def load(infile, identifier:str, width:int, height:int):
     """Load font from a .c file."""
     payload = _get_payload(infile, identifier)

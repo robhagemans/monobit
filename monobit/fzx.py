@@ -10,6 +10,7 @@ import ctypes
 
 from .binary import ceildiv, friendlystruct
 from .raw import load_aligned
+from .formats import Loaders, Savers
 from .typeface import Typeface
 from .font import Font, Label
 from .glyph import Glyph
@@ -37,7 +38,7 @@ class _CHAR_ENTRY(ctypes.LittleEndianStructure):
     _pack_ = True
 
 
-@Typeface.loads('fzx', name='FZX', binary=True)
+@Loaders.register('fzx', name='FZX', binary=True)
 def load(instream):
     """Load font from FZX file."""
     data = instream.read()

@@ -10,6 +10,7 @@ import string
 from types import SimpleNamespace
 
 from .text import clean_comment, write_comments, split_global_comment, to_text
+from .formats import Loaders, Savers
 from .typeface import Typeface
 from .font import PROPERTIES, Font, Label
 from .glyph import Glyph
@@ -56,7 +57,7 @@ _DRAW_PARAMETERS = dict(
 )
 
 
-@Typeface.loads('yaff', 'text', 'txt', name='monobit-yaff')
+@Loaders.register('yaff', 'text', 'txt', name='monobit-yaff')
 def load(instream):
     """Read a plaintext font file."""
     fonts = []
@@ -69,20 +70,20 @@ def load(instream):
         return Typeface(fonts)
     raise ValueError('No fonts found in file.')
 
-@Typeface.saves('yaff', 'text', 'txt', multi=False)
+@Savers.register('yaff', 'text', 'txt', multi=False)
 def save(font, outstream):
     """Write fonts to a yaff file."""
     _save_yaff(font, outstream, **_YAFF_PARAMETERS)
     return font
 
 
-@Typeface.loads('draw', name='hexdraw')
+@Loaders.register('draw', name='hexdraw')
 def load_draw(instream):
     """Read a hexdraw font file."""
     fonts = [_load_font(instream, fore='#', back='-', key_format=draw_input_key)]
     return Typeface(fonts)
 
-@Typeface.saves('draw', multi=False)
+@Savers.register('draw', multi=False)
 def save_draw(font, outstream):
     """Write font to a hexdraw file."""
     _save_draw(font, outstream, **_DRAW_PARAMETERS)

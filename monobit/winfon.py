@@ -31,6 +31,7 @@ import string
 import logging
 
 from .binary import friendlystruct, ceildiv, align
+from .formats import Loaders, Savers
 from .typeface import Typeface
 
 from .winfnt import parse_fnt, create_fnt
@@ -234,7 +235,7 @@ _IMAGE_RESOURCE_DATA_ENTRY = friendlystruct(
 ##############################################################################
 # top level functions
 
-@Typeface.loads('fon', name='Windows FON', binary=True)
+@Loaders.register('fon', name='Windows FON', binary=True)
 def load(instream):
     """Load a Windows .FON file."""
     data = instream.read()
@@ -261,7 +262,7 @@ def load(instream):
     ]
     return Typeface(fonts)
 
-@Typeface.saves('fon', binary=True)
+@Savers.register('fon', binary=True)
 def save(typeface, outstream, version:int=2):
     """Write fonts to a Windows .FON file."""
     outstream.write(_create_fon(typeface, version*0x100))

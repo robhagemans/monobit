@@ -13,11 +13,11 @@ try:
     from reportlab.pdfgen.canvas import Canvas
 except ImportError:
     reportlab = None
-from .typeface import Typeface
+from .formats import Savers
 
 
 if reportlab:
-    @Typeface.saves('pdf', binary=True, multi=False)
+    @Savers.register('pdf', binary=True, multi=False)
     def save(
             font, outfile,
             format:str='png',

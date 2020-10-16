@@ -7,6 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
+from .formats import Loaders, Savers
 from .typeface import Typeface
 from .font import Font, Coord
 from .glyph import Glyph
@@ -129,7 +130,7 @@ _XLFD_UNPARSED = {
 ##############################################################################
 # top-level calls
 
-@Typeface.loads('bdf', name='BDF')
+@Loaders.register('bdf', name='BDF')
 def load(instream):
     """Load font from a .bdf file."""
     nchars, comments, bdf_props, x_props = _read_bdf_global(instream)
@@ -141,7 +142,7 @@ def load(instream):
     return Typeface([Font(glyphs, labels, comments=comments, properties=properties)])
 
 
-@Typeface.saves('bdf', multi=False)
+@Savers.register('bdf', multi=False)
 def save(font, outstream):
     """Write fonts to a .bdf file."""
     _save_bdf(font, outstream)

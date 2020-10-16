@@ -13,13 +13,14 @@ except ImportError:
     Image = None
 from .base import pair, rgb
 from .binary import ceildiv
+from .formats import Loaders, Savers
 from .typeface import Typeface
 from .font import Font
 from .glyph import Glyph
 
 
 if Image:
-    @Typeface.loads('png', 'bmp', 'gif', 'image', name='Bitmap Image', binary=True)
+    @Loaders.register('png', 'bmp', 'gif', 'image', name='Bitmap Image', binary=True)
     def load(
             infile,
             cell:pair=(8, 8),
@@ -78,7 +79,7 @@ if Image:
         return Typeface([Font(glyphs)])
 
 
-    @Typeface.saves('png', 'bmp', 'gif', 'image', binary=True, multi=False)
+    @Savers.register('png', 'bmp', 'gif', 'image', binary=True, multi=False)
     def save(
             font, outfile,
             format:str='png',
