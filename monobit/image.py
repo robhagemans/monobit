@@ -76,7 +76,7 @@ if Image:
             for _cell in crops
         ]
         # set code points
-        return Typeface([Font(glyphs)])
+        return Font(glyphs)
 
 
     @Savers.register('png', 'bmp', 'gif', 'image', binary=True, multi=False)
@@ -129,16 +129,16 @@ def _to_image(
     return img
 
 def show(
-        typeface,
+        pack,
         columns=32, margin=(0, 0), padding=(0, 0), scale=(1, 1),
         border=(32, 32, 32), back=(0, 0, 0), fore=(255, 255, 255),
         encoding=None
     ):
-    """Show font as image."""
-    for font in typeface:
+    """Show font(s) as image."""
+    for font in pack:
         img = _to_image(font, columns, margin, padding, scale, border, back, fore, encoding)
         img.show()
-    return typeface
+    return pack
 
 
 def render(

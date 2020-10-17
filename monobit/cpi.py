@@ -100,14 +100,14 @@ _FORMAT_NAME = {
 }
 
 
-@Loaders.register('cpi', name='CPI', binary=True)
+@Loaders.register('cpi', name='CPI', binary=True, multi=True)
 def load(instream):
     """Load fonts from CPI file."""
     data = instream.read()
     fonts = _parse_cpi(data)
     return Typeface(fonts)
 
-@Loaders.register('cp', name='Codepage', binary=True)
+@Loaders.register('cp', name='Codepage', binary=True, multi=True)
 def load_cp(instream):
     """Load fonts from CP file."""
     data = instream.read()

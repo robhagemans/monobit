@@ -11,7 +11,6 @@ import ctypes
 from .binary import ceildiv, friendlystruct
 from .raw import load_aligned
 from .formats import Loaders, Savers
-from .typeface import Typeface
 from .font import Font, Label
 from .glyph import Glyph
 
@@ -74,4 +73,4 @@ def load(instream):
         'encoding': 'zx-spectrum',
     }
     labels = {_i + 32: _i for _i, _ in enumerate(glyphs)}
-    return Typeface([Font(glyphs, labels, (), properties)])
+    return Font(glyphs, labels, (), properties)

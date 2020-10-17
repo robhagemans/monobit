@@ -79,8 +79,15 @@ class Loaders:
         return loader(infile, **kwargs)
 
     @classmethod
-    def register(cls, *formats, name=None, binary=False, container=False):
-        """Decorator to register font loader."""
+    def register(cls, *formats, name=None, binary=False, multi=False, container=False):
+        """
+        Decorator to register font loader.
+            *formats: list of extensions covered by this function
+            name: name of the format
+            binary: format is binary, not text
+            multi: format can contain multiple fonts
+            container: format is stored as files in a directory or other container
+        """
         if name is None:
             name = formats[0]
 
@@ -89,9 +96,9 @@ class Loaders:
             @wraps(load)
             def _load_func(infile, **kwargs):
                 if container:
-                    return _container_loader(load, infile, binary, name, **kwargs)
+                    return _container_loader(load, infile, binary, multi, name, **kwargs)
                 else:
-                    return _stream_loader(load, infile, binary, name, **kwargs)
+                    return _stream_loader(load, infile, binary, multi, name, **kwargs)
             # register loader
             _load_func.script_args = load.__annotations__
             for format in formats:
@@ -101,7 +108,7 @@ class Loaders:
         return _load_decorator
 
 
-def _container_loader(load, infile, binary, format, **kwargs):
+def _container_loader(load, infile, binary, multi, format, **kwargs):
     """Open a container and provide to font loader."""
     if not infile or infile == '-':
         infile = sys.stdin.buffer
@@ -121,11 +128,11 @@ def _container_loader(load, infile, binary, format, **kwargs):
                     'Container format expected but encountering non-container stream'
                 )
     with container_type(infile, 'r') as zip_con:
-        pack = load(zip_con, **kwargs)
-        return _set_extraction_props(pack, infile, format)
+        font_or_pack = load(zip_con, **kwargs)
+        return _set_extraction_props(font_or_pack, infile, format, multi)
 
 
-def _stream_loader(load, infile, binary, format, **kwargs):
+def _stream_loader(load, infile, binary, multi, format, **kwargs):
     """Open a single- or multifont format."""
     if not infile or infile == '-':
         infile = sys.stdin.buffer
@@ -148,8 +155,8 @@ def _stream_loader(load, infile, binary, format, **kwargs):
     if not container_type:
         if isinstance(infile, (str, bytes)):
             with _open_stream(io, infile, 'r', binary) as instream:
-                pack = load(instream, **kwargs)
-                return _set_extraction_props(pack, infile, format)
+                font_or_pack = load(instream, **kwargs)
+                return _set_extraction_props(font_or_pack, infile, format, multi)
         else:
             # check text/binary
             if isinstance(infile.read(0), bytes):
@@ -158,15 +165,19 @@ def _stream_loader(load, infile, binary, format, **kwargs):
             else:
                 if binary:
                     raise ValueError('This format requires a binary stream, not a text stream.')
-            pack = load(infile, **kwargs)
-            return _set_extraction_props(pack, infile, format)
+            font_or_pack = load(infile, **kwargs)
+            return _set_extraction_props(font_or_pack, infile, format, multi)
     else:
         with container_type(infile, 'r') as zip_con:
             packs = []
             for name in zip_con:
                 with _open_stream(zip_con, name, 'r', binary) as stream:
-                    pack = load(stream, **kwargs)
-                    packs.append(_set_extraction_props(pack, name, format))
+                    font_or_pack = load(stream, **kwargs)
+                    font_or_pack = _set_extraction_props(font_or_pack, name, format)
+                    if multi:
+                        packs.append(font_or_pack)
+                    else:
+                        packs.append([font_or_pack])
             return Typeface([_font for _pack in packs for _font in _pack])
 
 
@@ -174,12 +185,15 @@ def _has_magic(instream, magic):
     """Check if a binary stream matches the given signature."""
     return instream.peek(len(magic)).startswith(magic)
 
-def _set_extraction_props(pack, infile, format):
+def _set_extraction_props(font_or_pack, infile, format, multi):
     """Return copy with source-name and source-format set."""
-    return Typeface(
-        _set_font_extraction_props(_font, infile, format)
-        for _font in pack
-    )
+    if multi:
+        return Typeface(
+            _set_font_extraction_props(_font, infile, format)
+            for _font in font_or_pack
+        )
+    else:
+        return _set_font_extraction_props(font_or_pack, infile, format)
 
 def _set_font_extraction_props(font, infile, format):
     """Return copy of font with source-name and source-format set."""
@@ -215,7 +229,6 @@ class Savers:
             raise ValueError('Cannot save to format `{}`'.format(format))
 
     @classmethod
-    @scriptable
     def save(cls, pack, outfile:str, format:str='', **kwargs):
         """Write to file, return unchanged."""
         saver = cls.get_saver(outfile, format)
@@ -223,8 +236,14 @@ class Savers:
         return pack
 
     @classmethod
-    def register(cls, *formats, binary=False, multi=True, container=False):
-        """Decorator to register font saver."""
+    def register(cls, *formats, binary=False, multi=False, container=False):
+        """
+        Decorator to register font saver.
+            *formats: extensions covered by registered function
+            binary: format is binary, not text
+            multi: format can contain multiple fonts
+            container: format is stored as files in a directory or other container
+        """
 
         def _save_decorator(save):
             # stream output wrapper

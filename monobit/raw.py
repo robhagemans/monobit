@@ -9,7 +9,6 @@ import logging
 
 from .binary import ceildiv, bytes_to_bits
 from .formats import Loaders, Savers
-from .typeface import Typeface
 from .font import Font
 from .glyph import Glyph
 from .base import boolean, pair
@@ -25,7 +24,7 @@ def load(instream, cell:pair=(8, 8), n_chars:int=None, offset:int=0, strike:bool
         cells = load_strike(instream, cell, n_chars)
     else:
         cells = load_aligned(instream, cell, n_chars)
-    return Typeface([Font(cells)])
+    return Font(cells)
 
 
 @Savers.register('dos', 'bin', 'rom', 'raw', binary=True, multi=False)

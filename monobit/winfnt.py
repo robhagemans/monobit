@@ -33,7 +33,6 @@ import itertools
 
 from .binary import friendlystruct, bytes_to_bits, ceildiv, align
 from .formats import Loaders, Savers
-from .typeface import Typeface
 from .font import Font, Coord
 from .glyph import Glyph
 
@@ -275,7 +274,7 @@ _GLYPH_ENTRY = {
 def load(instream):
     """Load a Windows .FNT file."""
     font = parse_fnt(instream.read())
-    return Typeface([font])
+    return font
 
 @Savers.register('fnt', binary=True, multi=False)
 def save(font, outstream, version:int=2):

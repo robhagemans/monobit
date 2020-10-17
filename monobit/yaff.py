@@ -60,15 +60,10 @@ _DRAW_PARAMETERS = dict(
 @Loaders.register('yaff', 'text', 'txt', name='monobit-yaff')
 def load(instream):
     """Read a plaintext font file."""
-    fonts = []
-    while True:
-        font = _load_font(instream, fore='@', back='.', key_format=Label)
-        if font is None:
-            break
-        fonts.append(font)
-    if fonts:
-        return Typeface(fonts)
-    raise ValueError('No fonts found in file.')
+    font = _load_font(instream, fore='@', back='.', key_format=Label)
+    if font is None:
+        raise ValueError('No fonts found in file.')
+    return font
 
 @Savers.register('yaff', 'text', 'txt', multi=False)
 def save(font, outstream):
@@ -80,8 +75,10 @@ def save(font, outstream):
 @Loaders.register('draw', name='hexdraw')
 def load_draw(instream):
     """Read a hexdraw font file."""
-    fonts = [_load_font(instream, fore='#', back='-', key_format=draw_input_key)]
-    return Typeface(fonts)
+    font = _load_font(instream, fore='#', back='-', key_format=draw_input_key)
+    if font is None:
+        raise ValueError('No fonts found in file.')
+    return font
 
 @Savers.register('draw', multi=False)
 def save_draw(font, outstream):

@@ -12,7 +12,6 @@ import logging
 import string
 
 from .text import clean_comment, split_global_comment, write_comments
-from .typeface import Typeface
 from .formats import Loaders, Savers
 from .font import Font, Label
 from .glyph import Glyph
@@ -70,7 +69,7 @@ def load(instream):
     comments[None] = global_comment
     # preserve any comment at end of file
     comments[label].extend(clean_comment(current_comment))
-    return Typeface([Font(glyphs, labels, comments=comments)])
+    return Font(glyphs, labels, comments=comments)
 
 
 @Savers.register('hex', multi=False)

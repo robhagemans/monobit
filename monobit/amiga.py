@@ -11,7 +11,6 @@ import logging
 
 from .binary import friendlystruct, bytes_to_bits
 from .formats import Loaders, Savers
-from .typeface import Typeface
 from .font import Font, Coord
 from .glyph import Glyph
 
@@ -113,7 +112,7 @@ def load(f):
     if hunk_id != _HUNK_CODE:
         raise ValueError('Not an Amiga font data file: no code hunk found (id %04x)' % hunk_id)
     glyphs, labels, props = _read_font_hunk(f)
-    return Typeface([Font(glyphs, labels, properties=props)])
+    return Font(glyphs, labels, properties=props)
 
 
 class _FileUnpacker:

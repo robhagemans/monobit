@@ -32,7 +32,6 @@ import logging
 
 from .binary import friendlystruct, ceildiv, align
 from .formats import Loaders, Savers
-from .typeface import Typeface
 
 from .winfnt import parse_fnt, create_fnt
 
@@ -235,7 +234,7 @@ _IMAGE_RESOURCE_DATA_ENTRY = friendlystruct(
 ##############################################################################
 # top level functions
 
-@Loaders.register('fon', name='Windows FON', binary=True)
+@Loaders.register('fon', name='Windows FON', binary=True, multi=True)
 def load(instream):
     """Load a Windows .FON file."""
     data = instream.read()
@@ -262,11 +261,11 @@ def load(instream):
     ]
     return Typeface(fonts)
 
-@Savers.register('fon', binary=True)
-def save(typeface, outstream, version:int=2):
+@Savers.register('fon', binary=True, multi=True)
+def save(pack, outstream, version:int=2):
     """Write fonts to a Windows .FON file."""
-    outstream.write(_create_fon(typeface, version*0x100))
-    return typeface
+    outstream.write(_create_fon(pack, version*0x100))
+    return pack
 
 
 ##############################################################################
@@ -490,13 +489,13 @@ def _create_resource_table(header_size, post_size, resdata_size, n_fonts, font_s
     return bytes(res_table).ljust(res_size_aligned, b'\0')
 
 
-def _create_nonresident_name_table(typeface):
+def _create_nonresident_name_table(pack):
     """Non-resident name tabe containing the FONTRES line."""
     # get name, dpi of first font
     # FONTRES is probably largely ignored anyway
-    families = list(set(font.family for font in typeface if font.family))
+    families = list(set(font.family for font in pack if font.family))
     if not families:
-        names = list(set(font.name for font in typeface if font.name))
+        names = list(set(font.name for font in pack if font.name))
         if not names:
             name = 'NoName'
         else:
@@ -505,12 +504,12 @@ def _create_nonresident_name_table(typeface):
         name = families[0]
         if len(families) > 1:
             logging.warning('More than one font family name in container. Using `%s`.', name)
-    resolutions = list(set(font.dpi for font in typeface))
+    resolutions = list(set(font.dpi for font in pack))
     if len(resolutions) > 1:
         logging.warning('More than one resolution in container. Using `%s`.', resolutions[0])
     dpi = resolutions[0]
     xdpi, ydpi = dpi.x, dpi.y
-    points = [_font.point_size for _font in typeface]
+    points = [_font.point_size for _font in pack]
     # FONTRES Aspect, LogPixelsX, LogPixelsY : Name Pts0,Pts1,... (Device res.)
     nonres = ('FONTRES %d,%d,%d : %s %s' % (
         (100 * xdpi) // ydpi, xdpi, ydpi,
@@ -519,10 +518,10 @@ def _create_nonresident_name_table(typeface):
     return bytes([len(nonres)]) + nonres + b'\0\0\0'
 
 
-def _create_resident_name_table(typeface):
+def _create_resident_name_table(pack):
     """Resident name table containing the module name."""
     # use font-family name of first font
-    families = list(set(font.family.upper() for font in typeface if font.family))
+    families = list(set(font.family.upper() for font in pack if font.family))
     if not families:
         name = _MODULE_NAME.upper()
     else:
@@ -535,10 +534,10 @@ def _create_resident_name_table(typeface):
     return bytes([len(mname)]) + mname.encode('ascii') + b'\0\0\0'
 
 
-def _create_resource_data(typeface, version):
+def _create_resource_data(pack, version):
     """Store the actual font resources."""
     # construct the FNT resources
-    fonts = [create_fnt(_font, version) for _font in typeface]
+    fonts = [create_fnt(_font, version) for _font in pack]
     # construct the FONTDIR (FONTGROUPHDR)
     # https://docs.microsoft.com/en-us/windows/desktop/menurc/fontgrouphdr
     fontdir_struct = friendlystruct(
@@ -548,7 +547,7 @@ def _create_resource_data(typeface, version):
     )
     fontdir = bytes(fontdir_struct(len(fonts))) + b''.join(
         _create_fontdirentry(_i+1, fonts[_i], _font)
-        for _i, _font in enumerate(typeface)
+        for _i, _font in enumerate(pack)
     )
     resdata = fontdir.ljust(align(len(fontdir), _ALIGN_SHIFT), b'\0')
     font_start = [len(resdata)]
@@ -560,18 +559,18 @@ def _create_resource_data(typeface, version):
     return resdata, font_start
 
 
-def _create_fon(typeface, version=0x200):
+def _create_fon(pack, version=0x200):
     """Create a .FON font library."""
-    n_fonts = len(typeface)
+    n_fonts = len(pack)
     # MZ DOS executable stub
     stubdata = _create_mz_stub()
     # (non)resident name tables
-    nonres = _create_nonresident_name_table(typeface)
-    res = _create_resident_name_table(typeface)
+    nonres = _create_nonresident_name_table(pack)
+    res = _create_resident_name_table(pack)
     # entry table / imported names table should contain a zero word.
     entry = b'\0\0'
     # the actual font data
-    resdata, font_start = _create_resource_data(typeface, version)
+    resdata, font_start = _create_resource_data(pack, version)
     # create resource table and align
     header_size = len(stubdata) + _NE_HEADER.size
     post_size = len(res) + len(entry) + len(nonres)

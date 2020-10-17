@@ -10,7 +10,6 @@ import logging
 from .binary import ceildiv, friendlystruct
 from .raw import load_aligned
 from .formats import Loaders, Savers
-from .typeface import Typeface
 from .font import Font, Label
 from .glyph import Glyph
 
@@ -59,7 +58,7 @@ _PSF2_SEPARATOR = b'\xFF'
 _PSF2_STARTSEQ = b'\xFE'
 
 
-@Loaders.register('psf', name='PSF', binary=True)
+@Loaders.register('psf', name='PSF', binary=True, multi=False)
 def load(instream):
     """Load font from psf file."""
     magic = instream.read(2)
@@ -103,7 +102,7 @@ def load(instream):
             for _index, _seq in enumerate(table)
             if _seq
         })
-    return Typeface([Font(cells, labels, properties=properties)])
+    return Font(cells, labels, properties=properties)
 
 def _read_unicode_table(instream, separator, startseq, encoding):
     """Read the Unicode table in a PSF2 file."""

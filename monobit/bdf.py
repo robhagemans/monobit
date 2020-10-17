@@ -8,7 +8,6 @@ licence: https://opensource.org/licenses/MIT
 import logging
 
 from .formats import Loaders, Savers
-from .typeface import Typeface
 from .font import Font, Coord
 from .glyph import Glyph
 
@@ -139,7 +138,7 @@ def load(instream):
     if nchars != len(glyphs):
         logging.warning('Number of characters found does not match CHARS declaration.')
     glyphs, properties = _parse_properties(glyphs, glyph_props, bdf_props, x_props)
-    return Typeface([Font(glyphs, labels, comments=comments, properties=properties)])
+    return Font(glyphs, labels, comments=comments, properties=properties)
 
 
 @Savers.register('bdf', multi=False)

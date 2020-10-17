@@ -9,7 +9,6 @@ import string
 
 from .binary import ceildiv
 from .formats import Loaders, Savers
-from .typeface import Typeface
 from .font import Font
 from .glyph import Glyph
 
@@ -32,7 +31,7 @@ def load(infile, identifier:str, width:int, height:int):
         Glyph.from_bytes(_bytes, width)
         for _bytes in glyphbytes
     ]
-    return Typeface([Font(glyphs)])
+    return Font(glyphs)
 
 
 def _int_from_c(cvalue):
