@@ -19,7 +19,7 @@ except ImportError:
 from .base import ZipContainer, boolean, pair, unique_name
 from .binary import friendlystruct
 from .formats import Loaders, Savers
-from .typeface import Typeface
+from .pack import Pack
 from .font import Font, Coord
 from .glyph import Glyph
 from .winfnt import _CHARSET_MAP
@@ -43,7 +43,7 @@ if Image:
                 fonts.append(_read_bmfont(container, desc))
             except ValueError as e:
                 logging.error('Could not extract %s: %s', desc, e)
-        return Typeface(fonts)
+        return Pack(fonts)
 
     @Savers.register('bmf', binary=True, multi=True, container=True)
     def save(

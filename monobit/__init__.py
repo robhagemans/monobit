@@ -10,7 +10,7 @@ import sys as _sys
 assert _sys.version_info >= (3, 6)
 
 from .base import VERSION as __version__
-from .typeface import Typeface
+from .pack import Pack
 from .formats import Loaders, Savers
 from .text import to_text as _to_text
 
@@ -36,7 +36,7 @@ from .image import show, render
 # get font operations
 OPERATIONS = {
     _name: _func
-    for _name, _func in Typeface.__dict__.items()
+    for _name, _func in Pack.__dict__.items()
     if hasattr(_func, 'scriptable')
 }
 

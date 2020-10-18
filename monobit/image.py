@@ -14,7 +14,6 @@ except ImportError:
 from .base import pair, rgb
 from .binary import ceildiv
 from .formats import Loaders, Savers
-from .typeface import Typeface
 from .font import Font
 from .glyph import Glyph
 

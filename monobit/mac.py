@@ -9,7 +9,7 @@ import logging
 
 from .binary import friendlystruct, bytes_to_bits
 from .formats import Loaders, Savers
-from .typeface import Typeface
+from .pack import Pack
 from .font import Font, Glyph, Coord
 
 
@@ -322,7 +322,7 @@ _NON_ROMAN_NAMES = {
 def load_dfont(instream):
     """Load a MacOS suitcase."""
     data = instream.read()
-    return Typeface(_parse_resource_fork(data))
+    return Pack(_parse_resource_fork(data))
 
 @Loaders.register('apple',
     name='MacOS resource (AppleSingle/AppleDouble container)',
@@ -357,7 +357,7 @@ def _parse_apple(data):
                 )
                 for font in fonts
             ]
-            return Typeface(fonts)
+            return Pack(fonts)
     raise ValueError('No resource fork found.')
 
 

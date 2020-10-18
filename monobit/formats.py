@@ -17,7 +17,7 @@ from .base import (
     DirContainer, ZipContainer, TextMultiStream, unique_name
 )
 from .font import Font
-from .typeface import Typeface
+from .pack import Pack
 
 
 def _open_stream(on, outfile, mode, binary=False):
@@ -178,7 +178,7 @@ def _stream_loader(load, infile, binary, multi, format, **kwargs):
                         packs.append(font_or_pack)
                     else:
                         packs.append([font_or_pack])
-            return Typeface([_font for _pack in packs for _font in _pack])
+            return Pack([_font for _pack in packs for _font in _pack])
 
 
 def _has_magic(instream, magic):
@@ -188,7 +188,7 @@ def _has_magic(instream, magic):
 def _set_extraction_props(font_or_pack, infile, format, multi):
     """Return copy with source-name and source-format set."""
     if multi:
-        return Typeface(
+        return Pack(
             _set_font_extraction_props(_font, infile, format)
             for _font in font_or_pack
         )
@@ -249,7 +249,7 @@ class Savers:
             @wraps(save)
             def _save_func(pack_or_font, outfile, **kwargs):
                 if isinstance(pack_or_font, Font):
-                    pack = Typeface([pack_or_font])
+                    pack = Pack([pack_or_font])
                 else:
                     pack = pack_or_font
                 if container:

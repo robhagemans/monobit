@@ -16,7 +16,7 @@ import logging
 from .binary import ceildiv, friendlystruct
 from .raw import parse_aligned
 from .formats import Loaders, Savers
-from .typeface import Typeface
+from .pack import Pack
 from .font import Font
 from .glyph import Glyph
 
@@ -105,14 +105,14 @@ def load(instream):
     """Load fonts from CPI file."""
     data = instream.read()
     fonts = _parse_cpi(data)
-    return Typeface(fonts)
+    return Pack(fonts)
 
 @Loaders.register('cp', name='Codepage', binary=True, multi=True)
 def load_cp(instream):
     """Load fonts from CP file."""
     data = instream.read()
     fonts, _ = _parse_cp(data, 0)
-    return Typeface(fonts)
+    return Pack(fonts)
 
 
 

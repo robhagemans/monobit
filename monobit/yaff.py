@@ -11,7 +11,6 @@ from types import SimpleNamespace
 
 from .text import clean_comment, write_comments, split_global_comment, to_text
 from .formats import Loaders, Savers
-from .typeface import Typeface
 from .font import PROPERTIES, Font, Label
 from .glyph import Glyph
 
