@@ -197,16 +197,15 @@ def _set_extraction_props(font_or_pack, infile, format, multi):
 
 def _set_font_extraction_props(font, infile, format):
     """Return copy of font with source-name and source-format set."""
+    if isinstance(infile, (str, bytes)):
+        source_name = Path(infile).name
+    else:
+        source_name = Path(infile.name).name
     new_props = {
         'converter': 'monobit v{}'.format(VERSION),
+        'source-format': font.source_format or format,
+        'source-name': font.source_name or source_name
     }
-    if not font.source_name:
-        if isinstance(infile, (str, bytes)):
-            new_props['source-name'] = Path(infile).name
-        else:
-            new_props['source-name'] = Path(infile.name).name
-    if not font.source_format:
-        new_props['source-format'] = format
     return font.set_properties(**new_props)
 
 
@@ -248,7 +247,11 @@ class Savers:
         def _save_decorator(save):
             # stream output wrapper
             @wraps(save)
-            def _save_func(pack, outfile, **kwargs):
+            def _save_func(pack_or_font, outfile, **kwargs):
+                if isinstance(pack_or_font, Font):
+                    pack = Typeface([pack_or_font])
+                else:
+                    pack = pack_or_font
                 if container:
                     _container_saver(save, pack, outfile, **kwargs)
                 elif multi:
