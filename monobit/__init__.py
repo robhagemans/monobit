@@ -1,7 +1,7 @@
 """
 monobit - tools for working with monochrome bitmap fonts
 
-(c) 2019 Rob Hagemans
+(c) 2019--2020 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -11,6 +11,8 @@ assert _sys.version_info >= (3, 6)
 
 from .base import VERSION as __version__
 from .pack import Pack
+from .font import Font
+from .encoding import Codepage
 from .formats import Loaders, Savers
 from .text import to_text as _to_text
 
