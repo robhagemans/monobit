@@ -172,12 +172,8 @@ class Font:
         if not labels:
             labels = {_i: _i for _i in range(len(glyphs))}
         self._labels = {Label(_k): _v for _k, _v in labels.items()}
-        if isinstance(comments, dict):
-            # per-property comments
-            self._comments = comments
-        else:
-            # global comments only
-            self._comments = {None: comments}
+        # global comments
+        self._comments = comments
         # set encoding first so we can set labels
         self._properties = {}
         self._add_unicode_data(properties.get('encoding', None))
@@ -453,17 +449,14 @@ class Font:
     ##########################################################################
     # comments
 
-    def get_comments(self, key=None):
-        """Get a comment for a key, or global comment if no key provided."""
-        return self._comments.get(key, [])
+    def get_comments(self):
+        """Get global comments."""
+        return tuple(self._comments)
 
     @scriptable
-    def add_comments(self, new_comment:str='', key:str=None):
-        """Get a comment for a key, or global comment if no key provided."""
-        comments = {**self._comments}
-        if key not in comments:
-            comments[key] = []
-        comments[key] = list(comments[key]) + new_comment.splitlines()
+    def add_comments(self, new_comment:str=''):
+        """Return a font with added comments."""
+        comments = [*self._comments] + new_comment.splitlines()
         return Font(self._glyphs, self._labels, comments, self._properties)
 
     @scriptable

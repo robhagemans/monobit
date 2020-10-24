@@ -29,9 +29,7 @@ def load(instream):
     """Load font from a .hex file."""
     label = None
     glyphs = []
-    comments = {}
     labels = {}
-    global_comment = []
     current_comment = []
     for line in instream:
         line = line.rstrip('\r\n')
@@ -46,6 +44,8 @@ def load(instream):
         if label is None:
             global_comment, current_comment = split_global_comment(current_comment)
             global_comment = clean_comment(global_comment)
+        else:
+            global_comment = []
         # parse code line
         key, value = line.split(':', 1)
         value = value.strip()
@@ -63,12 +63,13 @@ def load(instream):
         # unicode label
         label = Label.from_unicode(''.join(chr(int(_key, 16)) for _key in key.split(',')))
         labels[label] = len(glyphs)
-        glyphs.append(Glyph.from_hex(value, width, height))
-        comments[label] = clean_comment(current_comment)
+        current_glyph = Glyph.from_hex(value, width, height)
+        current_glyph = current_glyph.add_comments(clean_comment(current_comment))
+        glyphs.append(current_glyph)
         current_comment = []
-    comments[None] = global_comment
-    # preserve any comment at end of file
-    comments[label].extend(clean_comment(current_comment))
+    comments = global_comment
+    # preserve any comment at end of file as part of global comment
+    comments.extend(clean_comment(current_comment))
     return Font(glyphs, labels, comments=comments)
 
 
@@ -94,7 +95,7 @@ def save(font, outstream):
 
 @Savers.register('hext', multi=False)
 def save_hext(font, outstream):
-    """Write font to a .hex file."""
+    """Write font to an extended .hex file."""
     write_comments(outstream, font.get_comments(), comm_char='#', is_global=True)
     for label, char in font.iter_unicode():
         if char.width not in (8, 16):
@@ -109,7 +110,7 @@ def save_hext(font, outstream):
     return font
 
 def _write_hex_extended(outstream, label, char):
-    """Write font to a .hex file, extended syntax."""
+    """Write character to a .hex file, extended syntax."""
     write_comments(outstream, char.comments, comm_char='#')
     hexlabel = u','.join(f'{ord(_c):04X}' for _c in label.unicode)
     hex = char.as_hex().upper()

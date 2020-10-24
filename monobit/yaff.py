@@ -141,11 +141,8 @@ def _load_font(instream, fore, back, key_format):
     if not elements and not global_comment:
         # no font to read, no comments to keep
         return None
-    # preserve any comment at end of file
-    current_comment = clean_comment(current_comment)
-    if current_comment:
-        elements.append(new_cluster())
-        elements[-1].comments = current_comment
+
+    # parse properties
     # properties: anything that contains more than .@
     property_elements = [
         _el for _el in elements
@@ -157,6 +154,8 @@ def _load_font(instream, fore, back, key_format):
         for _el in property_elements
         for _key in _el.labels
     }
+
+    # parse glyphs
     # text version of glyphs
     # a glyph is any key/value where the value contains no alphanumerics
     glyph_elements = [
@@ -177,25 +176,27 @@ def _load_font(instream, fore, back, key_format):
         )
         for _el in glyph_elements
     ]
-    # extract property comments
-    comments = {
-        key_format(_key): _el.comments
-        for _el in property_elements
-        for _key in _el.labels
-    }
-    comments[None] = clean_comment(global_comment)
+
+    # parse comments
+    # global comment
+    comments = clean_comment(global_comment)
+    # append property comments to global comment
+    comments.extend(_el.comments for _el in property_elements)
+    # preserve any comment at end of file
+    comments.extend(clean_comment(current_comment))
+    # construct font
     return Font(glyphs, labels, comments, properties)
 
 
 ##############################################################################
 # write file
 
-def _write_glyph(outstream, labels, glyph, fore, back, comment, tab, key_format, key_sep, empty):
+def _write_glyph(outstream, labels, glyph, fore, back, comm_char, tab, key_format, key_sep, empty):
     """Write out a single glyph in text format."""
     if not labels:
         logging.warning('No labels for glyph: %s', glyph)
         return
-    write_comments(outstream, glyph.comments, comm_char=comment)
+    write_comments(outstream, glyph.comments, comm_char=comm_char)
     for ordinal in labels:
         outstream.write(key_format(ordinal) + key_sep)
     glyphtxt = to_text(glyph.as_matrix(fore, back), line_break='\n'+tab)
@@ -226,6 +227,8 @@ def _write_prop(outstream, key, value, tab):
 def _save_yaff(font, outstream, fore, back, comment, tab, key_format, key_sep, empty):
     """Write one font to a plaintext stream."""
     write_comments(outstream, font.get_comments(), comm_char=comment, is_global=True)
+    # we always output name, font-size and spacing
+    # plus anything that is different from the default
     props = {
         'name': font.name,
         'point-size': font.point_size,
@@ -233,12 +236,12 @@ def _save_yaff(font, outstream, fore, back, comment, tab, key_format, key_sep, e
         **font.nondefault_properties
     }
     if props:
+        # write recognised yaff properties first, in defined order
         for key in PROPERTIES:
-            write_comments(outstream, font.get_comments(key), comm_char=comment)
             value = props.pop(key, '')
             _write_prop(outstream, key, value, tab)
+        # write out any remaining properties
         for key, value in props.items():
-            write_comments(outstream, font.get_comments(key), comm_char=comment)
             _write_prop(outstream, key, value, tab)
         outstream.write('\n')
     for labels, glyph in font:
