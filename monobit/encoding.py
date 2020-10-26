@@ -5,7 +5,7 @@ monobit.encoding - unicode encodings
 licence: https://opensource.org/licenses/MIT
 """
 
-from .label import Label
+import unicodedata
 
 
 _ENCODING_ALIASES = {
@@ -53,16 +53,17 @@ class Codec:
         self._encoding = encoding
 
     def ord_to_unicode(self, ordinal):
-        """Convert ordinal to unicode label."""
+        """Convert ordinal to unicode, return empty string if missing."""
         byte = bytes([int(ordinal)])
-        unicode = byte.decode(self._encoding)
-        return str(Label.from_unicode(unicode))
+        # ignore: return empty string if not found
+        unicode = byte.decode(self._encoding, errors='ignore')
+        return unicode
 
-    def unicode_to_ord(self, key):
-        """Convert ordinal to unicode label."""
-        unicode = Label(key).unicode
-        uniord = ord(unicode)
-        byte = unicode.encode(self._encoding, errors='strict')
+    def unicode_to_ord(self, unicode):
+        """Convert unicode to ordinal, raise ValueError if missing."""
+        byte = unicode.encode(self._encoding, errors='ignore')
+        if not byte:
+            return None
         return byte[0]
 
 
@@ -115,19 +116,18 @@ class Codepage:
         return mapping
 
     def ord_to_unicode(self, ordinal):
-        """Convert ordinal to unicode label."""
+        """Convert ordinal to unicode, return empty string if missing."""
         try:
-            return str(Label.from_unicode(self._mapping[int(ordinal)]))
+            return self._mapping[int(ordinal)]
         except KeyError as e:
-            raise ValueError(str(e)) from e
+            return ''
 
-    def unicode_to_ord(self, key):
-        """Convert ordinal to unicode label."""
-        unicode = Label(key).unicode
+    def unicode_to_ord(self, unicode):
+        """Convert unicode to ordinal, return None if missing."""
         try:
             return self._inv_mapping[unicode]
         except KeyError as e:
-            raise ValueError(str(e)) from e
+            return None
 
     @classmethod
     def override(cls, name, filename):
@@ -140,27 +140,27 @@ class Unicode:
 
     @staticmethod
     def ord_to_unicode(ordinal):
-        """Convert ordinal to unicode label."""
-        return str(Label.from_unicode(chr(int(ordinal))))
+        """Convert ordinal to unicode."""
+        return chr(int(ordinal))
 
     @staticmethod
-    def unicode_to_ord(key):
-        """Convert ordinal to unicode label."""
-        uc = Label(key).unicode
-        if len(uc) > 1:
+    def unicode_to_ord(unicode):
+        """Convert unicode to ordinal."""
+        unicode = unicodedata.normalize('NFC', unicode)
+        if len(unicode) > 1:
             # grapheme clusters
             # when encoding == Unicode we shouldn't really need unicode_to_ord
             # however if we do, grapheme clusters are not supported
-            raise ValueError(str(key))
-        return ord(uc)
+            return None
+        return ord(unicode)
 
 
 class NoEncoding:
 
     @staticmethod
     def ord_to_unicode(ordinal):
-        raise ValueError(ordinal)
+        return ''
 
     @staticmethod
     def unicode_to_ord(key):
-        raise ValueError(str(key))
+        return None

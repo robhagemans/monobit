@@ -11,7 +11,7 @@ import ctypes
 from .binary import ceildiv, friendlystruct
 from .raw import load_aligned
 from .formats import Loaders, Savers
-from .font import Font, Label
+from .font import Font
 from .glyph import Glyph
 
 
@@ -72,5 +72,8 @@ def load(instream):
         'tracking': header.tracking,
         'encoding': 'zx-spectrum',
     }
-    labels = {_i + 32: _i for _i, _ in enumerate(glyphs)}
-    return Font(glyphs, labels, (), properties)
+    glyphs = [
+        _glyph.set_annotations(codepoint=_index+32)
+        for _index, _glyph in enumerate(glyphs)
+    ]
+    return Font(glyphs, properties=properties)

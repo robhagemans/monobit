@@ -14,8 +14,7 @@ import unicodedata
 
 from .base import scriptable
 from .glyph import Glyph
-from .label import Label
-from .encoding import Unicode, normalise_encoding, _get_encoding
+from .encoding import Unicode, NoEncoding, normalise_encoding, _get_encoding
 
 
 
@@ -57,7 +56,7 @@ class Coord(NamedTuple):
 
 
 class KerningTable:
-    """(Label, Label) -> int."""
+    """(str, str) -> int."""
 
     def __init__(self, table=None):
         """Set up kerning table."""
@@ -69,7 +68,7 @@ class KerningTable:
                 for _row in table.splitlines()
             }
         self._table = {
-            (Label(_k[0]), Label(_k[1])): int(_v)
+            (_k[0], _k[1]): int(_v)
             for _k, _v in table.items()
         }
 
@@ -139,9 +138,9 @@ PROPERTIES = {
 
     # character set
     # can't be calculated, affect rendering
-    'encoding': str,
-    'default-char': Label, # use question mark to replace missing glyph
-    'word-boundary': Label, # word-break character (usually space)
+    'encoding': normalise_encoding,
+    'default-char': str, # use question mark to replace missing glyph
+    'word-boundary': str, # word-break character (usually space)
 
     # conversion metadata
     # can't be calculated, informational
@@ -164,32 +163,18 @@ _OVERRIDABLE = ('x-height', 'cap-height',)
 class Font:
     """Representation of font glyphs and metadata."""
 
-    def __init__(self, glyphs, labels=None, comments=(), properties=None):
+    def __init__(self, glyphs=(), comments=(), properties=None):
         """Create new font."""
         if not properties:
             properties = {}
         self._glyphs = tuple(glyphs)
-        if not labels:
-            labels = {_i: _i for _i in range(len(glyphs))}
-        self._labels = {Label(_k): _v for _k, _v in labels.items()}
         # global comments
-        self._comments = comments
-        # set encoding first so we can set labels
-        self._properties = {}
-        self._add_unicode_data(properties.get('encoding', None))
-        # identify multi-codepoint clusters
-        # we've already added unicode labels for codepage ordinals, so those should be included.
-        self._grapheme_clusters = set(
-            _label.unicode for _label in self._labels
-            if _label.is_unicode and len(_label.unicode) > 1
-        )
+        self._comments = tuple(comments)
         # update properties
+        self._properties = {}
         if properties:
             properties = {_k.replace('_', '-'): _v for _k, _v in properties.items()}
             for key, converter in reversed(list(PROPERTIES.items())):
-                # we've already set the encoding
-                if key == 'encoding':
-                    continue
                 try:
                     value = converter(properties.pop(key))
                 except KeyError:
@@ -214,62 +199,114 @@ class Font:
                             )
             # append nonstandard properties
             self._properties.update(properties)
+        # set encoding first so we can set labels
+        self._add_encoding_data()
+        # construct lookup tables
+        self._labels = {
+            _label: _index
+            for _index, _glyph in enumerate(self._glyphs)
+            for _label in _glyph.labels
+        }
+        self._codepoints = {
+            _glyph.codepoint: _index
+            for _index, _glyph in enumerate(self._glyphs)
+            if _glyph.codepoint is not None
+        }
+        self._chars = {
+            _glyph.char: _index
+            for _index, _glyph in enumerate(self._glyphs)
+            if _glyph.char
+        }
+        # identify multi-codepoint clusters
+        self._grapheme_clusters = set(
+            _c for _c in self._chars
+            if _c and len(_c) > 1
+        )
 
     def __repr__(self):
         """Representation."""
         return f"<Font '{self.name}'>"
 
-    def _add_unicode_data(self, encoding=None):
-        """Add unicode labels."""
-        if encoding:
-            self._properties['encoding'] = normalise_encoding(encoding)
-        self._encoding = _get_encoding(self.encoding)
-        # add unicode labels for ordinals
-        uni_labels = {}
-        for _k, _v in self._labels.items():
-            if not _k.is_ordinal:
-                continue
-            try:
-                label = Label(self._encoding.ord_to_unicode(_k))
-            except ValueError:
-                pass
-            else:
-                uni_labels[label] = _v
-        # remove ordinal labels if encoding is unicode
-        if self._encoding == Unicode:
-            self._labels = {
-                _k: _v for _k, _v in self._labels.items()
-                if not _k.is_ordinal
-            }
-        # override with explicit unicode labels, if given
-        uni_labels.update(self._labels)
-        self._labels = uni_labels
+    def _add_encoding_data(self):
+        """Add unicode annotations for codepage."""
+        has_codepoint = any(_glyph.codepoint is not None for _glyph in self._glyphs)
+        has_char = any(_glyph.char for _glyph in self._glyphs)
+        # update glyph codepoints
+        # use index as codepoint if no codepoints or chars set
+        if not has_codepoint and not has_char:
+            self._glyphs = tuple(
+                _glyph.set_annotations(codepoint=_index)
+                for _index, _glyph in enumerate(self._glyphs)
+            )
+        # update glyph unicode annotations
+        encoding = _get_encoding(self._properties.get('encoding', None))
+        self._is_unicode = (encoding == Unicode)
+        if encoding == NoEncoding:
+            # no encoding - leave codepoint and unicode labels as is
+            return
+        if self._is_unicode:
+            # only use char if encoding is unicode
+            # since codepoint field has no way of encoding grapheme clusters
+            self._glyphs = tuple(
+                _glyph.set_annotations(codepoint=None)
+                for _glyph in self._glyphs
+            )
+        else:
+            # use codepage to find char if glyph does not have char set
+            # use codepage to find codepoint if no code point set
+            self._glyphs = tuple(
+                _glyph.set_annotations(
+                    char=_glyph.char or encoding.ord_to_unicode(_glyph.codepoint),
+                    codepoint=_glyph.codepoint or encoding.unicode_to_ord(_glyph.char)
+                )
+                for _glyph in self._glyphs
+            )
 
 
     ##########################################################################
     # glyph access
 
-    def get_glyph(self, key, *, missing='raise'):
-        """Get glyph by key, default if not present."""
-        try:
-            index = self._labels[Label(key)]
-        except KeyError:
-            return self._get_fallback_glyph(key, missing)
-        return self._glyphs[index]
+    @property
+    def glyphs(self):
+        return self._glyphs
 
-    def _get_fallback_glyph(self, key='', missing='raise'):
-        """Get the fallback glyph."""
-        if missing == 'default':
-            return self.get_default_glyph()
-        if missing == 'empty':
-            return self.get_empty_glyph()
-        raise KeyError(f'No glyph found matching {key}.')
+    def get_glyph(self, key=None, *, label=None, missing='raise'):
+        """Get glyph by char, codepoint or label; default if not present."""
+        try:
+            return self._glyphs[self.get_index(key, label=label)]
+        except KeyError:
+            if missing == 'default':
+                return self.get_default_glyph()
+            if missing == 'empty':
+                return self.get_empty_glyph()
+            if missing == 'raise':
+                raise KeyError(f'No glyph found matching {key}.')
+            return missing
+
+    def get_index(self, key=None, *, label=None):
+        """Get index for given key or label, if defined."""
+        if label is not None:
+            if key is not None:
+                raise ValueError('Cannot request both key and label.')
+            try:
+                return self._labels[key]
+            except KeyError:
+                pass
+        else:
+            if isinstance(key, int):
+                if self._is_unicode:
+                    raise TypeError(f'This is a Unicode font - key must be char, not `{type(key)}`')
+                return self._codepoints[key]
+            try:
+                return self._chars[key]
+            except (KeyError, TypeError):
+                pass
+        raise KeyError(f'Could not find `{key}` in font')
 
     def get_default_glyph(self):
         """Get default glyph; empty if not defined."""
         try:
-            default_key = self._labels[self.default_char]
-            return self._glyphs[default_key]
+            return self._get_glyph(self.default_char)
         except KeyError:
             return self.get_empty_glyph()
 
@@ -277,52 +314,9 @@ class Font:
         """Get empty glyph with minimal advance (zero if bearing 0 or negative)."""
         return Glyph.empty(max(0, -self.offset.x - self.tracking), self.bounding_box.y)
 
-    def __iter__(self):
-        """Iterate over labels, glyph pairs."""
-        for index, glyph in enumerate(self._glyphs):
-            labels = tuple(_label for _label, _index in self._labels.items() if _index == index)
-            yield labels, glyph
-
-    def iter_unicode(self):
-        """Iterate over glyphs with unicode labels."""
-        for index, glyph in enumerate(self._glyphs):
-            yield from (
-                (_label, glyph) for _label, _index in self._labels.items()
-                if _index == index and _label.is_unicode
-            )
-
-    def iter_ordinal(self, encoding=None, start=0, stop=None, missing='empty'):
-        """Iterate over glyphs by ordinal; contiguous range."""
-        start = start or 0
-        stop = stop or 1 + max(int(_k) for _k in self._labels if _k.is_ordinal)
-        if encoding:
-            encoding = _get_encoding(encoding)
-        for ordinal in range(start, stop):
-            if not encoding:
-                # use only whatever ordinal was provided
-                label = ordinal
-                try:
-                    unicode = self._encoding.ord_to_unicode(ordinal)
-                except ValueError:
-                    unicode = ''
-            else:
-                # transcode from unicode labels
-                try:
-                    label = encoding.ord_to_unicode(ordinal)
-                    unicode = label
-                except ValueError:
-                    # not in target encoding
-                    continue
-            yield Label(unicode), self.get_glyph(label, missing=missing)
-
 
     ##########################################################################
     # text / character access
-
-    def get_char(self, key, missing='raise'):
-        """Get glyph by unicode character."""
-        label = Label.from_unicode(key)
-        return self.get_glyph(label, missing=missing)
 
     def _iter_string(self, string, missing='raise'):
         """Iterate over string, yielding unicode characters."""
@@ -346,12 +340,12 @@ class Font:
             for _line in text.splitlines()
         ]
         glyphs = [
-            [self.get_char(_c, missing=missing) for _c in _line]
+            [self.get_glyph(_c, missing=missing) for _c in _line]
             for _line in chars
         ]
         if self.kerning:
             kerning = {
-                (self.get_unicode_for_label(_key[0]), self.get_unicode_for_label(_key[1])): _value
+                (self.get_glyph(_key[0]).char, self.get_glyph(_key[1]).char): _value
                 for _key, _value in self.kerning.items()
             }
             kernings = [
@@ -413,69 +407,36 @@ class Font:
 
 
     ##########################################################################
-    # labels
-
-    @property
-    def number_glyphs(self):
-        """Get number of glyphs in font."""
-        return len(self._glyphs)
-
-    def get_ordinal_for_label(self, key):
-        """Get ordinal for given label, if defined."""
-        key = Label(key)
-        # maybe it's an ordinal already
-        if key.is_ordinal:
-            return int(key)
-        index = self._labels[key]
-        for label, lindex in self._labels.items():
-            if index == lindex and label.is_ordinal:
-                return int(label)
-        raise KeyError(f'No ordinal found for label `{key}`')
-
-    def get_unicode_for_label(self, key):
-        """Get unicode for given label, if defined."""
-        key = Label(key)
-        if key.is_unicode:
-            return key.unicode
-        if key.is_ordinal and self._encoding == Unicode:
-            return chr(int(key))
-        index = self._labels[key]
-        for label, lindex in self._labels.items():
-            if index == lindex and label.is_unicode:
-                return label.unicode
-        raise KeyError(f'No unicode codepoint found for label `{key}`')
-
-
-    ##########################################################################
     # comments
 
     def get_comments(self):
         """Get global comments."""
-        return tuple(self._comments)
+        return self._comments
 
     @scriptable
     def add_comments(self, new_comment:str=''):
         """Return a font with added comments."""
         comments = [*self._comments] + new_comment.splitlines()
-        return Font(self._glyphs, self._labels, comments, self._properties)
+        return Font(self._glyphs, comments, self._properties)
 
     @scriptable
     def add_glyph_names(self):
         """Add unicode glyph names as comments, if no comment already exists."""
         glyphs = list(self._glyphs)
-        for label, index in self._labels.items():
-            if label.is_unicode and label.unicode_name and not self._glyphs[index].comments:
+        for char, index in self._chars.items():
+            name = ', '.join(unicodedata.name(_cp, '') for _cp in char)
+            if name and not self._glyphs[index].comments:
                 try:
-                    category = unicodedata.category(label.unicode)
+                    category = unicodedata.category(char)
                 except TypeError:
                     # multi-codepoint glyphs
                     category = ''
                 if category.startswith('C'):
-                    description = '{}'.format(label.unicode_name)
+                    description = '{}'.format(name)
                 else:
-                    description = '[{}] {}'.format(label.unicode, label.unicode_name)
-                glyphs[index] = glyphs[index].add_comments((description,))
-        return Font(glyphs, self._labels, self._comments, self._properties)
+                    description = '[{}] {}'.format(char, name)
+                glyphs[index] = glyphs[index].add_annotations(comments=(description,))
+        return Font(glyphs, self._comments, self._properties)
 
 
     ##########################################################################
@@ -484,20 +445,16 @@ class Font:
     @scriptable
     def set_encoding(self, encoding:str=''):
         """
-        Return a copy with ordinals relabelled through a different codepage.
-        Text and unicode labels and glyph comments are dropped.
-        Note that this takes the *ordinal values* as authoritative and relabels *unicode keys*
+        Return a copy with codepoints relabelled through a different codepage.
         """
-        labels = {_k: _v for _k,_v in self._labels.items() if _k.is_ordinal}
-        glyphs = [_glyph.drop_comments() for _glyph in self._glyphs]
         properties = {**self._properties}
         properties['encoding'] = encoding
-        return Font(glyphs, labels, self._comments, properties)
+        return Font(self._glyphs, self._comments, properties)
 
     def set_properties(self, **kwargs):
         """Return a copy with amended properties."""
         return Font(
-            self._glyphs, self._labels, self._comments, {**self._properties, **kwargs}
+            self._glyphs, self._comments, {**self._properties, **kwargs}
         )
 
     @property
@@ -521,7 +478,7 @@ class Font:
             # if in yaff property list, return default
             return PROPERTIES[attr]()
         except KeyError as e:
-            raise AttributeError from e
+            raise AttributeError(e) from e
 
     def yaffproperty(fn):
         """Take property from property table, if defined; calculate otherwise."""
@@ -543,7 +500,7 @@ class Font:
         'setwidth': 'normal', # normal, condensed, expanded, etc.
         'direction': 'left-to-right', # left-to-right, right-to-left
         'encoding': '',
-        'word-boundary': 'u+0020', # word-break character (usually space)
+        'word-boundary': '\u0020', # word-break character (usually space)
     }
 
     @yaffproperty
@@ -623,9 +580,9 @@ class Font:
     @yaffproperty
     def default_char(self):
         """Default character."""
-        repl = Label('u+fffd')
-        if repl in self._labels:
-            return str(repl)
+        repl = '\ufffd'
+        if repl in self._chars:
+            return repl
         return ''
 
     @yaffproperty
@@ -665,7 +622,7 @@ class Font:
     def cap_advance(self):
         """Advance width of uppercase X."""
         try:
-            return self.get_char('X').width + self.offset.x + self.tracking
+            return self.get_glyph('X').width + self.offset.x + self.tracking
         except KeyError:
             return 0
 
@@ -673,7 +630,7 @@ class Font:
     def x_height(self):
         """Ink height of lowercase x."""
         try:
-            return self.get_char('x').ink_height
+            return self.get_glyph('x').ink_height
         except KeyError:
             return 0
 
@@ -681,7 +638,7 @@ class Font:
     def cap_height(self):
         """Ink height of uppercase X."""
         try:
-            return self.get_char('X').ink_height
+            return self.get_glyph('X').ink_height
         except KeyError:
             return 0
 
@@ -689,67 +646,68 @@ class Font:
     # font operations
 
     @scriptable
-    def renumber(self, add:int=0):
-        """Return a font with renumbered keys."""
-        labels = {
-            (Label(int(_k) + add) if _k.is_ordinal else _k): _v
-            for _k, _v in self._labels.items()
-        }
-        return Font(self._glyphs, labels, self._comments, self._properties)
-
-    @scriptable
-    def subrange(self, from_:int=0, to_:int=None):
-        """Return a continuous subrange of the font."""
-        return self.subset(range(from_, to_))
-
-    @scriptable
-    def subrange_unicode(self, from_:int=0, to_:int=None):
-        """Return a continuous subrange of the font in terms of unicode labels."""
-        return self.subset(Label.from_unicode(chr(_cp)) for _cp in range(from_, to_))
-
-    @scriptable
-    def subset(self, keys:set=None):
+    def subset(self, keys:set=(), labels:set=()):
         """Return a subset of the font."""
-        if keys is None:
-            return self
-        else:
-            keys = [Label(_k) for _k in keys]
-        labels = {_k: _v for _k, _v in self._labels.items() if _k in keys}
-        indexes = sorted(set(_v for _k, _v in labels.items()))
-        glyphs = [self._glyphs[_i] for _i in indexes]
-        # redefine indexes
-        new_index = {_old: _new for _new, _old in enumerate(indexes)}
-        labels = {_label: new_index[_old] for _label, _old in labels.items()}
-        return Font(glyphs, labels, self._comments, self._properties)
+        keys = list(keys)
+        labels = list(labels)
+        if self._is_unicode and not all(isinstance(_k, str) for _k in keys):
+            raise TypeError(f'This is a Unicode font - key must be char, not `{type(key)}`')
+        glyphs = (
+            [self.get_glyph(_key, missing=None) for _key in keys]
+            + [self.get_glyph(label=_label, missing=None) for _label in labels]
+        )
+        glyphs = (_glyph for _glyph in glyphs if _glyph is not None)
+        return Font(glyphs, self._comments, self._properties)
 
     @scriptable
-    def without(self, keys:set=None):
+    def without(self, keys:set=(), labels:set=()):
         """Return a font excluding a subset."""
-        if keys is None:
+        keys = set(keys)
+        labels = set(labels)
+        if not keys and not labels:
             return self
+        if self._is_unicode:
+            if not all(isinstance(_k, str) for _k in keys):
+                raise TypeError(f'This is a Unicode font - key must be char, not `{type(key)}`')
+            glyphs = [
+                _glyph
+                for _glyph in self._glyphs
+                if (
+                    _glyph.char not in keys
+                    and not set(_glyph.labels) - labels
+                )
+            ]
         else:
-            keys = [Label(_k) for _k in keys]
-        remaining_keys = [_k for _k in self._labels.keys() if _k not in keys]
-        return self.subset(remaining_keys)
+            glyphs = [
+                _glyph
+                for _glyph in self._glyphs
+                if (
+                    _glyph.char not in keys
+                    and glyph_.codepoint not in keys
+                    and not set(_glyph.labels) - labels
+                )
+            ]
+        return Font(glyphs, self._comments, self._properties)
 
     def merged_with(self, other):
         """Merge glyphs from other font into this one. Existing glyphs have preference."""
         glyphs = list(self._glyphs)
-        labels = {**self._labels}
-        for label, index in other._labels.items():
-            if label not in labels:
-                labels[label] = len(glyphs)
-                glyphs.append(other._glyphs[index])
-        return Font(glyphs, labels, self._comments, self._properties)
+        for glyph in other.glyphs:
+            new_labels = set(glyph.labels) - set(self._labels)
+            if self._is_unicode:
+                new_key = glyph.char not in set(self._chars)
+            else:
+                new_key = glyph.codepoint not in set(self._codepoints)
+            if new_labels or new_key:
+                glyphs.append(glyph.set_annotations(labels=new_labels))
+        return Font(glyphs, self._comments, self._properties)
 
-    def with_glyph(self, glyph, label):
+    # replace with clone(glyphs=.., comments=.., properties=..)
+    def with_glyph(self, glyph):
         """Return a font with a glyph added."""
         glyphs = list(self._glyphs)
-        index = len(glyphs)
-        labels = {**self._labels}
         glyphs.append(glyph)
-        labels[label] = index
-        return Font(glyphs, labels, self._comments, self._properties)
+        return Font(glyphs, self._comments, self._properties)
 
 
     ##########################################################################
@@ -764,7 +722,7 @@ class Font:
                     operation(_glyph, *args, **kwargs)
                     for _glyph in self._glyphs
                 ]
-                return Font(glyphs, self._labels, self._comments, self._properties)
+                return Font(glyphs, self._comments, self._properties)
 
             _modify.scriptable = True
             _modify.script_args = _func.script_args

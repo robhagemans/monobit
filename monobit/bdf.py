@@ -133,12 +133,12 @@ _XLFD_UNPARSED = {
 def load(instream):
     """Load font from a .bdf file."""
     nchars, comments, bdf_props, x_props = _read_bdf_global(instream)
-    glyphs, glyph_props, labels = _read_bdf_characters(instream)
+    glyphs, glyph_props = _read_bdf_characters(instream)
     # check number of characters, but don't break if no match
     if nchars != len(glyphs):
         logging.warning('Number of characters found does not match CHARS declaration.')
     glyphs, properties = _parse_properties(glyphs, glyph_props, bdf_props, x_props)
-    return Font(glyphs, labels, comments=comments, properties=properties)
+    return Font(glyphs, comments=comments, properties=properties)
 
 
 @Savers.register('bdf', multi=False)
@@ -169,7 +169,6 @@ def _read_bdf_characters(instream):
     """Read character section."""
     # output
     glyphs = []
-    labels = {}
     glyph_meta = []
     for line in instream:
         line = line.rstrip('\r\n')
@@ -188,20 +187,21 @@ def _read_bdf_characters(instream):
         hexstr = ''.join(instream.readline().strip() for _ in range(height))
         glyph = Glyph.from_hex(hexstr, width, height)
         # store labels, if they're not just ordinals
+        label = meta['STARTCHAR']
         try:
-            int(meta['STARTCHAR'])
+            int(label)
         except ValueError:
-            labels[meta['STARTCHAR']] = len(glyphs)
+            glyph = glyph.set_annotations(labels=[label])
         # ENCODING must be single integer or -1 followed by integer
         encvalue = int(meta['ENCODING'].split(' ')[-1])
         # no encoding number found
         if encvalue != -1:
-            labels[encvalue] = len(glyphs)
+            glyph = glyph.set_annotations(codepoint=len(glyphs))
         glyphs.append(glyph)
         glyph_meta.append(meta)
         if not instream.readline().startswith('ENDCHAR'):
             raise('Expected ENDCHAR')
-    return glyphs, glyph_meta, labels
+    return glyphs, glyph_meta
 
 def _read_bdf_global(instream):
     """Read global section of BDF file."""
@@ -475,7 +475,7 @@ def _create_xlfd_properties(font):
         'AVERAGE_WIDTH': str(round(float(font.average_advance) * 10)).replace('-', '~'),
     }
     try:
-        xlfd_props['DEFAULT_CHAR'] = font.get_ordinal_for_label(font.default_char)
+        xlfd_props['DEFAULT_CHAR'] = font.get_ordinal(font.default_char)
     except KeyError:
         pass
     logging.info(xlfd_props)
@@ -519,28 +519,36 @@ def _save_bdf(font, outstream):
     is_unicode = font.encoding == 'unicode'
     # get glyphs for encoding values
     encoded_glyphs = []
-    for labels, glyph in font:
-        name = ''
+    for glyph in font.glyphs:
         # keep the first text label as the glyph name
-        for label in labels:
-            if not label.is_unicode and not label.is_ordinal:
-                name = label
-                break
-        included = False
-        for label in labels:
-            if is_unicode and label.is_unicode:
-                encoding = ord(label.unicode)
+        if not glyph.labels:
+            name = ''
+        else:
+            name = glyph.labels[0]
+        has_encoding_value = False
+        if is_unicode:
+            try:
+                encoding = ord(glyph.char)
+            except ValueError:
+                # multi-codepoint grapheme cluster or not set
+                pass
+            else:
                 if not name:
                     name = f'uni{encoding:04X}'
                 encoded_glyphs.append((encoding, name, glyph))
-                included = True
-            elif not is_unicode and label.is_ordinal:
-                encoding = int(label)
+                has_encoding_value = True
+        else:
+            try:
+                encoding = int(glyph.codepoint)
+            except TypeError:
+                # not set
+                pass
+            else:
                 if not name:
                     name = f'char{encoding:02X}'
                 encoded_glyphs.append((encoding, name, glyph))
-                included = True
-        if not included:
+                has_encoding_value = True
+        if not has_encoding_value:
             # glyph has no encoding value
             # must have a name - else it has no labels referring to it!
             encoded_glyphs.append((-1, name, glyph))

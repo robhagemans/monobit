@@ -38,7 +38,13 @@ if reportlab:
         canvas.setStrokeColorRGB(0.5, 0.5, 0.5)
         canvas.setFillColorRGB(0, 0, 0)
         canvas.setFont('Helvetica', ypix)
-        chars, glyphs = zip(*font.iter_ordinal(encoding=encoding))
+        if encoding is not None:
+            #FIXME
+            pass
+        chars, glyphs = zip(
+            font.get_glyph(_codepoint, 'empty')
+            for _codepoint in range(256)
+        )
         for col in range(columns):
             for row in range(rows):
                 orig_x, orig_y = col*xpix*width, (rows-row-1)*ypix*height

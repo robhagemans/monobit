@@ -546,16 +546,17 @@ def _parse_nfnt(data, offset, properties):
         for _glyph, _width, _offset in zip(glyphs, widths, offsets)
     ]
     # ordinal labels
-    labelled = list(zip(range(fontrec.firstChar, fontrec.lastChar+1), glyphs))
-    # last glyph is the "missing" glyph
-    labelled.append(('missing', glyphs[-1]))
-    # drop undefined glyphs & their labels, so long as they're empty
     labelled = [
-        _pair for _pair, _width, _offset in zip(labelled, widths, offsets)
-        if (_width != 0xff and _offset != 0xff) or (_pair[1].width and _pair[1].height)
+        _glyph.set_annotations(codepoint=_codepoint)
+        for _codepoint, _glyph in zip(range(fontrec.firstChar, fontrec.lastChar+1), glyphs)
     ]
-    glyphs = [_g for _, _g in labelled]
-    labels = {_l: _i for _i, _l in enumerate(_l for _l, _ in labelled)}
+    # last glyph is the "missing" glyph
+    labelled.append(glyphs[-1].set_annotations(labels=['missing']))
+    # drop undefined glyphs & their labels, so long as they're empty
+    glyphs = [
+        _glyph for _glyph, _width, _offset in zip(labelled, widths, offsets)
+        if (_width != 0xff and _offset != 0xff) or (_glyph.width and _glyph.height)
+    ]
     # store properties
     properties.update({
         'spacing': 'monospace' if is_fixed else 'proportional',
@@ -565,4 +566,4 @@ def _parse_nfnt(data, offset, properties):
         'leading': fontrec.leading,
         'offset': Coord(fontrec.kernMax, -fontrec.descent),
     })
-    return Font(glyphs, labels, properties=properties)
+    return Font(glyphs, properties=properties)
