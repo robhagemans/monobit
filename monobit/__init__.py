@@ -12,6 +12,7 @@ assert _sys.version_info >= (3, 6)
 from .base import VERSION as __version__
 from .pack import Pack
 from .font import Font
+from .glyph import Glyph
 from .encoding import Codepage
 from .formats import Loaders, Savers
 from .text import to_text as _to_text

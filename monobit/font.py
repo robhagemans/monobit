@@ -156,7 +156,7 @@ PROPERTIES = {
 # calculated properties
 # properties that must have the calculated value
 _NON_OVERRIDABLE = ('spacing', 'bounding-box', 'pixel-size', 'average-advance', 'cap-advance',)
-# properties where the calculated vale may be overridden
+# properties where the calculated value may be overridden
 _OVERRIDABLE = ('x-height', 'cap-height',)
 
 
