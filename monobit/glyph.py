@@ -11,17 +11,40 @@ from .base import scriptable
 from .binary import ceildiv, bytes_to_bits
 from .text import to_text
 
+NOT_SET = object()
+
 class Glyph:
     """Single glyph."""
 
-    def __init__(self, pixels=((),), comments=()):
+    def __init__(self, pixels=((),), codepoint=None, char='', labels=(), comments=()):
         """Create glyph from tuple of tuples."""
+        # glyph data
         self._rows = tuple(tuple(bool(_bit) for _bit in _row) for _row in pixels)
         if len(set(len(_r) for _r in self._rows)) > 1:
             raise ValueError(
                 f'All rows in a glyph must be of the same width: {repr(self)}'
             )
-        self._comments = comments
+        # annotations
+        self._comments = tuple(comments)
+        self._codepoint = codepoint
+        self._char = char
+        self._labels = tuple(labels)
+
+    @property
+    def labels(self):
+        return self._labels
+
+    @property
+    def char(self):
+        return self._char
+
+    @property
+    def codepoint(self):
+        return self._codepoint
+
+    @property
+    def comments(self):
+        return self._comments
 
     def __repr__(self):
         """Text representation."""
@@ -29,14 +52,43 @@ class Glyph:
             to_text(self.as_matrix(fore='@', back='.'), line_break="'\n  '")
         )
 
-    def add_comments(self, comments):
-        """Return a copy of the glyph with added comments."""
-        return Glyph(self._rows, self._comments + tuple(comments))
+    def add_annotations(self, *, labels=(), comments=()):
+        """Return a copy of the glyph with added labels or comments."""
+        return self.modify(
+            labels=self._labels + tuple(labels),
+            comments=self._comments + tuple(comments)
+        )
+
+    def set_annotations(self, *, labels=NOT_SET, char=NOT_SET, codepoint=NOT_SET, comments=NOT_SET):
+        """Return a copy of the glyph with different annotations."""
+        return self.modify(labels=labels, char=char, codepoint=codepoint, comments=comments)
 
     @scriptable
     def drop_comments(self):
         """Return a copy of the glyph without comments."""
-        return Glyph(self._rows)
+        return self.modify(comments=())
+
+    def modify(
+            self, pixels=NOT_SET, *, labels=NOT_SET, char=NOT_SET, codepoint=NOT_SET, comments=NOT_SET
+        ):
+        """Return a copy of the glyph with changes."""
+        if pixels is NOT_SET:
+            pixels = self._rows
+        if labels is NOT_SET:
+            labels = self._labels
+        if codepoint is NOT_SET:
+            codepoint = self._codepoint
+        if char is NOT_SET:
+            char = self._char
+        if comments is NOT_SET:
+            comments = self._comments
+        return Glyph(
+            tuple(pixels),
+            codepoint=codepoint,
+            char=char,
+            labels=tuple(labels),
+            comments=tuple(comments)
+        )
 
     @property
     def comments(self):
@@ -174,7 +226,7 @@ class Glyph:
 
     def superimposed(self, other):
         """Superimpose another glyph of the same size."""
-        return Glyph(
+        return self.modify(
             tuple(
                 _pix or _pix1
                 for _pix, _pix1 in zip(_row, _row1)
@@ -199,17 +251,17 @@ class Glyph:
     @scriptable
     def mirror(self):
         """Reverse pixels horizontally."""
-        return Glyph(tuple(_row[::-1] for _row in self._rows))
+        return self.modify(tuple(_row[::-1] for _row in self._rows))
 
     @scriptable
     def flip(self):
         """Reverse pixels vertically."""
-        return Glyph(self._rows[::-1])
+        return self.modify(self._rows[::-1])
 
     @scriptable
     def transpose(self):
         """Transpose glyph."""
-        return Glyph(tuple(tuple(_x) for _x in zip(*self._rows)))
+        return self.modify(tuple(tuple(_x) for _x in zip(*self._rows)))
 
     @scriptable
     def rotate(self, turns:int=1):
@@ -226,12 +278,12 @@ class Glyph:
     @scriptable
     def invert(self):
         """Reverse video."""
-        return Glyph(tuple(tuple((not _col) for _col in _row) for _row in self._rows))
+        return self.modify(tuple(tuple((not _col) for _col in _row) for _row in self._rows))
 
     @scriptable
     def crop(self, left:int=0, bottom:int=0, right:int=0, top:int=0):
         """Crop glyph, inclusive bounds."""
-        return Glyph(tuple(
+        return self.modify(tuple(
             _row[left : (-right if right else None)]
             for _row in self._rows[top : (-bottom if bottom else None)]
         ))
@@ -244,7 +296,7 @@ class Glyph:
         else:
             old_width = 0
         new_width = left + old_width + right
-        return Glyph(
+        return self.modify(
             ((False,) * new_width,) * top
             + tuple((False,)*left + _row + (False,)*right for _row in self._rows)
             + ((False,) * new_width,) * bottom
@@ -260,7 +312,7 @@ class Glyph:
             tuple(_col for _col in _row for _ in range(factor_x))
             for _row in glyph
         )
-        return Glyph(glyph)
+        return self.modify(glyph)
 
     @scriptable
     def shrink(self, factor_x:int=1, factor_y:int=1, force:bool=False):
@@ -275,4 +327,4 @@ class Glyph:
                     raise ValueError("can't shrink glyph without loss")
         # horizontal stretch
         glyph = tuple(_row[::factor_x] for _row in self._rows)
-        return Glyph(glyph)
+        return self.modify(glyph)

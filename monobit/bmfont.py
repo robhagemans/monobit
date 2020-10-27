@@ -361,7 +361,6 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=())
     # ensure we have RGBA channels
     sheets = {_k: _v.convert('RGBA') for _k, _v in sheets.items()}
     glyphs = []
-    labels = {}
     min_after = 0
     min_before = 0
     max_height = 0
@@ -433,7 +432,7 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=())
                 )
             else:
                 glyph = Glyph.empty(char.xadvance - min_after, max_height)
-            labels[char.id] = len(glyphs)
+            glyph = glyph.set_annotations(codepoint=len(glyphs))
             glyphs.append(glyph)
     # parse properties
     bmfont_props = {**info}
@@ -474,7 +473,7 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=())
         for _k, _v in bmfont_props.items()
         if str(_v) != default_bmfont_props[_k]
     })
-    return Font(glyphs, labels, (), properties)
+    return Font(glyphs, properties=properties)
 
 def _read_bmfont(container, name):
     """Read a bmfont from a container."""
@@ -523,7 +522,6 @@ def _create_spritesheets(font, size=(256, 256), packed=False):
     empty = Image.new('L', (width, height), border)
     sheets = [empty] * n_layers
     pages.append(sheets)
-    iter_unicode = font.iter_unicode()
     page_id = 0
     layer = 0
     while True:
@@ -534,8 +532,8 @@ def _create_spritesheets(font, size=(256, 256), packed=False):
         # output glyphs
         x, y = 0, 0
         tree = SpriteNode(x, y, width, height)
-        for label, glyph in iter_unicode:
-            if len(label.unicode) > 1:
+        for glyph in font.glyphs:
+            if len(glyph.char) > 1:
                 logging.warning(
                     "Can't encode grapheme cluster %s in bmfont file; skipping.", str(label)
                 )
@@ -553,7 +551,7 @@ def _create_spritesheets(font, size=(256, 256), packed=False):
                 charimg.putdata(data)
                 img.paste(charimg, (x, y))
             chars.append(dict(
-                id=ord(label.unicode),
+                id=ord(glyph.char),
                 x=x,
                 y=y,
                 width=cropped.width,
@@ -567,7 +565,7 @@ def _create_spritesheets(font, size=(256, 256), packed=False):
                 chnl=channels,
             ))
         else:
-            # iter_unicode runs out, get out
+            # iterator runs out, get out
             break
         # move to next layer or page
         if layer == n_layers - 1:
@@ -644,8 +642,8 @@ def _create_bmfont(container, font, size=(256, 256), packed=False, imageformat='
     }
     if hasattr(font, 'kerning'):
         props['kernings'] = [{
-                'first': ord(font.get_unicode_for_label(_key[0])),
-                'second': ord(font.get_unicode_for_label(_key[1])),
+                'first': ord(font[_key[0]].char),
+                'second': ord(font[_key[1]].char),
                 'amount': int(_amount)
             }
             for _key, _amount in font.kerning.items()

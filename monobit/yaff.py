@@ -11,27 +11,48 @@ from types import SimpleNamespace
 
 from .text import clean_comment, write_comments, split_global_comment, to_text
 from .formats import Loaders, Savers
-from .font import PROPERTIES, Font, Label
+from .font import PROPERTIES, Font
 from .glyph import Glyph
-
 
 _WHITESPACE = ' \t'
 _CODESTART = _WHITESPACE + string.digits + string.ascii_letters + '_'
 
 
-def draw_input_key(key):
-    """Convert keys on input from .draw."""
+def yaff_input_key(cluster, key):
+    """Convert keys on input from .yaff."""
     try:
-        return int(key, 16)
-    except (TypeError, ValueError):
-        return Label(key)
-
-def draw_output_key(key):
-    """Convert keys on input from .draw."""
-    try:
-        return '{:04x}'.format(int(key))
+        # check for codepoint (anything convertible to int)
+        cluster.codepoint = int(key, 0)
+        return cluster
     except ValueError:
-        raise ValueError('.draw format only supports integer keys')
+        pass
+    try:
+        # accept decimals with leading zeros
+        cluster.codepoint = int(key.lstrip('0'))
+        return cluster
+    except ValueError:
+        pass
+    key = key.strip()
+    # see if it counts as unicode label
+    if key.lower().startswith('u+'):
+        try:
+            cluster.char = ''.join(chr(int(_elem.strip()[2:], 16)) for _elem in key.split(','))
+            return cluster
+        except ValueError as e:
+            raise ValueError("'{}' is not a valid unicode label.".format(key)) from e
+    # otherwise it's a string label
+    cluster.label = key.lower()
+    return cluster
+
+
+def draw_input_key(cluster, key):
+    """Convert keys on input from .draw."""
+    try:
+        cluster.char = chr(int(key, 16))
+    except (TypeError, ValueError):
+        cluster.labels = [key]
+    return cluster
+
 
 
 # defaults
@@ -40,7 +61,6 @@ _YAFF_PARAMETERS = dict(
     back='.',
     comment='#',
     tab='    ',
-    key_format=str,
     key_sep=':\n',
     empty='-',
 )
@@ -50,7 +70,6 @@ _DRAW_PARAMETERS = dict(
     back='-',
     comment='%',
     tab='\t',
-    key_format=draw_output_key,
     key_sep=':',
     empty='-',
 )
@@ -59,7 +78,7 @@ _DRAW_PARAMETERS = dict(
 @Loaders.register('yaff', 'text', 'txt', name='monobit-yaff')
 def load(instream):
     """Read a plaintext font file."""
-    font = _load_font(instream, fore='@', back='.', key_format=Label)
+    font = _load_font(instream, fore='@', back='.', key_format=yaff_input_key)
     if font is None:
         raise ValueError('No fonts found in file.')
     return font
@@ -92,8 +111,12 @@ def save_draw(font, outstream):
 class Cluster(SimpleNamespace):
     """Bag of elements relating to one glyph."""
 
+
+
 def new_cluster(**kwargs):
     return Cluster(
+        char='',
+        codepoint=None,
         labels=[],
         clusters=[],
         comments=[]
@@ -125,13 +148,15 @@ def _load_font(instream, fore, back, key_format):
                     global_comment.extend(global_comm)
             label, sep, rest = line.partition(':')
             if sep != ':':
-                raise ValueError(f'Invalid yaff file: key `{label.strip()}` not followed by :')
+                raise ValueError(
+                    f'Invalid .yaff or .draw file: key `{label.strip()}` not followed by :'
+                )
             if elements[-1].clusters:
                 # we already have stuff for the last key, so this is a new one
                 elements.append(new_cluster())
             elements[-1].comments.extend(clean_comment(current_comment))
             current_comment = []
-            elements[-1].labels.append(label)
+            elements[-1] = key_format(elements[-1], label)
             # remainder of label line after : is glyph row or property value
             rest = rest.strip()
             if rest:
@@ -162,17 +187,19 @@ def _load_font(instream, fore, back, key_format):
         _el for _el in elements
         if _is_glyph(''.join(_el.clusters), fore, back)
     ]
-    labels = {
-        key_format(_lab): _index
-        for _index, _el in enumerate(glyph_elements)
-        for _lab in _el.labels
-    }
     # convert text representation to glyph
     glyphs = [
         (
-            Glyph.from_matrix(_el.clusters, background=back).add_comments(_el.comments)
-            if _el.clusters != ['-']
-            else Glyph.empty().add_comments(_el.comments)
+            (
+                Glyph.from_matrix(_el.clusters, background=back)
+                if _el.clusters != ['-']
+                else Glyph.empty()
+            ).set_annotations(
+                labels=_el.labels,
+                char=_el.char,
+                codepoint=_el.codepoint,
+                comments=_el.comments,
+            )
         )
         for _el in glyph_elements
     ]
@@ -185,20 +212,20 @@ def _load_font(instream, fore, back, key_format):
     # preserve any comment at end of file
     comments.extend(clean_comment(current_comment))
     # construct font
-    return Font(glyphs, labels, comments, properties)
+    return Font(glyphs, comments, properties)
 
 
 ##############################################################################
 # write file
 
-def _write_glyph(outstream, labels, glyph, fore, back, comm_char, tab, key_format, key_sep, empty):
+def _write_glyph(outstream, labels, glyph, fore, back, comm_char, tab, key_sep, empty):
     """Write out a single glyph in text format."""
     if not labels:
         logging.warning('No labels for glyph: %s', glyph)
         return
     write_comments(outstream, glyph.comments, comm_char=comm_char)
-    for ordinal in labels:
-        outstream.write(key_format(ordinal) + key_sep)
+    for _label in labels:
+        outstream.write(_label + key_sep)
     glyphtxt = to_text(glyph.as_matrix(fore, back), line_break='\n'+tab)
     # empty glyphs are stored as 0x0, not 0xm or nx0
     if not glyph.width or not glyph.height:
@@ -224,7 +251,7 @@ def _write_prop(outstream, key, value, tab):
             )
         )
 
-def _save_yaff(font, outstream, fore, back, comment, tab, key_format, key_sep, empty):
+def _save_yaff(font, outstream, fore, back, comment, tab, key_sep, empty):
     """Write one font to a plaintext stream."""
     write_comments(outstream, font.get_comments(), comm_char=comment, is_global=True)
     # we always output name, font-size and spacing
@@ -244,16 +271,30 @@ def _save_yaff(font, outstream, fore, back, comment, tab, key_format, key_sep, e
         for key, value in props.items():
             _write_prop(outstream, key, value, tab)
         outstream.write('\n')
-    for labels, glyph in font:
-        _write_glyph(outstream, labels, glyph, fore, back, comment, tab, key_format, key_sep, empty)
+    for glyph in font.glyphs:
+        labels = []
+        if glyph.codepoint is not None:
+            labels.append(f'0x{glyph.codepoint:02x}')
+        if glyph.char:
+            labels.append(','.join(
+                f'u+{ord(_uc):04x}'
+                for _uc in glyph.char
+            ))
+        labels.extend(glyph.labels)
+        _write_glyph(
+            outstream, labels,
+            glyph, fore, back, comment, tab, key_sep, empty
+        )
 
-def _save_draw(font, outstream, fore, back, comment, tab, key_format, key_sep, empty):
+def _save_draw(font, outstream, fore, back, comment, tab, key_sep, empty):
     """Write one font to a plaintext stream."""
     write_comments(outstream, font.get_comments(), comm_char=comment, is_global=True)
-    for label, glyph in font.iter_unicode():
-        if len(label.unicode) > 1:
+    for glyph in font:
+        if len(glyph.char) > 1:
             logging.warning("Can't encode grapheme cluster %s in .draw file; skipping.", str(label))
             continue
+        label = f'{ord(glyph.char):04x}'
         _write_glyph(
-            outstream, [ord(label.unicode)], glyph, fore, back, comment, tab, key_format, key_sep, empty
+            outstream, [label],
+            glyph, fore, back, comment, tab, key_sep, empty
         )

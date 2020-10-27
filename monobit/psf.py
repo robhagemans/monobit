@@ -10,7 +10,7 @@ import logging
 from .binary import ceildiv, friendlystruct
 from .raw import load_aligned
 from .formats import Loaders, Savers
-from .font import Font, Label
+from .font import Font
 from .glyph import Glyph
 
 
@@ -89,20 +89,14 @@ def load(instream):
     else:
         raise ValueError('Not a PSF file.')
     cells = load_aligned(instream, (width, height), length)
-    # set ordinals as labels
-    labels = {
-        _index: _index
-        for _index in range(len(cells))
-    }
     if has_unicode_table:
         table = _read_unicode_table(instream, separator, startseq, encoding)
         # convert unicode table to labels
-        labels.update({
-            Label.from_unicode(_seq): _index
-            for _index, _seq in enumerate(table)
-            if _seq
-        })
-    return Font(cells, labels, properties=properties)
+        cells = [
+            _glyph.set_annotations(char=table[_index])
+            for _index, _glyph in enumerate(cells)
+        ]
+    return Font(cells, properties=properties)
 
 def _read_unicode_table(instream, separator, startseq, encoding):
     """Read the Unicode table in a PSF2 file."""
@@ -125,9 +119,7 @@ def save(font, outstream):
         raise ValueError(
             'This format only supports character-cell fonts.'
         )
-    # use native encoding for now
-    encoding = None
-    labels, glyphs = zip(*font.iter_ordinal(encoding=encoding))
+    glyphs = font.glyphs
     psf_props = dict(
         width=font.bounding_box.x,
         height=font.bounding_box.y,
@@ -142,7 +134,7 @@ def save(font, outstream):
     # save_aligned
     for glyph in glyphs:
         outstream.write(glyph.as_bytes())
-    unicode_seq = [_label.unicode for _label in labels]
+    unicode_seq = [_glyph.char for _glyph in glyphs]
     _write_unicode_table(outstream, unicode_seq, _PSF2_SEPARATOR, _PSF2_STARTSEQ, 'utf-8')
     return font
 

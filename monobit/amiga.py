@@ -111,8 +111,8 @@ def load(f):
     hunk_id = _read_ulong(f)
     if hunk_id != _HUNK_CODE:
         raise ValueError('Not an Amiga font data file: no code hunk found (id %04x)' % hunk_id)
-    glyphs, labels, props = _read_font_hunk(f)
-    return Font(glyphs, labels, properties=props)
+    glyphs, props = _read_font_hunk(f)
+    return Font(glyphs, properties=props)
 
 
 class _FileUnpacker:
@@ -171,7 +171,7 @@ def _read_font_hunk(f):
     # remainder is the font strike
     data = f.read()
     # read character data
-    glyphs, labels, offset_x = _read_strike(
+    glyphs, offset_x = _read_strike(
         data, amiga_props.tf_XSize, amiga_props.tf_YSize,
         amiga_props.tf_Flags & _FPF_PROPORTIONAL,
         amiga_props.tf_Modulo, amiga_props.tf_LoChar, amiga_props.tf_HiChar,
@@ -184,7 +184,7 @@ def _read_font_hunk(f):
     if 'name' not in props:
         props['name'] = props['source-name']
     props['family'] = props['name'].split('/')[0].split(' ')[0]
-    return glyphs, labels, props
+    return glyphs, props
 
 def _parse_amiga_props(amiga_props, offset_x):
     """Convert AmigaFont properties into yaff properties."""
@@ -284,12 +284,12 @@ def _read_strike(
     offset_x = min(kerning)
     kerning = (_kern - offset_x for _kern in kerning)
     glyphs = [
-        Glyph(tuple((False,) * _kern + _row + (False,) * (_width-_kern-len(_row)) for _row in _char))
-        for _char, _width, _kern in zip(font, spacing, kerning)
+        Glyph(
+            tuple((False,) * _kern + _row + (False,) * (_width-_kern-len(_row)) for _row in _char),
+            codepoint=_i + lochar
+        )
+        for _i, (_char, _width, _kern) in enumerate(zip(font, spacing, kerning))
     ]
-    # default glyph doesn't have an encoding value
-    labels = {
-        _i + lochar: _i for _i in range(len(glyphs)-1)
-    }
-    labels['default'] = len(glyphs) - 1
-    return glyphs, labels, offset_x
+    # default glyph has no codepoint
+    glyphs[-1] = glyphs[-1].set_annotations(codepoint=None, labels=('default',))
+    return glyphs, offset_x

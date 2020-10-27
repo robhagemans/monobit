@@ -290,8 +290,8 @@ def parse_fnt(fnt):
     """Create an internal font description from a .FNT-shaped string."""
     win_props = _parse_header(fnt)
     properties = _parse_win_props(fnt, win_props)
-    glyphs, labels = _parse_chartable(fnt, win_props)
-    return Font(glyphs, labels, properties=properties)
+    glyphs = _parse_chartable(fnt, win_props)
+    return Font(glyphs, properties=properties)
 
 def _parse_header(fnt):
     """Read the header information in the FNT resource."""
@@ -327,7 +327,6 @@ def _parse_chartable_v1(fnt, win_props):
         for _row in range(win_props.dfPixHeight)
     )
     glyphs = []
-    labels = {}
     for ord in range(n_chars):
         offset = offsets[ord]
         width = offsets[ord+1] - offset
@@ -339,9 +338,8 @@ def _parse_chartable_v1(fnt, win_props):
         )
         # don't store empty glyphs but count them for ordinals
         if rows:
-            glyphs.append(Glyph(rows))
-            labels[win_props.dfFirstChar + ord] = len(glyphs) - 1
-    return glyphs, labels
+            glyphs.append(Glyph(rows), codepoint=win_props.dfFirstChar + ord)
+    return glyphs
 
 def _parse_chartable_v2(fnt, win_props):
     """Read a WinFont 2.0 or 3.0 character table."""
@@ -349,7 +347,6 @@ def _parse_chartable_v2(fnt, win_props):
     glyph_entry_array = _GLYPH_ENTRY[win_props.dfVersion] * n_chars
     ct_start = _FNT_HEADER_SIZE[win_props.dfVersion]
     glyphs = []
-    labels = {}
     height = win_props.dfPixHeight
     entries = glyph_entry_array.from_buffer_copy(fnt, ct_start)
     for ord, entry in enumerate(entries, win_props.dfFirstChar):
@@ -363,9 +360,8 @@ def _parse_chartable_v2(fnt, win_props):
             for _row in range(height)
             for _col in range(bytewidth)
         )
-        glyphs.append(Glyph.from_bytes(glyph_data, entry.geWidth))
-        labels[ord] = len(glyphs) - 1
-    return glyphs, labels
+        glyphs.append(Glyph.from_bytes(glyph_data, entry.geWidth).set_annotations(codepoint=ord))
+    return glyphs
 
 def bytes_to_str(s, encoding='latin-1'):
     """Extract null-terminated string from bytes."""
@@ -548,8 +544,8 @@ def create_fnt(font, version=0x200):
         dfMaxWidth=font.bounding_box.x + font.tracking + font.offset_x,
         dfFirstChar=min_ord,
         dfLastChar=max_ord,
-        dfDefaultChar=font.get_ordinal_for_label(font.default_char) - min_ord,
-        dfBreakChar=font.get_ordinal_for_label(font.word_boundary) - min_ord,
+        dfDefaultChar=font.get_ordinal(font.default_char) - min_ord,
+        dfBreakChar=font.get_ordinal(font.word_boundary) - min_ord,
         # round up to multiple of 2 bytes to word-align v1.0 strikes (not used for v2.0+ ?)
         dfWidthBytes=align(ceildiv(font.bounding_box.x, 8), 1),
         dfDevice=device_name_offset,

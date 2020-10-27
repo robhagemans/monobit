@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Extract bitmap font and save in different format
-(c) 2019 Rob Hagemans, licence: https://opensource.org/licenses/MIT
+(c) 2019--2020 Rob Hagemans, licence: https://opensource.org/licenses/MIT
 """
 
 import sys
@@ -42,12 +42,12 @@ parser.add_argument(
 args, unknown = parser.parse_known_args()
 
 # get loader arguments
-loader = monobit.Typeface.get_loader(args.infile, format=args.from_)
+loader = monobit.formats.Loaders.get_loader(args.infile, format=args.from_)
 for arg, _type in loader.script_args.items():
     parser.add_argument('--' + arg.replace('_', '-'), dest=arg, type=_type)
 
 # get saver arguments
-saver = monobit.Typeface.get_saver(args.outfile, format=args.to_)
+saver = monobit.formats.Savers.get_saver(args.outfile, format=args.to_)
 for arg, _type in saver.script_args.items():
     parser.add_argument('--' + arg.replace('_', '-'), dest=arg, type=_type)
 
@@ -84,7 +84,7 @@ try:
     if args.comments:
         with open(args.comments) as f:
             font = font.add_comments(f.read())
-    font.save(args.outfile, format=args.to_, **save_args)
+    monobit.save(font, args.outfile, format=args.to_, **save_args)
 except Exception as exc:
     logging.error(exc)
     if args.debug:
