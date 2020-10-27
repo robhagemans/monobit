@@ -37,29 +37,37 @@ def load(instream):
             if current_comment and current_comment[-1] != '':
                 current_comment.append('')
             continue
-        if line[0] not in string.hexdigits:
+        # pass through lines without : as comments - allows e.g. to convert diffs, like hexdraw
+        if line[0] == '#' or ':' not in line:
             current_comment.append(line)
             continue
-        if not glyphs and current_comment:
-            global_comment, current_comment = split_global_comment(current_comment)
-            global_comment = clean_comment(global_comment)
         # parse code line
-        key, value = line.split(':', 1)
+        key, value = line.rsplit(':', 1)
         value = value.strip()
         # may be on one of next lines
         while not value:
-            value = instream.readline.strip()
+            value = instream.readline().strip()
         if len(value) < 64:
             # must be less than 32 pixels high, or we confuse it with 16-pixels wide standard
             width, height = 8, int(len(value)/2)
         else:
             width, height = 16, int(len(value)/4)
         current = len(glyphs)
-        if (set(value) | set(key)) - set(string.hexdigits + ','):
-            raise ValueError(f'Keys and values must be hexadecimal, found {key}:{value}')
+        if set(value) - set(string.hexdigits + ','):
+            # not a valid line, treat as comment
+            current_comment.append(line)
+            #raise ValueError(f'Keys and values must be hexadecimal, found {key}:{value}')
+            continue
+        if not glyphs and current_comment:
+            global_comment, current_comment = split_global_comment(current_comment)
+            global_comment = clean_comment(global_comment)
+        try:
+            char = ''.join(chr(int(_key, 16)) for _key in key.split(','))
+        except ValueError:
+            char = ''
         current_glyph = Glyph.from_hex(value, width, height)
         current_glyph = current_glyph.set_annotations(
-            char=''.join(chr(int(_key, 16)) for _key in key.split(',')),
+            char=char, labels=([key] if not char else []),
             comments=clean_comment(current_comment)
         )
         glyphs.append(current_glyph)
