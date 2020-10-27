@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Apply operation to bitmap font
-(c) 2019 Rob Hagemans, licence: https://opensource.org/licenses/MIT
+(c) 2019--2020 Rob Hagemans, licence: https://opensource.org/licenses/MIT
 """
 
 import sys
@@ -55,6 +55,6 @@ fargs = {
 try:
     font = monobit.load(args.infile)
     font = operation(font, **fargs)
-    font.save(args.outfile)
+    monobit.save(font, args.outfile)
 except ValueError as exc:
     logging.error(exc)
