@@ -690,7 +690,7 @@ class Font:
                 for _glyph in self._glyphs
                 if (
                     _glyph.char not in keys
-                    and not set(_glyph.labels) - labels
+                    and not (set(_glyph.labels) & labels)
                 )
             ]
         else:
@@ -699,8 +699,8 @@ class Font:
                 for _glyph in self._glyphs
                 if (
                     _glyph.char not in keys
-                    and glyph_.codepoint not in keys
-                    and not set(_glyph.labels) - labels
+                    and _glyph.codepoint not in keys
+                    and not (set(_glyph.labels) & labels)
                 )
             ]
         return Font(glyphs, self._comments, self._properties)
