@@ -289,7 +289,7 @@ class Glyph:
         ))
 
     @scriptable
-    def expand(self, left:int=0, top:int=0, right:int=0, bottom:int=0):
+    def expand(self, left:int=0, bottom:int=0, right:int=0, top:int=0):
         """Add empty space."""
         if self._rows:
             old_width = len(self._rows[0])

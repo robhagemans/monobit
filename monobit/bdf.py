@@ -196,7 +196,7 @@ def _read_bdf_characters(instream):
         encvalue = int(meta['ENCODING'].split(' ')[-1])
         # no encoding number found
         if encvalue != -1:
-            glyph = glyph.set_annotations(codepoint=len(glyphs))
+            glyph = glyph.set_annotations(codepoint=encvalue)
         glyphs.append(glyph)
         glyph_meta.append(meta)
         if not instream.readline().startswith('ENDCHAR'):

@@ -9,7 +9,6 @@ from functools import wraps
 from typing import NamedTuple
 import numbers
 import logging
-import pkgutil
 import unicodedata
 
 from .base import scriptable
@@ -88,9 +87,13 @@ class KerningTable:
 # recognised yaff properties and converters from str
 # this also defines the default order in yaff files
 PROPERTIES = {
+
+    # naming - can be determined from source file if needed
+    'name': str, # full human name
+    'family': str, # typeface/font family
+
     # font metadata
     # can't be calculated
-    'name': str, # full human name
     'foundry': str, # author or issuer
     'copyright': str, # copyright string
     'notice': str, # e.g. license string
@@ -98,7 +101,6 @@ PROPERTIES = {
 
     # font description
     # can't be calculated
-    'family': str, # typeface/font family
     'style': str, # serif, sans, etc.
     'point-size': number, # nominal point size
     'weight': str, # normal, bold, light, etc.
@@ -109,6 +111,7 @@ PROPERTIES = {
     # target info
     # can't be calculated
     'device': str, # target device name
+    # calculated or given
     'dpi': Coord.create, # target resolution in dots per inch
 
     # summarising quantities
@@ -157,7 +160,7 @@ PROPERTIES = {
 # properties that must have the calculated value
 _NON_OVERRIDABLE = ('spacing', 'bounding-box', 'pixel-size', 'average-advance', 'cap-advance',)
 # properties where the calculated value may be overridden
-_OVERRIDABLE = ('x-height', 'cap-height',)
+_OVERRIDABLE = ('dpi', 'name', 'family', 'x-height', 'cap-height',)
 
 
 class Font:
@@ -244,21 +247,20 @@ class Font:
         if encoding == NoEncoding:
             # no encoding - leave codepoint and unicode labels as is
             return
+        # use codepage to find char if glyph does not have char set
+        # use codepage to find codepoint if no code point set
+        self._glyphs = tuple(
+            _glyph.set_annotations(
+                char=_glyph.char or encoding.ord_to_unicode(_glyph.codepoint),
+                codepoint=_glyph.codepoint or encoding.unicode_to_ord(_glyph.char)
+            )
+            for _glyph in self._glyphs
+        )
         if self._is_unicode:
             # only use char if encoding is unicode
             # since codepoint field has no way of encoding grapheme clusters
             self._glyphs = tuple(
                 _glyph.set_annotations(codepoint=None)
-                for _glyph in self._glyphs
-            )
-        else:
-            # use codepage to find char if glyph does not have char set
-            # use codepage to find codepoint if no code point set
-            self._glyphs = tuple(
-                _glyph.set_annotations(
-                    char=_glyph.char or encoding.ord_to_unicode(_glyph.codepoint),
-                    codepoint=_glyph.codepoint or encoding.unicode_to_ord(_glyph.char)
-                )
                 for _glyph in self._glyphs
             )
 
@@ -317,6 +319,19 @@ class Font:
 
     ##########################################################################
     # text / character access
+
+    def get_chars(self):
+        """Get list of characters covered by this font."""
+        return list(self._chars.keys())
+
+    def get_codepoints(self):
+        """Get list of codepage codepoints covered by this font."""
+        return list(self._codepoints.keys())
+
+    def get_labels(self):
+        """Get list of codepage codepoints covered by this font."""
+        return list(self._labels.keys())
+
 
     def _iter_string(self, string, missing='raise'):
         """Iterate over string, yielding unicode characters."""
@@ -419,6 +434,7 @@ class Font:
         comments = [*self._comments] + new_comment.splitlines()
         return Font(self._glyphs, comments, self._properties)
 
+    # move to glyph.with_name()
     @scriptable
     def add_glyph_names(self):
         """Add unicode glyph names as comments, if no comment already exists."""
@@ -674,7 +690,7 @@ class Font:
                 for _glyph in self._glyphs
                 if (
                     _glyph.char not in keys
-                    and not set(_glyph.labels) - labels
+                    and not (set(_glyph.labels) & labels)
                 )
             ]
         else:
@@ -683,8 +699,8 @@ class Font:
                 for _glyph in self._glyphs
                 if (
                     _glyph.char not in keys
-                    and glyph_.codepoint not in keys
-                    and not set(_glyph.labels) - labels
+                    and _glyph.codepoint not in keys
+                    and not (set(_glyph.labels) & labels)
                 )
             ]
         return Font(glyphs, self._comments, self._properties)

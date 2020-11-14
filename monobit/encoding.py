@@ -6,7 +6,8 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import unicodedata
-
+import pkgutil
+import logging
 
 _ENCODING_ALIASES = {
     'ucs': 'unicode',
@@ -147,10 +148,8 @@ class Unicode:
     def unicode_to_ord(unicode):
         """Convert unicode to ordinal."""
         unicode = unicodedata.normalize('NFC', unicode)
-        if len(unicode) > 1:
-            # grapheme clusters
-            # when encoding == Unicode we shouldn't really need unicode_to_ord
-            # however if we do, grapheme clusters are not supported
+        if len(unicode) != 1:
+            # empty chars or multi-codepoint grapheme clusters are not supported here
             return None
         return ord(unicode)
 
