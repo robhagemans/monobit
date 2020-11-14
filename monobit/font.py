@@ -320,6 +320,19 @@ class Font:
     ##########################################################################
     # text / character access
 
+    def get_chars(self):
+        """Get list of characters covered by this font."""
+        return list(self._chars.keys())
+
+    def get_codepoints(self):
+        """Get list of codepage codepoints covered by this font."""
+        return list(self._codepoints.keys())
+
+    def get_labels(self):
+        """Get list of codepage codepoints covered by this font."""
+        return list(self._labels.keys())
+
+
     def _iter_string(self, string, missing='raise'):
         """Iterate over string, yielding unicode characters."""
         remaining = string
@@ -421,6 +434,7 @@ class Font:
         comments = [*self._comments] + new_comment.splitlines()
         return Font(self._glyphs, comments, self._properties)
 
+    # move to glyph.with_name()
     @scriptable
     def add_glyph_names(self):
         """Add unicode glyph names as comments, if no comment already exists."""
