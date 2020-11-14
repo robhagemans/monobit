@@ -247,21 +247,20 @@ class Font:
         if encoding == NoEncoding:
             # no encoding - leave codepoint and unicode labels as is
             return
+        # use codepage to find char if glyph does not have char set
+        # use codepage to find codepoint if no code point set
+        self._glyphs = tuple(
+            _glyph.set_annotations(
+                char=_glyph.char or encoding.ord_to_unicode(_glyph.codepoint),
+                codepoint=_glyph.codepoint or encoding.unicode_to_ord(_glyph.char)
+            )
+            for _glyph in self._glyphs
+        )
         if self._is_unicode:
             # only use char if encoding is unicode
             # since codepoint field has no way of encoding grapheme clusters
             self._glyphs = tuple(
                 _glyph.set_annotations(codepoint=None)
-                for _glyph in self._glyphs
-            )
-        else:
-            # use codepage to find char if glyph does not have char set
-            # use codepage to find codepoint if no code point set
-            self._glyphs = tuple(
-                _glyph.set_annotations(
-                    char=_glyph.char or encoding.ord_to_unicode(_glyph.codepoint),
-                    codepoint=_glyph.codepoint or encoding.unicode_to_ord(_glyph.char)
-                )
                 for _glyph in self._glyphs
             )
 
