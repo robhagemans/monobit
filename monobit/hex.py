@@ -52,7 +52,6 @@ def load(instream):
             width, height = 8, int(len(value)/2)
         else:
             width, height = 16, int(len(value)/4)
-        current = len(glyphs)
         if set(value) - set(string.hexdigits + ','):
             # not a valid line, treat as comment
             current_comment.append(line)
@@ -82,7 +81,7 @@ def load(instream):
 def save(font, outstream):
     """Write font to a .hex file."""
     write_comments(outstream, font.get_comments(), comm_char='#', is_global=True)
-    for glyph in font:
+    for glyph in font.glyphs:
         if len(glyph.char) > 1:
             logging.warning(
                 "Can't encode grapheme cluster %s in .hex file; skipping.",
