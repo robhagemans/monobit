@@ -9,7 +9,6 @@ from functools import wraps
 from typing import NamedTuple
 import numbers
 import logging
-import pkgutil
 import unicodedata
 
 from .base import scriptable
@@ -88,9 +87,13 @@ class KerningTable:
 # recognised yaff properties and converters from str
 # this also defines the default order in yaff files
 PROPERTIES = {
+
+    # naming - can be determined from source file if needed
+    'name': str, # full human name
+    'family': str, # typeface/font family
+
     # font metadata
     # can't be calculated
-    'name': str, # full human name
     'foundry': str, # author or issuer
     'copyright': str, # copyright string
     'notice': str, # e.g. license string
@@ -98,7 +101,6 @@ PROPERTIES = {
 
     # font description
     # can't be calculated
-    'family': str, # typeface/font family
     'style': str, # serif, sans, etc.
     'point-size': number, # nominal point size
     'weight': str, # normal, bold, light, etc.
@@ -109,6 +111,7 @@ PROPERTIES = {
     # target info
     # can't be calculated
     'device': str, # target device name
+    # calculated or given
     'dpi': Coord.create, # target resolution in dots per inch
 
     # summarising quantities
@@ -157,7 +160,7 @@ PROPERTIES = {
 # properties that must have the calculated value
 _NON_OVERRIDABLE = ('spacing', 'bounding-box', 'pixel-size', 'average-advance', 'cap-advance',)
 # properties where the calculated value may be overridden
-_OVERRIDABLE = ('x-height', 'cap-height',)
+_OVERRIDABLE = ('dpi', 'name', 'family', 'x-height', 'cap-height',)
 
 
 class Font:
