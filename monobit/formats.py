@@ -304,7 +304,7 @@ def _single_saver(save, pack, outfile, binary, ext, **kwargs):
         outfile = sys.stdout.buffer
     if len(pack) == 1:
         # we have only one font to deal with, no need to create container
-        _multi_saver(save, [*pack][0], outfile, binary)
+        _multi_saver(save, [*pack][0], outfile, binary, **kwargs)
     else:
         # create container and call saver for each font in the pack
         with _open_container(outfile, 'w', binary) as out:
