@@ -108,14 +108,13 @@ def _to_image(
     # work out image geometry
     step_x = font.bounding_box.x * scale_x + padding_x
     step_y = font.bounding_box.y * scale_y + padding_y
-    glyphs = [_glyph for _, _glyph in font.iter_ordinal(encoding=encoding)]
-    rows = ceildiv(len(glyphs), columns)
+    rows = ceildiv(len(font.glyphs), columns)
     # determine image geometry
     width = columns * step_x + 2 * margin_x - padding_x
     height = rows * step_y + 2 * margin_y - padding_y
     img = Image.new('RGB', (width, height), border)
     # output glyphs
-    for ordinal, glyph in enumerate(glyphs):
+    for ordinal, glyph in enumerate(font.glyphs):
         if not glyph.width or not glyph.height:
             continue
         row, col = divmod(ordinal, columns)

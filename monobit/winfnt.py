@@ -483,7 +483,7 @@ def create_fnt(font, version=0x200):
     # use only native encoding for now
     encoding = None
     # char table
-    ord_glyphs = [_glyph for _, _glyph in font.iter_ordinal(encoding=encoding)]
+    ord_glyphs = [_glyph for _, _glyph in enumerate(font.glyphs)]
     min_ord = 0
     max_ord = len(ord_glyphs) - 1
     # add the guaranteed-blank glyph
