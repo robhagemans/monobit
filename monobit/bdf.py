@@ -350,7 +350,7 @@ def _parse_xlfd_name(xlfd_str):
     """Parse X logical font description font name string."""
     xlfd = xlfd_str.split('-')
     if len(xlfd) == 15:
-        properties = {_key: _value for _key, _value in zip(_XLFD_NAME_FIELDS, xlfd) if _key}
+        properties = {_key: _value for _key, _value in zip(_XLFD_NAME_FIELDS, xlfd) if _key and _value}
     else:
         logging.warning('Could not parse X font name string `%s`', xlfd_str)
         return {}
