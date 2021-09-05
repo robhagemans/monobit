@@ -195,6 +195,7 @@ def _load_font(instream, fore, back, key_format):
         for _key in _el.labels
     }
     # we have to deal with default-char separately to parse key/label
+    # FIXME: also for word-boundary
     if 'default-char' in properties:
         # use a dummy cluster
         label_dict = vars(key_format(Cluster(), properties['default-char']))
@@ -322,7 +323,7 @@ def _save_yaff(font, outstream, fore, back, comment, tab, key_sep, empty):
 def _save_draw(font, outstream, fore, back, comment, tab, key_sep, empty):
     """Write one font to a plaintext stream."""
     write_comments(outstream, font.get_comments(), comm_char=comment, is_global=True)
-    for glyph in font:
+    for glyph in font.glyphs:
         if len(glyph.char) > 1:
             logging.warning("Can't encode grapheme cluster %s in .draw file; skipping.", str(label))
             continue
