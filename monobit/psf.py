@@ -93,7 +93,7 @@ def load(instream):
         table = _read_unicode_table(instream, separator, startseq, encoding)
         # convert unicode table to labels
         cells = [
-            _glyph.set_annotations(char=table[_index])
+            _glyph.set_annotations(char=''.join(table[_index]))
             for _index, _glyph in enumerate(cells)
         ]
     return Font(cells, properties=properties)
