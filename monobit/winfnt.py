@@ -35,6 +35,7 @@ from .binary import friendlystruct, bytes_to_bits, ceildiv, align
 from .formats import Loaders, Savers
 from .font import Font, Coord
 from .glyph import Glyph
+from .encoding import get_encoding
 
 
 ##############################################################################
@@ -43,6 +44,10 @@ from .glyph import Glyph
 # https://web.archive.org/web/20120215123301/http://support.microsoft.com/kb/65123
 # https://ffenc.blogspot.com/2008/04/fnt-font-file-format.html
 
+
+_FALLBACK_CHARSET = 'windows-ansi-2.0'
+# codepoint 0x80 is unmapped in windows-ansi-2.0 and commonly used for default
+_FALLBACK_DEFAULT = 0x80
 
 # https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-wmf/0d0b32ac-a836-4bd2-a112-b6000a1b4fc9
 # most of this is a guess, I can't find a more precise definition
@@ -300,7 +305,7 @@ def _parse_header(fnt):
         header_ext = _FNT_HEADER_EXT[win_props.dfVersion]
     except KeyError:
         raise ValueError(
-            f'Not a Windows .FNT resource or unsupported version ({win_props.dfVersion:#04x}).'
+            f'Not a Windows .FNT resource or unsupported version (0x{win_props.dfVersion:04x}).'
             ) from None
     win_props += header_ext.from_bytes(fnt, _FNT_HEADER.size)
     return win_props
@@ -343,7 +348,7 @@ def _parse_chartable_v1(fnt, win_props):
         )
         # don't store empty glyphs but count them for ordinals
         if rows:
-            glyphs.append(Glyph(rows), codepoint=win_props.dfFirstChar + ord)
+            glyphs.append(Glyph(rows, codepoint=win_props.dfFirstChar + ord))
     return glyphs
 
 def _parse_chartable_v2(fnt, win_props):
@@ -396,7 +401,7 @@ def _parse_win_props(fnt, win_props):
         'default-char': win_props.dfDefaultChar + win_props.dfFirstChar,
     }
     if win_props.dfPixWidth:
-        properties['spacing'] = 'monospace'
+        properties['spacing'] = 'character-cell'
     else:
         properties['spacing'] = 'proportional'
         # this can be extracted from the font - will be dropped if consistent
@@ -485,12 +490,31 @@ def create_fnt(font, version=0x200):
         x_width = pix_width = font.bounding_box.x
         v3_flags = _DFF_FIXED
     space_index = 0
-    # use only native encoding for now
-    encoding = None
-    # char table
-    ord_glyphs = [_glyph for _, _glyph in enumerate(font.glyphs)]
-    min_ord = 0
-    max_ord = len(ord_glyphs) - 1
+    # if encoding is compatible, use it; if not, sample fallback charset from what we have
+    try:
+        charset = charset_map[font.encoding]
+        # unicode is not supported by FNT so we must have a codepage font here
+        codepoints = font.get_codepoints()
+        # FNT can hold at most the codepoints 0..256 as these fields are byte-sized
+        min_ord = min(codepoints)
+        max_ord = min(255, max(codepoints))
+        # char table; we need a contiguous range between the min and max codepoints
+        ord_glyphs = [font.get_glyph(_codepoint) for _codepoint in range(min_ord, max_ord)]
+        default_ord = font.get_glyph(font.default_char).codepoint
+        break_ord = font.get_glyph(font.word_boundary).codepoint
+    except KeyError:
+        logging.warning(
+            f'Encoding `{font.encoding}` not supported by Windows FNT resource format, '
+            'glyphs will be mapped to `{_FALLBACK_CHARSET}` instead.'
+        )
+        charset = 0xff
+        # sample chars from cp437
+        encoder = get_encoding(_FALLBACK_CHARSET)
+        chars = (encoder.ord_to_unicode(_ord) for _ord in range(256))
+        min_ord, max_ord = 0, 255
+        ord_glyphs = [font.get_glyph(_char, missing='default') for _char in chars]
+        # use space for break; 0x80 is unmapped in windows-ansi-2.0 and commonly used for default
+        default_ord, break_ord = _FALLBACK_DEFAULT, 0x20
     # add the guaranteed-blank glyph
     ord_glyphs.append(Glyph.empty(pix_width, font.bounding_box.y))
     # create the bitmaps
@@ -521,6 +545,14 @@ def create_fnt(font, version=0x200):
     # set device name pointer to zero for 'generic font'
     if not device_name or device_name == b'\0':
         device_name_offset = 0
+    try:
+        weight = weight_map[font.weight]
+    except KeyError:
+        logging.warning(
+            f'Weight `{font.weight}` not supported by Windows FNT resource format, '
+            '`regular` will be used instead.'
+        )
+        weight = weight_map['regular']
     # create FNT file
     win_props = _FNT_HEADER(
         dfVersion=version,
@@ -539,7 +571,7 @@ def create_fnt(font, version=0x200):
         dfUnderline=('underline' in font.decoration),
         dfStrikeOut=('strikethrough' in font.decoration),
         dfWeight=weight_map.get(font.weight, weight_map['regular']),
-        dfCharSet=charset_map.get(font.encoding, 0xff),
+        dfCharSet=charset,
         dfPixWidth=pix_width,
         dfPixHeight=font.bounding_box.y,
         dfPitchAndFamily=pitch_and_family,
@@ -549,8 +581,8 @@ def create_fnt(font, version=0x200):
         dfMaxWidth=font.bounding_box.x + font.tracking + font.offset.x,
         dfFirstChar=min_ord,
         dfLastChar=max_ord,
-        dfDefaultChar=font.get_ordinal(font.default_char) - min_ord,
-        dfBreakChar=font.get_ordinal(font.word_boundary) - min_ord,
+        dfDefaultChar=default_ord - min_ord,
+        dfBreakChar=break_ord - min_ord,
         # round up to multiple of 2 bytes to word-align v1.0 strikes (not used for v2.0+ ?)
         dfWidthBytes=align(ceildiv(font.bounding_box.x, 8), 1),
         dfDevice=device_name_offset,
