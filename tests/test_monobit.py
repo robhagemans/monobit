@@ -93,7 +93,7 @@ class TestMonobit(unittest.TestCase):
     def test_import_psf(self):
         """Test importing psf files"""
         font = monobit.load("tests/fonts/fixed/4x6.psf")
-        self.assertEqual(len(font.glyphs), 256)
+        self.assertEqual(len(font.glyphs), 919)
 
     def test_export_psf(self):
         """Test exporting psf files"""

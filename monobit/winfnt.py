@@ -296,7 +296,12 @@ def parse_fnt(fnt):
 def _parse_header(fnt):
     """Read the header information in the FNT resource."""
     win_props = _FNT_HEADER.from_bytes(fnt)
-    header_ext = _FNT_HEADER_EXT[win_props.dfVersion]
+    try:
+        header_ext = _FNT_HEADER_EXT[win_props.dfVersion]
+    except KeyError:
+        raise ValueError(
+            f'Not a Windows .FNT resource or unsupported version ({win_props.dfVersion:#04x}).'
+            ) from None
     win_props += header_ext.from_bytes(fnt, _FNT_HEADER.size)
     return win_props
 
@@ -541,7 +546,7 @@ def create_fnt(font, version=0x200):
         # for 2.0+, we use actual average advance here (like fontforge but unlike mkwinfont)
         dfAvgWidth=round(font.average_advance),
         # max advance width
-        dfMaxWidth=font.bounding_box.x + font.tracking + font.offset_x,
+        dfMaxWidth=font.bounding_box.x + font.tracking + font.offset.x,
         dfFirstChar=min_ord,
         dfLastChar=max_ord,
         dfDefaultChar=font.get_ordinal(font.default_char) - min_ord,
