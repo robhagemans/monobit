@@ -10,6 +10,7 @@ import logging
 from .formats import Loaders, Savers
 from .font import Font, Coord
 from .glyph import Glyph
+from .encoding import get_encoding
 
 
 # x11 encodings e.g.
@@ -379,7 +380,6 @@ def _parse_xlfd_properties(x_props, xlfd_name):
         'x-height': x_props.pop('X_HEIGHT', None),
         'cap-height': x_props.pop('CAP_HEIGHT', None),
         'pixel-size': x_props.pop('PIXEL_SIZE', None),
-        'default-char': x_props.pop('DEFAULT_CHAR', None),
         'slant': _SLANT_MAP.get(_from_quoted_string(x_props.pop('SLANT', '')), None),
         'spacing': _SPACING_MAP.get(_from_quoted_string(x_props.pop('SPACING', '')), None),
     }
@@ -415,6 +415,10 @@ def _parse_xlfd_properties(x_props, xlfd_name):
         properties['encoding'] = registry
     else:
         properties['encoding'] = encoding
+    if 'DEFAULT_CHAR' in x_props:
+        default_ord = x_props.pop('DEFAULT_CHAR', None)
+        encoder = get_encoding(properties['encoding'])
+        properties['default-char'] = encoder.ord_to_unicode(default_ord)
     properties = {_k: _v for _k, _v in properties.items() if _v is not None and _v != ''}
     # invalid xlfd name: keep but with changed property name
     if not xlfd_name_props:
@@ -474,12 +478,9 @@ def _create_xlfd_properties(font):
         'ADD_STYLE_NAME': _quoted_string(font.style.title()),
         'AVERAGE_WIDTH': str(round(float(font.average_advance) * 10)).replace('-', '~'),
     }
-    try:
-        xlfd_props['DEFAULT_CHAR'] = font.get_ordinal(font.default_char)
-    except KeyError:
-        pass
-    logging.info(xlfd_props)
-    # modify/summarise values
+    # encoding dependent values
+    encoder = get_encoding(font.encoding)
+    xlfd_props['DEFAULT_CHAR'] = encoder.unicode_to_ord(font.default_char)
     if font.encoding == 'unicode':
         xlfd_props['CHARSET_REGISTRY'] = '"ISO10646"'
         xlfd_props['CHARSET_ENCODING'] = '"1"'
@@ -494,7 +495,7 @@ def _create_xlfd_properties(font):
     xlfd_props = {_k: _v for _k, _v in xlfd_props.items() if _v}
     # keep unparsed BDF properties
     xlfd_props.update({
-        _k[len('bdf.'):].replace('-', '_'): _v
+        _k[len('bdf.'):].replace('-', '_').upper(): _v
         for _k, _v in font.nondefault_properties.items() if _k.startswith('bdf.')
     })
     return xlfd_props

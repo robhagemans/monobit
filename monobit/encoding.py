@@ -24,7 +24,7 @@ def normalise_encoding(encoding):
     return _ENCODING_ALIASES.get(encoding, encoding)
 
 
-def _get_encoding(enc):
+def get_encoding(enc):
     """Find an encoding by name."""
     if enc:
         enc = enc.lower().replace('-', '_')

@@ -13,7 +13,7 @@ import unicodedata
 
 from .base import scriptable
 from .glyph import Glyph
-from .encoding import Unicode, NoEncoding, normalise_encoding, _get_encoding
+from .encoding import Unicode, NoEncoding, normalise_encoding, get_encoding
 
 
 
@@ -242,7 +242,7 @@ class Font:
                 for _index, _glyph in enumerate(self._glyphs)
             )
         # update glyph unicode annotations
-        encoding = _get_encoding(self._properties.get('encoding', None))
+        encoding = get_encoding(self._properties.get('encoding', None))
         self._is_unicode = (encoding == Unicode)
         if encoding == NoEncoding:
             # no encoding - leave codepoint and unicode labels as is
@@ -291,7 +291,7 @@ class Font:
             if key is not None:
                 raise ValueError('Cannot request both key and label.')
             try:
-                return self._labels[key]
+                return self._labels[label]
             except KeyError:
                 pass
         else:
@@ -308,7 +308,8 @@ class Font:
     def get_default_glyph(self):
         """Get default glyph; empty if not defined."""
         try:
-            return self._get_glyph(self.default_char)
+            #FIXME - does not work if default_char holds a label
+            return self.get_glyph(self.default_char)
         except KeyError:
             return self.get_empty_glyph()
 

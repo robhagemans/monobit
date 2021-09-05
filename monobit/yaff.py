@@ -34,14 +34,14 @@ def yaff_input_key(cluster, key):
         pass
     key = key.strip()
     # see if it counts as unicode label
-    if key.lower().startswith('u+'):
+    if _is_unicode_label(key):
         try:
-            cluster.char = ''.join(chr(int(_elem.strip()[2:], 16)) for _elem in key.split(','))
+            cluster.char = _from_unicode_label(key)
             return cluster
         except ValueError as e:
             raise ValueError("'{}' is not a valid unicode label.".format(key)) from e
     # otherwise it's a string label
-    cluster.label = key.lower()
+    cluster.labels = [key.lower()]
     return cluster
 
 
@@ -53,6 +53,21 @@ def draw_input_key(cluster, key):
         cluster.labels = [key]
     return cluster
 
+
+def _is_unicode_label(key):
+    """Identify u+XXXX label."""
+    return key.lower().startswith('u+')
+
+def _to_unicode_label(unichars):
+    """Get u+XXXX label for unicode chars."""
+    return ','.join(
+        f'u+{ord(_uc):04x}'
+        for _uc in unichars
+    )
+
+def _from_unicode_label(label):
+    """Get unicode char for u+XXXX label."""
+    return ''.join(chr(int(_elem.strip()[2:], 16)) for _elem in label.split(','))
 
 
 # defaults
@@ -179,7 +194,17 @@ def _load_font(instream, fore, back, key_format):
         for _el in property_elements
         for _key in _el.labels
     }
-
+    # we have to deal with default-char separately to parse key/label
+    if 'default-char' in properties:
+        # use a dummy cluster
+        label_dict = vars(key_format(Cluster(), properties['default-char']))
+        try:
+            properties['default-char'] = label_dict['char']
+        except KeyError:
+            try:
+                properties['default-char'] = label_dict['codepoint']
+            except KeyError:
+                properties['default-char'] = label_dict['labels'][0]
     # parse glyphs
     # text version of glyphs
     # a glyph is any key/value where the value contains no alphanumerics
@@ -262,6 +287,17 @@ def _save_yaff(font, outstream, fore, back, comment, tab, key_sep, empty):
         'spacing': font.spacing,
         **font.nondefault_properties
     }
+    # we have to deal with default-char here as it's a str already but needs to be converted to a label
+    try:
+        default = props['default-char']
+    except KeyError:
+        pass
+    else:
+        if font.encoding == 'unicode':
+            #FIXME - this doesn't allow for labels
+            props['default-char'] = _to_unicode_label(default)
+        elif isinstance(default, int):
+            props['default-char'] = f'0x{default:02x}'
     if props:
         # write recognised yaff properties first, in defined order
         for key in PROPERTIES:
@@ -276,10 +312,7 @@ def _save_yaff(font, outstream, fore, back, comment, tab, key_sep, empty):
         if glyph.codepoint is not None:
             labels.append(f'0x{glyph.codepoint:02x}')
         if glyph.char:
-            labels.append(','.join(
-                f'u+{ord(_uc):04x}'
-                for _uc in glyph.char
-            ))
+            labels.append(_to_unicode_label(glyph.char))
         labels.extend(glyph.labels)
         _write_glyph(
             outstream, labels,
