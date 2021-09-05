@@ -8,6 +8,13 @@ The `monobit` tools let you modify bitmap fonts and convert between several form
 Roman Czyborra's `hexdraw`, Simon Tatham's `mkwinfont` and John Elliott's `psftools`. A specification
 of the font format follows below.
 
+Dependencies
+------------
+
+* Python
+* Some features require the `PIL` module i.e. `pip3 install Pillow`
+* Exporting to "pdf" requires the `reportlab` module i.e. `pip3 install reportlab`
+
 Supported formats
 -----------------
 
