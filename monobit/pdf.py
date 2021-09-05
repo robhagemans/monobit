@@ -41,17 +41,13 @@ if reportlab:
         if encoding is not None:
             #FIXME
             pass
-        chars, glyphs = zip(
-            font.get_glyph(_codepoint, 'empty')
-            for _codepoint in range(256)
-        )
         for col in range(columns):
             for row in range(rows):
                 orig_x, orig_y = col*xpix*width, (rows-row-1)*ypix*height
                 n = columns * row + col
-                if n < len(chars):
-                    canvas.drawString(orig_x, orig_y+font.bounding_box.y*ypix + 3, f'{n:02X}: {chars[n]}')
-                    glyph = glyphs[n].as_matrix()
+                if n < len(font.glyphs):
+                    canvas.drawString(orig_x, orig_y+font.bounding_box.y*ypix + 3, f'{n:02X}: {font.glyphs[n].char}')
+                    glyph = font.glyphs[n].as_matrix()
                     for y in range(len(glyph)):
                         for x in range(len(glyph[y])):
                             canvas.rect(orig_x+x*xpix, orig_y+(len(glyph)-y-1)*ypix, xpix, ypix, fill=glyph[y][x])
