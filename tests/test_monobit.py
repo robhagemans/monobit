@@ -39,34 +39,34 @@ class TestMonobit(unittest.TestCase):
         font = monobit.load("tests/fonts/fixed/8x16.draw")
         self.assertEqual(len(font.glyphs), 919)
 
-    # def test_export_draw(self):
-    #     """Test exporting draw files"""
-    #     draw_file = self.tmp_dir.name + "/8x16.draw"
-    #     monobit.save(self.fixed8x16, draw_file)
-    #     self.assertTrue(os.path.getsize(draw_file) > 0)
+    def test_export_draw(self):
+        """Test exporting draw files"""
+        draw_file = self.tmp_dir.name + "/8x16.draw"
+        monobit.save(self.fixed8x16, draw_file)
+        self.assertTrue(os.path.getsize(draw_file) > 0)
 
-    # def test_import_fon(self):
-    #     """Test importing fon files"""
-    #     pack = monobit.load("tests/fonts/fixed/6x13.fon")
-    #     font = pack[0]
-    #     self.assertEqual(len(font.glyphs), 256)
+    def test_import_fon(self):
+        """Test importing fon files"""
+        pack = monobit.load("tests/fonts/fixed/6x13.fon")
+        font = pack[0]
+        self.assertEqual(len(font.glyphs), 256)
 
-    # def test_export_fon(self):
-    #     """Test exporting fon files"""
-    #     fon_file = self.tmp_dir.name + "/4x6.fon"
-    #     monobit.save(self.fixed4x6, fon_file)
-    #     self.assertTrue(os.path.getsize(fon_file) > 0)
+    def test_export_fon(self):
+        """Test exporting fon files"""
+        fon_file = self.tmp_dir.name + "/4x6.fon"
+        monobit.save(self.fixed4x6, fon_file)
+        self.assertTrue(os.path.getsize(fon_file) > 0)
 
-    # def test_import_fnt(self):
-    #     """Test importing fnt files"""
-    #     font = monobit.load("tests/fonts/fixed/4x6.fnt")
-    #     self.assertEqual(len(font.glyphs), 919)
+    def test_import_fnt(self):
+        """Test importing fnt files"""
+        font = monobit.load("tests/fonts/fixed/4x6.fnt")
+        self.assertEqual(len(font.glyphs), 919)
 
-    # def test_export_fnt(self):
-    #     """Test exporting fnt files"""
-    #     fnt_file = self.tmp_dir.name + "/4x6.fnt"
-    #     monobit.save(self.fixed4x6, fnt_file)
-    #     self.assertTrue(os.path.getsize(fnt_file) > 0)
+    def test_export_fnt(self):
+        """Test exporting fnt files"""
+        fnt_file = self.tmp_dir.name + "/4x6.fnt"
+        monobit.save(self.fixed4x6, fnt_file)
+        self.assertTrue(os.path.getsize(fnt_file) > 0)
 
     def test_import_hex(self):
         """Test importing hex files"""
@@ -78,22 +78,22 @@ class TestMonobit(unittest.TestCase):
         monobit.save(self.fixed8x16, hex_file)
         self.assertTrue(os.path.getsize(hex_file) > 0)
 
-    # def test_export_pdf(self):
-    #     """Test exporting pdf files"""
-    #     pdf_file = self.tmp_dir.name + "/4x6.pdf"
-    #     monobit.save(self.fixed4x6, pdf_file)
-    #     self.assertTrue(os.path.getsize(pdf_file) > 0)
+    def test_export_pdf(self):
+        """Test exporting pdf files"""
+        pdf_file = self.tmp_dir.name + "/4x6.pdf"
+        monobit.save(self.fixed4x6, pdf_file)
+        self.assertTrue(os.path.getsize(pdf_file) > 0)
 
-    # def test_export_png(self):
-    #     """Test exporting png files"""
-    #     png_file = self.tmp_dir.name + "/4x6.png"
-    #     monobit.save(self.fixed4x6, png_file)
-    #     self.assertTrue(os.path.getsize(png_file) > 0)
+    def test_export_png(self):
+        """Test exporting png files"""
+        png_file = self.tmp_dir.name + "/4x6.png"
+        monobit.save(self.fixed4x6, png_file)
+        self.assertTrue(os.path.getsize(png_file) > 0)
 
-    # def test_import_psf(self):
-    #     """Test importing psf files"""
-    #     font = monobit.load("tests/fonts/fixed/4x6.psf")
-    #     self.assertEqual(len(font.glyphs), 256)
+    def test_import_psf(self):
+        """Test importing psf files"""
+        font = monobit.load("tests/fonts/fixed/4x6.psf")
+        self.assertEqual(len(font.glyphs), 256)
 
     def test_export_psf(self):
         """Test exporting psf files"""
