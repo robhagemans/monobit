@@ -30,7 +30,7 @@ def _open_stream(on, outfile, mode, binary=False):
 
 def _open_container(outfile, mode, binary=True):
     """Open a zip or directory container."""
-    if isinstance(outfile, (str, bytes)):
+    if isinstance(outfile, (str, bytes, Path)):
         return DirContainer(outfile, mode)
     elif binary:
         return ZipContainer(outfile, mode)
@@ -45,7 +45,7 @@ def get_format(infile, format=''):
     if not format:
         format = DEFAULT_FORMAT
         # if filename given, try to use it to infer format
-        if isinstance(infile, str):
+        if isinstance(infile, (str, Path)):
             suffixes = Path(infile).suffixes
             if suffixes:
                 if suffixes[-1] == '.zip' and len(suffixes) > 2:
@@ -112,7 +112,7 @@ def _container_loader(load, infile, binary, multi, format, **kwargs):
     """Open a container and provide to font loader."""
     if not infile or infile == '-':
         infile = sys.stdin.buffer
-    if isinstance(infile, (str, bytes)):
+    if isinstance(infile, (str, bytes, Path)):
         # string provided; open stream or container as appropriate
         if Path(infile).is_dir():
             container_type = DirContainer
@@ -137,7 +137,7 @@ def _stream_loader(load, infile, binary, multi, format, **kwargs):
     if not infile or infile == '-':
         infile = sys.stdin.buffer
     container_type = None
-    if isinstance(infile, (str, bytes)):
+    if isinstance(infile, (str, bytes, Path)):
         # string provided; open stream or container as appropriate
         if Path(infile).is_dir():
             container_type = DirContainer
@@ -153,7 +153,7 @@ def _stream_loader(load, infile, binary, multi, format, **kwargs):
             elif not binary and _has_magic(infile, TextMultiStream.magic):
                 container_type = TextMultiStream
     if not container_type:
-        if isinstance(infile, (str, bytes)):
+        if isinstance(infile, (str, bytes, Path)):
             with _open_stream(io, infile, 'r', binary) as instream:
                 font_or_pack = load(instream, **kwargs)
                 return _set_extraction_props(font_or_pack, infile, format, multi)
@@ -197,7 +197,7 @@ def _set_extraction_props(font_or_pack, infile, format, multi):
 
 def _set_font_extraction_props(font, infile, format):
     """Return copy of font with source-name and source-format set."""
-    if isinstance(infile, (str, bytes)):
+    if isinstance(infile, (str, bytes, Path)):
         source_name = Path(infile).name
     else:
         source_name = Path(infile.name).name
@@ -284,7 +284,7 @@ def _multi_saver(save, pack, outfile, binary, **kwargs):
     # use standard streams if none provided
     if not outfile or outfile == '-':
         outfile = sys.stdout.buffer
-    if isinstance(outfile, (str, bytes)):
+    if isinstance(outfile, (str, bytes, Path)):
         outfile = _open_stream(io, outfile, 'w', binary)
     else:
         if not binary:
