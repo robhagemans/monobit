@@ -59,8 +59,8 @@ class TestMonobit(unittest.TestCase):
 
     def test_import_fnt(self):
         """Test importing fnt files"""
-        font = monobit.load("tests/fonts/fixed/4x6.fnt")
-        self.assertEqual(len(font.glyphs), 919)
+        font = monobit.load("tests/fonts/fixed/6x13.fnt")
+        self.assertEqual(len(font.glyphs), 256)
 
     def test_export_fnt(self):
         """Test exporting fnt files"""
