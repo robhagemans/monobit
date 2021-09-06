@@ -12,6 +12,7 @@ usage::
 import os
 import tempfile
 import unittest
+from pathlib import Path
 
 import monobit
 
@@ -124,6 +125,13 @@ class TestMonobit(unittest.TestCase):
         fnt_file = self.tmp_dir.name + "/4x6.raw"
         monobit.save(self.fixed4x6, fnt_file)
         self.assertTrue(os.path.getsize(fnt_file) > 0)
+
+    def test_export_pdf(self):
+        """Test exporting to pdf."""
+        fnt_file = Path(self.tmp_dir.name) / '4x6.pdf'
+        monobit.save(self.fixed4x6, fnt_file)
+        self.assertTrue(os.path.getsize(fnt_file) > 0)
+
 
 if __name__ == '__main__':
     unittest.main()
