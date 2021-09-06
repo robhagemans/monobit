@@ -70,7 +70,7 @@ class Loaders:
         try:
             return cls._loaders[format]
         except KeyError:
-            raise ValueError('Cannot load from format `{}`'.format(format))
+            raise ValueError('Cannot load from format `{}`'.format(format)) from None
 
     @classmethod
     def load(cls, infile:str, format:str='', **kwargs):

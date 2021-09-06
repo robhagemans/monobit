@@ -42,14 +42,25 @@ parser.add_argument(
 args, unknown = parser.parse_known_args()
 
 # get loader arguments
-loader = monobit.formats.Loaders.get_loader(args.infile, format=args.from_)
-for arg, _type in loader.script_args.items():
-    parser.add_argument('--' + arg.replace('_', '-'), dest=arg, type=_type)
+early_exception = None
+try:
+    loader = monobit.formats.Loaders.get_loader(args.infile, format=args.from_)
+except Exception as exc:
+    early_exception = exc
+    loader = None
+else:
+    for arg, _type in loader.script_args.items():
+        parser.add_argument('--' + arg.replace('_', '-'), dest=arg, type=_type)
 
 # get saver arguments
-saver = monobit.formats.Savers.get_saver(args.outfile, format=args.to_)
-for arg, _type in saver.script_args.items():
-    parser.add_argument('--' + arg.replace('_', '-'), dest=arg, type=_type)
+try:
+    saver = monobit.formats.Savers.get_saver(args.outfile, format=args.to_)
+except Exception as exc:
+    early_exception = exc
+    saver = None
+else:
+    for arg, _type in saver.script_args.items():
+        parser.add_argument('--' + arg.replace('_', '-'), dest=arg, type=_type)
 
 args = parser.parse_args()
 
@@ -58,16 +69,22 @@ if args.help:
     sys.exit(0)
 
 # convert arguments to type accepted by operation
-load_args = {
-    _name: _arg
-    for _name, _arg in vars(args).items()
-    if _arg is not None and _name in loader.script_args
-}
-save_args = {
-    _name: _arg
-    for _name, _arg in vars(args).items()
-    if _arg is not None and _name in saver.script_args
-}
+if loader:
+    load_args = {
+        _name: _arg
+        for _name, _arg in vars(args).items()
+        if _arg is not None and _name in loader.script_args
+    }
+else:
+    load_args = {}
+if saver:
+    save_args = {
+        _name: _arg
+        for _name, _arg in vars(args).items()
+        if _arg is not None and _name in saver.script_args
+    }
+else:
+    save_args = {}
 
 
 if args.debug:
@@ -77,7 +94,10 @@ else:
 
 logging.basicConfig(level=loglevel, format='%(levelname)s: %(message)s')
 
+
 try:
+    if early_exception:
+        raise early_exception
     font = monobit.load(args.infile, format=args.from_, **load_args)
     if args.codepage:
         font = font.set_encoding(args.codepage)
