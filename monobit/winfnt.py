@@ -505,7 +505,7 @@ def create_fnt(font, version=0x200):
     except KeyError:
         logging.warning(
             f'Encoding `{font.encoding}` not supported by Windows FNT resource format, '
-            'glyphs will be mapped to `{_FALLBACK_CHARSET}` instead.'
+            f'glyphs will be mapped to `{_FALLBACK_CHARSET}` instead.'
         )
         charset = 0xff
         # sample chars from cp437
