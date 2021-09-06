@@ -114,5 +114,16 @@ class TestMonobit(unittest.TestCase):
     def tearDown(self):
         self.tmp_dir.cleanup()
 
+    def test_import_raw(self):
+        """Test importing raw binary files"""
+        font = monobit.load("tests/fonts/fixed/4x6.raw", cell=(4, 6))
+        self.assertEqual(len(font.glyphs), 919)
+
+    def test_export_raw(self):
+        """Test exporting raw binary files"""
+        fnt_file = self.tmp_dir.name + "/4x6.raw"
+        monobit.save(self.fixed4x6, fnt_file)
+        self.assertTrue(os.path.getsize(fnt_file) > 0)
+
 if __name__ == '__main__':
     unittest.main()
