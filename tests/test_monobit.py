@@ -132,6 +132,17 @@ class TestMonobit(unittest.TestCase):
         monobit.save(self.fixed4x6, fnt_file)
         self.assertTrue(os.path.getsize(fnt_file) > 0)
 
+    def test_import_bmf(self):
+        """Test importing bmfont files."""
+        pack = monobit.load("tests/fonts/fixed/6x13.bmf")
+        self.assertEqual(len(pack), 7)
+
+    def test_export_bmf(self):
+        """Test exporting bmfont files."""
+        fnt_file = self.tmp_dir.name + "/4x6.bmf"
+        monobit.save(self.fixed4x6, fnt_file)
+        self.assertTrue(os.path.getsize(fnt_file) > 0)
+
 
 if __name__ == '__main__':
     unittest.main()
