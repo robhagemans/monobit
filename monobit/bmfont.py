@@ -25,6 +25,11 @@ from .glyph import Glyph
 from .winfnt import _CHARSET_MAP
 
 
+##############################################################################
+
+# text/xml/binary format: https://www.angelcode.com/products/bmfont/doc/file_format.html
+# json format: https://github.com/Jam3/load-bmfont/blob/master/json-spec.md
+
 
 ##############################################################################
 # top-level calls
@@ -229,9 +234,14 @@ def _parse_xml(data):
     root = etree.fromstring(data)
     if root.tag != 'font':
         raise ValueError(
-            'Not a valid BMFont XML file: root should be <font>, not <{}>'.format(root.tag)
+            f'Not a valid BMFont XML file: root should be <font>, not <{root.tag}>'
         )
-    return dict(
+    for tag in ('info', 'common', 'pages', 'chars'):
+        if root.find(tag) is None:
+            raise ValueError(
+                f'Not a valid BMFont XML file: no <{tag}> tag found.'
+            )
+    result = dict(
         bmformat='xml',
         info=root.find('info').attrib,
         common=_COMMON(**_dict_to_ints(root.find('common').attrib)),
@@ -240,24 +250,35 @@ def _parse_xml(data):
             _CHAR(**_dict_to_ints(_elem.attrib))
             for _elem in root.find('chars').iterfind('char')
         ],
-        kernings=[
+        kernings=[]
+    )
+    if root.find('kernings') is not None:
+        result['kernings'] = [
             _KERNING(**_dict_to_ints(_elem.attrib))
             for _elem in root.find('kernings').iterfind('kerning')
         ],
-    )
+    return result
 
 def _parse_json(data):
     """Parse JSON bmfont description."""
     # https://github.com/Jam3/load-bmfont/blob/master/json-spec.md
     tree = json.loads(data)
-    return dict(
+    for tag in ('info', 'common', 'pages', 'chars'):
+        if tag not in tree:
+            raise ValueError(
+                f'Not a valid BMFont JSON file: no <{tag}> key found.'
+            )
+    result = dict(
         bmformat='json',
         info=tree['info'],
         common=_COMMON(**_dict_to_ints(tree['common'])),
         pages=[{'id': _i, 'file': _page} for _i, _page in enumerate(tree['pages'])],
         chars=[_CHAR(**_dict_to_ints(_elem)) for _elem in tree['chars']],
-        kernings=[_KERNING(**_dict_to_ints(_elem)) for _elem in tree['kernings']],
+        kernings=[]
     )
+    if 'kernings' in tree:
+        result['kernings'] = [_KERNING(**_dict_to_ints(_elem)) for _elem in tree['kernings']]
+    return result
 
 def _parse_text_dict(line):
     """Parse space separated key=value pairs."""
@@ -535,7 +556,7 @@ def _create_spritesheets(font, size=(256, 256), packed=False):
         for glyph in font.glyphs:
             if len(glyph.char) > 1:
                 logging.warning(
-                    "Can't encode grapheme cluster %s in bmfont file; skipping.", str(label)
+                    f"Can't encode multi-codepoint grapheme {glyph.char} in bmfont file; skipping."
                 )
                 continue
             left, bottom, right, top = glyph.ink_offsets
