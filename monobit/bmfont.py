@@ -420,6 +420,9 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=())
             else:
                 masked = ()
             sprites.append(masked)
+        # close resources
+        for image in sheets.values():
+            image.close()
         # check if font is monochromatic
         colourset = list(set(_tup for _sprite in sprites for _tup in _sprite))
         if len(colourset) == 1:

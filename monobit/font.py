@@ -585,10 +585,10 @@ class Font:
 
     @property
     def bounding_box(self):
-        """Get maximum ink width and height, in pixels."""
+        """Get maximum raster width and height, in pixels."""
+        # this equals bdf.FONTBOUNDINGBOX only if all glyphs are reduced to their ink bounding box
         if not self._glyphs:
             return Coord(0, 0)
-        # the max raster width/height and max *ink* width/height *should* be the same
         return Coord(
             max(_glyph.width for _glyph in self._glyphs),
             max(_glyph.height for _glyph in self._glyphs)

@@ -198,7 +198,9 @@ class Glyph:
         if not self._rows:
             return 0
         inked = [True in _row for _row in self._rows]
-        return len(inked) - inked.index(True) - list(reversed(inked)).index(True)
+        if True in inked:
+            return len(inked) - inked.index(True) - list(reversed(inked)).index(True)
+        return 0
 
     @property
     def bounding_box(self):

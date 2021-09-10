@@ -41,7 +41,7 @@ def save_aligned(outstream, font, encoding=None):
         raise ValueError(
             'This format only supports character-cell fonts.'
         )
-    for _, glyph in enumerate(font.glyphs):
+    for glyph in font.glyphs:
         outstream.write(glyph.as_bytes())
 
 
