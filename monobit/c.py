@@ -13,6 +13,8 @@ from .font import Font
 from .glyph import Glyph
 
 
+###################################################################################################
+
 @Loaders.register('c', 'cc', 'cpp', 'h', name='C-source')
 def load(infile, identifier:str, width:int, height:int):
     """Load font from a .c file."""
@@ -78,3 +80,30 @@ def _get_payload(instream, identifier):
         if line:
             payload.append(line)
     return ''.join(payload)
+
+
+###################################################################################################
+
+@Savers.register('c', binary=False, multi=False)
+def save(font, outstream):
+    """Save font to c source as byte-aligned binary (DOS font)."""
+    # check if font is fixed-width and fixed-height
+    if font.spacing != 'character-cell':
+        raise ValueError(
+            'This format only supports character-cell fonts.'
+        )
+    # convert name to c identifier
+    ascii_name = font.name.encode('ascii', 'ignore').decode('ascii')
+    ascii_name = ''.join(_c if _c.isalnum() else '_' for _c in ascii_name)
+    identifier = 'char font_' + ascii_name
+    width, height = font.bounding_box
+    bytesize = ceildiv(width, 8) * height
+    outstream.write(f'{identifier}[{len(font.glyphs) * bytesize}]')
+    outstream.write(' = {\n')
+    for glyph in font.glyphs:
+        outstream.write('  ')
+        for byte in glyph.as_bytes():
+            outstream.write(f'0x{byte:02x}, ')
+        outstream.write('\n')
+    outstream.write('}\n')
+    return font
