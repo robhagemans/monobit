@@ -25,10 +25,10 @@ Supported formats
 | GNU Unifont           |          | `.hex`                      |             | ✔     | ✔     |
 | PC Screen Font        | 1        | `.psf`                      | Linux       | ✔     |       |
 | PC Screen Font        | 2        | `.psf`                      | Linux       | ✔     | ✔     |
-| Raw binary            |          | `.fnt` `.rom` `.f??` `.ch8` `.64c` |             | ✔     | ✔     |
+| Raw binary            |          | `.fnt` `.rom` `.f??` `.ch8` `.64c` |      | ✔     | ✔     |
 | Bitmap image          |          | `.png` `.gif` `.bmp`        |             | ✔     | ✔     |
 | PDF chart             |          | `.pdf`                      |             |       | ✔     |
-| C or C++ source code  |          | `.c` `.cpp` `.h`            |             | ✔     |       |
+| C or C++ source code  |          | `.c` `.cpp` `.h`            |             | ✔     | ✔     |
 | AngelCode BMFont      | Text     | `.fnt` + images             |             | ✔     | ✔     |
 | AngelCode BMFont      | Binary   | `.fnt` + images             |             | ✔     |       |
 | AngelCode BMFont      | XML      | `.fnt` `.xml` + images      |             | ✔     |       |

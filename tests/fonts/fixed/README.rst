@@ -12,3 +12,5 @@ Derivative Fonts:
 * 8x16.hex was created from 4x6.yaff using `bittermelon`
 * 8x16.draw was created from 8x16.hex using `hexdraw`
 * 6x13.fnt was extracted from 6x13.fon using `tail -c +449`
+* files in 6x13.bmf were created with Angelcode BMFont, except 6x13-jsaon.fnt which was manually converted from 6x13-xml.fnt
+* 4x6.c was created from 4x6.yaff using `monobit`
