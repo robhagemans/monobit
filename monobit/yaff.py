@@ -145,33 +145,35 @@ def _read_text(instream, separator):
     current = _new_cluster()
     parsing_comment = False
     for line in instream:
-        if not line.rstrip('\r\n'):
+        # strip all trailing whitespace (important!)
+        line = line.rstrip()
+        if not line:
             # preserve empty lines if they separate comments
             if parsing_comment:
                 current.comments.append('')
-        elif line[0] not in _CODESTART:
-            parsing_comment = True
-            current.comments.append(line.rstrip('\r\n'))
-        elif line[0] not in _WHITESPACE:
-            parsing_comment = False
-            key, sep, rest = line.partition(separator)
-            if sep != separator:
-                raise ValueError(
-                    f'Invalid .yaff or .draw file: key `{key.strip()}` not followed by `{separator}`'
-                )
+        elif current.keys and line[0] in _WHITESPACE:
+            # found a follow-up value line
+            current.values.append(line.lstrip())
+        else:
+            # found a key or comment
             if current.values:
-                # we already have stuff for the last key, so this is a new one
-                current.comments = clean_comment(current.comments)
+                # we already have values for the last key, so this is a new cluster
                 elements.append(current)
                 current = _new_cluster()
-            current.keys.append(key)
-            # remainder of label line after : is glyph row or property value
-            rest = rest.strip()
-            if rest:
-                current.values.append(rest)
-        else:
-            current.values.append(line.strip())
-    current.comments = clean_comment(current.comments)
+            parsing_comment = line[0] not in _CODESTART
+            if parsing_comment:
+                current.comments.append(line)
+            else:
+                key, sep, rest = line.partition(separator)
+                if sep != separator:
+                    raise ValueError(
+                        'Invalid .yaff or .draw file: '
+                        f'key `{key.strip()}` not followed by `{separator}`'
+                    )
+                current.keys.append(key)
+                # remainder of label line after : is first value line
+                if rest:
+                    current.values.append(rest.lstrip())
     elements.append(current)
     return elements
 
@@ -217,7 +219,7 @@ def _parse_glyphs(elements, fore, back, empty, parse_glyph_keys):
                 if _el.values != [empty]
                 else Glyph.empty()
             ).set_annotations(
-                comments=_el.comments,
+                comments=clean_comment(_el.comments),
                 **parse_glyph_keys(_el.keys)
             )
         )
@@ -233,12 +235,18 @@ def _extract_comments(elements):
     if elements[0].keys:
         # split out global comment
         header_comment, elements[0].comments = split_global_comment(elements[0].comments)
+        elements[0].comments = clean_comment(elements[0].comments)
+        header_comment = clean_comment(header_comment)
     else:
         header_comment = elements[0].comments
         elements = elements[1:]
     comments = clean_comment(header_comment)
     # preserve any comment at end of file
     if elements and not elements[-1].keys:
+        elements[-1].comments = clean_comment(elements[-1].comments)
+        # separate header and footer with empty line
+        if comments and elements[-1].comments:
+            comments.append('')
         comments.extend(clean_comment(elements[-1].comments))
         elements = elements[:-1]
     return elements, comments
