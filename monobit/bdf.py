@@ -423,7 +423,7 @@ def _parse_xlfd_properties(x_props, xlfd_name):
     if 'DEFAULT_CHAR' in x_props:
         default_ord = x_props.pop('DEFAULT_CHAR', None)
         encoder = get_encoding(properties['encoding'])
-        properties['default-char'] = UnicodeLabel.from_char(encoder.ord_to_unicode(default_ord))
+        properties['default-char'] = UnicodeLabel.from_char(encoder.chr(default_ord))
     properties = {_k: _v for _k, _v in properties.items() if _v is not None and _v != ''}
     # invalid xlfd name: keep but with changed property name
     if not xlfd_name_props:
@@ -485,7 +485,7 @@ def _create_xlfd_properties(font):
     }
     # encoding dependent values
     encoder = get_encoding(font.encoding)
-    xlfd_props['DEFAULT_CHAR'] = encoder.unicode_to_ord(font.default_char.to_char())
+    xlfd_props['DEFAULT_CHAR'] = encoder.ord(font.default_char.to_char())
     if font.encoding == 'unicode':
         xlfd_props['CHARSET_REGISTRY'] = '"ISO10646"'
         xlfd_props['CHARSET_ENCODING'] = '"1"'

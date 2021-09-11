@@ -249,8 +249,8 @@ class Font:
         # use codepage to find codepoint if no code point set
         self._glyphs = tuple(
             _glyph.set_annotations(
-                char=_glyph.char or encoding.ord_to_unicode(_glyph.codepoint),
-                codepoint=_glyph.codepoint or encoding.unicode_to_ord(_glyph.char)
+                char=_glyph.char or encoding.chr(_glyph.codepoint),
+                codepoint=_glyph.codepoint or encoding.ord(_glyph.char)
             )
             for _glyph in self._glyphs
         )

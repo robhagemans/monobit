@@ -53,16 +53,16 @@ class Codec:
         'x'.encode(encoding)
         self._encoding = encoding
 
-    def ord_to_unicode(self, ordinal):
-        """Convert ordinal to unicode, return empty string if missing."""
+    def chr(self, ordinal):
+        """Convert ordinal to character, return empty string if missing."""
         byte = bytes([int(ordinal)])
         # ignore: return empty string if not found
-        unicode = byte.decode(self._encoding, errors='ignore')
-        return unicode
+        char = byte.decode(self._encoding, errors='ignore')
+        return char
 
-    def unicode_to_ord(self, unicode):
-        """Convert unicode to ordinal, raise ValueError if missing."""
-        byte = unicode.encode(self._encoding, errors='ignore')
+    def ord(self, char):
+        """Convert character to ordinal, raise ValueError if missing."""
+        byte = char.encode(self._encoding, errors='ignore')
         if not byte:
             return None
         return byte[0]
@@ -116,17 +116,17 @@ class Codepage:
                 logging.warning('Could not parse line in codepage file: %s', repr(line))
         return mapping
 
-    def ord_to_unicode(self, ordinal):
-        """Convert ordinal to unicode, return empty string if missing."""
+    def chr(self, ordinal):
+        """Convert ordinal to character, return empty string if missing."""
         try:
             return self._mapping[int(ordinal)]
         except KeyError as e:
             return ''
 
-    def unicode_to_ord(self, unicode):
-        """Convert unicode to ordinal, return None if missing."""
+    def ord(self, char):
+        """Convert character to ordinal, return None if missing."""
         try:
-            return self._inv_mapping[unicode]
+            return self._inv_mapping[char]
         except KeyError as e:
             return None
 
@@ -140,26 +140,26 @@ class Unicode:
     """Convert between unicode and ordinals."""
 
     @staticmethod
-    def ord_to_unicode(ordinal):
-        """Convert ordinal to unicode."""
+    def chr(ordinal):
+        """Convert ordinal to character."""
         return chr(int(ordinal))
 
     @staticmethod
-    def unicode_to_ord(unicode):
-        """Convert unicode to ordinal."""
-        unicode = unicodedata.normalize('NFC', unicode)
-        if len(unicode) != 1:
+    def ord(char):
+        """Convert character to ordinal."""
+        char = unicodedata.normalize('NFC', char)
+        if len(char) != 1:
             # empty chars or multi-codepoint grapheme clusters are not supported here
             return None
-        return ord(unicode)
+        return ord(char)
 
 
 class NoEncoding:
 
     @staticmethod
-    def ord_to_unicode(ordinal):
+    def chr(ordinal):
         return ''
 
     @staticmethod
-    def unicode_to_ord(key):
+    def ord(key):
         return None

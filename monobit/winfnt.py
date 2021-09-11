@@ -510,7 +510,7 @@ def create_fnt(font, version=0x200):
         charset = 0xff
         # sample chars from cp437
         encoder = get_encoding(_FALLBACK_CHARSET)
-        chars = (encoder.ord_to_unicode(_ord) for _ord in range(256))
+        chars = (encoder.chr(_ord) for _ord in range(256))
         min_ord, max_ord = 0, 255
         ord_glyphs = [font.get_glyph(_char, missing='default') for _char in chars]
         # use space for break; 0x80 is unmapped in windows-ansi-2.0 and commonly used for default
