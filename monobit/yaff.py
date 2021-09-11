@@ -21,25 +21,6 @@ _WHITESPACE = ' \t'
 _CODESTART = _WHITESPACE + string.digits + string.ascii_letters + '_'
 
 
-def yaff_input_key(cluster, key):
-    """Convert keys on input from .yaff."""
-    label = to_label(key)
-    if isinstance(label, TagLabel):
-        cluster.tags.append(str(label))
-    elif isinstance(label, CodepointLabel):
-        # TODO: multi-codepoint labels
-        cluster.codepoint = int(label)
-    else:
-        cluster.char = label.to_char()
-    return cluster
-
-def draw_input_key(cluster, key):
-    """Convert keys on input from .draw."""
-    try:
-        cluster.char = chr(int(key, 16))
-    except (TypeError, ValueError):
-        cluster.tags = [key]
-    return cluster
 
 # defaults
 _YAFF_PARAMETERS = dict(
@@ -61,10 +42,45 @@ _DRAW_PARAMETERS = dict(
 )
 
 
+def _parse_yaff_keys(keys):
+    """Convert keys on input from .yaff."""
+    kwargs = dict(
+        char='',
+        codepoint=None,
+        tags=[],
+    )
+    for key in keys:
+        label = to_label(key)
+        if isinstance(label, TagLabel):
+            kwargs['tags'].append(str(label))
+        elif isinstance(label, CodepointLabel):
+            # TODO: multi-codepoint labels
+            kwargs['codepoint'] = int(label)
+        else:
+            kwargs['char'] = label.to_char()
+    return kwargs
+
+def _parse_draw_keys(keys):
+    """Convert keys on input from .draw."""
+    kwargs = dict(
+        char='',
+        codepoint=None,
+        tags=[],
+    )
+    # only one key allowed in .draw, rest ignored
+    key = keys[0]
+    try:
+        kwargs['char'] = chr(int(key, 16))
+    except (TypeError, ValueError):
+        kwargs['tags'] = [key]
+    return kwargs
+
+
+
 @Loaders.register('yaff', 'text', 'txt', name='monobit-yaff')
 def load(instream):
     """Read a plaintext font file."""
-    font = _load_font(instream, fore='@', back='.', key_format=yaff_input_key)
+    font = _load_font(instream, fore='@', back='.', parse_glyph_keys=_parse_yaff_keys)
     if font is None:
         raise ValueError('No fonts found in file.')
     return font
@@ -79,7 +95,7 @@ def save(font, outstream):
 @Loaders.register('draw', name='hexdraw')
 def load_draw(instream):
     """Read a hexdraw font file."""
-    font = _load_font(instream, fore='#', back='-', key_format=draw_input_key)
+    font = _load_font(instream, fore='#', back='-', parse_glyph_keys=_parse_draw_keys)
     if font is None:
         raise ValueError('No fonts found in file.')
     return font
@@ -95,32 +111,25 @@ def save_draw(font, outstream):
 # read file
 
 class Cluster(SimpleNamespace):
-    """Bag of elements relating to one glyph."""
-
+    """Bag of elements clustered in a text file (glyph, property, etc)."""
 
 
 def new_cluster(**kwargs):
     return Cluster(
-        char='',
-        codepoint=None,
-        tags=[],
-        clusters=[],
+        keys=[],
+        values=[],
         comments=[]
     )
 
-def _is_glyph(value, fore, back):
-    """Value is a glyph."""
-    return not(set(value) - set(fore) - set(back))
-
-def _load_font(instream, fore, back, key_format):
+def _load_font(instream, fore, back, parse_glyph_keys):
     """Read and parse a plaintext font file."""
-    header_comment, elements, footer_comment = _read_text(instream, key_format)
+    header_comment, elements, footer_comment = _read_text(instream)
     if not elements and not header_comment:
         # no font to read, no comments to keep
         return None
     # property comments currently not preserved
     properties, property_comments = _parse_properties(elements, fore, back)
-    glyphs = _parse_glyphs(elements, fore, back)
+    glyphs = _parse_glyphs(elements, fore, back, parse_glyph_keys)
     # parse comments
     # global comment
     comments = clean_comment(header_comment)
@@ -130,11 +139,11 @@ def _load_font(instream, fore, back, key_format):
     return Font(glyphs, comments, properties)
 
 
-def _read_text(instream, key_format):
+def _read_text(instream):
     """Read a plaintext font file."""
     header_comment = []
     current_comment = []
-    # cluster by character
+    # cluster by property/character/comment block
     elements = []
     for line in instream:
         if not line.rstrip('\r\n'):
@@ -155,63 +164,65 @@ def _read_text(instream, key_format):
                 raise ValueError(
                     f'Invalid .yaff or .draw file: key `{label.strip()}` not followed by `:`'
                 )
-            if elements[-1].clusters:
+            if elements[-1].values:
                 # we already have stuff for the last key, so this is a new one
                 elements.append(new_cluster())
             elements[-1].comments.extend(clean_comment(current_comment))
             current_comment = []
-            elements[-1] = key_format(elements[-1], label)
+            elements[-1].keys.append(label)
             # remainder of label line after : is glyph row or property value
             rest = rest.strip()
             if rest:
-                elements[-1].clusters.append(rest)
+                elements[-1].values.append(rest)
         else:
-            elements[-1].clusters.append(line.strip())
+            elements[-1].values.append(line.strip())
     return header_comment, elements, current_comment
 
+
+def _is_glyph(value, fore, back):
+    """Value is a glyph."""
+    return not(set(value) - set(fore) - set(back))
 
 def _parse_properties(elements, fore, back):
     """Parse properties."""
     # properties: anything that contains more than .@
     property_elements = [
         _el for _el in elements
-        if not _is_glyph(''.join(_el.clusters), fore, back)
+        if not _is_glyph(''.join(_el.values), fore, back)
     ]
     # multiple labels translate into multiple keys with the same value
     properties = {
-        _key: '\n'.join(_el.clusters)
+        _key: '\n'.join(_el.values)
         for _el in property_elements
-        for _key in _el.tags
+        for _key in _el.keys
     }
     # property comments
     comments = {
         _key: _el.comments
         for _el in property_elements
-        for _key in _el.tags
+        for _key in _el.keys
     }
     return properties, comments
 
 
-def _parse_glyphs(elements, fore, back):
+def _parse_glyphs(elements, fore, back, parse_glyph_keys):
     # parse glyphs
     # text version of glyphs
     # a glyph is any key/value where the value contains no alphanumerics
     glyph_elements = [
         _el for _el in elements
-        if _is_glyph(''.join(_el.clusters), fore, back)
+        if _is_glyph(''.join(_el.values), fore, back)
     ]
     # convert text representation to glyph
     glyphs = [
         (
             (
-                Glyph.from_matrix(_el.clusters, background=back)
-                if _el.clusters != ['-']
+                Glyph.from_matrix(_el.values, background=back)
+                if _el.values != ['-']
                 else Glyph.empty()
             ).set_annotations(
-                tags=_el.tags,
-                char=_el.char,
-                codepoint=_el.codepoint,
                 comments=_el.comments,
+                **parse_glyph_keys(_el.keys)
             )
         )
         for _el in glyph_elements
