@@ -13,7 +13,7 @@ import unicodedata
 
 from .base import scriptable
 from .glyph import Glyph
-from .encoding import Unicode, NoEncoding, normalise_encoding, get_encoding
+from .encoding import Unicode, normalise_encoding, get_encoding
 from .label import label, UnicodeLabel, CodepointLabel, TagLabel
 
 
@@ -241,7 +241,7 @@ class Font:
             )
         # update glyph unicode annotations
         encoding = self._get_encoding()
-        if encoding == NoEncoding:
+        if encoding is None:
             # no encoding - leave codepoint and unicode labels as is
             return
         # use codepage to find char if glyph does not have char set

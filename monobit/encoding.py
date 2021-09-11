@@ -39,7 +39,7 @@ def get_encoding(enc):
         except LookupError:
             pass
         logging.warning('Unknown encoding `%s`.', enc)
-    return NoEncoding
+    return None
 
 
 
@@ -152,14 +152,3 @@ class Unicode:
             # empty chars or multi-codepoint grapheme clusters are not supported here
             return None
         return ord(char)
-
-
-class NoEncoding:
-
-    @staticmethod
-    def chr(ordinal):
-        return ''
-
-    @staticmethod
-    def ord(key):
-        return None
