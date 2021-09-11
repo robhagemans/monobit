@@ -14,7 +14,8 @@ x-height: 4
 cap-height: 5
 offset: 0 -1
 encoding: unicode
-default-char: 0
+default-char: u+0000
+word-boundary: u+0020
 converter: monobit v0.11
 source-name: 4x6.bdf
 source-format: BDF v2.1

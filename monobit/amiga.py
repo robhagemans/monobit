@@ -291,5 +291,5 @@ def _read_strike(
         for _i, (_char, _width, _kern) in enumerate(zip(font, spacing, kerning))
     ]
     # default glyph has no codepoint
-    glyphs[-1] = glyphs[-1].set_annotations(codepoint=None, labels=('default',))
+    glyphs[-1] = glyphs[-1].set_annotations(codepoint=None, tags=('default',))
     return glyphs, offset_x

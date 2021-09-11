@@ -11,7 +11,12 @@ from .formats import Loaders, Savers
 from .font import Font, Coord
 from .glyph import Glyph
 from .encoding import get_encoding
+from .label import UnicodeLabel
 
+
+# BDF specification: https://adobe-type-tools.github.io/font-tech-notes/pdfs/5005.BDF_Spec.pdf
+# XLFD conventions: https://www.x.org/releases/X11R7.6/doc/xorg-docs/specs/XLFD/xlfd.html
+# charset and property registry: https://github.com/freedesktop/xorg-docs/blob/master/registry
 
 # x11 encodings e.g.
 # ISO10646-1 = unicode
@@ -192,7 +197,7 @@ def _read_bdf_characters(instream):
         try:
             int(label)
         except ValueError:
-            glyph = glyph.set_annotations(labels=[label])
+            glyph = glyph.set_annotations(tags=[label])
         # ENCODING must be single integer or -1 followed by integer
         encvalue = int(meta['ENCODING'].split(' ')[-1])
         # no encoding number found
@@ -418,7 +423,7 @@ def _parse_xlfd_properties(x_props, xlfd_name):
     if 'DEFAULT_CHAR' in x_props:
         default_ord = x_props.pop('DEFAULT_CHAR', None)
         encoder = get_encoding(properties['encoding'])
-        properties['default-char'] = encoder.ord_to_unicode(default_ord)
+        properties['default-char'] = UnicodeLabel.from_char(encoder.ord_to_unicode(default_ord))
     properties = {_k: _v for _k, _v in properties.items() if _v is not None and _v != ''}
     # invalid xlfd name: keep but with changed property name
     if not xlfd_name_props:
@@ -480,7 +485,7 @@ def _create_xlfd_properties(font):
     }
     # encoding dependent values
     encoder = get_encoding(font.encoding)
-    xlfd_props['DEFAULT_CHAR'] = encoder.unicode_to_ord(font.default_char)
+    xlfd_props['DEFAULT_CHAR'] = encoder.unicode_to_ord(font.default_char.to_char())
     if font.encoding == 'unicode':
         xlfd_props['CHARSET_REGISTRY'] = '"ISO10646"'
         xlfd_props['CHARSET_ENCODING'] = '"1"'
@@ -521,11 +526,11 @@ def _save_bdf(font, outstream):
     # get glyphs for encoding values
     encoded_glyphs = []
     for glyph in font.glyphs:
-        # keep the first text label as the glyph name
-        if not glyph.labels:
+        # keep the first text tag as the glyph name
+        if not glyph.tags:
             name = ''
         else:
-            name = glyph.labels[0]
+            name = glyph.tags[0]
         has_encoding_value = False
         if is_unicode:
             try:

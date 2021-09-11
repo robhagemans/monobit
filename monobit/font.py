@@ -14,20 +14,18 @@ import unicodedata
 from .base import scriptable
 from .glyph import Glyph
 from .encoding import Unicode, NoEncoding, normalise_encoding, get_encoding
-
+from .label import label, UnicodeLabel, CodepointLabel, TagLabel
 
 
 def number(value=0):
     """Convert to int or float."""
     if isinstance(value, str):
         value = float(value)
-        if value == int(value):
-            value = int(value)
     if not isinstance(value, numbers.Real):
         raise ValueError("Can't convert `{}` to number.".format(value))
+    if value == int(value):
+        value = int(value)
     return value
-
-
 
 
 class Coord(NamedTuple):
@@ -142,8 +140,8 @@ PROPERTIES = {
     # character set
     # can't be calculated, affect rendering
     'encoding': normalise_encoding,
-    'default-char': str, # use question mark to replace missing glyph
-    'word-boundary': str, # word-break character (usually space)
+    'default-char': label, # use question mark to replace missing glyph
+    'word-boundary': label, # word-break character (usually space)
 
     # conversion metadata
     # can't be calculated, informational
@@ -205,10 +203,10 @@ class Font:
         # set encoding first so we can set labels
         self._add_encoding_data()
         # construct lookup tables
-        self._labels = {
-            _label: _index
+        self._tags = {
+            _tag: _index
             for _index, _glyph in enumerate(self._glyphs)
-            for _label in _glyph.labels
+            for _tag in _glyph.tags
         }
         self._codepoints = {
             _glyph.codepoint: _index
@@ -272,10 +270,10 @@ class Font:
     def glyphs(self):
         return self._glyphs
 
-    def get_glyph(self, key=None, *, label=None, missing='raise'):
-        """Get glyph by char, codepoint or label; default if not present."""
+    def get_glyph(self, key=None, *, tag=None, missing='raise'):
+        """Get glyph by char, codepoint or tag; default if not present."""
         try:
-            return self._glyphs[self.get_index(key, label=label)]
+            return self._glyphs[self.get_index(key, tag=tag)]
         except KeyError:
             if missing == 'default':
                 return self.get_default_glyph()
@@ -285,21 +283,26 @@ class Font:
                 raise KeyError(f'No glyph found matching {key}.')
             return missing
 
-    def get_index(self, key=None, *, label=None):
-        """Get index for given key or label, if defined."""
-        if label is not None:
+    def get_index(self, key=None, *, tag=None):
+        """Get index for given key or tag, if defined."""
+        if isinstance(key, TagLabel):
+            tag = str(key)
+            key = None
+        if tag is not None:
             if key is not None:
-                raise ValueError('Cannot request both key and label.')
+                raise ValueError('Cannot request both key and tag.')
             try:
-                return self._labels[label]
+                return self._tags[tag]
             except KeyError:
                 pass
         else:
-            if isinstance(key, int):
+            if isinstance(key, int) or isinstance(key, CodepointLabel):
                 if self._is_unicode:
                     raise TypeError(f'This is a Unicode font - key must be char, not `{type(key)}`')
                 return self._codepoints[key]
             try:
+                if isinstance(key, UnicodeLabel):
+                    key = key.to_char()
                 return self._chars[key]
             except (KeyError, TypeError):
                 pass
@@ -308,8 +311,7 @@ class Font:
     def get_default_glyph(self):
         """Get default glyph; empty if not defined."""
         try:
-            #FIXME - does not work if default_char holds a label
-            return self.get_glyph(self.default_char)
+            return self.get_glyph(**self.default_char.kwargs())
         except KeyError:
             return self.get_empty_glyph()
 
@@ -329,9 +331,9 @@ class Font:
         """Get list of codepage codepoints covered by this font."""
         return list(self._codepoints.keys())
 
-    def get_labels(self):
-        """Get list of codepage codepoints covered by this font."""
-        return list(self._labels.keys())
+    def get_tags(self):
+        """Get list of tags covered by this font."""
+        return list(self._tags.keys())
 
 
     def _iter_string(self, string, missing='raise'):
@@ -517,7 +519,7 @@ class Font:
         'setwidth': 'normal', # normal, condensed, expanded, etc.
         'direction': 'left-to-right', # left-to-right, right-to-left
         'encoding': '',
-        'word-boundary': '\u0020', # word-break character (usually space)
+        'word-boundary': label('u+0020'), # word-break character (usually space)
     }
 
     @yaffproperty
@@ -598,9 +600,9 @@ class Font:
     def default_char(self):
         """Default character."""
         repl = '\ufffd'
-        if repl in self._chars:
-            return repl
-        return ''
+        if repl not in self._chars:
+            repl = ''
+        return UnicodeLabel.from_char(repl)
 
     @yaffproperty
     def average_advance(self):
@@ -663,25 +665,25 @@ class Font:
     # font operations
 
     @scriptable
-    def subset(self, keys:set=(), labels:set=()):
+    def subset(self, keys:set=(), tags:set=()):
         """Return a subset of the font."""
         keys = list(keys)
-        labels = list(labels)
+        tags = list(tags)
         if self._is_unicode and not all(isinstance(_k, str) for _k in keys):
             raise TypeError(f'This is a Unicode font - key must be char, not `{type(key)}`')
         glyphs = (
             [self.get_glyph(_key, missing=None) for _key in keys]
-            + [self.get_glyph(label=_label, missing=None) for _label in labels]
+            + [self.get_glyph(tag=_tag, missing=None) for _tag in tags]
         )
         glyphs = (_glyph for _glyph in glyphs if _glyph is not None)
         return Font(glyphs, self._comments, self._properties)
 
     @scriptable
-    def without(self, keys:set=(), labels:set=()):
+    def without(self, keys:set=(), tags:set=()):
         """Return a font excluding a subset."""
         keys = set(keys)
-        labels = set(labels)
-        if not keys and not labels:
+        tags = set(tags)
+        if not keys and not tags:
             return self
         if self._is_unicode:
             if not all(isinstance(_k, str) for _k in keys):
@@ -691,7 +693,7 @@ class Font:
                 for _glyph in self._glyphs
                 if (
                     _glyph.char not in keys
-                    and not (set(_glyph.labels) & labels)
+                    and not (set(_glyph.tags) & tags)
                 )
             ]
         else:
@@ -701,7 +703,7 @@ class Font:
                 if (
                     _glyph.char not in keys
                     and _glyph.codepoint not in keys
-                    and not (set(_glyph.labels) & labels)
+                    and not (set(_glyph.tags) & tags)
                 )
             ]
         return Font(glyphs, self._comments, self._properties)
@@ -710,13 +712,13 @@ class Font:
         """Merge glyphs from other font into this one. Existing glyphs have preference."""
         glyphs = list(self._glyphs)
         for glyph in other.glyphs:
-            new_labels = set(glyph.labels) - set(self._labels)
+            new_tags = set(glyph.tags) - set(self._tags)
             if self._is_unicode:
                 new_key = glyph.char not in set(self._chars)
             else:
                 new_key = glyph.codepoint not in set(self._codepoints)
-            if new_labels or new_key:
-                glyphs.append(glyph.set_annotations(labels=new_labels))
+            if new_tags or new_key:
+                glyphs.append(glyph.set_annotations(tags=new_tags))
         return Font(glyphs, self._comments, self._properties)
 
     # replace with clone(glyphs=.., comments=.., properties=..)

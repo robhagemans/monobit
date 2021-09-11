@@ -66,7 +66,7 @@ def load(instream):
             char = ''
         current_glyph = Glyph.from_hex(value, width, height)
         current_glyph = current_glyph.set_annotations(
-            char=char, labels=([key] if not char else []),
+            char=char, tags=([key] if not char else []),
             comments=clean_comment(current_comment)
         )
         glyphs.append(current_glyph)
