@@ -14,7 +14,7 @@ import unicodedata
 from .base import scriptable
 from .glyph import Glyph
 from .encoding import Unicode, NoEncoding, normalise_encoding, get_encoding
-from .label import label, UnicodeLabel
+from .label import label, UnicodeLabel, CodepointLabel, TextLabel
 
 
 def number(value=0):
@@ -285,6 +285,9 @@ class Font:
 
     def get_index(self, key=None, *, label=None):
         """Get index for given key or label, if defined."""
+        if isinstance(key, TextLabel):
+            label = str(key)
+            key = None
         if label is not None:
             if key is not None:
                 raise ValueError('Cannot request both key and label.')
@@ -293,11 +296,13 @@ class Font:
             except KeyError:
                 pass
         else:
-            if isinstance(key, int):
+            if isinstance(key, int) or isinstance(key, CodepointLabel):
                 if self._is_unicode:
                     raise TypeError(f'This is a Unicode font - key must be char, not `{type(key)}`')
                 return self._codepoints[key]
             try:
+                if isinstance(key, UnicodeLabel):
+                    key = key.to_char()
                 return self._chars[key]
             except (KeyError, TypeError):
                 pass
@@ -306,7 +311,7 @@ class Font:
     def get_default_glyph(self):
         """Get default glyph; empty if not defined."""
         try:
-            return self.get_glyph(**self.default_char.kwargs)
+            return self.get_glyph(**self.default_char.kwargs())
         except KeyError:
             return self.get_empty_glyph()
 
@@ -327,7 +332,7 @@ class Font:
         return list(self._codepoints.keys())
 
     def get_labels(self):
-        """Get list of codepage codepoints covered by this font."""
+        """Get list of text labels covered by this font."""
         return list(self._labels.keys())
 
 
