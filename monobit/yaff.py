@@ -113,8 +113,26 @@ def _is_glyph(value, fore, back):
     return not(set(value) - set(fore) - set(back))
 
 def _load_font(instream, fore, back, key_format):
+    """Read and parse a plaintext font file."""
+    header_comment, elements, footer_comment = _read_text(instream, key_format)
+    if not elements and not header_comment:
+        # no font to read, no comments to keep
+        return None
+    # property comments currently not preserved
+    properties, property_comments = _parse_properties(elements, fore, back)
+    glyphs = _parse_glyphs(elements, fore, back)
+    # parse comments
+    # global comment
+    comments = clean_comment(header_comment)
+    # preserve any comment at end of file
+    comments.extend(clean_comment(footer_comment))
+    # construct font
+    return Font(glyphs, comments, properties)
+
+
+def _read_text(instream, key_format):
     """Read a plaintext font file."""
-    global_comment = []
+    header_comment = []
     current_comment = []
     # cluster by character
     elements = []
@@ -131,7 +149,7 @@ def _load_font(instream, fore, back, key_format):
                 elements.append(new_cluster())
                 if current_comment:
                     global_comm, current_comment = split_global_comment(current_comment)
-                    global_comment.extend(global_comm)
+                    header_comment.extend(global_comm)
             label, sep, rest = line.partition(':')
             if sep != ':':
                 raise ValueError(
@@ -149,11 +167,11 @@ def _load_font(instream, fore, back, key_format):
                 elements[-1].clusters.append(rest)
         else:
             elements[-1].clusters.append(line.strip())
-    if not elements and not global_comment:
-        # no font to read, no comments to keep
-        return None
+    return header_comment, elements, current_comment
 
-    # parse properties
+
+def _parse_properties(elements, fore, back):
+    """Parse properties."""
     # properties: anything that contains more than .@
     property_elements = [
         _el for _el in elements
@@ -165,6 +183,16 @@ def _load_font(instream, fore, back, key_format):
         for _el in property_elements
         for _key in _el.tags
     }
+    # property comments
+    comments = {
+        _key: _el.comments
+        for _el in property_elements
+        for _key in _el.tags
+    }
+    return properties, comments
+
+
+def _parse_glyphs(elements, fore, back):
     # parse glyphs
     # text version of glyphs
     # a glyph is any key/value where the value contains no alphanumerics
@@ -188,16 +216,8 @@ def _load_font(instream, fore, back, key_format):
         )
         for _el in glyph_elements
     ]
+    return glyphs
 
-    # parse comments
-    # global comment
-    comments = clean_comment(global_comment)
-    # append property comments to global comment
-    comments.extend(_comment for _el in property_elements for _comment in _el.comments)
-    # preserve any comment at end of file
-    comments.extend(clean_comment(current_comment))
-    # construct font
-    return Font(glyphs, comments, properties)
 
 
 ##############################################################################
