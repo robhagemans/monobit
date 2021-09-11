@@ -11,13 +11,15 @@ from .binary import ceildiv
 from .formats import Loaders, Savers
 from .font import Font
 from .glyph import Glyph
+from .base import pair
 
 
 ###################################################################################################
 
 @Loaders.register('c', 'cc', 'cpp', 'h', name='C-source')
-def load(infile, identifier:str, width:int, height:int):
+def load(infile, identifier:str, cell:pair):
     """Load font from a .c file."""
+    width, height = cell
     payload = _get_payload(infile, identifier)
     # c bytes are python bytes, except 0777-style octal (which we therefore don't support correctly)
     bytelist = [_int_from_c(_s) for _s in payload.split(',') if _s]
