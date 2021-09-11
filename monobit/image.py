@@ -6,6 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import logging
+from collections import Counter
 
 try:
     from PIL import Image
@@ -18,6 +19,18 @@ from .font import Font
 from .glyph import Glyph
 
 
+
+
+# available background policies
+# -----------------------------
+#
+# most-common       use colour most commonly found in payload cells
+# least-common      use colour least commonly found in payload cells
+# brightest         use brightest colour, by sum of RGB values
+# darkest           use darkest colour, by sum of RGB values
+# top-left          use colour of top-left pixel in first cell
+
+
 if Image:
     @Loaders.register('png', 'bmp', 'gif', 'image', name='Bitmap Image', binary=True)
     def load(
@@ -25,7 +38,10 @@ if Image:
             cell:pair=(8, 8),
             margin:pair=(0, 0),
             padding:pair=(0, 0),
-            scale:pair=(1, 1)
+            scale:pair=(1, 1),
+            # 0 or negative indicates 'use all chars'
+            n_chars:int=0,
+            background:str='most-common'
         ):
         """Import font from image."""
         width, height = cell
@@ -51,17 +67,42 @@ if Image:
             for _row in range(ncells_y)
             for _col in range(ncells_x)
         ]
+        if not crops:
+            logging.error('Image too small; no characters found.')
+            return Font()
         # scale
         crops = [_crop.resize(cell) for _crop in crops]
         # get pixels
         crops = [list(_crop.getdata()) for _crop in crops]
+        # restrict to requested number of characters
+        if n_chars and n_chars > 0:
+            crops = crops[:n_chars]
         # check that cells are monochrome
         colourset = set.union(*(set(_data) for _data in crops))
         if len(colourset) > 2:
-            raise ValueError('Colour, greyscale and antialiased glyphs not supported.')
+            logging.warning('Colour, greyscale and antialiased glyphs are not supported. ')
+            logging.warning(
+                f'More than two colours ({len(colourset)}) found in payload. '
+                'All non-background colours will be converted to foreground.'
+            )
+        colourfreq = Counter(_c for _data in crops for _c in _data)
+        brightness = sorted((sum(_v for _v in _c), _c) for _c in colourset)
+        if background == 'most-common':
+            # most common colour in image assumed to be background colour
+            bg, _ = colourfreq.most_common(1)[0]
+        elif background == 'least-common':
+            # least common colour in image assumed to be background colour
+            bg, _ = colourfreq.most_common()[-1]
+        elif background == 'brightest':
+            # brightest colour assumed to be background
+            _, bg = brightness[-1]
+        elif background == 'darkest':
+            # darkest colour assumed to be background
+            _, bg = brightness[0]
+        elif background == 'top-left':
+            # top-left pixel of first char assumed to be background colour
+            bg = crops[0][0]
         # replace colours with characters
-        # top-left pixel of first char assumed to be background colour
-        bg = crops[0][0]
         crops = tuple(
             [_c != bg for _c in _cell]
             for _cell in crops
