@@ -14,7 +14,7 @@ from .formats import Loaders, Savers
 from .font import PROPERTIES, Font
 from .glyph import Glyph
 from .label import label as to_label
-from .label import UnicodeLabel, TextLabel, CodepointLabel
+from .label import UnicodeLabel, TagLabel, CodepointLabel
 
 
 _WHITESPACE = ' \t'
@@ -24,8 +24,8 @@ _CODESTART = _WHITESPACE + string.digits + string.ascii_letters + '_'
 def yaff_input_key(cluster, key):
     """Convert keys on input from .yaff."""
     label = to_label(key)
-    if isinstance(label, TextLabel):
-        cluster.labels = [str(label)]
+    if isinstance(label, TagLabel):
+        cluster.tags.append(str(label))
     elif isinstance(label, CodepointLabel):
         # TODO: multi-codepoint labels
         cluster.codepoint = int(label)
@@ -38,7 +38,7 @@ def draw_input_key(cluster, key):
     try:
         cluster.char = chr(int(key, 16))
     except (TypeError, ValueError):
-        cluster.labels = [key]
+        cluster.tags = [key]
     return cluster
 
 # defaults
@@ -103,7 +103,7 @@ def new_cluster(**kwargs):
     return Cluster(
         char='',
         codepoint=None,
-        labels=[],
+        tags=[],
         clusters=[],
         comments=[]
     )
@@ -163,7 +163,7 @@ def _load_font(instream, fore, back, key_format):
     properties = {
         _key: '\n'.join(_el.clusters)
         for _el in property_elements
-        for _key in _el.labels
+        for _key in _el.tags
     }
     # parse glyphs
     # text version of glyphs
@@ -180,7 +180,7 @@ def _load_font(instream, fore, back, key_format):
                 if _el.clusters != ['-']
                 else Glyph.empty()
             ).set_annotations(
-                labels=_el.labels,
+                tags=_el.tags,
                 char=_el.char,
                 codepoint=_el.codepoint,
                 comments=_el.comments,
@@ -262,7 +262,7 @@ def _save_yaff(font, outstream, fore, back, comment, tab, key_sep, empty):
             labels.append(repr(CodepointLabel(glyph.codepoint)))
         if glyph.char:
             labels.append(repr(UnicodeLabel.from_char(glyph.char)))
-        labels.extend(glyph.labels)
+        labels.extend(glyph.tags)
         _write_glyph(
             outstream, labels,
             glyph, fore, back, comment, tab, key_sep, empty
@@ -273,7 +273,10 @@ def _save_draw(font, outstream, fore, back, comment, tab, key_sep, empty):
     write_comments(outstream, font.get_comments(), comm_char=comment, is_global=True)
     for glyph in font.glyphs:
         if len(glyph.char) > 1:
-            logging.warning("Can't encode grapheme cluster %s in .draw file; skipping.", str(label))
+            logging.warning(
+                "Can't encode grapheme cluster %s in .draw file; skipping.",
+                UnicodeLabel.from_char(glyph.char)
+            )
             continue
         label = f'{ord(glyph.char):04x}'
         _write_glyph(

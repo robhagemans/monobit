@@ -6,7 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 def label(value=''):
-    """Convert to codepoint/unicode/text label as appropriate."""
+    """Convert to codepoint/unicode/tag label as appropriate."""
     # check for codepoint (anything convertible to int)
     try:
         return CodepointLabel(value)
@@ -17,31 +17,31 @@ def label(value=''):
         return UnicodeLabel(value)
     except ValueError:
         pass
-    return TextLabel(value)
+    return TagLabel(value)
 
 
-class TextLabel:
-    """Text label."""
+class TagLabel:
+    """Tag label."""
 
     def __init__(self, value):
-        """Construct label object."""
-        if isinstance(value, TextLabel):
-            self._label = value._label
+        """Construct tag object."""
+        if isinstance(value, TagLabel):
+            self._tag = value._tag
             return
         if not isinstance(value, str):
             raise ValueError(
-                f'Cannot convert value {repr(value)} of type {type(value)} to text label.'
+                f'Cannot convert value {repr(value)} of type {type(value)} to tag.'
             )
         value = value.strip()
-        self._label = value.lower()
+        self._tag = value.lower()
 
     def __repr__(self):
-        """Convert label to str."""
-        return self._label
+        """Convert tag to str."""
+        return self._tag
 
     def kwargs(self):
         """Keyword arguments for character-based functions."""
-        return {'label': self._label}
+        return {'tag': self._tag}
 
 
 class CodepointLabel:

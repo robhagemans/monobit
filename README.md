@@ -238,23 +238,23 @@ The label must be followed by a separator `:` and a line ending.
 * Whitespace between the label elements, commas, the separator, and the line ending is allowed.
 
 A *label element* consists only of ASCII letters, ASCII digits, the underscore `_` the dash `-`, and the plus `+`.
-* A label element has one of three types: *Unicode*, *codepoint*, or *text*.
-* If a label element starts with a digit, it is a *codepoint* label element.
+* A label element has one of three types: *character*, *codepoint*, or *tag*.
+* If a label element starts with a digit, it is a *codepoint*.
   * If all characters are digits, the codepoint is in decimal format.
   * If the first two characters are `0x` or `0X`, the codepoint is hexadecimal. All further characters must
     be case-insensitive hex digits.
   * If the first two characters are `0o` or `0O`, the codepoint is octal. All further characters must be octal digits.
-* If a label element contains a `+`, it is a *Unicode* label element.
+* If a label element contains a `+`, it is a Unicode *character*.
   * Its first two characters must be `u+` or `U+`. All further characters must
     be case-insensitive hex digits.
   * The label represents a Unicode code point in hexadecimal notation.
-* If a label element starts with an ASCII letter, `-` or `_` and does not contain `+`, it is a *text* label element.
-  * In a text label, the `-` and the `_` are considered equivalent.
-  * Text labels are not case sensitive.
+* If a label element starts with an ASCII letter, `-` or `_` and does not contain `+`, it is a *tag*.
+  * In a tag, the `-` and the `_` are considered equivalent.
+  * Tags are not case sensitive.
 * If a label element does not fit in any of the above three categories, then it is not a valid label element.
 
-If a label consists of more than one label element, they must be of the same type and must not be text labels.
-* If they are Unicode, together they represent a single grapheme cluster.
+If a label consists of more than one label element, they must be of the same type and must not be tags.
+* If they are Unicode characters, together they represent a single grapheme cluster.
 * If they are codepoints, together they represent a single multibyte code page sequence.
 
 A *glyph* may span multiple lines.

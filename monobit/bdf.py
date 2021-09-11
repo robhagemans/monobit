@@ -197,7 +197,7 @@ def _read_bdf_characters(instream):
         try:
             int(label)
         except ValueError:
-            glyph = glyph.set_annotations(labels=[label])
+            glyph = glyph.set_annotations(tags=[label])
         # ENCODING must be single integer or -1 followed by integer
         encvalue = int(meta['ENCODING'].split(' ')[-1])
         # no encoding number found
@@ -526,11 +526,11 @@ def _save_bdf(font, outstream):
     # get glyphs for encoding values
     encoded_glyphs = []
     for glyph in font.glyphs:
-        # keep the first text label as the glyph name
-        if not glyph.labels:
+        # keep the first text tag as the glyph name
+        if not glyph.tags:
             name = ''
         else:
-            name = glyph.labels[0]
+            name = glyph.tags[0]
         has_encoding_value = False
         if is_unicode:
             try:
