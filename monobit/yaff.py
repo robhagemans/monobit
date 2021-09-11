@@ -135,7 +135,7 @@ def _load_font(instream, fore, back, key_format):
             label, sep, rest = line.partition(':')
             if sep != ':':
                 raise ValueError(
-                    f'Invalid .yaff or .draw file: key `{label.strip()}` not followed by :'
+                    f'Invalid .yaff or .draw file: key `{label.strip()}` not followed by `:`'
                 )
             if elements[-1].clusters:
                 # we already have stuff for the last key, so this is a new one
@@ -205,7 +205,7 @@ def _load_font(instream, fore, back, key_format):
     # global comment
     comments = clean_comment(global_comment)
     # append property comments to global comment
-    comments.extend(_el.comments for _el in property_elements)
+    comments.extend(_comment for _el in property_elements for _comment in _el.comments)
     # preserve any comment at end of file
     comments.extend(clean_comment(current_comment))
     # construct font
