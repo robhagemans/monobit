@@ -147,13 +147,24 @@ class TestMonobit(unittest.TestCase):
         """Test importing c source files."""
         font = monobit.load(
             'tests/fonts/fixed/4x6.c',
-            identifier='char font_Fixed_Medium_6', width=4, height=6
+            identifier='char font_Fixed_Medium_6', cell=(4, 6)
         )
         self.assertEqual(len(font.glyphs), 919)
 
     def test_export_c(self):
-        """Test exporting bmfont files."""
+        """Test exporting c source files."""
         fnt_file = Path(self.tmp_dir.name) / '4x6.c'
+        monobit.save(self.fixed4x6, fnt_file)
+        self.assertTrue(os.path.getsize(fnt_file) > 0)
+
+    def test_import_png(self):
+        """Test importing image files."""
+        font = monobit.load('tests/fonts/fixed/4x6.png', cell=(4, 6), n_chars=919)
+        self.assertEqual(len(font.glyphs), 919)
+
+    def test_export_png(self):
+        """Test exporting image files."""
+        fnt_file = Path(self.tmp_dir.name) / '4x6.png'
         monobit.save(self.fixed4x6, fnt_file)
         self.assertTrue(os.path.getsize(fnt_file) > 0)
 
