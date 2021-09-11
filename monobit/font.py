@@ -240,8 +240,7 @@ class Font:
                 for _index, _glyph in enumerate(self._glyphs)
             )
         # update glyph unicode annotations
-        encoding = get_encoding(self._properties.get('encoding', None))
-        self._is_unicode = (encoding == Unicode)
+        encoding = self._get_encoding()
         if encoding == NoEncoding:
             # no encoding - leave codepoint and unicode labels as is
             return
@@ -254,13 +253,10 @@ class Font:
             )
             for _glyph in self._glyphs
         )
-        if self._is_unicode:
-            # only use char if encoding is unicode
-            # since codepoint field has no way of encoding grapheme clusters
-            self._glyphs = tuple(
-                _glyph.set_annotations(codepoint=None)
-                for _glyph in self._glyphs
-            )
+
+    def _get_encoding(self):
+        """Get encoding object."""
+        return get_encoding(self._properties.get('encoding', None))
 
 
     ##########################################################################
@@ -297,8 +293,6 @@ class Font:
                 pass
         else:
             if isinstance(key, int) or isinstance(key, CodepointLabel):
-                if self._is_unicode:
-                    raise TypeError(f'This is a Unicode font - key must be char, not `{type(key)}`')
                 return self._codepoints[key]
             try:
                 if isinstance(key, UnicodeLabel):
@@ -669,8 +663,6 @@ class Font:
         """Return a subset of the font."""
         keys = list(keys)
         tags = list(tags)
-        if self._is_unicode and not all(isinstance(_k, str) for _k in keys):
-            raise TypeError(f'This is a Unicode font - key must be char, not `{type(key)}`')
         glyphs = (
             [self.get_glyph(_key, missing=None) for _key in keys]
             + [self.get_glyph(tag=_tag, missing=None) for _tag in tags]
@@ -685,40 +677,29 @@ class Font:
         tags = set(tags)
         if not keys and not tags:
             return self
-        if self._is_unicode:
-            if not all(isinstance(_k, str) for _k in keys):
-                raise TypeError(f'This is a Unicode font - key must be char, not `{type(key)}`')
-            glyphs = [
-                _glyph
-                for _glyph in self._glyphs
-                if (
-                    _glyph.char not in keys
-                    and not (set(_glyph.tags) & tags)
-                )
-            ]
-        else:
-            glyphs = [
-                _glyph
-                for _glyph in self._glyphs
-                if (
-                    _glyph.char not in keys
-                    and _glyph.codepoint not in keys
-                    and not (set(_glyph.tags) & tags)
-                )
-            ]
+        glyphs = [
+            _glyph
+            for _glyph in self._glyphs
+            if (
+                _glyph.char not in keys
+                and _glyph.codepoint not in keys
+                and not (set(_glyph.tags) & tags)
+            )
+        ]
         return Font(glyphs, self._comments, self._properties)
 
     def merged_with(self, other):
         """Merge glyphs from other font into this one. Existing glyphs have preference."""
         glyphs = list(self._glyphs)
+        ecoding = self._get_encoding()
         for glyph in other.glyphs:
-            new_tags = set(glyph.tags) - set(self._tags)
-            if self._is_unicode:
-                new_key = glyph.char not in set(self._chars)
-            else:
-                new_key = glyph.codepoint not in set(self._codepoints)
-            if new_tags or new_key:
-                glyphs.append(glyph.set_annotations(tags=new_tags))
+            # don't overwrite chars we already have
+            if glyph.char not in set(self._chars):
+                # exclude tags we already have
+                new_tags = set(glyph.tags) - set(self._tags)
+                # update codepoint based on this font's encoding
+                new_codepoint = encoding.ord(glyph.char)
+                glyphs.append(glyph.set_annotations(tags=new_tags, codepoint=new_codepoint))
         return Font(glyphs, self._comments, self._properties)
 
     # replace with clone(glyphs=.., comments=.., properties=..)

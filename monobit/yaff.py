@@ -310,7 +310,8 @@ def _save_yaff(font, outstream, fore, back, comment, tab, separator, empty, **kw
         outstream.write('\n')
     for glyph in font.glyphs:
         labels = []
-        if glyph.codepoint is not None:
+        # don't write out codepoints for unicode fonts as we have u+XXXX already
+        if glyph.codepoint is not None and (font.encoding != 'unicode' or not glyph.char):
             labels.append(repr(CodepointLabel(glyph.codepoint)))
         if glyph.char:
             labels.append(repr(UnicodeLabel.from_char(glyph.char)))

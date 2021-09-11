@@ -522,42 +522,33 @@ def _save_bdf(font, outstream):
         )
     ]
     # labels
-    is_unicode = font.encoding == 'unicode'
     # get glyphs for encoding values
     encoded_glyphs = []
     for glyph in font.glyphs:
-        # keep the first text tag as the glyph name
-        if not glyph.tags:
-            name = ''
-        else:
+        try:
+            encoding = int(glyph.codepoint)
+        except TypeError:
+            # multi-codepoint grapheme cluster or not set
+            # -1 means no encoding value in bdf
+            encoding = -1
+        # char must have a name in bdf
+        # keep the first tag as the glyph name if available
+        if glyph.tags:
             name = glyph.tags[0]
-        has_encoding_value = False
-        if is_unicode:
-            try:
-                encoding = ord(glyph.char)
-            except ValueError:
-                # multi-codepoint grapheme cluster or not set
-                pass
-            else:
-                if not name:
-                    name = f'uni{encoding:04X}'
-                encoded_glyphs.append((encoding, name, glyph))
-                has_encoding_value = True
         else:
-            try:
-                encoding = int(glyph.codepoint)
-            except TypeError:
-                # not set
-                pass
+            if encoding != -1 and font.encoding != 'unicode':
+                # use encoding value if available
+                name = f'char{encoding:02X}'
+            elif glyph.char:
+                # work with unicode sequence if character available
+                uni_ords = [ord(_c) for _c in glyph.char]
+                name = 'uni' + '-'.join(f'{_ord:04X}' for _ord in uni_ords)
             else:
-                if not name:
-                    name = f'char{encoding:02X}'
-                encoded_glyphs.append((encoding, name, glyph))
-                has_encoding_value = True
-        if not has_encoding_value:
-            # glyph has no encoding value
-            # must have a name - else it has no labels referring to it!
-            encoded_glyphs.append((-1, name, glyph))
+                logging.warning(
+                    f'Multi-codepoint glyph {glyph.codepoint}'
+                    "can't be stored as no name or character available."
+                )
+        encoded_glyphs.append((encoding, name, glyph))
     glyphs = []
     for encoding, name, glyph in encoded_glyphs:
         # "The SWIDTH y value should always be zero for a standard X font."
