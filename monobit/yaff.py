@@ -13,6 +13,9 @@ from .text import clean_comment, write_comments, split_global_comment, to_text
 from .formats import Loaders, Savers
 from .font import PROPERTIES, Font
 from .glyph import Glyph
+from .label import label as to_label
+from .label import UnicodeLabel, TextLabel, CodepointLabel
+
 
 _WHITESPACE = ' \t'
 _CODESTART = _WHITESPACE + string.digits + string.ascii_letters + '_'
@@ -20,30 +23,15 @@ _CODESTART = _WHITESPACE + string.digits + string.ascii_letters + '_'
 
 def yaff_input_key(cluster, key):
     """Convert keys on input from .yaff."""
-    try:
-        # check for codepoint (anything convertible to int)
-        cluster.codepoint = int(key, 0)
-        return cluster
-    except ValueError:
-        pass
-    try:
-        # accept decimals with leading zeros
-        cluster.codepoint = int(key.lstrip('0'))
-        return cluster
-    except ValueError:
-        pass
-    key = key.strip()
-    # see if it counts as unicode label
-    if _is_unicode_label(key):
-        try:
-            cluster.char = _from_unicode_label(key)
-            return cluster
-        except ValueError as e:
-            raise ValueError("'{}' is not a valid unicode label.".format(key)) from e
-    # otherwise it's a string label
-    cluster.labels = [key.lower()]
+    label = to_label(key)
+    if isinstance(label, TextLabel):
+        cluster.labels = [str(label)]
+    elif isinstance(label, CodepointLabel):
+        # TODO: multi-codepoint labels
+        cluster.codepoint = int(label)
+    else:
+        cluster.char = label.to_char()
     return cluster
-
 
 def draw_input_key(cluster, key):
     """Convert keys on input from .draw."""
@@ -52,23 +40,6 @@ def draw_input_key(cluster, key):
     except (TypeError, ValueError):
         cluster.labels = [key]
     return cluster
-
-
-def _is_unicode_label(key):
-    """Identify u+XXXX label."""
-    return key.lower().startswith('u+')
-
-def _to_unicode_label(unichars):
-    """Get u+XXXX label for unicode chars."""
-    return ','.join(
-        f'u+{ord(_uc):04x}'
-        for _uc in unichars
-    )
-
-def _from_unicode_label(label):
-    """Get unicode char for u+XXXX label."""
-    return ''.join(chr(int(_elem.strip()[2:], 16)) for _elem in label.split(','))
-
 
 # defaults
 _YAFF_PARAMETERS = dict(
@@ -264,7 +235,7 @@ def _write_prop(outstream, key, value, tab):
     """Write out a property."""
     if value is None:
         return
-    # this may use custom string converter (e.g ordinal labels)
+    # this may use custom string converter (e.g codepoint labels)
     value = str(value)
     if not value:
         return
@@ -289,16 +260,13 @@ def _save_yaff(font, outstream, fore, back, comment, tab, key_sep, empty):
         **font.nondefault_properties
     }
     # we have to deal with default-char here as it's a str already but needs to be converted to a label
+    # FIXME: word-break too
     try:
         default = props['default-char']
     except KeyError:
         pass
     else:
-        if font.encoding == 'unicode':
-            #FIXME - this doesn't allow for labels
-            props['default-char'] = _to_unicode_label(default)
-        elif isinstance(default, int):
-            props['default-char'] = f'0x{default:02x}'
+        props['default-char'] = to_label(default)
     if props:
         # write recognised yaff properties first, in defined order
         for key in PROPERTIES:
@@ -311,9 +279,9 @@ def _save_yaff(font, outstream, fore, back, comment, tab, key_sep, empty):
     for glyph in font.glyphs:
         labels = []
         if glyph.codepoint is not None:
-            labels.append(f'0x{glyph.codepoint:02x}')
+            labels.append(repr(CodepointLabel(glyph.codepoint)))
         if glyph.char:
-            labels.append(_to_unicode_label(glyph.char))
+            labels.append(repr(UnicodeLabel.from_char(glyph.char)))
         labels.extend(glyph.labels)
         _write_glyph(
             outstream, labels,
