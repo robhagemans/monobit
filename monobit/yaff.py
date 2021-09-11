@@ -17,12 +17,12 @@ from .label import label as to_label
 from .label import UnicodeLabel, TagLabel, CodepointLabel
 
 
+##############################################################################
+# parameters
+
 _WHITESPACE = ' \t'
 _CODESTART = _WHITESPACE + string.digits + string.ascii_letters + '_'
 
-
-
-# defaults
 _YAFF_PARAMETERS = dict(
     fore='@',
     back='.',
@@ -76,6 +76,8 @@ def _parse_draw_keys(keys):
     return kwargs
 
 
+##############################################################################
+
 
 @Loaders.register('yaff', 'text', 'txt', name='monobit-yaff')
 def load(instream):
@@ -110,12 +112,9 @@ def save_draw(font, outstream):
 ##############################################################################
 # read file
 
-class Cluster(SimpleNamespace):
+def _new_cluster(**kwargs):
     """Bag of elements clustered in a text file (glyph, property, etc)."""
-
-
-def new_cluster(**kwargs):
-    return Cluster(
+    return SimpleNamespace(
         keys=[],
         values=[],
         comments=[]
@@ -123,60 +122,56 @@ def new_cluster(**kwargs):
 
 def _load_font(instream, fore, back, parse_glyph_keys):
     """Read and parse a plaintext font file."""
-    header_comment, elements, footer_comment = _read_text(instream)
-    if not elements and not header_comment:
+    elements = _read_text(instream)
+    if not elements:
         # no font to read, no comments to keep
         return None
+    # extract comments
+    elements, comments = _extract_comments(elements)
+    # first take out all glyphs
+    glyphs = _parse_glyphs(elements, fore, back, parse_glyph_keys)
     # property comments currently not preserved
     properties, property_comments = _parse_properties(elements, fore, back)
-    glyphs = _parse_glyphs(elements, fore, back, parse_glyph_keys)
-    # parse comments
-    # global comment
-    comments = clean_comment(header_comment)
-    # preserve any comment at end of file
-    comments.extend(clean_comment(footer_comment))
     # construct font
     return Font(glyphs, comments, properties)
 
 
 def _read_text(instream):
     """Read a plaintext font file."""
-    header_comment = []
-    current_comment = []
     # cluster by property/character/comment block
     elements = []
+    current = _new_cluster()
+    parsing_comment = False
     for line in instream:
         if not line.rstrip('\r\n'):
             # preserve empty lines if they separate comments
-            if current_comment and current_comment[-1] != '':
-                current_comment.append('')
+            if parsing_comment:
+                current.comments.append('')
         elif line[0] not in _CODESTART:
-            current_comment.append(line.rstrip('\r\n'))
+            parsing_comment = True
+            current.comments.append(line.rstrip('\r\n'))
         elif line[0] not in _WHITESPACE:
-            # split out global comment
-            if not elements:
-                elements.append(new_cluster())
-                if current_comment:
-                    global_comm, current_comment = split_global_comment(current_comment)
-                    header_comment.extend(global_comm)
-            label, sep, rest = line.partition(':')
+            parsing_comment = False
+            key, sep, rest = line.partition(':')
             if sep != ':':
                 raise ValueError(
-                    f'Invalid .yaff or .draw file: key `{label.strip()}` not followed by `:`'
+                    f'Invalid .yaff or .draw file: key `{key.strip()}` not followed by `:`'
                 )
-            if elements[-1].values:
+            if current.values:
                 # we already have stuff for the last key, so this is a new one
-                elements.append(new_cluster())
-            elements[-1].comments.extend(clean_comment(current_comment))
-            current_comment = []
-            elements[-1].keys.append(label)
+                current.comments = clean_comment(current.comments)
+                elements.append(current)
+                current = _new_cluster()
+            current.keys.append(key)
             # remainder of label line after : is glyph row or property value
             rest = rest.strip()
             if rest:
-                elements[-1].values.append(rest)
+                current.values.append(rest)
         else:
-            elements[-1].values.append(line.strip())
-    return header_comment, elements, current_comment
+            current.values.append(line.strip())
+    current.comments = clean_comment(current.comments)
+    elements.append(current)
+    return elements
 
 
 def _is_glyph(value, fore, back):
@@ -204,9 +199,8 @@ def _parse_properties(elements, fore, back):
     }
     return properties, comments
 
-
 def _parse_glyphs(elements, fore, back, parse_glyph_keys):
-    # parse glyphs
+    """Parse glyphs."""
     # text version of glyphs
     # a glyph is any key/value where the value contains no alphanumerics
     glyph_elements = [
@@ -229,6 +223,23 @@ def _parse_glyphs(elements, fore, back, parse_glyph_keys):
     ]
     return glyphs
 
+def _extract_comments(elements):
+    """Parse comments and remove from element list."""
+    if not elements:
+        return []
+    # header comment
+    if elements[0].keys:
+        # split out global comment
+        header_comment, elements[0].comments = split_global_comment(elements[0].comments)
+    else:
+        header_comment = elements[0].comments
+        elements = elements[1:]
+    comments = clean_comment(header_comment)
+    # preserve any comment at end of file
+    if elements and not elements[-1].keys:
+        comments.extend(clean_comment(elements[-1].comments))
+        elements = elements[:-1]
+    return elements, comments
 
 
 ##############################################################################
