@@ -14,20 +14,18 @@ import unicodedata
 from .base import scriptable
 from .glyph import Glyph
 from .encoding import Unicode, NoEncoding, normalise_encoding, get_encoding
-
+from .label import label, UnicodeLabel
 
 
 def number(value=0):
     """Convert to int or float."""
     if isinstance(value, str):
         value = float(value)
-        if value == int(value):
-            value = int(value)
     if not isinstance(value, numbers.Real):
         raise ValueError("Can't convert `{}` to number.".format(value))
+    if value == int(value):
+        value = int(value)
     return value
-
-
 
 
 class Coord(NamedTuple):
@@ -142,8 +140,8 @@ PROPERTIES = {
     # character set
     # can't be calculated, affect rendering
     'encoding': normalise_encoding,
-    'default-char': str, # use question mark to replace missing glyph
-    'word-boundary': str, # word-break character (usually space)
+    'default-char': label, # use question mark to replace missing glyph
+    'word-boundary': label, # word-break character (usually space)
 
     # conversion metadata
     # can't be calculated, informational
@@ -308,8 +306,7 @@ class Font:
     def get_default_glyph(self):
         """Get default glyph; empty if not defined."""
         try:
-            #FIXME - does not work if default_char holds a label
-            return self.get_glyph(self.default_char)
+            return self.get_glyph(**self.default_char.kwargs)
         except KeyError:
             return self.get_empty_glyph()
 
@@ -517,7 +514,7 @@ class Font:
         'setwidth': 'normal', # normal, condensed, expanded, etc.
         'direction': 'left-to-right', # left-to-right, right-to-left
         'encoding': '',
-        'word-boundary': '\u0020', # word-break character (usually space)
+        'word-boundary': label('u+0020'), # word-break character (usually space)
     }
 
     @yaffproperty
@@ -598,9 +595,9 @@ class Font:
     def default_char(self):
         """Default character."""
         repl = '\ufffd'
-        if repl in self._chars:
-            return repl
-        return ''
+        if repl not in self._chars:
+            repl = ''
+        return UnicodeLabel.from_char(repl)
 
     @yaffproperty
     def average_advance(self):

@@ -165,18 +165,6 @@ def _load_font(instream, fore, back, key_format):
         for _el in property_elements
         for _key in _el.labels
     }
-    # we have to deal with default-char separately to parse key/label
-    # FIXME: also for word-boundary
-    if 'default-char' in properties:
-        # use a dummy cluster
-        label_dict = vars(key_format(Cluster(), properties['default-char']))
-        try:
-            properties['default-char'] = label_dict['char']
-        except KeyError:
-            try:
-                properties['default-char'] = label_dict['codepoint']
-            except KeyError:
-                properties['default-char'] = label_dict['labels'][0]
     # parse glyphs
     # text version of glyphs
     # a glyph is any key/value where the value contains no alphanumerics
@@ -259,14 +247,6 @@ def _save_yaff(font, outstream, fore, back, comment, tab, key_sep, empty):
         'spacing': font.spacing,
         **font.nondefault_properties
     }
-    # we have to deal with default-char here as it's a str already but needs to be converted to a label
-    # FIXME: word-break too
-    try:
-        default = props['default-char']
-    except KeyError:
-        pass
-    else:
-        props['default-char'] = to_label(default)
     if props:
         # write recognised yaff properties first, in defined order
         for key in PROPERTIES:

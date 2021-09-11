@@ -5,7 +5,7 @@ monobit.label - yaff representation of labels
 licence: https://opensource.org/licenses/MIT
 """
 
-def label(value):
+def label(value=''):
     """Convert to codepoint/unicode/text label as appropriate."""
     # check for codepoint (anything convertible to int)
     try:
@@ -50,7 +50,7 @@ class CodepointLabel:
     def __init__(self, value):
         """Convert to codepoint label if possible."""
         if isinstance(value, CodepointLabel):
-            self._value = value._value
+            self._key = value._key
             return
         # handle composite labels
         # codepoint sequences (MBCS) "0xf5,0x02" etc.
@@ -64,14 +64,20 @@ class CodepointLabel:
         try:
             self._key = [self._convert_element(_elem) for _elem in elements]
         except ValueError as e:
-            raise ValueError(
-                f'Cannot convert value {repr(value)} of type {type(value)} to codepoint label.'
-            ) from e
+            raise self._value_error(value) from e
+
+    def _value_error(self, value):
+        """Create a ValueError."""
+        return ValueError(
+            f'Cannot convert value {repr(value)} of type {type(value)} to codepoint label.'
+        )
 
     def _convert_element(self, value):
         """Convert codepoint label element to int if possible."""
         if isinstance(value, (int, float)) and value == int(value):
             return int(value)
+        if not isinstance(value, str):
+            raise self._value_error(value)
         try:
             # check for anything convertible to int in Python notation (12, 0xff, 0o777, etc.)
             return int(value, 0)
@@ -107,12 +113,14 @@ class UnicodeLabel:
     """Unicode label."""
 
     def __init__(self, value):
-        """Convert u+XXXX string to unicode label."""
+        """Convert u+XXXX string to unicode label. May be empty, representing no glyph."""
         if isinstance(value, UnicodeLabel):
             self._key = value._key
             return
         if not isinstance(value, str):
             raise self._value_error(value)
+        if not value:
+            self._key = ''
         # normalise
         value = value.lower()
         elements = value.split(',')
