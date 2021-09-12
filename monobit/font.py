@@ -391,8 +391,9 @@ class Font:
                 grid_x, grid_y = margin_x + x, grid_top + self.ascent - y
                 # add ink, taking into account there may be ink already in case of negative bearings
                 for work_y in range(glyph.height):
-                    if 0 <= grid_y - work_y < height:
-                        row = line_output[grid_y - work_y]
+                    y_index = grid_y - work_y - 1
+                    if 0 <= y_index < height:
+                        row = line_output[y_index]
                         for work_x, ink in enumerate(matrix[glyph.height - work_y - 1]):
                             if 0 <= grid_x + work_x < width:
                                 row[grid_x + work_x] |= ink
