@@ -111,7 +111,7 @@ def load(instream):
 def load_cp(instream):
     """Load fonts from CP file."""
     data = instream.read()
-    fonts, _ = _parse_cp(data, 0)
+    fonts, _ = _parse_cp(data, 0, standalone=True)
     return Pack(fonts)
 
 
@@ -158,13 +158,17 @@ def _parse_cpi(data):
         ]
     return fonts
 
-def _parse_cp(data, cpeh_offset, header_id=_ID_MS, drdos_effh=None):
+def _parse_cp(data, cpeh_offset, header_id=_ID_MS, drdos_effh=None, standalone=False):
     """Parse a .CP codepage."""
     cpeh = _CODEPAGE_ENTRY_HEADER.from_bytes(data, cpeh_offset)
     if header_id == _ID_NT:
         # fix relative offsets in FONT.NT
         cpeh.cpih_offset += cpeh_offset
         cpeh.next_cpeh_offset += cpeh_offset
+    if standalone:
+        # on a standalone codepage (kbd .cp file), ignore the offset
+        # CPIH follows immediately after CPEH
+        cpeh.cpih_offset = cpeh_offset + _CODEPAGE_ENTRY_HEADER.size
     cpih = _CODEPAGE_INFO_HEADER.from_bytes(data, cpeh.cpih_offset)
     # offset to the first font header
     fh_offset = cpeh.cpih_offset + _CODEPAGE_INFO_HEADER.size
