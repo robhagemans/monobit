@@ -55,6 +55,8 @@ class Codec:
 
     def chr(self, ordinal):
         """Convert ordinal to character, return empty string if missing."""
+        if ordinal is None:
+            return ''
         byte = bytes([int(ordinal)])
         # ignore: return empty string if not found
         char = byte.decode(self._encoding, errors='ignore')
@@ -120,7 +122,7 @@ class Codepage:
         """Convert ordinal to character, return empty string if missing."""
         try:
             return self._mapping[int(ordinal)]
-        except KeyError as e:
+        except (KeyError, TypeError) as e:
             return ''
 
     def ord(self, char):
@@ -142,6 +144,8 @@ class Unicode:
     @staticmethod
     def chr(ordinal):
         """Convert ordinal to character."""
+        if ordinal is None:
+            return ''
         return chr(int(ordinal))
 
     @staticmethod
