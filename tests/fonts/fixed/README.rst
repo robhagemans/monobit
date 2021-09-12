@@ -16,3 +16,4 @@ Derivative Fonts:
 * other files in 6x13.bmf were created with Angelcode BMFont
 * 4x6.c was created from 4x6.yaff using `monobit`
 * 8x16-*.cpi were created from 8x16.hex through a psf intermediate using `monobit` and `psftools`
+* 8.16.cp was extracted from 8x16.cpi using `codepage -a` and `tail -c 8257`
