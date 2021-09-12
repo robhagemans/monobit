@@ -606,16 +606,16 @@ class Font:
         """Monospace or proportional spacing."""
         if not self._glyphs:
             return 'character-cell'
-        widths = set(_glyph.width for _glyph in self._glyphs)
-        heights = set(_glyph.height for _glyph in self._glyphs)
+        # don't count void glyphs (0 width and/or height) to determine whether it's monospace
+        widths = set(_glyph.width for _glyph in self._glyphs if _glyph.width)
+        heights = set(_glyph.height for _glyph in self._glyphs if _glyph.height)
         min_width = min(widths)
         # mono- or multi-cell fonts: equal heights, no ink outside cell, widths are fixed multiples
-        charcell = (
-            len(heights) == 1
-            and self.offset.x >= 0 and self.tracking >= 0 and self.leading >= 0
-            and min_width > 3 and not any(_width % min_width for _width in widths)
-        )
-        if charcell:
+        if (
+                len(heights) == 1
+                and self.offset.x >= 0 and self.tracking >= 0 and self.leading >= 0
+                and min_width > 3 and not any(_width % min_width for _width in widths)
+            ):
             if len(widths) == 1:
                 return 'character-cell'
             return 'multi-cell'
