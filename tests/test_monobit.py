@@ -175,5 +175,27 @@ class TestMonobit(unittest.TestCase):
         monobit.save(self.fixed4x6, fnt_file)
         self.assertTrue(os.path.getsize(fnt_file) > 0)
 
+    def test_import_cpi_font(self):
+        """Test importing CPI (FONT) files"""
+        fnt_file = self.font_path / '8x16-font.cpi'
+        pack = monobit.load(fnt_file)
+        self.assertEqual(len(pack), 2)
+        self.assertEqual(len(pack[0].glyphs), 256)
+
+    def test_import_cpi_fontnt(self):
+        """Test importing CPI (FONT.NT) files"""
+        fnt_file = self.font_path / '8x16-fontnt.cpi'
+        pack = monobit.load(fnt_file)
+        font = pack[0]
+        self.assertEqual(len(font.glyphs), 256)
+
+    def test_import_cpi_drfont(self):
+        """Test importing CPI (DRFONT) files"""
+        fnt_file = self.font_path / '8x16-drfont.cpi'
+        pack = monobit.load(fnt_file)
+        font = pack[0]
+        self.assertEqual(len(font.glyphs), 256)
+
+
 if __name__ == '__main__':
     unittest.main()
