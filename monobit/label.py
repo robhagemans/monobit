@@ -5,6 +5,9 @@ monobit.label - yaff representation of labels
 licence: https://opensource.org/licenses/MIT
 """
 
+import string
+
+
 def label(value=''):
     """Convert to codepoint/unicode/tag label as appropriate."""
     # check for codepoint (anything convertible to int)
@@ -32,8 +35,9 @@ class TagLabel:
             raise ValueError(
                 f'Cannot convert value {repr(value)} of type {type(value)} to tag.'
             )
+        # remove leading and trailing whitespace
         value = value.strip()
-        self._tag = value.lower()
+        self._tag = value
 
     def __repr__(self):
         """Convert tag to str."""
@@ -55,7 +59,6 @@ class CodepointLabel:
         # handle composite labels
         # codepoint sequences (MBCS) "0xf5,0x02" etc.
         if isinstance(value, str):
-            value = value.lower()
             elements = value.split(',')
         elif isinstance(value, (tuple, list)):
             elements = value
@@ -77,6 +80,9 @@ class CodepointLabel:
         if isinstance(value, (int, float)) and value == int(value):
             return int(value)
         if not isinstance(value, str):
+            raise self._value_error(value)
+        # must start with a number to be a codepoint
+        if not value or not value[0] in string.digits:
             raise self._value_error(value)
         try:
             # check for anything convertible to int in Python notation (12, 0xff, 0o777, etc.)
@@ -122,7 +128,6 @@ class UnicodeLabel:
         if not value:
             self._key = ''
         # normalise
-        value = value.lower()
         elements = value.split(',')
         try:
             chars = [self._convert_element(_elem) for _elem in elements if _elem]
@@ -133,6 +138,7 @@ class UnicodeLabel:
 
     def _convert_element(self, element):
         """Convert unicode label element to char if possible."""
+        element = element.lower()
         if not element.startswith('u+'):
             raise ValueError(element)
         # convert to sequence of chars

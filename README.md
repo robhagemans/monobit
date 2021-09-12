@@ -233,24 +233,21 @@ all are considered to point to the glyph that follows.
 
 A *label* consists of one or more *label elements* separated by commas ','.
 The label must be followed by a separator `:` and a line ending.
-* The label is not case sensitive.
 * The label must be given at the start of the line. Leading whitepace is not allowed.
-* Whitespace between the label elements, commas, the separator, and the line ending is allowed.
+* Whitespace between the label elements, commas, the separator, and the line ending is ignored.
 
 A *label element* consists only of ASCII letters, ASCII digits, the underscore `_` the dash `-`, and the plus `+`.
 * A label element has one of three types: *character*, *codepoint*, or *tag*.
 * If a label element starts with a digit, it is a *codepoint*.
   * If all characters are digits, the codepoint is in decimal format.
   * If the first two characters are `0x` or `0X`, the codepoint is hexadecimal. All further characters must
-    be case-insensitive hex digits.
+    be hex digits.
   * If the first two characters are `0o` or `0O`, the codepoint is octal. All further characters must be octal digits.
 * If a label element contains a `+`, it is a Unicode *character*.
-  * Its first two characters must be `u+` or `U+`. All further characters must
-    be case-insensitive hex digits.
+  * Its first two characters must be `u+` or `U+`. All further characters must be hex digits.
   * The label represents a Unicode code point in hexadecimal notation.
-* If a label element starts with an ASCII letter, `-` or `_` and does not contain `+`, it is a *tag*.
-  * In a tag, the `-` and the `_` are considered equivalent.
-  * Tags are not case sensitive.
+* If a label element does not start with a digit, `u+` or `U+`, it is a *tag*.
+  * Tags are case-sensitive.
 * If a label element does not fit in any of the above three categories, then it is not a valid label element.
 
 If a label consists of more than one label element, they must be of the same type and must not be tags.
