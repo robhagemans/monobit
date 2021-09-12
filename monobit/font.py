@@ -241,18 +241,11 @@ class Font:
             )
         # update glyph unicode annotations
         encoding = self._get_encoding()
-        if encoding is None:
-            # no encoding - leave codepoint and unicode labels as is
-            return
-        # use codepage to find char if glyph does not have char set
-        # use codepage to find codepoint if no code point set
-        self._glyphs = tuple(
-            _glyph.set_annotations(
-                char=_glyph.char or encoding.chr(_glyph.codepoint),
-                codepoint=_glyph.codepoint or encoding.ord(_glyph.char)
-            )
-            for _glyph in self._glyphs
-        )
+        if encoding is not None:
+            self._glyphs = [
+                _glyph.set_encoding_annotations(encoding)
+                for _glyph in self._glyphs
+            ]
 
     def _get_encoding(self):
         """Get encoding object."""
@@ -276,7 +269,7 @@ class Font:
             if missing == 'empty':
                 return self.get_empty_glyph()
             if missing == 'raise':
-                raise KeyError(f'No glyph found matching {key}.')
+                raise KeyError(f'No glyph found matching {key}.') from None
             return missing
 
     def get_index(self, key=None, *, tag=None):

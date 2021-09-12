@@ -6,12 +6,16 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import binascii
+import logging
 
 from .base import scriptable
 from .binary import ceildiv, bytes_to_bits
 from .text import to_text
+from .label import UnicodeLabel, CodepointLabel
+
 
 NOT_SET = object()
+
 
 class Glyph:
     """Single glyph."""
@@ -62,6 +66,24 @@ class Glyph:
     def set_annotations(self, *, tags=NOT_SET, char=NOT_SET, codepoint=NOT_SET, comments=NOT_SET):
         """Return a copy of the glyph with different annotations."""
         return self.modify(tags=tags, char=char, codepoint=codepoint, comments=comments)
+
+    def set_encoding_annotations(self, encoder):
+        """Det annotations using provided encoder object."""
+        # use codepage to find char if not set
+        if not self.char:
+            return self.set_annotations(char=encoder.chr(self.codepoint))
+        # use codepage to find codepoint if not set
+        if self.codepoint is None:
+            return self.set_annotations(codepoint=encoder.ord(self.char))
+        # both are set but not onsistent with codepage
+        enc_char = encoder.chr(self.codepoint)
+        if self.char != enc_char:
+            logging.warning(
+                f'Inconsistent encoding at {CodepointLabel(self.codepoint)}: '
+                f'mapped to {UnicodeLabel.from_char(self.char)} '
+                f'instead of {UnicodeLabel.from_char(enc_char)} per stated encoding.'
+            )
+        return self
 
     @scriptable
     def drop_comments(self):
