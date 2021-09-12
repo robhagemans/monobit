@@ -117,25 +117,25 @@ _INFO_SMOOTH = 1 << 0
 # looks like these are equal to the Windows OEM ones
 # mapping of those is a guess, see _CHARSET_MAP in winfnt.py
 _CHARSET_STR_MAP = {
-    'ANSI': 'windows-1252',
-    'DEFAULT': 'windows-1252', # ?
-    'SYMBOL': 'symbol',
-    'MAC': 'mac-roman',
-    'SHIFTJIS': 'windows-932',
-    'HANGUL': 'windows-949',
-    'JOHAB': 'johab',
-    'GB2312': 'windows-936',
-    'CHINESEBIG5': 'windows-950',
-    'GREEK': 'windows-1253',
-    'TURKISH': 'windows-1254',
-    'VIETNAMESE': 'windows-1258',
-    'HEBREW': 'windows-1255',
-    'ARABIC': 'windows-1256',
-    'BALTIC': 'windows-1257',
-    'RUSSIAN': 'windows-1251',
-    'THAI': 'windows-874',
-    'EASTEUROPE': 'windows-1250',
-    'OEM': 'cp437', # ?
+    'ANSI': _CHARSET_MAP[0x00],
+    'DEFAULT': _CHARSET_MAP[0x01],
+    'SYMBOL':  _CHARSET_MAP[0x02],
+    'MAC': _CHARSET_MAP[0x4d],
+    'SHIFTJIS': _CHARSET_MAP[0x80],
+    'HANGUL': _CHARSET_MAP[0x81],
+    'JOHAB': _CHARSET_MAP[0x82],
+    'GB2312': _CHARSET_MAP[0x86],
+    'CHINESEBIG5': _CHARSET_MAP[0x88],
+    'GREEK': _CHARSET_MAP[0xa1],
+    'TURKISH': _CHARSET_MAP[0xa2],
+    'VIETNAMESE': _CHARSET_MAP[0xa3],
+    'HEBREW': _CHARSET_MAP[0xb1],
+    'ARABIC': _CHARSET_MAP[0xb2],
+    'BALTIC': _CHARSET_MAP[0xba],
+    'RUSSIAN': _CHARSET_MAP[0xcc],
+    'THAI': _CHARSET_MAP[0xde],
+    'EASTEUROPE': _CHARSET_MAP[0xee],
+    'OEM': _CHARSET_MAP[0xff],
 }
 
 
