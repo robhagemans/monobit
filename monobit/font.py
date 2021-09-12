@@ -115,7 +115,7 @@ PROPERTIES = {
     # summarising quantities
     # determined from the bitmaps only
     'spacing': str, # proportional, monospace, character-cell, multi-cell
-    'bounding-box': Coord.create, # maximum ink width/height
+    'bounding-box': Coord.create, # maximum raster (not necessarily ink) width/height
     'average-advance': number, # average advance width, rounded to tenths
     'cap-advance': int, # advance width of LATIN CAPITAL LETTER X
 
@@ -575,7 +575,6 @@ class Font:
     @property
     def bounding_box(self):
         """Get maximum raster width and height, in pixels."""
-        # this equals bdf.FONTBOUNDINGBOX only if all glyphs are reduced to their ink bounding box
         if not self._glyphs:
             return Coord(0, 0)
         return Coord(
