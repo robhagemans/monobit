@@ -435,7 +435,7 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=())
                 'Greyscale, colour and antialiased fonts not supported.'
             )
         elif len(colourset) == 2:
-            # use highesr intensity (sum of channels) as foreground
+            # use higher intensity (sum of channels) as foreground
             bg, fg = colourset
             if sum(bg) > sum(fg):
                 bg, fg = fg, bg
@@ -456,7 +456,7 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=())
                 )
             else:
                 glyph = Glyph.empty(char.xadvance - min_after, max_height)
-            glyph = glyph.set_annotations(codepoint=len(glyphs))
+            glyph = glyph.set_annotations(codepoint=char.id)
             glyphs.append(glyph)
     # parse properties
     bmfont_props = {**info}
