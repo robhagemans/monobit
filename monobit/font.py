@@ -684,7 +684,7 @@ class Font:
     def merged_with(self, other):
         """Merge glyphs from other font into this one. Existing glyphs have preference."""
         glyphs = list(self._glyphs)
-        ecoding = self._get_encoding()
+        encoding = self._get_encoding()
         for glyph in other.glyphs:
             # don't overwrite chars we already have
             if glyph.char not in set(self._chars):
