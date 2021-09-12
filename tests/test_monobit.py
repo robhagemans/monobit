@@ -16,6 +16,7 @@ from pathlib import Path
 
 import monobit
 
+
 class TestMonobit(unittest.TestCase):
     """Test monobit export/import"""
 
@@ -50,7 +51,7 @@ class TestMonobit(unittest.TestCase):
         """Test importing fon files"""
         pack = monobit.load("tests/fonts/fixed/6x13.fon")
         font = pack[0]
-        self.assertEqual(len(font.glyphs), 256)
+        self.assertEqual(len(font.glyphs), 249)
 
     def test_export_fon(self):
         """Test exporting fon files"""
@@ -61,7 +62,7 @@ class TestMonobit(unittest.TestCase):
     def test_import_fnt(self):
         """Test importing fnt files"""
         font = monobit.load("tests/fonts/fixed/6x13.fnt")
-        self.assertEqual(len(font.glyphs), 256)
+        self.assertEqual(len(font.glyphs), 249)
 
     def test_export_fnt(self):
         """Test exporting fnt files"""
