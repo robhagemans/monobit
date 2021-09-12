@@ -5,7 +5,6 @@ monobit.encoding - unicode encodings
 licence: https://opensource.org/licenses/MIT
 """
 
-import unicodedata
 import pkgutil
 import logging
 
@@ -151,7 +150,9 @@ class Unicode:
     @staticmethod
     def ord(char):
         """Convert character to ordinal."""
-        char = unicodedata.normalize('NFC', char)
+        # we used to normalise to NFC here, presumably to reduce multi-codepoint situations
+        # but it leads to inconsistency between char and codepoint for canonically equivalent chars
+        #char = unicodedata.normalize('NFC', char)
         if len(char) != 1:
             # empty chars or multi-codepoint grapheme clusters are not supported here
             return None

@@ -68,7 +68,7 @@ class Glyph:
         return self.modify(tags=tags, char=char, codepoint=codepoint, comments=comments)
 
     def set_encoding_annotations(self, encoder):
-        """Det annotations using provided encoder object."""
+        """Set annotations using provided encoder object."""
         # use codepage to find char if not set
         if not self.char:
             return self.set_annotations(char=encoder.chr(self.codepoint))
