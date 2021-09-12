@@ -45,54 +45,132 @@ from .encoding import get_encoding
 # https://ffenc.blogspot.com/2008/04/fnt-font-file-format.html
 
 
-_FALLBACK_CHARSET = 'windows-ansi-2.0'
+# fallback values for font file writer
+# use OEM charset value; "default" charset 0x01 is not a valid value per freetype docs
+_FALLBACK_CHARSET = 0xff
+# "dfDefaultChar should indicate a special character in the font which is not a space."
 # codepoint 0x80 is unmapped in windows-ansi-2.0 and commonly used for default
 _FALLBACK_DEFAULT = 0x80
+# "dfBreakChar is normally (32 - dfFirstChar), which is an ASCII space."
+_FALLBACK_BREAK = 0x20
 
+# official but vague documentation:
 # https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-wmf/0d0b32ac-a836-4bd2-a112-b6000a1b4fc9
-# most of this is a guess, I can't find a more precise definition
+#
+# The CharacterSet Enumeration defines the possible sets of character glyphs that are defined in fonts for graphics output.
+#      typedef  enum
+#      {
+#        ANSI_CHARSET = 0x00000000,
+#        DEFAULT_CHARSET = 0x00000001,
+#        SYMBOL_CHARSET = 0x00000002,
+#        MAC_CHARSET = 0x0000004D,
+#        SHIFTJIS_CHARSET = 0x00000080,
+#        HANGUL_CHARSET = 0x00000081,
+#        JOHAB_CHARSET = 0x00000082,
+#        GB2312_CHARSET = 0x00000086,
+#        CHINESEBIG5_CHARSET = 0x00000088,
+#        GREEK_CHARSET = 0x000000A1,
+#        TURKISH_CHARSET = 0x000000A2,
+#        VIETNAMESE_CHARSET = 0x000000A3,
+#        HEBREW_CHARSET = 0x000000B1,
+#        ARABIC_CHARSET = 0x000000B2,
+#        BALTIC_CHARSET = 0x000000BA,
+#        RUSSIAN_CHARSET = 0x000000CC,
+#        THAI_CHARSET = 0x000000DE,
+#        EASTEUROPE_CHARSET = 0x000000EE,
+#        OEM_CHARSET = 0x000000FF
+#      } CharacterSet;
+#
+# ANSI_CHARSET: Specifies the English character set.
+# DEFAULT_CHARSET: Specifies a character set based on the current system locale; for example, when the system locale is United States English, the default character set is ANSI_CHARSET.
+# SYMBOL_CHARSET: Specifies a character set of symbols.
+# MAC_CHARSET: Specifies the Apple Macintosh character set.<6>
+# SHIFTJIS_CHARSET: Specifies the Japanese character set.
+# HANGUL_CHARSET: Also spelled "Hangeul". Specifies the Hangul Korean character set.
+# JOHAB_CHARSET: Also spelled "Johap". Specifies the Johab Korean character set.
+# GB2312_CHARSET: Specifies the "simplified" Chinese character set for People's Republic of China.
+# CHINESEBIG5_CHARSET: Specifies the "traditional" Chinese character set, used mostly in Taiwan and in the Hong Kong and Macao Special Administrative Regions.
+# GREEK_CHARSET: Specifies the Greek character set.
+# TURKISH_CHARSET: Specifies the Turkish character set.
+# VIETNAMESE_CHARSET: Specifies the Vietnamese character set.
+# HEBREW_CHARSET: Specifies the Hebrew character set
+# ARABIC_CHARSET: Specifies the Arabic character set
+# BALTIC_CHARSET: Specifies the Baltic (Northeastern European) character set
+# RUSSIAN_CHARSET: Specifies the Russian Cyrillic character set.
+# THAI_CHARSET: Specifies the Thai character set.
+# EASTEUROPE_CHARSET: Specifies a Eastern European character set.
+# OEM_CHARSET: Specifies a mapping to one of the OEM code pages, according to the current system locale setting.
+
+# MS Windows SDK 1.03 Programmer's reference, Appendix C Font Files, p. 427:
+#   "One byte specifying the character set defined by this font. The IBM@ PC hardware font has been
+#   assigned the designation 377 octal (FF hexadecimal or 255 decimal)."
+
+# below we follow the more useful info at https://www.freetype.org/freetype2/docs/reference/ft2-winfnt_fonts.html
+# from freetype freetype/ftwinfnt.h:
+#define FT_WinFNT_ID_CP1252    0
+#define FT_WinFNT_ID_DEFAULT   1
+#define FT_WinFNT_ID_SYMBOL    2
+#define FT_WinFNT_ID_MAC      77
+#define FT_WinFNT_ID_CP932   128
+#define FT_WinFNT_ID_CP949   129
+#define FT_WinFNT_ID_CP1361  130
+#define FT_WinFNT_ID_CP936   134
+#define FT_WinFNT_ID_CP950   136
+#define FT_WinFNT_ID_CP1253  161
+#define FT_WinFNT_ID_CP1254  162
+#define FT_WinFNT_ID_CP1258  163
+#define FT_WinFNT_ID_CP1255  177
+#define FT_WinFNT_ID_CP1256  178
+#define FT_WinFNT_ID_CP1257  186
+#define FT_WinFNT_ID_CP1251  204
+#define FT_WinFNT_ID_CP874   222
+#define FT_WinFNT_ID_CP1250  238
+#define FT_WinFNT_ID_OEM     255
+# some of their notes:
+#   SYMBOL - There is no known mapping table available.
+#   OEM - as opposed to ANSI, denotes the second default codepage that most international versions of Windows have.
+#         It is one of the OEM codepages from https://docs.microsoft.com/en-us/windows/desktop/intl/code-page-identifiers
+#   DEFAULT	- This is used for font enumeration and font creation as a ‘don't care’ value. Valid font files don't contain this value.
+#   Exact mapping tables for the various ‘cpXXXX’ encodings (except for ‘cp1361’) can be found at
+#   ‘ftp://ftp.unicode.org/Public/’ in the MAPPINGS/VENDORS/MICSFT/WINDOWS subdirectory.
+#   ‘cp1361’ is roughly a superset of MAPPINGS/OBSOLETE/EASTASIA/KSC/JOHAB.TXT.
+#
 _CHARSET_MAP = {
-    # ANSI_CHARSET = 0x00000000 - maybe 'iso-8859-1' but I think Windows would use this instead
-    0x00: 'windows-ansi-2.0',
-    # DEFAULT_CHARSET = 0x00000001 - locale dependent :/ ??
-    0x01: 'windows-ansi-2.0',
-    # SYMBOL_CHARSET = 0x00000002
-    0x02: 'mac-symbol',
-    # MAC_CHARSET = 0x0000004D
+    0x00: 'windows-1252',
+    # no codepage
+    0x01: '',
+    0x02: 'windows-symbol',
     0x4d: 'mac-roman',
-    # SHIFTJIS_CHARSET = 0x00000080 - MS probably mean their own Shift-JIS extension?
     0x80: 'windows-932',
-    # HANGUL_CHARSET = 0x00000081 - assuming euc-kr
     0x81: 'windows-949',
-    # JOHAB_CHARSET = 0x00000082
-    0x82: 'johab',
-    # GB2312_CHARSET = 0x00000086,
+    0x82: 'windows-1361',
     0x86: 'windows-936',
-    # CHINESEBIG5_CHARSET = 0x00000088
     0x88: 'windows-950',
-    # GREEK_CHARSET = 0x000000A1
     0xa1: 'windows-1253',
-    # TURKISH_CHARSET = 0x000000A2
     0xa2: 'windows-1254',
-    # VIETNAMESE_CHARSET = 0x000000A3
     0xa3: 'windows-1258',
-    # HEBREW_CHARSET = 0x000000B1
     0xb1: 'windows-1255',
-    # ARABIC_CHARSET = 0x000000B2
     0xb2: 'windows-1256',
-    # BALTIC_CHARSET = 0x000000BA
     0xba: 'windows-1257',
-    # RUSSIAN_CHARSET = 0x000000CC
     0xcc: 'windows-1251',
-    # THAI_CHARSET = 0x000000DE
     0xde: 'windows-874',
-    # EASTEUROPE_CHARSET = 0x000000EE
     0xee: 'windows-1250',
-    # OEM_CHARSET = 0x000000FF
-    # Specifies a mapping to one of the OEM code pages, according to the current system locale setting
-    # - also "the IBM PC hardware font" as per windows 1.03 sdk docs
-    0xff: 'cp437',
+    # could be any OEM codepage
+    0xff: '',
 }
+_CHARSET_REVERSE_MAP = dict(reversed(_item) for _item in _CHARSET_MAP.items())
+_CHARSET_REVERSE_MAP.update({
+    # different windows versions used fifferent definitions of windows-1252
+    # see https://www.aivosto.com/articles/charsets-codepages-windows.html
+    'windows-ansi-2.0': 0x00,
+    'windows-1252': 0x00,
+    # windows-1252 agrees with iso-8859-1 (u+0000--u+00ff) except for controls 0x7F-0x9F
+    # furthermore, often the control range 0x00-0x19 is set to IBM graphics in windows-1252
+    'latin-1': 0x00,
+    'unicode': 0x00,
+    # use OEM as fallback for undefined as "valid font files don't contain 0x01"
+    '': 0xff,
+})
 
 # https://web.archive.org/web/20120215123301/http://support.microsoft.com/kb/65123
 # dfWeight: 2 bytes specifying the weight of the characters in the character definition data, on a scale of 1 to 1000.
@@ -474,7 +552,7 @@ def _parse_win_props(fnt, win_props):
 def create_fnt(font, version=0x200):
     """Create .FNT from properties."""
     weight_map = dict(reversed(_item) for _item in _WEIGHT_MAP.items())
-    charset_map = dict(reversed(_item) for _item in _CHARSET_MAP.items())
+    charset_map = _CHARSET_REVERSE_MAP
     style_map = dict(reversed(_item) for _item in _STYLE_MAP.items())
     if font.spacing == 'proportional':
         # width of uppercase X
@@ -490,31 +568,23 @@ def create_fnt(font, version=0x200):
         x_width = pix_width = font.bounding_box.x
         v3_flags = _DFF_FIXED
     space_index = 0
-    # if encoding is compatible, use it; if not, sample fallback charset from what we have
-    try:
-        charset = charset_map[font.encoding]
-        # unicode is not supported by FNT so we must have a codepage font here
-        codepoints = font.get_codepoints()
-        # FNT can hold at most the codepoints 0..256 as these fields are byte-sized
-        min_ord = min(codepoints)
-        max_ord = min(255, max(codepoints))
-        # char table; we need a contiguous range between the min and max codepoints
-        ord_glyphs = [font.get_glyph(_codepoint) for _codepoint in range(min_ord, max_ord)]
-        default_ord = font.get_glyph(font.default_char).codepoint
-        break_ord = font.get_glyph(font.word_boundary).codepoint
-    except KeyError:
-        logging.warning(
-            f'Encoding `{font.encoding}` not supported by Windows FNT resource format, '
-            f'glyphs will be mapped to `{_FALLBACK_CHARSET}` instead.'
-        )
-        charset = 0xff
-        # sample chars from cp437
-        encoder = get_encoding(_FALLBACK_CHARSET)
-        chars = (encoder.chr(_ord) for _ord in range(256))
-        min_ord, max_ord = 0, 255
-        ord_glyphs = [font.get_glyph(_char, missing='default') for _char in chars]
-        # use space for break; 0x80 is unmapped in windows-ansi-2.0 and commonly used for default
-        default_ord, break_ord = _FALLBACK_DEFAULT, 0x20
+    # if encoding is compatible, use it; otherwise set to fallback value
+    charset = charset_map.get(font.encoding, _FALLBACK_CHARSET)
+    codepoints = font.get_codepoints()
+    # FNT can hold at most the codepoints 0..256 as these fields are byte-sized
+    min_ord = min(codepoints)
+    max_ord = min(255, max(codepoints))
+    # char table; we need a contiguous range between the min and max codepoints
+    ord_glyphs = [
+        font.get_glyph(_codepoint, missing='empty')
+        for _codepoint in range(min_ord, max_ord+1)
+    ]
+    default_ord = font.get_glyph(font.default_char).codepoint
+    if default_ord is None:
+        default_ord = _FALLBACK_DEFAULT
+    break_ord = font.get_glyph(font.word_boundary).codepoint
+    if break_ord is None:
+        break_ord = _FALLBACK_BREAK
     # add the guaranteed-blank glyph
     ord_glyphs.append(Glyph.empty(pix_width, font.bounding_box.y))
     # create the bitmaps
