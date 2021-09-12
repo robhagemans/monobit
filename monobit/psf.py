@@ -58,7 +58,7 @@ _PSF2_SEPARATOR = b'\xFF'
 _PSF2_STARTSEQ = b'\xFE'
 
 
-@Loaders.register('psf', name='PSF', binary=True, multi=False)
+@Loaders.register('psf', 'psfu', name='PSF', binary=True, multi=False)
 def load(instream):
     """Load font from psf file."""
     magic = instream.read(2)
