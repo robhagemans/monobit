@@ -5,6 +5,7 @@ monobit.formats - loader and saver plugin registry
 licence: https://opensource.org/licenses/MIT
 """
 
+import gzip
 import io
 import sys
 import logging
@@ -24,7 +25,12 @@ def _open_stream(on, outfile, mode, binary=False):
     """Open a binary or encoded text stream."""
     if not binary:
         encoding = 'utf-8-sig' if mode == 'r' else 'utf-8'
-        return on.open(outfile, mode, encoding=encoding)
+        if Path(outfile).suffix == ".gz":
+            # `gzip`'s 'r' same as 'rb' which is incompatible with 'encoding' argument
+            mode = 'rt' if mode == 'r' else 'wt'
+            return gzip.open(outfile, mode, encoding=encoding)
+        else:
+            return on.open(outfile, mode, encoding=encoding)
     else:
         return on.open(outfile, mode + 'b')
 
@@ -49,6 +55,8 @@ def get_format(infile, format=''):
             suffixes = Path(infile).suffixes
             if suffixes:
                 if suffixes[-1] == '.zip' and len(suffixes) > 2:
+                    format = suffixes[-2][1:]
+                elif suffixes[-1] == '.gz' and len(suffixes) == 2:
                     format = suffixes[-2][1:]
                 else:
                     format = suffixes[-1][1:]
