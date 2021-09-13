@@ -54,7 +54,7 @@ def get_format(infile, format=''):
         if isinstance(infile, (str, Path)):
             suffixes = Path(infile).suffixes
             if suffixes:
-                if suffixes[-1] == '.zip' and len(suffixes) > 2:
+                if suffixes[-1] == '.zip' and len(suffixes) >= 2:
                     format = suffixes[-2][1:]
                 elif suffixes[-1] == '.gz' and len(suffixes) == 2:
                     format = suffixes[-2][1:]
