@@ -131,12 +131,12 @@ if Image:
             encoding:str=None,
         ):
         """Export font to image."""
-        img = _to_image(font, columns, margin, padding, scale, border, back, fore, encoding)
+        img = create_image(font, columns, margin, padding, scale, border, back, fore, encoding)
         img.save(outfile, format)
         return font
 
 
-def _to_image(
+def create_image(
         font,
         columns=32, margin=(0, 0), padding=(0, 0), scale=(1, 1),
         border=(32, 32, 32), back=(0, 0, 0), fore=(255, 255, 255),
@@ -166,18 +166,6 @@ def _to_image(
         lefttop = (margin_x + col*step_x, margin_y + row*step_y)
         img.paste(charimg, lefttop)
     return img
-
-def show(
-        pack,
-        columns=32, margin=(0, 0), padding=(0, 0), scale=(1, 1),
-        border=(32, 32, 32), back=(0, 0, 0), fore=(255, 255, 255),
-        encoding=None
-    ):
-    """Show font(s) as image."""
-    for font in pack:
-        img = _to_image(font, columns, margin, padding, scale, border, back, fore, encoding)
-        img.show()
-    return pack
 
 
 def render(

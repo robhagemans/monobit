@@ -33,7 +33,7 @@ from . import fzx
 from . import pdf
 from . import c
 
-from .image import show, render
+from .image import create_image, render
 
 
 # get font operations
