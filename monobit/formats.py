@@ -116,6 +116,8 @@ class Loaders:
         return _load_decorator
 
 
+# container-format loader
+
 def _container_loader(load, infile, binary, multi, format, **kwargs):
     """Open a container and provide to font loader."""
     if not infile or infile == '-':
@@ -140,10 +142,56 @@ def _container_loader(load, infile, binary, multi, format, **kwargs):
         return _set_extraction_props(font_or_pack, infile, format, multi)
 
 
+# single-stream format loader
+
 def _stream_loader(load, infile, binary, multi, format, **kwargs):
-    """Open a single- or multifont format."""
+    """Open a stream and load one or more fonts."""
     if not infile or infile == '-':
         infile = sys.stdin.buffer
+    container_type = _identify_container(infile)
+    if container_type:
+        return _load_streams_from_container(
+            load, infile, container_type, binary, multi, format, **kwargs
+        )
+    else:
+        return _load_stream_directly(load, infile, binary, multi, format, **kwargs)
+
+
+def _load_stream_directly(load, infile, binary, multi, format, **kwargs):
+    """Load font or pack from stream."""
+    if isinstance(infile, (str, bytes, Path)):
+        with _open_stream(io, infile, 'r', binary) as instream:
+            font_or_pack = load(instream, **kwargs)
+            return _set_extraction_props(font_or_pack, infile, format, multi)
+    else:
+        # check text/binary
+        if isinstance(infile.read(0), bytes):
+            if not binary:
+                infile = io.TextIOWrapper(infile, encoding='utf-8-sig')
+        else:
+            if binary:
+                raise ValueError('This format requires a binary stream, not a text stream.')
+        font_or_pack = load(infile, **kwargs)
+        return _set_extraction_props(font_or_pack, infile, format, multi)
+
+def _load_streams_from_container(load, infile, container_type, binary, multi, format, **kwargs):
+    """Open container and load all fonts found in it into one pack."""
+    with container_type(infile, 'r') as zip_con:
+        packs = []
+        for name in zip_con:
+            with _open_stream(zip_con, name, 'r', binary) as stream:
+                font_or_pack = load(stream, **kwargs)
+                font_or_pack = _set_extraction_props(font_or_pack, name, format, multi)
+                if isinstance(font_or_pack, Pack):
+                    packs.append(font_or_pack)
+                else:
+                    packs.append([font_or_pack])
+        # flatten list of packs
+        fonts = [_font for _pack in packs for _font in _pack]
+        return Pack(fonts)
+
+def _identify_container(infile):
+    """Recognise container type and return container object."""
     container_type = None
     if isinstance(infile, (str, bytes, Path)):
         # string provided; open stream or container as appropriate
@@ -160,34 +208,10 @@ def _stream_loader(load, infile, binary, multi, format, **kwargs):
                 container_type = ZipContainer
             elif not binary and _has_magic(infile, TextMultiStream.magic):
                 container_type = TextMultiStream
-    if not container_type:
-        if isinstance(infile, (str, bytes, Path)):
-            with _open_stream(io, infile, 'r', binary) as instream:
-                font_or_pack = load(instream, **kwargs)
-                return _set_extraction_props(font_or_pack, infile, format, multi)
-        else:
-            # check text/binary
-            if isinstance(infile.read(0), bytes):
-                if not binary:
-                    infile = io.TextIOWrapper(infile, encoding='utf-8-sig')
-            else:
-                if binary:
-                    raise ValueError('This format requires a binary stream, not a text stream.')
-            font_or_pack = load(infile, **kwargs)
-            return _set_extraction_props(font_or_pack, infile, format, multi)
-    else:
-        with container_type(infile, 'r') as zip_con:
-            packs = []
-            for name in zip_con:
-                with _open_stream(zip_con, name, 'r', binary) as stream:
-                    font_or_pack = load(stream, **kwargs)
-                    font_or_pack = _set_extraction_props(font_or_pack, name, format)
-                    if multi:
-                        packs.append(font_or_pack)
-                    else:
-                        packs.append([font_or_pack])
-            return Pack([_font for _pack in packs for _font in _pack])
+    return container_type
 
+
+# loading helpers
 
 def _has_magic(instream, magic):
     """Check if a binary stream matches the given signature."""
