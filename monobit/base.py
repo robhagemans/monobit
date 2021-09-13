@@ -95,10 +95,12 @@ class ZipContainer:
         # using posixpath for internal paths in the archive
         # as forward slash should always work, but backslash would fail on unix
         filename = posixpath.join(self._root, name)
-        if mode.endswith('b'):
-            return self._zip.open(filename, mode[:-1])
+        binary = mode.endswith('b')
+        mode = mode[0]
+        stream = self._zip.open(filename, mode)
+        if binary:
+            return stream
         else:
-            stream = self._zip.open(filename, mode)
             if mode == 'r':
                 encoding = encoding or 'utf-8-sig'
             else:
