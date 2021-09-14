@@ -269,12 +269,8 @@ def _multi_saver(save, pack, outfile, binary, **kwargs):
     else:
         if not binary:
             outfile = io.TextIOWrapper(outfile, encoding='utf-8')
-    try:
-        with outfile:
-            save(pack, outfile, **kwargs)
-    except BrokenPipeError:
-        # ignore broken pipes
-        pass
+    with outfile:
+        save(pack, outfile, **kwargs)
 
 def _single_saver(save, pack, outfile, binary, ext, **kwargs):
     """Call a font saving function, save to a stream or container."""

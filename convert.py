@@ -105,6 +105,9 @@ try:
         with open(args.comments) as f:
             font = font.add_comments(f.read())
     monobit.save(font, args.outfile, format=args.to_, **save_args)
+except BrokenPipeError:
+    # happens e.g. when piping to `head`
+    pass
 except Exception as exc:
     logging.error(exc)
     if args.debug:

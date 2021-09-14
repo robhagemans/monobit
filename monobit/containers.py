@@ -95,6 +95,13 @@ class ZipContainer:
         except EnvironmentError:
             pass
 
+    def __del__(self):
+        """Ensure archive is closed and essential records written."""
+        try:
+            self._zip.close()
+        except EnvironmentError:
+            pass
+
     def open(self, name, mode, encoding=None):
         """Open a stream in the container."""
         # using posixpath for internal paths in the archive
