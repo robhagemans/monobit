@@ -121,7 +121,7 @@ def _stream_loader(load, infile, binary, multi, format, **kwargs):
 def _load_stream_directly(load, infile, binary, multi, format, **kwargs):
     """Load font or pack from stream."""
     if isinstance(infile, (str, bytes, Path)):
-        with streams.open(io, infile, 'r', binary) as instream:
+        with streams.open(infile, 'r', binary) as instream:
             return _load_stream_directly(load, instream, binary, multi, format, **kwargs)
     # check text/binary
     # a text format can be read from a binary stream with a wrapper
@@ -143,7 +143,7 @@ def _load_streams_from_container(load, infile, container_type, binary, multi, fo
     with container_type(infile, 'r') as zip_con:
         packs = []
         for name in zip_con:
-            with streams.open(zip_con, name, 'r', binary) as stream:
+            with streams.open(name, 'r', binary, on=zip_con) as stream:
                 font_or_pack = load(stream, **kwargs)
                 font_or_pack = _set_extraction_props(font_or_pack, name, format)
                 if isinstance(font_or_pack, Pack):
@@ -255,7 +255,7 @@ def _multi_saver(save, pack, outfile, binary, **kwargs):
     """Call a pack saving function, save to a stream."""
     # use standard streams if none provided
     if not outfile or isinstance(outfile, (str, bytes, Path)):
-        outfile = streams.open(io, outfile, 'w', binary)
+        outfile = streams.open(outfile, 'w', binary)
     else:
         if not binary:
             outfile = io.TextIOWrapper(outfile, encoding='utf-8')
@@ -276,7 +276,7 @@ def _single_saver(save, pack, outfile, binary, ext, **kwargs):
                 name = font.name.replace(' ', '_')
                 filename = unique_name(out, name, ext)
                 try:
-                    with streams.open(out, filename, 'w', binary) as stream:
+                    with streams.open(filename, 'w', binary, on=out) as stream:
                         save(font, stream, **kwargs)
                 except Exception as e:
                     logging.error('Could not save %s: %s', filename, e)

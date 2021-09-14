@@ -1,7 +1,7 @@
 """
-monobit.streams - stream utilities
+monobit.formats - loader and saver plugin registry
 
-(c) 2021 Rob Hagemans
+(c) 2019 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -12,21 +12,17 @@ import logging
 from pathlib import Path
 
 
-def open(on, path, mode, binary):
+def open(path, mode, binary, *, on=None):
     """Open a binary or encoded text stream on a container or the filesystem."""
-    # on: container / can be anything that provides an open() method with a signature like io.open
     # path is a path-like object
     # mode is 'r' or 'w'
     # binary is a boolean; open as binary if true, as text if false
+    # on: container / can be anything that provides an open() method with a signature like io.open
     # nameless stream on filesystem -> stdio
-    if on == io and not path:
-        if mode == 'w':
-            if binary:
-                return sys.stdout.buffer
-            return sys.stdout
-        if binary:
-            return sys.stdin.buffer
-        return sys.stdin
+    if on is None:
+        if not path:
+            return stdio_stream(mode, binary)
+        on = io
     path = Path(path)
     if path.suffix == '.gz':
         # open the compressed stream on any container
@@ -39,6 +35,16 @@ def open(on, path, mode, binary):
         return on.open(path, mode + 't', encoding=encoding)
     else:
         return on.open(path, mode + 'b')
+
+def stdio_stream(mode, binary):
+    """Get standard stream for given mode and text/binary type."""
+    if mode == 'w':
+        if binary:
+            return sys.stdout.buffer
+        return sys.stdout
+    if binary:
+        return sys.stdin.buffer
+    return sys.stdin
 
 def is_binary(instream):
     """Check if stream is binary."""

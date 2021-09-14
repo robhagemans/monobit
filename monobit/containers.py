@@ -35,7 +35,7 @@ def identify_container(infile):
         if Path(infile).is_dir():
             return DirContainer
         else:
-            with streams.open(io, infile, 'r', binary=True) as instream:
+            with streams.open(infile, 'r', binary=True) as instream:
                 return identify_container(instream)
     # stream provided
     if streams.has_magic(infile, ZipContainer.magic):
@@ -58,7 +58,7 @@ class ZipContainer:
         mode = mode[:1]
         # use standard streams if none provided
         if not stream_or_name:
-            stream_or_name = streams.open(io, '', mode, binary=True)
+            stream_or_name = streams.stdio_stream(mode, binary=True)
         if isinstance(stream_or_name, bytes):
             stream_or_name = stream_or_name.decode('ascii')
         if isinstance(stream_or_name, (str, Path)):
@@ -185,7 +185,7 @@ class TextMultiStream:
         """Open stream or create wrapper."""
         if not infile or isinstance(infile, (str, bytes, Path)):
             # all containers expect binary stream, including TextMultiStream
-            self._stream = streams.open(io, infile, mode, binary=True)
+            self._stream = streams.open(infile, mode, binary=True)
         else:
             self._stream = infile
         self.closed = False
