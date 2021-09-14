@@ -10,7 +10,6 @@ import sys
 import gzip
 import logging
 from functools import wraps
-from contextlib import contextmanager
 from pathlib import Path
 
 from .base import VERSION, DEFAULT_FORMAT, scriptable
@@ -39,20 +38,6 @@ def get_format(infile, format=''):
                     format = suffixes[-1][1:]
     return format.lower()
 
-
-# container functions
-
-
-def _create_container(outfile, binary):
-    """Open a zip or directory container."""
-    if isinstance(outfile, (str, bytes, Path)):
-        return DirContainer(outfile, 'w')
-    elif binary:
-        return ZipContainer(outfile, 'w')
-    else:
-        return TextMultiStream(outfile, 'w')
-
-# stream functions
 
 ##############################################################################
 # loading
@@ -266,7 +251,15 @@ class Savers:
 
 
 
-@contextmanager
+def _create_container(outfile, binary):
+    """Open a zip, directory or text container, depending on input type."""
+    if isinstance(outfile, (str, bytes, Path)):
+        return DirContainer(outfile, 'w')
+    elif binary:
+        return ZipContainer(outfile, 'w')
+    else:
+        return TextMultiStream(outfile, 'w')
+
 def _container_saver(save, pack, outfile, **kwargs):
     """Call a pack or font saving function, save to a container."""
     # use standard streams if none provided
@@ -275,7 +268,6 @@ def _container_saver(save, pack, outfile, **kwargs):
     with _create_container(outfile, binary=True) as out:
         save(pack, out, **kwargs)
 
-@contextmanager
 def _multi_saver(save, pack, outfile, binary, **kwargs):
     """Call a pack saving function, save to a stream."""
     # use standard streams if none provided
@@ -293,7 +285,6 @@ def _multi_saver(save, pack, outfile, binary, **kwargs):
         # ignore broken pipes
         pass
 
-@contextmanager
 def _single_saver(save, pack, outfile, binary, ext, **kwargs):
     """Call a font saving function, save to a stream."""
     # use standard streams if none provided
