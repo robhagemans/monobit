@@ -14,9 +14,11 @@ from contextlib import contextmanager
 from pathlib import Path
 
 from .base import VERSION, DEFAULT_FORMAT, scriptable
-from .containers import DirContainer, ZipContainer, TextMultiStream, unique_name
+from .containers import DirContainer, ZipContainer, TextMultiStream, unique_name, identify_container
 from .font import Font
 from .pack import Pack
+
+from . import streams
 
 
 # identify font file format from suffix
@@ -40,21 +42,6 @@ def get_format(infile, format=''):
 
 # container functions
 
-def _identify_container(infile):
-    """Recognise container type and return container object."""
-    if isinstance(infile, (str, bytes, Path)):
-        # string provided
-        if Path(infile).is_dir():
-            return DirContainer
-        else:
-            with _open_stream(io, infile, 'r', binary=True) as instream:
-                return _identify_container(instream)
-    # stream provided
-    if _has_magic(infile, ZipContainer.magic):
-        return ZipContainer
-    elif _has_magic(infile, TextMultiStream.magic):
-        return TextMultiStream
-    return None
 
 def _create_container(outfile, binary):
     """Open a zip or directory container."""
@@ -66,35 +53,6 @@ def _create_container(outfile, binary):
         return TextMultiStream(outfile, 'w')
 
 # stream functions
-
-def _open_stream(on, path, mode, binary):
-    """Open a binary or encoded text stream on a container or the filesystem."""
-    # on: container / can be anything that provides an open() method with a signature like io.open
-    # path is a path-like object
-    # mode is 'r' or 'w'
-    # binary is a boolean; open as binary if true, as text if false
-    path = Path(path)
-    if path.suffix == '.gz':
-        # open the compressed stream on any container
-        # gzip.open accepts an open stream in its path argument
-        path = on.open(path, mode + 'b')
-        on = gzip
-    if not binary:
-        encoding = 'utf-8-sig' if mode == 'r' else 'utf-8'
-        # 'r' is text for io but binary for gzip - 'rt' is always text
-        return on.open(path, mode + 't', encoding=encoding)
-    else:
-        return on.open(path, mode + 'b')
-
-def _is_binary_stream(instream):
-    """Check if stream is binary."""
-    # read 0 bytes - the return type will tell us if this is a text or binary stream
-    return isinstance(instream.read(0), bytes)
-
-def _has_magic(instream, magic):
-    """Check if a binary stream matches the given signature."""
-    return instream.peek(len(magic)).startswith(magic)
-
 
 ##############################################################################
 # loading
@@ -152,7 +110,7 @@ def _loader(container_format, load, infile, binary, multi, name, **kwargs):
     """Open a stream or container and load one or more fonts."""
     if not infile or infile == '-':
         infile = sys.stdin.buffer
-    container_type = _identify_container(infile)
+    container_type = identify_container(infile)
     if container_format:
         return _container_loader(load, infile, container_type, binary, multi, name, **kwargs)
     else:
@@ -179,7 +137,7 @@ def _stream_loader(load, infile, container_type, binary, multi, format, **kwargs
         raise ValueError('This format requires a binary stream, not a text stream.')
     if isinstance(infile, (str, bytes, Path)):
         # all containers expect binary stream, including TextMultiStream
-        with _open_stream(io, infile, 'r', binary=True) as instream:
+        with streams.open(io, infile, 'r', binary=True) as instream:
             return _stream_loader(
                 load, instream, container_type, binary, multi, format, **kwargs
             )
@@ -194,13 +152,13 @@ def _stream_loader(load, infile, container_type, binary, multi, format, **kwargs
 def _load_stream_directly(load, infile, binary, multi, format, **kwargs):
     """Load font or pack from stream."""
     if isinstance(infile, (str, bytes, Path)):
-        with _open_stream(io, infile, 'r', binary) as instream:
+        with streams.open(io, infile, 'r', binary) as instream:
             return _load_stream_directly(load, instream, binary, multi, format, **kwargs)
     else:
         # check text/binary
         # a text format can be read from a binary stream with a wrapper
         # but vice versa can't be done
-        if _is_binary_stream(infile):
+        if streams.is_binary(infile):
             if not binary:
                 infile = io.TextIOWrapper(infile, encoding='utf-8-sig')
         elif binary:
@@ -215,14 +173,14 @@ def _load_streams_from_container(load, infile, container_type, binary, multi, fo
         raise ValueError('This format requires a binary stream, not a text stream.')
     if isinstance(infile, (str, bytes, Path)):
         # all containers expect binary stream, including TextMultiStream
-        with _open_stream(io, infile, 'r', binary=True) as instream:
+        with streams.open(io, infile, 'r', binary=True) as instream:
             return _load_streams_from_container(
                 load, instream, container_type, binary, multi, format, **kwargs
             )
     with container_type(infile, 'r') as zip_con:
         packs = []
         for name in zip_con:
-            with _open_stream(zip_con, name, 'r', binary) as stream:
+            with streams.open(zip_con, name, 'r', binary) as stream:
                 font_or_pack = load(stream, **kwargs)
                 font_or_pack = _set_extraction_props(font_or_pack, name, format, multi)
                 if isinstance(font_or_pack, Pack):
@@ -338,7 +296,7 @@ def _multi_saver(save, pack, outfile, binary, **kwargs):
     if not outfile or outfile == '-':
         outfile = sys.stdout.buffer
     if isinstance(outfile, (str, bytes, Path)):
-        outfile = _open_stream(io, outfile, 'w', binary)
+        outfile = streams.open(io, outfile, 'w', binary)
     else:
         if not binary:
             outfile = io.TextIOWrapper(outfile, encoding='utf-8')
@@ -367,7 +325,7 @@ def _single_saver(save, pack, outfile, binary, ext, **kwargs):
                 name = font.name.replace(' ', '_')
                 filename = unique_name(out, name, ext)
                 try:
-                    with _open_stream(out, filename, 'w', binary) as stream:
+                    with streams.open(out, filename, 'w', binary) as stream:
                         save(font, stream, **kwargs)
                 except Exception as e:
                     logging.error('Could not save %s: %s', filename, e)

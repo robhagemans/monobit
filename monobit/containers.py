@@ -13,7 +13,9 @@ import posixpath
 import itertools
 from contextlib import contextmanager
 from zipfile import ZipFile
+from pathlib import Path
 
+from . import streams
 
 
 def unique_name(container, name, ext):
@@ -24,6 +26,23 @@ def unique_name(container, name, ext):
         i += 1
         filename = '{}.{}.{}'.format(name, i, ext)
     return filename
+
+
+def identify_container(infile):
+    """Recognise container type and return container object."""
+    if isinstance(infile, (str, bytes, Path)):
+        # string provided
+        if Path(infile).is_dir():
+            return DirContainer
+        else:
+            with streams.open(io, infile, 'r', binary=True) as instream:
+                return identify_container(instream)
+    # stream provided
+    if streams.has_magic(infile, ZipContainer.magic):
+        return ZipContainer
+    elif streams.has_magic(infile, TextMultiStream.magic):
+        return TextMultiStream
+    return None
 
 
 class ZipContainer:
