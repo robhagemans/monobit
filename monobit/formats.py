@@ -93,8 +93,6 @@ class Loaders:
 
 def _loader(container_format, load, infile, binary, multi, name, **kwargs):
     """Open a stream or container and load one or more fonts."""
-    if not infile or infile == '-':
-        infile = sys.stdin.buffer
     if container_format:
         return _container_loader(load, infile, binary, multi, name, **kwargs)
     else:
@@ -161,8 +159,6 @@ def _load_streams_from_container(load, infile, container_type, binary, multi, fo
         # flatten list of packs
         fonts = [_font for _pack in packs for _font in _pack]
         return Pack(fonts)
-
-
 
 
 # extraction properties
@@ -253,7 +249,7 @@ class Savers:
 
 def _create_container(outfile, binary):
     """Open a zip, directory or text container, depending on input type."""
-    if isinstance(outfile, (str, bytes, Path)):
+    if outfile and isinstance(outfile, (str, bytes, Path)):
         return DirContainer(outfile, 'w')
     elif binary:
         return ZipContainer(outfile, 'w')
@@ -262,18 +258,13 @@ def _create_container(outfile, binary):
 
 def _container_saver(save, pack, outfile, **kwargs):
     """Call a pack or font saving function, save to a container."""
-    # use standard streams if none provided
-    if not outfile or outfile == '-':
-        outfile = sys.stdout.buffer
     with _create_container(outfile, binary=True) as out:
         save(pack, out, **kwargs)
 
 def _multi_saver(save, pack, outfile, binary, **kwargs):
     """Call a pack saving function, save to a stream."""
     # use standard streams if none provided
-    if not outfile or outfile == '-':
-        outfile = sys.stdout.buffer
-    if isinstance(outfile, (str, bytes, Path)):
+    if not outfile or isinstance(outfile, (str, bytes, Path)):
         outfile = streams.open(io, outfile, 'w', binary)
     else:
         if not binary:
@@ -286,10 +277,7 @@ def _multi_saver(save, pack, outfile, binary, **kwargs):
         pass
 
 def _single_saver(save, pack, outfile, binary, ext, **kwargs):
-    """Call a font saving function, save to a stream."""
-    # use standard streams if none provided
-    if not outfile or outfile == '-':
-        outfile = sys.stdout.buffer
+    """Call a font saving function, save to a stream or container."""
     if len(pack) == 1:
         # we have only one font to deal with, no need to create container
         _multi_saver(save, [*pack][0], outfile, binary, **kwargs)

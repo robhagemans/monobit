@@ -18,6 +18,15 @@ def open(on, path, mode, binary):
     # path is a path-like object
     # mode is 'r' or 'w'
     # binary is a boolean; open as binary if true, as text if false
+    # nameless stream on filesystem -> stdio
+    if on == io and not path:
+        if mode == 'w':
+            if binary:
+                return sys.stdout.buffer
+            return sys.stdout
+        if binary:
+            return sys.stdin.buffer
+        return sys.stdin
     path = Path(path)
     if path.suffix == '.gz':
         # open the compressed stream on any container

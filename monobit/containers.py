@@ -56,8 +56,13 @@ class ZipContainer:
         name = ''
         # mode really should just be 'r' or 'w'
         mode = mode[:1]
-        if isinstance(stream_or_name, (str, bytes)):
-            name = stream_or_name
+        # use standard streams if none provided
+        if not stream_or_name:
+            stream_or_name = streams.open(io, '', mode, binary=True)
+        if isinstance(stream_or_name, bytes):
+            stream_or_name = stream_or_name.decode('ascii')
+        if isinstance(stream_or_name, (str, Path)):
+            stream_or_name = name = str(stream_or_name)
             if mode == 'w' and not stream_or_name.endswith('.zip'):
                 stream_or_name += '.zip'
         else:
@@ -171,9 +176,9 @@ class TextMultiStream:
 
     def __init__(self, infile, mode='r'):
         """Open stream or create wrapper."""
-        if isinstance(infile, (str, bytes, Path)):
+        if not infile or isinstance(infile, (str, bytes, Path)):
             # all containers expect binary stream, including TextMultiStream
-            self._stream = open(io, infile, 'rb')
+            self._stream = streams.open(io, infile, mode, binary=True)
         else:
             self._stream = infile
         self.closed = False
