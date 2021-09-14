@@ -121,8 +121,9 @@ def _stream_loader(load, infile, binary, multi, format, **kwargs):
 def _load_stream_directly(load, infile, binary, multi, format, **kwargs):
     """Load font or pack from stream."""
     with streams.make_stream(infile, 'r', binary) as instream:
+        name = Path(instream.name).name
         font_or_pack = load(instream, **kwargs)
-        return _set_extraction_props(font_or_pack, instream.name, format)
+    return _set_extraction_props(font_or_pack, name, format)
 
 
 def _load_streams_from_container(load, infile, container_type, binary, multi, format, **kwargs):
@@ -133,11 +134,11 @@ def _load_streams_from_container(load, infile, container_type, binary, multi, fo
         for name in zip_con:
             with streams.open(name, 'r', binary, on=zip_con) as stream:
                 font_or_pack = load(stream, **kwargs)
-                font_or_pack = _set_extraction_props(font_or_pack, name, format)
-                if isinstance(font_or_pack, Pack):
-                    packs.append(font_or_pack)
-                else:
-                    packs.append([font_or_pack])
+            font_or_pack = _set_extraction_props(font_or_pack, name, format)
+            if isinstance(font_or_pack, Pack):
+                packs.append(font_or_pack)
+            else:
+                packs.append([font_or_pack])
         # flatten list of packs
         fonts = [_font for _pack in packs for _font in _pack]
         return Pack(fonts)
@@ -145,22 +146,18 @@ def _load_streams_from_container(load, infile, container_type, binary, multi, fo
 
 # extraction properties
 
-def _set_extraction_props(font_or_pack, infile, format):
+def _set_extraction_props(font_or_pack, name, format):
     """Return copy with source-name and source-format set."""
     if isinstance(font_or_pack, Pack):
         return Pack(
-            _set_extraction_props(_font, infile, format)
+            _set_extraction_props(_font, name, format)
             for _font in font_or_pack
         )
-    if isinstance(infile, (str, bytes, Path)):
-        source_name = Path(infile).name
-    else:
-        source_name = Path(infile.name).name
     font = font_or_pack
     new_props = {
         'converter': 'monobit v{}'.format(VERSION),
         'source-format': font.source_format or format,
-        'source-name': font.source_name or source_name
+        'source-name': font.source_name or name
     }
     return font.set_properties(**new_props)
 
@@ -222,7 +219,6 @@ class Savers:
             return _save_func
 
         return _save_decorator
-
 
 
 def _create_container(outfile, binary):
