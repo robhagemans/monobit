@@ -2,7 +2,7 @@
 monobit.winfnt - windows 1.x, 2.x and 3.x .FNT files
 
 based on Simon Tatham's dewinfont; see MIT-style licence below.
-changes (c) 2019 Rob Hagemans and released under the same licence.
+changes (c) 2019--2021 Rob Hagemans and released under the same licence.
 
 dewinfont is copyright 2001,2017 Simon Tatham. All rights reserved.
 

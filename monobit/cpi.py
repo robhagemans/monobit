@@ -1,7 +1,7 @@
 """
 monobit.cpi - DOS Codepage Information format
 
-(c) 2019 Rob Hagemans
+(c) 2019--2021 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 

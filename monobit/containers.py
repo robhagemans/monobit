@@ -1,7 +1,7 @@
 """
-monobit.base - shared utilities
+monobit.containers - file containers
 
-(c) 2019 Rob Hagemans
+(c) 2021 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 

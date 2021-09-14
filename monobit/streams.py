@@ -1,7 +1,7 @@
 """
-monobit.formats - loader and saver plugin registry
+monobit.streams - stream utilities
 
-(c) 2019 Rob Hagemans
+(c) 2021 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 

@@ -1,7 +1,7 @@
 """
 monobit.label - yaff representation of labels
 
-(c) 2020, 2021 Rob Hagemans
+(c) 2020--2021 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
