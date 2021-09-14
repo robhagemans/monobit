@@ -80,7 +80,9 @@ class Loaders:
             # stream input wrapper
             @wraps(load)
             def _load_func(infile, **kwargs):
-                return _loader(container, load, infile, binary, multi, name, **kwargs)
+                if container:
+                    return _container_loader(load, infile, binary, multi, name, **kwargs)
+                return _stream_loader(load, infile, binary, multi, name, **kwargs)
 
             # register loader
             _load_func.script_args = load.__annotations__
@@ -89,14 +91,6 @@ class Loaders:
             return _load_func
 
         return _load_decorator
-
-
-def _loader(container_format, load, infile, binary, multi, name, **kwargs):
-    """Open a stream or container and load one or more fonts."""
-    if container_format:
-        return _container_loader(load, infile, binary, multi, name, **kwargs)
-    else:
-        return _stream_loader(load, infile, binary, multi, name, **kwargs)
 
 
 # container-format loader
@@ -108,7 +102,7 @@ def _container_loader(load, infile, binary, multi, format, **kwargs):
         raise ValueError('Container format expected but encountering non-container stream')
     with container_type(infile, 'r') as zip_con:
         font_or_pack = load(zip_con, **kwargs)
-        return _set_extraction_props(font_or_pack, infile, format, multi)
+        return _set_extraction_props(font_or_pack, infile, format)
 
 
 # single-stream format loader
@@ -138,7 +132,7 @@ def _load_stream_directly(load, infile, binary, multi, format, **kwargs):
     elif binary:
         raise ValueError('This format requires a binary stream, not a text stream.')
     font_or_pack = load(infile, **kwargs)
-    return _set_extraction_props(font_or_pack, infile, format, multi)
+    return _set_extraction_props(font_or_pack, infile, format)
 
 
 def _load_streams_from_container(load, infile, container_type, binary, multi, format, **kwargs):
@@ -151,7 +145,7 @@ def _load_streams_from_container(load, infile, container_type, binary, multi, fo
         for name in zip_con:
             with streams.open(zip_con, name, 'r', binary) as stream:
                 font_or_pack = load(stream, **kwargs)
-                font_or_pack = _set_extraction_props(font_or_pack, name, format, multi)
+                font_or_pack = _set_extraction_props(font_or_pack, name, format)
                 if isinstance(font_or_pack, Pack):
                     packs.append(font_or_pack)
                 else:
@@ -163,22 +157,18 @@ def _load_streams_from_container(load, infile, container_type, binary, multi, fo
 
 # extraction properties
 
-def _set_extraction_props(font_or_pack, infile, format, multi):
+def _set_extraction_props(font_or_pack, infile, format):
     """Return copy with source-name and source-format set."""
-    if multi:
+    if isinstance(font_or_pack, Pack):
         return Pack(
-            _set_font_extraction_props(_font, infile, format)
+            _set_extraction_props(_font, infile, format)
             for _font in font_or_pack
         )
-    else:
-        return _set_font_extraction_props(font_or_pack, infile, format)
-
-def _set_font_extraction_props(font, infile, format):
-    """Return copy of font with source-name and source-format set."""
     if isinstance(infile, (str, bytes, Path)):
         source_name = Path(infile).name
     else:
         source_name = Path(infile.name).name
+    font = font_or_pack
     new_props = {
         'converter': 'monobit v{}'.format(VERSION),
         'source-format': font.source_format or format,
