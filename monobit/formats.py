@@ -13,10 +13,8 @@ from functools import wraps
 from contextlib import contextmanager
 from pathlib import Path
 
-from .base import (
-    VERSION, DEFAULT_FORMAT, scriptable,
-    DirContainer, ZipContainer, TextMultiStream, unique_name
-)
+from .base import VERSION, DEFAULT_FORMAT, scriptable
+from .containers import DirContainer, ZipContainer, TextMultiStream, unique_name
 from .font import Font
 from .pack import Pack
 
