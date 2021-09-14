@@ -169,9 +169,13 @@ class TextMultiStream:
     separator = b'---'
     magic = separator
 
-    def __init__(self, stream, mode='r'):
-        """Create wrapper."""
-        self._stream = stream
+    def __init__(self, infile, mode='r'):
+        """Open stream or create wrapper."""
+        if isinstance(infile, (str, bytes, Path)):
+            # all containers expect binary stream, including TextMultiStream
+            self._stream = open(io, infile, 'rb')
+        else:
+            self._stream = infile
         self.closed = False
         self._mode = mode[:1]
         if self._mode == 'r':

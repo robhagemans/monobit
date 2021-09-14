@@ -110,17 +110,17 @@ def _loader(container_format, load, infile, binary, multi, name, **kwargs):
     """Open a stream or container and load one or more fonts."""
     if not infile or infile == '-':
         infile = sys.stdin.buffer
-    container_type = identify_container(infile)
     if container_format:
-        return _container_loader(load, infile, container_type, binary, multi, name, **kwargs)
+        return _container_loader(load, infile, binary, multi, name, **kwargs)
     else:
-        return _stream_loader(load, infile, container_type, binary, multi, name, **kwargs)
+        return _stream_loader(load, infile, binary, multi, name, **kwargs)
 
 
 # container-format loader
 
-def _container_loader(load, infile, container_type, binary, multi, format, **kwargs):
+def _container_loader(load, infile, binary, multi, format, **kwargs):
     """Open a container and provide to font loader."""
+    container_type = identify_container(infile)
     if not container_type:
         raise ValueError('Container format expected but encountering non-container stream')
     with container_type(infile, 'r') as zip_con:
@@ -130,17 +130,9 @@ def _container_loader(load, infile, container_type, binary, multi, format, **kwa
 
 # single-stream format loader
 
-def _stream_loader(load, infile, container_type, binary, multi, format, **kwargs):
+def _stream_loader(load, infile, binary, multi, format, **kwargs):
     """Open a stream and load one or more fonts."""
-    # text container can only hold text, so we can't read a binary font from it
-    if binary and container_type == TextMultiStream:
-        raise ValueError('This format requires a binary stream, not a text stream.')
-    if isinstance(infile, (str, bytes, Path)):
-        # all containers expect binary stream, including TextMultiStream
-        with streams.open(io, infile, 'r', binary=True) as instream:
-            return _stream_loader(
-                load, instream, container_type, binary, multi, format, **kwargs
-            )
+    container_type = identify_container(infile)
     if container_type:
         return _load_streams_from_container(
             load, infile, container_type, binary, multi, format, **kwargs
@@ -154,29 +146,23 @@ def _load_stream_directly(load, infile, binary, multi, format, **kwargs):
     if isinstance(infile, (str, bytes, Path)):
         with streams.open(io, infile, 'r', binary) as instream:
             return _load_stream_directly(load, instream, binary, multi, format, **kwargs)
-    else:
-        # check text/binary
-        # a text format can be read from a binary stream with a wrapper
-        # but vice versa can't be done
-        if streams.is_binary(infile):
-            if not binary:
-                infile = io.TextIOWrapper(infile, encoding='utf-8-sig')
-        elif binary:
-            raise ValueError('This format requires a binary stream, not a text stream.')
-        font_or_pack = load(infile, **kwargs)
-        return _set_extraction_props(font_or_pack, infile, format, multi)
+    # check text/binary
+    # a text format can be read from a binary stream with a wrapper
+    # but vice versa can't be done
+    if streams.is_binary(infile):
+        if not binary:
+            infile = io.TextIOWrapper(infile, encoding='utf-8-sig')
+    elif binary:
+        raise ValueError('This format requires a binary stream, not a text stream.')
+    font_or_pack = load(infile, **kwargs)
+    return _set_extraction_props(font_or_pack, infile, format, multi)
 
 
 def _load_streams_from_container(load, infile, container_type, binary, multi, format, **kwargs):
     """Open container and load all fonts found in it into one pack."""
+    # text container can only hold text, so we can't read a binary font from it
     if binary and container_type == TextMultiStream:
         raise ValueError('This format requires a binary stream, not a text stream.')
-    if isinstance(infile, (str, bytes, Path)):
-        # all containers expect binary stream, including TextMultiStream
-        with streams.open(io, infile, 'r', binary=True) as instream:
-            return _load_streams_from_container(
-                load, instream, container_type, binary, multi, format, **kwargs
-            )
     with container_type(infile, 'r') as zip_con:
         packs = []
         for name in zip_con:
