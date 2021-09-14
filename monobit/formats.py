@@ -237,14 +237,8 @@ def _container_saver(save, pack, outfile, **kwargs):
 
 def _multi_saver(save, pack, outfile, binary, **kwargs):
     """Call a pack saving function, save to a stream."""
-    # use standard streams if none provided
-    if not outfile or isinstance(outfile, (str, bytes, Path)):
-        outfile = streams.open(outfile, 'w', binary)
-    else:
-        if not binary:
-            outfile = io.TextIOWrapper(outfile, encoding='utf-8')
-    with outfile:
-        save(pack, outfile, **kwargs)
+    with streams.make_stream(outfile, 'w', binary) as outstream:
+        save(pack, outstream, **kwargs)
 
 def _single_saver(save, pack, outfile, binary, ext, **kwargs):
     """Call a font saving function, save to a stream or container."""
