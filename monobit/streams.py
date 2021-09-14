@@ -10,6 +10,7 @@ import io
 import sys
 import logging
 from pathlib import Path
+from contextlib import contextmanager
 
 
 def open(path, mode, binary, *, on=None):
@@ -35,6 +36,31 @@ def open(path, mode, binary, *, on=None):
         return on.open(path, mode + 't', encoding=encoding)
     else:
         return on.open(path, mode + 'b')
+
+
+@contextmanager
+def make_stream(infile, mode, binary):
+    # if a path is provided, open a stream
+    if isinstance(infile, (str, bytes, Path)):
+        with open(infile, mode, binary) as instream:
+            yield instream
+    # check text/binary
+    # a text format can be read from a binary stream with a wrapper
+    # but vice versa can't be done
+    elif is_binary(infile):
+        if not binary:
+            encoding = 'utf-8-sig' if mode == 'r' else 'utf-8'
+            with io.TextIOWrapper(infile, encoding=encoding) as text_stream:
+                yield text_stream
+    elif binary:
+        raise ValueError('Encountered text stream while expecting binary stream.')
+    elif not infile.mode.startswith(mode):
+        raise ValueError(
+            f"Encountered stream of mode '{infile.mode}' while expecting '{mode}'."
+        )
+    else:
+        yield infile
+
 
 def stdio_stream(mode, binary):
     """Get standard stream for given mode and text/binary type."""

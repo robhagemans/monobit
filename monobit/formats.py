@@ -120,26 +120,14 @@ def _stream_loader(load, infile, binary, multi, format, **kwargs):
 
 def _load_stream_directly(load, infile, binary, multi, format, **kwargs):
     """Load font or pack from stream."""
-    if isinstance(infile, (str, bytes, Path)):
-        with streams.open(infile, 'r', binary) as instream:
-            return _load_stream_directly(load, instream, binary, multi, format, **kwargs)
-    # check text/binary
-    # a text format can be read from a binary stream with a wrapper
-    # but vice versa can't be done
-    if streams.is_binary(infile):
-        if not binary:
-            infile = io.TextIOWrapper(infile, encoding='utf-8-sig')
-    elif binary:
-        raise ValueError('This format requires a binary stream, not a text stream.')
-    font_or_pack = load(infile, **kwargs)
-    return _set_extraction_props(font_or_pack, infile, format)
+    with streams.make_stream(infile, 'r', binary) as instream:
+        font_or_pack = load(instream, **kwargs)
+        return _set_extraction_props(font_or_pack, instream.name, format)
 
 
 def _load_streams_from_container(load, infile, container_type, binary, multi, format, **kwargs):
     """Open container and load all fonts found in it into one pack."""
     # text container can only hold text, so we can't read a binary font from it
-    if binary and container_type == TextMultiStream:
-        raise ValueError('This format requires a binary stream, not a text stream.')
     with container_type(infile, 'r') as zip_con:
         packs = []
         for name in zip_con:

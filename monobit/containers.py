@@ -218,7 +218,7 @@ class TextMultiStream:
         if not mode.startswith(self._mode):
             raise ValueError('File and container read/write mode must match.')
         if mode.endswith('b'):
-            raise('Cannot open binary file on text container.')
+            raise ValueError('Cannot open binary file on text container.')
 
         class _TextStream:
             """Wrapper object to emulate a single text stream."""
