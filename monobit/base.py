@@ -56,6 +56,8 @@ class ZipContainer:
         """Create wrapper."""
         # append .zip to zip filename, but leave out of root dir name
         name = ''
+        # mode really should just be 'r' or 'w'
+        mode = mode[:1]
         if isinstance(stream_or_name, (str, bytes)):
             name = stream_or_name
             if mode == 'w' and not stream_or_name.endswith('.zip'):
@@ -96,7 +98,7 @@ class ZipContainer:
         # as forward slash should always work, but backslash would fail on unix
         filename = posixpath.join(self._root, name)
         binary = mode.endswith('b')
-        mode = mode[0]
+        mode = mode[:1]
         stream = self._zip.open(filename, mode)
         if binary:
             return stream
@@ -125,6 +127,8 @@ class DirContainer:
     def __init__(self, path, mode='r'):
         """Create wrapper."""
         self._path = path
+        # mode really should just be 'r' or 'w'
+        mode = mode[:1]
         if mode == 'w' and path:
             try:
                 os.makedirs(path)
@@ -139,6 +143,7 @@ class DirContainer:
 
     def open(self, name, mode, encoding=None):
         """Open a stream in the container."""
+        # mode in 'rb', 'rt', 'wb', 'wt'
         if mode.startswith('w'):
             path = os.path.dirname(name)
             try:
@@ -170,8 +175,8 @@ class TextMultiStream:
         """Create wrapper."""
         self._stream = stream
         self.closed = False
-        self._mode = mode
-        if self._mode.startswith('r'):
+        self._mode = mode[:1]
+        if self._mode == 'r':
             if self._stream.readline().strip() != self.separator:
                 raise ValueError('Not a text multistream.')
         else:
@@ -195,8 +200,11 @@ class TextMultiStream:
 
     @contextmanager
     def open(self, name, mode, encoding=None):
-        """Open a single stream. Arguments are dummies"""
-        encoding = encoding or 'utf-8'
+        """Open a single stream. Name argument is a dummy."""
+        if not mode.startswith(self._mode):
+            raise ValueError('File and container read/write mode must match.')
+        if mode.endswith('b'):
+            raise('Cannot open binary file on text container.')
 
         class _TextStream:
             """Wrapper object to emulate a single text stream."""
@@ -218,8 +226,9 @@ class TextMultiStream:
                 """Write to stream."""
                 self._stream.write(s)
 
+        encoding = encoding or 'utf-8'
         textstream = io.TextIOWrapper(self._stream, encoding=encoding)
         yield _TextStream(self, textstream)
         textstream.flush()
-        if self._mode.startswith('w'):
+        if self._mode == 'w':
             self._stream.write(b'\n%s\n' % (self.separator, ))

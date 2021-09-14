@@ -509,7 +509,7 @@ def _read_bmfont(container, name):
         with container.open(name, 'rb') as fnt:
             fontinfo = _parse_binary(fnt.read())
     else:
-        with container.open(name, 'r') as fnt:
+        with container.open(name, 'rt') as fnt:
             for line in fnt:
                 if line:
                     break
@@ -676,7 +676,7 @@ def _create_bmfont(container, font, size=(256, 256), packed=False, imageformat='
         props['kernings'] = []
     # write the .fnt description
     bmfontname = unique_name(container, f'{path}/{fontname}', 'fnt')
-    with container.open(bmfontname, 'w') as bmf:
+    with container.open(bmfontname, 'wt') as bmf:
         bmf.write(_create_textdict('info', props['info']))
         bmf.write(_create_textdict('common', props['common']))
         for page in props['pages']:
