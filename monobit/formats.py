@@ -13,10 +13,9 @@ from functools import wraps
 from pathlib import Path
 
 from .base import VERSION, DEFAULT_FORMAT, scriptable
-from .containers import DirContainer, ZipContainer, TextMultiStream, unique_name, identify_container
+from .containers import  unique_name, open_container
 from .font import Font
 from .pack import Pack
-
 from . import streams
 
 
@@ -97,10 +96,7 @@ class Loaders:
 
 def _container_loader(load, infile, binary, multi, format, **kwargs):
     """Open a container and provide to font loader."""
-    container_type = identify_container(infile)
-    if not container_type:
-        raise ValueError('Container format expected but encountering non-container stream')
-    with container_type(infile, 'r') as zip_con:
+    with open_container(infile, 'r') as zip_con:
         font_or_pack = load(zip_con, **kwargs)
         return _set_extraction_props(font_or_pack, infile, format)
 
@@ -109,12 +105,9 @@ def _container_loader(load, infile, binary, multi, format, **kwargs):
 
 def _stream_loader(load, infile, binary, multi, format, **kwargs):
     """Open a stream and load one or more fonts."""
-    container_type = identify_container(infile)
-    if container_type:
-        return _load_streams_from_container(
-            load, infile, container_type, binary, multi, format, **kwargs
-        )
-    else:
+    try:
+        return _load_streams_from_container(load, infile, binary, multi, format, **kwargs)
+    except ValueError:
         return _load_stream_directly(load, infile, binary, multi, format, **kwargs)
 
 
@@ -126,10 +119,10 @@ def _load_stream_directly(load, infile, binary, multi, format, **kwargs):
     return _set_extraction_props(font_or_pack, name, format)
 
 
-def _load_streams_from_container(load, infile, container_type, binary, multi, format, **kwargs):
+def _load_streams_from_container(load, infile, binary, multi, format, **kwargs):
     """Open container and load all fonts found in it into one pack."""
-    # text container can only hold text, so we can't read a binary font from it
-    with container_type(infile, 'r') as zip_con:
+    # try opening a container, will raise error if not container format
+    with open_container(infile, 'r') as zip_con:
         packs = []
         for name in zip_con:
             with streams.open(name, 'r', binary, on=zip_con) as stream:
@@ -221,18 +214,9 @@ class Savers:
         return _save_decorator
 
 
-def _create_container(outfile, binary):
-    """Open a zip, directory or text container, depending on input type."""
-    if outfile and isinstance(outfile, (str, bytes, Path)):
-        return DirContainer(outfile, 'w')
-    elif binary:
-        return ZipContainer(outfile, 'w')
-    else:
-        return TextMultiStream(outfile, 'w')
-
 def _container_saver(save, pack, outfile, **kwargs):
     """Call a pack or font saving function, save to a container."""
-    with _create_container(outfile, binary=True) as out:
+    with open_container(outfile, 'w', binary=True) as out:
         save(pack, out, **kwargs)
 
 def _multi_saver(save, pack, outfile, binary, **kwargs):
@@ -247,7 +231,7 @@ def _single_saver(save, pack, outfile, binary, ext, **kwargs):
         _multi_saver(save, [*pack][0], outfile, binary, **kwargs)
     else:
         # create container and call saver for each font in the pack
-        with _create_container(outfile, binary) as out:
+        with open_container(outfile, 'w', binary) as out:
             # save fonts one-by-one
             for font in pack:
                 # generate unique filename

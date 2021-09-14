@@ -45,6 +45,22 @@ def identify_container(infile):
     return None
 
 
+def open_container(file, mode, binary=True):
+    """Open container of the appropriate type."""
+    if mode == 'r':
+        container_type = identify_container(file)
+        if not container_type:
+            raise ValueError('Container format expected but encountering non-container stream')
+    else:
+        if file and isinstance(file, (str, bytes, Path)):
+            container_type = DirContainer
+        elif binary:
+            container_type = ZipContainer
+        else:
+            container_type = TextMultiStream
+    return container_type(file, mode)
+
+
 class ZipContainer:
     """Zip-file wrapper"""
 
