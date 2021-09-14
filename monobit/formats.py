@@ -80,8 +80,11 @@ class Loaders:
             @wraps(load)
             def _load_func(infile, **kwargs):
                 if container:
-                    return _container_loader(load, infile, binary, multi, name, **kwargs)
-                return _stream_loader(load, infile, binary, multi, name, **kwargs)
+                    return _load_container_format(load, infile, binary, multi, name, **kwargs)
+                try:
+                    return _load_streams_from_container(load, infile, binary, multi, name, **kwargs)
+                except ValueError:
+                    return _load_stream_format(load, infile, binary, multi, name, **kwargs)
 
             # register loader
             _load_func.script_args = load.__annotations__
@@ -92,32 +95,18 @@ class Loaders:
         return _load_decorator
 
 
-# container-format loader
-
-def _container_loader(load, infile, binary, multi, format, **kwargs):
+def _load_container_format(load, infile, binary, multi, format, **kwargs):
     """Open a container and provide to font loader."""
     with open_container(infile, 'r') as zip_con:
         font_or_pack = load(zip_con, **kwargs)
         return _set_extraction_props(font_or_pack, infile, format)
 
-
-# single-stream format loader
-
-def _stream_loader(load, infile, binary, multi, format, **kwargs):
-    """Open a stream and load one or more fonts."""
-    try:
-        return _load_streams_from_container(load, infile, binary, multi, format, **kwargs)
-    except ValueError:
-        return _load_stream_directly(load, infile, binary, multi, format, **kwargs)
-
-
-def _load_stream_directly(load, infile, binary, multi, format, **kwargs):
+def _load_stream_format(load, infile, binary, multi, format, **kwargs):
     """Load font or pack from stream."""
     with streams.make_stream(infile, 'r', binary) as instream:
         name = Path(instream.name).name
         font_or_pack = load(instream, **kwargs)
     return _set_extraction_props(font_or_pack, name, format)
-
 
 def _load_streams_from_container(load, infile, binary, multi, format, **kwargs):
     """Open container and load all fonts found in it into one pack."""
@@ -199,12 +188,13 @@ class Savers:
                 else:
                     pack = pack_or_font
                 if container:
-                    _container_saver(save, pack, outfile, **kwargs)
+                    _save_container_format(save, pack, outfile, **kwargs)
                 elif multi:
-                    _multi_saver(save, pack, outfile, binary, **kwargs)
+                    _save_stream_format(save, pack, outfile, binary, **kwargs)
                 else:
                     # use first extension provided by saver function
-                    _single_saver(save, pack, outfile, binary, formats[0], **kwargs)
+                    _save_streams(save, pack, outfile, binary, formats[0], **kwargs)
+
             # register saver
             _save_func.script_args = save.__annotations__
             for format in formats:
@@ -214,21 +204,21 @@ class Savers:
         return _save_decorator
 
 
-def _container_saver(save, pack, outfile, **kwargs):
+def _save_container_format(save, pack, outfile, **kwargs):
     """Call a pack or font saving function, save to a container."""
     with open_container(outfile, 'w', binary=True) as out:
         save(pack, out, **kwargs)
 
-def _multi_saver(save, pack, outfile, binary, **kwargs):
+def _save_stream_format(save, pack, outfile, binary, **kwargs):
     """Call a pack saving function, save to a stream."""
     with streams.make_stream(outfile, 'w', binary) as outstream:
         save(pack, outstream, **kwargs)
 
-def _single_saver(save, pack, outfile, binary, ext, **kwargs):
+def _save_streams(save, pack, outfile, binary, ext, **kwargs):
     """Call a font saving function, save to a stream or container."""
     if len(pack) == 1:
         # we have only one font to deal with, no need to create container
-        _multi_saver(save, [*pack][0], outfile, binary, **kwargs)
+        _save_stream_format(save, [*pack][0], outfile, binary, **kwargs)
     else:
         # create container and call saver for each font in the pack
         with open_container(outfile, 'w', binary) as out:
