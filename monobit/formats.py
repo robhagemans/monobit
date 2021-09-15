@@ -13,7 +13,7 @@ from functools import wraps
 from pathlib import Path
 
 from .base import VERSION, DEFAULT_FORMAT, scriptable
-from .containers import  unique_name, open_container
+from .containers import open_container, unique_name
 from .font import Font
 from .pack import Pack
 from . import streams

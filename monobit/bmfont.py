@@ -17,7 +17,7 @@ except ImportError:
     Image = None
 
 from .base import boolean, pair
-from .containers import ZipContainer, unique_name
+from .containers import unique_name
 from .binary import friendlystruct
 from .formats import Loaders, Savers
 from .pack import Pack

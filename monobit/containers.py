@@ -18,14 +18,16 @@ from pathlib import Path
 from . import streams
 
 
-def unique_name(container, name, ext):
-    """Generate unique name for container file."""
-    filename = '{}.{}'.format(name, ext)
-    i = 0
-    while filename in container:
-        i += 1
-        filename = '{}.{}.{}'.format(name, i, ext)
-    return filename
+# register of containers
+_containers = {}
+
+def set_magic(magic):
+
+    def decorator(container_class):
+        _containers[magic] = container_class
+        return container_class
+
+    return decorator
 
 
 def identify_container(infile):
@@ -37,11 +39,9 @@ def identify_container(infile):
         # nothing provided or string is not a dir
         with streams.open_stream(infile, 'r', binary=True) as instream:
             return identify_container(instream)
-    # stream provided
-    if streams.has_magic(infile, ZipContainer.magic):
-        return ZipContainer
-    elif streams.has_magic(infile, TextContainer.magic):
-        return TextContainer
+    for magic, container_type in _containers.items():
+        if streams.has_magic(infile, magic):
+            return container_type
     return None
 
 
@@ -59,6 +59,16 @@ def open_container(file, mode, binary=True):
         else:
             container_type = TextContainer
     return container_type(file, mode)
+
+
+def unique_name(container, name, ext):
+    """Generate unique name for container file."""
+    filename = '{}.{}'.format(name, ext)
+    i = 0
+    while filename in container:
+        i += 1
+        filename = '{}.{}.{}'.format(name, i, ext)
+    return filename
 
 
 class Container:
@@ -90,10 +100,9 @@ class Container:
         raise NotImplementedError
 
 
+@set_magic(b'PK\x03\x04')
 class ZipContainer(Container):
     """Zip-file wrapper"""
-
-    magic = b'PK\x03\x04'
 
     def __init__(self, stream_or_name, mode='r'):
         """Create wrapper."""
@@ -211,11 +220,11 @@ class DirContainer(Container):
         return os.path.exists(os.path.join(self._path, name))
 
 
+@set_magic(b'---')
 class TextContainer(Container):
     """Container of concatenated text files."""
 
     separator = b'---'
-    magic = separator
 
     def __init__(self, infile, mode='r'):
         """Open stream or create wrapper."""
