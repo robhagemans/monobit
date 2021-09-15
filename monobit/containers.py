@@ -18,31 +18,42 @@ from pathlib import Path
 from . import streams
 
 
-# register of containers
-_containers = {}
+class MagicRegistry:
+    """Registry of file types and their magic sequences."""
 
-def set_magic(magic):
+    def __init__(self):
+        """Set up registry."""
+        self._types = {}
 
-    def decorator(container_class):
-        _containers[magic] = container_class
-        return container_class
+    def set_magic(self, magic):
+        """Decorator to register class that handles file type."""
+        def decorator(klass):
+            self._types[magic] = klass
+            return klass
+        return decorator
 
-    return decorator
+    def identify(self, file):
+        """Identify a type from magic sequence on input file."""
+        if not file or isinstance(file, (str, bytes, Path)):
+            # only use context manager if string provided
+            # if we got an open stream we should not close it
+            with streams.open_stream(file, 'r', binary=True) as stream:
+                return self.identify(stream)
+        for magic, klass in self._types.items():
+            if streams.has_magic(file, magic):
+                return klass
+        return None
+
+
+_containers = MagicRegistry()
 
 
 def identify_container(infile):
     """Recognise container type and return container object."""
+    # handle directories separately - no magic
     if infile and isinstance(infile, (str, bytes, Path)) and Path(infile).is_dir():
-        # string provided
         return DirContainer
-    if not infile or isinstance(infile, (str, bytes, Path)):
-        # nothing provided or string is not a dir
-        with streams.open_stream(infile, 'r', binary=True) as instream:
-            return identify_container(instream)
-    for magic, container_type in _containers.items():
-        if streams.has_magic(infile, magic):
-            return container_type
-    return None
+    return _containers.identify(infile)
 
 
 def open_container(file, mode, binary=True):
@@ -100,7 +111,7 @@ class Container:
         raise NotImplementedError
 
 
-@set_magic(b'PK\x03\x04')
+@_containers.set_magic(b'PK\x03\x04')
 class ZipContainer(Container):
     """Zip-file wrapper"""
 
@@ -220,7 +231,7 @@ class DirContainer(Container):
         return os.path.exists(os.path.join(self._path, name))
 
 
-@set_magic(b'---')
+@_containers.set_magic(b'---')
 class TextContainer(Container):
     """Container of concatenated text files."""
 
