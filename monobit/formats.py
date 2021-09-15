@@ -83,7 +83,7 @@ class Loaders:
                     return _load_container_format(load, infile, binary, multi, name, **kwargs)
                 try:
                     return _load_streams_from_container(load, infile, binary, multi, name, **kwargs)
-                except ValueError:
+                except TypeError:
                     return _load_stream_format(load, infile, binary, multi, name, **kwargs)
 
             # register loader
@@ -206,7 +206,7 @@ class Savers:
 
 def _save_container_format(save, pack, outfile, **kwargs):
     """Call a pack or font saving function, save to a container."""
-    with open_container(outfile, 'w', binary=True) as out:
+    with open_container(outfile, 'w') as out:
         save(pack, out, **kwargs)
 
 def _save_stream_format(save, pack, outfile, binary, **kwargs):

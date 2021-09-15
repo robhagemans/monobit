@@ -40,8 +40,8 @@ def identify_container(infile):
     # stream provided
     if streams.has_magic(infile, ZipContainer.magic):
         return ZipContainer
-    elif streams.has_magic(infile, TextMultiStream.magic):
-        return TextMultiStream
+    elif streams.has_magic(infile, TextContainer.magic):
+        return TextContainer
     return None
 
 
@@ -50,18 +50,47 @@ def open_container(file, mode, binary=True):
     if mode == 'r':
         container_type = identify_container(file)
         if not container_type:
-            raise ValueError('Container format expected but encountering non-container stream')
+            raise TypeError('Container format expected but encountering non-container stream')
     else:
         if file and isinstance(file, (str, bytes, Path)):
             container_type = DirContainer
         elif binary:
             container_type = ZipContainer
         else:
-            container_type = TextMultiStream
+            container_type = TextContainer
     return container_type(file, mode)
 
 
-class ZipContainer:
+class Container:
+    """Base class for container types."""
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        pass
+
+    def open_binary(self, name, mode):
+        """Open a binary stream in the container."""
+        raise NotImplementedError
+
+    def open(self, name, mode, *, encoding=None):
+        """Open a stream on the container."""
+        stream = self.open_binary(name, mode[:1])
+        if mode.endswith('b'):
+            return stream
+        return streams.make_textstream(stream, encoding=encoding)
+
+    def __iter__(self):
+        """List contents."""
+        raise NotImplementedError
+
+    def __contains__(self, name):
+        """File exists in container."""
+        raise NotImplementedError
+
+
+class ZipContainer(Container):
     """Zip-file wrapper"""
 
     magic = b'PK\x03\x04'
@@ -118,22 +147,16 @@ class ZipContainer:
         except EnvironmentError:
             pass
 
-    def open(self, name, mode, encoding=None):
+    def open_binary(self, name, mode):
         """Open a stream in the container."""
         # using posixpath for internal paths in the archive
         # as forward slash should always work, but backslash would fail on unix
         filename = posixpath.join(self._root, name)
-        binary = mode.endswith('b')
         mode = mode[:1]
-        stream = self._zip.open(filename, mode)
-        if binary:
-            return stream
-        else:
-            if mode == 'r':
-                encoding = encoding or 'utf-8-sig'
-            else:
-                encoding = encoding or 'utf-8'
-            return io.TextIOWrapper(stream, encoding)
+        if not mode:
+            mode = 'r'
+        # always open as binary
+        return self._zip.open(filename, mode)
 
     def __iter__(self):
         """List contents."""
@@ -147,7 +170,7 @@ class ZipContainer:
         return name in list(self)
 
 
-class DirContainer:
+class DirContainer(Container):
     """Treat directory tree as a container."""
 
     def __init__(self, path, mode='r'):
@@ -161,22 +184,19 @@ class DirContainer:
             except EnvironmentError:
                 pass
 
-    def __enter__(self):
-        return self
-
-    def __exit__(self, one, two, three):
-        pass
-
-    def open(self, name, mode, encoding=None):
+    def open_binary(self, name, mode):
         """Open a stream in the container."""
         # mode in 'rb', 'rt', 'wb', 'wt'
-        if mode.startswith('w'):
+        mode = mode[:1]
+        if not mode:
+            mode = 'r'
+        if mode == 'w':
             path = os.path.dirname(name)
             try:
                 os.makedirs(os.path.join(self._path, path))
             except EnvironmentError:
                 pass
-        return open(os.path.join(self._path, name), mode, encoding=encoding)
+        return io.open(os.path.join(self._path, name), mode + 'b')
 
     def __iter__(self):
         """List contents."""
@@ -191,71 +211,66 @@ class DirContainer:
         return os.path.exists(os.path.join(self._path, name))
 
 
-class TextMultiStream:
-    """Container of concatenated text files. This is a bit hacky."""
+class TextContainer(Container):
+    """Container of concatenated text files."""
 
     separator = b'---'
     magic = separator
 
     def __init__(self, infile, mode='r'):
         """Open stream or create wrapper."""
-        # all containers expect binary stream, including TextMultiStream
+        # all containers expect binary stream, including TextContainer
         self._stream = streams.make_stream(infile, mode, binary=True)
-        self.closed = False
         self._mode = mode[:1]
         if self._mode == 'r':
             if self._stream.readline().strip() != self.separator:
-                raise ValueError('Not a text multistream.')
+                raise ValueError('Not a text container.')
         else:
             self._stream.write(b'%s\n' % (self.separator,))
 
     def __iter__(self):
         """Dummy content lister."""
         for i in itertools.count():
-            if self.closed or self._stream.closed:
+            if self._stream.closed:
                 return
             yield str(i)
 
     def __contains__(self, name):
         return False
 
-    def __enter__(self):
-        return self
-
-    def __exit__(self, one, two, three):
-        pass
-
-    @contextmanager
-    def open(self, name, mode, encoding=None):
+    def open_binary(self, name, mode):
         """Open a single stream. Name argument is a dummy."""
         if not mode.startswith(self._mode):
-            raise ValueError('File and container read/write mode must match.')
-        if mode.endswith('b'):
-            raise ValueError('Cannot open binary file on text container.')
+            raise ValueError(f"Cannot open file for '{mode}' on container open for '{self._mode}'")
 
-        class _TextStream:
+        parent = self
+
+        class _SubStream:
             """Wrapper object to emulate a single text stream."""
 
-            def __init__(self, parent, stream):
+            def __init__(self, stream):
                 self._stream = stream
-                self._stream.close = lambda: None
-                self._parent = parent
+                self.closed = False
 
             def __iter__(self):
                 """Iterate over lines until next separator."""
                 for line in self._stream:
-                    if line.strip() == self._parent.separator.decode('ascii'):
+                    if line.strip() == parent.separator:
                         return
                     yield line[:-1]
-                self._parent.closed = True
+                self._stream.close()
 
-            def write(self, s):
-                """Write to stream."""
-                self._stream.write(s)
+            def __getattr__(self, attr):
+                """Delegate undefined attributes to wrapped stream."""
+                return getattr(self._stream, attr)
 
-        encoding = encoding or 'utf-8'
-        textstream = io.TextIOWrapper(self._stream, encoding=encoding)
-        yield _TextStream(self, textstream)
-        textstream.flush()
-        if self._mode == 'w':
-            self._stream.write(b'\n%s\n' % (self.separator, ))
+            def close(self):
+                self._stream.flush()
+                if parent._mode == 'w' and not self.closed:
+                    self._stream.write(b'\n%s\n' % (parent.separator, ))
+                self.closed = True
+
+            def __del__(self):
+                self.close()
+
+        return _SubStream(self._stream)
