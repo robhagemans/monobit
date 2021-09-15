@@ -30,13 +30,13 @@ def unique_name(container, name, ext):
 
 def identify_container(infile):
     """Recognise container type and return container object."""
-    if isinstance(infile, (str, bytes, Path)):
+    if infile and isinstance(infile, (str, bytes, Path)) and Path(infile).is_dir():
         # string provided
-        if Path(infile).is_dir():
-            return DirContainer
-        else:
-            with streams.open(infile, 'r', binary=True) as instream:
-                return identify_container(instream)
+        return DirContainer
+    if not infile or isinstance(infile, (str, bytes, Path)):
+        # nothing provided or string is not a dir
+        with streams.make_stream(infile, 'r', binary=True) as instream:
+            return identify_container(instream)
     # stream provided
     if streams.has_magic(infile, ZipContainer.magic):
         return ZipContainer
@@ -199,11 +199,8 @@ class TextMultiStream:
 
     def __init__(self, infile, mode='r'):
         """Open stream or create wrapper."""
-        if not infile or isinstance(infile, (str, bytes, Path)):
-            # all containers expect binary stream, including TextMultiStream
-            self._stream = streams.open(infile, mode, binary=True)
-        else:
-            self._stream = infile
+        # all containers expect binary stream, including TextMultiStream
+        self._stream = streams.make_stream(infile, mode, binary=True)
         self.closed = False
         self._mode = mode[:1]
         if self._mode == 'r':
