@@ -72,6 +72,37 @@ def is_binary(instream):
         return False
     return True
 
+
+###################################################################################################
+# magic byte sequences
+
 def has_magic(instream, magic):
     """Check if a binary stream matches the given signature."""
     return instream.peek(len(magic)).startswith(magic)
+
+
+class MagicRegistry:
+    """Registry of file types and their magic sequences."""
+
+    def __init__(self):
+        """Set up registry."""
+        self._types = {}
+
+    def set_magic(self, magic):
+        """Decorator to register class that handles file type."""
+        def decorator(klass):
+            self._types[magic] = klass
+            return klass
+        return decorator
+
+    def identify(self, file):
+        """Identify a type from magic sequence on input file."""
+        if not file or isinstance(file, (str, bytes, Path)):
+            # only use context manager if string provided
+            # if we got an open stream we should not close it
+            with open_stream(file, 'r', binary=True) as stream:
+                return self.identify(stream)
+        for magic, klass in self._types.items():
+            if has_magic(file, magic):
+                return klass
+        return None

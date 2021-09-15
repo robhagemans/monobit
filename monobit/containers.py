@@ -16,33 +16,7 @@ from zipfile import ZipFile
 from pathlib import Path
 
 from . import streams
-
-
-class MagicRegistry:
-    """Registry of file types and their magic sequences."""
-
-    def __init__(self):
-        """Set up registry."""
-        self._types = {}
-
-    def set_magic(self, magic):
-        """Decorator to register class that handles file type."""
-        def decorator(klass):
-            self._types[magic] = klass
-            return klass
-        return decorator
-
-    def identify(self, file):
-        """Identify a type from magic sequence on input file."""
-        if not file or isinstance(file, (str, bytes, Path)):
-            # only use context manager if string provided
-            # if we got an open stream we should not close it
-            with streams.open_stream(file, 'r', binary=True) as stream:
-                return self.identify(stream)
-        for magic, klass in self._types.items():
-            if streams.has_magic(file, magic):
-                return klass
-        return None
+from .streams import MagicRegistry
 
 
 _containers = MagicRegistry()
@@ -61,7 +35,7 @@ def open_container(file, mode, binary=True):
     if mode == 'r':
         container_type = identify_container(file)
         if not container_type:
-            raise TypeError('Container format expected but encountering non-container stream')
+            raise TypeError('Expected container format, got non-container stream')
     else:
         if file and isinstance(file, (str, bytes, Path)):
             container_type = DirContainer
