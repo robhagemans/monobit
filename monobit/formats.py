@@ -103,7 +103,7 @@ def _load_container_format(load, infile, binary, multi, format, **kwargs):
 
 def _load_stream_format(load, infile, binary, multi, format, **kwargs):
     """Load font or pack from stream."""
-    with streams.make_stream(infile, 'r', binary) as instream:
+    with streams.open_stream(infile, 'r', binary) as instream:
         name = Path(instream.name).name
         font_or_pack = load(instream, **kwargs)
     return _set_extraction_props(font_or_pack, name, format)
@@ -114,7 +114,7 @@ def _load_streams_from_container(load, infile, binary, multi, format, **kwargs):
     with open_container(infile, 'r') as zip_con:
         packs = []
         for name in zip_con:
-            with streams.make_stream(name, 'r', binary, on=zip_con) as stream:
+            with streams.open_stream(name, 'r', binary, on=zip_con) as stream:
                 font_or_pack = load(stream, **kwargs)
             font_or_pack = _set_extraction_props(font_or_pack, name, format)
             if isinstance(font_or_pack, Pack):
@@ -211,7 +211,7 @@ def _save_container_format(save, pack, outfile, **kwargs):
 
 def _save_stream_format(save, pack, outfile, binary, **kwargs):
     """Call a pack saving function, save to a stream."""
-    with streams.make_stream(outfile, 'w', binary) as outstream:
+    with streams.open_stream(outfile, 'w', binary) as outstream:
         save(pack, outstream, **kwargs)
 
 def _save_streams(save, pack, outfile, binary, ext, **kwargs):
@@ -228,7 +228,7 @@ def _save_streams(save, pack, outfile, binary, ext, **kwargs):
                 name = font.name.replace(' ', '_')
                 filename = unique_name(out, name, ext)
                 try:
-                    with streams.make_stream(filename, 'w', binary, on=out) as stream:
+                    with streams.open_stream(filename, 'w', binary, on=out) as stream:
                         save(font, stream, **kwargs)
                 except Exception as e:
                     logging.error('Could not save %s: %s', filename, e)

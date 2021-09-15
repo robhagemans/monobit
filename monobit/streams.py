@@ -12,7 +12,7 @@ import logging
 from pathlib import Path
 
 
-def make_stream(file, mode, binary, *, on=None):
+def open_stream(file, mode, binary, *, on=None):
     """Ensure file is a stream of the right type, open or wrap if necessary."""
     # path is a path-like object
     # mode is 'r' or 'w'

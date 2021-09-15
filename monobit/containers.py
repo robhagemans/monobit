@@ -35,7 +35,7 @@ def identify_container(infile):
         return DirContainer
     if not infile or isinstance(infile, (str, bytes, Path)):
         # nothing provided or string is not a dir
-        with streams.make_stream(infile, 'r', binary=True) as instream:
+        with streams.open_stream(infile, 'r', binary=True) as instream:
             return identify_container(instream)
     # stream provided
     if streams.has_magic(infile, ZipContainer.magic):
@@ -220,7 +220,7 @@ class TextContainer(Container):
     def __init__(self, infile, mode='r'):
         """Open stream or create wrapper."""
         # all containers expect binary stream, including TextContainer
-        self._stream = streams.make_stream(infile, mode, binary=True)
+        self._stream = streams.open_stream(infile, mode, binary=True)
         self._mode = mode[:1]
         if self._mode == 'r':
             if self._stream.readline().strip() != self.separator:
