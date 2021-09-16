@@ -134,11 +134,7 @@ class ZipContainer(Container):
             if mode == 'w' and not stream_or_name.endswith('.zip'):
                 stream_or_name += '.zip'
         else:
-            # try to get stream name. Not all streams have one (e.g. BytesIO)
-            try:
-                root = stream_or_name.name
-            except AttributeError:
-                pass
+            root = streams.get_stream_name(stream_or_name)
         # if name ends up empty, replace; clip off any dir path and suffix
         root = PurePath(root).stem or 'fontdata'
         # create the zipfile

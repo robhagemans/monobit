@@ -180,11 +180,8 @@ def _read_font_hunk(f):
         None if not amiga_props.tf_CharKern else amiga_props.tf_CharKern + loc
     )
     props = _parse_amiga_props(amiga_props, offset_x)
-    props['source-name'] = '/'.join(f.name.split(os.sep)[-2:])
-    # the file name tends to be the name as given in the .font anyway
-    if 'name' not in props:
-        props['name'] = props['source-name']
-    props['family'] = props['name'].split('/')[0].split(' ')[0]
+    if 'name' in props:
+        props['family'] = props['name'].split('/')[0].split(' ')[0]
     return glyphs, props
 
 def _parse_amiga_props(amiga_props, offset_x):

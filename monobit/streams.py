@@ -59,17 +59,25 @@ def stdio_stream(mode, binary):
         return sys.stdin.buffer
     return sys.stdin
 
-def is_binary(instream):
+def is_binary(stream):
     """Check if readable stream is binary."""
-    if instream.readable():
+    if stream.readable():
         # read 0 bytes - the return type will tell us if this is a text or binary stream
-        return isinstance(instream.read(0), bytes)
+        return isinstance(stream.read(0), bytes)
     # write empty bytes - error if text stream
     try:
-        instream.write(b'')
+        stream.write(b'')
     except TypeError:
         return False
     return True
+
+def get_stream_name(stream):
+    """Get stream name, if available."""
+    try:
+        return stream.name
+    except AttributeError:
+        # not all streams have one (e.g. BytesIO)
+        return ''
 
 
 ###################################################################################################
@@ -158,10 +166,7 @@ def open_compressed_stream(file):
     """Identify and wrap compressed streams."""
     compressor = _compressors.identify(file)
     if not compressor:
-        try:
-            suffix = Path(file.name).suffix
-        except AttributeError:
-            suffix = ''
+        suffix = Path(get_stream_name(file)).suffix
         compressor = _compressors.get(suffix)
     if compressor:
         file = compressor.open(file, file.mode[:1] + 'b')
