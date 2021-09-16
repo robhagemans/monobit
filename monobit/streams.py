@@ -19,10 +19,7 @@ def open_stream(file, mode, binary, *, on=None):
     # binary is a boolean; open as binary if true, as text if false
     # on: container to open any new stream on
     mode = mode[:1]
-    if not file and not on:
-        # nameless stream on filesystem -> stdio
-        file = stdio_stream(mode, binary=True)
-    elif isinstance(file, (str, bytes, Path)):
+    if isinstance(file, (str, bytes, Path)):
         # if a path is provided, open a (binary) stream
         if not on:
             file = io.open(file, mode + 'b')
@@ -48,16 +45,6 @@ def make_textstream(file, *, encoding=None):
     """Wrap binary stream to create text stream."""
     encoding = 'utf-8-sig' if file.readable() else 'utf-8'
     return io.TextIOWrapper(file, encoding=encoding)
-
-def stdio_stream(mode, binary):
-    """Get standard stream for given mode and text/binary type."""
-    if mode == 'w':
-        if binary:
-            return sys.stdout.buffer
-        return sys.stdout
-    if binary:
-        return sys.stdin.buffer
-    return sys.stdin
 
 def is_binary(stream):
     """Check if readable stream is binary."""

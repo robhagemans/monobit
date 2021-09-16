@@ -53,8 +53,12 @@ fargs = {
 
 # load, modify, save
 try:
+    if not args.infile:
+        args.infile = sys.stdin.buffer
     font = monobit.load(args.infile)
     font = getattr(font, args.operation[0])(**fargs)
+    if not args.outfile:
+        args.outfile = sys.stdout.buffer
     monobit.save(font, args.outfile)
 except ValueError as exc:
     logging.error(exc)

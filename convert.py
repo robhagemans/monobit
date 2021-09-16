@@ -98,12 +98,16 @@ logging.basicConfig(level=loglevel, format='%(levelname)s: %(message)s')
 try:
     if early_exception:
         raise early_exception
+    if not args.infile:
+        args.infile = sys.stdin.buffer
     font = monobit.load(args.infile, format=args.from_, **load_args)
     if args.codepage:
         font = font.set_encoding(args.codepage)
     if args.comments:
         with open(args.comments) as f:
             font = font.add_comments(f.read())
+    if not args.outfile:
+        args.outfile = sys.stdout.buffer
     monobit.save(font, args.outfile, format=args.to_, **save_args)
 except BrokenPipeError:
     # happens e.g. when piping to `head`
