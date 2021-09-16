@@ -29,8 +29,7 @@ def open_stream(file, mode, binary, *, on=None):
         else:
             file = on.open_binary(file, mode)
     # wrap compression/decompression if needed
-    if Path(file.name).suffix == '.gz':
-        file = gzip.open(file, mode + 'b')
+    file = open_compressed_stream(file)
     # override gzip's mode values which are numeric
     if mode == 'r' and not file.readable():
         raise ValueError('Expected readable stream, got writable.')
@@ -71,6 +70,16 @@ def is_binary(instream):
     except TypeError:
         return False
     return True
+
+
+###################################################################################################
+# compression helpers
+
+def open_compressed_stream(file):
+    """Identify and wrap compressed streams."""
+    if Path(file.name).suffix == '.gz':
+        file = gzip.open(file, file.mode[:1] + 'b')
+    return file
 
 
 ###################################################################################################
