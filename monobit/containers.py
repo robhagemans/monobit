@@ -9,11 +9,10 @@ import io
 import os
 import sys
 import logging
-import posixpath
 import itertools
 from contextlib import contextmanager
 from zipfile import ZipFile
-from pathlib import Path
+from pathlib import Path, PurePath, PurePosixPath
 
 from . import streams
 from .streams import MagicRegistry
@@ -88,7 +87,7 @@ class ZipContainer(Container):
     def __init__(self, stream_or_name, mode='r'):
         """Create wrapper."""
         # append .zip to zip filename, but leave out of root dir name
-        name = ''
+        root = ''
         # mode really should just be 'r' or 'w'
         mode = mode[:1]
         # use standard streams if none provided
@@ -97,24 +96,22 @@ class ZipContainer(Container):
         if isinstance(stream_or_name, bytes):
             stream_or_name = stream_or_name.decode('ascii')
         if isinstance(stream_or_name, (str, Path)):
-            stream_or_name = name = str(stream_or_name)
+            stream_or_name = root = str(stream_or_name)
             if mode == 'w' and not stream_or_name.endswith('.zip'):
                 stream_or_name += '.zip'
         else:
             # try to get stream name. Not all streams have one (e.g. BytesIO)
             try:
-                name = stream_or_name.name
+                root = stream_or_name.name
             except AttributeError:
                 pass
-        # if name ends up empty, replace
-        name = os.path.basename(name or 'fontdata')
-        if name.endswith('.zip'):
-            name = name[:-4]
+        # if name ends up empty, replace; clip off any dir path and suffix
+        root = PurePath(root).stem or 'fontdata'
         # create the zipfile
         self._zip = ZipFile(stream_or_name, mode)
         if mode == 'w':
             # if creating a new container, put everything in a directory inside it
-            self._root = name
+            self._root = root
         else:
             self._root = ''
         self._mode = mode
@@ -122,25 +119,31 @@ class ZipContainer(Container):
     def __enter__(self):
         return self
 
-    def __exit__(self, exc_type, exc_value, traceback):
-        if exc_type == BrokenPipeError:
-            return True
+    def _close(self):
+        """Close the zip file, ignoring errors."""
         try:
             self._zip.close()
         except EnvironmentError:
+            # e.g. BrokenPipeError
             pass
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        if exc_type == BrokenPipeError:
+            return True
+        self._close()
 
     def __del__(self):
         """Ensure archive is closed and essential records written."""
         try:
-            self._zip.close()
-        except EnvironmentError:
+            self._close()
+        except AttributeError:
+            # _zip may already have been destroyed
             pass
 
     def __iter__(self):
         """List contents."""
         return (
-            posixpath.relpath(_name, self._root)
+            str(PurePosixPath(_name).relative_to(self._root))
             for _name in self._zip.namelist()
         )
 
@@ -152,10 +155,8 @@ class ZipContainer(Container):
         """Open a stream in the container."""
         # using posixpath for internal paths in the archive
         # as forward slash should always work, but backslash would fail on unix
-        filename = posixpath.join(self._root, name)
+        filename = str(PurePosixPath(self._root) / name)
         mode = mode[:1]
-        if not mode:
-            mode = 'r'
         # always open as binary
         return self._zip.open(filename, mode)
 
@@ -165,40 +166,33 @@ class DirContainer(Container):
 
     def __init__(self, path, mode='r'):
         """Create wrapper."""
-        self._path = path
+        self._path = Path(path)
         # mode really should just be 'r' or 'w'
         mode = mode[:1]
         if mode == 'w' and path:
-            try:
-                os.makedirs(path)
-            except EnvironmentError:
-                pass
+            self._path.mkdir(parents=True, exist_ok=True)
 
     def open_binary(self, name, mode):
         """Open a stream in the container."""
         # mode in 'rb', 'rt', 'wb', 'wt'
         mode = mode[:1]
-        if not mode:
-            mode = 'r'
+        name = Path(name)
         if mode == 'w':
-            path = os.path.dirname(name)
-            try:
-                os.makedirs(os.path.join(self._path, path))
-            except EnvironmentError:
-                pass
-        return io.open(os.path.join(self._path, name), mode + 'b')
+            path = name.parent
+            (self._path / path).mkdir(parents=True, exist_ok=True)
+        return io.open(self._path / name, mode + 'b')
 
     def __iter__(self):
         """List contents."""
         return (
-            os.path.relpath(os.path.join(_r, _f), self._path)
+            str((Path(_r) / _f).relative_to(self._path))
             for _r, _, _files in os.walk(self._path)
             for _f in _files
         )
 
     def __contains__(self, name):
         """File exists in container."""
-        return os.path.exists(os.path.join(self._path, name))
+        return (self._path / name).exists()
 
 
 @_containers.set_magic(b'---')
