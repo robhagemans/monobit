@@ -18,7 +18,7 @@ from . import streams
 from .streams import MagicRegistry
 
 
-_containers = MagicRegistry()
+containers = MagicRegistry()
 
 
 def open_container(file, mode, binary=True):
@@ -28,7 +28,7 @@ def open_container(file, mode, binary=True):
         if file and isinstance(file, (str, bytes, Path)) and Path(file).is_dir():
             container_type = DirContainer
         else:
-            container_type = _containers.identify(file)
+            container_type = containers.identify(file)
         if not container_type:
             raise TypeError('Expected container format, got non-container stream')
     else:
@@ -114,7 +114,7 @@ class DirContainer(Container):
         return (self._path / name).exists()
 
 
-@_containers.register('.zip', magic=b'PK\x03\x04')
+@containers.register('.zip', magic=b'PK\x03\x04')
 class ZipContainer(Container):
     """Zip-file wrapper"""
 
@@ -191,7 +191,7 @@ class ZipContainer(Container):
         return self._zip.open(filename, mode)
 
 
-@_containers.register('.txt', magic=b'---')
+@containers.register('.txt', magic=b'---')
 class TextContainer(Container):
     """Container of concatenated text files."""
 

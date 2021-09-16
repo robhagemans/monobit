@@ -142,6 +142,10 @@ class MagicRegistry:
             suffix = suffix[1:]
         return suffix.lower()
 
+    def has_suffix(self, suffix):
+        """Suffix is covered."""
+        return self._normalise_suffix(suffix) in self._suffixes.keys()
+
     def identify(self, file):
         """Identify a type from magic sequence on input file."""
         if not file or isinstance(file, (str, bytes, Path)):
@@ -163,13 +167,13 @@ class MagicRegistry:
 ###################################################################################################
 # compression helpers
 
-_compressors = MagicRegistry()
-_compressors.register('.gz', magic=b'\x1f\x8b')(gzip)
+compressors = MagicRegistry()
+compressors.register('.gz', magic=b'\x1f\x8b')(gzip)
 
 
 def open_compressed_stream(file):
     """Identify and wrap compressed streams."""
-    compressor = _compressors.identify(file)
+    compressor = compressors.identify(file)
     if compressor:
         file = compressor.open(file, file.mode[:1] + 'b')
     return file

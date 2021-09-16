@@ -13,28 +13,37 @@ from functools import wraps
 from pathlib import Path
 
 from .base import VERSION, DEFAULT_FORMAT, scriptable
-from .containers import open_container, unique_name
+from .containers import open_container, unique_name, containers
 from .font import Font
 from .pack import Pack
 from . import streams
+from .streams import compressors
 
 
 # identify font file format from suffix
 
 def get_format(infile, format=''):
-    """Get format name."""
+    """Get format name from file name."""
     if isinstance(infile, bytes):
         infile = infile.decode('ascii')
     if not format:
         format = DEFAULT_FORMAT
         # if filename given, try to use it to infer format
-        if isinstance(infile, (str, Path)):
-            suffixes = Path(infile).suffixes
-            if suffixes:
-                if suffixes[-1] in ('.zip', '.gz') and len(suffixes) >= 2:
-                    format = suffixes[-2][1:]
-                else:
-                    format = suffixes[-1][1:]
+        if infile and not isinstance(infile, (str, Path)):
+            infile = streams.get_stream_name(infile)
+        suffixes = Path(infile).suffixes
+        if suffixes:
+            # container/compressed formats often have names like .format.gz
+            if len(suffixes) >= 2 and (
+                    containers.has_suffix(suffixes[-1])
+                    or compressors.has_suffix(suffixes[-1])
+                ):
+                format = suffixes[-2]
+            else:
+                format = suffixes[-1]
+    # normalise suffix
+    if format.startswith('.'):
+        format = format[1:]
     return format.lower()
 
 
