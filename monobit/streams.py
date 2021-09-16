@@ -5,11 +5,13 @@ monobit.formats - loader and saver plugin registry
 licence: https://opensource.org/licenses/MIT
 """
 
-import gzip
 import io
 import sys
 import logging
 from pathlib import Path
+import gzip
+import lzma
+import bz2
 
 
 def open_stream(file, mode, binary, *, on=None):
@@ -156,7 +158,8 @@ class MagicRegistry:
 
 compressors = MagicRegistry()
 compressors.register('.gz', magic=b'\x1f\x8b')(gzip)
-
+compressors.register('.xz', magic=b'\xFD7zXZ\x00')(lzma)
+compressors.register('.bz2', magic=b'BZh')(bz2)
 
 def open_compressed_stream(file):
     """Identify and wrap compressed streams."""
