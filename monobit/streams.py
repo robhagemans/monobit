@@ -73,16 +73,6 @@ def is_binary(instream):
 
 
 ###################################################################################################
-# compression helpers
-
-def open_compressed_stream(file):
-    """Identify and wrap compressed streams."""
-    if Path(file.name).suffix == '.gz':
-        file = gzip.open(file, file.mode[:1] + 'b')
-    return file
-
-
-###################################################################################################
 # magic byte sequences
 
 def has_magic(instream, magic):
@@ -95,14 +85,22 @@ class MagicRegistry:
 
     def __init__(self):
         """Set up registry."""
-        self._types = {}
+        self._magic = {}
+        self._suffixes = {}
 
-    def set_magic(self, magic):
+    def register(self, suffix, magic):
         """Decorator to register class that handles file type."""
         def decorator(klass):
-            self._types[magic] = klass
+            if suffix:
+                self._suffixes[suffix.lower()] = klass
+            if magic:
+                self._magic[magic] = klass
             return klass
         return decorator
+
+    def get(self, suffix):
+        """Get type from suffix."""
+        return self._suffixes.get(suffix.lower(), None)
 
     def identify(self, file):
         """Identify a type from magic sequence on input file."""
@@ -111,7 +109,25 @@ class MagicRegistry:
             # if we got an open stream we should not close it
             with open_stream(file, 'r', binary=True) as stream:
                 return self.identify(stream)
-        for magic, klass in self._types.items():
+        for magic, klass in self._magic.items():
             if has_magic(file, magic):
                 return klass
         return None
+
+
+###################################################################################################
+# compression helpers
+
+_compressors = MagicRegistry()
+_compressors.register('.gz', b'\x1f\x8b')(gzip)
+
+
+def open_compressed_stream(file):
+    """Identify and wrap compressed streams."""
+    try:
+        compressor = _compressors.get(Path(file.name).suffix)
+    except AttributeError:
+        pass
+    if compressor:
+        file = compressor.open(file, file.mode[:1] + 'b')
+    return file
