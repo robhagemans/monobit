@@ -80,6 +80,40 @@ class Container:
         return streams.make_textstream(stream, encoding=encoding)
 
 
+class DirContainer(Container):
+    """Treat directory tree as a container."""
+
+    def __init__(self, path, mode='r'):
+        """Create wrapper."""
+        self._path = Path(path)
+        # mode really should just be 'r' or 'w'
+        mode = mode[:1]
+        if mode == 'w' and path:
+            self._path.mkdir(parents=True, exist_ok=True)
+
+    def open_binary(self, name, mode):
+        """Open a stream in the container."""
+        # mode in 'rb', 'rt', 'wb', 'wt'
+        mode = mode[:1]
+        name = Path(name)
+        if mode == 'w':
+            path = name.parent
+            (self._path / path).mkdir(parents=True, exist_ok=True)
+        return io.open(self._path / name, mode + 'b')
+
+    def __iter__(self):
+        """List contents."""
+        return (
+            str((Path(_r) / _f).relative_to(self._path))
+            for _r, _, _files in os.walk(self._path)
+            for _f in _files
+        )
+
+    def __contains__(self, name):
+        """File exists in container."""
+        return (self._path / name).exists()
+
+
 @_containers.set_magic(b'PK\x03\x04')
 class ZipContainer(Container):
     """Zip-file wrapper"""
@@ -159,40 +193,6 @@ class ZipContainer(Container):
         mode = mode[:1]
         # always open as binary
         return self._zip.open(filename, mode)
-
-
-class DirContainer(Container):
-    """Treat directory tree as a container."""
-
-    def __init__(self, path, mode='r'):
-        """Create wrapper."""
-        self._path = Path(path)
-        # mode really should just be 'r' or 'w'
-        mode = mode[:1]
-        if mode == 'w' and path:
-            self._path.mkdir(parents=True, exist_ok=True)
-
-    def open_binary(self, name, mode):
-        """Open a stream in the container."""
-        # mode in 'rb', 'rt', 'wb', 'wt'
-        mode = mode[:1]
-        name = Path(name)
-        if mode == 'w':
-            path = name.parent
-            (self._path / path).mkdir(parents=True, exist_ok=True)
-        return io.open(self._path / name, mode + 'b')
-
-    def __iter__(self):
-        """List contents."""
-        return (
-            str((Path(_r) / _f).relative_to(self._path))
-            for _r, _, _files in os.walk(self._path)
-            for _f in _files
-        )
-
-    def __contains__(self, name):
-        """File exists in container."""
-        return (self._path / name).exists()
 
 
 @_containers.set_magic(b'---')
