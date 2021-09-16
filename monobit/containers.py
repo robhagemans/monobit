@@ -22,18 +22,14 @@ from .streams import MagicRegistry
 _containers = MagicRegistry()
 
 
-def identify_container(infile):
-    """Recognise container type and return container object."""
-    # handle directories separately - no magic
-    if infile and isinstance(infile, (str, bytes, Path)) and Path(infile).is_dir():
-        return DirContainer
-    return _containers.identify(infile)
-
-
 def open_container(file, mode, binary=True):
     """Open container of the appropriate type."""
     if mode == 'r':
-        container_type = identify_container(file)
+        # handle directories separately - no magic
+        if file and isinstance(file, (str, bytes, Path)) and Path(file).is_dir():
+            container_type = DirContainer
+        else:
+            container_type = _containers.identify(file)
         if not container_type:
             raise TypeError('Expected container format, got non-container stream')
     else:
@@ -65,6 +61,14 @@ class Container:
     def __exit__(self, exc_type, exc_value, traceback):
         pass
 
+    def __iter__(self):
+        """List contents."""
+        raise NotImplementedError
+
+    def __contains__(self, name):
+        """File exists in container."""
+        raise NotImplementedError
+
     def open_binary(self, name, mode):
         """Open a binary stream in the container."""
         raise NotImplementedError
@@ -75,14 +79,6 @@ class Container:
         if mode.endswith('b'):
             return stream
         return streams.make_textstream(stream, encoding=encoding)
-
-    def __iter__(self):
-        """List contents."""
-        raise NotImplementedError
-
-    def __contains__(self, name):
-        """File exists in container."""
-        raise NotImplementedError
 
 
 @_containers.set_magic(b'PK\x03\x04')
@@ -141,17 +137,6 @@ class ZipContainer(Container):
         except EnvironmentError:
             pass
 
-    def open_binary(self, name, mode):
-        """Open a stream in the container."""
-        # using posixpath for internal paths in the archive
-        # as forward slash should always work, but backslash would fail on unix
-        filename = posixpath.join(self._root, name)
-        mode = mode[:1]
-        if not mode:
-            mode = 'r'
-        # always open as binary
-        return self._zip.open(filename, mode)
-
     def __iter__(self):
         """List contents."""
         return (
@@ -162,6 +147,17 @@ class ZipContainer(Container):
     def __contains__(self, name):
         """File exists in container."""
         return name in list(self)
+
+    def open_binary(self, name, mode):
+        """Open a stream in the container."""
+        # using posixpath for internal paths in the archive
+        # as forward slash should always work, but backslash would fail on unix
+        filename = posixpath.join(self._root, name)
+        mode = mode[:1]
+        if not mode:
+            mode = 'r'
+        # always open as binary
+        return self._zip.open(filename, mode)
 
 
 class DirContainer(Container):
