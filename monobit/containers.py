@@ -114,7 +114,7 @@ class DirContainer(Container):
         return (self._path / name).exists()
 
 
-@_containers.register('.zip', b'PK\x03\x04')
+@_containers.register('.zip', magic=b'PK\x03\x04')
 class ZipContainer(Container):
     """Zip-file wrapper"""
 
@@ -191,7 +191,7 @@ class ZipContainer(Container):
         return self._zip.open(filename, mode)
 
 
-@_containers.register('.txt', b'---')
+@_containers.register('.txt', magic=b'---')
 class TextContainer(Container):
     """Container of concatenated text files."""
 

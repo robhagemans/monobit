@@ -116,6 +116,7 @@ def has_magic(instream, magic):
         # e.g. write-only stream
         return False
 
+
 class MagicRegistry:
     """Registry of file types and their magic sequences."""
 
@@ -124,19 +125,22 @@ class MagicRegistry:
         self._magic = {}
         self._suffixes = {}
 
-    def register(self, suffix, magic):
+    def register(self, *suffixes, magic=b''):
         """Decorator to register class that handles file type."""
         def decorator(klass):
-            if suffix:
-                self._suffixes[suffix.lower()] = klass
+            for suffix in suffixes:
+                suffix = self._normalise_suffix(suffix)
+                self._suffixes[suffix] = klass
             if magic:
                 self._magic[magic] = klass
             return klass
         return decorator
 
-    def get(self, suffix):
-        """Get type from suffix."""
-        return self._suffixes.get(suffix.lower(), None)
+    def _normalise_suffix(self, suffix):
+        """Bring suffix to lowercase without dot."""
+        if suffix.startswith('.'):
+            suffix = suffix[1:]
+        return suffix.lower()
 
     def identify(self, file):
         """Identify a type from magic sequence on input file."""
@@ -146,28 +150,26 @@ class MagicRegistry:
             with open_stream(file, 'r', binary=True) as stream:
                 return self.identify(stream)
         # can't read magic on write-only file
-        if not file.readable():
-            return None
-        for magic, klass in self._magic.items():
-            if has_magic(file, magic):
-                return klass
-
-        return None
+        if file.readable():
+            for magic, klass in self._magic.items():
+                if has_magic(file, magic):
+                    return klass
+        # not readable or no magic, try suffix
+        suffix = Path(get_stream_name(file)).suffix
+        suffix = self._normalise_suffix(suffix)
+        return self._suffixes.get(suffix, None)
 
 
 ###################################################################################################
 # compression helpers
 
 _compressors = MagicRegistry()
-_compressors.register('.gz', b'\x1f\x8b')(gzip)
+_compressors.register('.gz', magic=b'\x1f\x8b')(gzip)
 
 
 def open_compressed_stream(file):
     """Identify and wrap compressed streams."""
     compressor = _compressors.identify(file)
-    if not compressor:
-        suffix = Path(get_stream_name(file)).suffix
-        compressor = _compressors.get(suffix)
     if compressor:
         file = compressor.open(file, file.mode[:1] + 'b')
     return file
