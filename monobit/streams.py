@@ -77,8 +77,11 @@ def is_binary(instream):
 
 def has_magic(instream, magic):
     """Check if a binary stream matches the given signature."""
-    return instream.peek(len(magic)).startswith(magic)
-
+    try:
+        return instream.peek(len(magic)).startswith(magic)
+    except EnvironmentError:
+        # e.g. write-only stream
+        return False
 
 class MagicRegistry:
     """Registry of file types and their magic sequences."""
@@ -109,9 +112,13 @@ class MagicRegistry:
             # if we got an open stream we should not close it
             with open_stream(file, 'r', binary=True) as stream:
                 return self.identify(stream)
+        # can't read magic on write-only file
+        if not file.readable():
+            return None
         for magic, klass in self._magic.items():
             if has_magic(file, magic):
                 return klass
+
         return None
 
 
@@ -124,10 +131,13 @@ _compressors.register('.gz', b'\x1f\x8b')(gzip)
 
 def open_compressed_stream(file):
     """Identify and wrap compressed streams."""
-    try:
-        compressor = _compressors.get(Path(file.name).suffix)
-    except AttributeError:
-        pass
+    compressor = _compressors.identify(file)
+    if not compressor:
+        try:
+            suffix = Path(file.name).suffix
+        except AttributeError:
+            suffix = ''
+        compressor = _compressors.get(suffix)
     if compressor:
         file = compressor.open(file, file.mode[:1] + 'b')
     return file
