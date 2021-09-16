@@ -73,6 +73,31 @@ def is_binary(instream):
 
 
 ###################################################################################################
+# keep-open stream wrapper
+
+class KeepOpen:
+    """Protect wrapped stream from closure."""
+
+    def __init__(self, stream):
+        """Constructor."""
+        self._stream = stream
+        self.closed = stream.closed
+
+    def __getattr__(self, attr):
+        """Delegate undefined attributes to wrapped stream."""
+        return getattr(self._stream, attr)
+
+    def __del__(self):
+        """Destructor."""
+        self.close()
+
+    def close(self):
+        """Close wrapper but not stream."""
+        self._stream.flush()
+        self.closed = True
+
+
+###################################################################################################
 # magic byte sequences
 
 def has_magic(instream, magic):
