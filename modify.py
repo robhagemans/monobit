@@ -60,5 +60,5 @@ try:
     if not args.outfile:
         args.outfile = sys.stdout.buffer
     monobit.save(font, args.outfile)
-except ValueError as exc:
+except Exception as exc:
     logging.error(exc)
