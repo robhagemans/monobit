@@ -21,8 +21,8 @@ def open_stream(file, mode, binary, *, on=None):
     # binary is a boolean; open as binary if true, as text if false
     # on: container to open any new stream on
     mode = mode[:1]
+    # if a path is provided, open a (binary) stream
     if isinstance(file, (str, bytes, Path)):
-        # if a path is provided, open a (binary) stream
         if not on:
             file = io.open(file, mode + 'b')
         else:

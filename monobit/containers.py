@@ -150,9 +150,6 @@ class ZipContainer(Container):
             self._root = ''
         self._mode = mode
 
-    def __enter__(self):
-        return self
-
     def _close(self):
         """Close the zip file, ignoring errors."""
         try:
@@ -204,13 +201,20 @@ class TextContainer(Container):
     def __init__(self, infile, mode='r'):
         """Open stream or create wrapper."""
         # all containers expect binary stream, including TextContainer
-        self._stream = streams.open_stream(infile, mode, binary=True)
+        self._stream_context = streams.open_stream(infile, mode, binary=True)
+        self._stream = self._stream_context.__enter__()
         self._mode = mode[:1]
         if self._mode == 'r':
             if self._stream.readline().strip() != self.separator:
                 raise ValueError('Not a text container.')
         else:
             self._stream.write(b'%s\n' % (self.separator,))
+        self._substream = None
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        if self._substream:
+            self._substream.close()
+        return self._stream_context.__exit__(exc_type, exc_value, traceback)
 
     def __iter__(self):
         """Dummy content lister."""
@@ -226,6 +230,8 @@ class TextContainer(Container):
         """Open a single stream. Name argument is a dummy."""
         if not mode.startswith(self._mode):
             raise ValueError(f"Cannot open file for '{mode}' on container open for '{self._mode}'")
+        if self._substream is not None:
+            raise ValueError('Text container can only support one open file at a time.')
 
         parent = self
 
@@ -249,12 +255,15 @@ class TextContainer(Container):
                 return getattr(self._stream, attr)
 
             def close(self):
-                self._stream.flush()
-                if parent._mode == 'w' and not self.closed:
-                    self._stream.write(b'\n%s\n' % (parent.separator, ))
+                if not self.closed:
+                    self._stream.flush()
+                    if parent._mode == 'w' and not self.closed:
+                        self._stream.write(b'\n%s\n' % (parent.separator, ))
+                    parent._substream = None
                 self.closed = True
 
             def __del__(self):
                 self.close()
 
-        return _SubStream(self._stream)
+        self._substream = _SubStream(self._stream)
+        return self._substream
