@@ -49,7 +49,7 @@ class Stream:
             raise ValueError('Expected binary stream, got text stream.')
         if is_binary(file) and not binary:
             file = make_textstream(file)
-        self.binary = is_binary(file)
+        self.binary = binary
         self.name = get_stream_name(file)
         self._stream = file
 
@@ -85,7 +85,7 @@ def make_textstream(file, *, encoding=None):
     return io.TextIOWrapper(file, encoding=encoding)
 
 def is_binary(stream):
-    """Check if readable stream is binary."""
+    """Check if stream is binary."""
     if stream.readable():
         # read 0 bytes - the return type will tell us if this is a text or binary stream
         return isinstance(stream.read(0), bytes)
