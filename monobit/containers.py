@@ -118,27 +118,31 @@ class DirContainer(Container):
 class ZipContainer(Container):
     """Zip-file wrapper"""
 
-    def __init__(self, stream_or_name, mode='r'):
+    def __init__(self, file, mode='r'):
         """Create wrapper."""
         # append .zip to zip filename, but leave out of root dir name
         root = ''
         # mode really should just be 'r' or 'w'
         mode = mode[:1]
         # use standard streams if none provided
-        if not stream_or_name:
-            stream_or_name = streams.stdio_stream(mode, binary=True)
-        if isinstance(stream_or_name, bytes):
-            stream_or_name = stream_or_name.decode('ascii')
-        if isinstance(stream_or_name, (str, Path)):
-            stream_or_name = root = str(stream_or_name)
-            if mode == 'w' and not stream_or_name.endswith('.zip'):
-                stream_or_name += '.zip'
+        if not file:
+            file = streams.stdio_stream(mode, binary=True)
+        if isinstance(file, bytes):
+            file = file.decode('ascii')
+        if isinstance(file, (str, Path)):
+            file = root = str(file)
+            if mode == 'w' and not file.endswith('.zip'):
+                file += '.zip'
         else:
-            root = streams.get_stream_name(stream_or_name)
+            root = streams.get_stream_name(file)
         # if name ends up empty, replace; clip off any dir path and suffix
         root = PurePath(root).stem or 'fontdata'
+        # reading zipfile needs a seekable stream, drain to buffer if needed
+        # note you can only do this once on the input stream!
+        if (mode == 'r' and not isinstance(file, (str, Path)) and not file.seekable()):
+            file = io.BytesIO(file.read())
         # create the zipfile
-        self._zip = ZipFile(stream_or_name, mode)
+        self._zip = ZipFile(file, mode)
         if mode == 'w':
             # if creating a new container, put everything in a directory inside it
             self._root = root
