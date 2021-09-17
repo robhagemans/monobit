@@ -255,7 +255,7 @@ class TextContainer(Container):
                 return getattr(self._stream, attr)
 
             def close(self):
-                if not self.closed:
+                if not self.closed and not self._stream.closed:
                     self._stream.flush()
                     if parent._mode == 'w' and not self.closed:
                         self._stream.write(b'\n%s\n' % (parent.separator, ))
