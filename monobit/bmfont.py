@@ -5,10 +5,10 @@ monobit.bmfont - AngelCode BMFont format
 licence: https://opensource.org/licenses/MIT
 """
 
-import os
 import json
 import shlex
 import logging
+from pathlib import Path
 import xml.etree.ElementTree as etree
 
 try:
@@ -374,9 +374,9 @@ def _parse_binary(data):
 
 def _extract(container, name, bmformat, info, common, pages, chars, kernings=()):
     """Extract glyphs."""
-    path = os.path.dirname(name)
+    path = Path(name).parent
     image_files = {
-        int(_page['id']): container.open(os.path.join(path, _page['file']), 'rb')
+        int(_page['id']): container.open(path / _page['file'], 'rb')
         for _page in pages
     }
     sheets = {_id: Image.open(_file) for _id, _file in image_files.items()}
@@ -477,7 +477,7 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=())
         encoding = _CHARSET_STR_MAP.get(charset.upper(), charset)
     properties = {
         'source-format': 'BMFont ({} descriptor; {} spritesheet)'.format(bmformat, ','.join(imgformats)),
-        'source-name': os.path.basename(name),
+        'source-name': Path(name).name,
         'tracking': min_after,
         'family': bmfont_props.pop('face'),
         # assume size == pixel-size == ascent + descent
