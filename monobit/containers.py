@@ -265,8 +265,5 @@ class TextContainer(Container):
                     parent._substream = None
                 self.closed = True
 
-            def __del__(self):
-                self.close()
-
         self._substream = _SubStream(self._stream)
         return self._substream

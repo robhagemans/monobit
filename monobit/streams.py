@@ -67,10 +67,6 @@ class Stream:
         """Delegate undefined attributes to wrapped stream."""
         return getattr(self._stream, attr)
 
-    def __del__(self):
-        """Destructor."""
-        self.close()
-
     def close(self):
         """Close stream, absorb errors."""
         try:
