@@ -373,12 +373,13 @@ def _parse_binary(data):
     return props
 
 def _extract(container, name, bmformat, info, common, pages, chars, kernings=()):
-    """Extract characters."""
+    """Extract glyphs."""
     path = os.path.dirname(name)
-    sheets = {
-        int(_page['id']): Image.open(container.open(os.path.join(path, _page['file']), 'rb'))
+    image_files = {
+        int(_page['id']): container.open(os.path.join(path, _page['file']), 'rb')
         for _page in pages
     }
+    sheets = {_id: Image.open(_file) for _id, _file in image_files.items()}
     imgformats = set(str(_img.format) for _img in sheets.values())
     # ensure we have RGBA channels
     sheets = {_k: _v.convert('RGBA') for _k, _v in sheets.items()}
@@ -459,6 +460,11 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=())
                 glyph = Glyph.empty(char.xadvance - min_after, max_height)
             glyph = glyph.set_annotations(codepoint=char.id)
             glyphs.append(glyph)
+    # close image files
+    for image in sheets.values():
+        image.close()
+    for file in image_files.values():
+        file.close()
     # parse properties
     bmfont_props = {**info}
     # encoding
