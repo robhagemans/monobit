@@ -113,7 +113,8 @@ def _load_container_format(load, infile, binary, multi, format, **kwargs):
 def _load_stream_format(load, infile, binary, multi, format, **kwargs):
     """Load font or pack from stream."""
     with streams.open_stream(infile, 'r', binary) as instream:
-        name = Path(streams.get_stream_name(instream)).name
+        # Stream object always has a .name
+        name = Path(instream.name).name
         font_or_pack = load(instream, **kwargs)
     return _set_extraction_props(font_or_pack, name, format)
 

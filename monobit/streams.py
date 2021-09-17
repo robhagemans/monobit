@@ -16,32 +16,68 @@ import bz2
 
 def open_stream(file, mode, binary, *, on=None):
     """Ensure file is a stream of the right type, open or wrap if necessary."""
-    # path is a path-like object
-    # mode is 'r' or 'w'
-    # binary is a boolean; open as binary if true, as text if false
-    # on: container to open any new stream on
-    mode = mode[:1]
-    # if a path is provided, open a (binary) stream
-    if isinstance(file, (str, bytes, Path)):
-        if not on:
-            file = io.open(file, mode + 'b')
-        else:
-            file = on.open_binary(file, mode)
-    # wrap compression/decompression if needed
-    file = open_compressed_stream(file)
-    # override gzip's mode values which are numeric
-    if mode == 'r' and not file.readable():
-        raise ValueError('Expected readable stream, got writable.')
-    if mode == 'w' and not file.writable():
-        raise ValueError('Expected writable stream, got readable.')
-    # check text/binary
-    # a text format can be read from/written to a binary stream with a wrapper
-    # but vice versa can't be done
-    if not is_binary(file) and binary:
-        raise ValueError('Expected binary stream, got text stream.')
-    if is_binary(file) and not binary:
-        file = make_textstream(file)
-    return file
+    return Stream(file, mode, binary, on=on)
+
+
+class Stream:
+    """Manage file resource."""
+
+    def __init__(self, file, mode, binary, *, on=None):
+        """Ensure file is a stream of the right type, open or wrap if necessary."""
+        # path is a path-like object
+        # mode is 'r' or 'w'
+        # binary is a boolean; open as binary if true, as text if false
+        # on: container to open any new stream on
+        mode = mode[:1]
+        # if a path is provided, open a (binary) stream
+        if isinstance(file, (str, bytes, Path)):
+            if not on:
+                file = io.open(file, mode + 'b')
+            else:
+                file = on.open_binary(file, mode)
+        # wrap compression/decompression if needed
+        file = open_compressed_stream(file)
+        # override gzip's mode values which are numeric
+        if mode == 'r' and not file.readable():
+            raise ValueError('Expected readable stream, got writable.')
+        if mode == 'w' and not file.writable():
+            raise ValueError('Expected writable stream, got readable.')
+        # check text/binary
+        # a text format can be read from/written to a binary stream with a wrapper
+        # but vice versa can't be done
+        if not is_binary(file) and binary:
+            raise ValueError('Expected binary stream, got text stream.')
+        if is_binary(file) and not binary:
+            file = make_textstream(file)
+        self.binary = is_binary(file)
+        self.name = get_stream_name(file)
+        self._stream = file
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self._stream.close()
+
+    def __iter__(self):
+        # dunder methods not delegated?
+        return self._stream.__iter__()
+
+    def __getattr__(self, attr):
+        """Delegate undefined attributes to wrapped stream."""
+        return getattr(self._stream, attr)
+
+    def __del__(self):
+        """Destructor."""
+        self.close()
+
+    def close(self):
+        """Close stream, absorb errors."""
+        try:
+            self._stream.close()
+        except EnvironmentError:
+            pass
+
 
 def make_textstream(file, *, encoding=None):
     """Wrap binary stream to create text stream."""
