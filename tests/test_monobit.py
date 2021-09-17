@@ -203,15 +203,26 @@ class TestMonobit(unittest.TestCase):
         font = pack[0]
         self.assertEqual(len(font.glyphs), 256)
 
-    def test_gzip(self):
-        """Test importing/exporting gzip compressed files"""
-        yaff_gz_file = self.temp_path / '4x6.yaff.gz'
-
-        monobit.save(self.fixed4x6, yaff_gz_file)
-        self.assertTrue(os.path.getsize(yaff_gz_file) > 0)
-
-        font = monobit.load(yaff_gz_file)
+    def _test_compressed(self, format):
+        """Test importing/exporting compressed files."""
+        compressed_file = self.temp_path / f'4x6.yaff.{format}'
+        monobit.save(self.fixed4x6, compressed_file)
+        self.assertTrue(os.path.getsize(compressed_file) > 0)
+        font = monobit.load(compressed_file)
         self.assertEqual(len(font.glyphs), 919)
+
+    def test_gzip(self):
+        """Test importing/exporting gzip compressed files."""
+        self._test_compressed('gz')
+
+    def test_lzma(self):
+        """Test importing/exporting lzma compressed files."""
+        self._test_compressed('xz')
+
+    def test_bz2(self):
+        """Test importing/exporting bzip2 compressed files."""
+        self._test_compressed('bz2')
+
 
 if __name__ == '__main__':
     unittest.main()
