@@ -240,6 +240,8 @@ def _save_streams(save, pack, outfile, binary, ext, **kwargs):
                 try:
                     with streams.open_stream(filename, 'w', binary, on=out) as stream:
                         save(font, stream, **kwargs)
+                except BrokenPipeError:
+                    pass
                 except Exception as e:
                     logging.error('Could not save %s: %s', filename, e)
                     raise

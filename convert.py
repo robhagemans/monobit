@@ -7,6 +7,7 @@ Extract bitmap font and save in different format
 import sys
 import argparse
 import logging
+import os
 
 import monobit
 
@@ -111,7 +112,8 @@ try:
     monobit.save(font, args.outfile, format=args.to_, **save_args)
 except BrokenPipeError:
     # happens e.g. when piping to `head`
-    pass
+    # https://stackoverflow.com/questions/16314321/suppressing-printout-of-exception-ignored-message-in-python-3
+    sys.stdout = os.fdopen(1)
 except Exception as exc:
     logging.error(exc)
     if args.debug:
