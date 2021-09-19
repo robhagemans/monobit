@@ -171,6 +171,17 @@ compressors.register('.bz2', magic=b'BZh')(bz2)
 def open_compressed_stream(file):
     """Identify and wrap compressed streams."""
     compressor = compressors.identify(file)
-    if compressor:
-        file = compressor.open(file, file.mode[:1] + 'b')
-    return file
+    if not compressor:
+        return file
+    wrapped = compressor.open(file, file.mode[:1] + 'b')
+    # set name of uncompressed stream
+    wrapped.name = get_stream_name(file)
+    # drop the .gz etc
+    try:
+        last_suffix = Path(wrapped.name).suffixes[-1]
+    except IndexError:
+        pass
+    else:
+        if last_suffix and compressors.has_suffix(last_suffix):
+            wrapped.name = wrapped.name[:-len(last_suffix)]
+    return wrapped
