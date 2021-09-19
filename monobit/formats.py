@@ -17,21 +17,18 @@ from .containers import open_container, unique_name, containers
 from .font import Font
 from .pack import Pack
 from . import streams
-from .streams import compressors
+from .streams import compressors, has_magic
 
 
 # identify font file format from suffix
 
-def get_format(infile, format=''):
+def get_format(file, format=''):
     """Get format name from file name."""
-    if isinstance(infile, bytes):
-        infile = infile.decode('ascii')
     if not format:
         format = DEFAULT_FORMAT
         # if filename given, try to use it to infer format
-        if infile and not isinstance(infile, (str, Path)):
-            infile = streams.get_stream_name(infile)
-        suffixes = Path(infile).suffixes
+        name = streams.get_stream_name(file)
+        suffixes = Path(name).suffixes
         if suffixes:
             # container/compressed formats often have names like .format.gz
             if len(suffixes) >= 2 and (
@@ -54,10 +51,24 @@ class Loaders:
     """Loader plugin registry."""
 
     _loaders = {}
+    _magic = {}
 
     @classmethod
     def get_loader(cls, infile, format=''):
         """Get loader function for this format."""
+        # try to use magic sequences
+        if infile:
+            if isinstance(infile, (str, bytes, Path)):
+                try:
+                    with streams.open_stream(infile, 'r', binary=True) as stream:
+                        return cls.get_loader(stream, format)
+                except IsADirectoryError:
+                    pass
+            else:
+                if infile.readable():
+                    for magic, loader in cls._magic.items():
+                        if has_magic(infile, magic):
+                            return loader
         format = get_format(infile, format)
         try:
             return cls._loaders[format]
@@ -71,7 +82,7 @@ class Loaders:
         return loader(infile, **kwargs)
 
     @classmethod
-    def register(cls, *formats, name=None, binary=False, multi=False, container=False):
+    def register(cls, *formats, magic=(), name=None, binary=False, multi=False, container=False):
         """
         Decorator to register font loader.
             *formats: list of extensions covered by this function
@@ -99,6 +110,8 @@ class Loaders:
             _load_func.script_args = load.__annotations__
             for format in formats:
                 cls._loaders[format.lower()] = _load_func
+            for sequence in magic:
+                cls._magic[sequence] = _load_func
             return _load_func
 
         return _load_decorator
