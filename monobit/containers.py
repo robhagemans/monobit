@@ -26,9 +26,9 @@ def open_container(file, mode, binary=True):
     """Open container of the appropriate type."""
     if isinstance(file, Container):
         return file
+    if not file:
+        file = '.'
     if mode == 'r':
-        if not file:
-            file = '.'
         # handle directories separately - no magic
         if isinstance(file, (str, Path)) and Path(file).is_dir():
             container_type = DirContainer

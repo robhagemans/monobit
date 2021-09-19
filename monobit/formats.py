@@ -65,6 +65,7 @@ class Loaders:
                     for magic, loader in cls._magic.items():
                         if has_magic(infile, magic):
                             return loader
+        # fall back to suffixes
         format = get_format(infile, format)
         try:
             return cls._loaders[format]
@@ -179,11 +180,12 @@ class Savers:
             raise ValueError('Cannot save to format `{}`'.format(format))
 
     @classmethod
-    def save(cls, pack, outfile:str, format:str='', **kwargs):
+    def save(cls, pack, outfile:str, format:str='', on:str='', **kwargs):
         """Write to file, return unchanged."""
         saver = cls.get_saver(outfile, format)
-        saver(pack, outfile, **kwargs)
+        saver(pack, outfile, on, **kwargs)
         return pack
+
 
     @classmethod
     def register(cls, *formats, binary=False, multi=False, container=False):
@@ -195,59 +197,52 @@ class Savers:
             container: format is stored as files in a directory or other container
         """
 
-        def _save_decorator(save):
+        def _save_decorator(original_saver):
             # stream output wrapper
-            @wraps(save)
-            def _save_func(pack_or_font, outfile, **kwargs):
+            @wraps(original_saver)
+            def _saver(pack_or_font, outfile, on, **kwargs):
                 if isinstance(pack_or_font, Font):
                     pack = Pack([pack_or_font])
                 else:
                     pack = pack_or_font
-                if container:
-                    _save_container_format(save, pack, outfile, **kwargs)
-                elif multi:
-                    _save_stream_format(save, pack, outfile, binary, **kwargs)
-                else:
-                    # use first extension provided by saver function
-                    _save_streams(save, pack, outfile, binary, formats[0], **kwargs)
+                with open_container(on, 'w', binary) as on:
+                    logging.warning(on)
+                    logging.warning(repr(outfile))
+                    if container or multi or len(pack) == 1:
+                        with streams.open_stream(outfile, 'w', binary) as outstream:
+                            logging.warning(outstream)
+                            if not multi:
+                                pack = pack[0]
+                            if container:
+                                original_saver(pack, outstream, container=on, **kwargs)
+                            else:
+                                original_saver(pack, outstream, **kwargs)
+                    else:
+                        # use first extension provided by saver function
+                        _save_streams(
+                            original_saver, pack, outfile, on, formats[0], binary, **kwargs
+                        )
 
             # register saver
-            _save_func.script_args = save.__annotations__
+            _saver.script_args = original_saver.__annotations__
             for format in formats:
-                cls._savers[format.lower()] = _save_func
-            return _save_func
+                cls._savers[format.lower()] = _saver
+            return _saver
 
         return _save_decorator
 
 
-def _save_container_format(save, pack, outfile, **kwargs):
-    """Call a pack or font saving function, save to a container."""
-    with open_container(outfile, 'w') as out:
-        save(pack, out, **kwargs)
-
-def _save_stream_format(save, pack, outfile, binary, **kwargs):
-    """Call a pack saving function, save to a stream."""
-    with streams.open_stream(outfile, 'w', binary) as outstream:
-        save(pack, outstream, **kwargs)
-
-def _save_streams(save, pack, outfile, binary, ext, **kwargs):
+def _save_streams(original_saver, pack, outfile, on, suffix, binary, **kwargs):
     """Call a font saving function, save to a stream or container."""
-    if len(pack) == 1:
-        # we have only one font to deal with, no need to create container
-        _save_stream_format(save, [*pack][0], outfile, binary, **kwargs)
-    else:
-        # create container and call saver for each font in the pack
-        with open_container(outfile, 'w', binary) as out:
-            # save fonts one-by-one
-            for font in pack:
-                # generate unique filename
-                name = font.name.replace(' ', '_')
-                filename = unique_name(out, name, ext)
-                try:
-                    with streams.open_stream(filename, 'w', binary, on=out) as stream:
-                        save(font, stream, **kwargs)
-                except BrokenPipeError:
-                    pass
-                except Exception as e:
-                    logging.error('Could not save %s: %s', filename, e)
-                    raise
+    for font in pack:
+        # generate unique filename
+        name = font.name.replace(' ', '_')
+        filename = unique_name(on, name, suffix)
+        try:
+            with streams.open_stream(filename, 'w', binary, on=on) as stream:
+                original_saver(font, stream, **kwargs)
+        except BrokenPipeError:
+            pass
+        except Exception as e:
+            logging.error('Could not save %s: %s', filename, e)
+            raise
