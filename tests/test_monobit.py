@@ -142,19 +142,19 @@ class TestMonobit(unittest.TestCase):
     def test_import_bmf(self):
         """Test importing bmfont files."""
         base_path = self.font_path / '6x13.bmf'
-        font = monobit.load(base_path / '6x13-text.fnt', on=base_path, format='bmf')
+        font = monobit.load('6x13-text.fnt', on=base_path, format='bmf')
         self.assertEqual(len(font.glyphs), 189)
-        font = monobit.load(base_path / '6x13-xml.fnt', on=base_path, format='bmf')
+        font = monobit.load('6x13-xml.fnt', on=base_path, format='bmf')
         self.assertEqual(len(font.glyphs), 189)
-        font = monobit.load(base_path / '6x13-json.fnt', on=base_path, format='bmf')
+        font = monobit.load('6x13-json.fnt', on=base_path, format='bmf')
         self.assertEqual(len(font.glyphs), 189)
-        font = monobit.load(base_path / '6x13-8bit.fnt', on=base_path, format='bmf')
+        font = monobit.load('6x13-8bit.fnt', on=base_path, format='bmf')
         self.assertEqual(len(font.glyphs), 189)
-        font = monobit.load(base_path / '6x13-32bit-packed.fnt', on=base_path, format='bmf')
+        font = monobit.load('6x13-32bit-packed.fnt', on=base_path, format='bmf')
         self.assertEqual(len(font.glyphs), 189)
-        font = monobit.load(base_path / '6x13-32bit-nonpacked.fnt', on=base_path, format='bmf')
+        font = monobit.load('6x13-32bit-nonpacked.fnt', on=base_path, format='bmf')
         self.assertEqual(len(font.glyphs), 189)
-        font = monobit.load(base_path / '6x13-binary.fnt', on=base_path, format='bmf')
+        font = monobit.load('6x13-binary.fnt', on=base_path, format='bmf')
         self.assertEqual(len(font.glyphs), 189)
 
     def test_export_bmf(self):

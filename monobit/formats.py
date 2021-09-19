@@ -50,14 +50,14 @@ class Loaders:
     _magic = {}
 
     @classmethod
-    def get_loader(cls, infile, format=''):
+    def get_loader(cls, infile, on=None, format=''):
         """Get loader function for this format."""
         # try to use magic sequences
         if infile:
             if isinstance(infile, (str, Path)):
                 try:
-                    with streams.open_stream(infile, 'r', binary=True) as stream:
-                        return cls.get_loader(stream, format)
+                    with streams.open_stream(infile, 'r', binary=True, on=on) as stream:
+                        return cls.get_loader(stream, on, format)
                 except IsADirectoryError:
                     pass
             else:
@@ -74,21 +74,37 @@ class Loaders:
     @classmethod
     def load(cls, infile:str, format:str='', on:str='', **kwargs):
         """Read new font from file."""
-        # try loading from a container first
-        if not format:
-            try:
-                return _load_streams_from_container(infile, **kwargs)
-            except TypeError:
-                pass
-        # not a container - identify file type
-        loader = cls.get_loader(infile, format)
-        # in some cases a container is required for opening more files (e.g. bmfont)
-        # if none provided, use the filesystem
-        if not on:
-            return loader(infile, io, **kwargs)
-        else:
-            with open_container(on, 'r') as on:
-                return loader(infile, on, **kwargs)
+        with open_container(on, 'r') as on:
+            # try if infile is a container first
+            if not format:
+                try:
+                    return cls._load_all_from_container(infile, **kwargs)
+                except TypeError:
+                    pass
+            return cls._load_from_file(infile, on, format, **kwargs)
+
+    @classmethod
+    def _load_from_file(cls, infile, on, format, **kwargs):
+        """Open file and load font(s) from it."""
+        # infile is not a container - identify file type
+        loader = cls.get_loader(infile, on, format)
+        return loader(infile, on, **kwargs)
+
+    @classmethod
+    def _load_all_from_container(cls, infile, **kwargs):
+        """Open container and load all fonts found in it into one pack."""
+        # try opening a container, will raise error if not container format
+        packs = []
+        with open_container(infile, 'r') as container:
+            for name in container:
+                font_or_pack = cls._load_from_file(name, on=container, format=None, **kwargs)
+                if isinstance(font_or_pack, Pack):
+                    packs.append(font_or_pack)
+                else:
+                    packs.append([font_or_pack])
+        # flatten list of packs
+        fonts = [_font for _pack in packs for _font in _pack]
+        return Pack(fonts)
 
     @classmethod
     def register(cls, *formats, magic=(), name=None, binary=False, multi=False, container=False):
@@ -102,21 +118,21 @@ class Loaders:
         """
         format = name or formats[0]
 
-        def _load_decorator(load):
+        def _load_decorator(original_loader):
 
             # stream input wrapper
-            @wraps(load)
+            @wraps(original_loader)
             def _loader(infile, on, **kwargs):
-                with streams.open_stream(infile, 'r', binary) as instream:
+                with streams.open_stream(infile, 'r', binary, on=on) as instream:
                     if container:
-                        font_or_pack = load(instream, container=on, **kwargs)
+                        font_or_pack = original_loader(instream, container=on, **kwargs)
                     else:
-                        font_or_pack = load(instream, **kwargs)
-                name = Path(streams.get_stream_name(instream)).name
+                        font_or_pack = original_loader(instream, **kwargs)
+                    name = Path(streams.get_stream_name(instream)).name
                 return _set_extraction_props(font_or_pack, name, format)
 
             # register loader
-            _loader.script_args = load.__annotations__
+            _loader.script_args = original_loader.__annotations__
             for format in formats:
                 cls._loaders[format.lower()] = _loader
             for sequence in magic:
@@ -124,23 +140,6 @@ class Loaders:
             return _loader
 
         return _load_decorator
-
-
-def _load_streams_from_container(infile, **kwargs):
-    """Open container and load all fonts found in it into one pack."""
-    # try opening a container, will raise error if not container format
-    packs = []
-    with open_container(infile, 'r') as container:
-        for name in container:
-            with streams.open_stream(name, 'r', binary=True, on=container) as stream:
-                font_or_pack = Loaders.load(stream, **kwargs)
-            if isinstance(font_or_pack, Pack):
-                packs.append(font_or_pack)
-            else:
-                packs.append([font_or_pack])
-    # flatten list of packs
-    fonts = [_font for _pack in packs for _font in _pack]
-    return Pack(fonts)
 
 
 # extraction properties

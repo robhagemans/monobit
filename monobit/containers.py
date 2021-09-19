@@ -24,9 +24,13 @@ containers = MagicRegistry()
 
 def open_container(file, mode, binary=True):
     """Open container of the appropriate type."""
+    if isinstance(file, Container):
+        return file
     if mode == 'r':
+        if not file:
+            file = '.'
         # handle directories separately - no magic
-        if file and isinstance(file, (str, Path)) and Path(file).is_dir():
+        if isinstance(file, (str, Path)) and Path(file).is_dir():
             container_type = DirContainer
         else:
             container_type = containers.identify(file)
