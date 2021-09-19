@@ -16,7 +16,7 @@ import tarfile
 from pathlib import Path, PurePath, PurePosixPath
 
 from . import streams
-from .streams import MagicRegistry
+from .streams import MagicRegistry, StreamWrapper
 
 
 containers = MagicRegistry()
@@ -81,6 +81,9 @@ class Container:
         return streams.make_textstream(stream, encoding=encoding)
 
 
+###################################################################################################
+# directory
+
 class DirContainer(Container):
     """Treat directory tree as a container."""
 
@@ -114,6 +117,9 @@ class DirContainer(Container):
         """File exists in container."""
         return (self._path / name).exists()
 
+
+###################################################################################################
+# zip archive
 
 @containers.register('.zip', magic=b'PK\x03\x04')
 class ZipContainer(Container):
@@ -188,6 +194,9 @@ class ZipContainer(Container):
         return self._zip.open(filename, mode)
 
 
+###################################################################################################
+# tar archive
+
 @containers.register('.tar')
 class TarContainer(Container):
     """Tar-file wrapper."""
@@ -249,18 +258,17 @@ class TarContainer(Container):
             raise ValueError('Writing to .tar archive not supported')
 
 
-class TarStream:
+class TarStream(StreamWrapper):
     """Wrapper for stream open on tar file."""
 
     def __init__(self, stream, name):
         """Override name with member name."""
         self.name = name
-        self._stream = stream
+        super().__init__(stream)
 
-    def __getattr__(self, attr):
-        """Delegate undefined attributes to wrapped stream."""
-        return getattr(self._stream, attr)
 
+###################################################################################################
+# yaml-style '---'-separated text stream
 
 @containers.register('.txt', magic=b'---')
 class TextContainer(Container):
@@ -300,40 +308,37 @@ class TextContainer(Container):
         """Open a single stream. Name argument is a dummy."""
         if not mode.startswith(self._mode):
             raise ValueError(f"Cannot open file for '{mode}' on container open for '{self._mode}'")
-        if self._substream is not None:
+        if self._substream and not self._substream.closed:
             raise ValueError('Text container can only support one open file at a time.')
-
-        parent = self
-
-        class _SubStream:
-            """Wrapper object to emulate a single text stream."""
-
-            def __init__(self, stream):
-                self._stream = stream
-                self.closed = False
-
-            def __iter__(self):
-                """Iterate over lines until next separator."""
-                for line in self._stream:
-                    if line.strip() == parent.separator:
-                        return
-                    yield line[:-1]
-                self._stream.close()
-
-            def __getattr__(self, attr):
-                """Delegate undefined attributes to wrapped stream."""
-                return getattr(self._stream, attr)
-
-            def close(self):
-                if not self.closed and not self._stream.closed:
-                    try:
-                        self._stream.flush()
-                        if parent._mode == 'w' and not self.closed:
-                            self._stream.write(b'\n%s\n' % (parent.separator, ))
-                    except BrokenPipeError:
-                        pass
-                    parent._substream = None
-                self.closed = True
-
-        self._substream = _SubStream(self._stream)
+        self._substream = TextSubStream(parent=self, mode=self._mode, separator=self.separator)
         return self._substream
+
+
+class TextSubStream(StreamWrapper):
+    """Wrapper object working with TextContainer to emulate a single text stream."""
+
+    def __init__(self, parent, mode, separator):
+        self.closed = False
+        self._parent = parent
+        self._separator = separator
+        self._mode = mode
+        super().__init__(parent._stream)
+
+    def __iter__(self):
+        """Iterate over lines until next separator."""
+        for line in self._stream:
+            if line.strip() == self._separator:
+                return
+            yield line[:-1]
+        self._stream.close()
+
+    def close(self):
+        if not self.closed and not self._stream.closed:
+            try:
+                self._stream.flush()
+                if self._mode == 'w' and not self.closed:
+                    self._stream.write(b'\n%s\n' % (self._separator, ))
+            except BrokenPipeError:
+                pass
+            self._parent._substream = None
+        self.closed = True

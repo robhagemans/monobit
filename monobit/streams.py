@@ -19,7 +19,28 @@ def open_stream(file, mode, binary, *, on=None):
     return Stream(file, mode, binary, on=on)
 
 
-class Stream:
+class StreamWrapper:
+    """Wrapper object to emulate a single text stream."""
+
+    def __init__(self, stream):
+        self._stream = stream
+
+    def __getattr__(self, attr):
+        """Delegate undefined attributes to wrapped stream."""
+        return getattr(self._stream, attr)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
+
+    def __iter__(self):
+        # dunder methods not delegated?
+        return self._stream.__iter__()
+
+
+class Stream(StreamWrapper):
     """Manage file resource."""
 
     def __init__(self, file, mode, binary, *, on=None):
@@ -51,17 +72,7 @@ class Stream:
             file = make_textstream(file)
         self.binary = binary
         self.name = get_stream_name(file)
-        self._stream = file
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        self._stream.close()
-
-    def __iter__(self):
-        # dunder methods not delegated?
-        return self._stream.__iter__()
+        super().__init__(file)
 
     def __getattr__(self, attr):
         """Delegate undefined attributes to wrapped stream."""
