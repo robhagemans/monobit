@@ -44,13 +44,13 @@ if Image:
 
     @Savers.register('bmf', binary=True, multi=False, container=True)
     def save(
-            pack, outfile, container,
+            font, outfile, container,
             image_size:pair=(256, 256),
             image_format:str='png',
             packed:boolean=True,
         ):
         """Save fonts to bmfonts in container."""
-        _create_bmfont(outstream, container, font, image_size, packed, image_format)
+        _create_bmfont(outfile, container, font, image_size, packed, image_format)
 
 
 ##############################################################################
@@ -676,22 +676,23 @@ def _create_bmfont(outfile, container, font, size=(256, 256), packed=False, imag
         outfile = unique_name(container, f'{path}/{fontname}', 'fnt')
     if isinstance(outfile, (str, Path)):
         with container.open(bmfontname, 'wt') as stream:
-            _write_fnt_descriptor(stream, props)
+            _write_fnt_descriptor(stream, props, chars)
     else:
-        _write_fnt_descriptor(outfile, props)
+        _write_fnt_descriptor(outfile, props, chars)
 
-def _write_fnt_descriptor(bmf, props):
+def _write_fnt_descriptor(outfile, props, chars):
     """Write the .fnt descriptor file."""
-    bmf.write(_create_textdict('info', props['info']))
-    bmf.write(_create_textdict('common', props['common']))
-    for page in props['pages']:
-        bmf.write(_create_textdict('page', page))
-    bmf.write('chars count={}\n'.format(len(chars)))
-    for char in chars:
-        bmf.write(_create_textdict('char', char))
-    bmf.write('kernings count={}\n'.format(len(props['kernings'])))
-    for kern in props['kernings']:
-        bmf.write(_create_textdict('kerning', kern))
+    with streams.make_textstream(outfile) as bmf:
+        bmf.write(_create_textdict('info', props['info']))
+        bmf.write(_create_textdict('common', props['common']))
+        for page in props['pages']:
+            bmf.write(_create_textdict('page', page))
+        bmf.write('chars count={}\n'.format(len(chars)))
+        for char in chars:
+            bmf.write(_create_textdict('char', char))
+        bmf.write('kernings count={}\n'.format(len(props['kernings'])))
+        for kern in props['kernings']:
+            bmf.write(_create_textdict('kerning', kern))
 
 
 class SpriteNode:
