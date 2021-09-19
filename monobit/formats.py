@@ -29,15 +29,11 @@ def get_format(file, format=''):
         # if filename given, try to use it to infer format
         name = streams.get_stream_name(file)
         suffixes = Path(name).suffixes
+        while len(suffixes) > 1:
+            if containers.has_suffix(suffixes[-1]) or compressors.has_suffix(suffixes[-1]):
+                suffixes.pop()
         if suffixes:
-            # container/compressed formats often have names like .format.gz
-            if len(suffixes) >= 2 and (
-                    containers.has_suffix(suffixes[-1])
-                    or compressors.has_suffix(suffixes[-1])
-                ):
-                format = suffixes[-2]
-            else:
-                format = suffixes[-1]
+            format = suffixes[-1]
     # normalise suffix
     if format.startswith('.'):
         format = format[1:]
