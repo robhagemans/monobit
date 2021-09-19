@@ -96,11 +96,11 @@ class Loaders:
             @wraps(load)
             def _load_func(infile, **kwargs):
                 if container:
-                    return _load_container_format(load, infile, binary, multi, name, **kwargs)
+                    return _load_container_format(load, infile, binary, name, **kwargs)
                 try:
-                    return _load_streams_from_container(load, infile, binary, multi, name, **kwargs)
+                    return _load_streams_from_container(load, infile, binary, name, **kwargs)
                 except TypeError:
-                    return _load_stream_format(load, infile, binary, multi, name, **kwargs)
+                    return _load_stream_format(load, infile, binary, name, **kwargs)
 
             # register loader
             _load_func.script_args = load.__annotations__
@@ -113,13 +113,13 @@ class Loaders:
         return _load_decorator
 
 
-def _load_container_format(load, infile, binary, multi, format, **kwargs):
+def _load_container_format(load, infile, binary, format, **kwargs):
     """Open a container and provide to font loader."""
     with open_container(infile, 'r') as zip_con:
         font_or_pack = load(zip_con, **kwargs)
         return _set_extraction_props(font_or_pack, infile, format)
 
-def _load_stream_format(load, infile, binary, multi, format, **kwargs):
+def _load_stream_format(load, infile, binary, format, **kwargs):
     """Load font or pack from stream."""
     with streams.open_stream(infile, 'r', binary) as instream:
         # Stream object always has a .name
@@ -127,11 +127,12 @@ def _load_stream_format(load, infile, binary, multi, format, **kwargs):
         font_or_pack = load(instream, **kwargs)
     return _set_extraction_props(font_or_pack, name, format)
 
-def _load_streams_from_container(load, infile, binary, multi, format, **kwargs):
+
+def _load_streams_from_container(load, infile, binary, format, **kwargs):
     """Open container and load all fonts found in it into one pack."""
     # try opening a container, will raise error if not container format
+    packs = []
     with open_container(infile, 'r') as zip_con:
-        packs = []
         for name in zip_con:
             with streams.open_stream(name, 'r', binary, on=zip_con) as stream:
                 font_or_pack = load(stream, **kwargs)
@@ -140,9 +141,9 @@ def _load_streams_from_container(load, infile, binary, multi, format, **kwargs):
                 packs.append(font_or_pack)
             else:
                 packs.append([font_or_pack])
-        # flatten list of packs
-        fonts = [_font for _pack in packs for _font in _pack]
-        return Pack(fonts)
+    # flatten list of packs
+    fonts = [_font for _pack in packs for _font in _pack]
+    return Pack(fonts)
 
 
 # extraction properties
