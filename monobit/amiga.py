@@ -145,7 +145,7 @@ def _read_string(f):
 
 def _read_header(f):
     """Read file header."""
-        # read header id
+    # read header id
     if _read_ulong(f) != _HUNK_HEADER:
         raise ValueError('Not an Amiga font data file: incorrect magic constant')
     # null terminated list of strings
@@ -176,7 +176,8 @@ def _read_font_hunk(f):
         amiga_props.tf_Flags & _FPF_PROPORTIONAL,
         amiga_props.tf_Modulo, amiga_props.tf_LoChar, amiga_props.tf_HiChar,
         amiga_props.tf_CharData + loc, amiga_props.tf_CharLoc + loc,
-        amiga_props.tf_CharSpace + loc, amiga_props.tf_CharKern + loc
+        None if not amiga_props.tf_CharSpace else amiga_props.tf_CharSpace + loc,
+        None if not amiga_props.tf_CharKern else amiga_props.tf_CharKern + loc
     )
     props = _parse_amiga_props(amiga_props, offset_x)
     props['source-name'] = '/'.join(f.name.split(os.sep)[-2:])
