@@ -135,7 +135,7 @@ _XLFD_UNPARSED = {
 ##############################################################################
 # top-level calls
 
-@Loaders.register('bdf', name='BDF')
+@Loaders.register('bdf', magic=(b'STARTFONT ',), name='BDF')
 def load(instream):
     """Load font from a .bdf file."""
     nchars, comments, bdf_props, x_props = _read_bdf_global(instream)

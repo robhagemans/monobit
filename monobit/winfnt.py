@@ -357,7 +357,7 @@ _GLYPH_ENTRY = {
 ##############################################################################
 # top level functions
 
-@Loaders.register('fnt', name='Windows FNT', binary=True)
+@Loaders.register('fnt', magic=(b'\0\x01', b'\0\x02', b'\0\x03'), name='Windows FNT', binary=True)
 def load(instream):
     """Load a Windows .FNT file."""
     font = parse_fnt(instream.read())

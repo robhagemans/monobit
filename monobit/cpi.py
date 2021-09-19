@@ -100,7 +100,11 @@ _FORMAT_NAME = {
 }
 
 
-@Loaders.register('cpi', name='CPI', binary=True, multi=True)
+@Loaders.register(
+    'cpi',
+    magic=(b'\xff'+_ID_MS, b'\xff'+_ID_NT, b'\x7f'+_ID_DR),
+    name='CPI', binary=True, multi=True
+)
 def load(instream):
     """Load fonts from CPI file."""
     data = instream.read()

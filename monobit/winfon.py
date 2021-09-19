@@ -235,7 +235,7 @@ _IMAGE_RESOURCE_DATA_ENTRY = friendlystruct(
 ##############################################################################
 # top level functions
 
-@Loaders.register('fon', name='Windows FON', binary=True, multi=True)
+@Loaders.register('fon', magic=(b'MZ',), name='Windows FON', binary=True, multi=True)
 def load(instream):
     """Load a Windows .FON file."""
     data = instream.read()
