@@ -47,7 +47,6 @@ early_exception = None
 try:
     loader = monobit.formats.Loaders.get_loader(args.infile, format=args.from_)
 except Exception as exc:
-    early_exception = exc
     loader = None
 else:
     for arg, _type in loader.script_args.items():
@@ -57,7 +56,6 @@ else:
 try:
     saver = monobit.formats.Savers.get_saver(args.outfile, format=args.to_)
 except Exception as exc:
-    early_exception = exc
     saver = None
 else:
     for arg, _type in saver.script_args.items():

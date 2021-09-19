@@ -141,7 +141,7 @@ class TestMonobit(unittest.TestCase):
 
     def test_import_bmf(self):
         """Test importing bmfont files."""
-        pack = monobit.load(self.font_path / '6x13.bmf')
+        pack = monobit.load(self.font_path / '6x13.bmf', format='bmf')
         self.assertEqual(len(pack), 7)
 
     def test_export_bmf(self):

@@ -74,6 +74,13 @@ class Loaders:
     @classmethod
     def load(cls, infile:str, format:str='', **kwargs):
         """Read new font from file."""
+        # try loading from a container first
+        if not format:
+            try:
+                return _load_streams_from_container(infile, **kwargs)
+            except TypeError:
+                pass
+        # not a container - identify file type
         loader = cls.get_loader(infile, format)
         return loader(infile, **kwargs)
 
@@ -97,10 +104,7 @@ class Loaders:
             def _load_func(infile, **kwargs):
                 if container:
                     return _load_container_format(load, infile, binary, name, **kwargs)
-                try:
-                    return _load_streams_from_container(load, infile, binary, name, **kwargs)
-                except TypeError:
-                    return _load_stream_format(load, infile, binary, name, **kwargs)
+                return _load_stream_format(load, infile, binary, name, **kwargs)
 
             # register loader
             _load_func.script_args = load.__annotations__
@@ -128,15 +132,14 @@ def _load_stream_format(load, infile, binary, format, **kwargs):
     return _set_extraction_props(font_or_pack, name, format)
 
 
-def _load_streams_from_container(load, infile, binary, format, **kwargs):
+def _load_streams_from_container(infile, **kwargs):
     """Open container and load all fonts found in it into one pack."""
     # try opening a container, will raise error if not container format
     packs = []
-    with open_container(infile, 'r') as zip_con:
-        for name in zip_con:
-            with streams.open_stream(name, 'r', binary, on=zip_con) as stream:
-                font_or_pack = load(stream, **kwargs)
-            font_or_pack = _set_extraction_props(font_or_pack, name, format)
+    with open_container(infile, 'r') as container:
+        for name in container:
+            with streams.open_stream(name, 'r', binary=True, on=container) as stream:
+                font_or_pack = Loaders.load(stream, **kwargs)
             if isinstance(font_or_pack, Pack):
                 packs.append(font_or_pack)
             else:
