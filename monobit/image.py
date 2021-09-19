@@ -40,7 +40,7 @@ if Image:
             # PNG
             b'\x89PNG\r\n\x1a\n',
             # BMP
-            b'BM',
+            #b'BM',   # -- clash with bmfont b'BMF'
             # GIF
             b'GIF87a', b'GIF89a',
             # TIFF
