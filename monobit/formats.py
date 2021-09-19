@@ -54,7 +54,7 @@ class Loaders:
         """Get loader function for this format."""
         # try to use magic sequences
         if infile:
-            if isinstance(infile, (str, bytes, Path)):
+            if isinstance(infile, (str, Path)):
                 try:
                     with streams.open_stream(infile, 'r', binary=True) as stream:
                         return cls.get_loader(stream, format)

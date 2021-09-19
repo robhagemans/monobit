@@ -30,7 +30,7 @@ class Stream:
         # on: container to open any new stream on
         mode = mode[:1]
         # if a path is provided, open a (binary) stream
-        if isinstance(file, (str, bytes, Path)):
+        if isinstance(file, (str, Path)):
             if not on:
                 file = io.open(file, mode + 'b')
             else:
@@ -144,7 +144,7 @@ class MagicRegistry:
 
     def identify(self, file):
         """Identify a type from magic sequence on input file."""
-        if not file or isinstance(file, (str, bytes, Path)):
+        if not file or isinstance(file, (str, Path)):
             # only use context manager if string provided
             # if we got an open stream we should not close it
             with open_stream(file, 'r', binary=True) as stream:

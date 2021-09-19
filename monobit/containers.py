@@ -25,14 +25,14 @@ def open_container(file, mode, binary=True):
     """Open container of the appropriate type."""
     if mode == 'r':
         # handle directories separately - no magic
-        if file and isinstance(file, (str, bytes, Path)) and Path(file).is_dir():
+        if file and isinstance(file, (str, Path)) and Path(file).is_dir():
             container_type = DirContainer
         else:
             container_type = containers.identify(file)
         if not container_type:
             raise TypeError('Expected container format, got non-container stream')
     else:
-        if file and isinstance(file, (str, bytes, Path)):
+        if file and isinstance(file, (str, Path)):
             container_type = DirContainer
         elif binary:
             container_type = ZipContainer
@@ -116,7 +116,7 @@ class DirContainer(Container):
 
 @containers.register('.zip', magic=b'PK\x03\x04')
 class ZipContainer(Container):
-    """Zip-file wrapper"""
+    """Zip-file wrapper."""
 
     def __init__(self, file, mode='r'):
         """Create wrapper."""
@@ -124,11 +124,6 @@ class ZipContainer(Container):
         root = ''
         # mode really should just be 'r' or 'w'
         mode = mode[:1]
-        # use standard streams if none provided
-        if not file:
-            file = streams.stdio_stream(mode, binary=True)
-        if isinstance(file, bytes):
-            file = file.decode('ascii')
         if isinstance(file, (str, Path)):
             file = root = str(file)
             if mode == 'w' and not file.endswith('.zip'):
