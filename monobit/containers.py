@@ -12,6 +12,7 @@ import logging
 import itertools
 from contextlib import contextmanager
 from zipfile import ZipFile
+import tarfile
 from pathlib import Path, PurePath, PurePosixPath
 
 from . import streams
@@ -131,19 +132,19 @@ class ZipContainer(Container):
         else:
             root = streams.get_stream_name(file)
         # if name ends up empty, replace; clip off any dir path and suffix
-        root = PurePath(root).stem or 'fontdata'
+        root = PurePath(root).stem or 'fonts'
         # reading zipfile needs a seekable stream, drain to buffer if needed
         # note you can only do this once on the input stream!
         if (mode == 'r' and not isinstance(file, (str, Path)) and not file.seekable()):
             file = io.BytesIO(file.read())
-        # create the zipfile
-        self._zip = ZipFile(file, mode)
         if mode == 'w':
             # if creating a new container, put everything in a directory inside it
             self._root = root
         else:
             self._root = ''
         self._mode = mode
+        # create the zipfile
+        self._zip = ZipFile(file, mode)
 
     def _close(self):
         """Close the zip file, ignoring errors."""
@@ -185,6 +186,80 @@ class ZipContainer(Container):
         mode = mode[:1]
         # always open as binary
         return self._zip.open(filename, mode)
+
+
+@containers.register('.tar')
+class TarContainer(Container):
+    """Tar-file wrapper."""
+
+    def __init__(self, file, mode='r'):
+        """Create wrapper."""
+        # mode really should just be 'r' or 'w'
+        mode = mode[:1]
+        if isinstance(file, (str, Path)):
+            file = str(file)
+        # reading zipfile needs a seekable stream, drain to buffer if needed
+        # note you can only do this once on the input stream!
+        if (mode == 'r' and not isinstance(file, (str, Path)) and not file.seekable()):
+            file = io.BytesIO(file.read())
+        # create the tarfile
+        if mode != 'r':
+            raise ValueError('Writing to tarfile not supported')
+        self._mode = mode
+        self._tarfile = tarfile.open(file, mode)
+
+    def _close(self):
+        """Close the zip file, ignoring errors."""
+        try:
+            self._tarfile.close()
+        except EnvironmentError:
+            # e.g. BrokenPipeError
+            pass
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        if exc_type == BrokenPipeError:
+            return True
+        self._close()
+
+    def __del__(self):
+        """Ensure archive is closed and essential records written."""
+        try:
+            self._close()
+        except AttributeError:
+            # _tarfile may already have been destroyed
+            pass
+
+    def __iter__(self):
+        """List contents."""
+        return iter(self._tarfile.getnames())
+
+    def __contains__(self, name):
+        """File exists in container."""
+        return name in list(self)
+
+    def open_binary(self, name, mode):
+        """Open a stream in the container."""
+        mode = mode[:1]
+        # always open as binary
+        if mode == 'r':
+            file = self._tarfile.extractfile(name)
+            # .name is not writeable, so we need to wrap
+            return TarStream(file, name)
+        else:
+            raise ValueError('Writing to .tar archive not supported')
+
+
+class TarStream:
+    """Wrapper for stream open on tar file."""
+
+    def __init__(self, stream, name):
+        """Override name with member name."""
+        self.name = name
+        self._stream = stream
+
+    def __getattr__(self, attr):
+        """Delegate undefined attributes to wrapped stream."""
+        return getattr(self._stream, attr)
 
 
 @containers.register('.txt', magic=b'---')

@@ -173,7 +173,11 @@ def open_compressed_stream(file):
     compressor = compressors.identify(file)
     if not compressor:
         return file
-    wrapped = compressor.open(file, file.mode[:1] + 'b')
+    if file.readable():
+        mode = 'r'
+    else:
+        mode = 'w'
+    wrapped = compressor.open(file, mode + 'b')
     # set name of uncompressed stream
     wrapped.name = get_stream_name(file)
     # drop the .gz etc
