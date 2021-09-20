@@ -13,7 +13,7 @@ from functools import wraps
 from pathlib import Path
 
 from .base import VERSION, DEFAULT_FORMAT, scriptable
-from .containers import open_container, unique_name, containers
+from .containers import open_container, unique_name, containers, Container
 from .font import Font
 from .pack import Pack
 from . import streams
@@ -54,12 +54,9 @@ class Loaders:
         """Get loader function for this format."""
         # try to use magic sequences
         if infile:
-            if isinstance(infile, (str, Path)):
-                try:
-                    with streams.open_stream(infile, 'r', binary=True, on=on) as stream:
-                        return cls.get_loader(stream, on, format)
-                except IsADirectoryError:
-                    pass
+            if isinstance(infile, (str, Path)) and not Path(infile).is_dir():
+                with streams.open_stream(infile, 'r', binary=True, on=on) as stream:
+                    return cls.get_loader(stream, on, format)
             else:
                 if infile.readable():
                     for magic, loader in cls._magic.items():
@@ -75,14 +72,16 @@ class Loaders:
     @classmethod
     def load(cls, infile:str, format:str='', on:str='', **kwargs):
         """Read new font from file."""
-        with open_container(on, 'r') as on:
-            # try if infile is a container first
-            if not format:
-                try:
-                    return cls._load_all_from_container(infile, **kwargs)
-                except TypeError:
-                    pass
-            return cls._load_from_file(infile, on, format, **kwargs)
+        if on and not isinstance(on, Container):
+            with open_container(on, 'r') as on:
+                return cls.load(infile, format, on, **kwargs)
+        # try if infile is a container first
+        if not format and not on:
+            try:
+                return cls._load_all_from_container(infile, **kwargs)
+            except TypeError:
+                pass
+        return cls._load_from_file(infile, on, format, **kwargs)
 
     @classmethod
     def _load_from_file(cls, infile, on, format, **kwargs):
@@ -94,8 +93,8 @@ class Loaders:
     @classmethod
     def _load_all_from_container(cls, infile, **kwargs):
         """Open container and load all fonts found in it into one pack."""
-        # try opening a container, will raise error if not container format
         packs = []
+        # try opening a container, will raise error if not container format
         with open_container(infile, 'r') as container:
             for name in container:
                 font_or_pack = cls._load_from_file(name, on=container, format=None, **kwargs)
@@ -181,7 +180,13 @@ class Savers:
 
     @classmethod
     def save(cls, pack, outfile:str, format:str='', on:str='', **kwargs):
-        """Write to file, return unchanged."""
+        """
+        Write to file, return unchanged.
+            outfile: stream or filename
+            format: format specification string
+            on: location/container. mandatory for formats that need filesystem access.
+                if specified and outfile is a filename, it is taken relative to this location.
+        """
         saver = cls.get_saver(outfile, format)
         saver(pack, outfile, on, **kwargs)
         return pack
@@ -206,11 +211,8 @@ class Savers:
                 else:
                     pack = pack_or_font
                 with open_container(on, 'w', binary) as on:
-                    logging.warning(on)
-                    logging.warning(repr(outfile))
                     if container or multi or len(pack) == 1:
                         with streams.open_stream(outfile, 'w', binary) as outstream:
-                            logging.warning(outstream)
                             if not multi:
                                 pack = pack[0]
                             if container:

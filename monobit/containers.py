@@ -21,29 +21,34 @@ from .streams import MagicRegistry, StreamWrapper
 
 containers = MagicRegistry()
 
-
 def open_container(file, mode, binary=True):
     """Open container of the appropriate type."""
     if isinstance(file, Container):
         return file
-    if not file:
-        file = '.'
-    if mode == 'r':
-        # handle directories separately - no magic
-        if isinstance(file, (str, Path)) and Path(file).is_dir():
-            container_type = DirContainer
-        else:
-            container_type = containers.identify(file)
-        if not container_type:
-            raise TypeError('Expected container format, got non-container stream')
     else:
-        if file and isinstance(file, (str, Path)):
+        container_type = identify_container(file, mode, binary)
+        return container_type(file, mode)
+
+def identify_container(file, mode, binary):
+    """Get container of the appropriate type."""
+    if not file:
+        container_type = None
+    # handle directories separately - no magic
+    elif isinstance(file, (str, Path)) and Path(file).is_dir():
+        container_type = DirContainer
+    else:
+        container_type = containers.identify(file)
+    if not container_type:
+        # no container type found
+        if mode == 'r':
+            raise TypeError('Expected container format, got non-container stream.')
+        if not file:
             container_type = DirContainer
         elif binary:
             container_type = ZipContainer
         else:
             container_type = TextContainer
-    return container_type(file, mode)
+    return container_type
 
 
 def unique_name(container, name, ext):
