@@ -17,7 +17,7 @@ parser.add_argument('infile', nargs='?', type=str, default='')
 parser.add_argument('outfile', nargs='?', type=str, default='')
 parser.add_argument(
     '--from', dest='from_', default='', type=str,
-    help='input format (default: infer from filename)'
+    help='input format (default: infer from magic number or filename)'
 )
 parser.add_argument(
     '--to', dest='to_', default='', type=str,
@@ -41,6 +41,15 @@ parser.add_argument(
 )
 # find out which operation we're asked to perform
 args, unknown = parser.parse_known_args()
+
+
+if args.debug:
+    loglevel = logging.DEBUG
+else:
+    loglevel = logging.INFO
+
+logging.basicConfig(level=loglevel, format='%(levelname)s: %(message)s')
+
 
 # get loader arguments
 early_exception = None
@@ -84,15 +93,6 @@ if saver:
     }
 else:
     save_args = {}
-
-
-if args.debug:
-    loglevel = logging.DEBUG
-else:
-    loglevel = logging.INFO
-
-logging.basicConfig(level=loglevel, format='%(levelname)s: %(message)s')
-
 
 try:
     if early_exception:
