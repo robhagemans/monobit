@@ -41,7 +41,7 @@ def identify_container(file, mode, binary):
     if not container_type:
         # no container type found
         if mode == 'r':
-            raise TypeError('Expected container format, got non-container stream.')
+            raise TypeError('Expected container format, got non-container stream')
         if not file:
             container_type = DirContainer
         elif binary:
