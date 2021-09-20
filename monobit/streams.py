@@ -88,7 +88,8 @@ class Stream(StreamWrapper):
 
 def make_textstream(file, *, encoding=None):
     """Wrap binary stream to create text stream."""
-    encoding = 'utf-8-sig' if file.readable() else 'utf-8'
+    if not encoding:
+        encoding = 'utf-8-sig' if file.readable() else 'utf-8'
     return io.TextIOWrapper(file, encoding=encoding)
 
 def is_binary(stream):
@@ -155,7 +156,9 @@ class MagicRegistry:
 
     def identify(self, file):
         """Identify a type from magic sequence on input file."""
-        if not file or isinstance(file, (str, Path)):
+        if not file:
+            return None
+        if isinstance(file, (str, Path)):
             # only use context manager if string provided
             # if we got an open stream we should not close it
             with open_stream(file, 'r', binary=True) as stream:
