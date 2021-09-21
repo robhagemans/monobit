@@ -45,11 +45,15 @@ class Stream(StreamWrapper):
 
     def __init__(self, file, mode, binary, *, on=None):
         """Ensure file is a stream of the right type, open or wrap if necessary."""
-        # path is a path-like object
+        if not file:
+            raise ValueError('No file name, path or stream provided.')
+        # file is a stream, string or path-like object
         # mode is 'r' or 'w'
         # binary is a boolean; open as binary if true, as text if false
         # on: container to open any new stream on
         mode = mode[:1]
+        # don't close externally provided stream
+        self._keep_open = not isinstance(file, (str, Path))
         # if a path is provided, open a (binary) stream
         if isinstance(file, (str, Path)):
             if not on:
@@ -80,10 +84,11 @@ class Stream(StreamWrapper):
 
     def close(self):
         """Close stream, absorb errors."""
-        try:
-            self._stream.close()
-        except EnvironmentError:
-            pass
+        if not self._keep_open:
+            try:
+                self._stream.close()
+            except EnvironmentError:
+                pass
 
 
 def make_textstream(file, *, encoding=None):
