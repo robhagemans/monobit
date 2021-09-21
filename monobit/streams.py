@@ -196,6 +196,7 @@ def open_compressed_stream(file):
         mode = 'r'
     else:
         mode = 'w'
+    logging.info("Opening %s-compressed stream for mode '%s'", compressor.__name__, mode)
     wrapped = compressor.open(file, mode + 'b')
     # set name of uncompressed stream
     wrapped.name = get_stream_name(file)

@@ -11,13 +11,14 @@ import gzip
 import logging
 from functools import wraps
 from pathlib import Path
+from contextlib import contextmanager
 
 from .base import VERSION, DEFAULT_FORMAT, scriptable
-from .containers import open_container, unique_name, containers, Container
+from .containers import Container, open_container, unique_name, containers
 from .font import Font
 from .pack import Pack
 from . import streams
-from .streams import compressors, has_magic
+from .streams import Stream, open_stream, compressors, has_magic
 
 
 # identify font file format from suffix
@@ -38,6 +39,22 @@ def get_format(file, format=''):
     if format.startswith('.'):
         format = format[1:]
     return format.lower()
+
+
+##############################################################################
+
+@contextmanager
+def open_location(file, on, mode):
+    """
+    Open a binary stream on a container or filesystem
+    both `file` and `on` may be Streams, files, or file/directory names
+    `on` may also be a Container
+    if `on` is empty or the module io, the whole filesystem is taken as the container/location.
+    returns a Steam and a Container object
+    """
+    with open_container(on, mode) as container:
+        with open_stream(file, mode, binary=True, on=container) as stream:
+            yield stream, container
 
 
 ##############################################################################
@@ -72,11 +89,12 @@ class Loaders:
     @classmethod
     def load(cls, infile:str, format:str='', on:str='', **kwargs):
         """Read new font from file."""
-        if on and not isinstance(on, Container):
-            with open_container(on, 'r') as on:
-                return cls.load(infile, format, on, **kwargs)
+        # if container provided as string or steam, open it
+        if not isinstance(on, Container) or not isinstance(infile, Stream):
+            with open_location(infile, on, 'r') as (stream, on):
+                return cls.load(stream, format, on, **kwargs)
         # try if infile is a container first
-        if not format and not on:
+        if not format:
             try:
                 return cls._load_all_from_container(infile, **kwargs)
             except TypeError:
@@ -94,7 +112,7 @@ class Loaders:
     def _load_all_from_container(cls, infile, **kwargs):
         """Open container and load all fonts found in it into one pack."""
         packs = []
-        # try opening a container, will raise error if not container format
+        # try opening a container on input file for read, will raise error if not container format
         with open_container(infile, 'r') as container:
             for name in container:
                 font_or_pack = cls._load_from_file(name, on=container, format=None, **kwargs)
