@@ -210,7 +210,6 @@ class Savers:
                     pack = Pack([pack_or_font])
                 else:
                     pack = pack_or_font
-                logging.warning(repr((outfile, on, binary)))
                 if container or multi or len(pack) == 1:
                     with open_container(on, 'w', binary) as on:
                         with streams.open_stream(outfile, 'w', binary, on=on) as outstream:
