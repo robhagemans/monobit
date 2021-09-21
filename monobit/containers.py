@@ -25,23 +25,27 @@ def open_container(file, mode, binary=True):
     """Open container of the appropriate type."""
     if isinstance(file, Container):
         return file
-    else:
-        container_type = identify_container(file, mode, binary)
-        return container_type(file, mode)
+    if not file or file == io:
+        # io module is not a context manager
+        return DirContainer('')
+    container_type = identify_container(file, mode, binary)
+    return container_type(file, mode)
 
 def identify_container(file, mode, binary):
     """Get container of the appropriate type."""
-    if not file:
-        container_type = None
+    # no file provided means filesystem
+    if not file or file == io:
+        # io module is not a context manager
+        return DirContainer
     # handle directories separately - no magic
-    elif isinstance(file, (str, Path)) and Path(file).is_dir():
+    if isinstance(file, (str, Path)) and Path(file).is_dir():
         container_type = DirContainer
     else:
         container_type = containers.identify(file)
     if not container_type:
         # no container type found
         if mode == 'r':
-            raise TypeError('Expected container format, got non-container stream')
+            raise TypeError('Expected container format, got non-container stream.')
         if not file:
             container_type = DirContainer
         elif binary:
@@ -98,6 +102,9 @@ class DirContainer(Container):
 
     def __init__(self, path, mode='r'):
         """Create wrapper."""
+        # if empty path, this refers to the whole filesystem
+        if not path:
+            path = ''
         self._path = Path(path)
         # mode really should just be 'r' or 'w'
         mode = mode[:1]
@@ -116,6 +123,9 @@ class DirContainer(Container):
 
     def __iter__(self):
         """List contents."""
+        # don't walk the whole filesystem - no path is no contents
+        if not self._path:
+            return ()
         return (
             str((Path(_r) / _f).relative_to(self._path))
             for _r, _, _files in os.walk(self._path)
