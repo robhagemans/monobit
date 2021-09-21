@@ -18,7 +18,7 @@ from .containers import Container, open_container, unique_name, containers
 from .font import Font
 from .pack import Pack
 from . import streams
-from .streams import Stream, open_stream, compressors, has_magic
+from .streams import Stream, open_stream, make_textstream, compressors, has_magic
 
 
 # identify font file format from suffix
@@ -115,11 +115,12 @@ class Loaders:
         # try opening a container on input file for read, will raise error if not container format
         with open_container(infile, 'r') as container:
             for name in container:
-                font_or_pack = cls._load_from_file(name, on=container, format=None, **kwargs)
-                if isinstance(font_or_pack, Pack):
-                    packs.append(font_or_pack)
-                else:
-                    packs.append([font_or_pack])
+                with streams.open_stream(name, 'r', binary=True, on=container) as stream:
+                    font_or_pack = cls._load_from_file(stream, on=container, format=None, **kwargs)
+                    if isinstance(font_or_pack, Pack):
+                        packs.append(font_or_pack)
+                    else:
+                        packs.append([font_or_pack])
         # flatten list of packs
         fonts = [_font for _pack in packs for _font in _pack]
         return Pack(fonts)
@@ -140,13 +141,14 @@ class Loaders:
 
             # stream input wrapper
             @wraps(original_loader)
-            def _loader(infile, on, **kwargs):
-                with streams.open_stream(infile, 'r', binary, on=on) as instream:
-                    if container:
-                        font_or_pack = original_loader(instream, container=on, **kwargs)
-                    else:
-                        font_or_pack = original_loader(instream, **kwargs)
-                    name = Path(streams.get_stream_name(instream)).name
+            def _loader(instream, on, **kwargs):
+                if not binary:
+                    instream = make_textstream(instream)
+                if container:
+                    font_or_pack = original_loader(instream, container=on, **kwargs)
+                else:
+                    font_or_pack = original_loader(instream, **kwargs)
+                name = Path(instream.name).name
                 return _set_extraction_props(font_or_pack, name, format)
 
             # register loader
