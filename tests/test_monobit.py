@@ -160,7 +160,7 @@ class TestMonobit(unittest.TestCase):
     def test_export_bmf(self):
         """Test exporting bmfont files."""
         fnt_file = self.temp_path / '4x6.bmf'
-        monobit.save(self.fixed4x6, fnt_file)
+        monobit.save(self.fixed4x6, fnt_file, on=self.temp_path)
         self.assertTrue(os.path.getsize(fnt_file) > 0)
 
     def test_import_c(self):
