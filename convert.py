@@ -39,8 +39,25 @@ parser.add_argument(
     '-h', '--help', action='store_true',
     help='show this help message and exit'
 )
+
+
+def add_script_args(parser, loadersaver):
+    """Add loader or saver arguments to argparser."""
+    for arg, _type in loadersaver.script_args.items():
+        parser.add_argument('--' + arg.replace('_', '-'), dest=arg, type=_type)
+
+def convert_args(args, loadersaver):
+    """Convert arguments to type accepted by operation."""
+    if not loadersaver:
+        return {}
+    return {
+        _name: _arg
+        for _name, _arg in vars(args).items()
+        if _arg is not None and _name in loader.script_args
+    }
+
 # find out which operation we're asked to perform
-args, unknown = parser.parse_known_args()
+args, _ = parser.parse_known_args()
 
 
 if args.debug:
@@ -50,60 +67,50 @@ else:
 
 logging.basicConfig(level=loglevel, format='%(levelname)s: %(message)s')
 
+# help screen should include loader/saver arguments if from/to specified
+if args.help:
+    if args.from_:
+        loader = monobit.formats.Loaders.get_loader(format=args.from_)
+        add_script_args(parser, loader)
+    if args.to_:
+        loader = monobit.formats.Loaders.get_saver(format=args.to_)
+        add_script_args(parser, saver)
+    parser.print_help()
+    sys.exit(0)
+
 try:
-    # get loader arguments
-    try:
-        loader = monobit.formats.Loaders.get_loader(args.infile, format=args.from_)
-    except Exception as exc:
-        loader = None
-    else:
-        for arg, _type in loader.script_args.items():
-            parser.add_argument('--' + arg.replace('_', '-'), dest=arg, type=_type)
+    # if no infile or outfile provided, use stdio
+    infile = args.infile or sys.stdin.buffer
+    outfile = args.outfile or sys.stdout.buffer
 
-    # get saver arguments
-    try:
-        saver = monobit.formats.Savers.get_saver(args.outfile, format=args.to_)
-    except Exception as exc:
-        saver = None
-    else:
-        for arg, _type in saver.script_args.items():
-            parser.add_argument('--' + arg.replace('_', '-'), dest=arg, type=_type)
+    # open streams
+    with monobit.open_location(infile, 'r') as (instream, incontainer):
+        # get loader arguments
+        loader = monobit.formats.Loaders.get_loader(instream, format=args.from_)
+        if loader:
+            add_script_args(parser, loader)
+            # don't raise if no loader - it may be a container we can extract
+        args, _ = parser.parse_known_args()
+        # convert arguments to type accepted by operation
+        load_args = convert_args(args, loader)
+        font = monobit.load(instream, on=incontainer, format=args.from_, **load_args)
 
-    args = parser.parse_args()
-
-    if args.help:
-        parser.print_help()
-        sys.exit(0)
-
-    # convert arguments to type accepted by operation
-    if loader:
-        load_args = {
-            _name: _arg
-            for _name, _arg in vars(args).items()
-            if _arg is not None and _name in loader.script_args
-        }
-    else:
-        load_args = {}
-    if saver:
-        save_args = {
-            _name: _arg
-            for _name, _arg in vars(args).items()
-            if _arg is not None and _name in saver.script_args
-        }
-    else:
-        save_args = {}
-
-    if not args.infile:
-        args.infile = sys.stdin.buffer
-    font = monobit.load(args.infile, format=args.from_, **load_args)
     if args.codepage:
         font = font.set_encoding(args.codepage)
     if args.comments:
         with open(args.comments) as f:
             font = font.add_comments(f.read())
-    if not args.outfile:
-        args.outfile = sys.stdout.buffer
-    monobit.save(font, args.outfile, format=args.to_, **save_args)
+
+    with monobit.open_location(outfile, 'w') as (outstream, outcontainer):
+        # get saver arguments
+        saver = monobit.formats.Savers.get_saver(outstream, format=args.to_)
+        if saver:
+            add_script_args(parser, saver)
+        args = parser.parse_args()
+        # convert arguments to type accepted by operation
+        save_args = convert_args(args, saver)
+        monobit.save(font, outstream, on=outcontainer, format=args.to_, **save_args)
+
 except BrokenPipeError:
     # happens e.g. when piping to `head`
     # https://stackoverflow.com/questions/16314321/suppressing-printout-of-exception-ignored-message-in-python-3

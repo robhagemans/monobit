@@ -23,18 +23,23 @@ from .streams import Stream, open_stream, make_textstream, compressors, has_magi
 
 # identify font file format from suffix
 
-def get_format(file, format=''):
-    """Get format name from file name."""
+def get_format(file=None, format=''):
+    """
+    Get format name from file name.
+    `file` must be a Stream
+    """
     if not format:
         format = DEFAULT_FORMAT
-        # if filename given, try to use it to infer format
-        name = streams.get_stream_name(file)
-        suffixes = Path(name).suffixes
-        while len(suffixes) > 1:
-            if containers.has_suffix(suffixes[-1]) or compressors.has_suffix(suffixes[-1]):
-                suffixes.pop()
-        if suffixes:
-            format = suffixes[-1]
+        if file:
+            # if filename given, try to use it to infer format
+            suffixes = Path(file.name).suffixes
+            # drop trailing suffixes like .tar.gz
+            # TODO: this should already be done by Stream?
+            while len(suffixes) > 1:
+                if containers.has_suffix(suffixes[-1]) or compressors.has_suffix(suffixes[-1]):
+                    suffixes.pop()
+            if suffixes:
+                format = suffixes[-1]
     # normalise suffix
     if format.startswith('.'):
         format = format[1:]
@@ -44,7 +49,7 @@ def get_format(file, format=''):
 ##############################################################################
 
 @contextmanager
-def open_location(file, on, mode):
+def open_location(file, mode, on=None):
     """
     Open a binary stream on a container or filesystem
     both `file` and `on` may be Streams, files, or file/directory names
@@ -67,31 +72,26 @@ class Loaders:
     _magic = {}
 
     @classmethod
-    def get_loader(cls, infile, on=None, format=''):
-        """Get loader function for this format."""
+    def get_loader(cls, infile=None, format=''):
+        """
+        Get loader function for this format.
+        infile must be a Stream or empty.
+        """
         # try to use magic sequences
-        if infile:
-            if isinstance(infile, (str, Path)) and not Path(infile).is_dir():
-                with streams.open_stream(infile, 'r', binary=True, on=on) as stream:
-                    return cls.get_loader(stream, on, format)
-            else:
-                if infile.readable():
-                    for magic, loader in cls._magic.items():
-                        if has_magic(infile, magic):
-                            return loader
+        if infile and infile.readable():
+            for magic, loader in cls._magic.items():
+                if has_magic(infile, magic):
+                    return loader
         # fall back to suffixes
         format = get_format(infile, format)
-        try:
-            return cls._loaders[format]
-        except KeyError:
-            raise ValueError('Cannot load from format `{}`'.format(format)) from None
+        return cls._loaders.get(format, None)
 
     @classmethod
     def load(cls, infile:str, format:str='', on:str='', **kwargs):
         """Read new font from file."""
         # if container provided as string or steam, open it
         if not isinstance(on, Container) or not isinstance(infile, Stream):
-            with open_location(infile, on, 'r') as (stream, container):
+            with open_location(infile, 'r', on=on) as (stream, container):
                 return cls.load(stream, format, container, **kwargs)
         # try if infile is a container first
         if not format:
@@ -105,7 +105,9 @@ class Loaders:
     def _load_from_file(cls, infile, on, format, **kwargs):
         """Open file and load font(s) from it."""
         # infile is not a container - identify file type
-        loader = cls.get_loader(infile, on, format)
+        loader = cls.get_loader(infile, format=format)
+        if not loader:
+            raise ValueError('Cannot load from format `{}`.'.format(format)) from None
         return loader(infile, on, **kwargs)
 
     @classmethod
@@ -190,13 +192,13 @@ class Savers:
     _savers = {}
 
     @classmethod
-    def get_saver(cls, outfile, format=''):
-        """Get saver function for this format."""
+    def get_saver(cls, outfile=None, format=''):
+        """
+        Get saver function for this format.
+        `outfile` must be a Stream or empty.
+        """
         format = get_format(outfile, format)
-        try:
-            return cls._savers[format]
-        except KeyError:
-            raise ValueError('Cannot save to format `{}`'.format(format))
+        return cls._savers.get(format, None)
 
     @classmethod
     def save(cls, pack_or_font, outfile:str, format:str='', on:str='', **kwargs):
@@ -209,13 +211,15 @@ class Savers:
         """
         # if container provided as string or steam, open it
         if not isinstance(on, Container) or not isinstance(outfile, Stream):
-            with open_location(outfile, on, 'w') as (stream, container):
+            with open_location(outfile, 'w', on=on) as (stream, container):
                 return cls.save(pack_or_font, stream, format, container, **kwargs)
         if isinstance(pack_or_font, Font):
             pack = Pack([pack_or_font])
         else:
             pack = pack_or_font
-        saver = cls.get_saver(outfile, format)
+        saver = cls.get_saver(outfile, format=format)
+        if not saver:
+            raise ValueError('Cannot save to format `{}`.'.format(format))
         saver(pack, outfile, on, **kwargs)
         return pack
 
@@ -273,4 +277,3 @@ def _save_all_to_container(original_saver, pack, outfile, suffix, binary, **kwar
                 pass
             except Exception as e:
                 logging.error('Could not save %s: %s', filename, e)
-                raise

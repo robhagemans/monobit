@@ -14,7 +14,7 @@ from .pack import Pack
 from .font import Font
 from .glyph import Glyph
 from .encoding import Codepage
-from .formats import Loaders, Savers
+from .formats import Loaders, Savers, open_location
 
 from . import bmfont
 from . import winfon
