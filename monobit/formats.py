@@ -26,20 +26,15 @@ from .streams import Stream, open_stream, make_textstream, compressors, has_magi
 def get_format(file=None, format=''):
     """
     Get format name from file name.
-    `file` must be a Stream
+    `file` must be a Stream or empty
     """
     if not format:
         format = DEFAULT_FORMAT
         if file:
             # if filename given, try to use it to infer format
-            suffixes = Path(file.name).suffixes
-            # drop trailing suffixes like .tar.gz
-            # TODO: this should already be done by Stream?
-            while len(suffixes) > 1:
-                if containers.has_suffix(suffixes[-1]) or compressors.has_suffix(suffixes[-1]):
-                    suffixes.pop()
-            if suffixes:
-                format = suffixes[-1]
+            suffix = Path(file.name).suffix
+            if suffix:
+                format = suffix
     # normalise suffix
     if format.startswith('.'):
         format = format[1:]
