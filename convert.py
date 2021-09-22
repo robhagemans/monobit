@@ -50,53 +50,49 @@ else:
 
 logging.basicConfig(level=loglevel, format='%(levelname)s: %(message)s')
 
-
-# get loader arguments
-early_exception = None
 try:
-    loader = monobit.formats.Loaders.get_loader(args.infile, format=args.from_)
-except Exception as exc:
-    loader = None
-else:
-    for arg, _type in loader.script_args.items():
-        parser.add_argument('--' + arg.replace('_', '-'), dest=arg, type=_type)
+    # get loader arguments
+    try:
+        loader = monobit.formats.Loaders.get_loader(args.infile, format=args.from_)
+    except Exception as exc:
+        loader = None
+    else:
+        for arg, _type in loader.script_args.items():
+            parser.add_argument('--' + arg.replace('_', '-'), dest=arg, type=_type)
 
-# get saver arguments
-try:
-    saver = monobit.formats.Savers.get_saver(args.outfile, format=args.to_)
-except Exception as exc:
-    saver = None
-else:
-    for arg, _type in saver.script_args.items():
-        parser.add_argument('--' + arg.replace('_', '-'), dest=arg, type=_type)
+    # get saver arguments
+    try:
+        saver = monobit.formats.Savers.get_saver(args.outfile, format=args.to_)
+    except Exception as exc:
+        saver = None
+    else:
+        for arg, _type in saver.script_args.items():
+            parser.add_argument('--' + arg.replace('_', '-'), dest=arg, type=_type)
 
-args = parser.parse_args()
+    args = parser.parse_args()
 
-if args.help:
-    parser.print_help()
-    sys.exit(0)
+    if args.help:
+        parser.print_help()
+        sys.exit(0)
 
-# convert arguments to type accepted by operation
-if loader:
-    load_args = {
-        _name: _arg
-        for _name, _arg in vars(args).items()
-        if _arg is not None and _name in loader.script_args
-    }
-else:
-    load_args = {}
-if saver:
-    save_args = {
-        _name: _arg
-        for _name, _arg in vars(args).items()
-        if _arg is not None and _name in saver.script_args
-    }
-else:
-    save_args = {}
+    # convert arguments to type accepted by operation
+    if loader:
+        load_args = {
+            _name: _arg
+            for _name, _arg in vars(args).items()
+            if _arg is not None and _name in loader.script_args
+        }
+    else:
+        load_args = {}
+    if saver:
+        save_args = {
+            _name: _arg
+            for _name, _arg in vars(args).items()
+            if _arg is not None and _name in saver.script_args
+        }
+    else:
+        save_args = {}
 
-try:
-    if early_exception:
-        raise early_exception
     if not args.infile:
         args.infile = sys.stdin.buffer
     font = monobit.load(args.infile, format=args.from_, **load_args)
