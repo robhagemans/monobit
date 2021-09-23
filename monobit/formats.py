@@ -94,8 +94,9 @@ class Loaders:
                 container = open_container(infile, 'r')
             except TypeError as e:
                 pass
-            with container:
-                return cls._load_all(container, **kwargs)
+            else:
+                with container:
+                    return cls._load_all(container, **kwargs)
         return cls._load_from_file(infile, on, format, **kwargs)
 
     @classmethod
