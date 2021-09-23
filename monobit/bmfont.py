@@ -40,7 +40,10 @@ if Image:
     @Loaders.register('bmf', name='BMFont', binary=True, multi=False, container=True)
     def load(infile, container):
         """Load fonts from bmfont in container."""
-        return _read_bmfont(infile, container)
+        font = _read_bmfont(infile, container)
+        if not font:
+            raise ValueError('No font found.')
+        return font
 
     @Savers.register('bmf', binary=True, multi=False, container=True)
     def save(
