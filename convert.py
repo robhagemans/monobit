@@ -57,7 +57,7 @@ def convert_args(args, loadersaver):
     return {
         _name: _arg
         for _name, _arg in vars(args).items()
-        if _arg is not None and _name in loader.script_args
+        if _arg is not None and _name in loadersaver.script_args
     }
 
 # find out which operation we're asked to perform
@@ -77,7 +77,7 @@ if args.help:
         loader = monobit.formats.Loaders.get_loader(format=args.from_)
         add_script_args(parser, loader)
     if args.to_:
-        loader = monobit.formats.Loaders.get_saver(format=args.to_)
+        saver = monobit.formats.Loaders.get_saver(format=args.to_)
         add_script_args(parser, saver)
     parser.print_help()
     sys.exit(0)
