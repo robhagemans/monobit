@@ -93,10 +93,10 @@ class Loaders:
             try:
                 container = open_container(infile, 'r')
             except TypeError as e:
-                return cls._load_from_file(infile, on, format, **kwargs)
-            else:
-                with container:
-                    return cls._load_all(container, **kwargs)
+                pass
+            with container:
+                return cls._load_all(container, **kwargs)
+        return cls._load_from_file(infile, on, format, **kwargs)
 
     @classmethod
     def _load_from_file(cls, infile, on, format, **kwargs):
