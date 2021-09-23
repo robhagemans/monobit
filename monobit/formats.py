@@ -91,10 +91,12 @@ class Loaders:
         # try if infile is a container first
         if not format:
             try:
-                return cls._load_all_from_container(infile, **kwargs)
-            except TypeError:
-                pass
-        return cls._load_from_file(infile, on, format, **kwargs)
+                container = open_container(infile, 'r')
+            except TypeError as e:
+                return cls._load_from_file(infile, on, format, **kwargs)
+            else:
+                with container:
+                    return cls._load_all(container, **kwargs)
 
     @classmethod
     def _load_from_file(cls, infile, on, format, **kwargs):
@@ -106,15 +108,19 @@ class Loaders:
         return loader(infile, on, **kwargs)
 
     @classmethod
-    def _load_all_from_container(cls, infile, **kwargs):
+    def _load_all(cls, container, **kwargs):
         """Open container and load all fonts found in it into one pack."""
         packs = []
         # try opening a container on input file for read, will raise error if not container format
-        with open_container(infile, 'r') as container:
-            for name in container:
-                logging.info('Attempting to extract file `%s`.', name)
-                with open_stream(name, 'r', binary=True, on=container) as stream:
-                    font_or_pack = cls._load_from_file(stream, on=container, format=None, **kwargs)
+        for name in container:
+            logging.info('Attempting to extract file `%s`.', name)
+            with open_stream(name, 'r', binary=True, on=container) as stream:
+                try:
+                    # recursive call - walk containers-in-containers
+                    font_or_pack = cls.load(stream, on=container, format=None, **kwargs)
+                except ValueError as exc:
+                    logging.warning('Could not load `%s`: %s', name, exc)
+                else:
                     if isinstance(font_or_pack, Pack):
                         packs.append(font_or_pack)
                     else:
@@ -219,29 +225,30 @@ class Savers:
         else:
             pack = pack_or_font
         try:
-            # create a container on outfile, store the fonts in there
-            return cls._save_all_to_container(pack, outfile, on, format, **kwargs)
+            container = open_container(outfile, 'w', binary=True)
         except TypeError:
-            pass
-        return cls._save_to_file(pack, outfile, on, format, **kwargs)
+            return cls._save_to_file(pack, outfile, on, format, **kwargs)
+        else:
+            # create a container on outfile, store the fonts in there
+            with container:
+                return cls._save_all(pack, container, format, **kwargs)
 
     @classmethod
-    def _save_all_to_container(cls, pack, outfile, on, format, **kwargs):
+    def _save_all(cls, pack, container, format, **kwargs):
         """Save pack of fonts to a container created on outfile."""
-        with open_container(outfile, 'w', binary=True) as on:
-            for font in pack:
-                # generate unique filename
-                name = font.name.replace(' ', '_')
-                filename = unique_name(on, name, format)
-                logging.info('Attempting to save to file `%s`.', filename)
-                try:
-                    with open_stream(filename, 'w', binary=True, on=on) as stream:
-                        cls._save_to_file(Pack([font]), stream, on, format, **kwargs)
-                except BrokenPipeError:
-                    pass
-                except Exception as e:
-                    logging.error('Could not save %s: %s', filename, e)
-                    raise
+        for font in pack:
+            # generate unique filename
+            name = font.name.replace(' ', '_')
+            filename = unique_name(container, name, format)
+            logging.info('Attempting to save to file `%s`.', filename)
+            try:
+                with open_stream(filename, 'w', binary=True, on=container) as stream:
+                    cls._save_to_file(Pack([font]), stream, container, format, **kwargs)
+            except BrokenPipeError:
+                pass
+            except Exception as e:
+                logging.error('Could not save %s: %s', filename, e)
+                raise
 
     @classmethod
     def _save_to_file(cls, pack, outfile, on, format, **kwargs):
