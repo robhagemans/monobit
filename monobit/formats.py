@@ -52,7 +52,7 @@ def open_location(file, mode, on=None, overwrite=False):
     if `on` is empty or the module io, the whole filesystem is taken as the container/location.
     returns a Steam and a Container object
     """
-    with open_container(on, mode) as container:
+    with open_container(on, mode, overwrite=overwrite) as container:
         with open_stream(file, mode, binary=True, on=container, overwrite=overwrite) as stream:
             yield stream, container
 
