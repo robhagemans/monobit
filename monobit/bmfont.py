@@ -503,7 +503,7 @@ def _read_bmfont(infile, container):
     magic = infile.peek(3)
     fontinfo = {}
     if magic.startswith(b'BMF'):
-        logging.debug('found binary: %s', streams.get_stream_name(infile))
+        logging.debug('found binary: %s', infile.name)
         fontinfo = _parse_binary(infile.read())
     else:
         with streams.make_textstream(infile) as fnt:
@@ -520,7 +520,7 @@ def _read_bmfont(infile, container):
             else:
                 logging.debug('found text: %s', fnt.name)
                 fontinfo = _parse_text(data)
-    return _extract(container, streams.get_stream_name(infile), **fontinfo)
+    return _extract(container, infile.name, **fontinfo)
 
 
 ##############################################################################
