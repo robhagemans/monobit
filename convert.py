@@ -32,6 +32,10 @@ parser.add_argument(
     help='add global comments from text file'
 )
 parser.add_argument(
+    '--overwrite', action='store_true',
+    help='overwrite existing output file'
+)
+parser.add_argument(
     '--debug', action='store_true',
     help='show debugging output'
 )
@@ -101,7 +105,7 @@ try:
         with open(args.comments) as f:
             font = font.add_comments(f.read())
 
-    with monobit.open_location(outfile, 'w') as (outstream, outcontainer):
+    with monobit.open_location(outfile, 'w', overwrite=args.overwrite) as (outstream, outcontainer):
         # get saver arguments
         saver = monobit.formats.Savers.get_saver(outstream, format=args.to_)
         if saver:

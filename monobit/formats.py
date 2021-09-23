@@ -44,7 +44,7 @@ def get_format(file=None, format=''):
 ##############################################################################
 
 @contextmanager
-def open_location(file, mode, on=None):
+def open_location(file, mode, on=None, overwrite=False):
     """
     Open a binary stream on a container or filesystem
     both `file` and `on` may be Streams, files, or file/directory names
@@ -53,7 +53,7 @@ def open_location(file, mode, on=None):
     returns a Steam and a Container object
     """
     with open_container(on, mode) as container:
-        with open_stream(file, mode, binary=True, on=container) as stream:
+        with open_stream(file, mode, binary=True, on=container, overwrite=overwrite) as stream:
             yield stream, container
 
 
@@ -196,17 +196,22 @@ class Savers:
         return cls._savers.get(format, None)
 
     @classmethod
-    def save(cls, pack_or_font, outfile:str, format:str='', on:str='', **kwargs):
+    def save(
+            cls, pack_or_font,
+            outfile:str, format:str='', on:str='', overwrite:bool=False,
+            **kwargs
+        ):
         """
         Write to file, return unchanged.
             outfile: stream or filename
             format: format specification string
             on: location/container. mandatory for formats that need filesystem access.
                 if specified and outfile is a filename, it is taken relative to this location.
+            overwrite: if outfile is a filename, allow overwriting exising file
         """
         # if container provided as string or steam, open it
         if not isinstance(on, Container) or not isinstance(outfile, Stream):
-            with open_location(outfile, 'w', on=on) as (stream, container):
+            with open_location(outfile, 'w', on=on, overwrite=overwrite) as (stream, container):
                 return cls.save(pack_or_font, stream, format, container, **kwargs)
         if isinstance(pack_or_font, Font):
             pack = Pack([pack_or_font])

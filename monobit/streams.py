@@ -14,9 +14,9 @@ import lzma
 import bz2
 
 
-def open_stream(file, mode, binary, *, on=None):
+def open_stream(file, mode, binary, *, on=None, overwrite=False):
     """Ensure file is a stream of the right type, open or wrap if necessary."""
-    return Stream(file, mode, binary, on=on)
+    return Stream(file, mode, binary, on=on, overwrite=overwrite)
 
 
 class StreamWrapper:
@@ -43,7 +43,7 @@ class StreamWrapper:
 class Stream(StreamWrapper):
     """Manage file resource."""
 
-    def __init__(self, file, mode, binary, *, on=None):
+    def __init__(self, file, mode, binary, *, on=None, overwrite=False):
         """Ensure file is a stream of the right type, open or wrap if necessary."""
         if not file:
             raise ValueError('No file name, path or stream provided.')
@@ -57,12 +57,18 @@ class Stream(StreamWrapper):
         # if a path is provided, open a (binary) stream
         if isinstance(file, (str, Path)):
             if not on:
+                if not overwrite and mode == 'w' and Path(file).exists():
+                    raise FileExistsError(f'Will not overwrite existing file `{file}`.')
                 file = io.open(file, mode + 'b')
             else:
+                if not overwrite and mode == 'w' and file in on:
+                    raise FileExistsError(
+                        f'Will not overwrite existing file `{file}` on `{on.name}`.'
+                    )
                 file = on.open_binary(file, mode)
         # wrap compression/decompression if needed
         file = open_compressed_stream(file)
-        # override gzip's mode values which are numeric
+        # check r/w mode is consistent
         if mode == 'r' and not file.readable():
             raise ValueError('Expected readable stream, got writable.')
         if mode == 'w' and not file.writable():

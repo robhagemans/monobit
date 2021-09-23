@@ -21,7 +21,7 @@ from .streams import MagicRegistry, StreamWrapper
 
 containers = MagicRegistry()
 
-def open_container(file, mode, binary=True):
+def open_container(file, mode, binary=True, overwrite=False):
     """Open container of the appropriate type."""
     if isinstance(file, Container):
         return file
@@ -29,7 +29,7 @@ def open_container(file, mode, binary=True):
         # io module is not a context manager
         return DirContainer('')
     container_type = identify_container(file, mode, binary)
-    return container_type(file, mode)
+    return container_type(file, mode, overwrite=overwrite)
 
 def identify_container(file, mode, binary):
     """Get container of the appropriate type."""
@@ -100,16 +100,18 @@ class Container:
 class DirContainer(Container):
     """Treat directory tree as a container."""
 
-    def __init__(self, path, mode='r'):
-        """Create wrapper."""
+    def __init__(self, path, mode='r', *, overwrite=False):
+        """Create directory wrapper."""
         # if empty path, this refers to the whole filesystem
         if not path:
             path = ''
         self._path = Path(path)
+        self.name = str(self._path)
         # mode really should just be 'r' or 'w'
         mode = mode[:1]
-        if mode == 'w' and path:
-            self._path.mkdir(parents=True, exist_ok=True)
+        if mode == 'w':
+            # exist_ok raises FileExistsError only if the *target* already exists, not the parents
+            self._path.mkdir(parents=True, exist_ok=overwrite)
 
     def open_binary(self, name, mode):
         """Open a stream in the container."""
@@ -144,7 +146,7 @@ class DirContainer(Container):
 class ZipContainer(Container):
     """Zip-file wrapper."""
 
-    def __init__(self, file, mode='r'):
+    def __init__(self, file, mode='r', *, overwrite=False):
         """Create wrapper."""
         # append .zip to zip filename, but leave out of root dir name
         root = ''
@@ -152,8 +154,11 @@ class ZipContainer(Container):
         mode = mode[:1]
         if isinstance(file, (str, Path)):
             file = root = str(file)
-            if mode == 'w' and not file.endswith('.zip'):
-                file += '.zip'
+            if mode == 'w':
+                if not file.endswith('.zip'):
+                    file += '.zip'
+                if Path(file).exists():
+                    raise FileExistsError(f'Will not overwrite `{file}`.')
         else:
             root = streams.get_stream_name(file)
         # if name ends up empty, replace; clip off any dir path and suffix
@@ -170,6 +175,7 @@ class ZipContainer(Container):
         self._mode = mode
         # create the zipfile
         self._zip = ZipFile(file, mode)
+        self.name = self._zip.filename
 
     def _close(self):
         """Close the zip file, ignoring errors."""
@@ -220,7 +226,7 @@ class ZipContainer(Container):
 class TarContainer(Container):
     """Tar-file wrapper."""
 
-    def __init__(self, file, mode='r'):
+    def __init__(self, file, mode='r',*, overwrite=False):
         """Create wrapper."""
         # mode really should just be 'r' or 'w'
         mode = mode[:1]
@@ -232,9 +238,10 @@ class TarContainer(Container):
             file = io.BytesIO(file.read())
         # create the tarfile
         if mode != 'r':
-            raise ValueError('Writing to tarfile not supported')
+            raise ValueError('Writing to tarfile not supported.')
         self._mode = mode
         self._tarfile = tarfile.open(file, mode)
+        self.name = self._tarfile.name
 
     def _close(self):
         """Close the zip file, ignoring errors."""
@@ -295,10 +302,10 @@ class TextContainer(Container):
 
     separator = b'---'
 
-    def __init__(self, infile, mode='r'):
+    def __init__(self, infile, mode='r', *, overwrite=False):
         """Open stream or create wrapper."""
         # all containers expect binary stream, including TextContainer
-        self._stream_context = streams.open_stream(infile, mode, binary=True)
+        self._stream_context = streams.open_stream(infile, mode, binary=True, overwrite=overwrite)
         self._stream = self._stream_context.__enter__()
         self._mode = mode[:1]
         if self._mode == 'r':
@@ -307,6 +314,7 @@ class TextContainer(Container):
         else:
             self._stream.write(b'%s\n' % (self.separator,))
         self._substream = None
+        self.name = self._stream.name
 
     def __exit__(self, exc_type, exc_value, traceback):
         if self._substream:
@@ -341,6 +349,7 @@ class TextSubStream(StreamWrapper):
         self._parent = parent
         self._separator = separator
         self._mode = mode
+        self.name = ''
         super().__init__(parent._stream)
 
     def __iter__(self):
