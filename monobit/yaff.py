@@ -174,7 +174,8 @@ def _read_text(instream, separator):
                 # remainder of label line after : is first value line
                 if rest:
                     current.values.append(rest.lstrip())
-    elements.append(current)
+    if current.keys or current.values or current.comments:
+        elements.append(current)
     return elements
 
 
