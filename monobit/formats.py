@@ -112,6 +112,7 @@ class Loaders:
         # try opening a container on input file for read, will raise error if not container format
         with open_container(infile, 'r') as container:
             for name in container:
+                logging.info('Attempting to extract file `%s`.', name)
                 with open_stream(name, 'r', binary=True, on=container) as stream:
                     font_or_pack = cls._load_from_file(stream, on=container, format=None, **kwargs)
                     if isinstance(font_or_pack, Pack):
@@ -217,6 +218,34 @@ class Savers:
             pack = Pack([pack_or_font])
         else:
             pack = pack_or_font
+        try:
+            # create a container on outfile, store the fonts in there
+            return cls._save_all_to_container(pack, outfile, on, format, **kwargs)
+        except TypeError:
+            pass
+        return cls._save_to_file(pack, outfile, on, format, **kwargs)
+
+    @classmethod
+    def _save_all_to_container(cls, pack, outfile, on, format, **kwargs):
+        """Save pack of fonts to a container created on outfile."""
+        with open_container(outfile, 'w', binary=True) as on:
+            for font in pack:
+                # generate unique filename
+                name = font.name.replace(' ', '_')
+                filename = unique_name(on, name, format)
+                logging.info('Attempting to save to file `%s`.', filename)
+                try:
+                    with open_stream(filename, 'w', binary=True, on=on) as stream:
+                        cls._save_to_file(Pack([font]), stream, on, format, **kwargs)
+                except BrokenPipeError:
+                    pass
+                except Exception as e:
+                    logging.error('Could not save %s: %s', filename, e)
+                    raise
+
+    @classmethod
+    def _save_to_file(cls, pack, outfile, on, format, **kwargs):
+        """Save pack of fonts to a single file."""
         saver = cls.get_saver(outfile, format=format)
         if not saver:
             raise ValueError('Cannot save to format `{}`.'.format(format))
@@ -238,21 +267,16 @@ class Savers:
             # stream output wrapper
             @wraps(original_saver)
             def _saver(pack, outfile, on, **kwargs):
-                if container or multi or len(pack) == 1:
-                    if not binary:
-                        outfile = make_textstream(outfile)
-                    if not multi:
-                        pack = pack[0]
-                    if container:
-                        original_saver(pack, outfile, container=on, **kwargs)
-                    else:
-                        original_saver(pack, outfile, **kwargs)
+                if not (container or multi or len(pack) == 1):
+                    raise TypeError("Can't save multiple fonts to single file of this type.")
+                if not binary:
+                    outfile = make_textstream(outfile)
+                if not multi:
+                    pack = pack[0]
+                if container:
+                    original_saver(pack, outfile, container=on, **kwargs)
                 else:
-                    # create a container on outfile, store the fonts in there
-                    # use first extension provided by saver function
-                    _save_all_to_container(
-                        original_saver, pack, outfile, formats[0], binary, **kwargs
-                    )
+                    original_saver(pack, outfile, **kwargs)
 
             # register saver
             _saver.script_args = original_saver.__annotations__
@@ -261,19 +285,3 @@ class Savers:
             return _saver
 
         return _save_decorator
-
-
-def _save_all_to_container(original_saver, pack, outfile, suffix, binary, **kwargs):
-    """Call a font saving function, save to a stream or container."""
-    with open_container(outfile, 'w', binary) as on:
-        for font in pack:
-            # generate unique filename
-            name = font.name.replace(' ', '_')
-            filename = unique_name(on, name, suffix)
-            try:
-                with open_stream(filename, 'w', binary, on=on) as stream:
-                    original_saver(font, stream, **kwargs)
-            except BrokenPipeError:
-                pass
-            except Exception as e:
-                logging.error('Could not save %s: %s', filename, e)

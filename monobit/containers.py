@@ -44,14 +44,7 @@ def identify_container(file, mode, binary):
         container_type = containers.identify(file)
     if not container_type:
         # no container type found
-        if mode == 'r':
-            raise TypeError('Expected container format, got non-container stream.')
-        if not file:
-            container_type = DirContainer
-        elif binary:
-            container_type = ZipContainer
-        else:
-            container_type = TextContainer
+        raise TypeError('Expected container format, got non-container stream.')
     return container_type
 
 
@@ -296,10 +289,11 @@ class TarStream(StreamWrapper):
 ###################################################################################################
 # yaml-style '---'-separated text stream
 
-@containers.register('.txt', magic=b'---')
+@containers.register('.txt', '.yaffs', magic=b'---')
 class TextContainer(Container):
-    """Container of concatenated text files."""
+    """Container of mime-/yaml-style concatenated text files with boundary marker."""
 
+    # boundary marker
     separator = b'---'
 
     def __init__(self, infile, mode='r', *, overwrite=False):

@@ -90,6 +90,9 @@ class Stream(StreamWrapper):
 
     def close(self):
         """Close stream, absorb errors."""
+        # always close at wrapper level
+        self.closed = True
+        # only close stream if we own it
         if not self._keep_open:
             try:
                 self._stream.close()
