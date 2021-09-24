@@ -45,7 +45,7 @@ if Image:
             raise ValueError('No font found.')
         return font
 
-    @Savers.register('bmf', binary=True, multi=False, container=True)
+    @Savers.register('bmf', name=load.name, binary=True, multi=False, container=True)
     def save(
             font, outfile, container,
             image_size:pair=(256, 256),

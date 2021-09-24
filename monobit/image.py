@@ -35,7 +35,7 @@ if Image:
     @Loaders.register(
         'png', 'bmp', 'gif', 'tif', 'tiff',
         'ppm', 'pgm', 'pbm', 'pnm', 'webp',
-        'pcx', 'tga', 'jpg', 'jpeg', 'image',
+        'pcx', 'tga', 'jpg', 'jpeg',
         magic=(
             # PNG
             b'\x89PNG\r\n\x1a\n',
@@ -142,7 +142,7 @@ if Image:
         return Font(glyphs)
 
 
-    @Savers.register('png', 'bmp', 'gif', 'image', binary=True, multi=False)
+    @Savers.register('png', 'bmp', 'gif', name=load.name, binary=True, multi=False)
     def save(
             font, outfile,
             format:str='png',

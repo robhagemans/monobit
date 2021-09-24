@@ -235,7 +235,13 @@ _IMAGE_RESOURCE_DATA_ENTRY = friendlystruct(
 ##############################################################################
 # top level functions
 
-@Loaders.register('fon', magic=(b'MZ',), name='Windows FON', binary=True, multi=True)
+@Loaders.register(
+    'fon',
+    magic=(b'MZ',),
+    name='Windows font',
+    binary=True,
+    multi=True
+)
 def load(instream):
     """Load a Windows .FON file."""
     data = instream.read()
@@ -262,7 +268,7 @@ def load(instream):
     ]
     return Pack(fonts)
 
-@Savers.register('fon', binary=True, multi=True)
+@Savers.register('fon', name=load.name, binary=True, multi=True)
 def save(pack, outstream, version:int=2):
     """Write fonts to a Windows .FON file."""
     outstream.write(_create_fon(pack, version*0x100))

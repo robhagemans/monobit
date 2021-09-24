@@ -89,7 +89,7 @@ def load(instream):
         raise ValueError('No fonts found in file.')
     return font
 
-@Savers.register('yaff', 'text', 'txt', multi=False)
+@Savers.register('yaff', 'text', 'txt', multi=False, name=load.name)
 def save(font, outstream):
     """Write fonts to a yaff file."""
     _save_yaff(font, outstream, **_YAFF_PARAMETERS)
@@ -104,7 +104,7 @@ def load_draw(instream):
         raise ValueError('No fonts found in file.')
     return font
 
-@Savers.register('draw', multi=False)
+@Savers.register('draw', multi=False, name=load_draw.name)
 def save_draw(font, outstream):
     """Write font to a hexdraw file."""
     _save_draw(font, outstream, **_DRAW_PARAMETERS)

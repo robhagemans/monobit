@@ -157,6 +157,7 @@ class Loaders:
                 return _set_extraction_props(font_or_pack, name, format)
 
             # register loader
+            _loader.name = name
             _loader.script_args = original_loader.__annotations__
             for format in formats:
                 cls._loaders[format.lower()] = _loader
@@ -262,7 +263,7 @@ class Savers:
 
 
     @classmethod
-    def register(cls, *formats, binary=False, multi=False, container=False):
+    def register(cls, *formats, name='', binary=False, multi=False, container=False):
         """
         Decorator to register font saver.
             *formats: extensions covered by registered function
@@ -276,7 +277,7 @@ class Savers:
             @wraps(original_saver)
             def _saver(pack, outfile, on, **kwargs):
                 if not (container or multi or len(pack) == 1):
-                    raise TypeError("Can't save multiple fonts to single file of this type.")
+                    raise TypeError(f"Can't save multiple fonts to single {name} file.")
                 if not binary:
                     outfile = make_textstream(outfile)
                 if not multi:
@@ -288,6 +289,7 @@ class Savers:
 
             # register saver
             _saver.script_args = original_saver.__annotations__
+            _saver.name = name
             for format in formats:
                 cls._savers[format.lower()] = _saver
             return _saver
