@@ -11,7 +11,7 @@ import sys
 import logging
 import itertools
 from contextlib import contextmanager
-from zipfile import ZipFile
+import zipfile
 import tarfile
 from pathlib import Path, PurePath, PurePosixPath
 
@@ -178,7 +178,7 @@ class ZipContainer(Container):
         self._mode = mode
         # create the zipfile
         try:
-            self._zip = ZipFile(file, mode)
+            self._zip = zipfile.ZipFile(file, mode)
         except zipfile.BadZipFile as exc:
             raise ContainerFormatError(exc) from exc
         self.name = self._zip.filename
