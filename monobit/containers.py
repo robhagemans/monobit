@@ -8,6 +8,7 @@ licence: https://opensource.org/licenses/MIT
 import io
 import os
 import sys
+import time
 import logging
 import itertools
 from contextlib import contextmanager
@@ -261,22 +262,38 @@ class TarContainer(Container):
         if (mode == 'r' and not isinstance(file, (str, Path)) and not file.seekable()):
             file = io.BytesIO(file.read())
         # create the tarfile
-        if mode != 'r':
-            raise ContainerFormatError('Writing to tarfile not supported.')
-        self._mode = mode
         try:
             self._tarfile = tarfile.open(file, mode)
         except tarfile.ReadError as exc:
             raise ContainerFormatError(exc) from exc
+        self._mode = mode
         self.name = self._tarfile.name
+        if mode == 'w':
+            self._root = Path(self.name).stem
+        else:
+            self._root = ''
+        # output files, to be written on close
+        self._files = []
+        self.closed = False
 
     def _close(self):
-        """Close the zip file, ignoring errors."""
+        """Close the tar file, ignoring errors."""
+        if self._mode == 'w' and not self.closed:
+            for file in self._files:
+                name = file.name
+                logging.debug('Writing out `%s` to tar container `%s`.', name, self.name)
+                tinfo = tarfile.TarInfo(name)
+                tinfo.mtime = time.time()
+                tinfo.size = len(file.getvalue())
+                file.seek(0)
+                self._tarfile.addfile(tinfo, file)
+                file.close()
         try:
             self._tarfile.close()
         except EnvironmentError:
             # e.g. BrokenPipeError
             pass
+        self.closed = True
 
     def __exit__(self, exc_type, exc_value, traceback):
         if exc_type == BrokenPipeError:
@@ -301,14 +318,23 @@ class TarContainer(Container):
 
     def open_binary(self, name, mode):
         """Open a stream in the container."""
+        name = str(PurePosixPath(self._root) / name)
         mode = mode[:1]
         # always open as binary
+        logging.debug('Opening file `%s` on tar container `%s`.', name, self.name)
         if mode == 'r':
             file = self._tarfile.extractfile(name)
             # .name is not writeable, so we need to wrap
             return TarStream(file, name)
         else:
-            raise FileFormatError('Writing to .tar archive not supported')
+            newfile = io.BytesIO()
+            newfile.name = name
+            # stop BytesIO from being closed until we want it to be
+            newfile.close = lambda: None
+            if name in self._files:
+                logging.warning('Creating multiple files of the same name `%s`.', name)
+            self._files.append(newfile)
+            return newfile
 
 
 class TarStream(StreamWrapper):
