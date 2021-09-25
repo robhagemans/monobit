@@ -21,21 +21,9 @@ from . import streams
 from .streams import Stream, open_stream, make_textstream, compressors, has_magic, FileFormatError
 
 
-# identify font file format from suffix
 
-def get_format(file=None, format=''):
-    """
-    Get format name from file name.
-    `file` must be a Stream or empty
-    """
-    if not format:
-        format = DEFAULT_FORMAT
-        if file:
-            # if filename given, try to use it to infer format
-            suffix = Path(file.name).suffix
-            if suffix:
-                format = suffix
-    # normalise suffix
+def _normalise_suffix(format):
+    """Bring suffix to lowercase without dot."""
     if format.startswith('.'):
         format = format[1:]
     return format.lower()
@@ -70,15 +58,20 @@ class Loaders:
     def get_loader(cls, infile=None, format=''):
         """
         Get loader function for this format.
-        infile must be a Stream or empty.
+        infile must be a Stream or empty
         """
-        # try to use magic sequences
-        if infile and infile.readable():
-            for magic, loader in cls._magic.items():
-                if has_magic(infile, magic):
-                    return loader
-        # fall back to suffixes
-        format = get_format(infile, format)
+        if not format:
+            # try to use magic sequences
+            if infile:
+                if infile.readable():
+                    for magic, loader in cls._magic.items():
+                        if has_magic(infile, magic):
+                            return loader
+                # fall back to suffixes
+                suffix = Path(infile.name).suffix
+                format = _normalise_suffix(suffix or DEFAULT_FORMAT)
+            else:
+                format = DEFAULT_FORMAT
         return cls._loaders.get(format, None)
 
     @classmethod
@@ -202,7 +195,12 @@ class Savers:
         Get saver function for this format.
         `outfile` must be a Stream or empty.
         """
-        format = get_format(outfile, format)
+        if not format:
+            if outfile:
+                suffix = Path(outfile.name).suffix
+                format = _normalise_suffix(suffix or DEFAULT_FORMAT)
+            else:
+                format = DEFAULT_FORMAT
         return cls._savers.get(format, None)
 
     @classmethod
