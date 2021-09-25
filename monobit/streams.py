@@ -182,6 +182,8 @@ class MagicRegistry:
         """Suffix is covered."""
         return normalise_suffix(suffix) in self._suffixes.keys()
 
+    __contains__ = has_suffix
+
     def identify(self, file, mode):
         """Identify a type from magic sequence on input file."""
         if not file:

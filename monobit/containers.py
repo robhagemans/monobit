@@ -46,9 +46,11 @@ def identify_container(file, mode, overwrite):
     if isinstance(file, (str, Path)) and Path(file).is_dir():
         container_type = DirContainer
     else:
-        if isinstance(file, (str, Path)):
-            # this will deal with compressed output, e.g. tar.gz or .tar.xz
-            file = open_stream(file, mode, binary=True, overwrite=overwrite)
+        # this will deal with compressed output, e.g. tar.gz or .tar.xz
+        # this parallels what happens in open_stream, but we don't want to create a file here yet
+        if mode == 'w' and isinstance(file, (str, Path)) and streams.compressors.identify(file, 'w'):
+            # remove compressor suffix
+            file = Path(file).with_suffix('')
         container_type = containers.identify(file, mode)
     suffix = get_suffix(file)
     if not container_type:
