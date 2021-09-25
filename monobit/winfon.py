@@ -32,7 +32,6 @@ import logging
 
 from .binary import friendlystruct, ceildiv, align
 from .formats import Loaders, Savers
-from .pack import Pack
 
 from .winfnt import parse_fnt, create_fnt
 
@@ -266,7 +265,7 @@ def load(instream):
         )
         for font in fonts
     ]
-    return Pack(fonts)
+    return fonts
 
 @Savers.register('fon', name=load.name, binary=True, multi=True)
 def save(pack, outstream, version:int=2):

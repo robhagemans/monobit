@@ -21,7 +21,6 @@ from .containers import unique_name
 from . import streams
 from .binary import friendlystruct
 from .formats import Loaders, Savers
-from .pack import Pack
 from .font import Font, Coord
 from .glyph import Glyph
 from .winfnt import _CHARSET_MAP

@@ -21,6 +21,8 @@ class Pack:
 
     def __init__(self, fonts=()):
         """Create pack from sequence of fonts."""
+        if isinstance(fonts, Font):
+            fonts = fonts,
         self._fonts = tuple(fonts)
 
     def __iter__(self):

@@ -9,6 +9,8 @@ licence: https://opensource.org/licenses/MIT
 DEFAULT_FORMAT = 'yaff'
 VERSION = '0.13'
 
+CONVERTER_NAME = f'monobit v{VERSION}'
+
 
 def scriptable(fn):
     """Decorator to register operation for scripting."""

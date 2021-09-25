@@ -13,7 +13,7 @@ from functools import wraps
 from pathlib import Path
 from contextlib import contextmanager
 
-from .base import VERSION, DEFAULT_FORMAT
+from .base import VERSION, DEFAULT_FORMAT, CONVERTER_NAME
 from .containers import Container, open_container, unique_name, ContainerFormatError
 from .font import Font
 from .pack import Pack
@@ -122,10 +122,7 @@ class Loaders:
                     # loaders raise ValueError if unable to parse
                     logging.debug('Could not load `%s`: %s', name, exc)
                 else:
-                    if isinstance(font_or_pack, Pack):
-                        packs.append(font_or_pack)
-                    else:
-                        packs.append([font_or_pack])
+                    packs.append(Pack(font_or_pack))
         # flatten list of packs
         fonts = [_font for _pack in packs for _font in _pack]
         return Pack(fonts)
@@ -136,9 +133,9 @@ class Loaders:
         Decorator to register font loader.
             *formats: list of extensions covered by this function
             name: name of the format
-            binary: format is binary, not text
-            multi: format can contain multiple fonts
-            container: needs access to container/filesystem beyond input stream
+            binary: loader expects binary stream, not text
+            multi: format can contain multiple fonts, loader returns iterable
+            container: loader needs access to container/filesystem beyond input stream
         """
         format = name or formats[0]
 
@@ -153,8 +150,9 @@ class Loaders:
                     font_or_pack = original_loader(instream, container=on, **kwargs)
                 else:
                     font_or_pack = original_loader(instream, **kwargs)
+                pack = Pack(font_or_pack)
                 name = Path(instream.name).name
-                return _set_extraction_props(font_or_pack, name, format)
+                return _set_extraction_props(pack, name, format)
 
             # register loader
             _loader.name = name
@@ -170,20 +168,16 @@ class Loaders:
 
 # extraction properties
 
-def _set_extraction_props(font_or_pack, name, format):
+def _set_extraction_props(pack, name, format):
     """Return copy with source-name and source-format set."""
-    if isinstance(font_or_pack, Pack):
-        return Pack(
-            _set_extraction_props(_font, name, format)
-            for _font in font_or_pack
+    return Pack(
+        _font.set_properties(
+            converter=CONVERTER_NAME,
+            source_format=_font.source_format or format,
+            source_name=_font.source_name or name
         )
-    font = font_or_pack
-    new_props = {
-        'converter': 'monobit v{}'.format(VERSION),
-        'source-format': font.source_format or format,
-        'source-name': font.source_name or name
-    }
-    return font.set_properties(**new_props)
+        for _font in pack
+    )
 
 
 
@@ -227,10 +221,7 @@ class Savers:
         if not isinstance(on, Container) or outfile and not isinstance(outfile, Stream):
             with open_location(outfile, 'w', on=on, overwrite=overwrite) as (stream, container):
                 return cls.save(pack_or_font, stream, format, container, **kwargs)
-        if isinstance(pack_or_font, Font):
-            pack = Pack([pack_or_font])
-        else:
-            pack = pack_or_font
+        pack = Pack(pack_or_font)
         if not outfile:
             # create a container on outfile, store the fonts in there as individual files
             return cls._save_all(pack, on, format, **kwargs)
@@ -246,7 +237,7 @@ class Savers:
             logging.debug('Attempting to save to file `%s`.', filename)
             try:
                 with open_stream(filename, 'w', on=container) as stream:
-                    cls._save_to_file(Pack([font]), stream, container, format, **kwargs)
+                    cls._save_to_file(Pack(font), stream, container, format, **kwargs)
                     logging.info('Saved to `%s`.', stream.name)
             except BrokenPipeError:
                 pass
@@ -269,9 +260,9 @@ class Savers:
         """
         Decorator to register font saver.
             *formats: extensions covered by registered function
-            binary: format is binary, not text
-            multi: format can contain multiple fonts
-            container: format is stored as files in a directory or other container
+            binary: saver expects binary stream, not text
+            multi: format can contain multiple fonts, saver expects iterable
+            container: saver needs access to filesystem beyond output stream
         """
         def _save_decorator(original_saver):
 
