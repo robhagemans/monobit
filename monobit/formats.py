@@ -19,7 +19,7 @@ from .font import Font
 from .pack import Pack
 from . import streams
 from .streams import (
-    Stream, open_stream, make_textstream, compressors, has_magic, FileFormatError,
+    Stream, open_stream, compressors, has_magic, FileFormatError,
     normalise_suffix
 )
 
@@ -52,7 +52,7 @@ def open_location(file, mode, on=None, overwrite=False):
             # infile is not a container, load/save single file
             pass
     with open_container(on, mode, overwrite=overwrite) as container:
-        with open_stream(file, mode, binary=True, on=container, overwrite=overwrite) as stream:
+        with open_stream(file, mode, on=container, overwrite=overwrite) as stream:
             yield stream, container
 
 
@@ -113,7 +113,7 @@ class Loaders:
         # try opening a container on input file for read, will raise error if not container format
         for name in container:
             logging.debug('Attempting to load from file `%s`.', name)
-            with open_stream(name, 'r', binary=True, on=container) as stream:
+            with open_stream(name, 'r', on=container) as stream:
                 try:
                     font_or_pack = cls.load(stream, on=container, format=format, **kwargs)
                     logging.info('Found `%s` on `%s`', stream.name, container.name)
@@ -148,7 +148,7 @@ class Loaders:
             @wraps(original_loader)
             def _loader(instream, on, **kwargs):
                 if not binary:
-                    instream = make_textstream(instream)
+                    instream = instream.text
                 if container:
                     font_or_pack = original_loader(instream, container=on, **kwargs)
                 else:
@@ -245,7 +245,7 @@ class Savers:
             filename = unique_name(container, name, format)
             logging.debug('Attempting to save to file `%s`.', filename)
             try:
-                with open_stream(filename, 'w', binary=True, on=container) as stream:
+                with open_stream(filename, 'w', on=container) as stream:
                     cls._save_to_file(Pack([font]), stream, container, format, **kwargs)
                     logging.info('Saved to `%s`.', stream.name)
             except BrokenPipeError:
@@ -282,14 +282,16 @@ class Savers:
                     raise FileFormatError(
                         f"Can't save multiple fonts to single {name} file."
                     ) from None
-                if not binary:
-                    outfile = make_textstream(outfile)
                 if not multi:
                     pack = pack[0]
+                if not binary:
+                    outfile = outfile.text
                 if container:
                     original_saver(pack, outfile, container=on, **kwargs)
                 else:
                     original_saver(pack, outfile, **kwargs)
+                if not binary:
+                    outfile.close()
 
             # register saver
             _saver.script_args = original_saver.__annotations__

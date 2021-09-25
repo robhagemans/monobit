@@ -19,9 +19,9 @@ class FileFormatError(Exception):
     """Incorrect file format."""
 
 
-def open_stream(file, mode, binary, *, on=None, overwrite=False):
+def open_stream(file, mode, *, on=None, overwrite=False):
     """Ensure file is a stream of the right type, open or wrap if necessary."""
-    return Stream(file, mode, binary, on=on, overwrite=overwrite)
+    return Stream(file, mode, on=on, overwrite=overwrite)
 
 
 class StreamWrapper:
@@ -55,7 +55,7 @@ class KeepOpen(StreamWrapper):
 class Stream(StreamWrapper):
     """Manage file resource."""
 
-    def __init__(self, file, mode, binary, *, on=None, overwrite=False):
+    def __init__(self, file, mode, *, on=None, overwrite=False):
         """Ensure file is a stream of the right type, open or wrap if necessary."""
         if not file:
             raise ValueError('No file name, path or stream provided.')
@@ -64,6 +64,7 @@ class Stream(StreamWrapper):
         # binary is a boolean; open as binary if true, as text if false
         # on: container to open any new stream on
         mode = mode[:1]
+        self.mode = mode
         # if a path is provided, open a (binary) stream
         if isinstance(file, (str, Path)):
             if not on:
@@ -91,14 +92,24 @@ class Stream(StreamWrapper):
             raise FileFormatError('Expected writable stream, got readable.')
         # check text/binary
         # a text format can be read from/written to a binary stream with a wrapper
-        # but vice versa can't be done
-        if not is_binary(file) and binary:
-            raise FileFormatError('Expected binary stream, got text stream.')
-        if is_binary(file) and not binary:
-            file = make_textstream(file)
-        self.binary = binary
+        if not is_binary(file):
+            self._textstream = file
+            try:
+                file = file.buffer
+            except AttributeError as e:
+                raise FileFormatError('Unable to access binary stream.') from e
+        else:
+            self._textstream = None
         self.name = get_stream_name(file)
         super().__init__(file)
+
+    @property
+    def text(self):
+        """Return underlying text stream or wrap underlying binary stream with utf-8 wrapper."""
+        if not self._textstream:
+            encoding = 'utf-8-sig' if self.mode == 'r' else 'utf-8'
+            self._textstream = io.TextIOWrapper(self._stream, encoding=encoding)
+        return self._textstream
 
     def __getattr__(self, attr):
         """Delegate undefined attributes to wrapped stream."""
@@ -108,21 +119,21 @@ class Stream(StreamWrapper):
         """Close stream, absorb errors."""
         # always close at wrapper level
         self.closed = True
+        if self._textstream:
+            try:
+                self._textstream.close()
+            except EnvironmentError:
+                pass
         try:
             self._stream.close()
         except EnvironmentError:
             pass
-        try:
-            self._raw.close()
-        except EnvironmentError:
-            pass
+        if self._raw:
+            try:
+                self._raw.close()
+            except EnvironmentError:
+                pass
 
-
-def make_textstream(file, *, encoding=None):
-    """Wrap binary stream to create text stream."""
-    if not encoding:
-        encoding = 'utf-8-sig' if file.readable() else 'utf-8'
-    return io.TextIOWrapper(file, encoding=encoding)
 
 def is_binary(stream):
     """Check if stream is binary."""
@@ -205,7 +216,7 @@ class MagicRegistry:
             if isinstance(file, (str, Path)):
                 # only use context manager if string provided
                 # if we got an open stream we should not close it
-                with open_stream(file, 'r', binary=True) as stream:
+                with open_stream(file, 'r') as stream:
                     for magic, klass in self._magic.items():
                         if has_magic(stream, magic):
                             return klass

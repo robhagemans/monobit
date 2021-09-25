@@ -93,12 +93,12 @@ class Container:
         """Open a binary stream in the container."""
         raise NotImplementedError
 
-    def open(self, name, mode, *, encoding=None):
+    def open(self, name, mode):
         """Open a stream on the container."""
         stream = self.open_binary(name, mode[:1])
         if mode.endswith('b'):
             return stream
-        return streams.make_textstream(stream, encoding=encoding)
+        return stream.text
 
 
 ###################################################################################################
@@ -130,7 +130,7 @@ class DirContainer(Container):
             path = pathname.parent
             logging.debug('Creating directory `%s`', self._path / path)
             (self._path / path).mkdir(parents=True, exist_ok=True)
-        file = open_stream(self._path / pathname, mode, binary=True)
+        file = open_stream(self._path / pathname, mode)
         # provide name relative to directory container
         file.name = str(pathname)
         return file
@@ -165,7 +165,7 @@ class ZipContainer(Container):
         # mode really should just be 'r' or 'w'
         mode = mode[:1]
         if isinstance(file, (str, Path)):
-            file = open_stream(file, mode, binary=True, overwrite=overwrite)
+            file = open_stream(file, mode, overwrite=overwrite)
         else:
             root = streams.get_stream_name(file)
             # if name ends up empty, replace; clip off any dir path and suffix
@@ -260,7 +260,7 @@ class TarContainer(Container):
         if (mode == 'r' and not isinstance(file, (str, Path)) and not file.seekable()):
             file = io.BytesIO(file.read())
         else:
-            file = open_stream(file, mode, binary=True, overwrite=overwrite)
+            file = open_stream(file, mode, overwrite=overwrite)
         # create the tarfile
         try:
             self._tarfile = tarfile.open(fileobj=file, mode=mode)
@@ -359,8 +359,7 @@ class TextContainer(Container):
     def __init__(self, infile, mode='r', *, overwrite=False):
         """Open stream or create wrapper."""
         # all containers expect binary stream, including TextContainer
-        self._stream_context = streams.open_stream(infile, mode, binary=True, overwrite=overwrite)
-        self._stream = self._stream_context.__enter__()
+        self._stream = streams.open_stream(infile, mode, overwrite=overwrite)
         self._mode = mode[:1]
         if self._mode == 'r':
             if self._stream.readline().strip() != self.separator:
@@ -373,7 +372,7 @@ class TextContainer(Container):
     def __exit__(self, exc_type, exc_value, traceback):
         if self._substream:
             self._substream.close()
-        return self._stream_context.__exit__(exc_type, exc_value, traceback)
+        return self._stream.__exit__(exc_type, exc_value, traceback)
 
     def __iter__(self):
         """Dummy content lister."""

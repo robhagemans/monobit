@@ -84,8 +84,8 @@ if args.help:
 
 try:
     # if no infile or outfile provided, use stdio
-    infile = args.infile or sys.stdin.buffer
-    outfile = args.outfile or sys.stdout.buffer
+    infile = args.infile or sys.stdin
+    outfile = args.outfile or sys.stdout
 
     # open streams
     with monobit.open_location(infile, 'r') as (instream, incontainer):
