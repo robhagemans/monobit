@@ -33,10 +33,10 @@ def open_container(file, mode, overwrite=False):
     if not file or file == io:
         # io module is not a context manager
         return DirContainer('')
-    container_type = identify_container(file, mode)
+    container_type = identify_container(file, mode, overwrite)
     return container_type(file, mode, overwrite=overwrite)
 
-def identify_container(file, mode):
+def identify_container(file, mode, overwrite):
     """Get container of the appropriate type."""
     # no file provided means filesystem
     if not file or file == io:
@@ -46,6 +46,9 @@ def identify_container(file, mode):
     if isinstance(file, (str, Path)) and Path(file).is_dir():
         container_type = DirContainer
     else:
+        if isinstance(file, (str, Path)):
+            # this will deal with compressed output, e.g. tar.gz or .tar.xz
+            file = open_stream(file, mode, binary=True, overwrite=overwrite)
         container_type = containers.identify(file, mode)
     suffix = get_suffix(file)
     if not container_type:
@@ -120,14 +123,14 @@ class DirContainer(Container):
         """Open a stream in the container."""
         # mode in 'rb', 'rt', 'wb', 'wt'
         mode = mode[:1]
-        name = Path(name)
+        pathname = Path(name)
         if mode == 'w':
-            path = name.parent
+            path = pathname.parent
             logging.debug('Creating directory `%s`', self._path / path)
             (self._path / path).mkdir(parents=True, exist_ok=True)
-        file = open_stream(self._path / name, mode, binary=True)
+        file = open_stream(self._path / pathname, mode, binary=True)
         # provide name relative to directory container
-        file.name = name
+        file.name = str(pathname)
         return file
 
     def __iter__(self):
@@ -160,16 +163,11 @@ class ZipContainer(Container):
         # mode really should just be 'r' or 'w'
         mode = mode[:1]
         if isinstance(file, (str, Path)):
-            file = root = str(file)
-            if mode == 'w':
-                if not file.endswith('.zip'):
-                    file += '.zip'
-                if Path(file).exists() and not overwrite:
-                    raise FileExistsError(f'Will not overwrite `{file}`.')
+            file = open_stream(file, mode, binary=True, overwrite=overwrite)
         else:
             root = streams.get_stream_name(file)
-        # if name ends up empty, replace; clip off any dir path and suffix
-        root = PurePath(root).stem or 'fonts'
+            # if name ends up empty, replace; clip off any dir path and suffix
+            root = PurePath(file.name).stem or 'fonts'
         # reading zipfile needs a seekable stream, drain to buffer if needed
         # note you can only do this once on the input stream!
         if (mode == 'r' and not isinstance(file, (str, Path)) and not file.seekable()):
@@ -255,21 +253,21 @@ class TarContainer(Container):
         """Create wrapper."""
         # mode really should just be 'r' or 'w'
         mode = mode[:1]
-        if isinstance(file, (str, Path)):
-            file = str(file)
         # reading zipfile needs a seekable stream, drain to buffer if needed
         # note you can only do this once on the input stream!
         if (mode == 'r' and not isinstance(file, (str, Path)) and not file.seekable()):
             file = io.BytesIO(file.read())
+        else:
+            file = open_stream(file, mode, binary=True, overwrite=overwrite)
         # create the tarfile
         try:
-            self._tarfile = tarfile.open(file, mode)
+            self._tarfile = tarfile.open(fileobj=file, mode=mode)
         except tarfile.ReadError as exc:
             raise ContainerFormatError(exc) from exc
         self._mode = mode
         self.name = self._tarfile.name
         if mode == 'w':
-            self._root = Path(self.name).stem
+            self._root = Path(self.name).stem or fonts
         else:
             self._root = ''
         # output files, to be written on close
