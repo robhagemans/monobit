@@ -45,6 +45,13 @@ class StreamWrapper:
         return self._stream.__iter__()
 
 
+class KeepOpen(StreamWrapper):
+    """Wrapper to avoid closing wrapped stream."""
+
+    def close(self):
+        """Do nothing."""
+
+
 class Stream(StreamWrapper):
     """Manage file resource."""
 
@@ -57,8 +64,6 @@ class Stream(StreamWrapper):
         # binary is a boolean; open as binary if true, as text if false
         # on: container to open any new stream on
         mode = mode[:1]
-        # don't close externally provided stream
-        self._keep_open = not isinstance(file, (str, Path))
         # if a path is provided, open a (binary) stream
         if isinstance(file, (str, Path)):
             if not on:
@@ -72,6 +77,11 @@ class Stream(StreamWrapper):
                         f'Will not overwrite existing file `{file}` on `{on.name}`.'
                     )
                 file = on.open_binary(file, mode)
+            self._raw = file
+        else:
+            # don't close externally provided stream
+            file = KeepOpen(file)
+            self._raw = None
         # wrap compression/decompression if needed
         file = open_compressed_stream(file)
         # check r/w mode is consistent
@@ -98,12 +108,14 @@ class Stream(StreamWrapper):
         """Close stream, absorb errors."""
         # always close at wrapper level
         self.closed = True
-        # only close stream if we own it
-        if not self._keep_open:
-            try:
-                self._stream.close()
-            except EnvironmentError:
-                pass
+        try:
+            self._stream.close()
+        except EnvironmentError:
+            pass
+        try:
+            self._raw.close()
+        except EnvironmentError:
+            pass
 
 
 def make_textstream(file, *, encoding=None):
