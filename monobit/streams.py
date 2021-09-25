@@ -64,7 +64,7 @@ class Stream(StreamWrapper):
             if not on:
                 if not overwrite and mode == 'w' and Path(file).exists():
                     raise FileExistsError(f'Will not overwrite existing file `{file}`.')
-                logging.info("Opening file `%s` for '%s'.", file, mode)
+                logging.debug("Opening file `%s` for mode '%s'.", file, mode)
                 file = io.open(file, mode + 'b')
             else:
                 if not overwrite and mode == 'w' and file in on:
@@ -132,6 +132,20 @@ def get_stream_name(stream):
         # not all streams have one (e.g. BytesIO)
         return ''
 
+def normalise_suffix(suffix):
+    """Bring suffix to lowercase without dot."""
+    if suffix.startswith('.'):
+        suffix = suffix[1:]
+    return suffix.lower()
+
+def get_suffix(file):
+    """Get normalised suffix for file or path."""
+    if isinstance(file, (str, Path)):
+        suffix = Path(file).suffix
+    else:
+        suffix = Path(get_stream_name(file)).suffix
+    return normalise_suffix(suffix)
+
 
 ###################################################################################################
 # magic byte sequences
@@ -157,22 +171,16 @@ class MagicRegistry:
         """Decorator to register class that handles file type."""
         def decorator(klass):
             for suffix in suffixes:
-                suffix = self._normalise_suffix(suffix)
+                suffix = normalise_suffix(suffix)
                 self._suffixes[suffix] = klass
             if magic:
                 self._magic[magic] = klass
             return klass
         return decorator
 
-    def _normalise_suffix(self, suffix):
-        """Bring suffix to lowercase without dot."""
-        if suffix.startswith('.'):
-            suffix = suffix[1:]
-        return suffix.lower()
-
     def has_suffix(self, suffix):
         """Suffix is covered."""
-        return self._normalise_suffix(suffix) in self._suffixes.keys()
+        return normalise_suffix(suffix) in self._suffixes.keys()
 
     def identify(self, file, mode):
         """Identify a type from magic sequence on input file."""
@@ -184,13 +192,10 @@ class MagicRegistry:
                 # only use context manager if string provided
                 # if we got an open stream we should not close it
                 with open_stream(file, 'r', binary=True) as stream:
-                    return self.identify(stream, 'r')
-            for magic, klass in self._magic.items():
-                if has_magic(file, magic):
-                    return klass
-        # not readable or no magic, try suffix
-        suffix = Path(get_stream_name(file)).suffix
-        suffix = self._normalise_suffix(suffix)
+                    for magic, klass in self._magic.items():
+                        if has_magic(stream, magic):
+                            return klass
+        suffix = get_suffix(file)
         return self._suffixes.get(suffix, None)
 
 
@@ -212,7 +217,7 @@ def open_compressed_stream(file):
         mode = 'r'
     else:
         mode = 'w'
-    logging.info("Opening %s-compressed stream for mode '%s'", compressor.__name__, mode)
+    logging.debug("Opening %s-compressed stream for mode '%s'", compressor.__name__, mode)
     wrapped = compressor.open(file, mode + 'b')
     # set name of uncompressed stream
     wrapped.name = get_stream_name(file)

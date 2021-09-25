@@ -16,7 +16,7 @@ import tarfile
 from pathlib import Path, PurePath, PurePosixPath
 
 from . import streams
-from .streams import MagicRegistry, StreamWrapper, FileFormatError
+from .streams import MagicRegistry, StreamWrapper, FileFormatError, get_suffix
 
 
 class ContainerFormatError(FileFormatError):
@@ -46,12 +46,10 @@ def identify_container(file, mode):
         container_type = DirContainer
     else:
         container_type = containers.identify(file, mode)
+    suffix = get_suffix(file)
     if not container_type:
         # output to file with no suffix - default to text container
-        if mode == 'w' and (
-                (isinstance(file, (str, Path)) and not Path(file).suffix)
-                or not Path(file.name).suffix
-            ):
+        if mode == 'w' and not suffix:
             return TextContainer
         # no container type found
         raise ContainerFormatError('Expected container format, got non-container stream.')
@@ -113,6 +111,7 @@ class DirContainer(Container):
         # mode really should just be 'r' or 'w'
         mode = mode[:1]
         if mode == 'w':
+            logging.debug('Creating directory `%s`', self._path)
             # exist_ok raises FileExistsError only if the *target* already exists, not the parents
             self._path.mkdir(parents=True, exist_ok=overwrite)
 
@@ -123,6 +122,7 @@ class DirContainer(Container):
         name = Path(name)
         if mode == 'w':
             path = name.parent
+            logging.debug('Creating directory `%s`', self._path / path)
             (self._path / path).mkdir(parents=True, exist_ok=True)
         return io.open(self._path / name, mode + 'b')
 
@@ -160,7 +160,7 @@ class ZipContainer(Container):
             if mode == 'w':
                 if not file.endswith('.zip'):
                     file += '.zip'
-                if Path(file).exists():
+                if Path(file).exists() and not overwrite:
                     raise FileExistsError(f'Will not overwrite `{file}`.')
         else:
             root = streams.get_stream_name(file)
@@ -222,6 +222,7 @@ class ZipContainer(Container):
         filename = str(PurePosixPath(self._root) / name)
         mode = mode[:1]
         # always open as binary
+        logging.debug('Opening file `%s` on zip container `%s`.', filename, self.name)
         return self._zip.open(filename, mode)
 
 

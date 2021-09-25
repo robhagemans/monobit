@@ -18,15 +18,10 @@ from .containers import Container, open_container, unique_name, ContainerFormatE
 from .font import Font
 from .pack import Pack
 from . import streams
-from .streams import Stream, open_stream, make_textstream, compressors, has_magic, FileFormatError
-
-
-
-def _normalise_suffix(format):
-    """Bring suffix to lowercase without dot."""
-    if format.startswith('.'):
-        format = format[1:]
-    return format.lower()
+from .streams import (
+    Stream, open_stream, make_textstream, compressors, has_magic, FileFormatError,
+    normalise_suffix
+)
 
 
 ##############################################################################
@@ -45,7 +40,7 @@ def open_location(file, mode, on=None, overwrite=False):
     # no container given - see if file is itself a container
     if not on:
         try:
-            with open_container(file, mode) as container:
+            with open_container(file, mode, overwrite=overwrite) as container:
                 if mode == 'r':
                     logging.info('Reading all from `%s`.', container.name)
                 else:
@@ -85,7 +80,7 @@ class Loaders:
                             return loader
                 # fall back to suffixes
                 suffix = Path(infile.name).suffix
-                format = _normalise_suffix(suffix or DEFAULT_FORMAT)
+                format = normalise_suffix(suffix or DEFAULT_FORMAT)
             else:
                 format = DEFAULT_FORMAT
         return cls._loaders.get(format, None)
@@ -99,7 +94,7 @@ class Loaders:
                 return cls.load(stream, format, container, **kwargs)
         # infile not provided - load all from container
         if not infile:
-            return cls._load_all(on, **kwargs)
+            return cls._load_all(on, format, **kwargs)
         return cls._load_from_file(infile, on, format, **kwargs)
 
     @classmethod
@@ -112,19 +107,20 @@ class Loaders:
         return loader(infile, on, **kwargs)
 
     @classmethod
-    def _load_all(cls, container, **kwargs):
+    def _load_all(cls, container, format, **kwargs):
         """Open container and load all fonts found in it into one pack."""
         packs = []
         # try opening a container on input file for read, will raise error if not container format
         for name in container:
-            logging.info('Attempting to extract file `%s`.', name)
+            logging.debug('Attempting to load from file `%s`.', name)
             with open_stream(name, 'r', binary=True, on=container) as stream:
                 try:
-                    # recursive call - walk containers-in-containers
-                    font_or_pack = cls.load(stream, on=container, format=None, **kwargs)
-                except (FileFormatError, ValueError) as exc:
+                    font_or_pack = cls.load(stream, on=container, format=format, **kwargs)
+                    logging.info('Found `%s` on `%s`', stream.name, container.name)
+                except Exception as exc:
+                    # if one font fails for any reason, try the next
                     # loaders raise ValueError if unable to parse
-                    logging.warning('Could not load `%s`: %s', name, exc)
+                    logging.debug('Could not load `%s`: %s', name, exc)
                 else:
                     if isinstance(font_or_pack, Pack):
                         packs.append(font_or_pack)
@@ -208,7 +204,7 @@ class Savers:
         if not format:
             if outfile:
                 suffix = Path(outfile.name).suffix
-                format = _normalise_suffix(suffix or DEFAULT_FORMAT)
+                format = normalise_suffix(suffix or DEFAULT_FORMAT)
             else:
                 format = DEFAULT_FORMAT
         return cls._savers.get(format, None)
@@ -247,7 +243,7 @@ class Savers:
             # generate unique filename
             name = font.name.replace(' ', '_')
             filename = unique_name(container, name, format)
-            logging.info('Attempting to save to file `%s`.', filename)
+            logging.debug('Attempting to save to file `%s`.', filename)
             try:
                 with open_stream(filename, 'w', binary=True, on=container) as stream:
                     cls._save_to_file(Pack([font]), stream, container, format, **kwargs)
