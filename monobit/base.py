@@ -7,7 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 
 DEFAULT_FORMAT = 'yaff'
-VERSION = '0.12'
+VERSION = '0.13'
 
 
 def scriptable(fn):
