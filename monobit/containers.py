@@ -182,7 +182,7 @@ class ZipContainer(Container):
         self._mode = mode
         # create the zipfile
         try:
-            self._zip = zipfile.ZipFile(file, mode)
+            self._zip = zipfile.ZipFile(file, mode, compression=zipfile.ZIP_DEFLATED)
         except zipfile.BadZipFile as exc:
             raise ContainerFormatError(exc) from exc
         self.name = self._zip.filename
