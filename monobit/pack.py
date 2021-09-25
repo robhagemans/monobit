@@ -1,18 +1,12 @@
 """
-monobit.pack - representation of collection of fonts
+monobit.pack - collection of fonts
 
 (c) 2019--2021 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
-import io
-import sys
 import logging
-from functools import wraps
-from contextlib import contextmanager
-from pathlib import Path
 
-from .base import VERSION, DEFAULT_FORMAT, scriptable
 from .font import Font
 
 
@@ -25,47 +19,33 @@ class Pack:
             fonts = fonts,
         self._fonts = tuple(fonts)
 
-    def __iter__(self):
-        """Iterate over fonts in pack."""
-        return iter(self._fonts)
-
-    def __len__(self):
-        """Number of fonts in pack."""
-        return len(self._fonts)
-
     def __repr__(self):
         """Representation."""
-        if self.names:
-            return "<Pack \n    '" + "'\n    '".join(self.names) + "'\n>"
-        return '<empty Pack>'
+        return 'Pack' + repr(self._fonts)
 
-    def __getitem__(self, item):
-        """Get a font by number."""
-        if isinstance(item, str):
-            for _font in self._fonts:
-                if _font.name == item:
-                    return _font
-            raise KeyError(f'No font named {item} in collection.')
-        return self._fonts[item]
+    def __len__(self):
+        return len(self._fonts)
 
-    @property
-    def names(self):
-        """List names of fonts in collection."""
-        return [_font.name for _font in self._fonts]
+    def __iter__(self):
+        return iter(self._fonts)
 
-    # inject Font operations into Pack
+    def __getitem__(self, index):
+        return self._fonts[index]
 
-    for _name, _func in Font.__dict__.items():
-        if hasattr(_func, 'scriptable'):
+    def __add__(self, other):
+        return Pack(self._fonts + Pack(other))
 
-            def _modify(self, *args, operation=_func, **kwargs):
-                """Return a pack with modified fonts."""
-                fonts = [
-                    operation(_font, *args, **kwargs)
-                    for _font in self._fonts
-                ]
-                return Pack(fonts)
+    def select(self, **properties):
+        """Get a subset from the pack by property. E.g. select(name='Times')."""
+        return Pack(
+            _font
+            for _font in self._fonts
+            if all(
+                getattr(_font, _property) == _value
+                for _property, _value in properties.items()
+            )
+        )
 
-            _modify.scriptable = True
-            _modify.script_args = _func.script_args
-            locals()[_name] = _modify
+    def list_by(self, property):
+        """List property of fonts in collection."""
+        return tuple(getattr(_font, property) for _font in self._fonts)
