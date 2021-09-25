@@ -331,23 +331,22 @@ class TextContainer(Container):
             raise ValueError(f"Cannot open file for '{mode}' on container open for '{self._mode}'")
         if self._substream and not self._substream.closed:
             raise ValueError('Text container can only support one open file at a time.')
-        self._substream = TextSubStream(parent=self, mode=self._mode, separator=self.separator)
+        self._substream = TextSubStream(self._stream, self._mode, self.separator)
         return self._substream
 
 
 class TextSubStream(StreamWrapper):
     """Wrapper object working with TextContainer to emulate a single text stream."""
 
-    def __init__(self, parent, mode, separator):
+    def __init__(self, parent_stream, mode, separator):
         """Open a substream."""
         self.closed = False
-        self._parent = parent
         self._separator = separator
         self._mode = mode
         self.name = ''
         self._linebuffer = b''
         self._eof = False
-        super().__init__(parent._stream)
+        super().__init__(parent_stream)
 
     def __iter__(self):
         """Iterate over lines until next separator."""
