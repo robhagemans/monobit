@@ -64,6 +64,7 @@ class Stream(StreamWrapper):
             if not on:
                 if not overwrite and mode == 'w' and Path(file).exists():
                     raise FileExistsError(f'Will not overwrite existing file `{file}`.')
+                logging.info("Opening file `%s` for '%s'.", file, mode)
                 file = io.open(file, mode + 'b')
             else:
                 if not overwrite and mode == 'w' and file in on:
@@ -173,17 +174,17 @@ class MagicRegistry:
         """Suffix is covered."""
         return self._normalise_suffix(suffix) in self._suffixes.keys()
 
-    def identify(self, file):
+    def identify(self, file, mode):
         """Identify a type from magic sequence on input file."""
         if not file:
             return None
-        if isinstance(file, (str, Path)):
-            # only use context manager if string provided
-            # if we got an open stream we should not close it
-            with open_stream(file, 'r', binary=True) as stream:
-                return self.identify(stream)
         # can't read magic on write-only file
-        if file.readable():
+        if mode == 'r':
+            if isinstance(file, (str, Path)):
+                # only use context manager if string provided
+                # if we got an open stream we should not close it
+                with open_stream(file, 'r', binary=True) as stream:
+                    return self.identify(stream, 'r')
             for magic, klass in self._magic.items():
                 if has_magic(file, magic):
                     return klass
@@ -203,7 +204,8 @@ compressors.register('.bz2', magic=b'BZh')(bz2)
 
 def open_compressed_stream(file):
     """Identify and wrap compressed streams."""
-    compressor = compressors.identify(file)
+    mode = 'r' if file.readable() else 'w'
+    compressor = compressors.identify(file, mode)
     if not compressor:
         return file
     if file.readable():

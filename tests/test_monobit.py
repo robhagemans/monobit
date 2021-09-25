@@ -12,6 +12,7 @@ usage::
 import os
 import tempfile
 import unittest
+import logging
 from pathlib import Path
 
 import monobit
@@ -19,6 +20,8 @@ import monobit
 
 class TestMonobit(unittest.TestCase):
     """Test monobit export/import."""
+
+    logging.basicConfig(level=logging.WARNING)
 
     font_path = Path('tests/fonts/fixed/')
     # fonts are immutable so no problem in loading only once

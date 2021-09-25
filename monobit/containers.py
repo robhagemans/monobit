@@ -45,7 +45,7 @@ def identify_container(file, mode):
     if isinstance(file, (str, Path)) and Path(file).is_dir():
         container_type = DirContainer
     else:
-        container_type = containers.identify(file)
+        container_type = containers.identify(file, mode)
     if not container_type:
         # output to file with no suffix - default to text container
         if mode == 'w' and (

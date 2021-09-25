@@ -13,7 +13,7 @@ from functools import wraps
 from pathlib import Path
 from contextlib import contextmanager
 
-from .base import VERSION, DEFAULT_FORMAT, scriptable
+from .base import VERSION, DEFAULT_FORMAT
 from .containers import Container, open_container, unique_name, ContainerFormatError
 from .font import Font
 from .pack import Pack
@@ -40,6 +40,22 @@ def open_location(file, mode, on=None, overwrite=False):
     if `on` is empty or the module io, the whole filesystem is taken as the container/location.
     returns a Steam and a Container object
     """
+    if mode not in ('r', 'w'):
+        raise ValueError(f"Unsupported mode '{mode}'.")
+    # no container given - see if file is itself a container
+    if not on:
+        try:
+            with open_container(file, mode) as container:
+                if mode == 'r':
+                    logging.info('Reading all from `%s`.', container.name)
+                else:
+                    logging.info('Writing all to `%s`.', container.name)
+                # empty file parameter means 'load/save all'
+                yield None, container
+            return
+        except ContainerFormatError as e:
+            # infile is not a container, load/save single file
+            pass
     with open_container(on, mode, overwrite=overwrite) as container:
         with open_stream(file, mode, binary=True, on=container, overwrite=overwrite) as stream:
             yield stream, container
@@ -77,19 +93,13 @@ class Loaders:
     @classmethod
     def load(cls, infile:str, format:str='', on:str='', **kwargs):
         """Read new font from file."""
-        # if container provided as string or steam, open it
-        if not isinstance(on, Container) or not isinstance(infile, Stream):
+        # if container/file provided as string or steam, open them
+        if not isinstance(on, Container) or infile and not isinstance(infile, Stream):
             with open_location(infile, 'r', on=on) as (stream, container):
                 return cls.load(stream, format, container, **kwargs)
-        # try if infile is a container first
-        if not format:
-            try:
-                container = open_container(infile, 'r')
-            except ContainerFormatError as e:
-                pass
-            else:
-                with container:
-                    return cls._load_all(container, **kwargs)
+        # infile not provided - load all from container
+        if not infile:
+            return cls._load_all(on, **kwargs)
         return cls._load_from_file(infile, on, format, **kwargs)
 
     @classmethod
@@ -215,24 +225,20 @@ class Savers:
             format: format specification string
             on: location/container. mandatory for formats that need filesystem access.
                 if specified and outfile is a filename, it is taken relative to this location.
-            overwrite: if outfile is a filename, allow overwriting exising file
+            overwrite: if outfile is a filename, allow overwriting existing file
         """
         # if container provided as string or steam, open it
-        if not isinstance(on, Container) or not isinstance(outfile, Stream):
+        if not isinstance(on, Container) or outfile and not isinstance(outfile, Stream):
             with open_location(outfile, 'w', on=on, overwrite=overwrite) as (stream, container):
                 return cls.save(pack_or_font, stream, format, container, **kwargs)
         if isinstance(pack_or_font, Font):
             pack = Pack([pack_or_font])
         else:
             pack = pack_or_font
-        try:
-            container = open_container(outfile, 'w')
-        except ContainerFormatError:
-            return cls._save_to_file(pack, outfile, on, format, **kwargs)
-        else:
-            # create a container on outfile, store the fonts in there
-            with container:
-                return cls._save_all(pack, container, format, **kwargs)
+        if not outfile:
+            # create a container on outfile, store the fonts in there as individual files
+            return cls._save_all(pack, on, format, **kwargs)
+        return cls._save_to_file(pack, outfile, on, format, **kwargs)
 
     @classmethod
     def _save_all(cls, pack, container, format, **kwargs):
