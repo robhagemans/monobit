@@ -11,6 +11,7 @@ import logging
 
 from .binary import friendlystruct, bytes_to_bits
 from .formats import Loaders, Savers
+from .streams import FileFormatError
 from .font import Font, Coord
 from .glyph import Glyph
 
@@ -115,14 +116,14 @@ _AMIGA_HEADER = friendlystruct(
 )
 
 # this is for .font (info/directory) files: (b'\x0f\x00', b'\x0f\x02')
-@Loaders.register('amiga', magic=(b'\0\0\x03\xf3',), name='Amiga Font', binary=True)
-def load(f):
+@Loaders.register('amiga', magic=(b'\0\0\x03\xf3',), name='Amiga Font')
+def load(f, where=None):
     """Read Amiga disk font file."""
     # read & ignore header
     _read_header(f)
     hunk_id = _read_ulong(f)
     if hunk_id != _HUNK_CODE:
-        raise ValueError('Not an Amiga font data file: no code hunk found (id %04x)' % hunk_id)
+        raise FileFormatError('Not an Amiga font data file: no code hunk found (id %04x)' % hunk_id)
     glyphs, props = _read_font_hunk(f)
     return Font(glyphs, properties=props)
 

@@ -20,6 +20,9 @@ from . import streams
 from .streams import MagicRegistry, StreamWrapper, FileFormatError, get_suffix, open_stream
 
 
+DEFAULT_ROOT = 'fonts'
+
+
 class ContainerFormatError(FileFormatError):
     """Incorrect container format."""
 
@@ -169,7 +172,7 @@ class ZipContainer(Container):
         else:
             root = streams.get_stream_name(file)
             # if name ends up empty, replace; clip off any dir path and suffix
-            root = PurePath(file.name).stem or 'fonts'
+            root = PurePath(file.name).stem or DEFAULT_ROOT
         # reading zipfile needs a seekable stream, drain to buffer if needed
         # note you can only do this once on the input stream!
         if (mode == 'r' and not isinstance(file, (str, Path)) and not file.seekable()):
@@ -269,7 +272,7 @@ class TarContainer(Container):
         self._mode = mode
         self.name = self._tarfile.name
         if mode == 'w':
-            self._root = Path(self.name).stem or fonts
+            self._root = Path(self.name).stem or DEFAULT_ROOT
         else:
             self._root = ''
         # output files, to be written on close

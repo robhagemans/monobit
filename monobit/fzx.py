@@ -37,8 +37,8 @@ class _CHAR_ENTRY(ctypes.LittleEndianStructure):
     _pack_ = True
 
 
-@Loaders.register('fzx', name='FZX', binary=True)
-def load(instream):
+@Loaders.register('fzx', name='FZX')
+def load(instream, where=None):
     """Load font from FZX file."""
     data = instream.read()
     header = _FZX_HEADER.from_bytes(data)

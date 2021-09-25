@@ -8,6 +8,7 @@ licence: https://opensource.org/licenses/MIT
 import logging
 
 from .formats import Loaders, Savers
+from .streams import FileFormatError
 from .font import Font, Coord
 from .glyph import Glyph
 from .encoding import get_encoding
@@ -136,8 +137,9 @@ _XLFD_UNPARSED = {
 # top-level calls
 
 @Loaders.register('bdf', magic=(b'STARTFONT ',), name='BDF')
-def load(instream):
+def load(instream, where=None):
     """Load font from a .bdf file."""
+    instream = instream.text
     nchars, comments, bdf_props, x_props = _read_bdf_global(instream)
     glyphs, glyph_props = _read_bdf_characters(instream)
     # check number of characters, but don't break if no match
@@ -147,11 +149,12 @@ def load(instream):
     return Font(glyphs, comments=comments, properties=properties)
 
 
-@Savers.register('bdf', name=load.name, multi=False)
-def save(font, outstream):
+@Savers.register('bdf', name=load.name)
+def save(fonts, outstream, where=None):
     """Write fonts to a .bdf file."""
-    _save_bdf(font, outstream)
-    return font
+    if len(fonts) > 1:
+        raise FileFormatError('Can only save one font to BDF file.')
+    _save_bdf(fonts[0], outstream.text)
 
 
 ##############################################################################

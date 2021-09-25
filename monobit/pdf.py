@@ -13,19 +13,24 @@ try:
     from reportlab.pdfgen.canvas import Canvas
 except ImportError:
     reportlab = None
+
 from .formats import Savers
+from .streams import FileFormatError
 
 
 if reportlab:
-    @Savers.register('pdf', binary=True, multi=False)
+    @Savers.register('pdf')
     def save(
-            font, outfile,
+            fonts, outfile, where=None,
             format:str='png',
             columns:int=16,
             rows:int=16,
             encoding:str=None,
         ):
         """Export font to pdf chart."""
+        if len(fonts) > 1:
+            raise FileFormatError('Can only save one font to PDF file.')
+        font = fonts[0]
         canvas = Canvas(outfile)
         # assume A4
         page_x, page_y = 210*mm, 297*mm
@@ -53,4 +58,3 @@ if reportlab:
                             canvas.rect(orig_x+x*xpix, orig_y+(len(glyph)-y-1)*ypix, xpix, ypix, fill=glyph[y][x])
         canvas.showPage()
         canvas.save()
-        return font

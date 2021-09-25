@@ -128,14 +128,11 @@ class Loaders:
         return Pack(fonts)
 
     @classmethod
-    def register(cls, *formats, magic=(), name=None, binary=False, multi=False, container=False):
+    def register(cls, *formats, magic=(), name=''):
         """
         Decorator to register font loader.
-            *formats: list of extensions covered by this function
+            *formats: extensions covered by registered function
             name: name of the format
-            binary: loader expects binary stream, not text
-            multi: format can contain multiple fonts, loader returns iterable
-            container: loader needs access to container/filesystem beyond input stream
         """
         format = name or formats[0]
 
@@ -144,15 +141,19 @@ class Loaders:
             # stream input wrapper
             @wraps(original_loader)
             def _loader(instream, on, **kwargs):
-                if not binary:
-                    instream = instream.text
-                if container:
-                    font_or_pack = original_loader(instream, container=on, **kwargs)
-                else:
-                    font_or_pack = original_loader(instream, **kwargs)
-                pack = Pack(font_or_pack)
+                fonts = original_loader(instream, where=on, **kwargs)
+                if not fonts:
+                    raise ValueError('No fonts found in file.')
+                pack = Pack(fonts)
                 name = Path(instream.name).name
-                return _set_extraction_props(pack, name, format)
+                return Pack(
+                    _font.set_properties(
+                        converter=CONVERTER_NAME,
+                        source_format=_font.source_format or format,
+                        source_name=_font.source_name or name
+                    )
+                    for _font in pack
+                )
 
             # register loader
             _loader.name = name
@@ -164,21 +165,6 @@ class Loaders:
             return _loader
 
         return _load_decorator
-
-
-# extraction properties
-
-def _set_extraction_props(pack, name, format):
-    """Return copy with source-name and source-format set."""
-    return Pack(
-        _font.set_properties(
-            converter=CONVERTER_NAME,
-            source_format=_font.source_format or format,
-            source_name=_font.source_name or name
-        )
-        for _font in pack
-    )
-
 
 
 ##############################################################################
@@ -256,33 +242,18 @@ class Savers:
 
 
     @classmethod
-    def register(cls, *formats, name='', binary=False, multi=False, container=False):
+    def register(cls, *formats, name=''):
         """
         Decorator to register font saver.
             *formats: extensions covered by registered function
-            binary: saver expects binary stream, not text
-            multi: format can contain multiple fonts, saver expects iterable
-            container: saver needs access to filesystem beyond output stream
+            name: name of the format
         """
         def _save_decorator(original_saver):
 
             # stream output wrapper
             @wraps(original_saver)
             def _saver(pack, outfile, on, **kwargs):
-                if not (container or multi or len(pack) == 1):
-                    raise FileFormatError(
-                        f"Can't save multiple fonts to single {name} file."
-                    ) from None
-                if not multi:
-                    pack = pack[0]
-                if not binary:
-                    outfile = outfile.text
-                if container:
-                    original_saver(pack, outfile, container=on, **kwargs)
-                else:
-                    original_saver(pack, outfile, **kwargs)
-                if not binary:
-                    outfile.close()
+                original_saver(pack, outfile, where=on, **kwargs)
 
             # register saver
             _saver.script_args = original_saver.__annotations__

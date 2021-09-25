@@ -11,6 +11,7 @@ from types import SimpleNamespace
 
 from .text import clean_comment, write_comments, split_global_comment, to_text
 from .formats import Loaders, Savers
+from .streams import FileFormatError
 from .font import PROPERTIES, Font
 from .glyph import Glyph
 from .label import label as to_label
@@ -82,33 +83,29 @@ _DRAW_PARAMETERS = dict(
 
 
 @Loaders.register('yaff', 'text', 'txt', name='monobit-yaff')
-def load(instream):
+def load(instream, where=None):
     """Read a plaintext font file."""
-    font = _load_font(instream, **_YAFF_PARAMETERS)
-    if font is None:
-        raise ValueError('No fonts found in file.')
-    return font
+    return _load_font(instream.text, **_YAFF_PARAMETERS)
 
-@Savers.register('yaff', 'text', 'txt', multi=False, name=load.name)
-def save(font, outstream):
+@Savers.register('yaff', 'text', 'txt', name=load.name)
+def save(fonts, outstream, where=None):
     """Write fonts to a yaff file."""
-    _save_yaff(font, outstream, **_YAFF_PARAMETERS)
-    return font
+    if len(fonts) > 1:
+        raise FileFormatError("Can only save one font to yaff file.")
+    _save_yaff(fonts[0], outstream.text, **_YAFF_PARAMETERS)
 
 
 @Loaders.register('draw', name='hexdraw')
-def load_draw(instream):
+def load_draw(instream, where=None):
     """Read a hexdraw font file."""
-    font = _load_font(instream, **_DRAW_PARAMETERS)
-    if font is None:
-        raise ValueError('No fonts found in file.')
-    return font
+    return _load_font(instream.text, **_DRAW_PARAMETERS)
 
-@Savers.register('draw', multi=False, name=load_draw.name)
-def save_draw(font, outstream):
+@Savers.register('draw', name=load_draw.name)
+def save_draw(fonts, outstream, where=None):
     """Write font to a hexdraw file."""
-    _save_draw(font, outstream, **_DRAW_PARAMETERS)
-    return font
+    if len(fonts) > 1:
+        raise FileFormatError("Can only save one font to hexdraw file.")
+    _save_draw(fonts[0], outstream.text, **_DRAW_PARAMETERS)
 
 
 ##############################################################################

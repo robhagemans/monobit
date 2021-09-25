@@ -102,16 +102,16 @@ _FORMAT_NAME = {
 @Loaders.register(
     'cpi',
     magic=(b'\xff'+_ID_MS, b'\xff'+_ID_NT, b'\x7f'+_ID_DR),
-    name='CPI', binary=True, multi=True
+    name='CPI'
 )
-def load(instream):
+def load(instream, where=None):
     """Load fonts from CPI file."""
     data = instream.read()
     fonts = _parse_cpi(data)
     return fonts
 
-@Loaders.register('cp', name='Codepage', binary=True, multi=True)
-def load_cp(instream):
+@Loaders.register('cp', name='Codepage')
+def load_cp(instream, where=None):
     """Load fonts from CP file."""
     data = instream.read()
     fonts, _ = _parse_cp(data, 0, standalone=True)

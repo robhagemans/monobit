@@ -19,6 +19,7 @@ except ImportError:
 from .base import boolean, pair
 from .containers import unique_name
 from . import streams
+from .streams import FileFormatError
 from .binary import friendlystruct
 from .formats import Loaders, Savers
 from .font import Font, Coord
@@ -36,23 +37,22 @@ from .winfnt import _CHARSET_MAP
 # top-level calls
 
 if Image:
-    @Loaders.register('bmf', name='BMFont', binary=True, multi=False, container=True)
-    def load(infile, container):
+    @Loaders.register('bmf', name='BMFont')
+    def load(infile, where):
         """Load fonts from bmfont in container."""
-        font = _read_bmfont(infile, container)
-        if not font:
-            raise ValueError('No font found.')
-        return font
+        return _read_bmfont(infile, where)
 
-    @Savers.register('bmf', name=load.name, binary=True, multi=False, container=True)
+    @Savers.register('bmf', name=load.name)
     def save(
-            font, outfile, container,
+            fonts, outfile, where,
             image_size:pair=(256, 256),
             image_format:str='png',
             packed:boolean=True,
         ):
         """Save fonts to bmfonts in container."""
-        _create_bmfont(outfile, container, font, image_size, packed, image_format)
+        if len(fonts) > 1:
+            raise FileFormatError("Can only save one font to BMFont file.")
+        _create_bmfont(outfile, where, fonts[0], image_size, packed, image_format)
 
 
 ##############################################################################
@@ -497,9 +497,6 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=())
 
 def _read_bmfont(infile, container):
     """Read a bmfont from a container."""
-    if isinstance(infile, (str, Path)):
-        with container.open(name, 'rb') as instream:
-            return _read_bmfont(instream, container)
     magic = infile.peek(3)
     fontinfo = {}
     if magic.startswith(b'BMF'):
@@ -672,13 +669,7 @@ def _create_bmfont(outfile, container, font, size=(256, 256), packed=False, imag
     else:
         props['kernings'] = []
     # write the .fnt description
-    if not outfile:
-        outfile = unique_name(container, f'{path}/{fontname}', 'fnt')
-    if isinstance(outfile, (str, Path)):
-        with container.open(bmfontname, 'wt') as stream:
-            _write_fnt_descriptor(stream, props, chars)
-    else:
-        _write_fnt_descriptor(outfile, props, chars)
+    _write_fnt_descriptor(outfile, props, chars)
 
 def _write_fnt_descriptor(outfile, props, chars):
     """Write the .fnt descriptor file."""

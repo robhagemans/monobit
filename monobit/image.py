@@ -7,6 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 from collections import Counter
+from pathlib import Path
 
 try:
     from PIL import Image
@@ -15,10 +16,12 @@ except ImportError:
 from .base import pair, rgb
 from .binary import ceildiv
 from .formats import Loaders, Savers
+from .streams import FileFormatError
 from .font import Font
 from .glyph import Glyph
 
 
+DEFAULT_IMAGE_FORMAT = 'png'
 
 
 # available background policies
@@ -54,10 +57,10 @@ if Image:
             # JPEG
             b'\xFF\xD8\xFF',
         ),
-        name='Bitmap Image', binary=True
+        name='Bitmap Image',
     )
     def load(
-            infile,
+            infile, where=None,
             cell:pair=(8, 8),
             margin:pair=(0, 0),
             padding:pair=(0, 0),
@@ -142,10 +145,10 @@ if Image:
         return Font(glyphs)
 
 
-    @Savers.register('png', 'bmp', 'gif', name=load.name, binary=True, multi=False)
+    @Savers.register('png', 'bmp', 'gif', name=load.name)
     def save(
-            font, outfile,
-            format:str='png',
+            fonts, outfile, where=None,
+            format:str='',
             columns:int=32,
             margin:pair=(0, 0),
             padding:pair=(0, 0),
@@ -154,9 +157,13 @@ if Image:
             encoding:str=None,
         ):
         """Export font to image."""
-        img = create_image(font, columns, margin, padding, scale, border, back, fore, encoding)
-        img.save(outfile, format)
-        return font
+        if len(fonts) > 1:
+            raise FileFormatError('Can only save one font to image file.')
+        img = create_image(fonts[0], columns, margin, padding, scale, border, back, fore, encoding)
+        try:
+            img.save(outfile, format=format or Path(outfile).suffix[1:])
+        except (KeyError, ValueError, TypeError):
+            img.save(outfile, format=DEFAULT_IMAGE_FORMAT)
 
 
 def create_image(
