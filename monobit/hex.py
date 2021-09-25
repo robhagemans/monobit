@@ -79,7 +79,7 @@ def load(instream):
     return Font(glyphs, comments=comments, properties=dict(encoding='unicode'))
 
 
-@Savers.register('hex', name=load_hex.name)
+@Savers.register(loader=load_hex)
 def save(fonts, outstream, where=None):
     """Write font to a .hex file."""
     if len(fonts) > 1:
@@ -105,7 +105,7 @@ def save(fonts, outstream, where=None):
         _write_hex_extended(outstream, glyph.char, glyph)
 
 
-@Savers.register('hext', name=load_hext.name)
+@Savers.register(loader=load_hext)
 def save_hext(fonts, outstream, where=None):
     """Write font to an extended .hex file."""
     if len(fonts) > 1:

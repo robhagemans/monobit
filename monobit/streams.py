@@ -201,11 +201,9 @@ class MagicRegistry:
             return klass
         return decorator
 
-    def has_suffix(self, suffix):
+    def __contains__(self, suffix):
         """Suffix is covered."""
         return normalise_suffix(suffix) in self._suffixes.keys()
-
-    __contains__ = has_suffix
 
     def identify(self, file, mode):
         """Identify a type from magic sequence on input file."""
@@ -252,6 +250,6 @@ def open_compressed_stream(file):
     except IndexError:
         pass
     else:
-        if last_suffix and compressors.has_suffix(last_suffix):
+        if last_suffix in compressors:
             wrapped.name = wrapped.name[:-len(last_suffix)]
     return wrapped

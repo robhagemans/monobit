@@ -368,7 +368,7 @@ def load(instream, where=None):
     font = parse_fnt(instream.read())
     return font
 
-@Savers.register('fnt', name=load.name)
+@Savers.register(loader=load)
 def save(fonts, outstream, where=None, version:int=2):
     """Write font to a Windows .FNT file."""
     if len(fonts) > 1:

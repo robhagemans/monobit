@@ -145,7 +145,7 @@ if Image:
         return Font(glyphs)
 
 
-    @Savers.register('png', 'bmp', 'gif', name=load.name)
+    @Savers.register(loader=load)
     def save(
             fonts, outfile, where=None,
             format:str='',

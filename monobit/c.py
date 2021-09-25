@@ -86,7 +86,7 @@ def _get_payload(instream, identifier):
 
 ###################################################################################################
 
-@Savers.register('c')
+@Savers.register('c', loader=load)
 def save(fonts, outstream, where=None):
     """Save font to c source as byte-aligned binary (DOS font)."""
     if len(fonts) > 1:

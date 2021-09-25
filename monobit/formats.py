@@ -128,14 +128,12 @@ class Loaders:
         return Pack(fonts)
 
     @classmethod
-    def register(cls, *formats, magic=(), name=''):
+    def register(cls, *formats, magic=(), name='', saver=None):
         """
         Decorator to register font loader.
             *formats: extensions covered by registered function
             name: name of the format
         """
-        format = name or formats[0]
-
         def _load_decorator(original_loader):
 
             # stream input wrapper
@@ -145,12 +143,12 @@ class Loaders:
                 if not fonts:
                     raise ValueError('No fonts found in file.')
                 pack = Pack(fonts)
-                name = Path(instream.name).name
+                filename = Path(instream.name).name
                 return Pack(
                     _font.set_properties(
                         converter=CONVERTER_NAME,
-                        source_format=_font.source_format or format,
-                        source_name=_font.source_name or name
+                        source_format=_font.source_format or name,
+                        source_name=_font.source_name or filename
                     )
                     for _font in pack
                 )
@@ -158,7 +156,13 @@ class Loaders:
             # register loader
             _loader.name = name
             _loader.script_args = original_loader.__annotations__
-            for format in formats:
+            _loader.saver = saver
+            _loader.formats = formats
+            if saver:
+                saver.loader = _loader
+                _loader.name = name or saver.name
+                _loader.formats = _loader.formats or saver.formats
+            for format in _loader.formats:
                 cls._loaders[format.lower()] = _loader
             for sequence in magic:
                 cls._magic[sequence] = _loader
@@ -242,11 +246,12 @@ class Savers:
 
 
     @classmethod
-    def register(cls, *formats, name=''):
+    def register(cls, *formats, name='', loader=None):
         """
         Decorator to register font saver.
             *formats: extensions covered by registered function
             name: name of the format
+            loader: loader for this format
         """
         def _save_decorator(original_saver):
 
@@ -258,7 +263,13 @@ class Savers:
             # register saver
             _saver.script_args = original_saver.__annotations__
             _saver.name = name
-            for format in formats:
+            _saver.loader = loader
+            _saver.formats = formats
+            if loader:
+                loader.saver = _saver
+                _saver.name = name or loader.name
+                _saver.formats = _saver.formats or loader.formats
+            for format in _saver.formats:
                 cls._savers[format.lower()] = _saver
             return _saver
 

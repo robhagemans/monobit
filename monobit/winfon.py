@@ -266,7 +266,7 @@ def load(instream, where=None):
     ]
     return fonts
 
-@Savers.register('fon', name=load.name)
+@Savers.register(loader=load)
 def save(fonts, outstream, where=None, version:int=2):
     """Write fonts to a Windows .FON file."""
     outstream.write(_create_fon(fonts, version*0x100))

@@ -28,7 +28,7 @@ def load(instream, where=None, cell:pair=(8, 8), n_chars:int=None, offset:int=0,
     return Font(cells)
 
 
-@Savers.register('dos', 'bin', 'rom', 'raw', name=load.name)
+@Savers.register(loader=load)
 def save(fonts, outstream, where=None):
     """Save font to raw byte-aligned binary (DOS font)."""
     if len(fonts) > 1:
