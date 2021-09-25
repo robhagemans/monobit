@@ -367,8 +367,9 @@ def _parse_binary(data):
 
 def _extract(container, name, bmformat, info, common, pages, chars, kernings=()):
     """Extract glyphs."""
+    path = Path(name).parent
     image_files = {
-        int(_page['id']): container.open(_page['file'], 'rb')
+        int(_page['id']): container.open(path / _page['file'], 'rb')
         for _page in pages
     }
     sheets = {_id: Image.open(_file) for _id, _file in image_files.items()}
@@ -452,9 +453,6 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=())
                 glyph = Glyph.empty(char.xadvance - min_after, max_height)
             glyph = glyph.set_annotations(codepoint=char.id)
             glyphs.append(glyph)
-    # close image files
-    for image in sheets.values():
-        image.close()
     for file in image_files.values():
         file.close()
     # parse properties

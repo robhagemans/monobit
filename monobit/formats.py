@@ -247,6 +247,7 @@ class Savers:
             try:
                 with open_stream(filename, 'w', binary=True, on=container) as stream:
                     cls._save_to_file(Pack([font]), stream, container, format, **kwargs)
+                    logging.info('Saved to `%s`.', stream.name)
             except BrokenPipeError:
                 pass
             except Exception as e:

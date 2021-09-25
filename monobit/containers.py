@@ -16,7 +16,7 @@ import tarfile
 from pathlib import Path, PurePath, PurePosixPath
 
 from . import streams
-from .streams import MagicRegistry, StreamWrapper, FileFormatError, get_suffix
+from .streams import MagicRegistry, StreamWrapper, FileFormatError, get_suffix, open_stream
 
 
 class ContainerFormatError(FileFormatError):
@@ -124,7 +124,10 @@ class DirContainer(Container):
             path = name.parent
             logging.debug('Creating directory `%s`', self._path / path)
             (self._path / path).mkdir(parents=True, exist_ok=True)
-        return io.open(self._path / name, mode + 'b')
+        file = open_stream(self._path / name, mode, binary=True)
+        # provide name relative to directory container
+        file.name = name
+        return file
 
     def __iter__(self):
         """List contents."""
@@ -182,27 +185,30 @@ class ZipContainer(Container):
         except zipfile.BadZipFile as exc:
             raise ContainerFormatError(exc) from exc
         self.name = self._zip.filename
+        # output files, to be written on close
+        self._files = []
+        self.closed = False
 
     def _close(self):
         """Close the zip file, ignoring errors."""
+        if self._mode == 'w' and not self.closed:
+            for file in self._files:
+                logging.debug('Writing out `%s` to zip container `%s`.', file.name, self.name)
+                bytearray = file.getvalue()
+                file.close()
+                self._zip.writestr(file.name, bytearray)
         try:
             self._zip.close()
         except EnvironmentError:
             # e.g. BrokenPipeError
             pass
+        self.closed = True
 
     def __exit__(self, exc_type, exc_value, traceback):
+        """Ensure archive is closed and essential records written."""
         if exc_type == BrokenPipeError:
             return True
         self._close()
-
-    def __del__(self):
-        """Ensure archive is closed and essential records written."""
-        try:
-            self._close()
-        except AttributeError:
-            # _zip may already have been destroyed
-            pass
 
     def __iter__(self):
         """List contents."""
@@ -223,7 +229,18 @@ class ZipContainer(Container):
         mode = mode[:1]
         # always open as binary
         logging.debug('Opening file `%s` on zip container `%s`.', filename, self.name)
-        return self._zip.open(filename, mode)
+        if mode == 'r':
+            return self._zip.open(filename, mode)
+        else:
+            newfile = io.BytesIO()
+            newfile.name = filename
+            # stop BytesIO from being closed until we want it to be
+            newfile.close = lambda: None
+            if filename in self._files:
+                logging.warning('Creating multiple files of the same name `%s`.', filename)
+            self._files.append(newfile)
+            return newfile
+
 
 
 ###################################################################################################
