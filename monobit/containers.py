@@ -339,22 +339,64 @@ class TextSubStream(StreamWrapper):
     """Wrapper object working with TextContainer to emulate a single text stream."""
 
     def __init__(self, parent, mode, separator):
+        """Open a substream."""
         self.closed = False
         self._parent = parent
         self._separator = separator
         self._mode = mode
         self.name = ''
+        self._linebuffer = b''
+        self._eof = False
         super().__init__(parent._stream)
 
     def __iter__(self):
         """Iterate over lines until next separator."""
-        for line in self._stream:
-            if line.strip() == self._separator:
-                return
-            yield line[:-1]
-        self._stream.close()
+        while not self._eof:
+            yield self.readline()
+
+    def _check_separator(self, line):
+        if line.strip() == self._separator:
+            self._eof = True
+            return True
+        return False
+
+    def _check_line(self):
+        """Fill the line buffer, stop at separator."""
+        if self._eof:
+            line = b''
+        else:
+            line = self._stream.readline()
+            if not line:
+                # parent stream has ended, signal eof on substream too
+                self._eof = True
+                # close parent stream
+                # this signals to parent not to open further substreams
+                self._stream.close()
+            elif not self._check_separator(line):
+                self._linebuffer += line
+        return self._linebuffer
+
+    def read(self, n=-1):
+        """Read n bytes."""
+        while n < 0 or len(self._linebuffer) < n:
+            self._check_line()
+            if self._eof:
+                break
+        value, self._linebuffer = self._linebuffer[:n], self._linebuffer[n:]
+        return value
+
+    read1 = read
+
+    def readline(self):
+        """Read line until \n."""
+        self._check_line()
+        value, _, self._linebuffer = self._linebuffer.partition(b'\n')
+        return value
+
+    readline1 = readline
 
     def close(self):
+        """Close the substream."""
         if not self.closed and not self._stream.closed:
             try:
                 self._stream.flush()
@@ -362,5 +404,4 @@ class TextSubStream(StreamWrapper):
                     self._stream.write(b'\n%s\n' % (self._separator, ))
             except BrokenPipeError:
                 pass
-            self._parent._substream = None
         self.closed = True
