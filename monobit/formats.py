@@ -226,7 +226,7 @@ class Savers:
         else:
             pack = pack_or_font
         try:
-            container = open_container(outfile, 'w', binary=True)
+            container = open_container(outfile, 'w')
         except ContainerFormatError:
             return cls._save_to_file(pack, outfile, on, format, **kwargs)
         else:

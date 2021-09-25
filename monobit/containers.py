@@ -25,17 +25,17 @@ class ContainerFormatError(FileFormatError):
 
 containers = MagicRegistry()
 
-def open_container(file, mode, binary=True, overwrite=False):
+def open_container(file, mode, overwrite=False):
     """Open container of the appropriate type."""
     if isinstance(file, Container):
         return file
     if not file or file == io:
         # io module is not a context manager
         return DirContainer('')
-    container_type = identify_container(file, mode, binary)
+    container_type = identify_container(file, mode)
     return container_type(file, mode, overwrite=overwrite)
 
-def identify_container(file, mode, binary):
+def identify_container(file, mode):
     """Get container of the appropriate type."""
     # no file provided means filesystem
     if not file or file == io:
@@ -47,6 +47,12 @@ def identify_container(file, mode, binary):
     else:
         container_type = containers.identify(file)
     if not container_type:
+        # output to file with no suffix - default to text container
+        if mode == 'w' and (
+                (isinstance(file, (str, Path)) and not Path(file).suffix)
+                or not Path(file.name).suffix
+            ):
+            return TextContainer
         # no container type found
         raise ContainerFormatError('Expected container format, got non-container stream.')
     return container_type
