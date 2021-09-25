@@ -32,7 +32,7 @@ import logging
 import itertools
 
 from .binary import friendlystruct, bytes_to_bits, ceildiv, align
-from .formats import Loaders, Savers
+from .formats import loaders, savers
 from .streams import FileFormatError
 from .font import Font, Coord
 from .glyph import Glyph
@@ -358,7 +358,7 @@ _GLYPH_ENTRY = {
 ##############################################################################
 # top level functions
 
-@Loaders.register(
+@loaders.register(
     'fnt',
     magic=(b'\0\x01', b'\0\x02', b'\0\x03'),
     name='Windows font resource',
@@ -368,7 +368,7 @@ def load(instream, where=None):
     font = parse_fnt(instream.read())
     return font
 
-@Savers.register(loader=load)
+@savers.register(loader=load)
 def save(fonts, outstream, where=None, version:int=2):
     """Write font to a Windows .FNT file."""
     if len(fonts) > 1:

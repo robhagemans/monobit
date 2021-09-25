@@ -14,7 +14,7 @@ from .pack import Pack
 from .font import Font
 from .glyph import Glyph
 from .encoding import Codepage
-from .formats import Loaders, Savers, open_location
+from .formats import loaders, savers, open_location
 
 from . import bmfont
 from . import winfon
@@ -45,5 +45,5 @@ OPERATIONS = {
 # inject operations into main module namespace
 globals().update(OPERATIONS)
 
-save = Savers().save
-load = Loaders().load
+save = savers.save
+load = loaders.load

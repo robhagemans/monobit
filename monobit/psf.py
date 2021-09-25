@@ -9,7 +9,7 @@ import logging
 
 from .binary import ceildiv, friendlystruct
 from .raw import load_aligned
-from .formats import Loaders, Savers
+from .formats import loaders, savers
 from .font import Font
 from .glyph import Glyph
 from .streams import FileFormatError
@@ -59,7 +59,7 @@ _PSF2_SEPARATOR = b'\xFF'
 _PSF2_STARTSEQ = b'\xFE'
 
 
-@Loaders.register(
+@loaders.register(
     'psf', 'psfu',
     magic=(_PSF1_MAGIC, _PSF2_MAGIC),
     name='PSF',
@@ -116,7 +116,7 @@ def _read_unicode_table(instream, separator, startseq, encoding):
     return table
 
 
-@Savers.register(loader=load)
+@savers.register(loader=load)
 def save(fonts, outstream, where=None):
     """Save font to PSF2 file."""
     if len(fonts) > 1:

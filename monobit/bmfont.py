@@ -21,7 +21,7 @@ from .containers import unique_name
 from . import streams
 from .streams import FileFormatError
 from .binary import friendlystruct
-from .formats import Loaders, Savers
+from .formats import loaders, savers
 from .font import Font, Coord
 from .glyph import Glyph
 from .winfnt import _CHARSET_MAP
@@ -37,12 +37,12 @@ from .winfnt import _CHARSET_MAP
 # top-level calls
 
 if Image:
-    @Loaders.register('bmf', name='BMFont')
+    @loaders.register('bmf', name='BMFont')
     def load(infile, where):
         """Load fonts from bmfont in container."""
         return _read_bmfont(infile, where)
 
-    @Savers.register(loader=load)
+    @savers.register(loader=load)
     def save(
             fonts, outfile, where,
             image_size:pair=(256, 256),

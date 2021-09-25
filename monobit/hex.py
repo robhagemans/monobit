@@ -13,17 +13,17 @@ import logging
 import string
 
 from .text import clean_comment, split_global_comment, write_comments
-from .formats import Loaders, Savers
+from .formats import loaders, savers
 from .streams import FileFormatError
 from .font import Font
 from .glyph import Glyph
 
 
-@Loaders.register('hext', name='PC-BASIC Extended HEX')
+@loaders.register('hext', name='PC-BASIC Extended HEX')
 def load_hext(instream, where=None):
     return load(instream.text)
 
-@Loaders.register('hex', name='Unifont HEX')
+@loaders.register('hex', name='Unifont HEX')
 def load_hex(instream, where=None):
     return load(instream.text)
 
@@ -79,7 +79,7 @@ def load(instream):
     return Font(glyphs, comments=comments, properties=dict(encoding='unicode'))
 
 
-@Savers.register(loader=load_hex)
+@savers.register(loader=load_hex)
 def save(fonts, outstream, where=None):
     """Write font to a .hex file."""
     if len(fonts) > 1:
@@ -105,7 +105,7 @@ def save(fonts, outstream, where=None):
         _write_hex_extended(outstream, glyph.char, glyph)
 
 
-@Savers.register(loader=load_hext)
+@savers.register(loader=load_hext)
 def save_hext(fonts, outstream, where=None):
     """Write font to an extended .hex file."""
     if len(fonts) > 1:

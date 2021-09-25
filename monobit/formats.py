@@ -65,8 +65,7 @@ class Loaders:
     _loaders = {}
     _magic = {}
 
-    @classmethod
-    def get_loader(cls, infile=None, format=''):
+    def get_loader(self, infile=None, format=''):
         """
         Get loader function for this format.
         infile must be a Stream or empty
@@ -75,7 +74,7 @@ class Loaders:
             # try to use magic sequences
             if infile:
                 if infile.readable():
-                    for magic, loader in cls._magic.items():
+                    for magic, loader in self._magic.items():
                         if has_magic(infile, magic):
                             return loader
                 # fall back to suffixes
@@ -83,31 +82,28 @@ class Loaders:
                 format = normalise_suffix(suffix or DEFAULT_FORMAT)
             else:
                 format = DEFAULT_FORMAT
-        return cls._loaders.get(format, None)
+        return self._loaders.get(format, None)
 
-    @classmethod
-    def load(cls, infile:str, format:str='', where:str='', **kwargs):
+    def load(self, infile:str, format:str='', where:str='', **kwargs):
         """Read new font from file."""
         # if container/file provided as string or steam, open them
         if not isinstance(where, Container) or infile and not isinstance(infile, Stream):
             with open_location(infile, 'r', where=where) as (stream, container):
-                return cls.load(stream, format, container, **kwargs)
+                return self.load(stream, format, container, **kwargs)
         # infile not provided - load all from container
         if not infile:
-            return cls._load_all(where, format, **kwargs)
-        return cls._load_from_file(infile, where, format, **kwargs)
+            return self._load_all(where, format, **kwargs)
+        return self._load_from_file(infile, where, format, **kwargs)
 
-    @classmethod
-    def _load_from_file(cls, infile, where, format, **kwargs):
+    def _load_from_file(self, infile, where, format, **kwargs):
         """Open file and load font(s) from it."""
         # infile is not a container - identify file type
-        loader = cls.get_loader(infile, format=format)
+        loader = self.get_loader(infile, format=format)
         if not loader:
             raise FileFormatError('Cannot load from format `{}`.'.format(format)) from None
         return loader(infile, where, **kwargs)
 
-    @classmethod
-    def _load_all(cls, container, format, **kwargs):
+    def _load_all(self, container, format, **kwargs):
         """Open container and load all fonts found in it into one pack."""
         packs = []
         # try opening a container on input file for read, will raise error if not container format
@@ -115,7 +111,7 @@ class Loaders:
             logging.debug('Attempting to load from file `%s`.', name)
             with open_stream(name, 'r', where=container) as stream:
                 try:
-                    font_or_pack = cls.load(stream, where=container, format=format, **kwargs)
+                    font_or_pack = self.load(stream, where=container, format=format, **kwargs)
                     logging.info('Found `%s` on `%s`', stream.name, container.name)
                 except Exception as exc:
                     # if one font fails for any reason, try the next
@@ -127,8 +123,7 @@ class Loaders:
         fonts = [_font for _pack in packs for _font in _pack]
         return Pack(fonts)
 
-    @classmethod
-    def register(cls, *formats, magic=(), name='', saver=None):
+    def register(self, *formats, magic=(), name='', saver=None):
         """
         Decorator to register font loader.
             *formats: extensions covered by registered function
@@ -163,12 +158,15 @@ class Loaders:
                 _loader.name = name or saver.name
                 _loader.formats = _loader.formats or saver.formats
             for format in _loader.formats:
-                cls._loaders[format.lower()] = _loader
+                self._loaders[format.lower()] = _loader
             for sequence in magic:
-                cls._magic[sequence] = _loader
+                self._magic[sequence] = _loader
             return _loader
 
         return _load_decorator
+
+
+loaders = Loaders()
 
 
 ##############################################################################
@@ -179,8 +177,7 @@ class Savers:
 
     _savers = {}
 
-    @classmethod
-    def get_saver(cls, outfile=None, format=''):
+    def get_saver(self, outfile=None, format=''):
         """
         Get saver function for this format.
         `outfile` must be a Stream or empty.
@@ -191,11 +188,10 @@ class Savers:
                 format = normalise_suffix(suffix or DEFAULT_FORMAT)
             else:
                 format = DEFAULT_FORMAT
-        return cls._savers.get(format, None)
+        return self._savers.get(format, None)
 
-    @classmethod
     def save(
-            cls, pack_or_font,
+            self, pack_or_font,
             outfile:str, format:str='', where:str='', overwrite:bool=False,
             **kwargs
         ):
@@ -210,15 +206,14 @@ class Savers:
         # if container provided as string or steam, open it
         if not isinstance(where, Container) or outfile and not isinstance(outfile, Stream):
             with open_location(outfile, 'w', where=where, overwrite=overwrite) as (stream, container):
-                return cls.save(pack_or_font, stream, format, container, **kwargs)
+                return self.save(pack_or_font, stream, format, container, **kwargs)
         pack = Pack(pack_or_font)
         if not outfile:
             # create a container on outfile, store the fonts in there as individual files
-            return cls._save_all(pack, where, format, **kwargs)
-        return cls._save_to_file(pack, outfile, where, format, **kwargs)
+            return self._save_all(pack, where, format, **kwargs)
+        return self._save_to_file(pack, outfile, where, format, **kwargs)
 
-    @classmethod
-    def _save_all(cls, pack, where, format, **kwargs):
+    def _save_all(self, pack, where, format, **kwargs):
         """Save pack of fonts to a container created on outfile."""
         for font in pack:
             # generate unique filename
@@ -227,7 +222,7 @@ class Savers:
             logging.debug('Attempting to save to file `%s`.', filename)
             try:
                 with open_stream(filename, 'w', where=where) as stream:
-                    cls._save_to_file(Pack(font), stream, where, format, **kwargs)
+                    self._save_to_file(Pack(font), stream, where, format, **kwargs)
                     logging.info('Saved to `%s`.', stream.name)
             except BrokenPipeError:
                 pass
@@ -235,18 +230,16 @@ class Savers:
                 logging.error('Could not save %s: %s', filename, e)
                 raise
 
-    @classmethod
-    def _save_to_file(cls, pack, outfile, where, format, **kwargs):
+    def _save_to_file(self, pack, outfile, where, format, **kwargs):
         """Save pack of fonts to a single file."""
-        saver = cls.get_saver(outfile, format=format)
+        saver = self.get_saver(outfile, format=format)
         if not saver:
             raise FileFormatError('Cannot save to format `{}`.'.format(format))
         saver(pack, outfile, where, **kwargs)
         return pack
 
 
-    @classmethod
-    def register(cls, *formats, name='', loader=None):
+    def register(self, *formats, name='', loader=None):
         """
         Decorator to register font saver.
             *formats: extensions covered by registered function
@@ -270,7 +263,9 @@ class Savers:
                 _saver.name = name or loader.name
                 _saver.formats = _saver.formats or loader.formats
             for format in _saver.formats:
-                cls._savers[format.lower()] = _saver
+                self._savers[format.lower()] = _saver
             return _saver
 
         return _save_decorator
+
+savers = Savers()

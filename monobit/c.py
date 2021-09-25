@@ -8,7 +8,7 @@ licence: https://opensource.org/licenses/MIT
 import string
 
 from .binary import ceildiv
-from .formats import Loaders, Savers
+from .formats import loaders, savers
 from .font import Font
 from .glyph import Glyph
 from .base import pair
@@ -16,7 +16,7 @@ from .base import pair
 
 ###################################################################################################
 
-@Loaders.register('c', 'cc', 'cpp', 'h', name='C-source')
+@loaders.register('c', 'cc', 'cpp', 'h', name='C-source')
 def load(infile, where, identifier:str, cell:pair):
     """Load font from a .c file."""
     width, height = cell
@@ -86,7 +86,7 @@ def _get_payload(instream, identifier):
 
 ###################################################################################################
 
-@Savers.register('c', loader=load)
+@savers.register('c', loader=load)
 def save(fonts, outstream, where=None):
     """Save font to c source as byte-aligned binary (DOS font)."""
     if len(fonts) > 1:

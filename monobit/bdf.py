@@ -7,7 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
-from .formats import Loaders, Savers
+from .formats import loaders, savers
 from .streams import FileFormatError
 from .font import Font, Coord
 from .glyph import Glyph
@@ -136,7 +136,7 @@ _XLFD_UNPARSED = {
 ##############################################################################
 # top-level calls
 
-@Loaders.register('bdf', magic=(b'STARTFONT ',), name='BDF')
+@loaders.register('bdf', magic=(b'STARTFONT ',), name='BDF')
 def load(instream, where=None):
     """Load font from a .bdf file."""
     instream = instream.text
@@ -149,7 +149,7 @@ def load(instream, where=None):
     return Font(glyphs, comments=comments, properties=properties)
 
 
-@Savers.register(loader=load)
+@savers.register(loader=load)
 def save(fonts, outstream, where=None):
     """Write fonts to a .bdf file."""
     if len(fonts) > 1:

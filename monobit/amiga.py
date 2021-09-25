@@ -10,7 +10,7 @@ import struct
 import logging
 
 from .binary import friendlystruct, bytes_to_bits
-from .formats import Loaders, Savers
+from .formats import loaders, savers
 from .streams import FileFormatError
 from .font import Font, Coord
 from .glyph import Glyph
@@ -116,7 +116,7 @@ _AMIGA_HEADER = friendlystruct(
 )
 
 # this is for .font (info/directory) files: (b'\x0f\x00', b'\x0f\x02')
-@Loaders.register('amiga', magic=(b'\0\0\x03\xf3',), name='Amiga Font')
+@loaders.register('amiga', magic=(b'\0\0\x03\xf3',), name='Amiga Font')
 def load(f, where=None):
     """Read Amiga disk font file."""
     # read & ignore header

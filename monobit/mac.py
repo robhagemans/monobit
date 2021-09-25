@@ -8,7 +8,7 @@ licence: https://opensource.org/licenses/MIT
 import logging
 
 from .binary import friendlystruct, bytes_to_bits
-from .formats import Loaders, Savers
+from .formats import loaders, savers
 from .font import Font, Glyph, Coord
 
 
@@ -315,13 +315,13 @@ _NON_ROMAN_NAMES = {
 
 ##############################################################################
 
-@Loaders.register('dfont', 'suit', name='MacOS resource')
+@loaders.register('dfont', 'suit', name='MacOS resource')
 def load_dfont(instream, where=None):
     """Load a MacOS suitcase."""
     data = instream.read()
     return _parse_resource_fork(data)
 
-@Loaders.register('apple',
+@loaders.register('apple',
     magic=(_APPLESINGLE_MAGIC.to_bytes(4, 'big'), _APPLEDOUBLE_MAGIC.to_bytes(4, 'big')),
     name='MacOS resource (AppleSingle/AppleDouble container)',
 )

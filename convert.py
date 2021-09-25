@@ -74,10 +74,10 @@ logging.basicConfig(level=loglevel, format='%(levelname)s: %(message)s')
 # help screen should include loader/saver arguments if from/to specified
 if args.help:
     if args.from_:
-        loader = monobit.formats.Loaders.get_loader(format=args.from_)
+        loader = monobit.formats.loaders.get_loader(format=args.from_)
         add_script_args(parser, loader)
     if args.to_:
-        saver = monobit.formats.Loaders.get_saver(format=args.to_)
+        saver = monobit.formats.savers.get_saver(format=args.to_)
         add_script_args(parser, saver)
     parser.print_help()
     sys.exit(0)
@@ -90,7 +90,7 @@ try:
     # open streams
     with monobit.open_location(infile, 'r') as (instream, incontainer):
         # get loader arguments
-        loader = monobit.formats.Loaders.get_loader(instream, format=args.from_)
+        loader = monobit.formats.loaders.get_loader(instream, format=args.from_)
         if loader:
             add_script_args(parser, loader)
             # don't raise if no loader - it may be a container we can extract
@@ -107,7 +107,7 @@ try:
 
     with monobit.open_location(outfile, 'w', overwrite=args.overwrite) as (outstream, outcontainer):
         # get saver arguments
-        saver = monobit.formats.Savers.get_saver(outstream, format=args.to_)
+        saver = monobit.formats.savers.get_saver(outstream, format=args.to_)
         if saver:
             add_script_args(parser, saver)
         args = parser.parse_args()

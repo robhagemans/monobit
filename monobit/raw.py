@@ -8,14 +8,14 @@ licence: https://opensource.org/licenses/MIT
 import logging
 
 from .binary import ceildiv, bytes_to_bits
-from .formats import Loaders, Savers
+from .formats import loaders, savers
 from .font import Font
 from .glyph import Glyph
 from .streams import FileFormatError
 from .base import boolean, pair
 
 
-@Loaders.register('dos', 'bin', 'rom', 'raw', name='raw binary')
+@loaders.register('dos', 'bin', 'rom', 'raw', name='raw binary')
 def load(instream, where=None, cell:pair=(8, 8), n_chars:int=None, offset:int=0, strike:boolean=False):
     """Load font from raw binary."""
     # get through the offset
@@ -28,7 +28,7 @@ def load(instream, where=None, cell:pair=(8, 8), n_chars:int=None, offset:int=0,
     return Font(cells)
 
 
-@Savers.register(loader=load)
+@savers.register(loader=load)
 def save(fonts, outstream, where=None):
     """Save font to raw byte-aligned binary (DOS font)."""
     if len(fonts) > 1:

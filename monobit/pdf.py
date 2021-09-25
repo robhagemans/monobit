@@ -14,12 +14,12 @@ try:
 except ImportError:
     reportlab = None
 
-from .formats import Savers
+from .formats import savers
 from .streams import FileFormatError
 
 
 if reportlab:
-    @Savers.register('pdf')
+    @savers.register('pdf')
     def save(
             fonts, outfile, where=None,
             format:str='png',

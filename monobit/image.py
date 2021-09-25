@@ -15,7 +15,7 @@ except ImportError:
     Image = None
 from .base import pair, rgb
 from .binary import ceildiv
-from .formats import Loaders, Savers
+from .formats import loaders, savers
 from .streams import FileFormatError
 from .font import Font
 from .glyph import Glyph
@@ -35,7 +35,7 @@ DEFAULT_IMAGE_FORMAT = 'png'
 
 
 if Image:
-    @Loaders.register(
+    @loaders.register(
         'png', 'bmp', 'gif', 'tif', 'tiff',
         'ppm', 'pgm', 'pbm', 'pnm', 'webp',
         'pcx', 'tga', 'jpg', 'jpeg',
@@ -145,7 +145,7 @@ if Image:
         return Font(glyphs)
 
 
-    @Savers.register(loader=load)
+    @savers.register(loader=load)
     def save(
             fonts, outfile, where=None,
             format:str='',

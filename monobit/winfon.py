@@ -31,7 +31,7 @@ import string
 import logging
 
 from .binary import friendlystruct, ceildiv, align
-from .formats import Loaders, Savers
+from .formats import loaders, savers
 from .streams import FileFormatError
 
 from .winfnt import parse_fnt, create_fnt
@@ -235,7 +235,7 @@ _IMAGE_RESOURCE_DATA_ENTRY = friendlystruct(
 ##############################################################################
 # top level functions
 
-@Loaders.register(
+@loaders.register(
     'fon',
     magic=(b'MZ',),
     name='Windows font',
@@ -266,7 +266,7 @@ def load(instream, where=None):
     ]
     return fonts
 
-@Savers.register(loader=load)
+@savers.register(loader=load)
 def save(fonts, outstream, where=None, version:int=2):
     """Write fonts to a Windows .FON file."""
     outstream.write(_create_fon(fonts, version*0x100))
