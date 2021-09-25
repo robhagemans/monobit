@@ -190,20 +190,24 @@ class MagicRegistry:
         self._magic = {}
         self._suffixes = {}
 
-    def register(self, *suffixes, magic=b''):
+    def register(self, *suffixes, magic=()):
         """Decorator to register class that handles file type."""
         def decorator(klass):
             for suffix in suffixes:
                 suffix = normalise_suffix(suffix)
                 self._suffixes[suffix] = klass
-            if magic:
-                self._magic[magic] = klass
+            for sequence in magic:
+                self._magic[sequence] = klass
             return klass
         return decorator
 
     def __contains__(self, suffix):
         """Suffix is covered."""
         return normalise_suffix(suffix) in self._suffixes.keys()
+
+    def __getitem__(self, suffix):
+        """Get type by suffix."""
+        return self._suffixes.get(suffix, None)
 
     def identify(self, file, mode):
         """Identify a type from magic sequence on input file."""
@@ -219,16 +223,16 @@ class MagicRegistry:
                         if has_magic(stream, magic):
                             return klass
         suffix = get_suffix(file)
-        return self._suffixes.get(suffix, None)
+        return self[suffix]
 
 
 ###################################################################################################
 # compression helpers
 
 compressors = MagicRegistry()
-compressors.register('.gz', magic=b'\x1f\x8b')(gzip)
-compressors.register('.xz', magic=b'\xFD7zXZ\x00')(lzma)
-compressors.register('.bz2', magic=b'BZh')(bz2)
+compressors.register('.gz', magic=(b'\x1f\x8b',))(gzip)
+compressors.register('.xz', magic=(b'\xFD7zXZ\x00',))(lzma)
+compressors.register('.bz2', magic=(b'BZh',))(bz2)
 
 def open_compressed_stream(file):
     """Identify and wrap compressed streams."""

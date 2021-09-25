@@ -19,8 +19,8 @@ from .font import Font
 from .pack import Pack
 from . import streams
 from .streams import (
-    Stream, open_stream, compressors, has_magic, FileFormatError,
-    normalise_suffix
+    Stream, MagicRegistry, FileFormatError,
+    normalise_suffix, open_stream, compressors, has_magic
 )
 
 
@@ -59,7 +59,7 @@ def open_location(file, mode, where=None, overwrite=False):
 ##############################################################################
 # loading
 
-class Loaders:
+class Loaders(MagicRegistry):
     """Loader plugin registry."""
 
     _loaders = {}
@@ -70,19 +70,12 @@ class Loaders:
         Get loader function for this format.
         infile must be a Stream or empty
         """
+        loader = None
         if not format:
-            # try to use magic sequences
-            if infile:
-                if infile.readable():
-                    for magic, loader in self._magic.items():
-                        if has_magic(infile, magic):
-                            return loader
-                # fall back to suffixes
-                suffix = Path(infile.name).suffix
-                format = normalise_suffix(suffix or DEFAULT_FORMAT)
-            else:
-                format = DEFAULT_FORMAT
-        return self._loaders.get(format, None)
+            loader = self.identify(infile, mode='r')
+        if not loader:
+            loader = self[format or DEFAULT_FORMAT]
+        return loader
 
     def load(self, infile:str, format:str='', where:str='', **kwargs):
         """Read new font from file."""
@@ -129,6 +122,8 @@ class Loaders:
             *formats: extensions covered by registered function
             name: name of the format
         """
+        register_magic = super().register
+
         def _load_decorator(original_loader):
 
             # stream input wrapper
@@ -157,11 +152,9 @@ class Loaders:
                 saver.loader = _loader
                 _loader.name = name or saver.name
                 _loader.formats = _loader.formats or saver.formats
-            for format in _loader.formats:
-                self._loaders[format.lower()] = _loader
-            for sequence in magic:
-                self._magic[sequence] = _loader
+            register_magic(*_loader.formats, magic=magic)(_loader)
             return _loader
+
 
         return _load_decorator
 
@@ -172,7 +165,7 @@ loaders = Loaders()
 ##############################################################################
 # saving
 
-class Savers:
+class Savers(MagicRegistry):
     """Saver plugin registry."""
 
     _savers = {}
@@ -182,13 +175,12 @@ class Savers:
         Get saver function for this format.
         `outfile` must be a Stream or empty.
         """
+        saver = None
         if not format:
-            if outfile:
-                suffix = Path(outfile.name).suffix
-                format = normalise_suffix(suffix or DEFAULT_FORMAT)
-            else:
-                format = DEFAULT_FORMAT
-        return self._savers.get(format, None)
+            saver = self.identify(outfile, mode='r')
+        if not saver:
+            saver = self[format or DEFAULT_FORMAT]
+        return saver
 
     def save(
             self, pack_or_font,
@@ -246,6 +238,8 @@ class Savers:
             name: name of the format
             loader: loader for this format
         """
+        register_magic = super().register
+
         def _save_decorator(original_saver):
 
             # stream output wrapper
@@ -262,8 +256,7 @@ class Savers:
                 loader.saver = _saver
                 _saver.name = name or loader.name
                 _saver.formats = _saver.formats or loader.formats
-            for format in _saver.formats:
-                self._savers[format.lower()] = _saver
+            register_magic(*_saver.formats, magic=())(_saver)
             return _saver
 
         return _save_decorator

@@ -157,7 +157,7 @@ class DirContainer(Container):
 ###################################################################################################
 # zip archive
 
-@containers.register('.zip', magic=b'PK\x03\x04')
+@containers.register('.zip', magic=(b'PK\x03\x04',))
 class ZipContainer(Container):
     """Zip-file wrapper."""
 
@@ -353,7 +353,7 @@ class TarStream(StreamWrapper):
 ###################################################################################################
 # yaml-style '---'-separated text stream
 
-@containers.register('.txt', '.yaffs', magic=b'---')
+@containers.register('.txt', '.yaffs', magic=(b'---',))
 class TextContainer(Container):
     """Container of mime-/yaml-style concatenated text files with boundary marker."""
 
