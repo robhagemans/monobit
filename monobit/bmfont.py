@@ -5,10 +5,10 @@ monobit.bmfont - AngelCode BMFont format
 licence: https://opensource.org/licenses/MIT
 """
 
-import os
 import json
 import shlex
 import logging
+from pathlib import Path
 import xml.etree.ElementTree as etree
 
 try:
@@ -17,7 +17,8 @@ except ImportError:
     Image = None
 
 from .base import boolean, pair
-from .containers import ZipContainer, unique_name
+from .containers import unique_name
+from . import streams
 from .binary import friendlystruct
 from .formats import Loaders, Savers
 from .pack import Pack
@@ -36,31 +37,23 @@ from .winfnt import _CHARSET_MAP
 # top-level calls
 
 if Image:
-    @Loaders.register('bmf', name='BMFont', binary=True, multi=True, container=True)
-    def load(container):
+    @Loaders.register('bmf', name='BMFont', binary=True, multi=False, container=True)
+    def load(infile, container):
         """Load fonts from bmfont in container."""
-        descriptions = [
-            _name for _name in container
-            if _name.lower().endswith(('.fnt', '.json', '.xml'))
-        ]
-        fonts = []
-        for desc in descriptions:
-            try:
-                fonts.append(_read_bmfont(container, desc))
-            except ValueError as e:
-                logging.error('Could not extract %s: %s', desc, e)
-        return Pack(fonts)
+        font = _read_bmfont(infile, container)
+        if not font:
+            raise ValueError('No font found.')
+        return font
 
-    @Savers.register('bmf', binary=True, multi=True, container=True)
+    @Savers.register('bmf', name=load.name, binary=True, multi=False, container=True)
     def save(
-            pack, container,
+            font, outfile, container,
             image_size:pair=(256, 256),
             image_format:str='png',
             packed:boolean=True,
         ):
         """Save fonts to bmfonts in container."""
-        for font in pack:
-            _create_bmfont(container, font, image_size, packed, image_format)
+        _create_bmfont(outfile, container, font, image_size, packed, image_format)
 
 
 ##############################################################################
@@ -373,12 +366,13 @@ def _parse_binary(data):
     return props
 
 def _extract(container, name, bmformat, info, common, pages, chars, kernings=()):
-    """Extract characters."""
-    path = os.path.dirname(name)
-    sheets = {
-        int(_page['id']): Image.open(container.open(os.path.join(path, _page['file']), 'rb'))
+    """Extract glyphs."""
+    path = Path(name).parent
+    image_files = {
+        int(_page['id']): container.open(path / _page['file'], 'rb')
         for _page in pages
     }
+    sheets = {_id: Image.open(_file) for _id, _file in image_files.items()}
     imgformats = set(str(_img.format) for _img in sheets.values())
     # ensure we have RGBA channels
     sheets = {_k: _v.convert('RGBA') for _k, _v in sheets.items()}
@@ -459,6 +453,8 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=())
                 glyph = Glyph.empty(char.xadvance - min_after, max_height)
             glyph = glyph.set_annotations(codepoint=char.id)
             glyphs.append(glyph)
+    for file in image_files.values():
+        file.close()
     # parse properties
     bmfont_props = {**info}
     # encoding
@@ -471,7 +467,7 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=())
         encoding = _CHARSET_STR_MAP.get(charset.upper(), charset)
     properties = {
         'source-format': 'BMFont ({} descriptor; {} spritesheet)'.format(bmformat, ','.join(imgformats)),
-        'source-name': os.path.basename(name),
+        'source-name': Path(name).name,
         'tracking': min_after,
         'family': bmfont_props.pop('face'),
         # assume size == pixel-size == ascent + descent
@@ -500,31 +496,32 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=())
     })
     return Font(glyphs, properties=properties)
 
-def _read_bmfont(container, name):
+def _read_bmfont(infile, container):
     """Read a bmfont from a container."""
-    with container.open(name, 'rb') as fnt:
-        magic = fnt.read(3)
+    if isinstance(infile, (str, Path)):
+        with container.open(name, 'rb') as instream:
+            return _read_bmfont(instream, container)
+    magic = infile.peek(3)
     fontinfo = {}
-    if magic == b'BMF':
-        logging.debug('found binary: %s', name)
-        with container.open(name, 'rb') as fnt:
-            fontinfo = _parse_binary(fnt.read())
+    if magic.startswith(b'BMF'):
+        logging.debug('found binary: %s', infile.name)
+        fontinfo = _parse_binary(infile.read())
     else:
-        with container.open(name, 'rt') as fnt:
+        with streams.make_textstream(infile) as fnt:
             for line in fnt:
                 if line:
                     break
             data = line + '\n' + fnt.read()
             if line.startswith('<'):
-                logging.debug('found xml: %s', name)
+                logging.debug('found xml: %s', fnt.name)
                 fontinfo = _parse_xml(data)
             elif line.startswith('{'):
-                logging.debug('found json: %s', name)
+                logging.debug('found json: %s', fnt.name)
                 fontinfo = _parse_json(data)
             else:
-                logging.debug('found text: %s', name)
+                logging.debug('found text: %s', fnt.name)
                 fontinfo = _parse_text(data)
-    return _extract(container, name, **fontinfo)
+    return _extract(container, infile.name, **fontinfo)
 
 
 ##############################################################################
@@ -623,7 +620,7 @@ def _create_textdict(name, dict):
         for _k, _v in dict.items())
     )
 
-def _create_bmfont(container, font, size=(256, 256), packed=False, imageformat='png'):
+def _create_bmfont(outfile, container, font, size=(256, 256), packed=False, imageformat='png'):
     """Create a bmfont package."""
     path = font.family
     fontname = font.name.replace(' ', '_')
@@ -676,8 +673,17 @@ def _create_bmfont(container, font, size=(256, 256), packed=False, imageformat='
     else:
         props['kernings'] = []
     # write the .fnt description
-    bmfontname = unique_name(container, f'{path}/{fontname}', 'fnt')
-    with container.open(bmfontname, 'wt') as bmf:
+    if not outfile:
+        outfile = unique_name(container, f'{path}/{fontname}', 'fnt')
+    if isinstance(outfile, (str, Path)):
+        with container.open(bmfontname, 'wt') as stream:
+            _write_fnt_descriptor(stream, props, chars)
+    else:
+        _write_fnt_descriptor(outfile, props, chars)
+
+def _write_fnt_descriptor(outfile, props, chars):
+    """Write the .fnt descriptor file."""
+    with streams.make_textstream(outfile) as bmf:
         bmf.write(_create_textdict('info', props['info']))
         bmf.write(_create_textdict('common', props['common']))
         for page in props['pages']:

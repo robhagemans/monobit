@@ -14,8 +14,7 @@ from .pack import Pack
 from .font import Font
 from .glyph import Glyph
 from .encoding import Codepage
-from .formats import Loaders, Savers
-from .text import to_text as _to_text
+from .formats import Loaders, Savers, open_location
 
 from . import bmfont
 from . import winfon
@@ -48,13 +47,3 @@ globals().update(OPERATIONS)
 
 save = Savers().save
 load = Loaders().load
-
-
-def banner(
-        font, text, fore='@', back='.',
-        margin=(0, 0), scale=(1, 1), missing='default', stream=_sys.stdout
-    ):
-    """Print a banner."""
-    stream.write(_to_text(font.render(
-        text, fore, back, margin=margin, scale=scale, missing=missing
-    )) + '\n')

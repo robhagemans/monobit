@@ -15,6 +15,18 @@ from .font import Font, Coord
 from .glyph import Glyph
 
 
+###################################################################################################
+# AmigaOS font format
+#
+# developer docs: Graphics Library and Text
+# https://wiki.amigaos.net/wiki/Graphics_Library_and_Text
+# http://amigadev.elowar.com/read/ADCD_2.1/Libraries_Manual_guide/node03D2.html
+#
+# references on binary file format
+# http://amiga-dev.wikidot.com/file-format:hunk
+# https://archive.org/details/AmigaDOS_Technical_Reference_Manual_1985_Commodore/page/n13/mode/2up (p.14)
+
+
 # amiga header constants
 _MAXFONTPATH = 256
 _MAXFONTNAME = 32
@@ -102,8 +114,8 @@ _AMIGA_HEADER = friendlystruct(
     tf_CharKern='I',
 )
 
-
-@Loaders.register('amiga', name='Amiga Font', binary=True)
+# this is for .font (info/directory) files: (b'\x0f\x00', b'\x0f\x02')
+@Loaders.register('amiga', magic=(b'\0\0\x03\xf3',), name='Amiga Font', binary=True)
 def load(f):
     """Read Amiga disk font file."""
     # read & ignore header
@@ -180,11 +192,8 @@ def _read_font_hunk(f):
         None if not amiga_props.tf_CharKern else amiga_props.tf_CharKern + loc
     )
     props = _parse_amiga_props(amiga_props, offset_x)
-    props['source-name'] = '/'.join(f.name.split(os.sep)[-2:])
-    # the file name tends to be the name as given in the .font anyway
-    if 'name' not in props:
-        props['name'] = props['source-name']
-    props['family'] = props['name'].split('/')[0].split(' ')[0]
+    if 'name' in props:
+        props['family'] = props['name'].split('/')[0].split(' ')[0]
     return glyphs, props
 
 def _parse_amiga_props(amiga_props, offset_x):

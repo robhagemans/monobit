@@ -58,7 +58,11 @@ _PSF2_SEPARATOR = b'\xFF'
 _PSF2_STARTSEQ = b'\xFE'
 
 
-@Loaders.register('psf', 'psfu', name='PSF', binary=True, multi=False)
+@Loaders.register(
+    'psf', 'psfu',
+    magic=(_PSF1_MAGIC, _PSF2_MAGIC),
+    name='PSF', binary=True, multi=False
+)
 def load(instream):
     """Load font from psf file."""
     magic = instream.read(2)
@@ -111,7 +115,7 @@ def _read_unicode_table(instream, separator, startseq, encoding):
     return table
 
 
-@Savers.register('psf', binary=True, multi=False)
+@Savers.register('psf', 'psfu', name=load.name, binary=True, multi=False)
 def save(font, outstream):
     """Save font to PSF2 file."""
     # check if font is fixed-width and fixed-height

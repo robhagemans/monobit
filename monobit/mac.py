@@ -45,6 +45,7 @@ _APPLEDOUBLE_MAGIC = 0x00051607
 # Finder info     9       standard Macintosh Finder information
 _ID_RESOURCE = 2
 
+
 ##############################################################################
 # resource fork/dfont format
 # see https://developer.apple.com/library/archive/documentation/mac/pdf/MoreMacintoshToolbox.pdf
@@ -325,6 +326,7 @@ def load_dfont(instream):
     return Pack(_parse_resource_fork(data))
 
 @Loaders.register('apple',
+    magic=(_APPLESINGLE_MAGIC.to_bytes(4, 'big'), _APPLEDOUBLE_MAGIC.to_bytes(4, 'big')),
     name='MacOS resource (AppleSingle/AppleDouble container)',
     binary=True, multi=True
 )

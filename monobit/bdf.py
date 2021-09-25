@@ -135,7 +135,7 @@ _XLFD_UNPARSED = {
 ##############################################################################
 # top-level calls
 
-@Loaders.register('bdf', name='BDF')
+@Loaders.register('bdf', magic=(b'STARTFONT ',), name='BDF')
 def load(instream):
     """Load font from a .bdf file."""
     nchars, comments, bdf_props, x_props = _read_bdf_global(instream)
@@ -147,7 +147,7 @@ def load(instream):
     return Font(glyphs, comments=comments, properties=properties)
 
 
-@Savers.register('bdf', multi=False)
+@Savers.register('bdf', name=load.name, multi=False)
 def save(font, outstream):
     """Write fonts to a .bdf file."""
     _save_bdf(font, outstream)

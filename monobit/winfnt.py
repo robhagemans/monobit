@@ -357,13 +357,18 @@ _GLYPH_ENTRY = {
 ##############################################################################
 # top level functions
 
-@Loaders.register('fnt', name='Windows FNT', binary=True)
+@Loaders.register(
+    'fnt',
+    magic=(b'\0\x01', b'\0\x02', b'\0\x03'),
+    name='Windows font resource',
+    binary=True
+)
 def load(instream):
     """Load a Windows .FNT file."""
     font = parse_fnt(instream.read())
     return font
 
-@Savers.register('fnt', binary=True, multi=False)
+@Savers.register('fnt', name=load.name, binary=True, multi=False)
 def save(font, outstream, version:int=2):
     """Write font to a Windows .FNT file."""
     outstream.write(create_fnt(font, version*0x100))
