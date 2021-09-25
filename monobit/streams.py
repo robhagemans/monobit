@@ -19,9 +19,9 @@ class FileFormatError(Exception):
     """Incorrect file format."""
 
 
-def open_stream(file, mode, *, on=None, overwrite=False):
+def open_stream(file, mode, *, where=None, overwrite=False):
     """Ensure file is a stream of the right type, open or wrap if necessary."""
-    return Stream(file, mode, on=on, overwrite=overwrite)
+    return Stream(file, mode, where=where, overwrite=overwrite)
 
 
 class StreamWrapper:
@@ -55,29 +55,29 @@ class KeepOpen(StreamWrapper):
 class Stream(StreamWrapper):
     """Manage file resource."""
 
-    def __init__(self, file, mode, *, on=None, overwrite=False):
+    def __init__(self, file, mode, *, where=None, overwrite=False):
         """Ensure file is a stream of the right type, open or wrap if necessary."""
         if not file:
             raise ValueError('No file name, path or stream provided.')
         # file is a stream, string or path-like object
         # mode is 'r' or 'w'
         # binary is a boolean; open as binary if true, as text if false
-        # on: container to open any new stream on
+        # where: container to open any new stream on
         mode = mode[:1]
         self.mode = mode
         # if a path is provided, open a (binary) stream
         if isinstance(file, (str, Path)):
-            if not on:
+            if not where:
                 if not overwrite and mode == 'w' and Path(file).exists():
                     raise FileExistsError(f'Will not overwrite existing file `{file}`.')
                 logging.debug("Opening file `%s` for mode '%s'.", file, mode)
                 file = io.open(file, mode + 'b')
             else:
-                if not overwrite and mode == 'w' and file in on:
+                if not overwrite and mode == 'w' and file in where:
                     raise FileExistsError(
-                        f'Will not overwrite existing file `{file}` on `{on.name}`.'
+                        f'Will not overwrite existing file `{file}` on `{where.name}`.'
                     )
-                file = on.open_binary(file, mode)
+                file = where.open_binary(file, mode)
             self._raw = file
         else:
             # don't close externally provided stream

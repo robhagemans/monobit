@@ -27,18 +27,18 @@ from .streams import (
 ##############################################################################
 
 @contextmanager
-def open_location(file, mode, on=None, overwrite=False):
+def open_location(file, mode, where=None, overwrite=False):
     """
     Open a binary stream on a container or filesystem
-    both `file` and `on` may be Streams, files, or file/directory names
-    `on` may also be a Container
-    if `on` is empty or the module io, the whole filesystem is taken as the container/location.
+    both `file` and `where` may be Streams, files, or file/directory names
+    `where` may also be a Container
+    if `where` is empty or the module io, the whole filesystem is taken as the container/location.
     returns a Steam and a Container object
     """
     if mode not in ('r', 'w'):
         raise ValueError(f"Unsupported mode '{mode}'.")
     # no container given - see if file is itself a container
-    if not on:
+    if not where:
         try:
             with open_container(file, mode, overwrite=overwrite) as container:
                 if mode == 'r':
@@ -51,8 +51,8 @@ def open_location(file, mode, on=None, overwrite=False):
         except ContainerFormatError as e:
             # infile is not a container, load/save single file
             pass
-    with open_container(on, mode, overwrite=overwrite) as container:
-        with open_stream(file, mode, on=container, overwrite=overwrite) as stream:
+    with open_container(where, mode, overwrite=overwrite) as container:
+        with open_stream(file, mode, where=container, overwrite=overwrite) as stream:
             yield stream, container
 
 
@@ -86,25 +86,25 @@ class Loaders:
         return cls._loaders.get(format, None)
 
     @classmethod
-    def load(cls, infile:str, format:str='', on:str='', **kwargs):
+    def load(cls, infile:str, format:str='', where:str='', **kwargs):
         """Read new font from file."""
         # if container/file provided as string or steam, open them
-        if not isinstance(on, Container) or infile and not isinstance(infile, Stream):
-            with open_location(infile, 'r', on=on) as (stream, container):
+        if not isinstance(where, Container) or infile and not isinstance(infile, Stream):
+            with open_location(infile, 'r', where=where) as (stream, container):
                 return cls.load(stream, format, container, **kwargs)
         # infile not provided - load all from container
         if not infile:
-            return cls._load_all(on, format, **kwargs)
-        return cls._load_from_file(infile, on, format, **kwargs)
+            return cls._load_all(where, format, **kwargs)
+        return cls._load_from_file(infile, where, format, **kwargs)
 
     @classmethod
-    def _load_from_file(cls, infile, on, format, **kwargs):
+    def _load_from_file(cls, infile, where, format, **kwargs):
         """Open file and load font(s) from it."""
         # infile is not a container - identify file type
         loader = cls.get_loader(infile, format=format)
         if not loader:
             raise FileFormatError('Cannot load from format `{}`.'.format(format)) from None
-        return loader(infile, on, **kwargs)
+        return loader(infile, where, **kwargs)
 
     @classmethod
     def _load_all(cls, container, format, **kwargs):
@@ -113,9 +113,9 @@ class Loaders:
         # try opening a container on input file for read, will raise error if not container format
         for name in container:
             logging.debug('Attempting to load from file `%s`.', name)
-            with open_stream(name, 'r', on=container) as stream:
+            with open_stream(name, 'r', where=container) as stream:
                 try:
-                    font_or_pack = cls.load(stream, on=container, format=format, **kwargs)
+                    font_or_pack = cls.load(stream, where=container, format=format, **kwargs)
                     logging.info('Found `%s` on `%s`', stream.name, container.name)
                 except Exception as exc:
                     # if one font fails for any reason, try the next
@@ -140,8 +140,8 @@ class Loaders:
 
             # stream input wrapper
             @wraps(original_loader)
-            def _loader(instream, on, **kwargs):
-                fonts = original_loader(instream, where=on, **kwargs)
+            def _loader(instream, where, **kwargs):
+                fonts = original_loader(instream, where=where, **kwargs)
                 if not fonts:
                     raise ValueError('No fonts found in file.')
                 pack = Pack(fonts)
@@ -192,38 +192,38 @@ class Savers:
     @classmethod
     def save(
             cls, pack_or_font,
-            outfile:str, format:str='', on:str='', overwrite:bool=False,
+            outfile:str, format:str='', where:str='', overwrite:bool=False,
             **kwargs
         ):
         """
         Write to file, return unchanged.
             outfile: stream or filename
             format: format specification string
-            on: location/container. mandatory for formats that need filesystem access.
+            where: location/container. mandatory for formats that need filesystem access.
                 if specified and outfile is a filename, it is taken relative to this location.
             overwrite: if outfile is a filename, allow overwriting existing file
         """
         # if container provided as string or steam, open it
-        if not isinstance(on, Container) or outfile and not isinstance(outfile, Stream):
-            with open_location(outfile, 'w', on=on, overwrite=overwrite) as (stream, container):
+        if not isinstance(where, Container) or outfile and not isinstance(outfile, Stream):
+            with open_location(outfile, 'w', where=where, overwrite=overwrite) as (stream, container):
                 return cls.save(pack_or_font, stream, format, container, **kwargs)
         pack = Pack(pack_or_font)
         if not outfile:
             # create a container on outfile, store the fonts in there as individual files
-            return cls._save_all(pack, on, format, **kwargs)
-        return cls._save_to_file(pack, outfile, on, format, **kwargs)
+            return cls._save_all(pack, where, format, **kwargs)
+        return cls._save_to_file(pack, outfile, where, format, **kwargs)
 
     @classmethod
-    def _save_all(cls, pack, container, format, **kwargs):
+    def _save_all(cls, pack, where, format, **kwargs):
         """Save pack of fonts to a container created on outfile."""
         for font in pack:
             # generate unique filename
             name = font.name.replace(' ', '_')
-            filename = unique_name(container, name, format)
+            filename = unique_name(where, name, format)
             logging.debug('Attempting to save to file `%s`.', filename)
             try:
-                with open_stream(filename, 'w', on=container) as stream:
-                    cls._save_to_file(Pack(font), stream, container, format, **kwargs)
+                with open_stream(filename, 'w', where=where) as stream:
+                    cls._save_to_file(Pack(font), stream, where, format, **kwargs)
                     logging.info('Saved to `%s`.', stream.name)
             except BrokenPipeError:
                 pass
@@ -232,12 +232,12 @@ class Savers:
                 raise
 
     @classmethod
-    def _save_to_file(cls, pack, outfile, on, format, **kwargs):
+    def _save_to_file(cls, pack, outfile, where, format, **kwargs):
         """Save pack of fonts to a single file."""
         saver = cls.get_saver(outfile, format=format)
         if not saver:
             raise FileFormatError('Cannot save to format `{}`.'.format(format))
-        saver(pack, outfile, on, **kwargs)
+        saver(pack, outfile, where, **kwargs)
         return pack
 
 
@@ -252,8 +252,8 @@ class Savers:
 
             # stream output wrapper
             @wraps(original_saver)
-            def _saver(pack, outfile, on, **kwargs):
-                original_saver(pack, outfile, where=on, **kwargs)
+            def _saver(pack, outfile, where, **kwargs):
+                original_saver(pack, outfile, where=where, **kwargs)
 
             # register saver
             _saver.script_args = original_saver.__annotations__

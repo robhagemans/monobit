@@ -97,7 +97,7 @@ try:
         args, _ = parser.parse_known_args()
         # convert arguments to type accepted by operation
         load_args = convert_args(args, loader)
-        font = monobit.load(instream, on=incontainer, format=args.from_, **load_args)
+        font = monobit.load(instream, where=incontainer, format=args.from_, **load_args)
 
     if args.codepage:
         font = font.set_encoding(args.codepage)
@@ -113,7 +113,7 @@ try:
         args = parser.parse_args()
         # convert arguments to type accepted by operation
         save_args = convert_args(args, saver)
-        monobit.save(font, outstream, on=outcontainer, format=args.to_, **save_args)
+        monobit.save(font, outstream, where=outcontainer, format=args.to_, **save_args)
 
 except BrokenPipeError:
     # happens e.g. when piping to `head`

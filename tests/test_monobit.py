@@ -144,25 +144,25 @@ class TestMonobit(unittest.TestCase):
     def test_import_bmf(self):
         """Test importing bmfont files."""
         base_path = self.font_path / '6x13.bmf'
-        font, *_ = monobit.load('6x13-text.fnt', on=base_path, format='bmf')
+        font, *_ = monobit.load('6x13-text.fnt', where=base_path, format='bmf')
         self.assertEqual(len(font.glyphs), 189)
-        font, *_ = monobit.load('6x13-xml.fnt', on=base_path, format='bmf')
+        font, *_ = monobit.load('6x13-xml.fnt', where=base_path, format='bmf')
         self.assertEqual(len(font.glyphs), 189)
-        font, *_ = monobit.load('6x13-json.fnt', on=base_path, format='bmf')
+        font, *_ = monobit.load('6x13-json.fnt', where=base_path, format='bmf')
         self.assertEqual(len(font.glyphs), 189)
-        font, *_ = monobit.load('6x13-8bit.fnt', on=base_path, format='bmf')
+        font, *_ = monobit.load('6x13-8bit.fnt', where=base_path, format='bmf')
         self.assertEqual(len(font.glyphs), 189)
-        font, *_ = monobit.load('6x13-32bit-packed.fnt', on=base_path, format='bmf')
+        font, *_ = monobit.load('6x13-32bit-packed.fnt', where=base_path, format='bmf')
         self.assertEqual(len(font.glyphs), 189)
-        font, *_ = monobit.load('6x13-32bit-nonpacked.fnt', on=base_path, format='bmf')
+        font, *_ = monobit.load('6x13-32bit-nonpacked.fnt', where=base_path, format='bmf')
         self.assertEqual(len(font.glyphs), 189)
-        font, *_ = monobit.load('6x13-binary.fnt', on=base_path, format='bmf')
+        font, *_ = monobit.load('6x13-binary.fnt', where=base_path, format='bmf')
         self.assertEqual(len(font.glyphs), 189)
 
     def test_export_bmf(self):
         """Test exporting bmfont files."""
         fnt_file = self.temp_path / '4x6.bmf'
-        monobit.save(self.fixed4x6, fnt_file, on=self.temp_path, overwrite=True)
+        monobit.save(self.fixed4x6, fnt_file, where=self.temp_path, overwrite=True)
         self.assertTrue(os.path.getsize(fnt_file) > 0)
 
     def test_import_c(self):
