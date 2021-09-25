@@ -14,6 +14,11 @@ import lzma
 import bz2
 
 
+
+class FileFormatError(Exception):
+    """Incorrect file format."""
+
+
 def open_stream(file, mode, binary, *, on=None, overwrite=False):
     """Ensure file is a stream of the right type, open or wrap if necessary."""
     return Stream(file, mode, binary, on=on, overwrite=overwrite)
@@ -70,14 +75,14 @@ class Stream(StreamWrapper):
         file = open_compressed_stream(file)
         # check r/w mode is consistent
         if mode == 'r' and not file.readable():
-            raise ValueError('Expected readable stream, got writable.')
+            raise FileFormatError('Expected readable stream, got writable.')
         if mode == 'w' and not file.writable():
-            raise ValueError('Expected writable stream, got readable.')
+            raise FileFormatError('Expected writable stream, got readable.')
         # check text/binary
         # a text format can be read from/written to a binary stream with a wrapper
         # but vice versa can't be done
         if not is_binary(file) and binary:
-            raise ValueError('Expected binary stream, got text stream.')
+            raise FileFormatError('Expected binary stream, got text stream.')
         if is_binary(file) and not binary:
             file = make_textstream(file)
         self.binary = binary

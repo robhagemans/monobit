@@ -16,7 +16,11 @@ import tarfile
 from pathlib import Path, PurePath, PurePosixPath
 
 from . import streams
-from .streams import MagicRegistry, StreamWrapper
+from .streams import MagicRegistry, StreamWrapper, FileFormatError
+
+
+class ContainerFormatError(FileFormatError):
+    """Incorrect container format."""
 
 
 containers = MagicRegistry()
@@ -44,7 +48,7 @@ def identify_container(file, mode, binary):
         container_type = containers.identify(file)
     if not container_type:
         # no container type found
-        raise TypeError('Expected container format, got non-container stream.')
+        raise ContainerFormatError('Expected container format, got non-container stream.')
     return container_type
 
 
@@ -167,7 +171,10 @@ class ZipContainer(Container):
             self._root = ''
         self._mode = mode
         # create the zipfile
-        self._zip = ZipFile(file, mode)
+        try:
+            self._zip = ZipFile(file, mode)
+        except zipfile.BadZipFile as exc:
+            raise ContainerFormatError(exc) from exc
         self.name = self._zip.filename
 
     def _close(self):
@@ -231,9 +238,12 @@ class TarContainer(Container):
             file = io.BytesIO(file.read())
         # create the tarfile
         if mode != 'r':
-            raise ValueError('Writing to tarfile not supported.')
+            raise ContainerFormatError('Writing to tarfile not supported.')
         self._mode = mode
-        self._tarfile = tarfile.open(file, mode)
+        try:
+            self._tarfile = tarfile.open(file, mode)
+        except tarfile.ReadError as exc:
+            raise ContainerFormatError(exc) from exc
         self.name = self._tarfile.name
 
     def _close(self):
@@ -274,7 +284,7 @@ class TarContainer(Container):
             # .name is not writeable, so we need to wrap
             return TarStream(file, name)
         else:
-            raise ValueError('Writing to .tar archive not supported')
+            raise FileFormatError('Writing to .tar archive not supported')
 
 
 class TarStream(StreamWrapper):
@@ -304,7 +314,7 @@ class TextContainer(Container):
         self._mode = mode[:1]
         if self._mode == 'r':
             if self._stream.readline().strip() != self.separator:
-                raise ValueError('Not a text container.')
+                raise ContainerFormatError('Not a text container.')
         else:
             self._stream.write(b'%s\n' % (self.separator,))
         self._substream = None
@@ -328,9 +338,9 @@ class TextContainer(Container):
     def open_binary(self, name, mode):
         """Open a single stream. Name argument is a dummy."""
         if not mode.startswith(self._mode):
-            raise ValueError(f"Cannot open file for '{mode}' on container open for '{self._mode}'")
+            raise FileFormatError(f"Cannot open file for '{mode}' on container open for '{self._mode}'")
         if self._substream and not self._substream.closed:
-            raise ValueError('Text container can only support one open file at a time.')
+            raise EnvironmentError('Text container can only support one open file at a time.')
         self._substream = _Substream(self._stream, self._mode, self.separator)
         return self._substream
 

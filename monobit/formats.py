@@ -14,11 +14,11 @@ from pathlib import Path
 from contextlib import contextmanager
 
 from .base import VERSION, DEFAULT_FORMAT, scriptable
-from .containers import Container, open_container, unique_name, containers
+from .containers import Container, open_container, unique_name, ContainerFormatError
 from .font import Font
 from .pack import Pack
 from . import streams
-from .streams import Stream, open_stream, make_textstream, compressors, has_magic
+from .streams import Stream, open_stream, make_textstream, compressors, has_magic, FileFormatError
 
 
 # identify font file format from suffix
@@ -92,7 +92,7 @@ class Loaders:
         if not format:
             try:
                 container = open_container(infile, 'r')
-            except TypeError as e:
+            except ContainerFormatError as e:
                 pass
             else:
                 with container:
@@ -105,7 +105,7 @@ class Loaders:
         # infile is not a container - identify file type
         loader = cls.get_loader(infile, format=format)
         if not loader:
-            raise ValueError('Cannot load from format `{}`.'.format(format)) from None
+            raise FileFormatError('Cannot load from format `{}`.'.format(format)) from None
         return loader(infile, on, **kwargs)
 
     @classmethod
@@ -119,7 +119,8 @@ class Loaders:
                 try:
                     # recursive call - walk containers-in-containers
                     font_or_pack = cls.load(stream, on=container, format=None, **kwargs)
-                except ValueError as exc:
+                except (FileFormatError, ValueError) as exc:
+                    # loaders raise ValueError if unable to parse
                     logging.warning('Could not load `%s`: %s', name, exc)
                 else:
                     if isinstance(font_or_pack, Pack):
@@ -228,7 +229,7 @@ class Savers:
             pack = pack_or_font
         try:
             container = open_container(outfile, 'w', binary=True)
-        except TypeError:
+        except ContainerFormatError:
             return cls._save_to_file(pack, outfile, on, format, **kwargs)
         else:
             # create a container on outfile, store the fonts in there
@@ -257,7 +258,7 @@ class Savers:
         """Save pack of fonts to a single file."""
         saver = cls.get_saver(outfile, format=format)
         if not saver:
-            raise ValueError('Cannot save to format `{}`.'.format(format))
+            raise FileFormatError('Cannot save to format `{}`.'.format(format))
         saver(pack, outfile, on, **kwargs)
         return pack
 
@@ -277,7 +278,9 @@ class Savers:
             @wraps(original_saver)
             def _saver(pack, outfile, on, **kwargs):
                 if not (container or multi or len(pack) == 1):
-                    raise TypeError(f"Can't save multiple fonts to single {name} file.")
+                    raise FileFormatError(
+                        f"Can't save multiple fonts to single {name} file."
+                    ) from None
                 if not binary:
                     outfile = make_textstream(outfile)
                 if not multi:
