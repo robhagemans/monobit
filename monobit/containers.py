@@ -14,12 +14,15 @@ import itertools
 from contextlib import contextmanager
 import zipfile
 import tarfile
+import gzip
+import lzma
+import bz2
 from pathlib import Path, PurePath, PurePosixPath
 
-from . import streams
 from .streams import (
-    MagicRegistry, StreamWrapper, Stream, FileFormatError, get_suffix, open_stream,
-    StreamBase, KeepOpen
+    MagicRegistry, FileFormatError,
+    StreamBase, StreamWrapper, Stream, KeepOpen,
+    get_suffix, open_stream, get_stream_name
 )
 
 
@@ -52,11 +55,6 @@ def identify_container(file, mode, overwrite):
     if isinstance(file, (str, Path)) and Path(file).is_dir():
         container_type = DirContainer
     else:
-        # this will deal with compressed output, e.g. tar.gz or .tar.xz
-        # this parallels what happens in open_stream, but we don't want to create a file here yet
-        if mode == 'w' and isinstance(file, (str, Path)) and streams.compressors.identify(file, 'w'):
-            # remove compressor suffix
-            file = Path(file).with_suffix('')
         container_type = containers.identify(file, mode)
     suffix = get_suffix(file)
     if not container_type:
@@ -83,10 +81,6 @@ class Container(StreamBase):
 
     def __iter__(self):
         """List contents."""
-        raise NotImplementedError
-
-    def __contains__(self, name):
-        """File exists in container."""
         raise NotImplementedError
 
     def open_binary(self, name, mode):
@@ -159,7 +153,7 @@ class ZipContainer(Container):
         if isinstance(file, (str, Path)):
             file = open_stream(file, mode, overwrite=overwrite)
         else:
-            root = streams.get_stream_name(file)
+            root = get_stream_name(file)
             # if name ends up empty, replace; clip off any dir path and suffix
             root = PurePath(file.name).stem or DEFAULT_ROOT
         # reading zipfile needs a seekable stream, drain to buffer if needed
@@ -201,10 +195,6 @@ class ZipContainer(Container):
             str(PurePosixPath(_name).relative_to(self._root))
             for _name in self._zip.namelist()
         )
-
-    def __contains__(self, name):
-        """File exists in container."""
-        return name in list(self)
 
     def open_binary(self, name, mode):
         """Open a stream in the container."""
@@ -279,10 +269,6 @@ class TarContainer(Container):
         """List contents."""
         # list regular files only, skip symlinks and dirs and block devices
         return (_ti.name for _ti in self._tarfile.getmembers() if _ti.isfile())
-
-    def __contains__(self, name):
-        """File exists in container."""
-        return name in list(self)
 
     def open_binary(self, name, mode):
         """Open a stream in the container."""
@@ -415,3 +401,51 @@ class _Substream(StreamWrapper):
                     pass
         finally:
             self.closed = True
+
+
+###################################################################################################
+# single-file compression
+
+class Compressor(Container):
+    """Base class for compression helpers."""
+
+    format = ''
+    compressor = None
+
+    def __init__(self, infile, mode='r', *, overwrite=False):
+        stream = Stream(infile, mode, overwrite=overwrite)
+        super().__init__(stream, mode)
+        # drop the .gz etc
+        last_suffix = get_suffix(self.name)
+        if last_suffix == self.format:
+            self._content_name = self.name[:-1-len(last_suffix)]
+        else:
+            self._content_name = self.name
+        logging.debug('%r %r %r', last_suffix, self.format, self._content_name)
+
+    def __iter__(self):
+        return iter((self._content_name,))
+
+    def open_binary(self, name='', mode=''):
+        """Open a stream in the container."""
+        mode = mode[:1] or self.mode
+        wrapped = self.compressor.open(self._stream, mode + 'b')
+        wrapped = Stream(wrapped, mode, name=self._content_name)
+        logging.debug(
+            "Opening %s-compressed stream `%s` on `%s` for mode '%s'",
+            self.format, wrapped.name, self.name, mode
+        )
+        return wrapped
+
+
+@containers.register('.gz', magic=(b'\x1f\x8b',))
+class GzipCompressor(Compressor):
+    compressor = gzip
+
+@containers.register('.xz', magic=(b'\xFD7zXZ\x00',))
+class LzmaCompressor(Compressor):
+    compressor = lzma
+
+@containers.register('.bz2', magic=(b'BZh',))
+class Bzip2Compressor(Compressor):
+    compressor = bz2

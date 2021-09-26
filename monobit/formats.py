@@ -20,7 +20,7 @@ from .pack import Pack
 from . import streams
 from .streams import (
     Stream, MagicRegistry, FileFormatError,
-    normalise_suffix, open_stream, compressors, has_magic
+    normalise_suffix, open_stream, has_magic
 )
 
 

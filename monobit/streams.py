@@ -9,9 +9,7 @@ import io
 import sys
 import logging
 from pathlib import Path
-import gzip
-import lzma
-import bz2
+
 
 
 
@@ -114,8 +112,8 @@ class Stream(StreamWrapper):
         # check r/w mode is consistent
         if mode == 'r' and not file.readable():
             raise FileFormatError('Expected readable stream, got writable.')
-            if mode == 'w' and not file.writable():
-                raise FileFormatError('Expected writable stream, got readable.')
+        if mode == 'w' and not file.writable():
+            raise FileFormatError('Expected writable stream, got readable.')
         # any name override should be set before compression handler
         super().__init__(file, mode=mode, name=name)
         # check text/binary
@@ -129,39 +127,6 @@ class Stream(StreamWrapper):
             logging.debug('Getting buffer %r from text stream %r.', self._stream, self._textstream)
         else:
             self._textstream = None
-        # handle compression
-        while True:
-            try:
-                # wrap (multiple) compression/decompression if needed
-                self._open_compressed_stream()
-            except FileFormatError:
-                break
-
-    def _open_compressed_stream(self):
-        """Identify and wrap compressed streams."""
-        file = self._stream
-        mode = 'r' if file.readable() else 'w'
-        compressor = compressors.identify(file, mode)
-        if not compressor:
-            raise FileFormatError('Not a compressed stream.')
-        if file.readable():
-            mode = 'r'
-        else:
-            mode = 'w'
-        logging.debug("Opening %s-compressed stream on `%s` for mode '%s'", compressor.__name__, file, mode)
-        wrapped = compressor.open(file, mode + 'b')
-        # set name of uncompressed stream
-        wrapped.name = get_stream_name(file)
-        # drop the .gz etc
-        try:
-            last_suffix = Path(wrapped.name).suffixes[-1]
-        except IndexError:
-            pass
-        else:
-            if last_suffix in compressors:
-                wrapped.name = wrapped.name[:-len(last_suffix)]
-        self._stream = wrapped
-        self.name = wrapped.name
 
     @property
     def text(self):
@@ -215,6 +180,10 @@ def get_stream_name(stream):
         # not all streams have one (e.g. BytesIO)
         return ''
 
+
+###################################################################################################
+# recognise file types
+
 def normalise_suffix(suffix):
     """Bring suffix to lowercase without dot."""
     if suffix.startswith('.'):
@@ -229,9 +198,6 @@ def get_suffix(file):
         suffix = Path(get_stream_name(file)).suffix
     return normalise_suffix(suffix)
 
-
-###################################################################################################
-# magic byte sequences
 
 def has_magic(instream, magic):
     """Check if a binary stream matches the given signature."""
@@ -258,6 +224,9 @@ class MagicRegistry:
                 self._suffixes[suffix] = klass
             for sequence in magic:
                 self._magic[sequence] = klass
+            # use first suffix given as standard
+            if suffixes:
+                klass.format = normalise_suffix(suffixes[0])
             return klass
         return decorator
 
@@ -285,12 +254,3 @@ class MagicRegistry:
                     return klass
         suffix = get_suffix(file)
         return self[suffix]
-
-
-###################################################################################################
-# compression helpers
-
-compressors = MagicRegistry()
-compressors.register('.gz', magic=(b'\x1f\x8b',))(gzip)
-compressors.register('.xz', magic=(b'\xFD7zXZ\x00',))(lzma)
-compressors.register('.bz2', magic=(b'BZh',))(bz2)
