@@ -14,8 +14,8 @@ try:
 except ImportError:
     reportlab = None
 
-from .formats import savers
-from .streams import FileFormatError
+from ..formats import savers
+from ..streams import FileFormatError
 
 
 if reportlab:

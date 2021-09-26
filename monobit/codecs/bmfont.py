@@ -16,14 +16,15 @@ try:
 except ImportError:
     Image = None
 
-from .base import boolean, pair
-from .containers import unique_name
-from . import streams
-from .streams import FileFormatError
-from .binary import friendlystruct
-from .formats import loaders, savers
-from .font import Font, Coord
-from .glyph import Glyph
+from ..base import boolean, pair
+from ..containers import unique_name
+from .. import streams
+from ..streams import FileFormatError
+from ..base.binary import friendlystruct
+from ..formats import loaders, savers
+from ..font import Font, Coord
+from ..glyph import Glyph
+
 from .winfnt import _CHARSET_MAP
 
 

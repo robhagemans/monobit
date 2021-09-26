@@ -31,12 +31,12 @@ import string
 import logging
 import itertools
 
-from .binary import friendlystruct, bytes_to_bits, ceildiv, align
-from .formats import loaders, savers
-from .streams import FileFormatError
-from .font import Font, Coord
-from .glyph import Glyph
-from .encoding import get_encoding
+from ..base.binary import friendlystruct, bytes_to_bits, ceildiv, align
+from ..formats import loaders, savers
+from ..streams import FileFormatError
+from ..font import Font, Coord
+from ..glyph import Glyph
+from ..encoding import get_encoding
 
 
 ##############################################################################

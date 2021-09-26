@@ -9,11 +9,11 @@ import os
 import struct
 import logging
 
-from .binary import friendlystruct, bytes_to_bits
-from .formats import loaders, savers
-from .streams import FileFormatError
-from .font import Font, Coord
-from .glyph import Glyph
+from ..base.binary import friendlystruct, bytes_to_bits
+from ..formats import loaders, savers
+from ..streams import FileFormatError
+from ..font import Font, Coord
+from ..glyph import Glyph
 
 
 ###################################################################################################

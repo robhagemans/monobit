@@ -7,12 +7,12 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
-from .binary import ceildiv, bytes_to_bits
-from .formats import loaders, savers
-from .font import Font
-from .glyph import Glyph
-from .streams import FileFormatError
-from .base import boolean, pair
+from ..base.binary import ceildiv, bytes_to_bits
+from ..formats import loaders, savers
+from ..font import Font
+from ..glyph import Glyph
+from ..streams import FileFormatError
+from ..base import boolean, pair
 
 
 @loaders.register('dos', 'bin', 'rom', 'raw', name='raw binary')

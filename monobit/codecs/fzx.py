@@ -8,11 +8,12 @@ licence: https://opensource.org/licenses/MIT
 import logging
 import ctypes
 
-from .binary import ceildiv, friendlystruct
+from ..base.binary import ceildiv, friendlystruct
+from ..formats import loaders, savers
+from ..font import Font
+from ..glyph import Glyph
+
 from .raw import load_aligned
-from .formats import loaders, savers
-from .font import Font
-from .glyph import Glyph
 
 
 # https://faqwiki.zxnet.co.uk/wiki/FZX_format

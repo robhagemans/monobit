@@ -7,11 +7,11 @@ licence: https://opensource.org/licenses/MIT
 
 import string
 
-from .binary import ceildiv
-from .formats import loaders, savers
-from .font import Font
-from .glyph import Glyph
-from .base import pair
+from ..base.binary import ceildiv
+from ..formats import loaders, savers
+from ..font import Font
+from ..glyph import Glyph
+from ..base import pair
 
 
 ###################################################################################################

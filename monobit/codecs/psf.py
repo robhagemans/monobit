@@ -7,12 +7,13 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
-from .binary import ceildiv, friendlystruct
+from ..base.binary import ceildiv, friendlystruct
+from ..formats import loaders, savers
+from ..font import Font
+from ..glyph import Glyph
+from ..streams import FileFormatError
+
 from .raw import load_aligned
-from .formats import loaders, savers
-from .font import Font
-from .glyph import Glyph
-from .streams import FileFormatError
 
 
 # PSF formats:

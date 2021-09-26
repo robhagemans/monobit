@@ -9,8 +9,8 @@ import binascii
 import logging
 
 from .base import scriptable
-from .binary import ceildiv, bytes_to_bits
-from .text import to_text
+from .base.binary import ceildiv, bytes_to_bits
+from .base.text import to_text
 from .label import UnicodeLabel, CodepointLabel
 
 

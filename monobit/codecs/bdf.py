@@ -7,12 +7,12 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
-from .formats import loaders, savers
-from .streams import FileFormatError
-from .font import Font, Coord
-from .glyph import Glyph
-from .encoding import get_encoding
-from .label import UnicodeLabel
+from ..formats import loaders, savers
+from ..streams import FileFormatError
+from ..font import Font, Coord
+from ..glyph import Glyph
+from ..encoding import get_encoding
+from ..label import UnicodeLabel
 
 
 # BDF specification: https://adobe-type-tools.github.io/font-tech-notes/pdfs/5005.BDF_Spec.pdf

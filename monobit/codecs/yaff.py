@@ -10,13 +10,13 @@ import string
 from types import SimpleNamespace
 from itertools import count
 
-from .text import clean_comment, write_comments, split_global_comment, to_text
-from .formats import loaders, savers
-from .streams import FileFormatError
-from .font import PROPERTIES, Font
-from .glyph import Glyph
-from .label import label as to_label
-from .label import UnicodeLabel, TagLabel, CodepointLabel
+from ..base.text import clean_comment, write_comments, split_global_comment, to_text
+from ..formats import loaders, savers
+from ..streams import FileFormatError
+from ..font import PROPERTIES, Font
+from ..glyph import Glyph
+from ..label import label as to_label
+from ..label import UnicodeLabel, TagLabel, CodepointLabel
 
 
 ##############################################################################

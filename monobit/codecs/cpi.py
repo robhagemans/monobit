@@ -13,11 +13,12 @@ import os
 import string
 import logging
 
-from .binary import ceildiv, friendlystruct
+from ..base.binary import ceildiv, friendlystruct
+from ..formats import loaders, savers
+from ..font import Font
+from ..glyph import Glyph
+
 from .raw import parse_aligned
-from .formats import loaders, savers
-from .font import Font
-from .glyph import Glyph
 
 
 _ID_MS = b'FONT   '

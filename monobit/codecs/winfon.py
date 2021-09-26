@@ -30,9 +30,9 @@ SOFTWARE.
 import string
 import logging
 
-from .binary import friendlystruct, ceildiv, align
-from .formats import loaders, savers
-from .streams import FileFormatError
+from ..base.binary import friendlystruct, ceildiv, align
+from ..formats import loaders, savers
+from ..streams import FileFormatError
 
 from .winfnt import parse_fnt, create_fnt
 

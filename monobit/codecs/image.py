@@ -13,12 +13,13 @@ try:
     from PIL import Image
 except ImportError:
     Image = None
-from .base import pair, rgb
-from .binary import ceildiv
-from .formats import loaders, savers
-from .streams import FileFormatError
-from .font import Font
-from .glyph import Glyph
+
+from ..base import pair, rgb
+from ..base.binary import ceildiv
+from ..formats import loaders, savers
+from ..streams import FileFormatError
+from ..font import Font
+from ..glyph import Glyph
 
 
 DEFAULT_IMAGE_FORMAT = 'png'

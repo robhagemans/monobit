@@ -16,23 +16,7 @@ from .glyph import Glyph
 from .encoding import Codepage
 from .formats import loaders, savers, open_location
 
-from . import bmfont
-from . import winfon
-from . import winfnt
-from . import amiga
-from . import image
-from . import yaff
-from . import raw
-from . import mac
-from . import bdf
-from . import psf
-from . import hex
-from . import cpi
-from . import fzx
-from . import pdf
-from . import c
-
-from .image import create_image, render
+from .codecs.image import create_image, render
 
 
 # get font operations
