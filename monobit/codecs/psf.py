@@ -7,11 +7,13 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
-from .binary import ceildiv, friendlystruct
+from ..base.binary import ceildiv, friendlystruct
+from ..formats import loaders, savers
+from ..font import Font
+from ..glyph import Glyph
+from ..streams import FileFormatError
+
 from .raw import load_aligned
-from .formats import Loaders, Savers
-from .font import Font
-from .glyph import Glyph
 
 
 # PSF formats:
@@ -58,12 +60,12 @@ _PSF2_SEPARATOR = b'\xFF'
 _PSF2_STARTSEQ = b'\xFE'
 
 
-@Loaders.register(
+@loaders.register(
     'psf', 'psfu',
     magic=(_PSF1_MAGIC, _PSF2_MAGIC),
-    name='PSF', binary=True, multi=False
+    name='PSF',
 )
-def load(instream):
+def load(instream, where=None):
     """Load font from psf file."""
     magic = instream.read(2)
     if magic == _PSF1_MAGIC:
@@ -115,12 +117,15 @@ def _read_unicode_table(instream, separator, startseq, encoding):
     return table
 
 
-@Savers.register('psf', 'psfu', name=load.name, binary=True, multi=False)
-def save(font, outstream):
+@savers.register(loader=load)
+def save(fonts, outstream, where=None):
     """Save font to PSF2 file."""
+    if len(fonts) > 1:
+        raise FileFormatError('Can only save one font to PSF file.')
+    font = fonts[0]
     # check if font is fixed-width and fixed-height
     if font.spacing != 'character-cell':
-        raise ValueError(
+        raise FileFormatError(
             'This format only supports character-cell fonts.'
         )
     glyphs = font.glyphs

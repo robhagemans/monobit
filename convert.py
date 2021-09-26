@@ -74,10 +74,10 @@ logging.basicConfig(level=loglevel, format='%(levelname)s: %(message)s')
 # help screen should include loader/saver arguments if from/to specified
 if args.help:
     if args.from_:
-        loader = monobit.formats.Loaders.get_loader(format=args.from_)
+        loader = monobit.formats.loaders.get_loader(format=args.from_)
         add_script_args(parser, loader)
     if args.to_:
-        saver = monobit.formats.Loaders.get_saver(format=args.to_)
+        saver = monobit.formats.savers.get_saver(format=args.to_)
         add_script_args(parser, saver)
     parser.print_help()
     sys.exit(0)
@@ -90,14 +90,14 @@ try:
     # open streams
     with monobit.open_location(infile, 'r') as (instream, incontainer):
         # get loader arguments
-        loader = monobit.formats.Loaders.get_loader(instream, format=args.from_)
+        loader = monobit.formats.loaders.get_loader(instream, format=args.from_)
         if loader:
             add_script_args(parser, loader)
             # don't raise if no loader - it may be a container we can extract
         args, _ = parser.parse_known_args()
         # convert arguments to type accepted by operation
         load_args = convert_args(args, loader)
-        font = monobit.load(instream, on=incontainer, format=args.from_, **load_args)
+        font = monobit.load(instream, where=incontainer, format=args.from_, **load_args)
 
     if args.codepage:
         font = font.set_encoding(args.codepage)
@@ -107,13 +107,13 @@ try:
 
     with monobit.open_location(outfile, 'w', overwrite=args.overwrite) as (outstream, outcontainer):
         # get saver arguments
-        saver = monobit.formats.Savers.get_saver(outstream, format=args.to_)
+        saver = monobit.formats.savers.get_saver(outstream, format=args.to_)
         if saver:
             add_script_args(parser, saver)
         args = parser.parse_args()
         # convert arguments to type accepted by operation
         save_args = convert_args(args, saver)
-        monobit.save(font, outstream, on=outcontainer, format=args.to_, **save_args)
+        monobit.save(font, outstream, where=outcontainer, format=args.to_, **save_args)
 
 except BrokenPipeError:
     # happens e.g. when piping to `head`

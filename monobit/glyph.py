@@ -9,8 +9,8 @@ import binascii
 import logging
 
 from .base import scriptable
-from .binary import ceildiv, bytes_to_bits
-from .text import to_text
+from .base.binary import ceildiv, bytes_to_bits
+from .base.text import to_text
 from .label import UnicodeLabel, CodepointLabel
 
 
@@ -111,11 +111,6 @@ class Glyph:
             tags=tuple(tags),
             comments=tuple(comments)
         )
-
-    @property
-    def comments(self):
-        """Extract comments."""
-        return self._comments
 
     @classmethod
     def empty(cls, width=0, height=0):

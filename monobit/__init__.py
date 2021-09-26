@@ -14,25 +14,9 @@ from .pack import Pack
 from .font import Font
 from .glyph import Glyph
 from .encoding import Codepage
-from .formats import Loaders, Savers, open_location
+from .formats import loaders, savers, open_location
 
-from . import bmfont
-from . import winfon
-from . import winfnt
-from . import amiga
-from . import image
-from . import yaff
-from . import raw
-from . import mac
-from . import bdf
-from . import psf
-from . import hex
-from . import cpi
-from . import fzx
-from . import pdf
-from . import c
-
-from .image import create_image, render
+from .codecs.image import create_image, render
 
 
 # get font operations
@@ -45,5 +29,5 @@ OPERATIONS = {
 # inject operations into main module namespace
 globals().update(OPERATIONS)
 
-save = Savers().save
-load = Loaders().load
+save = savers.save
+load = loaders.load

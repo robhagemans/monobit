@@ -7,10 +7,9 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
-from .binary import friendlystruct, bytes_to_bits
-from .formats import Loaders, Savers
-from .pack import Pack
-from .font import Font, Glyph, Coord
+from ..base.binary import friendlystruct, bytes_to_bits
+from ..formats import loaders, savers
+from ..font import Font, Glyph, Coord
 
 
 ##############################################################################
@@ -316,21 +315,17 @@ _NON_ROMAN_NAMES = {
 
 ##############################################################################
 
-@Loaders.register('dfont', 'suit',
-    name='MacOS resource',
-    binary=True, multi=True
-)
-def load_dfont(instream):
+@loaders.register('dfont', 'suit', name='MacOS resource')
+def load_dfont(instream, where=None):
     """Load a MacOS suitcase."""
     data = instream.read()
-    return Pack(_parse_resource_fork(data))
+    return _parse_resource_fork(data)
 
-@Loaders.register('apple',
+@loaders.register('apple',
     magic=(_APPLESINGLE_MAGIC.to_bytes(4, 'big'), _APPLEDOUBLE_MAGIC.to_bytes(4, 'big')),
     name='MacOS resource (AppleSingle/AppleDouble container)',
-    binary=True, multi=True
 )
-def load_apple(instream):
+def load_apple(instream, where=None):
     """Load an AppleSingle or AppleDouble file."""
     data = instream.read()
     return _parse_apple(data)
@@ -359,7 +354,7 @@ def _parse_apple(data):
                 )
                 for font in fonts
             ]
-            return Pack(fonts)
+            return fonts
     raise ValueError('No resource fork found.')
 
 

@@ -31,11 +31,11 @@ import string
 import logging
 import itertools
 
-from .binary import friendlystruct, bytes_to_bits, ceildiv, align
-from .formats import Loaders, Savers
-from .font import Font, Coord
-from .glyph import Glyph
-from .encoding import get_encoding
+from ..base.binary import friendlystruct, bytes_to_bits, ceildiv, align
+from ..formats import loaders, savers
+from ..streams import FileFormatError
+from ..font import Font, Coord
+from ..glyph import Glyph
 
 
 ##############################################################################
@@ -357,20 +357,22 @@ _GLYPH_ENTRY = {
 ##############################################################################
 # top level functions
 
-@Loaders.register(
+@loaders.register(
     'fnt',
     magic=(b'\0\x01', b'\0\x02', b'\0\x03'),
     name='Windows font resource',
-    binary=True
 )
-def load(instream):
+def load(instream, where=None):
     """Load a Windows .FNT file."""
     font = parse_fnt(instream.read())
     return font
 
-@Savers.register('fnt', name=load.name, binary=True, multi=False)
-def save(font, outstream, version:int=2):
+@savers.register(loader=load)
+def save(fonts, outstream, where=None, version:int=2):
     """Write font to a Windows .FNT file."""
+    if len(fonts) > 1:
+        raise FileFormatError('Can only save one font to Windows font resource.')
+    font = fonts[0]
     outstream.write(create_fnt(font, version*0x100))
     return font
 

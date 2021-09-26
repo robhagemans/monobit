@@ -1,7 +1,7 @@
 """
-monobit.formats - loader and saver plugin registry
+monobit.streams - file stream tools
 
-(c) 2019 Rob Hagemans
+(c) 2019--2021 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -9,39 +9,70 @@ import io
 import sys
 import logging
 from pathlib import Path
-import gzip
-import lzma
-import bz2
-
 
 
 class FileFormatError(Exception):
     """Incorrect file format."""
 
 
-def open_stream(file, mode, *, on=None, overwrite=False):
+def open_stream(file, mode, *, where=None, overwrite=False):
     """Ensure file is a stream of the right type, open or wrap if necessary."""
-    return Stream(file, mode, on=on, overwrite=overwrite)
+    return Stream(file, mode, where=where, overwrite=overwrite)
 
 
-class StreamWrapper:
-    """Wrapper object to emulate a single text stream."""
+class StreamBase:
+    """Shared base for stream and container."""
 
-    def __init__(self, stream):
+    def __init__(self, stream, mode='', name=''):
         self._stream = stream
+        self.name = name
+        self.mode = mode[:1]
+        if self._stream:
+            if not self.name:
+                self.name = get_name(stream)
+            if not self.mode:
+                if self._stream.readable():
+                    self.mode = 'r'
+                else:
+                    self.mode = 'w'
+        self._refcount = 0
+        self.closed = False
+
+    def __enter__(self):
+        self._refcount += 1
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        """Ensure archive is closed and essential records written."""
+        if exc_type == BrokenPipeError:
+            return True
+        self._refcount -= 1
+        logging.debug('Exiting %r with reference count %d.', self, self._refcount)
+        if not self._refcount:
+            self.close()
+
+    def __repr__(self):
+        """String representation."""
+        return (
+            f"<{type(self).__name__} name='{self.name}' mode='{self.mode}'"
+            f"{' [closed]' if self.closed else ''}>"
+        )
+
+    def close(self):
+        if self._stream and not self._refcount:
+            self._stream.close()
+        self.closed = True
+
+
+class StreamWrapper(StreamBase):
+    """Wrapper object to emulate a single text stream."""
 
     def __getattr__(self, attr):
         """Delegate undefined attributes to wrapped stream."""
         return getattr(self._stream, attr)
 
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.close()
-
     def __iter__(self):
-        # dunder methods not delegated?
+        # dunder methods not delegated
         return self._stream.__iter__()
 
 
@@ -49,59 +80,76 @@ class KeepOpen(StreamWrapper):
     """Wrapper to avoid closing wrapped stream."""
 
     def close(self):
-        """Do nothing."""
+        """Don't close underlying stream."""
+        self._stream.flush()
 
 
 class Stream(StreamWrapper):
     """Manage file resource."""
 
-    def __init__(self, file, mode, *, on=None, overwrite=False):
-        """Ensure file is a stream of the right type, open or wrap if necessary."""
+    def __init__(self, file, mode, *, name='', where=None, overwrite=False):
+        """
+        Ensure file is a stream of the right type, open or wrap if necessary.
+            file: stream, string or path-like object
+            mode: 'r' or 'w'
+            where: container to open any new stream on
+        """
         if not file:
             raise ValueError('No file name, path or stream provided.')
-        # file is a stream, string or path-like object
-        # mode is 'r' or 'w'
-        # binary is a boolean; open as binary if true, as text if false
-        # on: container to open any new stream on
         mode = mode[:1]
-        self.mode = mode
         # if a path is provided, open a (binary) stream
         if isinstance(file, (str, Path)):
-            if not on:
-                if not overwrite and mode == 'w' and Path(file).exists():
-                    raise FileExistsError(f'Will not overwrite existing file `{file}`.')
-                logging.debug("Opening file `%s` for mode '%s'.", file, mode)
-                file = io.open(file, mode + 'b')
-            else:
-                if not overwrite and mode == 'w' and file in on:
-                    raise FileExistsError(
-                        f'Will not overwrite existing file `{file}` on `{on.name}`.'
-                    )
-                file = on.open_binary(file, mode)
+            file = self._open_path(file, mode, where, overwrite)
             self._raw = file
         else:
             # don't close externally provided stream
             file = KeepOpen(file)
             self._raw = None
-        # wrap compression/decompression if needed
-        file = open_compressed_stream(file)
+        # initialise wrapper
+        super().__init__(file, mode=mode, name=name)
         # check r/w mode is consistent
-        if mode == 'r' and not file.readable():
+        self._ensure_rw()
+        # placeholder for text wrapper
+        self._textstream = None
+        # Ensure we have a binary stream
+        self._ensure_binary()
+
+    @staticmethod
+    def _open_path(file, mode, where, overwrite):
+        """Open a raw stream on path and container provided."""
+        path = Path(file)
+        if not where:
+            # open on filesystem
+            if not overwrite and mode == 'w' and path.exists():
+                raise FileExistsError(f'Will not overwrite existing file `{file}`.')
+            logging.debug("Opening file `%s` for mode '%s'.", file, mode)
+            file = io.open(path, mode + 'b')
+        else:
+            # open on container
+            if not overwrite and mode == 'w' and file in where:
+                raise FileExistsError(
+                    f'Will not overwrite existing file `{file}` on `{where.name}`.'
+                )
+            file = where.open(path, mode)
+        return file
+
+    def _ensure_rw(self):
+        """Ensure r/w mode is consistent."""
+        if self.mode == 'r' and not self._stream.readable():
             raise FileFormatError('Expected readable stream, got writable.')
-        if mode == 'w' and not file.writable():
+        if self.mode == 'w' and not self._stream.writable():
             raise FileFormatError('Expected writable stream, got readable.')
-        # check text/binary
+
+    def _ensure_binary(self):
+        """Ensure we have a binary stream."""
         # a text format can be read from/written to a binary stream with a wrapper
-        if not is_binary(file):
-            self._textstream = file
+        if not is_binary(self._stream):
+            self._textstream = self._stream
             try:
-                file = file.buffer
+                self._stream = self._stream.buffer
             except AttributeError as e:
                 raise FileFormatError('Unable to access binary stream.') from e
-        else:
-            self._textstream = None
-        self.name = get_stream_name(file)
-        super().__init__(file)
+            logging.debug('Getting buffer %r from text stream %r.', self._stream, self._textstream)
 
     @property
     def text(self):
@@ -147,13 +195,17 @@ def is_binary(stream):
         return False
     return True
 
-def get_stream_name(stream):
+def get_name(stream):
     """Get stream name, if available."""
     try:
         return stream.name
     except AttributeError:
         # not all streams have one (e.g. BytesIO)
         return ''
+
+
+###################################################################################################
+# recognise file types
 
 def normalise_suffix(suffix):
     """Bring suffix to lowercase without dot."""
@@ -166,12 +218,8 @@ def get_suffix(file):
     if isinstance(file, (str, Path)):
         suffix = Path(file).suffix
     else:
-        suffix = Path(get_stream_name(file)).suffix
+        suffix = Path(get_name(file)).suffix
     return normalise_suffix(suffix)
-
-
-###################################################################################################
-# magic byte sequences
 
 def has_magic(instream, magic):
     """Check if a binary stream matches the given signature."""
@@ -190,22 +238,27 @@ class MagicRegistry:
         self._magic = {}
         self._suffixes = {}
 
-    def register(self, *suffixes, magic=b''):
+    def register(self, *suffixes, magic=()):
         """Decorator to register class that handles file type."""
         def decorator(klass):
             for suffix in suffixes:
                 suffix = normalise_suffix(suffix)
                 self._suffixes[suffix] = klass
-            if magic:
-                self._magic[magic] = klass
+            for sequence in magic:
+                self._magic[sequence] = klass
+            # use first suffix given as standard
+            if suffixes:
+                klass.format = normalise_suffix(suffixes[0])
             return klass
         return decorator
 
-    def has_suffix(self, suffix):
+    def __contains__(self, suffix):
         """Suffix is covered."""
         return normalise_suffix(suffix) in self._suffixes.keys()
 
-    __contains__ = has_suffix
+    def __getitem__(self, suffix):
+        """Get type by suffix."""
+        return self._suffixes.get(suffix, None)
 
     def identify(self, file, mode):
         """Identify a type from magic sequence on input file."""
@@ -217,41 +270,9 @@ class MagicRegistry:
                 # only use context manager if string provided
                 # if we got an open stream we should not close it
                 with open_stream(file, 'r') as stream:
-                    for magic, klass in self._magic.items():
-                        if has_magic(stream, magic):
-                            return klass
+                    return self.identify(stream, mode)
+            for magic, klass in self._magic.items():
+                if has_magic(file, magic):
+                    return klass
         suffix = get_suffix(file)
-        return self._suffixes.get(suffix, None)
-
-
-###################################################################################################
-# compression helpers
-
-compressors = MagicRegistry()
-compressors.register('.gz', magic=b'\x1f\x8b')(gzip)
-compressors.register('.xz', magic=b'\xFD7zXZ\x00')(lzma)
-compressors.register('.bz2', magic=b'BZh')(bz2)
-
-def open_compressed_stream(file):
-    """Identify and wrap compressed streams."""
-    mode = 'r' if file.readable() else 'w'
-    compressor = compressors.identify(file, mode)
-    if not compressor:
-        return file
-    if file.readable():
-        mode = 'r'
-    else:
-        mode = 'w'
-    logging.debug("Opening %s-compressed stream for mode '%s'", compressor.__name__, mode)
-    wrapped = compressor.open(file, mode + 'b')
-    # set name of uncompressed stream
-    wrapped.name = get_stream_name(file)
-    # drop the .gz etc
-    try:
-        last_suffix = Path(wrapped.name).suffixes[-1]
-    except IndexError:
-        pass
-    else:
-        if last_suffix and compressors.has_suffix(last_suffix):
-            wrapped.name = wrapped.name[:-len(last_suffix)]
-    return wrapped
+        return self[suffix]

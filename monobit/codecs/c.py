@@ -7,20 +7,21 @@ licence: https://opensource.org/licenses/MIT
 
 import string
 
-from .binary import ceildiv
-from .formats import Loaders, Savers
-from .font import Font
-from .glyph import Glyph
-from .base import pair
+from ..base.binary import ceildiv
+from ..formats import loaders, savers
+from ..font import Font
+from ..glyph import Glyph
+from ..streams import FileFormatError
+from ..base import pair
 
 
 ###################################################################################################
 
-@Loaders.register('c', 'cc', 'cpp', 'h', name='C-source')
-def load(infile, identifier:str, cell:pair):
+@loaders.register('c', 'cc', 'cpp', 'h', name='C-source')
+def load(infile, where, identifier:str, cell:pair):
     """Load font from a .c file."""
     width, height = cell
-    payload = _get_payload(infile, identifier)
+    payload = _get_payload(infile.text, identifier)
     # c bytes are python bytes, except 0777-style octal (which we therefore don't support correctly)
     bytelist = [_int_from_c(_s) for _s in payload.split(',') if _s]
     # split into chunks
@@ -86,12 +87,16 @@ def _get_payload(instream, identifier):
 
 ###################################################################################################
 
-@Savers.register('c', binary=False, multi=False)
-def save(font, outstream):
+@savers.register('c', loader=load)
+def save(fonts, outstream, where=None):
     """Save font to c source as byte-aligned binary (DOS font)."""
+    if len(fonts) > 1:
+        raise FileFormatError('Can only save one font to BDF file.')
+    font = fonts[0]
+    outstream = outstream.text
     # check if font is fixed-width and fixed-height
     if font.spacing != 'character-cell':
-        raise ValueError(
+        raise FileFormatError(
             'This format only supports character-cell fonts.'
         )
     # convert name to c identifier

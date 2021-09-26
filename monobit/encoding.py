@@ -23,23 +23,24 @@ def normalise_encoding(encoding):
     return _ENCODING_ALIASES.get(encoding, encoding)
 
 
-def get_encoding(enc):
-    """Find an encoding by name."""
-    if enc:
-        enc = enc.lower().replace('-', '_')
-        if normalise_encoding(enc) == 'unicode':
+def get_encoder(encoding_name, default=''):
+    """Find an encoding by name and return codec."""
+    encoding_name = encoding_name or default
+    if encoding_name:
+        encoding_name = encoding_name.lower().replace('-', '_')
+        if normalise_encoding(encoding_name) == 'unicode':
             return Unicode
         try:
-            return Codepage(enc)
+            return Codepage(encoding_name)
         except LookupError:
             pass
         try:
-            return Codec(enc)
+            return Codec(encoding_name)
         except LookupError:
             pass
-        logging.warning('Unknown encoding `%s`.', enc)
+    # this will break some formats
+    logging.warning('Unknown encoding `%s`.', encoding_name)
     return None
-
 
 
 class Codec:

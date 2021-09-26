@@ -8,11 +8,12 @@ licence: https://opensource.org/licenses/MIT
 import logging
 import ctypes
 
-from .binary import ceildiv, friendlystruct
+from ..base.binary import ceildiv, friendlystruct
+from ..formats import loaders, savers
+from ..font import Font
+from ..glyph import Glyph
+
 from .raw import load_aligned
-from .formats import Loaders, Savers
-from .font import Font
-from .glyph import Glyph
 
 
 # https://faqwiki.zxnet.co.uk/wiki/FZX_format
@@ -37,8 +38,8 @@ class _CHAR_ENTRY(ctypes.LittleEndianStructure):
     _pack_ = True
 
 
-@Loaders.register('fzx', name='FZX', binary=True)
-def load(instream):
+@loaders.register('fzx', name='FZX')
+def load(instream, where=None):
     """Load font from FZX file."""
     data = instream.read()
     header = _FZX_HEADER.from_bytes(data)

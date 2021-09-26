@@ -7,15 +7,16 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
-from .binary import ceildiv, bytes_to_bits
-from .formats import Loaders, Savers
-from .font import Font
-from .glyph import Glyph
-from .base import boolean, pair
+from ..base.binary import ceildiv, bytes_to_bits
+from ..formats import loaders, savers
+from ..font import Font
+from ..glyph import Glyph
+from ..streams import FileFormatError
+from ..base import boolean, pair
 
 
-@Loaders.register('dos', 'bin', 'rom', 'raw', name='raw binary', binary=True)
-def load(instream, cell:pair=(8, 8), n_chars:int=None, offset:int=0, strike:boolean=False):
+@loaders.register('dos', 'bin', 'rom', 'raw', name='raw binary')
+def load(instream, where=None, cell:pair=(8, 8), n_chars:int=None, offset:int=0, strike:boolean=False):
     """Load font from raw binary."""
     # get through the offset
     # we don't assume instream is seekable - it may be sys.stdin
@@ -27,18 +28,19 @@ def load(instream, cell:pair=(8, 8), n_chars:int=None, offset:int=0, strike:bool
     return Font(cells)
 
 
-@Savers.register('dos', 'bin', 'rom', 'raw', name=load.name, binary=True, multi=False)
-def save(font, outstream):
+@savers.register(loader=load)
+def save(fonts, outstream, where=None):
     """Save font to raw byte-aligned binary (DOS font)."""
-    save_aligned(outstream, font)
-    return font
+    if len(fonts) > 1:
+        raise FileFormatError('Can only save one font to BDF file.')
+    save_aligned(outstream, fonts[0])
 
 
 def save_aligned(outstream, font, encoding=None):
     """Save fixed-width font to byte-aligned bitmap."""
     # check if font is fixed-width and fixed-height
     if font.spacing != 'character-cell':
-        raise ValueError(
+        raise FileFormatError(
             'This format only supports character-cell fonts.'
         )
     for glyph in font.glyphs:

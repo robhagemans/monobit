@@ -13,12 +13,12 @@ import os
 import string
 import logging
 
-from .binary import ceildiv, friendlystruct
+from ..base.binary import ceildiv, friendlystruct
+from ..formats import loaders, savers
+from ..font import Font
+from ..glyph import Glyph
+
 from .raw import parse_aligned
-from .formats import Loaders, Savers
-from .pack import Pack
-from .font import Font
-from .glyph import Glyph
 
 
 _ID_MS = b'FONT   '
@@ -100,23 +100,23 @@ _FORMAT_NAME = {
 }
 
 
-@Loaders.register(
+@loaders.register(
     'cpi',
     magic=(b'\xff'+_ID_MS, b'\xff'+_ID_NT, b'\x7f'+_ID_DR),
-    name='CPI', binary=True, multi=True
+    name='CPI'
 )
-def load(instream):
+def load(instream, where=None):
     """Load fonts from CPI file."""
     data = instream.read()
     fonts = _parse_cpi(data)
-    return Pack(fonts)
+    return fonts
 
-@Loaders.register('cp', name='Codepage', binary=True, multi=True)
-def load_cp(instream):
+@loaders.register('cp', name='Codepage')
+def load_cp(instream, where=None):
     """Load fonts from CP file."""
     data = instream.read()
     fonts, _ = _parse_cp(data, 0, standalone=True)
-    return Pack(fonts)
+    return fonts
 
 
 

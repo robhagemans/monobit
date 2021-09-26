@@ -12,19 +12,20 @@ import os
 import logging
 import string
 
-from .text import clean_comment, split_global_comment, write_comments
-from .formats import Loaders, Savers
-from .font import Font
-from .glyph import Glyph
+from ..base.text import clean_comment, split_global_comment, write_comments
+from ..formats import loaders, savers
+from ..streams import FileFormatError
+from ..font import Font
+from ..glyph import Glyph
 
 
-@Loaders.register('hext', name='PC-BASIC Extended HEX')
-def load_hext(instream):
-    return load(instream)
+@loaders.register('hext', name='PC-BASIC Extended HEX')
+def load_hext(instream, where=None):
+    return load(instream.text)
 
-@Loaders.register('hex', name='Unifont HEX')
-def load_hex(instream):
-    return load(instream)
+@loaders.register('hex', name='Unifont HEX')
+def load_hex(instream, where=None):
+    return load(instream.text)
 
 def load(instream):
     """Load font from a .hex file."""
@@ -78,9 +79,13 @@ def load(instream):
     return Font(glyphs, comments=comments, properties=dict(encoding='unicode'))
 
 
-@Savers.register('hex', name=load_hex.name, multi=False)
-def save(font, outstream):
+@savers.register(loader=load_hex)
+def save(fonts, outstream, where=None):
     """Write font to a .hex file."""
+    if len(fonts) > 1:
+        raise FileFormatError('Can only save one font to hex file.')
+    font = fonts[0]
+    outstream = outstream.text
     write_comments(outstream, font.get_comments(), comm_char='#', is_global=True)
     for glyph in font.glyphs:
         if len(glyph.char) > 1:
@@ -98,12 +103,15 @@ def save(font, outstream):
             logging.warning('%s %s', glyph.char, glyph.as_hex())
             continue
         _write_hex_extended(outstream, glyph.char, glyph)
-    return font
 
 
-@Savers.register('hext', name=load_hext.name, multi=False)
-def save_hext(font, outstream):
+@savers.register(loader=load_hext)
+def save_hext(fonts, outstream, where=None):
     """Write font to an extended .hex file."""
+    if len(fonts) > 1:
+        raise FileFormatError('Can only save one font to hex file.')
+    font = fonts[0]
+    outstream = outstream.text
     write_comments(outstream, font.get_comments(), comm_char='#', is_global=True)
     for glyph in font.glyphs:
         if glyph.width not in (8, 16):
@@ -115,7 +123,6 @@ def save_hext(font, outstream):
             logging.warning('%s %s', glyph.char, glyph.as_hex())
             continue
         _write_hex_extended(outstream, glyph.char, glyph)
-    return font
 
 def _write_hex_extended(outstream, unicode, glyph):
     """Write character to a .hex file, extended syntax."""
