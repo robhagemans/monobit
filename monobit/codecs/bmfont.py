@@ -33,7 +33,6 @@ from .winfnt import CHARSET_MAP, CHARSET_REVERSE_MAP
 # text/xml/binary format: https://www.angelcode.com/products/bmfont/doc/file_format.html
 # json format: https://github.com/Jam3/load-bmfont/blob/master/json-spec.md
 
-
 ##############################################################################
 # top-level calls
 
@@ -49,11 +48,12 @@ if Image:
             image_size:pair=(256, 256),
             image_format:str='png',
             packed:boolean=True,
+            descriptor:str='text',
         ):
         """Save fonts to bmfonts in container."""
         if len(fonts) > 1:
             raise FileFormatError("Can only save one font to BMFont file.")
-        _create_bmfont(outfile, where, fonts[0], image_size, packed, image_format)
+        _create_bmfont(outfile, where, fonts[0], image_size, packed, image_format, descriptor)
 
 
 ##############################################################################
@@ -479,6 +479,12 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=(),
         'family': bmfont_props.pop('face'),
         # assume size == pixel-size == ascent + descent
         # size can be given as negative for an undocumented reason, maybe if "match char height" set
+        #
+        # https://gamedev.net/forums/topic/657937-strange-34size34-of-generated-bitmapfont/5161902/
+        # > The 'info' block is just a little information on the original truetype font used to generate the bitmap font. This is normally not used while rendering the text.
+        # > A negative size here reflects that the size is matching the cell height, rather than the character height.
+        #
+        # FIXME: so we should not use size for metrics - can use lineHeight and base?
         'ascent': abs(int(bmfont_props.pop('size'))) - (max_height - common.base),
         'descent': max_height - common.base,
         'weight': 'bold' if _to_int(bmfont_props.pop('bold')) else 'regular',
@@ -512,6 +518,7 @@ def _read_bmfont(infile, container, outline):
         fontinfo = _parse_binary(infile.read())
     else:
         fnt = infile.text
+        line = ''
         for line in fnt:
             if line:
                 break
@@ -623,7 +630,10 @@ def _create_textdict(name, dict):
         for _k, _v in dict.items())
     )
 
-def _create_bmfont(outfile, container, font, size=(256, 256), packed=False, imageformat='png'):
+def _create_bmfont(
+        outfile, container, font,
+        size=(256, 256), packed=False, imageformat='png', descriptor='text'
+    ):
     """Create a bmfont package."""
     path = font.family
     fontname = font.name.replace(' ', '_')
@@ -682,7 +692,12 @@ def _create_bmfont(outfile, container, font, size=(256, 256), packed=False, imag
     else:
         props['kernings'] = []
     # write the .fnt description
-    _write_fnt_descriptor(outfile, props, chars)
+    if descriptor == 'text':
+        _write_fnt_descriptor(outfile, props, chars)
+    elif descriptor == 'json':
+        _write_json(outfile, props, chars)
+    else:
+        raise FileFormatError(f'Writing to descriptor format {format} not supported.')
 
 def _write_fnt_descriptor(outfile, props, chars):
     """Write the .fnt descriptor file."""
@@ -697,6 +712,14 @@ def _write_fnt_descriptor(outfile, props, chars):
     bmf.write('kernings count={}\n'.format(len(props['kernings'])))
     for kern in props['kernings']:
         bmf.write(_create_textdict('kerning', kern))
+
+def _write_json(outfile, props, chars):
+    """Write JSON bmfont description."""
+    tree = {**props}
+    # assume the pages list is ordered
+    tree['pages'] = [_elem['file'] for _elem in tree['pages']]
+    tree['chars'] = chars
+    json.dump(tree, outfile.text)
 
 
 class SpriteNode:

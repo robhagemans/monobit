@@ -168,7 +168,9 @@ class TestCodecs(BaseTester):
     def test_export_bmf(self):
         """Test exporting bmfont files."""
         fnt_file = self.temp_path / '4x6.bmf'
-        monobit.save(self.fixed4x6, fnt_file, where=self.temp_path, overwrite=True)
+        monobit.save(self.fixed4x6, fnt_file, where=self.temp_path)
+        self.assertTrue(os.path.getsize(fnt_file) > 0)
+        monobit.save(self.fixed4x6, fnt_file, where=self.temp_path, descriptor='json', overwrite=True)
         self.assertTrue(os.path.getsize(fnt_file) > 0)
 
     def test_import_c(self):
