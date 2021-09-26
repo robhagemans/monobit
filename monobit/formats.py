@@ -14,7 +14,7 @@ from pathlib import Path
 from contextlib import contextmanager
 
 from .base import VERSION, DEFAULT_FORMAT, CONVERTER_NAME
-from .containers import Container, open_container, unique_name, ContainerFormatError
+from .containers import Container, open_container, ContainerFormatError
 from .font import Font
 from .pack import Pack
 from . import streams
@@ -223,7 +223,7 @@ class Savers(MagicRegistry):
             # generate unique filename
             name = font.name.replace(' ', '_')
             format = format or DEFAULT_FORMAT
-            filename = unique_name(where, name, format)
+            filename = where.unused_name(name, format)
             try:
                 with open_stream(filename, 'w', where=where) as stream:
                     self._save_to_file(Pack(font), stream, where, format, **kwargs)

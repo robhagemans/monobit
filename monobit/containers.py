@@ -66,16 +66,6 @@ def identify_container(file, mode, overwrite):
     return container_type
 
 
-def unique_name(container, name, ext):
-    """Generate unique name for container file."""
-    filename = '{}.{}'.format(name, ext)
-    i = 0
-    while filename in container:
-        i += 1
-        filename = '{}.{}.{}'.format(name, i, ext)
-    return filename
-
-
 class Container(StreamBase):
     """Base class for container types."""
 
@@ -87,6 +77,12 @@ class Container(StreamBase):
         """Open a binary stream in the container."""
         raise NotImplementedError
 
+    def unused_name(self, stem, suffix):
+        """Generate unique name for container file."""
+        for i in itertools.count():
+            filename = '{}.{}.{}'.format(stem, i, suffix)
+            if filename not in self:
+                return filename
 
 ###################################################################################################
 # directory

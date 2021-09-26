@@ -17,7 +17,6 @@ except ImportError:
     Image = None
 
 from ..base import boolean, pair
-from ..containers import unique_name
 from .. import streams
 from ..streams import FileFormatError
 from ..base.binary import friendlystruct
@@ -628,7 +627,7 @@ def _create_bmfont(outfile, container, font, size=(256, 256), packed=False, imag
     # save images; create page table
     props['pages'] = []
     for page_id, page in enumerate(pages):
-        name = unique_name(container, f'{path}/{fontname}_{page_id}', imageformat)
+        name = container.unused_name(f'{path}/{fontname}_{page_id}', imageformat)
         with container.open(name, 'w') as imgfile:
             page.save(imgfile, format=imageformat)
         props['pages'].append({'id': page_id, 'file': name})
