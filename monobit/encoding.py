@@ -39,7 +39,7 @@ def get_encoder(encoding_name, default=''):
         except LookupError:
             pass
     # this will break some formats
-    logging.warning('Unknown encoding `%s`.', encoding_name)
+    logging.debug('Unknown encoding `%s`.', encoding_name)
     return None
 
 
