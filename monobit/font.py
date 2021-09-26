@@ -13,7 +13,7 @@ import unicodedata
 
 from .base import scriptable
 from .glyph import Glyph
-from .encoding import Unicode, normalise_encoding, get_encoding
+from .encoding import Unicode, normalise_encoding, get_encoder
 from .label import label, UnicodeLabel, CodepointLabel, TagLabel
 
 
@@ -240,16 +240,16 @@ class Font:
                 for _index, _glyph in enumerate(self._glyphs)
             )
         # update glyph unicode annotations
-        encoding = self._get_encoding()
+        encoding = self._get_encoder()
         if encoding is not None:
             self._glyphs = [
                 _glyph.set_encoding_annotations(encoding)
                 for _glyph in self._glyphs
             ]
 
-    def _get_encoding(self):
+    def _get_encoder(self):
         """Get encoding object."""
-        return get_encoding(self._properties.get('encoding', None))
+        return get_encoder(self._properties.get('encoding', None))
 
 
     ##########################################################################
@@ -684,15 +684,19 @@ class Font:
     def merged_with(self, other):
         """Merge glyphs from other font into this one. Existing glyphs have preference."""
         glyphs = list(self._glyphs)
-        encoding = self._get_encoding()
+        encoder = self._get_encoder()
         for glyph in other.glyphs:
             # don't overwrite chars we already have
             if glyph.char not in set(self._chars):
                 # exclude tags we already have
                 new_tags = set(glyph.tags) - set(self._tags)
                 # update codepoint based on this font's encoding
-                new_codepoint = encoding.ord(glyph.char)
-                glyphs.append(glyph.set_annotations(tags=new_tags, codepoint=new_codepoint))
+                if encoder is not None:
+                    new_codepoint = encoder.ord(glyph.char)
+                    glyph = glyph.set_annotations(tags=new_tags, codepoint=new_codepoint)
+                else:
+                    glyph = glyph.set_annotations(tags=new_tags)
+                glyphs.append(glyph)
         return Font(glyphs, self._comments, self._properties)
 
     # replace with clone(glyphs=.., comments=.., properties=..)

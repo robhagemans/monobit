@@ -11,7 +11,7 @@ from ..formats import loaders, savers
 from ..streams import FileFormatError
 from ..font import Font, Coord
 from ..glyph import Glyph
-from ..encoding import get_encoding
+from ..encoding import get_encoder
 from ..label import UnicodeLabel
 
 
@@ -421,11 +421,11 @@ def _parse_xlfd_properties(x_props, xlfd_name):
         properties['encoding'] = f'{registry}-{encoding}'
     elif registry:
         properties['encoding'] = registry
-    else:
+    elif encoding != '0':
         properties['encoding'] = encoding
     if 'DEFAULT_CHAR' in x_props:
         default_ord = x_props.pop('DEFAULT_CHAR', None)
-        encoder = get_encoding(properties['encoding'])
+        encoder = get_encoder(properties['encoding'])
         properties['default-char'] = UnicodeLabel.from_char(encoder.chr(default_ord))
     properties = {_k: _v for _k, _v in properties.items() if _v is not None and _v != ''}
     # invalid xlfd name: keep but with changed property name
@@ -487,7 +487,7 @@ def _create_xlfd_properties(font):
         'AVERAGE_WIDTH': str(round(float(font.average_advance) * 10)).replace('-', '~'),
     }
     # encoding dependent values
-    encoder = get_encoding(font.encoding)
+    encoder = get_encoder(font.encoding, 'unicode')
     xlfd_props['DEFAULT_CHAR'] = encoder.ord(font.default_char.to_char())
     if font.encoding == 'unicode':
         xlfd_props['CHARSET_REGISTRY'] = '"ISO10646"'

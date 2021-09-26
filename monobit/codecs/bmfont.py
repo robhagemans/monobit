@@ -550,7 +550,7 @@ def _create_spritesheets(font, size=(256, 256), packed=False):
         # output glyphs
         x, y = 0, 0
         tree = SpriteNode(x, y, width, height)
-        for glyph in font.glyphs:
+        for number, glyph in enumerate(font.glyphs):
             if len(glyph.char) > 1:
                 logging.warning(
                     f"Can't encode multi-codepoint grapheme {glyph.char} in bmfont file; skipping."
@@ -568,8 +568,12 @@ def _create_spritesheets(font, size=(256, 256), packed=False):
                 data = cropped.as_tuple(fore, back)
                 charimg.putdata(data)
                 img.paste(charimg, (x, y))
+            if glyph.char:
+                id = ord(glyph.char)
+            else:
+                id = number
             chars.append(dict(
-                id=ord(glyph.char),
+                id=id,
                 x=x,
                 y=y,
                 width=cropped.width,
