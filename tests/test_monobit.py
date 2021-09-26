@@ -246,6 +246,25 @@ class TestCompressed(BaseTester):
         self._test_compressed('bz2')
 
 
+    def _test_double(self, format):
+        """Test doubly compressed files."""
+        container_file = self.font_path / f'double.yaff.{format}'
+        font, *_ = monobit.load(container_file)
+        self.assertEqual(len(font.glyphs), 919)
+
+    def test_gzip2(self):
+        """Test importing doubly gzip compressed files."""
+        self._test_double('gz')
+
+    def test_lzma(self):
+        """Test importing doubly lzma compressed files."""
+        self._test_double('xz')
+
+    def test_bz2(self):
+        """Test importing doubly bzip2 compressed files."""
+        self._test_double('bz2')
+
+
 class TestContainers(BaseTester):
     """Test container formats."""
 
@@ -261,13 +280,31 @@ class TestContainers(BaseTester):
         """Test importing/exporting zip files."""
         self._test_container('zip')
 
-    def test_lzma(self):
+    def test_tar(self):
         """Test importing/exporting tar files."""
         self._test_container('tar')
 
-    def test_bz2(self):
+    def test_tgz(self):
         """Test importing/exporting compressed tar files."""
         self._test_container('tar.gz')
+
+    def test_recursive(self):
+        """Test recursively traversing container."""
+        container_file = self.font_path / f'fontdir.tar.gz'
+        fonts = monobit.load(container_file)
+        self.assertEqual(len(fonts), 3)
+
+    def test_recursive_dir(self):
+        """Test recursively traversing directory."""
+        container_file = self.font_path / 'fontdir'
+        fonts = monobit.load(container_file)
+        self.assertEqual(len(fonts), 3)
+
+    def test_empty(self):
+        """Test empty container."""
+        container_file = self.font_path / 'empty.zip'
+        fonts = monobit.load(container_file)
+        self.assertEqual(len(fonts), 0)
 
 
 if __name__ == '__main__':
