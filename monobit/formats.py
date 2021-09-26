@@ -187,22 +187,19 @@ class Savers(MagicRegistry):
             **kwargs
         ):
         """
-        Write to file, return unchanged.
+        Write to file, no return value.
             outfile: stream or filename
             format: format specification string
             where: location/container. mandatory for formats that need filesystem access.
                 if specified and outfile is a filename, it is taken relative to this location.
             overwrite: if outfile is a filename, allow overwriting existing file
         """
-        # if container provided as string or steam, open it
-        if not isinstance(where, Container) or outfile and not isinstance(outfile, Stream):
-            with open_location(outfile, 'w', where=where, overwrite=overwrite) as (stream, container):
-                return self.save(pack_or_font, stream, format, container, **kwargs)
         pack = Pack(pack_or_font)
-        if not outfile:
-            # create a container on outfile, store the fonts in there as individual files
-            return self._save_all(pack, where, format, **kwargs)
-        return self._save_to_file(pack, outfile, where, format, **kwargs)
+        with open_location(outfile, 'w', where=where, overwrite=overwrite) as (stream, container):
+            if not outfile:
+                self._save_all(pack, where, format, **kwargs)
+            else:
+                self._save_to_file(pack, outfile, where, format, **kwargs)
 
     def _save_all(self, pack, where, format, **kwargs):
         """Save fonts to a container."""
@@ -227,7 +224,6 @@ class Savers(MagicRegistry):
             raise FileFormatError('Cannot save to format `{}`.'.format(format))
         logging.info('Saving `%s` on `%s` as %s.', outfile.name, where.name, saver.name)
         saver(pack, outfile, where, **kwargs)
-        return pack
 
 
     def register(self, *formats, name='', loader=None):
@@ -245,6 +241,8 @@ class Savers(MagicRegistry):
             @wraps(original_saver)
             def _saver(pack, outfile, where, **kwargs):
                 original_saver(pack, outfile, where=where, **kwargs)
+                # we need to flush as we're not closing properly
+                outfile.flush()
 
             # register saver
             _saver.script_args = original_saver.__annotations__

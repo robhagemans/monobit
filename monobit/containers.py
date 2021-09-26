@@ -59,8 +59,8 @@ def identify_container(file, mode, overwrite):
     suffix = get_suffix(file)
     if not container_type:
         # output to file with no suffix - default to text container
-        if mode == 'w' and not suffix:
-            return TextContainer
+        if mode == 'w' and not suffix and isinstance(file, (str, Path)):
+            return DirContainer
         # no container type found
         raise ContainerFormatError('Expected container format, got non-container stream.')
     return container_type
@@ -290,120 +290,6 @@ class TarContainer(Container):
 
 
 ###################################################################################################
-# yaml-style '---'-separated text stream
-
-@containers.register('.txt', '.yaffs', magic=(b'---',))
-class TextContainer(Container):
-    """Container of mime-/yaml-style concatenated text files with boundary marker."""
-
-    # boundary marker
-    separator = b'---'
-
-    def __init__(self, infile, mode='r', *, overwrite=False):
-        """Open stream or create wrapper."""
-        # all containers expect binary stream, including TextContainer
-        stream = Stream(infile, mode, overwrite=overwrite)
-        super().__init__(stream, mode)
-        if self.mode == 'r':
-            if self._stream.readline().strip() != self.separator:
-                raise ContainerFormatError('Not a text container.')
-        else:
-            self._stream.write(b'%s\n' % (self.separator,))
-        self._substream = None
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        if self._substream:
-            self._substream.close()
-        return self._stream.__exit__(exc_type, exc_value, traceback)
-
-    def __iter__(self):
-        """Dummy content lister."""
-        for i in itertools.count():
-            if self._stream.closed:
-                return
-            yield str(i)
-
-    def __contains__(self, name):
-        return False
-
-    def open(self, name, mode):
-        """Open a single stream. Name argument is a dummy."""
-        if not mode.startswith(self.mode):
-            raise FileFormatError(f"Cannot open file for '{mode}' on container open for '{self.mode}'")
-        if self._substream and not self._substream.closed:
-            raise EnvironmentError('Text container can only support one open file at a time.')
-        self._substream = _Substream(self._stream, self.mode, self.separator, name=name)
-        return self._substream
-
-
-class _Substream(StreamWrapper):
-    """Stream on TextContainer."""
-
-    def __init__(self, parent_stream, mode, separator, name=''):
-        """Open a substream."""
-        self._separator = separator
-        self._linebuffer = b''
-        self._eof = False
-        super().__init__(parent_stream, mode, name=name)
-
-    def __iter__(self):
-        """Iterate over lines until next separator."""
-        while not self._eof:
-            yield self.readline()
-
-    def _check_line(self):
-        """Fill the line buffer, stop at separator."""
-        if self._eof:
-            line = b''
-        else:
-            line = self._stream.readline()
-            if not line:
-                # parent stream has ended, signal eof on substream too
-                self._eof = True
-                # close parent stream
-                # this signals to parent not to open further substreams
-                self._stream.close()
-            elif line.strip() == self._separator:
-                # encountered separator, don't read any further
-                self._eof = True
-            else:
-                self._linebuffer += line
-        return self._linebuffer
-
-    def read(self, n=-1):
-        """Read n bytes."""
-        while n < 0 or len(self._linebuffer) < n:
-            self._check_line()
-            if self._eof:
-                break
-        value, self._linebuffer = self._linebuffer[:n], self._linebuffer[n:]
-        return value
-
-    read1 = read
-
-    def readline(self):
-        """Read line until \n."""
-        self._check_line()
-        value, _, self._linebuffer = self._linebuffer.partition(b'\n')
-        return value
-
-    readline1 = readline
-
-    def close(self):
-        """Close the substream."""
-        try:
-            if not self.closed and not self._stream.closed:
-                try:
-                    self._stream.flush()
-                    if self.mode == 'w' and not self.closed:
-                        self._stream.write(b'\n%s\n' % (self._separator, ))
-                except BrokenPipeError:
-                    pass
-        finally:
-            self.closed = True
-
-
-###################################################################################################
 # single-file compression
 
 class Compressor(Container):
@@ -421,7 +307,6 @@ class Compressor(Container):
             self._content_name = self.name[:-1-len(last_suffix)]
         else:
             self._content_name = self.name
-        logging.debug('%r %r %r', last_suffix, self.format, self._content_name)
 
     def __iter__(self):
         return iter((self._content_name,))
