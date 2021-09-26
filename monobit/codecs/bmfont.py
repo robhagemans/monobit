@@ -39,9 +39,9 @@ from .winfnt import CHARSET_MAP, CHARSET_REVERSE_MAP
 
 if Image:
     @loaders.register('bmf', name='BMFont')
-    def load(infile, where):
+    def load(infile, where, outline:boolean=False):
         """Load fonts from bmfont in container."""
-        return _read_bmfont(infile, where)
+        return _read_bmfont(infile, where, outline)
 
     @savers.register(loader=load)
     def save(
@@ -371,7 +371,7 @@ def _parse_binary(data):
         props['kernings'] = []
     return props
 
-def _extract(container, name, bmformat, info, common, pages, chars, kernings=()):
+def _extract(container, name, bmformat, info, common, pages, chars, kernings=(), outline=False):
     """Extract glyphs."""
     path = Path(name).parent
     image_files = {
@@ -391,9 +391,6 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=())
         min_after = min((char.xadvance - char.xoffset - char.width) for char in chars)
         min_before = min((char.xoffset) for char in chars)
         max_height = max(char.height + char.yoffset for char in chars)
-        # outline channel
-        if 1 in (common.redChnl, common.greenChnl, common.blueChnl, common.alphaChnl):
-            logging.warning('Outline channel not preserved.')
         # extract channel masked sprites
         sprites = []
         for char in chars:
@@ -405,11 +402,15 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=())
                 char.chnl = 15
             # keep only channels that hold this char
             # drop any zeroed/oned channels and the outline channel
+            if outline:
+                channels = (1, 2)
+            else:
+                channels = (0, 2)
             masks = (
-                bool(char.chnl & _CHNL_R) and common.redChnl in (0, 2),
-                bool(char.chnl & _CHNL_G) and common.greenChnl in (0, 2),
-                bool(char.chnl & _CHNL_B) and common.blueChnl in (0, 2),
-                bool(char.chnl & _CHNL_A) and common.alphaChnl in (0, 2),
+                bool(char.chnl & _CHNL_R) and common.redChnl in channels,
+                bool(char.chnl & _CHNL_G) and common.greenChnl in channels,
+                bool(char.chnl & _CHNL_B) and common.blueChnl in channels,
+                bool(char.chnl & _CHNL_A) and common.alphaChnl in channels,
             )
             if char.width and char.height:
                 # require all glyph channels above threshold
@@ -502,7 +503,7 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=())
     })
     return Font(glyphs, properties=properties)
 
-def _read_bmfont(infile, container):
+def _read_bmfont(infile, container, outline):
     """Read a bmfont from a container."""
     magic = infile.peek(3)
     fontinfo = {}
@@ -524,7 +525,7 @@ def _read_bmfont(infile, container):
         else:
             logging.debug('found text: %s', fnt.name)
             fontinfo = _parse_text(data)
-    return _extract(container, infile.name, **fontinfo)
+    return _extract(container, infile.name, outline=outline, **fontinfo)
 
 
 ##############################################################################
