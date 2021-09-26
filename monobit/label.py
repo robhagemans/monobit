@@ -146,7 +146,8 @@ class UnicodeLabel:
         cp_ord = int(element.strip()[2:], 16)
         return chr(cp_ord)
 
-    def _value_error(self, value):
+    @staticmethod
+    def _value_error(value):
         """Create a ValueError."""
         return ValueError(
             f'Cannot convert value {repr(value)} of type {type(value)} to unicode label.'

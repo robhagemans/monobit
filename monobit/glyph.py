@@ -112,11 +112,6 @@ class Glyph:
             comments=tuple(comments)
         )
 
-    @property
-    def comments(self):
-        """Extract comments."""
-        return self._comments
-
     @classmethod
     def empty(cls, width=0, height=0):
         """Create whitespace glyph."""

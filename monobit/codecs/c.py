@@ -11,6 +11,7 @@ from ..base.binary import ceildiv
 from ..formats import loaders, savers
 from ..font import Font
 from ..glyph import Glyph
+from ..streams import FileFormatError
 from ..base import pair
 
 
