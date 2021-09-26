@@ -26,9 +26,15 @@ class StreamBase:
     def __init__(self, stream, mode='', name=''):
         self._stream = stream
         self.name = name
-        if self._stream and not self.name:
-            self.name = get_name(stream)
-        self.mode = mode[:1] or ('r' if stream.readable() else 'w')
+        self.mode = mode[:1]
+        if self._stream:
+            if not self.name:
+                self.name = get_name(stream)
+            if not self.mode:
+                if self._stream.readable():
+                    self.mode = 'r'
+                else:
+                    self.mode = 'w'
         self._refcount = 0
         self.closed = False
 

@@ -32,31 +32,47 @@ def open_location(file, mode, where=None, overwrite=False):
     Open a binary stream on a container or filesystem
     both `file` and `where` may be Streams, files, or file/directory names
     `where` may also be a Container
-    if `where` is empty or the module io, the whole filesystem is taken as the container/location.
+    if `where` is empty, the whole filesystem is taken as the container/location.
+    if `overwrite` is True, will overwrite `file`. Note that `where` is always considered overwritable
     returns a Steam and a Container object
     """
     if mode not in ('r', 'w'):
         raise ValueError(f"Unsupported mode '{mode}'.")
     if not file and not where:
         raise ValueError(f'No location provided.')
+    # interpret incomplete arguments
+    # no choice - can't open a stream on a directory
+    if isinstance(file, (str, Path)) and Path(file).is_dir():
+        where = file
+        file = None
+    # only container location provided - traverse into it
     if where and not file:
-        with open_container(where, mode, overwrite=overwrite) as container:
+        with open_container(where, mode, overwrite=True) as container:
             # empty file parameter means 'load/save all'
-            logging.debug('Opening container `%s`.', container.name)
             yield None, container
         return
-    with open_container(where, mode, overwrite=overwrite) as container:
+    if not where and isinstance(file, (str, Path)):
+        # see if file is itself a container
+        # don't open containers if we only have a stream - we don't want surprise directory creation
+        try:
+            with open_container(file, mode, overwrite=overwrite) as container:
+                yield None, container
+            return
+        except ContainerFormatError as e:
+            # file is not itself a container, use enclosing dir as container
+            where = Path(file).parent
+            file = Path(file).name
+    # we have a stream and maybe a container
+    with open_container(where, mode, overwrite=True) as container:
         with open_stream(file, mode, where=container, overwrite=overwrite) as stream:
             # see if file is itself a container
             try:
                 with open_container(stream, mode, overwrite=overwrite) as container:
-                    logging.debug('Opening container `%s`.', container.name)
                     yield None, container
                 return
             except ContainerFormatError as e:
                 # infile is not a container, load/save single file
                 yield stream, container
-
 
 ##############################################################################
 # loading
@@ -196,10 +212,10 @@ class Savers(MagicRegistry):
         """
         pack = Pack(pack_or_font)
         with open_location(outfile, 'w', where=where, overwrite=overwrite) as (stream, container):
-            if not outfile:
-                self._save_all(pack, where, format, **kwargs)
+            if not stream:
+                self._save_all(pack, container, format, **kwargs)
             else:
-                self._save_to_file(pack, outfile, where, format, **kwargs)
+                self._save_to_file(pack, stream, container, format, **kwargs)
 
     def _save_all(self, pack, where, format, **kwargs):
         """Save fonts to a container."""
@@ -207,6 +223,7 @@ class Savers(MagicRegistry):
         for font in pack:
             # generate unique filename
             name = font.name.replace(' ', '_')
+            format = format or DEFAULT_FORMAT
             filename = unique_name(where, name, format)
             try:
                 with open_stream(filename, 'w', where=where) as stream:
@@ -215,7 +232,7 @@ class Savers(MagicRegistry):
                 pass
             except Exception as e:
                 logging.error('Could not save `%s`: %s', filename, e)
-                raise
+                #raise
 
     def _save_to_file(self, pack, outfile, where, format, **kwargs):
         """Save fonts to a single file."""

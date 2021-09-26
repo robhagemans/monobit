@@ -39,26 +39,26 @@ def open_container(file, mode, overwrite=False):
     """Open container of the appropriate type."""
     if isinstance(file, Container):
         return file
-    if not file or file == io:
-        # io module is not a context manager
-        return DirContainer('')
+    if not file:
+        # no-container, will throw errors when used
+        return Container(None)
     container_type = identify_container(file, mode, overwrite)
-    return container_type(file, mode, overwrite=overwrite)
+    container = container_type(file, mode, overwrite=overwrite)
+    logging.debug("Opening %s container `%s` for '%s'.", container_type.__name__, container.name, mode)
+    return container
 
 def identify_container(file, mode, overwrite):
     """Get container of the appropriate type."""
-    # no file provided means filesystem
-    if not file or file == io:
-        # io module is not a context manager
-        return DirContainer
-    # handle directories separately - no magic
+    if not file:
+        raise ValueError('No location provided.')
+    # if it already is a directory there is no choice
     if isinstance(file, (str, Path)) and Path(file).is_dir():
         container_type = DirContainer
     else:
         container_type = containers.identify(file, mode)
-    suffix = get_suffix(file)
     if not container_type:
-        # output to file with no suffix - default to text container
+        suffix = get_suffix(file)
+        # output to file with no suffix - default to directory
         if mode == 'w' and not suffix and isinstance(file, (str, Path)):
             return DirContainer
         # no container type found
@@ -118,7 +118,7 @@ class DirContainer(Container):
             logging.debug('Creating directory `%s`', self._path / path)
             (self._path / path).mkdir(parents=True, exist_ok=True)
         # provide name relative to directory container
-        file = Stream(self._path / pathname, mode=mode, name=str(pathname))
+        file = Stream(self._path / pathname, mode=mode, name=str(pathname), overwrite=True)
         return file
 
     def __iter__(self):
