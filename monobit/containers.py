@@ -310,7 +310,8 @@ class TarContainer(Container):
 
     def __iter__(self):
         """List contents."""
-        return iter(self._tarfile.getnames())
+        # list regular files only, skip symlinks and dirs and block devices
+        return (_ti.name for _ti in self._tarfile.getmembers() if _ti.isfile())
 
     def __contains__(self, name):
         """File exists in container."""
