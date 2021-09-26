@@ -22,7 +22,7 @@ from pathlib import Path, PurePath, PurePosixPath
 from .streams import (
     MagicRegistry, FileFormatError,
     StreamBase, StreamWrapper, Stream, KeepOpen,
-    get_suffix, open_stream, get_stream_name
+    get_suffix, open_stream, get_name
 )
 
 
@@ -83,7 +83,7 @@ class Container(StreamBase):
         """List contents."""
         raise NotImplementedError
 
-    def open_binary(self, name, mode):
+    def open(self, name, mode):
         """Open a binary stream in the container."""
         raise NotImplementedError
 
@@ -108,7 +108,7 @@ class DirContainer(Container):
             self._path.mkdir(parents=True, exist_ok=overwrite)
         super().__init__(None, mode, str(self._path))
 
-    def open_binary(self, name, mode):
+    def open(self, name, mode):
         """Open a stream in the container."""
         # mode in 'r', 'w'
         mode = mode[:1]
@@ -153,7 +153,7 @@ class ZipContainer(Container):
         if isinstance(file, (str, Path)):
             file = open_stream(file, mode, overwrite=overwrite)
         else:
-            root = get_stream_name(file)
+            root = get_name(file)
             # if name ends up empty, replace; clip off any dir path and suffix
             root = PurePath(file.name).stem or DEFAULT_ROOT
         # reading zipfile needs a seekable stream, drain to buffer if needed
@@ -196,7 +196,7 @@ class ZipContainer(Container):
             for _name in self._zip.namelist()
         )
 
-    def open_binary(self, name, mode):
+    def open(self, name, mode):
         """Open a stream in the container."""
         # using posixpath for internal paths in the archive
         # as forward slash should always work, but backslash would fail on unix
@@ -270,7 +270,7 @@ class TarContainer(Container):
         # list regular files only, skip symlinks and dirs and block devices
         return (_ti.name for _ti in self._tarfile.getmembers() if _ti.isfile())
 
-    def open_binary(self, name, mode):
+    def open(self, name, mode):
         """Open a stream in the container."""
         name = str(PurePosixPath(self._root) / name)
         mode = mode[:1]
@@ -326,7 +326,7 @@ class TextContainer(Container):
     def __contains__(self, name):
         return False
 
-    def open_binary(self, name, mode):
+    def open(self, name, mode):
         """Open a single stream. Name argument is a dummy."""
         if not mode.startswith(self.mode):
             raise FileFormatError(f"Cannot open file for '{mode}' on container open for '{self.mode}'")
@@ -426,7 +426,7 @@ class Compressor(Container):
     def __iter__(self):
         return iter((self._content_name,))
 
-    def open_binary(self, name='', mode=''):
+    def open(self, name='', mode=''):
         """Open a stream in the container."""
         mode = mode[:1] or self.mode
         wrapped = self.compressor.open(self._stream, mode + 'b')

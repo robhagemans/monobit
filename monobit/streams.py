@@ -1,7 +1,7 @@
 """
-monobit.formats - loader and saver plugin registry
+monobit.streams - file stream tools
 
-(c) 2019 Rob Hagemans
+(c) 2019--2021 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -9,8 +9,6 @@ import io
 import sys
 import logging
 from pathlib import Path
-
-
 
 
 class FileFormatError(Exception):
@@ -29,7 +27,7 @@ class StreamBase:
         self._stream = stream
         self.name = name
         if self._stream and not self.name:
-            self.name = get_stream_name(stream)
+            self.name = get_name(stream)
         self.mode = mode[:1] or ('r' if stream.readable() else 'w')
         self._refcount = 0
         self.closed = False
@@ -83,50 +81,68 @@ class Stream(StreamWrapper):
     """Manage file resource."""
 
     def __init__(self, file, mode, *, name='', where=None, overwrite=False):
-        """Ensure file is a stream of the right type, open or wrap if necessary."""
+        """
+        Ensure file is a stream of the right type, open or wrap if necessary.
+            file: stream, string or path-like object
+            mode: 'r' or 'w'
+            where: container to open any new stream on
+        """
         if not file:
             raise ValueError('No file name, path or stream provided.')
-        # file is a stream, string or path-like object
-        # mode is 'r' or 'w'
-        # binary is a boolean; open as binary if true, as text if false
-        # where: container to open any new stream on
         mode = mode[:1]
         # if a path is provided, open a (binary) stream
         if isinstance(file, (str, Path)):
-            if not where:
-                if not overwrite and mode == 'w' and Path(file).exists():
-                    raise FileExistsError(f'Will not overwrite existing file `{file}`.')
-                logging.debug("Opening file `%s` for mode '%s'.", file, mode)
-                file = io.open(file, mode + 'b')
-            else:
-                if not overwrite and mode == 'w' and file in where:
-                    raise FileExistsError(
-                        f'Will not overwrite existing file `{file}` on `{where.name}`.'
-                    )
-                file = where.open_binary(file, mode)
+            file = self._open_path(file, mode, where, overwrite)
             self._raw = file
         else:
             # don't close externally provided stream
             file = KeepOpen(file)
             self._raw = None
-        # check r/w mode is consistent
-        if mode == 'r' and not file.readable():
-            raise FileFormatError('Expected readable stream, got writable.')
-        if mode == 'w' and not file.writable():
-            raise FileFormatError('Expected writable stream, got readable.')
-        # any name override should be set before compression handler
+        # initialise wrapper
         super().__init__(file, mode=mode, name=name)
-        # check text/binary
+        # check r/w mode is consistent
+        self._ensure_rw()
+        # placeholder for text wrapper
+        self._textstream = None
+        # Ensure we have a binary stream
+        self._ensure_binary()
+
+    @staticmethod
+    def _open_path(file, mode, where, overwrite):
+        """Open a raw stream on path and container provided."""
+        path = Path(file)
+        if not where:
+            # open on filesystem
+            if not overwrite and mode == 'w' and path.exists():
+                raise FileExistsError(f'Will not overwrite existing file `{file}`.')
+            logging.debug("Opening file `%s` for mode '%s'.", file, mode)
+            file = io.open(path, mode + 'b')
+        else:
+            # open on container
+            if not overwrite and mode == 'w' and file in where:
+                raise FileExistsError(
+                    f'Will not overwrite existing file `{file}` on `{where.name}`.'
+                )
+            file = where.open(path, mode)
+        return file
+
+    def _ensure_rw(self):
+        """Ensure r/w mode is consistent."""
+        if self.mode == 'r' and not self._stream.readable():
+            raise FileFormatError('Expected readable stream, got writable.')
+        if self.mode == 'w' and not self._stream.writable():
+            raise FileFormatError('Expected writable stream, got readable.')
+
+    def _ensure_binary(self):
+        """Ensure we have a binary stream."""
         # a text format can be read from/written to a binary stream with a wrapper
-        if not is_binary(file):
+        if not is_binary(self._stream):
             self._textstream = self._stream
             try:
                 self._stream = self._stream.buffer
             except AttributeError as e:
                 raise FileFormatError('Unable to access binary stream.') from e
             logging.debug('Getting buffer %r from text stream %r.', self._stream, self._textstream)
-        else:
-            self._textstream = None
 
     @property
     def text(self):
@@ -172,7 +188,7 @@ def is_binary(stream):
         return False
     return True
 
-def get_stream_name(stream):
+def get_name(stream):
     """Get stream name, if available."""
     try:
         return stream.name
@@ -195,9 +211,8 @@ def get_suffix(file):
     if isinstance(file, (str, Path)):
         suffix = Path(file).suffix
     else:
-        suffix = Path(get_stream_name(file)).suffix
+        suffix = Path(get_name(file)).suffix
     return normalise_suffix(suffix)
-
 
 def has_magic(instream, magic):
     """Check if a binary stream matches the given signature."""
