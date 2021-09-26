@@ -368,7 +368,7 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=())
     """Extract glyphs."""
     path = Path(name).parent
     image_files = {
-        int(_page['id']): container.open(path / _page['file'], 'rb')
+        int(_page['id']): container.open_binary(path / _page['file'], 'r')
         for _page in pages
     }
     sheets = {_id: Image.open(_file) for _id, _file in image_files.items()}
@@ -628,7 +628,7 @@ def _create_bmfont(outfile, container, font, size=(256, 256), packed=False, imag
     props['pages'] = []
     for page_id, page in enumerate(pages):
         name = unique_name(container, f'{path}/{fontname}_{page_id}', imageformat)
-        with container.open(name, 'wb') as imgfile:
+        with container.open_binary(name, 'w') as imgfile:
             page.save(imgfile, format=imageformat)
         props['pages'].append({'id': page_id, 'file': name})
     props['info'] = {

@@ -37,23 +37,25 @@ def open_location(file, mode, where=None, overwrite=False):
     """
     if mode not in ('r', 'w'):
         raise ValueError(f"Unsupported mode '{mode}'.")
-    # no container given - see if file is itself a container
-    if not where:
-        try:
-            with open_container(file, mode, overwrite=overwrite) as container:
-                if mode == 'r':
-                    logging.info('Reading all from `%s`.', container.name)
-                else:
-                    logging.info('Writing all to `%s`.', container.name)
-                # empty file parameter means 'load/save all'
-                yield None, container
-            return
-        except ContainerFormatError as e:
-            # infile is not a container, load/save single file
-            pass
+    if not file and not where:
+        raise ValueError(f'No location provided.')
+    if where and not file:
+        with open_container(where, mode, overwrite=overwrite) as container:
+            # empty file parameter means 'load/save all'
+            logging.debug('Opening container `%s`.', container.name)
+            yield None, container
+        return
     with open_container(where, mode, overwrite=overwrite) as container:
         with open_stream(file, mode, where=container, overwrite=overwrite) as stream:
-            yield stream, container
+            # see if file is itself a container
+            try:
+                with open_container(stream, mode, overwrite=overwrite) as container:
+                    logging.debug('Opening container `%s`.', container.name)
+                    yield None, container
+                return
+            except ContainerFormatError as e:
+                # infile is not a container, load/save single file
+                yield stream, container
 
 
 ##############################################################################
@@ -80,41 +82,38 @@ class Loaders(MagicRegistry):
     def load(self, infile:str, format:str='', where:str='', **kwargs):
         """Read new font from file."""
         # if container/file provided as string or steam, open them
-        if not isinstance(where, Container) or infile and not isinstance(infile, Stream):
-            with open_location(infile, 'r', where=where) as (stream, container):
-                return self.load(stream, format, container, **kwargs)
-        # infile not provided - load all from container
-        if not infile:
-            return self._load_all(where, format, **kwargs)
-        return self._load_from_file(infile, where, format, **kwargs)
+        with open_location(infile, 'r', where=where) as (stream, container):
+            # infile not provided - load all from container
+            if not stream:
+                return self._load_all(container, format, **kwargs)
+            return self._load_from_file(stream, container, format, **kwargs)
 
     def _load_from_file(self, infile, where, format, **kwargs):
         """Open file and load font(s) from it."""
         # infile is not a container - identify file type
         loader = self.get_loader(infile, format=format)
+        logging.info('Loading `%s` on `%s` as %s', infile.name, where.name, loader.name)
         if not loader:
             raise FileFormatError('Cannot load from format `{}`.'.format(format)) from None
         return loader(infile, where, **kwargs)
 
     def _load_all(self, container, format, **kwargs):
         """Open container and load all fonts found in it into one pack."""
-        packs = []
+        logging.info('Reading all from `%s`.', container.name)
+        packs = Pack()
         # try opening a container on input file for read, will raise error if not container format
         for name in container:
-            logging.debug('Attempting to load from file `%s`.', name)
+            logging.debug('Trying `%s` on `%s`.', name, container.name)
             with open_stream(name, 'r', where=container) as stream:
                 try:
                     font_or_pack = self.load(stream, where=container, format=format, **kwargs)
-                    logging.info('Found `%s` on `%s`', stream.name, container.name)
                 except Exception as exc:
                     # if one font fails for any reason, try the next
                     # loaders raise ValueError if unable to parse
                     logging.debug('Could not load `%s`: %s', name, exc)
                 else:
-                    packs.append(Pack(font_or_pack))
-        # flatten list of packs
-        fonts = [_font for _pack in packs for _font in _pack]
-        return Pack(fonts)
+                    packs += Pack(font_or_pack)
+        return packs
 
     def register(self, *formats, magic=(), name='', saver=None):
         """
@@ -131,7 +130,7 @@ class Loaders(MagicRegistry):
             def _loader(instream, where, **kwargs):
                 fonts = original_loader(instream, where=where, **kwargs)
                 if not fonts:
-                    raise ValueError('No fonts found in file.')
+                    raise FileFormatError('No fonts found in file.')
                 pack = Pack(fonts)
                 filename = Path(instream.name).name
                 return Pack(
@@ -206,27 +205,27 @@ class Savers(MagicRegistry):
         return self._save_to_file(pack, outfile, where, format, **kwargs)
 
     def _save_all(self, pack, where, format, **kwargs):
-        """Save pack of fonts to a container created on outfile."""
+        """Save fonts to a container."""
+        logging.info('Writing all to `%s`.', where.name)
         for font in pack:
             # generate unique filename
             name = font.name.replace(' ', '_')
             filename = unique_name(where, name, format)
-            logging.debug('Attempting to save to file `%s`.', filename)
             try:
                 with open_stream(filename, 'w', where=where) as stream:
                     self._save_to_file(Pack(font), stream, where, format, **kwargs)
-                    logging.info('Saved to `%s`.', stream.name)
             except BrokenPipeError:
                 pass
             except Exception as e:
-                logging.error('Could not save %s: %s', filename, e)
+                logging.error('Could not save `%s`: %s', filename, e)
                 raise
 
     def _save_to_file(self, pack, outfile, where, format, **kwargs):
-        """Save pack of fonts to a single file."""
+        """Save fonts to a single file."""
         saver = self.get_saver(outfile, format=format)
         if not saver:
             raise FileFormatError('Cannot save to format `{}`.'.format(format))
+        logging.info('Saving `%s` on `%s` as %s.', outfile.name, where.name, saver.name)
         saver(pack, outfile, where, **kwargs)
         return pack
 

@@ -33,7 +33,7 @@ class Pack:
         return self._fonts[index]
 
     def __add__(self, other):
-        return Pack(self._fonts + Pack(other))
+        return Pack(self._fonts + Pack(other)._fonts)
 
     def select(self, **properties):
         """Get a subset from the pack by property. E.g. select(name='Times')."""
