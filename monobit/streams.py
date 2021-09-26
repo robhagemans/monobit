@@ -80,7 +80,8 @@ class KeepOpen(StreamWrapper):
     """Wrapper to avoid closing wrapped stream."""
 
     def close(self):
-        """Do nothing."""
+        """Don't close underlying stream."""
+        self._stream.flush()
 
 
 class Stream(StreamWrapper):

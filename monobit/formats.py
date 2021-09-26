@@ -170,7 +170,6 @@ class Loaders(MagicRegistry):
             register_magic(*_loader.formats, magic=magic)(_loader)
             return _loader
 
-
         return _load_decorator
 
 
@@ -258,8 +257,6 @@ class Savers(MagicRegistry):
             @wraps(original_saver)
             def _saver(pack, outfile, where, **kwargs):
                 original_saver(pack, outfile, where=where, **kwargs)
-                # we need to flush as we're not closing properly
-                outfile.flush()
 
             # register saver
             _saver.script_args = original_saver.__annotations__
