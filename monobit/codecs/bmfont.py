@@ -16,7 +16,8 @@ try:
 except ImportError:
     Image = None
 
-from ..base import boolean, pair
+from ..base import boolean, pair, reverse_dict
+from ..encoding import normalise_encoding
 from .. import streams
 from ..streams import FileFormatError
 from ..base.binary import friendlystruct
@@ -24,7 +25,7 @@ from ..formats import loaders, savers
 from ..font import Font, Coord
 from ..glyph import Glyph
 
-from .winfnt import _CHARSET_MAP
+from .winfnt import CHARSET_MAP, CHARSET_REVERSE_MAP
 
 
 ##############################################################################
@@ -108,29 +109,35 @@ _INFO_SMOOTH = 1 << 0
 # BMFont charset constants seem to be undocumented, but a list is here:
 # https://github.com/vladimirgamalyan/fontbm/blob/master/src/FontInfo.cpp
 # looks like these are equal to the Windows OEM ones
-# mapping of those is a guess, see _CHARSET_MAP in winfnt.py
-_CHARSET_STR_MAP = {
-    'ANSI': _CHARSET_MAP[0x00],
-    'DEFAULT': _CHARSET_MAP[0x01],
-    'SYMBOL':  _CHARSET_MAP[0x02],
-    'MAC': _CHARSET_MAP[0x4d],
-    'SHIFTJIS': _CHARSET_MAP[0x80],
-    'HANGUL': _CHARSET_MAP[0x81],
-    'JOHAB': _CHARSET_MAP[0x82],
-    'GB2312': _CHARSET_MAP[0x86],
-    'CHINESEBIG5': _CHARSET_MAP[0x88],
-    'GREEK': _CHARSET_MAP[0xa1],
-    'TURKISH': _CHARSET_MAP[0xa2],
-    'VIETNAMESE': _CHARSET_MAP[0xa3],
-    'HEBREW': _CHARSET_MAP[0xb1],
-    'ARABIC': _CHARSET_MAP[0xb2],
-    'BALTIC': _CHARSET_MAP[0xba],
-    'RUSSIAN': _CHARSET_MAP[0xcc],
-    'THAI': _CHARSET_MAP[0xde],
-    'EASTEUROPE': _CHARSET_MAP[0xee],
-    'OEM': _CHARSET_MAP[0xff],
+# mapping of those is a guess, see CHARSET_MAP in winfnt.py
+_CHARSET_NUM_MAP = {
+    'ANSI': 0x00,
+    'DEFAULT': 0x01,
+    'SYMBOL':  0x02,
+    'MAC': 0x4d,
+    'SHIFTJIS': 0x80,
+    'HANGUL': 0x81,
+    'JOHAB': 0x82,
+    'GB2312': 0x86,
+    'CHINESEBIG5': 0x88,
+    'GREEK': 0xa1,
+    'TURKISH': 0xa2,
+    'VIETNAMESE': 0xa3,
+    'HEBREW': 0xb1,
+    'ARABIC': 0xb2,
+    'BALTIC': 0xba,
+    'RUSSIAN': 0xcc,
+    'THAI': 0xde,
+    'EASTEUROPE': 0xee,
+    'OEM': 0xff,
 }
+_CHARSET_NUM_REVERSE_MAP = reverse_dict(_CHARSET_NUM_MAP)
 
+_CHARSET_STR_MAP = {
+    _str: CHARSET_MAP[_num]
+    for _str, _num in _CHARSET_NUM_MAP.items()
+}
+_CHARSET_STR_REVERSE_MAP = reverse_dict(_CHARSET_STR_MAP)
 
 # common struct
 
@@ -344,7 +351,7 @@ def _parse_binary(data):
         'italic': bininfo.bitField & _INFO_ITALIC,
         'unicode': bininfo.bitField & _INFO_UNICODE,
         'smooth': bininfo.bitField & _INFO_SMOOTH,
-        'charset': _CHARSET_MAP.get(bininfo.charSet, ''),
+        'charset': CHARSET_MAP.get(bininfo.charSet, ''),
         'aa': bininfo.aa,
         'padding': ','.join((
             str(bininfo.paddingUp), str(bininfo.paddingRight),
@@ -461,7 +468,7 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=())
         encoding = 'unicode'
         bmfont_props.pop('charset')
     else:
-        # if props are from binary, this has already been converted through _CHARSET_MAP
+        # if props are from binary, this has already been converted through CHARSETMAP
         charset = bmfont_props.pop('charset')
         encoding = _CHARSET_STR_MAP.get(charset.upper(), charset)
     properties = {
@@ -551,11 +558,6 @@ def _create_spritesheets(font, size=(256, 256), packed=False):
         x, y = 0, 0
         tree = SpriteNode(x, y, width, height)
         for number, glyph in enumerate(font.glyphs):
-            if len(glyph.char) > 1:
-                logging.warning(
-                    f"Can't encode multi-codepoint grapheme {glyph.char} in bmfont file; skipping."
-                )
-                continue
             left, bottom, right, top = glyph.ink_offsets
             cropped = glyph.reduce()
             if cropped.height and cropped.width:
@@ -568,10 +570,10 @@ def _create_spritesheets(font, size=(256, 256), packed=False):
                 data = cropped.as_tuple(fore, back)
                 charimg.putdata(data)
                 img.paste(charimg, (x, y))
-            if glyph.char:
-                id = ord(glyph.char)
-            else:
-                id = number
+            id = glyph.codepoint
+            if id is None:
+                logging.warning(f"Glyph {ascii(glyph.char)} has no codepoint; skipping.")
+                continue
             chars.append(dict(
                 id=id,
                 x=x,
@@ -624,6 +626,12 @@ def _create_bmfont(outfile, container, font, size=(256, 256), packed=False, imag
     """Create a bmfont package."""
     path = font.family
     fontname = font.name.replace(' ', '_')
+    encoding = normalise_encoding(font.encoding)
+    if encoding != 'unicode':
+        # if encoding is unknown, call it OEM
+        charset = _CHARSET_STR_REVERSE_MAP.get(encoding, _CHARSET_STR_REVERSE_MAP[''])
+    else:
+        charset = ''
     # create images
     pages, chars = _create_spritesheets(font, size, packed)
     props = {}
@@ -641,8 +649,8 @@ def _create_bmfont(outfile, container, font, size=(256, 256), packed=False, imag
         'size': font.pixel_size,
         'bold': font.weight == 'bold',
         'italic': font.slant in ('italic', 'oblique'),
-        'charset': '',
-        'unicode': True,
+        'charset': charset,
+        'unicode': encoding == 'unicode',
         'stretchH': 100,
         'smooth': False,
         'aa': 1,

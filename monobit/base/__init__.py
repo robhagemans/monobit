@@ -28,3 +28,7 @@ def pair(pairstr):
 
 # also works for 3-tuples...
 rgb = pair
+
+def reverse_dict(orig_dict):
+    """Reverse a dict."""
+    return {_v: _k for _k, _v in orig_dict.items()}

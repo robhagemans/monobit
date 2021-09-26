@@ -63,7 +63,7 @@ class Codec:
         return char
 
     def ord(self, char):
-        """Convert character to ordinal, raise ValueError if missing."""
+        """Convert character to ordinal, return None if missing."""
         byte = char.encode(self._encoding, errors='ignore')
         if not byte:
             return None

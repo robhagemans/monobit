@@ -31,6 +31,7 @@ import string
 import logging
 import itertools
 
+from ..base import reverse_dict
 from ..base.binary import friendlystruct, bytes_to_bits, ceildiv, align
 from ..formats import loaders, savers
 from ..streams import FileFormatError
@@ -139,7 +140,7 @@ _KEEP_EMPTY = (0x00, 0x20)
 #   ‘ftp://ftp.unicode.org/Public/’ in the MAPPINGS/VENDORS/MICSFT/WINDOWS subdirectory.
 #   ‘cp1361’ is roughly a superset of MAPPINGS/OBSOLETE/EASTASIA/KSC/JOHAB.TXT.
 #
-_CHARSET_MAP = {
+CHARSET_MAP = {
     0x00: 'windows-1252',
     # no codepage
     0x01: '',
@@ -162,8 +163,8 @@ _CHARSET_MAP = {
     # could be any OEM codepage
     0xff: '',
 }
-_CHARSET_REVERSE_MAP = dict(reversed(_item) for _item in _CHARSET_MAP.items())
-_CHARSET_REVERSE_MAP.update({
+CHARSET_REVERSE_MAP = reverse_dict(CHARSET_MAP)
+CHARSET_REVERSE_MAP.update({
     # different windows versions used fifferent definitions of windows-1252
     # see https://www.aivosto.com/articles/charsets-codepages-windows.html
     'windows-ansi-2.0': 0x00,
@@ -527,8 +528,8 @@ def _parse_win_props(fnt, win_props):
         weight = max(100, min(900, weight))
         properties['weight'] = _WEIGHT_MAP[round(weight, -2)]
     charset = win_props.dfCharSet
-    if charset in _CHARSET_MAP:
-        properties['encoding'] = _CHARSET_MAP[charset]
+    if charset in CHARSET_MAP:
+        properties['encoding'] = CHARSET_MAP[charset]
     else:
         properties['windows.dfCharSet'] = str(charset)
     properties['style'] = _STYLE_MAP[win_props.dfPitchAndFamily & 0xff00]
@@ -567,7 +568,7 @@ def _parse_win_props(fnt, win_props):
 def create_fnt(font, version=0x200):
     """Create .FNT from properties."""
     weight_map = dict(reversed(_item) for _item in _WEIGHT_MAP.items())
-    charset_map = _CHARSET_REVERSE_MAP
+    charset_map = CHARSET_REVERSE_MAP
     style_map = dict(reversed(_item) for _item in _STYLE_MAP.items())
     if font.spacing == 'proportional':
         # width of uppercase X
