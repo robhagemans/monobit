@@ -18,12 +18,13 @@ from pathlib import Path
 import monobit
 
 
-class TestMonobit(unittest.TestCase):
-    """Test monobit export/import."""
+class BaseTester(unittest.TestCase):
+    """Base class for testers."""
 
     logging.basicConfig(level=logging.WARNING)
 
-    font_path = Path('tests/fonts/fixed/')
+    font_path = Path('tests/fonts/')
+
     # fonts are immutable so no problem in loading only once
     fixed4x6, *_ = monobit.load(font_path / '4x6.yaff')
     fixed8x16, *_ = monobit.load(font_path / '8x16.hex')
@@ -36,6 +37,10 @@ class TestMonobit(unittest.TestCase):
     def tearDown(self):
         """Clean up after each test."""
         self.temp_dir.cleanup()
+
+
+class TestCodecs(BaseTester):
+    """Test monobit export/import."""
 
     def test_import_bdf(self):
         """Test importing bdf files."""
@@ -215,6 +220,10 @@ class TestMonobit(unittest.TestCase):
         pack = monobit.load(fnt_file)
         font = pack[0]
         self.assertEqual(len(font.glyphs), 256)
+
+
+class TestCompressed(BaseTester):
+    """Test compression formats."""
 
     def _test_compressed(self, format):
         """Test importing/exporting compressed files."""
