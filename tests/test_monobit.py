@@ -246,5 +246,29 @@ class TestCompressed(BaseTester):
         self._test_compressed('bz2')
 
 
+class TestContainers(BaseTester):
+    """Test container formats."""
+
+    def _test_container(self, format):
+        """Test importing/exporting container files."""
+        container_file = self.temp_path / f'4x6.yaff.{format}'
+        monobit.save(self.fixed4x6, container_file)
+        self.assertTrue(os.path.getsize(container_file) > 0)
+        font, *_ = monobit.load(container_file)
+        self.assertEqual(len(font.glyphs), 919)
+
+    def test_zip(self):
+        """Test importing/exporting zip files."""
+        self._test_container('zip')
+
+    def test_lzma(self):
+        """Test importing/exporting tar files."""
+        self._test_container('tar')
+
+    def test_bz2(self):
+        """Test importing/exporting compressed tar files."""
+        self._test_container('tar.gz')
+
+
 if __name__ == '__main__':
     unittest.main()
