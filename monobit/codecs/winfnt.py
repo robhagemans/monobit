@@ -165,7 +165,7 @@ CHARSET_MAP = {
 }
 CHARSET_REVERSE_MAP = reverse_dict(CHARSET_MAP)
 CHARSET_REVERSE_MAP.update({
-    # different windows versions used fifferent definitions of windows-1252
+    # different windows versions used different definitions of windows-1252
     # see https://www.aivosto.com/articles/charsets-codepages-windows.html
     'windows-ansi-2.0': 0x00,
     'windows-1252': 0x00,

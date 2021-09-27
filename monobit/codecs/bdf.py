@@ -19,7 +19,201 @@ from ..label import UnicodeLabel
 # XLFD conventions: https://www.x.org/releases/X11R7.6/doc/xorg-docs/specs/XLFD/xlfd.html
 # charset and property registry: https://github.com/freedesktop/xorg-docs/blob/master/registry
 
-# x11 encodings e.g.
+# https://github.com/freedesktop/xorg-docs/blob/master/registry
+#
+# 14. FONT CHARSET (REGISTRY AND ENCODING) NAMES
+#
+# See Sections 3.1.2.12 of the XLFD.  For ISO standards, the format
+# will generally be: "ISO" + <standard-number> + "-" + <part-number>
+#
+# Name						Reference
+# ----						---------
+# "DEC"						[27]
+# 	registry prefix
+# "DEC.CNS11643.1986-2"				[53]
+# 	CNS11643 2-plane using the encoding
+# 	suggested in that standard
+# "DEC.DTSCS.1990-2"				[54]
+# 	DEC Taiwan Supplemental Character Set
+# "fujitsu.u90x01.1991-0"				[87]
+# "fujitsu.u90x03.1991-0"				[87]
+# "GB2312.1980-0"					[39],[12]
+# 	China (PRC) Hanzi, GL encoding
+# "GB2312.1980-1"					[39]
+# 	(deprecated)
+# 	China (PRC) Hanzi, GR encoding
+# "HP-Arabic8"					[36]
+# 	HPARABIC8 8-bit character set
+# "HP-East8"					[36]
+# 	HPEAST8 8-bit character set
+# "HP-Greek8"					[36]
+# 	HPGREEK8 8-bit character set
+# "HP-Hebrew8"					[36]
+# 	HPHEBREW8 8-bit character set
+# "HP-Japanese15"					[36]
+# 	HPJAPAN15 15-bit characer set,
+# 	modified from industry defacto
+# 	standard Shift-JIS
+# "HP-Kana8"					[36]
+# 	HPKANA8 8-bit character set
+# "HP-Korean15"					[36]
+# 	HPKOREAN15 15-bit character set
+# "HP-Roman8"					[36]
+# 	HPROMAN8 8-bit character set
+# "HP-SChinese15"					[36]
+# 	HPSCHINA15 15-bit character set for
+# 	support of Simplified Chinese
+# "HP-TChinese15"					[36]
+# 	HPTCHINA15 15-bit character set for
+# 	support of Traditional Chinese
+# "HP-Turkish8"					[36]
+# 	HPTURKISH8 8-bit character set
+# "IPSYS"						[59]
+# 	registry prefix
+# "IPSYS.IE-1"					[59]
+# "ISO2022"<REG>"-"<ENC>				[44]
+# "ISO646.1991-IRV"				[107]
+# 	ISO 646 International Reference Version
+# "ISO8859-1"					[15],[12]
+# 	ISO Latin alphabet No. 1
+# "ISO8859-2"					[15],[12]
+# 	ISO Latin alphabet No. 2
+# "ISO8859-3"					[15],[12]
+# 	ISO Latin alphabet No. 3
+# "ISO8859-4"					[15],[12]
+# 	ISO Latin alphabet No. 4
+# "ISO8859-5"					[15],[12]
+# 	ISO Latin/Cyrillic alphabet
+# "ISO8859-6"					[15],[12]
+# 	ISO Latin/Arabic alphabet
+# "ISO8859-7"					[15],[12]
+# 	ISO Latin/Greek alphabet
+# "ISO8859-8"					[15],[12]
+# 	ISO Latin/Hebrew alphabet
+# "ISO8859-9"					[15],[12]
+# 	ISO Latin alphabet No. 5
+# "ISO8859-10"					[15],[12]
+# 	ISO Latin alphabet No. 6
+# "ISO8859-13"					[15],[12]
+# 	ISO Latin alphabet No. 7
+# "ISO8859-14"					[15],[12]
+# 	ISO Latin alphabet No. 8
+# "ISO8859-15"					[15],[12]
+# 	ISO Latin alphabet No. 9
+# "ISO8859-16"					[15],[12]
+# 	ISO Latin alphabet No. 10
+# "FCD8859-15"					[7]
+# 	(deprecated)
+# 	ISO Latin alphabet No. 9, Final Committee Draft
+# "ISO10646-1"					[133]
+# 	Unicode Universal Multiple-Octet Coded Character Set
+# "ISO10646-MES"					[133]
+# 	(deprecated)
+# 	Unicode Minimum European Subset
+# "JISX0201.1976-0"				[38],[12]
+# 	8-Bit Alphanumeric-Katakana Code
+# "JISX0208.1983-0"				[40],[12]
+# 	Japanese Graphic Character Set,
+# 	GL encoding
+# "JISX0208.1990-0"				[71]
+# 	Japanese Graphic Character Set,
+# 	GL encoding
+# "JISX0208.1983-1"				[40]
+# 	(deprecated)
+# 	Japanese Graphic Character Set,
+# 	GR encoding
+# "JISX0212.1990-0"				[72]
+# 	Supplementary Japanese Graphic Character Set,
+# 	GL encoding
+# "KOI8-R"					[119]
+# 	Cyrillic alphabet
+# "KSC5601.1987-0"				[41],[12]
+# 	Korean Graphic Character Set,
+# 	GL encoding
+# "KSC5601.1987-1"				[41]
+# 	(deprecated)
+# 	Korean Graphic Character Set,
+# 	GR encoding
+# "omron_CNS11643-0"				[45]
+# "omron_CNS11643-1"				[45]
+# "omron_BIG5-0"					[45]
+# "omron_BIG5-1"					[45]
+# "wn.tamil.1993"					[103]
+
+
+# ls /usr/share/fonts/X11/encodings/
+# adobe-dingbats.enc.gz  dec-special.enc.gz  ibm-cp866.enc.gz     iso8859-6.8x.enc.gz      microsoft-cp1253.enc.gz  microsoft-cp1258.enc.gz  mulelao-1.enc.gz
+# adobe-standard.enc.gz  encodings.dir       iso8859-11.enc.gz    large                    microsoft-cp1254.enc.gz  microsoft-win3.1.enc.gz  suneu-greek.enc.gz
+# adobe-symbol.enc.gz    ibm-cp437.enc.gz    iso8859-13.enc.gz    microsoft-cp1250.enc.gz  microsoft-cp1255.enc.gz  mulearabic-0.enc.gz      tcvn-0.enc.gz
+# armscii-8.enc.gz       ibm-cp850.enc.gz    iso8859-16.enc.gz    microsoft-cp1251.enc.gz  microsoft-cp1256.enc.gz  mulearabic-1.enc.gz      tis620-2.enc.gz
+# ascii-0.enc.gz         ibm-cp852.enc.gz    iso8859-6.16.enc.gz  microsoft-cp1252.enc.gz  microsoft-cp1257.enc.gz  mulearabic-2.enc.gz      viscii1.1-1.enc.gz
+
+# https://www.freshports.org/x11-fonts/encodings/
+#
+# share/fonts/encodings/adobe-dingbats.enc.gz
+# share/fonts/encodings/adobe-standard.enc.gz
+# share/fonts/encodings/adobe-symbol.enc.gz
+# share/fonts/encodings/armscii-8.enc.gz
+# share/fonts/encodings/ascii-0.enc.gz
+# share/fonts/encodings/dec-special.enc.gz
+# share/fonts/encodings/encodings.dir
+# share/fonts/encodings/ibm-cp437.enc.gz
+# share/fonts/encodings/ibm-cp850.enc.gz
+# share/fonts/encodings/ibm-cp852.enc.gz
+# share/fonts/encodings/ibm-cp866.enc.gz
+# share/fonts/encodings/iso8859-11.enc.gz
+# share/fonts/encodings/iso8859-13.enc.gz
+# share/fonts/encodings/iso8859-16.enc.gz
+# share/fonts/encodings/iso8859-6.16.enc.gz
+# share/fonts/encodings/iso8859-6.8x.enc.gz
+# share/fonts/encodings/large/big5.eten-0.enc.gz
+# share/fonts/encodings/large/big5hkscs-0.enc.gz
+# share/fonts/encodings/large/cns11643-1.enc.gz
+# share/fonts/encodings/large/cns11643-2.enc.gz
+# share/fonts/encodings/large/cns11643-3.enc.gz
+# share/fonts/encodings/large/encodings.dir
+# share/fonts/encodings/large/gb18030-0.enc.gz
+# share/fonts/encodings/large/gb18030.2000-0.enc.gz
+# share/fonts/encodings/large/gb18030.2000-1.enc.gz
+# share/fonts/encodings/large/gb2312.1980-0.enc.gz
+# share/fonts/encodings/large/gbk-0.enc.gz
+# share/fonts/encodings/large/jisx0201.1976-0.enc.gz
+# share/fonts/encodings/large/jisx0208.1990-0.enc.gz
+# share/fonts/encodings/large/jisx0212.1990-0.enc.gz
+# share/fonts/encodings/large/ksc5601.1987-0.enc.gz
+# share/fonts/encodings/large/ksc5601.1992-3.enc.gz
+# share/fonts/encodings/large/sun.unicode.india-0.enc.gz
+# share/fonts/encodings/microsoft-cp1250.enc.gz
+# share/fonts/encodings/microsoft-cp1251.enc.gz
+# share/fonts/encodings/microsoft-cp1252.enc.gz
+# share/fonts/encodings/microsoft-cp1253.enc.gz
+# share/fonts/encodings/microsoft-cp1254.enc.gz
+# share/fonts/encodings/microsoft-cp1255.enc.gz
+# share/fonts/encodings/microsoft-cp1256.enc.gz
+# share/fonts/encodings/microsoft-cp1257.enc.gz
+# share/fonts/encodings/microsoft-cp1258.enc.gz
+# share/fonts/encodings/microsoft-win3.1.enc.gz
+# share/fonts/encodings/mulearabic-0.enc.gz
+# share/fonts/encodings/mulearabic-1.enc.gz
+# share/fonts/encodings/mulearabic-2.enc.gz
+# share/fonts/encodings/mulelao-1.enc.gz
+# share/fonts/encodings/suneu-greek.enc.gz
+# share/fonts/encodings/tcvn-0.enc.gz
+# share/fonts/encodings/tis620-2.enc.gz
+# share/fonts/encodings/viscii1.1-1.enc.gz
+
+# https://x.org/releases/X11R7.7/doc/xorg-docs/fonts/fonts.html
+# > Specifying an encoding value of
+# > adobe-fontspecific for a Type 1 font disables the encoding mechanism. This is useful with symbol
+# > and incorrectly encoded fonts (see Hints about using badly encoded fonts below).
+#
+# > In the case of Type 1 fonts, the font designer can specify a default encoding; this encoding is
+# > requested by using the “adobe-fontspecific” encoding in the XLFD name.
+
+# some more encodings mentioned here:
+# https://www.x.org/releases/X11R6.9.0/doc/html/fonts3.html
+# https://www.x.org/releases/X11R6.9.0/doc/html/fonts4.html
+#
 # ISO10646-1 = unicode
 # ISO8859-1 (etc)  = latin-1
 # KOI8-R (-U -RU -UNI -E)
@@ -38,6 +232,13 @@ from ..label import UnicodeLabel
 # big5.eten-0
 # gb2312.1980-0
 
+# X11 / BDF undefined
+# these are mapped to "no encoding"
+# "no encoding" is mapped to the first name provided here
+UNDEFINED_ENCODINGS = [
+    'fontspecific-0',
+    'adobe-fontspecific',
+]
 
 _SLANT_MAP = {
     'R': 'roman',

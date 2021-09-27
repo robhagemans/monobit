@@ -10,17 +10,45 @@ import logging
 
 _ENCODING_ALIASES = {
     'ucs': 'unicode',
+    'iso646-us': 'ascii',
     'iso10646': 'unicode',
+    # X11 / BDF encoding names
     'iso10646-1': 'unicode',
     'iso8859-1': 'latin-1',
-    'iso646-us': 'ascii',
     'ascii-0': 'ascii',
+    #'microsoft-symbol': '', # http://www.kostis.net/charsets/symbol.htm
+    #'microsoft-win3.1': '', # is this the windows-3.1 version of 'windows-ansi'?
+    'armscii-8': 'armscii8a',
 }
+
+# replacement patterns
+# left hand side is e.g. used in BDF
+_ENCODING_STARTSWITH = {
+    'microsoft-cp': 'windows-',
+    'ibm-cp': 'cp',
+    'apple-': 'mac-',
+}
+
+# official Adobe mapping files from
+# https://www.unicode.org/Public/MAPPINGS/VENDORS/ADOBE/
+_ADOBE_ENCODINGS = {
+    'adobe-standard': 'adobe/stdenc.txt',
+    'adobe-symbol': 'adobe/symbol.txt',
+    'adobe-dingbats': 'adobe/zdingbat.txt',
+}
+
 
 def normalise_encoding(encoding):
     """Replace encoding name with normalised variant."""
     encoding = encoding.lower().replace('_', '-')
-    return _ENCODING_ALIASES.get(encoding, encoding)
+    try:
+        return _ENCODING_ALIASES[encoding]
+    except KeyError:
+        pass
+    for start, replacement in _ENCODING_STARTSWITH.items():
+        if encoding.startswith(start):
+            return replacement + encoding[len(start):]
+    return encoding
 
 
 def get_encoder(encoding_name, default=''):
@@ -43,8 +71,19 @@ def get_encoder(encoding_name, default=''):
     return None
 
 
+def _get_package_data(filename):
+    """Get package data."""
+    try:
+        return pkgutil.get_data(__name__, filename)
+    except EnvironmentError:
+        # "If the package cannot be located or loaded, then None is returned." say the docs
+        # but it seems to raise FileNotFoundError if the *resource* isn't there
+        return None
+
+
+
 class Codec:
-    """Convert between unicode and ordinals using python codec."""
+    """Convert between unicode and ordinals using Python codec."""
 
     def __init__(self, encoding):
         """Set up codec."""
@@ -72,7 +111,7 @@ class Codec:
 
 
 class Codepage:
-    """Convert between unicode and ordinals."""
+    """Convert between unicode and ordinals using stored codepage."""
 
     # table of user-registered or -overridden codepages
     _registered = {}
@@ -83,37 +122,47 @@ class Codepage:
         if codepage_name in self._registered:
             with open(self._registered[codepage_name], 'rb') as custom_cp:
                 data = custom_cp.read()
+            self._mapping = self._mapping_from_data(data, separator=':', codepoint_first=True)
         else:
-            try:
-                data = pkgutil.get_data(__name__, 'codepages/{}.ucp'.format(codepage_name))
-            except EnvironmentError:
-                # "If the package cannot be located or loaded, then None is returned." say the docs
-                # but it seems to raise FileNotFoundError if the *resource* isn't there
-                data = None
+            # Adobe codepages
+            adobe_file = _ADOBE_ENCODINGS.get(codepage_name, '')
+            if adobe_file:
+                data = _get_package_data(f'codepages/{adobe_file}')
+                # split by whitespace, unicode is first data point
+                self._mapping = self._mapping_from_data(data, separator=None, codepoint_first=False)
+            else:
+                # UCP codepages
+                data = _get_package_data(f'codepages/{codepage_name}.ucp')
+                self._mapping = self._mapping_from_data(data, separator=':', codepoint_first=True)
             if data is None:
                 raise LookupError(codepage_name)
-        self._mapping = self._mapping_from_ucp_data(data)
         self._inv_mapping = {_v: _k for _k, _v in self._mapping.items()}
 
-    def _mapping_from_ucp_data(self, data):
-        """Extract codepage mapping from ucp file data (as bytes)."""
+    def _mapping_from_data(self, data, separator=':', codepoint_first=True):
+        """Extract codepage mapping from file data (as bytes)."""
         mapping = {}
         for line in data.decode('utf-8-sig').splitlines():
             # ignore empty lines and comment lines (first char is #)
             if (not line) or (line[0] == '#'):
                 continue
             # strip off comments; split unicodepoint and hex string
-            splitline = line.split('#')[0].split(':')
+            splitline = line.split('#')[0].split(separator)
             # ignore malformed lines
             if len(splitline) < 2:
                 continue
             try:
-                # extract codepage point
-                cp_point = int(splitline[0].strip(), 16)
-                # allow sequence of code points separated by commas
-                mapping[cp_point] = ''.join(
-                    chr(int(ucs_str.strip(), 16)) for ucs_str in splitline[1].split(',')
-                )
+                if codepoint_first:
+                    # UCP
+                    # extract codepage point
+                    cp_point = int(splitline[0].strip(), 16)
+                    # allow sequence of code points separated by commas
+                    mapping[cp_point] = ''.join(
+                        chr(int(ucs_str.strip(), 16)) for ucs_str in splitline[1].split(',')
+                    )
+                else:
+                    # Adobe format
+                    cp_point = int(splitline[1].strip(), 16)
+                    mapping[cp_point] = chr(int(splitline[0].strip(), 16))
             except (ValueError, TypeError):
                 logging.warning('Could not parse line in codepage file: %s', repr(line))
         return mapping
