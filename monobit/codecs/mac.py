@@ -247,6 +247,9 @@ _STYLE_MAP = {
     6: 'extended',
 }
 
+# based on:
+# [1] Apple Technotes (As of 2002)/te/te_02.html
+# [2] https://developer.apple.com/library/archive/documentation/mac/Text/Text-367.html#HEADING367-0
 _MAC_ENCODING = {
     0: 'mac-roman',
     1: 'mac-japanese',
@@ -255,8 +258,8 @@ _MAC_ENCODING = {
     4: 'mac-arabic',
     5: 'mac-hebrew',
     6: 'mac-greek',
-    7: 'mac-russian',
-    # 8: right-to-left symbols
+    7: 'mac-cyrillic', # [1] russian
+    # 8: [2] right-to-left symbols
     9: 'mac-devanagari',
     10: 'mac-gurmukhi',
     11: 'mac-gujarati',
@@ -273,20 +276,20 @@ _MAC_ENCODING = {
     22: 'mac-laotian',
     23: 'mac-georgian',
     24: 'mac-armenian',
-    25: 'mac-simp-chinese', # in early docs, maldivian...
+    25: 'mac-simp-chinese', # [1] maldivian
     26: 'mac-tibetan',
     27: 'mac-mongolian',
-    28: 'mac-ethiopian', # aka geez
-    29: 'mac-latin2', # "non-cyrillic slavic", mac-centeuro
+    28: 'mac-ethiopic', # [2] == geez
+    29: 'mac-centraleurope', # [1] non-cyrillic slavic
     30: 'mac-vietnamese',
-    31: 'mac-sindhi', # == extended arabic
-    # 32: uninterpreted symbols
+    31: 'mac-sindhi', # [2] == ext-arabic
+    #32: [1] [2] 'uninterpreted symbols'
 }
 
 # font names for system fonts in FONT resources
 _FONT_NAMES = {
-    0: 'System',
-    1: 'Application',
+    0: 'Chicago', # system font
+    1: 'application font',
     2: 'New York',
     3: 'Geneva',
     4: 'Monaco',
@@ -294,7 +297,7 @@ _FONT_NAMES = {
     6: 'London',
     7: 'Athens',
     8: 'San Francisco',
-    9: 'Totonto',
+    9: 'Toronto',
     11: 'Cairo',
     12: 'Los Angeles',
     16: 'Palatino', # found experimentally
@@ -307,6 +310,11 @@ _FONT_NAMES = {
 
 # fonts which clain mac-roman encoding but aren't
 _NON_ROMAN_NAMES = {
+    # https://www.unicode.org/Public/MAPPINGS/VENDORS/APPLE/SYMBOL.TXT
+    # > The Mac OS Symbol encoding shares the script code smRoman
+    # > (0) with the Mac OS Roman encoding. To determine if the Symbol
+    # > encoding is being used, you must check if the font name is
+    # > "Symbol".
     'Symbol': 'mac-symbol',
     'Cairo': '',
     'Taliesin': '',
