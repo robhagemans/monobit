@@ -13,7 +13,6 @@ from .base import VERSION as __version__
 from .pack import Pack
 from .font import Font
 from .glyph import Glyph
-from .encoding import Codepage
 from .formats import loaders, savers, open_location
 
 from .codecs.image import create_image, render

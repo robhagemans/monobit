@@ -7,6 +7,10 @@ licence: https://opensource.org/licenses/MIT
 
 import pkgutil
 import logging
+from pathlib import Path
+
+from pkg_resources import resource_listdir
+
 
 _ENCODING_ALIASES = {
     'ucs': 'unicode',
@@ -122,41 +126,161 @@ def get_encoder(encoding_name, default=''):
     """Find an encoding by name and return codec."""
     encoding_name = encoding_name or default
     if encoding_name:
-        encoding_name = encoding_name.lower().replace('-', '_')
-        if normalise_encoding(encoding_name) == 'unicode':
-            return Unicode
+        encoding_name = normalise_encoding(encoding_name)
+        if encoding_name == 'unicode':
+            return Unicode()
         try:
-            return Codepage(encoding_name)
-        except LookupError:
+            return _codepages[encoding_name]
+            logging.debug(f'Using codepage `{encoding_name}`.')
+        except LookupError as exc:
+            logging.debug(exc)
             pass
         try:
-            return Codec(encoding_name)
-        except LookupError:
+            return PythonCodec(encoding_name)
+            logging.debug(f'Using Python codec `{encoding_name}` as codepage.')
+        except LookupError as exc:
+            logging.debug(exc)
             pass
     # this will break some formats
     logging.debug('Unknown encoding `%s`.', encoding_name)
     return None
 
 
-def _get_package_data(filename):
-    """Get package data."""
+def _get_data(filename):
+    """Get package or fle data."""
     try:
         return pkgutil.get_data(__name__, filename)
     except EnvironmentError:
         # "If the package cannot be located or loaded, then None is returned." say the docs
         # but it seems to raise FileNotFoundError if the *resource* isn't there
+        pass
+    try:
+        with open(filename, 'rb') as cpfile:
+            return cpfile.read()
+    except EnvironmentError:
         return None
 
 
+###################################################################################################
 
-class Codec:
-    """Convert between unicode and ordinals using Python codec."""
+class CodepageRegistry:
+    """Register user-defined codepages."""
+
+    # table of user-registered or -overridden codepages
+    _registered = {}
+
+    # codepage file format parameters
+    _formats = {
+        'ucp': dict(comment='#', separator=':', joiner=',', codepoint_first=True),
+        'adobe': dict(comment='#', separator='\t', joiner=None, codepoint_first=True),
+        'apple': dict(comment='#', separator=None, joiner='+', codepoint_first=True),
+    }
+
+    @classmethod
+    def register(cls, name, filename, format='ucp'):
+        """Override an existing codepage or register an unknown one."""
+        name = normalise_encoding(name)
+        cls._registered[name] = (filename, format)
+
+    def __contains__(self, name):
+        """Check if a name is defined in this registry."""
+        return name in self._registered
+
+    def __getitem__(self, name):
+        """Get codepage from registry by name; raise LookupError if not found."""
+        try:
+            filename, format = self._registered[name]
+        except KeyError as exc:
+            raise LookupError(f'Codepage {name} not registered.') from exc
+        data = _get_data(filename)
+        if not data:
+            raise LookupError(f'No data in codepage file `{filename}` registered for {name}.')
+        try:
+            mapping = self._mapping_from_data(data, **self._formats[format])
+        except KeyError as exc:
+            raise LookupError(f'Undefined codepage file format {format}.') from exc
+        return MapEncoder(mapping, name)
+
+    def __repr__(self):
+        """String representation."""
+        return (
+            'CodepageRegistry('
+            + ('\n' if self._registered else '')
+            + '\n    '.join(f"'{_k}': '{_v}'" for _k, _v in self._registered.items())
+            + ')'
+        )
+
+    def _mapping_from_data(self, data, *, comment, separator, joiner, codepoint_first):
+        """Extract codepage mapping from file data (as bytes)."""
+        mapping = {}
+        for line in data.decode('utf-8-sig').splitlines():
+            # ignore empty lines and comment lines (first char is #)
+            if (not line) or (line[0] == comment):
+                continue
+            # strip off comments; split unicodepoint and hex string
+            splitline = line.split(comment)[0].split(separator)
+            # ignore malformed lines
+            exc = ''
+            if len(splitline) >= 2:
+                try:
+                    if codepoint_first:
+                        cp_str, uni_str = splitline[0], splitline[1]
+                    else:
+                        uni_str, cp_str = splitline[0], splitline[1]
+                    cp_str = cp_str.strip()
+                    uni_str = uni_str.strip()
+                    # right-to-left marker in mac codepages
+                    uni_str = uni_str.replace('<RL>+', '').replace('<LR>+', '')
+                    cp_point = int(cp_str, 16)
+                    # allow sequence of code points separated by 'joiner'
+                    mapping[cp_point] = ''.join(
+                        chr(int(_substr, 16)) for _substr in uni_str.split(joiner)
+                    )
+                    continue
+                except (ValueError, TypeError) as e:
+                    exc = str(e)
+            logging.warning('Could not parse line in codepage file: %s [%s]', exc, repr(line))
+        return mapping
+
+
+###################################################################################################
+
+class Encoder:
+    """
+    Convert between unicode and ordinals.
+    Encoder objects act on single-glyph codes only, which may be single- or multi-codepoint.
+    They need not encode/decode between full strings and bytes.
+    """
+
+    def __init__(self, name):
+        """Set encoder name."""
+        self.name = name
+
+    def __repr__(self):
+        """String representation."""
+        return f"<{type(self).__name__}('{self.name}')>"
+
+    def chr(self, ordinal):
+        """Convert ordinal to character, return empty string if missing."""
+        raise NotImplemented
+
+    def ord(self, char):
+        """Convert character to ordinal, return None if missing."""
+        raise NotImplemented
+
+
+class PythonCodec(Encoder):
+    """Convert between unicode and ordinals using a Python codec."""
 
     def __init__(self, encoding):
         """Set up codec."""
         # force early LookupError if not known
-        b'x'.decode(encoding)
-        'x'.encode(encoding)
+        try:
+            b'x'.decode(encoding)
+            'x'.encode(encoding)
+        except Exception as exc:
+            raise LookupError(f'Could not use Python codec `{encoding}` as codepage: {exc}.')
+        super().__init__(encoding)
         self._encoding = encoding
 
     def chr(self, ordinal):
@@ -176,95 +300,39 @@ class Codec:
         return byte[0]
 
 
+class MapEncoder(Encoder):
+    """Convert between unicode and ordinals using stored mapping."""
 
-class Codepage:
-    """Convert between unicode and ordinals using stored codepage."""
-
-    # table of user-registered or -overridden codepages
-    _registered = {}
-
-    def __init__(self, codepage_name):
-        """Read a codepage file and convert to codepage dict."""
-        codepage_name = codepage_name.lower().replace('_', '-')
-        if codepage_name in self._registered:
-            with open(self._registered[codepage_name], 'rb') as custom_cp:
-                data = custom_cp.read()
-            self._mapping = self._mapping_from_data(data, separator=':', codepoint_first=True)
-        else:
-            # Adobe codepages
-            adobe_file = _ADOBE_ENCODINGS.get(codepage_name, '')
-            apple_file = _APPLE_ENCODINGS.get(codepage_name, '')
-            if adobe_file:
-                data = _get_package_data(f'codepages/{adobe_file}')
-                # split by whitespace, unicode is first data point
-                self._mapping = self._mapping_from_data(data, separator=None, codepoint_first=False)
-            elif apple_file:
-                data = _get_package_data(f'codepages/{apple_file}')
-                # split by whitespace, unicode is first data point
-                self._mapping = self._mapping_from_data(
-                    data, separator=None, joiner='+', codepoint_first=True
-                )
-            else:
-                # UCP codepages
-                data = _get_package_data(f'codepages/{codepage_name}.ucp')
-                self._mapping = self._mapping_from_data(
-                    data, separator=':', joiner=',', codepoint_first=True
-                )
-            if data is None:
-                raise LookupError(codepage_name)
-        self._inv_mapping = {_v: _k for _k, _v in self._mapping.items()}
-
-    def _mapping_from_data(self, data, comment='#', separator=':', joiner=',', codepoint_first=True):
-        """Extract codepage mapping from file data (as bytes)."""
-        mapping = {}
-        for line in data.decode('utf-8-sig').splitlines():
-            # ignore empty lines and comment lines (first char is #)
-            if (not line) or (line[0] == comment):
-                continue
-            # strip off comments; split unicodepoint and hex string
-            splitline = line.split(comment)[0].split(separator)
-            # ignore malformed lines
-            if len(splitline) < 2:
-                continue
-            try:
-                if codepoint_first:
-                    # UCP, Apple
-                    # extract codepage point
-                    cp_point = int(splitline[0].strip(), 16)
-                    # UCP: allow sequence of code points separated by commas
-                    mapping[cp_point] = ''.join(
-                        chr(int(ucs_str.strip(), 16)) for ucs_str in splitline[1].split(joiner)
-                    )
-                else:
-                    # Adobe format
-                    cp_point = int(splitline[1].strip(), 16)
-                    mapping[cp_point] = chr(int(splitline[0].strip(), 16))
-            except (ValueError, TypeError):
-                logging.warning('Could not parse line in codepage file: %s', repr(line))
-        return mapping
+    def __init__(self, mapping, name):
+        """Create codepage from a dictionary ord -> chr."""
+        if not mapping:
+            raise LookupError(name)
+        super().__init__(name)
+        # copy dict
+        self._ord2chr = {**mapping}
+        self._chr2ord = {_v: _k for _k, _v in self._ord2chr.items()}
 
     def chr(self, ordinal):
         """Convert ordinal to character, return empty string if missing."""
         try:
-            return self._mapping[int(ordinal)]
+            return self._ord2chr[int(ordinal)]
         except (KeyError, TypeError) as e:
             return ''
 
     def ord(self, char):
         """Convert character to ordinal, return None if missing."""
         try:
-            return self._inv_mapping[char]
+            return self._chr2ord[char]
         except KeyError as e:
             return None
 
-    @classmethod
-    def override(cls, name, filename):
-        """Override an existing codepage or register an unknown one."""
-        cls._registered[name] = filename
 
-
-class Unicode:
+class Unicode(Encoder):
     """Convert between unicode and ordinals."""
+
+    def __init__(self):
+        """Unicode converter."""
+        super().__init__('unicode')
 
     @staticmethod
     def chr(ordinal):
@@ -283,3 +351,20 @@ class Unicode:
             # empty chars or multi-codepoint grapheme clusters are not supported here
             return None
         return ord(char)
+
+
+###################################################################################################
+
+_codepages = CodepageRegistry()
+
+# Adobe codepages
+for _name, _file in _ADOBE_ENCODINGS.items():
+    _codepages.register(_name, f'codepages/{_file}', 'adobe')
+
+# Apple codepages
+for _name, _file in _APPLE_ENCODINGS.items():
+    _codepages.register(_name, f'codepages/{_file}', 'apple')
+
+# UCP codepages
+for _file in resource_listdir(__name__, 'codepages/'):
+    _codepages.register(Path(_file).stem, f'codepages/{_file}', 'ucp')

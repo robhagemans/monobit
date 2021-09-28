@@ -13,7 +13,7 @@ import unicodedata
 
 from .base import scriptable
 from .glyph import Glyph
-from .encoding import Unicode, normalise_encoding, get_encoder
+from .encoding import normalise_encoding, get_encoder
 from .label import label, UnicodeLabel, CodepointLabel, TagLabel
 
 
