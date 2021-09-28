@@ -256,10 +256,6 @@ class Encoder:
         """Set encoder name."""
         self.name = name
 
-    def __repr__(self):
-        """String representation."""
-        return f"<{type(self).__name__}('{self.name}')>"
-
     def chr(self, ordinal):
         """Convert ordinal to character, return empty string if missing."""
         raise NotImplemented
@@ -267,6 +263,28 @@ class Encoder:
     def ord(self, char):
         """Convert character to ordinal, return None if missing."""
         raise NotImplemented
+
+    def chart(self, page=0):
+        """Chart of page in codepage."""
+        chars = [self.chr(256*page+_i) or ' ' for _i in range(256)]
+        chars = ''.join((_c if _c.isprintable() else '\ufffd') for _c in chars)
+        return (
+            '    ' + ' '.join(f'_{_c:x}' for _c in range(16)) + '\n'
+            + '\n'.join(
+                f'{_r:x}_   ' + '  '.join(
+                    chars[16*_r:16*(_r+1)]
+                )
+                for _r in range(16)
+            )
+        )
+
+    def __repr__(self):
+        """Representation."""
+        return (
+            f"<{type(self).__name__} name='{self.name}' mapping=\n"
+            + self.chart()
+            + '\n>'
+        )
 
 
 class PythonCodec(Encoder):
