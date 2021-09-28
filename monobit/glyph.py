@@ -20,7 +20,7 @@ NOT_SET = object()
 class Glyph:
     """Single glyph."""
 
-    def __init__(self, pixels=((),), codepoint=None, char='', tags=(), comments=()):
+    def __init__(self, pixels=((),), codepoint=(), char='', tags=(), comments=()):
         """Create glyph from tuple of tuples."""
         # glyph data
         self._rows = tuple(tuple(bool(_bit) for _bit in _row) for _row in pixels)
@@ -30,7 +30,7 @@ class Glyph:
             )
         # annotations
         self._comments = tuple(comments)
-        self._codepoint = codepoint
+        self._codepoint = tuple(codepoint)
         self._char = char
         self._tags = tuple(tags)
 
@@ -71,12 +71,12 @@ class Glyph:
         """Set annotations using provided encoder object."""
         # use codepage to find char if not set
         if not self.char:
-            return self.set_annotations(char=encoder.chr(self.codepoint))
+            return self.set_annotations(char=encoder.char(self.codepoint))
         # use codepage to find codepoint if not set
-        if self.codepoint is None:
-            return self.set_annotations(codepoint=encoder.ord(self.char))
+        if not self.codepoint:
+            return self.set_annotations(codepoint=encoder.codepoint(self.char))
         # both are set but not onsistent with codepage
-        enc_char = encoder.chr(self.codepoint)
+        enc_char = encoder.char(self.codepoint)
         if self.char != enc_char:
             logging.warning(
                 f'Inconsistent encoding at {CodepointLabel(self.codepoint)}: '

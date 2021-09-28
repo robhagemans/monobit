@@ -7,11 +7,12 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
+from ..base.binary import int_to_bytes, bytes_to_int
 from ..formats import loaders, savers
 from ..streams import FileFormatError
 from ..font import Font, Coord
 from ..glyph import Glyph
-from ..encoding import get_encoder
+from ..encoding import get_encoder, normalise_encoding
 from ..label import UnicodeLabel
 
 
@@ -399,7 +400,7 @@ def _read_bdf_characters(instream):
         encvalue = int(meta['ENCODING'].split(' ')[-1])
         # no encoding number found
         if encvalue != -1:
-            glyph = glyph.set_annotations(codepoint=encvalue)
+            glyph = glyph.set_annotations(codepoint=(encvalue,))
         glyphs.append(glyph)
         glyph_meta.append(meta)
         if not instream.readline().startswith('ENDCHAR'):
@@ -463,6 +464,13 @@ def _parse_properties(glyphs, glyph_props, bdf_props, x_props):
             )
         else:
             properties[key] = value
+    # encoding values above 256 become multi-byte
+    # unless we're working in unicode
+    if normalise_encoding(properties['encoding']) != 'unicode':
+        glyphs = (
+            _glyph.set_annotations(codepoint=int_to_bytes(_glyph.codepoint[0]))
+            for _glyph in glyphs
+        )
     return glyphs, properties
 
 
@@ -618,9 +626,9 @@ def _parse_xlfd_properties(x_props, xlfd_name):
     elif encoding != '0':
         properties['encoding'] = encoding
     if 'DEFAULT_CHAR' in x_props:
-        default_ord = x_props.pop('DEFAULT_CHAR', None)
+        default_ord = int(x_props.pop('DEFAULT_CHAR', None))
         encoder = get_encoder(properties['encoding'])
-        properties['default-char'] = UnicodeLabel.from_char(encoder.chr(default_ord))
+        properties['default-char'] = UnicodeLabel.from_char(encoder.char((default_ord,)))
     properties = {_k: _v for _k, _v in properties.items() if _v is not None and _v != ''}
     # invalid xlfd name: keep but with changed property name
     if not xlfd_name_props:
@@ -682,12 +690,19 @@ def _create_xlfd_properties(font):
     }
     # encoding dependent values
     encoder = get_encoder(font.encoding, 'unicode')
-    xlfd_props['DEFAULT_CHAR'] = encoder.ord(font.default_char.to_char())
+    default_codepoint = encoder.codepoint(font.default_char.to_char())
     if font.encoding == 'unicode':
+        if len(default_codepoint) > 1:
+            raise ValueError('Default glyph must not be a grapheme sequence.')
+        xlfd_props['DEFAULT_CHAR'] = default_codepoint
+        # unicode encoding
         xlfd_props['CHARSET_REGISTRY'] = '"ISO10646"'
         xlfd_props['CHARSET_ENCODING'] = '"1"'
     else:
+        xlfd_props['DEFAULT_CHAR'] = bytes_to_int(default_codepoint)
         registry, *encoding = font.encoding.split('-', 1)
+        # encoding
+        # TODO: use translation table to preferred x11 alias
         xlfd_props['CHARSET_REGISTRY'] = _quoted_string(registry.upper())
         if encoding:
             xlfd_props['CHARSET_ENCODING'] = _quoted_string(encoding[0].upper())
@@ -722,12 +737,17 @@ def _save_bdf(font, outstream):
     # get glyphs for encoding values
     encoded_glyphs = []
     for glyph in font.glyphs:
-        try:
-            encoding = int(glyph.codepoint)
-        except TypeError:
-            # multi-codepoint grapheme cluster or not set
-            # -1 means no encoding value in bdf
-            encoding = -1
+        if font.encoding == 'unicode':
+            if len(glyph.codepoint) == 1:
+                encoding, = glyph.codepoint
+            else:
+                # multi-codepoint grapheme cluster or not set
+                # -1 means no encoding value in bdf
+                encoding = -1
+        else:
+            # encoding values above 256 become multi-byte
+            # unless we're working in unicode
+            encoding = bytes_to_int(glyph.codepoint)
         # char must have a name in bdf
         # keep the first tag as the glyph name if available
         if glyph.tags:

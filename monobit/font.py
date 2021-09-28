@@ -211,7 +211,7 @@ class Font:
         self._codepoints = {
             _glyph.codepoint: _index
             for _index, _glyph in enumerate(self._glyphs)
-            if _glyph.codepoint is not None
+            if _glyph.codepoint
         }
         self._chars = {
             _glyph.char: _index
@@ -230,13 +230,13 @@ class Font:
 
     def _add_encoding_data(self):
         """Add unicode annotations for codepage."""
-        has_codepoint = any(_glyph.codepoint is not None for _glyph in self._glyphs)
+        has_codepoint = any(_glyph.codepoint for _glyph in self._glyphs)
         has_char = any(_glyph.char for _glyph in self._glyphs)
         # update glyph codepoints
         # use index as codepoint if no codepoints or chars set
         if not has_codepoint and not has_char:
             self._glyphs = tuple(
-                _glyph.set_annotations(codepoint=_index)
+                _glyph.set_annotations(codepoint=(_index,))
                 for _index, _glyph in enumerate(self._glyphs)
             )
         # update glyph unicode annotations
@@ -692,7 +692,7 @@ class Font:
                 new_tags = set(glyph.tags) - set(self._tags)
                 # update codepoint based on this font's encoding
                 if encoder is not None:
-                    new_codepoint = encoder.ord(glyph.char)
+                    new_codepoint = encoder.codepoint(glyph.char)
                     glyph = glyph.set_annotations(tags=new_tags, codepoint=new_codepoint)
                 else:
                     glyph = glyph.set_annotations(tags=new_tags)

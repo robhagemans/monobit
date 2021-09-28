@@ -552,7 +552,7 @@ def _parse_nfnt(data, offset, properties):
     ]
     # codepoint labels
     labelled = [
-        _glyph.set_annotations(codepoint=_codepoint)
+        _glyph.set_annotations(codepoint=(_codepoint,))
         for _codepoint, _glyph in zip(range(fontrec.firstChar, fontrec.lastChar+1), glyphs)
     ]
     # last glyph is the "missing" glyph

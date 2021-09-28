@@ -20,7 +20,7 @@ from ..base import boolean, pair, reverse_dict
 from ..encoding import normalise_encoding
 from .. import streams
 from ..streams import FileFormatError
-from ..base.binary import friendlystruct
+from ..base.binary import friendlystruct, int_to_bytes, bytes_to_int
 from ..formats import loaders, savers
 from ..font import Font, Coord
 from ..glyph import Glyph
@@ -458,7 +458,7 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=(),
                 )
             else:
                 glyph = Glyph.empty(char.xadvance - min_after, max_height)
-            glyph = glyph.set_annotations(codepoint=char.id)
+            glyph = glyph.set_annotations(codepoint=(char.id,))
             glyphs.append(glyph)
     for file in image_files.values():
         file.close()
@@ -507,6 +507,13 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=(),
         for _k, _v in bmfont_props.items()
         if str(_v) != default_bmfont_props[_k]
     })
+    # encoding values above 256 become multi-byte
+    # unless we're working in unicode
+    if normalise_encoding(properties['encoding']) != 'unicode':
+        glyphs = (
+            _glyph.set_annotations(codepoint=int_to_bytes(glyph.codepoint[0]))
+            for _glyph in glyphs
+        )
     return Font(glyphs, properties=properties)
 
 def _read_bmfont(infile, container, outline):
@@ -578,10 +585,17 @@ def _create_spritesheets(font, size=(256, 256), packed=False):
                 data = cropped.as_tuple(fore, back)
                 charimg.putdata(data)
                 img.paste(charimg, (x, y))
-            id = glyph.codepoint
-            if id is None:
-                logging.warning(f"Glyph {ascii(glyph.char)} has no codepoint; skipping.")
+            if not glyph.codepoint:
+                logging.warning(f"Can't store glyph {ascii(glyph.char)} with no codepoint.")
                 continue
+            elif len(glyph.codepoint) == 1:
+                id, = glyph.codepoint
+            elif font.encoding != 'unicode':
+                id = bytes_to_int(glyph.codepoint)
+            else:
+                logging.warning(
+                    f"Can't store multi-codepoint grapheme sequence {ascii(glyph.char)}."
+                )
             chars.append(dict(
                 id=id,
                 x=x,

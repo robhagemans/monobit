@@ -192,8 +192,10 @@ def _mapping_from_data(data, *, comment, separator, joiner, codepoint_first):
                 uni_str = uni_str.strip()
                 # right-to-left marker in mac codepages
                 uni_str = uni_str.replace('<RL>+', '').replace('<LR>+', '')
-                cp_point = int(cp_str, 16)
                 # allow sequence of code points separated by 'joiner'
+                cp_point = tuple(
+                    int(_substr, 16) for _substr in cp_str.split(joiner)
+                )
                 mapping[cp_point] = ''.join(
                     chr(int(_substr, 16)) for _substr in uni_str.split(joiner)
                 )
@@ -269,24 +271,22 @@ class Encoder:
         """Set encoder name."""
         self.name = name
 
-    def chr(self, ordinal):
-        """Convert ordinal to character, return empty string if missing."""
+    def char(self, codepoint):
+        """Convert codepoint to character, return empty string if missing."""
         raise NotImplementedError
 
-    def ord(self, char):
-        """Convert character to ordinal, return None if missing."""
+    def codepoint(self, char):
+        """Convert character to codepoint, return None if missing."""
         raise NotImplementedError
 
-    def chart(self, page=0):
+    def table(self, page=0):
         """Chart of page in codepage."""
-        chars = [self.chr(256*page+_i) or ' ' for _i in range(256)]
-        chars = ''.join((_c if _c.isprintable() else '\ufffd') for _c in chars)
+        chars = (self.char((256*page+_i,)) or ' ' for _i in range(256))
+        chars = [(_c if _c.isprintable() else '\ufffd') for _c in chars]
         return (
             '    ' + ' '.join(f'_{_c:x}' for _c in range(16)) + '\n'
             + '\n'.join(
-                f'{_r:x}_   ' + '  '.join(
-                    chars[16*_r:16*(_r+1)]
-                )
+                f'{_r:x}_   ' + '  '.join(chars[16*_r:16*(_r+1)])
                 for _r in range(16)
             )
         )
@@ -295,7 +295,7 @@ class Encoder:
         """Representation."""
         return (
             f"<{type(self).__name__} name='{self.name}' mapping=\n"
-            + self.chart()
+            + self.table()
             + '\n>'
         )
 
@@ -314,28 +314,22 @@ class PythonCodec(Encoder):
         super().__init__(encoding)
         self._encoding = encoding
 
-    def chr(self, ordinal):
-        """Convert ordinal to character, return empty string if missing."""
-        if ordinal is None:
-            return ''
-        byte = bytes([int(ordinal)])
+    def char(self, codepoint):
+        """Convert codepoint sequence to character, return empty string if missing."""
+        byte_seq = bytes(codepoint)
         # ignore: return empty string if not found
-        char = byte.decode(self._encoding, errors='ignore')
-        return char
+        return byte_seq.decode(self._encoding, errors='ignore')
 
-    def ord(self, char):
-        """Convert character to ordinal, return None if missing."""
-        byte = char.encode(self._encoding, errors='ignore')
-        if not byte:
-            return None
-        return byte[0]
+    def codepoint(self, char):
+        """Convert character to codepoint sequence, return empty tuple if missing."""
+        return tuple(char.encode(self._encoding, errors='ignore'))
 
 
 class MapEncoder(Encoder):
     """Convert between unicode and ordinals using stored mapping."""
 
     def __init__(self, mapping, name):
-        """Create codepage from a dictionary ord -> chr."""
+        """Create codepage from a dictionary codepoint -> char."""
         if not mapping:
             name = ''
         super().__init__(name)
@@ -343,19 +337,20 @@ class MapEncoder(Encoder):
         self._ord2chr = {**mapping}
         self._chr2ord = {_v: _k for _k, _v in self._ord2chr.items()}
 
-    def chr(self, ordinal):
-        """Convert ordinal to character, return empty string if missing."""
+    def char(self, codepoint):
+        """Convert codepoint sequence to character, return empty string if missing."""
+        codepoint = tuple(codepoint)
         try:
-            return self._ord2chr[int(ordinal)]
+            return self._ord2chr[codepoint]
         except (KeyError, TypeError) as e:
             return ''
 
-    def ord(self, char):
-        """Convert character to ordinal, return None if missing."""
+    def codepoint(self, char):
+        """Convert character to codepoint sequence, return empty tuple if missing."""
         try:
             return self._chr2ord[char]
         except KeyError as e:
-            return None
+            return ()
 
     @property
     def mapping(self):
@@ -368,7 +363,7 @@ class MapEncoder(Encoder):
     def __sub__(self, other):
         """Return encoding with only characters that differ from right-hand side."""
         return MapEncoder(
-            mapping={_k: _v for _k, _v in self._ord2chr.items() if other.chr(_k) != _v},
+            mapping={_k: _v for _k, _v in self._ord2chr.items() if other.char(_k) != _v},
             name=f'{self.name}-{other.name}'
         )
 
@@ -381,22 +376,17 @@ class Unicode(Encoder):
         super().__init__('unicode')
 
     @staticmethod
-    def chr(ordinal):
-        """Convert ordinal to character."""
-        if ordinal is None:
-            return ''
-        return chr(int(ordinal))
+    def char(codepoint):
+        """Convert codepoint to character."""
+        return ''.join(chr(_i) for _i in codepoint)
 
     @staticmethod
-    def ord(char):
-        """Convert character to ordinal."""
+    def codepoint(char):
+        """Convert character to codepoint."""
         # we used to normalise to NFC here, presumably to reduce multi-codepoint situations
         # but it leads to inconsistency between char and codepoint for canonically equivalent chars
         #char = unicodedata.normalize('NFC', char)
-        if len(char) != 1:
-            # empty chars or multi-codepoint grapheme clusters are not supported here
-            return None
-        return ord(char)
+        return tuple(ord(_c) for _c in char)
 
 
 ###################################################################################################
