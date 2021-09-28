@@ -104,7 +104,6 @@ _APPLE_ENCODINGS = {
 }
 
 
-
 def normalise_encoding(encoding):
     """Replace encoding name with normalised variant."""
     encoding = encoding.lower().replace('_', '-')
@@ -146,6 +145,65 @@ def get_encoder(encoding_name, default=''):
     return None
 
 
+###################################################################################################
+# read codepage from file
+
+
+# codepage file format parameters
+_formats = {
+    'ucp': dict(comment='#', separator=':', joiner=',', codepoint_first=True),
+    'adobe': dict(comment='#', separator='\t', joiner=None, codepoint_first=True),
+    'apple': dict(comment='#', separator=None, joiner='+', codepoint_first=True),
+}
+
+
+def load_codepage_file(filename, *, format='ucp', name=''):
+    """Create new MapEncoder from file."""
+    data = _get_data(filename)
+    if not data:
+        raise LookupError(f'No data in codepage file `{filename}`.')
+    try:
+        mapping = _mapping_from_data(data, **_formats[format])
+    except KeyError as exc:
+        raise LookupError(f'Undefined codepage file format {format}.') from exc
+    if not name:
+        name = Path(filename).stem
+    return MapEncoder(mapping, name)
+
+
+def _mapping_from_data(data, *, comment, separator, joiner, codepoint_first):
+    """Extract codepage mapping from file data (as bytes)."""
+    mapping = {}
+    for line in data.decode('utf-8-sig').splitlines():
+        # ignore empty lines and comment lines (first char is #)
+        if (not line) or (line[0] == comment):
+            continue
+        # strip off comments; split unicodepoint and hex string
+        splitline = line.split(comment)[0].split(separator)
+        # ignore malformed lines
+        exc = ''
+        if len(splitline) >= 2:
+            try:
+                if codepoint_first:
+                    cp_str, uni_str = splitline[0], splitline[1]
+                else:
+                    uni_str, cp_str = splitline[0], splitline[1]
+                cp_str = cp_str.strip()
+                uni_str = uni_str.strip()
+                # right-to-left marker in mac codepages
+                uni_str = uni_str.replace('<RL>+', '').replace('<LR>+', '')
+                cp_point = int(cp_str, 16)
+                # allow sequence of code points separated by 'joiner'
+                mapping[cp_point] = ''.join(
+                    chr(int(_substr, 16)) for _substr in uni_str.split(joiner)
+                )
+                continue
+            except (ValueError, TypeError) as e:
+                exc = str(e)
+        logging.warning('Could not parse line in codepage file: %s [%s]', exc, repr(line))
+    return mapping
+
+
 def _get_data(filename):
     """Get package or fle data."""
     try:
@@ -161,6 +219,7 @@ def _get_data(filename):
         return None
 
 
+
 ###################################################################################################
 
 class CodepageRegistry:
@@ -168,13 +227,6 @@ class CodepageRegistry:
 
     # table of user-registered or -overridden codepages
     _registered = {}
-
-    # codepage file format parameters
-    _formats = {
-        'ucp': dict(comment='#', separator=':', joiner=',', codepoint_first=True),
-        'adobe': dict(comment='#', separator='\t', joiner=None, codepoint_first=True),
-        'apple': dict(comment='#', separator=None, joiner='+', codepoint_first=True),
-    }
 
     @classmethod
     def register(cls, name, filename, format='ucp'):
@@ -192,14 +244,7 @@ class CodepageRegistry:
             filename, format = self._registered[name]
         except KeyError as exc:
             raise LookupError(f'Codepage {name} not registered.') from exc
-        data = _get_data(filename)
-        if not data:
-            raise LookupError(f'No data in codepage file `{filename}` registered for {name}.')
-        try:
-            mapping = self._mapping_from_data(data, **self._formats[format])
-        except KeyError as exc:
-            raise LookupError(f'Undefined codepage file format {format}.') from exc
-        return MapEncoder(mapping, name)
+        return load_codepage_file(filename, name=name, format=format)
 
     def __repr__(self):
         """String representation."""
@@ -209,38 +254,6 @@ class CodepageRegistry:
             + '\n    '.join(f"'{_k}': '{_v}'" for _k, _v in self._registered.items())
             + ')'
         )
-
-    def _mapping_from_data(self, data, *, comment, separator, joiner, codepoint_first):
-        """Extract codepage mapping from file data (as bytes)."""
-        mapping = {}
-        for line in data.decode('utf-8-sig').splitlines():
-            # ignore empty lines and comment lines (first char is #)
-            if (not line) or (line[0] == comment):
-                continue
-            # strip off comments; split unicodepoint and hex string
-            splitline = line.split(comment)[0].split(separator)
-            # ignore malformed lines
-            exc = ''
-            if len(splitline) >= 2:
-                try:
-                    if codepoint_first:
-                        cp_str, uni_str = splitline[0], splitline[1]
-                    else:
-                        uni_str, cp_str = splitline[0], splitline[1]
-                    cp_str = cp_str.strip()
-                    uni_str = uni_str.strip()
-                    # right-to-left marker in mac codepages
-                    uni_str = uni_str.replace('<RL>+', '').replace('<LR>+', '')
-                    cp_point = int(cp_str, 16)
-                    # allow sequence of code points separated by 'joiner'
-                    mapping[cp_point] = ''.join(
-                        chr(int(_substr, 16)) for _substr in uni_str.split(joiner)
-                    )
-                    continue
-                except (ValueError, TypeError) as e:
-                    exc = str(e)
-            logging.warning('Could not parse line in codepage file: %s [%s]', exc, repr(line))
-        return mapping
 
 
 ###################################################################################################
@@ -258,11 +271,11 @@ class Encoder:
 
     def chr(self, ordinal):
         """Convert ordinal to character, return empty string if missing."""
-        raise NotImplemented
+        raise NotImplementedError
 
     def ord(self, char):
         """Convert character to ordinal, return None if missing."""
-        raise NotImplemented
+        raise NotImplementedError
 
     def chart(self, page=0):
         """Chart of page in codepage."""
@@ -358,7 +371,6 @@ class MapEncoder(Encoder):
             mapping={_k: _v for _k, _v in self._ord2chr.items() if other.chr(_k) != _v},
             name=f'{self.name}-{other.name}'
         )
-
 
 
 class Unicode(Encoder):
