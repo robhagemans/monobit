@@ -324,7 +324,7 @@ class MapEncoder(Encoder):
     def __init__(self, mapping, name):
         """Create codepage from a dictionary ord -> chr."""
         if not mapping:
-            raise LookupError(name)
+            name = ''
         super().__init__(name)
         # copy dict
         self._ord2chr = {**mapping}
@@ -343,6 +343,22 @@ class MapEncoder(Encoder):
             return self._chr2ord[char]
         except KeyError as e:
             return None
+
+    @property
+    def mapping(self):
+        return {**self._ord2chr}
+
+    def __eq__(self, other):
+        """Compare to other MapEncoder."""
+        return (self._ord2chr == other._ord2chr)
+
+    def __sub__(self, other):
+        """Return encoding with only characters that differ from right-hand side."""
+        return MapEncoder(
+            mapping={_k: _v for _k, _v in self._ord2chr.items() if other.chr(_k) != _v},
+            name=f'{self.name}-{other.name}'
+        )
+
 
 
 class Unicode(Encoder):
