@@ -201,24 +201,28 @@ class Codepage:
             elif apple_file:
                 data = _get_package_data(f'codepages/{apple_file}')
                 # split by whitespace, unicode is first data point
-                self._mapping = self._mapping_from_data(data, separator=None, codepoint_first=True)
+                self._mapping = self._mapping_from_data(
+                    data, separator=None, joiner='+', codepoint_first=True
+                )
             else:
                 # UCP codepages
                 data = _get_package_data(f'codepages/{codepage_name}.ucp')
-                self._mapping = self._mapping_from_data(data, separator=':', codepoint_first=True)
+                self._mapping = self._mapping_from_data(
+                    data, separator=':', joiner=',', codepoint_first=True
+                )
             if data is None:
                 raise LookupError(codepage_name)
         self._inv_mapping = {_v: _k for _k, _v in self._mapping.items()}
 
-    def _mapping_from_data(self, data, separator=':', codepoint_first=True):
+    def _mapping_from_data(self, data, comment='#', separator=':', joiner=',', codepoint_first=True):
         """Extract codepage mapping from file data (as bytes)."""
         mapping = {}
         for line in data.decode('utf-8-sig').splitlines():
             # ignore empty lines and comment lines (first char is #)
-            if (not line) or (line[0] == '#'):
+            if (not line) or (line[0] == comment):
                 continue
             # strip off comments; split unicodepoint and hex string
-            splitline = line.split('#')[0].split(separator)
+            splitline = line.split(comment)[0].split(separator)
             # ignore malformed lines
             if len(splitline) < 2:
                 continue
@@ -229,7 +233,7 @@ class Codepage:
                     cp_point = int(splitline[0].strip(), 16)
                     # UCP: allow sequence of code points separated by commas
                     mapping[cp_point] = ''.join(
-                        chr(int(ucs_str.strip(), 16)) for ucs_str in splitline[1].split(',')
+                        chr(int(ucs_str.strip(), 16)) for ucs_str in splitline[1].split(joiner)
                     )
                 else:
                     # Adobe format
