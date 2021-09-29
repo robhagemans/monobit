@@ -39,6 +39,11 @@ _ENCODING_ALIASES = {
     'mac-east-eur-roman': 'mac-centraleurope',
     'mac-geez': 'mac-ethiopic',
     'mac-ext-arabic': 'mac-sindhi',
+
+    'nextstep': 'next',
+    'next-multinational': 'next',
+    'strk1048-2002': 'kz-1048',
+    'gsm-03.38': 'gsm',
 }
 
 # replacement patterns
@@ -204,6 +209,8 @@ _OTHER_ENCODINGS = {
     # not loaded from misc/:
     # SGML.TXT
     # US-ASCII-QUOTES.TXT
+    'next': ('misc/NEXTSTEP.TXT', 'format_a'),
+    'gsm': ('misc/GSM0338.TXT', 'format_a'),
 }
 
 # Freedos
