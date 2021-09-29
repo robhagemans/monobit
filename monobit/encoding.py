@@ -82,6 +82,9 @@ _APPLE_ENCODINGS = {
     # Apple codepages matching a script code
     # https://www.unicode.org/Public/MAPPINGS/VENDORS/APPLE/
 
+    # Armenian and Georgian taken from Evertype:
+    # https://www.evertype.com/standards/mappings/
+
     #'mac-roman': 'apple/ROMAN.TXT',
     # this has the pre-euro version of the mac-roman set (aka microsoft's cp 10000)
     'mac-roman': 'microsoft/MAC/ROMAN.TXT',
@@ -109,8 +112,8 @@ _APPLE_ENCODINGS = {
     #'mac-khmer':
     'mac-thai': 'apple/THAI.TXT',
     #'mac-laotian':
-    #'mac-georgian':
-    #'mac-armenian':
+    'mac-georgian': 'evertype/mac/GEORGIAN.TXT',
+    'mac-armenian': 'evertype/mac/ARMENIAN.TXT',
     'mac-simp-chinese': 'apple/CHINSIMP.TXT',
     #'mac-tibetan':
     #'mac-mongolian':
