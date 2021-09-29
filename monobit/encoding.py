@@ -46,10 +46,31 @@ _ENCODING_STARTSWITH = {
     'microsoft-cp': 'windows-',
     'ibm-cp': 'cp',
     'apple-': 'mac-',
+    # mac-roman also known as x-mac-roman etc.
     'x-': '',
 }
 
-# official Adobe mapping files from
+# iso standards
+# https://www.unicode.org/Public/MAPPINGS/ISO8859
+_ISO_ENCODINGS = {
+    'iso-8859-1': 'iso-8859/8859-1.TXT',
+    'iso-8859-2': 'iso-8859/8859-2.TXT',
+    'iso-8859-3': 'iso-8859/8859-3.TXT',
+    'iso-8859-4': 'iso-8859/8859-4.TXT',
+    'iso-8859-5': 'iso-8859/8859-5.TXT',
+    'iso-8859-6': 'iso-8859/8859-6.TXT',
+    'iso-8859-7': 'iso-8859/8859-7.TXT',
+    'iso-8859-8': 'iso-8859/8859-8.TXT',
+    'iso-8859-9': 'iso-8859/8859-9.TXT',
+    'iso-8859-10': 'iso-8859/8859-10.TXT',
+    'iso-8859-11': 'iso-8859/8859-11.TXT',
+    'iso-8859-13': 'iso-8859/8859-13.TXT',
+    'iso-8859-14': 'iso-8859/8859-14.TXT',
+    'iso-8859-15': 'iso-8859/8859-15.TXT',
+    'iso-8859-16': 'iso-8859/8859-16.TXT',
+}
+
+# Adobe encodings
 # https://www.unicode.org/Public/MAPPINGS/VENDORS/ADOBE/
 _ADOBE_ENCODINGS = {
     'adobe-standard': 'adobe/stdenc.txt',
@@ -57,11 +78,14 @@ _ADOBE_ENCODINGS = {
     'adobe-dingbats': 'adobe/zdingbat.txt',
 }
 
-# https://www.unicode.org/Public/MAPPINGS/VENDORS/APPLE/
-# also known as x-mac-roman etc.
 _APPLE_ENCODINGS = {
+    # Apple codepages matching a script code
+    # https://www.unicode.org/Public/MAPPINGS/VENDORS/APPLE/
+
+    #'mac-roman': 'apple/ROMAN.TXT',
     # this has the pre-euro version of the mac-roman set (aka microsoft's cp 10000)
     'mac-roman': 'microsoft/MAC/ROMAN.TXT',
+
     'mac-japanese': 'apple/JAPANESE.TXT',
     'mac-trad-chinese': 'apple/CHINTRAD.TXT',
     'mac-korean': 'apple/KOREAN.TXT',
@@ -91,9 +115,15 @@ _APPLE_ENCODINGS = {
     #'mac-tibetan':
     #'mac-mongolian':
     #'mac-ethiopian',
-    'mac-centraleurope': 'apple/CENTEURO.TXT', # "non-cyrillic slavic", mac-centeuro
+
+    # "non-cyrillic slavic", mac-centeuro
+    # cf. 'microsoft/MAC/LATIN2.TXT'
+    'mac-centraleurope': 'apple/CENTEURO.TXT',
+
     #'mac-vietnamese':
     #'mac-sindhi':
+
+    # Apple codepages not matching a script code
 
     'mac-celtic': 'apple/CELTIC.TXT',
     'mac-croatian': 'apple/CROATIAN.TXT',
@@ -109,9 +139,9 @@ _APPLE_ENCODINGS = {
     # Evertype
 }
 
-
-
-_WINDOWS_ENCODINGS = {
+_MICROSOFT_ENCODINGS = {
+    # Windows codepages
+    # https://www.unicode.org/Public/MAPPINGS/VENDORS/MICSFT/WINDOWS
     'windows-874': 'microsoft/WINDOWS/CP874.TXT',
     'windows-932': 'microsoft/WINDOWS/CP932.TXT',
     'windows-936': 'microsoft/WINDOWS/CP936.TXT',
@@ -126,14 +156,46 @@ _WINDOWS_ENCODINGS = {
     'windows-1256': 'microsoft/WINDOWS/CP1256.TXT',
     'windows-1257': 'microsoft/WINDOWS/CP1257.TXT',
     'windows-1258': 'microsoft/WINDOWS/CP1258.TXT',
-}
 
-_DOS_ENCODINGS = {
-    'cp437': 'microsoft/WINDOWS/CP437.TXT',
+    # IBM/OEM/MS-DOS codepages
+    # https://www.unicode.org/Public/MAPPINGS/VENDORS/MICSFT/PC
+    'cp437': 'microsoft/PC/CP437.TXT',
+    'cp737': 'microsoft/PC/CP737.TXT',
+    'cp775': 'microsoft/PC/CP775.TXT',
+    'cp850': 'microsoft/PC/CP850.TXT',
+    'cp852': 'microsoft/PC/CP852.TXT',
+    'cp855': 'microsoft/PC/CP855.TXT',
+    'cp857': 'microsoft/PC/CP857.TXT',
+    'cp860': 'microsoft/PC/CP860.TXT',
+    'cp861': 'microsoft/PC/CP861.TXT',
+    'cp862': 'microsoft/PC/CP862.TXT',
+    'cp863': 'microsoft/PC/CP863.TXT',
+    'cp864': 'microsoft/PC/CP864.TXT',
+    'cp865': 'microsoft/PC/CP865.TXT',
+    'cp866': 'microsoft/PC/CP866.TXT',
+    'cp869': 'microsoft/PC/CP869.TXT',
+    'cp874': 'microsoft/PC/CP874.TXT',
 
+    # EBCDIC
+    # https://www.unicode.org/Public/MAPPINGS/VENDORS/MICSFT/EBCDIC
+    'cp037': 'microsoft/PC/CP037.TXT',
+    'cp500': 'microsoft/PC/CP500.TXT',
+    'cp875': 'microsoft/PC/CP875.TXT',
+    'cp1026': 'microsoft/PC/CP1026.TXT',
 }
 
 # Freedos
+
+
+# codepage file format parameters
+_FORMATS = {
+    'ucp': dict(comment='#', separator=':', joiner=',', codepoint_first=True),
+    'adobe': dict(comment='#', separator='\t', joiner=None, codepoint_first=True),
+    'format_a': dict(comment='#', separator=None, joiner='+', codepoint_first=True),
+}
+
+
+###################################################################################################
 
 def normalise_encoding(encoding):
     """Replace encoding name with normalised variant."""
@@ -179,22 +241,13 @@ def get_encoder(encoding_name, default=''):
 ###################################################################################################
 # read codepage from file
 
-
-# codepage file format parameters
-_formats = {
-    'ucp': dict(comment='#', separator=':', joiner=',', codepoint_first=True),
-    'adobe': dict(comment='#', separator='\t', joiner=None, codepoint_first=True),
-    'apple': dict(comment='#', separator=None, joiner='+', codepoint_first=True),
-}
-
-
 def load_codepage_file(filename, *, format='ucp', name=''):
     """Create new MapEncoder from file."""
     data = _get_data(filename)
     if not data:
         raise LookupError(f'No data in codepage file `{filename}`.')
     try:
-        mapping = _mapping_from_data(data, **_formats[format])
+        mapping = _mapping_from_data(data, **_FORMATS[format])
     except KeyError as exc:
         raise LookupError(f'Undefined codepage file format {format}.') from exc
     if not name:
@@ -445,15 +498,11 @@ for _name, _file in _ADOBE_ENCODINGS.items():
 
 # Apple codepages
 for _name, _file in _APPLE_ENCODINGS.items():
-    _codepages.register(_name, f'codepages/{_file}', 'apple')
+    _codepages.register(_name, f'codepages/{_file}', 'format_a')
 
-# Windows codepages
-for _name, _file in _WINDOWS_ENCODINGS.items():
-    _codepages.register(_name, f'codepages/{_file}', 'apple')
-
-# DOS/OEM codepages
-for _name, _file in _DOS_ENCODINGS.items():
-    _codepages.register(_name, f'codepages/{_file}', 'apple')
+# Microsoft codepages
+for _name, _file in _MICROSOFT_ENCODINGS.items():
+    _codepages.register(_name, f'codepages/{_file}', 'format_a')
 
 # UCP codepages
 for _file in resource_listdir(__name__, 'codepages/'):
