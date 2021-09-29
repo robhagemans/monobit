@@ -310,15 +310,17 @@ class Encoder:
 
     def table(self, page=0):
         """Chart of page in codepage."""
-        chars = (self.char((256*page+_i,)) or ' ' for _i in range(256))
+        bg = '\u2591'
+        chars = (self.char((256*page+_i,)) or bg for _i in range(256))
         chars = [(_c if _c.isprintable() else '\ufffd') for _c in chars]
-        return (
-            '    ' + ' '.join(f'_{_c:x}' for _c in range(16)) + '\n'
-            + '\n'.join(
-                f'{_r:x}_   ' + '  '.join(chars[16*_r:16*(_r+1)])
+        return ''.join((
+            '   ', ' '.join(f'_{_c:x}' for _c in range(16)), '\n',
+            '  +', '-'*48, '\n',
+            '\n'.join(
+                ''.join((f'{_r:x}_|', bg, (bg*2).join(chars[16*_r:16*(_r+1)]), bg))
                 for _r in range(16)
             )
-        )
+        ))
 
     def __repr__(self):
         """Representation."""
