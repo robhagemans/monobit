@@ -11,6 +11,8 @@ from pathlib import Path
 
 from pkg_resources import resource_listdir
 
+from .base.binary import int_to_bytes
+
 
 _ENCODING_ALIASES = {
     'ucs': 'unicode',
@@ -220,10 +222,9 @@ def _mapping_from_data(data, *, comment, separator, joiner, codepoint_first):
                 uni_str = uni_str.strip()
                 # right-to-left marker in mac codepages
                 uni_str = uni_str.replace('<RL>+', '').replace('<LR>+', '')
-                # allow sequence of code points separated by 'joiner'
-                cp_point = tuple(
-                    int(_substr, 16) for _substr in cp_str.split(joiner)
-                )
+                # multibyte code points given as single large number
+                cp_point = tuple(int_to_bytes(int(cp_str, 16)))
+                # allow sequence of unicode code points separated by 'joiner'
                 mapping[cp_point] = ''.join(
                     chr(int(_substr, 16)) for _substr in uni_str.split(joiner)
                 )
@@ -368,9 +369,11 @@ class MapEncoder(Encoder):
     def char(self, codepoint):
         """Convert codepoint sequence to character, return empty string if missing."""
         codepoint = tuple(codepoint)
+        if not all(isinstance(_i, int) for _i in codepoint):
+            raise TypeError('Codepoint must be bytes or sequence of integers.')
         try:
             return self._ord2chr[codepoint]
-        except (KeyError, TypeError) as e:
+        except KeyError as e:
             return ''
 
     def codepoint(self, char):

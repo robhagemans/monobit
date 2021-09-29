@@ -26,7 +26,7 @@ def bytes_to_bits(inbytes, width=None):
 
 def int_to_bytes(in_int, byteorder='big'):
     """Convert integer to bytes."""
-    return in_int.to_bytes((in_int.bit_length() + 7) // 8, byteorder)
+    return in_int.to_bytes(max(1, (in_int.bit_length() + 7) // 8), byteorder)
 
 def bytes_to_int(in_bytes, byteorder='big'):
     """Convert integer to bytes."""
