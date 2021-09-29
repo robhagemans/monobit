@@ -8,6 +8,7 @@ licence: https://opensource.org/licenses/MIT
 import pkgutil
 import logging
 from pathlib import Path
+import unicodedata
 
 from pkg_resources import resource_listdir
 
@@ -249,6 +250,14 @@ def _get_data(filename):
     except EnvironmentError:
         return None
 
+def is_fullwidth(char):
+    """Check if a character / grapheme sequence is fullwidth."""
+    if not char:
+        return False
+    if len(char) > 1:
+        # deal with combined glyphs
+        return any(is_fullwidth(_c) for _c in char)
+    return unicodedata.east_asian_width(char) in ('W', 'F')
 
 
 ###################################################################################################
@@ -311,13 +320,17 @@ class Encoder:
     def table(self, page=0):
         """Chart of page in codepage."""
         bg = '\u2591'
-        chars = (self.char((256*page+_i,)) or bg for _i in range(256))
-        chars = [(_c if _c.isprintable() else '\ufffd') for _c in chars]
+        cps = range(256)
+        cps = (((page, _c) if page else (_c,)) for _c in cps)
+        chars = (self.char(_cp) for _cp in cps)
+        chars = ((_c if _c.isprintable() else '\ufffd') for _c in chars)
+        chars = ((_c if is_fullwidth(_c) else ((_c + ' ') if _c else bg*2)) for _c in chars)
+        chars = [*chars]
         return ''.join((
-            '   ', ' '.join(f'_{_c:x}' for _c in range(16)), '\n',
-            '  +', '-'*48, '\n',
+            '    ', ' '.join(f'_{_c:x}' for _c in range(16)), '\n',
+            '  +', '-'*48, '-', '\n',
             '\n'.join(
-                ''.join((f'{_r:x}_|', bg, (bg*2).join(chars[16*_r:16*(_r+1)]), bg))
+                ''.join((f'{_r:x}_|', bg, bg.join(chars[16*_r:16*(_r+1)]), bg))
                 for _r in range(16)
             )
         ))
@@ -325,9 +338,9 @@ class Encoder:
     def __repr__(self):
         """Representation."""
         return (
-            f"<{type(self).__name__} name='{self.name}' mapping=\n"
+            f"{type(self).__name__}(name='{self.name}' mapping=\n"
             + self.table()
-            + '\n>'
+            + '\n)'
         )
 
 
