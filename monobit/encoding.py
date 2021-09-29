@@ -43,6 +43,7 @@ _ENCODING_ALIASES = {
     'nextstep': 'next',
     'next-multinational': 'next',
     'strk1048-2002': 'kz-1048',
+    'rk-1048': 'kz-1048',
     'gsm-03.38': 'gsm',
 }
 
@@ -198,7 +199,6 @@ _OTHER_ENCODINGS = {
     # IBM PC memory-mapped video graphics, overlaying the control character range
     # to be used in combination with other code pages e.g. cp437
     'ibm-graphics': ('misc/IBMGRAPH.TXT', 'adobe'),
-    'ibm-graphics-cp864': ('misc/IBMGRAPH.TXT', 'ibmgraph_864'),
     'koi8-r': ('misc/KOI8-R.TXT', 'format_a'),
     'koi8-u': ('misc/KOI8-U.TXT', 'format_a'),
     'cp424': ('misc/CP424.TXT', 'format_a'),
@@ -216,6 +216,13 @@ _OTHER_ENCODINGS = {
 
 # Freedos
 
+# codepages to be overlaid with IBM graphics in range 0x00--0x1f and 0x7f
+_ASCII_RANGE = tuple((_cp,) for _cp in range(0x80))
+_IBM_GRAPH_RANGE = tuple((_cp,) for _cp in range(0x20)) + ((0x7f,),)
+_IBM_OVERLAYS = (
+    'cp437', 'cp737', 'cp775', 'cp850', 'cp852', 'cp855', 'cp857', 'cp860', 'cp861', 'cp862',
+    'cp863', 'cp865', 'cp866', 'cp869', 'cp874',
+)
 
 # codepage file format parameters
 _FORMATS = {
@@ -350,12 +357,22 @@ class CodepageRegistry:
 
     # table of user-registered or -overridden codepages
     _registered = {}
+    _overlays = {}
 
     @classmethod
     def register(cls, name, filename, format='ucp'):
-        """Override an existing codepage or register an unknown one."""
+        """Register a file to be loaded for a given codepage."""
         name = normalise_encoding(name)
         cls._registered[name] = (filename, format)
+
+    @classmethod
+    def overlay(cls, name, filename, overlay_range, format='ucp'):
+        """Overlay a given codepage with an additional file."""
+        name = normalise_encoding(name)
+        try:
+            cls._overlays[name].append((filename, format, overlay_range))
+        except KeyError:
+            cls._overlays[name] = [(filename, format, overlay_range)]
 
     def __contains__(self, name):
         """Check if a name is defined in this registry."""
@@ -367,7 +384,11 @@ class CodepageRegistry:
             filename, format = self._registered[name]
         except KeyError as exc:
             raise LookupError(f'Codepage {name} not registered.') from exc
-        return load_codepage_file(filename, name=name, format=format)
+        codepage = load_codepage_file(filename, name=name, format=format)
+        for filename, format, ovr_rng in self._overlays.get(name, ()):
+            overlay = load_codepage_file(filename, format=format)
+            codepage = codepage.overlay(overlay, ovr_rng)
+        return codepage
 
     def __repr__(self):
         """String representation."""
@@ -493,8 +514,25 @@ class MapEncoder(Encoder):
         """Return encoding with only characters that differ from right-hand side."""
         return MapEncoder(
             mapping={_k: _v for _k, _v in self._ord2chr.items() if other.char(_k) != _v},
-            name=f'{self.name}-{other.name}'
+            name=f'[{self.name}]-[{other.name}]'
         )
+
+    def __add__(self, other):
+        """Return encoding overlaid with all characters defined in right-hand side."""
+        mapping = {**self.mapping}
+        mapping.update(other.mapping)
+        return MapEncoder(mapping=mapping, name=f'{self.name}')
+
+    def take(self, codepoint_range):
+        """Return encoding only for given range of codepoints."""
+        return MapEncoder(
+            mapping={_k: _v for _k, _v in self._ord2chr.items() if _k in codepoint_range},
+            name=f'subset[{self.name}]'
+        )
+
+    def overlay(self, other, codepoint_range):
+        """Return encoding overlaid with all characters in the overlay range taken from rhs."""
+        return self + other.take(codepoint_range)
 
 
 class Unicode(Encoder):
@@ -541,6 +579,16 @@ for _name, _file in _MICROSOFT_ENCODINGS.items():
 # miscellaneous codepages
 for _name, (_file, _fmt) in _OTHER_ENCODINGS.items():
     _codepages.register(_name, f'codepages/{_file}', _fmt)
+
+# overlays
+for _name in _IBM_OVERLAYS:
+    _codepages.overlay(_name, 'codepages/misc/IBMGRAPH.TXT', _IBM_GRAPH_RANGE, 'adobe')
+# second column in IBMGRAPH.TXT is there specially for this codepage
+_codepages.overlay('cp864', 'codepages/misc/IBMGRAPH.TXT', _IBM_GRAPH_RANGE, 'ibmgraph_864')
+
+# per NEXTSTEP.TXT, identical to ascii.
+# wikipedia suggests it's us-ascii-quotes
+_codepages.overlay('next', 'codepages/iso-8859/8859-1.TXT', _ASCII_RANGE, 'format_a')
 
 # UCP codepages
 for _file in resource_listdir(__name__, 'codepages/'):
