@@ -53,26 +53,27 @@ _ENCODING_STARTSWITH = {
     'apple-': 'mac-',
     # mac-roman also known as x-mac-roman etc.
     'x-': '',
+    'iso-': 'iso',
 }
 
 # iso standards
 # https://www.unicode.org/Public/MAPPINGS/ISO8859
 _ISO_ENCODINGS = {
-    'iso-8859-1': 'iso-8859/8859-1.TXT',
-    'iso-8859-2': 'iso-8859/8859-2.TXT',
-    'iso-8859-3': 'iso-8859/8859-3.TXT',
-    'iso-8859-4': 'iso-8859/8859-4.TXT',
-    'iso-8859-5': 'iso-8859/8859-5.TXT',
-    'iso-8859-6': 'iso-8859/8859-6.TXT',
-    'iso-8859-7': 'iso-8859/8859-7.TXT',
-    'iso-8859-8': 'iso-8859/8859-8.TXT',
-    'iso-8859-9': 'iso-8859/8859-9.TXT',
-    'iso-8859-10': 'iso-8859/8859-10.TXT',
-    'iso-8859-11': 'iso-8859/8859-11.TXT',
-    'iso-8859-13': 'iso-8859/8859-13.TXT',
-    'iso-8859-14': 'iso-8859/8859-14.TXT',
-    'iso-8859-15': 'iso-8859/8859-15.TXT',
-    'iso-8859-16': 'iso-8859/8859-16.TXT',
+    'iso8859-1': 'iso-8859/8859-1.TXT',
+    'iso8859-2': 'iso-8859/8859-2.TXT',
+    'iso8859-3': 'iso-8859/8859-3.TXT',
+    'iso8859-4': 'iso-8859/8859-4.TXT',
+    'iso8859-5': 'iso-8859/8859-5.TXT',
+    'iso8859-6': 'iso-8859/8859-6.TXT',
+    'iso8859-7': 'iso-8859/8859-7.TXT',
+    'iso8859-8': 'iso-8859/8859-8.TXT',
+    'iso8859-9': 'iso-8859/8859-9.TXT',
+    'iso8859-10': 'iso-8859/8859-10.TXT',
+    'iso8859-11': 'iso-8859/8859-11.TXT',
+    'iso8859-13': 'iso-8859/8859-13.TXT',
+    'iso8859-14': 'iso-8859/8859-14.TXT',
+    'iso8859-15': 'iso-8859/8859-15.TXT',
+    'iso8859-16': 'iso-8859/8859-16.TXT',
 }
 
 # Adobe encodings
@@ -520,6 +521,10 @@ class Unicode(Encoder):
 ###################################################################################################
 
 _codepages = CodepageRegistry()
+
+# ISO codepages
+for _name, _file in _ISO_ENCODINGS.items():
+    _codepages.register(_name, f'codepages/{_file}', 'format_a')
 
 # Adobe codepages
 for _name, _file in _ADOBE_ENCODINGS.items():
