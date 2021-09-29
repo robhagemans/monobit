@@ -43,7 +43,7 @@ _ENCODING_STARTSWITH = {
     'microsoft-cp': 'windows-',
     'ibm-cp': 'cp',
     'apple-': 'mac-',
-    'x-mac-': 'mac-',
+    'x-': '',
 }
 
 # official Adobe mapping files from
@@ -57,7 +57,8 @@ _ADOBE_ENCODINGS = {
 # https://www.unicode.org/Public/MAPPINGS/VENDORS/APPLE/
 # also known as x-mac-roman etc.
 _APPLE_ENCODINGS = {
-    'mac-roman': 'apple/ROMAN.TXT',
+    # this has the pre-euro version of the mac-roman set (aka microsoft's cp 10000)
+    'mac-roman': 'microsoft/MAC/ROMAN.TXT',
     'mac-japanese': 'apple/JAPANESE.TXT',
     'mac-trad-chinese': 'apple/CHINTRAD.TXT',
     'mac-korean': 'apple/KOREAN.TXT',
@@ -101,8 +102,35 @@ _APPLE_ENCODINGS = {
     'mac-symbol': 'apple/SYMBOL.TXT',
     'mac-turkish': 'apple/TURKISH.TXT',
     'mac-ukrainian': 'apple/UKRAINE.TXT',
+
+    # Evertype
 }
 
+
+
+_WINDOWS_ENCODINGS = {
+    'windows-874': 'microsoft/WINDOWS/CP874.TXT',
+    'windows-932': 'microsoft/WINDOWS/CP932.TXT',
+    'windows-936': 'microsoft/WINDOWS/CP936.TXT',
+    'windows-949': 'microsoft/WINDOWS/CP949.TXT',
+    'windows-950': 'microsoft/WINDOWS/CP950.TXT',
+    'windows-1250': 'microsoft/WINDOWS/CP1250.TXT',
+    'windows-1251': 'microsoft/WINDOWS/CP1251.TXT',
+    'windows-1252': 'microsoft/WINDOWS/CP1252.TXT',
+    'windows-1253': 'microsoft/WINDOWS/CP1253.TXT',
+    'windows-1254': 'microsoft/WINDOWS/CP1254.TXT',
+    'windows-1255': 'microsoft/WINDOWS/CP1255.TXT',
+    'windows-1256': 'microsoft/WINDOWS/CP1256.TXT',
+    'windows-1257': 'microsoft/WINDOWS/CP1257.TXT',
+    'windows-1258': 'microsoft/WINDOWS/CP1258.TXT',
+}
+
+_DOS_ENCODINGS = {
+    'cp437': 'microsoft/WINDOWS/CP437.TXT',
+
+}
+
+# Freedos
 
 def normalise_encoding(encoding):
     """Replace encoding name with normalised variant."""
@@ -399,6 +427,14 @@ for _name, _file in _ADOBE_ENCODINGS.items():
 
 # Apple codepages
 for _name, _file in _APPLE_ENCODINGS.items():
+    _codepages.register(_name, f'codepages/{_file}', 'apple')
+
+# Windows codepages
+for _name, _file in _WINDOWS_ENCODINGS.items():
+    _codepages.register(_name, f'codepages/{_file}', 'apple')
+
+# DOS/OEM codepages
+for _name, _file in _DOS_ENCODINGS.items():
     _codepages.register(_name, f'codepages/{_file}', 'apple')
 
 # UCP codepages
