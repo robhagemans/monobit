@@ -187,14 +187,36 @@ _MICROSOFT_ENCODINGS = {
     'cp1026': 'microsoft/PC/CP1026.TXT',
 }
 
+_OTHER_ENCODINGS = {
+    'atari-st': ('misc/ATARIST.TXT', 'format_a'),
+    # IBM PC memory-mapped video graphics, overlaying the control character range
+    # to be used in combination with other code pages e.g. cp437
+    'ibm-graphics': ('misc/IBMGRAPH.TXT', 'adobe'),
+    'ibm-graphics-cp864': ('misc/IBMGRAPH.TXT', 'ibmgraph_864'),
+    'koi8-r': ('misc/KOI8-R.TXT', 'format_a'),
+    'koi8-u': ('misc/KOI8-U.TXT', 'format_a'),
+    'cp424': ('misc/CP424.TXT', 'format_a'),
+    'cp856': ('misc/CP856.TXT', 'format_a'),
+    'cp1006': ('misc/CP1006.TXT', 'format_a'),
+    'iso-ir-68': ('misc/APL-ISO-IR-68.TXT', 'format_a'),
+    'kps-9566': ('misc/KPS9566.TXT', 'format_a'),
+    'kz-1048': ('misc/KZ1048.TXT', 'format_a'),
+    # not loaded from misc/:
+    # SGML.TXT
+    # US-ASCII-QUOTES.TXT
+}
+
 # Freedos
 
 
 # codepage file format parameters
 _FORMATS = {
-    'ucp': dict(comment='#', separator=':', joiner=',', codepoint_first=True),
-    'adobe': dict(comment='#', separator='\t', joiner=None, codepoint_first=True),
-    'format_a': dict(comment='#', separator=None, joiner='+', codepoint_first=True),
+    'ucp': dict(comment='#', separator=':', joiner=',', codepoint_column=0, unicode_column=1),
+    'adobe': dict(comment='#', separator='\t', joiner=None, codepoint_column=1, unicode_column=0),
+    'format_a': dict(comment='#', separator=None, joiner='+', codepoint_column=0, unicode_column=1),
+    'ibmgraph_864': dict(
+        comment='#', separator='\t', joiner=None, codepoint_column=2, unicode_column=0
+    ),
 }
 
 
@@ -258,7 +280,7 @@ def load_codepage_file(filename, *, format='ucp', name=''):
     return MapEncoder(mapping, name)
 
 
-def _mapping_from_data(data, *, comment, separator, joiner, codepoint_first):
+def _mapping_from_data(data, *, comment, separator, joiner, codepoint_column, unicode_column):
     """Extract codepage mapping from file data (as bytes)."""
     mapping = {}
     for line in data.decode('utf-8-sig').splitlines():
@@ -271,10 +293,7 @@ def _mapping_from_data(data, *, comment, separator, joiner, codepoint_first):
         exc = ''
         if len(splitline) >= 2:
             try:
-                if codepoint_first:
-                    cp_str, uni_str = splitline[0], splitline[1]
-                else:
-                    uni_str, cp_str = splitline[0], splitline[1]
+                cp_str, uni_str = splitline[codepoint_column], splitline[unicode_column]
                 cp_str = cp_str.strip()
                 uni_str = uni_str.strip()
                 # right-to-left marker in mac codepages
@@ -506,6 +525,10 @@ for _name, _file in _APPLE_ENCODINGS.items():
 # Microsoft codepages
 for _name, _file in _MICROSOFT_ENCODINGS.items():
     _codepages.register(_name, f'codepages/{_file}', 'format_a')
+
+# miscellaneous codepages
+for _name, (_file, _fmt) in _OTHER_ENCODINGS.items():
+    _codepages.register(_name, f'codepages/{_file}', _fmt)
 
 # UCP codepages
 for _file in resource_listdir(__name__, 'codepages/'):
