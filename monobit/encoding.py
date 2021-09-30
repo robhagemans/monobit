@@ -10,7 +10,7 @@ import logging
 from pathlib import Path
 import unicodedata
 
-from pkg_resources import resource_listdir
+from pkg_resources import resource_listdir, resource_isdir
 
 from .base.binary import int_to_bytes
 
@@ -374,9 +374,9 @@ class CodepageRegistry:
         except KeyError:
             cls._overlays[name] = [(filename, format, overlay_range)]
 
-    def __contains__(self, name):
-        """Check if a name is defined in this registry."""
-        return name in self._registered
+    def __iter__(self):
+        """Iterate over names of registered codepages."""
+        return iter(self._registered)
 
     def __getitem__(self, name):
         """Get codepage from registry by name; raise LookupError if not found."""
@@ -592,4 +592,5 @@ _codepages.overlay('next', 'codepages/iso-8859/8859-1.TXT', _ASCII_RANGE, 'forma
 
 # UCP codepages
 for _file in resource_listdir(__name__, 'codepages/'):
-    _codepages.register(Path(_file).stem, f'codepages/{_file}', 'ucp')
+    if not resource_isdir(__name__, _file):
+        _codepages.register(Path(_file).stem, f'codepages/{_file}', 'ucp')
