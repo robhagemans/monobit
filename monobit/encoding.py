@@ -212,6 +212,17 @@ _OTHER_ENCODINGS = {
     # US-ASCII-QUOTES.TXT
     'next': ('misc/NEXTSTEP.TXT', 'format_a'),
     'gsm': ('misc/GSM0338.TXT', 'format_a'),
+
+    # Roman Czyborra's codepage tables
+    'koi0': ('czyborra/koi-0.txt', 'format_a'),
+    'koi7': ('czyborra/koi-7.txt', 'format_a'),
+    'koi8-a': ('czyborra/koi8-a.txt', 'format_a'),
+    'koi8-b': ('czyborra/koi8-b.txt', 'format_a'),
+    'koi8-f': ('czyborra/koi8-f.txt', 'format_a'),
+    'koi8-e': ('czyborra/koi8-e.txt', 'format_a'),
+    # use unicode.org misc/ mappings for KOI8-U and KOI8-U
+    # 'koi8-r': ('czyborra/koi-8-e.txt', 'format_a'),
+    # 'koi8-u': ('czyborra/koi-8-e.txt', 'format_a'),
 }
 
 # Freedos
@@ -313,6 +324,12 @@ def _mapping_from_data(data, *, comment, separator, joiner, codepoint_column, un
                 uni_str = uni_str.strip()
                 # right-to-left marker in mac codepages
                 uni_str = uni_str.replace('<RL>+', '').replace('<LR>+', '')
+                # czyborra's codepages have U+ in front
+                if uni_str.upper().startswith('U+'):
+                    uni_str = uni_str[2:]
+                # czyborra's codepages have = in front
+                if cp_str.upper().startswith('='):
+                    cp_str = cp_str[1:]
                 # multibyte code points given as single large number
                 cp_point = tuple(int_to_bytes(int(cp_str, 16)))
                 # allow sequence of unicode code points separated by 'joiner'
