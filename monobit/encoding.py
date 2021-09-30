@@ -223,6 +223,9 @@ _OTHER_ENCODINGS = {
     # use unicode.org misc/ mappings for KOI8-U and KOI8-U
     # 'koi8-r': ('czyborra/koi-8-e.txt', 'format_a'),
     # 'koi8-u': ('czyborra/koi-8-e.txt', 'format_a'),
+
+    # Kosta Kostis's codepage tables
+    'cp851': ('kostis/851.txt', 'kostis'),
 }
 
 # Freedos
@@ -231,8 +234,8 @@ _OTHER_ENCODINGS = {
 _ASCII_RANGE = tuple((_cp,) for _cp in range(0x80))
 _IBM_GRAPH_RANGE = tuple((_cp,) for _cp in range(0x20)) + ((0x7f,),)
 _IBM_OVERLAYS = (
-    'cp437', 'cp737', 'cp775', 'cp850', 'cp852', 'cp855', 'cp857', 'cp860', 'cp861', 'cp862',
-    'cp863', 'cp865', 'cp866', 'cp869', 'cp874',
+    'cp437', 'cp737', 'cp775', 'cp850', 'cp851', 'cp852', 'cp853', 'cp855', 'cp857', 'cp860',
+    'cp861', 'cp862', 'cp863', 'cp865', 'cp866', 'cp869', 'cp874',
 )
 
 # codepage file format parameters
@@ -242,6 +245,10 @@ _FORMATS = {
     'format_a': dict(comment='#', separator=None, joiner='+', codepoint_column=0, unicode_column=1),
     'ibmgraph_864': dict(
         comment='#', separator='\t', joiner=None, codepoint_column=2, unicode_column=0
+    ),
+    'kostis': dict(
+        comment='#', separator='\t', joiner='+', codepoint_column=0, unicode_column=3,
+        codepoint_base=16, unicode_base=10, inline_comments=False
     ),
 }
 
@@ -294,7 +301,10 @@ def get_encoder(encoding_name, default=''):
 
 def load_codepage_file(filename, *, format='ucp', name=''):
     """Create new MapEncoder from file."""
-    data = _get_data(filename)
+    try:
+        data = pkgutil.get_data(__name__, filename)
+    except EnvironmentError as exc:
+        raise LookupError(f'Could not load codepage file `{filename}`: {exc}')
     if not data:
         raise LookupError(f'No data in codepage file `{filename}`.')
     try:
@@ -306,15 +316,21 @@ def load_codepage_file(filename, *, format='ucp', name=''):
     return MapEncoder(mapping, name)
 
 
-def _mapping_from_data(data, *, comment, separator, joiner, codepoint_column, unicode_column):
+def _mapping_from_data(
+        data, *, comment, separator, joiner, codepoint_column, unicode_column,
+        codepoint_base=16, unicode_base=16, inline_comments=True
+    ):
     """Extract codepage mapping from file data (as bytes)."""
     mapping = {}
     for line in data.decode('utf-8-sig').splitlines():
         # ignore empty lines and comment lines (first char is #)
         if (not line) or (line[0] == comment):
             continue
-        # strip off comments; split unicodepoint and hex string
-        splitline = line.split(comment)[0].split(separator)
+        # strip off comments
+        if inline_comments:
+            line = line.split(comment)[0]
+        # split unicodepoint and hex string
+        splitline = line.split(separator)
         # ignore malformed lines
         exc = ''
         if len(splitline) >= 2:
@@ -331,31 +347,17 @@ def _mapping_from_data(data, *, comment, separator, joiner, codepoint_column, un
                 if cp_str.upper().startswith('='):
                     cp_str = cp_str[1:]
                 # multibyte code points given as single large number
-                cp_point = tuple(int_to_bytes(int(cp_str, 16)))
+                cp_point = tuple(int_to_bytes(int(cp_str, codepoint_base)))
                 # allow sequence of unicode code points separated by 'joiner'
                 mapping[cp_point] = ''.join(
-                    chr(int(_substr, 16)) for _substr in uni_str.split(joiner)
+                    chr(int(_substr, unicode_base))
+                    for _substr in uni_str.split(joiner)
                 )
                 continue
             except (ValueError, TypeError) as e:
                 exc = str(e)
         logging.warning('Could not parse line in codepage file: %s [%s]', exc, repr(line))
     return mapping
-
-
-def _get_data(filename):
-    """Get package or fle data."""
-    try:
-        return pkgutil.get_data(__name__, filename)
-    except EnvironmentError:
-        # "If the package cannot be located or loaded, then None is returned." say the docs
-        # but it seems to raise FileNotFoundError if the *resource* isn't there
-        pass
-    try:
-        with open(filename, 'rb') as cpfile:
-            return cpfile.read()
-    except EnvironmentError:
-        return None
 
 def is_fullwidth(char):
     """Check if a character / grapheme sequence is fullwidth."""

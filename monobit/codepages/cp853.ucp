@@ -1,39 +1,9 @@
 # OEM 853: MS-DOS Latin 3
-# 80-FF: http://www.kostis.net/charsets/cp853.htm
-# https://en.wikipedia.org/wiki/Code_page_853
+# http://www.kostis.net/charsets/cp853.htm
 #
-00:0000
-01:263a
-02:263b
-03:2665
-04:2666
-05:2663
-06:2660
-07:2022
-08:25d8
-09:25cb
-0a:25d9
-0b:2642
-0c:2640
-0d:266a
-0e:266b
-0f:263c
-10:25ba
-11:25c4
-12:2195
-13:203c
-14:00b6
-15:00a7
-16:25ac
-17:21a8
-18:2191
-19:2193
-1a:2192
-1b:2190
-1c:221f
-1d:2194
-1e:25b2
-1f:25bc
+# correction based on https://en.wikipedia.org/wiki/Code_page_853
+# code point EE: undefined -> u+00B7 MIDDLE DOT 
+#
 20:0020
 21:0021
 22:0022
@@ -129,7 +99,7 @@
 7c:007c
 7d:007d
 7e:007e
-7f:2302
+#7f
 80:00c7
 81:00fc
 82:00e9
@@ -172,7 +142,7 @@ a6:011e
 a7:011f
 a8:0124
 a9:0125
-aa:0000
+#aa
 ab:00bd
 ac:0134
 ad:015f
@@ -210,8 +180,8 @@ cc:2560
 cd:2550
 ce:256c
 cf:00a4
-d0:0000
-d1:0000
+#d0
+#d1
 d2:00ca
 d3:00cb
 d4:00c8
@@ -223,7 +193,7 @@ d9:2518
 da:250c
 db:2588
 dc:2584
-dd:0000
+#dd
 de:00cc
 df:2580
 e0:00d3
@@ -243,7 +213,7 @@ ed:016d
 ee:00b7
 ef:00b4
 f0:00ad
-f1:0000
+#f1
 f2:2113
 f3:0149
 f4:02d8
@@ -253,7 +223,7 @@ f7:00b8
 f8:00b0
 f9:00a8
 fa:02d9
-fb:0000
+#fb
 fc:00b3
 fd:00b2
 fe:25a0
