@@ -45,6 +45,9 @@ _ENCODING_ALIASES = {
     'strk1048-2002': 'kz-1048',
     'rk-1048': 'kz-1048',
     'gsm-03.38': 'gsm',
+
+    'windows-big5': 'windows-950',
+    'cp950': 'windows-950',
 }
 
 # replacement patterns
@@ -236,6 +239,7 @@ _IBM_GRAPH_RANGE = tuple((_cp,) for _cp in range(0x20)) + ((0x7f,),)
 _IBM_OVERLAYS = (
     'cp437', 'cp737', 'cp775', 'cp850', 'cp851', 'cp852', 'cp853', 'cp855', 'cp857', 'cp860',
     'cp861', 'cp862', 'cp863', 'cp865', 'cp866', 'cp869', 'cp874',
+    'windows-950',
 )
 
 # codepage file format parameters
