@@ -240,6 +240,7 @@ _OTHER_ENCODINGS = {
 
     # Kosta Kostis's codepage tables
     'cp851': ('kostis/851.txt', 'kostis'),
+    'cp853': ('kostis/853.corrected.txt', 'kostis'),
 }
 
 # Freedos
