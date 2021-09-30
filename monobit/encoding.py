@@ -48,6 +48,9 @@ _ENCODING_ALIASES = {
 
     'windows-big5': 'windows-950',
     'cp950': 'windows-950',
+
+    'vscii-1': 'tcvn5712-1',
+    'vscii-2': 'tcvn5712-2',
 }
 
 # replacement patterns
@@ -217,6 +220,7 @@ _OTHER_ENCODINGS = {
     'gsm': ('misc/GSM0338.TXT', 'format_a'),
 
     # Roman Czyborra's codepage tables
+    # cyrillic pages
     'koi0': ('czyborra/koi-0.txt', 'format_a'),
     'koi7': ('czyborra/koi-7.txt', 'format_a'),
     'koi8-a': ('czyborra/koi8-a.txt', 'format_a'),
@@ -226,6 +230,13 @@ _OTHER_ENCODINGS = {
     # use unicode.org misc/ mappings for KOI8-U and KOI8-U
     # 'koi8-r': ('czyborra/koi-8-e.txt', 'format_a'),
     # 'koi8-u': ('czyborra/koi-8-e.txt', 'format_a'),
+    'mik': ('czyborra/bulgarian-mik.txt', 'format_a'),
+    'gost19768-87': ('czyborra/gost19768-87.txt', 'format_a'),
+    # latin pages
+    'hp-roman8': ('czyborra/hp-roman8.txt', 'format_a'),
+    'viscii': ('czyborra/vscii.corrected.txt', 'format_a'),
+    'tcvn5712-1': ('czyborra/vn5712-1.txt', 'format_a'),
+    'tcvn5712-2': ('czyborra/vn5712-2.txt', 'format_a'),
 
     # Kosta Kostis's codepage tables
     'cp851': ('kostis/851.txt', 'kostis'),
