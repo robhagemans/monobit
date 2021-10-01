@@ -83,6 +83,26 @@ _ISO_ENCODINGS = {
     'iso8859-16': 'iso-8859/8859-16.TXT',
 }
 
+# iso-646 variants from Keld Simonsen (dkuug)
+_ISO_646 = {
+    # ascii
+    'iso646-us': 'dkuug/iso646-us',
+    'iso646-ca': 'dkuug/iso646-ca',
+    'iso646-ca2': 'dkuug/iso646-ca2',
+    'iso646-cn': 'dkuug/iso646-cn',
+    'iso646-de': 'dkuug/iso646-de',
+    'iso646-dk': 'dkuug/iso646-dk',
+    'iso646-es': 'dkuug/iso646-es',
+    'iso646-es2': 'dkuug/iso646-es2',
+    'iso646-fr': 'dkuug/iso646-fr',
+    'iso646-gb': 'dkuug/iso646-gb',
+    'iso646-hu': 'dkuug/iso646-hu',
+    'iso646-it': 'dkuug/iso646-it',
+    'iso646-jp': 'dkuug/iso646-jp',
+    'iso646-kr': 'dkuug/iso646-kr',
+    'iso646-yu': 'dkuug/iso646-yu',
+}
+
 # Adobe encodings
 # https://www.unicode.org/Public/MAPPINGS/VENDORS/ADOBE/
 _ADOBE_ENCODINGS = {
@@ -254,20 +274,6 @@ _IBM_OVERLAYS = (
     'windows-950',
 )
 
-# codepage file format parameters
-_FORMATS = {
-    'ucp': dict(comment='#', separator=':', joiner=',', codepoint_column=0, unicode_column=1),
-    'adobe': dict(comment='#', separator='\t', joiner=None, codepoint_column=1, unicode_column=0),
-    'format_a': dict(comment='#', separator=None, joiner='+', codepoint_column=0, unicode_column=1),
-    'ibmgraph_864': dict(
-        comment='#', separator='\t', joiner=None, codepoint_column=2, unicode_column=0
-    ),
-    'kostis': dict(
-        comment='#', separator='\t', joiner='+', codepoint_column=0, unicode_column=3,
-        codepoint_base=16, unicode_base=10, inline_comments=False
-    ),
-}
-
 
 ###################################################################################################
 
@@ -301,6 +307,16 @@ def get_encoder(encoding_name, default=''):
     return None
 
 
+def is_fullwidth(char):
+    """Check if a character / grapheme sequence is fullwidth."""
+    if not char:
+        return False
+    if len(char) > 1:
+        # deal with combined glyphs
+        return any(is_fullwidth(_c) for _c in char)
+    return unicodedata.east_asian_width(char) in ('W', 'F')
+
+
 ###################################################################################################
 # read codepage from file
 
@@ -313,7 +329,8 @@ def load_codepage_file(filename, *, format='ucp', name=''):
     if not data:
         raise LookupError(f'No data in codepage file `{filename}`.')
     try:
-        mapping = _mapping_from_data(data, **_FORMATS[format])
+        reader, kwargs = _FORMATS[format]
+        mapping = reader(data, **kwargs)
     except KeyError as exc:
         raise LookupError(f'Undefined codepage file format {format}.') from exc
     if not name:
@@ -321,11 +338,11 @@ def load_codepage_file(filename, *, format='ucp', name=''):
     return MapEncoder(mapping, name)
 
 
-def _mapping_from_data(
+def _from_text_columns(
         data, *, comment, separator, joiner, codepoint_column, unicode_column,
         codepoint_base=16, unicode_base=16, inline_comments=True
     ):
-    """Extract codepage mapping from file data (as bytes)."""
+    """Extract codepage mapping from text columns in file data (as bytes)."""
     mapping = {}
     for line in data.decode('utf-8-sig').splitlines():
         # ignore empty lines and comment lines (first char is #)
@@ -364,14 +381,64 @@ def _mapping_from_data(
         logging.warning('Could not parse line in codepage file: %s [%s]', exc, repr(line))
     return mapping
 
-def is_fullwidth(char):
-    """Check if a character / grapheme sequence is fullwidth."""
-    if not char:
-        return False
-    if len(char) > 1:
-        # deal with combined glyphs
-        return any(is_fullwidth(_c) for _c in char)
-    return unicodedata.east_asian_width(char) in ('W', 'F')
+
+def _from_linux_charmap(data):
+    """Extract codepage mapping from linux charmap file data (as bytes)."""
+    # only deals with sbcs
+    # hardcoded, this should be read from file
+    comment = '%'
+    escape = '/'
+    mapping = {}
+    for line in data.decode('utf-8-sig').splitlines():
+        # ignore empty lines and comment lines (first char is #)
+        if (not line) or (line[0] == comment):
+            continue
+        if any(
+                line.startswith(_str)
+                for _str in ('CHARMAP', 'END', '<code_set_name>', '<comment_char>', '<escape_char>')
+            ):
+            continue
+        # split columns
+        splitline = line.split()
+        # ignore malformed lines
+        exc = ''
+        cp_str, uni_str = '', ''
+        for item in splitline:
+            if item.startswith('<U'):
+                # e.g. <U0000>
+                uni_str = item[2:-1]
+            elif item.startswith(escape + 'x'):
+                cp_str = item[2:]
+            else:
+                # ignore
+                continue
+        if not uni_str or not cp_str:
+            logging.warning('Could not parse line in codepage file: %s.', repr(line))
+            continue
+        cp_point = (int(cp_str, 16),)
+        mapping[cp_point] = chr(int(uni_str, 16))
+    return mapping
+
+# codepage file format parameters
+_FORMATS = {
+    'ucp': (_from_text_columns, dict(
+        comment='#', separator=':', joiner=',', codepoint_column=0, unicode_column=1
+    )),
+    'adobe': (_from_text_columns, dict(
+        comment='#', separator='\t', joiner=None, codepoint_column=1, unicode_column=0
+    )),
+    'format_a': (_from_text_columns, dict(
+    comment='#', separator=None, joiner='+', codepoint_column=0, unicode_column=1
+    )),
+    'ibmgraph_864': (_from_text_columns, dict(
+        comment='#', separator='\t', joiner=None, codepoint_column=2, unicode_column=0
+    )),
+    'kostis': (_from_text_columns, dict(
+        comment='#', separator='\t', joiner='+', codepoint_column=0, unicode_column=3,
+        codepoint_base=16, unicode_base=10, inline_comments=False
+    )),
+    'linux': (_from_linux_charmap, {}),
+}
 
 
 ###################################################################################################
@@ -569,6 +636,9 @@ _codepages = CodepageRegistry()
 # ISO codepages
 for _name, _file in _ISO_ENCODINGS.items():
     _codepages.register(_name, f'codepages/{_file}', 'format_a')
+
+for _name, _file in _ISO_646.items():
+    _codepages.register(_name, f'codepages/{_file}', 'linux')
 
 # Adobe codepages
 for _name, _file in _ADOBE_ENCODINGS.items():
