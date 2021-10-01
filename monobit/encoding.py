@@ -230,6 +230,8 @@ _OTHER_ENCODINGS = {
     # use unicode.org misc/ mappings for KOI8-U and KOI8-U
     # 'koi8-r': ('czyborra/koi-8-e.txt', 'format_a'),
     # 'koi8-u': ('czyborra/koi-8-e.txt', 'format_a'),
+    # use unicode.org microsoft/ mappings for cp866
+    # 'cp866': ('czyborra/cp866.txt', 'format_a'),
     'mik': ('czyborra/bulgarian-mik.txt', 'format_a'),
     'gost19768-87': ('czyborra/gost19768-87.txt', 'format_a'),
     # latin pages
