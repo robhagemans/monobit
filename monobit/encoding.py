@@ -292,23 +292,12 @@ def get_encoder(encoding_name, default=''):
     """Find an encoding by name and return codec."""
     encoding_name = encoding_name or default
     if encoding_name:
-        encoding_name = normalise_encoding(encoding_name)
-        if encoding_name == 'unicode':
-            return Unicode()
         try:
             return _codepages[encoding_name]
             logging.debug(f'Using codepage `{encoding_name}`.')
         except LookupError as exc:
-            logging.debug(exc)
-            pass
-        try:
-            return PythonCodec(encoding_name)
-            logging.debug(f'Using Python codec `{encoding_name}` as codepage.')
-        except LookupError as exc:
-            logging.debug(exc)
-            pass
+            logging.debug('Could not use encoding `%s`: %s', encoding_name, exc)
     # this will break some formats
-    logging.debug('Unknown encoding `%s`.', encoding_name)
     return None
 
 
@@ -415,6 +404,9 @@ class CodepageRegistry:
 
     def __getitem__(self, name):
         """Get codepage from registry by name; raise LookupError if not found."""
+        name = normalise_encoding(name)
+        if name == 'unicode':
+            return Unicode()
         try:
             filename, format = self._registered[name]
         except KeyError as exc:
@@ -483,31 +475,6 @@ class Encoder:
         )
 
 
-class PythonCodec(Encoder):
-    """Convert between unicode and ordinals using a Python codec."""
-
-    def __init__(self, encoding):
-        """Set up codec."""
-        # force early LookupError if not known
-        try:
-            b'x'.decode(encoding)
-            'x'.encode(encoding)
-        except Exception as exc:
-            raise LookupError(f'Could not use Python codec `{encoding}` as codepage: {exc}.')
-        super().__init__(encoding)
-        self._encoding = encoding
-
-    def char(self, codepoint):
-        """Convert codepoint sequence to character, return empty string if missing."""
-        byte_seq = bytes(codepoint)
-        # ignore: return empty string if not found
-        return byte_seq.decode(self._encoding, errors='ignore')
-
-    def codepoint(self, char):
-        """Convert character to codepoint sequence, return empty tuple if missing."""
-        return tuple(char.encode(self._encoding, errors='ignore'))
-
-
 class MapEncoder(Encoder):
     """Convert between unicode and ordinals using stored mapping."""
 
@@ -543,7 +510,7 @@ class MapEncoder(Encoder):
 
     def __eq__(self, other):
         """Compare to other MapEncoder."""
-        return (self._ord2chr == other._ord2chr)
+        return isinstance(other, MapEncoder) and (self._ord2chr == other._ord2chr)
 
     def __sub__(self, other):
         """Return encoding with only characters that differ from right-hand side."""
@@ -589,6 +556,10 @@ class Unicode(Encoder):
         # but it leads to inconsistency between char and codepoint for canonically equivalent chars
         #char = unicodedata.normalize('NFC', char)
         return tuple(ord(_c) for _c in char)
+
+    def __repr__(self):
+        """Representation."""
+        return type(self).__name__ + '()'
 
 
 ###################################################################################################
