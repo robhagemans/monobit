@@ -125,8 +125,8 @@ _APPLE_ENCODINGS = {
     #'mac-khmer':
     'mac-thai': 'apple/THAI.TXT',
     #'mac-laotian':
-    'mac-georgian': 'evertype/mac/GEORGIAN.TXT',
-    'mac-armenian': 'evertype/mac/ARMENIAN.TXT',
+    'mac-georgian': 'evertype/GEORGIAN.TXT',
+    'mac-armenian': 'evertype/ARMENIAN.TXT',
     'mac-simp-chinese': 'apple/CHINSIMP.TXT',
     #'mac-tibetan':
     #'mac-mongolian':
@@ -151,8 +151,6 @@ _APPLE_ENCODINGS = {
     'mac-symbol': 'apple/SYMBOL.TXT',
     'mac-turkish': 'apple/TURKISH.TXT',
     'mac-ukrainian': 'apple/UKRAINE.TXT',
-
-    # Evertype
 }
 
 _MICROSOFT_ENCODINGS = {
