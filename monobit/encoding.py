@@ -292,6 +292,10 @@ _ENCODING_FILES = {
         'wikipedia/brascii.html': ('brascii', 'abnt', 'star-3847'),
         'wikipedia/abicomp.html': ('abicomp', 'star-3848', 'freedos-3848'),
 
+        # DEC character sets
+        'wikipedia/dec-special.html': ('dec-special', 'ibm-1090'),
+        'wikipedia/dec-technical.html': ('dec-technical', 'dec-tcs', 'tcs'),
+
         # font-specific
         'wikipedia/wingdings.html': ('wingdings', 'windows-wingdings', 'microsoft-wingdings'),
 
