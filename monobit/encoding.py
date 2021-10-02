@@ -279,6 +279,7 @@ _ENCODING_FILES = {
         'manual/russup3.ucp': ('dos-russian-support-3', 'rs3', 'russup3'),
         'manual/russup4ac.ucp': ('dos-russian-support-4-academic', 'rs4ac', 'russup4ac'),
         'manual/russup4na.ucp': ('dos-russian-support-4', 'rs4', 'russup4na'),
+        'manual/zx-spectrum.ucp': ('zx-spectrum',),
     },
 
     'wikipedia': {
