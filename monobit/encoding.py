@@ -257,8 +257,11 @@ _ENCODING_FILES = {
         'dkuug/jis_x0201': ('jis-x0201', 'jis-c-6220'),
         'dkuug/x0201-7': ('x0201-7', 'iso-ir-13'),
 
-        # this is the ICU 'ucm' format as well
+        # charmaps from IBM/Unicode ICU project
         'icu/ibm-1125_P100-1997.ucm': ('ruscii', 'ibm-1125', 'cp866u', 'cp866nav'),
+        'icu/ibm-720_P100-1997.ucm': ('cp720', 'ibm-720', 'transparent-asmo'),
+        'icu/ibm-858_P100-1997.ucm': ('cp858', 'ibm-858', 'cp850-euro'),
+        'icu/ibm-868_P100-1995.ucm': ('cp868', 'ibm-868', 'cp-ar', 'dos-urdu'),
     },
 
     'kostis': {
@@ -272,10 +275,12 @@ _ENCODING_FILES = {
 _ASCII_RANGE = tuple((_cp,) for _cp in range(0x80))
 _IBM_GRAPH_RANGE = tuple((_cp,) for _cp in range(0x20)) + ((0x7f,),)
 _IBM_OVERLAYS = (
-    'cp437', 'cp737', 'cp775', 'cp850', 'cp851', 'cp852', 'cp853', 'cp855', 'cp857', 'cp860',
-    'cp861', 'cp862', 'cp863', 'cp865', 'cp866', 'cp869', 'cp874',
+    'cp437', 'cp720', 'cp737', 'cp775',
+    'cp850', 'cp851', 'cp852', 'cp853', 'cp855', 'cp856', 'cp857', 'cp858',
+    'cp860', 'cp861', 'cp862', 'cp863', 'cp865', 'cp866', 'cp868', 'cp869', # not cp864
+    'cp874',
     'windows-950',
-    'mik', 'koi8-r', 'koi8-u', 'koi8-ru',
+    'mik', 'koi8-r', 'koi8-u', 'koi8-ru', 'ruscii',
 )
 _ASCII_OVERLAYS = (
     'koi8-a', 'koi8-b', 'koi8-e', 'koi8-f', 'gost-19768-87', 'mik',
@@ -410,27 +415,47 @@ def _from_ucm_charmap(data):
     # only deals with sbcs
     comment = '#'
     escape = '\\'
+    # precision indicator
+    precision = '|'
     mapping = {}
+    parse = False
     for line in data.decode('utf-8-sig').splitlines():
         # ignore empty lines and comment lines (first char is #)
         if (not line) or (line[0] == comment):
             continue
         if line.startswith('<comment_char>'):
             comment = line.split()[-1].strip()
-        if line.startswith('<escape_char>'):
+        elif line.startswith('<escape_char>'):
             escape = line.split()[-1].strip()
+        elif line.startswith('CHARMAP'):
+            parse = True
+            continue
+        elif line.startswith('END CHARMAP'):
+            parse = False
+        if not parse:
+            continue
         # split columns
         splitline = line.split()
         # ignore malformed lines
         exc = ''
         cp_str, uni_str = '', ''
-        print(splitline)
         for item in splitline:
             if item.startswith('<U'):
                 # e.g. <U0000>
                 uni_str = item[2:-1]
             elif item.startswith(escape + 'x'):
                 cp_str = item[2:]
+            elif item.startswith(precision):
+                # precision indicator
+                # |0 - A “normal”, roundtrip mapping from a Unicode code point and back.
+                # |1 - A “fallback” mapping only from Unicode to the codepage, but not back.
+                # |2 - A subchar1 mapping. The code point is unmappable, and if a substitution is performed, then the subchar1 should be used rather than the subchar. Otherwise, such mappings are ignored.
+                # |3 - A “reverse fallback” mapping only from the codepage to Unicode, but not back to the codepage.
+                # |4 - A “good one-way” mapping only from Unicode to the codepage, but not back.
+                if item[1:].strip() != '0':
+                    # only accept 'normal' mappings
+                    # should we also allow "reverse fallback" ?
+                    continue
             else:
                 # ignore lines that start with anything else
                 # this like <code_set_name>, CHARSET, END CHARSET
