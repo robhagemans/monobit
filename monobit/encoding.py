@@ -270,10 +270,6 @@ _ENCODING_FILES = {
         'icu/ibm-851_P100-1995.ucm': ('cp851', 'ibm-851', 'oem-851'),
     },
 
-    'kostis': {
-        # Kosta Kostis's codepage tables
-    },
-
     'ucp': {
         # manually constructed based on gif images
         # https://web.archive.org/web/20061017214053/http://www.cyrillic.com/ref/cyrillic/
@@ -316,7 +312,7 @@ _ENCODING_FILES = {
     },
 }
 
-# codepages to be overlaid with IBM graphics in range 0x00--0x1f and 0x7f
+# charmaps to be overlaid with IBM graphics in range 0x00--0x1f and 0x7f
 _ASCII_RANGE = tuple((_cp,) for _cp in range(0x80))
 _IBM_GRAPH_RANGE = tuple((_cp,) for _cp in range(0x20)) + ((0x7f,),)
 _IBM_OVERLAYS = (
@@ -375,10 +371,10 @@ def get_encoder(encoding_name, default=''):
     encoding_name = encoding_name or default
     if encoding_name:
         try:
-            return _codepages[encoding_name]
-            logging.debug(f'Using codepage `{encoding_name}`.')
+            return charmaps[encoding_name]
+            logging.debug(f'Using character map `{encoding_name}`.')
         except LookupError as exc:
-            logging.warning('Could not use encoding `%s`: %s', encoding_name, exc)
+            logging.warning('Could not use character map `%s`: %s', encoding_name, exc)
     # this will break some formats
     return None
 
@@ -394,21 +390,21 @@ def is_fullwidth(char):
 
 
 ###################################################################################################
-# read codepage from file
+# read charmap from file
 
-def load_codepage_file(filename, *, format='ucp', name=''):
+def load_charmap(filename, *, format='ucp', name=''):
     """Create new MapEncoder from file."""
     try:
         data = pkgutil.get_data(__name__, filename)
     except EnvironmentError as exc:
-        raise LookupError(f'Could not load codepage file `{filename}`: {exc}')
+        raise LookupError(f'Could not load charmap file `{filename}`: {exc}')
     if not data:
-        raise LookupError(f'No data in codepage file `{filename}`.')
+        raise LookupError(f'No data in charmap file `{filename}`.')
     try:
         reader, kwargs = _FORMATS[format]
         mapping = reader(data, **kwargs)
     except KeyError as exc:
-        raise LookupError(f'Undefined codepage file format {format}.') from exc
+        raise LookupError(f'Undefined charmap file format {format}.') from exc
     if not name:
         name = Path(filename).stem
     return MapEncoder(mapping, name)
@@ -418,7 +414,7 @@ def _from_text_columns(
         data, *, comment, separator, joiner, codepoint_column, unicode_column,
         codepoint_base=16, unicode_base=16, inline_comments=True
     ):
-    """Extract codepage mapping from text columns in file data (as bytes)."""
+    """Extract character mapping from text columns in file data (as bytes)."""
     mapping = {}
     for line in data.decode('utf-8-sig').splitlines():
         # ignore empty lines and comment lines (first char is #)
@@ -454,12 +450,12 @@ def _from_text_columns(
                     mapping[cp_point] = char
             except (ValueError, TypeError) as e:
                 # ignore malformed lines
-                logging.warning('Could not parse line in codepage file: %s [%s]', e, repr(line))
+                logging.warning('Could not parse line in charmap file: %s [%s]', e, repr(line))
     return mapping
 
 
 def _from_ucm_charmap(data):
-    """Extract codepage mapping from ucm / linux charmap file data (as bytes)."""
+    """Extract character mapping from icu ucm / linux charmap file data (as bytes)."""
     # only deals with sbcs
     comment = '#'
     escape = '\\'
@@ -509,7 +505,7 @@ def _from_ucm_charmap(data):
                 # this like <code_set_name>, CHARSET, END CHARSET
                 continue
         if not uni_str or not cp_str:
-            logging.warning('Could not parse line in codepage file: %s.', repr(line))
+            logging.warning('Could not parse line in charmap file: %s.', repr(line))
             continue
         cp_point = (int(cp_str, 16),)
         if cp_point in mapping:
@@ -520,7 +516,7 @@ def _from_ucm_charmap(data):
 
 
 def _from_wikipedia(data, table=0, column=0):
-    """Scrape codepage from table in Wikipedia."""
+    """Scrape charmap from table in Wikipedia."""
 
     class _WikiParser(HTMLParser):
         """HTMLParser object to read Wikipedia tables."""
@@ -595,7 +591,7 @@ def _from_wikipedia(data, table=0, column=0):
     return parser.mapping
 
 
-# codepage file format parameters
+# charmap file format parameters
 _FORMATS = {
     'ucp': (_from_text_columns, dict(
         comment='#', separator=':', joiner=',', codepoint_column=0, unicode_column=1
@@ -621,22 +617,22 @@ _FORMATS = {
 
 ###################################################################################################
 
-class CodepageRegistry:
-    """Register user-defined codepages."""
+class CharmapRegistry:
+    """Register user-defined charmaps."""
 
-    # table of user-registered or -overridden codepages
+    # table of user-registered or -overridden charmaps
     _registered = {}
     _overlays = {}
 
     @classmethod
     def register(cls, name, filename, format='ucp'):
-        """Register a file to be loaded for a given codepage."""
+        """Register a file to be loaded for a given charmap."""
         name = normalise_encoding(name)
         cls._registered[name] = (filename, format)
 
     @classmethod
     def overlay(cls, name, filename, overlay_range, format='ucp'):
-        """Overlay a given codepage with an additional file."""
+        """Overlay a given charmap with an additional file."""
         name = normalise_encoding(name)
         try:
             cls._overlays[name].append((filename, format, overlay_range))
@@ -644,28 +640,28 @@ class CodepageRegistry:
             cls._overlays[name] = [(filename, format, overlay_range)]
 
     def __iter__(self):
-        """Iterate over names of registered codepages."""
+        """Iterate over names of registered charmaps."""
         return iter(self._registered)
 
     def __getitem__(self, name):
-        """Get codepage from registry by name; raise LookupError if not found."""
+        """Get charmap from registry by name; raise LookupError if not found."""
         name = normalise_encoding(name)
         if name == 'unicode':
             return Unicode()
         try:
             filename, format = self._registered[name]
         except KeyError as exc:
-            raise LookupError(f'Codepage {name} not registered.') from exc
-        codepage = load_codepage_file(filename, name=name, format=format)
+            raise LookupError(f'Character map {name} not registered.') from exc
+        charmap = load_charmap(filename, name=name, format=format)
         for filename, format, ovr_rng in self._overlays.get(name, ()):
-            overlay = load_codepage_file(filename, format=format)
-            codepage = codepage.overlay(overlay, ovr_rng)
-        return codepage
+            overlay = load_charmap(filename, format=format)
+            charmap = charmap.overlay(overlay, ovr_rng)
+        return charmap
 
     def __repr__(self):
         """String representation."""
         return (
-            'CodepageRegistry('
+            'CharmapRegistry('
             + ('\n' if self._registered else '')
             + '\n    '.join(f"'{_k}': '{_v}'" for _k, _v in self._registered.items())
             + ')'
@@ -694,7 +690,7 @@ class Encoder:
         raise NotImplementedError
 
     def table(self, page=0):
-        """Chart of page in codepage."""
+        """Chart of page in charmap."""
         bg = '\u2591'
         cps = range(256)
         cps = (((page, _c) if page else (_c,)) for _c in cps)
@@ -724,7 +720,7 @@ class MapEncoder(Encoder):
     """Convert between unicode and ordinals using stored mapping."""
 
     def __init__(self, mapping, name):
-        """Create codepage from a dictionary codepoint -> char."""
+        """Create charmap from a dictionary codepoint -> char."""
         if not mapping:
             name = ''
         super().__init__(name)
@@ -809,13 +805,13 @@ class Unicode(Encoder):
 
 ###################################################################################################
 
-_codepages = CodepageRegistry()
+charmaps = CharmapRegistry()
 
 # charmap files
 for _format, _files in _ENCODING_FILES.items():
     for _file, _aliases in _files.items():
         _name = _aliases[0]
-        _codepages.register(_name, f'codepages/{_file}', _format)
+        charmaps.register(_name, f'charmaps/{_file}', _format)
         for _alias in _aliases:
             if _alias in _ENCODING_ALIASES:
                 logging.error(
@@ -826,14 +822,14 @@ for _format, _files in _ENCODING_FILES.items():
 
 # overlays
 for _name in _ASCII_OVERLAYS:
-    _codepages.overlay(_name, 'codepages/iso-8859/8859-1.TXT', _ASCII_RANGE, 'format_a')
+    charmaps.overlay(_name, 'charmaps/iso-8859/8859-1.TXT', _ASCII_RANGE, 'format_a')
 for _name in _IBM_OVERLAYS:
-    _codepages.overlay(_name, 'codepages/misc/IBMGRAPH.TXT', _IBM_GRAPH_RANGE, 'adobe')
+    charmaps.overlay(_name, 'charmaps/misc/IBMGRAPH.TXT', _IBM_GRAPH_RANGE, 'adobe')
 # second column in IBMGRAPH.TXT is there specially for this codepage
-_codepages.overlay('cp864', 'codepages/misc/IBMGRAPH.TXT', _IBM_GRAPH_RANGE, 'ibmgraph_864')
+charmaps.overlay('cp864', 'charmaps/misc/IBMGRAPH.TXT', _IBM_GRAPH_RANGE, 'ibmgraph_864')
 
 
-# UCP codepages
-for _file in resource_listdir(__name__, 'codepages/'):
+# UCP charmaps
+for _file in resource_listdir(__name__, 'charmaps/'):
     if not resource_isdir(__name__, _file):
-        _codepages.register(Path(_file).stem, f'codepages/{_file}', 'ucp')
+        charmaps.register(Path(_file).stem, f'charmaps/{_file}', 'ucp')
