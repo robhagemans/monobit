@@ -9,6 +9,7 @@ import pkgutil
 import logging
 from pathlib import Path
 import unicodedata
+from html.parser import HTMLParser
 
 from pkg_resources import resource_listdir, resource_isdir
 
@@ -276,6 +277,13 @@ _ENCODING_FILES = {
         'manual/russup3.ucp': ('dos-russian-support-3', 'rs3', 'russup3'),
         'manual/russup4ac.ucp': ('dos-russian-support-4-academic', 'rs4ac', 'russup4ac'),
         'manual/russup4na.ucp': ('dos-russian-support-4', 'rs4', 'russup4na'),
+    },
+
+    'wikipedia': {
+        'wikipedia/mazovia.html': ('mazovia', 'cp667', 'cp790', 'cp991'),
+        'wikipedia/kamenicky.html': ('kamenický', 'kamenicky', 'nec-867', 'keybcs2', 'dos-895'),
+        'wikipedia/cwi2.html': ('cwi-2', 'cwi', 'cp-hu', 'hucwi', 'hu8cwi2'),
+        'wikipedia/pascii.html': ('pascii',),
     }
 }
 
@@ -289,12 +297,14 @@ _IBM_OVERLAYS = (
     'cp874',
     'windows-950',
     'mik', 'koi8-r', 'koi8-u', 'koi8-ru', 'ruscii', 'rs3', 'rs4', 'rs4ac',
+    'mazovia', 'kamenicky', 'cwi-2',
 )
 _ASCII_OVERLAYS = (
     'koi8-a', 'koi8-b', 'koi8-e', 'koi8-f', 'gost-19768-87', 'mik',
     # per NEXTSTEP.TXT, identical to ascii.
     # wikipedia suggests it's us-ascii-quotes
     'next', 'rs3', 'rs4', 'rs4ac',
+    'mazovia', 'kamenicky', 'cwi-2',
 )
 
 
@@ -308,6 +318,7 @@ _ENCODING_STARTSWITH = {
     'x-': '',
     'iso-': 'iso',
     'ms-dos-': 'dos-',
+    'oem-': 'dos-',
     'koi-': 'koi',
 }
 
@@ -478,6 +489,70 @@ def _from_ucm_charmap(data):
             mapping[cp_point] = chr(int(uni_str, 16))
     return mapping
 
+
+def _from_wikipedia(data):
+    """Scrape codepage from table in Wikipedia."""
+
+    class _WikiParser(HTMLParser):
+        """HTMLParser object to read Wikipedia tables."""
+
+        def __init__(self):
+            super().__init__()
+            self.mapping = {}
+            # parsing chset table
+            self.table = False
+            # data element
+            self.td = False
+            # the unicode point is surrounded by <small> tags
+            self.small = False
+            # parse row header
+            self.th = False
+            # current codepoint
+            self.current = 0
+
+        def handle_starttag(self, tag, attrs):
+            attrs = dict(attrs)
+            if tag == 'table' and 'class' in attrs and 'chset' in attrs['class']:
+                self.table = True
+                self.th = False
+                self.td = False
+                self.small = False
+            elif tag == 'td' and self.table:
+                self.td = True
+                self.small = False
+            elif tag == 'small':
+                self.small = True
+            elif tag == 'th':
+                self.th = True
+
+        def handle_endtag(self, tag):
+            if tag == 'table':
+                self.table = False
+            elif tag == 'td':
+                self.td = False
+                self.current += 1
+            elif tag == 'style':
+                self.small = False
+            elif tag == 'th':
+                self.th = False
+
+        def handle_data(self, data):
+            if self.th and len(data) == 2 and data[-1] == '_':
+                self.current = int(data[0],16) * 16
+            if self.td and self.small:
+                if len(data) >= 4:
+                    # unicode point
+                    try:
+                        self.mapping[(self.current,)] = chr(int(data, 16))
+                    except ValueError:
+                        # not a unicode point
+                        pass
+
+    parser = _WikiParser()
+    parser.feed(data.decode('utf-8-sig'))
+    return parser.mapping
+
+
 # codepage file format parameters
 _FORMATS = {
     'ucp': (_from_text_columns, dict(
@@ -497,6 +572,7 @@ _FORMATS = {
         codepoint_base=16, unicode_base=10, inline_comments=False
     )),
     'ucm': (_from_ucm_charmap, {}),
+    'wikipedia': (_from_wikipedia, {}),
 }
 
 
