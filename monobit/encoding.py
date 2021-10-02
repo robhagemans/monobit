@@ -22,9 +22,7 @@ _ENCODING_ALIASES = {
     'iso10646-1': 'unicode',
 
     # X11 / BDF encoding names
-    #'microsoft-symbol': '', # http://www.kostis.net/charsets/symbol.htm
     #'microsoft-win3.1': '', # is this the windows-3.1 version of 'windows-ansi'?
-
 }
 
 
@@ -142,7 +140,7 @@ _ENCODING_FILES = {
         'apple/GAELIC.TXT': ('mac-gaelic',),
         'apple/ICELAND.TXT': ('mac-icelandic',),
         'apple/INUIT.TXT': ('mac-inuit',),
-        'apple/SYMBOL.TXT': ('mac-symbol',),
+        'apple/SYMBOL.TXT': ('mac-symbol', 'windows-symbol', 'microsoft-symbol'),
         'apple/TURKISH.TXT': ('mac-turkish',),
         'apple/UKRAINE.TXT': ('mac-ukrainian',),
         # Apple scripts for which no codepage found
@@ -224,7 +222,10 @@ _ENCODING_FILES = {
         'mleisher/TIS620.TXT' : ('tis-620',),
 
         # IANA registrations
-        'iana/Amiga-1251': ('amiga-1251', 'ami1251',)
+        'iana/Amiga-1251': ('amiga-1251', 'ami1251',),
+
+        # manually adapted
+        'manual/ms-linedraw.txt': ('windows-linedraw', 'microsoft-linedraw', 'ms-linedraw'),
     },
 
     'adobe': {
@@ -290,6 +291,9 @@ _ENCODING_FILES = {
         'wikipedia/cp853.html': ('cp853', 'ibm-853'),
         'wikipedia/brascii.html': ('brascii', 'abnt', 'star-3847'),
         'wikipedia/abicomp.html': ('abicomp', 'star-3848', 'freedos-3848'),
+
+        # font-specific
+        'wikipedia/wingdings.html': ('wingdings', 'windows-wingdings', 'microsoft-wingdings'),
 
         # platform-specific charmaps
         'wikipedia/amstrad-cpc.html': ('amstrad-cpc',),
