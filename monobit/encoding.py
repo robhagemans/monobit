@@ -222,6 +222,9 @@ _ENCODING_FILES = {
         'mleisher/OSNOVAR.TXT' : ('osnovnoj-variant', 'osnovnoj', 'ov'),
         'mleisher/RISCOS.TXT' : ('risc-os', 'acorn-risc-os'),
         'mleisher/TIS620.TXT' : ('tis-620',),
+
+        # IANA registrations
+        'iana/Amiga-1251': ('amiga-1251', 'ami1251',)
     },
 
     'adobe': {
