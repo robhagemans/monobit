@@ -288,6 +288,8 @@ _ENCODING_FILES = {
         'wikipedia/cwi2.html': ('cwi-2', 'cwi', 'cp-hu', 'hucwi', 'hu8cwi2'),
         'wikipedia/pascii.html': ('pascii',),
         'wikipedia/cp853.html': ('cp853', 'ibm-853'),
+        'wikipedia/brascii.html': ('brascii', 'abnt', 'star-3847'),
+        'wikipedia/abicomp.html': ('abicomp', 'star-3848', 'freedos-3848'),
 
         # platform-specific charmaps
         'wikipedia/amstrad-cpc.html': ('amstrad-cpc',),
