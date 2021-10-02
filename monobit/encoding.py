@@ -209,7 +209,7 @@ _ENCODING_FILES = {
         'czyborra/vn5712-2.txt': ('tcvn5712-2', 'vscii-2'),
 
         # mleisher's csets
-        'mleisher/ALTVAR.TXT' : ('alternativnvj-variant', 'alternativnvj', 'av'),
+        'mleisher/ALTVAR.TXT' : ('alternativnyj-variant', 'alternativnyj', 'av'),
         'mleisher/ARMSCII-7.TXT' : ('armscii-7',),
         'mleisher/ARMSCII-8.TXT' : ('armscii-8',),
         'mleisher/ARMSCII-8A.TXT' : ('armscii-8a',),
