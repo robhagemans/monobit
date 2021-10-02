@@ -223,7 +223,7 @@ _ENCODING_FILES = {
     },
 
     'linux': {
-        # 7-bit iso-646 variants from Keld Simonsen (dkuug)
+        # charmaps from Keld Simonsen (dkuug)
         'dkuug/iso646-us': ('ascii', 'iso646-us', 'ascii-0', 'us-ascii', 'iso-ir-6', 'ansi-x3.4-1968'),
         'dkuug/iso646-ca': ('iso646-ca', 'iso-ir-121', 'csa7-1'),
         'dkuug/iso646-ca2': ('iso646-ca2', 'iso-ir-122', 'csa7-2'),
@@ -236,10 +236,12 @@ _ENCODING_FILES = {
         'dkuug/iso646-gb': ('iso646-gb', 'iso-ir-4', 'bs-4730'),
         'dkuug/iso646-hu': ('iso646-hu', 'iso-ir-86', 'msz7795-3'),
         'dkuug/iso646-it': ('iso646-it', 'iso-ir-15', 'uni-0204-70'),
-        # jis-x-0201 includes halfwidth katakana range
         'dkuug/iso646-jp': ('iso646-jp', 'iso-ir-14', 'jiscii', 'jis-roman', 'ibm-895'),
         'dkuug/iso646-kr': ('iso646-kr',),
         'dkuug/iso646-yu': ('iso646-yu', 'iso-ir-141', 'yuscii-latin', 'croscii', 'sloscii', 'jus-i.b1.002'),
+        # ibm-897 extends jis-x0201
+        'dkuug/jis_x0201': ('jis-x0201', 'jis-c-6220'),
+        'dkuug/x0201-7': ('x0201-7', 'iso-ir-13'),
     },
 
     'kostis': {
@@ -420,7 +422,10 @@ def _from_linux_charmap(data):
             logging.warning('Could not parse line in codepage file: %s.', repr(line))
             continue
         cp_point = (int(cp_str, 16),)
-        mapping[cp_point] = chr(int(uni_str, 16))
+        if cp_point in mapping:
+            logging.debug('Ignoring redefinition of code point %s', cp_point)
+        else:
+            mapping[cp_point] = chr(int(uni_str, 16))
     return mapping
 
 # codepage file format parameters
