@@ -236,7 +236,7 @@ _ENCODING_FILES = {
         'misc/IBMGRAPH.TXT': ('ibm-graphics',),
     },
 
-    'linux': {
+    'ucm': {
         # charmaps from Keld Simonsen (dkuug)
         'dkuug/iso646-us': ('ascii', 'iso646-us', 'ascii-0', 'us-ascii', 'iso-ir-6', 'ansi-x3.4-1968'),
         'dkuug/iso646-ca': ('iso646-ca', 'iso-ir-121', 'csa7-1'),
@@ -256,6 +256,9 @@ _ENCODING_FILES = {
         # ibm-897 extends jis-x0201
         'dkuug/jis_x0201': ('jis-x0201', 'jis-c-6220'),
         'dkuug/x0201-7': ('x0201-7', 'iso-ir-13'),
+
+        # this is the ICU 'ucm' format as well
+        'icu/ibm-1125_P100-1997.ucm': ('ruscii', 'ibm-1125', 'cp866u', 'cp866nav'),
     },
 
     'kostis': {
@@ -322,7 +325,7 @@ def get_encoder(encoding_name, default=''):
             return _codepages[encoding_name]
             logging.debug(f'Using codepage `{encoding_name}`.')
         except LookupError as exc:
-            logging.debug('Could not use encoding `%s`: %s', encoding_name, exc)
+            logging.warning('Could not use encoding `%s`: %s', encoding_name, exc)
     # this will break some formats
     return None
 
@@ -402,27 +405,26 @@ def _from_text_columns(
     return mapping
 
 
-def _from_linux_charmap(data):
-    """Extract codepage mapping from linux charmap file data (as bytes)."""
+def _from_ucm_charmap(data):
+    """Extract codepage mapping from ucm / linux charmap file data (as bytes)."""
     # only deals with sbcs
-    # hardcoded, this should be read from file
-    comment = '%'
-    escape = '/'
+    comment = '#'
+    escape = '\\'
     mapping = {}
     for line in data.decode('utf-8-sig').splitlines():
         # ignore empty lines and comment lines (first char is #)
         if (not line) or (line[0] == comment):
             continue
-        if any(
-                line.startswith(_str)
-                for _str in ('CHARMAP', 'END', '<code_set_name>', '<comment_char>', '<escape_char>')
-            ):
-            continue
+        if line.startswith('<comment_char>'):
+            comment = line.split()[-1].strip()
+        if line.startswith('<escape_char>'):
+            escape = line.split()[-1].strip()
         # split columns
         splitline = line.split()
         # ignore malformed lines
         exc = ''
         cp_str, uni_str = '', ''
+        print(splitline)
         for item in splitline:
             if item.startswith('<U'):
                 # e.g. <U0000>
@@ -430,7 +432,8 @@ def _from_linux_charmap(data):
             elif item.startswith(escape + 'x'):
                 cp_str = item[2:]
             else:
-                # ignore
+                # ignore lines that start with anything else
+                # this like <code_set_name>, CHARSET, END CHARSET
                 continue
         if not uni_str or not cp_str:
             logging.warning('Could not parse line in codepage file: %s.', repr(line))
@@ -460,7 +463,7 @@ _FORMATS = {
         comment='#', separator='\t', joiner='+', codepoint_column=0, unicode_column=3,
         codepoint_base=16, unicode_base=10, inline_comments=False
     )),
-    'linux': (_from_linux_charmap, {}),
+    'ucm': (_from_ucm_charmap, {}),
 }
 
 
