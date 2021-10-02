@@ -207,6 +207,20 @@ _ENCODING_FILES = {
         'czyborra/viscii.corrected.txt': ('viscii',),
         'czyborra/vn5712-1.txt': ('tcvn5712-1', 'vscii-1'),
         'czyborra/vn5712-2.txt': ('tcvn5712-2', 'vscii-2'),
+
+        # mleisher's csets
+        'mleisher/ALTVAR.TXT' : ('alternativnvj-variant', 'alternativnvj', 'av'),
+        'mleisher/ARMSCII-7.TXT' : ('armscii-7',),
+        'mleisher/ARMSCII-8.TXT' : ('armscii-8',),
+        'mleisher/ARMSCII-8A.TXT' : ('armscii-8a',),
+        'mleisher/DECMCS.TXT' : ('dec-mcs', 'dmcs', 'mcs', 'ibm-1100', 'cp1100'),
+        'mleisher/GEO-ITA.TXT' : ('georgian-academy', 'georgian-ita'),
+        'mleisher/GEO-PS.TXT' : ('georgian-parliament', 'georgian-ps'),
+        'mleisher/IRANSYSTEM.TXT' : ('iran-system', 'iransystem'),
+        'mleisher/KOI8RU.TXT' : ('koi8-ru',),
+        'mleisher/OSNOVAR.TXT' : ('osnovnoj-variant', 'osnovnoj', 'ov'),
+        'mleisher/RISCOS.TXT' : ('risc-os', 'acorn-risc-os'),
+        'mleisher/TIS620.TXT' : ('tis-620',),
     },
 
     'adobe': {
@@ -359,32 +373,32 @@ def _from_text_columns(
             line = line.split(comment)[0]
         # split unicodepoint and hex string
         splitline = line.split(separator)
-        # ignore malformed lines
-        exc = ''
-        if len(splitline) >= 2:
+        if len(splitline) > max(codepoint_column, unicode_column):
+            cp_str, uni_str = splitline[codepoint_column], splitline[unicode_column]
+            cp_str = cp_str.strip()
+            uni_str = uni_str.strip()
+            # right-to-left marker in mac codepages
+            uni_str = uni_str.replace('<RL>+', '').replace('<LR>+', '')
+            # czyborra's codepages have U+ in front
+            if uni_str.upper().startswith('U+'):
+                uni_str = uni_str[2:]
+            # czyborra's codepages have = in front
+            if cp_str.upper().startswith('='):
+                cp_str = cp_str[1:]
             try:
-                cp_str, uni_str = splitline[codepoint_column], splitline[unicode_column]
-                cp_str = cp_str.strip()
-                uni_str = uni_str.strip()
-                # right-to-left marker in mac codepages
-                uni_str = uni_str.replace('<RL>+', '').replace('<LR>+', '')
-                # czyborra's codepages have U+ in front
-                if uni_str.upper().startswith('U+'):
-                    uni_str = uni_str[2:]
-                # czyborra's codepages have = in front
-                if cp_str.upper().startswith('='):
-                    cp_str = cp_str[1:]
                 # multibyte code points given as single large number
                 cp_point = tuple(int_to_bytes(int(cp_str, codepoint_base)))
                 # allow sequence of unicode code points separated by 'joiner'
-                mapping[cp_point] = ''.join(
+                char = ''.join(
                     chr(int(_substr, unicode_base))
                     for _substr in uni_str.split(joiner)
                 )
-                continue
+                if char != '\uFFFD':
+                    # u+FFFD replacement character is used to mark undefined code points
+                    mapping[cp_point] = char
             except (ValueError, TypeError) as e:
-                exc = str(e)
-        logging.warning('Could not parse line in codepage file: %s [%s]', exc, repr(line))
+                # ignore malformed lines
+                logging.warning('Could not parse line in codepage file: %s [%s]', e, repr(line))
     return mapping
 
 
