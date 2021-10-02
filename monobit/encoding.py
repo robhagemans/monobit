@@ -269,6 +269,14 @@ _ENCODING_FILES = {
         'kostis/851.txt': ('cp851',),
         'kostis/853.corrected.txt': ('cp853',),
     },
+
+    'ucp': {
+        # manually constructed based on gif images
+        # https://web.archive.org/web/20061017214053/http://www.cyrillic.com/ref/cyrillic/
+        'manual/russup3.ucp': ('dos-russian-support-3', 'rs3', 'russup3'),
+        'manual/russup4ac.ucp': ('dos-russian-support-4-academic', 'rs4ac', 'russup4ac'),
+        'manual/russup4na.ucp': ('dos-russian-support-4', 'rs4', 'russup4na'),
+    }
 }
 
 # codepages to be overlaid with IBM graphics in range 0x00--0x1f and 0x7f
@@ -280,13 +288,13 @@ _IBM_OVERLAYS = (
     'cp860', 'cp861', 'cp862', 'cp863', 'cp865', 'cp866', 'cp868', 'cp869', # not cp864
     'cp874',
     'windows-950',
-    'mik', 'koi8-r', 'koi8-u', 'koi8-ru', 'ruscii',
+    'mik', 'koi8-r', 'koi8-u', 'koi8-ru', 'ruscii', 'rs3', 'rs4', 'rs4ac',
 )
 _ASCII_OVERLAYS = (
     'koi8-a', 'koi8-b', 'koi8-e', 'koi8-f', 'gost-19768-87', 'mik',
     # per NEXTSTEP.TXT, identical to ascii.
     # wikipedia suggests it's us-ascii-quotes
-    'next',
+    'next', 'rs3', 'rs4', 'rs4ac',
 )
 
 
