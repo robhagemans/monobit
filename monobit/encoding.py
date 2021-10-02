@@ -183,7 +183,7 @@ _ENCODING_FILES = {
         # not loaded from misc/:
         # SGML.TXT
         # US-ASCII-QUOTES.TXT
-        'misc/ATARIST.TXT': ('atari-st',),
+        # 'misc/ATARIST.TXT': ('atari-st',),
         'misc/NEXTSTEP.TXT': ('next', 'nextstep', 'next-multinational') ,
         'misc/GSM0338.TXT': ('gsm-03.38', 'gsm'),
 
@@ -288,7 +288,22 @@ _ENCODING_FILES = {
         'wikipedia/cwi2.html': ('cwi-2', 'cwi', 'cp-hu', 'hucwi', 'hu8cwi2'),
         'wikipedia/pascii.html': ('pascii',),
         'wikipedia/cp853.html': ('cp853', 'ibm-853'),
-    }
+
+        # platform-specific charmaps
+        'wikipedia/amstrad-cpc.html': ('amstrad-cpc',),
+        'wikipedia/amstrad-cpm-plus.html': ('amstrad-cpm-plus', 'amstrad-pcw', 'zx-spectrum-plus3'),
+        'wikipedia/atari-st.html': ('atari-st',),
+        'wikipedia/atascii.html': ('atascii',),
+        'wikipedia/gem.html': ('gem',),
+        'wikipedia/zx80.html': ('zx80',),
+        'wikipedia/zx81.html': ('zx81',),
+        'wikipedia/wiscii.html': ('wiscii', 'wang'),
+        'wikipedia/petscii.html': ('petscii-unshifted', 'petscii-0', 'petscii'),
+    },
+
+    'wikipedia-col1': {
+        'wikipedia/petscii.html': ('petscii-shifted', 'petscii-1'),
+    },
 }
 
 # codepages to be overlaid with IBM graphics in range 0x00--0x1f and 0x7f
@@ -494,7 +509,7 @@ def _from_ucm_charmap(data):
     return mapping
 
 
-def _from_wikipedia(data):
+def _from_wikipedia(data, table=0, column=0):
     """Scrape codepage from table in Wikipedia."""
 
     class _WikiParser(HTMLParser):
@@ -505,6 +520,7 @@ def _from_wikipedia(data):
             self.mapping = {}
             # parsing chset table
             self.table = False
+            self.count = 0
             # data element
             self.td = False
             # the unicode point is surrounded by <small> tags
@@ -516,7 +532,12 @@ def _from_wikipedia(data):
 
         def handle_starttag(self, tag, attrs):
             attrs = dict(attrs)
-            if tag == 'table' and 'class' in attrs and 'chset' in attrs['class']:
+            if (
+                    tag == 'table'
+                    and 'class' in attrs
+                    and 'chset' in attrs['class']
+                    and self.count == table
+                ):
                 self.table = True
                 self.th = False
                 self.td = False
@@ -531,6 +552,8 @@ def _from_wikipedia(data):
 
         def handle_endtag(self, tag):
             if tag == 'table':
+                if self.table:
+                    self.count += 1
                 self.table = False
             elif tag == 'td':
                 self.td = False
@@ -544,8 +567,13 @@ def _from_wikipedia(data):
             if self.th and len(data) == 2 and data[-1] == '_':
                 self.current = int(data[0],16) * 16
             if self.td and self.small:
+                cols = data.split()
+                if len(cols) > column:
+                    data = cols[column]
                 if len(data) >= 4:
                     # unicode point
+                    if data.lower().startswith('u+'):
+                        data = data[2:]
                     try:
                         self.mapping[(self.current,)] = chr(int(data, 16))
                     except ValueError:
@@ -577,6 +605,7 @@ _FORMATS = {
     )),
     'ucm': (_from_ucm_charmap, {}),
     'wikipedia': (_from_wikipedia, {}),
+    'wikipedia-col1': (_from_wikipedia, dict(column=1)),
 }
 
 
