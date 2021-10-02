@@ -263,12 +263,11 @@ _ENCODING_FILES = {
         'icu/ibm-720_P100-1997.ucm': ('cp720', 'ibm-720', 'transparent-asmo'),
         'icu/ibm-858_P100-1997.ucm': ('cp858', 'ibm-858', 'cp850-euro'),
         'icu/ibm-868_P100-1995.ucm': ('cp868', 'ibm-868', 'cp-ar', 'dos-urdu'),
+        'icu/ibm-851_P100-1995.ucm': ('cp851', 'ibm-851', 'oem-851'),
     },
 
     'kostis': {
         # Kosta Kostis's codepage tables
-        'kostis/851.txt': ('cp851',),
-        'kostis/853.corrected.txt': ('cp853',),
     },
 
     'ucp': {
@@ -284,6 +283,7 @@ _ENCODING_FILES = {
         'wikipedia/kamenicky.html': ('kamenický', 'kamenicky', 'nec-867', 'keybcs2', 'dos-895'),
         'wikipedia/cwi2.html': ('cwi-2', 'cwi', 'cp-hu', 'hucwi', 'hu8cwi2'),
         'wikipedia/pascii.html': ('pascii',),
+        'wikipedia/cp853.html': ('cp853', 'ibm-853'),
     }
 }
 
@@ -305,6 +305,7 @@ _ASCII_OVERLAYS = (
     # wikipedia suggests it's us-ascii-quotes
     'next', 'rs3', 'rs4', 'rs4ac',
     'mazovia', 'kamenicky', 'cwi-2',
+    'cp853',
 )
 
 
@@ -318,7 +319,6 @@ _ENCODING_STARTSWITH = {
     'x-': '',
     'iso-': 'iso',
     'ms-dos-': 'dos-',
-    'oem-': 'dos-',
     'koi-': 'koi',
 }
 
