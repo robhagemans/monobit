@@ -389,6 +389,13 @@ def is_fullwidth(char):
     return unicodedata.east_asian_width(char) in ('W', 'F')
 
 
+def is_graphical(char):
+    """Check if a char has a graphical representation."""
+    # we need Cn as unicodedata is not up to date
+    gr = char.isprintable() or unicodedata.category(char) in ('Zs', 'Co', 'Cn')
+    return gr
+
+
 ###################################################################################################
 # read charmap from file
 
@@ -697,6 +704,8 @@ class Encoder:
         chars = (self.char(_cp) for _cp in cps)
         chars = ((_c if _c.isprintable() else '\ufffd') for _c in chars)
         chars = ((_c if is_fullwidth(_c) else ((_c + ' ') if _c else bg*2)) for _c in chars)
+        # deal with Nonspacing Marks while keeping table format
+        chars = ((' ' +_c if unicodedata.category(_c[:1]) == 'Mn' else _c) for _c in chars)
         chars = [*chars]
         return ''.join((
             '    ', ' '.join(f'_{_c:x}' for _c in range(16)), '\n',
@@ -724,8 +733,8 @@ class MapEncoder(Encoder):
         if not mapping:
             name = ''
         super().__init__(name)
-        # copy dict
-        self._ord2chr = {**mapping}
+        # copy dict - ignore mappings to non-graphical characters (controls etc.)
+        self._ord2chr = {_k: _v for _k, _v in mapping.items() if is_graphical(_v)}
         self._chr2ord = {_v: _k for _k, _v in self._ord2chr.items()}
 
     def char(self, codepoint):
@@ -788,7 +797,7 @@ class Unicode(Encoder):
     @staticmethod
     def char(codepoint):
         """Convert codepoint to character."""
-        return ''.join(chr(_i) for _i in codepoint)
+        return ''.join(chr(_i) for _i in codepoint if is_graphical(chr(_i)))
 
     @staticmethod
     def codepoint(char):
