@@ -276,7 +276,12 @@ _ENCODING_FILES = {
         'manual/russup3.ucp': ('dos-russian-support-3', 'rs3', 'russup3'),
         'manual/russup4ac.ucp': ('dos-russian-support-4-academic', 'rs4ac', 'russup4ac'),
         'manual/russup4na.ucp': ('dos-russian-support-4', 'rs4', 'russup4na'),
+
+        # from wikipedia
         'manual/zx-spectrum.ucp': ('zx-spectrum',),
+
+        # from https://github.com/mtojo/camellia
+        'manual/cp806.ucp': ('cp806', 'ibm-806'),
     },
 
     'wikipedia': {
