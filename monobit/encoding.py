@@ -10,6 +10,7 @@ import logging
 from pathlib import Path
 import unicodedata
 from html.parser import HTMLParser
+import binascii
 
 from pkg_resources import resource_listdir, resource_isdir
 
@@ -55,7 +56,8 @@ _ENCODING_FILES = {
         # japanese shift-jis
         'microsoft/WINDOWS/CP932.TXT': ('windows-932', 'windows-31j', 'cp943c', 'ibm-943', 'ms-kanji'),
         # simplified chinese gbk
-        'microsoft/WINDOWS/CP936.TXT': ('windows-936', 'ibm-1386'),
+        # use more extensive version from icu by default
+        #'microsoft/WINDOWS/CP936.TXT': ('windows-936', 'ibm-1386'),
         # korean extended wansung / unified hangul code
         'microsoft/WINDOWS/CP949.TXT': ('windows-949', 'ext-wansung', 'uhc', 'ibm-1363'),
         # traditional chinese big-5
@@ -272,6 +274,7 @@ _ENCODING_FILES = {
         'icu/ibm-858_P100-1997.ucm': ('cp858', 'ibm-858', 'cp850-euro'),
         'icu/ibm-868_P100-1995.ucm': ('cp868', 'ibm-868', 'cp-ar', 'dos-urdu'),
         'icu/ibm-851_P100-1995.ucm': ('cp851', 'ibm-851', 'oem-851'),
+        'icu/windows-936-2000.ucm': ('windows-936', 'ibm-1386'),
     },
 
     'ucp': {
@@ -509,13 +512,14 @@ def _from_ucm_charmap(data):
         splitline = line.split()
         # ignore malformed lines
         exc = ''
-        cp_str, uni_str = '', ''
+        cp_bytes, uni_str = '', ''
         for item in splitline:
             if item.startswith('<U'):
                 # e.g. <U0000>
                 uni_str = item[2:-1]
             elif item.startswith(escape + 'x'):
-                cp_str = item[2:]
+                cp_str = item.replace(escape + 'x', '')
+                cp_bytes = binascii.unhexlify(cp_str)
             elif item.startswith(precision):
                 # precision indicator
                 # |0 - A “normal”, roundtrip mapping from a Unicode code point and back.
@@ -534,7 +538,7 @@ def _from_ucm_charmap(data):
         if not uni_str or not cp_str:
             logging.warning('Could not parse line in charmap file: %s.', repr(line))
             continue
-        cp_point = (int(cp_str, 16),)
+        cp_point = tuple(cp_bytes)
         if cp_point in mapping:
             logging.debug('Ignoring redefinition of code point %s', cp_point)
         else:
