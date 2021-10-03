@@ -209,7 +209,6 @@ _ENCODING_FILES = {
         'czyborra/bulgarian-mik.txt': ('mik', 'bulgarian-mik', 'bulgaria-pc'),
         # latin pages
         'czyborra/hp-roman8.txt': ('hp-roman8', 'ibm-1051'),
-        'czyborra/viscii.corrected.txt': ('viscii',),
         'czyborra/vn5712-1.txt': ('tcvn5712-1', 'vscii-1'),
         'czyborra/vn5712-2.txt': ('tcvn5712-2', 'vscii-2'),
 
@@ -229,6 +228,9 @@ _ENCODING_FILES = {
 
         # IANA registrations
         'iana/Amiga-1251': ('amiga-1251', 'ami1251',),
+
+        # X11 xfonts
+        'xfonts/viscii1.1-1.enc': ('viscii', 'viscii1.1-1'),
 
         # manually adapted
         'manual/ms-linedraw.txt': ('windows-linedraw', 'microsoft-linedraw', 'ms-linedraw'),
@@ -334,13 +336,13 @@ _IBM_GRAPH_RANGE = tuple((_cp,) for _cp in range(0x20)) + ((0x7f,),)
 _MAC_GRAPH_RANGE = tuple((_cp,) for _cp in range(0x11, 0x15))
 _MAC_EURO = ((0xDB,))
 _OVERLAYS = {
-    # these wer partially defined, complete them by adding 7-bit ascii codepoints
+    # these were partially defined, complete them by adding 7-bit ascii codepoints
     ('iso-8859/8859-1.TXT', _ASCII_RANGE, 'format_a'): (
         'koi8-a', 'koi8-b', 'koi8-e', 'koi8-f', 'gost-19768-87', 'mik',
         # per NEXTSTEP.TXT, identical to ascii.
         # wikipedia suggests it's us-ascii-quotes
-        'next', 'rs3', 'rs4', 'rs4ac',
-        'mazovia', 'kamenicky', 'cwi-2',
+        'next',
+        'rs3', 'rs4', 'rs4ac', 'mazovia', 'kamenicky', 'cwi-2', 'viscii',
         'cp853',
     ),
     # DOS/OEM codepages usually have the ibm-graphics range of icons mapped to C0 cntrols
@@ -453,6 +455,9 @@ def _from_text_columns(
     for line in data.decode('utf-8-sig').splitlines():
         # ignore empty lines and comment lines (first char is #)
         if (not line) or (line[0] == comment):
+            continue
+        if line.startswith('START') or line.startswith('END'):
+            # xfonts .enc files - STARTENCODING, STARTMAPPING etc.
             continue
         # strip off comments
         if inline_comments:
