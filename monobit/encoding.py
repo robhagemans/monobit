@@ -288,6 +288,10 @@ _ENCODING_FILES = {
 
         # from wikipedia
         'manual/zx-spectrum.ucp': ('zx-spectrum',),
+
+        # from ibm cdra but overlaid with 437
+        'manual/cp934.ucp': ('cp934', 'ibm-934', 'dos-v-korean'),
+        'manual/cp938.ucp': ('cp938', 'ibm-938', 'dos-v-chinese-traditional'),
     },
 
     'wikipedia': {
@@ -853,9 +857,3 @@ for _format, _files in _ENCODING_FILES.items():
 for (_overlay, _range, _format), _names in _OVERLAYS.items():
     for _name in _names:
         charmaps.overlay(_name, f'charmaps/{_overlay}', _range, _format)
-
-
-# UCP charmaps
-for _file in resource_listdir(__name__, 'charmaps/'):
-    if not resource_isdir(__name__, _file):
-        charmaps.register(Path(_file).stem, f'charmaps/{_file}', 'ucp')
