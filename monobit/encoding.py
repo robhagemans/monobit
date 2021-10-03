@@ -320,23 +320,31 @@ _ENCODING_FILES = {
 # charmaps to be overlaid with IBM graphics in range 0x00--0x1f and 0x7f
 _ASCII_RANGE = tuple((_cp,) for _cp in range(0x80))
 _IBM_GRAPH_RANGE = tuple((_cp,) for _cp in range(0x20)) + ((0x7f,),)
-_IBM_OVERLAYS = (
-    'cp437', 'cp720', 'cp737', 'cp775',
-    'cp850', 'cp851', 'cp852', 'cp853', 'cp855', 'cp856', 'cp857', 'cp858',
-    'cp860', 'cp861', 'cp862', 'cp863', 'cp865', 'cp866', 'cp868', 'cp869', # not cp864
-    'cp874',
-    'windows-950',
-    'mik', 'koi8-r', 'koi8-u', 'koi8-ru', 'ruscii', 'rs3', 'rs4', 'rs4ac',
-    'mazovia', 'kamenicky', 'cwi-2',
-)
-_ASCII_OVERLAYS = (
-    'koi8-a', 'koi8-b', 'koi8-e', 'koi8-f', 'gost-19768-87', 'mik',
-    # per NEXTSTEP.TXT, identical to ascii.
-    # wikipedia suggests it's us-ascii-quotes
-    'next', 'rs3', 'rs4', 'rs4ac',
-    'mazovia', 'kamenicky', 'cwi-2',
-    'cp853',
-)
+_OVERLAYS = {
+    # these wer partially defined, complete them by adding 7-bit ascii codepoints
+    ('iso-8859/8859-1.TXT', _ASCII_RANGE, 'format_a'): (
+        'koi8-a', 'koi8-b', 'koi8-e', 'koi8-f', 'gost-19768-87', 'mik',
+        # per NEXTSTEP.TXT, identical to ascii.
+        # wikipedia suggests it's us-ascii-quotes
+        'next', 'rs3', 'rs4', 'rs4ac',
+        'mazovia', 'kamenicky', 'cwi-2',
+        'cp853',
+    ),
+    # DOS/OEM codepages usually have the ibm-graphics range of icons mapped to C0 cntrols
+    ('misc/IBMGRAPH.TXT', _IBM_GRAPH_RANGE, 'adobe'): (
+        'cp437', 'cp720', 'cp737', 'cp775',
+        'cp850', 'cp851', 'cp852', 'cp853', 'cp855', 'cp856', 'cp857', 'cp858',
+        'cp860', 'cp861', 'cp862', 'cp863', 'cp865', 'cp866', 'cp868', 'cp869', # not cp864
+        'cp874',
+        'windows-950',
+        'mik', 'koi8-r', 'koi8-u', 'koi8-ru', 'ruscii', 'rs3', 'rs4', 'rs4ac',
+        'mazovia', 'kamenicky', 'cwi-2',
+    ),
+    # there's a different ordering of the ibm graphics range speially for cp864
+    ('misc/IBMGRAPH.TXT', _IBM_GRAPH_RANGE, 'ibmgraph_864'): (
+        'cp864',
+    )
+}
 
 
 # replacement patterns for normalisation
@@ -724,7 +732,7 @@ class Encoder:
     def __repr__(self):
         """Representation."""
         return (
-            f"{type(self).__name__}(name='{self.name}' mapping=\n"
+            f"{type(self).__name__}(name='{self.name}', mapping=<{len(self._ord2chr)} code points>\n"
             + self.table()
             + '\n)'
         )
@@ -835,12 +843,9 @@ for _format, _files in _ENCODING_FILES.items():
             _ENCODING_ALIASES[_alias] = _name
 
 # overlays
-for _name in _ASCII_OVERLAYS:
-    charmaps.overlay(_name, 'charmaps/iso-8859/8859-1.TXT', _ASCII_RANGE, 'format_a')
-for _name in _IBM_OVERLAYS:
-    charmaps.overlay(_name, 'charmaps/misc/IBMGRAPH.TXT', _IBM_GRAPH_RANGE, 'adobe')
-# second column in IBMGRAPH.TXT is there specially for this codepage
-charmaps.overlay('cp864', 'charmaps/misc/IBMGRAPH.TXT', _IBM_GRAPH_RANGE, 'ibmgraph_864')
+for (_overlay, _range, _format), _names in _OVERLAYS.items():
+    for _name in _names:
+        charmaps.overlay(_name, f'charmaps/{_overlay}', _range, _format)
 
 
 # UCP charmaps
