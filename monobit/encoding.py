@@ -65,7 +65,10 @@ _ENCODING_FILES = {
         # cyrillic
         'microsoft/WINDOWS/CP1251.TXT': ('windows-1251', 'cp1251', 'ibm-1251'),
         # latin - western europe
-        'microsoft/WINDOWS/CP1252.TXT': ('windows-1252', 'ansi', 'ansinew', 'cp1252', 'ibm-1252'),
+        'manual/windows-1.0.txt': ('windows-1.0', 'windows-ansi-1.0', 'windows-1252-1.0'),
+        'manual/windows-2.0.txt': ('windows-2.0', 'windows-ansi-2.0', 'windows-1252-2.0'),
+        'manual/windows-3.1.txt': ('windows-3.1', 'windows-ansi-3.1', 'windows-1252-3.1'),
+        'microsoft/WINDOWS/CP1252.TXT': ('windows-1252', 'windows-ansi', 'ansi', 'ansinew', 'cp1252', 'ibm-1252'),
         # greek
         'microsoft/WINDOWS/CP1253.TXT': ('windows-1253', 'greek-ansi', 'cp1253', 'ibm-1253'),
         # latin - turkish
