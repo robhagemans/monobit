@@ -516,7 +516,7 @@ def _from_ucm_charmap(data):
         cp_bytes, uni_str = '', ''
         for item in splitline:
             if item.startswith('<U'):
-                # e.g. <U0000>
+                # e.g. <U0000> or <U2913C>
                 uni_str = item[2:-1]
             elif item.startswith(escape + 'x'):
                 cp_str = item.replace(escape + 'x', '')
@@ -531,19 +531,16 @@ def _from_ucm_charmap(data):
                 if item[1:].strip() != '0':
                     # only accept 'normal' mappings
                     # should we also allow "reverse fallback" ?
-                    continue
-            else:
-                # ignore lines that start with anything else
-                # this like <code_set_name>, CHARSET, END CHARSET
-                continue
-        if not uni_str or not cp_str:
-            logging.warning('Could not parse line in charmap file: %s.', repr(line))
-            continue
-        cp_point = tuple(cp_bytes)
-        if cp_point in mapping:
-            logging.debug('Ignoring redefinition of code point %s', cp_point)
+                    break
         else:
-            mapping[cp_point] = chr(int(uni_str, 16))
+            if not uni_str or not cp_str:
+                logging.warning('Could not parse line in charmap file: %s.', repr(line))
+                continue
+            cp_point = tuple(cp_bytes)
+            if cp_point in mapping:
+                logging.debug('Ignoring redefinition of code point %s', cp_point)
+            else:
+                mapping[cp_point] = chr(int(uni_str, 16))
     return mapping
 
 
