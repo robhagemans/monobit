@@ -1,0 +1,4 @@
+# Mac OS Roman before Mac OS 8.5
+# \xDB is CURRENCY SIGN, not EURO SIGN
+#
+DB:00A4

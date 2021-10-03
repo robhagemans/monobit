@@ -108,9 +108,10 @@ _ENCODING_FILES = {
         # Apple codepages matching a script code
         # https://www.unicode.org/Public/MAPPINGS/VENDORS/APPLE/
         #
-        #'mac-roman': 'apple/ROMAN.TXT',
-        # this has the pre-euro version of the mac-roman set (aka microsoft's cp 10000)
-        'microsoft/MAC/ROMAN.TXT': ('mac-roman', 'mac', 'macintosh'),
+        # this will have the pre-euro version of the mac-roman set (aka microsoft's cp 10000)
+        # microsoft's table substitutes the capital omega with the (equivalent) Ohm sign
+        'apple/ROMAN.TXT': ('mac-roman', 'mac', 'macintosh', 'ibm-1275', 'windows-10000'),
+        #'apple/ROMAN.TXT': ('mac-roman-8.5', 'mac-8.5', 'macintosh-8.5', 'mac-roman-euro', 'mac-euro', 'macintosh-euro'),
         'apple/JAPANESE.TXT': ('mac-japanese',),
         'apple/CHINTRAD.TXT': ('mac-trad-chinese',),
         'apple/KOREAN.TXT': ('mac-korean',),
@@ -320,6 +321,8 @@ _ENCODING_FILES = {
 # charmaps to be overlaid with IBM graphics in range 0x00--0x1f and 0x7f
 _ASCII_RANGE = tuple((_cp,) for _cp in range(0x80))
 _IBM_GRAPH_RANGE = tuple((_cp,) for _cp in range(0x20)) + ((0x7f,),)
+_MAC_GRAPH_RANGE = tuple((_cp,) for _cp in range(0x11, 0x15))
+_MAC_EURO = ((0xDB,))
 _OVERLAYS = {
     # these wer partially defined, complete them by adding 7-bit ascii codepoints
     ('iso-8859/8859-1.TXT', _ASCII_RANGE, 'format_a'): (
@@ -341,9 +344,10 @@ _OVERLAYS = {
         'mazovia', 'kamenicky', 'cwi-2',
     ),
     # there's a different ordering of the ibm graphics range speially for cp864
-    ('misc/IBMGRAPH.TXT', _IBM_GRAPH_RANGE, 'ibmgraph_864'): (
-        'cp864',
-    )
+    ('misc/IBMGRAPH.TXT', _IBM_GRAPH_RANGE, 'ibmgraph_864'): ('cp864',),
+    # Mac OS system fonts
+    ('manual/mac-system.ucp', _MAC_GRAPH_RANGE, 'ucp'): ('mac-roman', 'mac-roman-8.5'),
+    ('manual/mac-roman-pre8.5.ucp', _MAC_EURO, 'ucp'): ('mac-roman',),
 }
 
 
