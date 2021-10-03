@@ -276,6 +276,7 @@ _ENCODING_FILES = {
         'icu/ibm-851_P100-1995.ucm': ('cp851', 'ibm-851', 'oem-851'),
         'icu/windows-936-2000.ucm': ('windows-936', 'ibm-1386'),
         'icu/ibm-1375_P100-2008.ucm': ('big5-hkscs', 'ibm-1375', 'big5hk'),
+        'icu/ibm-806_P100-1998.ucm': ('cp806', 'ibm-806', 'ibm-iscii-devanagari'),
     },
 
     'ucp': {
@@ -287,9 +288,6 @@ _ENCODING_FILES = {
 
         # from wikipedia
         'manual/zx-spectrum.ucp': ('zx-spectrum',),
-
-        # from https://github.com/mtojo/camellia
-        'manual/cp806.ucp': ('cp806', 'ibm-806'),
     },
 
     'wikipedia': {
@@ -342,7 +340,7 @@ _OVERLAYS = {
     ),
     # DOS/OEM codepages usually have the ibm-graphics range of icons mapped to C0 cntrols
     ('misc/IBMGRAPH.TXT', _IBM_GRAPH_RANGE, 'adobe'): (
-        'cp437', 'cp720', 'cp737', 'cp775',
+        'cp437', 'cp720', 'cp737', 'cp775', 'cp806',
         'cp850', 'cp851', 'cp852', 'cp853', 'cp855', 'cp856', 'cp857', 'cp858',
         'cp860', 'cp861', 'cp862', 'cp863', 'cp865', 'cp866', 'cp868', 'cp869', # not cp864
         'cp874',
