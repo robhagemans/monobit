@@ -376,12 +376,6 @@ def is_graphical(char):
 
 
 ###################################################################################################
-# character maps
-
-
-
-
-###################################################################################################
 # charmap files
 
 def _from_text_columns(
@@ -832,12 +826,15 @@ class Charmap(Encoder):
 
     def __repr__(self):
         """Representation."""
+        if self._ord2chr:
+            mapping = f'<{len(self._ord2chr)} code points>'
+            table = f'\n{self.table()}\n'
+            return (
+                f"{type(self).__name__}(name='{self.name}', mapping={mapping}){table}"
+            )
         return (
-            f"{type(self).__name__}(name='{self.name}', mapping=<{len(self._ord2chr)} code points>)\n"
-            + self.table()
-            + '\n)'
+            f"{type(self).__name__}()"
         )
-
 
 class Unicode(Encoder):
     """Convert between unicode and ordinals."""
