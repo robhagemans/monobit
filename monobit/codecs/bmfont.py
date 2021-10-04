@@ -17,7 +17,7 @@ except ImportError:
     Image = None
 
 from ..base import boolean, pair, reverse_dict
-from ..encoding import normalise_encoding
+from ..encoding import charmaps
 from .. import streams
 from ..streams import FileFormatError
 from ..base.binary import friendlystruct, int_to_bytes, bytes_to_int
@@ -509,7 +509,7 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=(),
     })
     # encoding values above 256 become multi-byte
     # unless we're working in unicode
-    if normalise_encoding(properties['encoding']) != 'unicode':
+    if not charmaps.is_unicode(properties['encoding']):
         glyphs = (
             _glyph.set_annotations(codepoint=int_to_bytes(glyph.codepoint[0]))
             for _glyph in glyphs
@@ -651,7 +651,7 @@ def _create_bmfont(
     """Create a bmfont package."""
     path = font.family
     fontname = font.name.replace(' ', '_')
-    encoding = normalise_encoding(font.encoding)
+    encoding = charmaps.normalise(font.encoding)
     if encoding != 'unicode':
         # if encoding is unknown, call it OEM
         charset = _CHARSET_STR_REVERSE_MAP.get(encoding, _CHARSET_STR_REVERSE_MAP[''])

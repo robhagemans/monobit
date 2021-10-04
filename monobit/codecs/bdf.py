@@ -12,8 +12,8 @@ from ..formats import loaders, savers
 from ..streams import FileFormatError
 from ..font import Font, Coord
 from ..glyph import Glyph
-from ..encoding import get_encoder, normalise_encoding
-from ..label import UnicodeLabel
+from ..encoding import charmaps
+from ..label import UnicodeLabel, CodepointLabel
 
 
 # BDF specification: https://adobe-type-tools.github.io/font-tech-notes/pdfs/5005.BDF_Spec.pdf
@@ -466,7 +466,7 @@ def _parse_properties(glyphs, glyph_props, bdf_props, x_props):
             properties[key] = value
     # encoding values above 256 become multi-byte
     # unless we're working in unicode
-    if normalise_encoding(properties['encoding']) != 'unicode':
+    if not charmaps.is_unicode(properties['encoding']):
         glyphs = (
             _glyph.set_annotations(codepoint=int_to_bytes(_glyph.codepoint[0]))
             for _glyph in glyphs
@@ -627,8 +627,7 @@ def _parse_xlfd_properties(x_props, xlfd_name):
         properties['encoding'] = encoding
     if 'DEFAULT_CHAR' in x_props:
         default_ord = int(x_props.pop('DEFAULT_CHAR', None))
-        encoder = get_encoder(properties['encoding'])
-        properties['default-char'] = UnicodeLabel.from_char(encoder.char((default_ord,)))
+        properties['default-char'] = CodepointLabel((default_ord,))
     properties = {_k: _v for _k, _v in properties.items() if _v is not None and _v != ''}
     # invalid xlfd name: keep but with changed property name
     if not xlfd_name_props:
@@ -689,8 +688,7 @@ def _create_xlfd_properties(font):
         'AVERAGE_WIDTH': str(round(float(font.average_advance) * 10)).replace('-', '~'),
     }
     # encoding dependent values
-    encoder = get_encoder(font.encoding, 'unicode')
-    default_codepoint = encoder.codepoint(font.default_char.to_char())
+    default_codepoint = font.get_default_glyph().codepoint
     if font.encoding == 'unicode':
         if len(default_codepoint) > 1:
             raise ValueError('Default glyph must not be a grapheme sequence.')

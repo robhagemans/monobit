@@ -13,7 +13,7 @@ import unicodedata
 
 from .base import scriptable
 from .glyph import Glyph
-from .encoding import normalise_encoding, get_encoder
+from .encoding import charmaps
 from .label import label, UnicodeLabel, CodepointLabel, TagLabel
 
 
@@ -139,7 +139,7 @@ PROPERTIES = {
 
     # character set
     # can't be calculated, affect rendering
-    'encoding': normalise_encoding,
+    'encoding': charmaps.normalise,
     'default-char': label, # use question mark to replace missing glyph
     'word-boundary': label, # word-break character (usually space)
 
@@ -249,7 +249,10 @@ class Font:
 
     def _get_encoder(self):
         """Get encoding object."""
-        return get_encoder(self._properties.get('encoding', None))
+        try:
+            return charmaps[self._properties['encoding']]
+        except KeyError:
+            return None
 
 
     ##########################################################################
@@ -585,7 +588,7 @@ class Font:
 
     @yaffproperty
     def default_char(self):
-        """Default character."""
+        """Label for default character."""
         repl = '\ufffd'
         if repl not in self._chars:
             repl = ''

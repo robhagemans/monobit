@@ -17,20 +17,9 @@ from pkg_resources import resource_listdir, resource_isdir
 from .base.binary import int_to_bytes
 
 
-_ENCODING_ALIASES = {
-    'ucs': 'unicode',
-    'iso10646': 'unicode',
-    'iso10646-1': 'unicode',
-
-    # X11 / BDF encoding names
-    #'microsoft-win3.1': '', # is this the windows-3.1 version of 'windows-ansi'?
-}
-
-
 _ENCODING_FILES = {
 
     'format_a': {
-
         # iso standards
         # https://www.unicode.org/Public/MAPPINGS/ISO8859
         'iso-8859/8859-1.TXT': ('latin-1', 'iso8859-1', 'iso-ir-100', 'ibm-819'),
@@ -366,51 +355,8 @@ _OVERLAYS = {
     ('manual/mac-roman-pre8.5.ucp', _MAC_EURO, 'ucp'): ('mac-roman',),
 }
 
-
-# replacement patterns for normalisation
-_ENCODING_STARTSWITH = {
-    'microsoft-cp': 'windows-',
-    'ms-': 'windows-',
-    'ibm-cp': 'ibm-',
-    'apple-': 'mac-',
-    # mac-roman also known as x-mac-roman etc.
-    'x-': '',
-    'iso-': 'iso',
-    'ms-dos-': 'dos-',
-    'koi-': 'koi',
-}
-
 ###################################################################################################
-
-def normalise_encoding(encoding):
-    """Replace encoding name with normalised variant."""
-    encoding = encoding.lower().replace('_', '-')
-    try:
-        # anything that's literally in the alias table
-        return _ENCODING_ALIASES[encoding]
-    except KeyError:
-        pass
-    # try replacements
-    for start, replacement in _ENCODING_STARTSWITH.items():
-        if encoding.startswith(start):
-            encoding = replacement + encoding[len(start):]
-            break
-    # found in table after replacement?
-    return _ENCODING_ALIASES.get(encoding, encoding)
-
-
-def get_encoder(encoding_name, default=''):
-    """Find an encoding by name and return codec."""
-    encoding_name = encoding_name or default
-    if encoding_name:
-        try:
-            return charmaps[encoding_name]
-            logging.debug(f'Using character map `{encoding_name}`.')
-        except LookupError as exc:
-            logging.warning('Could not use character map `%s`: %s', encoding_name, exc)
-    # this will break some formats
-    return None
-
+# character properties
 
 def is_fullwidth(char):
     """Check if a character / grapheme sequence is fullwidth."""
@@ -430,25 +376,13 @@ def is_graphical(char):
 
 
 ###################################################################################################
-# read charmap from file
+# character maps
 
-def load_charmap(filename, *, format='ucp', name=''):
-    """Create new MapEncoder from file."""
-    try:
-        data = pkgutil.get_data(__name__, filename)
-    except EnvironmentError as exc:
-        raise LookupError(f'Could not load charmap file `{filename}`: {exc}')
-    if not data:
-        raise LookupError(f'No data in charmap file `{filename}`.')
-    try:
-        reader, kwargs = _FORMATS[format]
-        mapping = reader(data, **kwargs)
-    except KeyError as exc:
-        raise LookupError(f'Undefined charmap file format {format}.') from exc
-    if not name:
-        name = Path(filename).stem
-    return MapEncoder(mapping, name)
 
+
+
+###################################################################################################
+# charmap files
 
 def _from_text_columns(
         data, *, comment, separator, joiner, codepoint_column, unicode_column,
@@ -537,8 +471,11 @@ def _from_ucm_charmap(data):
                 # precision indicator
                 # |0 - A “normal”, roundtrip mapping from a Unicode code point and back.
                 # |1 - A “fallback” mapping only from Unicode to the codepage, but not back.
-                # |2 - A subchar1 mapping. The code point is unmappable, and if a substitution is performed, then the subchar1 should be used rather than the subchar. Otherwise, such mappings are ignored.
-                # |3 - A “reverse fallback” mapping only from the codepage to Unicode, but not back to the codepage.
+                # |2 - A subchar1 mapping. The code point is unmappable, and if a substitution is
+                #      performed, then the subchar1 should be used rather than the subchar.
+                #      Otherwise, such mappings are ignored.
+                # |3 - A “reverse fallback” mapping only from the codepage to Unicode, but not back
+                #      to the codepage.
                 # |4 - A “good one-way” mapping only from Unicode to the codepage, but not back.
                 if item[1:].strip() != '0':
                     # only accept 'normal' mappings
@@ -657,45 +594,102 @@ _FORMATS = {
 
 
 ###################################################################################################
+# registry
+
+
+class NotFoundError(KeyError):
+    """Encoding not found."""
+
 
 class CharmapRegistry:
-    """Register user-defined charmaps."""
+    """Register and retrieve charmaps."""
 
-    # table of user-registered or -overridden charmaps
+    # table of user-registered or -overlaid charmaps
     _registered = {}
     _overlays = {}
+
+    # table of encoding aliases
+    _aliases = {
+        'ucs': 'unicode',
+        'iso10646': 'unicode',
+        'iso10646-1': 'unicode',
+    }
+
+    # replacement patterns for normalisation
+    _patterns = {
+        'microsoft-cp': 'windows-',
+        'ms-': 'windows-',
+        'ibm-cp': 'ibm-',
+        'apple-': 'mac-',
+        # mac-roman also known as x-mac-roman etc.
+        'x-': '',
+        'iso-': 'iso',
+        'ms-dos-': 'dos-',
+        'koi-': 'koi',
+    }
 
     @classmethod
     def register(cls, name, filename, format='ucp'):
         """Register a file to be loaded for a given charmap."""
-        name = normalise_encoding(name)
+        name = cls.normalise(name)
         cls._registered[name] = (filename, format)
 
     @classmethod
     def overlay(cls, name, filename, overlay_range, format='ucp'):
         """Overlay a given charmap with an additional file."""
-        name = normalise_encoding(name)
+        name = cls.normalise(name)
         try:
             cls._overlays[name].append((filename, format, overlay_range))
         except KeyError:
             cls._overlays[name] = [(filename, format, overlay_range)]
+
+    @classmethod
+    def alias(cls, alias, name):
+        if alias in cls._aliases:
+            logging.error(
+                'Character set alias collision: %s: %s or %s',
+                alias, name, cls._aliases[alias]
+            )
+        cls._aliases[alias] = name
+
+    @classmethod
+    def normalise(cls, name):
+        """Replace encoding name with normalised variant."""
+        name = name.lower().replace('_', '-')
+        try:
+            # anything that's literally in the alias table
+            return cls._aliases[name]
+        except KeyError:
+            pass
+        # try replacements
+        for start, replacement in cls._patterns.items():
+            if name.startswith(start):
+                name = replacement + name[len(start):]
+                break
+        # found in table after replacement?
+        return cls._aliases.get(name, name)
+
+    @classmethod
+    def is_unicode(cls, name):
+        """Encoding name is equivalent to unicode."""
+        return cls.normalise(name) == 'unicode'
 
     def __iter__(self):
         """Iterate over names of registered charmaps."""
         return iter(self._registered)
 
     def __getitem__(self, name):
-        """Get charmap from registry by name; raise LookupError if not found."""
-        name = normalise_encoding(name)
+        """Get charmap from registry by name; raise NotFoundError if not found."""
+        name = self.normalise(name)
         if name == 'unicode':
             return Unicode()
         try:
             filename, format = self._registered[name]
         except KeyError as exc:
-            raise LookupError(f'Character map {name} not registered.') from exc
-        charmap = load_charmap(filename, name=name, format=format)
+            raise NotFoundError(f'Character map {name} not registered.') from exc
+        charmap = Charmap.load(filename, name=name, format=format)
         for filename, format, ovr_rng in self._overlays.get(name, ()):
-            overlay = load_charmap(filename, format=format)
+            overlay = Charmap.load(filename, format=format)
             charmap = charmap.overlay(overlay, ovr_rng)
         return charmap
 
@@ -710,6 +704,7 @@ class CharmapRegistry:
 
 
 ###################################################################################################
+# encoder/charmap classes
 
 class Encoder:
     """
@@ -752,24 +747,39 @@ class Encoder:
 
     def __repr__(self):
         """Representation."""
-        return (
-            f"{type(self).__name__}(name='{self.name}', mapping=<{len(self._ord2chr)} code points>\n"
-            + self.table()
-            + '\n)'
-        )
+        return f"{type(self).__name__}(name='{self.name}')"
 
 
-class MapEncoder(Encoder):
+class Charmap(Encoder):
     """Convert between unicode and ordinals using stored mapping."""
 
-    def __init__(self, mapping, name):
+    def __init__(self, mapping=None, *, name=''):
         """Create charmap from a dictionary codepoint -> char."""
         if not mapping:
+            mapping = {}
             name = ''
         super().__init__(name)
         # copy dict - ignore mappings to non-graphical characters (controls etc.)
         self._ord2chr = {_k: _v for _k, _v in mapping.items() if is_graphical(_v)}
         self._chr2ord = {_v: _k for _k, _v in self._ord2chr.items()}
+
+    @classmethod
+    def load(cls, filename, *, format='ucp', name=''):
+        """Create new charmap from file."""
+        try:
+            data = pkgutil.get_data(__name__, filename)
+        except EnvironmentError as exc:
+            raise NotFoundError(f'Could not load charmap file `{filename}`: {exc}')
+        if not data:
+            raise NotFoundError(f'No data in charmap file `{filename}`.')
+        try:
+            reader, kwargs = _FORMATS[format]
+            mapping = reader(data, **kwargs)
+        except KeyError as exc:
+            raise NotFoundError(f'Undefined charmap file format {format}.') from exc
+        if not name:
+            name = Path(filename).stem
+        return cls(mapping, name=name)
 
     def char(self, codepoint):
         """Convert codepoint sequence to character, return empty string if missing."""
@@ -793,12 +803,12 @@ class MapEncoder(Encoder):
         return {**self._ord2chr}
 
     def __eq__(self, other):
-        """Compare to other MapEncoder."""
-        return isinstance(other, MapEncoder) and (self._ord2chr == other._ord2chr)
+        """Compare to other Charmap."""
+        return isinstance(other, Charmap) and (self._ord2chr == other._ord2chr)
 
     def __sub__(self, other):
         """Return encoding with only characters that differ from right-hand side."""
-        return MapEncoder(
+        return Charmap(
             mapping={_k: _v for _k, _v in self._ord2chr.items() if other.char(_k) != _v},
             name=f'[{self.name}]-[{other.name}]'
         )
@@ -807,11 +817,11 @@ class MapEncoder(Encoder):
         """Return encoding overlaid with all characters defined in right-hand side."""
         mapping = {**self.mapping}
         mapping.update(other.mapping)
-        return MapEncoder(mapping=mapping, name=f'{self.name}')
+        return Charmap(mapping=mapping, name=f'{self.name}')
 
     def take(self, codepoint_range):
         """Return encoding only for given range of codepoints."""
-        return MapEncoder(
+        return Charmap(
             mapping={_k: _v for _k, _v in self._ord2chr.items() if _k in codepoint_range},
             name=f'subset[{self.name}]'
         )
@@ -819,6 +829,14 @@ class MapEncoder(Encoder):
     def overlay(self, other, codepoint_range):
         """Return encoding overlaid with all characters in the overlay range taken from rhs."""
         return self + other.take(codepoint_range)
+
+    def __repr__(self):
+        """Representation."""
+        return (
+            f"{type(self).__name__}(name='{self.name}', mapping=<{len(self._ord2chr)} code points>)\n"
+            + self.table()
+            + '\n)'
+        )
 
 
 class Unicode(Encoder):
@@ -856,12 +874,7 @@ for _format, _files in _ENCODING_FILES.items():
         _name = _aliases[0]
         charmaps.register(_name, f'charmaps/{_file}', _format)
         for _alias in _aliases:
-            if _alias in _ENCODING_ALIASES:
-                logging.error(
-                    'Character set alias collision: %s: %s or %s',
-                    _alias, _name, _ENCODING_ALIASES[_alias]
-                )
-            _ENCODING_ALIASES[_alias] = _name
+            charmaps.alias(_alias, _name)
 
 # overlays
 for (_overlay, _range, _format), _names in _OVERLAYS.items():
