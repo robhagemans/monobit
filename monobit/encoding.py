@@ -19,7 +19,7 @@ from .base.binary import int_to_bytes
 
 _ENCODING_FILES = {
 
-    'format_a': {
+    'txt': {
         # iso standards
         # https://www.unicode.org/Public/MAPPINGS/ISO8859
         'iso-8859/8859-1.TXT': ('latin-1', 'iso8859-1', 'iso-ir-100', 'ibm-819'),
@@ -290,7 +290,7 @@ _ENCODING_FILES = {
         'manual/cp938.ucp': ('cp938', 'ibm-938', 'dos-v-chinese-traditional'),
     },
 
-    'wikipedia': {
+    'html': {
         'wikipedia/mazovia.html': ('mazovia', 'cp667', 'cp790', 'cp991'),
         'wikipedia/kamenicky.html': ('kamenický', 'kamenicky', 'nec-867', 'keybcs2', 'dos-895'),
         'wikipedia/cwi2.html': ('cwi-2', 'cwi', 'cp-hu', 'hucwi', 'hu8cwi2'),
@@ -568,11 +568,13 @@ _FORMATS = {
     'ucp': (_from_text_columns, dict(
         comment='#', separator=':', joiner=',', codepoint_column=0, unicode_column=1
     )),
+    'txt': (_from_text_columns, dict(
+        comment='#', separator=None, joiner='+', codepoint_column=0, unicode_column=1
+    )),
+    'ucm': (_from_ucm_charmap, {}),
+    'html': (_from_wikipedia, {}),
     'adobe': (_from_text_columns, dict(
         comment='#', separator='\t', joiner=None, codepoint_column=1, unicode_column=0
-    )),
-    'format_a': (_from_text_columns, dict(
-    comment='#', separator=None, joiner='+', codepoint_column=0, unicode_column=1
     )),
     'ibmgraph_864': (_from_text_columns, dict(
         comment='#', separator='\t', joiner=None, codepoint_column=2, unicode_column=0
@@ -581,10 +583,9 @@ _FORMATS = {
         comment='#', separator='\t', joiner='+', codepoint_column=0, unicode_column=3,
         codepoint_base=16, unicode_base=10, inline_comments=False
     )),
-    'ucm': (_from_ucm_charmap, {}),
-    'wikipedia': (_from_wikipedia, {}),
     'wikipedia-col1': (_from_wikipedia, dict(column=1)),
 }
+_FORMATS['enc'] = _FORMATS['txt']
 
 
 ###################################################################################################
@@ -623,13 +624,13 @@ class CharmapRegistry:
     }
 
     @classmethod
-    def register(cls, name, filename, format='ucp'):
+    def register(cls, name, filename, format=None):
         """Register a file to be loaded for a given charmap."""
         name = cls.normalise(name)
         cls._registered[name] = (filename, format)
 
     @classmethod
-    def overlay(cls, name, filename, overlay_range, format='ucp'):
+    def overlay(cls, name, filename, overlay_range, format=None):
         """Overlay a given charmap with an additional file."""
         name = cls.normalise(name)
         try:
@@ -663,6 +664,11 @@ class CharmapRegistry:
         # found in table after replacement?
         return cls._aliases.get(name, name)
 
+    @staticmethod
+    def load(*args, **kwargs):
+        """Create new charmap from file."""
+        return Charmap.load(*args, **kwargs)
+
     @classmethod
     def is_unicode(cls, name):
         """Encoding name is equivalent to unicode."""
@@ -681,9 +687,9 @@ class CharmapRegistry:
             filename, format = self._registered[name]
         except KeyError as exc:
             raise NotFoundError(f'Character map {name} not registered.') from exc
-        charmap = Charmap.load(filename, name=name, format=format)
+        charmap = self.load(filename, name=name, format=format)
         for filename, format, ovr_rng in self._overlays.get(name, ()):
-            overlay = Charmap.load(filename, format=format)
+            overlay = self.load(filename, format=format)
             charmap = charmap.overlay(overlay, ovr_rng)
         return charmap
 
@@ -758,7 +764,7 @@ class Charmap(Encoder):
         self._chr2ord = {_v: _k for _k, _v in self._ord2chr.items()}
 
     @classmethod
-    def load(cls, filename, *, format='ucp', name=''):
+    def load(cls, filename, *, format=None, name=''):
         """Create new charmap from file."""
         try:
             data = pkgutil.get_data(__name__, filename)
@@ -766,11 +772,12 @@ class Charmap(Encoder):
             raise NotFoundError(f'Could not load charmap file `{filename}`: {exc}')
         if not data:
             raise NotFoundError(f'No data in charmap file `{filename}`.')
+        format = format or Path(filename).suffix[1:].lower()
         try:
             reader, kwargs = _FORMATS[format]
-            mapping = reader(data, **kwargs)
         except KeyError as exc:
             raise NotFoundError(f'Undefined charmap file format {format}.') from exc
+        mapping = reader(data, **kwargs)
         if not name:
             name = Path(filename).stem
         return cls(mapping, name=name)
