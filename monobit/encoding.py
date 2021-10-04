@@ -43,6 +43,7 @@ _ENCODING_FILES = {
         'iso-8859/8859-8.TXT': ('iso8859-8', 'hebrew', 'latin-hebrew', 'iso-ir-138', 'ibm-916', 'ecma-121'),
         'iso-8859/8859-9.TXT': ('iso8859-9', 'latin-5', 'turkish', 'iso-ir-148', 'ibm-920', 'ecma-128'),
         'iso-8859/8859-10.TXT': ('iso8859-10', 'latin-6', 'ibm-919', 'iso-ir-157', 'ecma-144'),
+        # differs from tis-620 only in a code point mapping NBSP
         'iso-8859/8859-11.TXT': ('iso8859-11', 'latin-thai'),
         'iso-8859/8859-13.TXT': ('iso8859-13', 'latin-7', 'baltic-rim', 'ibm-921', 'iso-ir-179'),
         'iso-8859/8859-14.TXT': ('iso8859-14', 'latin-8', 'celtic', 'iso-celtic', 'iso-ir-199'),
@@ -52,7 +53,9 @@ _ENCODING_FILES = {
         # Windows codepages
         # https://www.unicode.org/Public/MAPPINGS/VENDORS/MICSFT/WINDOWS
         # thai
-        'microsoft/WINDOWS/CP874.TXT': ('windows-874', 'ibm-1162'),
+        # tis620-2 is the name used in xorg
+        # the xorg encoding also adds some PUA mappings on undefined code points
+        'microsoft/WINDOWS/CP874.TXT': ('windows-874', 'ibm-1162', 'tis620-2'),
         # japanese shift-jis
         'microsoft/WINDOWS/CP932.TXT': ('windows-932', 'windows-31j', 'cp943c', 'ibm-943', 'ms-kanji'),
         # simplified chinese gbk
@@ -198,7 +201,7 @@ _ENCODING_FILES = {
         # koi-8 should be overlaid with ascii
         'czyborra/koi8-a.txt': ('koi8-a', 'koi8', 'gost-19768-74-8'),
         'czyborra/koi8-b.txt': ('koi8-b',),
-        'czyborra/koi8-f.txt': ('koi8-f', 'koi8-unified'),
+        'czyborra/koi8-f.txt': ('koi8-f', 'koi8-unified', 'koi8-uni'),
         'czyborra/koi8-e.txt': ('koi8-e', 'iso-ir-111', 'ecma-cyrillic'),
         'czyborra/gost19768-87.txt': ('gost-19768-87',) ,
         # use unicode.org misc/ mappings for KOI8-U and KOI8-U
@@ -224,7 +227,8 @@ _ENCODING_FILES = {
         'mleisher/KOI8RU.TXT' : ('koi8-ru',),
         'mleisher/OSNOVAR.TXT' : ('osnovnoj-variant', 'osnovnoj', 'ov'),
         'mleisher/RISCOS.TXT' : ('risc-os', 'acorn-risc-os'),
-        'mleisher/TIS620.TXT' : ('tis-620',),
+        # tis620-0 is an alias used in xorg
+        'mleisher/TIS620.TXT' : ('tis-620', 'tis620-0', 'iso-ir-166'),
 
         # IANA registrations
         'iana/Amiga-1251': ('amiga-1251', 'ami1251',),
