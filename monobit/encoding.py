@@ -613,9 +613,17 @@ class CharmapRegistry:
     # longest first to avoid partial match
     _patterns = {
         'microsoftcp': 'windows',
-        'msdos': 'dos',
+        'microsoft': 'windows',
+        'msdoscp': 'oem',
+        'oemcp': 'oem',
+        'msdos': 'oem',
         'ibmcp': 'ibm',
         'apple': 'mac',
+        'macos': 'mac',
+        'doscp': 'oem',
+        'mscp': 'windows',
+        'dos': 'oem',
+        'pc': 'oem',
         'ms': 'windows',
         # mac-roman also known as x-mac-roman etc.
         'x': '',
@@ -626,10 +634,12 @@ class CharmapRegistry:
         """Register a file to be loaded for a given charmap."""
         normname = cls._normalise_for_match(name)
         if normname in cls._registered:
-            logging.warning(f"Redefining character map '{name}'=={normname}.")
+            logging.warning(
+                f"Redefining character map '{name}'=='{cls_registered[normname]['name']}'."
+            )
         if normname in cls._overlays:
             del cls._overlays[normname]
-        cls._registered[normname] = (filename, format)
+        cls._registered[normname] = dict(name=name, filename=filename, format=format)
 
     @classmethod
     def overlay(cls, name, filename, overlay_range, format=None):
@@ -650,7 +660,7 @@ class CharmapRegistry:
             return
         if alias in cls._registered:
             raise ValueError(
-                f'Character set alias {alias} for {name} collides with registered name.'
+                f"Character set alias '{alias}' for '{name}' collides with registered name."
             )
         if alias in cls._aliases:
             logging.warning(
@@ -702,19 +712,18 @@ class CharmapRegistry:
 
     def __iter__(self):
         """Iterate over names of registered charmaps."""
-        return iter(self._registered)
+        return iter(_v['name'] for _v in self._registered.values())
 
     def __getitem__(self, name):
         """Get charmap from registry by name; raise NotFoundError if not found."""
         if self.is_unicode(name):
             return Unicode()
-        name = self.normalise(name)
         normname = self._normalise_for_match(name)
         try:
-            filename, format = self._registered[normname]
+            charmap_dict = self._registered[normname]
         except KeyError as exc:
-            raise NotFoundError(f"Character map '{name}'=={normname} not registered.") from exc
-        charmap = self.load(filename, name=normname, format=format)
+            raise NotFoundError(f"No registered character map matches '{name}'.") from exc
+        charmap = self.load(**charmap_dict)
         for filename, format, ovr_rng in self._overlays.get(normname, ()):
             overlay = self.load(filename, format=format)
             charmap = charmap.overlay(overlay, ovr_rng)
@@ -723,10 +732,9 @@ class CharmapRegistry:
     def __repr__(self):
         """String representation."""
         return (
-            'CharmapRegistry('
-            + ('\n' if self._registered else '')
-            + '\n    '.join(f"'{_k}': '{_v}'" for _k, _v in self._registered.items())
-            + ')'
+            "CharmapRegistry('"
+            + "', '".join(self)
+            + "')"
         )
 
 
