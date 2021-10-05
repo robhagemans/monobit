@@ -360,19 +360,18 @@ _OVERLAYS = {
 
 def is_fullwidth(char):
     """Check if a character / grapheme sequence is fullwidth."""
-    if not char:
-        return False
-    if len(char) > 1:
-        # deal with combined glyphs
-        return any(is_fullwidth(_c) for _c in char)
-    return unicodedata.east_asian_width(char) in ('W', 'F')
-
+    return any(
+        unicodedata.east_asian_width(_c) in ('W', 'F')
+        for _c in char
+    )
 
 def is_graphical(char):
     """Check if a char has a graphical representation."""
-    # we need Cn as unicodedata is not up to date
-    gr = char.isprintable() or unicodedata.category(char) in ('Zs', 'Co', 'Cn')
-    return gr
+    return any(
+        # we need Cn as unicodedata is not up to date
+        _c.isprintable() or unicodedata.category(_c) in ('Zs', 'Co', 'Cn')
+        for _c in char
+    )
 
 
 ###################################################################################################
