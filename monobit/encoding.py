@@ -368,8 +368,30 @@ def is_fullwidth(char):
 def is_graphical(char):
     """Check if a char has a graphical representation."""
     return any(
-        # we need Cn as unicodedata is not up to date
-        _c.isprintable() or unicodedata.category(_c) in ('Zs', 'Co', 'Cn')
+        # str.isprintable includes everything but Other (C) and Separator (Z), plus SPACE
+        # we keep everything but
+        # Other/Control (Cc), Other/Surrogate (Cs), Separator/Line (Zl), Separator/Paragraph (Zp)
+        # so we keep all spaces (Zs); PUA (Co); Other/Format (Cf) which has things like SOFT HYPHEN
+        # also Not Assigned (Cn) - as unicodedata is not up to date
+        # anything excluded will be dropped from our charmaps
+        unicodedata.category(_c) not in ('Cc', 'Cs', 'Zl', 'Zp')
+        for _c in char
+    )
+
+def is_printable(char):
+    """Check if a char should be printed - nothing ambiguous or unrepresentable in there."""
+    return (not char) or is_graphical(char) and all(
+        # str.isprintable includes everything but Other (C) and Separator (Z), plus SPACE
+        # we keep everything that is_graphical except PUA, Other/Format, Not Assigned
+        # anything excluded will be shown as REPLACEMENT CHARACTER
+        unicodedata.category(_c) not in ('Co', 'Cf', 'Cn')
+        for _c in char
+    )
+
+def is_private_use(char):
+    """Check if any char is in the private use area."""
+    return any(
+        unicodedata.category(_c) == 'Co'
         for _c in char
     )
 
@@ -766,7 +788,7 @@ class Encoder:
         cps = range(256)
         cps = (((page, _c) if page else (_c,)) for _c in cps)
         chars = (self.char(_cp) for _cp in cps)
-        chars = ((_c if _c.isprintable() else '\ufffd') for _c in chars)
+        chars = ((_c if is_printable(_c) else '\ufffd') for _c in chars)
         chars = ((_c if is_fullwidth(_c) else ((_c + ' ') if _c else bg*2)) for _c in chars)
         # deal with Nonspacing Marks while keeping table format
         chars = ((' ' +_c if unicodedata.category(_c[:1]) == 'Mn' else _c) for _c in chars)
