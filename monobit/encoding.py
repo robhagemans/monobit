@@ -430,8 +430,13 @@ def _from_text_columns(
             if cp_str.upper().startswith('='):
                 cp_str = cp_str[1:]
             try:
-                # multibyte code points given as single large number
-                cp_point = tuple(int_to_bytes(int(cp_str, codepoint_base)))
+                # allow sequence of codepoints
+                # multibyte code points can also be given as single large number
+                cp_point = b''.join(
+                    int_to_bytes(int(_substr, codepoint_base))
+                    for _substr in cp_str.split(joiner)
+                )
+                cp_point = tuple(cp_point)
                 # allow sequence of unicode code points separated by 'joiner'
                 char = ''.join(
                     chr(int(_substr, unicode_base))
@@ -442,7 +447,7 @@ def _from_text_columns(
                     mapping[cp_point] = char
             except (ValueError, TypeError) as e:
                 # ignore malformed lines
-                logging.warning('Could not parse line in charmap file: %s [%s]', e, repr(line))
+                logging.warning('Could not parse line in text charmap file: %s [%s]', e, repr(line))
     return mapping
 
 
@@ -498,7 +503,7 @@ def _from_ucm_charmap(data):
                     break
         else:
             if not uni_str or not cp_str:
-                logging.warning('Could not parse line in charmap file: %s.', repr(line))
+                logging.warning('Could not parse line in ucm charmap file: %s.', repr(line))
                 continue
             cp_point = tuple(cp_bytes)
             if cp_point in mapping:
