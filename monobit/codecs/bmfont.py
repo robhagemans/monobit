@@ -590,7 +590,7 @@ def _create_spritesheets(font, size=(256, 256), packed=False):
                 continue
             elif len(glyph.codepoint) == 1:
                 id, = glyph.codepoint
-            elif font.encoding != 'unicode':
+            elif not charmaps.is_unicode(font.encoding):
                 id = bytes_to_int(glyph.codepoint)
             else:
                 logging.warning(
@@ -651,8 +651,8 @@ def _create_bmfont(
     """Create a bmfont package."""
     path = font.family
     fontname = font.name.replace(' ', '_')
-    encoding = charmaps.normalise(font.encoding)
-    if encoding != 'unicode':
+    encoding = font.encoding
+    if not charmaps.is_unicode(encoding):
         # if encoding is unknown, call it OEM
         charset = _CHARSET_STR_REVERSE_MAP.get(encoding, _CHARSET_STR_REVERSE_MAP[''])
     else:
@@ -675,7 +675,7 @@ def _create_bmfont(
         'bold': font.weight == 'bold',
         'italic': font.slant in ('italic', 'oblique'),
         'charset': charset,
-        'unicode': encoding == 'unicode',
+        'unicode': charmaps.is_unicode(encoding),
         'stretchH': 100,
         'smooth': False,
         'aa': 1,

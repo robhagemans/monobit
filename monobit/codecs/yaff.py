@@ -12,6 +12,7 @@ from itertools import count
 
 from ..base.text import clean_comment, write_comments, split_global_comment, to_text
 from ..formats import loaders, savers
+from ..encoding import charmaps
 from ..streams import FileFormatError
 from ..font import PROPERTIES, Font
 from ..glyph import Glyph
@@ -328,7 +329,7 @@ def _save_yaff(fonts, outstream, fore, back, comment, tab, separator, empty, **k
         for glyph in font.glyphs:
             labels = []
             # don't write out codepoints for unicode fonts as we have u+XXXX already
-            if glyph.codepoint and (font.encoding != 'unicode' or not glyph.char):
+            if glyph.codepoint and (not charmaps.is_unicode(font.encoding) or not glyph.char):
                 labels.append(repr(CodepointLabel(glyph.codepoint)))
             if glyph.char:
                 labels.append(repr(UnicodeLabel.from_char(glyph.char)))

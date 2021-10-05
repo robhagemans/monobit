@@ -689,7 +689,7 @@ def _create_xlfd_properties(font):
     }
     # encoding dependent values
     default_codepoint = font.get_default_glyph().codepoint
-    if font.encoding == 'unicode':
+    if charmaps.is_unicode(font.encoding):
         if len(default_codepoint) > 1:
             raise ValueError('Default glyph must not be a grapheme sequence.')
         xlfd_props['DEFAULT_CHAR'] = default_codepoint
@@ -735,7 +735,7 @@ def _save_bdf(font, outstream):
     # get glyphs for encoding values
     encoded_glyphs = []
     for glyph in font.glyphs:
-        if font.encoding == 'unicode':
+        if charmaps.is_unicode(font.encoding):
             if len(glyph.codepoint) == 1:
                 encoding, = glyph.codepoint
             else:
@@ -751,7 +751,7 @@ def _save_bdf(font, outstream):
         if glyph.tags:
             name = glyph.tags[0]
         else:
-            if encoding != -1 and font.encoding != 'unicode':
+            if encoding != -1 and not charmaps.is_unicode(font.encoding):
                 # use encoding value if available
                 name = f'char{encoding:02X}'
             elif glyph.char:

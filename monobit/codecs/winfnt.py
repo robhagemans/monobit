@@ -585,6 +585,7 @@ def create_fnt(font, version=0x200):
         v3_flags = _DFF_FIXED
     space_index = 0
     # if encoding is compatible, use it; otherwise set to fallback value
+    # FIXME - need to use charmap's matching logic
     charset = charset_map.get(font.encoding, _FALLBACK_CHARSET)
     # only include single-byte encoded glyphs
     codepoints = tuple(_cp[0] for _cp in font.get_codepoints() if len(_cp) == 1)
