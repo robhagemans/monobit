@@ -25,7 +25,7 @@ from ..formats import loaders, savers
 from ..font import Font, Coord
 from ..glyph import Glyph
 
-from .winfnt import CHARSET_MAP, CHARSET_REVERSE_MAP
+from .windows import CHARSET_MAP, CHARSET_REVERSE_MAP
 
 
 ##############################################################################
@@ -109,7 +109,7 @@ _INFO_SMOOTH = 1 << 0
 # BMFont charset constants seem to be undocumented, but a list is here:
 # https://github.com/vladimirgamalyan/fontbm/blob/master/src/FontInfo.cpp
 # looks like these are equal to the Windows OEM ones
-# mapping of those is a guess, see CHARSET_MAP in winfnt.py
+# mapping of those is a guess, see CHARSET_MAP in windows.py
 _CHARSET_NUM_MAP = {
     'ANSI': 0x00,
     'DEFAULT': 0x01,

@@ -7,9 +7,8 @@ licence: https://opensource.org/licenses/MIT
 
 from .base import open_location, loaders, savers
 
+from . import windows
 from . import bmfont
-from . import winfon
-from . import winfnt
 from . import amiga
 from . import image
 from . import yaff
