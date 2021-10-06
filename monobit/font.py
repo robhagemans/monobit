@@ -288,7 +288,7 @@ class Font:
             except KeyError:
                 pass
         else:
-            if isinstance(key, int) or isinstance(key, CodepointLabel):
+            if isinstance(key, tuple) or isinstance(key, bytes) or isinstance(key, CodepointLabel):
                 return self._codepoints[key]
             try:
                 if isinstance(key, UnicodeLabel):
@@ -334,7 +334,7 @@ class Font:
             and _glyph.char
         }, name=f"implied-{self.name}")
 
-    def _iter_string(self, string, missing='raise'):
+    def _iter_string(self, string):
         """Iterate over string, yielding unicode characters."""
         remaining = string
         while remaining:
@@ -348,17 +348,42 @@ class Font:
                 unicode, remaining = remaining[0], remaining[1:]
             yield unicode
 
+    def _iter_codepoints(self, codepoints, missing='raise'):
+        """Iterate over bytes/tuple of int, yielding glyphs."""
+        max_length = max(len(_cp) for _cp in self._codepoints.keys())
+        remaining = tuple(codepoints)
+        while remaining:
+            # try multibyte clusters first
+            for try_len in range(max_length, 1, -1):
+                try:
+                    yield self.get_glyph(key=remaining[:try_len], missing='raise')
+                except KeyError:
+                    pass
+                else:
+                    remaining = remaining[try_len:]
+                    break
+            else:
+                yield self.get_glyph(key=remaining[:1], missing=missing)
+                remaining = remaining[1:]
+
     def render(self, text, fore=1, back=0, *, margin=(0, 0), scale=(1, 1), missing='default'):
         """Render text string to bitmap."""
-        margin_x, margin_y = margin
-        chars = [
-            list(self._iter_string(_line))
-            for _line in text.splitlines()
-        ]
-        glyphs = [
-            [self.get_glyph(_c, missing=missing) for _c in _line]
-            for _line in chars
-        ]
+        if isinstance(text, str):
+            chars = [
+                list(self._iter_string(_line))
+                for _line in text.splitlines()
+            ]
+            glyphs = [
+                [self.get_glyph(_c, missing=missing) for _c in _line]
+                for _line in chars
+            ]
+        else:
+            glyphs = [
+                list(self._iter_codepoints(_line, missing=missing))
+                for _line in text.splitlines()
+            ]
+            chars = [[_g.char for _g in _line] for _line in glyphs]
+        # kerning currently only works for str
         if self.kerning:
             kerning = {
                 (self.get_glyph(_key[0]).char, self.get_glyph(_key[1]).char): _value
@@ -372,8 +397,9 @@ class Font:
                 for _line in chars
             ]
         else:
-            kernings = [[0] * len(_line) for _line in chars]
+            kernings = [[0] * len(_line) for _line in glyphs]
         # determine dimensions
+        margin_x, margin_y = margin
         if not glyphs:
             width = 2 * margin_x
         else:
