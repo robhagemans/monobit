@@ -325,6 +325,14 @@ class Font:
         """Get list of tags covered by this font."""
         return list(self._tags.keys())
 
+    def charmap(self):
+        """Implied character map based on defined chars."""
+        return charmaps.create({
+            _glyph.codepoint: _glyph.char
+            for _glyph in self._glyphs
+            if _glyph.codepoint
+            and _glyph.char
+        }, name=f"implied-{self.name}")
 
     def _iter_string(self, string, missing='raise'):
         """Iterate over string, yielding unicode characters."""

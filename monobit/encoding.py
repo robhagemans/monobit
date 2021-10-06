@@ -662,7 +662,7 @@ class CharmapRegistry:
         normname = cls._normalise_for_match(name)
         if normname in cls._registered:
             logging.warning(
-                f"Redefining character map '{name}'=='{cls_registered[normname]['name']}'."
+                f"Redefining character map '{name}'=='{cls._registered[normname]['name']}'."
             )
         if normname in cls._overlays:
             del cls._overlays[normname]
@@ -731,6 +731,11 @@ class CharmapRegistry:
     def load(*args, **kwargs):
         """Create new charmap from file."""
         return Charmap.load(*args, **kwargs)
+
+    @staticmethod
+    def create(*args, **kwargs):
+        """Create new charmap from mapping."""
+        return Charmap(*args, **kwargs)
 
     @classmethod
     def is_unicode(cls, name):
@@ -820,7 +825,7 @@ class Charmap(Encoder):
         if not mapping:
             mapping = {}
             name = ''
-        super().__init__(name)
+        super().__init__(CharmapRegistry.normalise(name))
         # copy dict - ignore mappings to non-graphical characters (controls etc.)
         self._ord2chr = {_k: _v for _k, _v in mapping.items() if is_graphical(_v)}
         self._chr2ord = {_v: _k for _k, _v in self._ord2chr.items()}
