@@ -12,6 +12,7 @@ from codecs import escape_decode
 
 import monobit
 from monobit.base import pair
+from monobit.base.text import to_text
 
 
 def unescape(text):
@@ -47,7 +48,7 @@ try:
     # take first font from pack
     if isinstance(font, monobit.Pack):
         font, *_ = font
-    sys.stdout.write(monobit.text.to_text(font.render(
+    sys.stdout.write(to_text(font.render(
         args.text, args.fore, args.back, margin=args.margin, scale=args.scale, missing='default'
     )) + '\n')
 except Exception as exc:
