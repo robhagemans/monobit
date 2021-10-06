@@ -12,11 +12,11 @@ import os
 import logging
 import string
 
-from ..base.text import clean_comment, split_global_comment, write_comments
 from ..formats import loaders, savers
 from ..streams import FileFormatError
 from ..font import Font
 from ..glyph import Glyph
+from .yaff import clean_comment, split_global_comment, write_comments
 
 
 @loaders.register('hext', name='PC-BASIC Extended HEX')

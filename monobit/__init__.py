@@ -16,7 +16,8 @@ from .glyph import Glyph
 from .formats import loaders, savers, open_location
 from .encoding import charmaps
 
-from .codecs.image import create_image, render
+from . import formats
+from .formats.image import create_image, render
 
 
 # get font operations

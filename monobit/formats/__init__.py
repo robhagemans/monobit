@@ -5,6 +5,8 @@ monobit.codecs - font format converters
 licence: https://opensource.org/licenses/MIT
 """
 
+from .base import open_location, loaders, savers
+
 from . import bmfont
 from . import winfon
 from . import winfnt

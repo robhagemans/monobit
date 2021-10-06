@@ -1,5 +1,5 @@
 """
-monobit.formats - loader and saver plugin registry
+monobit.files - load and save fonts
 
 (c) 2019--2021 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -13,12 +13,12 @@ from functools import wraps
 from pathlib import Path
 from contextlib import contextmanager
 
-from .base import VERSION, DEFAULT_FORMAT, CONVERTER_NAME
-from .containers import Container, open_container, ContainerFormatError
-from .font import Font
-from .pack import Pack
-from . import streams
-from .streams import (
+from ..base import VERSION, DEFAULT_FORMAT, CONVERTER_NAME
+from ..containers import Container, open_container, ContainerFormatError
+from ..font import Font
+from ..pack import Pack
+from .. import streams
+from ..streams import (
     Stream, MagicRegistry, FileFormatError,
     normalise_suffix, open_stream, has_magic
 )
