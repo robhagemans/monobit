@@ -696,6 +696,11 @@ class CharmapRegistry:
             )
         cls._aliases[alias] = name
 
+    @classmethod
+    def is_unicode(cls, name):
+        """Encoding name is equivalent to unicode."""
+        return cls.match(name, 'unicode')
+
     @staticmethod
     def normalise(name):
         """Replace encoding name with normalised variant for display."""
@@ -737,11 +742,6 @@ class CharmapRegistry:
         """Create new charmap from mapping."""
         return Charmap(*args, **kwargs)
 
-    @classmethod
-    def is_unicode(cls, name):
-        """Encoding name is equivalent to unicode."""
-        return cls.match(name, 'unicode')
-
     def __iter__(self):
         """Iterate over names of registered charmaps."""
         return iter(_v['name'] for _v in self._registered.values())
@@ -760,6 +760,20 @@ class CharmapRegistry:
             overlay = self.load(filename, format=format)
             charmap = charmap.overlay(overlay, ovr_rng)
         return charmap
+
+    def fit(self, charmap):
+        """Return best-fit registered charmap."""
+        min_dist = len(charmap)
+        fit = Charmap()
+        for registered in self:
+            registered_map = self[registered]
+            dist = charmap.distance(registered_map)
+            if dist == 0:
+                return registered_map
+            elif dist < min_dist:
+                min_dist = dist
+                fit = registered_map
+        return fit
 
     def __repr__(self):
         """String representation."""
@@ -870,6 +884,10 @@ class Charmap(Encoder):
     def mapping(self):
         return {**self._ord2chr}
 
+    def __len__(self):
+        """Number of defined codepoints."""
+        return len(self._ord2chr)
+
     def __eq__(self, other):
         """Compare to other Charmap."""
         return isinstance(other, Charmap) and (self._ord2chr == other._ord2chr)
@@ -886,6 +904,16 @@ class Charmap(Encoder):
         mapping = {**self.mapping}
         mapping.update(other.mapping)
         return Charmap(mapping=mapping, name=f'{self.name}')
+
+    def distance(self, other):
+        """Return number of different code points."""
+        other_only = set(other._ord2chr) - set(self._ord2chr)
+        self_only = set(self._ord2chr) - set(other._ord2chr)
+        different = set(
+            _k for _k, _v in self._ord2chr.items()
+            if _k in other._ord2chr and other.char(_k) != _v
+        )
+        return len(different) + len(other_only) + len(self_only)
 
     def take(self, codepoint_range):
         """Return encoding only for given range of codepoints."""
@@ -909,6 +937,7 @@ class Charmap(Encoder):
         return (
             f"{type(self).__name__}()"
         )
+
 
 class Unicode(Encoder):
     """Convert between unicode and ordinals."""
