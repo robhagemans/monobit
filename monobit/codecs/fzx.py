@@ -74,7 +74,7 @@ def load(instream, where=None):
         'encoding': 'zx-spectrum',
     }
     glyphs = [
-        _glyph.set_annotations(codepoint=_index+32)
+        _glyph.set_annotations(codepoint=(_index+32,))
         for _index, _glyph in enumerate(glyphs)
     ]
     return Font(glyphs, properties=properties)

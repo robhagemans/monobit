@@ -1,0 +1,14 @@
+# Mac OS system icons
+# to be applied to Mac OS Roman character map when used for the system font
+#
+# following the fallback mappings in
+# https://github.com/unicode-org/icu-data/blob/main/charset/data/ucm/ibm-1275_X100-1995.ucm
+# and Apple's usual mapping for its logo to the Private Use Area
+#
+# graphical table in old editions of Inside Macintosh, p. I-221
+# also at ftp://ftp.software.ibm.com/software/globalization/gcoc/attachments/CP01275.pdf
+#
+11:2318    # PLACE OF INTEREST / Command key symbol
+12:2713    # CHECK MARK
+13:2666    # BLACK DIAMOND SUIT
+14:F8FF    # PUA: Apple logo

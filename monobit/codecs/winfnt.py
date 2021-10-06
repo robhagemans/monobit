@@ -165,7 +165,7 @@ CHARSET_MAP = {
 }
 CHARSET_REVERSE_MAP = reverse_dict(CHARSET_MAP)
 CHARSET_REVERSE_MAP.update({
-    # different windows versions used fifferent definitions of windows-1252
+    # different windows versions used different definitions of windows-1252
     # see https://www.aivosto.com/articles/charsets-codepages-windows.html
     'windows-ansi-2.0': 0x00,
     'windows-1252': 0x00,
@@ -439,7 +439,7 @@ def _parse_chartable_v1(fnt, win_props):
         # only keep empty glyphs at NUL or SPACE
         # or if they are explicitly defined in the strike
         if rows or ord in _KEEP_EMPTY:
-            glyphs.append(Glyph(rows, codepoint=win_props.dfFirstChar + ord))
+            glyphs.append(Glyph(rows, codepoint=(win_props.dfFirstChar + ord,)))
     return glyphs
 
 def _parse_chartable_v2(fnt, win_props):
@@ -463,7 +463,7 @@ def _parse_chartable_v2(fnt, win_props):
         )
         # only keep empty glyphs at NUL or SPACE
         if any(c for c in glyph_data) or ord in _KEEP_EMPTY:
-            glyph = Glyph.from_bytes(glyph_data, entry.geWidth).set_annotations(codepoint=ord)
+            glyph = Glyph.from_bytes(glyph_data, entry.geWidth).set_annotations(codepoint=(ord,))
             glyphs.append(glyph)
     return glyphs
 
@@ -585,20 +585,22 @@ def create_fnt(font, version=0x200):
         v3_flags = _DFF_FIXED
     space_index = 0
     # if encoding is compatible, use it; otherwise set to fallback value
+    # FIXME - need to use charmap's matching logic
     charset = charset_map.get(font.encoding, _FALLBACK_CHARSET)
-    codepoints = font.get_codepoints()
+    # only include single-byte encoded glyphs
+    codepoints = tuple(_cp[0] for _cp in font.get_codepoints() if len(_cp) == 1)
     # FNT can hold at most the codepoints 0..256 as these fields are byte-sized
     min_ord = min(codepoints)
     max_ord = min(255, max(codepoints))
     # char table; we need a contiguous range between the min and max codepoints
     ord_glyphs = [
-        font.get_glyph(_codepoint, missing='empty')
+        font.get_glyph((_codepoint,), missing='empty')
         for _codepoint in range(min_ord, max_ord+1)
     ]
-    default_ord = font.get_glyph(font.default_char).codepoint
+    default_ord, = font.get_glyph(font.default_char).codepoint
     if default_ord is None:
         default_ord = _FALLBACK_DEFAULT
-    break_ord = font.get_glyph(font.word_boundary).codepoint
+    break_ord, = font.get_glyph(font.word_boundary).codepoint
     if break_ord is None:
         break_ord = _FALLBACK_BREAK
     # add the guaranteed-blank glyph

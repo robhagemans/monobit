@@ -13,7 +13,7 @@ import unicodedata
 
 from .base import scriptable
 from .glyph import Glyph
-from .encoding import Unicode, normalise_encoding, get_encoder
+from .encoding import charmaps
 from .label import label, UnicodeLabel, CodepointLabel, TagLabel
 
 
@@ -139,7 +139,7 @@ PROPERTIES = {
 
     # character set
     # can't be calculated, affect rendering
-    'encoding': normalise_encoding,
+    'encoding': charmaps.normalise,
     'default-char': label, # use question mark to replace missing glyph
     'word-boundary': label, # word-break character (usually space)
 
@@ -211,7 +211,7 @@ class Font:
         self._codepoints = {
             _glyph.codepoint: _index
             for _index, _glyph in enumerate(self._glyphs)
-            if _glyph.codepoint is not None
+            if _glyph.codepoint
         }
         self._chars = {
             _glyph.char: _index
@@ -230,13 +230,13 @@ class Font:
 
     def _add_encoding_data(self):
         """Add unicode annotations for codepage."""
-        has_codepoint = any(_glyph.codepoint is not None for _glyph in self._glyphs)
+        has_codepoint = any(_glyph.codepoint for _glyph in self._glyphs)
         has_char = any(_glyph.char for _glyph in self._glyphs)
         # update glyph codepoints
         # use index as codepoint if no codepoints or chars set
         if not has_codepoint and not has_char:
             self._glyphs = tuple(
-                _glyph.set_annotations(codepoint=_index)
+                _glyph.set_annotations(codepoint=(_index,))
                 for _index, _glyph in enumerate(self._glyphs)
             )
         # update glyph unicode annotations
@@ -249,7 +249,10 @@ class Font:
 
     def _get_encoder(self):
         """Get encoding object."""
-        return get_encoder(self._properties.get('encoding', None))
+        try:
+            return charmaps[self._properties['encoding']]
+        except KeyError:
+            return None
 
 
     ##########################################################################
@@ -322,6 +325,14 @@ class Font:
         """Get list of tags covered by this font."""
         return list(self._tags.keys())
 
+    def charmap(self):
+        """Implied character map based on defined chars."""
+        return charmaps.create({
+            _glyph.codepoint: _glyph.char
+            for _glyph in self._glyphs
+            if _glyph.codepoint
+            and _glyph.char
+        }, name=f"implied-{self.name}")
 
     def _iter_string(self, string, missing='raise'):
         """Iterate over string, yielding unicode characters."""
@@ -585,7 +596,7 @@ class Font:
 
     @yaffproperty
     def default_char(self):
-        """Default character."""
+        """Label for default character."""
         repl = '\ufffd'
         if repl not in self._chars:
             repl = ''
@@ -692,7 +703,7 @@ class Font:
                 new_tags = set(glyph.tags) - set(self._tags)
                 # update codepoint based on this font's encoding
                 if encoder is not None:
-                    new_codepoint = encoder.ord(glyph.char)
+                    new_codepoint = encoder.codepoint(glyph.char)
                     glyph = glyph.set_annotations(tags=new_tags, codepoint=new_codepoint)
                 else:
                     glyph = glyph.set_annotations(tags=new_tags)

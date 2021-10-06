@@ -65,11 +65,12 @@ class CodepointLabel:
         else:
             elements = [value]
         try:
-            self._key = [self._convert_element(_elem) for _elem in elements]
+            self._key = tuple(self._convert_element(_elem) for _elem in elements)
         except ValueError as e:
             raise self._value_error(value) from e
 
-    def _value_error(self, value):
+    @staticmethod
+    def _value_error(value):
         """Create a ValueError."""
         return ValueError(
             f'Cannot convert value {repr(value)} of type {type(value)} to codepoint label.'
@@ -100,19 +101,22 @@ class CodepointLabel:
             for _elem in self._key
         )
 
-    def __int__(self):
-        """Convert codepoint label to int, if possible."""
-        if len(self._key) > 1:
-            raise ValueError(
-                f'Cannot convert codepoint sequence label {repr(self._key)} to int.'
-            )
-        return self._key[0]
-
     def kwargs(self):
         """Keyword arguments for character-based functions."""
-        if len(self._key) > 1:
-            return {'key': self._key}
-        return {'key': self._key[0]}
+        return {'key': self._key}
+
+    def to_codepoint(self):
+        """Convert to codepoint sequence."""
+        return self._key
+
+    @classmethod
+    def from_codepoint(cls, value):
+        """Convert codepoint sequence str to label."""
+        label = cls(())
+        if not all(isinstance(_i, int) for _i in value):
+            raise cls._value_error(value)
+        label._key = tuple(value)
+        return label
 
 
 class UnicodeLabel:

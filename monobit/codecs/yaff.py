@@ -12,6 +12,7 @@ from itertools import count
 
 from ..base.text import clean_comment, write_comments, split_global_comment, to_text
 from ..formats import loaders, savers
+from ..encoding import charmaps
 from ..streams import FileFormatError
 from ..font import PROPERTIES, Font
 from ..glyph import Glyph
@@ -31,7 +32,7 @@ def _parse_yaff_keys(keys):
     """Convert keys on input from .yaff."""
     kwargs = dict(
         char='',
-        codepoint=None,
+        codepoint=(),
         tags=[],
     )
     for key in keys:
@@ -39,8 +40,7 @@ def _parse_yaff_keys(keys):
         if isinstance(label, TagLabel):
             kwargs['tags'].append(str(label))
         elif isinstance(label, CodepointLabel):
-            # TODO: multi-codepoint labels
-            kwargs['codepoint'] = int(label)
+            kwargs['codepoint'] = label.to_codepoint()
         else:
             kwargs['char'] = label.to_char()
     return kwargs
@@ -49,8 +49,8 @@ def _parse_draw_keys(keys):
     """Convert keys on input from .draw."""
     kwargs = dict(
         char='',
-        codepoint=None,
-        tags=[],
+        codepoint=(),
+        tags=(),
     )
     # only one key allowed in .draw, rest ignored
     key = keys[0]
@@ -329,7 +329,7 @@ def _save_yaff(fonts, outstream, fore, back, comment, tab, separator, empty, **k
         for glyph in font.glyphs:
             labels = []
             # don't write out codepoints for unicode fonts as we have u+XXXX already
-            if glyph.codepoint is not None and (font.encoding != 'unicode' or not glyph.char):
+            if glyph.codepoint and (not charmaps.is_unicode(font.encoding) or not glyph.char):
                 labels.append(repr(CodepointLabel(glyph.codepoint)))
             if glyph.char:
                 labels.append(repr(UnicodeLabel.from_char(glyph.char)))
