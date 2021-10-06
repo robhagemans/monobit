@@ -97,10 +97,10 @@ _ENCODING_FILES = {
 
         # EBCDIC
         # https://www.unicode.org/Public/MAPPINGS/VENDORS/MICSFT/EBCDIC
-        'microsoft/PC/CP037.TXT': ('cp037', 'ibm037', 'ebcdic-cp-us', 'ebcdic-cp-ca', 'ebcdic-cp-wt', 'ebcdic-cp-nl'),
-        'microsoft/PC/CP500.TXT': ('cp500', 'ibm500', 'ebcdic-international'),
-        'microsoft/PC/CP875.TXT': ('cp875', 'ibm875'),
-        'microsoft/PC/CP1026.TXT': ('cp1026', 'ibm1026'),
+        'microsoft/EBCDIC/CP037.TXT': ('cp037', 'ibm037', 'ebcdic-cp-us', 'ebcdic-cp-ca', 'ebcdic-cp-wt', 'ebcdic-cp-nl'),
+        'microsoft/EBCDIC/CP500.TXT': ('cp500', 'ibm500', 'ebcdic-international'),
+        'microsoft/EBCDIC/CP875.TXT': ('cp875', 'ibm875'),
+        'microsoft/EBCDIC/CP1026.TXT': ('cp1026', 'ibm1026'),
 
         # Apple codepages matching a script code
         # https://www.unicode.org/Public/MAPPINGS/VENDORS/APPLE/
@@ -330,7 +330,7 @@ _MAC_GRAPH_RANGE = tuple((_cp,) for _cp in range(0x11, 0x15))
 _MAC_EURO = ((0xDB,))
 _OVERLAYS = {
     # these were partially defined, complete them by adding 7-bit ascii codepoints
-    ('iso-8859/8859-1.TXT', _ASCII_RANGE, 'format_a'): (
+    ('iso-8859/8859-1.TXT', _ASCII_RANGE, 'txt'): (
         'koi8-a', 'koi8-b', 'koi8-e', 'koi8-f', 'gost-19768-87', 'mik',
         # per NEXTSTEP.TXT, identical to ascii.
         # wikipedia suggests it's us-ascii-quotes
