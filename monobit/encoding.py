@@ -19,128 +19,128 @@ from .base.binary import int_to_bytes
 
 _ENCODING_FILES = {
 
-    'txt': {
+    'txt': (
         # iso standards
         # https://www.unicode.org/Public/MAPPINGS/ISO8859
-        'iso-8859/8859-1.TXT': ('latin-1', 'iso8859-1', 'iso-ir-100', 'ibm-819'),
-        'iso-8859/8859-2.TXT': ('latin-2', 'iso8859-2', 'iso-ir-101', 'ibm-1111'),
-        'iso-8859/8859-3.TXT': ('latin-3', 'iso8859-3', 'iso-ir-109', 'ibm-913'),
-        'iso-8859/8859-4.TXT': ('latin-4', 'iso8859-4', 'iso-ir-110', 'ibm-914'),
-        'iso-8859/8859-5.TXT': ('iso8859-5', 'cyrillic', 'latin-cyrillic', 'iso-ir-144', 'ecma-113'),
-        'iso-8859/8859-6.TXT': ('iso8859-6', 'arabic', 'latin-arabic', 'asmo-708', 'iso-ir-127', 'ecma-114'),
-        'iso-8859/8859-7.TXT': ('iso8859-7', 'greek', 'latin-greek', 'greek8', 'iso-ir-126', 'ibm-813', 'elot-928', 'ecma-118'),
-        'iso-8859/8859-8.TXT': ('iso8859-8', 'hebrew', 'latin-hebrew', 'iso-ir-138', 'ibm-916', 'ecma-121'),
-        'iso-8859/8859-9.TXT': ('iso8859-9', 'latin-5', 'turkish', 'iso-ir-148', 'ibm-920', 'ecma-128'),
-        'iso-8859/8859-10.TXT': ('iso8859-10', 'latin-6', 'ibm-919', 'iso-ir-157', 'ecma-144'),
+        ('iso-8859/8859-1.TXT', 'latin-1', 'iso8859-1', 'iso-ir-100', 'ibm-819'),
+        ('iso-8859/8859-2.TXT', 'latin-2', 'iso8859-2', 'iso-ir-101', 'ibm-1111'),
+        ('iso-8859/8859-3.TXT', 'latin-3', 'iso8859-3', 'iso-ir-109', 'ibm-913'),
+        ('iso-8859/8859-4.TXT', 'latin-4', 'iso8859-4', 'iso-ir-110', 'ibm-914'),
+        ('iso-8859/8859-5.TXT', 'iso8859-5', 'cyrillic', 'latin-cyrillic', 'iso-ir-144', 'ecma-113'),
+        ('iso-8859/8859-6.TXT', 'iso8859-6', 'arabic', 'latin-arabic', 'asmo-708', 'iso-ir-127', 'ecma-114'),
+        ('iso-8859/8859-7.TXT', 'iso8859-7', 'greek', 'latin-greek', 'greek8', 'iso-ir-126', 'ibm-813', 'elot-928', 'ecma-118'),
+        ('iso-8859/8859-8.TXT', 'iso8859-8', 'hebrew', 'latin-hebrew', 'iso-ir-138', 'ibm-916', 'ecma-121'),
+        ('iso-8859/8859-9.TXT', 'iso8859-9', 'latin-5', 'turkish', 'iso-ir-148', 'ibm-920', 'ecma-128'),
+        ('iso-8859/8859-10.TXT', 'iso8859-10', 'latin-6', 'ibm-919', 'iso-ir-157', 'ecma-144'),
         # differs from tis-620 only in a code point mapping NBSP
-        'iso-8859/8859-11.TXT': ('iso8859-11', 'latin-thai'),
-        'iso-8859/8859-13.TXT': ('iso8859-13', 'latin-7', 'baltic-rim', 'ibm-921', 'iso-ir-179'),
-        'iso-8859/8859-14.TXT': ('iso8859-14', 'latin-8', 'celtic', 'iso-celtic', 'iso-ir-199'),
-        'iso-8859/8859-15.TXT': ('iso8859-15', 'latin-9', 'latin-0'),
-        'iso-8859/8859-16.TXT': ('iso8859-16', 'latin-10', 'sr-14111', 'iso-ir-226'),
+        ('iso-8859/8859-11.TXT', 'iso8859-11', 'latin-thai'),
+        ('iso-8859/8859-13.TXT', 'iso8859-13', 'latin-7', 'baltic-rim', 'ibm-921', 'iso-ir-179'),
+        ('iso-8859/8859-14.TXT', 'iso8859-14', 'latin-8', 'celtic', 'iso-celtic', 'iso-ir-199'),
+        ('iso-8859/8859-15.TXT', 'iso8859-15', 'latin-9', 'latin-0'),
+        ('iso-8859/8859-16.TXT', 'iso8859-16', 'latin-10', 'sr-14111', 'iso-ir-226'),
 
         # Windows codepages
         # https://www.unicode.org/Public/MAPPINGS/VENDORS/MICSFT/WINDOWS
         # thai
         # tis620-2 is the name used in xorg
         # the xorg encoding also adds some PUA mappings on undefined code points
-        'microsoft/WINDOWS/CP874.TXT': ('windows-874', 'ibm-1162', 'tis620-2'),
+        ('microsoft/WINDOWS/CP874.TXT', 'windows-874', 'ibm-1162', 'tis620-2'),
         # japanese shift-jis
-        'microsoft/WINDOWS/CP932.TXT': ('windows-932', 'windows-31j', 'cp943c', 'ibm-943', 'ms-kanji', 'windows-shift-jis'),
+        ('microsoft/WINDOWS/CP932.TXT', 'windows-932', 'windows-31j', 'cp943c', 'ibm-943', 'ms-kanji', 'windows-shift-jis'),
         # simplified chinese gbk
         # use more extensive version from icu by default
-        #'microsoft/WINDOWS/CP936.TXT': ('windows-936', 'ibm-1386'),
+        #'microsoft/WINDOWS/CP936.TXT', 'windows-936', 'ibm-1386'),
         # korean extended wansung / unified hangul code
-        'microsoft/WINDOWS/CP949.TXT': ('windows-949', 'ext-wansung', 'uhc', 'ibm-1363'),
+        ('microsoft/WINDOWS/CP949.TXT', 'windows-949', 'ext-wansung', 'uhc', 'ibm-1363'),
         # traditional chinese big-5
-        'microsoft/WINDOWS/CP950.TXT': ('windows-950', 'ms-big5'),
+        ('microsoft/WINDOWS/CP950.TXT', 'windows-950', 'ms-big5'),
         # latin - central & eastern europe
-        'microsoft/WINDOWS/CP1250.TXT': ('windows-1250', 'cp1250', 'ibm-1250'),
+        ('microsoft/WINDOWS/CP1250.TXT', 'windows-1250', 'cp1250', 'ibm-1250'),
         # cyrillic
-        'microsoft/WINDOWS/CP1251.TXT': ('windows-1251', 'cp1251', 'ibm-1251'),
+        ('microsoft/WINDOWS/CP1251.TXT', 'windows-1251', 'cp1251', 'ibm-1251'),
         # latin - western europe
-        'manual/windows-1.0.txt': ('windows-1.0', 'windows-ansi-1.0', 'windows-1252-1.0'),
-        'manual/windows-2.0.txt': ('windows-2.0', 'windows-ansi-2.0', 'windows-1252-2.0'),
-        'manual/windows-3.1.txt': ('windows-3.1', 'windows-ansi-3.1', 'windows-1252-3.1'),
-        'microsoft/WINDOWS/CP1252.TXT': ('windows-1252', 'windows-ansi', 'ansi', 'ansinew', 'cp1252', 'ibm-1252'),
+        ('manual/windows-1.0.txt', 'windows-1.0', 'windows-ansi-1.0', 'windows-1252-1.0'),
+        ('manual/windows-2.0.txt', 'windows-2.0', 'windows-ansi-2.0', 'windows-1252-2.0'),
+        ('manual/windows-3.1.txt', 'windows-3.1', 'windows-ansi-3.1', 'windows-1252-3.1'),
+        ('microsoft/WINDOWS/CP1252.TXT', 'windows-1252', 'windows-ansi', 'ansi', 'ansinew', 'cp1252', 'ibm-1252'),
         # greek
-        'microsoft/WINDOWS/CP1253.TXT': ('windows-1253', 'greek-ansi', 'cp1253', 'ibm-1253'),
+        ('microsoft/WINDOWS/CP1253.TXT', 'windows-1253', 'greek-ansi', 'cp1253', 'ibm-1253'),
         # latin - turkish
-        'microsoft/WINDOWS/CP1254.TXT': ('windows-1254', 'cp1254', 'ibm-1254'),
+        ('microsoft/WINDOWS/CP1254.TXT', 'windows-1254', 'cp1254', 'ibm-1254'),
         # hebrew
-        'microsoft/WINDOWS/CP1255.TXT': ('windows-1255', 'cp1255', 'ibm-1255'),
+        ('microsoft/WINDOWS/CP1255.TXT', 'windows-1255', 'cp1255', 'ibm-1255'),
         # arabic
-        'microsoft/WINDOWS/CP1256.TXT': ('windows-1256', 'cp1256', 'ibm-1256'),
+        ('microsoft/WINDOWS/CP1256.TXT', 'windows-1256', 'cp1256', 'ibm-1256'),
         # latin - baltic
-        'microsoft/WINDOWS/CP1257.TXT': ('windows-1257', 'windows-baltic', 'cp1257', 'ibm-1257', 'lst-1590-3'),
+        ('microsoft/WINDOWS/CP1257.TXT', 'windows-1257', 'windows-baltic', 'cp1257', 'ibm-1257', 'lst-1590-3'),
         # latin - vietnamese
-        'microsoft/WINDOWS/CP1258.TXT': ('windows-1258', 'cp1258', 'ibm-1258'),
+        ('microsoft/WINDOWS/CP1258.TXT', 'windows-1258', 'cp1258', 'ibm-1258'),
 
         # IBM/OEM/MS-DOS codepages
         # https://www.unicode.org/Public/MAPPINGS/VENDORS/MICSFT/PC
-        'microsoft/PC/CP437.TXT': ('cp437', 'oem-437', 'ibm-437', 'oem-us', 'pc-8', 'dos-latin-us'),
-        'microsoft/PC/CP737.TXT': ('cp737', 'oem-737', 'ibm-737', 'dos-greek'),
-        'microsoft/PC/CP775.TXT': ('cp775', 'oem-775', 'ibm-775', 'dos-baltic-rim', 'lst-1590-1'),
-        'microsoft/PC/CP850.TXT': ('cp850', 'oem-850', 'ibm-850', 'dos-latin-1'),
-        'microsoft/PC/CP852.TXT': ('cp852', 'oem-852', 'ibm-852', 'dos-latin-2'),
-        'microsoft/PC/CP855.TXT': ('cp855', 'oem-855', 'ibm-855', 'dos-cyrillic'),
-        'microsoft/PC/CP857.TXT': ('cp857', 'oem-857', 'ibm-857', 'dos-turkish'),
-        'microsoft/PC/CP860.TXT': ('cp860', 'oem-860', 'ibm-860', 'dos-portuguese'),
-        'microsoft/PC/CP861.TXT': ('cp861', 'oem-861', 'ibm-861', 'cp-is', 'dos-icelandic'),
-        'microsoft/PC/CP862.TXT': ('cp862', 'oem-862', 'ibm-862', 'dos-hebrew'),
-        'microsoft/PC/CP863.TXT': ('cp863', 'oem-863', 'ibm-863', 'dos-french-canada'),
-        'microsoft/PC/CP864.TXT': ('cp864', 'oem-864', 'ibm-864'), # dos-arabic
-        'microsoft/PC/CP865.TXT': ('cp865', 'oem-865', 'ibm-865', 'dos-nordic'),
-        'microsoft/PC/CP866.TXT': ('cp866', 'oem-866', 'ibm-866', 'dos-cyrillic-russian'),
-        'microsoft/PC/CP869.TXT': ('cp869', 'oem-869', 'ibm-869', 'dos-greek2'),
-        'microsoft/PC/CP874.TXT': ('ibm-874', 'ibm-9066'), # dos-thai
+        ('microsoft/PC/CP437.TXT', 'cp437', 'oem-437', 'ibm-437', 'oem-us', 'pc-8', 'dos-latin-us'),
+        ('microsoft/PC/CP737.TXT', 'cp737', 'oem-737', 'ibm-737', 'dos-greek'),
+        ('microsoft/PC/CP775.TXT', 'cp775', 'oem-775', 'ibm-775', 'dos-baltic-rim', 'lst-1590-1'),
+        ('microsoft/PC/CP850.TXT', 'cp850', 'oem-850', 'ibm-850', 'dos-latin-1'),
+        ('microsoft/PC/CP852.TXT', 'cp852', 'oem-852', 'ibm-852', 'dos-latin-2'),
+        ('microsoft/PC/CP855.TXT', 'cp855', 'oem-855', 'ibm-855', 'dos-cyrillic'),
+        ('microsoft/PC/CP857.TXT', 'cp857', 'oem-857', 'ibm-857', 'dos-turkish'),
+        ('microsoft/PC/CP860.TXT', 'cp860', 'oem-860', 'ibm-860', 'dos-portuguese'),
+        ('microsoft/PC/CP861.TXT', 'cp861', 'oem-861', 'ibm-861', 'cp-is', 'dos-icelandic'),
+        ('microsoft/PC/CP862.TXT', 'cp862', 'oem-862', 'ibm-862', 'dos-hebrew'),
+        ('microsoft/PC/CP863.TXT', 'cp863', 'oem-863', 'ibm-863', 'dos-french-canada'),
+        ('microsoft/PC/CP864.TXT', 'cp864', 'oem-864', 'ibm-864'), # dos-arabic
+        ('microsoft/PC/CP865.TXT', 'cp865', 'oem-865', 'ibm-865', 'dos-nordic'),
+        ('microsoft/PC/CP866.TXT', 'cp866', 'oem-866', 'ibm-866', 'dos-cyrillic-russian'),
+        ('microsoft/PC/CP869.TXT', 'cp869', 'oem-869', 'ibm-869', 'dos-greek2'),
+        ('microsoft/PC/CP874.TXT', 'ibm-874', 'ibm-9066'), # dos-thai
 
         # EBCDIC
         # https://www.unicode.org/Public/MAPPINGS/VENDORS/MICSFT/EBCDIC
-        'microsoft/EBCDIC/CP037.TXT': ('cp037', 'ibm037', 'ebcdic-cp-us', 'ebcdic-cp-ca', 'ebcdic-cp-wt', 'ebcdic-cp-nl'),
-        'microsoft/EBCDIC/CP500.TXT': ('cp500', 'ibm500', 'ebcdic-international'),
-        'microsoft/EBCDIC/CP875.TXT': ('cp875', 'ibm875'),
-        'microsoft/EBCDIC/CP1026.TXT': ('cp1026', 'ibm1026'),
+        ('microsoft/EBCDIC/CP037.TXT', 'cp037', 'ibm037', 'ebcdic-cp-us', 'ebcdic-cp-ca', 'ebcdic-cp-wt', 'ebcdic-cp-nl'),
+        ('microsoft/EBCDIC/CP500.TXT', 'cp500', 'ibm500', 'ebcdic-international'),
+        ('microsoft/EBCDIC/CP875.TXT', 'cp875', 'ibm875'),
+        ('microsoft/EBCDIC/CP1026.TXT', 'cp1026', 'ibm1026'),
 
         # Apple codepages matching a script code
         # https://www.unicode.org/Public/MAPPINGS/VENDORS/APPLE/
         #
         # this will have the pre-euro version of the mac-roman set (aka microsoft's cp 10000)
         # microsoft's table substitutes the capital omega with the (equivalent) Ohm sign
-        'apple/ROMAN.TXT': ('mac-roman', 'mac', 'macintosh', 'ibm-1275', 'windows-10000'),
-        #'apple/ROMAN.TXT': ('mac-roman-8.5', 'mac-8.5', 'macintosh-8.5', 'mac-roman-euro', 'mac-euro', 'macintosh-euro'),
-        'apple/JAPANESE.TXT': ('mac-japanese',),
-        'apple/CHINTRAD.TXT': ('mac-traditional-chinese', 'mac-trad-chinese', 'mac-chinese-trad'),
-        'apple/KOREAN.TXT': ('mac-korean',),
-        'apple/ARABIC.TXT': ('mac-arabic',),
-        'apple/HEBREW.TXT': ('mac-hebrew',),
-        'apple/GREEK.TXT': ('mac-greek',),
+        ('apple/ROMAN.TXT', 'mac-roman', 'mac', 'macintosh', 'ibm-1275', 'windows-10000'),
+        #'apple/ROMAN.TXT', 'mac-roman-8.5', 'mac-8.5', 'macintosh-8.5', 'mac-roman-euro', 'mac-euro', 'macintosh-euro'),
+        ('apple/JAPANESE.TXT', 'mac-japanese',),
+        ('apple/CHINTRAD.TXT', 'mac-traditional-chinese', 'mac-trad-chinese', 'mac-chinese-trad'),
+        ('apple/KOREAN.TXT', 'mac-korean',),
+        ('apple/ARABIC.TXT', 'mac-arabic',),
+        ('apple/HEBREW.TXT', 'mac-hebrew',),
+        ('apple/GREEK.TXT', 'mac-greek',),
         # note: A2, B6, FF changed after mac-os 9.0
         # see https://en.wikipedia.org/wiki/Mac_OS_Cyrillic_encoding
-        'apple/CYRILLIC.TXT': ('mac-cyrillic',),
-        'apple/DEVANAGA.TXT': ('mac-devanagari',),
-        'apple/GURMUKHI.TXT': ('mac-gurmukhi',),
-        'apple/GUJARATI.TXT': ('mac-gujarati',),
-        'apple/THAI.TXT': ('mac-thai',) ,
-        'apple/CHINSIMP.TXT': ('mac-simplified-chinese', 'mac-simp-chinese', 'mac-chinese-simp'),
+        ('apple/CYRILLIC.TXT', 'mac-cyrillic',),
+        ('apple/DEVANAGA.TXT', 'mac-devanagari',),
+        ('apple/GURMUKHI.TXT', 'mac-gurmukhi',),
+        ('apple/GUJARATI.TXT', 'mac-gujarati',),
+        ('apple/THAI.TXT', 'mac-thai',) ,
+        ('apple/CHINSIMP.TXT', 'mac-simplified-chinese', 'mac-simp-chinese', 'mac-chinese-simp'),
         # "non-cyrillic slavic", mac-centeuro
         # cf. 'microsoft/MAC/LATIN2.TXT'
-        'apple/CENTEURO.TXT': ('mac-centraleurope', 'mac-ce', 'mac-latin2', 'mac-centeuro', 'mac-east-eur-roman'),
+        ('apple/CENTEURO.TXT', 'mac-centraleurope', 'mac-ce', 'mac-latin2', 'mac-centeuro', 'mac-east-eur-roman'),
         # Armenian and Georgian taken from Evertype:
         # https://www.evertype.com/standards/mappings/
-        'evertype/GEORGIAN.TXT': ('mac-georgian',),
-        'evertype/ARMENIAN.TXT': ('mac-armenian',),
+        ('evertype/GEORGIAN.TXT', 'mac-georgian',),
+        ('evertype/ARMENIAN.TXT', 'mac-armenian',),
         # Apple codepages not matching a script code
-        'apple/CELTIC.TXT': ('mac-celtic',),
-        'apple/CROATIAN.TXT': ('mac-croatian',),
-        'apple/DINGBATS.TXT': ('mac-dingbats',),
-        'apple/FARSI.TXT': ('mac-farsi',),
-        'apple/GAELIC.TXT': ('mac-gaelic',),
-        'apple/ICELAND.TXT': ('mac-icelandic',),
-        'apple/INUIT.TXT': ('mac-inuit',),
-        'apple/SYMBOL.TXT': ('mac-symbol', 'windows-symbol', 'microsoft-symbol'),
-        'apple/TURKISH.TXT': ('mac-turkish',),
-        'apple/UKRAINE.TXT': ('mac-ukrainian',),
+        ('apple/CELTIC.TXT', 'mac-celtic',),
+        ('apple/CROATIAN.TXT', 'mac-croatian',),
+        ('apple/DINGBATS.TXT', 'mac-dingbats',),
+        ('apple/FARSI.TXT', 'mac-farsi',),
+        ('apple/GAELIC.TXT', 'mac-gaelic',),
+        ('apple/ICELAND.TXT', 'mac-icelandic',),
+        ('apple/INUIT.TXT', 'mac-inuit',),
+        ('apple/SYMBOL.TXT', 'mac-symbol', 'windows-symbol', 'microsoft-symbol'),
+        ('apple/TURKISH.TXT', 'mac-turkish',),
+        ('apple/UKRAINE.TXT', 'mac-ukrainian',),
         # Apple scripts for which no codepage found
         # note - Gurmukhi and Gujarati are ISCII-based
         # so can we infer the other Indic scripts that have an ISCII?
@@ -162,165 +162,165 @@ _ENCODING_FILES = {
 
         # https://www.unicode.org/Public/MAPPINGS/VENDORS/MISC/
         # cyrillic
-        'misc/KOI8-R.TXT': ('koi8-r', 'cp878'),
-        'misc/KOI8-U.TXT': ('koi8-u',),
+        ('misc/KOI8-R.TXT', 'koi8-r', 'cp878'),
+        ('misc/KOI8-U.TXT', 'koi8-u',),
         # hebrew
-        'misc/CP424.TXT': ('cp424', 'ebcdic-hebrew'),
-        'misc/CP856.TXT': ('cp856', 'oem-856', 'ibm-856'),
+        ('misc/CP424.TXT', 'cp424', 'ebcdic-hebrew'),
+        ('misc/CP856.TXT', 'cp856', 'oem-856', 'ibm-856'),
         # arabic - urdu
-        'misc/CP1006.TXT': ('cp1006', 'ibm-1006'),
+        ('misc/CP1006.TXT', 'cp1006', 'ibm-1006'),
         # APL
-        'misc/APL-ISO-IR-68.TXT': ('iso-ir-68',) ,
+        ('misc/APL-ISO-IR-68.TXT', 'iso-ir-68',) ,
         # korean
-        'misc/KPS9566.TXT': ('kps-9566', 'iso-ir-202'),
+        ('misc/KPS9566.TXT', 'kps-9566', 'iso-ir-202'),
         # cyrillic - kazakh
-        'misc/KZ1048.TXT': ('kz-1048', 'strk1048-2002', 'rk-1048'),
+        ('misc/KZ1048.TXT', 'kz-1048', 'strk1048-2002', 'rk-1048'),
 
         # not loaded from misc/:
         # SGML.TXT
         # US-ASCII-QUOTES.TXT
-        # 'misc/ATARIST.TXT': ('atari-st',),
-        'misc/NEXTSTEP.TXT': ('next', 'nextstep', 'next-multinational') ,
-        'misc/GSM0338.TXT': ('gsm-03.38', 'gsm'),
+        # 'misc/ATARIST.TXT', 'atari-st',),
+        ('misc/NEXTSTEP.TXT', 'next', 'nextstep', 'next-multinational') ,
+        ('misc/GSM0338.TXT', 'gsm-03.38', 'gsm'),
 
         # Roman Czyborra's codepage tables
         # cyrillic pages
-        'czyborra/koi-0.txt': ('koi0', 'gost-13052'),
-        'czyborra/koi-7.txt': ('koi7', 'gost-19768-74-7'),
+        ('czyborra/koi-0.txt', 'koi0', 'gost-13052'),
+        ('czyborra/koi-7.txt', 'koi7', 'gost-19768-74-7'),
         # koi-8 should be overlaid with ascii
-        'czyborra/koi8-a.txt': ('koi8-a', 'koi8', 'gost-19768-74-8'),
-        'czyborra/koi8-b.txt': ('koi8-b',),
-        'czyborra/koi8-f.txt': ('koi8-f', 'koi8-unified', 'koi8-uni'),
-        'czyborra/koi8-e.txt': ('koi8-e', 'iso-ir-111', 'ecma-cyrillic'),
-        'czyborra/gost19768-87.txt': ('gost-19768-87',) ,
+        ('czyborra/koi8-a.txt', 'koi8-a', 'koi8', 'gost-19768-74-8'),
+        ('czyborra/koi8-b.txt', 'koi8-b',),
+        ('czyborra/koi8-f.txt', 'koi8-f', 'koi8-unified', 'koi8-uni'),
+        ('czyborra/koi8-e.txt', 'koi8-e', 'iso-ir-111', 'ecma-cyrillic'),
+        ('czyborra/gost19768-87.txt', 'gost-19768-87',) ,
         # use unicode.org misc/ mappings for KOI8-U and KOI8-U
         # 'koi8-r': 'czyborra/koi-8-e.txt',
         # 'koi8-u': 'czyborra/koi-8-e.txt',
         # use unicode.org microsoft/ mappings for cp866
         # 'cp866': 'czyborra/cp866.txt',
-        'czyborra/bulgarian-mik.txt': ('mik', 'bulgarian-mik', 'bulgaria-pc'),
+        ('czyborra/bulgarian-mik.txt', 'mik', 'bulgarian-mik', 'bulgaria-pc'),
         # latin pages
-        'czyborra/hp-roman8.txt': ('hp-roman8', 'ibm-1051'),
-        'czyborra/vn5712-1.txt': ('tcvn5712-1', 'vscii-1'),
-        'czyborra/vn5712-2.txt': ('tcvn5712-2', 'vscii-2'),
+        ('czyborra/hp-roman8.txt', 'hp-roman8', 'ibm-1051'),
+        ('czyborra/vn5712-1.txt', 'tcvn5712-1', 'vscii-1'),
+        ('czyborra/vn5712-2.txt', 'tcvn5712-2', 'vscii-2'),
 
         # mleisher's csets
-        'mleisher/ALTVAR.TXT' : ('alternativnyj-variant', 'alternativnyj', 'av'),
-        'mleisher/ARMSCII-7.TXT' : ('armscii-7',),
-        'mleisher/ARMSCII-8.TXT' : ('armscii-8',),
-        'mleisher/ARMSCII-8A.TXT' : ('armscii-8a',),
-        'mleisher/DECMCS.TXT' : ('dec-mcs', 'dmcs', 'mcs', 'ibm-1100', 'cp1100'),
-        'mleisher/GEO-ITA.TXT' : ('georgian-academy', 'georgian-ita'),
-        'mleisher/GEO-PS.TXT' : ('georgian-parliament', 'georgian-ps'),
-        'mleisher/IRANSYSTEM.TXT' : ('iran-system', 'iransystem'),
-        'mleisher/KOI8RU.TXT' : ('koi8-ru',),
-        'mleisher/OSNOVAR.TXT' : ('osnovnoj-variant', 'osnovnoj', 'ov'),
-        'mleisher/RISCOS.TXT' : ('risc-os', 'acorn-risc-os'),
+        ('mleisher/ALTVAR.TXT' , 'alternativnyj-variant', 'alternativnyj', 'av'),
+        ('mleisher/ARMSCII-7.TXT' , 'armscii-7',),
+        ('mleisher/ARMSCII-8.TXT' , 'armscii-8',),
+        ('mleisher/ARMSCII-8A.TXT' , 'armscii-8a',),
+        ('mleisher/DECMCS.TXT' , 'dec-mcs', 'dmcs', 'mcs', 'ibm-1100', 'cp1100'),
+        ('mleisher/GEO-ITA.TXT' , 'georgian-academy', 'georgian-ita'),
+        ('mleisher/GEO-PS.TXT' , 'georgian-parliament', 'georgian-ps'),
+        ('mleisher/IRANSYSTEM.TXT' , 'iran-system', 'iransystem'),
+        ('mleisher/KOI8RU.TXT' , 'koi8-ru',),
+        ('mleisher/OSNOVAR.TXT' , 'osnovnoj-variant', 'osnovnoj', 'ov'),
+        ('mleisher/RISCOS.TXT' , 'risc-os', 'acorn-risc-os'),
         # tis620-0 is an alias used in xorg
-        'mleisher/TIS620.TXT' : ('tis-620', 'tis620-0', 'iso-ir-166'),
+        ('mleisher/TIS620.TXT' , 'tis-620', 'tis620-0', 'iso-ir-166'),
 
         # IANA registrations
-        'iana/Amiga-1251': ('amiga-1251', 'ami1251',),
+        ('iana/Amiga-1251', 'amiga-1251', 'ami1251',),
 
         # X11 xfonts
-        'xfonts/viscii1.1-1.enc': ('viscii', 'viscii1.1-1'),
+        ('xfonts/viscii1.1-1.enc', 'viscii', 'viscii1.1-1'),
 
         # manually adapted
-        'manual/ms-linedraw.txt': ('windows-linedraw', 'microsoft-linedraw', 'ms-linedraw'),
-        'manual/hp48.txt': ('hp-48', 'hp48', 'hp-rpl'),
-    },
+        ('manual/ms-linedraw.txt', 'windows-linedraw', 'microsoft-linedraw', 'ms-linedraw'),
+        ('manual/hp48.txt', 'hp-48', 'hp48', 'hp-rpl'),
+    ),
 
-    'adobe': {
+    'adobe': (
         # Adobe encodings
         # https://www.unicode.org/Public/MAPPINGS/VENDORS/ADOBE/
-        'adobe/stdenc.txt': ('adobe-standard',),
-        'adobe/symbol.txt': ('adobe-symbol',),
-        'adobe/zdingbat.txt': ('adobe-dingbats',),
+        ('adobe/stdenc.txt', 'adobe-standard',),
+        ('adobe/symbol.txt', 'adobe-symbol',),
+        ('adobe/zdingbat.txt', 'adobe-dingbats',),
 
         # IBM PC memory-mapped video graphics, overlaying the control character range
         # to be used in combination with other code pages e.g. cp437
         # https://www.unicode.org/Public/MAPPINGS/VENDORS/MISC/
-        'misc/IBMGRAPH.TXT': ('ibm-graphics',),
-    },
+        ('misc/IBMGRAPH.TXT', 'ibm-graphics',),
+    ),
 
-    'ucm': {
+    'ucm': (
         # charmaps from Keld Simonsen (dkuug)
-        'dkuug/iso646-us': ('ascii', 'iso646-us', 'ascii-0', 'us-ascii', 'iso-ir-6', 'ansi-x3.4-1968'),
-        'dkuug/iso646-ca': ('iso646-ca', 'iso-ir-121', 'csa7-1'),
-        'dkuug/iso646-ca2': ('iso646-ca2', 'iso-ir-122', 'csa7-2'),
-        'dkuug/iso646-cn': ('iso646-cn', 'iso-ir-57', 'gbt-1988-80'),
-        'dkuug/iso646-de': ('iso646-de', 'iso-ir-21', 'din-66003'),
-        'dkuug/iso646-dk': ('iso646-dk', 'ds-2089'),
-        'dkuug/iso646-es': ('iso646-es', 'iso-ir-17'),
-        'dkuug/iso646-es2': ('iso646-es2', 'iso-ir-85'),
-        'dkuug/iso646-fr': ('iso646-fr', 'iso-ir-69'),
-        'dkuug/iso646-gb': ('iso646-gb', 'iso-ir-4', 'bs-4730'),
-        'dkuug/iso646-hu': ('iso646-hu', 'iso-ir-86', 'msz7795-3'),
-        'dkuug/iso646-it': ('iso646-it', 'iso-ir-15', 'uni-0204-70'),
-        'dkuug/iso646-jp': ('iso646-jp', 'iso-ir-14', 'jiscii', 'jis-roman', 'ibm-895'),
-        'dkuug/iso646-kr': ('iso646-kr',),
-        'dkuug/iso646-yu': ('iso646-yu', 'iso-ir-141', 'yuscii-latin', 'croscii', 'sloscii', 'jus-i.b1.002'),
+        ('dkuug/iso646-us', 'ascii', 'iso646-us', 'ascii-0', 'us-ascii', 'iso-ir-6', 'ansi-x3.4-1968'),
+        ('dkuug/iso646-ca', 'iso646-ca', 'iso-ir-121', 'csa7-1'),
+        ('dkuug/iso646-ca2', 'iso646-ca2', 'iso-ir-122', 'csa7-2'),
+        ('dkuug/iso646-cn', 'iso646-cn', 'iso-ir-57', 'gbt-1988-80'),
+        ('dkuug/iso646-de', 'iso646-de', 'iso-ir-21', 'din-66003'),
+        ('dkuug/iso646-dk', 'iso646-dk', 'ds-2089'),
+        ('dkuug/iso646-es', 'iso646-es', 'iso-ir-17'),
+        ('dkuug/iso646-es2', 'iso646-es2', 'iso-ir-85'),
+        ('dkuug/iso646-fr', 'iso646-fr', 'iso-ir-69'),
+        ('dkuug/iso646-gb', 'iso646-gb', 'iso-ir-4', 'bs-4730'),
+        ('dkuug/iso646-hu', 'iso646-hu', 'iso-ir-86', 'msz7795-3'),
+        ('dkuug/iso646-it', 'iso646-it', 'iso-ir-15', 'uni-0204-70'),
+        ('dkuug/iso646-jp', 'iso646-jp', 'iso-ir-14', 'jiscii', 'jis-roman', 'ibm-895'),
+        ('dkuug/iso646-kr', 'iso646-kr',),
+        ('dkuug/iso646-yu', 'iso646-yu', 'iso-ir-141', 'yuscii-latin', 'croscii', 'sloscii', 'jus-i.b1.002'),
         # ibm-897 extends jis-x0201
-        'dkuug/jis_x0201': ('jis-x0201', 'jis-c-6220'),
-        'dkuug/x0201-7': ('x0201-7', 'iso-ir-13'),
+        ('dkuug/jis_x0201', 'jis-x0201', 'jis-c-6220'),
+        ('dkuug/x0201-7', 'x0201-7', 'iso-ir-13'),
 
         # charmaps from IBM/Unicode ICU project
-        'icu/ibm-1125_P100-1997.ucm': ('ruscii', 'ibm-1125', 'cp866u', 'cp866nav'),
-        'icu/ibm-720_P100-1997.ucm': ('cp720', 'ibm-720', 'transparent-asmo'),
-        'icu/ibm-858_P100-1997.ucm': ('cp858', 'ibm-858', 'cp850-euro'),
-        'icu/ibm-868_P100-1995.ucm': ('cp868', 'ibm-868', 'cp-ar', 'dos-urdu'),
-        'icu/ibm-851_P100-1995.ucm': ('cp851', 'ibm-851', 'oem-851'),
-        'icu/windows-936-2000.ucm': ('windows-936', 'ibm-1386', 'windows-gb2312', 'windows-gbk'),
-        'icu/ibm-1375_P100-2008.ucm': ('big5-hkscs', 'ibm-1375', 'big5hk'),
-        'icu/ibm-806_P100-1998.ucm': ('cp806', 'ibm-806', 'ibm-iscii-devanagari'),
-    },
+        ('icu/ibm-1125_P100-1997.ucm', 'ruscii', 'ibm-1125', 'cp866u', 'cp866nav'),
+        ('icu/ibm-720_P100-1997.ucm', 'cp720', 'ibm-720', 'transparent-asmo'),
+        ('icu/ibm-858_P100-1997.ucm', 'cp858', 'ibm-858', 'cp850-euro'),
+        ('icu/ibm-868_P100-1995.ucm', 'cp868', 'ibm-868', 'cp-ar', 'dos-urdu'),
+        ('icu/ibm-851_P100-1995.ucm', 'cp851', 'ibm-851', 'oem-851'),
+        ('icu/windows-936-2000.ucm', 'windows-936', 'ibm-1386', 'windows-gb2312', 'windows-gbk'),
+        ('icu/ibm-1375_P100-2008.ucm', 'big5-hkscs', 'ibm-1375', 'big5hk'),
+        ('icu/ibm-806_P100-1998.ucm', 'cp806', 'ibm-806', 'ibm-iscii-devanagari'),
+    ),
 
-    'ucp': {
+    'ucp': (
         # manually constructed based on gif images
         # https://web.archive.org/web/20061017214053/http://www.cyrillic.com/ref/cyrillic/
-        'manual/russup3.ucp': ('dos-russian-support-3', 'rs3', 'russup3'),
-        'manual/russup4ac.ucp': ('dos-russian-support-4-academic', 'rs4ac', 'russup4ac'),
-        'manual/russup4na.ucp': ('dos-russian-support-4', 'rs4', 'russup4na'),
+        ('manual/russup3.ucp', 'dos-russian-support-3', 'rs3', 'russup3'),
+        ('manual/russup4ac.ucp', 'dos-russian-support-4-academic', 'rs4ac', 'russup4ac'),
+        ('manual/russup4na.ucp', 'dos-russian-support-4', 'rs4', 'russup4na'),
 
         # from wikipedia
-        'manual/zx-spectrum.ucp': ('zx-spectrum',),
+        ('manual/zx-spectrum.ucp', 'zx-spectrum',),
 
         # from ibm cdra but overlaid with 437
-        'manual/cp934.ucp': ('cp934', 'ibm-934', 'dos-v-korean'),
-        'manual/cp938.ucp': ('cp938', 'ibm-938', 'dos-v-chinese-traditional'),
-    },
+        ('manual/cp934.ucp', 'cp934', 'ibm-934', 'dos-v-korean'),
+        ('manual/cp938.ucp', 'cp938', 'ibm-938', 'dos-v-chinese-traditional'),
+    ),
 
-    'html': {
-        'wikipedia/mazovia.html': ('mazovia', 'cp667', 'cp790', 'cp991'),
-        'wikipedia/kamenicky.html': ('kamenický', 'kamenicky', 'nec-867', 'keybcs2', 'dos-895'),
-        'wikipedia/cwi2.html': ('cwi-2', 'cwi', 'cp-hu', 'hucwi', 'hu8cwi2'),
-        'wikipedia/pascii.html': ('pascii',),
-        'wikipedia/cp853.html': ('cp853', 'ibm-853'),
-        'wikipedia/brascii.html': ('brascii', 'abnt', 'star-3847'),
-        'wikipedia/abicomp.html': ('abicomp', 'star-3848', 'freedos-3848'),
+    'html': (
+        ('wikipedia/mazovia.html', 'mazovia', 'cp667', 'cp790', 'cp991'),
+        ('wikipedia/kamenicky.html', 'kamenický', 'kamenicky', 'nec-867', 'keybcs2', 'dos-895'),
+        ('wikipedia/cwi2.html', 'cwi-2', 'cwi', 'cp-hu', 'hucwi', 'hu8cwi2'),
+        ('wikipedia/pascii.html', 'pascii',),
+        ('wikipedia/cp853.html', 'cp853', 'ibm-853'),
+        ('wikipedia/brascii.html', 'brascii', 'abnt', 'star-3847'),
+        ('wikipedia/abicomp.html', 'abicomp', 'star-3848', 'freedos-3848'),
 
         # DEC character sets
-        'wikipedia/dec-special.html': ('dec-special', 'ibm-1090'),
-        'wikipedia/dec-technical.html': ('dec-technical', 'dec-tcs', 'tcs'),
+        ('wikipedia/dec-special.html', 'dec-special', 'ibm-1090'),
+        ('wikipedia/dec-technical.html', 'dec-technical', 'dec-tcs', 'tcs'),
 
         # font-specific
-        'wikipedia/wingdings.html': ('wingdings', 'windows-wingdings', 'microsoft-wingdings'),
+        ('wikipedia/wingdings.html', 'wingdings', 'windows-wingdings', 'microsoft-wingdings'),
 
         # platform-specific charmaps
-        'wikipedia/amstrad-cpc.html': ('amstrad-cpc',),
-        'wikipedia/amstrad-cpm-plus.html': ('amstrad-cpm-plus', 'amstrad-pcw', 'zx-spectrum-plus3'),
-        'wikipedia/atari-st.html': ('atari-st',),
-        'wikipedia/atascii.html': ('atascii',),
-        'wikipedia/gem.html': ('gem',),
-        'wikipedia/zx80.html': ('zx80',),
-        'wikipedia/zx81.html': ('zx81',),
-        'wikipedia/wiscii.html': ('wiscii', 'wang'),
-        'wikipedia/petscii.html': ('petscii-unshifted', 'petscii-0', 'petscii'),
-    },
+        ('wikipedia/amstrad-cpc.html', 'amstrad-cpc',),
+        ('wikipedia/amstrad-cpm-plus.html', 'amstrad-cpm-plus', 'amstrad-pcw', 'zx-spectrum-plus3'),
+        ('wikipedia/atari-st.html', 'atari-st',),
+        ('wikipedia/atascii.html', 'atascii',),
+        ('wikipedia/gem.html', 'gem',),
+        ('wikipedia/zx80.html', 'zx80',),
+        ('wikipedia/zx81.html', 'zx81',),
+        ('wikipedia/wiscii.html', 'wiscii', 'wang'),
+        ('wikipedia/petscii.html', 'petscii-unshifted', 'petscii-0', 'petscii'),
+    ),
 
-    'wikipedia-col1': {
-        'wikipedia/petscii.html': ('petscii-shifted', 'petscii-1'),
-    },
+    'wikipedia-col1': (
+        ('wikipedia/petscii.html', 'petscii-shifted', 'petscii-1'),
+    ),
 }
 
 # charmaps to be overlaid with IBM graphics in range 0x00--0x1f and 0x7f
@@ -970,8 +970,7 @@ charmaps = CharmapRegistry()
 
 # charmap files
 for _format, _files in _ENCODING_FILES.items():
-    for _file, _aliases in _files.items():
-        _name = _aliases[0]
+    for _file, _name, *_aliases in _files:
         charmaps.register(_name, f'charmaps/{_file}', _format)
         for _alias in _aliases:
             charmaps.alias(_alias, _name)
