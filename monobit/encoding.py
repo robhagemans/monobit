@@ -46,7 +46,7 @@ _ENCODING_FILES = {
         # the xorg encoding also adds some PUA mappings on undefined code points
         'microsoft/WINDOWS/CP874.TXT': ('windows-874', 'ibm-1162', 'tis620-2'),
         # japanese shift-jis
-        'microsoft/WINDOWS/CP932.TXT': ('windows-932', 'windows-31j', 'cp943c', 'ibm-943', 'ms-kanji'),
+        'microsoft/WINDOWS/CP932.TXT': ('windows-932', 'windows-31j', 'cp943c', 'ibm-943', 'ms-kanji', 'windows-shift-jis'),
         # simplified chinese gbk
         # use more extensive version from icu by default
         #'microsoft/WINDOWS/CP936.TXT': ('windows-936', 'ibm-1386'),
@@ -110,7 +110,7 @@ _ENCODING_FILES = {
         'apple/ROMAN.TXT': ('mac-roman', 'mac', 'macintosh', 'ibm-1275', 'windows-10000'),
         #'apple/ROMAN.TXT': ('mac-roman-8.5', 'mac-8.5', 'macintosh-8.5', 'mac-roman-euro', 'mac-euro', 'macintosh-euro'),
         'apple/JAPANESE.TXT': ('mac-japanese',),
-        'apple/CHINTRAD.TXT': ('mac-trad-chinese',),
+        'apple/CHINTRAD.TXT': ('mac-traditional-chinese', 'mac-trad-chinese', 'mac-chinese-trad'),
         'apple/KOREAN.TXT': ('mac-korean',),
         'apple/ARABIC.TXT': ('mac-arabic',),
         'apple/HEBREW.TXT': ('mac-hebrew',),
@@ -122,7 +122,7 @@ _ENCODING_FILES = {
         'apple/GURMUKHI.TXT': ('mac-gurmukhi',),
         'apple/GUJARATI.TXT': ('mac-gujarati',),
         'apple/THAI.TXT': ('mac-thai',) ,
-        'apple/CHINSIMP.TXT': ('mac-simp-chinese',),
+        'apple/CHINSIMP.TXT': ('mac-simplified-chinese', 'mac-simp-chinese', 'mac-chinese-simp'),
         # "non-cyrillic slavic", mac-centeuro
         # cf. 'microsoft/MAC/LATIN2.TXT'
         'apple/CENTEURO.TXT': ('mac-centraleurope', 'mac-ce', 'mac-latin2', 'mac-centeuro', 'mac-east-eur-roman'),
@@ -270,7 +270,7 @@ _ENCODING_FILES = {
         'icu/ibm-858_P100-1997.ucm': ('cp858', 'ibm-858', 'cp850-euro'),
         'icu/ibm-868_P100-1995.ucm': ('cp868', 'ibm-868', 'cp-ar', 'dos-urdu'),
         'icu/ibm-851_P100-1995.ucm': ('cp851', 'ibm-851', 'oem-851'),
-        'icu/windows-936-2000.ucm': ('windows-936', 'ibm-1386'),
+        'icu/windows-936-2000.ucm': ('windows-936', 'ibm-1386', 'windows-gb2312', 'windows-gbk'),
         'icu/ibm-1375_P100-2008.ucm': ('big5-hkscs', 'ibm-1375', 'big5hk'),
         'icu/ibm-806_P100-1998.ucm': ('cp806', 'ibm-806', 'ibm-iscii-devanagari'),
     },
