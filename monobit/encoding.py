@@ -200,7 +200,7 @@ _ENCODING_FILES = (
         # 'cp866': 'czyborra/cp866.txt',
         ('czyborra/bulgarian-mik.txt', 'mik', 'bulgarian-mik', 'bulgaria-pc'),
         # latin pages
-        ('czyborra/hp-roman8.txt', 'hp-roman8', 'ibm-1051'),
+        ('czyborra/hp-roman8.txt', 'hp-roman8', 'ibm-1051', 'cp1051', 'roman8'),
 
         # Jean-Cristophe André at bugs.python.org
         # tcvn3 <= tcvn2 <= tcvn1
@@ -295,6 +295,7 @@ _ENCODING_FILES = (
     )),
 
     ('html', {}, (
+        # national character sets
         ('wikipedia/mazovia.html', 'mazovia', 'cp667', 'cp790', 'cp991'),
         ('wikipedia/kamenicky.html', 'kamenický', 'kamenicky', 'nec-867', 'keybcs2', 'dos-895'),
         ('wikipedia/cwi2.html', 'cwi-2', 'cwi', 'cp-hu', 'hucwi', 'hu8cwi2'),
@@ -321,6 +322,11 @@ _ENCODING_FILES = (
         ('wikipedia/petscii.html', 'petscii-unshifted', 'petscii-0', 'petscii'),
     )),
 
+    # Windows-1252 extensions
+    ('html', dict(table=1), (
+        ('wikipedia/windows-1252.html', 'windows-extended', 'ibm-1004'),
+    )),
+
     ('html', dict(range=range(0x80)), (
         ('wikipedia/atascii.html', 'atascii',),
     )),
@@ -332,6 +338,7 @@ _ENCODING_FILES = (
 
 # charmaps to be overlaid with IBM graphics in range 0x00--0x1f and 0x7f
 _ASCII_RANGE = tuple((_cp,) for _cp in range(0x80))
+_ANSI_RANGE = tuple((_cp,) for _cp in range(0x100))
 _IBM_GRAPH_RANGE = tuple((_cp,) for _cp in range(0x20)) + ((0x7f,),)
 _MAC_GRAPH_RANGE = tuple((_cp,) for _cp in range(0x11, 0x15))
 _MAC_EURO = ((0xDB,))
@@ -362,6 +369,7 @@ _OVERLAYS = (
     ('misc/IBMGRAPH.TXT', _IBM_GRAPH_RANGE, 'txt', dict(
         codepoint_column=2, unicode_column=0
     ), ('cp864',)),
+    ('microsoft/WINDOWS/CP1252.TXT', _ANSI_RANGE, 'txt', {}, ('windows-extended',)),
 )
 
 
@@ -552,6 +560,8 @@ class CharmapRegistry:
             raise NotFoundError(f"No registered character map matches '{name}'.") from exc
         charmap = self.load(**charmap_dict)
         for ovr_dict in self._overlays.get(normname, ()):
+            # copy so pop() doesn't change the stored dict
+            ovr_dict = {**ovr_dict}
             ovr_rng = ovr_dict.pop('codepoint_range')
             overlay = self.load(**ovr_dict)
             charmap = charmap.overlay(overlay, ovr_rng)
