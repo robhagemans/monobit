@@ -201,8 +201,12 @@ _ENCODING_FILES = (
         ('czyborra/bulgarian-mik.txt', 'mik', 'bulgarian-mik', 'bulgaria-pc'),
         # latin pages
         ('czyborra/hp-roman8.txt', 'hp-roman8', 'ibm-1051'),
-        ('czyborra/vn5712-1.txt', 'tcvn5712-1', 'vscii-1'),
-        ('czyborra/vn5712-2.txt', 'tcvn5712-2', 'vscii-2'),
+
+        # Jean-Cristophe André at bugs.python.org
+        # tcvn3 <= tcvn2 <= tcvn1
+        ('python/TCVN5712-1.TXT', 'tcvn5712-1', 'vscii-1', 'vscii', 'tcvn-1', 'iso-ir-180'),
+        ('python/TCVN5712-2.TXT', 'tcvn5712-2', 'vscii-2', 'tcvn-2'),
+        ('python/TCVN5712-3.TXT', 'tcvn5712-3', 'vscii-3', 'tcvn-3'),
 
         # mleisher's csets
         ('mleisher/ALTVAR.TXT' , 'alternativnyj-variant', 'alternativnyj', 'av'),
