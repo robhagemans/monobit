@@ -328,18 +328,18 @@ _ASCII_RANGE = tuple((_cp,) for _cp in range(0x80))
 _IBM_GRAPH_RANGE = tuple((_cp,) for _cp in range(0x20)) + ((0x7f,),)
 _MAC_GRAPH_RANGE = tuple((_cp,) for _cp in range(0x11, 0x15))
 _MAC_EURO = ((0xDB,))
-_OVERLAYS = {
+_OVERLAYS = (
     # these were partially defined, complete them by adding 7-bit ascii codepoints
-    ('iso-8859/8859-1.TXT', _ASCII_RANGE, 'txt'): (
+    ('iso-8859/8859-1.TXT', _ASCII_RANGE, 'txt', {}, (
         'koi8-a', 'koi8-b', 'koi8-e', 'koi8-f', 'gost-19768-87', 'mik',
         # per NEXTSTEP.TXT, identical to ascii.
         # wikipedia suggests it's us-ascii-quotes
         'next',
         'rs3', 'rs4', 'rs4ac', 'mazovia', 'kamenicky', 'cwi-2', 'viscii',
         'cp853',
-    ),
+    )),
     # DOS/OEM codepages usually have the ibm-graphics range of icons mapped to C0 cntrols
-    ('misc/IBMGRAPH.TXT', _IBM_GRAPH_RANGE, 'adobe'): (
+    ('misc/IBMGRAPH.TXT', _IBM_GRAPH_RANGE, 'adobe', {}, (
         'cp437', 'cp720', 'cp737', 'cp775', 'cp806',
         'cp850', 'cp851', 'cp852', 'cp853', 'cp855', 'cp856', 'cp857', 'cp858',
         'cp860', 'cp861', 'cp862', 'cp863', 'cp865', 'cp866', 'cp868', 'cp869', # not cp864
@@ -347,13 +347,16 @@ _OVERLAYS = {
         'windows-950',
         'mik', 'koi8-r', 'koi8-u', 'koi8-ru', 'ruscii', 'rs3', 'rs4', 'rs4ac',
         'mazovia', 'kamenicky', 'cwi-2',
-    ),
-    # there's a different ordering of the ibm graphics range speially for cp864
-    ('misc/IBMGRAPH.TXT', _IBM_GRAPH_RANGE, 'ibmgraph_864'): ('cp864',),
+    )),
     # Mac OS system fonts
-    ('manual/mac-system.ucp', _MAC_GRAPH_RANGE, 'ucp'): ('mac-roman', 'mac-roman-8.5'),
-    ('manual/mac-roman-pre8.5.ucp', _MAC_EURO, 'ucp'): ('mac-roman',),
-}
+    ('manual/mac-system.ucp', _MAC_GRAPH_RANGE, 'ucp', {}, ('mac-roman', 'mac-roman-8.5')),
+    ('manual/mac-roman-pre8.5.ucp', _MAC_EURO, 'ucp', {}, ('mac-roman',)),
+    # there's a different ordering of the ibm graphics range specially for cp864
+    ('misc/IBMGRAPH.TXT', _IBM_GRAPH_RANGE, 'txt', dict(
+        codepoint_column=2, unicode_column=0
+    ), ('cp864',)),
+)
+
 
 ###################################################################################################
 # character properties
@@ -611,19 +614,17 @@ def _from_wikipedia(data, table=0, column=0, range=None):
 
 # charmap file format parameters
 _FORMATS = {
-    'ucp': (_from_text_columns, dict(
-        comment='#', separator=':', joiner=',', codepoint_column=0, unicode_column=1
-    )),
+    # most tables are in this format
     'txt': (_from_text_columns, dict(
         comment='#', separator=None, joiner='+', codepoint_column=0, unicode_column=1
+    )),
+    'ucp': (_from_text_columns, dict(
+        comment='#', separator=':', joiner=',', codepoint_column=0, unicode_column=1
     )),
     'ucm': (_from_ucm_charmap, {}),
     'html': (_from_wikipedia, {}),
     'adobe': (_from_text_columns, dict(
         comment='#', separator='\t', joiner=None, codepoint_column=1, unicode_column=0
-    )),
-    'ibmgraph_864': (_from_text_columns, dict(
-        comment='#', separator='\t', joiner=None, codepoint_column=2, unicode_column=0
     )),
     'kostis': (_from_text_columns, dict(
         comment='#', separator='\t', joiner='+', codepoint_column=0, unicode_column=3,
@@ -688,13 +689,17 @@ class CharmapRegistry:
         cls._registered[normname] = dict(name=name, filename=filename, format=format, **kwargs)
 
     @classmethod
-    def overlay(cls, name, filename, overlay_range, format=None):
+    def overlay(cls, name, filename, overlay_range, format=None, **kwargs):
         """Overlay a given charmap with an additional file."""
         normname = cls._normalise_for_match(name)
+        ovr_dict = dict(
+            name=name, filename=filename, format=format, codepoint_range=overlay_range,
+            **kwargs
+        )
         try:
-            cls._overlays[normname].append((filename, format, overlay_range))
+            cls._overlays[normname].append(ovr_dict)
         except KeyError:
-            cls._overlays[normname] = [(filename, format, overlay_range)]
+            cls._overlays[normname] = [(ovr_dict)]
 
     @classmethod
     def alias(cls, alias, name):
@@ -775,8 +780,9 @@ class CharmapRegistry:
         except KeyError as exc:
             raise NotFoundError(f"No registered character map matches '{name}'.") from exc
         charmap = self.load(**charmap_dict)
-        for filename, format, ovr_rng in self._overlays.get(normname, ()):
-            overlay = self.load(filename, format=format)
+        for ovr_dict in self._overlays.get(normname, ()):
+            ovr_rng = ovr_dict.pop('codepoint_range')
+            overlay = self.load(**ovr_dict)
             charmap = charmap.overlay(overlay, ovr_rng)
         return charmap
 
@@ -877,7 +883,7 @@ class Charmap(Encoder):
             reader, format_kwargs = _FORMATS[format]
         except KeyError as exc:
             raise NotFoundError(f'Undefined charmap file format {format}.') from exc
-        mapping = reader(data, **format_kwargs, **kwargs)
+        mapping = reader(data, **{**format_kwargs, **kwargs})
         if not name:
             name = Path(filename).stem
         return cls(mapping, name=name)
@@ -995,6 +1001,6 @@ for _format, _kwargs, _records in _ENCODING_FILES:
             charmaps.alias(_alias, _name)
 
 # overlays
-for (_overlay, _range, _format), _names in _OVERLAYS.items():
+for _overlay, _range, _format, _kwargs, _names in _OVERLAYS:
     for _name in _names:
-        charmaps.overlay(_name, f'charmaps/{_overlay}', _range, _format)
+        charmaps.overlay(_name, f'charmaps/{_overlay}', _range, _format, **_kwargs)
