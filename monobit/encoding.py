@@ -941,12 +941,13 @@ def _from_wikipedia(data, table=0, column=0, range=None):
                     tag == 'table'
                     and 'class' in attrs
                     and 'chset' in attrs['class']
-                    and self.count == table
                 ):
-                self.table = True
-                self.th = False
-                self.td = False
-                self.small = False
+                if self.count == table:
+                    self.table = True
+                    self.th = False
+                    self.td = False
+                    self.small = False
+                self.count += 1
             elif self.table:
                 if tag == 'td':
                     self.td = True
@@ -959,8 +960,6 @@ def _from_wikipedia(data, table=0, column=0, range=None):
         def handle_endtag(self, tag):
             """Change state upon encountering end tag."""
             if tag == 'table':
-                if self.table:
-                    self.count += 1
                 self.table = False
                 self.th = False
                 self.td = False
