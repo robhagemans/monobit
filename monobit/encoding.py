@@ -304,9 +304,11 @@ _ENCODING_FILES = (
         ('wikipedia/brascii.html', 'brascii', 'abnt', 'star-3847'),
         ('wikipedia/abicomp.html', 'abicomp', 'star-3848', 'freedos-3848'),
 
-        # DEC character sets
+        # vendor character sets
         ('wikipedia/dec-special.html', 'dec-special', 'ibm-1090'),
         ('wikipedia/dec-technical.html', 'dec-technical', 'dec-tcs', 'tcs'),
+        ('wikipedia/lics.html', 'lotus-international', 'lics'),
+        ('wikipedia/ventura.html', 'ventura-international', 'ventura'),
 
         # font-specific
         ('wikipedia/wingdings.html', 'wingdings', 'windows-wingdings', 'microsoft-wingdings'),
@@ -324,7 +326,17 @@ _ENCODING_FILES = (
 
     # Windows-1252 extensions
     ('html', dict(table=1), (
-        ('wikipedia/windows-1252.html', 'windows-extended', 'ibm-1004'),
+        ('wikipedia/windows-1252.html', 'windows-extended', 'ibm-1004', 'os2-1004'),
+    )),
+    ('html', dict(table=2), (
+        ('wikipedia/windows-1252.html', 'windows-1252-msdos'),
+    )),
+    ('html', dict(table=3), (
+        ('wikipedia/windows-1252.html', 'palm-os'),
+    )),
+
+    ('html', dict(table=1), (
+        ('wikipedia/ventura.html', 'pcl-ventura-international', 'pcl-ventura'),
     )),
 
     ('html', dict(range=range(0x80)), (
@@ -369,7 +381,8 @@ _OVERLAYS = (
     ('misc/IBMGRAPH.TXT', _IBM_GRAPH_RANGE, 'txt', dict(
         codepoint_column=2, unicode_column=0
     ), ('cp864',)),
-    ('microsoft/WINDOWS/CP1252.TXT', _ANSI_RANGE, 'txt', {}, ('windows-extended',)),
+    ('microsoft/WINDOWS/CP1252.TXT', _ANSI_RANGE, 'txt', {}, ('windows-extended', 'palm-os')),
+    ('iso-8859/8859-1.TXT', _ANSI_RANGE, 'txt', {}, ('windows-1252-msdos',)),
 )
 
 
