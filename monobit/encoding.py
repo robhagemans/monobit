@@ -17,9 +17,9 @@ from pkg_resources import resource_listdir, resource_isdir
 from .base.binary import int_to_bytes
 
 
-_ENCODING_FILES = {
+_ENCODING_FILES = (
 
-    'txt': (
+    ('txt', {}, (
         # iso standards
         # https://www.unicode.org/Public/MAPPINGS/ISO8859
         ('iso-8859/8859-1.TXT', 'latin-1', 'iso8859-1', 'iso-ir-100', 'ibm-819'),
@@ -228,9 +228,9 @@ _ENCODING_FILES = {
         # manually adapted
         ('manual/ms-linedraw.txt', 'windows-linedraw', 'microsoft-linedraw', 'ms-linedraw'),
         ('manual/hp48.txt', 'hp-48', 'hp48', 'hp-rpl'),
-    ),
+    )),
 
-    'adobe': (
+    ('adobe', {}, (
         # Adobe encodings
         # https://www.unicode.org/Public/MAPPINGS/VENDORS/ADOBE/
         ('adobe/stdenc.txt', 'adobe-standard',),
@@ -241,9 +241,9 @@ _ENCODING_FILES = {
         # to be used in combination with other code pages e.g. cp437
         # https://www.unicode.org/Public/MAPPINGS/VENDORS/MISC/
         ('misc/IBMGRAPH.TXT', 'ibm-graphics',),
-    ),
+    )),
 
-    'ucm': (
+    ('ucm', {}, (
         # charmaps from Keld Simonsen (dkuug)
         ('dkuug/iso646-us', 'ascii', 'iso646-us', 'ascii-0', 'us-ascii', 'iso-ir-6', 'ansi-x3.4-1968'),
         ('dkuug/iso646-ca', 'iso646-ca', 'iso-ir-121', 'csa7-1'),
@@ -273,9 +273,9 @@ _ENCODING_FILES = {
         ('icu/windows-936-2000.ucm', 'windows-936', 'ibm-1386', 'windows-gb2312', 'windows-gbk'),
         ('icu/ibm-1375_P100-2008.ucm', 'big5-hkscs', 'ibm-1375', 'big5hk'),
         ('icu/ibm-806_P100-1998.ucm', 'cp806', 'ibm-806', 'ibm-iscii-devanagari'),
-    ),
+    )),
 
-    'ucp': (
+    ('ucp', {}, (
         # manually constructed based on gif images
         # https://web.archive.org/web/20061017214053/http://www.cyrillic.com/ref/cyrillic/
         ('manual/russup3.ucp', 'dos-russian-support-3', 'rs3', 'russup3'),
@@ -288,9 +288,9 @@ _ENCODING_FILES = {
         # from ibm cdra but overlaid with 437
         ('manual/cp934.ucp', 'cp934', 'ibm-934', 'dos-v-korean'),
         ('manual/cp938.ucp', 'cp938', 'ibm-938', 'dos-v-chinese-traditional'),
-    ),
+    )),
 
-    'html': (
+    ('html', {}, (
         ('wikipedia/mazovia.html', 'mazovia', 'cp667', 'cp790', 'cp991'),
         ('wikipedia/kamenicky.html', 'kamenický', 'kamenicky', 'nec-867', 'keybcs2', 'dos-895'),
         ('wikipedia/cwi2.html', 'cwi-2', 'cwi', 'cp-hu', 'hucwi', 'hu8cwi2'),
@@ -316,12 +316,12 @@ _ENCODING_FILES = {
         ('wikipedia/zx81.html', 'zx81',),
         ('wikipedia/wiscii.html', 'wiscii', 'wang'),
         ('wikipedia/petscii.html', 'petscii-unshifted', 'petscii-0', 'petscii'),
-    ),
+    )),
 
-    'wikipedia-col1': (
+    ('html', dict(column=1), (
         ('wikipedia/petscii.html', 'petscii-shifted', 'petscii-1'),
-    ),
-}
+    )),
+)
 
 # charmaps to be overlaid with IBM graphics in range 0x00--0x1f and 0x7f
 _ASCII_RANGE = tuple((_cp,) for _cp in range(0x80))
@@ -629,7 +629,6 @@ _FORMATS = {
         comment='#', separator='\t', joiner='+', codepoint_column=0, unicode_column=3,
         codepoint_base=16, unicode_base=10, inline_comments=False
     )),
-    'wikipedia-col1': (_from_wikipedia, dict(column=1)),
 }
 _FORMATS['enc'] = _FORMATS['txt']
 
@@ -677,7 +676,7 @@ class CharmapRegistry:
     }
 
     @classmethod
-    def register(cls, name, filename, format=None):
+    def register(cls, name, filename, format=None, **kwargs):
         """Register a file to be loaded for a given charmap."""
         normname = cls._normalise_for_match(name)
         if normname in cls._registered:
@@ -686,7 +685,7 @@ class CharmapRegistry:
             )
         if normname in cls._overlays:
             del cls._overlays[normname]
-        cls._registered[normname] = dict(name=name, filename=filename, format=format)
+        cls._registered[normname] = dict(name=name, filename=filename, format=format, **kwargs)
 
     @classmethod
     def overlay(cls, name, filename, overlay_range, format=None):
@@ -865,7 +864,7 @@ class Charmap(Encoder):
         self._chr2ord = {_v: _k for _k, _v in self._ord2chr.items()}
 
     @classmethod
-    def load(cls, filename, *, format=None, name=''):
+    def load(cls, filename, *, format=None, name='', **kwargs):
         """Create new charmap from file."""
         try:
             data = pkgutil.get_data(__name__, filename)
@@ -875,10 +874,10 @@ class Charmap(Encoder):
             raise NotFoundError(f'No data in charmap file `{filename}`.')
         format = format or Path(filename).suffix[1:].lower()
         try:
-            reader, kwargs = _FORMATS[format]
+            reader, format_kwargs = _FORMATS[format]
         except KeyError as exc:
             raise NotFoundError(f'Undefined charmap file format {format}.') from exc
-        mapping = reader(data, **kwargs)
+        mapping = reader(data, **format_kwargs, **kwargs)
         if not name:
             name = Path(filename).stem
         return cls(mapping, name=name)
@@ -989,9 +988,9 @@ class Unicode(Encoder):
 charmaps = CharmapRegistry()
 
 # charmap files
-for _format, _files in _ENCODING_FILES.items():
-    for _file, _name, *_aliases in _files:
-        charmaps.register(_name, f'charmaps/{_file}', _format)
+for _format, _kwargs, _records in _ENCODING_FILES:
+    for _file, _name, *_aliases in _records:
+        charmaps.register(_name, f'charmaps/{_file}', _format, **_kwargs)
         for _alias in _aliases:
             charmaps.alias(_alias, _name)
 
