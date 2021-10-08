@@ -513,15 +513,23 @@ def _from_ucm_charmap(data):
     return mapping
 
 
-def _from_wikipedia(data, table=0, column=0):
-    """Scrape charmap from table in Wikipedia."""
+def _from_wikipedia(data, table=0, column=0, range=None):
+    """
+    Scrape charmap from table in Wikipedia.
+    Reads matrix tables with class="chset".
+    table: target table; 0 for 1st chset table, etc.
+    column: target column if multiple unicode points provided per cell.
+    """
 
     class _WikiParser(HTMLParser):
         """HTMLParser object to read Wikipedia tables."""
 
         def __init__(self):
+            """Set up Wikipedia parser."""
             super().__init__()
+            # output dict
             self.mapping = {}
+            # state variables
             # parsing chset table
             self.table = False
             self.count = 0
@@ -535,6 +543,7 @@ def _from_wikipedia(data, table=0, column=0):
             self.current = 0
 
         def handle_starttag(self, tag, attrs):
+            """Change state upon encountering start tag."""
             attrs = dict(attrs)
             if (
                     tag == 'table'
@@ -546,19 +555,24 @@ def _from_wikipedia(data, table=0, column=0):
                 self.th = False
                 self.td = False
                 self.small = False
-            elif tag == 'td' and self.table:
-                self.td = True
-                self.small = False
-            elif tag == 'small':
-                self.small = True
-            elif tag == 'th':
-                self.th = True
+            elif self.table:
+                if tag == 'td':
+                    self.td = True
+                    self.small = False
+                elif tag == 'small':
+                    self.small = True
+                elif tag == 'th':
+                    self.th = True
 
         def handle_endtag(self, tag):
+            """Change state upon encountering end tag."""
             if tag == 'table':
                 if self.table:
                     self.count += 1
                 self.table = False
+                self.th = False
+                self.td = False
+                self.small = False
             elif tag == 'td':
                 self.td = False
                 self.current += 1
@@ -568,8 +582,11 @@ def _from_wikipedia(data, table=0, column=0):
                 self.th = False
 
         def handle_data(self, data):
+            """Parse cell data, depending on state."""
+            # row header provides first code point of the row
             if self.th and len(data) == 2 and data[-1] == '_':
                 self.current = int(data[0],16) * 16
+            # unicode point in <small> tag in table cell
             if self.td and self.small:
                 cols = data.split()
                 if len(cols) > column:
@@ -578,11 +595,14 @@ def _from_wikipedia(data, table=0, column=0):
                     # unicode point
                     if data.lower().startswith('u+'):
                         data = data[2:]
-                    try:
-                        self.mapping[(self.current,)] = chr(int(data, 16))
-                    except ValueError:
-                        # not a unicode point
-                        pass
+                    if not range or self.current in range:
+                        try:
+                            char = chr(int(data, 16))
+                        except ValueError:
+                            # not a unicode point
+                            pass
+                        else:
+                            self.mapping[(self.current,)] = char
 
     parser = _WikiParser()
     parser.feed(data.decode('utf-8-sig'))
