@@ -310,12 +310,15 @@ _ENCODING_FILES = (
         ('wikipedia/amstrad-cpc.html', 'amstrad-cpc',),
         ('wikipedia/amstrad-cpm-plus.html', 'amstrad-cpm-plus', 'amstrad-pcw', 'zx-spectrum-plus3'),
         ('wikipedia/atari-st.html', 'atari-st',),
-        ('wikipedia/atascii.html', 'atascii',),
         ('wikipedia/gem.html', 'gem',),
         ('wikipedia/zx80.html', 'zx80',),
         ('wikipedia/zx81.html', 'zx81',),
         ('wikipedia/wiscii.html', 'wiscii', 'wang'),
         ('wikipedia/petscii.html', 'petscii-unshifted', 'petscii-0', 'petscii'),
+    )),
+
+    ('html', dict(range=range(0x80)), (
+        ('wikipedia/atascii.html', 'atascii',),
     )),
 
     ('html', dict(column=1), (
