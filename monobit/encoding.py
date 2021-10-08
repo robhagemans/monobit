@@ -522,6 +522,7 @@ def _from_wikipedia(data, table=0, column=0, range=None):
     Reads matrix tables with class="chset".
     table: target table; 0 for 1st chset table, etc.
     column: target column if multiple unicode points provided per cell.
+    range: range to read, read all if range is empty
     """
 
     class _WikiParser(HTMLParser):
@@ -611,27 +612,6 @@ def _from_wikipedia(data, table=0, column=0, range=None):
     parser.feed(data.decode('utf-8-sig'))
     return parser.mapping
 
-
-# charmap file format parameters
-_FORMATS = {
-    # most tables are in this format
-    'txt': (_from_text_columns, dict(
-        comment='#', separator=None, joiner='+', codepoint_column=0, unicode_column=1
-    )),
-    'ucp': (_from_text_columns, dict(
-        comment='#', separator=':', joiner=',', codepoint_column=0, unicode_column=1
-    )),
-    'ucm': (_from_ucm_charmap, {}),
-    'html': (_from_wikipedia, {}),
-    'adobe': (_from_text_columns, dict(
-        comment='#', separator='\t', joiner=None, codepoint_column=1, unicode_column=0
-    )),
-    'kostis': (_from_text_columns, dict(
-        comment='#', separator='\t', joiner='+', codepoint_column=0, unicode_column=3,
-        codepoint_base=16, unicode_base=10, inline_comments=False
-    )),
-}
-_FORMATS['enc'] = _FORMATS['txt']
 
 
 ###################################################################################################
@@ -859,6 +839,23 @@ class Encoder:
 class Charmap(Encoder):
     """Convert between unicode and ordinals using stored mapping."""
 
+    # charmap file format parameters
+    _formats = {
+        # most tables are in this format
+        'txt': (_from_text_columns, dict(
+            comment='#', separator=None, joiner='+', codepoint_column=0, unicode_column=1
+        )),
+        'ucp': (_from_text_columns, dict(
+            comment='#', separator=':', joiner=',', codepoint_column=0, unicode_column=1
+        )),
+        'ucm': (_from_ucm_charmap, {}),
+        'html': (_from_wikipedia, {}),
+        'adobe': (_from_text_columns, dict(
+            comment='#', separator='\t', joiner=None, codepoint_column=1, unicode_column=0
+        )),
+    }
+    _formats['enc'] = _formats['txt']
+
     def __init__(self, mapping=None, *, name=''):
         """Create charmap from a dictionary codepoint -> char."""
         if not mapping:
@@ -880,7 +877,7 @@ class Charmap(Encoder):
             raise NotFoundError(f'No data in charmap file `{filename}`.')
         format = format or Path(filename).suffix[1:].lower()
         try:
-            reader, format_kwargs = _FORMATS[format]
+            reader, format_kwargs = cls._formats[format]
         except KeyError as exc:
             raise NotFoundError(f'Undefined charmap file format {format}.') from exc
         mapping = reader(data, **{**format_kwargs, **kwargs})
