@@ -228,6 +228,13 @@ _ENCODING_FILES = (
 
         # X11 xfonts
         ('xfonts/viscii1.1-1.enc', 'viscii', 'viscii1.1-1'),
+        # variant of iso8859-7
+        ('xfonts/suneu-greek.enc', 'suneu-greek',),
+        # multilingual emacs encodings
+        ('xfonts/mulelao-1.enc', 'mule-lao', 'mulelao-1'),
+        ('xfonts/mulearabic-0.enc', 'arabic-digit', 'mulearabic-0'),
+        ('xfonts/mulearabic-1.enc', 'arabic-1-column', 'mulearabic-1'),
+        ('xfonts/mulearabic-2.enc', 'arabic-2-column', 'mulearabic-2'),
 
         # manually adapted
         ('manual/ms-linedraw.txt', 'windows-linedraw', 'microsoft-linedraw', 'ms-linedraw'),
@@ -367,7 +374,7 @@ _OVERLAYS = (
         # wikipedia suggests it's us-ascii-quotes
         'next',
         'rs3', 'rs4', 'rs4ac', 'mazovia', 'kamenicky', 'cwi-2', 'viscii',
-        'cp853',
+        'cp853', 'suneu-greek', 'mule-lao',
     )),
     # DOS/OEM codepages usually have the ibm-graphics range of icons mapped to C0 cntrols
     ('misc/IBMGRAPH.TXT', _IBM_GRAPH_RANGE, 'adobe', {}, (
