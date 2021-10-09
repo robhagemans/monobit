@@ -731,13 +731,6 @@ class Encoder:
             )
         ))
 
-    def table(self):
-        """Mapping table, first page."""
-        return '\n'.join(
-            f'0x{_k[0]:02X}: u+{ord(_v):04X}  # {unicode_name(_v)}' for _k, _v in self._ord2chr.items()
-            if len(_k) == 1
-        )
-
     def __repr__(self):
         """Representation."""
         return f"{type(self).__name__}(name='{self.name}')"
@@ -848,6 +841,13 @@ class Charmap(Encoder):
     def overlay(self, other, codepoint_range):
         """Return encoding overlaid with all characters in the overlay range taken from rhs."""
         return self + other.take(codepoint_range)
+
+    def table(self):
+        """Mapping table, first page."""
+        return '\n'.join(
+            f'0x{_k[0]:02X}: u+{ord(_v):04X}  # {unicode_name(_v)}' for _k, _v in self._ord2chr.items()
+            if len(_k) == 1
+        )
 
     def __repr__(self):
         """Representation."""
