@@ -12,7 +12,7 @@ import unicodedata
 from html.parser import HTMLParser
 import binascii
 
-from pkg_resources import resource_listdir, resource_isdir
+from pkg_resources import resource_listdir
 
 from .base.binary import int_to_bytes
 
@@ -320,7 +320,7 @@ _ENCODING_FILES = (
         ('wikipedia/pascii.html', 'pascii',),
         ('wikipedia/cp853.html', 'cp853', 'ibm-853'),
         ('wikipedia/brascii.html', 'brascii', 'abnt', 'star-3847'),
-        ('wikipedia/abicomp.html', 'abicomp', 'star-3848', 'freedos-3848'),
+        ('wikipedia/abicomp.html', 'abicomp', 'star-3848'),
 
         # vendor character sets
         ('wikipedia/dec-special.html', 'dec-special', 'ibm-1090'),
@@ -1064,3 +1064,7 @@ for _format, _kwargs, _records in _ENCODING_FILES:
 for _overlay, _range, _format, _kwargs, _names in _OVERLAYS:
     for _name in _names:
         charmaps.overlay(_name, f'charmaps/{_overlay}', _range, _format, **_kwargs)
+
+# FreeDOS charmaps
+for _file in resource_listdir(__name__, 'charmaps/freedos'):
+    charmaps.register(f'freedos-{Path(_file).stem}', f'charmaps/freedos/{_file}')
