@@ -372,6 +372,9 @@ _ENCODING_FILES = (
         ('icu/windows-936-2000.ucm', 'windows-936', 'ibm-1386', 'windows-gb2312', 'windows-gbk'),
         ('icu/ibm-1375_P100-2008.ucm', 'big5-hkscs', 'ibm-1375', 'big5hk', 'big5hkscs-0'),
         ('icu/ibm-806_P100-1998.ucm', 'cp806', 'ibm-806', 'ibm-iscii-devanagari'),
+        ('icu/windows-1361-2000.ucm', 'windows-1361', 'johab', 'ksc5601-1992'),
+        # P12A variant has backslash, tilde; P120 has yen, overline
+        ('icu/ibm-932_P120-1999.ucm', 'ibm-932', 'dos-v-japanese'),
     )),
 
     ('ucp', {}, (
