@@ -236,6 +236,16 @@ _ENCODING_FILES = (
         ('xfonts/mulearabic-1.enc', 'arabic-1-column', 'mulearabic-1'),
         ('xfonts/mulearabic-2.enc', 'arabic-2-column', 'mulearabic-2'),
 
+        # GNU emacs MULE
+        # these are shifted to the lower 7 bits, except mule-lao above
+        ('emacs/MULE-ethiopic.map', 'mule-ethiopic',),
+        ('emacs/MULE-ipa.map', 'mule-ipa',),
+        ('emacs/MULE-sisheng.map', 'mule-sisheng', 'sisheng',),
+        ('emacs/MULE-is13194.map', 'mule-is13194', 'mule-iscii'),
+        ('emacs/MULE-tibetan.map', 'mule-tibetan',),
+        ('emacs/MULE-lviscii.map', 'mule-lviscii', 'viscii-lower'),
+        ('emacs/MULE-uviscii.map', 'mule-uviscii', 'viscii-upper'),
+
         # manually adapted
         ('manual/ms-linedraw.txt', 'windows-linedraw', 'microsoft-linedraw', 'ms-linedraw'),
         ('manual/hp48.txt', 'hp-48', 'hp48', 'hp-rpl'),
@@ -356,8 +366,6 @@ _ENCODING_FILES = (
     ('html', dict(column=1), (
         ('wikipedia/petscii.html', 'petscii-shifted', 'petscii-1'),
     )),
-
-
 )
 
 # charmaps to be overlaid with IBM graphics in range 0x00--0x1f and 0x7f
@@ -821,6 +829,7 @@ class Unicode(Encoder):
 
 @Charmap.register_loader('txt')
 @Charmap.register_loader('enc')
+@Charmap.register_loader('map')
 @Charmap.register_loader('ucp', separator=':', joiner=',')
 @Charmap.register_loader('adobe', separator='\t', joiner=None, codepoint_column=1, unicode_column=0)
 def _from_text_columns(
