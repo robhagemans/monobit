@@ -1,6 +1,6 @@
 # ZX Spectrum
 # https://en.wikipedia.org/wiki/ZX_Spectrum_character_set
-# code poins 20-7f are ascii, except 5e, 60, 7f
+# code points 20-7f are ascii, except 5e, 60, 7f
 20:0020
 21:0021
 22:0022
@@ -118,4 +118,3 @@
 8d:259f
 8e:2599
 8f:2588
-

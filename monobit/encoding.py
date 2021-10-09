@@ -322,6 +322,8 @@ _ENCODING_FILES = (
         ('wikipedia/zx81.html', 'zx81',),
         ('wikipedia/wiscii.html', 'wiscii', 'wang'),
         ('wikipedia/petscii.html', 'petscii-unshifted', 'petscii-0', 'petscii'),
+        ('wikipedia/trs-80.html', 'trs-80'),
+        ('wikipedia/mattel-aquarius.html', 'mattel-aquarius'),
     )),
 
     # Windows-1252 extensions
@@ -574,7 +576,9 @@ class CharmapRegistry:
         try:
             charmap_dict = self._registered[normname]
         except KeyError as exc:
-            raise NotFoundError(f"No registered character map matches '{name}'.") from exc
+            raise NotFoundError(
+                f"No registered character map matches '{name}' ['{normname}']."
+            ) from None
         charmap = self.load(**charmap_dict)
         for ovr_dict in self._overlays.get(normname, ()):
             # copy so pop() doesn't change the stored dict
