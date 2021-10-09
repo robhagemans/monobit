@@ -219,7 +219,6 @@ _ENCODING_FILES = (
         ('mleisher/IRANSYSTEM.TXT' , 'iran-system', 'iransystem'),
         ('mleisher/KOI8RU.TXT' , 'koi8-ru',),
         ('mleisher/OSNOVAR.TXT' , 'osnovnoj-variant', 'osnovnoj', 'ov'),
-        ('mleisher/RISCOS.TXT' , 'risc-os', 'acorn-risc-os'),
         # tis620-0 is an alias used in xorg
         ('mleisher/TIS620.TXT' , 'tis-620', 'tis620-0', 'iso-ir-166'),
 
@@ -246,6 +245,82 @@ _ENCODING_FILES = (
         ('emacs/MULE-tibetan.map', 'mule-tibetan',),
         ('emacs/MULE-lviscii.map', 'mule-lviscii', 'viscii-lower'),
         ('emacs/MULE-uviscii.map', 'mule-uviscii', 'viscii-upper'),
+
+        # Rebecca Bettencourt / KreativeKorp / Unicode Legacy Computing
+        # attachments to Unicode proposal L2/19-025
+        ('kreativekorp/ADAMOS7.TXT', 'coleco-adam-os7', 'adam-os7'),
+        ('kreativekorp/ADAMSWTR.TXT', 'coleco-adam-smartwriter', 'adam-smartwriter'),
+        ('kreativekorp/AMSCPC.TXT', 'amstrad-cpc',),
+        ('kreativekorp/AMSCPM.TXT', 'amstrad-cpm-plus', 'amstrad-pcw', 'zx-spectrum-plus3', 'zx-spectrum-3plus'),
+        ('kreativekorp/APL2PRIM.TXT', 'apple-ii', 'apple-ii-primary', 'apple-ii-0'),
+        ('kreativekorp/APL2ALT1.TXT', 'apple-ii-alternate-1', 'apple-ii-1'),
+        ('kreativekorp/APL2ALT2.TXT', 'apple-ii-alternate-2', 'apple-ii-2'),
+        ('kreativekorp/APL2ICHG.TXT', 'apple-ii-chr',),
+        ('kreativekorp/ATARI8VG.TXT', 'atascii'),
+        ('kreativekorp/ATARI8IG.TXT', 'atascii-chr',),
+        ('kreativekorp/ATARI8VI.TXT', 'atascii-international'),
+        ('kreativekorp/ATARI8II.TXT', 'atascii-international-chr'),
+        ('kreativekorp/ATARISTV.TXT', 'atari-st'),
+        # subset of atari-st
+        #('kreativekorp/ATARISTI.TXT', 'atari-st-chr',),
+        ('kreativekorp/COCOICHG.TXT', 'trs80-coco-sg4-chr', 'coco-sg4-chr'),
+        ('kreativekorp/COCOSGR4.TXT', 'trs80-coco-sg4', 'coco-sg4', 'coco-semigraphics-4'),
+        ('kreativekorp/COCOSGR6.TXT', 'trs80-coco-sg6', 'coco-sg6', 'coco-semigraphics-6'),
+        ('kreativekorp/CPETVPRI.TXT', 'pet', 'pet-primary', 'pet-0'),
+        ('kreativekorp/CPETVALT.TXT', 'pet-alternate', 'pet-alt', 'pet-1'),
+        ('kreativekorp/CPETIPRI.TXT', 'pet-chr', 'pet-primary-chr', 'pet-0-chr'),
+        ('kreativekorp/CPETIALT.TXT', 'pet-alternate-chr', 'pet-alt-chr', 'pet-1-chr'),
+        ('kreativekorp/CVICVPRI.TXT', 'vic-20', 'vic', 'vic-primary', 'vic-0'),
+        ('kreativekorp/CVICVALT.TXT', 'vic-20-alternate', 'vic-alt', 'vic-1'),
+        ('kreativekorp/CVICIPRI.TXT', 'vic-20-chr', 'vic-chr', 'vic-primary-chr', 'vic-0-chr'),
+        ('kreativekorp/CVICIALT.TXT', 'vic-20-alternate-chr', 'vic-alt-chr', 'vic-1-chr'),
+        ('kreativekorp/C64VPRI.TXT', 'c64', 'c64-primary', 'c64-0'),
+        ('kreativekorp/C64VALT.TXT', 'c64-alternate', 'c64-alt', 'c64-1'),
+        ('kreativekorp/C64IPRI.TXT', 'c64-chr', 'c64-primary-chr', 'c64-0-chr'),
+        ('kreativekorp/C64IALT.TXT', 'c64-alternate-chr', 'c64-alt-chr', 'c64-1-chr'),
+        # IBMPCVID.TXT
+        # IBMPCICH.TXT
+        ('kreativekorp/MINITLG0.TXT', 'minitel-g0', 'minitel-g2'),
+        ('kreativekorp/MINITLG1.TXT', 'minitel-g1',),
+        ('kreativekorp/MSX.TXT', 'msx-international', 'msx',),
+        ('kreativekorp/ORICG0.TXT', 'tangerine-oric-g0', 'oric-g0',),
+        ('kreativekorp/ORICG1.TXT', 'tangerine-oric-g1', 'oric-g1',),
+        # subset of riscos
+        # RISCOSI.TXT
+        ('kreativekorp/RISCOSV.TXT', 'risc-os', 'acorn-risc-os', 'risc-os-latin1'),
+        ('kreativekorp/RISCOSB.TXT', 'bbc-master', 'risc-os-bfont',),
+        ('kreativekorp/RISCEFF.TXT', 'risc-os-eff'),
+        ('kreativekorp/SINCLRQL.TXT', 'sinclair-ql',),
+        ('kreativekorp/TELTXTG0.TXT', 'teletext-g0', 'teletext'),
+        ('kreativekorp/TELTXTG1.TXT', 'teletext-g1',),
+        ('kreativekorp/TELTXTG2.TXT', 'teletext-g2',),
+        ('kreativekorp/TELTXTG3.TXT', 'teletext-g3',),
+        ('kreativekorp/TI994A.TXT', 'ti-99-4a',),
+        ('kreativekorp/TRSM1ORG.TXT', 'trs-80', 'trs-80-model1',),
+        ('kreativekorp/TRSM1REV.TXT', 'trs-80-revised', 'trs-80-model1-revised',),
+        ('kreativekorp/TRSM1ICH.TXT', 'trs-80-chr', 'trs-80-model1-chr',),
+        ('kreativekorp/TRSM3VIN.TXT', 'trs-80-model3',),
+        ('kreativekorp/TRSM3VJP.TXT', 'trs-80-model3-jp', 'trs-80-model3-katakana'),
+        ('kreativekorp/TRSM3VRV.TXT', 'trs-80-model3-reverse'),
+        # these replace graphicals at 00-1F with controls
+        # TRSM3IIN.TXT
+        # TRSM3IJP.TXT
+        # TRSM3IRV.TXT
+        ('kreativekorp/TRSM4AVP.TXT', 'trs-80-model4a', 'trs-80-model4a-primary', 'trs-80-model4a-0'),
+        ('kreativekorp/TRSM4AVA.TXT', 'trs-80-model4a-alternate', 'trs-80-model4a-1'),
+        ('kreativekorp/TRSM4AVR.TXT', 'trs-80-model4a-reverse',),
+        # TRSM4AIP
+        # TRSM4AIA
+        # TRSM4AIR
+        ('kreativekorp/ZX80.TXT', 'zx80',),
+        ('kreativekorp/ZX81.TXT', 'zx81',),
+        ('kreativekorp/ZXSPCTRM.TXT', 'zx-spectrum',),
+        ('kreativekorp/ZXDESKTP.TXT', 'zx-spectrum-desktop',),
+        # ZXFZXPUA.TXT
+        ('kreativekorp/ZXFZXLT1.TXT', 'fzx-latin1',),
+        ('kreativekorp/ZXFZXLT5.TXT', 'fzx-latin5',),
+        ('kreativekorp/ZXFZXKOI.TXT', 'fzx-koi8',),
+        ('kreativekorp/ZXFZXSLT.TXT', 'fzx-cp1252',),
 
         # manually adapted
         ('manual/ms-linedraw.txt', 'windows-linedraw', 'microsoft-linedraw', 'ms-linedraw'),
@@ -304,9 +379,6 @@ _ENCODING_FILES = (
         ('manual/russup4ac.ucp', 'dos-russian-support-4-academic', 'rs4ac', 'russup4ac'),
         ('manual/russup4na.ucp', 'dos-russian-support-4', 'rs4', 'russup4na'),
 
-        # from wikipedia
-        ('manual/zx-spectrum.ucp', 'zx-spectrum',),
-
         # from ibm cdra but overlaid with 437
         ('manual/cp934.ucp', 'cp934', 'ibm-934', 'dos-v-korean'),
         ('manual/cp938.ucp', 'cp938', 'ibm-938', 'dos-v-chinese-traditional'),
@@ -332,15 +404,8 @@ _ENCODING_FILES = (
         ('wikipedia/wingdings.html', 'wingdings', 'windows-wingdings', 'microsoft-wingdings'),
 
         # platform-specific charmaps
-        ('wikipedia/amstrad-cpc.html', 'amstrad-cpc',),
-        ('wikipedia/amstrad-cpm-plus.html', 'amstrad-cpm-plus', 'amstrad-pcw', 'zx-spectrum-plus3'),
-        ('wikipedia/atari-st.html', 'atari-st',),
         ('wikipedia/gem.html', 'gem',),
-        ('wikipedia/zx80.html', 'zx80',),
-        ('wikipedia/zx81.html', 'zx81',),
         ('wikipedia/wiscii.html', 'wiscii', 'wang'),
-        ('wikipedia/petscii.html', 'petscii-unshifted', 'petscii-0', 'petscii'),
-        ('wikipedia/trs-80.html', 'trs-80'),
         ('wikipedia/mattel-aquarius.html', 'mattel-aquarius'),
     )),
 
@@ -357,15 +422,6 @@ _ENCODING_FILES = (
 
     ('html', dict(table=1), (
         ('wikipedia/ventura.html', 'pcl-ventura-international', 'pcl-ventura'),
-    )),
-
-    ('html', dict(range=range(0x80)), (
-        ('wikipedia/atascii.html', 'atascii',),
-        ('wikipedia/atascii.html', 'atascii-international',),
-    )),
-
-    ('html', dict(column=1), (
-        ('wikipedia/petscii.html', 'petscii-shifted', 'petscii-1'),
     )),
 )
 
@@ -404,7 +460,6 @@ _OVERLAYS = (
     ), ('cp864',)),
     ('microsoft/WINDOWS/CP1252.TXT', _ANSI_RANGE, 'txt', {}, ('windows-extended', 'palm-os')),
     ('iso-8859/8859-1.TXT', _ANSI_RANGE, 'txt', {}, ('windows-1252-msdos',)),
-    ('manual/atascii-international.txt', _ASCII_RANGE, 'txt', dict(unicode_column=2, unicode_base='char'), ('atascii-international',)),
 )
 
 
@@ -447,6 +502,13 @@ def is_private_use(char):
         unicodedata.category(_c) == 'Co'
         for _c in char
     )
+
+def unicode_name(char):
+    """Unicode registered name."""
+    try:
+        return unicodedata.name(char)
+    except ValueError:
+        return ''
 
 
 ###################################################################################################
@@ -672,7 +734,7 @@ class Encoder:
     def table(self):
         """Mapping table, first page."""
         return '\n'.join(
-            f'0x{_k[0]:02X}: u+{ord(_v):04X}  # {unicodedata.name(_v)}' for _k, _v in self._ord2chr.items()
+            f'0x{_k[0]:02X}: u+{ord(_v):04X}  # {unicode_name(_v)}' for _k, _v in self._ord2chr.items()
             if len(_k) == 1
         )
 
@@ -857,6 +919,8 @@ def _from_text_columns(
             uni_str = uni_str.strip()
             # right-to-left marker in mac codepages
             uni_str = uni_str.replace('<RL>+', '').replace('<LR>+', '')
+            # reverse-vdeo marker in kreativekorp codepages
+            uni_str = uni_str.replace('<RV>+', '')
             # czyborra's codepages have U+ in front
             if uni_str.upper().startswith('U+'):
                 uni_str = uni_str[2:]
