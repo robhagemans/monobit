@@ -341,11 +341,14 @@ _ENCODING_FILES = (
 
     ('html', dict(range=range(0x80)), (
         ('wikipedia/atascii.html', 'atascii',),
+        ('wikipedia/atascii.html', 'atascii-international',),
     )),
 
     ('html', dict(column=1), (
         ('wikipedia/petscii.html', 'petscii-shifted', 'petscii-1'),
     )),
+
+
 )
 
 # charmaps to be overlaid with IBM graphics in range 0x00--0x1f and 0x7f
@@ -383,6 +386,7 @@ _OVERLAYS = (
     ), ('cp864',)),
     ('microsoft/WINDOWS/CP1252.TXT', _ANSI_RANGE, 'txt', {}, ('windows-extended', 'palm-os')),
     ('iso-8859/8859-1.TXT', _ANSI_RANGE, 'txt', {}, ('windows-1252-msdos',)),
+    ('manual/atascii-international.txt', _ASCII_RANGE, 'txt', dict(unicode_column=2, unicode_base='char'), ('atascii-international',)),
 )
 
 
@@ -839,11 +843,15 @@ def _from_text_columns(
                     for _substr in cp_str.split(joiner)
                 )
                 cp_point = tuple(cp_point)
-                # allow sequence of unicode code points separated by 'joiner'
-                char = ''.join(
-                    chr(int(_substr, unicode_base))
-                    for _substr in uni_str.split(joiner)
-                )
+                if unicode_base == 'char':
+                    # the character itself is in the column, utf-8 encoded
+                    char = uni_str
+                else:
+                    # allow sequence of unicode code points separated by 'joiner'
+                    char = ''.join(
+                        chr(int(_substr, unicode_base))
+                        for _substr in uni_str.split(joiner)
+                    )
                 if char != '\uFFFD':
                     # u+FFFD replacement character is used to mark undefined code points
                     mapping[cp_point] = char
