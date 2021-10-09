@@ -139,6 +139,7 @@ _ENCODING_FILES = (
         ('apple/ICELAND.TXT', 'mac-icelandic',),
         ('apple/INUIT.TXT', 'mac-inuit',),
         ('apple/SYMBOL.TXT', 'mac-symbol', 'windows-symbol', 'microsoft-symbol'),
+        ('apple/ROMANIAN.TXT', 'mac-romanian',),
         ('apple/TURKISH.TXT', 'mac-turkish',),
         # UKRAINE.TXT has no mapping
         ('apple/CYRILLIC.TXT', 'mac-ukrainian',),
@@ -457,7 +458,7 @@ _OVERLAYS = (
     # Mac OS system fonts and euro vs currency sign
     ('manual/mac-system.ucp', _MAC_GRAPH_RANGE, 'ucp', {}, ('mac-roman', 'mac-roman-8.5')),
     ('manual/currency-sign-0xdb.ucp', _0XDB, 'ucp', {}, (
-        'mac-roman', 'mac-celtic', 'mac-icelandic', 'mac-croatian', 'mac-gaelic',
+        'mac-roman', 'mac-celtic', 'mac-icelandic', 'mac-croatian', 'mac-gaelic', 'mac-romanian',
     )),
     ('manual/currency-sign-0x9c.ucp', _0X9C, 'ucp', {}, ('mac-greek',)),
     ('manual/mac-cyrillic-pre9.0.ucp', _MAC_CYRILLIC, 'ucp', {}, ('mac-cyrillic',)),
