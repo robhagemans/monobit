@@ -225,6 +225,7 @@ _ENCODING_FILES = (
 
         # IANA registrations
         ('iana/Amiga-1251', 'amiga-1251', 'ami1251',),
+        ('iana/PTCP154', 'paratype-154', 'ptcp-154', 'pt154', 'cyrillic-asian'),
 
         # X11 xfonts
         ('xfonts/viscii1.1-1.enc', 'viscii', 'viscii1.1-1'),

@@ -1,3 +1,51 @@
+# Subject: Registration of new charset [Amiga-1251]
+#
+#
+#
+# Charset name: Amiga-1251
+#
+# (This character set was initially based on ISO-8859-1, it also includes
+# ISO-8859-15 Euro sign, Numero Sign and the Windows-1251 cyrillic chars
+# 168, 184, 192-255 )
+#
+#
+#
+# MIBenum: 2104
+#
+#
+#
+# Charset aliases: Ami1251, Amiga1251, Ami-1251
+#
+# (Aliases are provided for historical reasons and should not be used)
+#
+#
+#
+# Suitability for use in MIME text: YES
+#
+#
+#
+# Published specification(s):
+#
+# 1) http://aminet.net/dev/misc/Amiga1251.lha
+#
+# Mirror: http://de.aminet.net/aminet/dev/misc/Amiga1251.lha
+#
+# Mirror: ftp://ftp.fau.de/aminet/dev/misc/Amiga1251.lha
+#
+# 2) Amiga OS 4.0 SDK
+#
+#
+#
+# ISO 10646 equivalency table:
+#
+# --cut-here-->
+#
+# Standard=Amiga-1251
+# AltStandard=Ami1251
+# Name=Amiga-1251
+# Characterization=_("Cyrillic (Amiga)")
+# ReadOnly=1
+
 #
 # Name: Amiga-1251 to Unicode table
 # Unicode version: 2.0
@@ -272,3 +320,18 @@
 0xFD 0x044D #CYRILLIC SMALL LETTER E
 0xFE 0x044E #CYRILLIC SMALL LETTER YU
 0xFF 0x044F #CYRILLIC SMALL LETTER YA
+
+# <--cut-here--
+#
+#
+# Additional information:
+#
+# Michael Malyshev
+# ATO-RU (Amiga Translation Organization - Russian Department)
+# Email: Michael_Malyshev&mail.ru
+#
+#
+#
+# Intended usage:
+#
+# COMMON
