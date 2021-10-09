@@ -167,7 +167,9 @@ CHARSET_REVERSE_MAP = reverse_dict(CHARSET_MAP)
 CHARSET_REVERSE_MAP.update({
     # different windows versions used different definitions of windows-1252
     # see https://www.aivosto.com/articles/charsets-codepages-windows.html
+    'windows-ansi-1.0': 0x00,
     'windows-ansi-2.0': 0x00,
+    'windows-ansi-3.1': 0x00,
     'windows-1252': 0x00,
     # windows-1252 agrees with iso-8859-1 (u+0000--u+00ff) except for controls 0x7F-0x9F
     # furthermore, often the control range 0x00-0x19 is set to IBM graphics in windows-1252

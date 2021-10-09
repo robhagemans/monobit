@@ -1,0 +1,4 @@
+# Mac OS Greek before Mac OS 8.5
+# \x9C is CURRENCY SIGN, not EURO SIGN
+#
+9C:00A4

@@ -1,0 +1,6 @@
+# Macintosh Ukrainian before Mac OS 9.0
+# also Microsoft code page 10017
+# see https://en.wikipedia.org/wiki/Mac_OS_Cyrillic_encoding
+A2: 0490
+B6: 0491
+FF: 00A4

@@ -1,0 +1,6 @@
+# Macintosh Cyrillic  before Mac OS 9.0
+# also Microsoft code page 10007 and IBM code page 1283
+# see https://en.wikipedia.org/wiki/Mac_OS_Cyrillic_encoding
+A2: 00A2
+B6: 2202
+FF: 00A4
