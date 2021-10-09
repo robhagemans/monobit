@@ -640,7 +640,7 @@ class Encoder:
         """Convert character to codepoint, return None if missing."""
         raise NotImplementedError
 
-    def table(self, page=0):
+    def chart(self, page=0):
         """Chart of page in charmap."""
         bg = '\u2591'
         cps = range(256)
@@ -659,6 +659,13 @@ class Encoder:
                 for _r in range(16)
             )
         ))
+
+    def table(self):
+        """Mapping table, first page."""
+        return '\n'.join(
+            f'0x{_k[0]:02X}: u+{ord(_v):04X}  # {unicodedata.name(_v)}' for _k, _v in self._ord2chr.items()
+            if len(_k) == 1
+        )
 
     def __repr__(self):
         """Representation."""
@@ -775,9 +782,9 @@ class Charmap(Encoder):
         """Representation."""
         if self._ord2chr:
             mapping = f'<{len(self._ord2chr)} code points>'
-            table = f'\n{self.table()}\n'
+            chart = f'\n{self.chart()}\n'
             return (
-                f"{type(self).__name__}(name='{self.name}', mapping={mapping}){table}"
+                f"{type(self).__name__}(name='{self.name}', mapping={mapping}){chart}"
             )
         return (
             f"{type(self).__name__}()"
