@@ -140,7 +140,8 @@ _ENCODING_FILES = (
         ('apple/INUIT.TXT', 'mac-inuit',),
         ('apple/SYMBOL.TXT', 'mac-symbol', 'windows-symbol', 'microsoft-symbol'),
         ('apple/TURKISH.TXT', 'mac-turkish',),
-        ('apple/UKRAINE.TXT', 'mac-ukrainian',),
+        # UKRAINE.TXT has no mapping
+        ('apple/CYRILLIC.TXT', 'mac-ukrainian',),
         # Apple scripts for which no codepage found
         # note - Gurmukhi and Gujarati are ISCII-based
         # so can we infer the other Indic scripts that have an ISCII?
@@ -430,7 +431,9 @@ _ASCII_RANGE = tuple((_cp,) for _cp in range(0x80))
 _ANSI_RANGE = tuple((_cp,) for _cp in range(0x100))
 _IBM_GRAPH_RANGE = tuple((_cp,) for _cp in range(0x20)) + ((0x7f,),)
 _MAC_GRAPH_RANGE = tuple((_cp,) for _cp in range(0x11, 0x15))
-_MAC_EURO = ((0xDB,))
+_0XDB = ((0xDB,),)
+_0X9C = ((0x9C,),)
+_MAC_CYRILLIC = ((0xA2,), (0xB6,), (0xFF,))
 _OVERLAYS = (
     # these were partially defined, complete them by adding 7-bit ascii codepoints
     ('iso-8859/8859-1.TXT', _ASCII_RANGE, 'txt', {}, (
@@ -451,9 +454,14 @@ _OVERLAYS = (
         'mik', 'koi8-r', 'koi8-u', 'koi8-ru', 'ruscii', 'rs3', 'rs4', 'rs4ac',
         'mazovia', 'kamenicky', 'cwi-2',
     )),
-    # Mac OS system fonts
+    # Mac OS system fonts and euro vs currency sign
     ('manual/mac-system.ucp', _MAC_GRAPH_RANGE, 'ucp', {}, ('mac-roman', 'mac-roman-8.5')),
-    ('manual/mac-roman-pre8.5.ucp', _MAC_EURO, 'ucp', {}, ('mac-roman',)),
+    ('manual/currency-sign-0xdb.ucp', _0XDB, 'ucp', {}, (
+        'mac-roman', 'mac-celtic', 'mac-icelandic', 'mac-croatian', 'mac-gaelic',
+    )),
+    ('manual/currency-sign-0x9c.ucp', _0X9C, 'ucp', {}, ('mac-greek',)),
+    ('manual/mac-cyrillic-pre9.0.ucp', _MAC_CYRILLIC, 'ucp', {}, ('mac-cyrillic',)),
+    ('manual/mac-ukrainian-pre9.0.ucp', _MAC_CYRILLIC, 'ucp', {}, ('mac-ukrainian',)),
     # there's a different ordering of the ibm graphics range specially for cp864
     ('misc/IBMGRAPH.TXT', _IBM_GRAPH_RANGE, 'txt', dict(
         codepoint_column=2, unicode_column=0
