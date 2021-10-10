@@ -14,7 +14,7 @@ import unicodedata
 from .base import scriptable
 from .glyph import Glyph
 from .encoding import charmaps
-from .label import Label, UnicodeLabel, CodepointLabel, label
+from .label import Label, TagLabel, UnicodeLabel, CodepointLabel, label
 
 
 def number(value=0):
@@ -272,7 +272,7 @@ class Font:
             if missing == 'empty':
                 return self.get_empty_glyph()
             if missing == 'raise':
-                raise KeyError(f'No glyph found matching {key}.') from None
+                raise
             return missing
 
     def get_index(self, key=None, *, char=None, codepoint=None, tag=None):
@@ -291,10 +291,20 @@ class Font:
                 # let CodepointLabel deal with interpretation
                 codepoint = CodepointLabel(key).value
         if tag is not None:
-            return self._tags[tag]
+            try:
+                return self._tags[tag]
+            except KeyError:
+                raise KeyError(f'No glyph found matching tag={TagLabel(tag)}') from None
         if char is not None:
-            return self._chars[char]
-        return self._codepoints[codepoint]
+            try:
+                return self._chars[char]
+            except KeyError:
+                raise KeyError(f'No glyph found matching char={UnicodeLabel(char)}') from None
+        try:
+            return self._codepoints[codepoint]
+        except KeyError:
+            raise KeyError(f'No glyph found matching codepoint={CodepointLabel(codepoint)}') from None
+
 
     def get_default_glyph(self):
         """Get default glyph; empty if not defined."""
