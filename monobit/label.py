@@ -11,6 +11,8 @@ import string
 def label(value=''):
     """Convert to codepoint/unicode/tag label as appropriate."""
     # check for codepoint (anything convertible to int)
+    if isinstance(value, Label):
+        return value
     try:
         return CodepointLabel(value)
     except ValueError:
@@ -23,7 +25,15 @@ def label(value=''):
     return TagLabel(value)
 
 
-class TagLabel:
+class Label:
+    """Label base class."""
+
+    def indexer(self):
+        """Keyword arguments for character-based functions."""
+        return {}
+
+
+class TagLabel(Label):
     """Tag label."""
 
     def __init__(self, value):
@@ -43,12 +53,12 @@ class TagLabel:
         """Convert tag to str."""
         return self._tag
 
-    def kwargs(self):
+    def indexer(self):
         """Keyword arguments for character-based functions."""
         return {'tag': self._tag}
 
 
-class CodepointLabel:
+class CodepointLabel(Label):
     """Codepoint sequence label."""
 
     def __init__(self, value):
@@ -101,7 +111,7 @@ class CodepointLabel:
             for _elem in self._key
         )
 
-    def kwargs(self):
+    def indexer(self):
         """Keyword arguments for character-based functions."""
         return {'key': self._key}
 
@@ -119,7 +129,7 @@ class CodepointLabel:
         return label
 
 
-class UnicodeLabel:
+class UnicodeLabel(Label):
     """Unicode label."""
 
     def __init__(self, value):
@@ -164,7 +174,7 @@ class UnicodeLabel:
             for _uc in self._key
         )
 
-    def kwargs(self):
+    def indexer(self):
         """Keyword arguments for character-based functions."""
         return {'key': self._key}
 

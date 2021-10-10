@@ -288,7 +288,9 @@ class Font:
             except KeyError:
                 pass
         else:
-            if isinstance(key, tuple) or isinstance(key, bytes) or isinstance(key, CodepointLabel):
+            if isinstance(key, CodepointLabel):
+                key = key.to_codepoint()
+            if isinstance(key, tuple) or isinstance(key, bytes):
                 return self._codepoints[key]
             try:
                 if isinstance(key, UnicodeLabel):
@@ -301,7 +303,7 @@ class Font:
     def get_default_glyph(self):
         """Get default glyph; empty if not defined."""
         try:
-            return self.get_glyph(**self.default_char.kwargs())
+            return self.get_glyph(**self.default_char.indexer())
         except KeyError:
             return self.get_empty_glyph()
 

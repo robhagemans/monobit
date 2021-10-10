@@ -75,7 +75,7 @@ class Glyph:
         # use codepage to find codepoint if not set
         if not self.codepoint:
             return self.set_annotations(codepoint=encoder.codepoint(self.char))
-        # both are set but not onsistent with codepage
+        # both are set, check if consistent with codepage
         enc_char = encoder.char(self.codepoint)
         if self.char != enc_char:
             logging.warning(
