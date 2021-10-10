@@ -14,7 +14,7 @@ import unicodedata
 from .base import scriptable
 from .glyph import Glyph
 from .encoding import charmaps
-from .label import Label, UnicodeLabel, label
+from .label import Label, UnicodeLabel, CodepointLabel, label
 
 
 def number(value=0):
@@ -288,8 +288,8 @@ class Font:
             if isinstance(key, str):
                 char = key
             else:
-                # TODO: support int codepoint (not iterable, just one number)
-                codepoint = tuple(key)
+                # let CodepointLabel deal with interpretation
+                codepoint = CodepointLabel(key).value
         if tag is not None:
             return self._tags[tag]
         if char is not None:
