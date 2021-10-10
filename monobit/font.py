@@ -14,7 +14,7 @@ import unicodedata
 from .base import scriptable
 from .glyph import Glyph
 from .encoding import charmaps
-from .label import label, UnicodeLabel, CodepointLabel, TagLabel
+from .label import Label, label
 
 
 def number(value=0):
@@ -262,10 +262,10 @@ class Font:
     def glyphs(self):
         return self._glyphs
 
-    def get_glyph(self, key=None, *, tag=None, missing='raise'):
+    def get_glyph(self, key=None, *, char=None, codepoint=None, tag=None, missing='raise'):
         """Get glyph by char, codepoint or tag; default if not present."""
         try:
-            return self._glyphs[self.get_index(key, tag=tag)]
+            return self._glyphs[self.get_index(key, tag=tag, char=char, codepoint=codepoint)]
         except KeyError:
             if missing == 'default':
                 return self.get_default_glyph()
@@ -275,35 +275,31 @@ class Font:
                 raise KeyError(f'No glyph found matching {key}.') from None
             return missing
 
-    def get_index(self, key=None, *, tag=None):
+    def get_index(self, key=None, *, char=None, codepoint=None, tag=None):
         """Get index for given key or tag, if defined."""
-        if isinstance(key, TagLabel):
-            tag = str(key)
-            key = None
+        if isinstance(key, Label):
+            return self.get_index(**key.indexer())
+        if 1 != len([_indexer for _indexer in (key, char, codepoint, tag) if _indexer is not None]):
+            raise ValueError('get_index() takes exactly one parameter.')
+        if key is not None:
+            # unspecified key, deduct from type
+            # str -> char; tuple/list/bytes -> codepoint
+            # a tag can only be specified explicitly
+            if isinstance(key, str):
+                char = key
+            else:
+                # TODO: support int codepoint (not iterable, just one number)
+                codepoint = tuple(key)
         if tag is not None:
-            if key is not None:
-                raise ValueError('Cannot request both key and tag.')
-            try:
-                return self._tags[tag]
-            except KeyError:
-                pass
-        else:
-            if isinstance(key, CodepointLabel):
-                key = key.to_codepoint()
-            if isinstance(key, tuple) or isinstance(key, bytes):
-                return self._codepoints[key]
-            try:
-                if isinstance(key, UnicodeLabel):
-                    key = key.to_char()
-                return self._chars[key]
-            except (KeyError, TypeError):
-                pass
-        raise KeyError(f'Could not find `{key}` in font')
+            return self._tags[tag]
+        if char is not None:
+            return self._chars[char]
+        return self._codepoints[codepoint]
 
     def get_default_glyph(self):
         """Get default glyph; empty if not defined."""
         try:
-            return self.get_glyph(**self.default_char.indexer())
+            return self.get_glyph(self.default_char)
         except KeyError:
             return self.get_empty_glyph()
 
