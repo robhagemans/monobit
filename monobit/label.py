@@ -32,6 +32,10 @@ class Label:
         """Keyword arguments for character-based functions."""
         return {}
 
+    def value(self):
+        """Payload value."""
+        return None
+
 
 class TagLabel(Label):
     """Tag label."""
@@ -56,6 +60,10 @@ class TagLabel(Label):
     def indexer(self):
         """Keyword arguments for get_index."""
         return {'tag': self._tag}
+
+    def value(self):
+        """Tag string."""
+        return self._tag
 
 
 class CodepointLabel(Label):
@@ -115,7 +123,7 @@ class CodepointLabel(Label):
         """Keyword arguments for get_index."""
         return {'codepoint': self._key}
 
-    def to_codepoint(self):
+    def value(self):
         """Convert to codepoint sequence."""
         return self._key
 
@@ -178,7 +186,7 @@ class UnicodeLabel(Label):
         """Keyword arguments for get_index."""
         return {'char': self._key}
 
-    def to_char(self):
+    def value(self):
         """Convert to character sequence str."""
         return self._key
 

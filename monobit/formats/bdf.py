@@ -13,7 +13,7 @@ from ..streams import FileFormatError
 from ..font import Font, Coord
 from ..glyph import Glyph
 from ..encoding import charmaps
-from ..label import UnicodeLabel, CodepointLabel
+from ..label import CodepointLabel
 
 
 # BDF specification: https://adobe-type-tools.github.io/font-tech-notes/pdfs/5005.BDF_Spec.pdf

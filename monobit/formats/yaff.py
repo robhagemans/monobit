@@ -37,12 +37,13 @@ def _parse_yaff_keys(keys):
     )
     for key in keys:
         label = to_label(key)
-        if isinstance(label, TagLabel):
-            kwargs['tags'].append(str(label))
-        elif isinstance(label, CodepointLabel):
-            kwargs['codepoint'] = label.to_codepoint()
-        else:
-            kwargs['char'] = label.to_char()
+        indexer = label.indexer()
+        try:
+            kwargs['tags'].append(indexer['tag'])
+            continue
+        except KeyError:
+            pass
+        kwargs.update(indexer)
     return kwargs
 
 def _parse_draw_keys(keys):
