@@ -105,8 +105,11 @@ _ENCODING_FILES = (
         # Apple codepages matching a script code
         # https://www.unicode.org/Public/MAPPINGS/VENDORS/APPLE/
         #
-        # this will have the pre-euro version of the mac-roman set (aka microsoft's cp 10000)
-        # microsoft's table substitutes the capital omega with the (equivalent) Ohm sign
+        # microsoft's cp10000 table has pre-euro and substitutes the capital omega with the (equivalent) Ohm sign
+        # 1985 macroman was undefined in the range 0xD9-0xFF inclusive:
+        # https://vintageapple.org/inside_o/pdf/Inside_Macintosh_Volume_I_1985.pdf#page=259
+        # this also doesn't show the system icons 0x11-0x14
+        # but they are often left out of such tables as they shadow controls
         ('apple/ROMAN.TXT', 'mac-roman', 'mac', 'macintosh', 'ibm-1275', 'windows-10000'),
         #'apple/ROMAN.TXT', 'mac-roman-8.5', 'mac-8.5', 'macintosh-8.5', 'mac-roman-euro', 'mac-euro', 'macintosh-euro'),
         ('apple/JAPANESE.TXT', 'mac-japanese',),
@@ -374,7 +377,20 @@ _ENCODING_FILES = (
         ('icu/ibm-806_P100-1998.ucm', 'cp806', 'ibm-806', 'ibm-iscii-devanagari'),
         ('icu/windows-1361-2000.ucm', 'windows-1361', 'johab', 'ksc5601-1992'),
         # P12A variant has backslash, tilde; P120 has yen, overline
-        ('icu/ibm-932_P120-1999.ucm', 'ibm-932', 'dos-v-japanese'),
+        ('icu/ibm-932_P120-1999.ucm', 'ibm-932',),
+
+        # from IBM CDRA tables
+        # MS-DOS Korean
+        # IBM-934 = IBM-891 (sbcs) + IBM-926 (dbcs)
+        # https://web.archive.org/web/20101210051426/http://www-01.ibm.com/software/globalization/ccsid/ccsid934.html
+        ('ibm-cdra/037B34B0.UPMAP100', 'cp891', 'ibm-891'),
+        ('ibm-cdra/039E44B0.UPMAP101', 'cp926', 'ibm-926', 'cp934', 'ibm-934'),
+        # MS-DOS Traditional Chinese
+        # IBM-938 = IBM-904 (sbcs) + IBM-927 (dbcs)
+        # https://web.archive.org/web/20141202002059/http://www-01.ibm.com/software/globalization/ccsid/ccsid938.html
+        # "CCSID 948 is a superset of this CCSID."
+        ('ibm-cdra/038834B0.UPMAP100', 'cp904', 'ibm-904'),
+        ('ibm-cdra/039F34B0.UPMAP100', 'cp927', 'ibm-927', 'cp938', 'ibm-938'),
     )),
 
     ('ucp', {}, (
@@ -383,10 +399,6 @@ _ENCODING_FILES = (
         ('manual/russup3.ucp', 'dos-russian-support-3', 'rs3', 'russup3'),
         ('manual/russup4ac.ucp', 'dos-russian-support-4-academic', 'rs4ac', 'russup4ac'),
         ('manual/russup4na.ucp', 'dos-russian-support-4', 'rs4', 'russup4na'),
-
-        # from ibm cdra but overlaid with 437
-        ('manual/cp934.ucp', 'cp934', 'ibm-934', 'dos-v-korean'),
-        ('manual/cp938.ucp', 'cp938', 'ibm-938', 'dos-v-chinese-traditional'),
     )),
 
     ('html', {}, (
@@ -472,6 +484,9 @@ _OVERLAYS = (
     ), ('cp864',)),
     ('microsoft/WINDOWS/CP1252.TXT', _ANSI_RANGE, 'txt', {}, ('windows-extended', 'palm-os')),
     ('iso-8859/8859-1.TXT', _ANSI_RANGE, 'txt', {}, ('windows-1252-msdos',)),
+    # IBM combined codepages SBCS page
+    ('ibm-cdra/037B34B0.UPMAP100', _ANSI_RANGE, 'ucm', {}, ('cp934',)),
+    ('ibm-cdra/038834B0.UPMAP100', _ANSI_RANGE, 'ucm', {}, ('cp938',)),
 )
 
 
