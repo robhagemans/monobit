@@ -377,7 +377,7 @@ def _save_yaff(fonts, outstream, fore, back, comment, tab, separator, empty, **k
             if glyph.codepoint and (not charmaps.is_unicode(font.encoding) or not glyph.char):
                 labels.append(repr(CodepointLabel(glyph.codepoint)))
             if glyph.char:
-                labels.append(repr(UnicodeLabel.from_char(glyph.char)))
+                labels.append(repr(UnicodeLabel(glyph.char)))
             labels.extend(glyph.tags)
             _write_glyph(
                 outstream, labels,
@@ -391,7 +391,7 @@ def _save_draw(font, outstream, fore, back, comment, tab, separator, empty, **kw
         if len(glyph.char) > 1:
             logging.warning(
                 "Can't encode grapheme cluster %s in .draw file; skipping.",
-                UnicodeLabel.from_char(glyph.char)
+                UnicodeLabel(glyph.char)
             )
             continue
         label = f'{ord(glyph.char):04x}'

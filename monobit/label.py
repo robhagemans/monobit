@@ -10,23 +10,34 @@ import string
 
 def label(value=''):
     """Convert to codepoint/unicode/tag label as appropriate."""
-    # check for codepoint (anything convertible to int)
     if isinstance(value, Label):
         return value
-    try:
+    if not isinstance(value, str):
+        # only Codepoint can have non-str argument
         return CodepointLabel(value)
+    try:
+        return CodepointLabel.from_str(value)
     except ValueError:
         pass
     # check for unicode identifier
     try:
-        return UnicodeLabel(value)
+        return UnicodeLabel.from_str(value)
     except ValueError:
         pass
-    return TagLabel(value)
+    return TagLabel.from_str(value)
 
 
 class Label:
     """Label base class."""
+
+    def __init__(self, value=None):
+        """Label base class should not be instantiated."""
+        raise ValueError('Cannot create untyped label.')
+
+    @classmethod
+    def from_str(cls, value):
+        """Create label from string representation."""
+        return cls(value)
 
     def indexer(self):
         """Keyword arguments for character-based functions."""
@@ -74,43 +85,11 @@ class CodepointLabel(Label):
         if isinstance(value, CodepointLabel):
             self._key = value._key
             return
-        # handle composite labels
-        # codepoint sequences (MBCS) "0xf5,0x02" etc.
-        if isinstance(value, str):
-            elements = value.split(',')
-        elif isinstance(value, (tuple, list)):
-            elements = value
-        else:
-            elements = [value]
-        try:
-            self._key = tuple(self._convert_element(_elem) for _elem in elements)
-        except ValueError as e:
-            raise self._value_error(value) from e
-
-    @staticmethod
-    def _value_error(value):
-        """Create a ValueError."""
-        return ValueError(
-            f'Cannot convert value {repr(value)} of type {type(value)} to codepoint label.'
-        )
-
-    def _convert_element(self, value):
-        """Convert codepoint label element to int if possible."""
-        if isinstance(value, (int, float)) and value == int(value):
-            return int(value)
-        if not isinstance(value, str):
+        if isinstance(value, int):
+            value = [value]
+        self._key = tuple(value)
+        if not all(isinstance(_elem, int) for _elem in self._key):
             raise self._value_error(value)
-        # must start with a number to be a codepoint
-        if not value or not value[0] in string.digits:
-            raise self._value_error(value)
-        try:
-            # check for anything convertible to int in Python notation (12, 0xff, 0o777, etc.)
-            return int(value, 0)
-        except ValueError:
-            pass
-        # also accept decimals with leading zeros
-        # raises ValueError if not possible
-        return int(value.lstrip('0'))
 
     def __repr__(self):
         """Convert codepoint label to str."""
@@ -128,52 +107,52 @@ class CodepointLabel(Label):
         return self._key
 
     @classmethod
-    def from_codepoint(cls, value):
-        """Convert codepoint sequence str to label."""
-        label = cls(())
-        if not all(isinstance(_i, int) for _i in value):
+    def from_str(cls, value):
+        """Convert str to codepoint label if possible."""
+        if not isinstance(value, str):
             raise cls._value_error(value)
-        label._key = tuple(value)
-        return label
+        # handle composite labels
+        # codepoint sequences (MBCS) "0xf5,0x02" etc.
+        elements = value.split(',')
+        try:
+            key = [cls._convert_element(_elem) for _elem in elements]
+        except ValueError:
+            raise cls._value_error(value) from None
+        return cls(key)
+
+    @staticmethod
+    def _convert_element(value):
+        """Convert codepoint label element to int if possible."""
+        try:
+            # check for anything convertible to int in Python notation (12, 0xff, 0o777, etc.)
+            return int(value, 0)
+        except ValueError:
+            # also accept decimals with leading zeros
+            # raises ValueError if not possible
+            return int(value.lstrip('0'))
+
+    @staticmethod
+    def _value_error(value):
+        """Create a ValueError."""
+        return ValueError(
+            f'Cannot convert value {repr(value)} of type {type(value)} to codepoint label.'
+        )
 
 
 class UnicodeLabel(Label):
     """Unicode label."""
 
     def __init__(self, value):
-        """Convert u+XXXX string to unicode label. May be empty, representing no glyph."""
+        """Convert char or char sequence to unicode label."""
         if isinstance(value, UnicodeLabel):
             self._key = value._key
             return
-        if not isinstance(value, str):
-            raise self._value_error(value)
-        if not value:
-            self._key = ''
-        # normalise
-        elements = value.split(',')
         try:
-            chars = [self._convert_element(_elem) for _elem in elements if _elem]
-        except ValueError as e:
-            raise self._value_error(value) from e
-        # convert sequence of chars to str
-        self._key = ''.join(chars)
-
-    def _convert_element(self, element):
-        """Convert unicode label element to char if possible."""
-        element = element.lower()
-        if not element.startswith('u+'):
-            raise ValueError(element)
-        # convert to sequence of chars
-        # this will raise ValueError if not possible
-        cp_ord = int(element.strip()[2:], 16)
-        return chr(cp_ord)
-
-    @staticmethod
-    def _value_error(value):
-        """Create a ValueError."""
-        return ValueError(
-            f'Cannot convert value {repr(value)} of type {type(value)} to unicode label.'
-        )
+            value = ''.join(value)
+        except TypeError:
+            raise self._value_error(value) from None
+        # UnicodeLabel('x') just holds 'x'
+        self._key = value
 
     def __repr__(self):
         """Convert to unicode label str."""
@@ -191,10 +170,33 @@ class UnicodeLabel(Label):
         return self._key
 
     @classmethod
-    def from_char(cls, value):
-        """Convert character sequence str to unicode label."""
-        label = cls('')
+    def from_str(cls, value):
+        """Convert u+XXXX string to unicode label. May be empty, representing no glyph."""
         if not isinstance(value, str):
             raise cls._value_error(value)
-        label._key = value
-        return label
+        # codepoint sequences
+        elements = value.split(',')
+        try:
+            chars = [cls._convert_element(_elem) for _elem in elements if _elem]
+        except ValueError:
+            raise cls._value_error(value) from None
+        # convert sequence of chars to str
+        return cls(chars)
+
+    @staticmethod
+    def _convert_element(element):
+        """Convert unicode label element to char if possible."""
+        element = element.lower()
+        if not element.startswith('u+'):
+            raise ValueError(element)
+        # convert to sequence of chars
+        # this will raise ValueError if not possible
+        cp_ord = int(element.strip()[2:], 16)
+        return chr(cp_ord)
+
+    @staticmethod
+    def _value_error(value):
+        """Create a ValueError."""
+        return ValueError(
+            f'Cannot convert value {repr(value)} of type {type(value)} to unicode label.'
+        )

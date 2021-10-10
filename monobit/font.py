@@ -14,7 +14,7 @@ import unicodedata
 from .base import scriptable
 from .glyph import Glyph
 from .encoding import charmaps
-from .label import Label, label
+from .label import Label, UnicodeLabel, label
 
 
 def number(value=0):
@@ -624,7 +624,7 @@ class Font:
         repl = '\ufffd'
         if repl not in self._chars:
             repl = ''
-        return UnicodeLabel.from_char(repl)
+        return UnicodeLabel(repl)
 
     @yaffproperty
     def average_advance(self):

@@ -80,8 +80,8 @@ class Glyph:
         if self.char != enc_char:
             logging.warning(
                 f'Inconsistent encoding at {CodepointLabel(self.codepoint)}: '
-                f'mapped to {UnicodeLabel.from_char(self.char)} '
-                f'instead of {UnicodeLabel.from_char(enc_char)} per stated encoding.'
+                f'mapped to {UnicodeLabel(self.char)} '
+                f'instead of {UnicodeLabel(enc_char)} per stated encoding.'
             )
         return self
 
