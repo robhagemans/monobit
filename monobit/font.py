@@ -14,7 +14,7 @@ import unicodedata
 from .base import scriptable
 from .glyph import Glyph
 from .encoding import charmaps
-from .label import Label, TagLabel, UnicodeLabel, CodepointLabel, label
+from .label import Label, Tag, Char, Codepoint, label
 
 
 def number(value=0):
@@ -288,22 +288,22 @@ class Font:
             if isinstance(key, str):
                 char = key
             else:
-                # let CodepointLabel deal with interpretation
-                codepoint = CodepointLabel(key).value
+                # let Codepoint deal with interpretation
+                codepoint = Codepoint(key).value
         if tag is not None:
             try:
                 return self._tags[tag]
             except KeyError:
-                raise KeyError(f'No glyph found matching tag={TagLabel(tag)}') from None
+                raise KeyError(f'No glyph found matching tag={Tag(tag)}') from None
         if char is not None:
             try:
                 return self._chars[char]
             except KeyError:
-                raise KeyError(f'No glyph found matching char={UnicodeLabel(char)}') from None
+                raise KeyError(f'No glyph found matching char={Char(char)}') from None
         try:
             return self._codepoints[codepoint]
         except KeyError:
-            raise KeyError(f'No glyph found matching codepoint={CodepointLabel(codepoint)}') from None
+            raise KeyError(f'No glyph found matching codepoint={Codepoint(codepoint)}') from None
 
 
     def get_default_glyph(self):
@@ -634,7 +634,7 @@ class Font:
         repl = '\ufffd'
         if repl not in self._chars:
             repl = ''
-        return UnicodeLabel(repl)
+        return Char(repl)
 
     @yaffproperty
     def average_advance(self):

@@ -14,17 +14,17 @@ def label(value=''):
         return value
     if not isinstance(value, str):
         # only Codepoint can have non-str argument
-        return CodepointLabel(value)
+        return Codepoint(value)
     try:
-        return CodepointLabel.from_str(value)
+        return Codepoint.from_str(value)
     except ValueError:
         pass
     # check for unicode identifier
     try:
-        return UnicodeLabel.from_str(value)
+        return Char.from_str(value)
     except ValueError:
         pass
-    return TagLabel.from_str(value)
+    return Tag.from_str(value)
 
 
 class Label:
@@ -49,12 +49,12 @@ class Label:
         return None
 
 
-class TagLabel(Label):
+class Tag(Label):
     """Tag label."""
 
     def __init__(self, value):
         """Construct tag object."""
-        if isinstance(value, TagLabel):
+        if isinstance(value, Tag):
             self._tag = value._tag
             return
         if not isinstance(value, str):
@@ -79,12 +79,12 @@ class TagLabel(Label):
         return self._tag
 
 
-class CodepointLabel(Label):
+class Codepoint(Label):
     """Codepoint sequence label."""
 
     def __init__(self, value):
         """Convert to codepoint label if possible."""
-        if isinstance(value, CodepointLabel):
+        if isinstance(value, Codepoint):
             self._key = value._key
             return
         if isinstance(value, int):
@@ -142,19 +142,19 @@ class CodepointLabel(Label):
         )
 
 
-class UnicodeLabel(Label):
+class Char(Label):
     """Unicode label."""
 
     def __init__(self, value):
         """Convert char or char sequence to unicode label."""
-        if isinstance(value, UnicodeLabel):
+        if isinstance(value, Char):
             self._key = value._key
             return
         try:
             value = ''.join(value)
         except TypeError:
             raise self._value_error(value) from None
-        # UnicodeLabel('x') just holds 'x'
+        # Char('x') just holds 'x'
         self._key = value
 
     def __repr__(self):

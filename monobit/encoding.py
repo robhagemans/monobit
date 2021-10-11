@@ -15,7 +15,7 @@ import binascii
 from pkg_resources import resource_listdir
 
 from .base.binary import int_to_bytes
-from .label import CodepointLabel, UnicodeLabel
+from .label import Codepoint, Char
 
 
 _ENCODING_FILES = (
@@ -810,7 +810,7 @@ class Charmap(Encoder):
     def char(self, codepoint):
         """Convert codepoint sequence to character, return empty string if missing."""
         # normalise codepoint value
-        codepoint = CodepointLabel(codepoint).value
+        codepoint = Codepoint(codepoint).value
         try:
             return self._ord2chr[codepoint]
         except KeyError as e:
@@ -818,8 +818,8 @@ class Charmap(Encoder):
 
     def codepoint(self, char):
         """Convert character to codepoint sequence, return empty tuple if missing."""
-        # accept str or UnicodeLabel
-        char = UnicodeLabel(char).value
+        # accept str or Char
+        char = Char(char).value
         try:
             return self._chr2ord[char]
         except KeyError as e:
