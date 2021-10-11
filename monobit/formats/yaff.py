@@ -375,9 +375,9 @@ def _save_yaff(fonts, outstream, fore, back, comment, tab, separator, empty, **k
             labels = []
             # don't write out codepoints for unicode fonts as we have u+XXXX already
             if glyph.codepoint and (not charmaps.is_unicode(font.encoding) or not glyph.char):
-                labels.append(repr(Codepoint(glyph.codepoint)))
+                labels.append(str(Codepoint(glyph.codepoint)))
             if glyph.char:
-                labels.append(repr(Char(glyph.char)))
+                labels.append(str(Char(glyph.char)))
             labels.extend(glyph.tags)
             _write_glyph(
                 outstream, labels,

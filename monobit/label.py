@@ -66,6 +66,10 @@ class Tag(Label):
         self._tag = value
 
     def __repr__(self):
+        """Represent tag."""
+        return f"{type(self).__name__}('{self._tag}')"
+
+    def __str__(self):
         """Convert tag to str."""
         return self._tag
 
@@ -94,8 +98,15 @@ class Codepoint(Label):
             raise self._value_error(value)
 
     def __repr__(self):
+        """Represent codepoint."""
+        cpstr = str(self)
+        if len(self._key) != 1:
+            cpstr = f'({cpstr})'
+        return f"{type(self).__name__}({cpstr})"
+
+    def __str__(self):
         """Convert codepoint label to str."""
-        return ','.join(
+        return ', '.join(
             f'0x{_elem:02x}'
             for _elem in self._key
         )
@@ -158,8 +169,12 @@ class Char(Label):
         self._key = value
 
     def __repr__(self):
+        """Represent character label."""
+        return f"{type(self).__name__}({ascii(self._key)})"
+
+    def __str__(self):
         """Convert to unicode label str."""
-        return ','.join(
+        return ', '.join(
             f'u+{ord(_uc):04x}'
             for _uc in self._key
         )
