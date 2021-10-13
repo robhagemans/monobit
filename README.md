@@ -226,6 +226,7 @@ There may be at most one newline between the separator and the value.
 * A value must not consist solely of `.`, `@`, and whitespace characters.
 * A value must not consist of a single `-`.
 * A value must not be empty.
+* If a value starts and ends with a double quote, these quotes are stripped and everything in between is used unchanged.
 
 #### Glyph definitions
 A *glyph definition* consists of one or more *labels*, followed by a *glyph*. If there are multiple
@@ -234,6 +235,8 @@ labels, all are considered to point to the glyph that follows.
 ##### Labels
 A *label* must be followed by a separator `:`, optional whitespace, and a line ending.
 * The label must be given at the start of the line. Leading whitespace is not allowed.
+* A label must start with an ascii letter or digit, an underscore `_`, a dash `-`, a dot `.`, or a double quote `"`.
+* If a label starts and ends with a double quote, these quotes are stripped and everything in between is used unchanged.
 * A label has one of three types: *character*, *codepoint*, or *tag*.
 
 If a label starts with a digit, it is a *codepoint*.

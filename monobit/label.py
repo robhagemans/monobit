@@ -7,6 +7,8 @@ licence: https://opensource.org/licenses/MIT
 
 import string
 
+from .base.text import strip_matching
+
 
 def label(value=''):
     """Convert to codepoint/unicode/tag label as appropriate."""
@@ -63,6 +65,8 @@ class Tag(Label):
             )
         # remove leading and trailing whitespace
         value = value.strip()
+        # strip matching double quotes - this allows to set a label starting with a digit by quoting it
+        value = strip_matching(value, '"')
         self._tag = value
 
     def __repr__(self):
@@ -71,6 +75,12 @@ class Tag(Label):
 
     def __str__(self):
         """Convert tag to str."""
+        # quote otherwise illegal tags
+        if (
+                self._tag.lower().startswith('u+') or not (self._tag[:1].isalpha() or self._tag[:1] in '_-."')
+                or (self._tag.startswith('"') and self._tag.endswith('"'))
+            ):
+            return f'"{self._tag}"'
         return self._tag
 
     def indexer(self):
