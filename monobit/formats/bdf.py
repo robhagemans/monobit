@@ -691,7 +691,7 @@ def _create_xlfd_properties(font):
     if charmaps.is_unicode(font.encoding):
         if len(default_codepoint) > 1:
             raise ValueError('Default glyph must not be a grapheme sequence.')
-        xlfd_props['DEFAULT_CHAR'] = default_codepoint
+        xlfd_props['DEFAULT_CHAR'] = default_codepoint[0]
         # unicode encoding
         xlfd_props['CHARSET_REGISTRY'] = '"ISO10646"'
         xlfd_props['CHARSET_ENCODING'] = '"1"'
