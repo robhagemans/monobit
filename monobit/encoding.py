@@ -23,22 +23,22 @@ _ENCODING_FILES = (
     ('txt', {}, (
         # iso standards
         # https://www.unicode.org/Public/MAPPINGS/ISO8859
-        ('iso-8859/8859-1.TXT', 'latin-1', 'iso8859-1', 'iso-ir-100', 'ibm-819'),
-        ('iso-8859/8859-2.TXT', 'latin-2', 'iso8859-2', 'iso-ir-101', 'ibm-1111'),
-        ('iso-8859/8859-3.TXT', 'latin-3', 'iso8859-3', 'iso-ir-109', 'ibm-913'),
-        ('iso-8859/8859-4.TXT', 'latin-4', 'iso8859-4', 'iso-ir-110', 'ibm-914'),
-        ('iso-8859/8859-5.TXT', 'iso8859-5', 'cyrillic', 'latin-cyrillic', 'iso-ir-144', 'ecma-113'),
-        ('iso-8859/8859-6.TXT', 'iso8859-6', 'arabic', 'latin-arabic', 'asmo-708', 'iso-ir-127', 'ecma-114'),
-        ('iso-8859/8859-7.TXT', 'iso8859-7', 'greek', 'latin-greek', 'greek8', 'iso-ir-126', 'ibm-813', 'elot-928', 'ecma-118'),
-        ('iso-8859/8859-8.TXT', 'iso8859-8', 'hebrew', 'latin-hebrew', 'iso-ir-138', 'ibm-916', 'ecma-121'),
-        ('iso-8859/8859-9.TXT', 'iso8859-9', 'latin-5', 'turkish', 'iso-ir-148', 'ibm-920', 'ecma-128'),
-        ('iso-8859/8859-10.TXT', 'iso8859-10', 'latin-6', 'ibm-919', 'iso-ir-157', 'ecma-144'),
+        ('iso-8859/8859-1.TXT', 'latin-1', 'iso8859-1', 'iso-ir-100', 'ibm-819', 'windows-28591'),
+        ('iso-8859/8859-2.TXT', 'latin-2', 'iso8859-2', 'iso-ir-101', 'ibm-1111', 'windows-28592'),
+        ('iso-8859/8859-3.TXT', 'latin-3', 'iso8859-3', 'iso-ir-109', 'ibm-913', 'windows-28593'),
+        ('iso-8859/8859-4.TXT', 'latin-4', 'iso8859-4', 'iso-ir-110', 'ibm-914', 'windows-28594'),
+        ('iso-8859/8859-5.TXT', 'iso8859-5', 'cyrillic', 'latin-cyrillic', 'iso-ir-144', 'ecma-113', 'windows-28595'),
+        ('iso-8859/8859-6.TXT', 'iso8859-6', 'arabic', 'latin-arabic', 'asmo-708', 'iso-ir-127', 'ecma-114', 'windows-28596', 'windows-38596'),
+        ('iso-8859/8859-7.TXT', 'iso8859-7', 'greek', 'latin-greek', 'greek8', 'iso-ir-126', 'ibm-813', 'elot-928', 'ecma-118', 'windows-28597'),
+        ('iso-8859/8859-8.TXT', 'iso8859-8', 'hebrew', 'latin-hebrew', 'iso-ir-138', 'ibm-916', 'ecma-121', 'windows-28598', 'windows-38598'),
+        ('iso-8859/8859-9.TXT', 'iso8859-9', 'latin-5', 'turkish', 'iso-ir-148', 'ibm-920', 'ecma-128', 'windows-28599'),
+        ('iso-8859/8859-10.TXT', 'iso8859-10', 'latin-6', 'ibm-919', 'iso-ir-157', 'ecma-144', 'windows-28600'),
         # differs from tis-620 only in a code point mapping NBSP
-        ('iso-8859/8859-11.TXT', 'iso8859-11', 'latin-thai'),
-        ('iso-8859/8859-13.TXT', 'iso8859-13', 'latin-7', 'baltic-rim', 'ibm-921', 'iso-ir-179'),
-        ('iso-8859/8859-14.TXT', 'iso8859-14', 'latin-8', 'celtic', 'iso-celtic', 'iso-ir-199'),
-        ('iso-8859/8859-15.TXT', 'iso8859-15', 'latin-9', 'latin-0'),
-        ('iso-8859/8859-16.TXT', 'iso8859-16', 'latin-10', 'sr-14111', 'iso-ir-226'),
+        ('iso-8859/8859-11.TXT', 'iso8859-11', 'latin-thai', 'windows-28601'),
+        ('iso-8859/8859-13.TXT', 'iso8859-13', 'latin-7', 'baltic-rim', 'ibm-921', 'iso-ir-179', 'windows-28603'),
+        ('iso-8859/8859-14.TXT', 'iso8859-14', 'latin-8', 'celtic', 'iso-celtic', 'iso-ir-199', 'windows-28604'),
+        ('iso-8859/8859-15.TXT', 'iso8859-15', 'latin-9', 'latin-0', 'windows-28605'),
+        ('iso-8859/8859-16.TXT', 'iso8859-16', 'latin-10', 'sr-14111', 'iso-ir-226', 'windows-28606'),
 
         # Windows codepages
         # https://www.unicode.org/Public/MAPPINGS/VENDORS/MICSFT/WINDOWS
@@ -113,40 +113,40 @@ _ENCODING_FILES = (
         # but they are often left out of such tables as they shadow controls
         ('apple/ROMAN.TXT', 'mac-roman', 'mac', 'macintosh', 'ibm-1275', 'windows-10000'),
         #'apple/ROMAN.TXT', 'mac-roman-8.5', 'mac-8.5', 'macintosh-8.5', 'mac-roman-euro', 'mac-euro', 'macintosh-euro'),
-        ('apple/JAPANESE.TXT', 'mac-japanese',),
-        ('apple/CHINTRAD.TXT', 'mac-traditional-chinese', 'mac-trad-chinese', 'mac-chinese-trad'),
-        ('apple/KOREAN.TXT', 'mac-korean',),
-        ('apple/ARABIC.TXT', 'mac-arabic',),
-        ('apple/HEBREW.TXT', 'mac-hebrew',),
-        ('apple/GREEK.TXT', 'mac-greek',),
+        ('apple/JAPANESE.TXT', 'mac-japanese', 'windows-10001'),
+        ('apple/CHINTRAD.TXT', 'mac-traditional-chinese', 'mac-trad-chinese', 'mac-chinese-trad', 'windows-10002'),
+        ('apple/KOREAN.TXT', 'mac-korean', 'windows-10003'),
+        ('apple/ARABIC.TXT', 'mac-arabic', 'windows-10004'),
+        ('apple/HEBREW.TXT', 'mac-hebrew', 'windows-10005'),
+        ('apple/GREEK.TXT', 'mac-greek', 'windows-10006'),
         # note: A2, B6, FF changed after mac-os 9.0
         # see https://en.wikipedia.org/wiki/Mac_OS_Cyrillic_encoding
-        ('apple/CYRILLIC.TXT', 'mac-cyrillic',),
+        ('apple/CYRILLIC.TXT', 'mac-cyrillic', 'windows-10007'),
         ('apple/DEVANAGA.TXT', 'mac-devanagari',),
         ('apple/GURMUKHI.TXT', 'mac-gurmukhi',),
         ('apple/GUJARATI.TXT', 'mac-gujarati',),
-        ('apple/THAI.TXT', 'mac-thai',) ,
-        ('apple/CHINSIMP.TXT', 'mac-simplified-chinese', 'mac-simp-chinese', 'mac-chinese-simp'),
+        ('apple/THAI.TXT', 'mac-thai', 'windows-10021') ,
+        ('apple/CHINSIMP.TXT', 'mac-simplified-chinese', 'mac-simp-chinese', 'mac-chinese-simp', 'windows-10008'),
         # "non-cyrillic slavic", mac-centeuro
         # cf. 'microsoft/MAC/LATIN2.TXT'
-        ('apple/CENTEURO.TXT', 'mac-centraleurope', 'mac-ce', 'mac-latin2', 'mac-centeuro', 'mac-east-eur-roman'),
+        ('apple/CENTEURO.TXT', 'mac-centraleurope', 'mac-ce', 'mac-latin2', 'mac-centeuro', 'mac-east-eur-roman', 'mac-roman2', 'windows-10029'),
         # Armenian and Georgian taken from Evertype:
         # https://www.evertype.com/standards/mappings/
         ('evertype/GEORGIAN.TXT', 'mac-georgian',),
         ('evertype/ARMENIAN.TXT', 'mac-armenian',),
         # Apple codepages not matching a script code
         ('apple/CELTIC.TXT', 'mac-celtic',),
-        ('apple/CROATIAN.TXT', 'mac-croatian',),
+        ('apple/CROATIAN.TXT', 'mac-croatian', 'windows-10082'),
         ('apple/DINGBATS.TXT', 'mac-dingbats',),
         ('apple/FARSI.TXT', 'mac-farsi',),
         ('apple/GAELIC.TXT', 'mac-gaelic',),
-        ('apple/ICELAND.TXT', 'mac-icelandic',),
+        ('apple/ICELAND.TXT', 'mac-icelandic', 'windows-10079'),
         ('apple/INUIT.TXT', 'mac-inuit',),
         ('apple/SYMBOL.TXT', 'mac-symbol', 'windows-symbol', 'microsoft-symbol'),
-        ('apple/ROMANIAN.TXT', 'mac-romanian',),
-        ('apple/TURKISH.TXT', 'mac-turkish',),
+        ('apple/ROMANIAN.TXT', 'mac-romanian', 'windows-10010'),
+        ('apple/TURKISH.TXT', 'mac-turkish', 'windows-10081'),
         # UKRAINE.TXT has no mapping
-        ('apple/CYRILLIC.TXT', 'mac-ukrainian',),
+        ('apple/CYRILLIC.TXT', 'mac-ukrainian', 'windows-10017'),
         # Apple scripts for which no codepage found
         # note - Gurmukhi and Gujarati are ISCII-based
         # so can we infer the other Indic scripts that have an ISCII?
@@ -348,7 +348,7 @@ _ENCODING_FILES = (
 
     ('ucm', {}, (
         # charmaps from Keld Simonsen (dkuug)
-        ('dkuug/iso646-us', 'ascii', 'iso646-us', 'ascii-0', 'us-ascii', 'iso-ir-6', 'ansi-x3.4-1968'),
+        ('dkuug/iso646-us', 'ascii', 'iso646-us', 'ascii-0', 'us-ascii', 'iso-ir-6', 'ansi-x3.4-1968', 'windows-20127'),
         ('dkuug/iso646-ca', 'iso646-ca', 'iso-ir-121', 'csa7-1'),
         ('dkuug/iso646-ca2', 'iso646-ca2', 'iso-ir-122', 'csa7-2'),
         ('dkuug/iso646-cn', 'iso646-cn', 'iso-ir-57', 'gbt-1988-80'),
