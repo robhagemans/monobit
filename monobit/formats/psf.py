@@ -102,6 +102,7 @@ def load(instream, where=None):
             _glyph.set_annotations(char=''.join(table[_index]))
             for _index, _glyph in enumerate(cells)
         ]
+        properties.update({'encoding': 'unicode'})
     return Font(cells, properties=properties)
 
 def _read_unicode_table(instream, separator, startseq, encoding):

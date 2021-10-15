@@ -226,33 +226,40 @@ There may be at most one newline between the separator and the value.
 * A value must not consist solely of `.`, `@`, and whitespace characters.
 * A value must not consist of a single `-`.
 * A value must not be empty.
+* If a value starts and ends with a double quote, these quotes are stripped and everything in between is used unchanged.
 
 #### Glyph definitions
-A *glyph definition* consists of one or more *labels*, followed by a *glyph*. If there are multiple labels,
-all are considered to point to the glyph that follows.
+A *glyph definition* consists of one or more *labels*, followed by a *glyph*. If there are multiple
+labels, all are considered to point to the glyph that follows.
 
-A *label* consists of one or more *label elements* separated by commas ','.
-The label must be followed by a separator `:` and a line ending.
-* The label must be given at the start of the line. Leading whitepace is not allowed.
-* Whitespace between the label elements, commas, the separator, and the line ending is ignored.
+##### Labels
+A *label* must be followed by a separator `:`, optional whitespace, and a line ending.
+* The label must be given at the start of the line. Leading whitespace is not allowed.
+* A label must start with an ascii letter or digit, an underscore `_`, a dash `-`, a dot `.`, or a double quote `"`.
+* If a label starts and ends with a double quote, these quotes are stripped and everything in between is used unchanged.
+* A label has one of three types: *character*, *codepoint*, or *tag*.
 
-A *label element* consists only of ASCII letters, ASCII digits, the underscore `_` the dash `-`, and the plus `+`.
-* A label element has one of three types: *character*, *codepoint*, or *tag*.
-* If a label element starts with a digit, it is a *codepoint*.
-  * If all characters are digits, the codepoint is in decimal format.
-  * If the first two characters are `0x` or `0X`, the codepoint is hexadecimal. All further characters must
-    be hex digits.
-  * If the first two characters are `0o` or `0O`, the codepoint is octal. All further characters must be octal digits.
-* If a label element contains a `+`, it is a Unicode *character*.
-  * Its first two characters must be `u+` or `U+`. All further characters must be hex digits.
-  * The label represents a Unicode code point in hexadecimal notation.
-* If a label element does not start with a digit, `u+` or `U+`, it is a *tag*.
-  * Tags are case-sensitive.
-* If a label element does not fit in any of the above three categories, then it is not a valid label element.
+If a label starts with a digit, it is a *codepoint*.
+* A codepoint label may consist of multiple elements, separated by commas and optional whitespace.
+* Each element represents an integer value.
+* If all characters in the element are digits, the element is in decimal format. Leading `0`s are allowed.
+* If the first two characters are `0x` or `0X`, the element is hexadecimal. All further characters
+  must be hex digits and are not case sensitive.
+* If the first two characters are `0o` or `0O`, the element is octal. All further characters must
+  be octal digits.
+* If a codepoint label consists of multiple elements, they represent a multi-byte codepoint sequence
+pointing to a single glyph.
 
-If a label consists of more than one label element, they must be of the same type and must not be tags.
-* If they are Unicode characters, together they represent a single grapheme cluster.
-* If they are codepoints, together they represent a single multibyte code page sequence.
+If a label starts with `u+` or `U+`, it is a Unicode *character*.
+  * A character label may consist of multiple elements, separated by commas and optional whitespace.
+  * Each element must start with `u+` or `U+`. All further characters must be hex digits and are not case sensitive.
+  * Each element represents a Unicode point in hexadecimal notation. Together they
+  are taken to represent a single grapheme cluster.
+
+If a label does not start with a digit, `u+` or `U+`, it is a *tag*.
+  * Tags are case-sensitive and may contain any kind of character.
+
+##### Glyphs
 
 A *glyph* may span multiple lines.
 * The lines of a glyph must start with whitespace. Trailing whitespace is allowed.

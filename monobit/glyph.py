@@ -11,7 +11,7 @@ import logging
 from .base import scriptable
 from .base.binary import ceildiv, bytes_to_bits
 from .base.text import to_text
-from .label import UnicodeLabel, CodepointLabel
+from .label import Char, Codepoint
 
 
 NOT_SET = object()
@@ -75,13 +75,13 @@ class Glyph:
         # use codepage to find codepoint if not set
         if not self.codepoint:
             return self.set_annotations(codepoint=encoder.codepoint(self.char))
-        # both are set but not onsistent with codepage
+        # both are set, check if consistent with codepage
         enc_char = encoder.char(self.codepoint)
         if self.char != enc_char:
             logging.warning(
-                f'Inconsistent encoding at {CodepointLabel(self.codepoint)}: '
-                f'mapped to {UnicodeLabel.from_char(self.char)} '
-                f'instead of {UnicodeLabel.from_char(enc_char)} per stated encoding.'
+                f'Inconsistent encoding at {Codepoint(self.codepoint)}: '
+                f'mapped to {Char(self.char)} '
+                f'instead of {Char(enc_char)} per stated encoding.'
             )
         return self
 

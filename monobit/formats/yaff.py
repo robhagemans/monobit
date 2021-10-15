@@ -10,21 +10,21 @@ import string
 from types import SimpleNamespace
 from itertools import count
 
-from ..base.text import to_text
+from ..base.text import to_text, strip_matching
 from ..formats import loaders, savers
 from ..encoding import charmaps
 from ..streams import FileFormatError
 from ..font import PROPERTIES, Font
 from ..glyph import Glyph
 from ..label import label as to_label
-from ..label import UnicodeLabel, TagLabel, CodepointLabel
+from ..label import Char, Codepoint, Tag
 
 
 ##############################################################################
 # format parameters
 
 _WHITESPACE = ' \t'
-_CODESTART = _WHITESPACE + string.digits + string.ascii_letters + '_'
+_CODESTART = _WHITESPACE + string.digits + string.ascii_letters + '_-."'
 
 BOUNDARY_MARKER = '---'
 
@@ -37,12 +37,13 @@ def _parse_yaff_keys(keys):
     )
     for key in keys:
         label = to_label(key)
-        if isinstance(label, TagLabel):
-            kwargs['tags'].append(str(label))
-        elif isinstance(label, CodepointLabel):
-            kwargs['codepoint'] = label.to_codepoint()
-        else:
-            kwargs['char'] = label.to_char()
+        indexer = label.indexer()
+        try:
+            kwargs['tags'].append(indexer['tag'])
+            continue
+        except KeyError:
+            pass
+        kwargs.update(indexer)
     return kwargs
 
 def _parse_draw_keys(keys):
@@ -249,7 +250,8 @@ def _parse_properties(elements, fore, back):
     ]
     # multiple labels translate into multiple keys with the same value
     properties = {
-        _key: '\n'.join(_el.values)
+        # strip matching double quotes on a per-line basis
+        _key: '\n'.join(strip_matching(_line, '"') for _line in _el.values)
         for _el in property_elements
         for _key in _el.keys
     }
@@ -320,7 +322,7 @@ def _write_glyph(outstream, labels, glyph, fore, back, comm_char, tab, separator
         return
     write_comments(outstream, glyph.comments, comm_char=comm_char)
     for _label in labels:
-        outstream.write(_label + separator)
+        outstream.write(str(_label) + separator)
     glyphtxt = to_text(glyph.as_matrix(fore, back), line_break='\n'+tab)
     # empty glyphs are stored as 0x0, not 0xm or nx0
     if not glyph.width or not glyph.height:
@@ -328,6 +330,15 @@ def _write_glyph(outstream, labels, glyph, fore, back, comm_char, tab, separator
     outstream.write(tab)
     outstream.write(glyphtxt)
     outstream.write('\n\n')
+
+def _quote_if_needed(value):
+    """See if string value needs double quotes."""
+    if (
+            (value.startswith('"') and value.endswith('"'))
+            or value[:1].isspace() or value[-1:].isspace()
+        ):
+        return f'"{value}"'
+    return value
 
 def _write_prop(outstream, key, value, tab):
     """Write out a property."""
@@ -338,11 +349,11 @@ def _write_prop(outstream, key, value, tab):
     if not value:
         return
     if '\n' not in value:
-        outstream.write('{}: {}\n'.format(key, value))
+        outstream.write(f'{key}: {_quote_if_needed(value)}\n')
     else:
         outstream.write(
             ('{}:\n' + tab + '{}\n').format(
-                key, ('\n' + tab).join(value.splitlines())
+                key, ('\n' + tab).join(_quote_if_needed(_line) for _line in value.splitlines())
             )
         )
 
@@ -374,10 +385,10 @@ def _save_yaff(fonts, outstream, fore, back, comment, tab, separator, empty, **k
             labels = []
             # don't write out codepoints for unicode fonts as we have u+XXXX already
             if glyph.codepoint and (not charmaps.is_unicode(font.encoding) or not glyph.char):
-                labels.append(repr(CodepointLabel(glyph.codepoint)))
+                labels.append(Codepoint(glyph.codepoint))
             if glyph.char:
-                labels.append(repr(UnicodeLabel.from_char(glyph.char)))
-            labels.extend(glyph.tags)
+                labels.append(Char(glyph.char))
+            labels.extend(Tag(_tag) for _tag in glyph.tags)
             _write_glyph(
                 outstream, labels,
                 glyph, fore, back, comment, tab, separator + '\n', empty
@@ -390,7 +401,7 @@ def _save_draw(font, outstream, fore, back, comment, tab, separator, empty, **kw
         if len(glyph.char) > 1:
             logging.warning(
                 "Can't encode grapheme cluster %s in .draw file; skipping.",
-                UnicodeLabel.from_char(glyph.char)
+                Char(glyph.char)
             )
             continue
         label = f'{ord(glyph.char):04x}'

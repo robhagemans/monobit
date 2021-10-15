@@ -15,6 +15,7 @@ import binascii
 from pkg_resources import resource_listdir
 
 from .base.binary import int_to_bytes
+from .label import Codepoint, Char
 
 
 _ENCODING_FILES = (
@@ -443,13 +444,13 @@ _ENCODING_FILES = (
 )
 
 # charmaps to be overlaid with IBM graphics in range 0x00--0x1f and 0x7f
-_ASCII_RANGE = tuple((_cp,) for _cp in range(0x80))
-_ANSI_RANGE = tuple((_cp,) for _cp in range(0x100))
-_IBM_GRAPH_RANGE = tuple((_cp,) for _cp in range(0x20)) + ((0x7f,),)
-_MAC_GRAPH_RANGE = tuple((_cp,) for _cp in range(0x11, 0x15))
-_0XDB = ((0xDB,),)
-_0X9C = ((0x9C,),)
-_MAC_CYRILLIC = ((0xA2,), (0xB6,), (0xFF,))
+_ASCII_RANGE = range(0x80)
+_ANSI_RANGE = range(0x100)
+_IBM_GRAPH_RANGE = tuple(range(0x20)) + (0x7f,)
+_MAC_GRAPH_RANGE = range(0x11, 0x15)
+_0XDB = (0xDB,)
+_0X9C = (0x9C,)
+_MAC_CYRILLIC = (0xA2, 0xB6, 0xFF)
 _OVERLAYS = (
     # these were partially defined, complete them by adding 7-bit ascii codepoints
     ('iso-8859/8859-1.TXT', _ASCII_RANGE, 'txt', {}, (
@@ -808,9 +809,8 @@ class Charmap(Encoder):
 
     def char(self, codepoint):
         """Convert codepoint sequence to character, return empty string if missing."""
-        codepoint = tuple(codepoint)
-        if not all(isinstance(_i, int) for _i in codepoint):
-            raise TypeError('Codepoint must be bytes or sequence of integers.')
+        # normalise codepoint value
+        codepoint = Codepoint(codepoint).value
         try:
             return self._ord2chr[codepoint]
         except KeyError as e:
@@ -818,6 +818,8 @@ class Charmap(Encoder):
 
     def codepoint(self, char):
         """Convert character to codepoint sequence, return empty tuple if missing."""
+        # accept str or Char
+        char = Char(char).value
         try:
             return self._chr2ord[char]
         except KeyError as e:
@@ -861,7 +863,11 @@ class Charmap(Encoder):
     def take(self, codepoint_range):
         """Return encoding only for given range of codepoints."""
         return Charmap(
-            mapping={_k: _v for _k, _v in self._ord2chr.items() if _k in codepoint_range},
+            mapping={
+                _k: _v
+                for _k, _v in self._ord2chr.items()
+                if (_k in codepoint_range) or (len(_k) == 1 and _k[0] in codepoint_range)
+            },
             name=f'subset[{self.name}]'
         )
 
