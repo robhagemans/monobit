@@ -48,6 +48,7 @@ def friendlystruct(_endian, **description):
 
     typemap = {
         'byte': ctypes.c_uint8,
+        'ubyte': ctypes.c_uint8,
         'uint8': ctypes.c_uint8,
         'B': ctypes.c_uint8,
 
@@ -55,6 +56,7 @@ def friendlystruct(_endian, **description):
         'b': ctypes.c_int8,
 
         'word': ctypes.c_uint16,
+        'uword': ctypes.c_uint16,
         'uint16': ctypes.c_uint16,
         'H': ctypes.c_uint16,
 
@@ -118,6 +120,18 @@ def friendlystruct(_endian, **description):
             """Concatenate structs."""
             addedstruct = friendlystruct(_endian, **OrderedDict(self._fields_ + other._fields_))
             return addedstruct(**self.__dict__, **other.__dict__)
+
+        # classmethod __mul__ doesn't seem to work
+        @classmethod
+        def array(cls, number):
+            """Create array."""
+            array = cls * number # base.__mul__(cls, number)
+            array.size = cls.size * number
+            array.from_bytes = array.from_buffer_copy
+            array.read_from = lambda stream: array.from_buffer_copy(
+                stream.read(ctypes.sizeof(array))
+            )
+            return array
 
         @classmethod
         def read_from(cls, stream):
