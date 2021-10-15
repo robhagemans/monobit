@@ -228,10 +228,89 @@ from ..encoding import charmaps
 # X11 / BDF undefined
 # these are mapped to "no encoding"
 # "no encoding" is mapped to the first name provided here
-UNDEFINED_ENCODINGS = [
+_UNDEFINED_ENCODINGS = [
     'fontspecific-0',
     'adobe-fontspecific',
 ]
+
+# names to be used when writing bdf
+_UNIX_ENCODINGS = {
+    '': _UNDEFINED_ENCODINGS[0],
+    'unicode': 'ISO10646-1',
+    'ascii': 'ascii-0',
+
+    'latin-1': 'ISO8859-1',
+    'latin-2': 'ISO8859-2',
+    'latin-3': 'ISO8859-3',
+    'latin-4': 'ISO8859-4',
+    'iso8859-5': 'ISO8859-5',
+    'iso8859-6': 'ISO8859-6',
+    'iso8859-7': 'ISO8859-7',
+    'iso8859-8': 'ISO8859-8',
+    'iso8859-9': 'ISO8859-9',
+    'iso8859-10': 'ISO8859-10',
+    'iso8859-11': 'ISO8859-11',
+    'iso8859-13': 'ISO8859-13',
+    'iso8859-14': 'ISO8859-14',
+    'iso8859-15': 'ISO8859-15',
+    'iso8859-16': 'ISO8859-16',
+
+    'koi8-r': 'KOI8-R',
+    'koi8-u': 'KOI8-U',
+    'koi8-ru': 'KOI8-RU',
+    'koi8-e': 'KOI8-E',
+    'koi8-unified': 'KOI8-UNI',
+
+    'mac-symbol': 'microsoft-symbol',
+    'mac-roman': 'apple-roman',
+    'cp437': 'ibm-cp437',
+    'cp850': 'ibm-cp850',
+    'cp852': 'ibm-cp852',
+    'cp866': 'ibm-cp866',
+
+    # adobe, dec encodings have standard names
+
+    'windows-1250': 'microsoft-cp1250',
+    'windows-1251': 'microsoft-cp1251',
+    'windows-1252': 'microsoft-cp1252',
+    'windows-1253': 'microsoft-cp1253',
+    'windows-1254': 'microsoft-cp1254',
+    'windows-1255': 'microsoft-cp1255',
+    'windows-1256': 'microsoft-cp1256',
+    'windows-1257': 'microsoft-cp1257',
+    'windows-1258': 'microsoft-cp1258',
+    'windows-3.1': 'microsoft-win3.1',
+
+    'hp-roman8': 'HP-Roman8',
+    'hp-greek8': 'HP-Greek8',
+    'hp-thai8': 'HP-Thai8',
+    'hp-turkish8': 'HP-Turkish8',
+
+    'jis-x0201': 'jisx0201.1976-0',
+
+    'big5-hkscs': 'big5hkscs-0',
+    'windows-936': 'gbk-0',
+
+    # johab
+    'windows-1361': 'ksc5601.1992-3',
+    # ksc5601.1987-0
+
+    'tis-620': 'tis620-0',
+    'viscii': 'viscii1.1-1',
+    # tcvn-0 ?
+
+    # big5.eten-0
+    # gb2312.1980-0
+    # cns11643-1
+    # cns11643-2
+    # cns11643-3
+    # gb18030-0
+    # gb18030.2000-0
+    # gb18030.2000-1
+
+    # jisx0208.1990-0
+    # jisx0212.1990-0
+}
 
 _SLANT_MAP = {
     'R': 'roman',
@@ -624,6 +703,8 @@ def _parse_xlfd_properties(x_props, xlfd_name):
         properties['encoding'] = registry
     elif encoding != '0':
         properties['encoding'] = encoding
+    if properties['encoding'] in _UNDEFINED_ENCODINGS:
+        properties['encoding'] = ''
     if 'DEFAULT_CHAR' in x_props:
         default_ord = int(x_props.pop('DEFAULT_CHAR', None))
         properties['default-char'] = default_ord
@@ -697,9 +778,10 @@ def _create_xlfd_properties(font):
         xlfd_props['CHARSET_ENCODING'] = '"1"'
     else:
         xlfd_props['DEFAULT_CHAR'] = bytes_to_int(default_codepoint)
-        registry, *encoding = font.encoding.split('-', 1)
+        # try preferred name
+        encoding_name = _UNIX_ENCODINGS.get(font.encoding, font.encoding)
+        registry, *encoding = encoding_name.split('-', 1)
         # encoding
-        # TODO: use translation table to preferred x11 alias
         xlfd_props['CHARSET_REGISTRY'] = _quoted_string(registry.upper())
         if encoding:
             xlfd_props['CHARSET_ENCODING'] = _quoted_string(encoding[0].upper())

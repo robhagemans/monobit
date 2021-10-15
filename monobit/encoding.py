@@ -196,7 +196,7 @@ _ENCODING_FILES = (
         # koi-8 should be overlaid with ascii
         ('czyborra/koi8-a.txt', 'koi8-a', 'koi8', 'gost-19768-74-8'),
         ('czyborra/koi8-b.txt', 'koi8-b',),
-        ('czyborra/koi8-f.txt', 'koi8-f', 'koi8-unified', 'koi8-uni'),
+        ('czyborra/koi8-f.txt', 'koi8-unified', 'koi8-f', 'koi8-uni'),
         ('czyborra/koi8-e.txt', 'koi8-e', 'iso-ir-111', 'ecma-cyrillic'),
         ('czyborra/gost19768-87.txt', 'gost-19768-87',) ,
         # use unicode.org misc/ mappings for KOI8-U and KOI8-U
@@ -373,7 +373,8 @@ _ENCODING_FILES = (
         ('icu/ibm-858_P100-1997.ucm', 'cp858', 'ibm-858', 'cp850-euro'),
         ('icu/ibm-868_P100-1995.ucm', 'cp868', 'ibm-868', 'cp-ar', 'dos-urdu'),
         ('icu/ibm-851_P100-1995.ucm', 'cp851', 'ibm-851', 'oem-851'),
-        ('icu/windows-936-2000.ucm', 'windows-936', 'ibm-1386', 'windows-gb2312', 'windows-gbk'),
+        # glibc and many others use gbk as an alias of windows-936, though apparently it's complicated
+        ('icu/windows-936-2000.ucm', 'windows-936', 'ibm-1386', 'windows-gb2312', 'windows-gbk', 'gbk', 'gbk-0'),
         ('icu/ibm-1375_P100-2008.ucm', 'big5-hkscs', 'ibm-1375', 'big5hk', 'big5hkscs-0'),
         ('icu/ibm-806_P100-1998.ucm', 'cp806', 'ibm-806', 'ibm-iscii-devanagari'),
         ('icu/windows-1361-2000.ucm', 'windows-1361', 'johab', 'ksc5601-1992'),
