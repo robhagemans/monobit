@@ -115,7 +115,60 @@ _AMIGA_HEADER = friendlystruct(
     tf_CharKern='I',
 )
 
-# this is for .font (info/directory) files: (b'\x0f\x00', b'\x0f\x02')
+# struct FontContentsHeader
+# .font directory file
+# https://wiki.amigaos.net/wiki/Graphics_Library_and_Text#Composition_of_a_Bitmap_Font_on_Disk
+_FONT_CONTENTS_HEADER = friendlystruct(
+    '>',
+    fch_FileID='uword',
+    fch_NumEntries='uword',
+    # followed by array of FontContents or TFontContents
+)
+
+# struct FontContents
+_FONT_CONTENTS = friendlystruct(
+    '>',
+    fc_FileName=friendlystruct.char * _MAXFONTPATH,
+    fc_YSize='uword',
+    fc_Style='ubyte',
+    fc_Flags='ubyte',
+)
+
+# struct TFontContents
+# not used - we ignore the extra tags stored at the back of the tfc_FileName field
+_T_FONT_CONTENTS = friendlystruct(
+    '>',
+    tfc_FileName=friendlystruct.char * (_MAXFONTPATH-2),
+    tfc_TagCount='uword',
+    tfc_YSize='uword',
+    tfc_Style='ubyte',
+    tfc_Flags='ubyte',
+)
+
+
+@loaders.register('font', magic=(b'\x0f\0', b'\x0f\2'), name='Amiga Font Contents')
+def load_contents(f, where):
+    """Read Amiga disk font contents file."""
+    fch = _FONT_CONTENTS_HEADER.read_from(f)
+    if fch.fch_FileID == 0x0f00:
+        logging.debug('Amiga FCH using FontContents')
+    elif fch.fch_FileID == 0x0f02:
+        logging.debug('Amiga FCH using TFontContents')
+    else:
+        raise FileFormatError('Not an Amiga Font Contents file.')
+    contentsarray = _FONT_CONTENTS.array(fch.fch_NumEntries).read_from(f)
+    pack = []
+    for fc in contentsarray:
+        # we'll get ysize, style and flags from the file itself, we just need a path.
+        # assuming it uses latin-1 or ascii?
+        name = fc.fc_FileName.decode('latin-1')
+        # amiga fs is case insensitive, so we need to loop over listdir and match
+        for filename in where:
+            if filename.lower() == name.lower():
+                pack.extend(load(where.open(filename, 'r'), where))
+    return pack
+
+
 @loaders.register('amiga', magic=(b'\0\0\x03\xf3',), name='Amiga Font')
 def load(f, where=None):
     """Read Amiga disk font file."""
