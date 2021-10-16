@@ -20,7 +20,7 @@ NOT_SET = object()
 class Glyph:
     """Single glyph."""
 
-    def __init__(self, pixels=((),), codepoint=(), char='', tags=(), comments=()):
+    def __init__(self, pixels=(), codepoint=(), char='', tags=(), comments=()):
         """Create glyph from tuple of tuples."""
         # glyph data
         self._rows = tuple(tuple(bool(_bit) for _bit in _row) for _row in pixels)
@@ -60,9 +60,13 @@ class Glyph:
                 '' if not self._comments else
                 "\n  '" + "',\n  '".join(self.comments) + "'"
             ) +
-            "pixels=(\n  '{}'\n)".format(
-                to_text(self.as_matrix(fore='@', back='.'), line_break="',\n  '")
-            )
+            "pixels=({})".format(
+                '' if not self._rows else
+                "\n  '{}'\n".format(
+                    to_text(self.as_matrix(fore='@', back='.'), line_break="',\n  '")
+                )
+            ) +
+            ")"
         )
 
     def add_annotations(self, *, tags=(), comments=()):
@@ -149,18 +153,18 @@ class Glyph:
             for _c in _row
         )
 
-    @staticmethod
-    def from_bytes(byteseq, width, height=None):
+    @classmethod
+    def from_bytes(cls, byteseq, width, height=None):
         """Create glyph from bytes/bytearray/int sequence."""
-        if not width:
-            return Glyph()
+        if not width or height == 0:
+            return cls()
         if height is not None:
             bytewidth = len(byteseq) // height
         else:
             bytewidth = ceildiv(width, 8)
         byteseq = list(byteseq)
         rows = [byteseq[_offs:_offs+bytewidth] for _offs in range(0, len(byteseq), bytewidth)]
-        return Glyph(tuple(bytes_to_bits(_row, width) for _row in rows))
+        return cls(tuple(bytes_to_bits(_row, width) for _row in rows))
 
     def as_bytes(self):
         """Convert glyph to flat bytes."""
@@ -186,10 +190,14 @@ class Glyph:
         ]
         return bytes(int(_bitstr, 2) for _bitstr in glyph_bytes)
 
-    @staticmethod
-    def from_hex(hexstr, width, height):
+    @classmethod
+    def from_hex(cls, hexstr, width, height):
         """Create glyph from hex string."""
-        return Glyph.from_bytes(binascii.unhexlify(hexstr.encode('ascii')), width, height)
+        if not width or not height:
+            if hexstr:
+                raise ValueError('Hex string must be empty for zero-sized glyph')
+            return cls.empty(width, height)
+        return cls.from_bytes(binascii.unhexlify(hexstr.encode('ascii')), width, height)
 
     def as_hex(self):
         """Convert glyph to hex string."""
@@ -274,7 +282,7 @@ class Glyph:
         try:
             combined = next(glyph_iter)
         except StopIteration:
-            return cls.empty()
+            return cls()
         for glyph in glyph_iter:
             combined = combined.superimposed(glyph)
         return combined
