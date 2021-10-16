@@ -16,7 +16,7 @@ from ..base import boolean, pair
 
 
 @loaders.register('dos', 'bin', 'rom', 'raw', name='raw binary')
-def load(instream, where=None, cell:pair=(8, 8), n_chars:int=None, offset:int=0, strike:boolean=False):
+def load(instream, where=None, cell:pair=(8, 8), n_chars:int=None, offset:int=0, padding:int=0, strike:boolean=False):
     """Load font from raw binary."""
     # get through the offset
     # we don't assume instream is seekable - it may be sys.stdin
@@ -24,7 +24,7 @@ def load(instream, where=None, cell:pair=(8, 8), n_chars:int=None, offset:int=0,
     if strike:
         cells = load_strike(instream, cell, n_chars)
     else:
-        cells = load_aligned(instream, cell, n_chars)
+        cells = load_aligned(instream, cell, n_chars, padding)
     return Font(cells)
 
 
@@ -68,24 +68,25 @@ def load_strike(instream, cell, n_chars):
     ]
     return cells
 
-def load_aligned(instream, cell, n_chars):
+def load_aligned(instream, cell, n_chars, padding=0):
     """Load fixed-width font from byte-aligned bitmap."""
     width, height = cell
     width_bytes = ceildiv(width, 8)
     if n_chars is None:
         rombytes = instream.read()
         # get number of chars in extract
-        n_chars = ceildiv(len(rombytes), width_bytes * height)
+        n_chars = ceildiv(len(rombytes), width_bytes * (height+padding))
     else:
-        rombytes = instream.read(n_chars * width_bytes * height)
-    return parse_aligned(rombytes, width, height, n_chars)
+        rombytes = instream.read(n_chars * width_bytes * (height+padding))
+    return parse_aligned(rombytes, width, height, n_chars, padding=padding)
 
-def parse_aligned(rombytes, width, height, n_chars, offset=0):
+def parse_aligned(rombytes, width, height, n_chars, offset=0, padding=0):
     """Load fixed-width font from byte-aligned bitmap."""
-    bytesize = ceildiv(width, 8) * height
+    rowbytes = ceildiv(width, 8)
+    bytesize = rowbytes * (height + padding)
     # get chunks
     glyphbytes = [
-        rombytes[offset+_ord*bytesize : offset+(_ord+1)*bytesize]
+        rombytes[offset+_ord*bytesize : offset+(_ord+1)*bytesize-rowbytes*padding]
         for _ord in range(n_chars)
     ]
     # concatenate rows
