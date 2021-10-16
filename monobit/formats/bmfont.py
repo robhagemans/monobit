@@ -428,7 +428,7 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=(),
         # check if font is monochromatic
         colourset = list(set(_tup for _sprite in sprites for _tup in _sprite))
         if len(colourset) == 1:
-            logging.warning('All glyphs are empty.')
+            logging.warning('All glyphs are blank.')
             # only one colour found
             bg, fg = colourset[0], None
             # note that if colourset is empty, all char widths/heights must be zero
@@ -457,7 +457,7 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=(),
                     before - min_before, char.yoffset, after - min_after, max_height - height
                 )
             else:
-                glyph = Glyph.empty(char.xadvance - min_after, max_height)
+                glyph = Glyph.blank(char.xadvance - min_after, max_height)
             glyph = glyph.set_annotations(codepoint=(char.id,))
             glyphs.append(glyph)
     for file in image_files.values():

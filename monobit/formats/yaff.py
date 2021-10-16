@@ -277,7 +277,7 @@ def _parse_glyphs(elements, fore, back, empty, parse_glyph_keys):
             (
                 Glyph.from_matrix(_el.values, background=back)
                 if _el.values != [empty]
-                else Glyph.empty()
+                else Glyph()
             ).set_annotations(
                 comments=clean_comment(_el.comments),
                 **parse_glyph_keys(_el.keys)

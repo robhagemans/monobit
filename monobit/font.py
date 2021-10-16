@@ -315,8 +315,8 @@ class Font:
             return self.get_empty_glyph()
 
     def get_empty_glyph(self):
-        """Get empty glyph with minimal advance (zero if bearing 0 or negative)."""
-        return Glyph.empty(max(0, -self.offset.x - self.tracking), self.max_raster_size.y)
+        """Get blank glyph with zero advance (or minimal if zero not possible)."""
+        return Glyph.blank(max(0, -self.offset.x - self.tracking), self.max_raster_size.y)
 
 
     ##########################################################################

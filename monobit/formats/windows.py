@@ -949,7 +949,7 @@ def create_fnt(font, version=0x200):
     if break_ord is None:
         break_ord = _FALLBACK_BREAK
     # add the guaranteed-blank glyph
-    ord_glyphs.append(Glyph.empty(pix_width, font.max_raster_size.y))
+    ord_glyphs.append(Glyph.blank(pix_width, font.max_raster_size.y))
     # create the bitmaps
     bitmaps = [_glyph.as_bytes() for _glyph in ord_glyphs]
     # bytewise transpose - .FNT stores as contiguous 8-pixel columns

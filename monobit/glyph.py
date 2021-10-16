@@ -24,15 +24,15 @@ class Glyph:
         """Create glyph from tuple of tuples."""
         # glyph data
         self._rows = tuple(tuple(bool(_bit) for _bit in _row) for _row in pixels)
-        if len(set(len(_r) for _r in self._rows)) > 1:
-            raise ValueError(
-                f'All rows in a glyph must be of the same width: {repr(self)}'
-            )
         # annotations
         self._comments = tuple(comments)
         self._codepoint = tuple(codepoint)
         self._char = char
         self._tags = tuple(tags)
+        if len(set(len(_r) for _r in self._rows)) > 1:
+            raise ValueError(
+                f'All rows in a glyph must be of the same width: {repr(self)}'
+            )
 
     @property
     def tags(self):
@@ -126,7 +126,7 @@ class Glyph:
         )
 
     @classmethod
-    def empty(cls, width=0, height=0):
+    def blank(cls, width=0, height=0):
         """Create whitespace glyph."""
         return cls(((0,) * width,) * height)
 
@@ -196,7 +196,7 @@ class Glyph:
         if not width or not height:
             if hexstr:
                 raise ValueError('Hex string must be empty for zero-sized glyph')
-            return cls.empty(width, height)
+            return cls.blank(width, height)
         return cls.from_bytes(binascii.unhexlify(hexstr.encode('ascii')), width, height)
 
     def as_hex(self):
@@ -332,7 +332,9 @@ class Glyph:
 
     @scriptable
     def expand(self, left:int=0, bottom:int=0, right:int=0, top:int=0):
-        """Add empty space."""
+        """Add blank space."""
+        if min(left, bottom, right, top) < 0:
+            raise ValueError('Can only expand glyph by a positive amount.')
         if self._rows:
             old_width = len(self._rows[0])
         else:

@@ -62,8 +62,8 @@ def load(instream, where=None):
             top=_entry.shift,
             bottom=header.height-_glyph.height-_entry.shift,
             left=max_kern-_entry.kern,
-            # only necessary to fix empty glyphs
-            right=_entry.width+1-_glyph.width
+            # +1 because _entry.width is actually width-1
+            right=(_entry.width+1)-_glyph.width
         )
         for _glyph, _entry in zip(glyphs, char_table)
     ]
