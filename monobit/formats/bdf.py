@@ -869,20 +869,20 @@ def _save_bdf(font, outstream):
         if font.spacing not in ('character-cell', 'multi-cell'):
             offset_x, offset_y = offset_x + glyph.ink_offsets[0], offset_y + glyph.ink_offsets[1]
             glyph = glyph.reduce()
-        # replace empty glyph with 1x1
         if not glyph.height or not glyph.width:
-            glyph = Glyph(((0,),))
-            offset_x, offset_y = 0, 0
-        hex = glyph.as_hex()
-        width = len(hex) // glyph.height
-        split_hex = [hex[_offs:_offs+width] for _offs in range(0, len(hex), width)]
+            # empty glyph
+            split_hex = ''
+        else:
+            hex = glyph.as_hex().upper()
+            width = len(hex) // glyph.height
+            split_hex = [hex[_offs:_offs+width] for _offs in range(0, len(hex), width)]
         glyphs.append([
             ('STARTCHAR', name),
             ('ENCODING', str(encoding)),
             ('SWIDTH', f'{swidth_x} {swidth_y}'),
             ('DWIDTH', f'{dwidth_x} {dwidth_y}'),
             ('BBX', f'{glyph.width} {glyph.height} {offset_x} {offset_y}'),
-            ('BITMAP', '\n' + '\n'.join(split_hex)),
+            ('BITMAP', '' if not split_hex else '\n' + '\n'.join(split_hex)),
         ])
     # write out
     for key, value in bdf_props:
