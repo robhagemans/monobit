@@ -231,7 +231,15 @@ class Font:
 
     def __repr__(self):
         """Representation."""
-        return f"<Font '{self.name}'>"
+        if not self.nondefault_properties:
+            props = '{}'
+        else:
+            props = (
+                '{\n'
+                + ''.join(f"  '{_k}': '{_v}',\n" for _k, _v in self.nondefault_properties.items())
+                + '}'
+            )
+        return f"Font(glyphs=<{len(self._glyphs)} glyphs>, properties={props})"
 
     def _add_encoding_data(self):
         """Add unicode annotations for codepage."""
