@@ -97,7 +97,7 @@ def save(fonts, outstream, where=None):
 @loaders.register('draw', 'text', 'txt', name='hexdraw')
 def load_draw(instream, where=None, fore='#', back='-'):
     """Read a hexdraw font file."""
-    params = {**_DRAW_PARAMETERS, fore=fore, back=back}
+    params = dict(fore=fore, back=back, **_DRAW_PARAMETERS)
     return _load_fonts(instream.text, **params)
 
 @savers.register(loader=load_draw)
@@ -105,7 +105,7 @@ def save_draw(fonts, outstream, where=None, fore='#', back='-'):
     """Write font to a hexdraw file."""
     if len(fonts) > 1:
         raise FileFormatError("Can only save one font to hexdraw file.")
-    params = {**_DRAW_PARAMETERS, fore=fore, back=back}
+    params = dict(fore=fore, back=back, **_DRAW_PARAMETERS)
     _save_draw(fonts[0], outstream.text, **params)
 
 
