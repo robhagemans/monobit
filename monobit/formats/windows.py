@@ -55,9 +55,6 @@ _FALLBACK_DEFAULT = 0x80
 # "dfBreakChar is normally (32 - dfFirstChar), which is an ASCII space."
 _FALLBACK_BREAK = 0x20
 
-# only keep empty glyphs if thy are mapped to NUL or SPACE
-_KEEP_EMPTY = (0x00, 0x20)
-
 
 # official but vague documentation:
 # https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-wmf/0d0b32ac-a836-4bd2-a112-b6000a1b4fc9
@@ -672,10 +669,7 @@ def _parse_chartable_v1(fnt, win_props):
             _srow[offset:offset+width]
             for _srow in strikerows
         )
-        # only keep empty glyphs at NUL or SPACE
-        # or if they are explicitly defined in the strike
-        if rows or ord in _KEEP_EMPTY:
-            glyphs.append(Glyph(rows, codepoint=(win_props.dfFirstChar + ord,)))
+        glyphs.append(Glyph(rows, codepoint=(win_props.dfFirstChar + ord,)))
     return glyphs
 
 def _parse_chartable_v2(fnt, win_props):
@@ -697,10 +691,8 @@ def _parse_chartable_v2(fnt, win_props):
             for _row in range(height)
             for _col in range(bytewidth)
         )
-        # only keep empty glyphs at NUL or SPACE
-        if any(c for c in glyph_data) or ord in _KEEP_EMPTY:
-            glyph = Glyph.from_bytes(glyph_data, entry.geWidth).set_annotations(codepoint=(ord,))
-            glyphs.append(glyph)
+        glyph = Glyph.from_bytes(glyph_data, entry.geWidth).set_annotations(codepoint=(ord,))
+        glyphs.append(glyph)
     return glyphs
 
 def bytes_to_str(s, encoding='latin-1'):
