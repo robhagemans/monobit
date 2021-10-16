@@ -584,6 +584,8 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
     # global DWIDTH; use bounding box as fallback if not specified
     global_dwidth = bdf_props.pop('DWIDTH', global_bbx[:2])
     global_swidth = bdf_props.pop('SWIDTH', 0)
+    ####################################
+    # expand glyphs
     # ignored: for METRICSSET in 1, 2: DWIDTH1, SWIDTH1, VVECTOR
     if not glyphs:
         mod_glyphs = glyphs
@@ -625,8 +627,11 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
             padding_left = offset_x - leftmost
             padding_bottom = offset_y - bottommost
             padding_top = topmost - bbx_height - offset_y
-            glyph = glyph.expand(padding_left, padding_top, padding_right, padding_bottom)
+            glyph = glyph.expand(
+                left=padding_left, bottom=padding_bottom, right=padding_right, top=padding_top
+            )
             mod_glyphs.append(glyph)
+    ####################################
     xlfd_name = bdf_props.pop('FONT')
     # keep unparsed bdf props
     properties.update({
