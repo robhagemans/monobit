@@ -637,7 +637,7 @@ class Font:
         # all glyphs share the font's offset
         # so to align glyph origins we need to align raster origins - bottom left for LTR fonts
         lefts, bottoms, rights, tops = zip(*(_glyph.ink_coordinates for _glyph in self._glyphs))
-        return max(rights) - min(lefts), max(tops) - min(bottoms)
+        return Coord(max(rights) - min(lefts), max(tops) - min(bottoms))
 
     @yaffproperty
     def default_char(self):
