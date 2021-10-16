@@ -7,6 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 import binascii
 import logging
+from typing import NamedTuple
 
 from .base import scriptable
 from .base.binary import ceildiv, bytes_to_bits
@@ -15,6 +16,14 @@ from .label import Char, Codepoint
 
 
 NOT_SET = object()
+
+
+class Bounds(NamedTuple):
+    """4-coordinate tuple."""
+    left: int
+    bottom: int
+    right: int
+    top: int
 
 
 class Glyph:
@@ -154,11 +163,11 @@ class Glyph:
         )
 
     @classmethod
-    def from_bytes(cls, byteseq, width, height=None):
+    def from_bytes(cls, byteseq, width, height=NOT_SET):
         """Create glyph from bytes/bytearray/int sequence."""
         if not width or height == 0:
             return cls()
-        if height is not None:
+        if height is not NOT_SET:
             bytewidth = len(byteseq) // height
         else:
             bytewidth = ceildiv(width, 8)
@@ -254,13 +263,15 @@ class Glyph:
         col_inked = [bool(sum(_row[_i] for _row in self._rows)) for _i in range(self.width)]
         left = col_inked.index(True)
         right = list(reversed(col_inked)).index(True)
-        return left, bottom, right, top
+        return Bounds(left, bottom, right, top)
 
     @property
     def ink_coordinates(self):
         """Offset from raster origin to bounding box. Left, bottom, right, top."""
         offsets = self.ink_offsets
-        return offsets[0], offsets[1], self.width-offsets[2], self.height-offsets[3]
+        return Bounds(
+            offsets.left, offsets.bottom, self.width-offsets.right, self.height-offsets.top
+        )
 
     def reduce(self):
         """Return a glyph reduced to the bounding box."""
