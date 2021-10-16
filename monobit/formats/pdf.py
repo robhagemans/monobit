@@ -35,8 +35,9 @@ if reportlab:
         # assume A4
         page_x, page_y = 210*mm, 297*mm
         margin_x, margin_y = 28*mm, 30*mm
-        width = font.bounding_box.x + 2
-        height = font.bounding_box.y + 4
+        # work with maximum raster size
+        width = font.max_raster_size.x + 2
+        height = font.max_raster_size.y + 4
         xpix, ypix = (page_x-2*margin_x)/columns/width, (page_y-2*margin_y)/rows/height
         canvas.translate(margin_x, margin_y)
         canvas.setLineWidth(xpix/10)
@@ -51,7 +52,7 @@ if reportlab:
                 orig_x, orig_y = col*xpix*width, (rows-row-1)*ypix*height
                 n = columns * row + col
                 if n < len(font.glyphs):
-                    canvas.drawString(orig_x, orig_y+font.bounding_box.y*ypix + 3, f'{n:02X}: {font.glyphs[n].char}')
+                    canvas.drawString(orig_x, orig_y+font.max_raster_size.y*ypix + 3, f'{n:02X}: {font.glyphs[n].char}')
                     glyph = font.glyphs[n].as_matrix()
                     for y in range(len(glyph)):
                         for x in range(len(glyph[y])):

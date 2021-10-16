@@ -239,6 +239,12 @@ class Glyph:
         right = list(reversed(col_inked)).index(True)
         return left, bottom, right, top
 
+    @property
+    def ink_coordinates(self):
+        """Offset from raster origin to bounding box. Left, bottom, right, top."""
+        offsets = self.ink_offsets
+        return offsets[0], offsets[1], self.width-offsets[2], self.height-offsets[3]
+
     def reduce(self):
         """Return a glyph reduced to the bounding box."""
         return self.crop(*self.ink_offsets)

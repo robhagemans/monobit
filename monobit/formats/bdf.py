@@ -545,10 +545,11 @@ def _parse_properties(glyphs, glyph_props, bdf_props, x_props):
     # encoding values above 256 become multi-byte
     # unless we're working in unicode
     if not charmaps.is_unicode(properties['encoding']):
-        glyphs = (
+        glyphs = [
             _glyph.set_annotations(codepoint=int_to_bytes(_glyph.codepoint[0]))
             for _glyph in glyphs
-        )
+            if _glyph.codepoint
+        ]
     return glyphs, properties
 
 
@@ -808,6 +809,8 @@ def _save_bdf(font, outstream):
         ('FONT', _create_xlfd_name(xlfd_props)),
         ('SIZE', f'{font.point_size} {font.dpi.x} {font.dpi.y}'),
         (
+            # per the example in the BDF spec,
+            # the first two coordinates in FONTBOUNDINGBOX are the font's ink-bounds
             'FONTBOUNDINGBOX',
             f'{font.bounding_box.x} {font.bounding_box.y} {font.offset.x} {font.offset.y}'
         )

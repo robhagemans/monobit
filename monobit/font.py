@@ -115,7 +115,8 @@ PROPERTIES = {
     # summarising quantities
     # determined from the bitmaps only
     'spacing': str, # proportional, monospace, character-cell, multi-cell
-    'bounding-box': Coord.create, # maximum raster (not necessarily ink) width/height
+    'max-raster-size': Coord.create, # maximum raster (not necessarily ink) width/height
+    'bounding-box': Coord.create, # overall ink bounds - overlay all glyphs with fixed origin and determine maximum ink extent
     'average-advance': number, # average advance width, rounded to tenths
     'cap-advance': int, # advance width of LATIN CAPITAL LETTER X
 
@@ -135,7 +136,7 @@ PROPERTIES = {
     'direction': str, # left-to-right, right-to-left
     'offset': Coord.create, # (horiz, vert) offset from origin to matrix start
     'tracking': int, # horizontal offset from matrix end to next origin
-    'leading': int, # interline spacing, defined as (pixels between baselines) - (bounding box height)
+    'leading': int, # interline spacing, defined as (pixels between baselines) - (max raster height)
 
     # character set
     # can't be calculated, affect rendering
@@ -156,7 +157,7 @@ PROPERTIES = {
 
 # calculated properties
 # properties that must have the calculated value
-_NON_OVERRIDABLE = ('spacing', 'bounding-box', 'pixel-size', 'average-advance', 'cap-advance',)
+_NON_OVERRIDABLE = ('spacing', 'max-raster-size', 'pixel-size', 'average-advance', 'cap-advance',)
 # properties where the calculated value may be overridden
 _OVERRIDABLE = ('dpi', 'name', 'family', 'x-height', 'cap-height',)
 
@@ -315,7 +316,7 @@ class Font:
 
     def get_empty_glyph(self):
         """Get empty glyph with minimal advance (zero if bearing 0 or negative)."""
-        return Glyph.empty(max(0, -self.offset.x - self.tracking), self.bounding_box.y)
+        return Glyph.empty(max(0, -self.offset.x - self.tracking), self.max_raster_size.y)
 
 
     ##########################################################################
@@ -418,7 +419,7 @@ class Font:
                 )
                 for _row in glyphs
             )
-        line_height = self.bounding_box.y + self.leading
+        line_height = self.max_raster_size.y + self.leading
         height = 2 * margin_y + line_height * len(glyphs)
         line_output = [
             [0 for _ in range(width)]
@@ -619,7 +620,7 @@ class Font:
         return Coord(72, 72)
 
     @property
-    def bounding_box(self):
+    def max_raster_size(self):
         """Get maximum raster width and height, in pixels."""
         if not self._glyphs:
             return Coord(0, 0)
@@ -627,6 +628,16 @@ class Font:
             max(_glyph.width for _glyph in self._glyphs),
             max(_glyph.height for _glyph in self._glyphs)
         )
+
+    @property
+    def bounding_box(self):
+        """Minimum bounding box encompassing all glyphs at fixed origin."""
+        if not self._glyphs:
+            return Coord(0, 0)
+        # all glyphs share the font's offset
+        # so to align glyph origins we need to align raster origins - bottom left for LTR fonts
+        lefts, bottoms, rights, tops = zip(*(_glyph.ink_coordinates for _glyph in self._glyphs))
+        return max(rights) - min(lefts), max(tops) - min(bottoms)
 
     @yaffproperty
     def default_char(self):

@@ -131,9 +131,9 @@ def save(fonts, outstream, where=None):
         )
     glyphs = font.glyphs
     psf_props = dict(
-        width=font.bounding_box.x,
-        height=font.bounding_box.y,
-        charsize=font.bounding_box.y * ceildiv(font.bounding_box.x, 8),
+        width=font.max_raster_size.x,
+        height=font.max_raster_size.y,
+        charsize=font.max_raster_size.y * ceildiv(font.max_raster_size.x, 8),
         version=0,
         flags=_PSF2_HAS_UNICODE_TABLE,
         length=len(glyphs),

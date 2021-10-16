@@ -926,7 +926,7 @@ def create_fnt(font, version=0x200):
         # CHECK: is this really always set for fixed-pitch?
         pitch_and_family = _FF_MODERN
         # x_width should equal average width
-        x_width = pix_width = font.bounding_box.x
+        x_width = pix_width = font.max_raster_size.x
         v3_flags = _DFF_FIXED
     space_index = 0
     # if encoding is compatible, use it; otherwise set to fallback value
@@ -949,7 +949,7 @@ def create_fnt(font, version=0x200):
     if break_ord is None:
         break_ord = _FALLBACK_BREAK
     # add the guaranteed-blank glyph
-    ord_glyphs.append(Glyph.empty(pix_width, font.bounding_box.y))
+    ord_glyphs.append(Glyph.empty(pix_width, font.max_raster_size.y))
     # create the bitmaps
     bitmaps = [_glyph.as_bytes() for _glyph in ord_glyphs]
     # bytewise transpose - .FNT stores as contiguous 8-pixel columns
@@ -996,9 +996,9 @@ def create_fnt(font, version=0x200):
         dfVertRes=font.dpi.y,
         dfHorizRes=font.dpi.x,
         # Windows dfAscent means distance between matrix top and baseline
-        dfAscent=font.offset.y + font.bounding_box.y,
+        dfAscent=font.offset.y + font.max_raster_size.y,
         #'ascent': win_props.dfAscent - win_props.dfInternalLeading,
-        dfInternalLeading=font.offset.y + font.bounding_box.y - font.ascent,
+        dfInternalLeading=font.offset.y + font.max_raster_size.y - font.ascent,
         dfExternalLeading=font.leading,
         dfItalic=(font.slant in ('italic', 'oblique')),
         dfUnderline=('underline' in font.decoration),
@@ -1006,18 +1006,18 @@ def create_fnt(font, version=0x200):
         dfWeight=weight_map.get(font.weight, weight_map['regular']),
         dfCharSet=charset,
         dfPixWidth=pix_width,
-        dfPixHeight=font.bounding_box.y,
+        dfPixHeight=font.max_raster_size.y,
         dfPitchAndFamily=pitch_and_family,
         # for 2.0+, we use actual average advance here (like fontforge but unlike mkwinfont)
         dfAvgWidth=round(font.average_advance),
         # max advance width
-        dfMaxWidth=font.bounding_box.x + font.tracking + font.offset.x,
+        dfMaxWidth=font.max_raster_size.x + font.tracking + font.offset.x,
         dfFirstChar=min_ord,
         dfLastChar=max_ord,
         dfDefaultChar=default_ord - min_ord,
         dfBreakChar=break_ord - min_ord,
         # round up to multiple of 2 bytes to word-align v1.0 strikes (not used for v2.0+ ?)
-        dfWidthBytes=align(ceildiv(font.bounding_box.x, 8), 1),
+        dfWidthBytes=align(ceildiv(font.max_raster_size.x, 8), 1),
         dfDevice=device_name_offset,
         dfFace=face_name_offset,
         dfBitsPointer=0, # used on loading
