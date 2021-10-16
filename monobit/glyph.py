@@ -52,8 +52,17 @@ class Glyph:
 
     def __repr__(self):
         """Text representation."""
-        return "Glyph(\n  '{}'\n)".format(
-            to_text(self.as_matrix(fore='@', back='.'), line_break="'\n  '")
+        return (
+            f"Glyph(char={repr(self._char)}, "
+            f"codepoint={repr(self._codepoint)}, "
+            f"tags={repr(self._tags)}, " +
+            "comments=({}), ".format(
+                '' if not self._comments else
+                "\n  '" + "',\n  '".join(self.comments) + "'"
+            ) +
+            "pixels=(\n  '{}'\n)".format(
+                to_text(self.as_matrix(fore='@', back='.'), line_break="',\n  '")
+            )
         )
 
     def add_annotations(self, *, tags=(), comments=()):
