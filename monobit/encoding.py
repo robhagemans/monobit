@@ -555,11 +555,7 @@ class CharmapRegistry:
     _overlays = {}
 
     # table of encoding aliases
-    _aliases = {
-        'ucs': 'unicode',
-        'iso10646': 'unicode',
-        'iso10646-1': 'unicode',
-    }
+    _aliases = {}
 
     # replacement patterns for normalisation
     # longest first to avoid partial match
@@ -1150,6 +1146,11 @@ def _from_wikipedia(data, table=0, column=0, range=None):
 ###################################################################################################
 
 charmaps = CharmapRegistry()
+
+# unicode aliases
+charmaps.alias('ucs', 'unicode')
+charmaps.alias('iso10646', 'unicode')
+charmaps.alias('iso10646-1', 'unicode')
 
 # charmap files
 for _format, _kwargs, _records in _ENCODING_FILES:
