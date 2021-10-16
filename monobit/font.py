@@ -165,13 +165,17 @@ _OVERRIDABLE = ('dpi', 'name', 'family', 'x-height', 'cap-height',)
 class Font:
     """Representation of font glyphs and metadata."""
 
-    def __init__(self, glyphs=(), comments=(), properties=None):
+    def __init__(self, glyphs=(), comments=None, properties=None):
         """Create new font."""
         if not properties:
             properties = {}
+        if not comments:
+            comments = {}
+        if not isinstance(comments, dict):
+            comments = {'': comments}
         self._glyphs = tuple(glyphs)
         # global comments
-        self._comments = tuple(comments)
+        self._comments = {_k: tuple(_v) for _k, _v in comments.items()}
         # update properties
         self._properties = {}
         if properties:
@@ -461,14 +465,17 @@ class Font:
     ##########################################################################
     # comments
 
-    def get_comments(self):
-        """Get global comments."""
-        return self._comments
+    def get_comments(self, property=''):
+        """Get global or property comments."""
+        return self._comments.get(property, ())
 
     @scriptable
-    def add_comments(self, new_comment:str=''):
+    def add_comments(self, new_comment:str='', property:str=''):
         """Return a font with added comments."""
-        comments = [*self._comments] + new_comment.splitlines()
+        comments = {**self._comments}
+        if property not in self._comments:
+            comments[property] = ()
+        comments[property] += tuple(new_comment.splitlines())
         return Font(self._glyphs, comments, self._properties)
 
     # move to glyph.with_name()

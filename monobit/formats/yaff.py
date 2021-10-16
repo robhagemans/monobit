@@ -177,11 +177,12 @@ def _load_fonts(instream, fore, back, separator, empty, parse_glyph_keys, **kwar
             continue
         logging.debug('Found content in section #%d.', number)
         # extract comments
-        elements, comments = _extract_comments(elements)
+        elements, global_comments = _extract_comments(elements)
         # first take out all glyphs
         glyphs = _parse_glyphs(elements, fore, back, empty, parse_glyph_keys)
         # property comments currently not preserved
         properties, property_comments = _parse_properties(elements, fore, back)
+        comments = {'': global_comments, **property_comments}
         # construct font
         pack.append(Font(glyphs, comments, properties))
     return pack
@@ -256,7 +257,7 @@ def _parse_properties(elements, fore, back):
     }
     # property comments
     comments = {
-        _key: _el.comments
+        _key: clean_comment(_el.comments)
         for _el in property_elements
         for _key in _el.keys
     }
@@ -339,7 +340,7 @@ def _quote_if_needed(value):
         return f'"{value}"'
     return value
 
-def _write_prop(outstream, key, value, tab):
+def _write_prop(outstream, key, value, tab, comments, comm_char):
     """Write out a property."""
     if value is None:
         return
@@ -347,6 +348,7 @@ def _write_prop(outstream, key, value, tab):
     value = str(value)
     if not value:
         return
+    write_comments(outstream, comments, comm_char=comm_char)
     if '\n' not in value:
         outstream.write(f'{key}: {_quote_if_needed(value)}\n')
     else:
@@ -375,10 +377,12 @@ def _save_yaff(fonts, outstream, fore, back, comment, tab, separator, empty, **k
             # write recognised yaff properties first, in defined order
             for key in PROPERTIES:
                 value = props.pop(key, '')
-                _write_prop(outstream, key, value, tab)
+                comments = font.get_comments(key)
+                _write_prop(outstream, key, value, tab, comments=comments, comm_char=comment)
             # write out any remaining properties
             for key, value in props.items():
-                _write_prop(outstream, key, value, tab)
+                comments = font.get_comments(key)
+                _write_prop(outstream, key, value, tab, comments=comments, comm_char=comment)
             outstream.write('\n')
         for glyph in font.glyphs:
             labels = []
