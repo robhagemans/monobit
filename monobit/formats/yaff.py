@@ -368,7 +368,7 @@ def _save_yaff(fonts, outstream, fore, back, comment, tab, separator, empty, **k
         # we always output name, font-size and spacing
         # plus anything that is different from the default
         props = {
-            'name': font.name,
+            'family': font.family,
             'point-size': font.point_size,
             'spacing': font.spacing,
             **font.nondefault_properties
