@@ -160,7 +160,8 @@ def load_contents(f, where):
     pack = []
     for fc in contentsarray:
         # we'll get ysize, style and flags from the file itself, we just need a path.
-        # assuming it uses latin-1 or ascii?
+        # latin-1 seems to be the standard for amiga strings,
+        # see e.g. https://wiki.amigaos.net/wiki/FTXT_IFF_Formatted_Text#Data_Chunk_CHRS
         name = fc.fc_FileName.decode('latin-1')
         # amiga fs is case insensitive, so we need to loop over listdir and match
         for filename in where:
