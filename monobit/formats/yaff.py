@@ -73,8 +73,6 @@ _YAFF_PARAMETERS = dict(
 )
 
 _DRAW_PARAMETERS = dict(
-    fore='#',
-    back='-',
     comment='%',
     tab='\t',
     separator=':',
@@ -85,7 +83,7 @@ _DRAW_PARAMETERS = dict(
 ##############################################################################
 
 
-@loaders.register('yaff', 'yaffs', 'text', 'txt', magic=(b'---',), name='monobit-yaff')
+@loaders.register('yaff', 'yaffs', magic=(b'---',), name='monobit-yaff')
 def load(instream, where=None):
     """Read a plaintext font file."""
     return _load_fonts(instream.text, **_YAFF_PARAMETERS)
@@ -96,18 +94,19 @@ def save(fonts, outstream, where=None):
     _save_yaff(fonts, outstream.text, **_YAFF_PARAMETERS)
 
 
-@loaders.register('draw', name='hexdraw')
-def load_draw(instream, where=None):
+@loaders.register('draw', 'text', 'txt', name='hexdraw')
+def load_draw(instream, where=None, fore='#', back='-'):
     """Read a hexdraw font file."""
-    return _load_fonts(instream.text, **_DRAW_PARAMETERS)
+    params = {**_DRAW_PARAMETERS, fore=fore, back=back}
+    return _load_fonts(instream.text, **params)
 
 @savers.register(loader=load_draw)
-def save_draw(fonts, outstream, where=None):
+def save_draw(fonts, outstream, where=None, fore='#', back='-'):
     """Write font to a hexdraw file."""
     if len(fonts) > 1:
         raise FileFormatError("Can only save one font to hexdraw file.")
-    _save_draw(fonts[0], outstream.text, **_DRAW_PARAMETERS)
-
+    params = {**_DRAW_PARAMETERS, fore=fore, back=back}
+    _save_draw(fonts[0], outstream.text, **params)
 
 
 ##############################################################################
