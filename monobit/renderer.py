@@ -7,11 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 from .base.text import to_text
 from .base.binary import ceildiv
-
-try:
-    from PIL import Image
-except ImportError:
-    Image = None
+from .base.image import to_image
 
 
 def render(font, text, fore=1, back=0, *, margin=(0, 0), scale=(1, 1), missing='default'):
@@ -124,23 +120,9 @@ def render_image(
         back=(0, 0, 0), fore=(255, 255, 255),
         margin=(0, 0), scale=(1, 1),
         missing='default',
-        filename=None,
     ):
     """Render text to image."""
-    if not Image:
-        raise ImportError('Rendering to image requires PIL module.')
-    grid = render(
-        font, text, fore, back, margin=margin, scale=scale, missing=missing
-    )
-    if not grid:
-        return
-    width, height = len(grid[0]), len(grid)
-    img = Image.new('RGB', (width, height), back)
-    img.putdata(_c for _row in grid for _c in _row)
-    if filename:
-        img.save(filename)
-    else:
-        img.show()
+    return to_image(render(font, text, fore, back, margin=margin, scale=scale, missing=missing))
 
 
 def chart(
@@ -170,3 +152,13 @@ def chart(
         left, bottom = margin_x + col*step_x, margin_y + (row+1)*step_y - padding_y
         _blit_matrix(matrix, canvas, left, bottom)
     return canvas
+
+
+def chart_image(
+        font,
+        columns=32, margin=(0, 0), padding=(0, 0), scale=(1, 1),
+        border=(32, 32, 32), back=(0, 0, 0), fore=(255, 255, 255),
+    ):
+    """Dump font to image."""
+    canvas = chart(font, columns, margin, padding, scale, -1, 0, 1)
+    return to_image(canvas, border, back, fore)

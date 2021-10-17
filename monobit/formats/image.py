@@ -20,7 +20,7 @@ from ..formats import loaders, savers
 from ..streams import FileFormatError
 from ..font import Font
 from ..glyph import Glyph
-from ..renderer import chart
+from ..renderer import chart_image
 
 
 DEFAULT_IMAGE_FORMAT = 'png'
@@ -160,25 +160,8 @@ if Image:
         """Export font to image."""
         if len(fonts) > 1:
             raise FileFormatError('Can only save one font to image file.')
-        img = create_image(fonts[0], columns, margin, padding, scale, border, back, fore)
+        img = chart_image(fonts[0], columns, margin, padding, scale, border, back, fore)
         try:
             img.save(outfile, format=format or Path(outfile).suffix[1:])
         except (KeyError, ValueError, TypeError):
             img.save(outfile, format=DEFAULT_IMAGE_FORMAT)
-
-
-def create_image(
-        font,
-        columns=32, margin=(0, 0), padding=(0, 0), scale=(1, 1),
-        border=(32, 32, 32), back=(0, 0, 0), fore=(255, 255, 255),
-    ):
-    """Dump font to image."""
-    canvas = chart(font, columns, margin, padding, scale, 0, 1, 2)
-    height = len(canvas)
-    if height:
-        width = len(canvas[0])
-    else:
-        width = 0
-    img = Image.new('RGB', (width, height), border)
-    img.putdata([{0: border, 1: back, 2: fore}[_pix] for _row in canvas for _pix in _row])
-    return img
