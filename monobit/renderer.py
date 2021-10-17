@@ -6,6 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 from .base.text import to_text
+from .base.binary import ceildiv
 
 try:
     from PIL import Image
@@ -59,10 +60,7 @@ def render(font, text, fore=1, back=0, *, margin=(0, 0), scale=(1, 1), missing='
         )
     line_height = font.max_raster_size.y + font.leading
     height = 2 * margin_y + line_height * len(glyphs)
-    line_output = [
-        [0 for _ in range(width)]
-        for _ in range(height)
-    ]
+    canvas = _create_matrix(width, height)
     # get to initial origin
     grid_top = margin_y
     for row, kernrow in zip(glyphs, kernings):
@@ -74,26 +72,46 @@ def render(font, text, fore=1, back=0, *, margin=(0, 0), scale=(1, 1), missing='
             # grid coordinates of grid origin
             grid_x, grid_y = margin_x + x, grid_top + font.ascent - y
             # add ink, taking into account there may be ink already in case of negative bearings
-            for work_y in range(glyph.height):
-                y_index = grid_y - work_y - 1
-                if 0 <= y_index < height:
-                    row = line_output[y_index]
-                    for work_x, ink in enumerate(matrix[glyph.height - work_y - 1]):
-                        if 0 <= grid_x + work_x < width:
-                            row[grid_x + work_x] |= ink
+            _blit_matrix(matrix, canvas, grid_x, grid_y)
             # advance
             x += glyph.width
             # apply post-offset
             x, y = x + font.tracking + kerning, y - font.offset.y
         grid_top += line_height
-    output = []
-    output.extend(line_output)
-    scale_x, scale_y = scale
-    output = tuple(
-        tuple((fore if _item else back) for _item in _row for _ in range(scale_x))
-        for _row in output for _ in range(scale_y)
-    )
+    scaled = _scale_matrix(canvas, *scale)
+    output = tuple(tuple(fore if _pix else back for _pix in _row) for _row in scaled)
     return output
+
+
+def _create_matrix(width, height, fill=0):
+    """Create a matrix in list format."""
+    return [
+        [fill for _ in range(width)]
+        for _ in range(height)
+    ]
+
+def _scale_matrix(matrix, scale_x, scale_y):
+    """Scale a matrix in list format."""
+    return [
+        [_item  for _item in _row for _ in range(scale_x)]
+        for _row in matrix for _ in range(scale_y)
+    ]
+
+def _blit_matrix(matrix, canvas, grid_x, grid_y, operator=max):
+    """Draw a matrix onto a canvas (leaving exising ink in place, depending on operator)."""
+    if not matrix or not canvas:
+        return canvas
+    matrix_height = len(matrix)
+    canvas_height = len(canvas)
+    canvas_width = len(canvas[0])
+    for work_y in range(matrix_height):
+        y_index = grid_y - work_y - 1
+        if 0 <= y_index < canvas_height:
+            row = canvas[y_index]
+            for work_x, ink in enumerate(matrix[matrix_height - work_y - 1]):
+                if 0 <= grid_x + work_x < canvas_width:
+                    row[grid_x + work_x] = operator(ink, row[grid_x + work_x])
+    return canvas
 
 
 def render_text(font, text, fore='@', back='-', *, margin=(0, 0), scale=(1, 1), missing='default'):
@@ -118,9 +136,37 @@ def render_image(
         return
     width, height = len(grid[0]), len(grid)
     img = Image.new('RGB', (width, height), back)
-    data = [_c for _row in grid for _c in _row]
-    img.putdata(data)
+    img.putdata(_c for _row in grid for _c in _row)
     if filename:
         img.save(filename)
     else:
         img.show()
+
+
+def chart(
+        font,
+        columns=16, margin=(0, 0), padding=(0, 0), scale=(1, 1),
+        border=0, back=0, fore=1,
+    ):
+    """Dump font to image."""
+    scale_x, scale_y = scale
+    padding_x, padding_y = padding
+    margin_x, margin_y = margin
+    # work out image geometry
+    step_x = font.max_raster_size.x * scale_x + padding_x
+    step_y = font.max_raster_size.y * scale_y + padding_y
+    rows = ceildiv(len(font.glyphs), columns)
+    # determine image geometry
+    width = columns * step_x + 2 * margin_x - padding_x
+    height = rows * step_y + 2 * margin_y - padding_y
+    canvas = _create_matrix(width, height, border)
+    # output glyphs
+    for ordinal, glyph in enumerate(font.glyphs):
+        if not glyph.width or not glyph.height:
+            continue
+        row, col = divmod(ordinal, columns)
+        matrix = glyph.as_matrix(fore, back)
+        matrix = _scale_matrix(matrix, scale_x, scale_y)
+        left, bottom = margin_x + col*step_x, margin_y + (row+1)*step_y - padding_y
+        _blit_matrix(matrix, canvas, left, bottom)
+    return canvas

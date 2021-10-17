@@ -20,6 +20,7 @@ from ..formats import loaders, savers
 from ..streams import FileFormatError
 from ..font import Font
 from ..glyph import Glyph
+from ..renderer import chart
 
 
 DEFAULT_IMAGE_FORMAT = 'png'
@@ -155,12 +156,11 @@ if Image:
             padding:pair=(0, 0),
             scale:pair=(1, 1),
             border:rgb=(32, 32, 32), back:rgb=(0, 0, 0), fore:rgb=(255, 255, 255),
-            encoding:str=None,
         ):
         """Export font to image."""
         if len(fonts) > 1:
             raise FileFormatError('Can only save one font to image file.')
-        img = create_image(fonts[0], columns, margin, padding, scale, border, back, fore, encoding)
+        img = create_image(fonts[0], columns, margin, padding, scale, border, back, fore)
         try:
             img.save(outfile, format=format or Path(outfile).suffix[1:])
         except (KeyError, ValueError, TypeError):
@@ -171,29 +171,14 @@ def create_image(
         font,
         columns=32, margin=(0, 0), padding=(0, 0), scale=(1, 1),
         border=(32, 32, 32), back=(0, 0, 0), fore=(255, 255, 255),
-        encoding=None
     ):
     """Dump font to image."""
-    scale_x, scale_y = scale
-    padding_x, padding_y = padding
-    margin_x, margin_y = margin
-    # work out image geometry
-    step_x = font.max_raster_size.x * scale_x + padding_x
-    step_y = font.max_raster_size.y * scale_y + padding_y
-    rows = ceildiv(len(font.glyphs), columns)
-    # determine image geometry
-    width = columns * step_x + 2 * margin_x - padding_x
-    height = rows * step_y + 2 * margin_y - padding_y
+    canvas = chart(font, columns, margin, padding, scale, 0, 1, 2)
+    height = len(canvas)
+    if height:
+        width = len(canvas[0])
+    else:
+        width = 0
     img = Image.new('RGB', (width, height), border)
-    # output glyphs
-    for ordinal, glyph in enumerate(font.glyphs):
-        if not glyph.width or not glyph.height:
-            continue
-        row, col = divmod(ordinal, columns)
-        charimg = Image.new('RGB', (glyph.width, glyph.height))
-        data = glyph.as_tuple(fore, back)
-        charimg.putdata(data)
-        charimg = charimg.resize((charimg.width * scale_x, charimg.height * scale_y))
-        lefttop = (margin_x + col*step_x, margin_y + row*step_y)
-        img.paste(charimg, lefttop)
+    img.putdata([{0: border, 1: back, 2: fore}[_pix] for _row in canvas for _pix in _row])
     return img
