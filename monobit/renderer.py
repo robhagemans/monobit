@@ -19,26 +19,30 @@ _BORDER = -1
 ###################################################################################################
 # text rendering
 
-def render_text(font, text, ink='@', paper='-', *, margin=(0, 0), scale=(1, 1), missing='default'):
+def render_text(
+        font, text, ink='@', paper='-', *,
+        margin=(0, 0), scale=(1, 1), rotate=0,
+        missing='default'
+    ):
     """Render text string to text bitmap."""
     return to_text(
-        render(font, text, margin=margin, scale=scale, missing=missing),
+        render(font, text, margin=margin, scale=scale, rotate=rotate, missing=missing),
         ink=ink, paper=paper
     )
 
 def render_image(
         font, text, *,
         paper=(0, 0, 0), ink=(255, 255, 255),
-        margin=(0, 0), scale=(1, 1),
+        margin=(0, 0), scale=(1, 1), rotate=0,
         missing='default',
     ):
     """Render text to image."""
     return to_image(
-        render(font, text, margin=margin, scale=scale, missing=missing),
+        render(font, text, margin=margin, scale=scale, rotate=rotate, missing=missing),
         ink=ink, paper=paper
     )
 
-def render(font, text, *, margin=(0, 0), scale=(1, 1), missing='default'):
+def render(font, text, *, margin=(0, 0), scale=(1, 1), rotate=0, missing='default'):
     """Render text string to bitmap."""
     glyphs = font.get_glyphs(text, missing=missing)
     kernings = font.get_kernings(glyphs)
@@ -66,7 +70,8 @@ def render(font, text, *, margin=(0, 0), scale=(1, 1), missing='default'):
         # move to next line
         top_line += font.line_height
     scaled = _scale_matrix(canvas, *scale)
-    return scaled
+    rotated = _rotate_matrix(scaled, rotate)
+    return rotated
 
 def _get_canvas(font, glyphs, margin_x, margin_y):
     """Create canvas of the right size."""
@@ -101,6 +106,21 @@ def _scale_matrix(matrix, scale_x, scale_y):
         [_item  for _item in _row for _ in range(scale_x)]
         for _row in matrix for _ in range(scale_y)
     ]
+
+def _rotate_matrix(matrix, quarter_turns=1):
+    """Scale a matrix in list format."""
+    for turn in range(quarter_turns):
+        matrix = _mirror_matrix(_transpose_matrix(matrix))
+    return matrix
+
+def _transpose_matrix(matrix):
+    """Transpose a matrix."""
+    return list(zip(*matrix))
+
+def _mirror_matrix(matrix):
+    """Mirror a matrix."""
+    return [reversed(_row) for _row in matrix]
+
 
 def _blit_matrix(matrix, canvas, grid_x, grid_y, operator=max):
     """Draw a matrix onto a canvas (leaving exising ink in place, depending on operator)."""

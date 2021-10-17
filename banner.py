@@ -48,6 +48,10 @@ parser.add_argument(
     help='number of characters to use per pixel in x and y direction (default: 1,1)'
 )
 parser.add_argument(
+    '--rotate', '-r', type=int, default=0,
+    help='number of quarter turns to rotate (default: 0)'
+)
+parser.add_argument(
     '--encoding', default='', type=str,
     help='override encoding/codepage (default: infer from metadata in file)'
 )
@@ -100,7 +104,8 @@ try:
     elif args.encoding:
         font = font.set_properties(encoding=args.encoding)
     sys.stdout.write(render_text(
-        font, args.text, args.ink, args.paper, margin=args.margin, scale=args.scale, missing='default'
+        font, args.text, args.ink, args.paper,
+        margin=args.margin, scale=args.scale, rotate=args.rotate, missing='default'
     ) + '\n')
 except BrokenPipeError:
     # happens e.g. when piping to `head`
