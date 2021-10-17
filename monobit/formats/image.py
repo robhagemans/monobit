@@ -155,12 +155,12 @@ if Image:
             margin:pair=(0, 0),
             padding:pair=(0, 0),
             scale:pair=(1, 1),
-            border:rgb=(32, 32, 32), back:rgb=(0, 0, 0), fore:rgb=(255, 255, 255),
+            border:rgb=(32, 32, 32), paper:rgb=(0, 0, 0), ink:rgb=(255, 255, 255),
         ):
         """Export font to image."""
         if len(fonts) > 1:
             raise FileFormatError('Can only save one font to image file.')
-        img = chart_image(fonts[0], columns, margin, padding, scale, border, back, fore)
+        img = chart_image(fonts[0], columns, margin, padding, scale, border, paper, ink)
         try:
             img.save(outfile, format=format or Path(outfile).suffix[1:])
         except (KeyError, ValueError, TypeError):

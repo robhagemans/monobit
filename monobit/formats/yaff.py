@@ -63,8 +63,8 @@ def _parse_draw_keys(keys):
 
 
 _YAFF_PARAMETERS = dict(
-    fore='@',
-    back='.',
+    ink='@',
+    paper='.',
     comment='#',
     tab='    ',
     separator=':',
@@ -95,17 +95,17 @@ def save(fonts, outstream, where=None):
 
 
 @loaders.register('draw', 'text', 'txt', name='hexdraw')
-def load_draw(instream, where=None, fore='#', back='-'):
+def load_draw(instream, where=None, ink='#', paper='-'):
     """Read a hexdraw font file."""
-    params = dict(fore=fore, back=back, **_DRAW_PARAMETERS)
+    params = dict(ink=ink, paper=paper, **_DRAW_PARAMETERS)
     return _load_fonts(instream.text, **params)
 
 @savers.register(loader=load_draw)
-def save_draw(fonts, outstream, where=None, fore='#', back='-'):
+def save_draw(fonts, outstream, where=None, ink='#', paper='-'):
     """Write font to a hexdraw file."""
     if len(fonts) > 1:
         raise FileFormatError("Can only save one font to hexdraw file.")
-    params = dict(fore=fore, back=back, **_DRAW_PARAMETERS)
+    params = dict(ink=ink, paper=paper, **_DRAW_PARAMETERS)
     _save_draw(fonts[0], outstream.text, **params)
 
 
@@ -163,7 +163,7 @@ def _new_cluster():
         comments=[]
     )
 
-def _load_fonts(instream, fore, back, separator, empty, parse_glyph_keys, **kwargs):
+def _load_fonts(instream, ink, paper, separator, empty, parse_glyph_keys, **kwargs):
     """Read and parse a plaintext font file."""
     pack = []
     for number in count():
@@ -179,9 +179,9 @@ def _load_fonts(instream, fore, back, separator, empty, parse_glyph_keys, **kwar
         # extract comments
         elements, global_comments = _extract_comments(elements)
         # first take out all glyphs
-        glyphs = _parse_glyphs(elements, fore, back, empty, parse_glyph_keys)
+        glyphs = _parse_glyphs(elements, ink, paper, empty, parse_glyph_keys)
         # property comments currently not preserved
-        properties, property_comments = _parse_properties(elements, fore, back)
+        properties, property_comments = _parse_properties(elements, ink, paper)
         comments = {'': global_comments, **property_comments}
         # construct font
         pack.append(Font(glyphs, comments, properties))
@@ -237,16 +237,16 @@ def _read_text(instream, separator):
     return elements
 
 
-def _is_glyph(value, fore, back):
+def _is_glyph(value, ink, paper):
     """Value is a glyph."""
-    return not(set(value) - set(fore) - set(back))
+    return not(set(value) - set(ink) - set(paper))
 
-def _parse_properties(elements, fore, back):
+def _parse_properties(elements, ink, paper):
     """Parse properties."""
     # properties: anything that contains more than .@
     property_elements = [
         _el for _el in elements
-        if not _is_glyph(''.join(_el.values), fore, back)
+        if not _is_glyph(''.join(_el.values), ink, paper)
     ]
     # multiple labels translate into multiple keys with the same value
     properties = {
@@ -263,19 +263,19 @@ def _parse_properties(elements, fore, back):
     }
     return properties, comments
 
-def _parse_glyphs(elements, fore, back, empty, parse_glyph_keys):
+def _parse_glyphs(elements, ink, paper, empty, parse_glyph_keys):
     """Parse glyphs."""
     # text version of glyphs
     # a glyph is any key/value where the value contains no alphanumerics
     glyph_elements = [
         _el for _el in elements
-        if _is_glyph(''.join(_el.values), fore, back)
+        if _is_glyph(''.join(_el.values), ink, paper)
     ]
     # convert text representation to glyph
     glyphs = [
         (
             (
-                Glyph.from_matrix(_el.values, background=back)
+                Glyph.from_matrix(_el.values, paper=paper)
                 if _el.values != [empty]
                 else Glyph()
             ).set_annotations(
@@ -315,7 +315,7 @@ def _extract_comments(elements):
 ##############################################################################
 # write file
 
-def _write_glyph(outstream, labels, glyph, fore, back, comm_char, tab, separator, empty):
+def _write_glyph(outstream, labels, glyph, ink, paper, comm_char, tab, separator, empty):
     """Write out a single glyph in text format."""
     if not labels:
         logging.warning('No labels for glyph: %s', glyph)
@@ -323,7 +323,7 @@ def _write_glyph(outstream, labels, glyph, fore, back, comm_char, tab, separator
     write_comments(outstream, glyph.comments, comm_char=comm_char)
     for _label in labels:
         outstream.write(str(_label) + separator)
-    glyphtxt = to_text(glyph.as_matrix(), fore=fore, back=back, line_break='\n'+tab)
+    glyphtxt = to_text(glyph.as_matrix(), ink=ink, paper=paper, line_break='\n'+tab)
     # empty glyphs are stored as 0x0, not 0xm or nx0
     if not glyph.width or not glyph.height:
         glyphtxt = empty
@@ -358,7 +358,7 @@ def _write_prop(outstream, key, value, tab, comments, comm_char):
             )
         )
 
-def _save_yaff(fonts, outstream, fore, back, comment, tab, separator, empty, **kwargs):
+def _save_yaff(fonts, outstream, ink, paper, comment, tab, separator, empty, **kwargs):
     """Write one font to a plaintext stream."""
     for number, font in enumerate(fonts):
         if len(fonts) > 1:
@@ -394,10 +394,10 @@ def _save_yaff(fonts, outstream, fore, back, comment, tab, separator, empty, **k
             labels.extend(Tag(_tag) for _tag in glyph.tags)
             _write_glyph(
                 outstream, labels,
-                glyph, fore, back, comment, tab, separator + '\n', empty
+                glyph, ink, paper, comment, tab, separator + '\n', empty
             )
 
-def _save_draw(font, outstream, fore, back, comment, tab, separator, empty, **kwargs):
+def _save_draw(font, outstream, ink, paper, comment, tab, separator, empty, **kwargs):
     """Write one font to a plaintext stream."""
     write_comments(outstream, font.get_comments(), comm_char=comment, is_global=True)
     for glyph in font.glyphs:
@@ -410,5 +410,5 @@ def _save_draw(font, outstream, fore, back, comment, tab, separator, empty, **kw
         label = f'{ord(glyph.char):04x}'
         _write_glyph(
             outstream, [label],
-            glyph, fore, back, comment, tab, separator, empty
+            glyph, ink, paper, comment, tab, separator, empty
         )

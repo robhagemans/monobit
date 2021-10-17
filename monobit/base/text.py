@@ -5,9 +5,9 @@ monobit.text - shared utilities for text-based formats
 licence: https://opensource.org/licenses/MIT
 """
 
-def to_text(matrix, *, border=' ', back='-', fore='@', line_break='\n'):
+def to_text(matrix, *, border=' ', paper='-', ink='@', line_break='\n'):
     """Convert matrix to text."""
-    colourdict = {-1: border, 0: back, 1: fore}
+    colourdict = {-1: border, 0: paper, 1: ink}
     return line_break.join(''.join(colourdict[_pix] for _pix in _row) for _row in matrix)
 
 def strip_matching(from_str, char):

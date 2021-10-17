@@ -553,8 +553,8 @@ def _create_spritesheets(font, size=(256, 256), packed=False):
         n_layers = 1
     else:
         n_layers = 4
-    back = 0
-    fore = 255
+    paper = 0
+    ink = 255
     border = 0
     width, height = size
     chars = []
@@ -582,7 +582,7 @@ def _create_spritesheets(font, size=(256, 256), packed=False):
                     # we don't fit, get next sheet
                     break
                 charimg = Image.new('L', (cropped.width, cropped.height))
-                data = cropped.as_tuple(fore, back)
+                data = cropped.as_tuple(ink, paper)
                 charimg.putdata(data)
                 img.paste(charimg, (x, y))
             if not glyph.codepoint:

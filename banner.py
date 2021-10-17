@@ -37,7 +37,7 @@ parser.add_argument(
 )
 parser.add_argument(
     '--paper', '--background', '-bg', type=str, default='-',
-    help='character to use for paper/background (default: @)'
+    help='character to use for paper/background (default: -)'
 )
 parser.add_argument(
     '--margin', '-m', type=pair, default=(0, 0),

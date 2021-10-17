@@ -19,23 +19,23 @@ _BORDER = -1
 ###################################################################################################
 # text rendering
 
-def render_text(font, text, fore='@', back='-', *, margin=(0, 0), scale=(1, 1), missing='default'):
+def render_text(font, text, ink='@', paper='-', *, margin=(0, 0), scale=(1, 1), missing='default'):
     """Render text string to text bitmap."""
     return to_text(
         render(font, text, margin=margin, scale=scale, missing=missing),
-        fore=fore, back=back
+        ink=ink, paper=paper
     )
 
 def render_image(
         font, text, *,
-        back=(0, 0, 0), fore=(255, 255, 255),
+        paper=(0, 0, 0), ink=(255, 255, 255),
         margin=(0, 0), scale=(1, 1),
         missing='default',
     ):
     """Render text to image."""
     return to_image(
         render(font, text, margin=margin, scale=scale, missing=missing),
-        fore=fore, back=back
+        ink=ink, paper=paper
     )
 
 def render(font, text, *, margin=(0, 0), scale=(1, 1), missing='default'):
@@ -146,20 +146,20 @@ def _blit_matrix(matrix, canvas, grid_x, grid_y, operator=max):
 def chart_image(
         font,
         columns=32, margin=(0, 0), padding=(0, 0), scale=(1, 1),
-        border=(32, 32, 32), back=(0, 0, 0), fore=(255, 255, 255),
+        border=(32, 32, 32), paper=(0, 0, 0), ink=(255, 255, 255),
     ):
     """Dump font to image."""
     canvas = chart(font, columns, margin, padding, scale)
-    return to_image(canvas, border, back, fore)
+    return to_image(canvas, border=border, paper=paper, ink=ink)
 
 def chart_text(
         font,
         columns=16, margin=(0, 0), padding=(0, 0), scale=(1, 1),
-        border=' ', back='-', fore='@',
+        border=' ', paper='-', ink='@',
     ):
     """Dump font to image."""
     canvas = chart(font, columns, margin, padding, scale)
-    return to_text(canvas, border=border, back=back, fore=fore)
+    return to_text(canvas, border=border, paper=paper, ink=ink)
 
 
 def chart(
