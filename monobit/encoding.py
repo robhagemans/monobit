@@ -401,6 +401,8 @@ _ENCODING_FILES = (
         ('manual/russup3.ucp', 'dos-russian-support-3', 'rs3', 'russup3'),
         ('manual/russup4ac.ucp', 'dos-russian-support-4-academic', 'rs4ac', 'russup4ac'),
         ('manual/russup4na.ucp', 'dos-russian-support-4', 'rs4', 'russup4na'),
+        # manually rearranged from dec-special charmap
+        ('manual/dec-vt100.ucp', 'dec-vt100', 'vt-100'),
     )),
 
     ('html', {}, (
@@ -460,7 +462,7 @@ _OVERLAYS = (
         # wikipedia suggests it's us-ascii-quotes
         'next',
         'rs3', 'rs4', 'rs4ac', 'mazovia', 'kamenicky', 'cwi-2', 'viscii',
-        'cp853', 'suneu-greek', 'mule-lao',
+        'cp853', 'suneu-greek', 'mule-lao', 'dec-vt100'
     )),
     # DOS/OEM codepages usually have the ibm-graphics range of icons mapped to C0 cntrols
     ('misc/IBMGRAPH.TXT', _IBM_GRAPH_RANGE, 'adobe', {}, (
