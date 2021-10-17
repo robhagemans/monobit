@@ -68,7 +68,8 @@ class TestCodecs(BaseTester):
     def test_import_fon(self):
         """Test importing fon files."""
         font, *_ = monobit.load(self.font_path / '6x13.fon')
-        self.assertEqual(len(font.glyphs), 249)
+        # there will be fewer chars if we drop blanks as undefined
+        self.assertEqual(len(font.glyphs), 256)
 
     def test_export_fon(self):
         """Test exporting fon files."""
@@ -79,7 +80,8 @@ class TestCodecs(BaseTester):
     def test_import_fnt(self):
         """Test importing fnt files."""
         font, *_ = monobit.load(self.font_path / '6x13.fnt')
-        self.assertEqual(len(font.glyphs), 249)
+        # there will be fewer chars if we drop blanks as undefined
+        self.assertEqual(len(font.glyphs), 256)
 
     def test_export_fnt(self):
         """Test exporting fnt files."""
