@@ -40,70 +40,49 @@ def render_image(
 
 def render(font, text, *, margin=(0, 0), scale=(1, 1), missing='default'):
     """Render text string to bitmap."""
-    if isinstance(text, str):
-        chars = [
-            list(font._iter_string(_line))
-            for _line in text.splitlines()
-        ]
-        glyphs = [
-            [font.get_glyph(_c, missing=missing) for _c in _line]
-            for _line in chars
-        ]
-    else:
-        glyphs = [
-            list(font._iter_codepoints(_line, missing=missing))
-            for _line in text.splitlines()
-        ]
-        chars = [[_g.char for _g in _line] for _line in glyphs]
-    # kerning currently only works for str
-    if font.kerning:
-        kerning = {
-            (font.get_glyph(_key[0]).char, font.get_glyph(_key[1]).char): _value
-            for _key, _value in font.kerning.items()
-        }
-        kernings = [
-            [
-                kerning.get((_char, _next), 0)
-                for _char, _next in zip(_line[:-1], _line[1:])
-            ] + [0]
-            for _line in chars
-        ]
-    else:
-        kernings = [[0] * len(_line) for _line in glyphs]
-    # determine dimensions
+    glyphs = font.get_glyphs(text, missing=missing)
+    kernings = font.get_kernings(glyphs)
     margin_x, margin_y = margin
-    if not glyphs:
-        width = 2 * margin_x
-    else:
-        width = 2 * margin_x + max(
+    canvas = _get_canvas(font, glyphs, margin_x, margin_y)
+    # top of first line starts at the margin
+    top_line = margin_y
+    for glyph_row, kerning_row in zip(glyphs, kernings):
+        # get to initial glyph origin
+        x, y = 0, 0
+        for glyph, kerning in zip(glyph_row, kerning_row):
+            matrix = glyph.as_matrix()
+            # apply pre-offset so that x,y is logical coordinate of raster origin
+            x, y = x + font.offset.x, y + font.offset.y
+            # canvas coordinates of raster origin
+            grid_x = margin_x + x
+            # canvas y coordinate increases *downwards* from top of line
+            grid_y = top_line + font.ascent - y
+            # add ink, taking into account there may be ink already in case of negative bearings
+            _blit_matrix(matrix, canvas, grid_x, grid_y)
+            # advance
+            x += glyph.width + font.tracking + kerning
+            # apply post-offset
+            y -= font.offset.y
+        # move to next line
+        top_line += font.line_height
+    scaled = _scale_matrix(canvas, *scale)
+    return scaled
+
+def _get_canvas(font, glyphs, margin_x, margin_y):
+    """Create canvas of the right size."""
+    # find required width - margins plus max row width
+    width = 2 * margin_x
+    if glyphs:
+        width += max(
             (
                 sum(_glyph.width for _glyph in _row)
                 + (font.offset.x + font.tracking) * len(_row)
             )
             for _row in glyphs
         )
-    line_height = font.max_raster_size.y + font.leading
-    height = 2 * margin_y + line_height * len(glyphs)
-    canvas = _create_matrix(width, height)
-    # get to initial origin
-    grid_top = margin_y
-    for row, kernrow in zip(glyphs, kernings):
-        x, y = 0, 0
-        for glyph, kerning in zip(row, kernrow):
-            matrix = glyph.as_matrix()
-            # apply pre-offset so that x,y is logical coordinate of grid origin
-            x, y = x + font.offset.x, y + font.offset.y
-            # grid coordinates of grid origin
-            grid_x, grid_y = margin_x + x, grid_top + font.ascent - y
-            # add ink, taking into account there may be ink already in case of negative bearings
-            _blit_matrix(matrix, canvas, grid_x, grid_y)
-            # advance
-            x += glyph.width
-            # apply post-offset
-            x, y = x + font.tracking + kerning, y - font.offset.y
-        grid_top += line_height
-    scaled = _scale_matrix(canvas, *scale)
-    return scaled
+    # find required height - margins plus line height for each row
+    height = 2 * margin_y + font.line_height * len(glyphs)
+    return _create_matrix(width, height)
 
 
 ###################################################################################################
