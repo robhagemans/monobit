@@ -108,9 +108,9 @@ class Loaders(MagicRegistry):
         """Open file and load font(s) from it."""
         # infile is not a container - identify file type
         loader = self.get_loader(infile, format=format)
-        logging.info('Loading `%s` on `%s` as %s', infile.name, where.name, loader.name)
         if not loader:
             raise FileFormatError('Cannot load from format `{}`.'.format(format)) from None
+        logging.info('Loading `%s` on `%s` as %s', infile.name, where.name, loader.name)
         return loader(infile, where, **kwargs)
 
     def _load_all(self, container, format, **kwargs):

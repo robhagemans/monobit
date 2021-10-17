@@ -5,19 +5,18 @@ monobit.codecs - font format converters
 licence: https://opensource.org/licenses/MIT
 """
 
-from .base import open_location, loaders, savers
+import logging
+from importlib import import_module
+from pathlib import Path
+from pkg_resources import resource_listdir
+from types import SimpleNamespace
 
-from . import windows
-from . import bmfont
-from . import amiga
-from . import image
-from . import yaff
-from . import raw
-from . import mac
-from . import bdf
-from . import psf
-from . import hex
-from . import cpi
-from . import fzx
-from . import pdf
-from . import c
+from ._base import open_location, loaders, savers
+
+
+# load all modules in this directory into converters namespace
+converters = SimpleNamespace(**{
+    Path(_file).stem: import_module('.' + Path(_file).stem, __package__)
+    for _file in resource_listdir(__name__, '')
+    if not _file.startswith('_')
+})
