@@ -16,15 +16,19 @@ from ..base import boolean, pair
 
 
 @loaders.register('dos', 'bin', 'rom', 'raw', name='raw binary')
-def load(instream, where=None, cell:pair=(8, 8), n_chars:int=None, offset:int=0, padding:int=0, strike:boolean=False):
+def load(
+        instream, where=None, *,
+        cell:pair=(8, 8), n_chars:int=None, offset:int=0, padding:int=0, strike:boolean=False
+    ):
     """Load font from raw binary."""
+    width, height = cell
     # get through the offset
     # we don't assume instream is seekable - it may be sys.stdin
     instream.read(offset)
     if strike:
-        cells = load_strike(instream, cell, n_chars)
+        cells = load_strike(instream, width, height, n_chars)
     else:
-        cells = load_aligned(instream, cell, n_chars, padding)
+        cells = load_aligned(instream, width, height, n_chars, padding)
     return Font(cells)
 
 
@@ -32,7 +36,7 @@ def load(instream, where=None, cell:pair=(8, 8), n_chars:int=None, offset:int=0,
 def save(fonts, outstream, where=None):
     """Save font to raw byte-aligned binary (DOS font)."""
     if len(fonts) > 1:
-        raise FileFormatError('Can only save one font to BDF file.')
+        raise FileFormatError('Can only save one font to raw binary file.')
     save_aligned(outstream, fonts[0])
 
 
@@ -47,9 +51,8 @@ def save_aligned(outstream, font, encoding=None):
         outstream.write(glyph.as_bytes())
 
 
-def load_strike(instream, cell, n_chars):
+def load_strike(instream, width, height, n_chars):
     """Load fixed-width font from bitmap strike."""
-    width, height = cell
     # n_chars must be given for strikes
     # assume byte-aligned at end of strike only
     strike_bytes = ceildiv(n_chars * width, 8)
@@ -68,20 +71,19 @@ def load_strike(instream, cell, n_chars):
     ]
     return cells
 
-def load_aligned(instream, cell, n_chars, padding=0):
+def load_aligned(instream, width, height, n_chars=None, padding=0):
     """Load fixed-width font from byte-aligned bitmap."""
-    width, height = cell
-    width_bytes = ceildiv(width, 8)
     if n_chars is None:
         rombytes = instream.read()
-        # get number of chars in extract
-        n_chars = ceildiv(len(rombytes), width_bytes * (height+padding))
     else:
-        rombytes = instream.read(n_chars * width_bytes * (height+padding))
+        rombytes = instream.read(n_chars * ceildiv(width, 8) * (height+padding))
     return parse_aligned(rombytes, width, height, n_chars, padding=padding)
 
-def parse_aligned(rombytes, width, height, n_chars, offset=0, padding=0):
+def parse_aligned(rombytes, width, height, n_chars=None, offset=0, padding=0):
     """Load fixed-width font from byte-aligned bitmap."""
+    if n_chars is None:
+        # get number of chars in extract
+        n_chars = ceildiv(len(rombytes), ceildiv(width, 8) * (height+padding))
     rowbytes = ceildiv(width, 8)
     bytesize = rowbytes * (height + padding)
     # get chunks

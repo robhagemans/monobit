@@ -13,31 +13,85 @@ from ..font import Font
 from ..glyph import Glyph
 from ..streams import FileFormatError
 from ..base import pair
+from .raw import parse_aligned
 
+
+_C_PARAMS = dict(
+    delimiters='{}',
+    comment='//',
+)
+
+_JS_PARAMS = dict(
+    delimiters='[]',
+    comment='//',
+)
+
+_PY_PARAMS = dict(
+    delimiters='[]',
+    comment='#',
+)
 
 ###################################################################################################
 
-@loaders.register('c', 'cc', 'cpp', 'h', name='C-source')
-def load(infile, where, identifier:str, cell:pair):
-    """Load font from a .c file."""
-    width, height = cell
-    payload = _get_payload(infile.text, identifier)
-    # c bytes are python bytes, except 0777-style octal (which we therefore don't support correctly)
-    bytelist = [_int_from_c(_s) for _s in payload.split(',') if _s]
-    # split into chunks
-    bytewidth = ceildiv(width, 8)
-    bytesize = bytewidth * height
-    n_glyphs = ceildiv(len(bytelist), bytesize)
-    glyphbytes = [
-        bytelist[_ord*bytesize:(_ord+1)*bytesize]
-        for _ord in range(n_glyphs)
-    ]
-    glyphs = [
-        Glyph.from_bytes(_bytes, width)
-        for _bytes in glyphbytes
-    ]
-    return Font(glyphs)
+@loaders.register('c', 'cc', 'cpp', 'h', name='C source')
+def load_c(
+        infile, where=None, *,
+        identifier:str,
+        cell:pair=(8, 8), n_chars:int=None, offset:int=0, padding:int=0,
+    ):
+    return _load_coded_binary(
+        infile, where, identifier=identifier,
+        cell=cell, n_chars=n_chars, offset=offset, padding=padding,
+        **_C_PARAMS
+    )
 
+@loaders.register('js', 'json', name='JavaScript source')
+def load_js(
+        infile, where=None, *,
+        identifier:str,
+        cell:pair=(8, 8), n_chars:int=None, offset:int=0, padding:int=0,
+    ):
+    return _load_coded_binary(
+        infile, where, identifier=identifier,
+        cell=cell, n_chars=n_chars, offset=offset, padding=padding,
+        **_JS_PARAMS
+    )
+
+@loaders.register('py', name='Python source')
+def load(
+        infile, where=None, *,
+        identifier:str,
+        cell:pair=(8, 8), n_chars:int=None, offset:int=0, padding:int=0,
+    ):
+    return _load_coded_binary(
+        infile, where, identifier=identifier,
+        cell=cell, n_chars=n_chars, offset=offset, padding=padding,
+        **_PY_PARAMS
+    )
+
+@loaders.register(name='source')
+def load(
+        infile, where=None, *,
+        identifier:str, delimiters:str='{}', comment:str='//',
+        cell:pair=(8, 8), n_chars:int=None, offset:int=0, padding:int=0,
+    ):
+    return _load_coded_binary(
+        infile, where, identifier=identifier,
+        cell=cell, n_chars=n_chars, offset=offset, padding=padding,
+        elimiters=delimiters, comment=coment
+    )
+
+
+def _load_coded_binary(
+        infile, where, identifier, delimiters, comment,
+        cell, n_chars, offset, padding,
+    ):
+    """Load font from binary encoded in source code."""
+    width, height = cell
+    payload = _get_payload(infile.text, identifier, delimiters, comment)
+    bytelist = [_int_from_c(_s) for _s in payload.split(',') if _s]
+    glyphs = parse_aligned(bytelist, width, height, n_chars, offset, padding)
+    return Font(glyphs)
 
 def _int_from_c(cvalue):
     """Parse integer from c code."""
@@ -45,16 +99,17 @@ def _int_from_c(cvalue):
     while cvalue[-1:].lower() in ('u', 'l'):
         cvalue = cvalue[:-1]
     if cvalue.startswith('0') and cvalue[1:2] and cvalue[1:2] in string.digits:
-        # c-style octal 0777
+        # C / Python-2 octal 0777
         cvalue = '0o' + cvalue[1:]
     # 0x, 0b, decimals - like Python
     return int(cvalue, 0)
 
-def _get_payload(instream, identifier):
+def _get_payload(instream, identifier, delimiters, comment):
     """Find the identifier and get the part between {curly brackets}."""
+    start, end = delimiters
     for line in instream:
-        if '//' in line:
-            line, _ = line.split('//', 1)
+        if comment in line:
+            line, _ = line.split(comment, 1)
         line = line.strip(' \r\n')
         # for this to work the declaration must be at the start of the line
         # (whitespace excluded). compound statements would break this.
@@ -62,22 +117,22 @@ def _get_payload(instream, identifier):
             break
     else:
         raise ValueError('Identifier `{}` not found in file'.format(identifier))
-    if '{' in line[len(identifier):]:
-        _, line = line.split('{')
-        if '}' in line:
-            line, _ = line.split('}', 1)
+    if start in line[len(identifier):]:
+        _, line = line.split(start)
+        if end in line:
+            line, _ = line.split(end, 1)
             return line
         payload = [line]
     else:
         payload = []
     for line in instream:
-        if '//' in line:
-            line, _ = line.split('//', 1)
+        if comment in line:
+            line, _ = line.split(comment, 1)
         line = line.strip(' \r\n')
-        if '{' in line:
-            _, line = line.split('{', 1)
-        if '}' in line:
-            line, _ = line.split('}', 1)
+        if start in line:
+            _, line = line.split(start, 1)
+        if end in line:
+            line, _ = line.split(end, 1)
             payload.append(line)
             break
         if line:
