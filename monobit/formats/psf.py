@@ -94,7 +94,7 @@ def load(instream, where=None):
         properties = {'source-format': 'PSF v2'}
     else:
         raise ValueError('Not a PSF file.')
-    cells = load_aligned(instream, (width, height), length)
+    cells = load_aligned(instream, width, height, length)
     if has_unicode_table:
         table = _read_unicode_table(instream, separator, startseq, encoding)
         # convert unicode table to labels

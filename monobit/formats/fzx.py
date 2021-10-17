@@ -13,8 +13,6 @@ from ..formats import loaders, savers
 from ..font import Font
 from ..glyph import Glyph
 
-from .raw import load_aligned
-
 
 # https://faqwiki.zxnet.co.uk/wiki/FZX_format
 

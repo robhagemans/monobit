@@ -58,7 +58,7 @@ def load_js(
     )
 
 @loaders.register('py', name='Python source')
-def load(
+def load_py(
         infile, where=None, *,
         identifier:str,
         cell:pair=(8, 8), n_chars:int=None, offset:int=0, padding:int=0,
@@ -78,7 +78,7 @@ def load(
     return _load_coded_binary(
         infile, where, identifier=identifier,
         cell=cell, n_chars=n_chars, offset=offset, padding=padding,
-        elimiters=delimiters, comment=coment
+        delimiters=delimiters, comment=comment
     )
 
 
