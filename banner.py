@@ -12,7 +12,7 @@ from codecs import escape_decode
 
 import monobit
 from monobit.base import pair
-from monobit.base.text import to_text
+from monobit import render_text
 
 
 def unescape(text):
@@ -99,9 +99,9 @@ try:
         args.text = args.text.encode('latin-1', errors='ignore')
     elif args.encoding:
         font = font.set_properties(encoding=args.encoding)
-    sys.stdout.write(to_text(font.render(
-        args.text, args.ink, args.paper, margin=args.margin, scale=args.scale, missing='default'
-    )) + '\n')
+    sys.stdout.write(render_text(
+        font, args.text, args.ink, args.paper, margin=args.margin, scale=args.scale, missing='default'
+    ) + '\n')
 except BrokenPipeError:
     # happens e.g. when piping to `head`
     # https://stackoverflow.com/questions/16314321/suppressing-printout-of-exception-ignored-message-in-python-3

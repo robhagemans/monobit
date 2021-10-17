@@ -13,12 +13,9 @@ from .base import VERSION as __version__
 from .pack import Pack
 from .font import Font
 from .glyph import Glyph
-from .formats import loaders, savers, open_location
+from .formats import loaders, savers, open_location, converters
 from .encoding import charmaps
-
-from . import formats
-from .formats.image import create_image, render
-
+from .renderer import render, render_image, render_text
 
 # get font operations
 OPERATIONS = {
