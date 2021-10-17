@@ -179,7 +179,7 @@ class Font:
         # update properties
         self._properties = {}
         if properties:
-            properties = {_k.replace('_', '-'): _v for _k, _v in properties.items()}
+            properties = {self._normalise_property(_k): _v for _k, _v in properties.items()}
             for key, converter in reversed(list(PROPERTIES.items())):
                 try:
                     value = converter(properties.pop(key))
@@ -267,6 +267,12 @@ class Font:
         except KeyError:
             return None
 
+    def _normalise_property(self, property):
+        """Return property name with underscores replaced."""
+        # don't modify namespace properties
+        if '.' in property:
+            return property
+        return property.replace('_', '-')
 
     ##########################################################################
     # glyph access
@@ -532,7 +538,7 @@ class Font:
 
     def __getattr__(self, attr):
         """Take property from property table."""
-        attr = attr.replace('_', '-')
+        attr = self._normalise_property(attr)
         try:
             return self._properties[attr]
         except KeyError:
@@ -553,7 +559,7 @@ class Font:
         @wraps(fn)
         def _cached_fn(self, *args, **kwargs):
             try:
-                return self._properties[fn.__name__.replace('_', '-')]
+                return self._properties[self._normalise_property(fn.__name__)]
             except KeyError:
                 pass
             return fn(self, *args, **kwargs)
