@@ -97,13 +97,26 @@ try:
         args, _ = parser.parse_known_args()
         # convert arguments to type accepted by operation
         load_args = convert_args(args, loader)
-        font = monobit.load(instream, where=incontainer, format=args.from_, **load_args)
+        pack = monobit.load(instream, where=incontainer, format=args.from_, **load_args)
 
+    # set codepage
     if args.codepage:
-        font = font.set_encoding(args.codepage)
+        pack = tuple(_font.set_encoding(args.codepage) for _font in pack)
+    # add comments
     if args.comments:
         with open(args.comments) as f:
-            font = font.add_comments(f.read())
+            pack = tuple(_font.add_comments(f.read()) for _font in pack)
+
+    # record converter parameters
+    pack = tuple(_font.set_properties(
+        converter_parameters=' '.join(
+            f'{_k}={_v}'
+            for _k, _v in vars(args).items()
+            # exclyde unset or otherwise recorded
+            if _v and _k in loader.script_args
+        ))
+        for _font in pack
+    )
 
     with monobit.open_location(outfile, 'w', overwrite=args.overwrite) as (outstream, outcontainer):
         # get saver arguments
@@ -113,7 +126,7 @@ try:
         args = parser.parse_args()
         # convert arguments to type accepted by operation
         save_args = convert_args(args, saver)
-        monobit.save(font, outstream, where=outcontainer, format=args.to_, **save_args)
+        monobit.save(pack, outstream, where=outcontainer, format=args.to_, **save_args)
 
 except BrokenPipeError:
     # happens e.g. when piping to `head`
