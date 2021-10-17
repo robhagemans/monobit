@@ -323,7 +323,7 @@ def _write_glyph(outstream, labels, glyph, fore, back, comm_char, tab, separator
     write_comments(outstream, glyph.comments, comm_char=comm_char)
     for _label in labels:
         outstream.write(str(_label) + separator)
-    glyphtxt = to_text(glyph.as_matrix(fore, back), line_break='\n'+tab)
+    glyphtxt = to_text(glyph.as_matrix(), fore=fore, back=back, line_break='\n'+tab)
     # empty glyphs are stored as 0x0, not 0xm or nx0
     if not glyph.width or not glyph.height:
         glyphtxt = empty

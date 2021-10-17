@@ -72,7 +72,7 @@ class Glyph:
             "pixels=({})".format(
                 '' if not self._rows else
                 "\n  '{}'\n".format(
-                    to_text(self.as_matrix(fore='@', back='.'), line_break="',\n  '")
+                    to_text(self.as_matrix(), fore='@', back='.', line_break="',\n  '")
                 )
             ) +
             ")"

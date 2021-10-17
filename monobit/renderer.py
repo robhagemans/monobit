@@ -10,6 +10,25 @@ from .base.binary import ceildiv
 from .base.image import to_image
 
 
+def render_text(font, text, fore='@', back='-', *, margin=(0, 0), scale=(1, 1), missing='default'):
+    """Render text string to text bitmap."""
+    return to_text(
+        render(font, text, margin=margin, scale=scale, missing=missing),
+        fore=fore, back=back
+    )
+
+def render_image(
+        font, text, *,
+        back=(0, 0, 0), fore=(255, 255, 255),
+        margin=(0, 0), scale=(1, 1),
+        missing='default',
+    ):
+    """Render text to image."""
+    return to_image(
+        render(font, text, margin=margin, scale=scale, missing=missing),
+        fore=fore, back=back
+    )
+
 def render(font, text, fore=1, back=0, *, margin=(0, 0), scale=(1, 1), missing='default'):
     """Render text string to bitmap."""
     if isinstance(text, str):
@@ -79,6 +98,8 @@ def render(font, text, fore=1, back=0, *, margin=(0, 0), scale=(1, 1), missing='
     return output
 
 
+###################################################################################################
+
 def _create_matrix(width, height, fill=0):
     """Create a matrix in list format."""
     return [
@@ -110,25 +131,32 @@ def _blit_matrix(matrix, canvas, grid_x, grid_y, operator=max):
     return canvas
 
 
-def render_text(font, text, fore='@', back='-', *, margin=(0, 0), scale=(1, 1), missing='default'):
-    """Render text string to text bitmap."""
-    return to_text(render(font, text, fore, back, margin=margin, scale=scale, missing=missing))
+###################################################################################################
 
 
-def render_image(
-        font, text, *,
-        back=(0, 0, 0), fore=(255, 255, 255),
-        margin=(0, 0), scale=(1, 1),
-        missing='default',
+def chart_image(
+        font,
+        columns=32, margin=(0, 0), padding=(0, 0), scale=(1, 1),
+        border=(32, 32, 32), back=(0, 0, 0), fore=(255, 255, 255),
     ):
-    """Render text to image."""
-    return to_image(render(font, text, fore, back, margin=margin, scale=scale, missing=missing))
+    """Dump font to image."""
+    canvas = chart(font, columns, margin, padding, scale)
+    return to_image(canvas, border, back, fore)
+
+def chart_text(
+        font,
+        columns=16, margin=(0, 0), padding=(0, 0), scale=(1, 1),
+        border=' ', back='-', fore='@',
+    ):
+    """Dump font to image."""
+    canvas = chart(font, columns, margin, padding, scale)
+    return to_text(canvas, border=border, back=back, fore=fore)
 
 
 def chart(
         font,
         columns=16, margin=(0, 0), padding=(0, 0), scale=(1, 1),
-        border=0, back=0, fore=1,
+        border=-1, back=0, fore=1,
     ):
     """Dump font to image."""
     scale_x, scale_y = scale
@@ -152,13 +180,3 @@ def chart(
         left, bottom = margin_x + col*step_x, margin_y + (row+1)*step_y - padding_y
         _blit_matrix(matrix, canvas, left, bottom)
     return canvas
-
-
-def chart_image(
-        font,
-        columns=32, margin=(0, 0), padding=(0, 0), scale=(1, 1),
-        border=(32, 32, 32), back=(0, 0, 0), fore=(255, 255, 255),
-    ):
-    """Dump font to image."""
-    canvas = chart(font, columns, margin, padding, scale, -1, 0, 1)
-    return to_image(canvas, border, back, fore)
