@@ -28,7 +28,9 @@ Supported formats
 | Raw binary            |          | `.fnt` `.rom` `.f??` `.ch8` `.64c` |      | ✔     | ✔     |
 | Bitmap image          |          | `.png` `.gif` `.bmp`        |             | ✔     | ✔     |
 | PDF chart             |          | `.pdf`                      |             |       | ✔     |
-| C or C++ source code  |          | `.c` `.cpp` `.h`            |             | ✔     | ✔     |
+| C or C++ source code  |          | `.c` `.cpp` `.cc` `.h`      |             | ✔     | ✔     |
+| JavaScript source code|          | `.js` `.json`               |             | ✔     |       |
+| Python source code    |          | `.py`                       |             | ✔     |       |
 | AngelCode BMFont      | Text     | `.fnt` + images             |             | ✔     | ✔     |
 | AngelCode BMFont      | Binary   | `.fnt` + images             |             | ✔     |       |
 | AngelCode BMFont      | XML      | `.fnt` `.xml` + images      |             | ✔     |       |
