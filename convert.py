@@ -24,8 +24,8 @@ parser.add_argument(
     help='output format (default: infer from filename)'
 )
 parser.add_argument(
-    '--codepage', default='', type=str,
-    help='override codepage (default: infer from metadata in file)'
+    '--encoding', default='', type=str,
+    help='override encoding/codepage (default: infer from metadata in file)'
 )
 parser.add_argument(
     '--comments', default='', type=str,
@@ -99,9 +99,9 @@ try:
         load_args = convert_args(args, loader)
         pack = monobit.load(instream, where=incontainer, format=args.from_, **load_args)
 
-    # set codepage
-    if args.codepage:
-        pack = tuple(_font.set_encoding(args.codepage) for _font in pack)
+    # set encoding
+    if args.encoding:
+        pack = tuple(_font.set_encoding(args.encoding) for _font in pack)
     # add comments
     if args.comments:
         with open(args.comments) as f:
