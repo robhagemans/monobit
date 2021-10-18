@@ -11,7 +11,7 @@ import logging
 from codecs import escape_decode
 
 import monobit
-from monobit.base import pair
+from monobit.scripting import pair
 from monobit import render_text
 
 

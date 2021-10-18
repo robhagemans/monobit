@@ -12,7 +12,7 @@ from ..formats import loaders, savers
 from ..font import Font
 from ..glyph import Glyph
 from ..streams import FileFormatError
-from ..base import pair
+from ..scripting import pair
 from .raw import parse_aligned
 
 

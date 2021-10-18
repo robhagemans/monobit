@@ -14,7 +14,7 @@ try:
 except ImportError:
     Image = None
 
-from ..base import pair, rgb
+from ..scripting import pair, rgb
 from ..base.binary import ceildiv
 from ..formats import loaders, savers
 from ..streams import FileFormatError

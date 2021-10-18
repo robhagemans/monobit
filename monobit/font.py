@@ -11,7 +11,7 @@ import numbers
 import logging
 import unicodedata
 
-from .base import scriptable
+from .scripting import scriptable
 from .glyph import Glyph
 from .encoding import charmaps
 from .label import Label, Tag, Char, Codepoint, label

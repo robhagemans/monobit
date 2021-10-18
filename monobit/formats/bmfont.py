@@ -16,7 +16,8 @@ try:
 except ImportError:
     Image = None
 
-from ..base import boolean, pair, reverse_dict
+from ..scripting import boolean, pair
+from ..base import reverse_dict
 from ..encoding import charmaps
 from .. import streams
 from ..streams import FileFormatError
