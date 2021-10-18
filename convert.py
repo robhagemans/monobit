@@ -9,7 +9,8 @@ import argparse
 import logging
 
 import monobit
-from monobit.scripting import main
+from monobit.scripting import main, add_script_args, convert_script_args
+
 
 # parse command line
 parser = argparse.ArgumentParser(add_help=False)
@@ -44,22 +45,6 @@ parser.add_argument(
     help='show this help message and exit'
 )
 
-
-def add_script_args(parser, loadersaver):
-    """Add loader or saver arguments to argparser."""
-    for arg, _type in loadersaver.script_args.items():
-        parser.add_argument('--' + arg.replace('_', '-'), dest=arg, type=_type)
-
-def convert_args(args, loadersaver):
-    """Convert arguments to type accepted by operation."""
-    if not loadersaver:
-        return {}
-    return {
-        _name: _arg
-        for _name, _arg in vars(args).items()
-        if _arg is not None and _name in loadersaver.script_args
-    }
-
 # find out which operation we're asked to perform
 args, _ = parser.parse_known_args()
 
@@ -85,12 +70,11 @@ with main(args, logging.INFO):
     with monobit.open_location(infile, 'r') as (instream, incontainer):
         # get loader arguments
         loader = monobit.formats.loaders.get_loader(instream, format=args.from_)
-        if loader:
-            add_script_args(parser, loader)
-            # don't raise if no loader - it may be a container we can extract
+        add_script_args(parser, loader)
+        # don't raise if no loader - it may be a container we can extract
         args, _ = parser.parse_known_args()
         # convert arguments to type accepted by operation
-        load_args = convert_args(args, loader)
+        load_args = convert_script_args(loader, var(args))
         pack = monobit.load(instream, where=incontainer, format=args.from_, **load_args)
 
     # set encoding
@@ -115,9 +99,8 @@ with main(args, logging.INFO):
     with monobit.open_location(outfile, 'w', overwrite=args.overwrite) as (outstream, outcontainer):
         # get saver arguments
         saver = monobit.formats.savers.get_saver(outstream, format=args.to_)
-        if saver:
-            add_script_args(parser, saver)
+        add_script_args(parser, saver)
         args = parser.parse_args()
         # convert arguments to type accepted by operation
-        save_args = convert_args(args, saver)
+        save_args = convert_script_args(saver, var(args))
         monobit.save(pack, outstream, where=outcontainer, format=args.to_, **save_args)

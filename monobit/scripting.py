@@ -29,13 +29,29 @@ def get_scriptables(cls):
         if not _name.startswith('_') and hasattr(_func, 'script_args')
     }
 
+
+###################################################################################################
+# argument parsing
+
 def convert_script_args(operation, arg_dict):
     """Convert arguments to type accepted by operation, per annotation."""
+    if not operation:
+        return {}
     return {
         _name: _arg
         for _name, _arg in arg_dict.items()
         if _arg is not None and _name in operation.script_args
     }
+
+def add_script_args(parser, func):
+    """Add scriptable function arguments to argparser."""
+    if not func:
+        return
+    for arg, _type in func.script_args.items():
+        if _type == bool:
+            parser.add_argument('--' + arg.strip('_'), dest=arg, action='store_true')
+        else:
+            parser.add_argument('--' + arg.strip('_'), dest=arg, type=_type)
 
 
 ###################################################################################################

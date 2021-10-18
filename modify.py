@@ -42,11 +42,7 @@ args, unknown = parser.parse_known_args()
 # get arguments for this operation
 operation_name = args.operation[0]
 operation = monobit.operations[operation_name]
-for arg, _type in operation.script_args.items():
-    if _type == bool:
-        parser.add_argument('--' + arg.strip('_'), dest=arg, action='store_true')
-    else:
-        parser.add_argument('--' + arg.strip('_'), dest=arg, type=_type)
+add_script_args(parser, operation)
 
 args = parser.parse_args()
 
