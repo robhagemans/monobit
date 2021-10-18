@@ -9,6 +9,7 @@ import argparse
 import logging
 
 import monobit
+from monobit.scripting import main
 
 
 # parse command line
@@ -38,14 +39,6 @@ parser.add_argument(
 # find out which operation we're asked to perform
 args, unknown = parser.parse_known_args()
 
-if args.debug:
-    loglevel = logging.DEBUG
-else:
-    loglevel = logging.INFO
-
-logging.basicConfig(level=loglevel, format='%(levelname)s: %(message)s')
-
-
 # get arguments for this operation
 operation_name = args.operation[0]
 operation = monobit.operations[operation_name]
@@ -64,7 +57,9 @@ fargs = {
     if _arg is not None and _name in operation.script_args
 }
 
-try:
+
+with main(args, logging.WARNING):
+
     # load
     fonts = monobit.load(args.infile or sys.stdin)
 
@@ -91,12 +86,3 @@ try:
 
     # save
     monobit.save(fonts, args.outfile or sys.stdout, overwrite=args.overwrite)
-
-except BrokenPipeError:
-    # happens e.g. when piping to `head`
-    # https://stackoverflow.com/questions/16314321/suppressing-printout-of-exception-ignored-message-in-python-3
-    sys.stdout = os.fdopen(1)
-except Exception as exc:
-    logging.error(exc)
-    if args.debug:
-        raise

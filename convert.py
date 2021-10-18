@@ -7,9 +7,9 @@ Extract bitmap font and save in different format
 import sys
 import argparse
 import logging
-import os
 
 import monobit
+from monobit.scripting import main
 
 # parse command line
 parser = argparse.ArgumentParser(add_help=False)
@@ -63,14 +63,6 @@ def convert_args(args, loadersaver):
 # find out which operation we're asked to perform
 args, _ = parser.parse_known_args()
 
-
-if args.debug:
-    loglevel = logging.DEBUG
-else:
-    loglevel = logging.INFO
-
-logging.basicConfig(level=loglevel, format='%(levelname)s: %(message)s')
-
 # help screen should include loader/saver arguments if from/to specified
 if args.help:
     if args.from_:
@@ -82,7 +74,9 @@ if args.help:
     parser.print_help()
     sys.exit(0)
 
-try:
+
+with main(args, logging.INFO):
+
     # if no infile or outfile provided, use stdio
     infile = args.infile or sys.stdin
     outfile = args.outfile or sys.stdout
@@ -127,12 +121,3 @@ try:
         # convert arguments to type accepted by operation
         save_args = convert_args(args, saver)
         monobit.save(pack, outstream, where=outcontainer, format=args.to_, **save_args)
-
-except BrokenPipeError:
-    # happens e.g. when piping to `head`
-    # https://stackoverflow.com/questions/16314321/suppressing-printout-of-exception-ignored-message-in-python-3
-    sys.stdout = os.fdopen(1)
-except Exception as exc:
-    logging.error(exc)
-    if args.debug:
-        raise
