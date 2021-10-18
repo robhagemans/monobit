@@ -86,13 +86,12 @@ with main(args, logging.INFO):
             pack = tuple(_font.add_comments(f.read()) for _font in pack)
 
     # record converter parameters
-    pack = tuple(_font.set_properties(
-        converter_parameters='convert ' + ' '.join(
-            f'--{_k}={_v}'
-            for _k, _v in vars(args).items()
-            # exclude unset or otherwise recorded
-            if _v and _k not in ('infile', 'outfile', 'overwrite')
-        ))
+    pack = tuple(
+        _font.set_properties(
+            converter_parameters=repr_script_args(
+                'convert', vars(args), loader, 'encoding', 'comments'
+            )
+        )
         for _font in pack
     )
 

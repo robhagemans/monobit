@@ -62,17 +62,13 @@ with main(args, logging.WARNING):
     )
 
     # record converter parameters
-    fonts = tuple(_font.set_properties(
-        converter_parameters=(
-            ((_font.converter_parameters + '\n') if hasattr(_font, 'converter_parameters') else '')
-            + (operation_name.replace('_', '-') + ' ' + ' '.join(
-                    f'--{_k}={_v}'
-                    for _k, _v in vars(args).items()
-                    # exclude unset and non-operation parameters
-                    if _v and _k in operation.script_args
-                )
-            ).strip()
-        ))
+    fonts = tuple(
+        _font.set_properties(
+            converter_parameters=(
+                ((_font.converter_parameters + '\n') if hasattr(_font, 'converter_parameters') else '')
+                + repr_script_args(operation_name, vars(args), operation)
+            )
+        )
         for _font in fonts
     )
 

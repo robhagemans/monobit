@@ -55,6 +55,18 @@ def add_script_args(parser, func):
             parser.add_argument('--' + arg.strip('_'), dest=arg, type=_type)
 
 
+def repr_script_args(operation_name, arg_dict, operation, *include_args):
+    """Record converter parameters."""
+    return (
+        operation_name.replace('_', '-') + ' '
+        + ' '.join(
+            f'--{_k}={_v}'
+            for _k, _v in arg_dict.items()
+            # exclude unset and non-operation parameters
+            if _v and _k in tuple(operation.script_args) + tuple(include_args)
+        )
+    ).strip()
+
 ###################################################################################################
 # script type converters
 
