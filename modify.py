@@ -27,15 +27,21 @@ logging.basicConfig(level=logging.DEBUG, format='%(levelname)s: %(message)s')
 
 # parse command line
 parser = argparse.ArgumentParser()
-parser.add_argument('operation', nargs='+', choices=monobit.OPERATIONS.keys())
+
+available_operations = list(monobit.OPERATIONS.keys())
+available_operations.extend([_op.replace('_', '-') for _op in available_operations])
+available_operations = sorted(set(available_operations))
+parser.add_argument('operation', nargs='+', choices=available_operations)
 parser.add_argument('--infile', type=str, default='')
 parser.add_argument('--outfile', type=str, default='')
 
 # find out which operation we're asked to perform
 args, unknown = parser.parse_known_args()
 
+
 # get arguments for this operation
-operation = monobit.OPERATIONS[args.operation[0]]
+operation_name = args.operation[0].replace('-', '_')
+operation = monobit.OPERATIONS[operation_name]
 for arg, _type in operation.script_args.items():
     if _type == bool:
         parser.add_argument('--' + arg.strip('_'), dest=arg, action='store_true')
@@ -60,6 +66,23 @@ try:
         operation(_font, **fargs)
         for _font in fonts
     )
+
+
+    # record converter parameters
+    fonts = tuple(_font.set_properties(
+        converter_parameters=(
+            ((_font.converter_parameters + '\n') if hasattr(_font, 'converter_parameters') else '')
+            + (operation_name.replace('_', '-') + ' ' + ' '.join(
+                    f'--{_k}={_v}'
+                    for _k, _v in vars(args).items()
+                    # exclude unset
+                    if _v and _k not in ('operation', 'infile', 'outfile')
+                )
+            ).strip()
+        ))
+        for _font in fonts
+    )
+
 
     if not args.outfile:
         args.outfile = sys.stdout.buffer

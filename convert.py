@@ -109,11 +109,11 @@ try:
 
     # record converter parameters
     pack = tuple(_font.set_properties(
-        converter_parameters=' '.join(
-            f'{_k}={_v}'
+        converter_parameters='convert ' + ' '.join(
+            f'--{_k}={_v}'
             for _k, _v in vars(args).items()
-            # exclyde unset or otherwise recorded
-            if _v and _k in loader.script_args
+            # exclude unset or otherwise recorded
+            if _v and _k not in ('infile', 'outfile', 'overwrite')
         ))
         for _font in pack
     )
