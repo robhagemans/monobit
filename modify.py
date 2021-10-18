@@ -9,7 +9,7 @@ import argparse
 import logging
 
 import monobit
-from monobit.scripting import main
+from monobit.scripting import main, convert_script_args
 
 
 # parse command line
@@ -50,12 +50,8 @@ for arg, _type in operation.script_args.items():
 
 args = parser.parse_args()
 
-# convert arguments to type accepted by operation
-fargs = {
-    _name: _arg
-    for _name, _arg in args.__dict__.items()
-    if _arg is not None and _name in operation.script_args
-}
+# convert script arguments to type accepted by operation
+fargs = convert_script_args(operation, vars(args))
 
 
 with main(args, logging.WARNING):

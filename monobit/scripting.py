@@ -22,10 +22,19 @@ def scriptable(fn):
     return fn
 
 def get_scriptables(cls):
+    """Get dict of functions marked as scriptable."""
     return {
         _name: _func
         for _name, _func in cls.__dict__.items()
         if not _name.startswith('_') and hasattr(_func, 'script_args')
+    }
+
+def convert_script_args(operation, arg_dict):
+    """Convert arguments to type accepted by operation, per annotation."""
+    return {
+        _name: _arg
+        for _name, _arg in arg_dict.items()
+        if _arg is not None and _name in operation.script_args
     }
 
 
