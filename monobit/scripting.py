@@ -50,6 +50,7 @@ def add_script_args(parser, func):
     for arg, _type in func.script_args.items():
         if _type == bool:
             parser.add_argument('--' + arg.strip('_'), dest=arg, action='store_true')
+            parser.add_argument('--no-' + arg.strip('_'), dest=arg, action='store_false')
         else:
             parser.add_argument('--' + arg.strip('_'), dest=arg, type=_type)
 
@@ -57,16 +58,12 @@ def add_script_args(parser, func):
 ###################################################################################################
 # script type converters
 
-def boolean(boolstr):
-    """Convert str to bool."""
-    return boolstr.lower() == 'true'
-
-def _tuple(pairstr):
+def tuple_int(pairstr):
     """Convert NxNx... or N,N,... to tuple."""
     return tuple(int(_s) for _s in pairstr.replace('x', ',').split(','))
 
-rgb = _tuple
-pair = _tuple
+rgb = tuple_int
+pair = tuple_int
 
 
 ###################################################################################################

@@ -12,13 +12,13 @@ from ..formats import loaders, savers
 from ..font import Font
 from ..glyph import Glyph
 from ..streams import FileFormatError
-from ..scripting import boolean, pair
+from ..scripting import pair
 
 
 @loaders.register('dos', 'bin', 'rom', 'raw', name='raw binary')
 def load(
         instream, where=None, *,
-        cell:pair=(8, 8), n_chars:int=None, offset:int=0, padding:int=0, strike:boolean=False
+        cell:pair=(8, 8), n_chars:int=None, offset:int=0, padding:int=0, strike:bool=False
     ):
     """Load font from raw binary."""
     width, height = cell

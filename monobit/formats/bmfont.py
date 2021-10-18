@@ -16,7 +16,7 @@ try:
 except ImportError:
     Image = None
 
-from ..scripting import boolean, pair
+from ..scripting import pair
 from ..base import reverse_dict
 from ..encoding import charmaps
 from .. import streams
@@ -39,7 +39,7 @@ from .windows import CHARSET_MAP, CHARSET_REVERSE_MAP
 
 if Image:
     @loaders.register('bmf', name='BMFont')
-    def load(infile, where, outline:boolean=False):
+    def load(infile, where, outline:bool=False):
         """Load fonts from bmfont in container."""
         return _read_bmfont(infile, where, outline)
 
@@ -48,7 +48,7 @@ if Image:
             fonts, outfile, where,
             image_size:pair=(256, 256),
             image_format:str='png',
-            packed:boolean=True,
+            packed:bool=True,
             descriptor:str='text',
         ):
         """Save fonts to bmfonts in container."""
