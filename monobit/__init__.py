@@ -11,14 +11,20 @@ assert _sys.version_info >= (3, 6)
 
 from .base import VERSION as __version__
 from .pack import Pack
-from .font import Font, operations
+from .font import Font, operations as _operations
 from .glyph import Glyph
 from .formats import loaders, savers, open_location, converters
 from .encoding import charmaps
 from .renderer import render, render_image, render_text
 
 # inject font operations into main module namespace
-globals().update(operations)
+globals().update(_operations)
+
+# make dash-versions of operations available through dict
+operations = {
+    _name.replace('_', '-'): _func
+    for _name, _func in _operations.items()
+}
 
 save = savers.save
 load = loaders.load

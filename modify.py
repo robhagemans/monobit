@@ -12,12 +12,15 @@ import monobit
 
 
 # parse command line
-parser = argparse.ArgumentParser()
+parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter)
 
-available_operations = list(monobit.operations)
-available_operations.extend([_op.replace('_', '-') for _op in available_operations])
-available_operations = sorted(set(available_operations))
-parser.add_argument('operation', nargs='+', choices=available_operations)
+parser.add_argument(
+    'operation', nargs=1, choices=sorted(monobit.operations),
+    help='\n'.join(
+        f"{_name}: {_func.__doc__.strip()}"
+        for _name, _func in monobit.operations.items()
+    )
+)
 
 parser.add_argument('--infile', type=str, default='')
 parser.add_argument('--outfile', type=str, default='')
@@ -44,7 +47,7 @@ logging.basicConfig(level=loglevel, format='%(levelname)s: %(message)s')
 
 
 # get arguments for this operation
-operation_name = args.operation[0].replace('-', '_')
+operation_name = args.operation[0]
 operation = monobit.operations[operation_name]
 for arg, _type in operation.script_args.items():
     if _type == bool:

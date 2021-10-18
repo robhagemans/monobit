@@ -16,7 +16,7 @@ def get_scriptables(cls):
     return {
         _name: _func
         for _name, _func in cls.__dict__.items()
-        if hasattr(_func, 'script_args')
+        if not _name.startswith('_') and hasattr(_func, 'script_args')
     }
 
 
