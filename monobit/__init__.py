@@ -20,7 +20,7 @@ from .renderer import render, render_image, render_text
 # get font operations
 OPERATIONS = {
     _name: _func
-    for _name, _func in Pack.__dict__.items()
+    for _name, _func in Font.__dict__.items()
     if hasattr(_func, 'scriptable')
 }
 

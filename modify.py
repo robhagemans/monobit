@@ -55,10 +55,14 @@ fargs = {
 try:
     if not args.infile:
         args.infile = sys.stdin.buffer
-    font = monobit.load(args.infile)
-    font = getattr(font, args.operation[0])(**fargs)
+    fonts = monobit.load(args.infile)
+    fonts = tuple(
+        operation(_font, **fargs)
+        for _font in fonts
+    )
+
     if not args.outfile:
         args.outfile = sys.stdout.buffer
-    monobit.save(font, args.outfile)
+    monobit.save(fonts, args.outfile)
 except Exception as exc:
     logging.error(exc)
