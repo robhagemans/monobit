@@ -11,20 +11,6 @@ import logging
 import monobit
 
 
-def str_to_int(instr):
-    """Convert dec/hex/oct string to integer."""
-    return int(instr, 0)
-
-
-CONVERTERS = {
-    int: str_to_int,
-    bool: bool,
-    str: str,
-}
-
-
-logging.basicConfig(level=logging.DEBUG, format='%(levelname)s: %(message)s')
-
 # parse command line
 parser = argparse.ArgumentParser()
 
@@ -32,11 +18,29 @@ available_operations = list(monobit.OPERATIONS.keys())
 available_operations.extend([_op.replace('_', '-') for _op in available_operations])
 available_operations = sorted(set(available_operations))
 parser.add_argument('operation', nargs='+', choices=available_operations)
+
 parser.add_argument('--infile', type=str, default='')
 parser.add_argument('--outfile', type=str, default='')
 
+parser.add_argument(
+    '--overwrite', action='store_true',
+    help='overwrite existing output file'
+)
+parser.add_argument(
+    '--debug', action='store_true',
+    help='show debugging output'
+)
+
+
 # find out which operation we're asked to perform
 args, unknown = parser.parse_known_args()
+
+if args.debug:
+    loglevel = logging.DEBUG
+else:
+    loglevel = logging.INFO
+
+logging.basicConfig(level=loglevel, format='%(levelname)s: %(message)s')
 
 
 # get arguments for this operation
@@ -46,7 +50,7 @@ for arg, _type in operation.script_args.items():
     if _type == bool:
         parser.add_argument('--' + arg.strip('_'), dest=arg, action='store_true')
     else:
-        parser.add_argument('--' + arg.strip('_'), dest=arg, type=CONVERTERS[_type])
+        parser.add_argument('--' + arg.strip('_'), dest=arg, type=_type)
 
 args = parser.parse_args()
 
@@ -57,16 +61,15 @@ fargs = {
     if _arg is not None and _name in operation.script_args
 }
 
-# load, modify, save
 try:
-    if not args.infile:
-        args.infile = sys.stdin.buffer
-    fonts = monobit.load(args.infile)
+    # load
+    fonts = monobit.load(args.infile or sys.stdin)
+
+    # modify
     fonts = tuple(
         operation(_font, **fargs)
         for _font in fonts
     )
-
 
     # record converter parameters
     fonts = tuple(_font.set_properties(
@@ -75,17 +78,22 @@ try:
             + (operation_name.replace('_', '-') + ' ' + ' '.join(
                     f'--{_k}={_v}'
                     for _k, _v in vars(args).items()
-                    # exclude unset
-                    if _v and _k not in ('operation', 'infile', 'outfile')
+                    # exclude unset and non-operation parameters
+                    if _v and _k in operation.script_args
                 )
             ).strip()
         ))
         for _font in fonts
     )
 
+    # save
+    monobit.save(fonts, args.outfile or sys.stdout, overwrite=args.overwrite)
 
-    if not args.outfile:
-        args.outfile = sys.stdout.buffer
-    monobit.save(fonts, args.outfile)
+except BrokenPipeError:
+    # happens e.g. when piping to `head`
+    # https://stackoverflow.com/questions/16314321/suppressing-printout-of-exception-ignored-message-in-python-3
+    sys.stdout = os.fdopen(1)
 except Exception as exc:
     logging.error(exc)
+    if args.debug:
+        raise
