@@ -14,7 +14,7 @@ import monobit
 # parse command line
 parser = argparse.ArgumentParser()
 
-available_operations = list(monobit.OPERATIONS.keys())
+available_operations = list(monobit.operations)
 available_operations.extend([_op.replace('_', '-') for _op in available_operations])
 available_operations = sorted(set(available_operations))
 parser.add_argument('operation', nargs='+', choices=available_operations)
@@ -45,7 +45,7 @@ logging.basicConfig(level=loglevel, format='%(levelname)s: %(message)s')
 
 # get arguments for this operation
 operation_name = args.operation[0].replace('-', '_')
-operation = monobit.OPERATIONS[operation_name]
+operation = monobit.operations[operation_name]
 for arg, _type in operation.script_args.items():
     if _type == bool:
         parser.add_argument('--' + arg.strip('_'), dest=arg, action='store_true')

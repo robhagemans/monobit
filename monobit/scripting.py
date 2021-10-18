@@ -5,12 +5,19 @@ monobit.scripting - scripting utilities
 licence: https://opensource.org/licenses/MIT
 """
 
+# mark functions for scripting
 
 def scriptable(fn):
     """Decorator to register operation for scripting."""
-    fn.scriptable = True
     fn.script_args = fn.__annotations__
     return fn
+
+def get_scriptables(cls):
+    return {
+        _name: _func
+        for _name, _func in cls.__dict__.items()
+        if hasattr(_func, 'script_args')
+    }
 
 
 # script type converters

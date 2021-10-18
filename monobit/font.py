@@ -11,7 +11,7 @@ import numbers
 import logging
 import unicodedata
 
-from .scripting import scriptable
+from .scripting import scriptable, get_scriptables
 from .glyph import Glyph
 from .encoding import charmaps
 from .label import Label, Tag, Char, Codepoint, label
@@ -744,17 +744,20 @@ class Font:
     ##########################################################################
     # inject Glyph operations into Font
 
-    for _name, _func in Glyph.__dict__.items():
-        if hasattr(_func, 'scriptable'):
+    glyph_operations = get_scriptables(Glyph)
+    for _name, _func in glyph_operations.items():
 
-            def _modify(self, *args, operation=_func, **kwargs):
-                """Return a font with modified glyphs."""
-                glyphs = [
-                    operation(_glyph, *args, **kwargs)
-                    for _glyph in self._glyphs
-                ]
-                return Font(glyphs, self._comments, self._properties)
+        def _modify(self, *args, operation=_func, **kwargs):
+            """Return a font with modified glyphs."""
+            glyphs = tuple(
+                operation(_glyph, *args, **kwargs)
+                for _glyph in self._glyphs
+            )
+            return Font(glyphs, self._comments, self._properties)
 
-            _modify.scriptable = True
-            _modify.script_args = _func.script_args
-            locals()[_name] = _modify
+        _modify.script_args = _func.script_args
+        locals()[_name] = _modify
+
+
+# scriptable font/glyph operations
+operations = get_scriptables(Font)
