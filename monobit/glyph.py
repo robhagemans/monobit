@@ -72,7 +72,7 @@ class Glyph:
             "pixels=({})".format(
                 '' if not self._rows else
                 "\n  '{}'\n".format(
-                    to_text(self.as_matrix(fore='@', back='.'), line_break="',\n  '")
+                    to_text(self.as_matrix(), ink='@', paper='.', line_break="',\n  '")
                 )
             ) +
             ")"
@@ -140,24 +140,24 @@ class Glyph:
         return cls(((0,) * width,) * height)
 
     @classmethod
-    def from_matrix(cls, rows, background):
+    def from_matrix(cls, rows, paper):
         """Create glyph from sequence of sequence of objects."""
         return cls(tuple(
-            tuple(_char not in background for _char in _row)
+            tuple(_char not in paper for _char in _row)
             for _row in rows
         ))
 
-    def as_matrix(self, fore=1, back=0):
-        """Return matrix of user-specified forground and background objects."""
+    def as_matrix(self, ink=1, paper=0):
+        """Return matrix of user-specified foreground and background objects."""
         return tuple(
-            tuple(fore if _c else back for _c in _row)
+            tuple(ink if _c else paper for _c in _row)
             for _row in self._rows
         )
 
-    def as_tuple(self, fore=1, back=0):
-        """Return flat tuple of user-specified forground and background objects."""
+    def as_tuple(self, ink=1, paper=0):
+        """Return flat tuple of user-specified foreground and background objects."""
         return tuple(
-            fore if _c else back
+            ink if _c else paper
             for _row in self._rows
             for _c in _row
         )

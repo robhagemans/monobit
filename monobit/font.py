@@ -361,8 +361,19 @@ class Font:
             and _glyph.char
         }, name=f"implied-{self.name}")
 
-    def _iter_string(self, string):
-        """Iterate over string, yielding unicode characters."""
+    def get_glyphs(self, text, missing='raise'):
+        """Get tuple of glyphs from text or bytes/codepoints input."""
+        if isinstance(text, str):
+            iter_text = self._iter_string
+        else:
+            iter_text = self._iter_codepoints
+        return tuple(
+            tuple(iter_text(_line, missing=missing))
+            for _line in text.splitlines()
+        )
+
+    def _iter_string(self, string, missing='raise'):
+        """Iterate over string, yielding glyphs."""
         remaining = string
         while remaining:
             # try grapheme clusters first
@@ -373,7 +384,7 @@ class Font:
                     break
             else:
                 unicode, remaining = remaining[0], remaining[1:]
-            yield unicode
+            yield self.get_glyph(key=unicode, missing=missing)
 
     def _iter_codepoints(self, codepoints, missing='raise'):
         """Iterate over bytes/tuple of int, yielding glyphs."""
@@ -393,87 +404,27 @@ class Font:
                 yield self.get_glyph(key=remaining[:1], missing=missing)
                 remaining = remaining[1:]
 
-    def render(self, text, fore=1, back=0, *, margin=(0, 0), scale=(1, 1), missing='default'):
-        """Render text string to bitmap."""
-        if isinstance(text, str):
-            chars = [
-                list(self._iter_string(_line))
-                for _line in text.splitlines()
-            ]
-            glyphs = [
-                [self.get_glyph(_c, missing=missing) for _c in _line]
-                for _line in chars
-            ]
-        else:
-            glyphs = [
-                list(self._iter_codepoints(_line, missing=missing))
-                for _line in text.splitlines()
-            ]
-            chars = [[_g.char for _g in _line] for _line in glyphs]
-        # kerning currently only works for str
-        if self.kerning:
-            kerning = {
-                (self.get_glyph(_key[0]).char, self.get_glyph(_key[1]).char): _value
-                for _key, _value in self.kerning.items()
-            }
-            kernings = [
-                [
-                    kerning.get((_char, _next), 0)
-                    for _char, _next in zip(_line[:-1], _line[1:])
-                ] + [0]
-                for _line in chars
-            ]
-        else:
-            kernings = [[0] * len(_line) for _line in glyphs]
-        # determine dimensions
-        margin_x, margin_y = margin
+    def get_kernings(self, glyphs):
+        """Get kerning amounts for an iteration of glyphs."""
         if not glyphs:
-            width = 2 * margin_x
-        else:
-            width = 2 * margin_x + max(
-                (
-                    sum(_glyph.width for _glyph in _row)
-                    + (self.offset.x + self.tracking) * len(_row)
-                )
-                for _row in glyphs
-            )
-        line_height = self.max_raster_size.y + self.leading
-        height = 2 * margin_y + line_height * len(glyphs)
-        line_output = [
-            [0 for _ in range(width)]
-            for _ in range(height)
-        ]
-        # get to initial origin
-        grid_top = margin_y
-        for row, kernrow in zip(glyphs, kernings):
-            x, y = 0, 0
-            for glyph, kerning in zip(row, kernrow):
-                matrix = glyph.as_matrix(1, 0)
-                # apply pre-offset so that x,y is logical coordinate of grid origin
-                x, y = x + self.offset.x, y + self.offset.y
-                # grid coordinates of grid origin
-                grid_x, grid_y = margin_x + x, grid_top + self.ascent - y
-                # add ink, taking into account there may be ink already in case of negative bearings
-                for work_y in range(glyph.height):
-                    y_index = grid_y - work_y - 1
-                    if 0 <= y_index < height:
-                        row = line_output[y_index]
-                        for work_x, ink in enumerate(matrix[glyph.height - work_y - 1]):
-                            if 0 <= grid_x + work_x < width:
-                                row[grid_x + work_x] |= ink
-                # advance
-                x += glyph.width
-                # apply post-offset
-                x, y = x + self.tracking + kerning, y - self.offset.y
-            grid_top += line_height
-        output = []
-        output.extend(line_output)
-        scale_x, scale_y = scale
-        output = tuple(
-            tuple((fore if _item else back) for _item in _row for _ in range(scale_x))
-            for _row in output for _ in range(scale_y)
+            return ()
+        if not self.kerning:
+            return tuple((0,) * len(_line) for _line in glyphs)
+        # kerning doesn't currently work if we have no chars defined
+        chars = [[_g.char for _g in _line] for _line in glyphs]
+        # get kerning in terms of chars
+        # would be better as a glyph property?
+        kerning_dict = {
+            (self.get_glyph(_key[0]).char, self.get_glyph(_key[1]).char): _value
+            for _key, _value in self.kerning.items()
+        }
+        return tuple(
+            tuple(
+                kerning_dict.get((_char, _next), 0)
+                for _char, _next in zip(_line[:-1], _line[1:])
+            ) + (0,)
+            for _line in chars
         )
-        return output
 
 
     ##########################################################################
@@ -724,6 +675,12 @@ class Font:
             return self.get_glyph('X').ink_height
         except KeyError:
             return 0
+
+    @property
+    def line_height(self):
+        """Line height."""
+        return self.max_raster_size.y + self.leading
+
 
     ##########################################################################
     # font operations

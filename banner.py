@@ -12,7 +12,7 @@ from codecs import escape_decode
 
 import monobit
 from monobit.base import pair
-from monobit.base.text import to_text
+from monobit import render_text
 
 
 def unescape(text):
@@ -37,7 +37,7 @@ parser.add_argument(
 )
 parser.add_argument(
     '--paper', '--background', '-bg', type=str, default='-',
-    help='character to use for paper/background (default: @)'
+    help='character to use for paper/background (default: -)'
 )
 parser.add_argument(
     '--margin', '-m', type=pair, default=(0, 0),
@@ -46,6 +46,10 @@ parser.add_argument(
 parser.add_argument(
     '--scale', '-s', type=pair, default=(1, 1),
     help='number of characters to use per pixel in x and y direction (default: 1,1)'
+)
+parser.add_argument(
+    '--rotate', '-r', type=int, default=0,
+    help='number of quarter turns to rotate (default: 0)'
 )
 parser.add_argument(
     '--encoding', default='', type=str,
@@ -99,9 +103,10 @@ try:
         args.text = args.text.encode('latin-1', errors='ignore')
     elif args.encoding:
         font = font.set_properties(encoding=args.encoding)
-    sys.stdout.write(to_text(font.render(
-        args.text, args.ink, args.paper, margin=args.margin, scale=args.scale, missing='default'
-    )) + '\n')
+    sys.stdout.write(render_text(
+        font, args.text, args.ink, args.paper,
+        margin=args.margin, scale=args.scale, rotate=args.rotate, missing='default'
+    ) + '\n')
 except BrokenPipeError:
     # happens e.g. when piping to `head`
     # https://stackoverflow.com/questions/16314321/suppressing-printout-of-exception-ignored-message-in-python-3

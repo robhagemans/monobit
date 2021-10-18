@@ -20,6 +20,7 @@ from ..formats import loaders, savers
 from ..streams import FileFormatError
 from ..font import Font
 from ..glyph import Glyph
+from ..renderer import chart_image
 
 
 DEFAULT_IMAGE_FORMAT = 'png'
@@ -154,69 +155,13 @@ if Image:
             margin:pair=(0, 0),
             padding:pair=(0, 0),
             scale:pair=(1, 1),
-            border:rgb=(32, 32, 32), back:rgb=(0, 0, 0), fore:rgb=(255, 255, 255),
-            encoding:str=None,
+            border:rgb=(32, 32, 32), paper:rgb=(0, 0, 0), ink:rgb=(255, 255, 255),
         ):
         """Export font to image."""
         if len(fonts) > 1:
             raise FileFormatError('Can only save one font to image file.')
-        img = create_image(fonts[0], columns, margin, padding, scale, border, back, fore, encoding)
+        img = chart_image(fonts[0], columns, margin, padding, scale, border, paper, ink)
         try:
             img.save(outfile, format=format or Path(outfile).suffix[1:])
         except (KeyError, ValueError, TypeError):
             img.save(outfile, format=DEFAULT_IMAGE_FORMAT)
-
-
-def create_image(
-        font,
-        columns=32, margin=(0, 0), padding=(0, 0), scale=(1, 1),
-        border=(32, 32, 32), back=(0, 0, 0), fore=(255, 255, 255),
-        encoding=None
-    ):
-    """Dump font to image."""
-    scale_x, scale_y = scale
-    padding_x, padding_y = padding
-    margin_x, margin_y = margin
-    # work out image geometry
-    step_x = font.max_raster_size.x * scale_x + padding_x
-    step_y = font.max_raster_size.y * scale_y + padding_y
-    rows = ceildiv(len(font.glyphs), columns)
-    # determine image geometry
-    width = columns * step_x + 2 * margin_x - padding_x
-    height = rows * step_y + 2 * margin_y - padding_y
-    img = Image.new('RGB', (width, height), border)
-    # output glyphs
-    for ordinal, glyph in enumerate(font.glyphs):
-        if not glyph.width or not glyph.height:
-            continue
-        row, col = divmod(ordinal, columns)
-        charimg = Image.new('RGB', (glyph.width, glyph.height))
-        data = glyph.as_tuple(fore, back)
-        charimg.putdata(data)
-        charimg = charimg.resize((charimg.width * scale_x, charimg.height * scale_y))
-        lefttop = (margin_x + col*step_x, margin_y + row*step_y)
-        img.paste(charimg, lefttop)
-    return img
-
-
-def render(
-        font, text, *,
-        back=(0, 0, 0), fore=(255, 255, 255),
-        margin=(0, 0), scale=(1, 1),
-        missing='default',
-        filename=None,
-    ):
-    """Render text to image."""
-    grid = font.render(
-        text, fore, back, margin=margin, scale=scale, missing=missing
-    )
-    if not grid:
-        return
-    width, height = len(grid[0]), len(grid)
-    img = Image.new('RGB', (width, height), back)
-    data = [_c for _row in grid for _c in _row]
-    img.putdata(data)
-    if filename:
-        img.save(filename)
-    else:
-        img.show()

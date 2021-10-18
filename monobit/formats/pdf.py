@@ -44,7 +44,7 @@ if reportlab:
         width = font.max_raster_size.x + 2
         height = font.max_raster_size.y + 4
         xpix = chart_width / columns / width
-        ypix = chart_height /rows / height
+        ypix = chart_height / rows / height
         canvas.translate(margin_x, margin_y)
         canvas.setLineWidth(xpix/10)
         canvas.setStrokeColorRGB(0.5, 0.5, 0.5)
