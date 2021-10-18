@@ -416,6 +416,7 @@ _ENCODING_FILES = (
         ('wikipedia/abicomp.html', 'abicomp', 'star-3848'),
 
         # vendor character sets
+        # dec-special - this should be underlaid with ascii
         ('wikipedia/dec-special.html', 'dec-special', 'ibm-1090'),
         ('wikipedia/dec-technical.html', 'dec-technical', 'dec-tcs', 'tcs'),
         ('wikipedia/lics.html', 'lotus-international', 'lics'),
@@ -462,7 +463,7 @@ _OVERLAYS = (
         # wikipedia suggests it's us-ascii-quotes
         'next',
         'rs3', 'rs4', 'rs4ac', 'mazovia', 'kamenicky', 'cwi-2', 'viscii',
-        'cp853', 'suneu-greek', 'mule-lao', 'dec-vt100'
+        'cp853', 'suneu-greek', 'mule-lao', 'dec-vt100',
     )),
     # DOS/OEM codepages usually have the ibm-graphics range of icons mapped to C0 cntrols
     ('misc/IBMGRAPH.TXT', _IBM_GRAPH_RANGE, 'adobe', {}, (
