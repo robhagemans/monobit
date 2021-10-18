@@ -9,7 +9,7 @@ import argparse
 import logging
 
 import monobit
-from monobit.scripting import main, add_script_args, convert_script_args
+from monobit.scripting import main, add_script_args, convert_script_args, repr_script_args
 
 
 # parse command line
@@ -74,7 +74,7 @@ with main(args, logging.INFO):
         # don't raise if no loader - it may be a container we can extract
         args, _ = parser.parse_known_args()
         # convert arguments to type accepted by operation
-        load_args = convert_script_args(loader, var(args))
+        load_args = convert_script_args(loader, vars(args))
         pack = monobit.load(instream, where=incontainer, format=args.from_, **load_args)
 
     # set encoding
@@ -102,5 +102,5 @@ with main(args, logging.INFO):
         add_script_args(parser, saver)
         args = parser.parse_args()
         # convert arguments to type accepted by operation
-        save_args = convert_script_args(saver, var(args))
+        save_args = convert_script_args(saver, vars(args))
         monobit.save(pack, outstream, where=outcontainer, format=args.to_, **save_args)

@@ -9,7 +9,7 @@ import argparse
 import logging
 
 import monobit
-from monobit.scripting import main, convert_script_args
+from monobit.scripting import main, convert_script_args, repr_script_args, add_script_args
 
 
 # parse command line
