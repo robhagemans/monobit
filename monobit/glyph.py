@@ -312,6 +312,16 @@ class Glyph:
         return self.modify(self._rows[::-1])
 
     @scriptable
+    def roll(self, rows:int=0, columns:int=0):
+        """Cycle rows. Positive `rows`: roll down; Positive `cols`: roll to right."""
+        rolled = self
+        if self.height > 1 and rows:
+            rolled = rolled.modify(rolled._rows[-rows:] + rolled._rows[:-rows])
+        if self.width > 1 and columns:
+            rolled = rolled.modify(tuple(_row[-columns:] + _row[:-columns] for _row in rolled._rows))
+        return rolled
+
+    @scriptable
     def transpose(self):
         """Transpose glyph."""
         return self.modify(tuple(tuple(_x) for _x in zip(*self._rows)))
