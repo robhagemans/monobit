@@ -408,7 +408,7 @@ _ENCODING_FILES = (
     ('html', {}, (
         # national character sets
         ('wikipedia/mazovia.html', 'mazovia', 'cp667', 'cp790', 'cp991'),
-        ('wikipedia/kamenicky.html', 'kamenický', 'kamenicky', 'nec-867', 'keybcs2', 'dos-895'),
+        ('wikipedia/kamenicky.html', 'kamenicky', 'kamenický', 'nec-867', 'keybcs2', 'dos-895'),
         ('wikipedia/cwi2.html', 'cwi-2', 'cwi', 'cp-hu', 'hucwi', 'hu8cwi2'),
         ('wikipedia/pascii.html', 'pascii',),
         ('wikipedia/cp853.html', 'cp853', 'ibm-853'),
@@ -1169,4 +1169,5 @@ for _overlay, _range, _format, _kwargs, _names in _OVERLAYS:
 
 # FreeDOS charmaps
 for _file in resource_listdir(__name__, 'charmaps/freedos'):
-    charmaps.register(f'freedos-{Path(_file).stem}', f'charmaps/freedos/{_file}')
+    if Path(_file).suffix != '.md':
+        charmaps.register(f'freedos-{Path(_file).stem}', f'charmaps/freedos/{_file}')
