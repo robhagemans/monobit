@@ -14,6 +14,7 @@ from pathlib import Path
 from contextlib import contextmanager
 
 from ..base import VERSION, DEFAULT_FORMAT, CONVERTER_NAME
+from ..scripting import scriptable
 from ..containers import Container, open_container, ContainerFormatError
 from ..font import Font
 from ..pack import Pack
@@ -142,6 +143,7 @@ class Loaders(MagicRegistry):
         def _load_decorator(original_loader):
 
             # stream input wrapper
+            @scriptable
             @wraps(original_loader)
             def _loader(instream, where, **kwargs):
                 fonts = original_loader(instream, where=where, **kwargs)
@@ -160,7 +162,6 @@ class Loaders(MagicRegistry):
 
             # register loader
             _loader.name = name
-            _loader.script_args = original_loader.__annotations__
             _loader.saver = saver
             _loader.formats = formats
             if saver:
@@ -254,12 +255,12 @@ class Savers(MagicRegistry):
         def _save_decorator(original_saver):
 
             # stream output wrapper
+            @scriptable
             @wraps(original_saver)
             def _saver(pack, outfile, where, **kwargs):
                 original_saver(pack, outfile, where=where, **kwargs)
 
             # register saver
-            _saver.script_args = original_saver.__annotations__
             _saver.name = name
             _saver.loader = loader
             _saver.formats = formats

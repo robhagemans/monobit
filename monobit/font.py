@@ -747,6 +747,8 @@ class Font:
     glyph_operations = get_scriptables(Glyph)
     for _name, _func in glyph_operations.items():
 
+        @scriptable
+        @wraps(_func)
         def _modify(self, *args, operation=_func, **kwargs):
             """Return a font with modified glyphs."""
             glyphs = tuple(
@@ -755,7 +757,6 @@ class Font:
             )
             return Font(glyphs, self._comments, self._properties)
 
-        _modify.script_args = _func.script_args
         locals()[_name] = _modify
 
 
