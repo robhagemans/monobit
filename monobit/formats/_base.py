@@ -91,7 +91,7 @@ class Loaders(MagicRegistry):
         """
         loader = None
         if not format:
-            loader = self.identify(infile, mode='r')
+            loader = self.identify(infile, do_open=True)
         if not loader:
             loader = self[format or DEFAULT_FORMAT]
         return loader
@@ -192,7 +192,7 @@ class Savers(MagicRegistry):
         """
         saver = None
         if not format:
-            saver = self.identify(outfile, mode='r')
+            saver = self.identify(outfile, do_open=False)
         if not saver:
             saver = self[format or DEFAULT_FORMAT]
         return saver

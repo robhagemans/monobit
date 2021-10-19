@@ -260,17 +260,17 @@ class MagicRegistry:
         """Get type by suffix."""
         return self._suffixes.get(suffix, None)
 
-    def identify(self, file, mode):
+    def identify(self, file, do_open=False):
         """Identify a type from magic sequence on input file."""
         if not file:
             return None
         # can't read magic on write-only file
-        if mode == 'r':
+        if do_open:
             if isinstance(file, (str, Path)):
                 # only use context manager if string provided
                 # if we got an open stream we should not close it
                 with open_stream(file, 'r') as stream:
-                    return self.identify(stream, mode)
+                    return self.identify(stream, do_open=do_open)
             for magic, klass in self._magic.items():
                 if has_magic(file, magic):
                     return klass

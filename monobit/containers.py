@@ -42,12 +42,12 @@ def open_container(file, mode, overwrite=False):
     if not file:
         # no-container, will throw errors when used
         return Container(None)
-    container_type = identify_container(file, mode, overwrite)
+    container_type = _identify_container(file, mode, overwrite)
     container = container_type(file, mode, overwrite=overwrite)
     logging.debug("Opening %s container `%s` for '%s'.", container_type.__name__, container.name, mode)
     return container
 
-def identify_container(file, mode, overwrite):
+def _identify_container(file, mode, overwrite):
     """Get container of the appropriate type."""
     if not file:
         raise ValueError('No location provided.')
@@ -55,7 +55,7 @@ def identify_container(file, mode, overwrite):
     if isinstance(file, (str, Path)) and Path(file).is_dir():
         container_type = DirContainer
     else:
-        container_type = containers.identify(file, mode)
+        container_type = containers.identify(file, do_open=(mode == 'r'))
     if not container_type:
         suffix = get_suffix(file)
         # output to file with no suffix - default to directory
