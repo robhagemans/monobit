@@ -13,9 +13,10 @@ from .base import VERSION as __version__
 from .pack import Pack
 from .font import Font, operations as _operations
 from .glyph import Glyph
-from .formats import loaders, savers, open_location, converters
+from .formats import loaders, savers, converters, open_location, load, save
 from .encoding import charmaps
 from .renderer import render, render_image, render_text
+
 
 # inject font operations into main module namespace
 globals().update(_operations)
@@ -25,6 +26,3 @@ operations = {
     _name.replace('_', '-'): _func
     for _name, _func in _operations.items()
 }
-
-save = savers.save
-load = loaders.load
