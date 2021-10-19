@@ -11,7 +11,7 @@ from pathlib import Path
 from pkg_resources import resource_listdir
 from types import SimpleNamespace
 
-from ._base import open_location, loaders, savers, load, save
+from ._base import loaders, savers
 
 
 # load all modules in this directory into converters namespace

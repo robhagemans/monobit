@@ -13,7 +13,8 @@ from .base import VERSION as __version__
 from .pack import Pack
 from .font import Font, operations as _operations
 from .glyph import Glyph
-from .formats import loaders, savers, converters, open_location, load, save
+from .formats import loaders, savers, converters
+from .storage import open_location, load, save
 from .encoding import charmaps
 from .renderer import render, render_image, render_text
 
