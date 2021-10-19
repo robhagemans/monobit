@@ -78,23 +78,58 @@ def open_location(file, mode, where=None, overwrite=False):
 ##############################################################################
 # loading
 
-class Loaders(MagicRegistry):
-    """Loader plugin registry."""
+class PluginRegistry(MagicRegistry):
+    """Loader/Saver plugin registry."""
 
-    _loaders = {}
-    _magic = {}
-
-    def get_loader(self, infile=None, format=''):
+    def get_plugin(self, file=None, format='', do_open=False):
         """
-        Get loader function for this format.
+        Get loader/saver function for this format.
         infile must be a Stream or empty
         """
-        loader = None
+        plugin = None
         if not format:
-            loader = self.identify(infile, do_open=True)
-        if not loader:
-            loader = self[format or DEFAULT_FORMAT]
-        return loader
+            plugin = self.identify(file, do_open=do_open)
+        if not plugin:
+            plugin = self[format or DEFAULT_FORMAT]
+        return plugin
+
+    def register(self, *formats, magic=(), name='', linked=None):
+        """
+        Decorator to register font loader/saver.
+            *formats: extensions covered by registered function
+            magic: magic sequences cobvered by the plugin (no effect for savers)
+            name: name of the format
+            linked: loader/saver linked to saver/loader
+        """
+        register_magic = super().register
+
+        def _decorator(original_func):
+
+            # stream input wrapper
+            @scriptable
+            @wraps(original_func)
+            def _func(*args, **kwargs):
+                return original_func(*args, **kwargs)
+
+            # register plugin
+            if linked:
+                linked.linked = _func
+                _func.name = name or linked.name
+                _func.formats = formats or linked.formats
+                _func.magic = magic or linked.magic
+            else:
+                _func.name = name
+                _func.linked = linked
+                _func.formats = formats
+                _func.magic = magic
+            register_magic(*_func.formats, magic=_func.magic)(_func)
+            return _func
+
+        return _decorator
+
+
+class Loaders(PluginRegistry):
+    """Loader plugin registry."""
 
     def load(self, infile:str, format:str='', where:str='', **kwargs):
         """Read new font from file."""
@@ -108,7 +143,7 @@ class Loaders(MagicRegistry):
     def _load_from_file(self, instream, where, format, **kwargs):
         """Open file and load font(s) from it."""
         # identify file type
-        loader = self.get_loader(instream, format=format)
+        loader = self.get_plugin(instream, format=format, do_open=True)
         if not loader:
             raise FileFormatError('Cannot load from format `{}`.'.format(format)) from None
         logging.info('Loading `%s` on `%s` as %s', instream.name, where.name, loader.name)
@@ -146,35 +181,6 @@ class Loaders(MagicRegistry):
                     packs += Pack(pack)
         return packs
 
-    def register(self, *formats, magic=(), name='', saver=None):
-        """
-        Decorator to register font loader.
-            *formats: extensions covered by registered function
-            name: name of the format
-        """
-        register_magic = super().register
-
-        def _load_decorator(original_loader):
-
-            # stream input wrapper
-            @scriptable
-            @wraps(original_loader)
-            def _loader(instream, where, **kwargs):
-                return original_loader(instream, where=where, **kwargs)
-
-            # register loader
-            _loader.name = name
-            _loader.saver = saver
-            _loader.formats = formats
-            if saver:
-                saver.loader = _loader
-                _loader.name = name or saver.name
-                _loader.formats = _loader.formats or saver.formats
-            register_magic(*_loader.formats, magic=magic)(_loader)
-            return _loader
-
-        return _load_decorator
-
 
 loaders = Loaders()
 
@@ -182,22 +188,8 @@ loaders = Loaders()
 ##############################################################################
 # saving
 
-class Savers(MagicRegistry):
+class Savers(PluginRegistry):
     """Saver plugin registry."""
-
-    _savers = {}
-
-    def get_saver(self, outfile=None, format=''):
-        """
-        Get saver function for this format.
-        `outfile` must be a Stream or empty.
-        """
-        saver = None
-        if not format:
-            saver = self.identify(outfile, do_open=False)
-        if not saver:
-            saver = self[format or DEFAULT_FORMAT]
-        return saver
 
     def save(
             self, pack_or_font,
@@ -238,41 +230,11 @@ class Savers(MagicRegistry):
 
     def _save_to_file(self, pack, outfile, where, format, **kwargs):
         """Save fonts to a single file."""
-        saver = self.get_saver(outfile, format=format)
+        saver = self.get_plugin(outfile, format=format, do_open=False)
         if not saver:
             raise FileFormatError('Cannot save to format `{}`.'.format(format))
         logging.info('Saving `%s` on `%s` as %s.', outfile.name, where.name, saver.name)
         saver(pack, outfile, where, **kwargs)
 
-
-    def register(self, *formats, name='', loader=None):
-        """
-        Decorator to register font saver.
-            *formats: extensions covered by registered function
-            name: name of the format
-            loader: loader for this format
-        """
-        register_magic = super().register
-
-        def _save_decorator(original_saver):
-
-            # stream output wrapper
-            @scriptable
-            @wraps(original_saver)
-            def _saver(pack, outfile, where, **kwargs):
-                original_saver(pack, outfile, where=where, **kwargs)
-
-            # register saver
-            _saver.name = name
-            _saver.loader = loader
-            _saver.formats = formats
-            if loader:
-                loader.saver = _saver
-                _saver.name = name or loader.name
-                _saver.formats = _saver.formats or loader.formats
-            register_magic(*_saver.formats, magic=())(_saver)
-            return _saver
-
-        return _save_decorator
 
 savers = Savers()

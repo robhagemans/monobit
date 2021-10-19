@@ -51,10 +51,10 @@ args, _ = parser.parse_known_args()
 # help screen should include loader/saver arguments if from/to specified
 if args.help:
     if args.from_:
-        loader = monobit.formats.loaders.get_loader(format=args.from_)
+        loader = monobit.formats.loaders.get_plugin(format=args.from_)
         add_script_args(parser, loader)
     if args.to_:
-        saver = monobit.formats.savers.get_saver(format=args.to_)
+        saver = monobit.formats.savers.get_plugin(format=args.to_)
         add_script_args(parser, saver)
     parser.print_help()
     sys.exit(0)
@@ -69,7 +69,7 @@ with main(args, logging.INFO):
     # open streams
     with monobit.open_location(infile, 'r') as (instream, incontainer):
         # get loader arguments
-        loader = monobit.formats.loaders.get_loader(instream, format=args.from_)
+        loader = monobit.formats.loaders.get_plugin(instream, format=args.from_, do_open=True)
         add_script_args(parser, loader)
         # don't raise if no loader - it may be a container we can extract
         args, _ = parser.parse_known_args()
@@ -97,7 +97,7 @@ with main(args, logging.INFO):
 
     with monobit.open_location(outfile, 'w', overwrite=args.overwrite) as (outstream, outcontainer):
         # get saver arguments
-        saver = monobit.formats.savers.get_saver(outstream, format=args.to_)
+        saver = monobit.formats.savers.get_plugin(outstream, format=args.to_)
         add_script_args(parser, saver)
         args = parser.parse_args()
         # convert arguments to type accepted by operation

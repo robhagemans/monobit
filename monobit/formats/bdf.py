@@ -422,7 +422,7 @@ def load(instream, where=None):
     return Font(glyphs, comments=comments, properties=properties)
 
 
-@savers.register(loader=load)
+@savers.register(linked=load)
 def save(fonts, outstream, where=None):
     """Write fonts to a .bdf file."""
     if len(fonts) > 1:

@@ -562,7 +562,7 @@ def load_resource(instream, where=None):
     font = parse_fnt(instream.read())
     return font
 
-@savers.register(loader=load_resource)
+@savers.register(linked=load_resource)
 def save_resource(fonts, outstream, where=None, version:int=2):
     """Write font to a Windows .FNT file."""
     if len(fonts) > 1:
@@ -603,7 +603,7 @@ def load(instream, where=None):
     ]
     return fonts
 
-@savers.register(loader=load)
+@savers.register(linked=load)
 def save(fonts, outstream, where=None, version:int=2):
     """Write fonts to a Windows .FON file."""
     outstream.write(_create_fon(fonts, version*0x100))

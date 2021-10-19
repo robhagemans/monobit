@@ -118,7 +118,7 @@ def _read_unicode_table(instream, separator, startseq, encoding):
     return table
 
 
-@savers.register(loader=load)
+@savers.register(linked=load)
 def save(fonts, outstream, where=None):
     """Save font to PSF2 file."""
     if len(fonts) > 1:

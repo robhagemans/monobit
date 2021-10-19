@@ -88,7 +88,7 @@ def load(instream, where=None):
     """Read a plaintext font file."""
     return _load_fonts(instream.text, **_YAFF_PARAMETERS)
 
-@savers.register(loader=load)
+@savers.register(linked=load)
 def save(fonts, outstream, where=None):
     """Write fonts to a yaff file."""
     _save_yaff(fonts, outstream.text, **_YAFF_PARAMETERS)
@@ -100,7 +100,7 @@ def load_draw(instream, where=None, ink='#', paper='-'):
     params = dict(ink=ink, paper=paper, **_DRAW_PARAMETERS)
     return _load_fonts(instream.text, **params)
 
-@savers.register(loader=load_draw)
+@savers.register(linked=load_draw)
 def save_draw(fonts, outstream, where=None, ink='#', paper='-'):
     """Write font to a hexdraw file."""
     if len(fonts) > 1:

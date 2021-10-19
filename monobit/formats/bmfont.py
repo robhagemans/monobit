@@ -43,7 +43,7 @@ if Image:
         """Load fonts from bmfont in container."""
         return _read_bmfont(infile, where, outline)
 
-    @savers.register(loader=load)
+    @savers.register(linked=load)
     def save(
             fonts, outfile, where,
             image_size:pair=(256, 256),

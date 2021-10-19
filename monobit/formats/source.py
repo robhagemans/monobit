@@ -142,7 +142,7 @@ def _get_payload(instream, identifier, delimiters, comment):
 
 ###################################################################################################
 
-@savers.register('c', loader=load)
+@savers.register('c', linked=load)
 def save(fonts, outstream, where=None):
     """Save font to c source as byte-aligned binary (DOS font)."""
     if len(fonts) > 1:
