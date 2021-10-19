@@ -105,14 +105,28 @@ class Loaders(MagicRegistry):
                 return self._load_all(container, format, **kwargs)
             return self._load_from_file(stream, container, format, **kwargs)
 
-    def _load_from_file(self, infile, where, format, **kwargs):
+    def _load_from_file(self, instream, where, format, **kwargs):
         """Open file and load font(s) from it."""
-        # infile is not a container - identify file type
-        loader = self.get_loader(infile, format=format)
+        # identify file type
+        loader = self.get_loader(instream, format=format)
         if not loader:
             raise FileFormatError('Cannot load from format `{}`.'.format(format)) from None
-        logging.info('Loading `%s` on `%s` as %s', infile.name, where.name, loader.name)
-        return loader(infile, where, **kwargs)
+        logging.info('Loading `%s` on `%s` as %s', instream.name, where.name, loader.name)
+        fonts = loader(instream, where, **kwargs)
+        # convert font or pack to pack
+        if not fonts:
+            raise FileFormatError('No fonts found in file.')
+        pack = Pack(fonts)
+        # set conversion properties
+        filename = Path(instream.name).name
+        return Pack(
+            _font.set_properties(
+                converter=CONVERTER_NAME,
+                source_format=_font.source_format or loader.name,
+                source_name=_font.source_name or filename
+            )
+            for _font in pack
+        )
 
     def _load_all(self, container, format, **kwargs):
         """Open container and load all fonts found in it into one pack."""
@@ -123,13 +137,13 @@ class Loaders(MagicRegistry):
             logging.debug('Trying `%s` on `%s`.', name, container.name)
             with open_stream(name, 'r', where=container) as stream:
                 try:
-                    font_or_pack = self.load(stream, where=container, format=format, **kwargs)
+                    pack = self.load(stream, where=container, format=format, **kwargs)
                 except Exception as exc:
                     # if one font fails for any reason, try the next
                     # loaders raise ValueError if unable to parse
                     logging.debug('Could not load `%s`: %s', name, exc)
                 else:
-                    packs += Pack(font_or_pack)
+                    packs += Pack(pack)
         return packs
 
     def register(self, *formats, magic=(), name='', saver=None):
@@ -146,19 +160,7 @@ class Loaders(MagicRegistry):
             @scriptable
             @wraps(original_loader)
             def _loader(instream, where, **kwargs):
-                fonts = original_loader(instream, where=where, **kwargs)
-                if not fonts:
-                    raise FileFormatError('No fonts found in file.')
-                pack = Pack(fonts)
-                filename = Path(instream.name).name
-                return Pack(
-                    _font.set_properties(
-                        converter=CONVERTER_NAME,
-                        source_format=_font.source_format or name,
-                        source_name=_font.source_name or filename
-                    )
-                    for _font in pack
-                )
+                return original_loader(instream, where=where, **kwargs)
 
             # register loader
             _loader.name = name
