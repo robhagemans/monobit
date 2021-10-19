@@ -9,7 +9,6 @@ import io
 import sys
 import gzip
 import logging
-from functools import wraps
 from pathlib import Path
 from contextlib import contextmanager
 
@@ -180,6 +179,7 @@ def _save_to_file(pack, outfile, where, format, **kwargs):
 
 
 ##############################################################################
+# loader/saver plugin registry
 
 class PluginRegistry(MagicRegistry):
     """Loader/Saver plugin registry."""
@@ -207,13 +207,8 @@ class PluginRegistry(MagicRegistry):
         register_magic = super().register
 
         def _decorator(original_func):
-
-            # stream input wrapper
-            @scriptable
-            @wraps(original_func)
-            def _func(*args, **kwargs):
-                return original_func(*args, **kwargs)
-
+            # set script arguments
+            _func = scriptable(original_func)
             # register plugin
             if linked:
                 linked.linked = _func
@@ -225,6 +220,7 @@ class PluginRegistry(MagicRegistry):
                 _func.linked = linked
                 _func.formats = formats
                 _func.magic = magic
+            # register magic sequences
             register_magic(*_func.formats, magic=_func.magic)(_func)
             return _func
 
