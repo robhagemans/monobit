@@ -5,9 +5,6 @@ monobit.storage - load and save fonts
 licence: https://opensource.org/licenses/MIT
 """
 
-import io
-import sys
-import gzip
 import logging
 from pathlib import Path
 from contextlib import contextmanager

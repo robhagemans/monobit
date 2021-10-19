@@ -5,13 +5,6 @@ monobit.plugins - plugin registry
 licence: https://opensource.org/licenses/MIT
 """
 
-import io
-import sys
-import gzip
-import logging
-from pathlib import Path
-from contextlib import contextmanager
-
 from ..base import DEFAULT_FORMAT
 from ..scripting import scriptable
 from ..streams import MagicRegistry
