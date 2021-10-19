@@ -39,16 +39,10 @@ def parse_func_args(parser, func):
     # don't raise if no loader - it may be a container we can extract
     args, _ = parser.parse_known_args()
     # get arguments accepted by operation
-    return get_script_args(func, vars(args))
-
-def get_script_args(operation, arg_dict):
-    """Get arguments accepted by operation, per annotation."""
-    if not operation:
-        return {}
     return {
         _name: _arg
-        for _name, _arg in arg_dict.items()
-        if _arg is not None and _name in operation.script_args
+        for _name, _arg in vars(args).items()
+        if _arg is not None and _name in func.script_args
     }
 
 def add_script_args(parser, func):
