@@ -9,7 +9,7 @@ import argparse
 import logging
 
 import monobit
-from monobit.scripting import main, add_script_args, convert_script_args, repr_script_args
+from monobit.scripting import main, parse_func_args, repr_script_args, add_script_args
 
 
 # parse command line
@@ -70,11 +70,7 @@ with main(args, logging.INFO):
     with monobit.open_location(infile, 'r') as (instream, incontainer):
         # get loader arguments
         loader = monobit.loaders.get_for(instream, format=args.from_, do_open=True)
-        add_script_args(parser, loader)
-        # don't raise if no loader - it may be a container we can extract
-        args, _ = parser.parse_known_args()
-        # convert arguments to type accepted by operation
-        load_args = convert_script_args(loader, vars(args))
+        load_args = parse_func_args(parser, loader)
         pack = monobit.load(instream, where=incontainer, format=args.from_, **load_args)
 
     # set encoding
@@ -98,8 +94,7 @@ with main(args, logging.INFO):
     with monobit.open_location(outfile, 'w', overwrite=args.overwrite) as (outstream, outcontainer):
         # get saver arguments
         saver = monobit.savers.get_for(outstream, format=args.to_)
-        add_script_args(parser, saver)
-        args = parser.parse_args()
-        # convert arguments to type accepted by operation
-        save_args = convert_script_args(saver, vars(args))
+        save_args = parse_func_args(parser, saver)
+        # force errors on unknown arguments
+        parser.parse_args()
         monobit.save(pack, outstream, where=outcontainer, format=args.to_, **save_args)

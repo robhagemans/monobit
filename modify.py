@@ -9,7 +9,7 @@ import argparse
 import logging
 
 import monobit
-from monobit.scripting import main, convert_script_args, repr_script_args, add_script_args
+from monobit.scripting import main, parse_func_args, repr_script_args
 
 
 # parse command line
@@ -42,13 +42,9 @@ args, unknown = parser.parse_known_args()
 # get arguments for this operation
 operation_name = args.operation[0]
 operation = monobit.operations[operation_name]
-add_script_args(parser, operation)
-
-args = parser.parse_args()
-
-# convert script arguments to type accepted by operation
-fargs = convert_script_args(operation, vars(args))
-
+fargs = parse_func_args(parser, operation)
+# force error on unknown arguments
+parser.parse_args()
 
 with main(args, logging.WARNING):
 

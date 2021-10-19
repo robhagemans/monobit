@@ -33,8 +33,16 @@ def get_scriptables(cls):
 ###################################################################################################
 # argument parsing
 
-def convert_script_args(operation, arg_dict):
-    """Convert arguments to type accepted by operation, per annotation."""
+def parse_func_args(parser, func):
+    """Parse arguments accepted by operation."""
+    add_script_args(parser, func)
+    # don't raise if no loader - it may be a container we can extract
+    args, _ = parser.parse_known_args()
+    # get arguments accepted by operation
+    return get_script_args(func, vars(args))
+
+def get_script_args(operation, arg_dict):
+    """Get arguments accepted by operation, per annotation."""
     if not operation:
         return {}
     return {
