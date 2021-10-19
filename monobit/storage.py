@@ -13,8 +13,8 @@ from .base import VERSION, DEFAULT_FORMAT, CONVERTER_NAME
 from .containers import ContainerFormatError, open_container
 from .font import Font
 from .pack import Pack
-from .streams import FileFormatError, open_stream
-from .formats import loaders, savers
+from .streams import MagicRegistry, FileFormatError, open_stream
+from .scripting import scriptable
 
 
 ##############################################################################
@@ -83,7 +83,7 @@ def load(infile:str, format:str='', where:str='', **kwargs):
 def _load_from_file(instream, where, format, **kwargs):
     """Open file and load font(s) from it."""
     # identify file type
-    loader = loaders.get_plugin(instream, format=format, do_open=True)
+    loader = loaders.get_for(instream, format=format, do_open=True)
     if not loader:
         raise FileFormatError('Cannot load from format `{}`.'.format(format)) from None
     logging.info('Loading `%s` on `%s` as %s', instream.name, where.name, loader.name)
@@ -164,8 +164,61 @@ def _save_all(pack, where, format, **kwargs):
 
 def _save_to_file(pack, outfile, where, format, **kwargs):
     """Save fonts to a single file."""
-    saver = savers.get_plugin(outfile, format=format, do_open=False)
+    saver = savers.get_for(outfile, format=format, do_open=False)
     if not saver:
         raise FileFormatError('Cannot save to format `{}`.'.format(format))
     logging.info('Saving `%s` on `%s` as %s.', outfile.name, where.name, saver.name)
     saver(pack, outfile, where, **kwargs)
+
+
+##############################################################################
+# loader/saver registry
+
+class ConverterRegistry(MagicRegistry):
+    """Loader/Saver registry."""
+
+    def get_for(self, file=None, format='', do_open=False):
+        """
+        Get loader/saver function for this format.
+        infile must be a Stream or empty
+        """
+        converter = None
+        if not format:
+            converter = self.identify(file, do_open=do_open)
+        if not converter:
+            converter = self[format or DEFAULT_FORMAT]
+        return converter
+
+    def register(self, *formats, magic=(), name='', linked=None):
+        """
+        Decorator to register font loader/saver.
+            *formats: extensions covered by registered function
+            magic: magic sequences covered by the converter (no effect for savers)
+            name: name of the format
+            linked: loader/saver linked to saver/loader
+        """
+        register_magic = super().register
+
+        def _decorator(original_func):
+            # set script arguments
+            _func = scriptable(original_func)
+            # register converter
+            if linked:
+                linked.linked = _func
+                _func.name = name or linked.name
+                _func.formats = formats or linked.formats
+                _func.magic = magic or linked.magic
+            else:
+                _func.name = name
+                _func.linked = linked
+                _func.formats = formats
+                _func.magic = magic
+            # register magic sequences
+            register_magic(*_func.formats, magic=_func.magic)(_func)
+            return _func
+
+        return _decorator
+
+
+loaders = ConverterRegistry()
+savers = ConverterRegistry()

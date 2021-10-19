@@ -1,5 +1,5 @@
 """
-monobit.plugins - font format converter plugins
+monobit.formats - font format converter plugins
 
 (c) 2019--2021 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -8,8 +8,6 @@ licence: https://opensource.org/licenses/MIT
 from importlib import import_module
 from pathlib import Path
 from pkg_resources import resource_listdir
-
-from ._base import loaders, savers
 
 
 # import all modules in this directory into module namespace

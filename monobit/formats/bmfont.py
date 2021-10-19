@@ -22,7 +22,7 @@ from ..encoding import charmaps
 from .. import streams
 from ..streams import FileFormatError
 from ..base.binary import friendlystruct, int_to_bytes, bytes_to_int
-from ..formats import loaders, savers
+from ..storage import loaders, savers
 from ..font import Font, Coord
 from ..glyph import Glyph
 

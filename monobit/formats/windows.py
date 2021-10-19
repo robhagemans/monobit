@@ -33,7 +33,7 @@ import itertools
 
 from ..base import reverse_dict
 from ..base.binary import friendlystruct, bytes_to_bits, ceildiv, align
-from ..formats import loaders, savers
+from ..storage import loaders, savers
 from ..streams import FileFormatError
 from ..font import Font, Coord
 from ..glyph import Glyph

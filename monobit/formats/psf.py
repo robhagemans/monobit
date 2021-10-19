@@ -8,7 +8,7 @@ licence: https://opensource.org/licenses/MIT
 import logging
 
 from ..base.binary import ceildiv, friendlystruct
-from ..formats import loaders, savers
+from ..storage import loaders, savers
 from ..font import Font
 from ..glyph import Glyph
 from ..streams import FileFormatError

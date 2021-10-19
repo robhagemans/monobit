@@ -16,7 +16,7 @@ except ImportError:
 
 from ..scripting import pair, rgb
 from ..base.binary import ceildiv
-from ..formats import loaders, savers
+from ..storage import loaders, savers
 from ..streams import FileFormatError
 from ..font import Font
 from ..glyph import Glyph

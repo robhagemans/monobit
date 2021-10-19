@@ -8,7 +8,7 @@ licence: https://opensource.org/licenses/MIT
 import logging
 
 from ..base.binary import int_to_bytes, bytes_to_int
-from ..formats import loaders, savers
+from ..storage import loaders, savers
 from ..streams import FileFormatError
 from ..font import Font, Coord
 from ..glyph import Glyph

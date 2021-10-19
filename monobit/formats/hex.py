@@ -8,11 +8,10 @@ licence: https://opensource.org/licenses/MIT
 # HEX format documentation
 # http://czyborra.com/unifont/
 
-import os
 import logging
 import string
 
-from ..formats import loaders, savers
+from ..storage import loaders, savers
 from ..streams import FileFormatError
 from ..font import Font
 from ..glyph import Glyph

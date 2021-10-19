@@ -14,7 +14,7 @@ try:
 except ImportError:
     reportlab = None
 
-from ..formats import savers
+from ..storage import savers
 from ..streams import FileFormatError
 from ..label import Codepoint
 
