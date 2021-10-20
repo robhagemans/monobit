@@ -57,9 +57,8 @@ with main(args, logging.WARNING):
     # record converter parameters
     fonts = tuple(
         _font.set_properties(
-            history=(
-                ((_font.history + '\n') if hasattr(_font, 'history') else '')
-                + r'\n'.join(monobit.history)
+            history='\n'.join(
+                _line for _line in _font.history.split('\n') + monobit.history if _line
             )
         )
         for _font in fonts

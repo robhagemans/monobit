@@ -149,6 +149,7 @@ PROPERTIES = {
     'converter': str,
     'source-name': str,
     'source-format': str,
+    'history': str,
 
     # kerning table (at the end because it's long)
     # pairwise kerning (defined as adjustment to tracking)
