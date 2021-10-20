@@ -24,26 +24,25 @@ def scriptable(*args, script_args=None, name=None, record=True):
         # return decorator with these arguments set as extra args
         return partial(scriptable, script_args=script_args, name=name, record=record)
     else:
-        # @called as @scriptable
+        # called as @scriptable
         func, = args
-        func.script_args = script_args or {}
-        func.script_args.update(func.__annotations__)
+        name = name or func.__name__
+        script_args = script_args or {}
+        script_args = {**script_args, **func.__annotations__}
 
         @wraps(func)
-        def _scriptable_func(*args, arg_parser=None, **kwargs):
-            if arg_parser:
-                kwargs.update(_parse_script_args(arg_parser, func))
+        def _scriptable_func(*args, **kwargs):
             result = func(*args, **kwargs)
             if record and result:
-                history = _repr_script_args(name or func.__name__, kwargs, func)
+                history = _repr_script_args(name, kwargs, script_args)
                 try:
                     result = tuple(_item.add_history(history) for _item in iter(result))
                 except TypeError:
                     result = result.add_history(history)
             return result
 
-        _scriptable_func.script_args = func.script_args
-        _scriptable_func.__name__ = name or func.__name__
+        _scriptable_func.script_args = script_args
+        _scriptable_func.__name__ = name
         return _scriptable_func
 
 def get_scriptables(cls):
@@ -58,12 +57,10 @@ def get_scriptables(cls):
 ###################################################################################################
 # argument parsing
 
-def _parse_script_args(parser, func):
-    """Parse arguments accepted by operation."""
-    add_script_args(parser, func)
-    # don't raise if no loader - it may be a container we can extract
-    args, _ = parser.parse_known_args()
-    # get arguments accepted by operation
+def get_script_args(func, args):
+    """Get arguments accepted by operation."""
+    if not func:
+        return {}
     return {
         _name: _arg
         for _name, _arg in vars(args).items()
@@ -82,7 +79,7 @@ def add_script_args(parser, func):
             parser.add_argument('--' + arg.strip('_'), dest=arg, type=_type)
 
 
-def _repr_script_args(operation_name, arg_dict, operation):
+def _repr_script_args(operation_name, arg_dict, script_args):
     """Represent converter parameters."""
     return (
         operation_name.replace('_', '-') + ' '
@@ -90,7 +87,7 @@ def _repr_script_args(operation_name, arg_dict, operation):
             f'--{_k}={_v}'
             for _k, _v in arg_dict.items()
             # exclude unset and non-operation parameters
-            if _v and _k in operation.script_args
+            if _v and _k in script_args
         )
     ).strip()
 

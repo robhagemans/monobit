@@ -15,14 +15,6 @@ from monobit.scripting import main
 # parse command line
 parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter)
 
-parser.add_argument(
-    'operation', nargs=1, choices=sorted(monobit.operations),
-    help='\n'.join(
-        f"{_name}: {_func.__doc__.strip()}"
-        for _name, _func in monobit.operations.items()
-    )
-)
-
 parser.add_argument('--infile', type=str, default='')
 parser.add_argument('--outfile', type=str, default='')
 
@@ -34,14 +26,28 @@ parser.add_argument(
     '--debug', action='store_true',
     help='show debugging output'
 )
+subparsers = parser.add_subparsers(dest='operation')
+
+for name, func in monobit.operations.items():
+    sub = subparsers.add_parser(name, help=func.__doc__)
+    sub.set_defaults(func=func)
+    sub.set_defaults(sub=sub)
+    for arg, typ in func.script_args.items():
+        sub.add_argument(f'--{arg}', type=typ)
 
 
 # find out which operation we're asked to perform
-args, unknown = parser.parse_known_args()
+args, _ = parser.parse_known_args()
+operation = args.func
 
-# get arguments for this operation
-operation_name = args.operation[0]
-operation = monobit.operations[operation_name]
+# get operation arguments
+kwargs = vars(args.sub.parse_known_args()[0])
+kwargs.pop('func')
+kwargs.pop('sub')
+
+# force error on unknown arguments
+parser.parse_args()
+
 
 with main(args, logging.WARNING):
 
@@ -50,12 +56,9 @@ with main(args, logging.WARNING):
 
     # modify
     fonts = tuple(
-        operation(_font, arg_parser=parser)
+        operation(_font, **kwargs)
         for _font in fonts
     )
 
     # save
     monobit.save(fonts, args.outfile or sys.stdout, overwrite=args.overwrite)
-
-    # force error on unknown arguments
-    parser.parse_args()

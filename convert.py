@@ -9,7 +9,7 @@ import argparse
 import logging
 
 import monobit
-from monobit.scripting import main, add_script_args
+from monobit.scripting import main, add_script_args, get_script_args
 
 
 # parse command line
@@ -40,23 +40,33 @@ parser.add_argument(
     '--debug', action='store_true',
     help='show debugging output'
 )
+
+args, _ = parser.parse_known_args()
+
+if args.from_:
+    group = parser.add_argument_group(f'load-{args.from_} arguments')
+    loader = monobit.loaders.get_for(format=args.from_)
+    add_script_args(group, loader)
+else:
+    loader = None
+
+if args.to_:
+    group = parser.add_argument_group(f'save-{args.to_} arguments')
+    saver = monobit.savers.get_for(format=args.to_)
+    add_script_args(group, saver)
+else:
+    saver = None
+
+# to ensure loader / saver arguments are included in help
+# we should only parse it after adding those
 parser.add_argument(
     '-h', '--help', action='store_true',
     help='show this help message and exit'
 )
 
-# find out which operation we're asked to perform
-args, _ = parser.parse_known_args()
+args = parser.parse_args()
 
-
-# help screen should include loader/saver arguments if from/to specified
 if args.help:
-    if args.from_:
-        loader = monobit.loaders.get_for(format=args.from_)
-        add_script_args(parser, loader)
-    if args.to_:
-        saver = monobit.savers.get_for(format=args.to_)
-        add_script_args(parser, saver)
     parser.print_help()
     sys.exit(0)
 
@@ -67,7 +77,7 @@ with main(args, logging.INFO):
     infile = args.infile or sys.stdin
     outfile = args.outfile or sys.stdout
 
-    pack = monobit.load(infile, format=args.from_, arg_parser=parser)
+    pack = monobit.load(infile, format=args.from_, **get_script_args(loader, args))
 
     # set encoding
     if args.encoding:
@@ -77,7 +87,4 @@ with main(args, logging.INFO):
         with open(args.comments) as f:
             pack = tuple(_font.add_comments(f.read()) for _font in pack)
 
-    monobit.save(pack, outfile, overwrite=args.overwrite, format=args.to_, arg_parser=parser)
-
-    # force errors on unknown arguments
-    parser.parse_args()
+    monobit.save(pack, outfile, overwrite=args.overwrite, format=args.to_, **get_script_args(saver, args))
