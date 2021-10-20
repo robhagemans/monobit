@@ -17,6 +17,7 @@ from . import formats
 from .storage import open_location, load, save, loaders, savers
 from .encoding import charmaps
 from .renderer import render, render_image, render_text
+from .scripting import history
 
 
 # inject font operations into main module namespace

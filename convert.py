@@ -9,7 +9,7 @@ import argparse
 import logging
 
 import monobit
-from monobit.scripting import main, parse_func_args, repr_script_args, add_script_args
+from monobit.scripting import main, add_script_args
 
 
 # parse command line
@@ -66,35 +66,31 @@ with main(args, logging.INFO):
     infile = args.infile or sys.stdin
     outfile = args.outfile or sys.stdout
 
-    # open streams
-    with monobit.open_location(infile, 'r') as (instream, incontainer):
-        # get loader arguments
-        loader = monobit.loaders.get_for(instream, format=args.from_, do_open=True)
-        load_args = parse_func_args(parser, loader)
-        pack = monobit.load(instream, where=incontainer, format=args.from_, **load_args)
+    pack = monobit.load(infile, format=args.from_, arg_parser=parser)
 
     # set encoding
     if args.encoding:
-        pack = tuple(_font.set_encoding(args.encoding) for _font in pack)
+        pack = tuple(_font.set_encoding(encoding=args.encoding) for _font in pack)
+        monobit.history.append(f'set-encoding --encoding={args.encoding}')
     # add comments
     if args.comments:
         with open(args.comments) as f:
             pack = tuple(_font.add_comments(f.read()) for _font in pack)
+        monobit.history.append('add-comments')
 
-    # record converter parameters
     pack = tuple(
         _font.set_properties(
-            converter_parameters=repr_script_args(
-                'convert', vars(args), loader, 'encoding', 'comments'
+            converter_parameters=(
+                ((_font.converter_parameters + '\n') if hasattr(_font, 'converter_parameters') else '')
+
+                + '\n'.join(monobit.history)
+
             )
         )
         for _font in pack
     )
 
-    with monobit.open_location(outfile, 'w', overwrite=args.overwrite) as (outstream, outcontainer):
-        # get saver arguments
-        saver = monobit.savers.get_for(outstream, format=args.to_)
-        save_args = parse_func_args(parser, saver)
-        # force errors on unknown arguments
-        parser.parse_args()
-        monobit.save(pack, outstream, where=outcontainer, format=args.to_, **save_args)
+    monobit.save(pack, outfile, overwrite=args.overwrite, format=args.to_, arg_parser=parser)
+
+    # force errors on unknown arguments
+    parser.parse_args()

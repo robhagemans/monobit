@@ -9,7 +9,7 @@ import argparse
 import logging
 
 import monobit
-from monobit.scripting import main, parse_func_args, repr_script_args
+from monobit.scripting import main
 
 
 # parse command line
@@ -42,9 +42,6 @@ args, unknown = parser.parse_known_args()
 # get arguments for this operation
 operation_name = args.operation[0]
 operation = monobit.operations[operation_name]
-fargs = parse_func_args(parser, operation)
-# force error on unknown arguments
-parser.parse_args()
 
 with main(args, logging.WARNING):
 
@@ -53,7 +50,7 @@ with main(args, logging.WARNING):
 
     # modify
     fonts = tuple(
-        operation(_font, **fargs)
+        operation(_font, arg_parser=parser)
         for _font in fonts
     )
 
@@ -62,7 +59,7 @@ with main(args, logging.WARNING):
         _font.set_properties(
             converter_parameters=(
                 ((_font.converter_parameters + '\n') if hasattr(_font, 'converter_parameters') else '')
-                + repr_script_args(operation_name, vars(args), operation)
+                + r'\n'.join(monobit.history)
             )
         )
         for _font in fonts
@@ -70,3 +67,6 @@ with main(args, logging.WARNING):
 
     # save
     monobit.save(fonts, args.outfile or sys.stdout, overwrite=args.overwrite)
+
+    # force error on unknown arguments
+    parser.parse_args()

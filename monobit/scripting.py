@@ -9,6 +9,11 @@ import sys
 import os
 import logging
 from contextlib import contextmanager
+from functools import wraps
+
+# scripting history
+# FIXME: lines may apply to different fonts, should be local to font/pack
+history = []
 
 
 ###################################################################################################
@@ -16,10 +21,21 @@ from contextlib import contextmanager
 # annotations give converters from string to desired type
 # docstings provide help text
 
-def scriptable(fn):
+def scriptable(func):
     """Decorator to register operation for scripting."""
-    fn.script_args = fn.__annotations__
-    return fn
+
+    func.script_args = func.__annotations__
+
+    @wraps(func)
+    def _scriptable_func(*args, arg_parser=None, **kwargs):
+        if arg_parser:
+            kwargs.update(parse_func_args(arg_parser, func))
+            history.append(repr_script_args(func.__name__, kwargs, func))
+        return func(*args, **kwargs)
+
+    _scriptable_func.script_args = func.__annotations__
+    return _scriptable_func
+
 
 def get_scriptables(cls):
     """Get dict of functions marked as scriptable."""
@@ -58,7 +74,7 @@ def add_script_args(parser, func):
 
 
 def repr_script_args(operation_name, arg_dict, operation, *include_args):
-    """Record converter parameters."""
+    """Represent converter parameters."""
     return (
         operation_name.replace('_', '-') + ' '
         + ' '.join(
