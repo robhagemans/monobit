@@ -48,6 +48,7 @@ parser.add_argument(
 # find out which operation we're asked to perform
 args, _ = parser.parse_known_args()
 
+
 # help screen should include loader/saver arguments if from/to specified
 if args.help:
     if args.from_:
@@ -80,11 +81,9 @@ with main(args, logging.INFO):
 
     pack = tuple(
         _font.set_properties(
-            converter_parameters=(
-                ((_font.converter_parameters + '\n') if hasattr(_font, 'converter_parameters') else '')
-
+            history=(
+                ((_font.history + '\n') if hasattr(_font, 'history') else '')
                 + '\n'.join(monobit.history)
-
             )
         )
         for _font in pack
