@@ -11,10 +11,6 @@ import logging
 from contextlib import contextmanager
 from functools import wraps, partial
 
-# scripting history
-# FIXME: lines may apply to different fonts, should be local to font/pack
-history = []
-
 
 ###################################################################################################
 # mark functions for scripting
@@ -36,11 +32,15 @@ def scriptable(*args, script_args=None, name=None, record=True):
         @wraps(func)
         def _scriptable_func(*args, arg_parser=None, **kwargs):
             if arg_parser:
-                kwargs.update(parse_func_args(arg_parser, func))
-                # only record if called from a script, i.e. we have an argparser
-                if record:
-                    history.append(repr_script_args(name or func.__name__, kwargs, func))
-            return func(*args, **kwargs)
+                kwargs.update(_parse_script_args(arg_parser, func))
+            result = func(*args, **kwargs)
+            if record and result:
+                history = _repr_script_args(name or func.__name__, kwargs, func)
+                try:
+                    result = tuple(_item.add_history(history) for _item in iter(result))
+                except TypeError:
+                    result = result.add_history(history)
+            return result
 
         _scriptable_func.script_args = func.script_args
         _scriptable_func.__name__ = name or func.__name__
@@ -58,7 +58,7 @@ def get_scriptables(cls):
 ###################################################################################################
 # argument parsing
 
-def parse_func_args(parser, func):
+def _parse_script_args(parser, func):
     """Parse arguments accepted by operation."""
     add_script_args(parser, func)
     # don't raise if no loader - it may be a container we can extract
@@ -82,7 +82,7 @@ def add_script_args(parser, func):
             parser.add_argument('--' + arg.strip('_'), dest=arg, type=_type)
 
 
-def repr_script_args(operation_name, arg_dict, operation):
+def _repr_script_args(operation_name, arg_dict, operation):
     """Represent converter parameters."""
     return (
         operation_name.replace('_', '-') + ' '

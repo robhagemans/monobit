@@ -201,7 +201,11 @@ class ConverterRegistry(MagicRegistry):
 
         def _decorator(original_func):
             # set script arguments
-            _func = scriptable(original_func)
+            _func = scriptable(
+                original_func,
+                # don't record history of loading from default format
+                record=(DEFAULT_FORMAT not in formats)
+            )
             # register converter
             if linked:
                 linked.linked = _func

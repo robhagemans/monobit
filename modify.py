@@ -54,16 +54,6 @@ with main(args, logging.WARNING):
         for _font in fonts
     )
 
-    # record converter parameters
-    fonts = tuple(
-        _font.set_properties(
-            history='\n'.join(
-                _line for _line in _font.history.split('\n') + monobit.history if _line
-            )
-        )
-        for _font in fonts
-    )
-
     # save
     monobit.save(fonts, args.outfile or sys.stdout, overwrite=args.overwrite)
 

@@ -468,6 +468,12 @@ class Font:
     ##########################################################################
     # properties
 
+    def add_history(self, history):
+        """Return a copy with a line added to history."""
+        return self.set_properties(history='\n'.join(
+            _line for _line in self.history.split('\n') + [history] if _line
+        ))
+
     def set_properties(self, **kwargs):
         """Return a copy with amended properties."""
         return Font(

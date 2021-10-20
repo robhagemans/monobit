@@ -107,6 +107,10 @@ class Glyph:
             )
         return self
 
+    def add_history(self, history):
+        """No-op - not recording glyph history."""
+        return self
+
     @scriptable
     def drop_comments(self):
         """Return a copy of the glyph without comments."""
