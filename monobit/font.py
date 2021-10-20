@@ -435,7 +435,7 @@ class Font:
         """Get global or property comments."""
         return self._comments.get(property, ())
 
-    @scriptable
+    @scriptable(record=False)
     def add_comments(self, new_comment:str='', property:str=''):
         """Return a font with added comments."""
         comments = {**self._comments}
@@ -468,20 +468,12 @@ class Font:
     ##########################################################################
     # properties
 
-    @scriptable
-    def set_encoding(self, encoding:str=''):
-        """
-        Return a copy with codepoints relabelled through a different codepage.
-        """
-        properties = {**self._properties}
-        properties['encoding'] = encoding
-        return Font(self._glyphs, self._comments, properties)
-
     def set_properties(self, **kwargs):
         """Return a copy with amended properties."""
         return Font(
             self._glyphs, self._comments, {**self._properties, **kwargs}
         )
+    set = scriptable(set_properties, script_args=PROPERTIES, name='set')
 
     @property
     def nondefault_properties(self):

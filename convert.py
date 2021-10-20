@@ -71,13 +71,12 @@ with main(args, logging.INFO):
 
     # set encoding
     if args.encoding:
-        pack = tuple(_font.set_encoding(encoding=args.encoding) for _font in pack)
-        monobit.history.append(f'set-encoding --encoding={args.encoding}')
+        pack = tuple(_font.set(encoding=args.encoding) for _font in pack)
+        monobit.history.append(f'set --encoding={args.encoding}')
     # add comments
     if args.comments:
         with open(args.comments) as f:
             pack = tuple(_font.add_comments(f.read()) for _font in pack)
-        monobit.history.append('add-comments')
 
     pack = tuple(
         _font.set_properties(

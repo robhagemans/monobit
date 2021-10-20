@@ -9,7 +9,7 @@ import sys
 import os
 import logging
 from contextlib import contextmanager
-from functools import wraps
+from functools import wraps, partial
 
 # scripting history
 # FIXME: lines may apply to different fonts, should be local to font/pack
@@ -21,21 +21,30 @@ history = []
 # annotations give converters from string to desired type
 # docstings provide help text
 
-def scriptable(func):
+def scriptable(*args, script_args=None, name=None, record=True):
     """Decorator to register operation for scripting."""
+    if not args:
+        # called as @scriptable(script_args=...)
+        # return decorator with these arguments set as extra args
+        return partial(scriptable, script_args=script_args, name=name, record=record)
+    else:
+        # @called as @scriptable
+        func, = args
+        func.script_args = script_args or {}
+        func.script_args.update(func.__annotations__)
 
-    func.script_args = func.__annotations__
+        @wraps(func)
+        def _scriptable_func(*args, arg_parser=None, **kwargs):
+            if arg_parser:
+                kwargs.update(parse_func_args(arg_parser, func))
+                # only record if called from a script, i.e. we have an argparser
+                if record:
+                    history.append(repr_script_args(name or func.__name__, kwargs, func))
+            return func(*args, **kwargs)
 
-    @wraps(func)
-    def _scriptable_func(*args, arg_parser=None, **kwargs):
-        if arg_parser:
-            kwargs.update(parse_func_args(arg_parser, func))
-            history.append(repr_script_args(func.__name__, kwargs, func))
-        return func(*args, **kwargs)
-
-    _scriptable_func.script_args = func.__annotations__
-    return _scriptable_func
-
+        _scriptable_func.script_args = func.script_args
+        _scriptable_func.__name__ = name or func.__name__
+        return _scriptable_func
 
 def get_scriptables(cls):
     """Get dict of functions marked as scriptable."""
@@ -73,7 +82,7 @@ def add_script_args(parser, func):
             parser.add_argument('--' + arg.strip('_'), dest=arg, type=_type)
 
 
-def repr_script_args(operation_name, arg_dict, operation, *include_args):
+def repr_script_args(operation_name, arg_dict, operation):
     """Represent converter parameters."""
     return (
         operation_name.replace('_', '-') + ' '
@@ -81,7 +90,7 @@ def repr_script_args(operation_name, arg_dict, operation, *include_args):
             f'--{_k}={_v}'
             for _k, _v in arg_dict.items()
             # exclude unset and non-operation parameters
-            if _v and _k in tuple(operation.script_args) + tuple(include_args)
+            if _v and _k in operation.script_args
         )
     ).strip()
 
