@@ -7,9 +7,13 @@ Extract bitmap font and save in different format
 import sys
 import argparse
 import logging
-import os
 
 import monobit
+from monobit.scripting import main
+
+
+###################################################################################################
+# argument parsing
 
 # parse command line
 parser = argparse.ArgumentParser(add_help=False)
@@ -39,100 +43,60 @@ parser.add_argument(
     '--debug', action='store_true',
     help='show debugging output'
 )
+
+args, _ = parser.parse_known_args()
+
+
+def add_script_args(parser, script_args, format, name):
+    """Add scriptable function arguments to argparser."""
+    group = parser.add_argument_group(f'{name}-{format} arguments')
+    for arg, _type, doc in script_args:
+        argname = f"{name}-{arg.strip('_')}"
+        if _type == bool:
+            group.add_argument(f'--{argname}', dest=arg, help=doc, action='store_true')
+            group.add_argument(
+                f'--no-{argname}', dest=arg, help=f'unset --{argname}', action='store_false'
+            )
+        else:
+            group.add_argument(f'--{argname}', dest=arg, help=doc, type=_type)
+
+
+loader_args = monobit.loaders.get_args(format=args.from_)
+saver_args = monobit.savers.get_args(format=args.to_)
+add_script_args(parser, loader_args, args.from_, 'load')
+add_script_args(parser, saver_args, args.to_, 'save')
+
+# to ensure loader / saver arguments are included in help
+# we should only parse it after adding those
 parser.add_argument(
     '-h', '--help', action='store_true',
     help='show this help message and exit'
 )
 
+args = parser.parse_args()
 
-def add_script_args(parser, loadersaver):
-    """Add loader or saver arguments to argparser."""
-    for arg, _type in loadersaver.script_args.items():
-        parser.add_argument('--' + arg.replace('_', '-'), dest=arg, type=_type)
-
-def convert_args(args, loadersaver):
-    """Convert arguments to type accepted by operation."""
-    if not loadersaver:
-        return {}
-    return {
-        _name: _arg
-        for _name, _arg in vars(args).items()
-        if _arg is not None and _name in loadersaver.script_args
-    }
-
-# find out which operation we're asked to perform
-args, _ = parser.parse_known_args()
-
-
-if args.debug:
-    loglevel = logging.DEBUG
-else:
-    loglevel = logging.INFO
-
-logging.basicConfig(level=loglevel, format='%(levelname)s: %(message)s')
-
-# help screen should include loader/saver arguments if from/to specified
 if args.help:
-    if args.from_:
-        loader = monobit.formats.loaders.get_loader(format=args.from_)
-        add_script_args(parser, loader)
-    if args.to_:
-        saver = monobit.formats.savers.get_saver(format=args.to_)
-        add_script_args(parser, saver)
     parser.print_help()
     sys.exit(0)
 
-try:
+
+###################################################################################################
+# main operation
+
+with main(args, logging.INFO):
+
     # if no infile or outfile provided, use stdio
     infile = args.infile or sys.stdin
     outfile = args.outfile or sys.stdout
 
-    # open streams
-    with monobit.open_location(infile, 'r') as (instream, incontainer):
-        # get loader arguments
-        loader = monobit.formats.loaders.get_loader(instream, format=args.from_)
-        if loader:
-            add_script_args(parser, loader)
-            # don't raise if no loader - it may be a container we can extract
-        args, _ = parser.parse_known_args()
-        # convert arguments to type accepted by operation
-        load_args = convert_args(args, loader)
-        pack = monobit.load(instream, where=incontainer, format=args.from_, **load_args)
+    pack = monobit.load(infile, format=args.from_, **loader_args.pick(args))
 
     # set encoding
     if args.encoding:
-        pack = tuple(_font.set_encoding(args.encoding) for _font in pack)
+        pack = tuple(_font.set(encoding=args.encoding) for _font in pack)
     # add comments
     if args.comments:
         with open(args.comments) as f:
             pack = tuple(_font.add_comments(f.read()) for _font in pack)
 
-    # record converter parameters
-    pack = tuple(_font.set_properties(
-        converter_parameters=' '.join(
-            f'{_k}={_v}'
-            for _k, _v in vars(args).items()
-            # exclyde unset or otherwise recorded
-            if _v and _k in loader.script_args
-        ))
-        for _font in pack
-    )
-
-    with monobit.open_location(outfile, 'w', overwrite=args.overwrite) as (outstream, outcontainer):
-        # get saver arguments
-        saver = monobit.formats.savers.get_saver(outstream, format=args.to_)
-        if saver:
-            add_script_args(parser, saver)
-        args = parser.parse_args()
-        # convert arguments to type accepted by operation
-        save_args = convert_args(args, saver)
-        monobit.save(pack, outstream, where=outcontainer, format=args.to_, **save_args)
-
-except BrokenPipeError:
-    # happens e.g. when piping to `head`
-    # https://stackoverflow.com/questions/16314321/suppressing-printout-of-exception-ignored-message-in-python-3
-    sys.stdout = os.fdopen(1)
-except Exception as exc:
-    logging.error(exc)
-    if args.debug:
-        raise
+    monobit.save(pack, outfile, overwrite=args.overwrite, format=args.to_, **saver_args.pick(args))

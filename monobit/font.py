@@ -11,7 +11,7 @@ import numbers
 import logging
 import unicodedata
 
-from .base import scriptable
+from .scripting import scriptable, get_scriptables
 from .glyph import Glyph
 from .encoding import charmaps
 from .label import Label, Tag, Char, Codepoint, label
@@ -149,6 +149,7 @@ PROPERTIES = {
     'converter': str,
     'source-name': str,
     'source-format': str,
+    'history': str,
 
     # kerning table (at the end because it's long)
     # pairwise kerning (defined as adjustment to tracking)
@@ -434,9 +435,14 @@ class Font:
         """Get global or property comments."""
         return self._comments.get(property, ())
 
-    @scriptable
-    def add_comments(self, new_comment:str='', property:str=''):
-        """Return a font with added comments."""
+    @scriptable(record=False)
+    def add_comments(self, comment:str='', property:str=''):
+        """
+        Return a font with added comments.
+
+        comment: comment to append
+        property: property to append commend to; default is global comment
+        """
         comments = {**self._comments}
         if property not in self._comments:
             comments[property] = ()
@@ -467,20 +473,18 @@ class Font:
     ##########################################################################
     # properties
 
-    @scriptable
-    def set_encoding(self, encoding:str=''):
-        """
-        Return a copy with codepoints relabelled through a different codepage.
-        """
-        properties = {**self._properties}
-        properties['encoding'] = encoding
-        return Font(self._glyphs, self._comments, properties)
+    def add_history(self, history):
+        """Return a copy with a line added to history."""
+        return self.set_properties(history='\n'.join(
+            _line for _line in self.history.split('\n') + [history] if _line
+        ))
 
     def set_properties(self, **kwargs):
         """Return a copy with amended properties."""
         return Font(
             self._glyphs, self._comments, {**self._properties, **kwargs}
         )
+    set = scriptable(set_properties, script_args=PROPERTIES, name='set')
 
     @property
     def nondefault_properties(self):
@@ -686,23 +690,27 @@ class Font:
     # font operations
 
     @scriptable
-    def subset(self, keys:set=(), tags:set=()):
-        """Return a subset of the font."""
-        keys = list(keys)
-        tags = list(tags)
+    def subset(self, keys=(), *, chars:set=(), codepoints:set=(), tags:set=()):
+        """
+        Return a subset of the font.
+
+        chars: chars to include
+        codepoints: codepoints to include
+        tags: tags to include
+        """
         glyphs = (
             [self.get_glyph(_key, missing=None) for _key in keys]
+            + [self.get_glyph(char=_char, missing=None) for _char in chars]
+            + [self.get_glyph(codepoint=_codepoint, missing=None) for _codepoint in codepoints]
             + [self.get_glyph(tag=_tag, missing=None) for _tag in tags]
         )
         glyphs = (_glyph for _glyph in glyphs if _glyph is not None)
         return Font(glyphs, self._comments, self._properties)
 
     @scriptable
-    def without(self, keys:set=(), tags:set=()):
+    def without(self, keys=(), *, chars:set=(), codepoints:set=(), tags:set=()):
         """Return a font excluding a subset."""
-        keys = set(keys)
-        tags = set(tags)
-        if not keys and not tags:
+        if not any(keys, chars, codepoints, tags):
             return self
         glyphs = [
             _glyph
@@ -710,6 +718,8 @@ class Font:
             if (
                 _glyph.char not in keys
                 and _glyph.codepoint not in keys
+                and _glyph.char not in chars
+                and _glyph.codepoint not in codepoints
                 and not (set(_glyph.tags) & tags)
             )
         ]
@@ -744,17 +754,20 @@ class Font:
     ##########################################################################
     # inject Glyph operations into Font
 
-    for _name, _func in Glyph.__dict__.items():
-        if hasattr(_func, 'scriptable'):
+    glyph_operations = get_scriptables(Glyph)
+    for _name, _func in glyph_operations.items():
 
-            def _modify(self, *args, operation=_func, **kwargs):
-                """Return a font with modified glyphs."""
-                glyphs = [
-                    operation(_glyph, *args, **kwargs)
-                    for _glyph in self._glyphs
-                ]
-                return Font(glyphs, self._comments, self._properties)
+        @scriptable
+        @wraps(_func)
+        def _modify(self, *args, operation=_func, **kwargs):
+            glyphs = tuple(
+                operation(_glyph, *args, **kwargs)
+                for _glyph in self._glyphs
+            )
+            return Font(glyphs, self._comments, self._properties)
 
-            _modify.scriptable = True
-            _modify.script_args = _func.script_args
-            locals()[_name] = _modify
+        locals()[_name] = _modify
+
+
+# scriptable font/glyph operations
+operations = get_scriptables(Font)

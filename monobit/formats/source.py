@@ -8,11 +8,11 @@ licence: https://opensource.org/licenses/MIT
 import string
 
 from ..base.binary import ceildiv
-from ..formats import loaders, savers
+from ..storage import loaders, savers
 from ..font import Font
 from ..glyph import Glyph
 from ..streams import FileFormatError
-from ..base import pair
+from ..scripting import pair
 from .raw import parse_aligned
 
 
@@ -37,11 +37,20 @@ _PY_PARAMS = dict(
 def load_c(
         infile, where=None, *,
         identifier:str,
-        cell:pair=(8, 8), n_chars:int=None, offset:int=0, padding:int=0,
+        cell:pair=(8, 8), numchars:int=None, offset:int=0, padding:int=0,
     ):
+    """
+    Extract font from bitmap encoded in C or C++ source code.
+
+    identifier: text at start of line where bitmap starts
+    cell: size X,Y of character cell
+    offset: number of bytes in file before bitmap starts
+    padding: number of bytes between encoded glyphs (not used for strike fonts)
+    numchars: number of glyphs to extract
+    """
     return _load_coded_binary(
         infile, where, identifier=identifier,
-        cell=cell, n_chars=n_chars, offset=offset, padding=padding,
+        cell=cell, numchars=numchars, offset=offset, padding=padding,
         **_C_PARAMS
     )
 
@@ -49,11 +58,20 @@ def load_c(
 def load_js(
         infile, where=None, *,
         identifier:str,
-        cell:pair=(8, 8), n_chars:int=None, offset:int=0, padding:int=0,
+        cell:pair=(8, 8), numchars:int=None, offset:int=0, padding:int=0,
     ):
+    """
+    Extract font from bitmap encoded in JavaScript source code.
+
+    identifier: text at start of line where bitmap starts
+    cell: size X,Y of character cell
+    offset: number of bytes in file before bitmap starts
+    padding: number of bytes between encoded glyphs (not used for strike fonts)
+    numchars: number of glyphs to extract
+    """
     return _load_coded_binary(
         infile, where, identifier=identifier,
-        cell=cell, n_chars=n_chars, offset=offset, padding=padding,
+        cell=cell, numchars=numchars, offset=offset, padding=padding,
         **_JS_PARAMS
     )
 
@@ -61,36 +79,57 @@ def load_js(
 def load_py(
         infile, where=None, *,
         identifier:str,
-        cell:pair=(8, 8), n_chars:int=None, offset:int=0, padding:int=0,
+        cell:pair=(8, 8), numchars:int=None, offset:int=0, padding:int=0,
     ):
+    """
+    Extract font from bitmap encoded in Python source code.
+
+    identifier: text at start of line where bitmap starts
+    cell: size X,Y of character cell
+    offset: number of bytes in file before bitmap starts
+    padding: number of bytes between encoded glyphs (not used for strike fonts)
+    numchars: number of glyphs to extract
+    """
     return _load_coded_binary(
         infile, where, identifier=identifier,
-        cell=cell, n_chars=n_chars, offset=offset, padding=padding,
+        cell=cell, numchars=numchars, offset=offset, padding=padding,
         **_PY_PARAMS
     )
 
 @loaders.register(name='source')
-def load(
+def load_source(
         infile, where=None, *,
         identifier:str, delimiters:str='{}', comment:str='//',
-        cell:pair=(8, 8), n_chars:int=None, offset:int=0, padding:int=0,
+        cell:pair=(8, 8), numchars:int=None, offset:int=0, padding:int=0,
     ):
+    """
+    Extract font from bitmap encoded in source code.
+
+    identifier: text at start of line where bitmap starts
+    delimiters: pair of delimiters (such as braces) that enclose the bitmap
+    comment: string that introduces inline comment
+    cell: size X,Y of character cell
+    offset: number of bytes in file before bitmap starts
+    padding: number of bytes between encoded glyphs (not used for strike fonts)
+    numchars: number of glyphs to extract
+    """
+
     return _load_coded_binary(
         infile, where, identifier=identifier,
-        cell=cell, n_chars=n_chars, offset=offset, padding=padding,
+        cell=cell, numchars=numchars, offset=offset, padding=padding,
         delimiters=delimiters, comment=comment
     )
 
 
 def _load_coded_binary(
         infile, where, identifier, delimiters, comment,
-        cell, n_chars, offset, padding,
+        cell, numchars, offset, padding,
     ):
     """Load font from binary encoded in source code."""
     width, height = cell
     payload = _get_payload(infile.text, identifier, delimiters, comment)
     bytelist = [_int_from_c(_s) for _s in payload.split(',') if _s]
-    glyphs = parse_aligned(bytelist, width, height, n_chars, offset, padding)
+    glyphs = parse_aligned(bytelist, width, height, numchars, offset, padding)
     return Font(glyphs)
 
 def _int_from_c(cvalue):
@@ -142,11 +181,19 @@ def _get_payload(instream, identifier, delimiters, comment):
 
 ###################################################################################################
 
-@savers.register('c', loader=load)
-def save(fonts, outstream, where=None):
-    """Save font to c source as byte-aligned binary (DOS font)."""
+@savers.register('c', linked=load_c)
+def save_c(fonts, outstream, where=None):
+    """
+    Save font to bitmap encoded in C source code.
+
+    identifier: text at start of line where bitmap starts
+    cell: size X,Y of character cell
+    offset: number of bytes in file before bitmap starts
+    padding: number of bytes between encoded glyphs (not used for strike fonts)
+    numchars: number of glyphs to extract
+    """
     if len(fonts) > 1:
-        raise FileFormatError('Can only save one font to BDF file.')
+        raise FileFormatError('Can only save one font to source file.')
     font = fonts[0]
     outstream = outstream.text
     # check if font is fixed-width and fixed-height

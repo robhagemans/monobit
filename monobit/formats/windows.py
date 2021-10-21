@@ -33,7 +33,7 @@ import itertools
 
 from ..base import reverse_dict
 from ..base.binary import friendlystruct, bytes_to_bits, ceildiv, align
-from ..formats import loaders, savers
+from ..storage import loaders, savers
 from ..streams import FileFormatError
 from ..font import Font, Coord
 from ..glyph import Glyph
@@ -557,14 +557,18 @@ _IMAGE_RESOURCE_DATA_ENTRY = friendlystruct(
     magic=(b'\0\x01', b'\0\x02', b'\0\x03'),
     name='Windows font resource',
 )
-def load_resource(instream, where=None):
-    """Load a Windows .FNT file."""
+def load_fnt(instream, where=None):
+    """Load font from a Windows .FNT resource."""
     font = parse_fnt(instream.read())
     return font
 
-@savers.register(loader=load_resource)
-def save_resource(fonts, outstream, where=None, version:int=2):
-    """Write font to a Windows .FNT file."""
+@savers.register(linked=load_fnt)
+def save_fnt(fonts, outstream, where=None, version:int=2):
+    """
+    Save font to a Windows .FNT resource.
+
+    version: Windows font format version
+    """
     if len(fonts) > 1:
         raise FileFormatError('Can only save one font to Windows font resource.')
     font = fonts[0]
@@ -577,8 +581,8 @@ def save_resource(fonts, outstream, where=None, version:int=2):
     magic=(b'MZ',),
     name='Windows font',
 )
-def load(instream, where=None):
-    """Load a Windows .FON file."""
+def load_fon(instream, where=None):
+    """Load fonts from a Windows .FON container."""
     data = instream.read()
     mz_header = _MZ_HEADER.from_bytes(data)
     if mz_header.magic not in (b'MZ', b'ZM'):
@@ -603,9 +607,13 @@ def load(instream, where=None):
     ]
     return fonts
 
-@savers.register(loader=load)
-def save(fonts, outstream, where=None, version:int=2):
-    """Write fonts to a Windows .FON file."""
+@savers.register(linked=load_fon)
+def save_fon(fonts, outstream, where=None, version:int=2):
+    """
+    Save fonts to a Windows .FON container.
+
+    version: Windows font format version
+    """
     outstream.write(_create_fon(fonts, version*0x100))
 
 

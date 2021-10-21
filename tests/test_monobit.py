@@ -191,7 +191,7 @@ class TestCodecs(BaseTester):
 
     def test_import_png(self):
         """Test importing image files."""
-        font, *_ = monobit.load(self.font_path / '4x6.png', cell=(4, 6), n_chars=919)
+        font, *_ = monobit.load(self.font_path / '4x6.png', cell=(4, 6), numchars=919)
         self.assertEqual(len(font.glyphs), 919)
 
     def test_export_png(self):

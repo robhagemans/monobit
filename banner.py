@@ -11,7 +11,7 @@ import logging
 from codecs import escape_decode
 
 import monobit
-from monobit.base import pair
+from monobit.scripting import pair, main
 from monobit import render_text
 
 
@@ -67,14 +67,7 @@ parser.add_argument(
 args = parser.parse_args()
 
 
-if args.debug:
-    loglevel = logging.DEBUG
-else:
-    loglevel = logging.WARNING
-
-logging.basicConfig(level=loglevel, format='%(levelname)s: %(message)s')
-
-try:
+with main(args, logging.WARNING):
     # codepage chart
     if args.chart:
         if args.text or args.encoding:
@@ -107,11 +100,3 @@ try:
         font, args.text, args.ink, args.paper,
         margin=args.margin, scale=args.scale, rotate=args.rotate, missing='default'
     ) + '\n')
-except BrokenPipeError:
-    # happens e.g. when piping to `head`
-    # https://stackoverflow.com/questions/16314321/suppressing-printout-of-exception-ignored-message-in-python-3
-    sys.stdout = os.fdopen(1)
-except Exception as exc:
-    logging.error(exc)
-    if args.debug:
-        raise

@@ -11,21 +11,19 @@ assert _sys.version_info >= (3, 6)
 
 from .base import VERSION as __version__
 from .pack import Pack
-from .font import Font
+from .font import Font, operations as _operations
 from .glyph import Glyph
-from .formats import loaders, savers, open_location, converters
+from . import formats
+from .storage import open_location, load, save, loaders, savers
 from .encoding import charmaps
 from .renderer import render, render_image, render_text
 
-# get font operations
-OPERATIONS = {
-    _name: _func
-    for _name, _func in Pack.__dict__.items()
-    if hasattr(_func, 'scriptable')
+
+# inject font operations into main module namespace
+globals().update(_operations)
+
+# make dash-versions of operations available through dict
+operations = {
+    _name.replace('_', '-'): _func
+    for _name, _func in _operations.items()
 }
-
-# inject operations into main module namespace
-globals().update(OPERATIONS)
-
-save = savers.save
-load = loaders.load

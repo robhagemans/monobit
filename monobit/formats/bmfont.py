@@ -16,12 +16,13 @@ try:
 except ImportError:
     Image = None
 
-from ..base import boolean, pair, reverse_dict
+from ..scripting import pair
+from ..base import reverse_dict
 from ..encoding import charmaps
 from .. import streams
 from ..streams import FileFormatError
 from ..base.binary import friendlystruct, int_to_bytes, bytes_to_int
-from ..formats import loaders, savers
+from ..storage import loaders, savers
 from ..font import Font, Coord
 from ..glyph import Glyph
 
@@ -38,19 +39,26 @@ from .windows import CHARSET_MAP, CHARSET_REVERSE_MAP
 
 if Image:
     @loaders.register('bmf', name='BMFont')
-    def load(infile, where, outline:boolean=False):
-        """Load fonts from bmfont in container."""
+    def load_bmfont(infile, where, outline:bool=False):
+        """
+        Load fonts from Angelcode BMFont format.
+
+        outline: extract outline layer instead of glyph layer
+        """
         return _read_bmfont(infile, where, outline)
 
-    @savers.register(loader=load)
+    @savers.register(linked=load_bmfont)
     def save(
             fonts, outfile, where,
             image_size:pair=(256, 256),
             image_format:str='png',
-            packed:boolean=True,
+            packed:bool=True,
             descriptor:str='text',
         ):
-        """Save fonts to bmfonts in container."""
+        """
+        Save fonts to Angelcode BMFont format.
+
+        """
         if len(fonts) > 1:
             raise FileFormatError("Can only save one font to BMFont file.")
         _create_bmfont(outfile, where, fonts[0], image_size, packed, image_format, descriptor)
