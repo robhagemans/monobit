@@ -28,13 +28,13 @@ def scriptable(*args, script_args=None, name=None, record=True):
         func, = args
         name = name or func.__name__
         script_args = script_args or {}
-        script_args = {**script_args, **func.__annotations__}
+        script_args = ScriptArgs(**script_args, **func.__annotations__)
 
         @wraps(func)
         def _scriptable_func(*args, **kwargs):
             result = func(*args, **kwargs)
             if record and result:
-                history = _repr_script_args(name, kwargs, script_args)
+                history = script_args.to_str(name, kwargs)
                 try:
                     result = tuple(_item.add_history(history) for _item in iter(result))
                 except TypeError:
@@ -57,39 +57,35 @@ def get_scriptables(cls):
 ###################################################################################################
 # argument parsing
 
-def get_script_args(func, args):
-    """Get arguments accepted by operation."""
-    if not func:
-        return {}
-    return {
-        _name: _arg
-        for _name, _arg in vars(args).items()
-        if _arg is not None and _name in func.script_args
-    }
+class ScriptArgs():
+    """Record of script arguments."""
 
-def add_script_args(parser, func):
-    """Add scriptable function arguments to argparser."""
-    if not func:
-        return
-    for arg, _type in func.script_args.items():
-        if _type == bool:
-            parser.add_argument('--' + arg.strip('_'), dest=arg, action='store_true')
-            parser.add_argument('--no-' + arg.strip('_'), dest=arg, action='store_false')
-        else:
-            parser.add_argument('--' + arg.strip('_'), dest=arg, type=_type)
+    def __init__(self, **script_args):
+        self._script_args = script_args or {}
 
+    def pick(self, args_namespace):
+        """Get arguments accepted by operation."""
+        return {
+            _name: _arg
+            for _name, _arg in vars(args_namespace).items()
+            if _arg is not None and _name in self._script_args
+        }
 
-def _repr_script_args(operation_name, arg_dict, script_args):
-    """Represent converter parameters."""
-    return (
-        operation_name.replace('_', '-') + ' '
-        + ' '.join(
-            f'--{_k}={_v}'
-            for _k, _v in arg_dict.items()
-            # exclude unset and non-operation parameters
-            if _v and _k in script_args
-        )
-    ).strip()
+    def to_str(self, operation_name, arg_dict):
+        """Represent converter parameters."""
+        return (
+            operation_name.replace('_', '-') + ' '
+            + ' '.join(
+                f'--{_k}={_v}'
+                for _k, _v in arg_dict.items()
+                # exclude unset and non-operation parameters
+                if _v and _k in self._script_args
+            )
+        ).strip()
+
+    def __iter__(self):
+        """Iterate over argument, type pairs."""
+        return iter(self._script_args.items())
 
 
 ###################################################################################################

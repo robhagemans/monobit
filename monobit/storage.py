@@ -14,7 +14,7 @@ from .containers import ContainerFormatError, open_container
 from .font import Font
 from .pack import Pack
 from .streams import MagicRegistry, FileFormatError, open_stream
-from .scripting import scriptable
+from .scripting import scriptable, ScriptArgs
 
 
 ##############################################################################
@@ -188,6 +188,16 @@ class ConverterRegistry(MagicRegistry):
         if not converter:
             converter = self[format or DEFAULT_FORMAT]
         return converter
+
+    def get_args(self, file=None, format='', do_open=False):
+        """
+        Get loader/saver arguments for this format.
+        infile must be a Stream or empty
+        """
+        converter = self.get_for(file, format, do_open)
+        if not converter:
+            return ScriptArgs()
+        return converter.script_args
 
     def register(self, *formats, magic=(), name='', linked=None):
         """

@@ -32,7 +32,7 @@ for name, func in monobit.operations.items():
     sub = subparsers.add_parser(name, help=func.__doc__)
     sub.set_defaults(func=func)
     sub.set_defaults(sub=sub)
-    for arg, typ in func.script_args.items():
+    for arg, typ in func.script_args:
         sub.add_argument(f'--{arg}', type=typ)
 
 

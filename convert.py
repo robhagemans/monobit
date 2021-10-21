@@ -9,8 +9,11 @@ import argparse
 import logging
 
 import monobit
-from monobit.scripting import main, add_script_args, get_script_args
+from monobit.scripting import main
 
+
+###################################################################################################
+# argument parsing
 
 # parse command line
 parser = argparse.ArgumentParser(add_help=False)
@@ -43,19 +46,23 @@ parser.add_argument(
 
 args, _ = parser.parse_known_args()
 
-if args.from_:
-    group = parser.add_argument_group(f'load-{args.from_} arguments')
-    loader = monobit.loaders.get_for(format=args.from_)
-    add_script_args(group, loader)
-else:
-    loader = None
 
-if args.to_:
-    group = parser.add_argument_group(f'save-{args.to_} arguments')
-    saver = monobit.savers.get_for(format=args.to_)
-    add_script_args(group, saver)
-else:
-    saver = None
+def add_script_args(parser, script_args, format, name):
+    """Add scriptable function arguments to argparser."""
+    group = parser.add_argument_group(f'{name}-{format} arguments')
+    for arg, _type in script_args:
+        if _type == bool:
+            group.add_argument('--' + arg.strip('_'), dest=arg, action='store_true')
+            group.add_argument('--no-' + arg.strip('_'), dest=arg, action='store_false')
+        else:
+            group.add_argument('--' + arg.strip('_'), dest=arg, type=_type)
+
+
+loader_args = monobit.loaders.get_args(format=args.from_)
+add_script_args(parser, loader_args, args.from_, 'load')
+
+saver_args = monobit.savers.get_args(format=args.to_)
+add_script_args(parser, saver_args, args.to_, 'save')
 
 # to ensure loader / saver arguments are included in help
 # we should only parse it after adding those
@@ -71,13 +78,16 @@ if args.help:
     sys.exit(0)
 
 
+###################################################################################################
+# main operation
+
 with main(args, logging.INFO):
 
     # if no infile or outfile provided, use stdio
     infile = args.infile or sys.stdin
     outfile = args.outfile or sys.stdout
 
-    pack = monobit.load(infile, format=args.from_, **get_script_args(loader, args))
+    pack = monobit.load(infile, format=args.from_, **loader_args.pick(args))
 
     # set encoding
     if args.encoding:
@@ -87,4 +97,4 @@ with main(args, logging.INFO):
         with open(args.comments) as f:
             pack = tuple(_font.add_comments(f.read()) for _font in pack)
 
-    monobit.save(pack, outfile, overwrite=args.overwrite, format=args.to_, **get_script_args(saver, args))
+    monobit.save(pack, outfile, overwrite=args.overwrite, format=args.to_, **saver_args.pick(args))
