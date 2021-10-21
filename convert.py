@@ -51,17 +51,17 @@ def add_script_args(parser, script_args, format, name):
     """Add scriptable function arguments to argparser."""
     group = parser.add_argument_group(f'{name}-{format} arguments')
     for arg, _type in script_args:
+        argname = f"{name}-{arg.strip('_')}"
         if _type == bool:
-            group.add_argument('--' + arg.strip('_'), dest=arg, action='store_true')
-            group.add_argument('--no-' + arg.strip('_'), dest=arg, action='store_false')
+            group.add_argument(f'--{argname}', dest=arg, action='store_true')
+            group.add_argument(f'--no-{argname}', dest=arg, action='store_false')
         else:
-            group.add_argument('--' + arg.strip('_'), dest=arg, type=_type)
+            group.add_argument(f'--{argname}', dest=arg, type=_type)
 
 
 loader_args = monobit.loaders.get_args(format=args.from_)
-add_script_args(parser, loader_args, args.from_, 'load')
-
 saver_args = monobit.savers.get_args(format=args.to_)
+add_script_args(parser, loader_args, args.from_, 'load')
 add_script_args(parser, saver_args, args.to_, 'save')
 
 # to ensure loader / saver arguments are included in help
