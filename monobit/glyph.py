@@ -317,7 +317,12 @@ class Glyph:
 
     @scriptable
     def roll(self, rows:int=0, columns:int=0):
-        """Cycle rows. Positive `rows`: roll down; Positive `cols`: roll to right."""
+        """
+        Cycle rows and/or columns in glyph.
+
+        rows: number of rows to roll (down if positive)
+        columns: number of columns to roll (to right if positive)
+        """
         rolled = self
         if self.height > 1 and rows:
             rolled = rolled.modify(rolled._rows[-rows:] + rolled._rows[:-rows])
@@ -332,7 +337,11 @@ class Glyph:
 
     @scriptable
     def rotate(self, turns:int=1):
-        """Rotate by 90-degree turns; positive is clockwise."""
+        """
+        Rotate by 90-degree turns.
+
+        turns: number of turns to rotate (clockwise if positive)
+        """
         turns %= 4
         if turns == 3:
             return self.transpose().flip()
@@ -349,7 +358,14 @@ class Glyph:
 
     @scriptable
     def crop(self, left:int=0, bottom:int=0, right:int=0, top:int=0):
-        """Crop glyph, inclusive bounds."""
+        """
+        Crop glyph.
+
+        left: number of columns to remove from left
+        bottom: number of rows to remove from bottom
+        right: number of columns to remove from right
+        top: number of rows to remove from top
+        """
         return self.modify(tuple(
             _row[left : (-right if right else None)]
             for _row in self._rows[top : (-bottom if bottom else None)]
@@ -357,7 +373,14 @@ class Glyph:
 
     @scriptable
     def expand(self, left:int=0, bottom:int=0, right:int=0, top:int=0):
-        """Add blank space."""
+        """
+        Add blank space.
+
+        left: number of columns to add on left
+        bottom: number of rows to add on bottom
+        right: number of columns to add on right
+        top: number of rows to add on top
+        """
         if min(left, bottom, right, top) < 0:
             raise ValueError('Can only expand glyph by a positive amount.')
         if self._rows:
@@ -373,7 +396,12 @@ class Glyph:
 
     @scriptable
     def stretch(self, factor_x:int=1, factor_y:int=1):
-        """Repeat rows and/or columns."""
+        """
+        Repeat rows and/or columns.
+
+        factor_x: number of times to repeat horizontally
+        factor_y: number of times to repeat vertically
+        """
         # vertical stretch
         glyph = tuple(_row for _row in self._rows for _ in range(factor_y))
         # horizontal stretch
@@ -385,7 +413,13 @@ class Glyph:
 
     @scriptable
     def shrink(self, factor_x:int=1, factor_y:int=1, force:bool=False):
-        """Remove rows and/or columns."""
+        """
+        Remove rows and/or columns.
+
+        factor_x: factor to shrink horizontally
+        factor_y: factor to shrink vertically
+        force: remove rows/columns even if not repeated
+        """
         # vertical shrink
         shrunk_glyph = self._rows[::factor_y]
         if not force:

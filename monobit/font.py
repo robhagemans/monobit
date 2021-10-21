@@ -436,8 +436,13 @@ class Font:
         return self._comments.get(property, ())
 
     @scriptable(record=False)
-    def add_comments(self, new_comment:str='', property:str=''):
-        """Return a font with added comments."""
+    def add_comments(self, comment:str='', property:str=''):
+        """
+        Return a font with added comments.
+
+        comment: comment to append
+        property: property to append commend to; default is global comment
+        """
         comments = {**self._comments}
         if property not in self._comments:
             comments[property] = ()
@@ -685,23 +690,27 @@ class Font:
     # font operations
 
     @scriptable
-    def subset(self, keys:set=(), tags:set=()):
-        """Return a subset of the font."""
-        keys = list(keys)
-        tags = list(tags)
+    def subset(self, keys=(), *, chars:set=(), codepoints:set=(), tags:set=()):
+        """
+        Return a subset of the font.
+
+        chars: chars to include
+        codepoints: codepoints to include
+        tags: tags to include
+        """
         glyphs = (
             [self.get_glyph(_key, missing=None) for _key in keys]
+            + [self.get_glyph(char=_char, missing=None) for _char in chars]
+            + [self.get_glyph(codepoint=_codepoint, missing=None) for _codepoint in codepoints]
             + [self.get_glyph(tag=_tag, missing=None) for _tag in tags]
         )
         glyphs = (_glyph for _glyph in glyphs if _glyph is not None)
         return Font(glyphs, self._comments, self._properties)
 
     @scriptable
-    def without(self, keys:set=(), tags:set=()):
+    def without(self, keys=(), *, chars:set=(), codepoints:set=(), tags:set=()):
         """Return a font excluding a subset."""
-        keys = set(keys)
-        tags = set(tags)
-        if not keys and not tags:
+        if not any(keys, chars, codepoints, tags):
             return self
         glyphs = [
             _glyph
@@ -709,6 +718,8 @@ class Font:
             if (
                 _glyph.char not in keys
                 and _glyph.codepoint not in keys
+                and _glyph.char not in chars
+                and _glyph.codepoint not in codepoints
                 and not (set(_glyph.tags) & tags)
             )
         ]
@@ -749,7 +760,6 @@ class Font:
         @scriptable
         @wraps(_func)
         def _modify(self, *args, operation=_func, **kwargs):
-            """Return a font with modified glyphs."""
             glyphs = tuple(
                 operation(_glyph, *args, **kwargs)
                 for _glyph in self._glyphs
