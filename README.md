@@ -8,12 +8,6 @@ The `monobit` tools let you modify bitmap fonts and convert between several form
 Roman Czyborra's `hexdraw`, Simon Tatham's `mkwinfont` and John Elliott's `psftools`. A specification
 of the font format follows below.
 
-Dependencies
-------------
-
-* Python
-* Some features require the `PIL` module i.e. `pip3 install Pillow`
-* Exporting to "pdf" requires the `reportlab` module i.e. `pip3 install reportlab`
 
 Supported formats
 -----------------
@@ -26,15 +20,15 @@ Supported formats
 | PC Screen Font        | 1        | `.psf`                      | MS-DOS      | ✔     |       |
 | PC Screen Font        | 2        | `.psf` `.psfu`              | Linux       | ✔     | ✔     |
 | Raw binary            |          | `.fnt` `.rom` `.f??` `.ch8` `.64c` |      | ✔     | ✔     |
-| Bitmap image          |          | `.png` `.gif` `.bmp`        |             | ✔     | ✔     |
-| PDF chart             |          | `.pdf`                      |             |       | ✔     |
+| Bitmap image          |          | `.png` `.gif` `.bmp`        |             | ✔ (P) | ✔ (P) |
+| PDF chart             |          | `.pdf`                      |             |       | ✔ (R) |
 | C or C++ source code  |          | `.c` `.cpp` `.cc` `.h`      |             | ✔     | ✔     |
 | JavaScript source code|          | `.js` `.json`               |             | ✔     |       |
 | Python source code    |          | `.py`                       |             | ✔     |       |
-| AngelCode BMFont      | Text     | `.fnt` + images             |             | ✔     | ✔     |
-| AngelCode BMFont      | Binary   | `.fnt` + images             |             | ✔     |       |
-| AngelCode BMFont      | XML      | `.fnt` `.xml` + images      |             | ✔     |       |
-| AngelCode BMFont      | JSON     | `.json` + images            |             | ✔     | ✔     |
+| AngelCode BMFont      | Text     | `.fnt` + images             |             | ✔ (P) | ✔ (P) |
+| AngelCode BMFont      | Binary   | `.fnt` + images             |             | ✔ (P) |       |
+| AngelCode BMFont      | XML      | `.fnt` `.xml` + images      |             | ✔ (P) |       |
+| AngelCode BMFont      | JSON     | `.json` + images            |             | ✔ (P) | ✔ (P) |
 | X11/Adobe BDF         |          | `.bdf`                      | Unix        | ✔     | ✔     |
 | Codepage Information  | FONT     | `.cpi`                      | MS-DOS      | ✔     |       |
 | Codepage Information  | FONT.NT  | `.cpi`                      | Windows NT  | ✔     |       |
@@ -55,15 +49,20 @@ Supported formats
 | Windows font          | 3.0 PE   | `.fon`                      | Windows 3.x | ✔     |       |  
 
 
+Dependencies
+------------
+
+(P) - requires **PIL**, install with `pip3 install Pillow`.  
+(R) - requires **reportlab**, install with `pip3 install reportlab`.  
+
+
 Roadmap
 -------
 
 **Warning**: `monobit` is currently in alpha stage and most likely broken at any point in time.
 
 Work is underway to add:
-- PCF
-- OS/2, GEM, Atari, GEOS font files
-- testing
+- PCF, OS/2, GEM, Atari, GEOS font files
 - a simple REPL interface for manipulating fonts
 
 
@@ -272,15 +271,78 @@ A *glyph* may span multiple lines.
 * A `@` represents an inked pixel in the glyph, a `.` represents an un-inked pixel.
 
 
-### Metrics
+Recognised properties
+---------------------
 
-The key properties defining font metrics are:
+The following are font properties `monobit` is aware of. Other properties may be defined as and when needed.
+
+##### Metrics
+
+_Metrics_ are properties that affect how the font is rendered.
+They are:
+- `direction`: Direction of writing. At present, only `left-to-right` is supported.
 - `offset` (_x_ _y_ pair): The shift from the _glyph origin_ to the _raster origin_.
 - `tracking`: Spacing following the glyph raster (i.e. to the right in a left-to-right font).
 - `leading`: Spacing between lines of text rasters (i.e. vertical spacing in a horizontal font).
+- `kerning`: Adjustment to tracking for specific glyph pairs. E.g. the pair `AV` may have negative
+kerning, so that they are displayed tighter than they otherwise would.
 
-The below figure illustrates these. Note that the font shown has negative offsets, so that a glyph's
-inked pixels may partially overlap the tracking space and even the raster of the preceding glyph.
+##### Characteristics
+
+_Characteristics_ are descriptive in nature. They can be specified or calculated. Usually specified are:
+- `x-height`: height of a lowercase `x` relative to the baseline.
+- `cap-height`: height of a capital letter relative to the baseline.
+- `ascent`: height of lowercase letters such as `f` that extend above the x-height.
+- `descent`: extent of lowercase letters such as `j` below the baseline.
+- `pixel-size`: pixel size (equals ascent plus descent).
+
+Characteristics inferred from the glyphs are:
+- `max-raster-size`: largest raster needed to define a glyph.
+- `bounding-box`: smallest box that encompasses all ink if all glyphs are overlayed at the same origin.
+- `average-advance`: average advance width across glyphs.
+- `cap-advance`: advance width of capital letter `X`.
+- `spacing`: type of font, can be one of:
+  - `proportional`: glyphs have different advance widths, e.g. `M` is wider than `i`.
+  - `monospace`: all glyphs have the same advance width.
+  - `character-cell`: all glyphs can be defined on a raster of fixed size and displayed without overlap.
+  - `multi-cell`: like `character-cell`, but some glyphs may take up multiple cells.
+
+Characteristics that give a font's identity are:
+- `family`: typeface or font family name
+- `point-size`: nominal size of the font in points
+- `name`: full name of the font
+- `revision`: version
+
+Font description characteristics that can be used to compare different fonts in a family:
+- `style`: e.g. `serif`, `sans`, ...
+- `weight`: e.g. `bold`, `normal`, `light`, ...
+- `slant`: e.g. `roman`, `italic`, `oblique`, ...
+- `setwidth`: e.g. `expanded`, `normal`, `condensed`, ...
+- `decoration`: e.g. `strikethrough`, `underline`, ...
+
+##### Metadata
+
+_Metadata_ are circumstantial properties. They can be related to authorship:
+- `foundry`: author or publisher of the font
+- `copyright`: copyright information
+- `notice`: licensing information
+
+They can be related to the target system:
+- `device`: target device, e.g. `EGA`, `VGA`, `printer`
+- `dpi`: target resolution in dots per inch
+
+Or they can be related to processing:
+- `converter`: software used to produce the present file, e.g. `monobit`.
+- `source-name`: file name from which the font was originally extracted.
+- `source-format`: file format from which the font was originally extracted.
+- `history`: summary of processing steps applied since extraction.
+
+
+
+
+##### Illustration of key properties
+
+The below figure illustrates the typographic properties. Note that the font shown has negative offsets, so that a glyph's inked pixels may partially overlap the tracking space and even the raster of the preceding glyph.
 
 
                     ┬       ┌─┬─┬─┬─┬─┬─┐  ─┬─┬─┬─┐  ─┬─┬─┬─┐  ─┬─┬─┬─┐  ─┬─┬─┬─┐  ─┬─┬─┬─┐
