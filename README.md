@@ -183,16 +183,6 @@ Dependencies
 (R) - requires **reportlab**, install with `pip3 install reportlab`.  
 
 
-Roadmap
--------
-
-**Warning**: `monobit` is currently in alpha stage and most likely broken at any point in time.
-
-Work is underway to add:
-- PCF, OS/2, GEM, Atari, GEOS font files
-- a simple REPL interface for manipulating fonts
-
-
 Licence
 -------
 
