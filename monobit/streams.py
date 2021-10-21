@@ -173,7 +173,7 @@ class Stream(StreamWrapper):
             except EnvironmentError:
                 pass
         try:
-            self._stream.close()
+            super().close()
         except EnvironmentError:
             pass
         if self._raw:

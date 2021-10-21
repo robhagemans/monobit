@@ -317,18 +317,20 @@ class TestStreams(BaseTester):
 
     def test_binary_stream(self):
         """Test importing psf files from binary stream."""
-        fontbuffer = open(self.font_path / '4x6.psf', 'rb').read()
+        with open(self.font_path / '4x6.psf', 'rb') as f:
+            fontbuffer = f.read()
         # we need peek()
-        stream = io.BufferedReader(io.BytesIO(fontbuffer))
-        font, *_ = monobit.load(stream)
+        with io.BufferedReader(io.BytesIO(fontbuffer)) as stream:
+            font, *_ = monobit.load(stream)
         self.assertEqual(len(font.glyphs), 919)
 
     def test_text_stream(self):
         """Test importing bdf files from text stream."""
         # we still need an underlying binary buffer, which StringIO doesn't have
-        fontbuffer = open(self.font_path / '4x6.bdf', 'rb').read()
-        stream = io.TextIOWrapper(io.BufferedReader(io.BytesIO(fontbuffer)))
-        font, *_ = monobit.load(stream)
+        with open(self.font_path / '4x6.bdf', 'rb') as f:
+            fontbuffer = f.read()
+        with io.TextIOWrapper(io.BufferedReader(io.BytesIO(fontbuffer))) as stream:
+            font, *_ = monobit.load(stream)
         self.assertEqual(len(font.glyphs), 919)
 
     def test_output_stream(self):
@@ -336,11 +338,11 @@ class TestStreams(BaseTester):
         # we still need an underlying binary buffer, which StringIO doesn't have
         fnt_file = self.font_path / '8x16-font.cpi'
         fonts = monobit.load(fnt_file)
-        stream = io.BytesIO()
-        monobit.save(fonts, stream)
-        output = stream.getvalue()
-        self.assertTrue(len(output) > 80000)
-        self.assertTrue(stream.getvalue().startswith(b'---'))
+        with io.BytesIO() as stream:
+            monobit.save(fonts, stream)
+            output = stream.getvalue()
+            self.assertTrue(len(output) > 80000)
+            self.assertTrue(stream.getvalue().startswith(b'---'))
 
 
 if __name__ == '__main__':
