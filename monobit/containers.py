@@ -142,34 +142,30 @@ class ZipContainer(Container):
 
     def __init__(self, file, mode='r', *, overwrite=False):
         """Create wrapper."""
-        # append .zip to zip filename, but leave out of root dir name
-        root = ''
         # mode really should just be 'r' or 'w'
         mode = mode[:1]
-        if isinstance(file, (str, Path)):
-            stream = open_stream(file, mode, overwrite=overwrite)
-        else:
-            stream = KeepOpen(file)
-        if mode == 'w':
-            # create archive root from filename
-            # if name ends up empty, replace; clip off any dir path and suffix
-            self._root = PurePath(stream.name).stem or DEFAULT_ROOT
-        else:
-            self._root = ''
         # reading zipfile needs a seekable stream, drain to buffer if needed
         # note you can only do this once on the input stream!
-        if (mode == 'r' and not stream.seekable()):
-            with stream:
-                new_stream = io.BytesIO(stream.read())
-            stream = new_stream
+        if (mode == 'r' and not isinstance(file, (str, Path)) and not file.seekable()):
+            # note file is externally provided so we shouldn't close it
+            # but the BytesIO is ours
+            stream = io.BytesIO(file.read())
+        else:
+            stream = open_stream(file, mode, overwrite=overwrite)
         # create the zipfile
         try:
             self._zip = zipfile.ZipFile(stream, mode, compression=zipfile.ZIP_DEFLATED)
         except zipfile.BadZipFile as exc:
             raise ContainerFormatError(exc) from exc
+        super().__init__(stream, mode, self._zip.filename)
+        # on output, put all files in a directory with the same name as the archive (without suffix)
+        if mode == 'w':
+            self._root = Path(self.name).stem or DEFAULT_ROOT
+        else:
+            self._root = ''
         # output files, to be written on close
         self._files = []
-        super().__init__(stream, mode, self._zip.filename)
+
 
     def close(self):
         """Close the zip file, ignoring errors."""
@@ -225,10 +221,10 @@ class TarContainer(Container):
         """Create wrapper."""
         # mode really should just be 'r' or 'w'
         mode = mode[:1]
-        # reading zipfile needs a seekable stream, drain to buffer if needed
+        # reading tarfile needs a seekable stream, drain to buffer if needed
         # note you can only do this once on the input stream!
         if (mode == 'r' and not isinstance(file, (str, Path)) and not file.seekable()):
-            #note file is externally provided so we shouldn't close it
+            # note file is externally provided so we shouldn't close it
             # but the BytesIO is ours
             stream = io.BytesIO(file.read())
         else:
@@ -239,6 +235,7 @@ class TarContainer(Container):
         except tarfile.ReadError as exc:
             raise ContainerFormatError(exc) from exc
         super().__init__(stream, mode, self._tarfile.name)
+        # on output, put all files in a directory with the same name as the archive (without suffix)
         if mode == 'w':
             self._root = Path(self.name).stem or DEFAULT_ROOT
         else:
