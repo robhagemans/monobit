@@ -7,7 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 
 DEFAULT_FORMAT = 'yaff'
-VERSION = '0.16'
+VERSION = '0.17'
 
 CONVERTER_NAME = f'monobit v{VERSION}'
 
