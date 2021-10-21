@@ -166,7 +166,7 @@ def load_amiga_fc(f, where):
         # amiga fs is case insensitive, so we need to loop over listdir and match
         for filename in where:
             if filename.lower() == name.lower():
-                pack.extend(load_amiga(where.open(filename, 'r'), where))
+                pack.append(load_amiga(where.open(filename, 'r'), where))
     return pack
 
 
@@ -246,9 +246,10 @@ def _read_font_hunk(f):
         None if not amiga_props.tf_CharSpace else amiga_props.tf_CharSpace + loc,
         None if not amiga_props.tf_CharKern else amiga_props.tf_CharKern + loc
     )
+    logging.info('Amiga properties:')
+    for name, value in vars(amiga_props).items():
+        logging.info('    %s: %s', name, value)
     props = _parse_amiga_props(amiga_props, offset_x)
-    if 'name' in props:
-        props['family'] = props['name'].split('/')[0].split(' ')[0]
     return glyphs, props
 
 def _parse_amiga_props(amiga_props, offset_x):
@@ -292,6 +293,8 @@ def _parse_amiga_props(amiga_props, offset_x):
     # use the most common value 1 as a default
     if amiga_props.tf_BoldSmear != 1:
         props['amiga.tf_BoldSmear'] = amiga_props.tf_BoldSmear
+    if 'name' in props:
+        props['family'] = props['name'].split('/')[0].split(' ')[0]
     return props
 
 def _read_strike(
@@ -350,7 +353,7 @@ def _read_strike(
     kerning = (_kern - offset_x for _kern in kerning)
     glyphs = [
         Glyph(
-            tuple((False,) * _kern + _row + (False,) * (_width-_kern-len(_row)) for _row in _char),
+            tuple((False,) * _kern + _row + (False,) * (_width-len(_row)) for _row in _char),
             codepoint=(_i + lochar,)
         )
         for _i, (_char, _width, _kern) in enumerate(zip(font, spacing, kerning))
