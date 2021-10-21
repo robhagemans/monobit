@@ -16,25 +16,35 @@ from ..scripting import pair
 
 
 @loaders.register('dos', 'bin', 'rom', 'raw', name='raw binary')
-def load(
+def load_binary(
         instream, where=None, *,
-        cell:pair=(8, 8), n_chars:int=None, offset:int=0, padding:int=0, strike:bool=False
+        cell:pair=(8, 8), numchars:int=None, offset:int=0, padding:int=0, strike:bool=False
     ):
-    """Load font from raw binary."""
+    """
+    Load character-cell font from byte-aligned binary or bitmap strike.
+
+    cell: size X,Y of character cell
+    offset: number of bytes in file before bitmap starts
+    padding: number of bytes between encoded glyphs (not used for strike fonts)
+    numchars: number of glyphs to extract
+    strike: bitmap is in strike format rather than byte-aligned
+    """
     width, height = cell
     # get through the offset
     # we don't assume instream is seekable - it may be sys.stdin
     instream.read(offset)
     if strike:
-        cells = load_strike(instream, width, height, n_chars)
+        cells = load_strike(instream, width, height, numchars)
     else:
-        cells = load_aligned(instream, width, height, n_chars, padding)
+        cells = load_aligned(instream, width, height, numchars, padding)
     return Font(cells)
 
 
-@savers.register(linked=load)
-def save(fonts, outstream, where=None):
-    """Save font to raw byte-aligned binary (DOS font)."""
+@savers.register(linked=load_binary)
+def save_binary(fonts, outstream, where=None):
+    """
+    Save characer-cell font to byte-aligned binary.
+    """
     if len(fonts) > 1:
         raise FileFormatError('Can only save one font to raw binary file.')
     save_aligned(outstream, fonts[0])
@@ -51,11 +61,11 @@ def save_aligned(outstream, font, encoding=None):
         outstream.write(glyph.as_bytes())
 
 
-def load_strike(instream, width, height, n_chars):
+def load_strike(instream, width, height, numchars):
     """Load fixed-width font from bitmap strike."""
-    # n_chars must be given for strikes
+    # numchars must be given for strikes
     # assume byte-aligned at end of strike only
-    strike_bytes = ceildiv(n_chars * width, 8)
+    strike_bytes = ceildiv(numchars * width, 8)
     rombytes = instream.read(strike_bytes * height)
     # flatten strikes
     rows = [
@@ -67,29 +77,29 @@ def load_strike(instream, width, height, n_chars):
     # clip out glyphs
     cells = [
         [_strike[_n*width:(_n+1)*width] for _strike in drawn]
-        for _n in range(n_chars)
+        for _n in range(numchars)
     ]
     return cells
 
-def load_aligned(instream, width, height, n_chars=None, padding=0):
+def load_aligned(instream, width, height, numchars=None, padding=0):
     """Load fixed-width font from byte-aligned bitmap."""
-    if n_chars is None:
+    if numchars is None:
         rombytes = instream.read()
     else:
-        rombytes = instream.read(n_chars * ceildiv(width, 8) * (height+padding))
-    return parse_aligned(rombytes, width, height, n_chars, padding=padding)
+        rombytes = instream.read(numchars * (ceildiv(width, 8)*height + padding))
+    return parse_aligned(rombytes, width, height, numchars, padding=padding)
 
-def parse_aligned(rombytes, width, height, n_chars=None, offset=0, padding=0):
+def parse_aligned(rombytes, width, height, numchars=None, offset=0, padding=0):
     """Load fixed-width font from byte-aligned bitmap."""
-    if n_chars is None:
+    if numchars is None:
         # get number of chars in extract
-        n_chars = ceildiv(len(rombytes), ceildiv(width, 8) * (height+padding))
+        numchars = ceildiv(len(rombytes), (ceildiv(width, 8)*height + padding))
     rowbytes = ceildiv(width, 8)
-    bytesize = rowbytes * (height + padding)
+    bytesize = rowbytes*height + padding
     # get chunks
     glyphbytes = [
-        rombytes[offset+_ord*bytesize : offset+(_ord+1)*bytesize-rowbytes*padding]
-        for _ord in range(n_chars)
+        rombytes[offset+_ord*bytesize : offset+(_ord+1)*bytesize-padding]
+        for _ord in range(numchars)
     ]
     # concatenate rows
     cells = [

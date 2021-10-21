@@ -28,7 +28,7 @@ def scriptable(*args, script_args=None, name=None, record=True):
         func, = args
         name = name or func.__name__
         script_args = script_args or {}
-        script_args = ScriptArgs(name, **script_args, **func.__annotations__)
+        script_args = ScriptArgs(func, name=name, extra_args=script_args)
 
         @wraps(func)
         def _scriptable_func(*args, **kwargs):
@@ -60,13 +60,26 @@ def get_scriptables(cls):
 class ScriptArgs():
     """Record of script arguments."""
 
-    def __init__(self, *args, **script_args):
-        """Script name and arguments."""
-        if args:
-            self.name = args[0]
-        else:
-            self.name = ''
-        self._script_args = script_args or {}
+    def __init__(self, func=None, *, name='', extra_args=None):
+        """Extract script name, arguments and docs."""
+        self.name = name
+        self._script_args = {}
+        self.doc = ''
+        docs = ()
+        if func:
+            if func.__doc__:
+                docs = [_l.strip() for _l in func.__doc__.split('\n') if _l.strip()]
+            self.name = name or func.__name__
+            self._script_args.update(func.__annotations__)
+        self._script_args.update(extra_args or {})
+        self._script_docs = {_k: '' for _k in self._script_args}
+        for line in docs:
+            if not line or ':' not in line:
+                continue
+            arg, doc = line.split(':', 1)
+            if arg.strip() in self._script_args:
+                self._script_docs[arg] = doc
+        self.doc = docs[0] if docs else ''
 
     def pick(self, arg_namespace):
         """Get arguments accepted by operation."""
@@ -90,7 +103,12 @@ class ScriptArgs():
 
     def __iter__(self):
         """Iterate over argument, type pairs."""
-        return iter(self._script_args.items())
+        return (
+            (_arg,
+            self._script_args[_arg],
+            self._script_docs[_arg])
+            for _arg in self._script_args
+        )
 
 
 ###################################################################################################

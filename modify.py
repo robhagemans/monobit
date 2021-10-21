@@ -29,9 +29,13 @@ parser.add_argument(
 
 subparsers = parser.add_subparsers(dest='operation')
 for name, func in monobit.operations.items():
-    sub = subparsers.add_parser(name, help=func.__doc__)
-    for arg, typ in func.script_args:
-        sub.add_argument(f'--{arg}', type=typ)
+    sub = subparsers.add_parser(name, help=func.script_args.doc)
+    for arg, _type, doc in func.script_args:
+        if _type == bool:
+            sub.add_argument(f'--{arg}', dest=arg, help=doc, action='store_true')
+            sub.add_argument(f'--no-{arg}', dest=arg, help=f'unset --{arg}', action='store_false')
+        else:
+            sub.add_argument(f'--{arg}', type=_type, help=doc)
 
 # force error on unknown arguments
 args = parser.parse_args()

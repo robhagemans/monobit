@@ -23,7 +23,7 @@ Supported formats
 | monobit yaff          |          | `.yaff`                     |             | ✔     | ✔     |
 | hexdraw               |          | `.draw`                     |             | ✔     | ✔     |
 | GNU Unifont           |          | `.hex`                      |             | ✔     | ✔     |
-| PC Screen Font        | 1        | `.psf`                      | Linux       | ✔     |       |
+| PC Screen Font        | 1        | `.psf`                      | MS-DOS      | ✔     |       |
 | PC Screen Font        | 2        | `.psf` `.psfu`              | Linux       | ✔     | ✔     |
 | Raw binary            |          | `.fnt` `.rom` `.f??` `.ch8` `.64c` |      | ✔     | ✔     |
 | Bitmap image          |          | `.png` `.gif` `.bmp`        |             | ✔     | ✔     |

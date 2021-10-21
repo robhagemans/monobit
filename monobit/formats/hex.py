@@ -20,10 +20,12 @@ from .yaff import clean_comment, split_global_comment, write_comments
 
 @loaders.register('hext', name='PC-BASIC Extended HEX')
 def load_hext(instream, where=None):
+    """Load 8xN multi-cell font from PC-BASIC extended .HEX file."""
     return load(instream.text)
 
 @loaders.register('hex', name='Unifont HEX')
 def load_hex(instream, where=None):
+    """Load 8x16 multi-cell font from Unifont .HEX file."""
     return load(instream.text)
 
 def load(instream):
@@ -79,11 +81,15 @@ def load(instream):
 
 
 @savers.register(linked=load_hex)
-def save(fonts, outstream, where=None):
-    """Write font to a .hex file."""
+def save_hex(fonts, outstream, where=None):
+    """Save 8x16 multi-cell font to Unifont .HEX file."""
     if len(fonts) > 1:
         raise FileFormatError('Can only save one font to hex file.')
     font = fonts[0]
+    if font.spacing not in ('character-cell', 'multi-cell'):
+        raise FileFormatError(
+            'This format only supports character-cell or multi-cell fonts.'
+        )
     outstream = outstream.text
     write_comments(outstream, font.get_comments(), comm_char='#', is_global=True)
     for glyph in font.glyphs:
@@ -106,10 +112,14 @@ def save(fonts, outstream, where=None):
 
 @savers.register(linked=load_hext)
 def save_hext(fonts, outstream, where=None):
-    """Write font to an extended .hex file."""
+    """Save 8xN multi-cell font to PC-BASIC extended .HEX file."""
     if len(fonts) > 1:
         raise FileFormatError('Can only save one font to hex file.')
     font = fonts[0]
+    if font.spacing not in ('character-cell', 'multi-cell'):
+        raise FileFormatError(
+            'This format only supports character-cell or multi-cell fonts.'
+        )
     outstream = outstream.text
     write_comments(outstream, font.get_comments(), comm_char='#', is_global=True)
     for glyph in font.glyphs:

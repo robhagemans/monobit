@@ -105,15 +105,15 @@ _FORMAT_NAME = {
     magic=(b'\xff'+_ID_MS, b'\xff'+_ID_NT, b'\x7f'+_ID_DR),
     name='CPI'
 )
-def load(instream, where=None):
-    """Load fonts from CPI file."""
+def load_cpi(instream, where=None):
+    """Load character-cell fonts from DOS Codepage Information (.CPI) file."""
     data = instream.read()
     fonts = _parse_cpi(data)
     return fonts
 
 @loaders.register('cp', name='Codepage')
 def load_cp(instream, where=None):
-    """Load fonts from CP file."""
+    """Load character-cell fonts from Linux Keyboard Codepage (.CP) file."""
     data = instream.read()
     fonts, _ = _parse_cp(data, 0, standalone=True)
     return fonts

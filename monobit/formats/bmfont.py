@@ -39,11 +39,15 @@ from .windows import CHARSET_MAP, CHARSET_REVERSE_MAP
 
 if Image:
     @loaders.register('bmf', name='BMFont')
-    def load(infile, where, outline:bool=False):
-        """Load fonts from bmfont in container."""
+    def load_bmfont(infile, where, outline:bool=False):
+        """
+        Load fonts from Angelcode BMFont format.
+
+        outline: extract outline layer instead of glyph layer
+        """
         return _read_bmfont(infile, where, outline)
 
-    @savers.register(linked=load)
+    @savers.register(linked=load_bmfont)
     def save(
             fonts, outfile, where,
             image_size:pair=(256, 256),
@@ -51,7 +55,10 @@ if Image:
             packed:bool=True,
             descriptor:str='text',
         ):
-        """Save fonts to bmfonts in container."""
+        """
+        Save fonts to Angelcode BMFont format.
+
+        """
         if len(fonts) > 1:
             raise FileFormatError("Can only save one font to BMFont file.")
         _create_bmfont(outfile, where, fonts[0], image_size, packed, image_format, descriptor)

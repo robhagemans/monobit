@@ -61,17 +61,26 @@ if Image:
         ),
         name='Bitmap Image',
     )
-    def load(
+    def load_image(
             infile, where=None,
             cell:pair=(8, 8),
             margin:pair=(0, 0),
             padding:pair=(0, 0),
             scale:pair=(1, 1),
             # 0 or negative indicates 'use all chars'
-            n_chars:int=0,
+            numchars:int=0,
             background:str='most-common'
         ):
-        """Import font from image."""
+        """
+        Extract character-cell font from image.
+
+        cell: size X,Y of character cell
+        margin: number of pixels in X,Y direction around glyph chart
+        padding: number of pixels in X,Y direction between glyph
+        scale: number of pixels in X,Y direction per glyph bit
+        numchars: number of glyphs to extract
+        background: determine background from "most-common", "least-common", "brightest", "darkest", "top-left" colour
+        """
         width, height = cell
         scale_x, scale_y = scale
         padding_x, padding_y = padding
@@ -103,8 +112,8 @@ if Image:
         # get pixels
         crops = [list(_crop.getdata()) for _crop in crops]
         # restrict to requested number of characters
-        if n_chars and n_chars > 0:
-            crops = crops[:n_chars]
+        if numchars and numchars > 0:
+            crops = crops[:numchars]
         # check that cells are monochrome
         colourset = set.union(*(set(_data) for _data in crops))
         if len(colourset) > 2:
@@ -147,8 +156,8 @@ if Image:
         return Font(glyphs)
 
 
-    @savers.register(linked=load)
-    def save(
+    @savers.register(linked=load_image)
+    def save_image(
             fonts, outfile, where=None,
             format:str='',
             columns:int=32,
@@ -157,7 +166,18 @@ if Image:
             scale:pair=(1, 1),
             border:rgb=(32, 32, 32), paper:rgb=(0, 0, 0), ink:rgb=(255, 255, 255),
         ):
-        """Export font to image."""
+        """
+        Export character-cell font to image.
+
+        format: image file format
+        columns: number of columns in glyph chart
+        margin: number of pixels in X,Y direction around glyph chart
+        padding: number of pixels in X,Y direction between glyph
+        scale: number of pixels in X,Y direction per glyph bit
+        border: border colour R,G,B 0--255
+        paper: background colour R,G,B 0--255
+        ink: foreground colour R,G,B 0--255
+        """
         if len(fonts) > 1:
             raise FileFormatError('Can only save one font to image file.')
         img = chart_image(fonts[0], columns, margin, padding, scale, border, paper, ink)

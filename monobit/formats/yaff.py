@@ -84,25 +84,35 @@ _DRAW_PARAMETERS = dict(
 
 
 @loaders.register('yaff', 'yaffs', magic=(b'---',), name='monobit-yaff')
-def load(instream, where=None):
-    """Read a plaintext font file."""
+def load_yaff(instream, where=None):
+    """Load font from a monobit .yaff file."""
     return _load_fonts(instream.text, **_YAFF_PARAMETERS)
 
-@savers.register(linked=load)
+@savers.register(linked=load_yaff)
 def save(fonts, outstream, where=None):
-    """Write fonts to a yaff file."""
+    """Write fonts to a monobit .yaff file."""
     _save_yaff(fonts, outstream.text, **_YAFF_PARAMETERS)
 
 
 @loaders.register('draw', 'text', 'txt', name='hexdraw')
 def load_draw(instream, where=None, ink='#', paper='-'):
-    """Read a hexdraw font file."""
+    """
+    Load font from a hexdraw file.
+
+    ink: character used for inked/foreground pixels
+    paper: character used for uninked/background pixels
+    """
     params = dict(ink=ink, paper=paper, **_DRAW_PARAMETERS)
     return _load_fonts(instream.text, **params)
 
 @savers.register(linked=load_draw)
 def save_draw(fonts, outstream, where=None, ink='#', paper='-'):
-    """Write font to a hexdraw file."""
+    """
+    Save font to a hexdraw file.
+
+    ink: character to use for inked/foreground pixels
+    paper: character to use for uninked/background pixels
+    """
     if len(fonts) > 1:
         raise FileFormatError("Can only save one font to hexdraw file.")
     params = dict(ink=ink, paper=paper, **_DRAW_PARAMETERS)

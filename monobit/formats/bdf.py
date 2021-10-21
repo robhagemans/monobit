@@ -410,8 +410,10 @@ _XLFD_UNPARSED = {
 # top-level calls
 
 @loaders.register('bdf', magic=(b'STARTFONT ',), name='BDF')
-def load(instream, where=None):
-    """Load font from a .bdf file."""
+def load_bdf(instream, where=None):
+    """
+    Load font from Adobe Glyph Bitmap Distribution Format (BDF) file.
+    """
     instream = instream.text
     nchars, comments, bdf_props, x_props = _read_bdf_global(instream)
     glyphs, glyph_props = _read_bdf_characters(instream)
@@ -422,9 +424,11 @@ def load(instream, where=None):
     return Font(glyphs, comments=comments, properties=properties)
 
 
-@savers.register(linked=load)
-def save(fonts, outstream, where=None):
-    """Write fonts to a .bdf file."""
+@savers.register(linked=load_bdf)
+def save_bdf(fonts, outstream, where=None):
+    """
+    Save font to Adobe Glyph Bitmap Distribution Format (BDF) file.
+    """
     if len(fonts) > 1:
         raise FileFormatError('Can only save one font to BDF file.')
     _save_bdf(fonts[0], outstream.text)

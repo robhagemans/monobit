@@ -23,13 +23,17 @@ from ..label import Codepoint
 if reportlab:
 
     @savers.register('pdf')
-    def save(
+    def save_pdf(
             fonts, outfile, where=None,
-            format:str='png',
             columns:int=16,
             rows:int=16,
         ):
-        """Export font to pdf chart."""
+        """
+        Export font to chart in Portable Document Format (PDF).
+
+        columns: number of columns in chart
+        rows: number of rows in chart
+        """
         if len(fonts) > 1:
             raise FileFormatError('Can only export one font to PDF file.')
         font = fonts[0]
