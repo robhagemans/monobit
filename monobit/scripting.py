@@ -81,7 +81,7 @@ class ScriptArgs():
         return (
             self.name.replace('_', '-') + ' '
             + ' '.join(
-                f'--{_k}={_v}'
+                f'{_k}={_v}'
                 for _k, _v in arg_dict.items()
                 # exclude unset and non-operation parameters
                 if _v and _k in self._script_args
