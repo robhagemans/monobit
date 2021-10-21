@@ -147,28 +147,29 @@ class ZipContainer(Container):
         # mode really should just be 'r' or 'w'
         mode = mode[:1]
         if isinstance(file, (str, Path)):
-            file = open_stream(file, mode, overwrite=overwrite)
+            stream = open_stream(file, mode, overwrite=overwrite)
         else:
-            root = get_name(file)
-            # if name ends up empty, replace; clip off any dir path and suffix
-            root = PurePath(file.name).stem or DEFAULT_ROOT
-        # reading zipfile needs a seekable stream, drain to buffer if needed
-        # note you can only do this once on the input stream!
-        if (mode == 'r' and not isinstance(file, (str, Path)) and not file.seekable()):
-            file = io.BytesIO(file.read())
+            stream = KeepOpen(file)
         if mode == 'w':
-            # if creating a new container, put everything in a directory inside it
-            self._root = root
+            # create archive root from filename
+            # if name ends up empty, replace; clip off any dir path and suffix
+            self._root = PurePath(stream.name).stem or DEFAULT_ROOT
         else:
             self._root = ''
+        # reading zipfile needs a seekable stream, drain to buffer if needed
+        # note you can only do this once on the input stream!
+        if (mode == 'r' and not stream.seekable()):
+            with stream:
+                new_stream = io.BytesIO(stream.read())
+            stream = new_stream
         # create the zipfile
         try:
-            self._zip = zipfile.ZipFile(file, mode, compression=zipfile.ZIP_DEFLATED)
+            self._zip = zipfile.ZipFile(stream, mode, compression=zipfile.ZIP_DEFLATED)
         except zipfile.BadZipFile as exc:
             raise ContainerFormatError(exc) from exc
         # output files, to be written on close
         self._files = []
-        super().__init__(None, mode, self._zip.filename)
+        super().__init__(stream, mode, self._zip.filename)
 
     def close(self):
         """Close the zip file, ignoring errors."""
@@ -183,6 +184,7 @@ class ZipContainer(Container):
         except EnvironmentError:
             # e.g. BrokenPipeError
             pass
+        super().close()
         self.closed = True
 
     def __iter__(self):
@@ -226,15 +228,17 @@ class TarContainer(Container):
         # reading zipfile needs a seekable stream, drain to buffer if needed
         # note you can only do this once on the input stream!
         if (mode == 'r' and not isinstance(file, (str, Path)) and not file.seekable()):
-            file = io.BytesIO(file.read())
+            #note file is externally provided so we shouldn't close it
+            # but the BytesIO is ours
+            stream = io.BytesIO(file.read())
         else:
-            file = open_stream(file, mode, overwrite=overwrite)
+            stream = open_stream(file, mode, overwrite=overwrite)
         # create the tarfile
         try:
-            self._tarfile = tarfile.open(fileobj=file, mode=mode)
+            self._tarfile = tarfile.open(fileobj=stream, mode=mode)
         except tarfile.ReadError as exc:
             raise ContainerFormatError(exc) from exc
-        super().__init__(None, mode, self._tarfile.name)
+        super().__init__(stream, mode, self._tarfile.name)
         if mode == 'w':
             self._root = Path(self.name).stem or DEFAULT_ROOT
         else:
@@ -259,6 +263,7 @@ class TarContainer(Container):
         except EnvironmentError:
             # e.g. BrokenPipeError
             pass
+        super().close()
         self.closed = True
 
     def __iter__(self):
