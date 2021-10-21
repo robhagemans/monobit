@@ -28,13 +28,13 @@ def scriptable(*args, script_args=None, name=None, record=True):
         func, = args
         name = name or func.__name__
         script_args = script_args or {}
-        script_args = ScriptArgs(**script_args, **func.__annotations__)
+        script_args = ScriptArgs(name, **script_args, **func.__annotations__)
 
         @wraps(func)
         def _scriptable_func(*args, **kwargs):
             result = func(*args, **kwargs)
             if record and result:
-                history = script_args.to_str(name, kwargs)
+                history = script_args.to_str(kwargs)
                 try:
                     result = tuple(_item.add_history(history) for _item in iter(result))
                 except TypeError:
@@ -60,21 +60,26 @@ def get_scriptables(cls):
 class ScriptArgs():
     """Record of script arguments."""
 
-    def __init__(self, **script_args):
+    def __init__(self, *args, **script_args):
+        """Script name and arguments."""
+        if args:
+            self.name = args[0]
+        else:
+            self.name = ''
         self._script_args = script_args or {}
 
-    def pick(self, args_namespace):
+    def pick(self, arg_namespace):
         """Get arguments accepted by operation."""
         return {
             _name: _arg
-            for _name, _arg in vars(args_namespace).items()
+            for _name, _arg in vars(arg_namespace).items()
             if _arg is not None and _name in self._script_args
         }
 
-    def to_str(self, operation_name, arg_dict):
+    def to_str(self, arg_dict):
         """Represent converter parameters."""
         return (
-            operation_name.replace('_', '-') + ' '
+            self.name.replace('_', '-') + ' '
             + ' '.join(
                 f'--{_k}={_v}'
                 for _k, _v in arg_dict.items()
