@@ -8,6 +8,133 @@ The `monobit` tools let you modify bitmap fonts and convert between several form
 Roman Czyborra's `hexdraw`, Simon Tatham's `mkwinfont` and John Elliott's `psftools`. A specification
 of the font format follows below.
 
+A a working Python 3 installation is required and some formats or features require additional packages to be installed; see _Dependencies_ below.
+
+`monobit` can be used as a Python package or as a command-line tool.
+
+
+Usage examples
+--------------
+
+##### Convert utility
+
+Here are some examples of how to use the conversion utility.
+
+`python3 convert.py -h`
+
+Display usage summary and command-line options
+
+`python3 convert.py fixedsys.fon`
+
+Recognise the source file format from "magic bytes" or suffix (here, a Windows font) and write fonts
+to standard output in `yaff` format.
+
+`python3 convert.py roman.bdf --to=hex`
+
+Read font in BDF format and  write to standard output as Unifont HEX.
+
+`python3 convert.py fixed.psf fixed.png`
+
+Read font in PSF format and write to disk as image in PNG format.
+
+`python3 convert.py --from=c --to=bdf`
+
+Read font from standard input as C-source and write to standard output as BDF.
+
+The converter transparently reads and writes `gz`, `bz2`, or `xz`-compressed font files and can read
+and write `zip` and `tar` archives. Some font formats contain multiple fonts whereas others can contain only one; the converter will write multiple files to a directory or archive if needed.
+
+##### Modify utility
+
+The modify utility reads a font file, performs an operation on it and writes it out.
+Check `python3 modify.py -h` for usage.
+
+##### Banner utility
+
+The banner utility renders text to standard output in a given font. This is similar to the ancient
+`banner` commands included in GNU and BSD Unixes.
+
+For example:
+
+    me@bandit:~$ python3 banner.py monobit. --font=VGASYS.FON --scale=2x1
+    --------------------------------------------------------------------------@@@@------------@@@@------------------
+    --------------------------------------------------------------------------@@@@------------@@@@----@@@@----------
+    --------------------------------------------------------------------------@@@@--------------------@@@@----------
+    --@@@@@@@@@@@@@@@@@@--------@@@@@@@@------@@@@@@@@@@--------@@@@@@@@------@@@@@@@@@@------@@@@--@@@@@@@@--------
+    --@@@@----@@@@----@@@@----@@@@----@@@@----@@@@----@@@@----@@@@----@@@@----@@@@----@@@@----@@@@----@@@@----------
+    --@@@@----@@@@----@@@@----@@@@----@@@@----@@@@----@@@@----@@@@----@@@@----@@@@----@@@@----@@@@----@@@@----------
+    --@@@@----@@@@----@@@@----@@@@----@@@@----@@@@----@@@@----@@@@----@@@@----@@@@----@@@@----@@@@----@@@@----------
+    --@@@@----@@@@----@@@@----@@@@----@@@@----@@@@----@@@@----@@@@----@@@@----@@@@----@@@@----@@@@----@@@@----------
+    --@@@@----@@@@----@@@@----@@@@----@@@@----@@@@----@@@@----@@@@----@@@@----@@@@----@@@@----@@@@----@@@@----@@@@--
+    --@@@@----@@@@----@@@@------@@@@@@@@------@@@@----@@@@------@@@@@@@@------@@@@@@@@@@------@@@@------@@@@--@@@@--
+    ----------------------------------------------------------------------------------------------------------------
+    ----------------------------------------------------------------------------------------------------------------
+    ----------------------------------------------------------------------------------------------------------------
+    ----------------------------------------------------------------------------------------------------------------
+    ----------------------------------------------------------------------------------------------------------------
+    ----------------------------------------------------------------------------------------------------------------
+
+or:
+
+    me@bandit:~$ python3 banner.py monobit. --font=VGASYS.FON --rotate=1 --ink='#' --paper=' '
+
+          #######   
+          #######   
+                #   
+                #   
+          #######   
+          #######   
+                #   
+                #   
+          #######   
+          ######    
+
+
+           #####    
+          #######   
+          #     #   
+          #     #   
+          #######   
+           #####    
+
+
+          #######   
+          #######   
+                #   
+                #   
+          #######   
+          ######    
+
+
+           #####    
+          #######   
+          #     #   
+          #     #   
+          #######   
+           #####    
+
+
+          ##########
+          ##########
+          #     #   
+          #     #   
+          #######   
+           #####    
+
+
+          ####### ##
+          ####### ##
+
+                #   
+           ########
+          #########
+          #     #   
+
+          ##        
+          ##        
+
+
+
 
 Supported formats
 -----------------
