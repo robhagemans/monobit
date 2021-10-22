@@ -9,7 +9,7 @@ licence: https://opensource.org/licenses/MIT
 import sys as _sys
 assert _sys.version_info >= (3, 6)
 
-from .base import VERSION as __version__
+from .constants import VERSION as __version__
 from .pack import Pack
 from .font import Font, operations as _operations
 from .glyph import Glyph

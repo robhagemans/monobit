@@ -13,7 +13,8 @@ import os
 import string
 import logging
 
-from ..base.binary import ceildiv, friendlystruct
+from ..binary import ceildiv
+from ..struct import friendlystruct
 from ..storage import loaders, savers
 from ..font import Font
 from ..glyph import Glyph

@@ -31,8 +31,8 @@ import string
 import logging
 import itertools
 
-from ..base import reverse_dict
-from ..base.binary import friendlystruct, bytes_to_bits, ceildiv, align
+from ..binary import bytes_to_bits, ceildiv, align
+from ..struct import friendlystruct, reverse_dict
 from ..storage import loaders, savers
 from ..streams import FileFormatError
 from ..font import Font, Coord

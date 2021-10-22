@@ -5,9 +5,8 @@ monobit.renderer - render text to bitmaps using font
 licence: https://opensource.org/licenses/MIT
 """
 
-from .base.binary import ceildiv
-
-from .import matrix
+from .binary import ceildiv
+from . import matrix
 
 # matrix colours
 # 0, 1 are background, foreground

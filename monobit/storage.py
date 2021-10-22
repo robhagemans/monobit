@@ -9,7 +9,7 @@ import logging
 from pathlib import Path
 from contextlib import contextmanager
 
-from .base import VERSION, DEFAULT_FORMAT, CONVERTER_NAME
+from .constants import VERSION, DEFAULT_FORMAT, CONVERTER_NAME
 from .containers import ContainerFormatError, open_container
 from .font import Font
 from .pack import Pack

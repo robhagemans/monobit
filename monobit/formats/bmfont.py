@@ -17,11 +17,11 @@ except ImportError:
     Image = None
 
 from ..scripting import pair
-from ..base import reverse_dict
 from ..encoding import charmaps
 from .. import streams
 from ..streams import FileFormatError
-from ..base.binary import friendlystruct, int_to_bytes, bytes_to_int
+from ..binary import int_to_bytes, bytes_to_int
+from ..struct import friendlystruct, reverse_dict
 from ..storage import loaders, savers
 from ..font import Font, Coord
 from ..glyph import Glyph
