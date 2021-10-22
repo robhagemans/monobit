@@ -10,7 +10,8 @@ import string
 from types import SimpleNamespace
 from itertools import count
 
-from ..base.text import to_text, strip_matching
+from ..base.text import strip_matching
+from ..matrix import to_text
 from ..storage import loaders, savers
 from ..encoding import charmaps
 from ..streams import FileFormatError

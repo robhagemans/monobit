@@ -11,7 +11,7 @@ from typing import NamedTuple
 
 from .scripting import scriptable
 from .base.binary import ceildiv, bytes_to_bits
-from .base.text import to_text
+from .matrix import to_text
 from .label import Char, Codepoint
 
 

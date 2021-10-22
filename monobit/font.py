@@ -446,7 +446,7 @@ class Font:
         comments = {**self._comments}
         if property not in self._comments:
             comments[property] = ()
-        comments[property] += tuple(new_comment.splitlines())
+        comments[property] += tuple(comment.splitlines())
         return Font(self._glyphs, comments, self._properties)
 
     # move to glyph.with_name()
