@@ -264,54 +264,33 @@ def _read_strike(
         pos_chardata, pos_charloc, pos_charspace, pos_charkern
     ):
     """Read and interpret the font strike and related tables."""
+    # location data
+    # one additional glyph at end for undefined chars
+    nchars = hichar - lochar + 1 + 1
+    loc_struct = friendlystruct('>', offset='H', width='H')
+    locs = loc_struct.array(nchars).from_bytes(data, pos_charloc)
+    # spacing data, can be negative
+    int16_struct = friendlystruct('>', value='h')
+    if proportional and pos_charspace is not None:
+        spacing = [_h.value for _h in int16_struct.array(nchars).from_bytes(data, pos_charspace)]
+    else:
+        spacing = [xsize] * nchars
+    # amiga "kerning" is a horizontal offset; can be pos (to right) or neg
+    if pos_charkern is not None:
+        kerning = [_h.value for _h in int16_struct.array(nchars).from_bytes(data, pos_charkern)]
+    else:
+        kerning = [0] * nchars
+    # strike
     rows = [
         bytes_to_bits(data[pos_chardata + _item*modulo : pos_chardata + (_item+1)*+modulo])
         for _item in range(ysize)
     ]
-    # location data
-    nchars = hichar - lochar + 1 + 1 # one additional glyph at end for undefined chars
-    loc_struct = friendlystruct('>', offset='H', width='H')
-    locs = [
-        loc_struct.from_bytes(data, pos_charloc+_i*loc_struct.size)
-        for _i in range(nchars)
-    ]
-    font = [
-        [_row[_loc.offset: _loc.offset+_loc.width] for _row in rows]
+    # extract glyphs
+    glyphrows = [
+        [_row[_loc.offset:_loc.offset+_loc.width] for _row in rows]
         for _loc in locs
     ]
-    # spacing data, can be negative
-    if proportional:
-        spc_struct = friendlystruct('>', space='h')
-        spacing = [
-            spc_struct.from_bytes(data, pos_charspace+_i*spc_struct.size).space
-            for _i in range(nchars)
-        ]
-        # check spacing
-        for i, sp in enumerate(spacing):
-            if sp < 0:
-                logging.warning('negative spacing of %d in %dth character' % (sp, i,))
-            if abs(sp) > xsize*2:
-                logging.error('very high values in spacing table')
-                spacing = (xsize,) * len(font)
-                break
-    else:
-        spacing = (xsize,) * len(font)
-    if pos_charkern is not None:
-        # amiga "kerning" is a horizontal offset; can be pos (to right) or neg
-        kern_struct = friendlystruct('>', kern='h')
-        kerning = [
-            kern_struct.from_bytes(data, pos_charkern+_i*kern_struct.size).kern
-            for _i in range(nchars)
-        ]
-        for i, sp in enumerate(kerning):
-            if abs(sp) > xsize*2:
-                logging.error('very high values in kerning table')
-                kerning = (0,) * len(font)
-                break
-    else:
-        kerning = (0,) * len(font)
-    # extract glyphs
-    glyphs = [Glyph(_char, codepoint=_ord) for _ord, _char in enumerate(font, start=lochar)]
+    glyphs = [Glyph(_char, codepoint=_ord) for _ord, _char in enumerate(glyphrows, start=lochar)]
     return glyphs, kerning, spacing
 
 
