@@ -324,7 +324,7 @@ def _read_strike(
             spc_struct.from_bytes(data, pos_charspace+_i*spc_struct.size).space
             for _i in range(nchars)
         ]
-        # apply spacing
+        # check spacing
         for i, sp in enumerate(spacing):
             if sp < 0:
                 logging.warning('negative spacing of %d in %dth character' % (sp, i,))
@@ -335,7 +335,7 @@ def _read_strike(
     else:
         spacing = (xsize,) * len(font)
     if pos_charkern is not None:
-        # kerning data, can be negative
+        # amiga "kerning" is a horizontal offset; can be pos (to right) or neg
         kern_struct = friendlystruct('>', kern='h')
         kerning = [
             kern_struct.from_bytes(data, pos_charkern+_i*kern_struct.size).kern
@@ -348,15 +348,15 @@ def _read_strike(
                 break
     else:
         kerning = (0,) * len(font)
+    # extract glyphs
+    glyphs = [Glyph(_char, codepoint=_ord) for _ord, _char in enumerate(font, start=lochar)]
     # deal with negative kerning by turning it into a global negative offset
     offset_x = min(kerning)
-    kerning = (_kern - offset_x for _kern in kerning)
+    kerning = [_kern - offset_x for _kern in kerning]
+    # apply kerning and spacing
     glyphs = [
-        Glyph(
-            tuple((False,) * _kern + _row + (False,) * (_width-len(_row)) for _row in _char),
-            codepoint=(_i + lochar,)
-        )
-        for _i, (_char, _width, _kern) in enumerate(zip(font, spacing, kerning))
+        _glyph.expand(left=_kern, right=max(0, _space-_glyph.width))
+        for _glyph, _space, _kern in zip(glyphs, spacing, kerning)
     ]
     # default glyph has no codepoint
     glyphs[-1] = glyphs[-1].set_annotations(codepoint=(), tags=('default',))

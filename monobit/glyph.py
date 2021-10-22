@@ -35,7 +35,7 @@ class Glyph:
         self._rows = tuple(tuple(bool(_bit) for _bit in _row) for _row in pixels)
         # annotations
         self._comments = tuple(comments)
-        self._codepoint = tuple(codepoint)
+        self._codepoint = Codepoint(codepoint).value
         self._char = char
         self._tags = tuple(tags)
         if len(set(len(_r) for _r in self._rows)) > 1:
