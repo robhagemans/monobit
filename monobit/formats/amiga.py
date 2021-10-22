@@ -6,7 +6,6 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import os
-import struct
 import logging
 
 from ..binary import bytes_to_bits
@@ -15,7 +14,7 @@ from ..storage import loaders, savers
 from ..streams import FileFormatError
 from ..font import Font, Coord
 from ..glyph import Glyph
-
+from .. import struct
 
 @loaders.register('font', magic=(b'\x0f\0', b'\x0f\2'), name='Amiga Font Contents')
 def load_amiga_fc(f, where):
@@ -136,7 +135,7 @@ _AMIGA_HEADER = friendlystruct(
     dfh_FileID='H',
     dfh_Revision='H',
     dfh_Segment='i',
-    dfh_Name=friendlystruct.char * _MAXFONTNAME,
+    dfh_Name=struct.char * _MAXFONTNAME,
     # struct Message at start of struct TextFont
     # struct Message http://amigadev.elowar.com/read/ADCD_2.1/Libraries_Manual_guide/node02EF.html
     tf_ln_Succ='I',
@@ -211,7 +210,7 @@ def _load_amiga(f, where):
 def _read_library_names(f):
     library_names = []
     while True:
-        num_longs = friendlystruct.uint32.from_buffer_copy(f.read(4))
+        num_longs = struct.BE.uint32.read_from(f)
         if not num_longs:
             return library_names
         string = f.read(num_longs * 4)
@@ -233,7 +232,7 @@ def _read_header(f):
     # list of memory sizes of hunks in this file (in number of ULONGs)
     # this seems to exclude overhead, so not useful to determine disk sizes
     num_sizes = hfh1.last_hunk - hfh1.first_hunk + 1
-    hunk_sizes = (friendlystruct.uint32 * num_sizes).from_buffer_copy(f.read(4 * num_sizes))
+    hunk_sizes = struct.BE.uint32.array(num_sizes).read_from(f)
     return library_names, hfh1, hunk_sizes
 
 def _read_font_hunk(f):
@@ -270,14 +269,13 @@ def _read_strike(
     loc_struct = friendlystruct('>', offset='H', width='H')
     locs = loc_struct.array(nchars).from_bytes(data, pos_charloc)
     # spacing data, can be negative
-    int16_struct = friendlystruct('>', value='h')
     if proportional and pos_charspace is not None:
-        spacing = [_h.value for _h in int16_struct.array(nchars).from_bytes(data, pos_charspace)]
+        spacing = struct.BE.int16.array(nchars).from_bytes(data, pos_charspace)
     else:
         spacing = [xsize] * nchars
     # amiga "kerning" is a horizontal offset; can be pos (to right) or neg
     if pos_charkern is not None:
-        kerning = [_h.value for _h in int16_struct.array(nchars).from_bytes(data, pos_charkern)]
+        kerning = struct.BE.int16.array(nchars).from_bytes(data, pos_charkern)
     else:
         kerning = [0] * nchars
     # strike

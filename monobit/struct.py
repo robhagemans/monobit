@@ -56,13 +56,13 @@ def _wraptype(ctyp):
 
 
 # base types
-char = _wraptype(ctypes.c_char)
-uint8 = _wraptype(ctypes.c_uint8)
-int8 = _wraptype(ctypes.c_int8)
-uint16 = _wraptype(ctypes.c_uint16)
-int16 = _wraptype(ctypes.c_int16)
-uint32 = _wraptype(ctypes.c_uint32)
-int32 = _wraptype(ctypes.c_int32)
+char = ctypes.c_char
+uint8 = ctypes.c_uint8
+int8 = ctypes.c_int8
+uint16 = ctypes.c_uint16
+int16 = ctypes.c_int16
+uint32 = ctypes.c_uint32
+int32 = ctypes.c_int32
 
 
 # type strings
@@ -169,3 +169,29 @@ friendlystruct.int16 = int16
 friendlystruct.uint32 = uint32
 friendlystruct.int32 = int32
 friendlystruct.sizeof = ctypes.sizeof
+
+
+def _wrap_base_type(ctyp, endian):
+    cls = friendlystruct(endian, value=ctyp)
+    cls.array = lambda n: _wrap_base_type(ctyp * n, endian)
+    cls.read_from = lambda stream: cls.from_buffer_copy(stream.read(ctypes.sizeof(ctyp))).value
+    cls.from_bytes = lambda *args: cls.from_buffer_copy(*args).value
+    return cls
+
+class BE:
+    char = _wrap_base_type(char, '>')
+    uint8 = _wrap_base_type(uint8, '>')
+    int8 = _wrap_base_type(int8, '>')
+    uint16 = _wrap_base_type(uint16, '>')
+    int16 = _wrap_base_type(int16, '>')
+    uint32 = _wrap_base_type(uint32, '>')
+    int32 = _wrap_base_type(int32, '>')
+
+class LE:
+    char = _wrap_base_type(char, '<')
+    uint8 = _wrap_base_type(uint8, '<')
+    int8 = _wrap_base_type(int8, '<')
+    uint16 = _wrap_base_type(uint16, '<')
+    int16 = _wrap_base_type(int16, '<')
+    uint32 = _wrap_base_type(uint32, '<')
+    int32 = _wrap_base_type(int32, '<')
