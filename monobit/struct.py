@@ -5,8 +5,10 @@ monobit.struct - property structures
 licence: https://opensource.org/licenses/MIT
 """
 
+from types import SimpleNamespace
 from collections import OrderedDict
 import ctypes
+import struct
 
 
 def reverse_dict(orig_dict):
@@ -14,8 +16,52 @@ def reverse_dict(orig_dict):
     return {_v: _k for _k, _v in orig_dict.items()}
 
 
+
+##############################################################################
+# property sets
+
+class Props(SimpleNamespace):
+    """
+    SimpleNamespace with the dunder methods of a dict
+    Not a mapping but allows both key-style and attribute-style access
+    """
+
+    def __getitem__(self, item):
+        return vars(self)[item.replace('-', '_')]
+
+    def __setitem__(self, item, value):
+        vars(self)[item.replace('-', '_')] = value
+
+    def __len__(self):
+        return len(vars(self))
+
+    def __iter__(self):
+        return iter(_item.replace('_', '-') for _item in vars(self))
+
+    def __str__(self):
+        return '\n'.join(f'{_k}: {_v}' for _k, _v in vars(self).items())
+
+
 ##############################################################################
 # binary structs
+
+
+class FileUnpacker:
+    """Wrapper for struct.unpack."""
+
+    def __init__(self, stream):
+        """Start at start."""
+        self._stream = stream
+
+    def unpack(self, format):
+        """Read the next data specified by format string."""
+        return struct.unpack(format, self._stream.read(struct.calcsize(format)))
+
+    def read(self, n_bytes=-1):
+        """Read number of raw bytes."""
+        return self._stream.read(n_bytes)
+
+
 
 def friendlystruct(_endian, **description):
     """A slightly less clunky interface to struct."""

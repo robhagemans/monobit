@@ -10,11 +10,42 @@ import struct
 import logging
 
 from ..binary import bytes_to_bits
-from ..struct import friendlystruct
+from ..struct import friendlystruct, Props
 from ..storage import loaders, savers
 from ..streams import FileFormatError
 from ..font import Font, Coord
 from ..glyph import Glyph
+
+
+@loaders.register('font', magic=(b'\x0f\0', b'\x0f\2'), name='Amiga Font Contents')
+def load_amiga_fc(f, where):
+    """Load font from Amiga disk font contents (.FONT) file."""
+    fch = _FONT_CONTENTS_HEADER.read_from(f)
+    if fch.fch_FileID == 0x0f00:
+        logging.debug('Amiga FCH using FontContents')
+    elif fch.fch_FileID == 0x0f02:
+        logging.debug('Amiga FCH using TFontContents')
+    else:
+        raise FileFormatError('Not an Amiga Font Contents file.')
+    contentsarray = _FONT_CONTENTS.array(fch.fch_NumEntries).read_from(f)
+    pack = []
+    for fc in contentsarray:
+        # we'll get ysize, style and flags from the file itself, we just need a path.
+        # latin-1 seems to be the standard for amiga strings,
+        # see e.g. https://wiki.amigaos.net/wiki/FTXT_IFF_Formatted_Text#Data_Chunk_CHRS
+        name = fc.fc_FileName.decode('latin-1')
+        # amiga fs is case insensitive, so we need to loop over listdir and match
+        for filename in where:
+            if filename.lower() == name.lower():
+                pack.append(_load_amiga(where.open(filename, 'r'), where))
+    return pack
+
+
+@loaders.register('amiga', magic=(b'\0\0\x03\xf3',), name='Amiga Font')
+def load_amiga(f, where=None):
+    """Load font from Amiga disk font file."""
+    return _load_amiga(f, where)
+
 
 
 ###################################################################################################
@@ -72,6 +103,22 @@ _FSF_COLORFONT = 0x40
 # the TextAttr is really a TTextAttr
 _FSF_TAGGED = 0x80
 
+# Amiga hunk file header
+# http://amiga-dev.wikidot.com/file-format:hunk#toc6
+_HUNK_FILE_HEADER_0 = friendlystruct(
+    '>',
+    hunk_id='uint32',
+)
+# followed by null-null-terminated string table
+# followed by
+_HUNK_FILE_HEADER_1 = friendlystruct(
+    '>',
+    table_size='uint32',
+    first_hunk='uint32',
+    last_hunk='uint32',
+)
+# followed by hunk_sizes = uint32 * (last_hunk-first_hunk+1)
+
 # disk font header
 _AMIGA_HEADER = friendlystruct(
     '>',
@@ -89,7 +136,7 @@ _AMIGA_HEADER = friendlystruct(
     dfh_FileID='H',
     dfh_Revision='H',
     dfh_Segment='i',
-    dfh_Name='{}s'.format(_MAXFONTNAME),
+    dfh_Name=friendlystruct.char * _MAXFONTNAME,
     # struct Message at start of struct TextFont
     # struct Message http://amigadev.elowar.com/read/ADCD_2.1/Libraries_Manual_guide/node02EF.html
     tf_ln_Succ='I',
@@ -147,99 +194,61 @@ _T_FONT_CONTENTS = friendlystruct(
 )
 
 
-@loaders.register('font', magic=(b'\x0f\0', b'\x0f\2'), name='Amiga Font Contents')
-def load_amiga_fc(f, where):
-    """Load font from Amiga disk font contents (.FONT) file."""
-    fch = _FONT_CONTENTS_HEADER.read_from(f)
-    if fch.fch_FileID == 0x0f00:
-        logging.debug('Amiga FCH using FontContents')
-    elif fch.fch_FileID == 0x0f02:
-        logging.debug('Amiga FCH using TFontContents')
-    else:
-        raise FileFormatError('Not an Amiga Font Contents file.')
-    contentsarray = _FONT_CONTENTS.array(fch.fch_NumEntries).read_from(f)
-    pack = []
-    for fc in contentsarray:
-        # we'll get ysize, style and flags from the file itself, we just need a path.
-        # latin-1 seems to be the standard for amiga strings,
-        # see e.g. https://wiki.amigaos.net/wiki/FTXT_IFF_Formatted_Text#Data_Chunk_CHRS
-        name = fc.fc_FileName.decode('latin-1')
-        # amiga fs is case insensitive, so we need to loop over listdir and match
-        for filename in where:
-            if filename.lower() == name.lower():
-                pack.append(load_amiga(where.open(filename, 'r'), where))
-    return pack
+###################################################################################################
+# read Amiga font
 
 
-@loaders.register('amiga', magic=(b'\0\0\x03\xf3',), name='Amiga Font')
-def load_amiga(f, where=None):
+def _load_amiga(f, where):
     """Load font from Amiga disk font file."""
     # read & ignore header
     _read_header(f)
-    hunk_id = _read_ulong(f)
-    if hunk_id != _HUNK_CODE:
-        raise FileFormatError('Not an Amiga font data file: no code hunk found (id %04x)' % hunk_id)
-    glyphs, props = _read_font_hunk(f)
-    return Font(glyphs, properties=props)
+    hfh0 = _HUNK_FILE_HEADER_0.read_from(f)
+    if hfh0.hunk_id != _HUNK_CODE:
+        raise FileFormatError('Not an Amiga font data file: no code hunk found (id %04x)' % hfh0.hunk_id)
+    props, glyphs, kerning, spacing = _read_font_hunk(f)
+    return _convert_amiga_font(props, glyphs, kerning, spacing)
 
-
-class _FileUnpacker:
-    """Wrapper for struct.unpack."""
-
-    def __init__(self, stream):
-        """Start at start."""
-        self._stream = stream
-
-    def unpack(self, format):
-        """Read the next data specified by format string."""
-        return struct.unpack(format, self._stream.read(struct.calcsize(format)))
-
-    def read(self, n_bytes=-1):
-        """Read number of raw bytes."""
-        return self._stream.read(n_bytes)
-
-
-def _read_ulong(f):
-    """Read a 32-bit unsigned long."""
-    return struct.unpack('>I', f.read(4))[0]
-
-def _read_string(f):
-    num_longs = _read_ulong(f)
-    if num_longs < 1:
-        return b''
-    string = f.read(num_longs * 4)
-    idx = string.find(b'\0')
-    return string[:idx]
+def _read_library_names(f):
+    library_names = []
+    while True:
+        num_longs = friendlystruct.uint32.from_buffer_copy(f.read(4))
+        if not num_longs:
+            return library_names
+        string = f.read(num_longs * 4)
+        # http://amiga-dev.wikidot.com/file-format:hunk#toc6
+        # - partitions the read string at null terminator and breaks on empty
+        # https://archive.org/details/AmigaDOS_Technical_Reference_Manual_1985_Commodore/page/n27/mode/2up
+        # - suggests this can't happen, length uint32 must be zero
+        # - also parse_header() at https://github.com/cnvogelg/amitools/blob/master/amitools/binfmt/hunk/HunkReader.py
+        library_names.append(string)
 
 def _read_header(f):
     """Read file header."""
     # read header id
-    if _read_ulong(f) != _HUNK_HEADER:
-        raise ValueError('Not an Amiga font data file: incorrect magic constant')
-    # null terminated list of strings
-    library_names = []
-    while True:
-        s = _read_string(f)
-        if not s:
-            break
-        library_names.append(s)
-    table_size, first_slot, last_slot = struct.unpack('>III', f.read(12))
+    hfh0 = _HUNK_FILE_HEADER_0.read_from(f)
+    if hfh0.hunk_id != _HUNK_HEADER:
+        raise FileFormatError('Not an Amiga font data file: magic constant {hfh0.hunk_id:X} != 0x3F3')
+    library_names = _read_library_names(f)
+    hfh1 = _HUNK_FILE_HEADER_1.read_from(f)
     # list of memory sizes of hunks in this file (in number of ULONGs)
     # this seems to exclude overhead, so not useful to determine disk sizes
-    num_sizes = last_slot - first_slot + 1
-    hunk_sizes = struct.unpack('>%dI' % (num_sizes,), f.read(4 * num_sizes))
-    return library_names, table_size, first_slot, last_slot, hunk_sizes
+    num_sizes = hfh1.last_hunk - hfh1.first_hunk + 1
+    hunk_sizes = (friendlystruct.uint32 * num_sizes).from_buffer_copy(f.read(4 * num_sizes))
+    return library_names, hfh1, hunk_sizes
 
 def _read_font_hunk(f):
     """Parse the font data blob."""
     #loc = f.tell() + 4
     amiga_props = _AMIGA_HEADER.read_from(f)
+    logging.info('Amiga properties:')
+    for name, value in vars(amiga_props).items():
+        logging.info('    %s: %s', name, value)
     # the reference point for locations in the hunk is just after the ReturnCode
     loc = - _AMIGA_HEADER.size + 4
     # remainder is the font strike
     data = f.read()
     # read character data
-    glyphs, offset_x = _read_strike(
+    glyphs, kerning, spacing = _read_strike(
         data, amiga_props.tf_XSize, amiga_props.tf_YSize,
         amiga_props.tf_Flags & _FPF_PROPORTIONAL,
         amiga_props.tf_Modulo, amiga_props.tf_LoChar, amiga_props.tf_HiChar,
@@ -247,56 +256,8 @@ def _read_font_hunk(f):
         None if not amiga_props.tf_CharSpace else amiga_props.tf_CharSpace + loc,
         None if not amiga_props.tf_CharKern else amiga_props.tf_CharKern + loc
     )
-    logging.info('Amiga properties:')
-    for name, value in vars(amiga_props).items():
-        logging.info('    %s: %s', name, value)
-    props = _parse_amiga_props(amiga_props, offset_x)
-    return glyphs, props
+    return amiga_props, glyphs, kerning, spacing
 
-def _parse_amiga_props(amiga_props, offset_x):
-    """Convert AmigaFont properties into yaff properties."""
-    if amiga_props.tf_Style & _FSF_COLORFONT:
-        raise ValueError('Amiga ColorFont not supported')
-    props = {}
-    # preserve tags stored in name field after \0
-    name, *tags = amiga_props.dfh_Name.decode('latin-1').split('\0')
-    for i, tag in enumerate(tags):
-        props['amiga.dfh_Name.{}'.format(i+1)] = tag
-    if name:
-        props['name'] = name
-    props['revision'] = amiga_props.dfh_Revision
-    props['offset'] = Coord(offset_x, -(amiga_props.tf_YSize - amiga_props.tf_Baseline))
-    # tf_Style
-    props['weight'] = 'bold' if amiga_props.tf_Style & _FSF_BOLD else 'medium'
-    props['slant'] = 'italic' if amiga_props.tf_Style & _FSF_ITALIC else 'roman'
-    props['setwidth'] = 'expanded' if amiga_props.tf_Style & _FSF_EXTENDED else 'medium'
-    if amiga_props.tf_Style & _FSF_UNDERLINED:
-        props['decoration'] = 'underline'
-    # tf_Flags
-    props['spacing'] = (
-        'proportional' if amiga_props.tf_Flags & _FPF_PROPORTIONAL else 'monospace'
-    )
-    if amiga_props.tf_Flags & _FPF_REVPATH:
-        props['direction'] = 'right-to-left'
-        logging.warning('right-to-left fonts are not correctly implemented yet')
-    if amiga_props.tf_Flags & _FPF_TALLDOT and not amiga_props.tf_Flags & _FPF_WIDEDOT:
-        # TALLDOT: This font was designed for a Hires screen (640x200 NTSC, non-interlaced)
-        props['dpi'] = '96 48'
-    elif amiga_props.tf_Flags & _FPF_WIDEDOT and not amiga_props.tf_Flags & _FPF_TALLDOT:
-        # WIDEDOT: This font was designed for a Lores Interlaced screen (320x400 NTSC)
-        props['dpi'] = '48 96'
-    else:
-        props['dpi'] = 96
-    props['encoding'] = 'iso8859-1'
-    props['default-char'] = 'default'
-    # preserve unparsed properties
-    # tf_BoldSmear; /* smear to affect a bold enhancement */
-    # use the most common value 1 as a default
-    if amiga_props.tf_BoldSmear != 1:
-        props['amiga.tf_BoldSmear'] = amiga_props.tf_BoldSmear
-    if 'name' in props:
-        props['family'] = props['name'].split('/')[0].split(' ')[0]
-    return props
 
 def _read_strike(
         data, xsize, ysize, proportional, modulo, lochar, hichar,
@@ -351,7 +312,24 @@ def _read_strike(
         kerning = (0,) * len(font)
     # extract glyphs
     glyphs = [Glyph(_char, codepoint=_ord) for _ord, _char in enumerate(font, start=lochar)]
-    # deal with negative kerning by turning it into a global negative offset
+    return glyphs, kerning, spacing
+
+
+###################################################################################################
+# convert from Amiga to monobit
+
+def _convert_amiga_font(amiga_props, glyphs, kerning, spacing):
+    """Convert Amiga properties and glyphs to monobit Font."""
+    glyphs, offset_x = _normalise_glyphs(glyphs, kerning, spacing)
+    props = _parse_amiga_props(amiga_props, offset_x)
+    logging.info('yaff properties:')
+    for line in str(props).splitlines():
+        logging.info('    ' + line)
+    return Font(glyphs, properties=vars(props))
+
+
+def _normalise_glyphs(glyphs, kerning, spacing):
+    """Deal with negative kerning by turning it into a global negative offset."""
     offset_x = min(kerning)
     kerning = [_kern - offset_x for _kern in kerning]
     # apply kerning and spacing
@@ -362,3 +340,50 @@ def _read_strike(
     # default glyph has no codepoint
     glyphs[-1] = glyphs[-1].set_annotations(codepoint=(), tags=('default',))
     return glyphs, offset_x
+
+
+def _parse_amiga_props(amiga_props, offset_x):
+    """Convert AmigaFont properties into yaff properties."""
+    if amiga_props.tf_Style & _FSF_COLORFONT:
+        raise FileFormatError('Amiga ColorFont not supported')
+    props = Props()
+    props.amiga = Props()
+    # preserve tags stored in name field after \0
+    name, *tags = amiga_props.dfh_Name.decode('latin-1').split('\0')
+    if name:
+        props.name = name.strip()
+    if tags:
+        props.amiga.dfh_Name = f'"{name}"' + ' '.join(tags)
+    props.revision = amiga_props.dfh_Revision
+    props.offset = Coord(offset_x, -(amiga_props.tf_YSize - amiga_props.tf_Baseline))
+    # tf_Style
+    props.weight = 'bold' if amiga_props.tf_Style & _FSF_BOLD else 'medium'
+    props.slant = 'italic' if amiga_props.tf_Style & _FSF_ITALIC else 'roman'
+    props.setwidth = 'expanded' if amiga_props.tf_Style & _FSF_EXTENDED else 'medium'
+    if amiga_props.tf_Style & _FSF_UNDERLINED:
+        props.decoration = 'underline'
+    # tf_Flags
+    props.spacing = (
+        'proportional' if amiga_props.tf_Flags & _FPF_PROPORTIONAL else 'monospace'
+    )
+    if amiga_props.tf_Flags & _FPF_REVPATH:
+        props.direction = 'right-to-left'
+        logging.warning('right-to-left fonts are not correctly implemented yet')
+    if amiga_props.tf_Flags & _FPF_TALLDOT and not amiga_props.tf_Flags & _FPF_WIDEDOT:
+        # TALLDOT: This font was designed for a Hires screen (640x200 NTSC, non-interlaced)
+        props.dpi = '96 48'
+    elif amiga_props.tf_Flags & _FPF_WIDEDOT and not amiga_props.tf_Flags & _FPF_TALLDOT:
+        # WIDEDOT: This font was designed for a Lores Interlaced screen (320x400 NTSC)
+        props.dpi = '48 96'
+    else:
+        props.dpi = 96
+    props.encoding = 'iso8859-1'
+    props.default_char = 'default'
+    # preserve unparsed properties
+    # tf_BoldSmear; /* smear to affect a bold enhancement */
+    # use the most common value 1 as a default
+    if amiga_props.tf_BoldSmear != 1:
+        props.amiga.tf_BoldSmear = amiga_props.tf_BoldSmear
+    if 'name' in props:
+        props.family = props.name.split('/')[0].split(' ')[0]
+    return props
