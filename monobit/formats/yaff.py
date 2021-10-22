@@ -10,14 +10,13 @@ import string
 from types import SimpleNamespace
 from itertools import count
 
-from ..base.text import strip_matching
 from ..matrix import to_text
 from ..storage import loaders, savers
 from ..encoding import charmaps
 from ..streams import FileFormatError
 from ..font import PROPERTIES, Font
 from ..glyph import Glyph
-from ..label import label as to_label
+from ..label import strip_matching, label as to_label
 from ..label import Char, Codepoint, Tag
 
 
