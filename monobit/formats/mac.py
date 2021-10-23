@@ -8,7 +8,8 @@ licence: https://opensource.org/licenses/MIT
 import logging
 
 from ..binary import bytes_to_bits
-from ..struct import friendlystruct
+from ..struct import big_endian as be
+from .. import struct
 from ..storage import loaders, savers
 from ..font import Font, Glyph, Coord
 
@@ -17,15 +18,13 @@ from ..font import Font, Glyph, Coord
 # AppleSingle/AppleDouble
 # see https://web.archive.org/web/20160304101440/http://kaiser-edv.de/documents/Applesingle_AppleDouble_v1.html
 
-_APPLE_HEADER = friendlystruct(
-    'be',
+_APPLE_HEADER = be.Struct(
     magic='uint32',
     version='uint32',
     home_fs='16s',
     number_entities='uint16',
 )
-_APPLE_ENTRY = friendlystruct(
-    'be',
+_APPLE_ENTRY = be.Struct(
     entry_id='uint32',
     offset='uint32',
     length='uint32',
@@ -51,8 +50,7 @@ _ID_RESOURCE = 2
 # see https://developer.apple.com/library/archive/documentation/mac/pdf/MoreMacintoshToolbox.pdf
 
 # Page 1-122 Figure 1-12 Format of a resource header in a resource fork
-_RSRC_HEADER = friendlystruct(
-    'be',
+_RSRC_HEADER = be.Struct(
     data_offset='uint32',
     map_offset='uint32',
     data_length='uint32',
@@ -63,15 +61,13 @@ _RSRC_HEADER = friendlystruct(
 )
 
 # Figure 1-13 Format of resource data for a single resource
-_DATA_HEADER = friendlystruct(
-    'be',
+_DATA_HEADER = be.Struct(
     length='uint32',
     # followed by `length` bytes of data
 )
 
 # Figure 1-14 Format of the resource map in a resource fork
-_MAP_HEADER = friendlystruct(
-    'be',
+_MAP_HEADER = be.Struct(
     reserved_header='16s',
     reserved_handle='4s',
     reserved_fileref='2s',
@@ -86,8 +82,7 @@ _MAP_HEADER = friendlystruct(
     # name list
 )
 # Figure 1-15 Format of an item in a resource type list
-_TYPE_ENTRY = friendlystruct(
-    'be',
+_TYPE_ENTRY = be.Struct(
     rsrc_type='4s',
     # number of resources minus 1
     last_rsrc='uint16',
@@ -95,8 +90,7 @@ _TYPE_ENTRY = friendlystruct(
 )
 
 # Figure 1-16 Format of an entry in the reference list for a resource type
-_REF_ENTRY = friendlystruct(
-    'be',
+_REF_ENTRY = be.Struct(
     rsrc_id='uint16',
     name_offset='uint16',
     attributes='uint8',
@@ -115,8 +109,7 @@ _REF_ENTRY = friendlystruct(
 
 # the header of the NFNT is a FontRec
 # https://developer.apple.com/library/archive/documentation/mac/Text/Text-214.html
-_NFNT_HEADER = friendlystruct(
-    'be',
+_NFNT_HEADER = be.Struct(
     #    {font type}
     fontType='uint16',
     #    {character code of first glyph}
@@ -152,8 +145,7 @@ _NFNT_HEADER = friendlystruct(
 )
 
 # location table entry
-_LOC_ENTRY = friendlystruct(
-    'be',
+_LOC_ENTRY = be.Struct(
     offset='uint16',
 )
 # width/offset table entry
@@ -166,14 +158,12 @@ _LOC_ENTRY = friendlystruct(
 # edge. If the sum equals zero, the glyph origin corresponds with the left edge of the bit image.
 # Missing glyphs are represented by a word value of -1. The last word of this table is also -1,
 # representing the end.
-_WO_ENTRY = friendlystruct(
-    'be',
+_WO_ENTRY = be.Struct(
     offset='uint8',
     width='uint8',
 )
 # glyph width table entry
-_WIDTH_ENTRY = friendlystruct(
-    'be',
+_WIDTH_ENTRY = be.Struct(
     width='uint16',
 )
 # height table entry
@@ -184,8 +174,7 @@ _WIDTH_ENTRY = friendlystruct(
 # the offset from the top of the font rectangle of the first non-blank (or nonwhite) row in the
 # glyph, and the low-order byte is the number of rows that must be drawn. The Font Manager creates
 # this table.
-_HEIGHT_ENTRY = friendlystruct(
-    'be',
+_HEIGHT_ENTRY = be.Struct(
     offset='uint8',
     height='uint8',
 )
@@ -194,8 +183,7 @@ _HEIGHT_ENTRY = friendlystruct(
 ##############################################################################
 # FOND resource
 
-_FOND_HEADER = friendlystruct(
-    'be',
+_FOND_HEADER = be.Struct(
    # {flags for family}
    ffFlags='uint16',
    # {family ID number}
@@ -219,20 +207,18 @@ _FOND_HEADER = friendlystruct(
    # {offset to style-mapping table}
    ffStylOff='uint32',
    # {style properties info}
-   ffProperty=friendlystruct.uint16 * 9,
+   ffProperty=struct.uint16 * 9,
    # {for international use}
-   ffIntl=friendlystruct.uint16 * 2,
+   ffIntl=struct.uint16 * 2,
    # {version number}
    ffVersion='uint16',
 )
 
 # font association table
-_FA_HEADER = friendlystruct(
-    'be',
+_FA_HEADER = be.Struct(
     max_entry='uint16',
 )
-_FA_ENTRY =  friendlystruct(
-    'be',
+_FA_ENTRY =  be.Struct(
     point_size='uint16',
     style_code='uint16',
     rsrc_id='uint16',
@@ -355,8 +341,8 @@ def _parse_apple(data):
         container = 'AppleDouble'
     else:
         raise ValueError('Not an AppleSingle or AppleDouble file.')
-    entry_array = _APPLE_ENTRY * header.number_entities
-    entries = entry_array.from_buffer_copy(data, _APPLE_HEADER.size)
+    entry_array = _APPLE_ENTRY.array(header.number_entities)
+    entries = entry_array.from_bytes(data, _APPLE_HEADER.size)
     for entry in entries:
         if entry.entry_id == _ID_RESOURCE:
             fork_data = data[entry.offset:entry.offset+entry.length]
@@ -375,14 +361,14 @@ def _parse_resource_fork(data):
     """Parse a MacOS resource fork."""
     rsrc_header = _RSRC_HEADER.from_bytes(data)
     map_header = _MAP_HEADER.from_bytes(data, rsrc_header.map_offset)
-    type_array = _TYPE_ENTRY * (map_header.last_type + 1)
+    type_array = _TYPE_ENTRY.array(map_header.last_type + 1)
     # +2 because the length field is considered part of the type list
     type_list_offset = rsrc_header.map_offset + map_header.type_list_offset + 2
-    type_list = type_array.from_buffer_copy(data, type_list_offset)
+    type_list = type_array.from_bytes(data, type_list_offset)
     resources = []
     for type_entry in type_list:
-        ref_array = _REF_ENTRY * (type_entry.last_rsrc + 1)
-        ref_list = ref_array.from_buffer_copy(
+        ref_array = _REF_ENTRY.array(type_entry.last_rsrc + 1)
+        ref_list = ref_array.from_bytes(
             data, type_list_offset -2 + type_entry.ref_list_offset
         )
         for ref_entry in ref_list:
@@ -468,7 +454,7 @@ def _parse_fond(data, offset, name):
     # family fractional width table
     # kerning table
     fa_header = _FA_HEADER.from_bytes(data, offset + _FOND_HEADER.size)
-    fa_list = (_FA_ENTRY * (fa_header.max_entry+1)).from_buffer_copy(
+    fa_list = _FA_ENTRY.array(fa_header.max_entry+1).from_bytes(
         data, offset + _FOND_HEADER.size + _FA_HEADER.size
     )
     encoding = _MAC_ENCODING.get(max(0, 1 + (family_header.ffFamID - 16384) // 512))
@@ -511,7 +497,7 @@ def _parse_nfnt(data, offset, properties):
     # number of chars: coded chars plus missing symbol
     n_chars = fontrec.lastChar - fontrec.firstChar + 2
     # loc table should have one extra entry to be able to determine widths
-    loc_table = (_LOC_ENTRY * (n_chars+1)).from_buffer_copy(data, loc_offset)
+    loc_table = _LOC_ENTRY.array(n_chars+1).from_bytes(data, loc_offset)
     # width offset table
     # https://developer.apple.com/library/archive/documentation/mac/Text/Text-252.html
     if fontrec.nDescent > 0:
@@ -519,13 +505,13 @@ def _parse_nfnt(data, offset, properties):
     else:
         wo_offset = fontrec.owTLoc * 2
     # owtTLoc is offset "from itself" to table
-    wo_table = (_WO_ENTRY * n_chars).from_buffer_copy(data, offset + 16 + wo_offset)
+    wo_table = _WO_ENTRY.array(n_chars).from_bytes(data, offset + 16 + wo_offset)
     widths = [_entry.width for _entry in wo_table]
     offsets = [_entry.offset for _entry in wo_table]
     # scalable width table - ignoring for now
     width_offset = wo_offset + _WO_ENTRY.size * n_chars
     if has_width_table:
-        width_table = (_WIDTH_ENTRY * n_chars).from_buffer_copy(data, width_offset)
+        width_table = _WIDTH_ENTRY.array(n_chars).from_bytes(data, width_offset)
     # image height table: ignore, this can be deduced from the bitmaps
     # parse bitmap strike
     bitmap_strike = bytes_to_bits(strike)
