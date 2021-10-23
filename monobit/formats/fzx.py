@@ -39,6 +39,9 @@ def load_fzx(instream, where=None):
     """Load font from ZX Spectrum .FZX file."""
     data = instream.read()
     header = _FZX_HEADER.from_bytes(data)
+    logging.info('FZX properties:')
+    for name, value in vars(header).items():
+        logging.info('    %s: %s', name, value)
     n_chars = header.lastchar - 32 + 1
     char_table = _CHAR_ENTRY.array(n_chars).from_bytes(data, _FZX_HEADER.size)
     # offsets seem to be given relative to the entry in the char table; convert to absolute offsets
