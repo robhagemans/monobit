@@ -201,7 +201,6 @@ def _wrap_base_type(ctyp, parent):
 # note that uint8 etc. are base types while BE.uint8 etc are wrapped
 # we can't use the latter in a struct definition
 
-
 def _binary_types(parent):
     return SimpleNamespace(
         Struct=partial(_build_struct, parent),
@@ -214,30 +213,5 @@ def _binary_types(parent):
         int32=_wrap_base_type(int32, parent),
     )
 
-
 big_endian = _binary_types(ctypes.BigEndianStructure)
 little_endian = _binary_types(ctypes.LittleEndianStructure)
-
-
-# deprecated interface
-
-def friendlystruct(_endian, **description):
-    """A slightly less clunky interface to struct."""
-    # get base class based on endianness
-    if _endian.lower() in ('<', 'little', 'le'):
-        base = ctypes.LittleEndianStructure
-    elif _endian.lower() in ('>', 'big', 'be'):
-        base = ctypes.BigEndianStructure
-    else:
-        raise ValueError('Endianness `{}` not understood'.format(_endian))
-    return _build_struct(base, **description)
-
-
-friendlystruct.char = char
-friendlystruct.uint8 = uint8
-friendlystruct.int8 = int8
-friendlystruct.uint16 = uint16
-friendlystruct.int16 = int16
-friendlystruct.uint32 = uint32
-friendlystruct.int32 = int32
-friendlystruct.sizeof = ctypes.sizeof
