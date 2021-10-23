@@ -88,42 +88,40 @@ TYPES = {
     's': char,
 }
 
+def _parse_type(atype):
+    """Convert struct member type specification to ctypes base type or array."""
+    if isinstance(atype, type):
+        return atype
+    try:
+        return TYPES[atype]
+    except KeyError:
+        pass
+    if isinstance(atype, str) and atype.endswith('s'):
+        return char * int(atype[:-1])
+    raise ValueError('Field type `{}` not understood'.format(atype))
+
 
 def friendlystruct(_endian, **description):
     """A slightly less clunky interface to struct."""
-
     # get base class based on endianness
-
     if _endian.lower() in ('<', 'little', 'le'):
         base = ctypes.LittleEndianStructure
     elif _endian.lower() in ('>', 'big', 'be'):
         base = ctypes.BigEndianStructure
     else:
         raise ValueError('Endianness `{}` not understood'.format(_endian))
+    return _build_struct(base, **description)
 
-    # build _fields_ description
 
-    def _parse_type(atype):
-        if isinstance(atype, type):
-            return atype
-        try:
-            return TYPES[atype]
-        except KeyError:
-            pass
-        if isinstance(atype, str) and atype.endswith('s'):
-            return char * int(atype[:-1])
-        raise ValueError('Field type `{}` not understood'.format(atype))
+def _build_struct(parent, **description):
+    """Use friendly keyword description to build ctypes struct subclass that supports vars()."""
 
-    description = {
-        _key: _parse_type(_value)
-        for _key, _value in description.items()
-    }
-
-    # subclass to define some additional methods
-
-    class Struct(base):
+    class Struct(parent):
         """Struct with binary representation."""
-        _fields_ = tuple(description.items())
+        _fields_ = tuple(
+            (_field, _parse_type(_type))
+            for _field, _type in description.items()
+        )
         _pack_ = True
 
         def __repr__(self):
@@ -137,7 +135,7 @@ def friendlystruct(_endian, **description):
 
         @property
         def __dict__(self):
-            """Fields as dict."""
+            """Extract the fields dictionary."""
             return dict(
                 (field, getattr(self, field))
                 for field, _ in self._fields_
@@ -145,7 +143,7 @@ def friendlystruct(_endian, **description):
 
         def __add__(self, other):
             """Concatenate structs."""
-            addedstruct = friendlystruct(_endian, **dict(self._fields_ + other._fields_))
+            addedstruct = _build_struct(parent, **dict(self._fields_ + other._fields_))
             return addedstruct(**self.__dict__, **other.__dict__)
 
     return _wrap_struct(Struct)
@@ -171,6 +169,9 @@ def _wrap_struct(cstruct):
 
 def _wrap_base_type(ctyp, endian):
     """Wrap ctypes base types with convenience methods."""
+    # while struct members defined as ctypes resolve to Python types,
+    # base ctypes are objects that are not compatible with Python types
+    # so we wrap the base type in a one-member struct
     cls = friendlystruct(endian, value=ctyp)
     cls.array = lambda n: _wrap_base_type(ctyp * n, endian)
     cls.read_from = lambda stream: cls.from_buffer_copy(stream.read(ctypes.sizeof(ctyp))).value
