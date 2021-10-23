@@ -521,7 +521,6 @@ def is_graphical(char):
 def is_printable(char):
     """Check if a char should be printed - nothing ambiguous or unrepresentable in there."""
     return (not char) or is_graphical(char) and all(
-        # str.isprintable includes everything but Other (C) and Separator (Z), plus SPACE
         # we keep everything that is_graphical except PUA, Other/Format, Not Assigned
         # anything excluded will be shown as REPLACEMENT CHARACTER
         unicodedata.category(_c) not in ('Co', 'Cf', 'Cn')
@@ -630,7 +629,7 @@ class CharmapRegistry:
         return cls.match(name, 'unicode')
 
     @staticmethod
-    def normalise(name):
+    def normalise(name=''):
         """Replace encoding name with normalised variant for display."""
         return name.lower().replace('_', '-').replace(' ', '-')
 
@@ -1132,6 +1131,7 @@ def _from_wikipedia(data, table=0, column=0, range=None):
                     # unicode point
                     if data.lower().startswith('u+'):
                         data = data[2:]
+                    # pylint: disable=unsupported-membership-test
                     if not range or self.current in range:
                         try:
                             char = chr(int(data, 16))

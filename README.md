@@ -414,7 +414,7 @@ _Characteristics_ are descriptive in nature. They can be specified or calculated
 - `pixel-size`: pixel size (equals ascent plus descent).
 
 Characteristics inferred from the glyphs are:
-- `max-raster-size`: largest raster needed to define a glyph.
+- `raster-size`: largest raster needed to define a glyph.
 - `bounding-box`: smallest box that encompasses all ink if all glyphs are overlayed at the same origin.
 - `average-advance`: average advance width across glyphs.
 - `cap-advance`: advance width of capital letter `X`.
@@ -446,6 +446,7 @@ _Metadata_ are circumstantial properties. They can be related to authorship:
 
 They can be related to the target system:
 - `device`: target device, e.g. `EGA`, `VGA`, `printer`
+- `pixel-aspect`: target aspect ratio of pixels, X:Y
 - `dpi`: target resolution in dots per inch
 
 Or they can be related to processing:

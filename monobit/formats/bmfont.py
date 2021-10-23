@@ -604,7 +604,7 @@ def _create_spritesheets(font, size=(256, 256), packed=False):
                 height=cropped.height,
                 xoffset=font.offset.x + left,
                 # y offset from top line
-                yoffset=font.max_raster_size.y - glyph.height + top,
+                yoffset=font.raster_size.y - glyph.height + top,
                 # not sure how these are really interpreted
                 xadvance=font.offset.x + glyph.width + font.tracking,
                 page=page_id,
@@ -649,7 +649,7 @@ def _create_bmfont(
         size=(256, 256), packed=False, imageformat='png', descriptor='text'
     ):
     """Create a bmfont package."""
-    path = font.family
+    path = Path('.') / font.family
     fontname = font.name.replace(' ', '_')
     encoding = font.encoding
     if not charmaps.is_unicode(encoding):
@@ -670,7 +670,7 @@ def _create_bmfont(
         props['pages'].append({'id': page_id, 'file': name})
     props['info'] = {
         'face': font.family,
-        # or max_raster_size.y ?
+        # or raster_size.y ?
         'size': font.pixel_size,
         'bold': font.weight == 'bold',
         'italic': font.slant in ('italic', 'oblique'),
@@ -684,8 +684,8 @@ def _create_bmfont(
         'outline': 0,
     }
     props['common'] = {
-        'lineHeight': font.max_raster_size.y + font.leading,
-        'base': font.max_raster_size.y + font.offset.y,
+        'lineHeight': font.raster_size.y + font.leading,
+        'base': font.raster_size.y + font.offset.y,
         'scaleW': size[0],
         'scaleH': size[1],
         'pages': len(pages),

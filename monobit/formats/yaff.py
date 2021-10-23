@@ -378,10 +378,14 @@ def _save_yaff(fonts, outstream, ink, paper, comment, tab, separator, empty, **k
         # we always output name, font-size and spacing
         # plus anything that is different from the default
         props = {
-            'bounding-box': font.bounding_box,
+            'name': font.name,
             'spacing': font.spacing,
             **font.nondefault_properties
         }
+        if font.spacing in ('character-cell', 'multi-cell'):
+            props['raster-size'] = font.raster_size
+        else:
+            props['bounding-box'] = font.bounding_box
         if props:
             # write recognised yaff properties first, in defined order
             for key in PROPERTIES:

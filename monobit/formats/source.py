@@ -205,7 +205,7 @@ def save_c(fonts, outstream, where=None):
     ascii_name = font.name.encode('ascii', 'ignore').decode('ascii')
     ascii_name = ''.join(_c if _c.isalnum() else '_' for _c in ascii_name)
     identifier = 'char font_' + ascii_name
-    width, height = font.max_raster_size
+    width, height = font.raster_size
     bytesize = ceildiv(width, 8) * height
     outstream.write(f'{identifier}[{len(font.glyphs) * bytesize}]')
     outstream.write(' = {\n')

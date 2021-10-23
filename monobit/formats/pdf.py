@@ -45,8 +45,8 @@ if reportlab:
         chart_width = page_x - 2*margin_x
         chart_height = page_y - 2*margin_y - title_y
         # work with maximum raster size
-        width = font.max_raster_size.x + 2
-        height = font.max_raster_size.y + 4
+        width = font.raster_size.x + 2
+        height = font.raster_size.y + 4
         xpix = chart_width / columns / width
         ypix = chart_height / rows / height
         canvas.translate(margin_x, margin_y)
@@ -68,7 +68,7 @@ if reportlab:
                             f'[{_tag}]' for _tag in glyph.tags
                         )
                     )
-                    canvas.drawString(orig_x, orig_y+font.max_raster_size.y*ypix + 3, label)
+                    canvas.drawString(orig_x, orig_y+font.raster_size.y*ypix + 3, label)
                     pixels = glyph.as_matrix()
                     for y in range(len(pixels)):
                         for x in range(len(pixels[y])):

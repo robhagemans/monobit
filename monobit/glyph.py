@@ -19,6 +19,7 @@ except ImportError:
 from .scripting import scriptable
 from .binary import ceildiv, bytes_to_bits
 from .matrix import to_text
+from .encoding import is_graphical
 from .label import Char, Codepoint
 
 
@@ -125,8 +126,8 @@ class Glyph:
             return self.set_annotations(codepoint=encoder.codepoint(self.char))
         # both are set, check if consistent with codepage
         enc_char = encoder.char(self.codepoint)
-        if self.char != enc_char:
-            logging.warning(
+        if (self.char != enc_char) and is_graphical(self.char) and is_graphical(enc_char):
+            logging.info(
                 f'Inconsistent encoding at {Codepoint(self.codepoint)}: '
                 f'mapped to {Char(self.char)} '
                 f'instead of {Char(enc_char)} per stated encoding.'
