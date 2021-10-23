@@ -89,28 +89,46 @@ TYPES = {
     's': char,
 }
 
+
+class bitfield:
+    """Pair (type, bit_width) to describe bit field."""
+
+    def __init__(self, fieldtype, bits):
+        """Pair (type, bit_width) to describe bit field."""
+        self.type = fieldtype
+        self.bits = bits
+
+
 def _parse_type(atype):
     """Convert struct member type specification to ctypes base type or array."""
+    if isinstance(atype, bitfield):
+        return (*_parse_type(atype.type), atype.bits)
     if isinstance(atype, type):
-        return atype
+        return atype,
     try:
-        return TYPES[atype]
+        return TYPES[atype],
     except KeyError:
         pass
     if isinstance(atype, str) and atype.endswith('s'):
-        return char * int(atype[:-1])
+        return char * int(atype[:-1]),
     raise ValueError('Field type `{}` not understood'.format(atype))
 
 
 def _build_struct(parent, **description):
     """Use friendly keyword description to build ctypes struct subclass that supports vars()."""
+    fields = tuple(
+        (_field, *_parse_type(_type))
+        for _field, _type in description.items()
+    )
+    return _define_struct(parent, fields)
+
+
+def _define_struct(parent, fields):
+    """Build ctypes struct subclass with fields list provided."""
 
     class Struct(parent):
         """Struct with binary representation."""
-        _fields_ = tuple(
-            (_field, _parse_type(_type))
-            for _field, _type in description.items()
-        )
+        _fields_ = fields
         _pack_ = True
 
         def __repr__(self):
@@ -132,10 +150,11 @@ def _build_struct(parent, **description):
 
         def __add__(self, other):
             """Concatenate structs."""
-            addedstruct = _build_struct(parent, **dict(self._fields_ + other._fields_))
-            return addedstruct(**self.__dict__, **other.__dict__)
+            addedstruct = _define_struct(parent, self._fields_ + other._fields_)
+            return addedstruct(**vars(self), **vars(other))
 
     return _wrap_struct(Struct)
+
 
 def _wrap_struct(cstruct):
     """Wrap ctypes structs/struct arrays with convenience methods."""
@@ -155,7 +174,6 @@ def _wrap_base_type(ctyp, parent):
     cls.read_from = lambda stream: cls.from_buffer_copy(stream.read(ctypes.sizeof(ctyp))).value
     cls.from_bytes = lambda *args: cls.from_buffer_copy(*args).value
     return cls
-
 
 
 # interface:
