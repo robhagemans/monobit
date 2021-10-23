@@ -521,7 +521,6 @@ def is_graphical(char):
 def is_printable(char):
     """Check if a char should be printed - nothing ambiguous or unrepresentable in there."""
     return (not char) or is_graphical(char) and all(
-        # str.isprintable includes everything but Other (C) and Separator (Z), plus SPACE
         # we keep everything that is_graphical except PUA, Other/Format, Not Assigned
         # anything excluded will be shown as REPLACEMENT CHARACTER
         unicodedata.category(_c) not in ('Co', 'Cf', 'Cn')
