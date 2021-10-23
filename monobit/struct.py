@@ -6,6 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 from types import SimpleNamespace
+from functools import partial
 import ctypes
 import struct
 from ctypes import sizeof
@@ -101,18 +102,6 @@ def _parse_type(atype):
     raise ValueError('Field type `{}` not understood'.format(atype))
 
 
-def friendlystruct(_endian, **description):
-    """A slightly less clunky interface to struct."""
-    # get base class based on endianness
-    if _endian.lower() in ('<', 'little', 'le'):
-        base = ctypes.LittleEndianStructure
-    elif _endian.lower() in ('>', 'big', 'be'):
-        base = ctypes.BigEndianStructure
-    else:
-        raise ValueError('Endianness `{}` not understood'.format(_endian))
-    return _build_struct(base, **description)
-
-
 def _build_struct(parent, **description):
     """Use friendly keyword description to build ctypes struct subclass that supports vars()."""
 
@@ -148,6 +137,75 @@ def _build_struct(parent, **description):
 
     return _wrap_struct(Struct)
 
+def _wrap_struct(cstruct):
+    """Wrap ctypes structs/struct arrays with convenience methods."""
+    cstruct.size = ctypes.sizeof(cstruct)
+    cstruct.array = lambda n: _wrap_struct(cstruct * n)
+    cstruct.read_from = lambda stream: cstruct.from_buffer_copy(stream.read(ctypes.sizeof(cstruct)))
+    cstruct.from_bytes = cstruct.from_buffer_copy
+    return cstruct
+
+def _wrap_base_type(ctyp, parent):
+    """Wrap ctypes base types with convenience methods."""
+    # while struct members defined as ctypes resolve to Python types,
+    # base ctypes are objects that are not compatible with Python types
+    # so we wrap the base type in a one-member struct
+    cls = _build_struct(parent, value=ctyp)
+    cls.array = lambda n: _wrap_base_type(ctyp * n, parent)
+    cls.read_from = lambda stream: cls.from_buffer_copy(stream.read(ctypes.sizeof(ctyp))).value
+    cls.from_bytes = lambda *args: cls.from_buffer_copy(*args).value
+    return cls
+
+
+
+# interface:
+#
+# >>> mystruct = BE.struct(one=uint8, two=int32)
+# >>> record = mystruct.from_bytes(b'\0\1\2\3\4')
+# >>> record
+# Struct(one=0, two=16909060)
+# >>> hex(record.two)
+# '0x1020304'
+#
+# >>> mystruct = LE.struct(one=uint8, two=int32)
+# >>> record = mystruct.from_bytes(b'\0\1\2\3\4')
+# >>> hex(record.two)
+# '0x4030201'
+
+# note that uint8 etc. are base types while BE.uint8 etc are wrapped
+# we can't use the latter in a struct definition
+
+
+def _binary_types(parent):
+    return SimpleNamespace(
+        struct=partial(_build_struct, parent),
+        char=_wrap_base_type(char, parent),
+        uint8=_wrap_base_type(uint8, parent),
+        int8=_wrap_base_type(int8, parent),
+        uint16=_wrap_base_type(uint16, parent),
+        int16=_wrap_base_type(int16, parent),
+        uint32=_wrap_base_type(uint32, parent),
+        int32=_wrap_base_type(int32, parent),
+    )
+
+
+BE = _binary_types(ctypes.BigEndianStructure)
+LE = _binary_types(ctypes.LittleEndianStructure)
+
+
+# deprecated interface
+
+def friendlystruct(_endian, **description):
+    """A slightly less clunky interface to struct."""
+    # get base class based on endianness
+    if _endian.lower() in ('<', 'little', 'le'):
+        base = ctypes.LittleEndianStructure
+    elif _endian.lower() in ('>', 'big', 'be'):
+        base = ctypes.BigEndianStructure
+    else:
+        raise ValueError('Endianness `{}` not understood'.format(_endian))
+    return _build_struct(base, **description)
+
 
 friendlystruct.char = char
 friendlystruct.uint8 = uint8
@@ -157,42 +215,3 @@ friendlystruct.int16 = int16
 friendlystruct.uint32 = uint32
 friendlystruct.int32 = int32
 friendlystruct.sizeof = ctypes.sizeof
-
-
-def _wrap_struct(cstruct):
-    """Wrap ctypes structs/struct arrays with convenience methods."""
-    cstruct.size = ctypes.sizeof(cstruct)
-    cstruct.array = lambda n: _wrap_struct(cstruct * n)
-    cstruct.read_from = lambda stream: cstruct.from_buffer_copy(stream.read(ctypes.sizeof(cstruct)))
-    cstruct.from_bytes = cstruct.from_buffer_copy
-    return cstruct
-
-def _wrap_base_type(ctyp, endian):
-    """Wrap ctypes base types with convenience methods."""
-    # while struct members defined as ctypes resolve to Python types,
-    # base ctypes are objects that are not compatible with Python types
-    # so we wrap the base type in a one-member struct
-    cls = friendlystruct(endian, value=ctyp)
-    cls.array = lambda n: _wrap_base_type(ctyp * n, endian)
-    cls.read_from = lambda stream: cls.from_buffer_copy(stream.read(ctypes.sizeof(ctyp))).value
-    cls.from_bytes = lambda *args: cls.from_buffer_copy(*args).value
-    return cls
-
-
-class BE:
-    char = _wrap_base_type(char, '>')
-    uint8 = _wrap_base_type(uint8, '>')
-    int8 = _wrap_base_type(int8, '>')
-    uint16 = _wrap_base_type(uint16, '>')
-    int16 = _wrap_base_type(int16, '>')
-    uint32 = _wrap_base_type(uint32, '>')
-    int32 = _wrap_base_type(int32, '>')
-
-class LE:
-    char = _wrap_base_type(char, '<')
-    uint8 = _wrap_base_type(uint8, '<')
-    int8 = _wrap_base_type(int8, '<')
-    uint16 = _wrap_base_type(uint16, '<')
-    int16 = _wrap_base_type(int16, '<')
-    uint32 = _wrap_base_type(uint32, '<')
-    int32 = _wrap_base_type(int32, '<')
