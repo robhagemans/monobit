@@ -198,8 +198,8 @@ def _load_amiga(f, where):
         raise FileFormatError(
             f'Not an Amiga font data file: no code hunk found (id 0x{hunk_id:03X})'
         )
-    props, glyphs, kerning, spacing = _read_font_hunk(f)
-    return _convert_amiga_font(props, glyphs, kerning, spacing)
+    props, glyphs = _read_font_hunk(f)
+    return _convert_amiga_font(props, glyphs)
 
 def _read_library_names(f):
     library_names = []
@@ -243,7 +243,7 @@ def _read_font_hunk(f):
     # remainder is the font strike
     data = f.read()
     # read character data
-    glyphs, kerning, spacing = _read_strike(
+    glyphs = _read_strike(
         data, amiga_props.tf_XSize, amiga_props.tf_YSize,
         amiga_props.tf_Flags & _FPF_PROPORTIONAL,
         amiga_props.tf_Modulo, amiga_props.tf_LoChar, amiga_props.tf_HiChar,
@@ -251,8 +251,7 @@ def _read_font_hunk(f):
         None if not amiga_props.tf_CharSpace else amiga_props.tf_CharSpace + loc,
         None if not amiga_props.tf_CharKern else amiga_props.tf_CharKern + loc
     )
-    return amiga_props, glyphs, kerning, spacing
-
+    return amiga_props, glyphs
 
 def _read_strike(
         data, xsize, ysize, proportional, modulo, lochar, hichar,
@@ -284,38 +283,47 @@ def _read_strike(
         [_row[_loc.offset:_loc.offset+_loc.width] for _row in rows]
         for _loc in locs
     ]
-    glyphs = [Glyph(_char, codepoint=_ord) for _ord, _char in enumerate(glyphrows, start=lochar)]
-    return glyphs, kerning, spacing
+    glyphs = [
+        Glyph(_char, codepoint=_ord, kerning=_kern, spacing=_spc)
+        for _ord, (_char, _kern, _spc) in enumerate(zip(glyphrows, kerning, spacing), start=lochar)
+    ]
+    return glyphs
 
 
 ###################################################################################################
 # convert from Amiga to monobit
 
-def _convert_amiga_font(amiga_props, glyphs, kerning, spacing):
+def _convert_amiga_font(amiga_props, glyphs):
     """Convert Amiga properties and glyphs to monobit Font."""
-    glyphs, offset_x = _normalise_glyphs(glyphs, kerning, spacing)
-    props = _parse_amiga_props(amiga_props, offset_x)
+    glyphs, offset_x = _convert_amiga_glyphs(glyphs)
+    props = _convert_amiga_props(amiga_props, offset_x)
     logging.info('yaff properties:')
     for line in str(props).splitlines():
         logging.info('    ' + line)
     return Font(glyphs, properties=vars(props))
 
 
-def _normalise_glyphs(glyphs, kerning, spacing):
+def _convert_amiga_glyphs(glyphs):
     """Deal with negative kerning by turning it into a global negative offset."""
-    offset_x = min(kerning)
-    kerning = [_kern - offset_x for _kern in kerning]
     # apply kerning and spacing
+    offset_x = min(_glyph.kerning for _glyph in glyphs)
     glyphs = [
-        _glyph.expand(left=_kern, right=max(0, _space-_glyph.width))
-        for _glyph, _space, _kern in zip(glyphs, spacing, kerning)
+        _glyph.expand(
+            left=_glyph.kerning - offset_x,
+            right=max(0, _glyph.spacing-_glyph.width)
+        )
+        for _glyph in glyphs
+    ]
+    glyphs = [
+        _glyph.drop_properties('kerning', 'spacing')
+        for _glyph in glyphs
     ]
     # default glyph has no codepoint
     glyphs[-1] = glyphs[-1].set_annotations(codepoint=(), tags=('default',))
     return glyphs, offset_x
 
 
-def _parse_amiga_props(amiga_props, offset_x):
+def _convert_amiga_props(amiga_props, offset_x):
     """Convert AmigaFont properties into yaff properties."""
     if amiga_props.tf_Style & _FSF_COLORFONT:
         raise FileFormatError('Amiga ColorFont not supported')

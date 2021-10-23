@@ -29,7 +29,7 @@ class Bounds(NamedTuple):
 class Glyph:
     """Single glyph."""
 
-    def __init__(self, pixels=(), codepoint=(), char='', tags=(), comments=()):
+    def __init__(self, pixels=(), *, codepoint=(), char='', tags=(), comments=(), **kwargs):
         """Create glyph from tuple of tuples."""
         # glyph data
         self._rows = tuple(tuple(bool(_bit) for _bit in _row) for _row in pixels)
@@ -42,6 +42,22 @@ class Glyph:
             raise ValueError(
                 f'All rows in a glyph must be of the same width: {repr(self)}'
             )
+        # custom properties - not used but kept
+        self._props = {_k.replace('_', '-'): _v for _k, _v in kwargs.items()}
+
+    def __getattr__(self, attr):
+        """Take property from property table."""
+        attr = attr.replace('_', '-')
+        try:
+            return self._props[attr]
+        except KeyError as e:
+            pass
+        raise AttributeError(attr)
+
+    def drop_properties(self, *args):
+        """Remove custom properties."""
+        args = [_arg.replace('_', '-') for _arg in args]
+        return self.modify(**{_k: _v for _k, _v in self._props.items() if _k not in args})
 
     @property
     def tags(self):
@@ -64,18 +80,20 @@ class Glyph:
         return (
             f"Glyph(char={repr(self._char)}, "
             f"codepoint={repr(self._codepoint)}, "
-            f"tags={repr(self._tags)}, " +
-            "comments=({}), ".format(
+            f"tags={repr(self._tags)}, "
+            + "comments=({}), ".format(
                 '' if not self._comments else
                 "\n  '" + "',\n  '".join(self.comments) + "'"
-            ) +
-            "pixels=({})".format(
+            )
+            + ', '.join(f'{_k}={_v}' for _k, _v in self._props.items())
+            + (', ' if self._props else '')
+            + "pixels=({})".format(
                 '' if not self._rows else
                 "\n  '{}'\n".format(
                     to_text(self.as_matrix(), ink='@', paper='.', line_break="',\n  '")
                 )
-            ) +
-            ")"
+            )
+            + ")"
         )
 
     def add_annotations(self, *, tags=(), comments=()):
@@ -117,7 +135,9 @@ class Glyph:
         return self.modify(comments=())
 
     def modify(
-            self, pixels=NOT_SET, *, tags=NOT_SET, char=NOT_SET, codepoint=NOT_SET, comments=NOT_SET
+            self, pixels=NOT_SET, *,
+            tags=NOT_SET, char=NOT_SET, codepoint=NOT_SET, comments=NOT_SET,
+            **kwargs
         ):
         """Return a copy of the glyph with changes."""
         if pixels is NOT_SET:
@@ -135,7 +155,8 @@ class Glyph:
             codepoint=codepoint,
             char=char,
             tags=tuple(tags),
-            comments=tuple(comments)
+            comments=tuple(comments),
+            **kwargs
         )
 
     @classmethod
