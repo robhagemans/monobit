@@ -649,7 +649,7 @@ def _create_bmfont(
         size=(256, 256), packed=False, imageformat='png', descriptor='text'
     ):
     """Create a bmfont package."""
-    path = font.family
+    path = Path('.') / font.family
     fontname = font.name.replace(' ', '_')
     encoding = font.encoding
     if not charmaps.is_unicode(encoding):
