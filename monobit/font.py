@@ -125,7 +125,7 @@ PROPERTIES = {
     # summarising quantities
     # determined from the bitmaps only
     'spacing': str, # proportional, monospace, character-cell, multi-cell
-    'max-raster-size': Coord.create, # maximum raster (not necessarily ink) width/height
+    'raster-size': Coord.create, # maximum raster (not necessarily ink) width/height
     'bounding-box': Coord.create, # overall ink bounds - overlay all glyphs with fixed origin and determine maximum ink extent
     'average-advance': number, # average advance width, rounded to tenths
     'cap-advance': int, # advance width of LATIN CAPITAL LETTER X
@@ -396,7 +396,7 @@ class Font:
     @cache
     def get_empty_glyph(self):
         """Get blank glyph with zero advance (or minimal if zero not possible)."""
-        return Glyph.blank(max(0, -self.offset.x - self.tracking), self.max_raster_size.y)
+        return Glyph.blank(max(0, -self.offset.x - self.tracking), self.raster_size.y)
 
 
     ##########################################################################
@@ -631,7 +631,7 @@ class Font:
         return Coord(72, 72)
 
     @calculated_property(override='reject')
-    def max_raster_size(self):
+    def raster_size(self):
         """Get maximum raster width and height, in pixels."""
         if not self._glyphs:
             return Coord(0, 0)
@@ -718,7 +718,7 @@ class Font:
     @calculated_property(override='reject')
     def line_height(self):
         """Line height."""
-        return self.max_raster_size.y + self.leading
+        return self.raster_size.y + self.leading
 
 
     ##########################################################################

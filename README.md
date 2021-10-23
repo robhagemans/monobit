@@ -414,7 +414,7 @@ _Characteristics_ are descriptive in nature. They can be specified or calculated
 - `pixel-size`: pixel size (equals ascent plus descent).
 
 Characteristics inferred from the glyphs are:
-- `max-raster-size`: largest raster needed to define a glyph.
+- `raster-size`: largest raster needed to define a glyph.
 - `bounding-box`: smallest box that encompasses all ink if all glyphs are overlayed at the same origin.
 - `average-advance`: average advance width across glyphs.
 - `cap-advance`: advance width of capital letter `X`.

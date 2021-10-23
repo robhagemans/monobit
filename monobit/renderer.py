@@ -120,8 +120,8 @@ def chart(
     padding_x, padding_y = padding
     margin_x, margin_y = margin
     # work out image geometry
-    step_x = font.max_raster_size.x * scale_x + padding_x
-    step_y = font.max_raster_size.y * scale_y + padding_y
+    step_x = font.raster_size.x * scale_x + padding_x
+    step_y = font.raster_size.y * scale_y + padding_y
     rows = ceildiv(len(font.glyphs), columns)
     # determine image geometry
     width = columns * step_x + 2 * margin_x - padding_x
