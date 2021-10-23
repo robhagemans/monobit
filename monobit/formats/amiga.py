@@ -358,9 +358,9 @@ def _convert_amiga_props(amiga_props, offset_x):
     props.revision = amiga_props.dfh_Revision
     props.offset = Coord(offset_x, -(amiga_props.tf_YSize - amiga_props.tf_Baseline))
     # tf_Style
-    props.weight = 'bold' if amiga_props.tf_Style.FSF_BOLD else 'medium'
-    props.slant = 'italic' if amiga_props.tf_Style.FSF_ITALIC else 'roman'
-    props.setwidth = 'expanded' if amiga_props.tf_Style.FSF_EXTENDED else 'medium'
+    props.weight = 'bold' if amiga_props.tf_Style.FSF_BOLD else Font.default('weight')
+    props.slant = 'italic' if amiga_props.tf_Style.FSF_ITALIC else Font.default('slant')
+    props.setwidth = 'expanded' if amiga_props.tf_Style.FSF_EXTENDED else Font.default('setwidth')
     if amiga_props.tf_Style.FSF_UNDERLINED:
         props.decoration = 'underline'
     # tf_Flags

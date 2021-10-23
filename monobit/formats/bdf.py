@@ -759,7 +759,7 @@ def _create_xlfd_properties(font):
         'NOTICE': _quoted_string(font.notice),
         'FOUNDRY': _quoted_string(font.foundry),
         'FAMILY_NAME': _quoted_string(font.family),
-        'WEIGHT_NAME': _quoted_string(font.weight),
+        'WEIGHT_NAME': _quoted_string(font.weight.title()),
         'RELATIVE_WEIGHT': (
             {_v: _k for _k, _v in _WEIGHT_MAP.items()}.get(font.weight, 50)
         ),
@@ -769,12 +769,12 @@ def _create_xlfd_properties(font):
         'SPACING': _quoted_string(
             {_v: _k for _k, _v in _SPACING_MAP.items()}.get(font.spacing, 'P')
         ),
-        'SETWIDTH_NAME': _quoted_string(font.setwidth),
+        'SETWIDTH_NAME': _quoted_string(font.setwidth.title()),
         'RELATIVE_SETWIDTH': (
             # 50 is medium
             {_v: _k for _k, _v in _SETWIDTH_MAP.items()}.get(font.setwidth, 50)
         ),
-        'ADD_STYLE_NAME': _quoted_string(font.style),
+        'ADD_STYLE_NAME': _quoted_string(font.style.title()),
         'AVERAGE_WIDTH': str(round(float(font.average_advance) * 10)).replace('-', '~'),
     }
     # encoding dependent values

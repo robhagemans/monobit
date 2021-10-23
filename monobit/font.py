@@ -299,7 +299,8 @@ class Font:
         except KeyError:
             return None
 
-    def _normalise_property(self, property):
+    @staticmethod
+    def _normalise_property(property):
         """Return property name with underscores replaced."""
         # don't modify namespace properties
         if '.' in property:
@@ -555,6 +556,11 @@ class Font:
         """Non-default properties."""
         return {**self._properties}
 
+    @classmethod
+    def default(cls, property):
+        """Default value for a property."""
+        return cls._property_defaults.get(cls._normalise_property(property), '')
+
     def __getattr__(self, attr):
         """Take property from property table."""
         norm_attr = self._normalise_property(attr)
@@ -576,10 +582,21 @@ class Font:
     @calculated_property
     def name(self):
         """Name of font."""
-        weight = '' if self.weight == self._property_defaults['weight'] else self.weight
-        slant = '' if self.slant == self._property_defaults['slant'] else self.slant
+        if self.slant == self._property_defaults['slant']:
+            slant = ''
+        else:
+            # title-case
+            slant = self.slant.title()
+        if self.setwidth == self._property_defaults['setwidth']:
+            setwidth = ''
+        else:
+            setwidth = self.setwidth.title()
+        if (slant or setwidth) and self.weight == self._property_defaults['weight']:
+            weight = ''
+        else:
+            weight = self.weight.title()
         return ' '.join(
-            str(_x) for _x in (self.family, weight, slant, self.point_size) if _x
+            str(_x) for _x in (self.family, setwidth, weight, slant, self.point_size) if _x
         )
 
     @calculated_property
