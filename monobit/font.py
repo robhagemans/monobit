@@ -7,6 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 from functools import wraps
 from typing import NamedTuple
+from functools import partial
 import numbers
 import logging
 import unicodedata
@@ -24,7 +25,7 @@ from .encoding import charmaps
 from .label import Label, Tag, Char, Codepoint, label
 
 
-
+# pylint: disable=redundant-keyword-arg, no-member
 
 def number(value=0):
     """Convert to int or float."""
@@ -165,15 +166,58 @@ PROPERTIES = {
     'kerning': KerningTable,
 }
 
-# calculated properties
+
 # properties that must have the calculated value
-_NON_OVERRIDABLE = ('spacing', 'max-raster-size', 'pixel-size', 'average-advance', 'cap-advance',)
-# properties where the calculated value may be overridden
-_OVERRIDABLE = ('dpi', 'name', 'family', 'x-height', 'cap-height',)
+_non_overridable=[]
+# properties where the calculated value may be overridden but results in a notification
+_notify_override=[]
+
+def calculated_property(*args, override='accept'):
+    """Decorator to take property from property table, if defined; calculate otherwise."""
+    if not args:
+        # return decorator with these arguments set as extra args
+        return partial(calculated_property, override=override)
+    fn, *_ = args
+
+    @property
+    @cache
+    @wraps(fn)
+    def _cached_fn(self, *args, **kwargs):
+        try:
+            return self._properties[fn.__name__.replace('_', '-')]
+        except KeyError:
+            pass
+        return fn(self, *args, **kwargs)
+
+    if override == 'reject':
+        _non_overridable.append(fn.__name__)
+    elif override == 'notify':
+        _notify_override.append(fn.__name__)
+    return _cached_fn
 
 
 class Font:
     """Representation of font glyphs and metadata."""
+
+
+    # default property values
+    _property_defaults = {
+        _prop: _type() for _prop, _type in PROPERTIES.items()
+    }
+    _property_defaults.update({
+        # font version
+        'revision': '0',
+        # normal, bold, light, ...
+        'weight': 'regular',
+        # roman, italic, oblique, ...
+        'slant': 'roman',
+        # normal, condensed, expanded, ...
+        'setwidth': 'normal',
+        # left-to-right, right-to-left
+        'direction': 'left-to-right',
+        # word-break character (usually space)
+        'word-boundary': Char(' '),
+    })
 
     def __init__(self, glyphs=(), comments=None, properties=None):
         """Create new font."""
@@ -188,34 +232,8 @@ class Font:
         self._comments = {_k: tuple(_v) for _k, _v in comments.items()}
         # update properties
         self._properties = {}
-        if properties:
-            properties = {self._normalise_property(_k): _v for _k, _v in properties.items()}
-            for key, converter in reversed(list(PROPERTIES.items())):
-                try:
-                    value = converter(properties.pop(key))
-                except KeyError:
-                    continue
-                except ValueError as e:
-                    logging.error('Could not set property %s: %s', key, e)
-                # don't set property values that equal the default
-                # we need to ensure we use underscore variants, or default functions won't get called
-                default_value = getattr(self, key.replace('-', '_'))
-                if value != default_value:
-                    if key in _NON_OVERRIDABLE:
-                        logging.warning(
-                            "Property `%s` value can't be set to %s. Keeping calculated value %s.",
-                            key, str(value), str(default_value)
-                        )
-                    else:
-                        self._properties[key] = value
-                        if key in _OVERRIDABLE:
-                            logging.info(
-                                'Property `%s` value set to %s, while calculated value is %s.',
-                                key, str(value), str(default_value)
-                            )
-            # append nonstandard properties
-            self._properties.update(properties)
         # set encoding first so we can set labels
+        self._properties.update(self._check_properties(properties))
         self._add_encoding_data()
         # construct lookup tables
         self._tags = {
@@ -238,6 +256,7 @@ class Font:
             _c for _c in self._chars
             if _c and len(_c) > 1
         )
+
 
     def __repr__(self):
         """Representation."""
@@ -283,6 +302,37 @@ class Font:
         if '.' in property:
             return property
         return property.replace('_', '-')
+
+    def _check_properties(self, properties):
+        """Convert properties where needed."""
+        if not properties:
+            return {}
+        properties = {self._normalise_property(_k): _v for _k, _v in properties.items()}
+        for key, converter in reversed(list(PROPERTIES.items())):
+            try:
+                value = converter(properties.pop(key))
+            except KeyError:
+                continue
+            except ValueError as e:
+                logging.error('Could not set property `%s` to %s: %s', key, repr(value), e)
+            # don't set property values that equal the default
+            # we need to ensure we use underscore variants, or default functions won't get called
+            default_value = getattr(self, key.replace('-', '_'))
+            if value != default_value:
+                if key in _non_overridable:
+                    logging.warning(
+                        "Property `%s` can't be set to %s. Keeping calculated value %s.",
+                        key, repr(value), repr(default_value)
+                    )
+                else:
+                    self._properties[key] = value
+                    if key in _notify_override:
+                        logging.info(
+                            'Property `%s` set to %s, while calculated value is %s.',
+                            key, repr(value), repr(default_value)
+                        )
+        # append nonstandard properties
+        return properties
 
     ##########################################################################
     # glyph access
@@ -505,48 +555,20 @@ class Font:
     def __getattr__(self, attr):
         """Take property from property table."""
         norm_attr = self._normalise_property(attr)
-        # first check if defined as override
-        try:
-            return self._properties[norm_attr]
-        except KeyError:
-            pass
-        # return default if in list
-        try:
-            return self._property_defaults[norm_attr]
-        except KeyError:
-            pass
-        raise AttributeError(attr)
-
-    # default property values
-    _property_defaults = {
-        _prop: _type() for _prop, _type in PROPERTIES.items()
-    }
-    _property_defaults.update({
-        # font version
-        'revision': '0',
-        # normal, bold, light, ...
-        'weight': 'regular',
-        # roman, italic, oblique, ...
-        'slant': 'roman',
-        # normal, condensed, expanded, ...
-        'setwidth': 'normal',
-        # left-to-right, right-to-left
-        'direction': 'left-to-right',
-        # word-break character (usually space)
-        'word-boundary': Char(' '),
-    })
-
-
-    def calculated_property(fn, overridable=True, warn=False):
-        """Decorator to take property from property table, if defined; calculate otherwise."""
-        @wraps(fn)
-        def _cached_fn(self, *args, **kwargs):
+        if '_properties' in vars(self):
+            # first check if defined as override
             try:
-                return self._properties[self._normalise_property(fn.__name__)]
+                return self._properties[norm_attr]
             except KeyError:
                 pass
-            return fn(self, *args, **kwargs)
-        return property(cache(_cached_fn))
+        if '_property_defaults' in vars(type(self)):
+            # return default if in list
+            try:
+                return self._property_defaults[norm_attr]
+            except KeyError:
+                pass
+        raise AttributeError(attr)
+
 
     @calculated_property
     def name(self):
@@ -565,14 +587,14 @@ class Font:
             return self.source_name.split('.')[0]
         return ''
 
-    @calculated_property
+    @calculated_property(override='notify')
     def point_size(self):
         """Nominal point height."""
         # assume 72 points per inch (officially 72.27 pica points per inch)
         # if dpi not given assumes 72 dpi, so point-size == pixel-size
         return int(self.pixel_size * self.dpi.y / 72.)
 
-    @calculated_property
+    @calculated_property(override='reject')
     def pixel_size(self):
         """Get nominal pixel size (ascent + descent)."""
         if not self._glyphs:
@@ -608,7 +630,7 @@ class Font:
         # default: 72 dpi; 1 point == 1 pixel
         return Coord(72, 72)
 
-    @calculated_property
+    @calculated_property(override='reject')
     def max_raster_size(self):
         """Get maximum raster width and height, in pixels."""
         if not self._glyphs:
@@ -618,7 +640,7 @@ class Font:
             max(_glyph.height for _glyph in self._glyphs)
         )
 
-    @calculated_property
+    @calculated_property(override='reject')
     def bounding_box(self):
         """Minimum bounding box encompassing all glyphs at fixed origin."""
         if not self._glyphs:
@@ -636,7 +658,7 @@ class Font:
             repl = ''
         return Char(repl)
 
-    @calculated_property
+    @calculated_property(override='notify')
     def average_advance(self):
         """Get average glyph advance width, rounded to tenths of pixels."""
         if not self._glyphs:
@@ -647,7 +669,7 @@ class Font:
             + self.tracking
         )
 
-    @calculated_property
+    @calculated_property(override='reject')
     def spacing(self):
         """Monospace or proportional spacing."""
         if not self._glyphs:
@@ -669,7 +691,7 @@ class Font:
             return 'monospace'
         return 'proportional'
 
-    @calculated_property
+    @calculated_property(override='notify')
     def cap_advance(self):
         """Advance width of uppercase X."""
         try:
@@ -677,7 +699,7 @@ class Font:
         except KeyError:
             return 0
 
-    @calculated_property
+    @calculated_property(override='notify')
     def x_height(self):
         """Ink height of lowercase x."""
         try:
@@ -685,7 +707,7 @@ class Font:
         except KeyError:
             return 0
 
-    @calculated_property
+    @calculated_property(override='notify')
     def cap_height(self):
         """Ink height of uppercase X."""
         try:
@@ -693,7 +715,7 @@ class Font:
         except KeyError:
             return 0
 
-    @calculated_property
+    @calculated_property(override='reject')
     def line_height(self):
         """Line height."""
         return self.max_raster_size.y + self.leading

@@ -1132,6 +1132,7 @@ def _from_wikipedia(data, table=0, column=0, range=None):
                     # unicode point
                     if data.lower().startswith('u+'):
                         data = data[2:]
+                    # pylint: disable=unsupported-membership-test
                     if not range or self.current in range:
                         try:
                             char = chr(int(data, 16))
