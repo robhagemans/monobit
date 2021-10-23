@@ -160,14 +160,14 @@ def _wrap_base_type(ctyp, parent):
 
 # interface:
 #
-# >>> mystruct = BE.struct(one=uint8, two=int32)
+# >>> mystruct = big_endian.Struct(one=uint8, two=int32)
 # >>> record = mystruct.from_bytes(b'\0\1\2\3\4')
 # >>> record
 # Struct(one=0, two=16909060)
 # >>> hex(record.two)
 # '0x1020304'
 #
-# >>> mystruct = LE.struct(one=uint8, two=int32)
+# >>> mystruct = little_endian.Struct(one=uint8, two=int32)
 # >>> record = mystruct.from_bytes(b'\0\1\2\3\4')
 # >>> hex(record.two)
 # '0x4030201'
@@ -178,7 +178,7 @@ def _wrap_base_type(ctyp, parent):
 
 def _binary_types(parent):
     return SimpleNamespace(
-        struct=partial(_build_struct, parent),
+        Struct=partial(_build_struct, parent),
         char=_wrap_base_type(char, parent),
         uint8=_wrap_base_type(uint8, parent),
         int8=_wrap_base_type(int8, parent),
@@ -189,8 +189,8 @@ def _binary_types(parent):
     )
 
 
-BE = _binary_types(ctypes.BigEndianStructure)
-LE = _binary_types(ctypes.LittleEndianStructure)
+big_endian = _binary_types(ctypes.BigEndianStructure)
+little_endian = _binary_types(ctypes.LittleEndianStructure)
 
 
 # deprecated interface

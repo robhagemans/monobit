@@ -9,12 +9,13 @@ import os
 import logging
 
 from ..binary import bytes_to_bits
-from ..struct import friendlystruct, Props
 from ..storage import loaders, savers
 from ..streams import FileFormatError
 from ..font import Font, Coord
 from ..glyph import Glyph
+from ..struct import Props, big_endian as be
 from .. import struct
+
 
 @loaders.register('font', magic=(b'\x0f\0', b'\x0f\2'), name='Amiga Font Contents')
 def load_amiga_fc(f, where):
@@ -104,23 +105,17 @@ _FSF_TAGGED = 0x80
 
 # Amiga hunk file header
 # http://amiga-dev.wikidot.com/file-format:hunk#toc6
-_HUNK_FILE_HEADER_0 = friendlystruct(
-    '>',
-    hunk_id='uint32',
-)
-# followed by null-null-terminated string table
-# followed by
-_HUNK_FILE_HEADER_1 = friendlystruct(
-    '>',
+#   hunk_id = uint32
+#   null-null-terminated string table
+_HUNK_FILE_HEADER_1 = be.Struct(
     table_size='uint32',
     first_hunk='uint32',
     last_hunk='uint32',
 )
-# followed by hunk_sizes = uint32 * (last_hunk-first_hunk+1)
+#   hunk_sizes = uint32 * (last_hunk-first_hunk+1)
 
 # disk font header
-_AMIGA_HEADER = friendlystruct(
-    '>',
+_AMIGA_HEADER = be.Struct(
     # struct DiskFontHeader
     # http://amigadev.elowar.com/read/ADCD_2.1/Libraries_Manual_guide/node05F9.html#line61
     dfh_NextSegment='I',
@@ -165,16 +160,14 @@ _AMIGA_HEADER = friendlystruct(
 # struct FontContentsHeader
 # .font directory file
 # https://wiki.amigaos.net/wiki/Graphics_Library_and_Text#Composition_of_a_Bitmap_Font_on_Disk
-_FONT_CONTENTS_HEADER = friendlystruct(
-    '>',
+_FONT_CONTENTS_HEADER = be.Struct(
     fch_FileID='uword',
     fch_NumEntries='uword',
     # followed by array of FontContents or TFontContents
 )
 
 # struct FontContents
-_FONT_CONTENTS = friendlystruct(
-    '>',
+_FONT_CONTENTS = be.Struct(
     fc_FileName=struct.char * _MAXFONTPATH,
     fc_YSize='uword',
     fc_Style='ubyte',
@@ -183,8 +176,7 @@ _FONT_CONTENTS = friendlystruct(
 
 # struct TFontContents
 # not used - we ignore the extra tags stored at the back of the tfc_FileName field
-_T_FONT_CONTENTS = friendlystruct(
-    '>',
+_T_FONT_CONTENTS = be.Struct(
     tfc_FileName=struct.char * (_MAXFONTPATH-2),
     tfc_TagCount='uword',
     tfc_YSize='uword',
@@ -201,7 +193,7 @@ def _load_amiga(f, where):
     """Load font from Amiga disk font file."""
     # read & ignore header
     _read_header(f)
-    hunk_id = struct.BE.uint32.read_from(f)
+    hunk_id = be.uint32.read_from(f)
     if hunk_id != _HUNK_CODE:
         raise FileFormatError(
             f'Not an Amiga font data file: no code hunk found (id 0x{hunk_id:03X})'
@@ -212,7 +204,7 @@ def _load_amiga(f, where):
 def _read_library_names(f):
     library_names = []
     while True:
-        num_longs = struct.BE.uint32.read_from(f)
+        num_longs = be.uint32.read_from(f)
         if not num_longs:
             return library_names
         string = f.read(num_longs * 4)
@@ -226,7 +218,7 @@ def _read_library_names(f):
 def _read_header(f):
     """Read file header."""
     # read header id
-    hunk_id = struct.BE.uint32.read_from(f)
+    hunk_id = be.uint32.read_from(f)
     if hunk_id != _HUNK_HEADER:
         raise FileFormatError(
             f'Not an Amiga font data file: magic constant 0x{hunk_id:03X} != 0x3F3'
@@ -236,7 +228,7 @@ def _read_header(f):
     # list of memory sizes of hunks in this file (in number of ULONGs)
     # this seems to exclude overhead, so not useful to determine disk sizes
     num_sizes = hfh1.last_hunk - hfh1.first_hunk + 1
-    hunk_sizes = struct.BE.uint32.array(num_sizes).read_from(f)
+    hunk_sizes = be.uint32.array(num_sizes).read_from(f)
     return library_names, hfh1, hunk_sizes
 
 def _read_font_hunk(f):
@@ -270,16 +262,16 @@ def _read_strike(
     # location data
     # one additional glyph at end for undefined chars
     nchars = hichar - lochar + 1 + 1
-    loc_struct = friendlystruct('>', offset='H', width='H')
+    loc_struct = be.Struct(offset='H', width='H')
     locs = loc_struct.array(nchars).from_bytes(data, pos_charloc)
     # spacing data, can be negative
     if proportional and pos_charspace is not None:
-        spacing = struct.BE.int16.array(nchars).from_bytes(data, pos_charspace)
+        spacing = be.int16.array(nchars).from_bytes(data, pos_charspace)
     else:
         spacing = [xsize] * nchars
     # amiga "kerning" is a horizontal offset; can be pos (to right) or neg
     if pos_charkern is not None:
-        kerning = struct.BE.int16.array(nchars).from_bytes(data, pos_charkern)
+        kerning = be.int16.array(nchars).from_bytes(data, pos_charkern)
     else:
         kerning = [0] * nchars
     # strike
