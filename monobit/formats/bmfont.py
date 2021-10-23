@@ -21,7 +21,8 @@ from ..encoding import charmaps
 from .. import streams
 from ..streams import FileFormatError
 from ..binary import int_to_bytes, bytes_to_int
-from ..struct import friendlystruct, reverse_dict
+from ..struct import reverse_dict, little_endian as le
+from .. import struct
 from ..storage import loaders, savers
 from ..font import Font, Coord
 from ..glyph import Glyph
@@ -68,14 +69,12 @@ if Image:
 # BMFont spec
 # see http://www.angelcode.com/products/bmfont/doc/file_format.html
 
-_HEAD = friendlystruct(
-    'le',
+_HEAD = le.Struct(
     magic='3s',
     version='uint8',
 )
 
-_BLKHEAD = friendlystruct(
-    'le',
+_BLKHEAD = le.Struct(
     typeId='uint8',
     blkSize='uint32',
 )
@@ -91,8 +90,7 @@ _BLK_KERNINGS = 5
 # info struct
 
 def _info(size):
-    return friendlystruct(
-        'le',
+    return le.Struct(
         fontSize='int16',
         bitField='uint8',
         charSet='uint8',
@@ -105,7 +103,7 @@ def _info(size):
         spacingHoriz='uint8',
         spacingVert='uint8',
         outline='uint8',
-        fontName = friendlystruct.char * (size-14),
+        fontName = struct.char * (size-14),
     )
 
 # info bitfield
@@ -149,8 +147,7 @@ _CHARSET_STR_REVERSE_MAP = reverse_dict(_CHARSET_STR_MAP)
 
 # common struct
 
-_COMMON = friendlystruct(
-    'le',
+_COMMON = le.Struct(
     lineHeight='uint16',
     base='uint16',
     scaleW='uint16',
@@ -167,16 +164,14 @@ _COMMON = friendlystruct(
 
 def _pages(npages, size):
     strlen = size // npages
-    return friendlystruct(
-        'le',
-        pageNames=(friendlystruct.char * strlen) * int(npages)
+    return le.Struct(
+        pageNames=(struct.char * strlen) * int(npages)
     )
 
 
 # char struct
 
-_CHAR = friendlystruct(
-    'le',
+_CHAR = le.Struct(
     id='uint32',
     x='uint16',
     y='uint16',
@@ -197,24 +192,21 @@ _CHNL_A = 1 << 3
 
 
 def _chars(size):
-    return friendlystruct(
-        'le',
+    return le.Struct(
         chars=_CHAR * (size // _CHAR.size)
     )
 
 
 # kerning struct
 
-_KERNING = friendlystruct(
-    'le',
+_KERNING = le.Struct(
     first='uint32',
     second='uint32',
     amount='int16',
 )
 
 def _kernings(size):
-    return friendlystruct(
-        'le',
+    return le.Struct(
         kernings=_KERNING * (size // _KERNING.size)
     )
 
