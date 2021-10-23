@@ -14,8 +14,10 @@ import string
 import logging
 
 from ..binary import ceildiv
-from ..struct import friendlystruct
+from ..struct import Props, little_endian as le
+from .. import struct
 from ..storage import loaders, savers
+from ..streams import FileFormatError
 from ..font import Font
 from ..glyph import Glyph
 
@@ -26,8 +28,7 @@ _ID_MS = b'FONT   '
 _ID_NT = b'FONT.NT'
 _ID_DR = b'DRFONT '
 
-_CPI_HEADER = friendlystruct(
-    'le',
+_CPI_HEADER = le.Struct(
     id0='byte',
     id='7s',
     reserved='8s',
@@ -35,12 +36,10 @@ _CPI_HEADER = friendlystruct(
     ptyp='byte',
     fih_offset='long',
 )
-_FONT_INFO_HEADER = friendlystruct(
-    'le',
+_FONT_INFO_HEADER = le.Struct(
     num_codepages='short',
 )
-_CODEPAGE_ENTRY_HEADER = friendlystruct(
-    'le',
+_CODEPAGE_ENTRY_HEADER = le.Struct(
     cpeh_size='short',
     next_cpeh_offset='long',
     device_type='short',
@@ -59,19 +58,16 @@ _DT_PRINTER = 2
 _CP_FONT = 1
 _CP_DRFONT = 2
 
-_CODEPAGE_INFO_HEADER = friendlystruct(
-    'le',
+_CODEPAGE_INFO_HEADER = le.Struct(
     version='short',
     num_fonts='short',
     size='short',
 )
-_PRINTER_FONT_HEADER = friendlystruct(
-    'le',
+_PRINTER_FONT_HEADER = le.Struct(
     printer_type='short',
     escape_length='short',
 )
-_SCREEN_FONT_HEADER = friendlystruct(
-    'le',
+_SCREEN_FONT_HEADER = le.Struct(
     height='byte',
     width='byte',
     yaspect='byte',
@@ -81,16 +77,14 @@ _SCREEN_FONT_HEADER = friendlystruct(
 
 # DRDOS Extended Font File Header
 def drdos_ext_header(num_fonts_per_codepage=0):
-    return friendlystruct(
-        'le',
+    return le.Struct(
         num_fonts_per_codepage='byte',
-        font_cellsize=friendlystruct.uint8 * num_fonts_per_codepage,
-        dfd_offset=friendlystruct.uint32 * num_fonts_per_codepage,
+        font_cellsize=struct.uint8 * num_fonts_per_codepage,
+        dfd_offset=struct.uint32 * num_fonts_per_codepage,
     )
 # DRFONT character index table
-_CHARACTER_INDEX_TABLE = friendlystruct(
-    'le',
-    FontIndex=friendlystruct.int16 * 256,
+_CHARACTER_INDEX_TABLE = le.Struct(
+    FontIndex=struct.int16 * 256,
 )
 
 # friendly format name
@@ -129,7 +123,9 @@ def _parse_cpi(data):
             or (cpi_header.id0 == 0xff and cpi_header.id == _ID_NT)
             or (cpi_header.id0 == 0x7f and cpi_header.id == _ID_DR)
         ):
-        raise ValueError('Unrecognised CPI signature. Not a valid CPI file.')
+        raise FileFormatError(
+            f'Not a valid CPI file: unrecognised CPI signature 0x{cpi_header.id0:02X} "{cpi_header.id}".'
+        )
     if cpi_header.id == _ID_DR:
         # read the extended DRFONT header - determine size first
         drdos_effh = drdos_ext_header().from_bytes(data, _CPI_HEADER.size)
@@ -147,7 +143,7 @@ def _parse_cpi(data):
             cp_fonts, cpeh_offset = _parse_cp(
                 data, cpeh_offset, cpi_header.id, drdos_effh=drdos_effh
             )
-        except ValueError as e:
+        except FileFormatError as e:
             logging.error('Could not parse font in CPI file: %s', e)
         else:
             fonts += cp_fonts
@@ -185,10 +181,9 @@ def _parse_cp(data, cpeh_offset, header_id=_ID_MS, drdos_effh=None, standalone=F
         cpih.num_fonts = 1
         # could we parse printer fonts? are they device specific?
         # if not, what are the dimensions?
-        raise ValueError(
-            'Printer codepages not supported - codepage {} device `{}`'.format(
-                cpeh.codepage, cpeh.device_name
-            )
+        raise FileFormatError(
+            'Printer CPI codepages not supported: '
+            f'codepage {cpeh.codepage}, device `{cpeh.device_name}`'
         )
     else:
         fonts = []
@@ -199,17 +194,17 @@ def _parse_cp(data, cpeh_offset, header_id=_ID_MS, drdos_effh=None, standalone=F
             fh = _SCREEN_FONT_HEADER.from_bytes(data, fh_offset)
             # extract font properties
             device = cpeh.device_name.strip().decode('ascii', 'replace')
-            props = {
-                'encoding': 'cp{}'.format(cpeh.codepage),
-                'device': device,
-                'source-format': 'CPI ({})'.format(_FORMAT_NAME[header_id]),
-                'family': device,
-            }
+            props = Props(
+                encoding=f'cp{cpeh.codepage}',
+                device=device,
+                source_format=f'CPI ({_FORMAT_NAME[header_id]})',
+                cpi=Props()
+            )
             # apparently never used
             if fh.xaspect or fh.yaspect:
                 # not clear how this would be interpreted...
-                props['cpi.xaspect'] = str(fh.xaspect)
-                props['cpi.yaspect'] = str(fh.yaspect)
+                props.cpi.xaspect = str(fh.xaspect)
+                props.cpi.yaspect = str(fh.yaspect)
             # get the bitmap
             if cpih.version == _CP_FONT:
                 # bitmaps follow font header
@@ -229,5 +224,5 @@ def _parse_cp(data, cpeh_offset, header_id=_ID_MS, drdos_effh=None, standalone=F
                         fh.width
                     ))
                 fh_offset += _SCREEN_FONT_HEADER.size
-            fonts.append(Font(cells, properties=props))
+            fonts.append(Font(cells, properties=vars(props)))
     return fonts, cpeh.next_cpeh_offset
