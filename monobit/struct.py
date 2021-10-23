@@ -134,10 +134,11 @@ def _define_struct(parent, fields):
 
         def __repr__(self):
             """String representation."""
+            props = vars(self)
             return type(self).__name__ + '({})'.format(
                 ', '.join(
-                    '{}={}'.format(field, getattr(self, field))
-                    for field, *_ in self._fields_
+                    '{}={}'.format(_fld, _val)
+                    for _fld, _val in props.items()
                 )
             )
 
@@ -146,7 +147,7 @@ def _define_struct(parent, fields):
             """Extract the fields dictionary."""
             return dict(
                 (field, getattr(self, field))
-                for field, _ in self._fields_
+                for field, *_ in self._fields_
             )
 
         def __add__(self, other):
@@ -154,8 +155,14 @@ def _define_struct(parent, fields):
             addedstruct = _define_struct(parent, self._fields_ + other._fields_)
             return addedstruct(**vars(self), **vars(other))
 
-    return _wrap_struct(Struct)
+        def __getattribute__(self, attr):
+            """Convert attributes where still necessary."""
+            value = super().__getattribute__(attr)
+            if isinstance(value, ctypes.Array):
+                return tuple(value)
+            return value
 
+    return _wrap_struct(Struct)
 
 def _wrap_struct(cstruct):
     """Wrap ctypes structs/struct arrays with convenience methods."""
