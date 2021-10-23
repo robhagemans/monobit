@@ -504,24 +504,41 @@ class Font:
 
     def __getattr__(self, attr):
         """Take property from property table."""
-        attr = self._normalise_property(attr)
+        norm_attr = self._normalise_property(attr)
+        # first check if defined as override
         try:
-            return self._properties[attr]
+            return self._properties[norm_attr]
         except KeyError:
             pass
+        # return default if in list
         try:
-            # if in yaff property list, return default
-            return self._yaff_properties[attr]
+            return self._property_defaults[norm_attr]
         except KeyError:
             pass
-        try:
-            # if in yaff property list, return default
-            return PROPERTIES[attr]()
-        except KeyError as e:
-            raise AttributeError(e) from e
+        raise AttributeError(attr)
 
-    def yaffproperty(fn):
-        """Take property from property table, if defined; calculate otherwise."""
+    # default property values
+    _property_defaults = {
+        _prop: _type() for _prop, _type in PROPERTIES.items()
+    }
+    _property_defaults.update({
+        # font version
+        'revision': '0',
+        # normal, bold, light, ...
+        'weight': 'regular',
+        # roman, italic, oblique, ...
+        'slant': 'roman',
+        # normal, condensed, expanded, ...
+        'setwidth': 'normal',
+        # left-to-right, right-to-left
+        'direction': 'left-to-right',
+        # word-break character (usually space)
+        'word-boundary': Char(' '),
+    })
+
+
+    def calculated_property(fn, overridable=True, warn=False):
+        """Decorator to take property from property table, if defined; calculate otherwise."""
         @wraps(fn)
         def _cached_fn(self, *args, **kwargs):
             try:
@@ -529,31 +546,18 @@ class Font:
             except KeyError:
                 pass
             return fn(self, *args, **kwargs)
-        return property(_cached_fn)
+        return property(cache(_cached_fn))
 
-    # default properties
-
-    _yaff_properties = {
-        'revision': '0', # font version
-        'weight': 'regular', # normal, bold, light, etc.
-        'slant': 'roman', # roman, italic, oblique, etc
-        'setwidth': 'normal', # normal, condensed, expanded, etc.
-        'direction': 'left-to-right', # left-to-right, right-to-left
-        'encoding': '',
-        'word-boundary': label('u+0020'), # word-break character (usually space)
-    }
-
-    @yaffproperty
+    @calculated_property
     def name(self):
         """Name of font."""
-        weight = '' if self.weight == self._yaff_properties['weight'] else self.weight.title()
-        slant = '' if self.slant == self._yaff_properties['slant'] else self.slant.title()
-        #encoding = '' if self.encoding == self._yaff_properties['encoding'] else f'({self.encoding})'
+        weight = '' if self.weight == self._property_defaults['weight'] else self.weight
+        slant = '' if self.slant == self._property_defaults['slant'] else self.slant
         return ' '.join(
             str(_x) for _x in (self.family, weight, slant, self.point_size) if _x
         )
 
-    @yaffproperty
+    @calculated_property
     def family(self):
         """Name of font family."""
         # use source name if no family name defined
@@ -561,22 +565,21 @@ class Font:
             return self.source_name.split('.')[0]
         return ''
 
-    @yaffproperty
+    @calculated_property
     def point_size(self):
         """Nominal point height."""
         # assume 72 points per inch (officially 72.27 pica points per inch)
         # if dpi not given assumes 72 dpi, so point-size == pixel-size
         return int(self.pixel_size * self.dpi.y / 72.)
 
-    @yaffproperty
+    @calculated_property
     def pixel_size(self):
         """Get nominal pixel size (ascent + descent)."""
         if not self._glyphs:
             return 0
         return self.ascent + self.descent
 
-    @yaffproperty
-    @cache
+    @calculated_property
     def ascent(self):
         """Get ascent (defaults to max ink height above baseline)."""
         if not self._glyphs:
@@ -587,8 +590,7 @@ class Font:
             for _glyph in self._glyphs
         )
 
-    @yaffproperty
-    @cache
+    @calculated_property
     def descent(self):
         """Get descent (defaults to bottom/vertical offset)."""
         if not self._glyphs:
@@ -598,7 +600,7 @@ class Font:
         # negative descent would mean font descenders are all above baseline
         return -self.offset.y - min(_glyph.ink_offsets[1] for _glyph in self._glyphs)
 
-    @yaffproperty
+    @calculated_property
     def dpi(self):
         """Target screen resolution in dots per inch."""
         # if point-size has been overridden and dpi not set, determine from pixel-size & point-size
@@ -608,8 +610,7 @@ class Font:
         # default: 72 dpi; 1 point == 1 pixel
         return Coord(72, 72)
 
-    @property
-    @cache
+    @calculated_property
     def max_raster_size(self):
         """Get maximum raster width and height, in pixels."""
         if not self._glyphs:
@@ -619,8 +620,7 @@ class Font:
             max(_glyph.height for _glyph in self._glyphs)
         )
 
-    @property
-    @cache
+    @calculated_property
     def bounding_box(self):
         """Minimum bounding box encompassing all glyphs at fixed origin."""
         if not self._glyphs:
@@ -630,8 +630,7 @@ class Font:
         lefts, bottoms, rights, tops = zip(*(_glyph.ink_coordinates for _glyph in self._glyphs))
         return Coord(max(rights) - min(lefts), max(tops) - min(bottoms))
 
-    @yaffproperty
-    @cache
+    @calculated_property
     def default_char(self):
         """Label for default character."""
         repl = '\ufffd'
@@ -639,8 +638,7 @@ class Font:
             repl = ''
         return Char(repl)
 
-    @yaffproperty
-    @cache
+    @calculated_property
     def average_advance(self):
         """Get average glyph advance width, rounded to tenths of pixels."""
         if not self._glyphs:
@@ -651,8 +649,7 @@ class Font:
             + self.tracking
         )
 
-    @yaffproperty
-    @cache
+    @calculated_property
     def spacing(self):
         """Monospace or proportional spacing."""
         if not self._glyphs:
@@ -674,8 +671,7 @@ class Font:
             return 'monospace'
         return 'proportional'
 
-    @yaffproperty
-    @cache
+    @calculated_property
     def cap_advance(self):
         """Advance width of uppercase X."""
         try:
@@ -683,8 +679,7 @@ class Font:
         except KeyError:
             return 0
 
-    @yaffproperty
-    @cache
+    @calculated_property
     def x_height(self):
         """Ink height of lowercase x."""
         try:
@@ -692,8 +687,7 @@ class Font:
         except KeyError:
             return 0
 
-    @yaffproperty
-    @cache
+    @calculated_property
     def cap_height(self):
         """Ink height of uppercase X."""
         try:
@@ -701,7 +695,7 @@ class Font:
         except KeyError:
             return 0
 
-    @property
+    @calculated_property
     def line_height(self):
         """Line height."""
         return self.max_raster_size.y + self.leading

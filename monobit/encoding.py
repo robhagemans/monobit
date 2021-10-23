@@ -630,7 +630,7 @@ class CharmapRegistry:
         return cls.match(name, 'unicode')
 
     @staticmethod
-    def normalise(name):
+    def normalise(name=''):
         """Replace encoding name with normalised variant for display."""
         return name.lower().replace('_', '-').replace(' ', '-')
 
