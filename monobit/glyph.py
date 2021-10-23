@@ -8,6 +8,7 @@ licence: https://opensource.org/licenses/MIT
 import binascii
 import logging
 from typing import NamedTuple
+import numbers
 
 try:
     # python 3.9
@@ -26,6 +27,17 @@ from .label import Char, Codepoint
 NOT_SET = object()
 
 
+def number(value=0):
+    """Convert to int or float."""
+    if isinstance(value, str):
+        value = float(value)
+    if not isinstance(value, numbers.Real):
+        raise ValueError("Can't convert `{}` to number.".format(value))
+    if value == int(value):
+        value = int(value)
+    return value
+
+
 class Bounds(NamedTuple):
     """4-coordinate tuple."""
     left: int
@@ -34,10 +46,39 @@ class Bounds(NamedTuple):
     top: int
 
 
+class Coord(NamedTuple):
+    """Coordinate tuple."""
+    x: int
+    y: int
+
+    def __str__(self):
+        return '{} {}'.format(self.x, self.y)
+
+    @classmethod
+    def create(cls, coord=0):
+        if isinstance(coord, numbers.Real):
+            return cls(coord, coord)
+        if isinstance(coord, str):
+            splits = coord.split(' ')
+            if len(splits) == 1:
+                return cls(number(splits[0]), number(splits[0]))
+            elif len(splits) == 2:
+                return cls(number(splits[0]), number(splits[1]))
+        if isinstance(coord, tuple):
+            if len(coord) == 2:
+                return cls(number(coord[0]), number(coord[1]))
+        raise ValueError("Can't convert `{}` to coordinate pair.".format(coord))
+
+
 class Glyph:
     """Single glyph."""
 
-    def __init__(self, pixels=(), *, codepoint=(), char='', tags=(), comments=(), **kwargs):
+    def __init__(
+            self, pixels=(), *,
+            codepoint=(), char='', tags=(), comments=(),
+            offset=NOT_SET, advance=NOT_SET,
+            **kwargs
+        ):
         """Create glyph from tuple of tuples."""
         # glyph data
         self._rows = tuple(tuple(bool(_bit) for _bit in _row) for _row in pixels)
@@ -46,6 +87,8 @@ class Glyph:
         self._codepoint = Codepoint(codepoint).value
         self._char = char
         self._tags = tuple(tags)
+        self._offset = offset
+        self._advance = advance
         # custom properties - not used but kept
         self._props = {_k.replace('_', '-'): _v for _k, _v in kwargs.items()}
         if len(set(len(_r) for _r in self._rows)) > 1:
@@ -84,6 +127,21 @@ class Glyph:
     def comments(self):
         return self._comments
 
+    @property
+    def offset(self):
+        """Offset vector, overrides font offsett."""
+        if self._offset is NOT_SET:
+            return None
+        return self._offset
+
+    @property
+    def advance(self):
+        """Advance width for this glyph, overrides font tracking."""
+        if self._advance is NOT_SET:
+            return None
+        return self._advance
+
+
     def __repr__(self):
         """Text representation."""
         return (
@@ -96,6 +154,8 @@ class Glyph:
             )
             + ', '.join(f'{_k}={_v}' for _k, _v in self._props.items())
             + (', ' if self._props else '')
+            + ('' if self._offset is NOT_SET else f"offset={repr(self._offset)}, ")
+            + ('' if self._advance is NOT_SET else f"advance={repr(self._advance)}, ")
             + "pixels=({})".format(
                 '' if not self._rows else
                 "\n  '{}'\n".format(
@@ -146,6 +206,7 @@ class Glyph:
     def modify(
             self, pixels=NOT_SET, *,
             tags=NOT_SET, char=NOT_SET, codepoint=NOT_SET, comments=NOT_SET,
+            offset=NOT_SET, advance=NOT_SET,
             **kwargs
         ):
         """Return a copy of the glyph with changes."""
@@ -159,12 +220,18 @@ class Glyph:
             char = self._char
         if comments is NOT_SET:
             comments = self._comments
+        if offset is NOT_SET:
+            offset = self._offset
+        if advance is NOT_SET:
+            advance = self._advance
         return Glyph(
             tuple(pixels),
             codepoint=codepoint,
             char=char,
             tags=tuple(tags),
             comments=tuple(comments),
+            offset=offset,
+            advance=advance,
             **kwargs
         )
 

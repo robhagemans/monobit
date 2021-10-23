@@ -900,8 +900,6 @@ def create_fnt(font, version=0x200):
     charset_map = CHARSET_REVERSE_MAP
     style_map = dict(reversed(_item) for _item in _STYLE_MAP.items())
     if font.spacing == 'proportional':
-        # width of uppercase X
-        x_width = int(font.x_width)
         # low bit set for proportional
         pitch_and_family = 0x01 | style_map.get(font.style, 0)
         pix_width = 0
@@ -910,7 +908,7 @@ def create_fnt(font, version=0x200):
         # CHECK: is this really always set for fixed-pitch?
         pitch_and_family = _FF_MODERN
         # x_width should equal average width
-        x_width = pix_width = font.raster_size.x
+        pix_width = font.raster_size.x
         v3_flags = _DFF_FIXED
     space_index = 0
     # if encoding is compatible, use it; otherwise set to fallback value

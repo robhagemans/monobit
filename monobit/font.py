@@ -6,9 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 from functools import wraps
-from typing import NamedTuple
 from functools import partial
-import numbers
 import logging
 import unicodedata
 
@@ -20,46 +18,12 @@ except ImportError:
     cache = lru_cache()
 
 from .scripting import scriptable, get_scriptables
-from .glyph import Glyph
+from .glyph import Glyph, Coord, number
 from .encoding import charmaps
 from .label import Label, Tag, Char, Codepoint, label
 
 
 # pylint: disable=redundant-keyword-arg, no-member
-
-def number(value=0):
-    """Convert to int or float."""
-    if isinstance(value, str):
-        value = float(value)
-    if not isinstance(value, numbers.Real):
-        raise ValueError("Can't convert `{}` to number.".format(value))
-    if value == int(value):
-        value = int(value)
-    return value
-
-
-class Coord(NamedTuple):
-    """Coordinate tuple."""
-    x: int
-    y: int
-
-    def __str__(self):
-        return '{} {}'.format(self.x, self.y)
-
-    @classmethod
-    def create(cls, coord=0):
-        if isinstance(coord, numbers.Real):
-            return cls(coord, coord)
-        if isinstance(coord, str):
-            splits = coord.split(' ')
-            if len(splits) == 1:
-                return cls(number(splits[0]), number(splits[0]))
-            elif len(splits) == 2:
-                return cls(number(splits[0]), number(splits[1]))
-        if isinstance(coord, tuple):
-            if len(coord) == 2:
-                return cls(number(coord[0]), number(coord[1]))
-        raise ValueError("Can't convert `{}` to coordinate pair.".format(coord))
 
 
 class KerningTable:
@@ -671,9 +635,13 @@ class Font:
         """Minimum bounding box encompassing all glyphs at fixed origin."""
         if not self._glyphs:
             return Coord(0, 0)
-        # all glyphs share the font's offset
         # so to align glyph origins we need to align raster origins - bottom left for LTR fonts
         lefts, bottoms, rights, tops = zip(*(_glyph.ink_coordinates for _glyph in self._glyphs))
+        offsets = [_glyph.offset if _glyph.offset is not None else self.offset for _glyph in self._glyphs]
+        lefts = [_left + _offs.x for _left, _offs in zip(lefts, offsets)]
+        rights = [_right + _offs.x for _right, _offs in zip(rights, offsets)]
+        topss = [_top + _offs.y for _top, _offs in zip(tops, offsets)]
+        bottoms = [_bottom + _offs.x for _bottom, _offs in zip(bottoms, offsets)]
         return Coord(max(rights) - min(lefts), max(tops) - min(bottoms))
 
     @calculated_property
@@ -700,21 +668,35 @@ class Font:
         """Monospace or proportional spacing."""
         if not self._glyphs:
             return 'character-cell'
-        # don't count void glyphs (0 width and/or height) to determine whether it's monospace
-        widths = set(_glyph.width for _glyph in self._glyphs if _glyph.width)
-        heights = set(_glyph.height for _glyph in self._glyphs if _glyph.height)
-        min_width = min(widths)
-        # mono- or multi-cell fonts: equal heights, no ink outside cell, widths are fixed multiples
-        if (
-                len(heights) == 1
-                and self.offset.x >= 0 and self.tracking >= 0 and self.leading >= 0
-                and min_width > 3 and not any(_width % min_width for _width in widths)
+        if self.kerning:
+            return 'proportional'
+        # fonts with individual glyph metrics are not cell fonts
+        if all(
+                _glyph.offset is None and _glyph.advance is None for _glyph in self._glyphs
             ):
+            # don't count void glyphs (0 width and/or height) to determine whether it's monospace
+            widths = set(_glyph.width for _glyph in self._glyphs if _glyph.width)
+            heights = set(_glyph.height for _glyph in self._glyphs if _glyph.height)
+            min_width = min(widths)
+            # mono- or multi-cell fonts: equal heights, no ink outside cell, widths are fixed multiples
+            if (
+                    len(heights) == 1
+                    and self.offset.x >= 0 and self.tracking >= 0 and self.leading >= 0
+                    and min_width > 3 and not any(_width % min_width for _width in widths)
+                ):
+                if len(widths) == 1:
+                    return 'character-cell'
+                return 'multi-cell'
             if len(widths) == 1:
-                return 'character-cell'
-            return 'multi-cell'
-        if len(widths) == 1:
-            return 'monospace'
+                return 'monospace'
+        else:
+            advances = set(
+                _glyph.advance if _glyph.advance is not None else (_glyph.width + self.tracking)
+                for _glyph in self._glyphs
+                if (_glyph.width or _glyph.advance)
+            )
+            if len(advances) == 1:
+                return 'monospace'
         return 'proportional'
 
     @calculated_property(override='notify')

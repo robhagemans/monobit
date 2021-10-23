@@ -277,6 +277,9 @@ def _parse_glyphs(elements, ink, paper, empty, parse_glyph_keys):
     """Parse glyphs."""
     # text version of glyphs
     # a glyph is any key/value where the value contains no alphanumerics
+
+    # FIXME: glyph properties
+
     glyph_elements = [
         _el for _el in elements
         if _is_glyph(''.join(_el.values), ink, paper)
@@ -337,8 +340,11 @@ def _write_glyph(outstream, labels, glyph, ink, paper, comm_char, tab, separator
     # empty glyphs are stored as 0x0, not 0xm or nx0
     if not glyph.width or not glyph.height:
         glyphtxt = empty
-    outstream.write(tab)
-    outstream.write(glyphtxt)
+    outstream.write(tab + glyphtxt + '\n\n')
+    if glyph.offset is not None:
+        outstream.write(f'{tab}offset: {str(glyph.offset)}\n')
+    if glyph.advance is not None:
+        outstream.write(f'{tab}advance: {str(glyph.advance)}\n')
     outstream.write('\n\n')
 
 def _quote_if_needed(value):

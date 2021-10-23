@@ -55,8 +55,12 @@ def render(font, text, *, margin=(0, 0), scale=(1, 1), rotate=0, missing='defaul
         x, y = 0, 0
         for glyph, kerning in zip(glyph_row, kerning_row):
             mx = glyph.as_matrix()
+            if glyph.offset is not None:
+                offset = glyph.offset
+            else:
+                offset = font.offset
             # apply pre-offset so that x, y is now the coordinate of glyph matrix origin
-            x, y = x + font.offset.x, y + font.offset.y
+            x, y = x + offset.x, y + offset.y
             # grid_x, grid_y are canvas coordinates relative to top left of canvas
             # canvas y coordinate increases *downwards* from top of line
             grid_x = margin_x + x
@@ -64,9 +68,13 @@ def render(font, text, *, margin=(0, 0), scale=(1, 1), rotate=0, missing='defaul
             # add ink, taking into account there may be ink already in case of negative bearings
             matrix.blit(mx, canvas, grid_x, grid_y)
             # advance
-            x += glyph.width + font.tracking + kerning
+            if glyph.advance is not None and glyph.offset is not None:
+                advance = glyph.advance - glyph.offset.x
+            else:
+                advance = glyph.width + font.tracking
+            x += advance + kerning
             # apply post-offset
-            y -= font.offset.y
+            y -= offset.y
         # move to next line
         baseline += font.line_height
     scaled = matrix.scale(canvas, *scale)
@@ -79,9 +87,10 @@ def _get_canvas(font, glyphs, margin_x, margin_y):
     width = 2 * margin_x
     if glyphs:
         width += max(
-            (
-                sum(_glyph.width for _glyph in _row)
-                + (font.offset.x + font.tracking) * len(_row)
+            sum(
+                (_glyph.offset.x if _glyph.offset is not None else font.offset.x)
+                + (_glyph.advance - _glyph.offset.x if _glyph.advance is not None else _glyph.width + font.tracking)
+                for _glyph in _row
             )
             for _row in glyphs
         )
