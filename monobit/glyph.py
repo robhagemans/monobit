@@ -38,20 +38,21 @@ class Glyph:
         self._codepoint = Codepoint(codepoint).value
         self._char = char
         self._tags = tuple(tags)
+        # custom properties - not used but kept
+        self._props = {_k.replace('_', '-'): _v for _k, _v in kwargs.items()}
         if len(set(len(_r) for _r in self._rows)) > 1:
             raise ValueError(
                 f'All rows in a glyph must be of the same width: {repr(self)}'
             )
-        # custom properties - not used but kept
-        self._props = {_k.replace('_', '-'): _v for _k, _v in kwargs.items()}
 
     def __getattr__(self, attr):
         """Take property from property table."""
         attr = attr.replace('_', '-')
-        try:
-            return self._props[attr]
-        except KeyError as e:
-            pass
+        if '_props' in vars(self):
+            try:
+                return self._props[attr]
+            except KeyError as e:
+                pass
         raise AttributeError(attr)
 
     def drop_properties(self, *args):
