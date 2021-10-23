@@ -446,6 +446,7 @@ _Metadata_ are circumstantial properties. They can be related to authorship:
 
 They can be related to the target system:
 - `device`: target device, e.g. `EGA`, `VGA`, `printer`
+- `pixel-aspect`: target aspect ratio of pixels, X:Y
 - `dpi`: target resolution in dots per inch
 
 Or they can be related to processing:

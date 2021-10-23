@@ -119,6 +119,7 @@ PROPERTIES = {
     # target info
     # can't be calculated
     'device': str, # target device name
+    'pixel-aspect': Coord.create, # pixel aspect ratio
     # calculated or given
     'dpi': Coord.create, # target resolution in dots per inch
 
@@ -217,6 +218,8 @@ class Font:
         'direction': 'left-to-right',
         # word-break character (usually space)
         'word-boundary': Char(' '),
+        # pixel aspect ratio - square pixel
+        'pixel-aspect': Coord(1, 1),
     })
 
     def __init__(self, glyphs=(), comments=None, properties=None):
@@ -602,6 +605,18 @@ class Font:
         return self.ascent + self.descent
 
     @calculated_property
+    def dpi(self):
+        """Target screen resolution in dots per inch."""
+        # if point-size has been overridden and dpi not set, determine from pixel-size & point-size
+        if 'point-size' in self._properties:
+            dpi = (72 * self.pixel_size) // self.point_size
+        else:
+            # default: 72 dpi; 1 point == 1 pixel
+            dpi = 72
+        # stretch/shrink dpi.x if aspect ratio is not square
+        return Coord((dpi*self.pixel_aspect.x)//self.pixel_aspect.y, dpi)
+
+    @calculated_property
     def ascent(self):
         """Get ascent (defaults to max ink height above baseline)."""
         if not self._glyphs:
@@ -619,16 +634,6 @@ class Font:
         # usually, descent is positive and offset is negative
         # negative descent would mean font descenders are all above baseline
         return -self.offset.y - min(_glyph.ink_offsets.bottom for _glyph in self._glyphs)
-
-    @calculated_property
-    def dpi(self):
-        """Target screen resolution in dots per inch."""
-        # if point-size has been overridden and dpi not set, determine from pixel-size & point-size
-        if 'point-size' in self._properties:
-            dpi = (72 * self.pixel_size) // self.point_size
-            return Coord(dpi, dpi)
-        # default: 72 dpi; 1 point == 1 pixel
-        return Coord(72, 72)
 
     @calculated_property(override='reject')
     def raster_size(self):

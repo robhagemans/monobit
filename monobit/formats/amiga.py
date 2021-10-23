@@ -371,12 +371,10 @@ def _convert_amiga_props(amiga_props, offset_x):
         props.direction = 'right-to-left'
     if amiga_props.tf_Flags.FPF_TALLDOT and not amiga_props.tf_Flags.FPF_WIDEDOT:
         # TALLDOT: This font was designed for a Hires screen (640x200 NTSC, non-interlaced)
-        props.dpi = '96 48'
+        props.pixel_aspect = '1 2'
     elif amiga_props.tf_Flags.FPF_WIDEDOT and not amiga_props.tf_Flags.FPF_TALLDOT:
         # WIDEDOT: This font was designed for a Lores Interlaced screen (320x400 NTSC)
-        props.dpi = '48 96'
-    else:
-        props.dpi = 96
+        props.pixel_aspect = '2 1'
     props.encoding = _ENCODING
     props.default_char = 'default'
     # preserve unparsed properties
