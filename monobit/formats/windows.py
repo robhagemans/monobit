@@ -32,7 +32,8 @@ import logging
 import itertools
 
 from ..binary import bytes_to_bits, ceildiv, align
-from ..struct import friendlystruct, reverse_dict
+from ..struct import reverse_dict, little_endian as le
+from .. import struct
 from ..storage import loaders, savers
 from ..streams import FileFormatError
 from ..font import Font, Coord
@@ -261,9 +262,8 @@ _FNT_TYPE_DEVICE = 0x0080
 
 
 # FNT header - the part common to v1.0, v2.0, v3.0
-_FNT_HEADER = friendlystruct(
-    'le',
-### this part is also common to FontDirEntry
+_FNT_HEADER = le.Struct(
+    ### this part is also common to FontDirEntry
     dfVersion='word',
     dfSize='dword',
     dfCopyright='60s',
@@ -297,10 +297,9 @@ _FNT_HEADER = friendlystruct(
 )
 
 # version-specific header extensions
-_FNT_HEADER_1 = friendlystruct('le')
-_FNT_HEADER_2 = friendlystruct('le', dfReserved='byte')
-_FNT_HEADER_3 = friendlystruct(
-    'le',
+_FNT_HEADER_1 = le.Struct()
+_FNT_HEADER_2 = le.Struct(dfReserved='byte')
+_FNT_HEADER_3 = le.Struct(
     dfReserved='byte',
     dfFlags='dword',
     dfAspace='word',
@@ -324,23 +323,19 @@ _FNT_HEADER_SIZE = {
 
 # GlyphEntry structures for char table
 # see e.g. https://web.archive.org/web/20120215123301/http://support.microsoft.com/kb/65123
-_GLYPH_ENTRY_1 = friendlystruct(
-    'le',
+_GLYPH_ENTRY_1 = le.Struct(
     geOffset='word',
 )
-_GLYPH_ENTRY_2 = friendlystruct(
-    'le',
+_GLYPH_ENTRY_2 = le.Struct(
     geWidth='word',
     geOffset='word',
 )
-_GLYPH_ENTRY_3 = friendlystruct(
-    'le',
+_GLYPH_ENTRY_3 = le.Struct(
     geWidth='word',
     geOffset='dword',
 )
 # for ABCFIXED and ABCPROPORTIONAL; for reference, not used in v3.00 (i.e. not used at all)
-_GLYPH_ENTRY_3ABC = friendlystruct(
-    'le',
+_GLYPH_ENTRY_3ABC = le.Struct(
     geWidth='word',
     geOffset='dword',
     geAspace='dword',
@@ -371,8 +366,7 @@ _STUB_CODE = bytes((
 ))
 
 # DOS executable (MZ) header
-_MZ_HEADER = friendlystruct(
-    '<',
+_MZ_HEADER = le.Struct(
     # EXE signature, 'MZ' or 'ZM'
     magic='2s',
     # number of bytes in last 512-byte page of executable
@@ -403,8 +397,7 @@ _MZ_HEADER = friendlystruct(
 _ALIGN_SHIFT = 4
 
 # Windows executable (NE) header
-_NE_HEADER = friendlystruct(
-    '<',
+_NE_HEADER = le.Struct(
     magic='2s',
     linker_major_version='B',
     linker_minor_version='B',
@@ -440,8 +433,7 @@ _NE_HEADER = friendlystruct(
 
 # TYPEINFO structure and components
 
-_NAMEINFO = friendlystruct(
-    'le',
+_NAMEINFO = le.Struct(
     rnOffset='word',
     rnLength='word',
     rnFlags='word',
@@ -452,8 +444,7 @@ _NAMEINFO = friendlystruct(
 
 def type_info_struct(rtResourceCount=0):
     """TYPEINFO structure."""
-    return friendlystruct(
-        'le',
+    return le.Struct(
         rtTypeID='word',
         rtResourceCount='word',
         rtReserved='dword',
@@ -466,12 +457,11 @@ _RT_FONTDIR = 0x8007
 _RT_FONT = 0x8008
 
 # resource table structure (fixed head only)
-_RES_TABLE_HEAD = friendlystruct(
-    'le',
+_RES_TABLE_HEAD = le.Struct(
     rscAlignShift='word',
     #rscTypes=[type_info ...],
     #rscEndTypes='word',
-    #rscResourceNames=friendlystruct.char * len_names,
+    #rscResourceNames=struct.char * len_names,
     #rscEndNames='byte'
 )
 
@@ -479,8 +469,7 @@ _RES_TABLE_HEAD = friendlystruct(
 # this is immediately followed by FONTDIRENTRY
 # https://docs.microsoft.com/en-us/windows/desktop/menurc/fontdirentry
 # which is just a copy of part of the FNT header, plus name and device
-_DIRENTRY = friendlystruct(
-    'le',
+_DIRENTRY = le.Struct(
     fontOrdinal='word',
 )
 
@@ -492,8 +481,7 @@ _MODULE_NAME = b'FONTLIB'
 # PE (32-bit) executable structures
 
 # PE header (winnt.h _IMAGE_FILE_HEADER)
-_PE_HEADER = friendlystruct(
-    'le',
+_PE_HEADER = le.Struct(
     # PE\0\0 magic:
     Signature='4s',
     # struct _IMAGE_FILE_HEADER:
@@ -508,8 +496,7 @@ _PE_HEADER = friendlystruct(
     # which we don't care about for now
 )
 
-_IMAGE_SECTION_HEADER = friendlystruct(
-    'le',
+_IMAGE_SECTION_HEADER = le.Struct(
     Name='8s',
     VirtualSize='dword',
     VirtualAddress='dword',
@@ -522,8 +509,7 @@ _IMAGE_SECTION_HEADER = friendlystruct(
     Characteristics='dword',
 )
 
-_IMAGE_RESOURCE_DIRECTORY = friendlystruct(
-    'le',
+_IMAGE_RESOURCE_DIRECTORY = le.Struct(
     Characteristics='dword',
     TimeDateStamp='dword',
     MajorVersion='word',
@@ -531,8 +517,7 @@ _IMAGE_RESOURCE_DIRECTORY = friendlystruct(
     NumberOfNamedEntries='word',
     NumberOfIdEntries='word',
 )
-_IMAGE_RESOURCE_DIRECTORY_ENTRY = friendlystruct(
-    'le',
+_IMAGE_RESOURCE_DIRECTORY_ENTRY = le.Struct(
     Id='dword', # technically a union with NameOffset, but meh
     OffsetToData='dword', # or OffsetToDirectory, if high bit set
 )
@@ -540,8 +525,7 @@ _IMAGE_RESOURCE_DIRECTORY_ENTRY = friendlystruct(
 _ID_FONTDIR = 0x07
 _ID_FONT = 0x08
 
-_IMAGE_RESOURCE_DATA_ENTRY = friendlystruct(
-    'le',
+_IMAGE_RESOURCE_DATA_ENTRY = le.Struct(
     OffsetToData='dword',
     Size='dword',
     CodePage='dword',
@@ -653,8 +637,8 @@ def _parse_chartable_v1(fnt, win_props):
     if not win_props.dfPixWidth:
         # proportional font
         ct_start = _FNT_HEADER_SIZE[win_props.dfVersion]
-        glyph_entry_array = _GLYPH_ENTRY[win_props.dfVersion] * (n_chars+1)
-        entries = glyph_entry_array.from_buffer_copy(fnt, ct_start)
+        glyph_entry_array = _GLYPH_ENTRY[win_props.dfVersion].array(n_chars+1)
+        entries = glyph_entry_array.from_bytes(fnt, ct_start)
         offsets = [_entry.geOffset for _entry in entries]
     else:
         offsets = [
@@ -683,11 +667,11 @@ def _parse_chartable_v1(fnt, win_props):
 def _parse_chartable_v2(fnt, win_props):
     """Read a WinFont 2.0 or 3.0 character table."""
     n_chars = win_props.dfLastChar - win_props.dfFirstChar + 1
-    glyph_entry_array = _GLYPH_ENTRY[win_props.dfVersion] * n_chars
+    glyph_entry_array = _GLYPH_ENTRY[win_props.dfVersion].array(n_chars)
     ct_start = _FNT_HEADER_SIZE[win_props.dfVersion]
     glyphs = []
     height = win_props.dfPixHeight
-    entries = glyph_entry_array.from_buffer_copy(fnt, ct_start)
+    entries = glyph_entry_array.from_bytes(fnt, ct_start)
     for ord, entry in enumerate(entries, win_props.dfFirstChar):
         # don't store empty glyphs but count them for ordinals
         if not entry.geWidth:
@@ -818,8 +802,8 @@ def _parse_ne(data, ne_offset):
             # end of resource table
             break
         # type, count, 4 bytes reserved
-        nameinfo_array = (_NAMEINFO * type_info.rtResourceCount)
-        for name_info in nameinfo_array.from_buffer_copy(data, ti_offset + type_info_head.size):
+        nameinfo_array = _NAMEINFO.array(type_info.rtResourceCount)
+        for name_info in nameinfo_array.from_bytes(data, ti_offset + type_info_head.size):
             # the are offsets w.r.t. the file start, not the NE header
             # they could be *before* the NE header for all we know
             start = name_info.rnOffset << res_table.rscAlignShift
@@ -834,7 +818,7 @@ def _parse_ne(data, ne_offset):
                     # don't raise exception so we can continue with other resources
                     logging.error('Failed to read font resource at {:x}: {}'.format(start, e))
         # rtResourceCount * 12
-        ti_offset += type_info_head.size + friendlystruct.sizeof(nameinfo_array)
+        ti_offset += type_info_head.size + nameinfo_array.size
     return fonts
 
 
@@ -854,8 +838,8 @@ def _parse_pe(fon, peoff):
     # then skip over to find the section table.
     pe_header = _PE_HEADER.from_bytes(fon, peoff)
     section_table_offset = peoff + _PE_HEADER.size + pe_header.SizeOfOptionalHeader
-    section_table_array = _IMAGE_SECTION_HEADER * pe_header.NumberOfSections
-    section_table = section_table_array.from_buffer_copy(fon, section_table_offset)
+    section_table_array = _IMAGE_SECTION_HEADER.array(pe_header.NumberOfSections)
+    section_table = section_table_array.from_bytes(fon, section_table_offset)
     # find the resource section
     for section in section_table:
         if section.Name == b'.rsrc':
@@ -887,7 +871,7 @@ def _traverse_dirtable(rsrc, off, rtype):
     number = resdir.NumberOfNamedEntries + resdir.NumberOfIdEntries
     # followed by resource directory entries
     direntry_array = _IMAGE_RESOURCE_DIRECTORY_ENTRY * number
-    direntries = direntry_array.from_buffer_copy(rsrc, off+_IMAGE_RESOURCE_DIRECTORY.size)
+    direntries = direntry_array.from_bytes(rsrc, off+_IMAGE_RESOURCE_DIRECTORY.size)
     dataentries = []
     for entry in direntries:
         if rtype in (entry.Id, None):
@@ -1094,14 +1078,13 @@ def _create_resource_table(header_size, post_size, resdata_size, n_fonts, font_s
     # dynamic-size struct types
     typeinfo_fontdir_struct = type_info_struct(1)
     typeinfo_font_struct = type_info_struct(n_fonts)
-    res_table_struct = friendlystruct(
-        'le',
+    res_table_struct = le.Struct(
         rscAlignShift='word',
         # rscTypes is a list of non-equal TYPEINFO entries
         rscTypes_fontdir=typeinfo_fontdir_struct,
         rscTypes_font=typeinfo_font_struct,
         rscEndTypes='word', # 0
-        rscResourceNames=friendlystruct.char * len(res_names),
+        rscResourceNames=struct.char * len(res_names),
         rscEndNames='byte', # 0
     )
     # calculate offset to resource data
@@ -1202,8 +1185,7 @@ def _create_resource_data(pack, version):
     fonts = [create_fnt(_font, version) for _font in pack]
     # construct the FONTDIR (FONTGROUPHDR)
     # https://docs.microsoft.com/en-us/windows/desktop/menurc/fontgrouphdr
-    fontdir_struct = friendlystruct(
-        'le',
+    fontdir_struct = le.Struct(
         NumberOfFonts='word',
         # + array of DIRENTRY/FONTDIRENTRY structs
     )
