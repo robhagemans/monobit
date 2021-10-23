@@ -54,10 +54,10 @@ class Glyph:
 
     def __getattr__(self, attr):
         """Take property from property table."""
-        attr = attr.replace('_', '-')
+        dict_attr = attr.replace('_', '-')
         if '_props' in vars(self):
             try:
-                return self._props[attr]
+                return self._props[dict_attr]
             except KeyError as e:
                 pass
         raise AttributeError(attr)
@@ -290,10 +290,10 @@ class Glyph:
     def ink_offsets(self):
         """Offset from sides to bounding box. Left, bottom, right, top."""
         if not self._rows:
-            return 0, 0, 0, 0
+            return Bounds(0, 0, 0, 0)
         row_inked = [True in _row for _row in self._rows]
         if True not in row_inked:
-            return self.width, self.height, 0, 0
+            return Bounds(self.width, self.height, 0, 0)
         bottom = list(reversed(row_inked)).index(True)
         top = row_inked.index(True)
         col_inked = [bool(sum(_row[_i] for _row in self._rows)) for _i in range(self.width)]
