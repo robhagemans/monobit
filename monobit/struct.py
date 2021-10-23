@@ -98,6 +98,7 @@ class bitfield:
         self.type = fieldtype
         self.bits = bits
 
+flag = bitfield('B', 1)
 
 def _parse_type(atype):
     """Convert struct member type specification to ctypes base type or array."""
@@ -133,10 +134,10 @@ def _define_struct(parent, fields):
 
         def __repr__(self):
             """String representation."""
-            return 'Struct({})'.format(
+            return type(self).__name__ + '({})'.format(
                 ', '.join(
                     '{}={}'.format(field, getattr(self, field))
-                    for field, _ in self._fields_
+                    for field, *_ in self._fields_
                 )
             )
 

@@ -13,7 +13,7 @@ from ..storage import loaders, savers
 from ..streams import FileFormatError
 from ..font import Font, Coord
 from ..glyph import Glyph
-from ..struct import Props, big_endian as be
+from ..struct import Props, flag, bitfield, big_endian as be
 from .. import struct
 
 
@@ -82,36 +82,41 @@ _HUNK_RELOC32 = 0x3ec
 _HUNK_END = 0x3f2
 
 # tf_Flags values
-# font is in rom
-_FPF_ROMFONT = 0x01
-# font is from diskfont.library
-_FPF_DISKFONT = 0x02
-# This font is designed to be printed from from right to left
-_FPF_REVPATH = 0x04
-# This font was designed for a Hires screen (640x200 NTSC, non-interlaced)
-_FPF_TALLDOT = 0x08
-# This font was designed for a Lores Interlaced screen (320x400 NTSC)
-_FPF_WIDEDOT = 0x10
-# character sizes can vary from nominal
-_FPF_PROPORTIONAL = 0x20
-# size explicitly designed, not constructed
-_FPF_DESIGNED = 0x40
-# the font has been removed
-_FPF_REMOVED = 0x80
+_TF_FLAGS = be.Struct(
+    # 0x80 the font has been removed
+    FPF_REMOVED=flag,
+    # 0x40 size explicitly designed, not constructed
+    FPF_DESIGNED=flag,
+    # 0x20 character sizes can vary from nominal
+    FPF_PROPORTIONAL=flag,
+    # 0x10 This font was designed for a Lores Interlaced screen (320x400 NTSC)
+    FPF_WIDEDOT=flag,
+    # 0x08 This font was designed for a Hires screen (640x200 NTSC, non-interlaced)
+    FPF_TALLDOT=flag,
+    # 0x04 This font is designed to be printed from from right to left
+    FPF_REVPATH=flag,
+    # 0x02 font is from diskfont.library
+    FPF_DISKFONT=flag,
+    # 0x01 font is in rom
+    FPF_ROMFONT=flag
+)
 
 # tf_Style values
-# underlined (under baseline)
-_FSF_UNDERLINED	= 0x01
-# bold face text (ORed w/ shifted)
-_FSF_BOLD = 0x02
-# italic (slanted 1:2 right)
-_FSF_ITALIC	= 0x04
-# extended face (wider than normal)
-_FSF_EXTENDED = 0x08
-# this uses ColorTextFont structure
-_FSF_COLORFONT = 0x40
-# the TextAttr is really a TTextAttr
-_FSF_TAGGED = 0x80
+_TF_STYLE = be.Struct(
+    # 0x80 the TextAttr is really a TTextAttr
+    FSF_TAGGED=flag,
+    # 0x40 this uses ColorTextFont structure
+    FSF_COLORFONT=flag,
+    unused=bitfield('B', 2),
+    # 0x08 extended face (wider than normal)
+    FSF_EXTENDED=flag,
+    # 0x04 italic (slanted 1:2 right)
+    FSF_ITALIC=flag,
+    # 0x02 bold face text (OR-ed w/ shifted)
+    FSF_BOLD=flag,
+    # 0x01 underlined (under baseline)
+    FSF_UNDERLINED=flag,
+)
 
 # Amiga hunk file header
 # http://amiga-dev.wikidot.com/file-format:hunk#toc6
@@ -153,8 +158,8 @@ _AMIGA_HEADER = be.Struct(
     tf_mn_Length='H',
     # struct TextFont http://amigadev.elowar.com/read/ADCD_2.1/Libraries_Manual_guide/node03DE.html
     tf_YSize='H',
-    tf_Style='B',
-    tf_Flags='B',
+    tf_Style=_TF_STYLE,
+    tf_Flags=_TF_FLAGS,
     tf_XSize='H',
     tf_Baseline='H',
     tf_BoldSmear='H',
@@ -273,7 +278,7 @@ def _read_strike(f, props):
     locs = loc_struct.array(nchars).from_bytes(data, loc + props.tf_CharLoc)
     # spacing table
     # spacing can be negative
-    if (props.tf_Flags & _FPF_PROPORTIONAL) and props.tf_CharSpace:
+    if props.tf_Flags.FPF_PROPORTIONAL and props.tf_CharSpace:
         spacing = be.int16.array(nchars).from_bytes(data, loc + props.tf_CharSpace)
     else:
         spacing = [props.tf_XSize] * nchars
@@ -339,7 +344,7 @@ def _convert_amiga_glyphs(glyphs):
 
 def _convert_amiga_props(amiga_props, offset_x):
     """Convert AmigaFont properties into yaff properties."""
-    if amiga_props.tf_Style & _FSF_COLORFONT:
+    if amiga_props.tf_Style.FSF_COLORFONT:
         raise FileFormatError('Amiga ColorFont not supported')
     props = Props()
     props.amiga = Props()
@@ -353,21 +358,21 @@ def _convert_amiga_props(amiga_props, offset_x):
     props.revision = amiga_props.dfh_Revision
     props.offset = Coord(offset_x, -(amiga_props.tf_YSize - amiga_props.tf_Baseline))
     # tf_Style
-    props.weight = 'bold' if amiga_props.tf_Style & _FSF_BOLD else 'medium'
-    props.slant = 'italic' if amiga_props.tf_Style & _FSF_ITALIC else 'roman'
-    props.setwidth = 'expanded' if amiga_props.tf_Style & _FSF_EXTENDED else 'medium'
-    if amiga_props.tf_Style & _FSF_UNDERLINED:
+    props.weight = 'bold' if amiga_props.tf_Style.FSF_BOLD else 'medium'
+    props.slant = 'italic' if amiga_props.tf_Style.FSF_ITALIC else 'roman'
+    props.setwidth = 'expanded' if amiga_props.tf_Style.FSF_EXTENDED else 'medium'
+    if amiga_props.tf_Style.FSF_UNDERLINED:
         props.decoration = 'underline'
     # tf_Flags
     props.spacing = (
-        'proportional' if amiga_props.tf_Flags & _FPF_PROPORTIONAL else 'monospace'
+        'proportional' if amiga_props.tf_Flags.FPF_PROPORTIONAL else 'monospace'
     )
-    if amiga_props.tf_Flags & _FPF_REVPATH:
+    if amiga_props.tf_Flags.FPF_REVPATH:
         props.direction = 'right-to-left'
-    if amiga_props.tf_Flags & _FPF_TALLDOT and not amiga_props.tf_Flags & _FPF_WIDEDOT:
+    if amiga_props.tf_Flags.FPF_TALLDOT and not amiga_props.tf_Flags.FPF_WIDEDOT:
         # TALLDOT: This font was designed for a Hires screen (640x200 NTSC, non-interlaced)
         props.dpi = '96 48'
-    elif amiga_props.tf_Flags & _FPF_WIDEDOT and not amiga_props.tf_Flags & _FPF_TALLDOT:
+    elif amiga_props.tf_Flags.FPF_WIDEDOT and not amiga_props.tf_Flags.FPF_TALLDOT:
         # WIDEDOT: This font was designed for a Lores Interlaced screen (320x400 NTSC)
         props.dpi = '48 96'
     else:
