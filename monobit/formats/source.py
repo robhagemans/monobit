@@ -7,7 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 import string
 
-from ..base.binary import ceildiv
+from ..binary import ceildiv
 from ..storage import loaders, savers
 from ..font import Font
 from ..glyph import Glyph

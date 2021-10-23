@@ -15,7 +15,7 @@ except ImportError:
     Image = None
 
 from ..scripting import pair, rgb
-from ..base.binary import ceildiv
+from ..binary import ceildiv
 from ..storage import loaders, savers
 from ..streams import FileFormatError
 from ..font import Font

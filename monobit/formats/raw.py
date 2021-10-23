@@ -7,7 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
-from ..base.binary import ceildiv, bytes_to_bits
+from ..binary import ceildiv, bytes_to_bits
 from ..storage import loaders, savers
 from ..font import Font
 from ..glyph import Glyph

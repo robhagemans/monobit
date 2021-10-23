@@ -7,7 +7,8 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
-from ..base.binary import ceildiv, friendlystruct
+from ..binary import ceildiv
+from ..struct import Props, bitfield, flag, little_endian as le
 from ..storage import loaders, savers
 from ..font import Font
 from ..glyph import Glyph
@@ -19,38 +20,49 @@ from .raw import load_aligned
 # PSF formats:
 # https://www.win.tue.nl/~aeb/linux/kbd/font-formats-1.html
 
-# PSF1 header
-_PSF1_MAGIC = b'\x36\x04'
-_PSF1_HEADER = friendlystruct(
-    'le',
-    mode='uint8',
-    charsize='uint8',
-)
 
 # mode field
-_PSF1_MODE512 = 0x01
-_PSF1_MODEHASTAB = 0x02
-#_PSF1_MODEHASSEQ = 0x04
 #_PSF1_MAXMODE = 0x05
+_PSF1_MODE = le.Struct(
+    # 0x01
+    PSF1_MODE512=flag,
+    # 0x02
+    PSF1_MODEHASTAB=flag,
+    # 0x04
+    PSF1_MODEHASSEQ=flag,
+    #unused=bitfield('uint8', 5),
+)
+
+# PSF1 header
+_PSF1_MAGIC = b'\x36\x04'
+_PSF1_HEADER = le.Struct(
+    mode=_PSF1_MODE,
+    charsize='uint8',
+)
 
 _PSF1_SEPARATOR = b'\xFF\xFF'
 _PSF1_STARTSEQ =  b'\xFF\xFE'
 
+
+# flags field
+_PSF2_FLAGS = le.Struct(
+    # 0x01
+    PSF2_HAS_UNICODE_TABLE=bitfield('uint32', 1),
+    #unused=bitfield('uint32', 31),
+)
+
+
 # PSF2 header
 _PSF2_MAGIC = b'\x72\xb5\x4a\x86'
-_PSF2_HEADER = friendlystruct(
-    'le',
+_PSF2_HEADER = le.Struct(
     version='uint32',
     headersize='uint32',
-    flags='uint32',
+    flags=_PSF2_FLAGS,
     length='uint32',
     charsize='uint32',
     height='uint32',
     width='uint32',
 )
-
-# flags field
-_PSF2_HAS_UNICODE_TABLE = 0x01
 
 # max version recognized so far
 #_PSF2_MAXVERSION = 0
@@ -68,15 +80,16 @@ _PSF2_STARTSEQ = b'\xFE'
 def load_psf(instream, where=None):
     """Load character-cell font from PC Screen Font (.PSF) file."""
     magic = instream.read(2)
+    properties = Props()
     if magic == _PSF1_MAGIC:
         psf_props = _PSF1_HEADER.read_from(instream)
         width, height = 8, psf_props.charsize
-        length = 512 if (psf_props.mode & _PSF1_MODE512) else 256
-        has_unicode_table = bool(psf_props.mode & _PSF1_MODEHASTAB)
+        length = 512 if psf_props.mode.PSF1_MODE512 else 256
+        has_unicode_table = bool(psf_props.mode.PSF1_MODEHASTAB)
         separator = _PSF1_SEPARATOR
         startseq = _PSF1_STARTSEQ
         encoding = 'utf-16le'
-        properties = {'source-format': 'PSF v1'}
+        properties.source_format = 'PSF v1'
     elif magic + instream.read(2) == _PSF2_MAGIC:
         psf_props = _PSF2_HEADER.read_from(instream)
         charsize = psf_props.height * ceildiv(psf_props.width, 8)
@@ -84,16 +97,22 @@ def load_psf(instream, where=None):
             logging.warning('Ignoring inconsistent char size in PSF header.')
             psf_props.charsize = charsize
         width, height, length = psf_props.width, psf_props.height, psf_props.length
-        has_unicode_table = bool(psf_props.flags & _PSF2_HAS_UNICODE_TABLE)
+        has_unicode_table = bool(psf_props.flags.PSF2_HAS_UNICODE_TABLE)
         # ignore any padding after header
         padding = psf_props.headersize - (_PSF2_HEADER.size + len(_PSF2_MAGIC))
         instream.read(padding)
         separator = _PSF2_SEPARATOR
         startseq = _PSF2_STARTSEQ
         encoding = 'utf-8'
-        properties = {'source-format': 'PSF v2'}
+        properties.source_format = 'PSF v2'
     else:
-        raise ValueError('Not a PSF file.')
+        raise FileFormatError(
+            'Not a PSF file: '
+            f'magic bytes 0x{magic:X} not one of 0x{_PSF1_MAGIC:X}, 0x{_PSF2_MAGIC:X}'
+        )
+    logging.info('PSF properties:')
+    for name, value in vars(psf_props).items():
+        logging.info('    %s: %s', name, value)
     cells = load_aligned(instream, width, height, length)
     if has_unicode_table:
         table = _read_unicode_table(instream, separator, startseq, encoding)
@@ -102,8 +121,8 @@ def load_psf(instream, where=None):
             _glyph.set_annotations(char=''.join(table[_index]))
             for _index, _glyph in enumerate(cells)
         ]
-        properties.update({'encoding': 'unicode'})
-    return Font(cells, properties=properties)
+        properties.encoding = 'unicode'
+    return Font(cells, properties=vars(properties))
 
 def _read_unicode_table(instream, separator, startseq, encoding):
     """Read the Unicode table in a PSF2 file."""
@@ -135,7 +154,7 @@ def save_psf(fonts, outstream, where=None):
         height=font.max_raster_size.y,
         charsize=font.max_raster_size.y * ceildiv(font.max_raster_size.x, 8),
         version=0,
-        flags=_PSF2_HAS_UNICODE_TABLE,
+        flags=_PSF2_FLAGS(PSF2_HAS_UNICODE_TABLE=1),
         length=len(glyphs),
         headersize=_PSF2_HEADER.size + len(_PSF2_MAGIC)
     )

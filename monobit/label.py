@@ -7,7 +7,14 @@ licence: https://opensource.org/licenses/MIT
 
 import string
 
-from .base.text import strip_matching
+def strip_matching(from_str, char):
+    """Strip a char from either side of the string if it occurs on both."""
+    if not char:
+        return from_str
+    clen = len(char)
+    if from_str.startswith(char) and from_str.endswith(char):
+        return from_str[clen:-clen]
+    return from_str
 
 
 def label(value=''):

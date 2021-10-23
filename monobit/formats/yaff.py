@@ -10,13 +10,13 @@ import string
 from types import SimpleNamespace
 from itertools import count
 
-from ..base.text import to_text, strip_matching
+from ..matrix import to_text
 from ..storage import loaders, savers
 from ..encoding import charmaps
 from ..streams import FileFormatError
 from ..font import PROPERTIES, Font
 from ..glyph import Glyph
-from ..label import label as to_label
+from ..label import strip_matching, label as to_label
 from ..label import Char, Codepoint, Tag
 
 
@@ -378,8 +378,7 @@ def _save_yaff(fonts, outstream, ink, paper, comment, tab, separator, empty, **k
         # we always output name, font-size and spacing
         # plus anything that is different from the default
         props = {
-            'family': font.family,
-            'point-size': font.point_size,
+            'bounding-box': font.bounding_box,
             'spacing': font.spacing,
             **font.nondefault_properties
         }
