@@ -11,10 +11,19 @@ import numbers
 import logging
 import unicodedata
 
+try:
+    # python 3.9
+    from functools import cache
+except ImportError:
+    from functools import lru_cache
+    cache = lru_cache()
+
 from .scripting import scriptable, get_scriptables
 from .glyph import Glyph
 from .encoding import charmaps
 from .label import Label, Tag, Char, Codepoint, label
+
+
 
 
 def number(value=0):
@@ -326,6 +335,7 @@ class Font:
             raise KeyError(f'No glyph found matching codepoint={Codepoint(codepoint)}') from None
 
 
+    @cache
     def get_default_glyph(self):
         """Get default glyph; empty if not defined."""
         try:
@@ -333,6 +343,7 @@ class Font:
         except KeyError:
             return self.get_empty_glyph()
 
+    @cache
     def get_empty_glyph(self):
         """Get blank glyph with zero advance (or minimal if zero not possible)."""
         return Glyph.blank(max(0, -self.offset.x - self.tracking), self.max_raster_size.y)
@@ -565,6 +576,7 @@ class Font:
         return self.ascent + self.descent
 
     @yaffproperty
+    @cache
     def ascent(self):
         """Get ascent (defaults to max ink height above baseline)."""
         if not self._glyphs:
@@ -576,6 +588,7 @@ class Font:
         )
 
     @yaffproperty
+    @cache
     def descent(self):
         """Get descent (defaults to bottom/vertical offset)."""
         if not self._glyphs:
@@ -596,6 +609,7 @@ class Font:
         return Coord(72, 72)
 
     @property
+    @cache
     def max_raster_size(self):
         """Get maximum raster width and height, in pixels."""
         if not self._glyphs:
@@ -606,6 +620,7 @@ class Font:
         )
 
     @property
+    @cache
     def bounding_box(self):
         """Minimum bounding box encompassing all glyphs at fixed origin."""
         if not self._glyphs:
@@ -616,6 +631,7 @@ class Font:
         return Coord(max(rights) - min(lefts), max(tops) - min(bottoms))
 
     @yaffproperty
+    @cache
     def default_char(self):
         """Label for default character."""
         repl = '\ufffd'
@@ -624,6 +640,7 @@ class Font:
         return Char(repl)
 
     @yaffproperty
+    @cache
     def average_advance(self):
         """Get average glyph advance width, rounded to tenths of pixels."""
         if not self._glyphs:
@@ -635,6 +652,7 @@ class Font:
         )
 
     @yaffproperty
+    @cache
     def spacing(self):
         """Monospace or proportional spacing."""
         if not self._glyphs:
@@ -657,6 +675,7 @@ class Font:
         return 'proportional'
 
     @yaffproperty
+    @cache
     def cap_advance(self):
         """Advance width of uppercase X."""
         try:
@@ -665,6 +684,7 @@ class Font:
             return 0
 
     @yaffproperty
+    @cache
     def x_height(self):
         """Ink height of lowercase x."""
         try:
@@ -673,6 +693,7 @@ class Font:
             return 0
 
     @yaffproperty
+    @cache
     def cap_height(self):
         """Ink height of uppercase X."""
         try:

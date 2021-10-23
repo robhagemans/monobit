@@ -9,6 +9,13 @@ import binascii
 import logging
 from typing import NamedTuple
 
+try:
+    # python 3.9
+    from functools import cache
+except ImportError:
+    from functools import lru_cache
+    cache = lru_cache()
+
 from .scripting import scriptable
 from .binary import ceildiv, bytes_to_bits
 from .matrix import to_text
@@ -251,6 +258,7 @@ class Glyph:
         return len(self._rows)
 
     @property
+    @cache
     def ink_width(self):
         """Ink width of glyph."""
         if not self._rows:
@@ -262,6 +270,7 @@ class Glyph:
         )
 
     @property
+    @cache
     def ink_height(self):
         """Ink height of glyph."""
         if not self._rows:
@@ -277,6 +286,7 @@ class Glyph:
         return self.ink_width, self.ink_height
 
     @property
+    @cache
     def ink_offsets(self):
         """Offset from sides to bounding box. Left, bottom, right, top."""
         if not self._rows:
@@ -292,6 +302,7 @@ class Glyph:
         return Bounds(left, bottom, right, top)
 
     @property
+    @cache
     def ink_coordinates(self):
         """Offset from raster origin to bounding box. Left, bottom, right, top."""
         offsets = self.ink_offsets
