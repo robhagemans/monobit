@@ -45,16 +45,6 @@ class Props(SimpleNamespace):
 ##############################################################################
 # binary structs
 
-def _wraptype(ctyp):
-    """Wrap ctypes types with some convenience members."""
-    # ctyp.array(n) is ctyp * n but with the same convenience members
-    ctyp.size = ctypes.sizeof(ctyp)
-    ctyp.array = lambda n: _wraptype(ctyp * n)
-    ctyp.read_from = lambda stream: ctyp.from_buffer_copy(stream.read(ctypes.sizeof(ctyp)))
-    ctyp.from_bytes = ctyp.from_buffer_copy
-    return ctyp
-
-
 # base types
 char = ctypes.c_char
 uint8 = ctypes.c_uint8
@@ -158,7 +148,7 @@ def friendlystruct(_endian, **description):
             addedstruct = friendlystruct(_endian, **dict(self._fields_ + other._fields_))
             return addedstruct(**self.__dict__, **other.__dict__)
 
-    return _wraptype(Struct)
+    return _wrap_struct(Struct)
 
 
 friendlystruct.char = char
@@ -171,12 +161,22 @@ friendlystruct.int32 = int32
 friendlystruct.sizeof = ctypes.sizeof
 
 
+def _wrap_struct(cstruct):
+    """Wrap ctypes structs/struct arrays with convenience methods."""
+    cstruct.size = ctypes.sizeof(cstruct)
+    cstruct.array = lambda n: _wrap_struct(cstruct * n)
+    cstruct.read_from = lambda stream: cstruct.from_buffer_copy(stream.read(ctypes.sizeof(cstruct)))
+    cstruct.from_bytes = cstruct.from_buffer_copy
+    return cstruct
+
 def _wrap_base_type(ctyp, endian):
+    """Wrap ctypes base types with convenience methods."""
     cls = friendlystruct(endian, value=ctyp)
     cls.array = lambda n: _wrap_base_type(ctyp * n, endian)
     cls.read_from = lambda stream: cls.from_buffer_copy(stream.read(ctypes.sizeof(ctyp))).value
     cls.from_bytes = lambda *args: cls.from_buffer_copy(*args).value
     return cls
+
 
 class BE:
     char = _wrap_base_type(char, '>')

@@ -175,7 +175,7 @@ _FONT_CONTENTS_HEADER = friendlystruct(
 # struct FontContents
 _FONT_CONTENTS = friendlystruct(
     '>',
-    fc_FileName=friendlystruct.char * _MAXFONTPATH,
+    fc_FileName=struct.char * _MAXFONTPATH,
     fc_YSize='uword',
     fc_Style='ubyte',
     fc_Flags='ubyte',
@@ -185,7 +185,7 @@ _FONT_CONTENTS = friendlystruct(
 # not used - we ignore the extra tags stored at the back of the tfc_FileName field
 _T_FONT_CONTENTS = friendlystruct(
     '>',
-    tfc_FileName=friendlystruct.char * (_MAXFONTPATH-2),
+    tfc_FileName=struct.char * (_MAXFONTPATH-2),
     tfc_TagCount='uword',
     tfc_YSize='uword',
     tfc_Style='ubyte',
@@ -201,9 +201,11 @@ def _load_amiga(f, where):
     """Load font from Amiga disk font file."""
     # read & ignore header
     _read_header(f)
-    hfh0 = _HUNK_FILE_HEADER_0.read_from(f)
-    if hfh0.hunk_id != _HUNK_CODE:
-        raise FileFormatError('Not an Amiga font data file: no code hunk found (id %04x)' % hfh0.hunk_id)
+    hunk_id = struct.BE.uint32.read_from(f)
+    if hunk_id != _HUNK_CODE:
+        raise FileFormatError(
+            f'Not an Amiga font data file: no code hunk found (id 0x{hunk_id:03X})'
+        )
     props, glyphs, kerning, spacing = _read_font_hunk(f)
     return _convert_amiga_font(props, glyphs, kerning, spacing)
 
@@ -224,9 +226,11 @@ def _read_library_names(f):
 def _read_header(f):
     """Read file header."""
     # read header id
-    hfh0 = _HUNK_FILE_HEADER_0.read_from(f)
-    if hfh0.hunk_id != _HUNK_HEADER:
-        raise FileFormatError('Not an Amiga font data file: magic constant {hfh0.hunk_id:X} != 0x3F3')
+    hunk_id = struct.BE.uint32.read_from(f)
+    if hunk_id != _HUNK_HEADER:
+        raise FileFormatError(
+            f'Not an Amiga font data file: magic constant 0x{hunk_id:03X} != 0x3F3'
+        )
     library_names = _read_library_names(f)
     hfh1 = _HUNK_FILE_HEADER_1.read_from(f)
     # list of memory sizes of hunks in this file (in number of ULONGs)
@@ -345,7 +349,6 @@ def _parse_amiga_props(amiga_props, offset_x):
     )
     if amiga_props.tf_Flags & _FPF_REVPATH:
         props.direction = 'right-to-left'
-        logging.warning('right-to-left fonts are not correctly implemented yet')
     if amiga_props.tf_Flags & _FPF_TALLDOT and not amiga_props.tf_Flags & _FPF_WIDEDOT:
         # TALLDOT: This font was designed for a Hires screen (640x200 NTSC, non-interlaced)
         props.dpi = '96 48'
