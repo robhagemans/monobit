@@ -69,6 +69,12 @@ class Coord(NamedTuple):
                 return cls(number(coord[0]), number(coord[1]))
         raise ValueError("Can't convert `{}` to coordinate pair.".format(coord))
 
+    def __add__(self, other):
+        return Coord(self.x + other.x, self.y + other.y)
+
+    def __sub__(self, other):
+        return Coord(self.x - other.x, self.y - other.y)
+
 
 class Glyph:
     """Single glyph."""
