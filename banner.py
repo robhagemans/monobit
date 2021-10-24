@@ -32,6 +32,10 @@ parser.add_argument(
     help='font file to use when printng text'
 )
 parser.add_argument(
+    '--format', type=str, default='',
+    help='format of file used in --font'
+)
+parser.add_argument(
     '--ink', '--foreground', '-fg', type=str, default='@',
     help='character to use for ink/foreground (default: @)'
 )
@@ -83,7 +87,7 @@ with main(args, logging.WARNING):
     args.ink = unescape(args.ink)
     args.paper = unescape(args.paper)
     # take first font from pack
-    font, *_ = monobit.load(args.font)
+    font, *_ = monobit.load(args.font, format=args.format)
     # check if any characters are defined
     # override encoding if requested
     if not font.get_chars() and not args.encoding and not isinstance(args.text, bytes):
