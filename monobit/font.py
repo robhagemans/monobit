@@ -26,40 +26,6 @@ from .label import Label, Tag, Char, Codepoint, label
 # pylint: disable=redundant-keyword-arg, no-member
 
 
-class KerningTable:
-    """(str, str) -> int."""
-
-    def __init__(self, table=None):
-        """Set up kerning table."""
-        if not table:
-            table = {}
-        if isinstance(table, str):
-            table = {
-                tuple(_row.split()[:2]): _row.split()[2]
-                for _row in table.splitlines()
-            }
-        self._table = {
-            (_k[0], _k[1]): int(_v)
-            for _k, _v in table.items()
-        }
-
-    def __str__(self):
-        """Convert kerning table to multiline string."""
-        return '\n'.join(
-            f'{_k[0]} {_k[1]} {_v}'
-            for _k, _v in self._table.items()
-        )
-
-    def items(self):
-        """Iterate over items."""
-        return self._table.items()
-
-    def __bool__(self):
-        """False if table is empty."""
-        return bool(self._table)
-
-
-
 # recognised yaff properties and converters from str
 # this also defines the default order in yaff files
 PROPERTIES = {
@@ -129,10 +95,6 @@ PROPERTIES = {
     'source-name': str,
     'source-format': str,
     'history': str,
-
-    # kerning table (at the end because it's long)
-    # pairwise kerning (defined as adjustment to tracking)
-    'kerning': KerningTable,
 }
 
 
@@ -420,22 +382,15 @@ class Font:
         """Get kerning amounts for an iteration of glyphs."""
         if not glyphs:
             return ()
-        if not self.kerning:
-            return tuple((0,) * len(_line) for _line in glyphs)
-        # kerning doesn't currently work if we have no chars defined
-        chars = [[_g.char for _g in _line] for _line in glyphs]
-        # get kerning in terms of chars
-        # would be better as a glyph property?
-        kerning_dict = {
-            (self.get_glyph(_key[0]).char, self.get_glyph(_key[1]).char): _value
-            for _key, _value in self.kerning.items()
-        }
         return tuple(
             tuple(
-                kerning_dict.get((_char, _next), 0)
-                for _char, _next in zip(_line[:-1], _line[1:])
+                self.get_glyph(_glyph.char, missing='empty').kern_to.get(
+                # FIXME: shouldn't be codepoint only
+                    self.get_glyph(_next.char, missing='empty').codepoint
+                , 0)
+                for _glyph, _next in zip(_line[:-1], _line[1:])
             ) + (0,)
-            for _line in chars
+            for _line in glyphs
         )
 
 

@@ -350,14 +350,19 @@ def _write_glyph(outstream, labels, glyph, ink, paper, comm_char, tab, separator
     # empty glyphs are stored as 0x0, not 0xm or nx0
     if not glyph.width or not glyph.height:
         glyphtxt = empty
-    outstream.write(tab + glyphtxt + '\n')
+    outstream.write(tab + glyphtxt + '\n\n')
     if glyph.offset:
-        outstream.write(f'\n{tab}offset: {str(glyph.offset)}')
+        outstream.write(f'{tab}offset: {str(glyph.offset)}\n')
     if glyph.tracking:
-        outstream.write(f'\n{tab}tracking: {str(glyph.tracking)}')
-    if glyph.offset or glyph.tracking:
+        outstream.write(f'{tab}tracking: {str(glyph.tracking)}\n')
+    #logging.warning(repr(glyph.kern_to))
+    if glyph.kern_to:
+        outstream.write(f'{tab}kern-to: \n')
+        for line in str(glyph.kern_to).splitlines():
+            outstream.write(f'{tab*2}{line}\n')
+    if glyph.offset or glyph.tracking or glyph.kern_to:
         outstream.write('\n')
-    outstream.write('\n\n')
+    outstream.write('\n')
 
 def _quote_if_needed(value):
     """See if string value needs double quotes."""
