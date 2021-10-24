@@ -444,12 +444,20 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=(),
                 bits[_offs: _offs+char.width]
                 for _offs in range(0, len(bits), char.width)
             ))
+            # append kernings (this glyph left)
+            # FIXME: what if second codepoint is multibyte?
+            kern_to = {
+                Codepoint(_kern.second).value: _kern.amount
+                for _kern in kernings
+                if _kern.first == char.id
+            }
             # max_height is used further down as well
             max_height = max(char.height + char.yoffset for char in chars)
             glyph = glyph.modify(
                 codepoint=int_to_bytes(char.id),
                 offset=(char.xoffset, max_height-glyph.height-char.yoffset),
                 tracking=char.xadvance - char.xoffset - char.width,
+                kern_to=kern_to
             )
             glyphs.append(glyph)
     for file in image_files.values():
@@ -475,7 +483,6 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=(),
         'weight': 'bold' if _to_int(bmfont_props.pop('bold')) else Font.default('weight'),
         'slant': 'italic' if _to_int(bmfont_props.pop('italic')) else Font.default('slant'),
         'encoding': encoding,
-        'kerning': {(_kern.first, _kern.second): _kern.amount for _kern in kernings},
     }
     # drop other props if they're default value
     default_bmfont_props = {
@@ -763,16 +770,15 @@ def _create_bmfont(
     # >  first  The first character id.
     # >  second The second character id.
     # >  amount	How much the x position should be adjusted when drawing the second character immediately following the first.
-    if hasattr(font, 'kerning'):
-        props['kernings'] = [{
-                'first': ord(font[_key[0]].char),
-                'second': ord(font[_key[1]].char),
-                'amount': int(_amount)
-            }
-            for _key, _amount in font.kerning.items()
-        ]
-    else:
-        props['kernings'] = []
+    props['kernings'] = [{
+            'first': _glyph_id(_glyph, font.encoding),
+            'second': _glyph_id(font.get_glyph(_to), font.encoding),
+            'amount': int(_amount)
+        }
+        for _glyph in font.glyphs
+        for _kern_to in _glyph.kern_to
+        for _to, _amount in _kern_to.items()
+    ]
     # write the .fnt description
     if descriptor == 'text':
         _write_fnt_descriptor(outfile, props, chars)
