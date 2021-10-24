@@ -653,7 +653,7 @@ class Font:
         offsets = [_glyph.offset if _glyph.offset is not None else self.offset for _glyph in self._glyphs]
         lefts = [_left + _offs.x for _left, _offs in zip(lefts, offsets)]
         rights = [_right + _offs.x for _right, _offs in zip(rights, offsets)]
-        topss = [_top + _offs.y for _top, _offs in zip(tops, offsets)]
+        tops = [_top + _offs.y for _top, _offs in zip(tops, offsets)]
         bottoms = [_bottom + _offs.x for _bottom, _offs in zip(bottoms, offsets)]
         return Coord(max(rights) - min(lefts), max(tops) - min(bottoms))
 
