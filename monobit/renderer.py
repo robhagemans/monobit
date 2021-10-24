@@ -55,9 +55,9 @@ def render(font, text, *, margin=(0, 0), scale=(1, 1), rotate=0, missing='defaul
         x, y = 0, 0
         for glyph, kerning in zip(glyph_row, kerning_row):
             mx = glyph.as_matrix()
-            # apply pre-offset so that x,y is logical coordinate of raster origin
+            # apply pre-offset so that x, y is now the coordinate of glyph matrix origin
             x, y = x + font.offset.x, y + font.offset.y
-            # canvas coordinates of raster origin
+            # grid_x, grid_y are canvas coordinates relative to top left of canvas
             # canvas y coordinate increases *downwards* from top of line
             grid_x = margin_x + x
             grid_y = baseline - y
