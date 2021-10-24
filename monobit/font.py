@@ -239,7 +239,7 @@ class Font:
         # set encoding first so we can set labels
         # NOTE - we must be careful NOT TO ACCESS CACHED PROPERTIES
         #        until the constructor is complete
-        self._properties.update(self._check_properties(properties))
+        self._properties.update(self._filter_properties(properties))
         self._add_encoding_data()
         # construct lookup tables
         self._tags = {
@@ -310,7 +310,8 @@ class Font:
             return property
         return property.replace('_', '-')
 
-    def _check_properties(self, properties):
+
+    def _filter_properties(self, properties):
         """Convert properties where needed."""
         if not properties:
             return {}
@@ -322,22 +323,18 @@ class Font:
                 continue
             except ValueError as e:
                 logging.error('Could not set property `%s` to %s: %s', key, repr(value), e)
-            # don't set property values that equal the default
-            # we need to ensure we use underscore variants, or default functions won't get called
-            default_value = self._property_defaults.get(key, '')
-            if value != default_value:
-                if key in _non_overridable:
-                    logging.warning(
-                        "Property `%s` can't be set to %s. Keeping calculated value %s.",
-                        key, repr(value), repr(default_value)
+            if key in _non_overridable:
+                logging.info(
+                    "Property `%s` is not overridable and can't be changed to %s.",
+                    key, repr(value)
+                )
+            else:
+                properties[key] = value
+                if key in _notify_override:
+                    logging.info(
+                        'Property `%s` is overridden to %s.',
+                        key, repr(value)
                     )
-                else:
-                    self._properties[key] = value
-                    if key in _notify_override:
-                        logging.info(
-                            'Property `%s` set to %s, while calculated value is %s.',
-                            key, repr(value), repr(default_value)
-                        )
         # append nonstandard properties
         return properties
 
