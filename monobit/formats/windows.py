@@ -992,7 +992,7 @@ def create_fnt(font, version=0x200):
         # for 2.0+, we use actual average advance here (like fontforge but unlike mkwinfont)
         dfAvgWidth=round(font.average_advance),
         # max advance width
-        dfMaxWidth=font.raster_size.x + font.tracking + font.offset.x,
+        dfMaxWidth=font.max_advance,
         dfFirstChar=min_ord,
         dfLastChar=max_ord,
         dfDefaultChar=default_ord - min_ord,

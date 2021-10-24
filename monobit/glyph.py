@@ -75,6 +75,9 @@ class Coord(NamedTuple):
     def __sub__(self, other):
         return Coord(self.x - other.x, self.y - other.y)
 
+    def __bool__(self):
+        return bool(self.x or self.y)
+
 
 class Glyph:
     """Single glyph."""
@@ -82,7 +85,7 @@ class Glyph:
     def __init__(
             self, pixels=(), *,
             codepoint=(), char='', tags=(), comments=(),
-            offset=NOT_SET, advance=NOT_SET,
+            offset=None, tracking=0,
             **kwargs
         ):
         """Create glyph from tuple of tuples."""
@@ -93,8 +96,8 @@ class Glyph:
         self._codepoint = Codepoint(codepoint).value
         self._char = char
         self._tags = tuple(tags)
-        self._offset = offset
-        self._advance = advance
+        self._offset = offset or Coord(0, 0)
+        self._tracking = tracking
         # custom properties - not used but kept
         self._props = {_k.replace('_', '-'): _v for _k, _v in kwargs.items()}
         if len(set(len(_r) for _r in self._rows)) > 1:
@@ -135,17 +138,13 @@ class Glyph:
 
     @property
     def offset(self):
-        """Offset vector, overrides font offsett."""
-        if self._offset is NOT_SET:
-            return None
+        """Internal ffset vector for this glyph, adds to font offsett."""
         return self._offset
 
     @property
-    def advance(self):
-        """Advance width for this glyph, overrides font tracking."""
-        if self._advance is NOT_SET:
-            return None
-        return self._advance
+    def tracking(self):
+        """Internal tracking for this glyph, adds to font tracking."""
+        return self._tracking
 
 
     def __repr__(self):
@@ -160,8 +159,8 @@ class Glyph:
             )
             + ', '.join(f'{_k}={_v}' for _k, _v in self._props.items())
             + (', ' if self._props else '')
-            + ('' if self._offset is NOT_SET else f"offset={repr(self._offset)}, ")
-            + ('' if self._advance is NOT_SET else f"advance={repr(self._advance)}, ")
+            + ('' if not self._offset else f"offset={repr(self._offset)}, ")
+            + ('' if not self._tracking else f"tracking={repr(self._tracking)}, ")
             + "pixels=({})".format(
                 '' if not self._rows else
                 "\n  '{}'\n".format(
@@ -212,7 +211,7 @@ class Glyph:
     def modify(
             self, pixels=NOT_SET, *,
             tags=NOT_SET, char=NOT_SET, codepoint=NOT_SET, comments=NOT_SET,
-            offset=NOT_SET, advance=NOT_SET,
+            offset=NOT_SET, tracking=NOT_SET,
             **kwargs
         ):
         """Return a copy of the glyph with changes."""
@@ -228,8 +227,8 @@ class Glyph:
             comments = self._comments
         if offset is NOT_SET:
             offset = self._offset
-        if advance is NOT_SET:
-            advance = self._advance
+        if tracking is NOT_SET:
+            tracking = self._tracking
         return Glyph(
             tuple(pixels),
             codepoint=codepoint,
@@ -237,7 +236,7 @@ class Glyph:
             tags=tuple(tags),
             comments=tuple(comments),
             offset=offset,
-            advance=advance,
+            tracking=tracking,
             **kwargs
         )
 
@@ -319,6 +318,9 @@ class Glyph:
         """Convert glyph to hex string."""
         return binascii.hexlify(self.as_bytes()).decode('ascii')
 
+    ###############################################################################################
+    # properties
+
     @property
     def width(self):
         """Raster width of glyph."""
@@ -332,37 +334,15 @@ class Glyph:
         return len(self._rows)
 
     @property
-    @cache
-    def ink_width(self):
-        """Ink width of glyph."""
-        if not self._rows:
-            return 0
-        # maximum row inkwidth
-        return max(
-            (len(_row) - _row.index(True) - list(reversed(_row)).index(True)) if True in _row else 0
-            for _row in self._rows
-        )
+    def advance(self):
+        """Internal advance width of glyph, including internal bearings."""
+        return self._offset.x + self.width + self._tracking
 
     @property
     @cache
-    def ink_height(self):
-        """Ink height of glyph."""
-        if not self._rows:
-            return 0
-        inked = [True in _row for _row in self._rows]
-        if True in inked:
-            return len(inked) - inked.index(True) - list(reversed(inked)).index(True)
-        return 0
-
-    @property
-    def ink_bounds(self):
-        """Dimensions of tightest box to fit glyph."""
-        return self.ink_width, self.ink_height
-
-    @property
-    @cache
+    # rename to margins ?
     def ink_offsets(self):
-        """Offset from sides to bounding box. Left, bottom, right, top."""
+        """Offset from raster sides to bounding box. Left, bottom, right, top."""
         if not self._rows:
             return Bounds(0, 0, 0, 0)
         row_inked = [True in _row for _row in self._rows]
@@ -377,12 +357,25 @@ class Glyph:
 
     @property
     @cache
-    def ink_coordinates(self):
-        """Offset from raster origin to bounding box. Left, bottom, right, top."""
-        offsets = self.ink_offsets
+    def ink_bounds(self):
+        """Minimum box encompassing all ink, in glyph origin coordinates."""
+        row_inked = [True in _row for _row in self._rows]
         return Bounds(
-            offsets.left, offsets.bottom, self.width-offsets.right, self.height-offsets.top
+            left=self._offset.x + self.ink_offsets.left,
+            bottom=self.offset.y + self.ink_offsets.bottom,
+            right=self.offset.x + self.width - self.ink_offsets.right,
+            top=self.offset.y + self.height - self.ink_offsets.top,
         )
+
+    @property
+    @cache
+    def ink_height(self):
+        """Ink height of glyph."""
+        return self.ink_bounds.top - self.ink_bounds.bottom
+
+
+    ###############################################################################################
+    # operations
 
     def reduce(self):
         """Return a glyph reduced to the bounding box."""
@@ -410,7 +403,7 @@ class Glyph:
         return combined
 
 
-    ##########################################################################
+    ###############################################################################################
 
     @scriptable
     def mirror(self):
