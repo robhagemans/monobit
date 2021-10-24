@@ -89,7 +89,11 @@ def _get_canvas(font, glyphs, margin_x, margin_y):
         width += max(
             sum(
                 (_glyph.offset.x if _glyph.offset is not None else font.offset.x)
-                + (_glyph.advance - _glyph.offset.x if _glyph.advance is not None else _glyph.width + font.tracking)
+                + (
+                    _glyph.advance - _glyph.offset.x
+                    if _glyph.advance is not None
+                    else _glyph.width + font.tracking
+                )
                 for _glyph in _row
             )
             for _row in glyphs
