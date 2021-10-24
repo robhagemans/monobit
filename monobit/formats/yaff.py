@@ -177,9 +177,8 @@ def _load_fonts(instream, ink, paper, separator, empty, parse_glyph_keys, **kwar
     """Read and parse a plaintext font file."""
     pack = []
     for number in count():
-        try:
-            elements = _read_text(instream, separator)
-        except EOFError:
+        elements, eof = _read_text(instream, separator)
+        if eof and not elements:
             break
         if not elements:
             logging.debug('Section #%d is empty.', number)
@@ -242,13 +241,11 @@ def _read_text(instream, separator):
     # append any trailing content
     if current.keys or current.values or current.comments:
         elements.append(current)
-    if eof and not elements:
-        raise EOFError('No further content in yaffs container.')
-    return elements
+    return elements, eof
 
 
 def _is_glyph(value, ink, paper):
-    """Value is a glyph."""
+    """Text line is a glyph."""
     return not(set(value) - set(ink) - set(paper))
 
 def _parse_properties(elements, ink, paper):
@@ -256,7 +253,7 @@ def _parse_properties(elements, ink, paper):
     # properties: anything that contains more than .@
     property_elements = [
         _el for _el in elements
-        if not _is_glyph(''.join(_el.values), ink, paper)
+        if not any(_is_glyph(_line, ink, paper) for _line in _el.values)
     ]
     # multiple labels translate into multiple keys with the same value
     properties = {
@@ -276,29 +273,41 @@ def _parse_properties(elements, ink, paper):
 def _parse_glyphs(elements, ink, paper, empty, parse_glyph_keys):
     """Parse glyphs."""
     # text version of glyphs
-    # a glyph is any key/value where the value contains no alphanumerics
-
-    # FIXME: glyph properties
-
+    # a glyph is any key/value where at least one line in the value contains no alphanumerics
+    # to avoid detection as glyph, a value can be quited
     glyph_elements = [
         _el for _el in elements
-        if _is_glyph(''.join(_el.values), ink, paper)
+        if any(_is_glyph(_line, ink, paper) for _line in _el.values)
     ]
     # convert text representation to glyph
     glyphs = [
-        (
-            (
-                Glyph.from_matrix(_el.values, paper=paper)
-                if _el.values != [empty]
-                else Glyph()
-            ).set_annotations(
-                comments=clean_comment(_el.comments),
-                **parse_glyph_keys(_el.keys)
-            )
-        )
+        _parse_glyph(_el, ink, paper, empty, parse_glyph_keys)
         for _el in glyph_elements
     ]
     return glyphs
+
+def _parse_glyph(element, ink, paper, empty, parse_glyph_keys):
+    """Parse single glyph."""
+    glyph_lines = [_line for _line in element.values if _is_glyph(_line, ink, paper)]
+    if glyph_lines == [empty]:
+        glyph = Glyph()
+    else:
+        glyph = Glyph.from_matrix(glyph_lines, paper=paper)
+    # glyph properties
+    prop_lines =  [_line for _line in element.values if not _is_glyph(_line, ink, paper)]
+    # FIXME - this is hacky
+    # we're submitting prop_lines as instream becuase for line in will work
+    # some kind of recursive call makes sense though
+    elements, _ = _read_text(prop_lines, separator=':')
+    if elements:
+        # ignore in-glyph comments
+        props, _ = _parse_properties(elements, ink, paper)
+        glyph = glyph.modify(**props)
+    glyph = glyph.set_annotations(
+        comments=clean_comment(element.comments),
+        **parse_glyph_keys(element.keys)
+    )
+    return glyph
 
 def _extract_comments(elements):
     """Parse comments and remove from element list."""
@@ -340,11 +349,13 @@ def _write_glyph(outstream, labels, glyph, ink, paper, comm_char, tab, separator
     # empty glyphs are stored as 0x0, not 0xm or nx0
     if not glyph.width or not glyph.height:
         glyphtxt = empty
-    outstream.write(tab + glyphtxt + '\n\n')
-    if glyph.offset is not None:
-        outstream.write(f'{tab}offset: {str(glyph.offset)}\n')
-    if glyph.advance is not None:
-        outstream.write(f'{tab}advance: {str(glyph.advance)}\n')
+    outstream.write(tab + glyphtxt + '\n')
+    if glyph.offset:
+        outstream.write(f'\n{tab}offset: {str(glyph.offset)}')
+    if glyph.tracking:
+        outstream.write(f'\n{tab}tracking: {str(glyph.tracking)}')
+    if glyph.offset or glyph.tracking:
+        outstream.write('\n')
     outstream.write('\n\n')
 
 def _quote_if_needed(value):
