@@ -317,19 +317,18 @@ def _read_strike(f, props):
 
 def _convert_amiga_font(amiga_props, glyphs):
     """Convert Amiga properties and glyphs to monobit Font."""
-    glyphs, offset_x = _convert_amiga_glyphs(glyphs)
-    props = _convert_amiga_props(amiga_props, offset_x)
+    glyphs = _convert_amiga_glyphs(glyphs, amiga_props)
+    props = _convert_amiga_props(amiga_props)
     return props, glyphs
 
 
-def _convert_amiga_glyphs(glyphs):
+def _convert_amiga_glyphs(glyphs, amiga_props):
     """Deal with negative kerning by turning it into a global negative offset."""
     # apply kerning and spacing
-    offset_x = min(_glyph.kerning for _glyph in glyphs)
     glyphs = [
-        _glyph.expand(
-            left=_glyph.kerning - offset_x,
-            right=max(0, _glyph.spacing-_glyph.width)
+        _glyph.modify(
+            offset=Coord(_glyph.kerning, -(amiga_props.tf_YSize - amiga_props.tf_Baseline)),
+            advance=_glyph.spacing
         )
         for _glyph in glyphs
     ]
@@ -339,10 +338,10 @@ def _convert_amiga_glyphs(glyphs):
     ]
     # default glyph has no codepoint
     glyphs[-1] = glyphs[-1].set_annotations(codepoint=(), tags=('default',))
-    return glyphs, offset_x
+    return glyphs
 
 
-def _convert_amiga_props(amiga_props, offset_x):
+def _convert_amiga_props(amiga_props):
     """Convert AmigaFont properties into yaff properties."""
     if amiga_props.tf_Style.FSF_COLORFONT:
         raise FileFormatError('Amiga ColorFont not supported')
@@ -356,7 +355,7 @@ def _convert_amiga_props(amiga_props, offset_x):
     if tags:
         props.amiga.dfh_Name = f'"{name}"' + ' '.join(tags)
     props.revision = amiga_props.dfh_Revision
-    props.offset = Coord(offset_x, -(amiga_props.tf_YSize - amiga_props.tf_Baseline))
+    #props.offset = Coord(offset_x, -(amiga_props.tf_YSize - amiga_props.tf_Baseline))
     # tf_Style
     props.weight = 'bold' if amiga_props.tf_Style.FSF_BOLD else Font.default('weight')
     props.slant = 'italic' if amiga_props.tf_Style.FSF_ITALIC else Font.default('slant')

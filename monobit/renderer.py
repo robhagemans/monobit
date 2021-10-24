@@ -55,18 +55,17 @@ def render(font, text, *, margin=(0, 0), scale=(1, 1), rotate=0, missing='defaul
         x, y = 0, 0
         for glyph, kerning in zip(glyph_row, kerning_row):
             mx = glyph.as_matrix()
-            # apply pre-offset so that x, y is now the coordinate of glyph matrix origin
-            x, y = x + font.offset.x, y + font.offset.y
+            offset = font.offset + glyph.offset
+            # offset + (x, y) is the coordinate of glyph matrix origin
             # grid_x, grid_y are canvas coordinates relative to top left of canvas
             # canvas y coordinate increases *downwards* from top of line
-            grid_x = margin_x + x
-            grid_y = baseline - y
+            grid_x = margin_x + (offset.x + x)
+            grid_y = baseline - (offset.y + y)
             # add ink, taking into account there may be ink already in case of negative bearings
             matrix.blit(mx, canvas, grid_x, grid_y)
-            # advance
-            x += glyph.width + font.tracking + kerning
-            # apply post-offset
-            y -= font.offset.y
+            # advance origin to next glyph
+            advance = font.offset.x + glyph.advance + font.tracking
+            x += advance + kerning
         # move to next line
         baseline += font.line_height
     scaled = matrix.scale(canvas, *scale)
@@ -79,10 +78,7 @@ def _get_canvas(font, glyphs, margin_x, margin_y):
     width = 2 * margin_x
     if glyphs:
         width += max(
-            (
-                sum(_glyph.width for _glyph in _row)
-                + (font.offset.x + font.tracking) * len(_row)
-            )
+            sum(font.offset.x + _glyph.advance + font.tracking for _glyph in _row)
             for _row in glyphs
         )
     # find required height - margins plus line height for each row
@@ -102,7 +98,7 @@ def chart_image(
         columns=32, margin=(0, 0), padding=(0, 0), scale=(1, 1),
         border=(32, 32, 32), paper=(0, 0, 0), ink=(255, 255, 255),
     ):
-    """Dump font to image."""
+    """Create font chart as image."""
     canvas = chart(font, columns, margin, padding, scale)
     return matrix.to_image(canvas, border=border, paper=paper, ink=ink)
 
@@ -111,7 +107,7 @@ def chart_text(
         columns=16, margin=(0, 0), padding=(0, 0), scale=(1, 1),
         border=' ', paper='-', ink='@',
     ):
-    """Dump font to image."""
+    """Create font chart as text."""
     canvas = chart(font, columns, margin, padding, scale)
     return matrix.to_text(canvas, border=border, paper=paper, ink=ink)
 
@@ -120,7 +116,7 @@ def chart(
         font,
         columns=16, margin=(0, 0), padding=(0, 0), scale=(1, 1),
     ):
-    """Dump font to image."""
+    """Create font chart matrix."""
     scale_x, scale_y = scale
     padding_x, padding_y = padding
     margin_x, margin_y = margin
@@ -139,6 +135,7 @@ def chart(
         row, col = divmod(ordinal, columns)
         mx = glyph.as_matrix()
         mx = matrix.scale(mx, scale_x, scale_y)
-        left, bottom = margin_x + col*step_x, margin_y + (row+1)*step_y - padding_y
+        left = margin_x + col*step_x + glyph.offset.x
+        bottom = margin_y + (row+1)*step_y - padding_y - glyph.offset.y
         matrix.blit(mx, canvas, left, bottom)
     return canvas

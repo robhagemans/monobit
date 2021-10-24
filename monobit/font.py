@@ -6,9 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 from functools import wraps
-from typing import NamedTuple
 from functools import partial
-import numbers
 import logging
 import unicodedata
 
@@ -20,46 +18,12 @@ except ImportError:
     cache = lru_cache()
 
 from .scripting import scriptable, get_scriptables
-from .glyph import Glyph
+from .glyph import Glyph, Coord, Bounds, number
 from .encoding import charmaps
 from .label import Label, Tag, Char, Codepoint, label
 
 
 # pylint: disable=redundant-keyword-arg, no-member
-
-def number(value=0):
-    """Convert to int or float."""
-    if isinstance(value, str):
-        value = float(value)
-    if not isinstance(value, numbers.Real):
-        raise ValueError("Can't convert `{}` to number.".format(value))
-    if value == int(value):
-        value = int(value)
-    return value
-
-
-class Coord(NamedTuple):
-    """Coordinate tuple."""
-    x: int
-    y: int
-
-    def __str__(self):
-        return '{} {}'.format(self.x, self.y)
-
-    @classmethod
-    def create(cls, coord=0):
-        if isinstance(coord, numbers.Real):
-            return cls(coord, coord)
-        if isinstance(coord, str):
-            splits = coord.split(' ')
-            if len(splits) == 1:
-                return cls(number(splits[0]), number(splits[0]))
-            elif len(splits) == 2:
-                return cls(number(splits[0]), number(splits[1]))
-        if isinstance(coord, tuple):
-            if len(coord) == 2:
-                return cls(number(coord[0]), number(coord[1]))
-        raise ValueError("Can't convert `{}` to coordinate pair.".format(coord))
 
 
 class KerningTable:
@@ -89,6 +53,10 @@ class KerningTable:
     def items(self):
         """Iterate over items."""
         return self._table.items()
+
+    def __bool__(self):
+        """False if table is empty."""
+        return bool(self._table)
 
 
 
@@ -135,7 +103,7 @@ PROPERTIES = {
     # can be calculated or given
     'x-height': int, # height of lowercase x relative to baseline
     'cap-height': int, # height of capital relative to baseline
-    # can't be calculated, don't currently affect rendering
+    # can't be calculated, affect rendering (vertical positioning)
     # might affect e.g. composition of characters
     'ascent': int, # recommended typographic ascent relative to baseline (not necessarily equal to top)
     'descent': int, # recommended typographic descent relative to baseline (not necessarily equal to bottom)
@@ -147,7 +115,7 @@ PROPERTIES = {
     'direction': str, # left-to-right, right-to-left
     'offset': Coord.create, # (horiz, vert) offset from origin to matrix start
     'tracking': int, # horizontal offset from matrix end to next origin
-    'leading': int, # interline spacing, defined as (pixels between baselines) - (max raster height)
+    'leading': int, # interline spacing, defined as (pixels between baselines) - (pixel size)
 
     # character set
     # can't be calculated, affect rendering
@@ -657,24 +625,85 @@ class Font:
         return -self.offset.y - min(_glyph.ink_offsets.bottom for _glyph in self._glyphs)
 
     @calculated_property(override='reject')
-    def raster_size(self):
-        """Get maximum raster width and height, in pixels."""
+    def raster(self):
+        """Minimum box encompassing all glyph matrices overlaid at fixed origin."""
         if not self._glyphs:
             return Coord(0, 0)
+        lefts = tuple(_glyph.offset.x for _glyph in self._glyphs)
+        bottoms = tuple(_glyph.offset.y for _glyph in self._glyphs)
+        rights = tuple(_glyph.offset.x + _glyph.width for _glyph in self._glyphs)
+        tops = tuple(_glyph.offset.y + _glyph.height for _glyph in self._glyphs)
+        return Bounds(left=min(lefts), bottom=min(bottoms), right=max(rights), top=max(tops))
+
+    @calculated_property(override='reject')
+    def raster_size(self):
+        """Minimum box encompassing all glyph matrices overlaid at fixed origin."""
         return Coord(
-            max(_glyph.width for _glyph in self._glyphs),
-            max(_glyph.height for _glyph in self._glyphs)
+            self.raster.right - self.raster.left,
+            self.raster.top - self.raster.bottom
+        )
+
+    @calculated_property(override='reject')
+    def ink_bounds(self):
+        """Minimum bounding box encompassing all glyphs at fixed origin, font origin cordinates."""
+        if not self._glyphs:
+            return Bounds(self.offset.x, self.offset.y, self.offset.x, self.offset.y)
+        lefts, bottoms, rights, tops = zip(*(_glyph.ink_bounds for _glyph in self._glyphs))
+        return Bounds(
+            left=self.offset.x + min(lefts),
+            bottom=self.offset.y + min(bottoms),
+            right=self.offset.x + max(rights),
+            top=self.offset.y + max(tops)
         )
 
     @calculated_property(override='reject')
     def bounding_box(self):
-        """Minimum bounding box encompassing all glyphs at fixed origin."""
+        """Dimensions of minimum bounding box encompassing all glyphs at fixed origin."""
+        return Coord(
+            self.ink_bounds.right - self.ink_bounds.left,
+            self.ink_bounds.top - self.ink_bounds.bottom
+        )
+
+    @calculated_property(override='reject')
+    def spacing(self):
+        """Monospace or proportional spacing."""
+        # a _character-cell_ font is a font where all glyphs can be put inside an equal size cell
+        # so that rendering the font becomes simply pasting in cells flush to each other. All ink
+        # for a glyph must be inside the cell.
+        #
+        # this means that:
+        # - all glyphs must have equal, positive advance width (except empty glyphs with advance zero).
+        # - for each glyph, the advance is greater than or equal to the bounding box width.
+        # - the line advance is greater than or equal to the font bounding box height.
+        # - there is no kerning
+        #
+        # a special case is the _multi-cell_ font, where a glyph may take up 0, 1 or 2 cells.
+        #
+        # a _monospace_ font is a font where all glyphs have equal advance.
+        #
         if not self._glyphs:
-            return Coord(0, 0)
-        # all glyphs share the font's offset
-        # so to align glyph origins we need to align raster origins - bottom left for LTR fonts
-        lefts, bottoms, rights, tops = zip(*(_glyph.ink_coordinates for _glyph in self._glyphs))
-        return Coord(max(rights) - min(lefts), max(tops) - min(bottoms))
+            return 'character-cell'
+        if self.kerning:
+            return 'proportional'
+        if any(_glyph.advance < 0 for _glyph in self._glyphs):
+            return 'proportional'
+        # don't count void glyphs (0 width and/or height) to determine whether it's monospace
+        advances = set(_glyph.advance for _glyph in self._glyphs if _glyph.advance)
+        monospaced = len(set(advances)) == 1
+        bispaced = len(set(advances)) == 2
+        ink_contained_y = self.line_height >= self.bounding_box.y
+        ink_contained_x = all(
+            _glyph.advance >= _glyph.bounding_box.x
+            for _glyph in self._glyphs
+        )
+        if ink_contained_x and ink_contained_y:
+            if monospaced:
+                return 'character-cell'
+            if bispaced:
+                return 'multi-cell'
+        if monospaced:
+            return 'monospace'
+        return 'proportional'
 
     @calculated_property
     def default_char(self):
@@ -691,37 +720,26 @@ class Font:
             return self.offset.x + self.tracking
         return (
             self.offset.x
-            + sum(_glyph.width for _glyph in self._glyphs) / len(self._glyphs)
+            + sum(_glyph.advance for _glyph in self._glyphs) / len(self._glyphs)
             + self.tracking
         )
 
-    @calculated_property(override='reject')
-    def spacing(self):
-        """Monospace or proportional spacing."""
+    @calculated_property(override='notify')
+    def max_advance(self):
+        """Maximum glyph advance width."""
         if not self._glyphs:
-            return 'character-cell'
-        # don't count void glyphs (0 width and/or height) to determine whether it's monospace
-        widths = set(_glyph.width for _glyph in self._glyphs if _glyph.width)
-        heights = set(_glyph.height for _glyph in self._glyphs if _glyph.height)
-        min_width = min(widths)
-        # mono- or multi-cell fonts: equal heights, no ink outside cell, widths are fixed multiples
-        if (
-                len(heights) == 1
-                and self.offset.x >= 0 and self.tracking >= 0 and self.leading >= 0
-                and min_width > 3 and not any(_width % min_width for _width in widths)
-            ):
-            if len(widths) == 1:
-                return 'character-cell'
-            return 'multi-cell'
-        if len(widths) == 1:
-            return 'monospace'
-        return 'proportional'
+            return self.offset.x + self.tracking
+        return (
+            self.offset.x
+            + max(_glyph.advance for _glyph in self._glyphs)
+            + self.tracking
+        )
 
     @calculated_property(override='notify')
     def cap_advance(self):
         """Advance width of uppercase X."""
         try:
-            return self.get_glyph('X').width + self.offset.x + self.tracking
+            return self.get_glyph('X').advance + self.offset.x + self.tracking
         except KeyError:
             return 0
 
@@ -729,7 +747,7 @@ class Font:
     def x_height(self):
         """Ink height of lowercase x."""
         try:
-            return self.get_glyph('x').ink_height
+            return self.get_glyph('x').bounding_box.y
         except KeyError:
             return 0
 
@@ -737,18 +755,14 @@ class Font:
     def cap_height(self):
         """Ink height of uppercase X."""
         try:
-            return self.get_glyph('X').ink_height
+            return self.get_glyph('X').bounding_box.y
         except KeyError:
             return 0
 
     @calculated_property(override='reject')
     def line_height(self):
         """Line height."""
-        # leading can't be relative to bounding box -
-        # if we leave extra blank pixels in a glyph definition we expect them to do something
-        # however, raster-size is useless if we have per-glyph metrics
-        # e.g. a glyph it may just be an apostrophe to be shown in the tp right corner
-        return self.raster_size.y + self.leading
+        return self.pixel_size + self.leading
 
 
     ##########################################################################

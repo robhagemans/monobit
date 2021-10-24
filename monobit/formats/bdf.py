@@ -573,12 +573,7 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
         'point-size': size,
         'dpi': (xdpi, ydpi),
     }
-    try:
-        properties['revision'] = bdf_props.pop('CONTENTVERSION')
-    except KeyError:
-        pass
-    # global settings, tend to be overridden by per-glyph settings
-    global_bbx = bdf_props.pop('FONTBOUNDINGBOX')
+    properties['revision'] = bdf_props.pop('CONTENTVERSION', '')
     # not supported: METRICSSET != 0
     writing_direction = bdf_props.pop('METRICSSET', 0)
     if writing_direction == 1:
@@ -588,57 +583,26 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
         logging.warning(
             'Top-to-bottom fonts not yet supported. Preserving horizontal metrics only.'
         )
+    # global settings, tend to be overridden by per-glyph settings
+    global_bbx = bdf_props.pop('FONTBOUNDINGBOX')
     # global DWIDTH; use bounding box as fallback if not specified
     global_dwidth = bdf_props.pop('DWIDTH', global_bbx[:2])
     global_swidth = bdf_props.pop('SWIDTH', 0)
-    ####################################
-    # expand glyphs
-    # ignored: for METRICSSET in 1, 2: DWIDTH1, SWIDTH1, VVECTOR
-    if not glyphs:
-        mod_glyphs = glyphs
-    else:
-        offsets_x = []
-        offsets_y = []
-        right_bearings = []
-        heights = []
-        for glyph, props in zip(glyphs, glyph_props):
-            props['BBX'] = props.get('BBX', global_bbx)
-            props['DWIDTH'] = props.get('DWIDTH', global_dwidth)
-            bbx_width, bbx_height, offset_x, offset_y = (int(_p) for _p in props['BBX'].split(' '))
-            dwidth_x, dwidth_y = (int(_p) for _p in props['DWIDTH'].split(' '))
-            try:
-                # ideally, SWIDTH = DWIDTH / ( points/1000 * dpi / 72 )
-                swidth_x, swidth_y = (int(_x) for _x in props.get('SWIDTH', global_swidth).split(' '))
-                #logging.info('x swidth: %s dwidth: %s', swidth_x*int(size)*int(xdpi) / 72000, dwidth_x)
-                #logging.info('y swidth: %s dwidth: %s', swidth_y*int(size)*int(ydpi) / 72000, dwidth_y)
-            except KeyError:
-                pass
-            # ignored: for METRICSSET in 1, 2: DWIDTH1, SWIDTH1, VVECTOR
-            offsets_x.append(offset_x)
-            offsets_y.append(offset_y)
-            right_bearings.append((offset_x + bbx_width) - dwidth_x)
-            heights.append(bbx_height + offset_y)
-        # shift/resize all glyphs to font bounding box
-        leftmost = min(offsets_x)
-        rightmost = max(right_bearings)
-        bottommost = min(offsets_y)
-        topmost = max(heights)
-        properties['tracking'] = -rightmost
-        properties['offset'] = Coord(leftmost, bottommost)
-        mod_glyphs = []
-        for glyph, props in zip(glyphs, glyph_props):
-            bbx_width, bbx_height, offset_x, offset_y = (int(_p) for _p in props['BBX'].split(' '))
-            dwidth_x, dwidth_y = (int(_p) for _p in props['DWIDTH'].split(' '))
-            right_bearing = (offset_x + bbx_width) - dwidth_x
-            padding_right = rightmost - right_bearing
-            padding_left = offset_x - leftmost
-            padding_bottom = offset_y - bottommost
-            padding_top = topmost - bbx_height - offset_y
-            glyph = glyph.expand(
-                left=padding_left, bottom=padding_bottom, right=padding_right, top=padding_top
-            )
-            mod_glyphs.append(glyph)
-    ####################################
+    # convert glyph properties
+    mod_glyphs = []
+    for glyph, props in zip(glyphs, glyph_props):
+        new_props = {}
+        # bounding box & offset
+        bbx = props.get('BBX', global_bbx)
+        bbx_width, bbx_height, offset_x, offset_y = (int(_p) for _p in bbx.split(' '))
+        new_props['offset'] = Coord(offset_x, offset_y)
+        # advance width
+        dwidth = props.get('DWIDTH', global_dwidth)
+        dwidth_x, dwidth_y = (int(_p) for _p in dwidth.split(' '))
+        new_props['tracking'] = dwidth_x - glyph.width - offset_x
+        if dwidth_y:
+            raise FileFormatError('Top-to-bottom fonts not yet supported.')
+        mod_glyphs.append(glyph.modify(**new_props))
     xlfd_name = bdf_props.pop('FONT')
     # keep unparsed bdf props
     properties.update({
