@@ -740,6 +740,10 @@ class Font:
     @calculated_property(override='reject')
     def line_height(self):
         """Line height."""
+        # leading can't be relative to bounding box -
+        # if we leave extra blank pixels in a glyph definition we expect them to do something
+        # however, raster-size is useless if we have per-glyph metrics
+        # e.g. a glyph it may just be an apostrophe to be shown in the tp right corner
         return self.raster_size.y + self.leading
 
 
