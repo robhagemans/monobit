@@ -475,23 +475,27 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=(),
     properties = {
         'source-format': 'BMFont ({} descriptor; {} spritesheet)'.format(bmformat, ','.join(imgformats)),
         'source-name': Path(name).name,
-        'tracking': min_after,
         'family': bmfont_props.pop('face'),
         # assume size == pixel-size == ascent + descent
-        # size can be given as negative for an undocumented reason, maybe if "match char height" set
+        # size can be given as negative for an undocumented reason:
         #
         # https://gamedev.net/forums/topic/657937-strange-34size34-of-generated-bitmapfont/5161902/
-        # > The 'info' block is just a little information on the original truetype font used to generate the bitmap font. This is normally not used while rendering the text.
-        # > A negative size here reflects that the size is matching the cell height, rather than the character height.
+        # > The 'info' block is just a little information on the original truetype font used to
+        # > generate the bitmap font. This is normally not used while rendering the text.
+        # > A negative size here reflects that the size is matching the cell height, rather than
+        # > the character height.
         #
-        # FIXME: so we should not use size for metrics - can use lineHeight and base?
+        # note that pixel-size, ascent and descent ar informational and not metrics
+        # so we can use the informational `size` to determine them
         'ascent': abs(int(bmfont_props.pop('size'))) - (max_height - common.base),
         'descent': max_height - common.base,
-        'weight': 'bold' if _to_int(bmfont_props.pop('bold')) else 'regular',
-        'slant': 'italic' if _to_int(bmfont_props.pop('italic')) else 'roman',
+        'weight': 'bold' if _to_int(bmfont_props.pop('bold')) else Font.default('weight'),
+        'slant': 'italic' if _to_int(bmfont_props.pop('italic')) else Font.default('slant'),
         'encoding': encoding,
+        # metrics
+        'tracking': min_after,
+        'offset': Coord(min_before, common.base - max_height),
         'kerning': {(_kern.first, _kern.second): _kern.amount for _kern in kernings},
-        'offset': Coord(min_before, common.base - max_height)
     }
     # drop other props if they're default value
     default_bmfont_props = {
@@ -596,16 +600,39 @@ def _create_spritesheets(font, size=(256, 256), packed=False):
                 logging.warning(
                     f"Can't store multi-codepoint grapheme sequence {ascii(glyph.char)}."
                 )
+            # >  char
+            # >  ----
+            # >  This tag describes on character in the font. There is one for each included character in the font.
+            # >  id         The character id.
+            # >  x          The left position of the character image in the texture.
+            # >  y          The top position of the character image in the texture.
+            # >  width      The width of the character image in the texture.
+            # >  height     The height of the character image in the texture.
+            # >  xoffset    How much the current position should be offset when copying the image from the texture to the screen.
+            # >  yoffset    How much the current position should be offset when copying the image from the texture to the screen.
+            # >  xadvance   How much the current position should be advanced after drawing the character.
+            # >  page       The texture page where the character image is found.
+            # >  chnl       The texture channel where the character image is found (1 = blue, 2 = green, 4 = red, 8 = alpha, 15 = all channels).
             chars.append(dict(
                 id=id,
                 x=x,
                 y=y,
                 width=cropped.width,
                 height=cropped.height,
+                # > The `xoffset` gives the horizontal offset that should be added to the cursor
+                # > position to find the left position where the character should be drawn.
+                # > A negative value here would mean that the character slightly overlaps
+                # > the previous character.
                 xoffset=font.offset.x + left,
-                # y offset from top line
+                # > The `yoffset` gives the distance from the top of the cell height to the top
+                # > of the character. A negative value here would mean that the character extends
+                # > above the cell height.
                 yoffset=font.raster_size.y - glyph.height + top,
-                # not sure how these are really interpreted
+                # xadvance is the advance width from origin to next origin
+                # > The filled red dot marks the current cursor position, and the hollow red dot
+                # > marks the position of the cursor after drawing the character. You get to this
+                # > position by moving the cursor horizontally with the xadvance value.
+                # > If kerning pairs are used the cursor should also be moved accordingly.
                 xadvance=font.offset.x + glyph.width + font.tracking,
                 page=page_id,
                 chnl=channels,
@@ -662,15 +689,41 @@ def _create_bmfont(
     props = {}
     props['chars'] = chars
     # save images; create page table
+    # https://www.angelcode.com/products/bmfont/doc/file_format.html
+    #
+    # >  page
+    # >  ----
+    # >  This tag gives the name of a texture file. There is one for each page in the font.
+    # >  id     The page id.
+    # >  file   The texture file name.
     props['pages'] = []
     for page_id, page in enumerate(pages):
         name = container.unused_name(f'{path}/{fontname}_{page_id}', imageformat)
         with container.open(name, 'w') as imgfile:
             page.save(imgfile, format=imageformat)
-        props['pages'].append({'id': page_id, 'file': name})
+        props['pages'].append({
+            'id': page_id,
+            'file': name
+        })
+    # > info
+    # > ----
+    # > This tag holds information on how the font was generated.
+    # > face        This is the name of the true type font.
+    # > size        The size of the true type font.
+    # > bold        The font is bold.
+    # > italic      The font is italic.
+    # > charset     The name of the OEM charset used (when not unicode).
+    # > unicode     Set to 1 if it is the unicode charset.
+    # > stretchH    The font height stretch in percentage. 100% means no stretch.
+    # > smooth      Set to 1 if smoothing was turned on.
+    # > aa          The supersampling level used. 1 means no supersampling was used.
+    # > padding     The padding for each character (up, right, down, left).
+    # > spacing     The spacing for each character (horizontal, vertical).
+    # > outline     The outline thickness for the characters.
     props['info'] = {
         'face': font.family,
-        # or raster_size.y ?
+        # we're assuming size == pixel-size == ascent + descent
+        # so it should be positive - negative means matching "cell height" (~ font.raster_size.y ?)
         'size': font.pixel_size,
         'bold': font.weight == 'bold',
         'italic': font.slant in ('italic', 'oblique'),
@@ -683,8 +736,29 @@ def _create_bmfont(
         'spacing': (0, 0),
         'outline': 0,
     }
+    # > common
+    # > ------
+    # > This tag holds information common to all characters.
+    # > lineHeight  This is the distance in pixels between each line of text.
+    # > base        The number of pixels from the absolute top of the line to the base of the characters.
+    # > scaleW      The width of the texture, normally used to scale the x pos of the character image.
+    # > scaleH      The height of the texture, normally used to scale the y pos of the character image.
+    # > pages       The number of texture pages included in the font.
+    # > packed      Set to 1 if the monochrome characters have been packed into each of the texture channels. In this case alphaChnl describes what is stored in each channel.
+    # > alphaChnl   Set to 0 if the channel holds the glyph data, 1 if it holds the outline, 2 if it holds the glyph and the outline, 3 if its set to zero, and 4 if its set to one.
+    # > redChnl     Set to 0 if the channel holds the glyph data, 1 if it holds the outline, 2 if it holds the glyph and the outline, 3 if its set to zero, and 4 if its set to one.
+    # > greenChnl   Set to 0 if the channel holds the glyph data, 1 if it holds the outline, 2 if it holds the glyph and the outline, 3 if its set to zero, and 4 if its set to one.
+    # > blueChnl    Set to 0 if the channel holds the glyph data, 1 if it holds the outline, 2 if it holds the glyph and the outline, 3 if its set to zero, and 4 if its set to one.
     props['common'] = {
-        'lineHeight': font.raster_size.y + font.leading,
+        # https://www.angelcode.com/products/bmfont/doc/render_text.html
+        # > [...] the lineHeight, i.e. how far the cursor should be moved vertically when
+        # > moving to the next line.
+        # font.line_height == font.raster_size.y + font.leading
+        'lineHeight': font.line_height,
+        # "base" is the distance between top-line and baseline
+        # > The base value is how far from the top of the cell height the base of the characters
+        # > in the font should be placed. Characters can of course extend above or below this base
+        # > line, which is entirely up to the font design.
         'base': font.raster_size.y + font.offset.y,
         'scaleW': size[0],
         'scaleH': size[1],
@@ -695,6 +769,12 @@ def _create_bmfont(
         'greenChnl': 0,
         'blueChnl': 0,
     }
+    # >  kerning
+    # >  -------
+    # >  The kerning information is used to adjust the distance between certain characters, e.g. some characters should be placed closer to each other than others.
+    # >  first  The first character id.
+    # >  second The second character id.
+    # >  amount	How much the x position should be adjusted when drawing the second character immediately following the first.
     if hasattr(font, 'kerning'):
         props['kernings'] = [{
                 'first': ord(font[_key[0]].char),

@@ -554,6 +554,9 @@ def _parse_properties(glyphs, glyph_props, bdf_props, x_props):
             for _glyph in glyphs
             if _glyph.codepoint
         ]
+    logging.info('yaff properties:')
+    for name, value in properties.items():
+        logging.info('    %s: %s', name, value)
     return glyphs, properties
 
 
