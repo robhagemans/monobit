@@ -622,13 +622,26 @@ class Font:
 
     @calculated_property(override='reject')
     def raster_size(self):
-        """Get maximum raster width and height, in pixels."""
+        """Get maximum raster width and height, in pixels, at fixed origin. >= bounding-box."""
         if not self._glyphs:
             return Coord(0, 0)
-        return Coord(
-            max(_glyph.width for _glyph in self._glyphs),
-            max(_glyph.height for _glyph in self._glyphs)
+        # include individual offset in raster for the amount that it differs from font offset
+        bearing = [
+            _glyph.offset - self.offset if _glyph.offset is not None else 0
+            for _glyph in self._glyphs
+        ]
+        internal_tracking = [
+            _glyph.advance - _glyph.width - _glyph.offset.x if _glyph.advance is not None else 0
+            for _glyph in self._glyphs
+        ]
+        size = Coord(
+            max(
+                _glyph.width + _offset.x + _trk
+                for _glyph, _offset, _trk in zip(self._glyphs, bearing, internal_tracking)
+            ),
+            max(_glyph.height + _offset.y for _glyph, _offset in zip(self._glyphs, bearing))
         )
+        return size
 
     @calculated_property(override='reject')
     def bounding_box(self):
