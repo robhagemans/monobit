@@ -179,21 +179,22 @@ def calculated_property(*args, override='accept'):
         # return decorator with these arguments set as extra args
         return partial(calculated_property, override=override)
     fn, *_ = args
+    name = fn.__name__.replace('_', '-')
 
     @property
     @cache
     @wraps(fn)
     def _cached_fn(self, *args, **kwargs):
         try:
-            return self._properties[fn.__name__.replace('_', '-')]
+            return self._properties[name]
         except KeyError:
             pass
         return fn(self, *args, **kwargs)
 
     if override == 'reject':
-        _non_overridable.append(fn.__name__)
+        _non_overridable.append(name)
     elif override == 'notify':
-        _notify_override.append(fn.__name__)
+        _notify_override.append(name)
     return _cached_fn
 
 
@@ -236,6 +237,8 @@ class Font:
         # update properties
         self._properties = {}
         # set encoding first so we can set labels
+        # NOTE - we must be careful NOT TO ACCESS CACHED PROPERTIES
+        #        until the constructor is complete
         self._properties.update(self._check_properties(properties))
         self._add_encoding_data()
         # construct lookup tables
@@ -321,7 +324,7 @@ class Font:
                 logging.error('Could not set property `%s` to %s: %s', key, repr(value), e)
             # don't set property values that equal the default
             # we need to ensure we use underscore variants, or default functions won't get called
-            default_value = getattr(self, key.replace('-', '_'))
+            default_value = self._property_defaults.get(key, '')
             if value != default_value:
                 if key in _non_overridable:
                     logging.warning(
@@ -570,12 +573,16 @@ class Font:
                 return self._properties[norm_attr]
             except KeyError:
                 pass
+        else:
+            logging.error('font._properties not defined')
         if '_property_defaults' in vars(type(self)):
             # return default if in list
             try:
                 return self._property_defaults[norm_attr]
             except KeyError:
                 pass
+        else:
+            logging.error('font._property_defaults not defined')
         raise AttributeError(attr)
 
 
