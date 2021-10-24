@@ -369,10 +369,12 @@ class Glyph:
 
     @property
     @cache
-    def ink_height(self):
-        """Ink height of glyph."""
-        return self.ink_bounds.top - self.ink_bounds.bottom
-
+    def bounding_box(self):
+        """Dimensions of minimum bounding box encompassing all ink."""
+        return Coord(
+            self.ink_bounds.right - self.ink_bounds.left,
+            self.ink_bounds.top - self.ink_bounds.bottom
+        )
 
     ###############################################################################################
     # operations

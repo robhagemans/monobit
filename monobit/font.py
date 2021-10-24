@@ -54,6 +54,10 @@ class KerningTable:
         """Iterate over items."""
         return self._table.items()
 
+    def __bool__(self):
+        """False if table is empty."""
+        return bool(self._table)
+
 
 
 # recognised yaff properties and converters from str
@@ -654,7 +658,7 @@ class Font:
 
     @calculated_property(override='reject')
     def bounding_box(self):
-        """Minimum bounding box encompassing all glyphs at fixed origin."""
+        """Dimensions of minimum bounding box encompassing all glyphs at fixed origin."""
         return Coord(
             self.ink_bounds.right - self.ink_bounds.left,
             self.ink_bounds.top - self.ink_bounds.bottom
@@ -743,7 +747,7 @@ class Font:
     def x_height(self):
         """Ink height of lowercase x."""
         try:
-            return self.get_glyph('x').ink_height
+            return self.get_glyph('x').bounding_box.y
         except KeyError:
             return 0
 
@@ -751,7 +755,7 @@ class Font:
     def cap_height(self):
         """Ink height of uppercase X."""
         try:
-            return self.get_glyph('X').ink_height
+            return self.get_glyph('X').bounding_box.y
         except KeyError:
             return 0
 
