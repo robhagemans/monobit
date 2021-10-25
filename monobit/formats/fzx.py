@@ -15,6 +15,22 @@ from ..font import Font
 from ..glyph import Glyph
 
 
+@loaders.register('fzx', name='FZX')
+def load_fzx(instream, where=None):
+    """Load font from ZX Spectrum .FZX file."""
+    fzx_props, fzx_glyphs = _read_fzx(instream)
+    logging.info('FZX properties:')
+    for line in str(fzx_props).splitlines():
+        logging.info('    ' + line)
+    props, glyphs = _convert_from_fzx(fzx_props, fzx_glyphs)
+    logging.info('yaff properties:')
+    for line in str(props).splitlines():
+        logging.info('    ' + line)
+    return Font(glyphs, properties=vars(props))
+
+###################################################################################################
+# FZX binary format
+
 # https://faqwiki.zxnet.co.uk/wiki/FZX_format
 
 # > height - vertical gap between baselines in pixels
@@ -62,21 +78,6 @@ _CHAR_ENTRY = le.Struct(
     shift=bitfield('uint8', 4),
 )
 
-
-@loaders.register('fzx', name='FZX')
-def load_fzx(instream, where=None):
-    """Load font from ZX Spectrum .FZX file."""
-    fzx_props, fzx_glyphs = _read_fzx(instream)
-    logging.info('FZX properties:')
-    for line in str(fzx_props).splitlines():
-        logging.info('    ' + line)
-    props, glyphs = _convert_from_fzx(fzx_props, fzx_glyphs)
-    logging.info('yaff properties:')
-    for line in str(props).splitlines():
-        logging.info('    ' + line)
-    return Font(glyphs, properties=vars(props))
-
-
 def _read_fzx(instream):
     """Read FZX binary file and return as properties."""
     data = instream.read()
@@ -105,6 +106,9 @@ def _read_fzx(instream):
     ]
     return Props(**vars(header)), glyphs
 
+
+###################################################################################################
+# metrics conversion
 
 def _convert_from_fzx(fzx_props, fzx_glyphs):
     """Convert FZX properties and glyphs to standard."""
