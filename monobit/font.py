@@ -169,28 +169,6 @@ def calculated_property(*args, override='accept'):
 class Font:
     """Representation of font glyphs and metadata."""
 
-
-    # default property values
-    _property_defaults = {
-        _prop: _type() for _prop, _type in PROPERTIES.items()
-    }
-    _property_defaults.update({
-        # font version
-        'revision': '0',
-        # normal, bold, light, ...
-        'weight': 'regular',
-        # roman, italic, oblique, ...
-        'slant': 'roman',
-        # normal, condensed, expanded, ...
-        'setwidth': 'normal',
-        # left-to-right, right-to-left
-        'direction': 'left-to-right',
-        # word-break character (usually space)
-        'word-boundary': Char(' '),
-        # pixel aspect ratio - square pixel
-        'pixel-aspect': Coord(1, 1),
-    })
-
     def __init__(self, glyphs=(), comments=None, properties=None):
         """Create new font."""
         if not properties:
@@ -504,7 +482,7 @@ class Font:
 
 
     ##########################################################################
-    # properties
+    # property access
 
     def add_history(self, history):
         """Return a copy with a line added to history."""
@@ -517,7 +495,6 @@ class Font:
         return Font(
             self._glyphs, self._comments, {**self._properties, **kwargs}
         )
-    set = scriptable(set_properties, script_args=PROPERTIES, name='set')
 
     @property
     def nondefault_properties(self):
@@ -550,6 +527,30 @@ class Font:
             logging.error('font._property_defaults not defined')
         raise AttributeError(attr)
 
+
+    ##########################################################################
+    # recognised properties
+
+    # default property values
+    _property_defaults = {
+        _prop: _type() for _prop, _type in PROPERTIES.items()
+    }
+    _property_defaults.update({
+        # font version
+        'revision': '0',
+        # normal, bold, light, ...
+        'weight': 'regular',
+        # roman, italic, oblique, ...
+        'slant': 'roman',
+        # normal, condensed, expanded, ...
+        'setwidth': 'normal',
+        # left-to-right, right-to-left
+        'direction': 'left-to-right',
+        # word-break character (usually space)
+        'word-boundary': Char(' '),
+        # pixel aspect ratio - square pixel
+        'pixel-aspect': Coord(1, 1),
+    })
 
     @calculated_property
     def name(self):
@@ -767,6 +768,8 @@ class Font:
 
     ##########################################################################
     # font operations
+
+    set = scriptable(set_properties, script_args=PROPERTIES, name='set')
 
     @scriptable
     def subset(self, keys=(), *, chars:set=(), codepoints:set=(), tags:set=()):
