@@ -66,11 +66,21 @@ _CHAR_ENTRY = le.Struct(
 @loaders.register('fzx', name='FZX')
 def load_fzx(instream, where=None):
     """Load font from ZX Spectrum .FZX file."""
+    fzx_props, fzx_glyphs = _read_fzx(instream)
+    logging.info('FZX properties:')
+    for line in str(fzx_props).splitlines():
+        logging.info('    ' + line)
+    props, glyphs = _convert_from_fzx(fzx_props, fzx_glyphs)
+    logging.info('yaff properties:')
+    for line in str(props).splitlines():
+        logging.info('    ' + line)
+    return Font(glyphs, properties=vars(props))
+
+
+def _read_fzx(instream):
+    """Read FZX binary file and return as properties."""
     data = instream.read()
     header = _FZX_HEADER.from_bytes(data)
-    logging.info('FZX properties:')
-    for name, value in vars(header).items():
-        logging.info('    %s: %s', name, value)
     n_chars = header.lastchar - 32 + 1
     # read glyph table
     char_table = _CHAR_ENTRY.array(n_chars).from_bytes(data, _FZX_HEADER.size)
@@ -88,31 +98,37 @@ def load_fzx(instream, where=None):
         Glyph.from_bytes(_glyph, _entry.width+1)
         for _glyph, _entry in zip(glyph_bytes, char_table)
     ]
-    # set glyph properties
+    # set glyph fzx properties
     glyphs = [
-        _glyph.modify(
-            offset=(-_entry.kern, header.height-_glyph.height-_entry.shift),
-            # +1 because _entry.width is actually width-1
-            tracking=(_entry.width+1)-_glyph.width
-        )
+        _glyph.modify(kern=_entry.kern, fzx_width=_entry.width, shift=_entry.shift)
         for _glyph, _entry in zip(glyphs, char_table)
     ]
+    return Props(**vars(header)), glyphs
+
+
+def _convert_from_fzx(fzx_props, fzx_glyphs):
+    """Convert FZX properties and glyphs to standard."""
+    leading = min(_glyph.shift for _glyph in fzx_glyphs)
+    # set glyph properties
+    glyphs = tuple(
+        _glyph.modify(
+            codepoint=(_codepoint,),
+            offset=(-_glyph.kern, fzx_props.height-_glyph.height-_glyph.shift),
+            # +1 because _entry.width is actually width-1
+            tracking=(_glyph.fzx_width+1)-_glyph.width
+        ).drop_properties(
+            'kern', 'fzx_width', 'shift'
+        )
+        for _codepoint, _glyph in enumerate(fzx_glyphs, start=32)
+    )
     # set font properties
-    leading = min(_entry.shift for _entry in char_table)
     properties = Props(
         leading=leading,
         # we don't know ascent & descent but we can't set line-height directly
-        ascent=header.height-leading,
+        ascent=fzx_props.height-leading,
         descent=0,
-        tracking=header.tracking,
-        # TODO check this - memory-mapped or chr-mapped?
-        encoding='zx-spectrum',
+        tracking=fzx_props.tracking,
+        # beyond ASCII, multiple encodings are in use - set these manually
+        encoding='ascii',
     )
-    glyphs = [
-        _glyph.set_annotations(codepoint=(_index+32,))
-        for _index, _glyph in enumerate(glyphs)
-    ]
-    logging.info('yaff properties:')
-    for line in str(properties).splitlines():
-        logging.info('    ' + line)
-    return Font(glyphs, properties=vars(properties))
+    return properties, glyphs

@@ -96,7 +96,7 @@ class Glyph:
         self._codepoint = Codepoint(codepoint).value
         self._char = char
         self._tags = tuple(tags)
-        self._offset = offset or Coord(0, 0)
+        self._offset = Coord(0, 0) if not offset else Coord(*offset)
         self._tracking = tracking
         # custom properties - not used but kept
         self._props = {_k.replace('_', '-'): _v for _k, _v in kwargs.items()}
