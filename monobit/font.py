@@ -321,16 +321,16 @@ class Font:
                 codepoint = Codepoint(key).value
         if tag is not None:
             try:
-                return self._tags[tag]
+                return self._tags[Tag(tag).value]
             except KeyError:
                 raise KeyError(f'No glyph found matching tag={Tag(tag)}') from None
         if char is not None:
             try:
-                return self._chars[char]
+                return self._chars[Char(char).value]
             except KeyError:
                 raise KeyError(f'No glyph found matching char={Char(char)}') from None
         try:
-            return self._codepoints[codepoint]
+            return self._codepoints[Codepoint(codepoint).value]
         except KeyError:
             raise KeyError(f'No glyph found matching codepoint={Codepoint(codepoint)}') from None
 
@@ -792,7 +792,7 @@ class Font:
     @scriptable
     def without(self, keys=(), *, chars:set=(), codepoints:set=(), tags:set=()):
         """Return a font excluding a subset."""
-        if not any(keys, chars, codepoints, tags):
+        if not any((keys, chars, codepoints, tags)):
             return self
         glyphs = [
             _glyph
@@ -802,7 +802,7 @@ class Font:
                 and _glyph.codepoint not in keys
                 and _glyph.char not in chars
                 and _glyph.codepoint not in codepoints
-                and not (set(_glyph.tags) & tags)
+                and not (set(_glyph.tags) & set(tags))
             )
         ]
         return Font(glyphs, self._comments, self._properties)
