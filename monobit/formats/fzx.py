@@ -243,7 +243,7 @@ def _convert_to_fzx(font):
         )
     # get contiguous range, fill gaps with empties
     glyphs = tuple(
-        includable.get_glyph(codepoint=_cp, missing='empty')
+        includable.get_glyph(codepoint=_cp, missing='empty').modify(codepoint=_cp)
         for _cp in _FZX_RANGE
     )
     # remove empties at end
@@ -253,6 +253,9 @@ def _convert_to_fzx(font):
     common_tracking = min(_glyph.tracking for _glyph in glyphs)
     # set glyph FZX properties
     fzx_glyphs = tuple(
+        # make zero-width glyphs into 1-width glyphs with 1 step back as we can't store zero width
+        Glyph(kern=1, shift=font.line_height, fzx_width=0)
+        if not _glyph.width else
         _glyph.modify(
             offset=(),
             tracking=0,
@@ -260,7 +263,7 @@ def _convert_to_fzx(font):
             # line height includes leading
             shift=font.line_height-_glyph.offset.y-_glyph.height,
             # absorb per-glyph tracking by extending fzx width
-            fzx_width=_glyph.width+_glyph.tracking-common_tracking-1,
+            fzx_width=_glyph.width + _glyph.tracking - common_tracking - 1,
         )
         for _glyph in glyphs
     )
