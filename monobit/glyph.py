@@ -56,6 +56,8 @@ class Coord(NamedTuple):
 
     @classmethod
     def create(cls, coord=0):
+        if isinstance(coord, Coord):
+            return coord
         if isinstance(coord, numbers.Real):
             return cls(coord, coord)
         if isinstance(coord, str):
@@ -67,6 +69,8 @@ class Coord(NamedTuple):
         if isinstance(coord, tuple):
             if len(coord) == 2:
                 return cls(number(coord[0]), number(coord[1]))
+        if not coord:
+            return cls(0, 0)
         raise ValueError("Can't convert `{}` to coordinate pair.".format(coord))
 
     def __add__(self, other):
@@ -96,8 +100,8 @@ class Glyph:
         self._codepoint = Codepoint(codepoint).value
         self._char = char
         self._tags = tuple(tags)
-        self._offset = Coord(0, 0) if not offset else Coord(*offset)
-        self._tracking = tracking
+        self._offset = Coord.create(offset)
+        self._tracking = int(tracking)
         # custom properties - not used but kept
         self._props = {_k.replace('_', '-'): _v for _k, _v in kwargs.items()}
         if len(set(len(_r) for _r in self._rows)) > 1:
