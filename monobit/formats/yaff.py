@@ -190,7 +190,7 @@ def _load_fonts(instream, ink, paper, separator, empty, parse_glyph_keys, **kwar
         # first take out all glyphs
         glyphs = _parse_glyphs(elements, ink, paper, empty, parse_glyph_keys)
         # property comments currently not preserved
-        properties, property_comments = _parse_properties(elements, ink, paper)
+        properties, property_comments = _parse_properties(elements, ink, paper, empty)
         comments = {'': global_comments, **property_comments}
         # construct font
         pack.append(Font(glyphs, comments, properties))
@@ -244,16 +244,17 @@ def _read_text(instream, separator):
     return elements, eof
 
 
-def _is_glyph(value, ink, paper):
+def _is_glyph(value, ink, paper, empty):
     """Text line is a glyph."""
-    return not(set(value) - set(ink) - set(paper))
+    value = value.strip()
+    return (value == empty) or not(set(value) - set(ink) - set(paper))
 
-def _parse_properties(elements, ink, paper):
+def _parse_properties(elements, ink, paper, empty):
     """Parse properties."""
     # properties: anything that contains more than .@
     property_elements = [
         _el for _el in elements
-        if not any(_is_glyph(_line, ink, paper) for _line in _el.values)
+        if not any(_is_glyph(_line, ink, paper, empty) for _line in _el.values)
     ]
     # multiple labels translate into multiple keys with the same value
     properties = {
@@ -277,7 +278,7 @@ def _parse_glyphs(elements, ink, paper, empty, parse_glyph_keys):
     # to avoid detection as glyph, a value can be quited
     glyph_elements = [
         _el for _el in elements
-        if any(_is_glyph(_line, ink, paper) for _line in _el.values)
+        if any(_is_glyph(_line, ink, paper, empty) for _line in _el.values)
     ]
     # convert text representation to glyph
     glyphs = [
@@ -288,20 +289,20 @@ def _parse_glyphs(elements, ink, paper, empty, parse_glyph_keys):
 
 def _parse_glyph(element, ink, paper, empty, parse_glyph_keys):
     """Parse single glyph."""
-    glyph_lines = [_line for _line in element.values if _is_glyph(_line, ink, paper)]
+    glyph_lines = [_line for _line in element.values if _is_glyph(_line, ink, paper, empty)]
     if glyph_lines == [empty]:
         glyph = Glyph()
     else:
         glyph = Glyph.from_matrix(glyph_lines, paper=paper)
     # glyph properties
-    prop_lines =  [_line for _line in element.values if not _is_glyph(_line, ink, paper)]
+    prop_lines =  [_line for _line in element.values if not _is_glyph(_line, ink, paper, empty)]
     # FIXME - this is hacky
     # we're submitting prop_lines as instream becuase for line in will work
     # some kind of recursive call makes sense though
     elements, _ = _read_text(prop_lines, separator=':')
     if elements:
         # ignore in-glyph comments
-        props, _ = _parse_properties(elements, ink, paper)
+        props, _ = _parse_properties(elements, ink, paper, empty)
         glyph = glyph.modify(**props)
     glyph = glyph.set_annotations(
         comments=clean_comment(element.comments),
