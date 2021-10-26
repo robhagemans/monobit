@@ -56,6 +56,8 @@ class Coord(NamedTuple):
 
     @classmethod
     def create(cls, coord=0):
+        if isinstance(coord, Coord):
+            return coord
         if isinstance(coord, numbers.Real):
             return cls(coord, coord)
         if isinstance(coord, str):
@@ -67,6 +69,8 @@ class Coord(NamedTuple):
         if isinstance(coord, tuple):
             if len(coord) == 2:
                 return cls(number(coord[0]), number(coord[1]))
+        if not coord:
+            return cls(0, 0)
         raise ValueError("Can't convert `{}` to coordinate pair.".format(coord))
 
     def __add__(self, other):
@@ -96,8 +100,8 @@ class Glyph:
         self._codepoint = Codepoint(codepoint).value
         self._char = char
         self._tags = tuple(tags)
-        self._offset = offset or Coord(0, 0)
-        self._tracking = tracking
+        self._offset = Coord.create(offset)
+        self._tracking = int(tracking)
         # custom properties - not used but kept
         self._props = {_k.replace('_', '-'): _v for _k, _v in kwargs.items()}
         if len(set(len(_r) for _r in self._rows)) > 1:
@@ -485,16 +489,16 @@ class Glyph:
         """
         if min(left, bottom, right, top) < 0:
             raise ValueError('Can only expand glyph by a positive amount.')
-        if self._rows:
-            old_width = len(self._rows[0])
-        else:
-            old_width = 0
-        new_width = left + old_width + right
-        return self.modify(
+        if right+left and not top+self.height+bottom:
+            # expanding empty glyph - make at least one high or it will stay empty
+            raise ValueError("Can't expand width of zero-height glyph.")
+        new_width = left + self.width + right
+        pixels = (
             ((False,) * new_width,) * top
             + tuple((False,)*left + _row + (False,)*right for _row in self._rows)
             + ((False,) * new_width,) * bottom
         )
+        return self.modify(pixels)
 
     @scriptable
     def stretch(self, factor_x:int=1, factor_y:int=1):
