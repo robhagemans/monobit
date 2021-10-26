@@ -489,16 +489,16 @@ class Glyph:
         """
         if min(left, bottom, right, top) < 0:
             raise ValueError('Can only expand glyph by a positive amount.')
-        if self._rows:
-            old_width = len(self._rows[0])
-        else:
-            old_width = 0
-        new_width = left + old_width + right
-        return self.modify(
+        if right+left and not top+self.height+bottom:
+            # expanding empty glyph - make at least one high or it will stay empty
+            raise ValueError("Can't expand width of zero-height glyph.")
+        new_width = left + self.width + right
+        pixels = (
             ((False,) * new_width,) * top
             + tuple((False,)*left + _row + (False,)*right for _row in self._rows)
             + ((False,) * new_width,) * bottom
         )
+        return self.modify(pixels)
 
     @scriptable
     def stretch(self, factor_x:int=1, factor_y:int=1):
