@@ -40,7 +40,7 @@ class BaseTester(unittest.TestCase):
         self.temp_dir.cleanup()
 
 
-class TestCodecs(BaseTester):
+class TestFormats(BaseTester):
     """Test monobit export/import."""
 
     def test_import_bdf(self):
@@ -121,6 +121,17 @@ class TestCodecs(BaseTester):
         psf_file = self.temp_path / '4x6.psf'
         monobit.save(self.fixed4x6, psf_file)
         self.assertTrue(os.path.getsize(psf_file) > 0)
+
+    def test_import_fzx(self):
+        """Test importing fzx files."""
+        font, *_ = monobit.load(self.font_path / '4x6.fzx')
+        self.assertEqual(len(font.glyphs), 224)
+
+    def test_export_fzx(self):
+        """Test exporting fzx files."""
+        fzx_file = self.temp_path / '4x6.fzx'
+        monobit.save(self.fixed4x6, fzx_file)
+        self.assertTrue(os.path.getsize(fzx_file) > 0)
 
     def test_import_yaff(self):
         """Test importing yaff files"""

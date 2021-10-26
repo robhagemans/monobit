@@ -146,7 +146,7 @@ Supported formats
 | GNU Unifont           |          | `.hex`                      |             | ✔     | ✔     |
 | PC Screen Font        | 1        | `.psf`                      | MS-DOS      | ✔     |       |
 | PC Screen Font        | 2        | `.psf` `.psfu`              | Linux       | ✔     | ✔     |
-| Raw binary            |          | `.fnt` `.rom` `.f??` `.ch8` `.64c` `.chr` |      | ✔     | ✔     |
+| Raw binary            |          | `.fnt` `.rom` `.f??` `.ch8` `.64c` `.chr`|| ✔     | ✔     |
 | Bitmap image          |          | `.png` `.gif` `.bmp`        |             | ✔ (P) | ✔ (P) |
 | PDF chart             |          | `.pdf`                      |             |       | ✔ (R) |
 | C or C++ source code  |          | `.c` `.cpp` `.cc` `.h`      |             | ✔     | ✔     |
@@ -163,7 +163,7 @@ Supported formats
 | `kbd` Codepage        |          | `.cp`                       | Linux       | ✔     |       |
 | Amiga Font Contents   |          | `.font`                     | Amiga OS    | ✔     |       |
 | Amiga Font            |          |                             | Amiga OS    | ✔     |       |
-| FZX Font              |          | `.fzx`                      | ZX Spectrum | ✔     |       |
+| FZX Font              |          | `.fzx`                      | ZX Spectrum | ✔     | ✔     |
 | MacOS font            | FONT     |                             | MacOS       | ✔     |       |
 | MacOS font            | NFNT/FOND|                             | MacOS       | ✔     |       |
 | Windows resource      | 1.0      | `.fnt`                      | Windows 1.x | ✔     |       |
