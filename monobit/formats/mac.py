@@ -8,7 +8,7 @@ licence: https://opensource.org/licenses/MIT
 import logging
 
 from ..binary import bytes_to_bits
-from ..struct import big_endian as be
+from ..struct import bitfield, big_endian as be
 from .. import struct
 from ..storage import loaders, savers
 from ..font import Font, Glyph, Coord
@@ -182,10 +182,36 @@ _HEIGHT_ENTRY = be.Struct(
 
 ##############################################################################
 # FOND resource
+# https://developer.apple.com/library/archive/documentation/mac/Text/Text-269.html#MARKER-2-525
+
+_FFLAGS = be.Struct(
+    # bit 15: This bit is set to 1 if the font family describes fixed-width fonts, and is cleared
+    #         to 0 if the font describes proportional fonts.
+    fixed_width=bitfield('uint16', 1),
+    # bit 14: This bit is set to 1 if the family fractional-width table is not used, and is cleared
+    #         to 0 if the table is used.
+    frac_width_unused=bitfield('uint16', 1),
+    # bit 13: This bit is set to 1 if the font family should use integer extra width for stylistic
+    #         variations. If not set, the font family should compute the fixed-point extra width
+    #         from the family style-mapping table, but only if the FractEnable global variable
+    #         has a value of TRUE.
+    use_int_extra_width=bitfield('uint16', 1),
+    # bit 12: This bit is set to 1 if the font family ignores the value of the FractEnable global
+    #         variable when deciding whether to use fixed-point values for stylistic variations;
+    #         the value of bit 13 is then the deciding factor. The value of the FractEnable global
+    #         variable is set by the SetFractEnable procedure.
+    ignore_global_fract_enable=bitfield('uint16', 1),
+    # bits 2-11: These bits are reserved by Apple and should be cleared to 0.
+    reserved_2_11=bitfield('uint16', 10),
+    # bit 1: This bit is set to 1 if the resource contains a glyph-width table.
+    has_width_table=bitfield('uint16', 1),
+    # bit 0: This bit is reserved by Apple and should be cleared to 0.
+    reserved_0=bitfield('uint16', 1),
+)
 
 _FOND_HEADER = be.Struct(
    # {flags for family}
-   ffFlags='uint16',
+   ffFlags=_FFLAGS,
    # {family ID number}
    ffFamID='uint16',
    # {ASCII code of first character}
@@ -439,12 +465,8 @@ def _parse_resource_fork(data):
 def _parse_fond(data, offset, name):
     """Parse a MacOS FOND resource."""
     family_header = _FOND_HEADER.from_bytes(data, offset)
-    # bitfield
-    #has_width_table = bool(family_header.ffFlags & (1 << 1))
-    #ignore_global_fract_enable = bool(family_header.ffFlags & (1 << 12))
-    #use_int_extra_width = bool(family_header.ffFlags & (1 << 13))
-    #frac_width_unused = bool(family_header.ffFlags & (1 << 14))
-    fixed_width = bool(family_header.ffFlags & (1 << 15))
+    # family-flags bitfield 15
+    fixed_width = family_header.ffFlags.fixed_width
     # things we will want initially:
     # the script
     # the point size and style (font association table)
@@ -487,7 +509,10 @@ def _parse_nfnt(data, offset, properties):
     if depth or has_ftcb:
         raise ValueError('Anti-aliased or colour fonts not supported.')
     # bit 13: is fixed-width; ignored by Font Manager
-    is_fixed = bool(fontrec.fontType & 1 << 13)
+    # also seems incorrect for system fonts
+    #is_fixed = bool(fontrec.fontType & 1 << 13)
+    ###############################################################################################
+    # read char tables & bitmaps
     # table offsets
     strike_offset = offset + _NFNT_HEADER.size
     loc_offset = offset + _NFNT_HEADER.size + fontrec.fRectHeight * fontrec.rowWords * 2
@@ -506,13 +531,18 @@ def _parse_nfnt(data, offset, properties):
         wo_offset = fontrec.owTLoc * 2
     # owtTLoc is offset "from itself" to table
     wo_table = _WO_ENTRY.array(n_chars).from_bytes(data, offset + 16 + wo_offset)
-    widths = [_entry.width for _entry in wo_table]
-    offsets = [_entry.offset for _entry in wo_table]
-    # scalable width table - ignoring for now
+    # scalable width table
     width_offset = wo_offset + _WO_ENTRY.size * n_chars
     if has_width_table:
         width_table = _WIDTH_ENTRY.array(n_chars).from_bytes(data, width_offset)
-    # image height table: ignore, this can be deduced from the bitmaps
+    # image height table: this can be deduced from the bitmaps
+    # https://developer.apple.com/library/archive/documentation/mac/Text/Text-250.html#MARKER-9-414
+    # > The Font Manager creates this table.
+    if has_height_table:
+        height_offset = width_offset
+        if has_width_table:
+            height_offset += _WIDTH_ENTRY.size * n_chars
+        height_table = _HEIGHT_ENTRY.array(n_chars).from_bytes(data, height_offset)
     # parse bitmap strike
     bitmap_strike = bytes_to_bits(strike)
     rows = [
@@ -526,36 +556,72 @@ def _parse_nfnt(data, offset, properties):
         Glyph([_row[_offs:_next] for _row in rows])
         for _offs, _next in zip(locs[:-1], locs[1:])
     ]
-    # pad to apply width and offset
+    # add glyph metrics
+    # scalable-width table
+    if has_width_table:
+        glyphs = tuple(
+            _glyph.modify(scalable_width=_we.width)
+            for _glyph, _we in zip(glyphs, width_table)
+        )
+    # image-height table
+    if has_height_table:
+        glyphs = tuple(
+            _glyph.modify(image_height=_he.height, top_offset=_he.offset)
+            for _glyph, _he in zip(glyphs, height_table)
+        )
+    # width & offset
+    glyphs = tuple(
+        _glyph.modify(wo_offset=_wo.offset, wo_width=_wo.width)
+        for _glyph, _wo in zip(glyphs, wo_table)
+    )
+    ###############################################################################################
+    # convert mac glyph metrics to monobit glyph metrics
+    #
     # the 'width' in the width/offset table is the pen advance
     # while the 'offset' is the (positive) offset after applying the
-    # (positive or negative) 'kernMax' (==left-bearing) global offset
-    # since advance = left-bearing + grid-width + right-bearing
+    # (positive or negative) 'kernMax' global offset
+    #
+    # since
+    #   (glyph) advance == offset.x + width + tracking
     # after this transformation we should have
-    #   grid-width = advance - left-bearing - right-bearing = 'width' - kernMax - right-bearing
-    # and it seems we can set right-bearing=0
-    glyphs = [
-        (
-            _glyph.expand(left=_offset, right=(_width-fontrec.kernMax)-(_glyph.width+_offset))
-            if _width != 0xff and _offset != 0xff else _glyph
+    #   (glyph) advance == wo.width
+    # which means
+    #   (total) advance == wo.width - kernMax
+    # since
+    #   (total) advance == (font) offset.x + glyph.advance + (font) tracking
+    # and (font) offset.x = -kernMax
+    glyphs = tuple(
+        _glyph.modify(
+            offset=(_glyph.wo_offset, 0),
+            tracking=_glyph.wo_width - _glyph.width - _glyph.wo_offset
         )
-        for _glyph, _width, _offset in zip(glyphs, widths, offsets)
-    ]
+        if _glyph.wo_width != 0xff and _glyph.wo_offset != 0xff else _glyph
+        for _glyph in glyphs
+    )
     # codepoint labels
     labelled = [
-        _glyph.set_annotations(codepoint=(_codepoint,))
-        for _codepoint, _glyph in zip(range(fontrec.firstChar, fontrec.lastChar+1), glyphs)
+        _glyph.modify(codepoint=(_codepoint,))
+        for _codepoint, _glyph in enumerate(glyphs[:-1], start=fontrec.firstChar)
     ]
     # last glyph is the "missing" glyph
-    labelled.append(glyphs[-1].set_annotations(tags=['missing']))
+    labelled.append(glyphs[-1].modify(tags=['missing']))
     # drop undefined glyphs & their labels, so long as they're empty
-    glyphs = [
-        _glyph for _glyph, _width, _offset in zip(labelled, widths, offsets)
-        if (_width != 0xff and _offset != 0xff) or (_glyph.width and _glyph.height)
-    ]
+    glyphs = tuple(
+        _glyph for _glyph in labelled
+        if (_glyph.wo_width != 0xff and _glyph.wo_offset != 0xff) or (_glyph.width and _glyph.height)
+    )
+    # drop mac glyph metrics
+    glyphs = tuple(
+        _glyph.drop_properties(
+            'wo_offset', 'wo_width', 'image_height',
+            # not interpreted - keep?
+            'top_offset', 'scalable_width'
+        )
+        for _glyph in glyphs
+    )
     # store properties
     properties.update({
-        'spacing': 'monospace' if is_fixed else 'proportional',
+        #'spacing': 'monospace' if is_fixed else 'proportional',
         'default-char': 'missing',
         'ascent': fontrec.ascent,
         'descent': fontrec.descent,
