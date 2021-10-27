@@ -107,11 +107,64 @@ _REF_ENTRY = be.Struct(
 ##############################################################################
 # NFNT/FONT resource
 
+# the Font Type Element
+# https://developer.apple.com/library/archive/documentation/mac/Text/Text-251.html#MARKER-9-442
+_FONT_TYPE = be.Struct(
+    # 15    Reserved. Should be set to 0.
+    reserved_15=bitfield('uint16', 1),
+    # 14    This bit is set to 1 if the font is not to be expanded to match the screen depth. The
+    #       font is for color Macintosh computers only if this bit is set to 1. This is for some
+    #       fonts, such as Kanji, which are too large for synthetic fonts to be effective or
+    #       meaningful, or bitmapped fonts that are larger than 50 points.
+    dont_expand_to_match_screen_depth=bitfield('uint16', 1),
+    # 13    This bit is set to 1 if the font describes a fixed-width font, and is set to 0 if the
+    #       font describes a proportional font. The Font Manager does not check the setting of this bit.
+    fixed_width=bitfield('uint16', 1),
+    # 12    Reserved. Should be set to 1.
+    reserved_12=bitfield('uint16', 1),
+    # 10-11 Reserved. Should be set to 0.
+    reserved_10_11=bitfield('uint16', 2),
+    # 9     This bit is set to 1 if the font contains colors other than black. This font is for
+    #       color Macintosh computers only if this bit is set to 1.
+    has_colors=bitfield('uint16', 1),
+    # 8     This bit is set to 1 if the font is a synthetic font, created dynamically from the
+    #       available font resources in response to a certain color and screen depth combination.
+    #       The font is for color Macintosh computers only if this bit is set to 1.
+    synthetic=bitfield('uint16', 1),
+    # 7     This bit is set to 1 if the font has a font color table ('fctb') resource. The font
+    #       is for color Macintosh computers only if this bit is set to 1.
+    has_fctb=bitfield('uint16', 1),
+    # 4-6   Reserved. Should be set to 0.
+    reserved_4_6=bitfield('uint16', 3),
+    # 2-3   These two bits define the depth of the font. Each of the four possible values indicates
+    #       the number of bits (and therefore, the number of colors) used to represent each pixel
+    #       in the glyph images.
+    #       Value    Font depth    Number of colors
+    #           0    1-bit    1
+    #           1    2-bit    4
+    #           2    4-bit    16
+    #           3    8-bit    256
+    #       Normally the font depth is 0 and the glyphs are specified as monochrome images. If
+    #       bit 7 of this field is set to 1, a resource of type 'fctb' with the same ID as the font
+    #       can optionally be provided to assign RGB colors to specific pixel values.
+    #
+    # If this font resource is a member of a font family, the settings of bits 8 and 9 of the
+    # fontStyle field in this font's association table entry should be the same as the settings of
+    # bits 2 and 3 in the fontType field. For more information, see "The Font Association Table"
+    # on page 4-89.
+    depth=bitfield('uint16', 2),
+    # 1    This bit is set to 1 if the font resource contains a glyph-width table.
+    has_width_table=bitfield('uint16', 1),
+    # 0 This bit is set to 1 if the font resource contains an image height table.
+    has_height_table=bitfield('uint16', 1),
+)
+
+
 # the header of the NFNT is a FontRec
 # https://developer.apple.com/library/archive/documentation/mac/Text/Text-214.html
 _NFNT_HEADER = be.Struct(
     #    {font type}
-    fontType='uint16',
+    fontType=_FONT_TYPE,
     #    {character code of first glyph}
     firstChar='uint16',
     #    {character code of last glyph}
@@ -500,17 +553,8 @@ def _parse_nfnt(data, offset, properties):
     fontrec = _NFNT_HEADER.from_bytes(data, offset)
     if not (fontrec.rowWords and fontrec.widMax and fontrec.fRectWidth and fontrec.fRectHeight):
         raise ValueError('Empty FONT/NFNT resource.')
-    # extract bit fields
-    has_height_table = bool(fontrec.fontType & 0x1)
-    has_width_table = bool(fontrec.fontType & 0x2)
-    # 1-bit 2-bit 4-bit 8-bit depth
-    depth = (fontrec.fontType & 0xc) >> 2
-    has_ftcb = bool(fontrec.fontType & 0x80)
-    if depth or has_ftcb:
+    if fontrec.fontType.depth or fontrec.fontType.has_fctb:
         raise ValueError('Anti-aliased or colour fonts not supported.')
-    # bit 13: is fixed-width; ignored by Font Manager
-    # also seems incorrect for system fonts
-    #is_fixed = bool(fontrec.fontType & 1 << 13)
     ###############################################################################################
     # read char tables & bitmaps
     # table offsets
@@ -533,14 +577,14 @@ def _parse_nfnt(data, offset, properties):
     wo_table = _WO_ENTRY.array(n_chars).from_bytes(data, offset + 16 + wo_offset)
     # scalable width table
     width_offset = wo_offset + _WO_ENTRY.size * n_chars
-    if has_width_table:
+    if fontrec.fontType.has_width_table:
         width_table = _WIDTH_ENTRY.array(n_chars).from_bytes(data, width_offset)
     # image height table: this can be deduced from the bitmaps
     # https://developer.apple.com/library/archive/documentation/mac/Text/Text-250.html#MARKER-9-414
     # > The Font Manager creates this table.
-    if has_height_table:
+    if fontrec.fontType.has_height_table:
         height_offset = width_offset
-        if has_width_table:
+        if fontrec.fontType.has_width_table:
             height_offset += _WIDTH_ENTRY.size * n_chars
         height_table = _HEIGHT_ENTRY.array(n_chars).from_bytes(data, height_offset)
     # parse bitmap strike
@@ -558,13 +602,13 @@ def _parse_nfnt(data, offset, properties):
     ]
     # add glyph metrics
     # scalable-width table
-    if has_width_table:
+    if fontrec.fontType.has_width_table:
         glyphs = tuple(
             _glyph.modify(scalable_width=_we.width)
             for _glyph, _we in zip(glyphs, width_table)
         )
     # image-height table
-    if has_height_table:
+    if fontrec.fontType.has_height_table:
         glyphs = tuple(
             _glyph.modify(image_height=_he.height, top_offset=_he.offset)
             for _glyph, _he in zip(glyphs, height_table)
@@ -621,7 +665,8 @@ def _parse_nfnt(data, offset, properties):
     )
     # store properties
     properties.update({
-        #'spacing': 'monospace' if is_fixed else 'proportional',
+        # not overridable; also seems incorrect for system fonts
+        #'spacing': 'monospace' if fontrec.fontType.fixed_width else 'proportional',
         'default-char': 'missing',
         'ascent': fontrec.ascent,
         'descent': fontrec.descent,
