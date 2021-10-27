@@ -103,7 +103,7 @@ class Glyph:
         self._offset = Coord.create(offset)
         self._tracking = int(tracking)
         # custom properties - not used but kept
-        self._props = {_k.replace('_', '-'): _v for _k, _v in kwargs.items()}
+        self._props = {_k.replace('_', '-'): _v for _k, _v in kwargs.items() if _v is not None}
         if len(set(len(_r) for _r in self._rows)) > 1:
             raise ValueError(
                 f'All rows in a glyph must be of the same width: {repr(self)}'
@@ -122,7 +122,7 @@ class Glyph:
     def drop_properties(self, *args):
         """Remove custom properties."""
         args = [_arg.replace('_', '-') for _arg in args]
-        return self.modify(**{_k: _v for _k, _v in self._props.items() if _k not in args})
+        return self.modify(**{_k: None for _k in args})
 
     @property
     def tags(self):
@@ -241,7 +241,7 @@ class Glyph:
             comments=tuple(comments),
             offset=offset,
             tracking=tracking,
-            **kwargs
+            **{**self._props, **kwargs}
         )
 
     @classmethod
