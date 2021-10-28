@@ -21,11 +21,12 @@ from ..encoding import charmaps
 from .. import streams
 from ..streams import FileFormatError
 from ..binary import int_to_bytes, bytes_to_int
-from ..struct import reverse_dict, little_endian as le
+from ..struct import Props, reverse_dict, little_endian as le
 from .. import struct
 from ..storage import loaders, savers
 from ..font import Font, Coord
 from ..glyph import Glyph
+from ..label import Codepoint
 
 from .windows import CHARSET_MAP, CHARSET_REVERSE_MAP
 
@@ -383,14 +384,8 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=(),
     # ensure we have RGBA channels
     sheets = {_k: _v.convert('RGBA') for _k, _v in sheets.items()}
     glyphs = []
-    min_after = 0
-    min_before = 0
     max_height = 0
     if chars:
-        # determine bearings
-        min_after = min((char.xadvance - char.xoffset - char.width) for char in chars)
-        min_before = min((char.xoffset) for char in chars)
-        max_height = max(char.height + char.yoffset for char in chars)
         # extract channel masked sprites
         sprites = []
         for char in chars:
@@ -443,22 +438,19 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=(),
                 bg, fg = fg, bg
         # extract glyphs
         for char, sprite in zip(chars, sprites):
-            if char.width and char.height:
-                bits = tuple(_c == fg for _c in sprite)
-                glyph = Glyph(tuple(
-                    bits[_offs: _offs+char.width]
-                    for _offs in range(0, len(bits), char.width)
-                ))
-                after = char.xadvance - char.xoffset - char.width
-                before = char.xoffset
-                height = char.height + char.yoffset
-                # bring to equal height, equal bearings
-                glyph = glyph.expand(
-                    before - min_before, char.yoffset, after - min_after, max_height - height
-                )
-            else:
-                glyph = Glyph.blank(char.xadvance - min_after, max_height)
-            glyph = glyph.set_annotations(codepoint=(char.id,))
+            #if char.width and char.height:
+            bits = tuple(_c == fg for _c in sprite)
+            glyph = Glyph(tuple(
+                bits[_offs: _offs+char.width]
+                for _offs in range(0, len(bits), char.width)
+            ))
+            # max_height is used further down as well
+            max_height = max(char.height + char.yoffset for char in chars)
+            glyph = glyph.modify(
+                codepoint=int_to_bytes(char.id),
+                offset=(char.xoffset, max_height-glyph.height-char.yoffset),
+                tracking=char.xadvance - char.xoffset - char.width,
+            )
             glyphs.append(glyph)
     for file in image_files.values():
         file.close()
@@ -476,25 +468,13 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=(),
         'source-format': 'BMFont ({} descriptor; {} spritesheet)'.format(bmformat, ','.join(imgformats)),
         'source-name': Path(name).name,
         'family': bmfont_props.pop('face'),
-        # assume size == pixel-size == ascent + descent
-        # size can be given as negative for an undocumented reason:
-        #
-        # https://gamedev.net/forums/topic/657937-strange-34size34-of-generated-bitmapfont/5161902/
-        # > The 'info' block is just a little information on the original truetype font used to
-        # > generate the bitmap font. This is normally not used while rendering the text.
-        # > A negative size here reflects that the size is matching the cell height, rather than
-        # > the character height.
-        #
-        # note that pixel-size, ascent and descent ar informational and not metrics
-        # so we can use the informational `size` to determine them
-        'ascent': abs(int(bmfont_props.pop('size'))) - (max_height - common.base),
+        # assume line_height == pixel-size == ascent + descent (i.e. no leading)
+        # this seems to lead to too high values with fonts produces by Angelcode BMFont
+        'ascent': common.lineHeight - (max_height - common.base),
         'descent': max_height - common.base,
         'weight': 'bold' if _to_int(bmfont_props.pop('bold')) else Font.default('weight'),
         'slant': 'italic' if _to_int(bmfont_props.pop('italic')) else Font.default('slant'),
         'encoding': encoding,
-        # metrics
-        'tracking': min_after,
-        'offset': Coord(min_before, common.base - max_height),
         'kerning': {(_kern.first, _kern.second): _kern.amount for _kern in kernings},
     }
     # drop other props if they're default value
@@ -506,18 +486,11 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=(),
         'spacing': '0,0',
         'outline': '0',
     }
-    properties.update({
-        'bmfont.' + _k: ' '.join(str(_v).split(','))
+    properties['bmfont'] = Props(**{
+        _k: ' '.join(str(_v).split(','))
         for _k, _v in bmfont_props.items()
-        if str(_v) != default_bmfont_props[_k]
+        if str(_v) != default_bmfont_props.get(_k, '')
     })
-    # encoding values above 256 become multi-byte
-    # unless we're working in unicode
-    if not charmaps.is_unicode(properties['encoding']):
-        glyphs = (
-            _glyph.set_annotations(codepoint=int_to_bytes(glyph.codepoint[0]))
-            for _glyph in glyphs
-        )
     return Font(glyphs, properties=properties)
 
 def _read_bmfont(infile, container, outline):
@@ -548,6 +521,19 @@ def _read_bmfont(infile, container, outline):
 
 ##############################################################################
 # bmfont writer
+
+def _glyph_id(glyph, encoding):
+    codepoint = glyph.codepoint
+    char = glyph.char
+    if not codepoint:
+        raise ValueError(f"Can't store glyph {ascii(char)} with no codepoint.")
+    if len(codepoint) == 1:
+        id, = codepoint
+    elif not charmaps.is_unicode(encoding):
+        id = bytes_to_int(codepoint)
+    else:
+        raise ValueError(f"Can't store multi-codepoint grapheme sequence {ascii(char)}.")
+    return id
 
 def _create_spritesheets(font, size=(256, 256), packed=False):
     """Dump font to sprite sheets."""
@@ -589,17 +575,11 @@ def _create_spritesheets(font, size=(256, 256), packed=False):
                 data = cropped.as_tuple(ink, paper)
                 charimg.putdata(data)
                 img.paste(charimg, (x, y))
-            if not glyph.codepoint:
-                logging.warning(f"Can't store glyph {ascii(glyph.char)} with no codepoint.")
+            try:
+                id = _glyph_id(glyph, font.encoding)
+            except ValueError as e:
+                logging.warning(e)
                 continue
-            elif len(glyph.codepoint) == 1:
-                id, = glyph.codepoint
-            elif not charmaps.is_unicode(font.encoding):
-                id = bytes_to_int(glyph.codepoint)
-            else:
-                logging.warning(
-                    f"Can't store multi-codepoint grapheme sequence {ascii(glyph.char)}."
-                )
             # >  char
             # >  ----
             # >  This tag describes on character in the font. There is one for each included character in the font.
@@ -722,6 +702,14 @@ def _create_bmfont(
     # > outline     The outline thickness for the characters.
     props['info'] = {
         'face': font.family,
+        # size can be given as negative for an undocumented reason:
+        #
+        # https://gamedev.net/forums/topic/657937-strange-34size34-of-generated-bitmapfont/5161902/
+        # > The 'info' block is just a little information on the original truetype font used to
+        # > generate the bitmap font. This is normally not used while rendering the text.
+        # > A negative size here reflects that the size is matching the cell height, rather than
+        # > the character height.
+        #
         # we're assuming size == pixel-size == ascent + descent
         # so it should be positive - negative means matching "cell height" (~ font.raster_size.y ?)
         'size': font.pixel_size,

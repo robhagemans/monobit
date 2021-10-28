@@ -125,7 +125,7 @@ class TestFormats(BaseTester):
     def test_import_fzx(self):
         """Test importing fzx files."""
         font, *_ = monobit.load(self.font_path / '4x6.fzx')
-        self.assertEqual(len(font.glyphs), 224)
+        self.assertEqual(len(font.glyphs), 191)
 
     def test_export_fzx(self):
         """Test exporting fzx files."""
