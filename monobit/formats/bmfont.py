@@ -21,7 +21,7 @@ from ..encoding import charmaps
 from .. import streams
 from ..streams import FileFormatError
 from ..binary import int_to_bytes, bytes_to_int
-from ..struct import reverse_dict, little_endian as le
+from ..struct import Props, reverse_dict, little_endian as le
 from .. import struct
 from ..storage import loaders, savers
 from ..font import Font, Coord
@@ -468,19 +468,9 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=(),
         'source-format': 'BMFont ({} descriptor; {} spritesheet)'.format(bmformat, ','.join(imgformats)),
         'source-name': Path(name).name,
         'family': bmfont_props.pop('face'),
-        # assume size == pixel-size == ascent + descent
-        # size can be given as negative for an undocumented reason:
-        #
-        # https://gamedev.net/forums/topic/657937-strange-34size34-of-generated-bitmapfont/5161902/
-        # > The 'info' block is just a little information on the original truetype font used to
-        # > generate the bitmap font. This is normally not used while rendering the text.
-        # > A negative size here reflects that the size is matching the cell height, rather than
-        # > the character height.
-        #
-        # note that pixel-size, ascent and descent ar informational and not metrics
-        # so we can use the informational `size` to determine them
-        'ascent': abs(int(bmfont_props.pop('size'))) - (max_height - common.base),
-        # FIXME: ascent is too high, needs to be adjusted by yoffset somehow?
+        # assume line_height == pixel-size == ascent + descent (i.e. no leading)
+        # this seems to lead to too high values with fonts produces by Angelcode BMFont
+        'ascent': common.lineHeight - (max_height - common.base),
         'descent': max_height - common.base,
         'weight': 'bold' if _to_int(bmfont_props.pop('bold')) else Font.default('weight'),
         'slant': 'italic' if _to_int(bmfont_props.pop('italic')) else Font.default('slant'),
@@ -496,10 +486,10 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=(),
         'spacing': '0,0',
         'outline': '0',
     }
-    properties.update({
-        'bmfont.' + _k: ' '.join(str(_v).split(','))
+    properties['bmfont'] = Props(**{
+        _k: ' '.join(str(_v).split(','))
         for _k, _v in bmfont_props.items()
-        if str(_v) != default_bmfont_props[_k]
+        if str(_v) != default_bmfont_props.get(_k, '')
     })
     return Font(glyphs, properties=properties)
 
@@ -712,6 +702,14 @@ def _create_bmfont(
     # > outline     The outline thickness for the characters.
     props['info'] = {
         'face': font.family,
+        # size can be given as negative for an undocumented reason:
+        #
+        # https://gamedev.net/forums/topic/657937-strange-34size34-of-generated-bitmapfont/5161902/
+        # > The 'info' block is just a little information on the original truetype font used to
+        # > generate the bitmap font. This is normally not used while rendering the text.
+        # > A negative size here reflects that the size is matching the cell height, rather than
+        # > the character height.
+        #
         # we're assuming size == pixel-size == ascent + descent
         # so it should be positive - negative means matching "cell height" (~ font.raster_size.y ?)
         'size': font.pixel_size,
