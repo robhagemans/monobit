@@ -445,16 +445,15 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=(),
                 for _offs in range(0, len(bits), char.width)
             ))
             # append kernings (this glyph left)
-            # FIXME: what if second codepoint is multibyte?
             kern_to = {
-                Codepoint(_kern.second).value: _kern.amount
+                _codepoint_for_id(_kern.second, info['unicode']).value: _kern.amount
                 for _kern in kernings
                 if _kern.first == char.id
             }
             # max_height is used further down as well
             max_height = max(char.height + char.yoffset for char in chars)
             glyph = glyph.modify(
-                codepoint=int_to_bytes(char.id),
+                codepoint=_codepoint_for_id(char.id, info['unicode']),
                 offset=(char.xoffset, max_height-glyph.height-char.yoffset),
                 tracking=char.xadvance - char.xoffset - char.width,
                 kern_to=kern_to
@@ -541,6 +540,12 @@ def _glyph_id(glyph, encoding):
     else:
         raise ValueError(f"Can't store multi-codepoint grapheme sequence {ascii(char)}.")
     return id
+
+def _codepoint_for_id(id, is_unicode):
+    if not is_unicode:
+        return Codepoint(int_to_bytes(id))
+    return Codepoint(id)
+
 
 def _create_spritesheets(font, size=(256, 256), packed=False):
     """Dump font to sprite sheets."""
