@@ -378,21 +378,6 @@ class Font:
                 yield self.get_glyph(key=remaining[:1], missing=missing)
                 remaining = remaining[1:]
 
-    def get_kernings(self, glyphs):
-        """Get kerning amounts for an iteration of glyphs."""
-        if not glyphs:
-            return ()
-        return tuple(
-            tuple(
-                self.get_glyph(_glyph.char, missing='empty').kern_to.get(
-                # FIXME: shouldn't be codepoint only
-                    self.get_glyph(_next.char, missing='empty').codepoint
-                , 0)
-                for _glyph, _next in zip(_line[:-1], _line[1:])
-            ) + (0,)
-            for _line in glyphs
-        )
-
 
     ##########################################################################
     # comments

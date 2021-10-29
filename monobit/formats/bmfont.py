@@ -776,8 +776,7 @@ def _create_bmfont(
             'amount': int(_amount)
         }
         for _glyph in font.glyphs
-        for _kern_to in _glyph.kern_to
-        for _to, _amount in _kern_to.items()
+        for _to, _amount in _glyph.kern_to.items()
     ]
     # write the .fnt description
     if descriptor == 'text':

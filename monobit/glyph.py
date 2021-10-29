@@ -21,7 +21,7 @@ from .scripting import scriptable
 from .binary import ceildiv, bytes_to_bits
 from .matrix import to_text
 from .encoding import is_graphical
-from .label import Char, Codepoint
+from .label import Char, Codepoint, Tag
 
 
 NOT_SET = object()
@@ -87,6 +87,10 @@ class Coord(NamedTuple):
 class KernTable(dict):
     """char -> int."""
 
+    # we use from (dict):
+    # - empty table is falsy
+    # - get(), items(), iter()
+
     def __init__(self, table=None):
         """Set up kerning table."""
         if not table:
@@ -107,6 +111,25 @@ class KernTable(dict):
             f'{_k} {_v}'
             for _k, _v in self.items()
         )
+
+    def get_for_glyph(self, second):
+        """Get kerning amount for given second glyph."""
+        try:
+            return self[Char(second.char).value]
+        except KeyError:
+            pass
+        try:
+            return self[Codepoint(second.codepoint).value]
+        except KeyError:
+            pass
+        for tag in second.tags:
+            try:
+                return self[Tag(tag).value]
+            except KeyError:
+                pass
+        # no kerning is zero kerning
+        return 0
+
 
 
 class Glyph:
