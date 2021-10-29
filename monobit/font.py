@@ -639,9 +639,7 @@ class Font:
         #
         if not self._glyphs:
             return 'character-cell'
-        if self.kerning:
-            return 'proportional'
-        if any(_glyph.advance < 0 for _glyph in self._glyphs):
+        if any(_glyph.advance < 0 or _glyph.kern_to for _glyph in self._glyphs):
             return 'proportional'
         # don't count void glyphs (0 width and/or height) to determine whether it's monospace
         advances = set(_glyph.advance for _glyph in self._glyphs if _glyph.advance)
