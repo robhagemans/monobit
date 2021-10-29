@@ -26,7 +26,7 @@ from .. import struct
 from ..storage import loaders, savers
 from ..font import Font, Coord
 from ..glyph import Glyph
-from ..label import Codepoint
+from ..label import Codepoint, Char
 
 from .windows import CHARSET_MAP, CHARSET_REVERSE_MAP
 
@@ -445,11 +445,18 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=(),
                 for _offs in range(0, len(bits), char.width)
             ))
             # append kernings (this glyph left)
-            kern_to = {
-                _codepoint_for_id(_kern.second, info['unicode']).value: _kern.amount
-                for _kern in kernings
-                if _kern.first == char.id
-            }
+            if info['unicode']:
+                kern_to = {
+                    Char(chr(_kern.second)): _kern.amount
+                    for _kern in kernings
+                    if _kern.first == char.id
+                }
+            else:
+                kern_to = {
+                    _codepoint_for_id(_kern.second, False): _kern.amount
+                    for _kern in kernings
+                    if _kern.first == char.id
+                }
             # max_height is used further down as well
             max_height = max(char.height + char.yoffset for char in chars)
             glyph = glyph.modify(

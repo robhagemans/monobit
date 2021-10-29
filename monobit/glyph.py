@@ -21,7 +21,7 @@ from .scripting import scriptable
 from .binary import ceildiv, bytes_to_bits
 from .matrix import to_text
 from .encoding import is_graphical
-from .label import Char, Codepoint, Tag
+from .label import Char, Codepoint, Tag, label
 
 
 NOT_SET = object()
@@ -101,7 +101,7 @@ class KernTable(dict):
                 for _row in table.splitlines()
             )
         super().__init__({
-            _k: int(_v)
+            label(_k): int(_v)
             for _k, _v in table.items()
         })
 
@@ -115,16 +115,16 @@ class KernTable(dict):
     def get_for_glyph(self, second):
         """Get kerning amount for given second glyph."""
         try:
-            return self[Char(second.char).value]
+            return self[Char(second.char)]
         except KeyError:
             pass
         try:
-            return self[Codepoint(second.codepoint).value]
+            return self[Codepoint(second.codepoint)]
         except KeyError:
             pass
         for tag in second.tags:
             try:
-                return self[Tag(tag).value]
+                return self[Tag(tag)]
             except KeyError:
                 pass
         # no kerning is zero kerning
