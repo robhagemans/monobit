@@ -21,7 +21,7 @@ from .scripting import scriptable
 from .binary import ceildiv, bytes_to_bits
 from .matrix import to_text
 from .encoding import is_graphical
-from .label import Char, Codepoint
+from .label import Char, Codepoint, Tag, label
 
 
 NOT_SET = object()
@@ -83,13 +83,62 @@ class Coord(NamedTuple):
         return bool(self.x or self.y)
 
 
+
+class KernTable(dict):
+    """char -> int."""
+
+    # we use from (dict):
+    # - empty table is falsy
+    # - get(), items(), iter()
+
+    def __init__(self, table=None):
+        """Set up kerning table."""
+        if not table:
+            table = {}
+        if isinstance(table, str):
+            table = dict(
+                _row.split(None, 1)
+                for _row in table.splitlines()
+            )
+        super().__init__({
+            label(_k): int(_v)
+            for _k, _v in table.items()
+        })
+
+    def __str__(self):
+        """Convert kerning table to multiline string."""
+        return '\n'.join(
+            f'{_k} {_v}'
+            for _k, _v in self.items()
+        )
+
+    def get_for_glyph(self, second):
+        """Get kerning amount for given second glyph."""
+        try:
+            return self[Char(second.char)]
+        except KeyError:
+            pass
+        try:
+            return self[Codepoint(second.codepoint)]
+        except KeyError:
+            pass
+        for tag in second.tags:
+            try:
+                return self[Tag(tag)]
+            except KeyError:
+                pass
+        # no kerning is zero kerning
+        return 0
+
+
+
 class Glyph:
     """Single glyph."""
 
     def __init__(
             self, pixels=(), *,
             codepoint=(), char='', tags=(), comments=(),
-            offset=None, tracking=0,
+            offset=None, tracking=0, kern_to=(),
             **kwargs
         ):
         """Create glyph from tuple of tuples."""
@@ -102,6 +151,7 @@ class Glyph:
         self._tags = tuple(tags)
         self._offset = Coord.create(offset)
         self._tracking = int(tracking)
+        self._kern_to = KernTable(kern_to)
         # custom properties - not used but kept
         self._props = {_k.replace('_', '-'): _v for _k, _v in kwargs.items() if _v is not None}
         if len(set(len(_r) for _r in self._rows)) > 1:
@@ -150,6 +200,9 @@ class Glyph:
         """Internal tracking for this glyph, adds to font tracking."""
         return self._tracking
 
+    @property
+    def kern_to(self):
+        return self._kern_to
 
     def __repr__(self):
         """Text representation."""
@@ -181,6 +234,7 @@ class Glyph:
             comments=self._comments + tuple(comments)
         )
 
+    # TODO remove this
     def set_annotations(self, *, tags=NOT_SET, char=NOT_SET, codepoint=NOT_SET, comments=NOT_SET):
         """Return a copy of the glyph with different annotations."""
         return self.modify(tags=tags, char=char, codepoint=codepoint, comments=comments)
@@ -215,7 +269,7 @@ class Glyph:
     def modify(
             self, pixels=NOT_SET, *,
             tags=NOT_SET, char=NOT_SET, codepoint=NOT_SET, comments=NOT_SET,
-            offset=NOT_SET, tracking=NOT_SET,
+            offset=NOT_SET, tracking=NOT_SET, kern_to=NOT_SET,
             **kwargs
         ):
         """Return a copy of the glyph with changes."""
@@ -233,6 +287,8 @@ class Glyph:
             offset = self._offset
         if tracking is NOT_SET:
             tracking = self._tracking
+        if kern_to is NOT_SET:
+            kern_to = self._kern_to
         return Glyph(
             tuple(pixels),
             codepoint=codepoint,
@@ -241,6 +297,7 @@ class Glyph:
             comments=tuple(comments),
             offset=offset,
             tracking=tracking,
+            kern_to=kern_to,
             **{**self._props, **kwargs}
         )
 

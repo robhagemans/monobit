@@ -6,6 +6,8 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import string
+from typing import NamedTuple
+
 
 def strip_matching(from_str, char):
     """Strip a char from either side of the string if it occurs on both."""
@@ -36,8 +38,10 @@ def label(value=''):
     return Tag.from_str(value)
 
 
+# pylint: disable=no-member
 class Label:
     """Label base class."""
+
 
     def __init__(self, value=None):
         """Label base class should not be instantiated."""
@@ -52,19 +56,23 @@ class Label:
         """Keyword arguments for character-based functions."""
         return {}
 
-    @property
-    def value(self):
-        """Payload value."""
-        return None
+
+    def __hash__(self):
+        return hash(self.value)
+
+    def __eq__(self, other):
+        return self.value == other.value
 
 
 class Tag(Label):
     """Tag label."""
 
+    value: str
+
     def __init__(self, value):
         """Construct tag object."""
         if isinstance(value, Tag):
-            self._tag = value._tag
+            self.value = value.value
             return
         if not isinstance(value, str):
             raise ValueError(
@@ -74,50 +82,56 @@ class Tag(Label):
         value = value.strip()
         # strip matching double quotes - this allows to set a label starting with a digit by quoting it
         value = strip_matching(value, '"')
-        self._tag = value
+        self.value = value
 
     def __repr__(self):
         """Represent tag."""
-        return f"{type(self).__name__}('{self._tag}')"
+        return f"{type(self).__name__}('{self.value}')"
 
     def __str__(self):
         """Convert tag to str."""
         # quote otherwise illegal tags
         if (
-                self._tag.lower().startswith('u+') or not (self._tag[:1].isalpha() or self._tag[:1] in '_-."')
-                or (self._tag.startswith('"') and self._tag.endswith('"'))
+                self.value.lower().startswith('u+')
+                or not (self.value[:1].isalpha() or self.value[:1] in '_-."')
+                or (self.value.startswith('"') and self.value.endswith('"'))
             ):
-            return f'"{self._tag}"'
-        return self._tag
+            return f'"{self.value}"'
+        return self.value
 
     def indexer(self):
         """Keyword arguments for get_index."""
-        return {'tag': self._tag}
+        return {'tag': self.value}
 
-    @property
-    def value(self):
-        """Tag string."""
-        return self._tag
+    def __hash__(self):
+        # make sure tag and Char don't collide
+        return hash((type(self), self.value))
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.value == other.value
 
 
 class Codepoint(Label):
     """Codepoint sequence label."""
 
+    value: tuple
+
     def __init__(self, value):
         """Convert to codepoint label if possible."""
         if isinstance(value, Codepoint):
-            self._key = value._key
+            self.value = value.value
             return
         if isinstance(value, int):
-            value = [value]
-        self._key = tuple(value)
-        if not all(isinstance(_elem, int) for _elem in self._key):
+            value = (value,)
+        # int.from_bytes? need byte width e.g. utf-32
+        self.value = tuple(value)
+        if not all(isinstance(_elem, int) for _elem in self.value):
             raise self._value_error(value)
 
     def __repr__(self):
         """Represent codepoint."""
         cpstr = str(self)
-        if len(self._key) != 1:
+        if len(self.value) != 1:
             cpstr = f'({cpstr})'
         return f"{type(self).__name__}({cpstr})"
 
@@ -125,17 +139,12 @@ class Codepoint(Label):
         """Convert codepoint label to str."""
         return ', '.join(
             f'0x{_elem:02x}'
-            for _elem in self._key
+            for _elem in self.value
         )
 
     def indexer(self):
         """Keyword arguments for get_index."""
-        return {'codepoint': self._key}
-
-    @property
-    def value(self):
-        """Convert to codepoint sequence."""
-        return self._key
+        return {'codepoint': self.value}
 
     @classmethod
     def from_str(cls, value):
@@ -173,37 +182,34 @@ class Codepoint(Label):
 class Char(Label):
     """Unicode label."""
 
+    value: str
+
     def __init__(self, value):
         """Convert char or char sequence to unicode label."""
         if isinstance(value, Char):
-            self._key = value._key
+            self.value = value.value
             return
         try:
             value = ''.join(value)
         except TypeError:
             raise self._value_error(value) from None
         # Char('x') just holds 'x'
-        self._key = value
+        self.value = value
 
     def __repr__(self):
         """Represent character label."""
-        return f"{type(self).__name__}({ascii(self._key)})"
+        return f"{type(self).__name__}({ascii(self.value)})"
 
     def __str__(self):
         """Convert to unicode label str."""
         return ', '.join(
             f'u+{ord(_uc):04x}'
-            for _uc in self._key
+            for _uc in self.value
         )
 
     def indexer(self):
         """Keyword arguments for get_index."""
-        return {'char': self._key}
-
-    @property
-    def value(self):
-        """Convert to character sequence str."""
-        return self._key
+        return {'char': self.value}
 
     @classmethod
     def from_str(cls, value):

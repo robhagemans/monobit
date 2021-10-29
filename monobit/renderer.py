@@ -43,29 +43,30 @@ def render_image(
 def render(font, text, *, margin=(0, 0), scale=(1, 1), rotate=0, missing='default'):
     """Render text string to bitmap."""
     glyphs = font.get_glyphs(text, missing=missing)
-    kernings = font.get_kernings(glyphs)
     margin_x, margin_y = margin
     canvas = _get_canvas(font, glyphs, margin_x, margin_y)
     # descent-line of the bottom-most row is at bottom margin
     # if a glyph extends below the descent line or left of the orgin, it may draw into the margin
     # raster_size.y moves from canvas origin to raster origin (bottom line)
     baseline = margin_y + font.ascent
-    for glyph_row, kerning_row in zip(glyphs, kernings):
+    for glyph_row in glyphs:
         # x, y are relative to the left margin & baseline
         x, y = 0, 0
-        for glyph, kerning in zip(glyph_row, kerning_row):
-            mx = glyph.as_matrix()
-            offset = font.offset + glyph.offset
+        prev = font.get_empty_glyph()
+        for glyph in glyph_row:
+            # adjust origin for kerning
+            x += prev.kern_to.get_for_glyph(glyph)
+            prev = glyph
             # offset + (x, y) is the coordinate of glyph matrix origin
             # grid_x, grid_y are canvas coordinates relative to top left of canvas
             # canvas y coordinate increases *downwards* from top of line
+            offset = font.offset + glyph.offset
             grid_x = margin_x + (offset.x + x)
             grid_y = baseline - (offset.y + y)
             # add ink, taking into account there may be ink already in case of negative bearings
-            matrix.blit(mx, canvas, grid_x, grid_y)
+            matrix.blit(glyph.as_matrix(), canvas, grid_x, grid_y)
             # advance origin to next glyph
-            advance = font.offset.x + glyph.advance + font.tracking
-            x += advance + kerning
+            x += font.offset.x + glyph.advance + font.tracking
         # move to next line
         baseline += font.line_height
     scaled = matrix.scale(canvas, *scale)
@@ -84,7 +85,7 @@ def _get_canvas(font, glyphs, margin_x, margin_y):
     # find required height - margins plus line height for each row
     # descent-line of the bottom-most row is at bottom margin
     # ascent-line of top-most row is at top margin
-    # if a glyph extends below the descent line or left of the orgin, it may draw into the margin
+    # if a glyph extends below the descent line or left of the origin, it may draw into the margin
     height = 2 * margin_y + font.pixel_size + font.line_height * (len(glyphs)-1)
     return matrix.create(width, height)
 
