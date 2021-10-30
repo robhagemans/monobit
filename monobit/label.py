@@ -63,6 +63,15 @@ class Label:
     def __eq__(self, other):
         return self.value == other.value
 
+    def __bool__(self):
+        return bool(self.value)
+
+    def __len__(self):
+        return len(self.value)
+
+    def __iter__(self):
+        return iter(self.value)
+
 
 class Tag(Label):
     """Tag label."""

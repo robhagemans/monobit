@@ -42,7 +42,7 @@ def load_yaff(instream, where=None):
 @savers.register(linked=load_yaff)
 def save_yaff(fonts, outstream, where=None):
     """Write fonts to a monobit .yaff file."""
-    _save_yaff(fonts, outstream.text)
+    YaffWriter().save(fonts, outstream.text)
 
 
 @loaders.register('draw', 'text', 'txt', name='hexdraw')
@@ -65,8 +65,7 @@ def save_draw(fonts, outstream, where=None, ink='#', paper='-'):
     """
     if len(fonts) > 1:
         raise FileFormatError("Can only save one font to hexdraw file.")
-    params = {**vars(DrawParams), **dict(ink=ink, paper=paper)}
-    _save_draw(fonts[0], outstream.text, **params)
+    DrawWriter(ink=ink, paper=paper).save(fonts[0], outstream.text)
 
 
 ##############################################################################
@@ -107,8 +106,6 @@ class TextReader:
     # first/second pass constants
     separator = ':'
     comment = '#'
-    # output only
-    tab = '    '
     # tuple of individual chars, need to be separate for startswith
     whitespace = tuple(' \t')
 
@@ -424,128 +421,147 @@ class DrawConverter(TextConverter, DrawParams):
 ##############################################################################
 # write file
 
-def _write_glyph(outstream, labels, glyph, ink, paper, comm_char, tab, separator, empty):
-    """Write out a single glyph in text format."""
-    if not labels:
-        logging.warning('No labels for glyph: %s', glyph)
-        return
-    write_comments(outstream, glyph.comments, comm_char=comm_char)
-    for _label in labels:
-        outstream.write(str(_label) + separator)
-    glyphtxt = to_text(glyph.as_matrix(), ink=ink, paper=paper, line_break='\n'+tab)
-    # empty glyphs are stored as 0x0, not 0xm or nx0
-    if not glyph.width or not glyph.height:
-        glyphtxt = empty
-    outstream.write(tab + glyphtxt + '\n\n')
-    if glyph.offset:
-        outstream.write(f'{tab}offset: {str(glyph.offset)}\n')
-    if glyph.tracking:
-        outstream.write(f'{tab}tracking: {str(glyph.tracking)}\n')
-    if glyph.kern_to:
-        outstream.write(f'{tab}kern-to: \n')
-        for line in str(glyph.kern_to).splitlines():
-            outstream.write(f'{tab*2}{line}\n')
-    for key, value in glyph.properties.items():
-        outstream.write(f'{tab}{key}: {value}\n')
-    if glyph.offset or glyph.tracking or glyph.kern_to:
-        outstream.write('\n')
-    outstream.write('\n')
 
-def _quote_if_needed(value):
-    """See if string value needs double quotes."""
-    if (
-            (value.startswith('"') and value.endswith('"'))
-            or value[:1].isspace() or value[-1:].isspace()
-        ):
-        return f'"{value}"'
-    return value
+class TextWriter:
 
-def _write_prop(outstream, key, value, tab, comments, comm_char):
-    """Write out a property."""
-    if value is None:
-        return
-    # this may use custom string converter (e.g codepoint labels)
-    value = str(value)
-    if not value:
-        return
-    write_comments(outstream, comments, comm_char=comm_char)
-    if '\n' not in value:
-        outstream.write(f'{key}: {_quote_if_needed(value)}\n')
-    else:
-        outstream.write(
-            ('{}:\n' + tab + '{}\n').format(
-                key, ('\n' + tab).join(_quote_if_needed(_line) for _line in value.splitlines())
-            )
-        )
+    separator = ':'
+    comment = '#'
+    tab = '    '
 
-def _save_yaff(fonts, outstream):
-    """Write one font to a plaintext stream."""
-    ink = YaffParams.ink
-    paper = YaffParams.paper
-    empty = YaffParams.empty
-    comment = YaffParams.comment
-    tab = YaffParams.tab
-    separator = YaffParams.separator
-    for number, font in enumerate(fonts):
-        if len(fonts) > 1:
-            outstream.write(BOUNDARY_MARKER + '\n')
-        logging.debug('Writing %s to section #%d', font.name, number)
-        write_comments(outstream, font.get_comments(), comm_char=comment, is_global=True)
-        # we always output name, font-size and spacing
-        # plus anything that is different from the default
-        props = {
-            'name': font.name,
-            'spacing': font.spacing,
-            **font.nondefault_properties
-        }
-        if font.spacing in ('character-cell', 'multi-cell'):
-            props['raster-size'] = font.raster_size
+    ink = '@'
+    paper = '.'
+    empty = '-'
+
+    def _write_glyph(self, outstream, glyph, label=None, suppress_codepoint=False):
+        """Write out a single glyph in text format."""
+        # glyph comments
+        write_comments(outstream, glyph.comments, comm_char=self.comment)
+        if label:
+            labels = [label]
         else:
-            props['bounding-box'] = font.bounding_box
-        if props:
-            # write recognised yaff properties first, in defined order
-            for key in PROPERTIES:
-                value = props.pop(key, '')
-                comments = font.get_comments(key)
-                _write_prop(outstream, key, value, tab, comments=comments, comm_char=comment)
-            # write out any remaining properties
-            for key, value in props.items():
-                comments = font.get_comments(key)
-                _write_prop(outstream, key, value, tab, comments=comments, comm_char=comment)
+            labels = glyph.get_labels(suppress_codepoint=suppress_codepoint)
+        if not labels:
+            logging.warning('No labels for glyph: %s', glyph)
+            return
+        for _label in labels:
+            outstream.write(f'{_label}{self.separator}\n')
+        # glyph matrix
+        # empty glyphs are stored as 0x0, not 0xm or nx0
+        if not glyph.width or not glyph.height:
+            glyphtxt = self.empty
+        else:
+            glyphtxt = to_text(
+                glyph.as_matrix(),
+                ink=self.ink, paper=self.paper, line_break='\n' + self.tab
+            )
+        tab = self.tab
+        outstream.write(f'{tab}{glyphtxt}\n\n')
+        # glyph properties
+        if glyph.offset:
+            outstream.write(f'{tab}offset: {str(glyph.offset)}\n')
+        if glyph.tracking:
+            outstream.write(f'{tab}tracking: {str(glyph.tracking)}\n')
+        if glyph.kern_to:
+            outstream.write(f'{tab}kern-to: \n')
+            for line in str(glyph.kern_to).splitlines():
+                outstream.write(f'{tab*2}{line}\n')
+        for key, value in glyph.properties.items():
+            outstream.write(f'{tab}{key}: {self._quote_if_needed(value)}\n')
+        if glyph.offset or glyph.tracking or glyph.kern_to or glyph.properties:
             outstream.write('\n')
-        for glyph in font.glyphs:
-            labels = []
-            # don't write out codepoints for unicode fonts as we have u+XXXX already
-            if glyph.codepoint and (not charmaps.is_unicode(font.encoding) or not glyph.char):
-                labels.append(Codepoint(glyph.codepoint))
-            if glyph.char:
-                labels.append(Char(glyph.char))
-            labels.extend(Tag(_tag) for _tag in glyph.tags)
-            _write_glyph(
-                outstream, labels,
-                glyph, ink, paper, comment, tab, separator + '\n', empty
-            )
+        outstream.write('\n')
 
-def _save_draw(font, outstream, ink, paper, comment, tab, separator, empty, **kwargs):
-    """Write one font to a plaintext stream."""
-    write_comments(outstream, font.get_comments(), comm_char=comment, is_global=True)
-    for glyph in font.glyphs:
-        if len(glyph.char) > 1:
-            logging.warning(
-                "Can't encode grapheme cluster %s in .draw file; skipping.",
-                Char(glyph.char)
+    def _write_property(self, outstream, key, value, comments):
+        """Write out a property."""
+        if value is None:
+            return
+        # this may use custom string converter (e.g codepoint labels)
+        value = str(value)
+        if not value:
+            return
+        write_comments(outstream, comments, comm_char=self.comment)
+        if '\n' not in value:
+            outstream.write(f'{key}: {self._quote_if_needed(value)}\n')
+        else:
+            outstream.write(
+                f'{key}:\n{self.tab}' '{}\n'.format(
+                    f'\n{self.tab}'.join(
+                        self._quote_if_needed(_line)
+                        for _line in value.splitlines()
+                    )
+                )
             )
-            continue
-        label = f'{ord(glyph.char):04x}'
-        _write_glyph(
-            outstream, [label],
-            glyph, ink, paper, comment, tab, separator, empty
-        )
+    def _quote_if_needed(self, value):
+        """See if string value needs double quotes."""
+        value = str(value)
+        if (
+                (value.startswith('"') and value.endswith('"'))
+                # leading or trailing space
+                or value[:1].isspace() or value[-1:].isspace()
+                # anything that could be mistaken for a glyph
+                or all(_c in (self.ink, self.paper, self.empty) for _c in value)
+            ):
+            return f'"{value}"'
+        return value
+
+
+class YaffWriter(TextWriter, YaffParams):
+
+    def save(self, fonts, outstream):
+        """Write fonts to a plaintext stream as yaff."""
+        for number, font in enumerate(fonts):
+            if len(fonts) > 1:
+                outstream.write(BOUNDARY_MARKER + '\n')
+            logging.debug('Writing %s to section #%d', font.name, number)
+            write_comments(outstream, font.get_comments(), comm_char=self.comment, is_global=True)
+            # we always output name, font-size and spacing
+            # plus anything that is different from the default
+            props = {
+                'name': font.name,
+                'spacing': font.spacing,
+                **font.nondefault_properties
+            }
+            if font.spacing in ('character-cell', 'multi-cell'):
+                props['raster-size'] = font.raster_size
+            else:
+                props['bounding-box'] = font.bounding_box
+            if props:
+                # write recognised yaff properties first, in defined order
+                ordered_keys = [
+                    *(_k for _k in PROPERTIES if _k in props),
+                    *(_k for _k in props if _k not in PROPERTIES)
+                ]
+                ordered_props = {_k: props[_k] for _k in ordered_keys}
+                for key in ordered_keys:
+                    self._write_property(outstream, key, props[key], font.get_comments(key))
+                outstream.write('\n')
+            for glyph in font.glyphs:
+                self._write_glyph(
+                    outstream, glyph, suppress_codepoint=charmaps.is_unicode(font.encoding)
+                )
+
+
+class DrawWriter(TextWriter, DrawParams):
+
+    def __init__(self, ink='', paper=''):
+        self.ink = ink or self.ink
+        self.paper = paper or self.paper
+
+    def save(self, font, outstream):
+        """Write one font to a plaintext stream as hexdraw."""
+        write_comments(outstream, font.get_comments(), comm_char=self.comment, is_global=True)
+        for glyph in font.glyphs:
+            if len(glyph.char) > 1:
+                logging.warning(
+                    "Can't encode grapheme cluster %s in .draw file; skipping.",
+                    Char(glyph.char)
+                )
+                continue
+            self._write_glyph(outstream, glyph, label=f'{ord(glyph.char):04x}')
 
 
 ##############################################################################
 # handle comments (used by hex)
-
 
 def write_comments(outstream, comments, comm_char, is_global=False):
     """Write out the comments attached to a given font item."""

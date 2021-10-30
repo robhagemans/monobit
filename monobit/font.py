@@ -203,7 +203,7 @@ class Font:
         # use index as codepoint if no codepoints or chars set
         if not has_codepoint and not has_char:
             self._glyphs = tuple(
-                _glyph.set_annotations(codepoint=(_index,))
+                _glyph.modify(codepoint=(_index,))
                 for _index, _glyph in enumerate(self._glyphs)
             )
         # update glyph unicode annotations
@@ -768,9 +768,9 @@ class Font:
                 # update codepoint based on this font's encoding
                 if encoder is not None:
                     new_codepoint = encoder.codepoint(glyph.char)
-                    glyph = glyph.set_annotations(tags=new_tags, codepoint=new_codepoint)
+                    glyph = glyph.modify(tags=new_tags, codepoint=new_codepoint)
                 else:
-                    glyph = glyph.set_annotations(tags=new_tags)
+                    glyph = glyph.modify(tags=new_tags)
                 glyphs.append(glyph)
         return Font(glyphs, self._comments, self._properties)
 

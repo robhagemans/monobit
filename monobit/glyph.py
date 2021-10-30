@@ -186,6 +186,17 @@ class Glyph:
     def codepoint(self):
         return self._codepoint
 
+    def get_labels(self, suppress_codepoint=False):
+        """Get glyph labels."""
+        labels = []
+        # don't write out codepoints for unicode fonts as we have u+XXXX already
+        if self.codepoint and (not suppress_codepoint or not self.char):
+            labels.append(self.codepoint)
+        if self.char:
+            labels.append(self.char)
+        labels.extend(self.tags)
+        return tuple(labels)
+
     @property
     def comments(self):
         return self._comments
