@@ -204,7 +204,6 @@ def _write_fzx(outstream, fzx_props, fzx_glyphs):
 def _convert_from_fzx(fzx_props, fzx_glyphs):
     """Convert FZX properties and glyphs to standard."""
     # set glyph properties
-    # drop undefined glyphs (zero advance empty)
     glyphs = tuple(
         _glyph.modify(
             codepoint=(_codepoint,),
@@ -215,7 +214,8 @@ def _convert_from_fzx(fzx_props, fzx_glyphs):
             'kern', 'fzx_width', 'shift'
         )
         for _codepoint, _glyph in enumerate(fzx_glyphs, start=32)
-        if _glyph.width and _glyph.height and (_glyph.fzx_width + _glyph.tracking - _glyph.kern) != 0
+        # drop undefined glyphs (zero advance empty)
+        if (_glyph.width and _glyph.height) or (_glyph.fzx_width+1 + _glyph.tracking - _glyph.kern != 0)
     )
     # set font properties
     # if there are common blank rows, call them leading instead of ascent
