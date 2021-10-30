@@ -8,7 +8,8 @@ licence: https://opensource.org/licenses/MIT
 import logging
 import string
 from types import SimpleNamespace
-from itertools import count
+from itertools import count, zip_longest
+from collections import deque
 
 from ..matrix import to_text
 from ..storage import loaders, savers
@@ -16,8 +17,9 @@ from ..encoding import charmaps
 from ..streams import FileFormatError
 from ..font import PROPERTIES, Font
 from ..glyph import Glyph
-from ..label import strip_matching, label as to_label
-from ..label import Char, Codepoint, Tag
+from ..label import strip_matching, label
+from ..label import Char, Codepoint, Tag, Label
+from ..struct import Props
 
 
 ##############################################################################
@@ -28,57 +30,6 @@ _CODESTART = _WHITESPACE + string.digits + string.ascii_letters + '_-."'
 
 BOUNDARY_MARKER = '---'
 
-def _parse_yaff_keys(keys):
-    """Convert keys on input from .yaff."""
-    kwargs = dict(
-        char='',
-        codepoint=(),
-        tags=[],
-    )
-    for key in keys:
-        label = to_label(key)
-        indexer = label.indexer()
-        try:
-            kwargs['tags'].append(indexer['tag'])
-            continue
-        except KeyError:
-            pass
-        kwargs.update(indexer)
-    return kwargs
-
-def _parse_draw_keys(keys):
-    """Convert keys on input from .draw."""
-    kwargs = dict(
-        char='',
-        codepoint=(),
-        tags=(),
-    )
-    # only one key allowed in .draw, rest ignored
-    key = keys[0]
-    try:
-        kwargs['char'] = chr(int(key, 16))
-    except (TypeError, ValueError):
-        kwargs['tags'] = [key]
-    return kwargs
-
-
-_YAFF_PARAMETERS = dict(
-    ink='@',
-    paper='.',
-    comment='#',
-    tab='    ',
-    separator=':',
-    empty='-',
-    parse_glyph_keys=_parse_yaff_keys
-)
-
-_DRAW_PARAMETERS = dict(
-    comment='%',
-    tab='\t',
-    separator=':',
-    empty='-',
-    parse_glyph_keys=_parse_draw_keys
-)
 
 ##############################################################################
 
@@ -86,12 +37,12 @@ _DRAW_PARAMETERS = dict(
 @loaders.register('yaff', 'yaffs', magic=(b'---',), name='monobit-yaff')
 def load_yaff(instream, where=None):
     """Load font from a monobit .yaff file."""
-    return _load_fonts(instream.text, **_YAFF_PARAMETERS)
+    return _load_yaff(instream.text)
 
 @savers.register(linked=load_yaff)
-def save(fonts, outstream, where=None):
+def save_yaff(fonts, outstream, where=None):
     """Write fonts to a monobit .yaff file."""
-    _save_yaff(fonts, outstream.text, **_YAFF_PARAMETERS)
+    _save_yaff(fonts, outstream.text)
 
 
 @loaders.register('draw', 'text', 'txt', name='hexdraw')
@@ -102,8 +53,7 @@ def load_draw(instream, where=None, ink='#', paper='-'):
     ink: character used for inked/foreground pixels
     paper: character used for uninked/background pixels
     """
-    params = dict(ink=ink, paper=paper, **_DRAW_PARAMETERS)
-    return _load_fonts(instream.text, **params)
+    return _load_draw(instream.text, _ink=ink, _paper=paper)
 
 @savers.register(linked=load_draw)
 def save_draw(fonts, outstream, where=None, ink='#', paper='-'):
@@ -115,226 +65,362 @@ def save_draw(fonts, outstream, where=None, ink='#', paper='-'):
     """
     if len(fonts) > 1:
         raise FileFormatError("Can only save one font to hexdraw file.")
-    params = dict(ink=ink, paper=paper, **_DRAW_PARAMETERS)
+    params = {**vars(DrawParams), **dict(ink=ink, paper=paper)}
     _save_draw(fonts[0], outstream.text, **params)
 
 
 ##############################################################################
-# handle comments (used by hex)
-
-def clean_comment(comment):
-    """Remove leading characters from comment."""
-    while comment and not comment[-1]:
-        comment = comment[:-1]
-    if not comment:
-        return []
-    comment = [(_line if _line else '') for _line in comment]
-    # remove "comment char" - non-alphanumeric shared first character
-    firsts = [_line[0:1] for _line in comment if _line]
-    if len(set(firsts)) == 1 and firsts[0] not in string.ascii_letters + string.digits:
-        comment = [_line[1:] for _line in comment]
-    # normalise leading whitespace
-    if all(_line.startswith(' ') for _line in comment if _line):
-        comment = [_line[1:] for _line in comment]
-    return comment
-
-def split_global_comment(comment):
-    while comment and not comment[-1]:
-        comment = comment[:-1]
-    try:
-        splitter = comment[::-1].index('')
-    except ValueError:
-        global_comment = comment
-        comment = []
-    else:
-        global_comment = comment[:-splitter-1]
-        comment = comment[-splitter:]
-    return global_comment, comment
-
-def write_comments(outstream, comments, comm_char, is_global=False):
-    """Write out the comments attached to a given font item."""
-    if comments:
-        if not is_global:
-            outstream.write('\n')
-        for line in comments:
-            outstream.write('{} {}\n'.format(comm_char, line))
-        if is_global:
-            outstream.write('\n')
-
-
 ##############################################################################
 # read file
 
-def _new_cluster():
-    """Bag of elements clustered in a text file (glyph, property, etc)."""
-    return SimpleNamespace(
-        keys=[],
-        values=[],
-        comments=[]
-    )
 
-def _load_fonts(instream, ink, paper, separator, empty, parse_glyph_keys, **kwargs):
-    """Read and parse a plaintext font file."""
-    pack = []
-    for number in count():
-        elements, eof = _read_text(instream, separator)
-        if eof and not elements:
-            break
-        if not elements:
-            logging.debug('Section #%d is empty.', number)
-            # no font to read, no comments to keep
-            continue
-        logging.debug('Found content in section #%d.', number)
-        # extract comments
-        elements, global_comments = _extract_comments(elements)
-        # first take out all glyphs
-        glyphs = _parse_glyphs(elements, ink, paper, empty, parse_glyph_keys)
-        # property comments currently not preserved
-        properties, property_comments = _parse_properties(elements, ink, paper, empty)
-        comments = {'': global_comments, **property_comments}
-        # construct font
-        pack.append(Font(glyphs, comments, properties))
-    return pack
-
-def _read_text(instream, separator):
-    """Read a plaintext font file."""
-    # cluster by property/character/comment block
-    elements = []
-    current = _new_cluster()
-    parsing_comment = False
-    eof = False
-    for line in instream:
+def _load_yaff(text_stream):
+    """Parse a yaff/yaffs file."""
+    reader = YaffReader()
+    fonts = []
+    for line in text_stream:
         if line.strip() == BOUNDARY_MARKER:
-            break
-        # strip all trailing whitespace (important!)
-        line = line.rstrip()
-        if not line:
-            # preserve empty lines if they separate comments
-            if parsing_comment:
-                current.comments.append('')
-        elif current.keys and line[0] in _WHITESPACE:
-            # found a follow-up value line
-            current.values.append(line.lstrip())
+            fonts.append(YaffConverter.get_font_from(reader))
+            reader.reset()
         else:
-            # found a key or comment
-            if current.values:
-                # we already have values for the last key, so this is a new cluster
-                elements.append(current)
-                current = _new_cluster()
-            parsing_comment = line[0] not in _CODESTART
-            if parsing_comment:
-                current.comments.append(line)
-            else:
-                key, sep, rest = line.partition(separator)
-                if sep != separator:
-                    raise ValueError(
-                        'Invalid .yaff or .draw file: '
-                        f'key `{key.strip()}` not followed by `{separator}`'
-                    )
-                current.keys.append(key)
-                # remainder of label line after : is first value line
-                if rest:
-                    current.values.append(rest.lstrip())
-    else:
-        # we're run through the whole file, no separators
-        eof = True
-    # append any trailing content
-    if current.keys or current.values or current.comments:
-        elements.append(current)
-    return elements, eof
+            reader.step(line)
+    fonts.append(YaffConverter.get_font_from(reader))
+    return fonts
 
 
-def _is_glyph(value, ink, paper, empty):
-    """Text line is a glyph."""
-    value = value.strip()
-    return (value == empty) or not(set(value) - set(ink) - set(paper))
+def _load_draw(text_stream, _ink='', _paper=''):
+    """Parse a yaff/yaffs file."""
 
-def _parse_properties(elements, ink, paper, empty):
-    """Parse properties."""
-    # properties: anything that contains more than .@
-    property_elements = [
-        _el for _el in elements
-        if not any(_is_glyph(_line, ink, paper, empty) for _line in _el.values)
-    ]
-    # multiple labels translate into multiple keys with the same value
-    properties = {
-        # strip matching double quotes on a per-line basis
-        _key: '\n'.join(strip_matching(_line, '"') for _line in _el.values)
-        for _el in property_elements
-        for _key in _el.keys
-    }
-    # property comments
-    comments = {
-        _key: clean_comment(_el.comments)
-        for _el in property_elements
-        for _key in _el.keys
-    }
-    return properties, comments
+    class _Converter(DrawConverter):
+        ink=_ink or DrawConverter.ink
+        paper=_paper or DrawConverter.paper
 
-def _parse_glyphs(elements, ink, paper, empty, parse_glyph_keys):
-    """Parse glyphs."""
-    # text version of glyphs
-    # a glyph is any key/value where at least one line in the value contains no alphanumerics
-    # to avoid detection as glyph, a value can be quited
-    glyph_elements = [
-        _el for _el in elements
-        if any(_is_glyph(_line, ink, paper, empty) for _line in _el.values)
-    ]
-    # convert text representation to glyph
-    glyphs = [
-        _parse_glyph(_el, ink, paper, empty, parse_glyph_keys)
-        for _el in glyph_elements
-    ]
-    return glyphs
+    reader = DrawReader()
+    for line in text_stream:
+        reader.step(line)
+    return _Converter.get_font_from(reader)
 
-def _parse_glyph(element, ink, paper, empty, parse_glyph_keys):
-    """Parse single glyph."""
-    glyph_lines = [_line for _line in element.values if _is_glyph(_line, ink, paper, empty)]
-    if glyph_lines == [empty]:
-        glyph = Glyph()
-    else:
-        glyph = Glyph.from_matrix(glyph_lines, paper=paper)
-    # glyph properties
-    prop_lines =  [_line for _line in element.values if not _is_glyph(_line, ink, paper, empty)]
-    # FIXME - this is hacky
-    # we're submitting prop_lines as instream becuase for line in will work
-    # some kind of recursive call makes sense though
-    elements, _ = _read_text(prop_lines, separator=':')
-    if elements:
+
+class TextReader:
+    """Parser for text-based font file."""
+
+    # first/second pass constants
+    separator = ':'
+    comment = '#'
+    # output only
+    tab = '    '
+    # tuple of individual chars, need to be separate for startswith
+    whitespace = tuple(' \t')
+
+    def __init__(self):
+        """Set up text reader."""
+        # current element appending to
+        self._current = ''
+        # elements done
+        self._elements = deque()
+
+    # first pass: lines to elements
+
+    def get_clusters(self):
+        """Convert elements to clusters and return."""
+        self._yield_element()
+        # run second pass and append
+        return self._build_clusters(self._elements)
+
+    def reset(self):
+        """Reset parser for new section."""
+        self._elements = deque()
+        self._current = ''
+
+    def _yield_element(self):
+        """Close and append current element and start a new one."""
+        if self._current:
+            self._elements.append(self._current)
+        self._current = ''
+
+    def step(self, line):
+        """Parse a single line."""
+        # strip trailing whitespace
+        contents = line.rstrip()
+        if contents.startswith(self.comment):
+            if self._current and not self._current.startswith(self.comment):
+                # new comment
+                self._yield_element()
+            self._step_value(contents)
+        elif not contents.strip():
+            # ignore empty lines except while parsing comments
+            if self._current.startswith(self.comment):
+                # new comment
+                self._yield_element()
+        elif not contents.startswith(self.whitespace):
+            # new key
+            key, sep, value = contents.partition(self.separator)
+            self._yield_element()
+            # yield key
+            self._step_value(key + sep)
+            self._yield_element()
+            # start building value
+            self._step_value(value.lstrip())
+        else:
+            # continue building value
+            self._step_value(contents)
+
+    def _step_value(self, contents):
+        """Continue building value."""
+        if self._current:
+            self._current += '\n' + contents
+        else:
+            self._current = contents
+
+    # second pass: elements to clusters
+
+    def _build_clusters(self, elements):
+        """Group elements into clusters."""
+        clusters = []
+        # current cluster
+        current = []
+        for element in elements:
+            # drop empty elements at top
+            if clusters or element:
+                current.append(element)
+            # each cluster ends with a value
+            # it can start with multiple keys and comments in no given order
+            if element and not element.startswith(self.comment) and not element.endswith(self.separator):
+                # yield cluster
+                clusters.append(current)
+                current = []
+        # separate out global top comment
+        if clusters and clusters[0]:
+            comments = [
+                _elem for _elem in clusters[0] if _elem.startswith(self.comment) or not _elem
+            ]
+            if comments:
+                others = [
+                    _elem for _elem in clusters[0] if _elem and not _elem.startswith(self.comment)
+                ]
+                new_first = comments[:-1]
+                new_second = [comments[-1], *others]
+                clusters = [new_first, new_second, *clusters[1:]]
+        return clusters
+
+
+class TextConverter:
+    """Convert text clusters to font."""
+
+    # first/second pass constants
+    separator = ':'
+    comment = '#'
+
+    # third-pass constants
+    ink = '@'
+    paper = '.'
+    empty = '-'
+    # convert key string to key object
+    convert_key = staticmethod(label)
+
+    # third pass: interpret clusters
+
+    def __init__(self):
+        """Set up converter."""
+        self.props = Props()
+        self.glyphs = []
+
+    @classmethod
+    def get_font_from(cls, reader):
+        """Get clusters from reader and convert to Font."""
+        props, glyphs = cls.convert_from(reader)
+        return Font(glyphs=glyphs, properties=vars(props))
+
+    @classmethod
+    def convert_from(cls, reader):
+        """Get clusters from reader and convert."""
+        clusters = reader.get_clusters()
+        # recursive call
+        converter = cls()
+        for cluster in clusters:
+            converter.convert_cluster(cluster)
+        return converter.props, converter.glyphs
+
+    def convert_cluster(self, cluster):
+        """Convert cluster."""
+        # keys
+        keys = tuple(
+            _elem[:-len(self.separator)].strip()
+            for _elem in cluster
+            if _elem.endswith(self.separator)
+        )
+        comments = tuple(
+            _elem
+            for _elem in cluster
+            if _elem.startswith(self.comment)
+        )
+        comments = self._clean_comment('\n'.join(comments))
+        values = tuple(
+            _elem
+            for _elem in cluster
+            if _elem and not _elem.startswith(self.comment) and not _elem.endswith(self.separator)
+        )
+        if len(values) > 1:
+            raise ValueError('Cluster with multiple value elements')
+        if not values:
+            if keys:
+                raise ValueError('Cluster with keys but without value element')
+            # global comment
+            self.props[Font.comment_prefix] = comments
+            return
+        value, = values
+        # if any line in the value has only glyph symbols, this cluster is a glyph
+        is_glyph = value and any(_line for _line in value.splitlines() if self._line_is_glyph(_line))
+        if is_glyph:
+            keys = tuple(self.convert_key(_key) for _key in keys)
+            chars = tuple(_key for _key in keys if isinstance(_key, Char))
+            codepoints = tuple(_key for _key in keys if isinstance(_key, Codepoint))
+            tags = tuple(_key for _key in keys if isinstance(_key, Tag))
+            glyph = self._convert_glyph(value)
+            # duplicate glyphs if we have multiple chars or codepoints
+            self.glyphs.extend(
+                glyph.modify(char=char, codepoint=cp, tags=tags, comments=comments)
+                for char, cp, _ in zip_longest(chars, codepoints, [None], fillvalue=None)
+            )
+        else:
+            # multiple labels translate into multiple keys with the same value
+            for key in keys:
+                self.props[key] = '\n'.join(_line for _line in value.splitlines() if _line)
+                # property comments
+                if comments:
+                    self.props[Font.comment_prefix + key] = comments
+
+
+    def _line_is_glyph(self, value):
+        """Text line is a glyph."""
+        value = value.strip()
+        return value and (
+            (value == self.empty)
+            or not(set(value) - set(self.ink) - set(self.paper))
+        )
+
+    def _convert_glyph(self, value):
+        """Parse single glyph."""
+        lines = value.splitlines()
+        glyph_lines = [
+            _line.strip() for _line in lines
+             if self._line_is_glyph(_line)
+        ]
+        if not glyph_lines:
+            raise ValueError('Not a glyph definition.')
+        elif glyph_lines == [self.empty]:
+            glyph = Glyph()
+        else:
+            glyph = Glyph.from_matrix(glyph_lines, paper=self.paper)
+        # glyph properties
+        prop_lines = [
+            _line for _line in lines
+             if not self._line_is_glyph(_line)
+        ]
+        # new text reader on glyph property lines
+        reader = TextReader()
+        for line in prop_lines:
+            reader.step(line)
+            # recursive call
+        props, glyphs = self.convert_from(reader)
         # ignore in-glyph comments
-        props, _ = _parse_properties(elements, ink, paper, empty)
+        props = {
+            _k: _v
+            for _k, _v in vars(props).items()
+            if not _k.startswith('_')
+        }
         glyph = glyph.modify(**props)
-    glyph = glyph.set_annotations(
-        comments=clean_comment(element.comments),
-        **parse_glyph_keys(element.keys)
-    )
-    return glyph
+        return glyph
 
-def _extract_comments(elements):
-    """Parse comments and remove from element list."""
-    if not elements:
-        return []
-    # header comment
-    if elements[0].keys:
-        # split out global comment
-        header_comment, elements[0].comments = split_global_comment(elements[0].comments)
-        elements[0].comments = clean_comment(elements[0].comments)
-        header_comment = clean_comment(header_comment)
-    else:
-        header_comment = elements[0].comments
-        elements = elements[1:]
-    comments = clean_comment(header_comment)
-    # preserve any comment at end of file
-    if elements and not elements[-1].keys:
-        elements[-1].comments = clean_comment(elements[-1].comments)
-        # separate header and footer with empty line
-        if comments and elements[-1].comments:
-            comments.append('')
-        comments.extend(clean_comment(elements[-1].comments))
-        elements = elements[:-1]
-    return elements, comments
+    def _convert_value(self, value):
+        """Strip matching double quotes on a per-line basis."""
+        return '\n'.join(strip_matching(_line, '"') for _line in value.splitlines())
+
+    def _clean_comment(self, comment):
+        """Remove common leading space from comment."""
+        # normalise single leading space
+        lines = comment.splitlines()
+        lines = tuple(
+            _line[len(self.comment):] if _line.startswith(self.comment) else _line
+            for _line in lines
+        )
+        if all(_line.startswith(' ') for _line in lines if _line):
+            return '\n'.join(_line[1:] for _line in lines)
+        return '\n'.join(lines)
 
 
+##############################################################################
+
+class YaffParams:
+    """Parameters for .yaff format."""
+
+    # first/second pass constants
+    separator = ':'
+    comment = '#'
+    # output only
+    tab = '    '
+    # tuple of individual chars, need to be separate for startswith
+    whitespace = tuple(' \t')
+
+    # third-pass constants
+    ink = '@'
+    paper = '.'
+    empty = '-'
+    # convert key string to key object
+    convert_key = label
+
+
+class YaffReader(TextReader, YaffParams):
+    """Reader for .yaff files."""
+
+class YaffConverter(TextConverter, YaffParams):
+    """Converter for .yaff files."""
+
+
+##############################################################################
+
+class DrawParams:
+    """Parameters for .draw format."""
+
+    # first/second pass constants
+    separator = ':'
+    comment = '%'
+    # output only
+    tab = '\t'
+    # tuple of individual chars, need to be separate for startswith
+    whitespace = tuple(' \t')
+
+    # third-pass constants
+    ink = '#'
+    paper = '-'
+    empty = '-'
+
+    @staticmethod
+    def convert_key(keys):
+        """Convert keys on input from .draw."""
+        kwargs = dict(
+            char='',
+            codepoint=(),
+            tags=(),
+        )
+        # only one key allowed in .draw, rest ignored
+        key = keys[0]
+        try:
+            kwargs['char'] = chr(int(key, 16))
+        except (TypeError, ValueError):
+            kwargs['tags'] = [key]
+        return kwargs
+
+
+class DrawReader(TextReader, DrawParams):
+    """Reader for .draw files."""
+
+
+class DrawConverter(TextConverter, DrawParams):
+    """Converter for .draw files."""
+
+
+##############################################################################
 ##############################################################################
 # write file
 
@@ -355,7 +441,6 @@ def _write_glyph(outstream, labels, glyph, ink, paper, comm_char, tab, separator
         outstream.write(f'{tab}offset: {str(glyph.offset)}\n')
     if glyph.tracking:
         outstream.write(f'{tab}tracking: {str(glyph.tracking)}\n')
-    #logging.warning(repr(glyph.kern_to))
     if glyph.kern_to:
         outstream.write(f'{tab}kern-to: \n')
         for line in str(glyph.kern_to).splitlines():
@@ -393,8 +478,14 @@ def _write_prop(outstream, key, value, tab, comments, comm_char):
             )
         )
 
-def _save_yaff(fonts, outstream, ink, paper, comment, tab, separator, empty, **kwargs):
+def _save_yaff(fonts, outstream):
     """Write one font to a plaintext stream."""
+    ink = YaffParams.ink
+    paper = YaffParams.paper
+    empty = YaffParams.empty
+    comment = YaffParams.comment
+    tab = YaffParams.tab
+    separator = YaffParams.separator
     for number, font in enumerate(fonts):
         if len(fonts) > 1:
             outstream.write(BOUNDARY_MARKER + '\n')
@@ -450,3 +541,18 @@ def _save_draw(font, outstream, ink, paper, comment, tab, separator, empty, **kw
             outstream, [label],
             glyph, ink, paper, comment, tab, separator, empty
         )
+
+
+##############################################################################
+# handle comments (used by hex)
+
+
+def write_comments(outstream, comments, comm_char, is_global=False):
+    """Write out the comments attached to a given font item."""
+    if comments:
+        if not is_global:
+            outstream.write('\n')
+        for line in comments.splitlines():
+            outstream.write('{} {}\n'.format(comm_char, line))
+        if is_global:
+            outstream.write('\n')

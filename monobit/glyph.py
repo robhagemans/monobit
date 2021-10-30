@@ -137,7 +137,7 @@ class Glyph:
 
     def __init__(
             self, pixels=(), *,
-            codepoint=(), char='', tags=(), comments=(),
+            codepoint=(), char='', tags=(), comments='',
             offset=None, tracking=0, kern_to=(),
             **kwargs
         ):
@@ -145,10 +145,10 @@ class Glyph:
         # glyph data
         self._rows = tuple(tuple(bool(_bit) for _bit in _row) for _row in pixels)
         # annotations
-        self._comments = tuple(comments)
+        self._comments = comments
         self._codepoint = Codepoint(codepoint).value
-        self._char = char
-        self._tags = tuple(tags)
+        self._char = Char(char).value
+        self._tags = tuple(Tag(_tag).value for _tag in tags)
         self._offset = Coord.create(offset)
         self._tracking = int(tracking)
         self._kern_to = KernTable(kern_to)
@@ -216,7 +216,7 @@ class Glyph:
             f"tags={repr(self._tags)}, "
             + "comments=({}), ".format(
                 '' if not self._comments else
-                "\n  '" + "',\n  '".join(self.comments) + "'"
+                "\n  '" + "\n',\n  '".join(self.comments.splitlines()) + "'"
             )
             + ', '.join(f'{_k}={_v}' for _k, _v in self._props.items())
             + (', ' if self._props else '')
@@ -247,10 +247,10 @@ class Glyph:
         """Set annotations using provided encoder object."""
         # use codepage to find char if not set
         if not self.char:
-            return self.set_annotations(char=encoder.char(self.codepoint))
+            return self.modify(char=encoder.char(self.codepoint))
         # use codepage to find codepoint if not set
         if not self.codepoint:
-            return self.set_annotations(codepoint=encoder.codepoint(self.char))
+            return self.modify(codepoint=encoder.codepoint(self.char))
         # both are set, check if consistent with codepage
         enc_char = encoder.char(self.codepoint)
         if (self.char != enc_char) and is_graphical(self.char) and is_graphical(enc_char):
@@ -268,7 +268,7 @@ class Glyph:
     @scriptable
     def drop_comments(self):
         """Return a copy of the glyph without comments."""
-        return self.modify(comments=())
+        return self.modify(comments='')
 
     def modify(
             self, pixels=NOT_SET, *,
@@ -298,7 +298,7 @@ class Glyph:
             codepoint=codepoint,
             char=char,
             tags=tuple(tags),
-            comments=tuple(comments),
+            comments=comments,
             offset=offset,
             tracking=tracking,
             kern_to=kern_to,

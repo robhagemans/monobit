@@ -15,7 +15,7 @@ from ..storage import loaders, savers
 from ..streams import FileFormatError
 from ..font import Font
 from ..glyph import Glyph
-from .yaff import clean_comment, split_global_comment, write_comments
+from .yaff import write_comments
 
 
 @loaders.register('hext', name='PC-BASIC Extended HEX')
@@ -79,6 +79,39 @@ def load(instream):
     comments.extend(clean_comment(current_comment))
     return Font(glyphs, comments=comments, properties=dict(encoding='unicode'))
 
+
+def clean_comment(comment):
+    """Remove leading characters from comment."""
+    while comment and not comment[-1]:
+        comment = comment[:-1]
+    if not comment:
+        return []
+    comment = [(_line if _line else '') for _line in comment]
+    # remove "comment char" - non-alphanumeric shared first character
+    firsts = [_line[0:1] for _line in comment if _line]
+    if len(set(firsts)) == 1 and firsts[0] not in string.ascii_letters + string.digits:
+        comment = [_line[1:] for _line in comment]
+    # normalise leading whitespace
+    if all(_line.startswith(' ') for _line in comment if _line):
+        comment = [_line[1:] for _line in comment]
+    return comment
+
+def split_global_comment(comment):
+    while comment and not comment[-1]:
+        comment = comment[:-1]
+    try:
+        splitter = comment[::-1].index('')
+    except ValueError:
+        global_comment = comment
+        comment = []
+    else:
+        global_comment = comment[:-splitter-1]
+        comment = comment[-splitter:]
+    return global_comment, comment
+
+
+##############################################################################
+# saver
 
 @savers.register(linked=load_hex)
 def save_hex(fonts, outstream, where=None):

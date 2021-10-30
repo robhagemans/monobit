@@ -74,6 +74,8 @@ class Tag(Label):
         if isinstance(value, Tag):
             self.value = value.value
             return
+        if Tag is None:
+            tag = ''
         if not isinstance(value, str):
             raise ValueError(
                 f'Cannot convert value {repr(value)} of type {type(value)} to tag.'
@@ -123,6 +125,8 @@ class Codepoint(Label):
             return
         if isinstance(value, int):
             value = (value,)
+        if value is None:
+            value = ()
         # int.from_bytes? need byte width e.g. utf-32
         self.value = tuple(value)
         if not all(isinstance(_elem, int) for _elem in self.value):
@@ -189,6 +193,8 @@ class Char(Label):
         if isinstance(value, Char):
             self.value = value.value
             return
+        if value is None:
+            value = ''
         try:
             value = ''.join(value)
         except TypeError:

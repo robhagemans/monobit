@@ -37,7 +37,7 @@ class Props(SimpleNamespace):
         return len(vars(self))
 
     def __iter__(self):
-        return iter(_item.replace('_', '-') for _item in vars(self))
+        return iter(_item for _item in vars(self))
 
     def __str__(self):
         return '\n'.join(f'{_k}: {_v}' for _k, _v in vars(self).items())
