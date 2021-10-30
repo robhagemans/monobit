@@ -360,6 +360,8 @@ def _write_glyph(outstream, labels, glyph, ink, paper, comm_char, tab, separator
         outstream.write(f'{tab}kern-to: \n')
         for line in str(glyph.kern_to).splitlines():
             outstream.write(f'{tab*2}{line}\n')
+    for key, value in glyph.properties.items():
+        outstream.write(f'{tab}{key}: {value}\n')
     if glyph.offset or glyph.tracking or glyph.kern_to:
         outstream.write('\n')
     outstream.write('\n')

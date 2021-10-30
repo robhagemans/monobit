@@ -204,6 +204,10 @@ class Glyph:
     def kern_to(self):
         return self._kern_to
 
+    @property
+    def properties(self):
+        return self._props
+
     def __repr__(self):
         """Text representation."""
         return (
