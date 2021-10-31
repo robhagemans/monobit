@@ -14,6 +14,7 @@ from .pack import Pack
 from .font import Font, operations as _operations
 from .glyph import Glyph
 from . import formats
+from . import taggers
 from .storage import open_location, load, save, loaders, savers
 from .encoding import charmaps
 from .renderer import render, render_image, render_text

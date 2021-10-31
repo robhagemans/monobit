@@ -8,7 +8,6 @@ licence: https://opensource.org/licenses/MIT
 from functools import wraps
 from functools import partial
 import logging
-import unicodedata
 
 try:
     # python 3.9
@@ -413,30 +412,6 @@ class Font:
             comments[property] += '\n'
         comments[property] += comment
         return Font(self._glyphs, comments, self._properties)
-
-    # move to glyph.with_name()
-    @scriptable
-    def add_glyph_names(self):
-        """Add unicode glyph names as comments, if no comment already exists."""
-        glyphs = list(self._glyphs)
-        for char, index in self._chars.items():
-            name = ', '.join(unicodedata.name(_cp, '') for _cp in char)
-            if name and not self._glyphs[index].comments:
-                try:
-                    category = unicodedata.category(char)
-                except TypeError:
-                    # multi-codepoint glyphs
-                    category = ''
-                if category.startswith('C'):
-                    description = '{}'.format(name)
-                else:
-                    description = '[{}] {}'.format(char, name)
-                comments = glyphs[index].comments
-                if comments and description:
-                    comments += '\n'
-                comments += description
-                glyphs[index] = glyphs[index].modify(comments=comments)
-        return Font(glyphs, self._comments, self._properties)
 
 
     ##########################################################################
