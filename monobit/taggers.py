@@ -66,6 +66,7 @@ class MappingTagger(Tagger):
     def __init__(self, mapping, name=''):
         """Set up mapping."""
         self._chr2tag = mapping
+        self.name = name
 
     @classmethod
     def load(cls, filename, *, name='', **kwargs):
@@ -83,7 +84,42 @@ class MappingTagger(Tagger):
 
     def get_tag(self, glyph):
         """Add unicode glyph names as comments, if no comment already exists."""
-        return self._chr2tag.get(glyph.char, '')
+        try:
+            return self._chr2tag[glyph.char]
+        except KeyError:
+            return self.get_default_tag(glyph)
+
+    def get_default_tag(self, glyph):
+        """Construct a default tag for unmapped glyphs."""
+        return ''
+
+
+class AdobeTagger(MappingTagger):
+
+    def get_default_tag(self, glyph):
+        """Construct a default tag for unmapped glyphs."""
+        char = glyph.char
+        if not char:
+            return ''
+        cps = [ord(_c) for _c in char]
+        # following agl recommendation for naming sequences
+        return '_'.join(f'uni{_cp:04X}' if _cp < 0x10000 else f'u{_cp:06X}' for _cp in cps)
+
+
+class SGMLTagger(MappingTagger):
+
+    def get_default_tag(self, glyph):
+        """Construct a default tag for unmapped glyphs."""
+        char = glyph.char
+        if not char:
+            return ''
+        cps = [ord(_c) for _c in char]
+        # joining numeric references by semicolons
+        # note that each entity should really start with & and end with ; e.g. &eacute;
+        return ';'.join(f'#{_cp:X}' for _cp in cps)
+
+
+
 
 
 ###################################################################################################
@@ -113,6 +149,6 @@ def _read_tagmap(data, separator=';', comment='#', joiner=' ', tag_column=0, uni
 
 tagmaps = {
     'unicode': UnicodeTagger(),
-    'adobe': MappingTagger.load('charmaps/agl/aglfn.txt', separator=';', unicode_column=0, tag_column=1),
-    'sgml': MappingTagger.load('charmaps/misc/SGML.TXT', separator='\t', unicode_column=2),
+    'adobe': AdobeTagger.load('charmaps/agl/aglfn.txt', separator=';', unicode_column=0, tag_column=1),
+    'sgml': SGMLTagger.load('charmaps/misc/SGML.TXT', separator='\t', unicode_column=2),
 }
