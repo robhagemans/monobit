@@ -435,7 +435,8 @@ class TextWriter:
     def _write_glyph(self, outstream, glyph, label=None, suppress_codepoint=False):
         """Write out a single glyph in text format."""
         # glyph comments
-        write_comments(outstream, glyph.comments, comm_char=self.comment)
+        if glyph.comments:
+            outstream.write('\n' + self._format_comment(glyph.comments))
         if label:
             labels = [label]
         else:
@@ -479,7 +480,10 @@ class TextWriter:
         value = str(value)
         if not value:
             return
-        write_comments(outstream, comments, comm_char=self.comment)
+        # write property comment
+        if comments:
+            outstream.write('\n' + self._format_comment(comments))
+        # write key-value pair
         if '\n' not in value:
             outstream.write(f'{key}: {self._quote_if_needed(value)}\n')
         else:
@@ -491,6 +495,11 @@ class TextWriter:
                     )
                 )
             )
+
+    def _format_comment(self, comments):
+        """Format a multiline comment."""
+        return '\n'.join(f'{self.comment} {_line}' for _line in comments.splitlines())
+
     def _quote_if_needed(self, value):
         """See if string value needs double quotes."""
         value = str(value)
@@ -513,7 +522,9 @@ class YaffWriter(TextWriter, YaffParams):
             if len(fonts) > 1:
                 outstream.write(BOUNDARY_MARKER + '\n')
             logging.debug('Writing %s to section #%d', font.name, number)
-            write_comments(outstream, font.get_comments(), comm_char=self.comment, is_global=True)
+            # write global comment
+            if font.get_comments():
+                outstream.write(self._format_comment(font.get_comments()) + '\n')
             # we always output name, font-size and spacing
             # plus anything that is different from the default
             props = {
@@ -549,7 +560,10 @@ class DrawWriter(TextWriter, DrawParams):
 
     def save(self, font, outstream):
         """Write one font to a plaintext stream as hexdraw."""
-        write_comments(outstream, font.get_comments(), comm_char=self.comment, is_global=True)
+        # write global comment
+        if font.get_comments():
+            outstream.write(self._format_comment(font.get_comments()) + '\n')
+        # write glyphs
         for glyph in font.glyphs:
             if len(glyph.char) > 1:
                 logging.warning(
