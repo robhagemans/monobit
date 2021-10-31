@@ -8,7 +8,6 @@ licence: https://opensource.org/licenses/MIT
 from functools import wraps
 from functools import partial
 import logging
-import unicodedata
 
 try:
     # python 3.9
@@ -159,7 +158,8 @@ class Font:
         #        until the constructor is complete
         self._properties = {}
         self._properties.update(self._filter_properties(properties))
-        self._add_encoding_data()
+        # add labels if unset (needs encoding property)
+        self._add_labels()
         # construct lookup tables
         self._tags = {
             _tag: _index
@@ -195,8 +195,8 @@ class Font:
             )
         return f"Font(glyphs=<{len(self._glyphs)} glyphs>, properties={props})"
 
-    def _add_encoding_data(self):
-        """Add unicode annotations for codepage."""
+    def _add_labels(self):
+        """Add character and codepoint labels."""
         has_codepoint = any(_glyph.codepoint for _glyph in self._glyphs)
         has_char = any(_glyph.char for _glyph in self._glyphs)
         # update glyph codepoints
@@ -206,13 +206,13 @@ class Font:
                 _glyph.modify(codepoint=(_index,))
                 for _index, _glyph in enumerate(self._glyphs)
             )
-        # update glyph unicode annotations
+        # update glyph labels
         encoding = self._get_encoder()
         if encoding is not None:
-            self._glyphs = [
-                _glyph.set_encoding_annotations(encoding)
+            self._glyphs = tuple(
+                _glyph.add_labels(encoding)
                 for _glyph in self._glyphs
-            ]
+            )
 
     def _get_encoder(self):
         """Get encoding object."""
@@ -412,26 +412,6 @@ class Font:
             comments[property] += '\n'
         comments[property] += comment
         return Font(self._glyphs, comments, self._properties)
-
-    # move to glyph.with_name()
-    @scriptable
-    def add_glyph_names(self):
-        """Add unicode glyph names as comments, if no comment already exists."""
-        glyphs = list(self._glyphs)
-        for char, index in self._chars.items():
-            name = ', '.join(unicodedata.name(_cp, '') for _cp in char)
-            if name and not self._glyphs[index].comments:
-                try:
-                    category = unicodedata.category(char)
-                except TypeError:
-                    # multi-codepoint glyphs
-                    category = ''
-                if category.startswith('C'):
-                    description = '{}'.format(name)
-                else:
-                    description = '[{}] {}'.format(char, name)
-                glyphs[index] = glyphs[index].add_annotations(comments=(description,))
-        return Font(glyphs, self._comments, self._properties)
 
 
     ##########################################################################

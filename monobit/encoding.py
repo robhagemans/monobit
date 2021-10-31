@@ -534,12 +534,15 @@ def is_private_use(char):
         for _c in char
     )
 
-def unicode_name(char):
+def unicode_name(char, no_name=''):
     """Unicode registered name."""
-    try:
-        return unicodedata.name(char)
-    except ValueError:
-        return ''
+    names = []
+    for c in char:
+        try:
+            names.append(unicodedata.name(c))
+        except ValueError:
+            names.append(no_name)
+    return ', '.join(names)
 
 
 ###################################################################################################

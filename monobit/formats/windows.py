@@ -683,7 +683,7 @@ def _parse_chartable_v2(fnt, win_props):
             for _row in range(height)
             for _col in range(bytewidth)
         )
-        glyph = Glyph.from_bytes(glyph_data, entry.geWidth).set_annotations(codepoint=(ord,))
+        glyph = Glyph.from_bytes(glyph_data, entry.geWidth).modify(codepoint=(ord,))
         glyphs.append(glyph)
     return glyphs
 

@@ -13,6 +13,7 @@ from ..streams import FileFormatError
 from ..font import Font, Coord
 from ..glyph import Glyph
 from ..encoding import charmaps
+from ..taggers import tagmaps
 
 
 # BDF specification: https://adobe-type-tools.github.io/font-tech-notes/pdfs/5005.BDF_Spec.pdf
@@ -477,12 +478,12 @@ def _read_bdf_characters(instream):
         try:
             int(label)
         except ValueError:
-            glyph = glyph.set_annotations(tags=[label])
+            glyph = glyph.modify(tags=[label])
         # ENCODING must be single integer or -1 followed by integer
         encvalue = int(meta['ENCODING'].split(' ')[-1])
         # no encoding number found
         if encvalue != -1:
-            glyph = glyph.set_annotations(codepoint=(encvalue,))
+            glyph = glyph.modify(codepoint=(encvalue,))
         glyphs.append(glyph)
         glyph_meta.append(meta)
         if not instream.readline().startswith('ENDCHAR'):
@@ -550,7 +551,7 @@ def _parse_properties(glyphs, glyph_props, bdf_props, x_props):
     # unless we're working in unicode
     if not charmaps.is_unicode(properties['encoding']):
         glyphs = [
-            _glyph.set_annotations(codepoint=int_to_bytes(_glyph.codepoint[0]))
+            _glyph.modify(codepoint=int_to_bytes(_glyph.codepoint[0]))
             for _glyph in glyphs
             if _glyph.codepoint
         ]
@@ -811,14 +812,12 @@ def _save_bdf(font, outstream):
         if glyph.tags:
             name = glyph.tags[0]
         else:
-            if encoding != -1 and not charmaps.is_unicode(font.encoding):
-                # use encoding value if available
+            # look up in adobe glyph list if character available
+            name = tagmaps['adobe'].get_tag(glyph)
+            # otherwise, use encoding value if available
+            if not name and encoding != -1:
                 name = f'char{encoding:02X}'
-            elif glyph.char:
-                # work with unicode sequence if character available
-                uni_ords = [ord(_c) for _c in glyph.char]
-                name = 'uni' + '-'.join(f'{_ord:04X}' for _ord in uni_ords)
-            else:
+            if not name:
                 logging.warning(
                     f'Multi-codepoint glyph {glyph.codepoint}'
                     "can't be stored as no name or character available."

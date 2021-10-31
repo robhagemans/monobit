@@ -118,7 +118,7 @@ def load_psf(instream, where=None):
         table = _read_unicode_table(instream, separator, startseq, encoding)
         # convert unicode table to labels
         cells = [
-            _glyph.set_annotations(char=''.join(table[_index]))
+            _glyph.modify(char=''.join(table[_index]))
             for _index, _glyph in enumerate(cells)
         ]
         properties.encoding = 'unicode'
