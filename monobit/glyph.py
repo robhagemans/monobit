@@ -147,7 +147,7 @@ class Glyph:
         # labels
         self._codepoint = Codepoint(codepoint).value
         self._char = Char(char).value
-        self._tags = tuple(Tag(_tag).value for _tag in tags)
+        self._tags = tuple(Tag(_tag).value for _tag in tags if _tag)
         # comments
         self._comments = comments
         # recognised properties
