@@ -54,40 +54,39 @@ def _validate(fonts):
 
 
 ##############################################################################
-# loaders
+# loader
 
 def _load_hex(instream):
     """Load font from a .hex file."""
     global_comment = []
     glyphs = []
-    current_comment = []
+    comment = []
     for line in instream:
         line = line.rstrip('\r\n')
-        if not line:
-            # preserve empty lines if they separate comments
-            if current_comment and current_comment[-1] != '':
-                current_comment.append('')
-            continue
-        # pass through lines without : as comments - allows e.g. to convert diffs, like hexdraw
-        if line[0] == '#' or ':' not in line:
-            current_comment.append(line)
-            continue
-        # parse code line
-        key, value = line.rsplit(':', 1)
-        value = value.strip()
-        if set(value) - set(string.hexdigits + ','):
-            # not a valid line, treat as comment
-            current_comment.append(line)
-            continue
-        if not glyphs and current_comment:
-            global_comment, current_comment = split_global_comment(current_comment)
-            global_comment = _clean_comment(global_comment)
-        glyphs.append(_convert_glyph(key, value, current_comment))
-        current_comment = []
-    comments = global_comment
+        if ':' in line:
+            # parse code line
+            key, value = line.rsplit(':', 1)
+            value = value.strip()
+        if (
+                # preserve empty lines if they separate comments
+                (not line and comment and comment[-1] != '')
+                # marked as comment
+                or line[0] == '#'
+                # pass through lines without : as comments - allows e.g. to convert diffs, like hexdraw
+                or (':' not in line)
+                # not a valid line, treat as comment
+                or set(value) - set(string.hexdigits + ',')
+            ):
+            comment.append(line)
+        else:
+            # when first glyph is found, split comment lines between global and glyph
+            if not glyphs and comment:
+                global_comment, comment = split_global_comment(comment)
+            glyphs.append(_convert_glyph(key, value, comment))
+            comment = []
     # preserve any comment at end of file as part of global comment
-    comments.extend(_clean_comment(current_comment))
-    return Font(glyphs, comments=comments, properties=dict(encoding='unicode'))
+    global_comment = '\n'.join([*_clean_comment(global_comment), *_clean_comment(comment)])
+    return Font(glyphs, comments=global_comment, properties=dict(encoding='unicode'))
 
 
 def _convert_label(key):
