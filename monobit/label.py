@@ -101,11 +101,15 @@ class Tag(Label):
 
     def __str__(self):
         """Convert tag to str."""
-        # quote otherwise illegal tags
+        # quote otherwise ambiguous/illegal tags
         if (
                 self.value.lower().startswith('u+')
                 or not (self.value[:1].isalpha() or self.value[:1] in '_-."')
                 or (self.value.startswith('"') and self.value.endswith('"'))
+                or (self.value.startswith("'") and self.value.endswith("'"))
+                # one-character tags - we want to consider representing ascii chars this way
+                # longer chars get single quotes
+                or len(self.value) == 1
             ):
             return f'"{self.value}"'
         return self.value
