@@ -407,8 +407,10 @@ class Font:
         """
         comments = {**self._comments}
         if property not in self._comments:
-            comments[property] = ()
-        comments[property] += tuple(comment.splitlines())
+            comments[property] = ''
+        if comments[property] and comment:
+            comments[property] += '\n'
+        comments[property] += comment
         return Font(self._glyphs, comments, self._properties)
 
     # move to glyph.with_name()
