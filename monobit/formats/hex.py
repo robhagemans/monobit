@@ -82,29 +82,37 @@ def _load_hex(instream):
         if not glyphs and current_comment:
             global_comment, current_comment = split_global_comment(current_comment)
             global_comment = _clean_comment(global_comment)
-        # get glyph properties
-        # determine geometry
-        # two standards: 8-pix wide, or 16-pix wide
-        # if height >= 32, they conflict
-        num_bytes = len(value) // 2
-        if num_bytes < 32:
-            width, height = 8, num_bytes
-        else:
-            width, height = 16, num_bytes // 2
-        try:
-            char = ''.join(chr(int(_key, 16)) for _key in key.split(','))
-        except ValueError:
-            char = ''
-        current_glyph = Glyph.from_hex(value, width, height).modify(
-            char=char, tags=([key] if not char else []),
-            comments=_clean_comment(current_comment)
-        )
-        glyphs.append(current_glyph)
+        glyphs.append(_convert_glyph(key, value, current_comment))
         current_comment = []
     comments = global_comment
     # preserve any comment at end of file as part of global comment
     comments.extend(_clean_comment(current_comment))
     return Font(glyphs, comments=comments, properties=dict(encoding='unicode'))
+
+
+def _convert_label(key):
+    """Ctreate char label from key string."""
+    try:
+        return ''.join(chr(int(_key, 16)) for _key in key.split(','))
+    except ValueError:
+        return ''
+
+def _convert_glyph(key, value, comment):
+    """Create Glyph object from key string and hex value."""
+    # determine geometry
+    # two standards: 8-pix wide, or 16-pix wide
+    # if height >= 32, they conflict
+    num_bytes = len(value) // 2
+    if num_bytes < 32:
+        width, height = 8, num_bytes
+    else:
+        width, height = 16, num_bytes // 2
+    # get labels
+    char = _convert_label(key)
+    return Glyph.from_hex(value, width, height).modify(
+        char=char, tags=([key] if not char else []),
+        comments=_clean_comment(comment)
+    )
 
 
 def _clean_comment(lines):
