@@ -244,7 +244,7 @@ class Glyph:
             + ")"
         )
 
-    def set_encoding_annotations(self, encoder):
+    def add_labels(self, encoder):
         """Set labels using provided encoder object."""
         # use codepage to find char if not set
         if not self.char:
