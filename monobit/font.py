@@ -131,6 +131,8 @@ def calculated_property(*args, override='accept'):
 class Font:
     """Representation of font glyphs and metadata."""
 
+    comment_prefix = '_comment_'
+
     def __init__(self, glyphs=(), comments=None, properties=None):
         """Create new font."""
         if not properties:
@@ -141,12 +143,21 @@ class Font:
             comments = {'': comments}
         self._glyphs = tuple(glyphs)
         # global comments
-        self._comments = {_k: tuple(_v) for _k, _v in comments.items()}
+        self._comments = {_k: _v for _k, _v in comments.items()}
+        # filter out comments given as properties starting with #
+        self._comments.update({
+            _k[len(self.comment_prefix):]: _v for _k, _v in properties.items()
+            if _v and _k.startswith(self.comment_prefix)
+        })
+        properties = {
+            _k: _v for _k, _v in properties.items()
+            if not _k.startswith(self.comment_prefix)
+        }
         # update properties
-        self._properties = {}
         # set encoding first so we can set labels
         # NOTE - we must be careful NOT TO ACCESS CACHED PROPERTIES
         #        until the constructor is complete
+        self._properties = {}
         self._properties.update(self._filter_properties(properties))
         self._add_encoding_data()
         # construct lookup tables
@@ -192,7 +203,7 @@ class Font:
         # use index as codepoint if no codepoints or chars set
         if not has_codepoint and not has_char:
             self._glyphs = tuple(
-                _glyph.set_annotations(codepoint=(_index,))
+                _glyph.modify(codepoint=(_index,))
                 for _index, _glyph in enumerate(self._glyphs)
             )
         # update glyph unicode annotations
@@ -396,8 +407,10 @@ class Font:
         """
         comments = {**self._comments}
         if property not in self._comments:
-            comments[property] = ()
-        comments[property] += tuple(comment.splitlines())
+            comments[property] = ''
+        if comments[property] and comment:
+            comments[property] += '\n'
+        comments[property] += comment
         return Font(self._glyphs, comments, self._properties)
 
     # move to glyph.with_name()
@@ -757,9 +770,9 @@ class Font:
                 # update codepoint based on this font's encoding
                 if encoder is not None:
                     new_codepoint = encoder.codepoint(glyph.char)
-                    glyph = glyph.set_annotations(tags=new_tags, codepoint=new_codepoint)
+                    glyph = glyph.modify(tags=new_tags, codepoint=new_codepoint)
                 else:
-                    glyph = glyph.set_annotations(tags=new_tags)
+                    glyph = glyph.modify(tags=new_tags)
                 glyphs.append(glyph)
         return Font(glyphs, self._comments, self._properties)
 
