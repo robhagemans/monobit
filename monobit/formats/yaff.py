@@ -572,17 +572,3 @@ class DrawWriter(TextWriter, DrawParams):
                 )
                 continue
             self._write_glyph(outstream, glyph, label=f'{ord(glyph.char):04x}')
-
-
-##############################################################################
-# handle comments (used by hex)
-
-def write_comments(outstream, comments, comm_char, is_global=False):
-    """Write out the comments attached to a given font item."""
-    if comments:
-        if not is_global:
-            outstream.write('\n')
-        for line in comments.splitlines():
-            outstream.write('{} {}\n'.format(comm_char, line))
-        if is_global:
-            outstream.write('\n')

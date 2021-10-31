@@ -15,20 +15,48 @@ from ..storage import loaders, savers
 from ..streams import FileFormatError
 from ..font import Font
 from ..glyph import Glyph
-from .yaff import write_comments
+
 
 
 @loaders.register('hext', name='PC-BASIC Extended HEX')
 def load_hext(instream, where=None):
     """Load 8xN multi-cell font from PC-BASIC extended .HEX file."""
-    return load(instream.text)
+    return _load_hex(instream.text)
 
 @loaders.register('hex', name='Unifont HEX')
 def load_hex(instream, where=None):
     """Load 8x16 multi-cell font from Unifont .HEX file."""
-    return load(instream.text)
+    return _load_hex(instream.text)
 
-def load(instream):
+@savers.register(linked=load_hex)
+def save_hex(fonts, outstream, where=None):
+    """Save 8x16 multi-cell font to Unifont .HEX file."""
+    font = _validate(fonts)
+    _save_hex(font, outstream.text, _fits_in_hex)
+
+@savers.register(linked=load_hext)
+def save_hext(fonts, outstream, where=None):
+    """Save 8xN multi-cell font to PC-BASIC extended .HEX file."""
+    font = _validate(fonts)
+    _save_hex(font, outstream.text, _fits_in_hext)
+
+
+def _validate(fonts):
+    """Check if font fits in file format."""
+    if len(fonts) > 1:
+        raise FileFormatError('Can only save one font to hex file.')
+    font, = fonts
+    if font.spacing not in ('character-cell', 'multi-cell'):
+        raise FileFormatError(
+            'This format only supports character-cell or multi-cell fonts.'
+        )
+    return font
+
+
+##############################################################################
+# loaders
+
+def _load_hex(instream):
     """Load font from a .hex file."""
     global_comment = []
     glyphs = []
@@ -47,129 +75,126 @@ def load(instream):
         # parse code line
         key, value = line.rsplit(':', 1)
         value = value.strip()
-        # may be on one of next lines
-        while not value:
-            value = instream.readline().strip()
-        if len(value) < 64:
-            # must be less than 32 pixels high, or we confuse it with 16-pixels wide standard
-            width, height = 8, int(len(value)/2)
-        else:
-            width, height = 16, int(len(value)/4)
         if set(value) - set(string.hexdigits + ','):
             # not a valid line, treat as comment
             current_comment.append(line)
-            #raise ValueError(f'Keys and values must be hexadecimal, found {key}:{value}')
             continue
         if not glyphs and current_comment:
             global_comment, current_comment = split_global_comment(current_comment)
-            global_comment = clean_comment(global_comment)
+            global_comment = _clean_comment(global_comment)
+        # get glyph properties
+        # determine geometry
+        # two standards: 8-pix wide, or 16-pix wide
+        # if height >= 32, they conflict
+        num_bytes = len(value) // 2
+        if num_bytes < 32:
+            width, height = 8, num_bytes
+        else:
+            width, height = 16, num_bytes // 2
         try:
             char = ''.join(chr(int(_key, 16)) for _key in key.split(','))
         except ValueError:
             char = ''
-        current_glyph = Glyph.from_hex(value, width, height)
-        current_glyph = current_glyph.set_annotations(
+        current_glyph = Glyph.from_hex(value, width, height).modify(
             char=char, tags=([key] if not char else []),
-            comments=clean_comment(current_comment)
+            comments=_clean_comment(current_comment)
         )
         glyphs.append(current_glyph)
         current_comment = []
     comments = global_comment
     # preserve any comment at end of file as part of global comment
-    comments.extend(clean_comment(current_comment))
+    comments.extend(_clean_comment(current_comment))
     return Font(glyphs, comments=comments, properties=dict(encoding='unicode'))
 
 
-def clean_comment(comment):
+def _clean_comment(lines):
     """Remove leading characters from comment."""
-    while comment and not comment[-1]:
-        comment = comment[:-1]
-    if not comment:
+    while lines and not lines[-1]:
+        lines = lines[:-1]
+    if not lines:
         return []
-    comment = [(_line if _line else '') for _line in comment]
+    lines = [_line or '' for _line in lines]
     # remove "comment char" - non-alphanumeric shared first character
-    firsts = [_line[0:1] for _line in comment if _line]
-    if len(set(firsts)) == 1 and firsts[0] not in string.ascii_letters + string.digits:
-        comment = [_line[1:] for _line in comment]
-    # normalise leading whitespace
-    if all(_line.startswith(' ') for _line in comment if _line):
-        comment = [_line[1:] for _line in comment]
-    return comment
+    firsts = str(set(_line[0:1] for _line in lines if _line))
+    if len(firsts) == 1 and firsts not in string.ascii_letters + string.digits:
+        lines = [_line[1:] for _line in lines]
+    # remove one leading space
+    if all(_line.startswith(' ') for _line in lines if _line):
+        lines = [_line[1:] for _line in lines]
+    return lines
 
-def split_global_comment(comment):
-    while comment and not comment[-1]:
-        comment = comment[:-1]
+def split_global_comment(lines):
+    """Split top comments into global and first glyph comment."""
+    while lines and not lines[-1]:
+        lines = lines[:-1]
     try:
-        splitter = comment[::-1].index('')
+        splitter = lines[::-1].index('')
     except ValueError:
-        global_comment = comment
-        comment = []
+        global_comment = lines
+        lines = []
     else:
-        global_comment = comment[:-splitter-1]
-        comment = comment[-splitter:]
-    return global_comment, comment
+        global_comment = lines[:-splitter-1]
+        lines = lines[-splitter:]
+    return global_comment, lines
 
 
 ##############################################################################
 # saver
 
-@savers.register(linked=load_hex)
-def save_hex(fonts, outstream, where=None):
-    """Save 8x16 multi-cell font to Unifont .HEX file."""
-    if len(fonts) > 1:
-        raise FileFormatError('Can only save one font to hex file.')
-    font = fonts[0]
-    if font.spacing not in ('character-cell', 'multi-cell'):
-        raise FileFormatError(
-            'This format only supports character-cell or multi-cell fonts.'
-        )
-    outstream = outstream.text
-    write_comments(outstream, font.get_comments(), comm_char='#', is_global=True)
+def _save_hex(font, outstream, fits):
+    """Save 8x16 multi-cell font to Unifont or PC-BASIC Extended .HEX file."""
+    # global comment
+    if font.get_comments():
+        outstream.write(_format_comment(font.get_comments(), comm_char='#') + '\n')
+    # glyphs
     for glyph in font.glyphs:
-        if len(glyph.char) > 1:
-            logging.warning(
-                "Can't encode grapheme cluster %s in .hex file; skipping.",
-                ascii(glyph.char)
-            )
-            continue
-        if glyph.height != 16 or glyph.width not in (8, 16):
-            logging.warning(
-                'Hex format only supports 8x16 or 16x16 glyphs, not {}x{}; skipping.'.format(
-                    glyph.width, glyph.height
-                )
-            )
-            logging.warning('%s %s', glyph.char, glyph.as_hex())
-            continue
-        _write_hex_extended(outstream, glyph.char, glyph)
+        if fits(glyph):
+            outstream.write(_format_glyph(glyph))
+        else:
+            logging.warning('Skipping %s: %s', glyph.char, glyph.as_hex())
 
-
-@savers.register(linked=load_hext)
-def save_hext(fonts, outstream, where=None):
-    """Save 8xN multi-cell font to PC-BASIC extended .HEX file."""
-    if len(fonts) > 1:
-        raise FileFormatError('Can only save one font to hex file.')
-    font = fonts[0]
-    if font.spacing not in ('character-cell', 'multi-cell'):
-        raise FileFormatError(
-            'This format only supports character-cell or multi-cell fonts.'
+def _fits_in_hex(glyph):
+    """Check if glyph fits in Unifont Hex format."""
+    if len(glyph.char) > 1:
+        logging.warning('Hex format does not support multi-codepoint grapheme clusters.')
+        return False
+    if glyph.height != 16 or glyph.width not in (8, 16):
+        logging.warning(
+            'Hex format only supports 8x16 or 16x16 glyphs, '
+            f'glyph {glyph.char} is {glyph.width}x{glyph.height}.'
         )
-    outstream = outstream.text
-    write_comments(outstream, font.get_comments(), comm_char='#', is_global=True)
-    for glyph in font.glyphs:
-        if glyph.width not in (8, 16):
-            logging.warning(
-                'Hex format only supports 8x or 16x glyphs, not {}x{}; skipping.'.format(
-                    glyph.width, glyph.height
-                )
-            )
-            logging.warning('%s %s', glyph.char, glyph.as_hex())
-            continue
-        _write_hex_extended(outstream, glyph.char, glyph)
+        return False
+    return True
 
-def _write_hex_extended(outstream, unicode, glyph):
-    """Write character to a .hex file, extended syntax."""
-    write_comments(outstream, glyph.comments, comm_char='#')
-    hexlabel = u','.join(f'{ord(_c):04X}' for _c in unicode)
-    hex = glyph.as_hex().upper()
-    outstream.write('{}:{}'.format(hexlabel, hex))
-    outstream.write('\n')
+def _fits_in_hext(glyph):
+    """Check if glyph fits in PC-BASIC Extended Hex format."""
+    if glyph.width not in (8, 16):
+        logging.warning(
+            'Extended Hex format only supports glyphs of width 8 or 16 pixels, '
+            f'glyph {glyph.char} is {glyph.width}x{glyph.height}.'
+        )
+        return False
+    if glyph.height >= 32:
+        logging.warning(
+            'Extended Hex format only supports glyphs less than 32 pixels high, '
+            f'glyph {glyph.char} is {glyph.width}x{glyph.height}.'
+        )
+        return False
+    return True
+
+def _format_glyph(glyph):
+    """Format glyph line for hex file."""
+    return (
+        # glyph comment
+        ('' if not glyph.comments else '\n' + _format_comment(glyph.comments, comm_char='#'))
+        + '{}:{}\n'.format(
+            # label
+            u','.join(f'{ord(_c):04X}' for _c in glyph.char),
+            # hex code
+            glyph.as_hex().upper()
+        )
+    )
+
+def _format_comment(comment, comm_char):
+    """Format a multiline comment."""
+    return '\n'.join(f'{comm_char} {_line}' for _line in comment.splitlines())
