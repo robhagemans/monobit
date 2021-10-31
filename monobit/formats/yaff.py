@@ -104,10 +104,10 @@ class TextReader:
     """Parser for text-based font file."""
 
     # first/second pass constants
-    separator = ':'
-    comment = '#'
+    separator: str
+    comment: str
     # tuple of individual chars, need to be separate for startswith
-    whitespace = tuple(' \t')
+    whitespace: str
 
     def __init__(self):
         """Set up text reader."""
@@ -205,15 +205,19 @@ class TextConverter:
     """Convert text clusters to font."""
 
     # first/second pass constants
-    separator = ':'
-    comment = '#'
+    separator: str
+    comment: str
 
     # third-pass constants
-    ink = '@'
-    paper = '.'
-    empty = '-'
-    # convert key string to key object
-    convert_key = staticmethod(label)
+    ink: str
+    paper: str
+    empty: str
+
+    @staticmethod
+    def convert_key(keystr):
+        """Convert key string to key object."""
+        raise NotImplementedError
+
 
     # third pass: interpret clusters
 
@@ -364,13 +368,13 @@ class YaffParams:
     paper = '.'
     empty = '-'
     # convert key string to key object
-    convert_key = label
+    convert_key = staticmethod(label)
 
 
-class YaffReader(TextReader, YaffParams):
+class YaffReader(YaffParams, TextReader):
     """Reader for .yaff files."""
 
-class YaffConverter(TextConverter, YaffParams):
+class YaffConverter(YaffParams, TextConverter):
     """Converter for .yaff files."""
 
 
@@ -409,11 +413,11 @@ class DrawParams:
         return kwargs
 
 
-class DrawReader(TextReader, DrawParams):
+class DrawReader(DrawParams, TextReader):
     """Reader for .draw files."""
 
 
-class DrawConverter(TextConverter, DrawParams):
+class DrawConverter(DrawParams, TextConverter):
     """Converter for .draw files."""
 
 
@@ -424,13 +428,14 @@ class DrawConverter(TextConverter, DrawParams):
 
 class TextWriter:
 
-    separator = ':'
-    comment = '#'
-    tab = '    '
+    # override these by inheriting a params class
+    separator: str
+    comment: str
+    tab: str
 
-    ink = '@'
-    paper = '.'
-    empty = '-'
+    ink: str
+    paper: str
+    empty: str
 
     def _write_glyph(self, outstream, glyph, label=None, suppress_codepoint=False):
         """Write out a single glyph in text format."""
