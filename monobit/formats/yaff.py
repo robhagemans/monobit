@@ -23,15 +23,7 @@ from ..struct import Props
 
 
 ##############################################################################
-# format parameters
-
-_WHITESPACE = ' \t'
-_CODESTART = _WHITESPACE + string.digits + string.ascii_letters + '_-."'
-
-BOUNDARY_MARKER = '---'
-
-
-##############################################################################
+# interface
 
 
 @loaders.register('yaff', 'yaffs', magic=(b'---',), name='monobit-yaff')
@@ -66,6 +58,64 @@ def save_draw(fonts, outstream, where=None, ink='#', paper='-'):
     if len(fonts) > 1:
         raise FileFormatError("Can only save one font to hexdraw file.")
     DrawWriter(ink=ink, paper=paper).save(fonts[0], outstream.text)
+
+
+##############################################################################
+# format parameters
+
+BOUNDARY_MARKER = '---'
+
+
+class YaffParams:
+    """Parameters for .yaff format."""
+
+    # first/second pass constants
+    separator = ':'
+    comment = '#'
+    # output only
+    tab = '    '
+    # tuple of individual chars, need to be separate for startswith
+    whitespace = tuple(' \t')
+
+    # third-pass constants
+    ink = '@'
+    paper = '.'
+    empty = '-'
+    # convert key string to key object
+    convert_key = staticmethod(label)
+
+
+class DrawParams:
+    """Parameters for .draw format."""
+
+    # first/second pass constants
+    separator = ':'
+    comment = '%'
+    # output only
+    tab = '\t'
+    # tuple of individual chars, need to be separate for startswith
+    whitespace = tuple(' \t')
+
+    # third-pass constants
+    ink = '#'
+    paper = '-'
+    empty = '-'
+
+    @staticmethod
+    def convert_key(keys):
+        """Convert keys on input from .draw."""
+        kwargs = dict(
+            char='',
+            codepoint=(),
+            tags=(),
+        )
+        # only one key allowed in .draw, rest ignored
+        key = keys[0]
+        try:
+            kwargs['char'] = chr(int(key, 16))
+        except (TypeError, ValueError):
+            kwargs['tags'] = [key]
+        return kwargs
 
 
 ##############################################################################
@@ -201,6 +251,13 @@ class TextReader:
         return clusters
 
 
+class YaffReader(YaffParams, TextReader):
+    """Reader for .yaff files."""
+
+class DrawReader(DrawParams, TextReader):
+    """Reader for .draw files."""
+
+
 class TextConverter:
     """Convert text clusters to font."""
 
@@ -273,16 +330,7 @@ class TextConverter:
         # if any line in the value has only glyph symbols, this cluster is a glyph
         is_glyph = value and any(_line for _line in value.splitlines() if self._line_is_glyph(_line))
         if is_glyph:
-            keys = tuple(self.convert_key(_key) for _key in keys)
-            chars = tuple(_key for _key in keys if isinstance(_key, Char))
-            codepoints = tuple(_key for _key in keys if isinstance(_key, Codepoint))
-            tags = tuple(_key for _key in keys if isinstance(_key, Tag))
-            glyph = self._convert_glyph(value)
-            # duplicate glyphs if we have multiple chars or codepoints
-            self.glyphs.extend(
-                glyph.modify(char=char, codepoint=cp, tags=tags, comments=comments)
-                for char, cp, _ in zip_longest(chars, codepoints, [None], fillvalue=None)
-            )
+            self.glyphs.extend(self._convert_glyph(keys, value, comments))
         else:
             # multiple labels translate into multiple keys with the same value
             for key in keys:
@@ -300,7 +348,7 @@ class TextConverter:
             or not(set(value) - set(self.ink) - set(self.paper))
         )
 
-    def _convert_glyph(self, value):
+    def _convert_glyph(self, keys, value, comments):
         """Parse single glyph."""
         lines = value.splitlines()
         glyph_lines = [
@@ -323,15 +371,23 @@ class TextConverter:
         for line in prop_lines:
             reader.step(line)
             # recursive call
-        props, glyphs = self.convert_from(reader)
+        props, _ = self.convert_from(reader)
         # ignore in-glyph comments
         props = {
             _k: _v
             for _k, _v in vars(props).items()
             if not _k.startswith('_')
         }
-        glyph = glyph.modify(**props)
-        return glyph
+        # labels
+        keys = tuple(self.convert_key(_key) for _key in keys)
+        chars = tuple(_key for _key in keys if isinstance(_key, Char))
+        codepoints = tuple(_key for _key in keys if isinstance(_key, Codepoint))
+        tags = tuple(_key for _key in keys if isinstance(_key, Tag))
+        # duplicate glyphs if we have multiple chars or codepoints
+        return tuple(
+            glyph.modify(char=char, codepoint=cp, tags=tags, comments=comments, **props)
+            for char, cp, _ in zip_longest(chars, codepoints, [None], fillvalue=None)
+        )
 
     def _convert_value(self, value):
         """Strip matching double quotes on a per-line basis."""
@@ -350,72 +406,8 @@ class TextConverter:
         return '\n'.join(lines)
 
 
-##############################################################################
-
-class YaffParams:
-    """Parameters for .yaff format."""
-
-    # first/second pass constants
-    separator = ':'
-    comment = '#'
-    # output only
-    tab = '    '
-    # tuple of individual chars, need to be separate for startswith
-    whitespace = tuple(' \t')
-
-    # third-pass constants
-    ink = '@'
-    paper = '.'
-    empty = '-'
-    # convert key string to key object
-    convert_key = staticmethod(label)
-
-
-class YaffReader(YaffParams, TextReader):
-    """Reader for .yaff files."""
-
 class YaffConverter(YaffParams, TextConverter):
     """Converter for .yaff files."""
-
-
-##############################################################################
-
-class DrawParams:
-    """Parameters for .draw format."""
-
-    # first/second pass constants
-    separator = ':'
-    comment = '%'
-    # output only
-    tab = '\t'
-    # tuple of individual chars, need to be separate for startswith
-    whitespace = tuple(' \t')
-
-    # third-pass constants
-    ink = '#'
-    paper = '-'
-    empty = '-'
-
-    @staticmethod
-    def convert_key(keys):
-        """Convert keys on input from .draw."""
-        kwargs = dict(
-            char='',
-            codepoint=(),
-            tags=(),
-        )
-        # only one key allowed in .draw, rest ignored
-        key = keys[0]
-        try:
-            kwargs['char'] = chr(int(key, 16))
-        except (TypeError, ValueError):
-            kwargs['tags'] = [key]
-        return kwargs
-
-
-class DrawReader(DrawParams, TextReader):
-    """Reader for .draw files."""
-
 
 class DrawConverter(DrawParams, TextConverter):
     """Converter for .draw files."""
@@ -424,7 +416,6 @@ class DrawConverter(DrawParams, TextConverter):
 ##############################################################################
 ##############################################################################
 # write file
-
 
 class TextWriter:
 
