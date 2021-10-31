@@ -196,7 +196,7 @@ class Font:
         return f"Font(glyphs=<{len(self._glyphs)} glyphs>, properties={props})"
 
     def _add_encoding_data(self):
-        """Add unicode annotations for codepage."""
+        """Add unicode labels for codepage."""
         has_codepoint = any(_glyph.codepoint for _glyph in self._glyphs)
         has_char = any(_glyph.char for _glyph in self._glyphs)
         # update glyph codepoints
@@ -206,7 +206,7 @@ class Font:
                 _glyph.modify(codepoint=(_index,))
                 for _index, _glyph in enumerate(self._glyphs)
             )
-        # update glyph unicode annotations
+        # update glyph labels
         encoding = self._get_encoder()
         if encoding is not None:
             self._glyphs = [
@@ -430,7 +430,11 @@ class Font:
                     description = '{}'.format(name)
                 else:
                     description = '[{}] {}'.format(char, name)
-                glyphs[index] = glyphs[index].add_annotations(comments=(description,))
+                comments = glyphs[index].comments
+                if comments and description:
+                    comments += '\n'
+                comments += description
+                glyphs[index] = glyphs[index].modify(comments=comments)
         return Font(glyphs, self._comments, self._properties)
 
 

@@ -477,12 +477,12 @@ def _read_bdf_characters(instream):
         try:
             int(label)
         except ValueError:
-            glyph = glyph.set_annotations(tags=[label])
+            glyph = glyph.modify(tags=[label])
         # ENCODING must be single integer or -1 followed by integer
         encvalue = int(meta['ENCODING'].split(' ')[-1])
         # no encoding number found
         if encvalue != -1:
-            glyph = glyph.set_annotations(codepoint=(encvalue,))
+            glyph = glyph.modify(codepoint=(encvalue,))
         glyphs.append(glyph)
         glyph_meta.append(meta)
         if not instream.readline().startswith('ENDCHAR'):
@@ -550,7 +550,7 @@ def _parse_properties(glyphs, glyph_props, bdf_props, x_props):
     # unless we're working in unicode
     if not charmaps.is_unicode(properties['encoding']):
         glyphs = [
-            _glyph.set_annotations(codepoint=int_to_bytes(_glyph.codepoint[0]))
+            _glyph.modify(codepoint=int_to_bytes(_glyph.codepoint[0]))
             for _glyph in glyphs
             if _glyph.codepoint
         ]

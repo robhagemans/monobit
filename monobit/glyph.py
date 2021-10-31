@@ -144,11 +144,13 @@ class Glyph:
         """Create glyph from tuple of tuples."""
         # glyph data
         self._rows = tuple(tuple(bool(_bit) for _bit in _row) for _row in pixels)
-        # annotations
-        self._comments = comments
+        # labels
         self._codepoint = Codepoint(codepoint).value
         self._char = Char(char).value
         self._tags = tuple(Tag(_tag).value for _tag in tags)
+        # comments
+        self._comments = comments
+        # recognised properties
         self._offset = Coord.create(offset)
         self._tracking = int(tracking)
         self._kern_to = KernTable(kern_to)
@@ -242,20 +244,8 @@ class Glyph:
             + ")"
         )
 
-    def add_annotations(self, *, tags=(), comments=()):
-        """Return a copy of the glyph with added tags or comments."""
-        return self.modify(
-            tags=self._tags + tuple(tags),
-            comments=self._comments + tuple(comments)
-        )
-
-    # TODO remove this
-    def set_annotations(self, *, tags=NOT_SET, char=NOT_SET, codepoint=NOT_SET, comments=NOT_SET):
-        """Return a copy of the glyph with different annotations."""
-        return self.modify(tags=tags, char=char, codepoint=codepoint, comments=comments)
-
     def set_encoding_annotations(self, encoder):
-        """Set annotations using provided encoder object."""
+        """Set labels using provided encoder object."""
         # use codepage to find char if not set
         if not self.char:
             return self.modify(char=encoder.char(self.codepoint))
