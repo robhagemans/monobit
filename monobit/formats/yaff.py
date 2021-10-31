@@ -432,7 +432,7 @@ class TextWriter:
         """Write out a single glyph in text format."""
         # glyph comments
         if glyph.comments:
-            outstream.write('\n' + self._format_comment(glyph.comments))
+            outstream.write('\n' + self._format_comment(glyph.comments) + '\n')
         if label:
             labels = [label]
         else:
@@ -478,7 +478,7 @@ class TextWriter:
             return
         # write property comment
         if comments:
-            outstream.write('\n' + self._format_comment(comments))
+            outstream.write('\n' + self._format_comment(comments) + '\n')
         # write key-value pair
         if '\n' not in value:
             outstream.write(f'{key}: {self._quote_if_needed(value)}\n')
