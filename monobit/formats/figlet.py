@@ -208,15 +208,19 @@ def _convert_to_flf(font, hardblank='$'):
         codetag_count = len(coded_chars)
     )
     # keep namespace properties
-    figprops = Props.from_str(font.figlet)
     try:
-        props.old_layout = figprops.old_layout
-    except AttributeError as e:
+        figprops = Props.from_str(font.figlet)
+    except AttributeError:
         pass
-    try:
-        props.full_layout = figprops.full_layout
-    except AttributeError as e:
-        pass
+    else:
+        try:
+            props.old_layout = figprops.old_layout
+        except AttributeError as e:
+            pass
+        try:
+            props.full_layout = figprops.full_layout
+        except AttributeError as e:
+            pass
     # first get glyphs in default repertoire
     # fill missing glyphs with empties
     glyphs = [font.get_glyph(_chr, missing='empty') for _chr in flf_chars]
