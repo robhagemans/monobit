@@ -245,9 +245,12 @@ class TextReader:
                 others = [
                     _elem for _elem in clusters[0] if _elem and not _elem.startswith(self.comment)
                 ]
-                new_first = comments[:-1]
-                new_second = [comments[-1], *others]
-                clusters = [new_first, new_second, *clusters[1:]]
+                if len(comments) > 1:
+                    new_first = comments[:-1]
+                    new_second = [comments[-1], *others]
+                    clusters = [new_first, new_second, *clusters[1:]]
+                else:
+                    clusters = [comments, others, *clusters[1:]]
         return clusters
 
 
