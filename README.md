@@ -164,6 +164,7 @@ Supported formats
 | Amiga Font Contents   |          | `.font`                     | Amiga OS    | ✔     |       |
 | Amiga Font            |          |                             | Amiga OS    | ✔     |       |
 | FZX Font              |          | `.fzx`                      | ZX Spectrum | ✔     | ✔     |
+| Figlet                |          | `.flf`                      | Unix        | ✔     | ✔     |
 | MacOS font            | FONT     |                             | MacOS       | ✔     |       |
 | MacOS font            | NFNT/FOND|                             | MacOS       | ✔     |       |
 | Windows resource      | 1.0      | `.fnt`                      | Windows 1.x | ✔     |       |
