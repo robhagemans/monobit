@@ -515,6 +515,7 @@ def _read_bdf_global(instream):
                 # value equals number of chars
                 # this signals the end of the global section
                 nchars = int(values)
+                comments = '\n'.join(comments)
                 return nchars, comments, bdf_props, x_props
             elif parsing_x:
                 x_props[keyword] = values
