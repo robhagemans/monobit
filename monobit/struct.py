@@ -42,6 +42,13 @@ class Props(SimpleNamespace):
     def __str__(self):
         return '\n'.join(f'{_k}: {_v}' for _k, _v in vars(self).items())
 
+    @classmethod
+    def from_str(cls, propstr):
+        return cls(**dict(
+            _line.strip().split(':', 1)
+            for _line in propstr.splitlines()
+        ))
+
 
 ##############################################################################
 # binary structs

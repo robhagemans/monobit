@@ -6,7 +6,6 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import string
-from typing import NamedTuple
 
 
 def strip_matching(from_str, char):
