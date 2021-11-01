@@ -152,7 +152,7 @@ def _save_hex(font, outstream, fits):
     """Save 8x16 multi-cell font to Unifont or PC-BASIC Extended .HEX file."""
     # global comment
     if font.get_comments():
-        outstream.write(_format_comment(font.get_comments(), comm_char='#') + '\n')
+        outstream.write(_format_comment(font.get_comments(), comm_char='#') + '\n\n')
     # glyphs
     for glyph in font.glyphs:
         if fits(glyph):

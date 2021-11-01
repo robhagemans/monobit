@@ -520,7 +520,7 @@ class YaffWriter(TextWriter, YaffParams):
             logging.debug('Writing %s to section #%d', font.name, number)
             # write global comment
             if font.get_comments():
-                outstream.write(self._format_comment(font.get_comments()) + '\n')
+                outstream.write(self._format_comment(font.get_comments()) + '\n\n')
             # we always output name, font-size and spacing
             # plus anything that is different from the default
             props = {
@@ -558,7 +558,7 @@ class DrawWriter(TextWriter, DrawParams):
         """Write one font to a plaintext stream as hexdraw."""
         # write global comment
         if font.get_comments():
-            outstream.write(self._format_comment(font.get_comments()) + '\n')
+            outstream.write(self._format_comment(font.get_comments()) + '\n\n')
         # write glyphs
         for glyph in font.glyphs:
             if len(glyph.char) > 1:
