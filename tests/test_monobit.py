@@ -237,6 +237,18 @@ class TestFormats(BaseTester):
         font = pack[0]
         self.assertEqual(len(font.glyphs), 256)
 
+    def test_import_flf(self):
+        """Test importing flf files."""
+        font, *_ = monobit.load(self.font_path / '4x6.flf')
+        self.assertEqual(len(font.glyphs), 919)
+
+    def test_export_flf(self):
+        """Test exporting flf files."""
+        file = self.temp_path / '4x6.flf'
+        monobit.save(self.fixed4x6, file)
+        self.assertTrue(os.path.getsize(file) > 0)
+
+
 
 class TestCompressed(BaseTester):
     """Test compression formats."""
