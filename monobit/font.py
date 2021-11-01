@@ -279,11 +279,15 @@ class Font:
 
     def get_index(self, key=None, *, char=None, codepoint=None, tag=None):
         """Get index for given key or tag, if defined."""
-        if isinstance(key, Label):
-            return self.get_index(**key.indexer())
         if 1 != len([_indexer for _indexer in (key, char, codepoint, tag) if _indexer is not None]):
             raise ValueError('get_index() takes exactly one parameter.')
-        if key is not None:
+        if isinstance(key, Char):
+            char = key
+        elif isinstance(key, Codepoint):
+            codepoint = key
+        elif isinstance(key, Tag):
+            tag = key
+        elif key is not None:
             # unspecified key, deduct from type
             # str -> char; tuple/list/bytes -> codepoint
             # a tag can only be specified explicitly

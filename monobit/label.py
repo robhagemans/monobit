@@ -45,17 +45,12 @@ class Label:
 
     def __init__(self, value=None):
         """Label base class should not be instantiated."""
-        raise ValueError('Cannot create untyped label.')
+        raise NotImplementedError('Cannot create untyped label.')
 
     @classmethod
     def from_str(cls, value):
         """Create label from string representation."""
         return cls(value)
-
-    def indexer(self):
-        """Keyword arguments for character-based functions."""
-        return {}
-
 
     def __hash__(self):
         return hash(self.value)
@@ -114,10 +109,6 @@ class Tag(Label):
             return f'"{self.value}"'
         return self.value
 
-    def indexer(self):
-        """Keyword arguments for get_index."""
-        return {'tag': self.value}
-
     def __hash__(self):
         # make sure tag and Char don't collide
         return hash((type(self), self.value))
@@ -158,10 +149,6 @@ class Codepoint(Label):
             f'0x{_elem:02x}'
             for _elem in self.value
         )
-
-    def indexer(self):
-        """Keyword arguments for get_index."""
-        return {'codepoint': self.value}
 
     @classmethod
     def from_str(cls, value):
@@ -225,10 +212,6 @@ class Char(Label):
             f'u+{ord(_uc):04x}'
             for _uc in self.value
         )
-
-    def indexer(self):
-        """Keyword arguments for get_index."""
-        return {'char': self.value}
 
     @classmethod
     def from_str(cls, value):
