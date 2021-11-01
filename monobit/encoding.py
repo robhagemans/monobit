@@ -907,7 +907,10 @@ class Unicode(Encoder):
     @staticmethod
     def char(codepoint):
         """Convert codepoint to character."""
-        return ''.join(chr(_i) for _i in codepoint if is_graphical(chr(_i)))
+        try:
+            return ''.join(chr(_i) for _i in codepoint if is_graphical(chr(_i)))
+        except ValueError:
+            return ''
 
     @staticmethod
     def codepoint(char):
