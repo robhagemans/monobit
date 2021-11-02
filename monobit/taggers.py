@@ -11,15 +11,7 @@ from pathlib import Path
 
 from .encoding import unicode_name, is_printable, NotFoundError
 from .font import Font
-
-
-def extend_string(string, line):
-    """Add a line to a multiline string."""
-    if not string:
-        return line
-    if not line:
-        return string
-    return '\n'.join((string, line))
+from .struct import extend_string
 
 
 class Tagger:

@@ -20,6 +20,7 @@ from .scripting import scriptable, get_scriptables
 from .glyph import Glyph, Coord, Bounds, number
 from .encoding import charmaps
 from .label import Label, Tag, Char, Codepoint, label
+from .struct import extend_string
 
 
 # pylint: disable=redundant-keyword-arg, no-member
@@ -281,6 +282,25 @@ class Font:
             self._glyphs, self._comments, {**self._properties, **kwargs}
         )
 
+    @scriptable(record=False)
+    def add_comments(self, comment:str='', property:str=''):
+        """
+        Return a font with added comments.
+
+        comment: comment to append
+        property: property to append commend to; default is global comment
+        """
+        comments = {**self._comments}
+        if property not in self._comments:
+            comments[property] = ''
+        comments[property] = extend_string(comments[property], comment)
+        return Font(self._glyphs, comments, self._properties)
+
+
+    def add_history(self, history):
+        """Return a copy with a line added to history."""
+        return self.set_properties(history=extend_string(self.history, history))
+
 
     ##########################################################################
     # glyph access
@@ -430,31 +450,6 @@ class Font:
         """Get global or property comments."""
         return self._comments.get(property, ())
 
-    @scriptable(record=False)
-    def add_comments(self, comment:str='', property:str=''):
-        """
-        Return a font with added comments.
-
-        comment: comment to append
-        property: property to append commend to; default is global comment
-        """
-        comments = {**self._comments}
-        if property not in self._comments:
-            comments[property] = ''
-        if comments[property] and comment:
-            comments[property] += '\n'
-        comments[property] += comment
-        return Font(self._glyphs, comments, self._properties)
-
-
-    ##########################################################################
-    # property access
-
-    def add_history(self, history):
-        """Return a copy with a line added to history."""
-        return self.set_properties(history='\n'.join(
-            _line for _line in self.history.split('\n') + [history] if _line
-        ))
 
     @property
     def nondefault_properties(self):

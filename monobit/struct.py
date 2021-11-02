@@ -21,6 +21,14 @@ def reverse_dict(orig_dict):
 ##############################################################################
 # property sets
 
+def extend_string(string, line):
+    """Add a line to a multiline string."""
+    return '\n'.join(
+        _line
+        for _line in string.split('\n') + [line]
+        if _line
+    )
+
 class Props(SimpleNamespace):
     """
     SimpleNamespace with the dunder methods of a dict
