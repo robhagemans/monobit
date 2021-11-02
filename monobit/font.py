@@ -8,6 +8,7 @@ licence: https://opensource.org/licenses/MIT
 from functools import wraps
 from functools import partial
 import logging
+from types import SimpleNamespace
 
 try:
     # python 3.9
@@ -31,73 +32,78 @@ from .struct import extend_string
 
 # recognised yaff properties and converters from str
 # this also defines the default order in yaff files
-PROPERTIES = {
+class RecognisedProperties(SimpleNamespace):
 
     # naming - can be determined from source file if needed
-    'name': str, # full human name
-    'family': str, # typeface/font family
+    name: str # full human name
+    family: str # typeface/font family
 
     # font metadata
     # can't be calculated
-    'foundry': str, # author or issuer
-    'copyright': str, # copyright string
-    'notice': str, # e.g. license string
-    'revision': str, # font version
+    foundry: str # author or issuer
+    copyright: str # copyright string
+    notice: str # e.g. license string
+    revision: str # font version
 
     # font description
     # can't be calculated
-    'style': str, # serif, sans, etc.
-    'point-size': number, # nominal point size
-    'weight': str, # normal, bold, light, etc.
-    'slant': str, # roman, italic, oblique, etc
-    'setwidth': str, # normal, condensed, expanded, etc.
-    'decoration': str, # underline, strikethrough, etc.
+    style: str # serif, sans, etc.
+    point_size: number # nominal point size
+    weight: str # normal, bold, light, etc.
+    slant: str # roman, italic, oblique, etc
+    setwidth: str # normal, condensed, expanded, etc.
+    decoration: str # underline, strikethrough, etc.
 
     # target info
     # can't be calculated
-    'device': str, # target device name
-    'pixel-aspect': Coord.create, # pixel aspect ratio
+    device: str # target device name
+    pixel_aspect: Coord.create # pixel aspect ratio
     # calculated or given
-    'dpi': Coord.create, # target resolution in dots per inch
+    dpi: Coord.create # target resolution in dots per inch
 
     # summarising quantities
     # determined from the bitmaps only
-    'spacing': str, # proportional, monospace, character-cell, multi-cell
-    'raster-size': Coord.create, # maximum raster (not necessarily ink) width/height
-    'bounding-box': Coord.create, # overall ink bounds - overlay all glyphs with fixed origin and determine maximum ink extent
-    'average-advance': number, # average advance width, rounded to tenths
-    'cap-advance': int, # advance width of LATIN CAPITAL LETTER X
+    spacing: str # proportional, monospace, character-cell, multi-cell
+    raster_size: Coord.create # maximum raster (not necessarily ink) width/height
+    bounding_box: Coord.create # overall ink bounds - overlay all glyphs with fixed origin and determine maximum ink extent
+    average_advance: number # average advance width, rounded to tenths
+    cap_advance: int # advance width of LATIN CAPITAL LETTER X
 
     # descriptive typographic quantities
     # can be calculated or given
-    'x-height': int, # height of lowercase x relative to baseline
-    'cap-height': int, # height of capital relative to baseline
+    x_height: int # height of lowercase x relative to baseline
+    cap_height: int # height of capital relative to baseline
     # can't be calculated, affect rendering (vertical positioning)
     # might affect e.g. composition of characters
-    'ascent': int, # recommended typographic ascent relative to baseline (not necessarily equal to top)
-    'descent': int, # recommended typographic descent relative to baseline (not necessarily equal to bottom)
-    'pixel-size': int, # nominal pixel size, always equals ascent + descent
+    ascent: int # recommended typographic ascent relative to baseline (not necessarily equal to top)
+    descent: int # recommended typographic descent relative to baseline (not necessarily equal to bottom)
+    pixel_size: int # nominal pixel size, always equals ascent + descent
 
     # metrics
     # can't be calculated, affect rendering
     # positioning relative to origin
-    'direction': str, # left-to-right, right-to-left
-    'offset': Coord.create, # (horiz, vert) offset from origin to matrix start
-    'tracking': int, # horizontal offset from matrix end to next origin
-    'leading': int, # interline spacing, defined as (pixels between baselines) - (pixel size)
+    direction: str # left-to-right, right-to-left
+    offset: Coord.create # (horiz, vert) offset from origin to matrix start
+    tracking: int # horizontal offset from matrix end to next origin
+    leading: int # interline spacing, defined as (pixels between baselines) - (pixel size)
 
     # character set
     # can't be calculated, affect rendering
-    'encoding': charmaps.normalise,
-    'default-char': label, # use question mark to replace missing glyph
-    'word-boundary': label, # word-break character (usually space)
+    encoding: charmaps.normalise
+    default_char: label # use question mark to replace missing glyph
+    word_boundary: label # word-break character (usually space)
 
     # conversion metadata
-    # can't be calculated, informational
-    'converter': str,
-    'source-name': str,
-    'source-format': str,
-    'history': str,
+    # can't be csalculated, informational
+    converter: str
+    source_name: str
+    source_format: str
+    history: str
+
+
+PROPERTIES = {
+    _k.replace('_', '-'): _v for _k, _v in
+    RecognisedProperties.__annotations__.items()
 }
 
 
