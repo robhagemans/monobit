@@ -24,6 +24,9 @@ from .label import Label, Tag, Char, Codepoint, label
 
 # pylint: disable=redundant-keyword-arg, no-member
 
+###################################################################################################
+# property management
+
 
 # recognised yaff properties and converters from str
 # this also defines the default order in yaff files
@@ -127,10 +130,17 @@ def calculated_property(*args, override='accept'):
     return _cached_fn
 
 
+###################################################################################################
+# Font class
+
+
 class Font:
     """Representation of font glyphs and metadata."""
 
     comment_prefix = '_comment_'
+
+    ##########################################################################
+    # constructor
 
     def __init__(self, glyphs=(), comments=None, properties=None):
         """Create new font."""
@@ -183,18 +193,6 @@ class Font:
         )
 
 
-    def __repr__(self):
-        """Representation."""
-        if not self.nondefault_properties:
-            props = '{}'
-        else:
-            props = (
-                '{\n'
-                + ''.join(f"  '{_k}': '{_v}',\n" for _k, _v in self.nondefault_properties.items())
-                + '}'
-            )
-        return f"Font(glyphs=<{len(self._glyphs)} glyphs>, properties={props})"
-
     def _add_labels(self):
         """Add character and codepoint labels."""
         has_codepoint = any(_glyph.codepoint for _glyph in self._glyphs)
@@ -229,7 +227,6 @@ class Font:
             return property
         return property.replace('_', '-')
 
-
     def _filter_properties(self, properties):
         """Convert properties where needed."""
         if not properties:
@@ -256,6 +253,34 @@ class Font:
                     )
         # append nonstandard properties
         return properties
+
+
+    ##########################################################################
+    # representation
+
+    def __repr__(self):
+        """Representation."""
+        if not self.nondefault_properties:
+            props = '{}'
+        else:
+            props = (
+                '{\n'
+                + ''.join(f"  '{_k}': '{_v}',\n" for _k, _v in self.nondefault_properties.items())
+                + '}'
+            )
+        return f"Font(glyphs=<{len(self._glyphs)} glyphs>, properties={props})"
+
+
+    ##########################################################################
+    # copying
+
+
+    def set_properties(self, **kwargs):
+        """Return a copy with amended properties."""
+        return Font(
+            self._glyphs, self._comments, {**self._properties, **kwargs}
+        )
+
 
     ##########################################################################
     # glyph access
@@ -327,7 +352,7 @@ class Font:
 
 
     ##########################################################################
-    # text / character access
+    # label access
 
     def get_chars(self):
         """Get list of characters covered by this font."""
@@ -349,6 +374,10 @@ class Font:
             if _glyph.codepoint
             and _glyph.char
         }, name=f"implied-{self.name}")
+
+
+    ##########################################################################
+    # text rendering
 
     def get_glyphs(self, text, missing='raise'):
         """Get tuple of glyphs from text or bytes/codepoints input."""
@@ -395,7 +424,7 @@ class Font:
 
 
     ##########################################################################
-    # comments
+    # property access
 
     def get_comments(self, property=''):
         """Get global or property comments."""
@@ -427,21 +456,10 @@ class Font:
             _line for _line in self.history.split('\n') + [history] if _line
         ))
 
-    def set_properties(self, **kwargs):
-        """Return a copy with amended properties."""
-        return Font(
-            self._glyphs, self._comments, {**self._properties, **kwargs}
-        )
-
     @property
     def nondefault_properties(self):
         """Non-default properties."""
         return {**self._properties}
-
-    @classmethod
-    def default(cls, property):
-        """Default value for a property."""
-        return cls._property_defaults.get(cls._normalise_property(property), '')
 
     def __getattr__(self, attr):
         """Take property from property table."""
@@ -472,6 +490,7 @@ class Font:
     _property_defaults = {
         _prop: _type() for _prop, _type in PROPERTIES.items()
     }
+
     _property_defaults.update({
         # font version
         'revision': '0',
@@ -488,6 +507,11 @@ class Font:
         # pixel aspect ratio - square pixel
         'pixel-aspect': Coord(1, 1),
     })
+
+    @classmethod
+    def default(cls, property):
+        """Default value for a property."""
+        return cls._property_defaults.get(cls._normalise_property(property), '')
 
     @calculated_property
     def name(self):
