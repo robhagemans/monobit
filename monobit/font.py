@@ -32,7 +32,7 @@ from .struct import extend_string, DefaultProps, normalise_property
 
 # recognised yaff properties and converters from str
 # this also defines the default order in yaff files
-class RecognisedProperties(DefaultProps):
+class FontProperties(DefaultProps):
 
     # naming - can be determined from source file if needed
     # full human name
@@ -132,7 +132,7 @@ class RecognisedProperties(DefaultProps):
     history: str
 
 
-PROPERTIES = RecognisedProperties.__annotations__
+PROPERTIES = FontProperties.__annotations__
 
 
 # properties that must have the calculated value
@@ -204,7 +204,7 @@ class Font:
         # NOTE - we must be careful NOT TO ACCESS CACHED PROPERTIES
         #        until the constructor is complete
         properties = self._filter_properties(properties)
-        self._props = RecognisedProperties(**properties)
+        self._props = FontProperties(**properties)
         # add labels if unset (needs encoding property)
         self._add_labels()
         # construct lookup tables
@@ -482,7 +482,7 @@ class Font:
     @classmethod
     def default(cls, property):
         """Default value for a property."""
-        return vars(RecognisedProperties).get(normalise_property(property), '')
+        return vars(FontProperties).get(normalise_property(property), '')
 
     @property
     def nondefault_properties(self):
@@ -492,7 +492,7 @@ class Font:
     def __getattr__(self, attr):
         """Take property from property table."""
         if '_props' not in vars(self):
-            logging.error('font._props not defined')
+            logging.error(type(self).__name__ + '._props not defined')
             raise AttributeError(attr)
         if attr.startswith('_'):
             # don't delegate private members
