@@ -584,7 +584,7 @@ def load_fon(instream, where=None):
             )
         )
     fonts = [
-        font.set_properties(
+        font.modify(
             source_format=font.source_format+' ({} FON container)'.format(ne_magic.decode('ascii'))
         )
         for font in fonts

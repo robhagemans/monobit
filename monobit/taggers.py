@@ -19,19 +19,17 @@ class Tagger:
 
     def set_comments(self, font):
         """Use tagger to add glyph comments."""
-        glyphs = tuple(
+        font.modify(
             _glyph.modify(comments=extend_string(_glyph.comments, self.get_tag(_glyph)))
             for _glyph in font.glyphs
         )
-        return Font(glyphs, font.get_comments(), font.nondefault_properties)
 
     def set_tags(self, font):
         """Use tagger to add glyph tags."""
-        glyphs = tuple(
+        font.modify(
             _glyph.modify(tags=_glyph.tags + (self.get_tag(_glyph),))
             for _glyph in font.glyphs
         )
-        return Font(glyphs, font.get_comments(), font.nondefault_properties)
 
     def get_tag(self, glyph):
         raise NotImplementedError

@@ -577,7 +577,7 @@ def _parse_apple(data):
             fork_data = data[entry.offset:entry.offset+entry.length]
             fonts = _parse_resource_fork(fork_data)
             fonts = [
-                font.set_properties(
+                font.modify(
                     source_format=f'MacOS {font.source_format} ({container} container)'
                 )
                 for font in fonts

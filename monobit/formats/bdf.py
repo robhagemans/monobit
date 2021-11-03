@@ -771,7 +771,7 @@ def _create_xlfd_properties(font):
     # keep unparsed BDF properties
     xlfd_props.update({
         _k[len('bdf.'):].replace('-', '_').upper(): _v
-        for _k, _v in font.nondefault_properties.items() if _k.startswith('bdf.')
+        for _k, _v in font.properties.items() if _k.startswith('bdf.')
     })
     return xlfd_props
 
@@ -782,7 +782,7 @@ def _save_bdf(font, outstream):
     bdf_props = [
         ('STARTFONT', '2.1'),
     ] + [
-        ('COMMENT', _comment) for _comment in font.get_comments()
+        ('COMMENT', _comment) for _comment in font.comments
     ] + [
         ('FONT', _create_xlfd_name(xlfd_props)),
         ('SIZE', f'{font.point_size} {font.dpi.x} {font.dpi.y}'),

@@ -24,6 +24,10 @@ from .label import Label, Tag, Char, Codepoint, label
 from .struct import extend_string, DefaultProps, normalise_property
 
 
+# sentinel object
+NOT_SET = object()
+
+
 # pylint: disable=redundant-keyword-arg, no-member
 
 ###################################################################################################
@@ -197,7 +201,8 @@ class Font:
         })
         properties = {
             _k: _v for _k, _v in properties.items()
-            if not _k.startswith(self.comment_prefix)
+            if _v is not None
+            and not _k.startswith(self.comment_prefix)
         }
         # update properties
         # set encoding first so we can set labels
@@ -289,25 +294,43 @@ class Font:
 
     def __repr__(self):
         """Representation."""
-        if not self.nondefault_properties:
+        if not self._props:
             props = '{}'
         else:
             props = (
                 '{\n'
-                + ''.join(f"  '{_k}': '{_v}',\n" for _k, _v in self.nondefault_properties.items())
+                + ''.join(f"  '{_k}': '{_v}',\n" for _k, _v in self.properties.items())
                 + '}'
             )
-        return f"Font(glyphs=<{len(self._glyphs)} glyphs>, properties={props})"
+        if self.glyphs:
+            glyphstr = f'(...{len(self._glyphs)} glyphs...)'
+        else:
+            glyphstr = '()'
+        return '{}({})'.format(
+                type(self).__name__,
+            ', '.join((
+                f'glyphs={glyphstr}',
+                f'properties={props}',
+            ))
+        )
 
 
     ##########################################################################
     # copying
 
-
-    def set_properties(self, **kwargs):
-        """Return a copy with amended properties."""
-        return Font(
-            self._glyphs, self._comments, {**vars(self._props), **kwargs}
+    def modify(
+            self, glyphs=NOT_SET, *,
+            comments=NOT_SET, **kwargs
+        ):
+        """Return a copy of the glyph with changes."""
+        if glyphs is NOT_SET:
+            glyphs = self._glyphs
+        if comments is NOT_SET:
+            comments = self._comments
+        return type(self)(
+            tuple(glyphs),
+            comments=comments,
+            properties={**self.properties, **kwargs}
         )
 
     @scriptable(record=False)
@@ -322,31 +345,19 @@ class Font:
         if property not in self._comments:
             comments[property] = ''
         comments[property] = extend_string(comments[property], comment)
-        return Font(self._glyphs, comments, vars(self._props))
-
+        return self.modify(comments=comments)
 
     def add_history(self, history):
         """Return a copy with a line added to history."""
-        return self.set_properties(history=extend_string(self.history, history))
+        return self.modify(history=extend_string(self.history, history))
+
+    def drop_properties(self, *args):
+        """Remove custom properties."""
+        return self.modify(**{_k: None for _k in args})
 
 
     ##########################################################################
     # property access
-
-    def get_comments(self, property=''):
-        """Get global or property comments."""
-        return self._comments.get(property, ())
-
-
-    @classmethod
-    def default(cls, property):
-        """Default value for a property."""
-        return vars(FontProperties).get(normalise_property(property), '')
-
-    @property
-    def nondefault_properties(self):
-        """Non-default properties."""
-        return vars(self._props)
 
     def __getattr__(self, attr):
         """Take property from property table."""
@@ -357,6 +368,25 @@ class Font:
             # don't delegate private members
             raise AttributeError(attr)
         return getattr(self._props, attr)
+
+    @property
+    def comments(self):
+        """Get global comments."""
+        return self._comments.get('', '')
+
+    def get_comments(self, property=''):
+        """Get global or property comments."""
+        return self._comments.get(normalise_property(property), '')
+
+    @classmethod
+    def default(cls, property):
+        """Default value for a property."""
+        return vars(FontProperties).get(normalise_property(property), '')
+
+    @property
+    def properties(self):
+        """Non-default properties."""
+        return vars(self._props)
 
 
     ##########################################################################
@@ -718,7 +748,7 @@ class Font:
     ##########################################################################
     # font operations
 
-    set = scriptable(set_properties, script_args=PROPERTIES, name='set')
+    set = scriptable(modify, script_args=PROPERTIES, name='set')
 
     @scriptable
     def subset(self, keys=(), *, chars:set=(), codepoints:set=(), tags:set=()):
@@ -735,8 +765,7 @@ class Font:
             + [self.get_glyph(codepoint=_codepoint, missing=None) for _codepoint in codepoints]
             + [self.get_glyph(tag=_tag, missing=None) for _tag in tags]
         )
-        glyphs = (_glyph for _glyph in glyphs if _glyph is not None)
-        return Font(glyphs, self._comments, vars(self._props))
+        return self.modify(_glyph for _glyph in glyphs if _glyph is not None)
 
     @scriptable
     def without(self, keys=(), *, chars:set=(), codepoints:set=(), tags:set=()):
@@ -754,7 +783,7 @@ class Font:
                 and not (set(_glyph.tags) & set(tags))
             )
         ]
-        return Font(glyphs, self._comments, vars(self._props))
+        return self.modify(glyphs)
 
     def merged_with(self, other):
         """Merge glyphs from other font into this one. Existing glyphs have preference."""
@@ -772,14 +801,14 @@ class Font:
                 else:
                     glyph = glyph.modify(tags=new_tags)
                 glyphs.append(glyph)
-        return Font(glyphs, self._comments, vars(self._props))
+        return self.modify(glyphs)
 
     # replace with clone(glyphs=.., comments=.., properties=..)
     def with_glyph(self, glyph):
         """Return a font with a glyph added."""
         glyphs = list(self._glyphs)
         glyphs.append(glyph)
-        return Font(glyphs, self._comments, vars(self._props))
+        return self.modify(glyphs)
 
 
     ##########################################################################
@@ -795,7 +824,7 @@ class Font:
                 operation(_glyph, *args, **kwargs)
                 for _glyph in self._glyphs
             )
-            return Font(glyphs, self._comments, vars(self._props))
+            return  self.modify(glyphs)
 
         locals()[_name] = _modify_glyphs
 

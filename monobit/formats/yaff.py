@@ -522,14 +522,14 @@ class YaffWriter(TextWriter, YaffParams):
                 outstream.write(BOUNDARY_MARKER + '\n')
             logging.debug('Writing %s to section #%d', font.name, number)
             # write global comment
-            if font.get_comments():
-                outstream.write(self._format_comment(font.get_comments()) + '\n\n')
+            if font.comments:
+                outstream.write(self._format_comment(font.comments) + '\n\n')
             # we always output name, font-size and spacing
             # plus anything that is different from the default
             props = {
                 'name': font.name,
                 'spacing': font.spacing,
-                **font.nondefault_properties
+                **font.properties
             }
             if font.spacing in ('character-cell', 'multi-cell'):
                 props['raster-size'] = font.raster_size
@@ -560,8 +560,8 @@ class DrawWriter(TextWriter, DrawParams):
     def save(self, font, outstream):
         """Write one font to a plaintext stream as hexdraw."""
         # write global comment
-        if font.get_comments():
-            outstream.write(self._format_comment(font.get_comments()) + '\n\n')
+        if font.comments:
+            outstream.write(self._format_comment(font.comments) + '\n\n')
         # write glyphs
         for glyph in font.glyphs:
             if len(glyph.char) > 1:

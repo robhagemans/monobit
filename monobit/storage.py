@@ -95,7 +95,7 @@ def _load_from_file(instream, where, format, **kwargs):
     # set conversion properties
     filename = Path(instream.name).name
     return Pack(
-        _font.set_properties(
+        _font.modify(
             converter=CONVERTER_NAME,
             source_format=_font.source_format or loader.name,
             source_name=_font.source_name or filename

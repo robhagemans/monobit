@@ -99,7 +99,7 @@ with main(args, logging.WARNING):
         # use string as a representation of bytes
         args.text = args.text.encode('latin-1', errors='ignore')
     elif args.encoding:
-        font = font.set_properties(encoding=args.encoding)
+        font = font.modify(encoding=args.encoding)
     sys.stdout.write(render_text(
         font, args.text, args.ink, args.paper,
         margin=args.margin, scale=args.scale, rotate=args.rotate, missing='default'

@@ -22,9 +22,10 @@ from .binary import ceildiv, bytes_to_bits
 from .matrix import to_text
 from .encoding import is_graphical
 from .label import Char, Codepoint, Tag, label
-from .struct import DefaultProps
+from .struct import DefaultProps, normalise_property
 
 
+# sentinel object
 NOT_SET = object()
 
 
@@ -179,21 +180,21 @@ class Glyph:
         """Text representation."""
         return '{}({})'.format(
             type(self).__name__,
-                ', '.join((
-                    f"char={repr(self._char)}",
-                    f"codepoint={repr(self._codepoint)}",
-                    f"tags={repr(self._tags)}",
-                    "comments=({})".format(
-                        '' if not self._comments else
-                        "\n  '" + "\n',\n  '".join(self.comments.splitlines()) + "'"
-                    ),
-                    ', '.join(f'{_k}={_v}' for _k, _v in self.properties.items()),
-                    "pixels=({})".format(
-                        '' if not self._rows else
-                        "\n  '{}'\n".format(
-                            to_text(self.as_matrix(), ink='@', paper='.', line_break="',\n  '")
-                        )
+            ', '.join((
+                f"char={repr(self._char)}",
+                f"codepoint={repr(self._codepoint)}",
+                f"tags={repr(self._tags)}",
+                "comments=({})".format(
+                    '' if not self._comments else
+                    "\n  '" + "\n',\n  '".join(self.comments.splitlines()) + "'"
+                ),
+                ', '.join(f'{_k}={_v}' for _k, _v in self.properties.items()),
+                "pixels=({})".format(
+                    '' if not self._rows else
+                    "\n  '{}'\n".format(
+                        to_text(self.as_matrix(), ink='@', paper='.', line_break="',\n  '")
                     )
+                )
             ))
         )
 
@@ -274,6 +275,11 @@ class Glyph:
     @property
     def comments(self):
         return self._comments
+
+    @classmethod
+    def default(cls, property):
+        """Default value for a property."""
+        return vars(GlyphProperties).get(normalise_property(property), '')
 
     @property
     def properties(self):

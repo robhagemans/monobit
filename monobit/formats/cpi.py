@@ -154,7 +154,7 @@ def _parse_cpi(data):
             _c for _c in notice if _c in string.printable
         )
         fonts = [
-            _font.set_properties(notice=notice.strip())
+            _font.modify(notice=notice.strip())
             for _font in fonts
         ]
     return fonts
