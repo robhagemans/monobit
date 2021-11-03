@@ -886,4 +886,4 @@ def _parse_nfnt(data, offset, properties):
         'leading': fontrec.leading,
         'offset': Coord(fontrec.kernMax, -fontrec.descent),
     })
-    return Font(glyphs, properties=properties)
+    return Font(glyphs, **properties)

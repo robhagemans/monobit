@@ -217,7 +217,7 @@ def _load_amiga(f, where):
     logging.info('yaff properties:')
     for line in str(props).splitlines():
         logging.info('    ' + line)
-    return Font(glyphs, properties=vars(props))
+    return Font(glyphs, **vars(props))
 
 
 def _read_library_names(f):

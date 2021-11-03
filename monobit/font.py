@@ -183,10 +183,8 @@ class Font:
     ##########################################################################
     # constructor
 
-    def __init__(self, glyphs=(), comments=None, properties=None):
+    def __init__(self, glyphs=(), comments=None, **properties):
         """Create new font."""
-        if not properties:
-            properties = {}
         if not comments:
             comments = {}
         if not isinstance(comments, dict):
@@ -310,7 +308,7 @@ class Font:
                 type(self).__name__,
             ', '.join((
                 f'glyphs={glyphstr}',
-                f'properties={props}',
+                ', '.join(f'{_k}={_v}' for _k, _v in self.properties.items()),
             ))
         )
 
@@ -330,7 +328,7 @@ class Font:
         return type(self)(
             tuple(glyphs),
             comments=comments,
-            properties={**self.properties, **kwargs}
+            **{**self.properties, **kwargs}
         )
 
     @scriptable(record=False)
@@ -801,13 +799,6 @@ class Font:
                 else:
                     glyph = glyph.modify(tags=new_tags)
                 glyphs.append(glyph)
-        return self.modify(glyphs)
-
-    # replace with clone(glyphs=.., comments=.., properties=..)
-    def with_glyph(self, glyph):
-        """Return a font with a glyph added."""
-        glyphs = list(self._glyphs)
-        glyphs.append(glyph)
         return self.modify(glyphs)
 
 

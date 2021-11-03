@@ -33,7 +33,7 @@ def load_fzx(instream, where=None):
     logging.info('yaff properties:')
     for line in str(props).splitlines():
         logging.info('    ' + line)
-    return Font(glyphs, properties=vars(props))
+    return Font(glyphs, **vars(props))
 
 
 @savers.register(linked=load_fzx)

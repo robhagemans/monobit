@@ -38,7 +38,7 @@ def load_flf(instream, where=None, *, ink:str=''):
     logging.info('yaff properties:')
     for line in str(props).splitlines():
         logging.info('    ' + line)
-    return Font(glyphs, properties=vars(props), comments=comments)
+    return Font(glyphs, comments=comments, **vars(props))
 
 @savers.register(linked=load_flf)
 def save_flf(fonts, outstream, where=None):

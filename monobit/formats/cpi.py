@@ -224,5 +224,5 @@ def _parse_cp(data, cpeh_offset, header_id=_ID_MS, drdos_effh=None, standalone=F
                         fh.width
                     ))
                 fh_offset += _SCREEN_FONT_HEADER.size
-            fonts.append(Font(cells, properties=vars(props)))
+            fonts.append(Font(cells, **vars(props)))
     return fonts, cpeh.next_cpeh_offset

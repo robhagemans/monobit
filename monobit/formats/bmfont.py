@@ -504,7 +504,7 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=(),
         for _k, _v in bmfont_props.items()
         if str(_v) != default_bmfont_props.get(_k, '')
     })
-    return Font(glyphs, properties=properties)
+    return Font(glyphs, **properties)
 
 def _read_bmfont(infile, container, outline):
     """Read a bmfont from a container."""

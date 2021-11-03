@@ -290,7 +290,7 @@ class TextConverter:
     def get_font_from(cls, reader):
         """Get clusters from reader and convert to Font."""
         props, glyphs = cls.convert_from(reader)
-        return Font(glyphs=glyphs, properties=vars(props))
+        return Font(glyphs, **vars(props))
 
     @classmethod
     def convert_from(cls, reader):
