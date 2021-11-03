@@ -21,7 +21,7 @@ from .scripting import scriptable, get_scriptables
 from .glyph import Glyph, Coord, Bounds, number
 from .encoding import charmaps
 from .label import Label, Tag, Char, Codepoint, label
-from .struct import extend_string
+from .struct import extend_string, DefaultProps, normalise_property
 
 
 # pylint: disable=redundant-keyword-arg, no-member
@@ -32,79 +32,107 @@ from .struct import extend_string
 
 # recognised yaff properties and converters from str
 # this also defines the default order in yaff files
-class RecognisedProperties(SimpleNamespace):
+class RecognisedProperties(DefaultProps):
 
     # naming - can be determined from source file if needed
-    name: str # full human name
-    family: str # typeface/font family
+    # full human name
+    name: str
+    # typeface/font family
+    family: str
 
     # font metadata
     # can't be calculated
-    foundry: str # author or issuer
-    copyright: str # copyright string
-    notice: str # e.g. license string
-    revision: str # font version
+    # author or issuer
+    foundry: str
+    # copyright string
+    copyright: str
+    # license string or similar
+    notice: str
+    # font version
+    revision: str = '0'
 
     # font description
     # can't be calculated
-    style: str # serif, sans, etc.
-    point_size: number # nominal point size
-    weight: str # normal, bold, light, etc.
-    slant: str # roman, italic, oblique, etc
-    setwidth: str # normal, condensed, expanded, etc.
-    decoration: str # underline, strikethrough, etc.
+    # serif, sans, etc.
+    style: str
+    # nominal point size
+    point_size: number
+    # normal, bold, light, ...
+    weight: str = 'regular'
+    # roman, italic, oblique, ...
+    slant: str = 'roman'
+    # normal, condensed, expanded, ...
+    setwidth: str = 'normal'
+    # underline, strikethrough, etc.
+    decoration: str
 
     # target info
     # can't be calculated
-    device: str # target device name
-    pixel_aspect: Coord.create # pixel aspect ratio
+    # target device name
+    device: str
     # calculated or given
-    dpi: Coord.create # target resolution in dots per inch
+    # pixel aspect ratio - square pixel
+    pixel_aspect: Coord.create = Coord(1, 1)
+    # target resolution in dots per inch
+    dpi: Coord.create
 
     # summarising quantities
     # determined from the bitmaps only
-    spacing: str # proportional, monospace, character-cell, multi-cell
-    raster_size: Coord.create # maximum raster (not necessarily ink) width/height
-    bounding_box: Coord.create # overall ink bounds - overlay all glyphs with fixed origin and determine maximum ink extent
-    average_advance: number # average advance width, rounded to tenths
-    cap_advance: int # advance width of LATIN CAPITAL LETTER X
+    # proportional, monospace, character-cell, multi-cell
+    spacing: str
+    # maximum raster (not necessarily ink) width/height
+    raster_size: Coord.create
+    # overall ink bounds - overlay all glyphs with fixed origin and determine maximum ink extent
+    bounding_box: Coord.create
+    # average advance width, rounded to tenths
+    average_advance: number
+    # advance width of LATIN CAPITAL LETTER X
+    cap_advance: int
 
     # descriptive typographic quantities
     # can be calculated or given
-    x_height: int # height of lowercase x relative to baseline
-    cap_height: int # height of capital relative to baseline
+    # height of lowercase x relative to baseline
+    x_height: int
+    # height of capital relative to baseline
+    cap_height: int
     # can't be calculated, affect rendering (vertical positioning)
     # might affect e.g. composition of characters
-    ascent: int # recommended typographic ascent relative to baseline (not necessarily equal to top)
-    descent: int # recommended typographic descent relative to baseline (not necessarily equal to bottom)
-    pixel_size: int # nominal pixel size, always equals ascent + descent
+    # recommended typographic ascent relative to baseline (not necessarily equal to top)
+    ascent: int
+    # recommended typographic descent relative to baseline (not necessarily equal to bottom)
+    descent: int
+    # nominal pixel size, always equals ascent + descent
+    pixel_size: int
 
     # metrics
     # can't be calculated, affect rendering
     # positioning relative to origin
-    direction: str # left-to-right, right-to-left
-    offset: Coord.create # (horiz, vert) offset from origin to matrix start
-    tracking: int # horizontal offset from matrix end to next origin
-    leading: int # interline spacing, defined as (pixels between baselines) - (pixel size)
+    # left-to-right, right-to-left
+    direction: str = 'left-to-right'
+    # (horiz, vert) offset from origin to matrix start
+    offset: Coord.create
+    # horizontal offset from matrix end to next origin
+    tracking: int
+    # interline spacing, defined as (pixels between baselines) - (pixel size)
+    leading: int
 
     # character set
     # can't be calculated, affect rendering
     encoding: charmaps.normalise
-    default_char: label # use question mark to replace missing glyph
-    word_boundary: label # word-break character (usually space)
+    # replacement for missing glyph
+    default_char: label
+    # word-break character (usually space)
+    word_boundary: label = Char(' ')
 
     # conversion metadata
-    # can't be csalculated, informational
+    # can't be calculated, informational
     converter: str
     source_name: str
     source_format: str
     history: str
 
 
-PROPERTIES = {
-    _k.replace('_', '-'): _v for _k, _v in
-    RecognisedProperties.__annotations__.items()
-}
+PROPERTIES = RecognisedProperties.__annotations__
 
 
 # properties that must have the calculated value
@@ -118,14 +146,16 @@ def calculated_property(*args, override='accept'):
         # return decorator with these arguments set as extra args
         return partial(calculated_property, override=override)
     fn, *_ = args
-    name = fn.__name__.replace('_', '-')
+    name = fn.__name__
 
     @property
     @cache
     @wraps(fn)
-    def _cached_fn(self, *args, **kwargs):
+    def _overridable_fn(self, *args, **kwargs):
         try:
-            return self._properties[name]
+            # get property through vars()
+            # only use if explicitly set on the instance
+            return vars(self._props)[name]
         except KeyError:
             pass
         return fn(self, *args, **kwargs)
@@ -134,7 +164,7 @@ def calculated_property(*args, override='accept'):
         _non_overridable.append(name)
     elif override == 'notify':
         _notify_override.append(name)
-    return _cached_fn
+    return _overridable_fn
 
 
 ###################################################################################################
@@ -173,8 +203,8 @@ class Font:
         # set encoding first so we can set labels
         # NOTE - we must be careful NOT TO ACCESS CACHED PROPERTIES
         #        until the constructor is complete
-        self._properties = {}
-        self._properties.update(self._filter_properties(properties))
+        properties = self._filter_properties(properties)
+        self._props = RecognisedProperties(**properties)
         # add labels if unset (needs encoding property)
         self._add_labels()
         # construct lookup tables
@@ -222,23 +252,15 @@ class Font:
     def _get_encoder(self):
         """Get encoding object."""
         try:
-            return charmaps[self._properties['encoding']]
+            return charmaps[self._props.encoding]
         except KeyError:
             return None
-
-    @staticmethod
-    def _normalise_property(property):
-        """Return property name with underscores replaced."""
-        # don't modify namespace properties
-        if '.' in property:
-            return property
-        return property.replace('_', '-')
 
     def _filter_properties(self, properties):
         """Convert properties where needed."""
         if not properties:
             return {}
-        properties = {self._normalise_property(_k): _v for _k, _v in properties.items()}
+        properties = {normalise_property(_k): _v for _k, _v in properties.items()}
         for key, converter in reversed(list(PROPERTIES.items())):
             try:
                 value = converter(properties.pop(key))
@@ -285,7 +307,7 @@ class Font:
     def set_properties(self, **kwargs):
         """Return a copy with amended properties."""
         return Font(
-            self._glyphs, self._comments, {**self._properties, **kwargs}
+            self._glyphs, self._comments, {**vars(self._props), **kwargs}
         )
 
     @scriptable(record=False)
@@ -300,7 +322,7 @@ class Font:
         if property not in self._comments:
             comments[property] = ''
         comments[property] = extend_string(comments[property], comment)
-        return Font(self._glyphs, comments, self._properties)
+        return Font(self._glyphs, comments, vars(self._props))
 
 
     def add_history(self, history):
@@ -457,62 +479,29 @@ class Font:
         return self._comments.get(property, ())
 
 
-    @property
-    def nondefault_properties(self):
-        """Non-default properties."""
-        return {**self._properties}
-
-    def __getattr__(self, attr):
-        """Take property from property table."""
-        norm_attr = self._normalise_property(attr)
-        if '_properties' in vars(self):
-            # first check if defined as override
-            try:
-                return self._properties[norm_attr]
-            except KeyError:
-                pass
-        else:
-            logging.error('font._properties not defined')
-        if '_property_defaults' in vars(type(self)):
-            # return default if in list
-            try:
-                return self._property_defaults[norm_attr]
-            except KeyError:
-                pass
-        else:
-            logging.error('font._property_defaults not defined')
-        raise AttributeError(attr)
-
-
-    ##########################################################################
-    # recognised properties
-
-    # default property values
-    _property_defaults = {
-        _prop: _type() for _prop, _type in PROPERTIES.items()
-    }
-
-    _property_defaults.update({
-        # font version
-        'revision': '0',
-        # normal, bold, light, ...
-        'weight': 'regular',
-        # roman, italic, oblique, ...
-        'slant': 'roman',
-        # normal, condensed, expanded, ...
-        'setwidth': 'normal',
-        # left-to-right, right-to-left
-        'direction': 'left-to-right',
-        # word-break character (usually space)
-        'word-boundary': Char(' '),
-        # pixel aspect ratio - square pixel
-        'pixel-aspect': Coord(1, 1),
-    })
-
     @classmethod
     def default(cls, property):
         """Default value for a property."""
-        return cls._property_defaults.get(cls._normalise_property(property), '')
+        return vars(RecognisedProperties).get(normalise_property(property), '')
+
+    @property
+    def nondefault_properties(self):
+        """Non-default properties."""
+        return vars(self._props)
+
+    def __getattr__(self, attr):
+        """Take property from property table."""
+        if '_props' not in vars(self):
+            logging.error('font._props not defined')
+            raise AttributeError(attr)
+        if attr.startswith('_'):
+            # don't delegate private members
+            raise AttributeError(attr)
+        return getattr(self._props, attr)
+
+
+    ##########################################################################
+    # calculated properties
 
     @calculated_property
     def name(self):
@@ -538,8 +527,8 @@ class Font:
     def family(self):
         """Name of font family."""
         # use source name if no family name defined
-        if 'source-name' in self._properties:
-            return self.source_name.split('.')[0]
+        if 'source-name' in self._props:
+            return self._props.source_name.split('.')[0]
         return ''
 
     @calculated_property(override='notify')
@@ -560,7 +549,7 @@ class Font:
     def dpi(self):
         """Target screen resolution in dots per inch."""
         # if point-size has been overridden and dpi not set, determine from pixel-size & point-size
-        if 'point-size' in self._properties:
+        if 'point-size' in self._props:
             dpi = (72 * self.pixel_size) // self.point_size
         else:
             # default: 72 dpi; 1 point == 1 pixel
@@ -747,7 +736,7 @@ class Font:
             + [self.get_glyph(tag=_tag, missing=None) for _tag in tags]
         )
         glyphs = (_glyph for _glyph in glyphs if _glyph is not None)
-        return Font(glyphs, self._comments, self._properties)
+        return Font(glyphs, self._comments, vars(self._props))
 
     @scriptable
     def without(self, keys=(), *, chars:set=(), codepoints:set=(), tags:set=()):
@@ -765,7 +754,7 @@ class Font:
                 and not (set(_glyph.tags) & set(tags))
             )
         ]
-        return Font(glyphs, self._comments, self._properties)
+        return Font(glyphs, self._comments, vars(self._props))
 
     def merged_with(self, other):
         """Merge glyphs from other font into this one. Existing glyphs have preference."""
@@ -783,14 +772,14 @@ class Font:
                 else:
                     glyph = glyph.modify(tags=new_tags)
                 glyphs.append(glyph)
-        return Font(glyphs, self._comments, self._properties)
+        return Font(glyphs, self._comments, vars(self._props))
 
     # replace with clone(glyphs=.., comments=.., properties=..)
     def with_glyph(self, glyph):
         """Return a font with a glyph added."""
         glyphs = list(self._glyphs)
         glyphs.append(glyph)
-        return Font(glyphs, self._comments, self._properties)
+        return Font(glyphs, self._comments, vars(self._props))
 
 
     ##########################################################################
@@ -801,14 +790,14 @@ class Font:
 
         @scriptable
         @wraps(_func)
-        def _modify(self, *args, operation=_func, **kwargs):
+        def _modify_glyphs(self, *args, operation=_func, **kwargs):
             glyphs = tuple(
                 operation(_glyph, *args, **kwargs)
                 for _glyph in self._glyphs
             )
-            return Font(glyphs, self._comments, self._properties)
+            return Font(glyphs, self._comments, vars(self._props))
 
-        locals()[_name] = _modify
+        locals()[_name] = _modify_glyphs
 
 
 # scriptable font/glyph operations

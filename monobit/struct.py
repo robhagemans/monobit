@@ -29,33 +29,101 @@ def extend_string(string, line):
         if _line
     )
 
+def normalise_property(item):
+    return item.replace('-', '_')
+
+
 class Props(SimpleNamespace):
     """
     SimpleNamespace with the dunder methods of a dict
     Not a mapping but allows both key-style and attribute-style access
     """
 
+    # don't pollute the object namespace
+    # we only have __dunder__ methods
+
+    def __init__(self, *args, **kwargs):
+        # convert from string representation
+        if len(args) == 1 and isinstance(args[0], str):
+            kwargs = dict(
+                _line.strip().split(':', 1)
+                for _line in args[0].splitlines()
+            )
+            args = ()
+        super().__init__(*args, **kwargs)
+
     def __getitem__(self, item):
-        return vars(self)[item.replace('-', '_')]
+        return vars(self)[normalise_property(item)]
 
     def __setitem__(self, item, value):
-        vars(self)[item.replace('-', '_')] = value
+        vars(self)[normalise_property(item)] = value
+
+    def __delitem__(self, item):
+        del vars(self)[normalise_property(item)]
 
     def __len__(self):
         return len(vars(self))
 
     def __iter__(self):
-        return iter(_item for _item in vars(self))
+        return iter(vars(self))
 
     def __str__(self):
         return '\n'.join(f'{_k}: {_v}' for _k, _v in vars(self).items())
 
-    @classmethod
-    def from_str(cls, propstr):
-        return cls(**dict(
-            _line.strip().split(':', 1)
-            for _line in propstr.splitlines()
-        ))
+
+
+class DefaultProps(Props):
+    """
+    Namespace with recognised fields and defaults.
+    Define field types (converters) and defaults in class definition.
+    >>> class MyProps(DefaultProps)
+    >>>    field_1: int
+    >>>    field_2: int = 2
+    >>> p = MyProps()
+    >>> p.field_2
+    >>> 2
+    >>> p.field_1
+    >>> 0
+    where field_1 has an implied default, int() == 0
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # if a type constructor is given in the annotations, use that to set the default
+        # note that we're changing the *class* namespace on the *instance* initialiser
+        # which feels a bit hacky
+        # but this will be consistent and only run once for multiple instances of the class
+        for field, field_type in type(self).__annotations__.items():
+            if field not in vars(type(self)):
+                setattr(type(self), field, field_type())
+
+    def __getitem__(self, item):
+        try:
+            return super().__getitem__(item)
+        except KeyError:
+            pass
+        # defaults are defined in class namespace
+        defaults = vars(type(self))
+        try:
+            return defaults[normalise_property(item)]
+        except KeyError:
+            pass
+        raise KeyError(item)
+
+    def __getattr__(self, item):
+        try:
+            return self[item]
+        except KeyError as key_error:
+            raise AttributeError(item) from key_error
+
+    def __setattr__(self, item, value):
+        self[item] = value
+
+    def __delattr__(self, item):
+        try:
+            del self[item]
+        except KeyError as key_error:
+            raise AttributeError(item) from key_error
 
 
 ##############################################################################

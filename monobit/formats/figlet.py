@@ -209,7 +209,7 @@ def _convert_to_flf(font, hardblank='$'):
     )
     # keep namespace properties
     try:
-        figprops = Props.from_str(font.figlet)
+        figprops = Props(font.figlet)
     except AttributeError:
         pass
     else:
