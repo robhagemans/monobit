@@ -171,58 +171,6 @@ class Glyph:
                 f"All rows in a glyph's pixel matrix must be of the same width: {repr(self)}"
             )
 
-    ##########################################################################
-    # property access
-
-    def __getattr__(self, attr):
-        """Take property from property table."""
-        if '_props' not in vars(self):
-            logging.error(type(self).__name__ + '._props not defined')
-            raise AttributeError(attr)
-        if attr.startswith('_'):
-            # don't delegate private members
-            raise AttributeError(attr)
-        return getattr(self._props, attr)
-
-    def drop_properties(self, *args):
-        """Remove custom properties."""
-        return self.modify(**{_k: None for _k in args})
-
-    @property
-    def comments(self):
-        return self._comments
-
-    @property
-    def properties(self):
-        return vars(self._props)
-
-
-    ##########################################################################
-    # label access
-
-    @property
-    def tags(self):
-        return self._tags
-
-    @property
-    def char(self):
-        return self._char
-
-    @property
-    def codepoint(self):
-        return self._codepoint
-
-    def get_labels(self, suppress_codepoint=False):
-        """Get glyph labels."""
-        labels = []
-        # don't write out codepoints for unicode fonts as we have u+XXXX already
-        if self.codepoint and (not suppress_codepoint or not self.char):
-            labels.append(Codepoint(self.codepoint))
-        if self.char:
-            labels.append(Char(self.char))
-        labels.extend(Tag(_t) for _t in self.tags)
-        return tuple(labels)
-
 
     ##########################################################################
     # representation
@@ -248,6 +196,7 @@ class Glyph:
                     )
             ))
         )
+
 
     ##########################################################################
     # copying
@@ -303,6 +252,60 @@ class Glyph:
     def drop_comments(self):
         """Return a copy of the glyph without comments."""
         return self.modify(comments='')
+
+    def drop_properties(self, *args):
+        """Remove custom properties."""
+        return self.modify(**{_k: None for _k in args})
+
+
+    ##########################################################################
+    # property access
+
+    def __getattr__(self, attr):
+        """Take property from property table."""
+        if '_props' not in vars(self):
+            logging.error(type(self).__name__ + '._props not defined')
+            raise AttributeError(attr)
+        if attr.startswith('_'):
+            # don't delegate private members
+            raise AttributeError(attr)
+        return getattr(self._props, attr)
+
+    @property
+    def comments(self):
+        return self._comments
+
+    @property
+    def properties(self):
+        return vars(self._props)
+
+
+    ##########################################################################
+    # label access
+
+    @property
+    def tags(self):
+        return self._tags
+
+    @property
+    def char(self):
+        return self._char
+
+    @property
+    def codepoint(self):
+        return self._codepoint
+
+    def get_labels(self, suppress_codepoint=False):
+        """Get glyph labels."""
+        labels = []
+        # don't write out codepoints for unicode fonts as we have u+XXXX already
+        if self.codepoint and (not suppress_codepoint or not self.char):
+            labels.append(Codepoint(self.codepoint))
+        if self.char:
+            labels.append(Char(self.char))
+        labels.extend(Tag(_t) for _t in self.tags)
+        return tuple(labels)
+
 
     ##########################################################################
     # creation and conversion

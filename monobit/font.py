@@ -331,6 +331,35 @@ class Font:
 
 
     ##########################################################################
+    # property access
+
+    def get_comments(self, property=''):
+        """Get global or property comments."""
+        return self._comments.get(property, ())
+
+
+    @classmethod
+    def default(cls, property):
+        """Default value for a property."""
+        return vars(FontProperties).get(normalise_property(property), '')
+
+    @property
+    def nondefault_properties(self):
+        """Non-default properties."""
+        return vars(self._props)
+
+    def __getattr__(self, attr):
+        """Take property from property table."""
+        if '_props' not in vars(self):
+            logging.error(type(self).__name__ + '._props not defined')
+            raise AttributeError(attr)
+        if attr.startswith('_'):
+            # don't delegate private members
+            raise AttributeError(attr)
+        return getattr(self._props, attr)
+
+
+    ##########################################################################
     # glyph access
 
     @property
@@ -469,35 +498,6 @@ class Font:
             else:
                 yield self.get_glyph(key=remaining[:1], missing=missing)
                 remaining = remaining[1:]
-
-
-    ##########################################################################
-    # property access
-
-    def get_comments(self, property=''):
-        """Get global or property comments."""
-        return self._comments.get(property, ())
-
-
-    @classmethod
-    def default(cls, property):
-        """Default value for a property."""
-        return vars(FontProperties).get(normalise_property(property), '')
-
-    @property
-    def nondefault_properties(self):
-        """Non-default properties."""
-        return vars(self._props)
-
-    def __getattr__(self, attr):
-        """Take property from property table."""
-        if '_props' not in vars(self):
-            logging.error(type(self).__name__ + '._props not defined')
-            raise AttributeError(attr)
-        if attr.startswith('_'):
-            # don't delegate private members
-            raise AttributeError(attr)
-        return getattr(self._props, attr)
 
 
     ##########################################################################
