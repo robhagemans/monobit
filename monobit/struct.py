@@ -89,11 +89,12 @@ _NOT_SET = object()
 def reject_override(property):
     def _reject_override_deco(fn):
         def _set_value(value=_NOT_SET):
-            # must have the calculated value
-            logging.info(
-                "Property `%s` is not overridable and can't be changed to %s.",
-                property, repr(value)
-            )
+            if not value is _NOT_SET:
+                # must have the calculated value
+                logging.info(
+                    "Property `%s` is not overridable and can't be changed to %s.",
+                    property, repr(value)
+                )
             raise KeyError(f'`{property}` is not overridable')
         return _set_value
     return _reject_override_deco
@@ -101,12 +102,15 @@ def reject_override(property):
 def notify_override(property):
     def _notify_override_deco(fn):
         def _set_value(value=_NOT_SET):
-            # calculated value may be overridden but gives a notification
-            logging.info(
-                'Property `%s` is overridden to %s.',
-                property, repr(value)
-            )
-            return fn() if value is _NOT_SET else fn(value)
+            if value is _NOT_SET:
+                return fn()
+            else:
+                # calculated value may be overridden but gives a notification
+                logging.info(
+                    'Property `%s` is overridden to %s.',
+                    property, repr(value)
+                )
+                return fn(value)
         return _set_value
     return _notify_override_deco
 
