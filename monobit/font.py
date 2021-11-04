@@ -231,24 +231,13 @@ class Font:
 
     def __repr__(self):
         """Representation."""
-        if not self._props:
-            props = '{}'
-        else:
-            props = (
-                '{\n'
-                + ''.join(f"  '{_k}': '{_v}',\n" for _k, _v in self.properties.items())
-                + '}'
-            )
-        if self.glyphs:
-            glyphstr = f'(...{len(self._glyphs)} glyphs...)'
-        else:
-            glyphstr = '()'
+        elements = (
+            f'glyphs=(...{len(self._glyphs)} glyphs...)' if self.glyphs else '',
+            ', '.join(f'{_k}={_v}' for _k, _v in self.properties.items()),
+        )
         return '{}({})'.format(
-                type(self).__name__,
-            ', '.join((
-                f'glyphs={glyphstr}',
-                ', '.join(f'{_k}={_v}' for _k, _v in self.properties.items()),
-            ))
+            type(self).__name__,
+            ', '.join(_e for _e in elements if _e)
         )
 
 

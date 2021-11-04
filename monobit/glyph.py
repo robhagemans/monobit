@@ -179,24 +179,23 @@ class Glyph:
 
     def __repr__(self):
         """Text representation."""
+        elements = (
+            f"char={repr(self._char)}" if self._char else '',
+            f"codepoint={repr(self._codepoint)}" if self._codepoint else '',
+            f"tags={repr(self._tags)}" if self._tags else '',
+            "comments=({})".format(
+                "\n  '" + "\n',\n  '".join(self.comments.splitlines()) + "'"
+            ) if self._comments else '',
+            ', '.join(f'{_k}={_v}' for _k, _v in self.properties.items()),
+            "pixels=({})".format(
+                "\n  '{}'\n".format(
+                    to_text(self.as_matrix(), ink='@', paper='.', line_break="',\n  '")
+                )
+            ) if self._rows else ''
+        )
         return '{}({})'.format(
             type(self).__name__,
-            ', '.join((
-                f"char={repr(self._char)}",
-                f"codepoint={repr(self._codepoint)}",
-                f"tags={repr(self._tags)}",
-                "comments=({})".format(
-                    '' if not self._comments else
-                    "\n  '" + "\n',\n  '".join(self.comments.splitlines()) + "'"
-                ),
-                ', '.join(f'{_k}={_v}' for _k, _v in self.properties.items()),
-                "pixels=({})".format(
-                    '' if not self._rows else
-                    "\n  '{}'\n".format(
-                        to_text(self.as_matrix(), ink='@', paper='.', line_break="',\n  '")
-                    )
-                )
-            ))
+            ', '.join(_e for _e in elements if _e)
         )
 
 
