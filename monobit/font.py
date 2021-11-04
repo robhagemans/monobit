@@ -135,7 +135,6 @@ class FontProperties(DefaultProps):
 
 calculated_property = FontProperties._calculated_property
 
-PROPERTIES = FontProperties.__annotations__
 
 
 ###################################################################################################
@@ -311,8 +310,8 @@ class Font:
 
     @property
     def properties(self):
-        """Non-default properties."""
-        return vars(self._props)
+        """Non-defaulted properties in order of default definition list."""
+        return {_k: self._props[_k] for _k in self._props}
 
 
     ##########################################################################
@@ -672,7 +671,7 @@ class Font:
     ##########################################################################
     # font operations
 
-    set = scriptable(modify, script_args=PROPERTIES, name='set')
+    set = scriptable(modify, script_args=FontProperties.__annotations__, name='set')
 
     @scriptable
     def subset(self, keys=(), *, chars:set=(), codepoints:set=(), tags:set=()):

@@ -12,6 +12,7 @@ from ctypes import sizeof
 import logging
 from types import SimpleNamespace
 from functools import partial, wraps
+from itertools import chain
 try:
     # python 3.9
     from functools import cache
@@ -194,6 +195,13 @@ class DefaultProps(Props):
             del self[item]
         except KeyError as key_error:
             raise AttributeError(item) from key_error
+
+    def __iter__(self):
+        """Iterate on default definition order first, then remaining keys."""
+        keys = vars(super()).keys()
+        have_defaults = (_k for _k in type(self).__annotations__ if _k in keys)
+        others = (_k for _k in keys if _k not in type(self).__annotations__)
+        return chain(have_defaults, others)
 
     @classmethod
     def _calculated_property(cls, *args, override='accept'):

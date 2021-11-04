@@ -15,7 +15,7 @@ from ..matrix import to_text
 from ..storage import loaders, savers
 from ..encoding import charmaps
 from ..streams import FileFormatError
-from ..font import PROPERTIES, Font
+from ..font import Font
 from ..glyph import Glyph
 from ..label import strip_matching, label
 from ..label import Char, Codepoint, Tag, Label
@@ -529,21 +529,16 @@ class YaffWriter(TextWriter, YaffParams):
             props = {
                 'name': font.name,
                 'spacing': font.spacing,
-                **font.properties
             }
             if font.spacing in ('character-cell', 'multi-cell'):
                 props['raster-size'] = font.raster_size
             else:
                 props['bounding-box'] = font.bounding_box
+            props.update(font.properties)
             if props:
                 # write recognised yaff properties first, in defined order
-                ordered_keys = [
-                    *(_k for _k in PROPERTIES if _k in props),
-                    *(_k for _k in props if _k not in PROPERTIES)
-                ]
-                ordered_props = {_k: props[_k] for _k in ordered_keys}
-                for key in ordered_keys:
-                    self._write_property(outstream, key, props[key], font.get_comments(key))
+                for key, value in props.items():
+                    self._write_property(outstream, key, value, font.get_comments(key))
                 outstream.write('\n')
             for glyph in font.glyphs:
                 self._write_glyph(
