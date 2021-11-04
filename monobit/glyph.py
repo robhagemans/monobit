@@ -436,13 +436,16 @@ class Glyph:
     @cache
     def ink_bounds(self):
         """Minimum box encompassing all ink, in glyph origin coordinates."""
-        row_inked = [True in _row for _row in self._rows]
-        return Bounds(
+        bounds = Bounds(
             left=self.offset.x + self.ink_offsets.left,
             bottom=self.offset.y + self.ink_offsets.bottom,
             right=self.offset.x + self.width - self.ink_offsets.right,
             top=self.offset.y + self.height - self.ink_offsets.top,
         )
+        # more intuitive result for blank glyphs
+        if bounds.left == bounds.right or bounds.top == bounds.bottom:
+            return Bounds(0, 0, 0, 0)
+        return bounds
 
     @property
     @cache

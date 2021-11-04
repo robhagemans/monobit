@@ -553,7 +553,11 @@ class Font:
         """Minimum bounding box encompassing all glyphs at fixed origin, font origin cordinates."""
         if not self._glyphs:
             return Bounds(self.offset.x, self.offset.y, self.offset.x, self.offset.y)
-        lefts, bottoms, rights, tops = zip(*(_glyph.ink_bounds for _glyph in self._glyphs))
+        lefts, bottoms, rights, tops = zip(*(
+            _glyph.ink_bounds
+            for _glyph in self._glyphs
+            if _glyph.bounding_box.x and _glyph.bounding_box.y
+        ))
         return Bounds(
             left=self.offset.x + min(lefts),
             bottom=self.offset.y + min(bottoms),
