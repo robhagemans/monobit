@@ -96,8 +96,8 @@ class ScriptArgs():
             + ' '.join(
                 f'{_k}={_v}'
                 for _k, _v in arg_dict.items()
-                # exclude unset and non-operation parameters
-                if _v and _k in self._script_args
+                # exclude non-operation parameters
+                if _k in self._script_args
             )
         ).strip()
 
