@@ -141,6 +141,7 @@ class GlyphProperties(DefaultProps):
     kern_to: KernTable
 
 
+
 class Glyph:
     """Single glyph."""
 

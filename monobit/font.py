@@ -5,11 +5,8 @@ monobit.font - representation of font
 licence: https://opensource.org/licenses/MIT
 """
 
-from functools import wraps
-from functools import partial
 import logging
-from types import SimpleNamespace
-
+from functools import wraps
 try:
     # python 3.9
     from functools import cache
@@ -136,39 +133,9 @@ class FontProperties(DefaultProps):
     history: str
 
 
+calculated_property = FontProperties._calculated_property
+
 PROPERTIES = FontProperties.__annotations__
-
-
-# properties that must have the calculated value
-_non_overridable=[]
-# properties where the calculated value may be overridden but results in a notification
-_notify_override=[]
-
-def calculated_property(*args, override='accept'):
-    """Decorator to take property from property table, if defined; calculate otherwise."""
-    if not args:
-        # return decorator with these arguments set as extra args
-        return partial(calculated_property, override=override)
-    fn, *_ = args
-    name = fn.__name__
-
-    @property
-    @cache
-    @wraps(fn)
-    def _overridable_fn(self, *args, **kwargs):
-        try:
-            # get property through vars()
-            # only use if explicitly set on the instance
-            return vars(self._props)[name]
-        except KeyError:
-            pass
-        return fn(self, *args, **kwargs)
-
-    if override == 'reject':
-        _non_overridable.append(name)
-    elif override == 'notify':
-        _notify_override.append(name)
-    return _overridable_fn
 
 
 ###################################################################################################
@@ -206,7 +173,6 @@ class Font:
         # set encoding first so we can set labels
         # NOTE - we must be careful NOT TO ACCESS CACHED PROPERTIES
         #        until the constructor is complete
-        properties = self._filter_properties(properties)
         self._props = FontProperties(**properties)
         # add labels if unset (needs encoding property)
         self._add_labels()
@@ -258,33 +224,6 @@ class Font:
             return charmaps[self._props.encoding]
         except KeyError:
             return None
-
-    def _filter_properties(self, properties):
-        """Convert properties where needed."""
-        if not properties:
-            return {}
-        properties = {normalise_property(_k): _v for _k, _v in properties.items()}
-        for key, converter in reversed(list(PROPERTIES.items())):
-            try:
-                value = converter(properties.pop(key))
-            except KeyError:
-                continue
-            except ValueError as e:
-                logging.error('Could not set property `%s` to %s: %s', key, repr(value), e)
-            if key in _non_overridable:
-                logging.info(
-                    "Property `%s` is not overridable and can't be changed to %s.",
-                    key, repr(value)
-                )
-            else:
-                properties[key] = value
-                if key in _notify_override:
-                    logging.info(
-                        'Property `%s` is overridden to %s.',
-                        key, repr(value)
-                    )
-        # append nonstandard properties
-        return properties
 
 
     ##########################################################################
