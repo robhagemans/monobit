@@ -462,16 +462,16 @@ class Font:
     @calculated_property
     def name(self):
         """Name of font."""
-        if self.slant == self._property_defaults['slant']:
+        if self.slant == self.default('slant'):
             slant = ''
         else:
             # title-case
             slant = self.slant.title()
-        if self.setwidth == self._property_defaults['setwidth']:
+        if self.setwidth == self.default('setwidth'):
             setwidth = ''
         else:
             setwidth = self.setwidth.title()
-        if (slant or setwidth) and self.weight == self._property_defaults['weight']:
+        if (slant or setwidth) and self.weight == self.default('weight'):
             weight = ''
         else:
             weight = self.weight.title()
@@ -483,9 +483,7 @@ class Font:
     def family(self):
         """Name of font family."""
         # use source name if no family name defined
-        if 'source-name' in self._props:
-            return self._props.source_name.split('.')[0]
-        return ''
+        return self._props.source_name.split('.')[0]
 
     @calculated_property(override='notify')
     def point_size(self):
