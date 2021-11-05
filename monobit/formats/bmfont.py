@@ -582,7 +582,7 @@ def _create_spritesheets(font, size=(256, 256), packed=False):
         x, y = 0, 0
         tree = SpriteNode(x, y, width, height)
         for number, glyph in enumerate(font.glyphs):
-            left, bottom, right, top = glyph.ink_offsets
+            left, bottom, right, top = glyph.padding
             cropped = glyph.reduce()
             if cropped.height and cropped.width:
                 try:

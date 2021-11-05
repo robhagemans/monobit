@@ -413,8 +413,7 @@ class Glyph:
 
     @property
     @cache
-    # rename to margins ?
-    def ink_offsets(self):
+    def padding(self):
         """Offset from raster sides to bounding box. Left, bottom, right, top."""
         if not self._rows:
             return Bounds(0, 0, 0, 0)
@@ -433,10 +432,10 @@ class Glyph:
     def ink_bounds(self):
         """Minimum box encompassing all ink, in glyph origin coordinates."""
         bounds = Bounds(
-            left=self.offset.x + self.ink_offsets.left,
-            bottom=self.offset.y + self.ink_offsets.bottom,
-            right=self.offset.x + self.width - self.ink_offsets.right,
-            top=self.offset.y + self.height - self.ink_offsets.top,
+            left=self.offset.x + self.padding.left,
+            bottom=self.offset.y + self.padding.bottom,
+            right=self.offset.x + self.width - self.padding.right,
+            top=self.offset.y + self.height - self.padding.top,
         )
         # more intuitive result for blank glyphs
         if bounds.left == bounds.right or bounds.top == bounds.bottom:
@@ -457,7 +456,7 @@ class Glyph:
 
     def reduce(self):
         """Return a glyph reduced to the bounding box."""
-        return self.crop(*self.ink_offsets)
+        return self.crop(*self.padding)
 
     def superimposed(self, other):
         """Superimpose another glyph of the same size."""

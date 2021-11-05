@@ -484,7 +484,7 @@ class Font:
         if not self._glyphs:
             return 0
         return self.offset.y + max(
-            _glyph.height - _glyph.ink_offsets.top
+            _glyph.height - _glyph.padding.top
             for _glyph in self._glyphs
         )
 
@@ -495,7 +495,7 @@ class Font:
             return 0
         # usually, descent is positive and offset is negative
         # negative descent would mean font descenders are all above baseline
-        return -self.offset.y - min(_glyph.ink_offsets.bottom for _glyph in self._glyphs)
+        return -self.offset.y - min(_glyph.padding.bottom for _glyph in self._glyphs)
 
     @calculated_property(override='reject')
     def raster(self):

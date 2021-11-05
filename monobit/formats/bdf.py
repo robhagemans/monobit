@@ -838,7 +838,7 @@ def _save_bdf(font, outstream):
         offset_x, offset_y = font.offset.x, font.offset.y
         # minimize glyphs to ink-bounds (BBX) before storing, except "cell" fonts
         if font.spacing not in ('character-cell', 'multi-cell'):
-            offset_x, offset_y = offset_x + glyph.ink_offsets[0], offset_y + glyph.ink_offsets[1]
+            offset_x, offset_y = offset_x + glyph.padding.left, offset_y + glyph.padding.bottom
             glyph = glyph.reduce()
         if not glyph.height or not glyph.width:
             # empty glyph
