@@ -533,7 +533,7 @@ class Font:
     def raster(self):
         """Minimum box encompassing all glyph matrices overlaid at fixed origin."""
         if not self._glyphs:
-            return Coord(0, 0)
+            return Bounds(0, 0, 0, 0)
         lefts = tuple(_glyph.offset.x for _glyph in self._glyphs)
         bottoms = tuple(_glyph.offset.y for _glyph in self._glyphs)
         rights = tuple(_glyph.offset.x + _glyph.width for _glyph in self._glyphs)
