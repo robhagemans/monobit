@@ -144,30 +144,16 @@ calculated_property = FontProperties._calculated_property
 class Font:
     """Representation of font glyphs and metadata."""
 
-    comment_prefix = '_comment_'
-
-    ##########################################################################
-    # constructor
-
-    def __init__(self, glyphs=(), comments=None, **properties):
+    def __init__(self, glyphs=(), *, comments=None, **properties):
         """Create new font."""
-        if not comments:
-            comments = {}
-        if not isinstance(comments, dict):
-            comments = {'': comments}
         self._glyphs = tuple(glyphs)
-        # global comments
-        self._comments = {_k: _v for _k, _v in comments.items()}
-        # filter out comments given as properties starting with #
-        self._comments.update({
-            _k[len(self.comment_prefix):]: _v for _k, _v in properties.items()
-            if _v and _k.startswith(self.comment_prefix)
-        })
-        properties = {
-            _k: _v for _k, _v in properties.items()
-            if _v is not None
-            and not _k.startswith(self.comment_prefix)
-        }
+        # comments can be str (just global comment) or mapping of property comments
+        if not comments:
+            self._comments = {}
+        elif isinstance(comments, str):
+            self._comments = {'': comments}
+        else:
+            self._comments = {_k: _v for _k, _v in comments.items()}
         # update properties
         # set encoding first so we can set labels
         # NOTE - we must be careful NOT TO ACCESS CACHED PROPERTIES

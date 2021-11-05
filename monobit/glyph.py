@@ -148,7 +148,7 @@ class Glyph:
     def __init__(
             self, pixels=(), *,
             codepoint=(), char='', tags=(), comments='',
-            **kwargs
+            **properties
         ):
         """Create glyph from tuple of tuples."""
         # glyph data
@@ -158,15 +158,11 @@ class Glyph:
         self._char = Char(char).value
         self._tags = tuple(Tag(_tag).value for _tag in tags if _tag)
         # comments
+        if not isinstance(comments, str):
+            raise TypeError('Glyph comment must be a single string.')
         self._comments = comments
-        # custom properties - not used but kept
-        custom_props = {
-            _k: _v
-            for _k, _v in kwargs.items()
-            if _v is not None
-        }
         # recognised properties
-        self._props = GlyphProperties(**custom_props)
+        self._props = GlyphProperties(**properties)
         # check pixel matrix geometry
         if len(set(len(_r) for _r in self._rows)) > 1:
             raise ValueError(

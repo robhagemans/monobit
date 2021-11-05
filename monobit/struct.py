@@ -138,8 +138,10 @@ class DefaultProps(Props):
     def __init__(self, *args, **kwargs):
         super().__init__(*args)
         # use setitem below, for value conversion
+        # we use None to *unset* properties
         for field, value in kwargs.items():
-            self[field] = value
+            if field is not None:
+                self[field] = value
         # if a type constructor is given in the annotations, use that to set the default
         # note that we're changing the *class* namespace on the *instance* initialiser
         # which feels a bit hacky
