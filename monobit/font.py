@@ -566,7 +566,7 @@ class Font:
         advances = set(_glyph.advance for _glyph in self._glyphs if _glyph.advance)
         monospaced = len(set(advances)) == 1
         bispaced = len(set(advances)) == 2
-        ink_contained_y = self.line_height >= self.bounding_box.y
+        ink_contained_y = self.line_spacing >= self.bounding_box.y
         ink_contained_x = all(
             _glyph.advance >= _glyph.bounding_box.x
             for _glyph in self._glyphs
@@ -635,8 +635,8 @@ class Font:
             return 0
 
     @calculated_property(override='reject')
-    def line_height(self):
-        """Line height."""
+    def line_spacing(self):
+        """Distance between consecutive baselines, in pixels."""
         return self.pixel_size + self.leading
 
 
