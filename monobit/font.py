@@ -391,40 +391,6 @@ class Font:
 
 
     ##########################################################################
-    # text rendering
-
-    def get_text_glyphs(self, text, missing='raise'):
-        """Get tuple of tuples of glyphs (by line) from str or bytes/codepoints input."""
-        if isinstance(text, str):
-            max_length = max(len(_c) for _c in self._chars.keys())
-            type_conv = str
-        else:
-            max_length = max(len(_cp) for _cp in self._codepoints.keys())
-            type_conv = tuple
-        return tuple(
-            tuple(self._iter_labels(type_conv(_line), max_length, missing))
-            for _line in text.splitlines()
-        )
-
-    def _iter_labels(self, labels, max_length, missing='raise'):
-        """Iterate over labels, yielding glyphs."""
-        remaining = labels
-        while remaining:
-            # try multibyte clusters first
-            for try_len in range(max_length, 1, -1):
-                try:
-                    yield self.get_glyph(key=remaining[:try_len], missing='raise')
-                except KeyError:
-                    pass
-                else:
-                    remaining = remaining[try_len:]
-                    break
-            else:
-                yield self.get_glyph(key=remaining[:1], missing=missing)
-                remaining = remaining[1:]
-
-
-    ##########################################################################
     # calculated properties
 
     @calculated_property
