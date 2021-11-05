@@ -177,11 +177,6 @@ class Font:
             for _index, _glyph in enumerate(self._glyphs)
             if _glyph.char
         }
-        # identify multi-codepoint clusters
-        self._grapheme_clusters = set(
-            _c for _c in self._chars
-            if _c and len(_c) > 1
-        )
 
 
     def _add_labels(self):
@@ -397,35 +392,22 @@ class Font:
     ##########################################################################
     # text rendering
 
-    def get_glyphs(self, text, missing='raise'):
-        """Get tuple of glyphs from text or bytes/codepoints input."""
+    def get_text_glyphs(self, text, missing='raise'):
+        """Get tuple of tuples of glyphs (by line) from str or bytes/codepoints input."""
         if isinstance(text, str):
-            iter_text = self._iter_string
+            max_length = max(len(_c) for _c in self._chars.keys())
+            type_conv = str
         else:
-            iter_text = self._iter_codepoints
+            max_length = max(len(_cp) for _cp in self._codepoints.keys())
+            type_conv = tuple
         return tuple(
-            tuple(iter_text(_line, missing=missing))
+            tuple(self._iter_labels(type_conv(_line), max_length, missing))
             for _line in text.splitlines()
         )
 
-    def _iter_string(self, string, missing='raise'):
-        """Iterate over string, yielding glyphs."""
-        remaining = string
-        while remaining:
-            # try grapheme clusters first
-            for cluster in self._grapheme_clusters:
-                if remaining.startswith(cluster):
-                    unicode = cluster
-                    remaining = remaining[len(cluster):]
-                    break
-            else:
-                unicode, remaining = remaining[0], remaining[1:]
-            yield self.get_glyph(key=unicode, missing=missing)
-
-    def _iter_codepoints(self, codepoints, missing='raise'):
-        """Iterate over bytes/tuple of int, yielding glyphs."""
-        max_length = max(len(_cp) for _cp in self._codepoints.keys())
-        remaining = tuple(codepoints)
+    def _iter_labels(self, labels, max_length, missing='raise'):
+        """Iterate over labels, yielding glyphs."""
+        remaining = labels
         while remaining:
             # try multibyte clusters first
             for try_len in range(max_length, 1, -1):

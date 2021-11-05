@@ -42,7 +42,7 @@ def render_image(
 
 def render(font, text, *, margin=(0, 0), scale=(1, 1), rotate=0, missing='default'):
     """Render text string to bitmap."""
-    glyphs = font.get_glyphs(text, missing=missing)
+    glyphs = font.get_text_glyphs(text, missing=missing)
     margin_x, margin_y = margin
     canvas = _get_canvas(font, glyphs, margin_x, margin_y)
     # descent-line of the bottom-most row is at bottom margin
