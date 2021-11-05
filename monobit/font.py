@@ -7,6 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 from functools import wraps
+from pathlib import PurePath
 try:
     # python 3.9
     from functools import cache
@@ -450,7 +451,13 @@ class Font:
     def family(self):
         """Name of font family."""
         # use source name if no family name defined
-        return self._props.source_name.split('.')[0]
+        stem = PurePath(self.source_name).stem
+        # replace underscores with spaces
+        stem = stem.replace('_', '-')
+        # convert all-upper or all-lower to titlecase
+        if stem == stem.upper() or stem == stem.lower():
+            stem = stem.title()
+        return stem
 
     @calculated_property(override='notify')
     def point_size(self):
