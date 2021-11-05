@@ -332,7 +332,7 @@ A *property* can span multiple lines. It starts with a *key* followed by the sep
 A *key* consists only of ASCII letters, ASCII digits, the underscore `_`, the dash `-`, or the full stop `.`.
 * The key is not case sensitive.
 * In a key, the `-` and the `_` are considered equivalent.
-* The key must be given at the start of the line. Leading whitepace is not allowed.
+* The key must be given at the start of the line. Leading whitespace is not allowed.
 * The key and the separator `:` must be on the same line.
 
 Whitespace between the key, the separator, and the value is allowed.
@@ -416,7 +416,7 @@ _Characteristics_ are descriptive in nature. They can be specified or calculated
 
 Characteristics inferred from the glyphs are:
 - `raster`: largest raster needed to define a glyph; coordinates (left, bottom, right, top)
-- `ink-bounds`: smallest box that encompasses all ink if all glyphs are overlayed at the same origin.
+- `ink-bounds`: smallest box that encompasses all ink if all glyphs are overlaid at the same origin.
                 coordinates (left, bottom, right, top)
 - `raster-size`: (width, height) of raster.
 - `bounding-box`: (width, height) of ink-bounds.
@@ -427,7 +427,7 @@ Characteristics inferred from the glyphs are:
   - `proportional`: glyphs have different advance widths, e.g. `M` is wider than `i`.
   - `monospace`: all glyphs have the same advance width.
   - `character-cell`: all glyphs can be defined on a raster of fixed size and displayed without overlap.
-  - `multi-cell`: like `character-cell`, but some glyphs may take up multiple cells.
+  - `multi-cell`: like `character-cell`, but some glyphs may take up two cells.
 
 Characteristics that give a font's identity are:
 - `family`: typeface or font family name
