@@ -240,19 +240,24 @@ class Font:
             **{**self.properties, **kwargs}
         )
 
-    @scriptable(record=False)
-    def add_comments(self, comment:str='', property:str=''):
-        """
-        Return a font with added comments.
-
-        comment: comment to append
-        property: property to append commend to; default is global comment
-        """
-        comments = {**self._comments}
-        if property not in self._comments:
-            comments[property] = ''
-        comments[property] = extend_string(comments[property], comment)
-        return self.modify(comments=comments)
+    def add(
+            self, glyphs=(), *,
+            comments='', **properties
+        ):
+        """Return a copy of the glyph with changes."""
+        if glyphs:
+            glyphs = self._glyphs + tuple(glyphs)
+        for property, comment in comments.items():
+            if property in self._comments:
+                comments[property] = extend_string(self._comments[property], comment)
+        for property, value in properties.items():
+            if property in self._props:
+                properties[property] = extend_string(self._props[property], value)
+        return self.modify(
+            glyphs,
+            comments=comments,
+            **properties
+        )
 
     def add_history(self, history):
         """Return a copy with a line added to history."""
