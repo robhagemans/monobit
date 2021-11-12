@@ -380,7 +380,7 @@ class Font:
         """Get list of tags covered by this font."""
         return list(self._tags.keys())
 
-    def charmap(self):
+    def get_charmap(self):
         """Implied character map based on defined chars."""
         return charmaps.create({
             _glyph.codepoint: _glyph.char
