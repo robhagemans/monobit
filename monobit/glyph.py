@@ -152,7 +152,7 @@ class Glyph:
         ):
         """Create glyph from tuple of tuples."""
         # glyph data
-        self._rows = tuple(tuple(bool(_bit) for _bit in _row) for _row in pixels)
+        self._pixels = tuple(tuple(bool(_bit) for _bit in _row) for _row in pixels)
         # labels
         self._codepoint = Codepoint(codepoint).value
         self._char = Char(char).value
@@ -164,7 +164,7 @@ class Glyph:
         # recognised properties
         self._props = GlyphProperties(**properties)
         # check pixel matrix geometry
-        if len(set(len(_r) for _r in self._rows)) > 1:
+        if len(set(len(_r) for _r in self._pixels)) > 1:
             raise ValueError(
                 f"All rows in a glyph's pixel matrix must be of the same width: {repr(self)}"
             )
@@ -187,7 +187,7 @@ class Glyph:
                 "\n  '{}'\n".format(
                     to_text(self.as_matrix(), ink='@', paper='.', line_break="',\n  '")
                 )
-            ) if self._rows else ''
+            ) if self._pixels else ''
         )
         return '{}({})'.format(
             type(self).__name__,
@@ -205,7 +205,7 @@ class Glyph:
         ):
         """Return a copy of the glyph with changes."""
         if pixels is NOT_SET:
-            pixels = self._rows
+            pixels = self._pixels
         if tags is NOT_SET:
             tags = self._tags
         if codepoint is NOT_SET:
@@ -329,14 +329,14 @@ class Glyph:
         """Return matrix of user-specified foreground and background objects."""
         return tuple(
             tuple(ink if _c else paper for _c in _row)
-            for _row in self._rows
+            for _row in self._pixels
         )
 
     def as_tuple(self, ink=1, paper=0):
         """Return flat tuple of user-specified foreground and background objects."""
         return tuple(
             ink if _c else paper
-            for _row in self._rows
+            for _row in self._pixels
             for _c in _row
         )
 
@@ -355,14 +355,14 @@ class Glyph:
 
     def as_bytes(self):
         """Convert glyph to flat bytes."""
-        if not self._rows:
+        if not self._pixels:
             return b''
-        width = len(self._rows[0])
+        width = len(self._pixels[0])
         bytewidth = ceildiv(width, 8)
         # byte-align rows
         rows = [
             _row + (False,) * (bytewidth*8 - width)
-            for _row in self._rows
+            for _row in self._pixels
         ]
         # chunk by byte and flatten
         glyph_bytes = [
@@ -397,14 +397,14 @@ class Glyph:
     @property
     def width(self):
         """Raster width of glyph."""
-        if not self._rows:
+        if not self._pixels:
             return 0
-        return len(self._rows[0])
+        return len(self._pixels[0])
 
     @property
     def height(self):
         """Raster height of glyph."""
-        return len(self._rows)
+        return len(self._pixels)
 
     @property
     def advance(self):
@@ -415,14 +415,14 @@ class Glyph:
     @cache
     def padding(self):
         """Offset from raster sides to bounding box. Left, bottom, right, top."""
-        if not self._rows:
+        if not self._pixels:
             return Bounds(0, 0, 0, 0)
-        row_inked = [True in _row for _row in self._rows]
+        row_inked = [True in _row for _row in self._pixels]
         if True not in row_inked:
             return Bounds(self.width, self.height, 0, 0)
         bottom = list(reversed(row_inked)).index(True)
         top = row_inked.index(True)
-        col_inked = [bool(sum(_row[_i] for _row in self._rows)) for _i in range(self.width)]
+        col_inked = [bool(sum(_row[_i] for _row in self._pixels)) for _i in range(self.width)]
         left = col_inked.index(True)
         right = list(reversed(col_inked)).index(True)
         return Bounds(left, bottom, right, top)
@@ -465,7 +465,7 @@ class Glyph:
                 _pix or _pix1
                 for _pix, _pix1 in zip(_row, _row1)
             )
-            for _row, _row1 in zip(self._rows, other._rows)
+            for _row, _row1 in zip(self._pixels, other._pixels)
         )
 
     @classmethod
@@ -483,12 +483,12 @@ class Glyph:
     @scriptable
     def mirror(self):
         """Reverse pixels horizontally."""
-        return self.modify(tuple(_row[::-1] for _row in self._rows))
+        return self.modify(tuple(_row[::-1] for _row in self._pixels))
 
     @scriptable
     def flip(self):
         """Reverse pixels vertically."""
-        return self.modify(self._rows[::-1])
+        return self.modify(self._pixels[::-1])
 
     @scriptable
     def roll(self, rows:int=0, columns:int=0):
@@ -500,15 +500,15 @@ class Glyph:
         """
         rolled = self
         if self.height > 1 and rows:
-            rolled = rolled.modify(rolled._rows[-rows:] + rolled._rows[:-rows])
+            rolled = rolled.modify(rolled._pixels[-rows:] + rolled._pixels[:-rows])
         if self.width > 1 and columns:
-            rolled = rolled.modify(tuple(_row[-columns:] + _row[:-columns] for _row in rolled._rows))
+            rolled = rolled.modify(tuple(_row[-columns:] + _row[:-columns] for _row in rolled._pixels))
         return rolled
 
     @scriptable
     def transpose(self):
         """Transpose glyph."""
-        return self.modify(tuple(tuple(_x) for _x in zip(*self._rows)))
+        return self.modify(tuple(tuple(_x) for _x in zip(*self._pixels)))
 
     @scriptable
     def rotate(self, turns:int=1):
@@ -529,7 +529,7 @@ class Glyph:
     @scriptable
     def invert(self):
         """Reverse video."""
-        return self.modify(tuple(tuple((not _col) for _col in _row) for _row in self._rows))
+        return self.modify(tuple(tuple((not _col) for _col in _row) for _row in self._pixels))
 
     @scriptable
     def crop(self, left:int=0, bottom:int=0, right:int=0, top:int=0):
@@ -543,7 +543,7 @@ class Glyph:
         """
         return self.modify(tuple(
             _row[left : (-right if right else None)]
-            for _row in self._rows[top : (-bottom if bottom else None)]
+            for _row in self._pixels[top : (-bottom if bottom else None)]
         ))
 
     @scriptable
@@ -564,7 +564,7 @@ class Glyph:
         new_width = left + self.width + right
         pixels = (
             ((False,) * new_width,) * top
-            + tuple((False,)*left + _row + (False,)*right for _row in self._rows)
+            + tuple((False,)*left + _row + (False,)*right for _row in self._pixels)
             + ((False,) * new_width,) * bottom
         )
         return self.modify(pixels)
@@ -578,7 +578,7 @@ class Glyph:
         factor_y: number of times to repeat vertically
         """
         # vertical stretch
-        glyph = tuple(_row for _row in self._rows for _ in range(factor_y))
+        glyph = tuple(_row for _row in self._pixels for _ in range(factor_y))
         # horizontal stretch
         glyph = tuple(
             tuple(_col for _col in _row for _ in range(factor_x))
@@ -596,13 +596,13 @@ class Glyph:
         force: remove rows/columns even if not repeated
         """
         # vertical shrink
-        shrunk_glyph = self._rows[::factor_y]
+        shrunk_glyph = self._pixels[::factor_y]
         if not force:
             # check we're not throwing away stuff
             for offs in range(1, factor_y):
-                alt = self._rows[offs::factor_y]
+                alt = self._pixels[offs::factor_y]
                 if shrunk_glyph != alt:
                     raise ValueError("can't shrink glyph without loss")
         # horizontal stretch
-        glyph = tuple(_row[::factor_x] for _row in self._rows)
+        glyph = tuple(_row[::factor_x] for _row in self._pixels)
         return self.modify(glyph)
