@@ -242,9 +242,11 @@ class Font:
 
     def add(
             self, glyphs=(), *,
-            comments='', **properties
+            comments=None, **properties
         ):
         """Return a copy of the glyph with changes."""
+        if not comments:
+            comments = {}
         if glyphs:
             glyphs = self._glyphs + tuple(glyphs)
         for property, comment in comments.items():
@@ -255,7 +257,7 @@ class Font:
                 properties[property] = extend_string(self._props[property], value)
         return self.modify(
             glyphs,
-            comments=comments,
+            comments={**self._comments, **comments},
             **properties
         )
 
