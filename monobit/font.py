@@ -234,6 +234,8 @@ class Font:
             glyphs = self._glyphs
         if comments is NOT_SET:
             comments = self._comments
+        # properties are replaced keyword bhy keyword
+        # but comments (given as one keyword arg) are replaced wholesale
         return type(self)(
             tuple(glyphs),
             comments=comments,
@@ -247,8 +249,6 @@ class Font:
         """Return a copy of the glyph with changes."""
         if not comments:
             comments = {}
-        if glyphs:
-            glyphs = self._glyphs + tuple(glyphs)
         for property, comment in comments.items():
             if property in self._comments:
                 comments[property] = extend_string(self._comments[property], comment)
@@ -256,7 +256,7 @@ class Font:
             if property in self._props:
                 properties[property] = extend_string(self._props[property], value)
         return self.modify(
-            glyphs,
+            self._glyphs + tuple(glyphs),
             comments={**self._comments, **comments},
             **properties
         )
