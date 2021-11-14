@@ -214,7 +214,7 @@ class Font:
         """Representation."""
         elements = (
             f'glyphs=(...{len(self._glyphs)} glyphs...)' if self.glyphs else '',
-            ', '.join(f'{_k}={_v}' for _k, _v in self.properties.items()),
+            ',\n    '.join(f'{_k}={repr(_v)}' for _k, _v in self.properties.items()),
         )
         return '{}({})'.format(
             type(self).__name__,
