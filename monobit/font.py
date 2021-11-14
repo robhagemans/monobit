@@ -261,10 +261,28 @@ class Font:
             **properties
         )
 
-    def drop_properties(self, *args):
-        """Remove custom properties."""
-        return self.modify(**{_k: None for _k in args})
-
+    def drop(self, *args):
+        """Remove glyphs, comments or properties."""
+        args = list(args)
+        try:
+            args.remove('glyphs')
+            glyphs = ()
+        except ValueError:
+            # not in list
+            glyphs = self._glyphs
+        try:
+            args.remove('comments')
+            comments = {}
+        except ValueError:
+            comments = self._comments
+        return type(self)(
+            glyphs, comments,
+            **{
+                _k: _v
+                for _k, _v in self.properties.items()
+                if _k not in args
+            }
+        )
 
     ##########################################################################
     # property access
