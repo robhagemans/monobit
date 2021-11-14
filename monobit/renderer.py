@@ -42,7 +42,7 @@ def render_image(
 
 def render(font, text, *, margin=(0, 0), scale=(1, 1), rotate=0, missing='default'):
     """Render text string to bitmap."""
-    glyphs = font.get_glyphs(text, missing=missing)
+    glyphs = _get_text_glyphs(font, text, missing=missing)
     margin_x, margin_y = margin
     canvas = _get_canvas(font, glyphs, margin_x, margin_y)
     # descent-line of the bottom-most row is at bottom margin
@@ -68,7 +68,7 @@ def render(font, text, *, margin=(0, 0), scale=(1, 1), rotate=0, missing='defaul
             # advance origin to next glyph
             x += font.offset.x + glyph.advance + font.tracking
         # move to next line
-        baseline += font.line_height
+        baseline += font.line_spacing
     scaled = matrix.scale(canvas, *scale)
     rotated = matrix.rotate(scaled, rotate)
     return rotated
@@ -86,8 +86,38 @@ def _get_canvas(font, glyphs, margin_x, margin_y):
     # descent-line of the bottom-most row is at bottom margin
     # ascent-line of top-most row is at top margin
     # if a glyph extends below the descent line or left of the origin, it may draw into the margin
-    height = 2 * margin_y + font.pixel_size + font.line_height * (len(glyphs)-1)
+    height = 2 * margin_y + font.pixel_size + font.line_spacing * (len(glyphs)-1)
     return matrix.create(width, height)
+
+def _get_text_glyphs(font, text, missing='raise'):
+    """Get tuple of tuples of glyphs (by line) from str or bytes/codepoints input."""
+    if isinstance(text, str):
+        max_length = max(len(_c) for _c in font.get_chars())
+        type_conv = str
+    else:
+        max_length = max(len(_cp) for _cp in font.get_codepoints())
+        type_conv = tuple
+    return tuple(
+        tuple(_iter_labels(font, type_conv(_line), max_length, missing))
+        for _line in text.splitlines()
+    )
+
+def _iter_labels(font, labels, max_length, missing='raise'):
+    """Iterate over labels, yielding glyphs."""
+    remaining = labels
+    while remaining:
+        # try multibyte clusters first
+        for try_len in range(max_length, 1, -1):
+            try:
+                yield font.get_glyph(key=remaining[:try_len], missing='raise')
+            except KeyError:
+                pass
+            else:
+                remaining = remaining[try_len:]
+                break
+        else:
+            yield font.get_glyph(key=remaining[:1], missing=missing)
+            remaining = remaining[1:]
 
 
 

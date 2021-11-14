@@ -5,11 +5,20 @@ monobit.struct - property structures
 licence: https://opensource.org/licenses/MIT
 """
 
-from types import SimpleNamespace
-from functools import partial
 import ctypes
 import struct
 from ctypes import sizeof
+
+import logging
+from types import SimpleNamespace
+from functools import partial, wraps
+from itertools import chain
+try:
+    # python 3.9
+    from functools import cache
+except ImportError:
+    from functools import lru_cache
+    cache = lru_cache()
 
 
 def reverse_dict(orig_dict):
@@ -21,33 +30,212 @@ def reverse_dict(orig_dict):
 ##############################################################################
 # property sets
 
+def extend_string(string, line):
+    """Add a line to a multiline string."""
+    return '\n'.join(
+        _line
+        for _line in string.split('\n') + [line]
+        if _line
+    )
+
+def normalise_property(item):
+    return item.replace('-', '_')
+
+
 class Props(SimpleNamespace):
     """
     SimpleNamespace with the dunder methods of a dict
     Not a mapping but allows both key-style and attribute-style access
     """
 
+    # don't pollute the object namespace
+    # we only have __dunder__ methods
+
+    def __init__(self, *args, **kwargs):
+        # convert from string representation
+        if len(args) == 1 and isinstance(args[0], str):
+            kwargs = dict(
+                _line.strip().split(':', 1)
+                for _line in args[0].splitlines()
+            )
+            args = ()
+        super().__init__(*args, **kwargs)
+
     def __getitem__(self, item):
-        return vars(self)[item.replace('-', '_')]
+        return vars(self)[normalise_property(item)]
 
     def __setitem__(self, item, value):
-        vars(self)[item.replace('-', '_')] = value
+        vars(self)[normalise_property(item)] = value
+
+    def __delitem__(self, item):
+        del vars(self)[normalise_property(item)]
 
     def __len__(self):
         return len(vars(self))
 
     def __iter__(self):
-        return iter(_item for _item in vars(self))
+        return iter(vars(self))
 
     def __str__(self):
         return '\n'.join(f'{_k}: {_v}' for _k, _v in vars(self).items())
 
+
+##############################################################################
+# property sets with default values, override policy and type conversion
+
+# sentinel
+_NOT_SET = object()
+
+# converter decorators to use for calculated properties
+def reject_override(property):
+    def _reject_override_deco(fn):
+        def _set_value(value=_NOT_SET):
+            if not value is _NOT_SET:
+                # must have the calculated value
+                logging.info(
+                    "Property `%s` is not overridable and can't be changed to %s.",
+                    property, repr(value)
+                )
+            raise KeyError(f'`{property}` is not overridable')
+        return _set_value
+    return _reject_override_deco
+
+def notify_override(property):
+    def _notify_override_deco(fn):
+        def _set_value(value=_NOT_SET):
+            if value is _NOT_SET:
+                return fn()
+            else:
+                # calculated value may be overridden but gives a notification
+                logging.info(
+                    'Property `%s` is overridden to %s.',
+                    property, repr(value)
+                )
+                return fn(value)
+        return _set_value
+    return _notify_override_deco
+
+
+def passthrough(arg=None):
+    return arg
+
+
+class DefaultProps(Props):
+    """
+    Namespace with recognised fields and defaults.
+    Define field types (converters) and defaults in class definition.
+    >>> class MyProps(DefaultProps)
+    >>>    field_1: int
+    >>>    field_2: int = 2
+    >>> p = MyProps()
+    >>> p.field_2
+    >>> 2
+    >>> p.field_1
+    >>> 0
+    where field_1 has an implied default, int() == 0
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args)
+        # use setitem below, for value conversion
+        # we use None to *unset* properties
+        for field, value in kwargs.items():
+            if field is not None:
+                self[field] = value
+        # if a type constructor is given in the annotations, use that to set the default
+        # note that we're changing the *class* namespace on the *instance* initialiser
+        # which feels a bit hacky
+        # but this will be consistent and only run once for multiple instances of the class
+        for field, field_type in type(self).__annotations__.items():
+            if field not in vars(type(self)):
+                try:
+                    setattr(type(self), field, field_type())
+                except KeyError as e:
+                    # non overridable
+                    pass
+
+    def __getitem__(self, item):
+        try:
+            return super().__getitem__(item)
+        except KeyError:
+            pass
+        # defaults are defined in class namespace
+        defaults = vars(type(self))
+        try:
+            return defaults[normalise_property(item)]
+        except KeyError:
+            pass
+        raise KeyError(item)
+
+    def __setitem__(self, item, value):
+        # convert to annotated type
+        try:
+            converter = type(self).__annotations__[item]
+        except KeyError:
+            converter = passthrough
+        else:
+            try:
+                # this may raise a KeyError if non overridable
+                # may raise a ValueError if not convertible
+                value = converter(value)
+            except KeyError:
+                # non overridable
+                return
+        super().__setitem__(item, value)
+
+    def __getattr__(self, item):
+        try:
+            return self[item]
+        except KeyError as key_error:
+            raise AttributeError(item) from key_error
+
+    def __setattr__(self, item, value):
+        self[item] = value
+
+    def __delattr__(self, item):
+        try:
+            del self[item]
+        except KeyError as key_error:
+            raise AttributeError(item) from key_error
+
+    def __iter__(self):
+        """Iterate on default definition order first, then remaining keys."""
+        keys = vars(super()).keys()
+        have_defaults = (_k for _k in type(self).__annotations__ if _k in keys)
+        others = (_k for _k in keys if _k not in type(self).__annotations__)
+        return chain(have_defaults, others)
+
     @classmethod
-    def from_str(cls, propstr):
-        return cls(**dict(
-            _line.strip().split(':', 1)
-            for _line in propstr.splitlines()
-        ))
+    def _calculated_property(cls, *args, override='accept'):
+        """Decorator to take property from property table, if defined; calculate otherwise."""
+        if not args:
+            # return decorator with these arguments set as extra args
+            return partial(cls._calculated_property, override=override)
+        fn, *_ = args
+        name = fn.__name__
+
+        @property
+        @cache
+        @wraps(fn)
+        def _overridable_fn(self):
+            try:
+                # get property through vars()
+                # only use if explicitly set on the instance
+                return vars(self._props)[name]
+            except KeyError:
+                pass
+            return fn(self)
+
+        # class namespace annotations of DefaultProps child class
+        # this is where we store coverters to the properrty type
+        converter = cls.__annotations__.get(name, passthrough)
+
+        if override == 'reject':
+            cls.__annotations__[name] = reject_override(name)(converter)
+        elif override == 'notify':
+            cls.__annotations__[name] = notify_override(name)(converter)
+
+        return _overridable_fn
 
 
 ##############################################################################

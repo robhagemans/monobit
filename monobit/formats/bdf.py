@@ -422,7 +422,7 @@ def load_bdf(instream, where=None):
     if nchars != len(glyphs):
         logging.warning('Number of characters found does not match CHARS declaration.')
     glyphs, properties = _parse_properties(glyphs, glyph_props, bdf_props, x_props)
-    return Font(glyphs, comments=comments, properties=properties)
+    return Font(glyphs, comments=comments, **properties)
 
 
 @savers.register(linked=load_bdf)
@@ -771,7 +771,7 @@ def _create_xlfd_properties(font):
     # keep unparsed BDF properties
     xlfd_props.update({
         _k[len('bdf.'):].replace('-', '_').upper(): _v
-        for _k, _v in font.nondefault_properties.items() if _k.startswith('bdf.')
+        for _k, _v in font.properties.items() if _k.startswith('bdf.')
     })
     return xlfd_props
 
@@ -782,7 +782,7 @@ def _save_bdf(font, outstream):
     bdf_props = [
         ('STARTFONT', '2.1'),
     ] + [
-        ('COMMENT', _comment) for _comment in font.get_comments()
+        ('COMMENT', _comment) for _comment in font.comments
     ] + [
         ('FONT', _create_xlfd_name(xlfd_props)),
         ('SIZE', f'{font.point_size} {font.dpi.x} {font.dpi.y}'),
@@ -838,7 +838,7 @@ def _save_bdf(font, outstream):
         offset_x, offset_y = font.offset.x, font.offset.y
         # minimize glyphs to ink-bounds (BBX) before storing, except "cell" fonts
         if font.spacing not in ('character-cell', 'multi-cell'):
-            offset_x, offset_y = offset_x + glyph.ink_offsets[0], offset_y + glyph.ink_offsets[1]
+            offset_x, offset_y = offset_x + glyph.padding.left, offset_y + glyph.padding.bottom
             glyph = glyph.reduce()
         if not glyph.height or not glyph.width:
             # empty glyph

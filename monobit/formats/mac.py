@@ -577,7 +577,7 @@ def _parse_apple(data):
             fork_data = data[entry.offset:entry.offset+entry.length]
             fonts = _parse_resource_fork(fork_data)
             fonts = [
-                font.set_properties(
+                font.modify(
                     source_format=f'MacOS {font.source_format} ({container} container)'
                 )
                 for font in fonts
@@ -869,7 +869,7 @@ def _parse_nfnt(data, offset, properties):
     )
     # drop mac glyph metrics
     glyphs = tuple(
-        _glyph.drop_properties(
+        _glyph.drop(
             'wo_offset', 'wo_width', 'image_height',
             # not interpreted - keep?
             'top_offset', 'scalable_width'
@@ -886,4 +886,4 @@ def _parse_nfnt(data, offset, properties):
         'leading': fontrec.leading,
         'offset': Coord(fontrec.kernMax, -fontrec.descent),
     })
-    return Font(glyphs, properties=properties)
+    return Font(glyphs, **properties)

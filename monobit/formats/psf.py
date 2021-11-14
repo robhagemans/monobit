@@ -122,7 +122,7 @@ def load_psf(instream, where=None):
             for _index, _glyph in enumerate(cells)
         ]
         properties.encoding = 'unicode'
-    return Font(cells, properties=vars(properties))
+    return Font(cells, **vars(properties))
 
 def _read_unicode_table(instream, separator, startseq, encoding):
     """Read the Unicode table in a PSF2 file."""

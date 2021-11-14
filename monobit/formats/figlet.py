@@ -38,7 +38,7 @@ def load_flf(instream, where=None, *, ink:str=''):
     logging.info('yaff properties:')
     for line in str(props).splitlines():
         logging.info('    ' + line)
-    return Font(glyphs, properties=vars(props), comments=comments)
+    return Font(glyphs, comments=comments, **vars(props))
 
 @savers.register(linked=load_flf)
 def save_flf(fonts, outstream, where=None):
@@ -179,14 +179,12 @@ def _convert_from_flf(glyphs, props):
 def _convert_to_flf(font, hardblank='$'):
     """Convert monobit glyphs and properties to figlet."""
     # convert to unicode
-    font = font.set_properties(encoding=_ENCODING)
+    font = font.modify(encoding=_ENCODING)
     # count glyphs outside the default set
     # we can only encode glyphs that have chars
     # latin-1 codepoints, so we can just use chr()
     flf_chars = tuple(chr(_cp) for _cp in _CODEPOINTS)
     coded_chars = set(font.get_chars()) - set(flf_chars)
-    # get length of global comment
-    comments = font.get_comments()
     # construct flf properties
     props = Props(
         signature_hardblank=_SIGNATURE + hardblank,
@@ -198,7 +196,8 @@ def _convert_to_flf(font, hardblank='$'):
         max_length=2 + max(_g.advance for _g in font.glyphs),
         # layout parameters - keep to default, there is not much we can sensibly do
         old_layout=0,
-        comment_lines=len(comments.splitlines()),
+        # get length of global comment
+        comment_lines=len(font.comments.splitlines()),
         # > The Print_Direction parameter tells which direction the font is to be
         # > printed by default.  A value of 0 means left-to-right, and 1 means
         # > right-to-left.  If this parameter is absent, 0 (left-to-right) is assumed.
@@ -209,7 +208,7 @@ def _convert_to_flf(font, hardblank='$'):
     )
     # keep namespace properties
     try:
-        figprops = Props.from_str(font.figlet)
+        figprops = Props(font.figlet)
     except AttributeError:
         pass
     else:
@@ -240,11 +239,11 @@ def _convert_to_flf(font, hardblank='$'):
             bottom=max(0, font.offset.y + _g.offset.y),
             right=max(0, font.tracking + _g.tracking),
             # include leading; ensure glyphs are equal height
-            top=max(0, font.line_height - _g.height - max(0, font.offset.y + _g.offset.y)),
+            top=max(0, font.line_spacing - _g.height - max(0, font.offset.y + _g.offset.y)),
         )
         for _g in glyphs
     ]
-    return glyphs, props, comments
+    return glyphs, props, font.comments
 
 def _write_flf(outstream, flf_glyphs, flf_props, comments, ink='#', paper=' ', hardblank='$'):
     """Write out a figlet font file."""

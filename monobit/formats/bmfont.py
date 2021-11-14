@@ -482,12 +482,12 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=(),
         'source-format': 'BMFont ({} descriptor; {} spritesheet)'.format(bmformat, ','.join(imgformats)),
         'source-name': Path(name).name,
         'family': bmfont_props.pop('face'),
-        # assume line_height == pixel-size == ascent + descent (i.e. no leading)
+        # assume line_spacing == pixel-size == ascent + descent (i.e. no leading)
         # this seems to lead to too high values with fonts produces by Angelcode BMFont
         'ascent': common.lineHeight - (max_height - common.base),
         'descent': max_height - common.base,
-        'weight': 'bold' if _to_int(bmfont_props.pop('bold')) else Font.default('weight'),
-        'slant': 'italic' if _to_int(bmfont_props.pop('italic')) else Font.default('slant'),
+        'weight': 'bold' if _to_int(bmfont_props.pop('bold')) else Font.get_default('weight'),
+        'slant': 'italic' if _to_int(bmfont_props.pop('italic')) else Font.get_default('slant'),
         'encoding': encoding,
     }
     # drop other props if they're default value
@@ -504,7 +504,7 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=(),
         for _k, _v in bmfont_props.items()
         if str(_v) != default_bmfont_props.get(_k, '')
     })
-    return Font(glyphs, properties=properties)
+    return Font(glyphs, **properties)
 
 def _read_bmfont(infile, container, outline):
     """Read a bmfont from a container."""
@@ -582,7 +582,7 @@ def _create_spritesheets(font, size=(256, 256), packed=False):
         x, y = 0, 0
         tree = SpriteNode(x, y, width, height)
         for number, glyph in enumerate(font.glyphs):
-            left, bottom, right, top = glyph.ink_offsets
+            left, bottom, right, top = glyph.padding
             cropped = glyph.reduce()
             if cropped.height and cropped.width:
                 try:
@@ -760,8 +760,8 @@ def _create_bmfont(
         # https://www.angelcode.com/products/bmfont/doc/render_text.html
         # > [...] the lineHeight, i.e. how far the cursor should be moved vertically when
         # > moving to the next line.
-        # font.line_height == font.raster_size.y + font.leading
-        'lineHeight': font.line_height,
+        # font.line_spacing == font.raster_size.y + font.leading
+        'lineHeight': font.line_spacing,
         # "base" is the distance between top-line and baseline
         # > The base value is how far from the top of the cell height the base of the characters
         # > in the font should be placed. Characters can of course extend above or below this base

@@ -584,7 +584,7 @@ def load_fon(instream, where=None):
             )
         )
     fonts = [
-        font.set_properties(
+        font.modify(
             source_format=font.source_format+' ({} FON container)'.format(ne_magic.decode('ascii'))
         )
         for font in fonts
@@ -611,7 +611,7 @@ def parse_fnt(fnt):
     win_props = _parse_header(fnt)
     properties = _parse_win_props(fnt, win_props)
     glyphs = _parse_chartable(fnt, win_props)
-    return Font(glyphs, properties=properties)
+    return Font(glyphs, **properties)
 
 def _parse_header(fnt):
     """Read the header information in the FNT resource."""

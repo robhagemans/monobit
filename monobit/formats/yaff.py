@@ -15,7 +15,7 @@ from ..matrix import to_text
 from ..storage import loaders, savers
 from ..encoding import charmaps
 from ..streams import FileFormatError
-from ..font import PROPERTIES, Font
+from ..font import Font
 from ..glyph import Glyph
 from ..label import strip_matching, label
 from ..label import Char, Codepoint, Tag, Label
@@ -284,23 +284,24 @@ class TextConverter:
     def __init__(self):
         """Set up converter."""
         self.props = Props()
+        self.comments = {}
         self.glyphs = []
 
     @classmethod
     def get_font_from(cls, reader):
         """Get clusters from reader and convert to Font."""
-        props, glyphs = cls.convert_from(reader)
-        return Font(glyphs=glyphs, properties=vars(props))
+        conv = cls._convert_from(reader)
+        return Font(conv.glyphs, comments=conv.comments, **vars(conv.props))
 
     @classmethod
-    def convert_from(cls, reader):
+    def _convert_from(cls, reader):
         """Get clusters from reader and convert."""
         clusters = reader.get_clusters()
         # recursive call
         converter = cls()
         for cluster in clusters:
             converter.convert_cluster(cluster)
-        return converter.props, converter.glyphs
+        return converter
 
     def convert_cluster(self, cluster):
         """Convert cluster."""
@@ -327,7 +328,7 @@ class TextConverter:
             if keys:
                 raise ValueError('Cluster with keys but without value element')
             # global comment
-            self.props[Font.comment_prefix] = comments
+            self.comments[''] = comments
             return
         value, = values
         # if any line in the value has only glyph symbols, this cluster is a glyph
@@ -340,7 +341,7 @@ class TextConverter:
                 self.props[key] = '\n'.join(_line for _line in value.splitlines() if _line)
                 # property comments
                 if comments:
-                    self.props[Font.comment_prefix + key] = comments
+                    self.comments[key] = comments
 
 
     def _line_is_glyph(self, value):
@@ -373,14 +374,9 @@ class TextConverter:
         reader = TextReader()
         for line in prop_lines:
             reader.step(line)
-            # recursive call
-        props, _ = self.convert_from(reader)
+        # recursive call
         # ignore in-glyph comments
-        props = {
-            _k: _v
-            for _k, _v in vars(props).items()
-            if not _k.startswith('_')
-        }
+        props = self._convert_from(reader).props
         # labels
         keys = tuple(self.convert_key(_key) for _key in keys)
         chars = tuple(_key for _key in keys if isinstance(_key, Char))
@@ -388,7 +384,7 @@ class TextConverter:
         tags = tuple(_key for _key in keys if isinstance(_key, Tag))
         # duplicate glyphs if we have multiple chars or codepoints
         return tuple(
-            glyph.modify(char=char, codepoint=cp, tags=tags, comments=comments, **props)
+            glyph.modify(char=char, codepoint=cp, tags=tags, comments=comments, **vars(props))
             for char, cp, _ in zip_longest(chars, codepoints, [None], fillvalue=None)
         )
 
@@ -522,28 +518,23 @@ class YaffWriter(TextWriter, YaffParams):
                 outstream.write(BOUNDARY_MARKER + '\n')
             logging.debug('Writing %s to section #%d', font.name, number)
             # write global comment
-            if font.get_comments():
-                outstream.write(self._format_comment(font.get_comments()) + '\n\n')
+            if font.comments:
+                outstream.write(self._format_comment(font.comments) + '\n\n')
             # we always output name, font-size and spacing
             # plus anything that is different from the default
             props = {
                 'name': font.name,
                 'spacing': font.spacing,
-                **font.nondefault_properties
             }
             if font.spacing in ('character-cell', 'multi-cell'):
                 props['raster-size'] = font.raster_size
             else:
                 props['bounding-box'] = font.bounding_box
+            props.update(font.properties)
             if props:
                 # write recognised yaff properties first, in defined order
-                ordered_keys = [
-                    *(_k for _k in PROPERTIES if _k in props),
-                    *(_k for _k in props if _k not in PROPERTIES)
-                ]
-                ordered_props = {_k: props[_k] for _k in ordered_keys}
-                for key in ordered_keys:
-                    self._write_property(outstream, key, props[key], font.get_comments(key))
+                for key, value in props.items():
+                    self._write_property(outstream, key, value, font.get_comments(key))
                 outstream.write('\n')
             for glyph in font.glyphs:
                 self._write_glyph(
@@ -560,8 +551,8 @@ class DrawWriter(TextWriter, DrawParams):
     def save(self, font, outstream):
         """Write one font to a plaintext stream as hexdraw."""
         # write global comment
-        if font.get_comments():
-            outstream.write(self._format_comment(font.get_comments()) + '\n\n')
+        if font.comments:
+            outstream.write(self._format_comment(font.comments) + '\n\n')
         # write glyphs
         for glyph in font.glyphs:
             if len(glyph.char) > 1:

@@ -33,7 +33,7 @@ def load_fzx(instream, where=None):
     logging.info('yaff properties:')
     for line in str(props).splitlines():
         logging.info('    ' + line)
-    return Font(glyphs, properties=vars(props))
+    return Font(glyphs, **vars(props))
 
 
 @savers.register(linked=load_fzx)
@@ -210,7 +210,7 @@ def _convert_from_fzx(fzx_props, fzx_glyphs):
             offset=(-_glyph.kern, fzx_props.height-_glyph.height-_glyph.shift),
             # +1 because _entry.width is actually width-1
             tracking=(_glyph.fzx_width+1)-_glyph.width
-        ).drop_properties(
+        ).drop(
             'kern', 'fzx_width', 'shift'
         )
         for _codepoint, _glyph in enumerate(fzx_glyphs, start=32)
@@ -249,29 +249,29 @@ def _convert_to_fzx(font):
         for _cp in _FZX_RANGE
     )
     # remove empties at end
-    while not glyphs[-1].width:
+    while glyphs and not glyphs[-1].width:
         glyphs = glyphs[:-1]
+    if not glyphs:
+        raise FileFormatError('FZX format: no glyphs in storable codepoint range 32--255.')
     # TODO: bring on normal form first
     common_tracking = min(_glyph.tracking for _glyph in glyphs)
     # set glyph FZX properties
     fzx_glyphs = tuple(
         # make zero-width glyphs into 1-width glyphs with 1 step back as we can't store zero width
-        Glyph(kern=1, shift=font.line_height, fzx_width=0)
+        Glyph(kern=1, shift=font.line_spacing, fzx_width=0)
         if not _glyph.width else
         _glyph.modify(
             offset=(),
             tracking=0,
             kern=-_glyph.offset.x,
             # line height includes leading
-            shift=font.line_height-_glyph.offset.y-_glyph.height,
+            shift=font.line_spacing-_glyph.offset.y-_glyph.height,
             # absorb per-glyph tracking by extending fzx width
             fzx_width=_glyph.width + _glyph.tracking - common_tracking - 1,
         )
         for _glyph in glyphs
     )
     # check glyph dimensions / bitfield ranges
-    if not glyphs:
-        raise FileFormatError('FZX format: no glyphs in storable codepoint range 32--255.')
     if any(_glyph.fzx_width < 0 or _glyph.fzx_width > 15 for _glyph in fzx_glyphs):
         raise FileFormatError('FZX format: glyphs must be from 1 to 16 pixels wide.')
     if any(_glyph.kern < 0 or _glyph.kern > 3 for _glyph in fzx_glyphs):
@@ -285,7 +285,7 @@ def _convert_to_fzx(font):
     # set font FZX properties
     fzx_props = Props(
         tracking=tracking,
-        height=font.line_height,
+        height=font.line_spacing,
         lastchar=len(glyphs) + min(_FZX_RANGE) - 1
     )
     return fzx_props, fzx_glyphs

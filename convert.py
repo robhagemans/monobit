@@ -97,6 +97,6 @@ with main(args, logging.INFO):
     # add comments
     if args.comments:
         with open(args.comments) as f:
-            pack = tuple(_font.add_comments(f.read()) for _font in pack)
+            pack = tuple(_font.add(comments=f.read()) for _font in pack)
 
     monobit.save(pack, outfile, overwrite=args.overwrite, format=args.to_, **saver_args.pick(args))

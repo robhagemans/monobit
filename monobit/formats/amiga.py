@@ -217,7 +217,7 @@ def _load_amiga(f, where):
     logging.info('yaff properties:')
     for line in str(props).splitlines():
         logging.info('    ' + line)
-    return Font(glyphs, properties=vars(props))
+    return Font(glyphs, **vars(props))
 
 
 def _read_library_names(f):
@@ -333,7 +333,7 @@ def _convert_amiga_glyphs(glyphs, amiga_props):
         for _glyph in glyphs
     ]
     glyphs = [
-        _glyph.drop_properties('kerning', 'spacing')
+        _glyph.drop('kerning', 'spacing')
         for _glyph in glyphs
     ]
     # default glyph has no codepoint
@@ -357,9 +357,11 @@ def _convert_amiga_props(amiga_props):
     props.revision = amiga_props.dfh_Revision
     #props.offset = Coord(offset_x, -(amiga_props.tf_YSize - amiga_props.tf_Baseline))
     # tf_Style
-    props.weight = 'bold' if amiga_props.tf_Style.FSF_BOLD else Font.default('weight')
-    props.slant = 'italic' if amiga_props.tf_Style.FSF_ITALIC else Font.default('slant')
-    props.setwidth = 'expanded' if amiga_props.tf_Style.FSF_EXTENDED else Font.default('setwidth')
+    props.weight = 'bold' if amiga_props.tf_Style.FSF_BOLD else Font.get_default('weight')
+    props.slant = 'italic' if amiga_props.tf_Style.FSF_ITALIC else Font.get_default('slant')
+    props.setwidth = (
+        'expanded' if amiga_props.tf_Style.FSF_EXTENDED else Font.get_default('setwidth')
+    )
     if amiga_props.tf_Style.FSF_UNDERLINED:
         props.decoration = 'underline'
     # tf_Flags
