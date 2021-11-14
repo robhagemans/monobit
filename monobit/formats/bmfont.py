@@ -486,8 +486,8 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=(),
         # this seems to lead to too high values with fonts produces by Angelcode BMFont
         'ascent': common.lineHeight - (max_height - common.base),
         'descent': max_height - common.base,
-        'weight': 'bold' if _to_int(bmfont_props.pop('bold')) else Font.default('weight'),
-        'slant': 'italic' if _to_int(bmfont_props.pop('italic')) else Font.default('slant'),
+        'weight': 'bold' if _to_int(bmfont_props.pop('bold')) else Font.get_default('weight'),
+        'slant': 'italic' if _to_int(bmfont_props.pop('italic')) else Font.get_default('slant'),
         'encoding': encoding,
     }
     # drop other props if they're default value

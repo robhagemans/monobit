@@ -307,7 +307,7 @@ class Font:
         return self._comments.get(normalise_property(property), '')
 
     @classmethod
-    def default(cls, property):
+    def get_default(cls, property):
         """Default value for a property."""
         return vars(FontProperties).get(normalise_property(property), '')
 
@@ -417,16 +417,16 @@ class Font:
     @calculated_property
     def name(self):
         """Name of font."""
-        if self.slant == self.default('slant'):
+        if self.slant == self.get_default('slant'):
             slant = ''
         else:
             # title-case
             slant = self.slant.title()
-        if self.setwidth == self.default('setwidth'):
+        if self.setwidth == self.get_default('setwidth'):
             setwidth = ''
         else:
             setwidth = self.setwidth.title()
-        if (slant or setwidth) and self.weight == self.default('weight'):
+        if (slant or setwidth) and self.weight == self.get_default('weight'):
             weight = ''
         else:
             weight = self.weight.title()
