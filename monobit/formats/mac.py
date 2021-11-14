@@ -869,7 +869,7 @@ def _parse_nfnt(data, offset, properties):
     )
     # drop mac glyph metrics
     glyphs = tuple(
-        _glyph.drop_properties(
+        _glyph.drop(
             'wo_offset', 'wo_width', 'image_height',
             # not interpreted - keep?
             'top_offset', 'scalable_width'

@@ -210,7 +210,7 @@ def _convert_from_fzx(fzx_props, fzx_glyphs):
             offset=(-_glyph.kern, fzx_props.height-_glyph.height-_glyph.shift),
             # +1 because _entry.width is actually width-1
             tracking=(_glyph.fzx_width+1)-_glyph.width
-        ).drop_properties(
+        ).drop(
             'kern', 'fzx_width', 'shift'
         )
         for _codepoint, _glyph in enumerate(fzx_glyphs, start=32)

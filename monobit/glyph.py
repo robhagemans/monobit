@@ -245,14 +245,24 @@ class Glyph:
         """No-op - not recording glyph history."""
         return self
 
-    @scriptable
-    def drop_comments(self):
-        """Return a copy of the glyph without comments."""
-        return self.modify(comments='')
-
-    def drop_properties(self, *args):
-        """Remove custom properties."""
-        return self.modify(**{_k: None for _k in args})
+    def drop(self, *args):
+        """Remove labels, comments or properties."""
+        args = list(args)
+        try:
+            args.remove('comments')
+            comments = ''
+        except ValueError:
+            comments = self._comments
+        return type(self)(
+            self._pixels,
+            tags=self._tags, codepoint=self._codepoint, char=self._char,
+            comments=comments,
+            **{
+                _k: _v
+                for _k, _v in self.properties.items()
+                if _k not in args
+            }
+        )
 
 
     ##########################################################################

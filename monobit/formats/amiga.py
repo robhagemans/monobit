@@ -333,7 +333,7 @@ def _convert_amiga_glyphs(glyphs, amiga_props):
         for _glyph in glyphs
     ]
     glyphs = [
-        _glyph.drop_properties('kerning', 'spacing')
+        _glyph.drop('kerning', 'spacing')
         for _glyph in glyphs
     ]
     # default glyph has no codepoint
