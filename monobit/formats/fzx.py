@@ -249,8 +249,10 @@ def _convert_to_fzx(font):
         for _cp in _FZX_RANGE
     )
     # remove empties at end
-    while not glyphs[-1].width:
+    while glyphs and not glyphs[-1].width:
         glyphs = glyphs[:-1]
+    if not glyphs:
+        raise FileFormatError('FZX format: no glyphs in storable codepoint range 32--255.')
     # TODO: bring on normal form first
     common_tracking = min(_glyph.tracking for _glyph in glyphs)
     # set glyph FZX properties
@@ -270,8 +272,6 @@ def _convert_to_fzx(font):
         for _glyph in glyphs
     )
     # check glyph dimensions / bitfield ranges
-    if not glyphs:
-        raise FileFormatError('FZX format: no glyphs in storable codepoint range 32--255.')
     if any(_glyph.fzx_width < 0 or _glyph.fzx_width > 15 for _glyph in fzx_glyphs):
         raise FileFormatError('FZX format: glyphs must be from 1 to 16 pixels wide.')
     if any(_glyph.kern < 0 or _glyph.kern > 3 for _glyph in fzx_glyphs):
