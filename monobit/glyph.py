@@ -249,13 +249,33 @@ class Glyph:
         """Remove labels, comments or properties."""
         args = list(args)
         try:
+            args.remove('pixels')
+            pixels = ()
+        except ValueError:
+            pixels = self._pixels
+        try:
+            args.remove('char')
+            char = ''
+        except ValueError:
+            char = self._char
+        try:
+            args.remove('codepoint')
+            codepoint = ()
+        except ValueError:
+            codepoint = self._codepoint
+        try:
+            args.remove('tags')
+            tags = ()
+        except ValueError:
+            tags = self._tags
+        try:
             args.remove('comments')
             comments = ''
         except ValueError:
             comments = self._comments
         return type(self)(
-            self._pixels,
-            tags=self._tags, codepoint=self._codepoint, char=self._char,
+            pixels,
+            tags=tags, codepoint=codepoint, char=char,
             comments=comments,
             **{
                 _k: _v
