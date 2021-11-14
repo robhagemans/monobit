@@ -241,7 +241,7 @@ class Glyph:
             )
         return self
 
-    def add_history(self, history):
+    def add(self, history):
         """No-op - not recording glyph history."""
         return self
 

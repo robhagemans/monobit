@@ -261,10 +261,6 @@ class Font:
             **properties
         )
 
-    def add_history(self, history):
-        """Return a copy with a line added to history."""
-        return self.modify(history=extend_string(self.history, history))
-
     def drop_properties(self, *args):
         """Remove custom properties."""
         return self.modify(**{_k: None for _k in args})

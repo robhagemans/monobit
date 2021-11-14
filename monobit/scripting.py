@@ -36,9 +36,9 @@ def scriptable(*args, script_args=None, name=None, record=True):
             if record and result:
                 history = script_args.to_str(kwargs)
                 try:
-                    result = tuple(_item.add_history(history) for _item in iter(result))
+                    result = tuple(_item.add(history=history) for _item in iter(result))
                 except TypeError:
-                    result = result.add_history(history)
+                    result = result.add(history=history)
             return result
 
         _scriptable_func.script_args = script_args
