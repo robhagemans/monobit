@@ -22,7 +22,7 @@ from .binary import ceildiv, bytes_to_bits
 from .matrix import to_text
 from .encoding import is_graphical
 from .label import Char, Codepoint, Tag, label
-from .struct import DefaultProps, normalise_property
+from .struct import DefaultProps, normalise_property, extend_string
 
 
 # sentinel object
@@ -241,9 +241,27 @@ class Glyph:
             )
         return self
 
-    def add(self, history):
-        """No-op - not recording glyph history."""
-        return self
+    def add(
+            self, *,
+            comments=None, **properties
+        ):
+        """Return a copy of the glyph with changes."""
+        if not comments:
+            comments = ''
+        comments = extend_string(self._comments, comments)
+        for property, value in properties.items():
+            if property in self._props:
+                properties[property] = extend_string(self._props[property], value)
+        # do not record glyph history
+        try:
+            history = properties.pop('history')
+            logging.debug("Ignoring glyph history '%s'", history)
+        except KeyError:
+            pass
+        return self.modify(
+            comments=comments,
+            **properties
+        )
 
     def drop(self, *args):
         """Remove labels, comments or properties."""

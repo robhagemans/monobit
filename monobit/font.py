@@ -229,12 +229,12 @@ class Font:
             self, glyphs=NOT_SET, *,
             comments=NOT_SET, **kwargs
         ):
-        """Return a copy of the glyph with changes."""
+        """Return a copy of the font with changes."""
         if glyphs is NOT_SET:
             glyphs = self._glyphs
         if comments is NOT_SET:
             comments = self._comments
-        # properties are replaced keyword bhy keyword
+        # properties are replaced keyword by keyword
         # but comments (given as one keyword arg) are replaced wholesale
         return type(self)(
             tuple(glyphs),
@@ -246,7 +246,7 @@ class Font:
             self, glyphs=(), *,
             comments=None, **properties
         ):
-        """Return a copy of the glyph with changes."""
+        """Return a copy of the font with additions."""
         if not comments:
             comments = {}
         for property, comment in comments.items():
