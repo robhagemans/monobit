@@ -216,3 +216,39 @@ def save_c(fonts, outstream, where=None):
         outstream.write('\n')
     outstream.write('}\n')
     return font
+
+@savers.register('py', linked=load_py)
+def save_py(fonts, outstream, where=None):
+    """
+    Save font to bitmap encoded in Python source code.
+
+    identifier: text at start of line where bitmap starts
+    cell: size X,Y of character cell
+    offset: number of bytes in file before bitmap starts
+    padding: number of bytes between encoded glyphs (not used for strike fonts)
+    numchars: number of glyphs to extract
+    """
+    if len(fonts) > 1:
+        raise FileFormatError('Can only save one font to source file.')
+    font = fonts[0]
+    outstream = outstream.text
+    # check if font is fixed-width and fixed-height
+    if font.spacing != 'character-cell':
+        raise FileFormatError(
+            'This format only supports character-cell fonts.'
+        )
+    # convert name to c identifier
+    ascii_name = font.name.encode('ascii', 'ignore').decode('ascii')
+    ascii_name = ''.join(_c if _c.isalnum() else '_' for _c in ascii_name)
+    identifier = 'font_' + ascii_name
+    width, height = font.raster_size
+    bytesize = ceildiv(width, 8) * height
+    outstream.write(f'{identifier}')
+    outstream.write(' = [\n')
+    for glyph in font.glyphs:
+        outstream.write('  ')
+        for byte in glyph.as_bytes():
+            outstream.write(f'0x{byte:02x}, ')
+        outstream.write('\n')
+    outstream.write(']\n')
+    return font
