@@ -6,6 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import string
+import math
 
 from ..binary import ceildiv
 from ..storage import loaders, savers
@@ -241,13 +242,16 @@ def save_py(fonts, outstream, where=None):
     ascii_name = font.name.encode('ascii', 'ignore').decode('ascii')
     ascii_name = ''.join(_c if _c.isalnum() else '_' for _c in ascii_name)
     identifier = 'font_' + ascii_name
-    width, height = font.raster_size
-    bytesize = ceildiv(width, 8) * height
+    width, _ = font.raster_size
+    widthByteAligned = math.ceil(width/8)*8
     outstream.write(f'{identifier}')
     outstream.write(' = [\n')
     for glyph in font.glyphs:
         outstream.write('  ')
         for byte in glyph.as_bytes():
+            # glyphs are expanded right with 0 to full bytes, 
+            # we have to chop of the 0s again
+            byte = byte >> (widthByteAligned-width)
             outstream.write(f'0x{byte:02x}, ')
         outstream.write('\n')
     outstream.write(']\n')
