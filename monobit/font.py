@@ -513,12 +513,15 @@ class Font:
     @calculated_property(override='reject')
     def ink_bounds(self):
         """Minimum bounding box encompassing all glyphs at fixed origin, font origin cordinates."""
-        if not self._glyphs:
+        nonempty = [
+            _glyph for _glyph in self._glyphs
+            if _glyph.bounding_box.x and _glyph.bounding_box.y
+        ]
+        if not nonempty:
             return Bounds(self.offset.x, self.offset.y, self.offset.x, self.offset.y)
         lefts, bottoms, rights, tops = zip(*(
             _glyph.ink_bounds
-            for _glyph in self._glyphs
-            if _glyph.bounding_box.x and _glyph.bounding_box.y
+            for _glyph in nonempty
         ))
         return Bounds(
             left=self.offset.x + min(lefts),
