@@ -18,7 +18,8 @@ from ..scripting import pair
 @loaders.register('dos', 'bin', 'rom', 'raw', name='raw binary')
 def load_binary(
         instream, where=None, *,
-        cell:pair=(8, 8), numchars:int=None, offset:int=0, padding:int=0, strike:bool=False
+        cell:pair=(8, 8), numchars:int=None, offset:int=0, padding:int=0, strike:bool=False,
+        first_codepoint:int=0
     ):
     """
     Load character-cell font from byte-aligned binary or bitmap strike.
@@ -28,16 +29,21 @@ def load_binary(
     padding: number of bytes between encoded glyphs (not used for strike fonts)
     numchars: number of glyphs to extract
     strike: bitmap is in strike format rather than byte-aligned
+    first_codepoint: first code point in bitmap
     """
     width, height = cell
     # get through the offset
     # we don't assume instream is seekable - it may be sys.stdin
     instream.read(offset)
     if strike:
-        cells = load_strike(instream, width, height, numchars)
+        glyphs = load_strike(instream, width, height, numchars)
     else:
-        cells = load_aligned(instream, width, height, numchars, padding)
-    return Font(cells)
+        glyphs = load_aligned(instream, width, height, numchars, padding)
+    glyphs = (
+        _glyph.modify(codepoint=_index)
+        for _index, _glyph in enumerate(glyphs, first_codepoint)
+    )
+    return Font(glyphs)
 
 
 @savers.register(linked=load_binary)
