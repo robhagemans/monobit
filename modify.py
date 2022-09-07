@@ -31,17 +31,20 @@ subparsers = parser.add_subparsers(dest='operation')
 for name, func in monobit.operations.items():
     sub = subparsers.add_parser(name, help=func.script_args.doc)
     for arg, _type, doc in func.script_args:
+        argname = arg.replace('_', '-')
         if _type == bool:
-            sub.add_argument(f'--{arg}', dest=arg, help=doc, action='store_true')
-            sub.add_argument(f'--no-{arg}', dest=arg, help=f'unset --{arg}', action='store_false')
+            sub.add_argument(f'--{argname}', dest=arg, help=doc, action='store_true')
+            sub.add_argument(f'--no-{argname}', dest=arg, help=f'unset --{argname}', action='store_false')
         else:
-            sub.add_argument(f'--{arg}', type=_type, help=doc)
+            sub.add_argument(f'--{argname}', dest=arg, type=_type, help=doc)
+
 
 # force error on unknown arguments
 args = parser.parse_args()
 
 # find out which operation we're asked to perform
 operation = monobit.operations[args.operation]
+
 
 with main(args, logging.WARNING):
 
