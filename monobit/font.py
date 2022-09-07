@@ -640,8 +640,6 @@ class Font:
     ##########################################################################
     # font operations
 
-    set = scriptable(modify, script_args=FontProperties.__annotations__, name='set')
-
     @scriptable
     def subset(self, keys=(), *, chars:set=(), codepoints:set=(), tags:set=()):
         """
@@ -694,6 +692,10 @@ class Font:
                     glyph = glyph.modify(tags=new_tags)
                 glyphs.append(glyph)
         return self.modify(glyphs)
+
+
+    # WARNING: this shadows builtin set() in annotations for method definitions below
+    set = scriptable(modify, script_args=FontProperties.__annotations__, name='set')
 
 
     ##########################################################################
