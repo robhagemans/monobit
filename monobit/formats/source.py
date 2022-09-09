@@ -7,6 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 import string
 import math
+from typing import Callable, List
 
 from ..binary import ceildiv
 from ..storage import loaders, savers
@@ -183,52 +184,52 @@ def _get_payload(instream, identifier, delimiters, comment):
 ###################################################################################################
 
 @savers.register('c', linked=load_c)
-def save_c(fonts, outstream, where=None):
+def save_c(fonts:List[Font], outstream, where=None) -> Font:
     """
     Save font to bitmap encoded in C source code.
-
-    identifier: text at start of line where bitmap starts
-    cell: size X,Y of character cell
-    offset: number of bytes in file before bitmap starts
-    padding: number of bytes between encoded glyphs (not used for strike fonts)
-    numchars: number of glyphs to extract
     """
-    if len(fonts) > 1:
-        raise FileFormatError('Can only save one font to source file.')
-    font = fonts[0]
-    outstream = outstream.text
-    # check if font is fixed-width and fixed-height
-    if font.spacing != 'character-cell':
-        raise FileFormatError(
-            'This format only supports character-cell fonts.'
-        )
-    # convert name to c identifier
-    ascii_name = font.name.encode('ascii', 'ignore').decode('ascii')
-    ascii_name = ''.join(_c if _c.isalnum() else '_' for _c in ascii_name)
-    identifier = 'char font_' + ascii_name
-    width, height = font.raster_size
-    bytesize = ceildiv(width, 8) * height
-    outstream.write(f'{identifier}[{len(font.glyphs) * bytesize}]')
-    outstream.write(' = {\n')
-    for glyph in font.glyphs:
-        outstream.write('  ')
-        for byte in glyph.as_bytes():
-            outstream.write(f'0x{byte:02x}, ')
-        outstream.write('\n')
-    outstream.write('}\n')
-    return font
+    def identifier_factory(font:Font) -> str:
+        ascii_name = font.name.encode('ascii', 'ignore').decode('ascii')
+        ascii_name = ''.join(_c if _c.isalnum() else '_' for _c in ascii_name)
+        identifier = 'char font_' + ascii_name
+        width, height = font.raster_size
+        bytesize = ceildiv(width, 8) * height
+        return f'{identifier}[{len(font.glyphs) * bytesize}]'
+
+    return _save_coded_binary(fonts, outstream, identifier_factory, *_C_PARAMS)
 
 @savers.register('py', linked=load_py)
-def save_py(fonts, outstream, where=None):
+def save_py(fonts:List[Font], outstream, where=None) -> Font:
     """
     Save font to bitmap encoded in Python source code.
-
-    identifier: text at start of line where bitmap starts
-    cell: size X,Y of character cell
-    offset: number of bytes in file before bitmap starts
-    padding: number of bytes between encoded glyphs (not used for strike fonts)
-    numchars: number of glyphs to extract
     """
+    def identifier_factory(font:Font) -> str:
+        ascii_name = font.name.encode('ascii', 'ignore').decode('ascii')
+        ascii_name = ''.join(_c if _c.isalnum() else '_' for _c in ascii_name)
+        identifier = 'font_' + ascii_name
+        return f'{identifier}'
+
+    return _save_coded_binary(fonts, outstream, identifier_factory, **_PY_PARAMS)
+
+def _save_coded_binary(fonts:List[Font], outstream, identifier_factory:Callable[[Font], str], delimiters:str, comment:str) -> Font:
+    """
+    Generate bitmap encoded source code from a font.
+
+    Args:
+        fonts (List[Font]): Exaclty one font must be given.
+        outstream (): Stream to write the source code to.
+        identifier_factory (Callable[[Font], str]): Crafts a identifier.
+        delimiters (str): Must contain two charachters, building the opening and closing delimiters of the coolection. E.g. []
+        comment (str): Line Comment character(s). Currently not used.
+
+    Raises:
+        FileFormatError: If more the one Font is passed or if it is not a character-cell font.
+        ValueError: If delimiter does not contain at least two charachters.
+
+    Returns:
+        Font: Used font.
+    """
+
     if len(fonts) > 1:
         raise FileFormatError('Can only save one font to source file.')
     font = fonts[0]
@@ -238,21 +239,17 @@ def save_py(fonts, outstream, where=None):
         raise FileFormatError(
             'This format only supports character-cell fonts.'
         )
-    # convert name to c identifier
-    ascii_name = font.name.encode('ascii', 'ignore').decode('ascii')
-    ascii_name = ''.join(_c if _c.isalnum() else '_' for _c in ascii_name)
-    identifier = 'font_' + ascii_name
-    width, _ = font.raster_size
-    widthByteAligned = math.ceil(width/8)*8
-    outstream.write(f'{identifier}')
-    outstream.write(' = [\n')
+    if len(delimiters)<2:
+        raise ValueError('A start and end delimiter must be given. E.g. []')
+    start_delimiter = delimiters[0]
+    end_delimiter = delimiters[1]
+    identifier = identifier_factory(font)
+    outstream.write(f'{identifier} = {start_delimiter}\n')
     for glyph in font.glyphs:
         outstream.write('  ')
         for byte in glyph.as_bytes():
-            # glyphs are expanded right with 0 to full bytes, 
-            # we have to chop of the 0s again
-            byte = byte >> (widthByteAligned-width)
             outstream.write(f'0x{byte:02x}, ')
         outstream.write('\n')
-    outstream.write(']\n')
+    outstream.write(f'{end_delimiter}\n')
     return font
+
