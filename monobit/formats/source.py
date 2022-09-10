@@ -183,20 +183,20 @@ def _get_payload(instream, identifier, delimiters, comment):
 ###################################################################################################
 
 @savers.register('c', linked=load_c)
-def save_c(fonts, outstream, where=None) -> Font:
+def save_c(fonts, outstream, where=None):
     """
     Save font to bitmap encoded in C source code.
     """
     return _save_coded_binary(fonts, outstream, 'char font_{compactname}[{bytesize}]', *_C_PARAMS)
 
 @savers.register('py', linked=load_py)
-def save_py(fonts, outstream, where=None) -> Font:
+def save_py(fonts, outstream, where=None):
     """
     Save font to bitmap encoded in Python source code.
     """
     return _save_coded_binary(fonts, outstream, 'font_{compactname}', **_PY_PARAMS)
 
-def _save_coded_binary(fonts, outstream, identifier_pattern, delimiters, comment) -> Font:
+def _save_coded_binary(fonts, outstream, identifier_pattern, delimiters, comment):
     """
     Generate bitmap encoded source code from a font.
 
