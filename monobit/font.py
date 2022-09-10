@@ -640,7 +640,8 @@ class Font:
     ##########################################################################
     # font operations
 
-    @scriptable
+    # need converter from string to set of labels to script this
+    #@scriptable
     def subset(self, keys=(), *, chars:set=(), codepoints:set=(), tags:set=()):
         """
         Return a subset of the font.
@@ -657,7 +658,7 @@ class Font:
         )
         return self.modify(_glyph for _glyph in glyphs if _glyph is not None)
 
-    @scriptable
+    #@scriptable
     def without(self, keys=(), *, chars:set=(), codepoints:set=(), tags:set=()):
         """Return a font excluding a subset."""
         if not any((keys, chars, codepoints, tags)):

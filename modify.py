@@ -9,7 +9,7 @@ import argparse
 import logging
 
 import monobit
-from monobit.scripting import main
+from monobit.scripting import main, add_script_args
 
 
 # parse command line
@@ -27,17 +27,11 @@ parser.add_argument(
     help='show debugging output'
 )
 
+
 subparsers = parser.add_subparsers(dest='operation')
 for name, func in monobit.operations.items():
     sub = subparsers.add_parser(name, help=func.script_args.doc)
-    for arg, _type, doc in func.script_args:
-        argname = arg.replace('_', '-')
-        if _type == bool:
-            sub.add_argument(f'--{argname}', dest=arg, help=doc, action='store_true')
-            sub.add_argument(f'--no-{argname}', dest=arg, help=f'unset --{argname}', action='store_false')
-        else:
-            sub.add_argument(f'--{argname}', dest=arg, type=_type, help=doc)
-
+    add_script_args(sub, func.script_args)
 
 # force error on unknown arguments
 args = parser.parse_args()
