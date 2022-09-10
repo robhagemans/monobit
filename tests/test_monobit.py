@@ -200,6 +200,18 @@ class TestFormats(BaseTester):
         monobit.save(self.fixed4x6, fnt_file)
         self.assertTrue(os.path.getsize(fnt_file) > 0)
 
+    def test_export_py(self):
+        """Test exporting Python source files."""
+        fnt_file = self.temp_path  / '4x6.py'
+        monobit.save(self.fixed4x6, fnt_file)
+        self.assertTrue(os.path.getsize(fnt_file) > 0)
+
+    def test_export_json(self):
+        """Test exporting JSON source files."""
+        fnt_file = self.temp_path  / '4x6.json'
+        monobit.save(self.fixed4x6, fnt_file)
+        self.assertTrue(os.path.getsize(fnt_file) > 0)
+
     def test_import_png(self):
         """Test importing image files."""
         font, *_ = monobit.load(self.font_path / '4x6.png', cell=(4, 6), numchars=919)

@@ -6,6 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import string
+import math
 
 from ..binary import ceildiv
 from ..storage import loaders, savers
@@ -144,7 +145,7 @@ def _int_from_c(cvalue):
     return int(cvalue, 0)
 
 def _get_payload(instream, identifier, delimiters, comment):
-    """Find the identifier and get the part between {curly brackets}."""
+    """Find the identifier and get the part between delimiters."""
     start, end = delimiters
     for line in instream:
         if comment in line:
@@ -185,13 +186,59 @@ def _get_payload(instream, identifier, delimiters, comment):
 def save_c(fonts, outstream, where=None):
     """
     Save font to bitmap encoded in C source code.
-
-    identifier: text at start of line where bitmap starts
-    cell: size X,Y of character cell
-    offset: number of bytes in file before bitmap starts
-    padding: number of bytes between encoded glyphs (not used for strike fonts)
-    numchars: number of glyphs to extract
     """
+    return _save_coded_binary(fonts, outstream, 'char font_{compactname}[{bytesize}] = ', **_C_PARAMS)
+
+@savers.register('py', 'python', linked=load_py)
+def save_py(fonts, outstream, where=None):
+    """
+    Save font to bitmap encoded in Python source code.
+    """
+    return _save_coded_binary(fonts, outstream, 'font_{compactname} = ', **_PY_PARAMS)
+
+@savers.register('json', linked=load_js)
+def save_json(fonts, outstream, where=None):
+    """
+    Save font to bitmap encoded in JSON code.
+    """
+    return _save_coded_binary(fonts, outstream, '', **_JS_PARAMS)
+
+@savers.register('js', linked=load_js)
+def save_js(fonts, outstream, where=None):
+    """
+    Save font to bitmap encoded in JSON code.
+    """
+    return _save_coded_binary(fonts, outstream, 'let font_{compactname} = ', **_JS_PARAMS)
+
+@savers.register('source', linked=load_source)
+def save_source(
+        fonts, outstream, where=None, *,
+        identifier:str, assign:str='=', delimiters:str='{}', comment:str='//',
+    ):
+    """
+    Save font to bitmap encoded in JSON code.
+    """
+    return _save_coded_binary(fonts, outstream, f'{identifier} {assign} ', delimiters, comment)
+
+def _save_coded_binary(fonts, outstream, assignment_pattern, delimiters, comment):
+    """
+    Generate bitmap encoded source code from a font.
+
+    Args:
+        fonts (List[Font]): Exactly one font must be given.
+        outstream: Stream to write the source code to.
+        assignment_pattern: Format pattern for the assignment statement. May include `compactname` amd `bytesize` variables.
+        delimiters (str): Must contain two characters, building the opening and closing delimiters of the collection. E.g. []
+        comment (str): Line Comment character(s). Currently not used.
+
+    Raises:
+        FileFormatError: If more the one Font is passed or if it is not a character-cell font.
+        ValueError: If delimiter does not contain at least two characters.
+
+    Returns:
+        Font: Used font.
+    """
+
     if len(fonts) > 1:
         raise FileFormatError('Can only save one font to source file.')
     font = fonts[0]
@@ -201,18 +248,23 @@ def save_c(fonts, outstream, where=None):
         raise FileFormatError(
             'This format only supports character-cell fonts.'
         )
-    # convert name to c identifier
+    if len(delimiters) < 2:
+        raise ValueError('A start and end delimiter must be given. E.g. []')
+    start_delimiter = delimiters[0]
+    end_delimiter = delimiters[1]
+    # build the identifier
     ascii_name = font.name.encode('ascii', 'ignore').decode('ascii')
     ascii_name = ''.join(_c if _c.isalnum() else '_' for _c in ascii_name)
-    identifier = 'char font_' + ascii_name
     width, height = font.raster_size
-    bytesize = ceildiv(width, 8) * height
-    outstream.write(f'{identifier}[{len(font.glyphs) * bytesize}]')
-    outstream.write(' = {\n')
+    bytesize = ceildiv(width, 8) * height * len(font.glyphs)
+    assignment = assignment_pattern.format(compactname=ascii_name, bytesize=bytesize)
+    # emit code
+    outstream.write(f'{assignment}{start_delimiter}\n')
     for glyph in font.glyphs:
         outstream.write('  ')
         for byte in glyph.as_bytes():
             outstream.write(f'0x{byte:02x}, ')
         outstream.write('\n')
-    outstream.write('}\n')
+    outstream.write(f'{end_delimiter}\n')
     return font
+
