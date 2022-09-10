@@ -7,7 +7,6 @@ licence: https://opensource.org/licenses/MIT
 
 import string
 import math
-from typing import Callable, List
 
 from ..binary import ceildiv
 from ..storage import loaders, savers
@@ -184,7 +183,7 @@ def _get_payload(instream, identifier, delimiters, comment):
 ###################################################################################################
 
 @savers.register('c', linked=load_c)
-def save_c(fonts:List[Font], outstream, where=None) -> Font:
+def save_c(fonts, outstream, where=None) -> Font:
     """
     Save font to bitmap encoded in C source code.
     """
@@ -199,7 +198,7 @@ def save_c(fonts:List[Font], outstream, where=None) -> Font:
     return _save_coded_binary(fonts, outstream, identifier_factory, *_C_PARAMS)
 
 @savers.register('py', linked=load_py)
-def save_py(fonts:List[Font], outstream, where=None) -> Font:
+def save_py(fonts, outstream, where=None) -> Font:
     """
     Save font to bitmap encoded in Python source code.
     """
@@ -211,20 +210,20 @@ def save_py(fonts:List[Font], outstream, where=None) -> Font:
 
     return _save_coded_binary(fonts, outstream, identifier_factory, **_PY_PARAMS)
 
-def _save_coded_binary(fonts:List[Font], outstream, identifier_factory:Callable[[Font], str], delimiters:str, comment:str) -> Font:
+def _save_coded_binary(fonts, outstream, identifier_factory, delimiters, comment) -> Font:
     """
     Generate bitmap encoded source code from a font.
 
     Args:
-        fonts (List[Font]): Exaclty one font must be given.
-        outstream (): Stream to write the source code to.
-        identifier_factory (Callable[[Font], str]): Crafts a identifier.
-        delimiters (str): Must contain two charachters, building the opening and closing delimiters of the coolection. E.g. []
+        fonts (List[Font]): Exactly one font must be given.
+        outstream: Stream to write the source code to.
+        identifier_factory (Callable[[Font], str]): Crafts an identifier.
+        delimiters (str): Must contain two characters, building the opening and closing delimiters of the collection. E.g. []
         comment (str): Line Comment character(s). Currently not used.
 
     Raises:
         FileFormatError: If more the one Font is passed or if it is not a character-cell font.
-        ValueError: If delimiter does not contain at least two charachters.
+        ValueError: If delimiter does not contain at least two characters.
 
     Returns:
         Font: Used font.
