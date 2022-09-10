@@ -338,7 +338,10 @@ class TextConverter:
         else:
             # multiple labels translate into multiple keys with the same value
             for key in keys:
-                self.props[key] = '\n'.join(_line for _line in value.splitlines() if _line)
+                lines = (_line.strip() for _line in value.splitlines())
+                lines = (_line for _line in lines if _line)
+                lines = (_line[1:-1] if _line.startswith('"') and _line.endswith('"') else _line for _line in lines)
+                self.props[key] = '\n'.join(lines)
                 # property comments
                 if comments:
                     self.comments[key] = comments
