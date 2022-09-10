@@ -123,6 +123,29 @@ pair = tuple_int
 
 
 ###################################################################################################
+
+
+def add_script_args(parser, script_args, format='', name=''):
+    """Add scriptable function arguments to argparser."""
+    if name and format:
+        group = parser.add_argument_group(f'{name}-{format} arguments')
+    else:
+        group = parser
+    for arg, _type, doc in script_args:
+        argname = arg.strip('_').replace('_', '-')
+        if name:
+            argname = f'{name}-{argname}'
+        if _type == bool:
+            group.add_argument(f'--{argname}', dest=arg, help=doc, action='store_true')
+            group.add_argument(
+                f'--no-{argname}', dest=arg, help=f'unset --{argname}', action='store_false'
+            )
+        else:
+            group.add_argument(f'--{argname}', dest=arg, help=doc, type=_type)
+
+
+
+###################################################################################################
 # frame for main scripts
 
 @contextmanager
