@@ -150,8 +150,8 @@ Supported formats
 | Bitmap image          |          | `.png` `.gif` `.bmp`        |             | ✔ (P) | ✔ (P) |
 | PDF chart             |          | `.pdf`                      |             |       | ✔ (R) |
 | C or C++ source code  |          | `.c` `.cpp` `.cc` `.h`      |             | ✔     | ✔     |
-| JavaScript source code|          | `.js` `.json`               |             | ✔     |       |
-| Python source code    |          | `.py`                       |             | ✔     |       |
+| JavaScript source code|          | `.js` `.json`               |             | ✔     | ✔     |
+| Python source code    |          | `.py`                       |             | ✔     | ✔     |
 | AngelCode BMFont      | Text     | `.fnt` + images             |             | ✔ (P) | ✔ (P) |
 | AngelCode BMFont      | Binary   | `.fnt` + images             |             | ✔ (P) |       |
 | AngelCode BMFont      | XML      | `.fnt` `.xml` + images      |             | ✔ (P) |       |
