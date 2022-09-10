@@ -187,37 +187,23 @@ def save_c(fonts, outstream, where=None) -> Font:
     """
     Save font to bitmap encoded in C source code.
     """
-    def identifier_factory(font:Font) -> str:
-        ascii_name = font.name.encode('ascii', 'ignore').decode('ascii')
-        ascii_name = ''.join(_c if _c.isalnum() else '_' for _c in ascii_name)
-        identifier = 'char font_' + ascii_name
-        width, height = font.raster_size
-        bytesize = ceildiv(width, 8) * height
-        return f'{identifier}[{len(font.glyphs) * bytesize}]'
-
-    return _save_coded_binary(fonts, outstream, identifier_factory, *_C_PARAMS)
+    return _save_coded_binary(fonts, outstream, 'char font_{compactname}[{bytesize}]', *_C_PARAMS)
 
 @savers.register('py', linked=load_py)
 def save_py(fonts, outstream, where=None) -> Font:
     """
     Save font to bitmap encoded in Python source code.
     """
-    def identifier_factory(font:Font) -> str:
-        ascii_name = font.name.encode('ascii', 'ignore').decode('ascii')
-        ascii_name = ''.join(_c if _c.isalnum() else '_' for _c in ascii_name)
-        identifier = 'font_' + ascii_name
-        return f'{identifier}'
+    return _save_coded_binary(fonts, outstream, 'font_{compactname}', **_PY_PARAMS)
 
-    return _save_coded_binary(fonts, outstream, identifier_factory, **_PY_PARAMS)
-
-def _save_coded_binary(fonts, outstream, identifier_factory, delimiters, comment) -> Font:
+def _save_coded_binary(fonts, outstream, identifier_pattern, delimiters, comment) -> Font:
     """
     Generate bitmap encoded source code from a font.
 
     Args:
         fonts (List[Font]): Exactly one font must be given.
         outstream: Stream to write the source code to.
-        identifier_factory (Callable[[Font], str]): Crafts an identifier.
+        identifier_pattern: Format pattern for the identifier. May include `compactname` amd `bytesize` variables.
         delimiters (str): Must contain two characters, building the opening and closing delimiters of the collection. E.g. []
         comment (str): Line Comment character(s). Currently not used.
 
@@ -242,7 +228,13 @@ def _save_coded_binary(fonts, outstream, identifier_factory, delimiters, comment
         raise ValueError('A start and end delimiter must be given. E.g. []')
     start_delimiter = delimiters[0]
     end_delimiter = delimiters[1]
-    identifier = identifier_factory(font)
+    # build the identifier
+    ascii_name = font.name.encode('ascii', 'ignore').decode('ascii')
+    ascii_name = ''.join(_c if _c.isalnum() else '_' for _c in ascii_name)
+    width, height = font.raster_size
+    bytesize = ceildiv(width, 8) * height * len(font.glyphs)
+    identifier = identifier_pattern.format(compactname=ascii_name, bytesize=bytesize)
+    # emit code
     outstream.write(f'{identifier} = {start_delimiter}\n')
     for glyph in font.glyphs:
         outstream.write('  ')
