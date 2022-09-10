@@ -12,7 +12,7 @@ from ..storage import loaders, savers
 from ..font import Font
 from ..glyph import Glyph
 from ..streams import FileFormatError
-from ..scripting import pair
+from ..scripting import pair, any_int
 
 
 @loaders.register('dos', 'bin', 'rom', 'raw', name='raw binary')

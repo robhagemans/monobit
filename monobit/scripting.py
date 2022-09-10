@@ -122,7 +122,20 @@ rgb = tuple_int
 pair = tuple_int
 
 
+def any_int(int_str):
+    """Int-like or string in any representation."""
+    try:
+        return int(int_str, 0)
+    except TypeError:
+        return int(int_str)
+
+
 ###################################################################################################
+
+
+_CONVERTER = {
+    int: any_int
+}
 
 
 def add_script_args(parser, script_args, format='', name=''):
@@ -141,7 +154,8 @@ def add_script_args(parser, script_args, format='', name=''):
                 f'--no-{argname}', dest=arg, help=f'unset --{argname}', action='store_false'
             )
         else:
-            group.add_argument(f'--{argname}', dest=arg, help=doc, type=_type)
+            converter = _CONVERTER.get(_type, _type)
+            group.add_argument(f'--{argname}', dest=arg, help=doc, type=converter)
 
 
 
