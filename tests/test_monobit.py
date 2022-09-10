@@ -201,8 +201,14 @@ class TestFormats(BaseTester):
         self.assertTrue(os.path.getsize(fnt_file) > 0)
 
     def test_export_py(self):
-        """Test exporting c source files."""
+        """Test exporting Python source files."""
         fnt_file = self.temp_path  / '4x6.py'
+        monobit.save(self.fixed4x6, fnt_file)
+        self.assertTrue(os.path.getsize(fnt_file) > 0)
+
+    def test_export_json(self):
+        """Test exporting JSON source files."""
+        fnt_file = self.temp_path  / '4x6.json'
         monobit.save(self.fixed4x6, fnt_file)
         self.assertTrue(os.path.getsize(fnt_file) > 0)
 

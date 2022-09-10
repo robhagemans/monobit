@@ -145,7 +145,7 @@ def _int_from_c(cvalue):
     return int(cvalue, 0)
 
 def _get_payload(instream, identifier, delimiters, comment):
-    """Find the identifier and get the part between {curly brackets}."""
+    """Find the identifier and get the part between delimiters."""
     start, end = delimiters
     for line in instream:
         if comment in line:
@@ -187,23 +187,47 @@ def save_c(fonts, outstream, where=None):
     """
     Save font to bitmap encoded in C source code.
     """
-    return _save_coded_binary(fonts, outstream, 'char font_{compactname}[{bytesize}]', *_C_PARAMS)
+    return _save_coded_binary(fonts, outstream, 'char font_{compactname}[{bytesize}] = ', **_C_PARAMS)
 
-@savers.register('py', linked=load_py)
+@savers.register('py', 'python', linked=load_py)
 def save_py(fonts, outstream, where=None):
     """
     Save font to bitmap encoded in Python source code.
     """
-    return _save_coded_binary(fonts, outstream, 'font_{compactname}', **_PY_PARAMS)
+    return _save_coded_binary(fonts, outstream, 'font_{compactname} = ', **_PY_PARAMS)
 
-def _save_coded_binary(fonts, outstream, identifier_pattern, delimiters, comment):
+@savers.register('json', linked=load_js)
+def save_json(fonts, outstream, where=None):
+    """
+    Save font to bitmap encoded in JSON code.
+    """
+    return _save_coded_binary(fonts, outstream, '', **_JS_PARAMS)
+
+@savers.register('js', linked=load_js)
+def save_js(fonts, outstream, where=None):
+    """
+    Save font to bitmap encoded in JSON code.
+    """
+    return _save_coded_binary(fonts, outstream, 'let font_{compactname} = ', **_JS_PARAMS)
+
+@savers.register('source', linked=load_source)
+def save_source(
+        fonts, outstream, where=None, *,
+        identifier:str, assign:str='=', delimiters:str='{}', comment:str='//',
+    ):
+    """
+    Save font to bitmap encoded in JSON code.
+    """
+    return _save_coded_binary(fonts, outstream, f'{identifier} {assign} ', delimiters, comment)
+
+def _save_coded_binary(fonts, outstream, assignment_pattern, delimiters, comment):
     """
     Generate bitmap encoded source code from a font.
 
     Args:
         fonts (List[Font]): Exactly one font must be given.
         outstream: Stream to write the source code to.
-        identifier_pattern: Format pattern for the identifier. May include `compactname` amd `bytesize` variables.
+        assignment_pattern: Format pattern for the assignment statement. May include `compactname` amd `bytesize` variables.
         delimiters (str): Must contain two characters, building the opening and closing delimiters of the collection. E.g. []
         comment (str): Line Comment character(s). Currently not used.
 
@@ -224,7 +248,7 @@ def _save_coded_binary(fonts, outstream, identifier_pattern, delimiters, comment
         raise FileFormatError(
             'This format only supports character-cell fonts.'
         )
-    if len(delimiters)<2:
+    if len(delimiters) < 2:
         raise ValueError('A start and end delimiter must be given. E.g. []')
     start_delimiter = delimiters[0]
     end_delimiter = delimiters[1]
@@ -233,9 +257,9 @@ def _save_coded_binary(fonts, outstream, identifier_pattern, delimiters, comment
     ascii_name = ''.join(_c if _c.isalnum() else '_' for _c in ascii_name)
     width, height = font.raster_size
     bytesize = ceildiv(width, 8) * height * len(font.glyphs)
-    identifier = identifier_pattern.format(compactname=ascii_name, bytesize=bytesize)
+    assignment = assignment_pattern.format(compactname=ascii_name, bytesize=bytesize)
     # emit code
-    outstream.write(f'{identifier} = {start_delimiter}\n')
+    outstream.write(f'{assignment}{start_delimiter}\n')
     for glyph in font.glyphs:
         outstream.write('  ')
         for byte in glyph.as_bytes():
