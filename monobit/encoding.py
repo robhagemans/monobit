@@ -559,6 +559,9 @@ class CharmapRegistry:
     _registered = {}
     _overlays = {}
 
+    # directly stored encoders
+    _stored = {}
+
     # table of encoding aliases
     _aliases = {}
 
@@ -593,6 +596,12 @@ class CharmapRegistry:
         if normname in cls._overlays:
             del cls._overlays[normname]
         cls._registered[normname] = dict(name=name, filename=filename, format=format, **kwargs)
+
+    @classmethod
+    def add(cls, encoder):
+        """Add an encoder object to the registry."""
+        normname = encoder.name
+        cls._stored[normname] = encoder
 
     @classmethod
     def overlay(cls, name, filename, overlay_range, format=None, **kwargs):
@@ -681,6 +690,10 @@ class CharmapRegistry:
         if self.is_unicode(name):
             return Unicode()
         normname = self._normalise_for_match(name)
+        try:
+            return self._stored[normname]
+        except KeyError:
+            pass
         try:
             charmap_dict = self._registered[normname]
         except KeyError as exc:
