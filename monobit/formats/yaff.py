@@ -310,7 +310,7 @@ class TextConverter:
         keys = tuple(
             _elem[:-len(self.separator)].strip()
             for _elem in cluster
-            if _elem.endswith(self.separator)
+            if _elem.endswith(self.separator) and not _elem.startswith(self.comment)
         )
         comments = tuple(
             _elem
