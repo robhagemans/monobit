@@ -267,6 +267,7 @@ class TextConverter:
     # first/second pass constants
     separator: str
     comment: str
+    whitespace: str
 
     # third-pass constants
     ink: str
@@ -309,7 +310,7 @@ class TextConverter:
         keys = tuple(
             _elem[:-len(self.separator)].strip()
             for _elem in cluster
-            if _elem.endswith(self.separator)
+            if _elem.endswith(self.separator) and not _elem.startswith(self.comment)
         )
         comments = tuple(
             _elem
@@ -375,6 +376,10 @@ class TextConverter:
         ]
         # new text reader on glyph property lines
         reader = TextReader()
+        # set fields so we have a .yaff or .draw reader
+        reader.separator = self.separator
+        reader.comment = self.comment
+        reader.whitespace = self.whitespace
         for line in prop_lines:
             reader.step(line)
         # recursive call
@@ -455,11 +460,6 @@ class TextWriter:
             )
         tab = self.tab
         outstream.write(f'{tab}{glyphtxt}\n\n')
-        # glyph properties
-        if glyph.offset:
-            outstream.write(f'{tab}offset: {str(glyph.offset)}\n')
-        if glyph.tracking:
-            outstream.write(f'{tab}tracking: {str(glyph.tracking)}\n')
         if glyph.kern_to:
             outstream.write(f'{tab}kern-to: \n')
             for line in str(glyph.kern_to).splitlines():
@@ -481,6 +481,8 @@ class TextWriter:
         # write property comment
         if comments:
             outstream.write('\n' + self._format_comment(comments) + '\n')
+        if not '.' in key and not key.startswith('_'):
+            key = key.replace('_', '-')
         # write key-value pair
         if '\n' not in value:
             outstream.write(f'{key}: {self._quote_if_needed(value)}\n')
@@ -530,9 +532,9 @@ class YaffWriter(TextWriter, YaffParams):
                 'spacing': font.spacing,
             }
             if font.spacing in ('character-cell', 'multi-cell'):
-                props['raster-size'] = font.raster_size
+                props['raster_size'] = font.raster_size
             else:
-                props['bounding-box'] = font.bounding_box
+                props['bounding_box'] = font.bounding_box
             props.update(font.properties)
             if props:
                 # write recognised yaff properties first, in defined order

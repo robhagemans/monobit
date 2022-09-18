@@ -155,10 +155,12 @@ def _save_hex(font, outstream, fits):
         outstream.write(_format_comment(font.comments, comm_char='#') + '\n\n')
     # glyphs
     for glyph in font.glyphs:
-        if fits(glyph):
-            outstream.write(_format_glyph(glyph))
-        else:
+        if not glyph.char:
+            logging.warning('Skipping glyph without character label: %s', glyph.as_hex())
+        elif not fits(glyph):
             logging.warning('Skipping %s: %s', glyph.char, glyph.as_hex())
+        else:
+            outstream.write(_format_glyph(glyph))
 
 def _fits_in_hex(glyph):
     """Check if glyph fits in Unifont Hex format."""
