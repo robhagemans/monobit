@@ -10,7 +10,6 @@ import pkgutil
 from pathlib import Path
 
 from .encoding import unicode_name, is_printable, NotFoundError
-from .font import Font
 from .struct import extend_string
 
 
@@ -19,14 +18,14 @@ class Tagger:
 
     def set_comments(self, font):
         """Use tagger to add glyph comments."""
-        font.modify(
+        return font.modify(
             _glyph.modify(comments=extend_string(_glyph.comments, self.get_tag(_glyph)))
             for _glyph in font.glyphs
         )
 
     def set_tags(self, font):
         """Use tagger to add glyph tags."""
-        font.modify(
+        return font.modify(
             _glyph.modify(tags=_glyph.tags + (self.get_tag(_glyph),))
             for _glyph in font.glyphs
         )
@@ -42,7 +41,7 @@ class UnicodeTagger(Tagger):
         self.include_char = include_char
 
     def get_tag(self, glyph):
-        """Add unicode glyph names as comments, if no comment already exists."""
+        """Get unicode glyph name."""
         name = unicode_name(glyph.char)
         if self.include_char and is_printable(glyph.char):
             return '[{}] {}'.format(glyph.char, name)
