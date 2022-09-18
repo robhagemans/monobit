@@ -481,6 +481,8 @@ class TextWriter:
         # write property comment
         if comments:
             outstream.write('\n' + self._format_comment(comments) + '\n')
+        if not '.' in key and not key.startswith('_'):
+            key = key.replace('_', '-')
         # write key-value pair
         if '\n' not in value:
             outstream.write(f'{key}: {self._quote_if_needed(value)}\n')
@@ -530,9 +532,9 @@ class YaffWriter(TextWriter, YaffParams):
                 'spacing': font.spacing,
             }
             if font.spacing in ('character-cell', 'multi-cell'):
-                props['raster-size'] = font.raster_size
+                props['raster_size'] = font.raster_size
             else:
-                props['bounding-box'] = font.bounding_box
+                props['bounding_box'] = font.bounding_box
             props.update(font.properties)
             if props:
                 # write recognised yaff properties first, in defined order
