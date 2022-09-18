@@ -460,11 +460,6 @@ class TextWriter:
             )
         tab = self.tab
         outstream.write(f'{tab}{glyphtxt}\n\n')
-        # glyph properties
-        if glyph.offset:
-            outstream.write(f'{tab}offset: {str(glyph.offset)}\n')
-        if glyph.tracking:
-            outstream.write(f'{tab}tracking: {str(glyph.tracking)}\n')
         if glyph.kern_to:
             outstream.write(f'{tab}kern-to: \n')
             for line in str(glyph.kern_to).splitlines():
