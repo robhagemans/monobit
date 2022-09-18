@@ -267,6 +267,7 @@ class TextConverter:
     # first/second pass constants
     separator: str
     comment: str
+    whitespace: str
 
     # third-pass constants
     ink: str
@@ -375,6 +376,10 @@ class TextConverter:
         ]
         # new text reader on glyph property lines
         reader = TextReader()
+        # set fields so we have a .yaff or .draw reader
+        reader.separator = self.separator
+        reader.comment = self.comment
+        reader.whitespace = self.whitespace
         for line in prop_lines:
             reader.step(line)
         # recursive call
