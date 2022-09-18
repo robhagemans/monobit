@@ -10,6 +10,7 @@ import logging
 from ..binary import int_to_bytes, bytes_to_int
 from ..storage import loaders, savers
 from ..streams import FileFormatError
+from ..struct import Props
 from ..font import Font, Coord
 from ..glyph import Glyph
 from ..encoding import charmaps
@@ -537,8 +538,9 @@ def _parse_properties(glyphs, glyph_props, bdf_props, x_props):
     for name, value in x_props.items():
         logging.info('    %s: %s', name, value)
     # parse meaningful metadata
-    glyphs, properties, xlfd_name = _parse_bdf_properties(glyphs, glyph_props, bdf_props)
-    xlfd_props = _parse_xlfd_properties(x_props, xlfd_name)
+    glyphs, properties, xlfd_name, bdf_unparsed = _parse_bdf_properties(glyphs, glyph_props, bdf_props)
+    xlfd_props, xlfd_unparsed = _parse_xlfd_properties(x_props, xlfd_name)
+    properties['bdf'] = Props(**bdf_unparsed, **xlfd_unparsed)
     for key, value in xlfd_props.items():
         if key in properties and properties[key] != value:
             logging.warning(
@@ -607,11 +609,7 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
         mod_glyphs.append(glyph.modify(**new_props))
     xlfd_name = bdf_props.pop('FONT')
     # keep unparsed bdf props
-    properties.update({
-        'bdf.' + _key: _value
-        for _key, _value in bdf_props.items()
-    })
-    return mod_glyphs, properties, xlfd_name
+    return mod_glyphs, properties, xlfd_name, bdf_props
 
 
 def _parse_xlfd_name(xlfd_str):
@@ -688,12 +686,12 @@ def _parse_xlfd_properties(x_props, xlfd_name):
         default_ord = int(x_props.pop('DEFAULT_CHAR', None))
         properties['default-char'] = default_ord
     properties = {_k: _v for _k, _v in properties.items() if _v is not None and _v != ''}
+    # keep unparsed properties
+    unparsed = {**x_props}
     # invalid xlfd name: keep but with changed property name
     if not xlfd_name_props:
-        properties['bdf._FONT'] = xlfd_name
-    # keep unparsed properties
-    properties.update({'bdf.' + _k: _v for _k, _v in x_props.items()})
-    return properties
+        unparsed['_FONT'] = xlfd_name
+    return properties, unparsed
 
 
 ##############################################################################
@@ -770,8 +768,8 @@ def _create_xlfd_properties(font):
     xlfd_props = {_k: _v for _k, _v in xlfd_props.items() if _v}
     # keep unparsed BDF properties
     xlfd_props.update({
-        _k[len('bdf.'):].replace('-', '_').upper(): _v
-        for _k, _v in font.properties.items() if _k.startswith('bdf.')
+        _k.replace('-', '_').upper(): _v
+        for _k, _v in font.properties['bdf'].items()
     })
     return xlfd_props
 
