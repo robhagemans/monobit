@@ -807,7 +807,11 @@ class Charmap(Encoder):
     def load(cls, filename, *, format=None, name='', **kwargs):
         """Create new charmap from file."""
         try:
-            data = pkgutil.get_data(__name__, filename)
+            if filename.startswith('/') or filename.startswith('.'):
+                with open(filename, 'rb') as f:
+                    data = f.read()
+            else:
+                data = pkgutil.get_data(__name__, filename)
         except EnvironmentError as exc:
             raise NotFoundError(f'Could not load charmap file `{filename}`: {exc}')
         if not data:
