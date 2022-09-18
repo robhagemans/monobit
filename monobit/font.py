@@ -277,7 +277,8 @@ class Font:
         except ValueError:
             comments = self._comments
         return type(self)(
-            glyphs, comments,
+            glyphs,
+            comments=comments,
             **{
                 _k: _v
                 for _k, _v in self.properties.items()
