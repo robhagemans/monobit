@@ -277,7 +277,8 @@ class Font:
         except ValueError:
             comments = self._comments
         return type(self)(
-            glyphs, comments,
+            glyphs,
+            comments=comments,
             **{
                 _k: _v
                 for _k, _v in self.properties.items()
@@ -537,6 +538,16 @@ class Font:
         return Coord(
             self.ink_bounds.right - self.ink_bounds.left,
             self.ink_bounds.top - self.ink_bounds.bottom
+        )
+
+    @calculated_property(override='reject')
+    def padding(self):
+        """Offset from raster sides to bounding box. Left, bottom, right, top."""
+        return Bounds(
+            self.ink_bounds.left - self.raster.left,
+            self.ink_bounds.bottom - self.raster_bottom,
+            self.raster.right - self.ink_bounds.right,
+            self.raster.top - self.ink_bounds.top,
         )
 
     @calculated_property(override='reject')
