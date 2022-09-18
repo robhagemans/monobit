@@ -1,7 +1,7 @@
 """
-monobit.psf - PC Screen Font format
+monobit.formats.psf - PC Screen Font format
 
-(c) 2019--2021 Rob Hagemans
+(c) 2019--2022 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 

@@ -1,7 +1,7 @@
 """
 monobit.taggers - glyph tagging
 
-(c) 2020--2021 Rob Hagemans
+(c) 2020--2022 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 

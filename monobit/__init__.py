@@ -1,7 +1,7 @@
 """
 monobit - tools for working with monochrome bitmap fonts
 
-(c) 2019--2021 Rob Hagemans
+(c) 2019--2022 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 

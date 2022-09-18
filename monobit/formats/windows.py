@@ -1,8 +1,8 @@
 """
-monobit.windows - windows 1.x, 2.x and 3.x .FON and .FNT files
+monobit.formats.windows - windows 1.x, 2.x and 3.x .FON and .FNT files
 
 based on Simon Tatham's dewinfont; see MIT-style licence below.
-changes (c) 2019--2021 Rob Hagemans and released under the same licence.
+changes (c) 2019--2022 Rob Hagemans and released under the same licence.
 
 dewinfont is copyright 2001,2017 Simon Tatham. All rights reserved.
 
