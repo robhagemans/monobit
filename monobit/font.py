@@ -20,6 +20,7 @@ from .glyph import Glyph, Coord, Bounds, number
 from .encoding import charmaps
 from .label import Label, Tag, Char, Codepoint, label
 from .struct import extend_string, DefaultProps, normalise_property
+from .taggers import tagmaps
 
 
 # sentinel object
@@ -639,6 +640,26 @@ class Font:
 
     ##########################################################################
     # font operations
+
+    @scriptable
+    def annotate(self, *, tagger:str='', how:str='tags'):
+        """
+        Return a version of the font with tags or comments added
+
+        tagger: name of tagger to use to add tags or comments
+        how: how to annotate, through 'tags' or 'comments'
+        """
+        try:
+            tagger = tagmaps[tagger]
+        except KeyError as e:
+            raise ValueError(f'No tagger named `{tagger}` found') from e
+        if how == 'tags':
+            action = tagger.set_tags
+        elif how == 'comments':
+            action = tagger.set_comments
+        else:
+            raise ValueError(f'Parameter `how` must be one of `tags` or `comments`, not `{how}`')
+        return action(self)
 
     # need converter from string to set of labels to script this
     #@scriptable
