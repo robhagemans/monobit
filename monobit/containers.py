@@ -1,7 +1,7 @@
 """
 monobit.containers - file containers
 
-(c) 2021 Rob Hagemans
+(c) 2021--2022 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 

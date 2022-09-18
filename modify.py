@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Apply operation to bitmap font
-(c) 2019--2021 Rob Hagemans, licence: https://opensource.org/licenses/MIT
+(c) 2019--2022 Rob Hagemans, licence: https://opensource.org/licenses/MIT
 """
 
 import sys

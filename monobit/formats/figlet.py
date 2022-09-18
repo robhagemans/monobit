@@ -1,7 +1,7 @@
 """
-monobit.figlet - FIGlet .flf format
+monobit.formats.figlet - FIGlet .flf format
 
-(c) 2021 Rob Hagemans
+(c) 2021--2022 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
