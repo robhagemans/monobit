@@ -541,6 +541,16 @@ class Font:
         )
 
     @calculated_property(override='reject')
+    def padding(self):
+        """Offset from raster sides to bounding box. Left, bottom, right, top."""
+        return Bounds(
+            self.ink_bounds.left - self.raster.left,
+            self.ink_bounds.bottom - self.raster_bottom,
+            self.raster.right - self.ink_bounds.right,
+            self.raster.top - self.ink_bounds.top,
+        )
+
+    @calculated_property(override='reject')
     def spacing(self):
         """Monospace or proportional spacing."""
         # a _character-cell_ font is a font where all glyphs can be put inside an equal size cell
