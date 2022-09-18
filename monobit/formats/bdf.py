@@ -607,6 +607,15 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
         if dwidth_y:
             raise FileFormatError('Top-to-bottom fonts not yet supported.')
         mod_glyphs.append(glyph.modify(**new_props))
+    # if all glyph props are equal, take them global
+    offsets = set(_g.offset for _g in mod_glyphs)
+    if len(offsets) == 1:
+        mod_glyphs = [_g.drop('offset') for _g in mod_glyphs]
+        properties['offset'] = offsets.pop()
+    trackings = set(_g.tracking for _g in mod_glyphs)
+    if len(trackings) == 1:
+        mod_glyphs = [_g.drop('tracking') for _g in mod_glyphs]
+        properties['tracking'] = trackings.pop()
     xlfd_name = bdf_props.pop('FONT')
     # keep unparsed bdf props
     return mod_glyphs, properties, xlfd_name, bdf_props
