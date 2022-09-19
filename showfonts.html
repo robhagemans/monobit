@@ -86,6 +86,13 @@
         var glyphs = {};
         var current_key = 0;
         var current_value = [];
+        function checkAndAddGlyph(glyphs, current_key, current_value) {
+            // store whatever we were working on, if it's a glyph
+            // i.e if it contains no alphanumerics
+            if (current_key && (current_value.length != 0) && !current_value.join("").match(/[A-Za-z0-9]+/)) {
+                glyphs[current_key] = current_value;
+            }
+        }
         for (var i=0; i < preglyph.length; ++i) {
             var row = preglyph[i]
             if (!row) continue;
@@ -93,11 +100,7 @@
             if (!YAFF_CODE.includes(row[0])) continue;
             row = row.trim();
             if (row.includes(":")) {
-                // store whatever we were working on, if it's a glyph
-                // i.e if it contains no alphanumerics
-                if (current_key && (current_value.length != 0) && !current_value.join("").match(/[A-Za-z0-9]+/)) {
-                    glyphs[current_key] = current_value
-                }
+                checkAndAddGlyph(glyphs, current_key, current_value);
                 // we need to parse both .draw and .yaff codepoint keys
                 // decimal keys in .yaff will currently fail
                 var split = row.split(":");
@@ -117,9 +120,7 @@
                 current_value.push(row);
             }
         }
-        if (current_key && (current_value.length != 0) && !current_value.join("").match(/[A-Za-z0-9]+/)) {
-            glyphs[current_key] = current_value
-        }
+        checkAndAddGlyph(glyphs, current_key, current_value);
         return (glyphs);
     }
 
