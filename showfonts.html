@@ -34,10 +34,6 @@
 
 
     function getList() {
-        /*
-        loadFont();
-        return;
-        */
         var url = "https://api.github.com/repos/robhagemans/hoard-of-bitfonts/git/trees/master?recursive=1";
         if (url !== undefined && url !== null && url) {
             var request1 = new XMLHttpRequest();
@@ -70,15 +66,6 @@
     }
 
     function loadFont(path) {
-        /*
-        var fontfile = [
-            "test: ignore\n",
-            "01:\n", "\t...@@...\n", "\t...@@...\n", "\t.@@@@@@.\n", "\t...@@...\n","\t...@@...\n"
-        ].join("")
-        glyphs = parseFont(fontfile);
-        show(glyphs);
-        return;
-        */
         var url = "https://raw.githubusercontent.com/robhagemans/hoard-of-bitfonts/master/" + path;
         if (url !== undefined && url !== null && url) {
             var request = new XMLHttpRequest();
