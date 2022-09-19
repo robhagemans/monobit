@@ -34,10 +34,6 @@
 
 
     function getList() {
-        /*
-        loadFont();
-        return;
-        */
         var url = "https://api.github.com/repos/robhagemans/hoard-of-bitfonts/git/trees/master?recursive=1";
         if (url !== undefined && url !== null && url) {
             var request1 = new XMLHttpRequest();
@@ -70,15 +66,6 @@
     }
 
     function loadFont(path) {
-        /*
-        var fontfile = [
-            "test: ignore\n",
-            "01:\n", "\t...@@...\n", "\t...@@...\n", "\t.@@@@@@.\n", "\t...@@...\n","\t...@@...\n"
-        ].join("")
-        glyphs = parseFont(fontfile);
-        show(glyphs);
-        return;
-        */
         var url = "https://raw.githubusercontent.com/robhagemans/hoard-of-bitfonts/master/" + path;
         if (url !== undefined && url !== null && url) {
             var request = new XMLHttpRequest();
@@ -98,7 +85,14 @@
         var preglyph = fontfile.split('\n');
         var glyphs = {};
         var current_key = 0;
-        var current_value = []
+        var current_value = [];
+        function checkAndAddGlyph(glyphs, current_key, current_value) {
+            // store whatever we were working on, if it's a glyph
+            // i.e if it contains no alphanumerics
+            if (current_key && (current_value.length != 0) && !current_value.join("").match(/[A-Za-z0-9]+/)) {
+                glyphs[current_key] = current_value;
+            }
+        }
         for (var i=0; i < preglyph.length; ++i) {
             var row = preglyph[i]
             if (!row) continue;
@@ -106,23 +100,19 @@
             if (!YAFF_CODE.includes(row[0])) continue;
             row = row.trim();
             if (row.includes(":")) {
-                // store whatever we were working on, if it's a glyph
-                // i.e if it contains no alphanumerics
-                if (current_key && current_value && !current_value.join("").match(/[A-Za-z0-9]+/)) {
-                    glyphs[current_key] = current_value
-                }
+                checkAndAddGlyph(glyphs, current_key, current_value);
+                // we need to parse both .draw and .yaff codepoint keys
+                // decimal keys in .yaff will currently fail
                 var split = row.split(":");
                 var key = split[0].trim();
                 if (key.startsWith("0x")) {
                     key = key.split("0x")[1];
                 }
-                // non-hex or too long ('beef' will still work...)
-                if (key.length > 4 || !key.match(/^[0-9A-Fa-f]+$/)) {
-                    current_key = key;
-                }
-                else {
+                // non-hex or too long
+                if (key.length <= 4 && key.match(/^[0-9A-Fa-f]+$/)) {
                     current_key = parseInt(key, 16);
                 }
+                // any remainder of the row becomes part of the value
                 current_value = [];
                 row = split.slice(1).join("").trim();
             }
@@ -130,9 +120,7 @@
                 current_value.push(row);
             }
         }
-        if (current_key && current_value && !current_value.join("").match(/[A-Za-z0-9]+/)) {
-            glyphs[current_key] = current_value
-        }
+        checkAndAddGlyph(glyphs, current_key, current_value);
         return (glyphs);
     }
 
