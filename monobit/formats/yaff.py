@@ -102,20 +102,12 @@ class DrawParams:
     empty = '-'
 
     @staticmethod
-    def convert_key(keys):
+    def convert_key(key):
         """Convert keys on input from .draw."""
-        kwargs = dict(
-            char='',
-            codepoint=(),
-            tags=(),
-        )
-        # only one key allowed in .draw, rest ignored
-        key = keys[0]
         try:
-            kwargs['char'] = chr(int(key, 16))
+            return Char(chr(int(key, 16)))
         except (TypeError, ValueError):
-            kwargs['tags'] = [key]
-        return kwargs
+            return Tag(key)
 
 
 ##############################################################################
