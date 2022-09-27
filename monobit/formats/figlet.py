@@ -163,8 +163,11 @@ def _convert_from_flf(glyphs, props):
         ascent=int(props.baseline),
         direction=_DIRECTIONS[props.print_direction],
         encoding=_ENCODING,
-        default_char=0,
     )
+    # > If a FIGcharacter with code 0 is present, it is treated
+    # > specially.  It is a FIGfont's "missing character".
+    if any(_g.codepoint == 0 for _g in glyphs):
+        properties['default_char'] = 0
     # keep uninterpreted parameters in namespace
     properties.figlet = Props(
         old_layout=props.old_layout,
