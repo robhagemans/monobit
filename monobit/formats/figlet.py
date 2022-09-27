@@ -97,7 +97,7 @@ def _read_flf(instream, ink=None):
     """Read font from a FIGlet .flf file."""
     props = _read_props(instream)
     comments = _read_comments(instream, props)
-    glyphs = _read_glyphs(instream, props, ink=ink)
+    glyphs, props = _read_glyphs(instream, props, ink=ink)
     return glyphs, props, comments
 
 def _read_props(instream):
@@ -126,11 +126,24 @@ def _read_glyphs(instream, props, ink=''):
         line = line.rstrip()
         # codepoint, unicode name label
         codepoint, _, tag = line.partition(' ')
-        glyphs.append(_read_glyph(instream, props, codepoint=int(codepoint, 0), tag=tag, ink=ink))
-    return glyphs
+        codepoint = int(codepoint, 0)
+        if codepoint < 0:
+            # codepoints below zero are used for things like "KATAMAP" which we can't parse
+            content = '\n'.join(_read_glyph_lines(instream, props))
+            # should preserve as unparsed content
+            # but multi-line values in subproperty not correctly supported
+            #props[tag.strip()] = content
+        else:
+            glyphs.append(_read_glyph(instream, props, codepoint=codepoint, tag=tag, ink=ink))
+    return glyphs, props
+
+
+def _read_glyph_lines(instream, props):
+    return [_line.rstrip() for _, _line, in zip(range(int(props.height)), instream)]
+
 
 def _read_glyph(instream, props, codepoint, tag='', ink=''):
-    glyph_lines = [_line.rstrip() for _, _line, in zip(range(int(props.height)), instream)]
+    glyph_lines = _read_glyph_lines(instream, props)
     # > In most FIGfonts, the endmark character is either "@" or "#".  The FIGdriver
     # > will eliminate the last block of consecutive equal characters from each line
     # > of sub-characters when the font is read in.  By convention, the last line of
@@ -163,13 +176,20 @@ def _convert_from_flf(glyphs, props):
         ascent=int(props.baseline),
         direction=_DIRECTIONS[props.print_direction],
         encoding=_ENCODING,
-        default_char=0,
     )
+    # > If a FIGcharacter with code 0 is present, it is treated
+    # > specially.  It is a FIGfont's "missing character".
+    if any(_g.codepoint == 0 for _g in glyphs):
+        properties['default_char'] = 0
     # keep uninterpreted parameters in namespace
-    properties.figlet = Props(
-        old_layout=props.old_layout,
-        full_layout=props.full_layout,
-    )
+    uninterpreted = {
+        _k: _v for _k, _v in vars(props).items() if _k not in (
+            'descent', 'baseline', 'print_direction',
+            'hardblank', 'signature_hardblank', 'height', 'max_length',
+            'comment_lines', 'codetag_count'
+        )
+    }
+    properties.figlet = Props(**uninterpreted)
     return glyphs, properties
 
 

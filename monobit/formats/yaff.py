@@ -38,7 +38,7 @@ def save_yaff(fonts, outstream, where=None):
 
 
 @loaders.register('draw', 'text', 'txt', name='hexdraw')
-def load_draw(instream, where=None, ink='#', paper='-'):
+def load_draw(instream, where=None, ink:str='#', paper:str='-'):
     """
     Load font from a hexdraw file.
 
@@ -48,7 +48,7 @@ def load_draw(instream, where=None, ink='#', paper='-'):
     return _load_draw(instream.text, _ink=ink, _paper=paper)
 
 @savers.register(linked=load_draw)
-def save_draw(fonts, outstream, where=None, ink='#', paper='-'):
+def save_draw(fonts, outstream, where=None, ink:str='#', paper:str='-'):
     """
     Save font to a hexdraw file.
 
@@ -102,20 +102,12 @@ class DrawParams:
     empty = '-'
 
     @staticmethod
-    def convert_key(keys):
+    def convert_key(key):
         """Convert keys on input from .draw."""
-        kwargs = dict(
-            char='',
-            codepoint=(),
-            tags=(),
-        )
-        # only one key allowed in .draw, rest ignored
-        key = keys[0]
         try:
-            kwargs['char'] = chr(int(key, 16))
+            return Char(chr(int(key, 16)))
         except (TypeError, ValueError):
-            kwargs['tags'] = [key]
-        return kwargs
+            return Tag(key)
 
 
 ##############################################################################
@@ -159,12 +151,14 @@ class TextReader:
     # tuple of individual chars, need to be separate for startswith
     whitespace: str
 
-    def __init__(self):
+    def __init__(self, indent=0):
         """Set up text reader."""
         # current element appending to
         self._current = ''
         # elements done
         self._elements = deque()
+        # indentation level
+        self._indent = indent
 
     # first pass: lines to elements
 
@@ -187,6 +181,8 @@ class TextReader:
 
     def step(self, line):
         """Parse a single line."""
+        # strip indent
+        line = line[self._indent:]
         # strip trailing whitespace
         contents = line.rstrip()
         if contents.startswith(self.comment):
@@ -359,6 +355,12 @@ class TextConverter:
     def _convert_glyph(self, keys, value, comments):
         """Parse single glyph."""
         lines = value.splitlines()
+        # find indent - minimum common whitespace
+        # note we shouldn't have mixed indents.
+        indent = min(
+            len(_line) - len(_line.lstrip())
+            for _line in lines
+        )
         glyph_lines = [
             _line.strip() for _line in lines
              if self._line_is_glyph(_line)
@@ -375,7 +377,7 @@ class TextConverter:
              if not self._line_is_glyph(_line)
         ]
         # new text reader on glyph property lines
-        reader = TextReader()
+        reader = TextReader(indent)
         # set fields so we have a .yaff or .draw reader
         reader.separator = self.separator
         reader.comment = self.comment
@@ -560,10 +562,16 @@ class DrawWriter(TextWriter, DrawParams):
             outstream.write(self._format_comment(font.comments) + '\n\n')
         # write glyphs
         for glyph in font.glyphs:
-            if len(glyph.char) > 1:
+            if not glyph.char:
+                logging.warning(
+                    "Can't encode glyph without Unicode character label in .draw file;"
+                    " skipping\n%s\n",
+                    glyph
+                )
+            elif len(glyph.char) > 1:
                 logging.warning(
                     "Can't encode grapheme cluster %s in .draw file; skipping.",
                     Char(glyph.char)
                 )
-                continue
-            self._write_glyph(outstream, glyph, label=f'{ord(glyph.char):04x}')
+            else:
+                self._write_glyph(outstream, glyph, label=f'{ord(glyph.char):04x}')

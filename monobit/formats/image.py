@@ -69,7 +69,8 @@ if Image:
             scale:pair=(1, 1),
             # 0 or negative indicates 'use all chars'
             numchars:int=0,
-            background:str='most-common'
+            background:str='most-common',
+            first_codepoint:int=0
         ):
         """
         Extract character-cell font from image.
@@ -90,6 +91,7 @@ if Image:
         step_y = height *scale_y + padding_y
         # maximum number of cells that fits
         img = Image.open(infile)
+        img = img.convert('RGB')
         ncells_x = (img.width - margin_x) // step_x
         ncells_y = (img.height - margin_y) // step_y
         # extract sub-images
@@ -149,8 +151,8 @@ if Image:
             Glyph(tuple(
                 _cell[_offs: _offs+width]
                 for _offs in range(0, len(_cell), width)
-            ))
-            for _cell in crops
+            ), codepoint=_index)
+            for _index, _cell in enumerate(crops, first_codepoint)
         ]
         # set code points
         return Font(glyphs)
