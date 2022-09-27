@@ -562,10 +562,16 @@ class DrawWriter(TextWriter, DrawParams):
             outstream.write(self._format_comment(font.comments) + '\n\n')
         # write glyphs
         for glyph in font.glyphs:
-            if len(glyph.char) > 1:
+            if not glyph.char:
+                logging.warning(
+                    "Can't encode glyph without Unicode character label in .draw file;"
+                    " skipping\n%s\n",
+                    glyph
+                )
+            elif len(glyph.char) > 1:
                 logging.warning(
                     "Can't encode grapheme cluster %s in .draw file; skipping.",
                     Char(glyph.char)
                 )
-                continue
-            self._write_glyph(outstream, glyph, label=f'{ord(glyph.char):04x}')
+            else:
+                self._write_glyph(outstream, glyph, label=f'{ord(glyph.char):04x}')
