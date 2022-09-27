@@ -38,7 +38,7 @@ def save_yaff(fonts, outstream, where=None):
 
 
 @loaders.register('draw', 'text', 'txt', name='hexdraw')
-def load_draw(instream, where=None, ink='#', paper='-'):
+def load_draw(instream, where=None, ink:str='#', paper:str='-'):
     """
     Load font from a hexdraw file.
 
@@ -48,7 +48,7 @@ def load_draw(instream, where=None, ink='#', paper='-'):
     return _load_draw(instream.text, _ink=ink, _paper=paper)
 
 @savers.register(linked=load_draw)
-def save_draw(fonts, outstream, where=None, ink='#', paper='-'):
+def save_draw(fonts, outstream, where=None, ink:str='#', paper:str='-'):
     """
     Save font to a hexdraw file.
 
