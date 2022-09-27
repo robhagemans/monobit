@@ -634,6 +634,29 @@ class Glyph:
         )
         return self.modify(glyph)
 
+
+    @scriptable
+    def smear(self, *, left:int=0, right:int=0, up:int=0, down:int=0):
+        """
+        Repeat ink on unchanged canvas size
+
+        left: number of times to repeat inked pixel leftwards
+        right: number of times to repeat inked pixel rightwards
+        up: number of times to repeat inked pixel upwards
+        down: number of times to repeat inked pixel downwards
+        """
+        work = self.modify()
+        for _ in range(left):
+            work = work.superimposed(work.crop(left=1).expand(right=1))
+        for _ in range(right):
+            work = work.superimposed(work.crop(right=1).expand(left=1))
+        for _ in range(up):
+            work = work.superimposed(work.crop(top=1).expand(bottom=1))
+        for _ in range(down):
+            work = work.superimposed(work.crop(bottom=1).expand(top=1))
+        return work
+
+
     @scriptable
     def shrink(self, factor_x:int=1, factor_y:int=1, force:bool=False):
         """
