@@ -90,6 +90,7 @@ if Image:
         step_y = height *scale_y + padding_y
         # maximum number of cells that fits
         img = Image.open(infile)
+        img = img.convert('RGB')
         ncells_x = (img.width - margin_x) // step_x
         ncells_y = (img.height - margin_y) // step_y
         # extract sub-images
