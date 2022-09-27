@@ -125,8 +125,13 @@ pair = tuple_int
 def any_int(int_str):
     """Int-like or string in any representation."""
     try:
+        # '0xFF' - hex
+        # '0o77' - octal
+        # '99' - decimal
         return int(int_str, 0)
-    except TypeError:
+    except (TypeError, ValueError):
+        # '099' - ValueError above, OK as decimal
+        # non-string inputs: TypeError, may be OK if int(x) works
         return int(int_str)
 
 
