@@ -778,7 +778,7 @@ def _create_xlfd_properties(font):
     # keep unparsed BDF properties
     xlfd_props.update({
         _k.replace('-', '_').upper(): _v
-        for _k, _v in font.properties['bdf'].items()
+        for _k, _v in font.properties.get('bdf', {}).items()
     })
     return xlfd_props
 
