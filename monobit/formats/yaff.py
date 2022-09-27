@@ -151,12 +151,14 @@ class TextReader:
     # tuple of individual chars, need to be separate for startswith
     whitespace: str
 
-    def __init__(self):
+    def __init__(self, indent=0):
         """Set up text reader."""
         # current element appending to
         self._current = ''
         # elements done
         self._elements = deque()
+        # indentation level
+        self._indent = indent
 
     # first pass: lines to elements
 
@@ -179,6 +181,8 @@ class TextReader:
 
     def step(self, line):
         """Parse a single line."""
+        # strip indent
+        line = line[self._indent:]
         # strip trailing whitespace
         contents = line.rstrip()
         if contents.startswith(self.comment):
@@ -351,6 +355,12 @@ class TextConverter:
     def _convert_glyph(self, keys, value, comments):
         """Parse single glyph."""
         lines = value.splitlines()
+        # find indent - minimum common whitespace
+        # note we shouldn't have mixed indents.
+        indent = min(
+            len(_line) - len(_line.lstrip())
+            for _line in lines
+        )
         glyph_lines = [
             _line.strip() for _line in lines
              if self._line_is_glyph(_line)
@@ -367,7 +377,7 @@ class TextConverter:
              if not self._line_is_glyph(_line)
         ]
         # new text reader on glyph property lines
-        reader = TextReader()
+        reader = TextReader(indent)
         # set fields so we have a .yaff or .draw reader
         reader.separator = self.separator
         reader.comment = self.comment
