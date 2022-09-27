@@ -81,46 +81,41 @@
         }
     }
 
+    // store any glyphs found in ordinal order, ignoring all metadata
     function parseFont(fontfile) {
         var preglyph = fontfile.split('\n');
-        var glyphs = {};
-        var current_key = 0;
+        // ensure last cluster gets parsed if no trailing newline
+        preglyph.push("");
+        var glyphs = [];
+        var new_key = false;
         var current_value = [];
-        function checkAndAddGlyph(glyphs, current_key, current_value) {
+        function haveGlyph(current_value) {
+            if (!current_value.length) return false;
             // store whatever we were working on, if it's a glyph
             // i.e if it contains no alphanumerics
-            if (current_key && (current_value.length != 0) && !current_value.join("").match(/[A-Za-z0-9]+/)) {
-                glyphs[current_key] = current_value;
-            }
+            return !current_value.join("").match(/[A-Za-z0-9]+/)
         }
         for (var i=0; i < preglyph.length; ++i) {
             var row = preglyph[i]
-            if (!row) continue;
-            // ignore comments
-            if (!YAFF_CODE.includes(row[0])) continue;
+            // treat comments as empty lines
+            if (!YAFF_CODE.includes(row[0])) row = "";
             row = row.trim();
-            if (row.includes(":")) {
-                checkAndAddGlyph(glyphs, current_key, current_value);
-                // we need to parse both .draw and .yaff codepoint keys
-                // decimal keys in .yaff will currently fail
-                var split = row.split(":");
-                var key = split[0].trim();
-                if (key.startsWith("0x")) {
-                    key = key.split("0x")[1];
-                }
-                // non-hex or too long
-                if (key.length <= 4 && key.match(/^[0-9A-Fa-f]+$/)) {
-                    current_key = parseInt(key, 16);
-                }
-                // any remainder of the row becomes part of the value
-                current_value = [];
-                row = split.slice(1).join("").trim();
-            }
             if (row) {
-                current_value.push(row);
+                new_key = row.includes(":");
+                if (new_key) {
+                    var split = row.split(":");
+                    // any remainder becomes part of the value
+                    row = split.slice(1).join("").trim();
+                }
             }
+            // if a new key or blank is found, store the previous value
+            if ((!row || new_key) && haveGlyph(current_value)) {
+                glyphs.push(current_value);
+                current_value = [];
+            }
+            if (new_key) current_value = [];
+            if (row) current_value.push(row);
         }
-        checkAndAddGlyph(glyphs, current_key, current_value);
         return (glyphs);
     }
 
