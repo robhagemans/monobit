@@ -856,6 +856,8 @@ class Charmap(Encoder):
         """Compare to other Charmap."""
         return isinstance(other, Charmap) and (self._ord2chr == other._ord2chr)
 
+    # charmap operations
+
     def __sub__(self, other):
         """Return encoding with only characters that differ from right-hand side."""
         return Charmap(
@@ -893,6 +895,23 @@ class Charmap(Encoder):
     def overlay(self, other, codepoint_range):
         """Return encoding overlaid with all characters in the overlay range taken from rhs."""
         return self + other.take(codepoint_range)
+
+    def shift(self, by=0x80):
+        """
+        Increment all codepoints in the first page by the given amount.
+
+        by: amount to increment
+        """
+        return Charmap(
+            mapping={
+                ((_k[0] + by,) if len(_k)==1 else _k): _v
+                for _k, _v in self._ord2chr.items()
+            },
+            name=f'shift[{self.name}]'
+        )
+
+
+    # representations
 
     def table(self):
         """Mapping table, first page."""
