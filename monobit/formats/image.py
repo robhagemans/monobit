@@ -69,7 +69,8 @@ if Image:
             scale:pair=(1, 1),
             # 0 or negative indicates 'use all chars'
             numchars:int=0,
-            background:str='most-common'
+            background:str='most-common',
+            first_codepoint:int=0
         ):
         """
         Extract character-cell font from image.
@@ -150,8 +151,8 @@ if Image:
             Glyph(tuple(
                 _cell[_offs: _offs+width]
                 for _offs in range(0, len(_cell), width)
-            ))
-            for _cell in crops
+            ), codepoint=_index)
+            for _index, _cell in enumerate(crops, first_codepoint)
         ]
         # set code points
         return Font(glyphs)
