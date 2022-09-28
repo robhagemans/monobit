@@ -24,6 +24,12 @@ Here are some examples of how to use the conversion utility.
 
 Display usage summary and command-line options
 
+`python3 convert.py --from=raw -h`
+
+Display usage summary and additional format-specific command-line options for conversion from raw binary.
+Format-specific options for loading and saving are *only* available when specifying
+the `--from` or `--to` arguments, respectively.
+
 `python3 convert.py fixedsys.fon`
 
 Recognise the source file format from "magic bytes" or suffix (here, a Windows font) and write fonts
@@ -267,8 +273,21 @@ In the spirit of human-friendliness, a short example is probably more informativ
         @..@.
         @@@..
 
-    # Or for example just a text label.
-    # This is a 0x0 empty glyph, by the way.
+
+    # Or for example, just a text label.
+    # A glyph may contain per-glyph metrics
+    latin_c:
+        ....
+        .@@.
+        @..@
+        @...
+        @..@
+        .@@.
+
+        tracking: 1
+
+
+    # This is a special notation for a 0x0 empty glyph, with the text tabel "empty".
     empty:
         -
 
@@ -294,7 +313,6 @@ In the spirit of human-friendliness, a short example is probably more informativ
         @.@.
         @.@.
         .@@@
-
 
 
 
@@ -343,10 +361,11 @@ There may be at most one newline between the separator and the value.
   with whitespace. There must be at least one such line. Leading and trailing whitespace on these
   lines does not form part of the value, but the newlines do.
 * A value may contain any character that is allowed in a `yaff` file.
-* A value must not consist solely of `.`, `@`, and whitespace characters.
-* A value must not consist of a single `-`.
+* No line of a value must consist solely of `.`, `@`, and whitespace characters.
+* No line of a value must consist of a single `-`.
 * A value must not be empty.
-* If a value starts and ends with a double quote, these quotes are stripped and everything in between is used unchanged.
+* If any line of a value starts and ends with a double quote character `"`, 
+  these quotes are stripped and everything in between is used unchanged.
 
 #### Glyph definitions
 A *glyph definition* consists of one or more *labels*, followed by a *glyph*. If there are multiple
@@ -378,15 +397,20 @@ If a label starts with `u+` or `U+`, it is a Unicode *character*.
 
 If a label does not start with a digit, `u+` or `U+`, it is a *tag*.
   * Tags are case-sensitive and may contain any kind of character.
+* If a tag starts and ends with a double quote character `"`,
+  these quotes are stripped and the tag consists of everything in between.
 
 ##### Glyphs
 
 A *glyph* may span multiple lines.
-* The lines of a glyph must start with whitespace. Trailing whitespace is allowed.
+* The lines of a glyph must start with whitespace (the _indent_). Trailing whitespace is allowed.
+* All lines of the glyph must have identical indent.
 * If a glyph consists of the character `-` only, it is the empty glyph.
 * Otherwise, the glyph must consist of the characters `.` and `@` only.
 * After removal of whitespace, all lines in the glyph must be of equal length.
 * A `@` represents an inked pixel in the glyph, a `.` represents an un-inked pixel.
+* Per-glyph properties may follow the glyph definition. These must be at the same indent and
+  separated from the pixel data by a blank line.
 
 
 Recognised properties
@@ -396,14 +420,22 @@ The following are font properties `monobit` is aware of. Other properties may be
 
 ##### Metrics
 
-_Metrics_ are properties that affect how the font is rendered.
-They are:
+_Metrics_ are properties that affect how the font is rendered. There are per-glyph metrics and global metrics.
+
+Global metrics are:
 - `direction`: Direction of writing. At present, only `left-to-right` is supported.
+- `leading`: Additional line spacing (i.e. vertical spacing in a horizontal font) in excess of the `pixel-height`.
+
+Per-glyph metrics are:
 - `offset` (_x_ _y_ pair): The shift from the _glyph origin_ to the _raster origin_.
 - `tracking`: Spacing following the glyph raster (i.e. to the right in a left-to-right font).
-- `leading`: Spacing between lines of text rasters (i.e. vertical spacing in a horizontal font).
-- `kerning`: Adjustment to tracking for specific glyph pairs. E.g. the pair `AV` may have negative
-kerning, so that they are displayed tighter than they otherwise would.
+- `kern-to`: Adjustment to tracking for specific glyph pairs. E.g. the pair `AV` may have negative
+kerning, so that they are displayed tighter than they otherwise would. Such an adjustment is
+specified in the `kern-to` property of the `A` glyph, as a pair of the label for the `V` glyph and
+a numeric adjustment value.
+
+The per-glyph metrics (except `kern-to`) may be specified globally, in which case they apply to all
+glyphs.
 
 ##### Characteristics
 
