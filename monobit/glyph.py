@@ -652,5 +652,5 @@ class Glyph:
                 if shrunk_glyph != alt:
                     raise ValueError("can't shrink glyph without loss")
         # horizontal stretch
-        glyph = tuple(_row[::factor_x] for _row in self._pixels)
-        return self.modify(glyph)
+        shrunk_glyph = tuple(_row[::factor_x] for _row in shrunk_glyph)
+        return self.modify(shrunk_glyph)
