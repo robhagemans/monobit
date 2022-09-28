@@ -67,10 +67,11 @@ if Image:
             margin:pair=(0, 0),
             padding:pair=(0, 0),
             scale:pair=(1, 1),
-            # 0 or negative indicates 'use all chars'
-            numchars:int=0,
+            table_size:pair=(0,0),
             background:str='most-common',
-            first_codepoint:int=0
+            first_codepoint:int=0,
+            order:str='row',
+            direction:pair=(1, 1),
         ):
         """
         Extract character-cell font from image.
@@ -79,8 +80,11 @@ if Image:
         margin: number of pixels in X,Y direction around glyph chart
         padding: number of pixels in X,Y direction between glyph
         scale: number of pixels in X,Y direction per glyph bit
-        numchars: number of glyphs to extract
+        table_size: number of glyphs in X, Y direction. (0, 0) means as much as fits in the image.
         background: determine background from "most-common", "least-common", "brightest", "darkest", "top-left" colour
+        first_codepoint: codepoint value assigned to first glyph
+        order: "r" or "row" for row-major order, "c" or "column" for column-major
+        direction: X, Y direction where +1, +1 means left-to-right, top-to-bottom
         """
         width, height = cell
         scale_x, scale_y = scale
@@ -88,14 +92,41 @@ if Image:
         margin_x, margin_y = margin
         # work out image geometry
         step_x = width * scale_x + padding_x
-        step_y = height *scale_y + padding_y
+        step_y = height * scale_y + padding_y
         # maximum number of cells that fits
         img = Image.open(infile)
         img = img.convert('RGB')
-        ncells_x = (img.width - margin_x) // step_x
-        ncells_y = (img.height - margin_y) // step_y
+        ncells_x, ncells_y = table_size
+        if ncells_x == 0:
+            ncells_x = (img.width - margin_x) // step_x
+        if ncells_y == 0:
+            ncells_y = (img.height - margin_y) // step_y
+        dir_x, dir_y = direction
+        x_traverse = range(ncells_x)
+        if dir_x < 0:
+            x_traverse = reversed(x_traverse)
+        y_traverse = range(ncells_y)
+        if dir_y < 0:
+            y_traverse = reversed(y_traverse)
+        if order.startswith('r'):
+            # row-major left-to-right top-to-bottom
+            x_traverse = list(x_traverse)
+            traverse = (
+                (_row, _col)
+                for _row in y_traverse
+                for _col in x_traverse
+            )
+        elif order.startswith('c'):
+            # row-major top-to-bottom left-to-right
+            y_traverse = list(y_traverse)
+            traverse = (
+                (_row, _col)
+                for _col in x_traverse
+                for _row in y_traverse
+            )
+        else:
+            raise ValueError(f'order should start with one of `r`, `c`, not `{order}`.')
         # extract sub-images
-        # assume row-major left-to-right top-to-bottom
         crops = [
             img.crop((
                 margin_x + _col*step_x,
@@ -103,8 +134,7 @@ if Image:
                 margin_x + _col*step_x + width * scale_x,
                 margin_y + _row*step_y + height * scale_y,
             ))
-            for _row in range(ncells_y)
-            for _col in range(ncells_x)
+            for _row, _col in traverse
         ]
         if not crops:
             logging.error('Image too small; no characters found.')
@@ -113,9 +143,6 @@ if Image:
         crops = [_crop.resize(cell) for _crop in crops]
         # get pixels
         crops = [list(_crop.getdata()) for _crop in crops]
-        # restrict to requested number of characters
-        if numchars and numchars > 0:
-            crops = crops[:numchars]
         # check that cells are monochrome
         colourset = set.union(*(set(_data) for _data in crops))
         if len(colourset) > 2:
