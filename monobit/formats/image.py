@@ -68,6 +68,7 @@ if Image:
             padding:pair=(0, 0),
             scale:pair=(1, 1),
             table_size:pair=(0,0),
+            count:int=0,
             background:str='most-common',
             first_codepoint:int=0,
             order:str='row-major',
@@ -80,7 +81,8 @@ if Image:
         margin: number of pixels in X,Y direction around glyph chart
         padding: number of pixels in X,Y direction between glyph
         scale: number of pixels in X,Y direction per glyph bit
-        table_size: number of glyphs in X, Y direction. (0, 0) means as much as fits in the image.
+        table_size: number of glyphs in X, Y direction. 0 or negative means as much as fits on the axis.
+        count: maximum number of glyphs to extract (within constraints of table_size). 0 or negative means extract all.
         background: determine background from "most-common", "least-common", "brightest", "darkest", "top-left" colour
         first_codepoint: codepoint value assigned to first glyph
         order: start with "r" for row-major order, "c" for column-major order
@@ -97,9 +99,9 @@ if Image:
         img = Image.open(infile)
         img = img.convert('RGB')
         ncells_x, ncells_y = table_size
-        if ncells_x == 0:
+        if ncells_x <= 0:
             ncells_x = (img.width - margin_x) // step_x
-        if ncells_y == 0:
+        if ncells_y <= 0:
             ncells_y = (img.height - margin_y) // step_y
         traverse = traverse_chart(ncells_x, ncells_y, order, direction)
         # extract sub-images
@@ -115,6 +117,8 @@ if Image:
         if not crops:
             logging.error('Image too small; no characters found.')
             return Font()
+        if count > 0:
+            crops = crops[:count]
         # scale
         crops = [_crop.resize(cell) for _crop in crops]
         # get pixels
