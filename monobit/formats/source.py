@@ -38,7 +38,7 @@ _PY_PARAMS = dict(
 def load_c(
         infile, where=None, *,
         identifier:str,
-        cell:pair=(8, 8), numchars:int=None, offset:int=0, padding:int=0,
+        cell:pair=(8, 8), count:int=None, offset:int=0, padding:int=0,
     ):
     """
     Extract font from bitmap encoded in C or C++ source code.
@@ -47,11 +47,11 @@ def load_c(
     cell: size X,Y of character cell
     offset: number of bytes in file before bitmap starts
     padding: number of bytes between encoded glyphs (not used for strike fonts)
-    numchars: number of glyphs to extract
+    count: number of glyphs to extract
     """
     return _load_coded_binary(
         infile, where, identifier=identifier,
-        cell=cell, numchars=numchars, offset=offset, padding=padding,
+        cell=cell, count=count, offset=offset, padding=padding,
         **_C_PARAMS
     )
 
@@ -59,7 +59,7 @@ def load_c(
 def load_js(
         infile, where=None, *,
         identifier:str,
-        cell:pair=(8, 8), numchars:int=None, offset:int=0, padding:int=0,
+        cell:pair=(8, 8), count:int=None, offset:int=0, padding:int=0,
     ):
     """
     Extract font from bitmap encoded in JavaScript source code.
@@ -68,11 +68,11 @@ def load_js(
     cell: size X,Y of character cell
     offset: number of bytes in file before bitmap starts
     padding: number of bytes between encoded glyphs (not used for strike fonts)
-    numchars: number of glyphs to extract
+    count: number of glyphs to extract
     """
     return _load_coded_binary(
         infile, where, identifier=identifier,
-        cell=cell, numchars=numchars, offset=offset, padding=padding,
+        cell=cell, count=count, offset=offset, padding=padding,
         **_JS_PARAMS
     )
 
@@ -80,7 +80,7 @@ def load_js(
 def load_py(
         infile, where=None, *,
         identifier:str,
-        cell:pair=(8, 8), numchars:int=None, offset:int=0, padding:int=0,
+        cell:pair=(8, 8), count:int=None, offset:int=0, padding:int=0,
     ):
     """
     Extract font from bitmap encoded in Python source code.
@@ -89,11 +89,11 @@ def load_py(
     cell: size X,Y of character cell
     offset: number of bytes in file before bitmap starts
     padding: number of bytes between encoded glyphs (not used for strike fonts)
-    numchars: number of glyphs to extract
+    count: number of glyphs to extract
     """
     return _load_coded_binary(
         infile, where, identifier=identifier,
-        cell=cell, numchars=numchars, offset=offset, padding=padding,
+        cell=cell, count=count, offset=offset, padding=padding,
         **_PY_PARAMS
     )
 
@@ -101,7 +101,7 @@ def load_py(
 def load_source(
         infile, where=None, *,
         identifier:str, delimiters:str='{}', comment:str='//',
-        cell:pair=(8, 8), numchars:int=None, offset:int=0, padding:int=0,
+        cell:pair=(8, 8), count:int=None, offset:int=0, padding:int=0,
     ):
     """
     Extract font from bitmap encoded in source code.
@@ -112,25 +112,25 @@ def load_source(
     cell: size X,Y of character cell
     offset: number of bytes in file before bitmap starts
     padding: number of bytes between encoded glyphs (not used for strike fonts)
-    numchars: number of glyphs to extract
+    count: number of glyphs to extract
     """
 
     return _load_coded_binary(
         infile, where, identifier=identifier,
-        cell=cell, numchars=numchars, offset=offset, padding=padding,
+        cell=cell, count=count, offset=offset, padding=padding,
         delimiters=delimiters, comment=comment
     )
 
 
 def _load_coded_binary(
         infile, where, identifier, delimiters, comment,
-        cell, numchars, offset, padding,
+        cell, count, offset, padding,
     ):
     """Load font from binary encoded in source code."""
     width, height = cell
     payload = _get_payload(infile.text, identifier, delimiters, comment)
     bytelist = [_int_from_c(_s) for _s in payload.split(',') if _s]
-    glyphs = parse_aligned(bytelist, width, height, numchars, offset, padding)
+    glyphs = parse_aligned(bytelist, width, height, count, offset, padding)
     return Font(glyphs)
 
 def _int_from_c(cvalue):
