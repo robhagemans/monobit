@@ -40,7 +40,7 @@ args = parser.parse_args()
 operation = monobit.operations[args.operation]
 
 
-with main(args, logging.WARNING):
+with main(args.debug, logging.WARNING):
 
     # load
     fonts = monobit.load(args.infile or sys.stdin)

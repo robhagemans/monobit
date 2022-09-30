@@ -69,7 +69,7 @@ if args.help:
 ###################################################################################################
 # main operation
 
-with main(args, logging.INFO):
+with main(args.debug, logging.INFO):
 
     # if no infile or outfile provided, use stdio
     infile = args.infile or sys.stdin

@@ -161,18 +161,16 @@ def add_script_args(parser, script_args, format='', name=''):
         else:
             converter = _CONVERTER.get(_type, _type)
             group.add_argument(f'--{argname}', dest=arg, help=doc, type=converter)
-
+    return group
 
 
 ###################################################################################################
 # frame for main scripts
 
 @contextmanager
-def main(args, loglevel=logging.WARNING):
+def main(debug=False, loglevel=logging.WARNING):
     """Main script context."""
-    if not hasattr(args, 'debug'):
-        args.debug = True
-    if args.debug:
+    if debug:
         loglevel = logging.DEBUG
     logging.basicConfig(level=loglevel, format='%(levelname)s: %(message)s')
     try:
@@ -183,5 +181,5 @@ def main(args, loglevel=logging.WARNING):
         sys.stdout = os.fdopen(1)
     except Exception as exc:
         logging.error(exc)
-        if not hasattr(args, 'debug') or args.debug:
+        if debug:
             raise
