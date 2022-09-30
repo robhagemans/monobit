@@ -322,15 +322,14 @@ Specification
 
 #### Encoding
 
-`yaff` files must be text files encoded as UTF-8.
+`yaff` files must be text files encoded as valid UTF-8.
 - A byte-order mark (`u+FEFF`) may be included at the start of the file.
 - Lines must be terminated by one of the following line endings:
   `LF` (`u+000a`), `CR LF` (`u+000d u+000a`), or `CR` (`u+000d`).
 - *Whitespace* consists of spaces (`u+0020`) and tabs (`u+0009`).
-- `yaff` files must not include:
-  * Control characters (Unicode category Cc) other than whitespace and line endings as defined above,
-  * The line separators `u+2028` and `u+2029`, or
-  * Any of the 66 Unicode *noncharacters*.
+- Use of control characters other than the ones mentioned above, 
+  private-use characters and noncharacters 
+  is not advisable, but it is allowed.
 
 #### Components
 `yaff` files consist of *glyph definitions*, *properties* and *comments*.
