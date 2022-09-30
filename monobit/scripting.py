@@ -12,6 +12,12 @@ from contextlib import contextmanager
 from functools import wraps, partial
 
 
+class ArgumentError(TypeError):
+
+    def __init__(self, func, arg):
+        super().__init__(f'{arg} is an invalid keyword for {func}()')
+
+
 ###################################################################################################
 # mark functions for scripting
 # annotations give converters from string to desired type
@@ -32,9 +38,20 @@ def scriptable(*args, script_args=None, name=None, record=True):
 
         @wraps(func)
         def _scriptable_func(*args, **kwargs):
-            result = func(*args, **kwargs)
+            # apply converters to argument
+            conv_kwargs = {}
+            for kwarg, value in kwargs.items():
+                try:
+                    _type, _ = script_args[kwarg]
+                except KeyError:
+                    raise ArgumentError(name, kwarg) from None
+                converter = _CONVERTER.get(_type, _type)
+                conv_kwargs[kwarg] = converter(value)
+            # call wrapped function
+            result = func(*args, **conv_kwargs)
+            # update history tracker
             if record and result:
-                history = script_args.to_str(kwargs)
+                history = script_args.to_str(conv_kwargs)
                 try:
                     result = tuple(_item.add(history=history) for _item in iter(result))
                 except TypeError:
@@ -102,7 +119,7 @@ class ScriptArgs():
         ).strip()
 
     def __iter__(self):
-        """Iterate over argument, type pairs."""
+        """Iterate over argument, type, doc pairs."""
         return (
             (_arg,
             self._script_args[_arg],
@@ -110,13 +127,21 @@ class ScriptArgs():
             for _arg in self._script_args
         )
 
+    def __getitem__(self, arg):
+        """Retrieve type, doc pair."""
+        return (
+            self._script_args[arg],
+            self._script_docs[arg]
+        )
 
 ###################################################################################################
 # script type converters
 
-def tuple_int(pairstr):
+def tuple_int(tup):
     """Convert NxNx... or N,N,... to tuple."""
-    return tuple(int(_s) for _s in pairstr.replace('x', ',').split(','))
+    if isinstance(tup, str):
+        return tuple(int(_s) for _s in tup.replace('x', ',').split(','))
+    return tuple([*tup])
 
 rgb = tuple_int
 pair = tuple_int
