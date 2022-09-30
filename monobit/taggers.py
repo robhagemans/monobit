@@ -19,7 +19,11 @@ class Tagger:
     def set_comments(self, font):
         """Use tagger to add glyph comments."""
         return font.modify(
-            _glyph.modify(comments=extend_string(_glyph.comments, self.get_tag(_glyph)))
+            (
+                _glyph.modify(comments=extend_string(_glyph.comments, self.get_tag(_glyph)))
+                if self.get_tag(_glyph) not in _glyph.comments
+                else _glyph
+            )
             for _glyph in font.glyphs
         )
 
