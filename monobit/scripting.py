@@ -143,16 +143,18 @@ _CONVERTER = {
 }
 
 
-def add_script_args(parser, script_args, format='', name=''):
+def add_script_args(parser, script_args, *, name='', **kwargs):
     """Add scriptable function arguments to argparser."""
-    if name and format:
-        group = parser.add_argument_group(f'{name}-{format} arguments')
+    if name:
+        header = f'{name}-options'
+        for key, value in kwargs.items():
+            if value:
+                header += f' for --{key}={value}'
+        group = parser.add_argument_group(header)
     else:
         group = parser
     for arg, _type, doc in script_args:
         argname = arg.strip('_').replace('_', '-')
-        if name:
-            argname = f'{name}-{argname}'
         if _type == bool:
             group.add_argument(f'--{argname}', dest=arg, help=doc, action='store_true')
             group.add_argument(
