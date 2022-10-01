@@ -411,7 +411,7 @@ _XLFD_UNPARSED = {
 ##############################################################################
 # top-level calls
 
-@loaders.register('bdf', magic=(b'STARTFONT ',), name='BDF')
+@loaders.register('bdf', magic=(b'STARTFONT ',), name='bdf')
 def load_bdf(instream, where=None):
     """
     Load font from Adobe Glyph Bitmap Distribution Format (BDF) file.

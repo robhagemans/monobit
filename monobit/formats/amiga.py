@@ -17,7 +17,7 @@ from ..struct import Props, flag, bitfield, big_endian as be
 from .. import struct
 
 
-@loaders.register('font', magic=(b'\x0f\0', b'\x0f\2'), name='Amiga Font Contents')
+@loaders.register('font', magic=(b'\x0f\0', b'\x0f\2'), name='amiga-fc')
 def load_amiga_fc(f, where):
     """Load font from Amiga disk font contents (.FONT) file."""
     fch = _FONT_CONTENTS_HEADER.read_from(f)
@@ -43,7 +43,7 @@ def load_amiga_fc(f, where):
     return pack
 
 
-@loaders.register('amiga', magic=(b'\0\0\x03\xf3',), name='Amiga Font')
+@loaders.register('amiga', magic=(b'\0\0\x03\xf3',), name='amiga')
 def load_amiga(f, where=None):
     """Load font from Amiga disk font file."""
     return _load_amiga(f, where)

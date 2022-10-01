@@ -75,7 +75,7 @@ _PSF2_STARTSEQ = b'\xFE'
 @loaders.register(
     'psf', 'psfu',
     magic=(_PSF1_MAGIC, _PSF2_MAGIC),
-    name='PSF',
+    name='psf',
 )
 def load_psf(instream, where=None):
     """Load character-cell font from PC Screen Font (.PSF) file."""

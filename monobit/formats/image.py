@@ -59,7 +59,7 @@ if Image:
             # JPEG
             b'\xFF\xD8\xFF',
         ),
-        name='Bitmap Image',
+        name='image',
     )
     def load_image(
             infile, where=None,

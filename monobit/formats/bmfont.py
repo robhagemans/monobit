@@ -40,7 +40,7 @@ from .windows import CHARSET_MAP, CHARSET_REVERSE_MAP
 # top-level calls
 
 if Image:
-    @loaders.register('bmf', name='BMFont')
+    @loaders.register('bmf', name='bmfont')
     def load_bmfont(infile, where, outline:bool=False):
         """
         Load fonts from Angelcode BMFont format.

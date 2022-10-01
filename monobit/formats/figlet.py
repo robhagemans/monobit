@@ -28,7 +28,7 @@ from ..label import Codepoint
 
 
 @loaders.register('flf', magic=(b'flf2a',), name='figlet')
-def load_flf(instream, where=None, *, ink:str=''):
+def load_figlet(instream, where=None, *, ink:str=''):
     """Load font from a FIGlet .flf file."""
     flf_glyphs, flf_props, comments = _read_flf(instream.text, ink=ink)
     logging.info('figlet properties:')
@@ -40,8 +40,8 @@ def load_flf(instream, where=None, *, ink:str=''):
         logging.info('    ' + line)
     return Font(glyphs, comments=comments, **vars(props))
 
-@savers.register(linked=load_flf)
-def save_flf(fonts, outstream, where=None):
+@savers.register(linked=load_figlet)
+def save_figlet(fonts, outstream, where=None):
     """Write fonts to a FIGlet .flf file."""
     if len(fonts) > 1:
         raise FileFormatError('Can only save one font to .flf file.')
