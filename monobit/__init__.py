@@ -5,9 +5,9 @@ monobit - tools for working with monochrome bitmap fonts
 licence: https://opensource.org/licenses/MIT
 """
 
-# we need at least Python 3.6
+# we need at least Python 3.7
 import sys as _sys
-assert _sys.version_info >= (3, 6)
+assert _sys.version_info >= (3, 7)
 
 from .constants import VERSION as __version__
 from .pack import Pack
