@@ -183,6 +183,28 @@ Supported formats
 | Windows font          | 3.0 PE   | `.fon`                      | Windows 3.x | ✔     |       |  
 
 
+Font format features
+--------------------
+
+Here is a comparison of what you can and cannot store in selected formats supported by `monobit`.
+
+| Format        | Unicode | Unicode sequences | Encoding | MBCS | Multiple fonts | Cell size | Proportional | Kerning | Colour/antialiasing | Glyph representation
+|---------------|---|---|---|---|---|------|---|---|---|--------------
+| `yaff`        | ✔ | ✔ | ✔ | ✔ | ✔ | any  | ✔ | ✔ |   | visual text
+| `bmfont`      | ✔ |   | ✔ | ✔ |   | any  | ✔ | ✔ | ✔ | image
+| `bdf`         | ✔ |   | ✔ | ✔ |   | any  | ✔ |   |   | hex
+| `mac-*`       |   |   | ✔ | ✔ | ✔ | any  | ✔ | ✔ | ✔ | binary
+| `win-*`       |   |   | ✔ | ✔ | ✔ | any  | ✔ |   |   | binary
+| `hexdraw`     | ✔ |   |   |   |   | any  | ✔ |   |   | visual text
+| `amiga-*`     |   |   |   |   | ✔ | any  | ✔ |   | ✔ | binary
+| `fzx`         |   |   |   |   |   | any  | ✔ |   |   | binary
+| `hext`        | ✔ | ✔ |   |   |   | 8xN  | multi-cell |   |   | hex
+| `hex`         | ✔ |   |   |   |   | 8x16 | multi-cell |   |   | hex
+| `psf.2`       | ✔ | ✔ |   |   |   | any  |   |   |   | binary
+| `psf.1`       | ✔ |   |   |   |   | 8xN  |   |   |   | binary
+| `cpi`         |   |   | ✔ |   | ✔ | 8xN  |   |   |   | binary
+
+
 Dependencies
 ------------
 
