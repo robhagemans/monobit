@@ -8,13 +8,15 @@ licence: https://opensource.org/licenses/MIT
 import string
 
 
-def strip_matching(from_str, char):
+def strip_matching(from_str, char, allow_no_match=True):
     """Strip a char from either side of the string if it occurs on both."""
     if not char:
         return from_str
     clen = len(char)
-    if from_str.startswith(char) and from_str.endswith(char):
+    if len(from_str) >= 2*clen and from_str.startswith(char) and from_str.endswith(char):
         return from_str[clen:-clen]
+    elif not allow_no_match:
+        raise ValueError(f'No matching delimiters `{char}` found in string `{from_str}`.')
     return from_str
 
 
@@ -72,7 +74,7 @@ class Tag(Label):
 
     value: str
 
-    def __init__(self, value):
+    def __init__(self, value=''):
         """Construct tag object."""
         if isinstance(value, Tag):
             self.value = value.value
@@ -121,7 +123,7 @@ class Codepoint(Label):
 
     value: tuple
 
-    def __init__(self, value):
+    def __init__(self, value=()):
         """Convert to codepoint label if possible."""
         if isinstance(value, Codepoint):
             self.value = value.value
@@ -187,18 +189,23 @@ class Char(Label):
 
     value: str
 
-    def __init__(self, value):
+    def __init__(self, value=''):
         """Convert char or char sequence to unicode label."""
         if isinstance(value, Char):
             self.value = value.value
             return
         if value is None:
             value = ''
-        try:
-            value = ''.join(value)
-        except TypeError:
-            raise self._value_error(value) from None
-        # Char('x') just holds 'x'
+        if isinstance(value, str):
+            # Char('x') just holds 'x'
+            # strip matching single quotes - if the character label should be literally '', use ''''.
+            value = strip_matching(value, "'")
+        else:
+            # iterable of strings?
+            try:
+                value = ''.join(value)
+            except TypeError:
+                raise self._value_error(value) from None
         self.value = value
 
     def __repr__(self):
@@ -229,6 +236,13 @@ class Char(Label):
     @staticmethod
     def _convert_element(element):
         """Convert unicode label element to char if possible."""
+        # string delimited by single quotes denotes a character/grapheme sequence
+        try:
+            element = strip_matching(element, "'", allow_no_match=False)
+        except ValueError:
+            pass
+        else:
+            return element
         element = element.lower()
         if not element.startswith('u+'):
             raise ValueError(element)

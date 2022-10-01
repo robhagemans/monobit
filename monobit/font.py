@@ -18,7 +18,7 @@ except ImportError:
 from .scripting import scriptable, get_scriptables
 from .glyph import Glyph, Coord, Bounds, number
 from .encoding import charmaps, encoder
-from .label import Label, Tag, Char, Codepoint, label
+from .label import Label, Tag, Char, Codepoint, label as to_label
 from .struct import (
     extend_string, DefaultProps, normalise_property, as_tuple, writable_property, checked_property
 )
@@ -136,9 +136,9 @@ class FontProperties(DefaultProps):
     # character map, stored as normalised name
     encoding: charmaps.normalise
     # replacement for missing glyph
-    default_char: label
+    default_char: to_label
     # word-break character (usually space)
-    word_boundary: label = Char(' ')
+    word_boundary: to_label = Char(' ')
 
     # rendering hints
     # can't be calculated, may affect rendering
@@ -598,10 +598,10 @@ class Font:
     def glyphs(self):
         return self._glyphs
 
-    def get_glyph(self, key=None, *, char=None, codepoint=None, tag=None, missing='raise'):
+    def get_glyph(self, label=None, *, char=None, codepoint=None, tag=None, missing='raise'):
         """Get glyph by char, codepoint or tag; default if not present."""
         try:
-            index = self.get_index(key, tag=tag, char=char, codepoint=codepoint)
+            index = self.get_index(label, tag=tag, char=char, codepoint=codepoint)
         except KeyError:
             if missing == 'default':
                 return self.get_default_glyph()
@@ -612,25 +612,30 @@ class Font:
             raise
         return self._glyphs[index]
 
-    def get_index(self, key=None, *, char=None, codepoint=None, tag=None):
-        """Get index for given key or tag, if defined."""
-        if 1 != len([_indexer for _indexer in (key, char, codepoint, tag) if _indexer is not None]):
+    def get_index(self, label=None, *, char=None, codepoint=None, tag=None):
+        """Get index for given label, if defined."""
+        if 1 != len([_indexer for _indexer in (label, char, codepoint, tag) if _indexer is not None]):
             raise ValueError('get_index() takes exactly one parameter.')
-        if isinstance(key, Char):
-            char = key
-        elif isinstance(key, Codepoint):
-            codepoint = key
-        elif isinstance(key, Tag):
-            tag = key
-        elif key is not None:
-            # unspecified key, deduct from type
-            # str -> char; tuple/list/bytes -> codepoint
-            # a tag can only be specified explicitly
-            if isinstance(key, str):
-                char = key
-            else:
-                # let Codepoint deal with interpretation
-                codepoint = Codepoint(key).value
+        if isinstance(label, str):
+            # first look for char - expected to be shorter - then tags
+            try:
+                return self._chars[label]
+            except KeyError:
+                pass
+            try:
+                return self._tags[label]
+            except KeyError:
+                pass
+        # do we have the input string directly as a char or tag?
+        if label is not None:
+            # convert strings, numerics through standard rules
+            label = to_label(label)
+            if isinstance(label, Char):
+                char = label
+            elif isinstance(label, Codepoint):
+                codepoint = label
+            elif isinstance(label, Tag):
+                tag = label
         if tag is not None:
             try:
                 return self._tags[Tag(tag).value]

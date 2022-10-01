@@ -108,14 +108,14 @@ def _iter_labels(font, labels, max_length, missing='raise'):
         # try multibyte clusters first
         for try_len in range(max_length, 1, -1):
             try:
-                yield font.get_glyph(key=remaining[:try_len], missing='raise')
+                yield font.get_glyph(label=remaining[:try_len], missing='raise')
             except KeyError:
                 pass
             else:
                 remaining = remaining[try_len:]
                 break
         else:
-            yield font.get_glyph(key=remaining[:1], missing=missing)
+            yield font.get_glyph(label=remaining[:1], missing=missing)
             remaining = remaining[1:]
 
 

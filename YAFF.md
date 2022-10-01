@@ -172,15 +172,18 @@ If a label starts with a digit, it is a *codepoint*.
 * If a codepoint label consists of multiple elements, they represent a multi-byte codepoint sequence
 pointing to a single glyph.
 
-If a label starts with `u+` or `U+`, it is a Unicode *character*.
+If a label starts with `u+` or `U+`, or is enclosed by single quote characters `'`, it is a Unicode *character*, 
+which may be a multi-character grapheme sequence.
   * A character label may consist of multiple elements, separated by commas and optional whitespace.
-  * Each element must start with `u+` or `U+`. All further characters must be hex digits and are not case sensitive.
-  * Each element represents a Unicode point in hexadecimal notation. Together they
-  are taken to represent a single grapheme cluster.
+  * Each element must start with `u+` or `U+` or be enclosed in single quotes. All further characters must be hex digits and are not case sensitive.
+  * If an element starts with `u+` or `U+`, followed by hex digits, it represents a Unicode point in hexadecimal notation. 
+  The hex digits are not case sensitive.
+  * If a label element starts and ends with a single-quote character `'`,
+  these quotes are stripped and the element consists of everything in between. 
 
 If a label does not start with a digit, `u+` or `U+`, it is a *tag*.
-  * Tags are case-sensitive and may contain any kind of character.
-* If a tag starts and ends with a double quote character `"`,
+* Tags are case-sensitive and may contain any kind of character.
+* If a label starts and ends with a double-quote character `"`,
   these quotes are stripped and the tag consists of everything in between.
 
 ##### Glyphs
