@@ -14,7 +14,7 @@ from .containers import ContainerFormatError, open_container
 from .font import Font
 from .pack import Pack
 from .streams import MagicRegistry, FileFormatError, open_stream
-from .scripting import scriptable, ScriptArgs
+from .scripting import scriptable, ScriptArgs, Any
 
 
 ##############################################################################
@@ -72,7 +72,7 @@ def open_location(file, mode, where=None, overwrite=False):
 # loading
 
 
-def get_loader(infile:str, format:str='', where:str='', do_open=True):
+def get_loader(infile, format='', where='', do_open=True):
     """Get loader information for font from file."""
     if not infile and not where:
         return loaders.get_for(format=format)
@@ -83,7 +83,7 @@ def get_loader(infile:str, format:str='', where:str='', do_open=True):
 
 
 @scriptable(unknown_args='passthrough', record=False)
-def load(infile, *, format:str='', where:str='', **kwargs):
+def load(infile, *, format:str='', where:Any='', **kwargs):
     """
     Read new font from file.
 
@@ -143,7 +143,7 @@ def _load_all(container, format, **kwargs):
 # saving
 
 
-def get_saver(outfile:str, format:str='', where:str=''):
+def get_saver(outfile, format, where=''):
     """Get saver information for font from file."""
     return savers.get_for(outfile, format=format, do_open=False)
 
@@ -152,7 +152,7 @@ def get_saver(outfile:str, format:str='', where:str=''):
 def save(
         pack_or_font,
         outfile, *,
-        format:str='', where:str='', overwrite:bool=False,
+        format:str='', where:Any='', overwrite:bool=False,
         **kwargs
     ):
     """

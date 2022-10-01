@@ -60,7 +60,7 @@ def scriptable(*args, script_args=None, name=None, record=True, unknown_args='ra
                         continue
                     else:
                         raise ArgumentError(name, kwarg) from None
-                    _type = lambda _:_
+                    _type = Any
                 converter = _CONVERTER.get(_type, _type)
                 conv_kwargs[kwarg] = converter(value)
             # call wrapped function
@@ -175,6 +175,11 @@ def any_int(int_str):
         # '099' - ValueError above, OK as decimal
         # non-string inputs: TypeError, may be OK if int(x) works
         return int(int_str)
+
+
+def Any(var):
+    """Passthrough type."""
+    return var
 
 
 ###################################################################################################
