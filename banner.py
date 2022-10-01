@@ -24,8 +24,8 @@ def unescape(text):
 # parse command line
 parser = argparse.ArgumentParser()
 parser.add_argument(
-    'text', nargs='?', type=str,
-    help='text to be printed. if not given, read from standard input'
+    'text', nargs='*', type=str,
+    help='text to be printed. multiple text arguments represent consecutive lines. if not given, read from standard input'
 )
 parser.add_argument(
     '--font', '-f', type=str, default='',
@@ -40,8 +40,8 @@ parser.add_argument(
     help='character to use for ink/foreground (default: @)'
 )
 parser.add_argument(
-    '--paper', '--background', '-bg', type=str, default='-',
-    help='character to use for paper/background (default: -)'
+    '--paper', '--background', '-bg', type=str, default='.',
+    help='character to use for paper/background (default: .)'
 )
 parser.add_argument(
     '--margin', '-m', type=pair, default=(0, 0),
@@ -71,7 +71,14 @@ parser.add_argument(
 args = parser.parse_args()
 
 
-with main(args, logging.WARNING):
+if args.debug:
+    loglevel = logging.DEBUG
+else:
+    loglevel = logging.WARNING
+logging.basicConfig(level=loglevel, format='%(levelname)s: %(message)s')
+
+
+with main(args.debug):
     # codepage chart
     if args.chart:
         if args.text or args.encoding:
@@ -82,6 +89,8 @@ with main(args, logging.WARNING):
     elif not args.text:
         args.text = sys.stdin.read()
     else:
+        # multiple options or \n give line breaks
+        args.text = '\n'.join(args.text)
         args.text = unescape(args.text)
     # foreground and backgound characters
     args.ink = unescape(args.ink)
@@ -92,7 +101,7 @@ with main(args, logging.WARNING):
     # override encoding if requested
     if not font.get_chars() and not args.encoding and not isinstance(args.text, bytes):
         logging.info(
-            'No character mappeing defined in font. Using `--encoding=raw` as fallback.'
+            'No character mapping defined in font. Using `--encoding=raw` as fallback.'
         )
         args.encoding = 'raw'
     if args.encoding == 'raw':
