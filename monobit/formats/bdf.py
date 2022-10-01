@@ -840,9 +840,10 @@ def _save_bdf(font, outstream):
         # DWIDTH specifies the widths in x and y, dwx0 and dwy0, in device pixels.
         # Like SWIDTH , this width information is a vector indicating the position of
         # the next glyph’s origin relative to the origin of this glyph.
-        dwidth_x = font.offset.x + glyph.width + font.tracking
+        offset_x, offset_y = font.offset.x + glyph.offset.x, font.offset.y + glyph.offset.y
+        tracking = glyph.tracking + font.tracking
+        dwidth_x = offset_x + glyph.width + tracking
         swidth_x = int(round(dwidth_x / (font.point_size / 1000) / (font.dpi.y / 72)))
-        offset_x, offset_y = font.offset.x, font.offset.y
         # minimize glyphs to ink-bounds (BBX) before storing, except "cell" fonts
         if font.spacing not in ('character-cell', 'multi-cell'):
             offset_x, offset_y = offset_x + glyph.padding.left, offset_y + glyph.padding.bottom

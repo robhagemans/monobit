@@ -74,6 +74,7 @@ class YaffParams:
     comment = '#'
     # output only
     tab = '    '
+    separator_space = '\n'
     # tuple of individual chars, need to be separate for startswith
     whitespace = tuple(' \t')
 
@@ -93,6 +94,7 @@ class DrawParams:
     comment = '%'
     # output only
     tab = '\t'
+    separator_space = ''
     # tuple of individual chars, need to be separate for startswith
     whitespace = tuple(' \t')
 
@@ -432,6 +434,7 @@ class TextWriter:
     separator: str
     comment: str
     tab: str
+    separator_space: str
 
     ink: str
     paper: str
@@ -450,7 +453,7 @@ class TextWriter:
             logging.warning('No labels for glyph: %s', glyph)
             return
         for _label in labels:
-            outstream.write(f'{_label}{self.separator}\n')
+            outstream.write(f'{_label}{self.separator}{self.separator_space}')
         # glyph matrix
         # empty glyphs are stored as 0x0, not 0xm or nx0
         if not glyph.width or not glyph.height:
@@ -461,18 +464,16 @@ class TextWriter:
                 ink=self.ink, paper=self.paper, line_break='\n' + self.tab
             )
         tab = self.tab
-        outstream.write(f'{tab}{glyphtxt}\n\n')
-        if glyph.kern_to:
-            outstream.write(f'{tab}kern-to: \n')
-            for line in str(glyph.kern_to).splitlines():
-                outstream.write(f'{tab*2}{line}\n')
+        outstream.write(f'{tab}{glyphtxt}\n')
+        if glyph.properties:
+            outstream.write(f'\n')
         for key, value in glyph.properties.items():
-            outstream.write(f'{tab}{key}: {self._quote_if_needed(value)}\n')
-        if glyph.offset or glyph.tracking or glyph.kern_to or glyph.properties:
+            self._write_property(outstream, key, value, None, indent=self.tab)
+        if glyph.properties:
             outstream.write('\n')
         outstream.write('\n')
 
-    def _write_property(self, outstream, key, value, comments):
+    def _write_property(self, outstream, key, value, comments, indent=''):
         """Write out a property."""
         if value is None:
             return
@@ -482,16 +483,16 @@ class TextWriter:
             return
         # write property comment
         if comments:
-            outstream.write('\n' + self._format_comment(comments) + '\n')
+            outstream.write('\n{indent}' + self._format_comment(comments) + '\n')
         if not '.' in key and not key.startswith('_'):
             key = key.replace('_', '-')
         # write key-value pair
         if '\n' not in value:
-            outstream.write(f'{key}: {self._quote_if_needed(value)}\n')
+            outstream.write(f'{indent}{key}: {self._quote_if_needed(value)}\n')
         else:
             outstream.write(
-                f'{key}:\n{self.tab}' '{}\n'.format(
-                    f'\n{self.tab}'.join(
+                f'{indent}{key}:\n{indent}{self.tab}' '{}\n'.format(
+                    f'\n{indent}{self.tab}'.join(
                         self._quote_if_needed(_line)
                         for _line in value.splitlines()
                     )
