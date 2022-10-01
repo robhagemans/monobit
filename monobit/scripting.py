@@ -12,29 +12,64 @@ from contextlib import contextmanager
 from functools import wraps, partial
 
 
+class ArgumentError(TypeError):
+    """Invalid keyword argument."""
+
+    def __init__(self, func, arg):
+        super().__init__(f'{arg} is an invalid keyword for {func}()')
+
+
 ###################################################################################################
 # mark functions for scripting
 # annotations give converters from string to desired type
 # docstings provide help text
 
-def scriptable(*args, script_args=None, name=None, record=True):
+def scriptable(
+        *args, script_args=None, name=None, record=True, history_values=None, unknown_args='raise'
+    ):
     """Decorator to register operation for scripting."""
     if not args:
         # called as @scriptable(script_args=...)
         # return decorator with these arguments set as extra args
-        return partial(scriptable, script_args=script_args, name=name, record=record)
+        return partial(
+            scriptable, script_args=script_args,
+            name=name, record=record, history_values=history_values, unknown_args=unknown_args
+        )
     else:
         # called as @scriptable
         func, = args
         name = name or func.__name__
         script_args = script_args or {}
-        script_args = ScriptArgs(func, name=name, extra_args=script_args)
+        script_args = ScriptArgs(func, name=name, extra_args=script_args, history_values=history_values)
 
         @wraps(func)
         def _scriptable_func(*args, **kwargs):
-            result = func(*args, **kwargs)
+            # apply converters to argument
+            conv_kwargs = {}
+            for kwarg, value in kwargs.items():
+                # skip not-specified arguments
+                if value is None:
+                    continue
+                try:
+                    _type, _ = script_args[kwarg]
+                except KeyError:
+                    if unknown_args == 'drop':
+                        continue
+                    if unknown_args == 'passthrough':
+                        pass
+                    elif unknown_args == 'warn':
+                        logging.warning(ArgumentError(name, kwarg))
+                        continue
+                    else:
+                        raise ArgumentError(name, kwarg) from None
+                    _type = Any
+                converter = _CONVERTER.get(_type, _type)
+                conv_kwargs[kwarg] = converter(value)
+            # call wrapped function
+            result = func(*args, **conv_kwargs)
+            # update history tracker
             if record and result:
-                history = script_args.to_str(kwargs)
+                history = script_args.to_str(conv_kwargs)
                 try:
                     result = tuple(_item.add(history=history) for _item in iter(result))
                 except TypeError:
@@ -44,6 +79,7 @@ def scriptable(*args, script_args=None, name=None, record=True):
         _scriptable_func.script_args = script_args
         _scriptable_func.__name__ = name
         return _scriptable_func
+
 
 def get_scriptables(cls):
     """Get dict of functions marked as scriptable."""
@@ -60,7 +96,7 @@ def get_scriptables(cls):
 class ScriptArgs():
     """Record of script arguments."""
 
-    def __init__(self, func=None, *, name='', extra_args=None):
+    def __init__(self, func=None, *, name='', extra_args=None, history_values=None):
         """Extract script name, arguments and docs."""
         self.name = name
         self._script_args = {}
@@ -72,6 +108,7 @@ class ScriptArgs():
             self.name = name or func.__name__
             self._script_args.update(func.__annotations__)
         self._script_args.update(extra_args or {})
+        self._history_values = history_values or {}
         self._script_docs = {_k: '' for _k in self._script_args}
         for line in docs:
             if not line or ':' not in line:
@@ -92,8 +129,12 @@ class ScriptArgs():
     def to_str(self, arg_dict):
         """Represent converter parameters."""
         return (
-            self.name.replace('_', '-') + ' '
-            + ' '.join(
+            self.name.replace('_', '-')
+            + ' ' + ' '.join(
+                f'{_k}={_v}'
+                for _k, _v in self._history_values.items()
+            )
+            + ' ' + ' '.join(
                 f'{_k}={_v}'
                 for _k, _v in arg_dict.items()
                 # exclude non-operation parameters
@@ -102,7 +143,7 @@ class ScriptArgs():
         ).strip()
 
     def __iter__(self):
-        """Iterate over argument, type pairs."""
+        """Iterate over argument, type, doc pairs."""
         return (
             (_arg,
             self._script_args[_arg],
@@ -110,13 +151,21 @@ class ScriptArgs():
             for _arg in self._script_args
         )
 
+    def __getitem__(self, arg):
+        """Retrieve type, doc pair."""
+        return (
+            self._script_args[arg],
+            self._script_docs[arg]
+        )
 
 ###################################################################################################
 # script type converters
 
-def tuple_int(pairstr):
+def tuple_int(tup):
     """Convert NxNx... or N,N,... to tuple."""
-    return tuple(int(_s) for _s in pairstr.replace('x', ',').split(','))
+    if isinstance(tup, str):
+        return tuple(int(_s) for _s in tup.replace('x', ',').split(','))
+    return tuple([*tup])
 
 rgb = tuple_int
 pair = tuple_int
@@ -135,6 +184,11 @@ def any_int(int_str):
         return int(int_str)
 
 
+def Any(var):
+    """Passthrough type."""
+    return var
+
+
 ###################################################################################################
 
 
@@ -143,17 +197,18 @@ _CONVERTER = {
 }
 
 
-def add_script_args(parser, script_args, format='', name=''):
+def add_script_args(parser, scriptable, positional=()):
     """Add scriptable function arguments to argparser."""
-    if name and format:
-        group = parser.add_argument_group(f'{name}-{format} arguments')
-    else:
-        group = parser
+    name = scriptable.script_args.name
+    script_args = scriptable.script_args
+    header = f'{name}-options'
+    group = parser.add_argument_group(header)
     for arg, _type, doc in script_args:
         argname = arg.strip('_').replace('_', '-')
-        if name:
-            argname = f'{name}-{argname}'
-        if _type == bool:
+        if argname in positional:
+            converter = _CONVERTER.get(_type, _type)
+            group.add_argument(f'{arg}', help=doc, nargs='?', type=converter)
+        elif _type == bool:
             group.add_argument(f'--{argname}', dest=arg, help=doc, action='store_true')
             group.add_argument(
                 f'--no-{argname}', dest=arg, help=f'unset --{argname}', action='store_false'
@@ -161,20 +216,36 @@ def add_script_args(parser, script_args, format='', name=''):
         else:
             converter = _CONVERTER.get(_type, _type)
             group.add_argument(f'--{argname}', dest=arg, help=doc, type=converter)
+    return group
 
+
+def parse_converter_args(parser, converter, arglist):
+    """Add a converrter's argument to parser and retrieve values."""
+    if converter:
+        add_script_args(parser, converter)
+        args, _ = parser.parse_known_args(arglist)
+        return converter.script_args.pick(args)
+    return {}
+
+
+
+# split argument list in command components
+def split_argv(*command_words):
+    part_argv = []
+    for arg in sys.argv[1:]:
+        if arg in command_words:
+            yield part_argv
+            part_argv = []
+        part_argv.append(arg)
+    yield part_argv
 
 
 ###################################################################################################
 # frame for main scripts
 
 @contextmanager
-def main(args, loglevel=logging.WARNING):
+def main(debug=False):
     """Main script context."""
-    if not hasattr(args, 'debug'):
-        args.debug = True
-    if args.debug:
-        loglevel = logging.DEBUG
-    logging.basicConfig(level=loglevel, format='%(levelname)s: %(message)s')
     try:
         yield
     except BrokenPipeError:
@@ -183,5 +254,5 @@ def main(args, loglevel=logging.WARNING):
         sys.stdout = os.fdopen(1)
     except Exception as exc:
         logging.error(exc)
-        if not hasattr(args, 'debug') or args.debug:
+        if debug:
             raise

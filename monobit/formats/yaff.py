@@ -26,7 +26,7 @@ from ..struct import Props
 # interface
 
 
-@loaders.register('yaff', 'yaffs', magic=(b'---',), name='monobit-yaff')
+@loaders.register('yaff', 'yaffs', magic=(b'---',), name='yaff')
 def load_yaff(instream, where=None):
     """Load font from a monobit .yaff file."""
     return _load_yaff(instream.text)
@@ -38,22 +38,22 @@ def save_yaff(fonts, outstream, where=None):
 
 
 @loaders.register('draw', 'text', 'txt', name='hexdraw')
-def load_draw(instream, where=None, ink:str='#', paper:str='-'):
+def load_hexdraw(instream, where=None, ink:str='#', paper:str='-'):
     """
     Load font from a hexdraw file.
 
-    ink: character used for inked/foreground pixels
-    paper: character used for uninked/background pixels
+    ink: character used for inked/foreground pixels (default #)
+    paper: character used for uninked/background pixels (default -)
     """
     return _load_draw(instream.text, _ink=ink, _paper=paper)
 
-@savers.register(linked=load_draw)
-def save_draw(fonts, outstream, where=None, ink:str='#', paper:str='-'):
+@savers.register(linked=load_hexdraw)
+def save_hexdraw(fonts, outstream, where=None, ink:str='#', paper:str='-'):
     """
     Save font to a hexdraw file.
 
-    ink: character to use for inked/foreground pixels
-    paper: character to use for uninked/background pixels
+    ink: character to use for inked/foreground pixels (default #)
+    paper: character to use for uninked/background pixels (default -)
     """
     if len(fonts) > 1:
         raise FileFormatError("Can only save one font to hexdraw file.")

@@ -6,7 +6,6 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import string
-import math
 
 from ..binary import ceildiv
 from ..storage import loaders, savers
@@ -34,7 +33,7 @@ _PY_PARAMS = dict(
 
 ###################################################################################################
 
-@loaders.register('c', 'cc', 'cpp', 'h', name='C source')
+@loaders.register('c', 'cc', 'cpp', 'h', name='c')
 def load_c(
         infile, where=None, *,
         identifier:str='',
@@ -59,8 +58,8 @@ def load_c(
         **_C_PARAMS
     )
 
-@loaders.register('js', 'json', name='JavaScript source')
-def load_js(
+@loaders.register('js', 'json', name='json')
+def load_json(
         infile, where=None, *,
         identifier:str='',
         cell:pair=(8, 8), count:int=-1, offset:int=0, padding:int=0,
@@ -84,8 +83,8 @@ def load_js(
         **_JS_PARAMS
     )
 
-@loaders.register('py', name='Python source')
-def load_py(
+@loaders.register('py', name='python')
+def load_python(
         infile, where=None, *,
         identifier:str='',
         cell:pair=(8, 8), count:int=-1, offset:int=0, padding:int=0,
@@ -209,26 +208,19 @@ def save_c(fonts, outstream, where=None):
     """
     return _save_coded_binary(fonts, outstream, 'char font_{compactname}[{bytesize}] = ', **_C_PARAMS)
 
-@savers.register('py', 'python', linked=load_py)
-def save_py(fonts, outstream, where=None):
+@savers.register('py', 'python', linked=load_python)
+def save_python(fonts, outstream, where=None):
     """
     Save font to bitmap encoded in Python source code.
     """
     return _save_coded_binary(fonts, outstream, 'font_{compactname} = ', **_PY_PARAMS)
 
-@savers.register('json', linked=load_js)
+@savers.register('json', linked=load_json)
 def save_json(fonts, outstream, where=None):
     """
     Save font to bitmap encoded in JSON code.
     """
     return _save_coded_binary(fonts, outstream, '', **_JS_PARAMS)
-
-@savers.register('js', linked=load_js)
-def save_js(fonts, outstream, where=None):
-    """
-    Save font to bitmap encoded in JSON code.
-    """
-    return _save_coded_binary(fonts, outstream, 'let font_{compactname} = ', **_JS_PARAMS)
 
 @savers.register('source', linked=load_source)
 def save_source(
@@ -236,7 +228,7 @@ def save_source(
         identifier:str, assign:str='=', delimiters:str='{}', comment:str='//',
     ):
     """
-    Save font to bitmap encoded in JSON code.
+    Save font to bitmap encoded in source code.
     """
     return _save_coded_binary(fonts, outstream, f'{identifier} {assign} ', delimiters, comment)
 

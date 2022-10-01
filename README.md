@@ -73,7 +73,7 @@ Check `python3 modify.py -h` for usage.
 ##### Banner utility
 
 The banner utility renders text to standard output in a given font. This is similar to the ancient
-`banner` commands included in GNU and BSD Unixes.
+`banner` commands included in System-V and BSD Unixes.
 
 For example, the banner at the top of this `README` was made with
 
@@ -87,42 +87,44 @@ Check `python3 banner.py -h` for usage.
 Supported formats
 -----------------
 
-| Format                | Version  | Typical Extension           | Native OS   | Read  | Write |
-|-----------------------|----------|-----------------------------|-------------|-------|-------|
-| monobit yaff          |          | `.yaff`                     |             | ✔     | ✔     |
-| hexdraw               |          | `.draw`                     |             | ✔     | ✔     |
-| GNU Unifont           |          | `.hex`                      |             | ✔     | ✔     |
-| PC Screen Font        | 1        | `.psf`                      | MS-DOS      | ✔     |       |
-| PC Screen Font        | 2        | `.psf` `.psfu`              | Linux       | ✔     | ✔     |
-| Raw binary            |          | `.fnt` `.rom` `.f??` `.ch8` `.64c` `.chr`|| ✔     | ✔     |
-| Bitmap image          |          | `.png` `.gif` `.bmp`        |             | ✔ (P) | ✔ (P) |
-| PDF chart             |          | `.pdf`                      |             |       | ✔ (R) |
-| C or C++ source code  |          | `.c` `.cpp` `.cc` `.h`      |             | ✔     | ✔     |
-| JavaScript source code|          | `.js` `.json`               |             | ✔     | ✔     |
-| Python source code    |          | `.py`                       |             | ✔     | ✔     |
-| AngelCode BMFont      | Text     | `.fnt` + images             |             | ✔ (P) | ✔ (P) |
-| AngelCode BMFont      | Binary   | `.fnt` + images             |             | ✔ (P) |       |
-| AngelCode BMFont      | XML      | `.fnt` `.xml` + images      |             | ✔ (P) |       |
-| AngelCode BMFont      | JSON     | `.json` + images            |             | ✔ (P) | ✔ (P) |
-| X11/Adobe BDF         |          | `.bdf`                      | Unix        | ✔     | ✔     |
-| Codepage Information  | FONT     | `.cpi`                      | MS-DOS      | ✔     |       |
-| Codepage Information  | FONT.NT  | `.cpi`                      | Windows NT  | ✔     |       |
-| Codepage Information  | DRFONT   | `.cpi`                      | DR-DOS      | ✔     |       |
-| `kbd` Codepage        |          | `.cp`                       | Linux       | ✔     |       |
-| Amiga Font Contents   |          | `.font`                     | Amiga OS    | ✔     |       |
-| Amiga Font            |          |                             | Amiga OS    | ✔     |       |
-| FZX Font              |          | `.fzx`                      | ZX Spectrum | ✔     | ✔     |
-| Figlet                |          | `.flf`                      | Unix        | ✔     | ✔     |
-| MacOS font            | FONT     |                             | MacOS       | ✔     |       |
-| MacOS font            | NFNT/FOND|                             | MacOS       | ✔     |       |
-| Windows resource      | 1.0      | `.fnt`                      | Windows 1.x | ✔     |       |
-| Windows resource      | 2.0      | `.fnt`                      | Windows 2.x | ✔     | ✔     |
-| Windows resource      | 3.0      | `.fnt`                      | Windows 3.x | ✔     | ✔     |
-| Windows font          | 1.0 NE   | `.fon`                      | Windows 1.x | ✔     |       |
-| Windows font          | 2.0 NE   | `.fon`                      | Windows 2.x | ✔     | ✔     |
-| Windows font          | 3.0 NE   | `.fon`                      | Windows 3.x | ✔     | ✔     |
-| Windows font          | 2.0 PE   | `.fon`                      | Windows 2.x | ✔     |       |
-| Windows font          | 3.0 PE   | `.fon`                      | Windows 3.x | ✔     |       |  
+| Format                | Short Name | Version  | Typical Extension           | Native OS   | Read  | Write |
+|-----------------------|------------|----------|-----------------------------|-------------|-------|-------|
+| monobit yaff          | `yaff`     |          | `.yaff`                     |             | ✔     | ✔     |
+| hexdraw               | `hexdraw`  |          | `.draw`                     |             | ✔     | ✔     |
+| GNU Unifont           | `hex`      |          | `.hex`                      |             | ✔     | ✔     |
+| PC Screen Font        | `psf`      | 1        | `.psf`                      | MS-DOS      | ✔     |       |
+| PC Screen Font        | `psf`      | 2        | `.psf` `.psfu`              | Linux       | ✔     | ✔     |
+| Raw binary            | `binary`   |          | `.fnt` `.rom` `.f??` `.ch8` `.64c` `.chr`|| ✔     | ✔     |
+| Bitmap image          | `image`    |          | `.png` `.gif` `.bmp`        |             | ✔ (P) | ✔ (P) |
+| PDF chart             | `pdf`      |          | `.pdf`                      |             |       | ✔ (R) |
+| C or C++ coded binary | `c`        |          | `.c` `.cpp` `.cc` `.h`      |             | ✔     | ✔     |
+| JSON coded binary     | `json`     |          | `.json`                     |             | ✔     | ✔     |
+| Python coded binary   | `python`   |          | `.py`                       |             | ✔     | ✔     |
+| AngelCode BMFont      | `bmfont`   | Text     | `.fnt` + images             |             | ✔ (P) | ✔ (P) |
+| AngelCode BMFont      | `bmfont`   | Binary   | `.fnt` + images             |             | ✔ (P) |       |
+| AngelCode BMFont      | `bmfont`   | XML      | `.fnt` `.xml` + images      |             | ✔ (P) |       |
+| AngelCode BMFont      | `bmfont`   | JSON     | `.json` + images            |             | ✔ (P) | ✔ (P) |
+| X11/Adobe BDF         | `bdf`      |          | `.bdf`                      | Unix        | ✔     | ✔     |
+| Codepage Information  | `cpi`      | FONT     | `.cpi`                      | MS-DOS      | ✔     |       |
+| Codepage Information  | `cpi`      | FONT.NT  | `.cpi`                      | Windows NT  | ✔     |       |
+| Codepage Information  | `cpi`      | DRFONT   | `.cpi`                      | DR-DOS      | ✔     |       |
+| `kbd` Codepage        | `kbd-cp`   |          | `.cp`                       | Linux       | ✔     |       |
+| Amiga Font Contents   | `amiga-fc` |          | `.font`                     | Amiga OS    | ✔     |       |
+| Amiga Font            | `amiga`    |          |                             | Amiga OS    | ✔     |       |
+| FZX Font              | `fzx`      |          | `.fzx`                      | ZX Spectrum | ✔     | ✔     |
+| Figlet                | `figlet`   |          | `.flf`                      | Unix        | ✔     | ✔     |
+| MacOS font            | `mac-dfont`| FONT     | `.dfont` `.suit`            | MacOS       | ✔     |       |
+| MacOS font            | `mac-dfont`| NFNT/FOND| `.dfont` `.suit`            | MacOS       | ✔     |       |
+| MacOS font (AS/AD)    | `mac-rsrc` | FONT     | `.rsrc`                     | MacOS       | ✔     |       |
+| MacOS font (AS/AD)    | `mac-rsrc` | NFNT/FOND| `.rsrc`                     | MacOS       | ✔     |       |
+| Windows resource      | `win-fnt`  | 1.0      | `.fnt`                      | Windows 1.x | ✔     |       |
+| Windows resource      | `win-fnt`  | 2.0      | `.fnt`                      | Windows 2.x | ✔     | ✔     |
+| Windows resource      | `win-fnt`  | 3.0      | `.fnt`                      | Windows 3.x | ✔     | ✔     |
+| Windows font          | `win-fon`  | 1.0 NE   | `.fon`                      | Windows 1.x | ✔     |       |
+| Windows font          | `win-fon`  | 2.0 NE   | `.fon`                      | Windows 2.x | ✔     | ✔     |
+| Windows font          | `win-fon`  | 3.0 NE   | `.fon`                      | Windows 3.x | ✔     | ✔     |
+| Windows font          | `win-fon`  | 2.0 PE   | `.fon`                      | Windows 2.x | ✔     |       |
+| Windows font          | `win-fon`  | 3.0 PE   | `.fon`                      | Windows 3.x | ✔     |       |  
 
 
 Font format features

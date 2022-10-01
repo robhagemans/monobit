@@ -15,7 +15,7 @@ from ..streams import FileFormatError
 from ..scripting import pair, any_int
 
 
-@loaders.register('dos', 'bin', 'rom', 'raw', name='raw binary')
+@loaders.register('bin', 'rom', 'raw', 'f08', 'f14', 'f16', name='binary')
 def load_binary(
         instream, where=None, *,
         cell:pair=(8, 8), count:int=-1, offset:int=0, padding:int=0,

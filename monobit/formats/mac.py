@@ -539,19 +539,19 @@ _NON_ROMAN_NAMES = {
 
 ##############################################################################
 
-@loaders.register('dfont', 'suit', name='MacOS resource')
-def load_dfont(instream, where=None):
+@loaders.register('dfont', 'suit', name='mac-dfont')
+def load_mac_dfont(instream, where=None):
     """
     Load font from a MacOS suitcase.
     """
     data = instream.read()
     return _parse_resource_fork(data)
 
-@loaders.register('apple',
+@loaders.register('as', 'adf', 'rsrc',
     magic=(_APPLESINGLE_MAGIC.to_bytes(4, 'big'), _APPLEDOUBLE_MAGIC.to_bytes(4, 'big')),
-    name='MacOS resource (AppleSingle/AppleDouble container)',
+    name='mac-rsrc',
 )
-def load_apple(instream, where=None):
+def load_mac_rsrc(instream, where=None):
     """
     Load font from an AppleSingle or AppleDouble container.
     """

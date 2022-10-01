@@ -537,17 +537,17 @@ _IMAGE_RESOURCE_DATA_ENTRY = le.Struct(
 # top level functions
 
 @loaders.register(
-    'fnt',
+    #'fnt',
     magic=(b'\0\x01', b'\0\x02', b'\0\x03'),
-    name='Windows font resource',
+    name='win-fnt',
 )
-def load_fnt(instream, where=None):
+def load_win_fnt(instream, where=None):
     """Load font from a Windows .FNT resource."""
     font = parse_fnt(instream.read())
     return font
 
-@savers.register(linked=load_fnt)
-def save_fnt(fonts, outstream, where=None, version:int=2):
+@savers.register(linked=load_win_fnt)
+def save_win_fnt(fonts, outstream, where=None, version:int=2):
     """
     Save font to a Windows .FNT resource.
 
@@ -563,9 +563,9 @@ def save_fnt(fonts, outstream, where=None, version:int=2):
 @loaders.register(
     'fon',
     magic=(b'MZ',),
-    name='Windows font',
+    name='win-fon',
 )
-def load_fon(instream, where=None):
+def load_win_fon(instream, where=None):
     """Load fonts from a Windows .FON container."""
     data = instream.read()
     mz_header = _MZ_HEADER.from_bytes(data)
@@ -591,8 +591,8 @@ def load_fon(instream, where=None):
     ]
     return fonts
 
-@savers.register(linked=load_fon)
-def save_fon(fonts, outstream, where=None, version:int=2):
+@savers.register(linked=load_win_fon)
+def save_win_fon(fonts, outstream, where=None, version:int=2):
     """
     Save fonts to a Windows .FON container.
 

@@ -22,7 +22,7 @@ _FZX_ENCODING = 'zx-spectrum'
 _FZX_RANGE = range(32, 256)
 
 
-@loaders.register('fzx', name='FZX')
+@loaders.register('fzx', name='fzx')
 def load_fzx(instream, where=None):
     """Load font from ZX Spectrum .FZX file."""
     fzx_props, fzx_glyphs = _read_fzx(instream)

@@ -5,6 +5,7 @@ monobit.storage - load and save fonts
 licence: https://opensource.org/licenses/MIT
 """
 
+import sys
 import logging
 from pathlib import Path
 from contextlib import contextmanager
@@ -14,7 +15,7 @@ from .containers import ContainerFormatError, open_container
 from .font import Font
 from .pack import Pack
 from .streams import MagicRegistry, FileFormatError, open_stream
-from .scripting import scriptable, ScriptArgs
+from .scripting import scriptable, ScriptArgs, Any
 
 
 ##############################################################################
@@ -71,8 +72,22 @@ def open_location(file, mode, where=None, overwrite=False):
 ##############################################################################
 # loading
 
-def load(infile:str, format:str='', where:str='', **kwargs):
-    """Read new font from file."""
+
+@scriptable(unknown_args='passthrough', record=False)
+def load(infile:Any='', *, format:str='', where:Any='', **kwargs):
+    """
+    Read font(s) from file.
+
+    infile: input file (default: stdin)
+    format: input format (default: infer from magic number or filename)
+    where: enclosing container stream or name (default: current working directory)
+    """
+    infile = infile or sys.stdin
+    return _load_from_location(infile, where, format, **kwargs)
+
+
+def _load_from_location(infile, where, format, **kwargs):
+    """Read font(s) from file."""
     # if container/file provided as string or steam, open them
     with open_location(infile, 'r', where=where) as (stream, container):
         # infile not provided - load all from container
@@ -112,7 +127,7 @@ def _load_all(container, format, **kwargs):
         logging.debug('Trying `%s` on `%s`.', name, container.name)
         with open_stream(name, 'r', where=container) as stream:
             try:
-                pack = load(stream, where=container, format=format, **kwargs)
+                pack = _load_from_location(stream, where=container, format=format, **kwargs)
             except Exception as exc:
                 # if one font fails for any reason, try the next
                 # loaders raise ValueError if unable to parse
@@ -125,20 +140,27 @@ def _load_all(container, format, **kwargs):
 ##############################################################################
 # saving
 
+
+
+@scriptable(unknown_args='passthrough', record=False)
 def save(
         pack_or_font,
-        outfile:str, format:str='', where:str='', overwrite:bool=False,
+        outfile:Any='', *,
+        format:str='', where:Any='', overwrite:bool=False,
         **kwargs
     ):
     """
-    Write to file, no return value.
-        outfile: stream or filename
-        format: format specification string
-        where: location/container. mandatory for formats that need filesystem access.
-            if specified and outfile is a filename, it is taken relative to this location.
-        overwrite: if outfile is a filename, allow overwriting existing file
+    Write font(s) to file.
+
+    outfile: output file (default: stdout)
+    format: font file format
+    where: enclosing location/container. (default: current working directory)
+    overwrite: if outfile is a filename, allow overwriting existing file
     """
+    # `where` is mandatory for formats that need filesystem access.
+    # if specified and outfile is a filename, it is taken relative to this location.
     pack = Pack(pack_or_font)
+    outfile = outfile or sys.stdout
     with open_location(outfile, 'w', where=where, overwrite=overwrite) as (stream, container):
         if not stream:
             _save_all(pack, container, format, **kwargs)
@@ -177,6 +199,24 @@ def _save_to_file(pack, outfile, where, format, **kwargs):
 class ConverterRegistry(MagicRegistry):
     """Loader/Saver registry."""
 
+    def __init__(self, func_name):
+        """Set up registry and function name."""
+        super().__init__()
+        self._func_name = func_name
+
+    def get_for_location(self, file, format='', where='', do_open=True):
+        """Get loader/saver for font file location."""
+        if not file and not where:
+            return self.get_for(format=format)
+        if where:
+            # if container/file provided as string or steam, open them to check magic bytes
+            with open_location(infile, 'r', where=where) as (stream, container):
+                # identify file type if possible
+                return self.get_for(stream, format=format, do_open=do_open)
+        else:
+            return self.get_for(file, format=format, do_open=do_open)
+
+
     def get_for(self, file=None, format='', do_open=False):
         """
         Get loader/saver function for this format.
@@ -202,10 +242,11 @@ class ConverterRegistry(MagicRegistry):
     def register(self, *formats, magic=(), name='', linked=None):
         """
         Decorator to register font loader/saver.
-            *formats: extensions covered by registered function
-            magic: magic sequences covered by the converter (no effect for savers)
-            name: name of the format
-            linked: loader/saver linked to saver/loader
+
+        *formats: extensions covered by registered function
+        magic: magic sequences covered by the converter (no effect for savers)
+        name: name of the format
+        linked: loader/saver linked to saver/loader
         """
         register_magic = super().register
 
@@ -213,8 +254,12 @@ class ConverterRegistry(MagicRegistry):
             # set script arguments
             _func = scriptable(
                 original_func,
+                # use the standard name, not that of the registered function
+                name=self._func_name,
                 # don't record history of loading from default format
-                record=(DEFAULT_FORMAT not in formats)
+                record=(DEFAULT_FORMAT not in formats),
+                # set the format name as format parameter
+                history_values=dict(format=name),
             )
             # register converter
             if linked:
@@ -228,11 +273,11 @@ class ConverterRegistry(MagicRegistry):
                 _func.formats = formats
                 _func.magic = magic
             # register magic sequences
-            register_magic(*_func.formats, magic=_func.magic)(_func)
+            register_magic(_func.name, *_func.formats, magic=_func.magic)(_func)
             return _func
 
         return _decorator
 
 
-loaders = ConverterRegistry()
-savers = ConverterRegistry()
+loaders = ConverterRegistry('load')
+savers = ConverterRegistry('save')

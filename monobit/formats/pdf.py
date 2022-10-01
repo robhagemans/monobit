@@ -22,7 +22,7 @@ from ..label import Codepoint
 
 if reportlab:
 
-    @savers.register('pdf')
+    @savers.register('pdf', name='pdf')
     def save_pdf(
             fonts, outfile, where=None,
             columns:int=16,
