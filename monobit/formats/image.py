@@ -20,7 +20,7 @@ from ..storage import loaders, savers
 from ..streams import FileFormatError
 from ..font import Font
 from ..glyph import Glyph
-from ..renderer import chart_image
+from ..renderer import chart_image, traverse_chart
 
 
 DEFAULT_IMAGE_FORMAT = 'png'
@@ -67,10 +67,11 @@ if Image:
             margin:pair=(0, 0),
             padding:pair=(0, 0),
             scale:pair=(1, 1),
-            # 0 or negative indicates 'use all chars'
-            numchars:int=0,
+            table_size:pair=(0,0),
             background:str='most-common',
-            first_codepoint:int=0
+            first_codepoint:int=0,
+            order:str='row-major',
+            direction:pair=(1, 1),
         ):
         """
         Extract character-cell font from image.
@@ -79,8 +80,11 @@ if Image:
         margin: number of pixels in X,Y direction around glyph chart
         padding: number of pixels in X,Y direction between glyph
         scale: number of pixels in X,Y direction per glyph bit
-        numchars: number of glyphs to extract
+        table_size: number of glyphs in X, Y direction. (0, 0) means as much as fits in the image.
         background: determine background from "most-common", "least-common", "brightest", "darkest", "top-left" colour
+        first_codepoint: codepoint value assigned to first glyph
+        order: start with "r" for row-major order, "c" for column-major order
+        direction: X, Y direction where +1, +1 means left-to-right, top-to-bottom
         """
         width, height = cell
         scale_x, scale_y = scale
@@ -88,14 +92,17 @@ if Image:
         margin_x, margin_y = margin
         # work out image geometry
         step_x = width * scale_x + padding_x
-        step_y = height *scale_y + padding_y
+        step_y = height * scale_y + padding_y
         # maximum number of cells that fits
         img = Image.open(infile)
         img = img.convert('RGB')
-        ncells_x = (img.width - margin_x) // step_x
-        ncells_y = (img.height - margin_y) // step_y
+        ncells_x, ncells_y = table_size
+        if ncells_x == 0:
+            ncells_x = (img.width - margin_x) // step_x
+        if ncells_y == 0:
+            ncells_y = (img.height - margin_y) // step_y
+        traverse = traverse_chart(ncells_x, ncells_y, order, direction)
         # extract sub-images
-        # assume row-major left-to-right top-to-bottom
         crops = [
             img.crop((
                 margin_x + _col*step_x,
@@ -103,8 +110,7 @@ if Image:
                 margin_x + _col*step_x + width * scale_x,
                 margin_y + _row*step_y + height * scale_y,
             ))
-            for _row in range(ncells_y)
-            for _col in range(ncells_x)
+            for _row, _col in traverse
         ]
         if not crops:
             logging.error('Image too small; no characters found.')
@@ -113,9 +119,6 @@ if Image:
         crops = [_crop.resize(cell) for _crop in crops]
         # get pixels
         crops = [list(_crop.getdata()) for _crop in crops]
-        # restrict to requested number of characters
-        if numchars and numchars > 0:
-            crops = crops[:numchars]
         # check that cells are monochrome
         colourset = set.union(*(set(_data) for _data in crops))
         if len(colourset) > 2:
@@ -160,12 +163,14 @@ if Image:
 
     @savers.register(linked=load_image)
     def save_image(
-            fonts, outfile, where=None,
+            fonts, outfile, where=None, *,
             format:str='',
             columns:int=32,
             margin:pair=(0, 0),
             padding:pair=(0, 0),
             scale:pair=(1, 1),
+            order:str='row-major',
+            direction:pair=(1, 1),
             border:rgb=(32, 32, 32), paper:rgb=(0, 0, 0), ink:rgb=(255, 255, 255),
         ):
         """
@@ -177,12 +182,16 @@ if Image:
         padding: number of pixels in X,Y direction between glyph
         scale: number of pixels in X,Y direction per glyph bit
         border: border colour R,G,B 0--255
+        order: start with "r" for row-major order, "c" for column-major order
+        direction: X, Y direction where +1, +1 means left-to-right, top-to-bottom
         paper: background colour R,G,B 0--255
         ink: foreground colour R,G,B 0--255
         """
         if len(fonts) > 1:
             raise FileFormatError('Can only save one font to image file.')
-        img = chart_image(fonts[0], columns, margin, padding, scale, border, paper, ink)
+        img = chart_image(
+            fonts[0], columns, margin, padding, scale, order, direction, border, paper, ink,
+        )
         try:
             img.save(outfile, format=format or Path(outfile).suffix[1:])
         except (KeyError, ValueError, TypeError):
