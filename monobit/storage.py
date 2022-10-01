@@ -71,6 +71,17 @@ def open_location(file, mode, where=None, overwrite=False):
 ##############################################################################
 # loading
 
+
+def get_loader(infile:str, format:str='', where:str='', do_open=True):
+    """Get loader information for font from file."""
+    if not infile and not where:
+        return loaders.get_for(format=format)
+    # if container/file provided as string or steam, open them to check magic bytes
+    with open_location(infile, 'r', where=where) as (stream, container):
+        # identify file type if possible
+        return loaders.get_for(stream, format=format, do_open=do_open)
+
+
 def load(infile:str, format:str='', where:str='', **kwargs):
     """Read new font from file."""
     # if container/file provided as string or steam, open them
@@ -124,6 +135,12 @@ def _load_all(container, format, **kwargs):
 
 ##############################################################################
 # saving
+
+
+def get_saver(outfile:str, format:str='', where:str=''):
+    """Get saver information for font from file."""
+    return savers.get_for(outfile, format=format, do_open=False)
+
 
 def save(
         pack_or_font,

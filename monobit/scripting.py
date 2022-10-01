@@ -195,11 +195,8 @@ def add_script_args(parser, script_args, *, name='', **kwargs):
 # frame for main scripts
 
 @contextmanager
-def main(debug=False, loglevel=logging.WARNING):
+def main(debug=False):
     """Main script context."""
-    if debug:
-        loglevel = logging.DEBUG
-    logging.basicConfig(level=loglevel, format='%(levelname)s: %(message)s')
     try:
         yield
     except BrokenPipeError:
