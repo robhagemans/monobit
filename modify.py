@@ -81,8 +81,14 @@ for cargv in command_argv(('load', 'save', *monobit.operations)):
 
 debug = any(_args.debug for _, _args in commands)
 
+if debug:
+    loglevel = logging.DEBUG
+else:
+    loglevel = logging.WARNING
+logging.basicConfig(level=loglevel, format='%(levelname)s: %(message)s')
 
-with main(debug, logging.WARNING):
+
+with main(debug):
 
     # load
     #fonts = monobit.load(args.infile or sys.stdin)
