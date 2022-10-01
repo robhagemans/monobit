@@ -55,7 +55,7 @@ load_parser = argparse.ArgumentParser(
 )
 load_group = add_script_args(load_parser, monobit.load, positional=['infile'])
 load_args, _ = load_parser.parse_known_args(first_argv)
-loader = monobit.get_loader(load_args.infile, format=load_args.format)
+loader = monobit.loaders.get_for_location(load_args.infile, format=load_args.format)
 load_kwargs = parse_converter_args(load_parser, loader, first_argv)
 
 
@@ -78,7 +78,7 @@ save_group.add_argument(
 )
 
 save_args, _ = save_parser.parse_known_args(last_argv)
-saver = monobit.get_saver(save_args.outfile, format=save_args.format)
+saver = monobit.savers.get_for_location(save_args.outfile, format=save_args.format)
 save_kwargs = parse_converter_args(save_parser, saver, last_argv)
 
 if args.help:

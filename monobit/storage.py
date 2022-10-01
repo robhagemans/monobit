@@ -72,16 +72,6 @@ def open_location(file, mode, where=None, overwrite=False):
 # loading
 
 
-def get_loader(infile, format='', where='', do_open=True):
-    """Get loader information for font from file."""
-    if not infile and not where:
-        return loaders.get_for(format=format)
-    # if container/file provided as string or steam, open them to check magic bytes
-    with open_location(infile, 'r', where=where) as (stream, container):
-        # identify file type if possible
-        return loaders.get_for(stream, format=format, do_open=do_open)
-
-
 @scriptable(unknown_args='passthrough', record=False)
 def load(infile:Any, *, format:str='', where:Any='', **kwargs):
     """
@@ -144,10 +134,6 @@ def _load_all(container, format, **kwargs):
 # saving
 
 
-def get_saver(outfile, format, where=''):
-    """Get saver information for font from file."""
-    return savers.get_for(outfile, format=format, do_open=False)
-
 
 @scriptable(unknown_args='passthrough', record=False)
 def save(
@@ -204,6 +190,19 @@ def _save_to_file(pack, outfile, where, format, **kwargs):
 
 class ConverterRegistry(MagicRegistry):
     """Loader/Saver registry."""
+
+    def get_for_location(self, file, format='', where='', do_open=True):
+        """Get loader/saver for font file location."""
+        if not file and not where:
+            return self.get_for(format=format)
+        if where:
+            # if container/file provided as string or steam, open them to check magic bytes
+            with open_location(infile, 'r', where=where) as (stream, container):
+                # identify file type if possible
+                return self.get_for(stream, format=format, do_open=do_open)
+        else:
+            return self.get_for(file, format=format, do_open=do_open)
+
 
     def get_for(self, file=None, format='', do_open=False):
         """
