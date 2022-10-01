@@ -5,6 +5,7 @@ monobit.storage - load and save fonts
 licence: https://opensource.org/licenses/MIT
 """
 
+import sys
 import logging
 from pathlib import Path
 from contextlib import contextmanager
@@ -73,14 +74,15 @@ def open_location(file, mode, where=None, overwrite=False):
 
 
 @scriptable(unknown_args='passthrough', record=False)
-def load(infile:Any, *, format:str='', where:Any='', **kwargs):
+def load(infile:Any='', *, format:str='', where:Any='', **kwargs):
     """
     Read font(s) from file.
 
-    infile: input file
+    infile: input file (default: stdin)
     format: input format (default: infer from magic number or filename)
     where: enclosing container stream or name (default: current working directory)
     """
+    infile = infile or sys.stdin
     # if container/file provided as string or steam, open them
     with open_location(infile, 'r', where=where) as (stream, container):
         # infile not provided - load all from container
@@ -138,14 +140,14 @@ def _load_all(container, format, **kwargs):
 @scriptable(unknown_args='passthrough', record=False)
 def save(
         pack_or_font,
-        outfile:Any, *,
+        outfile:Any='', *,
         format:str='', where:Any='', overwrite:bool=False,
         **kwargs
     ):
     """
     Write font(s) to file.
 
-    outfile: output file
+    outfile: output file (default: stdout)
     format: font file format
     where: enclosing location/container. (default: current working directory)
     overwrite: if outfile is a filename, allow overwriting existing file
@@ -153,6 +155,7 @@ def save(
     # `where` is mandatory for formats that need filesystem access.
     # if specified and outfile is a filename, it is taken relative to this location.
     pack = Pack(pack_or_font)
+    outfile = outfile or sys.stdout
     with open_location(outfile, 'w', where=where, overwrite=overwrite) as (stream, container):
         if not stream:
             _save_all(pack, container, format, **kwargs)
