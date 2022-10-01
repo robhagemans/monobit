@@ -82,7 +82,7 @@ def get_loader(infile:str, format:str='', where:str='', do_open=True):
         return loaders.get_for(stream, format=format, do_open=do_open)
 
 
-@scriptable(unknown_args='passthrough')
+@scriptable(unknown_args='passthrough', record=False)
 def load(infile, *, format:str='', where:str='', **kwargs):
     """
     Read new font from file.
@@ -148,7 +148,7 @@ def get_saver(outfile:str, format:str='', where:str=''):
     return savers.get_for(outfile, format=format, do_open=False)
 
 
-@scriptable(unknown_args='passthrough')
+@scriptable(unknown_args='passthrough', record=False)
 def save(
         pack_or_font,
         outfile, *,
