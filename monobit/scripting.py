@@ -221,6 +221,18 @@ def parse_converter_args(parser, converter, arglist):
     return {}
 
 
+
+# split argument list in command components
+def split_argv(*command_words):
+    part_argv = []
+    for arg in sys.argv[1:]:
+        if arg in command_words and part_argv:
+            yield part_argv
+            part_argv = []
+        part_argv.append(arg)
+    yield part_argv
+
+
 ###################################################################################################
 # frame for main scripts
 

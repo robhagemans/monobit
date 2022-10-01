@@ -9,7 +9,7 @@ import argparse
 import logging
 
 import monobit
-from monobit.scripting import main, add_script_args
+from monobit.scripting import main, add_script_args, split_argv
 
 SCRIPT = 'modify'
 
@@ -17,20 +17,11 @@ SCRIPT = 'modify'
 ###################################################################################################
 # argument parsing
 
-# split argument list in command components
-def command_argv(command_words):
-    part_argv = []
-    for arg in sys.argv[1:]:
-        if arg in command_words and part_argv:
-            yield part_argv
-            part_argv = []
-        part_argv.append(arg)
-    yield part_argv
 
 
 commands = []
 
-for cargv in command_argv(('load', 'save', *monobit.operations)):
+for cargv in split_argv('load', 'save', *monobit.operations):
 
     # parse command line
     parser = argparse.ArgumentParser(

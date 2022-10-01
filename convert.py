@@ -16,16 +16,11 @@ from monobit.scripting import main, add_script_args, split_argv, parse_converter
 # argument parsing
 
 # split argument list in command components
-is_saver_arg = False
-first_argv, last_argv = [], []
-for arg in sys.argv[1:]:
-    if arg == 'to':
-        is_saver_arg = True
-        continue
-    if is_saver_arg:
-        last_argv.append(arg)
-    else:
-        first_argv.append(arg)
+first_argv, *last_argv = split_argv('to')
+# drop 'to' command word
+if last_argv:
+    last_argv = last_argv[0][1:]
+
 
 # parse command line
 # global options
