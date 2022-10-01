@@ -83,6 +83,11 @@ def load(infile:Any='', *, format:str='', where:Any='', **kwargs):
     where: enclosing container stream or name (default: current working directory)
     """
     infile = infile or sys.stdin
+    return _load_from_location(infile, where, format, **kwargs)
+
+
+def _load_from_location(infile, where, format, **kwargs):
+    """Read font(s) from file."""
     # if container/file provided as string or steam, open them
     with open_location(infile, 'r', where=where) as (stream, container):
         # infile not provided - load all from container
@@ -122,7 +127,7 @@ def _load_all(container, format, **kwargs):
         logging.debug('Trying `%s` on `%s`.', name, container.name)
         with open_stream(name, 'r', where=container) as stream:
             try:
-                pack = load(stream, where=container, format=format, **kwargs)
+                pack = _load_from_location(stream, where=container, format=format, **kwargs)
             except Exception as exc:
                 # if one font fails for any reason, try the next
                 # loaders raise ValueError if unable to parse
