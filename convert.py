@@ -58,13 +58,7 @@ load_parser = argparse.ArgumentParser(
     formatter_class=argparse.MetavarTypeHelpFormatter,
     usage=argparse.SUPPRESS
 )
-load_group = add_script_args(load_parser, monobit.load)
-load_group.add_argument('infile', nargs='?', type=str, default='', help=argparse.SUPPRESS)
-load_group.add_argument(
-    '--encoding', default='', type=str,
-    help='override encoding/codepage (default: infer from metadata in file)'
-)
-
+load_group = add_script_args(load_parser, monobit.load, positional=['infile'])
 load_args, _ = load_parser.parse_known_args(first_argv)
 loader = monobit.get_loader(load_args.infile, format=load_args.format)
 if loader:
@@ -83,9 +77,11 @@ save_parser = argparse.ArgumentParser(
     usage=argparse.SUPPRESS
 )
 
-save_group = add_script_args(save_parser, monobit.save)
-
-save_group.add_argument('outfile', nargs='?', type=str, default='', help=argparse.SUPPRESS)
+save_group = add_script_args(save_parser, monobit.save, positional=['outfile'])
+save_group.add_argument(
+    '--encoding', default='', type=str,
+    help='override encoding/codepage (default: infer from metadata in file)'
+)
 save_group.add_argument(
     '--comments', default='', type=str,
     help='add global comments from text file'
@@ -125,7 +121,7 @@ with main(args.debug):
     pack = monobit.load(infile, format=load_args.format, **load_kwargs)
 
     # set encoding
-    if load_args.encoding:
+    if save_args.encoding:
         pack = tuple(_font.set(encoding=load_args.encoding) for _font in pack)
     # add comments
     if save_args.comments:

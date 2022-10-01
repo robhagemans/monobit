@@ -83,12 +83,13 @@ def get_loader(infile, format='', where='', do_open=True):
 
 
 @scriptable(unknown_args='passthrough', record=False)
-def load(infile, *, format:str='', where:Any='', **kwargs):
+def load(infile:Any, *, format:str='', where:Any='', **kwargs):
     """
-    Read new font from file.
+    Read font(s) from file.
 
+    infile: input file
     format: input format (default: infer from magic number or filename)
-    where: enclosing container location for file (default: current working directory)
+    where: enclosing container stream or name (default: current working directory)
     """
     # if container/file provided as string or steam, open them
     with open_location(infile, 'r', where=where) as (stream, container):
@@ -151,18 +152,20 @@ def get_saver(outfile, format, where=''):
 @scriptable(unknown_args='passthrough', record=False)
 def save(
         pack_or_font,
-        outfile, *,
+        outfile:Any, *,
         format:str='', where:Any='', overwrite:bool=False,
         **kwargs
     ):
     """
-    Write to file, no return value.
-        outfile: stream or filename
-        format: format specification string
-        where: location/container. mandatory for formats that need filesystem access.
-            if specified and outfile is a filename, it is taken relative to this location.
-        overwrite: if outfile is a filename, allow overwriting existing file
+    Write font(s) to file.
+
+    outfile: output file
+    format: font file format
+    where: enclosing location/container. (default: current working directory)
+    overwrite: if outfile is a filename, allow overwriting existing file
     """
+    # `where` is mandatory for formats that need filesystem access.
+    # if specified and outfile is a filename, it is taken relative to this location.
     pack = Pack(pack_or_font)
     with open_location(outfile, 'w', where=where, overwrite=overwrite) as (stream, container):
         if not stream:
