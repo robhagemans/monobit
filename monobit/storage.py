@@ -199,6 +199,11 @@ def _save_to_file(pack, outfile, where, format, **kwargs):
 class ConverterRegistry(MagicRegistry):
     """Loader/Saver registry."""
 
+    def __init__(self, func_name):
+        """Set up registry and function name."""
+        super().__init__()
+        self._func_name = func_name
+
     def get_for_location(self, file, format='', where='', do_open=True):
         """Get loader/saver for font file location."""
         if not file and not where:
@@ -237,10 +242,11 @@ class ConverterRegistry(MagicRegistry):
     def register(self, *formats, magic=(), name='', linked=None):
         """
         Decorator to register font loader/saver.
-            *formats: extensions covered by registered function
-            magic: magic sequences covered by the converter (no effect for savers)
-            name: name of the format
-            linked: loader/saver linked to saver/loader
+
+        *formats: extensions covered by registered function
+        magic: magic sequences covered by the converter (no effect for savers)
+        name: name of the format
+        linked: loader/saver linked to saver/loader
         """
         register_magic = super().register
 
@@ -248,8 +254,12 @@ class ConverterRegistry(MagicRegistry):
             # set script arguments
             _func = scriptable(
                 original_func,
+                # use the standard name, not that of the registered function
+                name=self._func_name,
                 # don't record history of loading from default format
-                record=(DEFAULT_FORMAT not in formats)
+                record=(DEFAULT_FORMAT not in formats),
+                # set the format name as format parameter
+                history_values=dict(format=name),
             )
             # register converter
             if linked:
@@ -263,11 +273,11 @@ class ConverterRegistry(MagicRegistry):
                 _func.formats = formats
                 _func.magic = magic
             # register magic sequences
-            register_magic(*_func.formats, magic=_func.magic)(_func)
+            register_magic(_func.name, *_func.formats, magic=_func.magic)(_func)
             return _func
 
         return _decorator
 
 
-loaders = ConverterRegistry()
-savers = ConverterRegistry()
+loaders = ConverterRegistry('load')
+savers = ConverterRegistry('save')

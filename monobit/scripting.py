@@ -24,21 +24,23 @@ class ArgumentError(TypeError):
 # annotations give converters from string to desired type
 # docstings provide help text
 
-def scriptable(*args, script_args=None, name=None, record=True, unknown_args='raise'):
+def scriptable(
+        *args, script_args=None, name=None, record=True, history_values=None, unknown_args='raise'
+    ):
     """Decorator to register operation for scripting."""
     if not args:
         # called as @scriptable(script_args=...)
         # return decorator with these arguments set as extra args
         return partial(
             scriptable, script_args=script_args,
-            name=name, record=record, unknown_args=unknown_args
+            name=name, record=record, history_values=history_values, unknown_args=unknown_args
         )
     else:
         # called as @scriptable
         func, = args
         name = name or func.__name__
         script_args = script_args or {}
-        script_args = ScriptArgs(func, name=name, extra_args=script_args)
+        script_args = ScriptArgs(func, name=name, extra_args=script_args, history_values=history_values)
 
         @wraps(func)
         def _scriptable_func(*args, **kwargs):
@@ -94,7 +96,7 @@ def get_scriptables(cls):
 class ScriptArgs():
     """Record of script arguments."""
 
-    def __init__(self, func=None, *, name='', extra_args=None):
+    def __init__(self, func=None, *, name='', extra_args=None, history_values=None):
         """Extract script name, arguments and docs."""
         self.name = name
         self._script_args = {}
@@ -106,6 +108,7 @@ class ScriptArgs():
             self.name = name or func.__name__
             self._script_args.update(func.__annotations__)
         self._script_args.update(extra_args or {})
+        self._history_values = history_values or {}
         self._script_docs = {_k: '' for _k in self._script_args}
         for line in docs:
             if not line or ':' not in line:
@@ -126,8 +129,12 @@ class ScriptArgs():
     def to_str(self, arg_dict):
         """Represent converter parameters."""
         return (
-            self.name.replace('_', '-') + ' '
-            + ' '.join(
+            self.name.replace('_', '-')
+            + ' ' + ' '.join(
+                f'{_k}={_v}'
+                for _k, _v in self._history_values.items()
+            )
+            + ' ' + ' '.join(
                 f'{_k}={_v}'
                 for _k, _v in arg_dict.items()
                 # exclude non-operation parameters
