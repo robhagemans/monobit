@@ -20,7 +20,7 @@ from ..storage import loaders, savers
 from ..streams import FileFormatError
 from ..font import Font
 from ..glyph import Glyph
-from ..renderer import chart_image
+from ..renderer import chart_image, traverse_chart
 
 
 DEFAULT_IMAGE_FORMAT = 'png'
@@ -70,7 +70,7 @@ if Image:
             table_size:pair=(0,0),
             background:str='most-common',
             first_codepoint:int=0,
-            order:str='row',
+            order:str='row-major',
             direction:pair=(1, 1),
         ):
         """
@@ -83,7 +83,7 @@ if Image:
         table_size: number of glyphs in X, Y direction. (0, 0) means as much as fits in the image.
         background: determine background from "most-common", "least-common", "brightest", "darkest", "top-left" colour
         first_codepoint: codepoint value assigned to first glyph
-        order: "r" or "row" for row-major order, "c" or "column" for column-major
+        order: start with "r" for row-major order, "c" for column-major order
         direction: X, Y direction where +1, +1 means left-to-right, top-to-bottom
         """
         width, height = cell
@@ -101,31 +101,7 @@ if Image:
             ncells_x = (img.width - margin_x) // step_x
         if ncells_y == 0:
             ncells_y = (img.height - margin_y) // step_y
-        dir_x, dir_y = direction
-        x_traverse = range(ncells_x)
-        if dir_x < 0:
-            x_traverse = reversed(x_traverse)
-        y_traverse = range(ncells_y)
-        if dir_y < 0:
-            y_traverse = reversed(y_traverse)
-        if order.startswith('r'):
-            # row-major left-to-right top-to-bottom
-            x_traverse = list(x_traverse)
-            traverse = (
-                (_row, _col)
-                for _row in y_traverse
-                for _col in x_traverse
-            )
-        elif order.startswith('c'):
-            # row-major top-to-bottom left-to-right
-            y_traverse = list(y_traverse)
-            traverse = (
-                (_row, _col)
-                for _col in x_traverse
-                for _row in y_traverse
-            )
-        else:
-            raise ValueError(f'order should start with one of `r`, `c`, not `{order}`.')
+        traverse = traverse_chart(ncells_x, ncells_y, order, direction)
         # extract sub-images
         crops = [
             img.crop((
@@ -187,12 +163,14 @@ if Image:
 
     @savers.register(linked=load_image)
     def save_image(
-            fonts, outfile, where=None,
+            fonts, outfile, where=None, *,
             format:str='',
             columns:int=32,
             margin:pair=(0, 0),
             padding:pair=(0, 0),
             scale:pair=(1, 1),
+            order:str='row-major',
+            direction:pair=(1, 1),
             border:rgb=(32, 32, 32), paper:rgb=(0, 0, 0), ink:rgb=(255, 255, 255),
         ):
         """
@@ -204,12 +182,16 @@ if Image:
         padding: number of pixels in X,Y direction between glyph
         scale: number of pixels in X,Y direction per glyph bit
         border: border colour R,G,B 0--255
+        order: start with "r" for row-major order, "c" for column-major order
+        direction: X, Y direction where +1, +1 means left-to-right, top-to-bottom
         paper: background colour R,G,B 0--255
         ink: foreground colour R,G,B 0--255
         """
         if len(fonts) > 1:
             raise FileFormatError('Can only save one font to image file.')
-        img = chart_image(fonts[0], columns, margin, padding, scale, border, paper, ink)
+        img = chart_image(
+            fonts[0], columns, margin, padding, scale, order, direction, border, paper, ink,
+        )
         try:
             img.save(outfile, format=format or Path(outfile).suffix[1:])
         except (KeyError, ValueError, TypeError):
