@@ -118,7 +118,9 @@ with main(args.debug):
     fonts = []
     for operation, args in commands:
         if operation == all_operations['load']:
-            fonts = operation(**args)
+            fonts += operation(**args)
+        elif operation == all_operations['save']:
+            operation(fonts, **args)
         else:
             fonts = tuple(
                 operation(_font, **args)
