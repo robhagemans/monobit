@@ -233,7 +233,8 @@ _ENCODING_FILES = (
         ('iana/PTCP154', 'paratype-154', 'ptcp-154', 'pt154', 'cyrillic-asian'),
 
         # X11 xfonts
-        ('xfonts/viscii1.1-1.enc', 'viscii', 'viscii1.1-1'),
+        # xfonts's viscii is not correct
+        #('xfonts/viscii1.1-1.enc', 'viscii', 'viscii1.1-1'),
         # variant of iso8859-7
         ('xfonts/suneu-greek.enc', 'suneu-greek',),
         # multilingual emacs encodings
@@ -429,6 +430,11 @@ _ENCODING_FILES = (
         ('wikipedia/gem.html', 'gem',),
         ('wikipedia/wiscii.html', 'wiscii', 'wang'),
         ('wikipedia/mattel-aquarius.html', 'mattel-aquarius'),
+    )),
+
+    # https://vietstd.sourceforge.net/document/unicode.html
+    ('txt', dict(codepoint_column=0, unicode_column=2, codepoint_base=10), (
+        ('vietstd/viscii1.1.txt', 'viscii', 'viscii1.1-1'),
     )),
 
     # Windows-1252 extensions
