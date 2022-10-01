@@ -23,12 +23,15 @@ class ArgumentError(TypeError):
 # annotations give converters from string to desired type
 # docstings provide help text
 
-def scriptable(*args, script_args=None, name=None, record=True):
+def scriptable(*args, script_args=None, name=None, record=True, unknown_args='raise'):
     """Decorator to register operation for scripting."""
     if not args:
         # called as @scriptable(script_args=...)
         # return decorator with these arguments set as extra args
-        return partial(scriptable, script_args=script_args, name=name, record=record)
+        return partial(
+            scriptable, script_args=script_args,
+            name=name, record=record, unknown_args=unknown_args
+        )
     else:
         # called as @scriptable
         func, = args
@@ -41,10 +44,22 @@ def scriptable(*args, script_args=None, name=None, record=True):
             # apply converters to argument
             conv_kwargs = {}
             for kwarg, value in kwargs.items():
+                # skip not-specified arguments
+                if value is None:
+                    continue
                 try:
                     _type, _ = script_args[kwarg]
                 except KeyError:
-                    raise ArgumentError(name, kwarg) from None
+                    if unknown_args == 'drop':
+                        continue
+                    if unknown_args == 'passthrough':
+                        pass
+                    elif unknown_args == 'warn':
+                        logging.warning(ArgumentError(name, kwarg))
+                        continue
+                    else:
+                        raise ArgumentError(name, kwarg) from None
+                    _type = lambda _:_
                 converter = _CONVERTER.get(_type, _type)
                 conv_kwargs[kwarg] = converter(value)
             # call wrapped function

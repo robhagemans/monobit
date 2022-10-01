@@ -82,8 +82,14 @@ def get_loader(infile:str, format:str='', where:str='', do_open=True):
         return loaders.get_for(stream, format=format, do_open=do_open)
 
 
-def load(infile:str, format:str='', where:str='', **kwargs):
-    """Read new font from file."""
+@scriptable(unknown_args='passthrough')
+def load(infile, *, format:str='', where:str='', **kwargs):
+    """
+    Read new font from file.
+
+    format: input format (default: infer from magic number or filename)
+    where: enclosing container location for file (default: current working directory)
+    """
     # if container/file provided as string or steam, open them
     with open_location(infile, 'r', where=where) as (stream, container):
         # infile not provided - load all from container
@@ -142,9 +148,11 @@ def get_saver(outfile:str, format:str='', where:str=''):
     return savers.get_for(outfile, format=format, do_open=False)
 
 
+@scriptable(unknown_args='passthrough')
 def save(
         pack_or_font,
-        outfile:str, format:str='', where:str='', overwrite:bool=False,
+        outfile, *,
+        format:str='', where:str='', overwrite:bool=False,
         **kwargs
     ):
     """

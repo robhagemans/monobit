@@ -58,19 +58,14 @@ load_parser = argparse.ArgumentParser(
     formatter_class=argparse.MetavarTypeHelpFormatter,
     usage=argparse.SUPPRESS
 )
-load_group = load_parser.add_argument_group('load-options')
+load_group = add_script_args(load_parser, monobit.load.script_args, name='load')
 load_group.add_argument('infile', nargs='?', type=str, default='', help=argparse.SUPPRESS)
-load_group.add_argument(
-    '--format', default='', type=str,
-    help='input format (default: infer from magic number or filename)'
-)
 load_group.add_argument(
     '--encoding', default='', type=str,
     help='override encoding/codepage (default: infer from metadata in file)'
 )
 
 load_args, _ = load_parser.parse_known_args(first_argv)
-
 loader = monobit.get_loader(load_args.infile, format=load_args.format)
 if loader:
     add_script_args(load_parser, loader.script_args, name='load', format=load_args.format)
@@ -88,19 +83,12 @@ save_parser = argparse.ArgumentParser(
     usage=argparse.SUPPRESS
 )
 
-save_group = save_parser.add_argument_group('save-options')
+save_group = add_script_args(save_parser, monobit.save.script_args, name='save')
+
 save_group.add_argument('outfile', nargs='?', type=str, default='', help=argparse.SUPPRESS)
-save_group.add_argument(
-    '--format', default='', type=str,
-    help='output format (default: infer from filename)'
-)
 save_group.add_argument(
     '--comments', default='', type=str,
     help='add global comments from text file'
-)
-save_group.add_argument(
-    '--overwrite', action='store_true',
-    help='overwrite existing output file'
 )
 
 save_args, _ = save_parser.parse_known_args(last_argv)
