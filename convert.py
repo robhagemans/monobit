@@ -78,7 +78,7 @@ save_group.add_argument(
 )
 
 save_args, _ = save_parser.parse_known_args(last_argv)
-saver = monobit.savers.get_for_location(save_args.outfile, format=save_args.format)
+saver = monobit.savers.get_for_location(save_args.outfile, format=save_args.format, do_open=False)
 save_kwargs = parse_converter_args(save_parser, saver, last_argv)
 
 if args.help:
