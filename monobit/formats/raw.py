@@ -49,14 +49,14 @@ def load_binary(
 @savers.register(linked=load_binary)
 def save_binary(fonts, outstream, where=None):
     """
-    Save characer-cell font to byte-aligned binary.
+    Save character-cell font to byte-aligned binary.
     """
     if len(fonts) > 1:
         raise FileFormatError('Can only save one font to raw binary file.')
     save_aligned(outstream, fonts[0])
 
 
-def save_aligned(outstream, font, encoding=None):
+def save_aligned(outstream, font):
     """Save fixed-width font to byte-aligned bitmap."""
     # check if font is fixed-width and fixed-height
     if font.spacing != 'character-cell':
