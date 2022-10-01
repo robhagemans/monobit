@@ -58,7 +58,7 @@ load_parser = argparse.ArgumentParser(
     formatter_class=argparse.MetavarTypeHelpFormatter,
     usage=argparse.SUPPRESS
 )
-load_group = add_script_args(load_parser, monobit.load.script_args, name='load')
+load_group = add_script_args(load_parser, monobit.load)
 load_group.add_argument('infile', nargs='?', type=str, default='', help=argparse.SUPPRESS)
 load_group.add_argument(
     '--encoding', default='', type=str,
@@ -68,7 +68,7 @@ load_group.add_argument(
 load_args, _ = load_parser.parse_known_args(first_argv)
 loader = monobit.get_loader(load_args.infile, format=load_args.format)
 if loader:
-    add_script_args(load_parser, loader.script_args, name='load', format=load_args.format)
+    add_script_args(load_parser, loader, format=load_args.format)
     load_args, _ = load_parser.parse_known_args(first_argv)
     load_kwargs = loader.script_args.pick(load_args)
 else:
@@ -83,7 +83,7 @@ save_parser = argparse.ArgumentParser(
     usage=argparse.SUPPRESS
 )
 
-save_group = add_script_args(save_parser, monobit.save.script_args, name='save')
+save_group = add_script_args(save_parser, monobit.save)
 
 save_group.add_argument('outfile', nargs='?', type=str, default='', help=argparse.SUPPRESS)
 save_group.add_argument(
@@ -94,7 +94,7 @@ save_group.add_argument(
 save_args, _ = save_parser.parse_known_args(last_argv)
 saver = monobit.get_saver(save_args.outfile, format=save_args.format)
 if saver:
-    add_script_args(save_parser, saver.script_args, name='save', format=save_args.format)
+    add_script_args(save_parser, saver, format=save_args.format)
     save_args, _ = save_parser.parse_known_args(last_argv)
     save_kwargs = saver.script_args.pick(save_args)
 else:

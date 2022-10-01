@@ -13,6 +13,7 @@ from functools import wraps, partial
 
 
 class ArgumentError(TypeError):
+    """Invalid keyword argument."""
 
     def __init__(self, func, arg):
         super().__init__(f'{arg} is an invalid keyword for {func}()')
@@ -76,6 +77,7 @@ def scriptable(*args, script_args=None, name=None, record=True, unknown_args='ra
         _scriptable_func.script_args = script_args
         _scriptable_func.__name__ = name
         return _scriptable_func
+
 
 def get_scriptables(cls):
     """Get dict of functions marked as scriptable."""
@@ -183,16 +185,15 @@ _CONVERTER = {
 }
 
 
-def add_script_args(parser, script_args, *, name='', **kwargs):
+def add_script_args(parser, scriptable, **kwargs):
     """Add scriptable function arguments to argparser."""
-    if name:
-        header = f'{name}-options'
-        for key, value in kwargs.items():
-            if value:
-                header += f' for --{key}={value}'
-        group = parser.add_argument_group(header)
-    else:
-        group = parser
+    name = scriptable.script_args.name
+    script_args = scriptable.script_args
+    header = f'{name}-options'
+    for key, value in kwargs.items():
+        if value:
+            header += f' for --{key}={value}'
+    group = parser.add_argument_group(header)
     for arg, _type, doc in script_args:
         argname = arg.strip('_').replace('_', '-')
         if _type == bool:

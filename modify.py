@@ -58,11 +58,8 @@ for cargv in command_argv(('load', 'save', *monobit.operations)):
             name, help=func.script_args.doc, add_help=False,
             formatter_class=argparse.MetavarTypeHelpFormatter,
         )
-        group = add_script_args(sub, func.script_args, name=name)
-        sub.add_argument(
-            '-h', '--help', action='store_true',
-            help=argparse.SUPPRESS
-        )
+        sub.add_argument('-h', '--help', action='store_true', help=argparse.SUPPRESS)
+        group = add_script_args(sub, func)
         subs[name] = sub
 
 
