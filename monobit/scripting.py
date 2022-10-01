@@ -226,7 +226,7 @@ def parse_converter_args(parser, converter, arglist):
 def split_argv(*command_words):
     part_argv = []
     for arg in sys.argv[1:]:
-        if arg in command_words and part_argv:
+        if arg in command_words:
             yield part_argv
             part_argv = []
         part_argv.append(arg)

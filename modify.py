@@ -17,26 +17,22 @@ SCRIPT = 'modify'
 ###################################################################################################
 # argument parsing
 
-
-
-commands = []
-
-for cargv in split_argv('load', 'save', *monobit.operations):
-
-    # parse command line
+def build_parser():
+    # global options
     parser = argparse.ArgumentParser(
-        usage=f'{SCRIPT} [--debug] [--help] <command> [command-options] [ ... ]',
+        add_help=False, conflict_handler='resolve',
         formatter_class=argparse.MetavarTypeHelpFormatter,
+        usage='%(prog)s [--debug] [--help]  <command> [command-options] [ ... ]'
+    )
+    parser.add_argument(
+        '--debug', action='store_true', help='show debugging output'
+    )
+    parser.add_argument(
+        '-h', '--help', action='store_true',
+        help='show this help message and exit'
     )
 
-    #parser.add_argument(
-    #    '--overwrite', action='store_true',
-    #    help='overwrite existing output file'
-    #)
-    parser.add_argument(
-        '--debug', action='store_true',
-        help='show debugging output'
-    )
+    # command options
 
     subparsers = parser.add_subparsers(
         dest='operation', 
@@ -49,34 +45,45 @@ for cargv in split_argv('load', 'save', *monobit.operations):
             name, help=func.script_args.doc, add_help=False,
             formatter_class=argparse.MetavarTypeHelpFormatter,
         )
-        sub.add_argument('-h', '--help', action='store_true', help=argparse.SUPPRESS)
         group = add_script_args(sub, func)
         subs[name] = sub
 
-
-    # force error on unknown arguments
-    args = parser.parse_args(cargv)
-
-    if args.help:
-        subs[args.operation].print_help()
-        sys.exit(0)
-
-    # find out which operation we're asked to perform
-    operation = monobit.operations[args.operation]
-
-    commands.append((operation, args))
+    return parser, subs
 
 
-debug = any(_args.debug for _, _args in commands)
+first_argv, *command_argv = split_argv('load', 'save', *monobit.operations)
 
-if debug:
+parser, subs = build_parser()
+args, first_argv = parser.parse_known_args(first_argv)
+
+if args.debug:
     loglevel = logging.DEBUG
 else:
     loglevel = logging.WARNING
 logging.basicConfig(level=loglevel, format='%(levelname)s: %(message)s')
 
 
-with main(debug):
+# parse command args
+commands = []
+for cargv in command_argv:
+    parser, subs = build_parser()
+    command_args = parser.parse_args(cargv)
+    # find out which operation we're asked to perform
+    operation = monobit.operations[command_args.operation]
+    commands.append((operation, command_args))
+
+    if args.help:
+        subs[command_args.operation].print_help()
+        sys.exit(0)
+
+if args.help:
+    parser.print_help()
+    sys.exit(0)
+
+
+
+
+with main(args.debug):
 
     # load
     #fonts = monobit.load(args.infile or sys.stdin)
