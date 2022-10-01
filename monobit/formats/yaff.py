@@ -467,17 +467,13 @@ class TextWriter:
         outstream.write(f'{tab}{glyphtxt}\n')
         if glyph.properties:
             outstream.write(f'\n')
-        if glyph.kern_to:
-            outstream.write(f'{tab}kern-to: \n')
-            for line in str(glyph.kern_to).splitlines():
-                outstream.write(f'{tab*2}{line}\n')
         for key, value in glyph.properties.items():
             self._write_property(outstream, key, value, None, indent=self.tab)
         if glyph.properties:
             outstream.write('\n')
         outstream.write('\n')
 
-    def _write_property(self, outstream, key, value, comments):
+    def _write_property(self, outstream, key, value, comments, indent=''):
         """Write out a property."""
         if value is None:
             return
@@ -487,16 +483,16 @@ class TextWriter:
             return
         # write property comment
         if comments:
-            outstream.write('\n' + self._format_comment(comments) + '\n')
+            outstream.write('\n{indent}' + self._format_comment(comments) + '\n')
         if not '.' in key and not key.startswith('_'):
             key = key.replace('_', '-')
         # write key-value pair
         if '\n' not in value:
-            outstream.write(f'{key}: {self._quote_if_needed(value)}\n')
+            outstream.write(f'{indent}{key}: {self._quote_if_needed(value)}\n')
         else:
             outstream.write(
-                f'{key}:\n{self.tab}' '{}\n'.format(
-                    f'\n{self.tab}'.join(
+                f'{indent}{key}:\n{indent}{self.tab}' '{}\n'.format(
+                    f'\n{indent}{self.tab}'.join(
                         self._quote_if_needed(_line)
                         for _line in value.splitlines()
                     )
