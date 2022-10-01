@@ -9,7 +9,7 @@ import argparse
 import logging
 
 import monobit
-from monobit.scripting import main, add_script_args
+from monobit.scripting import main, add_script_args, split_argv, parse_converter_args
 
 
 ###################################################################################################
@@ -61,12 +61,7 @@ load_parser = argparse.ArgumentParser(
 load_group = add_script_args(load_parser, monobit.load, positional=['infile'])
 load_args, _ = load_parser.parse_known_args(first_argv)
 loader = monobit.get_loader(load_args.infile, format=load_args.format)
-if loader:
-    add_script_args(load_parser, loader, format=load_args.format)
-    load_args, _ = load_parser.parse_known_args(first_argv)
-    load_kwargs = loader.script_args.pick(load_args)
-else:
-    load_kwargs = {}
+load_kwargs = parse_converter_args(load_parser, loader, first_argv)
 
 
 # save options
@@ -89,13 +84,7 @@ save_group.add_argument(
 
 save_args, _ = save_parser.parse_known_args(last_argv)
 saver = monobit.get_saver(save_args.outfile, format=save_args.format)
-if saver:
-    add_script_args(save_parser, saver, format=save_args.format)
-    save_args, _ = save_parser.parse_known_args(last_argv)
-    save_kwargs = saver.script_args.pick(save_args)
-else:
-    save_kwargs = {}
-
+save_kwargs = parse_converter_args(save_parser, saver, last_argv)
 
 if args.help:
     parser.print_help()

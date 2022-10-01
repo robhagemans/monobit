@@ -212,6 +212,15 @@ def add_script_args(parser, scriptable, positional=()):
     return group
 
 
+def parse_converter_args(parser, converter, arglist):
+    """Add a converrter's argument to parser and retrieve values."""
+    if converter:
+        add_script_args(parser, converter)
+        args, _ = parser.parse_known_args(arglist)
+        return converter.script_args.pick(args)
+    return {}
+
+
 ###################################################################################################
 # frame for main scripts
 
