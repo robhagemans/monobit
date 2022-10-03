@@ -156,7 +156,7 @@ class Stream(StreamWrapper):
         """Return underlying text stream or wrap underlying binary stream with utf-8 wrapper."""
         if not self._textstream:
             encoding = 'utf-8-sig' if self.mode == 'r' else 'utf-8'
-            self._textstream = io.TextIOWrapper(self._stream, encoding=encoding)
+            self._textstream = io.TextIOWrapper(self._stream, encoding=encoding, errors='ignore')
         return self._textstream
 
     def __getattr__(self, attr):
