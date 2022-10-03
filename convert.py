@@ -107,7 +107,7 @@ with main(args.debug):
 
     # set encoding
     if save_args.encoding:
-        pack = tuple(_font.set(encoding=load_args.encoding) for _font in pack)
+        pack = tuple(_font.set(encoding=save_args.encoding) for _font in pack)
     # add comments
     if save_args.comments:
         with open(save_args.comments) as f:
