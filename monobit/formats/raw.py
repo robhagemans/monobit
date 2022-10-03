@@ -18,18 +18,20 @@ from ..scripting import pair, any_int
 @loaders.register('dos', 'bin', 'rom', 'raw', name='raw binary')
 def load_binary(
         instream, where=None, *,
-        cell:pair=(8, 8), count:int=None, offset:int=0, padding:int=0, strike:bool=False,
+        cell:pair=(8, 8), count:int=-1, offset:int=0, padding:int=0,
+        strike:bool=False, align:str='left',
         first_codepoint:int=0
     ):
     """
     Load character-cell font from byte-aligned binary or bitmap strike.
 
-    cell: size X,Y of character cell
-    offset: number of bytes in file before bitmap starts
-    padding: number of bytes between encoded glyphs (not used for strike fonts)
-    count: number of glyphs to extract
-    strike: bitmap is in strike format rather than byte-aligned
-    first_codepoint: first code point in bitmap
+    cell: size X,Y of character cell (default: 8x8)
+    offset: number of bytes in file before bitmap starts (default: 0)
+    padding: number of bytes between encoded glyphs (default: 0; ignored if strike==True)
+    count: number of glyphs to extract (<= 0 means all; default: all)
+    strike: bitmap is in strike format rather than byte-aligned (default: False)
+    align: alignment of glyph in byte (left for most-, right for least-significant; default: left; ignored if strike==True)
+    first_codepoint: first code point in bitmap (default: 0)
     """
     width, height = cell
     # get through the offset
@@ -38,7 +40,9 @@ def load_binary(
     if strike:
         glyphs = load_strike(instream, width, height, count)
     else:
-        glyphs = load_aligned(instream, width, height, count, padding)
+        glyphs = load_aligned(
+            instream, width, height, count, padding, align
+        )
     glyphs = (
         _glyph.modify(codepoint=_index)
         for _index, _glyph in enumerate(glyphs, first_codepoint)
@@ -87,17 +91,21 @@ def load_strike(instream, width, height, count):
     ]
     return cells
 
-def load_aligned(instream, width, height, count=None, padding=0):
+def load_aligned(
+        instream, width, height, count=-1, padding=0, align='left'
+    ):
     """Load fixed-width font from byte-aligned bitmap."""
-    if count is None:
+    if count is None or count <= 0:
         rombytes = instream.read()
     else:
         rombytes = instream.read(count * (ceildiv(width, 8)*height + padding))
-    return parse_aligned(rombytes, width, height, count, padding=padding)
+    return parse_aligned(rombytes, width, height, count, padding=padding, align=align)
 
-def parse_aligned(rombytes, width, height, count=None, offset=0, padding=0):
+def parse_aligned(
+        rombytes, width, height, count=-1, offset=0, padding=0, align='left',
+    ):
     """Load fixed-width font from byte-aligned bitmap."""
-    if count is None:
+    if count is None or count <= 0:
         # get number of chars in extract
         count = ceildiv(len(rombytes), (ceildiv(width, 8)*height + padding))
     rowbytes = ceildiv(width, 8)
@@ -109,7 +117,7 @@ def parse_aligned(rombytes, width, height, count=None, offset=0, padding=0):
     ]
     # concatenate rows
     cells = [
-        Glyph.from_bytes(_bytes, width)
+        Glyph.from_bytes(_bytes, width, align=align)
         for _bytes in glyphbytes
     ]
     return cells

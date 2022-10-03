@@ -389,7 +389,7 @@ class Glyph:
         )
 
     @classmethod
-    def from_bytes(cls, byteseq, width, height=NOT_SET):
+    def from_bytes(cls, byteseq, width, height=NOT_SET, align='left'):
         """Create glyph from bytes/bytearray/int sequence."""
         if not width or height == 0:
             return cls()
@@ -398,8 +398,13 @@ class Glyph:
         else:
             bytewidth = ceildiv(width, 8)
         byteseq = list(byteseq)
-        rows = [byteseq[_offs:_offs+bytewidth] for _offs in range(0, len(byteseq), bytewidth)]
-        return cls(tuple(bytes_to_bits(_row, width) for _row in rows))
+        rows = [
+            byteseq[_offs:_offs+bytewidth]
+            for _offs in range(0, len(byteseq), bytewidth)
+        ]
+        return cls(tuple(
+            bytes_to_bits(_row, width, align) for _row in rows
+        ))
 
     def as_bytes(self):
         """Convert glyph to flat bytes."""
