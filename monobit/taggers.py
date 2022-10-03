@@ -11,6 +11,7 @@ from pathlib import Path
 
 from .encoding import unicode_name, is_printable, NotFoundError
 from .struct import extend_string
+from .label import Codepoint
 
 
 class Tagger:
@@ -47,10 +48,28 @@ class UnicodeTagger(Tagger):
     def get_tag(self, glyph):
         """Get unicode glyph name."""
         name = unicode_name(glyph.char)
+        if not glyph.char:
+            return ''
         if self.include_char and is_printable(glyph.char):
             return '[{}] {}'.format(glyph.char, name)
         else:
             return '{}'.format(name)
+
+class CharTagger(Tagger):
+    """Tag with unicode characters."""
+
+    def get_tag(self, glyph):
+        return glyph.char
+
+
+class CodepointTagger(Tagger):
+    """Tag with codepoint numbers."""
+
+    def get_tag(self, glyph):
+        if not glyph.codepoint:
+            return ''
+        return str(Codepoint(glyph.codepoint))
+
 
 
 class MappingTagger(Tagger):
@@ -141,7 +160,10 @@ def _read_tagmap(data, separator=';', comment='#', joiner=' ', tag_column=0, uni
 
 
 tagmaps = {
+    'char': CharTagger(),
+    'codepoint': CodepointTagger(),
     'unicode': UnicodeTagger(),
+    'unicode-with-char': UnicodeTagger(include_char=True),
     'adobe': AdobeTagger.load('charmaps/agl/aglfn.txt', separator=';', unicode_column=0, tag_column=1),
     'sgml': SGMLTagger.load('charmaps/misc/SGML.TXT', separator='\t', unicode_column=2),
 }
