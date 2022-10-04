@@ -23,9 +23,9 @@ from ..glyph import Glyph
 )
 def load_dec_drcs(instream, where=None):
     """Load character-cell fonts from DEC DRCS file."""
-    dec_glyphs, dec_props = read_drcs(instream)
-    props, count, first_codepoint = parse_drcs_props(dec_props)
-    glyphs = parse_drcs_glyphs(dec_glyphs, first_codepoint)
+    dec_glyphs, dec_props = _read_drcs(instream)
+    props, count, first_codepoint = _parse_drcs_props(dec_props)
+    glyphs = _parse_drcs_glyphs(dec_glyphs, first_codepoint)
     if len(glyphs) != count:
         logging.warning('Expected %d glyphs, found %d.', count, len(glyphs))
     return Font(glyphs, **vars(props))
@@ -135,16 +135,16 @@ _DEC_PARMS = (
 )
 
 
-def read_char(f):
+def _read_char(f):
     c = f.read(1)
     while c in (b'\r', b'\n'):
         c = f.read(1)
     return c
 
-def read_args(f, sep, term=None):
+def _read_args(f, sep, term=None):
     val, c = b'', b'*'
     while c and c != term:
-        c = read_char(f)
+        c = _read_char(f)
         if (c == term or not c) and not val:
             break
         if c in (sep, term):
@@ -153,9 +153,9 @@ def read_args(f, sep, term=None):
         else:
             val += c
 
-def read_dscs_name(f):
+def _read_dscs_name(f):
     dscs = []
-    sep = read_char(f)
+    sep = _read_char(f)
     c = b''
     if sep != b'{':
         # { may have been absorbed by the Pcss read if there was no closing ;
@@ -168,10 +168,10 @@ def read_dscs_name(f):
             break
         if c and ord(c) not in range(0x20, 0x30):
             raise FileFormatError('invalid Dscs sequence')
-        c = read_char(f)
+        c = _read_char(f)
     return b''.join(dscs)
 
-def read_drcs(f):
+def _read_drcs(f):
     """Read a DEC DRCS file."""
     dcs = f.read(1)
     esc = dcs == b'\x1b'
@@ -180,47 +180,48 @@ def read_drcs(f):
         dcs += f.read(1)
     if not dcs in _ESC_START:
         raise FileFormatError('not a Dec DRCS file')
-    argreader = read_args(f, b';', b'{')
+    argreader = _read_args(f, b';', b'{')
     dec_props = dict(zip(_DEC_PARMS[:-1], argreader))
-    dec_props[_DEC_PARMS[-1]] = read_dscs_name(f)
+    dec_props[_DEC_PARMS[-1]] = _read_dscs_name(f)
     term = _ESC_END[esc]
     # really shld be ESC \ but we only check 1 char
     term = term[0]
-    glyphdefs = read_args(f, b';', term)
+    glyphdefs = _read_args(f, b';', term)
     glyphdefs = list(glyphdefs)
     return glyphdefs, dec_props
 
-def parse_drcs_glyphs(glyphdefs, first_codepoint):
-    """Convert DRCS glyphs to monobit glyphs."""
+
+def _convert_drcs_glyph(glyphdef):
+    """Convert DRCS glyph to monobit glyph."""
     glyphbytes = (
-        tuple(
-            tuple(_b - ord(b'?') for _b in _block)
-            for _block in _glyph.split(b'/')
-        )
-        for _glyph in glyphdefs
+        tuple(_b - ord(b'?') for _b in _block)
+        for _block in glyphdef.split(b'/')
     )
-    glyphbytes = (tuple(zip(*_g)) for _g in glyphbytes)
+    glyphbytes = zip(*glyphbytes)
     glyphstrs = (
-        tuple(
-            ''.join(f'{_b:06b}' for _b in reversed(_pair))
-            for _pair in _glyph
-        )
-        for _glyph in glyphbytes
+        ''.join(f'{_b:06b}' for _b in reversed(_pair))
+        for _pair in glyphbytes
     )
+    glyph = Glyph(
+        tuple(_c == '1' for _c in _row)
+        for _row in glyphstrs
+    )
+    return glyph.rotate(turns=3)
+
+
+def _parse_drcs_glyphs(glyphdefs, first_codepoint):
+    """Convert DRCS glyphs to monobit glyphs."""
     glyphs = (
-        Glyph(
-            tuple(_c == '1' for _c in _row)
-            for _row in _glyph
-        )
-        for _glyph in glyphstrs
+        _convert_drcs_glyph(_g)
+        for _g in glyphdefs
     )
     glyphs = tuple(
-        _g.rotate(turns=3).modify(codepoint=_cp)
+        _g.modify(codepoint=_cp)
         for _cp, _g in enumerate(glyphs, first_codepoint)
     )
     return glyphs
 
-def parse_drcs_props(dec_props):
+def _parse_drcs_props(dec_props):
     """Convert DRCS properties to yaff properties."""
     # determine glyph count from Pcss
     count = 96 if int(dec_props['Pcss']) else 94
