@@ -16,6 +16,7 @@ from ..streams import FileFormatError
 from ..struct import Props
 from ..font import Font
 from ..glyph import Glyph
+from ..binary import ceildiv
 
 
 @loaders.register(
@@ -30,6 +31,25 @@ def load_dec_drcs(instream, where=None):
     if len(glyphs) != count:
         logging.warning('Expected %d glyphs, found %d.', count, len(glyphs))
     return Font(glyphs, **vars(props))
+
+@savers.register(linked=load_dec_drcs)
+def save_dec_drcs(fonts, outstream, where=None, *, use_8bit:bool=False):
+    """Write font to a DEC DRCS file."""
+    if len(fonts) > 1:
+        raise FileFormatError('Can only save one font to dec-drcs file.')
+        # check if font is fixed-width and fixed-height
+    font, = fonts
+    if font.spacing != 'character-cell':
+        raise FileFormatError(
+            'This format only supports character-cell fonts.'
+        )
+    # upper size limits vary by device, not enforced.
+    # lower sizes would conflict with vt200 size values
+    if font.raster_size.x < 5 or font.raster_size.y < 1:
+        raise FileFormatError(
+            'This format only supports fonts of 5px or wider and 1px or taller.'
+        )
+    _write_dec_drcs(font, outstream)
 
 
 ##########################################################################
@@ -277,4 +297,66 @@ def _parse_drcs_props(dec_props):
     })
     return props, count, first_codepoint
 
+##########################################################################
+
+def _write_dec_drcs(font, outstream, use_8bit=False):
+    """Write a font to a DRCS file."""
+    esc = not use_8bit
+    # we can onl store the printable ascii range
+    ascii = tuple(chr(_b) for _b in range(0x20, 0x80))
+    glyphs = tuple(
+        font.get_glyph(char=_c, missing='blank')
+        for _c in ascii
+    )
+    # write 96 glyphs?
+    is_big = not glyphs[0].is_blank() or not glyphs[-1].is_blank()
+    if not is_big:
+        glyphs = glyphs[1:-1]
+    dec_props = _convert_to_drcs_props(font, is_big)
+    outstream.write(_ESC_START[esc])
+    outstream.write(b';'.join(
+        str(dec_props[_k]).encode('ascii')
+        for _k in _DEC_PARMS[:-1])
+    )
+    dscs = dec_props[_DEC_PARMS[-1]].encode('ascii')
+    outstream.write(b'{')
+    outstream.write(dscs)
+    outstream.write(b'\n')
+    for _g in glyphs:
+        outstream.write(_convert_to_drcs_glyph(_g))
+    outstream.write(_ESC_END[esc])
+    # select character set (SCS) - no 8-bit variant?
+    outstream.write(b' \x1b(%s\n' % (dscs,))
+
+def _convert_to_drcs_props(font, is_big):
+    dec_props = {
+        'Pfn': 0,
+        'Pcn': int(not is_big),  # we only define full sets
+        'Pe': 1,
+        'Pcmw': font.raster_size.x,
+        'Pss': 0, # TODO
+        'Pt': 2,
+        'Pcmh': font.raster_size.y,
+        'Pcss': int(is_big),
+        'Dscs': font.name[:1] or ' @',
+    }
+    return dec_props
+
+def _convert_to_drcs_glyph(glyph):
+    # cut to sixel blocks
+    nblocks = ceildiv(glyph.height, 6)
+    blocks = (
+        glyph.crop(
+            top=_i*6,
+            bottom=max(0, glyph.height-(_i+1)*6)
+        )
+        for _i in range(nblocks)
+    )
+    blocks = (_b.rotate(turns=1) for _b in blocks)
+    blockbytes = (_b.as_bytes(align='r') for _b in blocks)
+    glyphdef = b'/'.join(
+        bytes(_c + ord('?') for _c in _b)
+        for _b in blockbytes
+    ) + b';\n'
+    return glyphdef
 
