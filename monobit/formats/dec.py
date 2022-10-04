@@ -7,6 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 # DRCS format documentation
 # https://vt100.net/dec/vt320/soft_characters
+# https://vt100.net/docs/vt510-rm/DECDLD
 
 import logging
 
@@ -81,11 +82,14 @@ _DEC_PARMS = (
     # that VT220 fonts appear different VT320. Fonts designed specifically
     # for the VT320 should use values 5 through 15.
 
-    'Pw', # Font width
-    # Selects the number of columns per line (font set size).
-    #    0 = 80 columns. (Default)
-    #    1 = 80 columns.
-    #    2 = 132 columns.
+    'Pss', # Font set size (also 'Pw')
+    # Defines the screen width and screen height for this font.
+    # 0,1 = 80 columns, 24 lines. (default)
+    #   2 = 132 columns, 24 lines
+    #  11 = 80 columns, 36 lines
+    #  12 = 132 columns, 36 lines
+    #  21 = 80 columns, 48 lines
+    #  22 = 132 columns, 48 lines
 
     'Pt', # Text or full-cell
     # Defines the font as a text font or full-cell font.
@@ -134,6 +138,16 @@ _DEC_PARMS = (
     # sequence.
 )
 
+# terminal dimensions
+_PSS_DIMS = {
+    0: (80, 24),
+    1: (80, 24),
+    2: (132, 24),
+    11: (80, 36),
+    12: (132, 36),
+    21: (80, 48),
+    22: (132, 48),
+}
 
 def _read_char(f):
     c = f.read(1)
@@ -230,13 +244,16 @@ def _parse_drcs_props(dec_props):
     first_codepoint = pcn + 0x20
     if count == 94 and not pcn:
         first_codepoint = 0x21
-    # determine glyph width from Pcmw and Pw
-    target_cols = 132 if int(dec_props['Pw']) else 80
+    # determine glyph width from Pcmw and Pss
+    try:
+        cols, rows = _PSS_DIMS[int(dec_props['Pss'])]
+    except KeyError:
+        raise FileFormatError(f"unknown value {dec_props['Pss']} for Pss")
     pcmw = int(dec_props['Pcmw'])
     width, height = 0, 0
     if not pcmw:
-        width = 9 if target_cols == 132 else 15
-    elif 15 >= pcmw >= 5:
+        width = 9 if cols == 132 else 15
+    elif pcmw >= 5:
         width = pcmw
     elif 4 >= pcmw >= 2:
         width = 3 + pcmw
@@ -250,7 +267,7 @@ def _parse_drcs_props(dec_props):
         encoding='ascii',
         name=dec_props['Dscs'].decode('ascii'),
         raster_size=(width, height),
-        device=f'{target_cols}-column terminal',
+        device=f'{cols}x{rows} terminal',
     )
     # preserve unparsed properties
     props.dec_drcs = Props(**{
