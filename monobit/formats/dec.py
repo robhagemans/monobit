@@ -38,14 +38,34 @@ def read_char(f):
     return c
 
 def read_args(f, sep, term=None):
-    val, c = b'', b''
-    while c != term:
+    val, c = b'', b'*'
+    while c and c != term:
         c = read_char(f)
+        if (c == term or not c) and not val:
+            break
         if c in (sep, term):
             yield val
             val = b''
         else:
             val += c
+
+def read_dscs_name(f):
+    dscs = []
+    sep = read_char(f)
+    c = b''
+    if sep != b'{':
+        # { may have been absorbed by the Pcss read if there was no closing ;
+        #raise FileFormatError(f'invalid Dscs separator {sep}')
+        c = sep
+    # read Dscs
+    for _ in range(3):
+        dscs.append(c)
+        if c and ord(c) in range(0x30, 0x80):
+            break
+        if c and ord(c) not in range(0x20, 0x30):
+            raise FileFormatError('invalid Dscs sequence')
+        c = read_char(f)
+    return b''.join(dscs)
 
 def read_drcs(f):
     """Read a DEC DRCS file."""
@@ -57,22 +77,11 @@ def read_drcs(f):
     if not dcs in (b'\x90', b'\x1bP'):
         raise FileFormatError('not a Dec DRCS file')
     dec_parms = ('Pfn', 'Pcn', 'Pe', 'Pcmw', 'Pw', 'Pt', 'Pcmh', 'Pcss')
-    argreader = read_args(f, b';')
+    argreader = read_args(f, b';', b'{')
     dec_props = dict(zip(dec_parms, argreader))
-    sep = f.read(1)
-    if sep != b'{':
-        raise FileFormatError('invalid Dscs separator')
-    # read Dscs
-    dscs = []
-    for _ in range(3):
-        c = read_char(f)
-        dscs.append(c)
-        if ord(c) in range(0x30, 0x80):
-            break
-        if ord(c) not in range(0x20, 0x30):
-            raise FileFormatError('invalid Dscs sequence')
-    dec_props['Dscs'] = b''.join(dscs)
-    term = b'\x1b\\' if esc else b'\x9c'
+    dec_props['Dscs'] = read_dscs_name(f)
+    # really shld be ESC \ but we only check 1 char
+    term = b'\x1b' if esc else b'\x9c'
     glyphdefs = read_args(f, b';', term)
     glyphdefs = list(glyphdefs)
     return glyphdefs, dec_props
