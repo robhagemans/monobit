@@ -39,31 +39,30 @@ Here are some examples of how to use the conversion utility.
 
 Display usage summary and command-line options
 
-`python3 convert.py --from=raw -h`
+`python3 convert.py --format=raw -h`
 
 Display usage summary and additional format-specific command-line options for conversion from raw binary.
-Format-specific options for loading and saving are *only* available when specifying
-the `--from` or `--to` arguments, respectively.
 
 `python3 convert.py fixedsys.fon`
 
 Recognise the source file format from "magic bytes" or suffix (here, a Windows font) and write fonts
 to standard output in `yaff` format.
 
-`python3 convert.py roman.bdf --to=hex`
+`python3 convert.py roman.bdf to --format=hex`
 
-Read font in BDF format and  write to standard output as Unifont HEX.
+Read font from BDF file and write to standard output as Unifont HEX.
 
-`python3 convert.py fixed.psf fixed.png`
+`python3 convert.py fixed.psf to fixed.png`
 
 Read font in PSF format and write to disk as image in PNG format.
 
-`python3 convert.py --from=c --to=bdf`
+`python3 convert.py --format=c to --format=bdf`
 
-Read font from standard input as C-source and write to standard output as BDF.
+Read font from standard input as C-source coded binary and write to standard output as BDF.
 
 The converter transparently reads and writes `gz`, `bz2`, or `xz`-compressed font files and can read
-and write `zip` and `tar` archives. Some font formats contain multiple fonts whereas others can contain only one; the converter will write multiple files to a directory or archive if needed.
+and write `zip` and `tar` archives. Some font formats contain multiple fonts whereas others can
+contain only one; the converter will write multiple files to a directory or archive if needed.
 
 ##### Modify utility
 
