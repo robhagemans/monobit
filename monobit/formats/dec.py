@@ -31,6 +31,110 @@ def load_dec_drcs(instream, where=None):
     return Font(glyphs, **vars(props))
 
 
+##########################################################################
+
+# initial and final escape sequences
+_ESC_START = (b'\x90', b'\x1bP')
+_ESC_END = (b'\x9c', b'\x1b\\')
+
+# parameters
+_DEC_PARMS = (
+    'Pfn', # Font number
+    # Selects the DRCS font buffer to load.
+    # The VT320 has one DRCS font buffer. Pfn has two valid values, 0 and
+    # 1. Both values refer to the same DRCS buffer.
+
+    'Pcn', # Starting character
+    # Selects where to load the first character in the DRCS font buffer.
+    # The location corresponds to a location in the ASCII code table.
+    # Pcn is affected by the character set size. (See Pcss below.) In a
+    # 94-character set, a Pcn value of 0 or 1 means that the first soft
+    # character is loaded into position 2/1 of the character table. In a
+    # 96-character set, a Pcn value of 0 means the first character is
+    # loaded into position 2/0 of the character table. The greatest Pcn
+    # value is 95 (position 7/15).
+
+    'Pe', # Erase control
+    # Selects which characters to erase from the DRCS buffer before
+    # loading the new font.
+    # 0 = erase all characters in the DRCS buffer with this number,
+    #     width and rendition.
+    # 1 = erase only characters in locations being reloaded.
+    # 2 = erase all renditions of the soft character set (normal, bold,
+    #     80-column, 132-column).
+
+    'Pcmw', # Character matrix width
+    # Selects the maximum character cell width. VT300 modes:
+    #     0 = 15 pixels wide for 80 columns,
+    #         9 pixels wide for 132 columns. (Default)
+    #     1 = illegal.
+    #     2 = 5 × 10 pixel cell
+    #     3 = 6 × 10 pixel cell
+    #     4 = 7 × 10 pixel cell
+    #     5 = 5 pixels wide.
+    #     6 = 6 pixels wide.
+    #     ...
+    #     15 = 15 pixels wide.
+    # If you omit a Pcmw value, the terminal uses the default character
+    # width. Any Pcmw value over 15 is illegal.
+    # Use Pcmw values 2 through 4 with VT220 compatible software. Remember
+    # that VT220 fonts appear different VT320. Fonts designed specifically
+    # for the VT320 should use values 5 through 15.
+
+    'Pw', # Font width
+    # Selects the number of columns per line (font set size).
+    #    0 = 80 columns. (Default)
+    #    1 = 80 columns.
+    #    2 = 132 columns.
+
+    'Pt', # Text or full-cell
+    # Defines the font as a text font or full-cell font.
+    #    0 = text. (Default)
+    #    1 = text.
+    #    2 = full cell.
+    # Full-cell fonts can individually address all pixels in a cell.
+    # Text fonts cannot individually address all pixels. If you specify a
+    # text cell, the terminal automatically performs spacing and centering
+    # of the characters.
+
+    'Pcmh', # Character matrix height
+    # Selects the maximum character cell height.
+    #    0 = 12 pixels high. (Default)
+    #    1 = 1 pixel high.
+    #    2 = 2 pixels high.
+    #    3 = 3 pixels high.
+    #    ...
+    #    12 = 12 pixels high.
+    # Pcmh values over 12 are illegal. If the value of Pcmw is 2, 3 or 4,
+    # Pcmh is ignored.
+
+    'Pcss', # Character set size
+    # Defines the character set as a 94- or 96-character graphic set.
+    #    0 = 94-character set. (Default)
+    #    1 = 96-character set.
+    # The value of Pcss changes the meaning of the Pcn (starting
+    # character) parameter above.
+    # If Pcss = 0 (94-character set)
+    #    The terminal ignores any attempt to load characters into the 2/0
+    #    or 7/15 table positions.
+    #    1  column 2/row 1
+    #    ...
+    #    94 column 7/row 14
+    # If Pcss = 1 (96-character set)
+    #    0 column 2/row 0
+    #    ...
+    #    95 column 7/row 15
+
+    'Dscs', # Character Set Name
+    # Dscs defines the character set name. It consists of from one to
+    # three characters. The last character of the name is a character in
+    # the range ‘0’ to ‘~’ (3016 to 7E16). There can be from zero to two
+    # name characters preceding this one, in the range SP to ‘/’ (2016 to
+    # 2F16). This name will be used in the Select Character Set (SCS)
+    # sequence.
+)
+
+
 def read_char(f):
     c = f.read(1)
     while c in (b'\r', b'\n'):
@@ -74,14 +178,14 @@ def read_drcs(f):
     # one-byte x90 or two-byte esc P
     if esc:
         dcs += f.read(1)
-    if not dcs in (b'\x90', b'\x1bP'):
+    if not dcs in _ESC_START:
         raise FileFormatError('not a Dec DRCS file')
-    dec_parms = ('Pfn', 'Pcn', 'Pe', 'Pcmw', 'Pw', 'Pt', 'Pcmh', 'Pcss')
     argreader = read_args(f, b';', b'{')
-    dec_props = dict(zip(dec_parms, argreader))
-    dec_props['Dscs'] = read_dscs_name(f)
+    dec_props = dict(zip(_DEC_PARMS[:-1], argreader))
+    dec_props[_DEC_PARMS[-1]] = read_dscs_name(f)
+    term = _ESC_END[esc]
     # really shld be ESC \ but we only check 1 char
-    term = b'\x1b' if esc else b'\x9c'
+    term = term[0]
     glyphdefs = read_args(f, b';', term)
     glyphdefs = list(glyphdefs)
     return glyphdefs, dec_props
