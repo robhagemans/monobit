@@ -65,8 +65,9 @@ def open_location(file, mode, where=None, overwrite=False):
                     yield None, container
                 return
             except ContainerFormatError as e:
-                # infile is not a container, load/save single file
-                yield stream, container
+                pass
+            # infile is not a container, load/save single file
+            yield stream, container
 
 
 ##############################################################################
