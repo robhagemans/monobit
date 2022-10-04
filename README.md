@@ -108,6 +108,7 @@ Supported formats
 | Codepage Information  | `cpi`      | FONT.NT  | `.cpi`                      | Windows NT  | ✔     |       |
 | Codepage Information  | `cpi`      | DRFONT   | `.cpi`                      | DR-DOS      | ✔     |       |
 | `kbd` Codepage        | `kbd-cp`   |          | `.cp`                       | Linux       | ✔     |       |
+| DEC DRCS              | `dec-drcs` |          |                             | DEC VT      | ✔     | ✔     |
 | Amiga Font Contents   | `amiga-fc` |          | `.font`                     | Amiga OS    | ✔     |       |
 | Amiga Font            | `amiga`    |          |                             | Amiga OS    | ✔     |       |
 | FZX Font              | `fzx`      |          | `.fzx`                      | ZX Spectrum | ✔     | ✔     |
@@ -141,6 +142,7 @@ Here is a comparison of what you can and cannot store in selected formats suppor
 | `hexdraw`     | ✔ |   |   |   |   | any  | ✔ |   |   | visual text
 | `amiga-*`     |   |   |   |   | ✔ | any  | ✔ |   | ✔ | binary
 | `fzx`         |   |   |   |   |   | any  | ✔ |   |   | binary
+| `dec-drcs`    |   |   |   |   |   | >4xN |   |   |   | binary
 | `hext`        | ✔ | ✔ |   |   |   | 8xN  | multi-cell |   |   | hex
 | `hex`         | ✔ |   |   |   |   | 8x16 | multi-cell |   |   | hex
 | `psf.2`       | ✔ | ✔ |   |   |   | any  |   |   |   | binary
