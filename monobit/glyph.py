@@ -365,6 +365,10 @@ class Glyph:
         """Create whitespace glyph."""
         return cls(((0,) * width,) * height)
 
+    def is_blank(self):
+        """Glyph has no ink."""
+        return not any(True in _row for _row in self._pixels)
+
     @classmethod
     def from_matrix(cls, rows, paper):
         """Create glyph from sequence of sequence of objects."""
@@ -406,17 +410,23 @@ class Glyph:
             bytes_to_bits(_row, width, align) for _row in rows
         ))
 
-    def as_bytes(self):
+    def as_bytes(self, align='left'):
         """Convert glyph to flat bytes."""
         if not self._pixels:
             return b''
         width = len(self._pixels[0])
         bytewidth = ceildiv(width, 8)
         # byte-align rows
-        rows = [
-            _row + (False,) * (bytewidth*8 - width)
-            for _row in self._pixels
-        ]
+        if align.startswith('r'):
+            rows = [
+                (False,) * (bytewidth*8 - width) + _row
+                for _row in self._pixels
+            ]
+        else:
+            rows = [
+                _row + (False,) * (bytewidth*8 - width)
+                for _row in self._pixels
+            ]
         # chunk by byte and flatten
         glyph_bytes = [
             _row[_offs:_offs+8]

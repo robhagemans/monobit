@@ -133,6 +133,17 @@ class TestFormats(BaseTester):
         monobit.save(self.fixed4x6, fzx_file)
         self.assertTrue(os.path.getsize(fzx_file) > 0)
 
+    def test_import_dec_drcs(self):
+        """Test importing dec-drcs files."""
+        font, *_ = monobit.load(self.font_path / '6x13.dec')
+        self.assertEqual(len(font.glyphs), 94)
+
+    def test_export_dec_drcs(self):
+        """Test exporting dec-drcs files."""
+        dec_file = self.temp_path / '8x16.dec'
+        monobit.save(self.fixed8x16, dec_file)
+        self.assertTrue(os.path.getsize(dec_file) > 0)
+
     def test_import_yaff(self):
         """Test importing yaff files"""
         self.assertEqual(len(self.fixed4x6.glyphs), 919)
