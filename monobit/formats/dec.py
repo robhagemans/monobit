@@ -10,6 +10,7 @@ licence: https://opensource.org/licenses/MIT
 # https://vt100.net/docs/vt510-rm/DECDLD
 
 
+import shlex
 import logging
 
 from ..storage import loaders, savers
@@ -174,17 +175,22 @@ _DEVICE_PATTERN = '{}x{} terminal'
 
 # format-specific properties
 _ERASE_CONTROL = {
-    0: 'erase-font',
-    1: 'erase-glyphs',
-    2: 'erase-all',
+    0: 'erase=font',
+    1: 'erase=glyphs',
+    2: 'erase=all',
 }
 _FONT_TYPE = {
-    0: 'text-font',
-    1: 'text-font',
-    2: 'full-cell-font',
+    0: 'type=text',
+    1: 'type=text',
+    2: 'type=full-cell',
 }
-_PFN_PATTERN = 'buffer-{}'
 
+_JOINER = '='
+_PFN_NAME = 'buffer'
+_DSCS_NAME = 'dscs-id'
+# recommmended default id for user-defined sets
+# https://vt100.net/docs/vt510-rm/DECDLD
+_DEFAULT_DSCS = ' @'
 
 ##########################################################################
 
@@ -305,13 +311,14 @@ def _parse_drcs_props(dec_props):
         height = int(dec_props['Pcmh']) or 12
     props = Props(
         encoding='ascii',
-        name=dec_props['Dscs'].decode('ascii'),
         raster_size=(width, height),
         device=device,
     )
+    scs_id = dec_props['Dscs'].decode('ascii')
     # preserve unparsed properties
-    props.dec_drcs = ' '.join((
-        _PFN_PATTERN.format(int(dec_props['Pfn'])),
+    props.dec_drcs = shlex.join((
+        _JOINER.join((_DSCS_NAME, scs_id)),
+        _JOINER.join((_PFN_NAME, str(int(dec_props['Pfn'])))),
         _ERASE_CONTROL[int(dec_props['Pe'])],
         _FONT_TYPE[int(dec_props['Pt'])],
     ))
@@ -358,19 +365,23 @@ def _convert_to_drcs_props(font, is_big):
     pss = devices.get(font.device, 0)
     # format-specific
     pfn, pe, pt = 0, 1, 2
+    dscs_id = _DEFAULT_DSCS
     try:
         unparsed = font.dec_drcs
     except AttributeError:
         pass
     else:
-        uprops = unparsed.split()
+        uprops = shlex.split(unparsed)
         erase = dict(reversed(_p) for _p in _ERASE_CONTROL.items())
         ftype = dict(reversed(_p) for _p in _FONT_TYPE.items())
         for uprop in uprops:
             pe = erase.get(uprop, pe)
             pt = ftype.get(uprop, pt)
-            if uprop.startswith(_PFN_PATTERN.split('-')[0]):
-                pfn = int(uprop[-1])
+            key, _, val = uprop.split(_JOINER)
+            if key == _PFN_NAME:
+                pfn = value
+            if key == _DSCS_NAME:
+                dscs_id = value
     dec_props = {
         'Pfn': pfn,
         'Pcn': int(not is_big),  # we only define full sets
@@ -380,7 +391,7 @@ def _convert_to_drcs_props(font, is_big):
         'Pt': pt,
         'Pcmh': font.raster_size.y,
         'Pcss': int(is_big),
-        'Dscs': font.name[:1] or ' @',
+        'Dscs': dscs_id,
     }
     return dec_props
 
