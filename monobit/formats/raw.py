@@ -87,6 +87,8 @@ def load_bitmap(
     else:
         nrows = ceildiv(count, strike_count)
         rombytes = instream.read(nrows * row_bytes)
+    # we may exceed the length of the rom because we use ceildiv, pad with nulls
+    rombytes = rombytes.ljust(nrows * row_bytes, b'\0')
     glyphrows = [
         [
             rombytes[

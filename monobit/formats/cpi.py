@@ -12,6 +12,7 @@ licence: https://opensource.org/licenses/MIT
 import os
 import string
 import logging
+from io import BytesIO
 
 from ..binary import ceildiv
 from ..struct import Props, little_endian as le
