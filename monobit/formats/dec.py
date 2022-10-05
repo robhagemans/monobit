@@ -9,6 +9,7 @@ licence: https://opensource.org/licenses/MIT
 # https://vt100.net/dec/vt320/soft_characters
 # https://vt100.net/docs/vt510-rm/DECDLD
 
+
 import logging
 
 from ..storage import loaders, savers
@@ -168,6 +169,9 @@ _PSS_DIMS = {
     21: (80, 48),
     22: (132, 48),
 }
+_DIMS_PSS = dict(reversed(_p) for _p in _PSS_DIMS.items())
+_DEVICE_PATTERN = '{}x{} terminal'
+
 
 def _read_char(f):
     c = f.read(1)
@@ -269,6 +273,7 @@ def _parse_drcs_props(dec_props):
         cols, rows = _PSS_DIMS[int(dec_props['Pss'])]
     except KeyError:
         raise FileFormatError(f"unknown value {dec_props['Pss']} for Pss")
+    device = _DEVICE_PATTERN.format(cols, rows)
     pcmw = int(dec_props['Pcmw'])
     width, height = 0, 0
     if not pcmw:
@@ -287,7 +292,7 @@ def _parse_drcs_props(dec_props):
         encoding='ascii',
         name=dec_props['Dscs'].decode('ascii'),
         raster_size=(width, height),
-        device=f'{cols}x{rows} terminal',
+        device=device,
     )
     # preserve unparsed properties
     font_buffer = f"buffer-{int(dec_props['Pfn'])}"
@@ -312,7 +317,7 @@ def _write_dec_drcs(font, outstream, use_8bit=False):
     # we can onl store the printable ascii range
     ascii = tuple(chr(_b) for _b in range(0x20, 0x80))
     glyphs = tuple(
-        font.get_glyph(char=_c, missing='blank')
+        font.get_glyph(char=_c, missing='empty')
         for _c in ascii
     )
     # write 96 glyphs?
@@ -336,12 +341,17 @@ def _write_dec_drcs(font, outstream, use_8bit=False):
     outstream.write(b' \x1b(%s\n' % (dscs,))
 
 def _convert_to_drcs_props(font, is_big):
+    devices = {
+        _DEVICE_PATTERN.format(*_k): _v
+        for _k, _v in _DIMS_PSS.items()
+    }
+    pss = devices.get(font.device, 0)
     dec_props = {
         'Pfn': 0,
         'Pcn': int(not is_big),  # we only define full sets
         'Pe': 1,
         'Pcmw': font.raster_size.x,
-        'Pss': 0, # TODO
+        'Pss': pss,
         'Pt': 2,
         'Pcmh': font.raster_size.y,
         'Pcss': int(is_big),
