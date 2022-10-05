@@ -335,9 +335,9 @@ class Font:
                 return self.get_default_glyph()
             if missing == 'empty':
                 return self.get_empty_glyph()
-            if missing == 'raise':
-                raise
-            return missing
+            if missing is None or isinstance(missing, Glyph):
+                return None
+            raise
 
     def get_index(self, key=None, *, char=None, codepoint=None, tag=None):
         """Get index for given key or tag, if defined."""
