@@ -169,9 +169,24 @@ _PSS_DIMS = {
     21: (80, 48),
     22: (132, 48),
 }
-_DIMS_PSS = dict(reversed(_p) for _p in _PSS_DIMS.items())
 _DEVICE_PATTERN = '{}x{} terminal'
 
+
+# format-specific properties
+_ERASE_CONTROL = {
+    0: 'erase-font',
+    1: 'erase-glyphs',
+    2: 'erase-all',
+}
+_FONT_TYPE = {
+    0: 'text-font',
+    1: 'text-font',
+    2: 'full-cell-font',
+}
+_PFN_PATTERN = 'buffer-{}'
+
+
+##########################################################################
 
 def _read_char(f):
     c = f.read(1)
@@ -295,18 +310,11 @@ def _parse_drcs_props(dec_props):
         device=device,
     )
     # preserve unparsed properties
-    font_buffer = f"buffer-{int(dec_props['Pfn'])}"
-    erase_control = {
-        0: 'erase-font',
-        1: 'erase-glyphs',
-        2: 'erase-all',
-    }[int(dec_props['Pe'])]
-    font_type = {
-        0: 'text-font',
-        1: 'text-font',
-        2: 'full-cell-font',
-    }[int(dec_props['Pt'])]
-    props.dec_drcs = ' '.join((font_buffer, erase_control, font_type))
+    props.dec_drcs = ' '.join((
+        _PFN_PATTERN.format(int(dec_props['Pfn'])),
+        _ERASE_CONTROL[int(dec_props['Pe'])],
+        _FONT_TYPE[int(dec_props['Pt'])],
+    ))
     return props, count, first_codepoint
 
 ##########################################################################
@@ -341,18 +349,35 @@ def _write_dec_drcs(font, outstream, use_8bit=False):
     outstream.write(b' \x1b(%s\n' % (dscs,))
 
 def _convert_to_drcs_props(font, is_big):
+    # device spec
+    pss_to_dims = dict(reversed(_p) for _p in _PSS_DIMS.items())
     devices = {
         _DEVICE_PATTERN.format(*_k): _v
-        for _k, _v in _DIMS_PSS.items()
+        for _k, _v in pss_to_dims.items()
     }
     pss = devices.get(font.device, 0)
+    # format-specific
+    pfn, pe, pt = 0, 1, 2
+    try:
+        unparsed = font.dec_drcs
+    except AttributeError:
+        pass
+    else:
+        uprops = unparsed.split()
+        erase = dict(reversed(_p) for _p in _ERASE_CONTROL.items())
+        ftype = dict(reversed(_p) for _p in _FONT_TYPE.items())
+        for uprop in uprops:
+            pe = erase.get(uprop, pe)
+            pt = ftype.get(uprop, pt)
+            if uprop.startswith(_PFN_PATTERN.split('-')[0]):
+                pfn = int(uprop[-1])
     dec_props = {
-        'Pfn': 0,
+        'Pfn': pfn,
         'Pcn': int(not is_big),  # we only define full sets
-        'Pe': 1,
+        'Pe': pe,
         'Pcmw': font.raster_size.x,
         'Pss': pss,
-        'Pt': 2,
+        'Pt': pt,
         'Pcmh': font.raster_size.y,
         'Pcss': int(is_big),
         'Dscs': font.name[:1] or ' @',
