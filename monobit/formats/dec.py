@@ -290,11 +290,18 @@ def _parse_drcs_props(dec_props):
         device=f'{cols}x{rows} terminal',
     )
     # preserve unparsed properties
-    props.dec_drcs = Props(**{
-        _k: _v.decode('ascii')
-        for _k, _v in dec_props.items()
-        if _k in ('Pfn', 'Pe', 'Pt')
-    })
+    font_buffer = f"buffer-{int(dec_props['Pfn'])}"
+    erase_control = {
+        0: 'erase-font',
+        1: 'erase-glyphs',
+        2: 'erase-all',
+    }[int(dec_props['Pe'])]
+    font_type = {
+        0: 'text-font',
+        1: 'text-font',
+        2: 'full-cell-font',
+    }[int(dec_props['Pt'])]
+    props.dec_drcs = ' '.join((font_buffer, erase_control, font_type))
     return props, count, first_codepoint
 
 ##########################################################################
