@@ -5,6 +5,7 @@ monobit.formats.source - fonts embedded in C/Python/JS source files
 licence: https://opensource.org/licenses/MIT
 """
 
+from io import BytesIO
 import string
 
 from ..binary import ceildiv
@@ -13,7 +14,7 @@ from ..font import Font
 from ..glyph import Glyph
 from ..streams import FileFormatError
 from ..scripting import pair
-from .raw import parse_aligned
+from .raw import load_bitmap
 
 
 _C_PARAMS = dict(
@@ -38,7 +39,7 @@ def load_c(
         infile, where=None, *,
         identifier:str='',
         cell:pair=(8, 8), count:int=-1, offset:int=0, padding:int=0,
-        align:str='left',
+        align:str='left', strike_count:int=1, strike_bytes:int=-1,
         first_codepoint:int=0
     ):
     """
@@ -50,11 +51,15 @@ def load_c(
     padding: number of bytes between encoded glyphs (default: 0)
     count: number of glyphs to extract (<=0 means all; default: all glyphs)
     align: alignment of glyph in byte (left for most-, right for least-significant; default: left)
+    strike_count: number of glyphs in glyph row (<=0 for all; default: 1)
+    strike_bytes: strike width in bytes (<=0 means as many as needed to fit the glyphs; default: as needed)
+    first_codepoint: first code point in bitmap (default: 0)
     """
     return _load_coded_binary(
         infile, where, identifier=identifier,
         cell=cell, count=count, offset=offset, padding=padding,
-        align=align, first_codepoint=first_codepoint,
+        align=align, strike_count=strike_count, strike_bytes=strike_bytes, 
+        first_codepoint=first_codepoint,
         **_C_PARAMS
     )
 
@@ -63,7 +68,7 @@ def load_json(
         infile, where=None, *,
         identifier:str='',
         cell:pair=(8, 8), count:int=-1, offset:int=0, padding:int=0,
-        align:str='left',
+        align:str='left', strike_count:int=1, strike_bytes:int=-1,
         first_codepoint:int=0
     ):
     """
@@ -75,11 +80,15 @@ def load_json(
     padding: number of bytes between encoded glyphs (default: 0)
     count: number of glyphs to extract (<=0 means all; default: all)
     align: alignment of glyph in byte (left for most-, right for least-significant; default: left)
+    strike_count: number of glyphs in glyph row (<=0 for all; default: 1)
+    strike_bytes: strike width in bytes (<=0 means as many as needed to fit the glyphs; default: as needed)
+    first_codepoint: first code point in bitmap (default: 0)
     """
     return _load_coded_binary(
         infile, where, identifier=identifier,
         cell=cell, count=count, offset=offset, padding=padding,
-        align=align, first_codepoint=first_codepoint
+        align=align, strike_count=strike_count, strike_bytes=strike_bytes, 
+        first_codepoint=first_codepoint
         **_JS_PARAMS
     )
 
@@ -88,7 +97,7 @@ def load_python(
         infile, where=None, *,
         identifier:str='',
         cell:pair=(8, 8), count:int=-1, offset:int=0, padding:int=0,
-        align:str='left',
+        align:str='left', strike_count:int=1, strike_bytes:int=-1,
         first_codepoint:int=0
     ):
     """
@@ -100,11 +109,15 @@ def load_python(
     padding: number of bytes between encoded glyphs (default: 0)
     count: number of glyphs to extract (<=0 means all; default: all)
     align: alignment of glyph in byte (left for most-, right for least-significant; default: left)
+    strike_count: number of glyphs in glyph row (<=0 for all; default: 1)
+    strike_bytes: strike width in bytes (<=0 means as many as needed to fit the glyphs; default: as needed)
+    first_codepoint: first code point in bitmap (default: 0)
     """
     return _load_coded_binary(
         infile, where, identifier=identifier,
         cell=cell, count=count, offset=offset, padding=padding,
-        align=align, first_codepoint=first_codepoint,
+        align=align, strike_count=strike_count, strike_bytes=strike_bytes, 
+        first_codepoint=first_codepoint,
         **_PY_PARAMS
     )
 
@@ -127,30 +140,31 @@ def load_source(
     padding: number of bytes between encoded glyphs (default: 0)
     count: number of glyphs to extract (<=0 means all; default: all)
     align: alignment of glyph in byte (left for most-, right for least-significant; default: left)
+    strike_count: number of glyphs in glyph row (<=0 for all; default: 1)
+    strike_bytes: strike width in bytes (<=0 means as many as needed to fit the glyphs; default: as needed)
+    first_codepoint: first code point in bitmap (default: 0)
     """
 
     return _load_coded_binary(
         infile, where, identifier=identifier,
         cell=cell, count=count, offset=offset, padding=padding,
-        align=align, first_codepoint=first_codepoint,
+        align=align, strike_count=strike_count, strike_bytes=strike_bytes, 
+        first_codepoint=first_codepoint,
         delimiters=delimiters, comment=comment
     )
 
 
 def _load_coded_binary(
         infile, where, identifier, delimiters, comment,
-        cell, count, offset, padding, align, first_codepoint
+        cell, count, offset, padding, align, strike_count, strike_bytes, first_codepoint
     ):
     """Load font from binary encoded in source code."""
     width, height = cell
     payload = _get_payload(infile.text, identifier, delimiters, comment)
-    bytelist = [_int_from_c(_s) for _s in payload.split(',') if _s]
-    glyphs = parse_aligned(
-        bytelist, width, height, count, offset, padding, align
-    )
-    glyphs = (
-        _glyph.modify(codepoint=_index)
-        for _index, _glyph in enumerate(glyphs, first_codepoint)
+    data = bytes(_int_from_c(_s) for _s in payload.split(',') if _s)
+    bytesio = BytesIO(data[offset:])
+    return load_bitmap(
+        bytesio, width, height, count, padding, align, strike_count, strike_bytes, first_codepoint
     )
     return Font(glyphs)
 

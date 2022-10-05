@@ -19,7 +19,7 @@ from ..scripting import pair, any_int
 def load_binary(
         instream, where=None, *,
         cell:pair=(8, 8), count:int=-1, offset:int=0, padding:int=0,
-        strike:bool=False, align:str='left',
+        align:str='left', strike_count:int=1, strike_bytes:int=-1,
         first_codepoint:int=0
     ):
     """
@@ -27,27 +27,20 @@ def load_binary(
 
     cell: size X,Y of character cell (default: 8x8)
     offset: number of bytes in file before bitmap starts (default: 0)
-    padding: number of bytes between encoded glyphs (default: 0; ignored if strike==True)
+    padding: number of bytes between encoded glyph rows (default: 0)
     count: number of glyphs to extract (<= 0 means all; default: all)
-    strike: bitmap is in strike format rather than byte-aligned (default: False)
     align: alignment of glyph in byte (left for most-, right for least-significant; default: left; ignored if strike==True)
+    strike_count: number of glyphs in glyph row (<=0 for all; default: 1)
+    strike_bytes: strike width in bytes (<=0 means as many as needed to fit the glyphs; default: as needed)
     first_codepoint: first code point in bitmap (default: 0)
     """
     width, height = cell
     # get through the offset
     # we don't assume instream is seekable - it may be sys.stdin
     instream.read(offset)
-    if strike:
-        glyphs = load_strike(instream, width, height, count)
-    else:
-        glyphs = load_aligned(
-            instream, width, height, count, padding, align
-        )
-    glyphs = (
-        _glyph.modify(codepoint=_index)
-        for _index, _glyph in enumerate(glyphs, first_codepoint)
+    return load_bitmap(
+        instream, width, height, count, padding, align, strike_count, strike_bytes, first_codepoint
     )
-    return Font(glyphs)
 
 
 @savers.register(linked=load_binary)
@@ -57,10 +50,10 @@ def save_binary(fonts, outstream, where=None):
     """
     if len(fonts) > 1:
         raise FileFormatError('Can only save one font to raw binary file.')
-    save_aligned(outstream, fonts[0])
+    save_bitmap(outstream, fonts[0])
 
 
-def save_aligned(outstream, font):
+def save_bitmap(outstream, font):
     """Save fixed-width font to byte-aligned bitmap."""
     # check if font is fixed-width and fixed-height
     if font.spacing != 'character-cell':
@@ -71,53 +64,73 @@ def save_aligned(outstream, font):
         outstream.write(glyph.as_bytes())
 
 
-def load_strike(instream, width, height, count):
-    """Load fixed-width font from bitmap strike."""
-    # count must be given for strikes
-    # assume byte-aligned at end of strike only
-    strike_bytes = ceildiv(count * width, 8)
-    rombytes = instream.read(strike_bytes * height)
-    # flatten strikes
-    rows = [
-        rombytes[_strike*strike_bytes : (_strike+1)*strike_bytes]
-        for _strike in range(height)
-    ]
-    # convert to bits
-    drawn = [bytes_to_bits(_row) for _row in rows]
-    # clip out glyphs
-    cells = [
-        [_strike[_n*width:(_n+1)*width] for _strike in drawn]
-        for _n in range(count)
-    ]
-    return cells
-
-def load_aligned(
-        instream, width, height, count=-1, padding=0, align='left'
+def load_bitmap(
+        instream, width, height, count=-1, padding=0, align='left',
+        strike_count=1, strike_bytes=-1, first_codepoint=0,
     ):
-    """Load fixed-width font from byte-aligned bitmap."""
+    """Load fixed-width font from bitmap."""
+    if strike_bytes <= 0:
+        if strike_count <= 0:
+            strike_bytes = len(rombytes)
+        else:
+            strike_bytes = ceildiv(strike_count*width, 8)
+    else:
+        strike_count = -1
+    if strike_count <= 0:
+        strike_count = (strike_bytes * 8) // width
+    row_bytes = strike_bytes*height + padding
     if count is None or count <= 0:
         rombytes = instream.read()
-    else:
-        rombytes = instream.read(count * (ceildiv(width, 8)*height + padding))
-    return parse_aligned(rombytes, width, height, count, padding=padding, align=align)
-
-def parse_aligned(
-        rombytes, width, height, count=-1, offset=0, padding=0, align='left',
-    ):
-    """Load fixed-width font from byte-aligned bitmap."""
-    if count is None or count <= 0:
         # get number of chars in extract
-        count = ceildiv(len(rombytes), (ceildiv(width, 8)*height + padding))
-    rowbytes = ceildiv(width, 8)
-    bytesize = rowbytes*height + padding
-    # get chunks
-    glyphbytes = [
-        rombytes[offset+_ord*bytesize : offset+(_ord+1)*bytesize-padding]
-        for _ord in range(count)
+        nrows = ceildiv(len(rombytes), row_bytes)
+        count = nrows * strike_count
+    else:
+        nrows = ceildiv(count, strike_count)
+        rombytes = instream.read(nrows * row_bytes)
+    # we may exceed the length of the rom because we use ceildiv, pad with nulls
+    rombytes = rombytes.ljust(nrows * row_bytes, b'\0')
+    glyphrows = [
+        [
+            rombytes[
+                _glyphrow*row_bytes+_pixelrow*strike_bytes
+                : _glyphrow*row_bytes+(_pixelrow+1)*strike_bytes
+            ]
+            for _pixelrow in range(height)
+        ]
+        for _glyphrow in range(nrows)
     ]
-    # concatenate rows
-    cells = [
-        Glyph.from_bytes(_bytes, width, align=align)
-        for _bytes in glyphbytes
+    # convert to bits
+    drawn_glyphrows = [
+        [
+            bytes_to_bits(_row)
+            for _row in _glyphrow
+        ]
+        for _glyphrow in glyphrows
     ]
-    return cells
+    if align.startswith('r') and drawn_glyphrows and drawn_glyphrows[0]:
+        bitoffset = len(drawn_glyphrows[0][0]) - strike_count*width
+    else:
+        bitoffset = 0
+    drawn_glyphrows = [
+        [
+            _row[bitoffset:]
+            for _row in _glyphrow
+        ]
+        for _glyphrow in drawn_glyphrows
+    ]
+    # clip out glyphs
+    cells = tuple(
+        tuple(
+            _row[_n*width:(_n+1)*width]
+            for _row in _glyphrow
+        )
+        for _glyphrow in drawn_glyphrows
+        for _n in range(strike_count)
+    )
+    glyphs = tuple(
+        Glyph(_cell, codepoint=_index)
+        for _index, _cell in enumerate(cells, first_codepoint)
+    )
+    return Font(glyphs)
+
+
