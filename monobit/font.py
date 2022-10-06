@@ -109,12 +109,14 @@ class FontProperties(DefaultProps):
 
     # metrics
     # can't be calculated, affect rendering
-    # positioning relative to origin
     # left-to-right, right-to-left
     direction: str = 'left-to-right'
-    # (horiz, vert) offset from origin to matrix start
-    offset: Coord.create
-    # horizontal offset from matrix end to next origin
+    # positioning relative to origin
+    # horizontal offset from leftward origin to matrix left edge
+    left_bearing: int
+    # upward offset from origin to matrix start
+    shift_up: int
+    # horizontal offset from matrix right edge to rightward origin
     right_bearing: int
     # interline spacing, defined as (pixels between baselines) - (pixel size)
     leading: int
@@ -134,8 +136,16 @@ class FontProperties(DefaultProps):
     source_format: str
     history: str
 
+    # deprecated
+    # (horiz, vert) offset from origin to matrix start
+    offset: Coord.create
+    # horizontal offset from matrix right edge to rightward origin
+    tracking: int
+
     _synonyms = {
-        'tracking': 'right_bearing',
+        'right_bearing': 'tracking',
+        'left_bearing': 'offset.x',
+        'shift_up': 'offset.y',
     }
 
 
@@ -160,21 +170,30 @@ class Font:
             self._comments = {'': comments}
         else:
             self._comments = {_k: _v for _k, _v in comments.items()}
-        # synonyms
-        for synonym, base in FontProperties._synonyms.items():
-            if synonym in properties:
-                if base not in properties:
-                    properties[base] = properties[synonym]
-                else:
-                    logging.error(
-                        f"Can't define both `{base}` and its synonym `{synonym}`, ignoring {synonym}."
-                    )
-                del properties[synonym]
         # update properties
         # set encoding first so we can set labels
         # NOTE - we must be careful NOT TO ACCESS CACHED PROPERTIES
         #        until the constructor is complete
         self._props = FontProperties(**properties)
+        # synonyms
+        for base, synonym in FontProperties._synonyms.items():
+            synonym, _, subattr = synonym.partition('.')
+            if synonym in self._props:
+                if base not in self._props:
+                    value = self._props[synonym]
+                    if subattr:
+                        value = getattr(value, subattr)
+                    self._props[base] = value
+                else:
+                    logging.error(
+                        f"Can't define both `{base}` and its synonym `{synonym}`, ignoring {synonym}."
+                    )
+        for synonym in FontProperties._synonyms.values():
+            synonym, _, subattr = synonym.partition('.')
+            try:
+                del self._props[synonym]
+            except KeyError:
+                pass
         # add labels if unset (needs encoding property)
         self._add_labels()
         # construct lookup tables
@@ -399,7 +418,7 @@ class Font:
     @cache
     def get_empty_glyph(self):
         """Get blank glyph with zero advance_width (or minimal if zero not possible)."""
-        return Glyph.blank(max(0, -self.offset.x - self.right_bearing), self.raster_size.y)
+        return Glyph.blank(max(0, -self.left_bearing - self.right_bearing), self.raster_size.y)
 
 
     ##########################################################################
@@ -430,10 +449,15 @@ class Font:
     ##########################################################################
     # synonym properties
 
-    @calculated_property
+    @property
     def tracking(self):
         """Deprecated synonym for right-bearing."""
         return self.right_bearing
+
+    @property
+    def offset(self):
+        """Deprecated synonym for left-bearing, shift-up."""
+        return Coord(self.left_bearing, self.shift_up)
 
 
     ##########################################################################
@@ -502,7 +526,7 @@ class Font:
         """Get ascent (defaults to max ink height above baseline)."""
         if not self._glyphs:
             return 0
-        return self.offset.y + max(
+        return self.shift_up + max(
             _glyph.height - _glyph.padding.top
             for _glyph in self._glyphs
         )
@@ -514,17 +538,17 @@ class Font:
             return 0
         # usually, descent is positive and offset is negative
         # negative descent would mean font descenders are all above baseline
-        return -self.offset.y - min(_glyph.padding.bottom for _glyph in self._glyphs)
+        return -self.shift_up - min(_glyph.padding.bottom for _glyph in self._glyphs)
 
     @calculated_property(override='reject')
     def raster(self):
         """Minimum box encompassing all glyph matrices overlaid at fixed origin."""
         if not self._glyphs:
             return Bounds(0, 0, 0, 0)
-        lefts = tuple(_glyph.offset.x for _glyph in self._glyphs)
-        bottoms = tuple(_glyph.offset.y for _glyph in self._glyphs)
-        rights = tuple(_glyph.offset.x + _glyph.width for _glyph in self._glyphs)
-        tops = tuple(_glyph.offset.y + _glyph.height for _glyph in self._glyphs)
+        lefts = tuple(_glyph.left_bearing for _glyph in self._glyphs)
+        bottoms = tuple(_glyph.shift_up for _glyph in self._glyphs)
+        rights = tuple(_glyph.left_bearing + _glyph.width for _glyph in self._glyphs)
+        tops = tuple(_glyph.shift_up + _glyph.height for _glyph in self._glyphs)
         return Bounds(left=min(lefts), bottom=min(bottoms), right=max(rights), top=max(tops))
 
     @calculated_property(override='reject')
@@ -543,16 +567,16 @@ class Font:
             if _glyph.bounding_box.x and _glyph.bounding_box.y
         ]
         if not nonempty:
-            return Bounds(self.offset.x, self.offset.y, self.offset.x, self.offset.y)
+            return Bounds(self.left_bearing, self.shift_up, self.left_bearing, self.shift_up)
         lefts, bottoms, rights, tops = zip(*(
             _glyph.ink_bounds
             for _glyph in nonempty
         ))
         return Bounds(
-            left=self.offset.x + min(lefts),
-            bottom=self.offset.y + min(bottoms),
-            right=self.offset.x + max(rights),
-            top=self.offset.y + max(tops)
+            left=self.left_bearing + min(lefts),
+            bottom=self.shift_up + min(bottoms),
+            right=self.left_bearing + max(rights),
+            top=self.shift_up + max(tops)
         )
 
     @calculated_property(override='reject')
@@ -624,9 +648,9 @@ class Font:
     def average_advance(self):
         """Get average glyph advance width, rounded to tenths of pixels."""
         if not self._glyphs:
-            return self.offset.x + self.right_bearing
+            return self.left_bearing + self.right_bearing
         return (
-            self.offset.x
+            self.left_bearing
             + sum(_glyph.advance_width for _glyph in self._glyphs) / len(self._glyphs)
             + self.right_bearing
         )
@@ -635,9 +659,9 @@ class Font:
     def max_advance(self):
         """Maximum glyph advance width."""
         if not self._glyphs:
-            return self.offset.x + self.right_bearing
+            return self.left_bearing + self.right_bearing
         return (
-            self.offset.x
+            self.left_bearing
             + max(_glyph.advance_width for _glyph in self._glyphs)
             + self.right_bearing
         )
@@ -646,7 +670,7 @@ class Font:
     def cap_advance(self):
         """Advance width of uppercase X."""
         try:
-            return self.get_glyph('X').advance_width + self.offset.x + self.right_bearing
+            return self.get_glyph('X').advance_width + self.left_bearing + self.right_bearing
         except KeyError:
             return 0
 

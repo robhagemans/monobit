@@ -92,7 +92,7 @@ def reject_override(property):
         def _set_value(value=_NOT_SET):
             if not value is _NOT_SET:
                 # must have the calculated value
-                logging.info(
+                logging.warning(
                     "Property `%s` is not overridable and can't be changed to %s.",
                     property, repr(value)
                 )

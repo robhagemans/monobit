@@ -136,13 +136,26 @@ class KernTable(dict):
 class GlyphProperties(DefaultProps):
     """Recognised properties for Glyph."""
 
-    offset: Coord.create
+    left_bearing: int
     right_bearing: int
+    shift_up: int
     kern_to: KernTable
 
+    # deprecated
+    # (horiz, vert) offset from origin to matrix start
+    offset: Coord.create
+    # horizontal offset from matrix right edge to rightward origin
+    tracking: int
+
+
     _synonyms = {
-        'tracking': 'right_bearing',
+        'right_bearing': 'tracking',
+        'left_bearing': 'offset.x',
+        'shift_up': 'offset.y',
     }
+
+
+calculated_property = GlyphProperties._calculated_property
 
 
 class Glyph:
@@ -164,18 +177,27 @@ class Glyph:
         if not isinstance(comments, str):
             raise TypeError('Glyph comment must be a single string.')
         self._comments = comments
+        # recognised properties
+        self._props = GlyphProperties(**properties)
         # synonyms
-        for synonym, base in GlyphProperties._synonyms.items():
-            if synonym in properties:
-                if base not in properties:
-                    properties[base] = properties[synonym]
+        for base, synonym in GlyphProperties._synonyms.items():
+            synonym, _, subattr = synonym.partition('.')
+            if synonym in self._props:
+                if base not in self._props:
+                    value = self._props[synonym]
+                    if subattr:
+                        value = getattr(value, subattr)
+                    self._props[base] = value
                 else:
                     logging.error(
                         f"Can't define both `{base}` and its synonym `{synonym}`, ignoring {synonym}."
                     )
-                del properties[synonym]
-        # recognised properties
-        self._props = GlyphProperties(**properties)
+        for synonym in GlyphProperties._synonyms.values():
+            synonym, _, subattr = synonym.partition('.')
+            try:
+                del self._props[synonym]
+            except KeyError:
+                pass
         # check pixel matrix geometry
         if len(set(len(_r) for _r in self._pixels)) > 1:
             raise ValueError(
@@ -470,32 +492,24 @@ class Glyph:
     ###############################################################################################
     # calculated properties
 
-    @property
+    @calculated_property(override='reject')
     def width(self):
         """Raster width of glyph."""
         if not self._pixels:
             return 0
         return len(self._pixels[0])
 
-    @property
+    @calculated_property(override='reject')
     def height(self):
         """Raster height of glyph."""
         return len(self._pixels)
 
-    @property
+    @calculated_property(override='reject')
     def advance_width(self):
         """Internal advance width of glyph, including internal bearings."""
-        return self.offset.x + self.width + self.right_bearing
+        return self.left_bearing + self.width + self.right_bearing
 
-
-    @property
-    @cache
-    def tracking(self):
-        """Deprecated synonym for right-bearing."""
-        return self.right_bearing
-
-    @property
-    @cache
+    @calculated_property(override='reject')
     def padding(self):
         """Offset from raster sides to bounding box. Left, bottom, right, top."""
         if not self._pixels:
@@ -510,29 +524,47 @@ class Glyph:
         right = list(reversed(col_inked)).index(True)
         return Bounds(left, bottom, right, top)
 
-    @property
-    @cache
+    @calculated_property(override='reject')
     def ink_bounds(self):
         """Minimum box encompassing all ink, in glyph origin coordinates."""
         bounds = Bounds(
-            left=self.offset.x + self.padding.left,
-            bottom=self.offset.y + self.padding.bottom,
-            right=self.offset.x + self.width - self.padding.right,
-            top=self.offset.y + self.height - self.padding.top,
+            left=self.left_bearing + self.padding.left,
+            bottom=self.shift_up + self.padding.bottom,
+            right=self.left_bearing + self.width - self.padding.right,
+            top=self.shift_up + self.height - self.padding.top,
         )
         # more intuitive result for blank glyphs
         if bounds.left == bounds.right or bounds.top == bounds.bottom:
             return Bounds(0, 0, 0, 0)
         return bounds
 
-    @property
-    @cache
+    @calculated_property(override='reject')
     def bounding_box(self):
         """Dimensions of minimum bounding box encompassing all ink."""
         return Coord(
             self.ink_bounds.right - self.ink_bounds.left,
             self.ink_bounds.top - self.ink_bounds.bottom
         )
+
+    ##########################################################################
+    # synonym properties
+
+    @property
+    def tracking(self):
+        """Deprecated synonym for right-bearing."""
+        return self.right_bearing
+
+    @property
+    def offset(self):
+        """Deprecated synonym for left-bearing, shift-up."""
+        return Coord(self.left_bearing, self.shift_up)
+
+
+    @calculated_property(override='reject')
+    def shift_down(self):
+        """Downward shift - negative of shift-up."""
+        return -self.shift_up
+
 
     ###############################################################################################
     # operations
