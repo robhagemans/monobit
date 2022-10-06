@@ -255,11 +255,11 @@ def _convert_to_flf(font, hardblank='$'):
     # expand glyphs by bearings
     glyphs = [
         _g.expand(
-            left=max(0, font.offset.x + _g.offset.x),
-            bottom=max(0, font.offset.y + _g.offset.y),
+            left=max(0, font.left_bearing + _g.left_bearing),
+            bottom=max(0, font.shift_up + _g.shift_up),
             right=max(0, font.right_bearing + _g.right_bearing),
             # include leading; ensure glyphs are equal height
-            top=max(0, font.line_height - _g.height - max(0, font.offset.y + _g.offset.y)),
+            top=max(0, font.line_height - _g.height - max(0, font.shift_up + _g.shift_up)),
         )
         for _g in glyphs
     ]

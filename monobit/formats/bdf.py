@@ -797,7 +797,7 @@ def _save_bdf(font, outstream):
             # per the example in the BDF spec,
             # the first two coordinates in FONTBOUNDINGBOX are the font's ink-bounds
             'FONTBOUNDINGBOX',
-            f'{font.bounding_box.x} {font.bounding_box.y} {font.offset.x} {font.offset.y}'
+            f'{font.bounding_box.x} {font.bounding_box.y} {font.left_bearing} {font.shift_up}'
         )
     ]
     # labels
@@ -840,7 +840,7 @@ def _save_bdf(font, outstream):
         # DWIDTH specifies the widths in x and y, dwx0 and dwy0, in device pixels.
         # Like SWIDTH , this width information is a vector indicating the position of
         # the next glyph’s origin relative to the origin of this glyph.
-        offset_x, offset_y = font.offset.x + glyph.offset.x, font.offset.y + glyph.offset.y
+        offset_x, offset_y = font.left_bearing + glyph.left_bearing, font.shift_up + glyph.shift_up
         right_bearing = glyph.right_bearing + font.right_bearing
         dwidth_x = offset_x + glyph.width + right_bearing
         swidth_x = int(round(dwidth_x / (font.point_size / 1000) / (font.dpi.y / 72)))

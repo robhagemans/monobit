@@ -266,9 +266,9 @@ def _convert_to_fzx(font):
         _glyph.modify(
             offset=(),
             right_bearing=0,
-            kern=-_glyph.offset.x,
+            kern=-_glyph.left_bearing,
             # line height includes leading
-            shift=font.line_height-_glyph.offset.y-_glyph.height,
+            shift=font.line_height-_glyph.shift_up-_glyph.height,
             # absorb per-glyph right_bearing by extending fzx width
             fzx_width=_glyph.width + _glyph.right_bearing - common_right_bearing - 1,
         )

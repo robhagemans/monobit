@@ -622,7 +622,7 @@ def _create_spritesheets(font, size=(256, 256), packed=False):
                 # > position to find the left position where the character should be drawn.
                 # > A negative value here would mean that the character slightly overlaps
                 # > the previous character.
-                xoffset=font.offset.x + left,
+                xoffset=font.left_bearing + left,
                 # > The `yoffset` gives the distance from the top of the cell height to the top
                 # > of the character. A negative value here would mean that the character extends
                 # > above the cell height.
@@ -632,7 +632,7 @@ def _create_spritesheets(font, size=(256, 256), packed=False):
                 # > marks the position of the cursor after drawing the character. You get to this
                 # > position by moving the cursor horizontally with the xadvance value.
                 # > If kerning pairs are used the cursor should also be moved accordingly.
-                xadvance=font.offset.x + glyph.width + font.right_bearing,
+                xadvance=font.left_bearing + glyph.width + font.right_bearing,
                 page=page_id,
                 chnl=channels,
             ))
@@ -766,7 +766,7 @@ def _create_bmfont(
         # > The base value is how far from the top of the cell height the base of the characters
         # > in the font should be placed. Characters can of course extend above or below this base
         # > line, which is entirely up to the font design.
-        'base': font.raster_size.y + font.offset.y,
+        'base': font.raster_size.y + font.shift_up,
         'scaleW': size[0],
         'scaleH': size[1],
         'pages': len(pages),

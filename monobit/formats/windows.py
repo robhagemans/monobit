@@ -977,9 +977,9 @@ def create_fnt(font, version=0x200):
         dfVertRes=font.dpi.y,
         dfHorizRes=font.dpi.x,
         # Windows dfAscent means distance between matrix top and baseline
-        dfAscent=font.offset.y + font.raster_size.y,
+        dfAscent=font.shift_up + font.raster_size.y,
         #'ascent': win_props.dfAscent - win_props.dfInternalLeading,
-        dfInternalLeading=font.offset.y + font.raster_size.y - font.ascent,
+        dfInternalLeading=font.shift_up + font.raster_size.y - font.ascent,
         dfExternalLeading=font.leading,
         dfItalic=(font.slant in ('italic', 'oblique')),
         dfUnderline=('underline' in font.decoration),
