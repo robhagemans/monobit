@@ -839,13 +839,13 @@ def _parse_nfnt(data, offset, properties):
     # (positive or negative) 'kernMax' global offset
     #
     # since
-    #   (glyph) advance == offset.x + width + tracking
+    #   (glyph) advance_width == offset.x + width + tracking
     # after this transformation we should have
-    #   (glyph) advance == wo.width
+    #   (glyph) advance_width == wo.width
     # which means
-    #   (total) advance == wo.width - kernMax
+    #   (total) advance_width == wo.width - kernMax
     # since
-    #   (total) advance == (font) offset.x + glyph.advance + (font) tracking
+    #   (total) advance_width == (font) offset.x + glyph.advance_width + (font) tracking
     # and (font) offset.x = -kernMax
     glyphs = tuple(
         _glyph.modify(

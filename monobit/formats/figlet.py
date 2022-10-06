@@ -213,7 +213,7 @@ def _convert_to_flf(font, hardblank='$'):
         # > The Max_Length parameter is the maximum length of any line describing a
         # > FIGcharacter.  This is usually the width of the widest FIGcharacter, plus 2
         # > (to accommodate endmarks as described later.)
-        max_length=2 + max(_g.advance for _g in font.glyphs),
+        max_length=2 + max(_g.advance_width for _g in font.glyphs),
         # layout parameters - keep to default, there is not much we can sensibly do
         old_layout=0,
         # get length of global comment

@@ -470,7 +470,7 @@ class Glyph:
         return len(self._pixels)
 
     @property
-    def advance(self):
+    def advance_width(self):
         """Internal advance width of glyph, including internal bearings."""
         return self.offset.x + self.width + self.tracking
 

@@ -384,7 +384,7 @@ class Font:
 
     @cache
     def get_empty_glyph(self):
-        """Get blank glyph with zero advance (or minimal if zero not possible)."""
+        """Get blank glyph with zero advance_width (or minimal if zero not possible)."""
         return Glyph.blank(max(0, -self.offset.x - self.tracking), self.raster_size.y)
 
 
@@ -565,19 +565,19 @@ class Font:
         #
         # a special case is the _multi-cell_ font, where a glyph may take up 0, 1 or 2 cells.
         #
-        # a _monospace_ font is a font where all glyphs have equal advance.
+        # a _monospace_ font is a font where all glyphs have equal advance_width.
         #
         if not self._glyphs:
             return 'character-cell'
-        if any(_glyph.advance < 0 or _glyph.kern_to for _glyph in self._glyphs):
+        if any(_glyph.advance_width < 0 or _glyph.kern_to for _glyph in self._glyphs):
             return 'proportional'
         # don't count void glyphs (0 width and/or height) to determine whether it's monospace
-        advances = set(_glyph.advance for _glyph in self._glyphs if _glyph.advance)
+        advances = set(_glyph.advance_width for _glyph in self._glyphs if _glyph.advance_width)
         monospaced = len(set(advances)) == 1
         bispaced = len(set(advances)) == 2
         ink_contained_y = self.line_spacing >= self.bounding_box.y
         ink_contained_x = all(
-            _glyph.advance >= _glyph.bounding_box.x
+            _glyph.advance_width >= _glyph.bounding_box.x
             for _glyph in self._glyphs
         )
         if ink_contained_x and ink_contained_y:
@@ -604,7 +604,7 @@ class Font:
             return self.offset.x + self.tracking
         return (
             self.offset.x
-            + sum(_glyph.advance for _glyph in self._glyphs) / len(self._glyphs)
+            + sum(_glyph.advance_width for _glyph in self._glyphs) / len(self._glyphs)
             + self.tracking
         )
 
@@ -615,7 +615,7 @@ class Font:
             return self.offset.x + self.tracking
         return (
             self.offset.x
-            + max(_glyph.advance for _glyph in self._glyphs)
+            + max(_glyph.advance_width for _glyph in self._glyphs)
             + self.tracking
         )
 
@@ -623,7 +623,7 @@ class Font:
     def cap_advance(self):
         """Advance width of uppercase X."""
         try:
-            return self.get_glyph('X').advance + self.offset.x + self.tracking
+            return self.get_glyph('X').advance_width + self.offset.x + self.tracking
         except KeyError:
             return 0
 

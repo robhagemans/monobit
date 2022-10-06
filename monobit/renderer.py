@@ -66,7 +66,7 @@ def render(font, text, *, margin=(0, 0), scale=(1, 1), rotate=0, missing='defaul
             # add ink, taking into account there may be ink already in case of negative bearings
             matrix.blit(glyph.as_matrix(), canvas, grid_x, grid_y)
             # advance origin to next glyph
-            x += font.offset.x + glyph.advance + font.tracking
+            x += font.offset.x + glyph.advance_width + font.tracking
         # move to next line
         baseline += font.line_spacing
     scaled = matrix.scale(canvas, *scale)
@@ -79,7 +79,7 @@ def _get_canvas(font, glyphs, margin_x, margin_y):
     width = 2 * margin_x
     if glyphs:
         width += max(
-            sum(font.offset.x + _glyph.advance + font.tracking for _glyph in _row)
+            sum(font.offset.x + _glyph.advance_width + font.tracking for _glyph in _row)
             for _row in glyphs
         )
     # find required height - margins plus line height for each row
