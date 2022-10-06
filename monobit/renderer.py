@@ -68,7 +68,7 @@ def render(font, text, *, margin=(0, 0), scale=(1, 1), rotate=0, missing='defaul
             # advance origin to next glyph
             x += font.offset.x + glyph.advance_width + font.right_bearing
         # move to next line
-        baseline += font.line_spacing
+        baseline += font.line_height
     scaled = matrix.scale(canvas, *scale)
     rotated = matrix.rotate(scaled, rotate)
     return rotated
@@ -86,7 +86,7 @@ def _get_canvas(font, glyphs, margin_x, margin_y):
     # descent-line of the bottom-most row is at bottom margin
     # ascent-line of top-most row is at top margin
     # if a glyph extends below the descent line or left of the origin, it may draw into the margin
-    height = 2 * margin_y + font.pixel_size + font.line_spacing * (len(glyphs)-1)
+    height = 2 * margin_y + font.pixel_size + font.line_height * (len(glyphs)-1)
     return matrix.create(width, height)
 
 def _get_text_glyphs(font, text, missing='raise'):

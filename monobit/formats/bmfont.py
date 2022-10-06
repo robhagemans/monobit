@@ -482,7 +482,7 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=(),
         'source-format': 'BMFont ({} descriptor; {} spritesheet)'.format(bmformat, ','.join(imgformats)),
         'source-name': Path(name).name,
         'family': bmfont_props.pop('face'),
-        # assume line_spacing == pixel-size == ascent + descent (i.e. no leading)
+        # assume line_height == pixel-size == ascent + descent (i.e. no leading)
         # this seems to lead to too high values with fonts produces by Angelcode BMFont
         'ascent': common.lineHeight - (max_height - common.base),
         'descent': max_height - common.base,
@@ -760,8 +760,8 @@ def _create_bmfont(
         # https://www.angelcode.com/products/bmfont/doc/render_text.html
         # > [...] the lineHeight, i.e. how far the cursor should be moved vertically when
         # > moving to the next line.
-        # font.line_spacing == font.raster_size.y + font.leading
-        'lineHeight': font.line_spacing,
+        # font.line_height == font.raster_size.y + font.leading
+        'lineHeight': font.line_height,
         # "base" is the distance between top-line and baseline
         # > The base value is how far from the top of the cell height the base of the characters
         # > in the font should be placed. Characters can of course extend above or below this base
