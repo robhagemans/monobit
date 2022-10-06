@@ -227,7 +227,7 @@ class DefaultProps(Props):
             return fn(self)
 
         # class namespace annotations of DefaultProps child class
-        # this is where we store coverters to the properrty type
+        # this is where we store converters to the property type
         converter = cls.__annotations__.get(name, passthrough)
 
         if override == 'reject':

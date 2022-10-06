@@ -115,7 +115,7 @@ class FontProperties(DefaultProps):
     # (horiz, vert) offset from origin to matrix start
     offset: Coord.create
     # horizontal offset from matrix end to next origin
-    tracking: int
+    right_bearing: int
     # interline spacing, defined as (pixels between baselines) - (pixel size)
     leading: int
 
@@ -133,6 +133,10 @@ class FontProperties(DefaultProps):
     source_name: str
     source_format: str
     history: str
+
+    _synonyms = {
+        'tracking': 'right_bearing',
+    }
 
 
 calculated_property = FontProperties._calculated_property
@@ -156,6 +160,16 @@ class Font:
             self._comments = {'': comments}
         else:
             self._comments = {_k: _v for _k, _v in comments.items()}
+        # synonyms
+        for synonym, base in FontProperties._synonyms.items():
+            if synonym in properties:
+                if base not in properties:
+                    properties[base] = properties[synonym]
+                else:
+                    logging.error(
+                        f"Can't define both `{base}` and its synonym `{synonym}`, ignoring {synonym}."
+                    )
+                del properties[synonym]
         # update properties
         # set encoding first so we can set labels
         # NOTE - we must be careful NOT TO ACCESS CACHED PROPERTIES
@@ -385,7 +399,7 @@ class Font:
     @cache
     def get_empty_glyph(self):
         """Get blank glyph with zero advance_width (or minimal if zero not possible)."""
-        return Glyph.blank(max(0, -self.offset.x - self.tracking), self.raster_size.y)
+        return Glyph.blank(max(0, -self.offset.x - self.right_bearing), self.raster_size.y)
 
 
     ##########################################################################
@@ -411,6 +425,15 @@ class Font:
             if _glyph.codepoint
             and _glyph.char
         }, name=f"implied-{self.name}")
+
+
+    ##########################################################################
+    # synonym properties
+
+    @calculated_property
+    def tracking(self):
+        """Deprecated synonym for right-bearing."""
+        return self.right_bearing
 
 
     ##########################################################################
@@ -601,29 +624,29 @@ class Font:
     def average_advance(self):
         """Get average glyph advance width, rounded to tenths of pixels."""
         if not self._glyphs:
-            return self.offset.x + self.tracking
+            return self.offset.x + self.right_bearing
         return (
             self.offset.x
             + sum(_glyph.advance_width for _glyph in self._glyphs) / len(self._glyphs)
-            + self.tracking
+            + self.right_bearing
         )
 
     @calculated_property(override='notify')
     def max_advance(self):
         """Maximum glyph advance width."""
         if not self._glyphs:
-            return self.offset.x + self.tracking
+            return self.offset.x + self.right_bearing
         return (
             self.offset.x
             + max(_glyph.advance_width for _glyph in self._glyphs)
-            + self.tracking
+            + self.right_bearing
         )
 
     @calculated_property(override='notify')
     def cap_advance(self):
         """Advance width of uppercase X."""
         try:
-            return self.get_glyph('X').advance_width + self.offset.x + self.tracking
+            return self.get_glyph('X').advance_width + self.offset.x + self.right_bearing
         except KeyError:
             return 0
 

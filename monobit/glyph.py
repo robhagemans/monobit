@@ -137,9 +137,12 @@ class GlyphProperties(DefaultProps):
     """Recognised properties for Glyph."""
 
     offset: Coord.create
-    tracking: int
+    right_bearing: int
     kern_to: KernTable
 
+    _synonyms = {
+        'tracking': 'right_bearing',
+    }
 
 
 class Glyph:
@@ -161,6 +164,16 @@ class Glyph:
         if not isinstance(comments, str):
             raise TypeError('Glyph comment must be a single string.')
         self._comments = comments
+        # synonyms
+        for synonym, base in GlyphProperties._synonyms.items():
+            if synonym in properties:
+                if base not in properties:
+                    properties[base] = properties[synonym]
+                else:
+                    logging.error(
+                        f"Can't define both `{base}` and its synonym `{synonym}`, ignoring {synonym}."
+                    )
+                del properties[synonym]
         # recognised properties
         self._props = GlyphProperties(**properties)
         # check pixel matrix geometry
@@ -472,7 +485,14 @@ class Glyph:
     @property
     def advance_width(self):
         """Internal advance width of glyph, including internal bearings."""
-        return self.offset.x + self.width + self.tracking
+        return self.offset.x + self.width + self.right_bearing
+
+
+    @property
+    @cache
+    def tracking(self):
+        """Deprecated synonym for right-bearing."""
+        return self.right_bearing
 
     @property
     @cache
