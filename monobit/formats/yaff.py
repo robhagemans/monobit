@@ -491,7 +491,7 @@ class TextWriter:
             outstream.write(f'{indent}{key}: {self._quote_if_needed(value)}\n')
         else:
             outstream.write(
-                f'{indent}{key}:\n{indent}{self.tab}' '{}\n'.format(
+                f'{indent}{key}:\n{indent}{self.tab}' + '{}\n'.format(
                     f'\n{indent}{self.tab}'.join(
                         self._quote_if_needed(_line)
                         for _line in value.splitlines()
