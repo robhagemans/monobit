@@ -462,7 +462,7 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=(),
             glyph = glyph.modify(
                 codepoint=_codepoint_for_id(char.id, info['unicode']),
                 offset=(char.xoffset, max_height-glyph.height-char.yoffset),
-                tracking=char.xadvance - char.xoffset - char.width,
+                right_bearing=char.xadvance - char.xoffset - char.width,
                 kern_to=kern_to
             )
             glyphs.append(glyph)
@@ -632,7 +632,7 @@ def _create_spritesheets(font, size=(256, 256), packed=False):
                 # > marks the position of the cursor after drawing the character. You get to this
                 # > position by moving the cursor horizontally with the xadvance value.
                 # > If kerning pairs are used the cursor should also be moved accordingly.
-                xadvance=font.offset.x + glyph.width + font.tracking,
+                xadvance=font.offset.x + glyph.width + font.right_bearing,
                 page=page_id,
                 chnl=channels,
             ))

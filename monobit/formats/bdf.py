@@ -603,7 +603,7 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
         # advance width
         dwidth = props.get('DWIDTH', global_dwidth)
         dwidth_x, dwidth_y = (int(_p) for _p in dwidth.split(' '))
-        new_props['tracking'] = dwidth_x - glyph.width - offset_x
+        new_props['right-bearing'] = dwidth_x - glyph.width - offset_x
         if dwidth_y:
             raise FileFormatError('Top-to-bottom fonts not yet supported.')
         mod_glyphs.append(glyph.modify(**new_props))
@@ -612,10 +612,10 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
     if len(offsets) == 1:
         mod_glyphs = [_g.drop('offset') for _g in mod_glyphs]
         properties['offset'] = offsets.pop()
-    trackings = set(_g.tracking for _g in mod_glyphs)
-    if len(trackings) == 1:
-        mod_glyphs = [_g.drop('tracking') for _g in mod_glyphs]
-        properties['tracking'] = trackings.pop()
+    right_bearings = set(_g.right_bearing for _g in mod_glyphs)
+    if len(right_bearings) == 1:
+        mod_glyphs = [_g.drop('right-bearing') for _g in mod_glyphs]
+        properties['right_bearing'] = right_bearings.pop()
     xlfd_name = bdf_props.pop('FONT')
     # keep unparsed bdf props
     return mod_glyphs, properties, xlfd_name, bdf_props
@@ -841,8 +841,8 @@ def _save_bdf(font, outstream):
         # Like SWIDTH , this width information is a vector indicating the position of
         # the next glyph’s origin relative to the origin of this glyph.
         offset_x, offset_y = font.offset.x + glyph.offset.x, font.offset.y + glyph.offset.y
-        tracking = glyph.tracking + font.tracking
-        dwidth_x = offset_x + glyph.width + tracking
+        right_bearing = glyph.right_bearing + font.right_bearing
+        dwidth_x = offset_x + glyph.width + right_bearing
         swidth_x = int(round(dwidth_x / (font.point_size / 1000) / (font.dpi.y / 72)))
         # minimize glyphs to ink-bounds (BBX) before storing, except "cell" fonts
         if font.spacing not in ('character-cell', 'multi-cell'):

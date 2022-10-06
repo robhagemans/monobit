@@ -330,7 +330,7 @@ def _convert_amiga_glyphs(glyphs, amiga_props):
             offset=Coord(_glyph.kerning, -(amiga_props.tf_YSize - amiga_props.tf_Baseline)),
             #advance_width=_glyph.spacing
         ).modify(
-            tracking=_glyph.spacing-_glyph.offset.x
+            right_bearing=_glyph.spacing-_glyph.offset.x
         )
         for _glyph in glyphs
     ]

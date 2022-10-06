@@ -257,7 +257,7 @@ def _convert_to_flf(font, hardblank='$'):
         _g.expand(
             left=max(0, font.offset.x + _g.offset.x),
             bottom=max(0, font.offset.y + _g.offset.y),
-            right=max(0, font.tracking + _g.tracking),
+            right=max(0, font.right_bearing + _g.right_bearing),
             # include leading; ensure glyphs are equal height
             top=max(0, font.line_height - _g.height - max(0, font.offset.y + _g.offset.y)),
         )
