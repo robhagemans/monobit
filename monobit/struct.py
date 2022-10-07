@@ -117,6 +117,7 @@ def notify_override(property):
 
 
 def passthrough(arg=None):
+    """Any type no-op converter."""
     return arg
 
 
@@ -145,14 +146,8 @@ class DefaultProps(Props):
         # if a type constructor is given in the annotations, use that to set the default
         # note that we're changing the *class* namespace on the *instance* initialiser
         # which feels a bit hacky
-        # but this will be consistent and only run once for multiple instances of the class
-        for field, field_type in type(self).__annotations__.items():
-            if field not in vars(type(self)):
-                try:
-                    setattr(type(self), field, field_type())
-                except KeyError as e:
-                    # non overridable
-                    pass
+        # but this will be a no-op after the first instance has initialised
+        type(self)._set_defaults()
 
     def __getitem__(self, item):
         try:
@@ -204,6 +199,19 @@ class DefaultProps(Props):
         have_defaults = (_k for _k in type(self).__annotations__ if _k in keys)
         others = (_k for _k in keys if _k not in type(self).__annotations__)
         return chain(have_defaults, others)
+
+
+    @classmethod
+    def _set_defaults(cls):
+        """If a type constructor is given in the annotations, use that to set the default."""
+        for field, field_type in cls.__annotations__.items():
+            if field not in vars(cls):
+                try:
+                    setattr(cls, field, field_type())
+                except KeyError as e:
+                    # non overridable
+                    pass
+
 
     @classmethod
     def _calculated_property(cls, *args, override='accept'):
