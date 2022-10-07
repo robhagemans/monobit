@@ -62,13 +62,22 @@ class Props(SimpleNamespace):
         super().__init__(*args, **kwargs)
 
     def __getitem__(self, item):
-        return vars(self)[normalise_property(item)]
+        try:
+            return getattr(self, normalise_property(item))
+        except AttributeError as e:
+            raise KeyError(e) from e
 
     def __setitem__(self, item, value):
-        vars(self)[normalise_property(item)] = value
+        try:
+            setattr(self, normalise_property(item), value)
+        except AttributeError as e:
+            raise KeyError(e) from e
 
     def __delitem__(self, item):
-        del vars(self)[normalise_property(item)]
+        try:
+            delattr(self, normalise_property(item))
+        except AttributeError as e:
+            raise KeyError(e) from e
 
     def __len__(self):
         return len(vars(self))
@@ -149,49 +158,15 @@ class DefaultProps(Props):
         # but this will be a no-op after the first instance has initialised
         type(self)._set_defaults()
 
-    def __getitem__(self, item):
-        try:
-            return super().__getitem__(item)
-        except KeyError:
-            pass
-        # defaults are defined in class namespace
-        defaults = vars(type(self))
-        try:
-            return defaults[normalise_property(item)]
-        except KeyError:
-            pass
-        raise KeyError(item)
-
-    def __setitem__(self, item, value):
-        # convert to annotated type
-        try:
-            converter = type(self).__annotations__[item]
-        except KeyError:
-            converter = passthrough
-        else:
-            try:
-                # this may raise a KeyError if non overridable
-                # may raise a ValueError if not convertible
-                value = converter(value)
-            except KeyError:
-                # non overridable
-                return
-        super().__setitem__(item, value)
-
-    def __getattr__(self, item):
-        try:
-            return self[item]
-        except KeyError as key_error:
-            raise AttributeError(item) from key_error
-
     def __setattr__(self, item, value):
-        self[item] = value
-
-    def __delattr__(self, item):
+        converter = type(self).__annotations__.get(item, passthrough)
         try:
-            del self[item]
-        except KeyError as key_error:
-            raise AttributeError(item) from key_error
+            value = converter(value)
+        except KeyError:
+            # non overridable
+            pass
+        else:
+            super().__setattr__(item, value)
 
     def __iter__(self):
         """Iterate on default definition order first, then remaining keys."""
