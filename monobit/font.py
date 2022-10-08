@@ -121,12 +121,12 @@ class FontProperties(DefaultProps):
     direction: str = 'left-to-right'
     # horizontal offset from leftward origin to matrix left edge
     left_bearing: int
+    # horizontal offset from matrix right edge to rightward origin
+    right_bearing: int
     # upward offset from origin to matrix bottom
     shift_up: int
     # downward offset from origin to matrix left edge - equal to -shift_up
     shift_down: int
-    # horizontal offset from matrix right edge to rightward origin
-    right_bearing: int
     # vertical distance between consecutive baselines, in pixels
     line_height: int
 
@@ -336,7 +336,7 @@ class FontProperties(DefaultProps):
         #
         if not self._font.glyphs:
             return 'character-cell'
-        if any(_glyph.advance_width < 0 or _glyph.kern_to for _glyph in self._font.glyphs):
+        if any(_glyph.advance_width < 0 or _glyph.right_kerning for _glyph in self._font.glyphs):
             return 'proportional'
         # don't count void glyphs (0 width and/or height) to determine whether it's monospace
         advances = set(_glyph.advance_width for _glyph in self._font.glyphs if _glyph.advance_width)

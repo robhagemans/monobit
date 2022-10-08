@@ -55,7 +55,7 @@ def render(font, text, *, margin=(0, 0), scale=(1, 1), rotate=0, missing='defaul
         prev = font.get_empty_glyph()
         for glyph in glyph_row:
             # adjust origin for kerning
-            x += prev.kern_to.get_for_glyph(glyph)
+            x += prev.right_kerning.get_for_glyph(glyph)
             prev = glyph
             # offset + (x, y) is the coordinate of glyph matrix origin
             # grid_x, grid_y are canvas coordinates relative to top left of canvas

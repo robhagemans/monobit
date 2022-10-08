@@ -147,10 +147,22 @@ class KernTable(dict):
 class GlyphProperties(DefaultProps):
     """Recognised properties for Glyph."""
 
+    # horizontal offset from leftward origin to matrix left edge
     left_bearing: int
+    # horizontal offset from matrix right edge to rightward origin
     right_bearing: int
+    # upward offset from origin to matrix bottom
     shift_up: int
-    kern_to: KernTable
+    # downward offset from origin to matrix left edge - equal to -shift_up
+    shift_down: int
+    # kerning - pairwaise additional right-bearing
+    right_kerning: KernTable
+
+
+    @writable_property('kern_to')
+    def kern_to(self):
+        """Deprecated synonym of right-kerning."""
+        return self.right_kerning
 
     @writable_property('right_bearing')
     def tracking(self):

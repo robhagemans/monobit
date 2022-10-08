@@ -446,13 +446,13 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=(),
             ))
             # append kernings (this glyph left)
             if info['unicode']:
-                kern_to = {
+                right_kerning = {
                     Char(chr(_kern.second)): _kern.amount
                     for _kern in kernings
                     if _kern.first == char.id
                 }
             else:
-                kern_to = {
+                right_kerning = {
                     _codepoint_for_id(_kern.second, False): _kern.amount
                     for _kern in kernings
                     if _kern.first == char.id
@@ -463,7 +463,7 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=(),
                 codepoint=_codepoint_for_id(char.id, info['unicode']),
                 offset=(char.xoffset, max_height-glyph.height-char.yoffset),
                 right_bearing=char.xadvance - char.xoffset - char.width,
-                kern_to=kern_to
+                right_kerning=right_kerning
             )
             glyphs.append(glyph)
     for file in image_files.values():
@@ -790,7 +790,7 @@ def _create_bmfont(
             'amount': int(_amount)
         }
         for _glyph in font.glyphs
-        for _to, _amount in _glyph.kern_to.items()
+        for _to, _amount in _glyph.right_kerning.items()
     ]
     # write the .fnt description
     if descriptor == 'text':
