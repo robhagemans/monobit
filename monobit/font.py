@@ -121,8 +121,10 @@ class FontProperties(DefaultProps):
     direction: str = 'left-to-right'
     # horizontal offset from leftward origin to matrix left edge
     left_bearing: int
-    # upward offset from origin to matrix start
+    # upward offset from origin to matrix bottom
     shift_up: int
+    # downward offset from origin to matrix left edge - equal to -shift_up
+    shift_down: int
     # horizontal offset from matrix right edge to rightward origin
     right_bearing: int
     # vertical distance between consecutive baselines, in pixels
@@ -144,6 +146,7 @@ class FontProperties(DefaultProps):
     source_name: str
     source_format: str
     history: str
+
 
     @writable_property('right_bearing')
     def tracking(self):
