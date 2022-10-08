@@ -241,6 +241,11 @@ class Glyph:
         """Create glyph from tuple of tuples."""
         # glyph data
         self._pixels = tuple(tuple(bool(_bit) for _bit in _row) for _row in pixels)
+        # check pixel matrix geometry
+        if len(set(len(_r) for _r in self._pixels)) > 1:
+            raise ValueError(
+                f"All rows in a glyph's pixel matrix must be of the same width: {repr(self)}"
+            )
         # labels
         self._codepoint = Codepoint(codepoint).value
         self._char = Char(char).value
@@ -250,14 +255,8 @@ class Glyph:
             raise TypeError('Glyph comment must be a single string.')
         self._comments = comments
         # recognised properties
-        self._props = GlyphProperties(**properties)
         # access needed for calculated properties
-        self._props._pixels = self._pixels
-        # check pixel matrix geometry
-        if len(set(len(_r) for _r in self._pixels)) > 1:
-            raise ValueError(
-                f"All rows in a glyph's pixel matrix must be of the same width: {repr(self)}"
-            )
+        self._props = GlyphProperties(_pixels=self._pixels, **properties)
 
 
     ##########################################################################
