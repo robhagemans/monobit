@@ -405,17 +405,6 @@ class Font:
     def __init__(self, glyphs=(), *, comments=None, **properties):
         """Create new font."""
         self._glyphs = tuple(glyphs)
-        # comments can be str (just global comment) or mapping of property comments
-        if not comments:
-            self._comments = {}
-        elif isinstance(comments, str):
-            self._comments = {'': comments}
-        else:
-            self._comments = {_k: _v for _k, _v in comments.items()}
-
-        # add labels if unset (needs encoding property)
-#        self._add_labels()
-
         # construct lookup tables
         self._tags = {
             _tag: _index
@@ -432,32 +421,18 @@ class Font:
             for _index, _glyph in enumerate(self._glyphs)
             if _glyph.char
         }
+        # comments can be str (just global comment) or mapping of property comments
+        if not comments:
+            self._comments = {}
+        elif isinstance(comments, str):
+            self._comments = {'': comments}
+        else:
+            self._comments = {_k: _v for _k, _v in comments.items()}
         # update properties
         # set encoding first so we can set labels
         # NOTE - we must be careful NOT TO ACCESS CACHED PROPERTIES
         #        until the constructor is complete
         self._props = FontProperties(_font=self, **properties)
-
-
-
-    def _add_labels(self):
-        """Add character and codepoint labels."""
-        has_codepoint = any(_glyph.codepoint for _glyph in self._glyphs)
-        has_char = any(_glyph.char for _glyph in self._glyphs)
-        # update glyph codepoints
-        # use index as codepoint if no codepoints or chars set
-        if not has_codepoint and not has_char:
-            self._glyphs = tuple(
-                _glyph.modify(codepoint=(_index,))
-                for _index, _glyph in enumerate(self._glyphs)
-            )
-        # update glyph labels
-        encoding = self._get_encoder()
-        if encoding is not None:
-            self._glyphs = tuple(
-                _glyph.add_labels(encoding)
-                for _glyph in self._glyphs
-            )
 
     def _get_encoder(self):
         """Get encoding object."""
