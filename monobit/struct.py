@@ -92,6 +92,24 @@ class Props(SimpleNamespace):
 # property sets with default values, override policy and type conversion
 
 
+def delayed_cache(fn):
+    """Cache only once _frozen attribute is set."""
+    field = normalise_property(fn.__name__)
+
+    @wraps(fn)
+    def _getter(self):
+        if not self._frozen:
+            return fn(self)
+        try:
+            return self._cache[field]
+        except KeyError:
+            pass
+        self._cache[field] = fn(self)
+        return self._cache[field]
+
+    return _getter
+
+
 class DefaultProps(Props):
     """
     Namespace with recognised fields and defaults.
@@ -108,6 +126,8 @@ class DefaultProps(Props):
     """
 
     def __init__(self, *args, **kwargs):
+        # disable cacheing while building the object
+        self._frozen = False
         super().__init__(*args)
         # if a type constructor is given in the annotations, use that to set the default
         # note that we're changing the *class* namespace on the *instance* initialiser
@@ -120,6 +140,9 @@ class DefaultProps(Props):
             if value is not None:
                 field = normalise_property(field)
                 setattr(self, field, value)
+        # enable cacheing
+        self._cache = {}
+        self._frozen = True
 
     def _set_defaults(self):
         """If a type constructor is given in the annotations, use that to set the default."""
@@ -138,6 +161,8 @@ class DefaultProps(Props):
         return vars(self).get(normalise_property(field), None)
 
     def __setattr__(self, field, value):
+        if field != '_frozen' and self._frozen:
+            raise ValueError('Cannot set property on frozen object.')
         try:
             converter = type(self).__annotations__[field]
         except KeyError:
@@ -162,7 +187,8 @@ def writable_property(arg=None, *, field=None):
     field = field or fn.__name__
     field = normalise_property(field)
 
-    #@cache
+    cached_fn = delayed_cache(fn)
+
     @wraps(fn)
     def _getter(self):
         try:
@@ -171,10 +197,12 @@ def writable_property(arg=None, *, field=None):
             return vars(self)[field]
         except KeyError:
             pass
-        return fn(self)
+        return cached_fn(self)
 
     @wraps(fn)
     def _setter(self, value):
+        if self._frozen:
+            raise ValueError('Cannot set property on frozen object.')
         try:
             calc_value = fn(self)
         except AttributeError:
@@ -193,22 +221,24 @@ def checked_property(fn):
     """Non-overridable property, attempted writes will be logged and dropped."""
     field = normalise_property(fn.__name__)
 
+    _getter = delayed_cache(fn)
+
     @wraps(fn)
     def _setter(self, value):
-        calc_value = fn(self)
+        if self._frozen:
+            raise ValueError('Cannot set property on frozen object.')
         try:
             calc_value = fn(self)
-        except AttributeError:
-            pass
+        except Exception as e:
+            logging.warning(f'Could not check value of {field}: {e}')
+        if value == calc_value:
+            logging.debug(f'Non-overridable property {field}={value} consistently set.')
         else:
-            if value == calc_value:
-                logging.debug(f'Non-overridable property {field}={value} consistently set.')
-            else:
-                logging.warning(
-                    f'Non-overridable property {field}={calc_value} cannot be set to {value}.'
-                )
+            logging.warning(
+                f'Non-overridable property {field}={calc_value} cannot be set to {value}.'
+            )
 
-    return property(fn, _setter)
+    return property(_getter, _setter)
 
 
 def as_tuple(arg=None, *, fields=None, tuple_type=None):
@@ -239,6 +269,7 @@ def as_tuple(arg=None, *, fields=None, tuple_type=None):
             self[normalise_property(field)] = element
 
     return property(_getter, _setter)
+
 
 
 ##############################################################################
