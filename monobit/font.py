@@ -108,6 +108,8 @@ class FontProperties(DefaultProps):
     descent: int
     # nominal pixel size, always equals ascent + descent
     pixel_size: int
+    # vertical interline spacing, defined as line_height - pixel_size
+    leading: int
 
     # metrics
     # can't be calculated, affect rendering
@@ -120,8 +122,8 @@ class FontProperties(DefaultProps):
     shift_up: int
     # horizontal offset from matrix right edge to rightward origin
     right_bearing: int
-    # interline spacing, defined as (pixels between baselines) - (pixel size)
-    leading: int
+    # vertical distance between consecutive baselines, in pixels
+    line_height: int
 
     # character set
     # can't be calculated, affect rendering
@@ -197,13 +199,6 @@ class FontProperties(DefaultProps):
         # if dpi not given assumes 72 dpi, so point-size == pixel-size
         return int(self.pixel_size * self.dpi.y / 72.)
 
-    @checked_property
-    def pixel_size(self):
-        """Get nominal pixel size (ascent + descent)."""
-        if not self._font.glyphs:
-            return 0
-        return self.ascent + self.descent
-
     @writable_property
     def dpi(self):
         """Target screen resolution in dots per inch."""
@@ -228,12 +223,29 @@ class FontProperties(DefaultProps):
 
     @writable_property
     def descent(self):
-        """Get descent (defaults to bottom/vertical offset)."""
+        """Recommended typographic descent relative to baseline (defaults to ink-bottom)."""
         if not self._font.glyphs:
             return 0
         # usually, descent is positive and offset is negative
         # negative descent would mean font descenders are all above baseline
         return -self.shift_up - min(_glyph.padding.bottom for _glyph in self._font.glyphs)
+
+    @checked_property
+    def pixel_size(self):
+        """Get nominal pixel size (ascent + descent)."""
+        return self.ascent + self.descent
+
+    @writable_property
+    def line_height(self):
+        """Vertical distance between consecutive baselines, in pixels."""
+        if 'leading' in vars(self):
+            return self.pixel_size + self.leading
+        return self.pixel_size
+
+    @writable_property
+    def leading(self):
+        """Vertical interline spacing, defined as (pixels between baselines) - (pixel size)."""
+        return self.line_height - self.pixel_size
 
     @checked_property
     def raster(self):
@@ -385,13 +397,6 @@ class FontProperties(DefaultProps):
             return self._font.get_glyph('X').bounding_box.y
         except KeyError:
             return 0
-
-    @writable_property
-    def line_height(self):
-        """Distance between consecutive baselines, in pixels."""
-        return self.pixel_size + self.leading
-
-
 
 
 
