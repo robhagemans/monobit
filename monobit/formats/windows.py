@@ -708,10 +708,16 @@ def _parse_win_props(fnt, win_props):
         'point-size': win_props.dfPoints,
         'slant': 'italic' if win_props.dfItalic else 'roman',
         # Windows dfAscent means distance between matrix top and baseline
+        # and it calls the space where accents go the dfInternalLeading
+        # which is specified to be 'inside the bounds set by dfPixHeight'
         'ascent': win_props.dfAscent - win_props.dfInternalLeading,
+        # the dfPixHeight is the 'height of the character bitmap', i.e. our raster-size.y
+        # and dfAscent is the distance between the raster top and the baseline,
+        # so if we set the descent-line equal to the raster bottom, the following holds:
         'descent': win_props.dfPixHeight - win_props.dfAscent,
-        'offset': Coord(0, win_props.dfAscent - win_props.dfPixHeight),
-        'leading': win_props.dfExternalLeading,
+        'shift-up': win_props.dfAscent - win_props.dfPixHeight,
+        # dfExternalLeading is the 'amount of extra leading ... the application add between rows'
+        'line-height': win_props.dfPixHeight + win_props.dfExternalLeading,
         'default-char': win_props.dfDefaultChar + win_props.dfFirstChar,
     }
     if win_props.dfPixWidth:

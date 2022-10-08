@@ -461,7 +461,8 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=(),
             max_height = max(char.height + char.yoffset for char in chars)
             glyph = glyph.modify(
                 codepoint=_codepoint_for_id(char.id, info['unicode']),
-                offset=(char.xoffset, max_height-glyph.height-char.yoffset),
+                left_bearing=char.xoffset,
+                shift_up=max_height-glyph.height-char.yoffset,
                 right_bearing=char.xadvance - char.xoffset - char.width,
                 right_kerning=right_kerning
             )

@@ -172,7 +172,7 @@ def _convert_from_flf(glyphs, props):
     descent = int(props.height)-int(props.baseline)
     properties = Props(
         descent=descent,
-        offset=(0, -descent),
+        shift_up=-descent,
         ascent=int(props.baseline),
         direction=_DIRECTIONS[props.print_direction],
         encoding=_ENCODING,

@@ -849,7 +849,7 @@ def _parse_nfnt(data, offset, properties):
     # and (font) left_bearing = -kernMax
     glyphs = tuple(
         _glyph.modify(
-            offset=(_glyph.wo_offset, 0),
+            left_bearing=_glyph.wo_offset,
             right_bearing=_glyph.wo_width - _glyph.width - _glyph.wo_offset
         )
         if _glyph.wo_width != 0xff and _glyph.wo_offset != 0xff else _glyph
@@ -883,7 +883,8 @@ def _parse_nfnt(data, offset, properties):
         'default-char': 'missing',
         'ascent': fontrec.ascent,
         'descent': fontrec.descent,
-        'leading': fontrec.leading,
-        'offset': Coord(fontrec.kernMax, -fontrec.descent),
+        'line-height': fontrec.ascent + fontrec.descent + fontrec.leading,
+        'left-bearing': fontrec.kernMax,
+        'shift-up': -fontrec.descent,
     })
     return Font(glyphs, **properties)
