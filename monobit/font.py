@@ -83,6 +83,7 @@ class FontProperties(DefaultProps):
 
     # summarising quantities
     # determined from the bitmaps only
+
     # proportional, monospace, character-cell, multi-cell
     spacing: str
     # maximum raster (not necessarily ink) width/height
@@ -95,7 +96,8 @@ class FontProperties(DefaultProps):
     cap_advance: int
 
     # descriptive typographic quantities
-    # can be calculated or given
+    # can be calculated or given, may affect rendering
+
     # height of lowercase x relative to baseline
     x_height: int
     # height of capital relative to baseline
@@ -113,9 +115,9 @@ class FontProperties(DefaultProps):
 
     # metrics
     # can't be calculated, affect rendering
+
     # left-to-right, right-to-left
     direction: str = 'left-to-right'
-    # positioning relative to origin
     # horizontal offset from leftward origin to matrix left edge
     left_bearing: int
     # upward offset from origin to matrix start
@@ -125,8 +127,10 @@ class FontProperties(DefaultProps):
     # vertical distance between consecutive baselines, in pixels
     line_height: int
 
-    # character set
+    # character properties
     # can't be calculated, affect rendering
+
+    # character map
     encoding: charmaps.normalise
     # replacement for missing glyph
     default_char: label
@@ -162,7 +166,7 @@ class FontProperties(DefaultProps):
 
     @writable_property
     def name(self):
-        """Name of font."""
+        """Full human-friendly name."""
         if self.slant == self._get_default('slant'):
             slant = ''
         else:
@@ -213,7 +217,7 @@ class FontProperties(DefaultProps):
 
     @writable_property
     def ascent(self):
-        """Get ascent (defaults to max ink height above baseline)."""
+        """Recommended typographic ascent relative to baseline (defaults to ink-top)."""
         if not self._font.glyphs:
             return 0
         return self.shift_up + max(
