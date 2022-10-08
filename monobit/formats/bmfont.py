@@ -763,7 +763,6 @@ def _create_bmfont(
         # https://www.angelcode.com/products/bmfont/doc/render_text.html
         # > [...] the lineHeight, i.e. how far the cursor should be moved vertically when
         # > moving to the next line.
-        # font.line_height == font.raster_size.y + font.leading
         'lineHeight': font.line_height,
         # "base" is the distance between top-line and baseline
         # > The base value is how far from the top of the cell height the base of the characters

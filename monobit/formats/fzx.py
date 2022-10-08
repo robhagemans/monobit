@@ -222,13 +222,8 @@ def _convert_from_fzx(fzx_props, fzx_glyphs):
         if _glyph.advance_width or not _glyph.is_blank()
     )
     # set font properties
-    # if there are common blank rows, call them leading instead of ascent
-    leading = min(_glyph.shift for _glyph in fzx_glyphs)
     properties = Props(
-        leading=leading,
-        # we don't know ascent & descent but we can't set line-height directly
-        ascent=fzx_props.height-leading,
-        descent=0,
+        line_height=fzx_props.height,
         right_bearing=fzx_props.tracking,
         encoding=_FZX_ENCODING,
     )
@@ -277,13 +272,13 @@ def _convert_to_fzx(font):
     if any(_glyph.fzx_width < 0 or _glyph.fzx_width > 15 for _glyph in fzx_glyphs):
         raise FileFormatError('FZX format: glyphs must be from 1 to 16 pixels wide.')
     if any(_glyph.kern < 0 or _glyph.kern > 3 for _glyph in fzx_glyphs):
-        raise FileFormatError('FZX format: glyph left-bearing must be in range -3--0.')
+        raise FileFormatError('FZX format: left-bearing must be in range -3--0.')
     if any(_glyph.shift > 15 for _glyph in fzx_glyphs):
         # TODO: resize character to reduce shift
         raise FileFormatError('FZX format: distance between raster top and line height must be in range 0--15.')
     tracking = font.right_bearing + common_right_bearing
     if tracking < -128 or tracking > 127:
-        raise FileFormatError('FZX format: tracking must be in range -128--127.')
+        raise FileFormatError('FZX format: right-bearing must be in range -128--127.')
     # set font FZX properties
     fzx_props = Props(
         tracking=tracking,
