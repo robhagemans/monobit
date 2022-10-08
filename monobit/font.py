@@ -48,6 +48,7 @@ class FontProperties(DefaultProps):
     # font metadata
     # can't be calculated
     # author or issuer
+    author: str
     foundry: str
     # copyright string
     copyright: str
@@ -195,6 +196,11 @@ class FontProperties(DefaultProps):
         if stem == stem.upper() or stem == stem.lower():
             stem = stem.title()
         return stem
+
+    @writable_property
+    def foundry(self):
+        """Author or issuer."""
+        return self.author
 
     @writable_property
     def point_size(self):
