@@ -915,6 +915,10 @@ def create_fnt(font, version=0x200):
     charset = charset_map.get(font.encoding, _FALLBACK_CHARSET)
     # only include single-byte encoded glyphs
     codepoints = tuple(_cp[0] for _cp in font.get_codepoints() if len(_cp) == 1)
+    if not codepoints:
+        raise FileFormatError(
+            'Windows font can only encode glyphs with single-byte codepoints; none found in font.'
+        )
     # FNT can hold at most the codepoints 0..256 as these fields are byte-sized
     min_ord = min(codepoints)
     max_ord = min(255, max(codepoints))
