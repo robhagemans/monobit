@@ -109,16 +109,17 @@ class DefaultProps(Props):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args)
-        # use Props.__setitem__ for value conversion
-        # we use None to *unset* properties
-        for field, value in kwargs.items():
-            if value is not None:
-                self[field] = value
         # if a type constructor is given in the annotations, use that to set the default
         # note that we're changing the *class* namespace on the *instance* initialiser
         # which feels a bit hacky
         # but this will be a no-op after the first instance has initialised
         self._set_defaults()
+        # use Props.__setitem__ for value conversion
+        # we use None to *unset* properties
+        for field, value in kwargs.items():
+            if value is not None:
+                field = normalise_property(field)
+                setattr(self, field, value)
 
     def _set_defaults(self):
         """If a type constructor is given in the annotations, use that to set the default."""
@@ -174,11 +175,40 @@ def writable_property(arg=None, *, field=None):
 
     @wraps(fn)
     def _setter(self, value):
-        # TODO: first check if new value equals old
-        logging.debug(f'Setting overridable property {field}={value}.')
+        try:
+            calc_value = fn(self)
+        except AttributeError:
+            pass
+        else:
+            if value == calc_value:
+                logging.debug(f'Overridable property {field}={value} consistently set.')
+            else:
+                logging.info(f'Setting overridable property {field}={value} (was {calc_value}).')
         vars(self)[field] = value
 
     return property(_getter, _setter)
+
+
+def checked_property(fn):
+    """Non-overridable property, attempted writes will be logged and dropped."""
+    field = normalise_property(fn.__name__)
+
+    @wraps(fn)
+    def _setter(self, value):
+        calc_value = fn(self)
+        try:
+            calc_value = fn(self)
+        except AttributeError:
+            pass
+        else:
+            if value == calc_value:
+                logging.debug(f'Non-overridable property {field}={value} consistently set.')
+            else:
+                logging.warning(
+                    f'Non-overridable property {field}={calc_value} cannot be set to {value}.'
+                )
+
+    return property(fn, _setter)
 
 
 def as_tuple(arg=None, *, fields=None, tuple_type=None):
@@ -198,14 +228,14 @@ def as_tuple(arg=None, *, fields=None, tuple_type=None):
     @wraps(fn)
     def _getter(self):
         # in this case, always use the fields, whether defaulted or set
-        return tuple_type(
-            self[_normalise_property(field)]
+        return tuple_type(tuple(
+            self[normalise_property(_field)]
             for _field in fields
-        )
+        ))
 
     @wraps(fn)
     def _setter(self, value):
-        for field, element in zip(fields, value):
+        for field, element in zip(fields, tuple_type(value)):
             self[normalise_property(field)] = element
 
     return property(_getter, _setter)

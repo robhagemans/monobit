@@ -22,7 +22,10 @@ from .binary import ceildiv, bytes_to_bits
 from .matrix import to_text
 from .encoding import is_graphical
 from .label import Char, Codepoint, Tag, label
-from .struct import DefaultProps, normalise_property, extend_string, writable_property, as_tuple
+from .struct import (
+    DefaultProps, normalise_property, extend_string,
+    writable_property, as_tuple, checked_property
+)
 
 
 # sentinel object
@@ -157,36 +160,36 @@ class GlyphProperties(DefaultProps):
         """
         return self.right_bearing
 
-    @as_tuple(('left_bearing', 'shift_up'), tuple_type=Coord)
+    @as_tuple(('left_bearing', 'shift_up'), tuple_type=Coord.create)
     def offset(self):
         """
         (horiz, vert) offset from origin to matrix start
         Deprecated synonym for left-bearing, shift-up.
         """
 
-    @property
+    @checked_property
     def shift_down(self):
         """Downward shift - negative of shift-up."""
         return -self.shift_up
 
-    @property
+    @checked_property
     def width(self):
         """Raster width of glyph."""
         if not self._pixels:
             return 0
         return len(self._pixels[0])
 
-    @property
+    @checked_property
     def height(self):
         """Raster height of glyph."""
         return len(self._pixels)
 
-    @property
+    @checked_property
     def advance_width(self):
         """Internal advance width of glyph, including internal bearings."""
         return self.left_bearing + self.width + self.right_bearing
 
-    @property
+    @checked_property
     def padding(self):
         """Offset from raster sides to bounding box. Left, bottom, right, top."""
         if not self._pixels:
@@ -201,7 +204,7 @@ class GlyphProperties(DefaultProps):
         right = list(reversed(col_inked)).index(True)
         return Bounds(left, bottom, right, top)
 
-    @property
+    @checked_property
     def ink_bounds(self):
         """Minimum box encompassing all ink, in glyph origin coordinates."""
         bounds = Bounds(
@@ -215,7 +218,7 @@ class GlyphProperties(DefaultProps):
             return Bounds(0, 0, 0, 0)
         return bounds
 
-    @property
+    @checked_property
     def bounding_box(self):
         """Dimensions of minimum bounding box encompassing all ink."""
         return Coord(
@@ -412,9 +415,11 @@ class Glyph:
         """Default value for a property."""
         return vars(GlyphProperties).get(normalise_property(property), '')
 
+
     @property
     def properties(self):
-        return vars(self._props)
+        """Non-defaulted properties in order of default definition list."""
+        return {_k: self._props[_k] for _k in self._props if not _k.startswith('_')}
 
 
     ##########################################################################

@@ -19,7 +19,9 @@ from .scripting import scriptable, get_scriptables
 from .glyph import Glyph, Coord, Bounds, number
 from .encoding import charmaps
 from .label import Label, Tag, Char, Codepoint, label
-from .struct import extend_string, DefaultProps, normalise_property, as_tuple, writable_property
+from .struct import (
+    extend_string, DefaultProps, normalise_property, as_tuple, writable_property, checked_property
+)
 from .taggers import tagmaps
 
 
@@ -144,14 +146,14 @@ class FontProperties(DefaultProps):
         """
         return self.right_bearing
 
-    @as_tuple(('left_bearing', 'shift_up'), tuple_type=Coord)
+    @as_tuple(('left_bearing', 'shift_up'), tuple_type=Coord.create)
     def offset(self):
         """
         (horiz, vert) offset from origin to matrix start
         Deprecated synonym for left-bearing, shift-up.
         """
 
-    @property
+    @checked_property
     def shift_down(self):
         """Downward shift - negative of shift-up."""
         return -self.shift_up
@@ -195,7 +197,7 @@ class FontProperties(DefaultProps):
         # if dpi not given assumes 72 dpi, so point-size == pixel-size
         return int(self.pixel_size * self.dpi.y / 72.)
 
-    @property
+    @checked_property
     def pixel_size(self):
         """Get nominal pixel size (ascent + descent)."""
         if not self._font.glyphs:
@@ -233,7 +235,7 @@ class FontProperties(DefaultProps):
         # negative descent would mean font descenders are all above baseline
         return -self.shift_up - min(_glyph.padding.bottom for _glyph in self._font.glyphs)
 
-    @property
+    @checked_property
     def raster(self):
         """Minimum box encompassing all glyph matrices overlaid at fixed origin."""
         if not self._font.glyphs:
@@ -244,7 +246,7 @@ class FontProperties(DefaultProps):
         tops = tuple(_glyph.shift_up + _glyph.height for _glyph in self._font.glyphs)
         return Bounds(left=min(lefts), bottom=min(bottoms), right=max(rights), top=max(tops))
 
-    @property
+    @checked_property
     def raster_size(self):
         """Minimum box encompassing all glyph matrices overlaid at fixed origin."""
         return Coord(
@@ -252,7 +254,7 @@ class FontProperties(DefaultProps):
             self.raster.top - self.raster.bottom
         )
 
-    @property
+    @checked_property
     def ink_bounds(self):
         """Minimum bounding box encompassing all glyphs at fixed origin, font origin cordinates."""
         nonempty = [
@@ -272,7 +274,7 @@ class FontProperties(DefaultProps):
             top=self.shift_up + max(tops)
         )
 
-    @property
+    @checked_property
     def bounding_box(self):
         """Dimensions of minimum bounding box encompassing all glyphs at fixed origin."""
         return Coord(
@@ -280,7 +282,7 @@ class FontProperties(DefaultProps):
             self.ink_bounds.top - self.ink_bounds.bottom
         )
 
-    @property
+    @checked_property
     def padding(self):
         """Offset from raster sides to bounding box. Left, bottom, right, top."""
         return Bounds(
@@ -290,7 +292,7 @@ class FontProperties(DefaultProps):
             self.raster.top - self.ink_bounds.top,
         )
 
-    @property
+    @checked_property
     def spacing(self):
         """Monospace or proportional spacing."""
         # a _character-cell_ font is a font where all glyphs can be put inside an equal size cell
@@ -410,32 +412,10 @@ class Font:
             self._comments = {'': comments}
         else:
             self._comments = {_k: _v for _k, _v in comments.items()}
-        # update properties
-        # set encoding first so we can set labels
-        # NOTE - we must be careful NOT TO ACCESS CACHED PROPERTIES
-        #        until the constructor is complete
-        self._props = FontProperties(**properties)
-        # synonyms
-        for base, synonym in FontProperties._synonyms.items():
-            synonym, _, subattr = synonym.partition('.')
-            if synonym in self._props:
-                if base not in self._props:
-                    value = self._props[synonym]
-                    if subattr:
-                        value = getattr(value, subattr)
-                    self._props[base] = value
-                else:
-                    logging.error(
-                        f"Can't define both `{base}` and its synonym `{synonym}`, ignoring {synonym}."
-                    )
-        for synonym in FontProperties._synonyms.values():
-            synonym, _, subattr = synonym.partition('.')
-            try:
-                del self._props[synonym]
-            except KeyError:
-                pass
+
         # add labels if unset (needs encoding property)
-        self._add_labels()
+#        self._add_labels()
+
         # construct lookup tables
         self._tags = {
             _tag: _index
@@ -452,6 +432,12 @@ class Font:
             for _index, _glyph in enumerate(self._glyphs)
             if _glyph.char
         }
+        # update properties
+        # set encoding first so we can set labels
+        # NOTE - we must be careful NOT TO ACCESS CACHED PROPERTIES
+        #        until the constructor is complete
+        self._props = FontProperties(_font=self, **properties)
+
 
 
     def _add_labels(self):
@@ -584,7 +570,7 @@ class Font:
     @property
     def properties(self):
         """Non-defaulted properties in order of default definition list."""
-        return {_k: self._props[_k] for _k in self._props}
+        return {_k: self._props[_k] for _k in self._props if not _k.startswith('_')}
 
 
     ##########################################################################
