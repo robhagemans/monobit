@@ -558,7 +558,7 @@ class Font:
     def get_glyph(self, key=None, *, char=None, codepoint=None, tag=None, missing='raise'):
         """Get glyph by char, codepoint or tag; default if not present."""
         try:
-            return self._glyphs[self.get_index(key, tag=tag, char=char, codepoint=codepoint)]
+            index = self.get_index(key, tag=tag, char=char, codepoint=codepoint)
         except KeyError:
             if missing == 'default':
                 return self.get_default_glyph()
@@ -567,6 +567,7 @@ class Font:
             if missing is None or isinstance(missing, Glyph):
                 return None
             raise
+        return self._glyphs[index]
 
     def get_index(self, key=None, *, char=None, codepoint=None, tag=None):
         """Get index for given key or tag, if defined."""
@@ -609,7 +610,8 @@ class Font:
         try:
             return self.get_glyph(self.default_char)
         except KeyError:
-            return self.get_empty_glyph()
+            pass
+        return self.get_empty_glyph()
 
     @cache
     def get_empty_glyph(self):

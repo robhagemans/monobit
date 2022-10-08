@@ -754,16 +754,27 @@ def _create_xlfd_properties(font):
         'AVERAGE_WIDTH': str(round(float(font.average_advance) * 10)).replace('-', '~'),
     }
     # encoding dependent values
-    default_codepoint = font.get_default_glyph().codepoint
+    default_glyph = font.get_default_glyph()
     if charmaps.is_unicode(font.encoding):
-        if len(default_codepoint) > 1:
-            raise ValueError('Default glyph must not be a grapheme sequence.')
-        xlfd_props['DEFAULT_CHAR'] = default_codepoint[0]
+        if default_glyph.char:
+            default_codepoint = tuple(ord(_c) for _c in default_glyph.char)
+        else:
+            default_codepoint = default_glyph.codepoint
+        if not len(default_codepoint):
+            logging.error('BDF default glyph must have a character or codepoint.')
+        elif len(default_codepoint) > 1:
+            logging.error('BDF default glyph must not be a grapheme sequence.')
+        else:
+            xlfd_props['DEFAULT_CHAR'] = default_codepoint[0]
         # unicode encoding
         xlfd_props['CHARSET_REGISTRY'] = '"ISO10646"'
         xlfd_props['CHARSET_ENCODING'] = '"1"'
     else:
-        xlfd_props['DEFAULT_CHAR'] = bytes_to_int(default_codepoint)
+        default_codepoint = default_glyph.codepoint
+        if not len(default_codepoint):
+            logging.error('BDF default glyph must have a character or codepoint.')
+        else:
+            xlfd_props['DEFAULT_CHAR'] = bytes_to_int(default_codepoint)
         # try preferred name
         encoding_name = _UNIX_ENCODINGS.get(font.encoding, font.encoding)
         registry, *encoding = encoding_name.split('-', 1)
