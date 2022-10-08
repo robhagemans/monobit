@@ -436,11 +436,11 @@ class Glyph:
     def codepoint(self):
         return self._codepoint
 
-    def get_labels(self, suppress_codepoint=False):
+    def get_labels(self):
         """Get glyph labels."""
         labels = []
         # don't write out codepoints for unicode fonts as we have u+XXXX already
-        if self.codepoint and (not suppress_codepoint or not self.char):
+        if self.codepoint:
             labels.append(Codepoint(self.codepoint))
         if self.char:
             labels.append(Char(self.char))

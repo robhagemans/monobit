@@ -440,7 +440,7 @@ class TextWriter:
     paper: str
     empty: str
 
-    def _write_glyph(self, outstream, glyph, label=None, suppress_codepoint=False):
+    def _write_glyph(self, outstream, glyph, label=None):
         """Write out a single glyph in text format."""
         # glyph comments
         if glyph.comments:
@@ -448,7 +448,7 @@ class TextWriter:
         if label:
             labels = [label]
         else:
-            labels = glyph.get_labels(suppress_codepoint=suppress_codepoint)
+            labels = glyph.get_labels()
         if not labels:
             logging.warning('No labels for glyph: %s', glyph)
             return
@@ -545,9 +545,7 @@ class YaffWriter(TextWriter, YaffParams):
                     self._write_property(outstream, key, value, font.get_comments(key))
                 outstream.write('\n')
             for glyph in font.glyphs:
-                self._write_glyph(
-                    outstream, glyph, suppress_codepoint=charmaps.is_unicode(font.encoding)
-                )
+                self._write_glyph(outstream, glyph)
 
 
 class DrawWriter(TextWriter, DrawParams):
