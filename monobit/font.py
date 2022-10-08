@@ -703,24 +703,6 @@ class Font:
         ]
         return self.modify(glyphs)
 
-    def merged_with(self, other):
-        """Merge glyphs from other font into this one. Existing glyphs have preference."""
-        glyphs = list(self._glyphs)
-        encoder = self._get_encoder()
-        for glyph in other.glyphs:
-            # don't overwrite chars we already have
-            if glyph.char not in set(self._chars):
-                # exclude tags we already have
-                new_tags = set(glyph.tags) - set(self._tags)
-                # update codepoint based on this font's encoding
-                if encoder is not None:
-                    new_codepoint = encoder.codepoint(glyph.char)
-                    glyph = glyph.modify(tags=new_tags, codepoint=new_codepoint)
-                else:
-                    glyph = glyph.modify(tags=new_tags)
-                glyphs.append(glyph)
-        return self.modify(glyphs)
-
 
     # WARNING: this shadows builtin set() in annotations for method definitions below
     set = scriptable(modify, script_args=FontProperties.__annotations__, name='set')
