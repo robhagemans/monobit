@@ -26,7 +26,6 @@ def reverse_dict(orig_dict):
     return {_v: _k for _k, _v in orig_dict.items()}
 
 
-
 ##############################################################################
 # property sets
 
@@ -38,8 +37,8 @@ def extend_string(string, line):
         if _line
     )
 
-def normalise_property(item):
-    return item.replace('-', '_')
+def normalise_property(field):
+    return field.replace('-', '_')
 
 
 class Props(SimpleNamespace):
@@ -61,23 +60,23 @@ class Props(SimpleNamespace):
             args = ()
         super().__init__(*args, **kwargs)
 
-    def __getitem__(self, item):
+    def __getitem__(self, field):
         try:
-            return getattr(self, normalise_property(item))
+            return getattr(self, normalise_property(field))
         except AttributeError as e:
-            raise KeyError(e) from e
+            raise KeyError(field) from e
 
-    def __setitem__(self, item, value):
+    def __setitem__(self, field, value):
         try:
-            setattr(self, normalise_property(item), value)
+            setattr(self, normalise_property(field), value)
         except AttributeError as e:
-            raise KeyError(e) from e
+            raise KeyError(field) from e
 
-    def __delitem__(self, item):
+    def __delitem__(self, field):
         try:
-            delattr(self, normalise_property(item))
+            delattr(self, normalise_property(field))
         except AttributeError as e:
-            raise KeyError(e) from e
+            raise KeyError(field) from e
 
     def __len__(self):
         return len(vars(self))
@@ -91,43 +90,6 @@ class Props(SimpleNamespace):
 
 ##############################################################################
 # property sets with default values, override policy and type conversion
-
-# sentinel
-_NOT_SET = object()
-
-# converter decorators to use for calculated properties
-def reject_override(property):
-    def _reject_override_deco(fn):
-        def _set_value(value=_NOT_SET):
-            if not value is _NOT_SET:
-                # must have the calculated value
-                logging.warning(
-                    "Property `%s` is not overridable and can't be changed to %s.",
-                    property, repr(value)
-                )
-            raise KeyError(f'`{property}` is not overridable')
-        return _set_value
-    return _reject_override_deco
-
-def notify_override(property):
-    def _notify_override_deco(fn):
-        def _set_value(value=_NOT_SET):
-            if value is _NOT_SET:
-                return fn()
-            else:
-                # calculated value may be overridden but gives a notification
-                logging.info(
-                    'Property `%s` is overridden to %s.',
-                    property, repr(value)
-                )
-                return fn(value)
-        return _set_value
-    return _notify_override_deco
-
-
-def passthrough(arg=None):
-    """Any type no-op converter."""
-    return arg
 
 
 class DefaultProps(Props):
@@ -147,26 +109,41 @@ class DefaultProps(Props):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args)
-        # use setitem below, for value conversion
+        # use Props.__setitem__ for value conversion
         # we use None to *unset* properties
         for field, value in kwargs.items():
-            if field is not None:
+            if value is not None:
                 self[field] = value
         # if a type constructor is given in the annotations, use that to set the default
         # note that we're changing the *class* namespace on the *instance* initialiser
         # which feels a bit hacky
         # but this will be a no-op after the first instance has initialised
-        type(self)._set_defaults()
+        self._set_defaults()
 
-    def __setattr__(self, item, value):
-        converter = type(self).__annotations__.get(item, passthrough)
+    def _set_defaults(self):
+        """If a type constructor is given in the annotations, use that to set the default."""
+        cls = type(self)
+        for field, field_type in cls.__annotations__.items():
+            if field not in vars(cls):
+                setattr(cls, field, field_type())
+
+    @classmethod
+    def _get_default(cls, field):
+        """Default value for a property."""
+        return vars(cls).get(normalise_property(field), None)
+
+    def _defined(self, field):
+        """Writable property has been explicitly set."""
+        return vars(self).get(normalise_property(field), None)
+
+    def __setattr__(self, field, value):
         try:
-            value = converter(value)
+            converter = type(self).__annotations__[field]
         except KeyError:
-            # non overridable
             pass
         else:
-            super().__setattr__(item, value)
+            value = converter(value)
+        super().__setattr__(field, value)
 
     def __iter__(self):
         """Iterate on default definition order first, then remaining keys."""
@@ -176,49 +153,62 @@ class DefaultProps(Props):
         return chain(have_defaults, others)
 
 
-    @classmethod
-    def _set_defaults(cls):
-        """If a type constructor is given in the annotations, use that to set the default."""
-        for field, field_type in cls.__annotations__.items():
-            if field not in vars(cls):
-                try:
-                    setattr(cls, field, field_type())
-                except KeyError as e:
-                    # non overridable
-                    pass
+def writable_property(arg=None, *, field=None):
+    """Decorator to take property from property table, if defined; calculate otherwise."""
+    if not callable(arg):
+        return partial(writable_property, field=arg)
+    fn = arg
+    field = field or fn.__name__
+    field = normalise_property(field)
+
+    #@cache
+    @wraps(fn)
+    def _getter(self):
+        try:
+            # get property through vars()
+            # only use if explicitly set on the instance
+            return vars(self)[field]
+        except KeyError:
+            pass
+        return fn(self)
+
+    @wraps(fn)
+    def _setter(self, value):
+        # TODO: first check if new value equals old
+        logging.debug(f'Setting overridable property {field}={value}.')
+        vars(self)[field] = value
+
+    return property(_getter, _setter)
 
 
-    @classmethod
-    def _calculated_property(cls, *args, override='accept'):
-        """Decorator to take property from property table, if defined; calculate otherwise."""
-        if not args:
-            # return decorator with these arguments set as extra args
-            return partial(cls._calculated_property, override=override)
-        fn, *_ = args
-        name = fn.__name__
+def as_tuple(arg=None, *, fields=None, tuple_type=None):
+    """
+    Decorator to take summarise multiple fields as a (settable) tuple.
 
-        @property
-        @cache
-        @wraps(fn)
-        def _overridable_fn(self):
-            try:
-                # get property through vars()
-                # only use if explicitly set on the instance
-                return vars(self._props)[name]
-            except KeyError:
-                pass
-            return fn(self)
+    The decorated function is discarded except for the name, so use as:
+    @as_tuple(('x', 'y'))
+        def coord(): pass
+    """
+    if not callable(arg):
+        return partial(as_tuple, fields=arg, tuple_type=tuple_type)
+    fn = arg
 
-        # class namespace annotations of DefaultProps child class
-        # this is where we store converters to the property type
-        converter = cls.__annotations__.get(name, passthrough)
+    tuple_type = tuple_type or tuple
 
-        if override == 'reject':
-            cls.__annotations__[name] = reject_override(name)(converter)
-        elif override == 'notify':
-            cls.__annotations__[name] = notify_override(name)(converter)
+    @wraps(fn)
+    def _getter(self):
+        # in this case, always use the fields, whether defaulted or set
+        return tuple_type(
+            self[_normalise_property(field)]
+            for _field in fields
+        )
 
-        return _overridable_fn
+    @wraps(fn)
+    def _setter(self, value):
+        for field, element in zip(fields, value):
+            self[normalise_property(field)] = element
+
+    return property(_getter, _setter)
 
 
 ##############################################################################

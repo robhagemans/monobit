@@ -19,7 +19,7 @@ from .scripting import scriptable, get_scriptables
 from .glyph import Glyph, Coord, Bounds, number
 from .encoding import charmaps
 from .label import Label, Tag, Char, Codepoint, label
-from .struct import extend_string, DefaultProps, normalise_property
+from .struct import extend_string, DefaultProps, normalise_property, as_tuple, writable_property
 from .taggers import tagmaps
 
 
@@ -136,20 +136,260 @@ class FontProperties(DefaultProps):
     source_format: str
     history: str
 
-    # deprecated
-    # (horiz, vert) offset from origin to matrix start
-    offset: Coord.create
-    # horizontal offset from matrix right edge to rightward origin
-    tracking: int
+    @writable_property('right_bearing')
+    def tracking(self):
+        """
+        Horizontal offset from matrix right edge to rightward origin
+        Deprecated synonym for right-bearing.
+        """
+        return self.right_bearing
 
-    _synonyms = {
-        'right_bearing': 'tracking',
-        'left_bearing': 'offset.x',
-        'shift_up': 'offset.y',
-    }
+    @as_tuple(('left_bearing', 'shift_up'), tuple_type=Coord)
+    def offset(self):
+        """
+        (horiz, vert) offset from origin to matrix start
+        Deprecated synonym for left-bearing, shift-up.
+        """
+
+    @property
+    def shift_down(self):
+        """Downward shift - negative of shift-up."""
+        return -self.shift_up
+
+    @writable_property
+    def name(self):
+        """Name of font."""
+        if self.slant == self._get_default('slant'):
+            slant = ''
+        else:
+            # title-case
+            slant = self.slant.title()
+        if self.setwidth == self._get_default('setwidth'):
+            setwidth = ''
+        else:
+            setwidth = self.setwidth.title()
+        if (slant or setwidth) and self.weight == self._get_default('weight'):
+            weight = ''
+        else:
+            weight = self.weight.title()
+        return ' '.join(
+            str(_x) for _x in (self.family, setwidth, weight, slant, self.point_size) if _x
+        )
+
+    @writable_property
+    def family(self):
+        """Name of font family."""
+        # use source name if no family name defined
+        stem = PurePath(self.source_name).stem
+        # replace underscores with spaces
+        stem = stem.replace('_', '-')
+        # convert all-upper or all-lower to titlecase
+        if stem == stem.upper() or stem == stem.lower():
+            stem = stem.title()
+        return stem
+
+    @writable_property
+    def point_size(self):
+        """Nominal point height."""
+        # assume 72 points per inch (officially 72.27 pica points per inch)
+        # if dpi not given assumes 72 dpi, so point-size == pixel-size
+        return int(self.pixel_size * self.dpi.y / 72.)
+
+    @property
+    def pixel_size(self):
+        """Get nominal pixel size (ascent + descent)."""
+        if not self._font.glyphs:
+            return 0
+        return self.ascent + self.descent
+
+    @writable_property
+    def dpi(self):
+        """Target screen resolution in dots per inch."""
+        # if point-size has been overridden and dpi not set, determine from pixel-size & point-size
+        if self._defined('point-size') is not None:
+            dpi = (72 * self.pixel_size) // self.point_size
+        else:
+            # default: 72 dpi; 1 point == 1 pixel
+            dpi = 72
+        # stretch/shrink dpi.x if aspect ratio is not square
+        return Coord((dpi*self.pixel_aspect.x)//self.pixel_aspect.y, dpi)
+
+    @writable_property
+    def ascent(self):
+        """Get ascent (defaults to max ink height above baseline)."""
+        if not self._font.glyphs:
+            return 0
+        return self.shift_up + max(
+            _glyph.height - _glyph.padding.top
+            for _glyph in self._font.glyphs
+        )
+
+    @writable_property
+    def descent(self):
+        """Get descent (defaults to bottom/vertical offset)."""
+        if not self._font.glyphs:
+            return 0
+        # usually, descent is positive and offset is negative
+        # negative descent would mean font descenders are all above baseline
+        return -self.shift_up - min(_glyph.padding.bottom for _glyph in self._font.glyphs)
+
+    @property
+    def raster(self):
+        """Minimum box encompassing all glyph matrices overlaid at fixed origin."""
+        if not self._font.glyphs:
+            return Bounds(0, 0, 0, 0)
+        lefts = tuple(_glyph.left_bearing for _glyph in self._font.glyphs)
+        bottoms = tuple(_glyph.shift_up for _glyph in self._font.glyphs)
+        rights = tuple(_glyph.left_bearing + _glyph.width for _glyph in self._font.glyphs)
+        tops = tuple(_glyph.shift_up + _glyph.height for _glyph in self._font.glyphs)
+        return Bounds(left=min(lefts), bottom=min(bottoms), right=max(rights), top=max(tops))
+
+    @property
+    def raster_size(self):
+        """Minimum box encompassing all glyph matrices overlaid at fixed origin."""
+        return Coord(
+            self.raster.right - self.raster.left,
+            self.raster.top - self.raster.bottom
+        )
+
+    @property
+    def ink_bounds(self):
+        """Minimum bounding box encompassing all glyphs at fixed origin, font origin cordinates."""
+        nonempty = [
+            _glyph for _glyph in self._font.glyphs
+            if _glyph.bounding_box.x and _glyph.bounding_box.y
+        ]
+        if not nonempty:
+            return Bounds(self.left_bearing, self.shift_up, self.left_bearing, self.shift_up)
+        lefts, bottoms, rights, tops = zip(*(
+            _glyph.ink_bounds
+            for _glyph in nonempty
+        ))
+        return Bounds(
+            left=self.left_bearing + min(lefts),
+            bottom=self.shift_up + min(bottoms),
+            right=self.left_bearing + max(rights),
+            top=self.shift_up + max(tops)
+        )
+
+    @property
+    def bounding_box(self):
+        """Dimensions of minimum bounding box encompassing all glyphs at fixed origin."""
+        return Coord(
+            self.ink_bounds.right - self.ink_bounds.left,
+            self.ink_bounds.top - self.ink_bounds.bottom
+        )
+
+    @property
+    def padding(self):
+        """Offset from raster sides to bounding box. Left, bottom, right, top."""
+        return Bounds(
+            self.ink_bounds.left - self.raster.left,
+            self.ink_bounds.bottom - self.raster_bottom,
+            self.raster.right - self.ink_bounds.right,
+            self.raster.top - self.ink_bounds.top,
+        )
+
+    @property
+    def spacing(self):
+        """Monospace or proportional spacing."""
+        # a _character-cell_ font is a font where all glyphs can be put inside an equal size cell
+        # so that rendering the font becomes simply pasting in cells flush to each other. All ink
+        # for a glyph must be inside the cell.
+        #
+        # this means that:
+        # - all glyphs must have equal, positive advance width (except empty glyphs with advance zero).
+        # - for each glyph, the advance is greater than or equal to the bounding box width.
+        # - the line advance is greater than or equal to the font bounding box height.
+        # - there is no kerning
+        #
+        # a special case is the _multi-cell_ font, where a glyph may take up 0, 1 or 2 cells.
+        #
+        # a _monospace_ font is a font where all glyphs have equal advance_width.
+        #
+        if not self._font.glyphs:
+            return 'character-cell'
+        if any(_glyph.advance_width < 0 or _glyph.kern_to for _glyph in self._font.glyphs):
+            return 'proportional'
+        # don't count void glyphs (0 width and/or height) to determine whether it's monospace
+        advances = set(_glyph.advance_width for _glyph in self._font.glyphs if _glyph.advance_width)
+        monospaced = len(set(advances)) == 1
+        bispaced = len(set(advances)) == 2
+        ink_contained_y = self.line_height >= self.bounding_box.y
+        ink_contained_x = all(
+            _glyph.advance_width >= _glyph.bounding_box.x
+            for _glyph in self._font.glyphs
+        )
+        if ink_contained_x and ink_contained_y:
+            if monospaced:
+                return 'character-cell'
+            if bispaced:
+                return 'multi-cell'
+        if monospaced:
+            return 'monospace'
+        return 'proportional'
+
+    @writable_property
+    def default_char(self):
+        """Label for default character."""
+        repl = '\ufffd'
+        # TODO - make a font.chars property returning the keys object
+        if repl not in self._font._chars:
+            repl = ''
+        return Char(repl)
+
+    @writable_property
+    def average_advance(self):
+        """Get average glyph advance width, rounded to tenths of pixels."""
+        if not self._font.glyphs:
+            return self.left_bearing + self.right_bearing
+        return (
+            self.left_bearing
+            + sum(_glyph.advance_width for _glyph in self._font.glyphs) / len(self._font.glyphs)
+            + self.right_bearing
+        )
+
+    @writable_property
+    def max_advance(self):
+        """Maximum glyph advance width."""
+        if not self._font.glyphs:
+            return self.left_bearing + self.right_bearing
+        return (
+            self.left_bearing
+            + max(_glyph.advance_width for _glyph in self._font.glyphs)
+            + self.right_bearing
+        )
+
+    @writable_property
+    def cap_advance(self):
+        """Advance width of uppercase X."""
+        try:
+            return self._font.get_glyph('X').advance_width + self.left_bearing + self.right_bearing
+        except KeyError:
+            return 0
+
+    @writable_property
+    def x_height(self):
+        """Ink height of lowercase x."""
+        try:
+            return self._font.get_glyph('x').bounding_box.y
+        except KeyError:
+            return 0
+
+    @writable_property
+    def cap_height(self):
+        """Ink height of uppercase X."""
+        try:
+            return self._font.get_glyph('X').bounding_box.y
+        except KeyError:
+            return 0
+
+    @writable_property
+    def line_height(self):
+        """Distance between consecutive baselines, in pixels."""
+        return self.pixel_size + self.leading
 
 
-calculated_property = FontProperties._calculated_property
 
 
 
@@ -341,11 +581,6 @@ class Font:
         """Get global or property comments."""
         return self._comments.get(normalise_property(property), '')
 
-    @classmethod
-    def get_default(cls, property):
-        """Default value for a property."""
-        return vars(FontProperties).get(normalise_property(property), '')
-
     @property
     def properties(self):
         """Non-defaulted properties in order of default definition list."""
@@ -444,256 +679,6 @@ class Font:
             if _glyph.codepoint
             and _glyph.char
         }, name=f"implied-{self.name}")
-
-
-    ##########################################################################
-    # synonym properties
-
-    @property
-    def tracking(self):
-        """Deprecated synonym for right-bearing."""
-        return self.right_bearing
-
-    @property
-    def offset(self):
-        """Deprecated synonym for left-bearing, shift-up."""
-        return Coord(self.left_bearing, self.shift_up)
-
-
-    ##########################################################################
-    # calculated properties
-
-    @calculated_property
-    def name(self):
-        """Name of font."""
-        if self.slant == self.get_default('slant'):
-            slant = ''
-        else:
-            # title-case
-            slant = self.slant.title()
-        if self.setwidth == self.get_default('setwidth'):
-            setwidth = ''
-        else:
-            setwidth = self.setwidth.title()
-        if (slant or setwidth) and self.weight == self.get_default('weight'):
-            weight = ''
-        else:
-            weight = self.weight.title()
-        return ' '.join(
-            str(_x) for _x in (self.family, setwidth, weight, slant, self.point_size) if _x
-        )
-
-    @calculated_property
-    def family(self):
-        """Name of font family."""
-        # use source name if no family name defined
-        stem = PurePath(self.source_name).stem
-        # replace underscores with spaces
-        stem = stem.replace('_', '-')
-        # convert all-upper or all-lower to titlecase
-        if stem == stem.upper() or stem == stem.lower():
-            stem = stem.title()
-        return stem
-
-    @calculated_property(override='notify')
-    def point_size(self):
-        """Nominal point height."""
-        # assume 72 points per inch (officially 72.27 pica points per inch)
-        # if dpi not given assumes 72 dpi, so point-size == pixel-size
-        return int(self.pixel_size * self.dpi.y / 72.)
-
-    @calculated_property(override='reject')
-    def pixel_size(self):
-        """Get nominal pixel size (ascent + descent)."""
-        if not self._glyphs:
-            return 0
-        return self.ascent + self.descent
-
-    @calculated_property
-    def dpi(self):
-        """Target screen resolution in dots per inch."""
-        # if point-size has been overridden and dpi not set, determine from pixel-size & point-size
-        if 'point-size' in self._props:
-            dpi = (72 * self.pixel_size) // self.point_size
-        else:
-            # default: 72 dpi; 1 point == 1 pixel
-            dpi = 72
-        # stretch/shrink dpi.x if aspect ratio is not square
-        return Coord((dpi*self.pixel_aspect.x)//self.pixel_aspect.y, dpi)
-
-    @calculated_property
-    def ascent(self):
-        """Get ascent (defaults to max ink height above baseline)."""
-        if not self._glyphs:
-            return 0
-        return self.shift_up + max(
-            _glyph.height - _glyph.padding.top
-            for _glyph in self._glyphs
-        )
-
-    @calculated_property
-    def descent(self):
-        """Get descent (defaults to bottom/vertical offset)."""
-        if not self._glyphs:
-            return 0
-        # usually, descent is positive and offset is negative
-        # negative descent would mean font descenders are all above baseline
-        return -self.shift_up - min(_glyph.padding.bottom for _glyph in self._glyphs)
-
-    @calculated_property(override='reject')
-    def raster(self):
-        """Minimum box encompassing all glyph matrices overlaid at fixed origin."""
-        if not self._glyphs:
-            return Bounds(0, 0, 0, 0)
-        lefts = tuple(_glyph.left_bearing for _glyph in self._glyphs)
-        bottoms = tuple(_glyph.shift_up for _glyph in self._glyphs)
-        rights = tuple(_glyph.left_bearing + _glyph.width for _glyph in self._glyphs)
-        tops = tuple(_glyph.shift_up + _glyph.height for _glyph in self._glyphs)
-        return Bounds(left=min(lefts), bottom=min(bottoms), right=max(rights), top=max(tops))
-
-    @calculated_property(override='reject')
-    def raster_size(self):
-        """Minimum box encompassing all glyph matrices overlaid at fixed origin."""
-        return Coord(
-            self.raster.right - self.raster.left,
-            self.raster.top - self.raster.bottom
-        )
-
-    @calculated_property(override='reject')
-    def ink_bounds(self):
-        """Minimum bounding box encompassing all glyphs at fixed origin, font origin cordinates."""
-        nonempty = [
-            _glyph for _glyph in self._glyphs
-            if _glyph.bounding_box.x and _glyph.bounding_box.y
-        ]
-        if not nonempty:
-            return Bounds(self.left_bearing, self.shift_up, self.left_bearing, self.shift_up)
-        lefts, bottoms, rights, tops = zip(*(
-            _glyph.ink_bounds
-            for _glyph in nonempty
-        ))
-        return Bounds(
-            left=self.left_bearing + min(lefts),
-            bottom=self.shift_up + min(bottoms),
-            right=self.left_bearing + max(rights),
-            top=self.shift_up + max(tops)
-        )
-
-    @calculated_property(override='reject')
-    def bounding_box(self):
-        """Dimensions of minimum bounding box encompassing all glyphs at fixed origin."""
-        return Coord(
-            self.ink_bounds.right - self.ink_bounds.left,
-            self.ink_bounds.top - self.ink_bounds.bottom
-        )
-
-    @calculated_property(override='reject')
-    def padding(self):
-        """Offset from raster sides to bounding box. Left, bottom, right, top."""
-        return Bounds(
-            self.ink_bounds.left - self.raster.left,
-            self.ink_bounds.bottom - self.raster_bottom,
-            self.raster.right - self.ink_bounds.right,
-            self.raster.top - self.ink_bounds.top,
-        )
-
-    @calculated_property(override='reject')
-    def spacing(self):
-        """Monospace or proportional spacing."""
-        # a _character-cell_ font is a font where all glyphs can be put inside an equal size cell
-        # so that rendering the font becomes simply pasting in cells flush to each other. All ink
-        # for a glyph must be inside the cell.
-        #
-        # this means that:
-        # - all glyphs must have equal, positive advance width (except empty glyphs with advance zero).
-        # - for each glyph, the advance is greater than or equal to the bounding box width.
-        # - the line advance is greater than or equal to the font bounding box height.
-        # - there is no kerning
-        #
-        # a special case is the _multi-cell_ font, where a glyph may take up 0, 1 or 2 cells.
-        #
-        # a _monospace_ font is a font where all glyphs have equal advance_width.
-        #
-        if not self._glyphs:
-            return 'character-cell'
-        if any(_glyph.advance_width < 0 or _glyph.kern_to for _glyph in self._glyphs):
-            return 'proportional'
-        # don't count void glyphs (0 width and/or height) to determine whether it's monospace
-        advances = set(_glyph.advance_width for _glyph in self._glyphs if _glyph.advance_width)
-        monospaced = len(set(advances)) == 1
-        bispaced = len(set(advances)) == 2
-        ink_contained_y = self.line_height >= self.bounding_box.y
-        ink_contained_x = all(
-            _glyph.advance_width >= _glyph.bounding_box.x
-            for _glyph in self._glyphs
-        )
-        if ink_contained_x and ink_contained_y:
-            if monospaced:
-                return 'character-cell'
-            if bispaced:
-                return 'multi-cell'
-        if monospaced:
-            return 'monospace'
-        return 'proportional'
-
-    @calculated_property
-    def default_char(self):
-        """Label for default character."""
-        repl = '\ufffd'
-        if repl not in self._chars:
-            repl = ''
-        return Char(repl)
-
-    @calculated_property(override='notify')
-    def average_advance(self):
-        """Get average glyph advance width, rounded to tenths of pixels."""
-        if not self._glyphs:
-            return self.left_bearing + self.right_bearing
-        return (
-            self.left_bearing
-            + sum(_glyph.advance_width for _glyph in self._glyphs) / len(self._glyphs)
-            + self.right_bearing
-        )
-
-    @calculated_property(override='notify')
-    def max_advance(self):
-        """Maximum glyph advance width."""
-        if not self._glyphs:
-            return self.left_bearing + self.right_bearing
-        return (
-            self.left_bearing
-            + max(_glyph.advance_width for _glyph in self._glyphs)
-            + self.right_bearing
-        )
-
-    @calculated_property(override='notify')
-    def cap_advance(self):
-        """Advance width of uppercase X."""
-        try:
-            return self.get_glyph('X').advance_width + self.left_bearing + self.right_bearing
-        except KeyError:
-            return 0
-
-    @calculated_property(override='notify')
-    def x_height(self):
-        """Ink height of lowercase x."""
-        try:
-            return self.get_glyph('x').bounding_box.y
-        except KeyError:
-            return 0
-
-    @calculated_property(override='notify')
-    def cap_height(self):
-        """Ink height of uppercase X."""
-        try:
-            return self.get_glyph('X').bounding_box.y
-        except KeyError:
-            return 0
-
-    @calculated_property(override='reject')
-    def line_height(self):
-        """Distance between consecutive baselines, in pixels."""
-        return self.pixel_size + self.leading
 
 
     ##########################################################################
