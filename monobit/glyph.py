@@ -312,23 +312,21 @@ class Glyph:
             **{**self.properties, **kwargs}
         )
 
-    def add_labels(self, encoder):
-        """Set labels using provided encoder object."""
-        # use codepage to find char if not set
-        if not self.char:
-            return self.modify(char=encoder.char(self.codepoint))
+    def label(self, codepoint_from=None, char_from=None, overwrite=False):
+        """
+           Set labels using provided encoder object.
+
+           char_from: Encoder object used to set char labels
+           codepoint_from: Encoder object used to set codepoint labels
+        """
+        glyph = self
         # use codepage to find codepoint if not set
-        if not self.codepoint:
-            return self.modify(codepoint=encoder.codepoint(self.char))
-        # both are set, check if consistent with codepage
-        enc_char = encoder.char(self.codepoint)
-        if (self.char != enc_char) and is_graphical(self.char) and is_graphical(enc_char):
-            logging.info(
-                f'Inconsistent encoding at {Codepoint(self.codepoint)}: '
-                f'mapped to {Char(self.char)} '
-                f'instead of {Char(enc_char)} per stated encoding.'
-            )
-        return self
+        if overwrite or not self.codepoint:
+            glyph = glyph.modify(codepoint=codepoint_from.codepoint(self.char))
+        # use codepage to find char if not set
+        if overwrite or not self.char:
+            glyph = glyph.modify(char=char_from.char(self.codepoint))
+        return glyph
 
     def add(
             self, *,

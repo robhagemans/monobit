@@ -667,6 +667,35 @@ class Font:
             raise ValueError(f'Parameter `how` must be one of `tags` or `comments`, not `{how}`')
         return action(self)
 
+    @scriptable
+    def label(self, codepoint_from:str='', char_from:str='', overwrite:bool=False):
+        """Add character and codepoint labels."""
+        font = self
+        if codepoint_from == 'index':
+            font = font.modify(glyphs=tuple(
+                _glyph.modify(codepoint=(_index,))
+                if (overwrite or not _glyph.codepoint)
+                else _glyph
+                for _index, _glyph in enumerate(self._glyphs)
+            ))
+        elif codepoint_from:
+            # update glyph labels
+            encoding = charmaps[codepoint_from]
+            if encoding is not None:
+                font = font.modify(glyphs=tuple(
+                    _glyph.label(codepoint_from=encoding, overwrite=overwrite)
+                    for _glyph in self._glyphs
+                ))
+        if char_from:
+            # update glyph labels
+            encoding = charmaps[char_from]
+            if encoding is not None:
+                font = font.modify(glyphs=tuple(
+                    _glyph.label(char_from=encoding, overwrite=overwrite)
+                    for _glyph in self._glyphs
+                ))
+        return font
+
     # need converter from string to set of labels to script this
     #@scriptable
     def subset(self, keys=(), *, chars:set=(), codepoints:set=(), tags:set=()):
