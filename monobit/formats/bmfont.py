@@ -449,7 +449,8 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=(),
                     for _offs in range(0, len(bits), char.width)
                 ))
             # append kernings (this glyph left)
-            if info['unicode']:
+            is_unicode = bool(_to_int(info['unicode']))
+            if is_unicode:
                 right_kerning = {
                     Char(chr(_kern.second)): _kern.amount
                     for _kern in kernings
@@ -462,7 +463,7 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=(),
                     if _kern.first == char.id
                 }
             glyph = glyph.modify(
-                codepoint=_codepoint_for_id(char.id, info['unicode']),
+                codepoint=_codepoint_for_id(char.id, is_unicode),
                 left_bearing=char.xoffset,
                 shift_up=max_height-glyph.height-char.yoffset,
                 right_bearing=char.xadvance - char.xoffset - char.width,
