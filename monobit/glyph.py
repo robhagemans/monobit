@@ -110,10 +110,11 @@ class KernTable(dict):
                 _row.split(None, 1)
                 for _row in table.splitlines()
             )
-        super().__init__({
+        table = {
             label(_k): int(_v)
             for _k, _v in table.items()
-        })
+        }
+        super().__init__(table)
 
     def __str__(self):
         """Convert kerning table to multiline string."""
