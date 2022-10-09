@@ -422,7 +422,7 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=(),
             image.close()
         # check if font is monochromatic
         colourset = list(set(_tup for _sprite in sprites for _tup in _sprite))
-        if len(colourset) == 1:
+        if len(colourset) <= 1:
             logging.warning('All glyphs are blank.')
             # only one colour found
             bg, fg = colourset[0], None
@@ -441,10 +441,13 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=(),
         for char, sprite in zip(chars, sprites):
             #if char.width and char.height:
             bits = tuple(_c == fg for _c in sprite)
-            glyph = Glyph(tuple(
-                bits[_offs: _offs+char.width]
-                for _offs in range(0, len(bits), char.width)
-            ))
+            if not char.width:
+                glyph = Glyph.blank(width=0, height=char.height)
+            else:
+                glyph = Glyph(tuple(
+                    bits[_offs: _offs+char.width]
+                    for _offs in range(0, len(bits), char.width)
+                ))
             # append kernings (this glyph left)
             if info['unicode']:
                 right_kerning = {
