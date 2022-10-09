@@ -38,9 +38,6 @@ x-height: 7
 cap-height: 7
 ascent: 7
 descent: 2
-left-bearing: 0
-right-bearing: 0
-shift-up: -2
 encoding: iso8859-1
 default-char: 0x7f
 converter: monobit v0.22
