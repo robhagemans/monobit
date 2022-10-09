@@ -340,6 +340,9 @@ class TextConverter:
                 lines = (_line.strip() for _line in value.splitlines())
                 lines = (_line for _line in lines if _line)
                 lines = (_line[1:-1] if _line.startswith('"') and _line.endswith('"') else _line for _line in lines)
+                # Props object converts only non-leading underscores (for internal use)
+                # so we need to mae sure e turn those into dashes or we'll drop the prop
+                key = key.replace('_', '-')
                 self.props[key] = '\n'.join(lines)
                 # property comments
                 if comments:
