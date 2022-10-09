@@ -202,11 +202,8 @@ class TestFormats(BaseTester):
         webby_mod1, *_ = monobit.load(self.font_path / 'webby-small-kerned.yaff')
         monobit.save(webby_mod1, self.temp_path / 'webby-small-kerned.bmf', where=self.temp_path)
         webby_mod2, *_ = monobit.load(self.temp_path / 'webby-small-kerned.bmf')
-        text1 = monobit.render_text(webby_mod1, b'sjifjij', margin=(0,2))
-        text2 = monobit.render_text(webby_mod2, b'sjifjij', margin=(0,2))
-        print(text1)
-        print()
-        print(text2)
+        text1 = monobit.render_text(webby_mod1, b'sjifjij')
+        text2 = monobit.render_text(webby_mod2, b'sjifjij')
         assert text1 == text2
 
     def test_import_c(self):
