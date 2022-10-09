@@ -283,7 +283,7 @@ def _read_strike(f, props):
     else:
         spacing = [props.tf_XSize] * nchars
     # kerning table
-    # amiga "kerning" is a horizontal offset; can be pos (to right) or neg
+    # amiga "kerning" is a left bearing; can be pos (to right) or neg
     if props.tf_CharKern:
         kerning = be.int16.array(nchars).from_bytes(data, loc + props.tf_CharKern)
     else:
@@ -323,12 +323,15 @@ def _convert_amiga_font(amiga_props, glyphs):
 
 
 def _convert_amiga_glyphs(glyphs, amiga_props):
-    """Deal with negative kerning by turning it into a global negative offset."""
+    """Convert Amiga glyph properties to monobit."""
     # apply kerning and spacing
     glyphs = [
         _glyph.modify(
-            offset=Coord(_glyph.kerning, -(amiga_props.tf_YSize - amiga_props.tf_Baseline)),
-            advance=_glyph.spacing
+            left_bearing=_glyph.kerning,
+            shift_up=-(amiga_props.tf_YSize - amiga_props.tf_Baseline),
+            #advance_width=_glyph.spacing
+        ).modify(
+            right_bearing=_glyph.spacing-_glyph.left_bearing
         )
         for _glyph in glyphs
     ]
@@ -357,11 +360,12 @@ def _convert_amiga_props(amiga_props):
     props.revision = amiga_props.dfh_Revision
     #props.offset = Coord(offset_x, -(amiga_props.tf_YSize - amiga_props.tf_Baseline))
     # tf_Style
-    props.weight = 'bold' if amiga_props.tf_Style.FSF_BOLD else Font.get_default('weight')
-    props.slant = 'italic' if amiga_props.tf_Style.FSF_ITALIC else Font.get_default('slant')
-    props.setwidth = (
-        'expanded' if amiga_props.tf_Style.FSF_EXTENDED else Font.get_default('setwidth')
-    )
+    if amiga_props.tf_Style.FSF_BOLD:
+        props.weight = 'bold'
+    if amiga_props.tf_Style.FSF_ITALIC:
+        props.slant = 'italic'
+    if amiga_props.tf_Style.FSF_EXTENDED:
+        props.setwidth = 'expanded'
     if amiga_props.tf_Style.FSF_UNDERLINED:
         props.decoration = 'underline'
     # tf_Flags

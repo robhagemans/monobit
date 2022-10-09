@@ -708,10 +708,15 @@ def _parse_win_props(fnt, win_props):
         'point-size': win_props.dfPoints,
         'slant': 'italic' if win_props.dfItalic else 'roman',
         # Windows dfAscent means distance between matrix top and baseline
+        # and it calls the space where accents go the dfInternalLeading
+        # which is specified to be 'inside the bounds set by dfPixHeight'
         'ascent': win_props.dfAscent - win_props.dfInternalLeading,
-        'descent': win_props.dfPixHeight - win_props.dfAscent,
-        'offset': Coord(0, win_props.dfAscent - win_props.dfPixHeight),
-        'leading': win_props.dfExternalLeading,
+        # the dfPixHeight is the 'height of the character bitmap', i.e. our raster-size.y
+        # and dfAscent is the distance between the raster top and the baseline,
+        #'descent': win_props.dfPixHeight - win_props.dfAscent,
+        'shift-up': win_props.dfAscent - win_props.dfPixHeight,
+        # dfExternalLeading is the 'amount of extra leading ... the application add between rows'
+        'line-height': win_props.dfPixHeight + win_props.dfExternalLeading,
         'default-char': win_props.dfDefaultChar + win_props.dfFirstChar,
     }
     if win_props.dfPixWidth:
@@ -915,6 +920,10 @@ def create_fnt(font, version=0x200):
     charset = charset_map.get(font.encoding, _FALLBACK_CHARSET)
     # only include single-byte encoded glyphs
     codepoints = tuple(_cp[0] for _cp in font.get_codepoints() if len(_cp) == 1)
+    if not codepoints:
+        raise FileFormatError(
+            'Windows font can only encode glyphs with single-byte codepoints; none found in font.'
+        )
     # FNT can hold at most the codepoints 0..256 as these fields are byte-sized
     min_ord = min(codepoints)
     max_ord = min(255, max(codepoints))
@@ -977,10 +986,11 @@ def create_fnt(font, version=0x200):
         dfVertRes=font.dpi.y,
         dfHorizRes=font.dpi.x,
         # Windows dfAscent means distance between matrix top and baseline
-        dfAscent=font.offset.y + font.raster_size.y,
+        dfAscent=font.shift_up + font.raster_size.y,
         #'ascent': win_props.dfAscent - win_props.dfInternalLeading,
-        dfInternalLeading=font.offset.y + font.raster_size.y - font.ascent,
-        dfExternalLeading=font.leading,
+        dfInternalLeading=font.shift_up + font.raster_size.y - font.ascent,
+        #'line-height': win_props.dfPixHeight + win_props.dfExternalLeading,
+        dfExternalLeading=font.line_height-font.raster_size.y,
         dfItalic=(font.slant in ('italic', 'oblique')),
         dfUnderline=('underline' in font.decoration),
         dfStrikeOut=('strikethrough' in font.decoration),

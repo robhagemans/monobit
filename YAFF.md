@@ -206,19 +206,26 @@ The following are font properties `monobit` is aware of. Other properties may be
 _Metrics_ are properties that affect how the font is rendered. There are per-glyph metrics and global metrics.
 
 Global metrics are:
-- `direction`: Direction of writing. At present, only `left-to-right` is supported.
-- `leading`: Additional line spacing (i.e. vertical spacing in a horizontal font) in excess of the `pixel-height`.
+- `direction`: Direction of writing. At present, only `left-to-right` or `right-to-left` are supported.
+- `line-height`: Vertical spacing between consecutive baselines.
 
 Per-glyph metrics are:
-- `offset` (_x_ _y_ pair): The shift from the _glyph origin_ to the _raster origin_.
-- `tracking`: Spacing following the glyph raster (i.e. to the right in a left-to-right font).
-- `kern-to`: Adjustment to tracking for specific glyph pairs. E.g. the pair `AV` may have negative
+- `left-bearing`: Horizontal offset (in direction of writing) between leftward origin and left raster edge.
+- `right-bearing`: Horizontal offset (in direction of writing) between rightward origin and right raster edge.
+- `shift-up`: Upward shift from baseline to raster bottom.
+- `right-kerning`: Adjustment to right bearing for specific glyph pairs. E.g. the pair `AV` may have negative
 kerning, so that they are displayed tighter than they otherwise would. Such an adjustment is
-specified in the `kern-to` property of the `A` glyph, as a pair of the label for the `V` glyph and
+specified in the `right-kerning` property of the `A` glyph, as a pair of the label for the `V` glyph and
 a numeric adjustment value.
 
-The per-glyph metrics (except `kern-to`) may be specified globally, in which case they apply to all
-glyphs.
+The per-glyph metrics (except `right-kerning`) may be specified globally, in which case they apply to all
+glyphs. If metrics are specified both globally and per-glyph, they are added.
+
+Deprecated synonyms are:
+- `offset` (_x_ _y_ pair): Equal to (`left-bearing`, `shift-up`).
+- `tracking`: Equal to `right-bearing`.
+- `kern-to`: Equal to `right-kerning`.
+
 
 ##### Characteristics
 
@@ -228,6 +235,7 @@ _Characteristics_ are descriptive in nature. They can be specified or calculated
 - `ascent`: height of lowercase letters such as `f` that extend above the x-height.
 - `descent`: extent of lowercase letters such as `j` below the baseline.
 - `pixel-size`: pixel size (equals ascent plus descent).
+- `leading`: Additional vertical line spacing in excess of the `pixel-size`.
 
 Characteristics inferred from the glyphs are:
 - `raster`: largest raster needed to define a glyph; coordinates (left, bottom, right, top)
@@ -260,6 +268,7 @@ Font description characteristics that can be used to compare different fonts in 
 ##### Metadata
 
 _Metadata_ are circumstantial properties. They can be related to authorship:
+- `author`: author of the font
 - `foundry`: author or publisher of the font
 - `copyright`: copyright information
 - `notice`: licensing information
@@ -274,8 +283,6 @@ Or they can be related to processing:
 - `source-name`: file name from which the font was originally extracted.
 - `source-format`: file format from which the font was originally extracted.
 - `history`: summary of processing steps applied since extraction.
-
-
 
 
 ##### Illustration of key properties
@@ -297,14 +304,14 @@ The below figure illustrates the typographic properties. Note that the font show
                 |   │       │ │ │ │█│ │█│   │█│ │█│   │ │█│█│   │█│ │ │   │ │ │█│  ▓│ │ │ │   │  │  │
                             ├─┼─┼─O─┼─┼─┤  ─O─┼─┼─┤  ─O─┼─┼─┤  ─O─┼─┼─┤  ─O─┼─┼─┤  ─O─┼─┼─┤   ┴  ┴  ┴  ┬
                 |   │       │ │ │ │ │ │ │   │ │ │ │   │ │ │ │   │ │ │ │   │█│█│ │▓  │ │ │ │            │
-                ┴           ├─┼─┼─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤            ┴
-    pixel-size = 6  │       │ │ │ │ │ │ │   │ │ │ │   │ │ │ │   │ │ │ │   │ │ │▓│   │ │ │ │            descent = 1
-                    ┴   ┬   X─┴─┴─┴─┴─┴─┘  ─┴─┴─┴─┘  ─┴─┴─┴─┘  ─┴─┴─┴─┘  ─┴─┴─┴─┘  ─┴─┴─┴─┘
-    raster-height = 8   │
-                        ┴   ┌─┬─┬─┬─┬─┬─┐  ─┬─┬─┬─┐  ─┬─┬─┬─┐  ─┬─┬─┬─┐  ─┬─┬─┬─┐  ─┬─┬─┬─┐ . . top-line
-              leading = 1   │ │ │ │ │ │ │   │ │ │ │   │█│ │ │   │ │ │ │   │ │ │ │   │ │ │ │
-                            ├─┼─┼─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤ . . ascent-line
-                            │ │ │ │ │ │ │   │ │ │ │   │ │█│ │   │ │█│█│   │ │ │█│   │ │ │ │
+                ┴       ┬   ├─┼─┼─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤            ┴
+    pixel-size = 6  │   │   │ │ │ │ │ │ │   │ │ │ │   │ │ │ │   │ │ │ │   │ │ │▓│   │ │ │ │            descent = 1
+                    ┴       X─┴─┴─┴─┴─┴─┘  ─┴─┴─┴─┘  ─┴─┴─┴─┘  ─┴─┴─┴─┘  ─┴─┴─┴─┘  ─┴─┴─┴─┘
+    raster-size.y = 8   │
+                            ┌─┬─┬─┬─┬─┬─┐  ─┬─┬─┬─┐  ─┬─┬─┬─┐  ─┬─┬─┬─┐  ─┬─┬─┬─┐  ─┬─┬─┬─┐ . . top-line
+                        │   │ │ │ │ │ │ │   │ │ │ │   │█│ │ │   │ │ │ │   │ │ │ │   │ │ │ │
+                        ┴   ├─┼─┼─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤ . . ascent-line
+              leading = 3   │ │ │ │ │ │ │   │ │ │ │   │ │█│ │   │ │█│█│   │ │ │█│   │ │ │ │
                             ├─┼─┼─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤ . . cap-line
                             │ │ │ │ │█│ │   │ │ │ │   │ │ │ │   │█│ │ │   │ │ │ │   │ │ │█│
                             ├─┼─┼─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤ . . mean-line
@@ -312,18 +319,18 @@ The below figure illustrates the typographic properties. Note that the font show
                             ├─┼─┼─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤
                             │ │ │ │█│█│█│   │ │█│ │   │█│ │█│   │█│ │ │   │ │ │█│   │█│ │ │
                             ├─┼─┼─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤
-                            │ │ │ │█│ │█│   │█│ │█│   │ │█│█│   │█│ │ │   │ │ │█│  ▓│ │ │ │
-          offset.y = -2 O   ├─┼─┼─O─┼─┼─┤  ─O─┼─┼─┤  ─O─┼─┼─┤  ─O─┼─┼─┤  ─O─┼─┼─┤  ─O─┼─┼─┤ . . baseline
+            shift-up = -2   │ │ │ │█│ │█│   │█│ │█│   │ │█│█│   │█│ │ │   │ │ │█│  ▓│ │ │ │
+                        O   ├─┼─┼─O─┼─┼─┤  ─O─┼─┼─┤  ─O─┼─┼─┤  ─O─┼─┼─┤  ─O─┼─┼─┤  ─O─┼─┼─┤ . . baseline
                         │   │ │ │ │ │ │ │   │ │ │ │   │ │ │ │   │ │ │ │   │█│█│ │▓  │ │ │ │
                             ├─┼─┼─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤ . . descent-line
                         │   │ │ │ │ │ │ │   │ │ │ │   │ │ │ │   │ │ │ │   │ │ │▓│   │ │ │ │
                         X   X─┴─┴─┴─┴─┴─┘  ─┴─┴─┴─┘  ─┴─┴─┴─┘  ─┴─┴─┴─┘  ─┴─┴─┴─┘  ─┴─┴─┴─┘ . . bottom-line
 
-                            X─ ─ ─O offset.x = -3
+                            X─ ─ ─O left-bearing = -3
 
-           raster-width = 6 ├─ ─ ─ ─ ─ ─┤
+          raster-size.x = 6 ├─ ─ ─ ─ ─ ─┤
                                   O─ ─ ─ ─ ─O advance-width = 5
-                                        ├─ ─O tracking = 2
+                                        ├─ ─O right-bearing = 2
 
 
                             O = glyph-origin

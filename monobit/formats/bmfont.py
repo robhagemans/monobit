@@ -437,6 +437,7 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=(),
             if sum(bg) > sum(fg):
                 bg, fg = fg, bg
         # extract glyphs
+        max_height = max(char.height + char.yoffset for char in chars)
         for char, sprite in zip(chars, sprites):
             #if char.width and char.height:
             bits = tuple(_c == fg for _c in sprite)
@@ -446,24 +447,23 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=(),
             ))
             # append kernings (this glyph left)
             if info['unicode']:
-                kern_to = {
+                right_kerning = {
                     Char(chr(_kern.second)): _kern.amount
                     for _kern in kernings
                     if _kern.first == char.id
                 }
             else:
-                kern_to = {
+                right_kerning = {
                     _codepoint_for_id(_kern.second, False): _kern.amount
                     for _kern in kernings
                     if _kern.first == char.id
                 }
-            # max_height is used further down as well
-            max_height = max(char.height + char.yoffset for char in chars)
             glyph = glyph.modify(
                 codepoint=_codepoint_for_id(char.id, info['unicode']),
-                offset=(char.xoffset, max_height-glyph.height-char.yoffset),
-                tracking=char.xadvance - char.xoffset - char.width,
-                kern_to=kern_to
+                left_bearing=char.xoffset,
+                shift_up=max_height-glyph.height-char.yoffset,
+                right_bearing=char.xadvance - char.xoffset - char.width,
+                right_kerning=right_kerning
             )
             glyphs.append(glyph)
     for file in image_files.values():
@@ -482,14 +482,15 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=(),
         'source-format': 'BMFont ({} descriptor; {} spritesheet)'.format(bmformat, ','.join(imgformats)),
         'source-name': Path(name).name,
         'family': bmfont_props.pop('face'),
-        # assume line_spacing == pixel-size == ascent + descent (i.e. no leading)
-        # this seems to lead to too high values with fonts produces by Angelcode BMFont
-        'ascent': common.lineHeight - (max_height - common.base),
-        'descent': max_height - common.base,
-        'weight': 'bold' if _to_int(bmfont_props.pop('bold')) else Font.get_default('weight'),
-        'slant': 'italic' if _to_int(bmfont_props.pop('italic')) else Font.get_default('slant'),
+        'line-height': common.lineHeight,
+        #common.base = font.raster_size.y + font.shift_up,
+        'shift-up': common.base - Font(glyphs).raster_size.y,
         'encoding': encoding,
     }
+    if _to_int(bmfont_props.pop('bold')):
+        properties['weight'] = 'bold'
+    if _to_int(bmfont_props.pop('italic')):
+        properties['slant'] = 'italic'
     # drop other props if they're default value
     default_bmfont_props = {
         'stretchH': '100',
@@ -622,7 +623,7 @@ def _create_spritesheets(font, size=(256, 256), packed=False):
                 # > position to find the left position where the character should be drawn.
                 # > A negative value here would mean that the character slightly overlaps
                 # > the previous character.
-                xoffset=font.offset.x + left,
+                xoffset=font.left_bearing + left,
                 # > The `yoffset` gives the distance from the top of the cell height to the top
                 # > of the character. A negative value here would mean that the character extends
                 # > above the cell height.
@@ -632,7 +633,7 @@ def _create_spritesheets(font, size=(256, 256), packed=False):
                 # > marks the position of the cursor after drawing the character. You get to this
                 # > position by moving the cursor horizontally with the xadvance value.
                 # > If kerning pairs are used the cursor should also be moved accordingly.
-                xadvance=font.offset.x + glyph.width + font.tracking,
+                xadvance=font.left_bearing + glyph.width + font.right_bearing,
                 page=page_id,
                 chnl=channels,
             ))
@@ -760,13 +761,12 @@ def _create_bmfont(
         # https://www.angelcode.com/products/bmfont/doc/render_text.html
         # > [...] the lineHeight, i.e. how far the cursor should be moved vertically when
         # > moving to the next line.
-        # font.line_spacing == font.raster_size.y + font.leading
-        'lineHeight': font.line_spacing,
+        'lineHeight': font.line_height,
         # "base" is the distance between top-line and baseline
         # > The base value is how far from the top of the cell height the base of the characters
         # > in the font should be placed. Characters can of course extend above or below this base
         # > line, which is entirely up to the font design.
-        'base': font.raster_size.y + font.offset.y,
+        'base': font.raster_size.y + font.shift_up,
         'scaleW': size[0],
         'scaleH': size[1],
         'pages': len(pages),
@@ -788,7 +788,7 @@ def _create_bmfont(
             'amount': int(_amount)
         }
         for _glyph in font.glyphs
-        for _to, _amount in _glyph.kern_to.items()
+        for _to, _amount in _glyph.right_kerning.items()
     ]
     # write the .fnt description
     if descriptor == 'text':

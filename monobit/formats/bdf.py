@@ -598,24 +598,29 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
         new_props = {}
         # bounding box & offset
         bbx = props.get('BBX', global_bbx)
-        bbx_width, bbx_height, offset_x, offset_y = (int(_p) for _p in bbx.split(' '))
-        new_props['offset'] = Coord(offset_x, offset_y)
+        bbx_width, bbx_height, left_bearing, shift_up = (int(_p) for _p in bbx.split(' '))
+        new_props['left-bearing'] = left_bearing
+        new_props['shift-up'] = shift_up
         # advance width
         dwidth = props.get('DWIDTH', global_dwidth)
         dwidth_x, dwidth_y = (int(_p) for _p in dwidth.split(' '))
-        new_props['tracking'] = dwidth_x - glyph.width - offset_x
+        new_props['right-bearing'] = dwidth_x - glyph.width - left_bearing
         if dwidth_y:
             raise FileFormatError('Top-to-bottom fonts not yet supported.')
         mod_glyphs.append(glyph.modify(**new_props))
     # if all glyph props are equal, take them global
-    offsets = set(_g.offset for _g in mod_glyphs)
-    if len(offsets) == 1:
-        mod_glyphs = [_g.drop('offset') for _g in mod_glyphs]
-        properties['offset'] = offsets.pop()
-    trackings = set(_g.tracking for _g in mod_glyphs)
-    if len(trackings) == 1:
-        mod_glyphs = [_g.drop('tracking') for _g in mod_glyphs]
-        properties['tracking'] = trackings.pop()
+    shift_ups = set(_g.shift_up for _g in mod_glyphs)
+    if len(shift_ups) == 1:
+        mod_glyphs = [_g.drop('shift-up') for _g in mod_glyphs]
+        properties['shift-up'] = shift_ups.pop()
+    left_bearings = set(_g.left_bearing for _g in mod_glyphs)
+    if len(left_bearings) == 1:
+        mod_glyphs = [_g.drop('left-bearing') for _g in mod_glyphs]
+        properties['left-bearing'] = left_bearings.pop()
+    right_bearings = set(_g.right_bearing for _g in mod_glyphs)
+    if len(right_bearings) == 1:
+        mod_glyphs = [_g.drop('right-bearing') for _g in mod_glyphs]
+        properties['right-bearing'] = right_bearings.pop()
     xlfd_name = bdf_props.pop('FONT')
     # keep unparsed bdf props
     return mod_glyphs, properties, xlfd_name, bdf_props
@@ -754,16 +759,27 @@ def _create_xlfd_properties(font):
         'AVERAGE_WIDTH': str(round(float(font.average_advance) * 10)).replace('-', '~'),
     }
     # encoding dependent values
-    default_codepoint = font.get_default_glyph().codepoint
+    default_glyph = font.get_default_glyph()
     if charmaps.is_unicode(font.encoding):
-        if len(default_codepoint) > 1:
-            raise ValueError('Default glyph must not be a grapheme sequence.')
-        xlfd_props['DEFAULT_CHAR'] = default_codepoint[0]
+        if default_glyph.char:
+            default_codepoint = tuple(ord(_c) for _c in default_glyph.char)
+        else:
+            default_codepoint = default_glyph.codepoint
+        if not len(default_codepoint):
+            logging.error('BDF default glyph must have a character or codepoint.')
+        elif len(default_codepoint) > 1:
+            logging.error('BDF default glyph must not be a grapheme sequence.')
+        else:
+            xlfd_props['DEFAULT_CHAR'] = default_codepoint[0]
         # unicode encoding
         xlfd_props['CHARSET_REGISTRY'] = '"ISO10646"'
         xlfd_props['CHARSET_ENCODING'] = '"1"'
     else:
-        xlfd_props['DEFAULT_CHAR'] = bytes_to_int(default_codepoint)
+        default_codepoint = default_glyph.codepoint
+        if not len(default_codepoint):
+            logging.error('BDF default glyph must have a character or codepoint.')
+        else:
+            xlfd_props['DEFAULT_CHAR'] = bytes_to_int(default_codepoint)
         # try preferred name
         encoding_name = _UNIX_ENCODINGS.get(font.encoding, font.encoding)
         registry, *encoding = encoding_name.split('-', 1)
@@ -797,7 +813,7 @@ def _save_bdf(font, outstream):
             # per the example in the BDF spec,
             # the first two coordinates in FONTBOUNDINGBOX are the font's ink-bounds
             'FONTBOUNDINGBOX',
-            f'{font.bounding_box.x} {font.bounding_box.y} {font.offset.x} {font.offset.y}'
+            f'{font.bounding_box.x} {font.bounding_box.y} {font.left_bearing} {font.shift_up}'
         )
     ]
     # labels
@@ -840,13 +856,15 @@ def _save_bdf(font, outstream):
         # DWIDTH specifies the widths in x and y, dwx0 and dwy0, in device pixels.
         # Like SWIDTH , this width information is a vector indicating the position of
         # the next glyph’s origin relative to the origin of this glyph.
-        offset_x, offset_y = font.offset.x + glyph.offset.x, font.offset.y + glyph.offset.y
-        tracking = glyph.tracking + font.tracking
-        dwidth_x = offset_x + glyph.width + tracking
+        shift_up = font.shift_up + glyph.shift_up
+        left_bearing = font.left_bearing + glyph.left_bearing
+        right_bearing = glyph.right_bearing + font.right_bearing
+        dwidth_x = left_bearing + glyph.width + right_bearing
         swidth_x = int(round(dwidth_x / (font.point_size / 1000) / (font.dpi.y / 72)))
         # minimize glyphs to ink-bounds (BBX) before storing, except "cell" fonts
         if font.spacing not in ('character-cell', 'multi-cell'):
-            offset_x, offset_y = offset_x + glyph.padding.left, offset_y + glyph.padding.bottom
+            left_bearing += glyph.padding.left
+            shift_up += glyph.padding.bottom
             glyph = glyph.reduce()
         if not glyph.height or not glyph.width:
             # empty glyph
@@ -860,7 +878,7 @@ def _save_bdf(font, outstream):
             ('ENCODING', str(encoding)),
             ('SWIDTH', f'{swidth_x} {swidth_y}'),
             ('DWIDTH', f'{dwidth_x} {dwidth_y}'),
-            ('BBX', f'{glyph.width} {glyph.height} {offset_x} {offset_y}'),
+            ('BBX', f'{glyph.width} {glyph.height} {left_bearing} {shift_up}'),
             ('BITMAP', '' if not split_hex else '\n' + '\n'.join(split_hex)),
         ])
     # write out

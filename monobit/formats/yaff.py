@@ -340,6 +340,9 @@ class TextConverter:
                 lines = (_line.strip() for _line in value.splitlines())
                 lines = (_line for _line in lines if _line)
                 lines = (_line[1:-1] if _line.startswith('"') and _line.endswith('"') else _line for _line in lines)
+                # Props object converts only non-leading underscores (for internal use)
+                # so we need to mae sure e turn those into dashes or we'll drop the prop
+                key = key.replace('_', '-')
                 self.props[key] = '\n'.join(lines)
                 # property comments
                 if comments:
@@ -440,7 +443,7 @@ class TextWriter:
     paper: str
     empty: str
 
-    def _write_glyph(self, outstream, glyph, label=None, suppress_codepoint=False):
+    def _write_glyph(self, outstream, glyph, label=None):
         """Write out a single glyph in text format."""
         # glyph comments
         if glyph.comments:
@@ -448,7 +451,7 @@ class TextWriter:
         if label:
             labels = [label]
         else:
-            labels = glyph.get_labels(suppress_codepoint=suppress_codepoint)
+            labels = glyph.get_labels()
         if not labels:
             logging.warning('No labels for glyph: %s', glyph)
             return
@@ -491,7 +494,7 @@ class TextWriter:
             outstream.write(f'{indent}{key}: {self._quote_if_needed(value)}\n')
         else:
             outstream.write(
-                f'{indent}{key}:\n{indent}{self.tab}' '{}\n'.format(
+                f'{indent}{key}:\n{indent}{self.tab}' + '{}\n'.format(
                     f'\n{indent}{self.tab}'.join(
                         self._quote_if_needed(_line)
                         for _line in value.splitlines()
@@ -545,9 +548,7 @@ class YaffWriter(TextWriter, YaffParams):
                     self._write_property(outstream, key, value, font.get_comments(key))
                 outstream.write('\n')
             for glyph in font.glyphs:
-                self._write_glyph(
-                    outstream, glyph, suppress_codepoint=charmaps.is_unicode(font.encoding)
-                )
+                self._write_glyph(outstream, glyph)
 
 
 class DrawWriter(TextWriter, DrawParams):

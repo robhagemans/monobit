@@ -169,11 +169,8 @@ def _read_glyph(instream, props, codepoint, tag='', ink=''):
 
 def _convert_from_flf(glyphs, props):
     """Convert figlet glyphs and properties to monobit."""
-    descent = int(props.height)-int(props.baseline)
     properties = Props(
-        descent=descent,
-        offset=(0, -descent),
-        ascent=int(props.baseline),
+        shift_up=-int(props.height)+int(props.baseline),
         direction=_DIRECTIONS[props.print_direction],
         encoding=_ENCODING,
     )
@@ -184,7 +181,7 @@ def _convert_from_flf(glyphs, props):
     # keep uninterpreted parameters in namespace
     uninterpreted = {
         _k: _v for _k, _v in vars(props).items() if _k not in (
-            'descent', 'baseline', 'print_direction',
+            'baseline', 'print_direction',
             'hardblank', 'signature_hardblank', 'height', 'max_length',
             'comment_lines', 'codetag_count'
         )
@@ -213,7 +210,7 @@ def _convert_to_flf(font, hardblank='$'):
         # > The Max_Length parameter is the maximum length of any line describing a
         # > FIGcharacter.  This is usually the width of the widest FIGcharacter, plus 2
         # > (to accommodate endmarks as described later.)
-        max_length=2 + max(_g.advance for _g in font.glyphs),
+        max_length=2 + max(_g.advance_width for _g in font.glyphs),
         # layout parameters - keep to default, there is not much we can sensibly do
         old_layout=0,
         # get length of global comment
@@ -255,11 +252,11 @@ def _convert_to_flf(font, hardblank='$'):
     # expand glyphs by bearings
     glyphs = [
         _g.expand(
-            left=max(0, font.offset.x + _g.offset.x),
-            bottom=max(0, font.offset.y + _g.offset.y),
-            right=max(0, font.tracking + _g.tracking),
+            left=max(0, font.left_bearing + _g.left_bearing),
+            bottom=max(0, font.shift_up + _g.shift_up),
+            right=max(0, font.right_bearing + _g.right_bearing),
             # include leading; ensure glyphs are equal height
-            top=max(0, font.line_spacing - _g.height - max(0, font.offset.y + _g.offset.y)),
+            top=max(0, font.line_height - _g.height - max(0, font.shift_up + _g.shift_up)),
         )
         for _g in glyphs
     ]

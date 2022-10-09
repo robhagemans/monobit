@@ -55,20 +55,19 @@ def render(font, text, *, margin=(0, 0), scale=(1, 1), rotate=0, missing='defaul
         prev = font.get_empty_glyph()
         for glyph in glyph_row:
             # adjust origin for kerning
-            x += prev.kern_to.get_for_glyph(glyph)
+            x += prev.right_kerning.get_for_glyph(glyph)
             prev = glyph
             # offset + (x, y) is the coordinate of glyph matrix origin
             # grid_x, grid_y are canvas coordinates relative to top left of canvas
             # canvas y coordinate increases *downwards* from top of line
-            offset = font.offset + glyph.offset
-            grid_x = margin_x + (offset.x + x)
-            grid_y = baseline - (offset.y + y)
+            grid_x = margin_x + (font.left_bearing + glyph.left_bearing + x)
+            grid_y = baseline - (font.shift_up + glyph.shift_up + y)
             # add ink, taking into account there may be ink already in case of negative bearings
             matrix.blit(glyph.as_matrix(), canvas, grid_x, grid_y)
             # advance origin to next glyph
-            x += font.offset.x + glyph.advance + font.tracking
+            x += font.left_bearing + glyph.advance_width + font.right_bearing
         # move to next line
-        baseline += font.line_spacing
+        baseline += font.line_height
     scaled = matrix.scale(canvas, *scale)
     rotated = matrix.rotate(scaled, rotate)
     return rotated
@@ -79,14 +78,14 @@ def _get_canvas(font, glyphs, margin_x, margin_y):
     width = 2 * margin_x
     if glyphs:
         width += max(
-            sum(font.offset.x + _glyph.advance + font.tracking for _glyph in _row)
+            sum(font.left_bearing + _glyph.advance_width + font.right_bearing for _glyph in _row)
             for _row in glyphs
         )
     # find required height - margins plus line height for each row
     # descent-line of the bottom-most row is at bottom margin
     # ascent-line of top-most row is at top margin
     # if a glyph extends below the descent line or left of the origin, it may draw into the margin
-    height = 2 * margin_y + font.pixel_size + font.line_spacing * (len(glyphs)-1)
+    height = 2 * margin_y + font.pixel_size + font.line_height * (len(glyphs)-1)
     return matrix.create(width, height)
 
 def _get_text_glyphs(font, text, missing='raise'):
@@ -197,7 +196,7 @@ def chart(
         row, col = pos
         mx = glyph.as_matrix()
         mx = matrix.scale(mx, scale_x, scale_y)
-        left = margin_x + col*step_x + glyph.offset.x
-        bottom = margin_y + (row+1)*step_y - padding_y - glyph.offset.y
+        left = margin_x + col*step_x + glyph.left_bearing
+        bottom = margin_y + (row+1)*step_y - padding_y - glyph.shift_up
         matrix.blit(mx, canvas, left, bottom)
     return canvas
