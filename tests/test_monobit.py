@@ -198,6 +198,17 @@ class TestFormats(BaseTester):
         monobit.save(self.fixed4x6, fnt_file, where=self.temp_path, descriptor='json', overwrite=True)
         self.assertTrue(os.path.getsize(fnt_file) > 0)
 
+    def test_render_yaff_bmf_kerning(self):
+        webby_mod1, *_ = monobit.load(self.font_path / 'webby-small-kerned.yaff')
+        monobit.save(webby_mod1, self.temp_path / 'webby-small-kerned.bmf', where=self.temp_path)
+        webby_mod2, *_ = monobit.load(self.temp_path / 'webby-small-kerned.bmf')
+        text1 = monobit.render_text(webby_mod1, b'sjifjij', margin=(0,2))
+        text2 = monobit.render_text(webby_mod2, b'sjifjij', margin=(0,2))
+        print(text1)
+        print()
+        print(text2)
+        assert text1 == text2
+
     def test_import_c(self):
         """Test importing c source files."""
         font, *_ = monobit.load(
