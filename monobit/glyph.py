@@ -110,10 +110,11 @@ class KernTable(dict):
                 _row.split(None, 1)
                 for _row in table.splitlines()
             )
-        super().__init__({
+        table = {
             label(_k): int(_v)
             for _k, _v in table.items()
-        })
+        }
+        super().__init__(table)
 
     def __str__(self):
         """Convert kerning table to multiline string."""
@@ -396,15 +397,17 @@ class Glyph:
             comments = ''
         except ValueError:
             comments = self._comments
+        args = [normalise_property(_arg) for _arg in args]
+        properties = {
+            _k: _v
+            for _k, _v in self.properties.items()
+            if normalise_property(_k) not in args
+        }
         return type(self)(
             pixels,
             tags=tags, codepoint=codepoint, char=char,
             comments=comments,
-            **{
-                _k: _v
-                for _k, _v in self.properties.items()
-                if _k not in args
-            }
+            **properties
         )
 
 
