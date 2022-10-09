@@ -713,8 +713,7 @@ def _parse_win_props(fnt, win_props):
         'ascent': win_props.dfAscent - win_props.dfInternalLeading,
         # the dfPixHeight is the 'height of the character bitmap', i.e. our raster-size.y
         # and dfAscent is the distance between the raster top and the baseline,
-        # so if we set the descent-line equal to the raster bottom, the following holds:
-        'descent': win_props.dfPixHeight - win_props.dfAscent,
+        #'descent': win_props.dfPixHeight - win_props.dfAscent,
         'shift-up': win_props.dfAscent - win_props.dfPixHeight,
         # dfExternalLeading is the 'amount of extra leading ... the application add between rows'
         'line-height': win_props.dfPixHeight + win_props.dfExternalLeading,

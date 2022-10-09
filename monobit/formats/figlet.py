@@ -169,11 +169,8 @@ def _read_glyph(instream, props, codepoint, tag='', ink=''):
 
 def _convert_from_flf(glyphs, props):
     """Convert figlet glyphs and properties to monobit."""
-    descent = int(props.height)-int(props.baseline)
     properties = Props(
-        descent=descent,
-        shift_up=-descent,
-        ascent=int(props.baseline),
+        shift_up=-int(props.height)+int(props.baseline),
         direction=_DIRECTIONS[props.print_direction],
         encoding=_ENCODING,
     )
@@ -184,7 +181,7 @@ def _convert_from_flf(glyphs, props):
     # keep uninterpreted parameters in namespace
     uninterpreted = {
         _k: _v for _k, _v in vars(props).items() if _k not in (
-            'descent', 'baseline', 'print_direction',
+            'baseline', 'print_direction',
             'hardblank', 'signature_hardblank', 'height', 'max_length',
             'comment_lines', 'codetag_count'
         )

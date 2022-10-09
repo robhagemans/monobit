@@ -437,6 +437,7 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=(),
             if sum(bg) > sum(fg):
                 bg, fg = fg, bg
         # extract glyphs
+        max_height = max(char.height + char.yoffset for char in chars)
         for char, sprite in zip(chars, sprites):
             #if char.width and char.height:
             bits = tuple(_c == fg for _c in sprite)
@@ -457,8 +458,6 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=(),
                     for _kern in kernings
                     if _kern.first == char.id
                 }
-            # max_height is used further down as well
-            max_height = max(char.height + char.yoffset for char in chars)
             glyph = glyph.modify(
                 codepoint=_codepoint_for_id(char.id, info['unicode']),
                 left_bearing=char.xoffset,
@@ -483,10 +482,9 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=(),
         'source-format': 'BMFont ({} descriptor; {} spritesheet)'.format(bmformat, ','.join(imgformats)),
         'source-name': Path(name).name,
         'family': bmfont_props.pop('face'),
-        # assume line_height == pixel-size == ascent + descent (i.e. no leading)
-        # this seems to lead to too high values with fonts produces by Angelcode BMFont
-        'ascent': common.lineHeight - (max_height - common.base),
-        'descent': max_height - common.base,
+        'line-height': common.lineHeight,
+        #common.base = font.raster_size.y + font.shift_up,
+        'shift-up': common.base - Font(glyphs).raster_size.y,
         'encoding': encoding,
     }
     if _to_int(bmfont_props.pop('bold')):
