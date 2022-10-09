@@ -159,30 +159,16 @@ class GlyphProperties(DefaultProps):
     right_kerning: KernTable
 
 
-    @writable_property('kern_to')
-    def kern_to(self):
-        """Deprecated synonym of right-kerning."""
-        return self.right_kerning
-
-    @writable_property('right_bearing')
-    def tracking(self):
-        """
-        Horizontal offset from matrix right edge to rightward origin
-        Deprecated synonym for right-bearing.
-        """
-        return self.right_bearing
-
-    @as_tuple(('left_bearing', 'shift_up'), tuple_type=Coord.create)
-    def offset(self):
-        """
-        (horiz, vert) offset from origin to matrix start
-        Deprecated synonym for left-bearing, shift-up.
-        """
-
     @checked_property
     def shift_down(self):
         """Downward shift - negative of shift-up."""
         return -self.shift_up
+
+    @checked_property
+    def advance_width(self):
+        """Internal advance width of glyph, including internal bearings."""
+        return self.left_bearing + self.width + self.right_bearing
+
 
     @checked_property
     def width(self):
@@ -196,25 +182,6 @@ class GlyphProperties(DefaultProps):
         """Raster height of glyph."""
         return len(self._pixels)
 
-    @checked_property
-    def advance_width(self):
-        """Internal advance width of glyph, including internal bearings."""
-        return self.left_bearing + self.width + self.right_bearing
-
-    @checked_property
-    def padding(self):
-        """Offset from raster sides to bounding box. Left, bottom, right, top."""
-        if not self._pixels:
-            return Bounds(0, 0, 0, 0)
-        row_inked = [True in _row for _row in self._pixels]
-        if True not in row_inked:
-            return Bounds(self.width, self.height, 0, 0)
-        bottom = list(reversed(row_inked)).index(True)
-        top = row_inked.index(True)
-        col_inked = [bool(sum(_row[_i] for _row in self._pixels)) for _i in range(self.width)]
-        left = col_inked.index(True)
-        right = list(reversed(col_inked)).index(True)
-        return Bounds(left, bottom, right, top)
 
     @checked_property
     def ink_bounds(self):
@@ -237,6 +204,45 @@ class GlyphProperties(DefaultProps):
             self.ink_bounds.right - self.ink_bounds.left,
             self.ink_bounds.top - self.ink_bounds.bottom
         )
+
+    @checked_property
+    def padding(self):
+        """Offset from raster sides to bounding box. Left, bottom, right, top."""
+        if not self._pixels:
+            return Bounds(0, 0, 0, 0)
+        row_inked = [True in _row for _row in self._pixels]
+        if True not in row_inked:
+            return Bounds(self.width, self.height, 0, 0)
+        bottom = list(reversed(row_inked)).index(True)
+        top = row_inked.index(True)
+        col_inked = [bool(sum(_row[_i] for _row in self._pixels)) for _i in range(self.width)]
+        left = col_inked.index(True)
+        right = list(reversed(col_inked)).index(True)
+        return Bounds(left, bottom, right, top)
+
+
+    ##########################################################################
+    # deprecated compatibility synonymms
+
+    @writable_property('kern_to')
+    def kern_to(self):
+        """Deprecated synonym of right-kerning."""
+        return self.right_kerning
+
+    @writable_property('right_bearing')
+    def tracking(self):
+        """
+        Horizontal offset from matrix right edge to rightward origin
+        Deprecated synonym for right-bearing.
+        """
+        return self.right_bearing
+
+    @as_tuple(('left_bearing', 'shift_up'), tuple_type=Coord.create)
+    def offset(self):
+        """
+        (horiz, vert) offset from origin to matrix start
+        Deprecated synonym for left-bearing, shift-up.
+        """
 
 
 ##############################################################################

@@ -148,26 +148,6 @@ class FontProperties(DefaultProps):
     history: str
 
 
-    @writable_property('right_bearing')
-    def tracking(self):
-        """
-        Horizontal offset from matrix right edge to rightward origin
-        Deprecated synonym for right-bearing.
-        """
-        return self.right_bearing
-
-    @as_tuple(('left_bearing', 'shift_up'), tuple_type=Coord.create)
-    def offset(self):
-        """
-        (horiz, vert) offset from origin to matrix start
-        Deprecated synonym for left-bearing, shift-up.
-        """
-
-    @checked_property
-    def shift_down(self):
-        """Downward shift - negative of shift-up."""
-        return -self.shift_up
-
     @writable_property
     def name(self):
         """Full human-friendly name."""
@@ -224,6 +204,25 @@ class FontProperties(DefaultProps):
         # stretch/shrink dpi.x if aspect ratio is not square
         return Coord((dpi*self.pixel_aspect.x)//self.pixel_aspect.y, dpi)
 
+    ##########################################################################
+    # metrics
+
+    @checked_property
+    def shift_down(self):
+        """Downward shift - negative of shift-up."""
+        return -self.shift_up
+
+
+    @writable_property
+    def line_height(self):
+        """Vertical distance between consecutive baselines, in pixels."""
+        if 'leading' in vars(self):
+            return self.pixel_size + self.leading
+        return self.pixel_size
+
+    ##########################################################################
+    # typographic descriptors
+
     @writable_property
     def ascent(self):
         """Recommended typographic ascent relative to baseline (defaults to ink-top)."""
@@ -249,20 +248,56 @@ class FontProperties(DefaultProps):
         return self.ascent + self.descent
 
     @writable_property
-    def line_height(self):
-        """Vertical distance between consecutive baselines, in pixels."""
-        if 'leading' in vars(self):
-            return self.pixel_size + self.leading
-        return self.pixel_size
-
-    @writable_property
     def leading(self):
         """Vertical interline spacing, defined as (pixels between baselines) - (pixel size)."""
         return self.line_height - self.pixel_size
 
+    ##########################################################################
+    # summarising quantities
+
+    @checked_property
+    def spacing(self):
+        """Monospace or proportional spacing."""
+        # a _character-cell_ font is a font where all glyphs can be put inside an equal size cell
+        # so that rendering the font becomes simply pasting in cells flush to each other. All ink
+        # for a glyph must be inside the cell.
+        #
+        # this means that:
+        # - all glyphs must have equal, positive advance width (except empty glyphs with advance zero).
+        # - for each glyph, the advance is greater than or equal to the bounding box width.
+        # - the line advance is greater than or equal to the font bounding box height.
+        # - there is no kerning
+        #
+        # a special case is the _multi-cell_ font, where a glyph may take up 0, 1 or 2 cells.
+        #
+        # a _monospace_ font is a font where all glyphs have equal advance_width.
+        #
+        if not self._font.glyphs:
+            return 'character-cell'
+        if any(_glyph.advance_width < 0 or _glyph.right_kerning for _glyph in self._font.glyphs):
+            return 'proportional'
+        # don't count void glyphs (0 width and/or height) to determine whether it's monospace
+        advances = set(_glyph.advance_width for _glyph in self._font.glyphs if _glyph.advance_width)
+        monospaced = len(set(advances)) == 1
+        bispaced = len(set(advances)) == 2
+        ink_contained_y = self.line_height >= self.bounding_box.y
+        ink_contained_x = all(
+            _glyph.advance_width >= _glyph.bounding_box.x
+            for _glyph in self._font.glyphs
+        )
+        if ink_contained_x and ink_contained_y:
+            if monospaced:
+                return 'character-cell'
+            if bispaced:
+                return 'multi-cell'
+        if monospaced:
+            return 'monospace'
+        return 'proportional'
+
     @checked_property
     def raster(self):
         """Minimum box encompassing all glyph matrices overlaid at fixed origin."""
+        #FIXME: need to include font shifts & bearings? as with ink_bounds
         if not self._font.glyphs:
             return Bounds(0, 0, 0, 0)
         lefts = tuple(_glyph.left_bearing for _glyph in self._font.glyphs)
@@ -317,54 +352,6 @@ class FontProperties(DefaultProps):
             self.raster.top - self.ink_bounds.top,
         )
 
-    @checked_property
-    def spacing(self):
-        """Monospace or proportional spacing."""
-        # a _character-cell_ font is a font where all glyphs can be put inside an equal size cell
-        # so that rendering the font becomes simply pasting in cells flush to each other. All ink
-        # for a glyph must be inside the cell.
-        #
-        # this means that:
-        # - all glyphs must have equal, positive advance width (except empty glyphs with advance zero).
-        # - for each glyph, the advance is greater than or equal to the bounding box width.
-        # - the line advance is greater than or equal to the font bounding box height.
-        # - there is no kerning
-        #
-        # a special case is the _multi-cell_ font, where a glyph may take up 0, 1 or 2 cells.
-        #
-        # a _monospace_ font is a font where all glyphs have equal advance_width.
-        #
-        if not self._font.glyphs:
-            return 'character-cell'
-        if any(_glyph.advance_width < 0 or _glyph.right_kerning for _glyph in self._font.glyphs):
-            return 'proportional'
-        # don't count void glyphs (0 width and/or height) to determine whether it's monospace
-        advances = set(_glyph.advance_width for _glyph in self._font.glyphs if _glyph.advance_width)
-        monospaced = len(set(advances)) == 1
-        bispaced = len(set(advances)) == 2
-        ink_contained_y = self.line_height >= self.bounding_box.y
-        ink_contained_x = all(
-            _glyph.advance_width >= _glyph.bounding_box.x
-            for _glyph in self._font.glyphs
-        )
-        if ink_contained_x and ink_contained_y:
-            if monospaced:
-                return 'character-cell'
-            if bispaced:
-                return 'multi-cell'
-        if monospaced:
-            return 'monospace'
-        return 'proportional'
-
-    @writable_property
-    def default_char(self):
-        """Label for default character."""
-        repl = '\ufffd'
-        # TODO - make a font.chars property returning the keys object
-        if repl not in self._font._chars:
-            repl = ''
-        return Char(repl)
-
     @writable_property
     def average_advance(self):
         """Get average glyph advance width, rounded to tenths of pixels."""
@@ -411,6 +398,36 @@ class FontProperties(DefaultProps):
         except KeyError:
             return 0
 
+    ##########################################################################
+    # character properties
+
+    @writable_property
+    def default_char(self):
+        """Label for default character."""
+        repl = '\ufffd'
+        # TODO - make a font.chars property returning the keys object
+        if repl not in self._font._chars:
+            repl = ''
+        return Char(repl)
+
+
+    ##########################################################################
+    # deprecated compatibility synonyms
+
+    @writable_property('right_bearing')
+    def tracking(self):
+        """
+        Horizontal offset from matrix right edge to rightward origin
+        Deprecated synonym for right-bearing.
+        """
+        return self.right_bearing
+
+    @as_tuple(('left_bearing', 'shift_up'), tuple_type=Coord.create)
+    def offset(self):
+        """
+        (horiz, vert) offset from origin to matrix start
+        Deprecated synonym for left-bearing, shift-up.
+        """
 
 
 ###################################################################################################
