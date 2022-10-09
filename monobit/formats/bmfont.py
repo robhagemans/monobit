@@ -384,7 +384,6 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=(),
     # ensure we have RGBA channels
     sheets = {_k: _v.convert('RGBA') for _k, _v in sheets.items()}
     glyphs = []
-    max_height = 0
     if chars:
         # extract channel masked sprites
         sprites = []
@@ -437,7 +436,6 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=(),
             if sum(bg) > sum(fg):
                 bg, fg = fg, bg
         # extract glyphs
-        max_height = max(char.height + char.yoffset for char in chars)
         for char, sprite in zip(chars, sprites):
             #if char.width and char.height:
             bits = tuple(_c == fg for _c in sprite)
@@ -465,7 +463,6 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=(),
             glyph = glyph.modify(
                 codepoint=_codepoint_for_id(char.id, is_unicode),
                 left_bearing=char.xoffset,
-                shift_up=max_height-glyph.height-char.yoffset,
                 right_bearing=char.xadvance - char.xoffset - char.width,
                 right_kerning=right_kerning
             )
@@ -487,8 +484,7 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=(),
         'source-name': Path(name).name,
         'family': bmfont_props.pop('face'),
         'line-height': common.lineHeight,
-        #common.base = font.raster_size.y + font.shift_up,
-        'shift-up': common.base - Font(glyphs).raster_size.y,
+        # shift-up is set per-glyph
         'encoding': encoding,
     }
     if _to_int(bmfont_props.pop('bold')):
@@ -509,6 +505,16 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=(),
         for _k, _v in bmfont_props.items()
         if str(_v) != default_bmfont_props.get(_k, '')
     })
+    # > The `yoffset` gives the distance from the top of the cell height to the top
+    # > of the character. A negative value here would mean that the character extends
+    # > above the cell height.
+    raster_top = Font(glyphs, **properties).raster.top
+    glyphs = [
+        _glyph.modify(
+            shift_up=raster_top-_glyph.height-_char.yoffset,
+        )
+        for _glyph, _char in zip(glyphs, chars)
+    ]
     return Font(glyphs, **properties)
 
 def _read_bmfont(infile, container, outline):
@@ -587,7 +593,6 @@ def _create_spritesheets(font, size=(256, 256), packed=False):
         x, y = 0, 0
         tree = SpriteNode(x, y, width, height)
         for number, glyph in enumerate(font.glyphs):
-            left, bottom, right, top = glyph.padding
             cropped = glyph.reduce()
             if cropped.height and cropped.width:
                 try:
@@ -627,11 +632,11 @@ def _create_spritesheets(font, size=(256, 256), packed=False):
                 # > position to find the left position where the character should be drawn.
                 # > A negative value here would mean that the character slightly overlaps
                 # > the previous character.
-                xoffset=font.left_bearing + glyph.left_bearing + left,
+                xoffset=font.left_bearing + glyph.left_bearing + glyph.padding.left,
                 # > The `yoffset` gives the distance from the top of the cell height to the top
                 # > of the character. A negative value here would mean that the character extends
                 # > above the cell height.
-                yoffset=font.raster_size.y - glyph.height + top,
+                yoffset=font.raster.top-(glyph.height+glyph.shift_up) + glyph.padding.top,
                 # xadvance is the advance width from origin to next origin
                 # > The filled red dot marks the current cursor position, and the hollow red dot
                 # > marks the position of the cursor after drawing the character. You get to this
@@ -770,7 +775,7 @@ def _create_bmfont(
         # > The base value is how far from the top of the cell height the base of the characters
         # > in the font should be placed. Characters can of course extend above or below this base
         # > line, which is entirely up to the font design.
-        'base': font.raster_size.y + font.shift_up,
+        'base': font.raster.top,
         'scaleW': size[0],
         'scaleH': size[1],
         'pages': len(pages),
