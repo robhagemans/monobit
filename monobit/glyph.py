@@ -397,15 +397,17 @@ class Glyph:
             comments = ''
         except ValueError:
             comments = self._comments
+        args = [normalise_property(_arg) for _arg in args]
+        properties = {
+            _k: _v
+            for _k, _v in self.properties.items()
+            if normalise_property(_k) not in args
+        }
         return type(self)(
             pixels,
             tags=tags, codepoint=codepoint, char=char,
             comments=comments,
-            **{
-                _k: _v
-                for _k, _v in self.properties.items()
-                if _k not in args
-            }
+            **properties
         )
 
 
