@@ -140,6 +140,13 @@ class FontProperties(DefaultProps):
     # word-break character (usually space)
     word_boundary: label = Char(' ')
 
+    # rendering hints
+    # can't be calculated, may affect rendering
+
+    # number of pixels to smear in advance direction to simulate bold weight
+    bold_smear: int = 1
+
+
     # conversion metadata
     # can't be calculated, informational
     converter: str
