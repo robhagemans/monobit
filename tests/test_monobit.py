@@ -286,6 +286,11 @@ class TestFormats(BaseTester):
         # only 195 glyphs in the font as it's in mac-roman encoding now
         self.assertEqual(len(font.glyphs), 195)
 
+    def test_import_amigs(self):
+        """Test importing amiga font files."""
+        font, *_ = monobit.load(self.font_path / 'wbfont.amiga' / 'wbfont_prop.font')
+        self.assertEqual(len(font.glyphs), 225)
+
 
 class TestCompressed(BaseTester):
     """Test compression formats."""

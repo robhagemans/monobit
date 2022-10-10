@@ -1,17 +1,21 @@
 ## Testing fonts
 
-The _Fixed 4x6_ and _Fixed 6x13_ fonts used for these tests are in the public domain.
-The _WebbySmall_ font was released under an MIT licence.
-
 The fonts are included here for testing and some have been modified. If you wish to use these fonts 
 for other purposes, it is recommended that you download them from the original source, not from here.
 
-
-### Source Fonts
-
-* `4x6.bdf` https://www.cl.cam.ac.uk/~mgk25/ucs-fonts.html
-* `6x13.fon` https://www.chiark.greenend.org.uk/~sgtatham/fonts/
-* `WebbySmall.fon` and `WebbySmall.pcf` https://github.com/bluescan/proggyfonts/tree/master/ProggyOriginal
+Original sources:
+* `4x6.bdf` 
+  - https://www.cl.cam.ac.uk/~mgk25/ucs-fonts.html 
+  - in the public domain
+* `6x13.fon` 
+  - https://www.chiark.greenend.org.uk/~sgtatham/fonts/
+  - in the public domain
+* `WebbySmall.fon` and `WebbySmall.pcf` 
+  - https://github.com/bluescan/proggyfonts/tree/master/ProggyOriginal
+  - (c) 2004, 2005 Tristan Grimmer, released under an MIT licence
+* `wbfont`
+  - http://aminet.net/text/bfont/wbfont.lha
+  - (c) 1999 Keith Halstead, free to distribute so long as the readme file is included
 
 
 ### Derivatives of `4x6`
