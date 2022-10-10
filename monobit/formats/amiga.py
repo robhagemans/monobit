@@ -328,10 +328,12 @@ def _convert_amiga_glyphs(glyphs, amiga_props):
     glyphs = [
         _glyph.modify(
             left_bearing=_glyph.kerning,
-            shift_up=-(amiga_props.tf_YSize - amiga_props.tf_Baseline),
+            # baseline is the nth line, counting from the top, starting with 0
+            # so if there are 8 lines and baseline == 6 then that's 1 line from the bottom
+            shift_up=1-(amiga_props.tf_YSize - amiga_props.tf_Baseline),
             #advance_width=_glyph.spacing
         ).modify(
-            right_bearing=_glyph.spacing-_glyph.left_bearing
+            right_bearing=_glyph.spacing-_glyph.width-_glyph.left_bearing
         )
         for _glyph in glyphs
     ]

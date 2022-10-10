@@ -240,7 +240,11 @@ class FontProperties(DefaultProps):
             return 0
         # usually, descent is positive and offset is negative
         # negative descent would mean font descenders are all above baseline
-        return -self.shift_up - min(_glyph.padding.bottom for _glyph in self._font.glyphs)
+        # padding is from raster edges, not in glyph coordines
+        return - min(
+            self.shift_up + _glyph.shift_up + _glyph.padding.bottom
+            for _glyph in self._font.glyphs
+        )
 
     @checked_property
     def pixel_size(self):
