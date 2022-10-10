@@ -280,6 +280,11 @@ class TestFormats(BaseTester):
         monobit.save(self.fixed4x6, file)
         self.assertTrue(os.path.getsize(file) > 0)
 
+    def test_import_dfont(self):
+        """Test importing dfont files."""
+        font, *_ = monobit.load(self.font_path / '4x6.dfont')
+        # only 195 glyphs in the font as it's in mac-roman encoding now
+        self.assertEqual(len(font.glyphs), 195)
 
 
 class TestCompressed(BaseTester):
