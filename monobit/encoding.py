@@ -784,6 +784,10 @@ class Encoder:
         """Representation."""
         return f"{type(self).__name__}(name='{self.name}')"
 
+    def __str__(self):
+        """Yaff representation."""
+        return CharmapRegistry.normalise(self.name)
+
 
 class Charmap(Encoder):
     """Convert between unicode and ordinals using stored mapping."""
@@ -1197,6 +1201,24 @@ def _from_wikipedia(data, table=0, column=0, range=None):
 ###################################################################################################
 
 charmaps = CharmapRegistry()
+
+# for use in function annotations
+def encoder(initialiser):
+    """Retrieve or create a charmap from object or string."""
+    if isinstance(initialiser, Encoder):
+        return initialiser
+    elif not isinstance(initialiser, str):
+        raise ValueError(
+            f'Encoding value must be string or Encoder object, not `{type(initialiser)}`'
+        )
+    if initialiser == 'index':
+        return initialiser
+    try:
+        return charmaps[initialiser]
+    except KeyError:
+        pass
+    return Charmap.load(initialiser)
+
 
 # unicode aliases
 charmaps.alias('ucs', 'unicode')

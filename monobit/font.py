@@ -17,7 +17,7 @@ except ImportError:
 
 from .scripting import scriptable, get_scriptables
 from .glyph import Glyph, Coord, Bounds, number
-from .encoding import charmaps
+from .encoding import charmaps, encoder
 from .label import Label, Tag, Char, Codepoint, label
 from .struct import (
     extend_string, DefaultProps, normalise_property, as_tuple, writable_property, checked_property
@@ -133,7 +133,7 @@ class FontProperties(DefaultProps):
     # character properties
     # can't be calculated, affect rendering
 
-    # character map
+    # character map, stored as normalised name
     encoding: charmaps.normalise
     # replacement for missing glyph
     default_char: label
@@ -484,13 +484,6 @@ class Font:
         #        until the constructor is complete
         self._props = FontProperties(_font=self, **properties)
 
-    def _get_encoder(self):
-        """Get encoding object."""
-        try:
-            return charmaps[self._props.encoding]
-        except KeyError:
-            return None
-
 
     ##########################################################################
     # representation
@@ -718,9 +711,20 @@ class Font:
         return action(self)
 
     @scriptable
-    def label(self, codepoint_from:str='', char_from:str='', overwrite:bool=False):
-        """Add character and codepoint labels."""
+    def label(self, *, codepoint_from:encoder='', char_from:encoder='', overwrite:bool=False):
+        """
+        Add character and codepoint labels.
+
+        codepoint_from: encoder registered name or filename to use to set codepoints from character labels
+        char_from: encoder registered name or filename to use to set characters from codepoint labels. Default: use font encoding.
+        overwrite: overwrite existing codepoints and/or characters
+        """
         font = self
+        # default action: label chars with font encoding
+        if not codepoint_from and not char_from and self.encoding:
+            char_from = encoder(self.encoding)
+        # TODO: should we set self.encoding here?
+        # TODO: make into an Encoder class
         if codepoint_from == 'index':
             font = font.modify(glyphs=tuple(
                 _glyph.modify(codepoint=(_index,))
@@ -730,7 +734,7 @@ class Font:
             ))
         elif codepoint_from:
             # update glyph labels
-            encoding = charmaps[codepoint_from]
+            encoding = codepoint_from
             if encoding is not None:
                 font = font.modify(glyphs=tuple(
                     _glyph.label(codepoint_from=encoding, overwrite=overwrite)
@@ -738,7 +742,7 @@ class Font:
                 ))
         if char_from:
             # update glyph labels
-            encoding = charmaps[char_from]
+            encoding = char_from
             if encoding is not None:
                 font = font.modify(glyphs=tuple(
                     _glyph.label(char_from=encoding, overwrite=overwrite)
