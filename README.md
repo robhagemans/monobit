@@ -142,6 +142,7 @@ Here is a comparison of what you can and cannot store in selected formats suppor
 | `hexdraw`     | ✔ |   |   |   |   | any  | ✔ |   |   | visual text
 | `amiga-*`     |   |   |   |   | ✔ | any  | ✔ |   | ✔ | binary
 | `fzx`         |   |   |   |   |   | any  | ✔ |   |   | binary
+| `figlet`      | ✔ |   |   |   |   | any  | ✔ |   | ✔ | visual text
 | `dec-drcs`    |   |   |   |   |   | >4xN |   |   |   | binary
 | `hext`        | ✔ | ✔ |   |   |   | 8xN  | multi-cell |   |   | hex
 | `hex`         | ✔ |   |   |   |   | 8x16 | multi-cell |   |   | hex

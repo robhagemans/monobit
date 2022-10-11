@@ -60,8 +60,8 @@ _ENCODING = 'unicode'
 _CODEPOINTS = list(range(32, 127)) + [196, 214, 220, 228, 246, 252, 223]
 
 _DIRECTIONS = {
-    '0': 'left-to-right',
-    '1': 'right-to-left'
+    0: 'left-to-right',
+    1: 'right-to-left'
 }
 
 _SIGNATURE = 'flf2a'
@@ -164,14 +164,14 @@ def _read_glyph(instream, props, codepoint, tag='', ink=''):
         else:
             paper += list(charset - set(ink))
     return Glyph.from_matrix(glyph_lines, paper=paper).modify(
-        codepoint=codepoint, tags=[tag]
+        char=chr(codepoint), tags=[tag]
     )
 
 def _convert_from_flf(glyphs, props):
     """Convert figlet glyphs and properties to monobit."""
     properties = Props(
         shift_up=-int(props.height)+int(props.baseline),
-        direction=_DIRECTIONS[props.print_direction],
+        direction=_DIRECTIONS[int(props.print_direction)],
         encoding=_ENCODING,
     )
     # > If a FIGcharacter with code 0 is present, it is treated
@@ -179,14 +179,13 @@ def _convert_from_flf(glyphs, props):
     if any(_g.codepoint == 0 for _g in glyphs):
         properties['default_char'] = 0
     # keep uninterpreted parameters in namespace
-    uninterpreted = {
-        _k: _v for _k, _v in vars(props).items() if _k not in (
+    properties.figlet = ' '.join(
+        f'{_k}={_v}' for _k, _v in vars(props).items() if _k not in (
             'baseline', 'print_direction',
             'hardblank', 'signature_hardblank', 'height', 'max_length',
             'comment_lines', 'codetag_count'
         )
-    }
-    properties.figlet = Props(**uninterpreted)
+    )
     return glyphs, properties
 
 
@@ -211,32 +210,22 @@ def _convert_to_flf(font, hardblank='$'):
         # > FIGcharacter.  This is usually the width of the widest FIGcharacter, plus 2
         # > (to accommodate endmarks as described later.)
         max_length=2 + max(_g.advance_width for _g in font.glyphs),
-        # layout parameters - keep to default, there is not much we can sensibly do
-        old_layout=0,
         # get length of global comment
         comment_lines=len(font.comments.splitlines()),
         # > The Print_Direction parameter tells which direction the font is to be
         # > printed by default.  A value of 0 means left-to-right, and 1 means
         # > right-to-left.  If this parameter is absent, 0 (left-to-right) is assumed.
         print_direction=reverse_dict(_DIRECTIONS)[font.direction],
-        # layout parameters - keep to default, there is not much we can sensibly do
-        full_layout=0,
         codetag_count = len(coded_chars)
     )
     # keep namespace properties
-    try:
-        figprops = Props(font.figlet)
-    except AttributeError:
-        pass
+    if 'figlet' in font.properties:
+        propsplit = (item.partition('=') for item in font.figlet.split())
+        figprops = {_k: _v for _k, _, _v in propsplit}
     else:
-        try:
-            props.old_layout = figprops.old_layout
-        except AttributeError as e:
-            pass
-        try:
-            props.full_layout = figprops.full_layout
-        except AttributeError as e:
-            pass
+        figprops = {}
+    props.old_layout = figprops.get('old_layout', 0)
+    props.full_layout = figprops.get('full_layout', 0)
     # first get glyphs in default repertoire
     # fill missing glyphs with empties
     glyphs = [font.get_glyph(_chr, missing='empty') for _chr in flf_chars]
