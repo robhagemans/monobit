@@ -611,7 +611,9 @@ def parse_fnt(fnt):
     win_props = _parse_header(fnt)
     properties = _parse_win_props(fnt, win_props)
     glyphs = _parse_chartable(fnt, win_props)
-    return Font(glyphs, **properties)
+    font = Font(glyphs, **properties)
+    font = font.label()
+    return font
 
 def _parse_header(fnt):
     """Read the header information in the FNT resource."""

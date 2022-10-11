@@ -723,7 +723,6 @@ class Font:
         # default action: label chars with font encoding
         if not codepoint_from and not char_from and self.encoding:
             char_from = encoder(self.encoding)
-        print(codepoint_from)
         # TODO: should we set self.encoding here?
         if codepoint_from:
             # update glyph labels

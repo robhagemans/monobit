@@ -515,7 +515,9 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=(),
         )
         for _glyph, _char in zip(glyphs, chars)
     ]
-    return Font(glyphs, **properties)
+    font = Font(glyphs, **properties)
+    font = font.label()
+    return font
 
 def _read_bmfont(infile, container, outline):
     """Read a bmfont from a container."""

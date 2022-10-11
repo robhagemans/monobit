@@ -18,7 +18,6 @@ from ..streams import FileFormatError
 
 
 # beyond ASCII, multiple encodings are in use - set these manually after extraction
-_FZX_ENCODING = 'zx-spectrum'
 _FZX_RANGE = range(32, 256)
 
 
@@ -225,7 +224,6 @@ def _convert_from_fzx(fzx_props, fzx_glyphs):
     properties = Props(
         line_height=fzx_props.height,
         right_bearing=fzx_props.tracking,
-        encoding=_FZX_ENCODING,
     )
     return properties, glyphs
 

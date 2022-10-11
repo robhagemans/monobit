@@ -132,7 +132,7 @@ def _load_yaff(text_stream):
 
 
 def _load_draw(text_stream, _ink='', _paper=''):
-    """Parse a yaff/yaffs file."""
+    """Parse a hexdraw file."""
 
     class _Converter(DrawConverter):
         ink=_ink or DrawConverter.ink
