@@ -15,7 +15,7 @@ import binascii
 from pkg_resources import resource_listdir
 
 from .binary import int_to_bytes
-from .label import Codepoint, Char
+from .label import Codepoint, Char, label as to_label
 
 
 _ENCODING_FILES = (
@@ -604,10 +604,14 @@ class CharmapRegistry:
         cls._registered[normname] = dict(name=name, filename=filename, format=format, **kwargs)
 
     @classmethod
-    def add(cls, encoder):
-        """Add an encoder object to the registry."""
-        normname = encoder.name
-        cls._stored[normname] = encoder
+    def add_type(cls, name, encoder_class):
+        """Add an encoder class to the registry."""
+        normname = cls._normalise_for_match(name)
+        if normname in cls._registered:
+            logging.warning(
+                f"Redefining character map '{name}'=='{cls._registered[normname]['name']}'."
+            )
+        cls._stored[normname] = encoder_class
 
     @classmethod
     def overlay(cls, name, filename, overlay_range, format=None, **kwargs):
@@ -693,11 +697,9 @@ class CharmapRegistry:
 
     def __getitem__(self, name):
         """Get charmap from registry by name; raise NotFoundError if not found."""
-        if self.is_unicode(name):
-            return Unicode()
         normname = self._normalise_for_match(name)
         try:
-            return self._stored[normname]
+            return self._stored[normname]()
         except KeyError:
             pass
         try:
@@ -752,11 +754,11 @@ class Encoder:
         """Set encoder name."""
         self.name = name
 
-    def char(self, codepoint):
+    def char(self, *labels):
         """Convert codepoint to character, return empty string if missing."""
         raise NotImplementedError
 
-    def codepoint(self, char):
+    def codepoint(self, *labels):
         """Convert character to codepoint, return None if missing."""
         raise NotImplementedError
 
@@ -836,23 +838,29 @@ class Charmap(Encoder):
             name = Path(filename).stem
         return cls(mapping, name=name)
 
-    def char(self, codepoint):
+    def char(self, *labels):
         """Convert codepoint sequence to character, return empty string if missing."""
-        # normalise codepoint value
-        codepoint = Codepoint(codepoint).value
-        try:
-            return self._ord2chr[codepoint]
-        except KeyError as e:
-            return ''
+        for label in labels:
+            codepoint = to_label(label)
+            if isinstance(codepoint, Codepoint):
+                # normalise codepoint value
+                codepoint = codepoint.value
+                try:
+                    return self._ord2chr[codepoint]
+                except KeyError as e:
+                    return ''
 
-    def codepoint(self, char):
+    def codepoint(self, *labels):
         """Convert character to codepoint sequence, return empty tuple if missing."""
-        # accept str or Char
-        char = Char(char).value
-        try:
-            return self._chr2ord[char]
-        except KeyError as e:
-            return ()
+        for label in labels:
+            char = to_label(label)
+            if isinstance(char, Char):
+                # accept str or Char
+                char = char.value
+                try:
+                    return self._chr2ord[char]
+                except KeyError as e:
+                    return ()
 
     @property
     def mapping(self):
@@ -951,24 +959,55 @@ class Unicode(Encoder):
         super().__init__('unicode')
 
     @staticmethod
-    def char(codepoint):
+    def char(*labels):
         """Convert codepoint to character."""
-        try:
-            return ''.join(chr(_i) for _i in codepoint if is_graphical(chr(_i)))
-        except ValueError:
-            return ''
+        for label in labels:
+            codepoint = to_label(label)
+            if isinstance(codepoint, Codepoint):
+                try:
+                    # TODO: should we keep is_graphical? make it a setting?
+                    return ''.join(chr(_i) for _i in codepoint if is_graphical(chr(_i)))
+                except ValueError:
+                    return ''
 
     @staticmethod
-    def codepoint(char):
+    def codepoint(*labels):
         """Convert character to codepoint."""
-        # we used to normalise to NFC here, presumably to reduce multi-codepoint situations
-        # but it leads to inconsistency between char and codepoint for canonically equivalent chars
-        #char = unicodedata.normalize('NFC', char)
-        return tuple(ord(_c) for _c in char)
+        for label in labels:
+            char = to_label(label)
+            if isinstance(char, Char):
+                # we used to normalise to NFC here, presumably to reduce multi-codepoint situations
+                # but it leads to inconsistency between char and codepoint for canonically equivalent chars
+                #char = unicodedata.normalize('NFC', char)
+                return Codepoint(tuple(ord(_c) for _c in char))
+        return Codepoint()
 
     def __repr__(self):
         """Representation."""
         return type(self).__name__ + '()'
+
+
+class Index(Encoder):
+    """Convert from index to ordinals."""
+
+    def __init__(self, first_codepoint=0):
+        """Index converter."""
+        super().__init__('index')
+        self._count = first_codepoint
+
+    @staticmethod
+    def char(*labels):
+        """Convert codepoint to character, return empty string if missing."""
+        raise TypeError('Can only use Index encoder to set codepoints, not character labels.')
+
+    def codepoint(self, *labels):
+        """Convert character to codepoint."""
+        self._count += 1
+        return Codepoint(self._count-1)
+
+    def __repr__(self):
+        """Representation."""
+        return type(self).__name__ + f'(first_codepoint={first_codepoint})'
 
 
 ###################################################################################################
@@ -1200,7 +1239,6 @@ def _from_wikipedia(data, table=0, column=0, range=None):
 
 ###################################################################################################
 
-charmaps = CharmapRegistry()
 
 # for use in function annotations
 def encoder(initialiser):
@@ -1211,8 +1249,6 @@ def encoder(initialiser):
         raise ValueError(
             f'Encoding value must be string or Encoder object, not `{type(initialiser)}`'
         )
-    if initialiser == 'index':
-        return initialiser
     try:
         return charmaps[initialiser]
     except KeyError:
@@ -1220,7 +1256,11 @@ def encoder(initialiser):
     return Charmap.load(initialiser)
 
 
+charmaps = CharmapRegistry()
+charmaps.add_type('index', Index)
+
 # unicode aliases
+charmaps.add_type('unicode', Unicode)
 charmaps.alias('ucs', 'unicode')
 charmaps.alias('iso10646', 'unicode')
 charmaps.alias('iso10646-1', 'unicode')

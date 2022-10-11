@@ -723,16 +723,9 @@ class Font:
         # default action: label chars with font encoding
         if not codepoint_from and not char_from and self.encoding:
             char_from = encoder(self.encoding)
+        print(codepoint_from)
         # TODO: should we set self.encoding here?
-        # TODO: make into an Encoder class
-        if codepoint_from == 'index':
-            font = font.modify(glyphs=tuple(
-                _glyph.modify(codepoint=(_index,))
-                if (overwrite or not _glyph.codepoint)
-                else _glyph
-                for _index, _glyph in enumerate(self._glyphs)
-            ))
-        elif codepoint_from:
+        if codepoint_from:
             # update glyph labels
             encoding = codepoint_from
             if encoding is not None:

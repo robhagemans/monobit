@@ -340,11 +340,11 @@ class Glyph:
         """
         glyph = self
         # use codepage to find codepoint if not set
-        if overwrite or not self.codepoint:
-            glyph = glyph.modify(codepoint=codepoint_from.codepoint(self.char))
+        if codepoint_from and (overwrite or not self.codepoint):
+            glyph = glyph.modify(codepoint=codepoint_from.codepoint(*self.get_labels()))
         # use codepage to find char if not set
-        if overwrite or not self.char:
-            glyph = glyph.modify(char=char_from.char(self.codepoint))
+        if char_from and(overwrite or not self.char):
+            glyph = glyph.modify(char=char_from.char(*self.get_labels()))
         return glyph
 
     def add(
