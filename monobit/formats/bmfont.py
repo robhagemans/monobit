@@ -693,8 +693,12 @@ def _create_bmfont(
     if not charmaps.is_unicode(encoding):
         # if encoding is unknown, call it OEM
         charset = _CHARSET_STR_REVERSE_MAP.get(encoding, _CHARSET_STR_REVERSE_MAP[''])
+        # ensure codepoint values are set
+        font = font.label(codepoint_from=encoding)
     else:
         charset = ''
+        # ensure char values are set
+        font = font.label(char_from=encoding)
     # create images
     pages, chars = _create_spritesheets(font, size, packed)
     props = {}

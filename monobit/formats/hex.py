@@ -153,6 +153,8 @@ def _save_hex(font, outstream, fits):
     # global comment
     if font.comments:
         outstream.write(_format_comment(font.comments, comm_char='#') + '\n\n')
+    # ensure unicode labels exist if encoding is defined
+    font = font.label()
     # glyphs
     for glyph in font.glyphs:
         if not glyph.char:

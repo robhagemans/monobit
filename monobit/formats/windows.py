@@ -920,6 +920,8 @@ def create_fnt(font, version=0x200):
     space_index = 0
     # if encoding is compatible, use it; otherwise set to fallback value
     charset = charset_map.get(font.encoding, _FALLBACK_CHARSET)
+    # ensure codepoint values are set, if possible
+    font = font.label(codepoint_from=font.encoding)
     # only include single-byte encoded glyphs
     codepoints = tuple(_cp[0] for _cp in font.get_codepoints() if len(_cp) == 1)
     if not codepoints:

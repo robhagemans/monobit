@@ -435,7 +435,10 @@ def save_bdf(fonts, outstream, where=None):
     """
     if len(fonts) > 1:
         raise FileFormatError('Can only save one font to BDF file.')
-    _save_bdf(fonts[0], outstream.text)
+    # ensure codepoint values are set
+    font = fonts[0]
+    font = font.label(codepoint_from=font.encoding)
+    _save_bdf(font, outstream.text)
 
 
 ##############################################################################

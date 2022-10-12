@@ -559,6 +559,8 @@ class DrawWriter(TextWriter, DrawParams):
 
     def save(self, font, outstream):
         """Write one font to a plaintext stream as hexdraw."""
+        # ensure char labels are set
+        font = font.label(char_from=font.encoding)
         # write global comment
         if font.comments:
             outstream.write(self._format_comment(font.comments) + '\n\n')

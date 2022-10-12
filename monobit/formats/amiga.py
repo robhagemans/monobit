@@ -51,7 +51,8 @@ def load_amiga_fc(f, where):
         # amiga fs is case insensitive, so we need to loop over listdir and match
         for filename in where:
             if filename.lower() == name.lower():
-                pack.append(_load_amiga(where.open(filename, 'r'), where, tags))
+                with where.open(filename, 'r') as stream:
+                    pack.append(_load_amiga(stream, where, tags))
     return pack
 
 
@@ -239,7 +240,10 @@ def _load_amiga(f, where, tags):
     logging.info('yaff properties:')
     for line in str(props).splitlines():
         logging.info('    ' + line)
-    return Font(glyphs, **vars(props))
+    font = Font(glyphs, **vars(props))
+    # fill out character labels based on latin-1 encoding
+    font = font.label()
+    return font
 
 
 def _read_library_names(f):

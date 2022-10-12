@@ -45,6 +45,8 @@ def save_dec_drcs(fonts, outstream, where=None, *, use_8bit:bool=False):
         raise FileFormatError(
             'This format only supports character-cell fonts.'
         )
+    # ensure codepoint values are set if possible
+    font = font.label(codepoint_from=font.encoding)
     # upper size limits vary by device, not enforced.
     # lower sizes would conflict with vt200 size values
     if font.raster_size.x < 5 or font.raster_size.y < 1:

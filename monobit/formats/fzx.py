@@ -230,6 +230,8 @@ def _convert_from_fzx(fzx_props, fzx_glyphs):
 
 def _convert_to_fzx(font):
     """Convert monobit font to FZX properties and glyphs."""
+    # ensure codepoint values are set if possible
+    font = font.label(codepoint_from=font.encoding)
     # select glyphs that can be included
     # only codepoints 32--255 inclusive
     # on extraction 32--127 will be assumed to be ASCII
