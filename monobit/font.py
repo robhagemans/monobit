@@ -749,16 +749,17 @@ class Font:
 
     # need converter from string to set of labels to script this
     #@scriptable
-    def subset(self, keys=(), *, chars:set=(), codepoints:set=(), tags:set=()):
+    def subset(self, labels=(), *, chars:set=(), codepoints:set=(), tags:set=()):
         """
         Return a subset of the font.
 
+        labels: chars, codepoints or tags to include
         chars: chars to include
         codepoints: codepoints to include
         tags: tags to include
         """
         glyphs = (
-            [self.get_glyph(_key, missing=None) for _key in keys]
+            [self.get_glyph(_label, missing=None) for _label in labels]
             + [self.get_glyph(char=_char, missing=None) for _char in chars]
             + [self.get_glyph(codepoint=_codepoint, missing=None) for _codepoint in codepoints]
             + [self.get_glyph(tag=_tag, missing=None) for _tag in tags]
@@ -766,19 +767,27 @@ class Font:
         return self.modify(_glyph for _glyph in glyphs if _glyph is not None)
 
     #@scriptable
-    def without(self, keys=(), *, chars:set=(), codepoints:set=(), tags:set=()):
-        """Return a font excluding a subset."""
-        if not any((keys, chars, codepoints, tags)):
+    def exclude(self, labels=(), *, chars:set=(), codepoints:set=(), tags:set=()):
+        """
+        Return a font excluding a subset.
+
+        labels: chars, codepoints or tags to exclude
+        chars: chars to exclude
+        codepoints: codepoints to exclude
+        tags: tags to exclude
+        """
+        if not any((labels, chars, codepoints, tags)):
             return self
         glyphs = [
             _glyph
             for _glyph in self._glyphs
             if (
-                _glyph.char not in keys
-                and _glyph.codepoint not in keys
+                _glyph.char not in labels
+                and _glyph.codepoint not in labels
                 and _glyph.char not in chars
                 and _glyph.codepoint not in codepoints
                 and not (set(_glyph.tags) & set(tags))
+                and not (set(_glyph.tags) & set(labels))
             )
         ]
         return self.modify(glyphs)

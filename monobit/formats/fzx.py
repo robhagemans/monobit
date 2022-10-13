@@ -236,7 +236,7 @@ def _convert_to_fzx(font):
     # only codepoints 32--255 inclusive
     # on extraction 32--127 will be assumed to be ASCII
     includable = font.subset(codepoints=set(_FZX_RANGE))
-    dropped = font.without(codepoints=set(_FZX_RANGE))
+    dropped = font.exclude(codepoints=set(_FZX_RANGE))
     if dropped.glyphs:
         logging.warning(
             'FZX format can only store codepoints 32--255. '
