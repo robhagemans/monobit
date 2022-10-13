@@ -11,7 +11,7 @@ from pathlib import Path
 
 from .encoding import unicode_name, is_printable, NotFoundError
 from .struct import extend_string
-from .label import Codepoint
+from .label import codepoint_to_str
 
 
 class Tagger:
@@ -68,8 +68,7 @@ class CodepointTagger(Tagger):
     def get_tag(self, glyph):
         if not glyph.codepoint:
             return ''
-        return str(Codepoint(glyph.codepoint))
-
+        return codepoint_to_str(glyph.codepoint)
 
 
 class MappingTagger(Tagger):

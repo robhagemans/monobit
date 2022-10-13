@@ -26,7 +26,7 @@ from .. import struct
 from ..storage import loaders, savers
 from ..font import Font, Coord
 from ..glyph import Glyph
-from ..label import Codepoint, Char
+from ..label import codepoint, Char
 
 from .windows import CHARSET_MAP, CHARSET_REVERSE_MAP
 
@@ -549,22 +549,20 @@ def _read_bmfont(infile, container, outline):
 # bmfont writer
 
 def _glyph_id(glyph, encoding):
-    codepoint = glyph.codepoint
-    char = glyph.char
+    if charmaps.is_unicode(encoding):
+        char = glyph.char.value
+        if len(char) > 1:
+            raise ValueError(
+                f"Can't store multi-codepoint grapheme sequence {ascii(char)}."
+            )
+        return ord(char)
     if not codepoint:
-        raise ValueError(f"Can't store glyph {ascii(char)} with no codepoint.")
-    if len(codepoint) == 1:
-        id, = codepoint
-    elif not charmaps.is_unicode(encoding):
-        id = bytes_to_int(codepoint)
+        raise ValueError(f"Can't store glyph with no codepoint: {glyph}.")
     else:
-        raise ValueError(f"Can't store multi-codepoint grapheme sequence {ascii(char)}.")
-    return id
+        return bytes_to_int(glyph.codepoint)
 
 def _codepoint_for_id(id, is_unicode):
-    if not is_unicode:
-        return Codepoint(int_to_bytes(id))
-    return Codepoint(id)
+    return codepoint(id)
 
 
 def _create_spritesheets(font, size=(256, 256), packed=False):

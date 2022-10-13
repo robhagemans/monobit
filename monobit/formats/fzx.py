@@ -13,7 +13,6 @@ from ..struct import Props, bitfield, little_endian as le
 from ..storage import loaders, savers
 from ..font import Font
 from ..glyph import Glyph
-from ..label import Codepoint
 from ..streams import FileFormatError
 
 

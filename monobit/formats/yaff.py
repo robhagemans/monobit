@@ -18,7 +18,7 @@ from ..streams import FileFormatError
 from ..font import Font
 from ..glyph import Glyph
 from ..label import strip_matching, label
-from ..label import Char, Codepoint, Tag, Label
+from ..label import Char, codepoint, Tag, Label
 from ..struct import Props
 
 
@@ -395,7 +395,7 @@ class TextConverter:
         # labels
         keys = tuple(self.convert_key(_key) for _key in keys)
         chars = tuple(_key for _key in keys if isinstance(_key, Char))
-        codepoints = tuple(_key for _key in keys if isinstance(_key, Codepoint))
+        codepoints = tuple(_key for _key in keys if isinstance(_key, bytes))
         tags = tuple(_key for _key in keys if isinstance(_key, Tag))
         # duplicate glyphs if we have multiple chars or codepoints
         return tuple(

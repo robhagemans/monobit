@@ -16,7 +16,7 @@ except ImportError:
 
 from ..storage import savers
 from ..streams import FileFormatError
-from ..label import Codepoint
+from ..label import codepoint_to_str
 
 
 
@@ -63,7 +63,7 @@ if reportlab:
                 if n < len(font.glyphs):
                     glyph = font.glyphs[n]
                     label = (
-                        f'{Codepoint(glyph.codepoint)}: {glyph.char} '
+                        f'{codepoint_to_str(glyph.codepoint)}: {glyph.char} '
                         + ' '.join(
                             f'[{_tag}]' for _tag in glyph.tags
                         )

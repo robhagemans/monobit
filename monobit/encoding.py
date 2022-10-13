@@ -15,7 +15,7 @@ import binascii
 from pkg_resources import resource_listdir
 
 from .binary import int_to_bytes
-from .label import Codepoint, Char, label as to_label
+from .label import codepoint, Char, label as to_label
 
 
 _ENCODING_FILES = (
@@ -842,9 +842,7 @@ class Charmap(Encoder):
         """Convert codepoint sequence to character, return empty string if missing."""
         for label in labels:
             codepoint = to_label(label)
-            if isinstance(codepoint, Codepoint):
-                # normalise codepoint value
-                codepoint = codepoint.value
+            if isinstance(codepoint, bytes):
                 try:
                     return self._ord2chr[codepoint]
                 except KeyError as e:
@@ -963,7 +961,7 @@ class Unicode(Encoder):
         """Convert codepoint to character."""
         for label in labels:
             codepoint = to_label(label)
-            if isinstance(codepoint, Codepoint):
+            if isinstance(codepoint, bytes):
                 try:
                     # TODO: should we keep is_graphical? make it a setting?
                     return ''.join(chr(_i) for _i in codepoint if is_graphical(chr(_i)))
@@ -979,8 +977,8 @@ class Unicode(Encoder):
                 # we used to normalise to NFC here, presumably to reduce multi-codepoint situations
                 # but it leads to inconsistency between char and codepoint for canonically equivalent chars
                 #char = unicodedata.normalize('NFC', char)
-                return Codepoint(tuple(ord(_c) for _c in char))
-        return Codepoint()
+                return b''.join(ord(_c).to_bytes(4, 'big') for _c in char)
+        return b''
 
     def __repr__(self):
         """Representation."""
@@ -1003,7 +1001,7 @@ class Index(Encoder):
     def codepoint(self, *labels):
         """Convert character to codepoint."""
         self._count += 1
-        return Codepoint(self._count-1)
+        return codepoint(self._count-1)
 
     def __repr__(self):
         """Representation."""
@@ -1053,11 +1051,11 @@ def _from_text_columns(
             try:
                 # allow sequence of codepoints
                 # multibyte code points can also be given as single large number
+                # note that the page bytewidth of the codepoints is assumed to be 1
                 cp_point = b''.join(
                     int_to_bytes(int(_substr, codepoint_base))
                     for _substr in cp_str.split(joiner)
                 )
-                cp_point = tuple(cp_point)
                 if unicode_base == 'char':
                     # the character itself is in the column, utf-8 encoded
                     char = uni_str
@@ -1131,11 +1129,10 @@ def _from_ucm_charmap(data):
             if not uni_str or not cp_str:
                 logging.warning('Could not parse line in ucm charmap file: %s.', repr(line))
                 continue
-            cp_point = tuple(cp_bytes)
-            if cp_point in mapping:
-                logging.debug('Ignoring redefinition of code point %s', cp_point)
+            if cp_bytes in mapping:
+                logging.debug('Ignoring redefinition of code point %s', cp_bytes)
             else:
-                mapping[cp_point] = chr(int(uni_str, 16))
+                mapping[cp_bytes] = chr(int(uni_str, 16))
     return mapping
 
 
@@ -1230,7 +1227,7 @@ def _from_wikipedia(data, table=0, column=0, range=None):
                             # not a unicode point
                             pass
                         else:
-                            self.mapping[(self.current,)] = char
+                            self.mapping[bytes((self.current,))] = char
 
     parser = _WikiParser()
     parser.feed(data.decode('utf-8-sig'))

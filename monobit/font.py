@@ -18,7 +18,7 @@ except ImportError:
 from .scripting import scriptable, get_scriptables
 from .glyph import Glyph, Coord, Bounds, number
 from .encoding import charmaps, encoder
-from .label import Label, Tag, Char, Codepoint, label as to_label
+from .label import Label, Tag, Char, codepoint as to_codepoint, label as to_label
 from .struct import (
     extend_string, DefaultProps, normalise_property, as_tuple, writable_property, checked_property
 )
@@ -632,7 +632,7 @@ class Font:
             label = to_label(label)
             if isinstance(label, Char):
                 char = label
-            elif isinstance(label, Codepoint):
+            elif isinstance(label, bytes):
                 codepoint = label
             elif isinstance(label, Tag):
                 tag = label
@@ -646,12 +646,11 @@ class Font:
                 return self._chars[Char(char)]
             except KeyError:
                 raise KeyError(f'No glyph found matching char={Char(char)}') from None
-        byte_length = 4 if self.encoding == 'unicode' else 1
-        cp_value = Codepoint(codepoint) #.as_tuple(byte_length)
+        cp_value = to_codepoint(codepoint)
         try:
             return self._codepoints[cp_value]
         except KeyError:
-            raise KeyError(f'No glyph found matching codepoint={Codepoint(codepoint)} {self._codepoints}') from None
+            raise KeyError(f'No glyph found matching codepoint={cp_value}') from None
 
 
     @cache

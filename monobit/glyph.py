@@ -21,7 +21,7 @@ from .scripting import scriptable
 from .binary import ceildiv, bytes_to_bits
 from .matrix import to_text
 from .encoding import is_graphical
-from .label import Char, Codepoint, Tag, label
+from .label import Char, codepoint as to_codepoint, Tag, label
 from .struct import (
     DefaultProps, normalise_property, extend_string,
     writable_property, as_tuple, checked_property
@@ -130,7 +130,7 @@ class KernTable(dict):
         except KeyError:
             pass
         try:
-            return self[Codepoint(second.codepoint)]
+            return self[second.codepoint]
         except KeyError:
             pass
         for tag in second.tags:
@@ -266,7 +266,7 @@ class Glyph:
                 f"All rows in a glyph's pixel matrix must be of the same width: {repr(self)}"
             )
         # labels
-        self._codepoint = Codepoint(codepoint)
+        self._codepoint = to_codepoint(codepoint)
         self._char = Char(char)
         self._tags = tuple(Tag(_tag) for _tag in tags if _tag)
         # comments
@@ -460,7 +460,7 @@ class Glyph:
         labels = []
         # don't write out codepoints for unicode fonts as we have u+XXXX already
         if self.codepoint:
-            labels.append(Codepoint(self.codepoint))
+            labels.append(self.codepoint)
         if self.char:
             labels.append(Char(self.char))
         labels.extend(Tag(_t) for _t in self.tags)

@@ -15,7 +15,7 @@ from ..font import Font
 from ..glyph import Glyph
 from ..struct import Props, reverse_dict
 from ..taggers import extend_string, tagmaps
-from ..label import Codepoint
+from ..label import codepoint_to_str
 
 
 # note that we won't be able to use the "subcharacters" that are the defining feature of FIGlet
@@ -264,7 +264,7 @@ def _write_flf(outstream, flf_glyphs, flf_props, comments, ink='#', paper=' ', h
         outstream.write(_format_glyph(glyph, ink=ink, paper=paper))
     for glyph in flf_glyphs[len(_CODEPOINTS):]:
         tag = glyph.tags[0] if glyph.tags else tagmaps['unicode'].get_tag(glyph)
-        outstream.write('{} {}\n'.format(Codepoint(glyph.codepoint), tag))
+        outstream.write('{} {}\n'.format(codepoint_to_str(glyph.codepoint), tag))
         outstream.write(_format_glyph(glyph, ink=ink, paper=paper))
 
 

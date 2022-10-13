@@ -6,8 +6,10 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import string
+from binascii import hexlify
 
-from .binary import ceildiv
+from .binary import ceildiv, int_to_bytes
+from .scripting import any_int
 
 
 def strip_matching(from_str, char, allow_no_match=True):
@@ -28,9 +30,9 @@ def label(value=''):
         return value
     if not isinstance(value, str):
         # only Codepoint can have non-str argument
-        return Codepoint(value)
+        return codepoint(value)
     try:
-        return Codepoint.from_str(value)
+        return codepoint(value)
     except ValueError:
         pass
     # check for unicode identifier
@@ -116,71 +118,32 @@ class Tag(Label):
         return self._value
 
 
-
-class Codepoint(Label):
-    """Codepoint sequence label."""
-
-    def __init__(self, value=()):
-        """Convert to codepoint label if possible."""
-        if isinstance(value, Codepoint):
-            self._value = value.value
-            return
-        if isinstance(value, int):
-            value = (value,)
-        if value is None:
-            value = ()
-        # deal with other iterables, e.g. bytes
-        self._value = tuple(value)
-        if not all(isinstance(_elem, int) for _elem in self._value):
-            raise self._value_error(value)
-
-    def as_tuple(self, byte_length):
-        """Retrieve codepoint as a tuple for a given codepage byte-length."""
-        # integers/length-one tuples are reinterpreted if they exceed the bit length
-        if len(self._value) == 1:
-            value = self._value[0]
-            byte_size = byte_length * ceildiv(value.bit_length(), 8 * byte_length)
-            bytestr = value.to_bytes(byte_size, 'big')
-            chunks = zip(*(bytestr[_ofs::byte_length] for _ofs in range(byte_length)))
-            chunks = tuple(int.from_bytes(_c, 'big') for _c in chunks)
-            return chunks
-        return self._value
-
-    def __str__(self):
-        """Convert codepoint label to str."""
-        return ', '.join(f'0x{_elem:02x}' for _elem in self)
-
-    @classmethod
-    def from_str(cls, value):
-        """Convert str to codepoint label if possible."""
-        if not isinstance(value, str):
-            raise cls._value_error(value)
+#FIXME: we're always assuming codepage byte width 1
+def codepoint(value=None):
+    """Convert to codepoint label if possible."""
+    if value is None:
+        return b''
+    if isinstance(value, bytes):
+        return value
+    if isinstance(value, int):
+        return int_to_bytes(value)
+    if isinstance(value, str):
         # handle composite labels
         # codepoint sequences (MBCS) "0xf5,0x02" etc.
-        elements = value.split(',')
-        try:
-            key = [cls._convert_element(_elem) for _elem in elements]
-        except ValueError:
-            raise cls._value_error(value) from None
-        return cls(key)
-
-    @staticmethod
-    def _convert_element(value):
-        """Convert codepoint label element to int if possible."""
-        try:
-            # check for anything convertible to int in Python notation (12, 0xff, 0o777, etc.)
-            return int(value, 0)
-        except ValueError:
-            # also accept decimals with leading zeros
-            # raises ValueError if not possible
-            return int(value.lstrip('0'))
-
-    @staticmethod
-    def _value_error(value):
-        """Create a ValueError."""
-        return ValueError(
+        value = value.split(',')
+    # deal with other iterables, e.g. bytes
+    try:
+        return b''.join(int_to_bytes(any_int(_i)) for _i in value)
+    except (TypeError, OverflowError):
+        raise ValueError(
             f'Cannot convert value {repr(value)} of type {type(value)} to codepoint label.'
-        )
+        ) from None
+
+
+def codepoint_to_str(value):
+    """Convert codepoint label to str."""
+    return '0x' + hexlify(value).decode('ascii')
+
 
 
 class Char(Label):
