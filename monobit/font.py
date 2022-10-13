@@ -638,18 +638,20 @@ class Font:
                 tag = label
         if tag is not None:
             try:
-                return self._tags[Tag(tag).value]
+                return self._tags[Tag(tag)]
             except KeyError:
                 raise KeyError(f'No glyph found matching tag={Tag(tag)}') from None
         if char is not None:
             try:
-                return self._chars[Char(char).value]
+                return self._chars[Char(char)]
             except KeyError:
                 raise KeyError(f'No glyph found matching char={Char(char)}') from None
+        byte_length = 4 if self.encoding == 'unicode' else 1
+        cp_value = Codepoint(codepoint) #.as_tuple(byte_length)
         try:
-            return self._codepoints[Codepoint(codepoint).value]
+            return self._codepoints[cp_value]
         except KeyError:
-            raise KeyError(f'No glyph found matching codepoint={Codepoint(codepoint)}') from None
+            raise KeyError(f'No glyph found matching codepoint={Codepoint(codepoint)} {self._codepoints}') from None
 
 
     @cache

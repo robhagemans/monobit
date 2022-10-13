@@ -266,9 +266,9 @@ class Glyph:
                 f"All rows in a glyph's pixel matrix must be of the same width: {repr(self)}"
             )
         # labels
-        self._codepoint = Codepoint(codepoint).value
-        self._char = Char(char).value
-        self._tags = tuple(Tag(_tag).value for _tag in tags if _tag)
+        self._codepoint = Codepoint(codepoint)
+        self._char = Char(char)
+        self._tags = tuple(Tag(_tag) for _tag in tags if _tag)
         # comments
         if not isinstance(comments, str):
             raise TypeError('Glyph comment must be a single string.')

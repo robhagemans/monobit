@@ -7,6 +7,8 @@ licence: https://opensource.org/licenses/MIT
 
 import string
 
+from .binary import ceildiv
+
 
 def strip_matching(from_str, char, allow_no_match=True):
     """Strip a char from either side of the string if it occurs on both."""
@@ -39,10 +41,8 @@ def label(value=''):
     return Tag.from_str(value)
 
 
-# pylint: disable=no-member
 class Label:
     """Label base class."""
-
 
     def __init__(self, value=None):
         """Label base class should not be instantiated."""
@@ -53,11 +53,19 @@ class Label:
         """Create label from string representation."""
         return cls(value)
 
+    @property
+    def value(self):
+        """Value of the codepoint in base type."""
+        # pylint: disable=no-member
+        return self._value
+
     def __hash__(self):
-        return hash(self.value)
+        """Allow use as dictionary key."""
+        # make sure tag and Char don't collide
+        return hash((type(self), self.value))
 
     def __eq__(self, other):
-        return self.value == other.value
+        return type(self) == type(other) and self.value == other.value
 
     def __bool__(self):
         return bool(self.value)
@@ -68,16 +76,18 @@ class Label:
     def __iter__(self):
         return iter(self.value)
 
+    def __repr__(self):
+        """Represent label."""
+        return f"{type(self).__name__}({repr(self.value)})"
+
 
 class Tag(Label):
     """Tag label."""
 
-    value: str
-
     def __init__(self, value=''):
         """Construct tag object."""
         if isinstance(value, Tag):
-            self.value = value.value
+            self._value = value.value
             return
         if Tag is None:
             tag = ''
@@ -89,67 +99,56 @@ class Tag(Label):
         value = value.strip()
         # strip matching double quotes - this allows to set a label starting with a digit by quoting it
         value = strip_matching(value, '"')
-        self.value = value
-
-    def __repr__(self):
-        """Represent tag."""
-        return f"{type(self).__name__}('{self.value}')"
+        self._value = value
 
     def __str__(self):
         """Convert tag to str."""
         # quote otherwise ambiguous/illegal tags
         if (
-                self.value.lower().startswith('u+')
-                or not (self.value[:1].isalpha() or self.value[:1] in '_-."')
-                or (self.value.startswith('"') and self.value.endswith('"'))
-                or (self.value.startswith("'") and self.value.endswith("'"))
+                '+' in self._value
+                or not (self._value[:1].isalpha() or self._value[:1] in '_-."')
+                or (self._value.startswith('"') and self._value.endswith('"'))
+                or (self._value.startswith("'") and self._value.endswith("'"))
                 # one-character tags - we want to consider representing ascii chars this way
-                # longer chars get single quotes
-                or len(self.value) == 1
+                or len(self._value) == 1
             ):
-            return f'"{self.value}"'
-        return self.value
+            return f'"{self._value}"'
+        return self._value
 
-    def __hash__(self):
-        # make sure tag and Char don't collide
-        return hash((type(self), self.value))
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.value == other.value
 
 
 class Codepoint(Label):
     """Codepoint sequence label."""
 
-    value: tuple
-
     def __init__(self, value=()):
         """Convert to codepoint label if possible."""
         if isinstance(value, Codepoint):
-            self.value = value.value
+            self._value = value.value
             return
         if isinstance(value, int):
             value = (value,)
         if value is None:
             value = ()
-        # int.from_bytes? need byte width e.g. utf-32
-        self.value = tuple(value)
-        if not all(isinstance(_elem, int) for _elem in self.value):
+        # deal with other iterables, e.g. bytes
+        self._value = tuple(value)
+        if not all(isinstance(_elem, int) for _elem in self._value):
             raise self._value_error(value)
 
-    def __repr__(self):
-        """Represent codepoint."""
-        cpstr = str(self)
-        if len(self.value) != 1:
-            cpstr = f'({cpstr})'
-        return f"{type(self).__name__}({cpstr})"
+    def as_tuple(self, byte_length):
+        """Retrieve codepoint as a tuple for a given codepage byte-length."""
+        # integers/length-one tuples are reinterpreted if they exceed the bit length
+        if len(self._value) == 1:
+            value = self._value[0]
+            byte_size = byte_length * ceildiv(value.bit_length(), 8 * byte_length)
+            bytestr = value.to_bytes(byte_size, 'big')
+            chunks = zip(*(bytestr[_ofs::byte_length] for _ofs in range(byte_length)))
+            chunks = tuple(int.from_bytes(_c, 'big') for _c in chunks)
+            return chunks
+        return self._value
 
     def __str__(self):
         """Convert codepoint label to str."""
-        return ', '.join(
-            f'0x{_elem:02x}'
-            for _elem in self.value
-        )
+        return ', '.join(f'0x{_elem:02x}' for _elem in self)
 
     @classmethod
     def from_str(cls, value):
@@ -187,12 +186,10 @@ class Codepoint(Label):
 class Char(Label):
     """Unicode label."""
 
-    value: str
-
     def __init__(self, value=''):
         """Convert char or char sequence to unicode label."""
         if isinstance(value, Char):
-            self.value = value.value
+            self._value = value.value
             return
         if value is None:
             value = ''
@@ -206,17 +203,17 @@ class Char(Label):
                 value = ''.join(value)
             except TypeError:
                 raise self._value_error(value) from None
-        self.value = value
+        self._value = value
 
     def __repr__(self):
         """Represent character label."""
-        return f"{type(self).__name__}({ascii(self.value)})"
+        return f"{type(self).__name__}({ascii(self._value)})"
 
     def __str__(self):
         """Convert to unicode label str."""
         return ', '.join(
             f'u+{ord(_uc):04x}'
-            for _uc in self.value
+            for _uc in self._value
         )
 
     @classmethod
