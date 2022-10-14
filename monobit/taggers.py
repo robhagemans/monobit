@@ -11,7 +11,6 @@ from pathlib import Path
 
 from .encoding import unicode_name, is_printable, NotFoundError
 from .struct import extend_string
-from .label import Codepoint
 
 
 class Tagger:
@@ -68,8 +67,7 @@ class CodepointTagger(Tagger):
     def get_tag(self, glyph):
         if not glyph.codepoint:
             return ''
-        return str(Codepoint(glyph.codepoint))
-
+        return str(glyph.codepoint)
 
 
 class MappingTagger(Tagger):
@@ -129,8 +127,6 @@ class SGMLTagger(MappingTagger):
         # joining numeric references by semicolons
         # note that each entity should really start with & and end with ; e.g. &eacute;
         return ';'.join(f'#{_cp:X}' for _cp in cps)
-
-
 
 
 

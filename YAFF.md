@@ -157,32 +157,50 @@ labels, all are considered to point to the glyph that follows.
 ##### Labels
 A *label* must be followed by a separator `:`, optional whitespace, and a line ending.
 * The label must be given at the start of the line. Leading whitespace is not allowed.
-* A label must start with an ascii letter or digit, an underscore `_`, a dash `-`, a dot `.`, or a double quote `"`.
-* If a label starts and ends with a double quote, these quotes are stripped and everything in between is used unchanged.
 * A label has one of three types: *character*, *codepoint*, or *tag*.
 
-If a label starts with a digit, it is a *codepoint*.
+If a label starts with an ASCII digit, it is a *codepoint*.
 * A codepoint label may consist of multiple elements, separated by commas and optional whitespace.
-* Each element represents an integer value.
-* If all characters in the element are digits, the element is in decimal format. Leading `0`s are allowed.
+* Each element represents an unsigned integer value.
+* If all characters in the element are digits, the element is in decimal format.
+  Leading `0`s in decimals are allowed.
 * If the first two characters are `0x` or `0X`, the element is hexadecimal. All further characters
   must be hex digits and are not case sensitive.
 * If the first two characters are `0o` or `0O`, the element is octal. All further characters must
   be octal digits.
-* If a codepoint label consists of multiple elements, they represent a multi-byte codepoint sequence
-pointing to a single glyph.
+* If a codepoint label consists of multiple elements, each element must be less than 256. 
+  This forms a multi-byte codepoint sequence pointing to a single glyph.
 
-If a label starts with `u+` or `U+`, or is enclosed by single quote characters `'`, it is a Unicode *character*, 
-which may be a multi-character grapheme sequence.
-  * A character label may consist of multiple elements, separated by commas and optional whitespace.
-  * Each element must start with `u+` or `U+` or be enclosed in single quotes. All further characters must be hex digits and are not case sensitive.
-  * If an element starts with `u+` or `U+`, followed by hex digits, it represents a Unicode point in hexadecimal notation. 
+Examples of valid codepoint labels are `32`, `0032`, `0x20`, `0o24`, (all of which refer to the same
+codepoint). Further examples are `0x120`, `0x1, 0x20`, `1, 32` (all of which are the same multi-byte
+codepoint sequence).
+
+
+If a label:
+* is enclosed by single quote characters `'`, **or**
+* starts with `u+` or `U+`, **or**
+* starts with a character that is not in 7-bit ASCII, **or**
+* consists of a single Unicode character
+
+it is a *character* label, which may be a grapheme sequence consisting of multiple Unicode code points.
+* A character label may consist of multiple elements, separated by commas and optional whitespace.
+* Each element must start with `u+` or `U+` or be enclosed in single quotes.
+* If an element starts with `u+` or `U+`, it must be followed by hex digits. It represents a Unicode point in hexadecimal notation. 
   The hex digits are not case sensitive.
-  * If a label element starts and ends with a single-quote character `'`,
+* If a label element starts and ends with a single-quote character `'`,
   these quotes are stripped and the element consists of everything in between. 
 
-If a label does not start with a digit, `u+` or `U+`, it is a *tag*.
-* Tags are case-sensitive and may contain any kind of character.
+Examples of valid character labels are `A`, `À`, `安` (all of which are single characters), `ते` 
+(a grapheme sequence consisting of multiple non-ASCII characters), its equivalent `u+0924, u+0947`,
+ and `'ffi'` (multiple characters enclosed in single quotes).
+
+If a label:
+* is enclosed in double quote characters `"`, **or**
+* starts with an ASCII letter, is at least 2 characters long, and consists only of 
+  ASCII letters, ASCII digits, the underscore `_`, the dash `-`, or the full stop `.`,
+
+it is a *tag*.
+* Tags are case-sensitive and (if double-quoted) may contain any kind of character.
 * If a label starts and ends with a double-quote character `"`,
   these quotes are stripped and the tag consists of everything in between.
 

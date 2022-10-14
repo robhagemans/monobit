@@ -26,7 +26,7 @@ from .. import struct
 from ..storage import loaders, savers
 from ..font import Font, Coord
 from ..glyph import Glyph
-from ..label import Codepoint, Char
+from ..labels import Codepoint, Char
 
 from .windows import CHARSET_MAP, CHARSET_REVERSE_MAP
 
@@ -449,19 +449,16 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=(),
             # append kernings (this glyph left)
             is_unicode = bool(_to_int(info['unicode']))
             if is_unicode:
-                right_kerning = {
-                    Char(chr(_kern.second)): _kern.amount
-                    for _kern in kernings
-                    if _kern.first == char.id
-                }
+                labeller = lambda _id: Char(chr(_id))
             else:
-                right_kerning = {
-                    _codepoint_for_id(_kern.second, False): _kern.amount
-                    for _kern in kernings
-                    if _kern.first == char.id
-                }
+                labeller = lambda _id: Codepoint(_id)
+            right_kerning = {
+                labeller(_kern.second): _kern.amount
+                for _kern in kernings
+                if _kern.first == char.id
+            }
             glyph = glyph.modify(
-                codepoint=_codepoint_for_id(char.id, is_unicode),
+                labels=(labeller(char.id),),
                 left_bearing=char.xoffset,
                 right_bearing=char.xadvance - char.xoffset - char.width,
                 right_kerning=right_kerning
@@ -549,22 +546,17 @@ def _read_bmfont(infile, container, outline):
 # bmfont writer
 
 def _glyph_id(glyph, encoding):
-    codepoint = glyph.codepoint
-    char = glyph.char
-    if not codepoint:
-        raise ValueError(f"Can't store glyph {ascii(char)} with no codepoint.")
-    if len(codepoint) == 1:
-        id, = codepoint
-    elif not charmaps.is_unicode(encoding):
-        id = bytes_to_int(codepoint)
+    if charmaps.is_unicode(encoding):
+        char = glyph.char
+        if len(char) > 1:
+            raise ValueError(
+                f"Can't store multi-codepoint grapheme sequence {ascii(char)}."
+            )
+        return ord(char)
+    if not glyph.codepoint:
+        raise ValueError(f"Can't store glyph with no codepoint: {glyph}.")
     else:
-        raise ValueError(f"Can't store multi-codepoint grapheme sequence {ascii(char)}.")
-    return id
-
-def _codepoint_for_id(id, is_unicode):
-    if not is_unicode:
-        return Codepoint(int_to_bytes(id))
-    return Codepoint(id)
+        return bytes_to_int(glyph.codepoint)
 
 
 def _create_spritesheets(font, size=(256, 256), packed=False):

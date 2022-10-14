@@ -15,7 +15,6 @@ from ..font import Font
 from ..glyph import Glyph
 from ..struct import Props, reverse_dict
 from ..taggers import extend_string, tagmaps
-from ..label import Codepoint
 
 
 # note that we won't be able to use the "subcharacters" that are the defining feature of FIGlet
@@ -177,7 +176,7 @@ def _convert_from_flf(glyphs, props):
     # > If a FIGcharacter with code 0 is present, it is treated
     # > specially.  It is a FIGfont's "missing character".
     if any(_g.codepoint == 0 for _g in glyphs):
-        properties['default_char'] = 0
+        properties['default_char'] = '\0'
     # keep uninterpreted parameters in namespace
     properties.figlet = ' '.join(
         f'{_k}={_v}' for _k, _v in vars(props).items() if _k not in (
@@ -264,7 +263,7 @@ def _write_flf(outstream, flf_glyphs, flf_props, comments, ink='#', paper=' ', h
         outstream.write(_format_glyph(glyph, ink=ink, paper=paper))
     for glyph in flf_glyphs[len(_CODEPOINTS):]:
         tag = glyph.tags[0] if glyph.tags else tagmaps['unicode'].get_tag(glyph)
-        outstream.write('{} {}\n'.format(Codepoint(glyph.codepoint), tag))
+        outstream.write('{} {}\n'.format(str(glyph.codepoint), tag))
         outstream.write(_format_glyph(glyph, ink=ink, paper=paper))
 
 

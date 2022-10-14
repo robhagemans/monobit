@@ -15,6 +15,7 @@ from ..font import Font, Coord
 from ..glyph import Glyph
 from ..encoding import charmaps
 from ..taggers import tagmaps
+from ..labels import Char
 
 
 # BDF specification: https://adobe-type-tools.github.io/font-tech-notes/pdfs/5005.BDF_Spec.pdf
@@ -487,9 +488,7 @@ def _read_bdf_characters(instream):
             glyph = glyph.modify(tags=[label])
         # ENCODING must be single integer or -1 followed by integer
         encvalue = int(meta['ENCODING'].split(' ')[-1])
-        # no encoding number found
-        if encvalue != -1:
-            glyph = glyph.modify(codepoint=(encvalue,))
+        glyph = glyph.modify(encvalue=encvalue)
         glyphs.append(glyph)
         glyph_meta.append(meta)
         if not instream.readline().startswith('ENDCHAR'):
@@ -559,9 +558,15 @@ def _parse_properties(glyphs, glyph_props, bdf_props, x_props):
     # unless we're working in unicode
     if not charmaps.is_unicode(properties['encoding']):
         glyphs = [
-            _glyph.modify(codepoint=int_to_bytes(_glyph.codepoint[0]))
+            _glyph.modify(codepoint=int_to_bytes(_glyph.encvalue)).drop('encvalue')
+            if _glyph.encvalue != -1 else _glyph.drop('encvalue')
             for _glyph in glyphs
-            if _glyph.codepoint
+        ]
+    else:
+        glyphs = [
+            _glyph.modify(char=chr(_glyph.encvalue)).drop('encvalue')
+            if _glyph.encvalue != -1 else _glyph.drop('encvalue')
+            for _glyph in glyphs
         ]
     logging.info('yaff properties:')
     for name, value in properties.items():
@@ -703,7 +708,10 @@ def _parse_xlfd_properties(x_props, xlfd_name):
         properties['encoding'] = ''
     if 'DEFAULT_CHAR' in x_props:
         default_ord = int(x_props.pop('DEFAULT_CHAR', None))
-        properties['default-char'] = default_ord
+        if charmaps.is_unicode(properties['encoding']):
+            properties['default-char'] = Char(chr(default_ord))
+        else:
+            properties['default-char'] = default_ord
     properties = {_k: _v for _k, _v in properties.items() if _v is not None and _v != ''}
     # keep unparsed properties
     unparsed = {**x_props}

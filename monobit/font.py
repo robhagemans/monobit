@@ -18,7 +18,7 @@ except ImportError:
 from .scripting import scriptable, get_scriptables
 from .glyph import Glyph, Coord, Bounds, number
 from .encoding import charmaps, encoder
-from .label import Label, Tag, Char, Codepoint, label as to_label
+from .labels import Tag, Char, Codepoint, to_label
 from .struct import (
     extend_string, DefaultProps, normalise_property, as_tuple, writable_property, checked_property
 )
@@ -393,7 +393,7 @@ class FontProperties(DefaultProps):
     def cap_advance(self):
         """Advance width of uppercase X."""
         try:
-            return self._font.get_glyph('X').advance_width + self.left_bearing + self.right_bearing
+            return self._font.get_glyph(char='X').advance_width + self.left_bearing + self.right_bearing
         except KeyError:
             return 0
 
@@ -401,7 +401,7 @@ class FontProperties(DefaultProps):
     def x_height(self):
         """Ink height of lowercase x."""
         try:
-            return self._font.get_glyph('x').bounding_box.y
+            return self._font.get_glyph(char='x').bounding_box.y
         except KeyError:
             return 0
 
@@ -409,7 +409,7 @@ class FontProperties(DefaultProps):
     def cap_height(self):
         """Ink height of uppercase X."""
         try:
-            return self._font.get_glyph('X').bounding_box.y
+            return self._font.get_glyph(char='X').bounding_box.y
         except KeyError:
             return 0
 
@@ -630,24 +630,24 @@ class Font:
         if label is not None:
             # convert strings, numerics through standard rules
             label = to_label(label)
-            if isinstance(label, Char):
+            if isinstance(label, str):
                 char = label
-            elif isinstance(label, Codepoint):
+            elif isinstance(label, bytes):
                 codepoint = label
             elif isinstance(label, Tag):
                 tag = label
         if tag is not None:
             try:
-                return self._tags[Tag(tag).value]
+                return self._tags[Tag(tag)]
             except KeyError:
                 raise KeyError(f'No glyph found matching tag={Tag(tag)}') from None
         if char is not None:
             try:
-                return self._chars[Char(char).value]
+                return self._chars[Char(char)]
             except KeyError:
                 raise KeyError(f'No glyph found matching char={Char(char)}') from None
         try:
-            return self._codepoints[Codepoint(codepoint).value]
+            return self._codepoints[Codepoint(codepoint)]
         except KeyError:
             raise KeyError(f'No glyph found matching codepoint={Codepoint(codepoint)}') from None
 
