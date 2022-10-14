@@ -135,14 +135,21 @@ class TextReader:
                 # new comment
                 self._yield_element()
         elif not contents.startswith(self.whitespace):
-            # new key
-            key, sep, value = contents.partition(self.separator)
-            self._yield_element()
-            # yield key
-            self._step_value(key + sep)
-            self._yield_element()
-            # start building value
-            self._step_value(value.lstrip())
+            # glyph label
+            if contents.endswith(self.separator):
+                self._yield_element()
+                self._step_value(contents)
+                self._yield_element()
+            else:
+                # new key, separate at the first :
+                # keys must be alphanum so no need to worry about quoting
+                key, sep, value = contents.partition(self.separator)
+                self._yield_element()
+                # yield key
+                self._step_value(key + sep)
+                self._yield_element()
+                # start building value
+                self._step_value(value.lstrip())
         else:
             # continue building value
             self._step_value(contents)
