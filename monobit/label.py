@@ -63,31 +63,33 @@ def label(value):
         return char(value)
     # deal with other options such as single-quoted, u+codepoint and sequences
     try:
-        return _char_from_yaff(value)
+        elements = value.split(',')
+        return Char(''.join(
+            _convert_char_element(_elem)
+            for _elem in elements if _elem
+        ))
     except ValueError:
         pass
     return Tag(value)
 
+
 label_from_yaff = label
+label_to_yaff = str
 
-
-def label_to_yaff(value):
-    """Convert to codepoint/unicode/tag label from yaff file."""
-    if isinstance(value, Tag):
-        return str(value)
-    if isinstance(value, str):
-        return char_to_yaff(value)
-    if isinstance(value, bytes):
-        return codepoint_to_str(value)
-    raise ValueError(f'Value `{value}` of type`{type(value)}` is not a label.')
 
 
 ##############################################################################
 # label types
 
-class Label: pass
+class Label:
+    """Label."""
 
-class Char(str, Label):
+    def __repr__(self):
+        """Represent label."""
+        return f"{type(self).__name__}({super().__repr__()})"
+
+
+class Char(Label, str):
     """Character label."""
 
     def __str__(self):
@@ -98,7 +100,7 @@ class Char(str, Label):
         )
 
 
-class Codepoint(bytes, Label):
+class Codepoint(Label, bytes):
     """Codepoint label."""
 
     def __str__(self):
@@ -134,6 +136,7 @@ class Tag(Label):
             )
         self._value = value
 
+
     def __repr__(self):
         """Represent label."""
         return f"{type(self).__name__}({repr(self._value)})"
@@ -165,9 +168,6 @@ class Tag(Label):
 
     def __len__(self):
         return len(self._value)
-
-    def __iter__(self):
-        return iter(self._value)
 
     @property
     def value(self):
@@ -226,19 +226,6 @@ def char(value=''):
     raise ValueError(
         f'Cannot convert value {repr(value)} of type {type(value)} to character label.'
     )
-
-
-
-def _char_from_yaff(value=''):
-    """Convert u+XXXX string to unicode label. May be empty, representing no glyph."""
-    # unicode sequences
-    try:
-        elements = value.split(',')
-        return ''.join(_convert_char_element(_elem) for _elem in elements if _elem)
-    except (AttributeError, ValueError):
-        raise ValueError(
-            f'Cannot convert value {repr(value)} of type {type(value)} to character label.'
-        ) from None
 
 def _convert_char_element(element):
     """Convert character label element to char if possible."""
