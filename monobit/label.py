@@ -36,10 +36,6 @@ def strip_matching(from_str, char, allow_no_match=True):
 class Label:
     """Label."""
 
-    def __repr__(self):
-        """Represent label."""
-        return f"{type(self).__name__}({super().__repr__()})"
-
 
 def label(value):
     """Convert to codepoint/unicode/tag label from yaff file."""
@@ -109,8 +105,25 @@ label_to_yaff = str
 ##############################################################################
 # character labels
 
-class Char(Label, str):
+class Char(str, Label):
     """Character label."""
+
+    def __new__(cls, value=''):
+        """Convert char or char sequence to char label."""
+        if isinstance(value, Char):
+            # we don't want the redefined str() to be called on __new__ below
+            value = super().__str__(value)
+        elif value is None:
+            value = ''
+        elif not isinstance(value, str):
+            raise ValueError(
+                f'Can only convert `str` to character label, not `{type(value)}`.'
+            )
+        return super().__new__(cls, value)
+
+    def __repr__(self):
+        """Represent label."""
+        return f"{type(self).__name__}({super().__repr__()})"
 
     def __str__(self):
         """Convert to unicode label str for yaff."""
@@ -119,61 +132,51 @@ class Char(Label, str):
             for _uc in self
         )
 
-def char(value=''):
-    """Convert char or char sequence to char label."""
-    if isinstance(value, Char):
-        return value
-    if value is None:
-        value = ''
-    if isinstance(value, str):
-        # strip matching single quotes - if the character label should be literally '', use ''''.
-        return Char(value)
-    raise ValueError(
-        f'Cannot convert value {repr(value)} of type {type(value)} to character label.'
-    )
-
+char = Char
 
 
 ##############################################################################
 # codepoints
 
 
-class Codepoint(Label, bytes):
+class Codepoint(bytes, Label):
     """Codepoint label."""
+
+
+    def __new__(cls, value=b''):
+        """Convert to codepoint label if possible."""
+        if isinstance(value, Codepoint) or isinstance(value, bytes):
+            pass
+        elif value is None:
+            value = b''
+        elif isinstance(value, int):
+            value = int_to_bytes(value)
+        else:
+            if isinstance(value, str):
+                # handle composite labels
+                # codepoint sequences (MBCS) "0xf5,0x02" etc.
+                value = value.split(',')
+            # deal with other iterables, e.g. bytes, tuple
+            try:
+                value = b''.join(int_to_bytes(any_int(_i)) for _i in value)
+            except (TypeError, OverflowError):
+                raise ValueError(
+                    f'Cannot convert value {repr(value)} of type `{type(value)}` to codepoint label.'
+                ) from None
+        if len(value) > 1:
+            value = value.lstrip(b'\0')
+        return super().__new__(cls, value)
+
+    def __repr__(self):
+        """Represent label."""
+        return f"{type(self).__name__}({super().__repr__()})"
 
     def __str__(self):
         """Convert codepoint label to str."""
         return '0x' + hexlify(self).decode('ascii')
 
 
-def codepoint(value=b''):
-    """Convert to codepoint label if possible."""
-    if isinstance(value, Codepoint):
-        return value
-    if value is None:
-        value = b''
-    if isinstance(value, bytes):
-        return _strip_codepoint(value)
-    if isinstance(value, int):
-        return _strip_codepoint(int_to_bytes(value))
-    if isinstance(value, str):
-        # handle composite labels
-        # codepoint sequences (MBCS) "0xf5,0x02" etc.
-        value = value.split(',')
-    # deal with other iterables, e.g. bytes, tuple
-    try:
-        value = b''.join(int_to_bytes(any_int(_i)) for _i in value)
-    except (TypeError, OverflowError):
-        raise ValueError(
-            f'Cannot convert value {repr(value)} of type {type(value)} to codepoint label.'
-        ) from None
-    return _strip_codepoint(value)
-
-def _strip_codepoint(value):
-    if len(value) > 1:
-        value = value.lstrip(b'\0')
-    return Codepoint(value)
-
+codepoint = Codepoint
 
 
 def codepoint_to_str(value):
@@ -183,6 +186,7 @@ def codepoint_to_str(value):
 def char_to_yaff(value):
     """Convert codepoint label to str."""
     return str(Char(value))
+
 
 ##############################################################################
 # tags
