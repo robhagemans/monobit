@@ -17,8 +17,8 @@ from ..encoding import charmaps
 from ..streams import FileFormatError
 from ..font import Font
 from ..glyph import Glyph
-from ..label import strip_matching, to_label
-from ..label import Tag
+from ..labels import strip_matching, to_label
+from ..labels import Tag
 from ..struct import Props
 
 

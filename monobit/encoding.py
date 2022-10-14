@@ -15,7 +15,7 @@ import binascii
 from pkg_resources import resource_listdir
 
 from .binary import int_to_bytes
-from .label import Codepoint, to_label
+from .labels import Codepoint, to_label
 
 
 _ENCODING_FILES = (

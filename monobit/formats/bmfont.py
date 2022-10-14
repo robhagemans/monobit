@@ -26,7 +26,7 @@ from .. import struct
 from ..storage import loaders, savers
 from ..font import Font, Coord
 from ..glyph import Glyph
-from ..label import Codepoint, Char
+from ..labels import Codepoint, Char
 
 from .windows import CHARSET_MAP, CHARSET_REVERSE_MAP
 

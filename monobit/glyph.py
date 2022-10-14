@@ -21,7 +21,7 @@ from .scripting import scriptable
 from .binary import ceildiv, bytes_to_bits
 from .matrix import to_text
 from .encoding import is_graphical
-from .label import Codepoint, Char, Tag, to_label
+from .labels import Codepoint, Char, Tag, to_label
 from .struct import (
     DefaultProps, normalise_property, extend_string,
     writable_property, as_tuple, checked_property

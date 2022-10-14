@@ -15,7 +15,7 @@ from ..font import Font, Coord
 from ..glyph import Glyph
 from ..encoding import charmaps
 from ..taggers import tagmaps
-from ..label import Char
+from ..labels import Char
 
 
 # BDF specification: https://adobe-type-tools.github.io/font-tech-notes/pdfs/5005.BDF_Spec.pdf

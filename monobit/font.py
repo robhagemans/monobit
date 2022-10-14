@@ -18,7 +18,7 @@ except ImportError:
 from .scripting import scriptable, get_scriptables
 from .glyph import Glyph, Coord, Bounds, number
 from .encoding import charmaps, encoder
-from .label import Tag, Char, Codepoint, to_label
+from .labels import Tag, Char, Codepoint, to_label
 from .struct import (
     extend_string, DefaultProps, normalise_property, as_tuple, writable_property, checked_property
 )
