@@ -30,6 +30,17 @@ def strip_matching(from_str, char, allow_no_match=True):
     return from_str
 
 
+##############################################################################
+# label types
+
+class Label:
+    """Label."""
+
+    def __repr__(self):
+        """Represent label."""
+        return f"{type(self).__name__}({super().__repr__()})"
+
+
 def label(value):
     """Convert to codepoint/unicode/tag label from yaff file."""
     if isinstance(value, Label):
@@ -72,22 +83,31 @@ def label(value):
         pass
     return Tag(value)
 
+def _convert_char_element(element):
+    """Convert character label element to char if possible."""
+    # string delimited by single quotes denotes a character or sequence
+    try:
+        element = strip_matching(element, "'", allow_no_match=False)
+    except ValueError:
+        pass
+    else:
+        return element
+    # not a delimited char
+    element = element.lower()
+    if not element.startswith('u+'):
+        raise ValueError(element)
+    # convert to sequence of chars
+    # this will raise ValueError if not possible
+    cp_ord = int(element.strip()[2:], 16)
+    return chr(cp_ord)
+
 
 label_from_yaff = label
 label_to_yaff = str
 
 
-
 ##############################################################################
-# label types
-
-class Label:
-    """Label."""
-
-    def __repr__(self):
-        """Represent label."""
-        return f"{type(self).__name__}({super().__repr__()})"
-
+# character labels
 
 class Char(Label, str):
     """Character label."""
@@ -99,6 +119,24 @@ class Char(Label, str):
             for _uc in self
         )
 
+def char(value=''):
+    """Convert char or char sequence to char label."""
+    if isinstance(value, Char):
+        return value
+    if value is None:
+        value = ''
+    if isinstance(value, str):
+        # strip matching single quotes - if the character label should be literally '', use ''''.
+        return Char(value)
+    raise ValueError(
+        f'Cannot convert value {repr(value)} of type {type(value)} to character label.'
+    )
+
+
+
+##############################################################################
+# codepoints
+
 
 class Codepoint(Label, bytes):
     """Codepoint label."""
@@ -106,6 +144,35 @@ class Codepoint(Label, bytes):
     def __str__(self):
         """Convert codepoint label to str."""
         return '0x' + hexlify(self).decode('ascii')
+
+
+def codepoint(value=b''):
+    """Convert to codepoint label if possible."""
+    if isinstance(value, Codepoint):
+        return value
+    if value is None:
+        value = b''
+    if isinstance(value, bytes):
+        return _strip_codepoint(value)
+    if isinstance(value, int):
+        return _strip_codepoint(int_to_bytes(value))
+    if isinstance(value, str):
+        # handle composite labels
+        # codepoint sequences (MBCS) "0xf5,0x02" etc.
+        value = value.split(',')
+    # deal with other iterables, e.g. bytes, tuple
+    try:
+        value = b''.join(int_to_bytes(any_int(_i)) for _i in value)
+    except (TypeError, OverflowError):
+        raise ValueError(
+            f'Cannot convert value {repr(value)} of type {type(value)} to codepoint label.'
+        ) from None
+    return _strip_codepoint(value)
+
+def _strip_codepoint(value):
+    if len(value) > 1:
+        value = value.lstrip(b'\0')
+    return Codepoint(value)
 
 
 
@@ -176,72 +243,9 @@ class Tag(Label):
         return self._value
 
 
-##############################################################################
-# codepoints
-
-
-#FIXME: we're always assuming codepage byte width 1
-def codepoint(value=b''):
-    """Convert to codepoint label if possible."""
-    if isinstance(value, Codepoint):
-        return value
-    if value is None:
-        value = b''
-    if isinstance(value, bytes):
-        return _strip_codepoint(value)
-    if isinstance(value, int):
-        return _strip_codepoint(int_to_bytes(value))
-    if isinstance(value, str):
-        # handle composite labels
-        # codepoint sequences (MBCS) "0xf5,0x02" etc.
-        value = value.split(',')
-    # deal with other iterables, e.g. bytes, tuple
-    try:
-        value = b''.join(int_to_bytes(any_int(_i)) for _i in value)
-    except (TypeError, OverflowError):
-        raise ValueError(
-            f'Cannot convert value {repr(value)} of type {type(value)} to codepoint label.'
-        ) from None
-    return _strip_codepoint(value)
-
-def _strip_codepoint(value):
-    if len(value) > 1:
-        value = value.lstrip(b'\0')
-    return Codepoint(value)
 
 
 
-##############################################################################
-# character labels
 
-def char(value=''):
-    """Convert char or char sequence to char label."""
-    if isinstance(value, Char):
-        return value
-    if value is None:
-        value = ''
-    if isinstance(value, str):
-        # strip matching single quotes - if the character label should be literally '', use ''''.
-        return Char(value)
-    raise ValueError(
-        f'Cannot convert value {repr(value)} of type {type(value)} to character label.'
-    )
 
-def _convert_char_element(element):
-    """Convert character label element to char if possible."""
-    # string delimited by single quotes denotes a character or sequence
-    try:
-        element = strip_matching(element, "'", allow_no_match=False)
-    except ValueError:
-        pass
-    else:
-        return element
-    # not a delimited char
-    element = element.lower()
-    if not element.startswith('u+'):
-        raise ValueError(element)
-    # convert to sequence of chars
-    # this will raise ValueError if not possible
-    cp_ord = int(element.strip()[2:], 16)
-    return chr(cp_ord)
 
