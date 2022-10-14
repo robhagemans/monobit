@@ -21,7 +21,7 @@ from .scripting import scriptable
 from .binary import ceildiv, bytes_to_bits
 from .matrix import to_text
 from .encoding import is_graphical
-from .label import codepoint as to_codepoint, Tag, label
+from .label import codepoint as to_codepoint, char as to_char, Tag, label
 from .struct import (
     DefaultProps, normalise_property, extend_string,
     writable_property, as_tuple, checked_property
@@ -325,9 +325,9 @@ class Glyph:
             comments = self._comments
         return type(self)(
             tuple(pixels),
-            codepoint=codepoint,
-            char=char,
-            tags=tuple(tags),
+            codepoint=to_codepoint(codepoint),
+            char=to_char(char),
+            tags=tuple(Tag(_t) for _t in tags),
             comments=comments,
             **{**self.properties, **kwargs}
         )

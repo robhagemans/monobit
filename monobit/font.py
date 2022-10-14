@@ -643,7 +643,7 @@ class Font:
                 raise KeyError(f'No glyph found matching tag={Tag(tag)}') from None
         if char is not None:
             try:
-                return self._chars[char]
+                return self._chars[to_char(char)]
             except KeyError:
                 raise KeyError(f'No glyph found matching char={char}') from None
         cp_value = to_codepoint(codepoint)
