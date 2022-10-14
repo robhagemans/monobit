@@ -148,6 +148,8 @@ def save_psf(fonts, outstream, where=None):
         raise FileFormatError(
             'This format only supports character-cell fonts.'
         )
+    # ensure unicode labels exist if encoding is defined
+    font = font.label()
     glyphs = font.glyphs
     psf_props = dict(
         width=font.raster_size.x,

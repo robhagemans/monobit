@@ -611,7 +611,9 @@ def parse_fnt(fnt):
     win_props = _parse_header(fnt)
     properties = _parse_win_props(fnt, win_props)
     glyphs = _parse_chartable(fnt, win_props)
-    return Font(glyphs, **properties)
+    font = Font(glyphs, **properties)
+    font = font.label()
+    return font
 
 def _parse_header(fnt):
     """Read the header information in the FNT resource."""
@@ -918,6 +920,8 @@ def create_fnt(font, version=0x200):
     space_index = 0
     # if encoding is compatible, use it; otherwise set to fallback value
     charset = charset_map.get(font.encoding, _FALLBACK_CHARSET)
+    # ensure codepoint values are set, if possible
+    font = font.label(codepoint_from=font.encoding)
     # only include single-byte encoded glyphs
     codepoints = tuple(_cp[0] for _cp in font.get_codepoints() if len(_cp) == 1)
     if not codepoints:
@@ -929,14 +933,18 @@ def create_fnt(font, version=0x200):
     max_ord = min(255, max(codepoints))
     # char table; we need a contiguous range between the min and max codepoints
     ord_glyphs = [
-        font.get_glyph((_codepoint,), missing='empty')
+        font.get_glyph(_codepoint, missing='empty')
         for _codepoint in range(min_ord, max_ord+1)
     ]
-    default_ord, = font.get_glyph(font.default_char).codepoint
-    if default_ord is None:
+    default = font.get_glyph(font.default_char).codepoint
+    if len(default) == 1:
+        default_ord, = default
+    else:
         default_ord = _FALLBACK_DEFAULT
-    break_ord, = font.get_glyph(font.word_boundary).codepoint
-    if break_ord is None:
+    word_break = font.get_glyph(font.word_boundary).codepoint
+    if len(word_break) == 1:
+        break_ord, = word_break
+    else:
         break_ord = _FALLBACK_BREAK
     # add the guaranteed-blank glyph
     ord_glyphs.append(Glyph.blank(pix_width, font.raster_size.y))

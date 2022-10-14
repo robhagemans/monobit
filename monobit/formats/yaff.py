@@ -17,8 +17,8 @@ from ..encoding import charmaps
 from ..streams import FileFormatError
 from ..font import Font
 from ..glyph import Glyph
-from ..label import strip_matching, label
-from ..label import Char, Codepoint, Tag, Label
+from ..labels import strip_matching, to_label
+from ..labels import Tag
 from ..struct import Props
 
 
@@ -83,7 +83,7 @@ class YaffParams:
     paper = '.'
     empty = '-'
     # convert key string to key object
-    convert_key = staticmethod(label)
+    convert_key = staticmethod(to_label)
 
 
 class DrawParams:
@@ -107,7 +107,7 @@ class DrawParams:
     def convert_key(key):
         """Convert keys on input from .draw."""
         try:
-            return Char(chr(int(key, 16)))
+            return chr(int(key, 16))
         except (TypeError, ValueError):
             return Tag(key)
 
@@ -132,7 +132,7 @@ def _load_yaff(text_stream):
 
 
 def _load_draw(text_stream, _ink='', _paper=''):
-    """Parse a yaff/yaffs file."""
+    """Parse a hexdraw file."""
 
     class _Converter(DrawConverter):
         ink=_ink or DrawConverter.ink
@@ -290,6 +290,8 @@ class TextConverter:
     def get_font_from(cls, reader):
         """Get clusters from reader and convert to Font."""
         conv = cls._convert_from(reader)
+        if not conv.glyphs:
+            raise FileFormatError('No glyphs found in yaff file.')
         return Font(conv.glyphs, comments=conv.comments, **vars(conv.props))
 
     @classmethod
@@ -394,14 +396,21 @@ class TextConverter:
         props = self._convert_from(reader).props
         # labels
         keys = tuple(self.convert_key(_key) for _key in keys)
-        chars = tuple(_key for _key in keys if isinstance(_key, Char))
-        codepoints = tuple(_key for _key in keys if isinstance(_key, Codepoint))
+        chars = tuple(_key for _key in keys if isinstance(_key, str))
+        codepoints = tuple(_key for _key in keys if isinstance(_key, bytes))
         tags = tuple(_key for _key in keys if isinstance(_key, Tag))
         # duplicate glyphs if we have multiple chars or codepoints
-        return tuple(
+        glyphs = tuple(
             glyph.modify(char=char, codepoint=cp, tags=tags, comments=comments, **vars(props))
             for char, cp, _ in zip_longest(chars, codepoints, [None], fillvalue=None)
         )
+        # remove duplicates while preserving order
+        unique = []
+        for glyph in glyphs:
+            if glyph not in unique:
+                unique.append(glyph)
+        glyphs = tuple(unique)
+        return tuple(unique)
 
     def _convert_value(self, value):
         """Strip matching double quotes on a per-line basis."""
@@ -456,7 +465,7 @@ class TextWriter:
             logging.warning('No labels for glyph: %s', glyph)
             return
         for _label in labels:
-            outstream.write(f'{_label}{self.separator}{self.separator_space}')
+            outstream.write(f'{str(_label)}{self.separator}{self.separator_space}')
         # glyph matrix
         # empty glyphs are stored as 0x0, not 0xm or nx0
         if not glyph.width or not glyph.height:
@@ -559,6 +568,8 @@ class DrawWriter(TextWriter, DrawParams):
 
     def save(self, font, outstream):
         """Write one font to a plaintext stream as hexdraw."""
+        # ensure char labels are set
+        font = font.label(char_from=font.encoding)
         # write global comment
         if font.comments:
             outstream.write(self._format_comment(font.comments) + '\n\n')
@@ -573,7 +584,8 @@ class DrawWriter(TextWriter, DrawParams):
             elif len(glyph.char) > 1:
                 logging.warning(
                     "Can't encode grapheme cluster %s in .draw file; skipping.",
-                    Char(glyph.char)
+                    ascii(glyph.char)
                 )
             else:
+                #FIXME- draw does not support glyph properties
                 self._write_glyph(outstream, glyph, label=f'{ord(glyph.char):04x}')

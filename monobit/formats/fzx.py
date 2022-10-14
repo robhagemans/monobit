@@ -13,12 +13,10 @@ from ..struct import Props, bitfield, little_endian as le
 from ..storage import loaders, savers
 from ..font import Font
 from ..glyph import Glyph
-from ..label import Codepoint
 from ..streams import FileFormatError
 
 
 # beyond ASCII, multiple encodings are in use - set these manually after extraction
-_FZX_ENCODING = 'zx-spectrum'
 _FZX_RANGE = range(32, 256)
 
 
@@ -225,18 +223,19 @@ def _convert_from_fzx(fzx_props, fzx_glyphs):
     properties = Props(
         line_height=fzx_props.height,
         right_bearing=fzx_props.tracking,
-        encoding=_FZX_ENCODING,
     )
     return properties, glyphs
 
 
 def _convert_to_fzx(font):
     """Convert monobit font to FZX properties and glyphs."""
+    # ensure codepoint values are set if possible
+    font = font.label(codepoint_from=font.encoding)
     # select glyphs that can be included
     # only codepoints 32--255 inclusive
     # on extraction 32--127 will be assumed to be ASCII
     includable = font.subset(codepoints=set(_FZX_RANGE))
-    dropped = font.without(codepoints=set(_FZX_RANGE))
+    dropped = font.exclude(codepoints=set(_FZX_RANGE))
     if dropped.glyphs:
         logging.warning(
             'FZX format can only store codepoints 32--255. '

@@ -17,8 +17,8 @@ except ImportError:
 
 from .scripting import scriptable, get_scriptables
 from .glyph import Glyph, Coord, Bounds, number
-from .encoding import charmaps
-from .label import Label, Tag, Char, Codepoint, label
+from .encoding import charmaps, encoder
+from .labels import Tag, Char, Codepoint, to_label
 from .struct import (
     extend_string, DefaultProps, normalise_property, as_tuple, writable_property, checked_property
 )
@@ -133,12 +133,12 @@ class FontProperties(DefaultProps):
     # character properties
     # can't be calculated, affect rendering
 
-    # character map
+    # character map, stored as normalised name
     encoding: charmaps.normalise
     # replacement for missing glyph
-    default_char: label
+    default_char: to_label
     # word-break character (usually space)
-    word_boundary: label = Char(' ')
+    word_boundary: to_label = Char(' ')
 
     # rendering hints
     # can't be calculated, may affect rendering
@@ -393,7 +393,7 @@ class FontProperties(DefaultProps):
     def cap_advance(self):
         """Advance width of uppercase X."""
         try:
-            return self._font.get_glyph('X').advance_width + self.left_bearing + self.right_bearing
+            return self._font.get_glyph(char='X').advance_width + self.left_bearing + self.right_bearing
         except KeyError:
             return 0
 
@@ -401,7 +401,7 @@ class FontProperties(DefaultProps):
     def x_height(self):
         """Ink height of lowercase x."""
         try:
-            return self._font.get_glyph('x').bounding_box.y
+            return self._font.get_glyph(char='x').bounding_box.y
         except KeyError:
             return 0
 
@@ -409,7 +409,7 @@ class FontProperties(DefaultProps):
     def cap_height(self):
         """Ink height of uppercase X."""
         try:
-            return self._font.get_glyph('X').bounding_box.y
+            return self._font.get_glyph(char='X').bounding_box.y
         except KeyError:
             return 0
 
@@ -483,13 +483,6 @@ class Font:
         # NOTE - we must be careful NOT TO ACCESS CACHED PROPERTIES
         #        until the constructor is complete
         self._props = FontProperties(_font=self, **properties)
-
-    def _get_encoder(self):
-        """Get encoding object."""
-        try:
-            return charmaps[self._props.encoding]
-        except KeyError:
-            return None
 
 
     ##########################################################################
@@ -605,10 +598,10 @@ class Font:
     def glyphs(self):
         return self._glyphs
 
-    def get_glyph(self, key=None, *, char=None, codepoint=None, tag=None, missing='raise'):
+    def get_glyph(self, label=None, *, char=None, codepoint=None, tag=None, missing='raise'):
         """Get glyph by char, codepoint or tag; default if not present."""
         try:
-            index = self.get_index(key, tag=tag, char=char, codepoint=codepoint)
+            index = self.get_index(label, tag=tag, char=char, codepoint=codepoint)
         except KeyError:
             if missing == 'default':
                 return self.get_default_glyph()
@@ -619,37 +612,42 @@ class Font:
             raise
         return self._glyphs[index]
 
-    def get_index(self, key=None, *, char=None, codepoint=None, tag=None):
-        """Get index for given key or tag, if defined."""
-        if 1 != len([_indexer for _indexer in (key, char, codepoint, tag) if _indexer is not None]):
+    def get_index(self, label=None, *, char=None, codepoint=None, tag=None):
+        """Get index for given label, if defined."""
+        if 1 != len([_indexer for _indexer in (label, char, codepoint, tag) if _indexer is not None]):
             raise ValueError('get_index() takes exactly one parameter.')
-        if isinstance(key, Char):
-            char = key
-        elif isinstance(key, Codepoint):
-            codepoint = key
-        elif isinstance(key, Tag):
-            tag = key
-        elif key is not None:
-            # unspecified key, deduct from type
-            # str -> char; tuple/list/bytes -> codepoint
-            # a tag can only be specified explicitly
-            if isinstance(key, str):
-                char = key
-            else:
-                # let Codepoint deal with interpretation
-                codepoint = Codepoint(key).value
+        if isinstance(label, str):
+            # first look for char - expected to be shorter - then tags
+            try:
+                return self._chars[label]
+            except KeyError:
+                pass
+            try:
+                return self._tags[label]
+            except KeyError:
+                pass
+        # do we have the input string directly as a char or tag?
+        if label is not None:
+            # convert strings, numerics through standard rules
+            label = to_label(label)
+            if isinstance(label, str):
+                char = label
+            elif isinstance(label, bytes):
+                codepoint = label
+            elif isinstance(label, Tag):
+                tag = label
         if tag is not None:
             try:
-                return self._tags[Tag(tag).value]
+                return self._tags[Tag(tag)]
             except KeyError:
                 raise KeyError(f'No glyph found matching tag={Tag(tag)}') from None
         if char is not None:
             try:
-                return self._chars[Char(char).value]
+                return self._chars[Char(char)]
             except KeyError:
                 raise KeyError(f'No glyph found matching char={Char(char)}') from None
         try:
-            return self._codepoints[Codepoint(codepoint).value]
+            return self._codepoints[Codepoint(codepoint)]
         except KeyError:
             raise KeyError(f'No glyph found matching codepoint={Codepoint(codepoint)}') from None
 
@@ -718,19 +716,22 @@ class Font:
         return action(self)
 
     @scriptable
-    def label(self, codepoint_from:str='', char_from:str='', overwrite:bool=False):
-        """Add character and codepoint labels."""
+    def label(self, *, codepoint_from:encoder='', char_from:encoder='', overwrite:bool=False):
+        """
+        Add character and codepoint labels.
+
+        codepoint_from: encoder registered name or filename to use to set codepoints from character labels
+        char_from: encoder registered name or filename to use to set characters from codepoint labels. Default: use font encoding.
+        overwrite: overwrite existing codepoints and/or characters
+        """
         font = self
-        if codepoint_from == 'index':
-            font = font.modify(glyphs=tuple(
-                _glyph.modify(codepoint=(_index,))
-                if (overwrite or not _glyph.codepoint)
-                else _glyph
-                for _index, _glyph in enumerate(self._glyphs)
-            ))
-        elif codepoint_from:
+        # default action: label chars with font encoding
+        if not codepoint_from and not char_from and self.encoding:
+            char_from = encoder(self.encoding)
+        # TODO: should we set self.encoding here?
+        if codepoint_from:
             # update glyph labels
-            encoding = charmaps[codepoint_from]
+            encoding = codepoint_from
             if encoding is not None:
                 font = font.modify(glyphs=tuple(
                     _glyph.label(codepoint_from=encoding, overwrite=overwrite)
@@ -738,7 +739,7 @@ class Font:
                 ))
         if char_from:
             # update glyph labels
-            encoding = charmaps[char_from]
+            encoding = char_from
             if encoding is not None:
                 font = font.modify(glyphs=tuple(
                     _glyph.label(char_from=encoding, overwrite=overwrite)
@@ -748,16 +749,17 @@ class Font:
 
     # need converter from string to set of labels to script this
     #@scriptable
-    def subset(self, keys=(), *, chars:set=(), codepoints:set=(), tags:set=()):
+    def subset(self, labels=(), *, chars:set=(), codepoints:set=(), tags:set=()):
         """
         Return a subset of the font.
 
+        labels: chars, codepoints or tags to include
         chars: chars to include
         codepoints: codepoints to include
         tags: tags to include
         """
         glyphs = (
-            [self.get_glyph(_key, missing=None) for _key in keys]
+            [self.get_glyph(_label, missing=None) for _label in labels]
             + [self.get_glyph(char=_char, missing=None) for _char in chars]
             + [self.get_glyph(codepoint=_codepoint, missing=None) for _codepoint in codepoints]
             + [self.get_glyph(tag=_tag, missing=None) for _tag in tags]
@@ -765,19 +767,27 @@ class Font:
         return self.modify(_glyph for _glyph in glyphs if _glyph is not None)
 
     #@scriptable
-    def without(self, keys=(), *, chars:set=(), codepoints:set=(), tags:set=()):
-        """Return a font excluding a subset."""
-        if not any((keys, chars, codepoints, tags)):
+    def exclude(self, labels=(), *, chars:set=(), codepoints:set=(), tags:set=()):
+        """
+        Return a font excluding a subset.
+
+        labels: chars, codepoints or tags to exclude
+        chars: chars to exclude
+        codepoints: codepoints to exclude
+        tags: tags to exclude
+        """
+        if not any((labels, chars, codepoints, tags)):
             return self
         glyphs = [
             _glyph
             for _glyph in self._glyphs
             if (
-                _glyph.char not in keys
-                and _glyph.codepoint not in keys
+                _glyph.char not in labels
+                and _glyph.codepoint not in labels
                 and _glyph.char not in chars
                 and _glyph.codepoint not in codepoints
                 and not (set(_glyph.tags) & set(tags))
+                and not (set(_glyph.tags) & set(labels))
             )
         ]
         return self.modify(glyphs)
