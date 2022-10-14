@@ -37,17 +37,17 @@ class Label:
     """Label."""
 
 
-def label(value):
+def to_label(value):
     """Convert to codepoint/unicode/tag label from yaff file."""
     if isinstance(value, Label):
         return value
     if not isinstance(value, str):
         # only Codepoint can have non-str argument
-        return codepoint(value)
+        return Codepoint(value)
     # remove leading and trailing whitespace
     value = value.strip()
     if not value:
-        return char()
+        return Char()
     # protect commas, pluses etc. if enclosed
     if is_enclosed(value, '"'):
         # strip matching double quotes - this allows to set a label starting with a digit by quoting it
@@ -55,19 +55,19 @@ def label(value):
         return Tag(value)
     if is_enclosed(value, "'"):
         value = strip_matching(value, "'")
-        return char(value)
+        return Char(value)
     # codepoints start with an ascii digit
     try:
-        return codepoint(value)
+        return Codepoint(value)
     except ValueError:
         pass
     # length-one -> always a character
     if len(value) == 1:
-        return char(value)
+        return Char(value)
     # unquoted non-ascii -> always a character
     # note that this includes non-printables such as controls but these should not be used.
     if any(ord(_c) > 0x7f for _c in value):
-        return char(value)
+        return Char(value)
     # deal with other options such as single-quoted, u+codepoint and sequences
     try:
         elements = value.split(',')
@@ -96,10 +96,6 @@ def _convert_char_element(element):
     # this will raise ValueError if not possible
     cp_ord = int(element.strip()[2:], 16)
     return chr(cp_ord)
-
-
-label_from_yaff = label
-label_to_yaff = str
 
 
 ##############################################################################
@@ -132,16 +128,12 @@ class Char(str, Label):
             for _uc in self
         )
 
-char = Char
-
 
 ##############################################################################
 # codepoints
 
-
 class Codepoint(bytes, Label):
     """Codepoint label."""
-
 
     def __new__(cls, value=b''):
         """Convert to codepoint label if possible."""
@@ -174,18 +166,6 @@ class Codepoint(bytes, Label):
     def __str__(self):
         """Convert codepoint label to str."""
         return '0x' + hexlify(self).decode('ascii')
-
-
-codepoint = Codepoint
-
-
-def codepoint_to_str(value):
-    """Convert codepoint label to str."""
-    return str(Codepoint(value))
-
-def char_to_yaff(value):
-    """Convert codepoint label to str."""
-    return str(Char(value))
 
 
 ##############################################################################

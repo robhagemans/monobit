@@ -21,7 +21,7 @@ from .scripting import scriptable
 from .binary import ceildiv, bytes_to_bits
 from .matrix import to_text
 from .encoding import is_graphical
-from .label import Codepoint, Char, Tag, label as to_label
+from .label import Codepoint, Char, Tag, to_label
 from .struct import (
     DefaultProps, normalise_property, extend_string,
     writable_property, as_tuple, checked_property
@@ -254,7 +254,7 @@ class Glyph:
 
     def __init__(
             self, pixels=(), *,
-            codepoint=b'', char='', tags=(), comments='',
+            labels=(), codepoint=b'', char='', tags=(), comments='',
             **properties
         ):
         """Create glyph from tuple of tuples."""
@@ -266,7 +266,14 @@ class Glyph:
                 f"All rows in a glyph's pixel matrix must be of the same width: {repr(self)}"
             )
         # labels
-        #TODO: generic labels param that has the standard transformation from string, converted to char/tag/cp here
+        for label in labels:
+            label = to_label(label)
+            if isinstance(label, Char):
+                char = char or label
+            elif isinstance(label, Codepoint):
+                codepoint = codepoint or label
+            else:
+                tags += (label,)
         self._codepoint = Codepoint(codepoint)
         self._char = Char(char)
         self._tags = tuple(Tag(_tag) for _tag in tags if _tag)
@@ -309,7 +316,7 @@ class Glyph:
 
     def modify(
             self, pixels=NOT_SET, *,
-            tags=NOT_SET, char=NOT_SET, codepoint=NOT_SET, comments=NOT_SET,
+            labels=(), tags=NOT_SET, char=NOT_SET, codepoint=NOT_SET, comments=NOT_SET,
             **kwargs
         ):
         """Return a copy of the glyph with changes."""
@@ -325,6 +332,7 @@ class Glyph:
             comments = self._comments
         return type(self)(
             tuple(pixels),
+            labels=labels,
             codepoint=Codepoint(codepoint),
             char=Char(char),
             tags=tuple(Tag(_t) for _t in tags),

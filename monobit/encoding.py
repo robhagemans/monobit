@@ -15,7 +15,7 @@ import binascii
 from pkg_resources import resource_listdir
 
 from .binary import int_to_bytes
-from .label import codepoint, label as to_label
+from .label import Codepoint, to_label
 
 
 _ENCODING_FILES = (
@@ -970,7 +970,6 @@ class Unicode(Encoder):
     def codepoint(*labels):
         """Convert character to codepoint."""
         for label in labels:
-            #FIXME - we're not getting this right, codepoints/chars get mixed up e.g. '0'
             char = to_label(label)
             if isinstance(char, str):
                 # we used to normalise to NFC here, presumably to reduce multi-codepoint situations
@@ -1000,7 +999,7 @@ class Index(Encoder):
     def codepoint(self, *labels):
         """Convert character to codepoint."""
         self._count += 1
-        return codepoint(self._count-1)
+        return Codepoint(self._count-1)
 
     def __repr__(self):
         """Representation."""

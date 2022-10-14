@@ -17,7 +17,7 @@ from ..encoding import charmaps
 from ..streams import FileFormatError
 from ..font import Font
 from ..glyph import Glyph
-from ..label import strip_matching, label_from_yaff, label_to_yaff
+from ..label import strip_matching, to_label
 from ..label import Tag
 from ..struct import Props
 
@@ -83,7 +83,7 @@ class YaffParams:
     paper = '.'
     empty = '-'
     # convert key string to key object
-    convert_key = staticmethod(label_from_yaff)
+    convert_key = staticmethod(to_label)
 
 
 class DrawParams:
@@ -465,7 +465,7 @@ class TextWriter:
             logging.warning('No labels for glyph: %s', glyph)
             return
         for _label in labels:
-            outstream.write(f'{label_to_yaff(_label)}{self.separator}{self.separator_space}')
+            outstream.write(f'{str(_label)}{self.separator}{self.separator_space}')
         # glyph matrix
         # empty glyphs are stored as 0x0, not 0xm or nx0
         if not glyph.width or not glyph.height:
