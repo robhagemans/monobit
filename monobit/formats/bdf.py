@@ -15,6 +15,7 @@ from ..font import Font, Coord
 from ..glyph import Glyph
 from ..encoding import charmaps
 from ..taggers import tagmaps
+from ..label import Char
 
 
 # BDF specification: https://adobe-type-tools.github.io/font-tech-notes/pdfs/5005.BDF_Spec.pdf
@@ -707,7 +708,10 @@ def _parse_xlfd_properties(x_props, xlfd_name):
         properties['encoding'] = ''
     if 'DEFAULT_CHAR' in x_props:
         default_ord = int(x_props.pop('DEFAULT_CHAR', None))
-        properties['default-char'] = default_ord
+        if charmaps.is_unicode(properties['encoding']):
+            properties['default-char'] = Char(chr(default_ord))
+        else:
+            properties['default-char'] = default_ord
     properties = {_k: _v for _k, _v in properties.items() if _v is not None and _v != ''}
     # keep unparsed properties
     unparsed = {**x_props}

@@ -30,35 +30,17 @@ def strip_matching(from_str, char, allow_no_match=True):
     return from_str
 
 
-def label(value=''):
-    """Convert to codepoint/unicode/tag label from Python api or script input."""
+def label(value):
+    """Convert to codepoint/unicode/tag label from yaff file."""
     if isinstance(value, Label):
         return value
     if not isinstance(value, str):
         # only Codepoint can have non-str argument
         return codepoint(value)
-    # protect commas, pluses etc. if enclosed
-    if is_enclosed(value, '"'):
-        value = strip_matching(value, '"')
-        return Tag(value)
-    if is_enclosed(value, "'"):
-        value = strip_matching(value, "'")
-        return char(value)
-    try:
-        return codepoint(value)
-    except ValueError:
-        pass
-    return char(value)
-
-
-def label_from_yaff(value):
-    """Convert to codepoint/unicode/tag label from yaff file."""
-    if not isinstance(value, str):
-        raise ValueError(f'label_from_yaff requires a `str` argument, not `{type(value)}`.')
     # remove leading and trailing whitespace
     value = value.strip()
     if not value:
-        raise ValueError(f'label_from_yaff requires a non-empty argument.')
+        return char()
     # protect commas, pluses etc. if enclosed
     if is_enclosed(value, '"'):
         # strip matching double quotes - this allows to set a label starting with a digit by quoting it
@@ -81,10 +63,13 @@ def label_from_yaff(value):
         return char(value)
     # deal with other options such as single-quoted, u+codepoint and sequences
     try:
-        return char_from_yaff(value)
+        return _char_from_yaff(value)
     except ValueError:
         pass
     return Tag(value)
+
+label_from_yaff = label
+
 
 def label_to_yaff(value):
     """Convert to codepoint/unicode/tag label from yaff file."""
@@ -244,11 +229,8 @@ def char(value=''):
 
 
 
-def char_from_yaff(value):
+def _char_from_yaff(value=''):
     """Convert u+XXXX string to unicode label. May be empty, representing no glyph."""
-    # protect commas, pluses etc. if enclosed
-    if is_enclosed(value, "'"):
-        return char(value)
     # unicode sequences
     try:
         elements = value.split(',')

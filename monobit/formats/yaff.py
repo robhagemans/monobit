@@ -290,6 +290,8 @@ class TextConverter:
     def get_font_from(cls, reader):
         """Get clusters from reader and convert to Font."""
         conv = cls._convert_from(reader)
+        if not conv.glyphs:
+            raise FileFormatError('No glyphs found in yaff file.')
         return Font(conv.glyphs, comments=conv.comments, **vars(conv.props))
 
     @classmethod
