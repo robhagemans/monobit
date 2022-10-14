@@ -21,7 +21,7 @@ from .scripting import scriptable
 from .binary import ceildiv, bytes_to_bits
 from .matrix import to_text
 from .encoding import is_graphical
-from .label import codepoint as to_codepoint, char as to_char, Tag, label
+from .label import Codepoint, Char, Tag, label as to_label
 from .struct import (
     DefaultProps, normalise_property, extend_string,
     writable_property, as_tuple, checked_property
@@ -111,7 +111,7 @@ class KernTable(dict):
                 for _row in table.splitlines()
             )
         table = {
-            label(_k): int(_v)
+            to_label(_k): int(_v)
             for _k, _v in table.items()
         }
         super().__init__(table)
@@ -254,7 +254,7 @@ class Glyph:
 
     def __init__(
             self, pixels=(), *,
-            codepoint=(), char='', tags=(), comments='',
+            codepoint=b'', char='', tags=(), comments='',
             **properties
         ):
         """Create glyph from tuple of tuples."""
@@ -267,8 +267,8 @@ class Glyph:
             )
         # labels
         #TODO: generic labels param that has the standard transformation from string, converted to char/tag/cp here
-        self._codepoint = to_codepoint(codepoint)
-        self._char = char
+        self._codepoint = Codepoint(codepoint)
+        self._char = Char(char)
         self._tags = tuple(Tag(_tag) for _tag in tags if _tag)
         # comments
         if not isinstance(comments, str):
@@ -325,8 +325,8 @@ class Glyph:
             comments = self._comments
         return type(self)(
             tuple(pixels),
-            codepoint=to_codepoint(codepoint),
-            char=to_char(char),
+            codepoint=Codepoint(codepoint),
+            char=Char(char),
             tags=tuple(Tag(_t) for _t in tags),
             comments=comments,
             **{**self.properties, **kwargs}
@@ -461,10 +461,10 @@ class Glyph:
         labels = []
         # don't write out codepoints for unicode fonts as we have u+XXXX already
         if self.codepoint:
-            labels.append(self.codepoint)
+            labels.append(self._codepoint)
         if self.char:
-            labels.append(self.char)
-        labels.extend(Tag(_t) for _t in self.tags)
+            labels.append(self._char)
+        labels.extend(self._tags)
         return tuple(labels)
 
 

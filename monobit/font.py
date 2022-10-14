@@ -18,7 +18,7 @@ except ImportError:
 from .scripting import scriptable, get_scriptables
 from .glyph import Glyph, Coord, Bounds, number
 from .encoding import charmaps, encoder
-from .label import Tag, char as to_char, codepoint as to_codepoint, label as to_label
+from .label import Tag, Char, Codepoint, label as to_label
 from .struct import (
     extend_string, DefaultProps, normalise_property, as_tuple, writable_property, checked_property
 )
@@ -138,7 +138,7 @@ class FontProperties(DefaultProps):
     # replacement for missing glyph
     default_char: to_label
     # word-break character (usually space)
-    word_boundary: to_label = to_char(' ')
+    word_boundary: to_label = Char(' ')
 
     # rendering hints
     # can't be calculated, may affect rendering
@@ -423,7 +423,7 @@ class FontProperties(DefaultProps):
         # TODO - make a font.chars property returning the keys object
         if repl not in self._font._chars:
             repl = ''
-        return to_char(repl)
+        return Char(repl)
 
 
     ##########################################################################
@@ -643,14 +643,13 @@ class Font:
                 raise KeyError(f'No glyph found matching tag={Tag(tag)}') from None
         if char is not None:
             try:
-                return self._chars[to_char(char)]
+                return self._chars[Char(char)]
             except KeyError:
-                raise KeyError(f'No glyph found matching char={char}') from None
-        cp_value = to_codepoint(codepoint)
+                raise KeyError(f'No glyph found matching char={Char(char)}') from None
         try:
-            return self._codepoints[cp_value]
+            return self._codepoints[Codepoint(codepoint)]
         except KeyError:
-            raise KeyError(f'No glyph found matching codepoint={cp_value}') from None
+            raise KeyError(f'No glyph found matching codepoint={Codepoint(codepoint)}') from None
 
 
     @cache
