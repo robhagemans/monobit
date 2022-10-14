@@ -21,7 +21,7 @@ from .scripting import scriptable
 from .binary import ceildiv, bytes_to_bits
 from .matrix import to_text
 from .encoding import is_graphical
-from .label import Char, codepoint as to_codepoint, Tag, label
+from .label import codepoint as to_codepoint, Tag, label
 from .struct import (
     DefaultProps, normalise_property, extend_string,
     writable_property, as_tuple, checked_property
@@ -126,7 +126,7 @@ class KernTable(dict):
     def get_for_glyph(self, second):
         """Get kerning amount for given second glyph."""
         try:
-            return self[Char(second.char)]
+            return self[second.char]
         except KeyError:
             pass
         try:
@@ -266,8 +266,9 @@ class Glyph:
                 f"All rows in a glyph's pixel matrix must be of the same width: {repr(self)}"
             )
         # labels
+        #TODO: generic labels param that has the standard transformation from string, converted to char/tag/cp here
         self._codepoint = to_codepoint(codepoint)
-        self._char = Char(char)
+        self._char = char
         self._tags = tuple(Tag(_tag) for _tag in tags if _tag)
         # comments
         if not isinstance(comments, str):
@@ -462,7 +463,7 @@ class Glyph:
         if self.codepoint:
             labels.append(self.codepoint)
         if self.char:
-            labels.append(Char(self.char))
+            labels.append(self.char)
         labels.extend(Tag(_t) for _t in self.tags)
         return tuple(labels)
 

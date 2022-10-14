@@ -18,7 +18,7 @@ except ImportError:
 from .scripting import scriptable, get_scriptables
 from .glyph import Glyph, Coord, Bounds, number
 from .encoding import charmaps, encoder
-from .label import Label, Tag, Char, codepoint as to_codepoint, label as to_label
+from .label import Tag, char as to_char, codepoint as to_codepoint, label as to_label
 from .struct import (
     extend_string, DefaultProps, normalise_property, as_tuple, writable_property, checked_property
 )
@@ -138,7 +138,7 @@ class FontProperties(DefaultProps):
     # replacement for missing glyph
     default_char: to_label
     # word-break character (usually space)
-    word_boundary: to_label = Char(' ')
+    word_boundary: to_label = to_char(' ')
 
     # rendering hints
     # can't be calculated, may affect rendering
@@ -393,7 +393,7 @@ class FontProperties(DefaultProps):
     def cap_advance(self):
         """Advance width of uppercase X."""
         try:
-            return self._font.get_glyph('X').advance_width + self.left_bearing + self.right_bearing
+            return self._font.get_glyph(char='X').advance_width + self.left_bearing + self.right_bearing
         except KeyError:
             return 0
 
@@ -401,7 +401,7 @@ class FontProperties(DefaultProps):
     def x_height(self):
         """Ink height of lowercase x."""
         try:
-            return self._font.get_glyph('x').bounding_box.y
+            return self._font.get_glyph(char='x').bounding_box.y
         except KeyError:
             return 0
 
@@ -409,7 +409,7 @@ class FontProperties(DefaultProps):
     def cap_height(self):
         """Ink height of uppercase X."""
         try:
-            return self._font.get_glyph('X').bounding_box.y
+            return self._font.get_glyph(char='X').bounding_box.y
         except KeyError:
             return 0
 
@@ -423,7 +423,7 @@ class FontProperties(DefaultProps):
         # TODO - make a font.chars property returning the keys object
         if repl not in self._font._chars:
             repl = ''
-        return Char(repl)
+        return to_char(repl)
 
 
     ##########################################################################
@@ -630,7 +630,7 @@ class Font:
         if label is not None:
             # convert strings, numerics through standard rules
             label = to_label(label)
-            if isinstance(label, Char):
+            if isinstance(label, str):
                 char = label
             elif isinstance(label, bytes):
                 codepoint = label
@@ -643,9 +643,9 @@ class Font:
                 raise KeyError(f'No glyph found matching tag={Tag(tag)}') from None
         if char is not None:
             try:
-                return self._chars[Char(char)]
+                return self._chars[char]
             except KeyError:
-                raise KeyError(f'No glyph found matching char={Char(char)}') from None
+                raise KeyError(f'No glyph found matching char={char}') from None
         cp_value = to_codepoint(codepoint)
         try:
             return self._codepoints[cp_value]

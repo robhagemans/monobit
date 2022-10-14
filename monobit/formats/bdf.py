@@ -487,9 +487,7 @@ def _read_bdf_characters(instream):
             glyph = glyph.modify(tags=[label])
         # ENCODING must be single integer or -1 followed by integer
         encvalue = int(meta['ENCODING'].split(' ')[-1])
-        # no encoding number found
-        if encvalue != -1:
-            glyph = glyph.modify(codepoint=encvalue)
+        glyph = glyph.modify(encvalue=encvalue)
         glyphs.append(glyph)
         glyph_meta.append(meta)
         if not instream.readline().startswith('ENDCHAR'):
@@ -559,9 +557,15 @@ def _parse_properties(glyphs, glyph_props, bdf_props, x_props):
     # unless we're working in unicode
     if not charmaps.is_unicode(properties['encoding']):
         glyphs = [
-            _glyph.modify(codepoint=int_to_bytes(_glyph.codepoint[0]))
+            _glyph.modify(codepoint=int_to_bytes(_glyph.encvalue)).drop('encvalue')
+            if _glyph.encvalue != -1 else _glyph.drop('encvalue')
             for _glyph in glyphs
-            if _glyph.codepoint
+        ]
+    else:
+        glyphs = [
+            _glyph.modify(char=chr(_glyph.encvalue)).drop('encvalue')
+            if _glyph.encvalue != -1 else _glyph.drop('encvalue')
+            for _glyph in glyphs
         ]
     logging.info('yaff properties:')
     for name, value in properties.items():

@@ -15,7 +15,7 @@ import binascii
 from pkg_resources import resource_listdir
 
 from .binary import int_to_bytes
-from .label import codepoint, Char, label as to_label
+from .label import codepoint, label as to_label
 
 
 _ENCODING_FILES = (
@@ -852,9 +852,7 @@ class Charmap(Encoder):
         """Convert character to codepoint sequence, return empty tuple if missing."""
         for label in labels:
             char = to_label(label)
-            if isinstance(char, Char):
-                # accept str or Char
-                char = char.value
+            if isinstance(char, str):
                 try:
                     return self._chr2ord[char]
                 except KeyError as e:
@@ -972,8 +970,9 @@ class Unicode(Encoder):
     def codepoint(*labels):
         """Convert character to codepoint."""
         for label in labels:
+            #FIXME - we're not getting this right, codepoints/chars get mixed up e.g. '0'
             char = to_label(label)
-            if isinstance(char, Char):
+            if isinstance(char, str):
                 # we used to normalise to NFC here, presumably to reduce multi-codepoint situations
                 # but it leads to inconsistency between char and codepoint for canonically equivalent chars
                 #char = unicodedata.normalize('NFC', char)

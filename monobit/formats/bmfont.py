@@ -26,7 +26,7 @@ from .. import struct
 from ..storage import loaders, savers
 from ..font import Font, Coord
 from ..glyph import Glyph
-from ..label import codepoint, Char
+from ..label import codepoint
 
 from .windows import CHARSET_MAP, CHARSET_REVERSE_MAP
 
@@ -450,7 +450,7 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=(),
             is_unicode = bool(_to_int(info['unicode']))
             if is_unicode:
                 right_kerning = {
-                    Char(chr(_kern.second)): _kern.amount
+                    chr(_kern.second): _kern.amount
                     for _kern in kernings
                     if _kern.first == char.id
                 }
@@ -550,7 +550,7 @@ def _read_bmfont(infile, container, outline):
 
 def _glyph_id(glyph, encoding):
     if charmaps.is_unicode(encoding):
-        char = glyph.char.value
+        char = glyph.char
         if len(char) > 1:
             raise ValueError(
                 f"Can't store multi-codepoint grapheme sequence {ascii(char)}."
