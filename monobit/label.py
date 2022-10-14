@@ -32,15 +32,17 @@ def strip_matching(from_str, char, allow_no_match=True):
 
 def label(value=''):
     """Convert to codepoint/unicode/tag label from Python api or script input."""
-    if isinstance(value, Tag):
+    if isinstance(value, Label):
         return value
     if not isinstance(value, str):
         # only Codepoint can have non-str argument
         return codepoint(value)
     # protect commas, pluses etc. if enclosed
     if is_enclosed(value, '"'):
-        return Tag.from_str(value)
+        value = strip_matching(value, '"')
+        return Tag(value)
     if is_enclosed(value, "'"):
+        value = strip_matching(value, "'")
         return char(value)
     try:
         return codepoint(value)
@@ -53,12 +55,17 @@ def label_from_yaff(value):
     """Convert to codepoint/unicode/tag label from yaff file."""
     if not isinstance(value, str):
         raise ValueError(f'label_from_yaff requires a `str` argument, not `{type(value)}`.')
+    # remove leading and trailing whitespace
+    value = value.strip()
     if not value:
         raise ValueError(f'label_from_yaff requires a non-empty argument.')
     # protect commas, pluses etc. if enclosed
     if is_enclosed(value, '"'):
-        return Tag.from_str(value)
+        # strip matching double quotes - this allows to set a label starting with a digit by quoting it
+        value = strip_matching(value, '"')
+        return Tag(value)
     if is_enclosed(value, "'"):
+        value = strip_matching(value, "'")
         return char(value)
     # codepoints start with an ascii digit
     try:
@@ -77,7 +84,7 @@ def label_from_yaff(value):
         return char_from_yaff(value)
     except ValueError:
         pass
-    return Tag.from_str(value)
+    return Tag(value)
 
 def label_to_yaff(value):
     """Convert to codepoint/unicode/tag label from yaff file."""
@@ -91,9 +98,42 @@ def label_to_yaff(value):
 
 
 ##############################################################################
+# label types
+
+class Label: pass
+
+class Char(str, Label):
+    """Character label."""
+
+    def __str__(self):
+        """Convert to unicode label str for yaff."""
+        return ', '.join(
+            f'u+{ord(_uc):04x}'
+            for _uc in self
+        )
+
+
+class Codepoint(bytes, Label):
+    """Codepoint label."""
+
+    def __str__(self):
+        """Convert codepoint label to str."""
+        return '0x' + hexlify(self).decode('ascii')
+
+
+
+def codepoint_to_str(value):
+    """Convert codepoint label to str."""
+    return str(Codepoint(value))
+
+def char_to_yaff(value):
+    """Convert codepoint label to str."""
+    return str(Char(value))
+
+##############################################################################
 # tags
 
-class Tag:
+class Tag(Label):
     """Tag label."""
 
     def __init__(self, value=''):
@@ -101,16 +141,12 @@ class Tag:
         if isinstance(value, Tag):
             self._value = value.value
             return
-        if Tag is None:
-            tag = ''
+        if value is None:
+            value = ''
         if not isinstance(value, str):
             raise ValueError(
                 f'Cannot convert value {repr(value)} of type {type(value)} to tag.'
             )
-        # remove leading and trailing whitespace
-        value = value.strip()
-        # strip matching double quotes - this allows to set a label starting with a digit by quoting it
-        value = strip_matching(value, '"')
         self._value = value
 
     def __repr__(self):
@@ -148,11 +184,6 @@ class Tag:
     def __iter__(self):
         return iter(self._value)
 
-    @classmethod
-    def from_str(cls, value):
-        """Create label from string representation."""
-        return cls(value)
-
     @property
     def value(self):
         """Value of the codepoint in base type."""
@@ -165,36 +196,34 @@ class Tag:
 
 
 #FIXME: we're always assuming codepage byte width 1
-def codepoint(value=None):
+def codepoint(value=b''):
     """Convert to codepoint label if possible."""
+    if isinstance(value, Codepoint):
+        return value
     if value is None:
-        return b''
+        value = b''
     if isinstance(value, bytes):
-        return strip_codepoint(value)
+        return _strip_codepoint(value)
     if isinstance(value, int):
-        return strip_codepoint(int_to_bytes(value))
+        return _strip_codepoint(int_to_bytes(value))
     if isinstance(value, str):
         # handle composite labels
         # codepoint sequences (MBCS) "0xf5,0x02" etc.
         value = value.split(',')
-    # deal with other iterables, e.g. bytes
+    # deal with other iterables, e.g. bytes, tuple
     try:
         value = b''.join(int_to_bytes(any_int(_i)) for _i in value)
     except (TypeError, OverflowError):
         raise ValueError(
             f'Cannot convert value {repr(value)} of type {type(value)} to codepoint label.'
         ) from None
-    return strip_codepoint(value)
+    return _strip_codepoint(value)
 
-def strip_codepoint(value):
+def _strip_codepoint(value):
     if len(value) > 1:
         value = value.lstrip(b'\0')
-    return value
+    return Codepoint(value)
 
-
-def codepoint_to_str(value):
-    """Convert codepoint label to str."""
-    return '0x' + hexlify(value).decode('ascii')
 
 
 ##############################################################################
@@ -202,24 +231,18 @@ def codepoint_to_str(value):
 
 def char(value=''):
     """Convert char or char sequence to char label."""
+    if isinstance(value, Char):
+        return value
     if value is None:
-        return ''
-    #FIXME: this will keep stripping if we pass through char() multiple times
-    # char() should be idempotent - we need a marker for that, subclass str?
+        value = ''
     if isinstance(value, str):
         # strip matching single quotes - if the character label should be literally '', use ''''.
-        return strip_matching(value, "'")
+        return Char(value)
     raise ValueError(
         f'Cannot convert value {repr(value)} of type {type(value)} to character label.'
     )
 
 
-def char_to_yaff(value):
-    """Convert to unicode label str for yaff."""
-    return ', '.join(
-        f'u+{ord(_uc):04x}'
-        for _uc in value
-    )
 
 def char_from_yaff(value):
     """Convert u+XXXX string to unicode label. May be empty, representing no glyph."""
