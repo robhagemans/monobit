@@ -5,7 +5,7 @@ monobit.label - yaff representation of labels
 licence: https://opensource.org/licenses/MIT
 """
 
-from string import ascii_letters
+from string import ascii_letters, digits
 from binascii import hexlify
 
 from .binary import ceildiv, int_to_bytes
@@ -64,9 +64,9 @@ def label(value):
     # length-one -> always a character
     if len(value) == 1:
         return char(value)
-    # non-ascii first char -> always a character
+    # unquoted non-ascii -> always a character
     # note that this includes non-printables such as controls but these should not be used.
-    if ord(value[0]) >= 0x80:
+    if any(ord(_c) > 0x7f for _c in value):
         return char(value)
     # deal with other options such as single-quoted, u+codepoint and sequences
     try:
@@ -215,13 +215,14 @@ class Tag(Label):
     def __str__(self):
         """Convert tag to str."""
         # quote otherwise ambiguous/illegal tags
+        # in particular, we need to quote 0x u+ ' ", non-ascii, and single chars
         if (
                 len(self._value) < 2
-                or ord(self._value[0]) >= 0x80
-                or '+' in self._value
                 or not (self._value[0] in ascii_letters)
-                or (self._value.startswith('"') and self._value.endswith('"'))
-                or (self._value.startswith("'") and self._value.endswith("'"))
+                or any(
+                    _c not in ascii_letters + digits + '_-.'
+                    for _c in self._value
+                )
             ):
             return f'"{self._value}"'
         return self._value
@@ -232,24 +233,16 @@ class Tag(Label):
         return hash((type(self), self._value))
 
     def __eq__(self, other):
+        """Allow use as dictionary key."""
         return type(self) == type(other) and self._value == other.value
 
     def __bool__(self):
+        """Check if tag is non-empty."""
         return bool(self._value)
-
-    def __len__(self):
-        return len(self._value)
 
     @property
     def value(self):
-        """Value of the codepoint in base type."""
+        """Tag contents as str."""
         # pylint: disable=no-member
         return self._value
-
-
-
-
-
-
-
 
