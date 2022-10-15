@@ -8,6 +8,19 @@ licence: https://opensource.org/licenses/MIT
 from .binary import ceildiv
 from . import matrix
 
+try:
+    from bidi.algorithm import get_display
+except ImportError:
+    def get_display(text):
+        raise ImportError('Bidirectional text requires module `python-bidi`; not found.')
+
+try:
+    from arabic_reshaper import reshape
+except ImportError:
+    def reshape(text):
+        raise ImportError('Arabic text requires module `arabic-reshaper`; not found.')
+
+
 # matrix colours
 # 0, 1 are background, foreground
 # this allows us to use max() to combine the three in blit_matrix
@@ -20,11 +33,16 @@ _BORDER = -1
 def render_text(
         font, text, ink='@', paper='-', *,
         margin=(0, 0), scale=(1, 1), rotate=0,
+        direction='normal',
         missing='default'
     ):
     """Render text string to text bitmap."""
     return matrix.to_text(
-        render(font, text, margin=margin, scale=scale, rotate=rotate, missing=missing),
+        render(
+            font, text,
+            margin=margin, scale=scale, rotate=rotate, direction=direction,
+            missing=missing
+        ),
         ink=ink, paper=paper
     )
 
@@ -32,16 +50,40 @@ def render_image(
         font, text, *,
         paper=(0, 0, 0), ink=(255, 255, 255),
         margin=(0, 0), scale=(1, 1), rotate=0,
+        direction='normal',
         missing='default',
     ):
     """Render text to image."""
     return matrix.to_image(
-        render(font, text, margin=margin, scale=scale, rotate=rotate, missing=missing),
+        render(
+            font, text,
+            margin=margin, scale=scale, rotate=rotate, direction=direction,
+            missing=missing
+        ),
         ink=ink, paper=paper
     )
 
-def render(font, text, *, margin=(0, 0), scale=(1, 1), rotate=0, missing='default'):
+def render(
+        font, text, *, margin=(0, 0), scale=(1, 1), rotate=0, direction='normal', missing='default'
+    ):
     """Render text string to bitmap."""
+    # reshape Arabic glyphs to contextual forms
+    try:
+        text = reshape(text)
+    except ImportError as e:
+        # check common Arabic range - is there anything to reshape?
+        if any(ord(_c) in range(0x600, 0x700) for _c in text):
+            logging.warning(e)
+    # put characters in visual order instead of logical
+    if direction in ('normal', 'reverse'):
+        # decide direction based on bidi algorithm
+        text = get_display(text)
+    elif direction in ('right-to-left', 'reverse'):
+        # reverse writing order
+        text = ''.join(reversed(text))
+    elif direction != 'left-to-right':
+        raise ValueError(f'Unsupported writing direction `{direction}`')
+    # get glyphs for rendering
     glyphs = _get_text_glyphs(font, text, missing=missing)
     margin_x, margin_y = margin
     canvas = _get_canvas(font, glyphs, margin_x, margin_y)
