@@ -64,27 +64,11 @@ def render_image(
     )
 
 def render(
-        font, text, *, margin=(0, 0), scale=(1, 1), rotate=0, direction='normal', missing='default'
+        font, text, *, margin=(0, 0), scale=(1, 1), rotate=0, direction='', missing='default'
     ):
     """Render text string to bitmap."""
-    # reshape Arabic glyphs to contextual forms
-    try:
-        text = reshape(text)
-    except ImportError as e:
-        # check common Arabic range - is there anything to reshape?
-        if any(ord(_c) in range(0x600, 0x700) for _c in text):
-            logging.warning(e)
-    # put characters in visual order instead of logical
-    if direction in ('normal', 'reverse'):
-        # decide direction based on bidi algorithm
-        text = get_display(text)
-    elif direction in ('right-to-left', 'reverse'):
-        # reverse writing order
-        text = ''.join(reversed(text))
-    elif direction != 'left-to-right':
-        raise ValueError(f'Unsupported writing direction `{direction}`')
     # get glyphs for rendering
-    glyphs = _get_text_glyphs(font, text, missing=missing)
+    glyphs = _get_text_glyphs(font, text, direction=direction, missing=missing)
     margin_x, margin_y = margin
     canvas = _get_canvas(font, glyphs, margin_x, margin_y)
     # descent-line of the bottom-most row is at bottom margin
@@ -131,8 +115,27 @@ def _get_canvas(font, glyphs, margin_x, margin_y):
     height = 2 * margin_y + font.pixel_size + font.line_height * (len(glyphs)-1)
     return matrix.create(width, height)
 
-def _get_text_glyphs(font, text, missing='raise'):
+def _get_text_glyphs(font, text, direction, missing='raise'):
     """Get tuple of tuples of glyphs (by line) from str or bytes/codepoints input."""
+    if direction not in ('', 'normal', 'reverse', 'right-to-left', 'left-to-right'):
+        raise ValueError(f'Unsupported writing direction `{direction}`')
+    if isinstance(text, str):
+        # reshape Arabic glyphs to contextual forms
+        try:
+            text = reshape(text)
+        except ImportError as e:
+            # check common Arabic range - is there anything to reshape?
+            if any(ord(_c) in range(0x600, 0x700) for _c in text):
+                logging.warning(e)
+        # put characters in visual order instead of logical
+        if direction in ('', 'normal', 'reverse'):
+            # decide direction based on bidi algorithm
+            text = get_display(text)
+    elif direction in ('normal', 'reverse'):
+        raise ValueError(f'Writing direction `{direction}` only supported for Unicode text.')
+    if direction in ('right-to-left', 'reverse'):
+        # reverse writing order
+        text = ''.join(reversed(text))
     if isinstance(text, str):
         max_length = max(len(_c) for _c in font.get_chars())
         type_conv = str

@@ -56,7 +56,7 @@ parser.add_argument(
     help='number of quarter turns to rotate (default: 0)'
 )
 parser.add_argument(
-    '--direction', type=str, default='normal',
+    '--direction', type=str, default='',
     help=(
         "writing direction (default: use bidirectional algorithm;"
         " other options: `left-to-right`, `right-to-left`, `reverse`)"

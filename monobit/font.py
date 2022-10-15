@@ -122,8 +122,6 @@ class FontProperties(DefaultProps):
     # metrics
     # can't be calculated, affect rendering
 
-    # left-to-right, right-to-left
-    direction: str = 'left-to-right'
     # horizontal offset from leftward origin to matrix left edge
     left_bearing: int
     # horizontal offset from matrix right edge to rightward origin
@@ -148,6 +146,10 @@ class FontProperties(DefaultProps):
     # rendering hints
     # may affect rendering if effects are applied
 
+    # can be set to left-to-right, right-to-left to suggest a writing direction
+    # though it is better determined through the bidirectional algorithm
+    # the meaning of metrics is agnostic to writing direction
+    direction: str = ''
     # number of pixels to smear in advance direction to simulate bold weight
     bold_smear: int = 1
     # number of pixels in underline

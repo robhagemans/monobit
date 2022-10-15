@@ -227,7 +227,6 @@ The following are font properties `monobit` is aware of. Other properties may be
 _Metrics_ are properties that affect how the font is rendered. There are per-glyph metrics and global metrics.
 
 Global metrics are:
-- `direction`: Direction of writing. At present, only `left-to-right` or `right-to-left` are supported.
 - `line-height`: Vertical spacing between consecutive baselines.
 
 Per-glyph metrics are:
@@ -254,6 +253,9 @@ Deprecated synonyms are:
 ##### Rendering hints
 
 _Rendering hints_ affect the way decorations and transformations are applied. They are:
+- `direction`: Direction of writing. At present, only `left-to-right` or `right-to-left` are supported.
+  Default is to determine writing direction algorithmically, if the glyphs have character labels,
+  and to use left-to-right if not.
 - `bold-smear`: additional number of pixels to trail ink by, when bolding algorithmically
 - `underline-thickness`: number of pixels in a generated underline
 - `underline-descent`: location of underline in pixels below the baseline
