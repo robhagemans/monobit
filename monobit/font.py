@@ -163,6 +163,14 @@ class FontProperties(DefaultProps):
     subscript_offset: int
     # recommended small-capital size in pixels.
     small_cap_size: int
+    # recommended space between words, in pixels
+    word_space: int
+    # recommended minimum space between words, in pixels
+    min_word_space: int
+    # recommended maximum space between words, in pixels
+    max_word_space: int
+    # recommended space between sentences, in pixels
+    sentence_space: int
 
     # conversion metadata
     # can't be calculated, informational
@@ -430,6 +438,17 @@ class FontProperties(DefaultProps):
         except KeyError:
             return 0
 
+    @writable_property
+    def digit_width(self):
+        """Advance width of digits, if fixed."""
+        widths = set(
+            self._font.get_glyph(char=_d).advance_width
+            for _d in '$0123456789'
+        )
+        if len(widths) == 1:
+            return widths.pop()
+        return 0
+
 
     ##########################################################################
     # rendering hints
@@ -483,15 +502,28 @@ class FontProperties(DefaultProps):
         )
 
     @writable_property
-    def digit_width(self):
-        """Advance width of digits, if fixed."""
-        widths = set(
-            self._font.get_glyph(char=_d).advance_width
-            for _d in '$0123456789'
-        )
-        if len(widths) == 1:
-            return widths.pop()
-        return 0
+    def word_space(self):
+        """Recommended space between words, in pixels."""
+        try:
+            return self._font.get_glyph(char=' ').advance_width
+        except KeyError:
+            # convoluted XLFD calc just boils down to this?
+            return round(self.pixel_size / 3)
+
+    @writable_property
+    def min_word_space(self):
+        """Recommended minimum space between words, in pixels."""
+        return round(0.75 * self.word_space)
+
+    @writable_property
+    def max_word_space(self):
+        """Recommended maximum space between words, in pixels."""
+        return round(1.5 * self.word_space)
+
+    @writable_property
+    def sentence_space(self):
+        """Recommended space between sentences, in pixels."""
+        return self.word_space
 
 
     ##########################################################################

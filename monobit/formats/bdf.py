@@ -378,10 +378,7 @@ _XLFD_NAME_FIELDS = (
 
 # unparsed xlfd properties, for reference
 _XLFD_UNPARSED = {
-    'MIN_SPACE',
-    'NORM_SPACE',
-    'MAX_SPACE',
-    'END_SPACE',
+    # average cap/lower width, in tenths of pixels, negative for rtl
     'AVG_CAPITAL_WIDTH',
     'AVG_LOWERCASE_WIDTH',
     # width of a quad (em) space. deprecated.
@@ -702,6 +699,10 @@ def _parse_xlfd_properties(x_props, xlfd_name):
         'subscript-size': x_props.pop('SUBSCRIPT_SIZE', None),
         'small-cap-size': x_props.pop('SMALL_CAP_SIZE', None),
         'digit-width': x_props.pop('FIGURE_WIDTH', None),
+        'min-word-space': x_props.pop('MIN_SPACE', None),
+        'word-space': x_props.pop('NORM_SPACE', None),
+        'max-word-space': x_props.pop('MAX_SPACE', None),
+        'sentence-space': x_props.pop('END_SPACE', None),
     }
     if 'DESTINATION' in x_props and int(x_props['DESTINATION']) < 2:
         dest = int(x_props.pop('DESTINATION'))
@@ -838,6 +839,10 @@ def _create_xlfd_properties(font):
         'SUBSCRIPT_X': font.subscript_offset.x if 'subscript-offset' in font.properties else None,
         'SUBSCRIPT_Y': font.subscript_offset.y if 'subscript-offset' in font.properties else None,
         'FIGURE_WIDTH': font.properties.get('digit-width', None),
+        'MIN_SPACE': font.properties.get('min-word-space', None),
+        'NORM_SPACE': font.properties.get('word-space', None),
+        'MAX_SPACE': font.properties.get('max-word-space', None),
+        'END_SPACE': font.properties.get('sentence-space', None),
     }
     # encoding dependent values
     default_glyph = font.get_default_glyph()

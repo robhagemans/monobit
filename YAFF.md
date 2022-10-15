@@ -259,6 +259,10 @@ _Rendering hints_ affect the way decorations and transformations are applied. Th
 - `subscript-size`: pixel size of subscript font to use
 - `subscript-offset`: Horizontal (in direction of writing), downward offset for a subscript
 - `small-cap-size`: pixel size of small-capital font to use
+- `word-space`: normal space between words
+- `min-word-space`: minimum space between words
+- `max-word-space`: maximum space between words
+- `word-space`: space between sentences
 
 
 ##### Characteristics
