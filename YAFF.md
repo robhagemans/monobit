@@ -253,7 +253,7 @@ Deprecated synonyms are:
 _Rendering hints_ affect the way decorations and transformations are applied. They are:
 - `bold-smear`: additional number of pixels to trail ink by, when bolding algorithmically
 - `underline-thickness`: number of pixels in a generated underline
-- `underline-shift-down`: number of pixels to shift the underline below the baseline
+- `underline-descent`: location of underline in pixels below the baseline
 - `superscript-size`: pixel size of superscript font to use
 - `superscript-offset`: Horizontal (in direction of writing), upward offset for a superscript
 - `subscript-size`: pixel size of subscript font to use

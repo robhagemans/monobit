@@ -721,7 +721,7 @@ def _parse_xlfd_properties(x_props, xlfd_name):
         'pixel-size': x_props.pop('PIXEL_SIZE', None),
         'slant': _SLANT_MAP.get(_from_quoted_string(x_props.pop('SLANT', '')), None),
         'spacing': _SPACING_MAP.get(_from_quoted_string(x_props.pop('SPACING', '')), None),
-        'underline-shift-down': x_props.pop('UNDERLINE_POSITION', None),
+        'underline-descent': x_props.pop('UNDERLINE_POSITION', None),
         'underline-thickness': x_props.pop('UNDERLINE_THICKNESS', None),
         'superscript-size': x_props.pop('SUPERSCRIPT_SIZE', None),
         'subscript-size': x_props.pop('SUBSCRIPT_SIZE', None),
@@ -856,7 +856,7 @@ def _create_xlfd_properties(font):
         'ADD_STYLE_NAME': _quoted_string(font.style.title()),
         'AVERAGE_WIDTH': str(round(float(font.average_advance) * 10)).replace('-', '~'),
         # only set if explicitly defined
-        'UNDERLINE_POSITION': font.properties.get('underline-shift-down', None),
+        'UNDERLINE_POSITION': font.properties.get('underline-descent', None),
         'UNDERLINE_THICKNESS': font.properties.get('underline-thickness', None),
         'DESTINATION': {'printer': 0, 'screen': 1, None: None}.get(font.device.lower(), None),
         'SUPERSCRIPT_SIZE': font.properties.get('superscript-size', None),
