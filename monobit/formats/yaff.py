@@ -400,8 +400,8 @@ class TextWriter:
         else:
             labels = glyph.get_labels()
         if not labels:
-            logging.warning('No labels for glyph: %s', glyph)
-            return
+            logging.debug('No labels for glyph: %s', glyph)
+            outstream.write(f'{self.separator}{self.separator_space}')
         for _label in labels:
             outstream.write(f'{str(_label)}{self.separator}{self.separator_space}')
         # glyph matrix
@@ -429,12 +429,10 @@ class TextWriter:
             return
         # this may use custom string converter (e.g codepoint labels)
         value = str(value)
-        if not value:
-            return
         # write property comment
         if comments:
             outstream.write('\n{indent}' + self._format_comment(comments) + '\n')
-        if not '.' in key and not key.startswith('_'):
+        if not key.startswith('_'):
             key = key.replace('_', '-')
         # write key-value pair
         if '\n' not in value:

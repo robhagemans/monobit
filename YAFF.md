@@ -243,9 +243,26 @@ The per-glyph metrics (except `right-kerning`) may be specified globally, in whi
 glyphs. If metrics are specified both globally and per-glyph, they are added.
 
 Deprecated synonyms are:
-- `offset` (_x_ _y_ pair): Equal to (`left-bearing`, `shift-up`).
-- `tracking`: Equal to `right-bearing`.
-- `kern-to`: Equal to `right-kerning`.
+- `offset` (_x_ _y_ pair): equal to (`left-bearing`, `shift-up`).
+- `tracking`: equal to `right-bearing`.
+- `kern-to`: equal to `right-kerning`.
+
+
+##### Rendering hints
+
+_Rendering hints_ affect the way decorations and transformations are applied. They are:
+- `bold-smear`: additional number of pixels to trail ink by, when bolding algorithmically
+- `underline-thickness`: number of pixels in a generated underline
+- `underline-descent`: location of underline in pixels below the baseline
+- `superscript-size`: pixel size of superscript font to use
+- `superscript-offset`: Horizontal (in direction of writing), upward offset for a superscript
+- `subscript-size`: pixel size of subscript font to use
+- `subscript-offset`: Horizontal (in direction of writing), downward offset for a subscript
+- `small-cap-size`: pixel size of small-capital font to use
+- `word-space`: normal space between words
+- `min-word-space`: minimum space between words
+- `max-word-space`: maximum space between words
+- `word-space`: space between sentences
 
 
 ##### Characteristics
@@ -256,7 +273,7 @@ _Characteristics_ are descriptive in nature. They can be specified or calculated
 - `ascent`: height of lowercase letters such as `f` that extend above the x-height.
 - `descent`: extent of lowercase letters such as `j` below the baseline.
 - `pixel-size`: pixel size (equals ascent plus descent).
-- `leading`: Additional vertical line spacing in excess of the `pixel-size`.
+- `leading`: additional vertical line spacing in excess of the `pixel-size`.
 
 Characteristics inferred from the glyphs are:
 - `raster`: largest raster needed to define a glyph; coordinates (left, bottom, right, top)
@@ -264,14 +281,20 @@ Characteristics inferred from the glyphs are:
                 coordinates (left, bottom, right, top)
 - `raster-size`: (width, height) of raster.
 - `bounding-box`: (width, height) of ink-bounds.
-- `average-advance`: average advance width across glyphs.
-- `max-advance`: maximum advance width across glyphs.
-- `cap-advance`: advance width of capital letter `X`.
+- `average-width`: average advance width across glyphs.
+- `max-width`: maximum advance width across glyphs.
+- `cap-width`: advance width of capital letter `X`.
+- `digit-width`: advance width of digits and `$` sign, if all equal.
 - `spacing`: type of font, can be one of:
   - `proportional`: glyphs have different advance widths, e.g. `M` is wider than `i`.
   - `monospace`: all glyphs have the same advance width.
   - `character-cell`: all glyphs can be defined on a raster of fixed size and displayed without overlap.
   - `multi-cell`: like `character-cell`, but some glyphs may take up two cells.
+
+Deprecated synonyms are:
+- `average-advance`: equal to `average-width`.
+- `max-advance`: equal to `max-width`.
+- `cap-advance`: equal to `cap-width`.
 
 Characteristics that give a font's identity are:
 - `family`: typeface or font family name

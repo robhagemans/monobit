@@ -161,6 +161,12 @@ class DefaultProps(Props):
         """Writable property has been explicitly set."""
         return vars(self).get(normalise_property(field), None)
 
+    @classmethod
+    def _known(cls, field):
+        """Field is a writable property."""
+        # note that checked_properties are not included, writable_properties and regular fields are
+        return normalise_property(field) in vars(cls)
+
     def __setattr__(self, field, value):
         if field != '_frozen' and self._frozen:
             raise ValueError('Cannot set property on frozen object.')

@@ -19,6 +19,7 @@ from .scripting import scriptable, get_scriptables
 from .glyph import Glyph, Coord, Bounds, number
 from .encoding import charmaps, encoder
 from .labels import Tag, Char, Codepoint, to_label
+from .binary import ceildiv
 from .struct import (
     extend_string, DefaultProps, normalise_property, as_tuple, writable_property, checked_property
 )
@@ -92,9 +93,13 @@ class FontProperties(DefaultProps):
     # overall ink bounds - overlay all glyphs with fixed origin and determine maximum ink extent
     bounding_box: Coord.create
     # average advance width, rounded to tenths
-    average_advance: number
+    average_width: number
+    # maximum glyph advance width
+    max_width: int
     # advance width of LATIN CAPITAL LETTER X
-    cap_advance: int
+    cap_width: int
+    # advance width of digits, if fixed.
+    digit_width: int
 
     # descriptive typographic quantities
     # can be calculated or given, may affect rendering
@@ -141,11 +146,33 @@ class FontProperties(DefaultProps):
     word_boundary: to_label = Char(' ')
 
     # rendering hints
-    # can't be calculated, may affect rendering
+    # may affect rendering if effects are applied
 
     # number of pixels to smear in advance direction to simulate bold weight
     bold_smear: int = 1
-
+    # number of pixels in underline
+    # we don't implement the XLFD calculation based on average stem width
+    underline_thickness: int = 1
+    # position of underline below baseline. 0 means underline on baseline itself, 1 is one line below
+    underline_descent: int
+    # recommended superscript size in pixels.
+    superscript_size: int
+    # recommended subscript size in pixels.
+    subscript_size: int
+    # recommended superscript horizontal, vertical offset in pixels.
+    superscript_offset: Coord.create
+    # recommended subscript horizontal, vertical offset in pixels.
+    subscript_offset: Coord.create
+    # recommended small-capital size in pixels.
+    small_cap_size: int
+    # recommended space between words, in pixels
+    word_space: int
+    # recommended minimum space between words, in pixels
+    min_word_space: int
+    # recommended maximum space between words, in pixels
+    max_word_space: int
+    # recommended space between sentences, in pixels
+    sentence_space: int
 
     # conversion metadata
     # can't be calculated, informational
@@ -368,8 +395,8 @@ class FontProperties(DefaultProps):
         )
 
     @writable_property
-    def average_advance(self):
-        """Get average glyph advance width, rounded to tenths of pixels."""
+    def average_width(self):
+        """Get average glyph advance width."""
         if not self._font.glyphs:
             return self.left_bearing + self.right_bearing
         return (
@@ -379,7 +406,7 @@ class FontProperties(DefaultProps):
         )
 
     @writable_property
-    def max_advance(self):
+    def max_width(self):
         """Maximum glyph advance width."""
         if not self._font.glyphs:
             return self.left_bearing + self.right_bearing
@@ -390,7 +417,7 @@ class FontProperties(DefaultProps):
         )
 
     @writable_property
-    def cap_advance(self):
+    def cap_width(self):
         """Advance width of uppercase X."""
         try:
             return self._font.get_glyph(char='X').advance_width + self.left_bearing + self.right_bearing
@@ -412,6 +439,97 @@ class FontProperties(DefaultProps):
             return self._font.get_glyph(char='X').bounding_box.y
         except KeyError:
             return 0
+
+    @writable_property
+    def digit_width(self):
+        """Advance width of digits, if fixed."""
+        try:
+            widths = set(
+                self._font.get_glyph(char=_d).advance_width
+                for _d in '$0123456789'
+            )
+        except KeyError:
+            return 0
+        if len(widths) == 1:
+            return widths.pop()
+        return 0
+
+
+    ##########################################################################
+    # rendering hints
+
+    @writable_property
+    def underline_descent(self):
+        """
+        Position of underline below baseline.
+        0 means underline on baseline itself.
+        """
+        if not self._font.glyphs:
+            return 0
+        max_descent = -min(
+            self.shift_up + _glyph.shift_up + _glyph.padding.bottom
+            for _glyph in self._font.glyphs
+        )
+        # XLFD calculation says round(max_descent/2) but I think they mean this
+        # they may meam something else with the 'top of the baseline'?
+        return 1 + ceildiv(max_descent, 2)
+
+    @writable_property
+    def superscript_size(self):
+        """Recommended superscript size in pixels."""
+        return round(self.pixel_size * 0.6)
+
+    @writable_property
+    def superscript_offset(self):
+        """Recommended superscript horizontal, vertical offset in pixels."""
+        shift = round(self.pixel_size * 0.4)
+        return Coord(shift, shift)
+
+    @writable_property
+    def subscript_size(self):
+        """Recommended subscript size in pixels."""
+        return round(self.pixel_size * 0.6)
+
+    @writable_property
+    def subscript_offset(self):
+        """Recommended subscript horizontal, vertical offset in pixels."""
+        shift = round(self.pixel_size * 0.4)
+        return Coord(shift, shift)
+
+    @writable_property
+    def small_cap_size(self):
+        """Recommended small-capital size in pixels."""
+        return round(
+            self.pixel_size * (
+                (self.x_height + (self.cap_height - self.x_height) / 3)
+                / self.cap_height
+            )
+        )
+
+    @writable_property
+    def word_space(self):
+        """Recommended space between words, in pixels."""
+        try:
+            return self._font.get_glyph(char=' ').advance_width
+        except KeyError:
+            # convoluted XLFD calc just boils down to this?
+            return round(self.pixel_size / 3)
+
+    @writable_property
+    def min_word_space(self):
+        """Recommended minimum space between words, in pixels."""
+        return round(0.75 * self.word_space)
+
+    @writable_property
+    def max_word_space(self):
+        """Recommended maximum space between words, in pixels."""
+        return round(1.5 * self.word_space)
+
+    @writable_property
+    def sentence_space(self):
+        """Recommended space between sentences, in pixels."""
+        return self.word_space
+
 
     ##########################################################################
     # character properties
@@ -443,6 +561,21 @@ class FontProperties(DefaultProps):
         (horiz, vert) offset from origin to matrix start
         Deprecated synonym for left-bearing, shift-up.
         """
+
+    @writable_property('average_width')
+    def average_advance(self):
+        """Average advance width, rounded to tenths."""
+        return self.average_width
+
+    @writable_property('max_width')
+    def max_advance(self):
+        """Maximum glyph advance width."""
+        return self.max_width
+
+    @writable_property('cap_width')
+    def cap_advance(self):
+        """Advance width of LATIN CAPITAL LETTER X."""
+        return self.cap_width
 
 
 ###################################################################################################
@@ -589,6 +722,10 @@ class Font:
     def properties(self):
         """Non-defaulted properties in order of default definition list."""
         return {_k: self._props[_k] for _k in self._props if not _k.startswith('_')}
+
+    def is_known_property(self, key):
+        """Field is a recognised property."""
+        return self._props._known(key)
 
 
     ##########################################################################
