@@ -158,9 +158,9 @@ class FontProperties(DefaultProps):
     # recommended subscript size in pixels.
     subscript_size: int
     # recommended superscript horizontal, vertical offset in pixels.
-    superscript_offset: int
+    superscript_offset: Coord.create
     # recommended subscript horizontal, vertical offset in pixels.
-    subscript_offset: int
+    subscript_offset: Coord.create
     # recommended small-capital size in pixels.
     small_cap_size: int
     # recommended space between words, in pixels
@@ -441,10 +441,13 @@ class FontProperties(DefaultProps):
     @writable_property
     def digit_width(self):
         """Advance width of digits, if fixed."""
-        widths = set(
-            self._font.get_glyph(char=_d).advance_width
-            for _d in '$0123456789'
-        )
+        try:
+            widths = set(
+                self._font.get_glyph(char=_d).advance_width
+                for _d in '$0123456789'
+            )
+        except KeyError:
+            return 0
         if len(widths) == 1:
             return widths.pop()
         return 0
