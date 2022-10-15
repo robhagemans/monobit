@@ -422,7 +422,7 @@ def load_bdf(instream, where=None):
     """
     instream = instream.text
     nchars, comments, bdf_props, x_props = _read_bdf_global(instream)
-    glyphs, glyph_props = _read_bdf_characters(instream)
+    glyphs, glyph_props = _read_bdf_glyphs(instream)
     # check number of characters, but don't break if no match
     if nchars != len(glyphs):
         logging.warning('Number of characters found does not match CHARS declaration.')
@@ -462,7 +462,7 @@ def _read_dict(instream, until=None):
             break
     return result
 
-def _read_bdf_characters(instream):
+def _read_bdf_glyphs(instream):
     """Read character section."""
     # output
     glyphs = []
@@ -478,22 +478,26 @@ def _read_bdf_characters(instream):
         keyword, values = line.split(' ', 1)
         meta = _read_dict(instream, until='BITMAP')
         meta[keyword] = values
+        # store labels, if they're not just ordinals
+        label = meta['STARTCHAR']
         width, height, _, _ = meta['BBX'].split(' ')
         width, height = int(width), int(height)
         # convert from hex-string to list of bools
         hexstr = ''.join(instream.readline().strip() for _ in range(height))
-        glyph = Glyph.from_hex(hexstr, width, height)
-        # store labels, if they're not just ordinals
-        label = meta['STARTCHAR']
         try:
-            int(label)
-        except ValueError:
-            glyph = glyph.modify(tags=[label])
-        # ENCODING must be single integer or -1 followed by integer
-        encvalue = int(meta['ENCODING'].split(' ')[-1])
-        glyph = glyph.modify(encvalue=encvalue)
-        glyphs.append(glyph)
-        glyph_meta.append(meta)
+            glyph = Glyph.from_hex(hexstr, width, height)
+        except ValueError as e:
+            logging.warning(f'Could not read glyph `{label}` {hexstr}: {e}')
+        else:
+            try:
+                int(label)
+            except ValueError:
+                glyph = glyph.modify(tags=[label])
+            # ENCODING must be single integer or -1 followed by integer
+            encvalue = int(meta['ENCODING'].split(' ')[-1])
+            glyph = glyph.modify(encvalue=encvalue)
+            glyphs.append(glyph)
+            glyph_meta.append(meta)
         if not instream.readline().startswith('ENDCHAR'):
             raise('Expected ENDCHAR')
     return glyphs, glyph_meta
