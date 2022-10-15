@@ -581,14 +581,14 @@ def _parse_properties(glyphs, glyph_props, bdf_props, x_props):
     glyphs, properties, xlfd_name, bdf_unparsed = _parse_bdf_properties(glyphs, glyph_props, bdf_props)
     xlfd_props = _parse_xlfd_properties(x_props, xlfd_name)
     for key, value in bdf_unparsed.items():
-        logging.warning(f'Unrecognised BDF field {key}={value}')
+        logging.warning(f'Unrecognised BDF property {key}={value}')
         # preserve as property
         properties[key] = value
     for key, value in xlfd_props.items():
         if key in properties and properties[key] != value:
             logging.warning(
                 'Inconsistency between BDF and XLFD properties: '
-                '%s=%s (XLFD) but %s=%s (BDF). Taking BDF property.',
+                '%s=%s (from XLFD) but %s=%s (from BDF). Taking BDF property.',
                 key, value, key, properties[key]
             )
         else:
