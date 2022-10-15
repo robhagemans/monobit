@@ -96,6 +96,8 @@ class FontProperties(DefaultProps):
     average_advance: number
     # advance width of LATIN CAPITAL LETTER X
     cap_advance: int
+    # advance width of digits, if fixed.
+    digit_width: int
 
     # descriptive typographic quantities
     # can be calculated or given, may affect rendering
@@ -479,6 +481,17 @@ class FontProperties(DefaultProps):
                 / self.cap_height
             )
         )
+
+    @writable_property
+    def digit_width(self):
+        """Advance width of digits, if fixed."""
+        widths = set(
+            self._font.get_glyph(char=_d).advance_width
+            for _d in '$0123456789'
+        )
+        if len(widths) == 1:
+            return widths.pop()
+        return 0
 
 
     ##########################################################################

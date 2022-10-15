@@ -280,6 +280,7 @@ Characteristics inferred from the glyphs are:
 - `average-advance`: average advance width across glyphs.
 - `max-advance`: maximum advance width across glyphs.
 - `cap-advance`: advance width of capital letter `X`.
+- `digit-width`: advance width of digits and `$` sign, if all equal.
 - `spacing`: type of font, can be one of:
   - `proportional`: glyphs have different advance widths, e.g. `M` is wider than `i`.
   - `monospace`: all glyphs have the same advance width.
