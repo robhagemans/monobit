@@ -10,7 +10,6 @@ import logging
 from ..binary import int_to_bytes, bytes_to_int
 from ..storage import loaders, savers
 from ..streams import FileFormatError
-from ..struct import Props
 from ..font import Font, Coord
 from ..glyph import Glyph
 from ..encoding import charmaps
@@ -358,7 +357,9 @@ _WEIGHT_MAP = {
 
 # fields of the xlfd font name
 _XLFD_NAME_FIELDS = (
-    '',
+    # key name is unofficial but in widespread use
+    'FONTNAME_REGISTRY',
+    # official field name matches
     'FOUNDRY',
     'FAMILY_NAME',
     'WEIGHT_NAME',
@@ -406,6 +407,8 @@ _XLFD_UNPARSED = {
     'AXIS_NAMES',
     'AXIS_LIMITS',
     'AXIS_TYPES',
+    # key name is unofficial but in widespread use
+    'FONTNAME_REGISTRY',
 }
 
 
@@ -543,8 +546,11 @@ def _parse_properties(glyphs, glyph_props, bdf_props, x_props):
         logging.info('    %s: %s', name, value)
     # parse meaningful metadata
     glyphs, properties, xlfd_name, bdf_unparsed = _parse_bdf_properties(glyphs, glyph_props, bdf_props)
-    xlfd_props, xlfd_unparsed = _parse_xlfd_properties(x_props, xlfd_name)
-    properties['bdf'] = Props(**bdf_unparsed, **xlfd_unparsed)
+    xlfd_props = _parse_xlfd_properties(x_props, xlfd_name)
+    for key, value in bdf_unparsed.items():
+        logging.warning(f'Unrecognised BDF field {key}={value}')
+        # preserve as property
+        properties[key] = value
     for key, value in xlfd_props.items():
         if key in properties and properties[key] != value:
             logging.warning(
@@ -653,6 +659,17 @@ def _from_quoted_string(quoted):
 def _parse_xlfd_properties(x_props, xlfd_name):
     """Parse X metadata."""
     xlfd_name_props = _parse_xlfd_name(xlfd_name)
+    # find fields in XLFD FontName that do not match the FontProperties
+    conflicting = '\n'.join(
+        f'{_k}={repr(_v)} vs {_k}={repr(x_props[_k])}' for _k, _v in xlfd_name_props.items()
+        if _k in x_props and not (
+            str(_v) == str(x_props[_k])
+            or f'"{_v}"' == str(x_props[_k])
+        )
+    )
+    if conflicting:
+        logging.info('Conflicts between XLFD FontName and FontProperties: %s', conflicting)
+    # continue with the XLFD FontProperties overriding the XLFD FontName fields if given
     x_props = {**xlfd_name_props, **x_props}
     # PIXEL_SIZE = ROUND((RESOLUTION_Y * POINT_SIZE) / 722.7)
     properties = {
@@ -713,19 +730,37 @@ def _parse_xlfd_properties(x_props, xlfd_name):
         else:
             properties['default-char'] = default_ord
     properties = {_k: _v for _k, _v in properties.items() if _v is not None and _v != ''}
-    # keep unparsed properties
-    unparsed = {**x_props}
-    # invalid xlfd name: keep but with changed property name
-    if not xlfd_name_props:
-        unparsed['_FONT'] = xlfd_name
-    return properties, unparsed
+    # keep original FontName if invalid or conflicting
+    if not xlfd_name_props or conflicting:
+        properties['xlfd.font-name'] = xlfd_name
+    # keep unparsed but known properties
+    for key in _XLFD_UNPARSED:
+        try:
+            value = x_props.pop(key)
+        except KeyError:
+            continue
+        key = key.lower().replace('_', '-')
+        properties[f'xlfd.{key}'] = _from_quoted_string(value)
+    # keep unrecognised properties
+    properties.update({
+        _k.lower().replace('_', '-'): _from_quoted_string(_v)
+        for _k, _v in x_props.items()
+    })
+    return properties
 
 
+
+##############################################################################
 ##############################################################################
 # BDF writer
 
 def _create_xlfd_name(xlfd_props):
     """Construct XLFD name from properties."""
+    # if we stored a font name explicitly, keep it
+    try:
+        return xlfd_props['FONT_NAME']
+    except KeyError:
+        pass
     xlfd_fields = [xlfd_props.get(prop, '') for prop in _XLFD_NAME_FIELDS]
     return '-'.join(str(_field).strip('"') for _field in xlfd_fields)
 
@@ -804,10 +839,17 @@ def _create_xlfd_properties(font):
             xlfd_props['CHARSET_ENCODING'] = '"0"'
     # remove empty properties
     xlfd_props = {_k: _v for _k, _v in xlfd_props.items() if _v}
-    # keep unparsed BDF properties
+    # keep unparsed properties
     xlfd_props.update({
-        _k.replace('-', '_').upper(): _v
-        for _k, _v in font.properties.get('bdf', {}).items()
+        _k.split('.')[1].replace('-', '_').upper(): _quoted_string(_v)
+        for _k, _v in font.properties.items()
+        if _k.startswith('xlfd.')
+    })
+    # keep unknown properties
+    xlfd_props.update({
+        _k.replace('-', '_').upper(): _quoted_string(_v)
+        for _k, _v in font.properties.items()
+        if not _k.startswith('xlfd.') and not font.is_known_property(_k)
     })
     return xlfd_props
 

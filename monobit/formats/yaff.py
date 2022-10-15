@@ -434,7 +434,7 @@ class TextWriter:
         # write property comment
         if comments:
             outstream.write('\n{indent}' + self._format_comment(comments) + '\n')
-        if not '.' in key and not key.startswith('_'):
+        if not key.startswith('_'):
             key = key.replace('_', '-')
         # write key-value pair
         if '\n' not in value:

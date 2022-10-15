@@ -590,6 +590,10 @@ class Font:
         """Non-defaulted properties in order of default definition list."""
         return {_k: self._props[_k] for _k in self._props if not _k.startswith('_')}
 
+    def is_known_property(self, key):
+        """Field is a recognised property."""
+        return self._props._known(key)
+
 
     ##########################################################################
     # glyph access
