@@ -98,6 +98,7 @@ def render(
         for glyph in glyph_row:
             # adjust origin for kerning
             x += prev.right_kerning.get_for_glyph(glyph)
+            x += glyph.left_kerning.get_for_glyph(prev)
             prev = glyph
             # offset + (x, y) is the coordinate of glyph matrix origin
             # grid_x, grid_y are canvas coordinates relative to top left of canvas

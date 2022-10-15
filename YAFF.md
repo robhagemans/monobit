@@ -235,11 +235,14 @@ Per-glyph metrics are:
 - `right-bearing`: Horizontal offset (in direction of writing) between rightward origin and right raster edge.
 - `shift-up`: Upward shift from baseline to raster bottom.
 - `right-kerning`: Adjustment to right bearing for specific glyph pairs. E.g. the pair `AV` may have negative
-kerning, so that they are displayed tighter than they otherwise would. Such an adjustment is
-specified in the `right-kerning` property of the `A` glyph, as a pair of the label for the `V` glyph and
-a numeric adjustment value.
+  kerning, so that they are displayed tighter than they otherwise would. Such an adjustment is
+  specified in the `right-kerning` property of the `A` glyph, as a pair of the label for the `V` glyph and
+  a numeric adjustment value.
+- `left-kerning`: Adjustment to left bearing for specific glyph pairs. The same adjustment as above could be
+  specified in the `left-kerning` property of the `V` glyph, as a pair of the label for the `A` glyph and
+  a numeric adjustment value. If both `left-kerning` and `right-kerning` are specified, they add up.
 
-The per-glyph metrics (except `right-kerning`) may be specified globally, in which case they apply to all
+The per-glyph metrics (except `right-kerning` and `left-kerning`) may be specified globally, in which case they apply to all
 glyphs. If metrics are specified both globally and per-glyph, they are added.
 
 Deprecated synonyms are:

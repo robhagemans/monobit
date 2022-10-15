@@ -158,6 +158,8 @@ class GlyphProperties(DefaultProps):
     shift_down: int
     # kerning - pairwaise additional right-bearing
     right_kerning: KernTable
+    # kerning - pairwaise additional left-bearing
+    left_kerning: KernTable
 
 
     @checked_property
