@@ -850,13 +850,13 @@ def _create_xlfd_properties(font):
     xlfd_props = {_k: _v for _k, _v in xlfd_props.items() if _v is not None}
     # keep unparsed properties
     xlfd_props.update({
-        _k.split('.')[1].replace('-', '_').upper(): _quoted_string(_v)
+        _k.split('.')[1].replace('-', '_').upper(): _quoted_string(' '.join(_v.splitlines()))
         for _k, _v in font.properties.items()
         if _k.startswith('xlfd.')
     })
     # keep unknown properties
     xlfd_props.update({
-        _k.replace('-', '_').upper(): _quoted_string(_v)
+        _k.replace('-', '_').upper(): _quoted_string(' '.join(_v.splitlines()))
         for _k, _v in font.properties.items()
         if not _k.startswith('xlfd.') and not font.is_known_property(_k)
     })
