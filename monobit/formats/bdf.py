@@ -503,7 +503,7 @@ def _read_bdf_glyphs(instream):
         if line.startswith('ENDFONT'):
             break
         elif not line.startswith('STARTCHAR'):
-            raise ValueError('Expected STARTCHAR')
+            raise FileFormatError(f'Expected STARTCHAR, not {line}')
         keyword, values = line.split(' ', 1)
         meta = _read_dict(instream, until='BITMAP')
         meta[keyword] = values
@@ -527,8 +527,9 @@ def _read_bdf_glyphs(instream):
             glyph = glyph.modify(encvalue=encvalue)
             glyphs.append(glyph)
             glyph_meta.append(meta)
-        if not instream.readline().startswith('ENDCHAR'):
-            raise('Expected ENDCHAR')
+        line = instream.readline()
+        if not line.startswith('ENDCHAR'):
+            raise FileFormatError(f'Expected ENDCHAR, not {line}')
     return glyphs, glyph_meta
 
 def _read_bdf_global(instream):
@@ -595,7 +596,7 @@ def _parse_properties(glyphs, glyph_props, bdf_props, x_props):
             properties[key] = value
     # encoding values above 256 become multi-byte
     # unless we're working in unicode
-    if not charmaps.is_unicode(properties['encoding']):
+    if not charmaps.is_unicode(properties.get('encoding', '')):
         glyphs = [
             _glyph.modify(codepoint=int_to_bytes(_glyph.encvalue)).drop('encvalue')
             if _glyph.encvalue != -1 else _glyph.drop('encvalue')
@@ -629,33 +630,64 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
     properties['revision'] = bdf_props.pop('CONTENTVERSION', '')
     # not supported: METRICSSET != 0
     writing_direction = bdf_props.pop('METRICSSET', 0)
-    if writing_direction == 1:
-        # top-to-bottom only
-        raise ValueError('Top-to-bottom fonts not yet supported.')
-    elif writing_direction == 2:
-        logging.warning(
-            'Top-to-bottom fonts not yet supported. Preserving horizontal metrics only.'
-        )
+    if writing_direction not in (0, 1, 2):
+        logging.warning(f'Unsupported value METRICSSET={writing_direction} ignored')
+        writing_direction = 0
     # global settings, tend to be overridden by per-glyph settings
     global_bbx = bdf_props.pop('FONTBOUNDINGBOX')
     # global DWIDTH; use bounding box as fallback if not specified
-    global_dwidth = bdf_props.pop('DWIDTH', global_bbx[:2])
-    global_swidth = bdf_props.pop('SWIDTH', 0)
+    if writing_direction in (0, 2):
+        global_dwidth = bdf_props.pop('DWIDTH', global_bbx[:2])
+        global_swidth = bdf_props.pop('SWIDTH', 0)
+    if writing_direction in (1, 2):
+        global_vvector = bdf_props.pop('VVECTOR')
+        global_dwidth1 = bdf_props.pop('DWIDTH1', 0)
+        global_swidth1 = bdf_props.pop('SWIDTH1', 0)
     # convert glyph properties
     mod_glyphs = []
     for glyph, props in zip(glyphs, glyph_props):
         new_props = {}
         # bounding box & offset
         bbx = props.get('BBX', global_bbx)
-        bbx_width, bbx_height, left_bearing, shift_up = (int(_p) for _p in bbx.split(' '))
-        new_props['left-bearing'] = left_bearing
-        new_props['shift-up'] = shift_up
-        # advance width
-        dwidth = props.get('DWIDTH', global_dwidth)
-        dwidth_x, dwidth_y = (int(_p) for _p in dwidth.split(' '))
-        new_props['right-bearing'] = dwidth_x - glyph.width - left_bearing
-        if dwidth_y:
-            raise FileFormatError('Top-to-bottom fonts not yet supported.')
+        if writing_direction in (0, 2):
+            _bbx_width, _bbx_height, bboffx, shift_up = (int(_p) for _p in bbx.split(' '))
+            new_props['shift-up'] = shift_up
+            # advance width
+            dwidth = props.get('DWIDTH', global_dwidth)
+            dwidth_x, dwidth_y = (int(_p) for _p in dwidth.split(' '))
+            if dwidth_y:
+                raise FileFormatError('Vertical advance in horizontal writing not supported.')
+            if dwidth_x > 0:
+                advance_width = dwidth_x
+                left_bearing = bboffx
+            else:
+                advance_width = -dwidth_x
+                # bboffx would likely be negative
+                left_bearing = advance_width + bboffx
+            new_props['left-bearing'] = left_bearing
+            new_props['right-bearing'] = advance_width - glyph.width - left_bearing
+        if writing_direction in (1, 2):
+            vvector = props.get('VVECTOR', global_vvector)
+            _, _, bboffx, bboffy = (int(_p) for _p in bbx.split(' '))
+            voffx, voffy = (int(_p) for _p in vvector.split(' '))
+            to_bottom = bboffy - voffy
+            new_props['shift-left'] = bboffx - voffx
+            # advance height
+            dwidth1 = props.get('DWIDTH1', global_dwidth1)
+            dwidth1_x, dwidth1_y = (int(_p) for _p in dwidth1.split(' '))
+            if dwidth_x:
+                raise FileFormatError('Horizontal advance in vertical writing not supported.')
+            # dwidth1 vector: negative is down
+            if dwidth1_y < 0:
+                advance_height = -dwidth1_y
+                top_bearing = -to_bottom - glyph.height
+                bottom_bearing = advance_height - glyph.height - top_bearing
+            else:
+                advance_height = dwidth1_y
+                bottom_bearing = to_bottom
+                top_bearing = advance_height - glyph.height - bottom_bearing
+            new_props['top-bearing'] = top_bearing
+            new_props['bottom-bearing'] = bottom_bearing
         mod_glyphs.append(glyph.modify(**new_props))
     # if all glyph props are equal, take them global
     shift_ups = set(_g.shift_up for _g in mod_glyphs)
