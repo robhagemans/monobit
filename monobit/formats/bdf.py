@@ -400,18 +400,46 @@ _XLFD_UNPARSED = {
     'RASTERIZER_NAME',
     # the formal or informal version of a font rasterizer.
     'RASTERIZER_VERSION',
-    # for fonts with a transformation matrix
-    'RAW_ASCENT',
-    'RAW_DESCENT',
     #'RAW_*',
     # axes of a polymorphic font
     'AXIS_NAMES',
     'AXIS_LIMITS',
     'AXIS_TYPES',
-    # key name is unofficial but in widespread use
+    # key name is not in the spec but in widespread use and in bdflib
     'FONTNAME_REGISTRY',
-}
+    'CHARSET_COLLECTIONS',
+    'DEVICE_FONT_NAME',
 
+    # for fonts with a transformation matrix
+    'RAW_ASCENT',
+    'RAW_AVERAGE_WIDTH',
+    'RAW_AVG_CAPITAL_WIDTH',
+    'RAW_AVG_LOWERCASE_WIDTH',
+    'RAW_CAP_HEIGHT',
+    'RAW_DESCENT',
+    'RAW_END_SPACE',
+    'RAW_FIGURE_WIDTH',
+    'RAW_MAX_SPACE',
+    'RAW_MIN_SPACE',
+    'RAW_NORM_SPACE',
+    'RAW_PIXEL_SIZE',
+    'RAW_POINT_SIZE',
+    'RAW_PIXELSIZE',
+    'RAW_POINTSIZE',
+    'RAW_QUAD_WIDTH',
+    'RAW_SMALL_CAP_SIZE',
+    'RAW_STRIKEOUT_ASCENT',
+    'RAW_STRIKEOUT_DESCENT',
+    'RAW_SUBSCRIPT_SIZE',
+    'RAW_SUBSCRIPT_X',
+    'RAW_SUBSCRIPT_Y',
+    'RAW_SUPERSCRIPT_SIZE',
+    'RAW_SUPERSCRIPT_X',
+    'RAW_SUPERSCRIPT_Y',
+    'RAW_UNDERLINE_POSITION',
+    'RAW_UNDERLINE_THICKNESS',
+    'RAW_X_HEIGHT',
+}
 
 ##############################################################################
 # top-level calls
