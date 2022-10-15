@@ -559,6 +559,15 @@ def load_mac_rsrc(instream, where=None):
     return _parse_apple(data)
 
 
+@savers.register(linked=load_mac_dfont)
+def save_mac_dfont(pack, outstream, where=None):
+    raise FileFormatError('Saving to MacOS font files not supported.')
+
+@savers.register(linked=load_mac_rsrc)
+def save_mac_rsrc(pack, outstream, where=None):
+    raise FileFormatError('Saving to MacOS font files not supported.')
+
+
 ##############################################################################
 
 def _parse_apple(data):

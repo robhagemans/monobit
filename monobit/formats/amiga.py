@@ -61,6 +61,10 @@ def load_amiga(f, where=None, tags=()):
     """Load font from Amiga disk font file."""
     return _load_amiga(f, where, tags)
 
+@savers.register(linked=load_amiga)
+def save_amiga(pack, outstream, where=None):
+    raise FileFormatError('Saving to Amiga disk font file not supported.')
+
 
 ###################################################################################################
 # AmigaOS font format
