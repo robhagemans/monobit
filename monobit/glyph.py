@@ -161,6 +161,14 @@ class GlyphProperties(DefaultProps):
     # kerning - pairwaise additional left-bearing
     left_kerning: KernTable
 
+    # vertical metrics
+    # vertical offset from upward origin to matrix top edge
+    top_bearing: int
+    # vertical offset from matrix bottom edge to downward origin
+    bottom_bearing: int
+    # leftward offset from origin to matrix left edge
+    shift_left: int
+
 
     @checked_property
     def shift_down(self):
@@ -172,6 +180,10 @@ class GlyphProperties(DefaultProps):
         """Internal advance width of glyph, including internal bearings."""
         return self.left_bearing + self.width + self.right_bearing
 
+    @checked_property
+    def advance_height(self):
+        """Internal advance width of glyph, including internal bearings."""
+        return self.top_bearing + self.height + self.bottom_bearing
 
     @checked_property
     def width(self):

@@ -128,10 +128,20 @@ class FontProperties(DefaultProps):
     right_bearing: int
     # upward offset from origin to matrix bottom
     shift_up: int
-    # downward offset from origin to matrix left edge - equal to -shift_up
+    # downward offset from origin to matrix bottom - equal to -shift_up
     shift_down: int
     # vertical distance between consecutive baselines, in pixels
     line_height: int
+
+    # vertical metrics
+    # vertical offset from upward origin to matrix top edge
+    top_bearing: int
+    # vertical offset from matrix bottom edge to downward origin
+    bottom_bearing: int
+    # leftward offset from origin to matrix left edge
+    shift_left: int
+    # horizontal distance between consecutive baselines, in pixels
+    line_width: int
 
     # character properties
     # can't be calculated, affect rendering
@@ -255,6 +265,12 @@ class FontProperties(DefaultProps):
         if 'leading' in vars(self):
             return self.pixel_size + self.leading
         return self.pixel_size
+
+    @writable_property
+    def line_width(self):
+        """Horizontal distance between consecutive baselines, in pixels."""
+        return self.max_width
+
 
     ##########################################################################
     # typographic descriptors
