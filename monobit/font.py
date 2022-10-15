@@ -19,6 +19,7 @@ from .scripting import scriptable, get_scriptables
 from .glyph import Glyph, Coord, Bounds, number
 from .encoding import charmaps, encoder
 from .labels import Tag, Char, Codepoint, to_label
+from .binary import ceildiv
 from .struct import (
     extend_string, DefaultProps, normalise_property, as_tuple, writable_property, checked_property
 )
@@ -141,11 +142,15 @@ class FontProperties(DefaultProps):
     word_boundary: to_label = Char(' ')
 
     # rendering hints
-    # can't be calculated, may affect rendering
+    # may affect rendering if effects are applied
 
     # number of pixels to smear in advance direction to simulate bold weight
     bold_smear: int = 1
-
+    # number of pixels in underline
+    # we don't implement the XLFD calculation based on average stem width
+    underline_thickness: int = 1
+    # position of underline below baseline. 0 means underline on baseline itself
+    underline_shift_down: int
 
     # conversion metadata
     # can't be calculated, informational
@@ -412,6 +417,27 @@ class FontProperties(DefaultProps):
             return self._font.get_glyph(char='X').bounding_box.y
         except KeyError:
             return 0
+
+
+    ##########################################################################
+    # rendering hints
+
+    @writable_property
+    def underline_shift_down(self):
+        """
+        Position of underline below baseline.
+        0 means underline on baseline itself.
+        """
+        if not self._font.glyphs:
+            return 0
+        max_descent = -min(
+            self.shift_up + _glyph.shift_up + _glyph.padding.bottom
+            for _glyph in self._font.glyphs
+        )
+        # XLFD calculation says round(max_descent/2) but I think they mean this
+        # they may meam something else with the 'top of the baseline'?
+        return 1 + ceildiv(max_descent, 2)
+
 
     ##########################################################################
     # character properties

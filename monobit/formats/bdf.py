@@ -393,8 +393,6 @@ _XLFD_UNPARSED = {
     'SUPERSCRIPT_SIZE',
     'SUBSCRIPT_SIZE',
     'SMALL_CAP_SIZE',
-    'UNDERLINE_POSITION',
-    'UNDERLINE_THICKNESS',
     'STRIKEOUT_ASCENT',
     'STRIKEOUT_DESCENT',
     'ITALIC_ANGLE',
@@ -403,6 +401,8 @@ _XLFD_UNPARSED = {
     'FONT_TYPE',
     'RASTERIZER_NAME',
     'RASTERIZER_VERSION',
+    'RAW_ASCENT',
+    'RAW_DESCENT',
     #'RAW_*',
     'AXIS_NAMES',
     'AXIS_LIMITS',
@@ -688,6 +688,8 @@ def _parse_xlfd_properties(x_props, xlfd_name):
         'pixel-size': x_props.pop('PIXEL_SIZE', None),
         'slant': _SLANT_MAP.get(_from_quoted_string(x_props.pop('SLANT', '')), None),
         'spacing': _SPACING_MAP.get(_from_quoted_string(x_props.pop('SPACING', '')), None),
+        'underline-shift-down': x_props.pop('UNDERLINE_POSITION', None),
+        'underline-thickness': x_props.pop('UNDERLINE_THICKNESS', None),
     }
     if 'POINT_SIZE' in x_props:
         properties['point-size'] = str(round(int(x_props.pop('POINT_SIZE')) / 10))
@@ -805,6 +807,9 @@ def _create_xlfd_properties(font):
         ),
         'ADD_STYLE_NAME': _quoted_string(font.style.title()),
         'AVERAGE_WIDTH': str(round(float(font.average_advance) * 10)).replace('-', '~'),
+        # only set if explicitly defined
+        'UNDERLINE_POSITION': font.properties.get('underline-shift-down', None),
+        'UNDERLINE_THICKNESS': font.properties.get('underline-thickness', None),
     }
     # encoding dependent values
     default_glyph = font.get_default_glyph()
@@ -837,8 +842,8 @@ def _create_xlfd_properties(font):
             xlfd_props['CHARSET_ENCODING'] = _quoted_string(encoding[0].upper())
         else:
             xlfd_props['CHARSET_ENCODING'] = '"0"'
-    # remove empty properties
-    xlfd_props = {_k: _v for _k, _v in xlfd_props.items() if _v}
+    # remove unset properties
+    xlfd_props = {_k: _v for _k, _v in xlfd_props.items() if _v is not None}
     # keep unparsed properties
     xlfd_props.update({
         _k.split('.')[1].replace('-', '_').upper(): _quoted_string(_v)

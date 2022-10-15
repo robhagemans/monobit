@@ -248,6 +248,14 @@ Deprecated synonyms are:
 - `kern-to`: Equal to `right-kerning`.
 
 
+##### Rendering hints
+
+_Rendering hints_ affect the way decorations and transformations are applied. They are:
+- `bold-smear`: additional number of pixels to trail ink by, when bolding algorithmically
+- `underline-thickness`: number of pixels in a generated underline
+- `underline-shift-down`: number of pixels to shift the underline below the baseline
+
+
 ##### Characteristics
 
 _Characteristics_ are descriptive in nature. They can be specified or calculated. Usually specified are:
