@@ -60,6 +60,10 @@ if Image:
         """
         Save fonts to Angelcode BMFont format.
 
+        image_size: pixel width,height of the spritesheet(s) storing the glyphs (default: 256x256)
+        image_format: image format of the spritesheets (default: 'png')
+        packed: if true, use each of the RGB channels as a separate spritesheet (default: True)
+        descriptor: font descriptor file format, one of 'text', 'json' (default: 'text')
         """
         if len(fonts) > 1:
             raise FileFormatError("Can only save one font to BMFont file.")
