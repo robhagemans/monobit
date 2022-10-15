@@ -732,9 +732,9 @@ def _parse_win_props(fnt, win_props):
         # fontforge follows the "new" definition while mkwinfont follows the "old".
         # we'll make it depend on the version
         if version == 0x100:
-            properties['cap-advance'] = win_props.dfAvgWidth
+            properties['cap-width'] = win_props.dfAvgWidth
         else:
-            properties['average-advance'] = win_props.dfAvgWidth
+            properties['average-width'] = win_props.dfAvgWidth
     # check prop/fixed flag
     if bool(win_props.dfPitchAndFamily & 1) == bool(win_props.dfPixWidth):
         logging.warning(
@@ -1008,9 +1008,9 @@ def create_fnt(font, version=0x200):
         dfPixHeight=font.raster_size.y,
         dfPitchAndFamily=pitch_and_family,
         # for 2.0+, we use actual average advance here (like fontforge but unlike mkwinfont)
-        dfAvgWidth=round(font.average_advance),
+        dfAvgWidth=round(font.average_width),
         # max advance width
-        dfMaxWidth=font.max_advance,
+        dfMaxWidth=font.max_width,
         dfFirstChar=min_ord,
         dfLastChar=max_ord,
         dfDefaultChar=default_ord - min_ord,

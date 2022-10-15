@@ -93,9 +93,11 @@ class FontProperties(DefaultProps):
     # overall ink bounds - overlay all glyphs with fixed origin and determine maximum ink extent
     bounding_box: Coord.create
     # average advance width, rounded to tenths
-    average_advance: number
+    average_width: number
+    # maximum glyph advance width
+    max_width: int
     # advance width of LATIN CAPITAL LETTER X
-    cap_advance: int
+    cap_width: int
     # advance width of digits, if fixed.
     digit_width: int
 
@@ -393,7 +395,7 @@ class FontProperties(DefaultProps):
         )
 
     @writable_property
-    def average_advance(self):
+    def average_width(self):
         """Get average glyph advance width."""
         if not self._font.glyphs:
             return self.left_bearing + self.right_bearing
@@ -404,7 +406,7 @@ class FontProperties(DefaultProps):
         )
 
     @writable_property
-    def max_advance(self):
+    def max_width(self):
         """Maximum glyph advance width."""
         if not self._font.glyphs:
             return self.left_bearing + self.right_bearing
@@ -415,7 +417,7 @@ class FontProperties(DefaultProps):
         )
 
     @writable_property
-    def cap_advance(self):
+    def cap_width(self):
         """Advance width of uppercase X."""
         try:
             return self._font.get_glyph(char='X').advance_width + self.left_bearing + self.right_bearing
@@ -559,6 +561,21 @@ class FontProperties(DefaultProps):
         (horiz, vert) offset from origin to matrix start
         Deprecated synonym for left-bearing, shift-up.
         """
+
+    @writable_property('average_width')
+    def average_advance(self):
+        """Average advance width, rounded to tenths."""
+        return self.average_width
+
+    @writable_property('max_width')
+    def max_advance(self):
+        """Maximum glyph advance width."""
+        return self.max_width
+
+    @writable_property('cap_width')
+    def cap_advance(self):
+        """Advance width of LATIN CAPITAL LETTER X."""
+        return self.cap_width
 
 
 ###################################################################################################

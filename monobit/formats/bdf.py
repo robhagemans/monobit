@@ -739,7 +739,7 @@ def _parse_xlfd_properties(x_props, xlfd_name):
         properties['point-size'] = str(round(int(x_props.pop('POINT_SIZE')) / 10))
     if 'AVERAGE_WIDTH' in x_props:
         # average width can have a tilde for negative - because it occurs in the xlfd font name
-        properties['average-advance'] = int(x_props.pop('AVERAGE_WIDTH').replace('~', '-')) / 10
+        properties['average-width'] = int(x_props.pop('AVERAGE_WIDTH').replace('~', '-')) / 10
     # prefer the more precise relative weight and setwidth measures
     if 'RELATIVE_SETWIDTH' in x_props:
         properties['setwidth'] = _SETWIDTH_MAP.get(x_props.pop('RELATIVE_SETWIDTH'), None)
@@ -854,7 +854,7 @@ def _create_xlfd_properties(font):
             {_v: _k for _k, _v in _SETWIDTH_MAP.items()}.get(font.setwidth, 50)
         ),
         'ADD_STYLE_NAME': _quoted_string(font.style.title()),
-        'AVERAGE_WIDTH': str(round(float(font.average_advance) * 10)).replace('-', '~'),
+        'AVERAGE_WIDTH': str(round(float(font.average_width) * 10)).replace('-', '~'),
         # only set if explicitly defined
         'UNDERLINE_POSITION': font.properties.get('underline-descent', None),
         'UNDERLINE_THICKNESS': font.properties.get('underline-thickness', None),
