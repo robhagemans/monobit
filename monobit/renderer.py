@@ -33,7 +33,7 @@ _BORDER = -1
 def render_text(
         font, text, ink='@', paper='-', *,
         margin=(0, 0), scale=(1, 1), rotate=0,
-        direction='normal',
+        direction='',
         missing='default'
     ):
     """Render text string to text bitmap."""
@@ -50,7 +50,7 @@ def render_image(
         font, text, *,
         paper=(0, 0, 0), ink=(255, 255, 255),
         margin=(0, 0), scale=(1, 1), rotate=0,
-        direction='normal',
+        direction='',
         missing='default',
     ):
     """Render text to image."""
