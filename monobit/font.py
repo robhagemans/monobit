@@ -151,6 +151,14 @@ class FontProperties(DefaultProps):
     underline_thickness: int = 1
     # position of underline below baseline. 0 means underline on baseline itself
     underline_shift_down: int
+    # recommended superscript size in pixels.
+    superscript_size: int
+    # recommended subscript size in pixels.
+    subscript_size: int
+    # recommended superscript horizontal, vertical offset in pixels.
+    superscript_offset: int
+    # recommended subscript horizontal, vertical offset in pixels.
+    subscript_offset: int
 
     # conversion metadata
     # can't be calculated, informational
@@ -374,7 +382,7 @@ class FontProperties(DefaultProps):
 
     @writable_property
     def average_advance(self):
-        """Get average glyph advance width, rounded to tenths of pixels."""
+        """Get average glyph advance width."""
         if not self._font.glyphs:
             return self.left_bearing + self.right_bearing
         return (
@@ -437,6 +445,29 @@ class FontProperties(DefaultProps):
         # XLFD calculation says round(max_descent/2) but I think they mean this
         # they may meam something else with the 'top of the baseline'?
         return 1 + ceildiv(max_descent, 2)
+
+    @writable_property
+    def superscript_size(self):
+        """Recommended superscript size in pixels."""
+        return int(round(self.pixel_size * 0.6))
+
+    @writable_property
+    def superscript_offset(self):
+        """Recommended superscript horizontal, vertical offset in pixels."""
+        shift = int(round(self.pixel_size * 0.4))
+        return Coord(shift, shift)
+
+    @writable_property
+    def subscript_size(self):
+        """Recommended subscript size in pixels."""
+        return int(round(self.pixel_size * 0.6))
+
+    @writable_property
+    def subscript_offset(self):
+        """Recommended subscript horizontal, vertical offset in pixels."""
+        shift = int(round(self.pixel_size * 0.4))
+        return Coord(shift, shift)
+
 
 
     ##########################################################################

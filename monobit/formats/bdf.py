@@ -386,12 +386,6 @@ _XLFD_UNPARSED = {
     'AVG_LOWERCASE_WIDTH',
     'QUAD_WIDTH',
     'FIGURE_WIDTH',
-    'SUPERSCRIPT_X',
-    'SUPERSCRIPT_Y',
-    'SUBSCRIPT_X',
-    'SUBSCRIPT_Y',
-    'SUPERSCRIPT_SIZE',
-    'SUBSCRIPT_SIZE',
     'SMALL_CAP_SIZE',
     'STRIKEOUT_ASCENT',
     'STRIKEOUT_DESCENT',
@@ -704,6 +698,8 @@ def _parse_xlfd_properties(x_props, xlfd_name):
         'spacing': _SPACING_MAP.get(_from_quoted_string(x_props.pop('SPACING', '')), None),
         'underline-shift-down': x_props.pop('UNDERLINE_POSITION', None),
         'underline-thickness': x_props.pop('UNDERLINE_THICKNESS', None),
+        'superscript-size': x_props.pop('SUPERSCRIPT_SIZE', None),
+        'subscript-size': x_props.pop('SUBSCRIPT_SIZE', None),
     }
     if 'DESTINATION' in x_props and int(x_props['DESTINATION']) < 2:
         dest = int(x_props.pop('DESTINATION'))
@@ -731,6 +727,10 @@ def _parse_xlfd_properties(x_props, xlfd_name):
     elif 'RESOLUTION' in x_props:
         # deprecated
         properties['dpi'] = (x_props.get('RESOLUTION'), x_props.pop('RESOLUTION'))
+    if 'SUPERSCRIPT_X' in x_props and 'SUPERSCRIPT_Y' in x_props:
+        properties['superscript-offset'] = (x_props.pop('SUPERSCRIPT_X'), x_props.pop('SUPERSCRIPT_Y'))
+    if 'SUBSCRIPT_X' in x_props and 'SUBSCRIPT_Y' in x_props:
+        properties['subscript-offset'] = (x_props.pop('SUBSCRIPT_X'), x_props.pop('SUBSCRIPT_Y'))
     # encoding
     registry = _from_quoted_string(x_props.pop('CHARSET_REGISTRY', '')).lower()
     encoding = _from_quoted_string(x_props.pop('CHARSET_ENCODING', '')).lower()
@@ -828,6 +828,12 @@ def _create_xlfd_properties(font):
         'UNDERLINE_POSITION': font.properties.get('underline-shift-down', None),
         'UNDERLINE_THICKNESS': font.properties.get('underline-thickness', None),
         'DESTINATION': {'printer': 0, 'screen': 1, None: None}.get(font.device.lower(), None),
+        'SUPERSCRIPT_SIZE': font.properties.get('superscript-size', None),
+        'SUBSCRIPT_SIZE': font.properties.get('subscript-size', None),
+        'SUPERSCRIPT_X': font.superscript_offset.x if 'superscript-offset' in font.properties else None,
+        'SUPERSCRIPT_Y': font.superscript_offset.y if 'superscript-offset' in font.properties else None,
+        'SUBSCRIPT_X': font.subscript_offset.x if 'subscript-offset' in font.properties else None,
+        'SUBSCRIPT_Y': font.subscript_offset.y if 'subscript-offset' in font.properties else None,
     }
     # encoding dependent values
     default_glyph = font.get_default_glyph()
