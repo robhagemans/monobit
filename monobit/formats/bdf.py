@@ -778,20 +778,20 @@ def _quoted_string(unquoted):
 
 def _create_xlfd_properties(font):
     """Construct XLFD properties."""
+    # construct the fields needed for FontName if not defined, leave others optional
     xlfd_props = {
-        # rendering hints
-        'FONT_ASCENT': font.ascent,
-        'FONT_DESCENT': font.descent,
+        'FONT_ASCENT': font.properties.get('ascent'),
+        'FONT_DESCENT': font.properties.get('descent'),
         'PIXEL_SIZE': font.pixel_size,
-        'X_HEIGHT': font.x_height,
-        'CAP_HEIGHT': font.cap_height,
+        'X_HEIGHT': font.properties.get('x-height', None),
+        'CAP_HEIGHT': font.properties.get('cap-height', None),
         'RESOLUTION_X': font.dpi.x,
         'RESOLUTION_Y': font.dpi.y,
         'POINT_SIZE': int(font.point_size) * 10,
-        'FACE_NAME': _quoted_string(font.name),
-        'FONT_VERSION': _quoted_string(font.revision),
-        'COPYRIGHT': _quoted_string(font.copyright),
-        'NOTICE': _quoted_string(font.notice),
+        'FACE_NAME': _quoted_string(font.name) if 'name' in font.properties else None,
+        'FONT_VERSION': _quoted_string(font.revision) if 'revision' in font.properties else None,
+        'COPYRIGHT': _quoted_string(font.copyright) if 'copyright' in font.properties else None,
+        'NOTICE': _quoted_string(font.notice) if 'notice' in font.properties else None,
         'FOUNDRY': _quoted_string(font.foundry),
         'FAMILY_NAME': _quoted_string(font.family),
         'WEIGHT_NAME': _quoted_string(font.weight.title()),
