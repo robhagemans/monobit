@@ -400,8 +400,8 @@ class TextWriter:
         else:
             labels = glyph.get_labels()
         if not labels:
-            logging.warning('No labels for glyph: %s', glyph)
-            return
+            logging.debug('No labels for glyph: %s', glyph)
+            outstream.write(f'{self.separator}{self.separator_space}')
         for _label in labels:
             outstream.write(f'{str(_label)}{self.separator}{self.separator_space}')
         # glyph matrix
