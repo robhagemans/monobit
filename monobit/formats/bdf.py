@@ -386,7 +386,6 @@ _XLFD_UNPARSED = {
     'AVG_LOWERCASE_WIDTH',
     'QUAD_WIDTH',
     'FIGURE_WIDTH',
-    'SMALL_CAP_SIZE',
     'STRIKEOUT_ASCENT',
     'STRIKEOUT_DESCENT',
     # the nominal posture angle of the typeface design, in 1/64 degrees, measured from the
@@ -700,6 +699,7 @@ def _parse_xlfd_properties(x_props, xlfd_name):
         'underline-thickness': x_props.pop('UNDERLINE_THICKNESS', None),
         'superscript-size': x_props.pop('SUPERSCRIPT_SIZE', None),
         'subscript-size': x_props.pop('SUBSCRIPT_SIZE', None),
+        'small-cap-size': x_props.pop('SMALL_CAP_SIZE', None),
     }
     if 'DESTINATION' in x_props and int(x_props['DESTINATION']) < 2:
         dest = int(x_props.pop('DESTINATION'))
@@ -830,6 +830,7 @@ def _create_xlfd_properties(font):
         'DESTINATION': {'printer': 0, 'screen': 1, None: None}.get(font.device.lower(), None),
         'SUPERSCRIPT_SIZE': font.properties.get('superscript-size', None),
         'SUBSCRIPT_SIZE': font.properties.get('subscript-size', None),
+        'SMALL_CAP_SIZE': font.properties.get('small-cap-size', None),
         'SUPERSCRIPT_X': font.superscript_offset.x if 'superscript-offset' in font.properties else None,
         'SUPERSCRIPT_Y': font.superscript_offset.y if 'superscript-offset' in font.properties else None,
         'SUBSCRIPT_X': font.subscript_offset.x if 'subscript-offset' in font.properties else None,

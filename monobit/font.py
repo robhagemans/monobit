@@ -159,6 +159,8 @@ class FontProperties(DefaultProps):
     superscript_offset: int
     # recommended subscript horizontal, vertical offset in pixels.
     subscript_offset: int
+    # recommended small-capital size in pixels.
+    small_cap_size: int
 
     # conversion metadata
     # can't be calculated, informational
@@ -449,25 +451,34 @@ class FontProperties(DefaultProps):
     @writable_property
     def superscript_size(self):
         """Recommended superscript size in pixels."""
-        return int(round(self.pixel_size * 0.6))
+        return round(self.pixel_size * 0.6)
 
     @writable_property
     def superscript_offset(self):
         """Recommended superscript horizontal, vertical offset in pixels."""
-        shift = int(round(self.pixel_size * 0.4))
+        shift = round(self.pixel_size * 0.4)
         return Coord(shift, shift)
 
     @writable_property
     def subscript_size(self):
         """Recommended subscript size in pixels."""
-        return int(round(self.pixel_size * 0.6))
+        return round(self.pixel_size * 0.6)
 
     @writable_property
     def subscript_offset(self):
         """Recommended subscript horizontal, vertical offset in pixels."""
-        shift = int(round(self.pixel_size * 0.4))
+        shift = round(self.pixel_size * 0.4)
         return Coord(shift, shift)
 
+    @writable_property
+    def small_cap_size(self):
+        """Recommended small-capital size in pixels."""
+        return round(
+            self.pixel_size * (
+                (self.x_height + (self.cap_height - self.x_height) / 3)
+                / self.cap_height
+            )
+        )
 
 
     ##########################################################################

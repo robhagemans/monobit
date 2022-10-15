@@ -258,6 +258,7 @@ _Rendering hints_ affect the way decorations and transformations are applied. Th
 - `superscript-offset`: Horizontal (in direction of writing), upward offset for a superscript
 - `subscript-size`: pixel size of subscript font to use
 - `subscript-offset`: Horizontal (in direction of writing), downward offset for a subscript
+- `small-cap-size`: pixel size of small-capital font to use
 
 
 ##### Characteristics
