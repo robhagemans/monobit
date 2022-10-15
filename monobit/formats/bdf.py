@@ -395,15 +395,25 @@ _XLFD_UNPARSED = {
     'SMALL_CAP_SIZE',
     'STRIKEOUT_ASCENT',
     'STRIKEOUT_DESCENT',
+    # the nominal posture angle of the typeface design, in 1/64 degrees, measured from the
+    # glyph origin counterclockwise from the three o’clock position.
     'ITALIC_ANGLE',
+    # the calculated weight of the font, computed as the ratio of capital stem width to CAP_HEIGHT,
+    # in the range 0 to 1000, where 0 is the lightest weight.
     'WEIGHT',
-    'DESTINATION',
+    # the format of the font data as they are read from permanent storage by the current font source
+    # 'Bitmap', 'Prebuilt', 'Type 1', 'TrueType', 'Speedo', 'F3'
     'FONT_TYPE',
+    # the specific name of the rasterizer that has performed some rasterization operation
+    #(such as scaling from out- lines) on this font.
     'RASTERIZER_NAME',
+    # the formal or informal version of a font rasterizer.
     'RASTERIZER_VERSION',
+    # for fonts with a transformation matrix
     'RAW_ASCENT',
     'RAW_DESCENT',
     #'RAW_*',
+    # axes of a polymorphic font
     'AXIS_NAMES',
     'AXIS_LIMITS',
     'AXIS_TYPES',
@@ -695,6 +705,9 @@ def _parse_xlfd_properties(x_props, xlfd_name):
         'underline-shift-down': x_props.pop('UNDERLINE_POSITION', None),
         'underline-thickness': x_props.pop('UNDERLINE_THICKNESS', None),
     }
+    if 'DESTINATION' in x_props and int(x_props['DESTINATION']) < 2:
+        dest = int(x_props.pop('DESTINATION'))
+        properties['device'] = 'screen' if dest else 'printer'
     if 'POINT_SIZE' in x_props:
         properties['point-size'] = str(round(int(x_props.pop('POINT_SIZE')) / 10))
     if 'AVERAGE_WIDTH' in x_props:
@@ -814,6 +827,7 @@ def _create_xlfd_properties(font):
         # only set if explicitly defined
         'UNDERLINE_POSITION': font.properties.get('underline-shift-down', None),
         'UNDERLINE_THICKNESS': font.properties.get('underline-thickness', None),
+        'DESTINATION': {'printer': 0, 'screen': 1, None: None}.get(font.device.lower(), None),
     }
     # encoding dependent values
     default_glyph = font.get_default_glyph()
