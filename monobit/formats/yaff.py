@@ -429,8 +429,6 @@ class TextWriter:
             return
         # this may use custom string converter (e.g codepoint labels)
         value = str(value)
-        if not value:
-            return
         # write property comment
         if comments:
             outstream.write('\n{indent}' + self._format_comment(comments) + '\n')
