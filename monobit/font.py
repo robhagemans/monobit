@@ -90,6 +90,8 @@ class FontProperties(DefaultProps):
     spacing: str
     # maximum raster (not necessarily ink) width/height
     raster_size: Coord.create
+    # width, height of the character cell
+    cell_size: Coord.create
     # overall ink bounds - overlay all glyphs with fixed origin and determine maximum ink extent
     bounding_box: Coord.create
     # average advance width, rounded to tenths
