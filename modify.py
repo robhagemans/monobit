@@ -53,16 +53,31 @@ def build_parser():
             name, help=func.script_args.doc, add_help=False,
             formatter_class=argparse.MetavarTypeHelpFormatter,
         )
-        group = add_script_args(sub, func)
+        if func == monobit.load:
+            positional = ['infile']
+        elif func == monobit.save:
+            positional = ['outfile']
+        else:
+            positional = []
+        group = add_script_args(sub, func, positional=positional)
         subs[name] = sub
 
     return parser, subs
 
 
-first_argv, *command_argv = split_argv('load', 'save', *monobit.operations)
+first_argv = []
+for arg in sys.argv[1:]:
+    if arg.startswith('-'):
+        first_argv.append(arg)
+    else:
+        break
+
+command_argv = list(split_argv('load', 'save', 'to', *monobit.operations))
+
 
 parser, subs = build_parser()
 args, first_argv = parser.parse_known_args(first_argv)
+
 
 if args.debug:
     loglevel = logging.DEBUG
@@ -74,11 +89,14 @@ logging.basicConfig(level=loglevel, format='%(levelname)s: %(message)s')
 with main(args.debug):
 
     # ensure we load & save
-    if command_argv and not args.help:
+    if command_argv:
         if command_argv[0][:1] != ['load']:
-            command_argv = [['load']] + command_argv
+            command_argv[0] = ['load'] + command_argv[0]
         if command_argv[-1][:1] != ['save']:
-            command_argv = command_argv + [['save']]
+            if command_argv[-1][:1] == ['to']:
+                command_argv[-1][0] = 'save'
+            else:
+                command_argv += [['save']]
 
     # parse command args
     commands = []
