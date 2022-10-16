@@ -627,7 +627,7 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
         'point-size': size,
         'dpi': (xdpi, ydpi),
     }
-    properties['revision'] = bdf_props.pop('CONTENTVERSION', '')
+    properties['revision'] = bdf_props.pop('CONTENTVERSION', None)
     # not supported: METRICSSET != 0
     writing_direction = bdf_props.pop('METRICSSET', 0)
     if writing_direction not in (0, 1, 2):
