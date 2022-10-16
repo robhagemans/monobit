@@ -10,32 +10,34 @@ import pkgutil
 from pathlib import Path
 
 from .encoding import unicode_name, is_printable, NotFoundError
-from .struct import extend_string
+from .labels import to_label, Tag
 
 
 class Tagger:
     """Add tags or comments to a font's glyphs."""
 
-    def set_comments(self, font):
-        """Use tagger to add glyph comments."""
-        return font.modify(
-            (
-                _glyph.modify(comments=extend_string(_glyph.comments, self.get_tag(_glyph)))
-                if self.get_tag(_glyph) not in _glyph.comments
-                else _glyph
-            )
-            for _glyph in font.glyphs
-        )
-
-    def set_tags(self, font):
-        """Use tagger to add glyph tags."""
-        return font.modify(
-            _glyph.modify(tags=_glyph.tags + (self.get_tag(_glyph),))
-            for _glyph in font.glyphs
-        )
-
-    def get_tag(self, glyph):
+    def comment(self, *labels):
         raise NotImplementedError
+
+    def tag(self, *labels):
+        return Tag(self.comment(*labels))
+
+
+def _get_char(labels):
+    """Get first char label from list."""
+    for label in labels:
+        char = to_label(label)
+        if isinstance(char, str):
+            return char
+    return ''
+
+def _get_codepoint(labels):
+    """Get first codepoint label from list."""
+    for label in labels:
+        cp = to_label(label)
+        if isinstance(cp, bytes):
+            return cp
+    return b''
 
 
 class UnicodeTagger(Tagger):
@@ -44,30 +46,38 @@ class UnicodeTagger(Tagger):
     def __init__(self, include_char=False):
         self.include_char = include_char
 
-    def get_tag(self, glyph):
+    def comment(self, *labels):
         """Get unicode glyph name."""
-        name = unicode_name(glyph.char)
-        if not glyph.char:
+        char = _get_char(labels)
+        if not char:
             return ''
-        if self.include_char and is_printable(glyph.char):
-            return '[{}] {}'.format(glyph.char, name)
-        else:
-            return '{}'.format(name)
+        char = char.value
+        name = unicode_name(char)
+        if self.include_char and is_printable(char):
+            return '[{}] {}'.format(char, name)
+        return '{}'.format(name)
+
 
 class CharTagger(Tagger):
     """Tag with unicode characters."""
 
-    def get_tag(self, glyph):
-        return glyph.char
+    def comment(self, *labels):
+        """Get printable char."""
+        char = _get_char(labels).value
+        if is_printable(char):
+            return char
+        return ''
 
 
 class CodepointTagger(Tagger):
     """Tag with codepoint numbers."""
 
-    def get_tag(self, glyph):
-        if not glyph.codepoint:
+    def comment(self, *labels):
+        """Get codepoint string."""
+        cp = _get_codepoint(labels)
+        if not cp:
             return ''
-        return str(glyph.codepoint)
+        return str(cp)
 
 
 class MappingTagger(Tagger):
@@ -92,23 +102,23 @@ class MappingTagger(Tagger):
             name = Path(filename).stem
         return cls(mapping, name=name)
 
-    def get_tag(self, glyph):
-        """Add unicode glyph names as comments, if no comment already exists."""
+    def comment(self, *labels):
+        """Get value from tagmap."""
+        char = _get_char(labels)
         try:
-            return self._chr2tag[glyph.char]
+            return self._chr2tag[char]
         except KeyError:
-            return self.get_default_tag(glyph)
+            return self.get_default_tag(char)
 
-    def get_default_tag(self, glyph):
+    def get_default_tag(self, char):
         """Construct a default tag for unmapped glyphs."""
         return ''
 
 
 class AdobeTagger(MappingTagger):
 
-    def get_default_tag(self, glyph):
+    def get_default_tag(self, char):
         """Construct a default tag for unmapped glyphs."""
-        char = glyph.char
         if not char:
             return ''
         cps = [ord(_c) for _c in char]
@@ -118,9 +128,8 @@ class AdobeTagger(MappingTagger):
 
 class SGMLTagger(MappingTagger):
 
-    def get_default_tag(self, glyph):
+    def get_default_tag(self, char):
         """Construct a default tag for unmapped glyphs."""
-        char = glyph.char
         if not char:
             return ''
         cps = [ord(_c) for _c in char]
@@ -133,7 +142,7 @@ class SGMLTagger(MappingTagger):
 ###################################################################################################
 # tag map format readers
 
-def _read_tagmap(data, separator=';', comment='#', joiner=' ', tag_column=0, unicode_column=1):
+def _read_tagmap(data, separator=':', comment='#', joiner=',', tag_column=0, unicode_column=1):
     """Read a tag map from file data."""
     chr2tag = {}
     for line in data.decode('utf-8').splitlines():
@@ -153,6 +162,21 @@ def _read_tagmap(data, separator=';', comment='#', joiner=' ', tag_column=0, uni
 
 
 ###################################################################################################
+
+# for use in function annotations
+def tagger(initialiser):
+    """Retrieve or create a tagmap from object or string."""
+    if isinstance(initialiser, Tagger):
+        return initialiser
+    elif not isinstance(initialiser, str):
+        raise ValueError(
+            f'Tagger value must be string or Tagger object, not `{type(initialiser)}`'
+        )
+    try:
+        return tagmaps[initialiser]
+    except KeyError:
+        pass
+    return MappingTagger.load(initialiser)
 
 
 tagmaps = {

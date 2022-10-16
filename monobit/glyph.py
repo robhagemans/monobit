@@ -354,21 +354,44 @@ class Glyph:
             **{**self.properties, **kwargs}
         )
 
-    def label(self, codepoint_from=None, char_from=None, overwrite=False):
+    def label(
+            self, codepoint_from=None, char_from=None,
+            tag_from=None, comment_from=None,
+            overwrite=False
+        ):
         """
-           Set labels using provided encoder object.
+           Set labels or comments using provided encoder or tagger object.
 
            char_from: Encoder object used to set char labels
            codepoint_from: Encoder object used to set codepoint labels
+           tag_from: Tagger object used to set tag labels
+           comment_from: Tagger object used to set comments
+           overwrite: overwrite codepoint or char if already given
         """
-        glyph = self
+        if sum(
+                _arg is not None
+                for _arg in (codepoint_from, char_from, tag_from, comment_from)
+            ) > 1:
+            raise ValueError(
+                'Can only set one of character, codepoint, tag or comment with one label() call. '
+                'Use separate calls to set more.'
+           )
+        labels = self.get_labels()
         # use codepage to find codepoint if not set
         if codepoint_from and (overwrite or not self.codepoint):
-            glyph = glyph.modify(codepoint=codepoint_from.codepoint(*self.get_labels()))
+            return self.modify(codepoint=codepoint_from.codepoint(*labels))
         # use codepage to find char if not set
         if char_from and(overwrite or not self.char):
-            glyph = glyph.modify(char=char_from.char(*self.get_labels()))
-        return glyph
+            return self.modify(char=char_from.char(*labels))
+        if tag_from:
+            return self.modify(
+                tags=self.tags + (tag_from.tag(*labels),)
+            )
+        if comment_from:
+            return self.modify(
+                comments=extend_string(self.comments, comment_from.comment(*labels))
+            )
+        return self
 
     def add(
             self, *,

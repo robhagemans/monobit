@@ -13,8 +13,8 @@ from ..storage import loaders, savers
 from ..streams import FileFormatError
 from ..font import Font
 from ..glyph import Glyph
-from ..struct import Props, reverse_dict
-from ..taggers import extend_string, tagmaps
+from ..struct import Props, reverse_dict, extend_string
+from ..taggers import tagmaps
 
 
 # note that we won't be able to use the "subcharacters" that are the defining feature of FIGlet
