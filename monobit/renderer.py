@@ -5,6 +5,8 @@ monobit.renderer - render text to bitmaps using font
 licence: https://opensource.org/licenses/MIT
 """
 
+from unicodedata import bidirectional
+
 from .binary import ceildiv
 from . import matrix
 
@@ -67,6 +69,7 @@ def render(
         font, text, *, margin=(0, 0), scale=(1, 1), rotate=0, direction='', missing='default'
     ):
     """Render text string to bitmap."""
+    direction, align = _get_direction(text, direction)
     # get glyphs for rendering
     glyphs = _get_text_glyphs(font, text, direction=direction, missing=missing)
     margin_x, margin_y = margin
@@ -74,10 +77,6 @@ def render(
         canvas = _get_canvas_vertical(font, glyphs, margin_x, margin_y)
         canvas = _render_vertical(font, glyphs, canvas, margin_x, margin_y)
     else:
-        if direction in ('right-to-left', 'reverse'):
-            align = 'right'
-        else:
-            align = 'left'
         canvas = _get_canvas_horizontal(font, glyphs, margin_x, margin_y)
         canvas = _render_horizontal(font, glyphs, canvas, margin_x, margin_y, align)
     scaled = matrix.scale(canvas, *scale)
@@ -163,11 +162,43 @@ def _get_canvas_vertical(font, glyphs, margin_x, margin_y):
     return matrix.create(width, height)
 
 
+def _get_direction(text, direction):
+    """Get direction and alignment."""
+    if direction == 'top-to-bottom':
+        return direction, 'right'
+    isstr = isinstance(text, str)
+    if not direction:
+        if isstr:
+            direction = 'normal'
+        else:
+            direction = 'left-to-right'
+    if direction not in ('normal', 'reverse', 'right-to-left', 'left-to-right'):
+        raise ValueError(f'Unsupported writing direction `{direction}`')
+    left_align = True
+    if direction in ('normal', 'reverse'):
+        if not isstr:
+            raise ValueError(f'Writing direction `{direction}` only supported for Unicode text.')
+        # determine alignment by the class of the first directional character encountered
+        for c in text:
+            try:
+                bidicls = bidirectional(c)[0]
+            except (TypeError, IndexError):
+                continue
+            if bidicls == 'L':
+                break
+            if bidicls in ('R', 'A'):
+                left_align = False
+                break
+        if direction == 'reverse':
+            left_align = not left_align
+    elif direction == 'right-to-left':
+        left_align = False
+    return direction, 'left' if left_align else 'right'
+
+
 def _get_text_glyphs(font, text, direction, missing='raise'):
     """Get tuple of tuples of glyphs (by line) from str or bytes/codepoints input."""
     if direction != 'top-to-bottom':
-        if direction not in ('', 'normal', 'reverse', 'right-to-left', 'left-to-right'):
-            raise ValueError(f'Unsupported writing direction `{direction}`')
         if isinstance(text, str):
             # reshape Arabic glyphs to contextual forms
             try:
@@ -177,11 +208,9 @@ def _get_text_glyphs(font, text, direction, missing='raise'):
                 if any(ord(_c) in range(0x600, 0x700) for _c in text):
                     logging.warning(e)
             # put characters in visual order instead of logical
-            if direction in ('', 'normal', 'reverse'):
+            if direction in ('normal', 'reverse'):
                 # decide direction based on bidi algorithm
                 text = get_display(text)
-        elif direction in ('normal', 'reverse'):
-            raise ValueError(f'Writing direction `{direction}` only supported for Unicode text.')
         if direction in ('right-to-left', 'reverse'):
             # reverse writing order
             text = ''.join(reversed(text))
