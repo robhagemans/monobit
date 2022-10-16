@@ -70,7 +70,17 @@ def render(
     # get glyphs for rendering
     glyphs = _get_text_glyphs(font, text, direction=direction, missing=missing)
     margin_x, margin_y = margin
-    canvas = _get_canvas(font, glyphs, margin_x, margin_y)
+    if direction == 'top-to-bottom':
+        canvas = _get_canvas_vertical(font, glyphs, margin_x, margin_y)
+        canvas = _render_vertical(font, glyphs, canvas, margin_x, margin_y)
+    else:
+        canvas = _get_canvas_horizontal(font, glyphs, margin_x, margin_y)
+        canvas = _render_horizontal(font, glyphs, canvas, margin_x, margin_y)
+    scaled = matrix.scale(canvas, *scale)
+    rotated = matrix.rotate(scaled, rotate)
+    return rotated
+
+def _render_horizontal(font, glyphs, canvas, margin_x, margin_y):
     # descent-line of the bottom-most row is at bottom margin
     # if a glyph extends below the descent line or left of the orgin, it may draw into the margin
     # raster_size.y moves from canvas origin to raster origin (bottom line)
@@ -95,11 +105,26 @@ def render(
             x += font.left_bearing + glyph.advance_width + font.right_bearing
         # move to next line
         baseline += font.line_height
-    scaled = matrix.scale(canvas, *scale)
-    rotated = matrix.rotate(scaled, rotate)
-    return rotated
+    return canvas
 
-def _get_canvas(font, glyphs, margin_x, margin_y):
+def _render_vertical(font, glyphs, canvas, margin_x, margin_y):
+    # use baseline on the left?
+    baseline = margin_x
+    # default is ttb right-to-left
+    for glyph_row in reversed(glyphs):
+        x, y = 0, 0
+        for glyph in glyph_row:
+            # advance origin to next glyph
+            y += font.top_bearing + glyph.advance_height + font.bottom_bearing
+            grid_y = margin_y + (font.top_bearing + glyph.top_bearing + y)
+            grid_x = baseline - (font.shift_left + glyph.shift_left + x)
+            # add ink, taking into account there may be ink already in case of negative bearing
+            matrix.blit(glyph.as_matrix(), canvas, grid_x, grid_y)
+        # move to next line
+        baseline += font.line_width
+    return canvas
+
+def _get_canvas_horizontal(font, glyphs, margin_x, margin_y):
     """Create canvas of the right size."""
     # find required width - margins plus max row width
     width = 2 * margin_x
@@ -115,27 +140,41 @@ def _get_canvas(font, glyphs, margin_x, margin_y):
     height = 2 * margin_y + font.pixel_size + font.line_height * (len(glyphs)-1)
     return matrix.create(width, height)
 
+def _get_canvas_vertical(font, glyphs, margin_x, margin_y):
+    """Create canvas of the right size."""
+    # find required height - margins plus max row height
+    height = 2 * margin_y
+    if glyphs:
+        height += max(
+            sum(font.top_bearing + _glyph.advance_height + font.bottom_bearing for _glyph in _row)
+            for _row in glyphs
+        )
+    width = 2 * margin_x + font.line_width * len(glyphs)
+    return matrix.create(width, height)
+
+
 def _get_text_glyphs(font, text, direction, missing='raise'):
     """Get tuple of tuples of glyphs (by line) from str or bytes/codepoints input."""
-    if direction not in ('', 'normal', 'reverse', 'right-to-left', 'left-to-right'):
-        raise ValueError(f'Unsupported writing direction `{direction}`')
-    if isinstance(text, str):
-        # reshape Arabic glyphs to contextual forms
-        try:
-            text = reshape(text)
-        except ImportError as e:
-            # check common Arabic range - is there anything to reshape?
-            if any(ord(_c) in range(0x600, 0x700) for _c in text):
-                logging.warning(e)
-        # put characters in visual order instead of logical
-        if direction in ('', 'normal', 'reverse'):
-            # decide direction based on bidi algorithm
-            text = get_display(text)
-    elif direction in ('normal', 'reverse'):
-        raise ValueError(f'Writing direction `{direction}` only supported for Unicode text.')
-    if direction in ('right-to-left', 'reverse'):
-        # reverse writing order
-        text = ''.join(reversed(text))
+    if direction != 'top-to-bottom':
+        if direction not in ('', 'normal', 'reverse', 'right-to-left', 'left-to-right'):
+            raise ValueError(f'Unsupported writing direction `{direction}`')
+        if isinstance(text, str):
+            # reshape Arabic glyphs to contextual forms
+            try:
+                text = reshape(text)
+            except ImportError as e:
+                # check common Arabic range - is there anything to reshape?
+                if any(ord(_c) in range(0x600, 0x700) for _c in text):
+                    logging.warning(e)
+            # put characters in visual order instead of logical
+            if direction in ('', 'normal', 'reverse'):
+                # decide direction based on bidi algorithm
+                text = get_display(text)
+        elif direction in ('normal', 'reverse'):
+            raise ValueError(f'Writing direction `{direction}` only supported for Unicode text.')
+        if direction in ('right-to-left', 'reverse'):
+            # reverse writing order
+            text = ''.join(reversed(text))
     if isinstance(text, str):
         max_length = max(len(_c) for _c in font.get_chars())
         type_conv = str
