@@ -262,7 +262,7 @@ _Rendering hints_ affect the way decorations and transformations are applied. Th
 - `word-space`: normal space between words
 - `min-word-space`: minimum space between words
 - `max-word-space`: maximum space between words
-- `word-space`: space between sentences
+- `sentence-space`: space between sentences
 
 
 ##### Characteristics
