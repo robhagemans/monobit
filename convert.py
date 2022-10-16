@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Extract bitmap font and save in different format
+Apply operation to bitmap font
 (c) 2019--2022 Rob Hagemans, licence: https://opensource.org/licenses/MIT
 """
 
@@ -12,32 +12,72 @@ import monobit
 from monobit.scripting import main, add_script_args, split_argv, parse_converter_args
 
 
+SCRIPT = 'modify'
+
+all_operations = {
+    'load': monobit.load,
+    'save': monobit.save,
+    **monobit.operations
+}
+
+
 ###################################################################################################
 # argument parsing
 
-# split argument list in command components
-first_argv, *last_argv = split_argv('to')
-# drop 'to' command word
-if last_argv:
-    last_argv = last_argv[0][1:]
+def build_parser():
+
+    # global options
+
+    parser = argparse.ArgumentParser(
+        add_help=False, conflict_handler='resolve',
+        usage='%(prog)s [--debug] [--help]  <command> [command-options] [ ... ]'
+    )
+    parser.add_argument(
+        '--debug', action='store_true', help='show debugging output'
+    )
+    parser.add_argument(
+        '-h', '--help', action='store_true',
+        help='show this help message and exit'
+    )
+
+    # command options
+
+    subparsers = parser.add_subparsers(
+        dest='operation', 
+        title='commands',
+        prog=f'{SCRIPT} [--debug] [--help]',
+    )
+    subs = {}
+    for name, func in all_operations.items():
+        sub = subparsers.add_parser(
+            name, help=func.script_args.doc, add_help=False,
+            formatter_class=argparse.MetavarTypeHelpFormatter,
+        )
+        if func == monobit.load:
+            positional = ['infile']
+        elif func == monobit.save:
+            positional = ['outfile']
+        else:
+            positional = []
+        group = add_script_args(sub, func, positional=positional)
+        subs[name] = sub
+
+    return parser, subs
 
 
-# parse command line
-# global options
-parser = argparse.ArgumentParser(
-    add_help=False, conflict_handler='resolve',
-    formatter_class=argparse.MetavarTypeHelpFormatter,
-    usage='%(prog)s [--debug] [--help] [infile] [load-options] to [outfile] [save-options]'
-)
-parser.add_argument(
-    '--debug', action='store_true', help='show debugging output'
-)
-parser.add_argument(
-    '-h', '--help', action='store_true',
-    help='show this help message and exit'
-)
+first_argv = []
+for arg in sys.argv[1:]:
+    if arg.startswith('-'):
+        first_argv.append(arg)
+    else:
+        break
 
+command_argv = list(split_argv('load', 'save', 'to', *monobit.operations))
+
+
+parser, subs = build_parser()
 args, first_argv = parser.parse_known_args(first_argv)
+
 
 if args.debug:
     loglevel = logging.DEBUG
@@ -46,71 +86,60 @@ else:
 logging.basicConfig(level=loglevel, format='%(levelname)s: %(message)s')
 
 
-# load options
-
-load_parser = argparse.ArgumentParser(
-    add_help=False, conflict_handler='resolve',
-    formatter_class=argparse.MetavarTypeHelpFormatter,
-    usage=argparse.SUPPRESS
-)
-load_group = add_script_args(load_parser, monobit.load, positional=['infile'])
-load_args, _ = load_parser.parse_known_args(first_argv)
-loader = monobit.loaders.get_for_location(load_args.infile, format=load_args.format)
-load_kwargs = parse_converter_args(load_parser, loader, first_argv)
-
-
-# save options
-
-save_parser = argparse.ArgumentParser(
-    add_help=False, conflict_handler='resolve',
-    formatter_class=argparse.MetavarTypeHelpFormatter,
-    usage=argparse.SUPPRESS
-)
-
-save_group = add_script_args(save_parser, monobit.save, positional=['outfile'])
-save_group.add_argument(
-    '--encoding', default='', type=str,
-    help='override encoding/codepage (default: infer from metadata in file)'
-)
-save_group.add_argument(
-    '--comments', default='', type=str,
-    help='add global comments from text file'
-)
-
-save_args, _ = save_parser.parse_known_args(last_argv)
-saver = monobit.savers.get_for_location(save_args.outfile, format=save_args.format, do_open=False)
-save_kwargs = parse_converter_args(save_parser, saver, last_argv)
-
-if args.help:
-    parser.print_help()
-    print()
-    load_parser.print_help()
-    save_parser.print_help()
-    sys.exit(0)
-
-# force errors
-load_parser.parse_args(first_argv)
-save_parser.parse_args(last_argv)
-
-
-
-###################################################################################################
-# main operation
-
 with main(args.debug):
 
-    # if no infile or outfile provided, use stdio
-    infile = load_args.infile or sys.stdin
-    outfile = save_args.outfile or sys.stdout
+    # ensure we load & save
+    if command_argv:
+        if command_argv[0][:1] != ['load']:
+            command_argv[0] = ['load'] + command_argv[0]
+        if command_argv[-1][:1] != ['save']:
+            if command_argv[-1][:1] == ['to']:
+                command_argv[-1][0] = 'save'
+            else:
+                command_argv += [['save']]
 
-    pack = monobit.load(infile, format=load_args.format, **load_kwargs)
+    # parse command args
+    commands = []
+    for cargv in command_argv:
+        parser, subs = build_parser()
+        command_args, _ = parser.parse_known_args(cargv)
 
-    # set encoding
-    if save_args.encoding:
-        pack = tuple(_font.set(encoding=save_args.encoding) for _font in pack)
-    # add comments
-    if save_args.comments:
-        with open(save_args.comments) as f:
-            pack = tuple(_font.add(comments=f.read()) for _font in pack)
+        if command_args.operation == 'load':
+            load_args, _ = parser.parse_known_args(cargv)
+            loader = monobit.loaders.get_for_location(load_args.infile, format=load_args.format)
+            kwargs = parse_converter_args(subs['load'], loader, cargv)
+        elif command_args.operation == 'save':
+            save_args, _ = parser.parse_known_args(cargv)
+            saver = monobit.savers.get_for_location(save_args.outfile, format=save_args.format, do_open=False)
+            kwargs = parse_converter_args(subs['save'], saver, cargv)
+        else:
+            command_args = parser.parse_args(cargv)
+            kwargs= {}
+        # find out which operation we're asked to perform
+        operation = all_operations[command_args.operation]
+        kwargs.update(operation.script_args.pick(command_args))
+        commands.append((operation, kwargs))
 
-    monobit.save(pack, outfile, overwrite=save_args.overwrite, format=save_args.format, **save_kwargs)
+        if args.help:
+            subs[command_args.operation].print_help()
+            sys.exit(0)
+
+    if args.help:
+        parser.print_help()
+        sys.exit(0)
+
+
+    ###################################################################################################
+    # main operation
+
+    fonts = []
+    for operation, args in commands:
+        if operation == all_operations['load']:
+            fonts += operation(**args)
+        elif operation == all_operations['save']:
+            operation(fonts, **args)
+        else:
+            fonts = tuple(
+                operation(_font, **args)
+                for _font in fonts
+            )
