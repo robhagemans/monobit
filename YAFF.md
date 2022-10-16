@@ -261,9 +261,13 @@ Deprecated synonyms are:
 ##### Rendering hints
 
 _Rendering hints_ affect the way decorations and transformations are applied. They are:
-- `direction`: Direction of writing. At present, only `left-to-right` or `right-to-left` are supported.
-  Default is to determine writing direction algorithmically, if the glyphs have character labels,
-  and to use left-to-right if not.
+- `direction`: Advance direction of writing. The following directions are supported:
+  - `left-to-right`: left to right, top to bottom
+  - `right-to-left`: right to left, top to bottom
+  - `top-to-bottom`: top to bottom, right to left
+  If the glyphs in the font have character labels, the default is to determine horizontal writing
+  direction algorithmically from Unicode properties. If no character labels are given, the
+  default direction is `left-to-right`.
 - `bold-smear`: additional number of pixels to trail ink by, when bolding algorithmically
 - `underline-thickness`: number of pixels in a generated underline
 - `underline-descent`: location of underline in pixels below the baseline
