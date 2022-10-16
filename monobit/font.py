@@ -896,10 +896,19 @@ class Font:
         overwrite: overwrite existing codepoints and/or characters
         """
         font = self
+        if codepoint_from and char_from:
+            raise ValueError(
+                'Can only set either character or codepoints with one label() call. '
+                'Use separate calls to set both.'
+           )
         # default action: label chars with font encoding
         if not codepoint_from and not char_from and self.encoding:
             char_from = encoder(self.encoding)
-        # TODO: should we set self.encoding here?
+        if overwrite or not self.encoding:
+            if char_from:
+                self.encoding = char_from.name
+            elif codepoint_from:
+                self.encoding = codepoint_from.name
         if codepoint_from:
             # update glyph labels
             encoding = codepoint_from
