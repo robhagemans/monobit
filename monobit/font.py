@@ -210,8 +210,12 @@ class FontProperties(DefaultProps):
             weight = ''
         else:
             weight = self.weight.title()
+        if self.spacing in ('character-cell', 'multi-cell'):
+            size = 'x'.join(str(_x) for _x in self.cell_size)
+        else:
+            size = str(self.point_size)
         return ' '.join(
-            str(_x) for _x in (self.family, setwidth, weight, slant, self.point_size) if _x
+            str(_x) for _x in (self.family, setwidth, weight, slant, size) if _x
         )
 
     @writable_property
