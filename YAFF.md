@@ -52,7 +52,7 @@ In the spirit of human-friendliness, a short example is probably more informativ
     encoding: totally-made-up
 
     # The letter A is the first letter of the Latin alphabet.
-    # We've got three kinds of labels: unicode, codepage, and text.
+    # We've got three kinds of labels: unicode character, codepage, and tag.
     u+0041:
     0x41:
     latin_a:
@@ -74,7 +74,7 @@ In the spirit of human-friendliness, a short example is probably more informativ
         @@@..
 
 
-    # Or for example, just a text label.
+    # Or for example, just a tag.
     # A glyph may contain per-glyph metrics
     latin_c:
         ....
@@ -87,7 +87,7 @@ In the spirit of human-friendliness, a short example is probably more informativ
         tracking: 1
 
 
-    # This is a special notation for a 0x0 empty glyph, with the text tabel "empty".
+    # This is a special notation for a 0x0 empty glyph, with the tag "empty".
     empty:
         -
 
@@ -114,6 +114,36 @@ In the spirit of human-friendliness, a short example is probably more informativ
         @.@.
         .@@@
 
+
+    # Single quotes ensure a label is interpreted as a unicode character sequence
+    # this is equivalent to u+0066, u+0066
+    'ff':
+        ..@@@
+        .@.@.
+        .@.@.
+        @@@@@
+        .@.@.
+        .@.@.
+        .@.@.
+
+    # While double quotes ensure a label is interpreted as a tag
+    "my_à":
+        @...
+        .@..
+        ....
+        .@@.
+        @.@.
+        @.@.
+        .@@@
+
+    # It's possible, though not recommended, to define a glyph with no labels at all
+    # the colon is still required as a separator
+    :
+        ......
+        .@..@.
+        ......
+        .@..@.
+        ..@@..
 
 
 
