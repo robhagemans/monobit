@@ -612,7 +612,7 @@ def parse_fnt(fnt):
     properties = _parse_win_props(fnt, win_props)
     glyphs = _parse_chartable(fnt, win_props)
     font = Font(glyphs, **properties)
-    font = font.label()
+    font = font.label(_record=False)
     return font
 
 def _parse_header(fnt):

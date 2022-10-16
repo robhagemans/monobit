@@ -1240,6 +1240,8 @@ def encoder(initialiser):
     """Retrieve or create a charmap from object or string."""
     if isinstance(initialiser, Encoder):
         return initialiser
+    if not initialiser:
+        return None
     elif not isinstance(initialiser, str):
         raise ValueError(
             f'Encoding value must be string or Encoder object, not `{type(initialiser)}`'

@@ -457,7 +457,7 @@ def load_bdf(instream, where=None):
         logging.warning('Number of characters found does not match CHARS declaration.')
     glyphs, properties = _parse_properties(glyphs, glyph_props, bdf_props, x_props)
     font = Font(glyphs, comments=comments, **properties)
-    font = font.label()
+    font = font.label(_record=False)
     return font
 
 
@@ -627,7 +627,7 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
         'point-size': size,
         'dpi': (xdpi, ydpi),
     }
-    properties['revision'] = bdf_props.pop('CONTENTVERSION', '')
+    properties['revision'] = bdf_props.pop('CONTENTVERSION', None)
     # not supported: METRICSSET != 0
     writing_direction = bdf_props.pop('METRICSSET', 0)
     if writing_direction not in (0, 1, 2):
@@ -990,7 +990,7 @@ def _save_bdf(font, outstream):
             name = glyph.tags[0]
         else:
             # look up in adobe glyph list if character available
-            name = tagmaps['adobe'].get_tag(glyph)
+            name = tagmaps['adobe'].tag(*glyph.get_labels()).value
             # otherwise, use encoding value if available
             if not name and encoding != -1:
                 name = f'char{encoding:02X}'

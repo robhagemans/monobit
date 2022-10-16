@@ -43,7 +43,7 @@ def scriptable(
         script_args = ScriptArgs(func, name=name, extra_args=script_args, history_values=history_values)
 
         @wraps(func)
-        def _scriptable_func(*args, **kwargs):
+        def _scriptable_func(*args, _record=True, **kwargs):
             # apply converters to argument
             conv_kwargs = {}
             for kwarg, value in kwargs.items():
@@ -68,7 +68,7 @@ def scriptable(
             # call wrapped function
             result = func(*args, **conv_kwargs)
             # update history tracker
-            if record and result:
+            if record and _record and result:
                 history = script_args.to_str(conv_kwargs)
                 try:
                     result = tuple(_item.add(history=history) for _item in iter(result))

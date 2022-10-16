@@ -122,8 +122,8 @@ def _clean_comment(lines):
         return []
     lines = [_line or '' for _line in lines]
     # remove "comment char" - non-alphanumeric shared first character
-    firsts = str(set(_line[0:1] for _line in lines if _line))
-    if len(firsts) == 1 and firsts not in string.ascii_letters + string.digits:
+    firsts = tuple(set(_line[:1] for _line in lines if _line))
+    if len(firsts) == 1 and firsts[0] not in string.ascii_letters + string.digits:
         lines = [_line[1:] for _line in lines]
     # remove one leading space
     if all(_line.startswith(' ') for _line in lines if _line):

@@ -503,7 +503,7 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=(),
         for _glyph, _char in zip(glyphs, chars)
     ]
     font = Font(glyphs, **properties)
-    font = font.label()
+    font = font.label(_record=False)
     return font
 
 
