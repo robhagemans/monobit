@@ -293,6 +293,7 @@ Characteristics inferred from the glyphs are:
 - `ink-bounds`: smallest box that encompasses all ink if all glyphs are overlaid at the same origin.
                 coordinates (left, bottom, right, top)
 - `raster-size`: (width, height) of raster.
+- `cell-size`: (width, height) of character cell - (0, 0) for proportional fonts.
 - `bounding-box`: (width, height) of ink-bounds.
 - `average-width`: average advance width across glyphs.
 - `max-width`: maximum advance width across glyphs.

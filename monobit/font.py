@@ -375,6 +375,16 @@ class FontProperties(DefaultProps):
         )
 
     @checked_property
+    def cell_size(self):
+        """Width, height of the character cell."""
+        if self.spacing == 'proportional':
+            return Coord(0, 0)
+        # smaller of the (at most two) advance widths is the cell size
+        # in a multi-cell font, some glyphs may take up two cells.
+        cell_x = min(_glyph.advance_width for _glyph in self._font.glyphs if _glyph.advance_width)
+        return Coord(cell_x, self.line_height)
+
+    @checked_property
     def ink_bounds(self):
         """Minimum bounding box encompassing all glyphs at fixed origin, font origin cordinates."""
         nonempty = [
