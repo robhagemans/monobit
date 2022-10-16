@@ -74,21 +74,26 @@ def render(
         canvas = _get_canvas_vertical(font, glyphs, margin_x, margin_y)
         canvas = _render_vertical(font, glyphs, canvas, margin_x, margin_y)
     else:
+        if direction in ('right-to-left', 'reverse'):
+            align = 'right'
+        else:
+            align = 'left'
         canvas = _get_canvas_horizontal(font, glyphs, margin_x, margin_y)
-        canvas = _render_horizontal(font, glyphs, canvas, margin_x, margin_y)
+        canvas = _render_horizontal(font, glyphs, canvas, margin_x, margin_y, align)
     scaled = matrix.scale(canvas, *scale)
     rotated = matrix.rotate(scaled, rotate)
     return rotated
 
-def _render_horizontal(font, glyphs, canvas, margin_x, margin_y):
+def _render_horizontal(font, glyphs, canvas, margin_x, margin_y, align):
     # descent-line of the bottom-most row is at bottom margin
     # if a glyph extends below the descent line or left of the orgin, it may draw into the margin
     # raster_size.y moves from canvas origin to raster origin (bottom line)
-    baseline = margin_y + font.ascent
+    baseline = font.ascent
     for glyph_row in glyphs:
         # x, y are relative to the left margin & baseline
         x = 0
         prev = font.get_empty_glyph()
+        grid_x, grid_y = [], []
         for glyph in glyph_row:
             # adjust origin for kerning
             x += prev.right_kerning.get_for_glyph(glyph)
@@ -97,12 +102,17 @@ def _render_horizontal(font, glyphs, canvas, margin_x, margin_y):
             # offset + (x, y) is the coordinate of glyph matrix origin
             # grid_x, grid_y are canvas coordinates relative to top left of canvas
             # canvas y coordinate increases *downwards* from top of line
-            grid_x = margin_x + (font.left_bearing + glyph.left_bearing + x)
-            grid_y = baseline - (font.shift_up + glyph.shift_up)
-            # add ink, taking into account there may be ink already in case of negative bearings
-            matrix.blit(glyph.as_matrix(), canvas, grid_x, grid_y)
+            grid_x.append(font.left_bearing + glyph.left_bearing + x)
+            grid_y.append(baseline - (font.shift_up + glyph.shift_up))
             # advance origin to next glyph
             x += font.left_bearing + glyph.advance_width + font.right_bearing
+        if align == 'right':
+            start = len(canvas[0]) - margin_x - x
+        else:
+            start = margin_x
+        for glyph, x, y in zip(glyph_row, grid_x, grid_y):
+            # add ink, taking into account there may be ink already in case of negative bearings
+            matrix.blit(glyph.as_matrix(), canvas, start + x, margin_y + y)
         # move to next line
         baseline += font.line_height
     return canvas
