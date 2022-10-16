@@ -990,7 +990,7 @@ def _save_bdf(font, outstream):
             name = glyph.tags[0]
         else:
             # look up in adobe glyph list if character available
-            name = tagmaps['adobe'].get_tag(glyph)
+            name = tagmaps['adobe'].tag(*glyph.get_labels()).value
             # otherwise, use encoding value if available
             if not name and encoding != -1:
                 name = f'char{encoding:02X}'

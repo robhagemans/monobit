@@ -262,7 +262,7 @@ def _write_flf(outstream, flf_glyphs, flf_props, comments, ink='#', paper=' ', h
     for glyph in flf_glyphs[1:len(_CODEPOINTS)]:
         outstream.write(_format_glyph(glyph, ink=ink, paper=paper))
     for glyph in flf_glyphs[len(_CODEPOINTS):]:
-        tag = glyph.tags[0] if glyph.tags else tagmaps['unicode'].get_tag(glyph)
+        tag = glyph.tags[0] if glyph.tags else tagmaps['unicode'].tag(*glyph.get_labels()).value
         outstream.write('{} {}\n'.format(str(glyph.codepoint), tag))
         outstream.write(_format_glyph(glyph, ink=ink, paper=paper))
 
