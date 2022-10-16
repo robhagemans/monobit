@@ -138,7 +138,7 @@ class FontProperties(DefaultProps):
     top_bearing: int
     # vertical offset from matrix bottom edge to downward origin
     bottom_bearing: int
-    # leftward offset from origin to matrix left edge
+    # leftward offset from origin to matrix central vertical axis
     shift_left: int
     # horizontal distance between consecutive baselines, in pixels
     line_width: int

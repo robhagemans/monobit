@@ -233,12 +233,12 @@ Global metrics are:
 Per-glyph or global horizontal metrics are:
 - `left-bearing`: Horizontal offset (in direction of writing) between leftward origin and left raster edge.
 - `right-bearing`: Horizontal offset (in direction of writing) between rightward origin and right raster edge.
-- `shift-up`: Upward shift from baseline to raster bottom.
+- `shift-up`: Upward shift from baseline to raster bottom edge.
 
 Per-glyph or global vertical metrics are:
 - `top-bearing`: Vertical offset (in direction of writing) between upward origin and top raster edge.
 - `bottom-bearing`: Vertical offset (in direction of writing) between downward origin and bottom raster edge.
-- `shift-left`: Leftward shift from baseline to raster left edge.
+- `shift-left`: Leftward shift from baseline to central vertical axis of raster.
 
 If these metrics are specified globally, they apply to all
 glyphs. If metrics are specified both globally and per-glyph, they are added.

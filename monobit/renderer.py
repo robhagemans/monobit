@@ -87,7 +87,7 @@ def _render_horizontal(font, glyphs, canvas, margin_x, margin_y):
     baseline = margin_y + font.ascent
     for glyph_row in glyphs:
         # x, y are relative to the left margin & baseline
-        x, y = 0, 0
+        x = 0
         prev = font.get_empty_glyph()
         for glyph in glyph_row:
             # adjust origin for kerning
@@ -98,7 +98,7 @@ def _render_horizontal(font, glyphs, canvas, margin_x, margin_y):
             # grid_x, grid_y are canvas coordinates relative to top left of canvas
             # canvas y coordinate increases *downwards* from top of line
             grid_x = margin_x + (font.left_bearing + glyph.left_bearing + x)
-            grid_y = baseline - (font.shift_up + glyph.shift_up + y)
+            grid_y = baseline - (font.shift_up + glyph.shift_up)
             # add ink, taking into account there may be ink already in case of negative bearings
             matrix.blit(glyph.as_matrix(), canvas, grid_x, grid_y)
             # advance origin to next glyph
@@ -108,16 +108,16 @@ def _render_horizontal(font, glyphs, canvas, margin_x, margin_y):
     return canvas
 
 def _render_vertical(font, glyphs, canvas, margin_x, margin_y):
-    # use baseline on the left?
-    baseline = margin_x
+    # central axis (with leftward bias)
+    baseline = margin_x + int(font.line_width / 2)
     # default is ttb right-to-left
     for glyph_row in reversed(glyphs):
-        x, y = 0, 0
+        y = 0
         for glyph in glyph_row:
             # advance origin to next glyph
             y += font.top_bearing + glyph.advance_height + font.bottom_bearing
             grid_y = margin_y + (font.top_bearing + glyph.top_bearing + y)
-            grid_x = baseline - (font.shift_left + glyph.shift_left + x)
+            grid_x = baseline - int(glyph.width / 2) - (font.shift_left + glyph.shift_left)
             # add ink, taking into account there may be ink already in case of negative bearing
             matrix.blit(glyph.as_matrix(), canvas, grid_x, grid_y)
         # move to next line
