@@ -20,8 +20,8 @@ Tools for working with monochrome bitmap fonts
 The `monobit` tools let you modify bitmap fonts and convert between several formats.
 
 `monobit`'s native format is `yaff`, a human-friendly, text-based visual format similar to the ones used by
-Roman Czyborra's `hexdraw`, Simon Tatham's `mkwinfont` and John Elliott's `psftools`. A specification
-of the font format is given in [this repository](YAFF.md).
+Roman Czyborra's `hexdraw`, Simon Tatham's `mkwinfont` and John Elliott's `psftools`. Details are
+given in [the `yaff` font file format specification](YAFF.md).
 
 A a working Python 3 installation is required and some formats or features require additional packages to be installed; see _Dependencies_ below.
 
@@ -78,8 +78,8 @@ For example, the banner at the top of this `README` was made with
 
     me@bandit:~$ python3 banner.py '| monobit. |' --font=VGASYS.FON
 
-`banner.py` has anumer of rendering options - you can choose fonts, change the "ink" and "paper" 
-characters, set a margin, scale text, and rotate by quarter turns. 
+`banner.py` has a number of rendering options - you can choose fonts, change the "ink" and "paper"
+characters, set a margin, scale text, and rotate by quarter turns.
 Check `python3 banner.py -h` for usage.
 
 
