@@ -214,7 +214,7 @@ def _convert_to_flf(font, hardblank='$'):
         # > The Print_Direction parameter tells which direction the font is to be
         # > printed by default.  A value of 0 means left-to-right, and 1 means
         # > right-to-left.  If this parameter is absent, 0 (left-to-right) is assumed.
-        print_direction=reverse_dict(_DIRECTIONS)[font.direction],
+        print_direction=reverse_dict(_DIRECTIONS).get(font.direction, 0),
         codetag_count = len(coded_chars)
     )
     # keep namespace properties

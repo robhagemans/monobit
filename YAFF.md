@@ -227,20 +227,30 @@ The following are font properties `monobit` is aware of. Other properties may be
 _Metrics_ are properties that affect how the font is rendered. There are per-glyph metrics and global metrics.
 
 Global metrics are:
-- `direction`: Direction of writing. At present, only `left-to-right` or `right-to-left` are supported.
-- `line-height`: Vertical spacing between consecutive baselines.
+- `line-height`: Vertical spacing between consecutive baselines (for horizontal writing).
+- `line-width`: Horizontal spacing between consecutive baselines (for vertical writing).
 
-Per-glyph metrics are:
+Per-glyph or global horizontal metrics are:
 - `left-bearing`: Horizontal offset (in direction of writing) between leftward origin and left raster edge.
 - `right-bearing`: Horizontal offset (in direction of writing) between rightward origin and right raster edge.
-- `shift-up`: Upward shift from baseline to raster bottom.
-- `right-kerning`: Adjustment to right bearing for specific glyph pairs. E.g. the pair `AV` may have negative
-kerning, so that they are displayed tighter than they otherwise would. Such an adjustment is
-specified in the `right-kerning` property of the `A` glyph, as a pair of the label for the `V` glyph and
-a numeric adjustment value.
+- `shift-up`: Upward shift from baseline to raster bottom edge.
 
-The per-glyph metrics (except `right-kerning`) may be specified globally, in which case they apply to all
+Per-glyph or global vertical metrics are:
+- `top-bearing`: Vertical offset (in direction of writing) between upward origin and top raster edge.
+- `bottom-bearing`: Vertical offset (in direction of writing) between downward origin and bottom raster edge.
+- `shift-left`: Leftward shift from baseline to central vertical axis of raster.
+
+If these metrics are specified globally, they apply to all
 glyphs. If metrics are specified both globally and per-glyph, they are added.
+
+Per-glyph only metrics are:
+- `right-kerning`: Adjustment to right bearing for specific glyph pairs. E.g. the pair `AV` may have negative
+  kerning, so that they are displayed tighter than they otherwise would. Such an adjustment is
+  specified in the `right-kerning` property of the `A` glyph, as a pair of the label for the `V` glyph and
+  a numeric adjustment value.
+- `left-kerning`: Adjustment to left bearing for specific glyph pairs. The same adjustment as above could be
+  specified in the `left-kerning` property of the `V` glyph, as a pair of the label for the `A` glyph and
+  a numeric adjustment value. If both `left-kerning` and `right-kerning` are specified, they add up.
 
 Deprecated synonyms are:
 - `offset` (_x_ _y_ pair): equal to (`left-bearing`, `shift-up`).
@@ -251,6 +261,13 @@ Deprecated synonyms are:
 ##### Rendering hints
 
 _Rendering hints_ affect the way decorations and transformations are applied. They are:
+- `direction`: Advance direction of writing. The following directions are supported:
+  - `left-to-right`: left to right, top to bottom
+  - `right-to-left`: right to left, top to bottom
+  - `top-to-bottom`: top to bottom, right to left
+  If the glyphs in the font have character labels, the default is to determine horizontal writing
+  direction algorithmically from Unicode properties. If no character labels are given, the
+  default direction is `left-to-right`.
 - `bold-smear`: additional number of pixels to trail ink by, when bolding algorithmically
 - `underline-thickness`: number of pixels in a generated underline
 - `underline-descent`: location of underline in pixels below the baseline
@@ -280,6 +297,7 @@ Characteristics inferred from the glyphs are:
 - `ink-bounds`: smallest box that encompasses all ink if all glyphs are overlaid at the same origin.
                 coordinates (left, bottom, right, top)
 - `raster-size`: (width, height) of raster.
+- `cell-size`: (width, height) of character cell - (0, 0) for proportional fonts.
 - `bounding-box`: (width, height) of ink-bounds.
 - `average-width`: average advance width across glyphs.
 - `max-width`: maximum advance width across glyphs.

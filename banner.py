@@ -56,6 +56,13 @@ parser.add_argument(
     help='number of quarter turns to rotate (default: 0)'
 )
 parser.add_argument(
+    '--direction', type=str, default='',
+    help=(
+        "writing direction (default: use bidirectional algorithm;"
+        " other options: `left-to-right`, `right-to-left`, `reverse`)"
+    )
+)
+parser.add_argument(
     '--encoding', default='', type=str,
     help='override encoding/codepage (default: infer from metadata in file)'
 )
@@ -111,5 +118,6 @@ with main(args.debug):
         font = font.modify(encoding=args.encoding)
     sys.stdout.write(render_text(
         font, args.text, args.ink, args.paper,
-        margin=args.margin, scale=args.scale, rotate=args.rotate, missing='default'
+        margin=args.margin, scale=args.scale, rotate=args.rotate, direction=args.direction,
+        missing='default'
     ) + '\n')

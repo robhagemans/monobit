@@ -483,7 +483,7 @@ class YaffWriter(TextWriter, YaffParams):
                 'spacing': font.spacing,
             }
             if font.spacing in ('character-cell', 'multi-cell'):
-                props['raster_size'] = font.raster_size
+                props['cell_size'] = font.cell_size
             else:
                 props['bounding_box'] = font.bounding_box
             props.update(font.properties)

@@ -122,18 +122,26 @@ class FontProperties(DefaultProps):
     # metrics
     # can't be calculated, affect rendering
 
-    # left-to-right, right-to-left
-    direction: str = 'left-to-right'
     # horizontal offset from leftward origin to matrix left edge
     left_bearing: int
     # horizontal offset from matrix right edge to rightward origin
     right_bearing: int
     # upward offset from origin to matrix bottom
     shift_up: int
-    # downward offset from origin to matrix left edge - equal to -shift_up
+    # downward offset from origin to matrix bottom - equal to -shift_up
     shift_down: int
     # vertical distance between consecutive baselines, in pixels
     line_height: int
+
+    # vertical metrics
+    # vertical offset from upward origin to matrix top edge
+    top_bearing: int
+    # vertical offset from matrix bottom edge to downward origin
+    bottom_bearing: int
+    # leftward offset from origin to matrix central vertical axis
+    shift_left: int
+    # horizontal distance between consecutive baselines, in pixels
+    line_width: int
 
     # character properties
     # can't be calculated, affect rendering
@@ -148,6 +156,10 @@ class FontProperties(DefaultProps):
     # rendering hints
     # may affect rendering if effects are applied
 
+    # can be set to left-to-right, right-to-left to suggest a writing direction
+    # though it is better determined through the bidirectional algorithm
+    # the meaning of metrics is agnostic to writing direction
+    direction: str = ''
     # number of pixels to smear in advance direction to simulate bold weight
     bold_smear: int = 1
     # number of pixels in underline
@@ -254,6 +266,12 @@ class FontProperties(DefaultProps):
             return self.pixel_size + self.leading
         return self.pixel_size
 
+    @writable_property
+    def line_width(self):
+        """Horizontal distance between consecutive baselines, in pixels."""
+        return self.max_width
+
+
     ##########################################################################
     # typographic descriptors
 
@@ -355,6 +373,16 @@ class FontProperties(DefaultProps):
             self.raster.right - self.raster.left,
             self.raster.top - self.raster.bottom
         )
+
+    @checked_property
+    def cell_size(self):
+        """Width, height of the character cell."""
+        if self.spacing == 'proportional':
+            return Coord(0, 0)
+        # smaller of the (at most two) advance widths is the cell size
+        # in a multi-cell font, some glyphs may take up two cells.
+        cell_x = min(_glyph.advance_width for _glyph in self._font.glyphs if _glyph.advance_width)
+        return Coord(cell_x, self.line_height)
 
     @checked_property
     def ink_bounds(self):
