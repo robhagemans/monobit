@@ -43,12 +43,24 @@ parser.add_argument(
     '--scale', default=4, type=int,
     help='number of horizontal and vertical pixels in image that make up a pixel in the font'
 )
+parser.add_argument(
+    '--ink', '--foreground', '-fg', type=str, default='@',
+    help='character to use for ink/foreground (default: @)'
+)
+parser.add_argument(
+    '--paper', '--background', '-bg', type=str, default='-',
+    help='character to use for paper/background (default: -)'
+)
+parser.add_argument(
+    '--image', default=False, action='store_true',
+    help='output as image instead of text'
+)
 
 args = parser.parse_args()
 
 args.infile.read(args.offset)
 rombytes = args.infile.read(args.bytes)
-rows = ['{:08b}'.format(_c) for _c in bytearray(rombytes)]
+rows = ['{:08b}'.format(_c) for _c in rombytes]
 
 scale = args.scale
 margin = args.margin
@@ -57,40 +69,60 @@ padding = args.padding
 images = []
 if args.stride_to is None:
     args.stride_to = args.stride_from + 1
+
 for stride in range(args.stride_from, args.stride_to):
     width = stride * 8
     height = ceildiv(len(rombytes), stride)
 
-    fore, back, border = (255, 255, 255), (0, 0, 0), (20, 20, 20)
+    if args.image:
+        fore, back, border = (255, 255, 255), (0, 0, 0), (20, 20, 20)
 
-    img = Image.new('RGB', (width, height), border)
-    data = [
-        fore if _c == '1' else back
-        for _row in rows
-        for _c in _row
-    ]
-    img.putdata(data)
-    images.append((stride, img))
+        img = Image.new('RGB', (width, height), border)
+        data = [
+            fore if _c == '1' else back
+            for _row in rows
+            for _c in _row
+        ]
+        img.putdata(data)
+        images.append((stride, img))
+    else:
+        if args.stride_to > args.stride_from + 1:
+            args.outfile.write('\n')
+            title = f'stride={stride}'
+            args.outfile.write(title + '\n')
+            args.outfile.write('-'*len(title) + '\n')
 
+        drawn = [_row.replace(u'0', args.paper).replace(u'1', args.ink) for _row in rows]
+        decwidth = len(str(len(drawn)))
+        hexwidth = len(hex(len(drawn))) - 2
 
-font = ImageFont.load_default()
-max_stride, _ = images[-1]
-size = font.getsize(str(max_stride))
-margin += size[0]
+        for offset in range(0, len(drawn), stride):
+            char = drawn[offset:offset+stride]
+            args.outfile.write('{offset:{decwidth}} {offset:0{hexwidth}x}: '.format(
+                offset=offset, decwidth=decwidth, hexwidth=hexwidth
+            ))
+            args.outfile.write(''.join(char))
+            args.outfile.write('\n')
 
-fullimage = Image.new(
-    'RGB', (
-        margin + max(_i.width for _, _i in images),
-        sum(_i.height + padding for _, _i in images)
-    ),
-    border
-)
-draw = ImageDraw.Draw(fullimage)
-left, top = margin, 0
-for stride, img in images:
-    draw.text((0, top), str(stride), font=font, fill=(128, 255, 128))
-    fullimage.paste(img, (left, top))
-    top += img.height + padding
+if args.image:
+    font = ImageFont.load_default()
+    max_stride, _ = images[-1]
+    size = font.getsize(str(max_stride))
+    margin += size[0]
 
-fullimage = fullimage.resize((fullimage.width * scale, fullimage.height * scale))
-fullimage.show()
+    fullimage = Image.new(
+        'RGB', (
+            margin + max(_i.width for _, _i in images),
+            sum(_i.height + padding for _, _i in images)
+        ),
+        border
+    )
+    draw = ImageDraw.Draw(fullimage)
+    left, top = margin, 0
+    for stride, img in images:
+        draw.text((0, top), str(stride), font=font, fill=(128, 255, 128))
+        fullimage.paste(img, (left, top))
+        top += img.height + padding
+
+    fullimage = fullimage.resize((fullimage.width * scale, fullimage.height * scale))
+    fullimage.show()
