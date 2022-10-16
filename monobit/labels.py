@@ -128,6 +128,11 @@ class Char(str, Label):
             for _uc in self
         )
 
+    @property
+    def value(self):
+        """Get our str contents without calling __str__."""
+        return ''.join(self)
+
 
 ##############################################################################
 # codepoints

@@ -18,6 +18,7 @@ except ImportError:
 from .scripting import scriptable, get_scriptables
 from .glyph import Glyph, Coord, Bounds, number
 from .encoding import charmaps, encoder
+from .taggers import tagger
 from .labels import Tag, Char, Codepoint, to_label
 from .binary import ceildiv
 from .struct import (
@@ -867,42 +868,32 @@ class Font:
     # font operations
 
     @scriptable
-    def annotate(self, *, tagger:str='', how:str='tags'):
-        """
-        Return a version of the font with tags or comments added
-
-        tagger: name of tagger to use to add tags or comments
-        how: how to annotate, through 'tags' or 'comments'
-        """
-        try:
-            tagger = tagmaps[tagger]
-        except KeyError as e:
-            raise ValueError(f'No tagger named `{tagger}` found') from e
-        if how == 'tags':
-            action = tagger.set_tags
-        elif how == 'comments':
-            action = tagger.set_comments
-        else:
-            raise ValueError(f'Parameter `how` must be one of `tags` or `comments`, not `{how}`')
-        return action(self)
-
-    @scriptable
-    def label(self, *, codepoint_from:encoder='', char_from:encoder='', overwrite:bool=False):
+    def label(
+            self, *,
+            codepoint_from:encoder='', char_from:encoder='',
+            tag_from:tagger='', comment_from:tagger='',
+            overwrite:bool=False
+        ):
         """
         Add character and codepoint labels.
 
         codepoint_from: encoder registered name or filename to use to set codepoints from character labels
         char_from: encoder registered name or filename to use to set characters from codepoint labels. Default: use font encoding.
+        tag_from: tagger registered name or filename to use to set tag labels
+        comment_from: tagger registered name or filename to use to set comments
         overwrite: overwrite existing codepoints and/or characters
         """
-        font = self
-        if codepoint_from and char_from:
+        nargs = sum(
+            bool(_arg)
+            for _arg in (codepoint_from, char_from, tag_from, comment_from)
+        )
+        if nargs > 1:
             raise ValueError(
-                'Can only set either character or codepoints with one label() call. '
-                'Use separate calls to set both.'
-           )
+                'Can only set one of character, codepoint, tag or comment with one label() call. '
+                'Use separate calls to set more.'
+            )
         # default action: label chars with font encoding
-        if not codepoint_from and not char_from and self.encoding:
+        if nargs == 0 and self.encoding:
             char_from = encoder(self.encoding)
         if overwrite or not self.encoding:
             if char_from:
@@ -910,22 +901,26 @@ class Font:
             elif codepoint_from:
                 self.encoding = codepoint_from.name
         if codepoint_from:
-            # update glyph labels
-            encoding = codepoint_from
-            if encoding is not None:
-                font = font.modify(glyphs=tuple(
-                    _glyph.label(codepoint_from=encoding, overwrite=overwrite)
-                    for _glyph in self._glyphs
-                ))
+            return self.modify(glyphs=tuple(
+                _glyph.label(codepoint_from=codepoint_from, overwrite=overwrite)
+                for _glyph in self._glyphs
+            ))
         if char_from:
-            # update glyph labels
-            encoding = char_from
-            if encoding is not None:
-                font = font.modify(glyphs=tuple(
-                    _glyph.label(char_from=encoding, overwrite=overwrite)
-                    for _glyph in self._glyphs
-                ))
-        return font
+            return self.modify(glyphs=tuple(
+                _glyph.label(char_from=char_from, overwrite=overwrite)
+                for _glyph in self._glyphs
+            ))
+        if tag_from:
+            return self.modify(glyphs=tuple(
+                _glyph.label(tag_from=tag_from, overwrite=overwrite)
+                for _glyph in self._glyphs
+            ))
+        if comment_from:
+            return self.modify(glyphs=tuple(
+                _glyph.label(comment_from=comment_from, overwrite=overwrite)
+                for _glyph in self._glyphs
+            ))
+        return self
 
     # need converter from string to set of labels to script this
     #@scriptable
