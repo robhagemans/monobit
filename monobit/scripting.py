@@ -10,6 +10,7 @@ import os
 import logging
 from contextlib import contextmanager
 from functools import wraps, partial
+from types import SimpleNamespace as Namespace
 
 
 class ArgumentError(TypeError):
@@ -190,9 +191,13 @@ _CONVERTER = {
 
 
 ###################################################################################################
+# argument parser
+
+ARG_PREFIX = '--'
+FALSE_PREFIX = 'no-'
 
 
-def split_argv(*command_words):
+def _split_argv(*command_words):
     """Split argument list in command components."""
     part_argv = []
     for arg in sys.argv[1:]:
@@ -201,6 +206,78 @@ def split_argv(*command_words):
             part_argv = []
         part_argv.append(arg)
     yield part_argv
+
+
+def parse_subcommands(commands, global_options):
+    """Split argument list in command components and their options."""
+    # global arguments - these get added here wherever they occur in the argv list
+    global_args = Namespace(
+        command='',
+        args=[],
+        kwargs={},
+    )
+    command_args = []
+    for subargv in _split_argv(*commands):
+        # if no first command specified, use 'load'
+        command = 'load'
+        if subargv and subargv[0] in commands:
+            command = subargv.pop(0)
+        operation = commands[command]
+        args = []
+        kwargs = {}
+        expect_value = False
+        for arg in subargv:
+            if arg.startswith(ARG_PREFIX):
+                key = arg[len(ARG_PREFIX):]
+                key, _, value = key.partition('=')
+                expect_value = not bool(value)
+                # boolean flag prefixed with --no-
+                if key.startswith(FALSE_PREFIX):
+                    key = key[len(FALSE_PREFIX):]
+                    kwargs[key] = False
+                    expect_value = False
+                else:
+                    try:
+                        argtype, doc = global_options[key]
+                    except KeyError:
+                        pass
+                    else:
+                        # being lazy here, I don't need anything global but bools for now
+                        assert argtype == bool
+                        global_args.kwargs[key] = True
+                        expect_value = False
+                        continue
+                    try:
+                        argtype, doc = operation.script_args[key]
+                    except KeyError:
+                        pass
+                    else:
+                        if argtype == bool:
+                            kwargs[key] = True
+                            expect_value = False
+                    # record the key even if still expecting a value, will default to empty
+                    kwargs[key] = value
+            elif expect_value:
+                value = arg
+                kwargs[key] = value
+            else:
+                # positional argument
+                args.append(arg)
+        command_args.append(Namespace(
+            command=command,
+            args=args,
+            kwargs=kwargs
+        ))
+    return command_args, global_args
+
+
+def print_option_help(name, vartype, doc, tab, add_unsetter=True):
+    if vartype == bool:
+        print(f'{ARG_PREFIX}{name}\t{doc}'.expandtabs(tab))
+        if add_unsetter:
+            print(f'{ARG_PREFIX}{FALSE_PREFIX}{name}\tunset {ARG_PREFIX}{name}'.expandtabs(tab))
+    else:
+        print(f'{ARG_PREFIX}{name}=...\t{doc}'.expandtabs(tab))
 
 
 ###################################################################################################

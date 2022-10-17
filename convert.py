@@ -6,11 +6,11 @@ Apply operation to bitmap font
 
 import sys
 import logging
-
 from types import SimpleNamespace as Namespace
+from pathlib import Path
 
 import monobit
-from monobit.scripting import main, split_argv
+from monobit.scripting import main, parse_subcommands, print_option_help
 
 
 all_operations = {
@@ -20,77 +20,15 @@ all_operations = {
     **monobit.operations
 }
 
-ARG_PREFIX = '--'
-FALSE_PREFIX = 'no-'
-
 GLOBAL_FLAGS = {
-    'help': (bool, 'Print a help messasge and exit.'),
+    'help': (bool, 'Print a help message and exit.'),
+    'version': (bool, 'Show monobit version and exit.'),
     'debug': (bool, 'Enable debugging output.'),
 }
 
+command_args, global_args = parse_subcommands(all_operations, global_options=GLOBAL_FLAGS)
 
-command_argv = split_argv(*all_operations.keys())
-
-
-global_kwargs = {}
-global_args = []
-command_args = []
-
-
-for subargv in command_argv:
-    # if no first command specified, use 'load'
-    command = 'load'
-    if subargv and subargv[0] in all_operations:
-        command = subargv.pop(0)
-    operation = all_operations[command]
-    args = []
-    kwargs = {}
-    expect_value = False
-    for arg in subargv:
-        if arg.startswith(ARG_PREFIX):
-            key = arg[len(ARG_PREFIX):]
-            key, _, value = key.partition('=')
-            expect_value = not bool(value)
-            # boolean flag prefixed with --no-
-            if key.startswith(FALSE_PREFIX):
-                key = key[len(FALSE_PREFIX):]
-                kwargs[key] = False
-                expect_value = False
-            else:
-                try:
-                    argtype, doc = GLOBAL_FLAGS[key]
-                except KeyError:
-                    pass
-                else:
-                    # being lazy here, I don't need anything but bools for now
-                    assert argtype == bool
-                    global_kwargs[key] = True
-                    expect_value = False
-                    continue
-                try:
-                    argtype, doc = operation.script_args[key]
-                except KeyError:
-                    pass
-                else:
-                    if argtype == bool:
-                        kwargs[key] = True
-                        expect_value = False
-                # record the key even if still expecting a value, will default to empty
-                kwargs[key] = value
-        elif expect_value:
-            value = arg
-            kwargs[key] = value
-        else:
-            # positional argument
-            args.append(arg)
-    command_args.append(Namespace(
-        command=command,
-        args=args,
-        kwargs=kwargs
-    ))
-
-
-debug = 'debug' in global_kwargs
+debug = 'debug' in global_args.kwargs
 if debug:
     loglevel = logging.DEBUG
 else:
@@ -117,37 +55,51 @@ for number, args in enumerate(command_args):
 
 logging.debug(
     'Global args: %s %s',
-    ' '.join(global_args),
-    ' '.join(f'--{_k}={_v}' for _k, _v in global_kwargs.items())
+    ' '.join(global_args.args),
+    ' '.join(f'--{_k}={_v}' for _k, _v in global_args.kwargs.items())
 )
 
 
-def print_option_help(name, vartype, doc):
-    if vartype == bool:
-        print(f'{ARG_PREFIX}{name}\t{doc}'.expandtabs(20))
-        print(f'{ARG_PREFIX}{FALSE_PREFIX}{name}\tunset {ARG_PREFIX}{name}'.expandtabs(20))
-    else:
-        print(f'{ARG_PREFIX}{name}: {vartype.__name__}\t{doc}'.expandtabs(20))
+HELP_TAB = 25
+
+if 'help' in global_args.kwargs:
+    print(
+        f'usage: {Path(__file__).name} '
+        + '[INFILE] '
+        + ' '.join(f'[--{_op}]' for _op in GLOBAL_FLAGS)
+        + ' [COMMAND [OPTION...]] ...'
+        + ' [to OUTFILE]'
+    )
+    print()
+    print('Options')
+    print('=======')
+    print()
+    for name, (vartype, doc) in GLOBAL_FLAGS.items():
+        print_option_help(name, vartype, doc, HELP_TAB, add_unsetter=False)
 
 
-if 'help' in global_kwargs:
+    print()
+    print('Commands and their options')
+    print('==========================')
+    print()
     for op, func in all_operations.items():
         if op == 'to':
             continue
-
-        print(f'{op}\t{func.script_args.doc}'.expandtabs(20))
+        print(f'{op} '.ljust(HELP_TAB-1, '-') + f' {func.script_args.doc}')
         for name, vartype in func.script_args._script_args.items():
             doc = func.script_args._script_docs.get(name, '').strip()
-            print_option_help(name, vartype, doc)
+            print_option_help(name, vartype, doc, HELP_TAB)
         print()
-
         if op == 'load' and op in sys.argv[1:]:
             infile = sys.argv[sys.argv.index('load')+1]
             func = monobit.loaders.get_for_location(infile) #format=load_args.format
             for name, vartype in func.script_args._script_args.items():
                 doc = func.script_args._script_docs.get(name, '').strip()
-                print_option_help(name, vartype, doc)
+                print_option_help(name, vartype, doc, HELP_TAB)
             print()
+
+elif 'version' in global_args.kwargs:
+    print(f'monobit v{monobit.__version__}')
 
 else:
     with main(debug):
