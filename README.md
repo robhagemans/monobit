@@ -64,10 +64,9 @@ The converter transparently reads and writes `gz`, `bz2`, or `xz`-compressed fon
 and write `zip` and `tar` archives. Some font formats contain multiple fonts whereas others can
 contain only one; the converter will write multiple files to a directory or archive if needed.
 
-##### Modify utility
+It is also possible to apply various transformations on the font before saving it. Check
+`python3 convert.py --help` for usage.
 
-The modify utility reads a font file, performs an operation on it and writes it out.
-Check `python3 modify.py -h` for usage.
 
 ##### Banner utility
 
@@ -80,7 +79,7 @@ For example, the banner at the top of this `README` was made with
 
 `banner.py` has a number of rendering options - you can choose fonts, change the "ink" and "paper"
 characters, set a margin, scale text, and rotate by quarter turns.
-Check `python3 banner.py -h` for usage.
+Check `python3 banner.py --help` for usage.
 
 
 Supported formats
