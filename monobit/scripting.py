@@ -118,14 +118,6 @@ class ScriptArgs():
                 self._script_docs[arg] = doc
         self.doc = docs[0] if docs else ''
 
-    def pick(self, arg_namespace):
-        """Get arguments accepted by operation."""
-        return {
-            _name: _arg
-            for _name, _arg in vars(arg_namespace).items()
-            if _arg is not None and _name in self._script_args
-        }
-
     def to_str(self, arg_dict):
         """Represent converter parameters."""
         return (
@@ -158,6 +150,10 @@ class ScriptArgs():
             self._script_docs[arg]
         )
 
+    def __contains__(self, arg):
+        return arg in self._script_args
+
+
 ###################################################################################################
 # script type converters
 
@@ -169,7 +165,6 @@ def tuple_int(tup):
 
 rgb = tuple_int
 pair = tuple_int
-
 
 def any_int(int_str):
     """Int-like or string in any representation."""
@@ -189,48 +184,16 @@ def Any(var):
     return var
 
 
-###################################################################################################
-
-
 _CONVERTER = {
     int: any_int
 }
 
 
-def add_script_args(parser, scriptable, positional=()):
-    """Add scriptable function arguments to argparser."""
-    name = scriptable.script_args.name
-    script_args = scriptable.script_args
-    header = f'{name}-options'
-    group = parser.add_argument_group(header)
-    for arg, _type, doc in script_args:
-        argname = arg.strip('_').replace('_', '-')
-        if argname in positional:
-            converter = _CONVERTER.get(_type, _type)
-            group.add_argument(f'{arg}', help=doc, nargs='?', type=converter)
-        elif _type == bool:
-            group.add_argument(f'--{argname}', dest=arg, help=doc, action='store_true')
-            group.add_argument(
-                f'--no-{argname}', dest=arg, help=f'unset --{argname}', action='store_false'
-            )
-        else:
-            converter = _CONVERTER.get(_type, _type)
-            group.add_argument(f'--{argname}', dest=arg, help=doc, type=converter)
-    return group
+###################################################################################################
 
 
-def parse_converter_args(parser, converter, arglist):
-    """Add a converrter's argument to parser and retrieve values."""
-    if converter:
-        add_script_args(parser, converter)
-        args, _ = parser.parse_known_args(arglist)
-        return converter.script_args.pick(args)
-    return {}
-
-
-
-# split argument list in command components
 def split_argv(*command_words):
+    """Split argument list in command components."""
     part_argv = []
     for arg in sys.argv[1:]:
         if arg in command_words:
