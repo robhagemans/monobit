@@ -13,76 +13,44 @@ import monobit
 from monobit.scripting import main, parse_subcommands, print_option_help
 
 
-all_operations = {
+operations = {
     'load': monobit.load,
     'save': monobit.save,
     'to': monobit.save,
     **monobit.operations
 }
 
-GLOBAL_FLAGS = {
+global_options = {
     'help': (bool, 'Print a help message and exit.'),
     'version': (bool, 'Show monobit version and exit.'),
     'debug': (bool, 'Enable debugging output.'),
 }
 
-command_args, global_args = parse_subcommands(all_operations, global_options=GLOBAL_FLAGS)
-
-debug = 'debug' in global_args.kwargs
-if debug:
-    loglevel = logging.DEBUG
-else:
-    loglevel = logging.WARNING
-logging.basicConfig(level=loglevel, format='%(levelname)s: %(message)s')
-
-
-# only global kwargs or nothing preceding a load command
-if len(command_args) > 1 and (
-        command_args[0].command == command_args[1].command == 'load'
-        and not command_args[0].args and not command_args[0].kwargs
-    ):
-    logging.debug('Dropping empty first command followed by `load`')
-    command_args.pop(0)
-
-for number, args in enumerate(command_args):
-    logging.debug(
-        'Command #%d: %s %s %s',
-        number,
-        args.command,
-        ' '.join(args.args),
-        ' '.join(f'--{_k}={_v}' for _k, _v in args.kwargs.items())
-    )
-
-logging.debug(
-    'Global args: %s %s',
-    ' '.join(global_args.args),
-    ' '.join(f'--{_k}={_v}' for _k, _v in global_args.kwargs.items())
+usage = (
+    f'usage: {Path(__file__).name} '
+    + '[INFILE] [LOAD-OPTIONS] '
+    + ' '.join(f'[--{_op}]' for _op in global_options)
+    + ' [COMMAND [OPTION...]] ...'
+    + ' [to [OUTFILE] [SAVE_OPTIONS]]'
 )
 
 
 HELP_TAB = 25
 
-if 'help' in global_args.kwargs:
-    print(
-        f'usage: {Path(__file__).name} '
-        + '[INFILE] '
-        + ' '.join(f'[--{_op}]' for _op in GLOBAL_FLAGS)
-        + ' [COMMAND [OPTION...]] ...'
-        + ' [to OUTFILE]'
-    )
+def print_help(usage, operations, global_options):
+    print(usage)
     print()
     print('Options')
     print('=======')
     print()
-    for name, (vartype, doc) in GLOBAL_FLAGS.items():
+    for name, (vartype, doc) in global_options.items():
         print_option_help(name, vartype, doc, HELP_TAB, add_unsetter=False)
-
 
     print()
     print('Commands and their options')
     print('==========================')
     print()
-    for op, func in all_operations.items():
+    for op, func in operations.items():
         if op == 'to':
             continue
         print(f'{op} '.ljust(HELP_TAB-1, '-') + f' {func.script_args.doc}')
@@ -98,18 +66,38 @@ if 'help' in global_args.kwargs:
                 print_option_help(name, vartype, doc, HELP_TAB)
             print()
 
-elif 'version' in global_args.kwargs:
-    print(f'monobit v{monobit.__version__}')
 
+command_args, global_args = parse_subcommands(operations, global_options=global_options)
+
+
+debug = 'debug' in global_args.kwargs
+if debug:
+    loglevel = logging.DEBUG
 else:
-    with main(debug):
+    loglevel = logging.WARNING
+logging.basicConfig(level=loglevel, format='%(levelname)s: %(message)s')
 
-        ###################################################################################################
-        # main operation
 
+with main(debug):
+
+    # only global kwargs or nothing preceding a load command
+    if len(command_args) > 1 and (
+            command_args[0].command == command_args[1].command == 'load'
+            and not command_args[0].args and not command_args[0].kwargs
+        ):
+        logging.debug('Dropping empty first command followed by `load`')
+        command_args.pop(0)
+
+    if 'help' in global_args.kwargs:
+        print_help(usage, operations, global_options)
+
+    elif 'version' in global_args.kwargs:
+        print(f'monobit v{monobit.__version__}')
+
+    else:
         fonts = []
         for args in command_args:
-            operation = all_operations[args.command]
+            operation = operations[args.command]
             if operation == monobit.load:
                 fonts += operation(*args.args, **args.kwargs)
             elif operation == monobit.save:
