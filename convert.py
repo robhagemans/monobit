@@ -79,7 +79,7 @@ with main(debug):
         ):
         command_args[0].command = 'load'
     # ensure last command is save
-    if command_args[-1] not in ('to', 'save'):
+    if command_args[-1].command not in ('to', 'save'):
         command_args.append(argrecord(command='save'))
 
     if 'help' in global_args.kwargs:
@@ -93,6 +93,7 @@ with main(debug):
         for args in command_args:
             if not args.command:
                 continue
+            logging.debug('Executing command `%s`', args.command)
             operation = operations[args.command]
             if operation == monobit.load:
                 fonts += operation(*args.args, **args.kwargs)
