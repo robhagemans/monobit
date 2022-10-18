@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """
 Draw contents of a binary file as bitmap to image
-(c) 2019 Rob Hagemans, licence: https://opensource.org/licenses/MIT
+(c) 2019--2022 Rob Hagemans, licence: https://opensource.org/licenses/MIT
 """
+
 import sys
 import argparse
 from PIL import Image, ImageDraw, ImageFont
@@ -10,6 +11,7 @@ from PIL import Image, ImageDraw, ImageFont
 def ceildiv(num, den):
     """Integer division, rounding up."""
     return -(-num // den)
+
 
 # parse command line
 parser = argparse.ArgumentParser()
@@ -32,6 +34,24 @@ parser.add_argument(
     help='total number of bytes to extract'
 )
 parser.add_argument(
+    '--image', default=False, action='store_true',
+    help='output as image instead of text'
+)
+
+# only apply to text
+
+parser.add_argument(
+    '--ink', '--foreground', '-fg', type=str, default='@',
+    help='character to use for ink/foreground (default: @)'
+)
+parser.add_argument(
+    '--paper', '--background', '-bg', type=str, default='-',
+    help='character to use for paper/background (default: -)'
+)
+
+# only apply to images
+
+parser.add_argument(
     '--padding', default=8, type=int,
     help='number of vertical pixels between character cells'
 )
@@ -42,18 +62,6 @@ parser.add_argument(
 parser.add_argument(
     '--scale', default=4, type=int,
     help='number of horizontal and vertical pixels in image that make up a pixel in the font'
-)
-parser.add_argument(
-    '--ink', '--foreground', '-fg', type=str, default='@',
-    help='character to use for ink/foreground (default: @)'
-)
-parser.add_argument(
-    '--paper', '--background', '-bg', type=str, default='-',
-    help='character to use for paper/background (default: -)'
-)
-parser.add_argument(
-    '--image', default=False, action='store_true',
-    help='output as image instead of text'
 )
 
 args = parser.parse_args()
