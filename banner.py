@@ -21,6 +21,11 @@ def unescape(text):
     # https://stackoverflow.com/questions/4020539/process-escape-sequences-in-a-string-in-python
     return escape_decode(text.encode('utf-8'))[0].decode('utf-8')
 
+def unescape_bytes(bytestr):
+    """Interpolate escape sequences."""
+    return escape_decode(bytestr)[0]
+
+
 # parse command line
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -98,7 +103,6 @@ with main(args.debug):
     else:
         # multiple options or \n give line breaks
         args.text = '\n'.join(args.text)
-        args.text = unescape(args.text)
     # foreground and backgound characters
     args.ink = unescape(args.ink)
     args.paper = unescape(args.paper)
@@ -115,7 +119,11 @@ with main(args.debug):
         # use string as a representation of bytes
         args.text = args.text.encode('latin-1', errors='ignore')
     elif args.encoding:
-        font = font.modify(encoding=args.encoding)
+        font = font.modify(encoding=args.encoding).label()
+    if isinstance(args.text, str):
+        args.text = unescape(args.text)
+    else:
+        args.text = unescape_bytes(args.text)
     sys.stdout.write(render_text(
         font, args.text, args.ink, args.paper,
         margin=args.margin, scale=args.scale, rotate=args.rotate, direction=args.direction,
