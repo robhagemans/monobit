@@ -10,7 +10,7 @@ from types import SimpleNamespace as Namespace
 from pathlib import Path
 
 import monobit
-from monobit.scripting import main, parse_subcommands, print_option_help
+from monobit.scripting import main, parse_subcommands, print_option_help, argrecord
 
 
 operations = {
@@ -80,13 +80,16 @@ logging.basicConfig(level=loglevel, format='%(levelname)s: %(message)s')
 
 with main(debug):
 
-    # only global kwargs or nothing preceding a load command
-    if len(command_args) > 1 and (
-            command_args[0].command == command_args[1].command == 'load'
-            and not command_args[0].args and not command_args[0].kwargs
+    assert len(command_args) > 0
+    # ensure first command is load
+    if not command_args[0].command and (
+            command_args[0].args or command_args[0].kwargs
+            or command_args[1].command != 'load'
         ):
-        logging.debug('Dropping empty first command followed by `load`')
-        command_args.pop(0)
+        command_args[0].command = 'load'
+    # ensure last command is save
+    if command_args[-1] not in ('to', 'save'):
+        command_args.append(argrecord(command='save'))
 
     if 'help' in global_args.kwargs:
         print_help(usage, operations, global_options)
@@ -97,6 +100,8 @@ with main(debug):
     else:
         fonts = []
         for args in command_args:
+            if not args.command:
+                continue
             operation = operations[args.command]
             if operation == monobit.load:
                 fonts += operation(*args.args, **args.kwargs)

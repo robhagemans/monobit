@@ -407,7 +407,7 @@ class Glyph:
         # do not record glyph history
         try:
             history = properties.pop('history')
-            logging.debug("Ignoring glyph history '%s'", history)
+            #logging.debug("Ignoring glyph history '%s'", history)
         except KeyError:
             pass
         return self.modify(
