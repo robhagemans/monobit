@@ -17,13 +17,12 @@ from monobit import render_text
 
 def unescape(text):
     """Interpolate escape sequences."""
-    # escape_decode is unofficial/unsupported
-    # https://stackoverflow.com/questions/4020539/process-escape-sequences-in-a-string-in-python
-    return escape_decode(text.encode('utf-8'))[0].decode('utf-8')
-
-def unescape_bytes(bytestr):
-    """Interpolate escape sequences."""
-    return escape_decode(bytestr)[0]
+    # escape_decode is undocumented/unsupported and will leave \u escapes untouched
+    # simpler variant - using documented/supported codecs
+    #   raw-unicode-escape encodes to latin-1, leaves existing backslashes untouched but escapes non-latin-1
+    #   (while unicode-escape would escape backslashes and all non-ascii)
+    #   unicode-escape decodes from latin-1 and unescapes standard c escapes, \x.. and \u.. \U..
+    return text.encode('raw-unicode-escape').decode('unicode_escape')
 
 
 # parse command line
@@ -106,6 +105,7 @@ with main(args.debug):
     # foreground and backgound characters
     args.ink = unescape(args.ink)
     args.paper = unescape(args.paper)
+    args.text = unescape(args.text)
     # take first font from pack
     font, *_ = monobit.load(args.font, format=args.format)
     # check if any characters are defined
@@ -116,14 +116,10 @@ with main(args.debug):
         )
         args.encoding = 'raw'
     if args.encoding == 'raw':
-        # use string as a representation of bytes
-        args.text = args.text.encode('latin-1', errors='ignore')
+        # use string as a representation of bytes, replace anything with more than 8-bit codepoints
+        args.text = args.text.encode('latin-1', errors='replace')
     elif args.encoding:
         font = font.modify(encoding=args.encoding).label()
-    if isinstance(args.text, str):
-        args.text = unescape(args.text)
-    else:
-        args.text = unescape_bytes(args.text)
     sys.stdout.write(render_text(
         font, args.text, args.ink, args.paper,
         margin=args.margin, scale=args.scale, rotate=args.rotate, direction=args.direction,
