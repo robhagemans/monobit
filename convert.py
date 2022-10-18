@@ -68,18 +68,9 @@ def print_help(usage, operations, global_options):
 
 
 command_args, global_args = parse_subcommands(operations, global_options=global_options)
-
-
 debug = 'debug' in global_args.kwargs
-if debug:
-    loglevel = logging.DEBUG
-else:
-    loglevel = logging.WARNING
-logging.basicConfig(level=loglevel, format='%(levelname)s: %(message)s')
-
 
 with main(debug):
-
     assert len(command_args) > 0
     # ensure first command is load
     if not command_args[0].command and (

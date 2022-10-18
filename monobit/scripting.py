@@ -280,6 +280,13 @@ def print_option_help(name, vartype, doc, tab, add_unsetter=True):
 @contextmanager
 def main(debug=False):
     """Main script context."""
+    # set log level
+    if debug:
+        loglevel = logging.DEBUG
+    else:
+        loglevel = logging.WARNING
+    logging.basicConfig(level=loglevel, format='%(levelname)s: %(message)s')
+    # run main script
     try:
         yield
     except BrokenPipeError:

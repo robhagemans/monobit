@@ -82,13 +82,6 @@ parser.add_argument(
 args = parser.parse_args()
 
 
-if args.debug:
-    loglevel = logging.DEBUG
-else:
-    loglevel = logging.WARNING
-logging.basicConfig(level=loglevel, format='%(levelname)s: %(message)s')
-
-
 with main(args.debug):
     # codepage chart
     if args.chart:
