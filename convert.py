@@ -37,7 +37,7 @@ usage = (
 
 HELP_TAB = 25
 
-def print_help(usage, operations, global_options):
+def print_help(usage, command_args, global_options):
     print(usage)
     print()
     print('Options')
@@ -50,17 +50,27 @@ def print_help(usage, operations, global_options):
     print('Commands and their options')
     print('==========================')
     print()
-    for op, func in operations.items():
-        if op == 'to':
+    for ns in command_args:
+        op = ns.command
+        if not op:
             continue
+        func = operations[op]
         print(f'{op} '.ljust(HELP_TAB-1, '-') + f' {func.script_args.doc}')
         for name, vartype in func.script_args._script_args.items():
             doc = func.script_args._script_docs.get(name, '').strip()
             print_option_help(name, vartype, doc, HELP_TAB)
         print()
-        if op == 'load' and op in sys.argv[1:]:
-            infile = sys.argv[sys.argv.index('load')+1]
-            func = monobit.loaders.get_for_location(infile) #format=load_args.format
+        if op in ('load', 'save', 'to'):
+            if ns.args:
+                file = ns.args[0]
+            else:
+                file = ns.kwargs.get('infile', '')
+            format = ns.kwargs.get('format', '')
+            print(f'options for `{op} {file}' + (f' --format={format}' if format else '') + '`')
+            if op == 'load':
+                func = monobit.loaders.get_for_location(file, format=format)
+            else:
+                func = monobit.savers.get_for_location(file, format=format, do_open=False)
             for name, vartype in func.script_args._script_args.items():
                 doc = func.script_args._script_docs.get(name, '').strip()
                 print_option_help(name, vartype, doc, HELP_TAB)
@@ -83,7 +93,7 @@ with main(debug):
         command_args.append(argrecord(command='save'))
 
     if 'help' in global_args.kwargs:
-        print_help(usage, operations, global_options)
+        print_help(usage, command_args, global_options)
 
     elif 'version' in global_args.kwargs:
         print(f'monobit v{monobit.__version__}')
