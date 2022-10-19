@@ -46,14 +46,14 @@ def _get_context_help(rec):
         func = monobit.savers.get_for_location(file, format=format, do_open=False)
     return func.script_args
 
-def help(usage, command_args, global_options):
+def help(command_args):
     """Print the usage help message."""
     context_help = {
         _rec.command: _get_context_help(_rec)
         for _rec in command_args
         if _rec.command in ('load', 'save', 'to')
     }
-    print_help(usage, command_args, global_options, context_help)
+    print_help(command_args, usage, operations, global_options, context_help)
 
 def version():
     """Print the version string."""
@@ -65,25 +65,24 @@ debug = 'debug' in global_args.kwargs
 
 
 with main(debug):
-    assert len(command_args) > 0
-    # ensure first command is load
-    if not command_args[0].command and (
-            command_args[0].args or command_args[0].kwargs
-            or command_args[1].command != 'load'
-        ):
-        command_args[0].command = 'load'
-        command_args[0].func = operations['load']
-    # ensure last command is save
-    if command_args[-1].command not in ('to', 'save'):
-        command_args.append(argrecord(command='save', func=operations['save']))
-
     if 'help' in global_args.kwargs:
-        help(usage, command_args, global_options)
+        help(command_args)
 
     elif 'version' in global_args.kwargs:
         version()
 
     else:
+        # ensure first command is load
+        if not command_args[0].command and (
+                command_args[0].args or command_args[0].kwargs
+                or len(command_args) == 1 or command_args[1].command != 'load'
+            ):
+            command_args[0].command = 'load'
+            command_args[0].func = operations['load']
+        # ensure last command is save
+        if command_args[-1].command not in ('to', 'save'):
+            command_args.append(argrecord(command='save', func=operations['save']))
+
         fonts = []
         for args in command_args:
             if not args.command:

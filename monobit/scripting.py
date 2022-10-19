@@ -284,8 +284,7 @@ def _print_option_help(name, vartype, doc, tab, add_unsetter=True):
     else:
         print(f'{ARG_PREFIX}{name}=...\t{doc}'.expandtabs(tab))
 
-
-def print_help(usage, command_args, global_options, context_help):
+def print_help(command_args, usage, operations, global_options, context_help):
     print(usage)
     print()
     print('Options')
@@ -294,25 +293,33 @@ def print_help(usage, command_args, global_options, context_help):
     for name, (vartype, doc) in global_options.items():
         _print_option_help(name, vartype, doc, HELP_TAB, add_unsetter=False)
 
-    print()
-    print('Commands and their options')
-    print('==========================')
-    print()
-    for ns in command_args:
-        op = ns.command
-        if not op:
-            continue
-        func = ns.func
-        print(f'{op} '.ljust(HELP_TAB-1, '-') + f' {func.script_args.doc}')
-        for name, vartype, doc in func.script_args:
-            _print_option_help(name, vartype, doc, HELP_TAB)
+    if not command_args or len(command_args) == 1 and not command_args[0].command:
         print()
-        if op in context_help:
-            context_args = context_help[op]
-            print(f'{context_args.name} '.ljust(HELP_TAB-1, '-') + f' {func.script_args.doc}')
-            for name, vartype, doc in context_args:
+        print('Commands')
+        print('========')
+        print()
+        for op, func in operations.items():
+            print(f'{op} '.ljust(HELP_TAB-1) + f' {func.script_args.doc}')
+    else:
+        print()
+        print('Commands and their options')
+        print('==========================')
+        print()
+        for ns in command_args:
+            op = ns.command
+            if not op:
+                continue
+            func = ns.func
+            print(f'{op} '.ljust(HELP_TAB-1, '-') + f' {func.script_args.doc}')
+            for name, vartype, doc in func.script_args:
                 _print_option_help(name, vartype, doc, HELP_TAB)
             print()
+            if op in context_help:
+                context_args = context_help[op]
+                print(f'{context_args.name} '.ljust(HELP_TAB-1, '-') + f' {func.script_args.doc}')
+                for name, vartype, doc in context_args:
+                    _print_option_help(name, vartype, doc, HELP_TAB)
+                print()
 
 
 
