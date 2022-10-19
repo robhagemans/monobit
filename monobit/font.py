@@ -15,7 +15,7 @@ except ImportError:
     from functools import lru_cache
     cache = lru_cache()
 
-from .scripting import scriptable, get_scriptables
+from .scripting import scriptable, get_scriptables, Any
 from .glyph import Glyph, Coord, Bounds, number
 from .encoding import charmaps, encoder
 from .taggers import tagger
@@ -968,8 +968,35 @@ class Font:
         return self.modify(glyphs)
 
 
-    # WARNING: this shadows builtin set() in annotations for method definitions below
-    set = scriptable(modify, script_args=FontProperties.__annotations__, name='set')
+    # WARNING: this shadows builtin set() in any annotations for method definitions below
+    @scriptable(script_args={
+        _k.replace('_', '-'): _v
+        for _k, _v in FontProperties.__annotations__.items()
+    })
+    def set(self, **kwargs):
+        """Return a copy of the font with one or more recognised properties changed."""
+        return self.modify(**kwargs)
+
+    @scriptable
+    def set_property(self, key:str, value:Any):
+        """
+        Return a copy of the font with a property changed or added.
+
+        key: the property key to set or add
+        value: the new property value
+        """
+        kwargs = {key: value}
+        return self.modify(**kwargs)
+
+    @scriptable
+    def unset_property(self, key:str):
+        """
+        Return a copy of the font with a property removed.
+
+        key: the property key to remove
+        """
+        kwargs = {key: None}
+        return self.modify(**kwargs)
 
 
     ##########################################################################
