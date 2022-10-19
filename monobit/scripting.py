@@ -10,6 +10,7 @@ import os
 import logging
 from contextlib import contextmanager
 from functools import wraps, partial
+from types import SimpleNamespace
 
 
 class ArgumentError(TypeError):
@@ -69,7 +70,7 @@ def scriptable(
             result = func(*args, **conv_kwargs)
             # update history tracker
             if record and _record and result:
-                history = script_args.to_str(conv_kwargs)
+                history = script_args.get_history_item(*args, **conv_kwargs)
                 try:
                     result = tuple(_item.add(history=history) for _item in iter(result))
                 except TypeError:
@@ -115,31 +116,27 @@ class ScriptArgs():
                 continue
             arg, doc = line.split(':', 1)
             if arg.strip() in self._script_args:
-                self._script_docs[arg] = doc
+                self._script_docs[arg] = doc.strip()
         self.doc = docs[0] if docs else ''
 
-    def pick(self, arg_namespace):
-        """Get arguments accepted by operation."""
-        return {
-            _name: _arg
-            for _name, _arg in vars(arg_namespace).items()
-            if _arg is not None and _name in self._script_args
-        }
-
-    def to_str(self, arg_dict):
+    def get_history_item(self, *args, **kwargs):
         """Represent converter parameters."""
-        return (
-            self.name.replace('_', '-')
-            + ' ' + ' '.join(
-                f'{_k}={_v}'
-                for _k, _v in self._history_values.items()
+        return ' '.join(
+            _e for _e in (
+                self.name.replace('_', '-'),
+                # ' '.join(f'{_v}' for _v in args),
+                ' '.join(
+                    f'--{_k}={_v}'
+                    for _k, _v in self._history_values.items()
+                ),
+                ' '.join(
+                    f'--{_k}={_v}'
+                    for _k, _v in kwargs.items()
+                    # exclude non-operation parameters
+                    if _k in self._script_args
+                ),
             )
-            + ' ' + ' '.join(
-                f'{_k}={_v}'
-                for _k, _v in arg_dict.items()
-                # exclude non-operation parameters
-                if _k in self._script_args
-            )
+            if _e
         ).strip()
 
     def __iter__(self):
@@ -158,18 +155,26 @@ class ScriptArgs():
             self._script_docs[arg]
         )
 
+    def __contains__(self, arg):
+        return arg in self._script_args
+
+
 ###################################################################################################
 # script type converters
+
+class IntTuple(tuple):
+    """Tuple of ints with custom str conversion."""
+    def __str__(self):
+        return ','.join(str(_i) for _i in self)
 
 def tuple_int(tup):
     """Convert NxNx... or N,N,... to tuple."""
     if isinstance(tup, str):
-        return tuple(int(_s) for _s in tup.replace('x', ',').split(','))
-    return tuple([*tup])
+        return IntTuple(int(_s) for _s in tup.replace('x', ',').split(','))
+    return IntTuple([*tup])
 
 rgb = tuple_int
 pair = tuple_int
-
 
 def any_int(int_str):
     """Int-like or string in any representation."""
@@ -189,48 +194,76 @@ def Any(var):
     return var
 
 
-###################################################################################################
-
-
 _CONVERTER = {
     int: any_int
 }
 
 
-def add_script_args(parser, scriptable, positional=()):
-    """Add scriptable function arguments to argparser."""
-    name = scriptable.script_args.name
-    script_args = scriptable.script_args
-    header = f'{name}-options'
-    group = parser.add_argument_group(header)
-    for arg, _type, doc in script_args:
-        argname = arg.strip('_').replace('_', '-')
-        if argname in positional:
-            converter = _CONVERTER.get(_type, _type)
-            group.add_argument(f'{arg}', help=doc, nargs='?', type=converter)
-        elif _type == bool:
-            group.add_argument(f'--{argname}', dest=arg, help=doc, action='store_true')
-            group.add_argument(
-                f'--no-{argname}', dest=arg, help=f'unset --{argname}', action='store_false'
-            )
-        else:
-            converter = _CONVERTER.get(_type, _type)
-            group.add_argument(f'--{argname}', dest=arg, help=doc, type=converter)
-    return group
+###################################################################################################
+# argument parser
+
+ARG_PREFIX = '--'
+FALSE_PREFIX = 'no-'
+
+class IsSetFlag:
+    """Represent a parameter that is set with no value, converts to True if bool, not to other types."""
+    def __bool__(self):
+        return True
+    def __repr__(self):
+        return f'{type(self).__name__}()'
+    def __str__(self):
+        return TypeError('IsSetFlag does not convert to string.')
+
+SET = IsSetFlag()
 
 
-def parse_converter_args(parser, converter, arglist):
-    """Add a converrter's argument to parser and retrieve values."""
-    if converter:
-        add_script_args(parser, converter)
-        args, _ = parser.parse_known_args(arglist)
-        return converter.script_args.pick(args)
-    return {}
+def argrecord(command='', func=None, args=None, kwargs=None):
+    """Record holding arguments and options for one command."""
+    return SimpleNamespace(command=command, func=func, args=args or [], kwargs=kwargs or {})
 
 
+def parse_subcommands(operations, global_options):
+    """Split argument list in command components and their options with values."""
+    # global arguments - these get added here wherever they occur in the argv list
+    global_ns = argrecord()
+    command_args = []
+    for subargv in _split_argv(*operations.keys()):
+        command = ''
+        if subargv and subargv[0] in operations:
+            command = subargv.pop(0)
+        command_ns = argrecord(command=command, func=operations.get(command, ''))
+        expect_value = False
+        for arg in subargv:
+            if arg.startswith(ARG_PREFIX):
+                key = arg[len(ARG_PREFIX):]
+                key, _, value = key.partition('=')
+                # record the key as set even if still expecting a value
+                if key in global_options:
+                    ns = global_ns
+                else:
+                    ns = command_ns
+                # boolean flag prefixed with --no-
+                if key.startswith(FALSE_PREFIX):
+                    key = key[len(FALSE_PREFIX):]
+                    ns.kwargs[key] = False
+                    expect_value = False
+                else:
+                    ns.kwargs[key] = value or SET
+                    expect_value = value == ''
+            elif expect_value:
+                value = arg
+                ns.kwargs[key] = value
+                expect_value = False
+            else:
+                # positional argument
+                ns = command_ns
+                ns.args.append(arg)
+        command_args.append(command_ns)
+    return command_args, global_ns
 
-# split argument list in command components
-def split_argv(*command_words):
+
+def _split_argv(*command_words):
+    """Split argument list in command components."""
     part_argv = []
     for arg in sys.argv[1:]:
         if arg in command_words:
@@ -240,12 +273,69 @@ def split_argv(*command_words):
     yield part_argv
 
 
+# doc string alignment in usage text
+HELP_TAB = 25
+
+def _print_option_help(name, vartype, doc, tab, add_unsetter=True):
+    if vartype == bool:
+        print(f'{ARG_PREFIX}{name}\t{doc}'.expandtabs(tab))
+        if add_unsetter:
+            print(f'{ARG_PREFIX}{FALSE_PREFIX}{name}\tunset {ARG_PREFIX}{name}'.expandtabs(tab))
+    else:
+        print(f'{ARG_PREFIX}{name}=...\t{doc}'.expandtabs(tab))
+
+def print_help(command_args, usage, operations, global_options, context_help):
+    print(usage)
+    print()
+    print('Options')
+    print('=======')
+    print()
+    for name, (vartype, doc) in global_options.items():
+        _print_option_help(name, vartype, doc, HELP_TAB, add_unsetter=False)
+
+    if not command_args or len(command_args) == 1 and not command_args[0].command:
+        print()
+        print('Commands')
+        print('========')
+        print()
+        for op, func in operations.items():
+            print(f'{op} '.ljust(HELP_TAB-1) + f' {func.script_args.doc}')
+    else:
+        print()
+        print('Commands and their options')
+        print('==========================')
+        print()
+        for ns in command_args:
+            op = ns.command
+            if not op:
+                continue
+            func = ns.func
+            print(f'{op} '.ljust(HELP_TAB-1, '-') + f' {func.script_args.doc}')
+            for name, vartype, doc in func.script_args:
+                _print_option_help(name, vartype, doc, HELP_TAB)
+            print()
+            if op in context_help:
+                context_args = context_help[op]
+                print(f'{context_args.name} '.ljust(HELP_TAB-1, '-') + f' {func.script_args.doc}')
+                for name, vartype, doc in context_args:
+                    _print_option_help(name, vartype, doc, HELP_TAB)
+                print()
+
+
+
 ###################################################################################################
 # frame for main scripts
 
 @contextmanager
 def main(debug=False):
     """Main script context."""
+    # set log level
+    if debug:
+        loglevel = logging.DEBUG
+    else:
+        loglevel = logging.WARNING
+    logging.basicConfig(level=loglevel, format='%(levelname)s: %(message)s')
+    # run main script
     try:
         yield
     except BrokenPipeError:

@@ -17,9 +17,13 @@ from monobit import render_text
 
 def unescape(text):
     """Interpolate escape sequences."""
-    # escape_decode is unofficial/unsupported
-    # https://stackoverflow.com/questions/4020539/process-escape-sequences-in-a-string-in-python
-    return escape_decode(text.encode('utf-8'))[0].decode('utf-8')
+    # escape_decode is undocumented/unsupported and will leave \u escapes untouched
+    # simpler variant - using documented/supported codecs
+    #   raw-unicode-escape encodes to latin-1, leaves existing backslashes untouched but escapes non-latin-1
+    #   (while unicode-escape would escape backslashes and all non-ascii)
+    #   unicode-escape decodes from latin-1 and unescapes standard c escapes, \x.. and \u.. \U..
+    return text.encode('raw-unicode-escape').decode('unicode_escape')
+
 
 # parse command line
 parser = argparse.ArgumentParser()
@@ -78,13 +82,6 @@ parser.add_argument(
 args = parser.parse_args()
 
 
-if args.debug:
-    loglevel = logging.DEBUG
-else:
-    loglevel = logging.WARNING
-logging.basicConfig(level=loglevel, format='%(levelname)s: %(message)s')
-
-
 with main(args.debug):
     # codepage chart
     if args.chart:
@@ -98,10 +95,10 @@ with main(args.debug):
     else:
         # multiple options or \n give line breaks
         args.text = '\n'.join(args.text)
-        args.text = unescape(args.text)
     # foreground and backgound characters
     args.ink = unescape(args.ink)
     args.paper = unescape(args.paper)
+    args.text = unescape(args.text)
     # take first font from pack
     font, *_ = monobit.load(args.font, format=args.format)
     # check if any characters are defined
@@ -112,10 +109,10 @@ with main(args.debug):
         )
         args.encoding = 'raw'
     if args.encoding == 'raw':
-        # use string as a representation of bytes
-        args.text = args.text.encode('latin-1', errors='ignore')
+        # use string as a representation of bytes, replace anything with more than 8-bit codepoints
+        args.text = args.text.encode('latin-1', errors='replace')
     elif args.encoding:
-        font = font.modify(encoding=args.encoding)
+        font = font.modify(encoding=args.encoding).label()
     sys.stdout.write(render_text(
         font, args.text, args.ink, args.paper,
         margin=args.margin, scale=args.scale, rotate=args.rotate, direction=args.direction,
