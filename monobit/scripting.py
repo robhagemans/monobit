@@ -70,7 +70,7 @@ def scriptable(
             result = func(*args, **conv_kwargs)
             # update history tracker
             if record and _record and result:
-                history = script_args.to_str(conv_kwargs)
+                history = script_args.get_history_item(*args, **conv_kwargs)
                 try:
                     result = tuple(_item.add(history=history) for _item in iter(result))
                 except TypeError:
@@ -119,20 +119,24 @@ class ScriptArgs():
                 self._script_docs[arg] = doc
         self.doc = docs[0] if docs else ''
 
-    def to_str(self, arg_dict):
+    def get_history_item(self, *args, **kwargs):
         """Represent converter parameters."""
-        return (
-            self.name.replace('_', '-')
-            + ' ' + ' '.join(
-                f'{_k}={_v}'
-                for _k, _v in self._history_values.items()
+        return ' '.join(
+            _e for _e in (
+                self.name.replace('_', '-'),
+                ' '.join(
+                    f'--{_k}={_v}'
+                    for _k, _v in self._history_values.items()
+                ),
+                # ' '.join(f'{_v}' for _v in args),
+                ' '.join(
+                    f'--{_k}={_v}'
+                    for _k, _v in kwargs.items()
+                    # exclude non-operation parameters
+                    if _k in self._script_args
+                ),
             )
-            + ' ' + ' '.join(
-                f'{_k}={_v}'
-                for _k, _v in arg_dict.items()
-                # exclude non-operation parameters
-                if _k in self._script_args
-            )
+            if _e
         ).strip()
 
     def __iter__(self):
@@ -158,11 +162,16 @@ class ScriptArgs():
 ###################################################################################################
 # script type converters
 
+class IntTuple(tuple):
+    """Tuple of ints with custom str conversion."""
+    def __str__(self):
+        return ','.join(str(_i) for _i in self)
+
 def tuple_int(tup):
     """Convert NxNx... or N,N,... to tuple."""
     if isinstance(tup, str):
-        return tuple(int(_s) for _s in tup.replace('x', ',').split(','))
-    return tuple([*tup])
+        return IntTuple(int(_s) for _s in tup.replace('x', ',').split(','))
+    return IntTuple([*tup])
 
 rgb = tuple_int
 pair = tuple_int
