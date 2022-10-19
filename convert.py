@@ -10,7 +10,7 @@ from types import SimpleNamespace as Namespace
 from pathlib import Path
 
 import monobit
-from monobit.scripting import main, parse_subcommands, print_option_help, argrecord
+from monobit.scripting import main, parse_subcommands, print_help, argrecord
 
 
 operations = {
@@ -34,43 +34,7 @@ usage = (
     + ' [to [OUTFILE] [SAVE_OPTIONS]]'
 )
 
-
-HELP_TAB = 25
-
-def print_help(usage, command_args, global_options, context_help):
-    print(usage)
-    print()
-    print('Options')
-    print('=======')
-    print()
-    for name, (vartype, doc) in global_options.items():
-        print_option_help(name, vartype, doc, HELP_TAB, add_unsetter=False)
-
-    print()
-    print('Commands and their options')
-    print('==========================')
-    print()
-    for ns in command_args:
-        op = ns.command
-        if not op:
-            continue
-        func = operations[op]
-        print(f'{op} '.ljust(HELP_TAB-1, '-') + f' {func.script_args.doc}')
-        for name, vartype, doc in func.script_args:
-            #doc = func.script_args._script_docs.get(name, '').strip()
-            print_option_help(name, vartype, doc, HELP_TAB)
-        print()
-        if op in context_help:
-            context_args = context_help[op]
-            # print(f'options for `{op} {file}' + (f' --format={format}' if format else '') + '`')
-            print(f'{context_args.name} '.ljust(HELP_TAB-1, '-') + f' {func.script_args.doc}')
-            for name, vartype, doc in context_args:
-                #doc = func.script_args._script_docs.get(name, '').strip()
-                print_option_help(name, vartype, doc, HELP_TAB)
-            print()
-
-
-def get_context_help(rec):
+def _get_context_help(rec):
     if rec.args:
         file = rec.args[0]
     else:
@@ -82,9 +46,23 @@ def get_context_help(rec):
         func = monobit.savers.get_for_location(file, format=format, do_open=False)
     return func.script_args
 
+def help(usage, command_args, global_options):
+    """Print the usage help message."""
+    context_help = {
+        _rec.command: _get_context_help(_rec)
+        for _rec in command_args
+        if _rec.command in ('load', 'save', 'to')
+    }
+    print_help(usage, command_args, global_options, context_help)
+
+def version():
+    """Print the version string."""
+    print(f'monobit v{monobit.__version__}')
+
 
 command_args, global_args = parse_subcommands(operations, global_options=global_options)
 debug = 'debug' in global_args.kwargs
+
 
 with main(debug):
     assert len(command_args) > 0
@@ -94,20 +72,16 @@ with main(debug):
             or command_args[1].command != 'load'
         ):
         command_args[0].command = 'load'
+        command_args[0].func = operations['load']
     # ensure last command is save
     if command_args[-1].command not in ('to', 'save'):
-        command_args.append(argrecord(command='save'))
+        command_args.append(argrecord(command='save', func=operations['save']))
 
     if 'help' in global_args.kwargs:
-        context_help = {
-            _rec.command: get_context_help(_rec)
-            for _rec in command_args
-            if _rec.command in ('load', 'save', 'to')
-        }
-        print_help(usage, command_args, global_options, context_help)
+        help(usage, command_args, global_options)
 
     elif 'version' in global_args.kwargs:
-        print(f'monobit v{monobit.__version__}')
+        version()
 
     else:
         fonts = []

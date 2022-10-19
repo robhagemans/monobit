@@ -217,21 +217,21 @@ class IsSetFlag:
 SET = IsSetFlag()
 
 
-def argrecord(command='', args=None, kwargs=None):
+def argrecord(command='', func=None, args=None, kwargs=None):
     """Record holding arguments and options for one command."""
-    return SimpleNamespace(command=command, args=args or [], kwargs=kwargs or {})
+    return SimpleNamespace(command=command, func=func, args=args or [], kwargs=kwargs or {})
 
 
-def parse_subcommands(commands, global_options):
+def parse_subcommands(operations, global_options):
     """Split argument list in command components and their options with values."""
     # global arguments - these get added here wherever they occur in the argv list
     global_ns = argrecord()
     command_args = []
-    for subargv in _split_argv(*commands):
+    for subargv in _split_argv(*operations.keys()):
         command = ''
-        if subargv and subargv[0] in commands:
+        if subargv and subargv[0] in operations:
             command = subargv.pop(0)
-        command_ns = argrecord(command=command)
+        command_ns = argrecord(command=command, func=operations.get(command, ''))
         expect_value = False
         for arg in subargv:
             if arg.startswith(ARG_PREFIX):
@@ -273,13 +273,46 @@ def _split_argv(*command_words):
     yield part_argv
 
 
-def print_option_help(name, vartype, doc, tab, add_unsetter=True):
+# doc string alignment in usage text
+HELP_TAB = 25
+
+def _print_option_help(name, vartype, doc, tab, add_unsetter=True):
     if vartype == bool:
         print(f'{ARG_PREFIX}{name}\t{doc}'.expandtabs(tab))
         if add_unsetter:
             print(f'{ARG_PREFIX}{FALSE_PREFIX}{name}\tunset {ARG_PREFIX}{name}'.expandtabs(tab))
     else:
         print(f'{ARG_PREFIX}{name}=...\t{doc}'.expandtabs(tab))
+
+
+def print_help(usage, command_args, global_options, context_help):
+    print(usage)
+    print()
+    print('Options')
+    print('=======')
+    print()
+    for name, (vartype, doc) in global_options.items():
+        _print_option_help(name, vartype, doc, HELP_TAB, add_unsetter=False)
+
+    print()
+    print('Commands and their options')
+    print('==========================')
+    print()
+    for ns in command_args:
+        op = ns.command
+        if not op:
+            continue
+        func = ns.func
+        print(f'{op} '.ljust(HELP_TAB-1, '-') + f' {func.script_args.doc}')
+        for name, vartype, doc in func.script_args:
+            _print_option_help(name, vartype, doc, HELP_TAB)
+        print()
+        if op in context_help:
+            context_args = context_help[op]
+            print(f'{context_args.name} '.ljust(HELP_TAB-1, '-') + f' {func.script_args.doc}')
+            for name, vartype, doc in context_args:
+                _print_option_help(name, vartype, doc, HELP_TAB)
+            print()
 
 
 
