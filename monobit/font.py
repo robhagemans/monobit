@@ -640,12 +640,10 @@ class Font:
             if _glyph.char
         }
         # comments can be str (just global comment) or mapping of property comments
-        if not comments:
-            self._comments = {}
-        elif isinstance(comments, str):
-            self._comments = {'': comments}
-        else:
-            self._comments = {_k: _v for _k, _v in comments.items()}
+        if isinstance(comments, str):
+            properties['#'] = comments
+        elif comments:
+            properties.update({f'#{_k}': _v for _k, _v in comments.items()})
         # update properties
         # set encoding first so we can set labels
         # NOTE - we must be careful NOT TO ACCESS CACHED PROPERTIES
@@ -679,31 +677,31 @@ class Font:
         if glyphs is NOT_SET:
             glyphs = self._glyphs
         if comments is NOT_SET:
-            comments = self._comments
-        # properties are replaced keyword by keyword
-        # but comments (given as one keyword arg) are replaced wholesale
+            comments = self._get_comment_dict()
+        # comments and properties are replaced keyword by keyword
         return type(self)(
             tuple(glyphs),
             comments=comments,
             **{**self.properties, **kwargs}
         )
 
-    def add(
+    def append(
             self, glyphs=(), *,
             comments=None, **properties
         ):
         """Return a copy of the font with additions."""
         if not comments:
             comments = {}
-        for property, comment in comments.items():
-            if property in self._comments:
-                comments[property] = extend_string(self._comments[property], comment)
-        for property, value in properties.items():
-            if property in self._props:
-                properties[property] = extend_string(self._props[property], value)
+        for key, comment in comments.items():
+            old_comment = self.get_comments(key)
+            if old_comment:
+                comments[key] = extend_string(old_comment, comment)
+        for key, value in properties.items():
+            if key in self._props:
+                properties[key] = extend_string(self._props[key], value)
         return self.modify(
             self._glyphs + tuple(glyphs),
-            comments={**self._comments, **comments},
+            comments={**comments},
             **properties
         )
 
@@ -720,14 +718,14 @@ class Font:
             args.remove('comments')
             comments = {}
         except ValueError:
-            comments = self._comments
+            comments = self._get_comment_dict()
         return type(self)(
             glyphs,
             comments=comments,
             **{
                 _k: _v
                 for _k, _v in self.properties.items()
-                if _k not in args
+                if _k not in args and not _k.startswith('#')
             }
         )
 
@@ -746,17 +744,29 @@ class Font:
 
     @property
     def comments(self):
-        """Get global comments."""
-        return self._comments.get('', '')
+        """Get global comment."""
+        return getattr(self._props, f'#', '')
 
-    def get_comments(self, property=''):
+    def get_comments(self, key=''):
         """Get global or property comments."""
-        return self._comments.get(normalise_property(property), '')
+        return getattr(self._props, f'#{key}', '')
+
+    def _get_comment_dict(self):
+        """Get all global and property comments as a dict."""
+        return {
+            _k[1:]: self._props[_k]
+            for _k in self._props
+            if _k.startswith('#')
+        }
 
     @property
     def properties(self):
         """Non-defaulted properties in order of default definition list."""
-        return {_k: self._props[_k] for _k in self._props if not _k.startswith('_')}
+        return {
+            _k: self._props[_k]
+            for _k in self._props
+            if not _k.startswith('_') and not _k.startswith('#')
+        }
 
     def is_known_property(self, key):
         """Field is a recognised property."""

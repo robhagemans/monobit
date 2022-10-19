@@ -72,9 +72,9 @@ def scriptable(
             if record and _record and result:
                 history = script_args.get_history_item(*args, **conv_kwargs)
                 try:
-                    result = tuple(_item.add(history=history) for _item in iter(result))
+                    result = tuple(_item.append(history=history) for _item in iter(result))
                 except TypeError:
-                    result = result.add(history=history)
+                    result = result.append(history=history)
             return result
 
         _scriptable_func.script_args = script_args

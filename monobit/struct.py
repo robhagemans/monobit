@@ -88,6 +88,14 @@ class Props(SimpleNamespace):
     def __str__(self):
         return '\n'.join(f'{_k}: {_v}' for _k, _v in vars(self).items())
 
+    def __repr__(self):
+        return (
+            type(self).__name__
+            + '(\n    ' +
+            '\n    '.join(f'{_k}={_v!r},' for _k, _v in vars(self).items())
+            + '\n)'
+        )
+
 
 ##############################################################################
 # property sets with default values, override policy and type conversion
@@ -144,6 +152,17 @@ class DefaultProps(Props):
         # enable cacheing
         self._cache = {}
         self._frozen = True
+
+    def __repr__(self):
+        return (
+            type(self).__name__
+            + '(\n    ' +
+            '\n    '.join(
+                f'{_k}={_v!r},' for _k, _v in vars(self).items()
+                if not _k.startswith('_')
+            )
+            + '\n)'
+        )
 
     def _set_defaults(self):
         """If a type constructor is given in the annotations, use that to set the default."""

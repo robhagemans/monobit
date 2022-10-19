@@ -393,7 +393,7 @@ class Glyph:
             )
         return self
 
-    def add(
+    def append(
             self, *,
             comments=None, **properties
         ):
