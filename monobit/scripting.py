@@ -116,7 +116,7 @@ class ScriptArgs():
                 continue
             arg, doc = line.split(':', 1)
             if arg.strip() in self._script_args:
-                self._script_docs[arg] = doc
+                self._script_docs[arg] = doc.strip()
         self.doc = docs[0] if docs else ''
 
     def get_history_item(self, *args, **kwargs):
@@ -124,11 +124,11 @@ class ScriptArgs():
         return ' '.join(
             _e for _e in (
                 self.name.replace('_', '-'),
+                # ' '.join(f'{_v}' for _v in args),
                 ' '.join(
                     f'--{_k}={_v}'
                     for _k, _v in self._history_values.items()
                 ),
-                # ' '.join(f'{_v}' for _v in args),
                 ' '.join(
                     f'--{_k}={_v}'
                     for _k, _v in kwargs.items()

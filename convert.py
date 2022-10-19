@@ -37,7 +37,7 @@ usage = (
 
 HELP_TAB = 25
 
-def print_help(usage, command_args, global_options):
+def print_help(usage, command_args, global_options, context_help):
     print(usage)
     print()
     print('Options')
@@ -56,25 +56,31 @@ def print_help(usage, command_args, global_options):
             continue
         func = operations[op]
         print(f'{op} '.ljust(HELP_TAB-1, '-') + f' {func.script_args.doc}')
-        for name, vartype in func.script_args._script_args.items():
-            doc = func.script_args._script_docs.get(name, '').strip()
+        for name, vartype, doc in func.script_args:
+            #doc = func.script_args._script_docs.get(name, '').strip()
             print_option_help(name, vartype, doc, HELP_TAB)
         print()
-        if op in ('load', 'save', 'to'):
-            if ns.args:
-                file = ns.args[0]
-            else:
-                file = ns.kwargs.get('infile', '')
-            format = ns.kwargs.get('format', '')
-            print(f'options for `{op} {file}' + (f' --format={format}' if format else '') + '`')
-            if op == 'load':
-                func = monobit.loaders.get_for_location(file, format=format)
-            else:
-                func = monobit.savers.get_for_location(file, format=format, do_open=False)
-            for name, vartype in func.script_args._script_args.items():
-                doc = func.script_args._script_docs.get(name, '').strip()
+        if op in context_help:
+            context_args = context_help[op]
+            # print(f'options for `{op} {file}' + (f' --format={format}' if format else '') + '`')
+            print(f'{context_args.name} '.ljust(HELP_TAB-1, '-') + f' {func.script_args.doc}')
+            for name, vartype, doc in context_args:
+                #doc = func.script_args._script_docs.get(name, '').strip()
                 print_option_help(name, vartype, doc, HELP_TAB)
             print()
+
+
+def get_context_help(rec):
+    if rec.args:
+        file = rec.args[0]
+    else:
+        file = rec.kwargs.get('infile', '')
+    format = rec.kwargs.get('format', '')
+    if rec.command == 'load':
+        func = monobit.loaders.get_for_location(file, format=format)
+    else:
+        func = monobit.savers.get_for_location(file, format=format, do_open=False)
+    return func.script_args
 
 
 command_args, global_args = parse_subcommands(operations, global_options=global_options)
@@ -93,7 +99,12 @@ with main(debug):
         command_args.append(argrecord(command='save'))
 
     if 'help' in global_args.kwargs:
-        print_help(usage, command_args, global_options)
+        context_help = {
+            _rec.command: get_context_help(_rec)
+            for _rec in command_args
+            if _rec.command in ('load', 'save', 'to')
+        }
+        print_help(usage, command_args, global_options, context_help)
 
     elif 'version' in global_args.kwargs:
         print(f'monobit v{monobit.__version__}')
