@@ -431,7 +431,7 @@ class TextWriter:
         value = str(value)
         # write property comment
         if comments:
-            outstream.write('\n{indent}' + self._format_comment(comments) + '\n')
+            outstream.write(f'\n{indent}' + self._format_comment(comments) + '\n')
         if not key.startswith('_'):
             key = key.replace('_', '-')
         # write key-value pair
