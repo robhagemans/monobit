@@ -742,11 +742,6 @@ class Font:
             raise AttributeError(attr)
         return getattr(self._props, attr)
 
-    @property
-    def comments(self):
-        """Get global comment."""
-        return getattr(self._props, f'#', '')
-
     def get_comments(self, key=''):
         """Get global or property comments."""
         return getattr(self._props, f'#{key}', '')

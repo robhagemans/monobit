@@ -958,7 +958,7 @@ def _save_bdf(font, outstream):
     bdf_props = [
         ('STARTFONT', '2.1'),
     ] + [
-        ('COMMENT', _comment) for _comment in font.comments.splitlines()
+        ('COMMENT', _comment) for _comment in font.get_comments().splitlines()
     ] + [
         ('FONT', _create_xlfd_name(xlfd_props)),
         ('SIZE', f'{font.point_size} {font.dpi.x} {font.dpi.y}'),
