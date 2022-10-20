@@ -640,9 +640,11 @@ class Font:
             if _glyph.char
         }
         # comments can be str (just global comment) or mapping of property comments
-        if isinstance(comments, str):
+        if not comments:
+            pass
+        elif isinstance(comments, str):
             properties['#'] = comments
-        elif comments:
+        else:
             properties.update({f'#{_k}': _v for _k, _v in comments.items()})
         # update properties
         # set encoding first so we can set labels
@@ -984,38 +986,37 @@ class Font:
         return self.modify(**kwargs)
 
     @scriptable
-    def set_property(self, key:str, value:Any, *, append:bool=False):
+    def set_property(self, key:str, value:Any='', *, append:bool=False, remove:bool=False):
         """
         Return a copy of the font with a property changed or added.
 
         key: the property key to set or append a value to
         value: the new property value
+        append: append to existing string value, if any
+        remove: ignore value and remove key
         """
+        if remove:
+            value = None
         kwargs = {key: value}
-        if append:
+        if append and not remove:
             return self.append(**kwargs)
         return self.modify(**kwargs)
 
     @scriptable
-    def unset_property(self, key:str):
-        """
-        Return a copy of the font with a property removed.
-
-        key: the property key to remove
-        """
-        kwargs = {key: None}
-        return self.modify(**kwargs)
-
-    @scriptable
-    def set_comment(self, value:str, *, key:str='', append:bool=False):
+    def set_comment(self, value:str, *, key:str='', append:bool=False, remove:bool=False):
         """
         Return a copy of the font with a comment changed, added or removed.
 
         key: the property key to set or append a comment to, default is global comment
         value: the new comment
+        append: append to existing comment, if any
+        remove: ignore value and remove comment
         """
+        if remove:
+            # DefaultProps will skip keys with None values
+            value = None
         comments = {key: value}
-        if append:
+        if append and not remove:
             return self.append(comments=comments)
         return self.modify(comments=comments)
 
