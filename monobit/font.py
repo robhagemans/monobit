@@ -676,12 +676,13 @@ class Font:
         """Return a copy of the font with changes."""
         if glyphs is NOT_SET:
             glyphs = self._glyphs
-        if comments is NOT_SET:
-            comments = self._get_comment_dict()
+        old_comments = self._get_comment_dict()
+        if comments is not NOT_SET:
+            old_comments.update(comments)
         # comments and properties are replaced keyword by keyword
         return type(self)(
             tuple(glyphs),
-            comments=comments,
+            comments=old_comments,
             **{**self.properties, **kwargs}
         )
 
@@ -983,14 +984,16 @@ class Font:
         return self.modify(**kwargs)
 
     @scriptable
-    def set_property(self, key:str, value:Any):
+    def set_property(self, key:str, value:Any, *, append:bool=False):
         """
         Return a copy of the font with a property changed or added.
 
-        key: the property key to set or add
+        key: the property key to set or append a value to
         value: the new property value
         """
         kwargs = {key: value}
+        if append:
+            return self.append(**kwargs)
         return self.modify(**kwargs)
 
     @scriptable
@@ -1002,6 +1005,19 @@ class Font:
         """
         kwargs = {key: None}
         return self.modify(**kwargs)
+
+    @scriptable
+    def set_comment(self, value:str, *, key:str='', append:bool=False):
+        """
+        Return a copy of the font with a comment changed, added or removed.
+
+        key: the property key to set or append a comment to, default is global comment
+        value: the new comment
+        """
+        comments = {key: value}
+        if append:
+            return self.append(comments=comments)
+        return self.modify(comments=comments)
 
 
     ##########################################################################
