@@ -110,7 +110,7 @@ def _convert_glyph(key, value, comment):
     char = _convert_label(key)
     return Glyph.from_hex(value, width, height).modify(
         char=char, tags=([key] if not char else []),
-        comments='\n'.join(_clean_comment(comment))
+        comment='\n'.join(_clean_comment(comment))
     )
 
 
@@ -197,7 +197,7 @@ def _format_glyph(glyph):
     """Format glyph line for hex file."""
     return (
         # glyph comment
-        ('' if not glyph.comments else '\n' + _format_comment(glyph.comments, comm_char='#') + '\n')
+        ('' if not glyph.comment else '\n' + _format_comment(glyph.comment, comm_char='#') + '\n')
         + '{}:{}\n'.format(
             # label
             u','.join(f'{ord(_c):04X}' for _c in glyph.char),

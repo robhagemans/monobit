@@ -268,7 +268,7 @@ class Glyph:
 
     def __init__(
             self, pixels=(), *,
-            labels=(), codepoint=b'', char='', tags=(), comments='',
+            labels=(), codepoint=b'', char='', tags=(), comment='',
             **properties
         ):
         """Create glyph from tuple of tuples."""
@@ -291,10 +291,10 @@ class Glyph:
         self._codepoint = Codepoint(codepoint)
         self._char = Char(char)
         self._tags = tuple(Tag(_tag) for _tag in tags if _tag)
-        # comments
-        if not isinstance(comments, str):
+        # comment
+        if not isinstance(comment, str):
             raise TypeError('Glyph comment must be a single string.')
-        self._comments = comments
+        self._comment = comment
         # recognised properties
         # access needed for calculated properties
         self._props = GlyphProperties(_pixels=self._pixels, **properties)
@@ -309,9 +309,9 @@ class Glyph:
             f"char={repr(self._char)}" if self._char else '',
             f"codepoint={repr(self._codepoint)}" if self._codepoint else '',
             f"tags={repr(self._tags)}" if self._tags else '',
-            "comments=({})".format(
-                "\n  '" + "\n',\n  '".join(self.comments.splitlines()) + "'"
-            ) if self._comments else '',
+            "comment=({})".format(
+                "\n  '" + "\n',\n  '".join(self.comment.splitlines()) + "'"
+            ) if self._comment else '',
             ', '.join(f'{_k}={_v}' for _k, _v in self.properties.items()),
             "pixels=({})".format(
                 "\n  '{}'\n".format(
@@ -330,7 +330,7 @@ class Glyph:
 
     def modify(
             self, pixels=NOT_SET, *,
-            labels=(), tags=NOT_SET, char=NOT_SET, codepoint=NOT_SET, comments=NOT_SET,
+            labels=(), tags=NOT_SET, char=NOT_SET, codepoint=NOT_SET, comment=NOT_SET,
             **kwargs
         ):
         """Return a copy of the glyph with changes."""
@@ -342,15 +342,15 @@ class Glyph:
             codepoint = self._codepoint
         if char is NOT_SET:
             char = self._char
-        if comments is NOT_SET:
-            comments = self._comments
+        if comment is NOT_SET:
+            comment = self._comment
         return type(self)(
             tuple(pixels),
             labels=labels,
             codepoint=Codepoint(codepoint),
             char=Char(char),
             tags=tuple(Tag(_t) for _t in tags),
-            comments=comments,
+            comment=comment,
             **{**self.properties, **kwargs}
         )
 
@@ -360,12 +360,12 @@ class Glyph:
             overwrite=False
         ):
         """
-           Set labels or comments using provided encoder or tagger object.
+           Set labels or comment using provided encoder or tagger object.
 
            char_from: Encoder object used to set char labels
            codepoint_from: Encoder object used to set codepoint labels
            tag_from: Tagger object used to set tag labels
-           comment_from: Tagger object used to set comments
+           comment_from: Tagger object used to set comment
            overwrite: overwrite codepoint or char if already given
         """
         if sum(
@@ -389,18 +389,18 @@ class Glyph:
             )
         if comment_from:
             return self.modify(
-                comments=extend_string(self.comments, comment_from.comment(*labels))
+                comment=extend_string(self.comment, comment_from.comment(*labels))
             )
         return self
 
     def append(
             self, *,
-            comments=None, **properties
+            comment=None, **properties
         ):
         """Return a copy of the glyph with changes."""
-        if not comments:
-            comments = ''
-        comments = extend_string(self._comments, comments)
+        if not comment:
+            comment = ''
+        comment = extend_string(self._comment, comment)
         for property, value in properties.items():
             if property in self._props:
                 properties[property] = extend_string(self._props[property], value)
@@ -411,12 +411,12 @@ class Glyph:
         except KeyError:
             pass
         return self.modify(
-            comments=comments,
+            comment=comment,
             **properties
         )
 
     def drop(self, *args):
-        """Remove labels, comments or properties."""
+        """Remove labels, comment or properties."""
         args = list(args)
         try:
             args.remove('pixels')
@@ -439,10 +439,10 @@ class Glyph:
         except ValueError:
             tags = self._tags
         try:
-            args.remove('comments')
-            comments = ''
+            args.remove('comment')
+            comment = ''
         except ValueError:
-            comments = self._comments
+            comment = self._comment
         args = [normalise_property(_arg) for _arg in args]
         properties = {
             _k: _v
@@ -452,7 +452,7 @@ class Glyph:
         return type(self)(
             pixels,
             tags=tags, codepoint=codepoint, char=char,
-            comments=comments,
+            comment=comment,
             **properties
         )
 
@@ -471,8 +471,8 @@ class Glyph:
         return getattr(self._props, attr)
 
     @property
-    def comments(self):
-        return self._comments
+    def comment(self):
+        return self._comment
 
     @classmethod
     def default(cls, property):
