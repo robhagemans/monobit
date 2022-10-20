@@ -696,7 +696,7 @@ class Font:
         if not comments:
             comments = {}
         for key, comment in comments.items():
-            old_comment = self.get_comments(key)
+            old_comment = self.get_comment(key)
             if old_comment:
                 comments[key] = extend_string(old_comment, comment)
         for key, value in properties.items():
@@ -745,8 +745,8 @@ class Font:
             raise AttributeError(attr)
         return getattr(self._props, attr)
 
-    def get_comments(self, key=''):
-        """Get global or property comments."""
+    def get_comment(self, key=''):
+        """Get global or property comment."""
         return getattr(self._props, f'#{key}', '')
 
     def _get_comment_dict(self):

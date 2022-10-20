@@ -151,8 +151,8 @@ def split_global_comment(lines):
 def _save_hex(font, outstream, fits):
     """Save 8x16 multi-cell font to Unifont or PC-BASIC Extended .HEX file."""
     # global comment
-    if font.get_comments():
-        outstream.write(_format_comment(font.get_comments(), comm_char='#') + '\n\n')
+    if font.get_comment():
+        outstream.write(_format_comment(font.get_comment(), comm_char='#') + '\n\n')
     # ensure unicode labels exist if encoding is defined
     font = font.label()
     # glyphs

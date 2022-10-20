@@ -474,8 +474,8 @@ class YaffWriter(TextWriter, YaffParams):
                 outstream.write(BOUNDARY_MARKER + '\n')
             logging.debug('Writing %s to section #%d', font.name, number)
             # write global comment
-            if font.get_comments():
-                outstream.write(self._format_comment(font.get_comments()) + '\n\n')
+            if font.get_comment():
+                outstream.write(self._format_comment(font.get_comment()) + '\n\n')
             # we always output name, font-size and spacing
             # plus anything that is different from the default
             props = {
@@ -490,7 +490,7 @@ class YaffWriter(TextWriter, YaffParams):
             if props:
                 # write recognised yaff properties first, in defined order
                 for key, value in props.items():
-                    self._write_property(outstream, key, value, font.get_comments(key))
+                    self._write_property(outstream, key, value, font.get_comment(key))
                 outstream.write('\n')
             for glyph in font.glyphs:
                 self._write_glyph(outstream, glyph)

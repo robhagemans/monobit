@@ -107,8 +107,8 @@ class DrawWriter(TextWriter, DrawParams):
         # ensure char labels are set
         font = font.label(char_from=font.encoding)
         # write global comment
-        if font.get_comments():
-            outstream.write(self._format_comment(font.get_comments()) + '\n\n')
+        if font.get_comment():
+            outstream.write(self._format_comment(font.get_comment()) + '\n\n')
         # write glyphs
         for glyph in font.glyphs:
             if not glyph.char:

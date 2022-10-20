@@ -210,7 +210,7 @@ def _convert_to_flf(font, hardblank='$'):
         # > (to accommodate endmarks as described later.)
         max_length=2 + max(_g.advance_width for _g in font.glyphs),
         # get length of global comment
-        comment_lines=len(font.get_comments().splitlines()),
+        comment_lines=len(font.get_comment().splitlines()),
         # > The Print_Direction parameter tells which direction the font is to be
         # > printed by default.  A value of 0 means left-to-right, and 1 means
         # > right-to-left.  If this parameter is absent, 0 (left-to-right) is assumed.
@@ -248,7 +248,7 @@ def _convert_to_flf(font, hardblank='$'):
         )
         for _g in glyphs
     ]
-    return glyphs, props, font.get_comments()
+    return glyphs, props, font.get_comment()
 
 def _write_flf(outstream, flf_glyphs, flf_props, comments, ink='#', paper=' ', hardblank='$'):
     """Write out a figlet font file."""
