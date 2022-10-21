@@ -37,7 +37,7 @@ def load_figlet(instream, where=None, *, ink:str=''):
     logging.info('yaff properties:')
     for line in str(props).splitlines():
         logging.info('    ' + line)
-    return Font(glyphs, comments=comments, **vars(props))
+    return Font(glyphs, comment=comments, **vars(props))
 
 @savers.register(linked=load_figlet)
 def save_figlet(fonts, outstream, where=None):

@@ -620,7 +620,7 @@ class FontProperties(DefaultProps):
 class Font:
     """Representation of font glyphs and metadata."""
 
-    def __init__(self, glyphs=(), *, comments=None, **properties):
+    def __init__(self, glyphs=(), *, comment=None, **properties):
         """Create new font."""
         self._glyphs = tuple(glyphs)
         # construct lookup tables
@@ -639,13 +639,13 @@ class Font:
             for _index, _glyph in enumerate(self._glyphs)
             if _glyph.char
         }
-        # comments can be str (just global comment) or mapping of property comments
-        if not comments:
+        # comment can be str (just global comment) or mapping of property comments
+        if not comment:
             pass
-        elif isinstance(comments, str):
-            properties['#'] = comments
+        elif isinstance(comment, str):
+            properties['#'] = comment
         else:
-            properties.update({f'#{_k}': _v for _k, _v in comments.items()})
+            properties.update({f'#{_k}': _v for _k, _v in comment.items()})
         # update properties
         # set encoding first so we can set labels
         # NOTE - we must be careful NOT TO ACCESS CACHED PROPERTIES
@@ -673,40 +673,40 @@ class Font:
 
     def modify(
             self, glyphs=NOT_SET, *,
-            comments=NOT_SET, **kwargs
+            comment=NOT_SET, **kwargs
         ):
         """Return a copy of the font with changes."""
         if glyphs is NOT_SET:
             glyphs = self._glyphs
-        old_comments = self._get_comment_dict()
-        if isinstance(comments, str):
-            old_comments[''] = comment
-        elif comments is not NOT_SET:
-            old_comments.update(comments)
-        # comments and properties are replaced keyword by keyword
+        old_comment = self._get_comment_dict()
+        if isinstance(comment, str):
+            old_comment[''] = comment
+        elif comment is not NOT_SET:
+            old_comment.update(comment)
+        # comment and properties are replaced keyword by keyword
         return type(self)(
             tuple(glyphs),
-            comments=old_comments,
+            comment=old_comment,
             **{**self.properties, **kwargs}
         )
 
     def append(
             self, glyphs=(), *,
-            comments=None, **properties
+            comment=None, **properties
         ):
         """Return a copy of the font with additions."""
-        if not comments:
-            comments = {}
-        for key, comment in comments.items():
+        if not comment:
+            comment = {}
+        for key, comment in comment.items():
             old_comment = self.get_comment(key)
             if old_comment:
-                comments[key] = extend_string(old_comment, comment)
+                comment[key] = extend_string(old_comment, comment)
         for key, value in properties.items():
             if key in self._props:
                 properties[key] = extend_string(self._props[key], value)
         return self.modify(
             self._glyphs + tuple(glyphs),
-            comments={**comments},
+            comment={**comment},
             **properties
         )
 
@@ -720,13 +720,13 @@ class Font:
             # not in list
             glyphs = self._glyphs
         try:
-            args.remove('comments')
-            comments = {}
+            args.remove('comment')
+            comment = {}
         except ValueError:
-            comments = self._get_comment_dict()
+            comment = self._get_comment_dict()
         return type(self)(
             glyphs,
-            comments=comments,
+            comment=comment,
             **{
                 _k: _v
                 for _k, _v in self.properties.items()
@@ -1017,10 +1017,10 @@ class Font:
         if remove:
             # DefaultProps will skip keys with None values
             value = None
-        comments = {key: value}
+        comment = {key: value}
         if append and not remove:
-            return self.append(comments=comments)
-        return self.modify(comments=comments)
+            return self.append(comment=comment)
+        return self.modify(comment=comment)
 
 
     ##########################################################################

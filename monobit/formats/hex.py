@@ -86,7 +86,7 @@ def _load_hex(instream):
             comment = []
     # preserve any comment at end of file as part of global comment
     global_comment = '\n'.join([*_clean_comment(global_comment), *_clean_comment(comment)])
-    return Font(glyphs, comments=global_comment, encoding='unicode')
+    return Font(glyphs, comment=global_comment, encoding='unicode')
 
 
 def _convert_label(key):

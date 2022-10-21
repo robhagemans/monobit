@@ -233,7 +233,7 @@ class TextConverter:
         conv = cls._convert_from(reader)
         if not conv.glyphs:
             raise FileFormatError('No glyphs found in yaff file.')
-        return Font(conv.glyphs, comments=conv.comments, **vars(conv.props))
+        return Font(conv.glyphs, comment=conv.comments, **vars(conv.props))
 
     @classmethod
     def _convert_from(cls, reader):
