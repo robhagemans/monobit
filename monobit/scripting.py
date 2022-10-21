@@ -10,6 +10,14 @@ import os
 import logging
 from contextlib import contextmanager
 from functools import wraps, partial
+from types import SimpleNamespace
+
+
+class ArgumentError(TypeError):
+    """Invalid keyword argument."""
+
+    def __init__(self, func, arg):
+        super().__init__(f'{arg} is an invalid keyword for {func}()')
 
 
 ###################################################################################################
@@ -17,33 +25,62 @@ from functools import wraps, partial
 # annotations give converters from string to desired type
 # docstings provide help text
 
-def scriptable(*args, script_args=None, name=None, record=True):
+def scriptable(
+        *args, script_args=None, name=None, record=True, history_values=None, unknown_args='raise'
+    ):
     """Decorator to register operation for scripting."""
     if not args:
         # called as @scriptable(script_args=...)
         # return decorator with these arguments set as extra args
-        return partial(scriptable, script_args=script_args, name=name, record=record)
+        return partial(
+            scriptable, script_args=script_args,
+            name=name, record=record, history_values=history_values, unknown_args=unknown_args
+        )
     else:
         # called as @scriptable
         func, = args
         name = name or func.__name__
         script_args = script_args or {}
-        script_args = ScriptArgs(func, name=name, extra_args=script_args)
+        script_args = ScriptArgs(func, name=name, extra_args=script_args, history_values=history_values)
 
         @wraps(func)
-        def _scriptable_func(*args, **kwargs):
-            result = func(*args, **kwargs)
-            if record and result:
-                history = script_args.to_str(kwargs)
+        def _scriptable_func(*args, _record=True, **kwargs):
+            # apply converters to argument
+            conv_kwargs = {}
+            for kwarg, value in kwargs.items():
+                # skip not-specified arguments
+                if value is None:
+                    continue
                 try:
-                    result = tuple(_item.add(history=history) for _item in iter(result))
+                    _type, _ = script_args[kwarg]
+                except KeyError:
+                    if unknown_args == 'drop':
+                        continue
+                    if unknown_args == 'passthrough':
+                        pass
+                    elif unknown_args == 'warn':
+                        logging.warning(ArgumentError(name, kwarg))
+                        continue
+                    else:
+                        raise ArgumentError(name, kwarg) from None
+                    _type = Any
+                converter = _CONVERTER.get(_type, _type)
+                conv_kwargs[kwarg] = converter(value)
+            # call wrapped function
+            result = func(*args, **conv_kwargs)
+            # update history tracker
+            if record and _record and result:
+                history = script_args.get_history_item(*args, **conv_kwargs)
+                try:
+                    result = tuple(_item.append(history=history) for _item in iter(result))
                 except TypeError:
-                    result = result.add(history=history)
+                    result = result.append(history=history)
             return result
 
         _scriptable_func.script_args = script_args
         _scriptable_func.__name__ = name
         return _scriptable_func
+
 
 def get_scriptables(cls):
     """Get dict of functions marked as scriptable."""
@@ -60,7 +97,7 @@ def get_scriptables(cls):
 class ScriptArgs():
     """Record of script arguments."""
 
-    def __init__(self, func=None, *, name='', extra_args=None):
+    def __init__(self, func=None, *, name='', extra_args=None, history_values=None):
         """Extract script name, arguments and docs."""
         self.name = name
         self._script_args = {}
@@ -72,37 +109,38 @@ class ScriptArgs():
             self.name = name or func.__name__
             self._script_args.update(func.__annotations__)
         self._script_args.update(extra_args or {})
+        self._history_values = history_values or {}
         self._script_docs = {_k: '' for _k in self._script_args}
         for line in docs:
             if not line or ':' not in line:
                 continue
             arg, doc = line.split(':', 1)
             if arg.strip() in self._script_args:
-                self._script_docs[arg] = doc
+                self._script_docs[arg] = doc.strip()
         self.doc = docs[0] if docs else ''
 
-    def pick(self, arg_namespace):
-        """Get arguments accepted by operation."""
-        return {
-            _name: _arg
-            for _name, _arg in vars(arg_namespace).items()
-            if _arg is not None and _name in self._script_args
-        }
-
-    def to_str(self, arg_dict):
+    def get_history_item(self, *args, **kwargs):
         """Represent converter parameters."""
-        return (
-            self.name.replace('_', '-') + ' '
-            + ' '.join(
-                f'{_k}={_v}'
-                for _k, _v in arg_dict.items()
-                # exclude non-operation parameters
-                if _k in self._script_args
+        return ' '.join(
+            _e for _e in (
+                self.name.replace('_', '-'),
+                # ' '.join(f'{_v}' for _v in args),
+                ' '.join(
+                    f'--{_k}={_v}'
+                    for _k, _v in self._history_values.items()
+                ),
+                ' '.join(
+                    f'--{_k}={_v}'
+                    for _k, _v in kwargs.items()
+                    # exclude non-operation parameters
+                    if _k in self._script_args
+                ),
             )
+            if _e
         ).strip()
 
     def __iter__(self):
-        """Iterate over argument, type pairs."""
+        """Iterate over argument, type, doc pairs."""
         return (
             (_arg,
             self._script_args[_arg],
@@ -110,17 +148,33 @@ class ScriptArgs():
             for _arg in self._script_args
         )
 
+    def __getitem__(self, arg):
+        """Retrieve type, doc pair."""
+        return (
+            self._script_args[arg],
+            self._script_docs[arg]
+        )
+
+    def __contains__(self, arg):
+        return arg in self._script_args
+
 
 ###################################################################################################
 # script type converters
 
-def tuple_int(pairstr):
+class IntTuple(tuple):
+    """Tuple of ints with custom str conversion."""
+    def __str__(self):
+        return ','.join(str(_i) for _i in self)
+
+def tuple_int(tup):
     """Convert NxNx... or N,N,... to tuple."""
-    return tuple(int(_s) for _s in pairstr.replace('x', ',').split(','))
+    if isinstance(tup, str):
+        return IntTuple(int(_s) for _s in tup.replace('x', ',').split(','))
+    return IntTuple([*tup])
 
 rgb = tuple_int
 pair = tuple_int
-
 
 def any_int(int_str):
     """Int-like or string in any representation."""
@@ -135,7 +189,9 @@ def any_int(int_str):
         return int(int_str)
 
 
-###################################################################################################
+def Any(var):
+    """Passthrough type."""
+    return var
 
 
 _CONVERTER = {
@@ -143,24 +199,127 @@ _CONVERTER = {
 }
 
 
-def add_script_args(parser, script_args, format='', name=''):
-    """Add scriptable function arguments to argparser."""
-    if name and format:
-        group = parser.add_argument_group(f'{name}-{format} arguments')
+###################################################################################################
+# argument parser
+
+ARG_PREFIX = '--'
+FALSE_PREFIX = 'no-'
+
+class IsSetFlag:
+    """Represent a parameter that is set with no value, converts to True if bool, not to other types."""
+    def __bool__(self):
+        return True
+    def __repr__(self):
+        return f'{type(self).__name__}()'
+    def __str__(self):
+        return TypeError('IsSetFlag does not convert to string.')
+
+SET = IsSetFlag()
+
+
+def argrecord(command='', func=None, args=None, kwargs=None):
+    """Record holding arguments and options for one command."""
+    return SimpleNamespace(command=command, func=func, args=args or [], kwargs=kwargs or {})
+
+
+def parse_subcommands(operations, global_options):
+    """Split argument list in command components and their options with values."""
+    # global arguments - these get added here wherever they occur in the argv list
+    global_ns = argrecord()
+    command_args = []
+    for subargv in _split_argv(*operations.keys()):
+        command = ''
+        if subargv and subargv[0] in operations:
+            command = subargv.pop(0)
+        command_ns = argrecord(command=command, func=operations.get(command, ''))
+        expect_value = False
+        for arg in subargv:
+            if arg.startswith(ARG_PREFIX):
+                key = arg[len(ARG_PREFIX):]
+                key, _, value = key.partition('=')
+                # record the key as set even if still expecting a value
+                if key in global_options:
+                    ns = global_ns
+                else:
+                    ns = command_ns
+                # boolean flag prefixed with --no-
+                if key.startswith(FALSE_PREFIX):
+                    key = key[len(FALSE_PREFIX):]
+                    ns.kwargs[key] = False
+                    expect_value = False
+                else:
+                    ns.kwargs[key] = value or SET
+                    expect_value = value == ''
+            elif expect_value:
+                value = arg
+                ns.kwargs[key] = value
+                expect_value = False
+            else:
+                # positional argument
+                ns = command_ns
+                ns.args.append(arg)
+        command_args.append(command_ns)
+    return command_args, global_ns
+
+
+def _split_argv(*command_words):
+    """Split argument list in command components."""
+    part_argv = []
+    for arg in sys.argv[1:]:
+        if arg in command_words:
+            yield part_argv
+            part_argv = []
+        part_argv.append(arg)
+    yield part_argv
+
+
+# doc string alignment in usage text
+HELP_TAB = 25
+
+def _print_option_help(name, vartype, doc, tab, add_unsetter=True):
+    if vartype == bool:
+        print(f'{ARG_PREFIX}{name}\t{doc}'.expandtabs(tab))
+        if add_unsetter:
+            print(f'{ARG_PREFIX}{FALSE_PREFIX}{name}\tunset {ARG_PREFIX}{name}'.expandtabs(tab))
     else:
-        group = parser
-    for arg, _type, doc in script_args:
-        argname = arg.strip('_').replace('_', '-')
-        if name:
-            argname = f'{name}-{argname}'
-        if _type == bool:
-            group.add_argument(f'--{argname}', dest=arg, help=doc, action='store_true')
-            group.add_argument(
-                f'--no-{argname}', dest=arg, help=f'unset --{argname}', action='store_false'
-            )
-        else:
-            converter = _CONVERTER.get(_type, _type)
-            group.add_argument(f'--{argname}', dest=arg, help=doc, type=converter)
+        print(f'{ARG_PREFIX}{name}=...\t{doc}'.expandtabs(tab))
+
+def print_help(command_args, usage, operations, global_options, context_help):
+    print(usage)
+    print()
+    print('Options')
+    print('=======')
+    print()
+    for name, (vartype, doc) in global_options.items():
+        _print_option_help(name, vartype, doc, HELP_TAB, add_unsetter=False)
+
+    if not command_args or len(command_args) == 1 and not command_args[0].command:
+        print()
+        print('Commands')
+        print('========')
+        print()
+        for op, func in operations.items():
+            print(f'{op} '.ljust(HELP_TAB-1) + f' {func.script_args.doc}')
+    else:
+        print()
+        print('Commands and their options')
+        print('==========================')
+        print()
+        for ns in command_args:
+            op = ns.command
+            if not op:
+                continue
+            func = ns.func
+            print(f'{op} '.ljust(HELP_TAB-1, '-') + f' {func.script_args.doc}')
+            for name, vartype, doc in func.script_args:
+                _print_option_help(name, vartype, doc, HELP_TAB)
+            print()
+            if op in context_help:
+                context_args = context_help[op]
+                print(f'{context_args.name} '.ljust(HELP_TAB-1, '-') + f' {func.script_args.doc}')
+                for name, vartype, doc in context_args:
+                    _print_option_help(name, vartype, doc, HELP_TAB)
+                print()
 
 
 
@@ -168,13 +327,15 @@ def add_script_args(parser, script_args, format='', name=''):
 # frame for main scripts
 
 @contextmanager
-def main(args, loglevel=logging.WARNING):
+def main(debug=False):
     """Main script context."""
-    if not hasattr(args, 'debug'):
-        args.debug = True
-    if args.debug:
+    # set log level
+    if debug:
         loglevel = logging.DEBUG
+    else:
+        loglevel = logging.WARNING
     logging.basicConfig(level=loglevel, format='%(levelname)s: %(message)s')
+    # run main script
     try:
         yield
     except BrokenPipeError:
@@ -183,5 +344,5 @@ def main(args, loglevel=logging.WARNING):
         sys.stdout = os.fdopen(1)
     except Exception as exc:
         logging.error(exc)
-        if not hasattr(args, 'debug') or args.debug:
+        if debug:
             raise

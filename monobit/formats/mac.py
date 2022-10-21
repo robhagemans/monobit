@@ -539,24 +539,33 @@ _NON_ROMAN_NAMES = {
 
 ##############################################################################
 
-@loaders.register('dfont', 'suit', name='MacOS resource')
-def load_dfont(instream, where=None):
+@loaders.register('dfont', 'suit', name='mac-dfont')
+def load_mac_dfont(instream, where=None):
     """
     Load font from a MacOS suitcase.
     """
     data = instream.read()
     return _parse_resource_fork(data)
 
-@loaders.register('apple',
+@loaders.register('as', 'adf', 'rsrc',
     magic=(_APPLESINGLE_MAGIC.to_bytes(4, 'big'), _APPLEDOUBLE_MAGIC.to_bytes(4, 'big')),
-    name='MacOS resource (AppleSingle/AppleDouble container)',
+    name='mac-rsrc',
 )
-def load_apple(instream, where=None):
+def load_mac_rsrc(instream, where=None):
     """
     Load font from an AppleSingle or AppleDouble container.
     """
     data = instream.read()
     return _parse_apple(data)
+
+
+@savers.register(linked=load_mac_dfont)
+def save_mac_dfont(pack, outstream, where=None):
+    raise FileFormatError('Saving to MacOS font files not supported.')
+
+@savers.register(linked=load_mac_rsrc)
+def save_mac_rsrc(pack, outstream, where=None):
+    raise FileFormatError('Saving to MacOS font files not supported.')
 
 
 ##############################################################################
@@ -661,6 +670,7 @@ def _parse_resource_fork(data):
             except ValueError as e:
                 logging.error('Could not load font: %s', e)
             else:
+                font = font.label(_record=False)
                 fonts.append(font)
     return fonts
 
@@ -839,18 +849,18 @@ def _parse_nfnt(data, offset, properties):
     # (positive or negative) 'kernMax' global offset
     #
     # since
-    #   (glyph) advance == offset.x + width + tracking
+    #   (glyph) advance_width == left_bearing + width + right_bearing
     # after this transformation we should have
-    #   (glyph) advance == wo.width
+    #   (glyph) advance_width == wo.width
     # which means
-    #   (total) advance == wo.width - kernMax
+    #   (total) advance_width == wo.width - kernMax
     # since
-    #   (total) advance == (font) offset.x + glyph.advance + (font) tracking
-    # and (font) offset.x = -kernMax
+    #   (total) advance_width == (font) left_bearing + glyph.advance_width + (font) right_bearing
+    # and (font) left_bearing = -kernMax
     glyphs = tuple(
         _glyph.modify(
-            offset=(_glyph.wo_offset, 0),
-            tracking=_glyph.wo_width - _glyph.width - _glyph.wo_offset
+            left_bearing=_glyph.wo_offset,
+            right_bearing=_glyph.wo_width - _glyph.width - _glyph.wo_offset
         )
         if _glyph.wo_width != 0xff and _glyph.wo_offset != 0xff else _glyph
         for _glyph in glyphs
@@ -883,7 +893,8 @@ def _parse_nfnt(data, offset, properties):
         'default-char': 'missing',
         'ascent': fontrec.ascent,
         'descent': fontrec.descent,
-        'leading': fontrec.leading,
-        'offset': Coord(fontrec.kernMax, -fontrec.descent),
+        'line-height': fontrec.ascent + fontrec.descent + fontrec.leading,
+        'left-bearing': fontrec.kernMax,
+        'shift-up': -fontrec.descent,
     })
     return Font(glyphs, **properties)

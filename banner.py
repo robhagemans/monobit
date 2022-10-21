@@ -17,15 +17,19 @@ from monobit import render_text
 
 def unescape(text):
     """Interpolate escape sequences."""
-    # escape_decode is unofficial/unsupported
-    # https://stackoverflow.com/questions/4020539/process-escape-sequences-in-a-string-in-python
-    return escape_decode(text.encode('utf-8'))[0].decode('utf-8')
+    # escape_decode is undocumented/unsupported and will leave \u escapes untouched
+    # simpler variant - using documented/supported codecs
+    #   raw-unicode-escape encodes to latin-1, leaves existing backslashes untouched but escapes non-latin-1
+    #   (while unicode-escape would escape backslashes and all non-ascii)
+    #   unicode-escape decodes from latin-1 and unescapes standard c escapes, \x.. and \u.. \U..
+    return text.encode('raw-unicode-escape').decode('unicode_escape')
+
 
 # parse command line
 parser = argparse.ArgumentParser()
 parser.add_argument(
-    'text', nargs='?', type=str,
-    help='text to be printed. if not given, read from standard input'
+    'text', nargs='*', type=str,
+    help='text to be printed. multiple text arguments represent consecutive lines. if not given, read from standard input'
 )
 parser.add_argument(
     '--font', '-f', type=str, default='',
@@ -40,8 +44,8 @@ parser.add_argument(
     help='character to use for ink/foreground (default: @)'
 )
 parser.add_argument(
-    '--paper', '--background', '-bg', type=str, default='-',
-    help='character to use for paper/background (default: -)'
+    '--paper', '--background', '-bg', type=str, default='.',
+    help='character to use for paper/background (default: .)'
 )
 parser.add_argument(
     '--margin', '-m', type=pair, default=(0, 0),
@@ -54,6 +58,13 @@ parser.add_argument(
 parser.add_argument(
     '--rotate', '-r', type=int, default=0,
     help='number of quarter turns to rotate (default: 0)'
+)
+parser.add_argument(
+    '--direction', type=str, default='',
+    help=(
+        "writing direction (default: use bidirectional algorithm;"
+        " other options: `left-to-right`, `right-to-left`, `reverse`)"
+    )
 )
 parser.add_argument(
     '--encoding', default='', type=str,
@@ -71,7 +82,7 @@ parser.add_argument(
 args = parser.parse_args()
 
 
-with main(args, logging.WARNING):
+with main(args.debug):
     # codepage chart
     if args.chart:
         if args.text or args.encoding:
@@ -82,25 +93,28 @@ with main(args, logging.WARNING):
     elif not args.text:
         args.text = sys.stdin.read()
     else:
-        args.text = unescape(args.text)
+        # multiple options or \n give line breaks
+        args.text = '\n'.join(args.text)
     # foreground and backgound characters
     args.ink = unescape(args.ink)
     args.paper = unescape(args.paper)
+    args.text = unescape(args.text)
     # take first font from pack
     font, *_ = monobit.load(args.font, format=args.format)
     # check if any characters are defined
     # override encoding if requested
     if not font.get_chars() and not args.encoding and not isinstance(args.text, bytes):
         logging.info(
-            'No character mappeing defined in font. Using `--encoding=raw` as fallback.'
+            'No character mapping defined in font. Using `--encoding=raw` as fallback.'
         )
         args.encoding = 'raw'
     if args.encoding == 'raw':
-        # use string as a representation of bytes
-        args.text = args.text.encode('latin-1', errors='ignore')
+        # use string as a representation of bytes, replace anything with more than 8-bit codepoints
+        args.text = args.text.encode('latin-1', errors='replace')
     elif args.encoding:
-        font = font.modify(encoding=args.encoding)
+        font = font.modify(encoding=args.encoding).label()
     sys.stdout.write(render_text(
         font, args.text, args.ink, args.paper,
-        margin=args.margin, scale=args.scale, rotate=args.rotate, missing='default'
+        margin=args.margin, scale=args.scale, rotate=args.rotate, direction=args.direction,
+        missing='default'
     ) + '\n')

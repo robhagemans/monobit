@@ -17,36 +17,53 @@ from ..struct import Props, flag, bitfield, big_endian as be
 from .. import struct
 
 
-@loaders.register('font', magic=(b'\x0f\0', b'\x0f\2'), name='Amiga Font Contents')
+@loaders.register('font', magic=(b'\x0f\0', b'\x0f\2'), name='amiga-fc')
 def load_amiga_fc(f, where):
     """Load font from Amiga disk font contents (.FONT) file."""
     fch = _FONT_CONTENTS_HEADER.read_from(f)
     if fch.fch_FileID == _FCH_ID:
         logging.debug('Amiga FCH using FontContents')
+        contentsarray = _FONT_CONTENTS.array(fch.fch_NumEntries).read_from(f)
     elif fch.fch_FileID == _TFCH_ID:
         logging.debug('Amiga FCH using TFontContents')
+        contentsarray = _T_FONT_CONTENTS.array(fch.fch_NumEntries).read_from(f)
     else:
         raise FileFormatError(
             'Not an Amiga Font Contents file: '
             f'incorrect magic bytes 0x{fch.fch_FileID:04X} '
             f'not in (0x{_FCH_ID:04X}, 0x{_TFCH_ID:04X}).'
         )
-    contentsarray = _FONT_CONTENTS.array(fch.fch_NumEntries).read_from(f)
     pack = []
     for fc in contentsarray:
         # we'll get ysize, style and flags from the file itself, we just need a path.
         name = fc.fc_FileName.decode(_ENCODING)
+        #/*
+        #*  if tfc_TagCount is non-zero, tfc_FileName is overlaid with
+        #*  Text Tags starting at:  (struct TagItem *)
+        #*      &amp;tfc_FileName[MAXFONTPATH-(tfc_TagCount*sizeof(struct TagItem))]
+        #*/
+        if fch.fch_FileID == _TFCH_ID and fc.tfc_TagCount:
+            tag_start = _MAXFONTPATH - fc.tfc_TagCount * _TAG_ITEM.size
+            name = name[:tag_start]
+            tags = _TAG_ITEM.array(fc.tfc_TagCount).from_bytes(tfc_FileName[tag_start:])
+        else:
+            tags = ()
         # amiga fs is case insensitive, so we need to loop over listdir and match
         for filename in where:
             if filename.lower() == name.lower():
-                pack.append(_load_amiga(where.open(filename, 'r'), where))
+                with where.open(filename, 'r') as stream:
+                    pack.append(_load_amiga(stream, where, tags))
     return pack
 
 
-@loaders.register('amiga', magic=(b'\0\0\x03\xf3',), name='Amiga Font')
-def load_amiga(f, where=None):
+@loaders.register('amiga', magic=(b'\0\0\x03\xf3',), name='amiga')
+def load_amiga(f, where=None, tags=()):
     """Load font from Amiga disk font file."""
-    return _load_amiga(f, where)
+    return _load_amiga(f, where, tags)
+
+@savers.register(linked=load_amiga)
+def save_amiga(pack, outstream, where=None):
+    raise FileFormatError('Saving to Amiga disk font file not supported.')
 
 
 ###################################################################################################
@@ -146,7 +163,7 @@ _AMIGA_HEADER = be.Struct(
     dfh_Revision='H',
     dfh_Segment='i',
     # use array of bytes instead of char, to preserve tags post NUL
-    dfh_Name=struct.uint8 * _MAXFONTNAME,
+    dfh_Name=struct.char * _MAXFONTNAME,
     # struct Message at start of struct TextFont
     # struct Message http://amigadev.elowar.com/read/ADCD_2.1/Libraries_Manual_guide/node02EF.html
     tf_ln_Succ='I',
@@ -191,7 +208,7 @@ _FONT_CONTENTS = be.Struct(
 )
 
 # struct TFontContents
-# not used - we ignore the extra tags stored at the back of the tfc_FileName field
+# extra tags stored at the back of the tfc_FileName field
 _T_FONT_CONTENTS = be.Struct(
     tfc_FileName=struct.char * (_MAXFONTPATH-2),
     tfc_TagCount='uword',
@@ -200,16 +217,26 @@ _T_FONT_CONTENTS = be.Struct(
     tfc_Flags='ubyte',
 )
 
+# https://wiki.amigaos.net/wiki/Tags
+_TAG_ITEM = be.Struct(
+    # identifies the type of this item
+    ti_Tag='uint32',
+    # type-specific data, can be a pointer
+    ti_Data='uint32',
+)
 
 ###################################################################################################
 # read Amiga font
 
 
-def _load_amiga(f, where):
+def _load_amiga(f, where, tags):
     """Load font from Amiga disk font file."""
     # read & ignore header
     _read_header(f)
     amiga_props, glyphs = _read_font_hunk(f)
+    if tags:
+        tagstr = ' '.join(f'{tag.ti_Tag:04x}:{tag.ti_Data:04x}')
+        amiga_props.amiga = f'tags {tagstr}'
     logging.info('Amiga properties:')
     for name, value in vars(amiga_props).items():
         logging.info('    %s: %s', name, value)
@@ -217,7 +244,10 @@ def _load_amiga(f, where):
     logging.info('yaff properties:')
     for line in str(props).splitlines():
         logging.info('    ' + line)
-    return Font(glyphs, **vars(props))
+    font = Font(glyphs, **vars(props))
+    # fill out character labels based on latin-1 encoding
+    font = font.label(_record=False)
+    return font
 
 
 def _read_library_names(f):
@@ -283,7 +313,7 @@ def _read_strike(f, props):
     else:
         spacing = [props.tf_XSize] * nchars
     # kerning table
-    # amiga "kerning" is a horizontal offset; can be pos (to right) or neg
+    # amiga "kerning" is a left bearing; can be pos (to right) or neg
     if props.tf_CharKern:
         kerning = be.int16.array(nchars).from_bytes(data, loc + props.tf_CharKern)
     else:
@@ -323,12 +353,17 @@ def _convert_amiga_font(amiga_props, glyphs):
 
 
 def _convert_amiga_glyphs(glyphs, amiga_props):
-    """Deal with negative kerning by turning it into a global negative offset."""
+    """Convert Amiga glyph properties to monobit."""
     # apply kerning and spacing
     glyphs = [
         _glyph.modify(
-            offset=Coord(_glyph.kerning, -(amiga_props.tf_YSize - amiga_props.tf_Baseline)),
-            advance=_glyph.spacing
+            left_bearing=_glyph.kerning,
+            # baseline is the nth line, counting from the top, starting with 0
+            # so if there are 8 lines and baseline == 6 then that's 1 line from the bottom
+            shift_up=1-(amiga_props.tf_YSize - amiga_props.tf_Baseline),
+            #advance_width=_glyph.spacing
+        ).modify(
+            right_bearing=_glyph.spacing-_glyph.width-_glyph.left_bearing
         )
         for _glyph in glyphs
     ]
@@ -346,22 +381,17 @@ def _convert_amiga_props(amiga_props):
     if amiga_props.tf_Style.FSF_COLORFONT:
         raise FileFormatError('Amiga ColorFont not supported')
     props = Props()
-    props.amiga = Props()
-    # preserve tags stored in name field after \0
-    name, *tags = bytes(amiga_props.dfh_Name).decode(_ENCODING).split('\0')
+    name = bytes(amiga_props.dfh_Name).decode(_ENCODING).strip()
     if name:
-        props.name = name.strip()
-    tags = [_t.strip() for _t in tags if _t.strip()]
-    if tags:
-        props.amiga.dfh_Name = f'"{name}"' + ' '.join(tags)
+        props.name = name
     props.revision = amiga_props.dfh_Revision
-    #props.offset = Coord(offset_x, -(amiga_props.tf_YSize - amiga_props.tf_Baseline))
     # tf_Style
-    props.weight = 'bold' if amiga_props.tf_Style.FSF_BOLD else Font.get_default('weight')
-    props.slant = 'italic' if amiga_props.tf_Style.FSF_ITALIC else Font.get_default('slant')
-    props.setwidth = (
-        'expanded' if amiga_props.tf_Style.FSF_EXTENDED else Font.get_default('setwidth')
-    )
+    if amiga_props.tf_Style.FSF_BOLD:
+        props.weight = 'bold'
+    if amiga_props.tf_Style.FSF_ITALIC:
+        props.slant = 'italic'
+    if amiga_props.tf_Style.FSF_EXTENDED:
+        props.setwidth = 'expanded'
     if amiga_props.tf_Style.FSF_UNDERLINED:
         props.decoration = 'underline'
     # tf_Flags
@@ -378,11 +408,5 @@ def _convert_amiga_props(amiga_props):
         props.pixel_aspect = '2 1'
     props.encoding = _ENCODING
     props.default_char = 'default'
-    # preserve unparsed properties
-    # tf_BoldSmear; /* smear to affect a bold enhancement */
-    # use the most common value 1 as a default
-    if amiga_props.tf_BoldSmear != 1:
-        props.amiga.tf_BoldSmear = amiga_props.tf_BoldSmear
-    if 'name' in props:
-        props.family = props.name.split('/')[0].split(' ')[0]
+    props.bold_smear = amiga_props.tf_BoldSmear
     return props

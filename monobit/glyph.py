@@ -21,13 +21,19 @@ from .scripting import scriptable
 from .binary import ceildiv, bytes_to_bits
 from .matrix import to_text
 from .encoding import is_graphical
-from .label import Char, Codepoint, Tag, label
-from .struct import DefaultProps, normalise_property, extend_string
+from .labels import Codepoint, Char, Tag, to_label
+from .struct import (
+    DefaultProps, normalise_property, extend_string,
+    writable_property, as_tuple, checked_property
+)
 
 
 # sentinel object
 NOT_SET = object()
 
+
+##############################################################################
+# base data types
 
 def number(value=0):
     """Convert to int or float."""
@@ -85,6 +91,8 @@ class Coord(NamedTuple):
         return bool(self.x or self.y)
 
 
+##############################################################################
+# kerning table
 
 class KernTable(dict):
     """char -> int."""
@@ -102,10 +110,11 @@ class KernTable(dict):
                 _row.split(None, 1)
                 for _row in table.splitlines()
             )
-        super().__init__({
-            label(_k): int(_v)
+        table = {
+            to_label(_k): int(_v)
             for _k, _v in table.items()
-        })
+        }
+        super().__init__(table)
 
     def __str__(self):
         """Convert kerning table to multiline string."""
@@ -117,11 +126,11 @@ class KernTable(dict):
     def get_for_glyph(self, second):
         """Get kerning amount for given second glyph."""
         try:
-            return self[Char(second.char)]
+            return self[second.char]
         except KeyError:
             pass
         try:
-            return self[Codepoint(second.codepoint)]
+            return self[second.codepoint]
         except KeyError:
             pass
         for tag in second.tags:
@@ -133,41 +142,162 @@ class KernTable(dict):
         return 0
 
 
+##############################################################################
+# glyph properties
+
 class GlyphProperties(DefaultProps):
     """Recognised properties for Glyph."""
 
-    offset: Coord.create
-    tracking: int
-    kern_to: KernTable
+    # horizontal offset from leftward origin to matrix left edge
+    left_bearing: int
+    # horizontal offset from matrix right edge to rightward origin
+    right_bearing: int
+    # upward offset from origin to matrix bottom
+    shift_up: int
+    # downward offset from origin to matrix left edge - equal to -shift_up
+    shift_down: int
+    # kerning - pairwaise additional right-bearing
+    right_kerning: KernTable
+    # kerning - pairwaise additional left-bearing
+    left_kerning: KernTable
+
+    # vertical metrics
+    # vertical offset from upward origin to matrix top edge
+    top_bearing: int
+    # vertical offset from matrix bottom edge to downward origin
+    bottom_bearing: int
+    # leftward offset from origin to matrix left edge
+    shift_left: int
 
 
+    @checked_property
+    def shift_down(self):
+        """Downward shift - negative of shift-up."""
+        return -self.shift_up
+
+    @checked_property
+    def advance_width(self):
+        """Internal advance width of glyph, including internal bearings."""
+        return self.left_bearing + self.width + self.right_bearing
+
+    @checked_property
+    def advance_height(self):
+        """Internal advance width of glyph, including internal bearings."""
+        return self.top_bearing + self.height + self.bottom_bearing
+
+    @checked_property
+    def width(self):
+        """Raster width of glyph."""
+        if not self._pixels:
+            return 0
+        return len(self._pixels[0])
+
+    @checked_property
+    def height(self):
+        """Raster height of glyph."""
+        return len(self._pixels)
+
+
+    @checked_property
+    def ink_bounds(self):
+        """Minimum box encompassing all ink, in glyph origin coordinates."""
+        bounds = Bounds(
+            left=self.left_bearing + self.padding.left,
+            bottom=self.shift_up + self.padding.bottom,
+            right=self.left_bearing + self.width - self.padding.right,
+            top=self.shift_up + self.height - self.padding.top,
+        )
+        # more intuitive result for blank glyphs
+        if bounds.left == bounds.right or bounds.top == bounds.bottom:
+            return Bounds(0, 0, 0, 0)
+        return bounds
+
+    @checked_property
+    def bounding_box(self):
+        """Dimensions of minimum bounding box encompassing all ink."""
+        return Coord(
+            self.ink_bounds.right - self.ink_bounds.left,
+            self.ink_bounds.top - self.ink_bounds.bottom
+        )
+
+    @checked_property
+    def padding(self):
+        """Offset from raster sides to bounding box. Left, bottom, right, top."""
+        if not self._pixels:
+            return Bounds(0, 0, 0, 0)
+        row_inked = [True in _row for _row in self._pixels]
+        if True not in row_inked:
+            return Bounds(self.width, self.height, 0, 0)
+        bottom = list(reversed(row_inked)).index(True)
+        top = row_inked.index(True)
+        col_inked = [bool(sum(_row[_i] for _row in self._pixels)) for _i in range(self.width)]
+        left = col_inked.index(True)
+        right = list(reversed(col_inked)).index(True)
+        return Bounds(left, bottom, right, top)
+
+
+    ##########################################################################
+    # deprecated compatibility synonymms
+
+    @writable_property('kern_to')
+    def kern_to(self):
+        """Deprecated synonym of right-kerning."""
+        return self.right_kerning
+
+    @writable_property('right_bearing')
+    def tracking(self):
+        """
+        Horizontal offset from matrix right edge to rightward origin
+        Deprecated synonym for right-bearing.
+        """
+        return self.right_bearing
+
+    @as_tuple(('left_bearing', 'shift_up'), tuple_type=Coord.create)
+    def offset(self):
+        """
+        (horiz, vert) offset from origin to matrix start
+        Deprecated synonym for left-bearing, shift-up.
+        """
+
+
+##############################################################################
+# glyph
 
 class Glyph:
     """Single glyph."""
 
     def __init__(
             self, pixels=(), *,
-            codepoint=(), char='', tags=(), comments='',
+            labels=(), codepoint=b'', char='', tags=(), comment='',
             **properties
         ):
         """Create glyph from tuple of tuples."""
         # glyph data
         self._pixels = tuple(tuple(bool(_bit) for _bit in _row) for _row in pixels)
-        # labels
-        self._codepoint = Codepoint(codepoint).value
-        self._char = Char(char).value
-        self._tags = tuple(Tag(_tag).value for _tag in tags if _tag)
-        # comments
-        if not isinstance(comments, str):
-            raise TypeError('Glyph comment must be a single string.')
-        self._comments = comments
-        # recognised properties
-        self._props = GlyphProperties(**properties)
         # check pixel matrix geometry
         if len(set(len(_r) for _r in self._pixels)) > 1:
             raise ValueError(
                 f"All rows in a glyph's pixel matrix must be of the same width: {repr(self)}"
             )
+        # labels
+        for label in labels:
+            label = to_label(label)
+            if isinstance(label, Char):
+                char = char or label
+            elif isinstance(label, Codepoint):
+                codepoint = codepoint or label
+            else:
+                tags += (label,)
+        self._codepoint = Codepoint(codepoint)
+        self._char = Char(char)
+        self._tags = tuple(Tag(_tag) for _tag in tags if _tag)
+        # comment
+        if not isinstance(comment, str):
+            raise TypeError('Glyph comment must be a single string.')
+        self._comment = comment
+        # recognised properties
+        # access needed for calculated properties
+        self._props = GlyphProperties(_pixels=self._pixels, **properties)
 
 
     ##########################################################################
@@ -179,9 +309,9 @@ class Glyph:
             f"char={repr(self._char)}" if self._char else '',
             f"codepoint={repr(self._codepoint)}" if self._codepoint else '',
             f"tags={repr(self._tags)}" if self._tags else '',
-            "comments=({})".format(
-                "\n  '" + "\n',\n  '".join(self.comments.splitlines()) + "'"
-            ) if self._comments else '',
+            "comment=({})".format(
+                "\n  '" + "\n',\n  '".join(self.comment.splitlines()) + "'"
+            ) if self._comment else '',
             ', '.join(f'{_k}={_v}' for _k, _v in self.properties.items()),
             "pixels=({})".format(
                 "\n  '{}'\n".format(
@@ -200,7 +330,7 @@ class Glyph:
 
     def modify(
             self, pixels=NOT_SET, *,
-            tags=NOT_SET, char=NOT_SET, codepoint=NOT_SET, comments=NOT_SET,
+            labels=(), tags=NOT_SET, char=NOT_SET, codepoint=NOT_SET, comment=NOT_SET,
             **kwargs
         ):
         """Return a copy of the glyph with changes."""
@@ -212,59 +342,81 @@ class Glyph:
             codepoint = self._codepoint
         if char is NOT_SET:
             char = self._char
-        if comments is NOT_SET:
-            comments = self._comments
+        if comment is NOT_SET:
+            comment = self._comment
         return type(self)(
             tuple(pixels),
-            codepoint=codepoint,
-            char=char,
-            tags=tuple(tags),
-            comments=comments,
+            labels=labels,
+            codepoint=Codepoint(codepoint),
+            char=Char(char),
+            tags=tuple(Tag(_t) for _t in tags),
+            comment=comment,
             **{**self.properties, **kwargs}
         )
 
-    def add_labels(self, encoder):
-        """Set labels using provided encoder object."""
-        # use codepage to find char if not set
-        if not self.char:
-            return self.modify(char=encoder.char(self.codepoint))
+    def label(
+            self, codepoint_from=None, char_from=None,
+            tag_from=None, comment_from=None,
+            overwrite=False
+        ):
+        """
+           Set labels or comment using provided encoder or tagger object.
+
+           char_from: Encoder object used to set char labels
+           codepoint_from: Encoder object used to set codepoint labels
+           tag_from: Tagger object used to set tag labels
+           comment_from: Tagger object used to set comment
+           overwrite: overwrite codepoint or char if already given
+        """
+        if sum(
+                _arg is not None
+                for _arg in (codepoint_from, char_from, tag_from, comment_from)
+            ) > 1:
+            raise ValueError(
+                'Can only set one of character, codepoint, tag or comment with one label() call. '
+                'Use separate calls to set more.'
+           )
+        labels = self.get_labels()
         # use codepage to find codepoint if not set
-        if not self.codepoint:
-            return self.modify(codepoint=encoder.codepoint(self.char))
-        # both are set, check if consistent with codepage
-        enc_char = encoder.char(self.codepoint)
-        if (self.char != enc_char) and is_graphical(self.char) and is_graphical(enc_char):
-            logging.info(
-                f'Inconsistent encoding at {Codepoint(self.codepoint)}: '
-                f'mapped to {Char(self.char)} '
-                f'instead of {Char(enc_char)} per stated encoding.'
+        if codepoint_from and (overwrite or not self.codepoint):
+            return self.modify(codepoint=codepoint_from.codepoint(*labels))
+        # use codepage to find char if not set
+        if char_from and(overwrite or not self.char):
+            return self.modify(char=char_from.char(*labels))
+        if tag_from:
+            return self.modify(
+                tags=self.tags + (tag_from.tag(*labels),)
+            )
+        if comment_from:
+            return self.modify(
+                comment=extend_string(self.comment, comment_from.comment(*labels))
             )
         return self
 
-    def add(
+    def append(
             self, *,
-            comments=None, **properties
+            comment=None, **properties
         ):
         """Return a copy of the glyph with changes."""
-        if not comments:
-            comments = ''
-        comments = extend_string(self._comments, comments)
+        if not comment:
+            comment = ''
+        comment = extend_string(self._comment, comment)
         for property, value in properties.items():
             if property in self._props:
                 properties[property] = extend_string(self._props[property], value)
         # do not record glyph history
         try:
             history = properties.pop('history')
-            logging.debug("Ignoring glyph history '%s'", history)
+            #logging.debug("Ignoring glyph history '%s'", history)
         except KeyError:
             pass
         return self.modify(
-            comments=comments,
+            comment=comment,
             **properties
         )
 
     def drop(self, *args):
-        """Remove labels, comments or properties."""
+        """Remove labels, comment or properties."""
         args = list(args)
         try:
             args.remove('pixels')
@@ -287,19 +439,21 @@ class Glyph:
         except ValueError:
             tags = self._tags
         try:
-            args.remove('comments')
-            comments = ''
+            args.remove('comment')
+            comment = ''
         except ValueError:
-            comments = self._comments
+            comment = self._comment
+        args = [normalise_property(_arg) for _arg in args]
+        properties = {
+            _k: _v
+            for _k, _v in self.properties.items()
+            if normalise_property(_k) not in args
+        }
         return type(self)(
             pixels,
             tags=tags, codepoint=codepoint, char=char,
-            comments=comments,
-            **{
-                _k: _v
-                for _k, _v in self.properties.items()
-                if _k not in args
-            }
+            comment=comment,
+            **properties
         )
 
 
@@ -307,7 +461,7 @@ class Glyph:
     # property access
 
     def __getattr__(self, attr):
-        """Take property from property table."""
+        """Take attribute from property table if not defined here."""
         if '_props' not in vars(self):
             logging.error(type(self).__name__ + '._props not defined')
             raise AttributeError(attr)
@@ -317,17 +471,19 @@ class Glyph:
         return getattr(self._props, attr)
 
     @property
-    def comments(self):
-        return self._comments
+    def comment(self):
+        return self._comment
 
     @classmethod
     def default(cls, property):
         """Default value for a property."""
         return vars(GlyphProperties).get(normalise_property(property), '')
 
+
     @property
     def properties(self):
-        return vars(self._props)
+        """Non-defaulted properties in order of default definition list."""
+        return {_k: self._props[_k] for _k in self._props if not _k.startswith('_')}
 
 
     ##########################################################################
@@ -345,15 +501,15 @@ class Glyph:
     def codepoint(self):
         return self._codepoint
 
-    def get_labels(self, suppress_codepoint=False):
+    def get_labels(self):
         """Get glyph labels."""
         labels = []
         # don't write out codepoints for unicode fonts as we have u+XXXX already
-        if self.codepoint and (not suppress_codepoint or not self.char):
-            labels.append(Codepoint(self.codepoint))
+        if self.codepoint:
+            labels.append(self._codepoint)
         if self.char:
-            labels.append(Char(self.char))
-        labels.extend(Tag(_t) for _t in self.tags)
+            labels.append(self._char)
+        labels.extend(self._tags)
         return tuple(labels)
 
 
@@ -364,6 +520,10 @@ class Glyph:
     def blank(cls, width=0, height=0):
         """Create whitespace glyph."""
         return cls(((0,) * width,) * height)
+
+    def is_blank(self):
+        """Glyph has no ink."""
+        return not any(True in _row for _row in self._pixels)
 
     @classmethod
     def from_matrix(cls, rows, paper):
@@ -406,17 +566,23 @@ class Glyph:
             bytes_to_bits(_row, width, align) for _row in rows
         ))
 
-    def as_bytes(self):
+    def as_bytes(self, align='left'):
         """Convert glyph to flat bytes."""
         if not self._pixels:
             return b''
         width = len(self._pixels[0])
         bytewidth = ceildiv(width, 8)
         # byte-align rows
-        rows = [
-            _row + (False,) * (bytewidth*8 - width)
-            for _row in self._pixels
-        ]
+        if align.startswith('r'):
+            rows = [
+                (False,) * (bytewidth*8 - width) + _row
+                for _row in self._pixels
+            ]
+        else:
+            rows = [
+                _row + (False,) * (bytewidth*8 - width)
+                for _row in self._pixels
+            ]
         # chunk by byte and flatten
         glyph_bytes = [
             _row[_offs:_offs+8]
@@ -444,65 +610,7 @@ class Glyph:
         return binascii.hexlify(self.as_bytes()).decode('ascii')
 
 
-    ###############################################################################################
-    # calculated properties
 
-    @property
-    def width(self):
-        """Raster width of glyph."""
-        if not self._pixels:
-            return 0
-        return len(self._pixels[0])
-
-    @property
-    def height(self):
-        """Raster height of glyph."""
-        return len(self._pixels)
-
-    @property
-    def advance(self):
-        """Internal advance width of glyph, including internal bearings."""
-        return self.offset.x + self.width + self.tracking
-
-    @property
-    @cache
-    def padding(self):
-        """Offset from raster sides to bounding box. Left, bottom, right, top."""
-        if not self._pixels:
-            return Bounds(0, 0, 0, 0)
-        row_inked = [True in _row for _row in self._pixels]
-        if True not in row_inked:
-            return Bounds(self.width, self.height, 0, 0)
-        bottom = list(reversed(row_inked)).index(True)
-        top = row_inked.index(True)
-        col_inked = [bool(sum(_row[_i] for _row in self._pixels)) for _i in range(self.width)]
-        left = col_inked.index(True)
-        right = list(reversed(col_inked)).index(True)
-        return Bounds(left, bottom, right, top)
-
-    @property
-    @cache
-    def ink_bounds(self):
-        """Minimum box encompassing all ink, in glyph origin coordinates."""
-        bounds = Bounds(
-            left=self.offset.x + self.padding.left,
-            bottom=self.offset.y + self.padding.bottom,
-            right=self.offset.x + self.width - self.padding.right,
-            top=self.offset.y + self.height - self.padding.top,
-        )
-        # more intuitive result for blank glyphs
-        if bounds.left == bounds.right or bounds.top == bounds.bottom:
-            return Bounds(0, 0, 0, 0)
-        return bounds
-
-    @property
-    @cache
-    def bounding_box(self):
-        """Dimensions of minimum bounding box encompassing all ink."""
-        return Coord(
-            self.ink_bounds.right - self.ink_bounds.left,
-            self.ink_bounds.top - self.ink_bounds.bottom
-        )
 
     ###############################################################################################
     # operations

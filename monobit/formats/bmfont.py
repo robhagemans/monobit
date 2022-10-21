@@ -26,7 +26,7 @@ from .. import struct
 from ..storage import loaders, savers
 from ..font import Font, Coord
 from ..glyph import Glyph
-from ..label import Codepoint, Char
+from ..labels import Codepoint, Char
 
 from .windows import CHARSET_MAP, CHARSET_REVERSE_MAP
 
@@ -40,7 +40,7 @@ from .windows import CHARSET_MAP, CHARSET_REVERSE_MAP
 # top-level calls
 
 if Image:
-    @loaders.register('bmf', name='BMFont')
+    @loaders.register('bmf', name='bmfont')
     def load_bmfont(infile, where, outline:bool=False):
         """
         Load fonts from Angelcode BMFont format.
@@ -60,6 +60,10 @@ if Image:
         """
         Save fonts to Angelcode BMFont format.
 
+        image_size: pixel width,height of the spritesheet(s) storing the glyphs (default: 256x256)
+        image_format: image format of the spritesheets (default: 'png')
+        packed: if true, use each of the RGB channels as a separate spritesheet (default: True)
+        descriptor: font descriptor file format, one of 'text', 'json' (default: 'text')
         """
         if len(fonts) > 1:
             raise FileFormatError("Can only save one font to BMFont file.")
@@ -210,6 +214,24 @@ def _kernings(size):
     return le.Struct(
         kernings=_KERNING * (size // _KERNING.size)
     )
+
+
+# common settings for unparsed informational properties
+# these document the rasteriser/spritesheet generator settings of the AngelFont converter
+_UNPARSED_PROPS = {
+    # > stretchH    The font height stretch in percentage. 100% means no stretch.
+    'stretchH': '100',
+    # > smooth      Set to 1 if smoothing was turned on.
+    'smooth': '0',
+    # > aa          The supersampling level used. 1 means no supersampling was used.
+    'aa': '1',
+    # > padding     The padding for each character (up, right, down, left).
+    'padding': '0,0,0,0',
+    # > spacing     The spacing for each character (horizontal, vertical).
+    'spacing': '0,0',
+    # > outline     The outline thickness for the characters.
+    'outline': '0',
+}
 
 
 ##############################################################################
@@ -384,7 +406,6 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=(),
     # ensure we have RGBA channels
     sheets = {_k: _v.convert('RGBA') for _k, _v in sheets.items()}
     glyphs = []
-    max_height = 0
     if chars:
         # extract channel masked sprites
         sprites = []
@@ -422,7 +443,7 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=(),
             image.close()
         # check if font is monochromatic
         colourset = list(set(_tup for _sprite in sprites for _tup in _sprite))
-        if len(colourset) == 1:
+        if len(colourset) <= 1:
             logging.warning('All glyphs are blank.')
             # only one colour found
             bg, fg = colourset[0], None
@@ -440,34 +461,53 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=(),
         for char, sprite in zip(chars, sprites):
             #if char.width and char.height:
             bits = tuple(_c == fg for _c in sprite)
-            glyph = Glyph(tuple(
-                bits[_offs: _offs+char.width]
-                for _offs in range(0, len(bits), char.width)
-            ))
-            # append kernings (this glyph left)
-            if info['unicode']:
-                kern_to = {
-                    Char(chr(_kern.second)): _kern.amount
-                    for _kern in kernings
-                    if _kern.first == char.id
-                }
+            if not char.width:
+                glyph = Glyph.blank(width=0, height=char.height)
             else:
-                kern_to = {
-                    _codepoint_for_id(_kern.second, False): _kern.amount
-                    for _kern in kernings
-                    if _kern.first == char.id
-                }
-            # max_height is used further down as well
-            max_height = max(char.height + char.yoffset for char in chars)
+                glyph = Glyph(tuple(
+                    bits[_offs: _offs+char.width]
+                    for _offs in range(0, len(bits), char.width)
+                ))
+            # append kernings (this glyph left)
+            is_unicode = bool(_to_int(info['unicode']))
+            if is_unicode:
+                labeller = lambda _id: Char(chr(_id))
+            else:
+                labeller = lambda _id: Codepoint(_id)
+            right_kerning = {
+                labeller(_kern.second): _kern.amount
+                for _kern in kernings
+                if _kern.first == char.id
+            }
             glyph = glyph.modify(
-                codepoint=_codepoint_for_id(char.id, info['unicode']),
-                offset=(char.xoffset, max_height-glyph.height-char.yoffset),
-                tracking=char.xadvance - char.xoffset - char.width,
-                kern_to=kern_to
+                labels=(labeller(char.id),),
+                left_bearing=char.xoffset,
+                right_bearing=char.xadvance - char.xoffset - char.width,
+                right_kerning=right_kerning
             )
             glyphs.append(glyph)
     for file in image_files.values():
         file.close()
+    # convert to yaff properties
+    properties = _parse_bmfont_props(
+        name, bmformat, imgformats, info, common,
+    )
+    # > The `yoffset` gives the distance from the top of the cell height to the top
+    # > of the character. A negative value here would mean that the character extends
+    # > above the cell height.
+    raster_top = Font(glyphs, **properties).raster.top
+    glyphs = [
+        _glyph.modify(
+            shift_up=raster_top-_glyph.height-_char.yoffset,
+        )
+        for _glyph, _char in zip(glyphs, chars)
+    ]
+    font = Font(glyphs, **properties)
+    font = font.label(_record=False)
+    return font
+
+
+def _parse_bmfont_props(name, bmformat, imgformats, info, common):
     # parse properties
     bmfont_props = {**info}
     # encoding
@@ -479,32 +519,29 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=(),
         charset = bmfont_props.pop('charset')
         encoding = _CHARSET_STR_MAP.get(charset.upper(), charset)
     properties = {
-        'source-format': 'BMFont ({} descriptor; {} spritesheet)'.format(bmformat, ','.join(imgformats)),
+        'source-format':
+            'BMFont ({} descriptor; {} spritesheet)'.format(bmformat, ','.join(imgformats)),
         'source-name': Path(name).name,
         'family': bmfont_props.pop('face'),
-        # assume line_spacing == pixel-size == ascent + descent (i.e. no leading)
-        # this seems to lead to too high values with fonts produces by Angelcode BMFont
-        'ascent': common.lineHeight - (max_height - common.base),
-        'descent': max_height - common.base,
-        'weight': 'bold' if _to_int(bmfont_props.pop('bold')) else Font.get_default('weight'),
-        'slant': 'italic' if _to_int(bmfont_props.pop('italic')) else Font.get_default('slant'),
+        'line-height': common.lineHeight,
+        # shift-up is set per-glyph
         'encoding': encoding,
     }
+    if _to_int(bmfont_props.pop('bold')):
+        properties['weight'] = 'bold'
+    if _to_int(bmfont_props.pop('italic')):
+        properties['slant'] = 'italic'
     # drop other props if they're default value
-    default_bmfont_props = {
-        'stretchH': '100',
-        'smooth': '0',
-        'aa': '1',
-        'padding': '0,0,0,0',
-        'spacing': '0,0',
-        'outline': '0',
+    bmfont_props = {
+        _k: _v for _k, _v in bmfont_props.items()
+        if str(_v) != _UNPARSED_PROPS.get(_k, '')
     }
-    properties['bmfont'] = Props(**{
-        _k: ' '.join(str(_v).split(','))
+    properties['bmfont'] = ' '.join(
+        f'{_k}=' + ','.join(str(_v).split(','))
         for _k, _v in bmfont_props.items()
-        if str(_v) != default_bmfont_props.get(_k, '')
-    })
-    return Font(glyphs, **properties)
+    )
+    return properties
+
 
 def _read_bmfont(infile, container, outline):
     """Read a bmfont from a container."""
@@ -532,26 +569,23 @@ def _read_bmfont(infile, container, outline):
     return _extract(container, infile.name, outline=outline, **fontinfo)
 
 
+
+##############################################################################
 ##############################################################################
 # bmfont writer
 
 def _glyph_id(glyph, encoding):
-    codepoint = glyph.codepoint
-    char = glyph.char
-    if not codepoint:
-        raise ValueError(f"Can't store glyph {ascii(char)} with no codepoint.")
-    if len(codepoint) == 1:
-        id, = codepoint
-    elif not charmaps.is_unicode(encoding):
-        id = bytes_to_int(codepoint)
+    if charmaps.is_unicode(encoding):
+        char = glyph.char
+        if len(char) > 1:
+            raise ValueError(
+                f"Can't store multi-codepoint grapheme sequence {ascii(char)}."
+            )
+        return ord(char)
+    if not glyph.codepoint:
+        raise ValueError(f"Can't store glyph with no codepoint: {glyph}.")
     else:
-        raise ValueError(f"Can't store multi-codepoint grapheme sequence {ascii(char)}.")
-    return id
-
-def _codepoint_for_id(id, is_unicode):
-    if not is_unicode:
-        return Codepoint(int_to_bytes(id))
-    return Codepoint(id)
+        return bytes_to_int(glyph.codepoint)
 
 
 def _create_spritesheets(font, size=(256, 256), packed=False):
@@ -582,7 +616,6 @@ def _create_spritesheets(font, size=(256, 256), packed=False):
         x, y = 0, 0
         tree = SpriteNode(x, y, width, height)
         for number, glyph in enumerate(font.glyphs):
-            left, bottom, right, top = glyph.padding
             cropped = glyph.reduce()
             if cropped.height and cropped.width:
                 try:
@@ -622,17 +655,17 @@ def _create_spritesheets(font, size=(256, 256), packed=False):
                 # > position to find the left position where the character should be drawn.
                 # > A negative value here would mean that the character slightly overlaps
                 # > the previous character.
-                xoffset=font.offset.x + left,
+                xoffset=font.left_bearing + glyph.left_bearing + glyph.padding.left,
                 # > The `yoffset` gives the distance from the top of the cell height to the top
                 # > of the character. A negative value here would mean that the character extends
                 # > above the cell height.
-                yoffset=font.raster_size.y - glyph.height + top,
+                yoffset=font.raster.top-(glyph.height+glyph.shift_up) + glyph.padding.top,
                 # xadvance is the advance width from origin to next origin
                 # > The filled red dot marks the current cursor position, and the hollow red dot
                 # > marks the position of the cursor after drawing the character. You get to this
                 # > position by moving the cursor horizontally with the xadvance value.
                 # > If kerning pairs are used the cursor should also be moved accordingly.
-                xadvance=font.offset.x + glyph.width + font.tracking,
+                xadvance=font.left_bearing + glyph.advance_width + font.right_bearing,
                 page=page_id,
                 chnl=channels,
             ))
@@ -681,8 +714,12 @@ def _create_bmfont(
     if not charmaps.is_unicode(encoding):
         # if encoding is unknown, call it OEM
         charset = _CHARSET_STR_REVERSE_MAP.get(encoding, _CHARSET_STR_REVERSE_MAP[''])
+        # ensure codepoint values are set
+        font = font.label(codepoint_from=encoding)
     else:
         charset = ''
+        # ensure char values are set
+        font = font.label(char_from=encoding)
     # create images
     pages, chars = _create_spritesheets(font, size, packed)
     props = {}
@@ -751,22 +788,24 @@ def _create_bmfont(
     # > scaleW      The width of the texture, normally used to scale the x pos of the character image.
     # > scaleH      The height of the texture, normally used to scale the y pos of the character image.
     # > pages       The number of texture pages included in the font.
-    # > packed      Set to 1 if the monochrome characters have been packed into each of the texture channels. In this case alphaChnl describes what is stored in each channel.
-    # > alphaChnl   Set to 0 if the channel holds the glyph data, 1 if it holds the outline, 2 if it holds the glyph and the outline, 3 if its set to zero, and 4 if its set to one.
-    # > redChnl     Set to 0 if the channel holds the glyph data, 1 if it holds the outline, 2 if it holds the glyph and the outline, 3 if its set to zero, and 4 if its set to one.
-    # > greenChnl   Set to 0 if the channel holds the glyph data, 1 if it holds the outline, 2 if it holds the glyph and the outline, 3 if its set to zero, and 4 if its set to one.
-    # > blueChnl    Set to 0 if the channel holds the glyph data, 1 if it holds the outline, 2 if it holds the glyph and the outline, 3 if its set to zero, and 4 if its set to one.
+    # > packed      Set to 1 if the monochrome characters have been packed into each of the texture
+    # >             channels. In this case alphaChnl describes what is stored in each channel.
+    # > alphaChnl   Set to 0 if the channel holds the glyph data, 1 if it holds the outline,
+    # >             2 if it holds the glyph and the outline, 3 if its set to zero,
+    # >             and 4 if its set to one.
+    # > redChnl     ..(value as alphaChnl)..
+    # > greenChnl   ..(value as alphaChnl)..
+    # > blueChnl    ..(value as alphaChnl)..
     props['common'] = {
         # https://www.angelcode.com/products/bmfont/doc/render_text.html
         # > [...] the lineHeight, i.e. how far the cursor should be moved vertically when
         # > moving to the next line.
-        # font.line_spacing == font.raster_size.y + font.leading
-        'lineHeight': font.line_spacing,
+        'lineHeight': font.line_height,
         # "base" is the distance between top-line and baseline
         # > The base value is how far from the top of the cell height the base of the characters
         # > in the font should be placed. Characters can of course extend above or below this base
         # > line, which is entirely up to the font design.
-        'base': font.raster_size.y + font.offset.y,
+        'base': font.raster.top,
         'scaleW': size[0],
         'scaleH': size[1],
         'pages': len(pages),
@@ -778,17 +817,19 @@ def _create_bmfont(
     }
     # >  kerning
     # >  -------
-    # >  The kerning information is used to adjust the distance between certain characters, e.g. some characters should be placed closer to each other than others.
+    # >  The kerning information is used to adjust the distance between certain characters, e.g.
+    # >  some characters should be placed closer to each other than others.
     # >  first  The first character id.
     # >  second The second character id.
-    # >  amount	How much the x position should be adjusted when drawing the second character immediately following the first.
+    # >  amount	How much the x position should be adjusted when drawing the second character
+    # >  immediately following the first.
     props['kernings'] = [{
             'first': _glyph_id(_glyph, font.encoding),
             'second': _glyph_id(font.get_glyph(_to), font.encoding),
             'amount': int(_amount)
         }
         for _glyph in font.glyphs
-        for _to, _amount in _glyph.kern_to.items()
+        for _to, _amount in _glyph.right_kerning.items()
     ]
     # write the .fnt description
     if descriptor == 'text':

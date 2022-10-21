@@ -537,17 +537,17 @@ _IMAGE_RESOURCE_DATA_ENTRY = le.Struct(
 # top level functions
 
 @loaders.register(
-    'fnt',
+    #'fnt',
     magic=(b'\0\x01', b'\0\x02', b'\0\x03'),
-    name='Windows font resource',
+    name='win-fnt',
 )
-def load_fnt(instream, where=None):
+def load_win_fnt(instream, where=None):
     """Load font from a Windows .FNT resource."""
     font = parse_fnt(instream.read())
     return font
 
-@savers.register(linked=load_fnt)
-def save_fnt(fonts, outstream, where=None, version:int=2):
+@savers.register(linked=load_win_fnt)
+def save_win_fnt(fonts, outstream, where=None, version:int=2):
     """
     Save font to a Windows .FNT resource.
 
@@ -563,9 +563,9 @@ def save_fnt(fonts, outstream, where=None, version:int=2):
 @loaders.register(
     'fon',
     magic=(b'MZ',),
-    name='Windows font',
+    name='win-fon',
 )
-def load_fon(instream, where=None):
+def load_win_fon(instream, where=None):
     """Load fonts from a Windows .FON container."""
     data = instream.read()
     mz_header = _MZ_HEADER.from_bytes(data)
@@ -591,8 +591,8 @@ def load_fon(instream, where=None):
     ]
     return fonts
 
-@savers.register(linked=load_fon)
-def save_fon(fonts, outstream, where=None, version:int=2):
+@savers.register(linked=load_win_fon)
+def save_win_fon(fonts, outstream, where=None, version:int=2):
     """
     Save fonts to a Windows .FON container.
 
@@ -611,7 +611,9 @@ def parse_fnt(fnt):
     win_props = _parse_header(fnt)
     properties = _parse_win_props(fnt, win_props)
     glyphs = _parse_chartable(fnt, win_props)
-    return Font(glyphs, **properties)
+    font = Font(glyphs, **properties)
+    font = font.label(_record=False)
+    return font
 
 def _parse_header(fnt):
     """Read the header information in the FNT resource."""
@@ -708,10 +710,15 @@ def _parse_win_props(fnt, win_props):
         'point-size': win_props.dfPoints,
         'slant': 'italic' if win_props.dfItalic else 'roman',
         # Windows dfAscent means distance between matrix top and baseline
+        # and it calls the space where accents go the dfInternalLeading
+        # which is specified to be 'inside the bounds set by dfPixHeight'
         'ascent': win_props.dfAscent - win_props.dfInternalLeading,
-        'descent': win_props.dfPixHeight - win_props.dfAscent,
-        'offset': Coord(0, win_props.dfAscent - win_props.dfPixHeight),
-        'leading': win_props.dfExternalLeading,
+        # the dfPixHeight is the 'height of the character bitmap', i.e. our raster-size.y
+        # and dfAscent is the distance between the raster top and the baseline,
+        #'descent': win_props.dfPixHeight - win_props.dfAscent,
+        'shift-up': win_props.dfAscent - win_props.dfPixHeight,
+        # dfExternalLeading is the 'amount of extra leading ... the application add between rows'
+        'line-height': win_props.dfPixHeight + win_props.dfExternalLeading,
         'default-char': win_props.dfDefaultChar + win_props.dfFirstChar,
     }
     if win_props.dfPixWidth:
@@ -725,9 +732,9 @@ def _parse_win_props(fnt, win_props):
         # fontforge follows the "new" definition while mkwinfont follows the "old".
         # we'll make it depend on the version
         if version == 0x100:
-            properties['cap-advance'] = win_props.dfAvgWidth
+            properties['cap-width'] = win_props.dfAvgWidth
         else:
-            properties['average-advance'] = win_props.dfAvgWidth
+            properties['average-width'] = win_props.dfAvgWidth
     # check prop/fixed flag
     if bool(win_props.dfPitchAndFamily & 1) == bool(win_props.dfPixWidth):
         logging.warning(
@@ -913,21 +920,31 @@ def create_fnt(font, version=0x200):
     space_index = 0
     # if encoding is compatible, use it; otherwise set to fallback value
     charset = charset_map.get(font.encoding, _FALLBACK_CHARSET)
+    # ensure codepoint values are set, if possible
+    font = font.label(codepoint_from=font.encoding)
     # only include single-byte encoded glyphs
     codepoints = tuple(_cp[0] for _cp in font.get_codepoints() if len(_cp) == 1)
+    if not codepoints:
+        raise FileFormatError(
+            'Windows font can only encode glyphs with single-byte codepoints; none found in font.'
+        )
     # FNT can hold at most the codepoints 0..256 as these fields are byte-sized
     min_ord = min(codepoints)
     max_ord = min(255, max(codepoints))
     # char table; we need a contiguous range between the min and max codepoints
     ord_glyphs = [
-        font.get_glyph((_codepoint,), missing='empty')
+        font.get_glyph(_codepoint, missing='empty')
         for _codepoint in range(min_ord, max_ord+1)
     ]
-    default_ord, = font.get_glyph(font.default_char).codepoint
-    if default_ord is None:
+    default = font.get_glyph(font.default_char).codepoint
+    if len(default) == 1:
+        default_ord, = default
+    else:
         default_ord = _FALLBACK_DEFAULT
-    break_ord, = font.get_glyph(font.word_boundary).codepoint
-    if break_ord is None:
+    word_break = font.get_glyph(font.word_boundary).codepoint
+    if len(word_break) == 1:
+        break_ord, = word_break
+    else:
         break_ord = _FALLBACK_BREAK
     # add the guaranteed-blank glyph
     ord_glyphs.append(Glyph.blank(pix_width, font.raster_size.y))
@@ -977,10 +994,11 @@ def create_fnt(font, version=0x200):
         dfVertRes=font.dpi.y,
         dfHorizRes=font.dpi.x,
         # Windows dfAscent means distance between matrix top and baseline
-        dfAscent=font.offset.y + font.raster_size.y,
+        dfAscent=font.shift_up + font.raster_size.y,
         #'ascent': win_props.dfAscent - win_props.dfInternalLeading,
-        dfInternalLeading=font.offset.y + font.raster_size.y - font.ascent,
-        dfExternalLeading=font.leading,
+        dfInternalLeading=font.shift_up + font.raster_size.y - font.ascent,
+        #'line-height': win_props.dfPixHeight + win_props.dfExternalLeading,
+        dfExternalLeading=font.line_height-font.raster_size.y,
         dfItalic=(font.slant in ('italic', 'oblique')),
         dfUnderline=('underline' in font.decoration),
         dfStrikeOut=('strikethrough' in font.decoration),
@@ -990,9 +1008,9 @@ def create_fnt(font, version=0x200):
         dfPixHeight=font.raster_size.y,
         dfPitchAndFamily=pitch_and_family,
         # for 2.0+, we use actual average advance here (like fontforge but unlike mkwinfont)
-        dfAvgWidth=round(font.average_advance),
+        dfAvgWidth=round(font.average_width),
         # max advance width
-        dfMaxWidth=font.max_advance,
+        dfMaxWidth=font.max_width,
         dfFirstChar=min_ord,
         dfLastChar=max_ord,
         dfDefaultChar=default_ord - min_ord,

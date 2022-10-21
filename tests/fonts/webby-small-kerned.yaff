@@ -1,0 +1,1593 @@
+# This is a modified version of Tristan Grimmer's  WebbySmall, containing only ASCII
+# It is meant for testing purposes, not as a standalone font.
+# For the original, please visit https://github.com/bluescan/proggyfonts
+# 
+# MIT License
+# 
+# Copyright (c) 2004, 2005 Tristan Grimmer
+# 
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+# 
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+# 
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+name: WebbySmall Medium 7
+spacing: proportional
+bounding-box: 7 9
+family: WebbySmall
+foundry: bluescan
+point-size: 7
+weight: medium
+setwidth: normal
+dpi: 96 96
+average-advance: 6
+x-height: 7
+cap-height: 7
+ascent: 7
+descent: 2
+encoding: iso8859-1
+default-char: 0x7f
+converter: monobit v0.22
+source-name: WebbySmall-ascii.bdf
+source-format: BDF v2.1
+history: load format=bdf
+bdf:
+    WEIGHT: 10
+    QUAD_WIDTH: 7
+
+0x20:
+    .......
+    .......
+    .......
+    .......
+    .......
+    .......
+    .......
+    .......
+    .......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x21:
+    ...
+    ...
+    .@.
+    .@.
+    .@.
+    ...
+    .@.
+    ...
+    ...
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x22:
+    .....
+    .....
+    .@.@.
+    .@.@.
+    .....
+    .....
+    .....
+    .....
+    .....
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x23:
+    ......
+    ......
+    .@.@..
+    @@@@@.
+    .@.@..
+    @@@@@.
+    .@.@..
+    ......
+    ......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x24:
+    ......
+    ..@...
+    .@@@@.
+    @.@...
+    .@@@..
+    ..@.@.
+    @@@@..
+    ..@...
+    ......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x25:
+    .......
+    .@...@.
+    @.@.@..
+    .@.@...
+    ...@.@.
+    ..@.@.@
+    .@...@.
+    .......
+    .......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x26:
+    .......
+    .......
+    .@@....
+    @..@...
+    .@@@.@.
+    @...@@.
+    .@@@@..
+    .......
+    .......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x27:
+    ...
+    ...
+    .@.
+    .@.
+    ...
+    ...
+    ...
+    ...
+    ...
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x28:
+    ....
+    ..@.
+    .@..
+    .@..
+    .@..
+    .@..
+    .@..
+    ..@.
+    ....
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x29:
+    ....
+    .@..
+    ..@.
+    ..@.
+    ..@.
+    ..@.
+    ..@.
+    .@..
+    ....
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x2a:
+    ......
+    ......
+    ......
+    @.@.@.
+    .@@@..
+    @.@.@.
+    ......
+    ......
+    ......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x2b:
+    ......
+    ......
+    ..@...
+    ..@...
+    @@@@@.
+    ..@...
+    ..@...
+    ......
+    ......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x2c:
+    ..
+    ..
+    ..
+    ..
+    ..
+    ..
+    @.
+    @.
+    ..
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x2d:
+    ......
+    ......
+    ......
+    ......
+    @@@@@.
+    ......
+    ......
+    ......
+    ......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x2e:
+    ...
+    ...
+    ...
+    ...
+    ...
+    ...
+    .@.
+    ...
+    ...
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x2f:
+    ....@..
+    ....@..
+    ...@...
+    ...@...
+    ..@....
+    ..@....
+    .@.....
+    .@.....
+    .......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x30:
+    .......
+    .......
+    .@@@@..
+    @....@.
+    @.@@.@.
+    @....@.
+    .@@@@..
+    .......
+    .......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x31:
+    ..
+    ..
+    @.
+    @.
+    @.
+    @.
+    @.
+    ..
+    ..
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x32:
+    .......
+    .......
+    @@@@@@.
+    .....@.
+    @@@@@@.
+    @......
+    @@@@@@.
+    .......
+    .......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x33:
+    .......
+    .......
+    @@@@@..
+    .....@.
+    .@@@@@.
+    .....@.
+    @@@@@..
+    .......
+    .......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x34:
+    .......
+    .......
+    @....@.
+    @....@.
+    @@@@@@.
+    .....@.
+    .....@.
+    .......
+    .......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x35:
+    .......
+    .......
+    @@@@@@.
+    @......
+    @@@@@..
+    .....@.
+    @@@@@..
+    .......
+    .......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x36:
+    .......
+    .......
+    .@@@@..
+    @......
+    @@@@@..
+    @....@.
+    .@@@@..
+    .......
+    .......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x37:
+    .......
+    .......
+    @@@@@@.
+    .....@.
+    ....@..
+    ...@...
+    ..@....
+    .......
+    .......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x38:
+    .......
+    .......
+    .@@@@..
+    @....@.
+    .@@@@..
+    @....@.
+    .@@@@..
+    .......
+    .......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x39:
+    .......
+    .......
+    .@@@@..
+    @....@.
+    .@@@@@.
+    .....@.
+    .@@@@..
+    .......
+    .......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x3a:
+    ...
+    ...
+    ...
+    .@.
+    ...
+    .@.
+    ...
+    ...
+    ...
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x3b:
+    ...
+    ...
+    ...
+    .@.
+    ...
+    .@.
+    @..
+    ...
+    ...
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x3c:
+    .......
+    .......
+    ....@@.
+    ..@@...
+    @@.....
+    ..@@...
+    ....@@.
+    .......
+    .......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x3d:
+    .......
+    .......
+    .......
+    @@@@@@.
+    .......
+    @@@@@@.
+    .......
+    .......
+    .......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x3e:
+    .......
+    .......
+    @@.....
+    ..@@...
+    ....@@.
+    ..@@...
+    @@.....
+    .......
+    .......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x3f:
+    .......
+    .......
+    .@@@@..
+    @....@.
+    ..@@@..
+    .......
+    ..@....
+    .......
+    .......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x40:
+    .......
+    .@@@@..
+    @....@.
+    @.@@.@.
+    @.@..@.
+    @.@@@@.
+    @......
+    .@@@@..
+    .......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x41:
+    .......
+    .......
+    .@@@@..
+    @....@.
+    @@@@@@.
+    @....@.
+    @....@.
+    .......
+    .......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x42:
+    .......
+    .......
+    @@@@@..
+    @....@.
+    @@@@@..
+    @....@.
+    @@@@@..
+    .......
+    .......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x43:
+    .......
+    .......
+    .@@@@@.
+    @......
+    @......
+    @......
+    .@@@@@.
+    .......
+    .......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x44:
+    .......
+    .......
+    @@@@@..
+    @....@.
+    @....@.
+    @....@.
+    @@@@@..
+    .......
+    .......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x45:
+    .......
+    .......
+    .@@@@@.
+    @......
+    @@@@@..
+    @......
+    .@@@@@.
+    .......
+    .......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x46:
+    .......
+    .......
+    .@@@@@.
+    @......
+    @@@@@..
+    @......
+    @......
+    .......
+    .......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x47:
+    .......
+    .......
+    .@@@@@.
+    @......
+    @..@@@.
+    @....@.
+    .@@@@@.
+    .......
+    .......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x48:
+    .......
+    .......
+    @....@.
+    @....@.
+    @@@@@@.
+    @....@.
+    @....@.
+    .......
+    .......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x49:
+    ..
+    ..
+    @.
+    @.
+    @.
+    @.
+    @.
+    ..
+    ..
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x4a:
+    .......
+    .......
+    .....@.
+    .....@.
+    .....@.
+    .....@.
+    @@@@@..
+    .......
+    .......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x4b:
+    .......
+    .......
+    @....@.
+    @...@..
+    @@@@...
+    @...@..
+    @....@.
+    .......
+    .......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x4c:
+    .......
+    .......
+    @......
+    @......
+    @......
+    @......
+    .@@@@@.
+    .......
+    .......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x4d:
+    ........
+    ........
+    .@@@@@..
+    @..@..@.
+    @..@..@.
+    @..@..@.
+    @..@..@.
+    ........
+    ........
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x4e:
+    .......
+    .......
+    @@...@.
+    @.@..@.
+    @.@..@.
+    @..@.@.
+    @...@@.
+    .......
+    .......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x4f:
+    .......
+    .......
+    .@@@@..
+    @....@.
+    @....@.
+    @....@.
+    .@@@@..
+    .......
+    .......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x50:
+    .......
+    .......
+    @@@@@..
+    @....@.
+    @@@@@..
+    @......
+    @......
+    .......
+    .......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x51:
+    .......
+    .......
+    .@@@@..
+    @....@.
+    @....@.
+    @...@@.
+    .@@@@@.
+    .......
+    .......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x52:
+    .......
+    .......
+    @@@@@..
+    @....@.
+    @@@@@..
+    @....@.
+    @....@.
+    .......
+    .......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x53:
+    .......
+    .......
+    .@@@@@.
+    @......
+    .@@@@..
+    .....@.
+    @@@@@..
+    .......
+    .......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x54:
+    .......
+    .......
+    @@@@@@@
+    ...@...
+    ...@...
+    ...@...
+    ...@...
+    .......
+    .......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x55:
+    .......
+    .......
+    @....@.
+    @....@.
+    @....@.
+    @....@.
+    .@@@@..
+    .......
+    .......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x56:
+    .......
+    .......
+    @....@.
+    @....@.
+    @....@.
+    .@..@..
+    ..@@...
+    .......
+    .......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x57:
+    ........
+    ........
+    @..@..@.
+    @..@..@.
+    @..@..@.
+    @..@..@.
+    .@@@@@..
+    ........
+    ........
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x58:
+    ........
+    ........
+    @@...@@.
+    ..@.@...
+    ...@....
+    ..@.@...
+    @@...@@.
+    ........
+    ........
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x59:
+    ........
+    ........
+    @.....@.
+    @.....@.
+    .@@@@@..
+    ...@....
+    ...@....
+    ........
+    ........
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x5a:
+    .......
+    .......
+    @@@@@@.
+    ....@..
+    ..@@...
+    .@.....
+    @@@@@@.
+    .......
+    .......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x5b:
+    ....
+    .@@.
+    .@..
+    .@..
+    .@..
+    .@..
+    .@..
+    .@@.
+    ....
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x5c:
+    .......
+    .@@@@..
+    @....@.
+    @.@@.@.
+    @.@..@.
+    @.@@.@.
+    @....@.
+    .@@@@..
+    .......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x5d:
+    ....
+    .@@.
+    ..@.
+    ..@.
+    ..@.
+    ..@.
+    ..@.
+    .@@.
+    ....
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x5e:
+    .......
+    .......
+    ...@...
+    ..@.@..
+    .@...@.
+    .......
+    .......
+    .......
+    .......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x5f:
+    .......
+    .......
+    .......
+    .......
+    .......
+    .......
+    .......
+    @@@@@@.
+    .......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x60:
+    ....
+    .@..
+    ..@.
+    ....
+    ....
+    ....
+    ....
+    ....
+    ....
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x61:
+    .......
+    .......
+    .......
+    .@@@@..
+    @...@..
+    @...@..
+    .@@@@@.
+    .......
+    .......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x62:
+    ......
+    @.....
+    @.....
+    @@@@..
+    @...@.
+    @...@.
+    @@@@..
+    ......
+    ......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x63:
+    ......
+    ......
+    ......
+    .@@@@.
+    @.....
+    @.....
+    .@@@@.
+    ......
+    ......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x64:
+    ......
+    ....@.
+    ....@.
+    .@@@@.
+    @...@.
+    @...@.
+    .@@@@.
+    ......
+    ......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x65:
+    ......
+    ......
+    ......
+    .@@@..
+    @..@@.
+    @.....
+    .@@@..
+    ......
+    ......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x66:
+    .....
+    .@@@.
+    @....
+    @@@..
+    @....
+    @....
+    @....
+    .....
+    .....
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+    right-kerning:
+        0x69 -2
+        0x6a -1
+        0x66 -1
+        0x67 -1
+
+
+0x67:
+    ......
+    ......
+    ......
+    .@@@..
+    @...@.
+    @...@.
+    .@@@@.
+    ....@.
+    .@@@..
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x68:
+    ......
+    @.....
+    @.....
+    @@@@..
+    @...@.
+    @...@.
+    @...@.
+    ......
+    ......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x69:
+    ...
+    .@.
+    ...
+    .@.
+    .@.
+    .@.
+    .@.
+    ...
+    ...
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+    right-kerning:
+        0x6a -1
+
+
+0x6a:
+    ....
+    ..@.
+    ....
+    ..@.
+    ..@.
+    ..@.
+    ..@.
+    ..@.
+    @@..
+
+    left-bearing: -1
+    right-bearing: 0
+    shift-up: -2
+
+
+0x6b:
+    .....
+    @....
+    @..@.
+    @.@..
+    @@...
+    @.@..
+    @..@.
+    .....
+    .....
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x6c:
+    ...
+    .@.
+    .@.
+    .@.
+    .@.
+    .@.
+    .@.
+    ...
+    ...
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x6d:
+    ........
+    ........
+    ........
+    .@@@@@..
+    @..@..@.
+    @..@..@.
+    @..@..@.
+    ........
+    ........
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x6e:
+    ......
+    ......
+    ......
+    .@@@..
+    @...@.
+    @...@.
+    @...@.
+    ......
+    ......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x6f:
+    ......
+    ......
+    ......
+    .@@@..
+    @...@.
+    @...@.
+    .@@@..
+    ......
+    ......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x70:
+    ......
+    ......
+    ......
+    @@@@..
+    @...@.
+    @...@.
+    @@@@..
+    @.....
+    @.....
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x71:
+    ......
+    ......
+    ......
+    .@@@@.
+    @...@.
+    @...@.
+    .@@@@.
+    ....@.
+    ....@.
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x72:
+    ......
+    ......
+    ......
+    .@@@@.
+    @.....
+    @.....
+    @.....
+    ......
+    ......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x73:
+    .....
+    .....
+    .....
+    .@@@.
+    @@...
+    ..@@.
+    @@@..
+    .....
+    .....
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x74:
+    ......
+    .@....
+    .@....
+    .@@@..
+    .@....
+    .@....
+    ..@@@.
+    ......
+    ......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x75:
+    ......
+    ......
+    ......
+    @...@.
+    @...@.
+    @...@.
+    .@@@..
+    ......
+    ......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x76:
+    ......
+    ......
+    ......
+    @...@.
+    @...@.
+    .@.@..
+    ..@...
+    ......
+    ......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x77:
+    ........
+    ........
+    ........
+    @.....@.
+    @..@..@.
+    @..@..@.
+    .@@@@@..
+    ........
+    ........
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x78:
+    ......
+    ......
+    ......
+    @@.@@.
+    ..@...
+    ..@...
+    @@.@@.
+    ......
+    ......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x79:
+    ......
+    ......
+    ......
+    @...@.
+    @...@.
+    @...@.
+    .@@@@.
+    ....@.
+    .@@@..
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x7a:
+    ......
+    ......
+    ......
+    @@@@@.
+    ...@..
+    ..@...
+    @@@@@.
+    ......
+    ......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x7b:
+    ..@.
+    .@..
+    .@..
+    .@..
+    @...
+    .@..
+    .@..
+    .@..
+    ..@.
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x7c:
+    ...
+    .@.
+    .@.
+    .@.
+    .@.
+    .@.
+    .@.
+    .@.
+    ...
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x7d:
+    .@..
+    ..@.
+    ..@.
+    ..@.
+    ...@
+    ..@.
+    ..@.
+    ..@.
+    .@..
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x7e:
+    .......
+    .......
+    .......
+    .......
+    .@@..@.
+    @..@@..
+    .......
+    .......
+    .......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+
+0x7f:
+    .......
+    .......
+    .@@@@..
+    .@..@..
+    .@..@..
+    .@..@..
+    .@..@..
+    .......
+    .......
+
+    left-bearing: 0
+    right-bearing: 0
+    shift-up: -2
+
+

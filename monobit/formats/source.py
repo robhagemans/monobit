@@ -5,8 +5,8 @@ monobit.formats.source - fonts embedded in C/Python/JS source files
 licence: https://opensource.org/licenses/MIT
 """
 
+from io import BytesIO
 import string
-import math
 
 from ..binary import ceildiv
 from ..storage import loaders, savers
@@ -14,7 +14,7 @@ from ..font import Font
 from ..glyph import Glyph
 from ..streams import FileFormatError
 from ..scripting import pair
-from .raw import parse_aligned
+from .raw import load_bitmap
 
 
 _C_PARAMS = dict(
@@ -34,12 +34,12 @@ _PY_PARAMS = dict(
 
 ###################################################################################################
 
-@loaders.register('c', 'cc', 'cpp', 'h', name='C source')
+@loaders.register('c', 'cc', 'cpp', 'h', name='c')
 def load_c(
         infile, where=None, *,
         identifier:str='',
         cell:pair=(8, 8), count:int=-1, offset:int=0, padding:int=0,
-        align:str='left',
+        align:str='left', strike_count:int=1, strike_bytes:int=-1,
         first_codepoint:int=0
     ):
     """
@@ -51,20 +51,24 @@ def load_c(
     padding: number of bytes between encoded glyphs (default: 0)
     count: number of glyphs to extract (<=0 means all; default: all glyphs)
     align: alignment of glyph in byte (left for most-, right for least-significant; default: left)
+    strike_count: number of glyphs in glyph row (<=0 for all; default: 1)
+    strike_bytes: strike width in bytes (<=0 means as many as needed to fit the glyphs; default: as needed)
+    first_codepoint: first code point in bitmap (default: 0)
     """
     return _load_coded_binary(
         infile, where, identifier=identifier,
         cell=cell, count=count, offset=offset, padding=padding,
-        align=align, first_codepoint=first_codepoint,
+        align=align, strike_count=strike_count, strike_bytes=strike_bytes, 
+        first_codepoint=first_codepoint,
         **_C_PARAMS
     )
 
-@loaders.register('js', 'json', name='JavaScript source')
-def load_js(
+@loaders.register('js', 'json', name='json')
+def load_json(
         infile, where=None, *,
         identifier:str='',
         cell:pair=(8, 8), count:int=-1, offset:int=0, padding:int=0,
-        align:str='left',
+        align:str='left', strike_count:int=1, strike_bytes:int=-1,
         first_codepoint:int=0
     ):
     """
@@ -76,20 +80,24 @@ def load_js(
     padding: number of bytes between encoded glyphs (default: 0)
     count: number of glyphs to extract (<=0 means all; default: all)
     align: alignment of glyph in byte (left for most-, right for least-significant; default: left)
+    strike_count: number of glyphs in glyph row (<=0 for all; default: 1)
+    strike_bytes: strike width in bytes (<=0 means as many as needed to fit the glyphs; default: as needed)
+    first_codepoint: first code point in bitmap (default: 0)
     """
     return _load_coded_binary(
         infile, where, identifier=identifier,
         cell=cell, count=count, offset=offset, padding=padding,
-        align=align, first_codepoint=first_codepoint
+        align=align, strike_count=strike_count, strike_bytes=strike_bytes, 
+        first_codepoint=first_codepoint
         **_JS_PARAMS
     )
 
-@loaders.register('py', name='Python source')
-def load_py(
+@loaders.register('py', name='python')
+def load_python(
         infile, where=None, *,
         identifier:str='',
         cell:pair=(8, 8), count:int=-1, offset:int=0, padding:int=0,
-        align:str='left',
+        align:str='left', strike_count:int=1, strike_bytes:int=-1,
         first_codepoint:int=0
     ):
     """
@@ -101,11 +109,15 @@ def load_py(
     padding: number of bytes between encoded glyphs (default: 0)
     count: number of glyphs to extract (<=0 means all; default: all)
     align: alignment of glyph in byte (left for most-, right for least-significant; default: left)
+    strike_count: number of glyphs in glyph row (<=0 for all; default: 1)
+    strike_bytes: strike width in bytes (<=0 means as many as needed to fit the glyphs; default: as needed)
+    first_codepoint: first code point in bitmap (default: 0)
     """
     return _load_coded_binary(
         infile, where, identifier=identifier,
         cell=cell, count=count, offset=offset, padding=padding,
-        align=align, first_codepoint=first_codepoint,
+        align=align, strike_count=strike_count, strike_bytes=strike_bytes, 
+        first_codepoint=first_codepoint,
         **_PY_PARAMS
     )
 
@@ -128,30 +140,31 @@ def load_source(
     padding: number of bytes between encoded glyphs (default: 0)
     count: number of glyphs to extract (<=0 means all; default: all)
     align: alignment of glyph in byte (left for most-, right for least-significant; default: left)
+    strike_count: number of glyphs in glyph row (<=0 for all; default: 1)
+    strike_bytes: strike width in bytes (<=0 means as many as needed to fit the glyphs; default: as needed)
+    first_codepoint: first code point in bitmap (default: 0)
     """
 
     return _load_coded_binary(
         infile, where, identifier=identifier,
         cell=cell, count=count, offset=offset, padding=padding,
-        align=align, first_codepoint=first_codepoint,
+        align=align, strike_count=strike_count, strike_bytes=strike_bytes, 
+        first_codepoint=first_codepoint,
         delimiters=delimiters, comment=comment
     )
 
 
 def _load_coded_binary(
         infile, where, identifier, delimiters, comment,
-        cell, count, offset, padding, align, first_codepoint
+        cell, count, offset, padding, align, strike_count, strike_bytes, first_codepoint
     ):
     """Load font from binary encoded in source code."""
     width, height = cell
     payload = _get_payload(infile.text, identifier, delimiters, comment)
-    bytelist = [_int_from_c(_s) for _s in payload.split(',') if _s]
-    glyphs = parse_aligned(
-        bytelist, width, height, count, offset, padding, align
-    )
-    glyphs = (
-        _glyph.modify(codepoint=_index)
-        for _index, _glyph in enumerate(glyphs, first_codepoint)
+    data = bytes(_int_from_c(_s) for _s in payload.split(',') if _s)
+    bytesio = BytesIO(data[offset:])
+    return load_bitmap(
+        bytesio, width, height, count, padding, align, strike_count, strike_bytes, first_codepoint
     )
     return Font(glyphs)
 
@@ -209,26 +222,19 @@ def save_c(fonts, outstream, where=None):
     """
     return _save_coded_binary(fonts, outstream, 'char font_{compactname}[{bytesize}] = ', **_C_PARAMS)
 
-@savers.register('py', 'python', linked=load_py)
-def save_py(fonts, outstream, where=None):
+@savers.register('py', 'python', linked=load_python)
+def save_python(fonts, outstream, where=None):
     """
     Save font to bitmap encoded in Python source code.
     """
     return _save_coded_binary(fonts, outstream, 'font_{compactname} = ', **_PY_PARAMS)
 
-@savers.register('json', linked=load_js)
+@savers.register('json', linked=load_json)
 def save_json(fonts, outstream, where=None):
     """
     Save font to bitmap encoded in JSON code.
     """
     return _save_coded_binary(fonts, outstream, '', **_JS_PARAMS)
-
-@savers.register('js', linked=load_js)
-def save_js(fonts, outstream, where=None):
-    """
-    Save font to bitmap encoded in JSON code.
-    """
-    return _save_coded_binary(fonts, outstream, 'let font_{compactname} = ', **_JS_PARAMS)
 
 @savers.register('source', linked=load_source)
 def save_source(
@@ -236,7 +242,7 @@ def save_source(
         identifier:str, assign:str='=', delimiters:str='{}', comment:str='//',
     ):
     """
-    Save font to bitmap encoded in JSON code.
+    Save font to bitmap encoded in source code.
     """
     return _save_coded_binary(fonts, outstream, f'{identifier} {assign} ', delimiters, comment)
 

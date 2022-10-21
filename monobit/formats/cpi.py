@@ -12,6 +12,7 @@ licence: https://opensource.org/licenses/MIT
 import os
 import string
 import logging
+from io import BytesIO
 
 from ..binary import ceildiv
 from ..struct import Props, little_endian as le
@@ -21,7 +22,7 @@ from ..streams import FileFormatError
 from ..font import Font
 from ..glyph import Glyph
 
-from .raw import parse_aligned
+from .raw import load_bitmap
 
 
 _ID_MS = b'FONT   '
@@ -98,7 +99,7 @@ _FORMAT_NAME = {
 @loaders.register(
     'cpi',
     magic=(b'\xff'+_ID_MS, b'\xff'+_ID_NT, b'\x7f'+_ID_DR),
-    name='CPI'
+    name='cpi'
 )
 def load_cpi(instream, where=None):
     """Load character-cell fonts from DOS Codepage Information (.CPI) file."""
@@ -106,7 +107,7 @@ def load_cpi(instream, where=None):
     fonts = _parse_cpi(data)
     return fonts
 
-@loaders.register('cp', name='Codepage')
+@loaders.register('cp', name='kbd-cp')
 def load_cp(instream, where=None):
     """Load character-cell fonts from Linux Keyboard Codepage (.CP) file."""
     data = instream.read()
@@ -209,7 +210,9 @@ def _parse_cp(data, cpeh_offset, header_id=_ID_MS, drdos_effh=None, standalone=F
             if cpih.version == _CP_FONT:
                 # bitmaps follow font header
                 bm_offset = fh_offset + _SCREEN_FONT_HEADER.size
-                cells = parse_aligned(data, fh.width, fh.height, fh.num_chars, bm_offset)
+                bytesio = BytesIO(data)
+                font = load_bitmap(bytesio, fh.width, fh.height, fh.num_chars, bm_offset)
+                cells = font.glyphs
                 fh_offset = bm_offset + fh.num_chars * fh.height * ceildiv(fh.width, 8)
             else:
                 # DRFONT bitmaps
@@ -224,5 +227,7 @@ def _parse_cp(data, cpeh_offset, header_id=_ID_MS, drdos_effh=None, standalone=F
                         fh.width
                     ))
                 fh_offset += _SCREEN_FONT_HEADER.size
-            fonts.append(Font(cells, **vars(props)))
+            font = Font(cells, **vars(props))
+            font = font.label(_record=False)
+            fonts.append(font)
     return fonts, cpeh.next_cpeh_offset

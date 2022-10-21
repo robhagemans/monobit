@@ -5,8 +5,23 @@ monobit.renderer - render text to bitmaps using font
 licence: https://opensource.org/licenses/MIT
 """
 
+from unicodedata import bidirectional
+
 from .binary import ceildiv
 from . import matrix
+
+try:
+    from bidi.algorithm import get_display
+except ImportError:
+    def get_display(text):
+        raise ImportError('Bidirectional text requires module `python-bidi`; not found.')
+
+try:
+    from arabic_reshaper import reshape
+except ImportError:
+    def reshape(text):
+        raise ImportError('Arabic text requires module `arabic-reshaper`; not found.')
+
 
 # matrix colours
 # 0, 1 are background, foreground
@@ -20,11 +35,16 @@ _BORDER = -1
 def render_text(
         font, text, ink='@', paper='-', *,
         margin=(0, 0), scale=(1, 1), rotate=0,
+        direction='',
         missing='default'
     ):
     """Render text string to text bitmap."""
     return matrix.to_text(
-        render(font, text, margin=margin, scale=scale, rotate=rotate, missing=missing),
+        render(
+            font, text,
+            margin=margin, scale=scale, rotate=rotate, direction=direction,
+            missing=missing
+        ),
         ink=ink, paper=paper
     )
 
@@ -32,65 +52,168 @@ def render_image(
         font, text, *,
         paper=(0, 0, 0), ink=(255, 255, 255),
         margin=(0, 0), scale=(1, 1), rotate=0,
+        direction='',
         missing='default',
     ):
     """Render text to image."""
     return matrix.to_image(
-        render(font, text, margin=margin, scale=scale, rotate=rotate, missing=missing),
+        render(
+            font, text,
+            margin=margin, scale=scale, rotate=rotate, direction=direction,
+            missing=missing
+        ),
         ink=ink, paper=paper
     )
 
-def render(font, text, *, margin=(0, 0), scale=(1, 1), rotate=0, missing='default'):
+def render(
+        font, text, *, margin=(0, 0), scale=(1, 1), rotate=0, direction='', missing='default'
+    ):
     """Render text string to bitmap."""
-    glyphs = _get_text_glyphs(font, text, missing=missing)
+    direction, align = _get_direction(text, direction)
+    # get glyphs for rendering
+    glyphs = _get_text_glyphs(font, text, direction=direction, missing=missing)
     margin_x, margin_y = margin
-    canvas = _get_canvas(font, glyphs, margin_x, margin_y)
-    # descent-line of the bottom-most row is at bottom margin
-    # if a glyph extends below the descent line or left of the orgin, it may draw into the margin
-    # raster_size.y moves from canvas origin to raster origin (bottom line)
-    baseline = margin_y + font.ascent
-    for glyph_row in glyphs:
-        # x, y are relative to the left margin & baseline
-        x, y = 0, 0
-        prev = font.get_empty_glyph()
-        for glyph in glyph_row:
-            # adjust origin for kerning
-            x += prev.kern_to.get_for_glyph(glyph)
-            prev = glyph
-            # offset + (x, y) is the coordinate of glyph matrix origin
-            # grid_x, grid_y are canvas coordinates relative to top left of canvas
-            # canvas y coordinate increases *downwards* from top of line
-            offset = font.offset + glyph.offset
-            grid_x = margin_x + (offset.x + x)
-            grid_y = baseline - (offset.y + y)
-            # add ink, taking into account there may be ink already in case of negative bearings
-            matrix.blit(glyph.as_matrix(), canvas, grid_x, grid_y)
-            # advance origin to next glyph
-            x += font.offset.x + glyph.advance + font.tracking
-        # move to next line
-        baseline += font.line_spacing
+    if direction == 'top-to-bottom':
+        canvas = _get_canvas_vertical(font, glyphs, margin_x, margin_y)
+        canvas = _render_vertical(font, glyphs, canvas, margin_x, margin_y)
+    else:
+        canvas = _get_canvas_horizontal(font, glyphs, margin_x, margin_y)
+        canvas = _render_horizontal(font, glyphs, canvas, margin_x, margin_y, align)
     scaled = matrix.scale(canvas, *scale)
     rotated = matrix.rotate(scaled, rotate)
     return rotated
 
-def _get_canvas(font, glyphs, margin_x, margin_y):
+def _render_horizontal(font, glyphs, canvas, margin_x, margin_y, align):
+    # descent-line of the bottom-most row is at bottom margin
+    # if a glyph extends below the descent line or left of the orgin, it may draw into the margin
+    # raster_size.y moves from canvas origin to raster origin (bottom line)
+    baseline = font.ascent
+    for glyph_row in glyphs:
+        # x, y are relative to the left margin & baseline
+        x = 0
+        prev = font.get_empty_glyph()
+        grid_x, grid_y = [], []
+        for glyph in glyph_row:
+            # adjust origin for kerning
+            x += prev.right_kerning.get_for_glyph(glyph)
+            x += glyph.left_kerning.get_for_glyph(prev)
+            prev = glyph
+            # offset + (x, y) is the coordinate of glyph matrix origin
+            # grid_x, grid_y are canvas coordinates relative to top left of canvas
+            # canvas y coordinate increases *downwards* from top of line
+            grid_x.append(font.left_bearing + glyph.left_bearing + x)
+            grid_y.append(baseline - (font.shift_up + glyph.shift_up))
+            # advance origin to next glyph
+            x += font.left_bearing + glyph.advance_width + font.right_bearing
+        if align == 'right':
+            start = len(canvas[0]) - margin_x - x
+        else:
+            start = margin_x
+        for glyph, x, y in zip(glyph_row, grid_x, grid_y):
+            # add ink, taking into account there may be ink already in case of negative bearings
+            matrix.blit(glyph.as_matrix(), canvas, start + x, margin_y + y)
+        # move to next line
+        baseline += font.line_height
+    return canvas
+
+def _render_vertical(font, glyphs, canvas, margin_x, margin_y):
+    # central axis (with leftward bias)
+    baseline = margin_x + int(font.line_width / 2)
+    # default is ttb right-to-left
+    for glyph_row in reversed(glyphs):
+        y = 0
+        for glyph in glyph_row:
+            # advance origin to next glyph
+            y += font.top_bearing + glyph.advance_height + font.bottom_bearing
+            grid_y = margin_y + (font.top_bearing + glyph.top_bearing + y)
+            grid_x = baseline - int(glyph.width / 2) - (font.shift_left + glyph.shift_left)
+            # add ink, taking into account there may be ink already in case of negative bearing
+            matrix.blit(glyph.as_matrix(), canvas, grid_x, grid_y)
+        # move to next line
+        baseline += font.line_width
+    return canvas
+
+def _get_canvas_horizontal(font, glyphs, margin_x, margin_y):
     """Create canvas of the right size."""
     # find required width - margins plus max row width
     width = 2 * margin_x
     if glyphs:
         width += max(
-            sum(font.offset.x + _glyph.advance + font.tracking for _glyph in _row)
+            sum(font.left_bearing + _glyph.advance_width + font.right_bearing for _glyph in _row)
             for _row in glyphs
         )
     # find required height - margins plus line height for each row
     # descent-line of the bottom-most row is at bottom margin
     # ascent-line of top-most row is at top margin
     # if a glyph extends below the descent line or left of the origin, it may draw into the margin
-    height = 2 * margin_y + font.pixel_size + font.line_spacing * (len(glyphs)-1)
+    height = 2 * margin_y + font.pixel_size + font.line_height * (len(glyphs)-1)
     return matrix.create(width, height)
 
-def _get_text_glyphs(font, text, missing='raise'):
+def _get_canvas_vertical(font, glyphs, margin_x, margin_y):
+    """Create canvas of the right size."""
+    # find required height - margins plus max row height
+    height = 2 * margin_y
+    if glyphs:
+        height += max(
+            sum(font.top_bearing + _glyph.advance_height + font.bottom_bearing for _glyph in _row)
+            for _row in glyphs
+        )
+    width = 2 * margin_x + font.line_width * len(glyphs)
+    return matrix.create(width, height)
+
+
+def _get_direction(text, direction):
+    """Get direction and alignment."""
+    if direction == 'top-to-bottom':
+        return direction, 'right'
+    isstr = isinstance(text, str)
+    if not direction:
+        if isstr:
+            direction = 'normal'
+        else:
+            direction = 'left-to-right'
+    if direction not in ('normal', 'reverse', 'right-to-left', 'left-to-right'):
+        raise ValueError(f'Unsupported writing direction `{direction}`')
+    left_align = True
+    if direction in ('normal', 'reverse'):
+        if not isstr:
+            raise ValueError(f'Writing direction `{direction}` only supported for Unicode text.')
+        # determine alignment by the class of the first directional character encountered
+        for c in text:
+            try:
+                bidicls = bidirectional(c)[0]
+            except (TypeError, IndexError):
+                continue
+            if bidicls == 'L':
+                break
+            if bidicls in ('R', 'A'):
+                left_align = False
+                break
+        if direction == 'reverse':
+            left_align = not left_align
+    elif direction == 'right-to-left':
+        left_align = False
+    return direction, 'left' if left_align else 'right'
+
+
+def _get_text_glyphs(font, text, direction, missing='raise'):
     """Get tuple of tuples of glyphs (by line) from str or bytes/codepoints input."""
+    if direction != 'top-to-bottom':
+        if isinstance(text, str):
+            # reshape Arabic glyphs to contextual forms
+            try:
+                text = reshape(text)
+            except ImportError as e:
+                # check common Arabic range - is there anything to reshape?
+                if any(ord(_c) in range(0x600, 0x700) for _c in text):
+                    logging.warning(e)
+            # put characters in visual order instead of logical
+            if direction in ('normal', 'reverse'):
+                # decide direction based on bidi algorithm
+                text = get_display(text)
+        if direction in ('right-to-left', 'reverse'):
+            # reverse writing order
+            text = ''.join(reversed(text))
     if isinstance(text, str):
         max_length = max(len(_c) for _c in font.get_chars())
         type_conv = str
@@ -109,14 +232,14 @@ def _iter_labels(font, labels, max_length, missing='raise'):
         # try multibyte clusters first
         for try_len in range(max_length, 1, -1):
             try:
-                yield font.get_glyph(key=remaining[:try_len], missing='raise')
+                yield font.get_glyph(label=remaining[:try_len], missing='raise')
             except KeyError:
                 pass
             else:
                 remaining = remaining[try_len:]
                 break
         else:
-            yield font.get_glyph(key=remaining[:1], missing=missing)
+            yield font.get_glyph(label=remaining[:1], missing=missing)
             remaining = remaining[1:]
 
 
@@ -197,7 +320,7 @@ def chart(
         row, col = pos
         mx = glyph.as_matrix()
         mx = matrix.scale(mx, scale_x, scale_y)
-        left = margin_x + col*step_x + glyph.offset.x
-        bottom = margin_y + (row+1)*step_y - padding_y - glyph.offset.y
+        left = margin_x + col*step_x + glyph.left_bearing
+        bottom = margin_y + (row+1)*step_y - padding_y - glyph.shift_up
         matrix.blit(mx, canvas, left, bottom)
     return canvas

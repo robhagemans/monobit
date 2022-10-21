@@ -15,9 +15,10 @@ from .font import Font, operations as _operations
 from .glyph import Glyph
 from . import formats
 from .storage import open_location, load, save, loaders, savers
-from .encoding import charmaps
+from .encoding import charmaps, encoder
 from .taggers import tagmaps
 from .renderer import render, render_image, render_text
+from .labels import Char, Codepoint, Tag
 
 
 # inject font operations into main module namespace

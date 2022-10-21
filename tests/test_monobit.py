@@ -28,6 +28,7 @@ class BaseTester(unittest.TestCase):
 
     # fonts are immutable so no problem in loading only once
     fixed4x6, *_ = monobit.load(font_path / '4x6.yaff')
+    fixed4x6 = fixed4x6.label(codepoint_from='unicode')
     fixed8x16, *_ = monobit.load(font_path / '8x16.hex')
 
     def setUp(self):
@@ -133,6 +134,17 @@ class TestFormats(BaseTester):
         monobit.save(self.fixed4x6, fzx_file)
         self.assertTrue(os.path.getsize(fzx_file) > 0)
 
+    def test_import_dec_drcs(self):
+        """Test importing dec-drcs files."""
+        font, *_ = monobit.load(self.font_path / '6x13.dec')
+        self.assertEqual(len(font.glyphs), 94)
+
+    def test_export_dec_drcs(self):
+        """Test exporting dec-drcs files."""
+        dec_file = self.temp_path / '8x16.dec'
+        monobit.save(self.fixed8x16, dec_file)
+        self.assertTrue(os.path.getsize(dec_file) > 0)
+
     def test_import_yaff(self):
         """Test importing yaff files"""
         self.assertEqual(len(self.fixed4x6.glyphs), 919)
@@ -185,6 +197,14 @@ class TestFormats(BaseTester):
         self.assertTrue(os.path.getsize(fnt_file) > 0)
         monobit.save(self.fixed4x6, fnt_file, where=self.temp_path, descriptor='json', overwrite=True)
         self.assertTrue(os.path.getsize(fnt_file) > 0)
+
+    def test_render_yaff_bmf_kerning(self):
+        webby_mod1, *_ = monobit.load(self.font_path / 'webby-small-kerned.yaff')
+        monobit.save(webby_mod1, self.temp_path / 'webby-small-kerned.bmf', where=self.temp_path)
+        webby_mod2, *_ = monobit.load(self.temp_path / 'webby-small-kerned.bmf')
+        text1 = monobit.render_text(webby_mod1, b'sjifjij')
+        text2 = monobit.render_text(webby_mod2, b'sjifjij')
+        assert text1 == text2
 
     def test_import_c(self):
         """Test importing c source files."""
@@ -260,6 +280,16 @@ class TestFormats(BaseTester):
         monobit.save(self.fixed4x6, file)
         self.assertTrue(os.path.getsize(file) > 0)
 
+    def test_import_dfont(self):
+        """Test importing dfont files."""
+        font, *_ = monobit.load(self.font_path / '4x6.dfont')
+        # only 195 glyphs in the font as it's in mac-roman encoding now
+        self.assertEqual(len(font.glyphs), 195)
+
+    def test_import_amigs(self):
+        """Test importing amiga font files."""
+        font, *_ = monobit.load(self.font_path / 'wbfont.amiga' / 'wbfont_prop.font')
+        self.assertEqual(len(font.glyphs), 225)
 
 
 class TestCompressed(BaseTester):

@@ -1,88 +1,101 @@
 #!/usr/bin/env python3
 """
-Extract bitmap font and save in different format
+Apply operation to bitmap font
 (c) 2019--2022 Rob Hagemans, licence: https://opensource.org/licenses/MIT
 """
 
 import sys
-import argparse
 import logging
+from types import SimpleNamespace as Namespace
+from pathlib import Path
 
 import monobit
-from monobit.scripting import main, add_script_args
+from monobit.scripting import main, parse_subcommands, print_help, argrecord
 
 
-###################################################################################################
-# argument parsing
+operations = {
+    'load': monobit.load,
+    'save': monobit.save,
+    'to': monobit.save,
+    **monobit.operations
+}
 
-# parse command line
-parser = argparse.ArgumentParser(add_help=False)
-parser.add_argument('infile', nargs='?', type=str, default='')
-parser.add_argument('outfile', nargs='?', type=str, default='')
-parser.add_argument(
-    '--from', dest='from_', default='', type=str,
-    help='input format (default: infer from magic number or filename)'
-)
-parser.add_argument(
-    '--to', dest='to_', default='', type=str,
-    help='output format (default: infer from filename)'
-)
-parser.add_argument(
-    '--encoding', default='', type=str,
-    help='override encoding/codepage (default: infer from metadata in file)'
-)
-parser.add_argument(
-    '--comments', default='', type=str,
-    help='add global comments from text file'
-)
-parser.add_argument(
-    '--overwrite', action='store_true',
-    help='overwrite existing output file'
-)
-parser.add_argument(
-    '--debug', action='store_true',
-    help='show debugging output'
+global_options = {
+    'help': (bool, 'Print a help message and exit.'),
+    'version': (bool, 'Show monobit version and exit.'),
+    'debug': (bool, 'Enable debugging output.'),
+}
+
+usage = (
+    f'usage: {Path(__file__).name} '
+    + '[INFILE] [LOAD-OPTIONS] '
+    + ' '.join(f'[--{_op}]' for _op in global_options)
+    + ' [COMMAND [OPTION...]] ...'
+    + ' [to [OUTFILE] [SAVE_OPTIONS]]'
 )
 
-args, _ = parser.parse_known_args()
+def _get_context_help(rec):
+    if rec.args:
+        file = rec.args[0]
+    else:
+        file = rec.kwargs.get('infile', '')
+    format = rec.kwargs.get('format', '')
+    if rec.command == 'load':
+        func = monobit.loaders.get_for_location(file, format=format)
+    else:
+        func = monobit.savers.get_for_location(file, format=format, do_open=False)
+    return func.script_args
+
+def help(command_args):
+    """Print the usage help message."""
+    context_help = {
+        _rec.command: _get_context_help(_rec)
+        for _rec in command_args
+        if _rec.command in ('load', 'save', 'to')
+    }
+    print_help(command_args, usage, operations, global_options, context_help)
+
+def version():
+    """Print the version string."""
+    print(f'monobit v{monobit.__version__}')
 
 
-loader_args = monobit.loaders.get_args(format=args.from_)
-saver_args = monobit.savers.get_args(format=args.to_)
-add_script_args(parser, loader_args, args.from_, 'load')
-add_script_args(parser, saver_args, args.to_, 'save')
-
-# to ensure loader / saver arguments are included in help
-# we should only parse it after adding those
-parser.add_argument(
-    '-h', '--help', action='store_true',
-    help='show this help message and exit'
-)
-
-args = parser.parse_args()
-
-if args.help:
-    parser.print_help()
-    sys.exit(0)
+command_args, global_args = parse_subcommands(operations, global_options=global_options)
+debug = 'debug' in global_args.kwargs
 
 
-###################################################################################################
-# main operation
+with main(debug):
+    if 'help' in global_args.kwargs:
+        help(command_args)
 
-with main(args, logging.INFO):
+    elif 'version' in global_args.kwargs:
+        version()
 
-    # if no infile or outfile provided, use stdio
-    infile = args.infile or sys.stdin
-    outfile = args.outfile or sys.stdout
+    else:
+        # ensure first command is load
+        if not command_args[0].command and (
+                command_args[0].args or command_args[0].kwargs
+                or len(command_args) == 1 or command_args[1].command != 'load'
+            ):
+            command_args[0].command = 'load'
+            command_args[0].func = operations['load']
+        # ensure last command is save
+        if command_args[-1].command not in ('to', 'save'):
+            command_args.append(argrecord(command='save', func=operations['save']))
 
-    pack = monobit.load(infile, format=args.from_, **loader_args.pick(args))
+        fonts = []
+        for args in command_args:
+            if not args.command:
+                continue
+            logging.debug('Executing command `%s`', args.command)
+            operation = operations[args.command]
+            if operation == monobit.load:
+                fonts += operation(*args.args, **args.kwargs)
+            elif operation == monobit.save:
+                operation(fonts, *args.args, **args.kwargs)
+            else:
+                fonts = tuple(
+                    operation(_font, *args.args, **args.kwargs)
+                    for _font in fonts
+                )
 
-    # set encoding
-    if args.encoding:
-        pack = tuple(_font.set(encoding=args.encoding) for _font in pack)
-    # add comments
-    if args.comments:
-        with open(args.comments) as f:
-            pack = tuple(_font.add(comments=f.read()) for _font in pack)
-
-    monobit.save(pack, outfile, overwrite=args.overwrite, format=args.to_, **saver_args.pick(args))

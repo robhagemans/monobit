@@ -59,7 +59,7 @@ if Image:
             # JPEG
             b'\xFF\xD8\xFF',
         ),
-        name='Bitmap Image',
+        name='image',
     )
     def load_image(
             infile, where=None,
@@ -168,7 +168,7 @@ if Image:
     @savers.register(linked=load_image)
     def save_image(
             fonts, outfile, where=None, *,
-            format:str='',
+            image_format:str='',
             columns:int=32,
             margin:pair=(0, 0),
             padding:pair=(0, 0),
@@ -180,7 +180,7 @@ if Image:
         """
         Export character-cell font to image.
 
-        format: image file format
+        image_format: image file format
         columns: number of columns in glyph chart
         margin: number of pixels in X,Y direction around glyph chart
         padding: number of pixels in X,Y direction between glyph
@@ -197,6 +197,6 @@ if Image:
             fonts[0], columns, margin, padding, scale, order, direction, border, paper, ink,
         )
         try:
-            img.save(outfile, format=format or Path(outfile).suffix[1:])
+            img.save(outfile, format=image_format or Path(outfile).suffix[1:])
         except (KeyError, ValueError, TypeError):
             img.save(outfile, format=DEFAULT_IMAGE_FORMAT)

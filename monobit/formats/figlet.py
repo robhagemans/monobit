@@ -13,9 +13,8 @@ from ..storage import loaders, savers
 from ..streams import FileFormatError
 from ..font import Font
 from ..glyph import Glyph
-from ..struct import Props, reverse_dict
-from ..taggers import extend_string, tagmaps
-from ..label import Codepoint
+from ..struct import Props, reverse_dict, extend_string
+from ..taggers import tagmaps
 
 
 # note that we won't be able to use the "subcharacters" that are the defining feature of FIGlet
@@ -28,7 +27,7 @@ from ..label import Codepoint
 
 
 @loaders.register('flf', magic=(b'flf2a',), name='figlet')
-def load_flf(instream, where=None, *, ink:str=''):
+def load_figlet(instream, where=None, *, ink:str=''):
     """Load font from a FIGlet .flf file."""
     flf_glyphs, flf_props, comments = _read_flf(instream.text, ink=ink)
     logging.info('figlet properties:')
@@ -38,10 +37,10 @@ def load_flf(instream, where=None, *, ink:str=''):
     logging.info('yaff properties:')
     for line in str(props).splitlines():
         logging.info('    ' + line)
-    return Font(glyphs, comments=comments, **vars(props))
+    return Font(glyphs, comment=comments, **vars(props))
 
-@savers.register(linked=load_flf)
-def save_flf(fonts, outstream, where=None):
+@savers.register(linked=load_figlet)
+def save_figlet(fonts, outstream, where=None):
     """Write fonts to a FIGlet .flf file."""
     if len(fonts) > 1:
         raise FileFormatError('Can only save one font to .flf file.')
@@ -60,8 +59,8 @@ _ENCODING = 'unicode'
 _CODEPOINTS = list(range(32, 127)) + [196, 214, 220, 228, 246, 252, 223]
 
 _DIRECTIONS = {
-    '0': 'left-to-right',
-    '1': 'right-to-left'
+    0: 'left-to-right',
+    1: 'right-to-left'
 }
 
 _SIGNATURE = 'flf2a'
@@ -164,32 +163,28 @@ def _read_glyph(instream, props, codepoint, tag='', ink=''):
         else:
             paper += list(charset - set(ink))
     return Glyph.from_matrix(glyph_lines, paper=paper).modify(
-        codepoint=codepoint, tags=[tag]
+        char=chr(codepoint), tags=[tag]
     )
 
 def _convert_from_flf(glyphs, props):
     """Convert figlet glyphs and properties to monobit."""
-    descent = int(props.height)-int(props.baseline)
     properties = Props(
-        descent=descent,
-        offset=(0, -descent),
-        ascent=int(props.baseline),
-        direction=_DIRECTIONS[props.print_direction],
+        shift_up=-int(props.height)+int(props.baseline),
+        direction=_DIRECTIONS[int(props.print_direction)],
         encoding=_ENCODING,
     )
     # > If a FIGcharacter with code 0 is present, it is treated
     # > specially.  It is a FIGfont's "missing character".
     if any(_g.codepoint == 0 for _g in glyphs):
-        properties['default_char'] = 0
+        properties['default_char'] = '\0'
     # keep uninterpreted parameters in namespace
-    uninterpreted = {
-        _k: _v for _k, _v in vars(props).items() if _k not in (
-            'descent', 'baseline', 'print_direction',
+    properties.figlet = ' '.join(
+        f'{_k}={_v}' for _k, _v in vars(props).items() if _k not in (
+            'baseline', 'print_direction',
             'hardblank', 'signature_hardblank', 'height', 'max_length',
             'comment_lines', 'codetag_count'
         )
-    }
-    properties.figlet = Props(**uninterpreted)
+    )
     return glyphs, properties
 
 
@@ -213,33 +208,23 @@ def _convert_to_flf(font, hardblank='$'):
         # > The Max_Length parameter is the maximum length of any line describing a
         # > FIGcharacter.  This is usually the width of the widest FIGcharacter, plus 2
         # > (to accommodate endmarks as described later.)
-        max_length=2 + max(_g.advance for _g in font.glyphs),
-        # layout parameters - keep to default, there is not much we can sensibly do
-        old_layout=0,
+        max_length=2 + max(_g.advance_width for _g in font.glyphs),
         # get length of global comment
-        comment_lines=len(font.comments.splitlines()),
+        comment_lines=len(font.get_comment().splitlines()),
         # > The Print_Direction parameter tells which direction the font is to be
         # > printed by default.  A value of 0 means left-to-right, and 1 means
         # > right-to-left.  If this parameter is absent, 0 (left-to-right) is assumed.
-        print_direction=reverse_dict(_DIRECTIONS)[font.direction],
-        # layout parameters - keep to default, there is not much we can sensibly do
-        full_layout=0,
+        print_direction=reverse_dict(_DIRECTIONS).get(font.direction, 0),
         codetag_count = len(coded_chars)
     )
     # keep namespace properties
-    try:
-        figprops = Props(font.figlet)
-    except AttributeError:
-        pass
+    if 'figlet' in font.properties:
+        propsplit = (item.partition('=') for item in font.figlet.split())
+        figprops = {_k: _v for _k, _, _v in propsplit}
     else:
-        try:
-            props.old_layout = figprops.old_layout
-        except AttributeError as e:
-            pass
-        try:
-            props.full_layout = figprops.full_layout
-        except AttributeError as e:
-            pass
+        figprops = {}
+    props.old_layout = figprops.get('old_layout', 0)
+    props.full_layout = figprops.get('full_layout', 0)
     # first get glyphs in default repertoire
     # fill missing glyphs with empties
     glyphs = [font.get_glyph(_chr, missing='empty') for _chr in flf_chars]
@@ -255,15 +240,15 @@ def _convert_to_flf(font, hardblank='$'):
     # expand glyphs by bearings
     glyphs = [
         _g.expand(
-            left=max(0, font.offset.x + _g.offset.x),
-            bottom=max(0, font.offset.y + _g.offset.y),
-            right=max(0, font.tracking + _g.tracking),
+            left=max(0, font.left_bearing + _g.left_bearing),
+            bottom=max(0, font.shift_up + _g.shift_up),
+            right=max(0, font.right_bearing + _g.right_bearing),
             # include leading; ensure glyphs are equal height
-            top=max(0, font.line_spacing - _g.height - max(0, font.offset.y + _g.offset.y)),
+            top=max(0, font.line_height - _g.height - max(0, font.shift_up + _g.shift_up)),
         )
         for _g in glyphs
     ]
-    return glyphs, props, font.comments
+    return glyphs, props, font.get_comment()
 
 def _write_flf(outstream, flf_glyphs, flf_props, comments, ink='#', paper=' ', hardblank='$'):
     """Write out a figlet font file."""
@@ -277,8 +262,8 @@ def _write_flf(outstream, flf_glyphs, flf_props, comments, ink='#', paper=' ', h
     for glyph in flf_glyphs[1:len(_CODEPOINTS)]:
         outstream.write(_format_glyph(glyph, ink=ink, paper=paper))
     for glyph in flf_glyphs[len(_CODEPOINTS):]:
-        tag = glyph.tags[0] if glyph.tags else tagmaps['unicode'].get_tag(glyph)
-        outstream.write('{} {}\n'.format(Codepoint(glyph.codepoint), tag))
+        tag = glyph.tags[0] if glyph.tags else tagmaps['unicode'].tag(*glyph.get_labels()).value
+        outstream.write('{} {}\n'.format(str(glyph.codepoint), tag))
         outstream.write(_format_glyph(glyph, ink=ink, paper=paper))
 
 

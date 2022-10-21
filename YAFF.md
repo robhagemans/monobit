@@ -1,5 +1,21 @@
-The `yaff` format
-=================
+
+    .@@.......................@@..@@.....@@.
+    .@@......................@@..@@......@@.
+    .@@......................@@..@@......@@.
+    .@@.....@@....@@..@@@@..@@@@@@@@.....@@.
+    .@@.....@@....@@.@@..@@..@@..@@......@@.
+    .@@......@@..@@....@@@@..@@..@@......@@.
+    .@@......@@..@@...@@.@@..@@..@@......@@.
+    .@@.......@@@@...@@..@@..@@..@@......@@.
+    .@@.......@@@@...@@..@@..@@..@@......@@.
+    .@@........@@.....@@@@@..@@..@@......@@.
+    .@@........@@........................@@.
+    .@@.......@@.........................@@.
+    .@@......@@..........................@@.
+
+
+The `yaff` font file format
+===========================
 
 Design aims
 -----------
@@ -36,7 +52,7 @@ In the spirit of human-friendliness, a short example is probably more informativ
     encoding: totally-made-up
 
     # The letter A is the first letter of the Latin alphabet.
-    # We've got three kinds of labels: unicode, codepage, and text.
+    # We've got three kinds of labels: unicode character, codepage, and tag.
     u+0041:
     0x41:
     latin_a:
@@ -58,7 +74,7 @@ In the spirit of human-friendliness, a short example is probably more informativ
         @@@..
 
 
-    # Or for example, just a text label.
+    # Or for example, just a tag.
     # A glyph may contain per-glyph metrics
     latin_c:
         ....
@@ -71,7 +87,7 @@ In the spirit of human-friendliness, a short example is probably more informativ
         tracking: 1
 
 
-    # This is a special notation for a 0x0 empty glyph, with the text tabel "empty".
+    # This is a special notation for a 0x0 empty glyph, with the tag "empty".
     empty:
         -
 
@@ -98,6 +114,36 @@ In the spirit of human-friendliness, a short example is probably more informativ
         @.@.
         .@@@
 
+
+    # Single quotes ensure a label is interpreted as a unicode character sequence
+    # this is equivalent to u+0066, u+0066
+    'ff':
+        ..@@@
+        .@.@.
+        .@.@.
+        @@@@@
+        .@.@.
+        .@.@.
+        .@.@.
+
+    # While double quotes ensure a label is interpreted as a tag
+    "my_à":
+        @...
+        .@..
+        ....
+        .@@.
+        @.@.
+        @.@.
+        .@@@
+
+    # It's possible, though not recommended, to define a glyph with no labels at all
+    # the colon is still required as a separator
+    :
+        ......
+        .@..@.
+        ......
+        .@..@.
+        ..@@..
 
 
 
@@ -157,30 +203,51 @@ labels, all are considered to point to the glyph that follows.
 ##### Labels
 A *label* must be followed by a separator `:`, optional whitespace, and a line ending.
 * The label must be given at the start of the line. Leading whitespace is not allowed.
-* A label must start with an ascii letter or digit, an underscore `_`, a dash `-`, a dot `.`, or a double quote `"`.
-* If a label starts and ends with a double quote, these quotes are stripped and everything in between is used unchanged.
 * A label has one of three types: *character*, *codepoint*, or *tag*.
 
-If a label starts with a digit, it is a *codepoint*.
+If a label starts with an ASCII digit, it is a *codepoint*.
 * A codepoint label may consist of multiple elements, separated by commas and optional whitespace.
-* Each element represents an integer value.
-* If all characters in the element are digits, the element is in decimal format. Leading `0`s are allowed.
+* Each element represents an unsigned integer value.
+* If all characters in the element are digits, the element is in decimal format.
+  Leading `0`s in decimals are allowed.
 * If the first two characters are `0x` or `0X`, the element is hexadecimal. All further characters
   must be hex digits and are not case sensitive.
 * If the first two characters are `0o` or `0O`, the element is octal. All further characters must
   be octal digits.
-* If a codepoint label consists of multiple elements, they represent a multi-byte codepoint sequence
-pointing to a single glyph.
+* If a codepoint label consists of multiple elements, each element must be less than 256. 
+  This forms a multi-byte codepoint sequence pointing to a single glyph.
 
-If a label starts with `u+` or `U+`, it is a Unicode *character*.
-  * A character label may consist of multiple elements, separated by commas and optional whitespace.
-  * Each element must start with `u+` or `U+`. All further characters must be hex digits and are not case sensitive.
-  * Each element represents a Unicode point in hexadecimal notation. Together they
-  are taken to represent a single grapheme cluster.
+Examples of valid codepoint labels are `32`, `0032`, `0x20`, `0o24`, (all of which refer to the same
+codepoint). Further examples are `0x120`, `0x1, 0x20`, `1, 32` (all of which are the same multi-byte
+codepoint sequence).
 
-If a label does not start with a digit, `u+` or `U+`, it is a *tag*.
-  * Tags are case-sensitive and may contain any kind of character.
-* If a tag starts and ends with a double quote character `"`,
+
+If a label:
+* is enclosed by single quote characters `'`, **or**
+* starts with `u+` or `U+`, **or**
+* starts with a character that is not in 7-bit ASCII, **or**
+* consists of a single Unicode character
+
+it is a *character* label, which may be a grapheme sequence consisting of multiple Unicode code points.
+* A character label may consist of multiple elements, separated by commas and optional whitespace.
+* Each element must start with `u+` or `U+` or be enclosed in single quotes.
+* If an element starts with `u+` or `U+`, it must be followed by hex digits. It represents a Unicode point in hexadecimal notation. 
+  The hex digits are not case sensitive.
+* If a label element starts and ends with a single-quote character `'`,
+  these quotes are stripped and the element consists of everything in between. 
+
+Examples of valid character labels are `A`, `À`, `安` (all of which are single characters), `ते` 
+(a grapheme sequence consisting of multiple non-ASCII characters), its equivalent `u+0924, u+0947`,
+ and `'ffi'` (multiple characters enclosed in single quotes).
+
+If a label:
+* is enclosed in double quote characters `"`, **or**
+* starts with an ASCII letter, is at least 2 characters long, and consists only of 
+  ASCII letters, ASCII digits, the underscore `_`, the dash `-`, or the full stop `.`,
+
+it is a *tag*.
+* Tags are case-sensitive and (if double-quoted) may contain any kind of character.
+* If a label starts and ends with a double-quote character `"`,
   these quotes are stripped and the tag consists of everything in between.
 
 ##### Glyphs
@@ -206,19 +273,60 @@ The following are font properties `monobit` is aware of. Other properties may be
 _Metrics_ are properties that affect how the font is rendered. There are per-glyph metrics and global metrics.
 
 Global metrics are:
-- `direction`: Direction of writing. At present, only `left-to-right` is supported.
-- `leading`: Additional line spacing (i.e. vertical spacing in a horizontal font) in excess of the `pixel-height`.
+- `line-height`: Vertical spacing between consecutive baselines (for horizontal writing).
+- `line-width`: Horizontal spacing between consecutive baselines (for vertical writing).
 
-Per-glyph metrics are:
-- `offset` (_x_ _y_ pair): The shift from the _glyph origin_ to the _raster origin_.
-- `tracking`: Spacing following the glyph raster (i.e. to the right in a left-to-right font).
-- `kern-to`: Adjustment to tracking for specific glyph pairs. E.g. the pair `AV` may have negative
-kerning, so that they are displayed tighter than they otherwise would. Such an adjustment is
-specified in the `kern-to` property of the `A` glyph, as a pair of the label for the `V` glyph and
-a numeric adjustment value.
+Per-glyph or global horizontal metrics are:
+- `left-bearing`: Horizontal offset (in direction of writing) between leftward origin and left raster edge.
+- `right-bearing`: Horizontal offset (in direction of writing) between rightward origin and right raster edge.
+- `shift-up`: Upward shift from baseline to raster bottom edge.
 
-The per-glyph metrics (except `kern-to`) may be specified globally, in which case they apply to all
-glyphs.
+Per-glyph or global vertical metrics are:
+- `top-bearing`: Vertical offset (in direction of writing) between upward origin and top raster edge.
+- `bottom-bearing`: Vertical offset (in direction of writing) between downward origin and bottom raster edge.
+- `shift-left`: Leftward shift from baseline to central vertical axis of raster.
+
+If these metrics are specified globally, they apply to all
+glyphs. If metrics are specified both globally and per-glyph, they are added.
+
+Per-glyph only metrics are:
+- `right-kerning`: Adjustment to right bearing for specific glyph pairs. E.g. the pair `AV` may have negative
+  kerning, so that they are displayed tighter than they otherwise would. Such an adjustment is
+  specified in the `right-kerning` property of the `A` glyph, as a pair of the label for the `V` glyph and
+  a numeric adjustment value.
+- `left-kerning`: Adjustment to left bearing for specific glyph pairs. The same adjustment as above could be
+  specified in the `left-kerning` property of the `V` glyph, as a pair of the label for the `A` glyph and
+  a numeric adjustment value. If both `left-kerning` and `right-kerning` are specified, they add up.
+
+Deprecated synonyms are:
+- `offset` (_x_ _y_ pair): equal to (`left-bearing`, `shift-up`).
+- `tracking`: equal to `right-bearing`.
+- `kern-to`: equal to `right-kerning`.
+
+
+##### Rendering hints
+
+_Rendering hints_ affect the way decorations and transformations are applied. They are:
+- `direction`: Advance direction of writing. The following directions are supported:
+  - `left-to-right`: left to right, top to bottom
+  - `right-to-left`: right to left, top to bottom
+  - `top-to-bottom`: top to bottom, right to left
+  If the glyphs in the font have character labels, the default is to determine horizontal writing
+  direction algorithmically from Unicode properties. If no character labels are given, the
+  default direction is `left-to-right`.
+- `bold-smear`: additional number of pixels to trail ink by, when bolding algorithmically
+- `underline-thickness`: number of pixels in a generated underline
+- `underline-descent`: location of underline in pixels below the baseline
+- `superscript-size`: pixel size of superscript font to use
+- `superscript-offset`: Horizontal (in direction of writing), upward offset for a superscript
+- `subscript-size`: pixel size of subscript font to use
+- `subscript-offset`: Horizontal (in direction of writing), downward offset for a subscript
+- `small-cap-size`: pixel size of small-capital font to use
+- `word-space`: normal space between words
+- `min-word-space`: minimum space between words
+- `max-word-space`: maximum space between words
+- `sentence-space`: space between sentences
+
 
 ##### Characteristics
 
@@ -228,21 +336,29 @@ _Characteristics_ are descriptive in nature. They can be specified or calculated
 - `ascent`: height of lowercase letters such as `f` that extend above the x-height.
 - `descent`: extent of lowercase letters such as `j` below the baseline.
 - `pixel-size`: pixel size (equals ascent plus descent).
+- `leading`: additional vertical line spacing in excess of the `pixel-size`.
 
 Characteristics inferred from the glyphs are:
 - `raster`: largest raster needed to define a glyph; coordinates (left, bottom, right, top)
 - `ink-bounds`: smallest box that encompasses all ink if all glyphs are overlaid at the same origin.
                 coordinates (left, bottom, right, top)
 - `raster-size`: (width, height) of raster.
+- `cell-size`: (width, height) of character cell - (0, 0) for proportional fonts.
 - `bounding-box`: (width, height) of ink-bounds.
-- `average-advance`: average advance width across glyphs.
-- `max-advance`: maximum advance width across glyphs.
-- `cap-advance`: advance width of capital letter `X`.
+- `average-width`: average advance width across glyphs.
+- `max-width`: maximum advance width across glyphs.
+- `cap-width`: advance width of capital letter `X`.
+- `digit-width`: advance width of digits and `$` sign, if all equal.
 - `spacing`: type of font, can be one of:
   - `proportional`: glyphs have different advance widths, e.g. `M` is wider than `i`.
   - `monospace`: all glyphs have the same advance width.
   - `character-cell`: all glyphs can be defined on a raster of fixed size and displayed without overlap.
   - `multi-cell`: like `character-cell`, but some glyphs may take up two cells.
+
+Deprecated synonyms are:
+- `average-advance`: equal to `average-width`.
+- `max-advance`: equal to `max-width`.
+- `cap-advance`: equal to `cap-width`.
 
 Characteristics that give a font's identity are:
 - `family`: typeface or font family name
@@ -260,6 +376,7 @@ Font description characteristics that can be used to compare different fonts in 
 ##### Metadata
 
 _Metadata_ are circumstantial properties. They can be related to authorship:
+- `author`: author of the font
 - `foundry`: author or publisher of the font
 - `copyright`: copyright information
 - `notice`: licensing information
@@ -274,8 +391,6 @@ Or they can be related to processing:
 - `source-name`: file name from which the font was originally extracted.
 - `source-format`: file format from which the font was originally extracted.
 - `history`: summary of processing steps applied since extraction.
-
-
 
 
 ##### Illustration of key properties
@@ -297,14 +412,14 @@ The below figure illustrates the typographic properties. Note that the font show
                 |   │       │ │ │ │█│ │█│   │█│ │█│   │ │█│█│   │█│ │ │   │ │ │█│  ▓│ │ │ │   │  │  │
                             ├─┼─┼─O─┼─┼─┤  ─O─┼─┼─┤  ─O─┼─┼─┤  ─O─┼─┼─┤  ─O─┼─┼─┤  ─O─┼─┼─┤   ┴  ┴  ┴  ┬
                 |   │       │ │ │ │ │ │ │   │ │ │ │   │ │ │ │   │ │ │ │   │█│█│ │▓  │ │ │ │            │
-                ┴           ├─┼─┼─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤            ┴
-    pixel-size = 6  │       │ │ │ │ │ │ │   │ │ │ │   │ │ │ │   │ │ │ │   │ │ │▓│   │ │ │ │            descent = 1
-                    ┴   ┬   X─┴─┴─┴─┴─┴─┘  ─┴─┴─┴─┘  ─┴─┴─┴─┘  ─┴─┴─┴─┘  ─┴─┴─┴─┘  ─┴─┴─┴─┘
-    raster-height = 8   │
-                        ┴   ┌─┬─┬─┬─┬─┬─┐  ─┬─┬─┬─┐  ─┬─┬─┬─┐  ─┬─┬─┬─┐  ─┬─┬─┬─┐  ─┬─┬─┬─┐ . . top-line
-              leading = 1   │ │ │ │ │ │ │   │ │ │ │   │█│ │ │   │ │ │ │   │ │ │ │   │ │ │ │
-                            ├─┼─┼─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤ . . ascent-line
-                            │ │ │ │ │ │ │   │ │ │ │   │ │█│ │   │ │█│█│   │ │ │█│   │ │ │ │
+                ┴       ┬   ├─┼─┼─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤            ┴
+    pixel-size = 6  │   │   │ │ │ │ │ │ │   │ │ │ │   │ │ │ │   │ │ │ │   │ │ │▓│   │ │ │ │            descent = 1
+                    ┴       X─┴─┴─┴─┴─┴─┘  ─┴─┴─┴─┘  ─┴─┴─┴─┘  ─┴─┴─┴─┘  ─┴─┴─┴─┘  ─┴─┴─┴─┘
+    raster-size.y = 8   │
+                            ┌─┬─┬─┬─┬─┬─┐  ─┬─┬─┬─┐  ─┬─┬─┬─┐  ─┬─┬─┬─┐  ─┬─┬─┬─┐  ─┬─┬─┬─┐ . . top-line
+                        │   │ │ │ │ │ │ │   │ │ │ │   │█│ │ │   │ │ │ │   │ │ │ │   │ │ │ │
+                        ┴   ├─┼─┼─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤ . . ascent-line
+              leading = 3   │ │ │ │ │ │ │   │ │ │ │   │ │█│ │   │ │█│█│   │ │ │█│   │ │ │ │
                             ├─┼─┼─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤ . . cap-line
                             │ │ │ │ │█│ │   │ │ │ │   │ │ │ │   │█│ │ │   │ │ │ │   │ │ │█│
                             ├─┼─┼─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤ . . mean-line
@@ -312,18 +427,18 @@ The below figure illustrates the typographic properties. Note that the font show
                             ├─┼─┼─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤
                             │ │ │ │█│█│█│   │ │█│ │   │█│ │█│   │█│ │ │   │ │ │█│   │█│ │ │
                             ├─┼─┼─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤
-                            │ │ │ │█│ │█│   │█│ │█│   │ │█│█│   │█│ │ │   │ │ │█│  ▓│ │ │ │
-          offset.y = -2 O   ├─┼─┼─O─┼─┼─┤  ─O─┼─┼─┤  ─O─┼─┼─┤  ─O─┼─┼─┤  ─O─┼─┼─┤  ─O─┼─┼─┤ . . baseline
+            shift-up = -2   │ │ │ │█│ │█│   │█│ │█│   │ │█│█│   │█│ │ │   │ │ │█│  ▓│ │ │ │
+                        O   ├─┼─┼─O─┼─┼─┤  ─O─┼─┼─┤  ─O─┼─┼─┤  ─O─┼─┼─┤  ─O─┼─┼─┤  ─O─┼─┼─┤ . . baseline
                         │   │ │ │ │ │ │ │   │ │ │ │   │ │ │ │   │ │ │ │   │█│█│ │▓  │ │ │ │
                             ├─┼─┼─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤  ─┼─┼─┼─┤ . . descent-line
                         │   │ │ │ │ │ │ │   │ │ │ │   │ │ │ │   │ │ │ │   │ │ │▓│   │ │ │ │
                         X   X─┴─┴─┴─┴─┴─┘  ─┴─┴─┴─┘  ─┴─┴─┴─┘  ─┴─┴─┴─┘  ─┴─┴─┴─┘  ─┴─┴─┴─┘ . . bottom-line
 
-                            X─ ─ ─O offset.x = -3
+                            X─ ─ ─O left-bearing = -3
 
-           raster-width = 6 ├─ ─ ─ ─ ─ ─┤
+          raster-size.x = 6 ├─ ─ ─ ─ ─ ─┤
                                   O─ ─ ─ ─ ─O advance-width = 5
-                                        ├─ ─O tracking = 2
+                                        ├─ ─O right-bearing = 2
 
 
                             O = glyph-origin

@@ -17,8 +17,7 @@ from ..encoding import charmaps
 from ..streams import FileFormatError
 from ..font import Font
 from ..glyph import Glyph
-from ..label import strip_matching, label
-from ..label import Char, Codepoint, Tag, Label
+from ..labels import strip_matching, to_label, Tag
 from ..struct import Props
 
 
@@ -26,7 +25,7 @@ from ..struct import Props
 # interface
 
 
-@loaders.register('yaff', 'yaffs', magic=(b'---',), name='monobit-yaff')
+@loaders.register('yaff', 'yaffs', magic=(b'---',), name='yaff')
 def load_yaff(instream, where=None):
     """Load font from a monobit .yaff file."""
     return _load_yaff(instream.text)
@@ -35,29 +34,6 @@ def load_yaff(instream, where=None):
 def save_yaff(fonts, outstream, where=None):
     """Write fonts to a monobit .yaff file."""
     YaffWriter().save(fonts, outstream.text)
-
-
-@loaders.register('draw', 'text', 'txt', name='hexdraw')
-def load_draw(instream, where=None, ink:str='#', paper:str='-'):
-    """
-    Load font from a hexdraw file.
-
-    ink: character used for inked/foreground pixels
-    paper: character used for uninked/background pixels
-    """
-    return _load_draw(instream.text, _ink=ink, _paper=paper)
-
-@savers.register(linked=load_draw)
-def save_draw(fonts, outstream, where=None, ink:str='#', paper:str='-'):
-    """
-    Save font to a hexdraw file.
-
-    ink: character to use for inked/foreground pixels
-    paper: character to use for uninked/background pixels
-    """
-    if len(fonts) > 1:
-        raise FileFormatError("Can only save one font to hexdraw file.")
-    DrawWriter(ink=ink, paper=paper).save(fonts[0], outstream.text)
 
 
 ##############################################################################
@@ -83,33 +59,7 @@ class YaffParams:
     paper = '.'
     empty = '-'
     # convert key string to key object
-    convert_key = staticmethod(label)
-
-
-class DrawParams:
-    """Parameters for .draw format."""
-
-    # first/second pass constants
-    separator = ':'
-    comment = '%'
-    # output only
-    tab = '\t'
-    separator_space = ''
-    # tuple of individual chars, need to be separate for startswith
-    whitespace = tuple(' \t')
-
-    # third-pass constants
-    ink = '#'
-    paper = '-'
-    empty = '-'
-
-    @staticmethod
-    def convert_key(key):
-        """Convert keys on input from .draw."""
-        try:
-            return Char(chr(int(key, 16)))
-        except (TypeError, ValueError):
-            return Tag(key)
+    convert_key = staticmethod(to_label)
 
 
 ##############################################################################
@@ -129,19 +79,6 @@ def _load_yaff(text_stream):
             reader.step(line)
     fonts.append(YaffConverter.get_font_from(reader))
     return fonts
-
-
-def _load_draw(text_stream, _ink='', _paper=''):
-    """Parse a yaff/yaffs file."""
-
-    class _Converter(DrawConverter):
-        ink=_ink or DrawConverter.ink
-        paper=_paper or DrawConverter.paper
-
-    reader = DrawReader()
-    for line in text_stream:
-        reader.step(line)
-    return _Converter.get_font_from(reader)
 
 
 class TextReader:
@@ -198,14 +135,21 @@ class TextReader:
                 # new comment
                 self._yield_element()
         elif not contents.startswith(self.whitespace):
-            # new key
-            key, sep, value = contents.partition(self.separator)
-            self._yield_element()
-            # yield key
-            self._step_value(key + sep)
-            self._yield_element()
-            # start building value
-            self._step_value(value.lstrip())
+            # glyph label
+            if contents.endswith(self.separator):
+                self._yield_element()
+                self._step_value(contents)
+                self._yield_element()
+            else:
+                # new key, separate at the first :
+                # keys must be alphanum so no need to worry about quoting
+                key, sep, value = contents.partition(self.separator)
+                self._yield_element()
+                # yield key
+                self._step_value(key + sep)
+                self._yield_element()
+                # start building value
+                self._step_value(value.lstrip())
         else:
             # continue building value
             self._step_value(contents)
@@ -255,9 +199,6 @@ class TextReader:
 class YaffReader(YaffParams, TextReader):
     """Reader for .yaff files."""
 
-class DrawReader(DrawParams, TextReader):
-    """Reader for .draw files."""
-
 
 class TextConverter:
     """Convert text clusters to font."""
@@ -290,7 +231,9 @@ class TextConverter:
     def get_font_from(cls, reader):
         """Get clusters from reader and convert to Font."""
         conv = cls._convert_from(reader)
-        return Font(conv.glyphs, comments=conv.comments, **vars(conv.props))
+        if not conv.glyphs:
+            raise FileFormatError('No glyphs found in yaff file.')
+        return Font(conv.glyphs, comment=conv.comments, **vars(conv.props))
 
     @classmethod
     def _convert_from(cls, reader):
@@ -340,6 +283,9 @@ class TextConverter:
                 lines = (_line.strip() for _line in value.splitlines())
                 lines = (_line for _line in lines if _line)
                 lines = (_line[1:-1] if _line.startswith('"') and _line.endswith('"') else _line for _line in lines)
+                # Props object converts only non-leading underscores (for internal use)
+                # so we need to mae sure e turn those into dashes or we'll drop the prop
+                key = key.replace('_', '-')
                 self.props[key] = '\n'.join(lines)
                 # property comments
                 if comments:
@@ -391,14 +337,21 @@ class TextConverter:
         props = self._convert_from(reader).props
         # labels
         keys = tuple(self.convert_key(_key) for _key in keys)
-        chars = tuple(_key for _key in keys if isinstance(_key, Char))
-        codepoints = tuple(_key for _key in keys if isinstance(_key, Codepoint))
+        chars = tuple(_key for _key in keys if isinstance(_key, str))
+        codepoints = tuple(_key for _key in keys if isinstance(_key, bytes))
         tags = tuple(_key for _key in keys if isinstance(_key, Tag))
         # duplicate glyphs if we have multiple chars or codepoints
-        return tuple(
-            glyph.modify(char=char, codepoint=cp, tags=tags, comments=comments, **vars(props))
+        glyphs = tuple(
+            glyph.modify(char=char, codepoint=cp, tags=tags, comment=comments, **vars(props))
             for char, cp, _ in zip_longest(chars, codepoints, [None], fillvalue=None)
         )
+        # remove duplicates while preserving order
+        unique = []
+        for glyph in glyphs:
+            if glyph not in unique:
+                unique.append(glyph)
+        glyphs = tuple(unique)
+        return tuple(unique)
 
     def _convert_value(self, value):
         """Strip matching double quotes on a per-line basis."""
@@ -420,9 +373,6 @@ class TextConverter:
 class YaffConverter(YaffParams, TextConverter):
     """Converter for .yaff files."""
 
-class DrawConverter(DrawParams, TextConverter):
-    """Converter for .draw files."""
-
 
 ##############################################################################
 ##############################################################################
@@ -440,20 +390,20 @@ class TextWriter:
     paper: str
     empty: str
 
-    def _write_glyph(self, outstream, glyph, label=None, suppress_codepoint=False):
+    def _write_glyph(self, outstream, glyph, label=None):
         """Write out a single glyph in text format."""
         # glyph comments
-        if glyph.comments:
-            outstream.write('\n' + self._format_comment(glyph.comments) + '\n')
+        if glyph.comment:
+            outstream.write('\n' + self._format_comment(glyph.comment) + '\n')
         if label:
             labels = [label]
         else:
-            labels = glyph.get_labels(suppress_codepoint=suppress_codepoint)
+            labels = glyph.get_labels()
         if not labels:
-            logging.warning('No labels for glyph: %s', glyph)
-            return
+            logging.debug('No labels for glyph: %s', glyph)
+            outstream.write(f'{self.separator}{self.separator_space}')
         for _label in labels:
-            outstream.write(f'{_label}{self.separator}{self.separator_space}')
+            outstream.write(f'{str(_label)}{self.separator}{self.separator_space}')
         # glyph matrix
         # empty glyphs are stored as 0x0, not 0xm or nx0
         if not glyph.width or not glyph.height:
@@ -479,19 +429,17 @@ class TextWriter:
             return
         # this may use custom string converter (e.g codepoint labels)
         value = str(value)
-        if not value:
-            return
         # write property comment
         if comments:
-            outstream.write('\n{indent}' + self._format_comment(comments) + '\n')
-        if not '.' in key and not key.startswith('_'):
+            outstream.write(f'\n{indent}' + self._format_comment(comments) + '\n')
+        if not key.startswith('_'):
             key = key.replace('_', '-')
         # write key-value pair
         if '\n' not in value:
             outstream.write(f'{indent}{key}: {self._quote_if_needed(value)}\n')
         else:
             outstream.write(
-                f'{indent}{key}:\n{indent}{self.tab}' '{}\n'.format(
+                f'{indent}{key}:\n{indent}{self.tab}' + '{}\n'.format(
                     f'\n{indent}{self.tab}'.join(
                         self._quote_if_needed(_line)
                         for _line in value.splitlines()
@@ -526,8 +474,8 @@ class YaffWriter(TextWriter, YaffParams):
                 outstream.write(BOUNDARY_MARKER + '\n')
             logging.debug('Writing %s to section #%d', font.name, number)
             # write global comment
-            if font.comments:
-                outstream.write(self._format_comment(font.comments) + '\n\n')
+            if font.get_comment():
+                outstream.write(self._format_comment(font.get_comment()) + '\n\n')
             # we always output name, font-size and spacing
             # plus anything that is different from the default
             props = {
@@ -535,44 +483,14 @@ class YaffWriter(TextWriter, YaffParams):
                 'spacing': font.spacing,
             }
             if font.spacing in ('character-cell', 'multi-cell'):
-                props['raster_size'] = font.raster_size
+                props['cell_size'] = font.cell_size
             else:
                 props['bounding_box'] = font.bounding_box
             props.update(font.properties)
             if props:
                 # write recognised yaff properties first, in defined order
                 for key, value in props.items():
-                    self._write_property(outstream, key, value, font.get_comments(key))
+                    self._write_property(outstream, key, value, font.get_comment(key))
                 outstream.write('\n')
             for glyph in font.glyphs:
-                self._write_glyph(
-                    outstream, glyph, suppress_codepoint=charmaps.is_unicode(font.encoding)
-                )
-
-
-class DrawWriter(TextWriter, DrawParams):
-
-    def __init__(self, ink='', paper=''):
-        self.ink = ink or self.ink
-        self.paper = paper or self.paper
-
-    def save(self, font, outstream):
-        """Write one font to a plaintext stream as hexdraw."""
-        # write global comment
-        if font.comments:
-            outstream.write(self._format_comment(font.comments) + '\n\n')
-        # write glyphs
-        for glyph in font.glyphs:
-            if not glyph.char:
-                logging.warning(
-                    "Can't encode glyph without Unicode character label in .draw file;"
-                    " skipping\n%s\n",
-                    glyph
-                )
-            elif len(glyph.char) > 1:
-                logging.warning(
-                    "Can't encode grapheme cluster %s in .draw file; skipping.",
-                    Char(glyph.char)
-                )
-            else:
-                self._write_glyph(outstream, glyph, label=f'{ord(glyph.char):04x}')
+                self._write_glyph(outstream, glyph)

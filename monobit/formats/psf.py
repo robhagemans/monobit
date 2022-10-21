@@ -14,7 +14,7 @@ from ..font import Font
 from ..glyph import Glyph
 from ..streams import FileFormatError
 
-from .raw import load_aligned
+from .raw import load_bitmap
 
 
 # PSF formats:
@@ -75,7 +75,7 @@ _PSF2_STARTSEQ = b'\xFE'
 @loaders.register(
     'psf', 'psfu',
     magic=(_PSF1_MAGIC, _PSF2_MAGIC),
-    name='PSF',
+    name='psf',
 )
 def load_psf(instream, where=None):
     """Load character-cell font from PC Screen Font (.PSF) file."""
@@ -113,7 +113,7 @@ def load_psf(instream, where=None):
     logging.info('PSF properties:')
     for name, value in vars(psf_props).items():
         logging.info('    %s: %s', name, value)
-    cells = load_aligned(instream, width, height, length)
+    cells = load_bitmap(instream, width, height, length).glyphs
     if has_unicode_table:
         table = _read_unicode_table(instream, separator, startseq, encoding)
         # convert unicode table to labels
@@ -148,6 +148,8 @@ def save_psf(fonts, outstream, where=None):
         raise FileFormatError(
             'This format only supports character-cell fonts.'
         )
+    # ensure unicode labels exist if encoding is defined
+    font = font.label()
     glyphs = font.glyphs
     psf_props = dict(
         width=font.raster_size.x,
