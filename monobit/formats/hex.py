@@ -86,7 +86,7 @@ def _load_hex(instream):
             comment = []
     # preserve any comment at end of file as part of global comment
     global_comment = '\n'.join([*_clean_comment(global_comment), *_clean_comment(comment)])
-    return Font(glyphs, comments=global_comment, encoding='unicode')
+    return Font(glyphs, comment=global_comment, encoding='unicode')
 
 
 def _convert_label(key):
@@ -110,7 +110,7 @@ def _convert_glyph(key, value, comment):
     char = _convert_label(key)
     return Glyph.from_hex(value, width, height).modify(
         char=char, tags=([key] if not char else []),
-        comments='\n'.join(_clean_comment(comment))
+        comment='\n'.join(_clean_comment(comment))
     )
 
 
@@ -151,8 +151,8 @@ def split_global_comment(lines):
 def _save_hex(font, outstream, fits):
     """Save 8x16 multi-cell font to Unifont or PC-BASIC Extended .HEX file."""
     # global comment
-    if font.comments:
-        outstream.write(_format_comment(font.comments, comm_char='#') + '\n\n')
+    if font.get_comment():
+        outstream.write(_format_comment(font.get_comment(), comm_char='#') + '\n\n')
     # ensure unicode labels exist if encoding is defined
     font = font.label()
     # glyphs
@@ -197,7 +197,7 @@ def _format_glyph(glyph):
     """Format glyph line for hex file."""
     return (
         # glyph comment
-        ('' if not glyph.comments else '\n' + _format_comment(glyph.comments, comm_char='#') + '\n')
+        ('' if not glyph.comment else '\n' + _format_comment(glyph.comment, comm_char='#') + '\n')
         + '{}:{}\n'.format(
             # label
             u','.join(f'{ord(_c):04X}' for _c in glyph.char),

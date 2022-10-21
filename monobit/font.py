@@ -620,7 +620,7 @@ class FontProperties(DefaultProps):
 class Font:
     """Representation of font glyphs and metadata."""
 
-    def __init__(self, glyphs=(), *, comments=None, **properties):
+    def __init__(self, glyphs=(), *, comment=None, **properties):
         """Create new font."""
         self._glyphs = tuple(glyphs)
         # construct lookup tables
@@ -639,13 +639,13 @@ class Font:
             for _index, _glyph in enumerate(self._glyphs)
             if _glyph.char
         }
-        # comments can be str (just global comment) or mapping of property comments
-        if not comments:
-            self._comments = {}
-        elif isinstance(comments, str):
-            self._comments = {'': comments}
+        # comment can be str (just global comment) or mapping of property comments
+        if not comment:
+            pass
+        elif isinstance(comment, str):
+            properties['#'] = comment
         else:
-            self._comments = {_k: _v for _k, _v in comments.items()}
+            properties.update({f'#{_k}': _v for _k, _v in comment.items()})
         # update properties
         # set encoding first so we can set labels
         # NOTE - we must be careful NOT TO ACCESS CACHED PROPERTIES
@@ -673,37 +673,40 @@ class Font:
 
     def modify(
             self, glyphs=NOT_SET, *,
-            comments=NOT_SET, **kwargs
+            comment=NOT_SET, **kwargs
         ):
         """Return a copy of the font with changes."""
         if glyphs is NOT_SET:
             glyphs = self._glyphs
-        if comments is NOT_SET:
-            comments = self._comments
-        # properties are replaced keyword by keyword
-        # but comments (given as one keyword arg) are replaced wholesale
+        old_comment = self._get_comment_dict()
+        if isinstance(comment, str):
+            old_comment[''] = comment
+        elif comment is not NOT_SET:
+            old_comment.update(comment)
+        # comment and properties are replaced keyword by keyword
         return type(self)(
             tuple(glyphs),
-            comments=comments,
+            comment=old_comment,
             **{**self.properties, **kwargs}
         )
 
-    def add(
+    def append(
             self, glyphs=(), *,
-            comments=None, **properties
+            comment=None, **properties
         ):
         """Return a copy of the font with additions."""
-        if not comments:
-            comments = {}
-        for property, comment in comments.items():
-            if property in self._comments:
-                comments[property] = extend_string(self._comments[property], comment)
-        for property, value in properties.items():
-            if property in self._props:
-                properties[property] = extend_string(self._props[property], value)
+        if not comment:
+            comment = {}
+        for key, comment in comment.items():
+            old_comment = self.get_comment(key)
+            if old_comment:
+                comment[key] = extend_string(old_comment, comment)
+        for key, value in properties.items():
+            if key in self._props:
+                properties[key] = extend_string(self._props[key], value)
         return self.modify(
             self._glyphs + tuple(glyphs),
-            comments={**self._comments, **comments},
+            comment={**comment},
             **properties
         )
 
@@ -717,17 +720,17 @@ class Font:
             # not in list
             glyphs = self._glyphs
         try:
-            args.remove('comments')
-            comments = {}
+            args.remove('comment')
+            comment = {}
         except ValueError:
-            comments = self._comments
+            comment = self._get_comment_dict()
         return type(self)(
             glyphs,
-            comments=comments,
+            comment=comment,
             **{
                 _k: _v
                 for _k, _v in self.properties.items()
-                if _k not in args
+                if _k not in args and not _k.startswith('#')
             }
         )
 
@@ -744,19 +747,26 @@ class Font:
             raise AttributeError(attr)
         return getattr(self._props, attr)
 
-    @property
-    def comments(self):
-        """Get global comments."""
-        return self._comments.get('', '')
+    def get_comment(self, key=''):
+        """Get global or property comment."""
+        return getattr(self._props, f'#{key}', '')
 
-    def get_comments(self, property=''):
-        """Get global or property comments."""
-        return self._comments.get(normalise_property(property), '')
+    def _get_comment_dict(self):
+        """Get all global and property comments as a dict."""
+        return {
+            _k[1:]: self._props[_k]
+            for _k in self._props
+            if _k.startswith('#')
+        }
 
     @property
     def properties(self):
         """Non-defaulted properties in order of default definition list."""
-        return {_k: self._props[_k] for _k in self._props if not _k.startswith('_')}
+        return {
+            _k: self._props[_k]
+            for _k in self._props
+            if not _k.startswith('_') and not _k.startswith('#')
+        }
 
     def is_known_property(self, key):
         """Field is a recognised property."""
@@ -978,25 +988,39 @@ class Font:
         return self.modify(**kwargs)
 
     @scriptable
-    def set_property(self, key:str, value:Any):
+    def set_property(self, key:str, value:Any='', *, append:bool=False, remove:bool=False):
         """
         Return a copy of the font with a property changed or added.
 
-        key: the property key to set or add
+        key: the property key to set or append a value to
         value: the new property value
+        append: append to existing string value, if any
+        remove: ignore value and remove key
         """
+        if remove:
+            value = None
         kwargs = {key: value}
+        if append and not remove:
+            return self.append(**kwargs)
         return self.modify(**kwargs)
 
     @scriptable
-    def unset_property(self, key:str):
+    def set_comment(self, value:str, *, key:str='', append:bool=False, remove:bool=False):
         """
-        Return a copy of the font with a property removed.
+        Return a copy of the font with a comment changed, added or removed.
 
-        key: the property key to remove
+        key: the property key to set or append a comment to, default is global comment
+        value: the new comment
+        append: append to existing comment, if any
+        remove: ignore value and remove comment
         """
-        kwargs = {key: None}
-        return self.modify(**kwargs)
+        if remove:
+            # DefaultProps will skip keys with None values
+            value = None
+        comment = {key: value}
+        if append and not remove:
+            return self.append(comment=comment)
+        return self.modify(comment=comment)
 
 
     ##########################################################################

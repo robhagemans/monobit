@@ -233,7 +233,7 @@ class TextConverter:
         conv = cls._convert_from(reader)
         if not conv.glyphs:
             raise FileFormatError('No glyphs found in yaff file.')
-        return Font(conv.glyphs, comments=conv.comments, **vars(conv.props))
+        return Font(conv.glyphs, comment=conv.comments, **vars(conv.props))
 
     @classmethod
     def _convert_from(cls, reader):
@@ -342,7 +342,7 @@ class TextConverter:
         tags = tuple(_key for _key in keys if isinstance(_key, Tag))
         # duplicate glyphs if we have multiple chars or codepoints
         glyphs = tuple(
-            glyph.modify(char=char, codepoint=cp, tags=tags, comments=comments, **vars(props))
+            glyph.modify(char=char, codepoint=cp, tags=tags, comment=comments, **vars(props))
             for char, cp, _ in zip_longest(chars, codepoints, [None], fillvalue=None)
         )
         # remove duplicates while preserving order
@@ -393,8 +393,8 @@ class TextWriter:
     def _write_glyph(self, outstream, glyph, label=None):
         """Write out a single glyph in text format."""
         # glyph comments
-        if glyph.comments:
-            outstream.write('\n' + self._format_comment(glyph.comments) + '\n')
+        if glyph.comment:
+            outstream.write('\n' + self._format_comment(glyph.comment) + '\n')
         if label:
             labels = [label]
         else:
@@ -431,7 +431,7 @@ class TextWriter:
         value = str(value)
         # write property comment
         if comments:
-            outstream.write('\n{indent}' + self._format_comment(comments) + '\n')
+            outstream.write(f'\n{indent}' + self._format_comment(comments) + '\n')
         if not key.startswith('_'):
             key = key.replace('_', '-')
         # write key-value pair
@@ -474,8 +474,8 @@ class YaffWriter(TextWriter, YaffParams):
                 outstream.write(BOUNDARY_MARKER + '\n')
             logging.debug('Writing %s to section #%d', font.name, number)
             # write global comment
-            if font.comments:
-                outstream.write(self._format_comment(font.comments) + '\n\n')
+            if font.get_comment():
+                outstream.write(self._format_comment(font.get_comment()) + '\n\n')
             # we always output name, font-size and spacing
             # plus anything that is different from the default
             props = {
@@ -490,7 +490,7 @@ class YaffWriter(TextWriter, YaffParams):
             if props:
                 # write recognised yaff properties first, in defined order
                 for key, value in props.items():
-                    self._write_property(outstream, key, value, font.get_comments(key))
+                    self._write_property(outstream, key, value, font.get_comment(key))
                 outstream.write('\n')
             for glyph in font.glyphs:
                 self._write_glyph(outstream, glyph)
