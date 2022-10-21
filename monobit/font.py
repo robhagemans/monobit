@@ -679,7 +679,9 @@ class Font:
         if glyphs is NOT_SET:
             glyphs = self._glyphs
         old_comments = self._get_comment_dict()
-        if comments is not NOT_SET:
+        if isinstance(comments, str):
+            old_comments[''] = comment
+        elif comments is not NOT_SET:
             old_comments.update(comments)
         # comments and properties are replaced keyword by keyword
         return type(self)(
