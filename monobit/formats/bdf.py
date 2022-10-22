@@ -677,7 +677,7 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
             new_props['right-bearing'] = advance_width - glyph.width - left_bearing
         if writing_direction in (1, 2):
             vvector = props.get('VVECTOR', global_vvector)
-            bbx_width, _, bboffx, bboffy = (int(_p) for _p in bbx.split(' '))
+            bbx_width, _bbx_height, bboffx, bboffy = (int(_p) for _p in bbx.split(' '))
             voffx, voffy = (int(_p) for _p in vvector.split(' '))
             to_bottom = bboffy - voffy
             # vector from baseline to raster left; negative: baseline to right of left raster edge
@@ -975,6 +975,13 @@ def _save_bdf(font, outstream):
             f'{font.bounding_box.x} {font.bounding_box.y} {font.left_bearing} {font.shift_up}'
         )
     ]
+    vertical_metrics = ('shift-left', 'top-bearing', 'bottom-bearing')
+    has_vertical_metrics = (
+        any(_k in font.properties for _k in vertical_metrics)
+        or any(_k in _g.properties for _g in font.glyphs for _k in vertical_metrics)
+    )
+    if has_vertical_metrics:
+        bdf_props.append(('METRICSSET', '2'))
     # labels
     # get glyphs for encoding values
     encoded_glyphs = []
@@ -1032,14 +1039,32 @@ def _save_bdf(font, outstream):
             hex = glyph.as_hex().upper()
             width = len(hex) // glyph.height
             split_hex = [hex[_offs:_offs+width] for _offs in range(0, len(hex), width)]
-        glyphs.append([
+        glyphdata = [
             ('STARTCHAR', name),
             ('ENCODING', str(encoding)),
             ('SWIDTH', f'{swidth_x} {swidth_y}'),
             ('DWIDTH', f'{dwidth_x} {dwidth_y}'),
             ('BBX', f'{glyph.width} {glyph.height} {left_bearing} {shift_up}'),
-            ('BITMAP', '' if not split_hex else '\n' + '\n'.join(split_hex)),
-        ])
+        ]
+        if has_vertical_metrics:
+            top_bearing = font.top_bearing + glyph.top_bearing
+            bottom_bearing = glyph.bottom_bearing + font.bottom_bearing
+            shift_left = font.shift_left + glyph.shift_left
+            to_left = shift_left - ceildiv(glyph.width, 2)
+            to_bottom = -top_bearing - glyph.height
+            voffx = left_bearing - to_left
+            voffy = shift_up - to_bottom
+            dwidth1_x, swidth1_x = 0, 0
+            # dwidth1 vector: negative is down
+            dwidth1_y = -(top_bearing + glyph.height + bottom_bearing)
+            swidth1_y = int(round(dwidth1_y / (font.point_size / 1000) / (font.dpi.y / 72)))
+            glyphdata.extend([
+                ('VVECTOR', f'{voffx} {voffy}'),
+                ('SWIDTH1', f'{swidth1_x} {swidth1_y}'),
+                ('DWIDTH1', f'{dwidth1_x} {dwidth1_y}'),
+            ])
+        glyphdata.append(('BITMAP', '' if not split_hex else '\n' + '\n'.join(split_hex)))
+        glyphs.append(glyphdata)
     # write out
     for key, value in bdf_props:
         if value:
