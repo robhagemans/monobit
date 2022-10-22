@@ -327,7 +327,7 @@ def print_help(command_args, usage, operations, global_options, context_help):
 # frame for main scripts
 
 @contextmanager
-def main(debug=False):
+def wrap_main(debug=False):
     """Main script context."""
     # set log level
     if debug:
