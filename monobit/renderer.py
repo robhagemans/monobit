@@ -33,7 +33,7 @@ _BORDER = -1
 # text rendering
 
 def render_text(
-        font, text, ink='@', paper='-', *,
+        font, text, ink='@', paper='.', *,
         margin=(0, 0), scale=(1, 1), rotate=0,
         direction='',
         missing='default'
