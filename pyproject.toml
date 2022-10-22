@@ -11,6 +11,8 @@ requires-python = ">=3.7"
 dependencies = [
     "reportlab",
     "pillow",
+    "python-bidi",
+    "arabic-reshaper",
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
