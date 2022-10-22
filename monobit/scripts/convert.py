@@ -31,7 +31,7 @@ usage = (
     + '[INFILE] [LOAD-OPTIONS] '
     + ' '.join(f'[--{_op}]' for _op in global_options)
     + ' [COMMAND [OPTION...]] ...'
-    + ' [to [OUTFILE] [SAVE_OPTIONS]]'
+    + ' [to [OUTFILE] [SAVE-OPTIONS]]'
 )
 
 def _get_context_help(rec):
