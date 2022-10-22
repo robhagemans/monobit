@@ -854,9 +854,7 @@ def _create_xlfd_name(xlfd_props):
 
 def _quoted_string(unquoted):
     """Return quoted version of string, if any."""
-    if unquoted:
-        return '"{}"'.format(unquoted.replace('"', '""'))
-    return ''
+    return '"{}"'.format(unquoted.replace('"', '""'))
 
 def _create_xlfd_properties(font):
     """Construct XLFD properties."""
