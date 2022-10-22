@@ -7,7 +7,8 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
-from ..binary import int_to_bytes, bytes_to_int
+from ..binary import int_to_bytes, bytes_to_int, ceildiv
+from ..struct import normalise_property
 from ..storage import loaders, savers
 from ..streams import FileFormatError
 from ..font import Font, Coord
@@ -635,10 +636,12 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
     }
     properties['revision'] = bdf_props.pop('CONTENTVERSION', None)
     # not supported: METRICSSET != 0
-    writing_direction = bdf_props.pop('METRICSSET', 0)
-    if writing_direction not in (0, 1, 2):
+    writing_direction = bdf_props.pop('METRICSSET', '0')
+    if writing_direction not in ('0', '1', '2'):
         logging.warning(f'Unsupported value METRICSSET={writing_direction} ignored')
         writing_direction = 0
+    else:
+        writing_direction = int(writing_direction)
     # global settings, tend to be overridden by per-glyph settings
     global_bbx = bdf_props.pop('FONTBOUNDINGBOX')
     # global DWIDTH; use bounding box as fallback if not specified
@@ -646,7 +649,7 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
         global_dwidth = bdf_props.pop('DWIDTH', global_bbx[:2])
         global_swidth = bdf_props.pop('SWIDTH', 0)
     if writing_direction in (1, 2):
-        global_vvector = bdf_props.pop('VVECTOR')
+        global_vvector = bdf_props.pop('VVECTOR', None)
         global_dwidth1 = bdf_props.pop('DWIDTH1', 0)
         global_swidth1 = bdf_props.pop('SWIDTH1', 0)
     # convert glyph properties
@@ -674,14 +677,17 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
             new_props['right-bearing'] = advance_width - glyph.width - left_bearing
         if writing_direction in (1, 2):
             vvector = props.get('VVECTOR', global_vvector)
-            _, _, bboffx, bboffy = (int(_p) for _p in bbx.split(' '))
+            bbx_width, _, bboffx, bboffy = (int(_p) for _p in bbx.split(' '))
             voffx, voffy = (int(_p) for _p in vvector.split(' '))
             to_bottom = bboffy - voffy
-            new_props['shift-left'] = bboffx - voffx
+            # vector from baseline to raster left; negative: baseline to right of left raster edge
+            to_left = bboffx - voffx
+            # leftward shift from baseline to raster central axis
+            new_props['shift-left'] = ceildiv(bbx_width, 2) + to_left
             # advance height
             dwidth1 = props.get('DWIDTH1', global_dwidth1)
             dwidth1_x, dwidth1_y = (int(_p) for _p in dwidth1.split(' '))
-            if dwidth_x:
+            if dwidth1_x:
                 raise FileFormatError('Horizontal advance in vertical writing not supported.')
             # dwidth1 vector: negative is down
             if dwidth1_y < 0:
@@ -696,18 +702,14 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
             new_props['bottom-bearing'] = bottom_bearing
         mod_glyphs.append(glyph.modify(**new_props))
     # if all glyph props are equal, take them global
-    shift_ups = set(_g.shift_up for _g in mod_glyphs)
-    if len(shift_ups) == 1:
-        mod_glyphs = [_g.drop('shift-up') for _g in mod_glyphs]
-        properties['shift-up'] = shift_ups.pop()
-    left_bearings = set(_g.left_bearing for _g in mod_glyphs)
-    if len(left_bearings) == 1:
-        mod_glyphs = [_g.drop('left-bearing') for _g in mod_glyphs]
-        properties['left-bearing'] = left_bearings.pop()
-    right_bearings = set(_g.right_bearing for _g in mod_glyphs)
-    if len(right_bearings) == 1:
-        mod_glyphs = [_g.drop('right-bearing') for _g in mod_glyphs]
-        properties['right-bearing'] = right_bearings.pop()
+    for key in (
+            'shift-up', 'left_bearing', 'right-bearing',
+            'shift-left', 'top-bearing', 'bottom-bearing',
+        ):
+        distinct = set(getattr(_g, normalise_property(key)) for _g in mod_glyphs)
+        if len(distinct) == 1:
+            mod_glyphs = [_g.drop(key) for _g in mod_glyphs]
+            properties[key] = distinct.pop()
     xlfd_name = bdf_props.pop('FONT')
     # keep unparsed bdf props
     return mod_glyphs, properties, xlfd_name, bdf_props
