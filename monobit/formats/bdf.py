@@ -12,7 +12,7 @@ from ..storage import loaders, savers
 from ..streams import FileFormatError
 from ..font import Font, Coord
 from ..glyph import Glyph
-from ..encoding import charmaps
+from ..encoding import charmaps, NotFoundError
 from ..taggers import tagmaps
 from ..labels import Char
 
@@ -457,7 +457,10 @@ def load_bdf(instream, where=None):
         logging.warning('Number of characters found does not match CHARS declaration.')
     glyphs, properties = _parse_properties(glyphs, glyph_props, bdf_props, x_props)
     font = Font(glyphs, comment=comments, **properties)
-    font = font.label(_record=False)
+    try:
+        font = font.label(_record=False)
+    except NotFoundError:
+        pass
     return font
 
 
@@ -470,7 +473,10 @@ def save_bdf(fonts, outstream, where=None):
         raise FileFormatError('Can only save one font to BDF file.')
     # ensure codepoint values are set
     font = fonts[0]
-    font = font.label(codepoint_from=font.encoding)
+    try:
+        font = font.label(codepoint_from=font.encoding)
+    except NotFoundError:
+        pass
     _save_bdf(font, outstream.text)
 
 
