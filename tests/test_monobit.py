@@ -100,18 +100,6 @@ class TestFormats(BaseTester):
         monobit.save(self.fixed8x16, hex_file)
         self.assertTrue(os.path.getsize(hex_file) > 0)
 
-    def test_export_pdf(self):
-        """Test exporting pdf files."""
-        pdf_file = self.temp_path / '4x6.pdf'
-        monobit.save(self.fixed4x6, pdf_file)
-        self.assertTrue(os.path.getsize(pdf_file) > 0)
-
-    def test_export_png(self):
-        """Test exporting png files."""
-        png_file = self.temp_path / '4x6.png'
-        monobit.save(self.fixed4x6, png_file)
-        self.assertTrue(os.path.getsize(png_file) > 0)
-
     def test_import_psf(self):
         """Test importing psf files."""
         font, *_ = monobit.load(self.font_path / '4x6.psf')
@@ -167,10 +155,10 @@ class TestFormats(BaseTester):
         self.assertTrue(os.path.getsize(fnt_file) > 0)
 
     def test_export_pdf(self):
-        """Test exporting to pdf."""
-        fnt_file = self.temp_path / '4x6.pdf'
-        monobit.save(self.fixed4x6, fnt_file)
-        self.assertTrue(os.path.getsize(fnt_file) > 0)
+        """Test exporting pdf files."""
+        pdf_file = self.temp_path / '4x6.pdf'
+        monobit.save(self.fixed4x6, pdf_file)
+        self.assertTrue(os.path.getsize(pdf_file) > 0)
 
     def test_import_bmf(self):
         """Test importing bmfont files."""
@@ -197,14 +185,6 @@ class TestFormats(BaseTester):
         self.assertTrue(os.path.getsize(fnt_file) > 0)
         monobit.save(self.fixed4x6, fnt_file, where=self.temp_path, descriptor='json', overwrite=True)
         self.assertTrue(os.path.getsize(fnt_file) > 0)
-
-    def test_render_yaff_bmf_kerning(self):
-        webby_mod1, *_ = monobit.load(self.font_path / 'webby-small-kerned.yaff')
-        monobit.save(webby_mod1, self.temp_path / 'webby-small-kerned.bmf', where=self.temp_path)
-        webby_mod2, *_ = monobit.load(self.temp_path / 'webby-small-kerned.bmf')
-        text1 = monobit.render_text(webby_mod1, b'sjifjij')
-        text2 = monobit.render_text(webby_mod2, b'sjifjij')
-        assert text1 == text2
 
     def test_import_c(self):
         """Test importing c source files."""
@@ -286,10 +266,57 @@ class TestFormats(BaseTester):
         # only 195 glyphs in the font as it's in mac-roman encoding now
         self.assertEqual(len(font.glyphs), 195)
 
-    def test_import_amigs(self):
+    def test_import_amiga(self):
         """Test importing amiga font files."""
         font, *_ = monobit.load(self.font_path / 'wbfont.amiga' / 'wbfont_prop.font')
         self.assertEqual(len(font.glyphs), 225)
+
+
+class TestFeatures(BaseTester):
+    """Test specific features."""
+
+    def test_render_yaff_bmf_kerning(self):
+        webby_mod1, *_ = monobit.load(self.font_path / 'webby-small-kerned.yaff')
+        monobit.save(webby_mod1, self.temp_path / 'webby-small-kerned.bmf', where=self.temp_path)
+        webby_mod2, *_ = monobit.load(self.temp_path / 'webby-small-kerned.bmf')
+        text1 = monobit.render_text(webby_mod1, b'sjifjij')
+        text2 = monobit.render_text(webby_mod2, b'sjifjij')
+        assert text1 == text2
+
+    verttext="""......................
+......................
+......@......@........
+.......@....@.........
+................@.....
+...@@@@@@@@@@@@@@@....
+..........@...........
+....@@@@@@@@@@@@......
+..........@...........
+..........@......@....
+..@@@@@@@@@@@@@@@@@...
+..........@...........
+..........@.....@.....
+..@@@@@@@@@@@@@@@@....
+.........@.@..........
+........@...@.........
+.......@.....@........
+.....@@.......@@......
+...@@...........@@....
+......................
+......................
+......................
+""" * 2
+
+    def test_render_bdf_vertical(self):
+        vert2, *_ = monobit.load(self.font_path / 'vertical.bdf')
+        text2 = monobit.render_text(vert2, b'\x27\x27', direction='top-to-bottom', paper='.')
+        assert text2 == self.verttext.strip()
+
+    def test_render_yaff_vertical(self):
+        vert1, *_ = monobit.load(self.font_path / 'vertical.yaff')
+        text1 = monobit.render_text(vert1, b'\x27\x27', direction='top-to-bottom', paper='.')
+        assert text1 == self.verttext.strip()
+
 
 
 class TestCompressed(BaseTester):

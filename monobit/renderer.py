@@ -125,7 +125,7 @@ def _render_vertical(font, glyphs, canvas, margin_x, margin_y):
         for glyph in glyph_row:
             # advance origin to next glyph
             y += font.top_bearing + glyph.advance_height + font.bottom_bearing
-            grid_y = margin_y + (font.top_bearing + glyph.top_bearing + y)
+            grid_y = margin_y + y - (font.bottom_bearing + glyph.bottom_bearing)
             grid_x = baseline - int(glyph.width / 2) - (font.shift_left + glyph.shift_left)
             # add ink, taking into account there may be ink already in case of negative bearing
             matrix.blit(glyph.as_matrix(), canvas, grid_x, grid_y)
