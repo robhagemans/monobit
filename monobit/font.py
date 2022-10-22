@@ -763,7 +763,7 @@ class Font:
     def properties(self):
         """Non-defaulted properties in order of default definition list."""
         return {
-            _k: self._props[_k]
+            _k.replace('_', '-'): self._props[_k]
             for _k in self._props
             if not _k.startswith('_') and not _k.startswith('#')
         }
