@@ -257,12 +257,13 @@ def checked_property(fn):
             calc_value = fn(self)
         except Exception as e:
             logging.warning(f'Could not check value of {field}: {e}')
-        if value == calc_value:
-            logging.debug(f'Non-overridable property {field}={value} consistently set.')
         else:
-            logging.warning(
-                f'Non-overridable property {field}={calc_value} cannot be set to {value}.'
-            )
+            if value == calc_value:
+                logging.debug(f'Non-overridable property {field}={value} consistently set.')
+            else:
+                logging.warning(
+                    f'Non-overridable property {field}={calc_value} cannot be set to {value}.'
+                )
 
     return property(_getter, _setter)
 
