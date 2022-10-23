@@ -406,13 +406,12 @@ class TextWriter:
         # glyph matrix
         # empty glyphs are stored as 0x0, not 0xm or nx0
         if not glyph.width or not glyph.height:
-            glyphtxt = self.empty
+            glyphtxt = f'{self.tab}{self.empty}\n'
         else:
             glyphtxt = glyph.as_text(
-                ink=self.ink, paper=self.paper, linesep='\n' + self.tab
+                start=self.tab, ink=self.ink, paper=self.paper, end='\n'
             )
-        tab = self.tab
-        outstream.write(f'{tab}{glyphtxt}\n')
+        outstream.write(glyphtxt)
         if glyph.properties:
             outstream.write(f'\n')
         for key, value in glyph.properties.items():

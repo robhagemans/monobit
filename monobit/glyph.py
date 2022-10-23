@@ -293,7 +293,7 @@ class Glyph(Raster):
             ) if self._comment else '',
             ', '.join(f'{_k}={_v}' for _k, _v in self.properties.items()),
             "pixels=({})".format(
-                "\n  '{}'\n".format(self.as_text(linesep="',\n  '"))
+                self.as_text(start="\n  '", end="',")
             ) if self._pixels else ''
         )
         return '{}({})'.format(
@@ -455,7 +455,6 @@ class Glyph(Raster):
     def default(cls, property):
         """Default value for a property."""
         return vars(GlyphProperties).get(normalise_property(property), '')
-
 
     @property
     def properties(self):

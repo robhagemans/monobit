@@ -82,13 +82,15 @@ class Raster:
             for _row in self._pixels
         )
 
-    def as_text(self, *, ink='@', paper='.', linesep='\n'):
+    def as_text(self, *, ink='@', paper='.', start='', end='\n'):
         """Convert glyph to text."""
-        return linesep.join(
+        contents = (end + start).join(
             ''.join(ink if _c else paper for _c in _row)
             for _row in self._pixels
         )
-
+        if not contents:
+            return ''
+        return ''.join((start, contents, end))
 
     def as_vector(self, ink=1, paper=0):
         """Return flat tuple of user-specified foreground and background objects."""
