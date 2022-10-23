@@ -25,7 +25,7 @@ class Raster:
         # check pixel matrix geometry
         if len(set(len(_r) for _r in self._pixels)) > 1:
             raise ValueError(
-                f"All rows in a glyph's pixel matrix must be of the same width: {repr(self)}"
+                f"All rows in raster must be of the same width: {repr(self)}"
             )
 
     ##########################################################################
