@@ -9,6 +9,39 @@ import numbers
 from typing import NamedTuple
 
 
+class IntTuple(tuple):
+    """Tuple of ints with custom str conversion."""
+    def __str__(self):
+        return ','.join(str(_i) for _i in self)
+
+def tuple_int(tup):
+    """Convert NxNx... or N,N,... to tuple."""
+    if isinstance(tup, str):
+        return IntTuple(int(_s) for _s in tup.replace('x', ',').split(','))
+    return IntTuple([*tup])
+
+rgb = tuple_int
+pair = tuple_int
+
+def any_int(int_str):
+    """Int-like or string in any representation."""
+    try:
+        # '0xFF' - hex
+        # '0o77' - octal
+        # '99' - decimal
+        return int(int_str, 0)
+    except (TypeError, ValueError):
+        # '099' - ValueError above, OK as decimal
+        # non-string inputs: TypeError, may be OK if int(x) works
+        return int(int_str)
+
+
+def Any(var):
+    """Passthrough type."""
+    return var
+
+
+
 def number(value=0):
     """Convert to int or float."""
     if isinstance(value, str):
@@ -63,4 +96,3 @@ class Coord(NamedTuple):
 
     def __bool__(self):
         return bool(self.x or self.y)
-

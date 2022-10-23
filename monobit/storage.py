@@ -15,7 +15,8 @@ from .containers import ContainerFormatError, open_container
 from .font import Font
 from .pack import Pack
 from .streams import MagicRegistry, FileFormatError, open_stream
-from .scripting import scriptable, ScriptArgs, Any
+from .scripting import scriptable, ScriptArgs
+from .basetypes import Any
 
 
 ##############################################################################

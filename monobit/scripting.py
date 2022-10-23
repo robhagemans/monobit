@@ -12,6 +12,14 @@ from contextlib import contextmanager
 from functools import wraps, partial
 from types import SimpleNamespace
 
+from .basetypes import any_int, Any
+
+
+# script type converters
+_CONVERTER = {
+    int: any_int
+}
+
 
 class ArgumentError(TypeError):
     """Invalid keyword argument."""
@@ -28,7 +36,14 @@ class ArgumentError(TypeError):
 def scriptable(
         *args, script_args=None, name=None, record=True, history_values=None, unknown_args='raise'
     ):
-    """Decorator to register operation for scripting."""
+    """
+    Decorator to register operation for scripting.
+
+    Decorated functions get
+    - a script_args record for argument parsing
+    - automatic type conversion
+    - recorded history
+    """
     if not args:
         # called as @scriptable(script_args=...)
         # return decorator with these arguments set as extra args
@@ -159,45 +174,6 @@ class ScriptArgs():
     def __contains__(self, arg):
         return arg in self._script_args
 
-
-###################################################################################################
-# script type converters
-
-class IntTuple(tuple):
-    """Tuple of ints with custom str conversion."""
-    def __str__(self):
-        return ','.join(str(_i) for _i in self)
-
-def tuple_int(tup):
-    """Convert NxNx... or N,N,... to tuple."""
-    if isinstance(tup, str):
-        return IntTuple(int(_s) for _s in tup.replace('x', ',').split(','))
-    return IntTuple([*tup])
-
-rgb = tuple_int
-pair = tuple_int
-
-def any_int(int_str):
-    """Int-like or string in any representation."""
-    try:
-        # '0xFF' - hex
-        # '0o77' - octal
-        # '99' - decimal
-        return int(int_str, 0)
-    except (TypeError, ValueError):
-        # '099' - ValueError above, OK as decimal
-        # non-string inputs: TypeError, may be OK if int(x) works
-        return int(int_str)
-
-
-def Any(var):
-    """Passthrough type."""
-    return var
-
-
-_CONVERTER = {
-    int: any_int
-}
 
 
 ###################################################################################################

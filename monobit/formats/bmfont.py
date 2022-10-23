@@ -16,7 +16,7 @@ try:
 except ImportError:
     Image = None
 
-from ..scripting import pair
+from ..basetypes import pair
 from ..encoding import charmaps
 from .. import streams
 from ..streams import FileFormatError

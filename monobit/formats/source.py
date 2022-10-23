@@ -13,7 +13,7 @@ from ..storage import loaders, savers
 from ..font import Font
 from ..glyph import Glyph
 from ..streams import FileFormatError
-from ..scripting import pair
+from ..basetypes import pair
 from .raw import load_bitmap
 
 
