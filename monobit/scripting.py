@@ -86,7 +86,8 @@ def get_scriptables(cls):
     """Get dict of functions marked as scriptable."""
     return {
         _name: _func
-        for _name, _func in cls.__dict__.items()
+        for _cls in (cls, *cls.__bases__)
+        for _name, _func in vars(_cls).items()
         if not _name.startswith('_') and hasattr(_func, 'script_args')
     }
 
