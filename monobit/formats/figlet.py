@@ -8,7 +8,6 @@ licence: https://opensource.org/licenses/MIT
 import logging
 from typing import NamedTuple
 
-from ..matrix import to_text
 from ..storage import loaders, savers
 from ..streams import FileFormatError
 from ..font import Font
@@ -270,7 +269,7 @@ def _write_flf(outstream, flf_glyphs, flf_props, comments, ink='#', paper=' ', h
 def _format_glyph(glyph, ink='#', paper=' ', end='@'):
     lines = [
         f'{_line}{end}'
-        for _line in to_text(glyph.as_matrix(), ink=ink, paper=paper).splitlines()
+        for _line in glyph.as_text(ink=ink, paper=paper).splitlines()
     ]
     if lines:
         lines[-1] += end + '\n'

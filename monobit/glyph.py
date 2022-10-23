@@ -19,7 +19,6 @@ except ImportError:
 
 from .scripting import scriptable
 from .binary import ceildiv, bytes_to_bits
-from .matrix import to_text
 from .encoding import is_graphical
 from .labels import Codepoint, Char, Tag, to_label
 from .struct import (
@@ -314,9 +313,7 @@ class Glyph:
             ) if self._comment else '',
             ', '.join(f'{_k}={_v}' for _k, _v in self.properties.items()),
             "pixels=({})".format(
-                "\n  '{}'\n".format(
-                    to_text(self.as_matrix(), ink='@', paper='.', line_break="',\n  '")
-                )
+                "\n  '{}'\n".format(self.as_text(linesep="',\n  '"))
             ) if self._pixels else ''
         )
         return '{}({})'.format(
@@ -542,6 +539,14 @@ class Glyph:
             tuple(ink if _c else paper for _c in _row)
             for _row in self._pixels
         )
+
+    def as_text(self, *, ink='@', paper='.', linesep='\n'):
+        """Convert glyph to text."""
+        return linesep.join(
+            ''.join(ink if _c else paper for _c in _row)
+            for _row in self._pixels
+        )
+
 
     def as_tuple(self, ink=1, paper=0):
         """Return flat tuple of user-specified foreground and background objects."""

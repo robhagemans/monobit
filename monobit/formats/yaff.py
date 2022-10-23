@@ -11,7 +11,6 @@ from types import SimpleNamespace
 from itertools import count, zip_longest
 from collections import deque
 
-from ..matrix import to_text
 from ..storage import loaders, savers
 from ..encoding import charmaps
 from ..streams import FileFormatError
@@ -409,9 +408,8 @@ class TextWriter:
         if not glyph.width or not glyph.height:
             glyphtxt = self.empty
         else:
-            glyphtxt = to_text(
-                glyph.as_matrix(),
-                ink=self.ink, paper=self.paper, line_break='\n' + self.tab
+            glyphtxt = glyph.as_text(
+                ink=self.ink, paper=self.paper, linesep='\n' + self.tab
             )
         tab = self.tab
         outstream.write(f'{tab}{glyphtxt}\n')
