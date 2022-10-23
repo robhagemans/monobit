@@ -9,7 +9,7 @@ import binascii
 
 from .scripting import scriptable
 from .binary import ceildiv, bytes_to_bits
-
+from .basetypes import Bounds
 
 # sentinel object
 NOT_SET = object()
@@ -30,29 +30,32 @@ class Raster:
 
     # NOTE - these following are shadowed in GlyphProperties
 
-    def get_width(self):
+    @property
+    def width(self):
         """Raster width of glyph."""
         if not self._pixels:
             return 0
         return len(self._pixels[0])
 
-    def get_height(self):
+    @property
+    def height(self):
         """Raster height of glyph."""
         return len(self._pixels)
 
-    def get_padding(self):
+    @property
+    def padding(self):
         """Offset from raster sides to bounding box. Left, bottom, right, top."""
         if not self._pixels:
-            return 0, 0, 0, 0
+            return Bounds(0, 0, 0, 0)
         row_inked = [True in _row for _row in self._pixels]
         if True not in row_inked:
-            return self.width, self.height, 0, 0
+            return Bounds(self.width, self.height, 0, 0)
         bottom = list(reversed(row_inked)).index(True)
         top = row_inked.index(True)
         col_inked = [bool(sum(_row[_i] for _row in self._pixels)) for _i in range(self.width)]
         left = col_inked.index(True)
         right = list(reversed(col_inked)).index(True)
-        return left, bottom, right, top
+        return Bounds(left, bottom, right, top)
 
 
     ##########################################################################
