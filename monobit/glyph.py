@@ -185,14 +185,14 @@ class GlyphProperties(DefaultProps):
     @checked_property
     def width(self):
         """Raster width of glyph."""
-        if not self._pixels:
+        if not self._glyph._pixels:
             return 0
-        return len(self._pixels[0])
+        return len(self._glyph._pixels[0])
 
     @checked_property
     def height(self):
         """Raster height of glyph."""
-        return len(self._pixels)
+        return len(self._glyph._pixels)
 
 
     @checked_property
@@ -220,14 +220,14 @@ class GlyphProperties(DefaultProps):
     @checked_property
     def padding(self):
         """Offset from raster sides to bounding box. Left, bottom, right, top."""
-        if not self._pixels:
+        if not self._glyph._pixels:
             return Bounds(0, 0, 0, 0)
-        row_inked = [True in _row for _row in self._pixels]
+        row_inked = [True in _row for _row in self._glyph._pixels]
         if True not in row_inked:
             return Bounds(self.width, self.height, 0, 0)
         bottom = list(reversed(row_inked)).index(True)
         top = row_inked.index(True)
-        col_inked = [bool(sum(_row[_i] for _row in self._pixels)) for _i in range(self.width)]
+        col_inked = [bool(sum(_row[_i] for _row in self._glyph._pixels)) for _i in range(self.width)]
         left = col_inked.index(True)
         right = list(reversed(col_inked)).index(True)
         return Bounds(left, bottom, right, top)
@@ -289,7 +289,7 @@ class Glyph(Raster):
         self._comment = comment
         # recognised properties
         # access needed for calculated properties
-        self._props = GlyphProperties(_pixels=self._pixels, **properties)
+        self._props = GlyphProperties(_glyph=self, **properties)
 
 
     ##########################################################################
