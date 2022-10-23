@@ -63,7 +63,7 @@ class Raster:
         )
 
 
-    def as_tuple(self, ink=1, paper=0):
+    def as_vector(self, ink=1, paper=0):
         """Return flat tuple of user-specified foreground and background objects."""
         return tuple(
             ink if _c else paper
