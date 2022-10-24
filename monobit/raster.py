@@ -5,8 +5,6 @@ monobit.glyph - representation of single glyph
 licence: https://opensource.org/licenses/MIT
 """
 
-import binascii
-
 from .scripting import scriptable
 from .binary import ceildiv, bytes_to_bits
 from .basetypes import Bounds
@@ -121,7 +119,7 @@ class Raster:
             bytes_to_bits(_row, width, align) for _row in rows
         ))
 
-    def as_bytes(self, align='left'):
+    def as_bytes(self, *, align='left'):
         """Convert glyph to flat bytes."""
         if not self._pixels:
             return b''
@@ -152,20 +150,14 @@ class Raster:
         return bytes(int(_bitstr, 2) for _bitstr in glyph_bytes)
 
     @classmethod
-    def from_hex(cls, hexstr, width, height):
+    def from_hex(cls, hexstr, width, height=NOT_SET, *, align='left'):
         """Create glyph from hex string."""
-        if not width or not height:
-            if hexstr:
-                raise ValueError('Hex string must be empty for zero-sized glyph')
-            return cls.blank(width, height)
-        return cls.from_bytes(binascii.unhexlify(hexstr.encode('ascii')), width, height)
+        byteseq = bytes.fromhex(hexstr)
+        return cls.from_bytes(byteseq, width, height, align=align)
 
-    def as_hex(self):
+    def as_hex(self, *, align='left'):
         """Convert glyph to hex string."""
-        return binascii.hexlify(self.as_bytes()).decode('ascii')
-
-
-
+        return self.as_bytes(align=align).hex()
 
     ###############################################################################################
     # operations

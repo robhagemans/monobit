@@ -6,7 +6,6 @@ licence: https://opensource.org/licenses/MIT
 """
 
 from string import ascii_letters, digits
-from binascii import hexlify
 
 from .binary import ceildiv, int_to_bytes
 from .scripting import any_int
@@ -170,7 +169,7 @@ class Codepoint(bytes, Label):
 
     def __str__(self):
         """Convert codepoint label to str."""
-        return '0x' + hexlify(self).decode('ascii')
+        return '0x' + self.hex()
 
 
 ##############################################################################
