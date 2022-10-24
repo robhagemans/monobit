@@ -317,7 +317,7 @@ class TextConverter:
         elif glyph_lines == [self.empty]:
             glyph = Glyph()
         else:
-            glyph = Glyph.from_matrix(glyph_lines, paper=self.paper)
+            glyph = Glyph.from_text(glyph_lines, paper=self.paper)
         # glyph properties
         prop_lines = [
             _line for _line in lines

@@ -161,7 +161,8 @@ def _read_glyph(instream, props, codepoint, tag='', ink=''):
             )
         else:
             paper += list(charset - set(ink))
-    return Glyph.from_matrix(glyph_lines, paper=paper).modify(
+    return Glyph.from_matrix(
+        glyph_lines, paper=paper,
         char=chr(codepoint), tags=[tag]
     )
 

@@ -72,12 +72,12 @@ class Raster:
         return not any(True in _row for _row in self._pixels)
 
     @classmethod
-    def from_matrix(cls, rows, paper):
+    def from_matrix(cls, rows, paper, **kwargs):
         """Create glyph from sequence of sequence of objects."""
         return cls(tuple(
             tuple(_char not in paper for _char in _row)
             for _row in rows
-        ))
+        ), **kwargs)
 
     def as_matrix(self, ink=1, paper=0):
         """Return matrix of user-specified foreground and background objects."""
@@ -85,6 +85,14 @@ class Raster:
             tuple(ink if _c else paper for _c in _row)
             for _row in self._pixels
         )
+
+    @classmethod
+    def from_text(cls, rows, *, paper='.', **kwargs):
+        """Create glyph from sequence of strings."""
+        return cls(tuple(
+            tuple(_char != paper for _char in _row)
+            for _row in rows
+        ), **kwargs)
 
     def as_text(self, *, ink='@', paper='.', start='', end='\n'):
         """Convert glyph to text."""
