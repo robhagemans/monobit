@@ -16,17 +16,12 @@ except ImportError:
 
 from .encoding import is_graphical
 from .labels import Codepoint, Char, Tag, to_label
-from .raster import Raster
+from .raster import Raster, NOT_SET
 from .struct import (
     DefaultProps, normalise_property, extend_string,
     writable_property, as_tuple, checked_property
 )
 from .basetypes import Coord, Bounds, number
-
-
-# sentinel object
-NOT_SET = object()
-
 
 
 ##############################################################################
@@ -194,11 +189,12 @@ class Glyph(Raster):
     def __init__(
             self, pixels=(), *,
             labels=(), codepoint=b'', char='', tags=(), comment='',
+            _0=NOT_SET, _1=NOT_SET,
             **properties
         ):
         """Create glyph from tuple of tuples."""
         # raster data
-        super().__init__(pixels)
+        super().__init__(pixels, _0=_0, _1=_1)
         # labels
         for label in labels:
             label = to_label(label)
@@ -269,6 +265,7 @@ class Glyph(Raster):
             char=Char(char),
             tags=tuple(Tag(_t) for _t in tags),
             comment=comment,
+            _0=self._0, _1=self._1,
             **{**self.properties, **kwargs}
         )
 
@@ -371,6 +368,7 @@ class Glyph(Raster):
             pixels,
             tags=tags, codepoint=codepoint, char=char,
             comment=comment,
+            _0=self._0, _1=self._1,
             **properties
         )
 
