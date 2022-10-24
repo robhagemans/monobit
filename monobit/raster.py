@@ -6,7 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 from .scripting import scriptable
-from .binary import ceildiv, bytes_to_bits
+from .binary import ceildiv
 from .basetypes import Bounds
 
 # sentinel object
@@ -93,6 +93,25 @@ class Raster:
             return ''
         return ''.join((start, contents, end))
 
+
+    @classmethod
+    def from_vector(cls, bitseq, *, stride, width=NOT_SET, align='left'):
+        """Create glyph from flat immutable sequence representing bits."""
+        if not bitseq or width == 0 or stride == 0:
+            return cls()
+        if width is NOT_SET:
+            width = stride
+        if align.startswith('r'):
+            offset = stride - width
+        else:
+            offset = 0
+        rows = tuple(
+            bitseq[_offs:_offs+width]
+            for _offs in range(offset, len(bitseq), stride)
+        )
+        return cls(rows)
+
+
     def as_vector(self, ink=1, paper=0):
         """Return flat tuple of user-specified foreground and background objects."""
         return tuple(
@@ -102,22 +121,17 @@ class Raster:
         )
 
     @classmethod
-    def from_bytes(cls, byteseq, width, height=NOT_SET, align='left'):
+    def from_bytes(cls, byteseq, width, height=NOT_SET, *, align='left'):
         """Create glyph from bytes/bytearray/int sequence."""
-        if not width or height == 0:
-            return cls()
+        if width == 0 or height == 0:
+            return cls.blank(width, height)
         if height is not NOT_SET:
-            bytewidth = len(byteseq) // height
+            stride = 8 * (len(byteseq) // height)
         else:
-            bytewidth = ceildiv(width, 8)
-        byteseq = list(byteseq)
-        rows = [
-            byteseq[_offs:_offs+bytewidth]
-            for _offs in range(0, len(byteseq), bytewidth)
-        ]
-        return cls(tuple(
-            bytes_to_bits(_row, width, align) for _row in rows
-        ))
+            stride = 8 * ceildiv(width, 8)
+        bitseq = bin(int.from_bytes(byteseq, 'big'))[2:].zfill(8*len(byteseq))
+        bitseq = tuple(_c == '1' for _c in bitseq)
+        return cls.from_vector(bitseq, width=width, stride=stride, align=align)
 
     def as_bytes(self, *, align='left'):
         """Convert glyph to flat bytes."""
