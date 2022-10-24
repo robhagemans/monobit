@@ -134,6 +134,10 @@ class DefaultProps(Props):
     where field_1 has an implied default, int() == 0
     """
 
+    # set to True when defaults have been set for a given type
+    # on first instatntiation
+    _init = False
+
     def __init__(self, *args, **kwargs):
         # disable cacheing while building the object
         self._frozen = False
@@ -142,13 +146,16 @@ class DefaultProps(Props):
         # note that we're changing the *class* namespace on the *instance* initialiser
         # which feels a bit hacky
         # but this will be a no-op after the first instance has initialised
-        self._set_defaults()
+        if not type(self)._init:
+            self._set_defaults()
+            type(self)._init = True
         # use Props.__setitem__ for value conversion
         # we use None to *unset* properties
-        for field, value in kwargs.items():
-            if value is not None:
-                field = normalise_property(field)
-                setattr(self, field, value)
+        [
+            setattr(self, normalise_property(field), value)
+            for field, value in kwargs.items()
+            if value is not None
+        ]
         # enable cacheing
         self._cache = {}
         self._frozen = True
