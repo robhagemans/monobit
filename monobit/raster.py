@@ -93,9 +93,8 @@ class Raster:
             return ''
         return ''.join((start, contents, end))
 
-
     @classmethod
-    def from_vector(cls, bitseq, *, stride, width=NOT_SET, align='left'):
+    def from_vector(cls, bitseq, *, stride, width=NOT_SET, align='left', **kwargs):
         """Create glyph from flat immutable sequence representing bits."""
         if not bitseq or width == 0 or stride == 0:
             return cls()
@@ -109,8 +108,7 @@ class Raster:
             bitseq[_offs:_offs+width]
             for _offs in range(offset, len(bitseq), stride)
         )
-        return cls(rows)
-
+        return cls(rows, **kwargs)
 
     def as_vector(self, ink=1, paper=0):
         """Return flat tuple of user-specified foreground and background objects."""
@@ -121,7 +119,7 @@ class Raster:
         )
 
     @classmethod
-    def from_bytes(cls, byteseq, width, height=NOT_SET, *, align='left'):
+    def from_bytes(cls, byteseq, width, height=NOT_SET, *, align='left', **kwargs):
         """Create glyph from bytes/bytearray/int sequence."""
         if width == 0 or height == 0:
             return cls.blank(width, height)
@@ -131,7 +129,7 @@ class Raster:
             stride = 8 * ceildiv(width, 8)
         bitseq = bin(int.from_bytes(byteseq, 'big'))[2:].zfill(8*len(byteseq))
         bitseq = tuple(_c == '1' for _c in bitseq)
-        return cls.from_vector(bitseq, width=width, stride=stride, align=align)
+        return cls.from_vector(bitseq, width=width, stride=stride, align=align, **kwargs)
 
     def as_bytes(self, *, align='left'):
         """Convert glyph to flat bytes."""
@@ -164,10 +162,10 @@ class Raster:
         return bytes(int(_bitstr, 2) for _bitstr in glyph_bytes)
 
     @classmethod
-    def from_hex(cls, hexstr, width, height=NOT_SET, *, align='left'):
+    def from_hex(cls, hexstr, width, height=NOT_SET, *, align='left', **kwargs):
         """Create glyph from hex string."""
         byteseq = bytes.fromhex(hexstr)
-        return cls.from_bytes(byteseq, width, height, align=align)
+        return cls.from_bytes(byteseq, width, height, align=align, **kwargs)
 
     def as_hex(self, *, align='left'):
         """Convert glyph to hex string."""
