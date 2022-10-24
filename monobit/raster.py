@@ -45,14 +45,17 @@ class Raster:
         """Offset from raster sides to bounding box. Left, bottom, right, top."""
         if not self._pixels:
             return Bounds(0, 0, 0, 0)
-        row_inked = [True in _row for _row in self._pixels]
-        if True not in row_inked:
+        row_inked = tuple(any(_row) for _row in self._pixels)
+        if not any(row_inked):
             return Bounds(self.width, self.height, 0, 0)
-        bottom = list(reversed(row_inked)).index(True)
+        bottom = row_inked[::-1].index(True)
         top = row_inked.index(True)
-        col_inked = [bool(sum(_row[_i] for _row in self._pixels)) for _i in range(self.width)]
+        col_inked = tuple(
+            any(_row[_i] for _row in self._pixels)
+            for _i in range(self.width)
+        )
         left = col_inked.index(True)
-        right = list(reversed(col_inked)).index(True)
+        right = col_inked[::-1].index(True)
         return Bounds(left, bottom, right, top)
 
 
