@@ -236,15 +236,7 @@ def writable_property(arg=None, *, field=None):
     def _setter(self, value):
         if self._frozen:
             raise ValueError('Cannot set property on frozen object.')
-        try:
-            calc_value = fn(self)
-        except AttributeError:
-            pass
-        else:
-            if value == calc_value:
-                logging.debug(f'Overridable property {field}={value} consistently set.')
-            else:
-                logging.info(f'Setting overridable property {field}={value} (was {calc_value}).')
+        logging.info(f'Setting overridable property {field}={value}.')
         vars(self)[field] = value
 
     return property(_getter, _setter)
@@ -260,17 +252,7 @@ def checked_property(fn):
     def _setter(self, value):
         if self._frozen:
             raise ValueError('Cannot set property on frozen object.')
-        try:
-            calc_value = fn(self)
-        except Exception as e:
-            logging.warning(f'Could not check value of {field}: {e}')
-        else:
-            if value == calc_value:
-                logging.debug(f'Non-overridable property {field}={value} consistently set.')
-            else:
-                logging.warning(
-                    f'Non-overridable property {field}={calc_value} cannot be set to {value}.'
-                )
+        logging.info(f'Non-overridable property {field} cannot be set to {value}; ignored.')
 
     return property(_getter, _setter)
 
