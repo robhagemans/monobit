@@ -162,7 +162,8 @@ def _read_glyph(instream, props, codepoint, tag='', ink=''):
             )
         else:
             for c in charset:
-                glyph_lines = (_line.replace(c, ' ') for _line in glyph_lines)
+                if c != ink:
+                    glyph_lines = (_line.replace(c, ' ') for _line in glyph_lines)
             glyph_lines = tuple(glyph_lines)
     return Glyph.from_text(
         glyph_lines, paper=' ',
