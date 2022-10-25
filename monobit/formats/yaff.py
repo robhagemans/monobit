@@ -293,10 +293,9 @@ class TextConverter:
 
     def _line_is_glyph(self, value):
         """Text line is a glyph."""
-        value = value.strip()
         return value and (
             (value == self.empty)
-            or not(set(value) - set(self.ink) - set(self.paper))
+            or not(set(value) - set((self.ink, self.paper, ' ', '\t', '\n')))
         )
 
     def _convert_glyph(self, keys, value, comments):
