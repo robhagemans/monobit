@@ -315,9 +315,7 @@ class TextConverter:
         if not glyph_lines:
             raise ValueError('Not a glyph definition.')
         elif glyph_lines == (self.empty,):
-            glyph = Glyph()
-        else:
-            glyph = Glyph(glyph_lines, _0=self.paper, _1=self.ink)
+            glyph_lines = ()
         # glyph properties
         prop_lines = tuple(
             _line for _line in lines
@@ -341,7 +339,11 @@ class TextConverter:
         tags = tuple(_key for _key in keys if isinstance(_key, Tag))
         # duplicate glyphs if we have multiple chars or codepoints
         glyphs = tuple(
-            glyph.modify(char=char, codepoint=cp, tags=tags, comment=comments, **vars(props))
+            Glyph(
+                glyph_lines, _0=self.paper, _1=self.ink,
+                char=char, codepoint=cp, tags=tags,
+                comment=comments, **vars(props)
+            )
             for char, cp, _ in zip_longest(chars, codepoints, [None], fillvalue=None)
         )
         # remove duplicates while preserving order
