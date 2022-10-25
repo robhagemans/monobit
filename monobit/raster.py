@@ -87,15 +87,7 @@ class Raster:
             for _row in self._pixels
         )
 
-    @classmethod
-    def from_text(cls, rows, *, paper='.', **kwargs):
-        """Create glyph from sequence of strings."""
-        return cls(tuple(
-            tuple(_char != paper for _char in _row)
-            for _row in rows
-        ), **kwargs)
-
-    #TODO: inconsistent api - as_text is one string, forom text taakes tuplee of strings
+    # TODO - need method that outputs tuple of str, this one shld be as_string
     def as_text(self, *, ink='@', paper='.', start='', end='\n'):
         """Convert glyph to text."""
         contents = (end + start).join(

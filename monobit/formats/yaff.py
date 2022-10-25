@@ -308,21 +308,21 @@ class TextConverter:
             len(_line) - len(_line.lstrip())
             for _line in lines
         )
-        glyph_lines = [
+        glyph_lines = tuple(
             _line.strip() for _line in lines
              if self._line_is_glyph(_line)
-        ]
+        )
         if not glyph_lines:
             raise ValueError('Not a glyph definition.')
-        elif glyph_lines == [self.empty]:
+        elif glyph_lines == (self.empty,):
             glyph = Glyph()
         else:
-            glyph = Glyph.from_text(glyph_lines, paper=self.paper)
+            glyph = Glyph(glyph_lines, _0=self.paper, _1=self.ink)
         # glyph properties
-        prop_lines = [
+        prop_lines = tuple(
             _line for _line in lines
              if not self._line_is_glyph(_line)
-        ]
+        )
         # new text reader on glyph property lines
         reader = TextReader(indent)
         # set fields so we have a .yaff or .draw reader
