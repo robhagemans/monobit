@@ -282,12 +282,18 @@ class Raster:
             # expanding empty glyph - make at least one high or it will stay empty
             raise ValueError("Can't expand width of zero-height glyph.")
         new_width = left + self.width + right
+        _0, _1 = '0', '1'
         pixels = (
-            ((False,) * new_width,) * top
-            + tuple((False,)*left + _row + (False,)*right for _row in self._pixels)
-            + ((False,) * new_width,) * bottom
+            ''.join(_row)
+            for _row in self.as_matrix(paper=_0, ink=_1)
         )
-        return self.modify(pixels)
+        empty_row = _0 * new_width
+        pixels = (
+            (empty_row,) * top
+            + tuple(_0 * left + _row + _0 * right for _row in self._pixels)
+            + (empty_row,) * bottom
+        )
+        return type(self)(pixels, _0=_0, _1=_1)
 
     @scriptable
     def stretch(self, factor_x:int=1, factor_y:int=1):
