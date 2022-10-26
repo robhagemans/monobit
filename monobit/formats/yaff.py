@@ -277,15 +277,16 @@ class TextConverter:
         if is_glyph:
             self.glyphs.extend(self._convert_glyph(keys, value, comments))
         else:
+            lines = (_line.strip() for _line in value.splitlines())
+            lines = (_line for _line in lines if _line)
             # multiple labels translate into multiple keys with the same value
+            lines = (_line[1:-1] if _line.startswith('"') and _line.endswith('"') else _line for _line in lines)
+            propvalue = '\n'.join(lines)
             for key in keys:
-                lines = (_line.strip() for _line in value.splitlines())
-                lines = (_line for _line in lines if _line)
-                lines = (_line[1:-1] if _line.startswith('"') and _line.endswith('"') else _line for _line in lines)
                 # Props object converts only non-leading underscores (for internal use)
                 # so we need to mae sure e turn those into dashes or we'll drop the prop
                 key = key.replace('_', '-')
-                self.props[key] = '\n'.join(lines)
+                self.props[key] = propvalue
                 # property comments
                 if comments:
                     self.comments[key] = comments
