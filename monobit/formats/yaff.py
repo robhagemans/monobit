@@ -16,7 +16,8 @@ from ..encoding import charmaps
 from ..streams import FileFormatError
 from ..font import Font
 from ..glyph import Glyph
-from ..labels import strip_matching, to_label, Tag
+from ..basetypes import Any
+from ..labels import strip_matching, Tag
 from ..struct import Props
 
 
@@ -57,8 +58,8 @@ class YaffParams:
     ink = '@'
     paper = '.'
     empty = '-'
-    # convert key string to key object
-    convert_key = staticmethod(to_label)
+    # convert key string to key object - handled by Glyph constructor
+    convert_key = staticmethod(Any)
 
 
 ##############################################################################
@@ -278,10 +279,10 @@ class TextConverter:
         # if any line in the value has only glyph symbols, this cluster is a glyph
         is_glyph = lines and self._line_is_glyph(lines[0])
         if is_glyph:
-            self.glyphs.extend(self._convert_glyph(keys, origlines, striplines, comments))
+            self.glyphs.append(self._convert_glyph(keys, origlines, striplines, comments))
         else:
             # multiple labels translate into multiple keys with the same value
-            lines = (_line[1:-1] if _line.startswith('"') and _line.endswith('"') else _line for _line in lines)
+            lines = (strip_matching(_line, '"') for _line in lines)
             propvalue = '\n'.join(lines)
             for key in keys:
                 # Props object converts only non-leading underscores (for internal use)
@@ -328,26 +329,14 @@ class TextConverter:
         # ignore in-glyph comments
         props = self._convert_from(reader).props
         # labels
+        # only necessary to support .draw at this stage
+        # yaff labels handled by Glyph
         keys = tuple(self.convert_key(_key) for _key in keys)
-        chars = tuple(_key for _key in keys if isinstance(_key, str))
-        codepoints = tuple(_key for _key in keys if isinstance(_key, bytes))
-        tags = tuple(_key for _key in keys if isinstance(_key, Tag))
-        # duplicate glyphs if we have multiple chars or codepoints
-        glyphs = tuple(
-            Glyph(
-                glyph_lines, _0=self.paper, _1=self.ink,
-                char=char, codepoint=cp, tags=tags,
-                comment=comments, **vars(props)
-            )
-            for char, cp, _ in zip_longest(chars, codepoints, [None], fillvalue=None)
+        glyph = Glyph(
+            glyph_lines, _0=self.paper, _1=self.ink,
+            labels=keys, comment=comments, **vars(props)
         )
-        # remove duplicates while preserving order
-        unique = []
-        for glyph in glyphs:
-            if glyph not in unique:
-                unique.append(glyph)
-        glyphs = tuple(unique)
-        return tuple(unique)
+        return glyph
 
     def _convert_value(self, value):
         """Strip matching double quotes on a per-line basis."""
