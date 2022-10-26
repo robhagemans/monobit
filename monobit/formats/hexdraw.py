@@ -84,7 +84,7 @@ def _load_text(text_stream, *, ink, paper, comment, separator):
             if glyphlines:
                 glyphs.append(Glyph(
                     tuple(glyphlines), _0=paper, _1=ink,
-                    labels=(DrawParams.convert_key(label),)
+                    labels=(convert_key(label),)
                 ))
                 glyphlines = []
             label, _, stripline = line.partition(separator)
