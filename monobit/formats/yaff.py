@@ -468,10 +468,10 @@ class YaffWriter(TextWriter, YaffParams):
             logging.debug('Writing %s to section #%d', font.name, number)
             # write global comment
             if font.get_comment():
-                outstream.write(format_comment(
-                    font.get_comment() + '\n\n',
-                    self.comment
-                ))
+                outstream.write(
+                    format_comment(font.get_comment(), self.comment)
+                    + '\n\n'
+                )
             # we always output name, font-size and spacing
             # plus anything that is different from the default
             props = {
