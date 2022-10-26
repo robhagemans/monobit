@@ -11,7 +11,6 @@ from types import SimpleNamespace
 from itertools import count, zip_longest
 from collections import deque
 
-from ..matrix import to_text
 from ..storage import loaders, savers
 from ..encoding import charmaps
 from ..streams import FileFormatError
@@ -273,20 +272,22 @@ class TextConverter:
             self.comments[''] = comments
             return
         value, = values
+        origlines = value.splitlines()
+        striplines = tuple(_line.strip() for _line in origlines)
+        lines = tuple(_line for _line in striplines if _line)
         # if any line in the value has only glyph symbols, this cluster is a glyph
-        is_glyph = value and any(_line for _line in value.splitlines() if self._line_is_glyph(_line))
+        is_glyph = lines and self._line_is_glyph(lines[0])
         if is_glyph:
-            self.glyphs.extend(self._convert_glyph(keys, value, comments))
+            self.glyphs.extend(self._convert_glyph(keys, origlines, striplines, comments))
         else:
             # multiple labels translate into multiple keys with the same value
+            lines = (_line[1:-1] if _line.startswith('"') and _line.endswith('"') else _line for _line in lines)
+            propvalue = '\n'.join(lines)
             for key in keys:
-                lines = (_line.strip() for _line in value.splitlines())
-                lines = (_line for _line in lines if _line)
-                lines = (_line[1:-1] if _line.startswith('"') and _line.endswith('"') else _line for _line in lines)
                 # Props object converts only non-leading underscores (for internal use)
                 # so we need to mae sure e turn those into dashes or we'll drop the prop
                 key = key.replace('_', '-')
-                self.props[key] = '\n'.join(lines)
+                self.props[key] = propvalue
                 # property comments
                 if comments:
                     self.comments[key] = comments
@@ -294,36 +295,27 @@ class TextConverter:
 
     def _line_is_glyph(self, value):
         """Text line is a glyph."""
-        value = value.strip()
         return value and (
             (value == self.empty)
-            or not(set(value) - set(self.ink) - set(self.paper))
+            or not(set(value) - set((self.ink, self.paper, ' ', '\t', '\n')))
         )
 
-    def _convert_glyph(self, keys, value, comments):
+    def _convert_glyph(self, keys, lines, striplines, comments):
         """Parse single glyph."""
-        lines = value.splitlines()
-        # find indent - minimum common whitespace
+        # find first indent
         # note we shouldn't have mixed indents.
-        indent = min(
-            len(_line) - len(_line.lstrip())
-            for _line in lines
-        )
-        glyph_lines = [
-            _line.strip() for _line in lines
-             if self._line_is_glyph(_line)
-        ]
-        if not glyph_lines:
-            raise ValueError('Not a glyph definition.')
-        elif glyph_lines == [self.empty]:
-            glyph = Glyph()
-        else:
-            glyph = Glyph.from_matrix(glyph_lines, paper=self.paper)
-        # glyph properties
-        prop_lines = [
-            _line for _line in lines
-             if not self._line_is_glyph(_line)
-        ]
+        # skip leading empties
+        indent = len(lines[0]) - len(lines[0].lstrip())
+        is_glyph = tuple(self._line_is_glyph(_line) for _line in striplines)
+        # find first property row
+        try:
+            first_prop = is_glyph.index(False)
+        except ValueError:
+            first_prop = len(striplines)
+        glyph_lines = striplines[:first_prop]
+        prop_lines = lines[first_prop:]
+        if glyph_lines == (self.empty,):
+            glyph_lines = ()
         # new text reader on glyph property lines
         reader = TextReader(indent)
         # set fields so we have a .yaff or .draw reader
@@ -342,7 +334,11 @@ class TextConverter:
         tags = tuple(_key for _key in keys if isinstance(_key, Tag))
         # duplicate glyphs if we have multiple chars or codepoints
         glyphs = tuple(
-            glyph.modify(char=char, codepoint=cp, tags=tags, comment=comments, **vars(props))
+            Glyph(
+                glyph_lines, _0=self.paper, _1=self.ink,
+                char=char, codepoint=cp, tags=tags,
+                comment=comments, **vars(props)
+            )
             for char, cp, _ in zip_longest(chars, codepoints, [None], fillvalue=None)
         )
         # remove duplicates while preserving order
@@ -407,14 +403,12 @@ class TextWriter:
         # glyph matrix
         # empty glyphs are stored as 0x0, not 0xm or nx0
         if not glyph.width or not glyph.height:
-            glyphtxt = self.empty
+            glyphtxt = f'{self.tab}{self.empty}\n'
         else:
-            glyphtxt = to_text(
-                glyph.as_matrix(),
-                ink=self.ink, paper=self.paper, line_break='\n' + self.tab
+            glyphtxt = glyph.as_text(
+                start=self.tab, ink=self.ink, paper=self.paper, end='\n'
             )
-        tab = self.tab
-        outstream.write(f'{tab}{glyphtxt}\n')
+        outstream.write(glyphtxt)
         if glyph.properties:
             outstream.write(f'\n')
         for key, value in glyph.properties.items():

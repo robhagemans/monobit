@@ -10,7 +10,8 @@ import logging
 from codecs import escape_decode
 
 import monobit
-from monobit.scripting import pair, wrap_main
+from monobit.scripting import wrap_main
+from monobit.basetypes import pair
 from monobit import render_text
 
 

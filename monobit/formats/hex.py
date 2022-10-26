@@ -108,7 +108,7 @@ def _convert_glyph(key, value, comment):
         width, height = 16, num_bytes // 2
     # get labels
     char = _convert_label(key)
-    return Glyph.from_hex(value, width, height).modify(
+    return Glyph.from_hex(value, width, height,
         char=char, tags=([key] if not char else []),
         comment='\n'.join(_clean_comment(comment))
     )

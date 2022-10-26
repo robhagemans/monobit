@@ -10,7 +10,6 @@ import logging
 from pathlib import Path
 import unicodedata
 from html.parser import HTMLParser
-import binascii
 
 from pkg_resources import resource_listdir
 
@@ -1108,7 +1107,7 @@ def _from_ucm_charmap(data):
                 uni_str = item[2:-1]
             elif item.startswith(escape + 'x'):
                 cp_str = item.replace(escape + 'x', '')
-                cp_bytes = binascii.unhexlify(cp_str)
+                cp_bytes = bytes.fromhex(cp_str)
             elif item.startswith(precision):
                 # precision indicator
                 # |0 - A “normal”, roundtrip mapping from a Unicode code point and back.

@@ -7,9 +7,6 @@ licence: https://opensource.org/licenses/MIT
 
 from unicodedata import bidirectional
 
-from .binary import ceildiv
-from . import matrix
-
 try:
     from bidi.algorithm import get_display
 except ImportError:
@@ -22,11 +19,88 @@ except ImportError:
     def reshape(text):
         raise ImportError('Arabic text requires module `arabic-reshaper`; not found.')
 
+try:
+    from PIL import Image
+except ImportError:
+    Image = None
+
+from .binary import ceildiv
+
+
 
 # matrix colours
 # 0, 1 are background, foreground
 # this allows us to use max() to combine the three in blit_matrix
 _BORDER = -1
+
+
+###################################################################################################
+# canvas operations
+
+def create_canvas(width, height, fill=0):
+    """Create a matrix in list format."""
+    return [
+        [fill for _ in range(width)]
+        for _ in range(height)
+    ]
+
+def scale_canvas(matrix, scale_x, scale_y):
+    """Scale a matrix in list format."""
+    return [
+        [_item  for _item in _row for _ in range(scale_x)]
+        for _row in matrix for _ in range(scale_y)
+    ]
+
+def rotate_canvas(matrix, quarter_turns=1):
+    """Scale a matrix in list format."""
+    for turn in range(quarter_turns):
+        matrix = mirror_canvas(transpose_canvas(matrix))
+    return matrix
+
+def transpose_canvas(matrix):
+    """Transpose a matrix."""
+    return list(zip(*matrix))
+
+def mirror_canvas(matrix):
+    """Mirror a matrix."""
+    return [_row[::-1] for _row in matrix]
+
+
+def blit(matrix, canvas, grid_x, grid_y, operator=max):
+    """Draw a matrix onto a canvas (leaving exising ink in place, depending on operator)."""
+    if not matrix or not canvas:
+        return canvas
+    matrix_height = len(matrix)
+    canvas_height = len(canvas)
+    canvas_width = len(canvas[0])
+    for work_y in range(matrix_height):
+        y_index = grid_y - work_y - 1
+        if 0 <= y_index < canvas_height:
+            row = canvas[y_index]
+            for work_x, ink in enumerate(matrix[matrix_height - work_y - 1]):
+                if 0 <= grid_x + work_x < canvas_width:
+                    row[grid_x + work_x] = operator(ink, row[grid_x + work_x])
+    return canvas
+
+
+def to_image(matrix, border=(32, 32, 32), paper=(0, 0, 0), ink=(255, 255, 255)):
+    """Convert matrix to image."""
+    if not Image:
+        raise ImportError('Rendering to image requires PIL module.')
+    height = len(matrix)
+    if height:
+        width = len(matrix[0])
+    else:
+        width = 0
+    img = Image.new('RGB', (width, height), border)
+    img.putdata([{-1: border, 0: paper, 1: ink}[_pix] for _row in matrix for _pix in _row])
+    return img
+
+def to_text(matrix, *, border=' ', paper='-', ink='@', line_break='\n'):
+    """Convert matrix to text."""
+    colourdict = {-1: border, 0: paper, 1: ink}
+    return line_break.join(''.join(colourdict[_pix] for _pix in _row) for _row in matrix)
+
 
 
 ###################################################################################################
@@ -39,7 +113,7 @@ def render_text(
         missing='default'
     ):
     """Render text string to text bitmap."""
-    return matrix.to_text(
+    return to_text(
         render(
             font, text,
             margin=margin, scale=scale, rotate=rotate, direction=direction,
@@ -56,7 +130,7 @@ def render_image(
         missing='default',
     ):
     """Render text to image."""
-    return matrix.to_image(
+    return to_image(
         render(
             font, text,
             margin=margin, scale=scale, rotate=rotate, direction=direction,
@@ -79,8 +153,8 @@ def render(
     else:
         canvas = _get_canvas_horizontal(font, glyphs, margin_x, margin_y)
         canvas = _render_horizontal(font, glyphs, canvas, margin_x, margin_y, align)
-    scaled = matrix.scale(canvas, *scale)
-    rotated = matrix.rotate(scaled, rotate)
+    scaled = scale_canvas(canvas, *scale)
+    rotated = rotate_canvas(scaled, rotate)
     return rotated
 
 def _render_horizontal(font, glyphs, canvas, margin_x, margin_y, align):
@@ -111,7 +185,7 @@ def _render_horizontal(font, glyphs, canvas, margin_x, margin_y, align):
             start = margin_x
         for glyph, x, y in zip(glyph_row, grid_x, grid_y):
             # add ink, taking into account there may be ink already in case of negative bearings
-            matrix.blit(glyph.as_matrix(), canvas, start + x, margin_y + y)
+            blit(glyph.as_matrix(), canvas, start + x, margin_y + y)
         # move to next line
         baseline += font.line_height
     return canvas
@@ -128,7 +202,7 @@ def _render_vertical(font, glyphs, canvas, margin_x, margin_y):
             grid_y = margin_y + y - (font.bottom_bearing + glyph.bottom_bearing)
             grid_x = baseline - int(glyph.width / 2) - (font.shift_left + glyph.shift_left)
             # add ink, taking into account there may be ink already in case of negative bearing
-            matrix.blit(glyph.as_matrix(), canvas, grid_x, grid_y)
+            blit(glyph.as_matrix(), canvas, grid_x, grid_y)
         # move to next line
         baseline += font.line_width
     return canvas
@@ -147,7 +221,7 @@ def _get_canvas_horizontal(font, glyphs, margin_x, margin_y):
     # ascent-line of top-most row is at top margin
     # if a glyph extends below the descent line or left of the origin, it may draw into the margin
     height = 2 * margin_y + font.pixel_size + font.line_height * (len(glyphs)-1)
-    return matrix.create(width, height)
+    return create_canvas(width, height)
 
 def _get_canvas_vertical(font, glyphs, margin_x, margin_y):
     """Create canvas of the right size."""
@@ -159,7 +233,7 @@ def _get_canvas_vertical(font, glyphs, margin_x, margin_y):
             for _row in glyphs
         )
     width = 2 * margin_x + font.line_width * len(glyphs)
-    return matrix.create(width, height)
+    return create_canvas(width, height)
 
 
 def _get_direction(text, direction):
@@ -255,7 +329,7 @@ def chart_image(
     ):
     """Create font chart as image."""
     canvas = chart(font, columns, margin, padding, scale, order, direction)
-    return matrix.to_image(canvas, border=border, paper=paper, ink=ink)
+    return to_image(canvas, border=border, paper=paper, ink=ink)
 
 def chart_text(
         font,
@@ -265,7 +339,7 @@ def chart_text(
     ):
     """Create font chart as text."""
     canvas = chart(font, columns, margin, padding, scale, order, direction)
-    return matrix.to_text(canvas, border=border, paper=paper, ink=ink)
+    return to_text(canvas, border=border, paper=paper, ink=ink)
 
 def traverse_chart(columns, rows, order, direction):
     """Traverse a glyph chart in the specified order and directions."""
@@ -311,7 +385,7 @@ def chart(
     # determine image geometry
     width = columns * step_x + 2 * margin_x - padding_x
     height = rows * step_y + 2 * margin_y - padding_y
-    canvas = matrix.create(width, height, _BORDER)
+    canvas = create_canvas(width, height, _BORDER)
     # output glyphs
     traverse = traverse_chart(columns, rows, order, direction)
     for glyph, pos in zip(font.glyphs, traverse):
@@ -319,8 +393,8 @@ def chart(
             continue
         row, col = pos
         mx = glyph.as_matrix()
-        mx = matrix.scale(mx, scale_x, scale_y)
+        mx = scale_canvas(mx, scale_x, scale_y)
         left = margin_x + col*step_x + glyph.left_bearing
         bottom = margin_y + (row+1)*step_y - padding_y - glyph.shift_up
-        matrix.blit(mx, canvas, left, bottom)
+        blit(mx, canvas, left, bottom)
     return canvas
