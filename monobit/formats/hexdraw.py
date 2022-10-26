@@ -8,7 +8,19 @@ licence: https://opensource.org/licenses/MIT
 import logging
 
 from ..storage import loaders, savers
-from .yaff import TextReader, TextConverter, format_comment
+from ..font import Font
+from ..glyph import Glyph
+from ..labels import Tag, Char
+from .yaff import format_comment, normalise_comment
+
+
+class DrawParams:
+    """Parameters for hexdraw format."""
+    separator = ':'
+    comment = '%'
+    tab = '\t'
+    #ink = '#'
+    #paper = '-'
 
 
 ##############################################################################
@@ -25,7 +37,12 @@ def load_hexdraw(
     ink: character used for inked/foreground pixels (default #)
     paper: character used for uninked/background pixels (default -)
     """
-    return _load_draw(instream.text, _ink=ink, _paper=paper)
+    return _load_text(
+        instream.text,
+        ink=ink, paper=paper,
+        comment=DrawParams.comment,
+        separator=DrawParams.separator
+    )
 
 @savers.register(linked=load_hexdraw)
 def save_hexdraw(
@@ -47,58 +64,48 @@ def save_hexdraw(
 
 
 ##############################################################################
-# format parameters
-
-
-class DrawParams:
-    """Parameters for .draw format."""
-
-    # first/second pass constants
-    separator = ':'
-    comment = '%'
-    # output only
-    tab = '\t'
-    separator_space = ''
-    # tuple of individual chars, need to be separate for startswith
-    whitespace = tuple(' \t')
-
-    # third-pass constants
-    ink = '#'
-    paper = '-'
-    empty = '-'
-
-    @staticmethod
-    def convert_key(key):
-        """Convert keys on input from .draw."""
-        try:
-            return chr(int(key, 16))
-        except (TypeError, ValueError):
-            return Tag(key)
-
-
-##############################################################################
 ##############################################################################
 # read file
 
-def _load_draw(text_stream, _ink='', _paper=''):
-    """Parse a hexdraw file."""
 
-    class _Converter(DrawConverter):
-        ink=_ink or DrawConverter.ink
-        paper=_paper or DrawConverter.paper
-
-    reader = DrawReader()
+def _load_text(text_stream, *, ink, paper, comment, separator):
+    """Parse a hexdraw-style file."""
+    comments = []
+    glyphs = []
+    label = ''
+    glyphlines = []
     for line in text_stream:
-        reader.step(line)
-    return _Converter.get_font_from(reader)
+        if line.startswith(comment):
+            comments.append(line[len(comment):])
+        line = line.rstrip()
+        stripline = line.lstrip()
+        # no leading whitespace?
+        if line and len(line) == len(stripline):
+            if glyphlines:
+                glyphs.append(Glyph(
+                    tuple(glyphlines), _0=paper, _1=ink,
+                    labels=(DrawParams.convert_key(label),)
+                ))
+                glyphlines = []
+            label, _, stripline = line.partition(separator)
+            stripline = stripline.lstrip()
+        if len(line) != len(stripline):
+            glyphlines.append(stripline)
+    if glyphlines:
+        glyphs.append(Glyph(
+            tuple(glyphlines), _0=paper, _1=ink,
+            labels=(convert_key(label),)
+        ))
+    comments = normalise_comment(comments)
+    return Font(glyphs, comment=comments)
 
 
-
-class DrawReader(DrawParams, TextReader):
-    """Reader for .draw files."""
-
-class DrawConverter(DrawParams, TextConverter):
-    """Converter for .draw files."""
+def convert_key(key):
+    """Convert keys on input from .draw."""
+    try:
+        return Char(chr(int(key, 16)))
+    except (TypeError, ValueError):
+        return Tag(key)
 
 
 ##############################################################################

@@ -342,6 +342,7 @@ class TextConverter:
         """Strip matching double quotes on a per-line basis."""
         return '\n'.join(strip_matching(_line, '"') for _line in value.splitlines())
 
+    @classmethod
     def _clean_comment(self, comment):
         """Remove common leading space from comment."""
         # normalise single leading space
@@ -350,9 +351,14 @@ class TextConverter:
             _line[len(self.comment):] if _line.startswith(self.comment) else _line
             for _line in lines
         )
-        if all(_line.startswith(' ') for _line in lines if _line):
-            return '\n'.join(_line[1:] for _line in lines)
-        return '\n'.join(lines)
+        return normalise_comment(lines)
+
+
+def normalise_comment(lines):
+    """Remove common single leading space"""
+    if all(_line.startswith(' ') for _line in lines if _line):
+        return '\n'.join(_line[1:] for _line in lines)
+    return '\n'.join(lines)
 
 
 class YaffConverter(YaffParams, TextConverter):
