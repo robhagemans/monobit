@@ -16,8 +16,7 @@ from ..encoding import charmaps
 from ..streams import FileFormatError
 from ..font import Font
 from ..glyph import Glyph
-from ..basetypes import Any
-from ..labels import strip_matching, Tag
+from ..labels import strip_matching
 from ..struct import Props
 
 
@@ -50,7 +49,6 @@ class YaffParams:
     comment = '#'
     # output only
     tab = '    '
-    separator_space = '\n'
     # tuple of individual chars, need to be separate for startswith
     whitespace = tuple(' \t')
 
@@ -58,8 +56,6 @@ class YaffParams:
     ink = '@'
     paper = '.'
     empty = '-'
-    # convert key string to key object - handled by Glyph constructor
-    convert_key = staticmethod(Any)
 
 
 ##############################################################################
@@ -213,11 +209,6 @@ class TextConverter:
     paper: str
     empty: str
 
-    @staticmethod
-    def convert_key(keystr):
-        """Convert key string to key object."""
-        raise NotImplementedError
-
 
     # third pass: interpret clusters
 
@@ -329,9 +320,6 @@ class TextConverter:
         # ignore in-glyph comments
         props = self._convert_from(reader).props
         # labels
-        # only necessary to support .draw at this stage
-        # yaff labels handled by Glyph
-        keys = tuple(self.convert_key(_key) for _key in keys)
         glyph = Glyph(
             glyph_lines, _0=self.paper, _1=self.ink,
             labels=keys, comment=comments, **vars(props)
@@ -375,7 +363,6 @@ class TextWriter:
     separator: str
     comment: str
     tab: str
-    separator_space: str
 
     ink: str
     paper: str
@@ -392,9 +379,9 @@ class TextWriter:
             labels = glyph.get_labels()
         if not labels:
             logging.debug('No labels for glyph: %s', glyph)
-            outstream.write(f'{self.separator}{self.separator_space}')
+            outstream.write(f'{self.separator}\n')
         for _label in labels:
-            outstream.write(f'{str(_label)}{self.separator}{self.separator_space}')
+            outstream.write(f'{str(_label)}{self.separator}\n')
         # glyph matrix
         # empty glyphs are stored as 0x0, not 0xm or nx0
         if not glyph.width or not glyph.height:
