@@ -272,13 +272,14 @@ class TextConverter:
             self.comments[''] = comments
             return
         value, = values
+        origlines = value.splitlines()
+        striplines = tuple(_line.strip() for _line in origlines)
+        lines = tuple(_line for _line in striplines if _line)
         # if any line in the value has only glyph symbols, this cluster is a glyph
-        is_glyph = value and any(_line for _line in value.splitlines() if self._line_is_glyph(_line))
+        is_glyph = lines and self._line_is_glyph(lines[0])
         if is_glyph:
-            self.glyphs.extend(self._convert_glyph(keys, value, comments))
+            self.glyphs.extend(self._convert_glyph(keys, origlines, striplines, comments))
         else:
-            lines = (_line.strip() for _line in value.splitlines())
-            lines = (_line for _line in lines if _line)
             # multiple labels translate into multiple keys with the same value
             lines = (_line[1:-1] if _line.startswith('"') and _line.endswith('"') else _line for _line in lines)
             propvalue = '\n'.join(lines)
@@ -299,17 +300,17 @@ class TextConverter:
             or not(set(value) - set((self.ink, self.paper, ' ', '\t', '\n')))
         )
 
-    def _convert_glyph(self, keys, value, comments):
+    def _convert_glyph(self, keys, lines, striplines, comments):
         """Parse single glyph."""
-        lines = value.splitlines()
-        # find indent - minimum common whitespace
+        # find first indent
         # note we shouldn't have mixed indents.
-        indent = min(
-            len(_line) - len(_line.lstrip())
-            for _line in lines
-        )
+        # skip leading empties
+        first_row = 0
+        while not striplines[first_row]:
+            first_row += 1
+        indent = len(lines[first_row]) - len(lines[first_row].lstrip())
         glyph_lines = tuple(
-            _line.strip() for _line in lines
+            _line for _line in striplines
              if self._line_is_glyph(_line)
         )
         if not glyph_lines:
