@@ -305,23 +305,17 @@ class TextConverter:
         # find first indent
         # note we shouldn't have mixed indents.
         # skip leading empties
-        first_row = 0
-        while not striplines[first_row]:
-            first_row += 1
-        indent = len(lines[first_row]) - len(lines[first_row].lstrip())
-        glyph_lines = tuple(
-            _line for _line in striplines
-             if self._line_is_glyph(_line)
-        )
-        if not glyph_lines:
-            raise ValueError('Not a glyph definition.')
-        elif glyph_lines == (self.empty,):
+        indent = len(lines[0]) - len(lines[0].lstrip())
+        is_glyph = tuple(self._line_is_glyph(_line) for _line in striplines)
+        # find first property row
+        try:
+            first_prop = is_glyph.index(False)
+        except ValueError:
+            first_prop = len(striplines)
+        glyph_lines = striplines[:first_prop]
+        prop_lines = lines[first_prop:]
+        if glyph_lines == (self.empty,):
             glyph_lines = ()
-        # glyph properties
-        prop_lines = tuple(
-            _line for _line in lines
-             if not self._line_is_glyph(_line)
-        )
         # new text reader on glyph property lines
         reader = TextReader(indent)
         # set fields so we have a .yaff or .draw reader
