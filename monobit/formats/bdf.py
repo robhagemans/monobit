@@ -7,12 +7,13 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
-from ..binary import int_to_bytes, bytes_to_int
+from ..binary import int_to_bytes, bytes_to_int, ceildiv
+from ..struct import normalise_property
 from ..storage import loaders, savers
 from ..streams import FileFormatError
 from ..font import Font, Coord
 from ..glyph import Glyph
-from ..encoding import charmaps
+from ..encoding import charmaps, NotFoundError
 from ..taggers import tagmaps
 from ..labels import Char
 
@@ -457,7 +458,10 @@ def load_bdf(instream, where=None):
         logging.warning('Number of characters found does not match CHARS declaration.')
     glyphs, properties = _parse_properties(glyphs, glyph_props, bdf_props, x_props)
     font = Font(glyphs, comment=comments, **properties)
-    font = font.label(_record=False)
+    try:
+        font = font.label(_record=False)
+    except NotFoundError:
+        pass
     return font
 
 
@@ -470,7 +474,10 @@ def save_bdf(fonts, outstream, where=None):
         raise FileFormatError('Can only save one font to BDF file.')
     # ensure codepoint values are set
     font = fonts[0]
-    font = font.label(codepoint_from=font.encoding)
+    try:
+        font = font.label(codepoint_from=font.encoding)
+    except NotFoundError:
+        pass
     _save_bdf(font, outstream.text)
 
 
@@ -629,10 +636,12 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
     }
     properties['revision'] = bdf_props.pop('CONTENTVERSION', None)
     # not supported: METRICSSET != 0
-    writing_direction = bdf_props.pop('METRICSSET', 0)
-    if writing_direction not in (0, 1, 2):
+    writing_direction = bdf_props.pop('METRICSSET', '0')
+    if writing_direction not in ('0', '1', '2'):
         logging.warning(f'Unsupported value METRICSSET={writing_direction} ignored')
         writing_direction = 0
+    else:
+        writing_direction = int(writing_direction)
     # global settings, tend to be overridden by per-glyph settings
     global_bbx = bdf_props.pop('FONTBOUNDINGBOX')
     # global DWIDTH; use bounding box as fallback if not specified
@@ -640,7 +649,7 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
         global_dwidth = bdf_props.pop('DWIDTH', global_bbx[:2])
         global_swidth = bdf_props.pop('SWIDTH', 0)
     if writing_direction in (1, 2):
-        global_vvector = bdf_props.pop('VVECTOR')
+        global_vvector = bdf_props.pop('VVECTOR', None)
         global_dwidth1 = bdf_props.pop('DWIDTH1', 0)
         global_swidth1 = bdf_props.pop('SWIDTH1', 0)
     # convert glyph properties
@@ -668,14 +677,17 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
             new_props['right-bearing'] = advance_width - glyph.width - left_bearing
         if writing_direction in (1, 2):
             vvector = props.get('VVECTOR', global_vvector)
-            _, _, bboffx, bboffy = (int(_p) for _p in bbx.split(' '))
+            bbx_width, _bbx_height, bboffx, bboffy = (int(_p) for _p in bbx.split(' '))
             voffx, voffy = (int(_p) for _p in vvector.split(' '))
             to_bottom = bboffy - voffy
-            new_props['shift-left'] = bboffx - voffx
+            # vector from baseline to raster left; negative: baseline to right of left raster edge
+            to_left = bboffx - voffx
+            # leftward shift from baseline to raster central axis
+            new_props['shift-left'] = ceildiv(bbx_width, 2) + to_left
             # advance height
             dwidth1 = props.get('DWIDTH1', global_dwidth1)
             dwidth1_x, dwidth1_y = (int(_p) for _p in dwidth1.split(' '))
-            if dwidth_x:
+            if dwidth1_x:
                 raise FileFormatError('Horizontal advance in vertical writing not supported.')
             # dwidth1 vector: negative is down
             if dwidth1_y < 0:
@@ -690,18 +702,14 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
             new_props['bottom-bearing'] = bottom_bearing
         mod_glyphs.append(glyph.modify(**new_props))
     # if all glyph props are equal, take them global
-    shift_ups = set(_g.shift_up for _g in mod_glyphs)
-    if len(shift_ups) == 1:
-        mod_glyphs = [_g.drop('shift-up') for _g in mod_glyphs]
-        properties['shift-up'] = shift_ups.pop()
-    left_bearings = set(_g.left_bearing for _g in mod_glyphs)
-    if len(left_bearings) == 1:
-        mod_glyphs = [_g.drop('left-bearing') for _g in mod_glyphs]
-        properties['left-bearing'] = left_bearings.pop()
-    right_bearings = set(_g.right_bearing for _g in mod_glyphs)
-    if len(right_bearings) == 1:
-        mod_glyphs = [_g.drop('right-bearing') for _g in mod_glyphs]
-        properties['right-bearing'] = right_bearings.pop()
+    for key in (
+            'shift-up', 'left_bearing', 'right-bearing',
+            'shift-left', 'top-bearing', 'bottom-bearing',
+        ):
+        distinct = set(getattr(_g, normalise_property(key)) for _g in mod_glyphs)
+        if len(distinct) == 1:
+            mod_glyphs = [_g.drop(key) for _g in mod_glyphs]
+            properties[key] = distinct.pop()
     xlfd_name = bdf_props.pop('FONT')
     # keep unparsed bdf props
     return mod_glyphs, properties, xlfd_name, bdf_props
@@ -848,9 +856,7 @@ def _create_xlfd_name(xlfd_props):
 
 def _quoted_string(unquoted):
     """Return quoted version of string, if any."""
-    if unquoted:
-        return '"{}"'.format(unquoted.replace('"', '""'))
-    return ''
+    return '"{}"'.format(unquoted.replace('"', '""'))
 
 def _create_xlfd_properties(font):
     """Construct XLFD properties."""
@@ -969,6 +975,13 @@ def _save_bdf(font, outstream):
             f'{font.bounding_box.x} {font.bounding_box.y} {font.left_bearing} {font.shift_up}'
         )
     ]
+    vertical_metrics = ('shift-left', 'top-bearing', 'bottom-bearing')
+    has_vertical_metrics = (
+        any(_k in font.properties for _k in vertical_metrics)
+        or any(_k in _g.properties for _g in font.glyphs for _k in vertical_metrics)
+    )
+    if has_vertical_metrics:
+        bdf_props.append(('METRICSSET', '2'))
     # labels
     # get glyphs for encoding values
     encoded_glyphs = []
@@ -1026,14 +1039,32 @@ def _save_bdf(font, outstream):
             hex = glyph.as_hex().upper()
             width = len(hex) // glyph.height
             split_hex = [hex[_offs:_offs+width] for _offs in range(0, len(hex), width)]
-        glyphs.append([
+        glyphdata = [
             ('STARTCHAR', name),
             ('ENCODING', str(encoding)),
             ('SWIDTH', f'{swidth_x} {swidth_y}'),
             ('DWIDTH', f'{dwidth_x} {dwidth_y}'),
             ('BBX', f'{glyph.width} {glyph.height} {left_bearing} {shift_up}'),
-            ('BITMAP', '' if not split_hex else '\n' + '\n'.join(split_hex)),
-        ])
+        ]
+        if has_vertical_metrics:
+            top_bearing = font.top_bearing + glyph.top_bearing
+            bottom_bearing = glyph.bottom_bearing + font.bottom_bearing
+            shift_left = font.shift_left + glyph.shift_left
+            to_left = shift_left - ceildiv(glyph.width, 2)
+            to_bottom = -top_bearing - glyph.height
+            voffx = left_bearing - to_left
+            voffy = shift_up - to_bottom
+            dwidth1_x, swidth1_x = 0, 0
+            # dwidth1 vector: negative is down
+            dwidth1_y = -(top_bearing + glyph.height + bottom_bearing)
+            swidth1_y = int(round(dwidth1_y / (font.point_size / 1000) / (font.dpi.y / 72)))
+            glyphdata.extend([
+                ('VVECTOR', f'{voffx} {voffy}'),
+                ('SWIDTH1', f'{swidth1_x} {swidth1_y}'),
+                ('DWIDTH1', f'{dwidth1_x} {dwidth1_y}'),
+            ])
+        glyphdata.append(('BITMAP', '' if not split_hex else '\n' + '\n'.join(split_hex)))
+        glyphs.append(glyphdata)
     # write out
     for key, value in bdf_props:
         if value:

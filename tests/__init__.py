@@ -1,0 +1,4 @@
+"""
+monobit test suite
+"""
+
