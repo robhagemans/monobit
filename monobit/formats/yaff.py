@@ -379,7 +379,7 @@ class TextWriter:
         """Write out a single glyph in text format."""
         # glyph comments
         if glyph.comment:
-            outstream.write('\n' + self._format_comment(glyph.comment) + '\n')
+            outstream.write('\n' + format_comment(glyph.comment, self.comment) + '\n')
         if label:
             labels = [label]
         else:
@@ -414,7 +414,7 @@ class TextWriter:
         value = str(value)
         # write property comment
         if comments:
-            outstream.write(f'\n{indent}' + self._format_comment(comments) + '\n')
+            outstream.write(f'\n{indent}' + format_comment(comments) + '\n', self.comment)
         if not key.startswith('_'):
             key = key.replace('_', '-')
         # write key-value pair
@@ -430,10 +430,6 @@ class TextWriter:
                 )
             )
 
-    def _format_comment(self, comments):
-        """Format a multiline comment."""
-        return '\n'.join(f'{self.comment} {_line}' for _line in comments.splitlines())
-
     def _quote_if_needed(self, value):
         """See if string value needs double quotes."""
         value = str(value)
@@ -448,6 +444,14 @@ class TextWriter:
         return value
 
 
+def format_comment(comments, comment_char):
+    """Format a multiline comment."""
+    return '\n'.join(
+        f'{comment_char} {_line}'
+        for _line in comments.splitlines()
+    )
+
+
 class YaffWriter(TextWriter, YaffParams):
 
     def save(self, fonts, outstream):
@@ -458,7 +462,10 @@ class YaffWriter(TextWriter, YaffParams):
             logging.debug('Writing %s to section #%d', font.name, number)
             # write global comment
             if font.get_comment():
-                outstream.write(self._format_comment(font.get_comment()) + '\n\n')
+                outstream.write(format_comment(
+                    font.get_comment() + '\n\n',
+                    self.comment
+                ))
             # we always output name, font-size and spacing
             # plus anything that is different from the default
             props = {
