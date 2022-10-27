@@ -46,9 +46,9 @@ def to_label(value):
     if is_enclosed(value, '"'):
         # strip matching double quotes
         # this allows to set a label starting with a digit by quoting it
-        return Tag(strip_matching(value, '"'))
+        return Tag(value[1:-1])
     if is_enclosed(value, "'"):
-        return Char(strip_matching(value, "'"))
+        return Char(value[1:-1])
     # codepoints start with an ascii digit
     try:
         return Codepoint(value)
@@ -63,10 +63,9 @@ def to_label(value):
         return Char(value)
     # deal with other options such as single-quoted, u+codepoint and sequences
     try:
-        elements = value.split(',')
         return Char(''.join(
             _convert_char_element(_elem)
-            for _elem in elements if _elem
+            for _elem in value.split(',') if _elem
         ))
     except ValueError:
         pass
@@ -75,12 +74,8 @@ def to_label(value):
 def _convert_char_element(element):
     """Convert character label element to char if possible."""
     # string delimited by single quotes denotes a character or sequence
-    try:
-        element = strip_matching(element, "'", allow_no_match=False)
-    except ValueError:
-        pass
-    else:
-        return element
+    if is_enclosed(element, "'"):
+        return element[1:-1]
     # not a delimited char
     element = element.lower()
     if not element.startswith('u+'):
