@@ -88,7 +88,6 @@ class YaffElement:
 class YaffReader(YaffParams):
     """Parser for text-based font file."""
 
-
     def __init__(self):
         """Set up text reader."""
         # current element appending to
@@ -280,20 +279,43 @@ def normalise_comment(lines):
     return '\n'.join(lines)
 
 
+
 ##############################################################################
 ##############################################################################
 # write file
 
-class TextWriter:
+class YaffWriter(YaffParams):
 
-    # override these by inheriting a params class
-    separator: str
-    comment: str
-    tab: str
-
-    ink: str
-    paper: str
-    empty: str
+    def save(self, fonts, outstream):
+        """Write fonts to a plaintext stream as yaff."""
+        for number, font in enumerate(fonts):
+            if len(fonts) > 1:
+                outstream.write(BOUNDARY_MARKER + '\n')
+            logging.debug('Writing %s to section #%d', font.name, number)
+            # write global comment
+            if font.get_comment():
+                outstream.write(
+                    format_comment(font.get_comment(), self.comment)
+                    + '\n\n'
+                )
+            # we always output name, font-size and spacing
+            # plus anything that is different from the default
+            props = {
+                'name': font.name,
+                'spacing': font.spacing,
+            }
+            if font.spacing in ('character-cell', 'multi-cell'):
+                props['cell_size'] = font.cell_size
+            else:
+                props['bounding_box'] = font.bounding_box
+            props.update(font.properties)
+            if props:
+                # write recognised yaff properties first, in defined order
+                for key, value in props.items():
+                    self._write_property(outstream, key, value, font.get_comment(key))
+                outstream.write('\n')
+            for glyph in font.glyphs:
+                self._write_glyph(outstream, glyph)
 
     def _write_glyph(self, outstream, glyph, label=None):
         """Write out a single glyph in text format."""
@@ -372,37 +394,3 @@ def format_comment(comments, comment_char):
         f'{comment_char} {_line}'
         for _line in comments.splitlines()
     )
-
-
-class YaffWriter(TextWriter, YaffParams):
-
-    def save(self, fonts, outstream):
-        """Write fonts to a plaintext stream as yaff."""
-        for number, font in enumerate(fonts):
-            if len(fonts) > 1:
-                outstream.write(BOUNDARY_MARKER + '\n')
-            logging.debug('Writing %s to section #%d', font.name, number)
-            # write global comment
-            if font.get_comment():
-                outstream.write(
-                    format_comment(font.get_comment(), self.comment)
-                    + '\n\n'
-                )
-            # we always output name, font-size and spacing
-            # plus anything that is different from the default
-            props = {
-                'name': font.name,
-                'spacing': font.spacing,
-            }
-            if font.spacing in ('character-cell', 'multi-cell'):
-                props['cell_size'] = font.cell_size
-            else:
-                props['bounding_box'] = font.bounding_box
-            props.update(font.properties)
-            if props:
-                # write recognised yaff properties first, in defined order
-                for key, value in props.items():
-                    self._write_property(outstream, key, value, font.get_comment(key))
-                outstream.write('\n')
-            for glyph in font.glyphs:
-                self._write_glyph(outstream, glyph)
