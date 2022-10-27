@@ -167,8 +167,8 @@ class TextReader:
             # it can start with multiple keys and comments in no given order
             if (
                     element
-                    and not element.startswith(self.comment)
-                    and not element.endswith(self.separator)
+                    and element[:1] != self.comment
+                    and element[-1:] != self.separator
                 ):
                 # yield cluster
                 clusters.append(current)
@@ -177,12 +177,12 @@ class TextReader:
         if clusters and clusters[0]:
             comments = [
                 _elem for _elem in clusters[0]
-                if _elem.startswith(self.comment) or not _elem
+                if not _elem or _elem[0] == self.comment
             ]
             if comments:
                 others = [
                     _elem for _elem in clusters[0]
-                    if _elem and not _elem.startswith(self.comment)
+                    if _elem and _elem[0] != self.comment
                 ]
                 if len(comments) > 1:
                     new_first = comments[:-1]
@@ -241,20 +241,20 @@ class TextConverter:
         """Convert cluster."""
         # keys
         keys = tuple(
-            _elem[:-len(self.separator)].strip()
+            _elem[:-1].strip()
             for _elem in cluster
-            if _elem.endswith(self.separator) and not _elem.startswith(self.comment)
+            if _elem[-1:] == self.separator and _elem[0] != self.comment
         )
         comments = tuple(
             _elem
             for _elem in cluster
-            if _elem.startswith(self.comment)
+            if _elem[:1] == self.comment
         )
         comments = self._clean_comment('\n'.join(comments))
         values = tuple(
             _elem
             for _elem in cluster
-            if _elem and not _elem.startswith(self.comment) and not _elem.endswith(self.separator)
+            if _elem and _elem[0] != self.comment and _elem[-1] != self.separator
         )
         if len(values) > 1:
             raise ValueError('Cluster with multiple value elements')
