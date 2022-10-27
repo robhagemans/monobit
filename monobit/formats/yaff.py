@@ -70,7 +70,7 @@ def _load_yaff(text_stream):
     for line in text_stream:
         if line.strip() == BOUNDARY_MARKER:
             fonts.append(YaffConverter.get_font_from(reader))
-            reader.reset()
+            reader = YaffReader()
         else:
             reader.step(line)
     fonts.append(YaffConverter.get_font_from(reader))
@@ -108,11 +108,6 @@ class TextReader:
         self._yield_element()
         # run second pass and append
         return self._build_clusters(self._elements)
-
-    def reset(self):
-        """Reset parser for new section."""
-        self._elements = deque()
-        self._current = YaffElement()
 
     def _yield_element(self):
         """Close and append current element and start a new one."""
