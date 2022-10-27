@@ -186,32 +186,31 @@ class YaffConverter(YaffParams):
 
     def __init__(self):
         """Set up converter."""
-        self.props = Props()
+        self.props = {}
         self.comments = {}
         self.glyphs = []
 
     @classmethod
     def get_font_from(cls, reader):
         """Get clusters from reader and convert to Font."""
-        conv = cls._convert_from(reader)
-        if not conv.glyphs:
-            raise FileFormatError('No glyphs found in yaff file.')
-        return Font(conv.glyphs, comment=conv.comments, **vars(conv.props))
-
-    @classmethod
-    def _convert_from(cls, reader):
-        """Get clusters from reader and convert."""
         clusters = reader.get_clusters()
         # recursive call
         converter = cls()
         for cluster in clusters:
             converter.convert_cluster(cluster)
-        return converter
+        if not converter.glyphs:
+            raise FileFormatError('No glyphs found in yaff file.')
+        return Font(
+            converter.glyphs, comment=converter.comments, **converter.props
+        )
 
     def convert_cluster(self, cluster):
         """Convert cluster."""
-        # if first line in the value has only glyph symbols, this cluster is a glyph
-        if cluster.value and self._line_is_glyph(cluster.value[0]):
+        if not cluster.keys:
+            # global comment
+            self.comments[''] = normalise_comment(cluster.comment)
+        elif self._line_is_glyph(cluster.value[0]):
+            # if first line in the value has only glyph symbols, it's a glyph
             self.glyphs.append(self._convert_glyph(cluster))
         else:
             key, value, comment = self.convert_property(cluster)
@@ -225,11 +224,7 @@ class YaffConverter(YaffParams):
     def convert_property(cluster):
         """Convert property cluster."""
         # there should not be multiple keys for a property
-        try:
-            key = cluster.keys.pop(0)
-        except IndexError:
-            # this happens for the global comment
-            key = ''
+        key = cluster.keys.pop(0)
         if cluster.keys:
             logging.warning('ignored excess keys: %s', cluster.keys)
         # Props object converts only non-leading underscores
@@ -266,13 +261,16 @@ class YaffConverter(YaffParams):
         reader = YaffReader()
         for line in prop_lines:
             reader.step(line)
-        # recursive call
         # ignore in-glyph comments
-        props = self._convert_from(reader).props
+        props = dict(
+            self.convert_property(cluster)[:2]
+            for cluster in reader.get_clusters()
+            if cluster.keys
+        )
         # labels
         glyph = Glyph(
             glyph_lines, _0=self.paper, _1=self.ink,
-            labels=keys, comment=comment, **vars(props)
+            labels=keys, comment=comment, **props
         )
         return glyph
 
