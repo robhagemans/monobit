@@ -89,7 +89,7 @@ class TextReader:
     def __init__(self, indent=0):
         """Set up text reader."""
         # current element appending to
-        self._current = ''
+        self._current = []
         # elements done
         self._elements = deque()
         # indentation level
@@ -106,13 +106,13 @@ class TextReader:
     def reset(self):
         """Reset parser for new section."""
         self._elements = deque()
-        self._current = ''
+        self._current = []
 
     def _yield_element(self):
         """Close and append current element and start a new one."""
         if self._current:
-            self._elements.append(self._current)
-        self._current = ''
+            self._elements.append('\n'.join(self._current))
+        self._current = []
 
     def step(self, line):
         """Parse a single line."""
@@ -121,18 +121,18 @@ class TextReader:
         # strip trailing whitespace
         contents = line.rstrip()
         if contents.startswith(self.comment):
-            if self._current and not self._current.startswith(self.comment):
+            if self._current and not self._current[0].startswith(self.comment):
                 # new comment
                 self._yield_element()
             self._step_value(contents)
         elif not contents.strip():
             # ignore empty lines except while parsing comments
-            if self._current.startswith(self.comment):
+            if self._current and self._current[0].startswith(self.comment):
                 # new comment
                 self._yield_element()
         elif not contents.startswith(self.whitespace):
-            # glyph label
             if contents.endswith(self.separator):
+                # glyph label
                 self._yield_element()
                 self._step_value(contents)
                 self._yield_element()
@@ -152,10 +152,8 @@ class TextReader:
 
     def _step_value(self, contents):
         """Continue building value."""
-        if self._current:
-            self._current += '\n' + contents
-        else:
-            self._current = contents
+        self._current.append(contents)
+
 
     # second pass: elements to clusters
 
@@ -170,18 +168,24 @@ class TextReader:
                 current.append(element)
             # each cluster ends with a value
             # it can start with multiple keys and comments in no given order
-            if element and not element.startswith(self.comment) and not element.endswith(self.separator):
+            if (
+                    element
+                    and not element.startswith(self.comment)
+                    and not element.endswith(self.separator)
+                ):
                 # yield cluster
                 clusters.append(current)
                 current = []
         # separate out global top comment
         if clusters and clusters[0]:
             comments = [
-                _elem for _elem in clusters[0] if _elem.startswith(self.comment) or not _elem
+                _elem for _elem in clusters[0]
+                if _elem.startswith(self.comment) or not _elem
             ]
             if comments:
                 others = [
-                    _elem for _elem in clusters[0] if _elem and not _elem.startswith(self.comment)
+                    _elem for _elem in clusters[0]
+                    if _elem and not _elem.startswith(self.comment)
                 ]
                 if len(comments) > 1:
                     new_first = comments[:-1]
@@ -298,8 +302,10 @@ class TextConverter:
         # note we shouldn't have mixed indents.
         # skip leading empties
         indent = len(lines[0]) - len(lines[0].lstrip())
-        is_glyph = tuple(self._line_is_glyph(_line) for _line in striplines)
         # find first property row
+        # this should be correct for the glyph section and the first prop afterwards
+        # note empty lines have already been dropped by reader
+        is_glyph = tuple(not ':' in _line for _line in striplines)
         try:
             first_prop = is_glyph.index(False)
         except ValueError:
