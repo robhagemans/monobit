@@ -184,41 +184,37 @@ class YaffConverter(YaffParams):
 
     # third pass: interpret clusters
 
-    def __init__(self):
-        """Set up converter."""
-        self.props = {}
-        self.comments = {}
-        self.glyphs = []
-
     @classmethod
     def get_font_from(cls, reader):
         """Get clusters from reader and convert to Font."""
         clusters = reader.get_clusters()
         # recursive call
-        converter = cls()
-        for cluster in clusters:
-            converter.convert_cluster(cluster)
-        if not converter.glyphs:
+        glyphs, props, comments = cls.convert_clusters(clusters)
+        if not glyphs:
             raise FileFormatError('No glyphs found in yaff file.')
-        return Font(
-            converter.glyphs, comment=converter.comments, **converter.props
-        )
+        return Font(glyphs, comment=comments, **props)
 
-    def convert_cluster(self, cluster):
+    @classmethod
+    def convert_clusters(self, clusters):
         """Convert cluster."""
-        if not cluster.keys:
-            # global comment
-            self.comments[''] = normalise_comment(cluster.comment)
-        elif self._line_is_glyph(cluster.value[0]):
-            # if first line in the value has only glyph symbols, it's a glyph
-            self.glyphs.append(self._convert_glyph(cluster))
-        else:
-            key, value, comment = self.convert_property(cluster)
-            if value:
-                self.props[key] = value
-            # property comments
-            if comment:
-                self.comments[key] = comment
+        props = {}
+        comments = {}
+        glyphs = []
+        for cluster in clusters:
+            if not cluster.keys:
+                # global comment
+                comments[''] = normalise_comment(cluster.comment)
+            elif self._line_is_glyph(cluster.value[0]):
+                # if first line in the value has only glyph symbols, it's a glyph
+                glyphs.append(self._convert_glyph(cluster))
+            else:
+                key, value, comment = self.convert_property(cluster)
+                if value:
+                    props[key] = value
+                # property comments
+                if comment:
+                    comments[key] = comment
+        return glyphs, props, comments
 
     @staticmethod
     def convert_property(cluster):
@@ -234,6 +230,7 @@ class YaffConverter(YaffParams):
         comment = normalise_comment(cluster.comment)
         return key, value, comment
 
+    @classmethod
     def _line_is_glyph(self, value):
         """Text line is a glyph."""
         return value and (
@@ -241,6 +238,7 @@ class YaffConverter(YaffParams):
             or not(set(value) - set((self.ink, self.paper, ' ', '\t', '\n')))
         )
 
+    @classmethod
     def _convert_glyph(self, cluster):
         """Parse single glyph."""
         keys = cluster.keys
