@@ -85,7 +85,7 @@ class YaffElement:
     indent: int = 0
 
 
-class YaffReader(YaffParams):
+class YaffReader:
     """Parser for text-based font file."""
 
     def __init__(self):
@@ -97,15 +97,9 @@ class YaffReader(YaffParams):
 
     # first pass: lines to elements
 
-    def get_clusters(self):
-        """Convert elements to clusters and return."""
-        self._yield_element()
-        # run second pass and append
-        return self._build_clusters(self._elements)
-
     def _yield_element(self):
         """Close and append current element and start a new one."""
-        if self._current:
+        if self._current.keys or self._current.value or self._current.comment:
             self._elements.append(self._current)
         self._current = YaffElement()
 
@@ -123,13 +117,13 @@ class YaffReader(YaffParams):
                 self._current.comment.append('')
         else:
             startchar = contents[:1]
-            if startchar == self.comment:
+            if startchar == YaffParams.comment:
                 if self._current.keys or self._current.value:
                     # new comment starts new element
                     self._yield_element()
                 self._current.comment.append(contents[1:])
-            elif startchar not in self.whitespace:
-                if contents[-1:] == self.separator:
+            elif startchar not in YaffParams.whitespace:
+                if contents[-1:] == YaffParams.separator:
                     if self._current.value:
                         # new key when we have a value starts a new element
                         self._yield_element()
@@ -141,7 +135,7 @@ class YaffReader(YaffParams):
                         self._yield_element()
                     # new key, separate at the first :
                     # prop keys must be alphanum so no need to worry about quoting
-                    key, sep, value = contents.partition(self.separator)
+                    key, sep, value = contents.partition(YaffParams.separator)
                     # yield key and value
                     # yaff does not allow multiline values starting on the key line
                     self._current.keys.append(key.rstrip())
@@ -159,9 +153,11 @@ class YaffReader(YaffParams):
 
     # second pass: elements to clusters
 
-    def _build_clusters(self, elements):
-        """Group elements into clusters."""
-        clusters = elements
+    def get_clusters(self):
+        """Convert elements to clusters and return."""
+        self._yield_element()
+        # run second pass and append
+        clusters = self._elements
         # separate out global top comment
         if clusters and clusters[0]:
             top = clusters[0]
@@ -184,88 +180,85 @@ class YaffReader(YaffParams):
         """Get clusters from reader and convert to Font."""
         clusters = self.get_clusters()
         # recursive call
-        glyphs, props, comments = self.convert_clusters(clusters)
+        glyphs, props, comments = convert_clusters(clusters)
         if not glyphs:
             raise FileFormatError('No glyphs found in yaff file.')
         return Font(glyphs, comment=comments, **props)
 
-    @classmethod
-    def convert_clusters(self, clusters):
-        """Convert cluster."""
-        props = {}
-        comments = {}
-        glyphs = []
-        for cluster in clusters:
-            if not cluster.keys:
-                # global comment
-                comments[''] = normalise_comment(cluster.comment)
-            elif self._line_is_glyph(cluster.value[0]):
-                # if first line in the value has only glyph symbols, it's a glyph
-                glyphs.append(self._convert_glyph(cluster))
-            else:
-                key, value, comment = self.convert_property(cluster)
-                if value:
-                    props[key] = value
-                # property comments
-                if comment:
-                    comments[key] = comment
-        return glyphs, props, comments
 
-    @staticmethod
-    def convert_property(cluster):
-        """Convert property cluster."""
-        # there should not be multiple keys for a property
-        key = cluster.keys.pop(0)
-        if cluster.keys:
-            logging.warning('ignored excess keys: %s', cluster.keys)
-        # Props object converts only non-leading underscores
-        # so we need to make sure we turn those into dashes
-        key = key.replace('_', '-')
-        value = '\n'.join(strip_matching(_line, '"') for _line in cluster.value)
-        comment = normalise_comment(cluster.comment)
-        return key, value, comment
+def convert_clusters(clusters):
+    """Convert cluster."""
+    props = {}
+    comments = {}
+    glyphs = []
+    for cluster in clusters:
+        if not cluster.keys:
+            # global comment
+            comments[''] = normalise_comment(cluster.comment)
+        elif _line_is_glyph(cluster.value[0]):
+            # if first line in the value has only glyph symbols, it's a glyph
+            glyphs.append(_convert_glyph(cluster))
+        else:
+            key, value, comment = convert_property(cluster)
+            if value:
+                props[key] = value
+            # property comments
+            if comment:
+                comments[key] = comment
+    return glyphs, props, comments
 
-    @classmethod
-    def _line_is_glyph(self, value):
-        """Text line is a glyph."""
-        return value and (
-            (value == self.empty)
-            or not(set(value) - set((self.ink, self.paper, ' ', '\t', '\n')))
-        )
+def convert_property(cluster):
+    """Convert property cluster."""
+    # there should not be multiple keys for a property
+    key = cluster.keys.pop(0)
+    if cluster.keys:
+        logging.warning('ignored excess keys: %s', cluster.keys)
+    # Props object converts only non-leading underscores
+    # so we need to make sure we turn those into dashes
+    key = key.replace('_', '-')
+    value = '\n'.join(strip_matching(_line, '"') for _line in cluster.value)
+    comment = normalise_comment(cluster.comment)
+    return key, value, comment
 
-    @classmethod
-    def _convert_glyph(self, cluster):
-        """Parse single glyph."""
-        keys = cluster.keys
-        lines = cluster.value
-        comment = normalise_comment(cluster.comment)
-        # find first property row
-        # note empty lines have already been dropped by reader
-        is_prop = tuple(self.separator in _line for _line in lines)
-        try:
-            first_prop = is_prop.index(True)
-        except ValueError:
-            first_prop = len(lines)
-        glyph_lines = lines[:first_prop]
-        prop_lines = lines[first_prop:]
-        if glyph_lines == (self.empty,):
-            glyph_lines = ()
-        # new text reader on glyph property lines
-        reader = YaffReader()
-        for line in prop_lines:
-            reader.step(line)
-        # ignore in-glyph comments
-        props = dict(
-            self.convert_property(cluster)[:2]
-            for cluster in reader.get_clusters()
-            if cluster.keys
-        )
-        # labels
-        glyph = Glyph(
-            glyph_lines, _0=self.paper, _1=self.ink,
-            labels=keys, comment=comment, **props
-        )
-        return glyph
+def _line_is_glyph(value):
+    """Text line is a glyph."""
+    return value and (
+        (value == YaffParams.empty)
+        or not(set(value) - set((YaffParams.ink, YaffParams.paper, ' ', '\t', '\n')))
+    )
+
+def _convert_glyph(cluster):
+    """Parse single glyph."""
+    keys = cluster.keys
+    lines = cluster.value
+    comment = normalise_comment(cluster.comment)
+    # find first property row
+    # note empty lines have already been dropped by reader
+    is_prop = tuple(YaffParams.separator in _line for _line in lines)
+    try:
+        first_prop = is_prop.index(True)
+    except ValueError:
+        first_prop = len(lines)
+    glyph_lines = lines[:first_prop]
+    prop_lines = lines[first_prop:]
+    if glyph_lines == (YaffParams.empty,):
+        glyph_lines = ()
+    # new text reader on glyph property lines
+    reader = YaffReader()
+    for line in prop_lines:
+        reader.step(line)
+    # ignore in-glyph comments
+    props = dict(
+        convert_property(cluster)[:2]
+        for cluster in reader.get_clusters()
+        if cluster.keys
+    )
+    # labels
+    glyph = Glyph(
+        glyph_lines, _0=YaffParams.paper, _1=YaffParams.ink,
+        labels=keys, comment=comment, **props
+    )
+    return glyph
 
 
 def normalise_comment(lines):
@@ -291,7 +284,7 @@ class YaffWriter(YaffParams):
             # write global comment
             if font.get_comment():
                 outstream.write(
-                    format_comment(font.get_comment(), self.comment)
+                    format_comment(font.get_comment(), YaffParams.comment)
                     + '\n\n'
                 )
             # we always output name, font-size and spacing
@@ -317,29 +310,33 @@ class YaffWriter(YaffParams):
         """Write out a single glyph in text format."""
         # glyph comments
         if glyph.comment:
-            outstream.write('\n' + format_comment(glyph.comment, self.comment) + '\n')
+            outstream.write(
+                '\n' + format_comment(glyph.comment, YaffParams.comment) + '\n'
+            )
         if label:
             labels = [label]
         else:
             labels = glyph.get_labels()
         if not labels:
             logging.debug('No labels for glyph: %s', glyph)
-            outstream.write(f'{self.separator}\n')
+            outstream.write(f'{YaffParams.separator}\n')
         for _label in labels:
-            outstream.write(f'{str(_label)}{self.separator}\n')
+            outstream.write(f'{str(_label)}{YaffParams.separator}\n')
         # glyph matrix
         # empty glyphs are stored as 0x0, not 0xm or nx0
         if not glyph.width or not glyph.height:
-            glyphtxt = f'{self.tab}{self.empty}\n'
+            glyphtxt = f'{YaffParams.tab}{YaffParams.empty}\n'
         else:
             glyphtxt = glyph.as_text(
-                start=self.tab, ink=self.ink, paper=self.paper, end='\n'
+                start=YaffParams.tab,
+                ink=YaffParams.ink, paper=YaffParams.paper,
+                end='\n'
             )
         outstream.write(glyphtxt)
         if glyph.properties:
             outstream.write(f'\n')
         for key, value in glyph.properties.items():
-            self._write_property(outstream, key, value, None, indent=self.tab)
+            self._write_property(outstream, key, value, None, indent=YaffParams.tab)
         if glyph.properties:
             outstream.write('\n')
         outstream.write('\n')
@@ -353,7 +350,7 @@ class YaffWriter(YaffParams):
         # write property comment
         if comments:
             outstream.write(
-                f'\n{indent}{format_comment(comments, self.comment)}\n'
+                f'\n{indent}{format_comment(comments, YaffParams.comment)}\n'
             )
         if not key.startswith('_'):
             key = key.replace('_', '-')
@@ -362,8 +359,8 @@ class YaffWriter(YaffParams):
             outstream.write(f'{indent}{key}: {self._quote_if_needed(value)}\n')
         else:
             outstream.write(
-                f'{indent}{key}:\n{indent}{self.tab}' + '{}\n'.format(
-                    f'\n{indent}{self.tab}'.join(
+                f'{indent}{key}:\n{indent}{YaffParams.tab}' + '{}\n'.format(
+                    f'\n{indent}{YaffParams.tab}'.join(
                         self._quote_if_needed(_line)
                         for _line in value.splitlines()
                     )
@@ -378,7 +375,10 @@ class YaffWriter(YaffParams):
                 # leading or trailing space
                 or value[:1].isspace() or value[-1:].isspace()
                 # anything that could be mistaken for a glyph
-                or all(_c in (self.ink, self.paper, self.empty) for _c in value)
+                or all(
+                    _c in (YaffParams.ink, YaffParams.paper, YaffParams.empty)
+                    for _c in value
+                )
             ):
             return f'"{value}"'
         return value
