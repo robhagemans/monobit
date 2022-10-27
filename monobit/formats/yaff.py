@@ -85,14 +85,9 @@ class YaffElement:
     indent: int = 0
 
 
-class TextReader:
+class YaffReader(YaffParams):
     """Parser for text-based font file."""
 
-    # first/second pass constants
-    separator: str
-    comment: str
-    # tuple of individual chars, need to be separate for startswith
-    whitespace: str
 
     def __init__(self):
         """Set up text reader."""
@@ -184,23 +179,8 @@ class TextReader:
         return clusters
 
 
-class YaffReader(YaffParams, TextReader):
-    """Reader for .yaff files."""
-
-
-class TextConverter:
+class YaffConverter(YaffParams):
     """Convert text clusters to font."""
-
-    # first/second pass constants
-    separator: str
-    comment: str
-    whitespace: str
-
-    # third-pass constants
-    ink: str
-    paper: str
-    empty: str
-
 
     # third pass: interpret clusters
 
@@ -267,11 +247,10 @@ class TextConverter:
     def _convert_glyph(self, keys, lines, comments):
         """Parse single glyph."""
         # find first property row
-        # this should be correct for the glyph section and the first prop afterwards
         # note empty lines have already been dropped by reader
-        is_glyph = tuple(not ':' in _line for _line in lines)
+        is_prop = tuple(':' in _line for _line in lines)
         try:
-            first_prop = is_glyph.index(False)
+            first_prop = is_prop.index(True)
         except ValueError:
             first_prop = len(lines)
         glyph_lines = lines[:first_prop]
@@ -298,10 +277,6 @@ def normalise_comment(lines):
     if all(_line.startswith(' ') for _line in lines if _line):
         return '\n'.join(_line[1:] for _line in lines)
     return '\n'.join(lines)
-
-
-class YaffConverter(YaffParams, TextConverter):
-    """Converter for .yaff files."""
 
 
 ##############################################################################
