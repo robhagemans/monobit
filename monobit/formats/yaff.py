@@ -7,7 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 import string
-from types import SimpleNamespace
+from dataclasses import dataclass, field
 from itertools import count, zip_longest
 from collections import deque
 
@@ -77,6 +77,14 @@ def _load_yaff(text_stream):
     return fonts
 
 
+@dataclass
+class YaffElement:
+    keys: list = field(default_factory=list)
+    value: list = field(default_factory=list)
+    comment: list = field(default_factory=list)
+    indent: int = 0
+
+
 class TextReader:
     """Parser for text-based font file."""
 
@@ -86,14 +94,12 @@ class TextReader:
     # tuple of individual chars, need to be separate for startswith
     whitespace: str
 
-    def __init__(self, indent=0):
+    def __init__(self):
         """Set up text reader."""
         # current element appending to
-        self._current = []
+        self._current = YaffElement()
         # elements done
         self._elements = deque()
-        # indentation level
-        self._indent = indent
 
     # first pass: lines to elements
 
@@ -106,90 +112,80 @@ class TextReader:
     def reset(self):
         """Reset parser for new section."""
         self._elements = deque()
-        self._current = []
+        self._current = YaffElement()
 
     def _yield_element(self):
         """Close and append current element and start a new one."""
         if self._current:
-            self._elements.append('\n'.join(self._current))
-        self._current = []
+            self._elements.append(self._current)
+        self._current = YaffElement()
 
     def step(self, line):
         """Parse a single line."""
-        # strip indent
         # strip trailing whitespace
-        contents = line[self._indent:].rstrip()
+        contents = line.rstrip()
         if not contents:
-            # ignore empty lines except while parsing comments
-            if self._current and self._current[0][:1] == self.comment:
-                # new comment
-                self._yield_element()
+            # ignore empty lines except while already parsing comments
+            if (
+                    self._current.comment
+                    and not self._current.value
+                    and not self._current.keys
+                ):
+                self._current.comment.append('')
         else:
             startchar = contents[:1]
             if startchar == self.comment:
-                if self._current and not self._current[0][:1] == self.comment:
-                    # new comment
+                if self._current.keys or self._current.value:
+                    # new comment starts new element
                     self._yield_element()
-                self._current.append(contents)
+                self._current.comment.append(contents[1:])
             elif startchar not in self.whitespace:
                 if contents[-1:] == self.separator:
-                    # glyph label
-                    self._yield_element()
-                    self._current.append(contents)
-                    self._yield_element()
+                    if self._current.value:
+                        # new key when we have a value starts a new element
+                        self._yield_element()
+                    self._current.keys.append(contents[:-1])
                 else:
+                    # this must be a property key, not a glyph label
+                    # so starts a new element
+                    if self._current.value or self._current.keys:
+                        self._yield_element()
                     # new key, separate at the first :
-                    # keys must be alphanum so no need to worry about quoting
+                    # prop keys must be alphanum so no need to worry about quoting
                     key, sep, value = contents.partition(self.separator)
+                    # yield key and value
+                    # yaff does not allow multiline values starting on the key line
+                    self._current.keys.append(key.rstrip())
+                    self._current.value.append(value.lstrip())
                     self._yield_element()
-                    # yield key
-                    self._current.append(key + sep)
-                    self._yield_element()
-                    # start building value
-                    self._current.append(value.lstrip())
             else:
+                # first line in value
+                if not self._current.value:
+                    self._current.indent = len(contents) - len(contents.lstrip())
                 # continue building value
-                self._current.append(contents)
+                # do not strip all whitespace as we need it for multiline glyph props
+                # but strip the first line's indent
+                self._current.value.append(contents[self._current.indent:])
 
 
     # second pass: elements to clusters
 
     def _build_clusters(self, elements):
         """Group elements into clusters."""
-        clusters = []
-        # current cluster
-        current = []
-        for element in elements:
-            # drop empty elements at top
-            if clusters or element:
-                current.append(element)
-            # each cluster ends with a value
-            # it can start with multiple keys and comments in no given order
-            if (
-                    element
-                    and element[:1] != self.comment
-                    and element[-1:] != self.separator
-                ):
-                # yield cluster
-                clusters.append(current)
-                current = []
+        clusters = elements
         # separate out global top comment
         if clusters and clusters[0]:
-            comments = [
-                _elem for _elem in clusters[0]
-                if not _elem or _elem[0] == self.comment
-            ]
-            if comments:
-                others = [
-                    _elem for _elem in clusters[0]
-                    if _elem and _elem[0] != self.comment
-                ]
-                if len(comments) > 1:
-                    new_first = comments[:-1]
-                    new_second = [comments[-1], *others]
-                    clusters = [new_first, new_second, *clusters[1:]]
-                else:
-                    clusters = [comments, others, *clusters[1:]]
+            top = clusters[0]
+            comments = top.comment
+            # find last empty line which separates global from prop comment
+            try:
+                index = len(comments) - comments[::-1].index('')
+            except ValueError:
+                index = len(comments) + 1
+            if len(comments) > 1:
+                global_comment = YaffElement(comment=comments[:index])
+                top.comment = comments[index+1:]
+                clusters.appendleft(global_comment)
         return clusters
 
 
@@ -240,51 +236,31 @@ class TextConverter:
     def convert_cluster(self, cluster):
         """Convert cluster."""
         # keys
-        keys = tuple(
-            _elem[:-1].strip()
-            for _elem in cluster
-            if _elem[-1:] == self.separator and _elem[0] != self.comment
-        )
-        comments = tuple(
-            _elem
-            for _elem in cluster
-            if _elem[:1] == self.comment
-        )
-        comments = self._clean_comment('\n'.join(comments))
-        values = tuple(
-            _elem
-            for _elem in cluster
-            if _elem and _elem[0] != self.comment and _elem[-1] != self.separator
-        )
-        if len(values) > 1:
-            raise ValueError('Cluster with multiple value elements')
-        if not values:
+        keys = cluster.keys
+        comments = normalise_comment(cluster.comment)
+        if not cluster.value:
             if keys:
                 raise ValueError('Cluster with keys but without value element')
             # global comment
             self.comments[''] = comments
             return
-        value, = values
-        origlines = value.splitlines()
-        striplines = tuple(_line.strip() for _line in origlines)
-        lines = tuple(_line for _line in striplines if _line)
-        # if any line in the value has only glyph symbols, this cluster is a glyph
-        is_glyph = lines and self._line_is_glyph(lines[0])
-        if is_glyph:
-            self.glyphs.append(self._convert_glyph(keys, origlines, striplines, comments))
+        lines = cluster.value
+        # if first line in the value has only glyph symbols, this cluster is a glyph
+        if self._line_is_glyph(lines[0]):
+            self.glyphs.append(self._convert_glyph(keys, lines, comments))
         else:
             # multiple labels translate into multiple keys with the same value
-            lines = (strip_matching(_line, '"') for _line in lines)
-            propvalue = '\n'.join(lines)
+            propvalue = '\n'.join(strip_matching(_line, '"') for _line in lines)
             for key in keys:
-                # Props object converts only non-leading underscores (for internal use)
-                # so we need to mae sure e turn those into dashes or we'll drop the prop
+                # Props object converts only non-leading underscores
+                # (for internal use)
+                # so we need to make sure we turn those into dashes
+                # or we'll drop the prop
                 key = key.replace('_', '-')
                 self.props[key] = propvalue
                 # property comments
                 if comments:
                     self.comments[key] = comments
-
 
     def _line_is_glyph(self, value):
         """Text line is a glyph."""
@@ -293,30 +269,22 @@ class TextConverter:
             or not(set(value) - set((self.ink, self.paper, ' ', '\t', '\n')))
         )
 
-    def _convert_glyph(self, keys, lines, striplines, comments):
+    def _convert_glyph(self, keys, lines, comments):
         """Parse single glyph."""
-        # find first indent
-        # note we shouldn't have mixed indents.
-        # skip leading empties
-        indent = len(lines[0]) - len(lines[0].lstrip())
         # find first property row
         # this should be correct for the glyph section and the first prop afterwards
         # note empty lines have already been dropped by reader
-        is_glyph = tuple(not ':' in _line for _line in striplines)
+        is_glyph = tuple(not ':' in _line for _line in lines)
         try:
             first_prop = is_glyph.index(False)
         except ValueError:
-            first_prop = len(striplines)
-        glyph_lines = striplines[:first_prop]
+            first_prop = len(lines)
+        glyph_lines = lines[:first_prop]
         prop_lines = lines[first_prop:]
         if glyph_lines == (self.empty,):
             glyph_lines = ()
         # new text reader on glyph property lines
-        reader = TextReader(indent)
-        # set fields so we have a .yaff or .draw reader
-        reader.separator = self.separator
-        reader.comment = self.comment
-        reader.whitespace = self.whitespace
+        reader = YaffReader()
         for line in prop_lines:
             reader.step(line)
         # recursive call
@@ -328,21 +296,6 @@ class TextConverter:
             labels=keys, comment=comments, **vars(props)
         )
         return glyph
-
-    def _convert_value(self, value):
-        """Strip matching double quotes on a per-line basis."""
-        return '\n'.join(strip_matching(_line, '"') for _line in value.splitlines())
-
-    @classmethod
-    def _clean_comment(self, comment):
-        """Remove common leading space from comment."""
-        # normalise single leading space
-        lines = comment.splitlines()
-        lines = tuple(
-            _line[len(self.comment):] if _line.startswith(self.comment) else _line
-            for _line in lines
-        )
-        return normalise_comment(lines)
 
 
 def normalise_comment(lines):
@@ -410,7 +363,9 @@ class TextWriter:
         value = str(value)
         # write property comment
         if comments:
-            outstream.write(f'\n{indent}' + format_comment(comments) + '\n', self.comment)
+            outstream.write(
+                f'\n{indent}{format_comment(comments, self.comment)}\n'
+            )
         if not key.startswith('_'):
             key = key.replace('_', '-')
         # write key-value pair
