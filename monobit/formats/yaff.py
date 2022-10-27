@@ -69,11 +69,11 @@ def _load_yaff(text_stream):
     fonts = []
     for line in text_stream:
         if line.strip() == BOUNDARY_MARKER:
-            fonts.append(YaffConverter.get_font_from(reader))
+            fonts.append(reader.get_font())
             reader = YaffReader()
         else:
             reader.step(line)
-    fonts.append(YaffConverter.get_font_from(reader))
+    fonts.append(reader.get_font())
     return fonts
 
 
@@ -178,17 +178,13 @@ class YaffReader(YaffParams):
         return clusters
 
 
-class YaffConverter(YaffParams):
-    """Convert text clusters to font."""
-
     # third pass: interpret clusters
 
-    @classmethod
-    def get_font_from(cls, reader):
+    def get_font(self):
         """Get clusters from reader and convert to Font."""
-        clusters = reader.get_clusters()
+        clusters = self.get_clusters()
         # recursive call
-        glyphs, props, comments = cls.convert_clusters(clusters)
+        glyphs, props, comments = self.convert_clusters(clusters)
         if not glyphs:
             raise FileFormatError('No glyphs found in yaff file.')
         return Font(glyphs, comment=comments, **props)
@@ -245,7 +241,7 @@ class YaffConverter(YaffParams):
         comment = normalise_comment(cluster.comment)
         # find first property row
         # note empty lines have already been dropped by reader
-        is_prop = tuple(':' in _line for _line in lines)
+        is_prop = tuple(self.separator in _line for _line in lines)
         try:
             first_prop = is_prop.index(True)
         except ValueError:
