@@ -13,19 +13,16 @@ from .scripting import any_int
 
 def is_enclosed(from_str, char):
     """Check if a char occurs on both sides of a string."""
-    if not char:
-        return True
-    return len(from_str) >= 2*len(char) and from_str.startswith(char) and from_str.endswith(char)
+    return len(from_str) >= 2 and from_str[0] == char and from_str[-1] == char
 
 def strip_matching(from_str, char, allow_no_match=True):
     """Strip a char from either side of the string if it occurs on both."""
-    if not char:
-        return from_str
     if is_enclosed(from_str, char):
-        clen = len(char)
-        return from_str[clen:-clen]
+        return from_str[1:-1]
     elif not allow_no_match:
-        raise ValueError(f'No matching delimiters `{char}` found in string `{from_str}`.')
+        raise ValueError(
+            f'No matching delimiters `{char}` found in string `{from_str}`.'
+        )
     return from_str
 
 
@@ -43,18 +40,15 @@ def to_label(value):
     if not isinstance(value, str):
         # only Codepoint can have non-str argument
         return Codepoint(value)
-    # remove leading and trailing whitespace
-    value = value.strip()
     if not value:
         return Char()
     # protect commas, pluses etc. if enclosed
     if is_enclosed(value, '"'):
-        # strip matching double quotes - this allows to set a label starting with a digit by quoting it
-        value = strip_matching(value, '"')
-        return Tag(value)
+        # strip matching double quotes
+        # this allows to set a label starting with a digit by quoting it
+        return Tag(strip_matching(value, '"'))
     if is_enclosed(value, "'"):
-        value = strip_matching(value, "'")
-        return Char(value)
+        return Char(strip_matching(value, "'"))
     # codepoints start with an ascii digit
     try:
         return Codepoint(value)
@@ -76,7 +70,7 @@ def to_label(value):
         ))
     except ValueError:
         pass
-    return Tag(value)
+    return Tag(value.strip())
 
 def _convert_char_element(element):
     """Convert character label element to char if possible."""
