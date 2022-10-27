@@ -117,42 +117,39 @@ class TextReader:
     def step(self, line):
         """Parse a single line."""
         # strip indent
-        line = line[self._indent:]
         # strip trailing whitespace
-        contents = line.rstrip()
-        if contents.startswith(self.comment):
-            if self._current and not self._current[0].startswith(self.comment):
-                # new comment
-                self._yield_element()
-            self._step_value(contents)
-        elif not contents.strip():
+        contents = line[self._indent:].rstrip()
+        if not contents:
             # ignore empty lines except while parsing comments
-            if self._current and self._current[0].startswith(self.comment):
+            if self._current and self._current[0][:1] == self.comment:
                 # new comment
                 self._yield_element()
-        elif not contents.startswith(self.whitespace):
-            if contents.endswith(self.separator):
-                # glyph label
-                self._yield_element()
-                self._step_value(contents)
-                self._yield_element()
-            else:
-                # new key, separate at the first :
-                # keys must be alphanum so no need to worry about quoting
-                key, sep, value = contents.partition(self.separator)
-                self._yield_element()
-                # yield key
-                self._step_value(key + sep)
-                self._yield_element()
-                # start building value
-                self._step_value(value.lstrip())
         else:
-            # continue building value
-            self._step_value(contents)
-
-    def _step_value(self, contents):
-        """Continue building value."""
-        self._current.append(contents)
+            startchar = contents[:1]
+            if startchar == self.comment:
+                if self._current and not self._current[0][:1] == self.comment:
+                    # new comment
+                    self._yield_element()
+                self._current.append(contents)
+            elif startchar not in self.whitespace:
+                if contents[-1:] == self.separator:
+                    # glyph label
+                    self._yield_element()
+                    self._current.append(contents)
+                    self._yield_element()
+                else:
+                    # new key, separate at the first :
+                    # keys must be alphanum so no need to worry about quoting
+                    key, sep, value = contents.partition(self.separator)
+                    self._yield_element()
+                    # yield key
+                    self._current.append(key + sep)
+                    self._yield_element()
+                    # start building value
+                    self._current.append(value.lstrip())
+            else:
+                # continue building value
+                self._current.append(contents)
 
 
     # second pass: elements to clusters
