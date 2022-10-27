@@ -210,32 +210,34 @@ class YaffConverter(YaffParams):
 
     def convert_cluster(self, cluster):
         """Convert cluster."""
-        # keys
-        keys = cluster.keys
-        comments = normalise_comment(cluster.comment)
-        if not cluster.value:
-            if keys:
-                raise ValueError('Cluster with keys but without value element')
-            # global comment
-            self.comments[''] = comments
-            return
-        lines = cluster.value
         # if first line in the value has only glyph symbols, this cluster is a glyph
-        if self._line_is_glyph(lines[0]):
-            self.glyphs.append(self._convert_glyph(keys, lines, comments))
+        if cluster.value and self._line_is_glyph(cluster.value[0]):
+            self.glyphs.append(self._convert_glyph(cluster))
         else:
-            # multiple labels translate into multiple keys with the same value
-            propvalue = '\n'.join(strip_matching(_line, '"') for _line in lines)
-            for key in keys:
-                # Props object converts only non-leading underscores
-                # (for internal use)
-                # so we need to make sure we turn those into dashes
-                # or we'll drop the prop
-                key = key.replace('_', '-')
-                self.props[key] = propvalue
-                # property comments
-                if comments:
-                    self.comments[key] = comments
+            key, value, comment = self.convert_property(cluster)
+            if value:
+                self.props[key] = value
+            # property comments
+            if comment:
+                self.comments[key] = comment
+
+    @staticmethod
+    def convert_property(cluster):
+        """Convert property cluster."""
+        # there should not be multiple keys for a property
+        try:
+            key = cluster.keys.pop(0)
+        except IndexError:
+            # this happens for the global comment
+            key = ''
+        if cluster.keys:
+            logging.warning('ignored excess keys: %s', cluster.keys)
+        # Props object converts only non-leading underscores
+        # so we need to make sure we turn those into dashes
+        key = key.replace('_', '-')
+        value = '\n'.join(strip_matching(_line, '"') for _line in cluster.value)
+        comment = normalise_comment(cluster.comment)
+        return key, value, comment
 
     def _line_is_glyph(self, value):
         """Text line is a glyph."""
@@ -244,8 +246,11 @@ class YaffConverter(YaffParams):
             or not(set(value) - set((self.ink, self.paper, ' ', '\t', '\n')))
         )
 
-    def _convert_glyph(self, keys, lines, comments):
+    def _convert_glyph(self, cluster):
         """Parse single glyph."""
+        keys = cluster.keys
+        lines = cluster.value
+        comment = normalise_comment(cluster.comment)
         # find first property row
         # note empty lines have already been dropped by reader
         is_prop = tuple(':' in _line for _line in lines)
@@ -267,7 +272,7 @@ class YaffConverter(YaffParams):
         # labels
         glyph = Glyph(
             glyph_lines, _0=self.paper, _1=self.ink,
-            labels=keys, comment=comments, **vars(props)
+            labels=keys, comment=comment, **vars(props)
         )
         return glyph
 
