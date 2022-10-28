@@ -126,16 +126,15 @@ class YaffReader:
                     self._yield_element()
                 self._current.comment.append(contents[1:])
             elif startchar not in YaffParams.whitespace:
+                if self._current.value:
+                    # new key when we have a value starts a new element
+                    self._yield_element()
+                # note that we don't use partition() for the first check
+                # as we have to allow for : inside (quoted) glyph labels
                 if contents[-1:] == YaffParams.separator:
-                    if self._current.value:
-                        # new key when we have a value starts a new element
-                        self._yield_element()
                     self._current.keys.append(contents[:-1])
                 else:
                     # this must be a property key, not a glyph label
-                    # so starts a new element
-                    if self._current.value or self._current.keys:
-                        self._yield_element()
                     # new key, separate at the first :
                     # prop keys must be alphanum so no need to worry about quoting
                     key, sep, value = contents.partition(YaffParams.separator)
@@ -154,12 +153,12 @@ class YaffReader:
                 self._current.value.append(contents[self._current.indent:])
 
 
-    # second pass: elements to clusters
+    # second pass: top comment
 
     def get_clusters(self):
-        """Convert elements to clusters and return."""
+        """Convert top comment cluster and return."""
+        # ensure we include the last current element
         self._yield_element()
-        # run second pass and append
         clusters = self._elements
         # separate out global top comment
         if clusters and clusters[0]:
