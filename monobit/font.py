@@ -573,8 +573,7 @@ class FontProperties(DefaultProps):
     def default_char(self):
         """Label for default character."""
         repl = '\ufffd'
-        # TODO - make a font.chars property returning the keys object
-        if repl not in self._font._chars:
+        if repl not in self._font.get_chars():
             repl = ''
         return Char(repl)
 
@@ -624,20 +623,10 @@ class Font:
         """Create new font."""
         self._glyphs = tuple(glyphs)
         # construct lookup tables
-        self._tags = {
-            _tag: _index
+        self._labels = {
+            _label: _index
             for _index, _glyph in enumerate(self._glyphs)
-            for _tag in _glyph.tags
-        }
-        self._codepoints = {
-            _glyph.codepoint: _index
-            for _index, _glyph in enumerate(self._glyphs)
-            if _glyph.codepoint
-        }
-        self._chars = {
-            _glyph.char: _index
-            for _index, _glyph in enumerate(self._glyphs)
-            if _glyph.char
+            for _label in _glyph.get_labels()
         }
         # comment can be str (just global comment) or mapping of property comments
         if not comment:
@@ -796,42 +785,36 @@ class Font:
 
     def get_index(self, label=None, *, char=None, codepoint=None, tag=None):
         """Get index for given label, if defined."""
-        if 1 != len([_indexer for _indexer in (label, char, codepoint, tag) if _indexer is not None]):
+        if 1 != len([
+                _indexer for _indexer in (label, char, codepoint, tag)
+                if _indexer is not None
+            ]):
             raise ValueError('get_index() takes exactly one parameter.')
-        if isinstance(label, str):
+        if char is not None:
+            label = Char(char)
+        elif codepoint is not None:
+            label = Codepoint(codepoint)
+        elif tag is not None:
+            label = Tag(tag)
+        elif isinstance(label, str):
             # first look for char - expected to be shorter - then tags
             try:
-                return self._chars[label]
+                return self._labels[Char(label)]
             except KeyError:
                 pass
             try:
-                return self._tags[label]
+                return self._labels[Tag(label)]
             except KeyError:
                 pass
         # do we have the input string directly as a char or tag?
-        if label is not None:
+        elif label is not None:
             # convert strings, numerics through standard rules
             label = to_label(label)
-            if isinstance(label, str):
-                char = label
-            elif isinstance(label, bytes):
-                codepoint = label
-            elif isinstance(label, Tag):
-                tag = label
-        if tag is not None:
-            try:
-                return self._tags[Tag(tag)]
-            except KeyError:
-                raise KeyError(f'No glyph found matching tag={Tag(tag)}') from None
-        if char is not None:
-            try:
-                return self._chars[Char(char)]
-            except KeyError:
-                raise KeyError(f'No glyph found matching char={Char(char)}') from None
         try:
-            return self._codepoints[Codepoint(codepoint)]
+            return self._labels[label]
         except KeyError:
-            raise KeyError(f'No glyph found matching codepoint={Codepoint(codepoint)}') from None
+            pass
+        raise KeyError(f'No glyph found matching label={label}')
 
 
     @cache
@@ -853,16 +836,16 @@ class Font:
     # label access
 
     def get_chars(self):
-        """Get list of characters covered by this font."""
-        return list(self._chars.keys())
+        """Get tuple of characters covered by this font."""
+        return tuple(_c for _c in self._labels if isinstance(_c, Char))
 
     def get_codepoints(self):
         """Get list of codepage codepoints covered by this font."""
-        return list(self._codepoints.keys())
+        return tuple(_c for _c in self._labels if isinstance(_c, Codepoint))
 
     def get_tags(self):
         """Get list of tags covered by this font."""
-        return list(self._tags.keys())
+        return tuple(_c for _c in self._labels if isinstance(_c, Tag))
 
     def get_charmap(self):
         """Implied character map based on defined chars."""
@@ -961,19 +944,18 @@ class Font:
         codepoints: codepoints to exclude
         tags: tags to exclude
         """
+        labels = (
+            set(labels)
+            | set(Char(_c) for _c in chars)
+            | set(Codepoint(_c) for _c in codepoints)
+            | set(Tag(_c) for _c in tags)
+        )
         if not any((labels, chars, codepoints, tags)):
             return self
         glyphs = [
             _glyph
             for _glyph in self._glyphs
-            if (
-                _glyph.char not in labels
-                and _glyph.codepoint not in labels
-                and _glyph.char not in chars
-                and _glyph.codepoint not in codepoints
-                and not (set(_glyph.tags) & set(tags))
-                and not (set(_glyph.tags) & set(labels))
-            )
+            if not (set(_glyph.get_labels()) & set(labels))
         ]
         return self.modify(glyphs)
 

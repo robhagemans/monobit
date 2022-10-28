@@ -871,7 +871,7 @@ def _parse_nfnt(data, offset, properties):
         for _codepoint, _glyph in enumerate(glyphs[:-1], start=fontrec.firstChar)
     ]
     # last glyph is the "missing" glyph
-    labelled.append(glyphs[-1].modify(tags=['missing']))
+    labelled.append(glyphs[-1].modify(tag='missing'))
     # drop undefined glyphs & their labels, so long as they're empty
     glyphs = tuple(
         _glyph for _glyph in labelled

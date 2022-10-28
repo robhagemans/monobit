@@ -188,7 +188,7 @@ class Glyph(Raster):
 
     def __init__(
             self, pixels=(), *,
-            labels=(), codepoint=b'', char='', tags=(), comment='',
+            labels=(), codepoint=b'', char='', tag='', comment='',
             _0=NOT_SET, _1=NOT_SET,
             **properties
         ):
@@ -196,17 +196,11 @@ class Glyph(Raster):
         # raster data
         super().__init__(pixels, _0=_0, _1=_1)
         # labels
-        for label in labels:
-            label = to_label(label)
-            if isinstance(label, Char):
-                char = char or label
-            elif isinstance(label, Codepoint):
-                codepoint = codepoint or label
-            else:
-                tags += (label,)
-        self._codepoint = Codepoint(codepoint)
-        self._char = Char(char)
-        self._tags = tuple(Tag(_tag) for _tag in tags if _tag)
+        labels = (
+            Char(char), Codepoint(codepoint), Tag(tag),
+            *(to_label(_l) for _l in labels)
+        )
+        self._labels = tuple(_l for _l in labels if _l)
         # comment
         if not isinstance(comment, str):
             raise TypeError('Glyph comment must be a single string.')
@@ -222,9 +216,7 @@ class Glyph(Raster):
     def __repr__(self):
         """Text representation."""
         elements = (
-            f"char={repr(self._char)}" if self._char else '',
-            f"codepoint={repr(self._codepoint)}" if self._codepoint else '',
-            f"tags={repr(self._tags)}" if self._tags else '',
+            f"labels={repr(self._labels)}" if self._labels else '',
             "comment=({})".format(
                 "\n  '" + "\n',\n  '".join(self.comment.splitlines()) + "'"
             ) if self._comment else '',
@@ -244,26 +236,29 @@ class Glyph(Raster):
 
     def modify(
             self, pixels=NOT_SET, *,
-            labels=(), tags=NOT_SET, char=NOT_SET, codepoint=NOT_SET, comment=NOT_SET,
+            labels=NOT_SET, tag=NOT_SET, char=NOT_SET, codepoint=NOT_SET,
+            comment=NOT_SET,
             **kwargs
         ):
         """Return a copy of the glyph with changes."""
         if pixels is NOT_SET:
             pixels = self._pixels
-        if tags is NOT_SET:
-            tags = self._tags
+        if tag is NOT_SET:
+            tag = ''
         if codepoint is NOT_SET:
-            codepoint = self._codepoint
+            codepoint = b''
         if char is NOT_SET:
-            char = self._char
+            char = ''
+        if labels is NOT_SET:
+            labels = self._labels
         if comment is NOT_SET:
             comment = self._comment
         return type(self)(
             tuple(pixels),
             labels=labels,
-            codepoint=Codepoint(codepoint),
-            char=Char(char),
-            tags=tuple(Tag(_t) for _t in tags),
+            codepoint=codepoint,
+            char=char,
+            tag=tag,
             comment=comment,
             _0=self._0, _1=self._1,
             **{**self.properties, **kwargs}
@@ -299,9 +294,7 @@ class Glyph(Raster):
         if char_from and(overwrite or not self.char):
             return self.modify(char=char_from.char(*labels))
         if tag_from:
-            return self.modify(
-                tags=self.tags + (tag_from.tag(*labels),)
-            )
+            return self.modify(tag=tag_from.tag(*labels))
         if comment_from:
             return self.modify(
                 comment=extend_string(self.comment, comment_from.comment(*labels))
@@ -339,26 +332,16 @@ class Glyph(Raster):
         except ValueError:
             pixels = self._pixels
         try:
-            args.remove('char')
-            char = ''
+            args.remove('labels')
+            labels = ()
         except ValueError:
-            char = self._char
-        try:
-            args.remove('codepoint')
-            codepoint = ()
-        except ValueError:
-            codepoint = self._codepoint
-        try:
-            args.remove('tags')
-            tags = ()
-        except ValueError:
-            tags = self._tags
+            labels = self._labels
         try:
             args.remove('comment')
             comment = ''
         except ValueError:
             comment = self._comment
-        args = [normalise_property(_arg) for _arg in args]
+        args = tuple(normalise_property(_arg) for _arg in args)
         properties = {
             _k: _v
             for _k, _v in self.properties.items()
@@ -366,7 +349,7 @@ class Glyph(Raster):
         }
         return type(self)(
             pixels,
-            tags=tags, codepoint=codepoint, char=char,
+            labels=labels,
             comment=comment,
             _0=self._0, _1=self._1,
             **properties
@@ -409,23 +392,28 @@ class Glyph(Raster):
 
     @property
     def tags(self):
-        return self._tags
+        return tuple(_l for _l in self._labels if isinstance(_l, Tag))
+
+    @property
+    def chars(self):
+        return tuple(_l for _l in self._labels if isinstance(_l, Char))
+
+    @property
+    def codepoints(self):
+        return tuple(_l for _l in self._labels if isinstance(_l, Codepoint))
 
     @property
     def char(self):
-        return self._char
+        if self.chars:
+            return self.chars[0]
+        return Char()
 
     @property
     def codepoint(self):
-        return self._codepoint
+        if self.codepoints:
+            return self.codepoints[0]
+        return Codepoint()
 
     def get_labels(self):
         """Get glyph labels."""
-        labels = []
-        # don't write out codepoints for unicode fonts as we have u+XXXX already
-        if self.codepoint:
-            labels.append(self._codepoint)
-        if self.char:
-            labels.append(self._char)
-        labels.extend(self._tags)
-        return tuple(labels)
+        return self._labels

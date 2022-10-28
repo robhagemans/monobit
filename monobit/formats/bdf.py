@@ -528,7 +528,7 @@ def _read_bdf_glyphs(instream):
             try:
                 int(label)
             except ValueError:
-                glyph = glyph.modify(tags=[label])
+                glyph = glyph.modify(tag=label)
             # ENCODING must be single integer or -1 followed by integer
             encvalue = int(meta['ENCODING'].split(' ')[-1])
             glyph = glyph.modify(encvalue=encvalue)

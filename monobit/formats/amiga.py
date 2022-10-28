@@ -372,7 +372,7 @@ def _convert_amiga_glyphs(glyphs, amiga_props):
         for _glyph in glyphs
     ]
     # default glyph has no codepoint
-    glyphs[-1] = glyphs[-1].modify(codepoint=(), tags=('default',))
+    glyphs[-1] = glyphs[-1].modify(codepoint=(), tag='default')
     return glyphs
 
 

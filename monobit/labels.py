@@ -74,6 +74,7 @@ def to_label(value):
 def _convert_char_element(element):
     """Convert character label element to char if possible."""
     # string delimited by single quotes denotes a character or sequence
+    element = element.strip()
     if is_enclosed(element, "'"):
         return element[1:-1]
     # not a delimited char
@@ -141,7 +142,7 @@ class Codepoint(bytes, Label):
                 # handle composite labels
                 # codepoint sequences (MBCS) "0xf5,0x02" etc.
                 value = value.split(',')
-            # deal with other iterables, e.g. bytes, tuple
+            # deal with other iterables, e.g. tuple of int
             try:
                 value = b''.join(int_to_bytes(any_int(_i)) for _i in value)
             except (TypeError, OverflowError):

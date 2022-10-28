@@ -92,49 +92,49 @@ class YaffReader:
     def __init__(self):
         """Set up text reader."""
         # current element appending to
-        self._current = YaffElement()
         # elements done
         self._elements = deque()
 
     # first pass: lines to elements
 
-    def _yield_element(self):
+    def _yield_element(self, current):
         """Close and append current element and start a new one."""
-        if self._current.keys or self._current.value or self._current.comment:
-            self._elements.append(self._current)
-        self._current = YaffElement()
+        if current.keys or current.value or current.comment:
+            self._elements.append(current)
+        return YaffElement()
 
     def parse_section(self, text_stream):
         """Parse a single yaff section."""
+        current = YaffElement()
         for line in text_stream:
             # strip trailing whitespace
             contents = line.rstrip()
             if contents == BOUNDARY_MARKER:
-                self._yield_element()
+                self._yield_element(current)
                 return True
             if not contents:
                 # ignore empty lines except while already parsing comments
                 if (
-                        self._current.comment
-                        and not self._current.value
-                        and not self._current.keys
+                        current.comment
+                        and not current.value
+                        and not current.keys
                     ):
-                    self._current.comment.append('')
+                    current.comment.append('')
             else:
                 startchar = contents[:1]
                 if startchar == YaffParams.comment:
-                    if self._current.keys or self._current.value:
+                    if current.keys or current.value:
                         # new comment starts new element
-                        self._yield_element()
-                    self._current.comment.append(contents[1:])
+                        current = self._yield_element(current)
+                    current.comment.append(contents[1:])
                 elif startchar not in YaffParams.whitespace:
-                    if self._current.value:
+                    if current.value:
                         # new key when we have a value starts a new element
-                        self._yield_element()
+                        current = self._yield_element(current)
                     # note that we don't use partition() for the first check
                     # as we have to allow for : inside (quoted) glyph labels
                     if contents[-1:] == YaffParams.separator:
-                        self._current.keys.append(contents[:-1])
+                        current.keys.append(contents[:-1])
                     else:
                         # this must be a property key, not a glyph label
                         # new key, separate at the first :
@@ -142,18 +142,18 @@ class YaffReader:
                         key, sep, value = contents.partition(YaffParams.separator)
                         # yield key and value
                         # yaff does not allow multiline values starting on the key line
-                        self._current.keys.append(key.rstrip())
-                        self._current.value.append(value.lstrip())
-                        self._yield_element()
+                        current.keys.append(key.rstrip())
+                        current.value.append(value.lstrip())
+                        current = self._yield_element(current)
                 else:
                     # first line in value
-                    if not self._current.value:
-                        self._current.indent = len(contents) - len(contents.lstrip())
+                    if not current.value:
+                        current.indent = len(contents) - len(contents.lstrip())
                     # continue building value
                     # do not strip all whitespace as we need it for multiline glyph props
                     # but strip the first line's indent
-                    self._current.value.append(contents[self._current.indent:])
-        self._yield_element()
+                    current.value.append(contents[current.indent:])
+        self._yield_element(current)
         return False
 
     # second pass: top comment

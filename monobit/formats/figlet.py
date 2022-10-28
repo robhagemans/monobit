@@ -167,7 +167,7 @@ def _read_glyph(instream, props, codepoint, tag='', ink=''):
             glyph_lines = tuple(glyph_lines)
     return Glyph(
         glyph_lines, paper=' ', ink=ink,
-        char=chr(codepoint), tags=[tag]
+        char=chr(codepoint), tag=tag
     )
 
 def _convert_from_flf(glyphs, props):
