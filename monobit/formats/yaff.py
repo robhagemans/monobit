@@ -198,8 +198,9 @@ def convert_clusters(clusters):
         if not cluster.keys:
             # global comment
             comments[''] = normalise_comment(cluster.comment)
-        elif all(_c in YaffParams.glyphchars for _c in cluster.value[0]):
+        elif not set(cluster.value[0]) - set(YaffParams.glyphchars):
             # if first line in the value consists of glyph symbols, it's a glyph
+            # note that the set diff is significantly faster than all() on a genexp
             glyphs.append(_convert_glyph(cluster))
         else:
             key, value, comment = convert_property(cluster)
@@ -222,13 +223,6 @@ def convert_property(cluster):
     value = '\n'.join(strip_matching(_line, '"') for _line in cluster.value)
     comment = normalise_comment(cluster.comment)
     return key, value, comment
-
-def _line_is_glyph(value):
-    """Text line is a glyph."""
-    return value and (
-        (value == YaffParams.empty)
-        or not(set(value) - set((YaffParams.ink, YaffParams.paper, ' ', '\t', '\n')))
-    )
 
 def _convert_glyph(cluster):
     """Parse single glyph."""
@@ -266,7 +260,7 @@ def _convert_glyph(cluster):
 
 def normalise_comment(lines):
     """Remove common single leading space"""
-    if all(_line.startswith(' ') for _line in lines if _line):
+    if all(_line[0] == ' ' for _line in lines if _line):
         return '\n'.join(_line[1:] for _line in lines)
     return '\n'.join(lines)
 
