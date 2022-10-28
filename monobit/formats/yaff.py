@@ -32,7 +32,7 @@ def load_yaff(instream, where=None):
 @savers.register(linked=load_yaff)
 def save_yaff(fonts, outstream, where=None):
     """Write fonts to a monobit .yaff file."""
-    YaffWriter().save(fonts, outstream.text)
+    _save_yaff(fonts, outstream.text)
 
 
 ##############################################################################
@@ -276,110 +276,109 @@ def normalise_comment(lines):
 ##############################################################################
 # write file
 
-class YaffWriter(YaffParams):
 
-    def save(self, fonts, outstream):
-        """Write fonts to a plaintext stream as yaff."""
-        for number, font in enumerate(fonts):
-            if len(fonts) > 1:
-                outstream.write(BOUNDARY_MARKER + '\n')
-            logging.debug('Writing %s to section #%d', font.name, number)
-            # write global comment
-            if font.get_comment():
-                outstream.write(
-                    format_comment(font.get_comment(), YaffParams.comment)
-                    + '\n\n'
-                )
-            # we always output name, font-size and spacing
-            # plus anything that is different from the default
-            props = {
-                'name': font.name,
-                'spacing': font.spacing,
-            }
-            if font.spacing in ('character-cell', 'multi-cell'):
-                props['cell_size'] = font.cell_size
-            else:
-                props['bounding_box'] = font.bounding_box
-            props.update(font.properties)
-            if props:
-                # write recognised yaff properties first, in defined order
-                for key, value in props.items():
-                    self._write_property(outstream, key, value, font.get_comment(key))
-                outstream.write('\n')
-            for glyph in font.glyphs:
-                self._write_glyph(outstream, glyph)
-
-    def _write_glyph(self, outstream, glyph, label=None):
-        """Write out a single glyph in text format."""
-        # glyph comments
-        if glyph.comment:
+def _save_yaff(fonts, outstream):
+    """Write fonts to a plaintext stream as yaff."""
+    for number, font in enumerate(fonts):
+        if len(fonts) > 1:
+            outstream.write(BOUNDARY_MARKER + '\n')
+        logging.debug('Writing %s to section #%d', font.name, number)
+        # write global comment
+        if font.get_comment():
             outstream.write(
-                '\n' + format_comment(glyph.comment, YaffParams.comment) + '\n'
+                format_comment(font.get_comment(), YaffParams.comment)
+                + '\n\n'
             )
-        if label:
-            labels = [label]
+        # we always output name, font-size and spacing
+        # plus anything that is different from the default
+        props = {
+            'name': font.name,
+            'spacing': font.spacing,
+        }
+        if font.spacing in ('character-cell', 'multi-cell'):
+            props['cell_size'] = font.cell_size
         else:
-            labels = glyph.get_labels()
-        if not labels:
-            logging.debug('No labels for glyph: %s', glyph)
-            outstream.write(f'{YaffParams.separator}\n')
-        for _label in labels:
-            outstream.write(f'{str(_label)}{YaffParams.separator}\n')
-        # glyph matrix
-        # empty glyphs are stored as 0x0, not 0xm or nx0
-        if not glyph.width or not glyph.height:
-            glyphtxt = f'{YaffParams.tab}{YaffParams.empty}\n'
-        else:
-            glyphtxt = glyph.as_text(
-                start=YaffParams.tab,
-                ink=YaffParams.ink, paper=YaffParams.paper,
-                end='\n'
-            )
-        outstream.write(glyphtxt)
-        if glyph.properties:
-            outstream.write(f'\n')
-        for key, value in glyph.properties.items():
-            self._write_property(outstream, key, value, None, indent=YaffParams.tab)
-        if glyph.properties:
+            props['bounding_box'] = font.bounding_box
+        props.update(font.properties)
+        if props:
+            # write recognised yaff properties first, in defined order
+            for key, value in props.items():
+                _write_property(outstream, key, value, font.get_comment(key))
             outstream.write('\n')
-        outstream.write('\n')
+        for glyph in font.glyphs:
+            _write_glyph(outstream, glyph)
 
-    def _write_property(self, outstream, key, value, comments, indent=''):
-        """Write out a property."""
-        if value is None:
-            return
-        # this may use custom string converter (e.g codepoint labels)
-        value = str(value)
-        # write property comment
-        if comments:
-            outstream.write(
-                f'\n{indent}{format_comment(comments, YaffParams.comment)}\n'
-            )
-        if not key.startswith('_'):
-            key = key.replace('_', '-')
-        # write key-value pair
-        if '\n' not in value:
-            outstream.write(f'{indent}{key}: {self._quote_if_needed(value)}\n')
-        else:
-            outstream.write(
-                f'{indent}{key}:\n{indent}{YaffParams.tab}' + '{}\n'.format(
-                    f'\n{indent}{YaffParams.tab}'.join(
-                        self._quote_if_needed(_line)
-                        for _line in value.splitlines()
-                    )
+def _write_glyph(outstream, glyph, label=None):
+    """Write out a single glyph in text format."""
+    # glyph comments
+    if glyph.comment:
+        outstream.write(
+            '\n' + format_comment(glyph.comment, YaffParams.comment) + '\n'
+        )
+    if label:
+        labels = [label]
+    else:
+        labels = glyph.get_labels()
+    if not labels:
+        logging.debug('No labels for glyph: %s', glyph)
+        outstream.write(f'{YaffParams.separator}\n')
+    for _label in labels:
+        outstream.write(f'{str(_label)}{YaffParams.separator}\n')
+    # glyph matrix
+    # empty glyphs are stored as 0x0, not 0xm or nx0
+    if not glyph.width or not glyph.height:
+        glyphtxt = f'{YaffParams.tab}{YaffParams.empty}\n'
+    else:
+        glyphtxt = glyph.as_text(
+            start=YaffParams.tab,
+            ink=YaffParams.ink, paper=YaffParams.paper,
+            end='\n'
+        )
+    outstream.write(glyphtxt)
+    if glyph.properties:
+        outstream.write(f'\n')
+    for key, value in glyph.properties.items():
+        _write_property(outstream, key, value, None, indent=YaffParams.tab)
+    if glyph.properties:
+        outstream.write('\n')
+    outstream.write('\n')
+
+def _write_property(outstream, key, value, comments, indent=''):
+    """Write out a property."""
+    if value is None:
+        return
+    # this may use custom string converter (e.g codepoint labels)
+    value = str(value)
+    # write property comment
+    if comments:
+        outstream.write(
+            f'\n{indent}{format_comment(comments, YaffParams.comment)}\n'
+        )
+    if not key.startswith('_'):
+        key = key.replace('_', '-')
+    # write key-value pair
+    if '\n' not in value:
+        outstream.write(f'{indent}{key}: {_quote_if_needed(value)}\n')
+    else:
+        outstream.write(
+            f'{indent}{key}:\n{indent}{YaffParams.tab}' + '{}\n'.format(
+                f'\n{indent}{YaffParams.tab}'.join(
+                    _quote_if_needed(_line)
+                    for _line in value.splitlines()
                 )
             )
+        )
 
-    def _quote_if_needed(self, value):
-        """See if string value needs double quotes."""
-        value = str(value)
-        if (
-                not value
-                or value[0] in YaffParams.quotable
-                or value[-1] in YaffParams.quotable
-            ):
-            return f'"{value}"'
-        return value
+def _quote_if_needed(value):
+    """See if string value needs double quotes."""
+    value = str(value)
+    if (
+            not value
+            or value[0] in YaffParams.quotable
+            or value[-1] in YaffParams.quotable
+        ):
+        return f'"{value}"'
+    return value
 
 
 def format_comment(comments, comment_char):
