@@ -57,6 +57,9 @@ class YaffParams:
     paper = '.'
     empty = '-'
 
+    # string to be quoted if one of these chars at start and/or end
+    quotable = ('"', "'", ':', ' ', ink, paper, empty)
+    glyphchars = (ink, paper, empty)
 
 ##############################################################################
 ##############################################################################
@@ -195,8 +198,8 @@ def convert_clusters(clusters):
         if not cluster.keys:
             # global comment
             comments[''] = normalise_comment(cluster.comment)
-        elif _line_is_glyph(cluster.value[0]):
-            # if first line in the value has only glyph symbols, it's a glyph
+        elif all(_c in YaffParams.glyphchars for _c in cluster.value[0]):
+            # if first line in the value consists of glyph symbols, it's a glyph
             glyphs.append(_convert_glyph(cluster))
         else:
             key, value, comment = convert_property(cluster)
@@ -371,14 +374,9 @@ class YaffWriter(YaffParams):
         """See if string value needs double quotes."""
         value = str(value)
         if (
-                (value.startswith('"') and value.endswith('"'))
-                # leading or trailing space
-                or value[:1].isspace() or value[-1:].isspace()
-                # anything that could be mistaken for a glyph
-                or all(
-                    _c in (YaffParams.ink, YaffParams.paper, YaffParams.empty)
-                    for _c in value
-                )
+                not value
+                or value[0] in YaffParams.quotable
+                or value[-1] in YaffParams.quotable
             ):
             return f'"{value}"'
         return value
