@@ -70,13 +70,11 @@ def _load_yaff(text_stream):
     """Parse a yaff/yaffs file."""
     reader = YaffReader()
     fonts = []
-    for line in text_stream:
-        if line.strip() == BOUNDARY_MARKER:
-            fonts.append(reader.get_font())
-            reader = YaffReader()
-        else:
-            reader.step(line)
-    fonts.append(reader.get_font())
+    has_next_section = True
+    while has_next_section:
+        reader = YaffReader()
+        has_next_section = reader.parse_section(text_stream)
+        fonts.append(reader.get_font())
     return fonts
 
 
@@ -106,59 +104,62 @@ class YaffReader:
             self._elements.append(self._current)
         self._current = YaffElement()
 
-    def step(self, line):
-        """Parse a single line."""
-        # strip trailing whitespace
-        contents = line.rstrip()
-        if not contents:
-            # ignore empty lines except while already parsing comments
-            if (
-                    self._current.comment
-                    and not self._current.value
-                    and not self._current.keys
-                ):
-                self._current.comment.append('')
-        else:
-            startchar = contents[:1]
-            if startchar == YaffParams.comment:
-                if self._current.keys or self._current.value:
-                    # new comment starts new element
-                    self._yield_element()
-                self._current.comment.append(contents[1:])
-            elif startchar not in YaffParams.whitespace:
-                if self._current.value:
-                    # new key when we have a value starts a new element
-                    self._yield_element()
-                # note that we don't use partition() for the first check
-                # as we have to allow for : inside (quoted) glyph labels
-                if contents[-1:] == YaffParams.separator:
-                    self._current.keys.append(contents[:-1])
-                else:
-                    # this must be a property key, not a glyph label
-                    # new key, separate at the first :
-                    # prop keys must be alphanum so no need to worry about quoting
-                    key, sep, value = contents.partition(YaffParams.separator)
-                    # yield key and value
-                    # yaff does not allow multiline values starting on the key line
-                    self._current.keys.append(key.rstrip())
-                    self._current.value.append(value.lstrip())
-                    self._yield_element()
+    def parse_section(self, text_stream):
+        """Parse a single yaff section."""
+        for line in text_stream:
+            # strip trailing whitespace
+            contents = line.rstrip()
+            if contents == BOUNDARY_MARKER:
+                self._yield_element()
+                return True
+            if not contents:
+                # ignore empty lines except while already parsing comments
+                if (
+                        self._current.comment
+                        and not self._current.value
+                        and not self._current.keys
+                    ):
+                    self._current.comment.append('')
             else:
-                # first line in value
-                if not self._current.value:
-                    self._current.indent = len(contents) - len(contents.lstrip())
-                # continue building value
-                # do not strip all whitespace as we need it for multiline glyph props
-                # but strip the first line's indent
-                self._current.value.append(contents[self._current.indent:])
-
+                startchar = contents[:1]
+                if startchar == YaffParams.comment:
+                    if self._current.keys or self._current.value:
+                        # new comment starts new element
+                        self._yield_element()
+                    self._current.comment.append(contents[1:])
+                elif startchar not in YaffParams.whitespace:
+                    if self._current.value:
+                        # new key when we have a value starts a new element
+                        self._yield_element()
+                    # note that we don't use partition() for the first check
+                    # as we have to allow for : inside (quoted) glyph labels
+                    if contents[-1:] == YaffParams.separator:
+                        self._current.keys.append(contents[:-1])
+                    else:
+                        # this must be a property key, not a glyph label
+                        # new key, separate at the first :
+                        # prop keys must be alphanum so no need to worry about quoting
+                        key, sep, value = contents.partition(YaffParams.separator)
+                        # yield key and value
+                        # yaff does not allow multiline values starting on the key line
+                        self._current.keys.append(key.rstrip())
+                        self._current.value.append(value.lstrip())
+                        self._yield_element()
+                else:
+                    # first line in value
+                    if not self._current.value:
+                        self._current.indent = len(contents) - len(contents.lstrip())
+                    # continue building value
+                    # do not strip all whitespace as we need it for multiline glyph props
+                    # but strip the first line's indent
+                    self._current.value.append(contents[self._current.indent:])
+        self._yield_element()
+        return False
 
     # second pass: top comment
 
     def get_clusters(self):
         """Convert top comment cluster and return."""
-        # ensure we include the last current element
-        self._yield_element()
         clusters = self._elements
         # separate out global top comment
         if clusters and clusters[0]:
@@ -241,8 +242,7 @@ def _convert_glyph(cluster):
         glyph_lines = ()
     # new text reader on glyph property lines
     reader = YaffReader()
-    for line in prop_lines:
-        reader.step(line)
+    reader.parse_section(prop_lines)
     # ignore in-glyph comments
     props = dict(
         convert_property(cluster)[:2]
