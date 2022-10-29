@@ -334,12 +334,12 @@ def _get_text_glyphs(font, text, direction, line_direction, missing='raise'):
             if direction == 'normal':
                 # decide direction based on bidi algorithm
                 text = get_display(text)
-        if direction == 'right-to-left':
-            # reverse glyph order
-            text = text[::-1]
     lines = text.splitlines()
+    if direction in ('right-to-left', 'bottom-to-top'):
+        # reverse glyph order for rendering
+        lines = tuple(_row[::-1] for _row in lines)
     if line_direction in ('right-to-left', 'bottom-to-top'):
-        # reverse line order
+        # reverse line order for rendering
         lines = lines[::-1]
     return tuple(
         tuple(_iter_labels(font, _line, missing))
