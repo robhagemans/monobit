@@ -102,6 +102,11 @@ class GlyphProperties(DefaultProps):
     # leftward offset from origin to matrix left edge
     shift_left: int
 
+    # compatibility synonyms
+    kern_to: KernTable
+    tracking: int
+    offset: Coord.create
+
 
     @checked_property
     def shift_down(self):

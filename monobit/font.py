@@ -196,6 +196,13 @@ class FontProperties(DefaultProps):
     source_format: str
     history: str
 
+    # type converters for compatibility synonyms
+    tracking: int
+    offset: Coord.create
+    average_advance: number
+    max_advance: int
+    cap_advance: int
+
 
     @writable_property
     def name(self):
@@ -649,7 +656,10 @@ class Font:
         """Representation."""
         elements = (
             f'glyphs=(...{len(self._glyphs)} glyphs...)' if self.glyphs else '',
-            ',\n    '.join(f'{_k}={repr(_v)}' for _k, _v in self.properties.items()),
+            ',\n    '.join(
+                f'{normalise_property(_k)}={repr(_v)}'
+                for _k, _v in self.properties.items()
+            ),
         )
         return '{}({})'.format(
             type(self).__name__,
