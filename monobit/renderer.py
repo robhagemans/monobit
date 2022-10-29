@@ -158,7 +158,7 @@ def render(
     margin_x, margin_y = margin
     if direction in ('top-to-bottom', 'bottom-to-top'):
         canvas = _get_canvas_vertical(font, glyphs, margin_x, margin_y)
-        canvas = _render_vertical(font, glyphs, canvas, margin_x, margin_y)
+        canvas = _render_vertical(font, glyphs, canvas, margin_x, margin_y, align)
     else:
         canvas = _get_canvas_horizontal(font, glyphs, margin_x, margin_y)
         canvas = _render_horizontal(font, glyphs, canvas, margin_x, margin_y, align)
@@ -201,22 +201,31 @@ def _render_horizontal(font, glyphs, canvas, margin_x, margin_y, align):
         baseline += font.line_height
     return canvas
 
-def _render_vertical(font, glyphs, canvas, margin_x, margin_y):
+def _render_vertical(font, glyphs, canvas, margin_x, margin_y, align):
     # central axis (with leftward bias)
-    baseline = margin_x + int(font.line_width / 2)
+    baseline = int(font.line_width / 2)
     # default is ttb right-to-left
     for glyph_row in glyphs:
         y = 0
+        grid_x, grid_y = [], []
         for glyph in glyph_row:
             # advance origin to next glyph
             y += font.top_bearing + glyph.advance_height + font.bottom_bearing
-            grid_y = margin_y + y - (font.bottom_bearing + glyph.bottom_bearing)
-            grid_x = baseline - int(glyph.width / 2) - (
-                font.shift_left + glyph.shift_left
+            grid_y.append(
+                y - (font.bottom_bearing + glyph.bottom_bearing)
             )
+            grid_x.append(
+                baseline - int(glyph.width / 2) - (font.shift_left + glyph.shift_left)
+            )
+        if align == 'bottom':
+            start = len(canvas) - margin_y - y
+        else:
+            start = margin_y
+
+        for glyph, x, y in zip(glyph_row, grid_x, grid_y):
             # add ink, taking into account there may be ink already
-            # in case of negative bearing
-            blit(glyph.as_matrix(), canvas, grid_x, grid_y)
+            # in case of negative bearings
+            blit(glyph.as_matrix(), canvas, margin_x + x, start + y)
         # move to next line
         baseline += font.line_width
     return canvas
@@ -317,10 +326,10 @@ def _get_direction(text, direction):
             if bidicls in ('R', 'A'):
                 align = 'right'
                 break
-    elif line_direction == 'right-to-left':
-        align = 'left'
+    elif direction == 'bottom-to-top':
+        align = 'bottom'
     else:
-        align = 'right'
+        align = 'top'
     return direction, line_direction, align
 
 
