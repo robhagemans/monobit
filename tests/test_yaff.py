@@ -21,6 +21,7 @@ def get_stringio(string):
 class TestYaff(BaseTester):
     """Test the yaff format."""
 
+    # glyph definitions
 
     empty = """
 empty:
@@ -32,6 +33,36 @@ empty:
         f,  *_ = monobit.load(file)
         assert len(f.glyphs) == 1, repr(f.glyphs)
         assert f.raster_size == (0, 0), f.raster_size
+
+    glyphs = """
+a:
+    .....
+    ..@..
+    .@.@.
+    .@@@.
+    .@.@.
+    .@.@.
+b:
+    .....
+    .@@..
+    .@.@.
+    .@@..
+    .@.@.
+    .@@..
+"""
+
+    def test_glyphs(self):
+        file = get_stringio(self.glyphs)
+        f,  *_ = monobit.load(file)
+        a = f.get_glyph('a')
+        assert a.width == 5
+        assert a.height == 6
+        assert a.advance_width == 5
+        assert f.spacing == 'character-cell'
+        assert f.line_height == 6
+
+
+    # font sections
 
     sections = """
 ---
@@ -46,6 +77,8 @@ a:
         file = get_stringio(self.sections)
         pack = monobit.load(file)
         assert len(pack) == 2, repr(pack)
+
+    # labels
 
     labels = """
 tag:
@@ -151,6 +184,87 @@ tag3:
         assert f.glyphs[3].get_labels() == (
             Tag('tag1'), Tag('tag2'), Tag('tag3')
         )
+
+    # properties
+
+    props = """
+unknown: 2
+left-bearing: 1
+tracking: 3
+"""
+
+    def test_properties(self):
+        file = get_stringio(self.props)
+        f,  *_ = monobit.load(file)
+        # recognised property
+        assert f.left_bearing == 1
+        # compatibility synonym
+        assert f.right_bearing == 3
+        # unknown property
+        assert f.unknown == '2'
+
+    multiline = """
+single-line:  single line
+multi-line:
+    this is a
+    "  multiline  "
+    property
+"""
+
+    def test_multiline_properties(self):
+        file = get_stringio(self.multiline)
+        f,  *_ = monobit.load(file)
+        assert f.single_line == 'single line'
+        assert f.multi_line == 'this is a\n  multiline  \nproperty'
+
+    weird_props = """
+has-colon: ::myprop
+at-end: "myprop:"
+not-a-glyph:
+    ".@"
+glyph:
+    .@
+"""
+
+    def test_weird_properties(self):
+        file = get_stringio(self.weird_props)
+        f,  *_ = monobit.load(file)
+        assert f.has_colon == '::myprop'
+        assert f.at_end == 'myprop:'
+        assert f.not_a_glyph == '.@'
+        assert f.get_glyph('glyph').width == 2
+
+    # glyph props
+
+    glyphprops = """
+a:
+    .....
+    ..@..
+    .@.@.
+    .@@@.
+    .@.@.
+    .@.@.
+    prop: value
+    multiline:
+        another value
+
+b:
+    .....
+    .@@..
+    .@.@.
+    .@@..
+    .@.@.
+    .@@..
+
+    other-prop: also a value
+"""
+    def test_glyph_properties(self):
+        file = get_stringio(self.glyphprops)
+        f,  *_ = monobit.load(file)
+        a = f.get_glyph('a')
+        assert a.prop == 'value'
+        assert a.multiline == 'another value'
+        assert f.get_glyph('b').other_prop == 'also a value'
 
 
 if __name__ == '__main__':
