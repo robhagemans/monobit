@@ -748,6 +748,7 @@ class Font:
 
     def get_comment(self, key=''):
         """Get global or property comment."""
+        key = normalise_property(key)
         return getattr(self._props, f'#{key}', '')
 
     def _get_comment_dict(self):

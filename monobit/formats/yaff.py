@@ -173,8 +173,8 @@ class YaffReader:
             except ValueError:
                 index = len(comments) + 1
             if len(comments) > 1:
-                global_comment = YaffElement(comment=comments[:index])
-                top.comment = comments[index+1:]
+                global_comment = YaffElement(comment=comments[:index-1])
+                top.comment = comments[index:]
                 clusters.appendleft(global_comment)
         return clusters
 
