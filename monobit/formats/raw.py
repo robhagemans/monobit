@@ -12,7 +12,7 @@ from ..storage import loaders, savers
 from ..font import Font
 from ..glyph import Glyph
 from ..streams import FileFormatError
-from ..scripting import pair, any_int
+from ..basetypes import pair, any_int
 
 
 @loaders.register('bin', 'rom', 'raw', 'f08', 'f14', 'f16', name='binary')

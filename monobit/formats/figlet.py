@@ -8,7 +8,6 @@ licence: https://opensource.org/licenses/MIT
 import logging
 from typing import NamedTuple
 
-from ..matrix import to_text
 from ..storage import loaders, savers
 from ..streams import FileFormatError
 from ..font import Font
@@ -149,10 +148,11 @@ def _read_glyph(instream, props, codepoint, tag='', ink=''):
     # > a FIGcharacter has two endmarks, while all the rest have one. This makes it
     # > easy to see where FIGcharacters begin and end.  No line should have more
     # > than two endmarks.
-    glyph_lines = [_line.rstrip(_line[-1]) for _line in glyph_lines]
+    glyph_lines = (_line.rstrip(_line[-1]) for _line in glyph_lines)
+    # apply hardblanks
+    glyph_lines = tuple(_line.replace(props.hardblank, ' ') for _line in glyph_lines)
     # check number of characters excluding spaces
-    paper = [' ', props.hardblank]
-    charset = set(''.join(glyph_lines)) - set(paper)
+    charset = set(''.join(glyph_lines)) - set(' ')
     # if multiple characters per glyph found, ink characters must be specified explicitly
     if len(charset) > 1:
         if not ink:
@@ -161,9 +161,13 @@ def _read_glyph(instream, props, codepoint, tag='', ink=''):
                 f'encountered {list(charset)}.'
             )
         else:
-            paper += list(charset - set(ink))
-    return Glyph.from_matrix(glyph_lines, paper=paper).modify(
-        char=chr(codepoint), tags=[tag]
+            for c in charset:
+                if c != ink:
+                    glyph_lines = (_line.replace(c, ' ') for _line in glyph_lines)
+            glyph_lines = tuple(glyph_lines)
+    return Glyph(
+        glyph_lines, paper=' ', ink=ink,
+        char=chr(codepoint), tag=tag
     )
 
 def _convert_from_flf(glyphs, props):
@@ -270,7 +274,7 @@ def _write_flf(outstream, flf_glyphs, flf_props, comments, ink='#', paper=' ', h
 def _format_glyph(glyph, ink='#', paper=' ', end='@'):
     lines = [
         f'{_line}{end}'
-        for _line in to_text(glyph.as_matrix(), ink=ink, paper=paper).splitlines()
+        for _line in glyph.as_text(ink=ink, paper=paper).splitlines()
     ]
     if lines:
         lines[-1] += end + '\n'

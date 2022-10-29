@@ -190,9 +190,9 @@ There may be at most one newline between the separator and the value.
   with whitespace. There must be at least one such line. Leading and trailing whitespace on these
   lines does not form part of the value, but the newlines do.
 * A value may contain any character that is allowed in a `yaff` file.
-* No line of a value must consist solely of `.`, `@`, and whitespace characters.
-* No line of a value must consist of a single `-`.
-* A value must not be empty.
+* No line of a value must start with `:`, `.`, or `@`.
+* No line of a value must end with `:`.
+* No line of a value must be empty or consist of only the character `-`.
 * If any line of a value starts and ends with a double quote character `"`, 
   these quotes are stripped and everything in between is used unchanged.
 

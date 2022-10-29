@@ -8,24 +8,47 @@ licence: https://opensource.org/licenses/MIT
 import logging
 
 from ..storage import loaders, savers
-from .yaff import TextReader, TextConverter, TextWriter
+from ..font import Font
+from ..glyph import Glyph
+from ..labels import Tag, Char
+from .yaff import format_comment, normalise_comment
+
+
+class DrawParams:
+    """Parameters for hexdraw format."""
+    separator = ':'
+    comment = '%'
+    tab = '\t'
+    #ink = '#'
+    #paper = '-'
 
 
 ##############################################################################
 # interface
 
 @loaders.register('draw', 'text', 'txt', name='hexdraw')
-def load_hexdraw(instream, where=None, ink:str='#', paper:str='-'):
+def load_hexdraw(
+        instream, where=None,
+        ink:str='#', paper:str='-'
+    ):
     """
     Load font from a hexdraw file.
 
     ink: character used for inked/foreground pixels (default #)
     paper: character used for uninked/background pixels (default -)
     """
-    return _load_draw(instream.text, _ink=ink, _paper=paper)
+    return _load_text(
+        instream.text,
+        ink=ink, paper=paper,
+        comment=DrawParams.comment,
+        separator=DrawParams.separator
+    )
 
 @savers.register(linked=load_hexdraw)
-def save_hexdraw(fonts, outstream, where=None, ink:str='#', paper:str='-'):
+def save_hexdraw(
+        fonts, outstream, where=None,
+        ink:str='#', paper:str='-'
+    ):
     """
     Save font to a hexdraw file.
 
@@ -34,94 +57,88 @@ def save_hexdraw(fonts, outstream, where=None, ink:str='#', paper:str='-'):
     """
     if len(fonts) > 1:
         raise FileFormatError("Can only save one font to hexdraw file.")
-    DrawWriter(ink=ink, paper=paper).save(fonts[0], outstream.text)
-
-
-##############################################################################
-# format parameters
-
-
-class DrawParams:
-    """Parameters for .draw format."""
-
-    # first/second pass constants
-    separator = ':'
-    comment = '%'
-    # output only
-    tab = '\t'
-    separator_space = ''
-    # tuple of individual chars, need to be separate for startswith
-    whitespace = tuple(' \t')
-
-    # third-pass constants
-    ink = '#'
-    paper = '-'
-    empty = '-'
-
-    @staticmethod
-    def convert_key(key):
-        """Convert keys on input from .draw."""
-        try:
-            return chr(int(key, 16))
-        except (TypeError, ValueError):
-            return Tag(key)
+    _save_text(
+        fonts[0], outstream.text,
+        ink=ink, paper=paper, comment=DrawParams.comment
+    )
 
 
 ##############################################################################
 ##############################################################################
 # read file
 
-def _load_draw(text_stream, _ink='', _paper=''):
-    """Parse a hexdraw file."""
 
-    class _Converter(DrawConverter):
-        ink=_ink or DrawConverter.ink
-        paper=_paper or DrawConverter.paper
-
-    reader = DrawReader()
+def _load_text(text_stream, *, ink, paper, comment, separator):
+    """Parse a hexdraw-style file."""
+    comments = []
+    glyphs = []
+    label = ''
+    glyphlines = []
     for line in text_stream:
-        reader.step(line)
-    return _Converter.get_font_from(reader)
+        if line.startswith(comment):
+            comments.append(line[len(comment):])
+        line = line.rstrip()
+        stripline = line.lstrip()
+        # no leading whitespace?
+        if line and len(line) == len(stripline):
+            if glyphlines:
+                glyphs.append(Glyph(
+                    tuple(glyphlines), _0=paper, _1=ink,
+                    labels=(convert_key(label),)
+                ))
+                glyphlines = []
+            label, _, stripline = line.partition(separator)
+            stripline = stripline.lstrip()
+        if len(line) != len(stripline):
+            glyphlines.append(stripline)
+    if glyphlines:
+        glyphs.append(Glyph(
+            tuple(glyphlines), _0=paper, _1=ink,
+            labels=(convert_key(label),)
+        ))
+    comments = normalise_comment(comments)
+    return Font(glyphs, comment=comments)
 
 
-
-class DrawReader(DrawParams, TextReader):
-    """Reader for .draw files."""
-
-class DrawConverter(DrawParams, TextConverter):
-    """Converter for .draw files."""
+def convert_key(key):
+    """Convert keys on input from .draw."""
+    try:
+        return Char(chr(int(key, 16)))
+    except (TypeError, ValueError):
+        return Tag(key)
 
 
 ##############################################################################
 ##############################################################################
 # write file
 
-class DrawWriter(TextWriter, DrawParams):
 
-    def __init__(self, ink='', paper=''):
-        self.ink = ink or self.ink
-        self.paper = paper or self.paper
-
-    def save(self, font, outstream):
-        """Write one font to a plaintext stream as hexdraw."""
-        # ensure char labels are set
-        font = font.label(char_from=font.encoding)
-        # write global comment
-        if font.get_comment():
-            outstream.write(self._format_comment(font.get_comment()) + '\n\n')
-        # write glyphs
-        for glyph in font.glyphs:
-            if not glyph.char:
-                logging.warning(
-                    "Can't encode glyph without Unicode character label in .draw file;"
-                    " skipping\n%s\n",
-                    glyph
-                )
-            elif len(glyph.char) > 1:
-                logging.warning(
-                    "Can't encode grapheme cluster %s in .draw file; skipping.",
-                    ascii(glyph.char)
-                )
-            else:
-                #FIXME- draw does not support glyph properties
-                self._write_glyph(outstream, glyph, label=f'{ord(glyph.char):04x}')
+def _save_text(font, outstream, *, ink, paper, comment):
+    """Write one font to a plaintext stream as hexdraw."""
+    # ensure char labels are set
+    font = font.label(char_from=font.encoding)
+    # write global comment
+    if font.get_comment():
+        outstream.write(
+            format_comment(font.get_comment()) + '\n',
+            comment
+        )
+    # write glyphs
+    for glyph in font.glyphs:
+        if not glyph.char:
+            logging.warning(
+                "Can't encode glyph without Unicode character label in .draw file;"
+                " skipping\n%s\n",
+                glyph
+            )
+        elif len(glyph.char) > 1:
+            logging.warning(
+                "Can't encode grapheme cluster %s in .draw file; skipping.",
+                ascii(glyph.char)
+            )
+        else:
+            glyphtxt = glyph.as_text(
+                start=DrawParams.tab, ink=ink, paper=paper, end='\n'
+            )
+            outstream.write(f'\n{ord(glyph.char):04x}{DrawParams.separator}')
+            outstream.write(glyphtxt)

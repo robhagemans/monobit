@@ -528,7 +528,7 @@ def _read_bdf_glyphs(instream):
             try:
                 int(label)
             except ValueError:
-                glyph = glyph.modify(tags=[label])
+                glyph = glyph.modify(tag=label)
             # ENCODING must be single integer or -1 followed by integer
             encvalue = int(meta['ENCODING'].split(' ')[-1])
             glyph = glyph.modify(encvalue=encvalue)
@@ -709,7 +709,10 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
         distinct = set(getattr(_g, normalise_property(key)) for _g in mod_glyphs)
         if len(distinct) == 1:
             mod_glyphs = [_g.drop(key) for _g in mod_glyphs]
-            properties[key] = distinct.pop()
+            value = distinct.pop()
+            # NOTE - these all have zero defaults
+            if value != 0:
+                properties[key] = value
     xlfd_name = bdf_props.pop('FONT')
     # keep unparsed bdf props
     return mod_glyphs, properties, xlfd_name, bdf_props

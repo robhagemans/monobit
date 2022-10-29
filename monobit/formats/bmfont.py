@@ -16,7 +16,7 @@ try:
 except ImportError:
     Image = None
 
-from ..scripting import pair
+from ..basetypes import pair
 from ..encoding import charmaps
 from .. import streams
 from ..streams import FileFormatError
@@ -624,7 +624,7 @@ def _create_spritesheets(font, size=(256, 256), packed=False):
                     # we don't fit, get next sheet
                     break
                 charimg = Image.new('L', (cropped.width, cropped.height))
-                data = cropped.as_tuple(ink, paper)
+                data = cropped.as_vector(ink, paper)
                 charimg.putdata(data)
                 img.paste(charimg, (x, y))
             try:

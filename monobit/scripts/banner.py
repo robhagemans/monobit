@@ -10,7 +10,8 @@ import logging
 from codecs import escape_decode
 
 import monobit
-from monobit.scripting import pair, wrap_main
+from monobit.scripting import wrap_main
+from monobit.basetypes import pair
 from monobit import render_text
 
 
@@ -64,7 +65,8 @@ def main():
         '--direction', type=str, default='',
         help=(
             "writing direction (default: use bidirectional algorithm;"
-            " other options: `left-to-right`, `right-to-left`, `reverse`)"
+            " other options: `l`==`left-to-right`, `r`==`right-to-left`, "
+            "`t`==`top-to-bottom`, `b`==`bottom-to-top`)"
         )
     )
     parser.add_argument(

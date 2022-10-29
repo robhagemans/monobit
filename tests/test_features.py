@@ -16,7 +16,7 @@ class TestFeatures(BaseTester):
 
     # vertical metrics
 
-    verttext="""......................
+    verttext=("""......................
 ......................
 ......@......@........
 .......@....@.........
@@ -38,17 +38,17 @@ class TestFeatures(BaseTester):
 ......................
 ......................
 ......................
-""" * 2
+""" * 2).strip()
 
     def test_render_bdf_vertical(self):
         vert2, *_ = monobit.load(self.font_path / 'vertical.bdf')
         text2 = monobit.render_text(vert2, b'\x27\x27', direction='top-to-bottom')
-        assert text2 == self.verttext.strip()
+        assert text2 == self.verttext, f'"""{text2}"""\n != \n"""{self.verttext}"""'
 
     def test_render_yaff_vertical(self):
         vert1, *_ = monobit.load(self.font_path / 'vertical.yaff')
         text1 = monobit.render_text(vert1, b'\x27\x27', direction='top-to-bottom')
-        assert text1 == self.verttext.strip()
+        assert text1 == self.verttext, f'"""{text1}"""\n != \n"""{self.verttext}"""'
 
 
     # proportional rendering
@@ -63,19 +63,19 @@ class TestFeatures(BaseTester):
 .@@...@@...........@@..@@...@@.@@...@@..@@@@@@.
 ..@@@..@@@@@@.@@@@@@....@@@.@@.@@...@@......@@.
 ........................................@@@@@..
-"""
+""".strip()
 
     def test_render_amiga_proportional(self):
         prop1, *_ = monobit.load(self.font_path / 'wbfont.amiga/wbfont_prop.font')
         text1 = monobit.render_text(prop1, b'testing')
-        assert text1 == self.proptext.strip()
+        assert text1 == self.proptext, f'"""{text1}"""\n != \n"""{self.proptext}"""'
 
     def test_render_yaff_proportional(self):
         prop1, *_ = monobit.load(self.font_path / 'wbfont.amiga/wbfont_prop.font')
-        monobit.save(prop1, self.temp_path / 'wbfont_prop.yaff', where=self.temp_path)
+        monobit.save(prop1, self.temp_path / 'wbfont_prop.yaff')
         prop2, *_ = monobit.load(self.temp_path / 'wbfont_prop.yaff')
         text2 = monobit.render_text(prop2, b'testing')
-        assert text2 == self.proptext.strip()
+        assert text2 == self.proptext, f'"""{text2}"""\n != \n"""{self.proptext}"""'
 
 
     # kerning
@@ -90,19 +90,19 @@ class TestFeatures(BaseTester):
 @@@...@..@.@....@..@.@...
 ......@.........@....@...
 ....@@........@@...@@....
-"""
+""".strip()
 
     def test_render_yaff_kerning(self):
         webby_mod1, *_ = monobit.load(self.font_path / 'webby-small-kerned.yaff')
         text1 = monobit.render_text(webby_mod1, b'sjifjij')
-        assert text1 == self.kerntext.strip()
+        assert text1 == self.kerntext, f'"""{text1}"""\n != \n"""{self.kerntext}"""'
 
     def test_render_bmf_kerning(self):
         webby_mod1, *_ = monobit.load(self.font_path / 'webby-small-kerned.yaff')
         monobit.save(webby_mod1, self.temp_path / 'webby-small-kerned.bmf', where=self.temp_path)
         webby_mod2, *_ = monobit.load(self.temp_path / 'webby-small-kerned.bmf')
         text2 = monobit.render_text(webby_mod2, b'sjifjij')
-        assert text2 == self.kerntext.strip()
+        assert text2 == self.kerntext, f'"""{text2}"""\n != \n"""{self.kerntext}"""'
 
 
 if __name__ == '__main__':

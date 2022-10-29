@@ -6,7 +6,6 @@ licence: https://opensource.org/licenses/MIT
 """
 
 from string import ascii_letters, digits
-from binascii import hexlify
 
 from .binary import ceildiv, int_to_bytes
 from .scripting import any_int
@@ -14,19 +13,16 @@ from .scripting import any_int
 
 def is_enclosed(from_str, char):
     """Check if a char occurs on both sides of a string."""
-    if not char:
-        return True
-    return len(from_str) >= 2*len(char) and from_str.startswith(char) and from_str.endswith(char)
+    return len(from_str) >= 2 and from_str[0] == char and from_str[-1] == char
 
 def strip_matching(from_str, char, allow_no_match=True):
     """Strip a char from either side of the string if it occurs on both."""
-    if not char:
-        return from_str
     if is_enclosed(from_str, char):
-        clen = len(char)
-        return from_str[clen:-clen]
+        return from_str[1:-1]
     elif not allow_no_match:
-        raise ValueError(f'No matching delimiters `{char}` found in string `{from_str}`.')
+        raise ValueError(
+            f'No matching delimiters `{char}` found in string `{from_str}`.'
+        )
     return from_str
 
 
@@ -44,18 +40,15 @@ def to_label(value):
     if not isinstance(value, str):
         # only Codepoint can have non-str argument
         return Codepoint(value)
-    # remove leading and trailing whitespace
-    value = value.strip()
     if not value:
         return Char()
     # protect commas, pluses etc. if enclosed
     if is_enclosed(value, '"'):
-        # strip matching double quotes - this allows to set a label starting with a digit by quoting it
-        value = strip_matching(value, '"')
-        return Tag(value)
+        # strip matching double quotes
+        # this allows to set a label starting with a digit by quoting it
+        return Tag(value[1:-1])
     if is_enclosed(value, "'"):
-        value = strip_matching(value, "'")
-        return Char(value)
+        return Char(value[1:-1])
     # codepoints start with an ascii digit
     try:
         return Codepoint(value)
@@ -70,24 +63,20 @@ def to_label(value):
         return Char(value)
     # deal with other options such as single-quoted, u+codepoint and sequences
     try:
-        elements = value.split(',')
         return Char(''.join(
             _convert_char_element(_elem)
-            for _elem in elements if _elem
+            for _elem in value.split(',') if _elem
         ))
     except ValueError:
         pass
-    return Tag(value)
+    return Tag(value.strip())
 
 def _convert_char_element(element):
     """Convert character label element to char if possible."""
     # string delimited by single quotes denotes a character or sequence
-    try:
-        element = strip_matching(element, "'", allow_no_match=False)
-    except ValueError:
-        pass
-    else:
-        return element
+    element = element.strip()
+    if is_enclosed(element, "'"):
+        return element[1:-1]
     # not a delimited char
     element = element.lower()
     if not element.startswith('u+'):
@@ -153,7 +142,7 @@ class Codepoint(bytes, Label):
                 # handle composite labels
                 # codepoint sequences (MBCS) "0xf5,0x02" etc.
                 value = value.split(',')
-            # deal with other iterables, e.g. bytes, tuple
+            # deal with other iterables, e.g. tuple of int
             try:
                 value = b''.join(int_to_bytes(any_int(_i)) for _i in value)
             except (TypeError, OverflowError):
@@ -170,7 +159,7 @@ class Codepoint(bytes, Label):
 
     def __str__(self):
         """Convert codepoint label to str."""
-        return '0x' + hexlify(self).decode('ascii')
+        return '0x' + self.hex()
 
 
 ##############################################################################
