@@ -65,7 +65,7 @@ def main():
         '--direction', type=str, default='',
         help=(
             "writing direction (default: use bidirectional algorithm;"
-            " other options: `left-to-right`, `right-to-left`, `reverse`)"
+            " other options: `left-to-right`, `right-to-left`, `top-to-bottom`)"
         )
     )
     parser.add_argument(

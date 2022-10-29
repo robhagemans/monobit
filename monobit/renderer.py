@@ -140,7 +140,8 @@ def render_image(
     )
 
 def render(
-        font, text, *, margin=(0, 0), scale=(1, 1), rotate=0, direction='', missing='default'
+        font, text, *, margin=(0, 0), scale=(1, 1), rotate=0, direction='',
+        missing='default'
     ):
     """Render text string to bitmap."""
     direction, align = _get_direction(text, direction)
@@ -159,7 +160,8 @@ def render(
 
 def _render_horizontal(font, glyphs, canvas, margin_x, margin_y, align):
     # descent-line of the bottom-most row is at bottom margin
-    # if a glyph extends below the descent line or left of the orgin, it may draw into the margin
+    # if a glyph extends below the descent line or left of the origin,
+    # it may draw into the margin
     # raster_size.y moves from canvas origin to raster origin (bottom line)
     baseline = font.ascent
     for glyph_row in glyphs:
@@ -184,7 +186,8 @@ def _render_horizontal(font, glyphs, canvas, margin_x, margin_y, align):
         else:
             start = margin_x
         for glyph, x, y in zip(glyph_row, grid_x, grid_y):
-            # add ink, taking into account there may be ink already in case of negative bearings
+            # add ink, taking into account there may be ink already
+            # in case of negative bearings
             blit(glyph.as_matrix(), canvas, start + x, margin_y + y)
         # move to next line
         baseline += font.line_height
@@ -200,8 +203,11 @@ def _render_vertical(font, glyphs, canvas, margin_x, margin_y):
             # advance origin to next glyph
             y += font.top_bearing + glyph.advance_height + font.bottom_bearing
             grid_y = margin_y + y - (font.bottom_bearing + glyph.bottom_bearing)
-            grid_x = baseline - int(glyph.width / 2) - (font.shift_left + glyph.shift_left)
-            # add ink, taking into account there may be ink already in case of negative bearing
+            grid_x = baseline - int(glyph.width / 2) - (
+                font.shift_left + glyph.shift_left
+            )
+            # add ink, taking into account there may be ink already
+            # in case of negative bearing
             blit(glyph.as_matrix(), canvas, grid_x, grid_y)
         # move to next line
         baseline += font.line_width
@@ -213,13 +219,17 @@ def _get_canvas_horizontal(font, glyphs, margin_x, margin_y):
     width = 2 * margin_x
     if glyphs:
         width += max(
-            sum(font.left_bearing + _glyph.advance_width + font.right_bearing for _glyph in _row)
+            sum(
+                font.left_bearing + _glyph.advance_width + font.right_bearing
+                for _glyph in _row
+            )
             for _row in glyphs
         )
     # find required height - margins plus line height for each row
     # descent-line of the bottom-most row is at bottom margin
     # ascent-line of top-most row is at top margin
-    # if a glyph extends below the descent line or left of the origin, it may draw into the margin
+    # if a glyph extends below the descent line or left of the origin,
+    # it may draw into the margin
     height = 2 * margin_y + font.pixel_size + font.line_height * (len(glyphs)-1)
     return create_canvas(width, height)
 
@@ -229,7 +239,10 @@ def _get_canvas_vertical(font, glyphs, margin_x, margin_y):
     height = 2 * margin_y
     if glyphs:
         height += max(
-            sum(font.top_bearing + _glyph.advance_height + font.bottom_bearing for _glyph in _row)
+            sum(
+                font.top_bearing + _glyph.advance_height + font.bottom_bearing
+                for _glyph in _row
+            )
             for _row in glyphs
         )
     width = 2 * margin_x + font.line_width * len(glyphs)
@@ -246,13 +259,16 @@ def _get_direction(text, direction):
             direction = 'normal'
         else:
             direction = 'left-to-right'
-    if direction not in ('normal', 'reverse', 'right-to-left', 'left-to-right'):
+    if direction not in ('normal', 'right-to-left', 'left-to-right'):
         raise ValueError(f'Unsupported writing direction `{direction}`')
     left_align = True
-    if direction in ('normal', 'reverse'):
+    if direction == 'normal':
         if not isstr:
-            raise ValueError(f'Writing direction `{direction}` only supported for Unicode text.')
-        # determine alignment by the class of the first directional character encountered
+            raise ValueError(
+                f'Writing direction `{direction}` only supported for Unicode text.'
+            )
+        # determine alignment
+        # by the class of the first directional character encountered
         for c in text:
             try:
                 bidicls = bidirectional(c)[0]
@@ -263,8 +279,6 @@ def _get_direction(text, direction):
             if bidicls in ('R', 'A'):
                 left_align = False
                 break
-        if direction == 'reverse':
-            left_align = not left_align
     elif direction == 'right-to-left':
         left_align = False
     return direction, 'left' if left_align else 'right'
@@ -282,26 +296,25 @@ def _get_text_glyphs(font, text, direction, missing='raise'):
                 if any(ord(_c) in range(0x600, 0x700) for _c in text):
                     logging.warning(e)
             # put characters in visual order instead of logical
-            if direction in ('normal', 'reverse'):
+            if direction == 'normal':
                 # decide direction based on bidi algorithm
                 text = get_display(text)
-        if direction in ('right-to-left', 'reverse'):
+        if direction == 'right-to-left':
             # reverse writing order
-            text = ''.join(reversed(text))
-    if isinstance(text, str):
-        max_length = max(len(_c) for _c in font.get_chars())
-        type_conv = str
-    else:
-        max_length = max(len(_cp) for _cp in font.get_codepoints())
-        type_conv = tuple
+            text = text[::-1]
     return tuple(
-        tuple(_iter_labels(font, type_conv(_line), max_length, missing))
+        tuple(_iter_labels(font, _line, missing))
         for _line in text.splitlines()
     )
 
-def _iter_labels(font, labels, max_length, missing='raise'):
-    """Iterate over labels, yielding glyphs."""
-    remaining = labels
+def _iter_labels(font, text, missing='raise'):
+    """Iterate over labels in text, yielding glyphs. text may be str or bytes."""
+    if isinstance(text, str):
+        labelset = font.get_chars()
+    else:
+        labelset = font.get_codepoints()
+    max_length = max(len(_c) for _c in labelset)
+    remaining = text
     while remaining:
         # try multibyte clusters first
         for try_len in range(max_length, 1, -1):
