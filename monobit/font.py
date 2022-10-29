@@ -278,7 +278,7 @@ class FontProperties(DefaultProps):
         """Vertical distance between consecutive baselines, in pixels."""
         if 'leading' in vars(self):
             return self.pixel_size + self.leading
-        return self.pixel_size
+        return self.raster_size.y
 
     @writable_property
     def line_width(self):
@@ -748,6 +748,7 @@ class Font:
 
     def get_comment(self, key=''):
         """Get global or property comment."""
+        key = normalise_property(key)
         return getattr(self._props, f'#{key}', '')
 
     def _get_comment_dict(self):
