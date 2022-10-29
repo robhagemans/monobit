@@ -238,7 +238,7 @@ def _convert_glyph(cluster):
         first_prop = len(lines)
     glyph_lines = lines[:first_prop]
     prop_lines = lines[first_prop:]
-    if glyph_lines == (YaffParams.empty,):
+    if glyph_lines == [YaffParams.empty]:
         glyph_lines = ()
     # new text reader on glyph property lines
     reader = YaffReader()
