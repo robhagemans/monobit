@@ -266,6 +266,41 @@ b:
         assert a.multiline == 'another value'
         assert f.get_glyph('b').other_prop == 'also a value'
 
+    # comments
+
+    comments = """
+# this is the top comment
+#
+# this too
+
+# even this
+
+# but this is not
+property: value
+another_property: value
+# property comment
+# spanning two lines
+commented-property: 1
+
+# glyph comment
+glyph:
+    -
+"""
+    def test_comments(self):
+        file = get_stringio(self.comments)
+        f,  *_ = monobit.load(file)
+        assert f.get_comment() == (
+            'this is the top comment\n\n'
+            'this too\n\n'
+            'even this'
+        ), repr(f.get_comment())
+        assert f.get_comment('property') == 'but this is not', repr(f.get_comment('property'))
+        assert f.get_comment('another-property') == ''
+        assert f.get_comment('commented-property') == (
+            'property comment\nspanning two lines'
+        ), repr(f.get_comment('commented-property'))
+        assert f.glyphs[0].comment == 'glyph comment'
+
 
 if __name__ == '__main__':
     unittest.main()
