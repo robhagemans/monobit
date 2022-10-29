@@ -111,7 +111,9 @@ class YaffReader:
             contents = line.rstrip()
             if contents == BOUNDARY_MARKER:
                 self._yield_element(current)
-                return True
+                # ignore empty sections
+                if self._elements:
+                    return True
             if not contents:
                 # ignore empty lines except while already parsing comments
                 if (
@@ -184,8 +186,6 @@ class YaffReader:
         clusters = self.get_clusters()
         # recursive call
         glyphs, props, comments = convert_clusters(clusters)
-        if not glyphs:
-            raise FileFormatError('No glyphs found in yaff file.')
         return Font(glyphs, comment=comments, **props)
 
 
