@@ -39,6 +39,7 @@ DIRECTIONS = {
     'l': 'left-to-right',
     'r': 'right-to-left',
     't': 'top-to-bottom',
+    'b': 'bottom-to-top'
 }
 
 ###################################################################################################
@@ -155,7 +156,7 @@ def render(
     # get glyphs for rendering
     glyphs = _get_text_glyphs(font, text, direction, line_direction, missing)
     margin_x, margin_y = margin
-    if direction == 'top-to-bottom':
+    if direction in ('top-to-bottom', 'bottom-to-top'):
         canvas = _get_canvas_vertical(font, glyphs, margin_x, margin_y)
         canvas = _render_vertical(font, glyphs, canvas, margin_x, margin_y)
     else:
@@ -272,9 +273,11 @@ def _get_direction(text, direction):
     except KeyError:
         raise ValueError(
             'Writing direction must be one of '
-            '`n`==`normal`, `l`==`left-to-right`, '
-            '`r`==`right-to-left`, `t`==`top-to-bottom`; '
-            f'not `{direction}`.'
+            + ', '.join(
+                f'`{_k}`==`{_v}`'
+                for _k, _v in DIRECTIONS.items()
+            )
+            + f'; not `{direction}`.'
         )
     if not line_direction or line_direction.startswith('n'):
         if direction == 'top-to-bottom':
@@ -286,9 +289,11 @@ def _get_direction(text, direction):
     except KeyError:
         raise ValueError(
             'Line direction must be one of '
-            '`n`==`normal`, `l`==`left-to-right`, '
-            '`r`==`right-to-left`, `t`==`top-to-bottom`; '
-            f'not `{direction}`.'
+            + ', '.join(
+                f'`{_k}`==`{_v}`'
+                for _k, _v in DIRECTIONS.items()
+            )
+            + f'; not `{direction}`.'
         )
     if direction == 'left-to-right':
         align = 'left'
@@ -320,20 +325,22 @@ def _get_direction(text, direction):
 
 
 def _get_text_glyphs(font, text, direction, line_direction, missing='raise'):
-    """Get tuple of tuples of glyphs (by line) from str or bytes/codepoints input."""
-    if direction != 'top-to-bottom':
-        if isinstance(text, str):
-            # reshape Arabic glyphs to contextual forms
-            try:
-                text = reshape(text)
-            except ImportError as e:
-                # check common Arabic range - is there anything to reshape?
-                if any(ord(_c) in range(0x600, 0x700) for _c in text):
-                    logging.warning(e)
-            # put characters in visual order instead of logical
-            if direction == 'normal':
-                # decide direction based on bidi algorithm
-                text = get_display(text)
+    """
+    Get tuple of tuples of glyphs (by line) from str or bytes/codepoints input.
+    Glyphs are reordered so that they can be rendered ltr ttb or ttb ltr
+    """
+    if isinstance(text, str) and direction not in ('top-to-bottom', 'bottom-to-top'):
+        # reshape Arabic glyphs to contextual forms
+        try:
+            text = reshape(text)
+        except ImportError as e:
+            # check common Arabic range - is there anything to reshape?
+            if any(ord(_c) in range(0x600, 0x700) for _c in text):
+                logging.warning(e)
+        # put characters in visual order instead of logical
+        if direction == 'normal':
+            # decide direction based on bidi algorithm
+            text = get_display(text)
     lines = text.splitlines()
     if direction in ('right-to-left', 'bottom-to-top'):
         # reverse glyph order for rendering
