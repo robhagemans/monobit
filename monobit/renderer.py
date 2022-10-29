@@ -34,6 +34,14 @@ from .binary import ceildiv
 _BORDER = -1
 
 
+DIRECTIONS = {
+    'n': 'normal',
+    'l': 'left-to-right',
+    'r': 'right-to-left',
+    't': 'top-to-bottom',
+    'b': 'bottom-to-top'
+}
+
 ###################################################################################################
 # canvas operations
 
@@ -140,16 +148,17 @@ def render_image(
     )
 
 def render(
-        font, text, *, margin=(0, 0), scale=(1, 1), rotate=0, direction='', missing='default'
+        font, text, *, margin=(0, 0), scale=(1, 1), rotate=0, direction='',
+        missing='default'
     ):
     """Render text string to bitmap."""
-    direction, align = _get_direction(text, direction)
+    direction, line_direction, align = _get_direction(text, direction)
     # get glyphs for rendering
-    glyphs = _get_text_glyphs(font, text, direction=direction, missing=missing)
+    glyphs = _get_text_glyphs(font, text, direction, line_direction, missing)
     margin_x, margin_y = margin
-    if direction == 'top-to-bottom':
+    if direction in ('top-to-bottom', 'bottom-to-top'):
         canvas = _get_canvas_vertical(font, glyphs, margin_x, margin_y)
-        canvas = _render_vertical(font, glyphs, canvas, margin_x, margin_y)
+        canvas = _render_vertical(font, glyphs, canvas, margin_x, margin_y, align)
     else:
         canvas = _get_canvas_horizontal(font, glyphs, margin_x, margin_y)
         canvas = _render_horizontal(font, glyphs, canvas, margin_x, margin_y, align)
@@ -159,7 +168,8 @@ def render(
 
 def _render_horizontal(font, glyphs, canvas, margin_x, margin_y, align):
     # descent-line of the bottom-most row is at bottom margin
-    # if a glyph extends below the descent line or left of the orgin, it may draw into the margin
+    # if a glyph extends below the descent line or left of the origin,
+    # it may draw into the margin
     # raster_size.y moves from canvas origin to raster origin (bottom line)
     baseline = font.ascent
     for glyph_row in glyphs:
@@ -184,25 +194,38 @@ def _render_horizontal(font, glyphs, canvas, margin_x, margin_y, align):
         else:
             start = margin_x
         for glyph, x, y in zip(glyph_row, grid_x, grid_y):
-            # add ink, taking into account there may be ink already in case of negative bearings
+            # add ink, taking into account there may be ink already
+            # in case of negative bearings
             blit(glyph.as_matrix(), canvas, start + x, margin_y + y)
         # move to next line
         baseline += font.line_height
     return canvas
 
-def _render_vertical(font, glyphs, canvas, margin_x, margin_y):
+def _render_vertical(font, glyphs, canvas, margin_x, margin_y, align):
     # central axis (with leftward bias)
-    baseline = margin_x + int(font.line_width / 2)
+    baseline = int(font.line_width / 2)
     # default is ttb right-to-left
-    for glyph_row in reversed(glyphs):
+    for glyph_row in glyphs:
         y = 0
+        grid_x, grid_y = [], []
         for glyph in glyph_row:
             # advance origin to next glyph
             y += font.top_bearing + glyph.advance_height + font.bottom_bearing
-            grid_y = margin_y + y - (font.bottom_bearing + glyph.bottom_bearing)
-            grid_x = baseline - int(glyph.width / 2) - (font.shift_left + glyph.shift_left)
-            # add ink, taking into account there may be ink already in case of negative bearing
-            blit(glyph.as_matrix(), canvas, grid_x, grid_y)
+            grid_y.append(
+                y - (font.bottom_bearing + glyph.bottom_bearing)
+            )
+            grid_x.append(
+                baseline - int(glyph.width / 2) - (font.shift_left + glyph.shift_left)
+            )
+        if align == 'bottom':
+            start = len(canvas) - margin_y - y
+        else:
+            start = margin_y
+
+        for glyph, x, y in zip(glyph_row, grid_x, grid_y):
+            # add ink, taking into account there may be ink already
+            # in case of negative bearings
+            blit(glyph.as_matrix(), canvas, margin_x + x, start + y)
         # move to next line
         baseline += font.line_width
     return canvas
@@ -213,13 +236,17 @@ def _get_canvas_horizontal(font, glyphs, margin_x, margin_y):
     width = 2 * margin_x
     if glyphs:
         width += max(
-            sum(font.left_bearing + _glyph.advance_width + font.right_bearing for _glyph in _row)
+            sum(
+                font.left_bearing + _glyph.advance_width + font.right_bearing
+                for _glyph in _row
+            )
             for _row in glyphs
         )
     # find required height - margins plus line height for each row
     # descent-line of the bottom-most row is at bottom margin
     # ascent-line of top-most row is at top margin
-    # if a glyph extends below the descent line or left of the origin, it may draw into the margin
+    # if a glyph extends below the descent line or left of the origin,
+    # it may draw into the margin
     height = 2 * margin_y + font.pixel_size + font.line_height * (len(glyphs)-1)
     return create_canvas(width, height)
 
@@ -229,7 +256,10 @@ def _get_canvas_vertical(font, glyphs, margin_x, margin_y):
     height = 2 * margin_y
     if glyphs:
         height += max(
-            sum(font.top_bearing + _glyph.advance_height + font.bottom_bearing for _glyph in _row)
+            sum(
+                font.top_bearing + _glyph.advance_height + font.bottom_bearing
+                for _glyph in _row
+            )
             for _row in glyphs
         )
     width = 2 * margin_x + font.line_width * len(glyphs)
@@ -238,21 +268,54 @@ def _get_canvas_vertical(font, glyphs, margin_x, margin_y):
 
 def _get_direction(text, direction):
     """Get direction and alignment."""
-    if direction == 'top-to-bottom':
-        return direction, 'right'
     isstr = isinstance(text, str)
     if not direction:
         if isstr:
-            direction = 'normal'
+            direction = 'n'
         else:
-            direction = 'left-to-right'
-    if direction not in ('normal', 'reverse', 'right-to-left', 'left-to-right'):
-        raise ValueError(f'Unsupported writing direction `{direction}`')
-    left_align = True
-    if direction in ('normal', 'reverse'):
+            direction = 'l'
+    direction = direction.lower()
+    # get line advance direction if given
+    direction, _, line_direction = direction.partition(' ')
+    try:
+        direction = DIRECTIONS[direction[0]]
+    except KeyError:
+        raise ValueError(
+            'Writing direction must be one of '
+            + ', '.join(
+                f'`{_k}`==`{_v}`'
+                for _k, _v in DIRECTIONS.items()
+            )
+            + f'; not `{direction}`.'
+        )
+    if not line_direction or line_direction.startswith('n'):
+        if direction == 'top-to-bottom':
+            line_direction = 'r'
+        else:
+            line_direction = 't'
+    try:
+        line_direction = DIRECTIONS[line_direction[0]]
+    except KeyError:
+        raise ValueError(
+            'Line direction must be one of '
+            + ', '.join(
+                f'`{_k}`==`{_v}`'
+                for _k, _v in DIRECTIONS.items()
+            )
+            + f'; not `{direction}`.'
+        )
+    if direction == 'left-to-right':
+        align = 'left'
+    elif direction == 'right-to-left':
+        align = 'right'
+    elif direction == 'normal':
         if not isstr:
-            raise ValueError(f'Writing direction `{direction}` only supported for Unicode text.')
-        # determine alignment by the class of the first directional character encountered
+            raise ValueError(
+                f'Writing direction `{direction}` only supported for Unicode text.'
+            )
+        # determine alignment
+        # by the class of the first directional character encountered
+        align = 'left'
         for c in text:
             try:
                 bidicls = bidirectional(c)[0]
@@ -261,47 +324,52 @@ def _get_direction(text, direction):
             if bidicls == 'L':
                 break
             if bidicls in ('R', 'A'):
-                left_align = False
+                align = 'right'
                 break
-        if direction == 'reverse':
-            left_align = not left_align
-    elif direction == 'right-to-left':
-        left_align = False
-    return direction, 'left' if left_align else 'right'
-
-
-def _get_text_glyphs(font, text, direction, missing='raise'):
-    """Get tuple of tuples of glyphs (by line) from str or bytes/codepoints input."""
-    if direction != 'top-to-bottom':
-        if isinstance(text, str):
-            # reshape Arabic glyphs to contextual forms
-            try:
-                text = reshape(text)
-            except ImportError as e:
-                # check common Arabic range - is there anything to reshape?
-                if any(ord(_c) in range(0x600, 0x700) for _c in text):
-                    logging.warning(e)
-            # put characters in visual order instead of logical
-            if direction in ('normal', 'reverse'):
-                # decide direction based on bidi algorithm
-                text = get_display(text)
-        if direction in ('right-to-left', 'reverse'):
-            # reverse writing order
-            text = ''.join(reversed(text))
-    if isinstance(text, str):
-        max_length = max(len(_c) for _c in font.get_chars())
-        type_conv = str
+    elif direction == 'bottom-to-top':
+        align = 'bottom'
     else:
-        max_length = max(len(_cp) for _cp in font.get_codepoints())
-        type_conv = tuple
+        align = 'top'
+    return direction, line_direction, align
+
+
+def _get_text_glyphs(font, text, direction, line_direction, missing='raise'):
+    """
+    Get tuple of tuples of glyphs (by line) from str or bytes/codepoints input.
+    Glyphs are reordered so that they can be rendered ltr ttb or ttb ltr
+    """
+    if isinstance(text, str) and direction not in ('top-to-bottom', 'bottom-to-top'):
+        # reshape Arabic glyphs to contextual forms
+        try:
+            text = reshape(text)
+        except ImportError as e:
+            # check common Arabic range - is there anything to reshape?
+            if any(ord(_c) in range(0x600, 0x700) for _c in text):
+                logging.warning(e)
+        # put characters in visual order instead of logical
+        if direction == 'normal':
+            # decide direction based on bidi algorithm
+            text = get_display(text)
+    lines = text.splitlines()
+    if direction in ('right-to-left', 'bottom-to-top'):
+        # reverse glyph order for rendering
+        lines = tuple(_row[::-1] for _row in lines)
+    if line_direction in ('right-to-left', 'bottom-to-top'):
+        # reverse line order for rendering
+        lines = lines[::-1]
     return tuple(
-        tuple(_iter_labels(font, type_conv(_line), max_length, missing))
-        for _line in text.splitlines()
+        tuple(_iter_labels(font, _line, missing))
+        for _line in lines
     )
 
-def _iter_labels(font, labels, max_length, missing='raise'):
-    """Iterate over labels, yielding glyphs."""
-    remaining = labels
+def _iter_labels(font, text, missing='raise'):
+    """Iterate over labels in text, yielding glyphs. text may be str or bytes."""
+    if isinstance(text, str):
+        labelset = font.get_chars()
+    else:
+        labelset = font.get_codepoints()
+    max_length = max(len(_c) for _c in labelset)
+    remaining = text
     while remaining:
         # try multibyte clusters first
         for try_len in range(max_length, 1, -1):
