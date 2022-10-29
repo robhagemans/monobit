@@ -34,6 +34,13 @@ from .binary import ceildiv
 _BORDER = -1
 
 
+DIRECTIONS = {
+    'n': 'normal',
+    'l': 'left-to-right',
+    'r': 'right-to-left',
+    't': 'top-to-bottom',
+}
+
 ###################################################################################################
 # canvas operations
 
@@ -144,9 +151,9 @@ def render(
         missing='default'
     ):
     """Render text string to bitmap."""
-    direction, align = _get_direction(text, direction)
+    direction, line_direction, align = _get_direction(text, direction)
     # get glyphs for rendering
-    glyphs = _get_text_glyphs(font, text, direction=direction, missing=missing)
+    glyphs = _get_text_glyphs(font, text, direction, line_direction, missing)
     margin_x, margin_y = margin
     if direction == 'top-to-bottom':
         canvas = _get_canvas_vertical(font, glyphs, margin_x, margin_y)
@@ -197,7 +204,7 @@ def _render_vertical(font, glyphs, canvas, margin_x, margin_y):
     # central axis (with leftward bias)
     baseline = margin_x + int(font.line_width / 2)
     # default is ttb right-to-left
-    for glyph_row in reversed(glyphs):
+    for glyph_row in glyphs:
         y = 0
         for glyph in glyph_row:
             # advance origin to next glyph
@@ -251,22 +258,43 @@ def _get_canvas_vertical(font, glyphs, margin_x, margin_y):
 
 def _get_direction(text, direction):
     """Get direction and alignment."""
-    if direction.startswith('t'):
-        return 'top-to-bottom', 'right'
     isstr = isinstance(text, str)
     if not direction:
         if isstr:
-            direction = 'normal'
+            direction = 'n'
         else:
-            direction = 'left-to-right'
-    if direction[0] not in ('n', 'r', 'l'):
+            direction = 'l'
+    direction = direction.lower()
+    # get line advance direction if given
+    direction, _, line_direction = direction.partition(' ')
+    try:
+        direction = DIRECTIONS[direction[0]]
+    except KeyError:
         raise ValueError(
             'Writing direction must be one of '
             '`n`==`normal`, `l`==`left-to-right`, '
             '`r`==`right-to-left`, `t`==`top-to-bottom`; '
             f'not `{direction}`.'
         )
-    if direction.startswith('n'):
+    if not line_direction or line_direction.startswith('n'):
+        if direction == 'top-to-bottom':
+            line_direction = 'r'
+        else:
+            line_direction = 't'
+    try:
+        line_direction = DIRECTIONS[line_direction[0]]
+    except KeyError:
+        raise ValueError(
+            'Line direction must be one of '
+            '`n`==`normal`, `l`==`left-to-right`, '
+            '`r`==`right-to-left`, `t`==`top-to-bottom`; '
+            f'not `{direction}`.'
+        )
+    if direction == 'left-to-right':
+        align = 'left'
+    elif direction == 'right-to-left':
+        align = 'right'
+    elif direction == 'normal':
         if not isstr:
             raise ValueError(
                 f'Writing direction `{direction}` only supported for Unicode text.'
@@ -284,14 +312,14 @@ def _get_direction(text, direction):
             if bidicls in ('R', 'A'):
                 align = 'right'
                 break
-        return 'normal', align
-    elif direction.startswith('r'):
-        return 'right-to-left', 'right'
+    elif line_direction == 'right-to-left':
+        align = 'left'
     else:
-        return 'left-to-right', 'left'
+        align = 'right'
+    return direction, line_direction, align
 
 
-def _get_text_glyphs(font, text, direction, missing='raise'):
+def _get_text_glyphs(font, text, direction, line_direction, missing='raise'):
     """Get tuple of tuples of glyphs (by line) from str or bytes/codepoints input."""
     if direction != 'top-to-bottom':
         if isinstance(text, str):
@@ -307,11 +335,15 @@ def _get_text_glyphs(font, text, direction, missing='raise'):
                 # decide direction based on bidi algorithm
                 text = get_display(text)
         if direction == 'right-to-left':
-            # reverse writing order
+            # reverse glyph order
             text = text[::-1]
+    lines = text.splitlines()
+    if line_direction in ('right-to-left', 'bottom-to-top'):
+        # reverse line order
+        lines = lines[::-1]
     return tuple(
         tuple(_iter_labels(font, _line, missing))
-        for _line in text.splitlines()
+        for _line in lines
     )
 
 def _iter_labels(font, text, missing='raise'):
