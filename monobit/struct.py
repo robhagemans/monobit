@@ -219,7 +219,6 @@ def writable_property(arg=None, *, field=None):
     fn = arg
     field = field or fn.__name__
     field = normalise_property(field)
-
     cached_fn = delayed_cache(fn)
 
     @wraps(fn)

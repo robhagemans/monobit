@@ -196,6 +196,13 @@ class FontProperties(DefaultProps):
     source_format: str
     history: str
 
+    # type converters for compatibility synonyms
+    tracking: int
+    offset: Coord.create
+    average_advance: number
+    max_advance: int
+    cap_advance: int
+
 
     @writable_property
     def name(self):
