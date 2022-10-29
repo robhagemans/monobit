@@ -251,24 +251,29 @@ def _get_canvas_vertical(font, glyphs, margin_x, margin_y):
 
 def _get_direction(text, direction):
     """Get direction and alignment."""
-    if direction == 'top-to-bottom':
-        return direction, 'right'
+    if direction.startswith('t'):
+        return 'top-to-bottom', 'right'
     isstr = isinstance(text, str)
     if not direction:
         if isstr:
             direction = 'normal'
         else:
             direction = 'left-to-right'
-    if direction not in ('normal', 'right-to-left', 'left-to-right'):
-        raise ValueError(f'Unsupported writing direction `{direction}`')
-    left_align = True
-    if direction == 'normal':
+    if direction[0] not in ('n', 'r', 'l'):
+        raise ValueError(
+            'Writing direction must be one of '
+            '`n`==`normal`, `l`==`left-to-right`, '
+            '`r`==`right-to-left`, `t`==`top-to-bottom`; '
+            f'not `{direction}`.'
+        )
+    if direction.startswith('n'):
         if not isstr:
             raise ValueError(
                 f'Writing direction `{direction}` only supported for Unicode text.'
             )
         # determine alignment
         # by the class of the first directional character encountered
+        align = 'left'
         for c in text:
             try:
                 bidicls = bidirectional(c)[0]
@@ -277,11 +282,13 @@ def _get_direction(text, direction):
             if bidicls == 'L':
                 break
             if bidicls in ('R', 'A'):
-                left_align = False
+                align = 'right'
                 break
-    elif direction == 'right-to-left':
-        left_align = False
-    return direction, 'left' if left_align else 'right'
+        return 'normal', align
+    elif direction.startswith('r'):
+        return 'right-to-left', 'right'
+    else:
+        return 'left-to-right', 'left'
 
 
 def _get_text_glyphs(font, text, direction, missing='raise'):
