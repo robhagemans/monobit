@@ -186,7 +186,7 @@ class Raster:
     @scriptable
     def roll(self, down:int=0, right:int=0):
         """
-        Cycle rows and/or columns in glyph.
+        Cycle rows and/or columns in raster.
 
         down: number of rows to roll (down if positive, up if negative)
         right: number of columns to roll (to right if positive, to left if negative)
@@ -201,10 +201,9 @@ class Raster:
             )
         return rolled
 
-    @scriptable
     def shift(self, *, left:int=0, down:int=0, right:int=0, up:int=0):
         """
-        Shift rows and/or columns in glyph, replacing with paper
+        Shift rows and/or columns in raster, replacing with paper
 
         left: number of columns to move to left
         down: number of rows to move down
@@ -324,6 +323,7 @@ class Raster:
         )
         return type(self)(pixels, _0=_0, _1=_1)
 
+
     def stretch(self, factor_x:int=1, factor_y:int=1):
         """
         Repeat rows and/or columns.
@@ -339,29 +339,6 @@ class Raster:
             for _row in glyph
         )
         return self.modify(glyph)
-
-
-    @scriptable
-    def smear(self, *, left:int=0, right:int=0, up:int=0, down:int=0):
-        """
-        Repeat inked pixels.
-
-        left: number of times to repeat inked pixel leftwards
-        right: number of times to repeat inked pixel rightwards
-        up: number of times to repeat inked pixel upwards
-        down: number of times to repeat inked pixel downwards
-        """
-        # make space on canvas, if there is not enough padding
-        pleft, pdown, pright, pup = self.padding
-        work = self.expand(
-            max(0, left-pleft), max(0, down-pdown),
-            max(0, right-pright), max(0, up-pup)
-        )
-        work = work.overlay(work.shift(left=_i+1) for _i in range(left))
-        work = work.overlay(work.shift(right=_i+1) for _i in range(right))
-        work = work.overlay(work.shift(up=_i+1) for _i in range(up))
-        work = work.overlay(work.shift(down=_i+1) for _i in range(down))
-        return work
 
 
     def shrink(self, factor_x:int=1, factor_y:int=1, force:bool=False):
@@ -383,3 +360,27 @@ class Raster:
         # horizontal stretch
         shrunk_glyph = tuple(_row[::factor_x] for _row in shrunk_glyph)
         return self.modify(shrunk_glyph)
+
+    def smear(self, *, left:int=0, right:int=0, up:int=0, down:int=0, **kwargs):
+        """
+        Repeat inked pixels.
+
+        left: number of times to repeat inked pixel leftwards
+        right: number of times to repeat inked pixel rightwards
+        up: number of times to repeat inked pixel upwards
+        down: number of times to repeat inked pixel downwards
+        """
+        # make space on canvas, if there is not enough padding
+        pleft, pdown, pright, pup = self.padding
+        work = self.expand(
+            max(0, left-pleft), max(0, down-pdown),
+            max(0, right-pright), max(0, up-pup),
+            **kwargs
+        )
+        work = work.overlay(work.shift(left=_i+1) for _i in range(left))
+        work = work.overlay(work.shift(right=_i+1) for _i in range(right))
+        work = work.overlay(work.shift(up=_i+1) for _i in range(up))
+        work = work.overlay(work.shift(down=_i+1) for _i in range(down))
+        return work
+
+

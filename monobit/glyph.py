@@ -603,3 +603,23 @@ class Glyph(Raster):
                 shift_left=self.shift_left // factor_x,
             )
         return glyph
+
+
+    @scriptable
+    def smear(
+            self, *, left:int=0, right:int=0, up:int=0, down:int=0,
+            adjust_metrics:bool=True
+        ):
+        """
+        Repeat inked pixels.
+
+        left: number of times to repeat inked pixel leftwards
+        right: number of times to repeat inked pixel rightwards
+        up: number of times to repeat inked pixel upwards
+        down: number of times to repeat inked pixel downwards
+        adjust_metrics: ensure advances stay the same (default: True)
+        """
+        return super().smear(
+                left=left, right=right, up=up, down=down,
+                adjust_metrics=adjust_metrics
+        )
