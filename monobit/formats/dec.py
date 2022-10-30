@@ -259,15 +259,12 @@ def _convert_drcs_glyph(glyphdef):
         for _block in glyphdef.split(b'/')
     )
     glyphbytes = zip(*glyphbytes)
-    glyphstrs = (
-        ''.join(f'{_b:06b}' for _b in reversed(_pair))
+    glyphstrs = tuple(
+        ''.join(f'{_b:06b}' for _b in _pair[::-1])
         for _pair in glyphbytes
     )
-    glyph = Glyph(
-        tuple(_c == '1' for _c in _row)
-        for _row in glyphstrs
-    )
-    return glyph.rotate(turns=3)
+    glyph = Glyph(glyphstrs, _0='0', _1='1')
+    return glyph.turn(anti=1)
 
 
 def _parse_drcs_glyphs(glyphdefs, first_codepoint):

@@ -203,7 +203,7 @@ def _render_horizontal(font, glyphs, canvas, margin_x, margin_y, align):
 
 def _render_vertical(font, glyphs, canvas, margin_x, margin_y, align):
     # central axis (with leftward bias)
-    baseline = int(font.line_width / 2)
+    baseline = font.line_width // 2
     # default is ttb right-to-left
     for glyph_row in glyphs:
         y = 0
@@ -215,7 +215,7 @@ def _render_vertical(font, glyphs, canvas, margin_x, margin_y, align):
                 y - (font.bottom_bearing + glyph.bottom_bearing)
             )
             grid_x.append(
-                baseline - int(glyph.width / 2) - (font.shift_left + glyph.shift_left)
+                baseline - glyph.width // 2 - (font.shift_left + glyph.shift_left)
             )
         if align == 'bottom':
             start = len(canvas) - margin_y - y

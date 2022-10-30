@@ -166,10 +166,6 @@ class Raster:
     ###############################################################################################
     # operations
 
-    def reduce(self):
-        """Return a glyph reduced to the bounding box."""
-        return self.crop(*self.padding)
-
     def superimposed(self, other):
         """Superimpose another glyph of the same size."""
         return self.modify(
@@ -192,12 +188,10 @@ class Raster:
         return combined
 
 
-    @scriptable
     def mirror(self):
         """Reverse pixels horizontally."""
         return self.modify(tuple(_row[::-1] for _row in self._pixels))
 
-    @scriptable
     def flip(self):
         """Reverse pixels vertically."""
         return self.modify(self._pixels[::-1])
@@ -214,22 +208,36 @@ class Raster:
         if self.height > 1 and rows:
             rolled = rolled.modify(rolled._pixels[-rows:] + rolled._pixels[:-rows])
         if self.width > 1 and columns:
-            rolled = rolled.modify(tuple(_row[-columns:] + _row[:-columns] for _row in rolled._pixels))
+            rolled = rolled.modify(
+                tuple(_row[-columns:] + _row[:-columns] for _row in rolled._pixels)
+            )
         return rolled
 
-    @scriptable
     def transpose(self):
         """Transpose glyph."""
         return self.modify(tuple(tuple(_x) for _x in zip(*self._pixels)))
 
+    @staticmethod
+    def _calc_turns(clockwise, anti):
+        if clockwise is NOT_SET:
+            if anti is NOT_SET:
+                clockwise, anti = 1, 0
+            else:
+                clockwise = 0
+        elif anti is NOT_SET:
+            anti = 0
+        turns = (clockwise - anti) % 4
+        return turns
+
     @scriptable
-    def rotate(self, turns:int=1):
+    def turn(self, *, clockwise:int=NOT_SET, anti:int=NOT_SET):
         """
         Rotate by 90-degree turns.
 
-        turns: number of turns to rotate (clockwise if positive)
+        clockwise: number of turns to rotate clockwise (default: 1)
+        anti: number of turns to rotate anti-clockwise
         """
-        turns %= 4
+        turns = self._calc_turns(clockwise, anti)
         if turns == 3:
             return self.transpose().flip()
         elif turns == 2:
@@ -241,9 +249,9 @@ class Raster:
     @scriptable
     def invert(self):
         """Reverse video."""
-        return self.modify(tuple(tuple((not _col) for _col in _row) for _row in self._pixels))
+        return self.modify(_0=self._1, _1=self._0)
 
-    @scriptable
+
     def crop(self, left:int=0, bottom:int=0, right:int=0, top:int=0):
         """
         Crop glyph.
@@ -253,12 +261,13 @@ class Raster:
         right: number of columns to remove from right
         top: number of rows to remove from top
         """
+        if min(left, bottom, right, top) < 0:
+            raise ValueError('Can only crop glyph by a positive amount.')
         return self.modify(tuple(
             _row[left : (-right if right else None)]
             for _row in self._pixels[top : (-bottom if bottom else None)]
         ))
 
-    @scriptable
     def expand(self, left:int=0, bottom:int=0, right:int=0, top:int=0):
         """
         Add blank space.
@@ -287,7 +296,6 @@ class Raster:
         )
         return type(self)(pixels, _0=_0, _1=_1)
 
-    @scriptable
     def stretch(self, factor_x:int=1, factor_y:int=1):
         """
         Repeat rows and/or columns.
@@ -308,14 +316,15 @@ class Raster:
     @scriptable
     def smear(self, *, left:int=0, right:int=0, up:int=0, down:int=0):
         """
-        Repeat ink on unchanged canvas size
+        Repeat inked pixels
 
         left: number of times to repeat inked pixel leftwards
         right: number of times to repeat inked pixel rightwards
         up: number of times to repeat inked pixel upwards
         down: number of times to repeat inked pixel downwards
         """
-        work = self.modify()
+        # make space on canvas, assuming there is no padding
+        work = self.expand(left, down, right, up)
         for _ in range(left):
             work = work.superimposed(work.crop(left=1).expand(right=1))
         for _ in range(right):
@@ -327,7 +336,6 @@ class Raster:
         return work
 
 
-    @scriptable
     def shrink(self, factor_x:int=1, factor_y:int=1, force:bool=False):
         """
         Remove rows and/or columns.

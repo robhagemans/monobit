@@ -22,6 +22,7 @@ from .struct import (
     writable_property, as_tuple, checked_property
 )
 from .basetypes import Coord, Bounds, number
+from .scripting import scriptable
 
 
 ##############################################################################
@@ -243,6 +244,7 @@ class Glyph(Raster):
             self, pixels=NOT_SET, *,
             labels=NOT_SET, tag=NOT_SET, char=NOT_SET, codepoint=NOT_SET,
             comment=NOT_SET,
+            _0=NOT_SET, _1=NOT_SET,
             **kwargs
         ):
         """Return a copy of the glyph with changes."""
@@ -258,6 +260,10 @@ class Glyph(Raster):
             labels = self._labels
         if comment is NOT_SET:
             comment = self._comment
+        if _0 is NOT_SET:
+            _0 = self._0
+        if _1 is NOT_SET:
+            _1 = self._1
         return type(self)(
             tuple(pixels),
             labels=labels,
@@ -265,7 +271,7 @@ class Glyph(Raster):
             char=char,
             tag=tag,
             comment=comment,
-            _0=self._0, _1=self._1,
+            _0=_0, _1=_1,
             **{**self.properties, **kwargs}
         )
 
@@ -422,3 +428,178 @@ class Glyph(Raster):
     def get_labels(self):
         """Get glyph labels."""
         return self._labels
+
+
+    ##########################################################################
+    # glyph operations
+
+    @scriptable
+    def reduce(self, *, adjust_metrics:bool=True):
+        """
+        Return a glyph reduced to the bounding box.
+
+        adjust_metrics: make the operation render-invariant (default: True)
+        """
+        return self.crop(*self.padding, adjust_metrics=adjust_metrics)
+
+
+    #def overlay(self, *glyphs):
+    #    """Superimpose other glyphs."""
+
+
+    @scriptable
+    def mirror(self, *, adjust_metrics:bool=True):
+        """
+        Reverse pixels horizontally.
+
+        adjust_metrics: also reverse metrics (default: True)
+        """
+        glyph = super().mirror()
+        if adjust_metrics:
+            return glyph.modify(
+                left_bearing=self.right_bearing,
+                right_bearing=self.left_bearing,
+                #shift_left around central axis, so should differ at most 1 pixel
+            )
+        return glyph
+
+    @scriptable
+    def flip(self, *, adjust_metrics:bool=True):
+        """
+        Reverse pixels vertically.
+
+        adjust_metrics: also reverse metrics (default: True)
+        """
+        glyph = super().flip()
+        if adjust_metrics:
+            return glyph.modify(
+                top_bearing=self.top_bearing,
+                bottom_bearing=self.bottom_bearing,
+                #shift_up ?
+            )
+        # Font should adjust ascent <-> descent and global bearings
+        return glyph
+
+    @scriptable
+    def transpose(self, *, adjust_metrics:bool=True):
+        """
+        Transpose glyph.
+
+        adjust_metrics: also transpose metrics (default: True)
+        """
+        glyph = super().transpose()
+        if adjust_metrics:
+            return glyph.modify(
+                top_bearing=self.right_bearing,
+                right_bearing=self.top_bearing,
+                left_bearing=self.bottom_bearing,
+                bottom_bearing=self.left_bearing,
+                shift_left=self.shift_up+self.height//2,
+                shift_up=-self.shift_left+self.width//2
+            )
+
+    @scriptable
+    def crop(
+            self, left:int=0, bottom:int=0, right:int=0, top:int=0,
+            *, adjust_metrics:bool=True
+        ):
+        """
+        Crop the raster.
+
+        left: number of columns to remove from left
+        bottom: number of rows to remove from bottom
+        right: number of columns to remove from right
+        top: number of rows to remove from top
+        adjust_metrics: make the operation render-invariant (default: True)
+        """
+        # reduce raster
+        glyph = super().crop(left, bottom, right, top)
+        if adjust_metrics:
+            return glyph.modify(
+                # horizontal metrics
+                left_bearing=self.left_bearing + left,
+                right_bearing=self.right_bearing + right,
+                shift_up=self.shift_up + bottom,
+                # vertical metrics
+                top_bearing=self.top_bearing + top,
+                bottom_bearing=self.bottom_bearing + bottom,
+                shift_left=self.shift_left + self.width//2 - glyph.width//2,
+            )
+        # a Font may also have to ensure line_height remains unchanged
+        return glyph
+
+    @scriptable
+    def expand(
+            self, left:int=0, bottom:int=0, right:int=0, top:int=0,
+            *, adjust_metrics:bool=True
+        ):
+        """
+        Add blank space to raster.
+
+        left: number of columns to add on left
+        bottom: number of rows to add on bottom
+        right: number of columns to add on right
+        top: number of rows to add on top
+        adjust_metrics: make the operation render-invariant (default: True)
+        """
+        # reduce raster
+        glyph = super().expand(left, bottom, right, top)
+        if adjust_metrics:
+            return glyph.modify(
+                # horizontal metrics
+                left_bearing=self.left_bearing - left,
+                right_bearing=self.right_bearing - right,
+                shift_up=self.shift_up - bottom,
+                # vertical metrics
+                top_bearing=self.top_bearing - top,
+                bottom_bearing=self.bottom_bearing - bottom,
+                shift_left=self.shift_left + self.width//2 - glyph.width//2,
+            )
+        # a Font may also have to ensure line_height remains unchanged
+        return glyph
+
+    @scriptable
+    def stretch(self, factor_x:int=1, factor_y:int=1, *, adjust_metrics:bool=True):
+        """
+        Stretch glyph by repeating rows and/or columns.
+
+        factor_x: number of times to repeat horizontally
+        factor_y: number of times to repeat vertically
+        adjust_metrics: also stretch metrics (default: True)
+        """
+        glyph = super().stretch(factor_x, factor_y)
+        if adjust_metrics:
+            return glyph.modify(
+                left_bearing=factor_x*self.left_bearing,
+                right_bearing=factor_x*self.right_bearing,
+                top_bearing=factor_y*self.top_bearing,
+                bottom_bearing=factor_y*self.bottom_bearing,
+                shift_up=factor_y*self.shift_up,
+                shift_left=factor_x*self.shift_left,
+            )
+        return glyph
+
+    @scriptable
+    def shrink(
+            self, factor_x:int=1, factor_y:int=1,
+            *, force:bool=False, adjust_metrics:bool=True
+        ):
+        """
+        Remove rows and/or columns.
+
+        factor_x: factor to shrink horizontally
+        factor_y: factor to shrink vertically
+        force: remove rows/columns even if not repeated
+        adjust_metrics: also stretch metrics (default: True)
+        """
+        glyph = super().shrink(factor_x, factor_y)
+        if adjust_metrics:
+            return glyph.modify(
+                left_bearing=self.left_bearing // factor_x,
+                right_bearing=self.right_bearing // factor_x,
+                top_bearing=self.top_bearing // factor_y,
+                bottom_bearing=self.bottom_bearing // factor_y,
+                shift_up=self.shift_up // factor_y,
+                shift_left=self.shift_left // factor_x,
+            )
+        return glyph
