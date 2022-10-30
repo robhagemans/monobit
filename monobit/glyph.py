@@ -431,7 +431,7 @@ class Glyph(Raster):
 
 
     ##########################################################################
-    # glyph operations
+    # glyph transformations
 
     @scriptable
     def reduce(self, *, adjust_metrics:bool=True):

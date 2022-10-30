@@ -166,27 +166,14 @@ class Raster:
     ###############################################################################################
     # operations
 
-    def superimposed(self, other):
-        """Superimpose another glyph of the same size."""
-        return self.modify(
-            tuple(
-                _pix or _pix1
-                for _pix, _pix1 in zip(_row, _row1)
-            )
-            for _row, _row1 in zip(self._pixels, other._pixels)
-        )
-
-    @classmethod
-    def superimpose(cls, glyphs):
-        glyph_iter = iter(glyphs)
-        try:
-            combined = next(glyph_iter)
-        except StopIteration:
-            return cls()
-        for glyph in glyph_iter:
-            combined = combined.superimposed(glyph)
-        return combined
-
+    def overlay(self, *others):
+        """Overlay equal-sized rasters."""
+        # use as instance method or class method
+        others = (self, *tuple(*others))
+        matrices = tuple(_r.as_matrix() for _r in others)
+        rows = tuple(zip(*_row) for _row in zip(*matrices))
+        combined = tuple(tuple(any(_item) for _item in _row) for _row in rows)
+        return self.modify(combined, _0=False, _1=True)
 
     def mirror(self):
         """Reverse pixels horizontally."""
@@ -197,14 +184,15 @@ class Raster:
         return self.modify(self._pixels[::-1])
 
     @scriptable
-    def roll(self, rows:int=0, columns:int=0):
+    def roll(self, down:int=0, right:int=0):
         """
         Cycle rows and/or columns in glyph.
 
-        rows: number of rows to roll (down if positive)
-        columns: number of columns to roll (to right if positive)
+        down: number of rows to roll (down if positive, up if negative)
+        right: number of columns to roll (to right if positive, to left if negative)
         """
         rolled = self
+        rows, columns = down, right
         if self.height > 1 and rows:
             rolled = rolled.modify(rolled._pixels[-rows:] + rolled._pixels[:-rows])
         if self.width > 1 and columns:
@@ -212,6 +200,46 @@ class Raster:
                 tuple(_row[-columns:] + _row[:-columns] for _row in rolled._pixels)
             )
         return rolled
+
+    @scriptable
+    def shift(self, *, left:int=0, down:int=0, right:int=0, up:int=0):
+        """
+        Shift rows and/or columns in glyph, replacing with paper
+
+        left: number of columns to move to left
+        down: number of rows to move down
+        right: number of columns to move to right
+        up: number of rows to move up
+        """
+        if min(left, down, right, up) < 0:
+            raise ValueError('Can only shift glyph by a positive amount.')
+        rows = down - up
+        columns = right - left
+        _0, _1 = '0', '1'
+        pixels = tuple(
+            ''.join(_row)
+            for _row in self.as_matrix(paper=_0, ink=_1)
+        )
+        empty_row = _0 * self.width
+        if rows > 0:
+            shifted = self.modify(
+                (empty_row,) * rows + pixels[:-rows], _0=_0, _1=_1
+            )
+        elif rows <= 0:
+            shifted = self.modify(
+                pixels[-rows:] + (empty_row,) * -rows, _0=_0, _1=_1
+            )
+        if columns > 0:
+            return shifted.modify(
+                tuple(_0 * columns + _row[:-columns] for _row in shifted._pixels),
+                _0=_0, _1=_1
+            )
+        else:
+            return shifted.modify(
+                tuple(_row[-columns:] + _0 * -columns for _row in shifted._pixels),
+                _0=_0, _1=_1
+            )
+
 
     def transpose(self):
         """Transpose glyph."""
@@ -291,7 +319,7 @@ class Raster:
         empty_row = _0 * new_width
         pixels = (
             (empty_row,) * top
-            + tuple(_0 * left + _row + _0 * right for _row in self._pixels)
+            + tuple(_0 * left + _row + _0 * right for _row in pixels)
             + (empty_row,) * bottom
         )
         return type(self)(pixels, _0=_0, _1=_1)
@@ -316,23 +344,23 @@ class Raster:
     @scriptable
     def smear(self, *, left:int=0, right:int=0, up:int=0, down:int=0):
         """
-        Repeat inked pixels
+        Repeat inked pixels.
 
         left: number of times to repeat inked pixel leftwards
         right: number of times to repeat inked pixel rightwards
         up: number of times to repeat inked pixel upwards
         down: number of times to repeat inked pixel downwards
         """
-        # make space on canvas, assuming there is no padding
-        work = self.expand(left, down, right, up)
-        for _ in range(left):
-            work = work.superimposed(work.crop(left=1).expand(right=1))
-        for _ in range(right):
-            work = work.superimposed(work.crop(right=1).expand(left=1))
-        for _ in range(up):
-            work = work.superimposed(work.crop(top=1).expand(bottom=1))
-        for _ in range(down):
-            work = work.superimposed(work.crop(bottom=1).expand(top=1))
+        # make space on canvas, if there is not enough padding
+        pleft, pdown, pright, pup = self.padding
+        work = self.expand(
+            max(0, left-pleft), max(0, down-pdown),
+            max(0, right-pright), max(0, up-pup)
+        )
+        work = work.overlay(work.shift(left=_i+1) for _i in range(left))
+        work = work.overlay(work.shift(right=_i+1) for _i in range(right))
+        work = work.overlay(work.shift(up=_i+1) for _i in range(up))
+        work = work.overlay(work.shift(down=_i+1) for _i in range(down))
         return work
 
 
