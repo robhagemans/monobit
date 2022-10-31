@@ -9,13 +9,7 @@ import unittest
 
 import monobit
 from monobit import Glyph, Tag, Codepoint, Char
-from .base import BaseTester
-
-def get_stringio(string):
-    """Workaround as our streams require a buffer to be available."""
-    return io.TextIOWrapper(
-        io.BufferedReader(io.BytesIO(string.encode()))
-    )
+from .base import BaseTester, get_stringio
 
 
 class TestYaff(BaseTester):
