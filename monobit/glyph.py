@@ -459,6 +459,7 @@ class Glyph(Raster):
             return glyph.modify(
                 left_bearing=self.right_bearing,
                 right_bearing=self.left_bearing,
+                shift_left=-self.shift_left
                 #shift_left around central axis, so should differ at most 1 pixel
             )
         return glyph
@@ -473,9 +474,10 @@ class Glyph(Raster):
         glyph = super().flip()
         if adjust_metrics:
             return glyph.modify(
-                top_bearing=self.top_bearing,
-                bottom_bearing=self.bottom_bearing,
-                #shift_up ?
+                top_bearing=self.bottom_bearing,
+                bottom_bearing=self.top_bearing,
+                # flip about baseline
+                shift_up=-self.height - self.shift_up
             )
         # Font should adjust ascent <-> descent and global bearings
         return glyph
