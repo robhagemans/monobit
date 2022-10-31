@@ -173,6 +173,42 @@ class TestYaff(BaseTester):
         assert m.comment == one.comment
 
 
+    def test_turn2(self):
+        file = get_stringio(test)
+        f,  *_ = monobit.load(file)
+        one = f.glyphs[0]
+        m = one.turn(2)
+        assert m.as_text() == '\n'.join((
+            '........',
+            '........',
+            '........',
+            '.@@@@@@.',
+            '...@@...',
+            '...@@...',
+            '...@@...',
+            '...@@...',
+            '...@@...',
+            '...@@...',
+            '...@@...',
+            '...@@@@.',
+            '...@@@..',
+            '...@@...',
+            '........',
+            '........\n'
+        )), m
+        # metrics
+        assert m.right_bearing == one.left_bearing
+        assert m.left_bearing == one.right_bearing
+        assert m.top_bearing == one.bottom_bearing
+        assert m.bottom_bearing == one.top_bearing
+        # TODO: is this also correct for odd size glyphs?
+        assert m.shift_left == -one.shift_left
+        assert m.shift_up == -one.height - one.shift_up
+        # non-metrics preserved
+        assert m.test == one.test
+        assert m.comment == one.comment
+
+
 
 if __name__ == '__main__':
     unittest.main()
