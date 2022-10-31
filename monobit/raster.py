@@ -257,7 +257,7 @@ class Raster:
         return turns
 
     @scriptable
-    def turn(self, *, clockwise:int=NOT_SET, anti:int=NOT_SET):
+    def turn(self, clockwise:int=NOT_SET, *, anti:int=NOT_SET):
         """
         Rotate by 90-degree turns.
 
