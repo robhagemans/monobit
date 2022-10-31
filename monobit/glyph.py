@@ -596,14 +596,13 @@ class Glyph(Raster):
     @scriptable
     def shrink(
             self, factor_x:int=1, factor_y:int=1,
-            *, force:bool=False, adjust_metrics:bool=True
+            *, adjust_metrics:bool=True
         ):
         """
         Remove rows and/or columns.
 
         factor_x: factor to shrink horizontally
         factor_y: factor to shrink vertically
-        force: remove rows/columns even if not repeated
         adjust_metrics: also stretch metrics (default: True)
         """
         glyph = super().shrink(factor_x, factor_y)

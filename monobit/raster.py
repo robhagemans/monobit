@@ -324,23 +324,16 @@ class Raster:
         )
         return self.modify(glyph)
 
-    def shrink(self, factor_x:int=1, factor_y:int=1, force:bool=False):
+    def shrink(self, factor_x:int=1, factor_y:int=1):
         """
         Remove rows and/or columns.
 
         factor_x: factor to shrink horizontally
         factor_y: factor to shrink vertically
-        force: remove rows/columns even if not repeated
         """
         # vertical shrink
         shrunk_glyph = self._pixels[::factor_y]
-        if not force:
-            # check we're not throwing away stuff
-            for offs in range(1, factor_y):
-                alt = self._pixels[offs::factor_y]
-                if shrunk_glyph != alt:
-                    raise ValueError("can't shrink glyph without loss")
-        # horizontal stretch
+        # horizontal shrink
         shrunk_glyph = tuple(_row[::factor_x] for _row in shrunk_glyph)
         return self.modify(shrunk_glyph)
 
