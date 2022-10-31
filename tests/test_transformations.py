@@ -233,6 +233,18 @@ class TestYaff(BaseTester):
         assert m.test == one.test
         assert m.comment == one.comment
 
+    def test_turn_equalities(self):
+        file = get_stringio(test)
+        f,  *_ = monobit.load(file)
+        one = f.glyphs[0]
+        assert one.turn(4) == one
+        assert one.turn(1).turn(-1) == one
+        assert one.turn(2).turn(-2) == one
+        assert one.turn(3).turn(-3) == one
+        assert one.turn().turn().turn().turn() == one
+        assert one.turn(2) == one.turn().turn()
+        assert one.turn(3) == one.turn().turn().turn()
+
 
 if __name__ == '__main__':
     unittest.main()
