@@ -146,6 +146,33 @@ class TestYaff(BaseTester):
         assert m.test == one.test
         assert m.comment == one.comment
 
+    def test_turn(self):
+        file = get_stringio(test)
+        f,  *_ = monobit.load(file)
+        one = f.glyphs[0]
+        m = one.turn()
+        assert m.as_text() == '\n'.join((
+            '................',
+            '...@.......@....',
+            '...@.......@@...',
+            '...@@@@@@@@@@@..',
+            '...@@@@@@@@@@@..',
+            '...@............',
+            '...@............',
+            '................\n',
+        )), m
+        # metrics
+        assert m.right_bearing == one.top_bearing
+        assert m.left_bearing == one.bottom_bearing
+        assert m.top_bearing == one.left_bearing
+        assert m.bottom_bearing == one.right_bearing
+        assert m.shift_left == -one.height//2 - one.shift_up
+        assert m.shift_up == -one.width//2 + one.shift_left
+        # non-metrics preserved
+        assert m.test == one.test
+        assert m.comment == one.comment
+
+
 
 if __name__ == '__main__':
     unittest.main()
