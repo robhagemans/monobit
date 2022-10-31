@@ -492,12 +492,12 @@ class Glyph(Raster):
         glyph = super().transpose()
         if adjust_metrics:
             return glyph.modify(
-                top_bearing=self.right_bearing,
-                right_bearing=self.top_bearing,
-                left_bearing=self.bottom_bearing,
-                bottom_bearing=self.left_bearing,
+                top_bearing=self.left_bearing,
+                left_bearing=self.top_bearing,
+                right_bearing=self.bottom_bearing,
+                bottom_bearing=self.right_bearing,
                 shift_left=self.shift_up+self.height//2,
-                shift_up=-self.shift_left+self.width//2
+                shift_up=self.shift_left-self.width//2
             )
 
     @scriptable
