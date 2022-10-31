@@ -267,6 +267,35 @@ class TestYaff(BaseTester):
         assert m.advance_height == one.advance_height
         assert m.shift_up == one.shift_up + one.padding.bottom
 
+    def test_expand(self):
+        file = get_stringio(test)
+        f,  *_ = monobit.load(file)
+        one = f.glyphs[0]
+        m = one.expand(1, 1, 1, 1)
+        assert m.as_text() == '\n'.join((
+            '..........',
+            '..........',
+            '..........',
+            '....@@....',
+            '...@@@....',
+            '..@@@@....',
+            '....@@....',
+            '....@@....',
+            '....@@....',
+            '....@@....',
+            '....@@....',
+            '....@@....',
+            '....@@....',
+            '..@@@@@@..',
+            '..........',
+            '..........',
+            '..........',
+            '..........\n',
+        ))
+        assert m.advance_width == one.advance_width
+        assert m.advance_height == one.advance_height
+        assert m.shift_up == one.shift_up - 1
+
 
 if __name__ == '__main__':
     unittest.main()
