@@ -163,17 +163,8 @@ class Raster:
         """Convert glyph to hex string."""
         return self.as_bytes(align=align).hex()
 
-    ###############################################################################################
-    # operations
-
-    def overlay(self, *others):
-        """Overlay equal-sized rasters."""
-        # use as instance method or class method
-        others = (self, *tuple(*others))
-        matrices = tuple(_r.as_matrix() for _r in others)
-        rows = tuple(zip(*_row) for _row in zip(*matrices))
-        combined = tuple(tuple(any(_item) for _item in _row) for _row in rows)
-        return self.modify(combined, _0=False, _1=True)
+    ##########################################################################
+    # transformations
 
     def mirror(self):
         """Reverse pixels horizontally."""
@@ -182,6 +173,40 @@ class Raster:
     def flip(self):
         """Reverse pixels vertically."""
         return self.modify(self._pixels[::-1])
+
+    def transpose(self):
+        """Transpose glyph."""
+        return self.modify(tuple(tuple(_x) for _x in zip(*self._pixels)))
+
+    @staticmethod
+    def _calc_turns(clockwise, anti):
+        if clockwise is NOT_SET:
+            if anti is NOT_SET:
+                clockwise, anti = 1, 0
+            else:
+                clockwise = 0
+        elif anti is NOT_SET:
+            anti = 0
+        turns = (clockwise - anti) % 4
+        return turns
+
+    @scriptable
+    def turn(self, clockwise:int=NOT_SET, *, anti:int=NOT_SET):
+        """
+        Rotate by 90-degree turns.
+
+        clockwise: number of turns to rotate clockwise (default: 1)
+        anti: number of turns to rotate anti-clockwise
+        """
+        turns = self._calc_turns(clockwise, anti)
+        if turns == 3:
+            return self.transpose().flip()
+        elif turns == 2:
+            return self.mirror().flip()
+        elif turns == 1:
+            return self.transpose().mirror()
+        return self
+
 
     @scriptable
     def roll(self, down:int=0, right:int=0):
@@ -239,46 +264,6 @@ class Raster:
                 _0=_0, _1=_1
             )
 
-
-    def transpose(self):
-        """Transpose glyph."""
-        return self.modify(tuple(tuple(_x) for _x in zip(*self._pixels)))
-
-    @staticmethod
-    def _calc_turns(clockwise, anti):
-        if clockwise is NOT_SET:
-            if anti is NOT_SET:
-                clockwise, anti = 1, 0
-            else:
-                clockwise = 0
-        elif anti is NOT_SET:
-            anti = 0
-        turns = (clockwise - anti) % 4
-        return turns
-
-    @scriptable
-    def turn(self, clockwise:int=NOT_SET, *, anti:int=NOT_SET):
-        """
-        Rotate by 90-degree turns.
-
-        clockwise: number of turns to rotate clockwise (default: 1)
-        anti: number of turns to rotate anti-clockwise
-        """
-        turns = self._calc_turns(clockwise, anti)
-        if turns == 3:
-            return self.transpose().flip()
-        elif turns == 2:
-            return self.mirror().flip()
-        elif turns == 1:
-            return self.transpose().mirror()
-        return self
-
-    @scriptable
-    def invert(self):
-        """Reverse video."""
-        return self.modify(_0=self._1, _1=self._0)
-
-
     def crop(self, left:int=0, bottom:int=0, right:int=0, top:int=0):
         """
         Crop glyph.
@@ -323,7 +308,6 @@ class Raster:
         )
         return type(self)(pixels, _0=_0, _1=_1)
 
-
     def stretch(self, factor_x:int=1, factor_y:int=1):
         """
         Repeat rows and/or columns.
@@ -339,7 +323,6 @@ class Raster:
             for _row in glyph
         )
         return self.modify(glyph)
-
 
     def shrink(self, factor_x:int=1, factor_y:int=1, force:bool=False):
         """
@@ -360,6 +343,24 @@ class Raster:
         # horizontal stretch
         shrunk_glyph = tuple(_row[::factor_x] for _row in shrunk_glyph)
         return self.modify(shrunk_glyph)
+
+    ##########################################################################
+    # effects
+
+    def overlay(self, *others):
+        """Overlay equal-sized rasters."""
+        # use as instance method or class method
+        others = (self, *tuple(*others))
+        matrices = tuple(_r.as_matrix() for _r in others)
+        rows = tuple(zip(*_row) for _row in zip(*matrices))
+        combined = tuple(tuple(any(_item) for _item in _row) for _row in rows)
+        return self.modify(combined, _0=False, _1=True)
+
+    @scriptable
+    def invert(self):
+        """Reverse video."""
+        return self.modify(_0=self._1, _1=self._0)
+
 
     def smear(self, *, left:int=0, right:int=0, up:int=0, down:int=0, **kwargs):
         """

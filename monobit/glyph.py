@@ -453,10 +453,6 @@ class Glyph(Raster):
         return self.crop(*self.padding, adjust_metrics=adjust_metrics)
 
 
-    #def overlay(self, *glyphs):
-    #    """Superimpose other glyphs."""
-
-
     @scriptable
     def mirror(self, *, adjust_metrics:bool=True):
         """
