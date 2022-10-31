@@ -215,6 +215,16 @@ class Glyph(Raster):
         # access needed for calculated properties
         self._props = GlyphProperties(_glyph=self, **properties)
 
+    def __eq__(self, other):
+        """Equality."""
+        if (self.width, self.height) != (other.width, other.height):
+            return False
+        for p in (*self.properties.keys(), *other.properties.keys()):
+            p = normalise_property(p)
+            if not getattr(self, p) == getattr(other, p):
+                return False
+        return self.as_matrix() == other.as_matrix()
+
 
     ##########################################################################
     # representation
