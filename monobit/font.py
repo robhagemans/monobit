@@ -366,19 +366,13 @@ class FontProperties(DefaultProps):
 
     @checked_property
     def raster(self):
-        """Minimum box encompassing all glyph matrices overlaid at fixed origin, font origin coordinates."""
+        """
+        Minimum box encompassing all glyph matrices overlaid at fixed origin,
+        font origin coordinates.
+        """
         if not self._font.glyphs:
             return Bounds(0, 0, 0, 0)
-        lefts = tuple(_glyph.left_bearing for _glyph in self._font.glyphs)
-        bottoms = tuple(_glyph.shift_up for _glyph in self._font.glyphs)
-        rights = tuple(_glyph.left_bearing + _glyph.width for _glyph in self._font.glyphs)
-        tops = tuple(_glyph.shift_up + _glyph.height for _glyph in self._font.glyphs)
-        return Bounds(
-            left=self.left_bearing + min(lefts),
-            bottom=self.shift_up + min(bottoms),
-            right=self.left_bearing + max(rights),
-            top=self.shift_up + max(tops)
-        )
+        return Glyph._get_common_raster(*self._font.glyphs)
 
     @checked_property
     def raster_size(self):
@@ -431,7 +425,7 @@ class FontProperties(DefaultProps):
         """Offset from raster sides to bounding box. Left, bottom, right, top."""
         return Bounds(
             self.ink_bounds.left - self.raster.left,
-            self.ink_bounds.bottom - self.raster_bottom,
+            self.ink_bounds.bottom - self.raster.bottom,
             self.raster.right - self.ink_bounds.right,
             self.raster.top - self.ink_bounds.top,
         )

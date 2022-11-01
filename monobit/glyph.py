@@ -663,3 +663,21 @@ class Glyph(Raster):
                 left=left, right=right, up=up, down=down,
                 adjust_metrics=adjust_metrics
         )
+
+
+    ##########################################################################
+    # operations on multiple glyphs
+
+    def _get_common_raster(*glyphs):
+        """
+        Minimum box encompassing all glyph matrices overlaid at fixed origin
+        """
+        self = glyphs[0]
+        # raster edges
+        rasters = tuple(_g.raster for _g in glyphs)
+        return Bounds(
+            left=min(_r.left for _r in rasters),
+            bottom=min(_r.bottom for _r in rasters),
+            right=max(_r.right for _r in rasters),
+            top=max(_r.top for _r in rasters)
+        )
