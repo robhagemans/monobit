@@ -176,7 +176,7 @@ class Raster:
 
     def transpose(self):
         """Transpose glyph."""
-        return self.modify(tuple(tuple(_x) for _x in zip(*self._pixels)))
+        return self.modify(tuple(zip(*self._pixels)))
 
     @staticmethod
     def _calc_turns(clockwise, anti):
@@ -340,10 +340,10 @@ class Raster:
     ##########################################################################
     # effects
 
-    def overlay(self, *others):
+    def overlay(*others):
         """Overlay equal-sized rasters."""
+        self = others[0]
         # use as instance method or class method
-        others = (self, *tuple(*others))
         matrices = tuple(_r.as_matrix() for _r in others)
         rows = tuple(zip(*_row) for _row in zip(*matrices))
         combined = tuple(tuple(any(_item) for _item in _row) for _row in rows)
