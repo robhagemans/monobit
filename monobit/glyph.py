@@ -138,10 +138,10 @@ class GlyphProperties(DefaultProps):
     def ink_bounds(self):
         """Minimum box encompassing all ink, in glyph origin coordinates."""
         bounds = Bounds(
-            left=self.left_bearing + self.padding.left,
-            bottom=self.shift_up + self.padding.bottom,
-            right=self.left_bearing + self.width - self.padding.right,
-            top=self.shift_up + self.height - self.padding.top,
+            self.raster.left + self.padding.left,
+            self.raster.bottom + self.padding.bottom,
+            self.raster.right - self.padding.right,
+            self.raster.top - self.padding.top,
         )
         # more intuitive result for blank glyphs
         if bounds.left == bounds.right or bounds.top == bounds.bottom:
@@ -160,6 +160,21 @@ class GlyphProperties(DefaultProps):
     def padding(self):
         """Offset from raster sides to bounding box. Left, bottom, right, top."""
         return self._glyph.padding
+
+    @checked_property
+    def raster(self):
+        """Raster bounds, in glyph origin coordinates."""
+        return Bounds(
+            left=self.left_bearing,
+            bottom=self.shift_up,
+            right=self.left_bearing + self.width,
+            top=self.shift_up + self.height
+        )
+
+    @checked_property
+    def raster_size(self):
+        """Raster dimensions."""
+        return Coord(self.width, self.height)
 
 
     ##########################################################################
@@ -629,7 +644,6 @@ class Glyph(Raster):
                 shift_left=self.shift_left // factor_x,
             )
         return glyph
-
 
     @scriptable
     def smear(
