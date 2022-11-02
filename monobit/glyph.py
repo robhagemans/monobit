@@ -682,8 +682,13 @@ class Glyph(Raster):
             top=max(_r.top for _r in rasters)
         )
 
-    def overlay(*glyphs):
-        """Superimpose glyphs, taking into account metrics."""
+    def overlay(*glyphs, operator=any):
+        """
+        Superimpose glyphs, taking into account metrics.
+
+        operator: aggregation function, callable on iterable on bool/int.
+                  Use any for additive, all for masking.
+        """
         self = glyphs[0]
         # bring on common raster
         common = Glyph._get_common_raster(*glyphs)
@@ -697,4 +702,4 @@ class Glyph(Raster):
             for _g in glyphs
         )
         # apply the unbound function Raster.overlay
-        return super(Glyph).__get__(Glyph).overlay(*glyphs)
+        return super(Glyph).__get__(Glyph).overlay(*glyphs, operator=operator)

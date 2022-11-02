@@ -340,13 +340,18 @@ class Raster:
     ##########################################################################
     # effects
 
-    def overlay(*others):
-        """Overlay equal-sized rasters."""
+    def overlay(*others, operator=any):
+        """
+        Overlay equal-sized rasters.
+
+        operator: aggregation function, callable on iterable on bool/int.
+                  Use any for additive, all for masking.
+        """
         self = others[0]
         # use as instance method or class method
         matrices = tuple(_r.as_matrix() for _r in others)
         rows = tuple(zip(*_row) for _row in zip(*matrices))
-        combined = tuple(tuple(any(_item) for _item in _row) for _row in rows)
+        combined = tuple(tuple(operator(_item) for _item in _row) for _row in rows)
         return self.modify(combined, _0=False, _1=True)
 
     @scriptable
