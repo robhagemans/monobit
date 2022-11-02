@@ -647,7 +647,7 @@ class Glyph(Raster):
 
     @scriptable
     def smear(
-            self, *, left:int=0, right:int=0, up:int=0, down:int=0,
+            self, *, left:int=0, down:int=0, right:int=1, up:int=0,
             adjust_metrics:bool=True
         ):
         """
@@ -663,6 +663,18 @@ class Glyph(Raster):
                 left=left, right=right, up=up, down=down,
                 adjust_metrics=adjust_metrics
         )
+
+    @scriptable
+    def outline(self, *, thickness:int=1):
+        """
+        Outline glyph.
+
+        thickness: number of pixels in outline in each direction
+        """
+        thicker = self.smear(
+            left=thickness, down=thickness, right=thickness, up=thickness
+        )
+        return thicker.overlay(self, operator=lambda x: bool(sum(x) % 2))
 
 
     ##########################################################################
