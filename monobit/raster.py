@@ -383,3 +383,28 @@ class Raster:
         return work
 
 
+    def shear(self, start=0, **expand_kwargs):
+        """Transform raster by shearing diagonally."""
+        _0, _1 = '0', '1'
+        work = self.expand(
+            right=self.height+start,
+            left=-start,
+            **expand_kwargs
+        )
+        pixels = tuple(
+            ''.join(_row)
+            for _row in work.as_matrix(paper=_0, ink=_1)
+        )
+        shift = tuple(
+            start + min(work.width, _y)
+            for _y in range(work.height-1, -1, -1)
+        )
+        return work.modify(
+            tuple(
+                _0 * min(_y, work.width)
+                + _row[max(0, -_y):max(0, work.width-_y)]
+                + _0 * min(-_y, work.width)
+                for _row, _y in zip(pixels, shift)
+            ),
+            _0=_0, _1=_1
+        )
