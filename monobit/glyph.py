@@ -670,7 +670,7 @@ class Glyph(Raster):
 
     def _get_common_raster(*glyphs):
         """
-        Minimum box encompassing all glyph matrices overlaid at fixed origin
+        Minimum box encompassing all glyph matrices overlaid at fixed origin.
         """
         self = glyphs[0]
         # raster edges
@@ -681,3 +681,20 @@ class Glyph(Raster):
             right=max(_r.right for _r in rasters),
             top=max(_r.top for _r in rasters)
         )
+
+    def overlay(*glyphs):
+        """Superimpose glyphs, taking into account metrics."""
+        self = glyphs[0]
+        # bring on common raster
+        common = Glyph._get_common_raster(*glyphs)
+        glyphs = (
+            _g.expand(
+                left=_g.raster.left-common.left,
+                bottom=_g.raster.bottom-common.bottom,
+                right=common.right-_g.raster.right,
+                top=common.top-_g.raster.top
+            )
+            for _g in glyphs
+        )
+        # apply the unbound function Raster.overlay
+        return super(Glyph).__get__(Glyph).overlay(*glyphs)
