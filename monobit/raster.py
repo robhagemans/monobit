@@ -371,10 +371,10 @@ class Raster:
             max(0, right-pright), max(0, up-pup),
             **kwargs
         )
-        work = work.overlay(work.shift(left=_i+1) for _i in range(left))
-        work = work.overlay(work.shift(right=_i+1) for _i in range(right))
-        work = work.overlay(work.shift(up=_i+1) for _i in range(up))
-        work = work.overlay(work.shift(down=_i+1) for _i in range(down))
+        work = work.overlay(*(work.shift(left=_i+1) for _i in range(left)))
+        work = work.overlay(*(work.shift(right=_i+1) for _i in range(right)))
+        work = work.overlay(*(work.shift(up=_i+1) for _i in range(up)))
+        work = work.overlay(*(work.shift(down=_i+1) for _i in range(down)))
         return work
 
 
