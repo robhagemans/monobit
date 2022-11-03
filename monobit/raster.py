@@ -7,7 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 from .scripting import scriptable
 from .binary import ceildiv
-from .basetypes import Bounds
+from .basetypes import Bounds, pair
 
 # sentinel object
 NOT_SET = object()
@@ -383,15 +383,24 @@ class Raster:
         return work
 
 
-    def shear(self, start:int=0, direction:str='right', **expand_kwargs):
+    def shear(
+            self, start:int=0, direction:str='right',
+            pitch:pair=(1, 1), **expand_kwargs
+        ):
         """Transform raster by shearing diagonally."""
         direction = direction[0].lower()
+        xpitch, ypitch = pitch
         _0, _1 = '0', '1'
         shiftrange = range(self.height+start-1, start-1, -1)
+        shiftrange = tuple(_y*xpitch//ypitch for _y in shiftrange)
         if direction == 'r':
-            work = self.expand(right=self.height+start, left=-start, **expand_kwargs)
+            work = self.expand(
+                right=max(shiftrange), left=max(0, min(shiftrange)), **expand_kwargs
+            )
         elif direction == 'l':
-            work = self.expand(left=self.height+start, right=-start, **expand_kwargs)
+            work = self.expand(
+                left=max(shiftrange), right=max(0, min(shiftrange)), **expand_kwargs
+            )
             shiftrange=(-_y for _y in shiftrange)
         else:
             raise ValueError(

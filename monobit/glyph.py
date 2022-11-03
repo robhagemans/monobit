@@ -21,7 +21,7 @@ from .struct import (
     DefaultProps, normalise_property, extend_string,
     writable_property, as_tuple, checked_property
 )
-from .basetypes import Coord, Bounds, number
+from .basetypes import Coord, Bounds, number, pair
 from .scripting import scriptable
 
 
@@ -677,9 +677,9 @@ class Glyph(Raster):
         return thicker.overlay(self, operator=lambda x: bool(sum(x) % 2))
 
     @scriptable
-    def shear(self, *, direction:str='right'):
+    def shear(self, *, direction:str='right', pitch:pair=(1, 1)):
         """Transform glyph by shearing diagonally."""
-        return super().shear(start=self.shift_up, direction=direction)
+        return super().shear(start=self.shift_up, direction=direction, pitch=pitch)
 
 
     ##########################################################################
