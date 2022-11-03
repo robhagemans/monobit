@@ -677,9 +677,9 @@ class Glyph(Raster):
         return thicker.overlay(self, operator=lambda x: bool(sum(x) % 2))
 
     @scriptable
-    def shear(self):
+    def shear(self, *, direction:str='right'):
         """Transform glyph by shearing diagonally."""
-        return super().shear(start=self.shift_up)
+        return super().shear(start=self.shift_up, direction=direction)
 
 
     ##########################################################################
