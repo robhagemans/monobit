@@ -660,8 +660,8 @@ class Glyph(Raster):
         adjust_metrics: ensure advances stay the same (default: True)
         """
         return super().smear(
-                left=left, right=right, up=up, down=down,
-                adjust_metrics=adjust_metrics
+            left=left, right=right, up=up, down=down,
+            adjust_metrics=adjust_metrics
         )
 
     @scriptable
@@ -679,7 +679,30 @@ class Glyph(Raster):
     @scriptable
     def shear(self, *, direction:str='right', pitch:pair=(1, 1)):
         """Transform glyph by shearing diagonally."""
-        return super().shear(start=self.shift_up, direction=direction, pitch=pitch)
+        pitch_x, pitch_y = pitch
+        direction = direction[0].lower()
+        extra_width = (self.height-1) * pitch_x // pitch_y
+        pre = (self.shift_up * pitch_x + self.shift_up%pitch_y) // pitch_y
+        if direction == 'r':
+            work = self.modify(
+                left_bearing=self.left_bearing+pre,
+                right_bearing=self.right_bearing-pre,
+            )
+            work = work.expand(right=extra_width)
+        elif direction == 'l':
+            work = self.modify(
+                left_bearing=self.left_bearing-pre,
+                right_bearing=self.right_bearing+pre,
+            )
+            work = work.expand(left=extra_width)
+        else:
+            raise ValueError(
+                f'Shear direction must be `left` or `right`, not `{direction}`'
+            )
+        sheared = super(Glyph, work).shear(
+            direction=direction, pitch=pitch, modulo=self.shift_up,
+        )
+        return sheared
 
 
     ##########################################################################

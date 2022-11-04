@@ -306,7 +306,7 @@ class Raster:
             + tuple(_0 * left + _row + _0 * right for _row in pixels)
             + (empty_row,) * bottom
         )
-        return type(self)(pixels, _0=_0, _1=_1)
+        return self.modify(pixels, _0=_0, _1=_1)
 
     def stretch(self, factor_x:int=1, factor_y:int=1):
         """
@@ -384,38 +384,37 @@ class Raster:
 
 
     def shear(
-            self, start:int=0, direction:str='right',
-            pitch:pair=(1, 1), **expand_kwargs
+            self, direction:str='right',
+            pitch:pair=(1, 1), modulo:int=0, **expand_kwargs
         ):
         """Transform raster by shearing diagonally."""
         direction = direction[0].lower()
         xpitch, ypitch = pitch
         _0, _1 = '0', '1'
-        shiftrange = range(self.height+start-1, start-1, -1)
-        shiftrange = tuple(_y*xpitch//ypitch for _y in shiftrange)
-        if direction == 'r':
-            work = self.expand(
-                right=max(shiftrange), left=max(0, min(shiftrange)), **expand_kwargs
-            )
-        elif direction == 'l':
-            work = self.expand(
-                left=max(shiftrange), right=max(0, min(shiftrange)), **expand_kwargs
-            )
-            shiftrange=(-_y for _y in shiftrange)
-        else:
-            raise ValueError(
-                f'Shear direction must be `left` or `right`, not `{direction}`'
-            )
+        shiftrange = range(self.height)[::-1]
+        modulo %= ypitch
+        shiftrange = tuple((_y*xpitch + modulo)//ypitch for _y in shiftrange)
         pixels = tuple(
             ''.join(_row)
-            for _row in work.as_matrix(paper=_0, ink=_1)
+            for _row in self.as_matrix(paper=_0, ink=_1)
         )
-        return work.modify(
-            tuple(
-                _0 * min(_y, work.width)
-                + _row[max(0, -_y):max(0, work.width-_y)]
-                + _0 * min(-_y, work.width)
-                for _row, _y in zip(pixels, shiftrange)
-            ),
-            _0=_0, _1=_1
+        empty = _0 * self.width
+        if direction == 'l':
+            return self.modify(
+                tuple(
+                    _row[_y:] + empty[:_y]
+                    for _row, _y in zip(pixels, shiftrange)
+                ),
+                _0=_0, _1=_1
+            )
+        elif direction == 'r':
+            return self.modify(
+                tuple(
+                    empty[:_y] + _row[:self.width-_y]
+                    for _row, _y in zip(pixels, shiftrange)
+                ),
+                _0=_0, _1=_1
+            )
+        raise ValueError(
+            f'Shear direction must be `left` or `right`, not `{direction}`'
         )
