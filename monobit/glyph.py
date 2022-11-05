@@ -285,10 +285,6 @@ class Glyph:
             labels = self._labels
         if comment is NOT_SET:
             comment = self._comment
-        if _0 is NOT_SET:
-            _0 = self._pixels._0
-        if _1 is NOT_SET:
-            _1 = self._pixels._1
         return type(self)(
             pixels,
             labels=labels,
@@ -761,7 +757,7 @@ class Glyph:
             max(0, right-pright), max(0, up-pup),
             adjust_metrics=adjust_metrics
         )
-        return work.modify(self._pixels.smear(
+        return work.modify(work._pixels.smear(
             left=left, right=right, up=up, down=down,
         ))
 
