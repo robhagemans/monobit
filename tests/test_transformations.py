@@ -11,36 +11,6 @@ import monobit
 from monobit import Glyph
 from .base import BaseTester, get_stringio
 
-testfont = """
-
-a:
-     ...@.
-     .....
-     ...@.
-     .....
-     @@@@@
-     .....
-     ...@.
-
-     shift-up: -2
-     left-bearing: 1
-     top-bearing: 2
-     shift-left: 1
-
-b:
-     @@..@@
-     @@...@
-     ....@.
-     ......
-     ....@.
-     ......
-     @@@@@@
-     ......
-     @...@@
-
-     shift-up: -2
-     shift-left: 1
-"""
 
 test = """
 # testing glyph
@@ -369,6 +339,81 @@ class TestYaff(BaseTester):
         assert m.advance_height == one.advance_height
         assert m.shift_up == one.shift_up
         # shift_left is unaffected here as 9//2 == 8//2
+
+    def test_outline(self):
+        file = get_stringio(test)
+        f,  *_ = monobit.load(file)
+        one = f.glyphs[0]
+        m = one.reduce().outline()
+        assert m.as_text() == '\n'.join((
+            '..@@@@..',
+            '.@@..@..',
+            '@@...@..',
+            '@....@..',
+            '@@@..@..',
+            '..@..@..',
+            '..@..@..',
+            '..@..@..',
+            '..@..@..',
+            '..@..@..',
+            '@@@..@@@',
+            '@......@',
+            '@@@@@@@@\n',
+        ))
+        assert m.advance_width == one.advance_width
+        assert m.advance_height == one.advance_height
+        assert m.shift_up == -1
+        assert m.shift_left == 1
+
+    def test_overlay(self):
+        file = get_stringio(test)
+        f,  *_ = monobit.load(file)
+        one = f.glyphs[0]
+        m = one.overlay(one.mirror().reduce())
+        # note that glyph is not positioned in middle of advance
+        assert m.as_text() == '\n'.join((
+            '........',
+            '........',
+            '..@@@...',
+            '..@@@...',
+            '.@@@@@..',
+            '..@@@...',
+            '..@@@...',
+            '..@@@...',
+            '..@@@...',
+            '..@@@...',
+            '..@@@...',
+            '..@@@...',
+            '@@@@@@@.',
+            '........',
+            '........',
+            '........\n',
+        ))
+        # symmetric version
+        one = one.modify(right_bearing=1)
+        m = one.overlay(one.mirror().reduce())
+        assert m.as_text() == '\n'.join((
+            '........',
+            '........',
+            '...@@...',
+            '..@@@@..',
+            '.@@@@@@.',
+            '...@@...',
+            '...@@...',
+            '...@@...',
+            '...@@...',
+            '...@@...',
+            '...@@...',
+            '...@@...',
+            '.@@@@@@.',
+            '........',
+            '........',
+            '........\n',
+        ))
+        assert m.advance_width == one.advance_width
+        assert m.advance_height == one.advance_height
+        assert m.shift_up == one.shift_up
+        assert m.shift_left == one.shift_left
 
 
 if __name__ == '__main__':
