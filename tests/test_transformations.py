@@ -232,7 +232,7 @@ class TestGlyphTrafo(BaseTester):
             '..@@..',
             '..@@..',
             '@@@@@@\n',
-        ))
+        )), m
         assert m.advance_width == one.advance_width
         assert m.advance_height == one.advance_height
         assert m.shift_up == one.shift_up + one.padding.bottom
@@ -261,7 +261,7 @@ class TestGlyphTrafo(BaseTester):
             '..........',
             '..........',
             '..........\n',
-        ))
+        )), m
         assert m.advance_width == one.advance_width
         assert m.advance_height == one.advance_height
         assert m.shift_up == one.shift_up - 1
@@ -334,7 +334,7 @@ class TestGlyphTrafo(BaseTester):
             '.........',
             '.........',
             '.........\n',
-        ))
+        )), m
         assert m.advance_width == one.advance_width
         assert m.advance_height == one.advance_height
         assert m.shift_up == one.shift_up
@@ -359,7 +359,7 @@ class TestGlyphTrafo(BaseTester):
             '@@@..@@@',
             '@......@',
             '@@@@@@@@\n',
-        ))
+        )), m
         assert m.advance_width == one.advance_width
         assert m.advance_height == one.advance_height
         assert m.shift_up == -1
@@ -388,7 +388,7 @@ class TestGlyphTrafo(BaseTester):
             '........',
             '........',
             '........\n',
-        ))
+        )), m
         # symmetric version
         one = one.modify(right_bearing=1)
         m = one.overlay(one.mirror().reduce())
@@ -409,7 +409,7 @@ class TestGlyphTrafo(BaseTester):
             '........',
             '........',
             '........\n',
-        ))
+        )), m
         assert m.advance_width == one.advance_width
         assert m.advance_height == one.advance_height
         assert m.shift_up == one.shift_up
@@ -434,7 +434,7 @@ class TestGlyphTrafo(BaseTester):
             '..@@....',
             '..@@....',
             '@@@@@@..\n',
-        ))
+        )), m
 
     def test_shear_left(self):
         file = get_stringio(test)
@@ -455,7 +455,7 @@ class TestGlyphTrafo(BaseTester):
             '.....@@..',
             '.....@@..',
             '...@@@@@@\n',
-        ))
+        )), m
 
     def test_underline(self):
         file = get_stringio(test)
@@ -479,7 +479,7 @@ class TestGlyphTrafo(BaseTester):
             '........',
             '@@@@@@@@',
             '........\n',
-        ))
+        )), m
         assert m.advance_width == one.advance_width
         assert m.advance_height == one.advance_height
         assert m.shift_up == one.shift_up
