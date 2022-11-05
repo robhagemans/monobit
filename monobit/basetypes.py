@@ -8,6 +8,7 @@ licence: https://opensource.org/licenses/MIT
 import numbers
 from collections import namedtuple
 from functools import partial
+from typing import Any
 
 
 def to_int(int_str):
@@ -22,7 +23,7 @@ def to_int(int_str):
         # non-string inputs: TypeError, may be OK if int(x) works
         return int(int_str)
 
-def Any(var):
+def passthrough(var):
     """Passthrough type."""
     return var
 
@@ -97,3 +98,10 @@ def to_tuple(value=0, *, length=2):
 
 pair = partial(to_tuple, length=2)
 rgb = partial(to_tuple, length=3)
+
+
+# type converters
+CONVERTERS = {
+    int: to_int,
+    Any: passthrough,
+}

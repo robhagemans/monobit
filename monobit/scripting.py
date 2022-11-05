@@ -12,13 +12,7 @@ from contextlib import contextmanager
 from functools import wraps, partial
 from types import SimpleNamespace
 
-from .basetypes import to_int, Any
-
-
-# script type converters
-_CONVERTER = {
-    int: to_int
-}
+from .basetypes import Any, passthrough, to_int, CONVERTERS
 
 
 class ArgumentError(TypeError):
@@ -79,7 +73,7 @@ def scriptable(
                     else:
                         raise ArgumentError(name, kwarg) from None
                     _type = Any
-                converter = _CONVERTER.get(_type, _type)
+                converter = CONVERTERS.get(_type, _type)
                 conv_kwargs[kwarg] = converter(value)
             # call wrapped function
             result = func(*args, **conv_kwargs)
