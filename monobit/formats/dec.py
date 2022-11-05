@@ -15,7 +15,7 @@ import logging
 
 from ..storage import loaders, savers
 from ..streams import FileFormatError
-from ..struct import Props
+from ..properties import Props
 from ..font import Font
 from ..glyph import Glyph
 from ..binary import ceildiv
@@ -411,4 +411,3 @@ def _convert_to_drcs_glyph(glyph):
         for _b in blockbytes
     ) + b';\n'
     return glyphdef
-

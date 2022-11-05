@@ -17,7 +17,6 @@ from ..streams import FileFormatError
 from ..font import Font
 from ..glyph import Glyph
 from ..labels import strip_matching
-from ..struct import Props
 
 
 ##############################################################################

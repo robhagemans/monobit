@@ -32,8 +32,9 @@ import logging
 import itertools
 
 from ..binary import bytes_to_bits, ceildiv, align
-from ..struct import reverse_dict, little_endian as le
+from ..struct import little_endian as le
 from .. import struct
+from ..properties import reverse_dict
 from ..storage import loaders, savers
 from ..streams import FileFormatError
 from ..font import Font, Coord

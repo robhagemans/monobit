@@ -15,7 +15,8 @@ import logging
 from io import BytesIO
 
 from ..binary import ceildiv
-from ..struct import Props, little_endian as le
+from ..struct import little_endian as le
+from ..properties import Props
 from .. import struct
 from ..storage import loaders, savers
 from ..streams import FileFormatError

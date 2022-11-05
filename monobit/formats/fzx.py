@@ -9,7 +9,8 @@ import logging
 from itertools import accumulate
 
 from ..binary import ceildiv
-from ..struct import Props, bitfield, little_endian as le
+from ..struct import bitfield, little_endian as le
+from ..properties import Props
 from ..storage import loaders, savers
 from ..font import Font
 from ..glyph import Glyph

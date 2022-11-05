@@ -8,7 +8,7 @@ licence: https://opensource.org/licenses/MIT
 import logging
 
 from ..binary import int_to_bytes, bytes_to_int, ceildiv
-from ..struct import normalise_property
+from ..properties import normalise_property
 from ..storage import loaders, savers
 from ..streams import FileFormatError
 from ..font import Font, Coord
