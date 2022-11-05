@@ -700,7 +700,7 @@ class Glyph(Raster):
                 f'Shear direction must be `left` or `right`, not `{direction}`'
             )
         sheared = super(Glyph, work).shear(
-            direction=direction, pitch=pitch, modulo=self.shift_up,
+            direction=direction, pitch=pitch, modulo=-work.shift_up*pitch_x,
         )
         return sheared
 
