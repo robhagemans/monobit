@@ -57,7 +57,7 @@ class YaffParams:
     empty = '-'
 
     # string to be quoted if one of these chars at start and/or end
-    quotable = ('"', "'", ':', ' ', ink, paper, empty)
+    quotable = ('"', "'", ':', ' ')
     glyphchars = (ink, paper, empty)
 
 ##############################################################################
