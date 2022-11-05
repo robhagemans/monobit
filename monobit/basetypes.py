@@ -7,21 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 import numbers
 from collections import namedtuple
-
-
-class IntTuple(tuple):
-    """Tuple of ints with custom str conversion."""
-    def __str__(self):
-        return ','.join(str(_i) for _i in self)
-
-def tuple_int(tup):
-    """Convert NxNx... or N,N,... to tuple."""
-    if isinstance(tup, str):
-        tup = _str_to_tuple(tup)
-    return IntTuple(tup)
-
-rgb = tuple_int
-pair = tuple_int
+from functools import partial
 
 
 def any_int(int_str):
@@ -36,12 +22,9 @@ def any_int(int_str):
         # non-string inputs: TypeError, may be OK if int(x) works
         return int(int_str)
 
-
 def Any(var):
     """Passthrough type."""
     return var
-
-
 
 def number(value=0):
     """Convert to int or float."""
@@ -111,3 +94,6 @@ def to_tuple(value=0, *, length=2):
     except ValueError:
         pass
     raise ValueError(f"Can't convert {value!r} to tuple.")
+
+pair = partial(to_tuple, length=2)
+rgb = partial(to_tuple, length=3)
