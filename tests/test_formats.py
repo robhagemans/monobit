@@ -99,7 +99,7 @@ class TestFormats(BaseTester):
     def test_export_dec_drcs(self):
         """Test exporting dec-drcs files."""
         dec_file = self.temp_path / '8x16.dec'
-        monobit.save(self.fixed8x16, dec_file)
+        monobit.save(self.fixed8x16, dec_file, format='dec-drcs')
         self.assertTrue(os.path.getsize(dec_file) > 0)
 
     def test_import_yaff(self):
