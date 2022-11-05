@@ -11,7 +11,7 @@ from codecs import escape_decode
 
 import monobit
 from monobit.scripting import wrap_main
-from monobit.basetypes import pair
+from monobit.basetypes import Coord
 from monobit import render_text
 
 
@@ -50,11 +50,11 @@ def main():
         help='character to use for paper/background (default: .)'
     )
     parser.add_argument(
-        '--margin', '-m', type=pair, default=(0, 0),
+        '--margin', '-m', type=Coord.create, default=(0, 0),
         help='number of background characters to use as a margin in x and y direction (default: 0,0)'
     )
     parser.add_argument(
-        '--scale', '-s', type=pair, default=(1, 1),
+        '--scale', '-s', type=Coord.create, default=(1, 1),
         help='number of characters to use per pixel in x and y direction (default: 1,1)'
     )
     parser.add_argument(

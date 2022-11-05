@@ -73,6 +73,15 @@ class Coord(_VectorMixin, namedtuple('Coord', 'x y')):
         return cls(*coord)
 
 
+class RGB(_VectorMixin, namedtuple('Coord', 'r g b')):
+    """Coordinate tuple."""
+
+    @classmethod
+    def create(cls, coord=0):
+        coord = to_tuple(coord, length=3)
+        return cls(*coord)
+
+
 def _str_to_tuple(value):
     """Convert various string representations to tuple."""
     value = value.strip().replace(',', ' ').replace('x', ' ')
@@ -96,12 +105,11 @@ def to_tuple(value=0, *, length=2):
         pass
     raise ValueError(f"Can't convert {value!r} to tuple.")
 
-pair = partial(to_tuple, length=2)
-rgb = partial(to_tuple, length=3)
-
 
 # type converters
 CONVERTERS = {
     int: to_int,
     Any: passthrough,
+    Coord: Coord.create,
+    RGB: RGB.create,
 }

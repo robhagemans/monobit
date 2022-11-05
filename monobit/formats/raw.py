@@ -12,13 +12,13 @@ from ..storage import loaders, savers
 from ..font import Font
 from ..glyph import Glyph
 from ..streams import FileFormatError
-from ..basetypes import pair
+from ..basetypes import Coord
 
 
 @loaders.register('bin', 'rom', 'raw', 'f08', 'f14', 'f16', name='binary')
 def load_binary(
         instream, where=None, *,
-        cell:pair=(8, 8), count:int=-1, offset:int=0, padding:int=0,
+        cell:Coord=(8, 8), count:int=-1, offset:int=0, padding:int=0,
         align:str='left', strike_count:int=1, strike_bytes:int=-1,
         first_codepoint:int=0
     ):

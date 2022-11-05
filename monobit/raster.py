@@ -6,7 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 from .binary import ceildiv
-from .basetypes import Bounds, pair
+from .basetypes import Bounds, Coord
 
 # sentinel object
 NOT_SET = object()
@@ -378,7 +378,7 @@ class Raster:
 
     def shear(
             self, direction:str='right',
-            pitch:pair=(1, 1), modulo:int=0,
+            pitch:Coord=(1, 1), modulo:int=0,
         ):
         """Transform raster by shearing diagonally."""
         direction = direction[0].lower()

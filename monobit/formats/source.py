@@ -13,7 +13,7 @@ from ..storage import loaders, savers
 from ..font import Font
 from ..glyph import Glyph
 from ..streams import FileFormatError
-from ..basetypes import pair
+from ..basetypes import Coord
 from .raw import load_bitmap
 
 
@@ -38,7 +38,7 @@ _PY_PARAMS = dict(
 def load_c(
         infile, where=None, *,
         identifier:str='',
-        cell:pair=(8, 8), count:int=-1, offset:int=0, padding:int=0,
+        cell:Coord=(8, 8), count:int=-1, offset:int=0, padding:int=0,
         align:str='left', strike_count:int=1, strike_bytes:int=-1,
         first_codepoint:int=0
     ):
@@ -58,7 +58,7 @@ def load_c(
     return _load_coded_binary(
         infile, where, identifier=identifier,
         cell=cell, count=count, offset=offset, padding=padding,
-        align=align, strike_count=strike_count, strike_bytes=strike_bytes, 
+        align=align, strike_count=strike_count, strike_bytes=strike_bytes,
         first_codepoint=first_codepoint,
         **_C_PARAMS
     )
@@ -67,7 +67,7 @@ def load_c(
 def load_json(
         infile, where=None, *,
         identifier:str='',
-        cell:pair=(8, 8), count:int=-1, offset:int=0, padding:int=0,
+        cell:Coord=(8, 8), count:int=-1, offset:int=0, padding:int=0,
         align:str='left', strike_count:int=1, strike_bytes:int=-1,
         first_codepoint:int=0
     ):
@@ -87,7 +87,7 @@ def load_json(
     return _load_coded_binary(
         infile, where, identifier=identifier,
         cell=cell, count=count, offset=offset, padding=padding,
-        align=align, strike_count=strike_count, strike_bytes=strike_bytes, 
+        align=align, strike_count=strike_count, strike_bytes=strike_bytes,
         first_codepoint=first_codepoint
         **_JS_PARAMS
     )
@@ -96,7 +96,7 @@ def load_json(
 def load_python(
         infile, where=None, *,
         identifier:str='',
-        cell:pair=(8, 8), count:int=-1, offset:int=0, padding:int=0,
+        cell:Coord=(8, 8), count:int=-1, offset:int=0, padding:int=0,
         align:str='left', strike_count:int=1, strike_bytes:int=-1,
         first_codepoint:int=0
     ):
@@ -116,7 +116,7 @@ def load_python(
     return _load_coded_binary(
         infile, where, identifier=identifier,
         cell=cell, count=count, offset=offset, padding=padding,
-        align=align, strike_count=strike_count, strike_bytes=strike_bytes, 
+        align=align, strike_count=strike_count, strike_bytes=strike_bytes,
         first_codepoint=first_codepoint,
         **_PY_PARAMS
     )
@@ -125,7 +125,7 @@ def load_python(
 def load_source(
         infile, where=None, *,
         identifier:str='', delimiters:str='{}', comment:str='//',
-        cell:pair=(8, 8), count:int=-1, offset:int=0, padding:int=0,
+        cell:Coord=(8, 8), count:int=-1, offset:int=0, padding:int=0,
         align:str='left',
         first_codepoint:int=0
     ):
@@ -148,7 +148,7 @@ def load_source(
     return _load_coded_binary(
         infile, where, identifier=identifier,
         cell=cell, count=count, offset=offset, padding=padding,
-        align=align, strike_count=strike_count, strike_bytes=strike_bytes, 
+        align=align, strike_count=strike_count, strike_bytes=strike_bytes,
         first_codepoint=first_codepoint,
         delimiters=delimiters, comment=comment
     )
@@ -293,4 +293,3 @@ def _save_coded_binary(fonts, outstream, assignment_pattern, delimiters, comment
         outstream.write('\n')
     outstream.write(f'{end_delimiter}\n')
     return font
-
