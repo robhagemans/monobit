@@ -17,8 +17,8 @@ class IntTuple(tuple):
 def tuple_int(tup):
     """Convert NxNx... or N,N,... to tuple."""
     if isinstance(tup, str):
-        return IntTuple(int(_s) for _s in tup.replace('x', ',').split(','))
-    return IntTuple([*tup])
+        tup = _str_to_tuple(tup)
+    return IntTuple(tup)
 
 rgb = tuple_int
 pair = tuple_int
@@ -74,25 +74,40 @@ class _VectorMixin:
 class Bounds(_VectorMixin, namedtuple('Bounds', 'left bottom right top')):
     """4-coordinate tuple."""
 
+    @classmethod
+    def create(cls, coord=0):
+        coord = to_tuple(coord, length=4)
+        return cls(*coord)
+
+
 class Coord(_VectorMixin, namedtuple('Coord', 'x y')):
     """Coordinate tuple."""
 
     @classmethod
     def create(cls, coord=0):
-        if isinstance(coord, Coord):
-            return coord
-        if isinstance(coord, numbers.Real):
-            return cls(coord, coord)
-        if isinstance(coord, str):
-            splits = coord.split(' ')
-            if len(splits) == 1:
-                return cls(number(splits[0]), number(splits[0]))
-            elif len(splits) == 2:
-                return cls(number(splits[0]), number(splits[1]))
-        if isinstance(coord, tuple):
-            if len(coord) == 2:
-                return cls(number(coord[0]), number(coord[1]))
-        if not coord:
-            return cls(0, 0)
-        raise ValueError("Can't convert `{}` to coordinate pair.".format(coord))
+        coord = to_tuple(coord, length=2)
+        return cls(*coord)
 
+
+def _str_to_tuple(value):
+    """Convert various string representations to tuple."""
+    value = value.strip().replace(',', ' ').replace('x', ' ')
+    return tuple(number(_s) for _s in value.split())
+
+def to_tuple(value=0, *, length=2):
+    if isinstance(value, tuple):
+        return value
+    if isinstance(value, numbers.Real):
+        return (value,) * length
+    if isinstance(value, str):
+        value = _str_to_tuple(value)
+        if len(value) == 1:
+            return value * length
+        return value
+    if not value:
+        return (0,) * length
+    try:
+        return tuple(value)
+    except ValueError:
+        pass
+    raise ValueError(f"Can't convert {value!r} to tuple.")
