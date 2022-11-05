@@ -16,7 +16,8 @@ except ImportError:
     cache = lru_cache()
 
 from .scripting import scriptable, get_scriptables, Any
-from .glyph import Glyph, Coord, Bounds, number
+from .glyph import Glyph
+from .basetypes import Coord, Bounds, to_number
 from .encoding import charmaps, encoder
 from .taggers import tagger
 from .labels import Tag, Char, Codepoint, to_label
@@ -65,7 +66,7 @@ class FontProperties(DefaultProps):
     # serif, sans, etc.
     style: str
     # nominal point size
-    point_size: number
+    point_size: to_number
     # normal, bold, light, ...
     weight: str = 'regular'
     # roman, italic, oblique, ...
@@ -97,7 +98,7 @@ class FontProperties(DefaultProps):
     # overall ink bounds - overlay all glyphs with fixed origin and determine maximum ink extent
     bounding_box: Coord.create
     # average advance width, rounded to tenths
-    average_width: number
+    average_width: to_number
     # maximum glyph advance width
     max_width: int
     # advance width of LATIN CAPITAL LETTER X
@@ -200,7 +201,7 @@ class FontProperties(DefaultProps):
     # type converters for compatibility synonyms
     tracking: int
     offset: Coord.create
-    average_advance: number
+    average_advance: to_number
     max_advance: int
     cap_advance: int
 

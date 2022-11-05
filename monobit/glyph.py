@@ -21,7 +21,7 @@ from .properties import (
     DefaultProps, normalise_property, extend_string,
     writable_property, as_tuple, checked_property
 )
-from .basetypes import Coord, Bounds, number, Coord
+from .basetypes import Coord, Bounds
 from .scripting import scriptable
 
 

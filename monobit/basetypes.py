@@ -5,11 +5,15 @@ monobit.basetypes - base data types and converters
 licence: https://opensource.org/licenses/MIT
 """
 
-import numbers
 from collections import namedtuple
 from functools import partial
 from typing import Any
+from numbers import Real
 
+
+def passthrough(var):
+    """Passthrough type."""
+    return var
 
 def to_int(int_str):
     """Convert from int-like or string in any representation."""
@@ -23,15 +27,11 @@ def to_int(int_str):
         # non-string inputs: TypeError, may be OK if int(x) works
         return int(int_str)
 
-def passthrough(var):
-    """Passthrough type."""
-    return var
-
-def number(value=0):
+def to_number(value=0):
     """Convert to int or float."""
     if isinstance(value, str):
         value = float(value)
-    if not isinstance(value, numbers.Real):
+    if not isinstance(value, Real):
         raise ValueError("Can't convert `{}` to number.".format(value))
     if value == int(value):
         value = int(value)
@@ -85,12 +85,12 @@ class RGB(_VectorMixin, namedtuple('Coord', 'r g b')):
 def _str_to_tuple(value):
     """Convert various string representations to tuple."""
     value = value.strip().replace(',', ' ').replace('x', ' ')
-    return tuple(number(_s) for _s in value.split())
+    return tuple(to_number(_s) for _s in value.split())
 
 def to_tuple(value=0, *, length=2):
     if isinstance(value, tuple):
         return value
-    if isinstance(value, numbers.Real):
+    if isinstance(value, Real):
         return (value,) * length
     if isinstance(value, str):
         value = _str_to_tuple(value)
@@ -109,6 +109,7 @@ def to_tuple(value=0, *, length=2):
 # type converters
 CONVERTERS = {
     int: to_int,
+    Real: to_number,
     Any: passthrough,
     Coord: Coord.create,
     RGB: RGB.create,
