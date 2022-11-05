@@ -415,6 +415,50 @@ class TestYaff(BaseTester):
         assert m.shift_up == one.shift_up
         assert m.shift_left == one.shift_left
 
+    def test_shear(self):
+        file = get_stringio(test)
+        f,  *_ = monobit.load(file)
+        one = f.glyphs[0]
+        m = one.shear(pitch=(2, 5)).reduce()
+        # if metrics are correct, prior reduce should make no difference
+        assert m == one.reduce().shear(pitch=(2, 5)).reduce()
+        assert m.as_text() == '\n'.join((
+            '......@@',
+            '....@@@.',
+            '...@@@@.',
+            '....@@..',
+            '....@@..',
+            '....@@..',
+            '...@@...',
+            '...@@...',
+            '..@@....',
+            '..@@....',
+            '@@@@@@..\n',
+        ))
+
+    def test_shear_left(self):
+        file = get_stringio(test)
+        f,  *_ = monobit.load(file)
+        one = f.glyphs[0]
+        m = one.shear(pitch=(2, 5), direction='l').reduce()
+        # if metrics are correct, prior reduce should make no difference
+        assert m == one.reduce().shear(pitch=(2, 5), direction='l').reduce()
+        assert m.as_text() == '\n'.join((
+            '.@@......',
+            '.@@@.....',
+            '@@@@.....',
+            '...@@....',
+            '...@@....',
+            '...@@....',
+            '....@@...',
+            '....@@...',
+            '.....@@..',
+            '.....@@..',
+            '...@@@@@@\n',
+        ))
+
+
+
 
 if __name__ == '__main__':
     unittest.main()
