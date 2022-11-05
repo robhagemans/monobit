@@ -15,7 +15,6 @@ import logging
 
 from ..storage import loaders, savers
 from ..streams import FileFormatError
-from ..properties import Props
 from ..font import Font
 from ..glyph import Glyph
 from ..binary import ceildiv
@@ -32,7 +31,7 @@ def load_dec_drcs(instream, where=None):
     glyphs = _parse_drcs_glyphs(dec_glyphs, first_codepoint)
     if len(glyphs) != count:
         logging.warning('Expected %d glyphs, found %d.', count, len(glyphs))
-    return Font(glyphs, **vars(props))
+    return Font(glyphs, **props)
 
 @savers.register(linked=load_dec_drcs)
 def save_dec_drcs(fonts, outstream, where=None, *, use_8bit:bool=False):
@@ -308,14 +307,14 @@ def _parse_drcs_props(dec_props):
     # determine glyph height from Pcmh
     if not height:
         height = int(dec_props['Pcmh']) or 12
-    props = Props(
+    props = dict(
         encoding='ascii',
         raster_size=(width, height),
         device=device,
     )
     scs_id = dec_props['Dscs'].decode('ascii')
     # preserve unparsed properties
-    props.dec_drcs = shlex.join((
+    props['dec_drcs'] = shlex.join((
         _JOINER.join((_DSCS_NAME, scs_id)),
         _JOINER.join((_PFN_NAME, str(int(dec_props['Pfn'])))),
         _ERASE_CONTROL[int(dec_props['Pe'])],

@@ -9,7 +9,6 @@ import logging
 
 from ..binary import ceildiv
 from ..struct import bitfield, flag, little_endian as le
-from ..properties import Props
 from ..storage import loaders, savers
 from ..font import Font
 from ..glyph import Glyph
@@ -81,7 +80,7 @@ _PSF2_STARTSEQ = b'\xFE'
 def load_psf(instream, where=None):
     """Load character-cell font from PC Screen Font (.PSF) file."""
     magic = instream.read(2)
-    properties = Props()
+    properties = {}
     if magic == _PSF1_MAGIC:
         psf_props = _PSF1_HEADER.read_from(instream)
         width, height = 8, psf_props.charsize
@@ -90,7 +89,7 @@ def load_psf(instream, where=None):
         separator = _PSF1_SEPARATOR
         startseq = _PSF1_STARTSEQ
         encoding = 'utf-16le'
-        properties.source_format = 'PSF v1'
+        properties['source_format'] = 'PSF v1'
     elif magic + instream.read(2) == _PSF2_MAGIC:
         psf_props = _PSF2_HEADER.read_from(instream)
         charsize = psf_props.height * ceildiv(psf_props.width, 8)
@@ -105,7 +104,7 @@ def load_psf(instream, where=None):
         separator = _PSF2_SEPARATOR
         startseq = _PSF2_STARTSEQ
         encoding = 'utf-8'
-        properties.source_format = 'PSF v2'
+        properties['source_format'] = 'PSF v2'
     else:
         raise FileFormatError(
             'Not a PSF file: '
@@ -122,8 +121,8 @@ def load_psf(instream, where=None):
             _glyph.modify(char=''.join(table[_index]))
             for _index, _glyph in enumerate(cells)
         ]
-        properties.encoding = 'unicode'
-    return Font(cells, **vars(properties))
+        properties['encoding'] = 'unicode'
+    return Font(cells, **properties)
 
 def _read_unicode_table(instream, separator, startseq, encoding):
     """Read the Unicode table in a PSF2 file."""

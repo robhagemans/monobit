@@ -22,7 +22,7 @@ from .. import streams
 from ..streams import FileFormatError
 from ..binary import int_to_bytes, bytes_to_int
 from ..struct import little_endian as le
-from ..properties import Props, reverse_dict
+from ..properties import reverse_dict
 from .. import struct
 from ..storage import loaders, savers
 from ..font import Font, Coord
