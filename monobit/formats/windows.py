@@ -904,9 +904,9 @@ def _traverse_dirtable(rsrc, off, rtype):
 
 def create_fnt(font, version=0x200):
     """Create .FNT from properties."""
-    weight_map = dict(reversed(_item) for _item in _WEIGHT_MAP.items())
+    weight_map = reverse_dict(_WEIGHT_MAP)
     charset_map = CHARSET_REVERSE_MAP
-    style_map = dict(reversed(_item) for _item in _STYLE_MAP.items())
+    style_map = reverse_dict(_STYLE_MAP)
     if font.spacing == 'proportional':
         # low bit set for proportional
         pitch_and_family = 0x01 | style_map.get(font.style, 0)

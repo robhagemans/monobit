@@ -18,7 +18,7 @@ from ..streams import FileFormatError
 from ..font import Font
 from ..glyph import Glyph
 from ..binary import ceildiv
-
+from ..properties import reverse_dict
 
 @loaders.register(
     magic=(b'\x90', b'\x1bP'),
@@ -355,7 +355,7 @@ def _write_dec_drcs(font, outstream, use_8bit=False):
 
 def _convert_to_drcs_props(font, is_big):
     # device spec
-    pss_to_dims = dict(reversed(_p) for _p in _PSS_DIMS.items())
+    pss_to_dims = reverse_dict(_PSS_DIMS)
     devices = {
         _DEVICE_PATTERN.format(*_k): _v
         for _k, _v in pss_to_dims.items()
@@ -370,8 +370,8 @@ def _convert_to_drcs_props(font, is_big):
         pass
     else:
         uprops = shlex.split(unparsed)
-        erase = dict(reversed(_p) for _p in _ERASE_CONTROL.items())
-        ftype = dict(reversed(_p) for _p in _FONT_TYPE.items())
+        erase = reverse_dict(_ERASE_CONTROL)
+        ftype = reverse_dict(_FONT_TYPE)
         for uprop in uprops:
             pe = erase.get(uprop, pe)
             pt = ftype.get(uprop, pt)
