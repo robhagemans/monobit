@@ -127,12 +127,12 @@ class GlyphProperties(DefaultProps):
     @checked_property
     def width(self):
         """Raster width of glyph."""
-        return self._glyph.width
+        return self._glyph._pixels.width
 
     @checked_property
     def height(self):
         """Raster height of glyph."""
-        return self._glyph.height
+        return self._glyph._pixels.height
 
     @checked_property
     def ink_bounds(self):
@@ -159,7 +159,7 @@ class GlyphProperties(DefaultProps):
     @checked_property
     def padding(self):
         """Offset from raster sides to bounding box. Left, bottom, right, top."""
-        return self._glyph.padding
+        return self._glyph._pixels.padding
 
     @checked_property
     def raster(self):
@@ -204,7 +204,7 @@ class GlyphProperties(DefaultProps):
 ##############################################################################
 # glyph
 
-class Glyph(Raster):
+class Glyph:
     """Single glyph."""
 
     def __init__(
@@ -215,7 +215,7 @@ class Glyph(Raster):
         ):
         """Create glyph from tuple of tuples."""
         # raster data
-        super().__init__(pixels, _0=_0, _1=_1)
+        self._pixels = Raster(pixels, _0=_0, _1=_1)
         # labels
         labels = (
             Char(char), Codepoint(codepoint), Tag(tag),
@@ -285,12 +285,8 @@ class Glyph(Raster):
             labels = self._labels
         if comment is NOT_SET:
             comment = self._comment
-        if _0 is NOT_SET:
-            _0 = self._0
-        if _1 is NOT_SET:
-            _1 = self._1
         return type(self)(
-            tuple(pixels),
+            pixels,
             labels=labels,
             codepoint=codepoint,
             char=char,
@@ -387,7 +383,6 @@ class Glyph(Raster):
             pixels,
             labels=labels,
             comment=comment,
-            _0=self._0, _1=self._1,
             **properties
         )
 
@@ -456,6 +451,66 @@ class Glyph(Raster):
 
 
     ##########################################################################
+    # creation
+
+    @classmethod
+    def blank(cls, width=0, height=0, **kwargs):
+        """Create whitespace glyph."""
+        return cls(((0,) * width,) * height, **kwargs)
+
+    @classmethod
+    def from_vector(
+            cls, bitseq, *, stride, width=NOT_SET, align='left',
+            _0=NOT_SET, _1=NOT_SET, **kwargs
+        ):
+        """Create glyph from flat immutable sequence representing bits."""
+        pixels = Raster.from_vector(
+            bitseq, stride=stride, width=width, align=align, _0=_0, _1=_1
+        )
+        return cls(pixels, **kwargs)
+
+    @classmethod
+    def from_bytes(cls, byteseq, width, height=NOT_SET, *, align='left', **kwargs):
+        """Create glyph from bytes/bytearray/int sequence."""
+        pixels = Raster.from_bytes(byteseq, width, height, align=align)
+        return cls(pixels, **kwargs)
+
+    @classmethod
+    def from_hex(cls, hexstr, width, height=NOT_SET, *, align='left', **kwargs):
+        """Create glyph from hex string."""
+        pixels = Raster.from_hex(hexstr, width, height, align=align)
+        return cls(pixels, **kwargs)
+
+    ##########################################################################
+    # conversion
+
+    def is_blank(self):
+        """Glyph has no ink."""
+        return self._pixels.is_blank()
+
+    def as_matrix(self, *, ink=1, paper=0):
+        """Return matrix of user-specified foreground and background objects."""
+        return self._pixels.as_matrix(ink=ink, paper=paper)
+
+    # TODO - need method that outputs tuple of str, this one shld be as_string
+    def as_text(self, *, ink='@', paper='.', start='', end='\n'):
+        """Convert glyph to text."""
+        return self._pixels.as_text(ink=ink, paper=paper, start=start, end=end)
+
+    def as_vector(self, ink=1, paper=0):
+        """Return flat tuple of user-specified foreground and background objects."""
+        return self._pixels.as_vector(ink=ink, paper=paper)
+
+    def as_bytes(self, *, align='left'):
+        """Convert glyph to flat bytes."""
+        return self._pixels.as_bytes(align=align)
+
+    def as_hex(self, *, align='left'):
+        """Convert glyph to hex string."""
+        return self._pixels.as_hex(align=align)
+
+
+    ##########################################################################
     # glyph transformations
 
     @scriptable
@@ -494,15 +549,16 @@ class Glyph(Raster):
 
         adjust_metrics: also reverse metrics (default: True)
         """
-        glyph = super().mirror()
+        pixels = self._pixels.mirror()
         if adjust_metrics:
-            return glyph.modify(
+            return self.modify(
+                pixels,
                 left_bearing=self.right_bearing,
                 right_bearing=self.left_bearing,
                 shift_left=-self.shift_left
                 #shift_left around central axis, so should differ at most 1 pixel
             )
-        return glyph
+        return self.modify(pixels)
 
     @scriptable
     def flip(self, *, adjust_metrics:bool=True):
@@ -511,16 +567,17 @@ class Glyph(Raster):
 
         adjust_metrics: also reverse metrics (default: True)
         """
-        glyph = super().flip()
+        pixels = self._pixels.flip()
         if adjust_metrics:
-            return glyph.modify(
+            return self.modify(
+                pixels,
                 top_bearing=self.bottom_bearing,
                 bottom_bearing=self.top_bearing,
                 # flip about baseline
                 shift_up=-self.height - self.shift_up
             )
         # Font should adjust ascent <-> descent and global bearings
-        return glyph
+        return self.modify(pixels)
 
     @scriptable
     def transpose(self, *, adjust_metrics:bool=True):
@@ -529,9 +586,10 @@ class Glyph(Raster):
 
         adjust_metrics: also transpose metrics (default: True)
         """
-        glyph = super().transpose()
+        pixels = self._pixels.transpose()
         if adjust_metrics:
-            return glyph.modify(
+            return self.modify(
+                pixels,
                 top_bearing=self.left_bearing,
                 left_bearing=self.top_bearing,
                 right_bearing=self.bottom_bearing,
@@ -539,6 +597,36 @@ class Glyph(Raster):
                 shift_left=self.shift_up+self.height//2,
                 shift_up=self.shift_left-self.width//2
             )
+        return self.modify(pixels)
+
+    @staticmethod
+    def _calc_turns(clockwise, anti):
+        if clockwise is NOT_SET:
+            if anti is NOT_SET:
+                clockwise, anti = 1, 0
+            else:
+                clockwise = 0
+        elif anti is NOT_SET:
+            anti = 0
+        turns = (clockwise - anti) % 4
+        return turns
+
+    @scriptable
+    def turn(self, clockwise:int=NOT_SET, *, anti:int=NOT_SET):
+        """
+        Rotate by 90-degree turns.
+
+        clockwise: number of turns to rotate clockwise (default: 1)
+        anti: number of turns to rotate anti-clockwise
+        """
+        turns = self._calc_turns(clockwise, anti)
+        if turns == 3:
+            return self.transpose().flip()
+        elif turns == 2:
+            return self.mirror().flip()
+        elif turns == 1:
+            return self.transpose().mirror()
+        return self
 
     @scriptable
     def crop(
@@ -555,9 +643,10 @@ class Glyph(Raster):
         adjust_metrics: make the operation render-invariant (default: True)
         """
         # reduce raster
-        glyph = super().crop(left, bottom, right, top)
+        pixels = self._pixels.crop(left, bottom, right, top)
         if adjust_metrics:
-            return glyph.modify(
+            return self.modify(
+                pixels,
                 # horizontal metrics
                 left_bearing=self.left_bearing + left,
                 right_bearing=self.right_bearing + right,
@@ -565,10 +654,10 @@ class Glyph(Raster):
                 # vertical metrics
                 top_bearing=self.top_bearing + top,
                 bottom_bearing=self.bottom_bearing + bottom,
-                shift_left=self.shift_left + self.width//2 - glyph.width//2,
+                shift_left=self.shift_left + self.width//2 - pixels.width//2,
             )
         # a Font may also have to ensure line_height remains unchanged
-        return glyph
+        return self.modify(pixels)
 
     @scriptable
     def expand(
@@ -585,9 +674,10 @@ class Glyph(Raster):
         adjust_metrics: make the operation render-invariant (default: True)
         """
         # reduce raster
-        glyph = super().expand(left, bottom, right, top)
+        pixels = self._pixels.expand(left, bottom, right, top)
         if adjust_metrics:
-            return glyph.modify(
+            return self.modify(
+                pixels,
                 # horizontal metrics
                 left_bearing=self.left_bearing - left,
                 right_bearing=self.right_bearing - right,
@@ -595,10 +685,10 @@ class Glyph(Raster):
                 # vertical metrics
                 top_bearing=self.top_bearing - top,
                 bottom_bearing=self.bottom_bearing - bottom,
-                shift_left=self.shift_left + self.width//2 - glyph.width//2,
+                shift_left=self.shift_left + self.width//2 - pixels.width//2,
             )
         # a Font may also have to ensure line_height remains unchanged
-        return glyph
+        return self.modify(pixels)
 
     @scriptable
     def stretch(self, factor_x:int=1, factor_y:int=1, *, adjust_metrics:bool=True):
@@ -609,9 +699,10 @@ class Glyph(Raster):
         factor_y: number of times to repeat vertically
         adjust_metrics: also stretch metrics (default: True)
         """
-        glyph = super().stretch(factor_x, factor_y)
+        pixels = self._pixels.stretch(factor_x, factor_y)
         if adjust_metrics:
-            return glyph.modify(
+            return self.modify(
+                pixels,
                 left_bearing=factor_x*self.left_bearing,
                 right_bearing=factor_x*self.right_bearing,
                 top_bearing=factor_y*self.top_bearing,
@@ -619,7 +710,7 @@ class Glyph(Raster):
                 shift_up=factor_y*self.shift_up,
                 shift_left=factor_x*self.shift_left,
             )
-        return glyph
+        return self.modify(pixels)
 
     @scriptable
     def shrink(
@@ -633,9 +724,10 @@ class Glyph(Raster):
         factor_y: factor to shrink vertically
         adjust_metrics: also stretch metrics (default: True)
         """
-        glyph = super().shrink(factor_x, factor_y)
+        pixels = self._pixels.shrink(factor_x, factor_y)
         if adjust_metrics:
-            return glyph.modify(
+            return self.modify(
+                pixels,
                 left_bearing=self.left_bearing // factor_x,
                 right_bearing=self.right_bearing // factor_x,
                 top_bearing=self.top_bearing // factor_y,
@@ -643,7 +735,7 @@ class Glyph(Raster):
                 shift_up=self.shift_up // factor_y,
                 shift_left=self.shift_left // factor_x,
             )
-        return glyph
+        return self.modify(pixels)
 
     @scriptable
     def smear(
@@ -659,10 +751,15 @@ class Glyph(Raster):
         down: number of times to repeat inked pixel downwards
         adjust_metrics: ensure advances stay the same (default: True)
         """
-        return super().smear(
-            left=left, right=right, up=up, down=down,
+        pleft, pdown, pright, pup = self.padding
+        work = self.expand(
+            max(0, left-pleft), max(0, down-pdown),
+            max(0, right-pright), max(0, up-pup),
             adjust_metrics=adjust_metrics
         )
+        return work.modify(work._pixels.smear(
+            left=left, right=right, up=up, down=down,
+        ))
 
     @scriptable
     def outline(self, *, thickness:int=1):
@@ -699,10 +796,10 @@ class Glyph(Raster):
             raise ValueError(
                 f'Shear direction must be `left` or `right`, not `{direction}`'
             )
-        sheared = super(Glyph, work).shear(
+        pixels = work._pixels.shear(
             direction=direction, pitch=pitch, modulo=-work.shift_up*pitch_x,
         )
-        return sheared
+        return work.modify(pixels)
 
     @scriptable
     def underline(self, descent:int=0):
@@ -712,7 +809,20 @@ class Glyph(Raster):
             bottom=max(0, -height), top=max(0, height-self.height+1)
         )
         height = max(0, min(work.height, height))
-        return super(Glyph, work).underline(height)
+        return work.modify(work._pixels.underline(height))
+
+    def invert(self):
+        """Reverse video."""
+        return self.modify(self._pixels.invert())
+
+    def roll(self, down:int=0, right:int=0):
+        """
+        Cycle rows and/or columns in raster.
+
+        down: number of rows to roll (down if positive, up if negative)
+        right: number of columns to roll (to right if positive, to left if negative)
+        """
+        return self.modify(self._pixels.roll(down, right))
 
 
     ##########################################################################
@@ -722,7 +832,7 @@ class Glyph(Raster):
         """
         Minimum box encompassing all glyph matrices overlaid at fixed origin.
         """
-        self = glyphs[0]
+        #self = glyphs[0]
         # raster edges
         rasters = tuple(_g.raster for _g in glyphs)
         return Bounds(
@@ -739,10 +849,10 @@ class Glyph(Raster):
         operator: aggregation function, callable on iterable on bool/int.
                   Use any for additive, all for masking.
         """
-        self = glyphs[0]
+        #self = glyphs[0]
         # bring on common raster
         common = Glyph._get_common_raster(*glyphs)
-        glyphs = (
+        glyphs = tuple(
             _g.expand(
                 left=_g.raster.left-common.left,
                 bottom=_g.raster.bottom-common.bottom,
@@ -751,5 +861,7 @@ class Glyph(Raster):
             )
             for _g in glyphs
         )
-        # apply the unbound function Raster.overlay
-        return super(Glyph).__get__(Glyph).overlay(*glyphs, operator=operator)
+        pixels = Raster.overlay(
+            *(_g._pixels for _g in glyphs), operator=operator
+        )
+        return glyphs[0].modify(pixels)
