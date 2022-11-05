@@ -59,17 +59,9 @@ class KernTable(dict):
 
     def get_for_glyph(self, second):
         """Get kerning amount for given second glyph."""
-        try:
-            return self[second.char]
-        except KeyError:
-            pass
-        try:
-            return self[second.codepoint]
-        except KeyError:
-            pass
-        for tag in second.tags:
+        for label in second.get_labels():
             try:
-                return self[Tag(tag)]
+                return self[label]
             except KeyError:
                 pass
         # no kerning is zero kerning
