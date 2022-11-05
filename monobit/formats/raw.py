@@ -12,7 +12,7 @@ from ..storage import loaders, savers
 from ..font import Font
 from ..glyph import Glyph
 from ..streams import FileFormatError
-from ..basetypes import pair, any_int
+from ..basetypes import pair
 
 
 @loaders.register('bin', 'rom', 'raw', 'f08', 'f14', 'f16', name='binary')
@@ -132,5 +132,3 @@ def load_bitmap(
         for _index, _cell in enumerate(cells, first_codepoint)
     )
     return Font(glyphs)
-
-

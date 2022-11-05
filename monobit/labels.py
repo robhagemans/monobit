@@ -8,7 +8,7 @@ licence: https://opensource.org/licenses/MIT
 from string import ascii_letters, digits
 
 from .binary import ceildiv, int_to_bytes
-from .scripting import any_int
+from .scripting import to_int
 
 
 def is_enclosed(from_str, char):
@@ -144,7 +144,7 @@ class Codepoint(bytes, Label):
                 value = value.split(',')
             # deal with other iterables, e.g. tuple of int
             try:
-                value = b''.join(int_to_bytes(any_int(_i)) for _i in value)
+                value = b''.join(int_to_bytes(to_int(_i)) for _i in value)
             except (TypeError, OverflowError):
                 raise ValueError(
                     f'Cannot convert value {repr(value)} of type `{type(value)}` to codepoint label.'
@@ -219,4 +219,3 @@ class Tag(Label):
         """Tag contents as str."""
         # pylint: disable=no-member
         return self._value
-

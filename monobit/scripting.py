@@ -12,12 +12,12 @@ from contextlib import contextmanager
 from functools import wraps, partial
 from types import SimpleNamespace
 
-from .basetypes import any_int, Any
+from .basetypes import to_int, Any
 
 
 # script type converters
 _CONVERTER = {
-    int: any_int
+    int: to_int
 }
 
 

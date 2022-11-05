@@ -10,8 +10,8 @@ from collections import namedtuple
 from functools import partial
 
 
-def any_int(int_str):
-    """Int-like or string in any representation."""
+def to_int(int_str):
+    """Convert from int-like or string in any representation."""
     try:
         # '0xFF' - hex
         # '0o77' - octal
