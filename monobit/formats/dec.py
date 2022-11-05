@@ -403,7 +403,7 @@ def _convert_to_drcs_glyph(glyph):
         )
         for _i in range(nblocks)
     )
-    blocks = (_b.rotate(turns=1) for _b in blocks)
+    blocks = (_b.turn(clockwise=1) for _b in blocks)
     blockbytes = (_b.as_bytes(align='r') for _b in blocks)
     glyphdef = b'/'.join(
         bytes(_c + ord('?') for _c in _b)
