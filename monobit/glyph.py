@@ -704,6 +704,16 @@ class Glyph(Raster):
         )
         return sheared
 
+    @scriptable
+    def underline(self, descent:int=0):
+        """Return a raster with a line added."""
+        height = -self.shift_up - descent
+        work = self.expand(
+            bottom=max(0, -height), top=max(0, height-self.height+1)
+        )
+        height = max(0, min(work.height, height))
+        return super(Glyph, work).underline(height)
+
 
     ##########################################################################
     # operations on multiple glyphs

@@ -393,8 +393,8 @@ class Raster:
         _0, _1 = '0', '1'
         shiftrange = range(self.height)[::-1]
         modulo %= ypitch
-        shiftrange = tuple((_y*xpitch + modulo)//ypitch for _y in shiftrange)
-        pixels = tuple(
+        shiftrange = ((_y*xpitch + modulo)//ypitch for _y in shiftrange)
+        pixels = (
             ''.join(_row)
             for _row in self.as_matrix(paper=_0, ink=_1)
         )
@@ -418,3 +418,15 @@ class Raster:
         raise ValueError(
             f'Shear direction must be `left` or `right`, not `{direction}`'
         )
+
+    def underline(self, height:int=0):
+        """Return a raster with a line added."""
+        _0, _1 = '0', '1'
+        height = min(self.height, max(0, height))
+        pixels = tuple(
+            _1 * self.width
+            if self.height-_line-1 == height
+            else ''.join(_row)
+            for _line, _row in enumerate(self.as_matrix(paper=_0, ink=_1))
+        )
+        return self.modify(pixels, _0=_0, _1=_1)
