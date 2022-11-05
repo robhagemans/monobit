@@ -76,6 +76,19 @@ class Raster:
 
 
     ##########################################################################
+    # representation
+
+    def __repr__(self):
+        """Text representation."""
+        if self._pixels:
+            return '{}({})'.format(
+                type(self).__name__,
+                self.as_text(start="\n  '", end="',")
+            )
+        return '{}()'.format(type(self).__name__)
+
+
+    ##########################################################################
     # creation and conversion
 
     @classmethod
@@ -177,15 +190,24 @@ class Raster:
 
     def mirror(self):
         """Reverse pixels horizontally."""
-        return type(self)(tuple(_row[::-1] for _row in self._pixels))
+        return type(self)(
+            tuple(_row[::-1] for _row in self._pixels),
+            _0=self._0, _1=self._1
+        )
 
     def flip(self):
         """Reverse pixels vertically."""
-        return type(self)(self._pixels[::-1])
+        return type(self)(
+            self._pixels[::-1],
+            _0=self._0, _1=self._1
+        )
 
     def transpose(self):
         """Transpose glyph."""
-        return type(self)(tuple(zip(*self._pixels)))
+        return type(self)(
+            tuple(zip(*self._pixels)),
+            _0=self._0, _1=self._1
+        )
 
     def roll(self, down:int=0, right:int=0):
         """
@@ -197,12 +219,14 @@ class Raster:
         rolled = self
         rows, columns = down, right
         if self.height > 1 and rows:
-            rolled = type(self)(rolled._pixels[-rows:] + rolled._pixels[:-rows])
+            rolled = rolled._pixels[-rows:] + rolled._pixels[:-rows]
         if self.width > 1 and columns:
-            rolled = type(self)(
-                tuple(_row[-columns:] + _row[:-columns] for _row in rolled._pixels)
+            rolled = tuple(
+                _row[-columns:] + _row[:-columns]
+                for _row in rolled._pixels
             )
-        return rolled
+        return type(self)(rolled, _0=self._0, _1=self._1)
+
 
     def shift(self, *, left:int=0, down:int=0, right:int=0, up:int=0):
         """
@@ -224,21 +248,17 @@ class Raster:
         )
         empty_row = _0 * self.width
         if rows > 0:
-            shifted = type(self)(
-                (empty_row,) * rows + pixels[:-rows], _0=_0, _1=_1
-            )
-        elif rows <= 0:
-            shifted = type(self)(
-                pixels[-rows:] + (empty_row,) * -rows, _0=_0, _1=_1
-            )
+            shifted = (empty_row,) * rows + pixels[:-rows]
+        else:
+            shifted = pixels[-rows:] + (empty_row,) * -rows
         if columns > 0:
             return type(self)(
-                tuple(_0 * columns + _row[:-columns] for _row in shifted._pixels),
+                tuple(_0 * columns + _row[:-columns] for _row in shifted),
                 _0=_0, _1=_1
             )
         else:
             return type(self)(
-                tuple(_row[-columns:] + _0 * -columns for _row in shifted._pixels),
+                tuple(_row[-columns:] + _0 * -columns for _row in shifted),
                 _0=_0, _1=_1
             )
 
@@ -254,9 +274,11 @@ class Raster:
         if min(left, bottom, right, top) < 0:
             raise ValueError('Can only crop glyph by a positive amount.')
         return type(self)(tuple(
-            _row[left : (-right if right else None)]
-            for _row in self._pixels[top : (-bottom if bottom else None)]
-        ))
+                _row[left : (-right if right else None)]
+                for _row in self._pixels[top : (-bottom if bottom else None)]
+            ),
+            _0=self._0, _1=self._1
+        )
 
     def expand(self, left:int=0, bottom:int=0, right:int=0, top:int=0):
         """
@@ -294,13 +316,13 @@ class Raster:
         factor_y: number of times to repeat vertically
         """
         # vertical stretch
-        glyph = tuple(_row for _row in self._pixels for _ in range(factor_y))
+        pixels = (_row for _row in self._pixels for _ in range(factor_y))
         # horizontal stretch
-        glyph = tuple(
+        pixels = (
             tuple(_col for _col in _row for _ in range(factor_x))
-            for _row in glyph
+            for _row in pixels
         )
-        return type(self)(glyph)
+        return type(self)(tuple(pixels), _0=self._0, _1=self._1)
 
     def shrink(self, factor_x:int=1, factor_y:int=1):
         """
@@ -310,10 +332,11 @@ class Raster:
         factor_y: factor to shrink vertically
         """
         # vertical shrink
-        shrunk_glyph = self._pixels[::factor_y]
+        shrunk = self._pixels[::factor_y]
         # horizontal shrink
-        shrunk_glyph = tuple(_row[::factor_x] for _row in shrunk_glyph)
-        return type(self)(shrunk_glyph)
+        shrunk = tuple(_row[::factor_x] for _row in shrunk)
+        return type(self)(shrunk, _0=self._0, _1=self._1)
+
 
     ##########################################################################
     # effects
