@@ -152,7 +152,9 @@ def _read_fzx(instream):
     ]
     # set glyph fzx properties
     glyphs = [
-        _glyph.modify(kern=_entry.kern, fzx_width=_entry.width, shift=_entry.shift)
+        _glyph.modify(
+            fzx_kern=_entry.kern, fzx_width=_entry.width, fzx_shift=_entry.shift
+        )
         for _glyph, _entry in zip(glyphs, char_table)
     ]
     return Props(**vars(header)), glyphs
@@ -179,9 +181,9 @@ def _write_fzx(outstream, fzx_props, fzx_glyphs):
     char_table = _CHAR_ENTRY.array(n_chars)(*(
         _CHAR_ENTRY(
             offset=_offset,
-            kern=_glyph.kern,
+            kern=_glyph.fzx_kern,
             width=_glyph.fzx_width,
-            shift=_glyph.shift
+            shift=_glyph.fzx_shift
         )
         for _i, (_glyph, _offset) in enumerate(zip(fzx_glyphs, offsets))
     ))
@@ -205,12 +207,12 @@ def _convert_from_fzx(fzx_props, fzx_glyphs):
     glyphs = (
         _glyph.modify(
             codepoint=(_codepoint,),
-            left_bearing=-_glyph.kern,
-            shift_up=fzx_props.height-_glyph.height-_glyph.shift,
+            left_bearing=-_glyph.fzx_kern,
+            shift_up=fzx_props.height-_glyph.height-_glyph.fzx_shift,
             # +1 because _entry.width is actually width-1
             right_bearing=(_glyph.fzx_width+1)-_glyph.width
         ).drop(
-            'kern', 'fzx_width', 'shift'
+            'fzx_kern', 'fzx_width', 'fzx_shift'
         )
         for _codepoint, _glyph in enumerate(fzx_glyphs, start=32)
     )
@@ -250,18 +252,33 @@ def _convert_to_fzx(font):
     while glyphs and not glyphs[-1].width:
         glyphs = glyphs[:-1]
     if not glyphs:
-        raise FileFormatError('FZX format: no glyphs in storable codepoint range 32--255.')
-    # TODO: bring on normal form first
+        raise FileFormatError(
+            'FZX format: no glyphs in storable codepoint range 32--255.'
+        )
+    # we aim for left-bearing >= -3, fzx_shift >= 0
+    # crop as far as we can without losing ink
+    glyphs = tuple(_glyph.reduce(blank_empty=False) for _glyph in glyphs)
+    # expand to left-bearing <= 0
+    # expand to fzx-shift <= 15
+    glyphs = tuple(
+        _glyph.expand(
+            left=max(0, _glyph.left_bearing),
+            top=max(0, font.line_height-_glyph.shift_up-_glyph.height-15),
+            adjust_metrics=True
+        )
+        for _glyph in glyphs
+    )
     common_right_bearing = min(_glyph.right_bearing for _glyph in glyphs)
     # set glyph FZX properties
     fzx_glyphs = tuple(
-        # make zero-width glyphs into 1-width glyphs with 1 step back as we can't store zero width
-        Glyph(kern=1, shift=font.line_height, fzx_width=0)
+        # make zero-width glyphs into 1-width glyphs with 1 step back
+        # as we can't store zero width
+        Glyph(fzx_kern=1, fzx_shift=font.line_height, fzx_width=0)
         if not _glyph.width else
         _glyph.modify(
-            kern=-_glyph.left_bearing,
+            fzx_kern=-_glyph.left_bearing,
             # line height includes leading
-            shift=font.line_height-_glyph.shift_up-_glyph.height,
+            fzx_shift=font.line_height-_glyph.shift_up-_glyph.height,
             # absorb per-glyph right_bearing by extending fzx width
             fzx_width=_glyph.width + _glyph.right_bearing - common_right_bearing - 1,
         ).drop('left-bearing', 'right-bearing', 'shift-up')
@@ -270,11 +287,13 @@ def _convert_to_fzx(font):
     # check glyph dimensions / bitfield ranges
     if any(_glyph.fzx_width < 0 or _glyph.fzx_width > 15 for _glyph in fzx_glyphs):
         raise FileFormatError('FZX format: glyphs must be from 1 to 16 pixels wide.')
-    if any(_glyph.kern < 0 or _glyph.kern > 3 for _glyph in fzx_glyphs):
+    if any(_glyph.fzx_kern < 0 or _glyph.fzx_kern > 3 for _glyph in fzx_glyphs):
         raise FileFormatError('FZX format: left-bearing must be in range -3--0.')
-    if any(_glyph.shift > 15 for _glyph in fzx_glyphs):
-        # TODO: resize character to reduce shift
-        raise FileFormatError('FZX format: distance between raster top and line height must be in range 0--15.')
+    if any(_glyph.fzx_shift > 15 or _glyph.fzx_shift < 0 for _glyph in fzx_glyphs):
+        raise FileFormatError(
+            'FZX format: distance between raster top and line height '
+            'must be in range 0--15.'
+        )
     tracking = font.right_bearing + common_right_bearing
     if tracking < -128 or tracking > 127:
         raise FileFormatError('FZX format: right-bearing must be in range -128--127.')

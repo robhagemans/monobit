@@ -6,9 +6,17 @@ testing utilities
 import tempfile
 import unittest
 import logging
+import io
 from pathlib import Path
 
 import monobit
+
+
+def get_stringio(string):
+    """Workaround as our streams require a buffer to be available."""
+    return io.TextIOWrapper(
+        io.BufferedReader(io.BytesIO(string.encode()))
+    )
 
 
 class BaseTester(unittest.TestCase):

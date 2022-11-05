@@ -6,7 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import numbers
-from typing import NamedTuple
+from collections import namedtuple
 
 
 class IntTuple(tuple):
@@ -22,6 +22,7 @@ def tuple_int(tup):
 
 rgb = tuple_int
 pair = tuple_int
+
 
 def any_int(int_str):
     """Int-like or string in any representation."""
@@ -53,21 +54,28 @@ def number(value=0):
     return value
 
 
-class Bounds(NamedTuple):
-    """4-coordinate tuple."""
-    left: int
-    bottom: int
-    right: int
-    top: int
-
-
-class Coord(NamedTuple):
-    """Coordinate tuple."""
-    x: int
-    y: int
+class _VectorMixin:
+    """Vector operations on tuple."""
 
     def __str__(self):
-        return '{} {}'.format(self.x, self.y)
+        return ' '.join(f'{_e}' for _e in self)
+
+    def __add__(self, other):
+        return type(self)(*(_l + _r for _l, _r in zip(self, other)))
+
+    def __sub__(self, other):
+        return type(self)(*(_l - _r for _l, _r in zip(self, other)))
+
+    def __bool__(self):
+        return any(self)
+
+
+
+class Bounds(_VectorMixin, namedtuple('Bounds', 'left bottom right top')):
+    """4-coordinate tuple."""
+
+class Coord(_VectorMixin, namedtuple('Coord', 'x y')):
+    """Coordinate tuple."""
 
     @classmethod
     def create(cls, coord=0):
@@ -88,11 +96,3 @@ class Coord(NamedTuple):
             return cls(0, 0)
         raise ValueError("Can't convert `{}` to coordinate pair.".format(coord))
 
-    def __add__(self, other):
-        return Coord(self.x + other.x, self.y + other.y)
-
-    def __sub__(self, other):
-        return Coord(self.x - other.x, self.y - other.y)
-
-    def __bool__(self):
-        return bool(self.x or self.y)
