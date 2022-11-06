@@ -12,6 +12,40 @@ from .basetypes import Bounds, Coord
 NOT_SET = object()
 
 
+# turn function for Raster, Glyph and Font
+
+def _calc_turns(clockwise, anti):
+    if clockwise is NOT_SET:
+        if anti is NOT_SET:
+            clockwise, anti = 1, 0
+        else:
+            clockwise = 0
+    elif anti is NOT_SET:
+        anti = 0
+    turns = (clockwise - anti) % 4
+    return turns
+
+def turn(self, clockwise:int=NOT_SET, *, anti:int=NOT_SET):
+    """
+    Rotate by 90-degree turns.
+
+    clockwise: number of turns to rotate clockwise (default: 1)
+    anti: number of turns to rotate anti-clockwise
+    """
+    turns = _calc_turns(clockwise, anti)
+    if turns == 3:
+        return self.transpose().flip()
+    elif turns == 2:
+        return self.mirror().flip()
+    elif turns == 1:
+        return self.transpose().mirror()
+    return self
+
+turn_method = turn
+
+
+# immutable bit matrix
+
 class Raster:
     """Bit matrix."""
 
@@ -208,6 +242,8 @@ class Raster:
             tuple(zip(*self._pixels)),
             _0=self._0, _1=self._1
         )
+
+    turn = turn_method
 
     def roll(self, down:int=0, right:int=0):
         """

@@ -16,7 +16,7 @@ except ImportError:
 
 from .encoding import is_graphical
 from .labels import Codepoint, Char, Tag, to_label
-from .raster import Raster, NOT_SET
+from .raster import Raster, NOT_SET, turn_method
 from .properties import (
     DefaultProps, normalise_property, extend_string,
     writable_property, as_tuple, checked_property
@@ -603,22 +603,7 @@ class Glyph:
         turns = (clockwise - anti) % 4
         return turns
 
-    @scriptable
-    def turn(self, clockwise:int=NOT_SET, *, anti:int=NOT_SET):
-        """
-        Rotate by 90-degree turns.
-
-        clockwise: number of turns to rotate clockwise (default: 1)
-        anti: number of turns to rotate anti-clockwise
-        """
-        turns = self._calc_turns(clockwise, anti)
-        if turns == 3:
-            return self.transpose().flip()
-        elif turns == 2:
-            return self.mirror().flip()
-        elif turns == 1:
-            return self.transpose().mirror()
-        return self
+    turn = scriptable(turn_method)
 
     @scriptable
     def crop(
