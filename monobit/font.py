@@ -35,7 +35,7 @@ NOT_SET = object()
 
 # pylint: disable=redundant-keyword-arg, no-member
 
-###################################################################################################
+###############################################################################
 # property management
 
 
@@ -615,7 +615,7 @@ class FontProperties(DefaultProps):
         return self.cap_width
 
 
-###################################################################################################
+###############################################################################
 # Font class
 
 
@@ -776,10 +776,16 @@ class Font:
     def glyphs(self):
         return self._glyphs
 
-    def get_glyph(self, label=None, *, char=None, codepoint=None, tag=None, missing='raise'):
+    def get_glyph(
+            self, label=None, *,
+            char=None, codepoint=None, tag=None,
+            missing='raise'
+        ):
         """Get glyph by char, codepoint or tag; default if not present."""
         try:
-            index = self.get_index(label, tag=tag, char=char, codepoint=codepoint)
+            index = self.get_index(
+                label, tag=tag, char=char, codepoint=codepoint
+            )
         except KeyError:
             if missing == 'default':
                 return self.get_default_glyph()
