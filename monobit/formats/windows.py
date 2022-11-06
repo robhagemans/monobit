@@ -32,8 +32,9 @@ import logging
 import itertools
 
 from ..binary import bytes_to_bits, ceildiv, align
-from ..struct import reverse_dict, little_endian as le
+from ..struct import little_endian as le
 from .. import struct
+from ..properties import reverse_dict
 from ..storage import loaders, savers
 from ..streams import FileFormatError
 from ..font import Font, Coord
@@ -903,9 +904,9 @@ def _traverse_dirtable(rsrc, off, rtype):
 
 def create_fnt(font, version=0x200):
     """Create .FNT from properties."""
-    weight_map = dict(reversed(_item) for _item in _WEIGHT_MAP.items())
+    weight_map = reverse_dict(_WEIGHT_MAP)
     charset_map = CHARSET_REVERSE_MAP
-    style_map = dict(reversed(_item) for _item in _STYLE_MAP.items())
+    style_map = reverse_dict(_STYLE_MAP)
     if font.spacing == 'proportional':
         # low bit set for proportional
         pitch_and_family = 0x01 | style_map.get(font.style, 0)

@@ -17,7 +17,7 @@ except ImportError:
 from .encoding import is_graphical
 from .labels import Codepoint, Char, Tag, to_label
 from .raster import Raster, NOT_SET
-from .struct import (
+from .properties import (
     DefaultProps, normalise_property, extend_string,
     writable_property, as_tuple, checked_property
 )
