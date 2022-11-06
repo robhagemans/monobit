@@ -385,8 +385,7 @@ class Raster:
         xpitch, ypitch = pitch
         _0, _1 = '0', '1'
         shiftrange = range(self.height)[::-1]
-        modulo %= ypitch
-        shiftrange = ((_y*xpitch - modulo)//ypitch for _y in shiftrange)
+        shiftrange = tuple((_y*xpitch + modulo)//ypitch for _y in shiftrange)
         pixels = (
             ''.join(_row)
             for _row in self.as_matrix(paper=_0, ink=_1)

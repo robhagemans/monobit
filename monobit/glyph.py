@@ -771,17 +771,20 @@ class Glyph:
         pitch_x, pitch_y = pitch
         direction = direction[0].lower()
         extra_width = (self.height-1) * pitch_x // pitch_y
-        pre = (self.shift_up * pitch_x + self.shift_up%pitch_y) // pitch_y
+        # adjustment to start diagonal at baseline
+        modulo = pitch_y - (-self.shift_up*pitch_x) % pitch_y
+        # adjust for shift at baseline height, to keep it fixed
+        pre = (-self.shift_up * pitch_x + modulo) // pitch_y
         if direction == 'r':
             work = self.modify(
-                left_bearing=self.left_bearing+pre,
-                right_bearing=self.right_bearing-pre,
+                left_bearing=self.left_bearing-pre,
+                right_bearing=self.right_bearing+pre,
             )
             work = work.expand(right=extra_width)
         elif direction == 'l':
             work = self.modify(
-                left_bearing=self.left_bearing-pre,
-                right_bearing=self.right_bearing+pre,
+                left_bearing=self.left_bearing+pre,
+                right_bearing=self.right_bearing-pre,
             )
             work = work.expand(left=extra_width)
         else:
@@ -789,7 +792,7 @@ class Glyph:
                 f'Shear direction must be `left` or `right`, not `{direction}`'
             )
         pixels = work._pixels.shear(
-            direction=direction, pitch=pitch, modulo=-work.shift_up*pitch_x,
+            direction=direction, pitch=pitch, modulo=modulo,
         )
         return work.modify(pixels)
 
