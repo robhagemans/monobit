@@ -222,6 +222,8 @@ class Raster:
     ##########################################################################
     # transformations
 
+    # orthogonal transformations
+
     def mirror(self):
         """Reverse pixels horizontally."""
         return type(self)(
@@ -245,6 +247,8 @@ class Raster:
 
     turn = turn_method
 
+    # ink shifts on constant raster size
+
     def roll(self, down:int=0, right:int=0):
         """
         Cycle rows and/or columns in raster.
@@ -262,7 +266,6 @@ class Raster:
                 for _row in rolled._pixels
             )
         return type(self)(rolled, _0=self._0, _1=self._1)
-
 
     def shift(self, *, left:int=0, down:int=0, right:int=0, up:int=0):
         """
@@ -297,6 +300,8 @@ class Raster:
                 tuple(_row[-columns:] + _0 * -columns for _row in shifted),
                 _0=_0, _1=_1
             )
+
+    # raster size changes
 
     def crop(self, left:int=0, bottom:int=0, right:int=0, top:int=0):
         """
@@ -373,8 +378,6 @@ class Raster:
         shrunk = tuple(_row[::factor_x] for _row in shrunk)
         return type(self)(shrunk, _0=self._0, _1=self._1)
 
-
-    ##########################################################################
     # effects
 
     def overlay(*others, operator=any):
@@ -410,7 +413,6 @@ class Raster:
         work = work.overlay(*(work.shift(up=_i+1) for _i in range(up)))
         work = work.overlay(*(work.shift(down=_i+1) for _i in range(down)))
         return work
-
 
     def shear(
             self, direction:str='right',
