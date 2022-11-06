@@ -457,6 +457,30 @@ class TestGlyphTrafo(BaseTester):
             '...@@@@@@\n',
         )), m
 
+    def test_shear_unreduced(self):
+        file = get_stringio(test)
+        f,  *_ = monobit.load(file)
+        one = f.glyphs[0]
+        m = one.shear(pitch=(1, 2))
+        assert m.as_text() == '\n'.join((
+            '...............',
+            '...............',
+            '..........@@...',
+            '........@@@....',
+            '.......@@@@....',
+            '........@@.....',
+            '........@@.....',
+            '.......@@......',
+            '.......@@......',
+            '......@@.......',
+            '......@@.......',
+            '.....@@........',
+            '...@@@@@@......',
+            '...............',
+            '...............',
+            '...............\n',
+        )), m
+
     def test_underline(self):
         file = get_stringio(test)
         f,  *_ = monobit.load(file)
