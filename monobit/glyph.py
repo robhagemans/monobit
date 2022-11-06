@@ -505,34 +505,7 @@ class Glyph:
     ##########################################################################
     # glyph transformations
 
-    @scriptable
-    def reduce(self, *, adjust_metrics:bool=True, blank_empty:bool=True):
-        """
-        Return a glyph reduced to the bounding box.
-
-        adjust_metrics: make the operation render-invariant (default: True)
-        blank_empty: reduce blank glyphs to empty (default: True)
-        """
-        if (not blank_empty) and self.is_blank():
-            return self.crop(
-                self.width, self.height-1, 0, 0,
-                adjust_metrics=adjust_metrics
-            )
-        return self.crop(*self.padding, adjust_metrics=adjust_metrics)
-
-    @scriptable
-    def inflate(self, *, adjust_metrics:bool=True):
-        """
-        Return a glyph padded to include positive bearings.
-        Any negative bearings remain unchanged.
-
-        adjust_metrics: make the operation render-invariant (default: True)
-        """
-        return self.expand(
-            left=max(0, self.left_bearing), bottom=max(0, self.bottom_bearing),
-            right=max(0, self.right_bearing), top=max(0, self.top_bearing),
-            adjust_metrics=adjust_metrics
-        )
+    # orthogonal transformations
 
     @scriptable
     def mirror(self, *, adjust_metrics:bool=True):
@@ -605,6 +578,8 @@ class Glyph:
 
     turn = scriptable(turn_method)
 
+    # raster resizing
+
     @scriptable
     def crop(
             self, left:int=0, bottom:int=0, right:int=0, top:int=0,
@@ -668,6 +643,37 @@ class Glyph:
         return self.modify(pixels)
 
     @scriptable
+    def reduce(self, *, adjust_metrics:bool=True, blank_empty:bool=True):
+        """
+        Return a glyph reduced to the bounding box.
+
+        adjust_metrics: make the operation render-invariant (default: True)
+        blank_empty: reduce blank glyphs to empty (default: True)
+        """
+        if (not blank_empty) and self.is_blank():
+            return self.crop(
+                self.width, self.height-1, 0, 0,
+                adjust_metrics=adjust_metrics
+            )
+        return self.crop(*self.padding, adjust_metrics=adjust_metrics)
+
+    @scriptable
+    def inflate(self, *, adjust_metrics:bool=True):
+        """
+        Return a glyph padded to include positive bearings.
+        Any negative bearings remain unchanged.
+
+        adjust_metrics: make the operation render-invariant (default: True)
+        """
+        return self.expand(
+            left=max(0, self.left_bearing), bottom=max(0, self.bottom_bearing),
+            right=max(0, self.right_bearing), top=max(0, self.top_bearing),
+            adjust_metrics=adjust_metrics
+        )
+
+    # scaling
+
+    @scriptable
     def stretch(self, factor_x:int=1, factor_y:int=1, *, adjust_metrics:bool=True):
         """
         Stretch glyph by repeating rows and/or columns.
@@ -714,6 +720,41 @@ class Glyph:
             )
         return self.modify(pixels)
 
+    # shear
+
+    @scriptable
+    def shear(self, *, direction:str='right', pitch:Coord=(1, 1)):
+        """Transform glyph by shearing diagonally."""
+        pitch_x, pitch_y = pitch
+        direction = direction[0].lower()
+        extra_width = (self.height-1) * pitch_x // pitch_y
+        # adjustment to start diagonal at baseline
+        modulo = pitch_y - (-self.shift_up*pitch_x) % pitch_y
+        # adjust for shift at baseline height, to keep it fixed
+        pre = (-self.shift_up * pitch_x + modulo) // pitch_y
+        if direction == 'r':
+            work = self.modify(
+                left_bearing=self.left_bearing-pre,
+                right_bearing=self.right_bearing+pre,
+            )
+            work = work.expand(right=extra_width)
+        elif direction == 'l':
+            work = self.modify(
+                left_bearing=self.left_bearing+pre,
+                right_bearing=self.right_bearing-pre,
+            )
+            work = work.expand(left=extra_width)
+        else:
+            raise ValueError(
+                f'Shear direction must be `left` or `right`, not `{direction}`'
+            )
+        pixels = work._pixels.shear(
+            direction=direction, pitch=pitch, modulo=modulo,
+        )
+        return work.modify(pixels)
+
+    # ink effects
+
     @scriptable
     def smear(
             self, *, left:int=0, down:int=0, right:int=1, up:int=0,
@@ -749,37 +790,6 @@ class Glyph:
             left=thickness, down=thickness, right=thickness, up=thickness
         )
         return thicker.overlay(self, operator=lambda x: bool(sum(x) % 2))
-
-    @scriptable
-    def shear(self, *, direction:str='right', pitch:Coord=(1, 1)):
-        """Transform glyph by shearing diagonally."""
-        pitch_x, pitch_y = pitch
-        direction = direction[0].lower()
-        extra_width = (self.height-1) * pitch_x // pitch_y
-        # adjustment to start diagonal at baseline
-        modulo = pitch_y - (-self.shift_up*pitch_x) % pitch_y
-        # adjust for shift at baseline height, to keep it fixed
-        pre = (-self.shift_up * pitch_x + modulo) // pitch_y
-        if direction == 'r':
-            work = self.modify(
-                left_bearing=self.left_bearing-pre,
-                right_bearing=self.right_bearing+pre,
-            )
-            work = work.expand(right=extra_width)
-        elif direction == 'l':
-            work = self.modify(
-                left_bearing=self.left_bearing+pre,
-                right_bearing=self.right_bearing-pre,
-            )
-            work = work.expand(left=extra_width)
-        else:
-            raise ValueError(
-                f'Shear direction must be `left` or `right`, not `{direction}`'
-            )
-        pixels = work._pixels.shear(
-            direction=direction, pitch=pitch, modulo=modulo,
-        )
-        return work.modify(pixels)
 
     @scriptable
     def underline(self, descent:int=0):
