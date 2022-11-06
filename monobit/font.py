@@ -17,6 +17,7 @@ except ImportError:
 
 from .scripting import scriptable, get_scriptables, Any
 from .glyph import Glyph
+from .raster import turn_method
 from .basetypes import Coord, Bounds
 from .encoding import charmaps, encoder
 from .taggers import tagger
@@ -679,10 +680,16 @@ class Font:
         elif comment is not NOT_SET:
             old_comment.update(comment)
         # comment and properties are replaced keyword by keyword
+        properties = {
+            _k: _v
+            for _k, _v in vars(self._props).items()
+            if not _k.startswith('_') and not _k.startswith('#')
+        }
+        properties.update(kwargs)
         return type(self)(
             tuple(glyphs),
             comment=old_comment,
-            **{**self.properties, **kwargs}
+            **properties
         )
 
     def append(
@@ -1019,21 +1026,112 @@ class Font:
 
 
     ##########################################################################
-    # inject Glyph operations into Font
+    # transformations
 
-    glyph_operations = get_scriptables(Glyph)
-    for _name, _func in glyph_operations.items():
+    def _apply_to_all_glyphs(self, operation, *args, **kwargs):
+        glyphs = tuple(
+            operation(_glyph, *args, **kwargs)
+            for _glyph in self._glyphs
+        )
+        return self.modify(glyphs)
 
-        @scriptable
-        @wraps(_func)
-        def _modify_glyphs(self, *args, operation=_func, **kwargs):
-            glyphs = tuple(
-                operation(_glyph, *args, **kwargs)
-                for _glyph in self._glyphs
+    def _privatise_glyph_metrics(self):
+        glyphs = tuple(
+            _g.modify(
+                top_bearing=_g.top_bearing+self.top_bearing,
+                left_bearing=_g.left_bearing+self.left_bearing,
+                bottom_bearing=_g.bottom_bearing+self.bottom_bearing,
+                right_bearing=_g.right_bearing+self.right_bearing,
+                shift_up=_g.shift_up+self.shift_up,
+                shift_left=_g.shift_left+self.shift_left,
             )
-            return  self.modify(glyphs)
+            for _g in self._glyphs
+        )
+        return self.modify(
+            glyphs, top_bearing=None, left_bearing=None,
+            bottom_bearing=None, right_bearing=None,
+            shift_up=None, shift_left=None,
+        )
 
-        locals()[_name] = _modify_glyphs
+
+    @scriptable
+    def mirror(self, *, adjust_metrics:bool=True):
+        """
+        Reverse horizontally.
+
+        adjust_metrics: also reverse metrics (default: True)
+        """
+        font = self._privatise_glyph_metrics()
+        font = font._apply_to_all_glyphs(
+            Glyph.mirror, adjust_metrics=adjust_metrics
+        )
+        if not adjust_metrics:
+            return font
+        return font.modify(
+            direction={
+                'left-to-right': 'right-to-left',
+                'right-to-left': 'left-to-right',
+            }.get(font.direction, font.direction)
+        )
+
+    @scriptable
+    def flip(self, *, adjust_metrics:bool=True):
+        """
+        Reverse vertically.
+
+        adjust_metrics: also reverse metrics (default: True)
+        """
+        font = self._privatise_glyph_metrics()
+        font = font._apply_to_all_glyphs(
+            Glyph.flip, adjust_metrics=adjust_metrics
+        )
+        if not adjust_metrics:
+            return font
+        return font.modify(
+            direction={
+                'top-to-bottom': 'bottom-to-top',
+                'bottom-to-top': 'top-to-bottom',
+            }.get(font.direction, font.direction)
+        )
+
+    @scriptable
+    def transpose(self, *, adjust_metrics:bool=True):
+        """
+        Swap horizontal and vertical directions.
+
+        adjust_metrics: also transpose metrics (default: True)
+        """
+        font = self._privatise_glyph_metrics()
+        font = font._apply_to_all_glyphs(
+            Glyph.transpose, adjust_metrics=adjust_metrics
+        )
+        if not adjust_metrics:
+            return font
+        return font.modify(
+            line_height = font.line_width,
+            line_width = font.line_height,
+            direction={
+                'left-to-right': 'top-to-bottom',
+                'right-to-left': 'bottom-to-top',
+                'top-to-bottom': 'left-to-right',
+                'bottom-to-top': 'right-to-left',
+            }.get(font.direction, font.direction)
+        )
+
+    # implement turn() based on the above
+    turn = scriptable(turn_method)
+
+    # inject remaining Glyph transformations into Font
+
+    for _name, _func in get_scriptables(Glyph).items():
+        if _name not in locals():
+
+            @scriptable
+            @wraps(_func)
+            def _modify_glyphs(self, *args, **kwargs):
+                return _apply_to_all_glyphs(operation, *args, **kwargs)
+
+            locals()[_name] = _modify_glyphs
 
 
 # scriptable font/glyph operations
