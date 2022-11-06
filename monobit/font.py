@@ -17,7 +17,7 @@ except ImportError:
 
 from .scripting import scriptable, get_scriptables, Any
 from .glyph import Glyph
-from .basetypes import Coord, Bounds, to_number
+from .basetypes import Coord, Bounds
 from .encoding import charmaps, encoder
 from .taggers import tagger
 from .labels import Tag, Char, Codepoint, to_label
@@ -66,7 +66,7 @@ class FontProperties(DefaultProps):
     # serif, sans, etc.
     style: str
     # nominal point size
-    point_size: to_number
+    point_size: float
     # normal, bold, light, ...
     weight: str = 'regular'
     # roman, italic, oblique, ...
@@ -82,9 +82,9 @@ class FontProperties(DefaultProps):
     device: str
     # calculated or given
     # pixel aspect ratio - square pixel
-    pixel_aspect: Coord.create = Coord(1, 1)
+    pixel_aspect: Coord = Coord(1, 1)
     # target resolution in dots per inch
-    dpi: Coord.create
+    dpi: Coord
 
     # summarising quantities
     # determined from the bitmaps only
@@ -92,13 +92,13 @@ class FontProperties(DefaultProps):
     # proportional, monospace, character-cell, multi-cell
     spacing: str
     # maximum raster (not necessarily ink) width/height
-    raster_size: Coord.create
+    raster_size: Coord
     # width, height of the character cell
-    cell_size: Coord.create
+    cell_size: Coord
     # overall ink bounds - overlay all glyphs with fixed origin and determine maximum ink extent
-    bounding_box: Coord.create
+    bounding_box: Coord
     # average advance width, rounded to tenths
-    average_width: to_number
+    average_width: float
     # maximum glyph advance width
     max_width: int
     # advance width of LATIN CAPITAL LETTER X
@@ -177,9 +177,9 @@ class FontProperties(DefaultProps):
     # recommended subscript size in pixels.
     subscript_size: int
     # recommended superscript horizontal, vertical offset in pixels.
-    superscript_offset: Coord.create
+    superscript_offset: Coord
     # recommended subscript horizontal, vertical offset in pixels.
-    subscript_offset: Coord.create
+    subscript_offset: Coord
     # recommended small-capital size in pixels.
     small_cap_size: int
     # recommended space between words, in pixels
@@ -200,8 +200,8 @@ class FontProperties(DefaultProps):
 
     # type converters for compatibility synonyms
     tracking: int
-    offset: Coord.create
-    average_advance: to_number
+    offset: Coord
+    average_advance: float
     max_advance: int
     cap_advance: int
 

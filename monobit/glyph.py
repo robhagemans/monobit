@@ -106,7 +106,7 @@ class GlyphProperties(DefaultProps):
     # compatibility synonyms
     kern_to: KernTable
     tracking: int
-    offset: Coord.create
+    offset: Coord
 
 
     @checked_property

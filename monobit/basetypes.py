@@ -109,6 +109,7 @@ def to_tuple(value=0, *, length=2):
 # type converters
 CONVERTERS = {
     int: to_int,
+    float: to_number,
     Real: to_number,
     Any: passthrough,
     Coord: Coord.create,
