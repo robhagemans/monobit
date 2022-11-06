@@ -449,13 +449,16 @@ class Raster:
             f'Shear direction must be `left` or `right`, not `{direction}`'
         )
 
-    def underline(self, height:int=0):
+    def underline(self, top_height:int=0, bottom_height:int=0):
         """Return a raster with a line added."""
         _0, _1 = '0', '1'
-        height = min(self.height, max(0, height))
+        if bottom_height > top_height:
+            return self
+        top_height = min(self.height, max(0, top_height))
+        bottom_height = min(self.height, max(0, bottom_height))
         pixels = tuple(
             _1 * self.width
-            if self.height-_line-1 == height
+            if top_height >= self.height-_line-1 >= bottom_height
             else ''.join(_row)
             for _line, _row in enumerate(self.as_matrix(paper=_0, ink=_1))
         )

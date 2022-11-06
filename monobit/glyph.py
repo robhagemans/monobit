@@ -799,14 +799,22 @@ class Glyph:
         return thicker.overlay(self, operator=lambda x: bool(sum(x) % 2))
 
     @scriptable
-    def underline(self, descent:int=0):
-        """Return a raster with a line added."""
+    def underline(self, descent:int=1, thickness:int=1):
+        """
+        Add a line.
+
+        descent: number of pixels the underline is below the baseline (default: 1)
+        thickness: number of pixels the underline extends downward (default: 1)
+        """
         height = -self.shift_up - descent
-        work = self.expand(
-            bottom=max(0, -height), top=max(0, height-self.height+1)
-        )
-        height = max(0, min(work.height, height))
-        return work.modify(work._pixels.underline(height))
+        # extend down if we get to negative rows
+        down = max(0, -height+thickness-1)
+        # extend up if we get above the ratser height
+        up = max(0, height-self.height+1)
+        work = self.expand(bottom=down, top=up)
+        top_height = height+down
+        bottom_height = top_height-thickness+1
+        return work.modify(work._pixels.underline(top_height, bottom_height))
 
     @scriptable
     def invert(self):
