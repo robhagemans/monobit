@@ -294,35 +294,35 @@ class FontProperties(DefaultProps):
 
     @writable_property
     def ascent(self):
-        """Recommended typographic ascent relative to baseline (defaults to ink-top)."""
+        """
+        Recommended typographic ascent relative to baseline.
+        Defaults to ink-top.
+        """
         if not self._font.glyphs:
             return 0
-        return self.shift_up + max(
-            _glyph.height - _glyph.padding.top
-            for _glyph in self._font.glyphs
-        )
+        return self.ink_bounds.top
 
     @writable_property
     def descent(self):
-        """Recommended typographic descent relative to baseline (defaults to ink-bottom)."""
+        """
+        Recommended typographic descent relative to baseline.
+        Defaults to ink-bottom.
+        """
         if not self._font.glyphs:
             return 0
-        # usually, descent is positive and offset is negative
-        # negative descent would mean font descenders are all above baseline
-        # padding is from raster edges, not in glyph coordines
-        return - min(
-            self.shift_up + _glyph.shift_up + _glyph.padding.bottom
-            for _glyph in self._font.glyphs
-        )
+        return -self.ink_bounds.bottom
 
     @checked_property
     def pixel_size(self):
-        """Get nominal pixel size (ascent + descent)."""
+        """Get nominal pixel size. Equals ascent + descent."""
         return self.ascent + self.descent
 
     @writable_property
     def leading(self):
-        """Vertical interline spacing, defined as (pixels between baselines) - (pixel size)."""
+        """
+        Vertical interline spacing,
+        defined as (pixels between baselines) - (pixel size).
+        """
         return self.line_height - self.pixel_size
 
     ##########################################################################
