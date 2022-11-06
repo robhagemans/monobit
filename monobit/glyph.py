@@ -608,7 +608,6 @@ class Glyph:
                 bottom_bearing=self.bottom_bearing + bottom,
                 shift_left=self.shift_left + self.width//2 - pixels.width//2,
             )
-        # a Font may also have to ensure line_height remains unchanged
         return self.modify(pixels)
 
     @scriptable
@@ -639,7 +638,6 @@ class Glyph:
                 bottom_bearing=self.bottom_bearing - bottom,
                 shift_left=self.shift_left + self.width//2 - pixels.width//2,
             )
-        # a Font may also have to ensure line_height remains unchanged
         return self.modify(pixels)
 
     @scriptable
@@ -674,7 +672,10 @@ class Glyph:
     # scaling
 
     @scriptable
-    def stretch(self, factor_x:int=1, factor_y:int=1, *, adjust_metrics:bool=True):
+    def stretch(
+            self, factor_x:int=1, factor_y:int=1,
+            *, adjust_metrics:bool=True
+        ):
         """
         Stretch glyph by repeating rows and/or columns.
 
@@ -801,10 +802,12 @@ class Glyph:
         height = max(0, min(work.height, height))
         return work.modify(work._pixels.underline(height))
 
+    @scriptable
     def invert(self):
         """Reverse video."""
         return self.modify(self._pixels.invert())
 
+    @scriptable
     def roll(self, down:int=0, right:int=0):
         """
         Cycle rows and/or columns in raster.

@@ -1053,6 +1053,7 @@ class Font:
             shift_up=None, shift_left=None,
         )
 
+    # orthogonal transformations
 
     @scriptable
     def mirror(self, *, adjust_metrics:bool=True):
@@ -1108,8 +1109,8 @@ class Font:
         if not adjust_metrics:
             return font
         return font.modify(
-            line_height = font.line_width,
-            line_width = font.line_height,
+            line_height=font.line_width,
+            line_width=font.line_height,
             direction={
                 'left-to-right': 'top-to-bottom',
                 'right-to-left': 'bottom-to-top',
@@ -1121,6 +1122,159 @@ class Font:
     # implement turn() based on the above
     turn = scriptable(turn_method)
 
+    # raster resizing
+
+    @scriptable
+    def crop(
+            self, left:int=0, bottom:int=0, right:int=0, top:int=0,
+            *, adjust_metrics:bool=True
+        ):
+        """
+        Crop the raster.
+
+        left: number of columns to remove from left
+        bottom: number of rows to remove from bottom
+        right: number of columns to remove from right
+        top: number of rows to remove from top
+        adjust_metrics: make the operation render-invariant (default: True)
+        """
+        font = self._privatise_glyph_metrics()
+        font = font._apply_to_all_glyphs(
+            Glyph.crop, left, bottom, right, top, adjust_metrics=adjust_metrics
+        )
+        if not adjust_metrics:
+            return font
+        # fix line-advances to ensure they remain unchanged
+        return font.modify(
+            line_height=self.line_height,
+            line_width=self.line_width,
+        )
+
+    @scriptable
+    def expand(
+            self, left:int=0, bottom:int=0, right:int=0, top:int=0,
+            *, adjust_metrics:bool=True
+        ):
+        """
+        Add blank space to raster.
+
+        left: number of columns to add on left
+        bottom: number of rows to add on bottom
+        right: number of columns to add on right
+        top: number of rows to add on top
+        adjust_metrics: make the operation render-invariant (default: True)
+        """
+        font = self._privatise_glyph_metrics()
+        font = font._apply_to_all_glyphs(
+            Glyph.expand, left, bottom, right, top,
+            adjust_metrics=adjust_metrics
+        )
+        if not adjust_metrics:
+            return font
+        # fix line-advances to ensure they remain unchanged
+        return font.modify(
+            line_height=self.line_height,
+            line_width=self.line_width,
+        )
+
+    @scriptable
+    def reduce(self, *, adjust_metrics:bool=True, blank_empty:bool=True):
+        """
+        Reduce glyphs to their bounding box.
+
+        adjust_metrics: make the operation render-invariant (default: True)
+        blank_empty: reduce blank glyphs to empty (default: True)
+        """
+        font = self._privatise_glyph_metrics()
+        font = font._apply_to_all_glyphs(
+            Glyph.reduce,
+            adjust_metrics=adjust_metrics,
+            blank_empty=blank_empty
+        )
+        if not adjust_metrics:
+            return font
+        # fix line-advances to ensure they remain unchanged
+        return font.modify(
+            line_height=self.line_height,
+            line_width=self.line_width,
+        )
+
+    @scriptable
+    def inflate(self, *, adjust_metrics:bool=True):
+        """
+        Pad glyphs to include positive bearings.
+        Any negative bearings remain unchanged.
+
+        adjust_metrics: make the operation render-invariant (default: True)
+        """
+        font = self._privatise_glyph_metrics()
+        font = font._apply_to_all_glyphs(
+            Glyph.inflate,
+            adjust_metrics=adjust_metrics,
+        )
+        if not adjust_metrics:
+            return font
+        # fix line-advances to ensure they remain unchanged
+        return font.modify(
+            line_height=self.line_height,
+            line_width=self.line_width,
+        )
+
+    # scaling
+
+    @scriptable
+    def stretch(
+            self, factor_x:int=1, factor_y:int=1,
+            *, adjust_metrics:bool=True
+        ):
+        """
+        Stretch glyph by repeating rows and/or columns.
+
+        factor_x: number of times to repeat horizontally
+        factor_y: number of times to repeat vertically
+        adjust_metrics: also stretch metrics (default: True)
+        """
+        font = self._privatise_glyph_metrics()
+        font = font._apply_to_all_glyphs(
+            Glyph.stretch,
+            factor_x=factor_x, factor_y=factor_y,
+            adjust_metrics=adjust_metrics,
+        )
+        if not adjust_metrics:
+            return font
+        # fix line-advances to ensure they remain unchanged
+        return font.modify(
+            line_height=self.line_height * factor_y,
+            line_width=self.line_width * factor_x,
+        )
+
+    @scriptable
+    def shrink(
+            self, factor_x:int=1, factor_y:int=1,
+            *, adjust_metrics:bool=True
+        ):
+        """
+        Remove rows and/or columns.
+
+        factor_x: factor to shrink horizontally
+        factor_y: factor to shrink vertically
+        adjust_metrics: also stretch metrics (default: True)
+        """
+        font = self._privatise_glyph_metrics()
+        font = font._apply_to_all_glyphs(
+            Glyph.shrink,
+            factor_x=factor_x, factor_y=factor_y,
+            adjust_metrics=adjust_metrics,
+        )
+        if not adjust_metrics:
+            return font
+        # fix line-advances to ensure they remain unchanged
+        return font.modify(
+            line_height=self.line_height // factor_y,
+            line_width=self.line_width // factor_x,
+        )
+
+
     # inject remaining Glyph transformations into Font
 
     for _name, _func in get_scriptables(Glyph).items():
@@ -1128,8 +1282,8 @@ class Font:
 
             @scriptable
             @wraps(_func)
-            def _modify_glyphs(self, *args, **kwargs):
-                return _apply_to_all_glyphs(operation, *args, **kwargs)
+            def _modify_glyphs(self, *args, _func=_func, **kwargs):
+                return self._apply_to_all_glyphs(_func, *args, **kwargs)
 
             locals()[_name] = _modify_glyphs
 
