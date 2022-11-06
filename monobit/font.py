@@ -1228,7 +1228,7 @@ class Font:
             *, adjust_metrics:bool=True
         ):
         """
-        Stretch glyph by repeating rows and/or columns.
+        Stretch by repeating rows and/or columns.
 
         factor_x: number of times to repeat horizontally
         factor_y: number of times to repeat vertically
@@ -1254,7 +1254,7 @@ class Font:
             *, adjust_metrics:bool=True
         ):
         """
-        Remove rows and/or columns.
+        Shrink by removing rows and/or columns.
 
         factor_x: factor to shrink horizontally
         factor_y: factor to shrink vertically

@@ -702,7 +702,7 @@ class Glyph:
             *, adjust_metrics:bool=True
         ):
         """
-        Remove rows and/or columns.
+        Shrink by removing rows and/or columns.
 
         factor_x: factor to shrink horizontally
         factor_y: factor to shrink vertically
@@ -725,7 +725,13 @@ class Glyph:
 
     @scriptable
     def shear(self, *, direction:str='right', pitch:Coord=(1, 1)):
-        """Transform glyph by shearing diagonally."""
+        """
+        Create a slant by dislocating diagonally, keeping
+        the horizontal baseline fixed.
+
+        direction: direction to move the top of the glyph (default: 'right').
+        pitch: angle of the slant, given as (x, y) coordinate (default: 1,1).
+        """
         pitch_x, pitch_y = pitch
         direction = direction[0].lower()
         extra_width = (self.height-1) * pitch_x // pitch_y
