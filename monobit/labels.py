@@ -9,6 +9,7 @@ from string import ascii_letters, digits
 
 from .binary import ceildiv, int_to_bytes
 from .scripting import to_int
+from .basetypes import CONVERTERS
 
 
 def is_enclosed(from_str, char):
@@ -85,6 +86,9 @@ def _convert_char_element(element):
     # this will raise ValueError if not possible
     cp_ord = int(element.strip()[2:], 16)
     return chr(cp_ord)
+
+# register converter
+CONVERTERS[Label] = to_label
 
 
 ##############################################################################

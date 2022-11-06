@@ -20,7 +20,7 @@ from .glyph import Glyph
 from .basetypes import Coord, Bounds
 from .encoding import charmaps, encoder
 from .taggers import tagger
-from .labels import Tag, Char, Codepoint, to_label
+from .labels import Tag, Char, Codepoint, Label, to_label
 from .binary import ceildiv
 from .properties import (
     extend_string, DefaultProps, normalise_property, as_tuple,
@@ -154,9 +154,9 @@ class FontProperties(DefaultProps):
     # character map, stored as normalised name
     encoding: charmaps.normalise
     # replacement for missing glyph
-    default_char: to_label
+    default_char: Label
     # word-break character (usually space)
-    word_boundary: to_label = Char(' ')
+    word_boundary: Label = Char(' ')
 
     # rendering hints
     # may affect rendering if effects are applied
