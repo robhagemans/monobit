@@ -16,7 +16,7 @@ except ImportError:
 
 from .encoding import is_graphical
 from .labels import Codepoint, Char, Tag, to_label
-from .raster import Raster, NOT_SET
+from .raster import Raster, NOT_SET, turn_method
 from .properties import (
     DefaultProps, normalise_property, extend_string,
     writable_property, as_tuple, checked_property
@@ -505,34 +505,7 @@ class Glyph:
     ##########################################################################
     # glyph transformations
 
-    @scriptable
-    def reduce(self, *, adjust_metrics:bool=True, blank_empty:bool=True):
-        """
-        Return a glyph reduced to the bounding box.
-
-        adjust_metrics: make the operation render-invariant (default: True)
-        blank_empty: reduce blank glyphs to empty (default: True)
-        """
-        if (not blank_empty) and self.is_blank():
-            return self.crop(
-                self.width, self.height-1, 0, 0,
-                adjust_metrics=adjust_metrics
-            )
-        return self.crop(*self.padding, adjust_metrics=adjust_metrics)
-
-    @scriptable
-    def inflate(self, *, adjust_metrics:bool=True):
-        """
-        Return a glyph padded to include positive bearings.
-        Any negative bearings remain unchanged.
-
-        adjust_metrics: make the operation render-invariant (default: True)
-        """
-        return self.expand(
-            left=max(0, self.left_bearing), bottom=max(0, self.bottom_bearing),
-            right=max(0, self.right_bearing), top=max(0, self.top_bearing),
-            adjust_metrics=adjust_metrics
-        )
+    # orthogonal transformations
 
     @scriptable
     def mirror(self, *, adjust_metrics:bool=True):
@@ -603,22 +576,9 @@ class Glyph:
         turns = (clockwise - anti) % 4
         return turns
 
-    @scriptable
-    def turn(self, clockwise:int=NOT_SET, *, anti:int=NOT_SET):
-        """
-        Rotate by 90-degree turns.
+    turn = scriptable(turn_method)
 
-        clockwise: number of turns to rotate clockwise (default: 1)
-        anti: number of turns to rotate anti-clockwise
-        """
-        turns = self._calc_turns(clockwise, anti)
-        if turns == 3:
-            return self.transpose().flip()
-        elif turns == 2:
-            return self.mirror().flip()
-        elif turns == 1:
-            return self.transpose().mirror()
-        return self
+    # raster resizing
 
     @scriptable
     def crop(
@@ -648,7 +608,6 @@ class Glyph:
                 bottom_bearing=self.bottom_bearing + bottom,
                 shift_left=self.shift_left + self.width//2 - pixels.width//2,
             )
-        # a Font may also have to ensure line_height remains unchanged
         return self.modify(pixels)
 
     @scriptable
@@ -679,11 +638,44 @@ class Glyph:
                 bottom_bearing=self.bottom_bearing - bottom,
                 shift_left=self.shift_left + self.width//2 - pixels.width//2,
             )
-        # a Font may also have to ensure line_height remains unchanged
         return self.modify(pixels)
 
     @scriptable
-    def stretch(self, factor_x:int=1, factor_y:int=1, *, adjust_metrics:bool=True):
+    def reduce(self, *, adjust_metrics:bool=True, blank_empty:bool=True):
+        """
+        Return a glyph reduced to the bounding box.
+
+        adjust_metrics: make the operation render-invariant (default: True)
+        blank_empty: reduce blank glyphs to empty (default: True)
+        """
+        if (not blank_empty) and self.is_blank():
+            return self.crop(
+                self.width, self.height-1, 0, 0,
+                adjust_metrics=adjust_metrics
+            )
+        return self.crop(*self.padding, adjust_metrics=adjust_metrics)
+
+    @scriptable
+    def inflate(self, *, adjust_metrics:bool=True):
+        """
+        Return a glyph padded to include positive bearings.
+        Any negative bearings remain unchanged.
+
+        adjust_metrics: make the operation render-invariant (default: True)
+        """
+        return self.expand(
+            left=max(0, self.left_bearing), bottom=max(0, self.bottom_bearing),
+            right=max(0, self.right_bearing), top=max(0, self.top_bearing),
+            adjust_metrics=adjust_metrics
+        )
+
+    # scaling
+
+    @scriptable
+    def stretch(
+            self, factor_x:int=1, factor_y:int=1,
+            *, adjust_metrics:bool=True
+        ):
         """
         Stretch glyph by repeating rows and/or columns.
 
@@ -710,7 +702,7 @@ class Glyph:
             *, adjust_metrics:bool=True
         ):
         """
-        Remove rows and/or columns.
+        Shrink by removing rows and/or columns.
 
         factor_x: factor to shrink horizontally
         factor_y: factor to shrink vertically
@@ -728,6 +720,47 @@ class Glyph:
                 shift_left=self.shift_left // factor_x,
             )
         return self.modify(pixels)
+
+    # shear
+
+    @scriptable
+    def shear(self, *, direction:str='right', pitch:Coord=(1, 1)):
+        """
+        Create a slant by dislocating diagonally, keeping
+        the horizontal baseline fixed.
+
+        direction: direction to move the top of the glyph (default: 'right').
+        pitch: angle of the slant, given as (x, y) coordinate (default: 1,1).
+        """
+        pitch_x, pitch_y = pitch
+        direction = direction[0].lower()
+        extra_width = (self.height-1) * pitch_x // pitch_y
+        # adjustment to start diagonal at baseline
+        modulo = pitch_y - (-self.shift_up*pitch_x) % pitch_y
+        # adjust for shift at baseline height, to keep it fixed
+        pre = (-self.shift_up * pitch_x + modulo) // pitch_y
+        if direction == 'r':
+            work = self.modify(
+                left_bearing=self.left_bearing-pre,
+                right_bearing=self.right_bearing+pre,
+            )
+            work = work.expand(right=extra_width)
+        elif direction == 'l':
+            work = self.modify(
+                left_bearing=self.left_bearing+pre,
+                right_bearing=self.right_bearing-pre,
+            )
+            work = work.expand(left=extra_width)
+        else:
+            raise ValueError(
+                f'Shear direction must be `left` or `right`, not `{direction}`'
+            )
+        pixels = work._pixels.shear(
+            direction=direction, pitch=pitch, modulo=modulo,
+        )
+        return work.modify(pixels)
+
+    # ink effects
 
     @scriptable
     def smear(
@@ -766,47 +799,29 @@ class Glyph:
         return thicker.overlay(self, operator=lambda x: bool(sum(x) % 2))
 
     @scriptable
-    def shear(self, *, direction:str='right', pitch:Coord=(1, 1)):
-        """Transform glyph by shearing diagonally."""
-        pitch_x, pitch_y = pitch
-        direction = direction[0].lower()
-        extra_width = (self.height-1) * pitch_x // pitch_y
-        pre = (self.shift_up * pitch_x + self.shift_up%pitch_y) // pitch_y
-        if direction == 'r':
-            work = self.modify(
-                left_bearing=self.left_bearing+pre,
-                right_bearing=self.right_bearing-pre,
-            )
-            work = work.expand(right=extra_width)
-        elif direction == 'l':
-            work = self.modify(
-                left_bearing=self.left_bearing-pre,
-                right_bearing=self.right_bearing+pre,
-            )
-            work = work.expand(left=extra_width)
-        else:
-            raise ValueError(
-                f'Shear direction must be `left` or `right`, not `{direction}`'
-            )
-        pixels = work._pixels.shear(
-            direction=direction, pitch=pitch, modulo=-work.shift_up*pitch_x,
-        )
-        return work.modify(pixels)
+    def underline(self, descent:int=1, thickness:int=1):
+        """
+        Add a line.
+
+        descent: number of pixels the underline is below the baseline (default: 1)
+        thickness: number of pixels the underline extends downward (default: 1)
+        """
+        height = -self.shift_up - descent
+        # extend down if we get to negative rows
+        down = max(0, -height+thickness-1)
+        # extend up if we get above the ratser height
+        up = max(0, height-self.height+1)
+        work = self.expand(bottom=down, top=up)
+        top_height = height+down
+        bottom_height = top_height-thickness+1
+        return work.modify(work._pixels.underline(top_height, bottom_height))
 
     @scriptable
-    def underline(self, descent:int=0):
-        """Return a raster with a line added."""
-        height = -self.shift_up - descent
-        work = self.expand(
-            bottom=max(0, -height), top=max(0, height-self.height+1)
-        )
-        height = max(0, min(work.height, height))
-        return work.modify(work._pixels.underline(height))
-
     def invert(self):
         """Reverse video."""
         return self.modify(self._pixels.invert())
 
+    @scriptable
     def roll(self, down:int=0, right:int=0):
         """
         Cycle rows and/or columns in raster.

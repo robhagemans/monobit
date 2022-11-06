@@ -12,6 +12,40 @@ from .basetypes import Bounds, Coord
 NOT_SET = object()
 
 
+# turn function for Raster, Glyph and Font
+
+def _calc_turns(clockwise, anti):
+    if clockwise is NOT_SET:
+        if anti is NOT_SET:
+            clockwise, anti = 1, 0
+        else:
+            clockwise = 0
+    elif anti is NOT_SET:
+        anti = 0
+    turns = (clockwise - anti) % 4
+    return turns
+
+def turn(self, clockwise:int=NOT_SET, *, anti:int=NOT_SET):
+    """
+    Rotate by 90-degree turns.
+
+    clockwise: number of turns to rotate clockwise (default: 1)
+    anti: number of turns to rotate anti-clockwise
+    """
+    turns = _calc_turns(clockwise, anti)
+    if turns == 3:
+        return self.transpose().flip()
+    elif turns == 2:
+        return self.mirror().flip()
+    elif turns == 1:
+        return self.transpose().mirror()
+    return self
+
+turn_method = turn
+
+
+# immutable bit matrix
+
 class Raster:
     """Bit matrix."""
 
@@ -188,6 +222,8 @@ class Raster:
     ##########################################################################
     # transformations
 
+    # orthogonal transformations
+
     def mirror(self):
         """Reverse pixels horizontally."""
         return type(self)(
@@ -209,6 +245,10 @@ class Raster:
             _0=self._0, _1=self._1
         )
 
+    turn = turn_method
+
+    # ink shifts on constant raster size
+
     def roll(self, down:int=0, right:int=0):
         """
         Cycle rows and/or columns in raster.
@@ -226,7 +266,6 @@ class Raster:
                 for _row in rolled._pixels
             )
         return type(self)(rolled, _0=self._0, _1=self._1)
-
 
     def shift(self, *, left:int=0, down:int=0, right:int=0, up:int=0):
         """
@@ -261,6 +300,8 @@ class Raster:
                 tuple(_row[-columns:] + _0 * -columns for _row in shifted),
                 _0=_0, _1=_1
             )
+
+    # raster size changes
 
     def crop(self, left:int=0, bottom:int=0, right:int=0, top:int=0):
         """
@@ -337,8 +378,6 @@ class Raster:
         shrunk = tuple(_row[::factor_x] for _row in shrunk)
         return type(self)(shrunk, _0=self._0, _1=self._1)
 
-
-    ##########################################################################
     # effects
 
     def overlay(*others, operator=any):
@@ -375,7 +414,6 @@ class Raster:
         work = work.overlay(*(work.shift(down=_i+1) for _i in range(down)))
         return work
 
-
     def shear(
             self, direction:str='right',
             pitch:Coord=(1, 1), modulo:int=0,
@@ -385,8 +423,7 @@ class Raster:
         xpitch, ypitch = pitch
         _0, _1 = '0', '1'
         shiftrange = range(self.height)[::-1]
-        modulo %= ypitch
-        shiftrange = ((_y*xpitch - modulo)//ypitch for _y in shiftrange)
+        shiftrange = tuple((_y*xpitch + modulo)//ypitch for _y in shiftrange)
         pixels = (
             ''.join(_row)
             for _row in self.as_matrix(paper=_0, ink=_1)
@@ -412,13 +449,16 @@ class Raster:
             f'Shear direction must be `left` or `right`, not `{direction}`'
         )
 
-    def underline(self, height:int=0):
+    def underline(self, top_height:int=0, bottom_height:int=0):
         """Return a raster with a line added."""
         _0, _1 = '0', '1'
-        height = min(self.height, max(0, height))
+        if bottom_height > top_height:
+            return self
+        top_height = min(self.height, max(0, top_height))
+        bottom_height = min(self.height, max(0, bottom_height))
         pixels = tuple(
             _1 * self.width
-            if self.height-_line-1 == height
+            if top_height >= self.height-_line-1 >= bottom_height
             else ''.join(_row)
             for _line, _row in enumerate(self.as_matrix(paper=_0, ink=_1))
         )
