@@ -21,7 +21,7 @@ from .properties import (
     DefaultProps, normalise_property, extend_string,
     writable_property, as_tuple, checked_property
 )
-from .basetypes import Coord, Bounds, number, pair
+from .basetypes import Coord, Bounds
 from .scripting import scriptable
 
 
@@ -106,7 +106,7 @@ class GlyphProperties(DefaultProps):
     # compatibility synonyms
     kern_to: KernTable
     tracking: int
-    offset: Coord.create
+    offset: Coord
 
 
     @checked_property
@@ -774,7 +774,7 @@ class Glyph:
         return thicker.overlay(self, operator=lambda x: bool(sum(x) % 2))
 
     @scriptable
-    def shear(self, *, direction:str='right', pitch:pair=(1, 1)):
+    def shear(self, *, direction:str='right', pitch:Coord=(1, 1)):
         """Transform glyph by shearing diagonally."""
         pitch_x, pitch_y = pitch
         direction = direction[0].lower()

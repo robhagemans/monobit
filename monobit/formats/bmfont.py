@@ -16,7 +16,7 @@ try:
 except ImportError:
     Image = None
 
-from ..basetypes import pair
+from ..basetypes import Coord
 from ..encoding import charmaps
 from .. import streams
 from ..streams import FileFormatError
@@ -53,7 +53,7 @@ if Image:
     @savers.register(linked=load_bmfont)
     def save(
             fonts, outfile, where,
-            image_size:pair=(256, 256),
+            image_size:Coord=(256, 256),
             image_format:str='png',
             packed:bool=True,
             descriptor:str='text',

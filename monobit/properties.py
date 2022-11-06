@@ -17,6 +17,8 @@ except ImportError:
     from functools import lru_cache
     cache = lru_cache()
 
+from .basetypes import CONVERTERS
+
 
 def reverse_dict(orig_dict):
     """Reverse a dict."""
@@ -195,6 +197,7 @@ class DefaultProps(Props):
             raise ValueError('Cannot set property on frozen object.')
         try:
             converter = type(self).__annotations__[field]
+            converter = CONVERTERS.get(converter, converter)
         except KeyError:
             pass
         else:

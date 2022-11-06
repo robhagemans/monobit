@@ -5,27 +5,18 @@ monobit.basetypes - base data types and converters
 licence: https://opensource.org/licenses/MIT
 """
 
-import numbers
 from collections import namedtuple
+from functools import partial
+from typing import Any
+from numbers import Real
 
 
-class IntTuple(tuple):
-    """Tuple of ints with custom str conversion."""
-    def __str__(self):
-        return ','.join(str(_i) for _i in self)
+def passthrough(var):
+    """Passthrough type."""
+    return var
 
-def tuple_int(tup):
-    """Convert NxNx... or N,N,... to tuple."""
-    if isinstance(tup, str):
-        return IntTuple(int(_s) for _s in tup.replace('x', ',').split(','))
-    return IntTuple([*tup])
-
-rgb = tuple_int
-pair = tuple_int
-
-
-def any_int(int_str):
-    """Int-like or string in any representation."""
+def to_int(int_str):
+    """Convert from int-like or string in any representation."""
     try:
         # '0xFF' - hex
         # '0o77' - octal
@@ -36,18 +27,11 @@ def any_int(int_str):
         # non-string inputs: TypeError, may be OK if int(x) works
         return int(int_str)
 
-
-def Any(var):
-    """Passthrough type."""
-    return var
-
-
-
-def number(value=0):
+def to_number(value=0):
     """Convert to int or float."""
     if isinstance(value, str):
         value = float(value)
-    if not isinstance(value, numbers.Real):
+    if not isinstance(value, Real):
         raise ValueError("Can't convert `{}` to number.".format(value))
     if value == int(value):
         value = int(value)
@@ -74,25 +58,60 @@ class _VectorMixin:
 class Bounds(_VectorMixin, namedtuple('Bounds', 'left bottom right top')):
     """4-coordinate tuple."""
 
+    @classmethod
+    def create(cls, coord=0):
+        coord = to_tuple(coord, length=4)
+        return cls(*coord)
+
+
 class Coord(_VectorMixin, namedtuple('Coord', 'x y')):
     """Coordinate tuple."""
 
     @classmethod
     def create(cls, coord=0):
-        if isinstance(coord, Coord):
-            return coord
-        if isinstance(coord, numbers.Real):
-            return cls(coord, coord)
-        if isinstance(coord, str):
-            splits = coord.split(' ')
-            if len(splits) == 1:
-                return cls(number(splits[0]), number(splits[0]))
-            elif len(splits) == 2:
-                return cls(number(splits[0]), number(splits[1]))
-        if isinstance(coord, tuple):
-            if len(coord) == 2:
-                return cls(number(coord[0]), number(coord[1]))
-        if not coord:
-            return cls(0, 0)
-        raise ValueError("Can't convert `{}` to coordinate pair.".format(coord))
+        coord = to_tuple(coord, length=2)
+        return cls(*coord)
 
+
+class RGB(_VectorMixin, namedtuple('Coord', 'r g b')):
+    """Coordinate tuple."""
+
+    @classmethod
+    def create(cls, coord=0):
+        coord = to_tuple(coord, length=3)
+        return cls(*coord)
+
+
+def _str_to_tuple(value):
+    """Convert various string representations to tuple."""
+    value = value.strip().replace(',', ' ').replace('x', ' ')
+    return tuple(to_number(_s) for _s in value.split())
+
+def to_tuple(value=0, *, length=2):
+    if isinstance(value, tuple):
+        return value
+    if isinstance(value, Real):
+        return (value,) * length
+    if isinstance(value, str):
+        value = _str_to_tuple(value)
+        if len(value) == 1:
+            return value * length
+        return value
+    if not value:
+        return (0,) * length
+    try:
+        return tuple(value)
+    except ValueError:
+        pass
+    raise ValueError(f"Can't convert {value!r} to tuple.")
+
+
+# type converters
+CONVERTERS = {
+    int: to_int,
+    float: to_number,
+    Real: to_number,
+    Any: passthrough,
+    Coord: Coord.create,
+    RGB: RGB.create,
+}
