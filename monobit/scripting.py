@@ -127,30 +127,28 @@ class ScriptArgs():
         docs = ()
         if func:
             if func.__doc__:
-                docs = [_l.strip() for _l in func.__doc__.split('\n') if _l.strip()]
+                docs = func.__doc__.splitlines()
+                docs = (_l.strip() for _l in docs)
             self.name = name or func.__name__
             self._script_args.update(func.__annotations__)
         self._script_args.update(extra_args or {})
-        self._history_values = history_values or {}
         self._script_docs = {_k: '' for _k in self._script_args}
+        self.doc = ''
         for line in docs:
+            if not self.doc:
+                self.doc = line
             if not line or ':' not in line:
                 continue
             arg, doc = line.split(':', 1)
             if arg.strip() in self._script_args:
                 self._script_docs[arg] = doc.strip()
-        self.doc = docs[0] if docs else ''
 
     def get_history_item(self, *args, **kwargs):
         """Represent converter parameters."""
         return ' '.join(
             _e for _e in (
                 self.name.replace('_', '-'),
-                # ' '.join(f'{_v}' for _v in args),
-                ' '.join(
-                    f'--{_k}={_v}'
-                    for _k, _v in self._history_values.items()
-                ),
+                #' '.join(f'{_v}' for _v in args),
                 ' '.join(
                     f'--{_k}={_v}'
                     for _k, _v in kwargs.items()
@@ -182,7 +180,7 @@ class ScriptArgs():
 
 
 
-###################################################################################################
+###############################################################################
 # argument parser
 
 ARG_PREFIX = '--'
@@ -306,7 +304,7 @@ def print_help(command_args, usage, operations, global_options, context_help):
 
 
 
-###################################################################################################
+###############################################################################
 # frame for main scripts
 
 @contextmanager
