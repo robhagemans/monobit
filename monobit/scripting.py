@@ -22,13 +22,15 @@ class ArgumentError(TypeError):
         super().__init__(f'{arg} is an invalid keyword for {func}()')
 
 
-###################################################################################################
+###############################################################################
 # mark functions for scripting
 # annotations give converters from string to desired type
 # docstings provide help text
 
+_record = True
+
 def scriptable(
-        *args, script_args=None, name=None, record=True, history_values=None, unknown_args='raise'
+        *args, script_args=None, name=None, record=True, unknown_args='raise'
     ):
     """
     Decorator to register operation for scripting.
@@ -43,17 +45,20 @@ def scriptable(
         # return decorator with these arguments set as extra args
         return partial(
             scriptable, script_args=script_args,
-            name=name, record=record, history_values=history_values, unknown_args=unknown_args
+            name=name, record=record, unknown_args=unknown_args
         )
     else:
         # called as @scriptable
         func, = args
         name = name or func.__name__
         script_args = script_args or {}
-        script_args = ScriptArgs(func, name=name, extra_args=script_args, history_values=history_values)
+        script_args = ScriptArgs(
+            func, name=name, extra_args=script_args,
+        )
 
         @wraps(func)
-        def _scriptable_func(*args, _record=True, **kwargs):
+        def _scriptable_func(*args, **kwargs):
+            global _record
             # apply converters to argument
             conv_kwargs = {}
             for kwarg, value in kwargs.items():
@@ -76,12 +81,19 @@ def scriptable(
                 converter = CONVERTERS.get(_type, _type)
                 conv_kwargs[kwarg] = converter(value)
             # call wrapped function
+            if record:
+                _record, save = False, _record
             result = func(*args, **conv_kwargs)
+            if record:
+                _record = save
             # update history tracker
             if record and _record and result:
                 history = script_args.get_history_item(*args, **conv_kwargs)
                 try:
-                    result = tuple(_item.append(history=history) for _item in iter(result))
+                    result = tuple(
+                        _item.append(history=history)
+                        for _item in iter(result)
+                    )
                 except TypeError:
                     result = result.append(history=history)
             return result
@@ -101,13 +113,13 @@ def get_scriptables(cls):
     }
 
 
-###################################################################################################
+###############################################################################
 # argument parsing
 
 class ScriptArgs():
     """Record of script arguments."""
 
-    def __init__(self, func=None, *, name='', extra_args=None, history_values=None):
+    def __init__(self, func=None, *, name='', extra_args=None):
         """Extract script name, arguments and docs."""
         self.name = name
         self._script_args = {}

@@ -459,7 +459,7 @@ def load_bdf(instream, where=None):
     glyphs, properties = _parse_properties(glyphs, glyph_props, bdf_props, x_props)
     font = Font(glyphs, comment=comments, **properties)
     try:
-        font = font.label(_record=False)
+        font = font.label()
     except NotFoundError:
         pass
     return font

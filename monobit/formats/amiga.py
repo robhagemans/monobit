@@ -247,7 +247,7 @@ def _load_amiga(f, where, tags):
         logging.info('    ' + line)
     font = Font(glyphs, **vars(props))
     # fill out character labels based on latin-1 encoding
-    font = font.label(_record=False)
+    font = font.label()
     return font
 
 
