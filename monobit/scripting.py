@@ -187,13 +187,16 @@ ARG_PREFIX = '--'
 FALSE_PREFIX = 'no-'
 
 class IsSetFlag:
-    """Represent a parameter that is set with no value, converts to True if bool, not to other types."""
+    """
+    Represent a parameter that is set with no value,
+    converts to True or empty string, not to other types.
+    """
     def __bool__(self):
         return True
     def __repr__(self):
         return f'{type(self).__name__}()'
     def __str__(self):
-        return TypeError('IsSetFlag does not convert to string.')
+        return ''
 
 SET = IsSetFlag()
 
