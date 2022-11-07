@@ -87,7 +87,7 @@ def scriptable(
             if record:
                 _record = save
             # update history tracker
-            if record and _record and result:
+            if record and _record and result and not 'history' in kwargs:
                 history = script_args.get_history_item(*args, **conv_kwargs)
                 try:
                     result = tuple(
