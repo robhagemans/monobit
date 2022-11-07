@@ -738,7 +738,7 @@ class Glyph:
         # adjustment to start diagonal at baseline
         modulo = pitch_y - (-self.shift_up*pitch_x) % pitch_y
         # adjust for shift at baseline height, to keep it fixed
-        pre = (-self.shift_up * pitch_x + modulo) // pitch_y
+        pre = (-self.shift_up * pitch_x + modulo) // pitch_y - (modulo==pitch_y)
         if direction == 'r':
             work = self.modify(
                 left_bearing=self.left_bearing-pre,
