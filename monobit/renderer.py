@@ -11,13 +11,17 @@ try:
     from bidi.algorithm import get_display
 except ImportError:
     def get_display(text):
-        raise ImportError('Bidirectional text requires module `python-bidi`; not found.')
+        raise ImportError(
+            'Bidirectional text requires module `python-bidi`; not found.'
+        )
 
 try:
     from arabic_reshaper import reshape
 except ImportError:
     def reshape(text):
-        raise ImportError('Arabic text requires module `arabic-reshaper`; not found.')
+        raise ImportError(
+            'Arabic text requires module `arabic-reshaper`; not found.'
+        )
 
 try:
     from PIL import Image
@@ -25,7 +29,6 @@ except ImportError:
     Image = None
 
 from .binary import ceildiv
-
 
 
 # matrix colours
@@ -42,7 +45,7 @@ DIRECTIONS = {
     'b': 'bottom-to-top'
 }
 
-###################################################################################################
+###############################################################################
 # canvas operations
 
 def create_canvas(width, height, fill=0):
@@ -75,7 +78,10 @@ def mirror_canvas(matrix):
 
 
 def blit(matrix, canvas, grid_x, grid_y, operator=max):
-    """Draw a matrix onto a canvas (leaving exising ink in place, depending on operator)."""
+    """
+    Draw a matrix onto a canvas
+    (leaving exising ink in place, depending on operator).
+    """
     if not matrix or not canvas:
         return canvas
     matrix_height = len(matrix)
@@ -101,17 +107,22 @@ def to_image(matrix, border=(32, 32, 32), paper=(0, 0, 0), ink=(255, 255, 255)):
     else:
         width = 0
     img = Image.new('RGB', (width, height), border)
-    img.putdata([{-1: border, 0: paper, 1: ink}[_pix] for _row in matrix for _pix in _row])
+    img.putdata([
+        {-1: border, 0: paper, 1: ink}[_pix]
+        for _row in matrix for _pix in _row
+    ])
     return img
 
 def to_text(matrix, *, border=' ', paper='-', ink='@', line_break='\n'):
     """Convert matrix to text."""
     colourdict = {-1: border, 0: paper, 1: ink}
-    return line_break.join(''.join(colourdict[_pix] for _pix in _row) for _row in matrix)
+    return line_break.join(
+        ''.join(colourdict[_pix] for _pix in _row)
+        for _row in matrix
+    )
 
 
-
-###################################################################################################
+###############################################################################
 # text rendering
 
 def render_text(
@@ -386,7 +397,7 @@ def _iter_labels(font, text, missing='raise'):
 
 
 
-###################################################################################################
+###############################################################################
 # glyph chart
 
 def chart_image(
@@ -435,7 +446,9 @@ def traverse_chart(columns, rows, order, direction):
             for _row in y_traverse
         )
     else:
-        raise ValueError(f'order should start with one of `r`, `c`, not `{order}`.')
+        raise ValueError(
+            f'order should start with one of `r`, `c`, not `{order}`.'
+        )
 
 def chart(
         font,
