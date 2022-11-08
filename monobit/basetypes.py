@@ -73,7 +73,7 @@ class Coord(_VectorMixin, namedtuple('Coord', 'x y')):
         return cls(*coord)
 
 
-class RGB(_VectorMixin, namedtuple('Coord', 'r g b')):
+class RGB(_VectorMixin, namedtuple('RGB', 'r g b')):
     """Coordinate tuple."""
 
     @classmethod
