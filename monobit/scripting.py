@@ -8,6 +8,7 @@ licence: https://opensource.org/licenses/MIT
 import sys
 import os
 import logging
+import shlex
 from contextlib import contextmanager
 from functools import wraps, partial
 from types import SimpleNamespace
@@ -150,7 +151,7 @@ class ScriptArgs():
                 self.name.replace('_', '-'),
                 #' '.join(f'{_v}' for _v in args),
                 ' '.join(
-                    f'--{_k}={_v}'
+                    f'--{_k}={shlex.join((str(_v),))}'
                     for _k, _v in kwargs.items()
                     # exclude non-operation parameters
                     if _k in self._script_args
