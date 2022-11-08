@@ -987,6 +987,10 @@ class Font:
     })
     def set(self, **kwargs):
         """Return a copy of the font with one or more recognised properties changed."""
+        kwargs = {
+            _k: (_v if _v != '' else None)
+            for _k, _v in kwargs.items()
+        }
         return self.modify(**kwargs)
 
     @scriptable

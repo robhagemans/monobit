@@ -8,6 +8,7 @@ licence: https://opensource.org/licenses/MIT
 import sys
 import os
 import logging
+import shlex
 from contextlib import contextmanager
 from functools import wraps, partial
 from types import SimpleNamespace
@@ -22,13 +23,15 @@ class ArgumentError(TypeError):
         super().__init__(f'{arg} is an invalid keyword for {func}()')
 
 
-###################################################################################################
+###############################################################################
 # mark functions for scripting
 # annotations give converters from string to desired type
 # docstings provide help text
 
+_record = True
+
 def scriptable(
-        *args, script_args=None, name=None, record=True, history_values=None, unknown_args='raise'
+        *args, script_args=None, name=None, record=True, unknown_args='raise'
     ):
     """
     Decorator to register operation for scripting.
@@ -43,17 +46,20 @@ def scriptable(
         # return decorator with these arguments set as extra args
         return partial(
             scriptable, script_args=script_args,
-            name=name, record=record, history_values=history_values, unknown_args=unknown_args
+            name=name, record=record, unknown_args=unknown_args
         )
     else:
         # called as @scriptable
         func, = args
         name = name or func.__name__
         script_args = script_args or {}
-        script_args = ScriptArgs(func, name=name, extra_args=script_args, history_values=history_values)
+        script_args = ScriptArgs(
+            func, name=name, extra_args=script_args,
+        )
 
         @wraps(func)
-        def _scriptable_func(*args, _record=True, **kwargs):
+        def _scriptable_func(*args, **kwargs):
+            global _record
             # apply converters to argument
             conv_kwargs = {}
             for kwarg, value in kwargs.items():
@@ -76,12 +82,19 @@ def scriptable(
                 converter = CONVERTERS.get(_type, _type)
                 conv_kwargs[kwarg] = converter(value)
             # call wrapped function
+            if record:
+                _record, save = False, _record
             result = func(*args, **conv_kwargs)
+            if record:
+                _record = save
             # update history tracker
-            if record and _record and result:
+            if record and _record and result and not 'history' in kwargs:
                 history = script_args.get_history_item(*args, **conv_kwargs)
                 try:
-                    result = tuple(_item.append(history=history) for _item in iter(result))
+                    result = tuple(
+                        _item.append(history=history)
+                        for _item in iter(result)
+                    )
                 except TypeError:
                     result = result.append(history=history)
             return result
@@ -101,13 +114,13 @@ def get_scriptables(cls):
     }
 
 
-###################################################################################################
+###############################################################################
 # argument parsing
 
 class ScriptArgs():
     """Record of script arguments."""
 
-    def __init__(self, func=None, *, name='', extra_args=None, history_values=None):
+    def __init__(self, func=None, *, name='', extra_args=None):
         """Extract script name, arguments and docs."""
         self.name = name
         self._script_args = {}
@@ -115,32 +128,30 @@ class ScriptArgs():
         docs = ()
         if func:
             if func.__doc__:
-                docs = [_l.strip() for _l in func.__doc__.split('\n') if _l.strip()]
+                docs = func.__doc__.splitlines()
+                docs = (_l.strip() for _l in docs)
             self.name = name or func.__name__
             self._script_args.update(func.__annotations__)
         self._script_args.update(extra_args or {})
-        self._history_values = history_values or {}
         self._script_docs = {_k: '' for _k in self._script_args}
+        self.doc = ''
         for line in docs:
+            if not self.doc:
+                self.doc = line
             if not line or ':' not in line:
                 continue
             arg, doc = line.split(':', 1)
             if arg.strip() in self._script_args:
                 self._script_docs[arg] = doc.strip()
-        self.doc = docs[0] if docs else ''
 
     def get_history_item(self, *args, **kwargs):
         """Represent converter parameters."""
         return ' '.join(
             _e for _e in (
                 self.name.replace('_', '-'),
-                # ' '.join(f'{_v}' for _v in args),
+                #' '.join(f'{_v}' for _v in args),
                 ' '.join(
-                    f'--{_k}={_v}'
-                    for _k, _v in self._history_values.items()
-                ),
-                ' '.join(
-                    f'--{_k}={_v}'
+                    f'--{_k}={shlex.join((str(_v),))}'
                     for _k, _v in kwargs.items()
                     # exclude non-operation parameters
                     if _k in self._script_args
@@ -170,20 +181,23 @@ class ScriptArgs():
 
 
 
-###################################################################################################
+###############################################################################
 # argument parser
 
 ARG_PREFIX = '--'
 FALSE_PREFIX = 'no-'
 
 class IsSetFlag:
-    """Represent a parameter that is set with no value, converts to True if bool, not to other types."""
+    """
+    Represent a parameter that is set with no value,
+    converts to True or empty string, not to other types.
+    """
     def __bool__(self):
         return True
     def __repr__(self):
         return f'{type(self).__name__}()'
     def __str__(self):
-        return TypeError('IsSetFlag does not convert to string.')
+        return ''
 
 SET = IsSetFlag()
 
@@ -294,7 +308,7 @@ def print_help(command_args, usage, operations, global_options, context_help):
 
 
 
-###################################################################################################
+###############################################################################
 # frame for main scripts
 
 @contextmanager

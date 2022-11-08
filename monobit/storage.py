@@ -254,14 +254,15 @@ class ConverterRegistry(MagicRegistry):
 
         def _decorator(original_func):
             # set script arguments
+            funcname = self._func_name
+            if name:
+                funcname += f' --format={name}'
             _func = scriptable(
                 original_func,
                 # use the standard name, not that of the registered function
-                name=self._func_name,
+                name=funcname,
                 # don't record history of loading from default format
                 record=(DEFAULT_FORMAT not in formats),
-                # set the format name as format parameter
-                history_values=dict(format=name),
             )
             # register converter
             if linked:

@@ -44,7 +44,9 @@ def _get_context_help(rec):
         func = monobit.loaders.get_for_location(file, format=format)
     else:
         func = monobit.savers.get_for_location(file, format=format, do_open=False)
-    return func.script_args
+    if func:
+        return func.script_args
+    return None
 
 def help(command_args):
     """Print the usage help message."""
@@ -53,6 +55,7 @@ def help(command_args):
         for _rec in command_args
         if _rec.command in ('load', 'save', 'to')
     }
+    context_help = {_k: _v for _k, _v in context_help.items() if _v}
     print_help(command_args, usage, operations, global_options, context_help)
 
 def version():
