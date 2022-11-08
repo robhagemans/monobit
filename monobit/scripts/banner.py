@@ -31,7 +31,11 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         'text', nargs='*', type=str,
-        help='text to be printed. multiple text arguments represent consecutive lines. if not given, read from standard input'
+        help=(
+            'text to be printed. '
+            'multiple text arguments represent consecutive lines. '
+            'if not given, read from standard input'
+        )
     )
     parser.add_argument(
         '--font', '-f', type=str, default='',
@@ -51,11 +55,17 @@ def main():
     )
     parser.add_argument(
         '--margin', '-m', type=Coord.create, default=(0, 0),
-        help='number of background characters to use as a margin in x and y direction (default: 0,0)'
+        help=(
+            'number of background characters to use as a margin '
+            'in x and y direction (default: 0,0)'
+        )
     )
     parser.add_argument(
         '--scale', '-s', type=Coord.create, default=(1, 1),
-        help='number of characters to use per pixel in x and y direction (default: 1,1)'
+        help=(
+            'number of characters to use per pixel in x and y direction '
+            '(default: 1,1)'
+        )
     )
     parser.add_argument(
         '--rotate', '-r', type=int, default=0,
@@ -75,7 +85,10 @@ def main():
     )
     parser.add_argument(
         '--chart', action='store_true',
-        help="output codepage chart for lowest 256 codepoints. Can't be used with text or --encoding"
+        help=(
+            "output codepage chart for lowest 256 codepoints. "
+            "Can't be used with text or --encoding"
+        )
     )
     parser.add_argument(
         '--debug', action='store_true',
@@ -90,7 +103,9 @@ def main():
         if args.chart:
             if args.text or args.encoding:
                 raise ValueError("Can't supply text or `--encoding` with `--chart`.")
-            args.text = b'\n'.join(bytes(range(_row, _row+16)) for _row in range(0, 256, 16))
+            args.text = b'\n'.join(
+                bytes(range(_row, _row+16)) for _row in range(0, 256, 16)
+            )
             args.encoding = '_'
         # read text from stdin if not supplied
         elif not args.text:
@@ -106,9 +121,14 @@ def main():
         font, *_ = monobit.load(args.font, format=args.format)
         # check if any characters are defined
         # override encoding if requested
-        if not font.get_chars() and not args.encoding and not isinstance(args.text, bytes):
+        if (
+                not font.get_chars()
+                and not args.encoding
+                and not isinstance(args.text, bytes)
+            ):
             logging.info(
-                'No character mapping defined in font. Using `--encoding=raw` as fallback.'
+                'No character mapping defined in font. '
+                'Using `--encoding=raw` as fallback.'
             )
             args.encoding = 'raw'
         if args.encoding == 'raw':
