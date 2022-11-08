@@ -1206,7 +1206,7 @@ class Font:
     @scriptable
     def inflate(self, *, adjust_metrics:bool=True):
         """
-        Pad glyphs to include positive bearings.
+        Pad glyphs to include positive bearings and line spacing.
         Any negative bearings remain unchanged.
 
         adjust_metrics: make the operation render-invariant (default: True)
@@ -1218,8 +1218,17 @@ class Font:
         )
         if not adjust_metrics:
             return font
+        glyphs = tuple(
+            _g.expand(
+                top=max(0, self.line_height-_g.height),
+                left=max(0, (self.line_width-_g.width)//2),
+                right=max(0, (self.line_width-_g.width + 1)//2),
+            )
+            for _g in self._glyphs
+        )
         # fix line-advances to ensure they remain unchanged
         return font.modify(
+            glyphs,
             line_height=self.line_height,
             line_width=self.line_width,
         )
@@ -1278,6 +1287,53 @@ class Font:
             line_width=self.line_width // factor_x,
         )
 
+    # ink effects
+
+    @scriptable
+    def smear(
+            self, *, left:int=None, down:int=None, right:int=None, up:int=None,
+            adjust_metrics:bool=True
+        ):
+        """
+        Repeat inked pixels.
+
+        left: number of times to repeat inked pixel leftwards
+        right: number of times to repeat inked pixel rightwards
+               (default: use bold-smear value)
+        up: number of times to repeat inked pixel upwards
+        down: number of times to repeat inked pixel downwards
+        adjust_metrics: ensure advances stay the same (default: True)
+        """
+        if set((left, down, right, up)) == set((None,)):
+            right = self.bold_smear
+        right = right or 0
+        left = left or 0
+        down = down or 0
+        up = up or 0
+        return self._apply_to_all_glyphs(
+            Glyph.smear,
+            left=left, down=down, right=right, up=up,
+            adjust_metrics=adjust_metrics,
+        )
+
+    @scriptable
+    def underline(self, descent:int=None, thickness:int=None):
+        """
+        Add a line.
+
+        descent: number of pixels the underline is below the baseline
+                 (default: use underline-descent value)
+        thickness: number of pixels the underline extends downward
+                   (default: use underline-thickness value)
+        """
+        if descent is None:
+            descent = self.underline_descent
+        if thickness is None:
+            thickness = self.underline_thickness
+        return self._apply_to_all_glyphs(
+            Glyph.underline,
+            descent=descent, thickness = thickness
+        )
 
     # inject remaining Glyph transformations into Font
 
