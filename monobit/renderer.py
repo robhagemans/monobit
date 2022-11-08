@@ -45,6 +45,14 @@ DIRECTIONS = {
     'b': 'bottom-to-top'
 }
 
+
+class blockstr(str):
+    """str that is shown as block text in interactive session."""
+
+    def __repr__(self):
+        return f'"""\\\n{self}"""'
+
+
 ###############################################################################
 # canvas operations
 
@@ -116,10 +124,10 @@ def to_image(matrix, border=(32, 32, 32), paper=(0, 0, 0), ink=(255, 255, 255)):
 def to_text(matrix, *, border=' ', paper='-', ink='@', line_break='\n'):
     """Convert matrix to text."""
     colourdict = {-1: border, 0: paper, 1: ink}
-    return line_break.join(
+    return blockstr(line_break.join(
         ''.join(colourdict[_pix] for _pix in _row)
         for _row in matrix
-    )
+    ))
 
 
 ###############################################################################
