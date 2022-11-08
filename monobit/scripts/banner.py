@@ -11,8 +11,8 @@ from codecs import escape_decode
 
 import monobit
 from monobit.scripting import wrap_main
-from monobit.basetypes import Coord
-from monobit import render_text
+from monobit.basetypes import Coord, RGB
+from monobit.renderer import render, to_text, to_image
 
 
 def unescape(text):
@@ -46,12 +46,18 @@ def main():
         help='format of file used in --font'
     )
     parser.add_argument(
-        '--ink', '--foreground', '-fg', type=str, default='@',
-        help='character to use for ink/foreground (default: @)'
+        '--ink', '--foreground', '-fg', type=str, default='',
+        help=(
+            'character or colour to use for ink/foreground '
+            '(default: @ or (0,0,0))'
+        )
     )
     parser.add_argument(
-        '--paper', '--background', '-bg', type=str, default='.',
-        help='character to use for paper/background (default: .)'
+        '--paper', '--background', '-bg', type=str, default='',
+        help=(
+            'character or colour to use for paper/background '
+            '(default: . or (255,255,255))'
+        )
     )
     parser.add_argument(
         '--margin', '-m', type=Coord.create, default=(0, 0),
@@ -93,6 +99,13 @@ def main():
     parser.add_argument(
         '--debug', action='store_true',
         help='show debugging output'
+    )
+    parser.add_argument(
+        '--output',  default='', type=str,
+        help=(
+            'output file name. usee .txt extension for text output, '
+            'or image format for image output'
+        )
     )
 
     args = parser.parse_args()
@@ -136,11 +149,27 @@ def main():
             args.text = args.text.encode('latin-1', errors='replace')
         elif args.encoding:
             font = font.modify(encoding=args.encoding).label()
-        sys.stdout.write(render_text(
-            font, args.text, args.ink, args.paper,
+        # render
+        canvas = render(
+            font, args.text,
             margin=args.margin, scale=args.scale, rotate=args.rotate, direction=args.direction,
             missing='default'
-        ) + '\n')
+        )
+        # output
+        if not args.output or args.output.endswith('.txt'):
+            ink = args.ink or '@'
+            paper = args.paper or '.'
+            text = to_text(canvas, ink=ink, paper=paper) + '\n'
+            if not args.output:
+                sys.stdout.write(text)
+            else:
+                with open(args.output, 'w') as outfile:
+                    outfile.write(text)
+        else:
+            ink = RGB.create(args.ink or (0, 0, 0))
+            paper = RGB.create(args.paper or (255, 255, 255))
+            image = to_image(canvas, ink=ink, paper=paper)
+            image.save(args.output)
 
 
 if __name__ == '__main__':
