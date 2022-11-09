@@ -7,6 +7,7 @@ Print a banner using a bitmap font
 import sys
 import argparse
 import logging
+import codecs
 from codecs import escape_decode
 
 import monobit
@@ -24,6 +25,12 @@ def unescape(text):
     #   unicode-escape decodes from latin-1 and unescapes standard c escapes, \x.. and \u.. \U..
     return text.encode('raw-unicode-escape').decode('unicode_escape')
 
+
+def register_handler(handler_name, default_char):
+    """Register an encode/decode error handler with custom replacement char."""
+    def _handler(e):
+        return default_char, e.end
+    codecs.register_error(handler_name, _handler)
 
 
 def main():
@@ -145,8 +152,14 @@ def main():
             )
             args.encoding = 'raw'
         if args.encoding == 'raw':
-            # use string as a representation of bytes, replace anything with more than 8-bit codepoints
-            args.text = args.text.encode('latin-1', errors='replace')
+            # register the codepoint for replacement char
+            # note that we use latin-1 strings to represent bytes here
+            # if no replacement char or it has no codepoint, replace with empty
+            default_cp = font.get_default_glyph().codepoint.decode('latin-1')
+            register_handler('custom_replace', default_cp)
+            # see input string as a sequence of bytes to render through codepage
+            # replace anything with more than 8-bit codepoints
+            args.text = args.text.encode('latin-1', errors='custom_replace')
         elif args.encoding:
             font = font.modify(encoding=args.encoding).label()
         # render
