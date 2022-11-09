@@ -5,7 +5,7 @@ monobit.renderer - render text to bitmaps using font
 licence: https://opensource.org/licenses/MIT
 """
 
-from unicodedata import bidirectional
+from unicodedata import bidirectional, normalize
 
 try:
     from bidi.algorithm import get_display
@@ -385,6 +385,12 @@ def _iter_labels(font, text, missing='raise'):
     """Iterate over labels in text, yielding glyphs. text may be str or bytes."""
     if isinstance(text, str):
         labelset = font.get_chars()
+        # Char objects already match as NFC, but we need their length minimised
+        # because we only match until max_length found below.
+        # note that an unmatched grapheme cluster could still result
+        # in multiple replacement chars. we'd need the grapheme cluster break
+        # algorithm to do that better (e.g in uniseg or pyicu modules)
+        text = normalize('NFC', text)
     else:
         labelset = font.get_codepoints()
     max_length = max(len(_c) for _c in labelset)
