@@ -29,6 +29,7 @@ except ImportError:
     Image = None
 
 from .binary import ceildiv
+from .labels import Char, Codepoint
 
 
 # matrix colours
@@ -391,22 +392,28 @@ def _iter_labels(font, text, missing='raise'):
         # in multiple replacement chars. we'd need the grapheme cluster break
         # algorithm to do that better (e.g in uniseg or pyicu modules)
         text = normalize('NFC', text)
+        labeltype = Char
     else:
         labelset = font.get_codepoints()
+        labeltype = Codepoint
     max_length = max(len(_c) for _c in labelset)
     remaining = text
     while remaining:
         # try multibyte clusters first
         for try_len in range(max_length, 1, -1):
             try:
-                yield font.get_glyph(label=remaining[:try_len], missing='raise')
+                # convert to explicit label type,
+                # avoids matching tags as well as chars
+                yield font.get_glyph(
+                    labeltype(remaining[:try_len]), missing='raise'
+                )
             except KeyError:
                 pass
             else:
                 remaining = remaining[try_len:]
                 break
         else:
-            yield font.get_glyph(label=remaining[:1], missing=missing)
+            yield font.get_glyph(labeltype(remaining[:1]), missing=missing)
             remaining = remaining[1:]
 
 
