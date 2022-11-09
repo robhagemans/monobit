@@ -8,6 +8,7 @@ licence: https://opensource.org/licenses/MIT
 import logging
 from functools import wraps
 from pathlib import PurePath
+from unicodedata import normalize
 try:
     # python 3.9
     from functools import cache
@@ -793,15 +794,27 @@ class Font:
             index = self.get_index(
                 label, tag=tag, char=char, codepoint=codepoint
             )
+            return self._glyphs[index]
         except KeyError:
+            # if not found and the label is a composed unicode character
+            # try to compose the glyph from its elements
+            if isinstance(label, Char):
+                char = Char(label)
+            if char:
+                char = Char(normalize('NFD', char))
+                try:
+                    indices = (self.get_index(_c) for _c in char)
+                    indices=tuple(indices)
+                    return Glyph.overlay(*(self._glyphs[_i] for _i in indices))
+                except KeyError:
+                    pass
             if missing == 'default':
                 return self.get_default_glyph()
             if missing == 'empty':
                 return self.get_empty_glyph()
             if missing is None or isinstance(missing, Glyph):
-                return None
+                return missing
             raise
-        return self._glyphs[index]
 
     def get_index(self, label=None, *, char=None, codepoint=None, tag=None):
         """Get index for given label, if defined."""
@@ -836,20 +849,21 @@ class Font:
             pass
         raise KeyError(f'No glyph found matching label={label}')
 
-
     @cache
     def get_default_glyph(self):
         """Get default glyph; empty if not defined."""
-        try:
-            return self.get_glyph(self.default_char)
-        except KeyError:
-            pass
-        return self.get_empty_glyph()
+        return self.get_glyph(self.default_char, missing='empty')
 
     @cache
     def get_empty_glyph(self):
-        """Get blank glyph with zero advance_width (or minimal if zero not possible)."""
-        return Glyph.blank(max(0, -self.left_bearing - self.right_bearing), self.raster_size.y)
+        """
+        Get blank glyph with zero advance_width
+        (or minimal if zero not possible).
+        """
+        return Glyph.blank(
+            max(0, -self.left_bearing - self.right_bearing),
+            self.raster_size.y
+        )
 
 
     ##########################################################################
