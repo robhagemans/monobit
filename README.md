@@ -23,9 +23,11 @@ The `monobit` tools let you modify bitmap fonts and convert between several form
 Roman Czyborra's `hexdraw`, Simon Tatham's `mkwinfont` and John Elliott's `psftools`. Details are
 given in [the `yaff` font file format specification](YAFF.md).
 
-A a working Python 3 installation is required and some formats or features require additional packages to be installed; see _Dependencies_ below.
+Monobit requires Python 3. Install through `pip install monobit`. Some formats or features require additional packages; see _Dependencies_ below for a list. These
+will be installed automatically if you use `pip`.
 
 `monobit` can be used as a Python package or as a command-line tool.
+
 
 
 Usage examples
@@ -153,8 +155,13 @@ Here is a comparison of what you can and cannot store in selected formats suppor
 Dependencies
 ------------
 
-(P) - requires **PIL**, install with `pip3 install Pillow`.  
-(R) - requires **reportlab**, install with `pip3 install reportlab`.  
+(P) - requires **PIL**, install with `pip install Pillow`.  
+(R) - requires **reportlab**, install with `pip install reportlab`.  
+
+The renderer additionally employs
+- **uniseg**
+- **python-bidi**
+- **arabic-reshaper**
 
 
 Licence
@@ -179,5 +186,3 @@ Other bitmap font tools you could use in conjunction with (or instead of) `monob
 - John Elliott's [PSFTools](http://www.seasip.info/Unix/PSF/)
 - Mark Leisher's [`gbdfed`](http://sofia.nmsu.edu/~mleisher/Software/gbdfed/)
 - Simon Tatham's [`mkwinfont`/`dewinfont`](https://www.chiark.greenend.org.uk/~sgtatham/fonts/)
-
-

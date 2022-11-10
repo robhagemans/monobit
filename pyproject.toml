@@ -13,6 +13,7 @@ dependencies = [
     "pillow",
     "python-bidi",
     "arabic-reshaper",
+    "uniseg",
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",

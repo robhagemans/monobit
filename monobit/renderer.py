@@ -5,7 +5,7 @@ monobit.renderer - render text to bitmaps using font
 licence: https://opensource.org/licenses/MIT
 """
 
-from unicodedata import bidirectional, normalize
+from unicodedata import bidirectional, normalize, category
 
 try:
     from bidi.algorithm import get_display
@@ -22,6 +22,17 @@ except ImportError:
         raise ImportError(
             'Arabic text requires module `arabic-reshaper`; not found.'
         )
+
+try:
+    from uniseg.graphemecluster import grapheme_clusters
+except ImportError:
+    logging.warning(
+        'Module `uniseg` not found. Grapheme clusters may not render correctly.'
+    )
+    def grapheme_clusters(text):
+        """Use NFC as poor-man's grapheme cluster. This works... sometimes."""
+        for c in normalize('NFC', text):
+            yield c
 
 try:
     from PIL import Image
@@ -386,17 +397,19 @@ def _iter_labels(font, text, missing='raise'):
     """Iterate over labels in text, yielding glyphs. text may be str or bytes."""
     if isinstance(text, str):
         labelset = font.get_chars()
-        # Char objects already match as NFC, but we need their length minimised
-        # because we only match until max_length found below.
-        # note that an unmatched grapheme cluster could still result
-        # in multiple replacement chars. we'd need the grapheme cluster break
-        # algorithm to do that better (e.g in uniseg or pyicu modules)
-        text = normalize('NFC', text)
-        labeltype = Char
+        # split text into standard grapheme clusters
+        text = tuple(grapheme_clusters(text))
+        # find the longest *number of standard grapheme clusters* per label
+        # this will often be 1, except when the font has defined e.g. Zł or Ft
+        # as a char label for a single glyph
+        max_length = max(len(tuple(grapheme_clusters(_c))) for _c in labelset)
+        # we need to combine multiple elements back into str to match a glyph
+        def labeltype(seq):
+            return Char(''.join(seq))
     else:
         labelset = font.get_codepoints()
         labeltype = Codepoint
-    max_length = max(len(_c) for _c in labelset)
+        max_length = max(len(_c) for _c in labelset)
     remaining = text
     while remaining:
         # try multibyte clusters first
@@ -415,7 +428,6 @@ def _iter_labels(font, text, missing='raise'):
         else:
             yield font.get_glyph(labeltype(remaining[:1]), missing=missing)
             remaining = remaining[1:]
-
 
 
 ###############################################################################
