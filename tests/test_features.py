@@ -8,7 +8,7 @@ import io
 import unittest
 
 import monobit
-from .base import BaseTester
+from .base import BaseTester, get_stringio
 
 
 class TestFeatures(BaseTester):
@@ -102,6 +102,35 @@ class TestFeatures(BaseTester):
         webby_mod2, *_ = monobit.load(self.temp_path / 'webby-small-kerned.bmf')
         text2 = monobit.render_text(webby_mod2, b'sjifjij')
         assert text2 == self.kerntext, f'"""{text2}"""\n != \n"""{self.kerntext}"""'
+
+
+    # tiny sample from unscii-8.hex at https://github.com/viznut/unscii
+    # "Licensing: You can consider it Public Domain (or CC-0)" for unscii-8
+    unscii8_sample = """
+00020:0000000000000000
+00075:0000666666663E00
+00305:FF00000000000000
+00327:0000000000000818
+"""
+
+    composed = """
+@@@@@@@@........@@@@@@@@@@@@@@@@........
+........................................
+.@@..@@..@@..@@.........................
+.@@..@@..@@..@@.........................
+.@@..@@..@@..@@.........................
+.@@..@@..@@..@@.........................
+..@@@@@...@@@@@.....@...............@...
+...@@..............@@..............@@...
+""".strip()
+
+    def test_compose(self):
+        file = get_stringio(self.unscii8_sample)
+        f,  *_ = monobit.load(file, format='hex')
+        text = monobit.render_text(
+            f, 'u\u0305\u0327u \u0305\u0327 \u0305 \u0327'
+        )
+        assert text == self.composed
 
 
 if __name__ == '__main__':
