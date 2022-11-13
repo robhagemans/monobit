@@ -784,6 +784,14 @@ class Font:
     def glyphs(self):
         return self._glyphs
 
+    @cache
+    def _compose_glyph(self, char):
+        """Compose glyph by overlaying components."""
+        char = Char(normalize('NFD', char))
+        indices = (self.get_index(_c) for _c in char)
+        indices = tuple(indices)
+        return Glyph.overlay(*(self._glyphs[_i] for _i in indices))
+
     def get_glyph(
             self, label=None, *,
             char=None, codepoint=None, tag=None,
@@ -801,11 +809,8 @@ class Font:
             if isinstance(label, Char):
                 char = Char(label)
             if char:
-                char = Char(normalize('NFD', char))
                 try:
-                    indices = (self.get_index(_c) for _c in char)
-                    indices=tuple(indices)
-                    return Glyph.overlay(*(self._glyphs[_i] for _i in indices))
+                    return self._compose_glyph(char)
                 except KeyError:
                     pass
             if missing == 'default':
