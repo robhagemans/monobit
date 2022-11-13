@@ -117,7 +117,7 @@ def blit(matrix, canvas, grid_x, grid_y, operator=max):
     return canvas
 
 
-def to_image(matrix, border=(32, 32, 32), paper=(0, 0, 0), ink=(255, 255, 255)):
+def to_image(matrix, border=(0, 0, 0), paper=(0, 0, 0), ink=(255, 255, 255)):
     """Convert matrix to image."""
     if not Image:
         raise ImportError('Rendering to image requires PIL module.')
@@ -133,7 +133,7 @@ def to_image(matrix, border=(32, 32, 32), paper=(0, 0, 0), ink=(255, 255, 255)):
     ])
     return img
 
-def to_text(matrix, *, border=' ', paper='-', ink='@', line_break='\n'):
+def to_text(matrix, *, border='.', paper='.', ink='@', line_break='\n'):
     """Convert matrix to text."""
     colourdict = {-1: border, 0: paper, 1: ink}
     return blockstr(line_break.join(
@@ -144,40 +144,6 @@ def to_text(matrix, *, border=' ', paper='-', ink='@', line_break='\n'):
 
 ###############################################################################
 # text rendering
-
-def render_text(
-        font, text, *,
-        ink='@', paper='.', border='.',
-        margin=(0, 0), scale=(1, 1), rotate=0,
-        direction='',
-        missing='default'
-    ):
-    """Render text string to text bitmap."""
-    return to_text(
-        render(
-            font, text,
-            margin=margin, scale=scale, rotate=rotate, direction=direction,
-            missing=missing
-        ),
-        ink=ink, paper=paper, border=border,
-    )
-
-def render_image(
-        font, text, *,
-        paper=(0, 0, 0), ink=(255, 255, 255), border=(255, 255, 255),
-        margin=(0, 0), scale=(1, 1), rotate=0,
-        direction='',
-        missing='default',
-    ):
-    """Render text to image."""
-    return to_image(
-        render(
-            font, text,
-            margin=margin, scale=scale, rotate=rotate, direction=direction,
-            missing=missing
-        ),
-        ink=ink, paper=paper, border=border,
-    )
 
 def render(
         font, text, *, margin=(0, 0), scale=(1, 1), rotate=0, direction='',
@@ -433,26 +399,6 @@ def _iter_labels(font, text, missing='raise'):
 
 ###############################################################################
 # glyph chart
-
-def chart_image(
-        font,
-        columns=32, margin=(0, 0), padding=(0, 0), scale=(1, 1),
-        order='row-major', direction=(1, 1),
-        border=(32, 32, 32), paper=(0, 0, 0), ink=(255, 255, 255),
-    ):
-    """Create font chart as image."""
-    canvas = chart(font, columns, margin, padding, scale, order, direction)
-    return to_image(canvas, border=border, paper=paper, ink=ink)
-
-def chart_text(
-        font,
-        columns=16, margin=(0, 0), padding=(0, 0), scale=(1, 1),
-        order='row-major', direction=(1, 1),
-        border=' ', paper='-', ink='@',
-    ):
-    """Create font chart as text."""
-    canvas = chart(font, columns, margin, padding, scale, order, direction)
-    return to_text(canvas, border=border, paper=paper, ink=ink)
 
 def traverse_chart(columns, rows, order, direction):
     """Traverse a glyph chart in the specified order and directions."""
