@@ -97,13 +97,6 @@ def main():
         help='override encoding/codepage (default: infer from metadata in file)'
     )
     parser.add_argument(
-        '--chart', action='store_true',
-        help=(
-            "output codepage chart for lowest 256 codepoints. "
-            "Can't be used with text or --encoding"
-        )
-    )
-    parser.add_argument(
         '--debug', action='store_true',
         help='show debugging output'
     )
@@ -117,20 +110,11 @@ def main():
 
     args = parser.parse_args()
 
-
     with wrap_main(args.debug):
-        # codepage chart
-        if args.chart:
-            if args.text or args.encoding:
-                raise ValueError("Can't supply text or `--encoding` with `--chart`.")
-            args.text = b'\n'.join(
-                bytes(range(_row, _row+16)) for _row in range(0, 256, 16)
-            )
-            args.encoding = '_'
         #######################################################################
         # deal with inputs
         # read text from stdin if not supplied
-        elif not args.text:
+        if not args.text:
             args.text = sys.stdin.read()
         else:
             # multiple options or \n give line breaks
