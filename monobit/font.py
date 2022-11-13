@@ -804,6 +804,7 @@ class Font:
             )
             return self._glyphs[index]
         except KeyError:
+            label = to_label(label)
             # if not found and the label is a composed unicode character
             # try to compose the glyph from its elements
             if isinstance(label, Char):
