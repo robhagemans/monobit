@@ -6,7 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import logging
-from functools import wraps
+from functools import wraps, partial
 from pathlib import PurePath
 from unicodedata import normalize
 try:
@@ -653,7 +653,7 @@ class Font:
     def __repr__(self):
         """Representation."""
         elements = (
-            f'glyphs=(...{len(self._glyphs)} glyphs...)' if self.glyphs else '',
+            f'glyphs=(...{len(self._glyphs)} glyphs...)' if self._glyphs else '',
             ',\n    '.join(
                 f'{normalise_property(_k)}={repr(_v)}'
                 for _k, _v in self.properties.items()
@@ -687,7 +687,7 @@ class Font:
             if not _k.startswith('_') and not _k.startswith('#')
         }
         properties.update(kwargs)
-        return type(self)(
+        return Font(
             tuple(glyphs),
             comment=old_comment,
             **properties
@@ -727,7 +727,7 @@ class Font:
             comment = {}
         except ValueError:
             comment = self._get_comment_dict()
-        return type(self)(
+        return Font(
             glyphs,
             comment=comment,
             **{
@@ -1051,12 +1051,8 @@ class Font:
     ##########################################################################
     # transformations
 
-    def _apply_to_all_glyphs(self, operation, *args, **kwargs):
-        glyphs = tuple(
-            operation(_glyph, *args, **kwargs)
-            for _glyph in self._glyphs
-        )
-        return self.modify(glyphs)
+    def _apply_to_all_glyphs(self, operation, **kwargs):
+        return _LazyTransformedFont(self, operation, **kwargs)
 
     def _privatise_glyph_metrics(self):
         glyphs = tuple(
@@ -1163,7 +1159,8 @@ class Font:
         """
         font = self._privatise_glyph_metrics()
         font = font._apply_to_all_glyphs(
-            Glyph.crop, left, bottom, right, top, adjust_metrics=adjust_metrics
+            Glyph.crop,
+            left=left, bottom=bottom, right=right, top=top, adjust_metrics=adjust_metrics
         )
         if not adjust_metrics:
             return font
@@ -1189,7 +1186,8 @@ class Font:
         """
         font = self._privatise_glyph_metrics()
         font = font._apply_to_all_glyphs(
-            Glyph.expand, left, bottom, right, top,
+            Glyph.expand,
+            left=left, bottom=bottom, right=right, top=top,
             adjust_metrics=adjust_metrics
         )
         if not adjust_metrics:
@@ -1351,7 +1349,7 @@ class Font:
             thickness = self.underline_thickness
         return self._apply_to_all_glyphs(
             Glyph.underline,
-            descent=descent, thickness = thickness
+            descent=descent, thickness=thickness
         )
 
     # inject remaining Glyph transformations into Font
@@ -1361,11 +1359,49 @@ class Font:
 
             @scriptable
             @wraps(_func)
-            def _modify_glyphs(self, *args, _func=_func, **kwargs):
-                return self._apply_to_all_glyphs(_func, *args, **kwargs)
+            def _modify_glyphs(self, _func=_func, **kwargs):
+                return self._apply_to_all_glyphs(_func, **kwargs)
 
             locals()[_name] = _modify_glyphs
 
 
 # scriptable font/glyph operations
 operations = get_scriptables(Font)
+
+
+class _LazyTransformedFont(Font):
+
+    def __init__(self, font, transformation, **kwargs):
+        self._glyphs = font._glyphs
+        self._labels = font._labels
+        self._props = font._props
+        if isinstance(font, _LazyTransformedFont):
+            prev_transfo = font._transfo
+            def _wrapped(font, **kwargs):
+                return transformation(prev_transfo(font), **kwargs)
+        else:
+            _wrapped = transformation
+        self._transfo = partial(_wrapped, **kwargs)
+
+    def modify(self, *args, **kwargs):
+        return type(self)(super().modify(*args, **kwargs), self._transfo)
+
+    def drop(self, *args, **kwargs):
+        return type(self)(super().drop(*args, **kwargs), self._transfo)
+
+    @property
+    def glyphs(self):
+        #TODO needs more work - should not just be iterable but indexable, __len__, etc
+        return (self._transfo(_g) for _g in self._glyphs)
+
+    @cache
+    def get_glyph(
+            self, label=None, *,
+            char=None, codepoint=None, tag=None,
+            missing='raise'
+        ):
+        """Get glyph by char, codepoint or tag; default if not present."""
+        glyph = super().get_glyph(
+            label, char=char, codepoint=codepoint, tag=tag, missing=missing
+        )
+        return self._transfo(glyph)
