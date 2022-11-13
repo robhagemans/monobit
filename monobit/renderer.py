@@ -146,7 +146,8 @@ def to_text(matrix, *, border=' ', paper='-', ink='@', line_break='\n'):
 # text rendering
 
 def render_text(
-        font, text, ink='@', paper='.', *,
+        font, text, *,
+        ink='@', paper='.', border='.',
         margin=(0, 0), scale=(1, 1), rotate=0,
         direction='',
         missing='default'
@@ -158,12 +159,12 @@ def render_text(
             margin=margin, scale=scale, rotate=rotate, direction=direction,
             missing=missing
         ),
-        ink=ink, paper=paper
+        ink=ink, paper=paper, border=border,
     )
 
 def render_image(
         font, text, *,
-        paper=(0, 0, 0), ink=(255, 255, 255),
+        paper=(0, 0, 0), ink=(255, 255, 255), border=(255, 255, 255),
         margin=(0, 0), scale=(1, 1), rotate=0,
         direction='',
         missing='default',
@@ -175,7 +176,7 @@ def render_image(
             margin=margin, scale=scale, rotate=rotate, direction=direction,
             missing=missing
         ),
-        ink=ink, paper=paper
+        ink=ink, paper=paper, border=border,
     )
 
 def render(
@@ -279,7 +280,7 @@ def _get_canvas_horizontal(font, glyphs, margin_x, margin_y):
     # if a glyph extends below the descent line or left of the origin,
     # it may draw into the margin
     height = 2 * margin_y + font.pixel_size + font.line_height * (len(glyphs)-1)
-    return create_canvas(width, height)
+    return create_canvas(width, height, _BORDER)
 
 def _get_canvas_vertical(font, glyphs, margin_x, margin_y):
     """Create canvas of the right size."""
@@ -294,7 +295,7 @@ def _get_canvas_vertical(font, glyphs, margin_x, margin_y):
             for _row in glyphs
         )
     width = 2 * margin_x + font.line_width * len(glyphs)
-    return create_canvas(width, height)
+    return create_canvas(width, height, _BORDER)
 
 
 def _get_direction(text, direction):

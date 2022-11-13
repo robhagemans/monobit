@@ -67,6 +67,13 @@ def main():
         )
     )
     parser.add_argument(
+        '--border', type=str, default='',
+        help=(
+            'character or colour to use for border '
+            '(default: same as paper)'
+        )
+    )
+    parser.add_argument(
         '--margin', '-m', type=Coord.create, default=(0, 0),
         help=(
             'number of background characters to use as a margin '
@@ -138,6 +145,7 @@ def main():
         # foreground and backgound characters
         args.ink = unescape(args.ink)
         args.paper = unescape(args.paper)
+        args.border = unescape(args.border)
         args.text = unescape(args.text)
         #######################################################################
         # take first font from pack
@@ -177,7 +185,7 @@ def main():
         if args.underline:
             font = font.underline()
         if args.outline:
-            font=font.outline()
+            font = font.outline()
         #######################################################################
         # render
         canvas = render(
@@ -190,7 +198,8 @@ def main():
         if not args.output or args.output.endswith('.txt'):
             ink = args.ink or '@'
             paper = args.paper or '.'
-            text = to_text(canvas, ink=ink, paper=paper) + '\n'
+            border = args.border or paper
+            text = to_text(canvas, ink=ink, paper=paper, border=border) + '\n'
             if not args.output:
                 sys.stdout.write(text)
             else:
@@ -199,7 +208,8 @@ def main():
         else:
             ink = RGB.create(args.ink or (0, 0, 0))
             paper = RGB.create(args.paper or (255, 255, 255))
-            image = to_image(canvas, ink=ink, paper=paper)
+            border = RGB.create(args.border) if args.border else paper
+            image = to_image(canvas, ink=ink, paper=paper, border=border)
             image.save(args.output)
 
 
