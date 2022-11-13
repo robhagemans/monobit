@@ -802,7 +802,7 @@ class Font:
             index = self.get_index(
                 label, tag=tag, char=char, codepoint=codepoint
             )
-            return self._glyphs[index]
+            return self.glyphs[index]
         except KeyError:
             label = to_label(label)
             # if not found and the label is a composed unicode character
@@ -1412,13 +1412,7 @@ class _LazyTransformedFont(Font):
         return self._tglyphs
 
     @cache
-    def get_glyph(
-            self, label=None, *,
-            char=None, codepoint=None, tag=None,
-            missing='raise'
-        ):
-        """Get glyph by char, codepoint or tag; default if not present."""
-        glyph = super().get_glyph(
-            label, char=char, codepoint=codepoint, tag=tag, missing=missing
-        )
+    def _compose_glyph(self, char):
+        """Compose glyph by overlaying components."""
+        glyph = super()._compose_glyph(char)
         return self._transfo(glyph)
