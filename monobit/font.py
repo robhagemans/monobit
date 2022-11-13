@@ -1373,6 +1373,7 @@ operations = get_scriptables(Font)
 from collections.abc import Sequence
 
 class _LazyTransformedItems(Sequence):
+    """Sequence that applies transformation on access."""
 
     def __init__(self, items, func):
         self._items = items
@@ -1387,32 +1388,36 @@ class _LazyTransformedItems(Sequence):
 
 
 class _LazyTransformedFont(Font):
+    """Font that applies transformation on glyph access."""
 
     def __init__(self, font, transformation, **kwargs):
+        """Initialise, compose functions if needed."""
         self._glyphs = font._glyphs
         self._labels = font._labels
         self._props = font._props
         if isinstance(font, _LazyTransformedFont):
-            prev_transfo = font._transfo
-            def _wrapped(font, **kwargs):
-                return transformation(prev_transfo(font), **kwargs)
+            prev_func = font._func
+            def _wrapped(font):
+                return transformation(prev_func(font), **kwargs)
+            self._func = _wrapped
         else:
-            _wrapped = transformation
-        self._transfo = partial(_wrapped, **kwargs)
-        self._tglyphs = _LazyTransformedItems(self._glyphs, self._transfo)
+            self._func = partial(transformation, **kwargs)
+        self._transformed_glyphs = _LazyTransformedItems(self._glyphs, self._func)
 
     def modify(self, *args, **kwargs):
-        return type(self)(super().modify(*args, **kwargs), self._transfo)
+        return type(self)(super().modify(*args, **kwargs), self._func)
 
     def drop(self, *args, **kwargs):
-        return type(self)(super().drop(*args, **kwargs), self._transfo)
+        return type(self)(super().drop(*args, **kwargs), self._func)
 
     @property
     def glyphs(self):
-        return self._tglyphs
+        return self._transformed_glyphs
 
     @cache
     def _compose_glyph(self, char):
         """Compose glyph by overlaying components."""
+        # transformation may not commute with composition (e.g. outline)
+        # don't compose transformed glyphs, but transform the composed glyph
         glyph = super()._compose_glyph(char)
-        return self._transfo(glyph)
+        return self._func(glyph)
