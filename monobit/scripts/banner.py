@@ -107,7 +107,23 @@ def main():
             'or image format for image output'
         )
     )
-
+    # font / glyph effects
+    parser.add_argument(
+        '--bold', action='store_true',
+        help='apply algorithmic bold effect'
+    )
+    parser.add_argument(
+        '--italic', action='store_true',
+        help='apply algorithmic italic effect'
+    )
+    parser.add_argument(
+        '--underline', action='store_true',
+        help='apply algorithmic underline effect'
+    )
+    parser.add_argument(
+        '--outline', action='store_true',
+        help='apply algorithmic glyph outline effect'
+    )
     args = parser.parse_args()
 
     with wrap_main(args.debug):
@@ -151,6 +167,17 @@ def main():
             args.text = args.text.encode('latin-1', errors='custom_replace')
         elif args.encoding:
             font = font.modify(encoding=args.encoding).label()
+        #######################################################################
+        # apply effects
+        # tgese use default arguments as defined by rendering hints
+        if args.bold:
+            font = font.smear()
+        if args.italic:
+            font = font.shear()
+        if args.underline:
+            font = font.underline()
+        if args.outline:
+            font=font.outline()
         #######################################################################
         # render
         canvas = render(
