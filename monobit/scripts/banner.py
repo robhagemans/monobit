@@ -127,6 +127,8 @@ def main():
                 bytes(range(_row, _row+16)) for _row in range(0, 256, 16)
             )
             args.encoding = '_'
+        #######################################################################
+        # deal with inputs
         # read text from stdin if not supplied
         elif not args.text:
             args.text = sys.stdin.read()
@@ -137,8 +139,11 @@ def main():
         args.ink = unescape(args.ink)
         args.paper = unescape(args.paper)
         args.text = unescape(args.text)
+        #######################################################################
         # take first font from pack
         font, *_ = monobit.load(args.font, format=args.format)
+        #######################################################################
+        # encoding
         # check if any characters are defined
         # override encoding if requested
         if (
@@ -162,12 +167,14 @@ def main():
             args.text = args.text.encode('latin-1', errors='custom_replace')
         elif args.encoding:
             font = font.modify(encoding=args.encoding).label()
+        #######################################################################
         # render
         canvas = render(
             font, args.text,
             margin=args.margin, scale=args.scale, rotate=args.rotate, direction=args.direction,
             missing='default'
         )
+        #######################################################################
         # output
         if not args.output or args.output.endswith('.txt'):
             ink = args.ink or '@'
