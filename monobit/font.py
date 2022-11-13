@@ -1370,6 +1370,22 @@ class Font:
 operations = get_scriptables(Font)
 
 
+from collections.abc import Sequence
+
+class _LazyTransformedItems(Sequence):
+
+    def __init__(self, items, func):
+        self._items = items
+        self._func = func
+
+    @cache
+    def __getitem__(self, index):
+        return self._func(self._items[index])
+
+    def __len__(self):
+        return len(self._items)
+
+
 class _LazyTransformedFont(Font):
 
     def __init__(self, font, transformation, **kwargs):
@@ -1383,6 +1399,7 @@ class _LazyTransformedFont(Font):
         else:
             _wrapped = transformation
         self._transfo = partial(_wrapped, **kwargs)
+        self._tglyphs = _LazyTransformedItems(self._glyphs, self._transfo)
 
     def modify(self, *args, **kwargs):
         return type(self)(super().modify(*args, **kwargs), self._transfo)
@@ -1392,8 +1409,7 @@ class _LazyTransformedFont(Font):
 
     @property
     def glyphs(self):
-        #TODO needs more work - should not just be iterable but indexable, __len__, etc
-        return (self._transfo(_g) for _g in self._glyphs)
+        return self._tglyphs
 
     @cache
     def get_glyph(
