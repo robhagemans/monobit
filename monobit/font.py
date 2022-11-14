@@ -686,7 +686,10 @@ class Font:
             for _k, _v in vars(self._props).items()
             if not _k.startswith('_') and not _k.startswith('#')
         }
-        properties.update(kwargs)
+        properties.update({
+            normalise_property(_k): _v
+            for _k, _v in kwargs.items()
+        })
         return Font(
             tuple(glyphs),
             comment=old_comment,
@@ -721,20 +724,19 @@ class Font:
             glyphs = ()
         except ValueError:
             # not in list
-            glyphs = self._glyphs
+            glyphs = NOT_SET
         try:
             args.remove('comment')
-            comment = {}
+            comment = {'': None}
         except ValueError:
-            comment = self._get_comment_dict()
-        return Font(
+            comment = {}
+        none_args = {normalise_property(_k): None for _k in args}
+        # remove property comments for dropped properties
+        comment.update(none_args)
+        return self.modify(
             glyphs,
             comment=comment,
-            **{
-                _k: _v
-                for _k, _v in self.properties.items()
-                if _k not in args and not _k.startswith('#')
-            }
+            **none_args,
         )
 
     ##########################################################################
@@ -1406,9 +1408,6 @@ class _LazyTransformedFont(Font):
 
     def modify(self, *args, **kwargs):
         return type(self)(super().modify(*args, **kwargs), self._func)
-
-    def drop(self, *args, **kwargs):
-        return type(self)(super().drop(*args, **kwargs), self._func)
 
     @property
     def glyphs(self):
