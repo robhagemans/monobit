@@ -169,6 +169,10 @@ class FontProperties(DefaultProps):
     direction: str = ''
     # number of pixels to smear in advance direction to simulate bold weight
     bold_smear: int = 1
+    # pitch when simulating italic by shearing glyphs
+    italic_pitch: Coord = (1, 1)
+    # thickness of outline effect, in pixels
+    outline_thickness: int = 1
     # number of pixels in underline
     # we don't implement the XLFD calculation based on average stem width
     underline_thickness: int = 1
@@ -1354,6 +1358,39 @@ class Font:
             Glyph.underline,
             descent=descent, thickness=thickness
         )
+
+    @scriptable
+    def shear(self, *, direction:str='right', pitch:Coord=None):
+        """
+        Create a slant by dislocating diagonally, keeping
+        the horizontal baseline fixed.
+
+        direction: direction to move the top of the glyph (default: 'right').
+        pitch: angle of the slant, given as (x, y) coordinate
+               (default: use italic-pitch value).
+        """
+        if pitch is None:
+            pitch = self.italic_pitch
+        return self._apply_to_all_glyphs(
+            Glyph.shear,
+            direction=direction, pitch=pitch
+        )
+
+    @scriptable
+    def outline(self, *, thickness:int=None):
+        """
+        Outline glyph.
+
+        thickness: number of pixels in outline in each direction
+                   (default: use outline-thickness value).
+        """
+        if thickness is None:
+            thickness = self.outline_thickness
+        return self._apply_to_all_glyphs(
+            Glyph.outline,
+            thickness = thickness
+        )
+
 
     # inject remaining Glyph transformations into Font
 
