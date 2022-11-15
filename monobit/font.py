@@ -881,18 +881,22 @@ class Font:
     ##########################################################################
     # label access
 
+    @cache
     def get_chars(self):
         """Get tuple of characters covered by this font."""
         return tuple(_c for _c in self._labels if isinstance(_c, Char))
 
+    @cache
     def get_codepoints(self):
-        """Get list of codepage codepoints covered by this font."""
+        """Get tuple of codepage codepoints covered by this font."""
         return tuple(_c for _c in self._labels if isinstance(_c, Codepoint))
 
+    @cache
     def get_tags(self):
-        """Get list of tags covered by this font."""
+        """Get tuple of tags covered by this font."""
         return tuple(_c for _c in self._labels if isinstance(_c, Tag))
 
+    @cache
     def get_charmap(self):
         """Implied character map based on defined chars."""
         return charmaps.create({
