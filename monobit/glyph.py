@@ -654,7 +654,8 @@ class Glyph:
         """
         if (not blank_empty) and self.is_blank():
             return self.crop(
-                self.width, self.height-1, 0, 0,
+                # leave 1-pixel high, 0-wide glyph
+                self.width, max(0, self.height-1), 0, 0,
                 adjust_metrics=adjust_metrics
             )
         return self.crop(*self.padding, adjust_metrics=adjust_metrics)
