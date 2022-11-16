@@ -150,7 +150,7 @@ def render(
         missing='default'
     ):
     """Render text string to bitmap."""
-    direction, line_direction, align = _get_direction(text, direction)
+    direction, line_direction, align = _get_direction(font, text, direction)
     # get glyphs for rendering
     glyphs = _get_text_glyphs(font, text, direction, line_direction, missing)
     margin_x, margin_y = margin
@@ -264,14 +264,14 @@ def _get_canvas_vertical(font, glyphs, margin_x, margin_y):
     return create_canvas(width, height, _BORDER)
 
 
-def _get_direction(text, direction):
+def _get_direction(font, text, direction):
     """Get direction and alignment."""
     isstr = isinstance(text, str)
     if not direction:
         if isstr:
             direction = 'n'
         else:
-            direction = 'l'
+            direction = font.direction or 'l'
     direction = direction.lower()
     # get line advance direction if given
     direction, _, line_direction = direction.partition(' ')
