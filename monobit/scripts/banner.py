@@ -7,12 +7,13 @@ Print a banner using a bitmap font
 import sys
 import argparse
 import logging
+import codecs
 from codecs import escape_decode
 
 import monobit
 from monobit.scripting import wrap_main
-from monobit.basetypes import Coord
-from monobit import render_text
+from monobit.basetypes import Coord, RGB
+from monobit.renderer import render, to_text, to_image
 
 
 def unescape(text):
@@ -25,13 +26,23 @@ def unescape(text):
     return text.encode('raw-unicode-escape').decode('unicode_escape')
 
 
+def register_handler(handler_name, default_char):
+    """Register an encode/decode error handler with custom replacement char."""
+    def _handler(e):
+        return default_char, e.end
+    codecs.register_error(handler_name, _handler)
+
 
 def main():
     # parse command line
     parser = argparse.ArgumentParser()
     parser.add_argument(
         'text', nargs='*', type=str,
-        help='text to be printed. multiple text arguments represent consecutive lines. if not given, read from standard input'
+        help=(
+            'text to be printed. '
+            'multiple text arguments represent consecutive lines. '
+            'if not given, read from standard input'
+        )
     )
     parser.add_argument(
         '--font', '-f', type=str, default='',
@@ -42,20 +53,39 @@ def main():
         help='format of file used in --font'
     )
     parser.add_argument(
-        '--ink', '--foreground', '-fg', type=str, default='@',
-        help='character to use for ink/foreground (default: @)'
+        '--ink', '--foreground', '-fg', type=str, default='',
+        help=(
+            'character or colour to use for ink/foreground '
+            '(default: @ or (0,0,0))'
+        )
     )
     parser.add_argument(
-        '--paper', '--background', '-bg', type=str, default='.',
-        help='character to use for paper/background (default: .)'
+        '--paper', '--background', '-bg', type=str, default='',
+        help=(
+            'character or colour to use for paper/background '
+            '(default: . or (255,255,255))'
+        )
+    )
+    parser.add_argument(
+        '--border', type=str, default='',
+        help=(
+            'character or colour to use for border '
+            '(default: same as paper)'
+        )
     )
     parser.add_argument(
         '--margin', '-m', type=Coord.create, default=(0, 0),
-        help='number of background characters to use as a margin in x and y direction (default: 0,0)'
+        help=(
+            'number of background characters to use as a margin '
+            'in x and y direction (default: 0,0)'
+        )
     )
     parser.add_argument(
         '--scale', '-s', type=Coord.create, default=(1, 1),
-        help='number of characters to use per pixel in x and y direction (default: 1,1)'
+        help=(
+            'number of characters to use per pixel in x and y direction '
+            '(default: 1,1)'
+        )
     )
     parser.add_argument(
         '--rotate', '-r', type=int, default=0,
@@ -66,7 +96,16 @@ def main():
         help=(
             "writing direction (default: use bidirectional algorithm;"
             " other options: `l`==`left-to-right`, `r`==`right-to-left`, "
-            "`t`==`top-to-bottom`, `b`==`bottom-to-top`)"
+            "`t`==`top-to-bottom`, `b`==`bottom-to-top`). "
+            "May be combined as primary, secondary direction separated by space."
+        )
+    )
+    parser.add_argument(
+        '--align', type=str, default='',
+        help=(
+            "text alignment. (default: left for left-to-right, etc. "
+            " other options: `l`==`left`, `r`==`right`, "
+            "`t`==`top`, `b`==`bottom`)"
         )
     )
     parser.add_argument(
@@ -74,26 +113,40 @@ def main():
         help='override encoding/codepage (default: infer from metadata in file)'
     )
     parser.add_argument(
-        '--chart', action='store_true',
-        help="output codepage chart for lowest 256 codepoints. Can't be used with text or --encoding"
-    )
-    parser.add_argument(
         '--debug', action='store_true',
         help='show debugging output'
     )
-
+    parser.add_argument(
+        '--output',  default='', type=str,
+        help=(
+            'output file name. usee .txt extension for text output, '
+            'or image format for image output'
+        )
+    )
+    # font / glyph effects
+    parser.add_argument(
+        '--bold', action='store_true',
+        help='apply algorithmic bold effect'
+    )
+    parser.add_argument(
+        '--italic', action='store_true',
+        help='apply algorithmic italic effect'
+    )
+    parser.add_argument(
+        '--underline', action='store_true',
+        help='apply algorithmic underline effect'
+    )
+    parser.add_argument(
+        '--outline', action='store_true',
+        help='apply algorithmic glyph outline effect'
+    )
     args = parser.parse_args()
 
-
     with wrap_main(args.debug):
-        # codepage chart
-        if args.chart:
-            if args.text or args.encoding:
-                raise ValueError("Can't supply text or `--encoding` with `--chart`.")
-            args.text = b'\n'.join(bytes(range(_row, _row+16)) for _row in range(0, 256, 16))
-            args.encoding = '_'
+        #######################################################################
+        # deal with inputs
         # read text from stdin if not supplied
-        elif not args.text:
+        if not args.text:
             args.text = sys.stdin.read()
         else:
             # multiple options or \n give line breaks
@@ -101,26 +154,73 @@ def main():
         # foreground and backgound characters
         args.ink = unescape(args.ink)
         args.paper = unescape(args.paper)
+        args.border = unescape(args.border)
         args.text = unescape(args.text)
+        #######################################################################
         # take first font from pack
         font, *_ = monobit.load(args.font, format=args.format)
+        #######################################################################
+        # encoding
         # check if any characters are defined
         # override encoding if requested
-        if not font.get_chars() and not args.encoding and not isinstance(args.text, bytes):
+        if (
+                not font.get_chars()
+                and not args.encoding
+                and not isinstance(args.text, bytes)
+            ):
             logging.info(
-                'No character mapping defined in font. Using `--encoding=raw` as fallback.'
+                'No character mapping defined in font. '
+                'Using `--encoding=raw` as fallback.'
             )
             args.encoding = 'raw'
         if args.encoding == 'raw':
-            # use string as a representation of bytes, replace anything with more than 8-bit codepoints
-            args.text = args.text.encode('latin-1', errors='replace')
+            # register the codepoint for replacement char
+            # note that we use latin-1 strings to represent bytes here
+            # if no replacement char or it has no codepoint, replace with empty
+            default_cp = font.get_default_glyph().codepoint.decode('latin-1')
+            register_handler('custom_replace', default_cp)
+            # see input string as a sequence of bytes to render through codepage
+            # replace anything with more than 8-bit codepoints
+            args.text = args.text.encode('latin-1', errors='custom_replace')
         elif args.encoding:
             font = font.modify(encoding=args.encoding).label()
-        sys.stdout.write(render_text(
-            font, args.text, args.ink, args.paper,
-            margin=args.margin, scale=args.scale, rotate=args.rotate, direction=args.direction,
+        #######################################################################
+        # apply effects
+        # tgese use default arguments as defined by rendering hints
+        if args.bold:
+            font = font.smear()
+        if args.italic:
+            font = font.shear()
+        if args.underline:
+            font = font.underline()
+        if args.outline:
+            font = font.outline()
+        #######################################################################
+        # render
+        canvas = render(
+            font, args.text,
+            margin=args.margin, scale=args.scale, rotate=args.rotate,
+            direction=args.direction, align=args.align,
             missing='default'
-        ) + '\n')
+        )
+        #######################################################################
+        # output
+        if not args.output or args.output.endswith('.txt'):
+            ink = args.ink or '@'
+            paper = args.paper or '.'
+            border = args.border or paper
+            text = to_text(canvas, ink=ink, paper=paper, border=border) + '\n'
+            if not args.output:
+                sys.stdout.write(text)
+            else:
+                with open(args.output, 'w') as outfile:
+                    outfile.write(text)
+        else:
+            ink = RGB.create(args.ink or (0, 0, 0))
+            paper = RGB.create(args.paper or (255, 255, 255))
+            border = RGB.create(args.border) if args.border else paper
+            image = to_image(canvas, ink=ink, paper=paper, border=border)
+            image.save(args.output)
 
 
 if __name__ == '__main__':

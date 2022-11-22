@@ -6,6 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 from string import ascii_letters, digits
+from unicodedata import normalize
 
 from .binary import ceildiv, int_to_bytes
 from .scripting import to_int
@@ -121,6 +122,17 @@ class Char(str, Label):
             for _uc in self
         )
 
+    def __hash__(self):
+        """Ensure NFC-equivalent char labels match."""
+        # make sure tag and Char don't collide
+        return hash(normalize('NFC', self.value))
+
+    def __eq__(self, other):
+        """Ensure NFC-equivalent char labels match."""
+        if not isinstance(other, str):
+            return False
+        return normalize('NFC', self.value) == normalize('NFC', other)
+
     @property
     def value(self):
         """Get our str contents without calling __str__."""
@@ -164,6 +176,11 @@ class Codepoint(bytes, Label):
     def __str__(self):
         """Convert codepoint label to str."""
         return '0x' + self.hex()
+
+    @property
+    def value(self):
+        """Get bytes content."""
+        return bytes(self)
 
 
 ##############################################################################

@@ -6,8 +6,9 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import logging
-from functools import wraps
+from functools import wraps, partial
 from pathlib import PurePath
+from unicodedata import normalize
 try:
     # python 3.9
     from functools import cache
@@ -168,6 +169,10 @@ class FontProperties(DefaultProps):
     direction: str = ''
     # number of pixels to smear in advance direction to simulate bold weight
     bold_smear: int = 1
+    # pitch when simulating italic by shearing glyphs
+    italic_pitch: Coord = (1, 1)
+    # thickness of outline effect, in pixels
+    outline_thickness: int = 1
     # number of pixels in underline
     # we don't implement the XLFD calculation based on average stem width
     underline_thickness: int = 1
@@ -652,7 +657,7 @@ class Font:
     def __repr__(self):
         """Representation."""
         elements = (
-            f'glyphs=(...{len(self._glyphs)} glyphs...)' if self.glyphs else '',
+            f'glyphs=(...{len(self._glyphs)} glyphs...)' if self._glyphs else '',
             ',\n    '.join(
                 f'{normalise_property(_k)}={repr(_v)}'
                 for _k, _v in self.properties.items()
@@ -685,8 +690,11 @@ class Font:
             for _k, _v in vars(self._props).items()
             if not _k.startswith('_') and not _k.startswith('#')
         }
-        properties.update(kwargs)
-        return type(self)(
+        properties.update({
+            normalise_property(_k): _v
+            for _k, _v in kwargs.items()
+        })
+        return Font(
             tuple(glyphs),
             comment=old_comment,
             **properties
@@ -720,20 +728,19 @@ class Font:
             glyphs = ()
         except ValueError:
             # not in list
-            glyphs = self._glyphs
+            glyphs = NOT_SET
         try:
             args.remove('comment')
-            comment = {}
+            comment = {'': None}
         except ValueError:
-            comment = self._get_comment_dict()
-        return type(self)(
+            comment = {}
+        none_args = {normalise_property(_k): None for _k in args}
+        # remove property comments for dropped properties
+        comment.update(none_args)
+        return self.modify(
             glyphs,
             comment=comment,
-            **{
-                _k: _v
-                for _k, _v in self.properties.items()
-                if _k not in args and not _k.startswith('#')
-            }
+            **none_args,
         )
 
     ##########################################################################
@@ -783,6 +790,14 @@ class Font:
     def glyphs(self):
         return self._glyphs
 
+    @cache
+    def _compose_glyph(self, char):
+        """Compose glyph by overlaying components."""
+        char = Char(normalize('NFD', char))
+        indices = (self.get_index(_c) for _c in char)
+        indices = tuple(indices)
+        return Glyph.overlay(*(self._glyphs[_i] for _i in indices))
+
     def get_glyph(
             self, label=None, *,
             char=None, codepoint=None, tag=None,
@@ -793,15 +808,25 @@ class Font:
             index = self.get_index(
                 label, tag=tag, char=char, codepoint=codepoint
             )
+            return self.glyphs[index]
         except KeyError:
+            label = to_label(label)
+            # if not found and the label is a composed unicode character
+            # try to compose the glyph from its elements
+            if isinstance(label, Char):
+                char = Char(label)
+            if char:
+                try:
+                    return self._compose_glyph(char)
+                except KeyError:
+                    pass
             if missing == 'default':
                 return self.get_default_glyph()
             if missing == 'empty':
                 return self.get_empty_glyph()
             if missing is None or isinstance(missing, Glyph):
-                return None
+                return missing
             raise
-        return self._glyphs[index]
 
     def get_index(self, label=None, *, char=None, codepoint=None, tag=None):
         """Get index for given label, if defined."""
@@ -836,37 +861,42 @@ class Font:
             pass
         raise KeyError(f'No glyph found matching label={label}')
 
-
     @cache
     def get_default_glyph(self):
         """Get default glyph; empty if not defined."""
-        try:
-            return self.get_glyph(self.default_char)
-        except KeyError:
-            pass
-        return self.get_empty_glyph()
+        return self.get_glyph(self.default_char, missing='empty')
 
     @cache
     def get_empty_glyph(self):
-        """Get blank glyph with zero advance_width (or minimal if zero not possible)."""
-        return Glyph.blank(max(0, -self.left_bearing - self.right_bearing), self.raster_size.y)
+        """
+        Get blank glyph with zero advance_width
+        (or minimal if zero not possible).
+        """
+        return Glyph.blank(
+            max(0, -self.left_bearing - self.right_bearing),
+            self.raster_size.y
+        )
 
 
     ##########################################################################
     # label access
 
+    @cache
     def get_chars(self):
         """Get tuple of characters covered by this font."""
         return tuple(_c for _c in self._labels if isinstance(_c, Char))
 
+    @cache
     def get_codepoints(self):
-        """Get list of codepage codepoints covered by this font."""
+        """Get tuple of codepage codepoints covered by this font."""
         return tuple(_c for _c in self._labels if isinstance(_c, Codepoint))
 
+    @cache
     def get_tags(self):
-        """Get list of tags covered by this font."""
+        """Get tuple of tags covered by this font."""
         return tuple(_c for _c in self._labels if isinstance(_c, Tag))
 
+    @cache
     def get_charmap(self):
         """Implied character map based on defined chars."""
         return charmaps.create({
@@ -1032,12 +1062,8 @@ class Font:
     ##########################################################################
     # transformations
 
-    def _apply_to_all_glyphs(self, operation, *args, **kwargs):
-        glyphs = tuple(
-            operation(_glyph, *args, **kwargs)
-            for _glyph in self._glyphs
-        )
-        return self.modify(glyphs)
+    def _apply_to_all_glyphs(self, operation, **kwargs):
+        return _LazyTransformedFont(self, operation, **kwargs)
 
     def _privatise_glyph_metrics(self):
         glyphs = tuple(
@@ -1144,7 +1170,8 @@ class Font:
         """
         font = self._privatise_glyph_metrics()
         font = font._apply_to_all_glyphs(
-            Glyph.crop, left, bottom, right, top, adjust_metrics=adjust_metrics
+            Glyph.crop,
+            left=left, bottom=bottom, right=right, top=top, adjust_metrics=adjust_metrics
         )
         if not adjust_metrics:
             return font
@@ -1170,7 +1197,8 @@ class Font:
         """
         font = self._privatise_glyph_metrics()
         font = font._apply_to_all_glyphs(
-            Glyph.expand, left, bottom, right, top,
+            Glyph.expand,
+            left=left, bottom=bottom, right=right, top=top,
             adjust_metrics=adjust_metrics
         )
         if not adjust_metrics:
@@ -1332,8 +1360,41 @@ class Font:
             thickness = self.underline_thickness
         return self._apply_to_all_glyphs(
             Glyph.underline,
-            descent=descent, thickness = thickness
+            descent=descent, thickness=thickness
         )
+
+    @scriptable
+    def shear(self, *, direction:str='right', pitch:Coord=None):
+        """
+        Create a slant by dislocating diagonally, keeping
+        the horizontal baseline fixed.
+
+        direction: direction to move the top of the glyph (default: 'right').
+        pitch: angle of the slant, given as (x, y) coordinate
+               (default: use italic-pitch value).
+        """
+        if pitch is None:
+            pitch = self.italic_pitch
+        return self._apply_to_all_glyphs(
+            Glyph.shear,
+            direction=direction, pitch=pitch
+        )
+
+    @scriptable
+    def outline(self, *, thickness:int=None):
+        """
+        Outline glyph.
+
+        thickness: number of pixels in outline in each direction
+                   (default: use outline-thickness value).
+        """
+        if thickness is None:
+            thickness = self.outline_thickness
+        return self._apply_to_all_glyphs(
+            Glyph.outline,
+            thickness = thickness
+        )
+
 
     # inject remaining Glyph transformations into Font
 
@@ -1342,11 +1403,61 @@ class Font:
 
             @scriptable
             @wraps(_func)
-            def _modify_glyphs(self, *args, _func=_func, **kwargs):
-                return self._apply_to_all_glyphs(_func, *args, **kwargs)
+            def _modify_glyphs(self, _func=_func, **kwargs):
+                return self._apply_to_all_glyphs(_func, **kwargs)
 
             locals()[_name] = _modify_glyphs
 
 
 # scriptable font/glyph operations
 operations = get_scriptables(Font)
+
+
+from collections.abc import Sequence
+
+class _LazyTransformedItems(Sequence):
+    """Sequence that applies transformation on access."""
+
+    def __init__(self, items, func):
+        self._items = items
+        self._func = func
+
+    @cache
+    def __getitem__(self, index):
+        return self._func(self._items[index])
+
+    def __len__(self):
+        return len(self._items)
+
+
+class _LazyTransformedFont(Font):
+    """Font that applies transformation on glyph access."""
+
+    def __init__(self, font, transformation, **kwargs):
+        """Initialise, compose functions if needed."""
+        self._glyphs = font._glyphs
+        self._labels = font._labels
+        self._props = font._props
+        if isinstance(font, _LazyTransformedFont):
+            prev_func = font._func
+            def _wrapped(font):
+                return transformation(prev_func(font), **kwargs)
+            self._func = _wrapped
+        else:
+            self._func = partial(transformation, **kwargs)
+        self._transformed_glyphs = _LazyTransformedItems(self._glyphs, self._func)
+
+    def modify(self, *args, **kwargs):
+        return type(self)(super().modify(*args, **kwargs), self._func)
+
+    @property
+    def glyphs(self):
+        return self._transformed_glyphs
+
+    @cache
+    def _compose_glyph(self, char):
+        """Compose glyph by overlaying components."""
+        # transformation may not commute with composition (e.g. outline)
+        # don't compose transformed glyphs, but transform the composed glyph
+        glyph = super()._compose_glyph(char)
+        return self._func(glyph)

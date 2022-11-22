@@ -277,6 +277,15 @@ class Glyph:
             labels = self._labels
         if comment is NOT_SET:
             comment = self._comment
+        properties = {
+            _k: _v
+            for _k, _v in vars(self._props).items()
+            if not _k.startswith('_') and not _k.startswith('#')
+        }
+        properties.update({
+            normalise_property(_k): _v
+            for _k, _v in kwargs.items()
+        })
         return type(self)(
             pixels,
             labels=labels,
@@ -285,7 +294,7 @@ class Glyph:
             tag=tag,
             comment=comment,
             _0=_0, _1=_1,
-            **{**self.properties, **kwargs}
+            **properties
         )
 
     def label(
@@ -354,28 +363,23 @@ class Glyph:
             args.remove('pixels')
             pixels = ()
         except ValueError:
-            pixels = self._pixels
+            pixels = NOT_SET
         try:
             args.remove('labels')
             labels = ()
         except ValueError:
-            labels = self._labels
+            labels = NOT_SET
         try:
             args.remove('comment')
             comment = ''
         except ValueError:
-            comment = self._comment
-        args = tuple(normalise_property(_arg) for _arg in args)
-        properties = {
-            _k: _v
-            for _k, _v in self.properties.items()
-            if normalise_property(_k) not in args
-        }
-        return type(self)(
+            comment = NOT_SET
+        none_args = {normalise_property(_k): None for _k in args}
+        return self.modify(
             pixels,
             labels=labels,
             comment=comment,
-            **properties
+            **none_args
         )
 
 
@@ -650,7 +654,8 @@ class Glyph:
         """
         if (not blank_empty) and self.is_blank():
             return self.crop(
-                self.width, self.height-1, 0, 0,
+                # leave 1-pixel high, 0-wide glyph
+                self.width, max(0, self.height-1), 0, 0,
                 adjust_metrics=adjust_metrics
             )
         return self.crop(*self.padding, adjust_metrics=adjust_metrics)

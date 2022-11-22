@@ -703,12 +703,12 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
         mod_glyphs.append(glyph.modify(**new_props))
     # if all glyph props are equal, take them global
     for key in (
-            'shift-up', 'left_bearing', 'right-bearing',
+            'shift-up', 'left-bearing', 'right-bearing',
             'shift-left', 'top-bearing', 'bottom-bearing',
         ):
         distinct = set(getattr(_g, normalise_property(key)) for _g in mod_glyphs)
         if len(distinct) == 1:
-            mod_glyphs = [_g.drop(key) for _g in mod_glyphs]
+            mod_glyphs = tuple(_g.drop(key) for _g in mod_glyphs)
             value = distinct.pop()
             # NOTE - these all have zero defaults
             if value != 0:
