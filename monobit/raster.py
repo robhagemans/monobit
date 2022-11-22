@@ -324,6 +324,8 @@ class Raster:
         """
         if min(left, bottom, right, top) < 0:
             raise ValueError('Can only crop glyph by a positive amount.')
+        if self.height-top-bottom <= 0:
+            return type(self).blank(width=max(0, self.width-right-left))
         return type(self)(tuple(
                 _row[left : (-right if right else None)]
                 for _row in self._pixels[top : (-bottom if bottom else None)]
@@ -342,9 +344,8 @@ class Raster:
         """
         if min(left, bottom, right, top) < 0:
             raise ValueError('Can only expand glyph by a positive amount.')
-        if right+left and not top+self.height+bottom:
-            # expanding empty glyph - make at least one high or it will stay empty
-            raise ValueError("Can't expand width of zero-height glyph.")
+        if not top+self.height+bottom:
+            return type(self).blank(width=right+self.width+left)
         new_width = left + self.width + right
         _0, _1 = '0', '1'
         pixels = (
