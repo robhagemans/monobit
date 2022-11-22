@@ -57,6 +57,14 @@ DIRECTIONS = {
     'b': 'bottom-to-top'
 }
 
+ALIGNMENTS = {
+    'l': 'left',
+    'r': 'right',
+    't': 'top',
+    'b': 'bottom'
+}
+
+
 
 class blockstr(str):
     """str that is shown as block text in interactive session."""
@@ -146,11 +154,14 @@ def to_text(matrix, *, border='.', paper='.', ink='@', line_break='\n'):
 # text rendering
 
 def render(
-        font, text, *, margin=(0, 0), scale=(1, 1), rotate=0, direction='',
+        font, text, *, margin=(0, 0), scale=(1, 1), rotate=0,
+        direction='', align='',
         missing='default'
     ):
     """Render text string to bitmap."""
-    direction, line_direction, align = _get_direction(font, text, direction)
+    direction, line_direction, align = _get_direction(
+        font, text, direction, align
+    )
     # get glyphs for rendering
     glyphs = _get_text_glyphs(font, text, direction, line_direction, missing)
     margin_x, margin_y = margin
@@ -264,7 +275,7 @@ def _get_canvas_vertical(font, glyphs, margin_x, margin_y):
     return create_canvas(width, height, _BORDER)
 
 
-def _get_direction(font, text, direction):
+def _get_direction(font, text, direction, align):
     """Get direction and alignment."""
     isstr = isinstance(text, str)
     if not direction:
@@ -302,32 +313,35 @@ def _get_direction(font, text, direction):
             )
             + f'; not `{direction}`.'
         )
-    if direction == 'left-to-right':
-        align = 'left'
-    elif direction == 'right-to-left':
-        align = 'right'
-    elif direction == 'normal':
-        if not isstr:
-            raise ValueError(
-                f'Writing direction `{direction}` only supported for Unicode text.'
-            )
-        # determine alignment
-        # by the class of the first directional character encountered
-        align = 'left'
-        for c in text:
-            try:
-                bidicls = bidirectional(c)[0]
-            except (TypeError, IndexError):
-                continue
-            if bidicls == 'L':
-                break
-            if bidicls in ('R', 'A'):
-                align = 'right'
-                break
-    elif direction == 'bottom-to-top':
-        align = 'bottom'
-    else:
-        align = 'top'
+    if direction == 'normal' and not isstr:
+        raise ValueError(
+            f'Writing direction `{direction}` only supported for Unicode text.'
+        )
+    if align:
+        align = ALIGNMENTS[align[0].lower()]
+    if not align:
+        if direction == 'left-to-right':
+            align = 'left'
+        elif direction == 'right-to-left':
+            align = 'right'
+        elif direction == 'normal':
+            # determine alignment
+            # by the class of the first directional character encountered
+            align = 'left'
+            for c in text:
+                try:
+                    bidicls = bidirectional(c)[0]
+                except (TypeError, IndexError):
+                    continue
+                if bidicls == 'L':
+                    break
+                if bidicls in ('R', 'A'):
+                    align = 'right'
+                    break
+        elif direction == 'bottom-to-top':
+            align = 'bottom'
+        else:
+            align = 'top'
     return direction, line_direction, align
 
 

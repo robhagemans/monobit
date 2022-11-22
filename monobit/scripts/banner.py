@@ -96,7 +96,16 @@ def main():
         help=(
             "writing direction (default: use bidirectional algorithm;"
             " other options: `l`==`left-to-right`, `r`==`right-to-left`, "
-            "`t`==`top-to-bottom`, `b`==`bottom-to-top`)"
+            "`t`==`top-to-bottom`, `b`==`bottom-to-top`). "
+            "May be combined as primary, secondary direction separated by space."
+        )
+    )
+    parser.add_argument(
+        '--align', type=str, default='',
+        help=(
+            "text alignment. (default: left for left-to-right, etc. "
+            " other options: `l`==`left`, `r`==`right`, "
+            "`t`==`top`, `b`==`bottom`)"
         )
     )
     parser.add_argument(
@@ -190,7 +199,8 @@ def main():
         # render
         canvas = render(
             font, args.text,
-            margin=args.margin, scale=args.scale, rotate=args.rotate, direction=args.direction,
+            margin=args.margin, scale=args.scale, rotate=args.rotate,
+            direction=args.direction, align=args.align,
             missing='default'
         )
         #######################################################################
