@@ -288,6 +288,9 @@ def _get_direction(font, text, direction, align):
         else:
             direction = font.direction or 'l'
     direction = direction.lower()
+    force = direction.split(' ')[-1].startswith('f')
+    if force:
+        direction, _, _ = direction.rpartition(' ')
     # get line advance direction if given
     direction, _, line_direction = direction.partition(' ')
     try:
@@ -318,7 +321,7 @@ def _get_direction(font, text, direction, align):
             + f'; not `{direction}`.'
         )
     # determine base drection
-    if isstr:
+    if isstr and not force:
         if direction in ('left-to-right', 'right-to-left'):
             # for Unicode text with horizontal directions, always use bidi algo
             # direction parameter is taken as *base direction* only
@@ -330,9 +333,14 @@ def _get_direction(font, text, direction, align):
             base_direction = ('left-to-right', 'right-to-left')[base_level]
     else:
         if direction == 'normal':
-            raise ValueError(
-                f'Writing direction `{direction}` only supported for Unicode text.'
-            )
+            if isstr:
+                raise ValueError(
+                    f'Writing direction `{direction}` only supported for Unicode text.'
+                )
+            else:
+                raise ValueError(
+                    f'Writing direction `{direction}` not supported with `force`.'
+                )
         base_direction = direction
     # determine alignment
     if align:
