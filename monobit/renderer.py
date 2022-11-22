@@ -8,12 +8,14 @@ licence: https://opensource.org/licenses/MIT
 from unicodedata import bidirectional, normalize, category
 
 try:
-    from bidi.algorithm import get_display
+    from bidi.algorithm import get_display, get_base_level
 except ImportError:
-    def get_display(text):
+    def _bidi_not_found(*args, **kwargs):
         raise ImportError(
             'Bidirectional text requires module `python-bidi`; not found.'
         )
+    get_display = _bidi_not_found
+    get_base_level = _bidi_not_found
 
 try:
     from arabic_reshaper import reshape
@@ -159,11 +161,13 @@ def render(
         missing='default'
     ):
     """Render text string to bitmap."""
-    direction, line_direction, align = _get_direction(
+    direction, line_direction, base_direction, align = _get_direction(
         font, text, direction, align
     )
     # get glyphs for rendering
-    glyphs = _get_text_glyphs(font, text, direction, line_direction, missing)
+    glyphs = _get_text_glyphs(
+        font, text, direction, line_direction, base_direction, missing
+    )
     margin_x, margin_y = margin
     if direction in ('top-to-bottom', 'bottom-to-top'):
         canvas = _get_canvas_vertical(font, glyphs, margin_x, margin_y)
@@ -313,10 +317,24 @@ def _get_direction(font, text, direction, align):
             )
             + f'; not `{direction}`.'
         )
-    if direction == 'normal' and not isstr:
-        raise ValueError(
-            f'Writing direction `{direction}` only supported for Unicode text.'
-        )
+    # determine base drection
+    if isstr:
+        if direction in ('left-to-right', 'right-to-left'):
+            # for Unicode text with horizontal directions, always use bidi algo
+            # direction parameter is taken as *base direction* only
+            base_direction = direction
+            direction = 'normal'
+        else:
+            # use the class of the first directional character encountered
+            base_level = get_base_level(text)
+            base_direction = ('left-to-right', 'right-to-left')[base_level]
+    else:
+        if direction == 'normal':
+            raise ValueError(
+                f'Writing direction `{direction}` only supported for Unicode text.'
+            )
+        base_direction = direction
+    # determine alignment
     if align:
         align = ALIGNMENTS[align[0].lower()]
     if not align:
@@ -325,27 +343,22 @@ def _get_direction(font, text, direction, align):
         elif direction == 'right-to-left':
             align = 'right'
         elif direction == 'normal':
-            # determine alignment
-            # by the class of the first directional character encountered
-            align = 'left'
-            for c in text:
-                try:
-                    bidicls = bidirectional(c)[0]
-                except (TypeError, IndexError):
-                    continue
-                if bidicls == 'L':
-                    break
-                if bidicls in ('R', 'A'):
-                    align = 'right'
-                    break
+            if base_direction == 'left-to-right':
+                align = 'left'
+            else:
+                align = 'right'
         elif direction == 'bottom-to-top':
             align = 'bottom'
         else:
             align = 'top'
-    return direction, line_direction, align
+    return direction, line_direction, base_direction, align
 
 
-def _get_text_glyphs(font, text, direction, line_direction, missing='raise'):
+def _get_text_glyphs(
+        font, text,
+        direction, line_direction, base_direction,
+        missing='raise'
+    ):
     """
     Get tuple of tuples of glyphs (by line) from str or bytes/codepoints input.
     Glyphs are reordered so that they can be rendered ltr ttb or ttb ltr
@@ -361,7 +374,11 @@ def _get_text_glyphs(font, text, direction, line_direction, missing='raise'):
         # put characters in visual order instead of logical
         if direction == 'normal':
             # decide direction based on bidi algorithm
-            text = get_display(text)
+            base_dir = {
+                'left-to-right': 'L',
+                'right-to-left': 'R'
+            }[base_direction]
+            text = get_display(text, base_dir=base_dir)
     lines = text.splitlines()
     if direction in ('right-to-left', 'bottom-to-top'):
         # reverse glyph order for rendering
