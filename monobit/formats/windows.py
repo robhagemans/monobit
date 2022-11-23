@@ -939,12 +939,12 @@ def create_fnt(font, version=0x200):
         font.get_glyph(_codepoint, missing=blank)
         for _codepoint in range(min_ord, max_ord+1)
     ]
-    default = font.get_glyph(font.default_char).codepoint
+    default = font.get_glyph(font.default_char, missing='empty').codepoint
     if len(default) == 1:
         default_ord, = default
     else:
         default_ord = _FALLBACK_DEFAULT
-    word_break = font.get_glyph(font.word_boundary).codepoint
+    word_break = font.get_glyph(font.word_boundary, missing='empty').codepoint
     if len(word_break) == 1:
         break_ord, = word_break
     else:
