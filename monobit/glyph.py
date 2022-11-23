@@ -224,6 +224,8 @@ class Glyph:
 
     def __eq__(self, other):
         """Equality."""
+        if not isinstance(other, type(self)):
+            return False
         if (self.width, self.height) != (other.width, other.height):
             return False
         for p in (*self.properties.keys(), *other.properties.keys()):
