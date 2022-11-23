@@ -932,9 +932,11 @@ def create_fnt(font, version=0x200):
     # FNT can hold at most the codepoints 0..256 as these fields are byte-sized
     min_ord = min(codepoints)
     max_ord = min(255, max(codepoints))
+    # blank glyph of standard size
+    blank = Glyph.blank(pix_width, font.raster_size.y)
     # char table; we need a contiguous range between the min and max codepoints
     ord_glyphs = [
-        font.get_glyph(_codepoint, missing='empty')
+        font.get_glyph(_codepoint, missing=blank)
         for _codepoint in range(min_ord, max_ord+1)
     ]
     default = font.get_glyph(font.default_char).codepoint
@@ -948,7 +950,7 @@ def create_fnt(font, version=0x200):
     else:
         break_ord = _FALLBACK_BREAK
     # add the guaranteed-blank glyph
-    ord_glyphs.append(Glyph.blank(pix_width, font.raster_size.y))
+    ord_glyphs.append(blank)
     # create the bitmaps
     bitmaps = [_glyph.as_bytes() for _glyph in ord_glyphs]
     # bytewise transpose - .FNT stores as contiguous 8-pixel columns

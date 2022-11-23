@@ -868,13 +868,14 @@ class Font:
 
     @cache
     def get_empty_glyph(self):
-        """
-        Get blank glyph with zero advance_width
-        (or minimal if zero not possible).
-        """
+        """Get blank glyph with zero advance_width and advance_height"""
         return Glyph.blank(
-            max(0, -self.left_bearing - self.right_bearing),
-            self.raster_size.y
+            # fix advance_width
+            left_bearing=-self.left_bearing,
+            right_bearing=-self.right_bearing,
+            # fix advance_height
+            top_bearing=-self.top_bearing,
+            bottom_bearing=-self.bottom_bearing,
         )
 
 
