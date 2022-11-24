@@ -1211,18 +1211,16 @@ class Font:
         )
 
     @scriptable
-    def reduce(self, *, adjust_metrics:bool=True, blank_empty:bool=True):
+    def reduce(self, *, adjust_metrics:bool=True):
         """
         Reduce glyphs to their bounding box.
 
         adjust_metrics: make the operation render-invariant (default: True)
-        blank_empty: reduce blank glyphs to empty (default: True)
         """
         font = self._privatise_glyph_metrics()
         font = font._apply_to_all_glyphs(
             Glyph.reduce,
             adjust_metrics=adjust_metrics,
-            blank_empty=blank_empty
         )
         if not adjust_metrics:
             return font
