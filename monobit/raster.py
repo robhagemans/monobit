@@ -122,12 +122,15 @@ class Raster:
 
     def __repr__(self):
         """Text representation."""
-        if self._pixels:
-            return '{}({})'.format(
+        if self.height or not self.width:
+            return '{}(({}))'.format(
                 type(self).__name__,
                 self.as_text(start="\n  '", end="',")
             )
-        return '{}()'.format(type(self).__name__)
+        return '{}(width={})'.format(
+            type(self).__name__,
+            self.width,
+        )
 
 
     ##########################################################################
@@ -154,12 +157,12 @@ class Raster:
     # TODO - need method that outputs tuple of str, this one shld be as_string
     def as_text(self, *, ink='@', paper='.', start='', end='\n'):
         """Convert raster to text."""
+        if not self.height:
+            return ''
         contents = (end + start).join(
             ''.join(_row)
             for _row in self.as_matrix(ink=ink, paper=paper)
         )
-        if not contents:
-            return ''
         return ''.join((start, contents, end))
 
     @classmethod
