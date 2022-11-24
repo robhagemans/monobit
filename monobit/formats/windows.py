@@ -935,16 +935,21 @@ def create_fnt(font, version=0x200):
     # blank glyph of standard size
     blank = Glyph.blank(pix_width, font.raster_size.y)
     # char table; we need a contiguous range between the min and max codepoints
-    ord_glyphs = [
+    ord_glyphs = (
         font.get_glyph(_codepoint, missing=blank)
         for _codepoint in range(min_ord, max_ord+1)
+    )
+    # bring all glyphs to same height
+    ord_glyphs = [
+        _g.expand(top=font.raster_size.y-_g.height)
+        for _g in ord_glyphs
     ]
-    default = font.get_glyph(font.default_char).codepoint
+    default = font.get_glyph(font.default_char, missing='empty').codepoint
     if len(default) == 1:
         default_ord, = default
     else:
         default_ord = _FALLBACK_DEFAULT
-    word_break = font.get_glyph(font.word_boundary).codepoint
+    word_break = font.get_glyph(font.word_boundary, missing='empty').codepoint
     if len(word_break) == 1:
         break_ord, = word_break
     else:
@@ -952,15 +957,15 @@ def create_fnt(font, version=0x200):
     # add the guaranteed-blank glyph
     ord_glyphs.append(blank)
     # create the bitmaps
-    bitmaps = [_glyph.as_bytes() for _glyph in ord_glyphs]
+    bitmaps = (_glyph.as_bytes() for _glyph in ord_glyphs)
     # bytewise transpose - .FNT stores as contiguous 8-pixel columns
-    bitmaps = [
+    bitmaps = tuple(
         b''.join(
             _bm[_col::len(_bm)//_glyph.height]
             for _col in range(len(_bm)//_glyph.height)
         )
         for _glyph, _bm in zip(ord_glyphs, bitmaps)
-    ]
+    )
     glyph_offsets = [0] + list(itertools.accumulate(len(_bm) for _bm in bitmaps))
     glyph_entry = _GLYPH_ENTRY[version]
     fnt_header_ext = _FNT_HEADER_EXT[version]
