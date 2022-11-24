@@ -28,6 +28,30 @@ empty:
         assert len(f.glyphs) == 1, repr(f.glyphs)
         assert f.raster_size == (0, 0), f.raster_size
 
+
+    empty_w = """
+empty:
+    --
+"""
+
+    def test_wide_empty_glyph(self):
+        file = get_stringio(self.empty_w)
+        f,  *_ = monobit.load(file)
+        assert len(f.glyphs) == 1, repr(f.glyphs)
+        assert f.raster_size == (1, 0), f.raster_size
+
+    empty_h = """
+empty:
+    -
+    -
+"""
+
+    def test_high_empty_glyph(self):
+        file = get_stringio(self.empty_h)
+        f,  *_ = monobit.load(file)
+        assert len(f.glyphs) == 1, repr(f.glyphs)
+        assert f.raster_size == (0, 1), f.raster_size
+
     glyphs = """
 a:
     .....

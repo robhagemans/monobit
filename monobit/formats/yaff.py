@@ -16,6 +16,7 @@ from ..encoding import charmaps
 from ..streams import FileFormatError
 from ..font import Font
 from ..glyph import Glyph
+from ..raster import Raster
 from ..labels import strip_matching
 
 
@@ -235,10 +236,10 @@ def _convert_glyph(cluster):
         first_prop = is_prop.index(True)
     except ValueError:
         first_prop = len(lines)
-    glyph_lines = lines[:first_prop]
+    raster = lines[:first_prop]
     prop_lines = lines[first_prop:]
-    if glyph_lines == [YaffParams.empty]:
-        glyph_lines = ()
+    if all(set(_line) == set([YaffParams.empty]) for _line in raster):
+        raster = Raster.blank(width=len(raster[0])-1, height=len(raster)-1)
     # new text reader on glyph property lines
     reader = YaffReader()
     reader.parse_section(prop_lines)
@@ -250,7 +251,7 @@ def _convert_glyph(cluster):
     )
     # labels
     glyph = Glyph(
-        glyph_lines, _0=YaffParams.paper, _1=YaffParams.ink,
+        raster, _0=YaffParams.paper, _1=YaffParams.ink,
         labels=keys, comment=comment, **props
     )
     return glyph

@@ -258,7 +258,7 @@ def _convert_to_fzx(font):
         )
     # we aim for left-bearing >= -3, fzx_shift >= 0
     # crop as far as we can without losing ink
-    glyphs = tuple(_glyph.reduce(blank_empty=False) for _glyph in glyphs)
+    glyphs = tuple(_glyph.reduce() for _glyph in glyphs)
     # expand to left-bearing <= 0
     # expand to fzx-shift <= 15
     glyphs = tuple(

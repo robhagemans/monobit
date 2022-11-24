@@ -52,7 +52,7 @@ class Raster:
     _0 = False
     _1 = True
 
-    def __init__(self, pixels=(), *, _0=NOT_SET, _1=NOT_SET):
+    def __init__(self, pixels=(), *, width=NOT_SET, _0=NOT_SET, _1=NOT_SET):
         """Create glyph from tuple of tuples."""
         if isinstance(pixels, Raster):
             if _0 is NOT_SET:
@@ -60,33 +60,41 @@ class Raster:
             if _1 is NOT_SET:
                 _1 = pixels._1
             self._pixels = pixels._pixels
+            self._width = pixels._width
             self._0 = _0
             self._1 = _1
-        elif _0 is NOT_SET or _1 is NOT_SET:
-            # glyph data
-            self._pixels = tuple(
-                tuple(bool(_bit) for _bit in _row)
-                for _row in pixels
-            )
-            # check pixel matrix geometry
-            if len(set(len(_r) for _r in self._pixels)) > 1:
-                raise ValueError(
-                    f"All rows in raster must be of the same width: {repr(self)}"
-                )
         else:
-            # if _0 and _1 provided, we don't check the pixel matrix
-            self._pixels = pixels
-            self._0 = _0
-            self._1 = _1
+            if _0 is NOT_SET or _1 is NOT_SET:
+                # glyph data
+                self._pixels = tuple(
+                    tuple(bool(_bit) for _bit in _row)
+                    for _row in pixels
+                )
+                # check pixel matrix geometry
+                if len(set(len(_r) for _r in self._pixels)) > 1:
+                    raise ValueError(
+                        f"All rows in raster must be of the same width: {repr(self)}"
+                    )
+            else:
+                # if _0 and _1 provided, we don't check the pixel matrix
+                self._pixels = pixels
+                self._0 = _0
+                self._1 = _1
+            if not self._pixels:
+                if width is not NOT_SET:
+                    self._width = width
+                else:
+                    self._width = 0
+            else:
+                self._width = len(self._pixels[0])
+
 
     # NOTE - these following are shadowed in GlyphProperties
 
     @property
     def width(self):
         """Raster width of glyph."""
-        if not self._pixels:
-            return 0
-        return len(self._pixels[0])
+        return self._width
 
     @property
     def height(self):
@@ -114,12 +122,15 @@ class Raster:
 
     def __repr__(self):
         """Text representation."""
-        if self._pixels:
-            return '{}({})'.format(
+        if self.height or not self.width:
+            return '{}(({}))'.format(
                 type(self).__name__,
                 self.as_text(start="\n  '", end="',")
             )
-        return '{}()'.format(type(self).__name__)
+        return '{}(width={})'.format(
+            type(self).__name__,
+            self.width,
+        )
 
 
     ##########################################################################
@@ -128,6 +139,8 @@ class Raster:
     @classmethod
     def blank(cls, width=0, height=0):
         """Create uninked raster."""
+        if height == 0:
+            return cls(width=width)
         return cls(((0,) * width,) * height)
 
     def is_blank(self):
@@ -144,12 +157,12 @@ class Raster:
     # TODO - need method that outputs tuple of str, this one shld be as_string
     def as_text(self, *, ink='@', paper='.', start='', end='\n'):
         """Convert raster to text."""
+        if not self.height:
+            return ''
         contents = (end + start).join(
             ''.join(_row)
             for _row in self.as_matrix(ink=ink, paper=paper)
         )
-        if not contents:
-            return ''
         return ''.join((start, contents, end))
 
     @classmethod
@@ -314,6 +327,8 @@ class Raster:
         """
         if min(left, bottom, right, top) < 0:
             raise ValueError('Can only crop glyph by a positive amount.')
+        if self.height-top-bottom <= 0:
+            return type(self).blank(width=max(0, self.width-right-left))
         return type(self)(tuple(
                 _row[left : (-right if right else None)]
                 for _row in self._pixels[top : (-bottom if bottom else None)]
@@ -332,9 +347,8 @@ class Raster:
         """
         if min(left, bottom, right, top) < 0:
             raise ValueError('Can only expand glyph by a positive amount.')
-        if right+left and not top+self.height+bottom:
-            # expanding empty glyph - make at least one high or it will stay empty
-            raise ValueError("Can't expand width of zero-height glyph.")
+        if not top+self.height+bottom:
+            return type(self).blank(width=right+self.width+left)
         new_width = left + self.width + right
         _0, _1 = '0', '1'
         pixels = (

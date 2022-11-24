@@ -647,19 +647,12 @@ class Glyph:
         return self.modify(pixels)
 
     @scriptable
-    def reduce(self, *, adjust_metrics:bool=True, blank_empty:bool=True):
+    def reduce(self, *, adjust_metrics:bool=True):
         """
         Return a glyph reduced to the bounding box.
 
         adjust_metrics: make the operation render-invariant (default: True)
-        blank_empty: reduce blank glyphs to empty (default: True)
         """
-        if (not blank_empty) and self.is_blank():
-            return self.crop(
-                # leave 1-pixel high, 0-wide glyph
-                self.width, max(0, self.height-1), 0, 0,
-                adjust_metrics=adjust_metrics
-            )
         return self.crop(*self.padding, adjust_metrics=adjust_metrics)
 
     @scriptable
