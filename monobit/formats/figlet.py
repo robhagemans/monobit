@@ -229,6 +229,8 @@ def _convert_to_flf(font, hardblank='$'):
         figprops = {}
     props.old_layout = figprops.get('old_layout', 0)
     props.full_layout = figprops.get('full_layout', 0)
+    # apply font metrics to glyphs
+    font = font._privatise_glyph_metrics()
     # first get glyphs in default repertoire
     # fill missing glyphs with empties
     glyphs = [font.get_glyph(_chr, missing='empty') for _chr in flf_chars]
@@ -244,17 +246,20 @@ def _convert_to_flf(font, hardblank='$'):
     # expand glyphs by bearings
     glyphs = [
         _g.expand(
-            left=max(0, font.left_bearing + _g.left_bearing),
-            bottom=max(0, font.shift_up + _g.shift_up),
-            right=max(0, font.right_bearing + _g.right_bearing),
+            left=max(0, _g.left_bearing),
+            bottom=max(0, _g.shift_up),
+            right=max(0, _g.right_bearing),
             # include leading; ensure glyphs are equal height
-            top=max(0, font.line_height - _g.height - max(0, font.shift_up + _g.shift_up)),
+            top=max(0, font.line_height - _g.height - max(0, _g.shift_up)),
         )
         for _g in glyphs
     ]
     return glyphs, props, font.get_comment()
 
-def _write_flf(outstream, flf_glyphs, flf_props, comments, ink='#', paper=' ', hardblank='$'):
+def _write_flf(
+        outstream, flf_glyphs, flf_props, comments,
+        ink='#', paper=' ', hardblank='$'
+    ):
     """Write out a figlet font file."""
     # header
     header = _FLF_HEADER(**vars(flf_props))
