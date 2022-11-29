@@ -376,7 +376,7 @@ class FontProperties(DefaultProps):
     def raster(self):
         """
         Minimum box encompassing all glyph matrices overlaid at fixed origin,
-        font origin coordinates.
+        bottom-left origin coordinates.
         """
         if not self._font.glyphs:
             return Bounds(0, 0, 0, 0)
@@ -402,7 +402,10 @@ class FontProperties(DefaultProps):
 
     @checked_property
     def ink_bounds(self):
-        """Minimum bounding box encompassing all glyphs at fixed origin, font origin cordinates."""
+        """
+        Minimum bounding box encompassing all glyphs at fixed origin,
+        bottom-left origin cordinates.
+        """
         nonempty = [
             _glyph for _glyph in self._font.glyphs
             if _glyph.bounding_box.x and _glyph.bounding_box.y
@@ -422,7 +425,10 @@ class FontProperties(DefaultProps):
 
     @checked_property
     def bounding_box(self):
-        """Dimensions of minimum bounding box encompassing all glyphs at fixed origin."""
+        """
+        Dimensions of minimum bounding box encompassing all glyphs
+        at fixed bottom-left origin.
+        """
         return Coord(
             self.ink_bounds.right - self.ink_bounds.left,
             self.ink_bounds.top - self.ink_bounds.bottom

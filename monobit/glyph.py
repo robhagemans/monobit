@@ -128,7 +128,7 @@ class GlyphProperties(DefaultProps):
 
     @checked_property
     def ink_bounds(self):
-        """Minimum box encompassing all ink, in glyph origin coordinates."""
+        """Minimum box encompassing all ink, relative to bottom left."""
         bounds = Bounds(
             self.raster.left + self.padding.left,
             self.raster.bottom + self.padding.bottom,
@@ -155,7 +155,7 @@ class GlyphProperties(DefaultProps):
 
     @checked_property
     def raster(self):
-        """Raster bounds, in glyph origin coordinates."""
+        """Raster bounds, from bottom left."""
         return Bounds(
             left=self.left_bearing,
             bottom=self.shift_up,
