@@ -458,6 +458,7 @@ def load_bdf(instream, where=None):
         logging.warning('Number of characters found does not match CHARS declaration.')
     glyphs, properties = _parse_properties(glyphs, glyph_props, bdf_props, x_props)
     font = Font(glyphs, comment=comments, **properties)
+    font = font.globalise_glyph_metrics()
     try:
         font = font.label()
     except NotFoundError:
@@ -701,18 +702,6 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
             new_props['top-bearing'] = top_bearing
             new_props['bottom-bearing'] = bottom_bearing
         mod_glyphs.append(glyph.modify(**new_props))
-    # if all glyph props are equal, take them global
-    for key in (
-            'shift-up', 'left-bearing', 'right-bearing',
-            'shift-left', 'top-bearing', 'bottom-bearing',
-        ):
-        distinct = set(getattr(_g, normalise_property(key)) for _g in mod_glyphs)
-        if len(distinct) == 1:
-            mod_glyphs = tuple(_g.drop(key) for _g in mod_glyphs)
-            value = distinct.pop()
-            # NOTE - these all have zero defaults
-            if value != 0:
-                properties[key] = value
     xlfd_name = bdf_props.pop('FONT')
     # keep unparsed bdf props
     return mod_glyphs, properties, xlfd_name, bdf_props
