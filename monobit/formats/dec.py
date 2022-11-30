@@ -15,11 +15,10 @@ import logging
 
 from ..storage import loaders, savers
 from ..streams import FileFormatError
-from ..struct import Props
 from ..font import Font
 from ..glyph import Glyph
 from ..binary import ceildiv
-
+from ..properties import reverse_dict
 
 @loaders.register(
     magic=(b'\x90', b'\x1bP'),
@@ -32,7 +31,7 @@ def load_dec_drcs(instream, where=None):
     glyphs = _parse_drcs_glyphs(dec_glyphs, first_codepoint)
     if len(glyphs) != count:
         logging.warning('Expected %d glyphs, found %d.', count, len(glyphs))
-    return Font(glyphs, **vars(props))
+    return Font(glyphs, **props)
 
 @savers.register(linked=load_dec_drcs)
 def save_dec_drcs(fonts, outstream, where=None, *, use_8bit:bool=False):
@@ -259,15 +258,12 @@ def _convert_drcs_glyph(glyphdef):
         for _block in glyphdef.split(b'/')
     )
     glyphbytes = zip(*glyphbytes)
-    glyphstrs = (
-        ''.join(f'{_b:06b}' for _b in reversed(_pair))
+    glyphstrs = tuple(
+        ''.join(f'{_b:06b}' for _b in _pair[::-1])
         for _pair in glyphbytes
     )
-    glyph = Glyph(
-        tuple(_c == '1' for _c in _row)
-        for _row in glyphstrs
-    )
-    return glyph.rotate(turns=3)
+    glyph = Glyph(glyphstrs, _0='0', _1='1')
+    return glyph.turn(anti=1)
 
 
 def _parse_drcs_glyphs(glyphdefs, first_codepoint):
@@ -311,14 +307,14 @@ def _parse_drcs_props(dec_props):
     # determine glyph height from Pcmh
     if not height:
         height = int(dec_props['Pcmh']) or 12
-    props = Props(
+    props = dict(
         encoding='ascii',
         raster_size=(width, height),
         device=device,
     )
     scs_id = dec_props['Dscs'].decode('ascii')
     # preserve unparsed properties
-    props.dec_drcs = shlex.join((
+    props['dec_drcs'] = shlex.join((
         _JOINER.join((_DSCS_NAME, scs_id)),
         _JOINER.join((_PFN_NAME, str(int(dec_props['Pfn'])))),
         _ERASE_CONTROL[int(dec_props['Pe'])],
@@ -359,7 +355,7 @@ def _write_dec_drcs(font, outstream, use_8bit=False):
 
 def _convert_to_drcs_props(font, is_big):
     # device spec
-    pss_to_dims = dict(reversed(_p) for _p in _PSS_DIMS.items())
+    pss_to_dims = reverse_dict(_PSS_DIMS)
     devices = {
         _DEVICE_PATTERN.format(*_k): _v
         for _k, _v in pss_to_dims.items()
@@ -374,8 +370,8 @@ def _convert_to_drcs_props(font, is_big):
         pass
     else:
         uprops = shlex.split(unparsed)
-        erase = dict(reversed(_p) for _p in _ERASE_CONTROL.items())
-        ftype = dict(reversed(_p) for _p in _FONT_TYPE.items())
+        erase = reverse_dict(_ERASE_CONTROL)
+        ftype = reverse_dict(_FONT_TYPE)
         for uprop in uprops:
             pe = erase.get(uprop, pe)
             pt = ftype.get(uprop, pt)
@@ -407,11 +403,10 @@ def _convert_to_drcs_glyph(glyph):
         )
         for _i in range(nblocks)
     )
-    blocks = (_b.rotate(turns=1) for _b in blocks)
+    blocks = (_b.turn(clockwise=1) for _b in blocks)
     blockbytes = (_b.as_bytes(align='r') for _b in blocks)
     glyphdef = b'/'.join(
         bytes(_c + ord('?') for _c in _b)
         for _b in blockbytes
     ) + b';\n'
     return glyphdef
-

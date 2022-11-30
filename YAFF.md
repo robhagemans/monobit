@@ -157,8 +157,8 @@ Specification
 - Lines must be terminated by one of the following line endings:
   `LF` (`u+000a`), `CR LF` (`u+000d u+000a`), or `CR` (`u+000d`).
 - *Whitespace* consists of spaces (`u+0020`) and tabs (`u+0009`).
-- Use of control characters other than the ones mentioned above, 
-  private-use characters and noncharacters 
+- Use of control characters other than the ones mentioned above,
+  private-use characters and noncharacters
   is not advisable, but it is allowed.
 
 #### Components
@@ -193,7 +193,7 @@ There may be at most one newline between the separator and the value.
 * No line of a value must start with `:`, `.`, or `@`.
 * No line of a value must end with `:`.
 * No line of a value must be empty or consist of only the character `-`.
-* If any line of a value starts and ends with a double quote character `"`, 
+* If any line of a value starts and ends with a double quote character `"`,
   these quotes are stripped and everything in between is used unchanged.
 
 #### Glyph definitions
@@ -214,7 +214,7 @@ If a label starts with an ASCII digit, it is a *codepoint*.
   must be hex digits and are not case sensitive.
 * If the first two characters are `0o` or `0O`, the element is octal. All further characters must
   be octal digits.
-* If a codepoint label consists of multiple elements, each element must be less than 256. 
+* If a codepoint label consists of multiple elements, each element must be less than 256.
   This forms a multi-byte codepoint sequence pointing to a single glyph.
 
 Examples of valid codepoint labels are `32`, `0032`, `0x20`, `0o24`, (all of which refer to the same
@@ -231,18 +231,18 @@ If a label:
 it is a *character* label, which may be a grapheme sequence consisting of multiple Unicode code points.
 * A character label may consist of multiple elements, separated by commas and optional whitespace.
 * Each element must start with `u+` or `U+` or be enclosed in single quotes.
-* If an element starts with `u+` or `U+`, it must be followed by hex digits. It represents a Unicode point in hexadecimal notation. 
+* If an element starts with `u+` or `U+`, it must be followed by hex digits. It represents a Unicode point in hexadecimal notation.
   The hex digits are not case sensitive.
 * If a label element starts and ends with a single-quote character `'`,
-  these quotes are stripped and the element consists of everything in between. 
+  these quotes are stripped and the element consists of everything in between.
 
-Examples of valid character labels are `A`, `À`, `安` (all of which are single characters), `ते` 
+Examples of valid character labels are `A`, `À`, `安` (all of which are single characters), `ते`
 (a grapheme sequence consisting of multiple non-ASCII characters), its equivalent `u+0924, u+0947`,
  and `'ffi'` (multiple characters enclosed in single quotes).
 
 If a label:
 * is enclosed in double quote characters `"`, **or**
-* starts with an ASCII letter, is at least 2 characters long, and consists only of 
+* starts with an ASCII letter, is at least 2 characters long, and consists only of
   ASCII letters, ASCII digits, the underscore `_`, the dash `-`, or the full stop `.`,
 
 it is a *tag*.
@@ -315,6 +315,8 @@ _Rendering hints_ affect the way decorations and transformations are applied. Th
   direction algorithmically from Unicode properties. If no character labels are given, the
   default direction is `left-to-right`.
 - `bold-smear`: additional number of pixels to trail ink by, when bolding algorithmically
+- `italic-pitch`: pitch when italicising algorithmically, given as x,y step sizes
+- `outline-thickness`: number of pixels in a generated outline
 - `underline-thickness`: number of pixels in a generated underline
 - `underline-descent`: location of underline in pixels below the baseline
 - `superscript-size`: pixel size of superscript font to use

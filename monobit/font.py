@@ -6,8 +6,9 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import logging
-from functools import wraps
+from functools import wraps, partial
 from pathlib import PurePath
+from unicodedata import normalize
 try:
     # python 3.9
     from functools import cache
@@ -16,13 +17,16 @@ except ImportError:
     cache = lru_cache()
 
 from .scripting import scriptable, get_scriptables, Any
-from .glyph import Glyph, Coord, Bounds, number
+from .glyph import Glyph
+from .raster import turn_method
+from .basetypes import Coord, Bounds
 from .encoding import charmaps, encoder
 from .taggers import tagger
-from .labels import Tag, Char, Codepoint, to_label
+from .labels import Tag, Char, Codepoint, Label, to_label
 from .binary import ceildiv
-from .struct import (
-    extend_string, DefaultProps, normalise_property, as_tuple, writable_property, checked_property
+from .properties import (
+    extend_string, DefaultProps, normalise_property, as_tuple,
+    writable_property, checked_property
 )
 from .taggers import tagmaps
 
@@ -33,7 +37,7 @@ NOT_SET = object()
 
 # pylint: disable=redundant-keyword-arg, no-member
 
-###################################################################################################
+###############################################################################
 # property management
 
 
@@ -64,7 +68,7 @@ class FontProperties(DefaultProps):
     # serif, sans, etc.
     style: str
     # nominal point size
-    point_size: number
+    point_size: float
     # normal, bold, light, ...
     weight: str = 'regular'
     # roman, italic, oblique, ...
@@ -80,9 +84,9 @@ class FontProperties(DefaultProps):
     device: str
     # calculated or given
     # pixel aspect ratio - square pixel
-    pixel_aspect: Coord.create = Coord(1, 1)
+    pixel_aspect: Coord = Coord(1, 1)
     # target resolution in dots per inch
-    dpi: Coord.create
+    dpi: Coord
 
     # summarising quantities
     # determined from the bitmaps only
@@ -90,13 +94,13 @@ class FontProperties(DefaultProps):
     # proportional, monospace, character-cell, multi-cell
     spacing: str
     # maximum raster (not necessarily ink) width/height
-    raster_size: Coord.create
+    raster_size: Coord
     # width, height of the character cell
-    cell_size: Coord.create
+    cell_size: Coord
     # overall ink bounds - overlay all glyphs with fixed origin and determine maximum ink extent
-    bounding_box: Coord.create
+    bounding_box: Coord
     # average advance width, rounded to tenths
-    average_width: number
+    average_width: float
     # maximum glyph advance width
     max_width: int
     # advance width of LATIN CAPITAL LETTER X
@@ -152,9 +156,9 @@ class FontProperties(DefaultProps):
     # character map, stored as normalised name
     encoding: charmaps.normalise
     # replacement for missing glyph
-    default_char: to_label
+    default_char: Label
     # word-break character (usually space)
-    word_boundary: to_label = Char(' ')
+    word_boundary: Label = Char(' ')
 
     # rendering hints
     # may affect rendering if effects are applied
@@ -165,6 +169,10 @@ class FontProperties(DefaultProps):
     direction: str = ''
     # number of pixels to smear in advance direction to simulate bold weight
     bold_smear: int = 1
+    # pitch when simulating italic by shearing glyphs
+    italic_pitch: Coord = (1, 1)
+    # thickness of outline effect, in pixels
+    outline_thickness: int = 1
     # number of pixels in underline
     # we don't implement the XLFD calculation based on average stem width
     underline_thickness: int = 1
@@ -175,9 +183,9 @@ class FontProperties(DefaultProps):
     # recommended subscript size in pixels.
     subscript_size: int
     # recommended superscript horizontal, vertical offset in pixels.
-    superscript_offset: Coord.create
+    superscript_offset: Coord
     # recommended subscript horizontal, vertical offset in pixels.
-    subscript_offset: Coord.create
+    subscript_offset: Coord
     # recommended small-capital size in pixels.
     small_cap_size: int
     # recommended space between words, in pixels
@@ -198,8 +206,8 @@ class FontProperties(DefaultProps):
 
     # type converters for compatibility synonyms
     tracking: int
-    offset: Coord.create
-    average_advance: number
+    offset: Coord
+    average_advance: float
     max_advance: int
     cap_advance: int
 
@@ -291,35 +299,35 @@ class FontProperties(DefaultProps):
 
     @writable_property
     def ascent(self):
-        """Recommended typographic ascent relative to baseline (defaults to ink-top)."""
+        """
+        Recommended typographic ascent relative to baseline.
+        Defaults to ink-top.
+        """
         if not self._font.glyphs:
             return 0
-        return self.shift_up + max(
-            _glyph.height - _glyph.padding.top
-            for _glyph in self._font.glyphs
-        )
+        return self.ink_bounds.top
 
     @writable_property
     def descent(self):
-        """Recommended typographic descent relative to baseline (defaults to ink-bottom)."""
+        """
+        Recommended typographic descent relative to baseline.
+        Defaults to ink-bottom.
+        """
         if not self._font.glyphs:
             return 0
-        # usually, descent is positive and offset is negative
-        # negative descent would mean font descenders are all above baseline
-        # padding is from raster edges, not in glyph coordines
-        return - min(
-            self.shift_up + _glyph.shift_up + _glyph.padding.bottom
-            for _glyph in self._font.glyphs
-        )
+        return -self.ink_bounds.bottom
 
     @checked_property
     def pixel_size(self):
-        """Get nominal pixel size (ascent + descent)."""
+        """Get nominal pixel size. Equals ascent + descent."""
         return self.ascent + self.descent
 
     @writable_property
     def leading(self):
-        """Vertical interline spacing, defined as (pixels between baselines) - (pixel size)."""
+        """
+        Vertical interline spacing,
+        defined as (pixels between baselines) - (pixel size).
+        """
         return self.line_height - self.pixel_size
 
     ##########################################################################
@@ -366,19 +374,13 @@ class FontProperties(DefaultProps):
 
     @checked_property
     def raster(self):
-        """Minimum box encompassing all glyph matrices overlaid at fixed origin, font origin coordinates."""
+        """
+        Minimum box encompassing all glyph matrices overlaid at fixed origin,
+        font origin coordinates.
+        """
         if not self._font.glyphs:
             return Bounds(0, 0, 0, 0)
-        lefts = tuple(_glyph.left_bearing for _glyph in self._font.glyphs)
-        bottoms = tuple(_glyph.shift_up for _glyph in self._font.glyphs)
-        rights = tuple(_glyph.left_bearing + _glyph.width for _glyph in self._font.glyphs)
-        tops = tuple(_glyph.shift_up + _glyph.height for _glyph in self._font.glyphs)
-        return Bounds(
-            left=self.left_bearing + min(lefts),
-            bottom=self.shift_up + min(bottoms),
-            right=self.left_bearing + max(rights),
-            top=self.shift_up + max(tops)
-        )
+        return Glyph._get_common_raster(*self._font.glyphs)
 
     @checked_property
     def raster_size(self):
@@ -431,7 +433,7 @@ class FontProperties(DefaultProps):
         """Offset from raster sides to bounding box. Left, bottom, right, top."""
         return Bounds(
             self.ink_bounds.left - self.raster.left,
-            self.ink_bounds.bottom - self.raster_bottom,
+            self.ink_bounds.bottom - self.raster.bottom,
             self.raster.right - self.ink_bounds.right,
             self.raster.top - self.ink_bounds.top,
         )
@@ -619,7 +621,7 @@ class FontProperties(DefaultProps):
         return self.cap_width
 
 
-###################################################################################################
+###############################################################################
 # Font class
 
 
@@ -655,7 +657,7 @@ class Font:
     def __repr__(self):
         """Representation."""
         elements = (
-            f'glyphs=(...{len(self._glyphs)} glyphs...)' if self.glyphs else '',
+            f'glyphs=(...{len(self._glyphs)} glyphs...)' if self._glyphs else '',
             ',\n    '.join(
                 f'{normalise_property(_k)}={repr(_v)}'
                 for _k, _v in self.properties.items()
@@ -683,10 +685,19 @@ class Font:
         elif comment is not NOT_SET:
             old_comment.update(comment)
         # comment and properties are replaced keyword by keyword
-        return type(self)(
+        properties = {
+            _k: _v
+            for _k, _v in vars(self._props).items()
+            if not _k.startswith('_') and not _k.startswith('#')
+        }
+        properties.update({
+            normalise_property(_k): _v
+            for _k, _v in kwargs.items()
+        })
+        return Font(
             tuple(glyphs),
             comment=old_comment,
-            **{**self.properties, **kwargs}
+            **properties
         )
 
     def append(
@@ -717,20 +728,19 @@ class Font:
             glyphs = ()
         except ValueError:
             # not in list
-            glyphs = self._glyphs
+            glyphs = NOT_SET
         try:
             args.remove('comment')
-            comment = {}
+            comment = {'': None}
         except ValueError:
-            comment = self._get_comment_dict()
-        return type(self)(
+            comment = {}
+        none_args = {normalise_property(_k): None for _k in args}
+        # remove property comments for dropped properties
+        comment.update(none_args)
+        return self.modify(
             glyphs,
             comment=comment,
-            **{
-                _k: _v
-                for _k, _v in self.properties.items()
-                if _k not in args and not _k.startswith('#')
-            }
+            **none_args,
         )
 
     ##########################################################################
@@ -780,19 +790,43 @@ class Font:
     def glyphs(self):
         return self._glyphs
 
-    def get_glyph(self, label=None, *, char=None, codepoint=None, tag=None, missing='raise'):
+    @cache
+    def _compose_glyph(self, char):
+        """Compose glyph by overlaying components."""
+        char = Char(normalize('NFD', char))
+        indices = (self.get_index(_c) for _c in char)
+        indices = tuple(indices)
+        return Glyph.overlay(*(self._glyphs[_i] for _i in indices))
+
+    def get_glyph(
+            self, label=None, *,
+            char=None, codepoint=None, tag=None,
+            missing='raise'
+        ):
         """Get glyph by char, codepoint or tag; default if not present."""
         try:
-            index = self.get_index(label, tag=tag, char=char, codepoint=codepoint)
+            index = self.get_index(
+                label, tag=tag, char=char, codepoint=codepoint
+            )
+            return self.glyphs[index]
         except KeyError:
+            label = to_label(label)
+            # if not found and the label is a composed unicode character
+            # try to compose the glyph from its elements
+            if isinstance(label, Char):
+                char = Char(label)
+            if char:
+                try:
+                    return self._compose_glyph(char)
+                except KeyError:
+                    pass
             if missing == 'default':
                 return self.get_default_glyph()
             if missing == 'empty':
                 return self.get_empty_glyph()
             if missing is None or isinstance(missing, Glyph):
-                return None
+                return missing
             raise
-        return self._glyphs[index]
 
     def get_index(self, label=None, *, char=None, codepoint=None, tag=None):
         """Get index for given label, if defined."""
@@ -827,37 +861,43 @@ class Font:
             pass
         raise KeyError(f'No glyph found matching label={label}')
 
-
     @cache
     def get_default_glyph(self):
         """Get default glyph; empty if not defined."""
-        try:
-            return self.get_glyph(self.default_char)
-        except KeyError:
-            pass
-        return self.get_empty_glyph()
+        return self.get_glyph(self.default_char, missing='empty')
 
     @cache
     def get_empty_glyph(self):
-        """Get blank glyph with zero advance_width (or minimal if zero not possible)."""
-        return Glyph.blank(max(0, -self.left_bearing - self.right_bearing), self.raster_size.y)
+        """Get blank glyph with zero advance_width and advance_height"""
+        return Glyph.blank(
+            # fix advance_width
+            left_bearing=-self.left_bearing,
+            right_bearing=-self.right_bearing,
+            # fix advance_height
+            top_bearing=-self.top_bearing,
+            bottom_bearing=-self.bottom_bearing,
+        )
 
 
     ##########################################################################
     # label access
 
+    @cache
     def get_chars(self):
         """Get tuple of characters covered by this font."""
         return tuple(_c for _c in self._labels if isinstance(_c, Char))
 
+    @cache
     def get_codepoints(self):
-        """Get list of codepage codepoints covered by this font."""
+        """Get tuple of codepage codepoints covered by this font."""
         return tuple(_c for _c in self._labels if isinstance(_c, Codepoint))
 
+    @cache
     def get_tags(self):
-        """Get list of tags covered by this font."""
+        """Get tuple of tags covered by this font."""
         return tuple(_c for _c in self._labels if isinstance(_c, Tag))
 
+    @cache
     def get_charmap(self):
         """Implied character map based on defined chars."""
         return charmaps.create({
@@ -978,6 +1018,10 @@ class Font:
     })
     def set(self, **kwargs):
         """Return a copy of the font with one or more recognised properties changed."""
+        kwargs = {
+            _k: (_v if _v != '' else None)
+            for _k, _v in kwargs.items()
+        }
         return self.modify(**kwargs)
 
     @scriptable
@@ -1017,22 +1061,402 @@ class Font:
 
 
     ##########################################################################
-    # inject Glyph operations into Font
+    # transformations
 
-    glyph_operations = get_scriptables(Glyph)
-    for _name, _func in glyph_operations.items():
+    def _apply_to_all_glyphs(self, operation, **kwargs):
+        return _LazyTransformedFont(self, operation, **kwargs)
 
-        @scriptable
-        @wraps(_func)
-        def _modify_glyphs(self, *args, operation=_func, **kwargs):
-            glyphs = tuple(
-                operation(_glyph, *args, **kwargs)
-                for _glyph in self._glyphs
+    def _privatise_glyph_metrics(self):
+        glyphs = tuple(
+            _g.modify(
+                top_bearing=_g.top_bearing+self.top_bearing,
+                left_bearing=_g.left_bearing+self.left_bearing,
+                bottom_bearing=_g.bottom_bearing+self.bottom_bearing,
+                right_bearing=_g.right_bearing+self.right_bearing,
+                shift_up=_g.shift_up+self.shift_up,
+                shift_left=_g.shift_left+self.shift_left,
             )
-            return  self.modify(glyphs)
+            for _g in self._glyphs
+        )
+        return self.modify(
+            glyphs, top_bearing=None, left_bearing=None,
+            bottom_bearing=None, right_bearing=None,
+            shift_up=None, shift_left=None,
+        )
 
-        locals()[_name] = _modify_glyphs
+    # orthogonal transformations
+
+    @scriptable
+    def mirror(self, *, adjust_metrics:bool=True):
+        """
+        Reverse horizontally.
+
+        adjust_metrics: also reverse metrics (default: True)
+        """
+        font = self._privatise_glyph_metrics()
+        font = font._apply_to_all_glyphs(
+            Glyph.mirror, adjust_metrics=adjust_metrics
+        )
+        if not adjust_metrics:
+            return font
+        return font.modify(
+            direction={
+                'left-to-right': 'right-to-left',
+                'right-to-left': 'left-to-right',
+            }.get(font.direction, font.direction)
+        )
+
+    @scriptable
+    def flip(self, *, adjust_metrics:bool=True):
+        """
+        Reverse vertically.
+
+        adjust_metrics: also reverse metrics (default: True)
+        """
+        font = self._privatise_glyph_metrics()
+        font = font._apply_to_all_glyphs(
+            Glyph.flip, adjust_metrics=adjust_metrics
+        )
+        if not adjust_metrics:
+            return font
+        return font.modify(
+            direction={
+                'top-to-bottom': 'bottom-to-top',
+                'bottom-to-top': 'top-to-bottom',
+            }.get(font.direction, font.direction)
+        )
+
+    @scriptable
+    def transpose(self, *, adjust_metrics:bool=True):
+        """
+        Swap horizontal and vertical directions.
+
+        adjust_metrics: also transpose metrics (default: True)
+        """
+        font = self._privatise_glyph_metrics()
+        font = font._apply_to_all_glyphs(
+            Glyph.transpose, adjust_metrics=adjust_metrics
+        )
+        if not adjust_metrics:
+            return font
+        return font.modify(
+            line_height=font.line_width,
+            line_width=font.line_height,
+            direction={
+                'left-to-right': 'top-to-bottom',
+                'right-to-left': 'bottom-to-top',
+                'top-to-bottom': 'left-to-right',
+                'bottom-to-top': 'right-to-left',
+            }.get(font.direction, font.direction)
+        )
+
+    # implement turn() based on the above
+    turn = scriptable(turn_method)
+
+    # raster resizing
+
+    @scriptable
+    def crop(
+            self, left:int=0, bottom:int=0, right:int=0, top:int=0,
+            *, adjust_metrics:bool=True
+        ):
+        """
+        Crop the raster.
+
+        left: number of columns to remove from left
+        bottom: number of rows to remove from bottom
+        right: number of columns to remove from right
+        top: number of rows to remove from top
+        adjust_metrics: make the operation render-invariant (default: True)
+        """
+        font = self._privatise_glyph_metrics()
+        font = font._apply_to_all_glyphs(
+            Glyph.crop,
+            left=left, bottom=bottom, right=right, top=top, adjust_metrics=adjust_metrics
+        )
+        if not adjust_metrics:
+            return font
+        # fix line-advances to ensure they remain unchanged
+        return font.modify(
+            line_height=self.line_height,
+            line_width=self.line_width,
+        )
+
+    @scriptable
+    def expand(
+            self, left:int=0, bottom:int=0, right:int=0, top:int=0,
+            *, adjust_metrics:bool=True
+        ):
+        """
+        Add blank space to raster.
+
+        left: number of columns to add on left
+        bottom: number of rows to add on bottom
+        right: number of columns to add on right
+        top: number of rows to add on top
+        adjust_metrics: make the operation render-invariant (default: True)
+        """
+        font = self._privatise_glyph_metrics()
+        font = font._apply_to_all_glyphs(
+            Glyph.expand,
+            left=left, bottom=bottom, right=right, top=top,
+            adjust_metrics=adjust_metrics
+        )
+        if not adjust_metrics:
+            return font
+        # fix line-advances to ensure they remain unchanged
+        return font.modify(
+            line_height=self.line_height,
+            line_width=self.line_width,
+        )
+
+    @scriptable
+    def reduce(self, *, adjust_metrics:bool=True):
+        """
+        Reduce glyphs to their bounding box.
+
+        adjust_metrics: make the operation render-invariant (default: True)
+        """
+        font = self._privatise_glyph_metrics()
+        font = font._apply_to_all_glyphs(
+            Glyph.reduce,
+            adjust_metrics=adjust_metrics,
+        )
+        if not adjust_metrics:
+            return font
+        # fix line-advances to ensure they remain unchanged
+        return font.modify(
+            line_height=self.line_height,
+            line_width=self.line_width,
+        )
+
+    @scriptable
+    def inflate(self, *, adjust_metrics:bool=True):
+        """
+        Pad glyphs to include positive bearings and line spacing.
+        Any negative bearings remain unchanged.
+
+        adjust_metrics: make the operation render-invariant (default: True)
+        """
+        font = self._privatise_glyph_metrics()
+        font = font._apply_to_all_glyphs(
+            Glyph.inflate,
+            adjust_metrics=adjust_metrics,
+        )
+        if not adjust_metrics:
+            return font
+        glyphs = tuple(
+            _g.expand(
+                top=max(0, self.line_height-_g.height),
+                left=max(0, (self.line_width-_g.width)//2),
+                right=max(0, (self.line_width-_g.width + 1)//2),
+            )
+            for _g in self._glyphs
+        )
+        # fix line-advances to ensure they remain unchanged
+        return font.modify(
+            glyphs,
+            line_height=self.line_height,
+            line_width=self.line_width,
+        )
+
+    # scaling
+
+    @scriptable
+    def stretch(
+            self, factor_x:int=1, factor_y:int=1,
+            *, adjust_metrics:bool=True
+        ):
+        """
+        Stretch by repeating rows and/or columns.
+
+        factor_x: number of times to repeat horizontally
+        factor_y: number of times to repeat vertically
+        adjust_metrics: also stretch metrics (default: True)
+        """
+        font = self._privatise_glyph_metrics()
+        font = font._apply_to_all_glyphs(
+            Glyph.stretch,
+            factor_x=factor_x, factor_y=factor_y,
+            adjust_metrics=adjust_metrics,
+        )
+        if not adjust_metrics:
+            return font
+        # fix line-advances to ensure they remain unchanged
+        return font.modify(
+            line_height=self.line_height * factor_y,
+            line_width=self.line_width * factor_x,
+        )
+
+    @scriptable
+    def shrink(
+            self, factor_x:int=1, factor_y:int=1,
+            *, adjust_metrics:bool=True
+        ):
+        """
+        Shrink by removing rows and/or columns.
+
+        factor_x: factor to shrink horizontally
+        factor_y: factor to shrink vertically
+        adjust_metrics: also stretch metrics (default: True)
+        """
+        font = self._privatise_glyph_metrics()
+        font = font._apply_to_all_glyphs(
+            Glyph.shrink,
+            factor_x=factor_x, factor_y=factor_y,
+            adjust_metrics=adjust_metrics,
+        )
+        if not adjust_metrics:
+            return font
+        # fix line-advances to ensure they remain unchanged
+        return font.modify(
+            line_height=self.line_height // factor_y,
+            line_width=self.line_width // factor_x,
+        )
+
+    # ink effects
+
+    @scriptable
+    def smear(
+            self, *, left:int=None, down:int=None, right:int=None, up:int=None,
+            adjust_metrics:bool=True
+        ):
+        """
+        Repeat inked pixels.
+
+        left: number of times to repeat inked pixel leftwards
+        right: number of times to repeat inked pixel rightwards
+               (default: use bold-smear value)
+        up: number of times to repeat inked pixel upwards
+        down: number of times to repeat inked pixel downwards
+        adjust_metrics: ensure advances stay the same (default: True)
+        """
+        if set((left, down, right, up)) == set((None,)):
+            right = self.bold_smear
+        right = right or 0
+        left = left or 0
+        down = down or 0
+        up = up or 0
+        return self._apply_to_all_glyphs(
+            Glyph.smear,
+            left=left, down=down, right=right, up=up,
+            adjust_metrics=adjust_metrics,
+        )
+
+    @scriptable
+    def underline(self, descent:int=None, thickness:int=None):
+        """
+        Add a line.
+
+        descent: number of pixels the underline is below the baseline
+                 (default: use underline-descent value)
+        thickness: number of pixels the underline extends downward
+                   (default: use underline-thickness value)
+        """
+        if descent is None:
+            descent = self.underline_descent
+        if thickness is None:
+            thickness = self.underline_thickness
+        return self._apply_to_all_glyphs(
+            Glyph.underline,
+            descent=descent, thickness=thickness
+        )
+
+    @scriptable
+    def shear(self, *, direction:str='right', pitch:Coord=None):
+        """
+        Create a slant by dislocating diagonally, keeping
+        the horizontal baseline fixed.
+
+        direction: direction to move the top of the glyph (default: 'right').
+        pitch: angle of the slant, given as (x, y) coordinate
+               (default: use italic-pitch value).
+        """
+        if pitch is None:
+            pitch = self.italic_pitch
+        return self._apply_to_all_glyphs(
+            Glyph.shear,
+            direction=direction, pitch=pitch
+        )
+
+    @scriptable
+    def outline(self, *, thickness:int=None):
+        """
+        Outline glyph.
+
+        thickness: number of pixels in outline in each direction
+                   (default: use outline-thickness value).
+        """
+        if thickness is None:
+            thickness = self.outline_thickness
+        return self._apply_to_all_glyphs(
+            Glyph.outline,
+            thickness = thickness
+        )
+
+
+    # inject remaining Glyph transformations into Font
+
+    for _name, _func in get_scriptables(Glyph).items():
+        if _name not in locals():
+
+            @scriptable
+            @wraps(_func)
+            def _modify_glyphs(self, _func=_func, **kwargs):
+                return self._apply_to_all_glyphs(_func, **kwargs)
+
+            locals()[_name] = _modify_glyphs
 
 
 # scriptable font/glyph operations
 operations = get_scriptables(Font)
+
+
+from collections.abc import Sequence
+
+class _LazyTransformedItems(Sequence):
+    """Sequence that applies transformation on access."""
+
+    def __init__(self, items, func):
+        self._items = items
+        self._func = func
+
+    @cache
+    def __getitem__(self, index):
+        return self._func(self._items[index])
+
+    def __len__(self):
+        return len(self._items)
+
+
+class _LazyTransformedFont(Font):
+    """Font that applies transformation on glyph access."""
+
+    def __init__(self, font, transformation, **kwargs):
+        """Initialise, compose functions if needed."""
+        self._glyphs = font._glyphs
+        self._labels = font._labels
+        self._props = font._props
+        if isinstance(font, _LazyTransformedFont):
+            prev_func = font._func
+            def _wrapped(font):
+                return transformation(prev_func(font), **kwargs)
+            self._func = _wrapped
+        else:
+            self._func = partial(transformation, **kwargs)
+        self._transformed_glyphs = _LazyTransformedItems(self._glyphs, self._func)
+
+    def modify(self, *args, **kwargs):
+        return type(self)(super().modify(*args, **kwargs), self._func)
+
+    @property
+    def glyphs(self):
+        return self._transformed_glyphs
+
+    @cache
+    def _compose_glyph(self, char):
+        """Compose glyph by overlaying components."""
+        # transformation may not commute with composition (e.g. outline)
+        # don't compose transformed glyphs, but transform the composed glyph
+        glyph = super()._compose_glyph(char)
+        return self._func(glyph)

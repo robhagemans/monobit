@@ -13,7 +13,8 @@ from ..storage import loaders, savers
 from ..streams import FileFormatError
 from ..font import Font, Coord
 from ..glyph import Glyph
-from ..struct import Props, flag, bitfield, big_endian as be
+from ..struct import flag, bitfield, big_endian as be
+from ..properties import Props
 from .. import struct
 
 
@@ -246,7 +247,7 @@ def _load_amiga(f, where, tags):
         logging.info('    ' + line)
     font = Font(glyphs, **vars(props))
     # fill out character labels based on latin-1 encoding
-    font = font.label(_record=False)
+    font = font.label()
     return font
 
 

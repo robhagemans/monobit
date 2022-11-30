@@ -9,13 +9,7 @@ import unittest
 
 import monobit
 from monobit import Glyph, Tag, Codepoint, Char
-from .base import BaseTester
-
-def get_stringio(string):
-    """Workaround as our streams require a buffer to be available."""
-    return io.TextIOWrapper(
-        io.BufferedReader(io.BytesIO(string.encode()))
-    )
+from .base import BaseTester, get_stringio
 
 
 class TestYaff(BaseTester):
@@ -33,6 +27,30 @@ empty:
         f,  *_ = monobit.load(file)
         assert len(f.glyphs) == 1, repr(f.glyphs)
         assert f.raster_size == (0, 0), f.raster_size
+
+
+    empty_w = """
+empty:
+    --
+"""
+
+    def test_wide_empty_glyph(self):
+        file = get_stringio(self.empty_w)
+        f,  *_ = monobit.load(file)
+        assert len(f.glyphs) == 1, repr(f.glyphs)
+        assert f.raster_size == (1, 0), f.raster_size
+
+    empty_h = """
+empty:
+    -
+    -
+"""
+
+    def test_high_empty_glyph(self):
+        file = get_stringio(self.empty_h)
+        f,  *_ = monobit.load(file)
+        assert len(f.glyphs) == 1, repr(f.glyphs)
+        assert f.raster_size == (0, 1), f.raster_size
 
     glyphs = """
 a:

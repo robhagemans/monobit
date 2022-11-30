@@ -32,8 +32,9 @@ import logging
 import itertools
 
 from ..binary import bytes_to_bits, ceildiv, align
-from ..struct import reverse_dict, little_endian as le
+from ..struct import little_endian as le
 from .. import struct
+from ..properties import reverse_dict
 from ..storage import loaders, savers
 from ..streams import FileFormatError
 from ..font import Font, Coord
@@ -612,7 +613,7 @@ def parse_fnt(fnt):
     properties = _parse_win_props(fnt, win_props)
     glyphs = _parse_chartable(fnt, win_props)
     font = Font(glyphs, **properties)
-    font = font.label(_record=False)
+    font = font.label()
     return font
 
 def _parse_header(fnt):
@@ -903,9 +904,9 @@ def _traverse_dirtable(rsrc, off, rtype):
 
 def create_fnt(font, version=0x200):
     """Create .FNT from properties."""
-    weight_map = dict(reversed(_item) for _item in _WEIGHT_MAP.items())
+    weight_map = reverse_dict(_WEIGHT_MAP)
     charset_map = CHARSET_REVERSE_MAP
-    style_map = dict(reversed(_item) for _item in _STYLE_MAP.items())
+    style_map = reverse_dict(_STYLE_MAP)
     if font.spacing == 'proportional':
         # low bit set for proportional
         pitch_and_family = 0x01 | style_map.get(font.style, 0)
@@ -931,33 +932,40 @@ def create_fnt(font, version=0x200):
     # FNT can hold at most the codepoints 0..256 as these fields are byte-sized
     min_ord = min(codepoints)
     max_ord = min(255, max(codepoints))
+    # blank glyph of standard size
+    blank = Glyph.blank(pix_width, font.raster_size.y)
     # char table; we need a contiguous range between the min and max codepoints
-    ord_glyphs = [
-        font.get_glyph(_codepoint, missing='empty')
+    ord_glyphs = (
+        font.get_glyph(_codepoint, missing=blank)
         for _codepoint in range(min_ord, max_ord+1)
+    )
+    # bring all glyphs to same height
+    ord_glyphs = [
+        _g.expand(top=font.raster_size.y-_g.height)
+        for _g in ord_glyphs
     ]
-    default = font.get_glyph(font.default_char).codepoint
+    default = font.get_glyph(font.default_char, missing='empty').codepoint
     if len(default) == 1:
         default_ord, = default
     else:
         default_ord = _FALLBACK_DEFAULT
-    word_break = font.get_glyph(font.word_boundary).codepoint
+    word_break = font.get_glyph(font.word_boundary, missing='empty').codepoint
     if len(word_break) == 1:
         break_ord, = word_break
     else:
         break_ord = _FALLBACK_BREAK
     # add the guaranteed-blank glyph
-    ord_glyphs.append(Glyph.blank(pix_width, font.raster_size.y))
+    ord_glyphs.append(blank)
     # create the bitmaps
-    bitmaps = [_glyph.as_bytes() for _glyph in ord_glyphs]
+    bitmaps = (_glyph.as_bytes() for _glyph in ord_glyphs)
     # bytewise transpose - .FNT stores as contiguous 8-pixel columns
-    bitmaps = [
+    bitmaps = tuple(
         b''.join(
             _bm[_col::len(_bm)//_glyph.height]
             for _col in range(len(_bm)//_glyph.height)
         )
         for _glyph, _bm in zip(ord_glyphs, bitmaps)
-    ]
+    )
     glyph_offsets = [0] + list(itertools.accumulate(len(_bm) for _bm in bitmaps))
     glyph_entry = _GLYPH_ENTRY[version]
     fnt_header_ext = _FNT_HEADER_EXT[version]

@@ -16,12 +16,13 @@ try:
 except ImportError:
     Image = None
 
-from ..basetypes import pair
+from ..basetypes import Coord
 from ..encoding import charmaps
 from .. import streams
 from ..streams import FileFormatError
 from ..binary import int_to_bytes, bytes_to_int
-from ..struct import Props, reverse_dict, little_endian as le
+from ..struct import little_endian as le
+from ..properties import reverse_dict
 from .. import struct
 from ..storage import loaders, savers
 from ..font import Font, Coord
@@ -52,7 +53,7 @@ if Image:
     @savers.register(linked=load_bmfont)
     def save(
             fonts, outfile, where,
-            image_size:pair=(256, 256),
+            image_size:Coord=(256, 256),
             image_format:str='png',
             packed:bool=True,
             descriptor:str='text',
@@ -503,7 +504,7 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=(),
         for _glyph, _char in zip(glyphs, chars)
     ]
     font = Font(glyphs, **properties)
-    font = font.label(_record=False)
+    font = font.label()
     return font
 
 

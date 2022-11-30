@@ -15,7 +15,7 @@ import logging
 from io import BytesIO
 
 from ..binary import ceildiv
-from ..struct import Props, little_endian as le
+from ..struct import little_endian as le
 from .. import struct
 from ..storage import loaders, savers
 from ..streams import FileFormatError
@@ -195,17 +195,15 @@ def _parse_cp(data, cpeh_offset, header_id=_ID_MS, drdos_effh=None, standalone=F
             fh = _SCREEN_FONT_HEADER.from_bytes(data, fh_offset)
             # extract font properties
             device = cpeh.device_name.strip().decode('ascii', 'replace')
-            props = Props(
+            props = dict(
                 encoding=f'cp{cpeh.codepage}',
                 device=device,
                 source_format=f'CPI ({_FORMAT_NAME[header_id]})',
-                cpi=Props()
             )
             # apparently never used
             if fh.xaspect or fh.yaspect:
                 # not clear how this would be interpreted...
-                props.cpi.xaspect = str(fh.xaspect)
-                props.cpi.yaspect = str(fh.yaspect)
+                props['cpi'] = f'xaspect={fh.xaspect} yaspect={fh.yaspect}'
             # get the bitmap
             if cpih.version == _CP_FONT:
                 # bitmaps follow font header
@@ -227,7 +225,7 @@ def _parse_cp(data, cpeh_offset, header_id=_ID_MS, drdos_effh=None, standalone=F
                         fh.width
                     ))
                 fh_offset += _SCREEN_FONT_HEADER.size
-            font = Font(cells, **vars(props))
-            font = font.label(_record=False)
+            font = Font(cells, **props)
+            font = font.label()
             fonts.append(font)
     return fonts, cpeh.next_cpeh_offset

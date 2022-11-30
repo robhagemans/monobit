@@ -670,7 +670,7 @@ def _parse_resource_fork(data):
             except ValueError as e:
                 logging.error('Could not load font: %s', e)
             else:
-                font = font.label(_record=False)
+                font = font.label()
                 fonts.append(font)
     return fonts
 

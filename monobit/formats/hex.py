@@ -63,27 +63,32 @@ def _load_hex(instream):
     comment = []
     for line in instream:
         line = line.rstrip('\r\n')
-        if ':' in line:
-            # parse code line
-            key, value = line.rsplit(':', 1)
-            value = value.strip()
         if (
                 # preserve empty lines if they separate comments
                 (not line and comment and comment[-1] != '')
-                # marked as comment
-                or line[0] == '#'
-                # pass through lines without : as comments - allows e.g. to convert diffs, like hexdraw
-                or (':' not in line)
-                # not a valid line, treat as comment
-                or set(value) - set(string.hexdigits + ',')
+                or line and (
+                    # marked as comment
+                    line[0] == '#'
+                    # pass through lines without : as comments -
+                    # allows e.g. to convert diffs, like hexdraw
+                    or ':' not in line
+                )
             ):
             comment.append(line)
-        else:
-            # when first glyph is found, split comment lines between global and glyph
-            if not glyphs and comment:
-                global_comment, comment = split_global_comment(comment)
-            glyphs.append(_convert_glyph(key, value, comment))
-            comment = []
+        elif line:
+            # parse code line
+            key, value = line.rsplit(':', 1)
+            value = value.strip()
+            if set(value) - set(string.hexdigits + ','):
+                # not a valid line, treat as comment
+                comment.append(line)
+            else:
+                # when first glyph is found,
+                # split comment lines between global and glyph
+                if not glyphs and comment:
+                    global_comment, comment = split_global_comment(comment)
+                glyphs.append(_convert_glyph(key, value, comment))
+                comment = []
     # preserve any comment at end of file as part of global comment
     global_comment = '\n'.join([*_clean_comment(global_comment), *_clean_comment(comment)])
     return Font(glyphs, comment=global_comment, encoding='unicode')

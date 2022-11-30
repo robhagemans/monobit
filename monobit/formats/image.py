@@ -14,13 +14,13 @@ try:
 except ImportError:
     Image = None
 
-from ..basetypes import pair, rgb
+from ..basetypes import Coord, RGB
 from ..binary import ceildiv
 from ..storage import loaders, savers
 from ..streams import FileFormatError
 from ..font import Font
 from ..glyph import Glyph
-from ..renderer import chart_image, traverse_chart
+from ..renderer import chart, to_image, traverse_chart
 
 
 DEFAULT_IMAGE_FORMAT = 'png'
@@ -63,16 +63,16 @@ if Image:
     )
     def load_image(
             infile, where=None,
-            cell:pair=(8, 8),
-            margin:pair=(0, 0),
-            padding:pair=(0, 0),
-            scale:pair=(1, 1),
-            table_size:pair=(0,0),
+            cell:Coord=(8, 8),
+            margin:Coord=(0, 0),
+            padding:Coord=(0, 0),
+            scale:Coord=(1, 1),
+            table_size:Coord=(0,0),
             count:int=0,
             background:str='most-common',
             first_codepoint:int=0,
             order:str='row-major',
-            direction:pair=(1, 1),
+            direction:Coord=(1, 1),
         ):
         """
         Extract character-cell font from image.
@@ -170,12 +170,12 @@ if Image:
             fonts, outfile, where=None, *,
             image_format:str='',
             columns:int=32,
-            margin:pair=(0, 0),
-            padding:pair=(0, 0),
-            scale:pair=(1, 1),
+            margin:Coord=(0, 0),
+            padding:Coord=(0, 0),
+            scale:Coord=(1, 1),
             order:str='row-major',
-            direction:pair=(1, 1),
-            border:rgb=(32, 32, 32), paper:rgb=(0, 0, 0), ink:rgb=(255, 255, 255),
+            direction:Coord=(1, 1),
+            border:RGB=(32, 32, 32), paper:RGB=(0, 0, 0), ink:RGB=(255, 255, 255),
         ):
         """
         Export character-cell font to image.
@@ -193,8 +193,9 @@ if Image:
         """
         if len(fonts) > 1:
             raise FileFormatError('Can only save one font to image file.')
-        img = chart_image(
-            fonts[0], columns, margin, padding, scale, order, direction, border, paper, ink,
+        img = to_image(
+            chart(fonts[0], columns, margin, padding, scale, order, direction),
+            border, paper, ink
         )
         try:
             img.save(outfile, format=image_format or Path(outfile).suffix[1:])

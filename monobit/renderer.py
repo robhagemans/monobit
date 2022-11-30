@@ -5,19 +5,36 @@ monobit.renderer - render text to bitmaps using font
 licence: https://opensource.org/licenses/MIT
 """
 
-from unicodedata import bidirectional
+from unicodedata import bidirectional, normalize, category
 
 try:
-    from bidi.algorithm import get_display
+    from bidi.algorithm import get_display, get_base_level
 except ImportError:
-    def get_display(text):
-        raise ImportError('Bidirectional text requires module `python-bidi`; not found.')
+    def _bidi_not_found(*args, **kwargs):
+        raise ImportError(
+            'Bidirectional text requires module `python-bidi`; not found.'
+        )
+    get_display = _bidi_not_found
+    get_base_level = _bidi_not_found
 
 try:
     from arabic_reshaper import reshape
 except ImportError:
     def reshape(text):
-        raise ImportError('Arabic text requires module `arabic-reshaper`; not found.')
+        raise ImportError(
+            'Arabic text requires module `arabic-reshaper`; not found.'
+        )
+
+try:
+    from uniseg.graphemecluster import grapheme_clusters
+except ImportError:
+    logging.warning(
+        'Module `uniseg` not found. Grapheme clusters may not render correctly.'
+    )
+    def grapheme_clusters(text):
+        """Use NFC as poor-man's grapheme cluster. This works... sometimes."""
+        for c in normalize('NFC', text):
+            yield c
 
 try:
     from PIL import Image
@@ -25,7 +42,7 @@ except ImportError:
     Image = None
 
 from .binary import ceildiv
-
+from .labels import Char, Codepoint
 
 
 # matrix colours
@@ -42,7 +59,23 @@ DIRECTIONS = {
     'b': 'bottom-to-top'
 }
 
-###################################################################################################
+ALIGNMENTS = {
+    'l': 'left',
+    'r': 'right',
+    't': 'top',
+    'b': 'bottom'
+}
+
+
+
+class blockstr(str):
+    """str that is shown as block text in interactive session."""
+
+    def __repr__(self):
+        return f'"""\\\n{self}"""'
+
+
+###############################################################################
 # canvas operations
 
 def create_canvas(width, height, fill=0):
@@ -75,7 +108,10 @@ def mirror_canvas(matrix):
 
 
 def blit(matrix, canvas, grid_x, grid_y, operator=max):
-    """Draw a matrix onto a canvas (leaving exising ink in place, depending on operator)."""
+    """
+    Draw a matrix onto a canvas
+    (leaving exising ink in place, depending on operator).
+    """
     if not matrix or not canvas:
         return canvas
     matrix_height = len(matrix)
@@ -91,7 +127,7 @@ def blit(matrix, canvas, grid_x, grid_y, operator=max):
     return canvas
 
 
-def to_image(matrix, border=(32, 32, 32), paper=(0, 0, 0), ink=(255, 255, 255)):
+def to_image(matrix, border=(0, 0, 0), paper=(0, 0, 0), ink=(255, 255, 255)):
     """Convert matrix to image."""
     if not Image:
         raise ImportError('Rendering to image requires PIL module.')
@@ -101,60 +137,37 @@ def to_image(matrix, border=(32, 32, 32), paper=(0, 0, 0), ink=(255, 255, 255)):
     else:
         width = 0
     img = Image.new('RGB', (width, height), border)
-    img.putdata([{-1: border, 0: paper, 1: ink}[_pix] for _row in matrix for _pix in _row])
+    img.putdata([
+        {-1: border, 0: paper, 1: ink}[_pix]
+        for _row in matrix for _pix in _row
+    ])
     return img
 
-def to_text(matrix, *, border=' ', paper='-', ink='@', line_break='\n'):
+def to_text(matrix, *, border='.', paper='.', ink='@', line_break='\n'):
     """Convert matrix to text."""
     colourdict = {-1: border, 0: paper, 1: ink}
-    return line_break.join(''.join(colourdict[_pix] for _pix in _row) for _row in matrix)
+    return blockstr(line_break.join(
+        ''.join(colourdict[_pix] for _pix in _row)
+        for _row in matrix
+    ))
 
 
-
-###################################################################################################
+###############################################################################
 # text rendering
 
-def render_text(
-        font, text, ink='@', paper='.', *,
-        margin=(0, 0), scale=(1, 1), rotate=0,
-        direction='',
-        missing='default'
-    ):
-    """Render text string to text bitmap."""
-    return to_text(
-        render(
-            font, text,
-            margin=margin, scale=scale, rotate=rotate, direction=direction,
-            missing=missing
-        ),
-        ink=ink, paper=paper
-    )
-
-def render_image(
-        font, text, *,
-        paper=(0, 0, 0), ink=(255, 255, 255),
-        margin=(0, 0), scale=(1, 1), rotate=0,
-        direction='',
-        missing='default',
-    ):
-    """Render text to image."""
-    return to_image(
-        render(
-            font, text,
-            margin=margin, scale=scale, rotate=rotate, direction=direction,
-            missing=missing
-        ),
-        ink=ink, paper=paper
-    )
-
 def render(
-        font, text, *, margin=(0, 0), scale=(1, 1), rotate=0, direction='',
+        font, text, *, margin=(0, 0), scale=(1, 1), rotate=0,
+        direction='', align='',
         missing='default'
     ):
     """Render text string to bitmap."""
-    direction, line_direction, align = _get_direction(text, direction)
+    direction, line_direction, base_direction, align = _get_direction(
+        font, text, direction, align
+    )
     # get glyphs for rendering
-    glyphs = _get_text_glyphs(font, text, direction, line_direction, missing)
+    glyphs = _get_text_glyphs(
+        font, text, direction, line_direction, base_direction, missing
+    )
     margin_x, margin_y = margin
     if direction in ('top-to-bottom', 'bottom-to-top'):
         canvas = _get_canvas_vertical(font, glyphs, margin_x, margin_y)
@@ -203,7 +216,7 @@ def _render_horizontal(font, glyphs, canvas, margin_x, margin_y, align):
 
 def _render_vertical(font, glyphs, canvas, margin_x, margin_y, align):
     # central axis (with leftward bias)
-    baseline = int(font.line_width / 2)
+    baseline = font.line_width // 2
     # default is ttb right-to-left
     for glyph_row in glyphs:
         y = 0
@@ -215,7 +228,7 @@ def _render_vertical(font, glyphs, canvas, margin_x, margin_y, align):
                 y - (font.bottom_bearing + glyph.bottom_bearing)
             )
             grid_x.append(
-                baseline - int(glyph.width / 2) - (font.shift_left + glyph.shift_left)
+                baseline - glyph.width // 2 - (font.shift_left + glyph.shift_left)
             )
         if align == 'bottom':
             start = len(canvas) - margin_y - y
@@ -248,7 +261,7 @@ def _get_canvas_horizontal(font, glyphs, margin_x, margin_y):
     # if a glyph extends below the descent line or left of the origin,
     # it may draw into the margin
     height = 2 * margin_y + font.pixel_size + font.line_height * (len(glyphs)-1)
-    return create_canvas(width, height)
+    return create_canvas(width, height, _BORDER)
 
 def _get_canvas_vertical(font, glyphs, margin_x, margin_y):
     """Create canvas of the right size."""
@@ -263,18 +276,21 @@ def _get_canvas_vertical(font, glyphs, margin_x, margin_y):
             for _row in glyphs
         )
     width = 2 * margin_x + font.line_width * len(glyphs)
-    return create_canvas(width, height)
+    return create_canvas(width, height, _BORDER)
 
 
-def _get_direction(text, direction):
+def _get_direction(font, text, direction, align):
     """Get direction and alignment."""
     isstr = isinstance(text, str)
     if not direction:
         if isstr:
             direction = 'n'
         else:
-            direction = 'l'
+            direction = font.direction or 'l'
     direction = direction.lower()
+    force = direction.split(' ')[-1].startswith('f')
+    if force:
+        direction, _, _ = direction.rpartition(' ')
     # get line advance direction if given
     direction, _, line_direction = direction.partition(' ')
     try:
@@ -304,36 +320,53 @@ def _get_direction(text, direction):
             )
             + f'; not `{direction}`.'
         )
-    if direction == 'left-to-right':
-        align = 'left'
-    elif direction == 'right-to-left':
-        align = 'right'
-    elif direction == 'normal':
-        if not isstr:
-            raise ValueError(
-                f'Writing direction `{direction}` only supported for Unicode text.'
-            )
-        # determine alignment
-        # by the class of the first directional character encountered
-        align = 'left'
-        for c in text:
-            try:
-                bidicls = bidirectional(c)[0]
-            except (TypeError, IndexError):
-                continue
-            if bidicls == 'L':
-                break
-            if bidicls in ('R', 'A'):
-                align = 'right'
-                break
-    elif direction == 'bottom-to-top':
-        align = 'bottom'
+    # determine base drection
+    if isstr and not force:
+        if direction in ('left-to-right', 'right-to-left'):
+            # for Unicode text with horizontal directions, always use bidi algo
+            # direction parameter is taken as *base direction* only
+            base_direction = direction
+            direction = 'normal'
+        else:
+            # use the class of the first directional character encountered
+            base_level = get_base_level(text)
+            base_direction = ('left-to-right', 'right-to-left')[base_level]
     else:
-        align = 'top'
-    return direction, line_direction, align
+        if direction == 'normal':
+            if isstr:
+                raise ValueError(
+                    f'Writing direction `{direction}` only supported for Unicode text.'
+                )
+            else:
+                raise ValueError(
+                    f'Writing direction `{direction}` not supported with `force`.'
+                )
+        base_direction = direction
+    # determine alignment
+    if align:
+        align = ALIGNMENTS[align[0].lower()]
+    if not align:
+        if direction == 'left-to-right':
+            align = 'left'
+        elif direction == 'right-to-left':
+            align = 'right'
+        elif direction == 'normal':
+            if base_direction == 'left-to-right':
+                align = 'left'
+            else:
+                align = 'right'
+        elif direction == 'bottom-to-top':
+            align = 'bottom'
+        else:
+            align = 'top'
+    return direction, line_direction, base_direction, align
 
 
-def _get_text_glyphs(font, text, direction, line_direction, missing='raise'):
+def _get_text_glyphs(
+        font, text,
+        direction, line_direction, base_direction,
+        missing='raise'
+    ):
     """
     Get tuple of tuples of glyphs (by line) from str or bytes/codepoints input.
     Glyphs are reordered so that they can be rendered ltr ttb or ttb ltr
@@ -349,7 +382,11 @@ def _get_text_glyphs(font, text, direction, line_direction, missing='raise'):
         # put characters in visual order instead of logical
         if direction == 'normal':
             # decide direction based on bidi algorithm
-            text = get_display(text)
+            base_dir = {
+                'left-to-right': 'L',
+                'right-to-left': 'R'
+            }[base_direction]
+            text = get_display(text, base_dir=base_dir)
     lines = text.splitlines()
     if direction in ('right-to-left', 'bottom-to-top'):
         # reverse glyph order for rendering
@@ -366,48 +403,41 @@ def _iter_labels(font, text, missing='raise'):
     """Iterate over labels in text, yielding glyphs. text may be str or bytes."""
     if isinstance(text, str):
         labelset = font.get_chars()
+        # split text into standard grapheme clusters
+        text = tuple(grapheme_clusters(text))
+        # find the longest *number of standard grapheme clusters* per label
+        # this will often be 1, except when the font has defined e.g. Zł or Ft
+        # as a char label for a single glyph
+        max_length = max(len(tuple(grapheme_clusters(_c))) for _c in labelset)
+        # we need to combine multiple elements back into str to match a glyph
+        def labeltype(seq):
+            return Char(''.join(seq))
     else:
         labelset = font.get_codepoints()
-    max_length = max(len(_c) for _c in labelset)
+        labeltype = Codepoint
+        max_length = max(len(_c) for _c in labelset)
     remaining = text
     while remaining:
         # try multibyte clusters first
         for try_len in range(max_length, 1, -1):
             try:
-                yield font.get_glyph(label=remaining[:try_len], missing='raise')
+                # convert to explicit label type,
+                # avoids matching tags as well as chars
+                yield font.get_glyph(
+                    labeltype(remaining[:try_len]), missing='raise'
+                )
             except KeyError:
                 pass
             else:
                 remaining = remaining[try_len:]
                 break
         else:
-            yield font.get_glyph(label=remaining[:1], missing=missing)
+            yield font.get_glyph(labeltype(remaining[:1]), missing=missing)
             remaining = remaining[1:]
 
 
-
-###################################################################################################
+###############################################################################
 # glyph chart
-
-def chart_image(
-        font,
-        columns=32, margin=(0, 0), padding=(0, 0), scale=(1, 1),
-        order='row-major', direction=(1, 1),
-        border=(32, 32, 32), paper=(0, 0, 0), ink=(255, 255, 255),
-    ):
-    """Create font chart as image."""
-    canvas = chart(font, columns, margin, padding, scale, order, direction)
-    return to_image(canvas, border=border, paper=paper, ink=ink)
-
-def chart_text(
-        font,
-        columns=16, margin=(0, 0), padding=(0, 0), scale=(1, 1),
-        order='row-major', direction=(1, 1),
-        border=' ', paper='-', ink='@',
-    ):
-    """Create font chart as text."""
-    canvas = chart(font, columns, margin, padding, scale, order, direction)
-    return to_text(canvas, border=border, paper=paper, ink=ink)
 
 def traverse_chart(columns, rows, order, direction):
     """Traverse a glyph chart in the specified order and directions."""
@@ -435,7 +465,9 @@ def traverse_chart(columns, rows, order, direction):
             for _row in y_traverse
         )
     else:
-        raise ValueError(f'order should start with one of `r`, `c`, not `{order}`.')
+        raise ValueError(
+            f'order should start with one of `r`, `c`, not `{order}`.'
+        )
 
 def chart(
         font,

@@ -6,9 +6,11 @@ licence: https://opensource.org/licenses/MIT
 """
 
 from string import ascii_letters, digits
+from unicodedata import normalize
 
 from .binary import ceildiv, int_to_bytes
-from .scripting import any_int
+from .scripting import to_int
+from .basetypes import CONVERTERS
 
 
 def is_enclosed(from_str, char):
@@ -86,6 +88,9 @@ def _convert_char_element(element):
     cp_ord = int(element.strip()[2:], 16)
     return chr(cp_ord)
 
+# register converter
+CONVERTERS[Label] = to_label
+
 
 ##############################################################################
 # character labels
@@ -117,6 +122,17 @@ class Char(str, Label):
             for _uc in self
         )
 
+    def __hash__(self):
+        """Ensure NFC-equivalent char labels match."""
+        # make sure tag and Char don't collide
+        return hash(normalize('NFC', self.value))
+
+    def __eq__(self, other):
+        """Ensure NFC-equivalent char labels match."""
+        if not isinstance(other, str):
+            return False
+        return normalize('NFC', self.value) == normalize('NFC', other)
+
     @property
     def value(self):
         """Get our str contents without calling __str__."""
@@ -144,7 +160,7 @@ class Codepoint(bytes, Label):
                 value = value.split(',')
             # deal with other iterables, e.g. tuple of int
             try:
-                value = b''.join(int_to_bytes(any_int(_i)) for _i in value)
+                value = b''.join(int_to_bytes(to_int(_i)) for _i in value)
             except (TypeError, OverflowError):
                 raise ValueError(
                     f'Cannot convert value {repr(value)} of type `{type(value)}` to codepoint label.'
@@ -160,6 +176,11 @@ class Codepoint(bytes, Label):
     def __str__(self):
         """Convert codepoint label to str."""
         return '0x' + self.hex()
+
+    @property
+    def value(self):
+        """Get bytes content."""
+        return bytes(self)
 
 
 ##############################################################################
@@ -219,4 +240,3 @@ class Tag(Label):
         """Tag contents as str."""
         # pylint: disable=no-member
         return self._value
-
