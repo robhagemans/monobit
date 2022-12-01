@@ -292,6 +292,7 @@ def _save_yaff(fonts, outstream):
             props['cell_size'] = font.cell_size
         else:
             props['bounding_box'] = font.bounding_box
+        font = font.globalise_glyph_metrics()
         props.update(font.properties)
         if props:
             # write recognised yaff properties first, in defined order

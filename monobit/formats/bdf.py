@@ -458,7 +458,6 @@ def load_bdf(instream, where=None):
         logging.warning('Number of characters found does not match CHARS declaration.')
     glyphs, properties = _parse_properties(glyphs, glyph_props, bdf_props, x_props)
     font = Font(glyphs, comment=comments, **properties)
-    font = font.globalise_glyph_metrics()
     try:
         font = font.label()
     except NotFoundError:
