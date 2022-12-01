@@ -938,6 +938,7 @@ def _make_contiguous(font, pix_width):
 def _normalise_metrics(font):
     """Normalise glyph representation for Windows."""
     font = font._privatise_glyph_metrics()
+    add_shift_up = max(0, -min(_g.shift_up for _g in font._glyphs))
     ord_glyphs = tuple(
         _g.expand(
             # bring all glyphs to same height
@@ -945,18 +946,19 @@ def _normalise_metrics(font):
             # expand into horizontal bearings
             left=max(0, _g.left_bearing),
             right=max(0, _g.right_bearing),
-        )
+            # expand by positive shift to make all upshifts equal
+            bottom=_g.shift_up + add_shift_up
+        ).drop('shift-up')
         for _g in font.glyphs
     )
     font = font.modify(ord_glyphs)
-    font = font.globalise_glyph_metrics()
-    return font
+    return font, add_shift_up
 
 def create_fnt(font, version=0x200):
     """Create .FNT from properties."""
     # take only the glyphs we can store
     font = _subset_storable(font)
-    font = _normalise_metrics(font)
+    font, add_shift_up = _normalise_metrics(font)
     if font.spacing == 'proportional':
         # low bit set for proportional
         pitch_and_family = 0x01 | _STYLE_REVERSE_MAP.get(font.style, 0)
@@ -1033,9 +1035,9 @@ def create_fnt(font, version=0x200):
         dfVertRes=font.dpi.y,
         dfHorizRes=font.dpi.x,
         # Windows dfAscent means distance between matrix top and baseline
-        dfAscent=font.shift_up + font.raster_size.y,
+        dfAscent=font.raster_size.y - add_shift_up,
         #'ascent': win_props.dfAscent - win_props.dfInternalLeading,
-        dfInternalLeading=font.shift_up + font.raster_size.y - font.ascent,
+        dfInternalLeading=font.raster_size.y - add_shift_up - font.ascent,
         #'line-height': win_props.dfPixHeight + win_props.dfExternalLeading,
         dfExternalLeading=font.line_height-font.raster_size.y,
         dfItalic=(font.slant in ('italic', 'oblique')),
