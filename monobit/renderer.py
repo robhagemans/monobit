@@ -165,6 +165,7 @@ def render(
         font, text, direction, align
     )
     # get glyphs for rendering
+    font = font._privatise_glyph_metrics()
     glyphs = _get_text_glyphs(
         font, text, direction, line_direction, base_direction, missing
     )
@@ -198,10 +199,10 @@ def _render_horizontal(font, glyphs, canvas, margin_x, margin_y, align):
             # offset + (x, y) is the coordinate of glyph matrix origin
             # grid_x, grid_y are canvas coordinates relative to top left of canvas
             # canvas y coordinate increases *downwards* from top of line
-            grid_x.append(font.left_bearing + glyph.left_bearing + x)
-            grid_y.append(baseline - (font.shift_up + glyph.shift_up))
+            grid_x.append(glyph.left_bearing + x)
+            grid_y.append(baseline - glyph.shift_up)
             # advance origin to next glyph
-            x += font.left_bearing + glyph.advance_width + font.right_bearing
+            x += glyph.advance_width
         if align == 'right':
             start = len(canvas[0]) - margin_x - x
         else:
@@ -209,7 +210,10 @@ def _render_horizontal(font, glyphs, canvas, margin_x, margin_y, align):
         for glyph, x, y in zip(glyph_row, grid_x, grid_y):
             # add ink, taking into account there may be ink already
             # in case of negative bearings
-            blit(glyph.as_matrix(), canvas, start + x, margin_y + y)
+            blit(
+                glyph.as_matrix(), canvas,
+                start + x, margin_y + y
+            )
         # move to next line
         baseline += font.line_height
     return canvas
@@ -223,12 +227,10 @@ def _render_vertical(font, glyphs, canvas, margin_x, margin_y, align):
         grid_x, grid_y = [], []
         for glyph in glyph_row:
             # advance origin to next glyph
-            y += font.top_bearing + glyph.advance_height + font.bottom_bearing
-            grid_y.append(
-                y - (font.bottom_bearing + glyph.bottom_bearing)
-            )
+            y += glyph.advance_height
+            grid_y.append(y - glyph.bottom_bearing)
             grid_x.append(
-                baseline - glyph.width // 2 - (font.shift_left + glyph.shift_left)
+                baseline - glyph.width // 2 - glyph.shift_left
             )
         if align == 'bottom':
             start = len(canvas) - margin_y - y
@@ -238,7 +240,10 @@ def _render_vertical(font, glyphs, canvas, margin_x, margin_y, align):
         for glyph, x, y in zip(glyph_row, grid_x, grid_y):
             # add ink, taking into account there may be ink already
             # in case of negative bearings
-            blit(glyph.as_matrix(), canvas, margin_x + x, start + y)
+            blit(
+                glyph.as_matrix(), canvas,
+                margin_x + x, start + y
+            )
         # move to next line
         baseline += font.line_width
     return canvas
@@ -249,10 +254,7 @@ def _get_canvas_horizontal(font, glyphs, margin_x, margin_y):
     width = 2 * margin_x
     if glyphs:
         width += max(
-            sum(
-                font.left_bearing + _glyph.advance_width + font.right_bearing
-                for _glyph in _row
-            )
+            sum(_glyph.advance_width for _glyph in _row)
             for _row in glyphs
         )
     # find required height - margins plus line height for each row
@@ -265,15 +267,12 @@ def _get_canvas_horizontal(font, glyphs, margin_x, margin_y):
 
 def _get_canvas_vertical(font, glyphs, margin_x, margin_y):
     """Create canvas of the right size."""
-    # find required height - margins plus max row height
+    # find required height - margins plus max column height
     height = 2 * margin_y
     if glyphs:
         height += max(
-            sum(
-                font.top_bearing + _glyph.advance_height + font.bottom_bearing
-                for _glyph in _row
-            )
-            for _row in glyphs
+            sum(_glyph.advance_height for _glyph in _col)
+            for _col in glyphs
         )
     width = 2 * margin_x + font.line_width * len(glyphs)
     return create_canvas(width, height, _BORDER)
