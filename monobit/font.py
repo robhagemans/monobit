@@ -1090,27 +1090,6 @@ class Font:
             shift_up=None, shift_left=None,
         )
 
-    def globalise_glyph_metrics(self):
-        """If all glyph props are equal, take them global."""
-        mod_glyphs = self._glyphs
-        properties = {}
-        for key in (
-                'shift-up', 'left-bearing', 'right-bearing',
-                'shift-left', 'top-bearing', 'bottom-bearing',
-            ):
-            distinct = set(
-                getattr(_g, normalise_property(key))
-                for _g in mod_glyphs
-            )
-            if len(distinct) == 1:
-                mod_glyphs = tuple(_g.drop(key) for _g in mod_glyphs)
-                value = distinct.pop()
-                # NOTE - these all have zero defaults
-                if value != 0:
-                    properties[key] = value
-        return self.modify(mod_glyphs, **properties)
-
-
     # orthogonal transformations
 
     @scriptable
