@@ -130,24 +130,8 @@ class FontProperties(DefaultProps):
     # metrics
     # can't be calculated, affect rendering
 
-    # horizontal offset from leftward origin to matrix left edge
-    left_bearing: int
-    # horizontal offset from matrix right edge to rightward origin
-    right_bearing: int
-    # upward offset from origin to matrix bottom
-    shift_up: int
-    # downward offset from origin to matrix bottom - equal to -shift_up
-    shift_down: int
     # vertical distance between consecutive baselines, in pixels
     line_height: int
-
-    # vertical metrics
-    # vertical offset from upward origin to matrix top edge
-    top_bearing: int
-    # vertical offset from matrix bottom edge to downward origin
-    bottom_bearing: int
-    # leftward offset from origin to matrix central vertical axis
-    shift_left: int
     # horizontal distance between consecutive baselines, in pixels
     line_width: int
 
@@ -206,8 +190,6 @@ class FontProperties(DefaultProps):
     history: str
 
     # type converters for compatibility synonyms
-    tracking: int
-    offset: Coord
     average_advance: float
     max_advance: int
     cap_advance: int
@@ -276,12 +258,6 @@ class FontProperties(DefaultProps):
     ##########################################################################
     # metrics
 
-    @checked_property
-    def shift_down(self):
-        """Downward shift - negative of shift-up."""
-        return -self.shift_up
-
-
     @writable_property
     def line_height(self):
         """Vertical distance between consecutive baselines, in pixels."""
@@ -337,26 +313,37 @@ class FontProperties(DefaultProps):
     @checked_property
     def spacing(self):
         """Monospace or proportional spacing."""
-        # a _character-cell_ font is a font where all glyphs can be put inside an equal size cell
-        # so that rendering the font becomes simply pasting in cells flush to each other. All ink
-        # for a glyph must be inside the cell.
+        # a _character-cell_ font is a font where all glyphs can be put inside
+        # an equal size cell so that rendering the font becomes simply pasting
+        # cells flush to each other. All ink for a glyph must be inside the cell.
         #
         # this means that:
-        # - all glyphs must have equal, positive advance width (except empty glyphs with advance zero).
-        # - for each glyph, the advance is greater than or equal to the bounding box width.
-        # - the line advance is greater than or equal to the font bounding box height.
+        # - all glyphs must have equal, positive advance width
+        #   (except empty glyphs with advance zero).
+        # - for each glyph, the advance is greater than or equal to
+        #   the bounding box width.
+        # - the line advance is greater than or equal to the font bounding box
+        #   height.
         # - there is no kerning
         #
-        # a special case is the _multi-cell_ font, where a glyph may take up 0, 1 or 2 cells.
+        # a special case is the _multi-cell_ font,
+        # where a glyph may take up 0, 1 or 2 cells.
         #
         # a _monospace_ font is a font where all glyphs have equal advance_width.
         #
         if not self._font.glyphs:
             return 'character-cell'
-        if any(_glyph.advance_width < 0 or _glyph.right_kerning for _glyph in self._font.glyphs):
+        if any(
+                _glyph.advance_width < 0 or _glyph.right_kerning
+                for _glyph in self._font.glyphs
+            ):
             return 'proportional'
-        # don't count void glyphs (0 width and/or height) to determine whether it's monospace
-        advances = set(_glyph.advance_width for _glyph in self._font.glyphs if _glyph.advance_width)
+        # don't count void glyphs (0 width and/or height)
+        # to determine whether it's monospace
+        advances = set(
+            _glyph.advance_width
+            for _glyph in self._font.glyphs if _glyph.advance_width
+        )
         monospaced = len(set(advances)) == 1
         bispaced = len(set(advances)) == 2
         ink_contained_y = self.line_height >= self.bounding_box.y
@@ -398,7 +385,10 @@ class FontProperties(DefaultProps):
             return Coord(0, 0)
         # smaller of the (at most two) advance widths is the cell size
         # in a multi-cell font, some glyphs may take up two cells.
-        cell_x = min(_glyph.advance_width for _glyph in self._font.glyphs if _glyph.advance_width)
+        cell_x = min(
+            _glyph.advance_width
+            for _glyph in self._font.glyphs if _glyph.advance_width
+        )
         return Coord(cell_x, self.line_height)
 
     @checked_property
@@ -412,16 +402,16 @@ class FontProperties(DefaultProps):
             if _glyph.bounding_box.x and _glyph.bounding_box.y
         ]
         if not nonempty:
-            return Bounds(self.left_bearing, self.shift_up, self.left_bearing, self.shift_up)
+            return Bounds(0, 0, 0, 0)
         lefts, bottoms, rights, tops = zip(*(
             _glyph.ink_bounds
             for _glyph in nonempty
         ))
         return Bounds(
-            left=self.left_bearing + min(lefts),
-            bottom=self.shift_up + min(bottoms),
-            right=self.left_bearing + max(rights),
-            top=self.shift_up + max(tops)
+            left=min(lefts),
+            bottom=min(bottoms),
+            right=max(rights),
+            top=max(tops)
         )
 
     @checked_property
@@ -449,29 +439,24 @@ class FontProperties(DefaultProps):
     def average_width(self):
         """Get average glyph advance width."""
         if not self._font.glyphs:
-            return self.left_bearing + self.right_bearing
+            return 0
         return (
-            self.left_bearing
-            + sum(_glyph.advance_width for _glyph in self._font.glyphs) / len(self._font.glyphs)
-            + self.right_bearing
+            sum(_glyph.advance_width for _glyph in self._font.glyphs)
+            / len(self._font.glyphs)
         )
 
     @writable_property
     def max_width(self):
         """Maximum glyph advance width."""
         if not self._font.glyphs:
-            return self.left_bearing + self.right_bearing
-        return (
-            self.left_bearing
-            + max(_glyph.advance_width for _glyph in self._font.glyphs)
-            + self.right_bearing
-        )
+            return 0
+        return max(_glyph.advance_width for _glyph in self._font.glyphs)
 
     @writable_property
     def cap_width(self):
         """Advance width of uppercase X."""
         try:
-            return self._font.get_glyph(char='X').advance_width + self.left_bearing + self.right_bearing
+            return self._font.get_glyph(char='X').advance_width
         except KeyError:
             return 0
 
@@ -518,7 +503,7 @@ class FontProperties(DefaultProps):
         if not self._font.glyphs:
             return 0
         max_descent = -min(
-            self.shift_up + _glyph.shift_up + _glyph.padding.bottom
+            _glyph.shift_up + _glyph.padding.bottom
             for _glyph in self._font.glyphs
         )
         # XLFD calculation says round(max_descent/2) but I think they mean this
@@ -596,21 +581,6 @@ class FontProperties(DefaultProps):
 
     ##########################################################################
     # deprecated compatibility synonyms
-
-    @writable_property('right_bearing')
-    def tracking(self):
-        """
-        Horizontal offset from matrix right edge to rightward origin
-        Deprecated synonym for right-bearing.
-        """
-        return self.right_bearing
-
-    @as_tuple(('left_bearing', 'shift_up'), tuple_type=Coord.create)
-    def offset(self):
-        """
-        (horiz, vert) offset from origin to matrix start
-        Deprecated synonym for left-bearing, shift-up.
-        """
 
     @writable_property('average_width')
     def average_advance(self):
@@ -897,14 +867,7 @@ class Font:
     @cache
     def get_empty_glyph(self):
         """Get blank glyph with zero advance_width and advance_height"""
-        return Glyph.blank(
-            # fix advance_width
-            left_bearing=-self.left_bearing,
-            right_bearing=-self.right_bearing,
-            # fix advance_height
-            top_bearing=-self.top_bearing,
-            bottom_bearing=-self.bottom_bearing,
-        )
+        return Glyph.blank()
 
 
     ##########################################################################
