@@ -204,8 +204,6 @@ def _convert_to_flf(font, hardblank='$'):
     # latin-1 codepoints, so we can just use chr()
     flf_chars = tuple(chr(_cp) for _cp in _CODEPOINTS)
     coded_chars = set(font.get_chars()) - set(flf_chars)
-    # apply font metrics to glyphs
-    font = font._privatise_glyph_metrics()
     # construct flf properties
     props = Props(
         signature_hardblank=_SIGNATURE + hardblank,

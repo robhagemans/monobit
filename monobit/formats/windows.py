@@ -937,7 +937,6 @@ def _make_contiguous(font, pix_width):
 
 def _normalise_metrics(font):
     """Normalise glyph representation for Windows."""
-    font = font._privatise_glyph_metrics()
     add_shift_up = max(0, -min(_g.shift_up for _g in font._glyphs))
     ord_glyphs = tuple(
         _g.expand(

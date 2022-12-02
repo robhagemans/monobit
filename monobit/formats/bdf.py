@@ -956,8 +956,6 @@ def _swidth(dwidth, point_size, dpi):
 
 def _save_bdf(font, outstream):
     """Write one font to X11 BDF 2.1."""
-    # apply font metrics to glyphs
-    font = font._privatise_glyph_metrics()
     # property table
     xlfd_props = _create_xlfd_properties(font)
     bdf_props = [

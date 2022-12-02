@@ -721,8 +721,6 @@ def _create_bmfont(
         charset = ''
         # ensure char values are set
         font = font.label(char_from=encoding)
-    # localise metrics into glyphs
-    font = font._privatise_glyph_metrics()
     # create images
     pages, chars = _create_spritesheets(font, size, packed)
     props = {}

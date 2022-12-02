@@ -20,6 +20,7 @@ from .scripting import scriptable, get_scriptables, Any
 from .glyph import Glyph
 from .raster import turn_method
 from .basetypes import Coord, Bounds
+from .basetypes import to_int
 from .encoding import charmaps, encoder
 from .taggers import tagger
 from .labels import Tag, Char, Codepoint, Label, to_label
@@ -650,11 +651,32 @@ class Font:
             properties['#'] = comment
         else:
             properties.update({f'#{_k}': _v for _k, _v in comment.items()})
+        self._glyphs, properties = self._apply_metrics(self._glyphs, properties)
         # update properties
         # set encoding first so we can set labels
         # NOTE - we must be careful NOT TO ACCESS CACHED PROPERTIES
         #        until the constructor is complete
         self._props = FontProperties(_font=self, **properties)
+
+    @staticmethod
+    def _apply_metrics(glyphs, props):
+        """Apply globally specified glyph metrics."""
+        glyph_metrics = (
+            'shift_up', 'left_bearing', 'right_bearing',
+            'shift_left', 'top_bearing', 'bottom_bearing',
+            # TODO: tracking, offset
+        )
+        for key in glyph_metrics:
+            if key in props:
+                # TODO: these happen to be all ints for now
+                global_value = to_int(props[key])
+                # localise glyph metrics
+                glyphs = tuple(
+                    _g.modify(**{key: getattr(_g, key) + global_value})
+                    for _g in glyphs
+                )
+                del props[key]
+        return glyphs, props
 
 
     ##########################################################################
@@ -1072,23 +1094,6 @@ class Font:
     def _apply_to_all_glyphs(self, operation, **kwargs):
         return _LazyTransformedFont(self, operation, **kwargs)
 
-    def _privatise_glyph_metrics(self):
-        glyphs = tuple(
-            _g.modify(
-                top_bearing=_g.top_bearing+self.top_bearing,
-                left_bearing=_g.left_bearing+self.left_bearing,
-                bottom_bearing=_g.bottom_bearing+self.bottom_bearing,
-                right_bearing=_g.right_bearing+self.right_bearing,
-                shift_up=_g.shift_up+self.shift_up,
-                shift_left=_g.shift_left+self.shift_left,
-            )
-            for _g in self._glyphs
-        )
-        return self.modify(
-            glyphs, top_bearing=None, left_bearing=None,
-            bottom_bearing=None, right_bearing=None,
-            shift_up=None, shift_left=None,
-        )
 
     # orthogonal transformations
 
@@ -1099,7 +1104,6 @@ class Font:
 
         adjust_metrics: also reverse metrics (default: True)
         """
-        font = self._privatise_glyph_metrics()
         font = font._apply_to_all_glyphs(
             Glyph.mirror, adjust_metrics=adjust_metrics
         )
@@ -1119,7 +1123,6 @@ class Font:
 
         adjust_metrics: also reverse metrics (default: True)
         """
-        font = self._privatise_glyph_metrics()
         font = font._apply_to_all_glyphs(
             Glyph.flip, adjust_metrics=adjust_metrics
         )
@@ -1139,7 +1142,6 @@ class Font:
 
         adjust_metrics: also transpose metrics (default: True)
         """
-        font = self._privatise_glyph_metrics()
         font = font._apply_to_all_glyphs(
             Glyph.transpose, adjust_metrics=adjust_metrics
         )
@@ -1175,7 +1177,6 @@ class Font:
         top: number of rows to remove from top
         adjust_metrics: make the operation render-invariant (default: True)
         """
-        font = self._privatise_glyph_metrics()
         font = font._apply_to_all_glyphs(
             Glyph.crop,
             left=left, bottom=bottom, right=right, top=top, adjust_metrics=adjust_metrics
@@ -1202,7 +1203,6 @@ class Font:
         top: number of rows to add on top
         adjust_metrics: make the operation render-invariant (default: True)
         """
-        font = self._privatise_glyph_metrics()
         font = font._apply_to_all_glyphs(
             Glyph.expand,
             left=left, bottom=bottom, right=right, top=top,
@@ -1223,7 +1223,6 @@ class Font:
 
         adjust_metrics: make the operation render-invariant (default: True)
         """
-        font = self._privatise_glyph_metrics()
         font = font._apply_to_all_glyphs(
             Glyph.reduce,
             adjust_metrics=adjust_metrics,
@@ -1244,7 +1243,6 @@ class Font:
 
         adjust_metrics: make the operation render-invariant (default: True)
         """
-        font = self._privatise_glyph_metrics()
         font = font._apply_to_all_glyphs(
             Glyph.inflate,
             adjust_metrics=adjust_metrics,
@@ -1280,7 +1278,6 @@ class Font:
         factor_y: number of times to repeat vertically
         adjust_metrics: also stretch metrics (default: True)
         """
-        font = self._privatise_glyph_metrics()
         font = font._apply_to_all_glyphs(
             Glyph.stretch,
             factor_x=factor_x, factor_y=factor_y,
@@ -1306,7 +1303,6 @@ class Font:
         factor_y: factor to shrink vertically
         adjust_metrics: also stretch metrics (default: True)
         """
-        font = self._privatise_glyph_metrics()
         font = font._apply_to_all_glyphs(
             Glyph.shrink,
             factor_x=factor_x, factor_y=factor_y,

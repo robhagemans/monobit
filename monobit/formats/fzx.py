@@ -232,8 +232,6 @@ def _convert_from_fzx(fzx_props, fzx_glyphs):
 
 def _convert_to_fzx(font):
     """Convert monobit font to FZX properties and glyphs."""
-    # apply font metrics to glyphs
-    font = font._privatise_glyph_metrics()
     # ensure codepoint values are set if possible
     font = font.label(codepoint_from=font.encoding)
     # select glyphs that can be included

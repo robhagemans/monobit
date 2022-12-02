@@ -165,7 +165,6 @@ def render(
         font, text, direction, align
     )
     # get glyphs for rendering
-    font = font._privatise_glyph_metrics()
     glyphs = _get_text_glyphs(
         font, text, direction, line_direction, base_direction, missing
     )
