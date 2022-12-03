@@ -39,7 +39,7 @@ def load_fzx(instream, where=None):
 def save_fzx(fonts, outstream, where=None):
     """Save font to ZX Spectrum .FZX file."""
     if len(fonts) > 1:
-        raise FileFormatError('Can only save one font to PSF file.')
+        raise FileFormatError('Can only save one font to FZX file.')
     font, = fonts
     fzx_props, fzx_glyphs = _convert_to_fzx(font)
     logging.info('FZX properties:')
