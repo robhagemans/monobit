@@ -80,8 +80,6 @@ class GlyphProperties(DefaultProps):
     right_bearing: int
     # upward offset from origin to matrix bottom
     shift_up: int
-    # downward offset from origin to matrix left edge - equal to -shift_up
-    shift_down: int
     # kerning - pairwaise additional right-bearing
     right_kerning: KernTable
     # kerning - pairwaise additional left-bearing
@@ -100,11 +98,6 @@ class GlyphProperties(DefaultProps):
     tracking: int
     offset: Coord
 
-
-    @checked_property
-    def shift_down(self):
-        """Downward shift - negative of shift-up."""
-        return -self.shift_up
 
     @checked_property
     def advance_width(self):
