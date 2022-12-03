@@ -313,6 +313,7 @@ def _save_yaff(fonts, outstream):
             props['cell_size'] = font.cell_size
         else:
             props['bounding_box'] = font.bounding_box
+        props.update(font.properties)
         glyphs, global_metrics = _globalise_glyph_metrics(font.glyphs)
         props.update(global_metrics)
         if props:
