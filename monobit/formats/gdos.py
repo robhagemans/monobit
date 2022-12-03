@@ -76,8 +76,10 @@ _FNT_HEADER = {
         # Width of the widest character cell.
         max_cell_width='word',
         # Left offset
+        # ;Amount character slants left when skewed
         left_offset='word',
         # Right offset
+        # ;Amount character slants right
         right_offset='word',
         # Thickening size (in pixels).
         thicken='word',
@@ -263,15 +265,17 @@ def _convert_from_gdos(gdos_props):
     props = Props(
         name=gdos_props.name.decode('latin-1', errors='ignore'),
         point_size=gdos_props.point_size,
-        left_bearing=gdos_props.left_offset,
-        right_bearing=gdos_props.right_offset,
         shift_up=-gdos_props.bottom,
-        ascent=gdos_props.ascent,
+        ascent=gdos_props.ascent+1,
         descent=gdos_props.descent,
         bold_smear=gdos_props.thicken,
         underline_thickness=gdos_props.ul_size,
     )
-    props.gdos = f'font-id={gdos_props.font_id}'
+    props.gdos = ' '.join((
+        f'font-id={gdos_props.font_id}',
+        f'left-offset={gdos_props.left_offset}',
+        f'right-offset={gdos_props.right_offset}',
+    ))
     if gdos_props.lighten != 0x5555:
         props.gdos += f' lighten-mask=0x{gdos_props.lighten:x}'
     if gdos_props.skew != 0x5555:
