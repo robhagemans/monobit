@@ -112,6 +112,7 @@ Supported formats
 | DEC DRCS              | `dec-drcs` |          |                             | DEC VT      | ✔     | ✔     |
 | Amiga Font Contents   | `amiga-fc` |          | `.font`                     | Amiga OS    | ✔     |       |
 | Amiga Font            | `amiga`    |          |                             | Amiga OS    | ✔     |       |
+| Atari GDOS / GEM      | `gdos`     |          | `.fnt` `.gft`               | Atari ST, GEM| ✔     |       |
 | FZX Font              | `fzx`      |          | `.fzx`                      | ZX Spectrum | ✔     | ✔     |
 | Figlet                | `figlet`   |          | `.flf`                      | Unix        | ✔     | ✔     |
 | MacOS font            | `mac-dfont`| FONT     | `.dfont` `.suit`            | MacOS       | ✔     |       |
