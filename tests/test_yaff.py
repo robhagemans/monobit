@@ -207,17 +207,17 @@ tag3:
 
     props = """
 unknown: 2
-left-bearing: 1
-tracking: 3
+line-width: 1
+leading: 3
 """
 
     def test_properties(self):
         file = get_stringio(self.props)
         f,  *_ = monobit.load(file)
         # recognised property
-        assert f.left_bearing == 1
+        assert f.line_width == 1
         # compatibility synonym
-        assert f.right_bearing == 3
+        assert f.line_height == 3
         # unknown property
         assert f.unknown == '2'
 
