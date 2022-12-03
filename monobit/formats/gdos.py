@@ -7,7 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
-from ..struct import bitfield, little_endian as le
+from ..struct import bitfield, little_endian as le, big_endian as be
 from ..properties import Props
 from ..storage import loaders, savers
 from ..font import Font
@@ -21,9 +21,13 @@ from ..binary import bytes_to_bits
     'gft', #'fnt'
     name='gdos'
 )
-def load_gdos(instream, where=None):
-    """Load font from Atari GDOS/GEM .FNT file."""
-    gdos_props, gdos_glyphs = _read_gdos(instream)
+def load_gdos(instream, where=None, endianness:str=''):
+    """
+    Load font from Atari GDOS/GEM .FNT file.
+
+    endianness: (b)ig or (l)ittle-endian. default: guess from data
+    """
+    gdos_props, gdos_glyphs = _read_gdos(instream, endianness)
     logging.info('GDOS properties:')
     for line in str(gdos_props).splitlines():
         logging.info('    ' + line)
@@ -41,96 +45,105 @@ def load_gdos(instream, where=None):
 # http://cd.textfiles.com/ataricompendium/BOOK/HTML/APPENDC.HTM#cnt
 # https://temlib.org/AtariForumWiki/index.php/GDOS_Font_file_format
 # http://www.seasip.info/Gem/filefmt.html
+# http://www.verycomputer.com/10_34378d1abfb218c2_1.htm
 
-_FNT_HEADER = le.Struct(
-    # Face ID (must be unique).
-    font_id='word',
-    # Face size (in points).
-    point_size='word',
-    # Name, ASCII, 0-terminated
-    name='32s',
-    # Lowest character index in face (usually 32 for disk-loaded fonts).
-    first_char='word',
-    # Highest character index in face.
-    last_char='word',
-    # Top line distance expressed as a positive offset from baseline.
-    top='word',
-    # Ascent line distance expressed as a positive offset from baseline.
-    ascent='word',
-    # Half line distance expressed as a positive offset from baseline.
-    half='word',
-    # Descent line distance expressed as a positive offset from baseline.
-    descent='word',
-    # Bottom line distance expressed as a positive offset from baseline
-    bottom='word',
-    # Width of the widest character.
-    max_char_width='word',
-    # Width of the widest character cell.
-    max_cell_width='word',
-    # Left offset
-    left_offset='word',
-    # Right offset
-    right_offset='word',
-    # Thickening size (in pixels).
-    thicken='word',
-    # Underline size (in pixels).
-    ul_size='word',
-    # Lightening mask (used to eliminate pixels, usually 0x5555).
-    lighten='word',
-    # Skewing mask (rotated to determine when to perform additional rotation on
-    # a character when skewing, usually 0x5555).
-    skew='word',
-    # 0 Contains System Font
-    system_flag=bitfield('word', 1),
-    # 1 Horizontal Offset Tables should be used.
-    horiz_offs_flag=bitfield('word', 1),
-    # 2 Font data need not be byte-swapped.
-    byteswapped_flag=bitfield('word', 1),
-    # 3 Font is mono-spaced.
-    monospaced_flag=bitfield('word', 1),
-    unused4=bitfield('word', 1),
-    extended_flag=bitfield('word', 1),
-    unused6=bitfield('word', 1),
-    dbcs_flag=bitfield('word', 1),
-    unused8_12=bitfield('word', 5),
-    full_id_flag=bitfield('word', 1),
-    unused14_15=bitfield('word', 2),
-    # Offset from start of file to horizontal offset table.
-    hoffs='dword',
-	# Offset from start of file to character offset table.
-    coffs='dword',
-    # Offset from start of file to font data.
-    bmps='dword',
-    # Form width (in bytes).
-    width='word',
-    # Form height (in scanlines).
-    height='word',
-    # pointer to the next font (set by GDOS after loading).
-    reserved='dword',
-)
-_EXTENDED_HEADER = le.Struct(
-    # Offset of next section of this font
-    # ;from start of file (eg, another character
-    # ;range). The next section will have its
-    # ;own font header.
-    next='dword',
-    # ;File offset of file data
-    fdata_tbl='dword',
-    # ;Length of file data
-    fdata_len='word',
-    # ;Reference count when the font is loaded
-    reserved='dword',
-    # ;Device flags
-    dflags='word',
-    # ;Full font ID
-    fullid='word',
-    # ;Escape sequence buffer?
-    buffer='38s',
-    # ;If compressed, the size of this font segment
-    # ;from the end of the header to the end of the
-    # ;compressed data.
-    csize='word',
-)
+_BASE = {'l': le, 'b': be}
+
+_FNT_HEADER = {
+    _endian: _BASE[_endian].Struct(
+        # Face ID (must be unique).
+        font_id='word',
+        # Face size (in points).
+        point_size='word',
+        # Name, ASCII, 0-terminated
+        name='32s',
+        # Lowest character index in face (usually 32 for disk-loaded fonts).
+        first_char='word',
+        # Highest character index in face.
+        last_char='word',
+        # Top line distance expressed as a positive offset from baseline.
+        top='word',
+        # Ascent line distance expressed as a positive offset from baseline.
+        ascent='word',
+        # Half line distance expressed as a positive offset from baseline.
+        half='word',
+        # Descent line distance expressed as a positive offset from baseline.
+        descent='word',
+        # Bottom line distance expressed as a positive offset from baseline
+        bottom='word',
+        # Width of the widest character.
+        max_char_width='word',
+        # Width of the widest character cell.
+        max_cell_width='word',
+        # Left offset
+        left_offset='word',
+        # Right offset
+        right_offset='word',
+        # Thickening size (in pixels).
+        thicken='word',
+        # Underline size (in pixels).
+        ul_size='word',
+        # Lightening mask (used to eliminate pixels, usually 0x5555).
+        lighten='word',
+        # Skewing mask (rotated to determine when to perform additional rotation on
+        # a character when skewing, usually 0x5555).
+        skew='word',
+        # 0 Contains System Font
+        system_flag=bitfield('word', 1),
+        # 1 Horizontal Offset Tables should be used.
+        horiz_offs_flag=bitfield('word', 1),
+        # 2 Font data need not be byte-swapped.
+        byteswapped_flag=bitfield('word', 1),
+        # 3 Font is mono-spaced.
+        monospaced_flag=bitfield('word', 1),
+        unused4=bitfield('word', 1),
+        extended_flag=bitfield('word', 1),
+        unused6=bitfield('word', 1),
+        dbcs_flag=bitfield('word', 1),
+        unused8_12=bitfield('word', 5),
+        full_id_flag=bitfield('word', 1),
+        unused14_15=bitfield('word', 2),
+        # Offset from start of file to horizontal offset table.
+        hoffs='dword',
+        # Offset from start of file to character offset table.
+        coffs='dword',
+        # Offset from start of file to font data.
+        bmps='dword',
+        # Form width (in bytes).
+        width='word',
+        # Form height (in scanlines).
+        height='word',
+        # pointer to the next font (set by GDOS after loading).
+        reserved='dword',
+    )
+    for _endian in ('l', 'b')
+}
+_EXTENDED_HEADER = {
+    _endian: _BASE[_endian].Struct(
+        # Offset of next section of this font
+        # ;from start of file (eg, another character
+        # ;range). The next section will have its
+        # ;own font header.
+        next='dword',
+        # ;File offset of file data
+        fdata_tbl='dword',
+        # ;Length of file data
+        fdata_len='word',
+        # ;Reference count when the font is loaded
+        reserved='dword',
+        # ;Device flags
+        dflags='word',
+        # ;Full font ID
+        fullid='word',
+        # ;Escape sequence buffer?
+        buffer='38s',
+        # ;If compressed, the size of this font segment
+        # ;from the end of the header to the end of the
+        # ;compressed data.
+        csize='word',
+    )
+    for _endian in ('l', 'b')
+}
 
 # from seasip.info (John Elliott):
 # If there is a horizontal offsets table, this comes next. It contains two bytes
@@ -149,10 +162,13 @@ _EXTENDED_HEADER = le.Struct(
 
 # note that the atari compendium descriprtion disagrees with John Elliott,
 # but is also much less clear so I'm using John Elliott's
-_HORIZ_OFFS_ENTRY = le.Struct(
-    pre='byte',
-    post='byte',
-)
+_HORIZ_OFFS_ENTRY = {
+    _endian: _BASE[_endian].Struct(
+        pre='byte',
+        post='byte',
+    )
+    for _endian in ('l', 'b')
+}
 
 # The character offsets table consists of one word for each character; this word
 # is the X-coordinate of the glyph in question within the font.
@@ -165,9 +181,12 @@ _HORIZ_OFFS_ENTRY = le.Struct(
 # yielding (number of characters + 1) entries in the table. Each entry must be
 # byte-swapped as it appears in Intel ('Little Endian') format.
 
-_CHAR_OFFS_ENTRY = le.Struct(
-    offset='word',
-)
+_CHAR_OFFS_ENTRY = {
+    _endian: _BASE[_endian].Struct(
+        offset='word',
+    )
+    for _endian in ('l', 'b')
+}
 # The font itself is stored as a bitmapped image of all the characters side by
 # side. If the image is in byteswapped format, each byte will appear to be swapped
 # with its neighbour (as in a standard GEM device-independent bitmap).
@@ -183,18 +202,34 @@ _CHAR_OFFS_ENTRY = le.Struct(
 # must be byte-swapped.
 
 
-def _read_gdos(instream):
-    """Read GDOS binary file and return as properties."""
+def _read_gdos(instream, endianness):
+    """Read GDOS binary file and return as properties and glyphs."""
     data = instream.read()
-    header = _FNT_HEADER.from_bytes(data)
+    return _parse_gdos(data, endianness)
+
+def _parse_gdos(data, endianness):
+    """Parse GDOS binary file and return as properties and glyphs."""
+    endian = endianness[:1].lower()
+    header = _FNT_HEADER[endian or 'l'].from_bytes(data)
+    if not endian:
+        if header.point_size > 256:
+            # probably a big-endian font
+            return _parse_gdos(data, 'b')
+        endian = 'l'
     n_chars = header.last_char - header.first_char + 1
     if header.extended_flag:
-        ext_header = _EXTENDED_HEADER.from_bytes(data, _FNT_HEADER.size)
+        ext_header = _EXTENDED_HEADER[endian].from_bytes(
+            data, _FNT_HEADER[endian].size
+        )
     if header.horiz_offs_flag:
-        hoffs = _HORIZ_OFFS_ENTRY.array(n_chars).from_bytes(data, header.hoffs)
+        hoffs = _HORIZ_OFFS_ENTRY[endian].array(n_chars).from_bytes(
+            data, header.hoffs
+        )
     else:
-        hoffs = [_HORIZ_OFFS_ENTRY()] * n_chars
-    coffs = _CHAR_OFFS_ENTRY.array(n_chars).from_bytes(data, header.coffs)
+        hoffs = [_HORIZ_OFFS_ENTRY[endian]()] * n_chars
+    coffs = _CHAR_OFFS_ENTRY[endian].array(n_chars).from_bytes(
+        data, header.coffs
+    )
     # bitmap strike
     # TODO - byteswaps
     strike = [
