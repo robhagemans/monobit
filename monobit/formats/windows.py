@@ -213,6 +213,7 @@ _WEIGHT_MAP = {
     800: 'extra-bold', # windows 'ultrabold' equals 'extrabold'
     900: 'heavy', # bdf 'ultra-bold' is 'heavy'
 }
+_WEIGHT_REVERSE_MAP = reverse_dict(_WEIGHT_MAP)
 
 # pitch and family
 # low bit: 1 - proportional 0 - monospace
@@ -237,6 +238,7 @@ _STYLE_MAP = {
     _FF_SCRIPT: 'script',
     _FF_DECORATIVE: 'decorative',
 }
+_STYLE_REVERSE_MAP = reverse_dict(_STYLE_MAP)
 
 # dfFlags
 _DFF_FIXED = 0x01 # font is fixed pitch
@@ -902,14 +904,63 @@ def _traverse_dirtable(rsrc, off, rtype):
 ##############################################################################
 # windows .FNT writer
 
+def _subset_storable(font):
+    """Subset glyphs storable in Windows font."""
+    # ensure codepoint values are set, if possible
+    font = font.label(codepoint_from=font.encoding)
+    # only include single-byte encoded glyphs
+    # FNT can hold at most the codepoints 0..256 as these fields are byte-sized
+    codepoints = tuple(
+        _cp for _cp in font.get_codepoints() if len(_cp) == 1
+    )
+    if not codepoints:
+        raise FileFormatError(
+            'Windows font can only encode glyphs with single-byte codepoints; none found in font.'
+        )
+    font = font.subset(codepoints=codepoints)
+    return font
+
+def _make_contiguous(font, pix_width):
+    """Fill out a contiguous range of glyphs."""
+    # blank glyph of standard size
+    blank = Glyph.blank(pix_width, font.raster_size.y)
+    # char table; we need a contiguous range between the min and max codepoints
+    codepoints = font.get_codepoints()
+    ord_glyphs = [
+        font.get_glyph(_codepoint, missing=blank)
+        for _codepoint in range(min(codepoints)[0], max(codepoints)[0]+1)
+    ]
+    # add the guaranteed-blank glyph
+    ord_glyphs.append(blank)
+    font = font.modify(ord_glyphs)
+    return font
+
+def _normalise_metrics(font):
+    """Normalise glyph representation for Windows."""
+    add_shift_up = max(0, -min(_g.shift_up for _g in font._glyphs))
+    ord_glyphs = tuple(
+        _g.expand(
+            # bring all glyphs to same height
+            top=font.raster_size.y-_g.height,
+            # expand into horizontal bearings
+            left=max(0, _g.left_bearing),
+            right=max(0, _g.right_bearing),
+            # expand by positive shift to make all upshifts equal
+            bottom=_g.shift_up + add_shift_up
+        ).drop('shift-up')
+        for _g in font.glyphs
+    )
+    font = font.modify(ord_glyphs)
+    return font, add_shift_up
+
 def create_fnt(font, version=0x200):
     """Create .FNT from properties."""
-    weight_map = reverse_dict(_WEIGHT_MAP)
-    charset_map = CHARSET_REVERSE_MAP
-    style_map = reverse_dict(_STYLE_MAP)
+    # take only the glyphs we can store
+    font = _subset_storable(font)
+    font, add_shift_up = _normalise_metrics(font)
     if font.spacing == 'proportional':
         # low bit set for proportional
-        pitch_and_family = 0x01 | style_map.get(font.style, 0)
+        pitch_and_family = 0x01 | _STYLE_REVERSE_MAP.get(font.style, 0)
         pix_width = 0
         v3_flags = _DFF_PROPORTIONAL
     else:
@@ -918,32 +969,12 @@ def create_fnt(font, version=0x200):
         # x_width should equal average width
         pix_width = font.raster_size.x
         v3_flags = _DFF_FIXED
-    space_index = 0
+    font = _make_contiguous(font, pix_width)
+    # get lowest and highest codepoints (contiguous glyphs followed by blank)
+    min_ord = font.glyphs[0].codepoint[0]
+    max_ord = font.glyphs[-2].codepoint[0]
     # if encoding is compatible, use it; otherwise set to fallback value
-    charset = charset_map.get(font.encoding, _FALLBACK_CHARSET)
-    # ensure codepoint values are set, if possible
-    font = font.label(codepoint_from=font.encoding)
-    # only include single-byte encoded glyphs
-    codepoints = tuple(_cp[0] for _cp in font.get_codepoints() if len(_cp) == 1)
-    if not codepoints:
-        raise FileFormatError(
-            'Windows font can only encode glyphs with single-byte codepoints; none found in font.'
-        )
-    # FNT can hold at most the codepoints 0..256 as these fields are byte-sized
-    min_ord = min(codepoints)
-    max_ord = min(255, max(codepoints))
-    # blank glyph of standard size
-    blank = Glyph.blank(pix_width, font.raster_size.y)
-    # char table; we need a contiguous range between the min and max codepoints
-    ord_glyphs = (
-        font.get_glyph(_codepoint, missing=blank)
-        for _codepoint in range(min_ord, max_ord+1)
-    )
-    # bring all glyphs to same height
-    ord_glyphs = [
-        _g.expand(top=font.raster_size.y-_g.height)
-        for _g in ord_glyphs
-    ]
+    charset = CHARSET_REVERSE_MAP.get(font.encoding, _FALLBACK_CHARSET)
     default = font.get_glyph(font.default_char, missing='empty').codepoint
     if len(default) == 1:
         default_ord, = default
@@ -954,26 +985,27 @@ def create_fnt(font, version=0x200):
         break_ord, = word_break
     else:
         break_ord = _FALLBACK_BREAK
-    # add the guaranteed-blank glyph
-    ord_glyphs.append(blank)
     # create the bitmaps
-    bitmaps = (_glyph.as_bytes() for _glyph in ord_glyphs)
+    bitmaps = (_glyph.as_bytes() for _glyph in font.glyphs)
     # bytewise transpose - .FNT stores as contiguous 8-pixel columns
     bitmaps = tuple(
         b''.join(
             _bm[_col::len(_bm)//_glyph.height]
             for _col in range(len(_bm)//_glyph.height)
         )
-        for _glyph, _bm in zip(ord_glyphs, bitmaps)
+        for _glyph, _bm in zip(font.glyphs, bitmaps)
     )
     glyph_offsets = [0] + list(itertools.accumulate(len(_bm) for _bm in bitmaps))
     glyph_entry = _GLYPH_ENTRY[version]
     fnt_header_ext = _FNT_HEADER_EXT[version]
-    offset_bitmaps = _FNT_HEADER.size + fnt_header_ext.size + len(ord_glyphs)*glyph_entry.size
-    char_table = [
+    offset_bitmaps = (
+        _FNT_HEADER.size + fnt_header_ext.size
+        + len(font.glyphs)*glyph_entry.size
+    )
+    char_table = (
         bytes(glyph_entry(_glyph.width, offset_bitmaps + _glyph_offset))
-        for _glyph, _glyph_offset in zip(ord_glyphs, glyph_offsets)
-    ]
+        for _glyph, _glyph_offset in zip(font.glyphs, glyph_offsets)
+    )
     file_size = offset_bitmaps + glyph_offsets[-1]
     # add name and device strings
     face_name_offset = file_size
@@ -985,13 +1017,13 @@ def create_fnt(font, version=0x200):
     if not device_name or device_name == b'\0':
         device_name_offset = 0
     try:
-        weight = weight_map[font.weight]
+        weight = _WEIGHT_REVERSE_MAP[font.weight]
     except KeyError:
         logging.warning(
             f'Weight `{font.weight}` not supported by Windows FNT resource format, '
             '`regular` will be used instead.'
         )
-        weight = weight_map['regular']
+        weight = _WEIGHT_REVERSE_MAP['regular']
     # create FNT file
     win_props = _FNT_HEADER(
         dfVersion=version,
@@ -1002,15 +1034,17 @@ def create_fnt(font, version=0x200):
         dfVertRes=font.dpi.y,
         dfHorizRes=font.dpi.x,
         # Windows dfAscent means distance between matrix top and baseline
-        dfAscent=font.shift_up + font.raster_size.y,
+        dfAscent=font.raster_size.y - add_shift_up,
         #'ascent': win_props.dfAscent - win_props.dfInternalLeading,
-        dfInternalLeading=font.shift_up + font.raster_size.y - font.ascent,
+        dfInternalLeading=font.raster_size.y - add_shift_up - font.ascent,
         #'line-height': win_props.dfPixHeight + win_props.dfExternalLeading,
         dfExternalLeading=font.line_height-font.raster_size.y,
         dfItalic=(font.slant in ('italic', 'oblique')),
         dfUnderline=('underline' in font.decoration),
         dfStrikeOut=('strikethrough' in font.decoration),
-        dfWeight=weight_map.get(font.weight, weight_map['regular']),
+        dfWeight=_WEIGHT_REVERSE_MAP.get(
+            font.weight, _WEIGHT_REVERSE_MAP['regular']
+        ),
         dfCharSet=charset,
         dfPixWidth=pix_width,
         dfPixHeight=font.raster_size.y,

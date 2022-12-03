@@ -701,18 +701,6 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
             new_props['top-bearing'] = top_bearing
             new_props['bottom-bearing'] = bottom_bearing
         mod_glyphs.append(glyph.modify(**new_props))
-    # if all glyph props are equal, take them global
-    for key in (
-            'shift-up', 'left-bearing', 'right-bearing',
-            'shift-left', 'top-bearing', 'bottom-bearing',
-        ):
-        distinct = set(getattr(_g, normalise_property(key)) for _g in mod_glyphs)
-        if len(distinct) == 1:
-            mod_glyphs = tuple(_g.drop(key) for _g in mod_glyphs)
-            value = distinct.pop()
-            # NOTE - these all have zero defaults
-            if value != 0:
-                properties[key] = value
     xlfd_name = bdf_props.pop('FONT')
     # keep unparsed bdf props
     return mod_glyphs, properties, xlfd_name, bdf_props
@@ -960,6 +948,12 @@ def _create_xlfd_properties(font):
     })
     return xlfd_props
 
+def _swidth(dwidth, point_size, dpi):
+    """SWIDTH = DWIDTH / ( points/1000 * dpi / 72 )"""
+    return int(
+        round(dwidth / (point_size / 1000) / (dpi / 72))
+    )
+
 def _save_bdf(font, outstream):
     """Write one font to X11 BDF 2.1."""
     # property table
@@ -973,15 +967,19 @@ def _save_bdf(font, outstream):
         ('SIZE', f'{font.point_size} {font.dpi.x} {font.dpi.y}'),
         (
             # per the example in the BDF spec,
-            # the first two coordinates in FONTBOUNDINGBOX are the font's ink-bounds
-            'FONTBOUNDINGBOX',
-            f'{font.bounding_box.x} {font.bounding_box.y} {font.left_bearing} {font.shift_up}'
+            # the first two coordinates in FONTBOUNDINGBOX
+            # are the font's ink-bounds
+            'FONTBOUNDINGBOX', (
+                f'{font.bounding_box.x} {font.bounding_box.y} '
+                f'{font.ink_bounds.left} {font.ink_bounds.bottom}'
+            )
         )
     ]
     vertical_metrics = ('shift-left', 'top-bearing', 'bottom-bearing')
-    has_vertical_metrics = (
-        any(_k in font.properties for _k in vertical_metrics)
-        or any(_k in _g.properties for _g in font.glyphs for _k in vertical_metrics)
+    has_vertical_metrics = any(
+        _k in _g.properties
+        for _g in font.glyphs
+        for _k in vertical_metrics
     )
     if has_vertical_metrics:
         bdf_props.append(('METRICSSET', '2'))
@@ -1018,55 +1016,51 @@ def _save_bdf(font, outstream):
         encoded_glyphs.append((encoding, name, glyph))
     glyphs = []
     for encoding, name, glyph in encoded_glyphs:
-        # "The SWIDTH y value should always be zero for a standard X font."
-        # "The DWIDTH y value should always be zero for a standard X font."
+        # minimize glyphs to ink-bounds (BBX) before storing, except "cell" fonts
+        if font.spacing not in ('character-cell', 'multi-cell'):
+            glyph = glyph.reduce()
         swidth_y, dwidth_y = 0, 0
         # SWIDTH = DWIDTH / ( points/1000 * dpi / 72 )
         # DWIDTH specifies the widths in x and y, dwx0 and dwy0, in device pixels.
         # Like SWIDTH , this width information is a vector indicating the position of
         # the next glyph’s origin relative to the origin of this glyph.
-        shift_up = font.shift_up + glyph.shift_up
-        left_bearing = font.left_bearing + glyph.left_bearing
-        right_bearing = glyph.right_bearing + font.right_bearing
-        dwidth_x = left_bearing + glyph.width + right_bearing
-        swidth_x = int(round(dwidth_x / (font.point_size / 1000) / (font.dpi.y / 72)))
-        # minimize glyphs to ink-bounds (BBX) before storing, except "cell" fonts
-        if font.spacing not in ('character-cell', 'multi-cell'):
-            left_bearing += glyph.padding.left
-            shift_up += glyph.padding.bottom
-            glyph = glyph.reduce()
-        if not glyph.height or not glyph.width:
-            # empty glyph
-            split_hex = ''
-        else:
-            hex = glyph.as_hex().upper()
-            width = len(hex) // glyph.height
-            split_hex = [hex[_offs:_offs+width] for _offs in range(0, len(hex), width)]
+        dwidth_x = glyph.advance_width
+        swidth_x = _swidth(dwidth_x, font.point_size, font.dpi.x)
         glyphdata = [
             ('STARTCHAR', name),
             ('ENCODING', str(encoding)),
-            ('SWIDTH', f'{swidth_x} {swidth_y}'),
-            ('DWIDTH', f'{dwidth_x} {dwidth_y}'),
-            ('BBX', f'{glyph.width} {glyph.height} {left_bearing} {shift_up}'),
+            # "The SWIDTH y value should always be zero for a standard X font."
+            # "The DWIDTH y value should always be zero for a standard X font."
+            ('SWIDTH', f'{swidth_x} 0'),
+            ('DWIDTH', f'{dwidth_x} 0'),
+            ('BBX', (
+                f'{glyph.width} {glyph.height} '
+                f'{glyph.left_bearing} {glyph.shift_up}'
+            )),
         ]
         if has_vertical_metrics:
-            top_bearing = font.top_bearing + glyph.top_bearing
-            bottom_bearing = glyph.bottom_bearing + font.bottom_bearing
-            shift_left = font.shift_left + glyph.shift_left
-            to_left = shift_left - ceildiv(glyph.width, 2)
-            to_bottom = -top_bearing - glyph.height
-            voffx = left_bearing - to_left
-            voffy = shift_up - to_bottom
-            dwidth1_x, swidth1_x = 0, 0
+            to_left = glyph.shift_left - ceildiv(glyph.width, 2)
+            to_bottom = -glyph.top_bearing - glyph.height
+            voffx = glyph.left_bearing - to_left
+            voffy = glyph.shift_up - to_bottom
             # dwidth1 vector: negative is down
-            dwidth1_y = -(top_bearing + glyph.height + bottom_bearing)
-            swidth1_y = int(round(dwidth1_y / (font.point_size / 1000) / (font.dpi.y / 72)))
+            dwidth1_y = -glyph.advance_height
+            swidth1_y = _swidth(dwidth1_y, font.point_size, font.dpi.y)
             glyphdata.extend([
                 ('VVECTOR', f'{voffx} {voffy}'),
-                ('SWIDTH1', f'{swidth1_x} {swidth1_y}'),
-                ('DWIDTH1', f'{dwidth1_x} {dwidth1_y}'),
+                ('SWIDTH1', f'0 {swidth1_y}'),
+                ('DWIDTH1', f'0 {dwidth1_y}'),
             ])
-        glyphdata.append(('BITMAP', '' if not split_hex else '\n' + '\n'.join(split_hex)))
+        # bitmap
+        hex = glyph.as_hex().upper()
+        width = len(hex) // glyph.height
+        split_hex = [
+            hex[_offs:_offs+width]
+            for _offs in range(0, len(hex), width)
+        ]
+        glyphdata.append(
+            ('BITMAP', '' if not split_hex else '\n' + '\n'.join(split_hex))
+        )
         glyphs.append(glyphdata)
     # write out
     for key, value in bdf_props:

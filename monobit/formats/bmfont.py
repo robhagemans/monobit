@@ -656,17 +656,17 @@ def _create_spritesheets(font, size=(256, 256), packed=False):
                 # > position to find the left position where the character should be drawn.
                 # > A negative value here would mean that the character slightly overlaps
                 # > the previous character.
-                xoffset=font.left_bearing + glyph.left_bearing + glyph.padding.left,
+                xoffset=cropped.left_bearing,
                 # > The `yoffset` gives the distance from the top of the cell height to the top
                 # > of the character. A negative value here would mean that the character extends
                 # > above the cell height.
-                yoffset=font.raster.top-(glyph.height+glyph.shift_up) + glyph.padding.top,
+                yoffset=font.raster.top-(cropped.height+cropped.shift_up),
                 # xadvance is the advance width from origin to next origin
                 # > The filled red dot marks the current cursor position, and the hollow red dot
                 # > marks the position of the cursor after drawing the character. You get to this
                 # > position by moving the cursor horizontally with the xadvance value.
                 # > If kerning pairs are used the cursor should also be moved accordingly.
-                xadvance=font.left_bearing + glyph.advance_width + font.right_bearing,
+                xadvance=cropped.advance_width,
                 page=page_id,
                 chnl=channels,
             ))

@@ -80,8 +80,6 @@ class GlyphProperties(DefaultProps):
     right_bearing: int
     # upward offset from origin to matrix bottom
     shift_up: int
-    # downward offset from origin to matrix left edge - equal to -shift_up
-    shift_down: int
     # kerning - pairwaise additional right-bearing
     right_kerning: KernTable
     # kerning - pairwaise additional left-bearing
@@ -100,11 +98,6 @@ class GlyphProperties(DefaultProps):
     tracking: int
     offset: Coord
 
-
-    @checked_property
-    def shift_down(self):
-        """Downward shift - negative of shift-up."""
-        return -self.shift_up
 
     @checked_property
     def advance_width(self):
@@ -128,7 +121,7 @@ class GlyphProperties(DefaultProps):
 
     @checked_property
     def ink_bounds(self):
-        """Minimum box encompassing all ink, in glyph origin coordinates."""
+        """Minimum box encompassing all ink, relative to bottom left."""
         bounds = Bounds(
             self.raster.left + self.padding.left,
             self.raster.bottom + self.padding.bottom,
@@ -155,7 +148,7 @@ class GlyphProperties(DefaultProps):
 
     @checked_property
     def raster(self):
-        """Raster bounds, in glyph origin coordinates."""
+        """Raster bounds, from bottom left."""
         return Bounds(
             left=self.left_bearing,
             bottom=self.shift_up,
@@ -412,8 +405,16 @@ class Glyph:
         """Non-defaulted properties in order of default definition list."""
         return {
             _k.replace('_', '-'): self._props[_k]
-            for _k in self._props if not _k.startswith('_')
+            for _k in self._props
+            if not _k.startswith('_')
+            and self._props[_k] != self._props._get_default(_k)
         }
+
+    def get_property(self, key):
+        """Get value for property."""
+        key = normalise_property(key)
+        return getattr(self._props, key, '')
+
 
 
     ##########################################################################
