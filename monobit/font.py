@@ -784,6 +784,7 @@ class Font:
             _k.replace('_', '-'): self._props[_k]
             for _k in self._props
             if not _k.startswith('_') and not _k.startswith('#')
+            and self._props[_k] != self._props._get_default(_k)
         }
 
     def is_known_property(self, key):
