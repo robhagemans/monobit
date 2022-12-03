@@ -631,21 +631,31 @@ class Font:
     @staticmethod
     def _apply_metrics(glyphs, props):
         """Apply globally specified glyph metrics."""
-        glyph_metrics = (
-            'shift_up', 'left_bearing', 'right_bearing',
-            'shift_left', 'top_bearing', 'bottom_bearing',
-            # TODO: tracking, offset
-        )
-        for key in glyph_metrics:
-            if key in props:
-                # TODO: these happen to be all ints for now
-                global_value = to_int(props[key])
-                # localise glyph metrics
-                glyphs = tuple(
-                    _g.modify(**{key: getattr(_g, key) + global_value})
-                    for _g in glyphs
-                )
-                del props[key]
+        glyph_metrics = {
+            _k: props[_k]
+            for _k in (
+                'shift_up', 'left_bearing', 'right_bearing',
+                'shift_left', 'top_bearing', 'bottom_bearing',
+                'tracking', 'offset',
+            )
+            if _k in props
+        }
+        props = {
+            _k: _v
+            for _k, _v in props.items()
+            if _k not in glyph_metrics
+        }
+        if glyph_metrics:
+            # create a dummy glyph to ensure values get converted to right type
+            glob = Glyph(**glyph_metrics)
+            # localise glyph metrics
+            glyphs = tuple(
+                _g.modify(**{
+                    _k: _g.get_property(_k) + _v
+                    for _k, _v in glob.properties.items()
+                })
+                for _g in glyphs
+            )
         return glyphs, props
 
 
@@ -779,6 +789,11 @@ class Font:
     def is_known_property(self, key):
         """Field is a recognised property."""
         return self._props._known(key)
+
+    def get_property(self, key):
+        """Get value for property."""
+        key = normalise_property(key)
+        return getattr(self._props, key, '')
 
 
     ##########################################################################

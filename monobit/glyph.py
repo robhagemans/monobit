@@ -408,6 +408,12 @@ class Glyph:
             for _k in self._props if not _k.startswith('_')
         }
 
+    def get_property(self, key):
+        """Get value for property."""
+        key = normalise_property(key)
+        return getattr(self._props, key, '')
+
+
 
     ##########################################################################
     # label access
