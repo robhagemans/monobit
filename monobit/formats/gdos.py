@@ -312,7 +312,10 @@ def _read_strike(data, header):
 
 def _read_compressed_strike(data, header, ext_header, endian):
     """Read run length encoded bitmap strike."""
-    bmp_bytes = list(data[header.bmps:ext_header.next])
+    if ext_header.next:
+        bmp_bytes = list(data[header.bmps:ext_header.next])
+    else:
+        bmp_bytes = list(data[header.bmps:])
     if endian == 'l':
         bmp_bytes[0::2], bmp_bytes[1::2] = bmp_bytes[1::2], bmp_bytes[0::2]
     compressed_bmp = bytes_to_bits(bmp_bytes)
