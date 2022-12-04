@@ -218,8 +218,10 @@ def _read_gdos_header(data, endian):
             # probably a big-endian font
             endian = 'b'
             header = _FNT_HEADER[endian].from_bytes(data)
+            logging.info('Treating as big-endian based on point-size field')
         else:
             endian = 'l'
+            logging.info('Treating as little-endian based on point-size field')
     n_chars = header.last_char - header.first_char + 1
     if header.extended_flag:
         ext_header = _EXTENDED_HEADER[endian].from_bytes(
@@ -236,6 +238,8 @@ def _read_gdos_header(data, endian):
     coffs = _CHAR_OFFS_ENTRY[endian].array(n_chars+1).from_bytes(
         data, header.coffs
     )
+    if header.byteswapped_flag and endian != 'b':
+        logging.warning('Ignoring big-endian flag')
     return header, ext_header, coffs, hoffs, endian
 
 def _read_gdos_glyphs(data, header, ext_header, coffs, hoffs, endian):
