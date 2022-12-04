@@ -223,17 +223,18 @@ def _parse_gdos(data, endianness):
         ext_header = _EXTENDED_HEADER[endian].from_bytes(
             data, _FNT_HEADER[endian].size
         )
+    else:
+        ext_header = _EXTENDED_HEADER[endian]()
     if header.horiz_offs_flag:
         hoffs = _HORIZ_OFFS_ENTRY[endian].array(n_chars).from_bytes(
             data, header.hoffs
         )
     else:
         hoffs = [_HORIZ_OFFS_ENTRY[endian]()] * n_chars
-    coffs = _CHAR_OFFS_ENTRY[endian].array(n_chars).from_bytes(
+    coffs = _CHAR_OFFS_ENTRY[endian].array(n_chars+1).from_bytes(
         data, header.coffs
     )
     # bitmap strike
-    # TODO - byteswaps
     strike = [
         bytes_to_bits(data[_offset : _offset+header.width])
         for _offset in range(
