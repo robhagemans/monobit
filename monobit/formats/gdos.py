@@ -207,17 +207,21 @@ _CHAR_OFFS_ENTRY = {
 def _read_gdos(instream, endianness):
     """Read GDOS binary file and return as properties and glyphs."""
     data = instream.read()
-    return _parse_gdos(data, endianness)
+    header, coffs, hoffs, endian = _read_gdos_header(data, endianness)
+    glyphs = _read_gdos_glyphs(data, header, coffs, hoffs, endian)
+    return Props(**vars(header)), glyphs
 
-def _parse_gdos(data, endianness):
+def _read_gdos_header(data, endianness):
     """Parse GDOS binary file and return as properties and glyphs."""
     endian = endianness[:1].lower()
     header = _FNT_HEADER[endian or 'l'].from_bytes(data)
     if not endian:
         if header.point_size > 256:
             # probably a big-endian font
-            return _parse_gdos(data, 'b')
-        endian = 'l'
+            endian = 'b'
+            header = _FNT_HEADER[endian].from_bytes(data)
+        else:
+            endian = 'l'
     n_chars = header.last_char - header.first_char + 1
     if header.extended_flag:
         ext_header = _EXTENDED_HEADER[endian].from_bytes(
@@ -234,6 +238,10 @@ def _parse_gdos(data, endianness):
     coffs = _CHAR_OFFS_ENTRY[endian].array(n_chars+1).from_bytes(
         data, header.coffs
     )
+    return header, coffs, hoffs, endian
+
+def _read_gdos_glyphs(data, header, coffs, hoffs, endian):
+    """Read glyphs from bitmap strike data."""
     # bitmap strike
     strike = [
         bytes_to_bits(data[_offset : _offset+header.width])
@@ -258,7 +266,7 @@ def _parse_gdos(data, endianness):
             start=header.first_char
         )
     ]
-    return Props(**vars(header)), glyphs
+    return glyphs
 
 
 def _convert_from_gdos(gdos_props):
