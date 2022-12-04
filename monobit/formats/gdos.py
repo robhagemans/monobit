@@ -15,8 +15,6 @@ from ..glyph import Glyph
 from ..streams import FileFormatError
 from ..binary import bytes_to_bits
 
-
-
 @loaders.register(
     'gft', #'fnt'
     name='gdos'
@@ -204,19 +202,19 @@ _CHAR_OFFS_ENTRY = {
 # must be byte-swapped.
 
 
-def _read_gdos(instream, endianness):
+def _read_gdos(instream, endian):
     """Read GDOS binary file and return as properties and glyphs."""
     data = instream.read()
-    header, coffs, hoffs, endian = _read_gdos_header(data, endianness)
-    glyphs = _read_gdos_glyphs(data, header, coffs, hoffs, endian)
+    header, ext_header, coffs, hoffs, endian = _read_gdos_header(data, endian)
+    glyphs = _read_gdos_glyphs(data, header, ext_header, coffs, hoffs, endian)
     return Props(**vars(header)), glyphs
 
-def _read_gdos_header(data, endianness):
+def _read_gdos_header(data, endian):
     """Parse GDOS binary file and return as properties and glyphs."""
-    endian = endianness[:1].lower()
+    endian = endian[:1].lower()
     header = _FNT_HEADER[endian or 'l'].from_bytes(data)
     if not endian:
-        if header.point_size > 256:
+        if header.point_size >= 256:
             # probably a big-endian font
             endian = 'b'
             header = _FNT_HEADER[endian].from_bytes(data)
@@ -238,19 +236,15 @@ def _read_gdos_header(data, endianness):
     coffs = _CHAR_OFFS_ENTRY[endian].array(n_chars+1).from_bytes(
         data, header.coffs
     )
-    return header, coffs, hoffs, endian
+    return header, ext_header, coffs, hoffs, endian
 
-def _read_gdos_glyphs(data, header, coffs, hoffs, endian):
+def _read_gdos_glyphs(data, header, ext_header, coffs, hoffs, endian):
     """Read glyphs from bitmap strike data."""
     # bitmap strike
-    strike = [
-        bytes_to_bits(data[_offset : _offset+header.width])
-        for _offset in range(
-            header.bmps,
-            header.bmps + header.width*header.height,
-            header.width
-        )
-    ]
+    if header.extended_flag:
+        strike = _read_compressed_strike(data, header, ext_header, endian)
+    else:
+        strike = _read_strike(data, header)
     # extract glyphs
     pixels = [
         [_row[_loc.offset:_next.offset] for _row in strike]
@@ -267,6 +261,102 @@ def _read_gdos_glyphs(data, header, coffs, hoffs, endian):
         )
     ]
     return glyphs
+
+
+def _read_strike(data, header):
+    """Read uncompressed bitmap strike."""
+    return [
+        bytes_to_bits(data[_offset : _offset+header.width])
+        for _offset in range(
+            header.bmps,
+            header.bmps + header.width*header.height,
+            header.width
+        )
+    ]
+
+# https://github.com/shanecoughlan/OpenGEM/blob/master/source/OpenGEM-7-RC1-SDK/OpenGEM-7-SDK/GEM%20VDI%20AND%20SOURCE%20CODE/GEM%203%20VDI%20source%20code/DECODE.A86#L50
+# ;**************************************************************************
+# ;Now for the tricky bit - decoding the data.
+# ;
+# ;The decoding scheme is this:
+# ;Starting with a string of zeros, then alternating ones and zeros read string
+# ;lengths encoded as:
+# ;ZERO strings:
+# ; length of string   Encoding
+# ;     1-8	    1xyz	xyz=n-1 in binary
+# ;     9-16	    01xyz       xyz=n-9 in binary (1xyz=n-1)
+# ;    17-32	    001wxyz    wxyz=n-17 in binary (1wxyz=n-1)
+# ; etc to:
+# ;    64K-1	    0000 0000 0000 0111 1111 1111 1111 0
+# ;BUT 64K-1 no alternation:
+# ;		    0000 0000 0000 0111 1111 1111 1111 1
+# ;This last is used to break up long strings so that we can use 16 bit counts
+# ;
+# ;ONE strings:
+# ; length of string   Encoding
+# ;     1		     0
+# ;     2		     10
+# ;     3		     110
+# ; etc where the 0 flags the end of the string
+# ;NOTE that there is no theoretical limit to the lengths of strings encountered
+# ;
+# ;Lastly, convert each line except the top one to the XOR of itself and the
+# ;line above.
+# ;
+# ;**********************************************************************
+# ;
+
+def _read_compressed_strike(data, header, ext_header, endian):
+    """Read run length encoded bitmap strike."""
+    bmp_bytes = list(data[header.bmps:ext_header.next])
+    if endian == 'l':
+        bmp_bytes[0::2], bmp_bytes[1::2] = bmp_bytes[1::2], bmp_bytes[0::2]
+    compressed_bmp = bytes_to_bits(bmp_bytes)
+    ofs = 0
+    strike = []
+    row = None
+    next = []
+    for _y in range(header.height):
+        last_row = row
+        row = next
+        while True:
+            if ofs >= len(compressed_bmp) or len(row) >= header.width*8:
+                row, next = row[:header.width*8], row[header.width*8:]
+                # convert line to xor of itself and previous
+                if last_row:
+                    row = [_r^_l for _r, _l in zip(row, last_row)]
+                strike.append(row)
+                break
+            try:
+                idx_one = compressed_bmp.index(True, ofs) - ofs
+            except ValueError:
+                idx_one = len(compressed_bmp) - ofs
+            if idx_one:
+                # include the leading one
+                field = compressed_bmp[ofs+idx_one:ofs+2*idx_one+3]
+                ofs += 2*idx_one+3
+            else:
+                # 1-8 case, skip the leading one
+                field = compressed_bmp[ofs+1:ofs+4]
+                ofs += 4
+            field = ''.join('1' if _b else '0' for _b in field)
+            n_zeros = int(field, 2) + 1
+            max = 2**16
+            if n_zeros > max:
+                # error
+                raise FileFormatError('could not read compressed bitmap.')
+            elif n_zeros == max:
+                # special case, no alternation
+                row.extend([False]*(max-1))
+            else:
+                row.extend([False]*n_zeros)
+                try:
+                    idx_zero = compressed_bmp.index(False, ofs) - ofs
+                except ValueError:
+                    idx_zero = len(compressed_bmp) - ofs
+                row.extend([True]*(idx_zero+1))
+                ofs += idx_zero + 1
+    return strike
 
 
 def _convert_from_gdos(gdos_props):
