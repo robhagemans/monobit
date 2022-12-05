@@ -47,6 +47,45 @@ def load_gdos(instream, where=None, endianness:str=''):
 
 _BASE = {'l': le, 'b': be}
 
+# we need to specify the flags structure separately
+# due to the way ctypes applies endianness to bitfields
+_GDOS_FLAGS = {
+    'l': le.Struct(
+        # 0 Contains System Font
+        system=bitfield('word', 1),
+        # 1 Horizontal Offset Tables should be used.
+        horiz_offs=bitfield('word', 1),
+        # 2 Font data need not be byte-swapped.
+        byteswapped=bitfield('word', 1),
+        # 3 Font is mono-spaced.
+        monospaced=bitfield('word', 1),
+        unused4=bitfield('word', 1),
+        extended=bitfield('word', 1),
+        unused6=bitfield('word', 1),
+        dbcs_flag=bitfield('word', 1),
+        unused8_12=bitfield('word', 5),
+        full_id=bitfield('word', 1),
+        unused14_15=bitfield('word', 2),
+    ),
+    'b': be.Struct(
+        unused14_15=bitfield('word', 2),
+        full_id=bitfield('word', 1),
+        unused8_12=bitfield('word', 5),
+        dbcs_flag=bitfield('word', 1),
+        unused6=bitfield('word', 1),
+        extended=bitfield('word', 1),
+        unused4=bitfield('word', 1),
+        # 3 Font is mono-spaced.
+        monospaced=bitfield('word', 1),
+        # 2 Font data need not be byte-swapped.
+        byteswapped=bitfield('word', 1),
+        # 1 Horizontal Offset Tables should be used.
+        horiz_offs=bitfield('word', 1),
+        # 0 Contains System Font
+        system=bitfield('word', 1),
+    ),
+}
+
 _FNT_HEADER = {
     _endian: _BASE[_endian].Struct(
         # Face ID (must be unique).
@@ -88,21 +127,8 @@ _FNT_HEADER = {
         # Skewing mask (rotated to determine when to perform additional rotation on
         # a character when skewing, usually 0x5555).
         skew='word',
-        # 0 Contains System Font
-        system_flag=bitfield('word', 1),
-        # 1 Horizontal Offset Tables should be used.
-        horiz_offs_flag=bitfield('word', 1),
-        # 2 Font data need not be byte-swapped.
-        byteswapped_flag=bitfield('word', 1),
-        # 3 Font is mono-spaced.
-        monospaced_flag=bitfield('word', 1),
-        unused4=bitfield('word', 1),
-        extended_flag=bitfield('word', 1),
-        unused6=bitfield('word', 1),
-        dbcs_flag=bitfield('word', 1),
-        unused8_12=bitfield('word', 5),
-        full_id_flag=bitfield('word', 1),
-        unused14_15=bitfield('word', 2),
+        # flags, see structure above
+        flags=_GDOS_FLAGS[_endian],
         # Offset from start of file to horizontal offset table.
         hoffs='dword',
         # Offset from start of file to character offset table.
@@ -244,13 +270,13 @@ def _read_gdos_header(data, endian):
             endian = 'l'
             logging.info('Treating as little-endian based on point-size field')
     n_chars = header.last_char - header.first_char + 1
-    if header.extended_flag:
+    if header.flags.extended:
         ext_header = _EXTENDED_HEADER[endian].from_bytes(
             data, _FNT_HEADER[endian].size
         )
     else:
         ext_header = _EXTENDED_HEADER[endian]()
-    if header.horiz_offs_flag:
+    if header.flags.horiz_offs:
         hoffs = _HORIZ_OFFS_ENTRY[endian].array(n_chars).from_bytes(
             data, header.hoffs
         )
@@ -259,14 +285,16 @@ def _read_gdos_header(data, endian):
     coffs = _CHAR_OFFS_ENTRY[endian].array(n_chars+1).from_bytes(
         data, header.coffs
     )
-    if header.byteswapped_flag and endian != 'b':
+    if header.flags.byteswapped and endian != 'b':
         logging.warning('Ignoring big-endian flag')
+    if not header.flags.byteswapped and endian != 'l':
+        logging.warning('Ignoring little-endian flag')
     return header, ext_header, coffs, hoffs, endian
 
 def _read_gdos_glyphs(data, header, ext_header, coffs, hoffs, endian):
     """Read glyphs from bitmap strike data."""
     # bitmap strike
-    if header.extended_flag:
+    if header.flags.extended:
         strike = _read_compressed_strike(data, header, ext_header, endian)
     else:
         strike = _read_strike(data, header)
