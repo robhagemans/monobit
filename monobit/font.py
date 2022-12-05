@@ -1083,7 +1083,7 @@ class Font:
 
         adjust_metrics: also reverse metrics (default: True)
         """
-        font = font._apply_to_all_glyphs(
+        font = self._apply_to_all_glyphs(
             Glyph.mirror, adjust_metrics=adjust_metrics
         )
         if not adjust_metrics:
@@ -1102,7 +1102,7 @@ class Font:
 
         adjust_metrics: also reverse metrics (default: True)
         """
-        font = font._apply_to_all_glyphs(
+        font = self._apply_to_all_glyphs(
             Glyph.flip, adjust_metrics=adjust_metrics
         )
         if not adjust_metrics:
@@ -1121,7 +1121,7 @@ class Font:
 
         adjust_metrics: also transpose metrics (default: True)
         """
-        font = font._apply_to_all_glyphs(
+        font = self._apply_to_all_glyphs(
             Glyph.transpose, adjust_metrics=adjust_metrics
         )
         if not adjust_metrics:
@@ -1156,7 +1156,7 @@ class Font:
         top: number of rows to remove from top
         adjust_metrics: make the operation render-invariant (default: True)
         """
-        font = font._apply_to_all_glyphs(
+        font = self._apply_to_all_glyphs(
             Glyph.crop,
             left=left, bottom=bottom, right=right, top=top, adjust_metrics=adjust_metrics
         )
@@ -1182,7 +1182,7 @@ class Font:
         top: number of rows to add on top
         adjust_metrics: make the operation render-invariant (default: True)
         """
-        font = font._apply_to_all_glyphs(
+        font = self._apply_to_all_glyphs(
             Glyph.expand,
             left=left, bottom=bottom, right=right, top=top,
             adjust_metrics=adjust_metrics
@@ -1202,7 +1202,7 @@ class Font:
 
         adjust_metrics: make the operation render-invariant (default: True)
         """
-        font = font._apply_to_all_glyphs(
+        font = self._apply_to_all_glyphs(
             Glyph.reduce,
             adjust_metrics=adjust_metrics,
         )
@@ -1222,7 +1222,7 @@ class Font:
 
         adjust_metrics: make the operation render-invariant (default: True)
         """
-        font = font._apply_to_all_glyphs(
+        font = self._apply_to_all_glyphs(
             Glyph.inflate,
             adjust_metrics=adjust_metrics,
         )
@@ -1257,7 +1257,7 @@ class Font:
         factor_y: number of times to repeat vertically
         adjust_metrics: also stretch metrics (default: True)
         """
-        font = font._apply_to_all_glyphs(
+        font = self._apply_to_all_glyphs(
             Glyph.stretch,
             factor_x=factor_x, factor_y=factor_y,
             adjust_metrics=adjust_metrics,
@@ -1282,7 +1282,7 @@ class Font:
         factor_y: factor to shrink vertically
         adjust_metrics: also stretch metrics (default: True)
         """
-        font = font._apply_to_all_glyphs(
+        font = self._apply_to_all_glyphs(
             Glyph.shrink,
             factor_x=factor_x, factor_y=factor_y,
             adjust_metrics=adjust_metrics,
@@ -1417,7 +1417,11 @@ class _LazyTransformedFont(Font):
         """Initialise, compose functions if needed."""
         self._glyphs = font._glyphs
         self._labels = font._labels
+        # TODO: fix hack
         self._props = font._props
+        self._props._frozen = False
+        self._props._font = self
+        self._props._frozen = True
         if isinstance(font, _LazyTransformedFont):
             prev_func = font._func
             def _wrapped(font):
