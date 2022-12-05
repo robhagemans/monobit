@@ -114,7 +114,7 @@ _FNT_HEADER = {
         # Form height (in scanlines).
         height='word',
         # pointer to the next font (set by GDOS after loading).
-        reserved='dword',
+        reserved_nextfont='dword',
     )
     for _endian in ('l', 'b')
 }
@@ -130,7 +130,7 @@ _EXTENDED_HEADER = {
         # ;Length of file data
         fdata_len='word',
         # ;Reference count when the font is loaded
-        reserved='dword',
+        reserved_refcount='dword',
         # ;Device flags
         dflags='word',
         # ;Full font ID
@@ -207,7 +207,7 @@ def _read_gdos(instream, endian):
     data = instream.read()
     header, ext_header, coffs, hoffs, endian = _read_gdos_header(data, endian)
     glyphs = _read_gdos_glyphs(data, header, ext_header, coffs, hoffs, endian)
-    return Props(**vars(header)), glyphs
+    return Props(**vars(header), **vars(ext_header)), glyphs
 
 def _read_gdos_header(data, endian):
     """Parse GDOS binary file and return as properties and glyphs."""
