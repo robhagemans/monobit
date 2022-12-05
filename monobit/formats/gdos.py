@@ -16,7 +16,7 @@ from ..streams import FileFormatError
 from ..binary import bytes_to_bits
 
 @loaders.register(
-    'gft', #'fnt'
+    'gft', 'cga', 'ega', 'vga', #'fnt'
     name='gdos'
 )
 def load_gdos(instream, where=None, endianness:str=''):
