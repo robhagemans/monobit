@@ -205,9 +205,30 @@ _CHAR_OFFS_ENTRY = {
 def _read_gdos(instream, endian):
     """Read GDOS binary file and return as properties and glyphs."""
     data = instream.read()
-    header, ext_header, coffs, hoffs, endian = _read_gdos_header(data, endian)
-    glyphs = _read_gdos_glyphs(data, header, ext_header, coffs, hoffs, endian)
-    return Props(**vars(header), **vars(ext_header)), glyphs
+    # loop over linked list of character ranges
+    headers = []
+    glyph_ranges = []
+    while True:
+        if not data:
+            break
+        header, ext_header, coffs, hoffs, endian = _read_gdos_header(data, endian)
+        glyphs = _read_gdos_glyphs(data, header, ext_header, coffs, hoffs, endian)
+        headers.append(header)
+        glyph_ranges.append(glyphs)
+        # if no next section given, we're done
+        if not ext_header.next:
+            break
+        data = data[ext_header.next:]
+    glyphs = tuple(_g for _range in glyph_ranges for _g in _range)
+    if any(
+            len(set(tuple(getattr(_h, _attr) for _h in headers))) > 1
+            for _attr in ('font_id', 'name', 'point_size')
+        ):
+        logging.warning(
+            'Different font headers given for character ranges. '
+            'Using first header.'
+        )
+    return Props(**vars(headers[0]), **vars(ext_header)), glyphs
 
 def _read_gdos_header(data, endian):
     """Parse GDOS binary file and return as properties and glyphs."""
