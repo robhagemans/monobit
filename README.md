@@ -112,6 +112,7 @@ Supported formats
 | DEC DRCS              | `dec-drcs` |          |                             | DEC VT      | ✔     | ✔     |
 | Amiga Font Contents   | `amiga-fc` |          | `.font`                     | Amiga OS    | ✔     |       |
 | Amiga Font            | `amiga`    |          |                             | Amiga OS    | ✔     |       |
+| Atari GDOS / GEM      | `gdos`     |          | `.fnt` `.gft` `.vga`        | Atari ST, GEM| ✔     |       |
 | FZX Font              | `fzx`      |          | `.fzx`                      | ZX Spectrum | ✔     | ✔     |
 | Figlet                | `figlet`   |          | `.flf`                      | Unix        | ✔     | ✔     |
 | MacOS font            | `mac-dfont`| FONT     | `.dfont` `.suit`            | MacOS       | ✔     |       |
@@ -139,9 +140,10 @@ Here is a comparison of what you can and cannot store in selected formats suppor
 | `bmfont`      | ✔ |   | ✔ | ✔ |   | any  | ✔ | ✔ | ✔ | image
 | `bdf`         | ✔ |   | ✔ | ✔ |   | any  | ✔ |   |   | hex
 | `mac-*`       |   |   | ✔ | ✔ | ✔ | any  | ✔ | ✔ | ✔ | binary
-| `win-*`       |   |   | ✔ | ✔ | ✔ | any  | ✔ |   |   | binary
+| `win-fon`     |   |   | ✔ | ✔ | ✔ | any  | ✔ |   |   | binary
 | `hexdraw`     | ✔ |   |   |   |   | any  | ✔ |   |   | visual text
 | `amiga-*`     |   |   |   |   | ✔ | any  | ✔ |   | ✔ | binary
+| `gdos`        |   |   |   |   |   | any  | ✔ |   |   | binary
 | `fzx`         |   |   |   |   |   | any  | ✔ |   |   | binary
 | `figlet`      | ✔ |   |   |   |   | any  | ✔ |   | ✔ | visual text
 | `dec-drcs`    |   |   |   |   |   | >4xN |   |   |   | binary
@@ -170,6 +172,10 @@ Licence
 `monobit` and the `yaff` specification are released under the
 [Expat MIT licence](https://opensource.org/licenses/MIT).
 
+The font files in `tests/fonts` may be subject to more restrictive
+licences. These files are not included in the packaged
+distribution. Please check `tests/fonts/README.md`.
+
 
 Acknowledgements
 ----------------
@@ -186,3 +192,4 @@ Other bitmap font tools you could use in conjunction with (or instead of) `monob
 - John Elliott's [PSFTools](http://www.seasip.info/Unix/PSF/)
 - Mark Leisher's [`gbdfed`](http://sofia.nmsu.edu/~mleisher/Software/gbdfed/)
 - Simon Tatham's [`mkwinfont`/`dewinfont`](https://www.chiark.greenend.org.uk/~sgtatham/fonts/)
+- [RECOIL](https://recoil.sourceforge.net/)

@@ -240,6 +240,20 @@ class TestFormats(BaseTester):
         font, *_ = monobit.load(self.font_path / 'wbfont.amiga' / 'wbfont_prop.font')
         self.assertEqual(len(font.glyphs), 225)
 
+    def test_import_gdos(self):
+        """Test importing uncompressed gdos font file."""
+        font, *_ = monobit.load(
+            self.font_path / 'gdos' / 'L2UNVB18.FNT', format='gdos'
+        )
+        self.assertEqual(len(font.glyphs), 252)
+
+    def test_import_gdos_compressed(self):
+        """Test importing compressed, chained gdos font file."""
+        font, *_ = monobit.load(
+            self.font_path / 'gdos' / 'AI360GVP.VGA', format='gdos'
+        )
+        self.assertEqual(len(font.glyphs), 194)
+
 
 if __name__ == '__main__':
     unittest.main()

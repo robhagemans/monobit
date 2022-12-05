@@ -1,21 +1,29 @@
 ## Testing fonts
 
-The fonts are included here for testing and some have been modified. If you wish to use these fonts 
+The fonts are included here for testing and some have been modified. If you wish to use these fonts
 for other purposes, it is recommended that you download them from the original source, not from here.
 
 Original sources:
-* `4x6.bdf` 
-  - https://www.cl.cam.ac.uk/~mgk25/ucs-fonts.html 
+* `4x6.bdf`
+  - https://www.cl.cam.ac.uk/~mgk25/ucs-fonts.html
   - in the public domain
-* `6x13.fon` 
+* `6x13.fon`
   - https://www.chiark.greenend.org.uk/~sgtatham/fonts/
   - in the public domain
-* `WebbySmall.fon` and `WebbySmall.pcf` 
+* `WebbySmall.fon` and `WebbySmall.pcf`
   - https://github.com/bluescan/proggyfonts/tree/master/ProggyOriginal
   - (c) 2004, 2005 Tristan Grimmer, released under an MIT licence
 * `wbfont`
   - http://aminet.net/text/bfont/wbfont.lha
   - (c) 1999 Keith Halstead, free to distribute so long as the readme file is included
+* `L2UNIVB18.FNT`
+  - http://cd.textfiles.com/geminiatari/FILES/FONTS/GDOS/TWFNTSLA/
+  - Bernie LaGrave / Ric Kalford
+  - in the public domain
+* `AI360GVP.VGA`
+  - supplied with the GEM/3 screen drivers
+  - http://www.deltasoft.com/downloads/screendr.zip
+  - GNU General Public License v2
 
 
 ### Derivatives of `4x6`

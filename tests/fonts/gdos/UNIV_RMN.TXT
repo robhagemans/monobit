@@ -1,0 +1,52 @@
+
+
+July 14, 1990
+
+     University Roman font was one of the first PD fonts for Publishing
+Partner(PP).  Longevity must be the cause for its popularity (it is one of
+the most downloaded fonts on GEnie); it could not possibly have been the
+quality.  It was created with the old PP font editor and the serifs looked
+like Gumby's feet!  The original font editor had a screen work area of
+about 2" x 2" and no guides for stroke width.  I have been embarrassed over
+those serifs for a long time.
+
+     So, with the new PD editor from SoftLogik (thanks, Mike Kazmaier), I
+decided to make amends. I really didn't do too much to the characters,
+except for a tweak here and there, but Gumby's feet have been replaced with
+*real* serifs.  Kerning pairs have been added (for Mike Loader!) and the
+letter spacing for the whole character set was modified.
+
+     To use, merely copy the files in this Arc over the ones that are
+currently in your PSFONTS folder.  This font uses the same registration
+number of the original (#3000).  Included with this file are:
+
+     UNIV_RMN.FM         The font metrics
+     UNIV_RMN.DMF        The dot matrix font.
+     UNIV_RMN.12H        12 point screen font (slightly revised)
+     UNIV_RMN.24H        24 point screen font (ditto)
+     UNIV_RMN.PS         The downloadable PostScript (TM) font.
+     UNIV_RMN.PSF        The PS information file.
+
+     I did not re-do any of the other screen fonts.  Those were, for the
+most part, created by someone at SL and were pretty well done.  Of course,
+anyone wishing to improve the screen fonts may do so with the font editor.
+You should also delete any files named UNVR (.DMF, .PS & .PSF) from your
+PSFONTS folder.  Someone (I don't remember who) made some improvements to
+the original font so that it would convert from PP format into PgS format. 
+I think they added "close char" points or something like that.  Since UNVR
+uses the same font ID, PgS will get confused if you do not delete them.
+
+      These files are offered as freeware.  As such, they are placed
+into Public Domain and may be freely distributed as you see fit.  There is
+no guarantee expressed, whatsoever, as to their performance.
+
+     Incidentally, rumor has it that SoftLogik will release several new
+font disks *Real Soon Now* (RSN).  These will include several of the fonts
+that I created including LuciSans, the original Keyboard (with extras),
+PageStream (like Elan Demi-Bold; see the title page of your PgS manual),
+Calgary (like Playbill), Circus and Zip (like Zipper).  I hope you like
+them.
+
+Bernie LaGrave
+[B.LAGRAVE1 on Genie]
+
