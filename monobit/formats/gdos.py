@@ -164,8 +164,8 @@ _EXTENDED_HEADER = {
 # but is also much less clear so I'm using John Elliott's
 _HORIZ_OFFS_ENTRY = {
     _endian: _BASE[_endian].Struct(
-        pre='byte',
-        post='byte',
+        pre='int8',
+        post='int8',
     )
     for _endian in ('l', 'b')
 }
