@@ -6,6 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import logging
+from itertools import accumulate
 
 from ..struct import bitfield, little_endian as le, big_endian as be
 from ..properties import Props
@@ -13,7 +14,11 @@ from ..storage import loaders, savers
 from ..font import Font
 from ..glyph import Glyph
 from ..streams import FileFormatError
-from ..binary import bytes_to_bits
+from ..binary import bytes_to_bits, ceildiv
+
+from ..raster import Raster
+from .windows import _normalise_metrics
+
 
 @loaders.register(
     'gft', 'cga', 'ega', 'vga', #'fnt'
@@ -26,15 +31,33 @@ def load_gdos(instream, where=None, endianness:str=''):
     endianness: (b)ig or (l)ittle-endian. default: guess from data
     """
     gdos_props, gdos_glyphs = _read_gdos(instream, endianness)
-    logging.info('GDOS properties:')
-    for line in str(gdos_props).splitlines():
-        logging.info('    ' + line)
+    logging.info(
+        'GDOS properties:\n    ' +
+        '\n    '.join(str(gdos_props).splitlines())
+    )
     props = _convert_from_gdos(gdos_props)
-    logging.info('yaff properties:')
-    for line in str(props).splitlines():
-        logging.info('    ' + line)
+    logging.info(
+        'yaff properties:\n    ' +
+        '\n    '.join(str(props).splitlines())
+    )
     font = Font(gdos_glyphs, **vars(props))
     return font
+
+
+@savers.register(linked=load_gdos)
+def save_gdos(fonts, outstream, where=None, endianness:str='little'):
+    """
+    Save font to Atari GDOS/GEM .FNT file.
+
+    endianness: (b)ig or (l)ittle-endian. default: little
+    """
+    if len(fonts) > 1:
+        raise FileFormatError('Can only save one font to GDOS file.')
+    font, = fonts
+    header, gdos_glyphs = _convert_to_gdos(font, endianness)
+    logging.info('GDOS properties:')
+    logging.info(header)
+    _write_gdos(outstream, header, gdos_glyphs, endianness)
 
 
 ################################################################################
@@ -45,6 +68,10 @@ def load_gdos(instream, where=None, endianness:str=''):
 # http://www.seasip.info/Gem/filefmt.html
 # http://www.verycomputer.com/10_34378d1abfb218c2_1.htm
 
+# storable code points
+_GDOS_RANGE = range(0, 256)
+
+# we have a choice of big and little endian files, need different base classes
 _BASE = {'l': le, 'b': be}
 
 # we need to specify the flags structure separately
@@ -60,8 +87,11 @@ _GDOS_FLAGS = {
         # 3 Font is mono-spaced.
         monospaced=bitfield('word', 1),
         unused4=bitfield('word', 1),
+        # extended properties exist
+        # also, bitmap is compressed
         extended=bitfield('word', 1),
         unused6=bitfield('word', 1),
+        # not clear how these are used
         dbcs_flag=bitfield('word', 1),
         unused8_12=bitfield('word', 5),
         full_id=bitfield('word', 1),
@@ -75,13 +105,9 @@ _GDOS_FLAGS = {
         unused6=bitfield('word', 1),
         extended=bitfield('word', 1),
         unused4=bitfield('word', 1),
-        # 3 Font is mono-spaced.
         monospaced=bitfield('word', 1),
-        # 2 Font data need not be byte-swapped.
         byteswapped=bitfield('word', 1),
-        # 1 Horizontal Offset Tables should be used.
         horiz_offs=bitfield('word', 1),
-        # 0 Contains System Font
         system=bitfield('word', 1),
     ),
 }
@@ -227,6 +253,9 @@ _CHAR_OFFS_ENTRY = {
 # If bit #2 of the font flags header item is cleared, each WORD in the font data
 # must be byte-swapped.
 
+
+################################################################################
+# GDOS reader
 
 def _read_gdos(instream, endian):
     """Read GDOS binary file and return as properties and glyphs."""
@@ -436,3 +465,140 @@ def _convert_from_gdos(gdos_props):
     if gdos_props.skew != 0x5555:
         props.gdos += f' skew-mask=0x{gdos_props.skew:x}'
     return props
+
+
+################################################################################
+# GDOS writer
+
+def _convert_to_gdos(font, endianness):
+    """Convert monobit font to GDOS properties and glyphs."""
+    # ensure codepoint values are set if possible
+    font = font.label(codepoint_from=font.encoding)
+    font = _subset_storable(font)
+    font = _make_contiguous(font)
+    font, add_shift_up = _normalise_metrics(font)
+    # check glyph dimensions / bitfield ranges
+    if any(_g.left_bearing < -127 or _g.right_bearing < -127 for _g in font.glyphs):
+        raise FileFormatError(
+            'GDOS format: negative bearings must not exceed 127.'
+        )
+    # keep namespace properties
+    if 'gdos' in font.properties:
+        propsplit = (item.partition('=') for item in font.gdos.split())
+        add_props = {_k: int(_v) for _k, _, _v in propsplit}
+    else:
+        add_props = {}
+    endian = endianness[0].lower()
+    flags = _GDOS_FLAGS[endian](
+        system=add_props.get('font-id', 255) == 1,
+        horiz_offs=1,
+        byteswapped=endian == 'b',
+        monospaced=font.spacing != 'proportional',
+        extended=0,
+        dbcs_flag=0,
+        full_id=0,
+    )
+    header = _FNT_HEADER[endian](
+        # TODO -  base on name using list, override parameter?
+        font_id=add_props.get('font-id', 255),
+        point_size=font.point_size,
+        name=font.name.encode('ascii', 'replace'),
+        first_char=int(min(font.get_codepoints())),
+        last_char=int(max(font.get_codepoints())),
+        top=font.raster_size.y+add_shift_up,
+        ascent=font.ascent-1,
+        # Half line distance expressed as a positive offset from baseline.
+        # interpreting as x-height
+        half=font.x_height,
+        descent=font.descent,
+        bottom=add_shift_up,
+        # Width of the widest character.
+        # I'm interpreting this as the widest per-glyph bounding box
+        max_char_width=max(_g.bounding_box.x for _g in font.glyphs),
+        # Width of the widest character cell.
+        # interpreting as widest advance width
+        max_cell_width=font.max_width,
+        left_offset=add_props.get('left-offset', 0),
+        right_offset=add_props.get('right-offset', 0),
+        thicken=font.bold_smear,
+        ul_size=font.underline_thickness,
+        lighten=add_props.get('lighten_mask', 0x5555),
+        skew=add_props.get('skew_mask', 0x5555),
+        flags=flags,
+        #hoffs, coffs, bmps, width, height
+    )
+    return header, font.glyphs
+
+def _subset_storable(font):
+    """Select glyphs that can be included."""
+    # only codepoints 0--255 inclusive
+    if any(int(_c) not in _GDOS_RANGE for _c in font.get_codepoints()):
+        logging.warning(
+            'GDOS format can only store codepoints 0--255. '
+            'Not all glyphs in this font can be included.'
+        )
+    font = font.subset(codepoints=set(_GDOS_RANGE))
+    return font
+
+def _make_contiguous(font):
+    """Get contiguous range, fill gaps with empties."""
+    glyphs = tuple(
+        font.get_glyph(codepoint=_cp, missing='empty').modify(codepoint=_cp)
+        for _cp in range(
+            int(min(font.get_codepoints())),
+            int(max(font.get_codepoints()))+1
+        )
+    )
+    # remove empties at end
+    while glyphs and glyphs[-1].is_blank() and not glyphs[-1].advance_width:
+        glyphs = glyphs[:-1]
+    if not glyphs:
+        raise FileFormatError(
+            'GDOS format: no glyphs in storable codepoint range 0--255.'
+        )
+    font = font.modify(glyphs)
+    return font
+
+def _generate_bitmap_strike(glyphs):
+    """Generate horizontal bitmap strike."""
+    # all glyphs have been brought to the same height previously
+    matrices = tuple(_g.as_matrix() for _g in glyphs)
+    strike = tuple(
+        sum((_m[_row] for _m in matrices), ())
+        for _row in range(glyphs[0].height)
+    )
+    offsets = (0,) + tuple(accumulate(_g.width for _g in glyphs))
+    return Raster(strike, _0=0, _1=1), offsets
+
+def _write_gdos(outstream, header, glyphs, endianness):
+    """Write gdos properties and glyphs to binary file."""
+    endian = endianness[0].lower()
+    # generate strike and coffs table
+    strike, offsets = _generate_bitmap_strike(glyphs)
+    n_chars = len(glyphs)
+    # hoffs table - based on neg bearings
+    hoffs = _HORIZ_OFFS_ENTRY[endian].array(n_chars)(*(
+        _HORIZ_OFFS_ENTRY[endian](
+            pre=-_g.left_bearing,
+            post=-_g.right_bearing,
+        )
+        for _g in glyphs
+    ))
+    # coffs table
+    coffs = _CHAR_OFFS_ENTRY[endian].array(n_chars+1)(*(
+        _CHAR_OFFS_ENTRY[endian](offset=_o)
+        for _o in offsets
+    ))
+    # add pointers to header
+    header.hoffs = header.size
+    header.coffs = header.hoffs + hoffs.size
+    header.bmps = header.coffs + coffs.size
+    header.width = ceildiv(strike.width, 8)
+    header.height = strike.height
+    # write output
+    outstream.write(b''.join((
+        bytes(header),
+        bytes(hoffs),
+        bytes(coffs),
+        strike.as_bytes(),
+    )))
