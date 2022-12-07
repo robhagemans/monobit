@@ -309,6 +309,7 @@ def _read_gdos(instream, endian):
     # loop over linked list of character ranges
     headers = []
     glyph_ranges = []
+    offset = 0
     while True:
         if not data:
             break
@@ -319,7 +320,8 @@ def _read_gdos(instream, endian):
         # if no next section given, we're done
         if not ext_header.next:
             break
-        data = data[ext_header.next:]
+        data = data[ext_header.next-offset:]
+        offset = ext_header.next
     glyphs = tuple(_g for _range in glyph_ranges for _g in _range)
     if any(
             len(set(tuple(getattr(_h, _attr) for _h in headers))) > 1
@@ -329,6 +331,8 @@ def _read_gdos(instream, endian):
             'Different font headers given for character ranges. '
             'Using first header.'
         )
+    # note that not all values in the first header make sense when applied
+    # to the whole font - e.g. codepage range is just for first section
     return Props(**vars(headers[0]), **vars(ext_header)), glyphs
 
 def _read_gdos_header(data, endian):
