@@ -126,7 +126,11 @@ _FNT_HEADER = {
         # * per UTILITY.A86, the high byte is the 'attribute value'
         # * whereas the low byte is the font id proper. so 0 <= font_id <= 255
         # * unless the 'use full font id' flag is set,
-        # * in which case the low byte is discarded
+        # * in which case the low byte is discarded.
+        # * The 'attribute' is a bit field including flags for
+        # * thicken (1) lighten (2) skew (4) underline (8) outline (10) shadow (20)
+        # * Presumably it's used for predefined italic fonts etc, so they
+        # * won't need to be generated algorithmically? or internal use only?
         font_id='word',
         # Face size (in points).
         point_size='word',
@@ -171,7 +175,11 @@ _FNT_HEADER = {
         lighten='word',
         # Skewing mask (rotated to determine when to perform additional rotation on
         # a character when skewing, usually 0x5555).
-        # * I have no idea what this means
+        # * What I think this means is this. 'Rotated' is used as in bit-rotate,
+        # * so the bits of the mask are rotated; when we get a 1 bit a row in the
+        # * glyph is pushed further to the right.
+        # * So a 0x5555 skew means a 1x2 shear in monobit terminology,
+        # * which agrees with the offset values being half of ascent/descent.
         skew='word',
         # flags, see structure above
         flags=_GDOS_FLAGS[_endian],
