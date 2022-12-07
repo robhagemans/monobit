@@ -68,6 +68,10 @@ def save_gdos(fonts, outstream, where=None, endianness:str='little'):
 # http://www.seasip.info/Gem/filefmt.html
 # http://www.verycomputer.com/10_34378d1abfb218c2_1.htm
 
+# * all above sources seem to be incomplete. see also the GEM source code,
+# * in particular EQUATES.A86 - found in GDOS.ZIP or at
+# * https://github.com/shanecoughlan/OpenGEM/blob/master/source/OpenGEM-7-RC3-SDK/OpenGEM-7-SDK/GEM%20VDI%20AND%20SOURCE%20CODE/GEM%203%20VDI%20source%20code/EQUATES.A86
+
 # storable code points
 _GDOS_RANGE = range(0, 256)
 
@@ -83,17 +87,21 @@ _GDOS_FLAGS = {
         # 1 Horizontal Offset Tables should be used.
         horiz_offs=bitfield('word', 1),
         # 2 Font data need not be byte-swapped.
+        #;Bit 2: Font image is in byteswapped format
         byteswapped=bitfield('word', 1),
         # 3 Font is mono-spaced.
         monospaced=bitfield('word', 1),
         unused4=bitfield('word', 1),
-        # extended properties exist
-        # also, bitmap is compressed
+        #;Bit 5: Extended font header
+        #;      - another reference gives 'compressed'
         extended=bitfield('word', 1),
         unused6=bitfield('word', 1),
         # not clear how these are used
+        #;Bit 7: Font supports DBCS characters (used internally
+        #;       by ViewMAX in DRDOS 6.0/V).
         dbcs_flag=bitfield('word', 1),
         unused8_12=bitfield('word', 5),
+        #;Bit 13: Use 'full font ID' - see below.
         full_id=bitfield('word', 1),
         unused14_15=bitfield('word', 2),
     ),
@@ -115,6 +123,10 @@ _GDOS_FLAGS = {
 _FNT_HEADER = {
     _endian: _BASE[_endian].Struct(
         # Face ID (must be unique).
+        # * per UTILITY.A86, the high byte is the 'attribute value'
+        # * whereas the low byte is the font id proper. so 0 <= font_id <= 255
+        # * unless the 'use full font id' flag is set,
+        # * in which case the low byte is discarded
         font_id='word',
         # Face size (in points).
         point_size='word',
@@ -129,6 +141,7 @@ _FNT_HEADER = {
         # Ascent line distance expressed as a positive offset from baseline.
         ascent='word',
         # Half line distance expressed as a positive offset from baseline.
+        # * Illustrations in various sources show this as the x-height
         half='word',
         # Descent line distance expressed as a positive offset from baseline.
         descent='word',
@@ -140,18 +153,25 @@ _FNT_HEADER = {
         max_cell_width='word',
         # Left offset
         # ;Amount character slants left when skewed
+        # * I assume this is descriptive, not prescriptive. Values tend to be
+        # * ~ ceil(descent/2) which makes sense if the skewed glyph was
+        # * generated keeping the baseline constant and with a 1x2 pitch
         left_offset='word',
         # Right offset
         # ;Amount character slants right
+        # * As with left-offset. Value tends to be ~ ceil(ascent/2)
         right_offset='word',
         # Thickening size (in pixels).
         thicken='word',
         # Underline size (in pixels).
         ul_size='word',
         # Lightening mask (used to eliminate pixels, usually 0x5555).
+        # * From screenshots, the lightening is done by a dither pattern that
+        # * looks like alternating 0x5555 and 0xaaaa
         lighten='word',
         # Skewing mask (rotated to determine when to perform additional rotation on
         # a character when skewing, usually 0x5555).
+        # * I have no idea what this means
         skew='word',
         # flags, see structure above
         flags=_GDOS_FLAGS[_endian],
@@ -170,28 +190,45 @@ _FNT_HEADER = {
     )
     for _endian in ('l', 'b')
 }
+
+# based on EQUATES.A86 in GEM source code
+# it seems either John Elliott's page missed out a few fields or there
+# are different versions of the extended header (for different GEM versions?)
+# this produces sensible results on the fonts included with OpenGEM
 _EXTENDED_HEADER = {
     _endian: _BASE[_endian].Struct(
         # Offset of next section of this font
         # ;from start of file (eg, another character
         # ;range). The next section will have its
         # ;own font header.
+        # ; next font header offset
+        # ; next font header segment
         next='dword',
-        # ;File offset of file data
+        # ; offset to use counter (low word)
+        # ; offset to use counter (high word)
+        use_count='dword',
+        # ; font file data offset
+        # ; font file data segment
         fdata_tbl='dword',
-        # ;Length of file data
+        # ; font file data size
         fdata_len='word',
-        # ;Reference count when the font is loaded
-        reserved_refcount='dword',
-        # ;Device flags
+        # ; font string index
+        strindex='word',
+        # ; low word of header LRU
+        # ; high word of header LRU
+        lru='dword',
+        # ; GDOS font management flags
         dflags='word',
-        # ;Full font ID
+        # ; full font id word
+        # * the full word replaces the font_id in the main header
+        # * which really is a byte although stored in a word field
         fullid='word',
         # ;Escape sequence buffer?
         buffer='38s',
         # ;If compressed, the size of this font segment
         # ;from the end of the header to the end of the
         # ;compressed data.
+        # ; compressed data size
         csize='word',
     )
     for _endian in ('l', 'b')
@@ -213,7 +250,8 @@ _EXTENDED_HEADER = {
 # This table is not often used.
 
 # note that the atari compendium descriprtion disagrees with John Elliott,
-# but is also much less clear so I'm using John Elliott's
+# but is also much less clear so I'm using John Elliott's which seems to produce
+# sensible results on real ifiles.
 _HORIZ_OFFS_ENTRY = {
     _endian: _BASE[_endian].Struct(
         pre='int8',
@@ -303,6 +341,7 @@ def _read_gdos_header(data, endian):
         ext_header = _EXTENDED_HEADER[endian].from_bytes(
             data, _FNT_HEADER[endian].size
         )
+        logging.debug(ext_header)
     else:
         ext_header = _EXTENDED_HEADER[endian]()
     if header.flags.horiz_offs:
@@ -356,6 +395,12 @@ def _read_strike(data, header):
         )
     ]
 
+# description of the run-length encoding scheme
+# from DECODE.A86 in the GDOS sources
+# see e.g. https://github.com/shanecoughlan/OpenGEM
+# see also https://github.com/th-otto/gemfedit/blob/master/unix/decode.c
+# for a C implementation of the algorithm
+#
 # https://github.com/shanecoughlan/OpenGEM/blob/master/source/OpenGEM-7-RC1-SDK/OpenGEM-7-SDK/GEM%20VDI%20AND%20SOURCE%20CODE/GEM%203%20VDI%20source%20code/DECODE.A86#L50
 # ;**************************************************************************
 # ;Now for the tricky bit - decoding the data.
@@ -432,6 +477,7 @@ def _read_compressed_strike(data, header, ext_header, endian):
             ofs += idx_zero + 1
     # (undocumented?) decoding produces always 1 or more zeroes at the start
     # so remove the first zero to ensure it's possible to start with a 1
+    # this is what's meant by the 'imagined zero' mentioned in other sources?
     strike = [
         tuple(bits[_s:_s+header.width*8])
         for _s in range(1, n_strike_bits+1, header.width*8)
