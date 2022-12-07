@@ -398,49 +398,49 @@ def _read_compressed_strike(data, header, ext_header, endian):
         bmp_bytes[0::2], bmp_bytes[1::2] = bmp_bytes[1::2], bmp_bytes[0::2]
     compressed_bmp = bytes_to_bits(bmp_bytes)
     ofs = 0
-    strike = []
-    row = None
-    next = []
-    for _y in range(header.height):
-        last_row = row
-        row = next
-        while True:
-            if ofs >= len(compressed_bmp) or len(row) >= header.width*8:
-                row, next = row[:header.width*8], row[header.width*8:]
-                # convert line to xor of itself and previous
-                if last_row:
-                    row = [_r^_l for _r, _l in zip(row, last_row)]
-                strike.append(row)
-                break
+    bits = []
+    n_strike_bits = header.height * header.width * 8
+    while ofs < len(compressed_bmp) and len(bits) < n_strike_bits:
+        try:
+            idx_one = compressed_bmp.index(True, ofs) - ofs
+        except ValueError:
+            idx_one = len(compressed_bmp) - ofs
+        if idx_one:
+            # include the leading one
+            field = compressed_bmp[ofs+idx_one:ofs+2*idx_one+3]
+            ofs += 2*idx_one+3
+        else:
+            # 1-8 case, skip the leading one
+            field = compressed_bmp[ofs+1:ofs+4]
+            ofs += 4
+        field = ''.join('1' if _b else '0' for _b in field)
+        n_zeros = int(field, 2) + 1
+        max = 2**16
+        if n_zeros > max:
+            # error
+            raise FileFormatError('could not read compressed bitmap.')
+        elif n_zeros == max:
+            # special case, no alternation
+            bits.extend([False]*(max-1))
+        else:
+            bits.extend([False]*n_zeros)
             try:
-                idx_one = compressed_bmp.index(True, ofs) - ofs
+                idx_zero = compressed_bmp.index(False, ofs) - ofs
             except ValueError:
-                idx_one = len(compressed_bmp) - ofs
-            if idx_one:
-                # include the leading one
-                field = compressed_bmp[ofs+idx_one:ofs+2*idx_one+3]
-                ofs += 2*idx_one+3
-            else:
-                # 1-8 case, skip the leading one
-                field = compressed_bmp[ofs+1:ofs+4]
-                ofs += 4
-            field = ''.join('1' if _b else '0' for _b in field)
-            n_zeros = int(field, 2) + 1
-            max = 2**16
-            if n_zeros > max:
-                # error
-                raise FileFormatError('could not read compressed bitmap.')
-            elif n_zeros == max:
-                # special case, no alternation
-                row.extend([False]*(max-1))
-            else:
-                row.extend([False]*n_zeros)
-                try:
-                    idx_zero = compressed_bmp.index(False, ofs) - ofs
-                except ValueError:
-                    idx_zero = len(compressed_bmp) - ofs
-                row.extend([True]*(idx_zero+1))
-                ofs += idx_zero + 1
+                idx_zero = len(compressed_bmp) - ofs
+            bits.extend([True]*(idx_zero+1))
+            ofs += idx_zero + 1
+    # (undocumented?) decoding produces always 1 or more zeroes at the start
+    # so remove the first zero to ensure it's possible to start with a 1
+    strike = [
+        tuple(bits[_s:_s+header.width*8])
+        for _s in range(1, n_strike_bits+1, header.width*8)
+    ]
+    # convert line to xor of itself and previous (cumulative)
+    prev = (0,) * header.width*8
+    for n, _ in enumerate(strike):
+        strike[n] = tuple(_r^_l for _r, _l in zip(strike[n], prev))
+        prev = strike[n]
     return strike
 
 
