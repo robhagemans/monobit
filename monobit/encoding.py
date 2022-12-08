@@ -1249,7 +1249,10 @@ def encoder(initialiser):
         return charmaps[initialiser]
     except KeyError:
         pass
-    return Charmap.load(initialiser)
+    try:
+        return Charmap.load(initialiser)
+    except NotFoundError:
+        return None
 
 
 charmaps = CharmapRegistry()
