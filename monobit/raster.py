@@ -197,6 +197,8 @@ class Raster:
     def from_bytes(cls, byteseq, width, height=NOT_SET, *, align='left'):
         """Create raster from bytes/bytearray/int sequence."""
         if width == 0 or height == 0:
+            if height is NOT_SET:
+                height = 0
             return cls.blank(width, height)
         if height is not NOT_SET:
             stride = 8 * (len(byteseq) // height)
