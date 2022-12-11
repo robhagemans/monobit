@@ -157,21 +157,24 @@ _FNT_HEADER = {
         max_cell_width='word',
         # Left offset
         # ;Amount character slants left when skewed
-        # * I assume this is descriptive, not prescriptive. Values tend to be
-        # * ~ ceil(descent/2) which makes sense if the skewed glyph was
-        # * generated keeping the baseline constant and with a 1x2 pitch
+        # * Origin to be moved left by this amount before drawing skewed glyph
+        # * Values tend to be ~ descent/2 which makes sense if the skewed glyph
+        # * is generated keeping the baseline constant and with a 1x2 pitch
         left_offset='word',
         # Right offset
         # ;Amount character slants right
-        # * As with left-offset. Value tends to be ~ ceil(ascent/2)
+        # * Origin to be moved back (left) by this number of pixels after
+        # * drawing skewed glyph. Value tends to be ~ ascent/2
         right_offset='word',
         # Thickening size (in pixels).
         thicken='word',
         # Underline size (in pixels).
         ul_size='word',
         # Lightening mask (used to eliminate pixels, usually 0x5555).
-        # * From screenshots, the lightening is done by a dither pattern that
-        # * looks like alternating 0x5555 and 0xaaaa
+        # * From GUI screenshots, the lightening is done by a dither pattern
+        # * that looks like alternating 0x5555 and 0xaaaa, though on the
+        # * GEM character styles image in "Atari ST Graphics and Sound"
+        # * it appears to be 0x5555 applied on both axes
         lighten='word',
         # Skewing mask (rotated to determine when to perform additional rotation on
         # a character when skewing, usually 0x5555).
