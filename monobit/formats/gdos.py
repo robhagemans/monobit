@@ -80,52 +80,71 @@ _BASE = {'l': le, 'b': be}
 
 # we need to specify the flags structure separately
 # due to the way ctypes applies endianness to bitfields
-_GDOS_FLAGS = {
+_FH_FLAGS = {
     'l': le.Struct(
         # 0 Contains System Font
-        system=bitfield('word', 1),
+        default=bitfield('word', 1),
         # 1 Horizontal Offset Tables should be used.
-        horiz_offs=bitfield('word', 1),
+        horz_off=bitfield('word', 1),
         # 2 Font data need not be byte-swapped.
         #;Bit 2: Font image is in byteswapped format
-        byteswapped=bitfield('word', 1),
+        # * interpretation - this flag should be set if the file is in
+        # * standard == Motorola == big-endian format
+        stdform=bitfield('word', 1),
         # 3 Font is mono-spaced.
-        monospaced=bitfield('word', 1),
+        monospace=bitfield('word', 1),
         unused4=bitfield('word', 1),
         #;Bit 5: Extended font header
         #;      - another reference gives 'compressed'
-        extended=bitfield('word', 1),
+        # * EQUATES.A86 has
+        # * COMPRESSED		equ	0020h	; font data compressed flag
+        compressed=bitfield('word', 1),
         unused6=bitfield('word', 1),
-        # not clear how these are used
         #;Bit 7: Font supports DBCS characters (used internally
         #;       by ViewMAX in DRDOS 6.0/V).
+        # * internal use only, ignore
         dbcs_flag=bitfield('word', 1),
         unused8_12=bitfield('word', 5),
         #;Bit 13: Use 'full font ID' - see below.
-        full_id=bitfield('word', 1),
+        use_full_id=bitfield('word', 1),
         unused14_15=bitfield('word', 2),
     ),
     'b': be.Struct(
         unused14_15=bitfield('word', 2),
-        full_id=bitfield('word', 1),
+        use_full_id=bitfield('word', 1),
         unused8_12=bitfield('word', 5),
         dbcs_flag=bitfield('word', 1),
         unused6=bitfield('word', 1),
-        extended=bitfield('word', 1),
+        compressed=bitfield('word', 1),
         unused4=bitfield('word', 1),
-        monospaced=bitfield('word', 1),
-        byteswapped=bitfield('word', 1),
-        horiz_offs=bitfield('word', 1),
-        system=bitfield('word', 1),
+        monospace=bitfield('word', 1),
+        stdform=bitfield('word', 1),
+        horz_off=bitfield('word', 1),
+        default=bitfield('word', 1),
     ),
 }
+
+
+# style flags (font_id high byte)
+# from fontdef.h in SDSDL: GEM video driver for SDL
+# /* style bits */
+#define	THICKEN	0x001
+#define	LIGHT	0x002
+#define	SKEW	0x004
+#define	UNDER	0x008
+#define	OUTLINE 0x010
+#define	SHADOW	0x020
+#define ROTODD  0x040
+#define ROTHIGH 0x080
+#define	ROTATE	0x0c0
+#define	SCALE	0x100
 
 _FNT_HEADER = {
     _endian: _BASE[_endian].Struct(
         # Face ID (must be unique).
         # * per UTILITY.A86, the high byte is the 'attribute value'
         # * whereas the low byte is the font id proper. so 0 <= font_id <= 255
-        # * unless the 'use full font id' flag is set,
+        # * unless the 'use_full_id' flag is set,
         # * in which case the low byte is discarded.
         # * The 'attribute' is a bit field including flags for
         # * thicken (1) lighten (2) skew (4) underline (8) outline (10) shadow (20)
@@ -133,13 +152,13 @@ _FNT_HEADER = {
         # * won't need to be generated algorithmically? or internal use only?
         font_id='word',
         # Face size (in points).
-        point_size='word',
+        point='word',
         # Name, ASCII, 0-terminated
         name='32s',
         # Lowest character index in face (usually 32 for disk-loaded fonts).
-        first_char='word',
+        first_ade='word',
         # Highest character index in face.
-        last_char='word',
+        last_ade='word',
         # Top line distance expressed as a positive offset from baseline.
         top='word',
         # Ascent line distance expressed as a positive offset from baseline.
@@ -185,19 +204,19 @@ _FNT_HEADER = {
         # * which agrees with the offset values being half of ascent/descent.
         skew='word',
         # flags, see structure above
-        flags=_GDOS_FLAGS[_endian],
+        flags=_FH_FLAGS[_endian],
         # Offset from start of file to horizontal offset table.
-        hoffs='dword',
+        hor_table='dword',
         # Offset from start of file to character offset table.
-        coffs='dword',
+        off_table='dword',
         # Offset from start of file to font data.
-        bmps='dword',
+        dat_table='dword',
         # Form width (in bytes).
-        width='word',
+        form_width='word',
         # Form height (in scanlines).
-        height='word',
+        form_height='word',
         # pointer to the next font (set by GDOS after loading).
-        reserved_nextfont='dword',
+        next_font='dword',
     )
     for _endian in ('l', 'b')
 }
@@ -214,33 +233,33 @@ _EXTENDED_HEADER = {
         # ;own font header.
         # ; next font header offset
         # ; next font header segment
-        next='dword',
+        next_sect='dword',
         # ; offset to use counter (low word)
         # ; offset to use counter (high word)
         use_count='dword',
         # ; font file data offset
         # ; font file data segment
-        fdata_tbl='dword',
+        file_data_off='dword',
         # ; font file data size
-        fdata_len='word',
+        data_size='word',
         # ; font string index
         strindex='word',
         # ; low word of header LRU
         # ; high word of header LRU
-        lru='dword',
+        hdrlru='dword',
         # ; GDOS font management flags
-        dflags='word',
+        gdos_flags='word',
         # ; full font id word
         # * the full word replaces the font_id in the main header
         # * which really is a byte although stored in a word field
-        fullid='word',
+        full_id='word',
         # ;Escape sequence buffer?
         buffer='38s',
         # ;If compressed, the size of this font segment
         # ;from the end of the header to the end of the
         # ;compressed data.
         # ; compressed data size
-        csize='word',
+        compressed_size='word',
     )
     for _endian in ('l', 'b')
 }
@@ -316,19 +335,23 @@ def _read_gdos(instream, endian):
     while True:
         if not data:
             break
-        header, ext_header, coffs, hoffs, endian = _read_gdos_header(data, endian)
-        glyphs = _read_gdos_glyphs(data, header, ext_header, coffs, hoffs, endian)
+        header, ext_header, off_table, hor_table, endian = _read_gdos_header(
+            data, endian
+        )
+        glyphs = _read_gdos_glyphs(
+            data, header, ext_header, off_table, hor_table, endian
+        )
         headers.append(header)
         glyph_ranges.append(glyphs)
         # if no next section given, we're done
-        if not ext_header.next:
+        if not ext_header.next_sect:
             break
-        data = data[ext_header.next-offset:]
-        offset = ext_header.next
+        data = data[ext_header.next_sect-offset:]
+        offset = ext_header.next_sect
     glyphs = tuple(_g for _range in glyph_ranges for _g in _range)
     if any(
             len(set(tuple(getattr(_h, _attr) for _h in headers))) > 1
-            for _attr in ('font_id', 'name', 'point_size')
+            for _attr in ('font_id', 'name', 'point')
         ):
         logging.warning(
             'Different font headers given for character ranges. '
@@ -343,7 +366,7 @@ def _read_gdos_header(data, endian):
     endian = endian[:1].lower()
     header = _FNT_HEADER[endian or 'l'].from_bytes(data)
     if not endian:
-        if header.point_size >= 256:
+        if header.point >= 256:
             # probably a big-endian font
             endian = 'b'
             header = _FNT_HEADER[endian].from_bytes(data)
@@ -351,50 +374,50 @@ def _read_gdos_header(data, endian):
         else:
             endian = 'l'
             logging.info('Treating as little-endian based on point-size field')
-    n_chars = header.last_char - header.first_char + 1
+    n_chars = header.last_ade - header.first_ade + 1
     logging.debug(header)
-    if header.flags.extended:
+    if header.flags.compressed:
         ext_header = _EXTENDED_HEADER[endian].from_bytes(
             data, _FNT_HEADER[endian].size
         )
         logging.debug(ext_header)
     else:
         ext_header = _EXTENDED_HEADER[endian]()
-    if header.flags.horiz_offs:
-        hoffs = _HORIZ_OFFS_ENTRY[endian].array(n_chars).from_bytes(
-            data, header.hoffs
+    if header.flags.horz_off:
+        hor_table = _HORIZ_OFFS_ENTRY[endian].array(n_chars).from_bytes(
+            data, header.hor_table
         )
     else:
-        hoffs = [_HORIZ_OFFS_ENTRY[endian]()] * n_chars
-    coffs = _CHAR_OFFS_ENTRY[endian].array(n_chars+1).from_bytes(
-        data, header.coffs
+        hor_table = [_HORIZ_OFFS_ENTRY[endian]()] * n_chars
+    off_table = _CHAR_OFFS_ENTRY[endian].array(n_chars+1).from_bytes(
+        data, header.off_table
     )
-    if header.flags.byteswapped and endian != 'b':
+    if header.flags.stdform and endian != 'b':
         logging.warning('Ignoring big-endian flag')
-    if not header.flags.byteswapped and endian != 'l':
+    if not header.flags.stdform and endian != 'l':
         logging.warning('Ignoring little-endian flag')
-    return header, ext_header, coffs, hoffs, endian
+    return header, ext_header, off_table, hor_table, endian
 
-def _read_gdos_glyphs(data, header, ext_header, coffs, hoffs, endian):
+def _read_gdos_glyphs(data, header, ext_header, off_table, hor_table, endian):
     """Read glyphs from bitmap strike data."""
     # bitmap strike
-    if header.flags.extended:
+    if header.flags.compressed:
         strike = _read_compressed_strike(data, header, ext_header, endian)
     else:
         strike = _read_strike(data, header)
     # extract glyphs
     pixels = [
         [_row[_loc.offset:_next.offset] for _row in strike]
-        for _loc, _next in zip(coffs[:-1], coffs[1:])
+        for _loc, _next in zip(off_table[:-1], off_table[1:])
     ]
     glyphs = [
         Glyph(
             _pix, codepoint=_ord,
-            left_bearing=-_hoffs.pre, right_bearing=-_hoffs.post
+            left_bearing=-_hor_table.pre, right_bearing=-_hor_table.post
         )
-        for _ord, (_pix, _hoffs) in enumerate(
-            zip(pixels, hoffs),
-            start=header.first_char
+        for _ord, (_pix, _hor_table) in enumerate(
+            zip(pixels, hor_table),
+            start=header.first_ade
         )
     ]
     return glyphs
@@ -403,11 +426,11 @@ def _read_gdos_glyphs(data, header, ext_header, coffs, hoffs, endian):
 def _read_strike(data, header):
     """Read uncompressed bitmap strike."""
     return [
-        bytes_to_bits(data[_offset : _offset+header.width])
+        bytes_to_bits(data[_offset : _offset+header.form_width])
         for _offset in range(
-            header.bmps,
-            header.bmps + header.width*header.height,
-            header.width
+            header.dat_table,
+            header.dat_table + header.form_width*header.form_height,
+            header.form_width
         )
     ]
 
@@ -451,16 +474,16 @@ def _read_strike(data, header):
 
 def _read_compressed_strike(data, header, ext_header, endian):
     """Read run length encoded bitmap strike."""
-    if ext_header.next:
-        bmp_bytes = list(data[header.bmps:ext_header.next])
+    if ext_header.next_sect:
+        bmp_bytes = list(data[header.dat_table:ext_header.next_sect])
     else:
-        bmp_bytes = list(data[header.bmps:])
+        bmp_bytes = list(data[header.dat_table:])
     if endian == 'l':
         bmp_bytes[0::2], bmp_bytes[1::2] = bmp_bytes[1::2], bmp_bytes[0::2]
     compressed_bmp = bytes_to_bits(bmp_bytes)
     ofs = 0
     bits = []
-    n_strike_bits = header.height * header.width * 8
+    n_strike_bits = header.form_height * header.form_width * 8
     while ofs < len(compressed_bmp) and len(bits) < n_strike_bits:
         try:
             idx_one = compressed_bmp.index(True, ofs) - ofs
@@ -495,11 +518,11 @@ def _read_compressed_strike(data, header, ext_header, endian):
     # so remove the first zero to ensure it's possible to start with a 1
     # this is what's meant by the 'imagined zero' mentioned in other sources?
     strike = [
-        tuple(bits[_s:_s+header.width*8])
-        for _s in range(1, n_strike_bits+1, header.width*8)
+        tuple(bits[_s:_s+header.form_width*8])
+        for _s in range(1, n_strike_bits+1, header.form_width*8)
     ]
     # convert line to xor of itself and previous (cumulative)
-    prev = (0,) * header.width*8
+    prev = (0,) * header.form_width*8
     for n, _ in enumerate(strike):
         strike[n] = tuple(_r^_l for _r, _l in zip(strike[n], prev))
         prev = strike[n]
@@ -510,7 +533,7 @@ def _convert_from_gdos(gdos_props):
     """Convert GDOS font properties."""
     props = Props(
         name=gdos_props.name.decode('latin-1', errors='ignore'),
-        point_size=gdos_props.point_size,
+        point_size=gdos_props.point,
         shift_up=-gdos_props.bottom,
         ascent=gdos_props.ascent+1,
         descent=gdos_props.descent,
@@ -551,22 +574,22 @@ def _convert_to_gdos(font, endianness):
     else:
         add_props = {}
     endian = endianness[0].lower()
-    flags = _GDOS_FLAGS[endian](
-        system=add_props.get('font-id', 255) == 1,
-        horiz_offs=1,
-        byteswapped=endian == 'b',
-        monospaced=font.spacing != 'proportional',
-        extended=0,
+    flags = _FH_FLAGS[endian](
+        default=add_props.get('font-id', 255) == 1,
+        horz_off=1,
+        stdform=endian == 'b',
+        monospace=font.spacing in ('monospace', 'character-cell'),
+        compressed=0,
         dbcs_flag=0,
-        full_id=0,
+        use_full_id=0,
     )
     header = _FNT_HEADER[endian](
         # TODO -  base on name using list, override parameter?
         font_id=add_props.get('font-id', 255),
-        point_size=font.point_size,
+        point=font.point_size,
         name=font.name.encode('ascii', 'replace'),
-        first_char=int(min(font.get_codepoints())),
-        last_char=int(max(font.get_codepoints())),
+        first_ade=int(min(font.get_codepoints())),
+        last_ade=int(max(font.get_codepoints())),
         top=font.raster_size.y+add_shift_up,
         ascent=font.ascent-1,
         # Half line distance expressed as a positive offset from baseline.
@@ -587,7 +610,7 @@ def _convert_to_gdos(font, endianness):
         lighten=add_props.get('lighten_mask', 0x5555),
         skew=add_props.get('skew_mask', 0x5555),
         flags=flags,
-        #hoffs, coffs, bmps, width, height
+        #hor_table, off_table, dat_table, form_width, form_height
     )
     return header, font.glyphs
 
@@ -635,32 +658,32 @@ def _generate_bitmap_strike(glyphs):
 def _write_gdos(outstream, header, glyphs, endianness):
     """Write gdos properties and glyphs to binary file."""
     endian = endianness[0].lower()
-    # generate strike and coffs table
+    # generate strike and off_table table
     strike, offsets = _generate_bitmap_strike(glyphs)
     n_chars = len(glyphs)
-    # hoffs table - based on neg bearings
-    hoffs = _HORIZ_OFFS_ENTRY[endian].array(n_chars)(*(
+    # horizontal offsets - based on neg bearings
+    hor_table = _HORIZ_OFFS_ENTRY[endian].array(n_chars)(*(
         _HORIZ_OFFS_ENTRY[endian](
             pre=-_g.left_bearing,
             post=-_g.right_bearing,
         )
         for _g in glyphs
     ))
-    # coffs table
-    coffs = _CHAR_OFFS_ENTRY[endian].array(n_chars+1)(*(
+    # offsets table
+    off_table = _CHAR_OFFS_ENTRY[endian].array(n_chars+1)(*(
         _CHAR_OFFS_ENTRY[endian](offset=_o)
         for _o in offsets
     ))
     # add pointers to header
-    header.hoffs = header.size
-    header.coffs = header.hoffs + hoffs.size
-    header.bmps = header.coffs + coffs.size
-    header.width = ceildiv(strike.width, 8)
-    header.height = strike.height
+    header.hor_table = header.size
+    header.off_table = header.hor_table + hor_table.size
+    header.dat_table = header.off_table + off_table.size
+    header.form_width = ceildiv(strike.width, 8)
+    header.form_height = strike.height
     # write output
     outstream.write(b''.join((
         bytes(header),
-        bytes(hoffs),
-        bytes(coffs),
+        bytes(hor_table),
+        bytes(off_table),
         strike.as_bytes(),
     )))
