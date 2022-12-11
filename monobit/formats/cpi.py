@@ -200,6 +200,11 @@ def _parse_cp(data, cpeh_offset, header_id=_ID_MS, drdos_effh=None, standalone=F
                 device=device,
                 source_format=f'CPI ({_FORMAT_NAME[header_id]})',
             )
+            logging.debug(
+                f'Reading {fh.width}x{fh.height} font '
+                f'for codepage {cpeh.codepage} '
+                f'in {_FORMAT_NAME[header_id]} format.'
+            )
             # apparently never used
             if fh.xaspect or fh.yaspect:
                 # not clear how this would be interpreted...
@@ -225,6 +230,11 @@ def _parse_cp(data, cpeh_offset, header_id=_ID_MS, drdos_effh=None, standalone=F
                         fh.width
                     ))
                 fh_offset += _SCREEN_FONT_HEADER.size
+            # add codepoints and character labels
+            cells = tuple(
+                _g.modify(codepoint=_cp)
+                for _cp, _g in enumerate(cells)
+            )
             font = Font(cells, **props)
             font = font.label()
             fonts.append(font)

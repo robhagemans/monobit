@@ -182,8 +182,8 @@ def tagger(initialiser):
 tagmaps = {
     'char': CharTagger(),
     'codepoint': CodepointTagger(),
-    'unicode': UnicodeTagger(),
-    'unicode-with-char': UnicodeTagger(include_char=True),
+    'name': UnicodeTagger(),
+    'desc': UnicodeTagger(include_char=True),
     'adobe': AdobeTagger.load('charmaps/agl/aglfn.txt', separator=';', unicode_column=0, tag_column=1),
     'sgml': SGMLTagger.load('charmaps/misc/SGML.TXT', separator='\t', unicode_column=2),
 }

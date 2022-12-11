@@ -946,6 +946,9 @@ class Font:
         # default action: label chars with font encoding
         if nargs == 0 and self.encoding:
             char_from = encoder(self.encoding)
+            if not char_from:
+                logging.warning(f'Encoding `{self.encoding}` not recognised.')
+                return self
         if overwrite or not self.encoding:
             if char_from:
                 self.encoding = char_from.name
