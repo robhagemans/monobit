@@ -545,6 +545,13 @@ def is_printable(char):
         for _c in char
     )
 
+def is_whitespace(char):
+    """Check if a sequence is whitespace."""
+    return all(
+        unicodedata.category(_c) == 'Zs'
+        for _c in char
+    )
+
 def is_private_use(char):
     """Check if any char is in the private use area."""
     return any(

@@ -14,7 +14,7 @@ except ImportError:
     from functools import lru_cache
     cache = lru_cache()
 
-from .encoding import is_graphical
+from .encoding import is_graphical, is_whitespace
 from .labels import Codepoint, Char, Tag, to_label
 from .raster import Raster, NOT_SET, turn_method
 from .properties import (
@@ -319,8 +319,10 @@ class Glyph:
         if codepoint_from and (overwrite or not self.codepoint):
             return self.modify(codepoint=codepoint_from.codepoint(*labels))
         # use codepage to find char if not set
-        if char_from and(overwrite or not self.char):
-            return self.modify(char=char_from.char(*labels))
+        if char_from and (overwrite or not self.char):
+            char = char_from.char(*labels)
+            if not self.is_blank() or is_whitespace(char):
+                return self.modify(char=char)
         if tag_from:
             return self.modify(tag=tag_from.tag(*labels))
         if comment_from:
