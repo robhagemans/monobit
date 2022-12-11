@@ -15,8 +15,9 @@ from ..font import Font
 from ..glyph import Glyph
 from ..streams import FileFormatError
 from ..binary import bytes_to_bits, ceildiv
-
 from ..raster import Raster
+
+# common utilities
 from .windows import _normalise_metrics
 
 
@@ -559,7 +560,7 @@ def _convert_to_gdos(font, endianness):
     """Convert monobit font to GDOS properties and glyphs."""
     # ensure codepoint values are set if possible
     font = font.label(codepoint_from=font.encoding)
-    font = _subset_storable(font)
+    font = _subset_storable(font, _GDOS_RANGE)
     font = _make_contiguous(font)
     font, add_shift_up = _normalise_metrics(font)
     # check glyph dimensions / bitfield ranges
@@ -614,15 +615,15 @@ def _convert_to_gdos(font, endianness):
     )
     return header, font.glyphs
 
-def _subset_storable(font):
+def _subset_storable(font, storable_range):
     """Select glyphs that can be included."""
     # only codepoints 0--255 inclusive
-    if any(int(_c) not in _GDOS_RANGE for _c in font.get_codepoints()):
+    if any(int(_c) not in storable_range for _c in font.get_codepoints()):
         logging.warning(
-            'GDOS format can only store codepoints 0--255. '
+            'Output format can only store codepoints 0--255. '
             'Not all glyphs in this font can be included.'
         )
-    font = font.subset(codepoints=set(_GDOS_RANGE))
+    font = font.subset(codepoints=set(storable_range))
     return font
 
 def _make_contiguous(font):
@@ -639,7 +640,7 @@ def _make_contiguous(font):
         glyphs = glyphs[:-1]
     if not glyphs:
         raise FileFormatError(
-            'GDOS format: no glyphs in storable codepoint range 0--255.'
+            'Output format: no glyphs in storable codepoint range 0--255.'
         )
     font = font.modify(glyphs)
     return font

@@ -6,6 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import logging
+from itertools import accumulate
 
 from ..struct import bitfield, little_endian as le, big_endian as be
 from ..properties import Props
@@ -14,6 +15,8 @@ from ..font import Font
 from ..glyph import Glyph
 from ..streams import FileFormatError
 
+# common utilities
+from .gdos import _subset_storable
 
 
 @loaders.register(name='vfont', magic=(b'\x01\x1e', b'\x1e\x01'))
@@ -28,16 +31,17 @@ def load_vfont(instream, where=None):
 
 
 @savers.register(linked=load_vfont)
-def save_vfont(fonts, outstream, where=None):
+def save_vfont(fonts, outstream, where=None, endianness:str='little'):
     """Save font to vfont file."""
     if len(fonts) > 1:
         raise FileFormatError('Can only save one font to vfont file.')
     font, = fonts
+    endian = endianness[0].lower()
     vfont_props, vfont_glyphs = _convert_to_vfont(font)
     logging.info('vfont properties:')
     for line in str(vfont_props).splitlines():
         logging.info('    ' + line)
-    _write_fzx(outstream, vfont_props, vfont_glyphs)
+    _write_vfont(outstream, vfont_props, vfont_glyphs, endian)
 
 
 ################################################################################
@@ -46,6 +50,7 @@ def save_vfont(fonts, outstream, where=None):
 # http://www-lehre.inf.uos.de/~sp/Man/_Man_SunOS_4.1.3_html/html5/vfont.5.html
 # https://web.archive.org/web/20210303052254/https://remilia.otherone.xyz/man/2.10BSD/5/vfont
 
+_VFONT_MAGIC = 0o436
 
 # storable code points
 _VFONT_RANGE = range(0, 256)
@@ -65,7 +70,7 @@ _BASE = {'l': le, 'b': be}
 _HEADER = {
     _endian: _BASE[_endian].Struct(
         magic='short',
-        size='uint16',
+        size_='uint16',
         maxx='short',
         maxy='short',
         xtnd='short',
@@ -106,7 +111,7 @@ def _read_vfont(instream):
     if header.magic == 0x1e01:
         endian = 'b'
         header = _HEADER[endian].from_bytes(data)
-    if header.magic != 0o436:
+    if header.magic != _VFONT_MAGIC:
         raise FileFormatError(
             'Not a vfont file: '
             f'incorrect magic number 0o{header.magic:o} != 0o436'
@@ -134,14 +139,6 @@ def _read_vfont(instream):
     return Props(**vars(header)), glyphs
 
 
-def _write_vfont(outstream, vfont_props, vfont_glyphs):
-    """Write vfont properties and glyphs to binary file."""
-    raise NotImplementedError()
-
-
-###############################################################################
-# metrics conversion
-
 def _convert_from_vfont(vfont_glyphs):
     """Convert vfont properties and glyphs to standard."""
     # set glyph properties
@@ -161,6 +158,66 @@ def _convert_from_vfont(vfont_glyphs):
     )
     return glyphs
 
-def _convert_to_fzx(font):
+
+###############################################################################
+# writer
+
+def _convert_to_vfont(font):
     """Convert monobit font to vfont properties and glyphs."""
-    raise NotImplementedError()
+    # ensure codepoint values are set if possible
+    font = font.label(codepoint_from=font.encoding)
+    font = _subset_storable(font, _VFONT_RANGE)
+    font = _make_contiguous(font)
+    # set glyph properties
+    glyphs = tuple(
+        _glyph.modify(
+            vfont=dict(
+                left=-_glyph.left_bearing,
+                right=_glyph.width+_glyph.left_bearing,
+                down=-_glyph.shift_up,
+                up=_glyph.height+_glyph.shift_up,
+                width=_glyph.advance_width,
+            )
+        )
+        for _glyph in font.glyphs
+    )
+    props = dict(
+        maxx=max(_g.width for _g in glyphs),
+        maxy=max(_g.height for _g in glyphs),
+    )
+    return props, glyphs
+
+
+def _write_vfont(outstream, vfont_props, vfont_glyphs, endian):
+    """Write vfont properties and glyphs to binary file."""
+    glyph_bytes = tuple(_g.as_bytes() for _g in vfont_glyphs)
+    offsets = (0,) + tuple(accumulate(len(_g) for _g in glyph_bytes))
+    dispatch = _DISPATCH[endian].array(len(vfont_glyphs))(*(
+        _DISPATCH[endian](
+            addr=_o if  len(_b) else 0,
+            nbytes=len(_b),
+            **_g.vfont
+        )
+        for _b, _g, _o in zip(glyph_bytes, vfont_glyphs, offsets)
+    ))
+    bitmap = b''.join(glyph_bytes)
+    header = _HEADER[endian](
+        magic=_VFONT_MAGIC,
+        size_=len(bitmap),
+        **vfont_props
+    )
+    outstream.write(
+        bytes(header)
+        + bytes(dispatch)
+        + bitmap
+    )
+
+
+def _make_contiguous(font):
+    """Get contiguous range, fill gaps with empties."""
+    glyphs = tuple(
+        font.get_glyph(codepoint=_cp, missing='empty').modify(codepoint=_cp)
+        for _cp in _VFONT_RANGE
+    )
+    font = font.modify(glyphs)
+    return font
