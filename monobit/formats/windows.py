@@ -941,7 +941,7 @@ def _normalise_metrics(font):
     ord_glyphs = tuple(
         _g.expand(
             # bring all glyphs to same height
-            top=font.raster_size.y-_g.height,
+            top=max(0, font.raster_size.y-_g.height - add_shift_up),
             # expand into horizontal bearings
             left=max(0, _g.left_bearing),
             right=max(0, _g.right_bearing),

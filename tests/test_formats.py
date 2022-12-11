@@ -254,6 +254,12 @@ class TestFormats(BaseTester):
         )
         self.assertEqual(len(font.glyphs), 194)
 
+    def test_export_gdos(self):
+        """Test exporting flf files."""
+        file = self.temp_path / '4x6.gft'
+        monobit.save(self.fixed4x6, file, format='gdos')
+        self.assertTrue(os.path.getsize(file) > 0)
+
 
 if __name__ == '__main__':
     unittest.main()
