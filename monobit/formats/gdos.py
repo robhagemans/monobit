@@ -352,6 +352,7 @@ def _read_gdos_header(data, endian):
             endian = 'l'
             logging.info('Treating as little-endian based on point-size field')
     n_chars = header.last_char - header.first_char + 1
+    logging.debug(header)
     if header.flags.extended:
         ext_header = _EXTENDED_HEADER[endian].from_bytes(
             data, _FNT_HEADER[endian].size
