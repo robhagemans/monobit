@@ -46,7 +46,9 @@ _ENCODING_FILES = (
         # the xorg encoding also adds some PUA mappings on undefined code points
         ('microsoft/WINDOWS/CP874.TXT', 'windows-874', 'ibm-1162', 'tis620-2'),
         # japanese shift-jis
-        ('microsoft/WINDOWS/CP932.TXT', 'windows-932', 'windows-31j', 'cp943c', 'ibm-943', 'ms-kanji', 'windows-shift-jis'),
+        ('microsoft/WINDOWS/CP932.TXT', 'windows-932', 'windows-31j', 'ms-kanji', 'windows-shift-jis'),
+        # ibm variant adds graphical characters
+        ('microsoft/WINDOWS/CP932.TXT', 'ibm-943', 'cp943c'),
         # simplified chinese gbk
         # use more extensive version from icu by default
         #'microsoft/WINDOWS/CP936.TXT', 'windows-936', 'ibm-1386'),
@@ -363,8 +365,9 @@ _ENCODING_FILES = (
         ('dkuug/iso646-jp', 'iso646-jp', 'iso-ir-14', 'jiscii', 'jis-roman', 'ibm-895'),
         ('dkuug/iso646-kr', 'iso646-kr',),
         ('dkuug/iso646-yu', 'iso646-yu', 'iso-ir-141', 'yuscii-latin', 'croscii', 'sloscii', 'jus-i.b1.002'),
-        # ibm-897 extends jis-x0201
         ('dkuug/jis_x0201', 'jis-x0201', 'jis-c-6220'),
+        # ibm-897 extends jis-x0201, overlaid below
+        ('dkuug/jis_x0201', 'cp897', 'ibm-897'),
         ('dkuug/x0201-7', 'x0201-7', 'iso-ir-13'),
 
         # charmaps from IBM/Unicode ICU project
@@ -479,6 +482,11 @@ _OVERLAYS = (
         'windows-950',
         'mik', 'koi8-r', 'koi8-u', 'koi8-ru', 'ruscii', 'rs3', 'rs4', 'rs4ac',
         'mazovia', 'kamenicky', 'cwi-2',
+    )),
+    # ibm-897 == jis-x0201 with graphics
+    # constructed based on https://en.wikipedia.org/wiki/Code_page_897
+    ('manual/ibm897graph.ucp', _IBM_GRAPH_RANGE, 'ucp', {}, (
+        'cp897', 'ibm-943',
     )),
     # Mac OS system fonts and euro vs currency sign
     ('manual/mac-system.ucp', _MAC_GRAPH_RANGE, 'ucp', {}, ('mac-roman', 'mac-roman-8.5')),
