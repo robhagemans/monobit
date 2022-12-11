@@ -115,6 +115,7 @@ Supported formats
 | Atari GDOS / GEM      | `gdos`     |          | `.fnt` `.gft` `.vga`        | Atari ST, GEM| ✔    | ✔     |
 | FZX Font              | `fzx`      |          | `.fzx`                      | ZX Spectrum | ✔     | ✔     |
 | Figlet                | `figlet`   |          | `.flf`                      | Unix        | ✔     | ✔     |
+| vfont                 | `vfont`    |          |                             | BSD, SunOS  | ✔     |       |
 | MacOS font            | `mac-dfont`| FONT     | `.dfont` `.suit`            | MacOS       | ✔     |       |
 | MacOS font            | `mac-dfont`| NFNT/FOND| `.dfont` `.suit`            | MacOS       | ✔     |       |
 | MacOS font (AS/AD)    | `mac-rsrc` | FONT     | `.rsrc`                     | MacOS       | ✔     |       |
@@ -146,6 +147,7 @@ Here is a comparison of what you can and cannot store in selected formats suppor
 | `gdos`        |   |   |   |   |   | any  | ✔ |   |   | binary
 | `fzx`         |   |   |   |   |   | any  | ✔ |   |   | binary
 | `figlet`      | ✔ |   |   |   |   | any  | ✔ |   | ✔ | visual text
+| `vfont`       |   |   |   |   |   | any  | ✔ |   |   | binary
 | `dec-drcs`    |   |   |   |   |   | >4xN |   |   |   | binary
 | `hext`        | ✔ | ✔ |   |   |   | 8xN  | multi-cell |   |   | hex
 | `hex`         | ✔ |   |   |   |   | 8x16 | multi-cell |   |   | hex
