@@ -439,6 +439,11 @@ _ENCODING_FILES = (
         ('vietstd/viscii1.1.txt', 'viscii', 'viscii1.1-1'),
     )),
 
+    # https://www.unicode.org/Public/MAPPINGS/OBSOLETE/EASTASIA/JIS/JIS0208.TXT
+    ('txt', dict(codepoint_column=1, unicode_column=2), (
+        ('misc/JIS0208.TXT', 'jisx0208'),
+    )),
+
     # Windows-1252 extensions
     ('html', dict(table=1), (
         ('wikipedia/windows-1252.html', 'windows-extended', 'ibm-1004', 'os2-1004'),
