@@ -13,6 +13,8 @@ from .base import BaseTester
 class TestFormats(BaseTester):
     """Test monobit export/import."""
 
+    # BDF
+
     def test_import_bdf(self):
         """Test importing bdf files."""
         font, *_ = monobit.load(self.font_path / '4x6.bdf')
@@ -24,16 +26,7 @@ class TestFormats(BaseTester):
         monobit.save(self.fixed4x6, bdf_file)
         self.assertTrue(os.path.getsize(bdf_file) > 0)
 
-    def test_import_draw(self):
-        """Test importing draw files."""
-        font, *_ = monobit.load(self.font_path / '8x16.draw')
-        self.assertEqual(len(font.glyphs), 919)
-
-    def test_export_draw(self):
-        """Test exporting draw files."""
-        draw_file = self.temp_path / '8x16.draw'
-        monobit.save(self.fixed8x16, draw_file)
-        self.assertTrue(os.path.getsize(draw_file) > 0)
+    # Windows
 
     def test_import_fon(self):
         """Test importing fon files."""
@@ -59,6 +52,8 @@ class TestFormats(BaseTester):
         monobit.save(self.fixed4x6, fnt_file)
         self.assertTrue(os.path.getsize(fnt_file) > 0)
 
+    # Unifont
+
     def test_import_hex(self):
         """Test importing hex files."""
         self.assertEqual(len(self.fixed8x16.glyphs), 919)
@@ -68,6 +63,19 @@ class TestFormats(BaseTester):
         hex_file = self.temp_path / '8x16.hex'
         monobit.save(self.fixed8x16, hex_file)
         self.assertTrue(os.path.getsize(hex_file) > 0)
+
+    def test_import_draw(self):
+        """Test importing draw files."""
+        font, *_ = monobit.load(self.font_path / '8x16.draw')
+        self.assertEqual(len(font.glyphs), 919)
+
+    def test_export_draw(self):
+        """Test exporting draw files."""
+        draw_file = self.temp_path / '8x16.draw'
+        monobit.save(self.fixed8x16, draw_file)
+        self.assertTrue(os.path.getsize(draw_file) > 0)
+
+    # PSF
 
     def test_import_psf(self):
         """Test importing psf files."""
@@ -80,6 +88,8 @@ class TestFormats(BaseTester):
         monobit.save(self.fixed4x6, psf_file)
         self.assertTrue(os.path.getsize(psf_file) > 0)
 
+    # FZX
+
     def test_import_fzx(self):
         """Test importing fzx files."""
         font, *_ = monobit.load(self.font_path / '4x6.fzx')
@@ -90,6 +100,8 @@ class TestFormats(BaseTester):
         fzx_file = self.temp_path / '4x6.fzx'
         monobit.save(self.fixed4x6, fzx_file)
         self.assertTrue(os.path.getsize(fzx_file) > 0)
+
+    # DEC DRCS
 
     def test_import_dec_drcs(self):
         """Test importing dec-drcs files."""
@@ -102,6 +114,8 @@ class TestFormats(BaseTester):
         monobit.save(self.fixed8x16, dec_file, format='dec-drcs')
         self.assertTrue(os.path.getsize(dec_file) > 0)
 
+    # yaff
+
     def test_import_yaff(self):
         """Test importing yaff files"""
         self.assertEqual(len(self.fixed4x6.glyphs), 919)
@@ -111,6 +125,8 @@ class TestFormats(BaseTester):
         yaff_file = self.temp_path / '4x6.yaff'
         monobit.save(self.fixed4x6, yaff_file)
         self.assertTrue(os.path.getsize(yaff_file) > 0)
+
+    # Raw binary
 
     def test_import_raw(self):
         """Test importing raw binary files."""
@@ -123,11 +139,15 @@ class TestFormats(BaseTester):
         monobit.save(self.fixed4x6, fnt_file)
         self.assertTrue(os.path.getsize(fnt_file) > 0)
 
+    # PDF chart
+
     def test_export_pdf(self):
         """Test exporting pdf files."""
         pdf_file = self.temp_path / '4x6.pdf'
         monobit.save(self.fixed4x6, pdf_file)
         self.assertTrue(os.path.getsize(pdf_file) > 0)
+
+    # BMFont
 
     def test_import_bmf(self):
         """Test importing bmfont files."""
@@ -155,6 +175,8 @@ class TestFormats(BaseTester):
         monobit.save(self.fixed4x6, fnt_file, where=self.temp_path, descriptor='json', overwrite=True)
         self.assertTrue(os.path.getsize(fnt_file) > 0)
 
+    # Source coded binary
+
     def test_import_c(self):
         """Test importing c source files."""
         font, *_ = monobit.load(
@@ -181,6 +203,8 @@ class TestFormats(BaseTester):
         monobit.save(self.fixed4x6, fnt_file)
         self.assertTrue(os.path.getsize(fnt_file) > 0)
 
+    # Image
+
     def test_import_png(self):
         """Test importing image files."""
         font, *_ = monobit.load(self.font_path / '4x6.png', cell=(4, 6), count=919)
@@ -191,6 +215,8 @@ class TestFormats(BaseTester):
         fnt_file = self.temp_path / '4x6.png'
         monobit.save(self.fixed4x6, fnt_file)
         self.assertTrue(os.path.getsize(fnt_file) > 0)
+
+    # CPI
 
     def test_import_cpi_font(self):
         """Test importing CPI (FONT) files"""
@@ -218,6 +244,8 @@ class TestFormats(BaseTester):
         font = pack[0]
         self.assertEqual(len(font.glyphs), 256)
 
+    # Figlet
+
     def test_import_flf(self):
         """Test importing flf files."""
         font, *_ = monobit.load(self.font_path / '4x6.flf')
@@ -229,16 +257,22 @@ class TestFormats(BaseTester):
         monobit.save(self.fixed4x6, file)
         self.assertTrue(os.path.getsize(file) > 0)
 
+    # Apple
+
     def test_import_dfont(self):
         """Test importing dfont files."""
         font, *_ = monobit.load(self.font_path / '4x6.dfont')
         # only 195 glyphs in the font as it's in mac-roman encoding now
         self.assertEqual(len(font.glyphs), 195)
 
+    # Amiga
+
     def test_import_amiga(self):
         """Test importing amiga font files."""
         font, *_ = monobit.load(self.font_path / 'wbfont.amiga' / 'wbfont_prop.font')
         self.assertEqual(len(font.glyphs), 225)
+
+    # GDOS
 
     def test_import_gdos(self):
         """Test importing uncompressed gdos font file."""
@@ -255,9 +289,31 @@ class TestFormats(BaseTester):
         self.assertEqual(len(font.glyphs), 194)
 
     def test_export_gdos(self):
-        """Test exporting flf files."""
+        """Test exporting uncompressed gdos files."""
         file = self.temp_path / '4x6.gft'
         monobit.save(self.fixed4x6, file, format='gdos')
+        self.assertTrue(os.path.getsize(file) > 0)
+
+    # vfont
+
+    def test_import_vfont_le(self):
+        """Test importing little-endian vfont file."""
+        font, *_ = monobit.load(
+            self.font_path / '4x6.vfontle',
+        )
+        self.assertEqual(len(font.glyphs), 256)
+
+    def test_import_vfont_be(self):
+        """Test importing big-endian vfont file."""
+        font, *_ = monobit.load(
+            self.font_path / '4x6.vfontbe',
+        )
+        self.assertEqual(len(font.glyphs), 256)
+
+    def test_export_vfont(self):
+        """Test exporting vfont files."""
+        file = self.temp_path / '4x6.vfont'
+        monobit.save(self.fixed4x6, file, format='vfont')
         self.assertTrue(os.path.getsize(file) > 0)
 
 
