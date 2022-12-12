@@ -115,7 +115,7 @@ Supported formats
 | Atari GDOS / GEM      | `gdos`     |          | `.fnt` `.gft` `.vga`        | Atari ST, GEM| ✔    | ✔     |
 | FZX Font              | `fzx`      |          | `.fzx`                      | ZX Spectrum | ✔     | ✔     |
 | Figlet                | `figlet`   |          | `.flf`                      | Unix        | ✔     | ✔     |
-| vfont                 | `vfont`    |          |                             | BSD, SunOS  | ✔     |       |
+| vfont                 | `vfont`    |          |                             | BSD, SunOS  | ✔     | ✔     |
 | MacOS font            | `mac-dfont`| FONT     | `.dfont` `.suit`            | MacOS       | ✔     |       |
 | MacOS font            | `mac-dfont`| NFNT/FOND| `.dfont` `.suit`            | MacOS       | ✔     |       |
 | MacOS font (AS/AD)    | `mac-rsrc` | FONT     | `.rsrc`                     | MacOS       | ✔     |       |
@@ -195,3 +195,4 @@ Other bitmap font tools you could use in conjunction with (or instead of) `monob
 - Mark Leisher's [`gbdfed`](http://sofia.nmsu.edu/~mleisher/Software/gbdfed/)
 - Simon Tatham's [`mkwinfont`/`dewinfont`](https://www.chiark.greenend.org.uk/~sgtatham/fonts/)
 - [RECOIL](https://recoil.sourceforge.net/)
+- John Zaitseff's [console font utilities](https://www.zap.org.au/projects/console-fonts-utils/)
