@@ -41,11 +41,11 @@ def save_fontx(fonts, outstream, where=None, endianness:str='little'):
         raise FileFormatError('Can only save one font to fontx file.')
     font, = fonts
     endian = endianness[0].lower()
-    fontx_props, fontx_glyphs = _convert_to_fontx(font)
+    props, blocks,glyphs = _convert_to_fontx(font)
     logging.info('fontx properties:')
-    for line in str(fontx_props).splitlines():
+    for line in str(props).splitlines():
         logging.info('    ' + line)
-    _write_fontx(outstream, fontx_props, fontx_glyphs, endian)
+    _write_fontx(outstream, props, blocks, glyphs)
 
 
 ################################################################################
@@ -94,7 +94,6 @@ def _read_fontx(instream):
         )
     bytewidth = ceildiv(sbcs_header.width, 8)
     bytesize = bytewidth * sbcs_header.height
-    logging.debug(bytesize)
     props = vars(sbcs_header)
     if not sbcs_header.code_flag:
         glyphs = tuple(
@@ -135,3 +134,82 @@ def _convert_from_fontx(fontx_props):
         encoding='ms-shift-jis'
     )
     return props
+
+
+###############################################################################
+# writer
+
+def _convert_to_fontx(font):
+    """Convert monobit font to fontx properties and glyphs."""
+    if font.spacing != 'character-cell':
+        raise FileFormatError(
+            'FONTX2 format can only store character-cell fonts.'
+        )
+    # inflate glyphs to fill positive horizontal bearings
+    font, _ = _normalise_metrics(font)
+    blank = Glyph(width=font.cell_size.x, height=font.cell_size.y)
+    # ensure codepoint values are set if possible
+    if font.encoding:
+        font = font.label(codepoint_from=font.encoding)
+    props = Props(
+        code_flag=len(max(font.get_codepoints())) > 1,
+        name=font.name.encode('ascii', 'replace'),
+        width=font.cell_size.x,
+        height=font.cell_size.y,
+    )
+    if not props.code_flag:
+        # sbcs_font
+        blocks = (range(256),)
+    else:
+        # dbcs font
+        # find contiguous ranges and build block table
+        # at most 256 blocks; keep one page in one block and contiguous range within
+        # at most 2-byte codepoints
+        cps = tuple(int(_c) for _c in font.get_codepoints())
+        pages = tuple(
+            tuple(
+                _c for _c in cps
+                if _c >= 0x100*_hi and _c < 0x100*(_hi+1)
+            )
+            for _hi in range(256)
+        )
+        # skip empty ranges
+        blocks = tuple(
+            range(min(_page), max(_page)+1)
+            for _page in pages if _page
+        )
+    glyphs = tuple(
+        font.get_glyph(codepoint=_cp, missing=blank).modify(codepoint=_cp)
+        for _range in blocks
+        for _cp in _range
+    )
+    return props, blocks, glyphs
+
+def _write_fontx(outstream, props, blocks, glyphs):
+    """Write fontx properties and glyphs to binary file."""
+    glyph_bytes = tuple(_g.as_bytes() for _g in glyphs)
+    bitmap = b''.join(glyph_bytes)
+    offsets = (0,) + tuple(accumulate(len(_g) for _g in glyph_bytes))
+    sbcs_header = _SBCS_HEADER(
+        magic=_FONTX_MAGIC,
+        **vars(props)
+    )
+    if props.code_flag:
+        dbcs_header = _DBCS_HEADER(
+            n_blocks=len(blocks)
+        )
+        block_offsets = _BLOCK_OFFSET.array(len(blocks))(*(
+            _BLOCK_OFFSET(start=min(_block), end=max(_block))
+            for _block in blocks
+        ))
+        outstream.write(
+            bytes(sbcs_header)
+            + bytes(dbcs_header)
+            + bytes(block_offsets)
+            + bitmap
+        )
+    else:
+        outstream.write(
+            bytes(sbcs_header)
+            + bitmap
+        )
