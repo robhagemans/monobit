@@ -130,8 +130,7 @@ def _read_fontx(instream):
 def _convert_from_fontx(fontx_props):
     """Convert fontx properties and glyphs to standard."""
     props = dict(
-        name=fontx_props.name.decode('ascii', 'ignore'),
-        encoding='ms-shift-jis'
+        name=fontx_props.name.decode('latin-1', 'ignore'),
     )
     return props
 
