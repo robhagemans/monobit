@@ -108,6 +108,7 @@ Supported formats
 | Codepage Information  | `cpi`      | FONT     | `.cpi`                      | MS-DOS      | ✔     |       |
 | Codepage Information  | `cpi`      | FONT.NT  | `.cpi`                      | Windows NT  | ✔     |       |
 | Codepage Information  | `cpi`      | DRFONT   | `.cpi`                      | DR-DOS      | ✔     |       |
+| FONTX2                | `fontx`    |          | `.fnt`                      | DOS/V       | ✔     | ✔     |
 | `kbd` Codepage        | `kbd-cp`   |          | `.cp`                       | Linux       | ✔     |       |
 | DEC DRCS              | `dec-drcs` |          |                             | DEC VT      | ✔     | ✔     |
 | Amiga Font Contents   | `amiga-fc` |          | `.font`                     | Amiga OS    | ✔     |       |
