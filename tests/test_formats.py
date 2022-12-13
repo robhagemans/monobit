@@ -316,6 +316,29 @@ class TestFormats(BaseTester):
         monobit.save(self.fixed4x6, file, format='vfont')
         self.assertTrue(os.path.getsize(file) > 0)
 
+    # fontx
+
+    def test_import_fontx_sbcs(self):
+        """Test importing single-page fontx file."""
+        font, *_ = monobit.load(
+            self.font_path / '8x16-fontx-sbcs.fnt',
+        )
+        self.assertEqual(len(font.glyphs), 256)
+
+    def test_import_fontx_dbcs(self):
+        """Test importing multi-page fontx file."""
+        font, *_ = monobit.load(
+            self.font_path / '8x16-fontx.fnt',
+        )
+        # including 1000 blanks...
+        self.assertEqual(len(font.glyphs), 1919)
+
+    def test_export_fontx(self):
+        """Test exporting vfont files."""
+        file = self.temp_path / '4x6.fnt'
+        monobit.save(self.fixed4x6, file, format='fontx')
+        self.assertTrue(os.path.getsize(file) > 0)
+
 
 if __name__ == '__main__':
     unittest.main()
