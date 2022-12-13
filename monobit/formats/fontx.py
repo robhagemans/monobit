@@ -147,13 +147,13 @@ def _convert_to_fontx(font):
         )
     # inflate glyphs to fill positive horizontal bearings
     font, _ = _normalise_metrics(font)
-    blank = Glyph(width=font.cell_size.x, height=font.cell_size.y)
+    blank = Glyph.blank(*font.raster_size)
     # ensure codepoint values are set if possible
     if font.encoding:
         font = font.label(codepoint_from=font.encoding)
     props = Props(
         code_flag=len(max(font.get_codepoints())) > 1,
-        name=font.name.encode('ascii', 'replace'),
+        name=font.name[:8].encode('ascii', 'replace'),
         width=font.cell_size.x,
         height=font.cell_size.y,
     )
