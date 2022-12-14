@@ -11,6 +11,7 @@ from ..struct import big_endian as be
 from ..storage import loaders, savers
 from ..font import Font
 from ..glyph import Glyph
+from ..raster import Raster
 from ..streams import FileFormatError
 from ..binary import bytes_to_bits
 
@@ -28,7 +29,6 @@ def load_daisy(instream, where=None):
     # logging.info('daisy properties:')
     # for line in str(props).splitlines():
     #     logging.info('    ' + line)
-    props = _convert_from_daisy(props)
     return Font(glyphs, **props)
 
 
@@ -60,6 +60,8 @@ def _parse_daisy2(data):
     glyphs = []
     for cp in _DD_RANGE:
         width = data[ofs]
+        if width < 1 or width > 19:
+            logging.warning('Glyph width outside of allowed values, continuing')
         pass0 = bytes_to_bits(data[ofs+1:ofs+width+1])
         pass1 = bytes_to_bits(data[ofs+width+1:ofs+2*width+1])
         bits = tuple(_b for _pair in zip(pass0, pass1) for _b in _pair)
@@ -69,13 +71,65 @@ def _parse_daisy2(data):
         )
         # separated by a \x9b
         ofs += 2*width + 2
-    props = {}
+    props = dict(
+        right_bearing=1,
+        line_height=20,
+        source_format='Daisy-Dot II'
+    )
     return props, glyphs
 
-def _convert_from_daisy(props):
-    if not props:
-        # daisy-dot 2
-        return dict(
-            right_bearing=1,
-            line_height=17,
-        )
+
+def _parse_daisy3(data):
+    """Read daisy-dot III binary file and return glyphs."""
+    ofs = len(_DD3_MAGIC)
+    glyphs = []
+    # dd3 does not store space glyph
+    for cp in _DD_RANGE[1:]:
+        double, width = divmod(data[ofs], 64)
+        ofs += 1
+        if width < 1 or width > 32:
+            logging.warning('Glyph width outside of allowed values, continuing')
+        double = bool(double)
+        passes = [
+            bytes_to_bits(data[ofs:ofs+width]),
+            bytes_to_bits(data[ofs+width:ofs+2*width])
+        ]
+        bits = tuple(_b for _tup in zip(*passes) for _b in _tup)
+        matrix = Raster.from_vector(bits, stride=16).transpose().as_matrix()
+        ofs += 2*width
+        if double:
+            passes = [
+                bytes_to_bits(data[ofs:ofs+width]),
+                bytes_to_bits(data[ofs+width:ofs+2*width])
+            ]
+            ofs += 2*width
+            bits = tuple(_b for _tup in zip(*passes) for _b in _tup)
+            matrix += (
+                Raster.from_vector(bits, stride=16).transpose().as_matrix()
+            )
+        glyphs.append(Glyph(matrix, codepoint=cp))
+        # in dd3, not separated by a \x9b
+    dd3_props = _DD3_FINAL.from_bytes(data, ofs)
+    # extend non-doubled glyphs
+    height = max(_g.height for _g in glyphs)
+    glyphs = [
+        _g.expand(bottom=height-_g.height, adjust_metrics=False)
+        for _g in glyphs
+    ]
+    # create space glyph
+    space = Glyph.blank(
+        width=dd3_props.space_width, height=height, codepoint=0x20,
+    )
+    glyphs = [space, *glyphs]
+    props = dict(
+        right_bearing=1,
+        source_format='Daisy-Dot III',
+        # > In Daisy-Dot III, line spacing is the vertical space, measured in units
+        # > of 1/72", from the bottom of one line to the top of the next. Note that
+        # > this is different from line spacing's typical definition, the space from
+        # > the top of one line to the top of the next. The default line spacing is
+        # > 4.
+        line_height=dd3_props.height+4,
+        **vars(dd3_props)
+    )
+    return props, glyphs
