@@ -121,15 +121,28 @@ def _parse_daisy3(data):
         width=dd3_props.space_width, height=height, codepoint=0x20,
     )
     glyphs = [space, *glyphs]
+    # metrics
+    pixel_size = dd3_props.height+1
+    # we're using the underline as an indicator of where the baseline is
+    descent = dd3_props.height-dd3_props.underline+2
     props = dict(
         right_bearing=1,
         source_format='Daisy-Dot III',
+        # > Each DD3 font can be up to 32 rows high. However, If a font you are
+        # > designing Is smaller than that, DD3 allows you to specify the actual
+        # > height of the character so line spacing within the main printing
+        # > program will match the size of the characters. The height marker can
+        # > range from the second row (referred to as row 1) to the last row (row
+        # > 31).
+        shift_up=pixel_size-height-descent,
+        ascent=pixel_size-descent,
+        descent=descent,
+        underline_descent=1,
         # > In Daisy-Dot III, line spacing is the vertical space, measured in units
         # > of 1/72", from the bottom of one line to the top of the next. Note that
         # > this is different from line spacing's typical definition, the space from
         # > the top of one line to the top of the next. The default line spacing is
         # > 4.
-        line_height=dd3_props.height+4,
-        **vars(dd3_props)
+        line_height=pixel_size+4,
     )
     return props, glyphs
