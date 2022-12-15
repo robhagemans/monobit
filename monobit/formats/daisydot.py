@@ -15,10 +15,12 @@ from ..raster import Raster
 from ..streams import FileFormatError
 from ..binary import bytes_to_bits
 
-
+# Daisy-Dot II
 _DD2_MAGIC = b'DAISY-DOT NLQ FONT\x9b'
+# Daisy-Dot III
 _DD3_MAGIC = b'3\x9b'
 
+# controls and codepoints 96, 123 must not be stored
 _DD_RANGE = tuple(_c for _c in range(32, 125) if _c not in (96, 123))
 
 
@@ -29,6 +31,7 @@ def load_daisy(instream, where=None):
     # logging.info('daisy properties:')
     # for line in str(props).splitlines():
     #     logging.info('    ' + line)
+    props = _convert_from_daisy(props, glyphs)
     return Font(glyphs, **props)
 
 
@@ -71,11 +74,7 @@ def _parse_daisy2(data):
         )
         # separated by a \x9b
         ofs += 2*width + 2
-    props = dict(
-        right_bearing=1,
-        line_height=20,
-        source_format='Daisy-Dot II'
-    )
+    props = None
     return props, glyphs
 
 
@@ -121,13 +120,24 @@ def _parse_daisy3(data):
         width=dd3_props.space_width, height=height, codepoint=0x20,
     )
     glyphs = [space, *glyphs]
-    # metrics
+    return dd3_props, glyphs
+
+def _convert_from_daisy(dd3_props, glyphs):
+    """Convert daisy-dot metrics to monobit."""
+    if not dd3_props:
+        # set some sensible defaults for DD2 which has no metrics
+        return dict(
+            source_format='Daisy-Dot II',
+            right_bearing=1,
+            line_height=20,
+        )
+    height = max(_g.height for _g in glyphs)
     pixel_size = dd3_props.height+1
     # we're using the underline as an indicator of where the baseline is
     descent = dd3_props.height-dd3_props.underline+2
     props = dict(
-        right_bearing=1,
         source_format='Daisy-Dot III',
+        right_bearing=1,
         # > Each DD3 font can be up to 32 rows high. However, If a font you are
         # > designing Is smaller than that, DD3 allows you to specify the actual
         # > height of the character so line spacing within the main printing
@@ -145,4 +155,4 @@ def _parse_daisy3(data):
         # > 4.
         line_height=pixel_size+4,
     )
-    return props, glyphs
+    return props
