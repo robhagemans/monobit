@@ -31,11 +31,11 @@ _DD_RANGE = tuple(_c for _c in range(32, 125) if _c not in (96, 123))
 @loaders.register('nlq', name='daisy', magic=(_DD2_MAGIC, _DD3_MAGIC, _DDM_MAGIC))
 def load_daisy(instream, where=None):
     """Load font from fontx file."""
-    props, glyphs = _read_daisy(instream, where)
+    version, props, glyphs = _read_daisy(instream, where)
     # logging.info('daisy properties:')
     # for line in str(props).splitlines():
     #     logging.info('    ' + line)
-    props = _convert_from_daisy(props, glyphs)
+    props = _convert_from_daisy(props, glyphs, version)
     return Font(glyphs, **props)
 
 
@@ -82,7 +82,7 @@ def _parse_daisy2(data):
         # separated by a \x9b
         ofs += 2*width + 2
     props = None
-    return props, glyphs
+    return 2, props, glyphs
 
 
 def _parse_daisy3(data):
@@ -128,11 +128,11 @@ def _parse_daisy3(data):
         width=dd3_props.space_width, height=height, codepoint=0x20,
     )
     glyphs = [space, *glyphs]
-    return dd3_props, glyphs
+    return 3, dd3_props, glyphs
 
-def _convert_from_daisy(dd3_props, glyphs):
+def _convert_from_daisy(dd3_props, glyphs, version):
     """Convert daisy-dot metrics to monobit."""
-    if not dd3_props:
+    if version == 2:
         # set some sensible defaults for DD2 which has no metrics
         return dict(
             source_format='Daisy-Dot II',
@@ -144,7 +144,10 @@ def _convert_from_daisy(dd3_props, glyphs):
     # we're using the underline as an indicator of where the baseline is
     descent = dd3_props.height-dd3_props.underline+2
     props = dict(
-        source_format='Daisy-Dot III',
+        source_format=(
+            'Daisy-Dot III' if version == 3
+            else 'Daisy_Dot III Magnified'
+        ),
         right_bearing=1,
         # > Each DD3 font can be up to 32 rows high. However, If a font you are
         # > designing Is smaller than that, DD3 allows you to specify the actual
@@ -168,7 +171,7 @@ def _convert_from_daisy(dd3_props, glyphs):
 
 def _parse_daisy_mag(data, name, container):
     """Read daisy-dot III magnified binary file and return glyphs."""
-    dd3_props, glyphs = _parse_daisy3(data)
+    _, dd3_props, glyphs = _parse_daisy3(data)
     # > total # of files = integer value of (height + l)/32. Add 1 if the
     # > division leaves a remainder.
     n_files = ceildiv(dd3_props.height+1, 32)
@@ -177,7 +180,7 @@ def _parse_daisy_mag(data, name, container):
         stream_name = f'{name[:-1]}{count}'
         stream = container.open(path / stream_name, 'r')
         data = stream.read()
-        _, new_glyphs = _parse_daisy3(data)
+        _, _, new_glyphs = _parse_daisy3(data)
         glyphs = tuple(
             Glyph(
                # _g1.transpose().as_matrix() + _g2.transpose().as_matrix(),
@@ -187,4 +190,4 @@ def _parse_daisy_mag(data, name, container):
             #.transpose(adjust_metrics=False)
             for _g1, _g2 in zip(glyphs, new_glyphs)
         )
-    return dd3_props, glyphs
+    return 'M', dd3_props, glyphs
