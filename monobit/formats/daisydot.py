@@ -6,6 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import logging
+from pathlib import Path
 
 from ..struct import big_endian as be
 from ..storage import loaders, savers
@@ -13,21 +14,24 @@ from ..font import Font
 from ..glyph import Glyph
 from ..raster import Raster
 from ..streams import FileFormatError
-from ..binary import bytes_to_bits
+from ..binary import ceildiv, bytes_to_bits
+
 
 # Daisy-Dot II
 _DD2_MAGIC = b'DAISY-DOT NLQ FONT\x9b'
 # Daisy-Dot III
 _DD3_MAGIC = b'3\x9b'
+# Daisy-Dot III Magnified
+_DDM_MAGIC = b'B\x9b'
 
 # controls and codepoints 96, 123 must not be stored
 _DD_RANGE = tuple(_c for _c in range(32, 125) if _c not in (96, 123))
 
 
-@loaders.register('nlq', name='daisy', magic=(_DD2_MAGIC, _DD3_MAGIC))
+@loaders.register('nlq', name='daisy', magic=(_DD2_MAGIC, _DD3_MAGIC, _DDM_MAGIC))
 def load_daisy(instream, where=None):
     """Load font from fontx file."""
-    props, glyphs = _read_daisy(instream)
+    props, glyphs = _read_daisy(instream, where)
     # logging.info('daisy properties:')
     # for line in str(props).splitlines():
     #     logging.info('    ' + line)
@@ -46,13 +50,16 @@ _DD3_FINAL = be.Struct(
     space_width='uint8',
 )
 
-def _read_daisy(instream):
+def _read_daisy(instream, where):
     """Read daisy-dot binary file and return glyphs."""
     data = instream.read()
     if data.startswith(_DD2_MAGIC):
         return _parse_daisy2(data)
     elif data.startswith(_DD3_MAGIC):
         return _parse_daisy3(data)
+    elif data.startswith(_DDM_MAGIC):
+        # multi-file format
+        return _parse_daisy_mag(data, instream.name, where)
     raise FileFormatError(
         'Not a Daisy-Dot file: magic does not match either version'
     )
@@ -94,6 +101,7 @@ def _parse_daisy3(data):
             bytes_to_bits(data[ofs+width:ofs+2*width])
         ]
         bits = tuple(_b for _tup in zip(*passes) for _b in _tup)
+        # we transpose, so stride is based on row height which is fixed
         matrix = Raster.from_vector(bits, stride=16).transpose().as_matrix()
         ofs += 2*width
         if double:
@@ -156,3 +164,27 @@ def _convert_from_daisy(dd3_props, glyphs):
         line_height=pixel_size+4,
     )
     return props
+
+
+def _parse_daisy_mag(data, name, container):
+    """Read daisy-dot III magnified binary file and return glyphs."""
+    dd3_props, glyphs = _parse_daisy3(data)
+    # > total # of files = integer value of (height + l)/32. Add 1 if the
+    # > division leaves a remainder.
+    n_files = ceildiv(dd3_props.height+1, 32)
+    path = Path(name).parent
+    for count in range(2, n_files+1):
+        stream_name = f'{name[:-1]}{count}'
+        stream = container.open(path / stream_name, 'r')
+        data = stream.read()
+        _, new_glyphs = _parse_daisy3(data)
+        glyphs = tuple(
+            Glyph(
+               # _g1.transpose().as_matrix() + _g2.transpose().as_matrix(),
+               _g1.as_matrix() + _g2.as_matrix(),
+                codepoint=_g1.codepoint
+            )
+            #.transpose(adjust_metrics=False)
+            for _g1, _g2 in zip(glyphs, new_glyphs)
+        )
+    return dd3_props, glyphs
