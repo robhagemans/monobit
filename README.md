@@ -114,7 +114,7 @@ Supported formats
 | Amiga Font Contents   | `amiga-fc` |          | `.font`                     | Amiga OS    | ✔     |       |
 | Amiga Font            | `amiga`    |          |                             | Amiga OS    | ✔     |       |
 | Atari GDOS / GEM      | `gdos`     |          | `.fnt` `.gft` `.vga`        | Atari ST, GEM| ✔    | ✔     |
-| Daisy-Dot II & III    | `daisy`    |          | `.nlq' `.nl?`               | Atari       | ✔     |       |
+| Daisy-Dot II & III    | `daisy`    |          | `.nlq` `.nl?`               | Atari       | ✔     |       |
 | BBC soft font         | `bbc`      |          |                             | BBC Micro   | ✔     | ✔     |
 | FZX Font              | `fzx`      |          | `.fzx`                      | ZX Spectrum | ✔     | ✔     |
 | Figlet                | `figlet`   |          | `.flf`                      | Unix        | ✔     | ✔     |
@@ -151,7 +151,9 @@ Here is a comparison of what you can and cannot store in selected formats suppor
 | `fzx`         |   |   |   |   |   | any  | ✔ |   |   | binary
 | `figlet`      | ✔ |   |   |   |   | any  | ✔ |   | ✔ | visual text
 | `vfont`       |   |   |   |   |   | any  | ✔ |   |   | binary
+| `fontx`       |   |   |   | ✔ |   | any  |   |   |   | binary
 | `dec-drcs`    |   |   |   |   |   | >4xN |   |   |   | binary
+| `bbc`         |   |   |   |   |   | 8x8  |   |   |   | binary
 | `hext`        | ✔ | ✔ |   |   |   | 8xN  | multi-cell |   |   | hex
 | `hex`         | ✔ |   |   |   |   | 8x16 | multi-cell |   |   | hex
 | `psf.2`       | ✔ | ✔ |   |   |   | any  |   |   |   | binary
