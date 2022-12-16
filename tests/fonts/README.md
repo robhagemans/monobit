@@ -28,6 +28,7 @@ Original sources:
   - distributed with Roy Goldman's Daisy-Dot III
   - in the public domain
 
+
 ### Derivatives of `4x6`
 
 * `4x6.yaff` was created from `4x6.bdf` using `monobit`
@@ -35,7 +36,8 @@ Original sources:
 * `4x6.fzx` was created from `4x6.bdf` using `monobit`
 * `4x6.c` was created from `4x6.yaff` using `monobit`
 * `4x6.dfont` was created from `4x6.bdf` using `ufond` (part of `fondu`)
-* `4x6.vfont?e` were created from `4x6.psf` using `psftools-1.1.1`
+* `4x6.vfont*` were created from `4x6.psf` using `psftools-1.1.1`
+* `8x8.bbc` was created from `4x6.psf` using `psftools-1.1.1`
 * `8x16.hex` was created from `4x6.yaff` using `bittermelon`
 * `8x16.draw` was created from `8x16.hex` using `hexdraw`
 * `8x16-*.cpi` were created from `8x16.hex` through a PSF intermediate using `monobit` and `psftools`
