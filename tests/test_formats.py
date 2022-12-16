@@ -356,6 +356,20 @@ class TestFormats(BaseTester):
         # the space glyph should be generated
         self.assertEqual(len(font.glyphs), 91)
 
+    # BBC
+
+    def test_import_bbc(self):
+        """Test importing bbc files."""
+        font, *_ = monobit.load(self.font_path / '8x8.bbc')
+        self.assertEqual(len(font.glyphs), 224)
+
+    def test_export_bbc(self):
+        """Test exporting bbc files."""
+        file = self.temp_path / '4x6.bbc'
+        font = self.fixed4x6.expand(right=4, bottom=2, adjust_metrics=False)
+        monobit.save(font, file, format='bbc')
+        self.assertTrue(os.path.getsize(file) > 0)
+
 
 if __name__ == '__main__':
     unittest.main()
