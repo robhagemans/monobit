@@ -114,6 +114,7 @@ Supported formats
 | Amiga Font Contents   | `amiga-fc` |          | `.font`                     | Amiga OS    | ✔     |       |
 | Amiga Font            | `amiga`    |          |                             | Amiga OS    | ✔     |       |
 | Atari GDOS / GEM      | `gdos`     |          | `.fnt` `.gft` `.vga`        | Atari ST, GEM| ✔    | ✔     |
+| Daisy-Dot II & III    | `daisy`    |          | `.nlq' `.nl?`               | Atari       | ✔     |       |
 | FZX Font              | `fzx`      |          | `.fzx`                      | ZX Spectrum | ✔     | ✔     |
 | Figlet                | `figlet`   |          | `.flf`                      | Unix        | ✔     | ✔     |
 | vfont                 | `vfont`    |          |                             | BSD, SunOS  | ✔     | ✔     |

@@ -24,7 +24,9 @@ Original sources:
   - supplied with the GEM/3 screen drivers
   - http://www.deltasoft.com/downloads/screendr.zip
   - GNU General Public License v2
-
+* `times.nlq` and `daisy.nlq`
+  - distributed with Roy Goldman's Daisy-Dot III
+  - in the public domain
 
 ### Derivatives of `4x6`
 
