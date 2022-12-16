@@ -339,6 +339,23 @@ class TestFormats(BaseTester):
         monobit.save(self.fixed4x6, file, format='fontx')
         self.assertTrue(os.path.getsize(file) > 0)
 
+    # Daisy-Dot
+
+    def test_import_daisy2(self):
+        """Test importing daisy-dot II file."""
+        font, *_ = monobit.load(
+            self.font_path / 'daisy' / 'times.nlq',
+        )
+        self.assertEqual(len(font.glyphs), 91)
+
+    def test_import_daisy3(self):
+        """Test importing daisy-dot III file."""
+        font, *_ = monobit.load(
+            self.font_path / 'daisy' / 'swiss.nlq',
+        )
+        # the space glyph should be generated
+        self.assertEqual(len(font.glyphs), 91)
+
 
 if __name__ == '__main__':
     unittest.main()
