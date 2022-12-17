@@ -70,28 +70,13 @@ _GLYPH_HEADER = be.Struct(
 
 def _read_editor(instream):
     """Read Signum! editor binary file and return glyphs."""
-    data = instream.read()
-    header = _E24_HEADER.from_bytes(data)
-    ofs = header.size
-    glyphs = []
-    for cp in range(127):
-        glyph_header = _GLYPH_HEADER.from_bytes(data, ofs)
-        ofs += glyph_header.size
-        glyph_bytes = data[ofs:ofs+2*glyph_header.height]
-        ofs += 2*glyph_header.height
-        glyphs.append(Glyph.from_bytes(
-            glyph_bytes,
-            width=16,
-            codepoint=cp,
-            # width field gives advance width
-            right_bearing=glyph_header.width-16,
-            # top gives shift down from 24-pixel top line
-            shift_up=24-glyph_header.top-glyph_header.height,
-        ))
-    return glyphs
-
+    return _read_signum(instream, fixed_byte_width=2, top=24)
 
 def _read_printer(instream):
+    # top line relative to baseline
+    return _read_signum(instream, fixed_byte_width=None, top=48)
+
+def _read_signum(instream, fixed_byte_width=None, top=24):
     """Read Signum! printer binary file and return glyphs."""
     data = instream.read()
     header = _E24_HEADER.from_bytes(data)
@@ -100,7 +85,16 @@ def _read_printer(instream):
     for cp in range(127):
         glyph_header = _GLYPH_HEADER.from_bytes(data, ofs)
         ofs += glyph_header.size
-        bytesize = glyph_header.height*glyph_header.width
+        # printer fonts provide byte width in width field
+        # whereas editor files provide advance width
+        if fixed_byte_width:
+            bytewidth = fixed_byte_width
+            advance = glyph_header.width
+        else:
+            bytewidth = glyph_header.width
+            # we'll adjust this later based on actual padding
+            advance = bytewidth * 8
+        bytesize = glyph_header.height * bytewidth
         glyph_bytes = data[ofs:ofs+bytesize]
         ofs += bytesize
         notes = ''
@@ -114,9 +108,10 @@ def _read_printer(instream):
                 notes += (' ' if notes else '') + f'padding=0x{pad:02x}'
         glyph = Glyph.from_bytes(
             glyph_bytes,
-            width=8*glyph_header.width,
+            width=8*bytewidth,
             codepoint=cp,
-            shift_up=48-glyph_header.top-glyph_header.height,
+            shift_up=top-glyph_header.top-glyph_header.height,
+            right_bearing=advance-8*bytewidth,
             signum=notes if notes else None,
         )
         # as the width in printer fonts is given in bytes, not pixels,
@@ -124,6 +119,9 @@ def _read_printer(instream):
         # from actual files it looks reasonable to preserve only left bearing
         # it is unclear how the advance width of whitespace is determined
         # perhaps this is encoded in the unknown parts of the file header
-        glyph = glyph.crop(right=glyph.padding.right, adjust_metrics=False)
+        glyph = glyph.crop(
+            right=glyph.padding.right,
+            adjust_metrics=bool(fixed_byte_width)
+        ).drop('shift-left')
         glyphs.append(glyph)
     return glyphs
