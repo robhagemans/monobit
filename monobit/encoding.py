@@ -547,6 +547,8 @@ def is_printable(char):
 
 def is_whitespace(char):
     """Check if a sequence is whitespace."""
+    if not char:
+        return False
     return all(
         unicodedata.category(_c) == 'Zs'
         for _c in char
