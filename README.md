@@ -87,51 +87,42 @@ Check `monobit-banner --help` for usage.
 Supported formats
 -----------------
 
-| Format                | Short Name | Version  | Typical Extension           | Native OS   | Read  | Write |
-|-----------------------|------------|----------|-----------------------------|-------------|-------|-------|
-| monobit yaff          | `yaff`     |          | `.yaff`                     |             | ✔     | ✔     |
-| hexdraw               | `hexdraw`  |          | `.draw`                     |             | ✔     | ✔     |
-| GNU Unifont           | `hex`      |          | `.hex`                      |             | ✔     | ✔     |
-| PC Screen Font        | `psf`      | 1        | `.psf`                      | MS-DOS      | ✔     |       |
-| PC Screen Font        | `psf`      | 2        | `.psf` `.psfu`              | Linux       | ✔     | ✔     |
-| Raw binary            | `binary`   |          | `.fnt` `.rom` `.f??` `.ch8` `.64c` `.chr`|| ✔     | ✔     |
-| Bitmap image          | `image`    |          | `.png` `.gif` `.bmp`        |             | ✔ (P) | ✔ (P) |
-| PDF chart             | `pdf`      |          | `.pdf`                      |             |       | ✔ (R) |
-| C or C++ coded binary | `c`        |          | `.c` `.cpp` `.cc` `.h`      |             | ✔     | ✔     |
-| JSON coded binary     | `json`     |          | `.json`                     |             | ✔     | ✔     |
-| Python coded binary   | `python`   |          | `.py`                       |             | ✔     | ✔     |
-| AngelCode BMFont      | `bmfont`   | Text     | `.fnt` + images             |             | ✔ (P) | ✔ (P) |
-| AngelCode BMFont      | `bmfont`   | Binary   | `.fnt` + images             |             | ✔ (P) |       |
-| AngelCode BMFont      | `bmfont`   | XML      | `.fnt` `.xml` + images      |             | ✔ (P) |       |
-| AngelCode BMFont      | `bmfont`   | JSON     | `.json` + images            |             | ✔ (P) | ✔ (P) |
-| X11/Adobe BDF         | `bdf`      |          | `.bdf`                      | Unix        | ✔     | ✔     |
-| Codepage Information  | `cpi`      | FONT     | `.cpi`                      | MS-DOS      | ✔     |       |
-| Codepage Information  | `cpi`      | FONT.NT  | `.cpi`                      | Windows NT  | ✔     |       |
-| Codepage Information  | `cpi`      | DRFONT   | `.cpi`                      | DR-DOS      | ✔     |       |
-| FONTX2                | `fontx`    |          | `.fnt`                      | DOS/V       | ✔     | ✔     |
-| `kbd` Codepage        | `kbd-cp`   |          | `.cp`                       | Linux       | ✔     |       |
-| DEC DRCS              | `dec-drcs` |          |                             | DEC VT      | ✔     | ✔     |
-| Amiga Font Contents   | `amiga-fc` |          | `.font`                     | Amiga OS    | ✔     |       |
-| Amiga Font            | `amiga`    |          |                             | Amiga OS    | ✔     |       |
-| Atari GDOS / GEM      | `gdos`     |          | `.fnt` `.gft` `.vga`        | Atari ST, GEM| ✔    | ✔     |
-| Signum! 2             | `signum-???`|         | `.e24` `.p9` `.p24` `.l30`  | Atari ST    | ✔     |       |
-| Daisy-Dot II & III    | `daisy`    |          | `.nlq` `.nl?`               | Atari       | ✔     |       |
-| BBC soft font         | `bbc`      |          |                             | BBC Micro   | ✔     | ✔     |
-| FZX Font              | `fzx`      |          | `.fzx`                      | ZX Spectrum | ✔     | ✔     |
-| Figlet                | `figlet`   |          | `.flf`                      | Unix        | ✔     | ✔     |
-| vfont                 | `vfont`    |          |                             | BSD, SunOS  | ✔     | ✔     |
-| MacOS font            | `mac-dfont`| FONT     | `.dfont` `.suit`            | MacOS       | ✔     |       |
-| MacOS font            | `mac-dfont`| NFNT/FOND| `.dfont` `.suit`            | MacOS       | ✔     |       |
-| MacOS font (AS/AD)    | `mac-rsrc` | FONT     | `.rsrc`                     | MacOS       | ✔     |       |
-| MacOS font (AS/AD)    | `mac-rsrc` | NFNT/FOND| `.rsrc`                     | MacOS       | ✔     |       |
-| Windows resource      | `win-fnt`  | 1.0      | `.fnt`                      | Windows 1.x | ✔     |       |
-| Windows resource      | `win-fnt`  | 2.0      | `.fnt`                      | Windows 2.x | ✔     | ✔     |
-| Windows resource      | `win-fnt`  | 3.0      | `.fnt`                      | Windows 3.x | ✔     | ✔     |
-| Windows font          | `win-fon`  | 1.0 NE   | `.fon`                      | Windows 1.x | ✔     |       |
-| Windows font          | `win-fon`  | 2.0 NE   | `.fon`                      | Windows 2.x | ✔     | ✔     |
-| Windows font          | `win-fon`  | 3.0 NE   | `.fon`                      | Windows 3.x | ✔     | ✔     |
-| Windows font          | `win-fon`  | 2.0 PE   | `.fon`                      | Windows 2.x | ✔     |       |
-| Windows font          | `win-fon`  | 3.0 PE   | `.fon`                      | Windows 3.x | ✔     |       |  
+| Format                | Short Name | Version  | Typical Extension           | Native OS     | Read  | Write |
+|-----------------------|------------|----------|-----------------------------|---------------|-------|-------|
+| monobit yaff          | `yaff`     |          | `.yaff`                     |               | ✔     | ✔     |
+| Amiga Font Contents   | `amiga-fc` |          | `.font`                     | Amiga OS      | ✔     |       |
+| Amiga font            | `amiga`    |          |                             | Amiga OS      | ✔     |       |
+| BBC soft font         | `bbc`      |          |                             | BBC Micro     | ✔     | ✔     |
+| X11/Adobe BDF         | `bdf`      |          | `.bdf`                      | Unix          | ✔     | ✔     |
+| AngelCode BMFont [P]  | `bmfont` | text binary XML JSON | `.fnt` `.xml` `.json` + images  | | ✔     | ✔ (text, JSON) |
+| Raw binary            | `binary`   |          | `.fnt` `.rom` `.f??` `.ch8` `.64c` `.chr`|  | ✔     | ✔     |
+| C or C++ coded binary | `c`        |          | `.c` `.cpp` `.cc` `.h`      |               | ✔     | ✔     |
+| Codepage Information  | `cpi` | FONT FONT.NT DRFONT | `.cpi` | MS-DOS, Windows NT, DR-DOS   | ✔     |       |
+| Daisy-Dot             | `daisy` | II III Magnified | `.nlq` `.nl?`          | Atari         | ✔     |       |
+| DEC DRCS soft font    | `dec-drcs` |          |                             | DEC VT        | ✔     | ✔     |
+| FZX font              | `fzx`      |          | `.fzx`                      | ZX Spectrum   | ✔     | ✔     |
+| Figlet font           | `figlet`   |          | `.flf`                      | Unix          | ✔     | ✔     |
+| FONTX2                | `fontx`    |          | `.fnt`                      | DOS/V         | ✔     | ✔     |
+| Atari GDOS / GEM      | `gdos`     |          | `.fnt` `.gft` `.vga`        | Atari ST, GEM | ✔     | ✔     |
+| GNU Unifont           | `hex`      |          | `.hex`                      |               | ✔     | ✔     |
+| Extended Hex          | `hext`     |          | `.hex`                      |               | ✔     | ✔     |
+| hexdraw               | `hexdraw`  |          | `.draw`                     |               | ✔     | ✔     |
+| Bitmap image [P]      | `image`    |          | `.png` `.gif` `.bmp`        |               | ✔     | ✔     |
+| JSON coded binary     | `json`     |          | `.json`                     |               | ✔     | ✔     |
+| `kbd` Codepage        | `kbd-cp`   |          | `.cp`                       | Linux         | ✔     |       |
+| MacOS font            | `mac-dfont`| FONT NFNT+FOND | `.dfont` `.suit`      | MacOS         | ✔     |       |
+| MacOS font (AS/AD)    | `mac-rsrc` | FONT NFNT+FOND | `.rsrc`               | MacOS         | ✔     |       |
+| PDF chart [R]         | `pdf`      |          | `.pdf`                      |               |       | ✔     |
+| PC Screen Font        | `psf`      | 1 2      | `.psf` `.psfu`              | MS-DOS, Linux | ✔     | ✔ (version 2) |
+| Python coded binary   | `python`   |          | `.py`                       |               | ✔     | ✔     |
+| Signum! 2  | `signum-*` | editor 9-pin 24-pin laser | `.e24` `.p9` `.p24` `.l30` | Atari ST | ✔     |       |
+| vfont                 | `vfont`    |          |                             | BSD, SunOS    | ✔     | ✔     |
+| Windows resource      | `win-fnt`  | 1.0 2.0 3.0    | `.fnt`                | Windows 1.x 2.x 3.x | ✔  | ✔ (2.0, 3.0)       |
+| Windows font          | `win-fon`  | 1.0 2.0 3.0 NE PE | `.fon`             | Windows 1.x 2.x 3.x | ✔  | ✔ (2.0 NE, 3.0 NE) |
+
+
+[P] - requires **PIL**
+[R] - requires **reportlab**
 
 
 Font format features
@@ -152,26 +143,33 @@ Here is a comparison of what you can and cannot store in selected formats suppor
 | `fzx`         |   |   |   |   |   | any  | ✔ |   |   | binary
 | `figlet`      | ✔ |   |   |   |   | any  | ✔ |   | ✔ | visual text
 | `vfont`       |   |   |   |   |   | any  | ✔ |   |   | binary
-| `fontx`       |   |   |   | ✔ |   | any  |   |   |   | binary
-| `dec-drcs`    |   |   |   |   |   | >4xN |   |   |   | binary
-| `bbc`         |   |   |   |   |   | 8x8  |   |   |   | binary
 | `hext`        | ✔ | ✔ |   |   |   | 8xN  | multi-cell |   |   | hex
 | `hex`         | ✔ |   |   |   |   | 8x16 | multi-cell |   |   | hex
 | `psf.2`       | ✔ | ✔ |   |   |   | any  |   |   |   | binary
 | `psf.1`       | ✔ |   |   |   |   | 8xN  |   |   |   | binary
+| `fontx`       |   |   |   | ✔ |   | any  |   |   |   | binary
 | `cpi`         |   |   | ✔ |   | ✔ | 8xN  |   |   |   | binary
+| `dec-drcs`    |   |   |   |   |   | >4xN |   |   |   | binary
+| `bbc`         |   |   |   |   |   | 8x8  |   |   |   | binary
 
 
 Dependencies
 ------------
 
-(P) - requires **PIL**, install with `pip install Pillow`.  
-(R) - requires **reportlab**, install with `pip install reportlab`.  
+Some formats require
+- **PIL** (`Pillow`)
+- **reportlab**
 
 The renderer additionally employs
 - **uniseg**
 - **python-bidi**
 - **arabic-reshaper**
+
+All can be installed through Pip:
+
+    pip install Pillow reportlab uniseg python-bidi arabic-reshaper
+
+Without these packages, some functionality may not be available.
 
 
 Licence
