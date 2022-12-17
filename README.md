@@ -114,6 +114,7 @@ Supported formats
 | Amiga Font Contents   | `amiga-fc` |          | `.font`                     | Amiga OS    | ✔     |       |
 | Amiga Font            | `amiga`    |          |                             | Amiga OS    | ✔     |       |
 | Atari GDOS / GEM      | `gdos`     |          | `.fnt` `.gft` `.vga`        | Atari ST, GEM| ✔    | ✔     |
+| Signum! 2             | `signum-???`|         | `.e24` `.p9` `.p24` `.l30`  | Atari ST    | ✔     |       |
 | Daisy-Dot II & III    | `daisy`    |          | `.nlq` `.nl?`               | Atari       | ✔     |       |
 | BBC soft font         | `bbc`      |          |                             | BBC Micro   | ✔     | ✔     |
 | FZX Font              | `fzx`      |          | `.fzx`                      | ZX Spectrum | ✔     | ✔     |
