@@ -14,6 +14,39 @@ from ..storage import loaders, savers
 from ..font import Font, Glyph, Coord
 
 
+_APPLESINGLE_MAGIC = 0x00051600
+_APPLEDOUBLE_MAGIC = 0x00051607
+
+
+@loaders.register('dfont', 'suit', name='mac-dfont')
+def load_mac_dfont(instream, where=None):
+    """
+    Load font from a MacOS suitcase.
+    """
+    data = instream.read()
+    return _parse_resource_fork(data)
+
+@loaders.register('as', 'adf', 'rsrc',
+    magic=(_APPLESINGLE_MAGIC.to_bytes(4, 'big'), _APPLEDOUBLE_MAGIC.to_bytes(4, 'big')),
+    name='mac-rsrc',
+)
+def load_mac_rsrc(instream, where=None):
+    """
+    Load font from an AppleSingle or AppleDouble container.
+    """
+    data = instream.read()
+    return _parse_apple(data)
+
+
+@savers.register(linked=load_mac_dfont)
+def save_mac_dfont(pack, outstream, where=None):
+    raise FileFormatError('Saving to MacOS font files not supported.')
+
+@savers.register(linked=load_mac_rsrc)
+def save_mac_rsrc(pack, outstream, where=None):
+    raise FileFormatError('Saving to MacOS font files not supported.')
+
+
 ##############################################################################
 # AppleSingle/AppleDouble
 # see https://web.archive.org/web/20160304101440/http://kaiser-edv.de/documents/Applesingle_AppleDouble_v1.html
@@ -29,9 +62,6 @@ _APPLE_ENTRY = be.Struct(
     offset='uint32',
     length='uint32',
 )
-
-_APPLESINGLE_MAGIC = 0x00051600
-_APPLEDOUBLE_MAGIC = 0x00051607
 
 # Entry IDs
 # Data fork       1       standard Macintosh data fork
@@ -536,37 +566,6 @@ _NON_ROMAN_NAMES = {
     'Taliesin': '',
     'Mobile': '',
 }
-
-##############################################################################
-
-@loaders.register('dfont', 'suit', name='mac-dfont')
-def load_mac_dfont(instream, where=None):
-    """
-    Load font from a MacOS suitcase.
-    """
-    data = instream.read()
-    return _parse_resource_fork(data)
-
-@loaders.register('as', 'adf', 'rsrc',
-    magic=(_APPLESINGLE_MAGIC.to_bytes(4, 'big'), _APPLEDOUBLE_MAGIC.to_bytes(4, 'big')),
-    name='mac-rsrc',
-)
-def load_mac_rsrc(instream, where=None):
-    """
-    Load font from an AppleSingle or AppleDouble container.
-    """
-    data = instream.read()
-    return _parse_apple(data)
-
-
-@savers.register(linked=load_mac_dfont)
-def save_mac_dfont(pack, outstream, where=None):
-    raise FileFormatError('Saving to MacOS font files not supported.')
-
-@savers.register(linked=load_mac_rsrc)
-def save_mac_rsrc(pack, outstream, where=None):
-    raise FileFormatError('Saving to MacOS font files not supported.')
-
 
 ##############################################################################
 
