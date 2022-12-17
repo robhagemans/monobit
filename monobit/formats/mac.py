@@ -246,8 +246,14 @@ _WO_ENTRY = be.Struct(
     width='uint8',
 )
 # glyph width table entry
+# > Glyph-width table. For every glyph in the font, this table contains a word
+# > that specifies the glyph's fixed-point glyph width at the given point size
+# > and font style, in pixels. The Font Manager gives precedence to the values
+# > in this table over those in the font family glyph-width table. There is an
+# > unsigned integer in the high-order byte and a fractional part in the
+# > low-order byte. This table is optional.
 _WIDTH_ENTRY = be.Struct(
-    width='uint16',
+    width='uint16', # divide by 256
 )
 # height table entry
 # Image height table. For every glyph in the font, this table contains a word that specifies the
@@ -826,7 +832,9 @@ def _parse_nfnt(data, offset, properties):
     # scalable-width table
     if fontrec.fontType.has_width_table:
         glyphs = tuple(
-            _glyph.modify(scalable_width=_we.width)
+            # fixed-point value, unsigned integer in the high-order byte
+            # and a fractional part in the low-order byte
+            _glyph.modify(scalable_width=_we.width / 256)
             for _glyph, _we in zip(glyphs, width_table)
         )
     # image-height table
@@ -879,9 +887,10 @@ def _parse_nfnt(data, offset, properties):
     # drop mac glyph metrics
     glyphs = tuple(
         _glyph.drop(
-            'wo_offset', 'wo_width', 'image_height',
-            # not interpreted - keep?
-            'top_offset', 'scalable_width'
+            'wo_offset', 'wo_width',
+            # not interpreted - keep
+            # 'image_height', 'top_offset',
+            # 'scalable_width'
         )
         for _glyph in glyphs
     )
