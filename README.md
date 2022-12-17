@@ -188,8 +188,17 @@ distribution. Please check `tests/fonts/README.md`.
 Acknowledgements
 ----------------
 
-`monobit` contains code from Simon Tatham's `mkwinfont` and `dewinfont`.
-
+`monobit` would not exist without those documenting,
+reverse-engineering, implementing and preserving font formats and files:
+- [The Internet Archive](archive.org)
+- [Archive Team](http://fileformats.archiveteam.org/wiki/Fonts)
+- [Jason Scott's textfiles.com](textfiles.com)
+- [John Elliott's homepage](http://www.seasip.info)
+- [Simon Tatham's fonts page](https://www.chiark.greenend.org.uk/~sgtatham/fonts/): `monobit` contains code from `mkwinfont` and `dewinfont`
+- [Aivosto's character set documentation](https://www.aivosto.com/articles/charsets.html)
+- [Rebecca Bettencourt's character set documentation](https://www.kreativekorp.com/charset/)
+- [Xiphoseer's Signum Document Toolbox](https://sdo.dseiler.eu/)
+- ... and many others
 
 Other software
 --------------
