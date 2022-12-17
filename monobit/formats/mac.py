@@ -838,11 +838,14 @@ def _parse_nfnt(data, offset, properties):
             for _glyph, _we in zip(glyphs, width_table)
         )
     # image-height table
-    if fontrec.fontType.has_height_table:
-        glyphs = tuple(
-            _glyph.modify(image_height=_he.height, top_offset=_he.offset)
-            for _glyph, _he in zip(glyphs, height_table)
-        )
+    # > The Font Manager creates this table.
+    # this appears to mean any stored contents may well be meaningless
+    #
+    # if fontrec.fontType.has_height_table:
+    #     glyphs = tuple(
+    #         _glyph.modify(image_height=_he.height, top_offset=_he.offset)
+    #         for _glyph, _he in zip(glyphs, height_table)
+    #     )
     # width & offset
     glyphs = tuple(
         _glyph.modify(wo_offset=_wo.offset, wo_width=_wo.width)
