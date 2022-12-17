@@ -11,7 +11,8 @@ from ..binary import bytes_to_bits
 from ..struct import bitfield, big_endian as be
 from .. import struct
 from ..storage import loaders, savers
-from ..font import Font, Glyph, Coord
+from ..font import Font, Coord
+from ..glyph import Glyph, KernTable
 
 
 _APPLESINGLE_MAGIC = 0x00051600
@@ -688,6 +689,7 @@ def _parse_fond(data, offset, name):
     fa_offset = offset + _FOND_HEADER.size
     fa_header = _FA_HEADER.from_bytes(data, fa_offset)
     fa_list = _FA_ENTRY.array(fa_header.numAssoc+1).from_bytes(data, fa_offset + _FA_HEADER.size)
+    kerning_table = {}
     # check if any optional tables are expected
     # we don't have a field for bounding-box table offset
     if fond_header.ffWTabOff or fond_header.ffKernOff or fond_header.ffStylOff:
@@ -741,18 +743,17 @@ def _parse_fond(data, offset, name):
                 string, offs = string_from_bytes(data, offs)
                 encs.append(string)
         # Kerning table (optional)
-        if not fond_header.ffKernOff:
-            ktab = ()
-        else:
+        if fond_header.ffKernOff:
             ktab_offset = offset + fond_header.ffKernOff
             ktab = _KERN_TABLE.from_bytes(data, ktab_offset)
             offs = ktab_offset + _KERN_TABLE.size
-            pairs = []
+            kerning_table = {}
             for entry in range(ktab.numKerns+1):
                 ke = _KERN_ENTRY.from_bytes(data, offs)
-                # This is an integer value that specifies the number of bytes in this kerning subtable
+                # This is an integer value that specifies
+                # the number of bytes in this kerning subtable
                 pair_array = _KERN_PAIR.array(ke.kernLength)
-                pairs.append(
+                kerning_table[ke.kernStyle] = tuple(
                     pair_array.from_bytes(data, offs + _KERN_ENTRY.size)
                 )
                 offs += _KERN_ENTRY.size + pair_array.size
@@ -764,16 +765,33 @@ def _parse_fond(data, offset, name):
         # rsrc_id
         fa_entry.fontID: {
             'family': name,
-            'style': ' '.join(
-                _tag for _bit, _tag in _STYLE_MAP.items() if fa_entry.fontStyle & (0 << _bit)
-            ),
+            'style': _style_name(fa_entry.fontStyle),
             'point-size': fa_entry.fontSize,
             'spacing': 'monospace' if fond_header.ffFlags.fixed_width else 'proportional',
             'encoding': encoding,
+            'kerning-table': kerning_table.get(fa_entry.fontStyle, ())
         }
         for fa_entry in fa_list
     }
+    # check if we're losing kerning tables
+    styles = set(fa_entry.fontStyle for fa_entry in fa_list)
+    dropped_styles = tuple(
+        _style for _style in kerning_table
+        if _style not in styles
+    )
+    for style in dropped_styles:
+        logging.warning(
+            f'Kerning table for style {style:#0x} ({_style_name(style)}) not preserved.'
+        )
+        logging.debug(kerning_table[style])
     return info
+
+
+def _style_name(font_style):
+    """ Get human-readable representation of font style."""
+    return ' '.join(
+        _tag for _bit, _tag in _STYLE_MAP.items() if font_style & (1 << _bit)
+    )
 
 
 def _parse_nfnt(data, offset, properties):
@@ -888,15 +906,25 @@ def _parse_nfnt(data, offset, properties):
         if (_glyph.wo_width != 0xff and _glyph.wo_offset != 0xff) or (_glyph.width and _glyph.height)
     )
     # drop mac glyph metrics
-    glyphs = tuple(
-        _glyph.drop(
-            'wo_offset', 'wo_width',
-            # not interpreted - keep
-            # 'image_height', 'top_offset',
-            # 'scalable_width'
+    # keep scalable_width
+    glyphs = tuple(_glyph.drop('wo_offset', 'wo_width') for _glyph in glyphs)
+    # store kerning table
+    if 'kerning-table' in properties:
+        kern_table = sorted(
+            (
+                _entry.kernFirst, _entry.kernSecond,
+                _entry.kernWidth * properties['point-size'] / 2**12
+            )
+            for _entry in properties['kerning-table']
         )
-        for _glyph in glyphs
-    )
+        glyphs = tuple(
+            _glyph.modify(right_kerning=KernTable({
+                _right: f'{_width:.2f}'
+                for _left, _right, _width in kern_table
+                if _left == int(_glyph.codepoint)
+            }))
+            for _glyph in glyphs
+        )
     # store properties
     properties.update({
         # not overridable; also seems incorrect for system fonts
@@ -907,5 +935,7 @@ def _parse_nfnt(data, offset, properties):
         'line-height': fontrec.ascent + fontrec.descent + fontrec.leading,
         'left-bearing': fontrec.kernMax,
         'shift-up': -fontrec.descent,
+        # remove the kerning table
+        'kerning-table': None
     })
     return Font(glyphs, **properties)
