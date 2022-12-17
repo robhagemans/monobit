@@ -190,9 +190,9 @@ Acknowledgements
 
 `monobit` would not exist without those documenting,
 reverse-engineering, implementing and preserving font formats and files:
-- [The Internet Archive](archive.org)
+- [The Internet Archive](https://archive.org)
 - [Archive Team](http://fileformats.archiveteam.org/wiki/Fonts)
-- [Jason Scott's textfiles.com](textfiles.com)
+- [Jason Scott's textfiles.com](http://textfiles.com)
 - [John Elliott's homepage](http://www.seasip.info)
 - [Simon Tatham's fonts page](https://www.chiark.greenend.org.uk/~sgtatham/fonts/): `monobit` contains code from `mkwinfont` and `dewinfont`
 - [Aivosto's character set documentation](https://www.aivosto.com/articles/charsets.html)
