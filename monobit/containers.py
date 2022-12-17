@@ -80,7 +80,10 @@ class Container(StreamBase):
     def unused_name(self, stem, suffix):
         """Generate unique name for container file."""
         for i in itertools.count():
-            filename = '{}.{}.{}'.format(stem, i, suffix)
+            if i:
+                filename = '{}.{}.{}'.format(stem, i, suffix)
+            else:
+                filename = '{}.{}'.format(stem, suffix)
             if filename not in self:
                 return filename
 
