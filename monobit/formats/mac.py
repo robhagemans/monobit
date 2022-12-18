@@ -26,7 +26,7 @@ def load_mac_dfont(instream, where=None):
     Load font from a MacOS suitcase.
     """
     data = instream.read()
-    return _parse_resource_fork(data)
+    return _parse_mac_resource(data)
 
 @loaders.register('bin', name='mac-bin')
 def load_macbinary(instream, where=None):
@@ -49,7 +49,7 @@ def load_mac_rsrc(instream, where=None):
     Load font from an AppleSingle or AppleDouble container.
     """
     data = instream.read()
-    return _parse_apple(data)
+    return _parse_apple_container(data)
 
 
 @savers.register(linked=load_mac_dfont)
@@ -59,6 +59,7 @@ def save_mac_dfont(pack, outstream, where=None):
 @savers.register(linked=load_mac_rsrc)
 def save_mac_rsrc(pack, outstream, where=None):
     raise FileFormatError('Saving to MacOS font files not supported.')
+
 
 
 ##############################################################################
@@ -158,7 +159,7 @@ _APPLE_ENTRY_TYPES = {
 }
 
 
-def _parse_apple(data):
+def _parse_apple_container(data):
     """Parse an AppleSingle or AppleDouble file."""
     header = _APPLE_HEADER.from_bytes(data)
     if header.magic == _APPLESINGLE_MAGIC:
@@ -178,7 +179,7 @@ def _parse_apple(data):
         if entry.entry_id == _ID_RESOURCE:
             logging.debug('Reading resource')
             fork_data = data[entry.offset:entry.offset+entry.length]
-            fonts = _parse_resource_fork(fork_data, formatstr=container)
+            fonts = _parse_mac_resource(fork_data, formatstr=container)
             return fonts
     raise FileFormatError('No resource fork found in file.')
 
@@ -265,7 +266,7 @@ def _parse_macbinary(data):
     fork_data = data[ofs:]
     if not fork_data:
         raise FileFormatError('No resource fork found in file.')
-    fonts = _parse_resource_fork(fork_data, 'MacBinary')
+    fonts = _parse_mac_resource(fork_data, 'MacBinary')
     return fonts
 
 
@@ -328,7 +329,15 @@ _REF_ENTRY = be.Struct(
 # 1-byte length followed by bytes
 
 
-def _parse_resource_fork(data, formatstr=''):
+def _parse_mac_resource(data, formatstr=''):
+    """Parse a bare resource and convert to fonts."""
+    parsed_rsrc = _parse_resource_fork(data)
+    directory = _construct_directory(parsed_rsrc)
+    fonts = _convert_mac_font(parsed_rsrc, directory, formatstr)
+    return fonts
+
+
+def _parse_resource_fork(data):
     """Parse a MacOS resource fork."""
     rsrc_header = _RSRC_HEADER.from_bytes(data)
     map_header = _MAP_HEADER.from_bytes(data, rsrc_header.map_offset)
@@ -413,8 +422,10 @@ def _parse_resource_fork(data, formatstr=''):
                 'Skipped resource #%d: type %s name `%s`',
                 rsrc_id, rsrc_type.decode('latin-1'), name
             )
-    ###########################################################################
-    # construct directory
+    return parsed_rsrc
+
+def _construct_directory(parsed_rsrc):
+    """Construct font family directory"""
     info = {}
     for rsrc_type, rsrc_id, kwargs in parsed_rsrc:
         # new-style directory entries
@@ -425,8 +436,10 @@ def _parse_resource_fork(data, formatstr=''):
         elif rsrc_type == b'':
             font_number = rsrc_id // 128
             info[font_number] = {'family': kwargs['name']}
-    ###########################################################################
-    # convert properties and glyphs
+    return info
+
+def _convert_mac_font(parsed_rsrc, info, formatstr):
+    """convert properties and glyphs."""
     fonts = []
     for rsrc_type, rsrc_id, kwargs in parsed_rsrc:
         if rsrc_type in (b'FONT', b'NFNT'):
