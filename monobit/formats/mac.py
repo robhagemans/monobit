@@ -331,14 +331,15 @@ _REF_ENTRY = be.Struct(
 
 def _parse_mac_resource(data, formatstr=''):
     """Parse a bare resource and convert to fonts."""
-    parsed_rsrc = _parse_resource_fork(data)
+    resource_table = _parse_resource_fork_header(data)
+    parsed_rsrc = _parse_resources(data, resource_table)
     directory = _construct_directory(parsed_rsrc)
     fonts = _convert_mac_font(parsed_rsrc, directory, formatstr)
     return fonts
 
 
-def _parse_resource_fork(data):
-    """Parse a MacOS resource fork."""
+def _parse_resource_fork_header(data):
+    """Parse a Classic MacOS resource fork header."""
     rsrc_header = _RSRC_HEADER.from_bytes(data)
     map_header = _MAP_HEADER.from_bytes(data, rsrc_header.map_offset)
     type_array = _TYPE_ENTRY.array(map_header.last_type + 1)
@@ -366,11 +367,12 @@ def _parse_resource_fork(data):
             # construct the 3-byte integer
             data_offset = ref_entry.data_offset_hi * 0x10000 + ref_entry.data_offset
             offset = rsrc_header.data_offset + _DATA_HEADER.size + data_offset
-            if type_entry.rsrc_type == b'sfnt':
-                logging.warning('sfnt resources (vector or bitmap) not supported')
-            if type_entry.rsrc_type in (b'FONT', b'NFNT', b'FOND'):
-                resources.append((type_entry.rsrc_type, ref_entry.rsrc_id, offset, name))
-    # parse resources
+            resources.append((type_entry.rsrc_type, ref_entry.rsrc_id, offset, name))
+    return resources
+
+
+def _parse_resources(data, resources):
+    """Parse resources."""
     parsed_rsrc = []
     for rsrc_type, rsrc_id, offset, name in resources:
         if rsrc_type == b'FOND':
@@ -409,11 +411,14 @@ def _parse_resource_fork(data):
                 rsrc_type, rsrc_id, _parse_nfnt(data, offset)
             ))
         else:
+            if rsrc_type == b'sfnt':
+                logging.warning('sfnt resources (vector or bitmap) not supported')
             logging.debug(
                 'Skipped resource #%d: type %s name `%s`',
                 rsrc_id, rsrc_type.decode('latin-1'), name
             )
     return parsed_rsrc
+
 
 def _construct_directory(parsed_rsrc):
     """Construct font family directory."""
@@ -428,6 +433,7 @@ def _construct_directory(parsed_rsrc):
             font_number = rsrc_id // 128
             info[font_number] = {'family': kwargs['name']}
     return info
+
 
 def _convert_mac_font(parsed_rsrc, info, formatstr):
     """convert properties and glyphs."""
