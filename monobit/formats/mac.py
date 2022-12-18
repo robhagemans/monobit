@@ -365,7 +365,9 @@ def _parse_resource_fork(data, formatstr=''):
     for rsrc_type, rsrc_id, offset, name in resources:
         if rsrc_type == b'FOND':
             logging.debug('Parsing font family resource #%d [FOND]', rsrc_id)
-            info.update(_parse_fond(data, offset, name))
+            fond_header, fa_list, kerning, encoding = _parse_fond(data, offset)
+            props = _convert_fond(name, fond_header, fa_list, kerning, encoding)
+            info.update(props)
         else:
             if rsrc_type == b'FONT':
                 font_number, font_size = divmod(rsrc_id, 128)
@@ -413,7 +415,8 @@ def _parse_resource_fork(data, formatstr=''):
                     'Parsing bitmapped font resource #%d [%s]',
                     rsrc_id, rsrc_type.decode('latin-1')
                 )
-                font = _parse_nfnt(data, offset, props)
+                glyphs, fontrec = _parse_nfnt(data, offset)
+                font = _convert_nfnt(glyphs, fontrec, props)
             except ValueError as e:
                 logging.error('Could not load font: %s', e)
             else:
@@ -651,7 +654,7 @@ _KERN_PAIR = be.Struct(
     kernWidth=_FIXED_TYPE,
 )
 
-def _parse_fond(data, offset, name):
+def _parse_fond(data, offset):
     """Parse a MacOS FOND resource."""
     fond_header = _FOND_HEADER.from_bytes(data, offset)
     # Font Family Tables:
@@ -732,7 +735,7 @@ def _parse_fond(data, offset, name):
                     pair_array.from_bytes(data, offs + _KERN_ENTRY.size)
                 )
                 offs += _KERN_ENTRY.size + pair_array.size
-    return _convert_fond(name, fond_header, fa_list, kerning_table, encoding_table)
+    return fond_header, fa_list, kerning_table, encoding_table
 
 
 def _convert_fond(name, fond_header, fa_list, kerning_table, encoding_table):
@@ -932,7 +935,7 @@ _FONT_NAMES = {
 }
 
 
-def _parse_nfnt(data, offset, properties):
+def _parse_nfnt(data, offset):
     """Parse a MacOS NFNT or FONT resource."""
     fontrec = _NFNT_HEADER.from_bytes(data, offset)
     if not (fontrec.rowWords and fontrec.widMax and fontrec.fRectWidth and fontrec.fRectHeight):
@@ -1007,7 +1010,7 @@ def _parse_nfnt(data, offset, properties):
         _glyph.modify(wo_offset=_wo.offset, wo_width=_wo.width)
         for _glyph, _wo in zip(glyphs, wo_table)
     )
-    return _convert_nfnt(glyphs, fontrec, properties)
+    return glyphs, fontrec
 
 
 def _convert_nfnt(glyphs, fontrec, properties):
