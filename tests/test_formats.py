@@ -265,6 +265,11 @@ class TestFormats(BaseTester):
         # only 195 glyphs in the font as it's in mac-roman encoding now
         self.assertEqual(len(font.glyphs), 195)
 
+    def test_import_macbinary(self):
+        """Test importing macbinary files."""
+        font, *_ = monobit.load(self.font_path / '4x6.bin')
+        self.assertEqual(len(font.glyphs), 195)
+
     # Amiga
 
     def test_import_amiga(self):
