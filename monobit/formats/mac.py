@@ -13,6 +13,7 @@ from .. import struct
 from ..storage import loaders, savers
 from ..font import Font, Coord
 from ..glyph import Glyph, KernTable
+from ..streams import FileFormatError
 
 
 _APPLESINGLE_MAGIC = 0x00051600
@@ -156,7 +157,7 @@ def _parse_apple(data):
     elif header.magic == _APPLEDOUBLE_MAGIC:
         container = 'AppleDouble'
     else:
-        raise ValueError('Not an AppleSingle or AppleDouble file.')
+        raise FileFormatError('Not an AppleSingle or AppleDouble file.')
     entry_array = _APPLE_ENTRY.array(header.number_entities)
     entries = entry_array.from_bytes(data, _APPLE_HEADER.size)
     for i, entry in enumerate(entries):
@@ -170,7 +171,7 @@ def _parse_apple(data):
             fork_data = data[entry.offset:entry.offset+entry.length]
             fonts = _parse_resource_fork(fork_data, formatstr=container)
             return fonts
-    raise ValueError('No resource fork found in file.')
+    raise FileFormatError('No resource fork found in file.')
 
 
 ##############################################################################
@@ -829,9 +830,9 @@ def _parse_nfnt(data, offset, properties):
     """Parse a MacOS NFNT or FONT resource."""
     fontrec = _NFNT_HEADER.from_bytes(data, offset)
     if not (fontrec.rowWords and fontrec.widMax and fontrec.fRectWidth and fontrec.fRectHeight):
-        raise ValueError('Empty FONT/NFNT resource.')
+        raise FileFormatError('Empty FONT/NFNT resource.')
     if fontrec.fontType.depth or fontrec.fontType.has_fctb:
-        raise ValueError('Anti-aliased or colour fonts not supported.')
+        raise FileFormatError('Anti-aliased or colour fonts not supported.')
     ###############################################################################################
     # read char tables & bitmaps
     # table offsets
