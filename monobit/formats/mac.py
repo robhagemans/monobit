@@ -7,7 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
-from ..binary import bytes_to_bits
+from ..binary import bytes_to_bits, align
 from ..struct import bitfield, big_endian as be
 from .. import struct
 from ..storage import loaders, savers
@@ -52,7 +52,63 @@ def save_mac_rsrc(pack, outstream, where=None):
 
 
 ##############################################################################
-# AppleSingle/AppleDouble
+# encoding constants
+
+# based on:
+# [1] Apple Technotes (As of 2002)/te/te_02.html
+# [2] https://developer.apple.com/library/archive/documentation/mac/Text/Text-367.html#HEADING367-0
+_MAC_ENCODING = {
+    0: 'mac-roman',
+    1: 'mac-japanese',
+    2: 'mac-trad-chinese',
+    3: 'mac-korean',
+    4: 'mac-arabic',
+    5: 'mac-hebrew',
+    6: 'mac-greek',
+    7: 'mac-cyrillic', # [1] russian
+    # 8: [2] right-to-left symbols
+    9: 'mac-devanagari',
+    10: 'mac-gurmukhi',
+    11: 'mac-gujarati',
+    12: 'mac-oriya',
+    13: 'mac-bengali',
+    14: 'mac-tamil',
+    15: 'mac-telugu',
+    16: 'mac-kannada',
+    17: 'mac-malayalam',
+    18: 'mac-sinhalese',
+    19: 'mac-burmese',
+    20: 'mac-khmer',
+    21: 'mac-thai',
+    22: 'mac-laotian',
+    23: 'mac-georgian',
+    24: 'mac-armenian',
+    25: 'mac-simp-chinese', # [1] maldivian
+    26: 'mac-tibetan',
+    27: 'mac-mongolian',
+    28: 'mac-ethiopic', # [2] == geez
+    29: 'mac-centraleurope', # [1] non-cyrillic slavic
+    30: 'mac-vietnamese',
+    31: 'mac-sindhi', # [2] == ext-arabic
+    #32: [1] [2] 'uninterpreted symbols'
+}
+
+# fonts which clain mac-roman encoding but aren't
+_NON_ROMAN_NAMES = {
+    # https://www.unicode.org/Public/MAPPINGS/VENDORS/APPLE/SYMBOL.TXT
+    # > The Mac OS Symbol encoding shares the script code smRoman
+    # > (0) with the Mac OS Roman encoding. To determine if the Symbol
+    # > encoding is being used, you must check if the font name is
+    # > "Symbol".
+    'Symbol': 'mac-symbol',
+    'Cairo': '',
+    'Taliesin': '',
+    'Mobile': '',
+}
+
+
+##############################################################################
+# AppleSingle/AppleDouble container
 # v1: see https://web.archive.org/web/20160304101440/http://kaiser-edv.de/documents/Applesingle_AppleDouble_v1.html
 # v2: https://web.archive.org/web/20160303215152/http://kaiser-edv.de/documents/AppleSingle_AppleDouble.pdf
 # the difference between v1 and v2 affects the file info sections
@@ -90,6 +146,37 @@ _APPLE_ENTRY_TYPES = {
     14: 'afp file info',
     15: 'directory id',
 }
+
+
+def _parse_apple(data):
+    """Parse an AppleSingle or AppleDouble file."""
+    header = _APPLE_HEADER.from_bytes(data)
+    if header.magic == _APPLESINGLE_MAGIC:
+        container = 'AppleSingle'
+    elif header.magic == _APPLEDOUBLE_MAGIC:
+        container = 'AppleDouble'
+    else:
+        raise ValueError('Not an AppleSingle or AppleDouble file.')
+    entry_array = _APPLE_ENTRY.array(header.number_entities)
+    entries = entry_array.from_bytes(data, _APPLE_HEADER.size)
+    for i, entry in enumerate(entries):
+        entry_type = _APPLE_ENTRY_TYPES.get(entry.entry_id, 'unknown')
+        logging.debug(
+            '%s container: entry #%d, %s [%d]',
+            container, i, entry_type, entry.entry_id
+        )
+        if entry.entry_id == _ID_RESOURCE:
+            logging.debug('Reading resource')
+            fork_data = data[entry.offset:entry.offset+entry.length]
+            fonts = _parse_resource_fork(fork_data)
+            fonts = [
+                font.modify(
+                    source_format=f'MacOS {font.source_format} ({container} container)'
+                )
+                for font in fonts
+            ]
+            return fonts
+    raise ValueError('No resource fork found in file.')
 
 
 ##############################################################################
@@ -151,139 +238,94 @@ _REF_ENTRY = be.Struct(
 # 1-byte length followed by bytes
 
 
-##############################################################################
-# NFNT/FONT resource
-
-# the Font Type Element
-# https://developer.apple.com/library/archive/documentation/mac/Text/Text-251.html#MARKER-9-442
-_FONT_TYPE = be.Struct(
-    # 15    Reserved. Should be set to 0.
-    reserved_15=bitfield('uint16', 1),
-    # 14    This bit is set to 1 if the font is not to be expanded to match the screen depth. The
-    #       font is for color Macintosh computers only if this bit is set to 1. This is for some
-    #       fonts, such as Kanji, which are too large for synthetic fonts to be effective or
-    #       meaningful, or bitmapped fonts that are larger than 50 points.
-    dont_expand_to_match_screen_depth=bitfield('uint16', 1),
-    # 13    This bit is set to 1 if the font describes a fixed-width font, and is set to 0 if the
-    #       font describes a proportional font. The Font Manager does not check the setting of this bit.
-    fixed_width=bitfield('uint16', 1),
-    # 12    Reserved. Should be set to 1.
-    reserved_12=bitfield('uint16', 1),
-    # 10-11 Reserved. Should be set to 0.
-    reserved_10_11=bitfield('uint16', 2),
-    # 9     This bit is set to 1 if the font contains colors other than black. This font is for
-    #       color Macintosh computers only if this bit is set to 1.
-    has_colors=bitfield('uint16', 1),
-    # 8     This bit is set to 1 if the font is a synthetic font, created dynamically from the
-    #       available font resources in response to a certain color and screen depth combination.
-    #       The font is for color Macintosh computers only if this bit is set to 1.
-    synthetic=bitfield('uint16', 1),
-    # 7     This bit is set to 1 if the font has a font color table ('fctb') resource. The font
-    #       is for color Macintosh computers only if this bit is set to 1.
-    has_fctb=bitfield('uint16', 1),
-    # 4-6   Reserved. Should be set to 0.
-    reserved_4_6=bitfield('uint16', 3),
-    # 2-3   These two bits define the depth of the font. Each of the four possible values indicates
-    #       the number of bits (and therefore, the number of colors) used to represent each pixel
-    #       in the glyph images.
-    #       Value    Font depth    Number of colors
-    #           0    1-bit    1
-    #           1    2-bit    4
-    #           2    4-bit    16
-    #           3    8-bit    256
-    #       Normally the font depth is 0 and the glyphs are specified as monochrome images. If
-    #       bit 7 of this field is set to 1, a resource of type 'fctb' with the same ID as the font
-    #       can optionally be provided to assign RGB colors to specific pixel values.
-    #
-    # If this font resource is a member of a font family, the settings of bits 8 and 9 of the
-    # fontStyle field in this font's association table entry should be the same as the settings of
-    # bits 2 and 3 in the fontType field. For more information, see "The Font Association Table"
-    # on page 4-89.
-    depth=bitfield('uint16', 2),
-    # 1    This bit is set to 1 if the font resource contains a glyph-width table.
-    has_width_table=bitfield('uint16', 1),
-    # 0 This bit is set to 1 if the font resource contains an image height table.
-    has_height_table=bitfield('uint16', 1),
-)
-
-
-# the header of the NFNT is a FontRec
-# https://developer.apple.com/library/archive/documentation/mac/Text/Text-214.html
-_NFNT_HEADER = be.Struct(
-    #    {font type}
-    fontType=_FONT_TYPE,
-    #    {character code of first glyph}
-    firstChar='uint16',
-    #    {character code of last glyph}
-    lastChar='uint16',
-    #    {maximum glyph width}
-    widMax='uint16',
-    #    {maximum glyph kern}
-    kernMax='int16',
-    #    {negative of descent}
-    nDescent='int16',
-    #    {width of font rectangle}
-    fRectWidth='uint16',
-    #    {height of font rectangle}
-    fRectHeight='uint16',
-    #    {offset to width/offset table}
-    owTLoc='uint16',
-    #    {maximum ascent measurement}
-    ascent='uint16',
-    #    {maximum descent measurement}
-    descent='uint16',
-    #    {leading measurement}
-    leading='uint16',
-    #    {row width of bit image in 16-bit wds}
-    rowWords='uint16',
-    # followed by:
-    # bit image table
-    # bitmap location table
-    # width offset table
-    # glyph-width table
-    # image height table
-)
-
-# location table entry
-_LOC_ENTRY = be.Struct(
-    offset='uint16',
-)
-# width/offset table entry
-# Width/offset table. For every glyph in the font, this table contains a word with the glyph offset
-# in the high-order byte and the glyph's width, in integer form, in the low-order byte. The value of
-# the offset, when added to the maximum kerning  value for the font, determines the horizontal
-# distance from the glyph origin to the left edge of the bit image of the glyph, in pixels. If this
-# sum is negative, the glyph origin  is to the right of the glyph image's left edge, meaning the
-# glyph kerns to the left.  If the sum is positive, the origin is to the left of the image's left
-# edge. If the sum equals zero, the glyph origin corresponds with the left edge of the bit image.
-# Missing glyphs are represented by a word value of -1. The last word of this table is also -1,
-# representing the end.
-_WO_ENTRY = be.Struct(
-    offset='uint8',
-    width='uint8',
-)
-# glyph width table entry
-# > Glyph-width table. For every glyph in the font, this table contains a word
-# > that specifies the glyph's fixed-point glyph width at the given point size
-# > and font style, in pixels. The Font Manager gives precedence to the values
-# > in this table over those in the font family glyph-width table. There is an
-# > unsigned integer in the high-order byte and a fractional part in the
-# > low-order byte. This table is optional.
-_WIDTH_ENTRY = be.Struct(
-    width='uint16', # divide by 256
-)
-# height table entry
-# Image height table. For every glyph in the font, this table contains a word that specifies the
-# image height of the glyph, in pixels. The image height is the height of the glyph image and is
-# less than or equal to the font height. QuickDraw uses the image height for improved character
-# plotting, because it only draws the visible part of the glyph. The high-order byte of the word is
-# the offset from the top of the font rectangle of the first non-blank (or nonwhite) row in the
-# glyph, and the low-order byte is the number of rows that must be drawn. The Font Manager creates
-# this table.
-_HEIGHT_ENTRY = be.Struct(
-    offset='uint8',
-    height='uint8',
-)
+def _parse_resource_fork(data):
+    """Parse a MacOS resource fork."""
+    rsrc_header = _RSRC_HEADER.from_bytes(data)
+    map_header = _MAP_HEADER.from_bytes(data, rsrc_header.map_offset)
+    type_array = _TYPE_ENTRY.array(map_header.last_type + 1)
+    # +2 because the length field is considered part of the type list
+    type_list_offset = rsrc_header.map_offset + map_header.type_list_offset + 2
+    type_list = type_array.from_bytes(data, type_list_offset)
+    resources = []
+    for type_entry in type_list:
+        ref_array = _REF_ENTRY.array(type_entry.last_rsrc + 1)
+        ref_list = ref_array.from_bytes(
+            data, type_list_offset -2 + type_entry.ref_list_offset
+        )
+        for ref_entry in ref_list:
+            # get name from name list
+            if ref_entry.name_offset == 0xffff:
+                name = ''
+            else:
+                name_offset = (
+                    rsrc_header.map_offset + map_header.name_list_offset
+                    + ref_entry.name_offset
+                )
+                name_length = data[name_offset]
+                name = data[name_offset+1:name_offset+name_length+1].decode('ascii', 'replace')
+            # construct the 3-byte integer
+            data_offset = ref_entry.data_offset_hi * 0x10000 + ref_entry.data_offset
+            offset = rsrc_header.data_offset + _DATA_HEADER.size + data_offset
+            if type_entry.rsrc_type == b'sfnt':
+                logging.warning('sfnt resources (vector or bitmap) not supported')
+            if type_entry.rsrc_type in (b'FONT', b'NFNT', b'FOND'):
+                resources.append((type_entry.rsrc_type, ref_entry.rsrc_id, offset, name))
+    # construct directory
+    info = {}
+    for rsrc_type, rsrc_id, offset, name in resources:
+        if rsrc_type == b'FOND':
+            logging.debug('Parsing font family resource #%d [FOND]', rsrc_id)
+            info.update(_parse_fond(data, offset, name))
+        else:
+            if rsrc_type == b'FONT':
+                font_number, font_size = divmod(rsrc_id, 128)
+                if not font_size:
+                    info[font_number] = {
+                        'family': name,
+                    }
+    # parse fonts
+    fonts = []
+    for rsrc_type, rsrc_id, offset, name in resources:
+        if rsrc_type not in (b'FONT', b'NFNT'):
+            logging.debug(
+                'Resource entry #%d: type %s',
+                rsrc_id, rsrc_type.decode('latin-1')
+            )
+        else:
+            props = {
+                'family': name if name else f'{rsrc_id}',
+                'source-format': rsrc_type.decode('latin-1'),
+            }
+            if rsrc_type == b'FONT':
+                font_number, font_size = divmod(rsrc_id, 128)
+                if not font_size:
+                    # directory entry only
+                    continue
+                if font_number in _FONT_NAMES:
+                    props['family'] = _FONT_NAMES[font_number]
+                else:
+                    props['family'] = f'Family {font_number}'
+                if font_number in info:
+                    props.update({
+                        **info[font_number],
+                        'point-size': font_size,
+                    })
+            if rsrc_id in info:
+                props.update(info[rsrc_id])
+            if 'encoding' not in props or props.get('family', '') in _NON_ROMAN_NAMES:
+                props['encoding'] = _NON_ROMAN_NAMES.get(props.get('family', ''), 'mac-roman')
+            try:
+                logging.debug(
+                    'Parsing bitmapped font resource #%d [%s]',
+                    rsrc_id, rsrc_type.decode('latin-1')
+                )
+                font = _parse_nfnt(data, offset, props)
+            except ValueError as e:
+                logging.error('Could not load font: %s', e)
+            else:
+                font = font.label()
+                fonts.append(font)
+    return fonts
 
 
 ##############################################################################
@@ -515,204 +557,6 @@ _KERN_PAIR = be.Struct(
     kernWidth=_FIXED_TYPE,
 )
 
-
-# based on:
-# [1] Apple Technotes (As of 2002)/te/te_02.html
-# [2] https://developer.apple.com/library/archive/documentation/mac/Text/Text-367.html#HEADING367-0
-_MAC_ENCODING = {
-    0: 'mac-roman',
-    1: 'mac-japanese',
-    2: 'mac-trad-chinese',
-    3: 'mac-korean',
-    4: 'mac-arabic',
-    5: 'mac-hebrew',
-    6: 'mac-greek',
-    7: 'mac-cyrillic', # [1] russian
-    # 8: [2] right-to-left symbols
-    9: 'mac-devanagari',
-    10: 'mac-gurmukhi',
-    11: 'mac-gujarati',
-    12: 'mac-oriya',
-    13: 'mac-bengali',
-    14: 'mac-tamil',
-    15: 'mac-telugu',
-    16: 'mac-kannada',
-    17: 'mac-malayalam',
-    18: 'mac-sinhalese',
-    19: 'mac-burmese',
-    20: 'mac-khmer',
-    21: 'mac-thai',
-    22: 'mac-laotian',
-    23: 'mac-georgian',
-    24: 'mac-armenian',
-    25: 'mac-simp-chinese', # [1] maldivian
-    26: 'mac-tibetan',
-    27: 'mac-mongolian',
-    28: 'mac-ethiopic', # [2] == geez
-    29: 'mac-centraleurope', # [1] non-cyrillic slavic
-    30: 'mac-vietnamese',
-    31: 'mac-sindhi', # [2] == ext-arabic
-    #32: [1] [2] 'uninterpreted symbols'
-}
-
-# font names for system fonts in FONT resources
-_FONT_NAMES = {
-    0: 'Chicago', # system font
-    1: 'application font',
-    2: 'New York',
-    3: 'Geneva',
-    4: 'Monaco',
-    5: 'Venice',
-    6: 'London',
-    7: 'Athens',
-    8: 'San Francisco',
-    9: 'Toronto',
-    11: 'Cairo',
-    12: 'Los Angeles',
-    16: 'Palatino', # found experimentally
-    20: 'Times',
-    21: 'Helvetica',
-    22: 'Courier',
-    23: 'Symbol',
-    24: 'Taliesin', # later named Mobile, but it's have a FOND entry then.
-}
-
-# fonts which clain mac-roman encoding but aren't
-_NON_ROMAN_NAMES = {
-    # https://www.unicode.org/Public/MAPPINGS/VENDORS/APPLE/SYMBOL.TXT
-    # > The Mac OS Symbol encoding shares the script code smRoman
-    # > (0) with the Mac OS Roman encoding. To determine if the Symbol
-    # > encoding is being used, you must check if the font name is
-    # > "Symbol".
-    'Symbol': 'mac-symbol',
-    'Cairo': '',
-    'Taliesin': '',
-    'Mobile': '',
-}
-
-##############################################################################
-
-def _parse_apple(data):
-    """Parse an AppleSingle or AppleDouble file."""
-    header = _APPLE_HEADER.from_bytes(data)
-    if header.magic == _APPLESINGLE_MAGIC:
-        container = 'AppleSingle'
-    elif header.magic == _APPLEDOUBLE_MAGIC:
-        container = 'AppleDouble'
-    else:
-        raise ValueError('Not an AppleSingle or AppleDouble file.')
-    entry_array = _APPLE_ENTRY.array(header.number_entities)
-    entries = entry_array.from_bytes(data, _APPLE_HEADER.size)
-    for i, entry in enumerate(entries):
-        entry_type = _APPLE_ENTRY_TYPES.get(entry.entry_id, 'unknown')
-        logging.debug(
-            '%s container: entry #%d, %s [%d]',
-            container, i, entry_type, entry.entry_id
-        )
-        if entry.entry_id == _ID_RESOURCE:
-            logging.debug('Reading resource')
-            fork_data = data[entry.offset:entry.offset+entry.length]
-            fonts = _parse_resource_fork(fork_data)
-            fonts = [
-                font.modify(
-                    source_format=f'MacOS {font.source_format} ({container} container)'
-                )
-                for font in fonts
-            ]
-            return fonts
-    raise ValueError('No resource fork found in file.')
-
-
-def _parse_resource_fork(data):
-    """Parse a MacOS resource fork."""
-    rsrc_header = _RSRC_HEADER.from_bytes(data)
-    map_header = _MAP_HEADER.from_bytes(data, rsrc_header.map_offset)
-    type_array = _TYPE_ENTRY.array(map_header.last_type + 1)
-    # +2 because the length field is considered part of the type list
-    type_list_offset = rsrc_header.map_offset + map_header.type_list_offset + 2
-    type_list = type_array.from_bytes(data, type_list_offset)
-    resources = []
-    for type_entry in type_list:
-        ref_array = _REF_ENTRY.array(type_entry.last_rsrc + 1)
-        ref_list = ref_array.from_bytes(
-            data, type_list_offset -2 + type_entry.ref_list_offset
-        )
-        for ref_entry in ref_list:
-            # get name from name list
-            if ref_entry.name_offset == 0xffff:
-                name = ''
-            else:
-                name_offset = (
-                    rsrc_header.map_offset + map_header.name_list_offset
-                    + ref_entry.name_offset
-                )
-                name_length = data[name_offset]
-                name = data[name_offset+1:name_offset+name_length+1].decode('ascii', 'replace')
-            # construct the 3-byte integer
-            data_offset = ref_entry.data_offset_hi * 0x10000 + ref_entry.data_offset
-            offset = rsrc_header.data_offset + _DATA_HEADER.size + data_offset
-            if type_entry.rsrc_type == b'sfnt':
-                logging.warning('sfnt resources (vector or bitmap) not supported')
-            if type_entry.rsrc_type in (b'FONT', b'NFNT', b'FOND'):
-                resources.append((type_entry.rsrc_type, ref_entry.rsrc_id, offset, name))
-    # construct directory
-    info = {}
-    for rsrc_type, rsrc_id, offset, name in resources:
-        if rsrc_type == b'FOND':
-            logging.debug('Parsing font family resource #%d [FOND]', rsrc_id)
-            info.update(_parse_fond(data, offset, name))
-        else:
-            if rsrc_type == b'FONT':
-                font_number, font_size = divmod(rsrc_id, 128)
-                if not font_size:
-                    info[font_number] = {
-                        'family': name,
-                    }
-    # parse fonts
-    fonts = []
-    for rsrc_type, rsrc_id, offset, name in resources:
-        if rsrc_type not in (b'FONT', b'NFNT'):
-            logging.debug(
-                'Resource entry #%d: type %s',
-                rsrc_id, rsrc_type.decode('latin-1')
-            )
-        else:
-            props = {
-                'family': name if name else f'{rsrc_id}',
-                'source-format': rsrc_type.decode('latin-1'),
-            }
-            if rsrc_type == b'FONT':
-                font_number, font_size = divmod(rsrc_id, 128)
-                if not font_size:
-                    # directory entry only
-                    continue
-                if font_number in _FONT_NAMES:
-                    props['family'] = _FONT_NAMES[font_number]
-                else:
-                    props['family'] = f'Family {font_number}'
-                if font_number in info:
-                    props.update({
-                        **info[font_number],
-                        'point-size': font_size,
-                    })
-            if rsrc_id in info:
-                props.update(info[rsrc_id])
-            if 'encoding' not in props or props.get('family', '') in _NON_ROMAN_NAMES:
-                props['encoding'] = _NON_ROMAN_NAMES.get(props.get('family', ''), 'mac-roman')
-            try:
-                logging.debug(
-                    'Parsing bitmapped font resource #%d [%s]',
-                    rsrc_id, rsrc_type.decode('latin-1')
-                )
-                font = _parse_nfnt(data, offset, props)
-            except ValueError as e:
-                logging.error('Could not load font: %s', e)
-            else:
-                font = font.label()
-                fonts.append(font)
-    return fonts
-
-
 def _parse_fond(data, offset, name):
     """Parse a MacOS FOND resource."""
     fond_header = _FOND_HEADER.from_bytes(data, offset)
@@ -824,6 +668,163 @@ def _style_name(font_style):
     return ' '.join(
         _tag for _bit, _tag in _STYLE_MAP.items() if font_style & (1 << _bit)
     )
+
+
+##############################################################################
+# NFNT/FONT resource
+
+# the Font Type Element
+# https://developer.apple.com/library/archive/documentation/mac/Text/Text-251.html#MARKER-9-442
+_FONT_TYPE = be.Struct(
+    # 15    Reserved. Should be set to 0.
+    reserved_15=bitfield('uint16', 1),
+    # 14    This bit is set to 1 if the font is not to be expanded to match the screen depth. The
+    #       font is for color Macintosh computers only if this bit is set to 1. This is for some
+    #       fonts, such as Kanji, which are too large for synthetic fonts to be effective or
+    #       meaningful, or bitmapped fonts that are larger than 50 points.
+    dont_expand_to_match_screen_depth=bitfield('uint16', 1),
+    # 13    This bit is set to 1 if the font describes a fixed-width font, and is set to 0 if the
+    #       font describes a proportional font. The Font Manager does not check the setting of this bit.
+    fixed_width=bitfield('uint16', 1),
+    # 12    Reserved. Should be set to 1.
+    reserved_12=bitfield('uint16', 1),
+    # 10-11 Reserved. Should be set to 0.
+    reserved_10_11=bitfield('uint16', 2),
+    # 9     This bit is set to 1 if the font contains colors other than black. This font is for
+    #       color Macintosh computers only if this bit is set to 1.
+    has_colors=bitfield('uint16', 1),
+    # 8     This bit is set to 1 if the font is a synthetic font, created dynamically from the
+    #       available font resources in response to a certain color and screen depth combination.
+    #       The font is for color Macintosh computers only if this bit is set to 1.
+    synthetic=bitfield('uint16', 1),
+    # 7     This bit is set to 1 if the font has a font color table ('fctb') resource. The font
+    #       is for color Macintosh computers only if this bit is set to 1.
+    has_fctb=bitfield('uint16', 1),
+    # 4-6   Reserved. Should be set to 0.
+    reserved_4_6=bitfield('uint16', 3),
+    # 2-3   These two bits define the depth of the font. Each of the four possible values indicates
+    #       the number of bits (and therefore, the number of colors) used to represent each pixel
+    #       in the glyph images.
+    #       Value    Font depth    Number of colors
+    #           0    1-bit    1
+    #           1    2-bit    4
+    #           2    4-bit    16
+    #           3    8-bit    256
+    #       Normally the font depth is 0 and the glyphs are specified as monochrome images. If
+    #       bit 7 of this field is set to 1, a resource of type 'fctb' with the same ID as the font
+    #       can optionally be provided to assign RGB colors to specific pixel values.
+    #
+    # If this font resource is a member of a font family, the settings of bits 8 and 9 of the
+    # fontStyle field in this font's association table entry should be the same as the settings of
+    # bits 2 and 3 in the fontType field. For more information, see "The Font Association Table"
+    # on page 4-89.
+    depth=bitfield('uint16', 2),
+    # 1    This bit is set to 1 if the font resource contains a glyph-width table.
+    has_width_table=bitfield('uint16', 1),
+    # 0 This bit is set to 1 if the font resource contains an image height table.
+    has_height_table=bitfield('uint16', 1),
+)
+
+
+# the header of the NFNT is a FontRec
+# https://developer.apple.com/library/archive/documentation/mac/Text/Text-214.html
+_NFNT_HEADER = be.Struct(
+    #    {font type}
+    fontType=_FONT_TYPE,
+    #    {character code of first glyph}
+    firstChar='uint16',
+    #    {character code of last glyph}
+    lastChar='uint16',
+    #    {maximum glyph width}
+    widMax='uint16',
+    #    {maximum glyph kern}
+    kernMax='int16',
+    #    {negative of descent}
+    nDescent='int16',
+    #    {width of font rectangle}
+    fRectWidth='uint16',
+    #    {height of font rectangle}
+    fRectHeight='uint16',
+    #    {offset to width/offset table}
+    owTLoc='uint16',
+    #    {maximum ascent measurement}
+    ascent='uint16',
+    #    {maximum descent measurement}
+    descent='uint16',
+    #    {leading measurement}
+    leading='uint16',
+    #    {row width of bit image in 16-bit wds}
+    rowWords='uint16',
+    # followed by:
+    # bit image table
+    # bitmap location table
+    # width offset table
+    # glyph-width table
+    # image height table
+)
+
+# location table entry
+_LOC_ENTRY = be.Struct(
+    offset='uint16',
+)
+# width/offset table entry
+# Width/offset table. For every glyph in the font, this table contains a word with the glyph offset
+# in the high-order byte and the glyph's width, in integer form, in the low-order byte. The value of
+# the offset, when added to the maximum kerning  value for the font, determines the horizontal
+# distance from the glyph origin to the left edge of the bit image of the glyph, in pixels. If this
+# sum is negative, the glyph origin  is to the right of the glyph image's left edge, meaning the
+# glyph kerns to the left.  If the sum is positive, the origin is to the left of the image's left
+# edge. If the sum equals zero, the glyph origin corresponds with the left edge of the bit image.
+# Missing glyphs are represented by a word value of -1. The last word of this table is also -1,
+# representing the end.
+_WO_ENTRY = be.Struct(
+    offset='uint8',
+    width='uint8',
+)
+# glyph width table entry
+# > Glyph-width table. For every glyph in the font, this table contains a word
+# > that specifies the glyph's fixed-point glyph width at the given point size
+# > and font style, in pixels. The Font Manager gives precedence to the values
+# > in this table over those in the font family glyph-width table. There is an
+# > unsigned integer in the high-order byte and a fractional part in the
+# > low-order byte. This table is optional.
+_WIDTH_ENTRY = be.Struct(
+    width='uint16', # divide by 256
+)
+# height table entry
+# Image height table. For every glyph in the font, this table contains a word that specifies the
+# image height of the glyph, in pixels. The image height is the height of the glyph image and is
+# less than or equal to the font height. QuickDraw uses the image height for improved character
+# plotting, because it only draws the visible part of the glyph. The high-order byte of the word is
+# the offset from the top of the font rectangle of the first non-blank (or nonwhite) row in the
+# glyph, and the low-order byte is the number of rows that must be drawn. The Font Manager creates
+# this table.
+_HEIGHT_ENTRY = be.Struct(
+    offset='uint8',
+    height='uint8',
+)
+
+# font names for system fonts in FONT resources
+_FONT_NAMES = {
+    0: 'Chicago', # system font
+    1: 'application font',
+    2: 'New York',
+    3: 'Geneva',
+    4: 'Monaco',
+    5: 'Venice',
+    6: 'London',
+    7: 'Athens',
+    8: 'San Francisco',
+    9: 'Toronto',
+    11: 'Cairo',
+    12: 'Los Angeles',
+    16: 'Palatino', # found experimentally
+    20: 'Times',
+    21: 'Helvetica',
+    22: 'Courier',
+    23: 'Symbol',
+    24: 'Taliesin', # later named Mobile, but it has a FOND entry then.
+}
 
 
 def _parse_nfnt(data, offset, properties):
