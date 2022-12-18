@@ -659,6 +659,7 @@ def _parse_resource_fork(data):
     info = {}
     for rsrc_type, rsrc_id, offset, name in resources:
         if rsrc_type == b'FOND':
+            logging.debug('Parsing font family resource #%d [FOND]', rsrc_id)
             info.update(_parse_fond(data, offset, name))
         else:
             if rsrc_type == b'FONT':
@@ -670,10 +671,15 @@ def _parse_resource_fork(data):
     # parse fonts
     fonts = []
     for rsrc_type, rsrc_id, offset, name in resources:
-        if rsrc_type in (b'FONT', b'NFNT'):
+        if rsrc_type not in (b'FONT', b'NFNT'):
+            logging.debug(
+                'Resource entry #%d: type %s',
+                rsrc_id, rsrc_type.decode('latin-1')
+            )
+        else:
             props = {
                 'family': name if name else f'{rsrc_id}',
-                'source-format': rsrc_type.decode('ascii'),
+                'source-format': rsrc_type.decode('latin-1'),
             }
             if rsrc_type == b'FONT':
                 font_number, font_size = divmod(rsrc_id, 128)
@@ -694,6 +700,10 @@ def _parse_resource_fork(data):
             if 'encoding' not in props or props.get('family', '') in _NON_ROMAN_NAMES:
                 props['encoding'] = _NON_ROMAN_NAMES.get(props.get('family', ''), 'mac-roman')
             try:
+                logging.debug(
+                    'Parsing bitmapped font resource #%d [%s]',
+                    rsrc_id, rsrc_type.decode('latin-1')
+                )
                 font = _parse_nfnt(data, offset, props)
             except ValueError as e:
                 logging.error('Could not load font: %s', e)
