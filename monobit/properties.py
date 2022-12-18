@@ -235,7 +235,7 @@ def writable_property(arg=None, *, field=None):
     def _setter(self, value):
         if self._frozen:
             raise ValueError('Cannot set property on frozen object.')
-        logging.debug(f'Setting overridable property {field}={value}.')
+        #logging.debug(f'Setting overridable property {field}={value}.')
         vars(self)[field] = value
 
     return property(_getter, _setter)

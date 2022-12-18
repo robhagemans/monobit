@@ -742,7 +742,7 @@ def _parse_fond(data, offset, name):
             'family': name,
             'style': _style_name(fa_entry.fontStyle),
             'point-size': fa_entry.fontSize,
-            'spacing': 'monospace' if fond_header.ffFlags.fixed_width else 'proportional',
+            #'spacing': 'monospace' if fond_header.ffFlags.fixed_width else 'proportional',
             'encoding': encoding,
             'kerning-table': kerning_table.get(fa_entry.fontStyle, ()),
             'tag-table': encoding_table,
