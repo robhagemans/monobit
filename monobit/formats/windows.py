@@ -607,14 +607,14 @@ _IMAGE_RESOURCE_DATA_ENTRY = le.Struct(
 
 def parse_fnt(fnt):
     """Create an internal font description from a .FNT-shaped string."""
-    win_props = _parse_header(fnt)
-    properties = _parse_win_props(fnt, win_props)
-    glyphs = _parse_chartable(fnt, win_props)
+    win_props = _extract_win_props(fnt)
+    properties = _convert_win_props(fnt, win_props)
+    glyphs = _extract_glyphs(fnt, win_props)
     font = Font(glyphs, **properties)
     font = font.label()
     return font
 
-def _parse_header(fnt):
+def _extract_win_props(fnt):
     """Read the header information in the FNT resource."""
     win_props = _FNT_HEADER.from_bytes(fnt)
     try:
@@ -626,13 +626,13 @@ def _parse_header(fnt):
     win_props += header_ext.from_bytes(fnt, _FNT_HEADER.size)
     return win_props
 
-def _parse_chartable(fnt, win_props):
+def _extract_glyphs(fnt, win_props):
     """Read a WinFont character table."""
     if win_props.dfVersion == 0x100:
-        return _parse_chartable_v1(fnt, win_props)
-    return _parse_chartable_v2(fnt, win_props)
+        return _extract_glyphs_v1(fnt, win_props)
+    return _extract_glyphs_v2(fnt, win_props)
 
-def _parse_chartable_v1(fnt, win_props):
+def _extract_glyphs_v1(fnt, win_props):
     """Read a WinFont 1.0 character table."""
     n_chars = win_props.dfLastChar - win_props.dfFirstChar + 1
     if not win_props.dfPixWidth:
@@ -665,7 +665,7 @@ def _parse_chartable_v1(fnt, win_props):
         glyphs.append(Glyph(rows, codepoint=(win_props.dfFirstChar + ord,)))
     return glyphs
 
-def _parse_chartable_v2(fnt, win_props):
+def _extract_glyphs_v2(fnt, win_props):
     """Read a WinFont 2.0 or 3.0 character table."""
     n_chars = win_props.dfLastChar - win_props.dfFirstChar + 1
     glyph_entry_array = _GLYPH_ENTRY[win_props.dfVersion].array(n_chars)
@@ -694,7 +694,7 @@ def bytes_to_str(s, encoding='latin-1'):
         s, _ = s.split(b'\0', 1)
     return s.decode(encoding, errors='replace')
 
-def _parse_win_props(fnt, win_props):
+def _convert_win_props(fnt, win_props):
     """Convert WinFont properties to yaff properties."""
     version = win_props.dfVersion
     if win_props.dfType & 1:
