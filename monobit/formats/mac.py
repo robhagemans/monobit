@@ -252,7 +252,6 @@ _MACBINARY_HEADER = be.Struct(
 def _parse_macbinary(data):
     """Parse a MacBinary file."""
     header = _MACBINARY_HEADER.from_bytes(data)
-    logging.debug(header)
     ofs = 128
     if header.old_version != 0:
         raise FileFormatError(
@@ -661,6 +660,7 @@ def _parse_fond(data, offset, name):
     fa_header = _FA_HEADER.from_bytes(data, fa_offset)
     fa_list = _FA_ENTRY.array(fa_header.numAssoc+1).from_bytes(data, fa_offset + _FA_HEADER.size)
     kerning_table = {}
+    encoding_table = []
     # check if any optional tables are expected
     # we don't have a field for bounding-box table offset
     if fond_header.ffWTabOff or fond_header.ffKernOff or fond_header.ffStylOff:
@@ -693,26 +693,30 @@ def _parse_fond(data, offset, name):
         if not fond_header.ffStylOff:
             stab = ()
             names = ()
-            encs = ()
         else:
             stab_offset = offset + fond_header.ffStylOff
             stab = _STYLE_TABLE.from_bytes(data, stab_offset)
             # font name suffix subtable
             ntab_offset = stab_offset + _STYLE_TABLE.size
             ntab = _NAME_TABLE.from_bytes(data, ntab_offset)
-            # count + 1 as we take the base font name as well
             names = []
             offs = ntab_offset + _NAME_TABLE.size
-            for i in range(ntab.stringCount+1):
+            # count + 1 as we take the base font name as well?
+            # but using that leads to incorrect encoding table
+            for i in range(ntab.stringCount):
                 string, offs = string_from_bytes(data, offs)
                 names.append(string)
+            if names:
+                logging.debug('Font family name suffix table found')
+            # glyph-name encoding subtable
             etab_offset = offs
             etab = _ENC_TABLE.from_bytes(data, etab_offset)
             offs += _ENC_TABLE.size
-            encs = []
-            for i in range(etab.stringCount+1):
+            for i in range(etab.stringCount):
                 string, offs = string_from_bytes(data, offs)
-                encs.append(string)
+                encoding_table.append(string)
+            if encoding_table:
+                logging.debug('Glyph-name encoding table found')
         # Kerning table (optional)
         if fond_header.ffKernOff:
             ktab_offset = offset + fond_header.ffKernOff
@@ -740,7 +744,8 @@ def _parse_fond(data, offset, name):
             'point-size': fa_entry.fontSize,
             'spacing': 'monospace' if fond_header.ffFlags.fixed_width else 'proportional',
             'encoding': encoding,
-            'kerning-table': kerning_table.get(fa_entry.fontStyle, ())
+            'kerning-table': kerning_table.get(fa_entry.fontStyle, ()),
+            'tag-table': encoding_table,
         }
         for fa_entry in fa_list
     }
@@ -1037,7 +1042,7 @@ def _parse_nfnt(data, offset, properties):
     # keep scalable_width
     glyphs = tuple(_glyph.drop('wo_offset', 'wo_width') for _glyph in glyphs)
     # store kerning table
-    if 'kerning-table' in properties:
+    if properties.get('kerning-table', None):
         kern_table = sorted(
             (
                 _entry.kernFirst, _entry.kernSecond,
@@ -1053,6 +1058,16 @@ def _parse_nfnt(data, offset, properties):
             }))
             for _glyph in glyphs
         )
+    # store glyph-name encoding table
+    if properties.get('encoding-table', None):
+        tag_table = {
+            _entry[:1]: _entry[1:].decode('latin-1')
+            for _entry in properties['encoding-table']
+        }
+        glyphs = tuple(
+            _glyph.modify(tag=tag_table.get(_glyph.codepoint, ''))
+            for _glyph in glyphs
+        )
     # store properties
     properties.update({
         # not overridable; also seems incorrect for system fonts
@@ -1063,7 +1078,8 @@ def _parse_nfnt(data, offset, properties):
         'line-height': fontrec.ascent + fontrec.descent + fontrec.leading,
         'left-bearing': fontrec.kernMax,
         'shift-up': -fontrec.descent,
-        # remove the kerning table
-        'kerning-table': None
+        # remove the kerning table and encoding table now stored in glyphs
+        'kerning-table': None,
+        'encoding-table': None,
     })
     return Font(glyphs, **properties)
