@@ -110,8 +110,9 @@ Supported formats
 | Bitmap image [P]      | `image`    |          | `.png` `.gif` `.bmp`        |               | ✔     | ✔     |
 | JSON coded binary     | `json`     |          | `.json`                     |               | ✔     | ✔     |
 | `kbd` Codepage        | `kbd-cp`   |          | `.cp`                       | Linux         | ✔     |       |
-| MacOS font            | `mac-dfont`| FONT NFNT+FOND | `.dfont` `.suit`      | MacOS         | ✔     |       |
-| MacOS font (AS/AD)    | `mac-rsrc` | FONT NFNT+FOND | `.rsrc`               | MacOS         | ✔     |       |
+| MacOS font            | `mac-dfont`| FONT NFNT+FOND | `.dfont` `.suit`      | Classic MacOS | ✔     |       |
+| MacOS font (AS/AD)    | `mac-rsrc` | FONT NFNT+FOND | `.rsrc`               | Classic MacOS | ✔     |       |
+| MacOS font (MacBinary)| `mac-bin`  | FONT NFNT+FOND | `.bin`                | Classic MacOS | ✔     |       |
 | PDF chart [R]         | `pdf`      |          | `.pdf`                      |               |       | ✔     |
 | PC Screen Font        | `psf`      | 1 2      | `.psf` `.psfu`              | MS-DOS, Linux | ✔     | ✔ (version 2) |
 | Python coded binary   | `python`   |          | `.py`                       |               | ✔     | ✔     |
@@ -209,3 +210,4 @@ Other bitmap font tools you could use in conjunction with (or instead of) `monob
 - Simon Tatham's [`mkwinfont`/`dewinfont`](https://www.chiark.greenend.org.uk/~sgtatham/fonts/)
 - [RECOIL](https://recoil.sourceforge.net/)
 - John Zaitseff's [console font utilities](https://www.zap.org.au/projects/console-fonts-utils/)
+- George Williams's [Fondu](https://fondu.sourceforge.net)
