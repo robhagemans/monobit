@@ -331,15 +331,15 @@ _REF_ENTRY = be.Struct(
 
 def _parse_mac_resource(data, formatstr=''):
     """Parse a bare resource and convert to fonts."""
-    resource_table = _parse_resource_fork_header(data)
-    parsed_rsrc = _parse_resources(data, resource_table)
-    directory = _construct_directory(parsed_rsrc)
-    fonts = _convert_mac_font(parsed_rsrc, directory, formatstr)
+    resource_table = _extract_resource_fork_header(data)
+    rsrc = _extract_resources(data, resource_table)
+    directory = _construct_directory(rsrc)
+    fonts = _convert_mac_font(rsrc, directory, formatstr)
     return fonts
 
 
-def _parse_resource_fork_header(data):
-    """Parse a Classic MacOS resource fork header."""
+def _extract_resource_fork_header(data):
+    """Read a Classic MacOS resource fork header."""
     rsrc_header = _RSRC_HEADER.from_bytes(data)
     map_header = _MAP_HEADER.from_bytes(data, rsrc_header.map_offset)
     type_array = _TYPE_ENTRY.array(map_header.last_type + 1)
@@ -371,8 +371,8 @@ def _parse_resource_fork_header(data):
     return resources
 
 
-def _parse_resources(data, resources):
-    """Parse resources."""
+def _extract_resources(data, resources):
+    """Extract resources."""
     parsed_rsrc = []
     for rsrc_type, rsrc_id, offset, name in resources:
         if rsrc_type == b'FOND':
@@ -381,7 +381,7 @@ def _parse_resources(data, resources):
             )
             parsed_rsrc.append((
                 rsrc_type, rsrc_id, dict(
-                    name=name, **_parse_fond(data, offset)
+                    name=name, **_extract_fond(data, offset)
                 )
             ))
         elif rsrc_type == b'FONT' and name and not (rsrc_id % 128):
@@ -408,7 +408,7 @@ def _parse_resources(data, resources):
                 rsrc_id, rsrc_type.decode('latin-1'), name
             )
             parsed_rsrc.append((
-                rsrc_type, rsrc_id, _parse_nfnt(data, offset)
+                rsrc_type, rsrc_id, _extract_nfnt(data, offset)
             ))
         else:
             if rsrc_type == b'sfnt':
@@ -706,8 +706,8 @@ _KERN_PAIR = be.Struct(
     kernWidth=_FIXED_TYPE,
 )
 
-def _parse_fond(data, offset):
-    """Parse a MacOS FOND resource."""
+def _extract_fond(data, offset):
+    """Read a MacOS FOND resource."""
     fond_header = _FOND_HEADER.from_bytes(data, offset)
     # Font Family Tables:
     # Font Association table (mandatory)
@@ -992,8 +992,8 @@ _FONT_NAMES = {
 }
 
 
-def _parse_nfnt(data, offset):
-    """Parse a MacOS NFNT or FONT resource."""
+def _extract_nfnt(data, offset):
+    """Read a MacOS NFNT or FONT resource."""
     fontrec = _NFNT_HEADER.from_bytes(data, offset)
     if not (fontrec.rowWords and fontrec.widMax and fontrec.fRectWidth and fontrec.fRectHeight):
         raise FileFormatError('Empty FONT/NFNT resource.')
