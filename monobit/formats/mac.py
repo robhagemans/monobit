@@ -732,6 +732,11 @@ def _parse_fond(data, offset, name):
                     pair_array.from_bytes(data, offs + _KERN_ENTRY.size)
                 )
                 offs += _KERN_ENTRY.size + pair_array.size
+    return _convert_fond(name, fond_header, fa_list, kerning_table, encoding_table)
+
+
+def _convert_fond(name, fond_header, fa_list, kerning_table, encoding_table):
+    """Partially convert FOND properties to monobit peroperties."""
     # Inside Macintosh: Text 6-22
     # > Fonts with IDs below 16384 ($4000) are all Roman; starting with
     # > 16384 each non-Roman script system has a range of 512 ($200) font IDs available
@@ -1002,9 +1007,11 @@ def _parse_nfnt(data, offset, properties):
         _glyph.modify(wo_offset=_wo.offset, wo_width=_wo.width)
         for _glyph, _wo in zip(glyphs, wo_table)
     )
-    ###############################################################################################
-    # convert mac glyph metrics to monobit glyph metrics
-    #
+    return _convert_nfnt(glyphs, fontrec, properties)
+
+
+def _convert_nfnt(glyphs, fontrec, properties):
+    """Convert mac glyph metrics to monobit glyph metrics."""
     # the 'width' in the width/offset table is the pen advance
     # while the 'offset' is the (positive) offset after applying the
     # (positive or negative) 'kernMax' global offset
