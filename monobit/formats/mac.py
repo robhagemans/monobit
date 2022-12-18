@@ -852,7 +852,7 @@ def _parse_nfnt(data, offset, properties):
         glyphs = tuple(
             # fixed-point value, unsigned integer in the high-order byte
             # and a fractional part in the low-order byte
-            _glyph.modify(scalable_width=_we.width / 256)
+            _glyph.modify(scalable_width=f'{_we.width / 256:.2f}')
             for _glyph, _we in zip(glyphs, width_table)
         )
     # image-height table
