@@ -352,7 +352,8 @@ def _parse_resource_fork(data, formatstr=''):
                     + ref_entry.name_offset
                 )
                 name_length = data[name_offset]
-                name = data[name_offset+1:name_offset+name_length+1].decode('ascii', 'replace')
+                # should be ascii, but use latin-1 just in case
+                name = data[name_offset+1:name_offset+name_length+1].decode('latin-1')
             # construct the 3-byte integer
             data_offset = ref_entry.data_offset_hi * 0x10000 + ref_entry.data_offset
             offset = rsrc_header.data_offset + _DATA_HEADER.size + data_offset
@@ -360,28 +361,44 @@ def _parse_resource_fork(data, formatstr=''):
                 logging.warning('sfnt resources (vector or bitmap) not supported')
             if type_entry.rsrc_type in (b'FONT', b'NFNT', b'FOND'):
                 resources.append((type_entry.rsrc_type, ref_entry.rsrc_id, offset, name))
+    ###########################################################################
     # construct directory
     info = {}
     for rsrc_type, rsrc_id, offset, name in resources:
         if rsrc_type == b'FOND':
-            logging.debug('Parsing font family resource #%d [FOND]', rsrc_id)
+            logging.debug(
+                'Font family resource #%d: type FOND name `%s`', rsrc_id, name
+            )
             fond_header, fa_list, kerning, encoding = _parse_fond(data, offset)
             props = _convert_fond(name, fond_header, fa_list, kerning, encoding)
             info.update(props)
-        else:
-            if rsrc_type == b'FONT':
-                font_number, font_size = divmod(rsrc_id, 128)
-                if not font_size:
-                    info[font_number] = {
-                        'family': name,
-                    }
+    # parse old-style name-only FONT resources
+    for rsrc_type, rsrc_id, _, name in resources:
+        if rsrc_type == b'FONT' and name:
+            font_number, font_size = divmod(rsrc_id, 128)
+            if not font_size:
+                # inside macintosh:
+                # > Since 0 is not a valid font size, the resource ID having
+                # > 0 in the size field is used to provide only the name of
+                # > the font: The name of the resource is the font name. For
+                # > example, for a font named Griffin and numbered 200, the
+                # > resource naming the font would have a resource ID of 25600
+                # > and the resource name 'Griffin'. Size 10 of that font would
+                # > be stored in a resource numbered 25610.
+                # keep the name in the directory table
+                logging.debug(
+                    'Name entry #%d: type FONT name `%s`',
+                    rsrc_id, name
+                )
+                info[font_number] = {'family': name}
+    ###########################################################################
     # parse fonts
     fonts = []
     for rsrc_type, rsrc_id, offset, name in resources:
         if rsrc_type not in (b'FONT', b'NFNT'):
             logging.debug(
-                'Resource entry #%d: type %s',
-                rsrc_id, rsrc_type.decode('latin-1')
+                'Skipped resource #%d: type %s name `%s`',
+                rsrc_id, rsrc_type.decode('latin-1'), name
             )
         else:
             format = ''.join((
@@ -393,27 +410,34 @@ def _parse_resource_fork(data, formatstr=''):
                 'source-format': f'MacOS {format}',
             }
             if rsrc_type == b'FONT':
+                # get name and size info from resource ID
+                # https://developer.apple.com/library/archive/documentation/mac/Text/Text-191.html#HEADING191-0
+                # > The resource ID of the font must equal the number produced by
+                # > concatenating the font ID times 128 with the font size.
+                # > Remember that fonts stored in 'FONT' resources are restricted
+                # > to a point size of less than 128 and to a font ID in the range
+                # > 0 to 255. The resource ID is computed by the following formula:
+                # >     resourceID := (font ID * 128) + font size;
                 font_number, font_size = divmod(rsrc_id, 128)
                 if not font_size:
-                    # directory entry only
+                    # directory entry, skip
                     continue
-                if font_number in _FONT_NAMES:
-                    props['family'] = _FONT_NAMES[font_number]
-                else:
-                    props['family'] = f'Family {font_number}'
-                if font_number in info:
-                    props.update({
-                        **info[font_number],
-                        'point-size': font_size,
-                    })
+                props = {
+                    'point-size': font_size,
+                    'family': _FONT_NAMES.get(font_number, str(font_number))
+                }
+                # prefer directory info to info inferred from resource ID
+                # (in so far provided by FOND or directory FONT)
+                props.update(info.get(font_number, {}))
+            # update properties with directory info
             if rsrc_id in info:
                 props.update(info[rsrc_id])
             if 'encoding' not in props or props.get('family', '') in _NON_ROMAN_NAMES:
                 props['encoding'] = _NON_ROMAN_NAMES.get(props.get('family', ''), 'mac-roman')
             try:
                 logging.debug(
-                    'Parsing bitmapped font resource #%d [%s]',
-                    rsrc_id, rsrc_type.decode('latin-1')
+                    'Bitmapped font resource #%d: type %s name `%s`',
+                    rsrc_id, rsrc_type.decode('latin-1'), name
                 )
                 glyphs, fontrec = _parse_nfnt(data, offset)
                 font = _convert_nfnt(glyphs, fontrec, props)
