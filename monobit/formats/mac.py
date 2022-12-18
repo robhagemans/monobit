@@ -53,7 +53,10 @@ def save_mac_rsrc(pack, outstream, where=None):
 
 ##############################################################################
 # AppleSingle/AppleDouble
-# see https://web.archive.org/web/20160304101440/http://kaiser-edv.de/documents/Applesingle_AppleDouble_v1.html
+# v1: see https://web.archive.org/web/20160304101440/http://kaiser-edv.de/documents/Applesingle_AppleDouble_v1.html
+# v2: https://web.archive.org/web/20160303215152/http://kaiser-edv.de/documents/AppleSingle_AppleDouble.pdf
+# the difference between v1 and v2 affects the file info sections
+# not the resource fork which is what we care about
 
 _APPLE_HEADER = be.Struct(
     magic='uint32',
@@ -68,14 +71,6 @@ _APPLE_ENTRY = be.Struct(
 )
 
 # Entry IDs
-# Data fork       1       standard Macintosh data fork
-# Resource fork   2       standard Macintosh resource fork
-# Real name       3       file's name in its home file system
-# Comment         4       standard Macintosh comments
-# Icon, B&W       5       standard Macintosh black-and-white icon
-# Icon, color     6       Macintosh color icon
-# file info       7       file information: attributes and so on
-# Finder info     9       standard Macintosh Finder information
 _ID_RESOURCE = 2
 _APPLE_ENTRY_TYPES = {
     1: 'data fork',
@@ -84,8 +79,16 @@ _APPLE_ENTRY_TYPES = {
     4: 'comment',
     5: 'icon, b&w',
     6: 'icon, color',
-    7: 'file info',
+    7: 'file info', # v1 only
+    8: 'file dates info', # v2
     9: 'finder info',
+    # the following are all v2
+    10: 'macintosh file info',
+    11: 'prodos file info',
+    12: 'ms-dos file info',
+    13: 'short name',
+    14: 'afp file info',
+    15: 'directory id',
 }
 
 
