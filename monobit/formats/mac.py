@@ -168,13 +168,7 @@ def _parse_apple(data):
         if entry.entry_id == _ID_RESOURCE:
             logging.debug('Reading resource')
             fork_data = data[entry.offset:entry.offset+entry.length]
-            fonts = _parse_resource_fork(fork_data)
-            fonts = [
-                font.modify(
-                    source_format=f'MacOS {font.source_format} ({container} container)'
-                )
-                for font in fonts
-            ]
+            fonts = _parse_resource_fork(fork_data, formatstr=container)
             return fonts
     raise ValueError('No resource fork found in file.')
 
@@ -238,7 +232,7 @@ _REF_ENTRY = be.Struct(
 # 1-byte length followed by bytes
 
 
-def _parse_resource_fork(data):
+def _parse_resource_fork(data, formatstr=''):
     """Parse a MacOS resource fork."""
     rsrc_header = _RSRC_HEADER.from_bytes(data)
     map_header = _MAP_HEADER.from_bytes(data, rsrc_header.map_offset)
@@ -292,9 +286,13 @@ def _parse_resource_fork(data):
                 rsrc_id, rsrc_type.decode('latin-1')
             )
         else:
+            format = ''.join((
+                rsrc_type.decode('latin-1'),
+                f' in {formatstr}' if formatstr else ''
+            ))
             props = {
                 'family': name if name else f'{rsrc_id}',
-                'source-format': rsrc_type.decode('latin-1'),
+                'source-format': f'MacOS {format}',
             }
             if rsrc_type == b'FONT':
                 font_number, font_size = divmod(rsrc_id, 128)
