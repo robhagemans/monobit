@@ -35,7 +35,7 @@ Original sources:
 * `4x6.psf` was created from `4x6.yaff` using `monobit`
 * `4x6.fzx` was created from `4x6.bdf` using `monobit`
 * `4x6.c` was created from `4x6.yaff` using `monobit`
-* `4x6.dfont` was created from `4x6.bdf` using `ufond` (part of `fondu`)
+* `4x6.dfont` and `4x6.bin` were created from `4x6.bdf` using `ufond` (part of `fondu`)
 * `4x6.vfont*` were created from `4x6.psf` using `psftools-1.1.1`
 * `8x8.bbc` was created from `4x6.psf` using `psftools-1.1.1`
 * `8x16.hex` was created from `4x6.yaff` using `bittermelon`

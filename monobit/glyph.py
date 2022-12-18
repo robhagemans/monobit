@@ -21,7 +21,7 @@ from .properties import (
     DefaultProps, normalise_property, extend_string,
     writable_property, as_tuple, checked_property
 )
-from .basetypes import Coord, Bounds
+from .basetypes import Coord, Bounds, to_number
 from .scripting import scriptable
 
 
@@ -45,7 +45,7 @@ class KernTable(dict):
                 for _row in table.splitlines()
             )
         table = {
-            to_label(_k): int(_v)
+            to_label(_k): to_number(_v)
             for _k, _v in table.items()
         }
         super().__init__(table)
