@@ -28,7 +28,10 @@ def load_mac_dfont(instream, where=None):
     return _parse_resource_fork(data)
 
 @loaders.register('as', 'adf', 'rsrc',
-    magic=(_APPLESINGLE_MAGIC.to_bytes(4, 'big'), _APPLEDOUBLE_MAGIC.to_bytes(4, 'big')),
+    magic=(
+        _APPLESINGLE_MAGIC.to_bytes(4, 'big'),
+        _APPLEDOUBLE_MAGIC.to_bytes(4, 'big')
+    ),
     name='mac-rsrc',
 )
 def load_mac_rsrc(instream, where=None):
@@ -74,6 +77,16 @@ _APPLE_ENTRY = be.Struct(
 # file info       7       file information: attributes and so on
 # Finder info     9       standard Macintosh Finder information
 _ID_RESOURCE = 2
+_APPLE_ENTRY_TYPES = {
+    1: 'data fork',
+    2: 'resource fork',
+    3: 'real name',
+    4: 'comment',
+    5: 'icon, b&w',
+    6: 'icon, color',
+    7: 'file info',
+    9: 'finder info',
+}
 
 
 ##############################################################################
@@ -587,8 +600,14 @@ def _parse_apple(data):
         raise ValueError('Not an AppleSingle or AppleDouble file.')
     entry_array = _APPLE_ENTRY.array(header.number_entities)
     entries = entry_array.from_bytes(data, _APPLE_HEADER.size)
-    for entry in entries:
+    for i, entry in enumerate(entries):
+        entry_type = _APPLE_ENTRY_TYPES.get(entry.entry_id, 'unknown')
+        logging.debug(
+            '%s container: entry #%d, %s [%d]',
+            container, i, entry_type, entry.entry_id
+        )
         if entry.entry_id == _ID_RESOURCE:
+            logging.debug('Reading resource')
             fork_data = data[entry.offset:entry.offset+entry.length]
             fonts = _parse_resource_fork(fork_data)
             fonts = [
@@ -598,7 +617,7 @@ def _parse_apple(data):
                 for font in fonts
             ]
             return fonts
-    raise ValueError('No resource fork found.')
+    raise ValueError('No resource fork found in file.')
 
 
 def _parse_resource_fork(data):
