@@ -377,14 +377,9 @@ def _parse_resource_fork(data):
             logging.debug(
                 'Font family resource #%d: type FOND name `%s`', rsrc_id, name
             )
-            fond_header, fa_list, kerning, encoding = _parse_fond(data, offset)
             parsed_rsrc.append((
                 rsrc_type, rsrc_id, dict(
-                    name=name,
-                    fond_header=fond_header,
-                    fa_list=fa_list,
-                    kerning_table=kerning,
-                    encoding_table=encoding,
+                    name=name, **_parse_fond(data, offset)
                 )
             ))
         elif rsrc_type == b'FONT' and name and not (rsrc_id % 128):
@@ -410,12 +405,8 @@ def _parse_resource_fork(data):
                 'Bitmapped font resource #%d: type %s name `%s`',
                 rsrc_id, rsrc_type.decode('latin-1'), name
             )
-            glyphs, fontrec = _parse_nfnt(data, offset)
             parsed_rsrc.append((
-                rsrc_type, rsrc_id, dict(
-                    glyphs=glyphs,
-                    fontrec=fontrec,
-                )
+                rsrc_type, rsrc_id, _parse_nfnt(data, offset)
             ))
         else:
             logging.debug(
@@ -425,7 +416,7 @@ def _parse_resource_fork(data):
     return parsed_rsrc
 
 def _construct_directory(parsed_rsrc):
-    """Construct font family directory"""
+    """Construct font family directory."""
     info = {}
     for rsrc_type, rsrc_id, kwargs in parsed_rsrc:
         # new-style directory entries
@@ -790,7 +781,12 @@ def _parse_fond(data, offset):
                     pair_array.from_bytes(data, offs + _KERN_ENTRY.size)
                 )
                 offs += _KERN_ENTRY.size + pair_array.size
-    return fond_header, fa_list, kerning_table, encoding_table
+    return dict(
+        fond_header=fond_header,
+        fa_list=fa_list,
+        kerning_table=kerning_table,
+        encoding_table=encoding_table,
+    )
 
 
 def _convert_fond(name, fond_header, fa_list, kerning_table, encoding_table):
@@ -997,7 +993,6 @@ def _parse_nfnt(data, offset):
         raise FileFormatError('Empty FONT/NFNT resource.')
     if fontrec.fontType.depth or fontrec.fontType.has_fctb:
         raise FileFormatError('Anti-aliased or colour fonts not supported.')
-    ###############################################################################################
     # read char tables & bitmaps
     # table offsets
     strike_offset = offset + _NFNT_HEADER.size
@@ -1065,7 +1060,10 @@ def _parse_nfnt(data, offset):
         _glyph.modify(wo_offset=_wo.offset, wo_width=_wo.width)
         for _glyph, _wo in zip(glyphs, wo_table)
     )
-    return glyphs, fontrec
+    return dict(
+        glyphs=glyphs,
+        fontrec=fontrec,
+    )
 
 
 def _convert_nfnt(properties, glyphs, fontrec):
