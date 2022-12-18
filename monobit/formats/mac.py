@@ -361,52 +361,81 @@ def _parse_resource_fork(data, formatstr=''):
                 logging.warning('sfnt resources (vector or bitmap) not supported')
             if type_entry.rsrc_type in (b'FONT', b'NFNT', b'FOND'):
                 resources.append((type_entry.rsrc_type, ref_entry.rsrc_id, offset, name))
-    ###########################################################################
-    # construct directory
-    info = {}
+    # parse resources
+    parsed_rsrc = []
     for rsrc_type, rsrc_id, offset, name in resources:
         if rsrc_type == b'FOND':
             logging.debug(
                 'Font family resource #%d: type FOND name `%s`', rsrc_id, name
             )
             fond_header, fa_list, kerning, encoding = _parse_fond(data, offset)
-            props = _convert_fond(name, fond_header, fa_list, kerning, encoding)
-            info.update(props)
-    # parse old-style name-only FONT resources
-    for rsrc_type, rsrc_id, _, name in resources:
-        if rsrc_type == b'FONT' and name:
-            font_number, font_size = divmod(rsrc_id, 128)
-            if not font_size:
-                # inside macintosh:
-                # > Since 0 is not a valid font size, the resource ID having
-                # > 0 in the size field is used to provide only the name of
-                # > the font: The name of the resource is the font name. For
-                # > example, for a font named Griffin and numbered 200, the
-                # > resource naming the font would have a resource ID of 25600
-                # > and the resource name 'Griffin'. Size 10 of that font would
-                # > be stored in a resource numbered 25610.
-                # keep the name in the directory table
-                logging.debug(
-                    'Name entry #%d: type FONT name `%s`',
-                    rsrc_id, name
+            parsed_rsrc.append((
+                rsrc_type, rsrc_id, dict(
+                    name=name,
+                    fond_header=fond_header,
+                    fa_list=fa_list,
+                    kerning_table=kerning,
+                    encoding_table=encoding,
                 )
-                info[font_number] = {'family': name}
-    ###########################################################################
-    # parse fonts
-    fonts = []
-    for rsrc_type, rsrc_id, offset, name in resources:
-        if rsrc_type not in (b'FONT', b'NFNT'):
+            ))
+        elif rsrc_type == b'FONT' and name and not (rsrc_id % 128):
+            # rsrc_id % 128 is the point size
+            logging.debug(
+                'Name entry #%d: type FONT name `%s`',
+                rsrc_id, name
+            )
+            # inside macintosh:
+            # > Since 0 is not a valid font size, the resource ID having
+            # > 0 in the size field is used to provide only the name of
+            # > the font: The name of the resource is the font name. For
+            # > example, for a font named Griffin and numbered 200, the
+            # > resource naming the font would have a resource ID of 25600
+            # > and the resource name 'Griffin'. Size 10 of that font would
+            # > be stored in a resource numbered 25610.
+            # keep the name in the directory table
+            parsed_rsrc.append((
+                b'', rsrc_id, dict(name=name),
+            ))
+        elif rsrc_type in (b'NFNT', b'FONT'):
+            logging.debug(
+                'Bitmapped font resource #%d: type %s name `%s`',
+                rsrc_id, rsrc_type.decode('latin-1'), name
+            )
+            glyphs, fontrec = _parse_nfnt(data, offset)
+            parsed_rsrc.append((
+                rsrc_type, rsrc_id, dict(
+                    glyphs=glyphs,
+                    fontrec=fontrec,
+                )
+            ))
+        else:
             logging.debug(
                 'Skipped resource #%d: type %s name `%s`',
                 rsrc_id, rsrc_type.decode('latin-1'), name
             )
-        else:
+    ###########################################################################
+    # construct directory
+    info = {}
+    for rsrc_type, rsrc_id, kwargs in parsed_rsrc:
+        # new-style directory entries
+        if rsrc_type == b'FOND':
+            props = _convert_fond(**kwargs)
+            info.update(props)
+        # old-style name-only FONT resources (font_size 0)
+        elif rsrc_type == b'':
+            font_number = rsrc_id // 128
+            info[font_number] = {'family': kwargs['name']}
+    ###########################################################################
+    # convert properties and glyphs
+    fonts = []
+    for rsrc_type, rsrc_id, kwargs in parsed_rsrc:
+        if rsrc_type in (b'FONT', b'NFNT'):
             format = ''.join((
                 rsrc_type.decode('latin-1'),
                 f' in {formatstr}' if formatstr else ''
             ))
             props = {
-                'family': name if name else f'{rsrc_id}',
+                'family': kwargs.get('name', '') or f'{rsrc_id}',
                 'source-format': f'MacOS {format}',
             }
             if rsrc_type == b'FONT':
@@ -419,9 +448,7 @@ def _parse_resource_fork(data, formatstr=''):
                 # > 0 to 255. The resource ID is computed by the following formula:
                 # >     resourceID := (font ID * 128) + font size;
                 font_number, font_size = divmod(rsrc_id, 128)
-                if not font_size:
-                    # directory entry, skip
-                    continue
+                # we've already filtered out the case font_size == 0
                 props = {
                     'point-size': font_size,
                     'family': _FONT_NAMES.get(font_number, str(font_number))
@@ -429,23 +456,14 @@ def _parse_resource_fork(data, formatstr=''):
                 # prefer directory info to info inferred from resource ID
                 # (in so far provided by FOND or directory FONT)
                 props.update(info.get(font_number, {}))
-            # update properties with directory info
-            if rsrc_id in info:
-                props.update(info[rsrc_id])
+            else:
+                # update properties with directory info
+                props.update(info.get(rsrc_id, {}))
             if 'encoding' not in props or props.get('family', '') in _NON_ROMAN_NAMES:
                 props['encoding'] = _NON_ROMAN_NAMES.get(props.get('family', ''), 'mac-roman')
-            try:
-                logging.debug(
-                    'Bitmapped font resource #%d: type %s name `%s`',
-                    rsrc_id, rsrc_type.decode('latin-1'), name
-                )
-                glyphs, fontrec = _parse_nfnt(data, offset)
-                font = _convert_nfnt(glyphs, fontrec, props)
-            except ValueError as e:
-                logging.error('Could not load font: %s', e)
-            else:
-                font = font.label()
-                fonts.append(font)
+            font = _convert_nfnt(props, **kwargs)
+            font = font.label()
+            fonts.append(font)
     return fonts
 
 
@@ -1037,7 +1055,7 @@ def _parse_nfnt(data, offset):
     return glyphs, fontrec
 
 
-def _convert_nfnt(glyphs, fontrec, properties):
+def _convert_nfnt(properties, glyphs, fontrec):
     """Convert mac glyph metrics to monobit glyph metrics."""
     # the 'width' in the width/offset table is the pen advance
     # while the 'offset' is the (positive) offset after applying the
