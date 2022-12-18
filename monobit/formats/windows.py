@@ -41,6 +41,72 @@ from ..font import Font, Coord
 from ..glyph import Glyph
 
 
+@loaders.register(
+    #'fnt',
+    magic=(b'\0\x01', b'\0\x02', b'\0\x03'),
+    name='win-fnt',
+)
+def load_win_fnt(instream, where=None):
+    """Load font from a Windows .FNT resource."""
+    font = parse_fnt(instream.read())
+    return font
+
+@savers.register(linked=load_win_fnt)
+def save_win_fnt(fonts, outstream, where=None, version:int=2):
+    """
+    Save font to a Windows .FNT resource.
+
+    version: Windows font format version
+    """
+    if len(fonts) > 1:
+        raise FileFormatError('Can only save one font to Windows font resource.')
+    font = fonts[0]
+    outstream.write(create_fnt(font, version*0x100))
+    return font
+
+
+@loaders.register(
+    'fon',
+    magic=(b'MZ',),
+    name='win-fon',
+)
+def load_win_fon(instream, where=None):
+    """Load fonts from a Windows .FON container."""
+    data = instream.read()
+    mz_header = _MZ_HEADER.from_bytes(data)
+    if mz_header.magic not in (b'MZ', b'ZM'):
+        raise FileFormatError('MZ signature not found. Not a Windows .FON file')
+    ne_magic = data[mz_header.ne_offset:mz_header.ne_offset+2]
+    if ne_magic == b'NE':
+        fonts = _parse_ne(data, mz_header.ne_offset)
+    elif ne_magic == b'PE':
+        # PE magic should be padded by \0\0 but I'll believe it at this stage
+        fonts = _parse_pe(data, mz_header.ne_offset)
+    else:
+        raise FileFormatError(
+            'Executable signature is `{}`, not NE or PE. Not a Windows .FON file'.format(
+                ne_magic.decode('latin-1', 'replace')
+            )
+        )
+    fonts = [
+        font.modify(
+            source_format=font.source_format+' ({} FON container)'.format(ne_magic.decode('ascii'))
+        )
+        for font in fonts
+    ]
+    return fonts
+
+@savers.register(linked=load_win_fon)
+def save_win_fon(fonts, outstream, where=None, version:int=2):
+    """
+    Save fonts to a Windows .FON container.
+
+    version: Windows font format version
+    """
+    outstream.write(_create_fon(fonts, version*0x100))
+
+
+
 ##############################################################################
 # windows .FNT format definitions
 #
@@ -537,113 +603,43 @@ _IMAGE_RESOURCE_DATA_ENTRY = le.Struct(
 
 
 ##############################################################################
-# top level functions
-
-@loaders.register(
-    #'fnt',
-    magic=(b'\0\x01', b'\0\x02', b'\0\x03'),
-    name='win-fnt',
-)
-def load_win_fnt(instream, where=None):
-    """Load font from a Windows .FNT resource."""
-    font = parse_fnt(instream.read())
-    return font
-
-@savers.register(linked=load_win_fnt)
-def save_win_fnt(fonts, outstream, where=None, version:int=2):
-    """
-    Save font to a Windows .FNT resource.
-
-    version: Windows font format version
-    """
-    if len(fonts) > 1:
-        raise FileFormatError('Can only save one font to Windows font resource.')
-    font = fonts[0]
-    outstream.write(create_fnt(font, version*0x100))
-    return font
-
-
-@loaders.register(
-    'fon',
-    magic=(b'MZ',),
-    name='win-fon',
-)
-def load_win_fon(instream, where=None):
-    """Load fonts from a Windows .FON container."""
-    data = instream.read()
-    mz_header = _MZ_HEADER.from_bytes(data)
-    if mz_header.magic not in (b'MZ', b'ZM'):
-        raise FileFormatError('MZ signature not found. Not a Windows .FON file')
-    ne_magic = data[mz_header.ne_offset:mz_header.ne_offset+2]
-    if ne_magic == b'NE':
-        fonts = _parse_ne(data, mz_header.ne_offset)
-    elif ne_magic == b'PE':
-        # PE magic should be padded by \0\0 but I'll believe it at this stage
-        fonts = _parse_pe(data, mz_header.ne_offset)
-    else:
-        raise FileFormatError(
-            'Executable signature is `{}`, not NE or PE. Not a Windows .FON file'.format(
-                ne_magic.decode('latin-1', 'replace')
-            )
-        )
-    fonts = [
-        font.modify(
-            source_format=font.source_format+' ({} FON container)'.format(ne_magic.decode('ascii'))
-        )
-        for font in fonts
-    ]
-    return fonts
-
-@savers.register(linked=load_win_fon)
-def save_win_fon(fonts, outstream, where=None, version:int=2):
-    """
-    Save fonts to a Windows .FON container.
-
-    version: Windows font format version
-    """
-    outstream.write(_create_fon(fonts, version*0x100))
-
-
-##############################################################################
-
-##############################################################################
 # windows .FNT reader
 
-def parse_fnt(fnt):
+def parse_fnt(data):
     """Create an internal font description from a .FNT-shaped string."""
-    win_props = _parse_header(fnt)
-    properties = _parse_win_props(fnt, win_props)
-    glyphs = _parse_chartable(fnt, win_props)
+    win_props = _extract_win_props(data)
+    properties = _convert_win_props(data, win_props)
+    glyphs = _extract_glyphs(data, win_props)
     font = Font(glyphs, **properties)
     font = font.label()
     return font
 
-def _parse_header(fnt):
+def _extract_win_props(data):
     """Read the header information in the FNT resource."""
-    win_props = _FNT_HEADER.from_bytes(fnt)
+    win_props = _FNT_HEADER.from_bytes(data)
     try:
         header_ext = _FNT_HEADER_EXT[win_props.dfVersion]
     except KeyError:
         raise ValueError(
             f'Not a Windows .FNT resource or unsupported version (0x{win_props.dfVersion:04x}).'
             ) from None
-    win_props += header_ext.from_bytes(fnt, _FNT_HEADER.size)
+    win_props += header_ext.from_bytes(data, _FNT_HEADER.size)
     return win_props
 
-def _parse_chartable(fnt, win_props):
+def _extract_glyphs(data, win_props):
     """Read a WinFont character table."""
     if win_props.dfVersion == 0x100:
-        return _parse_chartable_v1(fnt, win_props)
-    return _parse_chartable_v2(fnt, win_props)
+        return _extract_glyphs_v1(data, win_props)
+    return _extract_glyphs_v2(data, win_props)
 
-def _parse_chartable_v1(fnt, win_props):
+def _extract_glyphs_v1(data, win_props):
     """Read a WinFont 1.0 character table."""
     n_chars = win_props.dfLastChar - win_props.dfFirstChar + 1
     if not win_props.dfPixWidth:
         # proportional font
         ct_start = _FNT_HEADER_SIZE[win_props.dfVersion]
         glyph_entry_array = _GLYPH_ENTRY[win_props.dfVersion].array(n_chars+1)
-        entries = glyph_entry_array.from_bytes(fnt, ct_start)
+        entries = glyph_entry_array.from_bytes(data, ct_start)
         offsets = [_entry.geOffset for _entry in entries]
     else:
         offsets = [
@@ -653,7 +649,7 @@ def _parse_chartable_v1(fnt, win_props):
     bytewidth = win_props.dfWidthBytes
     offset = win_props.dfBitsOffset
     strikerows = tuple(
-        bytes_to_bits(fnt[offset+_row*bytewidth : offset+(_row+1)*bytewidth])
+        bytes_to_bits(data[offset+_row*bytewidth : offset+(_row+1)*bytewidth])
         for _row in range(win_props.dfPixHeight)
     )
     glyphs = []
@@ -669,14 +665,14 @@ def _parse_chartable_v1(fnt, win_props):
         glyphs.append(Glyph(rows, codepoint=(win_props.dfFirstChar + ord,)))
     return glyphs
 
-def _parse_chartable_v2(fnt, win_props):
+def _extract_glyphs_v2(data, win_props):
     """Read a WinFont 2.0 or 3.0 character table."""
     n_chars = win_props.dfLastChar - win_props.dfFirstChar + 1
     glyph_entry_array = _GLYPH_ENTRY[win_props.dfVersion].array(n_chars)
     ct_start = _FNT_HEADER_SIZE[win_props.dfVersion]
     glyphs = []
     height = win_props.dfPixHeight
-    entries = glyph_entry_array.from_bytes(fnt, ct_start)
+    entries = glyph_entry_array.from_bytes(data, ct_start)
     for ord, entry in enumerate(entries, win_props.dfFirstChar):
         # don't store empty glyphs but count them for ordinals
         if not entry.geWidth:
@@ -684,7 +680,7 @@ def _parse_chartable_v2(fnt, win_props):
         bytewidth = ceildiv(entry.geWidth, 8)
         # transpose byte-columns to contiguous rows
         glyph_data = bytes(
-            fnt[entry.geOffset + _col * height + _row]
+            data[entry.geOffset + _col * height + _row]
             for _row in range(height)
             for _col in range(bytewidth)
         )
@@ -698,7 +694,7 @@ def bytes_to_str(s, encoding='latin-1'):
         s, _ = s.split(b'\0', 1)
     return s.decode(encoding, errors='replace')
 
-def _parse_win_props(fnt, win_props):
+def _convert_win_props(data, win_props):
     """Convert WinFont properties to yaff properties."""
     version = win_props.dfVersion
     if win_props.dfType & 1:
@@ -708,7 +704,7 @@ def _parse_win_props(fnt, win_props):
         logging.info('    {}: {}'.format(key, value))
     properties = {
         'source-format': 'Windows FNT v{}.{}'.format(*divmod(version, 256)),
-        'family': bytes_to_str(fnt[win_props.dfFace:]),
+        'family': bytes_to_str(data[win_props.dfFace:]),
         'copyright': bytes_to_str(win_props.dfCopyright),
         'point-size': win_props.dfPoints,
         'slant': 'italic' if win_props.dfItalic else 'roman',
@@ -765,7 +761,7 @@ def _parse_win_props(fnt, win_props):
     properties['style'] = _STYLE_MAP[win_props.dfPitchAndFamily & 0xff00]
     if win_props.dfBreakChar:
         properties['word-boundary'] = win_props.dfFirstChar + win_props.dfBreakChar
-    properties['device'] = bytes_to_str(fnt[win_props.dfDevice:])
+    properties['device'] = bytes_to_str(data[win_props.dfDevice:])
     # unparsed properties: dfMaxWidth - but this can be calculated from the matrices
     if version == 0x300:
         # https://github.com/letolabs/fontforge/blob/master/fontforge/winfonts.c
@@ -839,17 +835,17 @@ def _parse_ne(data, ne_offset):
 # https://github.com/deptofdefense/SalSA/wiki/PE-File-Format
 # https://source.winehq.org/source/include/winnt.h
 
-def _parse_pe(fon, peoff):
+def _parse_pe(data, peoff):
     """Parse a PE-format FON file."""
     # We could try finding the Resource Table entry in the Optional
     # Header, but it talks about RVAs instead of file offsets, so
     # it's probably easiest just to go straight to the section table.
     # So let's find the size of the Optional Header, which we can
     # then skip over to find the section table.
-    pe_header = _PE_HEADER.from_bytes(fon, peoff)
+    pe_header = _PE_HEADER.from_bytes(data, peoff)
     section_table_offset = peoff + _PE_HEADER.size + pe_header.SizeOfOptionalHeader
     section_table_array = _IMAGE_SECTION_HEADER.array(pe_header.NumberOfSections)
-    section_table = section_table_array.from_bytes(fon, section_table_offset)
+    section_table = section_table_array.from_bytes(data, section_table_offset)
     # find the resource section
     for section in section_table:
         if section.Name == b'.rsrc':
@@ -857,7 +853,7 @@ def _parse_pe(fon, peoff):
     else:
         raise ValueError('Unable to locate resource section')
     # Now we've found the resource section, let's throw away the rest.
-    rsrc = fon[section.PointerToRawData : section.PointerToRawData+section.SizeOfRawData]
+    rsrc = data[section.PointerToRawData : section.PointerToRawData+section.SizeOfRawData]
     # Now the fun begins. To start with, we must find the initial
     # Resource Directory Table and look up type 0x08 (font) in it.
     # If it yields another Resource Directory Table, we recurse
@@ -1069,13 +1065,13 @@ def create_fnt(font, version=0x200):
     if version == 0x300:
         # all are zeroes (default) except the flags for v3
         header_ext.dfFlags = v3_flags
-    fnt = (
+    data = (
         bytes(win_props) + bytes(header_ext) + b''.join(char_table)
         + b''.join(bitmaps)
         + face_name + device_name
     )
-    assert len(fnt) == file_size
-    return fnt
+    assert len(data) == file_size
+    return data
 
 
 ##############################################################################
@@ -1117,14 +1113,14 @@ def _create_mz_stub():
     return (bytes(mz_header) + _STUB_CODE + _STUB_MSG + b'$').ljust(ne_offset, b'\0')
 
 
-def _create_fontdirentry(ordinal, fnt, font):
+def _create_fontdirentry(ordinal, data, font):
     """Return the DIRENTRY+FONTDIRENTRY, given the data in a .FNT file."""
     direntry = _DIRENTRY(ordinal)
     face_name = font.family.encode('latin-1', 'replace') + b'\0'
     device_name = font.device.encode('latin-1', 'replace') + b'\0'
     return (
         bytes(direntry)
-        + fnt[0:0x71]
+        + data[0:0x71]
         + device_name
         + face_name
     )
