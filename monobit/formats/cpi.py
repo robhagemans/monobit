@@ -171,12 +171,34 @@ def _parse_cpi(data):
 # CP reader
 
 _CODEPAGE_ENTRY_HEADER = le.Struct(
+    # > This is the size of the CodePageEntryHeader structure, i.e. 0x1C bytes.
+    # > Some CPI files have other values here, most often 0x1A. Some utilities
+    # > ignore this field and always load 0x1C bytes; others believe it.
     cpeh_size='short',
+    # > This is the offset of the next CodePageEntryHeader in the file. In FONT
+    # > and DRFONT files, the address is relative to the start of the file; in
+    # > FONT.NT files, it is relative to the start of this CodePageEntryHeader.
+    # > In the last CodePageEntryHeader, the value of this field has no meaning.
+    # > Some files set it to 0, some to -1, and some to point at where the next
+    # > CodePageEntryHeader would be.
+    # > The MS-DOS 5 Programmer's Reference says it should be 0.
     next_cpeh_offset='long',
+    # > 1 for screen, 2 for printer. [...] Printer codepages should only be
+    # > present in FONT files, not FONT.NT or DRFONT.
     device_type='short',
+    # > The ASCII device name. For screens, it refers to the display hardware
+    # > ("EGA     " for EGA/VGA and "LCD     " for the IBM Convertible LCD)
     device_name='8s',
+    # > This is the number of the codepage this header describes. Traditionally,
+    # > DOS codepages had 3-digit IDs (1-999) but the number can range from
+    # > 1-65533. IDs 65280-65533 are 'reserved for customer use'
     codepage='uint16',
     reserved='6s',
+    # > The offset of the CodePageInfoHeader for this codepage. In FONT and
+    # > DRFONT files, it is relative to the start of the file; in FONT.NT files
+    # > it is relative to the start of this CodePageEntryHeader.
+    # > As with next_cpeh_offset, the field is normally treated as a 32-bit
+    # > pointer but some programs may instead populate it with segment:offset values.
     cpih_offset='long',
 )
 # device types
@@ -190,8 +212,14 @@ _CP_FONT = 1
 _CP_DRFONT = 2
 
 _CODEPAGE_INFO_HEADER = le.Struct(
+    # > This is 1 if the following codepage is in FONT format, 2 if it is in
+    # > DRFONT format. Putting a DRFONT codepage in a FONT-format file will not
+    # > work. You shouldn't put a FONT codepage in a DRFONT-format file either.
     version='short',
+    # > If this is a screen font, it gives the number of font records that follow.
     num_fonts='short',
+    # > This is the number of bytes that follow up to the end of this codepage
+    # > (if version is 1) or up to the character index table (if version is 2).
     size_to_end='short',
 )
 _PRINTER_FONT_HEADER = le.Struct(
@@ -199,10 +227,15 @@ _PRINTER_FONT_HEADER = le.Struct(
     escape_length='short',
 )
 _SCREEN_FONT_HEADER = le.Struct(
+    # > This is the character height in pixels.
     height='byte',
+    # > This is the character width in pixels; in all known CPI files it is 8.
     width='byte',
+    # > Vertical aspect ratio. In all known CPI files this is unused and set to zero.
     yaspect='byte',
+    # > Horizontal aspect ratio. In all known CPI files this is unused and set to zero.
     xaspect='byte',
+    # > Number of characters in the font. In known CPI files this is always 256.
     num_chars='short',
 )
 # DRFONT character index table
