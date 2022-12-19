@@ -9,6 +9,7 @@ import os
 import string
 import logging
 from io import BytesIO
+from itertools import accumulate
 
 from ..binary import ceildiv
 from ..struct import little_endian as le
@@ -21,7 +22,7 @@ from ..properties import Props
 
 from .raw import load_bitmap
 from .gdos import _subset_storable
-from .windows import _make_contiguous, _normalise_metrics
+from .windows import _normalise_metrics
 
 
 _ID_MS = b'FONT   '
@@ -60,13 +61,13 @@ def save_cp(fonts, outstream, where=None):
 
 
 @savers.register(linked=load_cpi)
-def save_cpi(fonts, outstream, where=None, format:str=_ID_MS):
+def save_cpi(fonts, outstream, where=None, cpi_version:str=_ID_MS):
     """
     Save character-cell fonts to Linux Keyboard Codepage (.CP) file.
 
-    format: CPI format version. One of 'DRFONT', 'FONT.NT', or 'FONT' (default)
+    version: CPI format version. One of 'DRFONT', 'FONT.NT', or 'FONT' (default)
     """
-    format = format[:7].upper().ljust(7)
+    format = cpi_version[:7].upper().ljust(7)
     if isinstance(format, str):
         format = format.encode('ascii', 'replace')
     if format in (_ID_MS, _ID_NT):
@@ -308,6 +309,15 @@ def _make_fit(fonts):
     fonts = tuple(_font for _font in fonts if _font)
     if not fonts:
         raise FileFormatError('No storable fonts provided')
+    sizes = set(_f.cell_size for _f in fonts)
+    codepages = sorted(set(_f.encoding for _f in fonts))
+    # ensure all sizes exist for all codepages
+    for cp in codepages:
+        cp_fonts = tuple(_f for _f in fonts if _f.encoding == cp)
+        cp_sizes = set(_f.cell_size for _f in cp_fonts)
+        # drop all fonts of sizes that aren't available in this codepage
+        sizes &= cp_sizes
+    fonts = tuple(_font for _font in fonts if _font.cell_size in sizes)
     return fonts
 
 def _make_one_fit(font):
@@ -346,7 +356,10 @@ def _convert_to_cp(fonts):
     for codepage in codepages:
         cp_output = Props()
         output.append(cp_output)
-        cp_fonts = tuple(_font for _font in fonts if _font.encoding == codepage)
+        cp_fonts = (_font for _font in fonts if _font.encoding == codepage)
+        # sort fonts by increasing cell size
+        # so that the same font number has the same size
+        cp_fonts = sorted(cp_fonts, key=lambda _f: _f.cell_size)
         cp_number = int(codepage[2:])
         cp_output.cpeh = _CODEPAGE_ENTRY_HEADER(
             cpeh_size=_CODEPAGE_ENTRY_HEADER.size,
@@ -406,22 +419,25 @@ def _write_cp(outstream, cpo, format=_ID_MS, start_offset=0):
         outstream.write(_bmp)
     return cpo.cpeh.next_cpeh_offset
 
-def _write_dr_cp_header(outstream, cpo):
+def _write_dr_cp_header(outstream, cpo, start_offset, last):
     """Write the representation of a DRFONT codepage header to file."""
     # format params
     cpo.cpih.version = _CP_DRFONT
     # set pointers
-    cpo.cpeh.next_cpeh_offset = (
-        cpo.cpih.size
-        + _SCREEN_FONT_HEADER.size * len(cpo.fhs)
-        + _CHARACTER_INDEX_TABLE.size
-    )
+    cpo.cpeh.cpih_offset = start_offset + cpo.cpeh.size
+    if not last:
+        cpo.cpeh.next_cpeh_offset = (
+            start_offset + cpo.cpih.size
+            + _SCREEN_FONT_HEADER.size * len(cpo.fhs)
+            + _CHARACTER_INDEX_TABLE.size
+        )
     # we define all chars in order
-    cit = _CHARACTER_INDEX_TABLE(range(256))
+    cit = _CHARACTER_INDEX_TABLE(tuple(range(256)))
     outstream.write(bytes(cpo.cpeh) + bytes(cpo.cpih))
-    outstream.write(b''.join(bytes(_fh) for _fh in cpo.fs))
+    outstream.write(b''.join(bytes(_fh) for _fh in cpo.fhs))
     outstream.write(bytes(cit))
     # in DRFONT, bitmaps follow after all headers
+    return cpo.cpeh.next_cpeh_offset
 
 def _save_ms_cpi(fonts, outstream, format):
     """Save to FONT or FONT.NT CPI file"""
@@ -441,3 +457,44 @@ def _save_ms_cpi(fonts, outstream, format):
     offset = ffh.size + fih.size
     for cpo in cpdata:
         offset = _write_cp(outstream, cpo, format, offset)
+
+
+def _save_dr_cpi(fonts, outstream, format):
+    """Save to DRFONT CPI file"""
+    fonts = _make_fit(fonts)
+    cpdata = _convert_to_cp(fonts)
+    # drdos codepages must have equal number of fonts for each page,
+    # in the same set of cell sizes
+    # since we've ensured that in _make_fit, we can just do this
+    num_fonts_per_codepage = len(fonts) // len(cpdata)
+    cell_sizes = tuple(_fh.height for _fh in cpdata[0].fhs)
+    # bitmap offsets
+    ddeff_type = drdos_ext_header(num_fonts_per_codepage)
+    offset = _CPI_HEADER.size + _FONT_INFO_HEADER.size + ddeff_type.size
+    drcp_size = (
+        _CODEPAGE_ENTRY_HEADER.size + _CODEPAGE_INFO_HEADER.size
+        + _SCREEN_FONT_HEADER.size * num_fonts_per_codepage
+        + _CHARACTER_INDEX_TABLE.size
+    )
+    bitmap_start = offset + drcp_size*len(cpdata)
+    lengths = (sum(len(_bmp) for _bmp in _cpo.bitmaps) for _cpo in cpdata)
+    dfd_offsets = tuple(accumulate(lengths, initial=bitmap_start))
+    ddeff = ddeff_type(
+        num_fonts_per_codepage,
+        (struct.uint8 * num_fonts_per_codepage)(*cell_sizes),
+        (struct.uint32 * num_fonts_per_codepage)(*dfd_offsets[:-1]),
+    )
+    ffh = _CPI_HEADER(
+        id0=0x7f,
+        id=format.ljust(7),
+        pnum=1,
+        ptyp=1,
+        fih_offset=_CPI_HEADER.size + ddeff_type.size,
+    )
+    fih = _FONT_INFO_HEADER(num_codepages=len(cpdata))
+    outstream.write(bytes(ffh) + bytes(ddeff) + bytes(fih))
+    for i, cpo in enumerate(cpdata):
+        offset = _write_dr_cp_header(outstream, cpo, offset, i==len(cpdata)-1)
+    for cpo in cpdata:
+        for bitmap in cpo.bitmaps:
+            outstream.write(bitmap)
