@@ -219,10 +219,17 @@ class TestFormats(BaseTester):
     # CPI
 
     def test_import_cpi_font(self):
-        """Test importing CPI (FONT) files"""
+        """Test importing CPI (FONT) files."""
         fnt_file = self.font_path / '8x16-font.cpi'
         font, *_ = monobit.load(fnt_file)
         self.assertEqual(len(font.glyphs), 256)
+
+    def test_export_cpi_font(self):
+        """Test exporting CPI (FONT) files"""
+        fnt_file = self.temp_path / '8x16.cpi'
+        font = self.fixed8x16.modify(encoding='cp437')
+        monobit.save(font, fnt_file, cpi_version='FONT')
+        self.assertTrue(os.path.getsize(fnt_file) > 0)
 
     def test_import_cpi_fontnt(self):
         """Test importing CPI (FONT.NT) files"""
@@ -230,19 +237,38 @@ class TestFormats(BaseTester):
         font, *_ = monobit.load(fnt_file)
         self.assertEqual(len(font.glyphs), 256)
 
+    def test_export_cpi_fontnt(self):
+        """Test exporting CPI (FONT.NT) files"""
+        fnt_file = self.temp_path / '8x16.cpi'
+        font = self.fixed8x16.modify(encoding='cp437')
+        monobit.save(font, fnt_file, cpi_version='FONT.NT')
+        self.assertTrue(os.path.getsize(fnt_file) > 0)
+
     def test_import_cpi_drfont(self):
         """Test importing CPI (DRFONT) files"""
         fnt_file = self.font_path / '8x16-drfont.cpi'
-        pack = monobit.load(fnt_file)
-        font = pack[0]
+        font, *_ = monobit.load(fnt_file)
         self.assertEqual(len(font.glyphs), 256)
+
+    def test_export_cpi_drfont(self):
+        """Test exporting CPI (DRFONT) files"""
+        fnt_file = self.temp_path / '8x16.cpi'
+        font = self.fixed8x16.modify(encoding='cp437')
+        monobit.save(font, fnt_file, cpi_version='DRFONT')
+        self.assertTrue(os.path.getsize(fnt_file) > 0)
 
     def test_import_cp(self):
         """Test importing kbd CP files"""
         fnt_file = self.font_path / '8x16.cp'
-        pack = monobit.load(fnt_file)
-        font = pack[0]
+        font, *_ = monobit.load(fnt_file)
         self.assertEqual(len(font.glyphs), 256)
+
+    def test_export_cp(self):
+        """Test exporting kbd CP files"""
+        fnt_file = self.temp_path / '8x16.cp'
+        font = self.fixed8x16.modify(encoding='cp437')
+        monobit.save(font, fnt_file, format='kbd-cp')
+        self.assertTrue(os.path.getsize(fnt_file) > 0)
 
     # Figlet
 
