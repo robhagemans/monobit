@@ -305,6 +305,10 @@ def _parse_cp(data, cpeh_offset, header_id=_ID_MS, drdos_effh=None, standalone=F
         )
         font = _convert_from_cp(cells, cpeh, fh, header_id)
         fonts.append(font)
+    # if this was the last entry and no pointer provided,
+    # set the pointer to the bitmap end
+    if cpeh.next_cpeh_offset in (0, 0xffffffff):
+        cpeh.next_cpeh_offset = bm_offset + (max(glyph_index[:fh.num_chars])+1) * bytesize
     return fonts, cpeh.next_cpeh_offset
 
 def _read_glyphs(data, bm_offset, bytesize, width, glyph_index):
