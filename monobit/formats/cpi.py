@@ -53,7 +53,7 @@ def load_cp(instream, where=None):
 def save_cp(fonts, outstream, where=None):
     """Save character-cell fonts to Linux Keyboard Codepage (.CP) file."""
     fonts = _make_fit(fonts)
-    cpdata = _convert_to_cp(fonts)
+    cpdata, _ = _convert_to_cp(fonts)
     if len(cpdata) > 1:
         raise FileFormatError(
             'All fonts in a single .cp file must have the same encoding.')
