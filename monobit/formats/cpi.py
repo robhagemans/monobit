@@ -221,10 +221,12 @@ def _parse_cp(data, cpeh_offset, header_id=_ID_MS, drdos_effh=None, standalone=F
             if cpih.version == _CP_FONT:
                 # bitmaps follow font header
                 bm_offset = fh_offset + _SCREEN_FONT_HEADER.size
-                bytesio = BytesIO(data)
-                font = load_bitmap(bytesio, fh.width, fh.height, fh.num_chars, bm_offset)
-                cells = font.glyphs
-                fh_offset = bm_offset + fh.num_chars * fh.height * ceildiv(fh.width, 8)
+                bytesz = fh.height * ceildiv(fh.width, 8)
+                fh_offset = bm_offset + fh.num_chars * bytesz
+                cells = tuple(
+                    Glyph.from_bytes(data[_offs : _offs+bytesz], fh.width)
+                    for _offs in range(bm_offset, fh_offset, bytesz)
+                )
             else:
                 # DRFONT bitmaps
                 cells = []
