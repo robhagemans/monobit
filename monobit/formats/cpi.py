@@ -401,8 +401,22 @@ def _fill_contiguous(font, full_range, filler):
     font = font.modify(glyphs)
     return font
 
+def _get_consistent(fonts, property):
+    """Get value for a property across fonts, or None if inconsistent."""
+    values = tuple(set(
+        _font.get_property(property)
+        for _font in fonts
+        if property in _font.properties
+    ))
+    if len(values) == 1:
+        return values[0]
+    return None
+
+
 def _convert_to_cp(fonts):
     codepages = sorted(set(_font.encoding for _font in fonts))
+    # preserve notice, if it is consistent
+    notice = _get_consistent(fonts, 'notice') or ''
     output = []
     for codepage in codepages:
         cp_output = Props()
@@ -413,15 +427,8 @@ def _convert_to_cp(fonts):
         cp_fonts = sorted(cp_fonts, key=lambda _f: _f.cell_size)
         cp_number = int(codepage[2:])
         # preserve device name, if it is consistent
-        devices = tuple(set(
-            _font.device[:8].encode('ascii', 'replace').ljust(8)
-            for _font in fonts
-            if 'device' in _font.properties
-        ))
-        if len(devices) == 1:
-            device, = devices
-        else:
-            device = b'EGA'.ljust(8)
+        device = _get_consistent(cp_fonts, 'device') or 'EGA'
+        device = device[:8].encode('ascii', 'replace').ljust(8)
         # set header fields
         cp_output.cpeh = _CODEPAGE_ENTRY_HEADER(
             cpeh_size=_CODEPAGE_ENTRY_HEADER.size,
@@ -455,7 +462,7 @@ def _convert_to_cp(fonts):
             # generate bitmaps
             bitmap = b''.join(_g.as_bytes() for _g in font.glyphs)
             cp_output.bitmaps.append(bitmap)
-    return output
+    return output, notice
 
 def _write_cp(outstream, cpo, format=_ID_MS, start_offset=0):
     """Write the representation of a FONT codepage to file."""
@@ -504,7 +511,7 @@ def _write_dr_cp_header(outstream, cpo, start_offset, last):
 def _save_ms_cpi(fonts, outstream, format):
     """Save to FONT or FONT.NT CPI file"""
     fonts = _make_fit(fonts)
-    cpdata = _convert_to_cp(fonts)
+    cpdata, notice = _convert_to_cp(fonts)
     ffh = _CPI_HEADER(
         id0=0xff,
         id=format.ljust(7),
@@ -519,12 +526,13 @@ def _save_ms_cpi(fonts, outstream, format):
     offset = ffh.size + fih.size
     for cpo in cpdata:
         offset = _write_cp(outstream, cpo, format, offset)
+    outstream.write(notice.encode('ascii', 'replace'))
 
 
 def _save_dr_cpi(fonts, outstream, format):
     """Save to DRFONT CPI file"""
     fonts = _make_fit(fonts)
-    cpdata = _convert_to_cp(fonts)
+    cpdata, notice = _convert_to_cp(fonts)
     # drdos codepages must have equal number of fonts for each page,
     # in the same set of cell sizes
     # since we've ensured that in _make_fit, we can just do this
@@ -560,3 +568,4 @@ def _save_dr_cpi(fonts, outstream, format):
     for cpo in cpdata:
         for bitmap in cpo.bitmaps:
             outstream.write(bitmap)
+    outstream.write(notice.encode('ascii', 'replace'))
