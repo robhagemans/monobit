@@ -210,92 +210,109 @@ _CHARACTER_INDEX_TABLE = le.Struct(
     FontIndex=struct.int16 * 256,
 )
 
-def _parse_cp(data, cpeh_offset, header_id=_ID_MS, drdos_effh=None, standalone=False):
-    """Parse a .CP codepage."""
-    cpeh = _CODEPAGE_ENTRY_HEADER.from_bytes(data, cpeh_offset)
-    if header_id == _ID_NT:
-        # fix relative offsets in FONT.NT
-        # > in FONT.NT files, it is relative to the start of this CodePageEntryHeader.
-        cpeh.cpih_offset += cpeh_offset
-        cpeh.next_cpeh_offset += cpeh_offset
-    if standalone:
-        # on a standalone codepage (kbd .cp file), ignore the offset
-        # CPIH follows immediately after CPEH
-        cpeh.cpih_offset = cpeh_offset + _CODEPAGE_ENTRY_HEADER.size
-    cpih = _CODEPAGE_INFO_HEADER.from_bytes(data, cpeh.cpih_offset)
-    # offset to the first font header
-    fh_offset = cpeh.cpih_offset + _CODEPAGE_INFO_HEADER.size
-    # https://www.seasip.info/DOS/CPI/cpi.html
-    # > LCD.CPI from Toshiba MS-DOS 3.30 sets this field to 0, which should be treated as 1.
-    if cpih.version == 0:
-        cpih.version = _CP_FONT
-    # printer CPs have one font only
+def _read_cp_header(data, start_offset, format, standalone):
+    cpeh = _CODEPAGE_ENTRY_HEADER.from_bytes(data, start_offset)
     if cpeh.device_type == _DT_PRINTER:
-        cpih.num_fonts = 1
-        # could we parse printer fonts? are they device specific?
-        # if not, what are the dimensions?
+        # printer fonts apparently hold printer-specific escape sequences
         raise FileFormatError(
             'Printer CPI codepages not supported: '
             f'codepage {cpeh.codepage}, device `{cpeh.device_name}`'
         )
+    # fix offsets to headers
+    if format == _ID_NT:
+        # > in FONT.NT files, it is relative to the start of this CodePageEntryHeader.
+        cpeh.cpih_offset += start_offset
+        cpeh.next_cpeh_offset += start_offset
+    if standalone:
+        # on a standalone codepage (kbd .cp file), ignore the offset
+        # CPIH follows immediately after CPEH
+        cpeh.cpih_offset = start_offset + _CODEPAGE_ENTRY_HEADER.size
+    cpih = _CODEPAGE_INFO_HEADER.from_bytes(data, cpeh.cpih_offset)
+    if cpih.version == 0:
+        # https://www.seasip.info/DOS/CPI/cpi.html
+        # > LCD.CPI from Toshiba MS-DOS 3.30 sets this field to 0, which should be treated as 1.
+        cpih.version = _CP_FONT
+    if cpih.version not in (_CP_DRFONT, _CP_FONT):
+        raise FileFormatError(
+            f'Incorrect CP format version number {cpih.version}.'
+        )
+    return cpeh, cpih
+
+
+def _parse_cp(data, cpeh_offset, header_id=_ID_MS, drdos_effh=None, standalone=False):
+    """Parse a .CP codepage."""
+    cpeh, cpih = _read_cp_header(data, cpeh_offset, header_id, standalone)
+    # offset to the first font header
+    fh_offset = cpeh.cpih_offset + _CODEPAGE_INFO_HEADER.size
+    # glyph index table for drfont
+    # for ms formats, the glyphs are in simple order
+    if cpih.version == _CP_DRFONT:
+        cit_offset = fh_offset + cpih.num_fonts * _SCREEN_FONT_HEADER.size
+        cit = _CHARACTER_INDEX_TABLE.from_bytes(data, cit_offset)
+        glyph_index = cit.FontIndex
     else:
-        fonts = []
-        # char table offset for drfont
-        if cpih.version == _CP_DRFONT:
-            cit_offset = fh_offset + cpih.num_fonts * _SCREEN_FONT_HEADER.size
-        elif cpih.version != _CP_FONT:
-            raise FileFormatError('Incorrect CP format version number.')
-        for cp_index in range(cpih.num_fonts):
-            fh = _SCREEN_FONT_HEADER.from_bytes(data, fh_offset)
-            # extract font properties
-            device = cpeh.device_name.strip().decode('ascii', 'replace')
-            format = header_id.strip().decode("latin-1")
-            props = dict(
-                encoding=f'cp{cpeh.codepage}',
-                device=device,
-                source_format=f'CPI ({format})',
-            )
-            logging.debug(
-                f'Reading {fh.width}x{fh.height} font '
-                f'for codepage {cpeh.codepage} '
-                f'in {format} format.'
-            )
-            # apparently never used
-            if fh.xaspect or fh.yaspect:
-                # not clear how this would be interpreted...
-                props['cpi'] = f'xaspect={fh.xaspect} yaspect={fh.yaspect}'
-            # get the bitmap
-            if cpih.version == _CP_FONT:
-                # bitmaps follow font header
-                bm_offset = fh_offset + _SCREEN_FONT_HEADER.size
-                bytesz = fh.height * ceildiv(fh.width, 8)
-                fh_offset = bm_offset + fh.num_chars * bytesz
-                cells = tuple(
-                    Glyph.from_bytes(data[_offs : _offs+bytesz], fh.width)
-                    for _offs in range(bm_offset, fh_offset, bytesz)
-                )
-            else:
-                # DRFONT bitmaps
-                cells = []
-                cit = _CHARACTER_INDEX_TABLE.from_bytes(data, cit_offset)
-                for ord, fi in zip(range(fh.num_chars), cit.FontIndex):
-                    bm_offs_char = (
-                        fi * drdos_effh.font_cellsize[cp_index] + drdos_effh.dfd_offset[cp_index]
-                    )
-                    cells.append(Glyph.from_bytes(
-                        data[bm_offs_char : bm_offs_char+drdos_effh.font_cellsize[cp_index]],
-                        fh.width
-                    ))
-                fh_offset += _SCREEN_FONT_HEADER.size
-            # add codepoints and character labels
-            cells = tuple(
-                _g.modify(codepoint=_cp)
-                for _cp, _g in enumerate(cells)
-            )
-            font = Font(cells, **props)
-            font = font.label()
-            fonts.append(font)
+        glyph_index = range(256)
+    fonts = []
+    for cp_index in range(cpih.num_fonts):
+        fh = _SCREEN_FONT_HEADER.from_bytes(data, fh_offset)
+        fh_offset += _SCREEN_FONT_HEADER.size
+        # get the bitmap
+        if cpih.version == _CP_FONT:
+            bytesize = fh.height * ceildiv(fh.width, 8)
+            # bitmaps are in between headers for FONT and FONT.NT
+            bm_offset = fh_offset
+            fh_offset += fh.num_chars * bytesize
+        else:
+            # this is also the height, as width must be 8
+            bytesize = drdos_effh.font_cellsize[cp_index]
+            # bitmaps are at end of file
+            bm_offset = drdos_effh.dfd_offset[cp_index]
+        cells = _read_glyphs(
+            data, bm_offset, bytesize, fh.width, glyph_index[:fh.num_chars]
+        )
+        font = _convert_from_cp(cells, cpeh, fh, header_id)
+        fonts.append(font)
     return fonts, cpeh.next_cpeh_offset
+
+def _read_glyphs(data, bm_offset, bytesize, width, glyph_index):
+    """Read bitmaps."""
+    offsets = (
+        bm_offset + _index * bytesize
+        for _index in glyph_index
+    )
+    cells = tuple(
+        Glyph.from_bytes(data[_offs : _offs+bytesize], width)
+        for _offs in offsets
+    )
+    return cells
+
+def _convert_from_cp(cells, cpeh, fh, header_id):
+    """Convert to monobit font."""
+    # extract font properties
+    device = cpeh.device_name.strip().decode('ascii', 'replace')
+    format = header_id.strip().decode("latin-1")
+    props = dict(
+        encoding=f'cp{cpeh.codepage}',
+        device=device,
+        source_format=f'CPI ({format})',
+    )
+    # apparently never used
+    if fh.xaspect or fh.yaspect:
+        # not clear how this would be interpreted...
+        props['cpi'] = f'xaspect={fh.xaspect} yaspect={fh.yaspect}'
+    logging.debug(
+        f'Reading {fh.width}x{fh.height} font '
+        f'for codepage {cpeh.codepage} '
+        f'in {format} format.'
+    )
+    # add codepoints and character labels
+    cells = tuple(
+        _g.modify(codepoint=_cp)
+        for _cp, _g in enumerate(cells)
+    )
+    font = Font(cells, **props)
+    font = font.label()
+    return font
 
 
 ###############################################################################
