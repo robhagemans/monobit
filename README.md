@@ -97,7 +97,7 @@ Supported formats
 | AngelCode BMFont [P]  | `bmfont` | text binary XML JSON | `.fnt` `.xml` `.json` + images  | | ✔     | ✔ (text, JSON) |
 | Raw binary            | `binary`   |          | `.fnt` `.rom` `.f??` `.ch8` `.64c` `.chr`|  | ✔     | ✔     |
 | C or C++ coded binary | `c`        |          | `.c` `.cpp` `.cc` `.h`      |               | ✔     | ✔     |
-| Codepage Information  | `cpi` | FONT FONT.NT DRFONT | `.cpi` | MS-DOS, Windows NT, DR-DOS   | ✔     |       |
+| Codepage Information  | `cpi` | FONT FONT.NT DRFONT | `.cpi` | MS-DOS, Windows NT, DR-DOS   | ✔     | ✔     |
 | Daisy-Dot             | `daisy` | II III Magnified | `.nlq` `.nl?`          | Atari         | ✔     |       |
 | DEC DRCS soft font    | `dec-drcs` |          |                             | DEC VT        | ✔     | ✔     |
 | FZX font              | `fzx`      |          | `.fzx`                      | ZX Spectrum   | ✔     | ✔     |
@@ -109,7 +109,7 @@ Supported formats
 | hexdraw               | `hexdraw`  |          | `.draw`                     |               | ✔     | ✔     |
 | Bitmap image [P]      | `image`    |          | `.png` `.gif` `.bmp`        |               | ✔     | ✔     |
 | JSON coded binary     | `json`     |          | `.json`                     |               | ✔     | ✔     |
-| `kbd` Codepage        | `kbd-cp`   |          | `.cp`                       | Linux         | ✔     |       |
+| `kbd` Codepage        | `kbd-cp`   |          | `.cp`                       | Linux         | ✔     | ✔     |
 | MacOS font            | `mac-dfont`| FONT NFNT+FOND | `.dfont` `.suit`      | Classic MacOS | ✔     |       |
 | MacOS font (AS/AD)    | `mac-rsrc` | FONT NFNT+FOND | `.rsrc`               | Classic MacOS | ✔     |       |
 | MacOS font (MacBinary)| `mac-bin`  | FONT NFNT+FOND | `.bin`                | Classic MacOS | ✔     |       |
