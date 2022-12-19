@@ -17,8 +17,11 @@ from ..storage import loaders, savers
 from ..streams import FileFormatError
 from ..font import Font
 from ..glyph import Glyph
+from ..properties import Props
 
 from .raw import load_bitmap
+from .gdos import _subset_storable
+from .windows import _make_contiguous, _normalise_metrics
 
 
 _ID_MS = b'FONT   '
@@ -43,6 +46,14 @@ def load_cp(instream, where=None):
     data = instream.read()
     fonts, _ = _parse_cp(data, 0, standalone=True)
     return fonts
+
+
+@savers.register(linked=load_cp)
+def save_cp(fonts, outstream, where=None):
+    """Save character-cell fonts to Linux Keyboard Codepage (.CP) file."""
+    fonts = _make_fit(fonts)
+    cpdata = _convert_to_cp(fonts)
+    _write_cp(outstream, cpdata)
 
 
 ###############################################################################
@@ -249,3 +260,133 @@ def _parse_cp(data, cpeh_offset, header_id=_ID_MS, drdos_effh=None, standalone=F
             font = font.label()
             fonts.append(font)
     return fonts, cpeh.next_cpeh_offset
+
+
+###############################################################################
+# CP writer
+
+# storable code points
+_RANGE = range(256)
+
+def _make_fit(fonts):
+    """Select only the fonts that fit."""
+    fonts = (_make_one_fit(_font) for _font in fonts)
+    fonts = tuple(_font for _font in fonts if _font)
+    if not fonts:
+        raise FileFormatError('No storable fonts provided')
+    return fonts
+
+def _make_one_fit(font):
+    """Check if font fits in format and reshape as necessary."""
+    if font.cell_size.x != 8:
+        logging.warning(
+            'CP format can only store 8xN character-cell fonts.'
+        )
+        return None
+    if not font.encoding.startswith('cp'):
+        logging.warning(
+            'CP fonts must have encoding set to a numbered codepage'
+        )
+        return None
+    # ensure codepoint values are set, if possible
+    font = font.label(codepoint_from=font.encoding)
+    # take only the glyphs that will fit
+    font = _subset_storable(font, _RANGE)
+    font, _ = _normalise_metrics(font)
+    font = _fill_contiguous(font, _RANGE, Glyph.blank(*font.cell_size))
+    return font
+
+
+def _fill_contiguous(font, full_range, filler):
+    """Get contiguous range, fill gaps with empties."""
+    glyphs = tuple(
+        font.get_glyph(codepoint=_cp, missing=filler).modify(codepoint=_cp)
+        for _cp in full_range
+    )
+    font = font.modify(glyphs)
+    return font
+
+def _convert_to_cp(fonts):
+    codepages = sorted(set(_font.encoding for _font in fonts))
+    output = []
+    for codepage in codepages:
+        cp_output = Props()
+        output.append(cp_output)
+        cp_fonts = tuple(_font for _font in fonts if _font.encoding == codepage)
+        cp_number = int(codepage[2:])
+        cp_output.cpeh = _CODEPAGE_ENTRY_HEADER(
+            cpeh_size=_CODEPAGE_ENTRY_HEADER.size,
+            #next_cpeh_offset='long',
+            device_type=_DT_SCREEN,
+            device_name=b'EGA'.ljust(8),
+            #(font.device[:8].encode('ascii', 'replace') or b'EGA').ljust(8),
+            codepage=cp_number,
+            # cpih should follow immediately
+            #cpih_offset=0 if format == _ID_NT else _CODEPAGE_ENTRY_HEADER.size,
+        )
+        cp_output.cpih = _CODEPAGE_INFO_HEADER(
+            #version=_CP_DRFONT if format==_ID_DR else _CP_FONT,
+            num_fonts=len(cp_fonts),
+            #size='short',
+        )
+        cp_output.fhs = []
+        cp_output.bitmaps = []
+        for font in cp_fonts:
+            # apparently never used
+            if 'cpi' in font.properties:
+                propsplit = (item.partition('=') for item in font.cpi.split())
+                cpiprops = {_k: _v for _k, _, _v in propsplit}
+            else:
+                cpiprops = {}
+            cp_output.fhs.append(_SCREEN_FONT_HEADER(
+                height=font.cell_size.y,
+                width=font.cell_size.x,
+                yaspect=cpiprops.get('yaspect', 0),
+                xaspect=cpiprops.get('xaspect', 0),
+                num_chars=len(font.glyphs),
+            ))
+            # generate bitmaps
+            bitmap = b''.join(_g.as_bytes() for _g in font.glyphs)
+            cp_output.bitmaps.append(bitmap)
+    return output
+
+def _write_cp(outstream, cpdata, format=_ID_MS):
+    """Write the representation of a FONT codepage to file."""
+    for cpo in cpdata:
+        # format params
+        cpo.cpih.version = _CP_FONT
+        # set pointers
+        if format == _ID_MS:
+            # cpih follows immediately
+            # for _ID_NT, we keep this 0
+            cpo.cpeh.cpih_offset = cpo.cpeh.size
+        cpo.cpeh.next_cpeh_offset = (
+            cpo.cpeh.cpih_offset + cpo.cpih.size
+            + sum(
+                _SCREEN_FONT_HEADER.size + len(_bmp)
+                for _bmp in cpo.bitmaps
+            )
+        )
+        outstream.write(bytes(cpo.cpeh) + bytes(cpo.cpih))
+        for _fh, _bmp in zip(cpo.fhs, cpo.bitmaps):
+            outstream.write(bytes(_fh))
+            outstream.write(_bmp)
+
+def _write_drcp_header(outstream, cpdata):
+    """Write the representation of a DRFONT codepage header to file."""
+    for cpo in cpdata:
+        # format params
+        cpo.cpih.version = CP_DRFONT
+        # set pointers
+
+        cpo.cpeh.next_cpeh_offset = (
+            cpo.cpih.size
+            + _SCREEN_FONT_HEADER.size * len(cpo.fhs)
+            + _CHARACTER_INDEX_TABLE.size
+        )
+        # we define all chars in order
+        cit = _CHARACTER_INDEX_TABLE(range(256))
+        outstream.write(bytes(cpo.cpeh) + bytes(cpo.cpih))
+        outstream.write(b''.join(bytes(_fh) for _fh in cpo.fs))
+        outstream.write(bytes(cit))
+        # in DRFONT, bitmaps follow after all headers
