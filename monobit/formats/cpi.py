@@ -192,7 +192,7 @@ _CP_DRFONT = 2
 _CODEPAGE_INFO_HEADER = le.Struct(
     version='short',
     num_fonts='short',
-    size='short',
+    size_to_end='short',
 )
 _PRINTER_FONT_HEADER = le.Struct(
     printer_type='short',
@@ -215,6 +215,7 @@ def _parse_cp(data, cpeh_offset, header_id=_ID_MS, drdos_effh=None, standalone=F
     cpeh = _CODEPAGE_ENTRY_HEADER.from_bytes(data, cpeh_offset)
     if header_id == _ID_NT:
         # fix relative offsets in FONT.NT
+        # > in FONT.NT files, it is relative to the start of this CodePageEntryHeader.
         cpeh.cpih_offset += cpeh_offset
         cpeh.next_cpeh_offset += cpeh_offset
     if standalone:
@@ -363,18 +364,17 @@ def _convert_to_cp(fonts):
         cp_number = int(codepage[2:])
         cp_output.cpeh = _CODEPAGE_ENTRY_HEADER(
             cpeh_size=_CODEPAGE_ENTRY_HEADER.size,
-            #next_cpeh_offset='long',
+            next_cpeh_offset=0,
             device_type=_DT_SCREEN,
             device_name=b'EGA'.ljust(8),
             #(font.device[:8].encode('ascii', 'replace') or b'EGA').ljust(8),
             codepage=cp_number,
-            # cpih should follow immediately
-            #cpih_offset=0 if format == _ID_NT else _CODEPAGE_ENTRY_HEADER.size,
+            cpih_offset=0,
         )
         cp_output.cpih = _CODEPAGE_INFO_HEADER(
             #version=_CP_DRFONT if format==_ID_DR else _CP_FONT,
             num_fonts=len(cp_fonts),
-            #size='short',
+            #size_to_end='short',
         )
         cp_output.fhs = []
         cp_output.bitmaps = []
@@ -402,16 +402,17 @@ def _write_cp(outstream, cpo, format=_ID_MS, start_offset=0):
     # format params
     cpo.cpih.version = _CP_FONT
     # set pointers
+    # cpih follows immediately
+    cpo.cpeh.cpih_offset = cpo.cpeh.size
     if format == _ID_MS:
-        # cpih follows immediately
-        # for _ID_NT, we keep this 0
-        cpo.cpeh.cpih_offset = start_offset + cpo.cpeh.size
+        cpo.cpeh.cpih_offset += start_offset
+    cpo.cpih.size_to_end = sum(
+        _SCREEN_FONT_HEADER.size + len(_bmp)
+        for _bmp in cpo.bitmaps
+    )
     cpo.cpeh.next_cpeh_offset = (
         cpo.cpeh.cpih_offset + cpo.cpih.size
-        + sum(
-            _SCREEN_FONT_HEADER.size + len(_bmp)
-            for _bmp in cpo.bitmaps
-        )
+        + cpo.cpih.size_to_end
     )
     outstream.write(bytes(cpo.cpeh) + bytes(cpo.cpih))
     for _fh, _bmp in zip(cpo.fhs, cpo.bitmaps):
@@ -431,6 +432,7 @@ def _write_dr_cp_header(outstream, cpo, start_offset, last):
             + _SCREEN_FONT_HEADER.size * len(cpo.fhs)
             + _CHARACTER_INDEX_TABLE.size
         )
+    # FIXME cpih.size_to_end
     # we define all chars in order
     cit = _CHARACTER_INDEX_TABLE(tuple(range(256)))
     outstream.write(bytes(cpo.cpeh) + bytes(cpo.cpih))
