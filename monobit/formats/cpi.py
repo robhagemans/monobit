@@ -412,12 +412,22 @@ def _convert_to_cp(fonts):
         # so that the same font number has the same size
         cp_fonts = sorted(cp_fonts, key=lambda _f: _f.cell_size)
         cp_number = int(codepage[2:])
+        # preserve device name, if it is consistent
+        devices = tuple(set(
+            _font.device[:8].encode('ascii', 'replace').ljust(8)
+            for _font in fonts
+            if 'device' in _font.properties
+        ))
+        if len(devices) == 1:
+            device, = devices
+        else:
+            device = b'EGA'.ljust(8)
+        # set header fields
         cp_output.cpeh = _CODEPAGE_ENTRY_HEADER(
             cpeh_size=_CODEPAGE_ENTRY_HEADER.size,
             next_cpeh_offset=0,
             device_type=_DT_SCREEN,
-            device_name=b'EGA'.ljust(8),
-            #(font.device[:8].encode('ascii', 'replace') or b'EGA').ljust(8),
+            device_name=device,
             codepage=cp_number,
             cpih_offset=0,
         )
