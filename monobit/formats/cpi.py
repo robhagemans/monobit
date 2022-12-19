@@ -5,10 +5,6 @@ monobit.formats.cpi - DOS Codepage Information format
 licence: https://opensource.org/licenses/MIT
 """
 
-# CPI format documentation
-# https://www.seasip.info/DOS/CPI/cpi.html
-# https://www.win.tue.nl/~aeb/linux/kbd/font-formats-3.html
-
 import os
 import string
 import logging
@@ -29,72 +25,6 @@ _ID_MS = b'FONT   '
 _ID_NT = b'FONT.NT'
 _ID_DR = b'DRFONT '
 
-_CPI_HEADER = le.Struct(
-    id0='byte',
-    id='7s',
-    reserved='8s',
-    pnum='short',
-    ptyp='byte',
-    fih_offset='long',
-)
-_FONT_INFO_HEADER = le.Struct(
-    num_codepages='short',
-)
-_CODEPAGE_ENTRY_HEADER = le.Struct(
-    cpeh_size='short',
-    next_cpeh_offset='long',
-    device_type='short',
-    device_name='8s',
-    codepage='uint16',
-    reserved='6s',
-    cpih_offset='long',
-)
-# device types
-_DT_SCREEN = 1
-_DT_PRINTER = 2
-# early printer devices that may erroneously have a device_type of 1
-#_PRINTERS = ('4201', '4208', '5202', '1050')
-
-# version for CP resource
-_CP_FONT = 1
-_CP_DRFONT = 2
-
-_CODEPAGE_INFO_HEADER = le.Struct(
-    version='short',
-    num_fonts='short',
-    size='short',
-)
-_PRINTER_FONT_HEADER = le.Struct(
-    printer_type='short',
-    escape_length='short',
-)
-_SCREEN_FONT_HEADER = le.Struct(
-    height='byte',
-    width='byte',
-    yaspect='byte',
-    xaspect='byte',
-    num_chars='short',
-)
-
-# DRDOS Extended Font File Header
-def drdos_ext_header(num_fonts_per_codepage=0):
-    return le.Struct(
-        num_fonts_per_codepage='byte',
-        font_cellsize=struct.uint8 * num_fonts_per_codepage,
-        dfd_offset=struct.uint32 * num_fonts_per_codepage,
-    )
-# DRFONT character index table
-_CHARACTER_INDEX_TABLE = le.Struct(
-    FontIndex=struct.int16 * 256,
-)
-
-# friendly format name
-_FORMAT_NAME = {
-    _ID_NT: 'Windows NT',
-    _ID_DR: 'DR-DOS',
-    _ID_MS: 'MS-DOS',
-}
-
 
 @loaders.register(
     'cpi',
@@ -114,6 +44,39 @@ def load_cp(instream, where=None):
     fonts, _ = _parse_cp(data, 0, standalone=True)
     return fonts
 
+
+###############################################################################
+# CPI reader
+# https://www.seasip.info/DOS/CPI/cpi.html
+# https://www.win.tue.nl/~aeb/linux/kbd/font-formats-3.html
+
+
+_CPI_HEADER = le.Struct(
+    id0='byte',
+    id='7s',
+    reserved='8s',
+    pnum='short',
+    ptyp='byte',
+    fih_offset='long',
+)
+_FONT_INFO_HEADER = le.Struct(
+    num_codepages='short',
+)
+
+# DRDOS Extended Font File Header
+def drdos_ext_header(num_fonts_per_codepage=0):
+    return le.Struct(
+        num_fonts_per_codepage='byte',
+        font_cellsize=struct.uint8 * num_fonts_per_codepage,
+        dfd_offset=struct.uint32 * num_fonts_per_codepage,
+    )
+
+# friendly format name
+_FORMAT_NAME = {
+    _ID_NT: 'Windows NT',
+    _ID_DR: 'DR-DOS',
+    _ID_MS: 'MS-DOS',
+}
 
 
 def _parse_cpi(data):
@@ -160,6 +123,50 @@ def _parse_cpi(data):
         ]
     return fonts
 
+
+###############################################################################
+# CP reader
+
+_CODEPAGE_ENTRY_HEADER = le.Struct(
+    cpeh_size='short',
+    next_cpeh_offset='long',
+    device_type='short',
+    device_name='8s',
+    codepage='uint16',
+    reserved='6s',
+    cpih_offset='long',
+)
+# device types
+_DT_SCREEN = 1
+_DT_PRINTER = 2
+# early printer devices that may erroneously have a device_type of 1
+#_PRINTERS = ('4201', '4208', '5202', '1050')
+
+# version for CP resource
+_CP_FONT = 1
+_CP_DRFONT = 2
+
+_CODEPAGE_INFO_HEADER = le.Struct(
+    version='short',
+    num_fonts='short',
+    size='short',
+)
+_PRINTER_FONT_HEADER = le.Struct(
+    printer_type='short',
+    escape_length='short',
+)
+_SCREEN_FONT_HEADER = le.Struct(
+    height='byte',
+    width='byte',
+    yaspect='byte',
+    xaspect='byte',
+    num_chars='short',
+)
+# DRFONT character index table
+_CHARACTER_INDEX_TABLE = le.Struct(
+    FontIndex=struct.int16 * 256,
+)
+
 def _parse_cp(data, cpeh_offset, header_id=_ID_MS, drdos_effh=None, standalone=False):
     """Parse a .CP codepage."""
     cpeh = _CODEPAGE_ENTRY_HEADER.from_bytes(data, cpeh_offset)
@@ -174,7 +181,8 @@ def _parse_cp(data, cpeh_offset, header_id=_ID_MS, drdos_effh=None, standalone=F
     cpih = _CODEPAGE_INFO_HEADER.from_bytes(data, cpeh.cpih_offset)
     # offset to the first font header
     fh_offset = cpeh.cpih_offset + _CODEPAGE_INFO_HEADER.size
-    # handle Toshiba fonts
+    # https://www.seasip.info/DOS/CPI/cpi.html
+    # > LCD.CPI from Toshiba MS-DOS 3.30 sets this field to 0, which should be treated as 1.
     if cpih.version == 0:
         cpih.version = _CP_FONT
     # printer CPs have one font only
