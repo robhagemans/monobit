@@ -53,7 +53,30 @@ def save_cp(fonts, outstream, where=None):
     """Save character-cell fonts to Linux Keyboard Codepage (.CP) file."""
     fonts = _make_fit(fonts)
     cpdata = _convert_to_cp(fonts)
-    _write_cp(outstream, cpdata)
+    if len(cpdata) > 1:
+        raise FileFormatError(
+            'All fonts in a single .cp file must have the same encoding.')
+    _write_cp(outstream, cpdata[0])
+
+
+@savers.register(linked=load_cpi)
+def save_cpi(fonts, outstream, where=None, format:str=_ID_MS):
+    """
+    Save character-cell fonts to Linux Keyboard Codepage (.CP) file.
+
+    format: CPI format version. One of 'DRFONT', 'FONT.NT', or 'FONT' (default)
+    """
+    format = format[:7].upper().ljust(7)
+    if isinstance(format, str):
+        format = format.encode('ascii', 'replace')
+    if format in (_ID_MS, _ID_NT):
+        return _save_ms_cpi(fonts, outstream, format)
+    elif format == _ID_DR:
+        return _save_dr_cpi(fonts, outstream, format)
+    accepted = b"', '".join((_ID_MS, _ID_NT, _ID_DR)).decode('ascii')
+    raise ValueError(
+        f"CPI format must be one of '{accepted}', not '{format.decode('latin-1')}'"
+    )
 
 
 ###############################################################################
@@ -63,11 +86,26 @@ def save_cp(fonts, outstream, where=None):
 
 
 _CPI_HEADER = le.Struct(
+    # The first byte of the file is 0xFF for FONT and FONT.NT files,
+    # and 0x7F for DRFONT files.
     id0='byte',
+    # This is the file format, space padded: "FONT   ", "FONT.NT" or "DRFONT ".
     id='7s',
+    # The eight reserved bytes are always zero.
     reserved='8s',
+    # This is the number of pointers in this header. In all known CPI files
+    # this is 1; the MS-DOS 5 Programmer's Reference says that "for current
+    # versions of MS-DOS" it should be 1.
     pnum='short',
+    # The type of the pointer in the header. In all known CPI files this is 1;
+    # the MS-DOS reference says that "for current versions of MS-DOS" it
+    # should be 1.
     ptyp='byte',
+    # The offset in the file of the FontInfoHeader. In FONT and FONT.NT files,
+    # this is usually 0x17, pointing to immediately after the FontFileHeader -
+    # though files with other values are known to exist [10]. In DRFONT files,
+    # it should # point to immediately after the DRDOSExtendedFontFileHeader [2],
+    # which for a # four-font CPI file puts it at 0x2C.
     fih_offset='long',
 )
 _FONT_INFO_HEADER = le.Struct(
@@ -81,13 +119,6 @@ def drdos_ext_header(num_fonts_per_codepage=0):
         font_cellsize=struct.uint8 * num_fonts_per_codepage,
         dfd_offset=struct.uint32 * num_fonts_per_codepage,
     )
-
-# friendly format name
-_FORMAT_NAME = {
-    _ID_NT: 'Windows NT',
-    _ID_DR: 'DR-DOS',
-    _ID_MS: 'MS-DOS',
-}
 
 
 def _parse_cpi(data):
@@ -210,19 +241,22 @@ def _parse_cp(data, cpeh_offset, header_id=_ID_MS, drdos_effh=None, standalone=F
         # char table offset for drfont
         if cpih.version == _CP_DRFONT:
             cit_offset = fh_offset + cpih.num_fonts * _SCREEN_FONT_HEADER.size
+        elif cpih.version != _CP_FONT:
+            raise FileFormatError('Incorrect CP format version number.')
         for cp_index in range(cpih.num_fonts):
             fh = _SCREEN_FONT_HEADER.from_bytes(data, fh_offset)
             # extract font properties
             device = cpeh.device_name.strip().decode('ascii', 'replace')
+            format = header_id.strip().decode("latin-1")
             props = dict(
                 encoding=f'cp{cpeh.codepage}',
                 device=device,
-                source_format=f'CPI ({_FORMAT_NAME[header_id]})',
+                source_format=f'CPI ({format})',
             )
             logging.debug(
                 f'Reading {fh.width}x{fh.height} font '
                 f'for codepage {cpeh.codepage} '
-                f'in {_FORMAT_NAME[header_id]} format.'
+                f'in {format} format.'
             )
             # apparently never used
             if fh.xaspect or fh.yaspect:
@@ -350,43 +384,60 @@ def _convert_to_cp(fonts):
             cp_output.bitmaps.append(bitmap)
     return output
 
-def _write_cp(outstream, cpdata, format=_ID_MS):
+def _write_cp(outstream, cpo, format=_ID_MS, start_offset=0):
     """Write the representation of a FONT codepage to file."""
-    for cpo in cpdata:
-        # format params
-        cpo.cpih.version = _CP_FONT
-        # set pointers
-        if format == _ID_MS:
-            # cpih follows immediately
-            # for _ID_NT, we keep this 0
-            cpo.cpeh.cpih_offset = cpo.cpeh.size
-        cpo.cpeh.next_cpeh_offset = (
-            cpo.cpeh.cpih_offset + cpo.cpih.size
-            + sum(
-                _SCREEN_FONT_HEADER.size + len(_bmp)
-                for _bmp in cpo.bitmaps
-            )
+    # format params
+    cpo.cpih.version = _CP_FONT
+    # set pointers
+    if format == _ID_MS:
+        # cpih follows immediately
+        # for _ID_NT, we keep this 0
+        cpo.cpeh.cpih_offset = start_offset + cpo.cpeh.size
+    cpo.cpeh.next_cpeh_offset = (
+        cpo.cpeh.cpih_offset + cpo.cpih.size
+        + sum(
+            _SCREEN_FONT_HEADER.size + len(_bmp)
+            for _bmp in cpo.bitmaps
         )
-        outstream.write(bytes(cpo.cpeh) + bytes(cpo.cpih))
-        for _fh, _bmp in zip(cpo.fhs, cpo.bitmaps):
-            outstream.write(bytes(_fh))
-            outstream.write(_bmp)
+    )
+    outstream.write(bytes(cpo.cpeh) + bytes(cpo.cpih))
+    for _fh, _bmp in zip(cpo.fhs, cpo.bitmaps):
+        outstream.write(bytes(_fh))
+        outstream.write(_bmp)
+    return cpo.cpeh.next_cpeh_offset
 
-def _write_drcp_header(outstream, cpdata):
+def _write_dr_cp_header(outstream, cpo):
     """Write the representation of a DRFONT codepage header to file."""
-    for cpo in cpdata:
-        # format params
-        cpo.cpih.version = CP_DRFONT
-        # set pointers
+    # format params
+    cpo.cpih.version = _CP_DRFONT
+    # set pointers
+    cpo.cpeh.next_cpeh_offset = (
+        cpo.cpih.size
+        + _SCREEN_FONT_HEADER.size * len(cpo.fhs)
+        + _CHARACTER_INDEX_TABLE.size
+    )
+    # we define all chars in order
+    cit = _CHARACTER_INDEX_TABLE(range(256))
+    outstream.write(bytes(cpo.cpeh) + bytes(cpo.cpih))
+    outstream.write(b''.join(bytes(_fh) for _fh in cpo.fs))
+    outstream.write(bytes(cit))
+    # in DRFONT, bitmaps follow after all headers
 
-        cpo.cpeh.next_cpeh_offset = (
-            cpo.cpih.size
-            + _SCREEN_FONT_HEADER.size * len(cpo.fhs)
-            + _CHARACTER_INDEX_TABLE.size
-        )
-        # we define all chars in order
-        cit = _CHARACTER_INDEX_TABLE(range(256))
-        outstream.write(bytes(cpo.cpeh) + bytes(cpo.cpih))
-        outstream.write(b''.join(bytes(_fh) for _fh in cpo.fs))
-        outstream.write(bytes(cit))
-        # in DRFONT, bitmaps follow after all headers
+def _save_ms_cpi(fonts, outstream, format):
+    """Save to FONT or FONT.NT CPI file"""
+    fonts = _make_fit(fonts)
+    cpdata = _convert_to_cp(fonts)
+    ffh = _CPI_HEADER(
+        id0=0xff,
+        id=format.ljust(7),
+        pnum=1,
+        ptyp=1,
+        fih_offset=_CPI_HEADER.size,
+    )
+    fih = _FONT_INFO_HEADER(
+        num_codepages=len(cpdata),
+    )
+    outstream.write(bytes(ffh) + bytes(fih))
+    offset = ffh.size + fih.size
+    for cpo in cpdata:
+        offset = _write_cp(outstream, cpo, format, offset)
