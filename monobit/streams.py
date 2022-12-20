@@ -11,6 +11,14 @@ import logging
 from pathlib import Path
 
 
+# number of bytes to read to check if something looks like text
+_TEXT_SAMPLE_SIZE = 256
+# lower-7 bytes not expected in text files
+# don't check for upper-7 as they may be lead bytes of utf8 or something else
+# i.e. we're mostly looking for C0 controls except HT, LF, CR
+_NON_TEXT_BYTES = tuple(range(9)) + (11, 12,) + tuple(range(14, 32))
+
+
 class FileFormatError(Exception):
     """Incorrect file format."""
 
@@ -156,7 +164,13 @@ class Stream(StreamWrapper):
         """Return underlying text stream or wrap underlying binary stream with utf-8 wrapper."""
         if not self._textstream:
             encoding = 'utf-8-sig' if self.mode == 'r' else 'utf-8'
-            self._textstream = io.TextIOWrapper(self._stream, encoding=encoding, errors='ignore')
+            self._textstream = io.TextIOWrapper(
+                self._stream, encoding=encoding,
+                # on the one hand, this avoids breaks on slightly damaged files
+                # on the other hand, we are less likely to break
+                # on files that are clearly not text
+                errors='ignore'
+            )
         return self._textstream
 
     def __getattr__(self, attr):
@@ -229,6 +243,36 @@ def has_magic(instream, magic):
         # e.g. write-only stream
         return False
 
+def maybe_text(instream):
+    """
+    Check if a binary input stream looks a bit like it might hold text.
+    Currently just checks for unexpected control bytes in a short sample.
+    """
+    if not instream.readable():
+        # output binary streams *could* hold text
+        # (this is not about the file type, but about the content)
+        return True
+    try:
+        sample = instream.peek(_TEXT_SAMPLE_SIZE)
+    except EnvironmentError:
+        return None
+    if set(sample) & set(_NON_TEXT_BYTES):
+        logging.debug(
+            'Found C0 bytes: identifying unknown input stream as binary.'
+        )
+        return False
+    try:
+        sample.decode('utf-8')
+    except UnicodeDecodeError as err:
+        # need to ensure we ignore errors due to clipping inside a utf-8 sequence
+        if err.reason != 'unexpected end of data':
+            logging.debug(
+                'Found non-UTF8: identifying unknown input stream as binary.'
+            )
+            return False
+    logging.debug('Tentatively identifying unknown input stream as text.')
+    return True
+
 
 class MagicRegistry:
     """Registry of file types and their magic sequences."""
@@ -273,6 +317,16 @@ class MagicRegistry:
                     return self.identify(stream, do_open=do_open)
             for magic, klass in self._magic.items():
                 if has_magic(file, magic):
+                    logging.debug(
+                        'Magic bytes %a: identifying stream as %s.',
+                        magic.decode('latin-1'), klass.name
+                    )
                     return klass
         suffix = get_suffix(file)
-        return self[suffix]
+        converter = self[suffix]
+        if converter:
+            logging.debug(
+                'Filename suffix `%s`: identifying stream as %s.',
+                suffix, converter.name
+            )
+        return converter

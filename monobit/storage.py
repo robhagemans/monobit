@@ -10,13 +10,17 @@ import logging
 from pathlib import Path
 from contextlib import contextmanager
 
-from .constants import VERSION, DEFAULT_FORMAT, CONVERTER_NAME
+from .constants import VERSION, CONVERTER_NAME
 from .containers import ContainerFormatError, open_container
 from .font import Font
 from .pack import Pack
-from .streams import MagicRegistry, FileFormatError, open_stream
+from .streams import MagicRegistry, FileFormatError, open_stream, maybe_text
 from .scripting import scriptable, ScriptArgs
 from .basetypes import Any
+
+
+DEFAULT_TEXT_FORMAT = 'yaff'
+DEFAULT_BINARY_FORMAT = 'raw'
 
 
 ##############################################################################
@@ -175,7 +179,7 @@ def _save_all(pack, where, format, **kwargs):
     for font in pack:
         # generate unique filename
         name = font.name.replace(' ', '_')
-        format = format or DEFAULT_FORMAT
+        format = format or DEFAULT_TEXT_FORMAT
         filename = where.unused_name(name, format)
         try:
             with open_stream(filename, 'w', where=where) as stream:
@@ -228,7 +232,12 @@ class ConverterRegistry(MagicRegistry):
         if not format:
             converter = self.identify(file, do_open=do_open)
         if not converter:
-            converter = self[format or DEFAULT_FORMAT]
+            if format:
+                converter = self[format]
+            elif maybe_text(file):
+                converter = self[DEFAULT_TEXT_FORMAT]
+            else:
+                converter = self[DEFAULT_BINARY_FORMAT]
         return converter
 
     def get_args(self, file=None, format='', do_open=False):
@@ -262,7 +271,7 @@ class ConverterRegistry(MagicRegistry):
                 # use the standard name, not that of the registered function
                 name=funcname,
                 # don't record history of loading from default format
-                record=(DEFAULT_FORMAT not in formats),
+                record=(DEFAULT_TEXT_FORMAT not in formats),
             )
             # register converter
             if linked:
