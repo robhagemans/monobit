@@ -204,7 +204,10 @@ class Raster:
             stride = 8 * (len(byteseq) // height)
         else:
             stride = 8 * ceildiv(width, 8)
-        bitseq = bin(int.from_bytes(byteseq, 'big'))[2:].zfill(8*len(byteseq))
+        if not byteseq:
+            bitseq = ''
+        else:
+            bitseq = bin(int.from_bytes(byteseq, 'big'))[2:].zfill(8*len(byteseq))
         return cls.from_vector(
             bitseq, width=width, stride=stride, align=align,
             _0='0', _1='1',
