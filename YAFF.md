@@ -157,9 +157,8 @@ Specification
 - Lines must be terminated by one of the following line endings:
   `LF` (`u+000a`), `CR LF` (`u+000d u+000a`), or `CR` (`u+000d`).
 - *Whitespace* consists of spaces (`u+0020`) and tabs (`u+0009`).
-- Use of control characters other than the ones mentioned above,
-  private-use characters and noncharacters
-  is not advisable, but it is allowed.
+- A `yaff` file must not contain control characters, other than the ones mentioned
+  above, or UTF-8 noncharacters.
 
 #### Components
 `yaff` files consist of *glyph definitions*, *properties* and *comments*.
