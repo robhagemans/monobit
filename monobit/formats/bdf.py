@@ -798,7 +798,7 @@ def _parse_xlfd_properties(x_props, xlfd_name, to_int=int):
             properties['default-char'] = default_ord
     properties = {_k: _v for _k, _v in properties.items() if _v is not None and _v != ''}
     # keep original FontName if invalid or conflicting
-    if not xlfd_name_props or conflicting:
+    if xlfd_name and (not xlfd_name_props or conflicting):
         properties['xlfd.font-name'] = xlfd_name
     # keep unparsed but known properties
     for key in _XLFD_UNPARSED:
@@ -807,7 +807,9 @@ def _parse_xlfd_properties(x_props, xlfd_name, to_int=int):
         except KeyError:
             continue
         key = key.lower().replace('_', '-')
-        properties[f'xlfd.{key}'] = _from_quoted_string(value)
+        value = _from_quoted_string(value)
+        if value:
+            properties[f'xlfd.{key}'] = value
     # keep unrecognised properties
     properties.update({
         _k.lower().replace('_', '-'): _from_quoted_string(_v)

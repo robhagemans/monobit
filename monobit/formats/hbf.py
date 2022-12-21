@@ -155,6 +155,7 @@ def _parse_properties(hbf_props, x_props):
         else:
             properties[key] = value
     # TODO: convert code scheme name to encoding name
+    # prefer hbf code scheme to charset values from xlfd
     logging.info('yaff properties:')
     for name, value in properties.items():
         logging.info('    %s: %s', name, value)
@@ -191,5 +192,7 @@ def _parse_hbf_properties(hbf_props):
         # I think the fontboundingbox offsets actually go unused
         'shift_up': offset_y,
     })
+    # known but we don't use it
+    properties['hbf.font'] = hbf_props.pop('FONT', None)
     # keep unparsed hbf props
     return properties, hbf_props
