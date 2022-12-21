@@ -13,10 +13,17 @@ from pathlib import Path
 
 # number of bytes to read to check if something looks like text
 _TEXT_SAMPLE_SIZE = 256
-# lower-7 bytes not expected in text files
-# don't check for upper-7 as they may be lead bytes of utf8 or something else
-# i.e. we're mostly looking for C0 controls except HT, LF, CR
-_NON_TEXT_BYTES = tuple(range(9)) + (11, 12,) + tuple(range(14, 32))
+# bytes not expected in (modern) text files
+_NON_TEXT_BYTES = (
+    # C0 controls except HT, LF, CR
+    tuple(range(9)) + (11, 12,) + tuple(range(14, 32))
+    # also check for F8-FF which shouldn't occur in utf-8 text
+    + tuple(range(0xf8, 0x100))
+    # we don't currently parse text formats that need the latin-1 range:
+    # - yaff is utf-8 excluding controls
+    # - bdf, bmfont are printable ascii [0x20--0x7e] plus 0x0a, 0x0d
+    # - hex, draw have undefined range, but we can assume ascii or utf-8
+)
 
 
 class FileFormatError(Exception):
@@ -245,8 +252,8 @@ def has_magic(instream, magic):
 
 def maybe_text(instream):
     """
-    Check if a binary input stream looks a bit like it might hold text.
-    Currently just checks for unexpected control bytes in a short sample.
+    Check if a binary input stream looks a bit like it might hold utf-8 text.
+    Currently just checks for unexpected bytes in a short sample.
     """
     if not instream.readable():
         # output binary streams *could* hold text
@@ -258,7 +265,7 @@ def maybe_text(instream):
         return None
     if set(sample) & set(_NON_TEXT_BYTES):
         logging.debug(
-            'Found C0 bytes: identifying unknown input stream as binary.'
+            'Found unexpected bytes: identifying unknown input stream as binary.'
         )
         return False
     try:
