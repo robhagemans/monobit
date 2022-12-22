@@ -34,11 +34,11 @@ def load_hbf(instream, where):
     logging.info('x properties:')
     for name, value in x_props.items():
         logging.info('    %s: %s', name, value)
-    properties = _parse_properties(hbf_props, x_props)
-    glyphs = _read_hbf_glyphs(instream, where, b2_ranges, c_ranges, properties)
+    glyphs = _read_hbf_glyphs(instream, where, b2_ranges, c_ranges, hbf_props)
     # check number of characters, but don't break if no match
     # if nchars != len(glyphs):
     #     logging.warning('Number of characters found does not match CHARS declaration.')
+    properties = _parse_properties(hbf_props, x_props)
     font = Font(glyphs, comment=comments, **properties)
     #TODO: label glyphs with code scheme
     return font
@@ -103,17 +103,17 @@ def indexer(code_range, b2_ranges):
 
 def _read_hbf_glyphs(instream, where, b2_ranges, c_ranges, props):
     """Read glyphs from bitmap files and index according to ranges."""
-    width, height = props['cell-size']
+    width, height, _, _ = _split_hbf_ints(props['HBF_BITMAP_BOUNDING_BOX'])
     bytesize = height * ceildiv(width, 8)
     b2_ranges = tuple(
-        range(*(hbf_int(_v) for _v in _range.split('-')))
+        range(*_split_hbf_ints(_range, sep='-'))
         for _range in b2_ranges
     )
     code_ranges = []
     glyphs = []
     for c_desc in c_ranges:
         code_range, filename, offset = c_desc.split()
-        code_range = range(*(hbf_int(_v) for _v in code_range.split('-')))
+        code_range = range(*_split_hbf_ints(code_range, sep='-'))
         offset = hbf_int(offset)
         with where.open(filename, 'r') as bitmapfile:
             # discard offset bytes
@@ -130,10 +130,17 @@ def _read_hbf_glyphs(instream, where, b2_ranges, c_ranges, props):
 # properties
 
 def hbf_int(numstr):
+    """Convert HBF int representation to int."""
     # HBF has c-style octals 0777
     if numstr.startswith('0') and numstr[1:2].isdigit():
         return int(numstr[1:], 8)
     return int(numstr, 0)
+
+
+def _split_hbf_ints(value, sep=None):
+    """Split a string and convert elements to int."""
+    return tuple(hbf_int(_p) for _p in value.split(sep))
+
 
 def _parse_properties(hbf_props, x_props):
     """Parse metrics and metadata."""
@@ -161,30 +168,26 @@ def _parse_properties(hbf_props, x_props):
         logging.info('    %s: %s', name, value)
     return properties
 
-
 def _parse_hbf_properties(hbf_props):
     """Parse HBF properties."""
-    size, xdpi, ydpi = hbf_props.pop('SIZE').split()
+    size, xdpi, ydpi = _split_hbf_ints(hbf_props.pop('SIZE'))
     properties = {
         'source-format': 'HBF v{}'.format(hbf_props.pop('HBF_START_FONT')),
         'point-size': size,
         'dpi': (xdpi, ydpi),
     }
-    bitmap_bbx = hbf_props.pop('HBF_BITMAP_BOUNDING_BOX')
-    width, height, offset_x, offset_y = (
-        hbf_int(_p) for _p in bitmap_bbx.split()
+    width, height, offset_x, offset_y = _split_hbf_ints(
+        hbf_props.pop('HBF_BITMAP_BOUNDING_BOX')
     )
     # https://www.ibiblio.org/pub/packages/ccic/software/info/HBF-1.1/BoundingBoxes.html
     # fontboundingbox is equal or larger than bitmap bounding box
     # may be used to specify inter-glyph and inter-line spacing
     # the documented examples show the effect of different bounding box heights
     # but the impact of the fondboundingbox offset is unclear to me
-    global_bbx = hbf_props.pop('FONTBOUNDINGBOX')
-    full_width, full_height, full_offset_x, full_offset_y = (
-        int(_p) for _p in bitmap_bbx.split()
+    full_width, full_height, full_offset_x, full_offset_y = _split_hbf_ints(
+        hbf_props.pop('FONTBOUNDINGBOX')
     )
     properties.update({
-        'cell-size': (width, height),
         'line-height': full_height,
         # full_width :==: advance-width == left-bearing + width + right-bearing
         'left-bearing': offset_x,

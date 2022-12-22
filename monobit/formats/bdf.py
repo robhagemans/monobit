@@ -706,6 +706,10 @@ def _from_quoted_string(quoted):
     """Strip quotes"""
     return quoted.strip('"').replace('""', '"')
 
+def _all_ints(*value, to_int=int):
+    """Convert all items in tuple to int."""
+    return tuple(to_int(_x) for _x in value)
+
 def _parse_xlfd_properties(x_props, xlfd_name, to_int=int):
     """Parse X metadata."""
     xlfd_name_props = _parse_xlfd_name(xlfd_name)
@@ -724,7 +728,9 @@ def _parse_xlfd_properties(x_props, xlfd_name, to_int=int):
     # PIXEL_SIZE = ROUND((RESOLUTION_Y * POINT_SIZE) / 722.7)
     properties = {
         # FULL_NAME is deprecated
-        'name': _from_quoted_string(x_props.pop('FACE_NAME', x_props.pop('FULL_NAME', ''))),
+        'name': _from_quoted_string(
+            x_props.pop('FACE_NAME', x_props.pop('FULL_NAME', ''))
+        ),
         'revision': _from_quoted_string(x_props.pop('FONT_VERSION', '')),
         'foundry': _from_quoted_string(x_props.pop('FOUNDRY', '')),
         'copyright': _from_quoted_string(x_props.pop('COPYRIGHT', '')),
@@ -736,8 +742,12 @@ def _parse_xlfd_properties(x_props, xlfd_name, to_int=int):
         'x-height': x_props.pop('X_HEIGHT', None),
         'cap-height': x_props.pop('CAP_HEIGHT', None),
         'pixel-size': x_props.pop('PIXEL_SIZE', None),
-        'slant': _SLANT_MAP.get(_from_quoted_string(x_props.pop('SLANT', '')), None),
-        'spacing': _SPACING_MAP.get(_from_quoted_string(x_props.pop('SPACING', '')), None),
+        'slant': _SLANT_MAP.get(
+            _from_quoted_string(x_props.pop('SLANT', '')), None
+        ),
+        'spacing': _SPACING_MAP.get(
+            _from_quoted_string(x_props.pop('SPACING', '')), None
+        ),
         'underline-descent': x_props.pop('UNDERLINE_POSITION', None),
         'underline-thickness': x_props.pop('UNDERLINE_THICKNESS', None),
         'superscript-size': x_props.pop('SUPERSCRIPT_SIZE', None),
@@ -753,16 +763,22 @@ def _parse_xlfd_properties(x_props, xlfd_name, to_int=int):
         dest = to_int(x_props.pop('DESTINATION'))
         properties['device'] = 'screen' if dest else 'printer'
     if 'POINT_SIZE' in x_props:
-        properties['point-size'] = str(round(to_int(x_props.pop('POINT_SIZE')) / 10))
+        properties['point-size'] = round(to_int(x_props.pop('POINT_SIZE')) / 10)
     if 'AVERAGE_WIDTH' in x_props:
         # average width can have a tilde for negative - because it occurs in the xlfd font name
-        properties['average-width'] = to_int(x_props.pop('AVERAGE_WIDTH').replace('~', '-')) / 10
+        properties['average-width'] = to_int(
+            x_props.pop('AVERAGE_WIDTH').replace('~', '-')
+        ) / 10
     # prefer the more precise relative weight and setwidth measures
     if 'RELATIVE_SETWIDTH' in x_props:
-        properties['setwidth'] = _SETWIDTH_MAP.get(x_props.pop('RELATIVE_SETWIDTH'), None)
+        properties['setwidth'] = _SETWIDTH_MAP.get(
+            x_props.pop('RELATIVE_SETWIDTH'), None
+        )
         x_props.pop('SETWIDTH_NAME', None)
     if 'setwidth' not in properties or not properties['setwidth']:
-        properties['setwidth'] = _from_quoted_string(x_props.pop('SETWIDTH_NAME', '')).lower()
+        properties['setwidth'] = _from_quoted_string(
+            x_props.pop('SETWIDTH_NAME', '')
+        ).lower()
     if 'RELATIVE_WEIGHT' in x_props:
         properties['weight'] = _WEIGHT_MAP.get(x_props.pop('RELATIVE_WEIGHT'), None)
         x_props.pop('WEIGHT_NAME', None)
@@ -770,15 +786,25 @@ def _parse_xlfd_properties(x_props, xlfd_name, to_int=int):
         properties['weight'] = _from_quoted_string(x_props.pop('WEIGHT_NAME', '')).lower()
     # resolution
     if 'RESOLUTION_X' in x_props and 'RESOLUTION_Y' in x_props:
-        properties['dpi'] = (x_props.pop('RESOLUTION_X'), x_props.pop('RESOLUTION_Y'))
+        properties['dpi'] = _all_ints(
+            x_props.pop('RESOLUTION_X'), x_props.pop('RESOLUTION_Y')
+        )
         x_props.pop('RESOLUTION', None)
     elif 'RESOLUTION' in x_props:
         # deprecated
-        properties['dpi'] = (x_props.get('RESOLUTION'), x_props.pop('RESOLUTION'))
+        properties['dpi'] = _all_ints(
+            x_props.get('RESOLUTION'), x_props.pop('RESOLUTION'), to_int=to_int
+        )
     if 'SUPERSCRIPT_X' in x_props and 'SUPERSCRIPT_Y' in x_props:
-        properties['superscript-offset'] = (x_props.pop('SUPERSCRIPT_X'), x_props.pop('SUPERSCRIPT_Y'))
+        properties['superscript-offset'] = _all_ints(
+            x_props.pop('SUPERSCRIPT_X'), x_props.pop('SUPERSCRIPT_Y'),
+            to_int=to_int
+        )
     if 'SUBSCRIPT_X' in x_props and 'SUBSCRIPT_Y' in x_props:
-        properties['subscript-offset'] = (x_props.pop('SUBSCRIPT_X'), x_props.pop('SUBSCRIPT_Y'))
+        properties['subscript-offset'] = _all_ints(
+            x_props.pop('SUBSCRIPT_X'), x_props.pop('SUBSCRIPT_Y'),
+            to_int=to_int
+        )
     # encoding
     registry = _from_quoted_string(x_props.pop('CHARSET_REGISTRY', '')).lower()
     encoding = _from_quoted_string(x_props.pop('CHARSET_ENCODING', '')).lower()
@@ -796,9 +822,8 @@ def _parse_xlfd_properties(x_props, xlfd_name, to_int=int):
             properties['default-char'] = Char(chr(default_ord))
         else:
             properties['default-char'] = default_ord
-    properties = {_k: _v for _k, _v in properties.items() if _v is not None and _v != ''}
     # keep original FontName if invalid or conflicting
-    if xlfd_name and (not xlfd_name_props or conflicting):
+    if not xlfd_name_props or conflicting:
         properties['xlfd.font-name'] = xlfd_name
     # keep unparsed but known properties
     for key in _XLFD_UNPARSED:
@@ -810,6 +835,11 @@ def _parse_xlfd_properties(x_props, xlfd_name, to_int=int):
         value = _from_quoted_string(value)
         if value:
             properties[f'xlfd.{key}'] = value
+    # drop empty known properties
+    properties = {
+        _k: _v for _k, _v in properties.items()
+        if _v is not None and _v != ''
+    }
     # keep unrecognised properties
     properties.update({
         _k.lower().replace('_', '-'): _from_quoted_string(_v)
