@@ -106,14 +106,19 @@ def _read_hbf_glyphs(instream, where, b2_ranges, c_ranges, props):
     width, height, _, _ = _split_hbf_ints(props['HBF_BITMAP_BOUNDING_BOX'])
     bytesize = height * ceildiv(width, 8)
     b2_ranges = tuple(
-        range(*_split_hbf_ints(_range, sep='-'))
+        _split_hbf_ints(_range, sep='-')
+        for _range in b2_ranges
+    )
+    b2_ranges = tuple(
+        range(_range[0], _range[1]+1)
         for _range in b2_ranges
     )
     code_ranges = []
     glyphs = []
     for c_desc in c_ranges:
         code_range, filename, offset = c_desc.split()
-        code_range = range(*_split_hbf_ints(code_range, sep='-'))
+        code_range = _split_hbf_ints(code_range, sep='-')
+        code_range = range(code_range[0], code_range[1]+1)
         offset = hbf_int(offset)
         with where.open(filename, 'r') as bitmapfile:
             # discard offset bytes
