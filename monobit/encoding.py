@@ -387,7 +387,11 @@ _ENCODING_FILES = (
         ('icu/windows-936-2000.ucm', 'windows-936', 'ibm-1386', 'windows-gb2312', 'windows-gbk', 'gbk', 'gbk-0'),
         ('icu/ibm-1375_P100-2008.ucm', 'big5-hkscs', 'ibm-1375', 'big5hk', 'big5hkscs-0'),
         ('icu/ibm-806_P100-1998.ucm', 'cp806', 'ibm-806', 'ibm-iscii-devanagari'),
-        ('icu/windows-1361-2000.ucm', 'windows-1361', 'johab', 'ksc5601-1992'),
+        # ksc5601-1992-3 is here because Unix/BDF call the Johab encoding ksc5601.1992-3
+        # but it's Annex 3, i.e. not the main form of ks-c-5601
+        ('icu/windows-1361-2000.ucm', 'windows-1361', 'johab', 'ksc5601-1992-3'),
+        # ksc5601.1992-0 would map here
+        ('icu/aix-KSC5601.1987_0-4.3.6.ucm', 'ks-c-5601', 'ksc5601-1987', 'ksc5601-1992', 'wansung'),
         # P12A variant has backslash, tilde; P120 has yen, overline
         ('icu/ibm-932_P120-1999.ucm', 'ibm-932',),
         # CNS11643 - note that this has plane 15 (2007 standard) encoded as plane 9. Planes 10-14 (2007) are not included.

@@ -91,8 +91,7 @@ _HBF_CODE_SCHEMES_BASE = {
     'JISX0208': 'jisx0208',
     # > KSC5601-1987
     # > Korean Standard Code (formingly KIPS)
-    #FIXME: check if the ksc5601's match
-    'KSC5601': 'ksc-5601-1992'
+    'KSC5601': 'ksc5601'
 }
 
 def _normalise_code_scheme(hbf_cs):
