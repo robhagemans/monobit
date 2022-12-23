@@ -27,20 +27,26 @@ def load_hbf(instream, where):
     Load font from Hanzi Bitmap Format (HBF) file.
     """
     instream = instream.text
-    comments, hbf_props, x_props, b2_ranges, c_ranges = _read_hbf_global(instream)
+    (
+        comments, hbf_props, x_props,
+        b2_ranges, c_ranges
+    ) = _read_hbf_global(instream)
     logging.info('hbf properties:')
     for name, value in hbf_props.items():
         logging.info('    %s: %s', name, value)
     logging.info('x properties:')
     for name, value in x_props.items():
         logging.info('    %s: %s', name, value)
-    glyphs = _read_hbf_glyphs(instream, where, b2_ranges, c_ranges, hbf_props)
+    glyphs = _read_hbf_glyphs(
+        instream, where, b2_ranges, c_ranges, hbf_props
+    )
     # check number of characters, but don't break if no match
     # if nchars != len(glyphs):
     #     logging.warning('Number of characters found does not match CHARS declaration.')
     properties = _parse_properties(hbf_props, x_props)
     font = Font(glyphs, comment=comments, **properties)
-    #TODO: label glyphs with code scheme
+    # label glyphs with code scheme, if known and recoognised
+    font = font.label()
     return font
 
 
@@ -49,7 +55,77 @@ def load_hbf(instream, where):
 
 # https://www.ibiblio.org/pub/packages/ccic/software/info/HBF-1.1/Format.html
 # https://www.ibiblio.org/pub/packages/ccic/software/info/HBF-1.1/BitmapFile.html
+
 # https://www.ibiblio.org/pub/packages/ccic/software/info/HBF-1.1/CodeSchemes.html
+# these are matches to encodings for which we have unicode mappings
+_HBF_CODE_SCHEMES_BASE = {
+    # > GB2312-1980
+    # > not simply "GB", nor "GB2312". there are many GuoBiao's for hanzi.
+    # GBK is a superset of GB2312, often taken to mean windows-936
+    'GB2312': 'gbk',
+    # > Big5
+    # > any so-called "Big5" bitmap file(s) can be used, but such bitmap file(s)
+    # > must conform to the Big5 character code standard without vendor-added
+    # > character code. The Big5 character code scheme has the following valid
+    # > code ranges for hanzi:
+    # >        0xA440-0xC67E for frequently-used hanzi      (5401 chars)
+    # >        0xC940-0xF9D5 for less-frequently-used hanzi (7652 chars)
+    'Big5': 'big5',
+    # Big5 ETen 3.10
+    # > not simply "Big5"; use specifically the bitmap files in the
+    # > ETen system 3.10 which contains vendor-specific character codes.
+    # > Similar specification of other vendors and software versions are
+    # > acceptable, to provide a more accurate description.
+    'Big5 ETen': 'big5-eten',
+    # CNS11643-92p1 to CNS11643-92p7
+    # Chinese National Standard of ROC, containing 7 planes.
+    # complicatiion is that HBF defines 2-byte coding only
+    # so the plane number would need to be extracted from the HBF_CODE_SCHEME
+    'CNS11643': 'cns11643',
+    # > Unicode 1.1
+    # > version "1.1", equivalent to ISO/IEC 10646-1 UCS-2, level 3. Perhaps there
+    # > will be vendor-specific versions at a later date.
+    'Unicode': 'unicode',
+    # > JISX0208-1990
+    # > Japanese Industrial Standard
+    'JISX0208': 'jisx0208',
+    # > KSC5601-1987
+    # > Korean Standard Code (formingly KIPS)
+    #FIXME: check if the ksc5601's match
+    'KSC5601': 'ksc-5601-1992'
+}
+
+def _normalise_code_scheme(hbf_cs):
+    """Normalise the code scheme name for matching."""
+    return hbf_cs.lower().replace(' ', '-').replace('.', '-')
+
+# sort from longer to shorter keys to resolve collisions
+_HBF_CODE_SCHEMES = {
+    _normalise_code_scheme(_k): _v
+    for _k, _v in sorted(
+        _HBF_CODE_SCHEMES_BASE.items(),
+        key=lambda _i: len(_i[0]),
+        reverse=True,
+    )
+}
+
+def _map_code_scheme(hbf_code_scheme):
+    """
+    Map HBF code scheme description to monobit encoding name.
+    returns encoding_name, plane
+    """
+    hbf_code_scheme = _normalise_code_scheme(hbf_code_scheme)
+    for cs, enc in _HBF_CODE_SCHEMES.items():
+        if hbf_code_scheme.startswith(cs):
+            if cs == 'cns11643':
+                # assume the last nonempty char is the plane number
+                plane_desc = hbf_code_scheme.strip()[-1:]
+                try:
+                    return enc, int(plane_desc)
+                except ValueError:
+                    pass
+            return enc, None
+    return hbf_code_scheme, None
 
 
 def _read_hbf_global(instream):
@@ -91,7 +167,7 @@ def _read_list(instream, end):
             output.append(value)
     return output, comments
 
-def indexer(code_range, b2_ranges):
+def indexer(plane, code_range, b2_ranges):
     """Gnenerator to run through code range keeping to allowed low-bytes."""
     if not code_range:
         return
@@ -99,12 +175,16 @@ def indexer(code_range, b2_ranges):
         lobyte = codepoint % 256
         if all(lobyte not in _range for _range in b2_ranges):
             continue
-        yield codepoint
+        if plane is None:
+            yield codepoint
+        else:
+            yield (0x80 + plane) * 0x10000 + codepoint
 
 def _read_hbf_glyphs(instream, where, b2_ranges, c_ranges, props):
     """Read glyphs from bitmap files and index according to ranges."""
     width, height, _, _ = _split_hbf_ints(props['HBF_BITMAP_BOUNDING_BOX'])
     bytesize = height * ceildiv(width, 8)
+    # get 2nd-byte ranges
     b2_ranges = tuple(
         _split_hbf_ints(_range, sep='-')
         for _range in b2_ranges
@@ -113,6 +193,8 @@ def _read_hbf_glyphs(instream, where, b2_ranges, c_ranges, props):
         range(_range[0], _range[1]+1)
         for _range in b2_ranges
     )
+    # get encoding plane (0th byte)
+    _, plane = _map_code_scheme(props['HBF_CODE_SCHEME'])
     code_ranges = []
     glyphs = []
     for c_desc in c_ranges:
@@ -123,7 +205,7 @@ def _read_hbf_glyphs(instream, where, b2_ranges, c_ranges, props):
         with where.open(filename, 'r') as bitmapfile:
             # discard offset bytes
             bitmapfile.read(offset)
-            for codepoint in indexer(code_range, b2_ranges):
+            for codepoint in indexer(plane, code_range, b2_ranges):
                 glyphbytes = bitmapfile.read(bytesize)
                 glyphs.append(Glyph.from_bytes(
                     glyphbytes, width=width, codepoint=codepoint
@@ -150,7 +232,7 @@ def _split_hbf_ints(value, sep=None):
 def _parse_properties(hbf_props, x_props):
     """Parse metrics and metadata."""
     # parse meaningful metadata
-    properties, unparsed = _parse_hbf_properties(hbf_props)
+    properties, unparsed, plane = _parse_hbf_properties(hbf_props)
     # the FONT field *may* conform to xlfd but doesn't have to. don't parse it
     xlfd_props = _parse_xlfd_properties(x_props, xlfd_name='', to_int=hbf_int)
     for key, value in unparsed.items():
@@ -166,7 +248,9 @@ def _parse_properties(hbf_props, x_props):
             )
         else:
             properties[key] = value
-    # TODO: convert code scheme name to encoding name
+    # ensure default codepoint gets a plane value
+    if plane is not None and 'default-char' in properties:
+        properties['default-char'] += (0x80+plane) * 0x10000
     # prefer hbf code scheme to charset values from xlfd
     logging.info('yaff properties:')
     for name, value in properties.items():
@@ -202,5 +286,13 @@ def _parse_hbf_properties(hbf_props):
     })
     # known but we don't use it
     properties['hbf.font'] = hbf_props.pop('FONT', None)
+    # match encoding name
+    code_scheme = hbf_props.pop('HBF_CODE_SCHEME')
+    properties['encoding'], plane = _map_code_scheme(code_scheme)
+    logging.debug(
+        'Interpreting code scheme `%s` as encoding `%s` %s',
+        code_scheme, properties['encoding'],
+        f'plane {plane}' if plane is not None else ''
+    )
     # keep unparsed hbf props
-    return properties, hbf_props
+    return properties, hbf_props, plane
