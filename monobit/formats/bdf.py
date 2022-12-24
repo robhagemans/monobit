@@ -487,11 +487,12 @@ def save_bdf(fonts, outstream, where=None):
 ##############################################################################
 # BDF reader
 
-def read_props(instream, end, keep_end=False):
+def read_props(instream, ends, keep_end=False):
     """Read key-value properties with comments."""
     # read global section
-    props = {}
+    props = []
     comments = []
+    keyword = ''
     for line in instream:
         line = line.strip()
         if not line:
@@ -500,12 +501,14 @@ def read_props(instream, end, keep_end=False):
             comments.append(line[8:])
             continue
         keyword, _, value = line.partition(' ')
-        props[keyword] = value
-        if keyword == end:
+        props.append((keyword, value))
+        if keyword in ends:
             if not keep_end:
-                del props[keyword]
+                del props[-1]
             break
-    return props, comments
+        else:
+            keyword = ''
+    return props, comments, keyword
 
 
 def _read_bdf_glyphs(instream):
@@ -523,7 +526,8 @@ def _read_bdf_glyphs(instream):
             raise FileFormatError(f'Expected STARTCHAR, not {line}')
         keyword, values = line.split(' ', 1)
         # TODO: we're ignoring glyph comments
-        meta, comments = read_props(instream, end='BITMAP')
+        meta, comments, _ = read_props(instream, ends=('BITMAP',))
+        meta = dict(meta)
         meta[keyword] = values
         # store labels, if they're not just ordinals
         label = meta['STARTCHAR']
@@ -552,12 +556,12 @@ def _read_bdf_glyphs(instream):
 
 def _read_bdf_global(instream):
     """Read global section of BDF file."""
-    start_props, start_comments = read_props(instream, end='STARTPROPERTIES')
-    x_props, x_comments = read_props(instream, end='ENDPROPERTIES')
-    end_props, end_comments = read_props(instream, end='CHARS', keep_end=True)
-    bdf_props = {**start_props, **end_props}
+    start_props, start_comments, _ = read_props(instream, ends=('STARTPROPERTIES',))
+    x_props, x_comments, _ = read_props(instream, ends=('ENDPROPERTIES',))
+    end_props, end_comments, _ = read_props(instream, ends=('CHARS',), keep_end=True)
+    bdf_props = {**dict(start_props), **dict(end_props)}
     comments = [*start_comments, *x_comments, *end_comments]
-    return '\n'.join(comments), bdf_props, x_props
+    return '\n'.join(comments), bdf_props, dict(x_props)
 
 
 ##############################################################################

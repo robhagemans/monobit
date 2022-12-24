@@ -29,7 +29,7 @@ def load_hbf(instream, where):
     instream = instream.text
     (
         comments, hbf_props, x_props,
-        b2_ranges, c_ranges
+        b2_ranges, b3_ranges, c_ranges
     ) = _read_hbf_global(instream)
     logging.info('hbf properties:')
     for name, value in hbf_props.items():
@@ -38,7 +38,7 @@ def load_hbf(instream, where):
     for name, value in x_props.items():
         logging.info('    %s: %s', name, value)
     glyphs = _read_hbf_glyphs(
-        instream, where, b2_ranges, c_ranges, hbf_props
+        instream, where, b2_ranges, b3_ranges, c_ranges, hbf_props
     )
     # check number of characters, but don't break if no match
     # if nchars != len(glyphs):
@@ -126,77 +126,92 @@ def _map_code_scheme(hbf_code_scheme):
             return enc, None
     return hbf_code_scheme, None
 
-
 def _read_hbf_global(instream):
     """Read global section of HBF file."""
-    props_0, comments_0 = read_props(instream, end='STARTPROPERTIES')
-    x_props, x_comments = read_props(instream, end='ENDPROPERTIES')
-    props_1, comments_1 = read_props(instream, end='HBF_START_BYTE_2_RANGES')
-    b2_ranges, b2_comments = _read_list(instream, end='HBF_END_BYTE_2_RANGES')
-    props_2, comments_2 = read_props(instream, end='HBF_START_CODE_RANGES')
-    c_ranges, c_comments = _read_list(instream, end='HBF_END_CODE_RANGES')
-    props_3, comments_3 = read_props(instream, end='HBF_END_FONT')
-    hbf_props = {**props_0, **props_1, **props_2, **props_3}
-    comments = '\n'.join(
-        '\n'.join(_list)
-        for _list in (
-            comments_0, x_comments, comments_1, b2_comments,
-            comments_2, c_comments, comments_3
+    hbf_props, comments = _read_section(
+        instream, end='ENDFONT',
+        subsections=(
+            'STARTPROPERTIES', 'HBF_START_BYTE_2_RANGES',
+            'HBF_START_BYTE_3_RANGES', 'HBF_START_CODE_RANGES',
         )
     )
-    return comments, hbf_props, x_props, b2_ranges, c_ranges
+    hbf_props = dict(hbf_props)
+    x_props = dict(hbf_props.pop('STARTPROPERTIES', {}))
+    b2_ranges = hbf_props.pop('HBF_START_BYTE_2_RANGES')
+    b3_ranges = hbf_props.pop('HBF_START_BYTE_3_RANGES', {})
+    c_ranges = hbf_props.pop('HBF_START_CODE_RANGES')
+    comments = '\n'.join(comments)
+    return comments, hbf_props, x_props, b2_ranges, b3_ranges, c_ranges
 
-
-def _read_list(instream, end):
-    """Read values (with ignored keys) with comments."""
-    # read global section
-    output = []
+def _read_section(instream, subsections, end):
+    """Read a section of HBF file."""
+    logging.debug('reading section %s', end)
+    props = []
     comments = []
-    for line in instream:
-        line = line.strip()
-        if not line:
-            continue
-        if line.startswith('COMMENT'):
-            comments.append(line[8:])
-            continue
-        keyword, _, value = line.partition(' ')
-        if keyword == end:
-            break
-        else:
-            output.append(value)
-    return output, comments
+    while True:
+        head_props, head_comments, keyword = read_props(
+            instream, ends=subsections + (end,)
+        )
+        props.extend(head_props)
+        comments.extend(head_comments)
+        logging.debug((keyword, end, subsections))
+        if not keyword or keyword == end:
+            return props, comments
+        sec_props, sec_comments = _read_section(
+            instream, subsections=(), end=keyword.replace('START', 'END')
+        )
+        props.append((keyword, sec_props))
+        # we're combining all comments in one block
+        comments.append('')
+        comments.extend(sec_comments)
 
-def indexer(plane, code_range, b2_ranges):
+def indexer(plane, code_range, b2_ranges, b3_ranges):
     """Gnenerator to run through code range keeping to allowed low-bytes."""
     if not code_range:
         return
+    n_bytes = 3 if b3_ranges else 2
+    planeshift = 8 * n_bytes
+    hishift = 8 * (n_bytes-1)
+    loshift = 8 * (n_bytes-2)
+    himask = (1 << hishift) - 1
+    lomask = (1 << loshift) - 1
     for codepoint in code_range:
-        lobyte = codepoint % 256
-        if all(lobyte not in _range for _range in b2_ranges):
+        byte2 = (codepoint & himask) >> loshift
+        if all(byte2 not in _range for _range in b2_ranges):
             continue
+        if n_bytes == 3:
+            byte2 = codepoint & lomask
+            if all(byte3 not in _range for _range in b3_ranges):
+                continue
         if plane is None:
             yield codepoint
         else:
-            yield (0x80 + plane) * 0x10000 + codepoint
+            yield ((0x80 + plane) << planeshift) + codepoint
 
-def _read_hbf_glyphs(instream, where, b2_ranges, c_ranges, props):
-    """Read glyphs from bitmap files and index according to ranges."""
-    width, height, _, _ = _split_hbf_ints(props['HBF_BITMAP_BOUNDING_BOX'])
-    bytesize = height * ceildiv(width, 8)
-    # get 2nd-byte ranges
+def _convert_ranges(b2_ranges):
+    """Convert range descriptors to ranges."""
     b2_ranges = tuple(
         _split_hbf_ints(_range, sep='-')
-        for _range in b2_ranges
+        for _, _range in b2_ranges
     )
     b2_ranges = tuple(
         range(_range[0], _range[1]+1)
         for _range in b2_ranges
     )
+    return b2_ranges
+
+def _read_hbf_glyphs(instream, where, b2_ranges, b3_ranges, c_ranges, props):
+    """Read glyphs from bitmap files and index according to ranges."""
+    width, height, _, _ = _split_hbf_ints(props['HBF_BITMAP_BOUNDING_BOX'])
+    bytesize = height * ceildiv(width, 8)
+    # get 2nd- and 3rd-byte ranges
+    b2_ranges = _convert_ranges(b2_ranges)
+    b3_ranges = _convert_ranges(b3_ranges)
     # get encoding plane (0th byte)
     _, plane = _map_code_scheme(props['HBF_CODE_SCHEME'])
     code_ranges = []
     glyphs = []
-    for c_desc in c_ranges:
+    for _, c_desc in c_ranges:
         code_range, filename, offset = c_desc.split()
         code_range = _split_hbf_ints(code_range, sep='-')
         code_range = range(code_range[0], code_range[1]+1)
@@ -204,7 +219,7 @@ def _read_hbf_glyphs(instream, where, b2_ranges, c_ranges, props):
         with where.open(filename, 'r') as bitmapfile:
             # discard offset bytes
             bitmapfile.read(offset)
-            for codepoint in indexer(plane, code_range, b2_ranges):
+            for codepoint in indexer(plane, code_range, b2_ranges, b3_ranges):
                 glyphbytes = bitmapfile.read(bytesize)
                 glyphs.append(Glyph.from_bytes(
                     glyphbytes, width=width, codepoint=codepoint
