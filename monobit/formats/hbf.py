@@ -14,12 +14,11 @@ from ..font import Font, Coord
 from ..glyph import Glyph
 from ..binary import ceildiv
 
-from .bdf import read_props, _parse_xlfd_properties
+from .bdf import read_props, _parse_xlfd_properties, _create_xlfd_properties
+from .bdf import _create_xlfd_name
+from .yaff import _globalise_glyph_metrics
+from .windows import _normalise_metrics
 
-
-
-##############################################################################
-# top-level calls
 
 @loaders.register('hbf', magic=(b'HBF_START_FONT ',), name='hanzi-bf')
 def load_hbf(instream, where):
@@ -48,6 +47,17 @@ def load_hbf(instream, where):
     # label glyphs with code scheme, if known and recoognised
     font = font.label()
     return font
+
+@savers.register(linked=load_hbf)
+def save_hbf(fonts, outstream, where):
+    """
+    Save font to Hanzi Bitmap Format (HBF) file.
+    """
+    if len(fonts) > 1:
+        raise FileFormatError('Can only save one font to HBF file.')
+    # ensure codepoint values are set
+    font = fonts[0]
+    _save_hbf(font, outstream.text, where)
 
 
 ##############################################################################
@@ -308,5 +318,185 @@ def _parse_hbf_properties(hbf_props):
         code_scheme, properties['encoding'],
         f'plane {plane}' if plane is not None else ''
     )
+    hbf_props.pop('HBF_END_FONT', None)
     # keep unparsed hbf props
     return properties, hbf_props, plane
+
+
+##############################################################################
+# hbf writer
+
+def _save_hbf(font, outstream, container):
+    """Write one font to HBF."""
+    bitmap_name = outstream.name + '.bin'
+    hbf_props, bitmaps = _convert_to_hbf(font, bitmap_name)
+    for name, value in hbf_props:
+        logging.info('    %s: %s', name, value)
+    with container.open(bitmap_name, 'w') as binfile:
+        for bitmap in bitmaps:
+            binfile.write(bitmap)
+    for name, value in hbf_props:
+        outstream.write(f'{name} {value}\n')
+
+
+def _convert_to_hbf(font, bitmap_name):
+    """Convert to HBF properties."""
+    # set codepoints
+    font = font.label(codepoint_from=font.encoding)
+    # get ranges
+    cps, cranges, b2ranges, b3ranges = _get_code_ranges(font)
+    font = font.subset(cps)
+    # check if the remaining glyphs mae for a cell font
+    if font.spacing != 'character-cell':
+        raise FileFormatError(
+            'Only character-cell fonts can be stored in HBF format.'
+        )
+    # bring font to normal form
+    font, shift_up = _normalise_metrics(font)
+    #TODO
+    left_bearing = 0
+    #glyphs, properties = _globalise_glyph_metrics(font)
+    # convert properties
+    xlfd_props = _create_xlfd_properties(font)
+    if 'hbf.font' in font.properties:
+        fontname = font.get_property('hbf.font')
+        xlfd_props.pop('HBF.FONT')
+    else:
+        fontname = _create_xlfd_name(xlfd_props)
+    bbx = (
+        f'{font.cell_size.x} {font.cell_size.y} '
+        f'{left_bearing} {shift_up}'
+    )
+    #TODO
+    code_scheme = font.encoding
+    props = [
+        ('HBF_START_FONT', '1.1'),
+        ('HBF_CODE_SCHEME', code_scheme),
+    ] + [
+        ('COMMENT', _comment) for _comment in font.get_comment().splitlines()
+    ] + [
+        ('FONT', fontname),
+        ('SIZE', f'{font.point_size} {font.dpi.x} {font.dpi.y}'),
+        ('HBF_BITMAP_BOUNDING_BOX', bbx),
+        ('FONTBOUNDINGBOX', bbx),
+    ]
+    if xlfd_props:
+        props.append(('STARTPROPERTIES', str(len(xlfd_props))))
+        props.extend(xlfd_props.items())
+        props.append(('ENDPROPERTIES', ''))
+    props.append(('CHARS', f'{len(font.glyphs)}'))
+    # byte-2 ranges
+    props.append(('HBF_START_BYTE_2_RANGES', str(len(b2ranges))))
+    for b2range in b2ranges:
+        props.append(_format_byte_range(b2range, 2))
+    props.append(('HBF_END_BYTE_2_RANGES', ''))
+    # byte-3 ranges
+    if b3ranges:
+        props.append(('HBF_START_BYTE_3_RANGES', str(len(b3ranges))))
+        for b3range in b3ranges:
+            props.append(_format_byte_range(b3range, 3))
+        props.append(('HBF_END_BYTE_3_RANGES', ''))
+    # code ranges
+    props.append(('HBF_START_CODE_RANGES', str(len(cranges))))
+    # create glyph bitmaps, one code range at a time
+    bitmaps = []
+    offset = 0
+    n_bytes = len(cps[-1])
+    for crange in cranges:
+        bitmap = b''.join(
+            font.get_glyph(codepoint=_cp).as_bytes()
+            for _cp in indexer(None, crange, b2ranges, b3ranges)
+        )
+        start = f'{crange.start:X}'.zfill(2*n_bytes)
+        end = f'{crange.stop-1:X}'.zfill(2*n_bytes)
+        props.append((
+            'HBF_CODE_RANGE',
+            f'0x{start}-0x{end} {bitmap_name} {offset}'
+        ))
+        bitmaps.append(bitmap)
+        offset += len(bitmap)
+    props.append(('HBF_END_CODE_RANGES', ''))
+    return props, bitmaps
+
+
+def _format_byte_range(brange, n_byte):
+    return (
+        f'HBF_BYTE_{n_byte}_RANGE',
+        f'{brange.start:#02X}-{brange.stop-1:#02X}'
+    )
+
+
+def _get_code_ranges(font):
+    """Determine contiguous ranges."""
+    cps = font.get_codepoints()
+    if not cps:
+        raise FileFormatError('No storable glyphs in font.')
+    n_bytes = len(max(cps))
+    if n_bytes not in (2, 3):
+        raise FileFormatError('HBF can only store 2- or 3-byte code ranges.')
+    # only store full-length codepoints and store in order
+    cps = sorted(_cp for _cp in cps if len(_cp) == n_bytes)
+    # determine byte-2 ranges
+    b2 = sorted(set(_cp[1] for _cp in cps))
+    b2ranges = _find_ranges(b2)
+    logging.debug('BYTE_2_RANGES %s', b2ranges)
+    # determine byte-3 ranges
+    if n_bytes == 3:
+        b3 = sorted(set(_cp[2] for _cp in cps))
+        b3ranges = _find_ranges(b3)
+        logging.debug('BYTE_3_RANGES %s', b3ranges)
+    else:
+        b3ranges = ()
+    # determine code ranges subject to byte-2, byte-3 ranges already found
+    start_crange = range(int(cps[0]), int(cps[-1])+1)
+    gen = indexer(None, start_crange, b2ranges, b3ranges)
+    cranges = _find_ranges(cps, gen)
+    logging.debug('CODE_RANGES %s', cranges)
+    return cps, cranges, b2ranges, b3ranges
+
+#
+# def __old_find_ranges(cps):
+#     """Convert a sorted list/tuple to a list of ranges."""
+#     start = int(cps[0])
+#     logging.debug(start)
+#     cur_range = [start, start]
+#     ranges = []
+#     for cp in cps[1:]:
+#         cp = int(cp)
+#         if cp == cur_range[1] + 1:
+#             cur_range[1] = cp
+#         else:
+#             ranges.append(range(cur_range[0], cur_range[1]+1))
+#             cur_range = [cp, cp]
+#     ranges.append(range(cur_range[0], cur_range[1]+1))
+#     logging.debug(ranges)
+#     return ranges
+
+
+def _find_ranges(cps, indexgen=None):
+    """Find code range subject to indexer."""
+    cur_start = int(cps[0])
+    cur_end = cur_start
+    if not indexgen:
+        indexgen = iter(range(cur_start, int(cps[-1])+1))
+    index = next(indexgen)
+    ranges = []
+    try:
+        for cp in cps[1:]:
+            cp = int(cp)
+            if cp <= index:
+                continue
+            # cp > index, get next index which is higher than previous.
+            # so now cp can be less, equal or higher
+            index = next(indexgen)
+            if cp == index:
+                cur_end = cp
+            else:
+                ranges.append(range(cur_start, cur_end + 1))
+                cur_start, cur_end = cp, cp
+                while cp > index:
+                    index = next(indexgen)
+    except StopIteration:
+        logging.debug('Indexer was exhausted')
+    ranges.append(range(cur_start, cur_end + 1))
+    return ranges
