@@ -984,7 +984,7 @@ class Charmap(Encoder):
 
 
 class Unicode(Encoder):
-    """Convert between unicode and ordinals."""
+    """Convert between unicode and UTF-32 ordinals."""
 
     def __init__(self):
         """Unicode converter."""
@@ -996,9 +996,14 @@ class Unicode(Encoder):
         for label in labels:
             codepoint = to_label(label)
             if isinstance(codepoint, bytes):
+                # convert as utf-32 chunks
+                chars = tuple(
+                    chr(int.from_bytes(codepoint[_start:_start+4], 'big'))
+                    for _start in range(0, len(codepoint), 4)
+                )
                 try:
                     # TODO: should we keep is_graphical? make it a setting?
-                    return ''.join(chr(_i) for _i in codepoint if is_graphical(chr(_i)))
+                    return ''.join(_c for _c in chars if is_graphical(_c))
                 except ValueError:
                     return ''
 
