@@ -18,6 +18,48 @@ from ..taggers import tagmaps
 from ..labels import Char
 
 
+@loaders.register('bdf', magic=(b'STARTFONT ',), name='bdf')
+def load_bdf(instream, where=None):
+    """
+    Load font from Adobe Glyph Bitmap Distribution Format (BDF) file.
+    """
+    instream = instream.text
+    comments, bdf_props, x_props = _read_bdf_global(instream)
+    logging.info('bdf properties:')
+    for name, value in bdf_props.items():
+        logging.info('    %s: %s', name, value)
+    logging.info('x properties:')
+    for name, value in x_props.items():
+        logging.info('    %s: %s', name, value)
+    glyphs, glyph_props = _read_bdf_glyphs(instream)
+    glyphs, properties = _parse_properties(glyphs, glyph_props, bdf_props, x_props)
+    font = Font(glyphs, comment=comments, **properties)
+    try:
+        font = font.label()
+    except NotFoundError:
+        pass
+    return font
+
+
+@savers.register(linked=load_bdf)
+def save_bdf(fonts, outstream, where=None):
+    """
+    Save font to Adobe Glyph Bitmap Distribution Format (BDF) file.
+    """
+    if len(fonts) > 1:
+        raise FileFormatError('Can only save one font to BDF file.')
+    # ensure codepoint values are set
+    font = fonts[0]
+    try:
+        font = font.label(codepoint_from=font.encoding)
+    except NotFoundError:
+        pass
+    _save_bdf(font, outstream.text)
+
+
+##############################################################################
+# specification
+
 # BDF specification: https://adobe-type-tools.github.io/font-tech-notes/pdfs/5005.BDF_Spec.pdf
 # XLFD conventions: https://www.x.org/releases/X11R7.6/doc/xorg-docs/specs/XLFD/xlfd.html
 # charset and property registry: https://github.com/freedesktop/xorg-docs/blob/master/registry
@@ -441,48 +483,6 @@ _XLFD_UNPARSED = {
     'RAW_UNDERLINE_THICKNESS',
     'RAW_X_HEIGHT',
 }
-
-##############################################################################
-# top-level calls
-
-@loaders.register('bdf', magic=(b'STARTFONT ',), name='bdf')
-def load_bdf(instream, where=None):
-    """
-    Load font from Adobe Glyph Bitmap Distribution Format (BDF) file.
-    """
-    instream = instream.text
-    comments, bdf_props, x_props = _read_bdf_global(instream)
-    logging.info('bdf properties:')
-    for name, value in bdf_props.items():
-        logging.info('    %s: %s', name, value)
-    logging.info('x properties:')
-    for name, value in x_props.items():
-        logging.info('    %s: %s', name, value)
-    glyphs, glyph_props = _read_bdf_glyphs(instream)
-    glyphs, properties = _parse_properties(glyphs, glyph_props, bdf_props, x_props)
-    font = Font(glyphs, comment=comments, **properties)
-    try:
-        font = font.label()
-    except NotFoundError:
-        pass
-    return font
-
-
-@savers.register(linked=load_bdf)
-def save_bdf(fonts, outstream, where=None):
-    """
-    Save font to Adobe Glyph Bitmap Distribution Format (BDF) file.
-    """
-    if len(fonts) > 1:
-        raise FileFormatError('Can only save one font to BDF file.')
-    # ensure codepoint values are set
-    font = fonts[0]
-    try:
-        font = font.label(codepoint_from=font.encoding)
-    except NotFoundError:
-        pass
-    _save_bdf(font, outstream.text)
-
 
 ##############################################################################
 # BDF reader

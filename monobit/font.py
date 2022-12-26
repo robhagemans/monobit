@@ -381,7 +381,7 @@ class FontProperties(DefaultProps):
     @checked_property
     def cell_size(self):
         """Width, height of the character cell."""
-        if self.spacing == 'proportional':
+        if not self._font.glyphs or self.spacing == 'proportional':
             return Coord(0, 0)
         # smaller of the (at most two) advance widths is the cell size
         # in a multi-cell font, some glyphs may take up two cells.
