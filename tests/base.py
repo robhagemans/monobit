@@ -13,10 +13,12 @@ import monobit
 
 
 def get_stringio(string):
-    """Workaround as our streams require a buffer to be available."""
-    return io.TextIOWrapper(
-        io.BufferedReader(io.BytesIO(string.encode()))
-    )
+    """Workaround as our streams objetcs require a buffer."""
+    return io.TextIOWrapper(get_bytesio(string.encode()))
+
+def get_bytesio(bytestring):
+    """Workaround as our streams objects require a buffer."""
+    return io.BufferedReader(io.BytesIO(bytestring))
 
 
 class BaseTester(unittest.TestCase):
@@ -39,5 +41,3 @@ class BaseTester(unittest.TestCase):
     def tearDown(self):
         """Clean up after each test."""
         self.temp_dir.cleanup()
-
-
