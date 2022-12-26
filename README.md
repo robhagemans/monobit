@@ -103,6 +103,7 @@ Supported formats
 | FZX font              | `fzx`      |          | `.fzx`                      | ZX Spectrum   | ✔     | ✔     |
 | Figlet font           | `figlet`   |          | `.flf`                      | Unix          | ✔     | ✔     |
 | FONTX2                | `fontx`    |          | `.fnt`                      | DOS/V         | ✔     | ✔     |
+| Hanzi Bitmap Font     | `hbf`      |          | `.hbf` + raw binary         | Unix          | ✔     | ✔     |
 | Atari GDOS / GEM      | `gdos`     |          | `.fnt` `.gft` `.vga`        | Atari ST, GEM | ✔     | ✔     |
 | GNU Unifont           | `hex`      |          | `.hex`                      |               | ✔     | ✔     |
 | Extended Hex          | `hext`     |          | `.hex`                      |               | ✔     | ✔     |
@@ -146,6 +147,7 @@ Here is a comparison of what you can and cannot store in selected formats suppor
 | `vfont`       |   |   |   |   |   | any  | ✔ |   |   | binary
 | `hext`        | ✔ | ✔ |   |   |   | 8xN  | multi-cell |   |   | hex
 | `hex`         | ✔ |   |   |   |   | 8x16 | multi-cell |   |   | hex
+| `hbf`         |   |   | ✔ | ✔ |   | any  |   |   |   | binary
 | `psf.2`       | ✔ | ✔ |   |   |   | any  |   |   |   | binary
 | `psf.1`       | ✔ |   |   |   |   | 8xN  |   |   |   | binary
 | `fontx`       |   |   |   | ✔ |   | any  |   |   |   | binary

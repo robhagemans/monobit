@@ -53,6 +53,7 @@ _ENCODING_FILES = (
         # use more extensive version from icu by default
         #'microsoft/WINDOWS/CP936.TXT', 'windows-936', 'ibm-1386'),
         # korean extended wansung / unified hangul code
+        # this is an extension of euc-kr, wansung
         ('microsoft/WINDOWS/CP949.TXT', 'windows-949', 'ext-wansung', 'uhc', 'ibm-1363'),
         # traditional chinese big-5
         ('microsoft/WINDOWS/CP950.TXT', 'windows-950', 'ms-big5'),
@@ -333,6 +334,12 @@ _ENCODING_FILES = (
         # manually adapted
         ('manual/ms-linedraw.txt', 'windows-linedraw', 'microsoft-linedraw', 'ms-linedraw'),
         ('manual/hp48.txt', 'hp-48', 'hp48', 'hp-rpl'),
+
+        # Mozilla Taiwan
+        # Big5-ETen
+        ('moztw/eten.txt', 'big5-eten', 'eten',),
+        # Big5-2003
+        ('moztw/big5-2003-b2u.txt', 'big5'),
     )),
 
     ('adobe', {}, (
@@ -380,9 +387,17 @@ _ENCODING_FILES = (
         ('icu/windows-936-2000.ucm', 'windows-936', 'ibm-1386', 'windows-gb2312', 'windows-gbk', 'gbk', 'gbk-0'),
         ('icu/ibm-1375_P100-2008.ucm', 'big5-hkscs', 'ibm-1375', 'big5hk', 'big5hkscs-0'),
         ('icu/ibm-806_P100-1998.ucm', 'cp806', 'ibm-806', 'ibm-iscii-devanagari'),
-        ('icu/windows-1361-2000.ucm', 'windows-1361', 'johab', 'ksc5601-1992'),
+        # ksc5601-1992-3 is here because Unix/BDF call the Johab encoding ksc5601.1992-3
+        # but it's Annex 3, i.e. not the main form of ks-c-5601
+        ('icu/windows-1361-2000.ucm', 'windows-1361', 'johab', 'ksc5601-1992-3'),
+        # ksc5601.1992-0 would map here
+        ('icu/aix-KSC5601.1987_0-4.3.6.ucm', 'ks-c-5601', 'ksc5601-1987', 'ksc5601-1992', 'wansung'),
         # P12A variant has backslash, tilde; P120 has yen, overline
         ('icu/ibm-932_P120-1999.ucm', 'ibm-932',),
+        # CNS11643 - note that this has plane 15 (2007 standard) encoded as plane 9. Planes 10-14 (2007) are not included.
+        ('icu/cns-11643-1992.ucm', 'cns-11643', 'csic'),
+        # EUC-TW, looks like this is algorithmically related to CNS-11643
+        #('icu/euc-tw-2014.ucm', 'euc-tw',),
 
         # from IBM CDRA tables
         # MS-DOS Korean

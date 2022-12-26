@@ -401,6 +401,20 @@ class TestFormats(BaseTester):
         monobit.save(font, file, format='bbc')
         self.assertTrue(os.path.getsize(file) > 0)
 
+    # HBF
+
+    def test_import_hbf(self):
+        """Test importing HBF files."""
+        font, *_ = monobit.load(self.font_path / '8x16.hbf')
+        self.assertEqual(len(font.glyphs), 727)
+
+    def test_export_hbf(self):
+        """Test exporting HBF files."""
+        file = self.temp_path / '4x6.hbf'
+        font = self.fixed4x6
+        monobit.save(font, file, format='hbf')
+        self.assertTrue(os.path.getsize(file) > 0)
+
 
 if __name__ == '__main__':
     unittest.main()
