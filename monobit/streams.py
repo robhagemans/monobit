@@ -255,7 +255,7 @@ def maybe_text(instream):
     Check if a binary input stream looks a bit like it might hold utf-8 text.
     Currently just checks for unexpected bytes in a short sample.
     """
-    if not instream.readable():
+    if instream.writable():
         # output binary streams *could* hold text
         # (this is not about the file type, but about the content)
         return True
@@ -326,7 +326,7 @@ class MagicRegistry:
                 if has_magic(file, magic):
                     logging.debug(
                         'Magic bytes %a: identifying stream as %s.',
-                        magic.decode('latin-1'), klass.name
+                        magic.decode('latin-1'), klass.__name__
                     )
                     return klass
         suffix = get_suffix(file)
@@ -334,6 +334,6 @@ class MagicRegistry:
         if converter:
             logging.debug(
                 'Filename suffix `%s`: identifying stream as %s.',
-                suffix, converter.name
+                suffix, converter.__name__
             )
         return converter
