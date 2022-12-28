@@ -115,6 +115,15 @@ def _load_from_file(instream, where, format, **kwargs):
     pack = Pack(fonts)
     # set conversion properties
     filename = Path(instream.name).name
+    # if the source filename contains surrogate-escaped non-utf8 bytes
+    # preserve the byte values as backslash escapes
+    try:
+        filename.encode('utf-8')
+    except UnicodeError:
+        filename = (
+            filename.encode('utf-8', 'surrogateescape')
+            .decode('ascii', 'backslashreplace')
+        )
     return Pack(
         _font.modify(
             converter=CONVERTER_NAME,
@@ -167,6 +176,10 @@ def save(
     # if specified and outfile is a filename, it is taken relative to this location.
     pack = Pack(pack_or_font)
     outfile = outfile or sys.stdout
+    if outfile == sys.stdout:
+        # errors can occur if the strings we write contain surrogates
+        # these may come from filesystem names using 'surrogateescape'
+        sys.stdout.reconfigure(errors='replace')
     with open_location(outfile, 'w', where=where, overwrite=overwrite) as (stream, container):
         if not stream:
             _save_all(pack, container, format, **kwargs)

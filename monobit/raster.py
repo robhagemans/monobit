@@ -195,15 +195,27 @@ class Raster:
 
     @classmethod
     def from_bytes(cls, byteseq, width, height=NOT_SET, *, align='left'):
-        """Create raster from bytes/bytearray/int sequence."""
+        """
+        Create raster from bytes/bytearray/int sequence.
+
+        width: raster width in pixels
+        height: raster height in pixels
+        align: 'left' or 'right' for byte-alignment; 'bit' for bit-alignment
+        """
         if width == 0 or height == 0:
             if height is NOT_SET:
                 height = 0
             return cls.blank(width, height)
-        if height is not NOT_SET:
-            stride = 8 * (len(byteseq) // height)
+        if align != 'bit':
+            if height is not NOT_SET:
+                stride = 8 * (len(byteseq) // height)
+            else:
+                stride = 8 * ceildiv(width, 8)
         else:
-            stride = 8 * ceildiv(width, 8)
+            if height is not NOT_SET:
+                stride = (8 * len(byteseq)) // height
+            else:
+                stride = width
         if not byteseq:
             bitseq = ''
         else:
@@ -214,18 +226,28 @@ class Raster:
         )
 
     def as_bytes(self, *, align='left'):
-        """Convert raster to flat bytes."""
+        """
+        Convert raster to flat bytes.
+
+        align: 'left' or 'right' for byte-alignment; 'bit' for bit-alignment
+        """
         if not self.height or not self.width:
             return b''
-        bytewidth = ceildiv(self.width, 8)
         rows = (
             ''.join(_row)
             for _row in self.as_matrix(paper='0', ink='1')
         )
-        if align.startswith('l'):
-            rows = (_row.ljust(8*bytewidth, '0') for _row in rows)
-        rows = (int(_row, 2).to_bytes(bytewidth, 'big') for _row in rows)
-        return b''.join(rows)
+        if align.startswith('b'):
+            bits = ''.join(rows)
+            bytesize = ceildiv(len(bits), 8)
+            byterow = int(_row, 2).to_bytes(bytewsize, 'big')
+            return byterow
+        else:
+            bytewidth = ceildiv(self.width, 8)
+            if align.startswith('l'):
+                rows = (_row.ljust(8*bytewidth, '0') for _row in rows)
+            byterows = (int(_row, 2).to_bytes(bytewidth, 'big') for _row in rows)
+            return b''.join(byterows)
 
     @classmethod
     def from_hex(cls, hexstr, width, height=NOT_SET, *, align='left'):

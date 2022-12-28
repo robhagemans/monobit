@@ -224,11 +224,13 @@ class FontProperties(DefaultProps):
         """Name of font family."""
         # use source name if no family name defined
         stem = PurePath(self.source_name).stem
+        # change underscored/spaced filenames to camelcase font name
         # replace underscores with spaces
-        stem = stem.replace('_', '-')
+        stem = stem.replace('_', ' ')
         # convert all-upper or all-lower to titlecase
         if stem == stem.upper() or stem == stem.lower():
             stem = stem.title()
+        stem = stem.replace(' ', '')
         return stem
 
     @writable_property
