@@ -9,19 +9,68 @@ import sys
 import logging
 import json
 
+
 try:
     from fontTools import ttLib
-    from fontTools.ttLib.ttFont import TTFont
-    from fontTools.ttLib.tables.E_B_D_T_ import BitmapGlyph
-    from fontTools.ttLib.tables._c_m_a_p import CmapSubtable
 except ImportError:
     ttLib = None
+else:
+    from fontTools.ttLib.ttFont import TTFont
+    from fontTools.ttLib.ttCollection import TTCollection
 
 from ..properties import Props
 from ..font import Font
 from ..glyph import Glyph
+from ..storage import loaders, savers
 
 
+# must be importable by mac module
+load_sfnt = None
+
+if ttLib:
+    @loaders.register(
+        'otb', 'ttf', 'otf', 'woff', 'tte',
+        magic=(
+            # TrueType
+            b'\0\1\0\0',
+            b'true',
+            # OpenType
+            b'OTTO',
+            # WOFF
+            b'wOFF',
+        ),
+        name='sfnt',
+    )
+    def load_sfnt(infile, where=None):
+        """Load an SFNT resource and convert to Font."""
+        sfnt = _read_sfnt(infile)
+        logging.debug(repr(sfnt))
+        font = _convert_sfnt(sfnt)
+        return font
+
+    @loaders.register(
+        'ttc', 'otc',
+        magic=(
+            # TrueType
+            b'ttcf',
+        ),
+        name='ttcf',
+    )
+    def load_collection(infile, where=None):
+        """Load a TrueType/OpenType Collection file."""
+        sfnts = _read_collection(infile)
+        fonts = tuple(
+            _convert_sfnt(_sfnt)
+            for _sfnt in sfnts
+        )
+        return fonts
+
+
+###############################################################################
+# fontTools extensions
+
+# bdat/bloc tables are Apple's version of EBDT/EBLC.
+# They have the same structure but a different tag.
 table__b_h_e_d = None
 table__b_l_o_c = None
 table__b_d_a_t = None
@@ -37,8 +86,6 @@ def _init_fonttools():
     if table__b_d_a_t:
         return
 
-    # bdat/bloc tables are Apple's version of EBDT/EBLC.
-    # They have the same structure but a different tag.
     from fontTools.ttLib.tables._h_e_a_d import table__h_e_a_d
     from fontTools.ttLib.tables.E_B_L_C_ import table_E_B_L_C_
     from fontTools.ttLib.tables.E_B_D_T_ import table_E_B_D_T_
@@ -54,18 +101,26 @@ def _init_fonttools():
     ttLib.registerCustomTableClass('bdat', 'monobit.formats.sfnt')
 
 
-def load_sfnt(instream):
-    sfnt = _read_sfnt(instream)
-    logging.debug(repr(sfnt))
-    font = _convert_sfnt(sfnt)
-    return font
-
+###############################################################################
+# sfnt resource reader
 
 def _read_sfnt(instream):
     """Read an SFNT resource into data structure."""
     # let fonttools parse the SFNT
     _init_fonttools()
     ttf = TTFont(instream)
+    return _sfnt_props(ttf)
+
+def _read_collection(instream):
+    """Read a collection into data structures."""
+    # let fonttools parse the SFNT
+    _init_fonttools()
+    ttfc = TTCollection(instream)
+    ttfc = tuple(_sfnt_props(_ttf) for _ttf in ttfc)
+    return ttfc
+
+
+def _sfnt_props(ttf):
     # decoompile tables we will need
     tags = ('cmap', 'bhed', 'head', 'EBDT', 'bdat', 'EBLC', 'bloc', 'maxp')
     tables = {_tag: ttf.get(_tag, None) for _tag in tags}
@@ -77,6 +132,8 @@ def _to_props(obj):
     # avoid infinite recursion
     if isinstance(obj, TTFont):
         return str(obj)
+    if obj is None:
+        return obj
     if isinstance(obj, dict):
         return {
             _k: _to_props(_v)
@@ -103,6 +160,8 @@ def _to_props(obj):
     return str(obj)
 
 
+###############################################################################
+# sfnt resource converter
 
 def _convert_sfnt(sfnt):
     """Convert sfnt data structure to Font."""
