@@ -5,6 +5,7 @@ monobit.formats.mac - MacOS suitcases and resources
 licence: https://opensource.org/licenses/MIT
 """
 
+import io
 import logging
 
 from ..binary import bytes_to_bits, align
@@ -14,6 +15,8 @@ from ..storage import loaders, savers
 from ..font import Font, Coord
 from ..glyph import Glyph, KernTable
 from ..streams import FileFormatError
+
+from .sfnt import load_sfnt
 
 
 _APPLESINGLE_MAGIC = 0x00051600
@@ -410,9 +413,17 @@ def _extract_resources(data, resources):
             parsed_rsrc.append((
                 rsrc_type, rsrc_id, _extract_nfnt(data, offset)
             ))
+        elif rsrc_type == b'sfnt':
+            logging.debug(
+                'TrueType font resource #%d: type %s name `%s`',
+                rsrc_id, rsrc_type.decode('latin-1'), name
+            )
+            bytesio = io.BytesIO(data[offset:])
+            font = load_sfnt(bytesio)
+            parsed_rsrc.append((
+                rsrc_type, rsrc_id, dict(font=font)
+            ))
         else:
-            if rsrc_type == b'sfnt':
-                logging.warning('sfnt resources (vector or bitmap) not supported')
             logging.debug(
                 'Skipped resource #%d: type %s name `%s`',
                 rsrc_id, rsrc_type.decode('latin-1'), name
@@ -439,7 +450,13 @@ def _convert_mac_font(parsed_rsrc, info, formatstr):
     """convert properties and glyphs."""
     fonts = []
     for rsrc_type, rsrc_id, kwargs in parsed_rsrc:
-        if rsrc_type in (b'FONT', b'NFNT'):
+        if rsrc_type == b'sfnt':
+            font = kwargs['font']
+            font = font.modify(
+                source_format = f'MacOS {font.source_format}',
+            )
+            fonts.append(font)
+        elif rsrc_type in (b'FONT', b'NFNT'):
             format = ''.join((
                 rsrc_type.decode('latin-1'),
                 f' in {formatstr}' if formatstr else ''
@@ -472,8 +489,9 @@ def _convert_mac_font(parsed_rsrc, info, formatstr):
             if 'encoding' not in props or props.get('family', '') in _NON_ROMAN_NAMES:
                 props['encoding'] = _NON_ROMAN_NAMES.get(props.get('family', ''), 'mac-roman')
             font = _convert_nfnt(props, **kwargs)
-            font = font.label()
-            fonts.append(font)
+            if font.glyphs:
+                font = font.label()
+                fonts.append(font)
     return fonts
 
 
@@ -996,7 +1014,8 @@ def _extract_nfnt(data, offset):
     """Read a MacOS NFNT or FONT resource."""
     fontrec = _NFNT_HEADER.from_bytes(data, offset)
     if not (fontrec.rowWords and fontrec.widMax and fontrec.fRectWidth and fontrec.fRectHeight):
-        raise FileFormatError('Empty FONT/NFNT resource.')
+        logging.debug('Empty FONT/NFNT resource.')
+        return dict(glyphs=(), fontrec=fontrec)
     if fontrec.fontType.depth or fontrec.fontType.has_fctb:
         raise FileFormatError('Anti-aliased or colour fonts not supported.')
     # read char tables & bitmaps
@@ -1087,6 +1106,8 @@ def _convert_nfnt(properties, glyphs, fontrec):
     # since
     #   (total) advance_width == (font) left_bearing + glyph.advance_width + (font) right_bearing
     # and (font) left_bearing = -kernMax
+    if not glyphs:
+        return Font()
     glyphs = tuple(
         _glyph.modify(
             left_bearing=_glyph.wo_offset,
