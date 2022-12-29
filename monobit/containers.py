@@ -402,6 +402,7 @@ class MacContainer(Container):
 
 ###############################################################################
 # BinHex 4.0 container
+# https://files.stairways.com/other/binhex-40-specs-info.txt
 
 from binascii import crc_hqx
 from itertools import zip_longest
