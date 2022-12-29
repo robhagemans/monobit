@@ -41,6 +41,19 @@ def load_macbinary(instream, where=None):
     data = instream.read()
     return _parse_macbinary(data)
 
+@loaders.register(
+    'hqx', name='binhex',
+    magic=(
+        b'(This file must be converted with BinHex 4.0)\r',
+        b'\r(This file must be converted with BinHex 4.0)\r',
+    ),
+)
+def load_binhex(instream, where=None):
+    """
+    Load font from a BinHex 4.0 container.
+    """
+    return _parse_binhex(instream.text)
+
 
 @loaders.register('as', 'adf', 'rsrc',
     magic=(
@@ -233,6 +246,91 @@ def _parse_macbinary(data):
     if not fork_data:
         raise FileFormatError('No resource fork found in file.')
     fonts = _parse_mac_resource(fork_data, 'MacBinary')
+    return fonts
+
+
+##############################################################################
+# BinHex 4.0 container
+
+from binascii import crc_hqx
+from itertools import zip_longest
+
+_BINHEX_CODES = (
+    '''!"#$%&'()*+,-012345689@ABCDEFGHIJKLMNPQRSTUVXYZ[`abcdefhijklmpqr'''
+)
+_BINHEX_CODEDICT = {_BINHEX_CODES[_i]: _i for _i in range(64)}
+
+_BINHEX_HEADER = be.Struct(
+    type='uint32',
+    auth='uint32',
+    flag='uint16',
+    dlen='uint32',
+    rlen='uint32',
+)
+_CRC = be.Struct(
+    crc='uint16',
+)
+
+def _parse_binhex(text):
+    """Parse a BinHex 4.0 file."""
+    front, binhex, *back = text.read().split(':')
+    if 'BinHex 4.0' not in front:
+        logging.warning('No BinHex 4.0 signature found.')
+    if back:
+        logging.warning('Additional data found after BinHex section.')
+    binhex = ''.join(binhex.split('\n'))
+    # decode into 6-bit ints
+    data = (_BINHEX_CODEDICT[_c] for _c in binhex)
+    # convert to bit sequence
+    bits = ''.join(bin(_d)[2:].zfill(6) for _d in data)
+    # group into chunks of 8
+    args = [iter(bits)] * 8
+    octets = (''.join(_t) for _t in zip_longest(*args, fillvalue='0'))
+    # convert to bytes
+    bytestr = bytes(int(_s, 2) for _s in octets)
+    # find run-length encoding marker
+    chunks = bytestr.split(b'\x90')
+    out = bytearray(chunks[0])
+    for c in chunks[1:]:
+        if c:
+            # run-length byte
+            repeat = c[0]
+        else:
+            # ...\x90\x90... -> ...', '', '...
+            repeat = 0x90
+        if not repeat:
+            # zero-byte is placeholder for just 0x90
+            out += b'\x90'
+        else:
+            # apply RLE
+            out += out[-1] * repeat
+        out += c[1:]
+    # decode header
+    length = out[0]
+    name = bytes(out[1:1+length]).decode('mac-roman')
+    if out[1+length] != 0:
+        logging.warning('No null byte after name')
+    header = _BINHEX_HEADER.from_bytes(out, 2+length)
+    offset = 2 + length + _BINHEX_HEADER.size
+    crc_header = out[:offset]
+    hc = _CRC.from_bytes(out, offset)
+    offset += _CRC.size
+    if crc_hqx(crc_header, 0) != hc.crc:
+        logging.error('CRC fault in header')
+    data = out[offset:offset+header.dlen]
+    offset += header.dlen
+    dc = _CRC.from_bytes(out, offset)
+    offset += _CRC.size
+    rsrc = out[offset:offset+header.rlen]
+    offset += header.rlen
+    rc = _CRC.from_bytes(out, offset)
+    if crc_hqx(data, 0) != dc.crc:
+        logging.error('CRC fault in data fork')
+    if crc_hqx(rsrc, 0) != rc.crc:
+        logging.error('CRC fault in resource fork')
+    if not rsrc:
+        raise FileFormatError('No resource fork found in file.')
+    fonts = _parse_mac_resource(rsrc, 'BinHex')
     return fonts
 
 
@@ -442,10 +540,10 @@ def _convert_mac_font(parsed_rsrc, info, formatstr):
                 # >     resourceID := (font ID * 128) + font size;
                 font_number, font_size = divmod(rsrc_id, 128)
                 # we've already filtered out the case font_size == 0
-                props = {
+                props.update({
                     'point-size': font_size,
                     'family': _FONT_NAMES.get(font_number, str(font_number))
-                }
+                })
                 # prefer directory info to info inferred from resource ID
                 # (in so far provided by FOND or directory FONT)
                 props.update(info.get(font_number, {}))
