@@ -15,6 +15,7 @@ try:
 except ImportError:
     ttLib = None
 else:
+    from fontTools.ttLib import TTLibError
     from fontTools.ttLib.ttFont import TTFont
     from fontTools.ttLib.ttCollection import TTCollection
 
@@ -22,6 +23,8 @@ from ..properties import Props
 from ..font import Font
 from ..glyph import Glyph
 from ..storage import loaders, savers
+from ..streams import FileFormatError
+
 
 
 # must be importable by mac module
@@ -44,7 +47,7 @@ if ttLib:
     def load_sfnt(infile, where=None):
         """Load an SFNT resource and convert to Font."""
         sfnt = _read_sfnt(infile)
-        logging.debug(repr(sfnt))
+        logging.debug(str(sfnt))
         font = _convert_sfnt(sfnt)
         return font
 
@@ -104,27 +107,45 @@ def _init_fonttools():
 ###############################################################################
 # sfnt resource reader
 
+# tags we will decompile and process
+_TAGS = (
+    'maxp',
+    'cmap',
+    'bhed', 'head',
+    'EBDT', 'bdat', 'EBLC', 'bloc',
+    'hmtx', 'hhea',
+)
+
+
 def _read_sfnt(instream):
     """Read an SFNT resource into data structure."""
     # let fonttools parse the SFNT
     _init_fonttools()
-    ttf = TTFont(instream)
+    try:
+        ttf = TTFont(instream)
+    except (TTLibError, AssertionError) as e:
+        raise FileFormatError(f'Could not read sfnt file: {e}')
     return _sfnt_props(ttf)
 
 def _read_collection(instream):
     """Read a collection into data structures."""
     # let fonttools parse the SFNT
     _init_fonttools()
-    ttfc = TTCollection(instream)
+    try:
+        ttfc = TTCollection(instream)
+    except (TTLibError, AssertionError) as e:
+        raise FileFormatError(f'Could not read collection file: {e}')
     ttfc = tuple(_sfnt_props(_ttf) for _ttf in ttfc)
     return ttfc
 
 
 def _sfnt_props(ttf):
-    # decoompile tables we will need
-    tags = ('cmap', 'bhed', 'head', 'EBDT', 'bdat', 'EBLC', 'bloc', 'maxp')
-    tables = {_tag: ttf.get(_tag, None) for _tag in tags}
-    return Props(**_to_props(tables))
+    """Decompile tables and convert from fontTools objects to data structure."""
+    try:
+        tables = {_tag: ttf.get(_tag, None) for _tag in _TAGS}
+        return Props(**_to_props(tables))
+    except (TTLibError, AssertionError) as e:
+        raise FileFormatError(f'Could not read sfnt: {e}') from e
 
 
 def _to_props(obj):
@@ -173,6 +194,8 @@ def _convert_sfnt(sfnt):
     sfnt.bdat = sfnt.bdat or sfnt.EBDT
     sfnt.bloc = sfnt.bloc or sfnt.EBLC
     sfnt.bhed = sfnt.bhed or sfnt.head
+    if not sfnt.bdat or not sfnt.bloc:
+        raise FileFormatError('No bitmap strikes found in file.')
     glyphs = _convert_glyphs(sfnt)
     return Font(glyphs, source_format=source_format)
 
