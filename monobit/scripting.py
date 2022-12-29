@@ -151,7 +151,7 @@ class ScriptArgs():
                 self.name.replace('_', '-'),
                 #' '.join(f'{_v}' for _v in args),
                 ' '.join(
-                    f'--{_k}={shlex.join((str(_v),))}'
+                    f'{ARG_PREFIX}{_k}={shlex.join((str(_v),))}'
                     for _k, _v in kwargs.items()
                     # exclude non-operation parameters
                     if _k in self._script_args
@@ -184,7 +184,8 @@ class ScriptArgs():
 ###############################################################################
 # argument parser
 
-ARG_PREFIX = '--'
+ARG_PREFIX = '-'
+GLOBAL_ARG_PREFIX = '--'
 FALSE_PREFIX = 'no-'
 
 class IsSetFlag:
@@ -219,13 +220,19 @@ def parse_subcommands(operations, global_options):
         command_ns = argrecord(command=command, func=operations.get(command, ''))
         expect_value = False
         for arg in subargv:
-            if arg.startswith(ARG_PREFIX):
-                key = arg[len(ARG_PREFIX):]
-                key, _, value = key.partition('=')
-                # record the key as set even if still expecting a value
-                if key in global_options:
-                    ns = global_ns
-                else:
+            if arg.startswith((ARG_PREFIX, GLOBAL_ARG_PREFIX)):
+                if arg.startswith(GLOBAL_ARG_PREFIX):
+                    key = arg[len(GLOBAL_ARG_PREFIX):]
+                    key, _, value = key.partition('=')
+                    # use -- for global args
+                    #  try to interpret as local if there isn't one
+                    if key in global_options:
+                        ns = global_ns
+                    else:
+                        ns = command_ns
+                elif arg.startswith(ARG_PREFIX):
+                    key = arg[len(ARG_PREFIX):]
+                    key, _, value = key.partition('=')
                     ns = command_ns
                 # boolean flag prefixed with --no-
                 if key.startswith(FALSE_PREFIX):
@@ -233,6 +240,7 @@ def parse_subcommands(operations, global_options):
                     ns.kwargs[key] = False
                     expect_value = False
                 else:
+                    # record the key as set even if still expecting a value
                     ns.kwargs[key] = value or SET
                     expect_value = value == ''
             elif expect_value:
@@ -261,13 +269,13 @@ def _split_argv(*command_words):
 # doc string alignment in usage text
 HELP_TAB = 25
 
-def _print_option_help(name, vartype, doc, tab, add_unsetter=True):
+def _print_option_help(name, vartype, doc, tab, prefix, *, add_unsetter=True):
     if vartype == bool:
-        print(f'{ARG_PREFIX}{name}\t{doc}'.expandtabs(tab))
+        print(f'{prefix}{name}\t{doc}'.expandtabs(tab))
         if add_unsetter:
-            print(f'{ARG_PREFIX}{FALSE_PREFIX}{name}\tunset {ARG_PREFIX}{name}'.expandtabs(tab))
+            print(f'{prefix}{FALSE_PREFIX}{name}\tunset {prefix}{name}'.expandtabs(tab))
     else:
-        print(f'{ARG_PREFIX}{name}=...\t{doc}'.expandtabs(tab))
+        print(f'{prefix}{name}=...\t{doc}'.expandtabs(tab))
 
 def print_help(command_args, usage, operations, global_options, context_help):
     print(usage)
@@ -276,7 +284,7 @@ def print_help(command_args, usage, operations, global_options, context_help):
     print('=======')
     print()
     for name, (vartype, doc) in global_options.items():
-        _print_option_help(name, vartype, doc, HELP_TAB, add_unsetter=False)
+        _print_option_help(name, vartype, doc, HELP_TAB, GLOBAL_ARG_PREFIX, add_unsetter=False)
 
     if not command_args or len(command_args) == 1 and not command_args[0].command:
         print()
@@ -297,13 +305,13 @@ def print_help(command_args, usage, operations, global_options, context_help):
             func = ns.func
             print(f'{op} '.ljust(HELP_TAB-1, '-') + f' {func.script_args.doc}')
             for name, vartype, doc in func.script_args:
-                _print_option_help(name, vartype, doc, HELP_TAB)
+                _print_option_help(name, vartype, doc, HELP_TAB, ARG_PREFIX)
             print()
             if op in context_help:
                 context_args = context_help[op]
                 print(f'{context_args.name} '.ljust(HELP_TAB-1, '-') + f' {func.script_args.doc}')
                 for name, vartype, doc in context_args:
-                    _print_option_help(name, vartype, doc, HELP_TAB)
+                    _print_option_help(name, vartype, doc, HELP_TAB, ARG_PREFIX)
                 print()
 
 

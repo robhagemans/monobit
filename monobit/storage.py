@@ -15,7 +15,7 @@ from .containers import ContainerFormatError, open_container
 from .font import Font
 from .pack import Pack
 from .streams import MagicRegistry, FileFormatError, open_stream, maybe_text
-from .scripting import scriptable, ScriptArgs
+from .scripting import scriptable, ScriptArgs, ARG_PREFIX
 from .basetypes import Any
 
 
@@ -247,7 +247,7 @@ class ConverterRegistry(MagicRegistry):
         if not converter:
             if format:
                 converter = self[format]
-            elif maybe_text(file):
+            elif not file or maybe_text(file):
                 converter = self[DEFAULT_TEXT_FORMAT]
             else:
                 converter = self[DEFAULT_BINARY_FORMAT]
@@ -278,7 +278,7 @@ class ConverterRegistry(MagicRegistry):
             # set script arguments
             funcname = self._func_name
             if name:
-                funcname += f' --format={name}'
+                funcname += f' {ARG_PREFIX}format={name}'
             _func = scriptable(
                 original_func,
                 # use the standard name, not that of the registered function
