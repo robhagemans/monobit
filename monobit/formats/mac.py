@@ -419,9 +419,9 @@ def _extract_resources(data, resources):
                 rsrc_id, rsrc_type.decode('latin-1'), name
             )
             bytesio = io.BytesIO(data[offset:])
-            font = load_sfnt(bytesio)
+            fonts = load_sfnt(bytesio)
             parsed_rsrc.append((
-                rsrc_type, rsrc_id, dict(font=font)
+                rsrc_type, rsrc_id, dict(fonts=fonts)
             ))
         else:
             logging.debug(
@@ -451,11 +451,14 @@ def _convert_mac_font(parsed_rsrc, info, formatstr):
     fonts = []
     for rsrc_type, rsrc_id, kwargs in parsed_rsrc:
         if rsrc_type == b'sfnt':
-            font = kwargs['font']
-            font = font.modify(
-                source_format = f'MacOS {font.source_format}',
+            rsrc_fonts = kwargs['fonts']
+            rsrc_fonts = (
+                _font.modify(
+                    source_format = f'MacOS {_font.source_format}',
+                )
+                for _font in rsrc_fonts
             )
-            fonts.append(font)
+            fonts.extend(rsrc_fonts)
         elif rsrc_type in (b'FONT', b'NFNT'):
             format = ''.join((
                 rsrc_type.decode('latin-1'),
