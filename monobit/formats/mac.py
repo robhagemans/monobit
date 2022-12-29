@@ -24,8 +24,8 @@ from .sfnt import (
 _APPLESINGLE_MAGIC = 0x00051600
 _APPLEDOUBLE_MAGIC = 0x00051607
 
-
-@loaders.register('dfont', 'suit', name='mac-dfont')
+# the magic is optional - a 'maybe magic'
+@loaders.register('dfont', 'suit', name='mac-dfont', magic=(b'\0\0\1\0\0\0',))
 def load_mac_dfont(instream, where=None):
     """
     Load font from a MacOS suitcase.
