@@ -531,7 +531,7 @@ def _convert_name_props(name):
         font_id=_decode_name(name.names, 3),
         name=_decode_name(name.names, 4),
         #
-        version_string=_decode_name(name.names, 5),
+        revision=_decode_name(name.names, 5),
         #
         #postscript_name
         #
