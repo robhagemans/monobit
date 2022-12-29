@@ -26,6 +26,14 @@ from ..storage import loaders, savers
 from ..streams import FileFormatError
 
 
+# errors that invalidates only one strike or resource, not the whole file
+
+class ResourceFormatError(FileFormatError):
+    """Unsupported parameters in resource."""
+
+class StrikeFormatError(ResourceFormatError):
+    """Unsupported parameters in bitmap strike."""
+
 
 # must be importable by mac module
 load_sfnt = None
@@ -145,7 +153,7 @@ def _sfnt_props(ttf):
         tables = {_tag: ttf.get(_tag, None) for _tag in _TAGS}
         return Props(**_to_props(tables))
     except (TTLibError, AssertionError) as e:
-        raise FileFormatError(f'Could not read sfnt: {e}') from e
+        raise ResourceFormatError(f'Could not read sfnt: {e}') from e
 
 
 def _to_props(obj):
@@ -195,9 +203,10 @@ def _convert_sfnt(sfnt):
     sfnt.bloc = sfnt.bloc or sfnt.EBLC
     sfnt.bhed = sfnt.bhed or sfnt.head
     if not sfnt.bdat or not sfnt.bloc:
-        raise FileFormatError('No bitmap strikes found in file.')
+        raise ResourceFormatError('No bitmap strikes found in sfnt resource.')
+    props = _convert_props(sfnt)
     glyphs = _convert_glyphs(sfnt)
-    return Font(glyphs, source_format=source_format)
+    return Font(glyphs, source_format=source_format, **vars(props))
 
 
 # preferred table to use for Unicode: platformID, platEncID
@@ -254,16 +263,55 @@ def _get_encoding_table(sfnt):
     return enctable
 
 
+def _convert_glyph_metrics(metrics, small_is_vert):
+    if hasattr(metrics, 'horiAdvance'):
+        # big metrics
+        return dict(
+            # hori
+            left_bearing=metrics.horiBearingX,
+            right_bearing=(
+                metrics.horiAdvance - metrics.width - metrics.horiBearingX
+            ),
+            shift_up=metrics.horiBearingY - metrics.height,
+            # vert
+            shift_left=metrics.vertBearingX,
+            top_bearing=metrics.vertBearingY,
+            bottom_bearing=(
+                metrics.vertAdvance - metrics.height
+                - metrics.vertBearingY
+            ),
+        )
+    elif not small_is_vert:
+        # small metrics
+        return dict(
+            left_bearing=metrics.dearingX,
+            right_bearing=metrics.advance - metrics.width - metrics.bearingX,
+            shift_up=metrics.bearingY - metrics.height,
+        )
+    else:
+        # small metrics, interpret as vert
+        return dict(
+            shift_left=metrics.bearingX,
+            top_bearing=metrics.bearingY,
+            bottom_bearing=(
+                metrics.advance - metrics.height - metrics.bearingY
+            ),
+        )
+
+
+#FIXME - separate multiple strikes, they can have different line metrics
 def _convert_glyphs(sfnt):
+    """Build glyphs and glyph properties from sfnt data."""
     unitable = _get_unicode_table(sfnt)
     enctable = _get_encoding_table(sfnt)
     glyphs = []
     for i_strike, strike in enumerate(sfnt.bdat.strikeData):
         for name, glyph in strike.items():
+            blocstrike = sfnt.bloc.strikes[i_strike]
             try:
                 metrics = glyph.metrics
             except AttributeError:
-                for subtable in sfnt.bloc.strikes[i_strike].indexSubTables:
+                for subtable in blocstrike.indexSubTables:
                     if name in subtable.names:
                         metrics = subtable.metrics
                         break
@@ -273,16 +321,50 @@ def _convert_glyphs(sfnt):
             byts = getattr(glyph, 'imageData', '')
             bits = bin(int.from_bytes(byts, 'big'))
             width = metrics.width
-
+            small_is_vert = blocstrike.bitmapSizeTable.flags == 2
+            props = _convert_glyph_metrics(metrics, small_is_vert)
             glyph = Glyph.from_bytes(
                 byts, width=8, align='bit',
                 tag=name, char=unitable.get(name, ''),
-                codepoint=enctable.get(name, b''),
+                codepoint=enctable.get(name, b''), **props
             )
             glyphs.append(glyph)
     return glyphs
 
 
+def _convert_props(sfnt):
+    """Build font properties from sfnt data."""
+    propses = []
+    for i_strike, strike in enumerate(sfnt.bloc.strikes):
+        bmst = strike.bitmapSizeTable
+        # validations
+        if bmst.bitDepth != 1:
+            raise StrikeFormatError(
+                'Colour and grayscale not supported.'
+            )
+        if bmst.flags not in (1, 2):
+            logging.warning(
+                f'Unsupported metric flag value {bmst.flags}, '
+                'using 1 (horizontal) instead.'
+            )
+            bmst.flags = 1
+        props = Props()
+        # asppect ratio is the inverse of pixels-per-em ratio
+        props.pixel_aspect = (bmst.ppemY, bmst.ppemX)
+        small_metrics_are_vert = bmst.flags == 2
+        # horizontal line metrics
+        # according to the EBLC spec the sbit metrics also define the linegap
+        # but I don't see it. widthMax looks like a max advance
+        props.ascent = bmst.hori.ascender
+        props.descent = -bmst.hori.descender
+        #props.shift_up = bmst.hori.descender
+        # vertical line metrics
+        # we don't keep track of 'ascent' and 'descent' for vert, maybe we should
+        # anyway, which way is the 'ascent', left or right?
+
+
+    # FIXME - multiple sets
+    return props
 
 # maxp
 
