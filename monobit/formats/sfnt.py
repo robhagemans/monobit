@@ -373,7 +373,7 @@ def _convert_glyphs(sfnt, i_strike, hori_fu_p_pix, vert_fu_p_pix):
         # FIXME - some formats are byte aligned
 
         glyph = Glyph.from_bytes(
-            byts, width=8, align='bit',
+            byts, width=width, align='bit',
             tag=name, char=unitable.get(name, ''),
             codepoint=enctable.get(name, b''), **props
         )
