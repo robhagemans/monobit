@@ -118,11 +118,12 @@ def _init_fonttools():
 # tags we will decompile and process
 _TAGS = (
     'maxp',
-    'cmap',
     'bhed', 'head',
-    'EBDT', 'bdat', 'EBLC', 'bloc',
+    'EBLC', 'bloc',
+    'EBDT', 'bdat',
     'hmtx', 'hhea',
     'vmtx', 'vhea',
+    'cmap',
     'name',
     # OS/2 - Windows metrics
     # kern - Apple kerning
