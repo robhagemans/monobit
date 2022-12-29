@@ -620,7 +620,7 @@ def _extract_win_props(data):
     try:
         header_ext = _FNT_HEADER_EXT[win_props.dfVersion]
     except KeyError:
-        raise ValueError(
+        raise FileFormatError(
             f'Not a Windows .FNT resource or unsupported version (0x{win_props.dfVersion:04x}).'
             ) from None
     win_props += header_ext.from_bytes(data, _FNT_HEADER.size)
@@ -698,7 +698,7 @@ def _convert_win_props(data, win_props):
     """Convert WinFont properties to yaff properties."""
     version = win_props.dfVersion
     if win_props.dfType & 1:
-        raise ValueError('Not a bitmap font')
+        raise FileFormatError('Not a Windows bitmap font')
     logging.info('Windows FNT properties:')
     for key, value in win_props.__dict__.items():
         logging.info('    {}: {}'.format(key, value))
@@ -777,14 +777,14 @@ def _convert_win_props(data, win_props):
         # https://web.archive.org/web/20120215123301/http://support.microsoft.com/kb/65123
         # NOTE: The only formats supported in Windows 3.0 will be DFF_FIXED and DFF_PROPORTIONAL.
         if win_props.dfFlags & _DFF_COLORFONT:
-            raise ValueError('ColorFont not supported')
+            raise FileFormatError('ColorFont not supported')
         if win_props.dfFlags & _DFF_ABC:
             # https://ffenc.blogspot.com/2008/04/fnt-font-file-format.html
             # For Windows 3.00, the font-file header includes six new fields:
             # dFlags, dfAspace, dfBspace, dfCspace, dfColorPointer, and dfReserved1.
             # These fields are not used in Windows 3.00. To ensure compatibility with future
             # versions of Windows, these fields should be set to zero.
-            raise ValueError('ABC spacing properties not supported')
+            raise FileFormatError('ABC spacing properties not supported')
     return properties
 
 
@@ -815,7 +815,7 @@ def _parse_ne(data, ne_offset):
             start = name_info.rnOffset << res_table.rscAlignShift
             size = name_info.rnLength << res_table.rscAlignShift
             if start < 0 or size < 0 or start + size > len(data):
-                raise ValueError('Resource overruns file boundaries')
+                raise FileFormatError('Resource overruns file boundaries')
             if type_info.rtTypeID == _RT_FONT:
                 try:
                     fonts.append(parse_fnt(data[start : start+size]))
@@ -851,7 +851,7 @@ def _parse_pe(data, peoff):
         if section.Name == b'.rsrc':
             break
     else:
-        raise ValueError('Unable to locate resource section')
+        raise FileFormatError('Unable to locate resource section')
     # Now we've found the resource section, let's throw away the rest.
     rsrc = data[section.PointerToRawData : section.PointerToRawData+section.SizeOfRawData]
     # Now the fun begins. To start with, we must find the initial
@@ -866,7 +866,7 @@ def _parse_pe(data, peoff):
         try:
             font = parse_fnt(rsrc[start : start+data_entry.Size])
         except ValueError as e:
-            raise ValueError('Failed to read font resource at {:x}: {}'.format(start, e))
+            raise FileFormatError('Failed to read font resource at {:x}: {}'.format(start, e))
         ret = ret + [font]
     return ret
 
