@@ -20,10 +20,6 @@ from .sfnt import (
     load_sfnt, mac_style_name as _style_name, MAC_ENCODING as _MAC_ENCODING
 )
 
-
-_APPLESINGLE_MAGIC = 0x00051600
-_APPLEDOUBLE_MAGIC = 0x00051607
-
 # the magic is optional - a 'maybe magic'
 @loaders.register('dfont', 'suit', name='mac-dfont', magic=(b'\0\0\1\0\0\0',))
 def load_mac_dfont(instream, where=None):
@@ -32,22 +28,6 @@ def load_mac_dfont(instream, where=None):
     """
     data = instream.read()
     return _parse_mac_resource(data)
-
-
-@loaders.register('as', 'adf', 'rsrc',
-    magic=(
-        _APPLESINGLE_MAGIC.to_bytes(4, 'big'),
-        _APPLEDOUBLE_MAGIC.to_bytes(4, 'big')
-    ),
-    name='mac-rsrc',
-)
-def load_mac_rsrc(instream, where=None):
-    """
-    Load font from an AppleSingle or AppleDouble container.
-    """
-    data = instream.read()
-    return _parse_apple_container(data)
-
 
 
 ##############################################################################
@@ -65,73 +45,6 @@ _NON_ROMAN_NAMES = {
     'Taliesin': '',
     'Mobile': '',
 }
-
-
-##############################################################################
-# AppleSingle/AppleDouble container
-# v1: see https://web.archive.org/web/20160304101440/http://kaiser-edv.de/documents/Applesingle_AppleDouble_v1.html
-# v2: https://web.archive.org/web/20160303215152/http://kaiser-edv.de/documents/AppleSingle_AppleDouble.pdf
-# the difference between v1 and v2 affects the file info sections
-# not the resource fork which is what we care about
-
-_APPLE_HEADER = be.Struct(
-    magic='uint32',
-    version='uint32',
-    home_fs='16s',
-    number_entities='uint16',
-)
-_APPLE_ENTRY = be.Struct(
-    entry_id='uint32',
-    offset='uint32',
-    length='uint32',
-)
-
-# Entry IDs
-_ID_RESOURCE = 2
-_APPLE_ENTRY_TYPES = {
-    1: 'data fork',
-    2: 'resource fork',
-    3: 'real name',
-    4: 'comment',
-    5: 'icon, b&w',
-    6: 'icon, color',
-    7: 'file info', # v1 only
-    8: 'file dates info', # v2
-    9: 'finder info',
-    # the following are all v2
-    10: 'macintosh file info',
-    11: 'prodos file info',
-    12: 'ms-dos file info',
-    13: 'short name',
-    14: 'afp file info',
-    15: 'directory id',
-}
-
-
-def _parse_apple_container(data):
-    """Parse an AppleSingle or AppleDouble file."""
-    header = _APPLE_HEADER.from_bytes(data)
-    if header.magic == _APPLESINGLE_MAGIC:
-        container = 'AppleSingle'
-    elif header.magic == _APPLEDOUBLE_MAGIC:
-        container = 'AppleDouble'
-    else:
-        raise FileFormatError('Not an AppleSingle or AppleDouble file.')
-    entry_array = _APPLE_ENTRY.array(header.number_entities)
-    entries = entry_array.from_bytes(data, _APPLE_HEADER.size)
-    for i, entry in enumerate(entries):
-        entry_type = _APPLE_ENTRY_TYPES.get(entry.entry_id, 'unknown')
-        logging.debug(
-            '%s container: entry #%d, %s [%d]',
-            container, i, entry_type, entry.entry_id
-        )
-        if entry.entry_id == _ID_RESOURCE:
-            logging.debug('Reading resource')
-            fork_data = data[entry.offset:entry.offset+entry.length]
-            fonts = _parse_mac_resource(fork_data, formatstr=container)
-            return fonts
-    raise FileFormatError('No resource fork found in file.')
-
 
 
 ##############################################################################
