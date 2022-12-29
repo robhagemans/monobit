@@ -342,6 +342,65 @@ class Bzip2Compressor(Compressor):
 
 
 ##############################################################################
+# Mac data/resource fork containers
+
+class MacContainer(Container):
+    """Mac data/resource fork container."""
+
+    parse = None
+
+    def __init__(self, file, mode='r', *, overwrite=False):
+        """Create wrapper."""
+        # mode really should just be 'r' or 'w'
+        mode = mode[:1]
+        if mode != 'r':
+            raise ContainerFormatError(
+                'Writing to Mac resource container is not implemented.'
+            )
+        with open_stream(file, mode, overwrite=overwrite) as stream:
+            self._fork_name, self._data, self._rsrc = self.parse(stream)
+        super().__init__(None, mode, stream.name)
+
+    def __iter__(self):
+        """List contents."""
+        contents = []
+        if self._data:
+            contents.append(f'{self._fork_name}.data')
+        if self._rsrc:
+            contents.append(f'{self._fork_name}.rsrc')
+        return iter(contents)
+
+    def open(self, name, mode):
+        """Open a stream in the container."""
+        # using posixpath for internal paths in the archive
+        # as forward slash should always work, but backslash would fail on unix
+        mode = mode[:1]
+        if mode != 'r':
+            raise ContainerFormatError(
+                'Writing to Mac resource container is not implemented.'
+            )
+        filename = str(name)[-4:].lower()
+        if filename not in ('data', 'rsrc'):
+            raise FileNotFoundError(
+                'Stream name on Mac resource container must end with `rsrc` or `data`'
+            )
+        filename = f'{self._fork_name}.{filename}'
+        # always open as binary
+        logging.debug(
+            'Opening fork `%s` on %s `%s`.', filename,
+            type(self).__name__, self.name
+        )
+        if filename.endswith('data'):
+            fork = self._data
+        else:
+            fork = self._rsrc
+        if not fork:
+            raise FileNotFoundError(filename)
+        newfile = Stream(get_bytesio(fork), mode=mode, name=filename)
+        return newfile
+
+
+###############################################################################
 # BinHex 4.0 container
 
 from binascii import crc_hqx
@@ -366,9 +425,9 @@ _CRC = be.Struct(
     crc='uint16',
 )
 
-def _parse_binhex(text):
+def _parse_binhex(stream):
     """Parse a BinHex 4.0 file."""
-    front, binhex, *back = text.read().split(':')
+    front, binhex, *back = stream.text.read().split(':')
     if 'BinHex 4.0' not in front:
         logging.warning('No BinHex 4.0 signature found.')
     back = ''.join(back).strip()
@@ -433,52 +492,100 @@ def _parse_binhex(text):
         b'\r(This file must be converted with BinHex 4.0)\r',
     ),
 )
-class BinHexContainer(Container):
+class BinHexContainer(MacContainer):
     """BinHex 4.0 Container."""
+    parse = staticmethod(_parse_binhex)
 
-    def __init__(self, file, mode='r', *, overwrite=False):
-        """Create wrapper."""
-        # mode really should just be 'r' or 'w'
-        mode = mode[:1]
-        if mode != 'r':
-            raise ContainerFormatError(
-                'Writing to BinHex container is not implemented.'
-            )
-        with open_stream(file, mode, overwrite=overwrite) as stream:
-            self._fork_name, self._data, self._rsrc = _parse_binhex(stream.text)
-        super().__init__(None, mode, stream.name)
 
-    def __iter__(self):
-        """List contents."""
-        contents = []
-        if self._data:
-            contents.append(f'{self._fork_name}.data')
-        if self._rsrc:
-            contents.append(f'{self._fork_name}.rsrc')
-        return iter(contents)
+##############################################################################
+# MacBinary container
+# v1: https://www.cryer.co.uk/file-types/b/bin_/original_mac_binary_format_proposal.htm
+# v2: https://files.stairways.com/other/macbinaryii-standard-info.txt
+# v2 defines additional fields inside an area zeroed in v1. we can ignore them.
 
-    def open(self, name, mode):
-        """Open a stream in the container."""
-        # using posixpath for internal paths in the archive
-        # as forward slash should always work, but backslash would fail on unix
-        mode = mode[:1]
-        if mode != 'r':
-            raise ContainerFormatError(
-                'Writing to BinHex container is not implemented.'
-            )
-        filename = str(name)[-4:].lower()
-        if filename not in ('data', 'rsrc'):
-            raise FileNotFoundError(
-                'Stream name on BinHex container must end with `rsrc` or `data`'
-            )
-        filename = f'{self._fork_name}.{filename}'
-        # always open as binary
-        logging.debug('Opening fork `%s` on BinHex container `%s`.', filename, self.name)
-        if filename.endswith('data'):
-            fork = self._data
-        else:
-            fork = self._rsrc
-        if not fork:
-            raise FileNotFoundError(filename)
-        newfile = Stream(get_bytesio(fork), mode=mode, name=filename)
-        return newfile
+from .binary import align
+
+
+_MACBINARY_HEADER = be.Struct(
+    # Offset 000-Byte, old version number, must be kept at zero for compatibility
+    old_version='byte',
+    # Offset 001-Byte, Length of filename (must be in the range 1-63)
+    filename_length='byte',
+    # Offset 002-1 to 63 chars, filename (only "length" bytes are significant).
+    filename='63s',
+    # Offset 065-Long Word, file type (normally expressed as four characters)
+    file_type='4s',
+    # Offset 069-Long Word, file creator (normally expressed as four characters)
+    file_creator='4s',
+    # Offset 073-Byte, original Finder flags
+    original_finder_flags='byte',
+    # Offset 074-Byte, zero fill, must be zero for compatibility
+    zero_0='byte',
+    # Offset 075-Word, file's vertical position within its window.
+    window_vert='word',
+    # Offset 077-Word, file's horizontal position within its window.
+    window_horiz='word',
+    # Offset 079-Word, file's window or folder ID.
+    window_id='word',
+    # Offset 081-Byte, "Protected" flag (in low order bit).
+    protected='byte',
+    # Offset 082-Byte, zero fill, must be zero for compatibility
+    zero_1='byte',
+    # Offset 083-Long Word, Data Fork length (bytes, zero if no Data Fork).
+    data_length='dword',
+    # Offset 087-Long Word, Resource Fork length (bytes, zero if no R.F.).
+    rsrc_length='dword',
+    # Offset 091-Long Word, File's creation date
+    creation_date='dword',
+    # Offset 095-Long Word, File's "last modified" date.
+    last_modified_date='dword',
+    # Offset 099-Word, length of Get Info comment to be sent after the resource
+    # fork (if implemented, see below).
+    get_info_length='word',
+    # *Offset 101-Byte, Finder Flags, bits 0-7. (Bits 8-15 are already in byte 73)
+    finder_flags='byte',
+    # *Offset 116-Long Word, Length of total files when packed files are unpacked.
+    packed_length='dword',
+    # *Offset 120-Word, Length of a secondary header.  If this is non-zero,
+    #              Skip this many bytes (rounded up to the next multiple of 128)
+    #              This is for future expansion only, when sending files with
+    #              MacBinary, this word should be zero.
+    second_header_length='dword',
+    # *Offset 122-Byte, Version number of Macbinary II that the uploading program
+    # is written for (the version begins at 129)
+    writer_version='byte',
+    # *Offset 123-Byte, Minimum MacBinary II version needed to read this file
+    # (start this value at 129 129)
+    reader_version='byte',
+    # *Offset 124-Word, CRC of previous 124 bytes
+    crc='word',
+    # from v1 desc:
+    # > 126 2 Reserved for computer type and OS ID
+    # > (this field will be zero for the current Macintosh).
+    reserved='word',
+    # *This is newly defined for MacBinary II.
+)
+
+def _parse_macbinary(stream):
+    """Parse a MacBinary file."""
+    data = stream.read()
+    header = _MACBINARY_HEADER.from_bytes(data)
+    ofs = 128
+    if header.old_version != 0:
+        raise FileFormatError(
+            'Not a MacBinary file: incorrect version field'
+            f' ({header.old_version}).'
+        )
+    if header.writer_version > 128:
+        ofs += align(header.second_header_length, 7)
+    data_fork = data[ofs:ofs+header.data_length]
+    ofs += align(header.data_length, 7)
+    rsrc_fork = data[ofs:ofs+header.rsrc_length]
+    name = header.filename.decode('mac-roman').strip()
+    return name, data_fork, rsrc_fork
+
+
+@containers.register('.bin')
+class MacBinaryContainer(MacContainer):
+    """MacBinary Container."""
+    parse = staticmethod(_parse_macbinary)
