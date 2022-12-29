@@ -51,6 +51,8 @@ class FontProperties(DefaultProps):
     name: str
     # typeface/font family
     family: str
+    # unique id
+    font_id: str
 
     # font metadata
     # can't be calculated

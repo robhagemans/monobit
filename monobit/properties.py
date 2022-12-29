@@ -106,6 +106,11 @@ class Props(SimpleNamespace):
             + '\n)'
         )
 
+    def __ior__(self, rhs):
+        """Update with other Properties object."""
+        self.__dict__.update(vars(rhs))
+        return self
+
 
 ##############################################################################
 # property sets with default values, override policy and type conversion

@@ -8,6 +8,7 @@ licence: https://opensource.org/licenses/MIT
 import sys
 import logging
 import json
+import math
 
 
 try:
@@ -121,8 +122,8 @@ _TAGS = (
     'bhed', 'head',
     'EBDT', 'bdat', 'EBLC', 'bloc',
     'hmtx', 'hhea',
+    'name',
 )
-
 
 def _read_sfnt(instream):
     """Read an SFNT resource into data structure."""
@@ -205,7 +206,7 @@ def _convert_sfnt(sfnt):
     # synonymous tables
     sfnt.bdat = sfnt.bdat or sfnt.EBDT
     sfnt.bloc = sfnt.bloc or sfnt.EBLC
-    sfnt.bhed = sfnt.bhed or sfnt.head
+    sfnt.head = sfnt.bhed or sfnt.head
     if not sfnt.bdat or not sfnt.bloc:
         raise ResourceFormatError('No bitmap strikes found in sfnt resource.')
     fonts = []
@@ -341,7 +342,14 @@ def _convert_glyphs(sfnt, i_strike):
 
 def _convert_props(sfnt, i_strike):
     """Build font properties from sfnt data."""
-    strike = sfnt.bloc.strikes[i_strike]
+    props = _convert_bloc_props(sfnt.bloc, i_strike)
+    props |= _convert_head_props(sfnt.head)
+    props |= _convert_name_props(sfnt.name)
+    return props
+
+def _convert_bloc_props(bloc, i_strike):
+    """Convert font properties from EBLC/bloc table."""
+    strike = bloc.strikes[i_strike]
     bmst = strike.bitmapSizeTable
     # validations
     if bmst.bitDepth != 1:
@@ -356,7 +364,8 @@ def _convert_props(sfnt, i_strike):
         bmst.flags = 1
     props = Props()
     # asppect ratio is the inverse of pixels-per-em ratio
-    props.pixel_aspect = (bmst.ppemY, bmst.ppemX)
+    den = math.gcd(bmst.ppemY, bmst.ppemX)
+    props.pixel_aspect = (bmst.ppemY//den, bmst.ppemX//den)
     small_metrics_are_vert = bmst.flags == 2
     # horizontal line metrics
     # according to the EBLC spec the sbit metrics also define the linegap
@@ -366,6 +375,140 @@ def _convert_props(sfnt, i_strike):
     # vertical line metrics
     # we don't keep track of 'ascent' and 'descent' for vert, maybe we should
     # anyway, which way is the 'ascent', left or right?
+    return props
+
+
+# interpretation of head.macStyle flags
+_STYLE_MAP = {
+    0: 'bold',
+    1: 'italic',
+    2: 'underline',
+    3: 'outline',
+    4: 'shadow',
+    5: 'condensed',
+    6: 'extended',
+}
+def mac_style_name(font_style):
+    """Get human-readable representation of font style."""
+    return ' '.join(
+        _tag for _bit, _tag in _STYLE_MAP.items() if font_style & (1 << _bit)
+    )
+
+
+def _convert_head_props(head):
+    """Convert font properties from head/bhed table."""
+    if not head:
+        return Props()
+    # units_per_em = head.unitsPerEm
+    # we also had pixels per em in the EBLC table, so now we know units per pixel
+    props = Props(
+        revision=head.fontRevision,
+        style=mac_style_name(head.macStyle),
+    )
+    return props
+
+
+# based on:
+# [1] Apple Technotes (As of 2002)/te/te_02.html
+# [2] https://developer.apple.com/library/archive/documentation/mac/Text/Text-367.html#HEADING367-0
+MAC_ENCODING = {
+    0: 'mac-roman',
+    1: 'mac-japanese',
+    2: 'mac-trad-chinese',
+    3: 'mac-korean',
+    4: 'mac-arabic',
+    5: 'mac-hebrew',
+    6: 'mac-greek',
+    7: 'mac-cyrillic', # [1] russian
+    # 8: [2] right-to-left symbols
+    9: 'mac-devanagari',
+    10: 'mac-gurmukhi',
+    11: 'mac-gujarati',
+    12: 'mac-oriya',
+    13: 'mac-bengali',
+    14: 'mac-tamil',
+    15: 'mac-telugu',
+    16: 'mac-kannada',
+    17: 'mac-malayalam',
+    18: 'mac-sinhalese',
+    19: 'mac-burmese',
+    20: 'mac-khmer',
+    21: 'mac-thai',
+    22: 'mac-laotian',
+    23: 'mac-georgian',
+    24: 'mac-armenian',
+    25: 'mac-simp-chinese', # [1] maldivian
+    26: 'mac-tibetan',
+    27: 'mac-mongolian',
+    28: 'mac-ethiopic', # [2] == geez
+    29: 'mac-centraleurope', # [1] non-cyrillic slavic
+    30: 'mac-vietnamese',
+    31: 'mac-sindhi', # [2] == ext-arabic
+    #32: [1] [2] 'uninterpreted symbols'
+}
+#
+# WIN_ENCODING = {
+#     0: 'windows-symbol',
+#     1: 'utf-16le', # unicode bmp
+#     2: 'ms932', # shift-jis
+#     3: 'ms936', # PRC
+#     4: 'ms950', # Big-5
+#     5: 'ms949', # Wansung
+#     6: 'ms1361', # Johab
+#     10: 'utf-16le', # Unicode full repertoire
+# }
+def _decode_name(namerecs, nameid):
+    for namerec in namerecs:
+        if namerec.nameID != nameid:
+            continue
+        if namerec.platformID == 1:
+            # mac
+            encoding = MAC_ENCODING.get(namerec.platEncID, 'mac-roman')
+        elif namerec.platformID == 3:
+            # windows
+            # > All string data for platform 3 must be encoded in UTF-16BE.
+            encoding = 'utf-16be'
+            #WIN_ENCODING.get(namerec.platEncID, 'utf-16le')
+        elif namerec.platformID == 0:
+            # unicode platform
+            encoding = 'utf-16be'
+        try:
+            return namerec.string.decode(encoding)
+        except UnicodeError:
+            pass
+        # not all these encodings will be recognised by Python
+        # fallback to latin-1
+        return namerec.string.decode('latin-1')
+    return None
+
+def _convert_name_props(name):
+    """Convert font properties from name table."""
+    if not name:
+        return Props()
+    props = Props(
+        copyright=_decode_name(name.names, 0),
+        family=_decode_name(name.names, 1),
+        # weight or slant or both
+        subfamily=_decode_name(name.names, 2),
+        font_id=_decode_name(name.names, 3),
+        name=_decode_name(name.names, 4),
+        #
+        version_string=_decode_name(name.names, 5),
+        #
+        #postscript_name
+        #
+        trademark=_decode_name(name.names, 7),
+        foundry=_decode_name(name.names, 8),
+        author=_decode_name(name.names, 9),
+        #
+        description=_decode_name(name.names, 10),
+        #
+        vendor_url=_decode_name(name.names, 11),
+        #
+        author_url=_decode_name(name.names, 12),
+        notice=_decode_name(name.names, 13),
+        license_url=_decode_name(name.names, 14),
+    )
     return props
 
 # maxp
