@@ -122,6 +122,7 @@ _TAGS = (
     'bhed', 'head',
     'EBDT', 'bdat', 'EBLC', 'bloc',
     'hmtx', 'hhea',
+    'vmtx', 'vhea',
     'name',
 )
 
@@ -342,9 +343,16 @@ def _convert_glyphs(sfnt, i_strike):
 
 def _convert_props(sfnt, i_strike):
     """Build font properties from sfnt data."""
+    # determine the size of a pixel in FUnits
+    bmst = sfnt.bloc.strikes[i_strike].bitmapSizeTable
+    vert_fu_p_pix = sfnt.head.unitsPerEm / bmst.ppemY
+    hori_fu_p_pix = sfnt.head.unitsPerEm / bmst.ppemX
+    # we also had pixels per em in the EBLC table, so now we know units per pixel
     props = _convert_bloc_props(sfnt.bloc, i_strike)
     props |= _convert_head_props(sfnt.head)
     props |= _convert_name_props(sfnt.name)
+    props |= _convert_hhea_props(sfnt.hhea, vert_fu_p_pix)
+    props |= _convert_vhea_props(sfnt.vhea, hori_fu_p_pix)
     return props
 
 def _convert_bloc_props(bloc, i_strike):
@@ -399,13 +407,43 @@ def _convert_head_props(head):
     """Convert font properties from head/bhed table."""
     if not head:
         return Props()
-    # units_per_em = head.unitsPerEm
-    # we also had pixels per em in the EBLC table, so now we know units per pixel
     props = Props(
         revision=head.fontRevision,
         style=mac_style_name(head.macStyle),
     )
     return props
+
+def _convert_hhea_props(hhea, vert_fu_p_pix):
+    """Convert font properties from hhea table."""
+    return Props()
+    #if not hhea:
+    props = Props(
+        ascent=hhea.ascent // vert_fu_p_pix,
+        descent=hhea.descent // vert_fu_p_pix,
+        line_height=(
+            (hhea.ascent + hhea.descent + hhea.lineGap)
+            // vert_fu_p_pix
+        ),
+    )
+    return props
+
+def _convert_vhea_props(vhea, horiz_fu_p_pix):
+    """Convert font properties from vhea table."""
+    return Props()
+    #if not hhea:
+    props = Props(
+        # > from the centerline to the previous line’s descent
+        # > assuming top-to-bottom right-to-left
+        right_extent=hhea.ascent // horiz_fu_p_pix,
+        # > from the centerline to the next line’s descent
+        left_extent=hhea.descent // horiz_fu_p_pix,
+        line_width=(
+            (hhea.ascender + hhea.descender + hhea.lineGap)
+            // horiz_fu_p_pix
+        ),
+    )
+    return props
+
 
 
 # based on:

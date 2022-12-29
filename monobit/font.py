@@ -124,6 +124,10 @@ class FontProperties(DefaultProps):
     ascent: int
     # recommended typographic descent relative to baseline (not necessarily equal to bottom)
     descent: int
+    # 'descent' for vertical rendering
+    left_extent: int
+    # 'ascent' for vertical rendering
+    right_extent: int
     # nominal pixel size, always equals ascent + descent
     pixel_size: int
     # vertical interline spacing, defined as line_height - pixel_size
