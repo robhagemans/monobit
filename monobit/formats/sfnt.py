@@ -346,39 +346,46 @@ def _convert_glyphs(sfnt, i_strike, hori_fu_p_pix, vert_fu_p_pix):
     glyphs = []
     strike = sfnt.bdat.strikeData[i_strike]
     blocstrike = sfnt.bloc.strikes[i_strike]
-    for name, glyph in strike.items():
-        try:
-            metrics = glyph.metrics
-        except AttributeError:
-            for subtable in blocstrike.indexSubTables:
-                if name in subtable.names:
-                    metrics = subtable.metrics
-                    break
+    for subtable in blocstrike.indexSubTables:
+        # some formats are byte aligned, others bit-aligned
+        if subtable.imageFormat in (1, 6):
+            align = 'left'
+        elif subtable.imageFormat in (2, 5, 7):
+            align = 'bit'
+        else:
+            # format 8, 9: component bitmaps
+            # format 3: obsolete, not used
+            # format 4: modified-Hufffman compressed, insufficiently documented
+            logging.warning(
+                'Unsupported image format %d', subtable.imageFormat
+            )
+            continue
+        for name in subtable.names:
+            glyph = strike[name]
+            try:
+                metrics = glyph.metrics
+            except AttributeError:
+                metrics = subtable.metrics
+            width = metrics.width
+            height = metrics.height
+            if not width or not height:
+                glyphbytes = b''
             else:
-                logging.warning('No metrics found.')
-                metrics = {}
-        width = metrics.width
-        height = metrics.height
-        try:
-            byts = glyph.imageData
-        except AttributeError:
-            if width or height:
-                logging.warning(f'No image data for glyph `{name}`')
-                continue
-            byts = b''
-        small_is_vert = blocstrike.bitmapSizeTable.flags == 2
-        props = _convert_glyph_metrics(metrics, small_is_vert)
-        props.update(_convert_hmtx_metrics(sfnt.hmtx, name, hori_fu_p_pix, width))
-        props.update(_convert_vmtx_metrics(sfnt.vmtx, name, vert_fu_p_pix, height))
-
-        # FIXME - some formats are byte aligned
-
-        glyph = Glyph.from_bytes(
-            byts, width=width, align='bit',
-            tag=name, char=unitable.get(name, ''),
-            codepoint=enctable.get(name, b''), **props
-        )
-        glyphs.append(glyph)
+                try:
+                    glyphbytes = glyph.imageData
+                except AttributeError:
+                    logging.warning(f'No image data for glyph `{name}`')
+                    continue
+            small_is_vert = blocstrike.bitmapSizeTable.flags == 2
+            props = _convert_glyph_metrics(metrics, small_is_vert)
+            props.update(_convert_hmtx_metrics(sfnt.hmtx, name, hori_fu_p_pix, width))
+            props.update(_convert_vmtx_metrics(sfnt.vmtx, name, vert_fu_p_pix, height))
+            glyph = Glyph.from_bytes(
+                glyphbytes, width=width, align=align,
+                tag=name, char=unitable.get(name, ''),
+                codepoint=enctable.get(name, b''), **props
+            )
+            glyphs.append(glyph)
     return glyphs
 
 
