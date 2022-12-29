@@ -124,6 +124,8 @@ _TAGS = (
     'hmtx', 'hhea',
     'vmtx', 'vhea',
     'name',
+    # OS/2 - Windows metrics
+    # kern - Apple kerning
 )
 
 def _read_sfnt(instream):
@@ -212,9 +214,14 @@ def _convert_sfnt(sfnt):
         raise ResourceFormatError('No bitmap strikes found in sfnt resource.')
     fonts = []
     for i_strike in range(sfnt.bloc.numSizes):
-        props = _convert_props(sfnt, i_strike)
-        glyphs = _convert_glyphs(sfnt, i_strike)
-        fonts.append(Font(glyphs, source_format=source_format, **vars(props)))
+        try:
+            props = _convert_props(sfnt, i_strike)
+            glyphs = _convert_glyphs(sfnt, i_strike, props._hfupp, props._vfupp)
+            del props._hfupp
+            del props._vfupp
+            fonts.append(Font(glyphs, source_format=source_format, **vars(props)))
+        except StrikeFormatError:
+            pass
     return fonts
 
 
@@ -294,22 +301,44 @@ def _convert_glyph_metrics(metrics, small_is_vert):
     elif not small_is_vert:
         # small metrics
         return dict(
-            left_bearing=metrics.dearingX,
-            right_bearing=metrics.advance - metrics.width - metrics.bearingX,
-            shift_up=metrics.bearingY - metrics.height,
+            left_bearing=metrics.BearingX,
+            right_bearing=metrics.Advance - metrics.width - metrics.BearingX,
+            shift_up=metrics.BearingY - metrics.height,
         )
     else:
         # small metrics, interpret as vert
         return dict(
-            shift_left=metrics.bearingX,
-            top_bearing=metrics.bearingY,
+            shift_left=metrics.BearingX,
+            top_bearing=metrics.BearingY,
             bottom_bearing=(
-                metrics.advance - metrics.height - metrics.bearingY
+                metrics.Advance - metrics.height - metrics.BearingY
             ),
         )
 
+def _convert_hmtx_metrics(hmtx, glyph_name, hori_fu_p_pix, width):
+    if hmtx:
+        hm = hmtx.metrics.get(glyph_name, None)
+        if hm:
+            advance, left_bearing = hm
+            return dict(
+                left_bearing=left_bearing // hori_fu_p_pix,
+                right_bearing=(advance - left_bearing) // hori_fu_p_pix - width,
+            )
+    return {}
 
-def _convert_glyphs(sfnt, i_strike):
+def _convert_vmtx_metrics(vmtx, glyph_name, vert_fu_p_pix, height):
+    if vmtx:
+        vm = vmtx.metrics.get(glyph_name, None)
+        if vm:
+            advance, top_bearing = vm
+            return dict(
+                top_bearing=top_bearing // vert_fu_p_pix,
+                bottom_bearing=(advance - top_bearing) // vert_fu_p_pix - height,
+            )
+    return {}
+
+
+def _convert_glyphs(sfnt, i_strike, hori_fu_p_pix, vert_fu_p_pix):
     """Build glyphs and glyph properties from sfnt data."""
     unitable = _get_unicode_table(sfnt)
     enctable = _get_encoding_table(sfnt)
@@ -327,11 +356,22 @@ def _convert_glyphs(sfnt, i_strike):
             else:
                 logging.warning('No metrics found.')
                 metrics = {}
-        byts = getattr(glyph, 'imageData', '')
-        bits = bin(int.from_bytes(byts, 'big'))
         width = metrics.width
+        height = metrics.height
+        try:
+            byts = glyph.imageData
+        except AttributeError:
+            if width or height:
+                logging.warning(f'No image data for glyph `{name}`')
+                continue
+            byts = b''
         small_is_vert = blocstrike.bitmapSizeTable.flags == 2
         props = _convert_glyph_metrics(metrics, small_is_vert)
+        props.update(_convert_hmtx_metrics(sfnt.hmtx, name, hori_fu_p_pix, width))
+        props.update(_convert_vmtx_metrics(sfnt.vmtx, name, vert_fu_p_pix, height))
+
+        # FIXME - some formats are byte aligned
+
         glyph = Glyph.from_bytes(
             byts, width=8, align='bit',
             tag=name, char=unitable.get(name, ''),
@@ -353,6 +393,8 @@ def _convert_props(sfnt, i_strike):
     props |= _convert_name_props(sfnt.name)
     props |= _convert_hhea_props(sfnt.hhea, vert_fu_p_pix)
     props |= _convert_vhea_props(sfnt.vhea, hori_fu_p_pix)
+    props._hfupp = hori_fu_p_pix
+    props._vfupp = vert_fu_p_pix
     return props
 
 def _convert_bloc_props(bloc, i_strike):
@@ -401,7 +443,6 @@ def mac_style_name(font_style):
     return ' '.join(
         _tag for _bit, _tag in _STYLE_MAP.items() if font_style & (1 << _bit)
     )
-
 
 def _convert_head_props(head):
     """Convert font properties from head/bhed table."""
@@ -548,23 +589,3 @@ def _convert_name_props(name):
         license_url=_decode_name(name.names, 14),
     )
     return props
-
-# maxp
-
-# name - metadata strings
-
-# hhea, hmtx - horizontal metrics. not used in apple. ff adds them to otb
-# vhea, vmtx
-# OS/2 - Windows metrics
-# post - postscript printer information
-
-# kern - Apple kerning
-# GPOS - Opentype kerning
-
-# ESBC - embedded bimap scling table.
-# see fontforge, not supported by fonttools
-# used by fforge to generate fake windows bitmap-only ttfs
-
-# loca, glyf - added but empty in fontforge's otb
-# but https://github.com/fonttools/fonttools/issues/684
-# > I think the empty `glyf`/`loca` tables are complicating thins needlessly. They are not needed, HarfBuzz (and I think FreeType) will handle the fonts without these tables just fine and no other systems support these fonts any way. FontForge should either no added the empty table or have an option not to do so.
