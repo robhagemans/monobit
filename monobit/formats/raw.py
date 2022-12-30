@@ -132,3 +132,27 @@ def load_bitmap(
         for _index, _cell in enumerate(cells, first_codepoint)
     )
     return Font(glyphs)
+
+
+###############################################################################
+# OPTIKS PCR - near-raw format
+# http://fileformats.archiveteam.org/wiki/PCR_font
+# http://cd.textfiles.com/simtel/simtel20/MSDOS/GRAPHICS/OKF220.ZIP
+# OKF220.ZIP → OKFONTS.ZIP → FONTS.DOC - Has an overview of the format.
+
+from ..struct import little_endian as le
+
+_PCR_HEADER = le.Struct(
+    magic='7s',
+    # maybe it's a be uint16 of the file size, followed by the same size as le
+    # anyway same difference
+    height='uint8',
+    zero='uint8',
+    bytesize='uint16',
+)
+
+@loaders.register('pcr', name='pcr', magic=(b'KPG\1\2\x20\1', 'KPG\1\1\x20\1'))
+def load_pcr(instream, where=None):
+    """Load an OPTIKS .PCR font."""
+    header = _PCR_HEADER.read_from(instream)
+    return load_binary(instream, where, cell=(8, header.height), count=256)
