@@ -112,8 +112,6 @@ Supported formats
 | JSON coded binary     | `json`     |          | `.json`                     |               | ✔     | ✔     |
 | `kbd` Codepage        | `kbd-cp`   |          | `.cp`                       | Linux         | ✔     | ✔     |
 | MacOS font            | `mac-dfont`| FONT NFNT+FOND | `.dfont` `.suit`      | Classic MacOS | ✔     |       |
-| MacOS font (AS/AD)    | `mac-rsrc` | FONT NFNT+FOND | `.rsrc`               | Classic MacOS | ✔     |       |
-| MacOS font (MacBinary)| `mac-bin`  | FONT NFNT+FOND | `.bin`                | Classic MacOS | ✔     |       |
 | PDF chart [R]         | `pdf`      |          | `.pdf`                      |               |       | ✔     |
 | PC Screen Font        | `psf`      | 1 2      | `.psf` `.psfu`              | MS-DOS, Linux | ✔     | ✔ (version 2) |
 | Python coded binary   | `python`   |          | `.py`                       |               | ✔     | ✔     |
@@ -154,6 +152,25 @@ Here is a comparison of what you can and cannot store in selected formats suppor
 | `cpi`         |   |   | ✔ |   | ✔ | 8xN  |   |   |   | binary
 | `dec-drcs`    |   |   |   |   |   | >4xN |   |   |   | binary
 | `bbc`         |   |   |   |   |   | 8x8  |   |   |   | binary
+
+
+Container formats
+-----------------
+
+`monobit` will recurse and extract font files from a number of common container,
+archive and compression formats:
+
+| Format        | Typical Extension           | Read  | Write |
+|---------------|-----------------------------|-------|-------|
+| PKZip/WinZip  | `.zip`                      | ✔     | ✔     |
+| GNU tar       | `.tar` `.tgz`               | ✔     | ✔     |
+| GZip          | `.gz`                       | ✔     | ✔     |
+| BZip2         | `.bz2`                      | ✔     | ✔     |
+| XZ/LZMA       | `.xz` `.lzma`               | ✔     | ✔     |
+| AppleSingle   | `.as`                       | ✔     |       |
+| AppleDouble   | `.adf` `.rsrc`              | ✔     |       |
+| MacBinary     | `.bin`                      | ✔     |       |
+| BinHex 4.0    | `.hqx`                      | ✔     |       |
 
 
 Dependencies
