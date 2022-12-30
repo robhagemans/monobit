@@ -333,6 +333,11 @@ class GzipCompressor(Compressor):
     compressor = gzip
 
 @containers.register('.xz', magic=(b'\xFD7zXZ\x00',))
+class XZCompressor(Compressor):
+    compressor = lzma
+
+# the magic is a 'maybe'
+@containers.register('.lzma', magic=(b'\x5d\0\0',))
 class LzmaCompressor(Compressor):
     compressor = lzma
 
@@ -671,7 +676,7 @@ def _parse_apple_container(stream):
 
 
 @containers.register(
-    'as',
+    '.as',
     magic=(
         _APPLESINGLE_MAGIC.to_bytes(4, 'big'),
     ),
@@ -682,7 +687,7 @@ class AppleSingleContainer(MacContainer):
 
 
 @containers.register(
-    'adf', #'rsrc',
+    '.adf', #'rsrc',
     magic=(
         _APPLEDOUBLE_MAGIC.to_bytes(4, 'big'),
     ),
