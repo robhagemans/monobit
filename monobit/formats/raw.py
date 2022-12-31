@@ -11,6 +11,7 @@ from ..binary import ceildiv, bytes_to_bits
 from ..storage import loaders, savers
 from ..font import Font
 from ..glyph import Glyph
+from ..raster import Raster
 from ..streams import FileFormatError
 from ..basetypes import Coord
 
@@ -69,74 +70,84 @@ def load_bitmap(
         strike_count=1, strike_bytes=-1, first_codepoint=0,
     ):
     """Load fixed-width font from bitmap."""
-    rombytes = None
-    if strike_bytes <= 0:
-        if strike_count <= 0:
-            rombytes = instream.read()
-            strike_bytes = ceildiv(len(rombytes), height)
-        else:
-            strike_bytes = ceildiv(strike_count*width, 8)
-    else:
-        strike_count = -1
-    if strike_count <= 0:
-        strike_count = (strike_bytes * 8) // width
-    row_bytes = strike_bytes*height + padding
-    if count is None or count <= 0:
-        if not rombytes:
-            rombytes = instream.read()
-        # get number of chars in extract
-        nrows = ceildiv(len(rombytes), row_bytes)
-        count = nrows * strike_count
-    else:
-        nrows = ceildiv(count, strike_count)
-        if not rombytes:
-            rombytes = instream.read(nrows * row_bytes)
-    # we may exceed the length of the rom because we use ceildiv, pad with nulls
-    rombytes = rombytes.ljust(nrows * row_bytes, b'\0')
-    glyphrows = [
-        [
-            rombytes[
-                _glyphrow*row_bytes+_pixelrow*strike_bytes
-                : _glyphrow*row_bytes+(_pixelrow+1)*strike_bytes
-            ]
-            for _pixelrow in range(height)
-        ]
-        for _glyphrow in range(nrows)
-    ]
-    # convert to bits
-    drawn_glyphrows = [
-        [
-            bytes_to_bits(_row)
-            for _row in _glyphrow
-        ]
-        for _glyphrow in glyphrows
-    ]
-    if align.startswith('r') and drawn_glyphrows and drawn_glyphrows[0]:
-        bitoffset = len(drawn_glyphrows[0][0]) - strike_count*width
-    else:
-        bitoffset = 0
-    drawn_glyphrows = [
-        [
-            _row[bitoffset:]
-            for _row in _glyphrow
-        ]
-        for _glyphrow in drawn_glyphrows
-    ]
-    # clip out glyphs
-    cells = tuple(
-        tuple(
-            _row[_n*width:(_n+1)*width]
-            for _row in _glyphrow
-        )
-        for _glyphrow in drawn_glyphrows
-        for _n in range(strike_count)
+    data, count, cells_per_row, bytes_per_row, nrows = _extract_data_and_geometry(
+        instream, width, height, count, padding, strike_count, strike_bytes,
     )
+    cells = _extract_cells(
+        data, width, height, align, cells_per_row, bytes_per_row, nrows
+    )
+    # reduce to given count, if exceeded
+    cells = cells[:count]
     # assign codepoints
     glyphs = tuple(
         Glyph(_cell, codepoint=_index)
         for _index, _cell in enumerate(cells, first_codepoint)
     )
     return Font(glyphs)
+
+
+def _extract_data_and_geometry(
+        instream, width, height, count=-1, padding=0,
+        strike_count=1, strike_bytes=-1,
+    ):
+    """Determine geometry from defaults and data size."""
+    data = None
+    # determine byte-width of the bitmap strike rows
+    if strike_bytes <= 0:
+        if strike_count <= 0:
+            data = instream.read()
+            strike_bytes = len(data) // height
+        else:
+            strike_bytes = ceildiv(strike_count*width, 8)
+    else:
+        strike_count = -1
+    # deteermine number of cells per strike row
+    if strike_count <= 0:
+        strike_count = (strike_bytes * 8) // width
+    # determine bytes per strike row
+    row_bytes = strike_bytes*height + padding
+    # determine number of strike rows
+    if count is None or count <= 0:
+        if not data:
+            data = instream.read()
+        # get number of chars in extract
+        nrows = ceildiv(len(data), row_bytes)
+        count = nrows * strike_count
+    else:
+        nrows = ceildiv(count, strike_count)
+        if not data:
+            data = instream.read(nrows * row_bytes)
+    # we may exceed the length of the rom because we use ceildiv, pad with nulls
+    data = data.ljust(nrows * row_bytes, b'\0')
+    if nrows == 0 or row_bytes == 0:
+        return Font()
+    return data, count, strike_count, row_bytes, nrows
+
+
+def _extract_cells(
+        data, width, height, align, cells_per_row, bytes_per_row, nrows
+    ):
+    """Extract glyphs from bitmap strike with given geometry."""
+    # extract one strike row at a time
+    # note that the strikes may not be immediately contiguous if there's padding
+    glyphrows = (
+        Raster.from_bytes(
+            data[_i*bytes_per_row : (_i+1)*bytes_per_row],
+            width*cells_per_row, height,
+            align=align
+        )
+        for _i in range(nrows)
+    )
+    # clip out glyphs
+    cells = tuple(
+        _glyphrow.crop(
+            left=_i*width,
+            right=_glyphrow.width - (_i+1)*width
+        )
+        for _glyphrow in glyphrows
+        for _i in range(cells_per_row)
+    )
+    return cells
 
 
 ###############################################################################
