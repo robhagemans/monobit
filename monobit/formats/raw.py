@@ -186,7 +186,52 @@ def load_mania(instream, where=None):
     return font
 
 
+###############################################################################
+# psftools PSF2AMS font loader
+# raw bitmap with Z80 CP/M loader, prefixed with a DOS stub, 512-bytes offset
+# https://github.com/ZXSpectrumVault/john-elliot/blob/master/psftools/tools/psf2ams.c
+# /* Offsets in PSFCOM:
+#  * 0000-000E  Initial code
+#  * 000F-002D  Signature
+#  * 002E-002F  Length of font, bytes (2k or 4k)
+#  * 0030-0031  Address of font */
 
+#_PSFCOM_STUB = bytes.fromhex('eb04 ebc3 ???? b409 ba32 01cd 21cd 20')
+_PSFCOM_SIG08 = b'\rFont converted with PSF2AMS\r\n\032'
+_PSFCOM_SIG16 = b'\rFont Converted with PSF2AMS\r\n\032'
+_PSFCOM_HEADER = le.Struct(
+    code='15s',
+    sig='31s',
+    bitmap_size='uint16',
+    # apparently the offset to the space char, but 0-31 are defined before that
+    # so this is the offset - 0x100 ?
+    address='uint16',
+)
+
+@loaders.register(
+    #'com',
+    name='psfcom',
+    magic=(b'\xeb\x04\xeb\xc3',)
+)
+def load_psfcom(instream, where=None):
+    """Load a PSFCOM font."""
+    header = _PSFCOM_HEADER.read_from(instream)
+    logging.debug('Version string %r', header.sig.decode('latin-1'))
+    if header.sig == _PSFCOM_SIG16:
+        height = 16
+    else:
+        height = 8
+    font = load_binary(
+        instream, where,
+        offset=header.address - header.size - 0x100,
+        cell=(8, height),
+    )
+    font = font.modify(
+        source_format='Amstrad/Spectrum CP/M loader (PSFCOM)',
+        encoding='amstrad-cpm-plus',
+    )
+    font = font.label()
+    return font
 
 ###############################################################################
 ###############################################################################
