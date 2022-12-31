@@ -43,7 +43,6 @@ def load_binary(
         instream, width, height, count, padding, align, strike_count, strike_bytes, first_codepoint
     )
 
-
 @savers.register(linked=load_binary)
 def save_binary(fonts, outstream, where=None):
     """
@@ -54,16 +53,37 @@ def save_binary(fonts, outstream, where=None):
     save_bitmap(outstream, fonts[0])
 
 
-def save_bitmap(outstream, font):
-    """Save fixed-width font to byte-aligned bitmap."""
-    # check if font is fixed-width and fixed-height
-    if font.spacing != 'character-cell':
-        raise FileFormatError(
-            'This format only supports character-cell fonts.'
-        )
-    for glyph in font.glyphs:
-        outstream.write(glyph.as_bytes())
+###############################################################################
+# OPTIKS PCR - near-raw format
+# http://fileformats.archiveteam.org/wiki/PCR_font
+# http://cd.textfiles.com/simtel/simtel20/MSDOS/GRAPHICS/OKF220.ZIP
+# OKF220.ZIP → OKFONTS.ZIP → FONTS.DOC - Has an overview of the format.
+# > I have added 11 bytes to the head of the file
+# > so that OPTIKS can identify it as a font file. The header has
+# > a recognition pattern, OPTIKS version number and the size of
+# > the font file.
 
+from ..struct import little_endian as le
+
+_PCR_HEADER = le.Struct(
+    magic='7s',
+    # maybe it's a be uint16 of the file size, followed by the same size as le
+    # anyway same difference
+    height='uint8',
+    zero='uint8',
+    bytesize='uint16',
+)
+
+@loaders.register('pcr', name='pcr', magic=(b'KPG\1\2\x20\1', b'KPG\1\1\x20\1'))
+def load_pcr(instream, where=None):
+    """Load an OPTIKS .PCR font."""
+    header = _PCR_HEADER.read_from(instream)
+    return load_binary(instream, where, cell=(8, header.height), count=256)
+
+
+
+###############################################################################
+# reader
 
 def load_bitmap(
         instream, width, height, count=-1, padding=0, align='left',
@@ -150,25 +170,16 @@ def _extract_cells(
     return cells
 
 
+
 ###############################################################################
-# OPTIKS PCR - near-raw format
-# http://fileformats.archiveteam.org/wiki/PCR_font
-# http://cd.textfiles.com/simtel/simtel20/MSDOS/GRAPHICS/OKF220.ZIP
-# OKF220.ZIP → OKFONTS.ZIP → FONTS.DOC - Has an overview of the format.
+# writer
 
-from ..struct import little_endian as le
-
-_PCR_HEADER = le.Struct(
-    magic='7s',
-    # maybe it's a be uint16 of the file size, followed by the same size as le
-    # anyway same difference
-    height='uint8',
-    zero='uint8',
-    bytesize='uint16',
-)
-
-@loaders.register('pcr', name='pcr', magic=(b'KPG\1\2\x20\1', 'KPG\1\1\x20\1'))
-def load_pcr(instream, where=None):
-    """Load an OPTIKS .PCR font."""
-    header = _PCR_HEADER.read_from(instream)
-    return load_binary(instream, where, cell=(8, header.height), count=256)
+def save_bitmap(outstream, font):
+    """Save fixed-width font to byte-aligned bitmap."""
+    # check if font is fixed-width and fixed-height
+    if font.spacing != 'character-cell':
+        raise FileFormatError(
+            'This format only supports character-cell fonts.'
+        )
+    for glyph in font.glyphs:
+        outstream.write(glyph.as_bytes())
