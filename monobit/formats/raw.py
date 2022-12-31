@@ -143,6 +143,44 @@ def load_pcr(instream, where=None):
 
 
 ###############################################################################
+# REXXCOM Font Mania
+# raw bitmap with DOS .COM header
+# http://fileformats.archiveteam.org/wiki/Font_Mania_(REXXCOM)
+
+from ..struct import little_endian as le
+
+# guessed by inspecion, with reference to Intel 8086 opcodes
+_FM_HEADER = le.Struct(
+    # JMP SHORT opcode 0xEB
+    jmp='uint8',
+    # signed jump target - 0x4b or 0x4e
+    code_offset='int8',
+    bitmap_offset='uint16',
+    bitmap_size='uint16',
+    # seems to be always 0x2000 le, i.e. b'\0x20'.
+    nul_space='2s',
+    version_string='62s',
+    # 'FONT MANIA, VERSION 1.0 \r\n COPYRIGHT (C) REXXCOM SYSTEMS, 1991'
+    # 'FONT MANIA, VERSION 2.0 \r\n COPYRIGHT (C) REXXCOM SYSTEMS, 1991'
+    # 'FONT MANIA, VERSION 2.2 \r\n COPYRIGHT (C) 1992  REXXCOM SYSTEMS'
+)
+
+# the version string would be a much better signature, but we need an offset
+@loaders.register('com', name='mania', magic=(b'\xEB\x4D', b'\xEB\x4E'))
+def load_mania(instream, where=None):
+    """Load a REXXCOM Font Mania font."""
+    header = _FM_HEADER.read_from(instream)
+    logging.debug('Version string %r', header.version_string.decode('latin-1'))
+    return load_binary(
+        instream, where,
+        offset=header.bitmap_offset - header.size,
+        cell=(8, header.bitmap_size//256),
+        count=256
+    )
+
+
+
+###############################################################################
 ###############################################################################
 # bitmap reader
 
