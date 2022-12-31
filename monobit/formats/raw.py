@@ -16,7 +16,7 @@ from ..streams import FileFormatError
 from ..basetypes import Coord
 
 
-@loaders.register('bin', 'rom', 'raw', 'f08', 'f14', 'f16', name='binary')
+@loaders.register('bin', 'rom', 'raw', name='binary')
 def load_binary(
         instream, where=None, *,
         cell:Coord=(8, 8), count:int=-1, offset:int=0, padding:int=0,
@@ -51,6 +51,61 @@ def save_binary(fonts, outstream, where=None):
     if len(fonts) > 1:
         raise FileFormatError('Can only save one font to raw binary file.')
     save_bitmap(outstream, fonts[0])
+
+
+###############################################################################
+# raw 8x14 format
+# CHET .814 - http://fileformats.archiveteam.org/wiki/CHET_font
+
+@loaders.register('814', name='chet')
+def load_pcr(instream, where=None):
+    """Load a raw 8x14 font."""
+    return load_binary(instream, where, cell=(8, 14), count=256)
+
+
+###############################################################################
+# raw 8x8 format
+# https://www.seasip.info/Unix/PSF/Amstrad/UDG/index.html
+
+@loaders.register('64c', 'udg', name='8x8')
+def load_8x8(instream, where=None):
+    """Load a raw 8x8 font."""
+    return load_binary(instream, where, cell=(8, 8), count=256)
+
+# https://www.seasip.info/Unix/PSF/Amstrad/Genecar/index.html
+# GENECAR included three fonts in a format it calls .CAR. This is basically a
+# raw dump of the font, but using a 16×16 character cell rather than the usual 16×8.
+@loaders.register('car', name='16x16')
+def load_16x16(instream, where=None):
+    """Load a raw 16x16 font."""
+    return load_binary(instream, where, cell=(16, 16))
+
+
+###############################################################################
+# raw 8xN format with height in suffix
+# guess we won't have them less than 4 or greater than 31
+
+from pathlib import PurePath
+
+_F_SUFFIXES = tuple(f'f{_height:02}' for _height in range(4, 32))
+
+@loaders.register(*_F_SUFFIXES, name='8xn')
+def load_8xn(instream, where=None):
+    """Load a raw 8x14 font."""
+    suffix = PurePath(instream.name).suffix
+    try:
+        height = int(suffix[2:])
+    except ValueError:
+        height=8
+    return load_binary(instream, where, cell=(8, height))
+
+
+###############################################################################
+# raw formats we can't easily recognise from suffix or magic
+
+# degas elite .fnt, 8x16x128, + flags, 2050 bytes https://temlib.org/AtariForumWiki/index.php/DEGAS_Elite_Font_file_format
+# warp 9 .fnt, 8x16x256 + flags, 4098 bytes https://temlib.org/AtariForumWiki/index.php/Warp9_Font_file_format
+# however not all have the extra word
 
 
 ###############################################################################
