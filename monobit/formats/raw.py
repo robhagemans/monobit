@@ -69,9 +69,11 @@ def load_bitmap(
         strike_count=1, strike_bytes=-1, first_codepoint=0,
     ):
     """Load fixed-width font from bitmap."""
+    rombytes = None
     if strike_bytes <= 0:
         if strike_count <= 0:
-            strike_bytes = len(rombytes)
+            rombytes = instream.read()
+            strike_bytes = ceildiv(len(rombytes), height)
         else:
             strike_bytes = ceildiv(strike_count*width, 8)
     else:
@@ -80,13 +82,15 @@ def load_bitmap(
         strike_count = (strike_bytes * 8) // width
     row_bytes = strike_bytes*height + padding
     if count is None or count <= 0:
-        rombytes = instream.read()
+        if not rombytes:
+            rombytes = instream.read()
         # get number of chars in extract
         nrows = ceildiv(len(rombytes), row_bytes)
         count = nrows * strike_count
     else:
         nrows = ceildiv(count, strike_count)
-        rombytes = instream.read(nrows * row_bytes)
+        if not rombytes:
+            rombytes = instream.read(nrows * row_bytes)
     # we may exceed the length of the rom because we use ceildiv, pad with nulls
     rombytes = rombytes.ljust(nrows * row_bytes, b'\0')
     glyphrows = [
@@ -127,6 +131,7 @@ def load_bitmap(
         for _glyphrow in drawn_glyphrows
         for _n in range(strike_count)
     )
+    # assign codepoints
     glyphs = tuple(
         Glyph(_cell, codepoint=_index)
         for _index, _cell in enumerate(cells, first_codepoint)
