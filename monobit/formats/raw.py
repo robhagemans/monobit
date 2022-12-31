@@ -16,7 +16,7 @@ from ..streams import FileFormatError
 from ..basetypes import Coord
 
 
-@loaders.register('bin', 'rom', 'raw', name='binary')
+@loaders.register('bin', 'rom', name='raw')
 def load_binary(
         instream, where=None, *,
         cell:Coord=(8, 8), count:int=-1, offset:int=0, padding:int=0,
@@ -62,20 +62,20 @@ def save_bitmap(
 # raw 8x14 format
 # CHET .814 - http://fileformats.archiveteam.org/wiki/CHET_font
 
-@loaders.register('814', name='chet')
-def load_pcr(instream, where=None):
+@loaders.register('814', name='8x14')
+def load_chet(instream, where=None):
     """Load a raw 8x14 font."""
-    return load_binary(instream, where, cell=(8, 14), count=256)
+    return load_binary(instream, where, cell=(8, 14))
 
 
 ###############################################################################
 # raw 8x8 format
 # https://www.seasip.info/Unix/PSF/Amstrad/UDG/index.html
 
-@loaders.register('64c', 'udg', name='8x8')
+@loaders.register('64c', 'udg', 'ch8', name='8x8')
 def load_8x8(instream, where=None):
     """Load a raw 8x8 font."""
-    return load_binary(instream, where, cell=(8, 8), count=256)
+    return load_binary(instream, where, cell=(8, 8))
 
 # https://www.seasip.info/Unix/PSF/Amstrad/Genecar/index.html
 # GENECAR included three fonts in a format it calls .CAR. This is basically a
@@ -96,7 +96,7 @@ _F_SUFFIXES = tuple(f'f{_height:02}' for _height in range(4, 32))
 
 @loaders.register(*_F_SUFFIXES, name='8xn')
 def load_8xn(instream, where=None):
-    """Load a raw 8x14 font."""
+    """Load a raw 8xN font."""
     suffix = PurePath(instream.name).suffix
     try:
         height = int(suffix[2:])
@@ -155,7 +155,7 @@ def load_pcr(instream, where=None):
 
 from ..struct import little_endian as le
 
-# guessed by inspecion, with reference to Intel 8086 opcodes
+# guessed by inspection, with reference to Intel 8086 opcodes
 _FM_HEADER = le.Struct(
     # JMP SHORT opcode 0xEB
     jmp='uint8',

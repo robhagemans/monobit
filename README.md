@@ -95,10 +95,10 @@ Supported formats
 | BBC soft font         | `bbc`      |          |                             | BBC Micro     | ✔     | ✔     |
 | X11/Adobe BDF         | `bdf`      |          | `.bdf`                      | Unix          | ✔     | ✔     |
 | AngelCode BMFont [P]  | `bmfont` | text binary XML JSON | `.fnt` `.xml` `.json` + images  | | ✔     | ✔ (text, JSON) |
-| Raw binary            | `binary`   |          | `.fnt` `.rom` `.f??` `.ch8` `.64c` `.chr`|  | ✔     | ✔     |
+| Raw binary            | `raw`      |          | `.fnt` `.rom` [*]           |  | ✔     | ✔     |
 | C or C++ coded binary | `c`        |          | `.c` `.cpp` `.cc` `.h`      |               | ✔     | ✔     |
 | Codepage Information  | `cpi` | FONT FONT.NT DRFONT | `.cpi` | MS-DOS, Windows NT, DR-DOS   | ✔     | ✔     |
-| Daisy-Dot             | `daisy` | II III Magnified | `.nlq` `.nl?`          | Atari         | ✔     |       |
+| Daisy-Dot             | `daisy` | II III Magnified | `.nlq` `.nl2` `.nl3` `.nl4` | Atari    | ✔     |       |
 | DEC DRCS soft font    | `dec-drcs` |          |                             | DEC VT        | ✔     | ✔     |
 | FZX font              | `fzx`      |          | `.fzx`                      | ZX Spectrum   | ✔     | ✔     |
 | Figlet font           | `figlet`   |          | `.flf`                      | Unix          | ✔     | ✔     |
@@ -112,8 +112,11 @@ Supported formats
 | JSON coded binary     | `json`     |          | `.json`                     |               | ✔     | ✔     |
 | `kbd` Codepage        | `kbd-cp`   |          | `.cp`                       | Linux         | ✔     | ✔     |
 | MacOS font            | `mac-dfont`| FONT NFNT+FOND | `.dfont` `.suit`      | Classic MacOS | ✔     |       |
+| REXXCOM Font Mania    | `mania`    |          | `.com`                      | DOS           | ✔     |       |
+| Optiks PCR Font       | `pcr`      |          | `.pcr`                      | DOS           | ✔     |       |
 | PDF chart [R]         | `pdf`      |          | `.pdf`                      |               |       | ✔     |
 | PC Screen Font        | `psf`      | 1 2      | `.psf` `.psfu`              | MS-DOS, Linux | ✔     | ✔ (version 2) |
+| PSF2AMS PSFCOM        | `psfcom`   |          | `.com`                      | Z80 CP/M      | ✔     |       |
 | Python coded binary   | `python`   |          | `.py`                       |               | ✔     | ✔     |
 | Signum! 2  | `signum-*` | editor 9-pin 24-pin laser | `.e24` `.p9` `.p24` `.l30` | Atari ST | ✔     |       |
 | vfont                 | `vfont`    |          |                             | BSD, SunOS    | ✔     | ✔     |
@@ -121,8 +124,32 @@ Supported formats
 | Windows font          | `win-fon`  | 1.0 2.0 3.0 NE PE | `.fon`             | Windows 1.x 2.x 3.x | ✔  | ✔ (2.0 NE, 3.0 NE) |
 
 
-[P] - requires **PIL**
-[R] - requires **reportlab**
+[P] - requires **PIL**  
+[R] - requires **reportlab**  
+
+
+[*] Identifying raw binary files
+--------------------------------
+
+This is the most common format used on old platforms, often with the unhelpful suffix `.fnt`. As there is no metadata, it's up to you to specify the character-cell size. The most common, and default, size is 8x8 (CGA and many 8-bit platforms), followed by 8x16 (VGA) and 8x14 (EGA).
+
+- 8x8 raw files are also known as `.f08`, `.ch8`, `.64c`, `.chr`, `.udg`, and many others.
+- 8x14 raw files are also known as `.f14` or CHET `.814`.
+- 8x16 raw files are also known as `.f16`, Warp 9 `.fnt` or Degas Elite `.fnt`
+- Genecar `.car` files are 16x16 raw files.
+- Harlekin III `.fnt` files are raw binaries with a 4096x8 pixel bitmap strike hosting 512 8x8 glyphs side by side. Extract with `-strike-width=512`.
+
+It is also useful to check the file size. Raw files commonly hold 96 (ASCII excluding controls), 128 (ASCII), 256, or multiples thereof. Common file sizes therefore are:
+
+|       |  8x8  |  8x14 |  8x16 |
+|-------|-------|-------|-------|
+| **96**|   768 |  1344 |  1536 |
+|**128**|  1024 |  1792 |  2048 |
+|**256**|  2048 |  3584 |  4096 |
+|**512**|  4096 |  7168 |  8192 |
+
+
+If your unidentified font file has one of these sizes, chances are it is a raw binary file.
 
 
 Font format features
