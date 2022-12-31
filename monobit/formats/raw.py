@@ -138,7 +138,9 @@ _PCR_HEADER = le.Struct(
 def load_pcr(instream, where=None):
     """Load an OPTIKS .PCR font."""
     header = _PCR_HEADER.read_from(instream)
-    return load_binary(instream, where, cell=(8, header.height), count=256)
+    font = load_binary(instream, where, cell=(8, header.height), count=256)
+    font = font.modify(source_format='Optiks PCR')
+    return font
 
 
 
@@ -166,17 +168,23 @@ _FM_HEADER = le.Struct(
 )
 
 # the version string would be a much better signature, but we need an offset
-@loaders.register('com', name='mania', magic=(b'\xEB\x4D', b'\xEB\x4E'))
+@loaders.register(
+    #'com',
+    name='mania', magic=(b'\xEB\x4D', b'\xEB\x4E')
+)
 def load_mania(instream, where=None):
     """Load a REXXCOM Font Mania font."""
     header = _FM_HEADER.read_from(instream)
     logging.debug('Version string %r', header.version_string.decode('latin-1'))
-    return load_binary(
+    font = load_binary(
         instream, where,
         offset=header.bitmap_offset - header.size,
         cell=(8, header.bitmap_size//256),
         count=256
     )
+    font = font.modify(source_format='DOS loader (REXXCOM Font Mania)')
+    return font
+
 
 
 
