@@ -24,15 +24,15 @@ def load_binary(
         first_codepoint:int=0
     ):
     """
-    Load character-cell font from byte-aligned binary or bitmap strike.
+    Load character-cell font from binary bitmap.
 
     cell: size X,Y of character cell (default: 8x8)
     offset: number of bytes in file before bitmap starts (default: 0)
     padding: number of bytes between encoded glyph rows (default: 0)
     count: number of glyphs to extract (<= 0 means all; default: all)
-    align: alignment of glyph in byte (left for most-, right for least-significant; default: left; ignored if strike==True)
     strike_count: number of glyphs in glyph row (<=0 for all; default: 1)
     strike_bytes: strike width in bytes (<=0 means as many as needed to fit the glyphs; default: as needed)
+    align: alignment of strike row ('left' for most-, 'right' for least-significant; 'bit' for bit-aligned; default: 'left')
     first_codepoint: first code point in bitmap (default: 0)
     """
     width, height = cell
@@ -43,14 +43,19 @@ def load_binary(
         instream, width, height, count, padding, align, strike_count, strike_bytes, first_codepoint
     )
 
-@savers.register(linked=load_binary)
-def save_binary(fonts, outstream, where=None):
+def save_bitmap(
+        outstream, font, *,
+        strike_count:int=1, align:str='left', padding:int=0,
+    ):
     """
-    Save character-cell font to byte-aligned binary.
+    Save character-cell fonts to binary bitmap.
+
+    strike_count: number of glyphs in glyph row (<=0 for all; default: 1)
+    align: alignment of strike row ('left' for most-, 'right' for least-significant; 'bit' for bit-aligned; default: 'left')
+    padding: number of bytes between encoded glyph rows (default: 0)
     """
-    if len(fonts) > 1:
-        raise FileFormatError('Can only save one font to raw binary file.')
-    save_bitmap(outstream, fonts[0])
+    for font in fonts:
+        save_bitmap(outstream, font)
 
 
 ###############################################################################
@@ -138,7 +143,8 @@ def load_pcr(instream, where=None):
 
 
 ###############################################################################
-# reader
+###############################################################################
+# bitmap reader
 
 def load_bitmap(
         instream, width, height, count=-1, padding=0, align='left',
@@ -225,16 +231,35 @@ def _extract_cells(
     return cells
 
 
-
 ###############################################################################
-# writer
+###############################################################################
+# bitmap writer
 
-def save_bitmap(outstream, font):
-    """Save fixed-width font to byte-aligned bitmap."""
-    # check if font is fixed-width and fixed-height
+def save_bitmap(
+        outstream, font, *,
+        strike_count:int=1, align:str='left', padding:int=0,
+    ):
+    """
+    Save character-cell font to binary bitmap.
+
+    strike_count: number of glyphs in glyph row (<=0 for all; default: 1)
+    align: alignment of strike row ('left' for most-, 'right' for least-significant; 'bit' for bit-aligned; default: 'left')
+    padding: number of bytes between encoded glyph rows (default: 0)
+    """
     if font.spacing != 'character-cell':
         raise FileFormatError(
             'This format only supports character-cell fonts.'
         )
-    for glyph in font.glyphs:
-        outstream.write(glyph.as_bytes())
+    # TODO: normalise
+    # get pixel rasters
+    rasters = (_g.pixels for _g in font_glyphs)
+    # contruct rows (itertools.grouper recipe)
+    args = [iter(_g)] * strike_count
+    grouped = zip_longest(*args, fillvalue=Glyph())
+    glyphrows = (
+        Raster.concatenate(*_row)
+        for _row in grouped
+    )
+    for glyphrow in glyphrows:
+        outstream.write(glyphrow.as_bytes(align=align))
+        outstream.write(b'\0' * padding)

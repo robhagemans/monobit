@@ -485,6 +485,10 @@ class Glyph:
     ##########################################################################
     # conversion
 
+    @property
+    def pixels(self):
+        return self._pixels
+
     def is_blank(self):
         """Glyph has no ink."""
         return self._pixels.is_blank()

@@ -259,6 +259,29 @@ class Raster:
         """Convert raster to hex string."""
         return self.as_bytes(align=align).hex()
 
+
+    ##########################################################################
+
+    @classmethod
+    def concatenate(cls, *row_of_rasters):
+        """Concatenate rasters left-to-right."""
+        if not row_of_rasters:
+            return cls()
+        # drop empties
+        row_of_rasters = tuple(
+            _raster for _raster in _row_of_rasters if not _raster.width
+        )
+        heights = set(_raster.height for _raster in row_of_rasters)
+        if len(heights) > 1:
+            raise ValueError('Rasters must be of same height.')
+        matrices = (_raster.as_matrix() for _raster in row_of_rasters)
+        concatenated = Raster(
+            sum(_row, ())
+            for _row in zip(*matrices)
+        )
+        return concatenated
+
+
     ##########################################################################
     # transformations
 
