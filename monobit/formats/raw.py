@@ -112,6 +112,10 @@ def load_8xn(instream, where=None):
 # warp 9 .fnt, 8x16x256 + flags, 4098 bytes https://temlib.org/AtariForumWiki/index.php/Warp9_Font_file_format
 # however not all have the extra word
 
+# Harlekin III .fnt - "Raw font data line by line, 8x8 (2048 bytes) or 8x16 (4096 bytes) only."
+# https://temlib.org/AtariForumWiki/index.php/Fonts
+# i.e. this is a wide-strike format, load width -strike-count=-1
+
 
 ###############################################################################
 # OPTIKS PCR - near-raw format
@@ -232,6 +236,7 @@ def load_psfcom(instream, where=None):
     )
     font = font.label()
     return font
+
 
 ###############################################################################
 ###############################################################################
