@@ -194,19 +194,26 @@ class Raster:
         )
 
     @classmethod
-    def from_bytes(cls, byteseq, width, height=NOT_SET, *, align='left'):
+    def from_bytes(
+                cls, byteseq, width, height=NOT_SET,
+                *, align='left', stride=NOT_SET,
+                **kwargs
+        ):
         """
         Create raster from bytes/bytearray/int sequence.
 
         width: raster width in pixels
         height: raster height in pixels
+        stride: number of pixels per row (default: what's needed for alignment)
         align: 'left' or 'right' for byte-alignment; 'bit' for bit-alignment
         """
         if width == 0 or height == 0:
             if height is NOT_SET:
                 height = 0
             return cls.blank(width, height)
-        if align != 'bit':
+        if stride is not NOT_SET:
+            pass
+        elif align != 'bit':
             if height is not NOT_SET:
                 stride = 8 * (len(byteseq) // height)
             else:

@@ -471,9 +471,15 @@ class Glyph:
         return cls(pixels, **kwargs)
 
     @classmethod
-    def from_bytes(cls, byteseq, width, height=NOT_SET, *, align='left', **kwargs):
+    def from_bytes(
+            cls, byteseq, width, height=NOT_SET,
+            *, align='left', stride=NOT_SET,
+            **kwargs
+        ):
         """Create glyph from bytes/bytearray/int sequence."""
-        pixels = Raster.from_bytes(byteseq, width, height, align=align)
+        pixels = Raster.from_bytes(
+            byteseq, width, height, align=align, stride=stride
+        )
         return cls(pixels, **kwargs)
 
     @classmethod
