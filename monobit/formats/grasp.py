@@ -21,34 +21,48 @@ from .raw import load_binary
 
 # http://fileformats.archiveteam.org/wiki/GRASP_font
 _GRASP_NEW_HEADER = le.Struct(
+    # 0
     unknown0='uint8',
+    # 1
     name='13s',
+    # 14
     unknown1=struct.uint8*2,
+    # 16
     count='uint8',
+    # 17
     unknown2=struct.uint8*2,
+    # 19
     width='uint8',
     height='uint8',
+    # 21
     bytewidth='uint8',
+    # 22
     unknown3=struct.uint8*3,
+    # 25
     filesize='uint16',
+    # 27
     unknown4=struct.uint8*32,
+    # 59
     # Unknown (not a pointer to the bitmap for the space character, logical as that would be)
     unknown5='uint16',
+    # 61
     offsets=struct.uint16 * 94,
+    # 249
     # Unknown; possibly the width of a space character
     # however one sample file has 0 here so maybe not
     space_width='uint8',
+    # 250
     widths=struct.uint8 * 94,
 )
 
 @loaders.register('set', name='grasp')
-def load_grasp(instream, where=None, version:str=None):
+def load_grasp(instream, where=None, version:str=''):
     """
     Load a GRASP font.
 
-    version: file format version; 'original' or 'new'. None (default) to detect.
+    version: file format version; 'original' or 'new'. Leave empty to detect from contents.
     """
-    version = version.lower[:1]
+    version = version.lower()[:1]
     if version == 'o':
         return _load_grasp_old(instream)
     header = _GRASP_NEW_HEADER.read_from(instream)
