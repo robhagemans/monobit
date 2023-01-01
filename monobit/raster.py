@@ -5,6 +5,8 @@ monobit.glyph - representation of single glyph
 licence: https://opensource.org/licenses/MIT
 """
 
+import logging
+
 from .binary import ceildiv
 from .basetypes import Bounds, Coord
 
@@ -179,6 +181,10 @@ class Raster:
             offset = stride - width
         else:
             offset = 0
+        excess = len(bitseq) % stride
+        if excess:
+            logging.warning('Bit string will be truncated.')
+            bitseq = bitseq[:-excess]
         rows = tuple(
             bitseq[_offs:_offs+width]
             for _offs in range(offset, len(bitseq), stride)
