@@ -42,13 +42,20 @@ _GRASP_NEW_HEADER = le.Struct(
 )
 
 @loaders.register('set', name='grasp')
-def load_grasp(instream, where=None):
-    """Load a GRASP font."""
+def load_grasp(instream, where=None, version:str=None):
+    """
+    Load a GRASP font.
+
+    version: file format version; 'original' or 'new'. None (default) to detect.
+    """
+    version = version.lower[:1]
+    if version == 'o':
+        return _load_grasp_old(instream)
     header = _GRASP_NEW_HEADER.read_from(instream)
     #` we use the name field to detect the new format
     name, *_ = header.name.split(b'\0')
     logging.debug('Filename field %r', name)
-    if any(_c not in range(32, 128) for _c in name):
+    if version != 'n' and any(_c not in range(32, 128) for _c in name):
         #  doesn't look like a filename
         instream.seek(0)
         return _load_grasp_old(instream)
