@@ -1,7 +1,7 @@
 """
 monobit.formats.grasp - GRASP GL .SET font files
 
-(c) 2022 Rob Hagemans
+(c) 2022--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -43,7 +43,7 @@ _GRASP_NEW_HEADER = le.Struct(
 
 @loaders.register('set', name='grasp')
 def load_grasp(instream, where=None):
-    """Load a GRASP font (oriiginal format)."""
+    """Load a GRASP font."""
     header = _GRASP_NEW_HEADER.read_from(instream)
     #` we use the name field to detect the new format
     name, *_ = header.name.split(b'\0')
@@ -69,7 +69,11 @@ def load_grasp(instream, where=None):
             start=0x21
         )
     )
-    font = Font(glyphs, source_format='GRASP .set (new)')
+    font = Font(
+        glyphs,
+        source_format='GRASP .set (new)',
+        name=header.name.decode('latin-1').split('.')[0]
+    )
     return font
 
 
