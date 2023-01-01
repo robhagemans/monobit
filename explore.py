@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-Bit dump binary file to text or image
+Bit dump binary file to text or image.
+Text output is like `xxd` but more adapted to visually exploring bitmaps.
 
 (c) 2019--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -78,33 +79,52 @@ def main():
     args.infile.read(args.offset)
     data = args.infile.read(args.bytes)
     bytesize = len(data)
-    rows = ['{:08b}'.format(_c) for _c in data]
 
     if args.image:
         bitdump_image(
-            rows, bytesize, args.stride_from, args.stride_to,
+            data, bytesize, args.stride_from, args.stride_to,
             args.margin, args.padding, args.scale
         )
     else:
-        bitdump_text(
-            args.outfile,
-            rows, bytesize, args.stride_from, args.stride_to,
-            args.paper, args.ink
-        )
+        try:
+            bitdump_text(
+                args.outfile,
+                data, bytesize, args.stride_from, args.stride_to,
+                args.paper, args.ink
+            )
+        except BrokenPipeError:
+            pass
 
 
 def ceildiv(num, den):
     """Integer division, rounding up."""
     return -(-num // den)
 
+def showchar(value):
+    """Show ascii chars, replace non-ascii with shaded block elementss."""
+    if value == 0:
+        return '░'
+    elif value < 0x20:
+        return '▒'
+    elif value == 0xff:
+        return '█'
+    elif value >= 0x7f:
+        return '▓'
+    return chr(value)
 
 def bitdump_text(
         outfile,
-        rows, bytesize,
+        data, bytesize,
         stride_from, stride_to,
         paper, ink
     ):
     """Bit dump to text output."""
+    rows = tuple('{:08b}'.format(_c) for _c in data)
+    drawn = ''.join(
+        _row.replace(u'0', paper).replace(u'1', ink)
+        for _row in rows
+    )
+
     for stride in range(stride_from, stride_to+1):
         width = stride * 8
         height = ceildiv(bytesize, stride)
@@ -115,28 +135,28 @@ def bitdump_text(
             outfile.write(title + '\n')
             outfile.write('-'*len(title) + '\n')
 
-        drawn = [
-            _row.replace(u'0', paper).replace(u'1', ink)
-            for _row in rows
-        ]
         decwidth = len(str(len(drawn)))
         hexwidth = len(hex(len(drawn))) - 2
 
-        for offset in range(0, len(drawn), stride):
-            char = drawn[offset:offset+stride]
-            outfile.write('{offset:{decwidth}} {offset:0{hexwidth}x}: '.format(
-                offset=offset, decwidth=decwidth, hexwidth=hexwidth
-            ))
-            outfile.write(''.join(char))
+        for offset in range(0, bytesize, stride):
+            bits = drawn[offset*8:(offset+stride)*8]
+            values = data[offset:offset+stride]
+            letters = ''.join(showchar(_v) for _v in values)
+            outfile.write(f'{offset:{decwidth}} {offset:0{hexwidth}x}  ')
+            outfile.write(bits)
+            outfile.write(f'  {values.hex(" ")}  {letters}  ')
+            outfile.write(' '.join(f'{_v:3d}' for _v in values))
             outfile.write('\n')
 
 
 def bitdump_image(
-        rows, bytesize,
+        data, bytesize,
         stride_from, stride_to,
         margin, padding, scale
     ):
     """Bit dump to image."""
+    rows = ['{:08b}'.format(_c) for _c in data]
+
     images = []
     for stride in range(stride_from, stride_to+1):
         width = stride * 8
