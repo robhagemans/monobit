@@ -97,6 +97,7 @@ Supported formats
 | AngelCode BMFont [P]  | `bmfont` | text binary XML JSON | `.fnt` `.xml` `.json` + images  | | ✔     | ✔ (text, JSON) |
 | Raw binary            | `raw`      |          | `.fnt` `.rom` [*]           |  | ✔     | ✔     |
 | C or C++ coded binary | `c`        |          | `.c` `.cpp` `.cc` `.h`      |               | ✔     | ✔     |
+| ChiWriter             | `chiwriter`| v3 v4    | `.sft` `.pft` `.eft` ...    | DOS           | ✔     |       |
 | Codepage Information  | `cpi` | FONT FONT.NT DRFONT | `.cpi` | MS-DOS, Windows NT, DR-DOS   | ✔     | ✔     |
 | Daisy-Dot             | `daisy` | II III Magnified | `.nlq` `.nl2` `.nl3` `.nl4` | Atari    | ✔     |       |
 | DEC DRCS soft font    | `dec-drcs` |          |                             | DEC VT        | ✔     | ✔     |
