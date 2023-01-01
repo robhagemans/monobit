@@ -1,29 +1,33 @@
 #!/usr/bin/env python3
 """
-Draw contents of a binary file as bitmap to image
-(c) 2019--2022 Rob Hagemans, licence: https://opensource.org/licenses/MIT
+Bit dump binary file to text or image
+
+(c) 2019--2023 Rob Hagemans
+licence: https://opensource.org/licenses/MIT
 """
 
 import sys
 import argparse
 from PIL import Image, ImageDraw, ImageFont
 
-def ceildiv(num, den):
-    """Integer division, rounding up."""
-    return -(-num // den)
-
 
 # parse command line
 parser = argparse.ArgumentParser()
-parser.add_argument('infile', nargs='?', type=argparse.FileType('rb'), default=sys.stdin.buffer)
-parser.add_argument('outfile', nargs='?', type=argparse.FileType('w'), default=sys.stdout)
+parser.add_argument(
+    'infile', nargs='?',
+    type=argparse.FileType('rb'), default=sys.stdin.buffer
+)
+parser.add_argument(
+    'outfile', nargs='?',
+    type=argparse.FileType('w'), default=sys.stdout
+)
 parser.add_argument(
     '-s', '--stride-from', default=1, type=int,
-    help='number of bytes per scanline'
+    help='lowest number of bytes per scanline'
 )
 parser.add_argument(
     '-t', '--stride-to', default=None, type=int,
-    help='number of bytes per scanline'
+    help='highest number of bytes per scanline'
 )
 parser.add_argument(
     '-o', '--offset', default=0, type=int,
@@ -53,7 +57,7 @@ parser.add_argument(
 
 parser.add_argument(
     '--padding', default=8, type=int,
-    help='number of vertical pixels between character cells'
+    help='number of vertical pixels between output bitmaps'
 )
 parser.add_argument(
     '--margin', default=10, type=int,
@@ -61,28 +65,83 @@ parser.add_argument(
 )
 parser.add_argument(
     '--scale', default=4, type=int,
-    help='number of horizontal and vertical pixels in image that make up a pixel in the font'
+    help='number of horizontal and vertical pixels used to represent a single bit'
 )
 
-args = parser.parse_args()
 
-args.infile.read(args.offset)
-rombytes = args.infile.read(args.bytes)
-rows = ['{:08b}'.format(_c) for _c in rombytes]
+def main():
+    args = parser.parse_args()
 
-scale = args.scale
-margin = args.margin
-padding = args.padding
+    if args.stride_to is None:
+        args.stride_to = args.stride_from
 
-images = []
-if args.stride_to is None:
-    args.stride_to = args.stride_from + 1
-
-for stride in range(args.stride_from, args.stride_to):
-    width = stride * 8
-    height = ceildiv(len(rombytes), stride)
+    args.infile.read(args.offset)
+    data = args.infile.read(args.bytes)
+    bytesize = len(data)
+    rows = ['{:08b}'.format(_c) for _c in data]
 
     if args.image:
+        bitdump_image(
+            rows, bytesize, args.stride_from, args.stride_to,
+            args.margin, args.padding, args.scale
+        )
+    else:
+        bitdump_text(
+            args.outfile,
+            rows, bytesize, args.stride_from, args.stride_to,
+            args.paper, args.ink
+        )
+
+
+def ceildiv(num, den):
+    """Integer division, rounding up."""
+    return -(-num // den)
+
+
+def bitdump_text(
+        outfile,
+        rows, bytesize,
+        stride_from, stride_to,
+        paper, ink
+    ):
+    """Bit dump to text output."""
+    for stride in range(stride_from, stride_to+1):
+        width = stride * 8
+        height = ceildiv(bytesize, stride)
+
+        if stride_to > stride_from:
+            outfile.write('\n')
+            title = f'stride={stride}'
+            outfile.write(title + '\n')
+            outfile.write('-'*len(title) + '\n')
+
+        drawn = [
+            _row.replace(u'0', paper).replace(u'1', ink)
+            for _row in rows
+        ]
+        decwidth = len(str(len(drawn)))
+        hexwidth = len(hex(len(drawn))) - 2
+
+        for offset in range(0, len(drawn), stride):
+            char = drawn[offset:offset+stride]
+            outfile.write('{offset:{decwidth}} {offset:0{hexwidth}x}: '.format(
+                offset=offset, decwidth=decwidth, hexwidth=hexwidth
+            ))
+            outfile.write(''.join(char))
+            outfile.write('\n')
+
+
+def bitdump_image(
+        rows, bytesize,
+        stride_from, stride_to,
+        margin, padding, scale
+    ):
+    """Bit dump to image."""
+    images = []
+    for stride in range(stride_from, stride_to+1):
+        width = stride * 8
+        height = ceildiv(bytesize, stride)
+
         fore, back, border = (255, 255, 255), (0, 0, 0), (20, 20, 20)
 
         img = Image.new('RGB', (width, height), border)
@@ -93,26 +152,7 @@ for stride in range(args.stride_from, args.stride_to):
         ]
         img.putdata(data)
         images.append((stride, img))
-    else:
-        if args.stride_to > args.stride_from + 1:
-            args.outfile.write('\n')
-            title = f'stride={stride}'
-            args.outfile.write(title + '\n')
-            args.outfile.write('-'*len(title) + '\n')
 
-        drawn = [_row.replace(u'0', args.paper).replace(u'1', args.ink) for _row in rows]
-        decwidth = len(str(len(drawn)))
-        hexwidth = len(hex(len(drawn))) - 2
-
-        for offset in range(0, len(drawn), stride):
-            char = drawn[offset:offset+stride]
-            args.outfile.write('{offset:{decwidth}} {offset:0{hexwidth}x}: '.format(
-                offset=offset, decwidth=decwidth, hexwidth=hexwidth
-            ))
-            args.outfile.write(''.join(char))
-            args.outfile.write('\n')
-
-if args.image:
     font = ImageFont.load_default()
     max_stride, _ = images[-1]
     size = font.getsize(str(max_stride))
@@ -132,5 +172,11 @@ if args.image:
         fullimage.paste(img, (left, top))
         top += img.height + padding
 
-    fullimage = fullimage.resize((fullimage.width * scale, fullimage.height * scale))
+    fullimage = fullimage.resize((
+        fullimage.width * scale,
+        fullimage.height * scale
+    ))
     fullimage.show()
+
+
+main()
