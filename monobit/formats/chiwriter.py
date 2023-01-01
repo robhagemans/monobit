@@ -51,19 +51,28 @@ _HEADER = le.Struct(
 )
 
 # magic 0x10 or 0x11 is a bit too generic
-@loaders.register('cft', 'eft', 'lft', 'mft', 'nft', 'pft', 'sft', 'xft',  name='cw')
-def load_grasp(instream, where=None):
-    """Load a ChiWriter font."""
+@loaders.register(
+    'cft', 'eft', 'lft', 'mft', 'nft', 'pft', 'sft', 'xft',
+    name='chiwriter'
+)
+def load_chiwriter(instream, where=None, version:int=None):
+    """
+    Load a ChiWriter font.
+
+    version: file format version; 3 or 4. None (default) to detect from file.
+    """
     data = instream.read()
     header = _HEADER.from_bytes(data)
     logging.debug(header)
     # locate width table
     # this is not correct for prisca/EBOLD.LFT which has 0x10
     # but follows the first scheme. maybe only PFT and SFT follow this?
-    if header.version == 0x11:
+    if (version == 4) or (version is None and header.version == 0x11):
         woffset = 120 + header.code_start
-    else:
+    elif version in (3, None):
         woffset = 250
+    else:
+        raise ValueError(f'Version must be 2 or 3, not `{version}`.')
     widths = le.uint8.array(header.count).from_bytes(data, woffset)
     logging.debug(widths)
     glyphs = [Glyph.blank(
