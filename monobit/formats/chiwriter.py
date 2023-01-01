@@ -98,7 +98,7 @@ def load_chiwriter(instream, where=None, version:int=None):
             data[boffset+_i*bytesize:boffset+(_i+1)*bytesize],
             width=header.hsize,
             # width table may hold zeros which means full-width
-            right_bearing=(_wid or header.hsize)-header.hsize,
+            right_bearing=(_wid or header.defaultwidth)-header.hsize,
             codepoint=_i+0x20+header.firstchar,
             shift_up=shift_up,
         )
