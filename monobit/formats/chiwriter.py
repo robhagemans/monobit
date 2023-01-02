@@ -18,7 +18,9 @@ from .raw import load_binary
 
 
 ###############################################################################
-# FONTRIX-derived font formats
+# font formats claiming descent from/compatibility with FONTRIX for IBM
+# I have only found FONTRIX and its fonts for the Apple II
+# and they are similar but incompatible (header offsets are different)
 
 # ChiWriter format
 # v3 http://jphdupre.chez-alice.fr/chiwriter/technic3/gcw3v01.html#pagev09
@@ -32,11 +34,11 @@ from .raw import load_binary
 
 # the header definition below is based on the ChiWrriter v4 reference above
 _HEADER = le.Struct(
-    # [0] 0x10 for cw3 files, 0x11 for cw4
+    # [0] 0x10 for pcpaint/grasp/cw3 files, 0x11 for cw4
     filetype='uint8',
     # [1] 8.3 null-terminated
     filename='13s',
-    # [14] often 0xBA==186 in filetype==0x10, usually 0 in 0x11
+    # [14] often 0xBA==186 or 0x46==70 when filetype==0x10, usually 0 in 0x11
     unused1='uint8',
     # [15] baseline, counting from the top
     baseline='uint8',
@@ -116,9 +118,9 @@ def load_chiwriter(instream, where=None, filetype:int=None):
     if filetype is not None:
         header.filetype = filetype
     # locate width table
-    # this is not correct for prisca/EBOLD.LFT which has 0x10
-    # but follows the first scheme. maybe only PFT and SFT follow this?
-    if header.filetype == 0x11:
+    # the V3 format only has space for 94 widths as bitmaps start at 344
+    # the V4 format files have the earlier offset even if they have <= 94 glyphs
+    if header.filetype == 0x11 or header.numchars > 94:
         woffset = _WIDTH_OFFSET_V4 + 0x20 + header.firstchar
     else:
         woffset = _WIDTH_OFFSET_V3
