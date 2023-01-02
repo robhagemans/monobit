@@ -13,7 +13,7 @@ from html.parser import HTMLParser
 
 from pkg_resources import resource_listdir
 
-from .binary import int_to_bytes
+from .binary import int_to_bytes, align
 from .labels import Codepoint, to_label
 
 
@@ -996,6 +996,8 @@ class Unicode(Encoder):
         for label in labels:
             codepoint = to_label(label)
             if isinstance(codepoint, bytes):
+                # ensure codepoint length is a multiple of 4
+                codepoint = codepoint.rjust(align(len(codepoint), 2), b'\0')
                 # convert as utf-32 chunks
                 chars = tuple(
                     chr(int.from_bytes(codepoint[_start:_start+4], 'big'))
