@@ -1046,7 +1046,7 @@ class Index(Encoder):
 
     def __repr__(self):
         """Representation."""
-        return type(self).__name__ + f'(first_codepoint={first_codepoint})'
+        return type(self).__name__ + f'(first_codepoint={self._count})'
 
 
 ###################################################################################################
