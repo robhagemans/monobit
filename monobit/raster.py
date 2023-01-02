@@ -194,19 +194,26 @@ class Raster:
         )
 
     @classmethod
-    def from_bytes(cls, byteseq, width, height=NOT_SET, *, align='left'):
+    def from_bytes(
+                cls, byteseq, width, height=NOT_SET,
+                *, align='left', stride=NOT_SET,
+                **kwargs
+        ):
         """
         Create raster from bytes/bytearray/int sequence.
 
         width: raster width in pixels
         height: raster height in pixels
+        stride: number of pixels per row (default: what's needed for alignment)
         align: 'left' or 'right' for byte-alignment; 'bit' for bit-alignment
         """
         if width == 0 or height == 0:
             if height is NOT_SET:
                 height = 0
             return cls.blank(width, height)
-        if align != 'bit':
+        if stride is not NOT_SET:
+            pass
+        elif align != 'bit':
             if height is not NOT_SET:
                 stride = 8 * (len(byteseq) // height)
             else:
@@ -258,6 +265,29 @@ class Raster:
     def as_hex(self, *, align='left'):
         """Convert raster to hex string."""
         return self.as_bytes(align=align).hex()
+
+
+    ##########################################################################
+
+    @classmethod
+    def concatenate(cls, *row_of_rasters):
+        """Concatenate rasters left-to-right."""
+        if not row_of_rasters:
+            return cls()
+        # drop empties
+        row_of_rasters = tuple(
+            _raster for _raster in _row_of_rasters if not _raster.width
+        )
+        heights = set(_raster.height for _raster in row_of_rasters)
+        if len(heights) > 1:
+            raise ValueError('Rasters must be of same height.')
+        matrices = (_raster.as_matrix() for _raster in row_of_rasters)
+        concatenated = Raster(
+            sum(_row, ())
+            for _row in zip(*matrices)
+        )
+        return concatenated
+
 
     ##########################################################################
     # transformations
