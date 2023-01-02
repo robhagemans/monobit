@@ -282,7 +282,7 @@ class Raster:
             return cls()
         # drop empties
         row_of_rasters = tuple(
-            _raster for _raster in row_of_rasters if not _raster.width
+            _raster for _raster in row_of_rasters if _raster.width
         )
         heights = set(_raster.height for _raster in row_of_rasters)
         if len(heights) > 1:
