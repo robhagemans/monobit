@@ -97,7 +97,6 @@ Supported formats
 | AngelCode BMFont [P]  | `bmfont` | text binary XML JSON | `.fnt` `.xml` `.json` + images  | | ✔     | ✔ (text, JSON) |
 | Raw binary            | `raw`      |          | `.fnt` `.rom` [*]           |  | ✔     | ✔     |
 | C or C++ coded binary | `c`        |          | `.c` `.cpp` `.cc` `.h`      |               | ✔     | ✔     |
-| ChiWriter             | `chiwriter`| v3 v4    | `.sft` `.pft` `.eft` ...    | DOS           | ✔     |       |
 | Codepage Information  | `cpi` | FONT FONT.NT DRFONT | `.cpi` | MS-DOS, Windows NT, DR-DOS   | ✔     | ✔     |
 | Daisy-Dot             | `daisy` | II III Magnified | `.nlq` `.nl2` `.nl3` `.nl4` | Atari    | ✔     |       |
 | DEC DRCS soft font    | `dec-drcs` |          |                             | DEC VT        | ✔     | ✔     |
@@ -115,6 +114,7 @@ Supported formats
 | MacOS font            | `mac-dfont`| FONT NFNT+FOND | `.dfont` `.suit`      | Classic MacOS | ✔     |       |
 | REXXCOM Font Mania    | `mania`    |          | `.com`                      | DOS           | ✔     |       |
 | Optiks PCR Font       | `pcr`      |          | `.pcr`                      | DOS           | ✔     |       |
+| PCPaint, GRASP, ChiWriter | `pcpaint` | old 3 4 | `.set` `.fnt`  `.sft` `.pft` `.eft` ... | DOS | ✔ |       |
 | PDF chart [R]         | `pdf`      |          | `.pdf`                      |               |       | ✔     |
 | PC Screen Font        | `psf`      | 1 2      | `.psf` `.psfu`              | MS-DOS, Linux | ✔     | ✔ (version 2) |
 | PSF2AMS PSFCOM        | `psfcom`   |          | `.com`                      | Z80 CP/M      | ✔     |       |
