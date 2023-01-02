@@ -524,7 +524,7 @@ def _write_dr_cp_header(outstream, cpo, start_offset, last):
 
 def _save_ms_cpi(fonts, outstream, format, codepage_prefix):
     """Save to FONT or FONT.NT CPI file"""
-    fonts = _make_fit(fonts, codepage_prefiix)
+    fonts = _make_fit(fonts, codepage_prefix)
     cpdata, notice = _convert_to_cp(fonts)
     ffh = _CPI_HEADER(
         id0=0xff,

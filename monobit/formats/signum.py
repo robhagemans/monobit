@@ -60,22 +60,22 @@ _parameters = {
 
 
 @loaders.register('e24', name='signum-e24', magic=(_E24_MAGIC,))
-def load_signum(instream, where=None):
+def load_signum_e24(instream, where=None):
     """Load font from signum file."""
     return _read_signum(instream, **_parameters['e24'])
 
 @loaders.register('l30', name='signum-l30', magic=(_L30_MAGIC,))
-def load_signum(instream, where=None):
+def load_signum_l30(instream, where=None):
     """Load font from signum file."""
     return _read_signum(instream, **_parameters['l30'])
 
 @loaders.register('p9', name='signum-p9', magic=(_P9_MAGIC,))
-def load_signum(instream, where=None):
+def load_signum_p9(instream, where=None):
     """Load font from signum file."""
     return _read_signum(instream, **_parameters['l30'])
 
 @loaders.register('p24', name='signum-p24', magic=(_P24_MAGIC,))
-def load_signum(instream, where=None):
+def load_signum_p24(instream, where=None):
     """Load font from signum file."""
     return _read_signum(instream, **_parameters['p24'])
 

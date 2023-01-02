@@ -190,7 +190,7 @@ def indexer(plane, code_range, b2_ranges, b3_ranges):
         if all(byte2 not in _range for _range in b2_ranges):
             continue
         if n_bytes == 3:
-            byte2 = codepoint & lomask
+            byte3 = codepoint & lomask
             if all(byte3 not in _range for _range in b3_ranges):
                 continue
         if plane is None:
