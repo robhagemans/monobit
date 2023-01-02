@@ -63,6 +63,7 @@ def scriptable(
             # apply converters to argument
             conv_kwargs = {}
             for kwarg, value in kwargs.items():
+                kwarg = kwarg.replace('-', '_')
                 # skip not-specified arguments
                 if value is None:
                     continue
@@ -149,9 +150,8 @@ class ScriptArgs():
         return ' '.join(
             _e for _e in (
                 self.name.replace('_', '-'),
-                #' '.join(f'{_v}' for _v in args),
                 ' '.join(
-                    f'{ARG_PREFIX}{_k}={shlex.join((str(_v),))}'
+                    f'{ARG_PREFIX}{_k.replace("_", "-")}={shlex.join((str(_v),))}'
                     for _k, _v in kwargs.items()
                     # exclude non-operation parameters
                     if _k in self._script_args
