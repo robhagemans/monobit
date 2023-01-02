@@ -595,7 +595,7 @@ def _convert_fond(name, fond_header, fa_list, kerning_table, encoding_table):
             #'spacing': 'monospace' if fond_header.ffFlags.fixed_width else 'proportional',
             'encoding': encoding,
             'kerning-table': kerning_table.get(fa_entry.fontStyle, ()),
-            'tag-table': encoding_table,
+            'encoding-table': encoding_table,
         }
         for fa_entry in fa_list
     }
