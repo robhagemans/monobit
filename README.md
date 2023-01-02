@@ -114,6 +114,7 @@ Supported formats
 | MacOS font            | `mac-dfont`| FONT NFNT+FOND | `.dfont` `.suit`      | Classic MacOS | ✔     |       |
 | REXXCOM Font Mania    | `mania`    |          | `.com`                      | DOS           | ✔     |       |
 | Optiks PCR Font       | `pcr`      |          | `.pcr`                      | DOS           | ✔     |       |
+| PCPaint, GRASP, ChiWriter | `pcpaint` | old 3 4 | `.set` `.fnt`  `.sft` `.pft` `.eft` ... | DOS | ✔ |       |
 | PDF chart [R]         | `pdf`      |          | `.pdf`                      |               |       | ✔     |
 | PC Screen Font        | `psf`      | 1 2      | `.psf` `.psfu`              | MS-DOS, Linux | ✔     | ✔ (version 2) |
 | PSF2AMS PSFCOM        | `psfcom`   |          | `.com`                      | Z80 CP/M      | ✔     |       |
