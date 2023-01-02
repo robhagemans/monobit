@@ -18,11 +18,19 @@ from .raw import load_binary
 
 
 ###############################################################################
+# FONTRIX-derived font formats
+
 # ChiWriter format
 # v3 http://jphdupre.chez-alice.fr/chiwriter/technic3/gcw3v01.html#pagev09
 # v4 http://jphdupre.chez-alice.fr/chiwriter/manuel4/mcw4-155.html#page158
 # we use the v4 field names here
 
+# GRASP 'new' format
+# http://fileformats.archiveteam.org/wiki/GRASP_font
+
+# PC-PAINT
+
+# the header definition below is based on the ChiWrriter v4 reference above
 _HEADER = le.Struct(
     # [0] 0x10 for cw3 files, 0x11 for cw4
     filetype='uint8',
@@ -41,21 +49,47 @@ _HEADER = le.Struct(
     # [19] glyph raster dimensions
     hsize='uint8',
     vsize='uint8',
-    # [21] not sure hat this means, leading? usually 0 in CW files
+    # [21] not sure what this means, leading? usually 0 in CW files
+    # from comparison with GRASP, it means the bytewidth/stride of the bitmaps
     baseshift='uint8',
     # [22] 'width of space' (v3) 'defaultwidth' (v4)
     defaultwidth='uint8',
+
+    # here file formats diverge in their interpretation. [ChiWriter v4] gives:
     # [23]
-    unused2=struct.uint8,
-    # [24] this is used in v3 files but unclear what for
-    unknown='uint8',
+    #unused2=struct.uint8 * 9,
+    # [32] defined but seems unused
+    #copyright='56s',
+    # [88] table of 256 uint8 advance widths
+    # which means the first entry is 88+32 + firstchar == 120 + firstchar
+
+    # however, v3 (filetype 0x10) files do seem to use the byte at offset [24]
+    # and start the width table at 250
+
+    # GRASP ssems to have:
+    # [23]
+    #unknown3=struct.uint8*2,
     # [25]
-    unused3=struct.uint8 * 7,
-    # [32] seems unused
-    copyright='56s',
+    #filesize='uint16',
+    # [27]
+    #unknown4=struct.uint8*32,
+    # [59]
+    # Unknown (not a pointer to the bitmap for the space character)
+    #unknown5='uint16',
+    # [61]
+    #offsets=struct.uint16 * 94,
+    # [249]
+    # Unknown; possibly the width of a space character
+    # however one sample file has 0 here so maybe not
+    #space_width='uint8',
+    # [250]
+    #widths=struct.uint8 * 94,
 )
-_WIDTH_OFFSET_V3 = 0xFA
-_BITMAP_OFFSET = 0x158
+
+_WIDTH_OFFSET_V3 = 0xFA # 250
+_WIDTH_OFFSET_V4 = 0x58 # 88
+
+_BITMAP_OFFSET = 0x158 # 344
 
 
 # magic 0x10 or 0x11 is a bit too generic
@@ -76,7 +110,7 @@ def load_chiwriter(instream, where=None, version:int=None):
     # this is not correct for prisca/EBOLD.LFT which has 0x10
     # but follows the first scheme. maybe only PFT and SFT follow this?
     if (version == 4) or (version is None and header.filetype == 0x11):
-        woffset = 120 + header.firstchar
+        woffset = _WIDTH_OFFSET_V4 + 0x20 + header.firstchar
     elif version in (3, None):
         woffset = _WIDTH_OFFSET_V3
     else:
