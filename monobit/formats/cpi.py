@@ -497,13 +497,14 @@ def _write_dr_cp_header(outstream, cpo, start_offset, last):
     cpo.cpih.version = _CP_DRFONT
     # set pointers
     cpo.cpeh.cpih_offset = start_offset + cpo.cpeh.size
+    # (For DRFONT) This is the number of bytes up to the character index table.
+    cpo.cpih.size_to_end = _SCREEN_FONT_HEADER.size * len(cpo.fhs)
     if not last:
         cpo.cpeh.next_cpeh_offset = (
             start_offset + cpo.cpih.size
-            + _SCREEN_FONT_HEADER.size * len(cpo.fhs)
+            + cpo.cpih.size_to_end
             + _CHARACTER_INDEX_TABLE.size
         )
-    # FIXME cpih.size_to_end
     # we define all chars in order
     cit = _CHARACTER_INDEX_TABLE(tuple(range(256)))
     outstream.write(bytes(cpo.cpeh) + bytes(cpo.cpih))
