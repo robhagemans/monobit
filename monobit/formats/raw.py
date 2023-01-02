@@ -46,7 +46,7 @@ def load_binary(
 
 @savers.register(linked=load_binary)
 def save_binary(
-        outstream, fonts, *,
+        fonts, outstream, where=None, *,
         strike_count:int=1, align:str='left', padding:int=0,
     ):
     """
@@ -57,7 +57,10 @@ def save_binary(
     padding: number of bytes between encoded glyph rows (default: 0)
     """
     for font in fonts:
-        save_bitmap(outstream, font)
+        save_bitmap(
+            outstream, font,
+            strike_count=strike_count, align=align, padding=padding
+        )
 
 
 ###############################################################################
