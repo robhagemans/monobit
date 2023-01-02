@@ -421,8 +421,8 @@ _BINHEX_CODES = (
 _BINHEX_CODEDICT = {_BINHEX_CODES[_i]: _i for _i in range(64)}
 
 _BINHEX_HEADER = be.Struct(
-    type='uint32',
-    auth='uint32',
+    type='4s',
+    auth='4s',
     flag='uint16',
     dlen='uint32',
     rlen='uint32',
@@ -463,8 +463,8 @@ def _parse_binhex(stream):
             # zero-byte is placeholder for just 0x90
             out += b'\x90'
         else:
-            # apply RLE
-            out += out[-1] * repeat
+            # apply RLE. the last byte counts as the first of the run
+            out += out[-1:] * (repeat-1)
         out += c[1:]
     # decode header
     length = out[0]
@@ -472,6 +472,7 @@ def _parse_binhex(stream):
     if out[1+length] != 0:
         logging.warning('No null byte after name')
     header = _BINHEX_HEADER.from_bytes(out, 2+length)
+    logging.debug(header)
     offset = 2 + length + _BINHEX_HEADER.size
     crc_header = out[:offset]
     hc = _CRC.from_bytes(out, offset)
@@ -494,8 +495,8 @@ def _parse_binhex(stream):
 
 @containers.register(
     '.hqx', magic=(
-        b'(This file must be converted with BinHex 4.0)\r',
-        b'\r(This file must be converted with BinHex 4.0)\r',
+        b'(This file must be converted',
+        b'\r(This file must be converted',
     ),
 )
 class BinHexContainer(MacContainer):
