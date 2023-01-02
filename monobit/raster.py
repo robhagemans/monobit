@@ -253,7 +253,7 @@ class Raster:
         if align.startswith('b'):
             bits = ''.join(rows)
             bytesize = ceildiv(len(bits), 8)
-            byterow = int(_row, 2).to_bytes(bytewsize, 'big')
+            byterow = int(bits, 2).to_bytes(bytesize, 'big')
             return byterow
         else:
             bytewidth = ceildiv(self.width, 8)
@@ -282,7 +282,7 @@ class Raster:
             return cls()
         # drop empties
         row_of_rasters = tuple(
-            _raster for _raster in _row_of_rasters if not _raster.width
+            _raster for _raster in row_of_rasters if not _raster.width
         )
         heights = set(_raster.height for _raster in row_of_rasters)
         if len(heights) > 1:
