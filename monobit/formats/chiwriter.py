@@ -97,24 +97,24 @@ _BITMAP_OFFSET = 0x158 # 344
     'cft', 'eft', 'lft', 'mft', 'nft', 'pft', 'sft', 'xft',
     name='chiwriter'
 )
-def load_chiwriter(instream, where=None, version:int=None):
+def load_chiwriter(instream, where=None, filetype:int=None):
     """
     Load a ChiWriter font.
 
-    version: file format version; 3 or 4. None (default) to detect from file.
+    filetype: override filetype. 0x10 for pcpaint, grasp, chiwriter v3. 0x11 for chiwriter v4. 0x00 for pcpaint/grasp old format
     """
     data = instream.read()
     header = _HEADER.from_bytes(data)
     logging.debug(header)
+    if filetype is not None:
+        header.filetype = filetype
     # locate width table
     # this is not correct for prisca/EBOLD.LFT which has 0x10
     # but follows the first scheme. maybe only PFT and SFT follow this?
-    if (version == 4) or (version is None and header.filetype == 0x11):
+    if header.filetype == 0x11:
         woffset = _WIDTH_OFFSET_V4 + 0x20 + header.firstchar
-    elif version in (3, None):
-        woffset = _WIDTH_OFFSET_V3
     else:
-        raise ValueError(f'Version must be 3 or 4, not `{version}`.')
+        woffset = _WIDTH_OFFSET_V3
     widths = le.uint8.array(header.numchars).from_bytes(data, woffset)
     logging.debug(widths)
     shift_up = -(header.vsize-header.baseline) if header.baseline else None
