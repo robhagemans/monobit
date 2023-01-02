@@ -16,11 +16,21 @@ from .labels import to_label, Tag
 class Tagger:
     """Add tags or comments to a font's glyphs."""
 
+    name = 'unknown-tagger'
+
     def comment(self, *labels):
         raise NotImplementedError
 
     def tag(self, *labels):
         return Tag(self.comment(*labels))
+
+    def __repr__(self):
+        """Representation."""
+        return f"{type(self).__name__}(name='{self.name}')"
+
+    def __str__(self):
+        """Yaff representation."""
+        return self.name
 
 
 def _get_char(labels):
@@ -45,6 +55,10 @@ class UnicodeTagger(Tagger):
 
     def __init__(self, include_char=False):
         self.include_char = include_char
+        if include_char:
+            self.name = 'desc'
+        else:
+            self.name = 'name'
 
     def comment(self, *labels):
         """Get unicode glyph name."""
@@ -61,6 +75,8 @@ class UnicodeTagger(Tagger):
 class CharTagger(Tagger):
     """Tag with unicode characters."""
 
+    name = 'char'
+
     def comment(self, *labels):
         """Get printable char."""
         char = _get_char(labels).value
@@ -71,6 +87,8 @@ class CharTagger(Tagger):
 
 class CodepointTagger(Tagger):
     """Tag with codepoint numbers."""
+
+    name = 'codepoint'
 
     def comment(self, *labels):
         """Get codepoint string."""
@@ -117,6 +135,8 @@ class MappingTagger(Tagger):
 
 class AdobeTagger(MappingTagger):
 
+    name = 'adobe'
+
     def get_default_tag(self, char):
         """Construct a default tag for unmapped glyphs."""
         if not char:
@@ -127,6 +147,8 @@ class AdobeTagger(MappingTagger):
 
 
 class SGMLTagger(MappingTagger):
+
+    name = 'sgml'
 
     def get_default_tag(self, char):
         """Construct a default tag for unmapped glyphs."""

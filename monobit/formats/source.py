@@ -88,7 +88,7 @@ def load_json(
         infile, where, identifier=identifier,
         cell=cell, count=count, offset=offset, padding=padding,
         align=align, strike_count=strike_count, strike_bytes=strike_bytes,
-        first_codepoint=first_codepoint
+        first_codepoint=first_codepoint,
         **_JS_PARAMS
     )
 
@@ -125,8 +125,8 @@ def load_python(
 def load_source(
         infile, where=None, *,
         identifier:str='', delimiters:str='{}', comment:str='//',
-        cell:Coord=(8, 8), count:int=-1, offset:int=0, padding:int=0,
-        align:str='left',
+        cell:Coord=(8, 8), count:int=-1, strike_count:int=1, strike_bytes:int=-1,
+        offset:int=0, padding:int=0, align:str='left',
         first_codepoint:int=0
     ):
     """
@@ -166,7 +166,6 @@ def _load_coded_binary(
     return load_bitmap(
         bytesio, width, height, count, padding, align, strike_count, strike_bytes, first_codepoint
     )
-    return Font(glyphs)
 
 def _int_from_c(cvalue):
     """Parse integer from c code."""

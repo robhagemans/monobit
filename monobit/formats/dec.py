@@ -375,7 +375,7 @@ def _convert_to_drcs_props(font, is_big):
         for uprop in uprops:
             pe = erase.get(uprop, pe)
             pt = ftype.get(uprop, pt)
-            key, _, val = uprop.split(_JOINER)
+            key, _, value = uprop.split(_JOINER)
             if key == _PFN_NAME:
                 pfn = value
             if key == _DSCS_NAME:

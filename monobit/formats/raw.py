@@ -6,6 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import logging
+from itertools import zip_longest
 
 from ..binary import ceildiv, bytes_to_bits
 from ..storage import loaders, savers
@@ -43,8 +44,9 @@ def load_binary(
         instream, width, height, count, padding, align, strike_count, strike_bytes, first_codepoint
     )
 
-def save_bitmap(
-        outstream, font, *,
+@savers.register(linked=load_binary)
+def save_binary(
+        fonts, outstream, where=None, *,
         strike_count:int=1, align:str='left', padding:int=0,
     ):
     """
@@ -55,7 +57,10 @@ def save_bitmap(
     padding: number of bytes between encoded glyph rows (default: 0)
     """
     for font in fonts:
-        save_bitmap(outstream, font)
+        save_bitmap(
+            outstream, font,
+            strike_count=strike_count, align=align, padding=padding
+        )
 
 
 ###############################################################################
@@ -348,9 +353,9 @@ def save_bitmap(
         )
     # TODO: normalise
     # get pixel rasters
-    rasters = (_g.pixels for _g in font_glyphs)
+    rasters = (_g.pixels for _g in font.glyphs)
     # contruct rows (itertools.grouper recipe)
-    args = [iter(_g)] * strike_count
+    args = [iter(rasters)] * strike_count
     grouped = zip_longest(*args, fillvalue=Glyph())
     glyphrows = (
         Raster.concatenate(*_row)

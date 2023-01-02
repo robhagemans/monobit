@@ -11,6 +11,7 @@ from ..storage import loaders, savers
 from ..font import Font
 from ..glyph import Glyph
 from ..labels import Tag, Char
+from ..streams import FileFormatError
 from .yaff import format_comment, normalise_comment
 
 
@@ -120,7 +121,7 @@ def _save_text(font, outstream, *, ink, paper, comment):
     # write global comment
     if font.get_comment():
         outstream.write(
-            format_comment(font.get_comment()) + '\n',
+            format_comment(font.get_comment(), comment_char='#') + '\n',
             comment
         )
     # write glyphs

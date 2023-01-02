@@ -90,7 +90,7 @@ def _read_fontx(instream):
     if sbcs_header.magic != _FONTX_MAGIC:
         raise FileFormatError(
             'Not a FONTX file: '
-            f'incorrect magic `{header.magic}` != {_FONTX_MAGIC}'
+            f'incorrect magic `{sbcs_header.magic}` != {_FONTX_MAGIC}'
         )
     bytewidth = ceildiv(sbcs_header.width, 8)
     bytesize = bytewidth * sbcs_header.height

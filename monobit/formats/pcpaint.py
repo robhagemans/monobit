@@ -120,7 +120,7 @@ def load_chiwriter(instream, where=None, filetype:int=None):
     data = instream.read()
     header = _HEADER.from_bytes(data)
     logging.debug(header)
-    if any(_c not in range(32, 128) for _c in name):
+    if any(_c not in range(32, 128) for _c in header.filename):
         # not a DOS filename, which suggests the old version
         header.filetype = filetype
     # apply filetype override

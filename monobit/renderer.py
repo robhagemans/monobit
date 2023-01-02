@@ -5,6 +5,7 @@ monobit.renderer - render text to bitmaps using font
 licence: https://opensource.org/licenses/MIT
 """
 
+import logging
 from unicodedata import bidirectional, normalize, category
 
 try:

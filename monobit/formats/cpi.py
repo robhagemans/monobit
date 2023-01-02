@@ -50,30 +50,39 @@ def load_cp(instream, where=None):
 
 
 @savers.register(linked=load_cp)
-def save_cp(fonts, outstream, where=None):
-    """Save character-cell fonts to Linux Keyboard Codepage (.CP) file."""
-    fonts = _make_fit(fonts)
+def save_cp(fonts, outstream, where=None, codepage_prefix:str='cp'):
+    """
+    Save character-cell fonts to Linux Keyboard Codepage (.CP) file.
+
+    codepage_prefix: prefix to use to find numbered codepage in encodings. Default: 'cp'.
+    """
+    fonts = _make_fit(fonts, codepage_prefix)
     cpdata, _ = _convert_to_cp(fonts)
     if len(cpdata) > 1:
         raise FileFormatError(
-            'All fonts in a single .cp file must have the same encoding.')
+            'All fonts in a single .cp file must have the same encoding.'
+        )
     _write_cp(outstream, cpdata[0])
 
 
 @savers.register(linked=load_cpi)
-def save_cpi(fonts, outstream, where=None, cpi_version:str=_ID_MS):
+def save_cpi(
+        fonts, outstream, where=None,
+        cpi_version:str=_ID_MS, codepage_prefix:str='cp'
+    ):
     """
     Save character-cell fonts to Linux Keyboard Codepage (.CP) file.
 
     version: CPI format version. One of 'DRFONT', 'FONT.NT', or 'FONT' (default)
+    codepage_prefix: prefix to use to find numbered codepage in encodings. Default: 'cp'.
     """
     format = cpi_version[:7].upper().ljust(7)
     if isinstance(format, str):
         format = format.encode('ascii', 'replace')
     if format in (_ID_MS, _ID_NT):
-        return _save_ms_cpi(fonts, outstream, format)
+        return _save_ms_cpi(fonts, outstream, format, codepage_prefix)
     elif format == _ID_DR:
-        return _save_dr_cpi(fonts, outstream, format)
+        return _save_dr_cpi(fonts, outstream, format, codepage_prefix)
     accepted = b"', '".join((_ID_MS, _ID_NT, _ID_DR)).decode('ascii')
     raise ValueError(
         f"CPI format must be one of '{accepted}', not '{format.decode('latin-1')}'"
@@ -358,9 +367,9 @@ def _convert_from_cp(cells, cpeh, fh, header_id):
 # storable code points
 _RANGE = range(256)
 
-def _make_fit(fonts):
+def _make_fit(fonts, codepage_prefix):
     """Select only the fonts that fit."""
-    fonts = (_make_one_fit(_font) for _font in fonts)
+    fonts = (_make_one_fit(_font, codepage_prefix) for _font in fonts)
     fonts = tuple(_font for _font in fonts if _font)
     if not fonts:
         raise FileFormatError('No storable fonts provided')
@@ -375,14 +384,14 @@ def _make_fit(fonts):
     fonts = tuple(_font for _font in fonts if _font.cell_size in sizes)
     return fonts
 
-def _make_one_fit(font):
+def _make_one_fit(font, codepage_prefix):
     """Check if font fits in format and reshape as necessary."""
     if font.cell_size.x != 8:
         logging.warning(
             'CP format can only store 8xN character-cell fonts.'
         )
         return None
-    if not font.encoding.startswith('cp'):
+    if not font.encoding.startswith(codepage_prefix):
         logging.warning(
             'CP fonts must have encoding set to a numbered codepage'
         )
@@ -497,13 +506,14 @@ def _write_dr_cp_header(outstream, cpo, start_offset, last):
     cpo.cpih.version = _CP_DRFONT
     # set pointers
     cpo.cpeh.cpih_offset = start_offset + cpo.cpeh.size
+    # (For DRFONT) This is the number of bytes up to the character index table.
+    cpo.cpih.size_to_end = _SCREEN_FONT_HEADER.size * len(cpo.fhs)
     if not last:
         cpo.cpeh.next_cpeh_offset = (
             start_offset + cpo.cpih.size
-            + _SCREEN_FONT_HEADER.size * len(cpo.fhs)
+            + cpo.cpih.size_to_end
             + _CHARACTER_INDEX_TABLE.size
         )
-    # FIXME cpih.size_to_end
     # we define all chars in order
     cit = _CHARACTER_INDEX_TABLE(tuple(range(256)))
     outstream.write(bytes(cpo.cpeh) + bytes(cpo.cpih))
@@ -512,9 +522,9 @@ def _write_dr_cp_header(outstream, cpo, start_offset, last):
     # in DRFONT, bitmaps follow after all headers
     return cpo.cpeh.next_cpeh_offset
 
-def _save_ms_cpi(fonts, outstream, format):
+def _save_ms_cpi(fonts, outstream, format, codepage_prefix):
     """Save to FONT or FONT.NT CPI file"""
-    fonts = _make_fit(fonts)
+    fonts = _make_fit(fonts, codepage_prefix)
     cpdata, notice = _convert_to_cp(fonts)
     ffh = _CPI_HEADER(
         id0=0xff,
@@ -533,9 +543,9 @@ def _save_ms_cpi(fonts, outstream, format):
     outstream.write(notice.encode('ascii', 'replace'))
 
 
-def _save_dr_cpi(fonts, outstream, format):
+def _save_dr_cpi(fonts, outstream, format, codepage_prefix):
     """Save to DRFONT CPI file"""
-    fonts = _make_fit(fonts)
+    fonts = _make_fit(fonts, codepage_prefix)
     cpdata, notice = _convert_to_cp(fonts)
     # drdos codepages must have equal number of fonts for each page,
     # in the same set of cell sizes

@@ -229,7 +229,7 @@ class ConverterRegistry(MagicRegistry):
             return self.get_for(format=format)
         if where:
             # if container/file provided as string or steam, open them to check magic bytes
-            with open_location(infile, 'r', where=where) as (stream, container):
+            with open_location(file, 'r', where=where) as (stream, container):
                 # identify file type if possible
                 return self.get_for(stream, format=format, do_open=do_open)
         else:
