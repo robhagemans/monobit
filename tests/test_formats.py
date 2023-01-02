@@ -296,6 +296,11 @@ class TestFormats(BaseTester):
         font, *_ = monobit.load(self.font_path / '4x6.bin')
         self.assertEqual(len(font.glyphs), 195)
 
+    def test_import_hexbin(self):
+        """Test importing hexbin files."""
+        font, *_ = monobit.load(self.font_path / '4x6.hqx')
+        self.assertEqual(len(font.glyphs), 195)
+
     # Amiga
 
     def test_import_amiga(self):

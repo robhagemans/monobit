@@ -20,51 +20,14 @@ from .sfnt import (
     load_sfnt, mac_style_name as _style_name, MAC_ENCODING as _MAC_ENCODING
 )
 
-
-_APPLESINGLE_MAGIC = 0x00051600
-_APPLEDOUBLE_MAGIC = 0x00051607
-
-
-@loaders.register('dfont', 'suit', name='mac-dfont')
+# the magic is optional - a 'maybe magic'
+@loaders.register('dfont', 'suit', name='mac-dfont', magic=(b'\0\0\1\0\0\0',))
 def load_mac_dfont(instream, where=None):
     """
     Load font from a MacOS suitcase.
     """
     data = instream.read()
     return _parse_mac_resource(data)
-
-@loaders.register('bin', name='mac-bin')
-def load_macbinary(instream, where=None):
-    """
-    Load font from a MacBinary container.
-    """
-    data = instream.read()
-    return _parse_macbinary(data)
-
-
-@loaders.register('as', 'adf', 'rsrc',
-    magic=(
-        _APPLESINGLE_MAGIC.to_bytes(4, 'big'),
-        _APPLEDOUBLE_MAGIC.to_bytes(4, 'big')
-    ),
-    name='mac-rsrc',
-)
-def load_mac_rsrc(instream, where=None):
-    """
-    Load font from an AppleSingle or AppleDouble container.
-    """
-    data = instream.read()
-    return _parse_apple_container(data)
-
-
-@savers.register(linked=load_mac_dfont)
-def save_mac_dfont(pack, outstream, where=None):
-    raise FileFormatError('Saving to MacOS font files not supported.')
-
-@savers.register(linked=load_mac_rsrc)
-def save_mac_rsrc(pack, outstream, where=None):
-    raise FileFormatError('Saving to MacOS font files not supported.')
-
 
 
 ##############################################################################
@@ -82,158 +45,6 @@ _NON_ROMAN_NAMES = {
     'Taliesin': '',
     'Mobile': '',
 }
-
-
-##############################################################################
-# AppleSingle/AppleDouble container
-# v1: see https://web.archive.org/web/20160304101440/http://kaiser-edv.de/documents/Applesingle_AppleDouble_v1.html
-# v2: https://web.archive.org/web/20160303215152/http://kaiser-edv.de/documents/AppleSingle_AppleDouble.pdf
-# the difference between v1 and v2 affects the file info sections
-# not the resource fork which is what we care about
-
-_APPLE_HEADER = be.Struct(
-    magic='uint32',
-    version='uint32',
-    home_fs='16s',
-    number_entities='uint16',
-)
-_APPLE_ENTRY = be.Struct(
-    entry_id='uint32',
-    offset='uint32',
-    length='uint32',
-)
-
-# Entry IDs
-_ID_RESOURCE = 2
-_APPLE_ENTRY_TYPES = {
-    1: 'data fork',
-    2: 'resource fork',
-    3: 'real name',
-    4: 'comment',
-    5: 'icon, b&w',
-    6: 'icon, color',
-    7: 'file info', # v1 only
-    8: 'file dates info', # v2
-    9: 'finder info',
-    # the following are all v2
-    10: 'macintosh file info',
-    11: 'prodos file info',
-    12: 'ms-dos file info',
-    13: 'short name',
-    14: 'afp file info',
-    15: 'directory id',
-}
-
-
-def _parse_apple_container(data):
-    """Parse an AppleSingle or AppleDouble file."""
-    header = _APPLE_HEADER.from_bytes(data)
-    if header.magic == _APPLESINGLE_MAGIC:
-        container = 'AppleSingle'
-    elif header.magic == _APPLEDOUBLE_MAGIC:
-        container = 'AppleDouble'
-    else:
-        raise FileFormatError('Not an AppleSingle or AppleDouble file.')
-    entry_array = _APPLE_ENTRY.array(header.number_entities)
-    entries = entry_array.from_bytes(data, _APPLE_HEADER.size)
-    for i, entry in enumerate(entries):
-        entry_type = _APPLE_ENTRY_TYPES.get(entry.entry_id, 'unknown')
-        logging.debug(
-            '%s container: entry #%d, %s [%d]',
-            container, i, entry_type, entry.entry_id
-        )
-        if entry.entry_id == _ID_RESOURCE:
-            logging.debug('Reading resource')
-            fork_data = data[entry.offset:entry.offset+entry.length]
-            fonts = _parse_mac_resource(fork_data, formatstr=container)
-            return fonts
-    raise FileFormatError('No resource fork found in file.')
-
-
-##############################################################################
-# MacBinary container
-# v1: https://www.cryer.co.uk/file-types/b/bin_/original_mac_binary_format_proposal.htm
-# v2: https://files.stairways.com/other/macbinaryii-standard-info.txt
-# v2 defines additional fields inside an area zeroed in v1. we can ignore them.
-
-_MACBINARY_HEADER = be.Struct(
-    # Offset 000-Byte, old version number, must be kept at zero for compatibility
-    old_version='byte',
-    # Offset 001-Byte, Length of filename (must be in the range 1-63)
-    filename_length='byte',
-    # Offset 002-1 to 63 chars, filename (only "length" bytes are significant).
-    filename='63s',
-    # Offset 065-Long Word, file type (normally expressed as four characters)
-    file_type='4s',
-    # Offset 069-Long Word, file creator (normally expressed as four characters)
-    file_creator='4s',
-    # Offset 073-Byte, original Finder flags
-    original_finder_flags='byte',
-    # Offset 074-Byte, zero fill, must be zero for compatibility
-    zero_0='byte',
-    # Offset 075-Word, file's vertical position within its window.
-    window_vert='word',
-    # Offset 077-Word, file's horizontal position within its window.
-    window_horiz='word',
-    # Offset 079-Word, file's window or folder ID.
-    window_id='word',
-    # Offset 081-Byte, "Protected" flag (in low order bit).
-    protected='byte',
-    # Offset 082-Byte, zero fill, must be zero for compatibility
-    zero_1='byte',
-    # Offset 083-Long Word, Data Fork length (bytes, zero if no Data Fork).
-    data_length='dword',
-    # Offset 087-Long Word, Resource Fork length (bytes, zero if no R.F.).
-    rsrc_length='dword',
-    # Offset 091-Long Word, File's creation date
-    creation_date='dword',
-    # Offset 095-Long Word, File's "last modified" date.
-    last_modified_date='dword',
-    # Offset 099-Word, length of Get Info comment to be sent after the resource
-    # fork (if implemented, see below).
-    get_info_length='word',
-    # *Offset 101-Byte, Finder Flags, bits 0-7. (Bits 8-15 are already in byte 73)
-    finder_flags='byte',
-    # *Offset 116-Long Word, Length of total files when packed files are unpacked.
-    packed_length='dword',
-    # *Offset 120-Word, Length of a secondary header.  If this is non-zero,
-    #              Skip this many bytes (rounded up to the next multiple of 128)
-    #              This is for future expansion only, when sending files with
-    #              MacBinary, this word should be zero.
-    second_header_length='dword',
-    # *Offset 122-Byte, Version number of Macbinary II that the uploading program
-    # is written for (the version begins at 129)
-    writer_version='byte',
-    # *Offset 123-Byte, Minimum MacBinary II version needed to read this file
-    # (start this value at 129 129)
-    reader_version='byte',
-    # *Offset 124-Word, CRC of previous 124 bytes
-    crc='word',
-    # from v1 desc:
-    # > 126 2 Reserved for computer type and OS ID
-    # > (this field will be zero for the current Macintosh).
-    reserved='word',
-    # *This is newly defined for MacBinary II.
-)
-
-def _parse_macbinary(data):
-    """Parse a MacBinary file."""
-    header = _MACBINARY_HEADER.from_bytes(data)
-    ofs = 128
-    if header.old_version != 0:
-        raise FileFormatError(
-            'Not a MacBinary file: incorrect version field'
-            f' ({header.old_version}).'
-        )
-    if header.writer_version > 128:
-        ofs += align(header.second_header_length, 7)
-    #ofs += align(header.data_length, 7)
-    # resource fork comes last, leave any padding beyond declared length
-    fork_data = data[ofs:]
-    if not fork_data:
-        raise FileFormatError('No resource fork found in file.')
-    fonts = _parse_mac_resource(fork_data, 'MacBinary')
-    return fonts
 
 
 ##############################################################################
@@ -442,10 +253,10 @@ def _convert_mac_font(parsed_rsrc, info, formatstr):
                 # >     resourceID := (font ID * 128) + font size;
                 font_number, font_size = divmod(rsrc_id, 128)
                 # we've already filtered out the case font_size == 0
-                props = {
+                props.update({
                     'point-size': font_size,
                     'family': _FONT_NAMES.get(font_number, str(font_number))
-                }
+                })
                 # prefer directory info to info inferred from resource ID
                 # (in so far provided by FOND or directory FONT)
                 props.update(info.get(font_number, {}))
@@ -784,7 +595,7 @@ def _convert_fond(name, fond_header, fa_list, kerning_table, encoding_table):
             #'spacing': 'monospace' if fond_header.ffFlags.fixed_width else 'proportional',
             'encoding': encoding,
             'kerning-table': kerning_table.get(fa_entry.fontStyle, ()),
-            'tag-table': encoding_table,
+            'encoding-table': encoding_table,
         }
         for fa_entry in fa_list
     }
