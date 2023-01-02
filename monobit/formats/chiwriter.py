@@ -63,8 +63,15 @@ _HEADER = le.Struct(
     # [88] table of 256 uint8 advance widths
     # which means the first entry is 88+32 + firstchar == 120 + firstchar
 
-    # however, v3 (filetype 0x10) files do seem to use the byte at offset [24]
-    # and start the width table at 250
+    # however, v3 (filetype 0x10) files use the byte at offset [24]
+    # and start the width table at 250. below is from v3 spec:
+    # [23] 'Space gap' is a separate field from 'Width of space'. Meaning unclear.
+    space_gap='uint8',
+    # [24] 'Line gap', again unclear.
+    # Simplest assumption is vsize + line_gap is the distance between baselines
+    # But this leads to very wide line spacing, often double-spaced.
+    # Perhaps it is the distance from baseline to next raster top?
+    line_gap='uint8',
 
     # GRASP ssems to have:
     # [23]
@@ -142,10 +149,16 @@ def load_chiwriter(instream, where=None, filetype:int=None):
         _g.crop(right=max(0, -_g.right_bearing)).drop('shift-left')
         for _g in glyphs
     ]
+    if header.line_gap:
+        # assuming distance from baseline to next raster top
+        line_height = header.line_gap + header.baseline
+    else:
+        line_height = None
     font = Font(
         glyphs,
         source_format=f'ChiWriter ({header.filetype:#02x})',
         name=header.filename.decode('latin-1').split('.')[0],
         font_id=header.filename.decode('latin-1'),
+        line_height=line_height,
     )
     return font
