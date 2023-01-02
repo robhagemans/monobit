@@ -309,7 +309,7 @@ def _parse_hbf_properties(hbf_props):
         'shift_up': offset_y,
     })
     # known but we don't use it
-    properties['hbf.font'] = hbf_props.pop('FONT', None)
+    properties['font-id'] = hbf_props.pop('FONT', None)
     # match encoding name
     code_scheme = hbf_props.pop('HBF_CODE_SCHEME')
     properties['encoding'], plane = _map_code_scheme(code_scheme)

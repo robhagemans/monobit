@@ -51,6 +51,8 @@ class FontProperties(DefaultProps):
     name: str
     # typeface/font family
     family: str
+    # unique id
+    font_id: str
 
     # font metadata
     # can't be calculated
@@ -122,6 +124,10 @@ class FontProperties(DefaultProps):
     ascent: int
     # recommended typographic descent relative to baseline (not necessarily equal to bottom)
     descent: int
+    # 'descent' for vertical rendering
+    left_extent: int
+    # 'ascent' for vertical rendering
+    right_extent: int
     # nominal pixel size, always equals ascent + descent
     pixel_size: int
     # vertical interline spacing, defined as line_height - pixel_size
@@ -224,11 +230,13 @@ class FontProperties(DefaultProps):
         """Name of font family."""
         # use source name if no family name defined
         stem = PurePath(self.source_name).stem
+        # change underscored/spaced filenames to camelcase font name
         # replace underscores with spaces
-        stem = stem.replace('_', '-')
+        stem = stem.replace('_', ' ')
         # convert all-upper or all-lower to titlecase
         if stem == stem.upper() or stem == stem.lower():
             stem = stem.title()
+        stem = stem.replace(' ', '')
         return stem
 
     @writable_property

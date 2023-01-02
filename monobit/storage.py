@@ -15,7 +15,7 @@ from .containers import ContainerFormatError, open_container
 from .font import Font
 from .pack import Pack
 from .streams import MagicRegistry, FileFormatError, open_stream, maybe_text
-from .scripting import scriptable, ScriptArgs
+from .scripting import scriptable, ScriptArgs, ARG_PREFIX
 from .basetypes import Any
 
 
@@ -115,6 +115,15 @@ def _load_from_file(instream, where, format, **kwargs):
     pack = Pack(fonts)
     # set conversion properties
     filename = Path(instream.name).name
+    # if the source filename contains surrogate-escaped non-utf8 bytes
+    # preserve the byte values as backslash escapes
+    try:
+        filename.encode('utf-8')
+    except UnicodeError:
+        filename = (
+            filename.encode('utf-8', 'surrogateescape')
+            .decode('ascii', 'backslashreplace')
+        )
     return Pack(
         _font.modify(
             converter=CONVERTER_NAME,
@@ -167,6 +176,10 @@ def save(
     # if specified and outfile is a filename, it is taken relative to this location.
     pack = Pack(pack_or_font)
     outfile = outfile or sys.stdout
+    if outfile == sys.stdout:
+        # errors can occur if the strings we write contain surrogates
+        # these may come from filesystem names using 'surrogateescape'
+        sys.stdout.reconfigure(errors='replace')
     with open_location(outfile, 'w', where=where, overwrite=overwrite) as (stream, container):
         if not stream:
             _save_all(pack, container, format, **kwargs)
@@ -234,7 +247,7 @@ class ConverterRegistry(MagicRegistry):
         if not converter:
             if format:
                 converter = self[format]
-            elif maybe_text(file):
+            elif not file or maybe_text(file):
                 converter = self[DEFAULT_TEXT_FORMAT]
             else:
                 converter = self[DEFAULT_BINARY_FORMAT]
@@ -265,7 +278,7 @@ class ConverterRegistry(MagicRegistry):
             # set script arguments
             funcname = self._func_name
             if name:
-                funcname += f' --format={name}'
+                funcname += f' {ARG_PREFIX}format={name}'
             _func = scriptable(
                 original_func,
                 # use the standard name, not that of the registered function

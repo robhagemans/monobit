@@ -5,6 +5,7 @@ monobit.formats.mac - MacOS suitcases and resources
 licence: https://opensource.org/licenses/MIT
 """
 
+import io
 import logging
 
 from ..binary import bytes_to_bits, align
@@ -14,6 +15,10 @@ from ..storage import loaders, savers
 from ..font import Font, Coord
 from ..glyph import Glyph, KernTable
 from ..streams import FileFormatError
+
+from .sfnt import (
+    load_sfnt, mac_style_name as _style_name, MAC_ENCODING as _MAC_ENCODING
+)
 
 
 _APPLESINGLE_MAGIC = 0x00051600
@@ -64,45 +69,6 @@ def save_mac_rsrc(pack, outstream, where=None):
 
 ##############################################################################
 # encoding constants
-
-# based on:
-# [1] Apple Technotes (As of 2002)/te/te_02.html
-# [2] https://developer.apple.com/library/archive/documentation/mac/Text/Text-367.html#HEADING367-0
-_MAC_ENCODING = {
-    0: 'mac-roman',
-    1: 'mac-japanese',
-    2: 'mac-trad-chinese',
-    3: 'mac-korean',
-    4: 'mac-arabic',
-    5: 'mac-hebrew',
-    6: 'mac-greek',
-    7: 'mac-cyrillic', # [1] russian
-    # 8: [2] right-to-left symbols
-    9: 'mac-devanagari',
-    10: 'mac-gurmukhi',
-    11: 'mac-gujarati',
-    12: 'mac-oriya',
-    13: 'mac-bengali',
-    14: 'mac-tamil',
-    15: 'mac-telugu',
-    16: 'mac-kannada',
-    17: 'mac-malayalam',
-    18: 'mac-sinhalese',
-    19: 'mac-burmese',
-    20: 'mac-khmer',
-    21: 'mac-thai',
-    22: 'mac-laotian',
-    23: 'mac-georgian',
-    24: 'mac-armenian',
-    25: 'mac-simp-chinese', # [1] maldivian
-    26: 'mac-tibetan',
-    27: 'mac-mongolian',
-    28: 'mac-ethiopic', # [2] == geez
-    29: 'mac-centraleurope', # [1] non-cyrillic slavic
-    30: 'mac-vietnamese',
-    31: 'mac-sindhi', # [2] == ext-arabic
-    #32: [1] [2] 'uninterpreted symbols'
-}
 
 # fonts which clain mac-roman encoding but aren't
 _NON_ROMAN_NAMES = {
@@ -362,8 +328,8 @@ def _extract_resource_fork_header(data):
                     + ref_entry.name_offset
                 )
                 name_length = data[name_offset]
-                # should be ascii, but use latin-1 just in case
-                name = data[name_offset+1:name_offset+name_length+1].decode('latin-1')
+                # should be ascii, but use mac-roman just in case
+                name = data[name_offset+1:name_offset+name_length+1].decode('mac-roman')
             # construct the 3-byte integer
             data_offset = ref_entry.data_offset_hi * 0x10000 + ref_entry.data_offset
             offset = rsrc_header.data_offset + _DATA_HEADER.size + data_offset
@@ -405,17 +371,25 @@ def _extract_resources(data, resources):
         elif rsrc_type in (b'NFNT', b'FONT'):
             logging.debug(
                 'Bitmapped font resource #%d: type %s name `%s`',
-                rsrc_id, rsrc_type.decode('latin-1'), name
+                rsrc_id, rsrc_type.decode('mac-roman'), name
             )
             parsed_rsrc.append((
                 rsrc_type, rsrc_id, _extract_nfnt(data, offset)
             ))
+        elif rsrc_type == b'sfnt':
+            logging.debug(
+                'TrueType font resource #%d: type %s name `%s`',
+                rsrc_id, rsrc_type.decode('mac-roman'), name
+            )
+            bytesio = io.BytesIO(data[offset:])
+            fonts = load_sfnt(bytesio)
+            parsed_rsrc.append((
+                rsrc_type, rsrc_id, dict(fonts=fonts)
+            ))
         else:
-            if rsrc_type == b'sfnt':
-                logging.warning('sfnt resources (vector or bitmap) not supported')
             logging.debug(
                 'Skipped resource #%d: type %s name `%s`',
-                rsrc_id, rsrc_type.decode('latin-1'), name
+                rsrc_id, rsrc_type.decode('mac-roman'), name
             )
     return parsed_rsrc
 
@@ -439,9 +413,18 @@ def _convert_mac_font(parsed_rsrc, info, formatstr):
     """convert properties and glyphs."""
     fonts = []
     for rsrc_type, rsrc_id, kwargs in parsed_rsrc:
-        if rsrc_type in (b'FONT', b'NFNT'):
+        if rsrc_type == b'sfnt':
+            rsrc_fonts = kwargs['fonts']
+            rsrc_fonts = (
+                _font.modify(
+                    source_format = f'MacOS {_font.source_format}',
+                )
+                for _font in rsrc_fonts
+            )
+            fonts.extend(rsrc_fonts)
+        elif rsrc_type in (b'FONT', b'NFNT'):
             format = ''.join((
-                rsrc_type.decode('latin-1'),
+                rsrc_type.decode('mac-roman'),
                 f' in {formatstr}' if formatstr else ''
             ))
             props = {
@@ -472,8 +455,9 @@ def _convert_mac_font(parsed_rsrc, info, formatstr):
             if 'encoding' not in props or props.get('family', '') in _NON_ROMAN_NAMES:
                 props['encoding'] = _NON_ROMAN_NAMES.get(props.get('family', ''), 'mac-roman')
             font = _convert_nfnt(props, **kwargs)
-            font = font.label()
-            fonts.append(font)
+            if font.glyphs:
+                font = font.label()
+                fonts.append(font)
     return fonts
 
 
@@ -552,16 +536,6 @@ _FA_ENTRY =  be.Struct(
     fontStyle='uint16',
     fontID='uint16',
 )
-
-_STYLE_MAP = {
-    0: 'bold',
-    1: 'italic',
-    2: 'underline',
-    3: 'outline',
-    4: 'shadow',
-    5: 'condensed',
-    6: 'extended',
-}
 
 # offset table
 # Fig 4-15, I. M.: Text p. 4-96
@@ -828,11 +802,6 @@ def _convert_fond(name, fond_header, fa_list, kerning_table, encoding_table):
     return info
 
 
-def _style_name(font_style):
-    """ Get human-readable representation of font style."""
-    return ' '.join(
-        _tag for _bit, _tag in _STYLE_MAP.items() if font_style & (1 << _bit)
-    )
 
 
 ##############################################################################
@@ -996,7 +965,8 @@ def _extract_nfnt(data, offset):
     """Read a MacOS NFNT or FONT resource."""
     fontrec = _NFNT_HEADER.from_bytes(data, offset)
     if not (fontrec.rowWords and fontrec.widMax and fontrec.fRectWidth and fontrec.fRectHeight):
-        raise FileFormatError('Empty FONT/NFNT resource.')
+        logging.debug('Empty FONT/NFNT resource.')
+        return dict(glyphs=(), fontrec=fontrec)
     if fontrec.fontType.depth or fontrec.fontType.has_fctb:
         raise FileFormatError('Anti-aliased or colour fonts not supported.')
     # read char tables & bitmaps
@@ -1087,6 +1057,8 @@ def _convert_nfnt(properties, glyphs, fontrec):
     # since
     #   (total) advance_width == (font) left_bearing + glyph.advance_width + (font) right_bearing
     # and (font) left_bearing = -kernMax
+    if not glyphs:
+        return Font()
     glyphs = tuple(
         _glyph.modify(
             left_bearing=_glyph.wo_offset,
@@ -1130,7 +1102,7 @@ def _convert_nfnt(properties, glyphs, fontrec):
     # store glyph-name encoding table
     if properties.get('encoding-table', None):
         tag_table = {
-            _entry[:1]: _entry[1:].decode('latin-1')
+            _entry[:1]: _entry[1:].decode('mac-roman')
             for _entry in properties['encoding-table']
         }
         glyphs = tuple(

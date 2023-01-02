@@ -297,6 +297,13 @@ class MagicRegistry:
                 self._suffixes[suffix] = klass
             for sequence in magic:
                 self._magic[sequence] = klass
+            # sort the magic registry long to short to manage conflicts
+            self._magic = {
+                _k: _v for _k, _v in sorted(
+                    self._magic.items(),
+                    key=lambda _i:len(_i[0]), reverse=True
+                )
+            }
             # use first suffix given as standard
             if suffixes:
                 klass.format = normalise_suffix(suffixes[0])
