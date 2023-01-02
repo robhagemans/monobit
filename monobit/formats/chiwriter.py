@@ -1,5 +1,5 @@
 """
-monobit.formats.chiwriter - ChiWriter, PCPaint, GRASP font files
+monobit.formats.pcpaint - ChiWriter, GRASP, PCPaint, FONTRIX (for IBM) font files
 
 (c) 2022--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -32,7 +32,7 @@ from .raw import load_binary
 
 # PC-PAINT
 
-# the header definition below is based on the ChiWrriter v4 reference above
+# the header definition below is based on the ChiWriter v4 reference above
 _HEADER = le.Struct(
     # [0] 0x10 for pcpaint/grasp/cw3 files, 0x11 for cw4
     filetype='uint8',
@@ -51,8 +51,8 @@ _HEADER = le.Struct(
     # [19] glyph raster dimensions
     hsize='uint8',
     vsize='uint8',
-    # [21] not sure what this means, leading? usually 0 in CW files
-    # from comparison with GRASP, it means the bytewidth/stride of the bitmaps
+    # [21] usually 0 in CW files
+    # in GRASP/PCPaint, this field is the bytewidth/stride of the bitmaps
     baseshift='uint8',
     # [22] 'width of space' (v3) 'defaultwidth' (v4)
     defaultwidth='uint8',
@@ -75,7 +75,10 @@ _HEADER = le.Struct(
     # Perhaps it is the distance from baseline to next raster top?
     line_gap='uint8',
 
-    # GRASP ssems to have:
+    # GRASP/PCPaint seem to have the following. This is compatible with Chiwriter
+    # high-offset but incompatible with low-offset. The difference is that the
+    # space before the width table is used for offsets into the bitmap. Chiwriter
+    # 0x10 format leaves these zero, but this overlaps with the width table in 0x11.
     # [23]
     #unknown3=struct.uint8*2,
     # [25]
@@ -177,15 +180,19 @@ def load_chiwriter(instream, where=None, filetype:int=None):
 
 
 ###############################################################################
-# PCPaint / GRASP original format:
+# PCPaint / GRASP original format. Not used by ChiWriter.
+# suffix .SET or .FNT
+#
+# http://fileformats.archiveteam.org/wiki/GRASP_font
+# http://www.textfiles.com/programming/FORMATS/glformat.txt
 #
 # +-- Font Header
-# | length	(word)		length of the entire font file
-# | size		(byte)		number of glyphs in the font file
-# | first		(byte)		byte value represented by the first glyph
-# | width		(byte)		width of each glyph in pixels
-# | height	(byte)		height of each glyph in pixels
-# | glyphsize	(byte)		number of bytes to encode each glyph
+# | length    (word)    length of the entire font file
+# | size      (byte)    number of glyphs in the font file
+# | first     (byte)    byte value represented by the first glyph
+# | width     (byte)    width of each glyph in pixels
+# | height    (byte)    height of each glyph in pixels
+# | glyphsize (byte)    number of bytes to encode each glyph
 # +-- Glyph Data
 
 _GRASP_HEADER = le.Struct(
