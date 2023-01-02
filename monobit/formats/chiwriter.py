@@ -1,7 +1,7 @@
 """
-monobit.formats.chiwriter - ChiWriter font files
+monobit.formats.chiwriter - ChiWriter, PCPaint, GRASP font files
 
-(c) 2023 Rob Hagemans
+(c) 2022--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -103,18 +103,24 @@ _BITMAP_OFFSET = 0x158 # 344
 
 # magic 0x10 or 0x11 is a bit too generic
 @loaders.register(
+    'set',
+    #'fnt',
     'cft', 'eft', 'lft', 'mft', 'nft', 'pft', 'sft', 'xft',
-    name='chiwriter'
+    name='pcpaint'
 )
 def load_chiwriter(instream, where=None, filetype:int=None):
     """
     Load a ChiWriter font.
 
-    filetype: override filetype. 0x10 for pcpaint, grasp, chiwriter v3. 0x11 for chiwriter v4. 0x00 for pcpaint/grasp old format
+    filetype: override filetype. 0x10 for pcpaint, grasp, chiwriter v3. 0x11 for chiwriter v4. Use 0x00 for pcpaint/grasp old format.
     """
     data = instream.read()
     header = _HEADER.from_bytes(data)
     logging.debug(header)
+    if any(_c not in range(32, 128) for _c in name):
+        # not a DOS filename, which suggests the old version
+        header.filetype = filetype
+    # apply filetype override
     if filetype is not None:
         header.filetype = filetype
     # locate width table
@@ -122,8 +128,12 @@ def load_chiwriter(instream, where=None, filetype:int=None):
     # the V4 format files have the earlier offset even if they have <= 94 glyphs
     if header.filetype == 0x11 or header.numchars > 94:
         woffset = _WIDTH_OFFSET_V4 + 0x20 + header.firstchar
-    else:
+    elif header.filetype == 0x11:
         woffset = _WIDTH_OFFSET_V3
+    else:
+        # other values => old format, where this is a size field
+        instream.seek(0)
+        return _load_grasp_old(instream)
     widths = le.uint8.array(header.numchars).from_bytes(data, woffset)
     logging.debug(widths)
     shift_up = -(header.vsize-header.baseline) if header.baseline else None
@@ -163,4 +173,39 @@ def load_chiwriter(instream, where=None, filetype:int=None):
         font_id=header.filename.decode('latin-1'),
         line_height=line_height,
     )
+    return font
+
+
+###############################################################################
+# PCPaint / GRASP original format:
+#
+# +-- Font Header
+# | length	(word)		length of the entire font file
+# | size		(byte)		number of glyphs in the font file
+# | first		(byte)		byte value represented by the first glyph
+# | width		(byte)		width of each glyph in pixels
+# | height	(byte)		height of each glyph in pixels
+# | glyphsize	(byte)		number of bytes to encode each glyph
+# +-- Glyph Data
+
+_GRASP_HEADER = le.Struct(
+    filesize='uint16',
+    count='uint8',
+    first='uint8',
+    width='uint8',
+    height='uint8',
+    glyphsize='uint8',
+)
+
+def _load_grasp_old(instream, where=None):
+    """Load a GRASP font (original format)."""
+    header = _GRASP_HEADER.read_from(instream)
+    font = load_binary(
+        instream, where,
+        cell=(header.width, header.height),
+        strike_bytes=header.glyphsize // header.height,
+        count=header.count,
+        first_codepoint=header.first,
+    )
+    font = font.modify(source_format='GRASP .set (original)')
     return font
