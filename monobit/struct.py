@@ -70,6 +70,7 @@ class bitfield:
 
 flag = bitfield('B', 1)
 
+
 def _parse_type(atype):
     """Convert struct member type specification to ctypes base type or array."""
     if isinstance(atype, bitfield):
@@ -87,130 +88,53 @@ def _parse_type(atype):
     raise ValueError('Field type `{}` not understood'.format(atype))
 
 
-def _build_struct(parent, **description):
-    """Use friendly keyword description to build ctypes struct subclass that supports vars()."""
-    fields = tuple(
-        (_field, *_parse_type(_type))
-        for _field, _type in description.items()
-    )
-    return _define_struct(parent, fields)
-
-
-def _define_struct(parent, fields):
-    """Build ctypes struct subclass with fields list provided."""
-
-    class Struct(parent):
-        """Struct with binary representation."""
-        _fields_ = fields
-        _pack_ = True
-
-        def __repr__(self):
-            """String representation."""
-            props = vars(self)
-            return type(self).__name__ + '({})'.format(
-                ', '.join(
-                    '{}={}'.format(_fld, _val)
-                    for _fld, _val in props.items()
-                )
-            )
-
-        @property
-        def __dict__(self):
-            """Extract the fields dictionary."""
-            return dict(
-                (field, getattr(self, field))
-                for field, *_ in self._fields_
-            )
-
-        def __add__(self, other):
-            """Concatenate structs."""
-            addedstruct = _define_struct(parent, self._fields_ + other._fields_)
-            return addedstruct(**vars(self), **vars(other))
-
-        def __getattribute__(self, attr):
-            """Convert attributes where still necessary."""
-            value = super().__getattribute__(attr)
-            if isinstance(value, ctypes.Array):
-                return tuple(value)
-            return value
-
-    return _wrap_struct(Struct)
-
-def _wrap_struct(cstruct):
-    """Wrap ctypes structs/struct arrays with convenience methods."""
-    cstruct.size = ctypes.sizeof(cstruct)
-    cstruct.array = lambda n: _wrap_struct(cstruct * n)
-    cstruct.read_from = lambda stream: cstruct.from_buffer_copy(stream.read(ctypes.sizeof(cstruct)))
-    cstruct.from_bytes = cstruct.from_buffer_copy
-    return cstruct
-
-def _wrap_base_type(ctyp, parent):
-    """Wrap ctypes base types with convenience methods."""
-    # while struct members defined as ctypes resolve to Python types,
-    # base ctypes are objects that are not compatible with Python types
-    # so we wrap the base type in a one-member struct
-    cls = _build_struct(parent, value=ctyp)
-    cls.array = lambda n: _wrap_base_type(ctyp * n, parent)
-    cls.read_from = lambda stream: cls.from_buffer_copy(stream.read(ctypes.sizeof(ctyp))).value
-    cls.from_bytes = lambda *args: cls.from_buffer_copy(*args).value
-    return cls
-
-
-# interface:
-#
-# >>> mystruct = big_endian.Struct(one=uint8, two=int32)
-# >>> record = mystruct.from_bytes(b'\0\1\2\3\4')
-# >>> record
-# Struct(one=0, two=16909060)
-# >>> hex(record.two)
-# '0x1020304'
-#
-# >>> mystruct = little_endian.Struct(one=uint8, two=int32)
-# >>> record = mystruct.from_bytes(b'\0\1\2\3\4')
-# >>> hex(record.two)
-# '0x4030201'
-
-# note that uint8 etc. are base types while BE.uint8 etc are wrapped
-# we can't use the latter in a struct definition
-
-def _binary_types(parent):
-    return SimpleNamespace(
-        Struct=partial(_build_struct, parent),
-        char=_wrap_base_type(char, parent),
-        uint8=_wrap_base_type(uint8, parent),
-        int8=_wrap_base_type(int8, parent),
-        uint16=_wrap_base_type(uint16, parent),
-        int16=_wrap_base_type(int16, parent),
-        uint32=_wrap_base_type(uint32, parent),
-        int32=_wrap_base_type(int32, parent),
-    )
-
-# big_endian = _binary_types(ctypes.BigEndianStructure)
-# little_endian = _binary_types(ctypes.LittleEndianStructure)
-
-
-
 class NewType:
 
     def __mul__(self, count):
         """Create an array."""
         return self.array(count)
 
+    def __call__(self, *args, **kwargs):
+        """Instantiate a struct variable."""
+        return self._value_cls.from_cvalue(self._ctype(*args, **kwargs))
+
     def from_bytes(self, *args):
-        return self._ctype.from_buffer_copy(*args)
+        cvalue = self._ctype.from_buffer_copy(*args)
+        return self._value_cls.from_cvalue(cvalue)
 
     def read_from(self, stream):
         return self.from_bytes(stream.read(self.size))
 
     def array(self, count):
-        return NewArray(self, count)
+        return ArrayType(self, count)
 
     @property
     def size(self):
         return ctypes.sizeof(self._ctype)
 
 
-class NewSimple(NewType):
+class NewValue:
+    """Wrapper for ctypes value."""
+
+    @classmethod
+    def from_cvalue(cls, cvalue):
+        obj = cls()
+        obj._cvalue = cvalue
+        return obj
+
+    def __bytes__(self):
+        return bytes(self._cvalue)
+
+
+class IntValue(NewValue):
+
+    def __int__(self):
+        return self._cvalue.value
+
+
+class ScalarType(NewType):
+
+    _value_cls = IntValue
 
     def __init__(self, endian, ctype):
         if endian[:1].lower() in ('b', '>'):
@@ -220,16 +144,35 @@ class NewSimple(NewType):
         else:
             raise ValueError(f"Endianness '{endian}' not recognised.")
 
-    def __call__(self, value):
-        """Instantiate a variable."""
-        # but bytes(...) woon't work correctly
-        return self._ctype(value).value
 
-    def from_bytes(self, *args):
-        return super().from_bytes(*args).value
+class StructValue(NewValue):
+    """Wrapper for ctypes Structure."""
+
+    def __getattr__(self, attr):
+        if not attr.startswith('__'):
+            return getattr(self._cvalue, attr)
+        raise AttributeError(attr)
+
+    @property
+    def __dict__(self):
+        return dict(
+            (field, getattr(self._cvalue, field))
+            for field, *_ in self._cvalue._fields_
+        )
 
 
-class NewStruct(NewType):
+class StructType(NewType):
+    """
+    Represent a structured type.
+
+    mystruct = StructType('big', first=uint8, second=uint16)
+    s = mystruct(first=1, second=2)
+
+    assert bytes(s) == b'\1\0\2'
+    assert mystruct.from_bytes(b'\1\0\2') == s
+    """
+
+    _value_cls = StructValue
 
     def __init__(self, endian, /, **description):
         """Create a structured type."""
@@ -240,45 +183,36 @@ class NewStruct(NewType):
         else:
             raise ValueError(f"Endianness '{endian}' not recognised.")
 
-        fields = tuple(
-            (_field, *_parse_type(_type))
-            for _field, _type in description.items()
-        )
-
-        class Struct(parent):
-            """Struct with binary representation."""
-            _fields_ = fields
+        class _CStruct(parent):
+            _fields_ = tuple(
+                (_field, *_parse_type(_type))
+                for _field, _type in description.items()
+            )
             _pack_ = True
 
-            @property
-            def __dict__(self):
-                """Extract the fields dictionary."""
-                return dict(
-                    (field, getattr(self, field))
-                    for field, *_ in self._fields_
-                )
-
-            def __getattribute__(self, attr):
-                """Convert attributes where still necessary."""
-                value = super().__getattribute__(attr)
-                if isinstance(value, ctypes.Array):
-                    return tuple(value)
-                return value
-
-            # deprecate?
-            def __add__(self, other):
-                """Concatenate structs."""
-                addedstruct = NewStruct(endian, **dict(self._fields_), **dict(other._fields_))
-                return addedstruct(**vars(self), **vars(other))
-
-        self._ctype = Struct
+        self._ctype = _CStruct
 
     def __call__(self, **kwargs):
         """Instantiate a struct variable."""
-        return self._ctype(**kwargs)
+        kwargs = {
+            _k: (_v._cvalue if isinstance(_v, NewValue) else _v)
+            for _k, _v in kwargs.items()
+        }
+        return StructValue.from_cvalue(self._ctype(**kwargs))
 
 
-class NewArray(NewType):
+class ArrayValue(NewValue):
+
+    def __getitem__(self, item):
+        return self._cvalue[item]
+
+    def __iter__(self):
+        return iter(self._cvalue)
+
+
+class ArrayType(NewType):
+
+    _value_cls = ArrayValue
 
     def __init__(self, struct, count):
         self._count = count
@@ -286,42 +220,36 @@ class NewArray(NewType):
 
     def __call__(self, *args):
         """Instantiate a struct variable."""
-        array = self._ctype
-        # deprecate?
-        print('here')
-        array.size = self.size
-        return array(*args)
+        if args and isinstance(args[0], NewValue):
+            args = (_arg._cvalue for _arg in args)
+        return ArrayValue.from_cvalue(self._ctype(*args))
 
 
-
-class NewStructBE(NewStruct):
-    def __init__(self, **description):
-        super().__init__('>', **description)
-
-class NewStructLE(NewStruct):
-    def __init__(self, **description):
-        super().__init__('<', **description)
-
+def sizeof(wrapped):
+    """Get size in bytes of a type or value."""
+    if isinstance(wrapped, NewType):
+        return wrapped.size
+    return ctypes.sizeof(wrapped._cvalue)
 
 
 big_endian = SimpleNamespace(
-    Struct=NewStructBE,
-    char=NewSimple('>', char),
-    uint8=NewSimple('>', uint8),
-    int8=NewSimple('>', int8),
-    uint16=NewSimple('>', uint16),
-    int16=NewSimple('>', int16),
-    uint32=NewSimple('>', uint32),
-    int32=NewSimple('>', int32),
+    Struct=partial(StructType, '>'),
+    char=ScalarType('>', char),
+    uint8=ScalarType('>', uint8),
+    int8=ScalarType('>', int8),
+    uint16=ScalarType('>', uint16),
+    int16=ScalarType('>', int16),
+    uint32=ScalarType('>', uint32),
+    int32=ScalarType('>', int32),
 )
 
 little_endian = SimpleNamespace(
-    Struct=NewStructLE,
-    char=NewSimple('<', char),
-    uint8=NewSimple('<', uint8),
-    int8=NewSimple('<', int8),
-    uint16=NewSimple('<', uint16),
-    int16=NewSimple('<', int16),
-    uint32=NewSimple('<', uint32),
-    int32=NewSimple('<', int32),
+    Struct=partial(StructType, '<'),
+    char=ScalarType('<', char),
+    uint8=ScalarType('<', uint8),
+    int8=ScalarType('<', int8),
+    uint16=ScalarType('<', uint16),
+    int16=ScalarType('<', int16),
+    uint32=ScalarType('<', uint32),
+    int32=ScalarType('<', int32),
 )

@@ -254,7 +254,7 @@ def _load_amiga(f, where, tags):
 def _read_library_names(f):
     library_names = []
     while True:
-        num_longs = be.uint32.read_from(f)
+        num_longs = int(be.uint32.read_from(f))
         if not num_longs:
             return library_names
         string = f.read(num_longs * 4)
@@ -268,7 +268,7 @@ def _read_library_names(f):
 def _read_header(f):
     """Read file header."""
     # read header id
-    hunk_id = be.uint32.read_from(f)
+    hunk_id = int(be.uint32.read_from(f))
     if hunk_id != _HUNK_HEADER:
         raise FileFormatError(
             'Not an Amiga font data file: '
@@ -284,7 +284,7 @@ def _read_header(f):
 
 def _read_font_hunk(f):
     """Parse the font data blob."""
-    hunk_id = be.uint32.read_from(f)
+    hunk_id = int(be.uint32.read_from(f))
     if hunk_id != _HUNK_CODE:
         raise FileFormatError(
             'Not an Amiga font data file: '
