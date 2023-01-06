@@ -250,7 +250,6 @@ def load_psfcom(instream, where=None):
 
 from ..struct import little_endian as le, bitfield
 
-
 _XBIN_HEADER = le.Struct(
     magic='5s',
     # Width of the image in character columns.
@@ -354,7 +353,7 @@ def _extract_data_and_geometry(
     # we may exceed the length of the rom because we use ceildiv, pad with nulls
     data = data.ljust(nrows * row_bytes, b'\0')
     if nrows == 0 or row_bytes == 0:
-        return Font()
+        return b'', 0, 0, 0, 0
     return data, count, strike_count, row_bytes, nrows
 
 
