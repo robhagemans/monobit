@@ -93,11 +93,11 @@ def load_16x16(instream, where=None):
 
 ###############################################################################
 # raw 8xN format with height in suffix
-# guess we won't have them less than 4 or greater than 31
+# guess we won't have them less than 4 or greater than 32
 
 from pathlib import PurePath
 
-_F_SUFFIXES = tuple(f'f{_height:02}' for _height in range(4, 32))
+_F_SUFFIXES = tuple(f'f{_height:02}' for _height in range(4, 33))
 
 @loaders.register(*_F_SUFFIXES, name='8xn')
 def load_8xn(instream, where=None):
