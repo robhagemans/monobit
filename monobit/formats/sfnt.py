@@ -118,6 +118,7 @@ def _init_fonttools():
 
 # tags we will decompile and process
 _TAGS = (
+    # check first to catch any assertion errors on decompile
     'maxp',
     'bhed', 'head',
     'EBLC', 'bloc',
@@ -159,11 +160,16 @@ def _read_collection(instream):
 
 def _sfnt_props(ttf):
     """Decompile tables and convert from fontTools objects to data structure."""
-    try:
-        tables = {_tag: ttf.get(_tag, None) for _tag in _TAGS}
-        return Props(**_to_props(tables))
-    except (TTLibError, AssertionError) as e:
-        raise ResourceFormatError(f'Could not read sfnt: {e}') from e
+    tables = {}
+    for tag in _TAGS:
+        try:
+            # __getitem__ forces a decompilation of the table
+            tables[tag] = ttf.get(tag, None)
+        except (TTLibError, AssertionError) as e:
+            if not str(e):
+                e = f'{type(e).__name__} in fontTools library.'
+            logging.warning('Could not read `%s` table in sfnt: %s', tag, e)
+    return Props(**_to_props(tables))
 
 
 def _to_props(obj):
