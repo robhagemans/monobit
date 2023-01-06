@@ -365,6 +365,36 @@ def load_xbin(instream, where=None):
     font = font.modify(source_format='XBIN')
     return font
 
+###############################################################################
+# Dr. Halo / Dr. Genius F*X*.FON
+
+from ..struct import little_endian as le
+
+_DRHALO_SIG = b'AH'
+
+@loaders.register(
+    #'fon',
+    name='drhalo', magic=(_DRHALO_SIG,)
+)
+def load_drhalo(instream, where=None):
+    """Load a Dr Halo / Dr Genius .FON font."""
+    start = instream.read(16)
+    if not start.startswith(_DRHALO_SIG):
+        raise FileFormatError(
+            'Not a Dr. Halo bitmap .FON: incorrect signature ' f'{start[:len(_DRHALO_SIG)]}.'
+        )
+    width = int(le.int16.read_from(instream))
+    height = int(le.int16.read_from(instream))
+    if not height or not width:
+        raise FileFormatError(
+            'Not a Dr. Halo bitmap .FON: may be stroked format.'
+        )
+    font = load_binary(
+        instream, where, cell=(width, height),
+    )
+    font = font.modify(source_format='Dr. Halo')
+    return font
+
 
 ###############################################################################
 ###############################################################################
