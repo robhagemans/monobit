@@ -103,6 +103,9 @@ Supported formats
 | FZX font              | `fzx`      |          | `.fzx`                      | ZX Spectrum   | ✔     | ✔     |
 | Figlet font           | `figlet`   |          | `.flf`                      | Unix          | ✔     | ✔     |
 | FONTX2                | `fontx`    |          | `.fnt`                      | DOS/V         | ✔     | ✔     |
+| FONTEDIT              | `fontedit` |          | `.com`                      | DOS           | ✔     |       |
+| Fontraption           | `frapt`    |          | `.com`                      | DOS           | ✔     |       |
+| Fontraption TSR       | `frapt-tsr`|          | `.com`                      | DOS           | ✔     |       |
 | Hanzi Bitmap Font     | `hbf`      |          | `.hbf` + raw binary         | Unix          | ✔     | ✔     |
 | Atari GDOS / GEM      | `gdos`     |          | `.fnt` `.gft` `.vga`        | Atari ST, GEM | ✔     | ✔     |
 | GNU Unifont           | `hex`      |          | `.hex`                      |               | ✔     | ✔     |
@@ -123,6 +126,7 @@ Supported formats
 | vfont                 | `vfont`    |          |                             | BSD, SunOS    | ✔     | ✔     |
 | Windows resource      | `win-fnt`  | 1.0 2.0 3.0    | `.fnt`                | Windows 1.x 2.x 3.x | ✔  | ✔ (2.0, 3.0)       |
 | Windows font          | `win-fon`  | 1.0 2.0 3.0 NE PE | `.fon`             | Windows 1.x 2.x 3.x | ✔  | ✔ (2.0 NE, 3.0 NE) |
+| XBIN font section     | `xbin`     |          | `.xb`                       | DOS           | ✔     |       |
 
 
 [P] - requires **PIL**  
