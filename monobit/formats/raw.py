@@ -243,6 +243,58 @@ def load_psfcom(instream, where=None):
     return font
 
 
+
+###############################################################################
+# XBIN font section
+# https://web.archive.org/web/20120204063040/http://www.acid.org/info/xbin/x_spec.htm
+
+from ..struct import little_endian as le, bitfield
+
+
+_XBIN_HEADER = le.Struct(
+    magic='5s',
+    # Width of the image in character columns.
+    width='word',
+    # Height of the image in character rows.
+    height='word',
+    # Number of pixel rows (scanlines) in the font, Default value for VGA is 16.
+    # Any value from 1 to 32 is technically possible on VGA. Any other values
+    # should be considered illegal.
+    fontsize='byte',
+    # A set of flags indicating special features in the XBin file.
+    # 7 6 5  4        3        2        1    0
+    # Unused 512Chars NonBlink Compress Font Palette
+    palette=bitfield('byte', 1),
+    font=bitfield('byte', 1),
+    compress=bitfield('byte', 1),
+    nonblink=bitfield('byte', 1),
+    has_512_chars=bitfield('byte', 1),
+    unused_flags=bitfield('byte', 3)
+)
+
+@loaders.register('.xb', name='xbin', magic=(b'XBIN\x1a',))
+def load_xbin(instream, where=None):
+    """Load a XBIN font."""
+    header = _XBIN_HEADER.read_from(instream)
+    if header.magic != b'XBIN\x1a':
+        raise FileFormatError(
+            f'Not an XBIN file: incorrect signature {header.magic}.'
+        )
+    if not header.font:
+        raise FileFormatError('XBIN file contains no font.')
+    height = header.fontsize
+    if header.has_512_chars:
+        count = 512
+    else:
+        count = 256
+    # skip 48-byte palette, if present
+    if header.palette:
+        instream.read(48)
+    font = load_binary(instream, where, cell=(8, height), count=count)
+    font = font.modify(source_format='XBIN')
+    return font
+
+
 ###############################################################################
 ###############################################################################
 # bitmap reader
