@@ -196,6 +196,78 @@ def load_mania(instream, where=None):
 
 
 ###############################################################################
+# Fontraption
+# raw bitmap with DOS .COM header, plain or TSR
+# https://github.com/viler-int10h/Fontraption/blob/master/FORMATS.inc
+
+from ..struct import little_endian as le
+
+_FRAPT_SIG = b'VILE\x1a'
+
+_FRAPT_HEADER = le.Struct(
+    magic='5s',
+    loader_0='16s',
+    height='uint8',
+    loader_1='3s',
+)
+@loaders.register(
+    #'com',
+    name='frapt', magic=(_FRAPT_SIG,)
+)
+def load_frapt(instream, where=None):
+    """Load a Fontraption plain .COM font."""
+    header = _FRAPT_HEADER.read_from(instream)
+    if header.magic != _FRAPT_SIG:
+        raise FileFormatError(
+            f'Not a Fontraption .COM file: incorrect signature {header.magic}.'
+        )
+    font = load_binary(instream, where, cell=(8, header.height))
+    font = font.modify(source_format='DOS loader (Fontraption)')
+    return font
+
+@loaders.register(
+    #'com',
+    name='frapt-tsr', magic=(b'\xe9\x60',)
+)
+def load_frapt_tsr(instream, where=None):
+    """Load a Fontraption TSR .COM font."""
+    instream.seek(0x28)
+    sig = instream.read(5)
+    if sig != _FRAPT_SIG:
+        raise FileFormatError(
+            f'Not a Fontraption .COM file: incorrect signature {sig}.'
+        )
+    instream.seek(0x5d)
+    height, = instream.read(1)
+    instream.seek(0x63)
+    font = load_binary(instream, where, cell=(8, height), count=256)
+    font = font.modify(source_format='DOS TSR (Fontraption)')
+    return font
+
+###############################################################################
+# FONTEDIT loader
+
+_FONTEDIT_SIG = b'\xeb\x33\x90\r   \r\n PC Magazine \xfe Michael J. Mefford\0\x1a'
+
+@loaders.register(
+    #'com',
+    name='fontedit', magic=(_FONTEDIT_SIG,)
+)
+def load_fontedit(instream, where=None):
+    """Load a FONTEDIT .COM font."""
+    sig = instream.read(99)
+    if not sig.startswith(_FONTEDIT_SIG):
+        raise FileFormatError(
+            'Not a FONTEDIT .COM file: incorrect signature '
+            f'{sig[:len(_FONTEDIT_SIG)]}.'
+        )
+    height = sig[50]
+    font = load_binary(instream, where, cell=(8, height), count=256)
+    font = font.modify(source_format='DOS loader (FONTEDIT)')
+    return font
+
+
+###############################################################################
 # psftools PSF2AMS font loader
 # raw bitmap with Z80 CP/M loader, prefixed with a DOS stub, 512-bytes offset
 # https://github.com/ZXSpectrumVault/john-elliot/blob/master/psftools/tools/psf2ams.c
