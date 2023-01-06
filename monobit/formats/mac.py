@@ -473,7 +473,7 @@ _NAME_TABLE = be.Struct(
 )
 
 def string_from_bytes(data, offset):
-    length = be.uint8.from_bytes(data, offset)
+    length = int(be.uint8.from_bytes(data, offset))
     string = data[offset+1:offset+1+length]
     return string, offset+1+length
 
