@@ -183,7 +183,11 @@ class Raster:
             offset = 0
         excess = len(bitseq) % stride
         if excess:
-            logging.warning('Bit string will be truncated.')
+            if _1 in bitseq[-excess:]:
+                logging.warning(
+                    'Bit string will be truncated (%d bytes). Dropping [%s].',
+                    excess, bitseq[-excess:]
+                )
             bitseq = bitseq[:-excess]
         rows = tuple(
             bitseq[_offs:_offs+width]
