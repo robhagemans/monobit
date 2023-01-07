@@ -73,35 +73,25 @@ def _read_dsf_format_0(instream):
         pixels = []
         visited = []
         offset = 0
-        ink = True
-        move = True
         width, height = 0, 0
         while True:
-            try:
-                cmd = code[offset]
-            except IndexError:
+            mode, direction, offset = _read_command(code, offset)
+            if not direction:
                 break
-            offset += 1
-            if cmd == 'b':
-                ink = False
-                continue
-            if cmd == 'n':
-                move = False
-                continue
+            ink = mode != 'b'
+            move = mode != 'n'
             step, offset = _read_stepsize(code, offset)
             nx, ny = x, y
             for _ in range(step):
                 if ink:
                     pixels.append((nx, ny))
                 visited.append((nx, ny))
-                nx, ny = _move_turtle(nx, ny, cmd)
+                nx, ny = _move_turtle(nx, ny, direction)
             if ink:
                 pixels.append((nx, ny))
             visited.append((nx, ny))
             if move:
                 x, y = nx, ny
-            ink = True
-            move = True
         max_x = max(_coord[0] for _coord in visited)
         min_y = min(_coord[1] for _coord in visited)
         max_y = max(_coord[1] for _coord in visited)
@@ -126,7 +116,25 @@ def _read_dsf_format_0(instream):
         glyphs.append(glyph)
     return glyphs
 
+def _read_command(code, offset):
+    """Read mode and command characer."""
+    try:
+        cmd = code[offset]
+    except IndexError:
+        return '', '', offset
+    offset += 1
+    if cmd not in ('b', 'n'):
+        return '', cmd, offset
+    mode = cmd
+    try:
+        cmd = code[offset]
+    except IndexError:
+        cmd = ''
+    offset += 1
+    return mode, cmd, offset
+
 def _read_stepsize(code, offset):
+    """Read step size."""
     num = []
     while True:
         try:
@@ -142,6 +150,7 @@ def _read_stepsize(code, offset):
     return int(''.join(num)), offset
 
 def _move_turtle(nx, ny, cmd):
+    """Move the turtle one step in the given direction."""
     if cmd in ('u', 'e', 'h'):
         ny += 1
     if cmd in ('r', 'e', 'f'):
