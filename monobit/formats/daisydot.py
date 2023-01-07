@@ -1,7 +1,7 @@
 """
 monobit.formats.daisydot - Daisy Dot II/III NLQ format
 
-(c) 2022 Rob Hagemans
+(c) 2022--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 

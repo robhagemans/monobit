@@ -1,7 +1,7 @@
 """
 monobit.hbf - Hanzi Bitmap File Format
 
-(c) 2022 Rob Hagemans
+(c) 2022--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 

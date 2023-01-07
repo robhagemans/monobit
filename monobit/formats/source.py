@@ -1,7 +1,7 @@
 """
 monobit.formats.source - fonts embedded in C/Python/JS source files
 
-(c) 2019--2022 Rob Hagemans
+(c) 2019--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 

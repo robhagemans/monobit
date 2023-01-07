@@ -1,7 +1,7 @@
 """
 monobit.yaff - monobit-yaff and Unifont HexDraw formats
 
-(c) 2019--2022 Rob Hagemans
+(c) 2019--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 

@@ -1,7 +1,7 @@
 """
 monobit.formats.dec - DEC Dynamically Redefined Character Set
 
-(c) 2022 Rob Hagemans
+(c) 2022--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
