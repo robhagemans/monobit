@@ -23,6 +23,7 @@ else:
 from ..properties import Props
 from ..font import Font
 from ..glyph import Glyph
+from ..labels import Tag
 from ..storage import loaders, savers
 from ..streams import FileFormatError
 
@@ -117,6 +118,7 @@ def _init_fonttools():
 
 # tags we will decompile and process
 _TAGS = (
+    # check first to catch any assertion errors on decompile
     'maxp',
     'bhed', 'head',
     'EBLC', 'bloc',
@@ -125,8 +127,8 @@ _TAGS = (
     'vmtx', 'vhea',
     'cmap',
     'name',
+    'kern',
     # OS/2 - Windows metrics
-    # kern - Apple kerning
 )
 
 def _read_sfnt(instream):
@@ -158,11 +160,16 @@ def _read_collection(instream):
 
 def _sfnt_props(ttf):
     """Decompile tables and convert from fontTools objects to data structure."""
-    try:
-        tables = {_tag: ttf.get(_tag, None) for _tag in _TAGS}
-        return Props(**_to_props(tables))
-    except (TTLibError, AssertionError) as e:
-        raise ResourceFormatError(f'Could not read sfnt: {e}') from e
+    tables = {}
+    for tag in _TAGS:
+        try:
+            # __getitem__ forces a decompilation of the table
+            tables[tag] = ttf.get(tag, None)
+        except (TTLibError, AssertionError) as e:
+            if not str(e):
+                e = f'{type(e).__name__} in fontTools library.'
+            logging.warning('Could not read `%s` table in sfnt: %s', tag, e)
+    return Props(**_to_props(tables))
 
 
 def _to_props(obj):
@@ -282,6 +289,7 @@ def _get_encoding_table(sfnt):
 
 
 def _convert_glyph_metrics(metrics, small_is_vert):
+    """Conveert glyph metrics."""
     if hasattr(metrics, 'horiAdvance'):
         # big metrics
         return dict(
@@ -317,6 +325,7 @@ def _convert_glyph_metrics(metrics, small_is_vert):
         )
 
 def _convert_hmtx_metrics(hmtx, glyph_name, hori_fu_p_pix, width):
+    """Convert horizontal metrics from hmtx table."""
     if hmtx:
         hm = hmtx.metrics.get(glyph_name, None)
         if hm:
@@ -328,6 +337,7 @@ def _convert_hmtx_metrics(hmtx, glyph_name, hori_fu_p_pix, width):
     return {}
 
 def _convert_vmtx_metrics(vmtx, glyph_name, vert_fu_p_pix, height):
+    """Convert vertical metrics from vmtx table."""
     if vmtx:
         vm = vmtx.metrics.get(glyph_name, None)
         if vm:
@@ -337,6 +347,29 @@ def _convert_vmtx_metrics(vmtx, glyph_name, vert_fu_p_pix, height):
                 bottom_bearing=(advance - top_bearing) // vert_fu_p_pix - height,
             )
     return {}
+
+def _convert_kern_metrics(glyphs, kern, hori_fu_p_pix):
+    """Convert kerning values form kern table."""
+    if kern:
+        if kern.version != 0:
+            logging.warning(f'`kern` table version {kern.version} not supported.')
+            return {}
+        glyph_props = {}
+        for table in kern.kernTables:
+            if table.coverage != 1:
+                logging.warning('Vertical or cross-stream kerning not supported.')
+                continue
+            for pair, kern_value in table.kernTable.items():
+                left, right = pair
+                table = glyph_props.get(Tag(left), {})
+                table[Tag(right)]  = kern_value / hori_fu_p_pix
+                glyph_props[Tag(left)] = table
+        glyphs = tuple(
+            _g.modify(right_kerning=glyph_props.get(_g.tags[0], None))
+            if _g.tags else _g
+            for _g in glyphs
+        )
+    return glyphs
 
 
 def _convert_glyphs(sfnt, i_strike, hori_fu_p_pix, vert_fu_p_pix):
@@ -386,6 +419,7 @@ def _convert_glyphs(sfnt, i_strike, hori_fu_p_pix, vert_fu_p_pix):
                 codepoint=enctable.get(name, b''), **props
             )
             glyphs.append(glyph)
+    glyphs = _convert_kern_metrics(glyphs, sfnt.kern, hori_fu_p_pix)
     return glyphs
 
 
