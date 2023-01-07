@@ -42,13 +42,16 @@ _OFFSETS = le.uint16.array(95)
 # followed by glyph bitmaps
 
 _BITMAP_HEADER = le.Struct(
-    unknown0=le.uint8 * 7,
+    unknown0=le.uint8,
+    # maybe
+    baseline='uint8',
+    unknown1=le.uint8* 5,
     name='9s',
     logo_bytewidth='uint8',
     logo_height='uint8',
     height='uint8',
     shortname='4s',
-    unknown1=le.uint8 * 4,
+    unknown2=le.uint8 * 4,
 )
 
 @loaders.register(
@@ -77,7 +80,8 @@ def load_printshop(instream, where=None):
     for start, width, height in zip(offsets, widths, heights):
         glyphs.append(Glyph.from_bytes(
             instream.read(ceildiv(width, 8) * height),
-            width=width, codepoint=codepoint, shift_up=bmp_header.height-height
+            width=width, codepoint=codepoint,
+            shift_up=bmp_header.baseline-height
         ))
         codepoint += 1
     return Font(
