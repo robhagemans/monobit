@@ -420,6 +420,40 @@ class TestFormats(BaseTester):
         monobit.save(font, file, format='hbf')
         self.assertTrue(os.path.getsize(file) > 0)
 
+    # XBIN
+
+    def test_import_xbin(self):
+        """Test importing XBIN files."""
+        font, *_ = monobit.load(self.font_path / '8X16.XB')
+        self.assertEqual(len(font.glyphs), 256)
+
+    # COM loaders
+
+    def test_import_frapt(self):
+        """Test importing Fontraptor files."""
+        font, *_ = monobit.load(self.font_path / '8X16-FRA.COM')
+        self.assertEqual(len(font.glyphs), 256)
+
+    def test_import_frapt_tsr(self):
+        """Test importing Fontraptor TSR files."""
+        font, *_ = monobit.load(self.font_path / '8X16-TSR.COM')
+        self.assertEqual(len(font.glyphs), 256)
+
+    def test_import_mania(self):
+        """Test importing Font Mania files."""
+        font, *_ = monobit.load(self.font_path / '8X16-REX.COM')
+        self.assertEqual(len(font.glyphs), 256)
+
+    def test_import_frapt(self):
+        """Test importing FONTEDIT files."""
+        font, *_ = monobit.load(self.font_path / '8X16-FE.COM')
+        self.assertEqual(len(font.glyphs), 256)
+
+    def test_import_psfcom(self):
+        """Test importing PSF2AMS files."""
+        font, *_ = monobit.load(self.font_path / '4x6-ams.com')
+        self.assertEqual(len(font.glyphs), 512)
+
 
 if __name__ == '__main__':
     unittest.main()

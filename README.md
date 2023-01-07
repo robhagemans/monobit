@@ -251,6 +251,7 @@ reverse-engineering, implementing and preserving font formats and files:
 - [Xiphoseer's Signum Document Toolbox](https://sdo.dseiler.eu/)
 - ... and many others
 
+
 Other software
 --------------
 
@@ -263,3 +264,4 @@ Other bitmap font tools you could use in conjunction with (or instead of) `monob
 - [RECOIL](https://recoil.sourceforge.net/)
 - John Zaitseff's [console font utilities](https://www.zap.org.au/projects/console-fonts-utils/)
 - George Williams's [Fondu](https://fondu.sourceforge.net)
+- VileR's [Fontraption](https://github.com/viler-int10h/Fontraption/)
