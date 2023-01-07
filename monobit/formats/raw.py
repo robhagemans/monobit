@@ -187,7 +187,7 @@ def load_mania(instream, where=None):
     logging.debug('Version string %r', header.version_string.decode('latin-1'))
     font = load_binary(
         instream, where,
-        offset=header.bitmap_offset - header.size,
+        offset=header.bitmap_offset - _FM_HEADER.size,
         cell=(8, header.bitmap_size//256),
         count=256
     )
@@ -304,7 +304,7 @@ def load_psfcom(instream, where=None):
         height = 8
     font = load_binary(
         instream, where,
-        offset=header.address - header.size - 0x100,
+        offset=header.address - _PSFCOM_HEADER.size - 0x100,
         cell=(8, height),
     )
     font = font.modify(
