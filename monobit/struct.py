@@ -125,6 +125,9 @@ class NewValue:
     def __bytes__(self):
         return bytes(self._cvalue)
 
+    def __repr__(self):
+        return type(self).__name__ + '({})'.format(self._cvalue.value)
+
 
 class IntValue(NewValue):
 
@@ -145,6 +148,7 @@ class ScalarType(NewType):
             raise ValueError(f"Endianness '{endian}' not recognised.")
 
 
+
 class StructValue(NewValue):
     """Wrapper for ctypes Structure."""
 
@@ -158,6 +162,15 @@ class StructValue(NewValue):
         return dict(
             (field, getattr(self._cvalue, field))
             for field, *_ in self._cvalue._fields_
+        )
+
+    def __repr__(self):
+        props = vars(self)
+        return type(self).__name__ + '({})'.format(
+            ', '.join(
+                '{}={}'.format(_fld, _val)
+                for _fld, _val in props.items()
+            )
         )
 
 
@@ -209,6 +222,16 @@ class ArrayValue(NewValue):
     def __iter__(self):
         return iter(self._cvalue)
 
+    def __len__(self):
+        return len(self._cvalue)
+
+    def __repr__(self):
+        props = vars(self)
+        return type(self).__name__ + '({})'.format(
+            ', '.join(
+                str(_s) for _s in iter(self)
+            )
+        )
 
 class ArrayType(NewType):
 
