@@ -322,6 +322,7 @@ def load_psfcom(instream, where=None):
 
 from ..struct import little_endian as le, bitfield
 
+_XBIN_MAGIC = b'XBIN\x1a'
 _XBIN_HEADER = le.Struct(
     magic='5s',
     # Width of the image in character columns.
@@ -343,11 +344,11 @@ _XBIN_HEADER = le.Struct(
     unused_flags=bitfield('byte', 3)
 )
 
-@loaders.register('.xb', name='xbin', magic=(b'XBIN\x1a',))
+@loaders.register('.xb', name='xbin', magic=(_XBIN_MAGIC,))
 def load_xbin(instream, where=None):
     """Load a XBIN font."""
     header = _XBIN_HEADER.read_from(instream)
-    if header.magic != b'XBIN\x1a':
+    if header.magic != _XBIN_MAGIC:
         raise FileFormatError(
             f'Not an XBIN file: incorrect signature {header.magic}.'
         )
@@ -364,6 +365,40 @@ def load_xbin(instream, where=None):
     font = load_binary(instream, where, cell=(8, height), count=count)
     font = font.modify(source_format='XBIN')
     return font
+
+
+@savers.register(linked=load_xbin)
+def save_xbin(fonts, outstream, where=None):
+    """Save an XBIN font."""
+    font, *extra = fonts
+    if extra:
+        raise FileFormatError('Can only save a single font to an XBIN file')
+    if font.spacing != 'character-cell' or font.cell_size.x != 8:
+        raise FileFormatError(
+            'This format can only store 8xN character-cell fonts'
+        )
+    font = font.label(codepoint_from=font.encoding)
+    max_cp = max(int(_cp) for _cp in font.get_codepoints())
+    if max_cp >= 512:
+        logging.warning('Glyphs above codepoint 512 will not be stored.')
+    blank = Glyph.blank(width=8, height=font.cell_size.y)
+    if max_cp >= 256:
+        count = 512
+    else:
+        count = 256
+    glyphs = (font.get_glyph(_cp, missing=blank) for _cp in range(count))
+    # TODO: take codepoint or ordinal?
+    # TODO: bring to normal form
+    header = _XBIN_HEADER(
+        magic=_XBIN_MAGIC,
+        fontsize=font.cell_size.y,
+        font=1,
+        has_512_glyphs=count==512,
+    )
+    outstream.write(bytes(header))
+    font = Font(glyphs)
+    save_bitmap(outstream, font)
+
 
 ###############################################################################
 # Dr. Halo / Dr. Genius F*X*.FON

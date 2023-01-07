@@ -427,6 +427,12 @@ class TestFormats(BaseTester):
         font, *_ = monobit.load(self.font_path / '8X16.XB')
         self.assertEqual(len(font.glyphs), 256)
 
+    def test_export_xbin(self):
+        """Test exporting XBIN files."""
+        fnt_file = self.temp_path / '8x16.xb'
+        monobit.save(self.fixed8x16, fnt_file)
+        self.assertTrue(os.path.getsize(fnt_file) > 0)
+
     # COM loaders
 
     def test_import_frapt(self):
