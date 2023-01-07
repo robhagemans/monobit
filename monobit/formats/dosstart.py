@@ -87,38 +87,18 @@ def _read_dsf_format_0(instream):
             if cmd == 'n':
                 move = False
                 continue
-            num = []
-            while True:
-                try:
-                    d = code[offset]
-                except IndexError:
-                    break
-                if not d.isdigit():
-                    break
-                offset += 1
-                num.append(d)
-            if num:
-                step = int(''.join(num))
-            else:
-                step = 1
+            step, offset = _read_stepsize(code, offset)
             nx, ny = x, y
             for _ in range(step):
                 if ink:
                     pixels.append((nx, ny))
                 height = max(height, ny)
                 width = max(width, nx)
-                if cmd in ('u', 'e', 'h'):
-                    ny += 1
-                if cmd in ('r', 'e', 'f'):
-                    nx += 1
-                if cmd in ('d', 'f', 'g'):
-                    ny -= 1
-                if cmd in ('l', 'g', 'h'):
-                    nx -= 1
+                nx, ny = _move_turtle(nx, ny, cmd)
             if ink:
                 pixels.append((nx, ny))
-            height = max(height, ny)
-            width = max(width, nx)
+            max_y = max(height, ny)
+            max_x = max(width, nx)
             if move:
                 x, y = nx, ny
             ink = True
@@ -126,16 +106,40 @@ def _read_dsf_format_0(instream):
         raster = tuple(
             ''.join(
                 '1' if (_x, _y) in pixels else '0'
-                for _x in range(width+1)
+                for _x in range(max_x+1)
             )
-            for _y in reversed(range(height+1))
+            for _y in reversed(range(max_y+1))
         )
         glyph = Glyph(
             raster, _0='0', _1='1',
-            right_bearing=advance-width,
+            right_bearing=advance-max_x-1,
             codepoint=0x20+i,
         )
-        # print(code)
-        # print(glyph)
         glyphs.append(glyph)
     return glyphs
+
+def _read_stepsize(code, offset):
+    num = []
+    while True:
+        try:
+            d = code[offset]
+        except IndexError:
+            break
+        if not d.isdigit():
+            break
+        offset += 1
+        num.append(d)
+    if not num:
+        return 1, offset
+    return int(''.join(num)), offset
+
+def _move_turtle(nx, ny, cmd):
+    if cmd in ('u', 'e', 'h'):
+        ny += 1
+    if cmd in ('r', 'e', 'f'):
+        nx += 1
+    if cmd in ('d', 'f', 'g'):
+        ny -= 1
+    if cmd in ('l', 'g', 'h'):
+        nx -= 1
+    return nx, ny
