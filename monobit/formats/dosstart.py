@@ -71,6 +71,7 @@ def _read_dsf_format_0(instream):
         advance = int(advance)
         x, y = 0, 0
         pixels = []
+        visited = []
         offset = 0
         ink = True
         move = True
@@ -92,28 +93,35 @@ def _read_dsf_format_0(instream):
             for _ in range(step):
                 if ink:
                     pixels.append((nx, ny))
-                height = max(height, ny)
-                width = max(width, nx)
+                visited.append((nx, ny))
                 nx, ny = _move_turtle(nx, ny, cmd)
             if ink:
                 pixels.append((nx, ny))
-            max_y = max(height, ny)
-            max_x = max(width, nx)
+            visited.append((nx, ny))
             if move:
                 x, y = nx, ny
             ink = True
             move = True
-        raster = tuple(
-            ''.join(
-                '1' if (_x, _y) in pixels else '0'
-                for _x in range(max_x+1)
-            )
-            for _y in reversed(range(max_y+1))
+        max_x = max(_coord[0] for _coord in visited)
+        min_y = min(_coord[1] for _coord in visited)
+        max_y = max(_coord[1] for _coord in visited)
+        raster = Raster(
+            tuple(
+                ''.join(
+                    '1' if (_x, _y) in pixels else '0'
+                    for _x in range(max_x+1)
+                )
+                for _y in reversed(range(min_y, max_y+1))
+            ),
+            _0='0', _1='1',
         )
+        # turtle moves to next origin, therefore raster includes this column
+        raster = raster.crop(right=1)
         glyph = Glyph(
-            raster, _0='0', _1='1',
-            right_bearing=advance-max_x-1,
+            raster,
+            right_bearing=advance-max_x,
             codepoint=0x20+i,
+            shift_up=min_y if min_y else None,
         )
         glyphs.append(glyph)
     return glyphs
