@@ -179,7 +179,7 @@ _FM_HEADER = le.Struct(
 # the version string would be a much better signature, but we need an offset
 @loaders.register(
     #'com',
-    name='mania', magic=(b'\xEB\x4D', b'\xEB\x4E')
+    name='mania', magic=(b'\xEB\x4D', b'\xEB\x4E', b'\xEB\x47\xA2\x05')
 )
 def load_mania(instream, where=None):
     """Load a REXXCOM Font Mania font."""
