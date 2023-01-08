@@ -108,7 +108,7 @@ def load_psf(instream, where=None):
     else:
         raise FileFormatError(
             'Not a PSF file: '
-            f'magic bytes 0x{magic:X} not one of 0x{_PSF1_MAGIC:X}, 0x{_PSF2_MAGIC:X}'
+            f'magic bytes {magic} not one of {_PSF1_MAGIC}, {_PSF2_MAGIC}'
         )
     logging.info('PSF properties:')
     for name, value in vars(psf_props).items():

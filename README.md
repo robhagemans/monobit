@@ -100,9 +100,13 @@ Supported formats
 | Codepage Information  | `cpi` | FONT FONT.NT DRFONT | `.cpi` | MS-DOS, Windows NT, DR-DOS   | ✔     | ✔     |
 | Daisy-Dot             | `daisy` | II III Magnified | `.nlq` `.nl2` `.nl3` `.nl4` | Atari    | ✔     |       |
 | DEC DRCS soft font    | `dec-drcs` |          |                             | DEC VT        | ✔     | ✔     |
+| DosStart!             | `dosstart` |          | `.dsf`                      | DOS           | ✔     |       |
 | FZX font              | `fzx`      |          | `.fzx`                      | ZX Spectrum   | ✔     | ✔     |
 | Figlet font           | `figlet`   |          | `.flf`                      | Unix          | ✔     | ✔     |
 | FONTX2                | `fontx`    |          | `.fnt`                      | DOS/V         | ✔     | ✔     |
+| FONTEDIT              | `fontedit` |          | `.com`                      | DOS           | ✔     |       |
+| Fontraption           | `frapt`    |          | `.com`                      | DOS           | ✔     |       |
+| Fontraption TSR       | `frapt-tsr`|          | `.com`                      | DOS           | ✔     |       |
 | Hanzi Bitmap Font     | `hbf`      |          | `.hbf` + raw binary         | Unix          | ✔     | ✔     |
 | Atari GDOS / GEM      | `gdos`     |          | `.fnt` `.gft` `.vga`        | Atari ST, GEM | ✔     | ✔     |
 | GNU Unifont           | `hex`      |          | `.hex`                      |               | ✔     | ✔     |
@@ -116,6 +120,7 @@ Supported formats
 | Optiks PCR Font       | `pcr`      |          | `.pcr`                      | DOS           | ✔     |       |
 | PCPaint, GRASP, ChiWriter | `pcpaint` | old 3 4 | `.set` `.fnt`  `.sft` `.pft` `.eft` ... | DOS | ✔ |       |
 | PDF chart [R]         | `pdf`      |          | `.pdf`                      |               |       | ✔     |
+| The Print Shop        | `printshop`|          | `.pnf`                      | DOS           | ✔     |       |
 | PC Screen Font        | `psf`      | 1 2      | `.psf` `.psfu`              | MS-DOS, Linux | ✔     | ✔ (version 2) |
 | PSF2AMS PSFCOM        | `psfcom`   |          | `.com`                      | Z80 CP/M      | ✔     |       |
 | Python coded binary   | `python`   |          | `.py`                       |               | ✔     | ✔     |
@@ -123,6 +128,7 @@ Supported formats
 | vfont                 | `vfont`    |          |                             | BSD, SunOS    | ✔     | ✔     |
 | Windows resource      | `win-fnt`  | 1.0 2.0 3.0    | `.fnt`                | Windows 1.x 2.x 3.x | ✔  | ✔ (2.0, 3.0)       |
 | Windows font          | `win-fon`  | 1.0 2.0 3.0 NE PE | `.fon`             | Windows 1.x 2.x 3.x | ✔  | ✔ (2.0 NE, 3.0 NE) |
+| XBIN font section     | `xbin`     |          | `.xb`                       | DOS           | ✔     |       |
 
 
 [P] - requires **PIL**  
@@ -246,6 +252,7 @@ reverse-engineering, implementing and preserving font formats and files:
 - [Xiphoseer's Signum Document Toolbox](https://sdo.dseiler.eu/)
 - ... and many others
 
+
 Other software
 --------------
 
@@ -258,3 +265,4 @@ Other bitmap font tools you could use in conjunction with (or instead of) `monob
 - [RECOIL](https://recoil.sourceforge.net/)
 - John Zaitseff's [console font utilities](https://www.zap.org.au/projects/console-fonts-utils/)
 - George Williams's [Fondu](https://fondu.sourceforge.net)
+- VileR's [Fontraption](https://github.com/viler-int10h/Fontraption/)

@@ -36,12 +36,17 @@ Original sources:
 * `4x6.fzx` was created from `4x6.bdf` using `monobit`
 * `4x6.c` was created from `4x6.yaff` using `monobit`
 * `4x6.dfont` and `4x6.bin` were created from `4x6.bdf` using `ufond` (part of `fondu`)
-* `4x6.vfont*` were created from `4x6.psf` using `psftools-1.1.1`
-* `8x8.bbc` was created from `4x6.psf` using `psftools-1.1.1`
+* `4x6.vfont*` were created from `4x6.psf` using `psftools` v1.1.1
+* `4x6-ams.com*` were created from `4x6.psf` using `psftools` v1.1.1
+* `8x8.bbc` was created from `4x6.psf` using `psftools` v1.1.1
 * `8x16.hex` was created from `4x6.yaff` using `bittermelon`
 * `8x16.draw` was created from `8x16.hex` using `hexdraw`
 * `8x16-*.cpi` were created from `8x16.hex` through a PSF intermediate using `monobit` and `psftools`
 * `8x16.cp` was extracted from `8x16.cpi` using `codepage -a` and `tail -c 8257`
+* `8x16.f16` was created from `8x16.cp` using `monobit`
+* `8X16.XB`, `8X16-FRA.COM` and `8X16-TSR.COM` were created from `8x16.f16` using Fontraption
+* `8X16-FE.COM` was created from `8X16-FRA.COM` using `FONTEDIT`
+* `8X16-REX.COM` was created from `8X16-FRA.COM` using Font Mania 2.2
 
 
 ### Derivatives of `6x13`

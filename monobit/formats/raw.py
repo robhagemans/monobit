@@ -93,11 +93,11 @@ def load_16x16(instream, where=None):
 
 ###############################################################################
 # raw 8xN format with height in suffix
-# guess we won't have them less than 4 or greater than 31
+# guess we won't have them less than 4 or greater than 32
 
 from pathlib import PurePath
 
-_F_SUFFIXES = tuple(f'f{_height:02}' for _height in range(4, 32))
+_F_SUFFIXES = tuple(f'f{_height:02}' for _height in range(4, 33))
 
 @loaders.register(*_F_SUFFIXES, name='8xn')
 def load_8xn(instream, where=None):
@@ -179,7 +179,7 @@ _FM_HEADER = le.Struct(
 # the version string would be a much better signature, but we need an offset
 @loaders.register(
     #'com',
-    name='mania', magic=(b'\xEB\x4D', b'\xEB\x4E')
+    name='mania', magic=(b'\xEB\x4D', b'\xEB\x4E', b'\xEB\x47\xA2\x05')
 )
 def load_mania(instream, where=None):
     """Load a REXXCOM Font Mania font."""
@@ -192,6 +192,78 @@ def load_mania(instream, where=None):
         count=256
     )
     font = font.modify(source_format='DOS loader (REXXCOM Font Mania)')
+    return font
+
+
+###############################################################################
+# Fontraption
+# raw bitmap with DOS .COM header, plain or TSR
+# https://github.com/viler-int10h/Fontraption/blob/master/FORMATS.inc
+
+from ..struct import little_endian as le
+
+_FRAPT_SIG = b'VILE\x1a'
+
+_FRAPT_HEADER = le.Struct(
+    magic='5s',
+    loader_0='16s',
+    height='uint8',
+    loader_1='3s',
+)
+@loaders.register(
+    #'com',
+    name='frapt', magic=(_FRAPT_SIG,)
+)
+def load_frapt(instream, where=None):
+    """Load a Fontraption plain .COM font."""
+    header = _FRAPT_HEADER.read_from(instream)
+    if header.magic != _FRAPT_SIG:
+        raise FileFormatError(
+            f'Not a Fontraption .COM file: incorrect signature {header.magic}.'
+        )
+    font = load_binary(instream, where, cell=(8, header.height))
+    font = font.modify(source_format='DOS loader (Fontraption)')
+    return font
+
+@loaders.register(
+    #'com',
+    name='frapt-tsr', magic=(b'\xe9\x60',)
+)
+def load_frapt_tsr(instream, where=None):
+    """Load a Fontraption TSR .COM font."""
+    instream.seek(0x28)
+    sig = instream.read(5)
+    if sig != _FRAPT_SIG:
+        raise FileFormatError(
+            f'Not a Fontraption .COM file: incorrect signature {sig}.'
+        )
+    instream.seek(0x5d)
+    height, = instream.read(1)
+    instream.seek(0x63)
+    font = load_binary(instream, where, cell=(8, height), count=256)
+    font = font.modify(source_format='DOS TSR (Fontraption)')
+    return font
+
+###############################################################################
+# FONTEDIT loader
+
+_FONTEDIT_SIG = b'\xeb\x33\x90\r   \r\n PC Magazine \xfe Michael J. Mefford\0\x1a'
+
+@loaders.register(
+    #'com',
+    name='fontedit', magic=(_FONTEDIT_SIG,)
+)
+def load_fontedit(instream, where=None):
+    """Load a FONTEDIT .COM font."""
+    sig = instream.read(99)
+    if not sig.startswith(_FONTEDIT_SIG):
+        raise FileFormatError(
+            'Not a FONTEDIT .COM file: incorrect signature '
+            f'{sig[:len(_FONTEDIT_SIG)]}.'
+        )
+    height = sig[50]
+    font = load_binary(instream, where, cell=(8, height), count=256)
+    font = font.modify(source_format='DOS loader (FONTEDIT)')
     return font
 
 
@@ -240,6 +312,122 @@ def load_psfcom(instream, where=None):
         encoding='amstrad-cpm-plus',
     )
     font = font.label()
+    return font
+
+
+
+###############################################################################
+# XBIN font section
+# https://web.archive.org/web/20120204063040/http://www.acid.org/info/xbin/x_spec.htm
+
+from ..struct import little_endian as le, bitfield
+
+_XBIN_MAGIC = b'XBIN\x1a'
+_XBIN_HEADER = le.Struct(
+    magic='5s',
+    # Width of the image in character columns.
+    width='word',
+    # Height of the image in character rows.
+    height='word',
+    # Number of pixel rows (scanlines) in the font, Default value for VGA is 16.
+    # Any value from 1 to 32 is technically possible on VGA. Any other values
+    # should be considered illegal.
+    fontsize='byte',
+    # A set of flags indicating special features in the XBin file.
+    # 7 6 5  4        3        2        1    0
+    # Unused 512Chars NonBlink Compress Font Palette
+    palette=bitfield('byte', 1),
+    font=bitfield('byte', 1),
+    compress=bitfield('byte', 1),
+    nonblink=bitfield('byte', 1),
+    has_512_chars=bitfield('byte', 1),
+    unused_flags=bitfield('byte', 3)
+)
+
+@loaders.register('.xb', name='xbin', magic=(_XBIN_MAGIC,))
+def load_xbin(instream, where=None):
+    """Load a XBIN font."""
+    header = _XBIN_HEADER.read_from(instream)
+    if header.magic != _XBIN_MAGIC:
+        raise FileFormatError(
+            f'Not an XBIN file: incorrect signature {header.magic}.'
+        )
+    if not header.font:
+        raise FileFormatError('XBIN file contains no font.')
+    height = header.fontsize
+    if header.has_512_chars:
+        count = 512
+    else:
+        count = 256
+    # skip 48-byte palette, if present
+    if header.palette:
+        instream.read(48)
+    font = load_binary(instream, where, cell=(8, height), count=count)
+    font = font.modify(source_format='XBIN')
+    return font
+
+
+@savers.register(linked=load_xbin)
+def save_xbin(fonts, outstream, where=None):
+    """Save an XBIN font."""
+    font, *extra = fonts
+    if extra:
+        raise FileFormatError('Can only save a single font to an XBIN file')
+    if font.spacing != 'character-cell' or font.cell_size.x != 8:
+        raise FileFormatError(
+            'This format can only store 8xN character-cell fonts'
+        )
+    font = font.label(codepoint_from=font.encoding)
+    max_cp = max(int(_cp) for _cp in font.get_codepoints())
+    if max_cp >= 512:
+        logging.warning('Glyphs above codepoint 512 will not be stored.')
+    blank = Glyph.blank(width=8, height=font.cell_size.y)
+    if max_cp >= 256:
+        count = 512
+    else:
+        count = 256
+    glyphs = (font.get_glyph(_cp, missing=blank) for _cp in range(count))
+    # TODO: take codepoint or ordinal?
+    # TODO: bring to normal form
+    header = _XBIN_HEADER(
+        magic=_XBIN_MAGIC,
+        fontsize=font.cell_size.y,
+        font=1,
+        has_512_glyphs=count==512,
+    )
+    outstream.write(bytes(header))
+    font = Font(glyphs)
+    save_bitmap(outstream, font)
+
+
+###############################################################################
+# Dr. Halo / Dr. Genius F*X*.FON
+
+from ..struct import little_endian as le
+
+_DRHALO_SIG = b'AH'
+
+@loaders.register(
+    #'fon',
+    name='drhalo', magic=(_DRHALO_SIG,)
+)
+def load_drhalo(instream, where=None):
+    """Load a Dr Halo / Dr Genius .FON font."""
+    start = instream.read(16)
+    if not start.startswith(_DRHALO_SIG):
+        raise FileFormatError(
+            'Not a Dr. Halo bitmap .FON: incorrect signature ' f'{start[:len(_DRHALO_SIG)]}.'
+        )
+    width = int(le.int16.read_from(instream))
+    height = int(le.int16.read_from(instream))
+    if not height or not width:
+        raise FileFormatError(
+            'Not a Dr. Halo bitmap .FON: may be stroked format.'
+        )
+    font = load_binary(
+        instream, where, cell=(width, height),
+    )
+    font = font.modify(source_format='Dr. Halo')
     return font
 
 
@@ -302,7 +490,7 @@ def _extract_data_and_geometry(
     # we may exceed the length of the rom because we use ceildiv, pad with nulls
     data = data.ljust(nrows * row_bytes, b'\0')
     if nrows == 0 or row_bytes == 0:
-        return Font()
+        return b'', 0, 0, 0, 0
     return data, count, strike_count, row_bytes, nrows
 
 
