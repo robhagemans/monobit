@@ -234,6 +234,114 @@ def _convert_sfnt(sfnt):
     return fonts
 
 
+def _convert_props(sfnt, i_strike):
+    """Build font properties from sfnt data."""
+    # determine the size of a pixel in FUnits
+    bmst = sfnt.bloc.strikes[i_strike].bitmapSizeTable
+    vert_fu_p_pix = sfnt.head.unitsPerEm / bmst.ppemY
+    hori_fu_p_pix = sfnt.head.unitsPerEm / bmst.ppemX
+    # we also had pixels per em in the EBLC table, so now we know units per pixel
+    props = _convert_bloc_props(sfnt.bloc, i_strike)
+    props |= _convert_head_props(sfnt.head)
+    props |= _convert_name_props(sfnt.name)
+    props |= _convert_hhea_props(sfnt.hhea, vert_fu_p_pix)
+    props |= _convert_vhea_props(sfnt.vhea, hori_fu_p_pix)
+    props._hfupp = hori_fu_p_pix
+    props._vfupp = vert_fu_p_pix
+    return props
+
+
+def _convert_glyphs(sfnt, i_strike, hori_fu_p_pix, vert_fu_p_pix):
+    """Build glyphs and glyph properties from sfnt data."""
+    unitable = _get_unicode_table(sfnt)
+    enctable = _get_encoding_table(sfnt)
+    glyphs = []
+    strike = sfnt.bdat.strikeData[i_strike]
+    blocstrike = sfnt.bloc.strikes[i_strike]
+    for subtable in blocstrike.indexSubTables:
+        # some formats are byte aligned, others bit-aligned
+        if subtable.imageFormat in (1, 6):
+            align = 'left'
+        elif subtable.imageFormat in (2, 5, 7):
+            align = 'bit'
+        else:
+            # format 8, 9: component bitmaps
+            # format 3: obsolete, not used
+            # format 4: modified-Hufffman compressed, insufficiently documented
+            logging.warning(
+                'Unsupported image format %d', subtable.imageFormat
+            )
+            continue
+        for name in subtable.names:
+            glyph = strike[name]
+            try:
+                metrics = glyph.metrics
+            except AttributeError:
+                metrics = subtable.metrics
+            width = metrics.width
+            height = metrics.height
+            if not width or not height:
+                glyphbytes = b''
+            else:
+                try:
+                    glyphbytes = glyph.imageData
+                except AttributeError:
+                    logging.warning(f'No image data for glyph `{name}`')
+                    continue
+            small_is_vert = blocstrike.bitmapSizeTable.flags == 2
+            props = _convert_glyph_metrics(metrics, small_is_vert)
+            props.update(_convert_hmtx_metrics(sfnt.hmtx, name, hori_fu_p_pix, width))
+            props.update(_convert_vmtx_metrics(sfnt.vmtx, name, vert_fu_p_pix, height))
+            glyph = Glyph.from_bytes(
+                glyphbytes, width=width, align=align,
+                tag=name, char=unitable.get(name, ''),
+                codepoint=enctable.get(name, b''), **props
+            )
+            glyphs.append(glyph)
+    glyphs = _convert_kern_metrics(glyphs, sfnt.kern, hori_fu_p_pix)
+    glyphs = _convert_gpos_metrics(glyphs, sfnt.GPOS, hori_fu_p_pix)
+    return glyphs
+
+
+def _convert_glyph_metrics(metrics, small_is_vert):
+    """Conveert glyph metrics."""
+    if hasattr(metrics, 'horiAdvance'):
+        # big metrics
+        return dict(
+            # hori
+            left_bearing=metrics.horiBearingX,
+            right_bearing=(
+                metrics.horiAdvance - metrics.width - metrics.horiBearingX
+            ),
+            shift_up=metrics.horiBearingY - metrics.height,
+            # vert
+            shift_left=metrics.vertBearingX,
+            top_bearing=metrics.vertBearingY,
+            bottom_bearing=(
+                metrics.vertAdvance - metrics.height
+                - metrics.vertBearingY
+            ),
+        )
+    elif not small_is_vert:
+        # small metrics
+        return dict(
+            left_bearing=metrics.BearingX,
+            right_bearing=metrics.Advance - metrics.width - metrics.BearingX,
+            shift_up=metrics.BearingY - metrics.height,
+        )
+    else:
+        # small metrics, interpret as vert
+        return dict(
+            shift_left=metrics.BearingX,
+            top_bearing=metrics.BearingY,
+            bottom_bearing=(
+                metrics.Advance - metrics.height - metrics.BearingY
+            ),
+        )
+
+
+###############################################################################
+# 'cmap' table
 
 # preferred table to use for Unicode: platformID, platEncID
 _UNICODE_CHOICES = (
@@ -289,41 +397,8 @@ def _get_encoding_table(sfnt):
     return enctable
 
 
-def _convert_glyph_metrics(metrics, small_is_vert):
-    """Conveert glyph metrics."""
-    if hasattr(metrics, 'horiAdvance'):
-        # big metrics
-        return dict(
-            # hori
-            left_bearing=metrics.horiBearingX,
-            right_bearing=(
-                metrics.horiAdvance - metrics.width - metrics.horiBearingX
-            ),
-            shift_up=metrics.horiBearingY - metrics.height,
-            # vert
-            shift_left=metrics.vertBearingX,
-            top_bearing=metrics.vertBearingY,
-            bottom_bearing=(
-                metrics.vertAdvance - metrics.height
-                - metrics.vertBearingY
-            ),
-        )
-    elif not small_is_vert:
-        # small metrics
-        return dict(
-            left_bearing=metrics.BearingX,
-            right_bearing=metrics.Advance - metrics.width - metrics.BearingX,
-            shift_up=metrics.BearingY - metrics.height,
-        )
-    else:
-        # small metrics, interpret as vert
-        return dict(
-            shift_left=metrics.BearingX,
-            top_bearing=metrics.BearingY,
-            bottom_bearing=(
-                metrics.Advance - metrics.height - metrics.BearingY
-            ),
-        )
+###############################################################################
+# 'hmtx' table
 
 def _convert_hmtx_metrics(hmtx, glyph_name, hori_fu_p_pix, width):
     """Convert horizontal metrics from hmtx table."""
@@ -337,6 +412,11 @@ def _convert_hmtx_metrics(hmtx, glyph_name, hori_fu_p_pix, width):
             )
     return {}
 
+
+
+###############################################################################
+# 'vmtx' table
+
 def _convert_vmtx_metrics(vmtx, glyph_name, vert_fu_p_pix, height):
     """Convert vertical metrics from vmtx table."""
     if vmtx:
@@ -348,6 +428,10 @@ def _convert_vmtx_metrics(vmtx, glyph_name, vert_fu_p_pix, height):
                 bottom_bearing=(advance - top_bearing) // vert_fu_p_pix - height,
             )
     return {}
+
+
+###############################################################################
+# 'kern' table
 
 def _convert_kern_metrics(glyphs, kern, hori_fu_p_pix):
     """Convert kerning values form kern table."""
@@ -372,6 +456,9 @@ def _convert_kern_metrics(glyphs, kern, hori_fu_p_pix):
         )
     return glyphs
 
+
+###############################################################################
+# 'GPOS' table
 
 def _convert_gpos_metrics(glyphs, gpos, hori_fu_p_pix):
     """Convert kerning values form GPOS table."""
@@ -440,73 +527,8 @@ def _is_rtl(glyph):
     return glyph.char and bidirectional(glyph.char)[:1] in ('R', 'A')
 
 
-def _convert_glyphs(sfnt, i_strike, hori_fu_p_pix, vert_fu_p_pix):
-    """Build glyphs and glyph properties from sfnt data."""
-    unitable = _get_unicode_table(sfnt)
-    enctable = _get_encoding_table(sfnt)
-    glyphs = []
-    strike = sfnt.bdat.strikeData[i_strike]
-    blocstrike = sfnt.bloc.strikes[i_strike]
-    for subtable in blocstrike.indexSubTables:
-        # some formats are byte aligned, others bit-aligned
-        if subtable.imageFormat in (1, 6):
-            align = 'left'
-        elif subtable.imageFormat in (2, 5, 7):
-            align = 'bit'
-        else:
-            # format 8, 9: component bitmaps
-            # format 3: obsolete, not used
-            # format 4: modified-Hufffman compressed, insufficiently documented
-            logging.warning(
-                'Unsupported image format %d', subtable.imageFormat
-            )
-            continue
-        for name in subtable.names:
-            glyph = strike[name]
-            try:
-                metrics = glyph.metrics
-            except AttributeError:
-                metrics = subtable.metrics
-            width = metrics.width
-            height = metrics.height
-            if not width or not height:
-                glyphbytes = b''
-            else:
-                try:
-                    glyphbytes = glyph.imageData
-                except AttributeError:
-                    logging.warning(f'No image data for glyph `{name}`')
-                    continue
-            small_is_vert = blocstrike.bitmapSizeTable.flags == 2
-            props = _convert_glyph_metrics(metrics, small_is_vert)
-            props.update(_convert_hmtx_metrics(sfnt.hmtx, name, hori_fu_p_pix, width))
-            props.update(_convert_vmtx_metrics(sfnt.vmtx, name, vert_fu_p_pix, height))
-            glyph = Glyph.from_bytes(
-                glyphbytes, width=width, align=align,
-                tag=name, char=unitable.get(name, ''),
-                codepoint=enctable.get(name, b''), **props
-            )
-            glyphs.append(glyph)
-    glyphs = _convert_kern_metrics(glyphs, sfnt.kern, hori_fu_p_pix)
-    glyphs = _convert_gpos_metrics(glyphs, sfnt.GPOS, hori_fu_p_pix)
-    return glyphs
-
-
-def _convert_props(sfnt, i_strike):
-    """Build font properties from sfnt data."""
-    # determine the size of a pixel in FUnits
-    bmst = sfnt.bloc.strikes[i_strike].bitmapSizeTable
-    vert_fu_p_pix = sfnt.head.unitsPerEm / bmst.ppemY
-    hori_fu_p_pix = sfnt.head.unitsPerEm / bmst.ppemX
-    # we also had pixels per em in the EBLC table, so now we know units per pixel
-    props = _convert_bloc_props(sfnt.bloc, i_strike)
-    props |= _convert_head_props(sfnt.head)
-    props |= _convert_name_props(sfnt.name)
-    props |= _convert_hhea_props(sfnt.hhea, vert_fu_p_pix)
-    props |= _convert_vhea_props(sfnt.vhea, hori_fu_p_pix)
-    props._hfupp = hori_fu_p_pix
-    props._vfupp = vert_fu_p_pix
-    return props
+###############################################################################
+# 'EBLC' or 'bloc' table
 
 def _convert_bloc_props(bloc, i_strike):
     """Convert font properties from EBLC/bloc table."""
@@ -539,6 +561,9 @@ def _convert_bloc_props(bloc, i_strike):
     return props
 
 
+###############################################################################
+# 'head' or 'bhed' table
+
 # interpretation of head.macStyle flags
 _STYLE_MAP = {
     0: 'bold',
@@ -549,6 +574,7 @@ _STYLE_MAP = {
     5: 'condensed',
     6: 'extended',
 }
+
 def mac_style_name(font_style):
     """Get human-readable representation of font style."""
     return ' '.join(
@@ -565,6 +591,10 @@ def _convert_head_props(head):
     )
     return props
 
+
+###############################################################################
+# 'hhea' table
+
 def _convert_hhea_props(hhea, vert_fu_p_pix):
     """Convert font properties from hhea table."""
     return Props()
@@ -578,6 +608,10 @@ def _convert_hhea_props(hhea, vert_fu_p_pix):
         ),
     )
     return props
+
+
+###############################################################################
+# 'vhea' table
 
 def _convert_vhea_props(vhea, horiz_fu_p_pix):
     """Convert font properties from vhea table."""
@@ -597,6 +631,8 @@ def _convert_vhea_props(vhea, horiz_fu_p_pix):
     return props
 
 
+###############################################################################
+# 'name' table
 
 # based on:
 # [1] Apple Technotes (As of 2002)/te/te_02.html
