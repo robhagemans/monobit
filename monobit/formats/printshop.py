@@ -30,20 +30,10 @@ _HEIGHTS = le.uint8.array(95)
 _OFFSETS = le.uint16.array(95)
 # offset 384
 
-# offs 574, 7 bytes unknown
-
-# offs 581, name, max 9 chars inc null terminator
-# offs 590 name bitmap byte width?
-# offs 591 name bitmap height/
-# offs 592 glyph height?
-# offs 593 short name, 4 bytes?
-# offs 597, 4 bytes unknown
-# offs 601, name bitmap
-# followed by glyph bitmaps
-
+# not clear how baseline and interglyph spacing are determined
 _BITMAP_HEADER = le.Struct(
     unknown0=le.uint8,
-    # maybe
+    # maybe, but only sometimes fits
     baseline='uint8',
     unknown1=le.uint8* 5,
     name='9s',
@@ -66,7 +56,9 @@ def load_printshop(instream, where=None):
     widths = _WIDTHS.read_from(instream)
     heights = _HEIGHTS.read_from(instream)
     offsets = _OFFSETS.read_from(instream)
-    instream.seek(574)
+    # another block in the same format, usually (always?) zeroed out
+    unknown = _OFFSETS.read_from(instream)
+    logging.debug(unknown)
     bmp_header = _BITMAP_HEADER.read_from(instream)
     logging.debug(bmp_header)
     logobytes = instream.read(bmp_header.logo_bytewidth * bmp_header.logo_height)
@@ -81,7 +73,7 @@ def load_printshop(instream, where=None):
         glyphs.append(Glyph.from_bytes(
             instream.read(ceildiv(width, 8) * height),
             width=width, codepoint=codepoint,
-            shift_up=bmp_header.baseline-height
+            shift_up=bmp_header.height-height
         ))
         codepoint += 1
     return Font(
