@@ -6,6 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import logging
+from itertools import count
 
 from ..storage import loaders, savers
 from ..font import Font
@@ -28,25 +29,36 @@ _WIDTHS = le.uint8.array(95)
 _HEIGHTS = le.uint8.array(95)
 # offset 194
 _OFFSETS = le.uint16.array(95)
-# offset 384
-
-# not clear how baseline and interglyph spacing are determined
+# offset 384, another 95 words, zeroed
+# offset 574, bitmap header
 _BITMAP_HEADER = le.Struct(
-    unknown0=le.uint8,
+    unknown0='uint8',
     # maybe, but only sometimes fits
-    baseline='uint8',
-    unknown1=le.uint8* 5,
+    maybe_baseline='uint8',
+    unknown1='uint16',
+    unknown2='uint16',
+    # zero
+    unused='uint8',
     name='9s',
     logo_bytewidth='uint8',
     logo_height='uint8',
     height='uint8',
     shortname='4s',
-    unknown2=le.uint8 * 4,
+    unknown4='uint16',
+    # unknown5==unknown2
+    unknown5='uint16',
 )
+# logo bitmap starts at offset 601, followed by glyph
 
-@loaders.register(
-    name='printshop'
-)
+
+# not clear how baseline and interglyph spacing are determined
+# the Print Shop uses negative bearings/kerning, but there clearly is
+# no bearings or kerning table present in the font file
+# so the hypothesis is that TPS does this algorithmically,
+# moving the next glyph as far left as possible so that a certain amount
+# of space remains between inked pixels
+
+@loaders.register('pnf', name='printshop')
 def load_printshop(instream, where=None):
     """
     Load a Broderbund The Print Shop font.
@@ -64,20 +76,22 @@ def load_printshop(instream, where=None):
     logobytes = instream.read(bmp_header.logo_bytewidth * bmp_header.logo_height)
     width = bmp_header.logo_bytewidth * 8
     logo = Glyph.from_bytes(
-            logobytes, width=width, height=bmp_header.logo_height,
-            tag='sample',
+        logobytes, width=width, height=bmp_header.logo_height,
+        tag='sample',
+    )
+    # ignoring the offsets table, assuming the glyphs are stored contiguously
+    glyphs = tuple(
+        Glyph.from_bytes(
+            instream.read(ceildiv(_w, 8) * _h),
+            width=_w, codepoint=_cp,
+            shift_up=bmp_header.height-_h
         )
-    glyphs = []
-    codepoint = 0x20
-    for start, width, height in zip(offsets, widths, heights):
-        glyphs.append(Glyph.from_bytes(
-            instream.read(ceildiv(width, 8) * height),
-            width=width, codepoint=codepoint,
-            shift_up=bmp_header.height-height
-        ))
-        codepoint += 1
+        for _w, _h, _cp in zip(widths, heights, count(0x20))
+    )
     return Font(
         glyphs, source_format='The Print Shop',
         family=bmp_header.name.decode('latin-1'),
+        # preserve the logo bitmap as a comment
+        # storing it as a glyph would mess up the bounding box
         comment=logo.as_text()
     )
