@@ -9,7 +9,7 @@ import sys
 import logging
 import json
 import math
-
+from unicodedata import bidirectional
 
 try:
     from fontTools import ttLib
@@ -128,6 +128,7 @@ _TAGS = (
     'cmap',
     'name',
     'kern',
+    'GPOS',
     # OS/2 - Windows metrics
 )
 
@@ -361,15 +362,82 @@ def _convert_kern_metrics(glyphs, kern, hori_fu_p_pix):
                 continue
             for pair, kern_value in table.kernTable.items():
                 left, right = pair
-                table = glyph_props.get(Tag(left), {})
-                table[Tag(right)]  = kern_value / hori_fu_p_pix
-                glyph_props[Tag(left)] = table
+                ktable = glyph_props.get(Tag(left), {})
+                ktable[Tag(right)]  = kern_value / hori_fu_p_pix
+                glyph_props[Tag(left)] = ktable
         glyphs = tuple(
             _g.modify(right_kerning=glyph_props.get(_g.tags[0], None))
             if _g.tags else _g
             for _g in glyphs
         )
     return glyphs
+
+
+def _convert_gpos_metrics(glyphs, gpos, hori_fu_p_pix):
+    """Convert kerning values form GPOS table."""
+    logging.debug('parsing gpos')
+    if gpos:
+        #features = gpos.table.featureList
+        llist = gpos.table.LookupList.Lookup
+        glyph_props = {}
+        for lookup in llist:
+            for subtable in lookup.SubTable:
+                if subtable._type != 'PairPos':
+                    continue
+                # per the docs, in logical order
+                # i.e first is left for LTR, first is right ror RTL
+                # presumably to be determined from glyph unicode properties?
+                # what happens if one glyph is LTR and the other RTL is unclear
+                # the one RTL file I have does things differently,
+                # and in line with this comment:
+                # https://fontforge-devel.narkive.com/s9C4jFO9/patch-1-2-fix-right-to-left-kerning
+                # i.e. the second glyph's Xadvance is adjusted by a negative number
+                # is this a hack to compensate for LTR-focussed real-world implementations?
+                # do they still mean the logical second (i.e. leftmost) glyph?
+                firsts = subtable.Coverage.glyphs
+                format1 = subtable.ValueFormat1 & 0xf
+                format2 = subtable.ValueFormat2 & 0xf
+                # first X_ADVANCE or second X_PLACEMENT
+                if format1 not in (0, 4) or format2 not in (0, 1, 4):
+                    logging.warning("Vertical and cross kerning not supported.")
+                for first, pairset in zip(firsts, subtable.PairSet):
+                    for record in pairset.PairValueRecord:
+                        second = record.SecondGlyph
+                        kern_value = 0
+                        direction = 'l'
+                        if format1 & 4:
+                            kern_value += record.Value1.XAdvance
+                        if format2 & 1:
+                            kern_value += record.Value2.XPlacement
+                        # oddly, this is how RTL kerning is recorded
+                        if format2 & 4 and not kern_value:
+                            direction = 'r'
+                            kern_value = record.Value2.XAdvance
+                        ktable = glyph_props.get(Tag(first), {})
+                        if kern_value:
+                            ktable[Tag(second)] = kern_value / hori_fu_p_pix
+                        else:
+                            logging.debug(
+                                'Dropped zero kerning value %s->%s',
+                                first, second
+                            )
+                        glyph_props[Tag(first)] = ktable
+        glyphs = tuple(
+            _g.modify(right_kerning=glyph_props.get(_g.tags[0], None))
+            if _g.tags and not _is_rtl(_g) else _g
+            for _g in glyphs
+        )
+        # interpret as left-hand kerning for RTL glyphs
+        glyphs = tuple(
+            _g.modify(left_kerning=glyph_props.get(_g.tags[0], None))
+            if _g.tags and _is_rtl(_g) else _g
+            for _g in glyphs
+        )
+    return glyphs
+
+def _is_rtl(glyph):
+    """Determine if a glyph is RTL for GPOS kerning."""
+    return glyph.char and bidirectional(glyph.char)[:1] in ('R', 'A')
 
 
 def _convert_glyphs(sfnt, i_strike, hori_fu_p_pix, vert_fu_p_pix):
@@ -420,6 +488,7 @@ def _convert_glyphs(sfnt, i_strike, hori_fu_p_pix, vert_fu_p_pix):
             )
             glyphs.append(glyph)
     glyphs = _convert_kern_metrics(glyphs, sfnt.kern, hori_fu_p_pix)
+    glyphs = _convert_gpos_metrics(glyphs, sfnt.GPOS, hori_fu_p_pix)
     return glyphs
 
 
