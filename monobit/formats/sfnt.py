@@ -23,7 +23,7 @@ else:
 from ..properties import Props
 from ..font import Font
 from ..glyph import Glyph
-from ..labels import Tag
+from ..labels import Tag, Char
 from ..storage import loaders, savers
 from ..streams import FileFormatError
 
@@ -125,11 +125,11 @@ _TAGS = (
     'EBDT', 'bdat',
     'hmtx', 'hhea',
     'vmtx', 'vhea',
-    'cmap',
-    'name',
     'kern',
     'GPOS',
-    # OS/2 - Windows metrics
+    'cmap',
+    'name',
+    'OS/2',
 )
 
 def _read_sfnt(instream):
@@ -244,6 +244,7 @@ def _convert_props(sfnt, i_strike):
     props = _convert_bloc_props(sfnt.bloc, i_strike)
     props |= _convert_head_props(sfnt.head)
     props |= _convert_name_props(sfnt.name)
+    props |= _convert_os_2_props(getattr(sfnt, 'OS/2'), vert_fu_p_pix, hori_fu_p_pix)
     props |= _convert_hhea_props(sfnt.hhea, vert_fu_p_pix)
     props |= _convert_vhea_props(sfnt.vhea, hori_fu_p_pix)
     props._hfupp = hori_fu_p_pix
@@ -715,7 +716,7 @@ def _convert_name_props(name):
         copyright=_decode_name(name.names, 0),
         family=_decode_name(name.names, 1),
         # weight or slant or both
-        subfamily=_decode_name(name.names, 2),
+        #subfamily=_decode_name(name.names, 2),
         font_id=_decode_name(name.names, 3),
         name=_decode_name(name.names, 4),
         #
@@ -735,4 +736,67 @@ def _convert_name_props(name):
         notice=_decode_name(name.names, 13),
         license_url=_decode_name(name.names, 14),
     )
+    return props
+
+
+###############################################################################
+# 'OS/2' table
+
+# usWeightClass
+_WEIGHT_MAP = {
+    100: 'thin',
+    200: 'extra-light',
+    300: 'light',
+    400: 'regular', # 'semi-light' in bdf
+    500: 'medium', # 'regular' in bdf
+    600: 'semi-bold',
+    700: 'bold',
+    800: 'extra-bold',
+    900: 'heavy',
+}
+
+# usWidthClass
+_SETWIDTH_MAP = {
+    1: 'ultra-condensed',
+    2: 'extra-condensed',
+    3: 'condensed',
+    4: 'semi-condensed',
+    5: 'normal', #'medium',
+    6: 'semi-expanded',
+    7: 'expanded',
+    8: 'extra-expanded',
+    9: 'ultra-expanded',
+}
+
+def _convert_os_2_props(os_2, vert_fu_p_pix, hori_fu_p_pix):
+    """Convert font properties from OS/2 table."""
+    if not os_2:
+        return Props()
+    weight = min(900, max(100, 100 * round(os_2.usWeightClass / 100)))
+    props = Props(
+        weight=_WEIGHT_MAP.get(weight, None),
+        setwidth=_SETWIDTH_MAP.get(os_2.usWidthClass, None),
+        subscript_size=os_2.ySubscriptYSize // vert_fu_p_pix,
+        subscript_offset=(
+            int(os_2.ySubscriptXOffset // hori_fu_p_pix),
+            -int(os_2.ySubscriptYOffset // vert_fu_p_pix)
+        ),
+        superscript_size=os_2.ySuperscriptYSize // vert_fu_p_pix,
+        superscript_offset=(
+            int(os_2.ySuperscriptXOffset // hori_fu_p_pix),
+            int(os_2.ySuperscriptYOffset // vert_fu_p_pix)
+        ),
+        ascent=os_2.sTypoAscender // vert_fu_p_pix,
+        descent=-os_2.sTypoDescender // vert_fu_p_pix,
+        line_height=(
+            os_2.sTypoAscender - os_2.sTypoDescender + os_2.sTypoLineGap
+        ) // vert_fu_p_pix,
+    )
+    if os_2.version > 1:
+        props |= Proops(
+            x_height=os_2.sxHeight // vert_fu_p_pix,
+            cap_height=os_2.sCapHeight // vert_fu_p_pix,
+            default_char=Char(chr(os_2.usDefaultChar)),
+            word_boundary=Char(chr(os_2.usBreakChar)),
+        )
     return props
