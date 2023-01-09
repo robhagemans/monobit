@@ -287,21 +287,29 @@ def load_geos_cvt(instream, where=None):
         icon.as_text(),
     ))
     fonts = []
-    for data_size, height in zip(
+    for data_size, ptsize in zip(
             info_block.O_GHSETLEN.value,
             info_block.O_GHPTSIZES.value
         ):
-        if not height or not data_size:
+        # ptsize is (font_id << 6) + point_size
+        if not ptsize or not data_size:
             continue
+        anchor = instream.tell()
         try:
             font = load_geos(instream)
         except ValueError as e:
             logging.debug(e)
             continue
+        true_data_size = instream.tell() - anchor
+        if true_data_size != data_size:
+            logging.warning(
+                'Actual size %x differs from reported size %x',
+                true_data_size, data_size
+            )
         # go to end of sector
         # 254 bytes per sector - the cvt does not store the initial pointer
-        skip = ceildiv(data_size, 254) * 254 - data_size
-        instream.seek(skip, 1)
+        nxt = ceildiv(true_data_size, 254) * 254
+        instream.seek(anchor + nxt)
         font = font.modify(
             family=dir_entry.filename.rstrip(b'\xa0').decode('ascii', 'replace'),
             comment=comment,
