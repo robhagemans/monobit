@@ -14,7 +14,7 @@ from ..glyph import Glyph
 from ..raster import Raster
 from .. import struct
 from ..struct import little_endian as le
-from ..binary import ceildiv
+from ..binary import ceildiv, align
 from .raw import load_binary
 
 
@@ -49,7 +49,7 @@ def load_geos(instream, where=None):
     # clip out glyphs
     glyphs = tuple(
         Glyph(
-            strike.crop(left=_offset, right=header.stride*8 - _next),
+            strike.crop(left=_offset, right=max(0, header.stride*8 - _next)),
             codepoint=_cp,
             shift_up=-(header.height-header.baseline-1)
         )
@@ -236,7 +236,16 @@ _INFO_BLOCK = le.Struct(
 # >   When a T/S link of $00/$00 is encountered, we  are  at  the  end  of  the
 # > RECORD block. If the T/S  link  is  a  $00/$FF,  then  the  record  is  not
 # > available.
-_RECORD_BLOCK = le.uint16.array(127)
+
+# https://ist.uwaterloo.ca/~schepers/formats/CVT.TXT
+# >   Note that the RECORD block is modified  from  the  original  GEOS  entry.
+# > Instead of containing the track and sector  references,  we  now  have  the
+# > sector count and the size of the last sector in the chain
+_RECORD_ENTRY = le.Struct(
+    sector_count='uint8',
+    last_size='uint8',
+)
+_RECORD_BLOCK = _RECORD_ENTRY.array(127)
 
 
 @loaders.register('cvt', name='geos-cvt')
@@ -266,28 +275,35 @@ def load_geos_cvt(instream, where=None):
     logging.debug('class: %s', info_block.class_text.decode('ascii', 'replace'))
     icon = Raster.from_bytes(tuple(info_block.icon.value), width=24)
     record_block = _RECORD_BLOCK.read_from(instream)
+    logging.debug(info_block)
+    logging.debug(list(x for x in record_block if not bytes(x) == b'\0\xff'))
     if dir_entry.geos_filetype != _GEOS_FONT_TYPE:
         logging.warning(
             'Not a GEOS font file: incorrect filetype %x.',
             dir_entry.geos_filetype
         )
-    logging.debug(info_block)
+    comment = '\n\n'.join((
+        info_block.description.decode('ascii', 'replace').replace('\r', '\n'),
+        icon.as_text(),
+    ))
     fonts = []
-    for height, data_size in zip(
+    for data_size, height in zip(
             info_block.O_GHSETLEN.value,
             info_block.O_GHPTSIZES.value
         ):
         if not height or not data_size:
             continue
-        logging.debug(instream.tell())
-        font = load_geos(instream)
-        logging.debug(instream.tell())
-        comment = '\n\n'.join((
-            info_block.description.decode('ascii', 'replace').replace('\r', '\n'),
-            icon.as_text(),
-        ))
+        try:
+            font = load_geos(instream)
+        except ValueError as e:
+            logging.debug(e)
+            continue
+        # go to end of sector
+        # 254 bytes per sector - the cvt does not store the initial pointer
+        skip = ceildiv(data_size, 254) * 254 - data_size
+        instream.seek(skip, 1)
         font = font.modify(
-            name=dir_entry.filename.rstrip(b'\xa0').decode('ascii', 'replace'),
+            family=dir_entry.filename.rstrip(b'\xa0').decode('ascii', 'replace'),
             comment=comment,
         )
         fonts.append(font)
