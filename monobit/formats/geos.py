@@ -164,8 +164,6 @@ _DIR_BLOCK = le.Struct(
 
 # https://ist.uwaterloo.ca/~schepers/formats/CVT.TXT
 _SIG_BLOCK = le.Struct(
-    # 0x00    0
-    dir=_DIR_BLOCK,
     # 0x1e   30
     signature='28s',
     # 0x3a   58
@@ -175,34 +173,56 @@ _SIG_BLOCK = le.Struct(
 
 # https://ist.uwaterloo.ca/~schepers/formats/GEOS.TXT
 _INFO_BLOCK = le.Struct(
+    # 0x02 / 0xfe - cvt leaves out the word-size pointer at the start
+    #        so sectors are only 254 bytes long
     # > Information sector ID bytes (03 15 BF). The "03" is  likely
     # > the bitmap width, and the "15" is likely the bitmap height,
     # > but rare exceptions do exist to this!
     id_bytes='3s', # > 03 15 bf
+    # 0x101
     # > Icon bitmap (sprite format, 63 bytes)
     icon=le.uint8.array(63),
+    # 0x140
     # > C64 filetype (same as that from the directory entry)
     filetype='uint8',
     # > GEOS filetype (same as that from the directory entry)
     geos_filetype='uint8',
     # > GEOS file structure (same as that from the dir entry)
     geos_structure='uint8',
+    # 0x143
     # > Program load address
     load_address='uint16',
     # > Program end address (only with accessories)
     end_address='uint16',
     # > Program start address
     start_address='uint16',
+    # 0x149
     # > Class text (terminated with a $00)
     class_text='20s',
+
+    # 0x61 / 0x15d
     # > Author (with application data: name  of  application  disk,
     # > terminated with a $00. This string may not  necessarily  be
     # > set, or it may contain invalid data)
-    author='20s',
+    #author='20s',
+    # 0x75 / 0x171
     # > 75-88: If a document, the name of the application that created it.
-    application='20s',
+    ##application='20s',
+    # 0x89/0x185
     # > 89-9F: Available for applications, unreserved.
-    unreserved='23s',
+    #unreserved='23s',
+
+    # here the font INFO section diverges from the standard one
+    # https://www.lyonlabs.org/commodore/onrequest/geos/geos-fonts.html
+    # 0x61 / 0x15d
+    O_GHSETLEN=le.uint16.array(15),
+    skip='uint8',
+    # 0x80 / 0x17c
+    O_GHFONTID='uint16',
+    # 0x82 / 0x17e
+    O_GHPTSIZES=le.uint16.array(15),
+    # 0xa0 / 0x19c
+
     # > A0-FF: Description (terminated with a $00)
     description='96s',
 )
@@ -222,8 +242,8 @@ _RECORD_BLOCK = le.uint16.array(127)
 @loaders.register('cvt', name='geos-cvt')
 def load_geos_cvt(instream, where=None):
     """Load a GEOS ConVerT container."""
+    dir_entry = _DIR_BLOCK.read_from(instream)
     sig_block = _SIG_BLOCK.read_from(instream)
-    dir_entry = sig_block.dir
     logging.debug(
         'filetype: %s',
         _C64_FILETYPES.get(dir_entry.filetype, dir_entry.filetype)
@@ -242,30 +262,33 @@ def load_geos_cvt(instream, where=None):
         dir_entry.hour, dir_entry.minute
     )
     logging.debug('signature: %s', bytes(sig_block.signature).decode('ascii', 'replace'))
-    logging.debug(bytes(sig_block.notes))
     info_block = _INFO_BLOCK.read_from(instream)
-    logging.debug(info_block)
+    logging.debug('class: %s', info_block.class_text.decode('ascii', 'replace'))
     icon = Raster.from_bytes(tuple(info_block.icon.value), width=24)
     record_block = _RECORD_BLOCK.read_from(instream)
-    # not clear how this is used in practice
-    # e.g. can I deduct whether there are multiple fonts in one file?
-    logging.debug(record_block)
     if dir_entry.geos_filetype != _GEOS_FONT_TYPE:
         logging.warning(
             'Not a GEOS font file: incorrect filetype %x.',
             dir_entry.geos_filetype
         )
-    logging.debug('class: %s', info_block.class_text.decode('ascii', 'replace'))
-    logging.debug('application: %s', info_block.application.decode('ascii', 'replace'))
-    font = load_geos(instream)
-    remaining = instream.read()
-    logging.debug(f'{len(remaining)} bytes unused.')
-    comment = '\n\n'.join((
-        info_block.description.decode('ascii', 'replace').replace('\r', '\n'),
-        icon.as_text(),
-    ))
-    font = font.modify(
-        name=dir_entry.filename.rstrip(b'\xa0').decode('ascii', 'replace'),
-        comment=comment,
-    )
-    return font
+    logging.debug(info_block)
+    fonts = []
+    for height, data_size in zip(
+            info_block.O_GHSETLEN.value,
+            info_block.O_GHPTSIZES.value
+        ):
+        if not height or not data_size:
+            continue
+        logging.debug(instream.tell())
+        font = load_geos(instream)
+        logging.debug(instream.tell())
+        comment = '\n\n'.join((
+            info_block.description.decode('ascii', 'replace').replace('\r', '\n'),
+            icon.as_text(),
+        ))
+        font = font.modify(
+            name=dir_entry.filename.rstrip(b'\xa0').decode('ascii', 'replace'),
+            comment=comment,
+        )
+        fonts.append(font)
+    return fonts
