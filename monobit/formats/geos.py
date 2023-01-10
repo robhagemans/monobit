@@ -55,7 +55,11 @@ def load_geos(instream, where=None):
         )
         for _offset, _next, _cp in zip(offsets, offsets[1:], count(0x20))
     )
-    return Font(glyphs)
+    props = dict(
+        descent=header.height-header.baseline-1,
+        ascent=header.baseline+1,
+    )
+    return Font(glyphs, **props)
 
 
 ###############################################################################
