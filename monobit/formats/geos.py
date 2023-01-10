@@ -20,9 +20,9 @@ from .raw import load_binary
 
 # offset CVT signature b'formatted GEOS file' could be used as magic
 @loaders.register('cvt', name='geos')
-def load_geos(instream, where=None):
+def load_geos(instream, where=None,  merge_mega:bool=True):
     """Load fonts from a GEOS ConVerT container."""
-    return _load_geos_cvt(instream)
+    return _load_geos_cvt(instream, merge_mega)
 
 
 ###############################################################################
@@ -262,7 +262,7 @@ _RECORD_ENTRY = le.Struct(
 _RECORD_BLOCK = _RECORD_ENTRY.array(127)
 
 
-def _load_geos_cvt(instream):
+def _load_geos_cvt(instream, merge_mega):
     """Load a GEOS ConVerT container."""
     dir_entry = _DIR_BLOCK.read_from(instream)
     sig_block = _SIG_BLOCK.read_from(instream)
@@ -300,14 +300,14 @@ def _load_geos_cvt(instream):
         icon.as_text(),
     ))
     fonts = []
-    for data_size, ptsize in zip(
+    for data_size, ghptsize in zip(
             info_block.O_GHSETLEN.value,
             info_block.O_GHPTSIZES.value
         ):
-        if not ptsize or not data_size:
+        if not ghptsize or not data_size:
             continue
         # ptsize is (font_id << 6) + point_size
-        font_id, height = divmod(ptsize, 1<<6)
+        font_id, height = divmod(ghptsize, 1<<6)
         logging.debug('Loading font id %d height %d', font_id, height)
         anchor = instream.tell()
         try:
@@ -332,6 +332,23 @@ def _load_geos_cvt(instream):
             font = font.modify(
                 family=dir_entry.filename.rstrip(b'\xa0').decode('ascii', 'replace'),
                 comment=comment,
+                font_id=font_id,
             )
             fonts.append(font)
+    # mega fonts: glyphs are divided over multiple strikes
+    # undefined glyphs are given as 1-pixel-wide
+    # last strike contains only empties
+    # GHPTSIZE differs between strikes but actual pixel-size is the same
+    ids = set(_f.font_id for _f in fonts)
+    # sometimes the last (empty) strike has a different height
+    id_sizes = set((_f.font_id, _f.pixel_size) for _f in fonts[:-1])
+    # if all strikes have the same id and pixel_size, assume this is a mega font
+    if merge_mega and len(id_sizes) == 1 and len(ids) == 1:
+        logging.debug('Mega font detected, merging.')
+        # take glyph of maximum width from each strike
+        selected = (
+            max(glyphs, key=lambda _g: _g.width)
+            for glyphs in zip(*(_f.glyphs for _f in fonts))
+        )
+        fonts = (fonts[0].modify(glyphs=selected),)
     return fonts
