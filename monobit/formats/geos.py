@@ -241,6 +241,23 @@ _INFO_BLOCK = le.Struct(
     description='96s',
 )
 
+# font_id values
+# http://www.zimmers.net/geos/docs/fontfile.txt
+# 0    BSW            13   Tilden
+# 1    University     14   Evans
+# 2    California     15   Durant
+# 3    Roma           16   Telegraph
+# 4    Dwinelle       17   Superb
+# 5    Cory           18   Bowditch
+# 6    Tolman         19   Ormond
+# 7    Bubble         20   Elmwood
+# 8    Fontknox       21   Hearst
+# 9    Harmon         21   Brennens (BUG)
+# 10   Mykonos        23   Channing
+# 11   Boalt          24   Putnam
+# 12   Stadium        25   LeConte
+
+
 # >   If the file is a VLIR, then the RECORD block is of interest. This  single
 # > sector is made up of up to 127 track/sector pointers, each of  which  point
 # > to program sections (called RECORDS). VLIR files are comprised of  loadable
