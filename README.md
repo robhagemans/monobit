@@ -109,6 +109,7 @@ Supported formats
 | Fontraption TSR       | `frapt-tsr`|          | `.com`                      | DOS           | ✔     |       |
 | Hanzi Bitmap Font     | `hbf`      |          | `.hbf` + raw binary         | Unix          | ✔     | ✔     |
 | Atari GDOS / GEM      | `gdos`     |          | `.fnt` `.gft` `.vga`        | Atari ST, GEM | ✔     | ✔     |
+| GEOS (C64)            | `geos`     |          | `.cvt`                      | Commodore 64  | ✔     |       |
 | GNU Unifont           | `hex`      |          | `.hex`                      |               | ✔     | ✔     |
 | Extended Hex          | `hext`     |          | `.hex`                      |               | ✔     | ✔     |
 | hexdraw               | `hexdraw`  |          | `.draw`                     |               | ✔     | ✔     |
