@@ -295,28 +295,34 @@ def load_geos_cvt(instream, where=None):
             info_block.O_GHSETLEN.value,
             info_block.O_GHPTSIZES.value
         ):
-        # ptsize is (font_id << 6) + point_size
         if not ptsize or not data_size:
             continue
+        # ptsize is (font_id << 6) + point_size
+        font_id, height = divmod(ptsize, 1<<6)
+        logging.debug('Loading font id %d height %d', font_id, height)
         anchor = instream.tell()
         try:
             font = load_geos(instream)
         except ValueError as e:
-            logging.debug(e)
-            continue
+            logging.warning(
+                'Could not load font id %d size %d: %s', font_id, height, e
+            )
+            # flag to skip to next sector
+            font = None
         true_data_size = instream.tell() - anchor
         if true_data_size != data_size:
             logging.warning(
-                'Actual size %x differs from reported size %x',
+                'Actual size 0x%x differs from reported size 0x%x',
                 true_data_size, data_size
             )
         # go to end of sector
         # 254 bytes per sector - the cvt does not store the initial pointer
         nxt = ceildiv(true_data_size, 254) * 254
         instream.seek(anchor + nxt)
-        font = font.modify(
-            family=dir_entry.filename.rstrip(b'\xa0').decode('ascii', 'replace'),
-            comment=comment,
-        )
-        fonts.append(font)
+        if font is not None:
+            font = font.modify(
+                family=dir_entry.filename.rstrip(b'\xa0').decode('ascii', 'replace'),
+                comment=comment,
+            )
+            fonts.append(font)
     return fonts
