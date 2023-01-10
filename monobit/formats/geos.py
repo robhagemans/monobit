@@ -18,8 +18,17 @@ from ..binary import ceildiv, align
 from .raw import load_binary
 
 
+# offset CVT signature b'formatted GEOS file' could be used as magic
+@loaders.register('cvt', name='geos')
+def load_geos(instream, where=None):
+    """Load fonts from a GEOS ConVerT container."""
+    return _load_geos_cvt(instream)
 
+
+###############################################################################
+# GEOS font VLIR
 # https://www.lyonlabs.org/commodore/onrequest/geos/geos-fonts.html
+
 _HEADER = le.Struct(
     baseline='uint8',
     stride='uint16',
@@ -33,7 +42,7 @@ _HEADER = le.Struct(
 _OFFSETS = le.uint16.array(96)
 
 
-def load_geos(instream, where=None):
+def _load_geos_vlir(instream):
     """Load a bare GEOS font VLIR."""
     anchor = instream.tell()
     header = _HEADER.read_from(instream)
@@ -252,9 +261,8 @@ _RECORD_ENTRY = le.Struct(
 )
 _RECORD_BLOCK = _RECORD_ENTRY.array(127)
 
-# offset CVT signature b'formatted GEOS file' could be used as magic
-@loaders.register('cvt', name='geos')
-def load_geos_cvt(instream, where=None):
+
+def _load_geos_cvt(instream):
     """Load a GEOS ConVerT container."""
     dir_entry = _DIR_BLOCK.read_from(instream)
     sig_block = _SIG_BLOCK.read_from(instream)
@@ -303,7 +311,7 @@ def load_geos_cvt(instream, where=None):
         logging.debug('Loading font id %d height %d', font_id, height)
         anchor = instream.tell()
         try:
-            font = load_geos(instream)
+            font = _load_geos_vlir(instream)
         except ValueError as e:
             logging.warning(
                 'Could not load font id %d size %d: %s', font_id, height, e
