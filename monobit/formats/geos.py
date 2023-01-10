@@ -33,7 +33,6 @@ _HEADER = le.Struct(
 _OFFSETS = le.uint16.array(96)
 
 
-@loaders.register('vlir', name='geos')
 def load_geos(instream, where=None):
     """Load a bare GEOS font VLIR."""
     anchor = instream.tell()
@@ -169,6 +168,8 @@ _DIR_BLOCK = le.Struct(
 # https://ist.uwaterloo.ca/~schepers/formats/CVT.TXT
 _SIG_BLOCK = le.Struct(
     # 0x1e   30
+    # b'PRG formatted GEOS file V1.0'
+    # b'SEQ formatted GEOS file V1.0'
     signature='28s',
     # 0x3a   58
     notes=le.uint8.array(196),
@@ -251,8 +252,8 @@ _RECORD_ENTRY = le.Struct(
 )
 _RECORD_BLOCK = _RECORD_ENTRY.array(127)
 
-
-@loaders.register('cvt', name='geos-cvt')
+# offset CVT signature b'formatted GEOS file' could be used as magic
+@loaders.register('cvt', name='geos')
 def load_geos_cvt(instream, where=None):
     """Load a GEOS ConVerT container."""
     dir_entry = _DIR_BLOCK.read_from(instream)
