@@ -270,33 +270,63 @@ def _unpack_bits(char):
     bitmap = []
     colour = bool(char.ink_run)
     for nyb in iternyb:
-        if nyb == 15:
-            repeat = 1
-        elif nyb == 14:
-            # row repeat count
-            repeat = _read_packed(iternyb)
-        else:
-            if nyb <= char.dyn_f:
-                # run count
-                run = nyb
+        try:
+            if nyb == 15:
+                repeat = 1
+            elif nyb == 14:
+                # row repeat count
+                repeat = _read_packed(iternyb)
             else:
-                second = next(iternyb)
-                # the spec is unclear, but given here explicitly:
-                # https://www.davidsalomon.name/DC4advertis/PKfonts.pdf
-                run = 16*(nyb - char.dyn_f  - 1) + second + char.dyn_f + 1
-            # check if we go past a row boundary
-            row_remaining = char.w - (len(bitmap) % char.w)
-            if run >= row_remaining:
-                bitmap.extend([colour] * row_remaining)
-                run -= row_remaining
-                # apply row repeats
-                bitmap.extend(bitmap[-char.w:]*repeat)
-                repeat = 0
-            # even if the rest of the run is longer than a row,
-            # there are no more repeat markers
-            bitmap.extend([colour] * run)
-            # flip colour for next run
-            colour = not colour
+                if nyb == 0:
+                    # > Value 0 indicates # a long run, occupying three or more
+                    # > nybbles. The length of the run is stored in as many #
+                    # > nybbles as needed, encoded as a packed number.
+                    # so the zero is *part of the packed number*.
+                    # the authors only *hint* at this in their
+                    # typical circumlocutious fashion.
+                    # Did they get paid by the word?
+                    run = _read_packed(iternyb, length=1)
+                    # > However, the long run lengths are always greater than
+                    # > 16(13 − dyn) + dyn. The shortest of the long run lengths
+                    # > is therefore s def = 16(13 − dyn) + dyn + 1, which is why
+                    # > it makes sense to subtract s from such a run length before
+                    # > it is encoded as a packed number.
+                    run += 16*(13-char.dyn_f) + char.dyn_f + 1
+                    # > Recall that the long run lengths are indicated by a nybble
+                    # > flag of 0, and a packed integer in the interval [16, 255]
+                    # > is also preceded by a single zero nybble. Thus, it makes
+                    # > sense to add 16 to the long run lengths after s is
+                    # > subtracted
+                    run -= 16
+                elif nyb <= char.dyn_f:
+                    # run count
+                    run = nyb
+                else:
+                    second = next(iternyb)
+                    # the spec is unclear, but given here explicitly:
+                    # https://www.davidsalomon.name/DC4advertis/PKfonts.pdf
+                    run = 16*(nyb - char.dyn_f  - 1) + second + char.dyn_f + 1
+                # check if we go past a row boundary
+                row_remaining = char.w - (len(bitmap) % char.w)
+
+                # The current row is defined as the row on which the
+                # first pixel of the next run count will lie. The repeat
+                # count is set back to zero when the last pixel in the
+                # current row is seen, and the row is sent out
+
+                if run >= row_remaining :
+                    bitmap.extend([colour] * row_remaining)
+                    run -= row_remaining
+                    # apply row repeats
+                    bitmap.extend(bitmap[-char.w:]*repeat)
+                    repeat = 0
+                # even if the rest of the run is longer than a row,
+                # there are no more repeat markers
+                bitmap.extend([colour] * run)
+                # flip colour for next run
+                colour = not colour
+        except StopIteration:
+            break
     return bitmap
 
 def _iter_nybbles(bytestr):
@@ -306,13 +336,12 @@ def _iter_nybbles(bytestr):
         yield hi
         yield lo
 
-def _read_packed(iternyb):
+def _read_packed(iternyb, length=0):
     """Read a packed number."""
     # >     Given an integer i, the idea is to create
     # > its hexadecimal representation (let’s say it occupies n nybbles),
     # > remove any leading zero nybbles and prepend n− 1 zero nybbles.
     nyb = 0
-    length = 0
     while nyb == 0:
         length += 1
         nyb = next(iternyb)
