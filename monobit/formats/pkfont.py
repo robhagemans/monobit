@@ -157,7 +157,8 @@ _CHAR_SHORT = be.Struct(
     # presumably in that order?
     tfm=be.uint8 * 3,
     # 'horizontal escapement (pixels)'
-    dm='uint8',
+    # named dm in spec
+    dx='uint8',
     # >     The w parameter is the width and the h
     # > parameter is the height in pixels of the minimum
     # > bounding box.
@@ -185,7 +186,8 @@ _CHAR_EXTENDED = be.Struct(
     pl='uint16',
     cc='uint8',
     tfm=be.uint8 * 3,
-    dm='uint16',
+    # named dm in spec
+    dx='uint16',
     w='uint16',
     h='uint16',
     hoff='int16',
@@ -240,47 +242,62 @@ def _convert_char(char):
     """Convert pkfont character definiition to glyph."""
     if char.dyn_f == 14:
         # plain bitmap data
-        return Glyph.from_bytes(
-            char.raster_data, width=char.w, align='bit',
-            codepoint=char.cc
+        raster = Raster.from_bytes(
+            char.raster_data, stride=char.w, width=char.w, align='bit',
         )
     else:
-        iternyb = _iter_nybbles(char.raster_data)
-        repeat = 0
-        bitmap = []
-        colour = True
-        for nyb in iternyb:
-            if nyb == 15:
-                repeat = 1
-            elif nyb == 14:
-                # row repeat count
-                repeat = _read_packed(iternyb)
+        bitmap = _unpack_bits(char)
+        raster = Raster.from_vector(bitmap, stride=char.w)
+    raster = raster.crop(bottom=raster.height-char.h)
+    # convert glyph properties
+    props = dict(
+        codepoint=char.cc,
+        left_bearing=-char.hoff,
+        shift_up=char.voff-raster.height,
+        # how is 'escapement' defined? is it the advance width?
+        # or does it exclude the initial offset?
+        right_bearing=char.dx-char.w, #-char.hoff,
+        # if there's a dy 'vertical escapement' defined, what do we do with it?
+        h=char.h,
+        w=char.w,
+    )
+    return Glyph(raster, **props)
+
+def _unpack_bits(char):
+    """Unpack a packed character definition."""
+    iternyb = _iter_nybbles(char.raster_data)
+    repeat = 0
+    bitmap = []
+    colour = True
+    for nyb in iternyb:
+        if nyb == 15:
+            repeat = 1
+        elif nyb == 14:
+            # row repeat count
+            repeat = _read_packed(iternyb)
+        else:
+            if nyb <= char.dyn_f:
+                # run count
+                run = nyb
             else:
-                if nyb <= char.dyn_f:
-                    # run count
-                    run = nyb
-                else:
-                    second = next(iternyb)
-                    # the spec is unclear, but given here explicitly:
-                    # https://www.davidsalomon.name/DC4advertis/PKfonts.pdf
-                    run = 16*(nyb - char.dyn_f  - 1) + second + char.dyn_f + 1
-                # check if we go past a row boundary
-                row_remaining = char.w - (len(bitmap) % char.w)
-                if run >= row_remaining:
-                    bitmap.extend([colour] * row_remaining)
-                    run -= row_remaining
-                    # apply row repeats
-                    bitmap.extend(bitmap[-char.w:]*repeat)
-                    repeat = 0
-                # even if the rest of the run is longer than a row,
-                # there are no more repeat markers
-                bitmap.extend([colour] * run)
-                # flip colour for next run
-                colour = not colour
-        return Glyph.from_vector(
-            bitmap, stride=char.w,
-            codepoint=char.cc,
-        )
+                second = next(iternyb)
+                # the spec is unclear, but given here explicitly:
+                # https://www.davidsalomon.name/DC4advertis/PKfonts.pdf
+                run = 16*(nyb - char.dyn_f  - 1) + second + char.dyn_f + 1
+            # check if we go past a row boundary
+            row_remaining = char.w - (len(bitmap) % char.w)
+            if run >= row_remaining:
+                bitmap.extend([colour] * row_remaining)
+                run -= row_remaining
+                # apply row repeats
+                bitmap.extend(bitmap[-char.w:]*repeat)
+                repeat = 0
+            # even if the rest of the run is longer than a row,
+            # there are no more repeat markers
+            bitmap.extend([colour] * run)
+            # flip colour for next run
+            colour = not colour
+    return bitmap
 
 def _iter_nybbles(bytestr):
     """Iterate over a bytes string in 4-bit steps (big-endian)."""
@@ -309,9 +326,10 @@ def _read_packed(iternyb):
 
 def _load_pkfont(instream):
     """Load fonts from a METAFONT/TeX PKFONT."""
-    # todo - parse other commands
+    # read preamble
     preamble = _read_preamble(instream)
     logging.debug(preamble)
+    # read char definitions and _special_ strings
     chars = []
     specials = []
     while True:
