@@ -10,6 +10,7 @@ licence: https://opensource.org/licenses/MIT
 import sys
 import argparse
 from PIL import Image, ImageDraw, ImageFont
+from itertools import zip_longest
 
 
 # parse command line
@@ -31,6 +32,10 @@ parser.add_argument(
     help='highest number of bytes per scanline'
 )
 parser.add_argument(
+    '-b', '--stride-bits', default=None, type=int,
+    help='bits per scanline. cannot be used with -s or -t'
+)
+parser.add_argument(
     '-o', '--offset', default=0, type=int,
     help='byte offset into binary'
 )
@@ -50,8 +55,8 @@ parser.add_argument(
     help='character to use for ink/foreground (default: @)'
 )
 parser.add_argument(
-    '--paper', '--background', '-bg', type=str, default='-',
-    help='character to use for paper/background (default: -)'
+    '--paper', '--background', '-bg', type=str, default='.',
+    help='character to use for paper/background (default: .)'
 )
 
 # only apply to images
@@ -81,6 +86,8 @@ def main():
     bytesize = len(data)
 
     if args.image:
+        if args.stride_bits is not None:
+            raise ValueError('Bit-aligned strides not supported for images.')
         bitdump_image(
             data, bytesize, args.stride_from, args.stride_to,
             args.margin, args.padding, args.scale
@@ -89,7 +96,8 @@ def main():
         try:
             bitdump_text(
                 args.outfile,
-                data, bytesize, args.stride_from, args.stride_to,
+                data, bytesize,
+                args.stride_from, args.stride_to, args.stride_bits,
                 args.paper, args.ink
             )
         except BrokenPipeError:
@@ -112,18 +120,34 @@ def showchar(value):
         return '▓'
     return chr(value)
 
+
 def bitdump_text(
         outfile,
         data, bytesize,
-        stride_from, stride_to,
+        stride_from, stride_to, stride_bits,
         paper, ink
     ):
     """Bit dump to text output."""
-    rows = tuple('{:08b}'.format(_c) for _c in data)
-    drawn = ''.join(
-        _row.replace(u'0', paper).replace(u'1', ink)
-        for _row in rows
-    )
+    # get the bits
+    allbits = bin(int.from_bytes(data, 'big'))[2:]
+    drawn = allbits.replace('0', paper).replace('1', ink)
+    # width of decimal and hex offset fields
+    decwidth = len(str(len(drawn)))
+    hexwidth = len(hex(len(drawn))) - 2
+
+    if stride_bits is not None:
+        # itertools grouper
+        args = [iter(drawn)] * stride_bits
+        grouper = zip_longest(*args, fillvalue='0')
+        for i, bits in enumerate(grouper):
+            offset, mod = divmod(i * stride_bits, 8)
+            if not mod:
+                outfile.write(f'{offset:{decwidth}} {offset:0{hexwidth}x}  ')
+            else:
+                outfile.write(' ' * (decwidth + hexwidth + 3))
+            outfile.write(''.join(bits))
+            outfile.write('\n')
+        return
 
     for stride in range(stride_from, stride_to+1):
         width = stride * 8
@@ -134,9 +158,6 @@ def bitdump_text(
             title = f'stride={stride}'
             outfile.write(title + '\n')
             outfile.write('-'*len(title) + '\n')
-
-        decwidth = len(str(len(drawn)))
-        hexwidth = len(hex(len(drawn))) - 2
 
         for offset in range(0, bytesize, stride):
             bits = drawn[offset*8:(offset+stride)*8]
