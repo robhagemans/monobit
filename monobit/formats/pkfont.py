@@ -248,18 +248,17 @@ def _convert_char(char):
     else:
         bitmap = _unpack_bits(char)
         raster = Raster.from_vector(bitmap, stride=char.w)
-    raster = raster.crop(bottom=raster.height-char.h)
+    raster = raster.crop(bottom=max(0, raster.height-char.h))
     # convert glyph properties
     props = dict(
         codepoint=char.cc,
         left_bearing=-char.hoff,
-        shift_up=char.voff-raster.height,
+        shift_up=char.voff-raster.height+1,
         # how is 'escapement' defined? is it the advance width?
         # or does it exclude the initial offset?
-        right_bearing=char.dx-char.w, #-char.hoff,
+        right_bearing=char.dx-char.w+char.hoff,
         # if there's a dy 'vertical escapement' defined, what do we do with it?
-        h=char.h,
-        w=char.w,
+        # also, what _is_ the TFM width??
     )
     return Glyph(raster, **props)
 
