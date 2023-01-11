@@ -268,7 +268,7 @@ def _unpack_bits(char):
     iternyb = _iter_nybbles(char.raster_data)
     repeat = 0
     bitmap = []
-    colour = True
+    colour = bool(char.ink_run)
     for nyb in iternyb:
         if nyb == 15:
             repeat = 1
