@@ -264,6 +264,11 @@ def _convert_char(char):
 
 def _unpack_bits(char):
     """Unpack a packed character definition."""
+    # we assume raster data is byte aligned and its length is determined
+    # by the package size. PKfonts.pdf states that a character flag can also
+    # occur in the middle of a byte but that contradicts Rockicki's tb13pk.pdf
+    # which states that the packet size can be used to jump to the next
+    # character definition record.
     iternyb = _iter_nybbles(char.raster_data)
     repeat = 0
     bitmap = []
