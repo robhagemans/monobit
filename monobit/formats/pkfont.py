@@ -357,6 +357,45 @@ def _read_packed(iternyb, length=0):
     return value
 
 
+# implements pseudocode from
+# https://www.tug.org/TUGboat/tb06-3/tb13pk.pdf
+def _pk_packed_num(iternyb, dyn_f):
+    """
+    Read a run number or repeat count.
+    returns a tuple run, repeat
+    """
+    i = next(iternyb)
+    if i == 0:
+        j = 0
+        while j == 0:
+            j = next(iternyb)
+            i += 1
+        while i > 0:
+            j = j * 16 + next(iternyb)
+        run = j - 15 + (13 - dyn_f)*16 + dyn_f
+        return run, None
+    if i <= dyn_f:
+        run = i
+        return run, None
+    if i < 14:
+        run = (i - dyn_f - 1)*16 + next(iternyb) + dyn_f + 1
+        return run, None
+    if i == 14:
+        repeat, should_be_none = _pk_packed_num(iternyb, dyn_f)
+        if should_be_none is not None:
+            logging.warning('Duplicate repeat count')
+    else:
+        repeat = 1
+    # send_out(true, repeat_count)
+    # not clear what this means:
+    # pk_packed_num <- pk_packed_num
+    run, should_be_none = _pk_packed_num(iternyb, dyn_f)
+    if should_be_none is not None:
+        logging.warning('Duplicate repeat count')
+    return run, repeat
+
+
+
 def _load_pkfont(instream):
     """Load fonts from a METAFONT/TeX PKFONT."""
     # read preamble
