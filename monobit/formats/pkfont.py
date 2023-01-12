@@ -317,22 +317,21 @@ def _pk_packed_num(iternyb, dyn_f):
     returns a tuple run, repeat
     """
     i = next(iternyb)
-    if i == 0:
-        j = 0
-        while j == 0:
-            j = next(iternyb)
-            i += 1
-        while i > 0:
-            j = j * 16 + next(iternyb)
-            i -= 1
-        run = j - 15 + (13 - dyn_f)*16 + dyn_f
-        return run, None
-    if i <= dyn_f:
-        run = i
-        return run, None
     if i < 14:
-        get_nyb = next(iternyb)
-        run = (i - dyn_f - 1)*16 + get_nyb + dyn_f + 1
+        if i == 0:
+            j = 0
+            while j == 0:
+                j = next(iternyb)
+                i += 1
+            while i > 0:
+                j = j * 16 + next(iternyb)
+                i -= 1
+            run = j - 15 + (13 - dyn_f)*16 + dyn_f
+        elif i <= dyn_f:
+            run = i
+        else:
+            get_nyb = next(iternyb)
+            run = (i - dyn_f - 1)*16 + get_nyb + dyn_f + 1
         return run, None
     if i == 14:
         repeat, should_be_none = _pk_packed_num(iternyb, dyn_f)
