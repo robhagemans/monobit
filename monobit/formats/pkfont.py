@@ -262,6 +262,7 @@ def _convert_char(char):
     )
     return Glyph(raster, **props)
 
+
 def _unpack_bits(char):
     """Unpack a packed character definition."""
     # we assume raster data is byte aligned and its length is determined
@@ -273,65 +274,32 @@ def _unpack_bits(char):
     repeat = 0
     bitmap = []
     colour = bool(char.ink_run)
-    for nyb in iternyb:
+    while True:
         try:
-            if nyb == 15:
-                repeat = 1
-            elif nyb == 14:
-                # row repeat count
-                repeat = _read_packed(iternyb)
-            else:
-                if nyb == 0:
-                    # > Value 0 indicates # a long run, occupying three or more
-                    # > nybbles. The length of the run is stored in as many #
-                    # > nybbles as needed, encoded as a packed number.
-                    # so the zero is *part of the packed number*.
-                    # the authors only *hint* at this in their
-                    # typical circumlocutious fashion.
-                    # Did they get paid by the word?
-                    run = _read_packed(iternyb, length=1)
-                    # > However, the long run lengths are always greater than
-                    # > 16(13 − dyn) + dyn. The shortest of the long run lengths
-                    # > is therefore s def = 16(13 − dyn) + dyn + 1, which is why
-                    # > it makes sense to subtract s from such a run length before
-                    # > it is encoded as a packed number.
-                    run += 16*(13-char.dyn_f) + char.dyn_f + 1
-                    # > Recall that the long run lengths are indicated by a nybble
-                    # > flag of 0, and a packed integer in the interval [16, 255]
-                    # > is also preceded by a single zero nybble. Thus, it makes
-                    # > sense to add 16 to the long run lengths after s is
-                    # > subtracted
-                    run -= 16
-                elif nyb <= char.dyn_f:
-                    # run count
-                    run = nyb
-                else:
-                    second = next(iternyb)
-                    # the spec is unclear, but given here explicitly:
-                    # https://www.davidsalomon.name/DC4advertis/PKfonts.pdf
-                    run = 16*(nyb - char.dyn_f  - 1) + second + char.dyn_f + 1
-                # check if we go past a row boundary
-                row_remaining = char.w - (len(bitmap) % char.w)
-
-                # The current row is defined as the row on which the
-                # first pixel of the next run count will lie. The repeat
-                # count is set back to zero when the last pixel in the
-                # current row is seen, and the row is sent out
-
-                if run >= row_remaining :
-                    bitmap.extend([colour] * row_remaining)
-                    run -= row_remaining
-                    # apply row repeats
-                    bitmap.extend(bitmap[-char.w:]*repeat)
-                    repeat = 0
-                # even if the rest of the run is longer than a row,
-                # there are no more repeat markers
-                bitmap.extend([colour] * run)
-                # flip colour for next run
-                colour = not colour
-        except StopIteration:
+            run, new_repeat = _pk_packed_num(iternyb, char.dyn_f)
+            if new_repeat is not None:
+                repeat = new_repeat
+        except StopIteration as e:
             break
+        # check if we go past a row boundary
+        row_remaining = char.w - (len(bitmap) % char.w)
+        # > The current row is defined as the row on which the
+        # > first pixel of the next run count will lie. The repeat
+        # > count is set back to zero when the last pixel in the
+        # > current row is seen, and the row is sent out
+        if run >= row_remaining:
+            bitmap.extend([colour] * row_remaining)
+            run -= row_remaining
+            # apply row repeats
+            bitmap.extend(bitmap[-char.w:]*repeat)
+            repeat = 0
+        # even if the rest of the run is longer than a row,
+        # there are no more repeat markers
+        bitmap.extend([colour] * run)
+        # flip colour for next run
+        colour = not colour
     return bitmap
+
 
 def _iter_nybbles(bytestr):
     """Iterate over a bytes string in 4-bit steps (big-endian)."""
@@ -340,24 +308,8 @@ def _iter_nybbles(bytestr):
         yield hi
         yield lo
 
-def _read_packed(iternyb, length=0):
-    """Read a packed number."""
-    # >     Given an integer i, the idea is to create
-    # > its hexadecimal representation (let’s say it occupies n nybbles),
-    # > remove any leading zero nybbles and prepend n− 1 zero nybbles.
-    nyb = 0
-    while nyb == 0:
-        length += 1
-        nyb = next(iternyb)
-    value = 0
-    for count in range(length):
-        if count > 0:
-            nyb = next(iternyb)
-        value = value * 16 + nyb
-    return value
 
-
-# implements pseudocode from
+# implements the pseudocode from
 # https://www.tug.org/TUGboat/tb06-3/tb13pk.pdf
 def _pk_packed_num(iternyb, dyn_f):
     """
@@ -372,13 +324,15 @@ def _pk_packed_num(iternyb, dyn_f):
             i += 1
         while i > 0:
             j = j * 16 + next(iternyb)
+            i -= 1
         run = j - 15 + (13 - dyn_f)*16 + dyn_f
         return run, None
     if i <= dyn_f:
         run = i
         return run, None
     if i < 14:
-        run = (i - dyn_f - 1)*16 + next(iternyb) + dyn_f + 1
+        get_nyb = next(iternyb)
+        run = (i - dyn_f - 1)*16 + get_nyb + dyn_f + 1
         return run, None
     if i == 14:
         repeat, should_be_none = _pk_packed_num(iternyb, dyn_f)
@@ -395,12 +349,10 @@ def _pk_packed_num(iternyb, dyn_f):
     return run, repeat
 
 
-
 def _load_pkfont(instream):
     """Load fonts from a METAFONT/TeX PKFONT."""
     # read preamble
     preamble = _read_preamble(instream)
-    logging.debug(preamble)
     # read char definitions and _special_ strings
     chars = []
     specials = []
@@ -416,5 +368,4 @@ def _load_pkfont(instream):
             chars.append(char)
     # converter
     glyphs = tuple(_convert_char(_char) for _char in chars)
-    logging.debug(specials)
     return Font(glyphs)
