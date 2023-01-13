@@ -260,7 +260,7 @@ def _convert_mac_font(parsed_rsrc, info, formatstr):
                 })
                 # prefer directory info to info inferred from resource ID
                 # (in so far provided by FOND or directory FONT)
-                props.update(info.get(font_number, {}))
+                props.update(info.get(rsrc_id, info.get(font_number, {})))
             else:
                 # update properties with directory info
                 props.update(info.get(rsrc_id, {}))
