@@ -116,7 +116,7 @@ Supported formats
 | Bitmap image [P]      | `image`    |          | `.png` `.gif` `.bmp`        |               | ✔     | ✔     |
 | JSON coded binary     | `json`     |          | `.json`                     |               | ✔     | ✔     |
 | `kbd` Codepage        | `kbd-cp`   |          | `.cp`                       | Linux         | ✔     | ✔     |
-| MacOS font            | `mac-dfont`| FONT NFNT SFNT | `.dfont` `.suit`      | Classic MacOS | ✔     |       |
+| MacOS font            | `mac`      | FONT NFNT SFNT | `.dfont` `.suit`      | Classic MacOS | ✔     |       |
 | REXXCOM Font Mania    | `mania`    |          | `.com`                      | DOS           | ✔     |       |
 | Optiks PCR Font       | `pcr`      |          | `.pcr`                      | DOS           | ✔     |       |
 | PCPaint, GRASP, ChiWriter | `pcpaint` | old 3 4 | `.set` `.fnt`  `.sft` `.pft` `.eft` ... | DOS | ✔ |       |

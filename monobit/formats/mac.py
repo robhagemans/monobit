@@ -21,7 +21,8 @@ from .sfnt import (
 )
 
 # the magic is optional - a 'maybe magic'
-@loaders.register('dfont', 'suit', name='mac-dfont', magic=(b'\0\0\1\0\0\0',))
+# .rsrc is what we use as a 'filename' for resources inside containers
+@loaders.register('dfont', 'suit', 'rsrc', name='mac', magic=(b'\0\0\1\0\0',))
 def load_mac_dfont(instream, where=None):
     """
     Load font from a MacOS suitcase.
