@@ -21,7 +21,7 @@ parser.add_argument(
 )
 parser.add_argument(
     'outfile', nargs='?',
-    type=argparse.FileType('w'), default=sys.stdout
+    type=str, default=''
 )
 parser.add_argument(
     '-s', '--stride-from', default=1, type=int,
@@ -70,7 +70,7 @@ parser.add_argument(
     help='number of horizontal pixels left of first bitmap'
 )
 parser.add_argument(
-    '--scale', default=4, type=int,
+    '--scale', default=1, type=int,
     help='number of horizontal and vertical pixels used to represent a single bit'
 )
 
@@ -89,6 +89,7 @@ def main():
         if args.stride_bits is not None:
             raise ValueError('Bit-aligned strides not supported for images.')
         bitdump_image(
+            args.outfile,
             data, bytesize, args.stride_from, args.stride_to,
             args.margin, args.padding, args.scale
         )
@@ -98,7 +99,7 @@ def main():
                 args.outfile,
                 data, bytesize,
                 args.stride_from, args.stride_to, args.stride_bits,
-                args.paper, args.ink
+                args.paper, args.ink, start=args.offset
             )
         except BrokenPipeError:
             pass
@@ -121,28 +122,37 @@ def showchar(value):
     return chr(value)
 
 
+def draw_bits(data, paper, ink):
+    bits = bin(int.from_bytes(data, 'big'))[2:].zfill(8*len(data))
+    return bits.replace('0', paper).replace('1', ink)
+
+
 def bitdump_text(
-        outfile,
+        outfilename,
         data, bytesize,
         stride_from, stride_to, stride_bits,
-        paper, ink
+        paper, ink, start
     ):
     """Bit dump to text output."""
-    # get the bits
-    allbits = bin(int.from_bytes(data, 'big'))[2:]
-    drawn = allbits.replace('0', paper).replace('1', ink)
     # width of decimal and hex offset fields
-    decwidth = len(str(len(drawn)))
-    hexwidth = len(hex(len(drawn))) - 2
+    decwidth = len(str(len(data)))
+    hexwidth = len(hex(len(data))) - 2
+
+    if outfilename:
+        outfile = open(outfilename, 'w')
+    else:
+        outfile = sys.stdout
 
     if stride_bits is not None:
+        # get the bits
+        drawn = draw_bits(data, paper, ink)
         # itertools grouper
         args = [iter(drawn)] * stride_bits
         grouper = zip_longest(*args, fillvalue='0')
         for i, bits in enumerate(grouper):
             offset, mod = divmod(i * stride_bits, 8)
             if not mod:
-                outfile.write(f'{offset:{decwidth}} {offset:0{hexwidth}x}  ')
+                outfile.write(f'{offset+start:{decwidth}} {offset+start:0{hexwidth}x}  ')
             else:
                 outfile.write(' ' * (decwidth + hexwidth + 3))
             outfile.write(''.join(bits))
@@ -160,38 +170,36 @@ def bitdump_text(
             outfile.write('-'*len(title) + '\n')
 
         for offset in range(0, bytesize, stride):
-            bits = drawn[offset*8:(offset+stride)*8]
             values = data[offset:offset+stride]
+            bits = draw_bits(values, paper, ink)
             letters = ''.join(showchar(_v) for _v in values)
-            outfile.write(f'{offset:{decwidth}} {offset:0{hexwidth}x}  ')
+            outfile.write(f'{offset+start:{decwidth}} {offset+start:0{hexwidth}x}  ')
             outfile.write(bits)
             outfile.write(f'  {values.hex(" ")}  {letters}  ')
             outfile.write(' '.join(f'{_v:3d}' for _v in values))
             outfile.write('\n')
 
+    if outfile != sys.stdout:
+        outfile.close()
 
 def bitdump_image(
+        outfilename,
         data, bytesize,
         stride_from, stride_to,
         margin, padding, scale
     ):
     """Bit dump to image."""
-    rows = ['{:08b}'.format(_c) for _c in data]
+    # colours
+    border = (20, 20, 20)
+    textcolour = (128, 255, 128)
 
     images = []
+    # append more than enough zeros to fill any shortfall
+    data += b'\0' * stride_to
     for stride in range(stride_from, stride_to+1):
         width = stride * 8
         height = ceildiv(bytesize, stride)
-
-        fore, back, border = (255, 255, 255), (0, 0, 0), (20, 20, 20)
-
-        img = Image.new('RGB', (width, height), border)
-        data = [
-            fore if _c == '1' else back
-            for _row in rows
-            for _c in _row
-        ]
-        img.putdata(data)
+        img = Image.frombytes('1', (width, height), data)
         images.append((stride, img))
 
     font = ImageFont.load_default()
@@ -209,7 +217,7 @@ def bitdump_image(
     draw = ImageDraw.Draw(fullimage)
     left, top = margin, 0
     for stride, img in images:
-        draw.text((0, top), str(stride), font=font, fill=(128, 255, 128))
+        draw.text((0, top), str(stride), font=font, fill=textcolour)
         fullimage.paste(img, (left, top))
         top += img.height + padding
 
@@ -217,7 +225,9 @@ def bitdump_image(
         fullimage.width * scale,
         fullimage.height * scale
     ))
-    fullimage.show()
-
+    if not outfilename:
+        fullimage.show()
+    else:
+        fullimage.save(outfilename)
 
 main()
