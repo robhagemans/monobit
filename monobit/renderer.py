@@ -47,11 +47,6 @@ from .labels import Char, Codepoint
 from .raster import Raster
 
 
-# matrix colours
-# 0, 1 are background, foreground
-# this allows us to use max() to combine the three in blit_matrix
-_BORDER = -1
-
 
 DIRECTIONS = {
     'n': 'normal',
@@ -84,6 +79,13 @@ class Canvas(Raster):
     """Mutable raster."""
 
     _sequence = list
+
+    @classmethod
+    def blank(cls, width, height):
+        """Create a canvas in background colour."""
+        canvas = [[-1]*width for _ in range(height)]
+        # setting 0 and 1 will make Raster init leave the input alone
+        return cls(canvas, _0=0, _1=1)
 
     def blit(self, raster, grid_x, grid_y, operator=max):
         """
@@ -235,7 +237,7 @@ def _get_canvas_horizontal(font, glyphs, margin_x, margin_y):
     # if a glyph extends below the descent line or left of the origin,
     # it may draw into the margin
     height = 2 * margin_y + font.pixel_size + font.line_height * (len(glyphs)-1)
-    return Canvas.blank(width, height) #, _BORDER)
+    return Canvas.blank(width, height)
 
 def _get_canvas_vertical(font, glyphs, margin_x, margin_y):
     """Create canvas of the right size."""
@@ -247,7 +249,7 @@ def _get_canvas_vertical(font, glyphs, margin_x, margin_y):
             for _col in glyphs
         )
     width = 2 * margin_x + font.line_width * len(glyphs)
-    return Canvas.blank(width, height) #, _BORDER)
+    return Canvas.blank(width, height)
 
 
 def _get_direction(font, text, direction, align):
@@ -466,7 +468,7 @@ def chart(
     # determine image geometry
     width = columns * step_x + 2 * margin_x - padding_x
     height = rows * step_y + 2 * margin_y - padding_y
-    canvas = Canvas.blank(width, height) # _BORDER)
+    canvas = Canvas.blank(width, height)
     # output glyphs
     traverse = traverse_chart(columns, rows, order, direction)
     for glyph, pos in zip(font.glyphs, traverse):
