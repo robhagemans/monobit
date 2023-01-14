@@ -42,6 +42,8 @@ Original sources:
 * `4x6.dfont` and `4x6.bin` were created from `4x6.bdf` using `ufond` (part of `fondu`)
 * `4x6.vfont*` were created from `4x6.psf` using `psftools` v1.1.1
 * `4x6-ams.com*` were created from `4x6.psf` using `psftools` v1.1.1
+* `4x6.ttf` was created from `4x6.bdf` using `fonttosfnt`
+* `4x6.otb`, `4x6.sfnt.dfont` and `4x6.ffms.ttf` were created from `4x6.bdf` using FontForge
 * `8x8.bbc` was created from `4x6.psf` using `psftools` v1.1.1
 * `8x16.hex` was created from `4x6.yaff` using `bittermelon`
 * `8x16.draw` was created from `8x16.hex` using `hexdraw`

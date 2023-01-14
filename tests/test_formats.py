@@ -467,6 +467,28 @@ class TestFormats(BaseTester):
         font, *_ = monobit.load(self.font_path / 'cmbx10.120pk')
         self.assertEqual(len(font.glyphs), 128)
 
+    # sfnt
+
+    def test_import_fonttosfnt(self):
+        """Test importing sfnt bitmap files produced by fonttosfnt."""
+        font, *_ = monobit.load(self.font_path / '4x6.ttf')
+        self.assertEqual(len(font.glyphs), 919)
+
+    def test_import_fontforge(self):
+        """Test importing sfnt bitmap files produced by fontforge."""
+        font, *_ = monobit.load(self.font_path / '4x6.otb')
+        self.assertEqual(len(font.glyphs), 922)
+
+    def test_import_fontforge_fakems(self):
+        """Test importing 'fake MS' sfnt bitmap files produced by fontforge."""
+        font, *_ = monobit.load(self.font_path / '4x6.ffms.ttf')
+        self.assertEqual(len(font.glyphs), 922)
+
+    def test_import_fontforge_dfont(self):
+        """Test importing dfont-wrapped sfnt bitmap files produced by fontforge."""
+        font, *_ = monobit.load(self.font_path / '4x6.sfnt.dfont')
+        self.assertEqual(len(font.glyphs), 922)
+
 
 if __name__ == '__main__':
     unittest.main()
