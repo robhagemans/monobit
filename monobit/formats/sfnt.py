@@ -131,6 +131,7 @@ _TAGS = (
     'cmap',
     'name',
     'OS/2',
+    'sbix',
 )
 
 def _read_sfnt(instream):
@@ -220,8 +221,14 @@ def _convert_sfnt(sfnt):
     sfnt.bdat = sfnt.bdat or sfnt.EBDT
     sfnt.bloc = sfnt.bloc or sfnt.EBLC
     sfnt.head = sfnt.bhed or sfnt.head
+    if sfnt.sbix:
+        logging.warning(
+            'Bitmap strikes in `sbix` format not supported.'
+        )
     if not sfnt.bdat or not sfnt.bloc:
-        raise ResourceFormatError('No bitmap strikes found in sfnt resource.')
+        raise ResourceFormatError(
+            'No `EBDT` or `bdat` bitmap strikes found in sfnt resource.'
+        )
     fonts = []
     for i_strike in range(sfnt.bloc.numSizes):
         try:
