@@ -132,7 +132,7 @@ class Canvas(Raster):
 # text rendering
 
 def render(
-        font, text, *, margin=(0, 0),
+        font, text, *, margin=(0, 0), adjust_bearings=0,
         direction='', align='',
         missing='default'
     ):
@@ -146,14 +146,21 @@ def render(
     )
     margin_x, margin_y = margin
     if direction in ('top-to-bottom', 'bottom-to-top'):
-        canvas = _get_canvas_vertical(font, glyphs, margin_x, margin_y)
-        canvas = _render_vertical(font, glyphs, canvas, margin_x, margin_y, align)
+        _get_canvas = _get_canvas_vertical
+        _render = _render_vertical
     else:
-        canvas = _get_canvas_horizontal(font, glyphs, margin_x, margin_y)
-        canvas = _render_horizontal(font, glyphs, canvas, margin_x, margin_y, align)
+        _get_canvas = _get_canvas_horizontal
+        _render = _render_horizontal
+    canvas = _get_canvas(font, glyphs, margin_x, margin_y, adjust_bearings)
+    canvas = _render(
+        font, glyphs, canvas, margin_x, margin_y, align, adjust_bearings
+    )
     return canvas
 
-def _render_horizontal(font, glyphs, canvas, margin_x, margin_y, align):
+def _render_horizontal(
+        font, glyphs, canvas, margin_x, margin_y, align, adjust_bearings
+    ):
+    """Render text horizontally."""
     # descent-line of the bottom-most row is at bottom margin
     # if a glyph extends below the descent line or left of the origin,
     # it may draw into the margin
@@ -162,12 +169,13 @@ def _render_horizontal(font, glyphs, canvas, margin_x, margin_y, align):
     for glyph_row in glyphs:
         # x, y are relative to the left margin & baseline
         x = 0
-        prev = font.get_empty_glyph()
         grid_x, grid_y = [], []
-        for glyph in glyph_row:
+        for count, glyph in enumerate(glyph_row):
             # adjust origin for kerning
-            x += prev.right_kerning.get_for_glyph(glyph)
-            x += glyph.left_kerning.get_for_glyph(prev)
+            if count:
+                x += adjust_bearings
+                x += prev.right_kerning.get_for_glyph(glyph)
+                x += glyph.left_kerning.get_for_glyph(prev)
             prev = glyph
             # offset + (x, y) is the coordinate of glyph matrix origin
             # grid_x, grid_y are canvas coordinates relative to top left of canvas
@@ -183,23 +191,25 @@ def _render_horizontal(font, glyphs, canvas, margin_x, margin_y, align):
         for glyph, x, y in zip(glyph_row, grid_x, grid_y):
             # add ink, taking into account there may be ink already
             # in case of negative bearings
-            canvas.blit(
-                glyph.pixels,
-                start + x, margin_y + y
-            )
+            canvas.blit(glyph.pixels, start + x, margin_y + y)
         # move to next line
         baseline += font.line_height
     return canvas
 
-def _render_vertical(font, glyphs, canvas, margin_x, margin_y, align):
+def _render_vertical(
+        font, glyphs, canvas, margin_x, margin_y, align, adjust_bearings
+    ):
+    """Render text vertically."""
     # central axis (with leftward bias)
     baseline = font.line_width // 2
     # default is ttb right-to-left
     for glyph_row in glyphs:
         y = 0
         grid_x, grid_y = [], []
-        for glyph in glyph_row:
+        for count, glyph in enumerate(glyph_row):
             # advance origin to next glyph
+            if count:
+                y += adjust_bearings
             y += glyph.advance_height
             grid_y.append(y - glyph.bottom_bearing)
             grid_x.append(
@@ -209,26 +219,23 @@ def _render_vertical(font, glyphs, canvas, margin_x, margin_y, align):
             start = len(canvas) - margin_y - y
         else:
             start = margin_y
-
         for glyph, x, y in zip(glyph_row, grid_x, grid_y):
             # add ink, taking into account there may be ink already
             # in case of negative bearings
-            canvas.blit(
-                glyph.pixels,
-                margin_x + x, start + y
-            )
+            canvas.blit(glyph.pixels, margin_x + x, start + y)
         # move to next line
         baseline += font.line_width
     return canvas
 
-def _get_canvas_horizontal(font, glyphs, margin_x, margin_y):
+def _get_canvas_horizontal(font, glyphs, margin_x, margin_y, adjust_bearings):
     """Get the right size for vertical rendering."""
     # find required width - margins plus max row width
     if not glyphs:
         width = 0
     else:
         width = max(
-            sum(_glyph.advance_width for _glyph in _row)
+            adjust_bearings * max(0, len(_row) - 1)
+            + sum(_glyph.advance_width for _glyph in _row)
             for _row in glyphs
         )
     # find required height - margins plus line height for each row
@@ -239,13 +246,14 @@ def _get_canvas_horizontal(font, glyphs, margin_x, margin_y):
     height = font.pixel_size + font.line_height * (len(glyphs)-1)
     return _get_canvas(width, height, margin_x, margin_y)
 
-def _get_canvas_vertical(font, glyphs, margin_x, margin_y):
+def _get_canvas_vertical(font, glyphs, margin_x, margin_y, adjust_bearings):
     """Get the right size for vertical rendering."""
     # find required height - margins plus max column height
     height = 2 * margin_y
     if glyphs:
         height += max(
-            sum(_glyph.advance_height for _glyph in _col)
+            adjust_bearings * max(0, len(_col) - 1)
+            + sum(_glyph.advance_height + adjust_bearings for _glyph in _col)
             for _col in glyphs
         )
     width = 2 * margin_x + font.line_width * len(glyphs)

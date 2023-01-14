@@ -148,6 +148,13 @@ def main():
         '--outline', action='store_true',
         help='apply algorithmic glyph outline effect'
     )
+    parser.add_argument(
+        '--expand', type=int, default=0,
+        help=(
+            'adjust bearings by given number of pixels '
+            'wider (positive) or tighter (negative)'
+        )
+    )
     args = parser.parse_args()
 
     with wrap_main(args.debug):
@@ -208,7 +215,7 @@ def main():
         canvas = render(
             font, args.text,
             margin=args.margin,
-            direction=args.direction, align=args.align,
+            direction=args.direction, align=args.align, adjust_bearings=args.expand,
             missing='default'
         )
         # transformations
