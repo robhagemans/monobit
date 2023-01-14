@@ -44,7 +44,7 @@ except ImportError:
 
 from .binary import ceildiv
 from .labels import Char, Codepoint
-from .raster import Raster
+from .raster import Raster, blockstr
 
 
 
@@ -62,14 +62,6 @@ ALIGNMENTS = {
     't': 'top',
     'b': 'bottom'
 }
-
-
-
-class blockstr(str):
-    """str that is shown as block text in interactive session."""
-
-    def __repr__(self):
-        return f'"""\\\n{self}"""'
 
 
 ###############################################################################

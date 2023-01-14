@@ -47,6 +47,12 @@ def turn(self, clockwise:int=NOT_SET, *, anti:int=NOT_SET):
 turn_method = turn
 
 
+class blockstr(str):
+    """str that is shown as block text in interactive session."""
+    def __repr__(self):
+        return f'"""\\\n{self}"""'
+
+
 # immutable bit matrix
 
 class Raster:
@@ -166,7 +172,7 @@ class Raster:
             ''.join(_row)
             for _row in self.as_matrix(ink=ink, paper=paper)
         )
-        return ''.join((start, contents, end))
+        return blockstr(''.join((start, contents, end)))
 
     def as_blocks(self, *, ink='@', paper='.', start='', end='\n'):
         """Convert glyph to a string of quadrant block characters."""
@@ -205,7 +211,7 @@ class Raster:
             ''.join(blockdict[_quartet] for _quartet in _row)
             for _row in quartets
         )
-        return quartets
+        return blockstr(quartets + '\n')
 
     @classmethod
     def from_vector(
