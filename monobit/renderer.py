@@ -373,7 +373,12 @@ def _get_text_glyphs(
 def _iter_labels(font, text, missing='raise'):
     """Iterate over labels in text, yielding glyphs. text may be str or bytes."""
     if isinstance(text, str):
+        font = font.label()
         labelset = font.get_chars()
+        if not labelset:
+            raise ValueError(
+                'Cannot render string: no character labels in font.'
+            )
         # split text into standard grapheme clusters
         text = tuple(grapheme_clusters(text))
         # find the longest *number of standard grapheme clusters* per label
@@ -384,7 +389,12 @@ def _iter_labels(font, text, missing='raise'):
         def labeltype(seq):
             return Char(''.join(seq))
     else:
+        font = font.label(codepoint_from=font.encoding)
         labelset = font.get_codepoints()
+        if not labelset:
+            raise ValueError(
+                'Cannot render bytes: no codepoint labels in font.'
+            )
         labeltype = Codepoint
         max_length = max(len(_c) for _c in labelset)
     remaining = text
