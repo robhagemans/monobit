@@ -308,7 +308,7 @@ def _convert_glyphs(sfnt, i_strike, hori_fu_p_pix, vert_fu_p_pix):
 
 
 def _convert_glyph_metrics(metrics, small_is_vert):
-    """Conveert glyph metrics."""
+    """Convert glyph metrics."""
     if hasattr(metrics, 'horiAdvance'):
         # big metrics
         return dict(
@@ -796,7 +796,7 @@ def _convert_os_2_props(os_2, vert_fu_p_pix, hori_fu_p_pix):
         ) // vert_fu_p_pix,
     )
     if os_2.version > 1:
-        props |= Proops(
+        props |= Props(
             x_height=os_2.sxHeight // vert_fu_p_pix,
             cap_height=os_2.sCapHeight // vert_fu_p_pix,
             default_char=Char(chr(os_2.usDefaultChar)),
