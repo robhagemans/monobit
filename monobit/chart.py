@@ -35,7 +35,7 @@ def chart(
         left = margin_x + col*step_x + glyph.left_bearing
         bottom = margin_y + (row+1)*step_y - padding_y - glyph.shift_up
         mx = glyph.stretch(scale_x, scale_y)
-        canvas.blit(mx, left, bottom)
+        canvas.blit(mx, left, bottom, operator=max)
     return canvas
 
 
