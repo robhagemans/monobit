@@ -109,14 +109,16 @@ Supported formats
 | Fontraption TSR       | `frapt-tsr`|          | `.com`                      | DOS           | ✔     |       |
 | Hanzi Bitmap Font     | `hbf`      |          | `.hbf` + raw binary         | Unix          | ✔     | ✔     |
 | Atari GDOS / GEM      | `gdos`     |          | `.fnt` `.gft` `.vga`        | Atari ST, GEM | ✔     | ✔     |
-| GEOS (C64)            | `geos`     |          | `.cvt`                      | Commodore 64  | ✔     |       |
+| C64 GEOS ConVerT      | `geos`     |          | `.cvt`                      | Commodore 64  | ✔     |       |
+| Bare GEOS resource    | `vlir`     |          |                             | Commodore 64  | ✔     |       |
 | GNU Unifont           | `hex`      |          | `.hex`                      |               | ✔     | ✔     |
 | Extended Hex          | `hext`     |          | `.hex`                      |               | ✔     | ✔     |
 | hexdraw               | `hexdraw`  |          | `.draw`                     |               | ✔     | ✔     |
 | Bitmap image [P]      | `image`    |          | `.png` `.gif` `.bmp`        |               | ✔     | ✔     |
 | JSON coded binary     | `json`     |          | `.json`                     |               | ✔     | ✔     |
-| `kbd` Codepage        | `kbd-cp`   |          | `.cp`                       | Linux         | ✔     | ✔     |
+| Bare codepage (`kbd`) | `kbd-cp`   |          | `.cp`                       | DOS, Linux    | ✔     | ✔     |
 | MacOS font            | `mac`      | FONT NFNT SFNT | `.dfont` `.suit`      | Classic MacOS | ✔     |       |
+| Bare NFNT resource    | `nfnt`     |          |                             | Classic MacOS, PalmOS | ✔ |   |
 | REXXCOM Font Mania    | `mania`    |          | `.com`                      | DOS           | ✔     |       |
 | Optiks PCR Font       | `pcr`      |          | `.pcr`                      | DOS           | ✔     |       |
 | PCPaint, GRASP, ChiWriter | `pcpaint` | old 3 4 | `.set` `.fnt`  `.sft` `.pft` `.eft` ... | DOS | ✔ |       |
@@ -137,6 +139,7 @@ Supported formats
 [P] - requires **PIL**  
 [R] - requires **reportlab**  
 [F] - requires **fontTools**
+
 
 [*] Identifying raw binary files
 --------------------------------
