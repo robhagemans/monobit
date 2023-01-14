@@ -6,6 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import logging
+from itertools import zip_longest
 
 from .binary import ceildiv
 from .basetypes import Bounds, Coord
@@ -166,6 +167,45 @@ class Raster:
             for _row in self.as_matrix(ink=ink, paper=paper)
         )
         return ''.join((start, contents, end))
+
+    def as_blocks(self, *, ink='@', paper='.', start='', end='\n'):
+        """Convert glyph to a string of quadrant block characters."""
+        if not self.height:
+            return ''
+        matrix = self.as_matrix()
+        quartets = tuple(
+            tuple(
+                _quartet
+                for _quartet in zip_longest(
+                    _row[::2], _row[1::2], _next[::2], _next[1::2],
+                    fillvalue=0
+                )
+            )
+            for _row, _next in zip_longest(matrix[::2], matrix[1::2], fillvalue=())
+        )
+        blockdict = {
+            (0, 0, 0, 0): ' ',
+            (0, 0, 0, 1): '\u2597',
+            (0, 0, 1, 0): '\u2596',
+            (0, 0, 1, 1): '\u2584',
+            (0, 1, 0, 0): '\u259d',
+            (0, 1, 0, 1): '\u2590',
+            (0, 1, 1, 0): '\u259e',
+            (0, 1, 1, 1): '\u259f',
+            (1, 0, 0, 0): '\u2598',
+            (1, 0, 0, 1): '\u259a',
+            (1, 0, 1, 0): '\u258c',
+            (1, 0, 1, 1): '\u2599',
+            (1, 1, 0, 0): '\u2580',
+            (1, 1, 0, 1): '\u259c',
+            (1, 1, 1, 0): '\u259b',
+            (1, 1, 1, 1): '\u2588',
+        }
+        quartets = '\n'.join(
+            ''.join(blockdict[_quartet] for _quartet in _row)
+            for _row in quartets
+        )
+        return quartets
 
     @classmethod
     def from_vector(
