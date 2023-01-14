@@ -565,7 +565,8 @@ def _convert_bloc_props(bloc, i_strike):
     # according to the EBLC spec the sbit metrics also define the linegap
     # but I don't see it. widthMax looks like a max advance
     props.ascent = bmst.hori.ascender
-    props.descent = -bmst.hori.descender
+    # descender should be negative - use abs in case it is incorrectly +
+    props.descent = abs(bmst.hori.descender)
     # vertical line metrics
     # we don't keep track of 'ascent' and 'descent' for vert, maybe we should
     # anyway, which way is the 'ascent', left or right?
@@ -608,13 +609,13 @@ def _convert_head_props(head):
 
 def _convert_hhea_props(hhea, vert_fu_p_pix):
     """Convert font properties from hhea table."""
-    return Props()
     #if not hhea:
+    return Props()
     props = Props(
         ascent=hhea.ascent // vert_fu_p_pix,
-        descent=hhea.descent // vert_fu_p_pix,
+        descent=abs(hhea.descent // vert_fu_p_pix),
         line_height=(
-            (hhea.ascent + hhea.descent + hhea.lineGap)
+            (hhea.ascent + abs(hhea.descent) + hhea.lineGap)
             // vert_fu_p_pix
         ),
     )
@@ -633,9 +634,9 @@ def _convert_vhea_props(vhea, horiz_fu_p_pix):
         # > assuming top-to-bottom right-to-left
         right_extent=vhea.ascent // horiz_fu_p_pix,
         # > from the centerline to the next line’s descent
-        left_extent=vhea.descent // horiz_fu_p_pix,
+        left_extent=abs(vhea.descent) // horiz_fu_p_pix,
         line_width=(
-            (vhea.ascender + vhea.descender + vhea.lineGap)
+            (vhea.ascender + abs(vhea.descender) + vhea.lineGap)
             // horiz_fu_p_pix
         ),
     )
@@ -796,10 +797,14 @@ def _convert_os_2_props(os_2, vert_fu_p_pix, hori_fu_p_pix):
             int(os_2.ySuperscriptXOffset // hori_fu_p_pix),
             int(os_2.ySuperscriptYOffset // vert_fu_p_pix)
         ),
-        ascent=os_2.sTypoAscender // vert_fu_p_pix,
-        descent=-os_2.sTypoDescender // vert_fu_p_pix,
+        #ascent=os_2.sTypoAscender // vert_fu_p_pix,
+        # the spec states sTypoDescender is 'usually' negative,
+        # but fonttosfnt produces + values while fontforge -
+        # abs should be fine as I have nno interpretation for a negative descent
+        # note the sign also affects int division
+        #descent=abs(os_2.sTypoDescender // vert_fu_p_pix),
         line_height=(
-            os_2.sTypoAscender - os_2.sTypoDescender + os_2.sTypoLineGap
+            os_2.sTypoAscender + abs(os_2.sTypoDescender) + os_2.sTypoLineGap
         ) // vert_fu_p_pix,
     )
     if os_2.version > 1:
