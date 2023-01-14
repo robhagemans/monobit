@@ -44,6 +44,7 @@ except ImportError:
 
 from .binary import ceildiv
 from .labels import Char, Codepoint
+from .raster import Raster
 
 
 # matrix colours
@@ -79,78 +80,49 @@ class blockstr(str):
 ###############################################################################
 # canvas operations
 
-def create_canvas(width, height, fill=0):
-    """Create a matrix in list format."""
-    return [
-        [fill for _ in range(width)]
-        for _ in range(height)
-    ]
+class Canvas(Raster):
+    """Mutable raster."""
 
-def scale_canvas(matrix, scale_x, scale_y):
-    """Scale a matrix in list format."""
-    return [
-        [_item  for _item in _row for _ in range(scale_x)]
-        for _row in matrix for _ in range(scale_y)
-    ]
+    _sequence = list
 
-def rotate_canvas(matrix, quarter_turns=1):
-    """Scale a matrix in list format."""
-    for turn in range(quarter_turns):
-        matrix = mirror_canvas(transpose_canvas(matrix))
-    return matrix
+    def blit(self, raster, grid_x, grid_y, operator=max):
+        """
+        Draw a matrix onto a canvas
+        (leaving exising ink in place, depending on operator).
+        """
+        if not raster.width or not self.width:
+            return self
+        matrix = raster.as_matrix()
+        for work_y in range(raster.height):
+            y_index = grid_y - work_y - 1
+            if 0 <= y_index < self.height:
+                row = self._pixels[y_index]
+                for work_x, ink in enumerate(matrix[raster.height - work_y - 1]):
+                    if 0 <= grid_x + work_x < self.width:
+                        row[grid_x + work_x] = operator(ink, row[grid_x + work_x])
+        return self
 
-def transpose_canvas(matrix):
-    """Transpose a matrix."""
-    return list(zip(*matrix))
+    def to_image(self, border=(0, 0, 0), paper=(0, 0, 0), ink=(255, 255, 255)):
+        """Convert matrix to image."""
+        if not Image:
+            raise ImportError('Rendering to image requires PIL module.')
+        if not self.height:
+            return Image.new('RGB', (0,0))
+        img = Image.new('RGB', (self.width, self.height), border)
+        img.putdata([
+            {-1: border, 0: paper, 1: ink}[_pix]
+            for _row in self._pixels for _pix in _row
+        ])
+        return img
 
-def mirror_canvas(matrix):
-    """Mirror a matrix."""
-    return [_row[::-1] for _row in matrix]
-
-
-def blit(matrix, canvas, grid_x, grid_y, operator=max):
-    """
-    Draw a matrix onto a canvas
-    (leaving exising ink in place, depending on operator).
-    """
-    if not matrix or not canvas:
-        return canvas
-    matrix_height = len(matrix)
-    canvas_height = len(canvas)
-    canvas_width = len(canvas[0])
-    for work_y in range(matrix_height):
-        y_index = grid_y - work_y - 1
-        if 0 <= y_index < canvas_height:
-            row = canvas[y_index]
-            for work_x, ink in enumerate(matrix[matrix_height - work_y - 1]):
-                if 0 <= grid_x + work_x < canvas_width:
-                    row[grid_x + work_x] = operator(ink, row[grid_x + work_x])
-    return canvas
-
-
-def to_image(matrix, border=(0, 0, 0), paper=(0, 0, 0), ink=(255, 255, 255)):
-    """Convert matrix to image."""
-    if not Image:
-        raise ImportError('Rendering to image requires PIL module.')
-    height = len(matrix)
-    if height:
-        width = len(matrix[0])
-    else:
-        width = 0
-    img = Image.new('RGB', (width, height), border)
-    img.putdata([
-        {-1: border, 0: paper, 1: ink}[_pix]
-        for _row in matrix for _pix in _row
-    ])
-    return img
-
-def to_text(matrix, *, border='.', paper='.', ink='@', line_break='\n'):
-    """Convert matrix to text."""
-    colourdict = {-1: border, 0: paper, 1: ink}
-    return blockstr(line_break.join(
-        ''.join(colourdict[_pix] for _pix in _row)
-        for _row in matrix
-    ))
+    # FIXME - naming conflicts with Raster.as_text()
+    def to_text(self, *, border='.', paper='.', ink='@', line_break='\n'):
+        """Convert matrix to text."""
+        colourdict = {-1: border, 0: paper, 1: ink}
+        return blockstr(line_break.join(
+            ''.join(colourdict[_pix] for _pix in _row)
+            for _row in self._pixels
+        ))
 
 
 ###############################################################################
@@ -176,8 +148,8 @@ def render(
     else:
         canvas = _get_canvas_horizontal(font, glyphs, margin_x, margin_y)
         canvas = _render_horizontal(font, glyphs, canvas, margin_x, margin_y, align)
-    scaled = scale_canvas(canvas, *scale)
-    rotated = rotate_canvas(scaled, rotate)
+    scaled = canvas.stretch(*scale)
+    rotated = scaled.turn(clockwise=rotate)
     return rotated
 
 def _render_horizontal(font, glyphs, canvas, margin_x, margin_y, align):
@@ -204,14 +176,14 @@ def _render_horizontal(font, glyphs, canvas, margin_x, margin_y, align):
             # advance origin to next glyph
             x += glyph.advance_width
         if align == 'right':
-            start = len(canvas[0]) - margin_x - x
+            start = self.width - margin_x - x
         else:
             start = margin_x
         for glyph, x, y in zip(glyph_row, grid_x, grid_y):
             # add ink, taking into account there may be ink already
             # in case of negative bearings
-            blit(
-                glyph.as_matrix(), canvas,
+            canvas.blit(
+                glyph.pixels,
                 start + x, margin_y + y
             )
         # move to next line
@@ -240,8 +212,8 @@ def _render_vertical(font, glyphs, canvas, margin_x, margin_y, align):
         for glyph, x, y in zip(glyph_row, grid_x, grid_y):
             # add ink, taking into account there may be ink already
             # in case of negative bearings
-            blit(
-                glyph.as_matrix(), canvas,
+            canvas.blit(
+                glyph.pixels,
                 margin_x + x, start + y
             )
         # move to next line
@@ -263,7 +235,7 @@ def _get_canvas_horizontal(font, glyphs, margin_x, margin_y):
     # if a glyph extends below the descent line or left of the origin,
     # it may draw into the margin
     height = 2 * margin_y + font.pixel_size + font.line_height * (len(glyphs)-1)
-    return create_canvas(width, height, _BORDER)
+    return Canvas.blank(width, height) #, _BORDER)
 
 def _get_canvas_vertical(font, glyphs, margin_x, margin_y):
     """Create canvas of the right size."""
@@ -275,7 +247,7 @@ def _get_canvas_vertical(font, glyphs, margin_x, margin_y):
             for _col in glyphs
         )
     width = 2 * margin_x + font.line_width * len(glyphs)
-    return create_canvas(width, height, _BORDER)
+    return Canvas.blank(width, height) #, _BORDER)
 
 
 def _get_direction(font, text, direction, align):
@@ -484,16 +456,15 @@ def chart(
     # determine image geometry
     width = columns * step_x + 2 * margin_x - padding_x
     height = rows * step_y + 2 * margin_y - padding_y
-    canvas = create_canvas(width, height, _BORDER)
+    canvas = Canvas.blank(width, height) # _BORDER)
     # output glyphs
     traverse = traverse_chart(columns, rows, order, direction)
     for glyph, pos in zip(font.glyphs, traverse):
         if not glyph.width or not glyph.height:
             continue
         row, col = pos
-        mx = glyph.as_matrix()
-        mx = scale_canvas(mx, scale_x, scale_y)
         left = margin_x + col*step_x + glyph.left_bearing
         bottom = margin_y + (row+1)*step_y - padding_y - glyph.shift_up
-        blit(mx, canvas, left, bottom)
+        mx = glyph.stretch(scale_x, scale_y)
+        canvas.blit(mx, left, bottom)
     return canvas
