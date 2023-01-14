@@ -125,9 +125,11 @@ def main():
     )
     parser.add_argument(
         '--image',  action='store_true',
-        help=(
-            'output to image if --output not set'
-        )
+        help=('output as image')
+    )
+    parser.add_argument(
+        '--blocks',  action='store_true',
+        help=('output as quadrant blocks')
     )
     # font / glyph effects
     parser.add_argument(
@@ -214,17 +216,7 @@ def main():
         canvas = canvas.turn(clockwise=args.rotate)
         #######################################################################
         # output
-        if (not args.image) and not args.output or args.output.endswith('.txt'):
-            ink = args.ink or '@'
-            paper = args.paper or '.'
-            border = args.border or paper
-            text = canvas.as_text(ink=ink, paper=paper, border=border) + '\n'
-            if not args.output:
-                sys.stdout.write(text)
-            else:
-                with open(args.output, 'w') as outfile:
-                    outfile.write(text)
-        else:
+        if args.image or args.output and not args.output.endswith('.txt'):
             ink = RGB.create(args.ink or (0, 0, 0))
             paper = RGB.create(args.paper or (255, 255, 255))
             border = RGB.create(args.border) if args.border else paper
@@ -233,6 +225,19 @@ def main():
                 image.save(args.output)
             else:
                 image.show()
+        else:
+            if args.blocks:
+                text = canvas.as_blocks()
+            else:
+                ink = args.ink or '@'
+                paper = args.paper or '.'
+                border = args.border or paper
+                text = canvas.as_text(ink=ink, paper=paper, border=border) + '\n'
+            if not args.output:
+                sys.stdout.write(text)
+            else:
+                with open(args.output, 'w') as outfile:
+                    outfile.write(text)
 
 
 if __name__ == '__main__':
