@@ -31,6 +31,9 @@ Original sources:
   - https://www.ctan.org/pkg/cm
   - unmodified bitmap of the Computer Modern font created by Donald Knuth
   - released under his usual licence: https://ctan.org/license/knuth
+* `SHILLING.cvt.gz`
+  - https://www.commodore.ca/manuals/funet/cbm/geos/graphics/fonts/unsorted/
+  - Symbol font created by Dick Estel - copyright 1989 - released for free use
 
 
 ### Derivatives of `4x6`

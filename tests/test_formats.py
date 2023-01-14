@@ -489,6 +489,13 @@ class TestFormats(BaseTester):
         font, *_ = monobit.load(self.font_path / '4x6.sfnt.dfont')
         self.assertEqual(len(font.glyphs), 922)
 
+    # geos
+
+    def test_import_geos(self):
+        """Test importing GEOS fonts."""
+        font, *_ = monobit.load(self.font_path / 'SHILLING.cvt.gz')
+        self.assertEqual(len(font.glyphs), 95)
+
 
 if __name__ == '__main__':
     unittest.main()
