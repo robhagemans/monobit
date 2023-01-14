@@ -81,13 +81,13 @@ class Canvas(Raster):
     _sequence = list
 
     @classmethod
-    def blank(cls, width, height):
+    def blank(cls, width, height, fill=-1):
         """Create a canvas in background colour."""
-        canvas = [[-1]*width for _ in range(height)]
+        canvas = [[fill]*width for _ in range(height)]
         # setting 0 and 1 will make Raster init leave the input alone
         return cls(canvas, _0=0, _1=1)
 
-    def blit(self, raster, grid_x, grid_y, operator=max):
+    def blit(self, raster, grid_x, grid_y, operator=lambda _m, _c: 1 if (_m==1 or _c==1) else _c):
         """
         Draw a matrix onto a canvas
         (leaving exising ink in place, depending on operator).
@@ -109,7 +109,7 @@ class Canvas(Raster):
         if not Image:
             raise ImportError('Rendering to image requires PIL module.')
         if not self.height:
-            return Image.new('RGB', (0,0))
+            return Image.new('RGB', (0, 0))
         img = Image.new('RGB', (self.width, self.height), border)
         img.putdata([
             {-1: border, 0: paper, 1: ink}[_pix]
@@ -223,11 +223,12 @@ def _render_vertical(font, glyphs, canvas, margin_x, margin_y, align):
     return canvas
 
 def _get_canvas_horizontal(font, glyphs, margin_x, margin_y):
-    """Create canvas of the right size."""
+    """Get the right size for vertical rendering."""
     # find required width - margins plus max row width
-    width = 2 * margin_x
-    if glyphs:
-        width += max(
+    if not glyphs:
+        width = 0
+    else:
+        width = max(
             sum(_glyph.advance_width for _glyph in _row)
             for _row in glyphs
         )
@@ -236,11 +237,11 @@ def _get_canvas_horizontal(font, glyphs, margin_x, margin_y):
     # ascent-line of top-most row is at top margin
     # if a glyph extends below the descent line or left of the origin,
     # it may draw into the margin
-    height = 2 * margin_y + font.pixel_size + font.line_height * (len(glyphs)-1)
-    return Canvas.blank(width, height)
+    height = font.pixel_size + font.line_height * (len(glyphs)-1)
+    return _get_canvas(width, height, margin_x, margin_y)
 
 def _get_canvas_vertical(font, glyphs, margin_x, margin_y):
-    """Create canvas of the right size."""
+    """Get the right size for vertical rendering."""
     # find required height - margins plus max column height
     height = 2 * margin_y
     if glyphs:
@@ -249,7 +250,17 @@ def _get_canvas_vertical(font, glyphs, margin_x, margin_y):
             for _col in glyphs
         )
     width = 2 * margin_x + font.line_width * len(glyphs)
-    return Canvas.blank(width, height)
+    return _get_canvas(width, height, margin_x, margin_y)
+
+def _get_canvas(width, height, margin_x, margin_y):
+    """Create canvas."""
+    # margin in border colour
+    canvas = Canvas.blank(2*margin_x + width, 2*margin_y + height, fill=-1)
+    # regular background
+    background = Canvas.blank(width, height, 0)
+    # blit coordinate is bottom left, but our coordinates work from top left
+    canvas.blit(background, margin_x, margin_y+height, operator=max)
+    return canvas
 
 
 def _get_direction(font, text, direction, align):
