@@ -119,8 +119,14 @@ def main():
     parser.add_argument(
         '--output',  default='', type=str,
         help=(
-            'output file name. usee .txt extension for text output, '
+            'output file name. use .txt extension for text output, '
             'or image format for image output'
+        )
+    )
+    parser.add_argument(
+        '--image',  action='store_true',
+        help=(
+            'output to image if --output not set'
         )
     )
     # font / glyph effects
@@ -205,7 +211,7 @@ def main():
         )
         #######################################################################
         # output
-        if not args.output or args.output.endswith('.txt'):
+        if (not args.image) and not args.output or args.output.endswith('.txt'):
             ink = args.ink or '@'
             paper = args.paper or '.'
             border = args.border or paper
@@ -220,7 +226,10 @@ def main():
             paper = RGB.create(args.paper or (255, 255, 255))
             border = RGB.create(args.border) if args.border else paper
             image = canvas.as_image(ink=ink, paper=paper, border=border)
-            image.save(args.output)
+            if args.output:
+                image.save(args.output)
+            else:
+                image.show()
 
 
 if __name__ == '__main__':
