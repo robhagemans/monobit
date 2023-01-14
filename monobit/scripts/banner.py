@@ -192,7 +192,7 @@ def main():
             font = font.modify(encoding=args.encoding).label()
         #######################################################################
         # apply effects
-        # tgese use default arguments as defined by rendering hints
+        # these use default arguments as defined by rendering hints
         if args.bold:
             font = font.smear()
         if args.italic:
@@ -205,10 +205,13 @@ def main():
         # render
         canvas = render(
             font, args.text,
-            margin=args.margin, scale=args.scale, rotate=args.rotate,
+            margin=args.margin,
             direction=args.direction, align=args.align,
             missing='default'
         )
+        # transformations
+        canvas = canvas.stretch(*args.scale)
+        canvas = canvas.turn(clockwise=args.rotate)
         #######################################################################
         # output
         if (not args.image) and not args.output or args.output.endswith('.txt'):

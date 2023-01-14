@@ -132,7 +132,7 @@ class Canvas(Raster):
 # text rendering
 
 def render(
-        font, text, *, margin=(0, 0), scale=(1, 1), rotate=0,
+        font, text, *, margin=(0, 0),
         direction='', align='',
         missing='default'
     ):
@@ -151,9 +151,7 @@ def render(
     else:
         canvas = _get_canvas_horizontal(font, glyphs, margin_x, margin_y)
         canvas = _render_horizontal(font, glyphs, canvas, margin_x, margin_y, align)
-    scaled = canvas.stretch(*scale)
-    rotated = scaled.turn(clockwise=rotate)
-    return rotated
+    return canvas
 
 def _render_horizontal(font, glyphs, canvas, margin_x, margin_y, align):
     # descent-line of the bottom-most row is at bottom margin
