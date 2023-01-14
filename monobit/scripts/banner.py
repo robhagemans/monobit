@@ -13,7 +13,7 @@ from codecs import escape_decode
 import monobit
 from monobit.scripting import wrap_main
 from monobit.basetypes import Coord, RGB
-from monobit.renderer import render, to_text, to_image
+from monobit.renderer import render
 
 
 def unescape(text):
@@ -209,7 +209,7 @@ def main():
             ink = args.ink or '@'
             paper = args.paper or '.'
             border = args.border or paper
-            text = to_text(canvas, ink=ink, paper=paper, border=border) + '\n'
+            text = canvas.to_text(ink=ink, paper=paper, border=border) + '\n'
             if not args.output:
                 sys.stdout.write(text)
             else:
@@ -219,7 +219,7 @@ def main():
             ink = RGB.create(args.ink or (0, 0, 0))
             paper = RGB.create(args.paper or (255, 255, 255))
             border = RGB.create(args.border) if args.border else paper
-            image = to_image(canvas, ink=ink, paper=paper, border=border)
+            image = canvas.to_image(ink=ink, paper=paper, border=border)
             image.save(args.output)
 
 
