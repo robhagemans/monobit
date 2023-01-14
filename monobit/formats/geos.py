@@ -25,8 +25,13 @@ def load_geos(instream, where=None,  merge_mega:bool=True):
     return _load_geos_cvt(instream, merge_mega)
 
 @loaders.register('vlir', name='geos-vlir')
-def load_geos_vlir(instream, where=None):
-    """Load a bare GEOS font VLIR."""
+def load_geos_vlir(instream, where=None, offset:int=0):
+    """
+    Load a bare GEOS font VLIR.
+
+    offset: starting offset in bytes of the VLIR record in the file (default 0)
+    """
+    instream.seek(offset)
     return _load_geos_vlir(instream)
 
 
