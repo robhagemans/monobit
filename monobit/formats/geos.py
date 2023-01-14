@@ -60,8 +60,10 @@ def _load_geos_vlir(instream):
     instream.seek(anchor + header.index_offset)
     offsets = _OFFSETS.read_from(instream)
     instream.seek(anchor + header.bitstream_offset)
+    strikebytes = instream.read(header.height * header.stride)
+    strikebytes = strikebytes.ljust(header.height * header.stride, b'\0')
     strike = Raster.from_bytes(
-        instream.read(header.height * header.stride),
+        strikebytes,
         header.stride * 8, header.height,
     )
     # clip out glyphs
@@ -364,14 +366,14 @@ def _load_geos_cvt(instream, merge_mega):
             fonts.append(font)
     # mega fonts: glyphs are divided over multiple strikes
     # undefined glyphs are given as 1-pixel-wide
-    # last strike contains only empties
+    # last strike contains only empty or blank glyphs
+    last_empty = all(_g.is_blank() for _g in fonts[-1].glyphs)
     # GHPTSIZE differs between strikes but actual pixel-size is the same
-    ids = set(_f.font_id for _f in fonts)
     # sometimes the last (empty) strike has a different height
     id_sizes = set((_f.font_id, _f.pixel_size) for _f in fonts[:-1])
     # if all strikes have the same id and pixel_size, assume this is a mega font
-    if merge_mega and len(id_sizes) == 1 and len(ids) == 1:
-        logging.debug('Mega font detected, merging.')
+    if merge_mega and len(id_sizes) == 1 and last_empty:
+        logging.info('Mega font detected, merging.')
         # take glyph of maximum width from each strike
         selected = (
             max(glyphs, key=lambda _g: _g.width)
