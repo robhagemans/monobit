@@ -195,7 +195,7 @@ if Image:
             raise FileFormatError('Can only save one font to image file.')
         img = (
             chart(fonts[0], columns, margin, padding, scale, order, direction)
-            .to_image(border, paper, ink)
+            .as_image(border=border, paper=paper, ink=ink)
         )
         try:
             img.save(outfile, format=image_format or Path(outfile).suffix[1:])

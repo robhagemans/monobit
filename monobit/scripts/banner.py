@@ -209,7 +209,7 @@ def main():
             ink = args.ink or '@'
             paper = args.paper or '.'
             border = args.border or paper
-            text = canvas.to_text(ink=ink, paper=paper, border=border) + '\n'
+            text = canvas.as_text(ink=ink, paper=paper, border=border) + '\n'
             if not args.output:
                 sys.stdout.write(text)
             else:
@@ -219,7 +219,7 @@ def main():
             ink = RGB.create(args.ink or (0, 0, 0))
             paper = RGB.create(args.paper or (255, 255, 255))
             border = RGB.create(args.border) if args.border else paper
-            image = canvas.to_image(ink=ink, paper=paper, border=border)
+            image = canvas.as_image(ink=ink, paper=paper, border=border)
             image.save(args.output)
 
 

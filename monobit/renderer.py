@@ -96,8 +96,11 @@ class Canvas(Raster):
                         row[grid_x + work_x] = operator(ink, row[grid_x + work_x])
         return self
 
-    def to_image(self, border=(0, 0, 0), paper=(0, 0, 0), ink=(255, 255, 255)):
-        """Convert matrix to image."""
+    def as_image(
+            self, *,
+            ink=(255, 255, 255), paper=(0, 0, 0), border=(0, 0, 0)
+        ):
+        """Convert raster to image."""
         if not Image:
             raise ImportError('Rendering to image requires PIL module.')
         if not self.height:
@@ -109,14 +112,20 @@ class Canvas(Raster):
         ])
         return img
 
-    # FIXME - naming conflicts with Raster.as_text()
-    def to_text(self, *, border='.', paper='.', ink='@', line_break='\n'):
-        """Convert matrix to text."""
+    def as_text(
+            self, *,
+            ink='@', paper='.', border='.',
+            start='', end=''
+        ):
+        """Convert raster to text."""
+        if not self.height:
+            return ''
         colourdict = {-1: border, 0: paper, 1: ink}
-        return blockstr(line_break.join(
+        contents = '\n'.join(
             ''.join(colourdict[_pix] for _pix in _row)
             for _row in self._pixels
-        ))
+        )
+        return blockstr(''.join((start, contents, end)))
 
 
 ###############################################################################
