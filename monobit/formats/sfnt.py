@@ -23,6 +23,7 @@ else:
 from ..properties import Props
 from ..font import Font
 from ..glyph import Glyph
+from ..raster import Raster
 from ..labels import Tag, Char
 from ..storage import loaders, savers
 from ..streams import FileFormatError
@@ -293,8 +294,10 @@ def _convert_glyphs(sfnt, i_strike, hori_fu_p_pix, vert_fu_p_pix):
             props = _convert_glyph_metrics(metrics, small_is_vert)
             props.update(_convert_hmtx_metrics(sfnt.hmtx, name, hori_fu_p_pix, width))
             props.update(_convert_vmtx_metrics(sfnt.vmtx, name, vert_fu_p_pix, height))
-            glyph = Glyph.from_bytes(
-                glyphbytes, width=width, align=align,
+            raster = Raster.from_bytes(glyphbytes, width=width, align=align)
+            raster = raster.crop(bottom=max(0, raster.height-height))
+            glyph = Glyph(
+                raster,
                 tag=name, char=unitable.get(name, ''),
                 codepoint=enctable.get(name, b''), **props
             )
