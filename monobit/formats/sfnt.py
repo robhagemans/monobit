@@ -41,6 +41,7 @@ class StrikeFormatError(ResourceFormatError):
 # must be importable by mac module
 load_sfnt = None
 
+
 if ttLib:
     @loaders.register(
         'otb', 'ttf', 'otf', 'woff', 'tte',
@@ -55,12 +56,27 @@ if ttLib:
         ),
         name='sfnt',
     )
-    def load_sfnt(infile, where=None):
-        """Load an SFNT resource and convert to Font."""
-        sfnt = _read_sfnt(infile)
+    def load_sfnt(
+            infile, where=None,
+            hmtx:bool=False, vmtx:bool=False,
+            hhea:bool=False, vhea:bool=False,
+            os_2:bool=True
+        ):
+        """
+        Load an SFNT resource and convert to Font.
+
+        hmtx: override horizontal bitmap metrics with `hmtx` table (default: False)
+        vmtx: override vertical bitmap metrics with `vmtx` table (default: False)
+        hhea: include horizontal line metrics from `hhea` table (default: False)
+        vhea: include vertical line metrics from `vhea` table (default: False)
+        os_2: include metrics from OS/2 table (default: True)
+        """
+        tags = _get_tags(hmtx, vmtx, hhea, vhea, os_2)
+        sfnt = _read_sfnt(infile, tags)
         logging.debug(str(sfnt))
         fonts = _convert_sfnt(sfnt)
         return fonts
+
 
     @loaders.register(
         'ttc', 'otc',
@@ -70,9 +86,23 @@ if ttLib:
         ),
         name='ttcf',
     )
-    def load_collection(infile, where=None):
-        """Load a TrueType/OpenType Collection file."""
-        sfnts = _read_collection(infile)
+    def load_collection(
+            infile, where=None,
+            hmtx:bool=False, vmtx:bool=False,
+            hhea:bool=False, vhea:bool=False,
+            os_2:bool=True
+        ):
+        """
+        Load a TrueType/OpenType Collection file.
+
+        hmtx: override horizontal bitmap metrics with `hmtx` table (default: False)
+        vmtx: override vertical bitmap metrics with `vmtx` table (default: False)
+        hhea: include horizontal line metrics from `hhea` table (default: False)
+        vhea: include vertical line metrics from `vhea` table (default: False)
+        os_2: include metrics from OS/2 table (default: True)
+        """
+        tags = _get_tags(hmtx, vmtx, hhea, vhea, os_2)
+        sfnts = _read_collection(infile, tags)
         fonts = []
         for _sfnt in sfnts:
             fonts.extend(_convert_sfnt(_sfnt))
@@ -117,24 +147,47 @@ def _init_fonttools():
 ###############################################################################
 # sfnt resource reader
 
+
 # tags we will decompile and process
 _TAGS = (
-    # check first to catch any assertion errors on decompile
+    # check `maxp` first to catch any assertion errors on decompile
     'maxp',
+    # core bitmap tables
     'bhed', 'head',
     'EBLC', 'bloc',
     'EBDT', 'bdat',
+    # sbix: currently just warn we don't parse it
+    'sbix',
+    # metrics
     'hmtx', 'hhea',
     'vmtx', 'vhea',
+    'OS/2',
+    # metadata
+    'name',
+    # kerning information
     'kern',
     'GPOS',
+    # encoding
     'cmap',
-    'name',
-    'OS/2',
-    'sbix',
 )
 
-def _read_sfnt(instream):
+def _get_tags(hmtx, vmtx, hhea, vhea, os_2):
+    """Get list of tables to extract."""
+    tags = list(_TAGS)
+    if not hmtx:
+        tags.remove('hmtx')
+    if not vmtx:
+        tags.remove('vmtx')
+    if not hhea:
+        tags.remove('hhea')
+    if not vhea:
+        tags.remove('vhea')
+    if not os_2:
+        tags.remove('OS/2')
+    return tags
+
+
+def _read_sfnt(instream, tags):
     """Read an SFNT resource into data structure."""
     # let fonttools parse the SFNT
     _init_fonttools()
@@ -142,9 +195,9 @@ def _read_sfnt(instream):
         ttf = TTFont(instream)
     except (TTLibError, AssertionError) as e:
         raise FileFormatError(f'Could not read sfnt file: {e}')
-    return _sfnt_props(ttf)
+    return _sfnt_props(ttf, tags)
 
-def _read_collection(instream):
+def _read_collection(instream, tags):
     """Read a collection into data structures."""
     # let fonttools parse the SFNT
     _init_fonttools()
@@ -155,16 +208,19 @@ def _read_collection(instream):
     ttfc_data = []
     for ttf in ttfc:
         try:
-            ttfc_data.append(_sfnt_props(ttf))
+            ttfc_data.append(_sfnt_props(ttf, tags))
         except ResourceFormatError as e:
             logging.warning(e)
     return ttfc_data
 
 
-def _sfnt_props(ttf):
+def _sfnt_props(ttf, tags):
     """Decompile tables and convert from fontTools objects to data structure."""
     tables = {}
     for tag in _TAGS:
+        if tag not in tags:
+            tables[tag] = None
+            continue
         try:
             # __getitem__ forces a decompilation of the table
             tables[tag] = ttf.get(tag, None)
@@ -609,8 +665,8 @@ def _convert_head_props(head):
 
 def _convert_hhea_props(hhea, vert_fu_p_pix):
     """Convert font properties from hhea table."""
-    #if not hhea:
-    return Props()
+    if not hhea:
+        return Props()
     props = Props(
         ascent=hhea.ascent // vert_fu_p_pix,
         descent=abs(hhea.descent // vert_fu_p_pix),
@@ -627,8 +683,8 @@ def _convert_hhea_props(hhea, vert_fu_p_pix):
 
 def _convert_vhea_props(vhea, horiz_fu_p_pix):
     """Convert font properties from vhea table."""
-    return Props()
-    #if not hhea:
+    if not vhea:
+        return Props()
     props = Props(
         # > from the centerline to the previous line’s descent
         # > assuming top-to-bottom right-to-left
