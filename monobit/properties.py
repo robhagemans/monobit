@@ -111,6 +111,12 @@ class Props(SimpleNamespace):
         self.__dict__.update(vars(rhs))
         return self
 
+    def __or__(self, rhs):
+        """Combine with other Properties object."""
+        new = Props(**vars(self))
+        new |= rhs
+        return new
+
 
 ##############################################################################
 # property sets with default values, override policy and type conversion

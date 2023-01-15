@@ -37,6 +37,13 @@ def load_palm(instream, where=None):
     fonts = _convert_palm(palm_data)
     return fonts
 
+@loaders.register('prc', name='palm-prc')
+def load_palm_prc(instream, where=None):
+    """Load fonts from a Palm OS PRC fiile."""
+    palm_data = _read_palm_prc(instream)
+    fonts = _convert_palm(palm_data)
+    return fonts
+
 
 ##############################################################################
 # PDB / PRC database
@@ -122,7 +129,7 @@ _PDB_ENTRY = be.Struct(
 
 _PRC_ENTRY = be.Struct(
     # The resource type.
-    type='uint32',
+    type='4s',
     # The ID of the resource.
     id='uint16',
     # The local offset from the top of the PRC to the start of the resource data
@@ -137,19 +144,25 @@ _PRC_ENTRY = be.Struct(
 # AppInfo Block (optional)
 # SortInfo Block (optional)
 
+
+def _read_header(instream):
+    """Read a PDB /PRC header."""
+    header = _PDB_HEADER.read_from(instream)
+    recordlist = _RECORD_LIST.read_from(instream)
+    return Props(
+        header=header,
+        recordlist=recordlist,
+    )
+
 def _read_palm(instream):
     """Read a PDB file."""
-    header = _PDB_HEADER.read_from(instream)
-    logging.debug(header)
-    if (header.type, header.creator) != (b'Font', b'Font'):
+    props = _read_header(instream)
+    if (props.header.type, props.header.creator) != (b'Font', b'Font'):
         logging.warning(
             'Not a Font PDB: type `%s` creator `%s`',
-            header.type, header.creator
+            props.header.type, props.header.creator
         )
-    recordlist = _RECORD_LIST.read_from(instream)
-    logging.debug(recordlist)
-    entries = _PDB_ENTRY.array(recordlist.numRecords).read_from(instream)
-    logging.debug(list(entries))
+    entries = _PDB_ENTRY.array(props.recordlist.numRecords).read_from(instream)
     nfnts = []
     for entry in entries:
         instream.seek(entry.localChunkID)
@@ -160,15 +173,39 @@ def _read_palm(instream):
         try:
             nfnt = _extract_nfnt(data, offset=0)
         except ValueError as e:
-            logging.warning('Could not read record, may not be an NFNT')
+            logging.warning('Could not read record: %s', e)
             continue
         nfnts.append(nfnt)
-    return Props(
-        header=header,
-        recordlist=recordlist,
-        entries=entries,
-        records=nfnts,
-    )
+    return props | Props(entries=tuple(entries), records=nfnts)
+
+
+def _read_palm_prc(instream):
+    """Read a PRC file."""
+    props = _read_header(instream)
+    entries = _PRC_ENTRY.array(props.recordlist.numRecords).read_from(instream)
+    nfnts = []
+    for entry in entries:
+        logging.debug(
+            'Found record of type `%s` id %d at offset 0x%X',
+            entry.type.decode('latin-1'),
+            entry.id,
+            entry.localChunkID
+        )
+        if entry.type not in (b'NFNT', b'nfnt'):
+            continue
+        if entry.type == b'nfnt':
+            logging.warning('Palm v2 (nfnt) format not implemented.')
+        instream.seek(entry.localChunkID)
+        data = instream.read()
+        # currently we're just assuming NFNT
+        try:
+            nfnt = _extract_nfnt(data, offset=0)
+        except ValueError as e:
+            logging.warning('Could not read record: %s', e)
+            continue
+        nfnts.append(nfnt)
+    return props | Props(entries=tuple(entries), records=nfnts)
+
 
 def _convert_palm(palm_data):
     """Convert a Palm OS font data structure to Font."""
