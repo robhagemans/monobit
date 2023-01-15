@@ -478,6 +478,8 @@ _ENCODING_FILES = (
 # charmaps to be overlaid with IBM graphics in range 0x00--0x1f and 0x7f
 _ASCII_RANGE = range(0x80)
 _ANSI_RANGE = range(0x100)
+# iso 8859-1, excludiing controls
+_ISO_RANGE = tuple(range(0x20, 0x7f)) + tuple(range(0xa0, 0x100))
 _IBM_GRAPH_RANGE = tuple(range(0x20)) + (0x7f,)
 _MAC_GRAPH_RANGE = range(0x11, 0x15)
 _0XDB = (0xDB,)
@@ -520,7 +522,7 @@ _OVERLAYS = (
     ('misc/IBMGRAPH.TXT', _IBM_GRAPH_RANGE, 'txt', dict(
         codepoint_column=2, unicode_column=0
     ), ('cp864',)),
-    ('microsoft/WINDOWS/CP1252.TXT', _ANSI_RANGE, 'txt', {}, ('windows-extended', 'palm-os')),
+    ('microsoft/WINDOWS/CP1252.TXT', _ISO_RANGE, 'txt', {}, ('windows-extended', 'palm-os')),
     ('iso-8859/8859-1.TXT', _ANSI_RANGE, 'txt', {}, ('windows-1252-msdos',)),
     # IBM combined codepages SBCS page
     ('ibm-cdra/037B34B0.UPMAP100', _ANSI_RANGE, 'ucm', {}, ('cp934',)),
