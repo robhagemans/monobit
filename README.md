@@ -117,9 +117,10 @@ Supported formats
 | Bitmap image [P]      | `image`    |          | `.png` `.gif` `.bmp`        |               | ✔     | ✔     |
 | JSON coded binary     | `json`     |          | `.json`                     |               | ✔     | ✔     |
 | Bare codepage (`kbd`) | `kbd-cp`   |          | `.cp`                       | DOS, Linux    | ✔     | ✔     |
+| REXXCOM Font Mania    | `mania`    |          | `.com`                      | DOS           | ✔     |       |
 | MacOS font            | `mac`      | FONT NFNT SFNT | `.dfont` `.suit`      | Classic MacOS | ✔     |       |
 | Bare NFNT resource    | `nfnt`     |          |                             | Classic MacOS, PalmOS | ✔ |   |
-| REXXCOM Font Mania    | `mania`    |          | `.com`                      | DOS           | ✔     |       |
+| Palm OS font          | `palm`     | 1 (NFNT) | `.pdb`                      | Palm OS       | ✔     |       |
 | Optiks PCR Font       | `pcr`      |          | `.pcr`                      | DOS           | ✔     |       |
 | PCPaint, GRASP, ChiWriter | `pcpaint` | old 3 4 | `.set` `.fnt`  `.sft` `.pft` `.eft` ... | DOS | ✔ |       |
 | PDF chart [R]         | `pdf`      |          | `.pdf`                      |               |       | ✔     |
@@ -128,7 +129,7 @@ Supported formats
 | PC Screen Font        | `psf`      | 1 2      | `.psf` `.psfu`              | MS-DOS, Linux | ✔     | ✔ (version 2) |
 | PSF2AMS PSFCOM        | `psfcom`   |          | `.com`                      | Z80 CP/M      | ✔     |       |
 | Python coded binary   | `python`   |          | `.py`                       |               | ✔     | ✔     |
-| SFNT embedded bitmap  | `sfnt`     |          | `.otb` `.ttf` `.otf` [F] [**] |               | ✔     |       |
+| SFNT embedded bitmap  | `sfnt`     |          | `.otb` `.ttf` `.otf` [F] [**] |             | ✔     |       |
 | Signum! 2  | `signum-*` | editor 9-pin 24-pin laser | `.e24` `.p9` `.p24` `.l30` | Atari ST | ✔     |       |
 | vfont                 | `vfont`    |          |                             | BSD, SunOS    | ✔     | ✔     |
 | Windows resource      | `win-fnt`  | 1.0 2.0 3.0    | `.fnt`                | Windows 1.x 2.x 3.x | ✔  | ✔ (2.0, 3.0)       |
