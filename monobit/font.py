@@ -957,28 +957,29 @@ class Font:
             if not char_from:
                 logging.warning(f'Encoding `{self.encoding}` not recognised.')
                 return self
+        encoding = self.encoding
         if overwrite or not self.encoding:
             if char_from:
-                self.encoding = char_from.name
+                encoding = char_from.name
             elif codepoint_from:
-                self.encoding = codepoint_from.name
+                encoding = codepoint_from.name
         if codepoint_from:
-            return self.modify(glyphs=tuple(
+            return self.modify(encoding=encoding, glyphs=tuple(
                 _glyph.label(codepoint_from=codepoint_from, overwrite=overwrite)
                 for _glyph in self._glyphs
             ))
         if char_from:
-            return self.modify(glyphs=tuple(
+            return self.modify(encoding=encoding, glyphs=tuple(
                 _glyph.label(char_from=char_from, overwrite=overwrite)
                 for _glyph in self._glyphs
             ))
         if tag_from:
-            return self.modify(glyphs=tuple(
+            return self.modify(encoding=encoding, glyphs=tuple(
                 _glyph.label(tag_from=tag_from, overwrite=overwrite)
                 for _glyph in self._glyphs
             ))
         if comment_from:
-            return self.modify(glyphs=tuple(
+            return self.modify(encoding=encoding, glyphs=tuple(
                 _glyph.label(comment_from=comment_from, overwrite=overwrite)
                 for _glyph in self._glyphs
             ))
