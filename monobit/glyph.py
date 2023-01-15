@@ -745,6 +745,8 @@ class Glyph:
         direction: direction to move the top of the glyph (default: 'right').
         pitch: angle of the slant, given as (x, y) coordinate (default: 1,1).
         """
+        if not self.height:
+            return self
         pitch_x, pitch_y = pitch
         direction = direction[0].lower()
         extra_width = (self.height-1) * pitch_x // pitch_y

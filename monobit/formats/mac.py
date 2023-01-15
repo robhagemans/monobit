@@ -21,7 +21,8 @@ from .sfnt import (
 )
 
 # the magic is optional - a 'maybe magic'
-@loaders.register('dfont', 'suit', name='mac-dfont', magic=(b'\0\0\1\0\0\0',))
+# .rsrc is what we use as a 'filename' for resources inside containers
+@loaders.register('dfont', 'suit', 'rsrc', name='mac', magic=(b'\0\0\1\0\0',))
 def load_mac_dfont(instream, where=None):
     """
     Load font from a MacOS suitcase.
@@ -259,7 +260,7 @@ def _convert_mac_font(parsed_rsrc, info, formatstr):
                 })
                 # prefer directory info to info inferred from resource ID
                 # (in so far provided by FOND or directory FONT)
-                props.update(info.get(font_number, {}))
+                props.update(info.get(rsrc_id, info.get(font_number, {})))
             else:
                 # update properties with directory info
                 props.update(info.get(rsrc_id, {}))
@@ -868,12 +869,17 @@ def _convert_nfnt(properties, glyphs, fontrec):
     # since
     #   (total) advance_width == (font) left_bearing + glyph.advance_width + (font) right_bearing
     # and (font) left_bearing = -kernMax
+    # we need to adjust for kernMax on both left and right bearings - it is an
+    # offset only, not a tightening of the advance wiidth
     if not glyphs:
         return Font()
     glyphs = tuple(
         _glyph.modify(
-            left_bearing=_glyph.wo_offset,
-            right_bearing=_glyph.wo_width - _glyph.width - _glyph.wo_offset
+            left_bearing=_glyph.wo_offset + fontrec.kernMax,
+            right_bearing=(
+                _glyph.wo_width - _glyph.width
+                - (_glyph.wo_offset + fontrec.kernMax)
+            )
         )
         if _glyph.wo_width != 0xff and _glyph.wo_offset != 0xff else _glyph
         for _glyph in glyphs
@@ -928,7 +934,6 @@ def _convert_nfnt(properties, glyphs, fontrec):
         'ascent': fontrec.ascent,
         'descent': fontrec.descent,
         'line-height': fontrec.ascent + fontrec.descent + fontrec.leading,
-        'left-bearing': fontrec.kernMax,
         'shift-up': -fontrec.descent,
         # remove the kerning table and encoding table now stored in glyphs
         'kerning-table': None,
