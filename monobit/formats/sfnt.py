@@ -23,6 +23,7 @@ else:
 from ..properties import Props
 from ..font import Font
 from ..glyph import Glyph
+from ..raster import Raster
 from ..labels import Tag, Char
 from ..storage import loaders, savers
 from ..streams import FileFormatError
@@ -40,6 +41,7 @@ class StrikeFormatError(ResourceFormatError):
 # must be importable by mac module
 load_sfnt = None
 
+
 if ttLib:
     @loaders.register(
         'otb', 'ttf', 'otf', 'woff', 'tte',
@@ -54,12 +56,27 @@ if ttLib:
         ),
         name='sfnt',
     )
-    def load_sfnt(infile, where=None):
-        """Load an SFNT resource and convert to Font."""
-        sfnt = _read_sfnt(infile)
+    def load_sfnt(
+            infile, where=None,
+            hmtx:bool=False, vmtx:bool=False,
+            hhea:bool=False, vhea:bool=False,
+            os_2:bool=True
+        ):
+        """
+        Load an SFNT resource and convert to Font.
+
+        hmtx: override horizontal bitmap metrics with `hmtx` table (default: False)
+        vmtx: override vertical bitmap metrics with `vmtx` table (default: False)
+        hhea: include horizontal line metrics from `hhea` table (default: False)
+        vhea: include vertical line metrics from `vhea` table (default: False)
+        os_2: include metrics from OS/2 table (default: True)
+        """
+        tags = _get_tags(hmtx, vmtx, hhea, vhea, os_2)
+        sfnt = _read_sfnt(infile, tags)
         logging.debug(str(sfnt))
         fonts = _convert_sfnt(sfnt)
         return fonts
+
 
     @loaders.register(
         'ttc', 'otc',
@@ -69,9 +86,23 @@ if ttLib:
         ),
         name='ttcf',
     )
-    def load_collection(infile, where=None):
-        """Load a TrueType/OpenType Collection file."""
-        sfnts = _read_collection(infile)
+    def load_collection(
+            infile, where=None,
+            hmtx:bool=False, vmtx:bool=False,
+            hhea:bool=False, vhea:bool=False,
+            os_2:bool=True
+        ):
+        """
+        Load a TrueType/OpenType Collection file.
+
+        hmtx: override horizontal bitmap metrics with `hmtx` table (default: False)
+        vmtx: override vertical bitmap metrics with `vmtx` table (default: False)
+        hhea: include horizontal line metrics from `hhea` table (default: False)
+        vhea: include vertical line metrics from `vhea` table (default: False)
+        os_2: include metrics from OS/2 table (default: True)
+        """
+        tags = _get_tags(hmtx, vmtx, hhea, vhea, os_2)
+        sfnts = _read_collection(infile, tags)
         fonts = []
         for _sfnt in sfnts:
             fonts.extend(_convert_sfnt(_sfnt))
@@ -116,23 +147,47 @@ def _init_fonttools():
 ###############################################################################
 # sfnt resource reader
 
+
 # tags we will decompile and process
 _TAGS = (
-    # check first to catch any assertion errors on decompile
+    # check `maxp` first to catch any assertion errors on decompile
     'maxp',
+    # core bitmap tables
     'bhed', 'head',
     'EBLC', 'bloc',
     'EBDT', 'bdat',
+    # sbix: currently just warn we don't parse it
+    'sbix',
+    # metrics
     'hmtx', 'hhea',
     'vmtx', 'vhea',
+    'OS/2',
+    # metadata
+    'name',
+    # kerning information
     'kern',
     'GPOS',
+    # encoding
     'cmap',
-    'name',
-    'OS/2',
 )
 
-def _read_sfnt(instream):
+def _get_tags(hmtx, vmtx, hhea, vhea, os_2):
+    """Get list of tables to extract."""
+    tags = list(_TAGS)
+    if not hmtx:
+        tags.remove('hmtx')
+    if not vmtx:
+        tags.remove('vmtx')
+    if not hhea:
+        tags.remove('hhea')
+    if not vhea:
+        tags.remove('vhea')
+    if not os_2:
+        tags.remove('OS/2')
+    return tags
+
+
+def _read_sfnt(instream, tags):
     """Read an SFNT resource into data structure."""
     # let fonttools parse the SFNT
     _init_fonttools()
@@ -140,9 +195,9 @@ def _read_sfnt(instream):
         ttf = TTFont(instream)
     except (TTLibError, AssertionError) as e:
         raise FileFormatError(f'Could not read sfnt file: {e}')
-    return _sfnt_props(ttf)
+    return _sfnt_props(ttf, tags)
 
-def _read_collection(instream):
+def _read_collection(instream, tags):
     """Read a collection into data structures."""
     # let fonttools parse the SFNT
     _init_fonttools()
@@ -153,16 +208,19 @@ def _read_collection(instream):
     ttfc_data = []
     for ttf in ttfc:
         try:
-            ttfc_data.append(_sfnt_props(ttf))
+            ttfc_data.append(_sfnt_props(ttf, tags))
         except ResourceFormatError as e:
             logging.warning(e)
     return ttfc_data
 
 
-def _sfnt_props(ttf):
+def _sfnt_props(ttf, tags):
     """Decompile tables and convert from fontTools objects to data structure."""
     tables = {}
     for tag in _TAGS:
+        if tag not in tags:
+            tables[tag] = None
+            continue
         try:
             # __getitem__ forces a decompilation of the table
             tables[tag] = ttf.get(tag, None)
@@ -219,8 +277,14 @@ def _convert_sfnt(sfnt):
     sfnt.bdat = sfnt.bdat or sfnt.EBDT
     sfnt.bloc = sfnt.bloc or sfnt.EBLC
     sfnt.head = sfnt.bhed or sfnt.head
+    if sfnt.sbix:
+        logging.warning(
+            'Bitmap strikes in `sbix` format not supported.'
+        )
     if not sfnt.bdat or not sfnt.bloc:
-        raise ResourceFormatError('No bitmap strikes found in sfnt resource.')
+        raise ResourceFormatError(
+            'No `EBDT` or `bdat` bitmap strikes found in sfnt resource.'
+        )
     fonts = []
     for i_strike in range(sfnt.bloc.numSizes):
         try:
@@ -293,8 +357,10 @@ def _convert_glyphs(sfnt, i_strike, hori_fu_p_pix, vert_fu_p_pix):
             props = _convert_glyph_metrics(metrics, small_is_vert)
             props.update(_convert_hmtx_metrics(sfnt.hmtx, name, hori_fu_p_pix, width))
             props.update(_convert_vmtx_metrics(sfnt.vmtx, name, vert_fu_p_pix, height))
-            glyph = Glyph.from_bytes(
-                glyphbytes, width=width, align=align,
+            raster = Raster.from_bytes(glyphbytes, width=width, align=align)
+            raster = raster.crop(bottom=max(0, raster.height-height))
+            glyph = Glyph(
+                raster,
                 tag=name, char=unitable.get(name, ''),
                 codepoint=enctable.get(name, b''), **props
             )
@@ -305,7 +371,7 @@ def _convert_glyphs(sfnt, i_strike, hori_fu_p_pix, vert_fu_p_pix):
 
 
 def _convert_glyph_metrics(metrics, small_is_vert):
-    """Conveert glyph metrics."""
+    """Convert glyph metrics."""
     if hasattr(metrics, 'horiAdvance'):
         # big metrics
         return dict(
@@ -555,7 +621,8 @@ def _convert_bloc_props(bloc, i_strike):
     # according to the EBLC spec the sbit metrics also define the linegap
     # but I don't see it. widthMax looks like a max advance
     props.ascent = bmst.hori.ascender
-    props.descent = -bmst.hori.descender
+    # descender should be negative - use abs in case it is incorrectly +
+    props.descent = abs(bmst.hori.descender)
     # vertical line metrics
     # we don't keep track of 'ascent' and 'descent' for vert, maybe we should
     # anyway, which way is the 'ascent', left or right?
@@ -598,13 +665,13 @@ def _convert_head_props(head):
 
 def _convert_hhea_props(hhea, vert_fu_p_pix):
     """Convert font properties from hhea table."""
-    return Props()
-    #if not hhea:
+    if not hhea:
+        return Props()
     props = Props(
         ascent=hhea.ascent // vert_fu_p_pix,
-        descent=hhea.descent // vert_fu_p_pix,
+        descent=abs(hhea.descent // vert_fu_p_pix),
         line_height=(
-            (hhea.ascent + hhea.descent + hhea.lineGap)
+            (hhea.ascent + abs(hhea.descent) + hhea.lineGap)
             // vert_fu_p_pix
         ),
     )
@@ -616,16 +683,16 @@ def _convert_hhea_props(hhea, vert_fu_p_pix):
 
 def _convert_vhea_props(vhea, horiz_fu_p_pix):
     """Convert font properties from vhea table."""
-    return Props()
-    #if not hhea:
+    if not vhea:
+        return Props()
     props = Props(
         # > from the centerline to the previous line’s descent
         # > assuming top-to-bottom right-to-left
         right_extent=vhea.ascent // horiz_fu_p_pix,
         # > from the centerline to the next line’s descent
-        left_extent=vhea.descent // horiz_fu_p_pix,
+        left_extent=abs(vhea.descent) // horiz_fu_p_pix,
         line_width=(
-            (vhea.ascender + vhea.descender + vhea.lineGap)
+            (vhea.ascender + abs(vhea.descender) + vhea.lineGap)
             // horiz_fu_p_pix
         ),
     )
@@ -786,14 +853,18 @@ def _convert_os_2_props(os_2, vert_fu_p_pix, hori_fu_p_pix):
             int(os_2.ySuperscriptXOffset // hori_fu_p_pix),
             int(os_2.ySuperscriptYOffset // vert_fu_p_pix)
         ),
-        ascent=os_2.sTypoAscender // vert_fu_p_pix,
-        descent=-os_2.sTypoDescender // vert_fu_p_pix,
+        #ascent=os_2.sTypoAscender // vert_fu_p_pix,
+        # the spec states sTypoDescender is 'usually' negative,
+        # but fonttosfnt produces + values while fontforge -
+        # abs should be fine as I have nno interpretation for a negative descent
+        # note the sign also affects int division
+        #descent=abs(os_2.sTypoDescender // vert_fu_p_pix),
         line_height=(
-            os_2.sTypoAscender - os_2.sTypoDescender + os_2.sTypoLineGap
+            os_2.sTypoAscender + abs(os_2.sTypoDescender) + os_2.sTypoLineGap
         ) // vert_fu_p_pix,
     )
     if os_2.version > 1:
-        props |= Proops(
+        props |= Props(
             x_height=os_2.sxHeight // vert_fu_p_pix,
             cap_height=os_2.sCapHeight // vert_fu_p_pix,
             default_char=Char(chr(os_2.usDefaultChar)),
