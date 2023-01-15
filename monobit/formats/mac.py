@@ -29,8 +29,13 @@ def load_mac_dfont(instream, where=None):
     return _parse_mac_resource(data)
 
 @loaders.register('nfnt', name='nfnt')
-def load_nfnt(instream, where=None):
-    """Load font from a bare FONT/NFNT resource."""
+def load_nfnt(instream, where=None, offset:int=0):
+    """
+    Load font from a bare FONT/NFNT resource.
+
+    offset: starting offset in bytes of the NFNT record in the file (default 0)
+    """
+    instream.seek(offset)
     data = instream.read()
     fontdata = _extract_nfnt(data, 0)
     return _convert_nfnt({}, **fontdata)
