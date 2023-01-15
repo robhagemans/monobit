@@ -17,7 +17,7 @@ from . import formats
 from .storage import open_location, load, save, loaders, savers
 from .encoding import charmaps, encoder
 from .taggers import tagmaps
-from .renderer import render, to_text, to_image
+from .renderer import render
 from .labels import Char, Codepoint, Tag
 
 
