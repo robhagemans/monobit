@@ -24,6 +24,11 @@ def load_geos(instream, where=None,  merge_mega:bool=True):
     """Load fonts from a GEOS ConVerT container."""
     return _load_geos_cvt(instream, merge_mega)
 
+@loaders.register('vlir', name='geos-vlir')
+def load_geos_vlir(instream, where=None):
+    """Load a bare GEOS font VLIR."""
+    return _load_geos_vlir(instream)
+
 
 ###############################################################################
 # GEOS font VLIR

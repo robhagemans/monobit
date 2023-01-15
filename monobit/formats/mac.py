@@ -24,11 +24,16 @@ from .sfnt import (
 # .rsrc is what we use as a 'filename' for resources inside containers
 @loaders.register('dfont', 'suit', 'rsrc', name='mac', magic=(b'\0\0\1\0\0',))
 def load_mac_dfont(instream, where=None):
-    """
-    Load font from a MacOS suitcase.
-    """
+    """Load font from a MacOS suitcase."""
     data = instream.read()
     return _parse_mac_resource(data)
+
+@loaders.register('nfnt', name='nfnt')
+def load_nfnt(instream, where=None):
+    """Load font from a bare FONT/NFNT resource."""
+    data = instream.read()
+    fontdata = _extract_nfnt(data, 0)
+    return _convert_nfnt({}, **fontdata)
 
 
 ##############################################################################
