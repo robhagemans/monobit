@@ -1,7 +1,7 @@
 """
 monobit - tools for working with monochrome bitmap fonts
 
-(c) 2019--2022 Rob Hagemans
+(c) 2019--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -17,7 +17,7 @@ from . import formats
 from .storage import open_location, load, save, loaders, savers
 from .encoding import charmaps, encoder
 from .taggers import tagmaps
-from .renderer import render, to_text, to_image
+from .renderer import render
 from .labels import Char, Codepoint, Tag
 
 

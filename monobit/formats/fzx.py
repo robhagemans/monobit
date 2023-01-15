@@ -1,7 +1,7 @@
 """
 monobit.formats.fzx - FZX format
 
-(c) 2019--2022 Rob Hagemans
+(c) 2019--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -39,7 +39,7 @@ def load_fzx(instream, where=None):
 def save_fzx(fonts, outstream, where=None):
     """Save font to ZX Spectrum .FZX file."""
     if len(fonts) > 1:
-        raise FileFormatError('Can only save one font to PSF file.')
+        raise FileFormatError('Can only save one font to FZX file.')
     font, = fonts
     fzx_props, fzx_glyphs = _convert_to_fzx(font)
     logging.info('FZX properties:')
@@ -250,7 +250,7 @@ def _convert_to_fzx(font):
         for _cp in _FZX_RANGE
     )
     # remove empties at end
-    while glyphs and not glyphs[-1].width:
+    while glyphs and glyphs[-1].is_blank() and not glyphs[-1].advance_width:
         glyphs = glyphs[:-1]
     if not glyphs:
         raise FileFormatError(
@@ -295,12 +295,11 @@ def _convert_to_fzx(font):
             'FZX format: distance between raster top and line height '
             'must be in range 0--15.'
         )
-    tracking = font.right_bearing + common_right_bearing
-    if tracking < -128 or tracking > 127:
+    if common_right_bearing < -128 or common_right_bearing > 127:
         raise FileFormatError('FZX format: right-bearing must be in range -128--127.')
     # set font FZX properties
     fzx_props = Props(
-        tracking=tracking,
+        tracking=common_right_bearing,
         height=font.line_height,
         lastchar=len(glyphs) + min(_FZX_RANGE) - 1
     )

@@ -1,7 +1,7 @@
 """
 monobit.font - representation of font
 
-(c) 2019--2022 Rob Hagemans
+(c) 2019--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -20,6 +20,7 @@ from .scripting import scriptable, get_scriptables, Any
 from .glyph import Glyph
 from .raster import turn_method
 from .basetypes import Coord, Bounds
+from .basetypes import to_int
 from .encoding import charmaps, encoder
 from .taggers import tagger
 from .labels import Tag, Char, Codepoint, Label, to_label
@@ -50,6 +51,8 @@ class FontProperties(DefaultProps):
     name: str
     # typeface/font family
     family: str
+    # unique id
+    font_id: str
 
     # font metadata
     # can't be calculated
@@ -121,6 +124,10 @@ class FontProperties(DefaultProps):
     ascent: int
     # recommended typographic descent relative to baseline (not necessarily equal to bottom)
     descent: int
+    # 'descent' for vertical rendering
+    left_extent: int
+    # 'ascent' for vertical rendering
+    right_extent: int
     # nominal pixel size, always equals ascent + descent
     pixel_size: int
     # vertical interline spacing, defined as line_height - pixel_size
@@ -129,24 +136,8 @@ class FontProperties(DefaultProps):
     # metrics
     # can't be calculated, affect rendering
 
-    # horizontal offset from leftward origin to matrix left edge
-    left_bearing: int
-    # horizontal offset from matrix right edge to rightward origin
-    right_bearing: int
-    # upward offset from origin to matrix bottom
-    shift_up: int
-    # downward offset from origin to matrix bottom - equal to -shift_up
-    shift_down: int
     # vertical distance between consecutive baselines, in pixels
     line_height: int
-
-    # vertical metrics
-    # vertical offset from upward origin to matrix top edge
-    top_bearing: int
-    # vertical offset from matrix bottom edge to downward origin
-    bottom_bearing: int
-    # leftward offset from origin to matrix central vertical axis
-    shift_left: int
     # horizontal distance between consecutive baselines, in pixels
     line_width: int
 
@@ -205,8 +196,6 @@ class FontProperties(DefaultProps):
     history: str
 
     # type converters for compatibility synonyms
-    tracking: int
-    offset: Coord
     average_advance: float
     max_advance: int
     cap_advance: int
@@ -241,11 +230,13 @@ class FontProperties(DefaultProps):
         """Name of font family."""
         # use source name if no family name defined
         stem = PurePath(self.source_name).stem
+        # change underscored/spaced filenames to camelcase font name
         # replace underscores with spaces
-        stem = stem.replace('_', '-')
+        stem = stem.replace('_', ' ')
         # convert all-upper or all-lower to titlecase
         if stem == stem.upper() or stem == stem.lower():
             stem = stem.title()
+        stem = stem.replace(' ', '')
         return stem
 
     @writable_property
@@ -274,12 +265,6 @@ class FontProperties(DefaultProps):
 
     ##########################################################################
     # metrics
-
-    @checked_property
-    def shift_down(self):
-        """Downward shift - negative of shift-up."""
-        return -self.shift_up
-
 
     @writable_property
     def line_height(self):
@@ -336,26 +321,37 @@ class FontProperties(DefaultProps):
     @checked_property
     def spacing(self):
         """Monospace or proportional spacing."""
-        # a _character-cell_ font is a font where all glyphs can be put inside an equal size cell
-        # so that rendering the font becomes simply pasting in cells flush to each other. All ink
-        # for a glyph must be inside the cell.
+        # a _character-cell_ font is a font where all glyphs can be put inside
+        # an equal size cell so that rendering the font becomes simply pasting
+        # cells flush to each other. All ink for a glyph must be inside the cell.
         #
         # this means that:
-        # - all glyphs must have equal, positive advance width (except empty glyphs with advance zero).
-        # - for each glyph, the advance is greater than or equal to the bounding box width.
-        # - the line advance is greater than or equal to the font bounding box height.
+        # - all glyphs must have equal, positive advance width
+        #   (except empty glyphs with advance zero).
+        # - for each glyph, the advance is greater than or equal to
+        #   the bounding box width.
+        # - the line advance is greater than or equal to the font bounding box
+        #   height.
         # - there is no kerning
         #
-        # a special case is the _multi-cell_ font, where a glyph may take up 0, 1 or 2 cells.
+        # a special case is the _multi-cell_ font,
+        # where a glyph may take up 0, 1 or 2 cells.
         #
         # a _monospace_ font is a font where all glyphs have equal advance_width.
         #
         if not self._font.glyphs:
             return 'character-cell'
-        if any(_glyph.advance_width < 0 or _glyph.right_kerning for _glyph in self._font.glyphs):
+        if any(
+                _glyph.advance_width < 0 or _glyph.right_kerning
+                for _glyph in self._font.glyphs
+            ):
             return 'proportional'
-        # don't count void glyphs (0 width and/or height) to determine whether it's monospace
-        advances = set(_glyph.advance_width for _glyph in self._font.glyphs if _glyph.advance_width)
+        # don't count void glyphs (0 width and/or height)
+        # to determine whether it's monospace
+        advances = set(
+            _glyph.advance_width
+            for _glyph in self._font.glyphs if _glyph.advance_width
+        )
         monospaced = len(set(advances)) == 1
         bispaced = len(set(advances)) == 2
         ink_contained_y = self.line_height >= self.bounding_box.y
@@ -376,7 +372,7 @@ class FontProperties(DefaultProps):
     def raster(self):
         """
         Minimum box encompassing all glyph matrices overlaid at fixed origin,
-        font origin coordinates.
+        bottom-left origin coordinates.
         """
         if not self._font.glyphs:
             return Bounds(0, 0, 0, 0)
@@ -393,36 +389,45 @@ class FontProperties(DefaultProps):
     @checked_property
     def cell_size(self):
         """Width, height of the character cell."""
-        if self.spacing == 'proportional':
+        if not self._font.glyphs or self.spacing == 'proportional':
             return Coord(0, 0)
         # smaller of the (at most two) advance widths is the cell size
         # in a multi-cell font, some glyphs may take up two cells.
-        cell_x = min(_glyph.advance_width for _glyph in self._font.glyphs if _glyph.advance_width)
+        cell_x = min(
+            _glyph.advance_width
+            for _glyph in self._font.glyphs if _glyph.advance_width
+        )
         return Coord(cell_x, self.line_height)
 
     @checked_property
     def ink_bounds(self):
-        """Minimum bounding box encompassing all glyphs at fixed origin, font origin cordinates."""
+        """
+        Minimum bounding box encompassing all glyphs at fixed origin,
+        bottom-left origin cordinates.
+        """
         nonempty = [
             _glyph for _glyph in self._font.glyphs
             if _glyph.bounding_box.x and _glyph.bounding_box.y
         ]
         if not nonempty:
-            return Bounds(self.left_bearing, self.shift_up, self.left_bearing, self.shift_up)
+            return Bounds(0, 0, 0, 0)
         lefts, bottoms, rights, tops = zip(*(
             _glyph.ink_bounds
             for _glyph in nonempty
         ))
         return Bounds(
-            left=self.left_bearing + min(lefts),
-            bottom=self.shift_up + min(bottoms),
-            right=self.left_bearing + max(rights),
-            top=self.shift_up + max(tops)
+            left=min(lefts),
+            bottom=min(bottoms),
+            right=max(rights),
+            top=max(tops)
         )
 
     @checked_property
     def bounding_box(self):
-        """Dimensions of minimum bounding box encompassing all glyphs at fixed origin."""
+        """
+        Dimensions of minimum bounding box encompassing all glyphs
+        at fixed bottom-left origin.
+        """
         return Coord(
             self.ink_bounds.right - self.ink_bounds.left,
             self.ink_bounds.top - self.ink_bounds.bottom
@@ -442,29 +447,24 @@ class FontProperties(DefaultProps):
     def average_width(self):
         """Get average glyph advance width."""
         if not self._font.glyphs:
-            return self.left_bearing + self.right_bearing
+            return 0
         return (
-            self.left_bearing
-            + sum(_glyph.advance_width for _glyph in self._font.glyphs) / len(self._font.glyphs)
-            + self.right_bearing
+            sum(_glyph.advance_width for _glyph in self._font.glyphs)
+            / len(self._font.glyphs)
         )
 
     @writable_property
     def max_width(self):
         """Maximum glyph advance width."""
         if not self._font.glyphs:
-            return self.left_bearing + self.right_bearing
-        return (
-            self.left_bearing
-            + max(_glyph.advance_width for _glyph in self._font.glyphs)
-            + self.right_bearing
-        )
+            return 0
+        return max(_glyph.advance_width for _glyph in self._font.glyphs)
 
     @writable_property
     def cap_width(self):
         """Advance width of uppercase X."""
         try:
-            return self._font.get_glyph(char='X').advance_width + self.left_bearing + self.right_bearing
+            return self._font.get_glyph(char='X').advance_width
         except KeyError:
             return 0
 
@@ -511,7 +511,7 @@ class FontProperties(DefaultProps):
         if not self._font.glyphs:
             return 0
         max_descent = -min(
-            self.shift_up + _glyph.shift_up + _glyph.padding.bottom
+            _glyph.shift_up + _glyph.padding.bottom
             for _glyph in self._font.glyphs
         )
         # XLFD calculation says round(max_descent/2) but I think they mean this
@@ -590,21 +590,6 @@ class FontProperties(DefaultProps):
     ##########################################################################
     # deprecated compatibility synonyms
 
-    @writable_property('right_bearing')
-    def tracking(self):
-        """
-        Horizontal offset from matrix right edge to rightward origin
-        Deprecated synonym for right-bearing.
-        """
-        return self.right_bearing
-
-    @as_tuple(('left_bearing', 'shift_up'), tuple_type=Coord.create)
-    def offset(self):
-        """
-        (horiz, vert) offset from origin to matrix start
-        Deprecated synonym for left-bearing, shift-up.
-        """
-
     @writable_property('average_width')
     def average_advance(self):
         """Average advance width, rounded to tenths."""
@@ -644,11 +629,42 @@ class Font:
             properties['#'] = comment
         else:
             properties.update({f'#{_k}': _v for _k, _v in comment.items()})
+        self._glyphs, properties = self._apply_metrics(self._glyphs, properties)
         # update properties
         # set encoding first so we can set labels
         # NOTE - we must be careful NOT TO ACCESS CACHED PROPERTIES
         #        until the constructor is complete
         self._props = FontProperties(_font=self, **properties)
+
+    @staticmethod
+    def _apply_metrics(glyphs, props):
+        """Apply globally specified glyph metrics."""
+        glyph_metrics = {
+            _k: props[_k]
+            for _k in (
+                'shift_up', 'left_bearing', 'right_bearing',
+                'shift_left', 'top_bearing', 'bottom_bearing',
+                'tracking', 'offset',
+            )
+            if _k in props
+        }
+        props = {
+            _k: _v
+            for _k, _v in props.items()
+            if _k not in glyph_metrics
+        }
+        if glyph_metrics:
+            # create a dummy glyph to ensure values get converted to right type
+            glob = Glyph(**glyph_metrics)
+            # localise glyph metrics
+            glyphs = tuple(
+                _g.modify(**{
+                    _k: _g.get_property(_k) + _v
+                    for _k, _v in glob.properties.items()
+                })
+                for _g in glyphs
+            )
+        return glyphs, props
 
 
     ##########################################################################
@@ -776,11 +792,17 @@ class Font:
             _k.replace('_', '-'): self._props[_k]
             for _k in self._props
             if not _k.startswith('_') and not _k.startswith('#')
+            and self._props[_k] != self._props._get_default(_k)
         }
 
     def is_known_property(self, key):
         """Field is a recognised property."""
         return self._props._known(key)
+
+    def get_property(self, key):
+        """Get value for property."""
+        key = normalise_property(key)
+        return getattr(self._props, key, '')
 
 
     ##########################################################################
@@ -869,14 +891,7 @@ class Font:
     @cache
     def get_empty_glyph(self):
         """Get blank glyph with zero advance_width and advance_height"""
-        return Glyph.blank(
-            # fix advance_width
-            left_bearing=-self.left_bearing,
-            right_bearing=-self.right_bearing,
-            # fix advance_height
-            top_bearing=-self.top_bearing,
-            bottom_bearing=-self.bottom_bearing,
-        )
+        return Glyph.blank()
 
 
     ##########################################################################
@@ -939,28 +954,32 @@ class Font:
         # default action: label chars with font encoding
         if nargs == 0 and self.encoding:
             char_from = encoder(self.encoding)
+            if not char_from:
+                logging.warning(f'Encoding `{self.encoding}` not recognised.')
+                return self
+        encoding = self.encoding
         if overwrite or not self.encoding:
             if char_from:
-                self.encoding = char_from.name
+                encoding = char_from.name
             elif codepoint_from:
-                self.encoding = codepoint_from.name
+                encoding = codepoint_from.name
         if codepoint_from:
-            return self.modify(glyphs=tuple(
+            return self.modify(encoding=encoding, glyphs=tuple(
                 _glyph.label(codepoint_from=codepoint_from, overwrite=overwrite)
                 for _glyph in self._glyphs
             ))
         if char_from:
-            return self.modify(glyphs=tuple(
+            return self.modify(encoding=encoding, glyphs=tuple(
                 _glyph.label(char_from=char_from, overwrite=overwrite)
                 for _glyph in self._glyphs
             ))
         if tag_from:
-            return self.modify(glyphs=tuple(
+            return self.modify(encoding=encoding, glyphs=tuple(
                 _glyph.label(tag_from=tag_from, overwrite=overwrite)
                 for _glyph in self._glyphs
             ))
         if comment_from:
-            return self.modify(glyphs=tuple(
+            return self.modify(encoding=encoding, glyphs=tuple(
                 _glyph.label(comment_from=comment_from, overwrite=overwrite)
                 for _glyph in self._glyphs
             ))
@@ -1066,23 +1085,6 @@ class Font:
     def _apply_to_all_glyphs(self, operation, **kwargs):
         return _LazyTransformedFont(self, operation, **kwargs)
 
-    def _privatise_glyph_metrics(self):
-        glyphs = tuple(
-            _g.modify(
-                top_bearing=_g.top_bearing+self.top_bearing,
-                left_bearing=_g.left_bearing+self.left_bearing,
-                bottom_bearing=_g.bottom_bearing+self.bottom_bearing,
-                right_bearing=_g.right_bearing+self.right_bearing,
-                shift_up=_g.shift_up+self.shift_up,
-                shift_left=_g.shift_left+self.shift_left,
-            )
-            for _g in self._glyphs
-        )
-        return self.modify(
-            glyphs, top_bearing=None, left_bearing=None,
-            bottom_bearing=None, right_bearing=None,
-            shift_up=None, shift_left=None,
-        )
 
     # orthogonal transformations
 
@@ -1093,8 +1095,7 @@ class Font:
 
         adjust_metrics: also reverse metrics (default: True)
         """
-        font = self._privatise_glyph_metrics()
-        font = font._apply_to_all_glyphs(
+        font = self._apply_to_all_glyphs(
             Glyph.mirror, adjust_metrics=adjust_metrics
         )
         if not adjust_metrics:
@@ -1113,8 +1114,7 @@ class Font:
 
         adjust_metrics: also reverse metrics (default: True)
         """
-        font = self._privatise_glyph_metrics()
-        font = font._apply_to_all_glyphs(
+        font = self._apply_to_all_glyphs(
             Glyph.flip, adjust_metrics=adjust_metrics
         )
         if not adjust_metrics:
@@ -1133,8 +1133,7 @@ class Font:
 
         adjust_metrics: also transpose metrics (default: True)
         """
-        font = self._privatise_glyph_metrics()
-        font = font._apply_to_all_glyphs(
+        font = self._apply_to_all_glyphs(
             Glyph.transpose, adjust_metrics=adjust_metrics
         )
         if not adjust_metrics:
@@ -1169,8 +1168,7 @@ class Font:
         top: number of rows to remove from top
         adjust_metrics: make the operation render-invariant (default: True)
         """
-        font = self._privatise_glyph_metrics()
-        font = font._apply_to_all_glyphs(
+        font = self._apply_to_all_glyphs(
             Glyph.crop,
             left=left, bottom=bottom, right=right, top=top, adjust_metrics=adjust_metrics
         )
@@ -1196,8 +1194,7 @@ class Font:
         top: number of rows to add on top
         adjust_metrics: make the operation render-invariant (default: True)
         """
-        font = self._privatise_glyph_metrics()
-        font = font._apply_to_all_glyphs(
+        font = self._apply_to_all_glyphs(
             Glyph.expand,
             left=left, bottom=bottom, right=right, top=top,
             adjust_metrics=adjust_metrics
@@ -1217,8 +1214,7 @@ class Font:
 
         adjust_metrics: make the operation render-invariant (default: True)
         """
-        font = self._privatise_glyph_metrics()
-        font = font._apply_to_all_glyphs(
+        font = self._apply_to_all_glyphs(
             Glyph.reduce,
             adjust_metrics=adjust_metrics,
         )
@@ -1238,8 +1234,7 @@ class Font:
 
         adjust_metrics: make the operation render-invariant (default: True)
         """
-        font = self._privatise_glyph_metrics()
-        font = font._apply_to_all_glyphs(
+        font = self._apply_to_all_glyphs(
             Glyph.inflate,
             adjust_metrics=adjust_metrics,
         )
@@ -1274,8 +1269,7 @@ class Font:
         factor_y: number of times to repeat vertically
         adjust_metrics: also stretch metrics (default: True)
         """
-        font = self._privatise_glyph_metrics()
-        font = font._apply_to_all_glyphs(
+        font = self._apply_to_all_glyphs(
             Glyph.stretch,
             factor_x=factor_x, factor_y=factor_y,
             adjust_metrics=adjust_metrics,
@@ -1300,8 +1294,7 @@ class Font:
         factor_y: factor to shrink vertically
         adjust_metrics: also stretch metrics (default: True)
         """
-        font = self._privatise_glyph_metrics()
-        font = font._apply_to_all_glyphs(
+        font = self._apply_to_all_glyphs(
             Glyph.shrink,
             factor_x=factor_x, factor_y=factor_y,
             adjust_metrics=adjust_metrics,
@@ -1436,7 +1429,11 @@ class _LazyTransformedFont(Font):
         """Initialise, compose functions if needed."""
         self._glyphs = font._glyphs
         self._labels = font._labels
+        # TODO: fix hack
         self._props = font._props
+        self._props._frozen = False
+        self._props._font = self
+        self._props._frozen = True
         if isinstance(font, _LazyTransformedFont):
             prev_func = font._func
             def _wrapped(font):

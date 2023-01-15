@@ -1,7 +1,7 @@
 """
 monobit.properties - property structures
 
-(c) 2019--2022 Rob Hagemans
+(c) 2019--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -10,6 +10,7 @@ import logging
 from types import SimpleNamespace
 from functools import partial, wraps
 from itertools import chain
+from textwrap import indent, wrap
 try:
     # python 3.9
     from functools import cache
@@ -85,15 +86,36 @@ class Props(SimpleNamespace):
         return iter(vars(self))
 
     def __str__(self):
-        return '\n'.join(f'{_k}: {_v}' for _k, _v in vars(self).items())
+        strs = tuple(
+            (str(_k), str(_v))
+            for _k, _v in vars(self).items()
+        )
+        return '\n'.join(
+            f'{_k}: ' + (indent('\n' + _v, '    ') if '\n' in _v else _v)
+            for _k, _v in strs
+        )
 
     def __repr__(self):
         return (
             type(self).__name__
-            + '(\n    ' +
-            '\n    '.join(f'{_k}={_v!r},' for _k, _v in vars(self).items())
+            + '(\n' +
+            indent(
+                '\n'.join(f'{_k}={_v!r},' for _k, _v in vars(self).items()),
+                '    '
+            )
             + '\n)'
         )
+
+    def __ior__(self, rhs):
+        """Update with other Properties object."""
+        self.__dict__.update(vars(rhs))
+        return self
+
+    def __or__(self, rhs):
+        """Combine with other Properties object."""
+        new = Props(**vars(self))
+        new |= rhs
+        return new
 
 
 ##############################################################################
@@ -235,7 +257,7 @@ def writable_property(arg=None, *, field=None):
     def _setter(self, value):
         if self._frozen:
             raise ValueError('Cannot set property on frozen object.')
-        logging.info(f'Setting overridable property {field}={value}.')
+        #logging.debug(f'Setting overridable property {field}={value}.')
         vars(self)[field] = value
 
     return property(_getter, _setter)

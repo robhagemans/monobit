@@ -1,7 +1,7 @@
 """
 monobit.formats.amiga - Amiga font format
 
-(c) 2019--2022 Rob Hagemans
+(c) 2019--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -46,7 +46,7 @@ def load_amiga_fc(f, where):
         if fch.fch_FileID == _TFCH_ID and fc.tfc_TagCount:
             tag_start = _MAXFONTPATH - fc.tfc_TagCount * _TAG_ITEM.size
             name = name[:tag_start]
-            tags = _TAG_ITEM.array(fc.tfc_TagCount).from_bytes(tfc_FileName[tag_start:])
+            tags = _TAG_ITEM.array(fc.tfc_TagCount).from_bytes(fc.tfc_FileName[tag_start:])
         else:
             tags = ()
         # amiga fs is case insensitive, so we need to loop over listdir and match
@@ -236,7 +236,7 @@ def _load_amiga(f, where, tags):
     _read_header(f)
     amiga_props, glyphs = _read_font_hunk(f)
     if tags:
-        tagstr = ' '.join(f'{tag.ti_Tag:04x}:{tag.ti_Data:04x}')
+        tagstr = ' '.join(f'{tags.ti_Tag:04x}:{tags.ti_Data:04x}')
         amiga_props.amiga = f'tags {tagstr}'
     logging.info('Amiga properties:')
     for name, value in vars(amiga_props).items():

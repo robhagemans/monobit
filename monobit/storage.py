@@ -1,7 +1,7 @@
 """
 monobit.storage - load and save fonts
 
-(c) 2019--2022 Rob Hagemans
+(c) 2019--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -10,13 +10,17 @@ import logging
 from pathlib import Path
 from contextlib import contextmanager
 
-from .constants import VERSION, DEFAULT_FORMAT, CONVERTER_NAME
+from .constants import VERSION, CONVERTER_NAME
 from .containers import ContainerFormatError, open_container
 from .font import Font
 from .pack import Pack
-from .streams import MagicRegistry, FileFormatError, open_stream
-from .scripting import scriptable, ScriptArgs
+from .streams import MagicRegistry, FileFormatError, open_stream, maybe_text
+from .scripting import scriptable, ScriptArgs, ARG_PREFIX
 from .basetypes import Any
+
+
+DEFAULT_TEXT_FORMAT = 'yaff'
+DEFAULT_BINARY_FORMAT = 'raw'
 
 
 ##############################################################################
@@ -111,6 +115,15 @@ def _load_from_file(instream, where, format, **kwargs):
     pack = Pack(fonts)
     # set conversion properties
     filename = Path(instream.name).name
+    # if the source filename contains surrogate-escaped non-utf8 bytes
+    # preserve the byte values as backslash escapes
+    try:
+        filename.encode('utf-8')
+    except UnicodeError:
+        filename = (
+            filename.encode('utf-8', 'surrogateescape')
+            .decode('ascii', 'backslashreplace')
+        )
     return Pack(
         _font.modify(
             converter=CONVERTER_NAME,
@@ -163,6 +176,10 @@ def save(
     # if specified and outfile is a filename, it is taken relative to this location.
     pack = Pack(pack_or_font)
     outfile = outfile or sys.stdout
+    if outfile == sys.stdout:
+        # errors can occur if the strings we write contain surrogates
+        # these may come from filesystem names using 'surrogateescape'
+        sys.stdout.reconfigure(errors='replace')
     with open_location(outfile, 'w', where=where, overwrite=overwrite) as (stream, container):
         if not stream:
             _save_all(pack, container, format, **kwargs)
@@ -175,7 +192,7 @@ def _save_all(pack, where, format, **kwargs):
     for font in pack:
         # generate unique filename
         name = font.name.replace(' ', '_')
-        format = format or DEFAULT_FORMAT
+        format = format or DEFAULT_TEXT_FORMAT
         filename = where.unused_name(name, format)
         try:
             with open_stream(filename, 'w', where=where) as stream:
@@ -212,7 +229,7 @@ class ConverterRegistry(MagicRegistry):
             return self.get_for(format=format)
         if where:
             # if container/file provided as string or steam, open them to check magic bytes
-            with open_location(infile, 'r', where=where) as (stream, container):
+            with open_location(file, 'r', where=where) as (stream, container):
                 # identify file type if possible
                 return self.get_for(stream, format=format, do_open=do_open)
         else:
@@ -228,7 +245,12 @@ class ConverterRegistry(MagicRegistry):
         if not format:
             converter = self.identify(file, do_open=do_open)
         if not converter:
-            converter = self[format or DEFAULT_FORMAT]
+            if format:
+                converter = self[format]
+            elif not file or maybe_text(file):
+                converter = self[DEFAULT_TEXT_FORMAT]
+            else:
+                converter = self[DEFAULT_BINARY_FORMAT]
         return converter
 
     def get_args(self, file=None, format='', do_open=False):
@@ -256,13 +278,13 @@ class ConverterRegistry(MagicRegistry):
             # set script arguments
             funcname = self._func_name
             if name:
-                funcname += f' --format={name}'
+                funcname += f' {ARG_PREFIX}format={name}'
             _func = scriptable(
                 original_func,
                 # use the standard name, not that of the registered function
                 name=funcname,
                 # don't record history of loading from default format
-                record=(DEFAULT_FORMAT not in formats),
+                record=(DEFAULT_TEXT_FORMAT not in formats),
             )
             # register converter
             if linked:

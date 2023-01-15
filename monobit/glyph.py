@@ -1,7 +1,7 @@
 """
 monobit.glyph - representation of single glyph
 
-(c) 2019--2022 Rob Hagemans
+(c) 2019--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -14,14 +14,14 @@ except ImportError:
     from functools import lru_cache
     cache = lru_cache()
 
-from .encoding import is_graphical
+from .encoding import is_graphical, is_whitespace
 from .labels import Codepoint, Char, Tag, to_label
 from .raster import Raster, NOT_SET, turn_method
 from .properties import (
     DefaultProps, normalise_property, extend_string,
     writable_property, as_tuple, checked_property
 )
-from .basetypes import Coord, Bounds
+from .basetypes import Coord, Bounds, to_number
 from .scripting import scriptable
 
 
@@ -45,7 +45,7 @@ class KernTable(dict):
                 for _row in table.splitlines()
             )
         table = {
-            to_label(_k): int(_v)
+            to_label(_k): to_number(_v)
             for _k, _v in table.items()
         }
         super().__init__(table)
@@ -80,8 +80,6 @@ class GlyphProperties(DefaultProps):
     right_bearing: int
     # upward offset from origin to matrix bottom
     shift_up: int
-    # downward offset from origin to matrix left edge - equal to -shift_up
-    shift_down: int
     # kerning - pairwaise additional right-bearing
     right_kerning: KernTable
     # kerning - pairwaise additional left-bearing
@@ -100,11 +98,6 @@ class GlyphProperties(DefaultProps):
     tracking: int
     offset: Coord
 
-
-    @checked_property
-    def shift_down(self):
-        """Downward shift - negative of shift-up."""
-        return -self.shift_up
 
     @checked_property
     def advance_width(self):
@@ -128,7 +121,7 @@ class GlyphProperties(DefaultProps):
 
     @checked_property
     def ink_bounds(self):
-        """Minimum box encompassing all ink, in glyph origin coordinates."""
+        """Minimum box encompassing all ink, relative to bottom left."""
         bounds = Bounds(
             self.raster.left + self.padding.left,
             self.raster.bottom + self.padding.bottom,
@@ -155,7 +148,7 @@ class GlyphProperties(DefaultProps):
 
     @checked_property
     def raster(self):
-        """Raster bounds, in glyph origin coordinates."""
+        """Raster bounds, from bottom left."""
         return Bounds(
             left=self.left_bearing,
             bottom=self.shift_up,
@@ -326,8 +319,10 @@ class Glyph:
         if codepoint_from and (overwrite or not self.codepoint):
             return self.modify(codepoint=codepoint_from.codepoint(*labels))
         # use codepage to find char if not set
-        if char_from and(overwrite or not self.char):
-            return self.modify(char=char_from.char(*labels))
+        if char_from and (overwrite or not self.char):
+            char = char_from.char(*labels)
+            if not self.is_blank() or is_whitespace(char):
+                return self.modify(char=char)
         if tag_from:
             return self.modify(tag=tag_from.tag(*labels))
         if comment_from:
@@ -412,8 +407,16 @@ class Glyph:
         """Non-defaulted properties in order of default definition list."""
         return {
             _k.replace('_', '-'): self._props[_k]
-            for _k in self._props if not _k.startswith('_')
+            for _k in self._props
+            if not _k.startswith('_')
+            and self._props[_k] != self._props._get_default(_k)
         }
+
+    def get_property(self, key):
+        """Get value for property."""
+        key = normalise_property(key)
+        return getattr(self._props, key, '')
+
 
 
     ##########################################################################
@@ -468,9 +471,15 @@ class Glyph:
         return cls(pixels, **kwargs)
 
     @classmethod
-    def from_bytes(cls, byteseq, width, height=NOT_SET, *, align='left', **kwargs):
+    def from_bytes(
+            cls, byteseq, width, height=NOT_SET,
+            *, align='left', stride=NOT_SET,
+            **kwargs
+        ):
         """Create glyph from bytes/bytearray/int sequence."""
-        pixels = Raster.from_bytes(byteseq, width, height, align=align)
+        pixels = Raster.from_bytes(
+            byteseq, width, height, align=align, stride=stride
+        )
         return cls(pixels, **kwargs)
 
     @classmethod
@@ -482,6 +491,10 @@ class Glyph:
     ##########################################################################
     # conversion
 
+    @property
+    def pixels(self):
+        return self._pixels
+
     def is_blank(self):
         """Glyph has no ink."""
         return self._pixels.is_blank()
@@ -490,10 +503,13 @@ class Glyph:
         """Return matrix of user-specified foreground and background objects."""
         return self._pixels.as_matrix(ink=ink, paper=paper)
 
-    # TODO - need method that outputs tuple of str, this one shld be as_string
     def as_text(self, *, ink='@', paper='.', start='', end='\n'):
         """Convert glyph to text."""
         return self._pixels.as_text(ink=ink, paper=paper, start=start, end=end)
+
+    def as_blocks(self):
+        """Convert glyph to a string of quadrant block characters."""
+        return self._pixels.as_blocks()
 
     def as_vector(self, ink=1, paper=0):
         """Return flat tuple of user-specified foreground and background objects."""
@@ -732,6 +748,8 @@ class Glyph:
         direction: direction to move the top of the glyph (default: 'right').
         pitch: angle of the slant, given as (x, y) coordinate (default: 1,1).
         """
+        if not self.height:
+            return self
         pitch_x, pitch_y = pitch
         direction = direction[0].lower()
         extra_width = (self.height-1) * pitch_x // pitch_y

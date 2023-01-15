@@ -1,6 +1,6 @@
 """
 Apply operation to bitmap font
-(c) 2019--2022 Rob Hagemans, licence: https://opensource.org/licenses/MIT
+(c) 2019--2023 Rob Hagemans, licence: https://opensource.org/licenses/MIT
 """
 
 import sys
@@ -9,7 +9,9 @@ from types import SimpleNamespace as Namespace
 from pathlib import Path
 
 import monobit
-from monobit.scripting import wrap_main, parse_subcommands, print_help, argrecord
+from monobit.scripting import (
+    wrap_main, parse_subcommands, print_help, argrecord, GLOBAL_ARG_PREFIX
+)
 
 script_name = Path(sys.argv[0]).name
 
@@ -29,7 +31,7 @@ global_options = {
 usage = (
     f'usage: {script_name} '
     + '[INFILE] [LOAD-OPTIONS] '
-    + ' '.join(f'[--{_op}]' for _op in global_options)
+    + ' '.join(f'[{GLOBAL_ARG_PREFIX}{_op}]' for _op in global_options)
     + ' [COMMAND [OPTION...]] ...'
     + ' [to [OUTFILE] [SAVE-OPTIONS]]'
 )

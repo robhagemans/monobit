@@ -1,6 +1,6 @@
 """
 Print a banner using a bitmap font
-(c) 2019--2022 Rob Hagemans, licence: https://opensource.org/licenses/MIT
+(c) 2019--2023 Rob Hagemans, licence: https://opensource.org/licenses/MIT
 """
 
 
@@ -13,7 +13,7 @@ from codecs import escape_decode
 import monobit
 from monobit.scripting import wrap_main
 from monobit.basetypes import Coord, RGB
-from monobit.renderer import render, to_text, to_image
+from monobit.renderer import render
 
 
 def unescape(text):
@@ -119,9 +119,17 @@ def main():
     parser.add_argument(
         '--output',  default='', type=str,
         help=(
-            'output file name. usee .txt extension for text output, '
+            'output file name. use .txt extension for text output, '
             'or image format for image output'
         )
+    )
+    parser.add_argument(
+        '--image',  action='store_true',
+        help=('output as image')
+    )
+    parser.add_argument(
+        '--blocks',  action='store_true',
+        help=('output as quadrant blocks')
     )
     # font / glyph effects
     parser.add_argument(
@@ -139,6 +147,13 @@ def main():
     parser.add_argument(
         '--outline', action='store_true',
         help='apply algorithmic glyph outline effect'
+    )
+    parser.add_argument(
+        '--expand', type=int, default=0,
+        help=(
+            'adjust bearings by given number of pixels '
+            'wider (positive) or tighter (negative)'
+        )
     )
     args = parser.parse_args()
 
@@ -186,7 +201,7 @@ def main():
             font = font.modify(encoding=args.encoding).label()
         #######################################################################
         # apply effects
-        # tgese use default arguments as defined by rendering hints
+        # these use default arguments as defined by rendering hints
         if args.bold:
             font = font.smear()
         if args.italic:
@@ -199,28 +214,37 @@ def main():
         # render
         canvas = render(
             font, args.text,
-            margin=args.margin, scale=args.scale, rotate=args.rotate,
-            direction=args.direction, align=args.align,
+            margin=args.margin,
+            direction=args.direction, align=args.align, adjust_bearings=args.expand,
             missing='default'
         )
+        # transformations
+        canvas = canvas.stretch(*args.scale)
+        canvas = canvas.turn(clockwise=args.rotate)
         #######################################################################
         # output
-        if not args.output or args.output.endswith('.txt'):
-            ink = args.ink or '@'
-            paper = args.paper or '.'
-            border = args.border or paper
-            text = to_text(canvas, ink=ink, paper=paper, border=border) + '\n'
+        if args.image or args.output and not args.output.endswith('.txt'):
+            ink = RGB.create(args.ink or (0, 0, 0))
+            paper = RGB.create(args.paper or (255, 255, 255))
+            border = RGB.create(args.border) if args.border else paper
+            image = canvas.as_image(ink=ink, paper=paper, border=border)
+            if args.output:
+                image.save(args.output)
+            else:
+                image.show()
+        else:
+            if args.blocks:
+                text = canvas.as_blocks()
+            else:
+                ink = args.ink or '@'
+                paper = args.paper or '.'
+                border = args.border or paper
+                text = canvas.as_text(ink=ink, paper=paper, border=border) + '\n'
             if not args.output:
                 sys.stdout.write(text)
             else:
                 with open(args.output, 'w') as outfile:
                     outfile.write(text)
-        else:
-            ink = RGB.create(args.ink or (0, 0, 0))
-            paper = RGB.create(args.paper or (255, 255, 255))
-            border = RGB.create(args.border) if args.border else paper
-            image = to_image(canvas, ink=ink, paper=paper, border=border)
-            image.save(args.output)
 
 
 if __name__ == '__main__':

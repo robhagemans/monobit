@@ -1,9 +1,12 @@
 """
 monobit.glyph - representation of single glyph
 
-(c) 2019--2022 Rob Hagemans
+(c) 2019--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
+
+import logging
+from itertools import zip_longest
 
 from .binary import ceildiv
 from .basetypes import Bounds, Coord
@@ -44,6 +47,12 @@ def turn(self, clockwise:int=NOT_SET, *, anti:int=NOT_SET):
 turn_method = turn
 
 
+class blockstr(str):
+    """str that is shown as block text in interactive session."""
+    def __repr__(self):
+        return f'"""\\\n{self}"""'
+
+
 # immutable bit matrix
 
 class Raster:
@@ -51,10 +60,11 @@ class Raster:
 
     _0 = False
     _1 = True
+    _sequence = tuple
 
     def __init__(self, pixels=(), *, width=NOT_SET, _0=NOT_SET, _1=NOT_SET):
         """Create glyph from tuple of tuples."""
-        if isinstance(pixels, Raster):
+        if isinstance(pixels, type(self)):
             if _0 is NOT_SET:
                 _0 = pixels._0
             if _1 is NOT_SET:
@@ -66,8 +76,8 @@ class Raster:
         else:
             if _0 is NOT_SET or _1 is NOT_SET:
                 # glyph data
-                self._pixels = tuple(
-                    tuple(bool(_bit) for _bit in _row)
+                self._pixels = self._sequence(
+                    self._sequence(bool(_bit) for _bit in _row)
                     for _row in pixels
                 )
                 # check pixel matrix geometry
@@ -154,7 +164,6 @@ class Raster:
             for _row in self._pixels
         )
 
-    # TODO - need method that outputs tuple of str, this one shld be as_string
     def as_text(self, *, ink='@', paper='.', start='', end='\n'):
         """Convert raster to text."""
         if not self.height:
@@ -163,7 +172,46 @@ class Raster:
             ''.join(_row)
             for _row in self.as_matrix(ink=ink, paper=paper)
         )
-        return ''.join((start, contents, end))
+        return blockstr(''.join((start, contents, end)))
+
+    def as_blocks(self, *, ink='@', paper='.', start='', end='\n'):
+        """Convert glyph to a string of quadrant block characters."""
+        if not self.height:
+            return ''
+        matrix = self.as_matrix()
+        quartets = tuple(
+            tuple(
+                _quartet
+                for _quartet in zip_longest(
+                    _row[::2], _row[1::2], _next[::2], _next[1::2],
+                    fillvalue=0
+                )
+            )
+            for _row, _next in zip_longest(matrix[::2], matrix[1::2], fillvalue=())
+        )
+        blockdict = {
+            (0, 0, 0, 0): ' ',
+            (0, 0, 0, 1): '\u2597',
+            (0, 0, 1, 0): '\u2596',
+            (0, 0, 1, 1): '\u2584',
+            (0, 1, 0, 0): '\u259d',
+            (0, 1, 0, 1): '\u2590',
+            (0, 1, 1, 0): '\u259e',
+            (0, 1, 1, 1): '\u259f',
+            (1, 0, 0, 0): '\u2598',
+            (1, 0, 0, 1): '\u259a',
+            (1, 0, 1, 0): '\u258c',
+            (1, 0, 1, 1): '\u2599',
+            (1, 1, 0, 0): '\u2580',
+            (1, 1, 0, 1): '\u259c',
+            (1, 1, 1, 0): '\u259b',
+            (1, 1, 1, 1): '\u2588',
+        }
+        quartets = '\n'.join(
+            ''.join(blockdict[_quartet] for _quartet in _row)
+            for _row in quartets
+        )
+        return blockstr(quartets + '\n')
 
     @classmethod
     def from_vector(
@@ -179,6 +227,14 @@ class Raster:
             offset = stride - width
         else:
             offset = 0
+        excess = len(bitseq) % stride
+        if excess:
+            if _1 in bitseq[-excess:]:
+                logging.warning(
+                    'Bit string will be truncated by %d bits. Dropping [%s].',
+                    excess, bitseq[-excess:]
+                )
+            bitseq = bitseq[:-excess]
         rows = tuple(
             bitseq[_offs:_offs+width]
             for _offs in range(offset, len(bitseq), stride)
@@ -194,33 +250,67 @@ class Raster:
         )
 
     @classmethod
-    def from_bytes(cls, byteseq, width, height=NOT_SET, *, align='left'):
-        """Create raster from bytes/bytearray/int sequence."""
+    def from_bytes(
+                cls, byteseq, width, height=NOT_SET,
+                *, align='left', stride=NOT_SET,
+                **kwargs
+        ):
+        """
+        Create raster from bytes/bytearray/int sequence.
+
+        width: raster width in pixels
+        height: raster height in pixels
+        stride: number of pixels per row (default: what's needed for alignment)
+        align: 'left' or 'right' for byte-alignment; 'bit' for bit-alignment
+        """
         if width == 0 or height == 0:
+            if height is NOT_SET:
+                height = 0
             return cls.blank(width, height)
-        if height is not NOT_SET:
-            stride = 8 * (len(byteseq) // height)
+        if stride is not NOT_SET:
+            pass
+        elif align != 'bit':
+            if height is not NOT_SET:
+                stride = 8 * (len(byteseq) // height)
+            else:
+                stride = 8 * ceildiv(width, 8)
         else:
-            stride = 8 * ceildiv(width, 8)
-        bitseq = bin(int.from_bytes(byteseq, 'big'))[2:].zfill(8*len(byteseq))
+            if height is not NOT_SET:
+                stride = (8 * len(byteseq)) // height
+            else:
+                stride = width
+        if not byteseq:
+            bitseq = ''
+        else:
+            bitseq = bin(int.from_bytes(byteseq, 'big'))[2:].zfill(8*len(byteseq))
         return cls.from_vector(
             bitseq, width=width, stride=stride, align=align,
             _0='0', _1='1',
         )
 
     def as_bytes(self, *, align='left'):
-        """Convert raster to flat bytes."""
+        """
+        Convert raster to flat bytes.
+
+        align: 'left' or 'right' for byte-alignment; 'bit' for bit-alignment
+        """
         if not self.height or not self.width:
             return b''
-        bytewidth = ceildiv(self.width, 8)
         rows = (
             ''.join(_row)
             for _row in self.as_matrix(paper='0', ink='1')
         )
-        if align.startswith('l'):
-            rows = (_row.ljust(8*bytewidth, '0') for _row in rows)
-        rows = (int(_row, 2).to_bytes(bytewidth, 'big') for _row in rows)
-        return b''.join(rows)
+        if align.startswith('b'):
+            bits = ''.join(rows)
+            bytesize = ceildiv(len(bits), 8)
+            byterow = int(bits, 2).to_bytes(bytesize, 'big')
+            return byterow
+        else:
+            bytewidth = ceildiv(self.width, 8)
+            if align.startswith('l'):
+                rows = (_row.ljust(8*bytewidth, '0') for _row in rows)
+            byterows = (int(_row, 2).to_bytes(bytewidth, 'big') for _row in rows)
+            return b''.join(byterows)
 
     @classmethod
     def from_hex(cls, hexstr, width, height=NOT_SET, *, align='left'):
@@ -232,6 +322,29 @@ class Raster:
         """Convert raster to hex string."""
         return self.as_bytes(align=align).hex()
 
+
+    ##########################################################################
+
+    @classmethod
+    def concatenate(cls, *row_of_rasters):
+        """Concatenate rasters left-to-right."""
+        if not row_of_rasters:
+            return cls()
+        # drop empties
+        row_of_rasters = tuple(
+            _raster for _raster in row_of_rasters if _raster.width
+        )
+        heights = set(_raster.height for _raster in row_of_rasters)
+        if len(heights) > 1:
+            raise ValueError('Rasters must be of same height.')
+        matrices = (_raster.as_matrix() for _raster in row_of_rasters)
+        concatenated = cls(
+            sum(_row, ())
+            for _row in zip(*matrices)
+        )
+        return concatenated
+
+
     ##########################################################################
     # transformations
 
@@ -240,7 +353,7 @@ class Raster:
     def mirror(self):
         """Reverse pixels horizontally."""
         return type(self)(
-            tuple(_row[::-1] for _row in self._pixels),
+            self._sequence(_row[::-1] for _row in self._pixels),
             _0=self._0, _1=self._1
         )
 
@@ -254,7 +367,7 @@ class Raster:
     def transpose(self):
         """Transpose glyph."""
         return type(self)(
-            tuple(zip(*self._pixels)),
+            self._sequence(zip(*self._pixels)),
             _0=self._0, _1=self._1
         )
 
@@ -274,7 +387,7 @@ class Raster:
         if self.height > 1 and rows:
             rolled = rolled._pixels[-rows:] + rolled._pixels[:-rows]
         if self.width > 1 and columns:
-            rolled = tuple(
+            rolled = self._sequence(
                 _row[-columns:] + _row[:-columns]
                 for _row in rolled._pixels
             )
@@ -305,12 +418,12 @@ class Raster:
             shifted = pixels[-rows:] + (empty_row,) * -rows
         if columns > 0:
             return type(self)(
-                tuple(_0 * columns + _row[:-columns] for _row in shifted),
+                self._sequence(_0 * columns + _row[:-columns] for _row in shifted),
                 _0=_0, _1=_1
             )
         else:
             return type(self)(
-                tuple(_row[-columns:] + _0 * -columns for _row in shifted),
+                self._sequence(_row[-columns:] + _0 * -columns for _row in shifted),
                 _0=_0, _1=_1
             )
 
@@ -329,7 +442,7 @@ class Raster:
             raise ValueError('Can only crop glyph by a positive amount.')
         if self.height-top-bottom <= 0:
             return type(self).blank(width=max(0, self.width-right-left))
-        return type(self)(tuple(
+        return type(self)(self._sequence(
                 _row[left : (-right if right else None)]
                 for _row in self._pixels[top : (-bottom if bottom else None)]
             ),
@@ -357,9 +470,9 @@ class Raster:
         )
         empty_row = _0 * new_width
         pixels = (
-            (empty_row,) * top
-            + tuple(_0 * left + _row + _0 * right for _row in pixels)
-            + (empty_row,) * bottom
+            self._sequence((empty_row,)) * top
+            + self._sequence(_0 * left + _row + _0 * right for _row in pixels)
+            + self._sequence((empty_row,)) * bottom
         )
         return type(self)(pixels, _0=_0, _1=_1)
 
@@ -374,10 +487,10 @@ class Raster:
         pixels = (_row for _row in self._pixels for _ in range(factor_y))
         # horizontal stretch
         pixels = (
-            tuple(_col for _col in _row for _ in range(factor_x))
+            self._sequence(_col for _col in _row for _ in range(factor_x))
             for _row in pixels
         )
-        return type(self)(tuple(pixels), _0=self._0, _1=self._1)
+        return type(self)(self._sequence(pixels), _0=self._0, _1=self._1)
 
     def shrink(self, factor_x:int=1, factor_y:int=1):
         """
@@ -389,7 +502,7 @@ class Raster:
         # vertical shrink
         shrunk = self._pixels[::factor_y]
         # horizontal shrink
-        shrunk = tuple(_row[::factor_x] for _row in shrunk)
+        shrunk = self._sequence(_row[::factor_x] for _row in shrunk)
         return type(self)(shrunk, _0=self._0, _1=self._1)
 
     # effects
@@ -405,7 +518,7 @@ class Raster:
         # use as instance method or class method
         matrices = tuple(_r.as_matrix() for _r in others)
         rows = tuple(zip(*_row) for _row in zip(*matrices))
-        combined = tuple(tuple(operator(_item) for _item in _row) for _row in rows)
+        combined = self._sequence(self._sequence(operator(_item) for _item in _row) for _row in rows)
         return type(self)(combined, _0=False, _1=True)
 
     def invert(self):
@@ -448,7 +561,7 @@ class Raster:
         empty = _0 * self.width
         if direction == 'l':
             return type(self)(
-                tuple(
+                self._sequence(
                     _row[_y:] + empty[:_y]
                     for _row, _y in zip(pixels, shiftrange)
                 ),
@@ -456,7 +569,7 @@ class Raster:
             )
         elif direction == 'r':
             return type(self)(
-                tuple(
+                self._sequence(
                     empty[:_y] + _row[:self.width-_y]
                     for _row, _y in zip(pixels, shiftrange)
                 ),
@@ -473,7 +586,7 @@ class Raster:
             return self
         top_height = min(self.height, max(0, top_height))
         bottom_height = min(self.height, max(0, bottom_height))
-        pixels = tuple(
+        pixels = self._sequence(
             _1 * self.width
             if top_height >= self.height-_line-1 >= bottom_height
             else ''.join(_row)

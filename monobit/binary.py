@@ -1,7 +1,7 @@
 """
 monobit.binary - binary utilities
 
-(c) 2019--2022 Rob Hagemans
+(c) 2019--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -19,7 +19,9 @@ def bytes_to_bits(inbytes, width=None, align='left'):
     """Convert bytes/bytearray/sequence of int to tuple of bits."""
     bitstr = ''.join('{:08b}'.format(_b) for _b in inbytes)
     bits = tuple(_c == '1' for _c in bitstr)
-    if align.startswith('r'):
+    if width is None:
+        return bits
+    elif align.startswith('r'):
         return bits[-width:]
     else:
         return bits[:width]

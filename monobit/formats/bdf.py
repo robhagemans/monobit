@@ -1,7 +1,7 @@
 """
 monobit.bdf - Adobe Glyph Bitmap Distribution Format
 
-(c) 2019--2022 Rob Hagemans
+(c) 2019--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -17,6 +17,48 @@ from ..encoding import charmaps, NotFoundError
 from ..taggers import tagmaps
 from ..labels import Char
 
+
+@loaders.register('bdf', magic=(b'STARTFONT ',), name='bdf')
+def load_bdf(instream, where=None):
+    """
+    Load font from Adobe Glyph Bitmap Distribution Format (BDF) file.
+    """
+    instream = instream.text
+    comments, bdf_props, x_props = _read_bdf_global(instream)
+    logging.info('bdf properties:')
+    for name, value in bdf_props.items():
+        logging.info('    %s: %s', name, value)
+    logging.info('x properties:')
+    for name, value in x_props.items():
+        logging.info('    %s: %s', name, value)
+    glyphs, glyph_props = _read_bdf_glyphs(instream)
+    glyphs, properties = _parse_properties(glyphs, glyph_props, bdf_props, x_props)
+    font = Font(glyphs, comment=comments, **properties)
+    try:
+        font = font.label()
+    except NotFoundError:
+        pass
+    return font
+
+
+@savers.register(linked=load_bdf)
+def save_bdf(fonts, outstream, where=None):
+    """
+    Save font to Adobe Glyph Bitmap Distribution Format (BDF) file.
+    """
+    if len(fonts) > 1:
+        raise FileFormatError('Can only save one font to BDF file.')
+    # ensure codepoint values are set
+    font = fonts[0]
+    try:
+        font = font.label(codepoint_from=font.encoding)
+    except NotFoundError:
+        pass
+    _save_bdf(font, outstream.text)
+
+
+##############################################################################
+# specification
 
 # BDF specification: https://adobe-type-tools.github.io/font-tech-notes/pdfs/5005.BDF_Spec.pdf
 # XLFD conventions: https://www.x.org/releases/X11R7.6/doc/xorg-docs/specs/XLFD/xlfd.html
@@ -443,60 +485,31 @@ _XLFD_UNPARSED = {
 }
 
 ##############################################################################
-# top-level calls
-
-@loaders.register('bdf', magic=(b'STARTFONT ',), name='bdf')
-def load_bdf(instream, where=None):
-    """
-    Load font from Adobe Glyph Bitmap Distribution Format (BDF) file.
-    """
-    instream = instream.text
-    nchars, comments, bdf_props, x_props = _read_bdf_global(instream)
-    glyphs, glyph_props = _read_bdf_glyphs(instream)
-    # check number of characters, but don't break if no match
-    if nchars != len(glyphs):
-        logging.warning('Number of characters found does not match CHARS declaration.')
-    glyphs, properties = _parse_properties(glyphs, glyph_props, bdf_props, x_props)
-    font = Font(glyphs, comment=comments, **properties)
-    try:
-        font = font.label()
-    except NotFoundError:
-        pass
-    return font
-
-
-@savers.register(linked=load_bdf)
-def save_bdf(fonts, outstream, where=None):
-    """
-    Save font to Adobe Glyph Bitmap Distribution Format (BDF) file.
-    """
-    if len(fonts) > 1:
-        raise FileFormatError('Can only save one font to BDF file.')
-    # ensure codepoint values are set
-    font = fonts[0]
-    try:
-        font = font.label(codepoint_from=font.encoding)
-    except NotFoundError:
-        pass
-    _save_bdf(font, outstream.text)
-
-
-##############################################################################
 # BDF reader
 
-def _read_dict(instream, until=None):
-    """Read key-value pairs."""
-    result = {}
+def read_props(instream, ends, keep_end=False):
+    """Read key-value properties with comments."""
+    # read global section
+    props = []
+    comments = []
+    keyword = ''
     for line in instream:
+        line = line.strip()
         if not line:
             continue
-        if ' ' not in line:
+        if line.startswith('COMMENT'):
+            comments.append(line[8:])
+            continue
+        keyword, _, value = line.partition(' ')
+        props.append((keyword, value))
+        if keyword in ends:
+            if not keep_end:
+                del props[-1]
             break
-        keyword, values = line[:-1].split(' ', 1)
-        result[keyword] = values.strip()
-        if keyword == until:
-            break
-    return result
+        else:
+            keyword = ''
+    return props, comments, keyword
+
 
 def _read_bdf_glyphs(instream):
     """Read character section."""
@@ -512,7 +525,9 @@ def _read_bdf_glyphs(instream):
         elif not line.startswith('STARTCHAR'):
             raise FileFormatError(f'Expected STARTCHAR, not {line}')
         keyword, values = line.split(' ', 1)
-        meta = _read_dict(instream, until='BITMAP')
+        # TODO: we're ignoring glyph comments
+        meta, comments, _ = read_props(instream, ends=('BITMAP',))
+        meta = dict(meta)
         meta[keyword] = values
         # store labels, if they're not just ordinals
         label = meta['STARTCHAR']
@@ -541,37 +556,12 @@ def _read_bdf_glyphs(instream):
 
 def _read_bdf_global(instream):
     """Read global section of BDF file."""
-    # read global section
-    bdf_props = {}
-    x_props = {}
-    comments = []
-    parsing_x = False
-    nchars = -1
-    for line in instream:
-        line = line.strip('\r\n')
-        if not line:
-            continue
-        elif line.startswith('COMMENT'):
-            comments.append(line[8:])
-        elif line.startswith('STARTPROPERTIES'):
-            parsing_x = True
-        elif line.startswith('ENDPROPERTIES'):
-            parsing_x = False
-        else:
-            keyword, values = line.split(' ', 1)
-            values = values.strip()
-            if keyword == 'CHARS':
-                # value equals number of chars
-                # this signals the end of the global section
-                nchars = int(values)
-                comments = '\n'.join(comments)
-                return nchars, comments, bdf_props, x_props
-            elif parsing_x:
-                x_props[keyword] = values
-            else:
-                # record all keywords in the same metadata table
-                bdf_props[keyword] = values
-    raise ValueError('No character information found in BDF file.')
+    start_props, start_comments, _ = read_props(instream, ends=('STARTPROPERTIES',))
+    x_props, x_comments, _ = read_props(instream, ends=('ENDPROPERTIES',))
+    end_props, end_comments, _ = read_props(instream, ends=('CHARS',), keep_end=True)
+    bdf_props = {**dict(start_props), **dict(end_props)}
+    comments = [*start_comments, *x_comments, *end_comments]
+    return '\n'.join(comments), bdf_props, dict(x_props)
 
 
 ##############################################################################
@@ -579,17 +569,11 @@ def _read_bdf_global(instream):
 
 def _parse_properties(glyphs, glyph_props, bdf_props, x_props):
     """Parse metrics and metadata."""
-    logging.info('bdf properties:')
-    for name, value in bdf_props.items():
-        logging.info('    %s: %s', name, value)
-    logging.info('x properties:')
-    for name, value in x_props.items():
-        logging.info('    %s: %s', name, value)
     # parse meaningful metadata
     glyphs, properties, xlfd_name, bdf_unparsed = _parse_bdf_properties(glyphs, glyph_props, bdf_props)
     xlfd_props = _parse_xlfd_properties(x_props, xlfd_name)
     for key, value in bdf_unparsed.items():
-        logging.warning(f'Unrecognised BDF property {key}={value}')
+        logging.info(f'Unrecognised BDF property {key}={value}')
         # preserve as property
         properties[key] = value
     for key, value in xlfd_props.items():
@@ -601,11 +585,10 @@ def _parse_properties(glyphs, glyph_props, bdf_props, x_props):
             )
         else:
             properties[key] = value
-    # encoding values above 256 become multi-byte
-    # unless we're working in unicode
+    # store labels as char if we're working in unicode, codepoint otherwise
     if not charmaps.is_unicode(properties.get('encoding', '')):
         glyphs = [
-            _glyph.modify(codepoint=int_to_bytes(_glyph.encvalue)).drop('encvalue')
+            _glyph.modify(codepoint=_glyph.encvalue).drop('encvalue')
             if _glyph.encvalue != -1 else _glyph.drop('encvalue')
             for _glyph in glyphs
         ]
@@ -633,9 +616,8 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
         'source-format': 'BDF v{}'.format(bdf_props.pop('STARTFONT')),
         'point-size': size,
         'dpi': (xdpi, ydpi),
+        'revision': bdf_props.pop('CONTENTVERSION', None),
     }
-    properties['revision'] = bdf_props.pop('CONTENTVERSION', None)
-    # not supported: METRICSSET != 0
     writing_direction = bdf_props.pop('METRICSSET', '0')
     if writing_direction not in ('0', '1', '2'):
         logging.warning(f'Unsupported value METRICSSET={writing_direction} ignored')
@@ -701,18 +683,11 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
             new_props['top-bearing'] = top_bearing
             new_props['bottom-bearing'] = bottom_bearing
         mod_glyphs.append(glyph.modify(**new_props))
-    # if all glyph props are equal, take them global
-    for key in (
-            'shift-up', 'left-bearing', 'right-bearing',
-            'shift-left', 'top-bearing', 'bottom-bearing',
-        ):
-        distinct = set(getattr(_g, normalise_property(key)) for _g in mod_glyphs)
-        if len(distinct) == 1:
-            mod_glyphs = tuple(_g.drop(key) for _g in mod_glyphs)
-            value = distinct.pop()
-            # NOTE - these all have zero defaults
-            if value != 0:
-                properties[key] = value
+    # check char counters
+    nchars = int(bdf_props.pop('CHARS'))
+    # check number of characters, but don't break if no match
+    if nchars != len(glyphs):
+        logging.warning('Number of characters found does not match CHARS declaration.')
     xlfd_name = bdf_props.pop('FONT')
     # keep unparsed bdf props
     return mod_glyphs, properties, xlfd_name, bdf_props
@@ -720,6 +695,9 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
 
 def _parse_xlfd_name(xlfd_str):
     """Parse X logical font description font name string."""
+    if not xlfd_str:
+        # if no name at all that's intentional (used for HBF) - do not warn
+        return {}
     xlfd = xlfd_str.split('-')
     if len(xlfd) == 15:
         properties = {_key: _value for _key, _value in zip(_XLFD_NAME_FIELDS, xlfd) if _key and _value}
@@ -732,7 +710,11 @@ def _from_quoted_string(quoted):
     """Strip quotes"""
     return quoted.strip('"').replace('""', '"')
 
-def _parse_xlfd_properties(x_props, xlfd_name):
+def _all_ints(*value, to_int=int):
+    """Convert all items in tuple to int."""
+    return tuple(to_int(_x) for _x in value)
+
+def _parse_xlfd_properties(x_props, xlfd_name, to_int=int):
     """Parse X metadata."""
     xlfd_name_props = _parse_xlfd_name(xlfd_name)
     # find fields in XLFD FontName that do not match the FontProperties
@@ -750,7 +732,9 @@ def _parse_xlfd_properties(x_props, xlfd_name):
     # PIXEL_SIZE = ROUND((RESOLUTION_Y * POINT_SIZE) / 722.7)
     properties = {
         # FULL_NAME is deprecated
-        'name': _from_quoted_string(x_props.pop('FACE_NAME', x_props.pop('FULL_NAME', ''))),
+        'name': _from_quoted_string(
+            x_props.pop('FACE_NAME', x_props.pop('FULL_NAME', ''))
+        ),
         'revision': _from_quoted_string(x_props.pop('FONT_VERSION', '')),
         'foundry': _from_quoted_string(x_props.pop('FOUNDRY', '')),
         'copyright': _from_quoted_string(x_props.pop('COPYRIGHT', '')),
@@ -762,8 +746,12 @@ def _parse_xlfd_properties(x_props, xlfd_name):
         'x-height': x_props.pop('X_HEIGHT', None),
         'cap-height': x_props.pop('CAP_HEIGHT', None),
         'pixel-size': x_props.pop('PIXEL_SIZE', None),
-        'slant': _SLANT_MAP.get(_from_quoted_string(x_props.pop('SLANT', '')), None),
-        'spacing': _SPACING_MAP.get(_from_quoted_string(x_props.pop('SPACING', '')), None),
+        'slant': _SLANT_MAP.get(
+            _from_quoted_string(x_props.pop('SLANT', '')), None
+        ),
+        'spacing': _SPACING_MAP.get(
+            _from_quoted_string(x_props.pop('SPACING', '')), None
+        ),
         'underline-descent': x_props.pop('UNDERLINE_POSITION', None),
         'underline-thickness': x_props.pop('UNDERLINE_THICKNESS', None),
         'superscript-size': x_props.pop('SUPERSCRIPT_SIZE', None),
@@ -775,20 +763,26 @@ def _parse_xlfd_properties(x_props, xlfd_name):
         'max-word-space': x_props.pop('MAX_SPACE', None),
         'sentence-space': x_props.pop('END_SPACE', None),
     }
-    if 'DESTINATION' in x_props and int(x_props['DESTINATION']) < 2:
-        dest = int(x_props.pop('DESTINATION'))
+    if 'DESTINATION' in x_props and to_int(x_props['DESTINATION']) < 2:
+        dest = to_int(x_props.pop('DESTINATION'))
         properties['device'] = 'screen' if dest else 'printer'
     if 'POINT_SIZE' in x_props:
-        properties['point-size'] = str(round(int(x_props.pop('POINT_SIZE')) / 10))
+        properties['point-size'] = round(to_int(x_props.pop('POINT_SIZE')) / 10)
     if 'AVERAGE_WIDTH' in x_props:
         # average width can have a tilde for negative - because it occurs in the xlfd font name
-        properties['average-width'] = int(x_props.pop('AVERAGE_WIDTH').replace('~', '-')) / 10
+        properties['average-width'] = to_int(
+            x_props.pop('AVERAGE_WIDTH').replace('~', '-')
+        ) / 10
     # prefer the more precise relative weight and setwidth measures
     if 'RELATIVE_SETWIDTH' in x_props:
-        properties['setwidth'] = _SETWIDTH_MAP.get(x_props.pop('RELATIVE_SETWIDTH'), None)
+        properties['setwidth'] = _SETWIDTH_MAP.get(
+            x_props.pop('RELATIVE_SETWIDTH'), None
+        )
         x_props.pop('SETWIDTH_NAME', None)
     if 'setwidth' not in properties or not properties['setwidth']:
-        properties['setwidth'] = _from_quoted_string(x_props.pop('SETWIDTH_NAME', '')).lower()
+        properties['setwidth'] = _from_quoted_string(
+            x_props.pop('SETWIDTH_NAME', '')
+        ).lower()
     if 'RELATIVE_WEIGHT' in x_props:
         properties['weight'] = _WEIGHT_MAP.get(x_props.pop('RELATIVE_WEIGHT'), None)
         x_props.pop('WEIGHT_NAME', None)
@@ -796,15 +790,25 @@ def _parse_xlfd_properties(x_props, xlfd_name):
         properties['weight'] = _from_quoted_string(x_props.pop('WEIGHT_NAME', '')).lower()
     # resolution
     if 'RESOLUTION_X' in x_props and 'RESOLUTION_Y' in x_props:
-        properties['dpi'] = (x_props.pop('RESOLUTION_X'), x_props.pop('RESOLUTION_Y'))
+        properties['dpi'] = _all_ints(
+            x_props.pop('RESOLUTION_X'), x_props.pop('RESOLUTION_Y')
+        )
         x_props.pop('RESOLUTION', None)
     elif 'RESOLUTION' in x_props:
         # deprecated
-        properties['dpi'] = (x_props.get('RESOLUTION'), x_props.pop('RESOLUTION'))
+        properties['dpi'] = _all_ints(
+            x_props.get('RESOLUTION'), x_props.pop('RESOLUTION'), to_int=to_int
+        )
     if 'SUPERSCRIPT_X' in x_props and 'SUPERSCRIPT_Y' in x_props:
-        properties['superscript-offset'] = (x_props.pop('SUPERSCRIPT_X'), x_props.pop('SUPERSCRIPT_Y'))
+        properties['superscript-offset'] = _all_ints(
+            x_props.pop('SUPERSCRIPT_X'), x_props.pop('SUPERSCRIPT_Y'),
+            to_int=to_int
+        )
     if 'SUBSCRIPT_X' in x_props and 'SUBSCRIPT_Y' in x_props:
-        properties['subscript-offset'] = (x_props.pop('SUBSCRIPT_X'), x_props.pop('SUBSCRIPT_Y'))
+        properties['subscript-offset'] = _all_ints(
+            x_props.pop('SUBSCRIPT_X'), x_props.pop('SUBSCRIPT_Y'),
+            to_int=to_int
+        )
     # encoding
     registry = _from_quoted_string(x_props.pop('CHARSET_REGISTRY', '')).lower()
     encoding = _from_quoted_string(x_props.pop('CHARSET_ENCODING', '')).lower()
@@ -817,12 +821,11 @@ def _parse_xlfd_properties(x_props, xlfd_name):
     if properties['encoding'] in _UNDEFINED_ENCODINGS:
         properties['encoding'] = ''
     if 'DEFAULT_CHAR' in x_props:
-        default_ord = int(x_props.pop('DEFAULT_CHAR', None))
+        default_ord = to_int(x_props.pop('DEFAULT_CHAR', None))
         if charmaps.is_unicode(properties['encoding']):
             properties['default-char'] = Char(chr(default_ord))
         else:
             properties['default-char'] = default_ord
-    properties = {_k: _v for _k, _v in properties.items() if _v is not None and _v != ''}
     # keep original FontName if invalid or conflicting
     if not xlfd_name_props or conflicting:
         properties['xlfd.font-name'] = xlfd_name
@@ -833,7 +836,14 @@ def _parse_xlfd_properties(x_props, xlfd_name):
         except KeyError:
             continue
         key = key.lower().replace('_', '-')
-        properties[f'xlfd.{key}'] = _from_quoted_string(value)
+        value = _from_quoted_string(value)
+        if value:
+            properties[f'xlfd.{key}'] = value
+    # drop empty known properties
+    properties = {
+        _k: _v for _k, _v in properties.items()
+        if _v is not None and _v != ''
+    }
     # keep unrecognised properties
     properties.update({
         _k.lower().replace('_', '-'): _from_quoted_string(_v)
@@ -960,6 +970,12 @@ def _create_xlfd_properties(font):
     })
     return xlfd_props
 
+def _swidth(dwidth, point_size, dpi):
+    """SWIDTH = DWIDTH / ( points/1000 * dpi / 72 )"""
+    return int(
+        round(dwidth / (point_size / 1000) / (dpi / 72))
+    )
+
 def _save_bdf(font, outstream):
     """Write one font to X11 BDF 2.1."""
     # property table
@@ -973,15 +989,19 @@ def _save_bdf(font, outstream):
         ('SIZE', f'{font.point_size} {font.dpi.x} {font.dpi.y}'),
         (
             # per the example in the BDF spec,
-            # the first two coordinates in FONTBOUNDINGBOX are the font's ink-bounds
-            'FONTBOUNDINGBOX',
-            f'{font.bounding_box.x} {font.bounding_box.y} {font.left_bearing} {font.shift_up}'
+            # the first two coordinates in FONTBOUNDINGBOX
+            # are the font's ink-bounds
+            'FONTBOUNDINGBOX', (
+                f'{font.bounding_box.x} {font.bounding_box.y} '
+                f'{font.ink_bounds.left} {font.ink_bounds.bottom}'
+            )
         )
     ]
     vertical_metrics = ('shift-left', 'top-bearing', 'bottom-bearing')
-    has_vertical_metrics = (
-        any(_k in font.properties for _k in vertical_metrics)
-        or any(_k in _g.properties for _g in font.glyphs for _k in vertical_metrics)
+    has_vertical_metrics = any(
+        _k in _g.properties
+        for _g in font.glyphs
+        for _k in vertical_metrics
     )
     if has_vertical_metrics:
         bdf_props.append(('METRICSSET', '2'))
@@ -1018,55 +1038,51 @@ def _save_bdf(font, outstream):
         encoded_glyphs.append((encoding, name, glyph))
     glyphs = []
     for encoding, name, glyph in encoded_glyphs:
-        # "The SWIDTH y value should always be zero for a standard X font."
-        # "The DWIDTH y value should always be zero for a standard X font."
+        # minimize glyphs to ink-bounds (BBX) before storing, except "cell" fonts
+        if font.spacing not in ('character-cell', 'multi-cell'):
+            glyph = glyph.reduce()
         swidth_y, dwidth_y = 0, 0
         # SWIDTH = DWIDTH / ( points/1000 * dpi / 72 )
         # DWIDTH specifies the widths in x and y, dwx0 and dwy0, in device pixels.
         # Like SWIDTH , this width information is a vector indicating the position of
         # the next glyph’s origin relative to the origin of this glyph.
-        shift_up = font.shift_up + glyph.shift_up
-        left_bearing = font.left_bearing + glyph.left_bearing
-        right_bearing = glyph.right_bearing + font.right_bearing
-        dwidth_x = left_bearing + glyph.width + right_bearing
-        swidth_x = int(round(dwidth_x / (font.point_size / 1000) / (font.dpi.y / 72)))
-        # minimize glyphs to ink-bounds (BBX) before storing, except "cell" fonts
-        if font.spacing not in ('character-cell', 'multi-cell'):
-            left_bearing += glyph.padding.left
-            shift_up += glyph.padding.bottom
-            glyph = glyph.reduce()
-        if not glyph.height or not glyph.width:
-            # empty glyph
-            split_hex = ''
-        else:
-            hex = glyph.as_hex().upper()
-            width = len(hex) // glyph.height
-            split_hex = [hex[_offs:_offs+width] for _offs in range(0, len(hex), width)]
+        dwidth_x = glyph.advance_width
+        swidth_x = _swidth(dwidth_x, font.point_size, font.dpi.x)
         glyphdata = [
             ('STARTCHAR', name),
             ('ENCODING', str(encoding)),
-            ('SWIDTH', f'{swidth_x} {swidth_y}'),
-            ('DWIDTH', f'{dwidth_x} {dwidth_y}'),
-            ('BBX', f'{glyph.width} {glyph.height} {left_bearing} {shift_up}'),
+            # "The SWIDTH y value should always be zero for a standard X font."
+            # "The DWIDTH y value should always be zero for a standard X font."
+            ('SWIDTH', f'{swidth_x} 0'),
+            ('DWIDTH', f'{dwidth_x} 0'),
+            ('BBX', (
+                f'{glyph.width} {glyph.height} '
+                f'{glyph.left_bearing} {glyph.shift_up}'
+            )),
         ]
         if has_vertical_metrics:
-            top_bearing = font.top_bearing + glyph.top_bearing
-            bottom_bearing = glyph.bottom_bearing + font.bottom_bearing
-            shift_left = font.shift_left + glyph.shift_left
-            to_left = shift_left - ceildiv(glyph.width, 2)
-            to_bottom = -top_bearing - glyph.height
-            voffx = left_bearing - to_left
-            voffy = shift_up - to_bottom
-            dwidth1_x, swidth1_x = 0, 0
+            to_left = glyph.shift_left - ceildiv(glyph.width, 2)
+            to_bottom = -glyph.top_bearing - glyph.height
+            voffx = glyph.left_bearing - to_left
+            voffy = glyph.shift_up - to_bottom
             # dwidth1 vector: negative is down
-            dwidth1_y = -(top_bearing + glyph.height + bottom_bearing)
-            swidth1_y = int(round(dwidth1_y / (font.point_size / 1000) / (font.dpi.y / 72)))
+            dwidth1_y = -glyph.advance_height
+            swidth1_y = _swidth(dwidth1_y, font.point_size, font.dpi.y)
             glyphdata.extend([
                 ('VVECTOR', f'{voffx} {voffy}'),
-                ('SWIDTH1', f'{swidth1_x} {swidth1_y}'),
-                ('DWIDTH1', f'{dwidth1_x} {dwidth1_y}'),
+                ('SWIDTH1', f'0 {swidth1_y}'),
+                ('DWIDTH1', f'0 {dwidth1_y}'),
             ])
-        glyphdata.append(('BITMAP', '' if not split_hex else '\n' + '\n'.join(split_hex)))
+        # bitmap
+        hex = glyph.as_hex().upper()
+        width = len(hex) // glyph.height
+        split_hex = [
+            hex[_offs:_offs+width]
+            for _offs in range(0, len(hex), width)
+        ]
+        glyphdata.append(
+            ('BITMAP', '' if not split_hex else '\n' + '\n'.join(split_hex))
+        )
         glyphs.append(glyphdata)
     # write out
     for key, value in bdf_props:

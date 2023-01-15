@@ -1,7 +1,7 @@
 """
 monobit.yaff - monobit-yaff and Unifont HexDraw formats
 
-(c) 2019--2022 Rob Hagemans
+(c) 2019--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -18,6 +18,7 @@ from ..font import Font
 from ..glyph import Glyph
 from ..raster import Raster
 from ..labels import strip_matching
+from ..properties import normalise_property
 
 
 ##############################################################################
@@ -270,6 +271,26 @@ def normalise_comment(lines):
 # write file
 
 
+def _globalise_glyph_metrics(mod_glyphs):
+    """If all glyph props are equal, take them global."""
+    properties = {}
+    for key in (
+            'shift-up', 'left-bearing', 'right-bearing',
+            'shift-left', 'top-bearing', 'bottom-bearing',
+        ):
+        distinct = set(
+            getattr(_g, normalise_property(key))
+            for _g in mod_glyphs
+        )
+        if len(distinct) == 1:
+            mod_glyphs = tuple(_g.drop(key) for _g in mod_glyphs)
+            value = distinct.pop()
+            # NOTE - these all have zero defaults
+            if value != 0:
+                properties[key] = value
+    return mod_glyphs, properties
+
+
 def _save_yaff(fonts, outstream):
     """Write fonts to a plaintext stream as yaff."""
     for number, font in enumerate(fonts):
@@ -293,12 +314,14 @@ def _save_yaff(fonts, outstream):
         else:
             props['bounding_box'] = font.bounding_box
         props.update(font.properties)
+        glyphs, global_metrics = _globalise_glyph_metrics(font.glyphs)
+        props.update(global_metrics)
         if props:
             # write recognised yaff properties first, in defined order
             for key, value in props.items():
                 _write_property(outstream, key, value, font.get_comment(key))
             outstream.write('\n')
-        for glyph in font.glyphs:
+        for glyph in glyphs:
             _write_glyph(outstream, glyph)
 
 def _write_glyph(outstream, glyph, label=None):
@@ -369,6 +392,7 @@ def _quote_if_needed(value):
             not value
             or value[0] in YaffParams.quotable
             or value[-1] in YaffParams.quotable
+            or all(_c in YaffParams.glyphchars for _c in value)
         ):
         return f'"{value}"'
     return value

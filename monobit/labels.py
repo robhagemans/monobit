@@ -1,14 +1,14 @@
 """
 monobit.label - yaff representation of labels
 
-(c) 2020--2022 Rob Hagemans
+(c) 2020--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
 from string import ascii_letters, digits
 from unicodedata import normalize
 
-from .binary import ceildiv, int_to_bytes
+from .binary import ceildiv, int_to_bytes, bytes_to_int
 from .scripting import to_int
 from .basetypes import CONVERTERS
 
@@ -181,6 +181,10 @@ class Codepoint(bytes, Label):
     def value(self):
         """Get bytes content."""
         return bytes(self)
+
+    def __int__(self):
+        """Get integer value."""
+        return bytes_to_int(self)
 
 
 ##############################################################################

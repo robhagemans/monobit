@@ -1,7 +1,7 @@
 """
 monobit.encoding - unicode encodings
 
-(c) 2020--2022 Rob Hagemans
+(c) 2020--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -13,7 +13,7 @@ from html.parser import HTMLParser
 
 from pkg_resources import resource_listdir
 
-from .binary import int_to_bytes
+from .binary import int_to_bytes, align
 from .labels import Codepoint, to_label
 
 
@@ -46,11 +46,14 @@ _ENCODING_FILES = (
         # the xorg encoding also adds some PUA mappings on undefined code points
         ('microsoft/WINDOWS/CP874.TXT', 'windows-874', 'ibm-1162', 'tis620-2'),
         # japanese shift-jis
-        ('microsoft/WINDOWS/CP932.TXT', 'windows-932', 'windows-31j', 'cp943c', 'ibm-943', 'ms-kanji', 'windows-shift-jis'),
+        ('microsoft/WINDOWS/CP932.TXT', 'windows-932', 'windows-31j', 'ms-kanji', 'windows-shift-jis'),
+        # ibm variant adds graphical characters
+        ('microsoft/WINDOWS/CP932.TXT', 'ibm-943', 'cp943c'),
         # simplified chinese gbk
         # use more extensive version from icu by default
         #'microsoft/WINDOWS/CP936.TXT', 'windows-936', 'ibm-1386'),
         # korean extended wansung / unified hangul code
+        # this is an extension of euc-kr, wansung
         ('microsoft/WINDOWS/CP949.TXT', 'windows-949', 'ext-wansung', 'uhc', 'ibm-1363'),
         # traditional chinese big-5
         ('microsoft/WINDOWS/CP950.TXT', 'windows-950', 'ms-big5'),
@@ -331,6 +334,12 @@ _ENCODING_FILES = (
         # manually adapted
         ('manual/ms-linedraw.txt', 'windows-linedraw', 'microsoft-linedraw', 'ms-linedraw'),
         ('manual/hp48.txt', 'hp-48', 'hp48', 'hp-rpl'),
+
+        # Mozilla Taiwan
+        # Big5-ETen
+        ('moztw/eten.txt', 'big5-eten', 'eten',),
+        # Big5-2003
+        ('moztw/big5-2003-b2u.txt', 'big5'),
     )),
 
     ('adobe', {}, (
@@ -363,8 +372,9 @@ _ENCODING_FILES = (
         ('dkuug/iso646-jp', 'iso646-jp', 'iso-ir-14', 'jiscii', 'jis-roman', 'ibm-895'),
         ('dkuug/iso646-kr', 'iso646-kr',),
         ('dkuug/iso646-yu', 'iso646-yu', 'iso-ir-141', 'yuscii-latin', 'croscii', 'sloscii', 'jus-i.b1.002'),
-        # ibm-897 extends jis-x0201
         ('dkuug/jis_x0201', 'jis-x0201', 'jis-c-6220'),
+        # ibm-897 extends jis-x0201, overlaid below
+        ('dkuug/jis_x0201', 'cp897', 'ibm-897'),
         ('dkuug/x0201-7', 'x0201-7', 'iso-ir-13'),
 
         # charmaps from IBM/Unicode ICU project
@@ -377,9 +387,17 @@ _ENCODING_FILES = (
         ('icu/windows-936-2000.ucm', 'windows-936', 'ibm-1386', 'windows-gb2312', 'windows-gbk', 'gbk', 'gbk-0'),
         ('icu/ibm-1375_P100-2008.ucm', 'big5-hkscs', 'ibm-1375', 'big5hk', 'big5hkscs-0'),
         ('icu/ibm-806_P100-1998.ucm', 'cp806', 'ibm-806', 'ibm-iscii-devanagari'),
-        ('icu/windows-1361-2000.ucm', 'windows-1361', 'johab', 'ksc5601-1992'),
+        # ksc5601-1992-3 is here because Unix/BDF call the Johab encoding ksc5601.1992-3
+        # but it's Annex 3, i.e. not the main form of ks-c-5601
+        ('icu/windows-1361-2000.ucm', 'windows-1361', 'johab', 'ksc5601-1992-3'),
+        # ksc5601.1992-0 would map here
+        ('icu/aix-KSC5601.1987_0-4.3.6.ucm', 'ks-c-5601', 'ksc5601-1987', 'ksc5601-1992', 'wansung'),
         # P12A variant has backslash, tilde; P120 has yen, overline
         ('icu/ibm-932_P120-1999.ucm', 'ibm-932',),
+        # CNS11643 - note that this has plane 15 (2007 standard) encoded as plane 9. Planes 10-14 (2007) are not included.
+        ('icu/cns-11643-1992.ucm', 'cns-11643', 'csic'),
+        # EUC-TW, looks like this is algorithmically related to CNS-11643
+        #('icu/euc-tw-2014.ucm', 'euc-tw',),
 
         # from IBM CDRA tables
         # MS-DOS Korean
@@ -436,6 +454,11 @@ _ENCODING_FILES = (
         ('vietstd/viscii1.1.txt', 'viscii', 'viscii1.1-1'),
     )),
 
+    # https://www.unicode.org/Public/MAPPINGS/OBSOLETE/EASTASIA/JIS/JIS0208.TXT
+    ('txt', dict(codepoint_column=1, unicode_column=2), (
+        ('misc/JIS0208.TXT', 'jisx0208'),
+    )),
+
     # Windows-1252 extensions
     ('html', dict(table=1), (
         ('wikipedia/windows-1252.html', 'windows-extended', 'ibm-1004', 'os2-1004'),
@@ -455,6 +478,8 @@ _ENCODING_FILES = (
 # charmaps to be overlaid with IBM graphics in range 0x00--0x1f and 0x7f
 _ASCII_RANGE = range(0x80)
 _ANSI_RANGE = range(0x100)
+# iso 8859-1, excludiing controls
+_ISO_RANGE = tuple(range(0x20, 0x7f)) + tuple(range(0xa0, 0x100))
 _IBM_GRAPH_RANGE = tuple(range(0x20)) + (0x7f,)
 _MAC_GRAPH_RANGE = range(0x11, 0x15)
 _0XDB = (0xDB,)
@@ -480,6 +505,11 @@ _OVERLAYS = (
         'mik', 'koi8-r', 'koi8-u', 'koi8-ru', 'ruscii', 'rs3', 'rs4', 'rs4ac',
         'mazovia', 'kamenicky', 'cwi-2',
     )),
+    # ibm-897 == jis-x0201 with graphics
+    # constructed based on https://en.wikipedia.org/wiki/Code_page_897
+    ('manual/ibm897graph.ucp', _IBM_GRAPH_RANGE, 'ucp', {}, (
+        'cp897', 'ibm-943',
+    )),
     # Mac OS system fonts and euro vs currency sign
     ('manual/mac-system.ucp', _MAC_GRAPH_RANGE, 'ucp', {}, ('mac-roman', 'mac-roman-8.5')),
     ('manual/currency-sign-0xdb.ucp', _0XDB, 'ucp', {}, (
@@ -492,7 +522,7 @@ _OVERLAYS = (
     ('misc/IBMGRAPH.TXT', _IBM_GRAPH_RANGE, 'txt', dict(
         codepoint_column=2, unicode_column=0
     ), ('cp864',)),
-    ('microsoft/WINDOWS/CP1252.TXT', _ANSI_RANGE, 'txt', {}, ('windows-extended', 'palm-os')),
+    ('microsoft/WINDOWS/CP1252.TXT', _ISO_RANGE, 'txt', {}, ('windows-extended', 'palm-os')),
     ('iso-8859/8859-1.TXT', _ANSI_RANGE, 'txt', {}, ('windows-1252-msdos',)),
     # IBM combined codepages SBCS page
     ('ibm-cdra/037B34B0.UPMAP100', _ANSI_RANGE, 'ucm', {}, ('cp934',)),
@@ -529,6 +559,15 @@ def is_printable(char):
         # we keep everything that is_graphical except PUA, Other/Format, Not Assigned
         # anything excluded will be shown as REPLACEMENT CHARACTER
         unicodedata.category(_c) not in ('Co', 'Cf', 'Cn')
+        for _c in char
+    )
+
+def is_whitespace(char):
+    """Check if a sequence is whitespace."""
+    if not char:
+        return False
+    return all(
+        unicodedata.category(_c) == 'Zs'
         for _c in char
     )
 
@@ -947,7 +986,7 @@ class Charmap(Encoder):
 
 
 class Unicode(Encoder):
-    """Convert between unicode and ordinals."""
+    """Convert between unicode and UTF-32 ordinals."""
 
     def __init__(self):
         """Unicode converter."""
@@ -959,9 +998,16 @@ class Unicode(Encoder):
         for label in labels:
             codepoint = to_label(label)
             if isinstance(codepoint, bytes):
+                # ensure codepoint length is a multiple of 4
+                codepoint = codepoint.rjust(align(len(codepoint), 2), b'\0')
+                # convert as utf-32 chunks
+                chars = tuple(
+                    chr(int.from_bytes(codepoint[_start:_start+4], 'big'))
+                    for _start in range(0, len(codepoint), 4)
+                )
                 try:
                     # TODO: should we keep is_graphical? make it a setting?
-                    return ''.join(chr(_i) for _i in codepoint if is_graphical(chr(_i)))
+                    return ''.join(_c for _c in chars if is_graphical(_c))
                 except ValueError:
                     return ''
 
@@ -1002,7 +1048,7 @@ class Index(Encoder):
 
     def __repr__(self):
         """Representation."""
-        return type(self).__name__ + f'(first_codepoint={first_codepoint})'
+        return type(self).__name__ + f'(first_codepoint={self._count})'
 
 
 ###################################################################################################
@@ -1249,7 +1295,10 @@ def encoder(initialiser):
         return charmaps[initialiser]
     except KeyError:
         pass
-    return Charmap.load(initialiser)
+    try:
+        return Charmap.load(initialiser)
+    except NotFoundError:
+        return None
 
 
 charmaps = CharmapRegistry()

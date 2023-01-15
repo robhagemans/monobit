@@ -1,0 +1,20 @@
+     "University Roman" is a Roman-style font that was adapted from a 
+Publishing Partner (tm) font file created by Bernie LaGrave (UNIV_RMN.ARC).
+
+     I have edited the horizontal serifs on most of the characters, as well
+the cross-bars on "t" and "f" to be thicker.  I have edited the "Q", "R", "W",
+and "w" characters to contain continuous outlines.  This makes the entire font 
+compatible with Outline Art (tm).  The font is usable as small as the 12 pt 
+size,  but looks much better at larger sizes > 24 pts.
+
+     "University Bold" was created to be 25% wider and thicker than
+"University Roman".  "University Roman" is narrow in appearance.  The bold
+lines in "University Bold" are subtle.  However, I consider the wider 
+characters of "University Bold" to be more pleasing than those in "University 
+Roman".
+
+                                     -- Ric Kalford
+
+
+[[ Publishing Partner is a trademark of SoftLogic.  Calamus and Outline Art
+   are registered trademarks of DMC/Ditek International. ]]
