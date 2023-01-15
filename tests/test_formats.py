@@ -496,6 +496,14 @@ class TestFormats(BaseTester):
         font, *_ = monobit.load(self.font_path / 'SHILLING.cvt.gz')
         self.assertEqual(len(font.glyphs), 95)
 
+    # palm
+
+    def test_import_palm(self):
+        """Test importing Palm OS fonts."""
+        font, *_ = monobit.load(self.font_path / 'Alpha-2B.pdb')
+        self.assertEqual(len(font.glyphs), 230)
+
+
 
 if __name__ == '__main__':
     unittest.main()

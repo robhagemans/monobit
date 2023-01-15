@@ -34,6 +34,12 @@ Original sources:
 * `SHILLING.cvt.gz`
   - https://www.commodore.ca/manuals/funet/cbm/geos/graphics/fonts/unsorted/
   - Symbol font created by Dick Estel - copyright 1989 - released for free use
+* `Alpha-2B.pdb`
+  - http://www.rainerzenz.de/palm/alphafonts.html
+  - © 2000/2001 for Alpha Font Collection: Rainer Zenz. If you want to substitute one of
+    these fonts to shareware or commercial software, please contact me. For freeware
+    it's free, of course. If you want to publish it - do it! But have a look at
+    PalmGear for the latest version.
 
 
 ### Derivatives of `4x6`
