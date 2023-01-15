@@ -27,6 +27,10 @@ Original sources:
 * `times.nlq` and `daisy.nlq`
   - distributed with Roy Goldman's Daisy-Dot III
   - in the public domain
+* `cmbx10.120pk`
+  - https://www.ctan.org/pkg/cm
+  - unmodified bitmap of the Computer Modern font created by Donald Knuth
+  - released under his usual licence: https://ctan.org/license/knuth
 
 
 ### Derivatives of `4x6`

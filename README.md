@@ -121,6 +121,7 @@ Supported formats
 | Optiks PCR Font       | `pcr`      |          | `.pcr`                      | DOS           | ✔     |       |
 | PCPaint, GRASP, ChiWriter | `pcpaint` | old 3 4 | `.set` `.fnt`  `.sft` `.pft` `.eft` ... | DOS | ✔ |       |
 | PDF chart [R]         | `pdf`      |          | `.pdf`                      |               |       | ✔     |
+| TeX PKFONT            | `pkfont`   |          | `.pk`                       |               | ✔     |       |
 | The Print Shop        | `printshop`|          | `.pnf`                      | DOS           | ✔     |       |
 | PC Screen Font        | `psf`      | 1 2      | `.psf` `.psfu`              | MS-DOS, Linux | ✔     | ✔ (version 2) |
 | PSF2AMS PSFCOM        | `psfcom`   |          | `.com`                      | Z80 CP/M      | ✔     |       |

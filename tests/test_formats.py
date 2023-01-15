@@ -460,6 +460,13 @@ class TestFormats(BaseTester):
         font, *_ = monobit.load(self.font_path / '4x6-ams.com')
         self.assertEqual(len(font.glyphs), 512)
 
+    # TeX PKFONT
+
+    def test_import_pkfont(self):
+        """Test importing PKFONT files."""
+        font, *_ = monobit.load(self.font_path / 'cmbx10.120pk')
+        self.assertEqual(len(font.glyphs), 128)
+
 
 if __name__ == '__main__':
     unittest.main()

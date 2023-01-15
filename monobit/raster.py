@@ -185,7 +185,7 @@ class Raster:
         if excess:
             if _1 in bitseq[-excess:]:
                 logging.warning(
-                    'Bit string will be truncated (%d bytes). Dropping [%s].',
+                    'Bit string will be truncated by %d bits. Dropping [%s].',
                     excess, bitseq[-excess:]
                 )
             bitseq = bitseq[:-excess]
