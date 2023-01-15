@@ -392,6 +392,7 @@ def _quote_if_needed(value):
             not value
             or value[0] in YaffParams.quotable
             or value[-1] in YaffParams.quotable
+            or all(_c in YaffParams.glyphchars for _c in value)
         ):
         return f'"{value}"'
     return value
