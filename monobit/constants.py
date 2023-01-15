@@ -6,5 +6,5 @@ licence: https://opensource.org/licenses/MIT
 """
 
 
-VERSION = '0.32'
+VERSION = '0.33'
 CONVERTER_NAME = f'monobit v{VERSION}'
