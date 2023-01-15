@@ -338,6 +338,13 @@ _Characteristics_ are descriptive in nature. They can be specified or calculated
 - `descent`: extent of lowercase letters such as `j` below the baseline.
 - `pixel-size`: pixel size (equals ascent plus descent).
 - `leading`: additional vertical line spacing in excess of the `pixel-size`.
+             Equals `line-height` less `pixel-size`.
+
+For fonts with vertical metrics, the following may exist:
+- `left-extent`: extent of glyphs to the left of the vertical baseline
+                 (analogue of `descent`).
+- `right-extent`: extent of glyphs to the right of the vertical baseline
+                  (analogue of `ascent`).
 
 Characteristics inferred from the glyphs are:
 - `raster`: largest raster needed to define a glyph; coordinates (left, bottom, right, top)

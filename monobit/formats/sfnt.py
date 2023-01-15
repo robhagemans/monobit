@@ -9,7 +9,7 @@ import sys
 import logging
 import json
 import math
-
+from unicodedata import bidirectional
 
 try:
     from fontTools import ttLib
@@ -23,7 +23,7 @@ else:
 from ..properties import Props
 from ..font import Font
 from ..glyph import Glyph
-from ..labels import Tag
+from ..labels import Tag, Char
 from ..storage import loaders, savers
 from ..streams import FileFormatError
 
@@ -125,10 +125,11 @@ _TAGS = (
     'EBDT', 'bdat',
     'hmtx', 'hhea',
     'vmtx', 'vhea',
+    'kern',
+    'GPOS',
     'cmap',
     'name',
-    'kern',
-    # OS/2 - Windows metrics
+    'OS/2',
 )
 
 def _read_sfnt(instream):
@@ -233,6 +234,115 @@ def _convert_sfnt(sfnt):
     return fonts
 
 
+def _convert_props(sfnt, i_strike):
+    """Build font properties from sfnt data."""
+    # determine the size of a pixel in FUnits
+    bmst = sfnt.bloc.strikes[i_strike].bitmapSizeTable
+    vert_fu_p_pix = sfnt.head.unitsPerEm / bmst.ppemY
+    hori_fu_p_pix = sfnt.head.unitsPerEm / bmst.ppemX
+    # we also had pixels per em in the EBLC table, so now we know units per pixel
+    props = _convert_bloc_props(sfnt.bloc, i_strike)
+    props |= _convert_head_props(sfnt.head)
+    props |= _convert_name_props(sfnt.name)
+    props |= _convert_os_2_props(getattr(sfnt, 'OS/2'), vert_fu_p_pix, hori_fu_p_pix)
+    props |= _convert_hhea_props(sfnt.hhea, vert_fu_p_pix)
+    props |= _convert_vhea_props(sfnt.vhea, hori_fu_p_pix)
+    props._hfupp = hori_fu_p_pix
+    props._vfupp = vert_fu_p_pix
+    return props
+
+
+def _convert_glyphs(sfnt, i_strike, hori_fu_p_pix, vert_fu_p_pix):
+    """Build glyphs and glyph properties from sfnt data."""
+    unitable = _get_unicode_table(sfnt)
+    enctable = _get_encoding_table(sfnt)
+    glyphs = []
+    strike = sfnt.bdat.strikeData[i_strike]
+    blocstrike = sfnt.bloc.strikes[i_strike]
+    for subtable in blocstrike.indexSubTables:
+        # some formats are byte aligned, others bit-aligned
+        if subtable.imageFormat in (1, 6):
+            align = 'left'
+        elif subtable.imageFormat in (2, 5, 7):
+            align = 'bit'
+        else:
+            # format 8, 9: component bitmaps
+            # format 3: obsolete, not used
+            # format 4: modified-Hufffman compressed, insufficiently documented
+            logging.warning(
+                'Unsupported image format %d', subtable.imageFormat
+            )
+            continue
+        for name in subtable.names:
+            glyph = strike[name]
+            try:
+                metrics = glyph.metrics
+            except AttributeError:
+                metrics = subtable.metrics
+            width = metrics.width
+            height = metrics.height
+            if not width or not height:
+                glyphbytes = b''
+            else:
+                try:
+                    glyphbytes = glyph.imageData
+                except AttributeError:
+                    logging.warning(f'No image data for glyph `{name}`')
+                    continue
+            small_is_vert = blocstrike.bitmapSizeTable.flags == 2
+            props = _convert_glyph_metrics(metrics, small_is_vert)
+            props.update(_convert_hmtx_metrics(sfnt.hmtx, name, hori_fu_p_pix, width))
+            props.update(_convert_vmtx_metrics(sfnt.vmtx, name, vert_fu_p_pix, height))
+            glyph = Glyph.from_bytes(
+                glyphbytes, width=width, align=align,
+                tag=name, char=unitable.get(name, ''),
+                codepoint=enctable.get(name, b''), **props
+            )
+            glyphs.append(glyph)
+    glyphs = _convert_kern_metrics(glyphs, sfnt.kern, hori_fu_p_pix)
+    glyphs = _convert_gpos_metrics(glyphs, sfnt.GPOS, hori_fu_p_pix)
+    return glyphs
+
+
+def _convert_glyph_metrics(metrics, small_is_vert):
+    """Conveert glyph metrics."""
+    if hasattr(metrics, 'horiAdvance'):
+        # big metrics
+        return dict(
+            # hori
+            left_bearing=metrics.horiBearingX,
+            right_bearing=(
+                metrics.horiAdvance - metrics.width - metrics.horiBearingX
+            ),
+            shift_up=metrics.horiBearingY - metrics.height,
+            # vert
+            shift_left=metrics.vertBearingX,
+            top_bearing=metrics.vertBearingY,
+            bottom_bearing=(
+                metrics.vertAdvance - metrics.height
+                - metrics.vertBearingY
+            ),
+        )
+    elif not small_is_vert:
+        # small metrics
+        return dict(
+            left_bearing=metrics.BearingX,
+            right_bearing=metrics.Advance - metrics.width - metrics.BearingX,
+            shift_up=metrics.BearingY - metrics.height,
+        )
+    else:
+        # small metrics, interpret as vert
+        return dict(
+            shift_left=metrics.BearingX,
+            top_bearing=metrics.BearingY,
+            bottom_bearing=(
+                metrics.Advance - metrics.height - metrics.BearingY
+            ),
+        )
+
+
+###############################################################################
+# 'cmap' table
 
 # preferred table to use for Unicode: platformID, platEncID
 _UNICODE_CHOICES = (
@@ -288,41 +398,8 @@ def _get_encoding_table(sfnt):
     return enctable
 
 
-def _convert_glyph_metrics(metrics, small_is_vert):
-    """Conveert glyph metrics."""
-    if hasattr(metrics, 'horiAdvance'):
-        # big metrics
-        return dict(
-            # hori
-            left_bearing=metrics.horiBearingX,
-            right_bearing=(
-                metrics.horiAdvance - metrics.width - metrics.horiBearingX
-            ),
-            shift_up=metrics.horiBearingY - metrics.height,
-            # vert
-            shift_left=metrics.vertBearingX,
-            top_bearing=metrics.vertBearingY,
-            bottom_bearing=(
-                metrics.vertAdvance - metrics.height
-                - metrics.vertBearingY
-            ),
-        )
-    elif not small_is_vert:
-        # small metrics
-        return dict(
-            left_bearing=metrics.BearingX,
-            right_bearing=metrics.Advance - metrics.width - metrics.BearingX,
-            shift_up=metrics.BearingY - metrics.height,
-        )
-    else:
-        # small metrics, interpret as vert
-        return dict(
-            shift_left=metrics.BearingX,
-            top_bearing=metrics.BearingY,
-            bottom_bearing=(
-                metrics.Advance - metrics.height - metrics.BearingY
-            ),
-        )
+###############################################################################
+# 'hmtx' table
 
 def _convert_hmtx_metrics(hmtx, glyph_name, hori_fu_p_pix, width):
     """Convert horizontal metrics from hmtx table."""
@@ -336,6 +413,11 @@ def _convert_hmtx_metrics(hmtx, glyph_name, hori_fu_p_pix, width):
             )
     return {}
 
+
+
+###############################################################################
+# 'vmtx' table
+
 def _convert_vmtx_metrics(vmtx, glyph_name, vert_fu_p_pix, height):
     """Convert vertical metrics from vmtx table."""
     if vmtx:
@@ -347,6 +429,10 @@ def _convert_vmtx_metrics(vmtx, glyph_name, vert_fu_p_pix, height):
                 bottom_bearing=(advance - top_bearing) // vert_fu_p_pix - height,
             )
     return {}
+
+
+###############################################################################
+# 'kern' table
 
 def _convert_kern_metrics(glyphs, kern, hori_fu_p_pix):
     """Convert kerning values form kern table."""
@@ -361,9 +447,9 @@ def _convert_kern_metrics(glyphs, kern, hori_fu_p_pix):
                 continue
             for pair, kern_value in table.kernTable.items():
                 left, right = pair
-                table = glyph_props.get(Tag(left), {})
-                table[Tag(right)]  = kern_value / hori_fu_p_pix
-                glyph_props[Tag(left)] = table
+                ktable = glyph_props.get(Tag(left), {})
+                ktable[Tag(right)]  = kern_value / hori_fu_p_pix
+                glyph_props[Tag(left)] = ktable
         glyphs = tuple(
             _g.modify(right_kerning=glyph_props.get(_g.tags[0], None))
             if _g.tags else _g
@@ -372,72 +458,78 @@ def _convert_kern_metrics(glyphs, kern, hori_fu_p_pix):
     return glyphs
 
 
-def _convert_glyphs(sfnt, i_strike, hori_fu_p_pix, vert_fu_p_pix):
-    """Build glyphs and glyph properties from sfnt data."""
-    unitable = _get_unicode_table(sfnt)
-    enctable = _get_encoding_table(sfnt)
-    glyphs = []
-    strike = sfnt.bdat.strikeData[i_strike]
-    blocstrike = sfnt.bloc.strikes[i_strike]
-    for subtable in blocstrike.indexSubTables:
-        # some formats are byte aligned, others bit-aligned
-        if subtable.imageFormat in (1, 6):
-            align = 'left'
-        elif subtable.imageFormat in (2, 5, 7):
-            align = 'bit'
-        else:
-            # format 8, 9: component bitmaps
-            # format 3: obsolete, not used
-            # format 4: modified-Hufffman compressed, insufficiently documented
-            logging.warning(
-                'Unsupported image format %d', subtable.imageFormat
-            )
-            continue
-        for name in subtable.names:
-            glyph = strike[name]
-            try:
-                metrics = glyph.metrics
-            except AttributeError:
-                metrics = subtable.metrics
-            width = metrics.width
-            height = metrics.height
-            if not width or not height:
-                glyphbytes = b''
-            else:
-                try:
-                    glyphbytes = glyph.imageData
-                except AttributeError:
-                    logging.warning(f'No image data for glyph `{name}`')
+###############################################################################
+# 'GPOS' table
+
+def _convert_gpos_metrics(glyphs, gpos, hori_fu_p_pix):
+    """Convert kerning values form GPOS table."""
+    logging.debug('parsing gpos')
+    if gpos:
+        #features = gpos.table.featureList
+        llist = gpos.table.LookupList.Lookup
+        glyph_props = {}
+        for lookup in llist:
+            for subtable in lookup.SubTable:
+                if subtable._type != 'PairPos':
                     continue
-            small_is_vert = blocstrike.bitmapSizeTable.flags == 2
-            props = _convert_glyph_metrics(metrics, small_is_vert)
-            props.update(_convert_hmtx_metrics(sfnt.hmtx, name, hori_fu_p_pix, width))
-            props.update(_convert_vmtx_metrics(sfnt.vmtx, name, vert_fu_p_pix, height))
-            glyph = Glyph.from_bytes(
-                glyphbytes, width=width, align=align,
-                tag=name, char=unitable.get(name, ''),
-                codepoint=enctable.get(name, b''), **props
-            )
-            glyphs.append(glyph)
-    glyphs = _convert_kern_metrics(glyphs, sfnt.kern, hori_fu_p_pix)
+                # per the docs, in logical order
+                # i.e first is left for LTR, first is right ror RTL
+                # presumably to be determined from glyph unicode properties?
+                # what happens if one glyph is LTR and the other RTL is unclear
+                # the one RTL file I have does things differently,
+                # and in line with this comment:
+                # https://fontforge-devel.narkive.com/s9C4jFO9/patch-1-2-fix-right-to-left-kerning
+                # i.e. the second glyph's Xadvance is adjusted by a negative number
+                # is this a hack to compensate for LTR-focussed real-world implementations?
+                # do they still mean the logical second (i.e. leftmost) glyph?
+                firsts = subtable.Coverage.glyphs
+                format1 = subtable.ValueFormat1 & 0xf
+                format2 = subtable.ValueFormat2 & 0xf
+                # first X_ADVANCE or second X_PLACEMENT
+                if format1 not in (0, 4) or format2 not in (0, 1, 4):
+                    logging.warning("Vertical and cross kerning not supported.")
+                for first, pairset in zip(firsts, subtable.PairSet):
+                    for record in pairset.PairValueRecord:
+                        second = record.SecondGlyph
+                        kern_value = 0
+                        direction = 'l'
+                        if format1 & 4:
+                            kern_value += record.Value1.XAdvance
+                        if format2 & 1:
+                            kern_value += record.Value2.XPlacement
+                        # oddly, this is how RTL kerning is recorded
+                        if format2 & 4 and not kern_value:
+                            direction = 'r'
+                            kern_value = record.Value2.XAdvance
+                        ktable = glyph_props.get(Tag(first), {})
+                        if kern_value:
+                            ktable[Tag(second)] = kern_value / hori_fu_p_pix
+                        else:
+                            logging.debug(
+                                'Dropped zero kerning value %s->%s',
+                                first, second
+                            )
+                        glyph_props[Tag(first)] = ktable
+        glyphs = tuple(
+            _g.modify(right_kerning=glyph_props.get(_g.tags[0], None))
+            if _g.tags and not _is_rtl(_g) else _g
+            for _g in glyphs
+        )
+        # interpret as left-hand kerning for RTL glyphs
+        glyphs = tuple(
+            _g.modify(left_kerning=glyph_props.get(_g.tags[0], None))
+            if _g.tags and _is_rtl(_g) else _g
+            for _g in glyphs
+        )
     return glyphs
 
+def _is_rtl(glyph):
+    """Determine if a glyph is RTL for GPOS kerning."""
+    return glyph.char and bidirectional(glyph.char)[:1] in ('R', 'A')
 
-def _convert_props(sfnt, i_strike):
-    """Build font properties from sfnt data."""
-    # determine the size of a pixel in FUnits
-    bmst = sfnt.bloc.strikes[i_strike].bitmapSizeTable
-    vert_fu_p_pix = sfnt.head.unitsPerEm / bmst.ppemY
-    hori_fu_p_pix = sfnt.head.unitsPerEm / bmst.ppemX
-    # we also had pixels per em in the EBLC table, so now we know units per pixel
-    props = _convert_bloc_props(sfnt.bloc, i_strike)
-    props |= _convert_head_props(sfnt.head)
-    props |= _convert_name_props(sfnt.name)
-    props |= _convert_hhea_props(sfnt.hhea, vert_fu_p_pix)
-    props |= _convert_vhea_props(sfnt.vhea, hori_fu_p_pix)
-    props._hfupp = hori_fu_p_pix
-    props._vfupp = vert_fu_p_pix
-    return props
+
+###############################################################################
+# 'EBLC' or 'bloc' table
 
 def _convert_bloc_props(bloc, i_strike):
     """Convert font properties from EBLC/bloc table."""
@@ -470,6 +562,9 @@ def _convert_bloc_props(bloc, i_strike):
     return props
 
 
+###############################################################################
+# 'head' or 'bhed' table
+
 # interpretation of head.macStyle flags
 _STYLE_MAP = {
     0: 'bold',
@@ -480,6 +575,7 @@ _STYLE_MAP = {
     5: 'condensed',
     6: 'extended',
 }
+
 def mac_style_name(font_style):
     """Get human-readable representation of font style."""
     return ' '.join(
@@ -496,6 +592,10 @@ def _convert_head_props(head):
     )
     return props
 
+
+###############################################################################
+# 'hhea' table
+
 def _convert_hhea_props(hhea, vert_fu_p_pix):
     """Convert font properties from hhea table."""
     return Props()
@@ -509,6 +609,10 @@ def _convert_hhea_props(hhea, vert_fu_p_pix):
         ),
     )
     return props
+
+
+###############################################################################
+# 'vhea' table
 
 def _convert_vhea_props(vhea, horiz_fu_p_pix):
     """Convert font properties from vhea table."""
@@ -528,6 +632,8 @@ def _convert_vhea_props(vhea, horiz_fu_p_pix):
     return props
 
 
+###############################################################################
+# 'name' table
 
 # based on:
 # [1] Apple Technotes (As of 2002)/te/te_02.html
@@ -610,7 +716,7 @@ def _convert_name_props(name):
         copyright=_decode_name(name.names, 0),
         family=_decode_name(name.names, 1),
         # weight or slant or both
-        subfamily=_decode_name(name.names, 2),
+        #subfamily=_decode_name(name.names, 2),
         font_id=_decode_name(name.names, 3),
         name=_decode_name(name.names, 4),
         #
@@ -630,4 +736,67 @@ def _convert_name_props(name):
         notice=_decode_name(name.names, 13),
         license_url=_decode_name(name.names, 14),
     )
+    return props
+
+
+###############################################################################
+# 'OS/2' table
+
+# usWeightClass
+_WEIGHT_MAP = {
+    100: 'thin',
+    200: 'extra-light',
+    300: 'light',
+    400: 'regular', # 'semi-light' in bdf
+    500: 'medium', # 'regular' in bdf
+    600: 'semi-bold',
+    700: 'bold',
+    800: 'extra-bold',
+    900: 'heavy',
+}
+
+# usWidthClass
+_SETWIDTH_MAP = {
+    1: 'ultra-condensed',
+    2: 'extra-condensed',
+    3: 'condensed',
+    4: 'semi-condensed',
+    5: 'normal', #'medium',
+    6: 'semi-expanded',
+    7: 'expanded',
+    8: 'extra-expanded',
+    9: 'ultra-expanded',
+}
+
+def _convert_os_2_props(os_2, vert_fu_p_pix, hori_fu_p_pix):
+    """Convert font properties from OS/2 table."""
+    if not os_2:
+        return Props()
+    weight = min(900, max(100, 100 * round(os_2.usWeightClass / 100)))
+    props = Props(
+        weight=_WEIGHT_MAP.get(weight, None),
+        setwidth=_SETWIDTH_MAP.get(os_2.usWidthClass, None),
+        subscript_size=os_2.ySubscriptYSize // vert_fu_p_pix,
+        subscript_offset=(
+            int(os_2.ySubscriptXOffset // hori_fu_p_pix),
+            -int(os_2.ySubscriptYOffset // vert_fu_p_pix)
+        ),
+        superscript_size=os_2.ySuperscriptYSize // vert_fu_p_pix,
+        superscript_offset=(
+            int(os_2.ySuperscriptXOffset // hori_fu_p_pix),
+            int(os_2.ySuperscriptYOffset // vert_fu_p_pix)
+        ),
+        ascent=os_2.sTypoAscender // vert_fu_p_pix,
+        descent=-os_2.sTypoDescender // vert_fu_p_pix,
+        line_height=(
+            os_2.sTypoAscender - os_2.sTypoDescender + os_2.sTypoLineGap
+        ) // vert_fu_p_pix,
+    )
+    if os_2.version > 1:
+        props |= Proops(
+            x_height=os_2.sxHeight // vert_fu_p_pix,
+            cap_height=os_2.sCapHeight // vert_fu_p_pix,
+            default_char=Char(chr(os_2.usDefaultChar)),
+            word_boundary=Char(chr(os_2.usBreakChar)),
+        )
     return props

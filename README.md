@@ -115,7 +115,7 @@ Supported formats
 | Bitmap image [P]      | `image`    |          | `.png` `.gif` `.bmp`        |               | ✔     | ✔     |
 | JSON coded binary     | `json`     |          | `.json`                     |               | ✔     | ✔     |
 | `kbd` Codepage        | `kbd-cp`   |          | `.cp`                       | Linux         | ✔     | ✔     |
-| MacOS font            | `mac-dfont`| FONT NFNT+FOND | `.dfont` `.suit`      | Classic MacOS | ✔     |       |
+| MacOS font            | `mac-dfont`| FONT NFNT SFNT | `.dfont` `.suit`      | Classic MacOS | ✔     |       |
 | REXXCOM Font Mania    | `mania`    |          | `.com`                      | DOS           | ✔     |       |
 | Optiks PCR Font       | `pcr`      |          | `.pcr`                      | DOS           | ✔     |       |
 | PCPaint, GRASP, ChiWriter | `pcpaint` | old 3 4 | `.set` `.fnt`  `.sft` `.pft` `.eft` ... | DOS | ✔ |       |
@@ -124,6 +124,7 @@ Supported formats
 | PC Screen Font        | `psf`      | 1 2      | `.psf` `.psfu`              | MS-DOS, Linux | ✔     | ✔ (version 2) |
 | PSF2AMS PSFCOM        | `psfcom`   |          | `.com`                      | Z80 CP/M      | ✔     |       |
 | Python coded binary   | `python`   |          | `.py`                       |               | ✔     | ✔     |
+| SFNT embedded bitmap  | `sfnt`     |          | `.otb` `.ttf` `.otf` [F] [**] |               | ✔     |       |
 | Signum! 2  | `signum-*` | editor 9-pin 24-pin laser | `.e24` `.p9` `.p24` `.l30` | Atari ST | ✔     |       |
 | vfont                 | `vfont`    |          |                             | BSD, SunOS    | ✔     | ✔     |
 | Windows resource      | `win-fnt`  | 1.0 2.0 3.0    | `.fnt`                | Windows 1.x 2.x 3.x | ✔  | ✔ (2.0, 3.0)       |
@@ -133,7 +134,7 @@ Supported formats
 
 [P] - requires **PIL**  
 [R] - requires **reportlab**  
-
+[F] - requires **fontTools**
 
 [*] Identifying raw binary files
 --------------------------------
@@ -157,6 +158,19 @@ It is also useful to check the file size. Raw files commonly hold 96 (ASCII excl
 
 
 If your unidentified font file has one of these sizes, chances are it is a raw binary file.
+
+
+[**] TrueType / OpenType embedded bitmaps
+-----------------------------------------
+
+`monobit` can extract bitmaps embedded in TrueType and OpenType font files. It
+should be kept in mind that these are primarily intended as scalable formats,
+and only exceptionally embed bitmaps to improve rendering on low-resolution displays.
+
+_The vast majority of `.ttf`, `.otf`, `.dfont` etc. files do not contain bitmaps at all_.
+This is true even for fonts with a pixelised look.
+To convert these you first need to _rasterise_ them, which `monobit` does not do.
+Some of the other font tools linked below do have rasterising features.
 
 
 Font format features
@@ -213,6 +227,7 @@ Dependencies
 Some formats require
 - **PIL** (`Pillow`)
 - **reportlab**
+- **fontTools**
 
 The renderer additionally employs
 - **uniseg**
@@ -221,7 +236,7 @@ The renderer additionally employs
 
 All can be installed through Pip:
 
-    pip install Pillow reportlab uniseg python-bidi arabic-reshaper
+    pip install Pillow reportlab fonttools uniseg python-bidi arabic-reshaper
 
 Without these packages, some functionality may not be available.
 
