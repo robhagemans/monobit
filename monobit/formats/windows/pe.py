@@ -8,11 +8,12 @@ monobit.formats.windows.pe - Windows 32-bit PE executable header
 See `LICENSE.md` in this package's directory.
 """
 
-
+import io
 import logging
 
 from ...struct import little_endian as le
 from ...streams import FileFormatError
+from ..sfnt import load_sfnt
 from .fnt import parse_fnt
 
 
@@ -91,7 +92,12 @@ def _parse_pe(data, peoff):
     # find the resource section
     for section in section_table:
         if section.Name == b'.rsrc':
-            logging.debug('Found section `%s`', section.Name.decode('latin-1'))
+            logging.debug(
+                'Found section `%s` of size 0x%X at offset 0x%X',
+                section.Name.decode('latin-1'),
+                section.SizeOfRawData,
+                section.PointerToRawData
+            )
             break
         logging.debug('Skipping section `%s`', section.Name.decode('latin-1'))
     else:
@@ -108,10 +114,24 @@ def _parse_pe(data, peoff):
     for data_entry in dataentries:
         start = data_entry.OffsetToData - section.VirtualAddress
         try:
-            font = parse_fnt(rsrc[start : start+data_entry.Size])
+            # in a PE this could also be an sfnt resource.
+            # both may start with \0\1 (sfnt \0\1\0\0, FNT \0\1, \0\2 or \0\3
+            # but it is unlikely that a Windows 1.0 FNT \0\1 resource
+            # is stored in a Windows NT PE file.
+            magic = rsrc[start:start+4]
+            if magic == b'\0\1\0\0':
+                # parse as sfnt
+                bytesio = io.BytesIO(rsrc[start:])
+                fonts = load_sfnt(bytesio)
+                ret.extend(fonts)
+            else:
+                # parse as FNT
+                font = parse_fnt(rsrc[start : start+data_entry.Size])
+                ret.append(font)
         except ValueError as e:
-            raise FileFormatError('Failed to read font resource at {:x}: {}'.format(start, e))
-        ret = ret + [font]
+            raise FileFormatError(
+                'Failed to read font resource at {:x}: {}'.format(start, e)
+            )
     return ret
 
 def _traverse_dirtable(rsrc, off, rtype):
