@@ -91,7 +91,9 @@ def _parse_pe(data, peoff):
     # find the resource section
     for section in section_table:
         if section.Name == b'.rsrc':
+            logging.debug('Found section `%s`', section.Name.decode('latin-1'))
             break
+        logging.debug('Skipping section `%s`', section.Name.decode('latin-1'))
     else:
         raise FileFormatError('Unable to locate resource section')
     # Now we've found the resource section, let's throw away the rest.
@@ -118,10 +120,11 @@ def _traverse_dirtable(rsrc, off, rtype):
     resdir = _IMAGE_RESOURCE_DIRECTORY.from_bytes(rsrc, off)
     number = resdir.NumberOfNamedEntries + resdir.NumberOfIdEntries
     # followed by resource directory entries
-    direntry_array = _IMAGE_RESOURCE_DIRECTORY_ENTRY * number
+    direntry_array = _IMAGE_RESOURCE_DIRECTORY_ENTRY.array(number)
     direntries = direntry_array.from_bytes(rsrc, off+_IMAGE_RESOURCE_DIRECTORY.size)
     dataentries = []
     for entry in direntries:
+        logging.debug('Found resource of type %d', entry.Id)
         if rtype in (entry.Id, None):
             off = entry.OffsetToData
             if off & (1<<31):

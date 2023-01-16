@@ -8,7 +8,10 @@ monobit.formats.windows - Windows FON and FNT files
 See `LICENSE.md` in this package's directory.
 """
 
+import logging
+
 from ...storage import loaders, savers
+from ...streams import FileFormatError
 from .fnt import parse_fnt, create_fnt
 from .ne import _parse_ne, _create_fon
 from .pe import _parse_pe
@@ -55,9 +58,11 @@ def load_win_fon(instream, where=None):
         raise FileFormatError('MZ signature not found. Not a Windows .FON file')
     ne_magic = data[mz_header.ne_offset:mz_header.ne_offset+2]
     if ne_magic == b'NE':
+        logging.debug('File is in NE (16-bit Windows executable) format')
         fonts = _parse_ne(data, mz_header.ne_offset)
     elif ne_magic == b'PE':
         # PE magic should be padded by \0\0 but I'll believe it at this stage
+        logging.debug('File is in PE (32-bit Windows executable) format')
         fonts = _parse_pe(data, mz_header.ne_offset)
     else:
         raise FileFormatError(
