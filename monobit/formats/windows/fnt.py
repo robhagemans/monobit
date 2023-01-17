@@ -9,6 +9,7 @@ See `LICENSE.md` in this package's directory.
 """
 
 
+import io
 import string
 import logging
 import itertools
@@ -17,6 +18,7 @@ from ...binary import bytes_to_bits, ceildiv, align
 from ...struct import little_endian as le
 from ...properties import reverse_dict
 from ...streams import FileFormatError
+from ...properties import Props
 from ...font import Font
 from ...glyph import Glyph
 
@@ -331,6 +333,13 @@ _GLYPH_ENTRY = {
     0x300: _GLYPH_ENTRY_3,
 }
 
+# proportional vector font
+# these have width and offset swapped compared to thhe v2 bitmap format
+_GLYPH_ENTRY_PVECTOR = le.Struct(
+    geOffset='word',
+    geWidth='word',
+)
+
 
 ##############################################################################
 # windows .FNT reader
@@ -358,6 +367,8 @@ def _extract_win_props(data):
 
 def _extract_glyphs(data, win_props):
     """Read a WinFont character table."""
+    if win_props.dfType & 1:
+        return _extract_vector_glyphs(data, win_props)
     if win_props.dfVersion == 0x100:
         return _extract_glyphs_v1(data, win_props)
     return _extract_glyphs_v2(data, win_props)
@@ -418,6 +429,78 @@ def _extract_glyphs_v2(data, win_props):
         glyphs.append(glyph)
     return glyphs
 
+
+def _extract_vector_glyphs(data, win_props):
+    """Read a vector character table."""
+    n_chars = win_props.dfLastChar - win_props.dfFirstChar + 1
+    ct_start = _FNT_HEADER_SIZE[win_props.dfVersion]
+    if not win_props.dfPixWidth:
+        # proportional font
+        # always 2x2 bytes for prop. vector
+        glyph_entry_array = _GLYPH_ENTRY_PVECTOR.array(n_chars+1)
+    else:
+        # fixed-width vector font
+        glyph_entry_array = _GLYPH_ENTRY_1.array(n_chars+1)
+    entries = glyph_entry_array.from_bytes(data, ct_start)
+    offsets = tuple(_entry.geOffset for _entry in entries)
+    if not win_props.dfPixWidth:
+        widths = tuple(_entry.geWidth for _entry in entries)
+    else:
+        widths = tuple(win_props.dfPixWidth) * (n_chars+1)
+    offset = win_props.dfBitsOffset
+    glyphbytes = tuple(
+        data[offset+_offset:offset+_next]
+        for _offset, _next in zip(offsets, offsets[1:])
+    )
+    glyphdata = tuple(
+        Props(codepoint=_cp, width=_w, code=_b)
+        for _cp, (_w, _b) in enumerate(
+            zip(widths, glyphbytes),
+            win_props.dfFirstChar
+        )
+    )
+    return _convert_vector_glyphs(glyphdata)
+
+
+def _convert_vector_glyphs(glyphdata):
+    """Convert a vector character table to paths."""
+    # convert glyphdata to paths
+    glyphs = []
+    for i, glyphrec in enumerate(glyphdata):
+        # \x80 (-128) is the pen-up sentinel
+        # all other bytes form signed int8 coordinate pairs
+        it = io.BytesIO(glyphrec.code)
+        ink = True
+        path = []
+        while True:
+            x = it.read(1)
+            if not x:
+                break
+            if x == b'\x80':
+                ink = False
+                continue
+            y = it.read(1)
+            if not y:
+                logging.warning('Vector glyph has truncated path definition')
+                break
+            path.append((ink, le.int8.from_bytes(x), le.int8.from_bytes(y)))
+            ink = True
+        # we're going to get the paths out of here
+        # as a custom property of an empty bitmap glyph
+        # this is a bit of a hack
+        svgpath = '\n'.join((
+            ' '.join(('l' if _ink else 'm', str(_x), str(_y)))
+            for _ink, _x, _y in path
+        ))
+        glyph = Glyph.blank(
+            path=svgpath,
+            codepoint=glyphrec.codepoint,
+            right_bearing=glyphrec.width
+        )
+        glyphs.append(glyph)
+    return glyphs
+
+
 def bytes_to_str(s, encoding='latin-1'):
     """Extract null-terminated string from bytes."""
     if b'\0' in s:
@@ -428,7 +511,7 @@ def _convert_win_props(data, win_props):
     """Convert WinFont properties to yaff properties."""
     version = win_props.dfVersion
     if win_props.dfType & 1:
-        raise FileFormatError('Not a Windows bitmap font')
+        logging.warning('This is a vector font')
     logging.info('Windows FNT properties:')
     for key, value in win_props.__dict__.items():
         logging.info('    {}: {}'.format(key, value))
