@@ -931,7 +931,7 @@ class Font:
             self, *,
             codepoint_from:encoder='', char_from:encoder='',
             tag_from:tagger='', comment_from:tagger='',
-            overwrite:bool=False
+            overwrite:bool=False, match_whitespace:bool=True,
         ):
         """
         Add character and codepoint labels.
@@ -941,6 +941,7 @@ class Font:
         tag_from: tagger registered name or filename to use to set tag labels
         comment_from: tagger registered name or filename to use to set comments
         overwrite: overwrite existing codepoints and/or characters
+        match_whitespace: do not give blank glyphs a non-whitespace char label (default: true)
         """
         nargs = sum(
             bool(_arg)
