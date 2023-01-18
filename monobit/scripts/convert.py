@@ -95,8 +95,6 @@ def main():
                 operation = operations[args.command]
                 if operation == monobit.load:
                     fonts += operation(*args.args, **args.kwargs)
-                elif operation == monobit.save:
-                    operation(fonts, *args.args, **args.kwargs)
                 elif operation.pack_operation:
                     fonts = operation(fonts, *args.args, **args.kwargs)
                 else:

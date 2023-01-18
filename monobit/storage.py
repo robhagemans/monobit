@@ -185,6 +185,7 @@ def save(
             _save_all(pack, container, format, **kwargs)
         else:
             _save_to_file(pack, stream, container, format, **kwargs)
+    return pack_or_font
 
 def _save_all(pack, where, format, **kwargs):
     """Save fonts to a container."""
