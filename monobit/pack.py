@@ -7,7 +7,8 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
-from .font import Font
+from .font import Font, FontProperties
+from .scripting import scriptable, get_scriptables
 
 
 class Pack:
@@ -35,11 +36,25 @@ class Pack:
     def __add__(self, other):
         return Pack(self._fonts + Pack(other)._fonts)
 
+    @scriptable(pack_operation=True)
+    def get(self, index:int=0):
+        """
+        Get a single-font pack by index.
+
+        index: which font to pick; 0 is first, -1 is last (default: zero)
+        """
+        logging.debug(repr(index))
+        return self[index]
+
+    @scriptable(
+        pack_operation=True,
+        script_args=FontProperties.__annotations__.items()
+    )
     def select(self, **properties):
-        """Get a subset from the pack by property. E.g. select(name='Times')."""
+        """Get a subset of fonts from the pack by property. E.g. select(name='Times')."""
         return Pack(
             _font
-            for _font in self._fonts
+            for _font in self
             if all(
                 getattr(_font, _property) == _value
                 for _property, _value in properties.items()
@@ -49,3 +64,7 @@ class Pack:
     def list_by(self, property):
         """List property of fonts in collection."""
         return tuple(getattr(_font, property) for _font in self._fonts)
+
+
+# scriptable font/glyph operations
+operations = get_scriptables(Pack)

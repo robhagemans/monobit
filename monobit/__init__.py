@@ -10,7 +10,7 @@ import sys as _sys
 assert _sys.version_info >= (3, 7)
 
 from .constants import VERSION as __version__
-from .pack import Pack
+from .pack import Pack, operations as _pack_operations
 from .font import Font, operations as _operations
 from .glyph import Glyph
 from . import formats
@@ -21,6 +21,7 @@ from .renderer import render
 from .labels import Char, Codepoint, Tag
 
 
+_operations.update(_pack_operations)
 # inject font operations into main module namespace
 globals().update(_operations)
 

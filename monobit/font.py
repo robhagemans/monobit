@@ -1031,10 +1031,7 @@ class Font:
 
 
     # WARNING: this shadows builtin set() in any annotations for method definitions below
-    @scriptable(script_args={
-        _k.replace('_', '-'): _v
-        for _k, _v in FontProperties.__annotations__.items()
-    })
+    @scriptable(script_args=FontProperties.__annotations__.items())
     def set(self, **kwargs):
         """Return a copy of the font with one or more recognised properties changed."""
         kwargs = {
