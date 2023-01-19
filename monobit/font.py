@@ -964,27 +964,24 @@ class Font:
                 encoding = char_from.name
             elif codepoint_from:
                 encoding = codepoint_from.name
+        kwargs = dict(
+            overwrite=overwrite,
+            match_whitespace=match_whitespace,
+        )
         if codepoint_from:
-            return self.modify(encoding=encoding, glyphs=tuple(
-                _glyph.label(codepoint_from=codepoint_from, overwrite=overwrite)
-                for _glyph in self._glyphs
-            ))
-        if char_from:
-            return self.modify(encoding=encoding, glyphs=tuple(
-                _glyph.label(char_from=char_from, overwrite=overwrite)
-                for _glyph in self._glyphs
-            ))
-        if tag_from:
-            return self.modify(encoding=encoding, glyphs=tuple(
-                _glyph.label(tag_from=tag_from, overwrite=overwrite)
-                for _glyph in self._glyphs
-            ))
-        if comment_from:
-            return self.modify(encoding=encoding, glyphs=tuple(
-                _glyph.label(comment_from=comment_from, overwrite=overwrite)
-                for _glyph in self._glyphs
-            ))
-        return self
+            kwargs.update(dict(codepoint_from=codepoint_from))
+        elif char_from:
+            kwargs.update(dict(char_from=char_from))
+        elif tag_from:
+            kwargs.update(dict(tag_from=tag_from))
+        elif comment_from:
+            kwargs.update(dict(comment_from=comment_from))
+        else:
+            return self
+        return self.modify(encoding=encoding, glyphs=tuple(
+            _glyph.label(**kwargs)
+            for _glyph in self._glyphs
+        ))
 
     # need converter from string to set of labels to script this
     #@scriptable
