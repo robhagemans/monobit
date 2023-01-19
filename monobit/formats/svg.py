@@ -40,7 +40,7 @@ def save_svg(
     outfile = outfile.text
     outfile.write(_HEADER)
     outfile.write(f'<font id="{font.family}" horiz-adv-x="{ceil(font.average_width)}">\n')
-    outfile.write(f'<font-face font-family="{font.family}" units-per-em="{font.line_height}" />\n')
+    outfile.write(f'<font-face font-family="{font.family}" units-per-em="{font.pixel_size}" />\n')
     for i, glyph in enumerate(font.glyphs):
         if glyph.path:
             svgpath = ' '.join(glyph.path.split('\n'))
