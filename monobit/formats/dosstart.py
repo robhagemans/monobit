@@ -72,6 +72,7 @@ def _read_dsf_format_0(instream):
         x, y = 0, 0
         pixels = []
         visited = []
+        path = []
         offset = 0
         width, height = 0, 0
         while True:
@@ -81,12 +82,18 @@ def _read_dsf_format_0(instream):
             ink = mode != 'b'
             move = mode != 'n'
             step, offset = _read_stepsize(code, offset)
+            dx, dy = _move_turtle(direction)
+            pathmove = 'l' if ink else 'm'
+            path.append(f'{pathmove} {dx*step} {dy*step}')
+            if not move:
+                path.append(f'm {-dx*step} {-dy*step}')
             nx, ny = x, y
             for _ in range(step):
                 if ink:
                     pixels.append((nx, ny))
                 visited.append((nx, ny))
-                nx, ny = _move_turtle(nx, ny, direction)
+                nx += dx
+                ny += dy
             if ink:
                 pixels.append((nx, ny))
             visited.append((nx, ny))
@@ -112,6 +119,7 @@ def _read_dsf_format_0(instream):
             right_bearing=advance-max_x,
             codepoint=0x20+i,
             shift_up=min_y if min_y else None,
+            path='\n'.join(path),
         )
         glyphs.append(glyph)
     return glyphs
@@ -149,14 +157,15 @@ def _read_stepsize(code, offset):
         return 1, offset
     return int(''.join(num)), offset
 
-def _move_turtle(nx, ny, cmd):
+def _move_turtle(cmd):
     """Move the turtle one step in the given direction."""
+    dx, dy = 0, 0
     if cmd in ('u', 'e', 'h'):
-        ny += 1
+        dy += 1
     if cmd in ('r', 'e', 'f'):
-        nx += 1
+        dx += 1
     if cmd in ('d', 'f', 'g'):
-        ny -= 1
+        dy -= 1
     if cmd in ('l', 'g', 'h'):
-        nx -= 1
-    return nx, ny
+        dx -= 1
+    return dx, dy
