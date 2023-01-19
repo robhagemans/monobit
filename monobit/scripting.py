@@ -61,7 +61,6 @@ def scriptable(
         @wraps(func)
         def _scriptable_func(*args, **kwargs):
             global _record
-            logging.debug(args)
             # apply converters to argument
             conv_kwargs = {}
             for kwarg, value in kwargs.items():

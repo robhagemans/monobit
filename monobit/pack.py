@@ -43,7 +43,6 @@ class Pack:
 
         index: which font to pick; 0 is first, -1 is last (default: zero)
         """
-        logging.debug(repr(index))
         return self[index]
 
     @scriptable(
