@@ -200,6 +200,8 @@ class FontProperties(DefaultProps):
     max_advance: int
     cap_advance: int
 
+    # path segments for stroke fonts
+    path: str
 
     @writable_property
     def name(self):
