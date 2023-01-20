@@ -273,7 +273,7 @@ class FontProperties(DefaultProps):
         """Vertical distance between consecutive baselines, in pixels."""
         if 'leading' in vars(self):
             return self.pixel_size + self.leading
-        return self.raster_size.y
+        return max(self.raster_size.y, self.pixel_size)
 
     @writable_property
     def line_width(self):
