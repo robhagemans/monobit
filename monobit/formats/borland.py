@@ -10,9 +10,7 @@ import logging
 from ..storage import loaders, savers
 from ..font import Font
 from ..glyph import Glyph
-from ..raster import Raster
 from ..struct import little_endian as le, bitfield
-from ..binary import ceildiv
 
 
 _BGI_MAGIC = b'PK\b\bBGI '
@@ -79,6 +77,7 @@ def load_borland(instream, where=None):
 
 
 def _read_borland(instream):
+    """Read a Borland BGI stroke font."""
     magic = instream.read(8)
     if magic != _BGI_MAGIC:
         raise FileFormatError(
