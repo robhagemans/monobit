@@ -469,31 +469,23 @@ def _convert_vector_glyphs(glyphdata):
     for i, glyphrec in enumerate(glyphdata):
         # \x80 (-128) is the pen-up sentinel
         # all other bytes form signed int8 coordinate pairs
-        it = io.BytesIO(glyphrec.code)
-        ink = True
+        code = le.int8.array(len(glyphrec.code)).from_bytes(glyphrec.code)
+        it = iter(code)
+        ink = 'l'
         path = []
-        while True:
-            x = it.read(1)
-            if not x:
-                break
-            if x == b'\x80':
-                ink = False
+        for x in it:
+            if x == -128:
+                ink = 'm'
                 continue
-            y = it.read(1)
-            if not y:
+            try:
+                y = next(it)
+            except StopIteration:
                 logging.warning('Vector glyph has truncated path definition')
                 break
-            path.append((ink, le.int8.from_bytes(x), le.int8.from_bytes(y)))
-            ink = True
-        # we're going to get the paths out of here
-        # as a custom property of an empty bitmap glyph
-        # this is a bit of a hack
-        svgpath = '\n'.join((
-            ' '.join(('l' if _ink else 'm', str(_x), str(_y)))
-            for _ink, _x, _y in path
-        ))
+            path.append(f'{ink} {x} {y}')
+            ink = 'l'
         glyph = Glyph.blank(
-            path=svgpath,
+            path='\n'.join(path),
             codepoint=glyphrec.codepoint,
             right_bearing=glyphrec.width
         )
