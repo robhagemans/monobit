@@ -84,8 +84,8 @@ characters, set a margin, scale text, and rotate by quarter turns.
 Check `monobit-banner --help` for usage.
 
 
-Supported formats
------------------
+Supported bitmap formats
+------------------------
 
 | Format                | Short Name | Version  | Typical Extension           | Native OS     | Read  | Write |
 |-----------------------|------------|----------|-----------------------------|---------------|-------|-------|
@@ -132,8 +132,8 @@ Supported formats
 | SFNT embedded bitmap  | `sfnt`     |          | `.otb` `.ttf` `.otf` [F] [**] |             | ✔     |       |
 | Signum! 2  | `signum-*` | editor 9-pin 24-pin laser | `.e24` `.p9` `.p24` `.l30` | Atari ST | ✔     |       |
 | vfont                 | `vfont`    |          |                             | BSD, SunOS    | ✔     | ✔     |
-| Windows resource      | `win-fnt`  | 1.0 2.0 3.0    | `.fnt`                | Windows 1.x 2.x 3.x | ✔  | ✔ (2.0, 3.0)       |
-| Windows font          | `win-fon`  | 1.0 2.0 3.0 NE PE | `.fon`             | Windows 1.x 2.x 3.x | ✔  | ✔ (2.0 NE, 3.0 NE) |
+| Windows resource      | `win-fnt`  | 1.0 2.0 3.0    | `.fnt`                | 16-bit Windows | ✔    | ✔     |
+| Windows font          | `win-fon`  | 1.0 2.0 3.0 NE PE | `.fon`             | 16-bit Windows | ✔   | ✔ (NE) |
 | XBIN font section     | `xbin`     |          | `.xb`                       | DOS           | ✔     |       |
 
 
@@ -225,6 +225,27 @@ archive and compression formats:
 | AppleDouble   | `.adf` `.rsrc`              | ✔     |       |
 | MacBinary     | `.bin`                      | ✔     |       |
 | BinHex 4.0    | `.hqx`                      | ✔     |       |
+
+
+
+Stroke formats
+--------------
+
+Stroke font support is experimental. Stroke fonts are scalable fonts defined as
+line segments. They are fundamentally different from modern fonts in that they
+define single strokes whereas modern fonts define outlines to be filled with ink.
+Additionally, the fonts currently supported consist of straight line segments only.
+
+
+| Format                     | Short Name | Typical Extension | Read  | Write |
+|----------------------------|------------|-------------------|-------|-------|
+| monobit yaff               | `yaff`     | `.yaff`           | ✔     | ✔     |
+| SVG Fonts                  | `svg`      | `.svg`            | ✔     | ✔     |
+| Windows resource           | `win-fnt`  | `.fnt`            | ✔     | ✔     |
+| Windows font               | `win-fon`  | `.fon`            | ✔    | ✔ (NE) |
+| Borland Graphics Interface | `borland`  | `.bgi`            | ✔     |       |
+| Hershey fonts (Jim Hurt)   | `hurt`     | `.jhf`            | ✔     |       |
+| DOSStart                   | `dosstart` | `.dsf`            | ✔     |       |
 
 
 Dependencies
