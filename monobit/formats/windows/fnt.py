@@ -21,6 +21,7 @@ from ...streams import FileFormatError
 from ...properties import Props
 from ...font import Font
 from ...glyph import Glyph
+from ...raster import Raster
 from ...vector import StrokePath
 
 
@@ -404,7 +405,8 @@ def _extract_glyphs_v1(data, win_props):
             _srow[offset:offset+width]
             for _srow in strikerows
         )
-        glyphs.append(Glyph(rows, codepoint=(win_props.dfFirstChar + ord,)))
+        glyph = Glyph(rows, codepoint=(win_props.dfFirstChar + ord,))
+        glyphs.append(glyph)
     return glyphs
 
 def _extract_glyphs_v2(data, win_props):
@@ -754,7 +756,7 @@ def _convert_to_fnt_props(
         dfDefaultChar=default_ord - min_ord,
         dfBreakChar=break_ord - min_ord,
         # round up to multiple of 2 bytes to word-align v1.0 strikes (not used for v2.0+ ?)
-        dfWidthBytes=align(ceildiv(font.raster_size.x, 8), 1),
+        dfWidthBytes=align(ceildiv(font.raster_size.x*(max_ord-min_ord+1), 8), 1),
         dfDevice=device_name_offset,
         dfFace=face_name_offset,
         dfBitsPointer=0, # used on loading
@@ -771,11 +773,15 @@ def _convert_to_fnt_props(
 
 def _convert_to_fnt_glyphs(font, version, vector, add_shift_up):
     """Convert glyphs to FNT bitmaps and offset tables."""
-    if (not vector) and version not in (0x200, 0x300):
-        raise FileFormatError(
-            f'Writing to version {version:#x} bitmap FNT not supported.'
-        )
-    if not vector:
+    if vector:
+        # vector glyph data
+        # this should equal the dfAscent value
+        win_ascent = font.raster_size.y - add_shift_up
+        bitmaps = _convert_vector_glyphs_to_fnt(font.glyphs, win_ascent)
+    elif version == 0x100:
+        strike = Raster.concatenate(*(_g.pixels for _g in font.glyphs))
+        bitmaps = (strike.as_bytes(),)
+    else:
         # create the bitmaps
         bitmaps = (_glyph.as_bytes() for _glyph in font.glyphs)
         # bytewise transpose - .FNT stores as contiguous 8-pixel columns
@@ -786,11 +792,6 @@ def _convert_to_fnt_glyphs(font, version, vector, add_shift_up):
             )
             for _glyph, _bm in zip(font.glyphs, bitmaps)
         )
-    else:
-        # vector glyph data
-        # this should equal the dfAscent value
-        win_ascent = font.raster_size.y - add_shift_up
-        bitmaps = _convert_vector_glyphs_to_fnt(font.glyphs, win_ascent)
     glyph_offsets = [0] + list(itertools.accumulate(len(_bm) for _bm in bitmaps))
     if not vector:
         glyph_entry = _GLYPH_ENTRY[version]
@@ -798,20 +799,23 @@ def _convert_to_fnt_glyphs(font, version, vector, add_shift_up):
         glyph_entry = _GLYPH_ENTRY_PVECTOR
     offset_bitmaps = (
         _FNT_HEADER.size + _FNT_HEADER_EXT[version].size
-        + len(font.glyphs)*glyph_entry.size
     )
     # vector format and v1 do not include dfBitmapOffset in the table
-    if vector:
+    if vector or version==0x100:
         base_offset = 0
     else:
         base_offset = offset_bitmaps
-    char_table = (
-        bytes(glyph_entry(
-            geWidth=_glyph.width,
-            geOffset=base_offset + _glyph_offset
-        ))
-        for _glyph, _glyph_offset in zip(font.glyphs, glyph_offsets)
-    )
+    if version==0x100 and font.spacing == 'character-cell':
+        char_table = (b'',)
+    else:
+        char_table = (
+            bytes(glyph_entry(
+                geWidth=_glyph.width,
+                geOffset=base_offset + _glyph_offset
+            ))
+            for _glyph, _glyph_offset in zip(font.glyphs, glyph_offsets)
+        )
+        offseet_bitmaps += len(font.glyphs) * glyph_entry.size
     return bitmaps, char_table, offset_bitmaps
 
 
