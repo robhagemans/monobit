@@ -87,10 +87,9 @@ class Canvas(Raster):
         if not raster.width or not self.width:
             return self
         matrix = raster.as_matrix()
-        for work_y in range(raster.height):
-            y_index = grid_y - work_y - 1
-            if 0 <= y_index < self.height:
-                row = self._pixels[y_index]
+        for work_y in reversed(range(raster.height)):
+            if 0 <= grid_y + work_y < self.height:
+                row = self._pixels[self.height - (grid_y + work_y) - 1]
                 for work_x, ink in enumerate(matrix[raster.height - work_y - 1]):
                     if 0 <= grid_x + work_x < self.width:
                         row[grid_x + work_x] = operator(ink, row[grid_x + work_x])
@@ -190,8 +189,7 @@ def _render_horizontal(
     # descent-line of the bottom-most row is at bottom margin
     # if a glyph extends below the descent line or left of the origin,
     # it may draw into the margin
-    # raster_size.y moves from canvas origin to raster origin (bottom line)
-    baseline = font.ascent
+    baseline = canvas.height - margin_y - font.ascent
     for glyph_row in glyphs:
         # x, y are relative to the left margin & baseline
         x = 0
@@ -204,14 +202,12 @@ def _render_horizontal(
                 x += glyph.left_kerning.get_for_glyph(prev)
             prev = glyph
             # offset + (x, y) is the coordinate of glyph matrix origin
-            # grid_x, grid_y are canvas coordinates relative to top left of canvas
-            # canvas y coordinate increases *downwards* from top of line
             grid_x.append(glyph.left_bearing + x)
-            grid_y.append(baseline - glyph.shift_up)
+            grid_y.append(glyph.shift_up + baseline)
             # advance origin to next glyph
             x += glyph.advance_width
         if align == 'right':
-            start = self.width - margin_x - x
+            start = canvas.width - margin_x - x
         else:
             start = margin_x
         for glyph, x, y in zip(glyph_row, grid_x, grid_y):
@@ -219,7 +215,7 @@ def _render_horizontal(
             # in case of negative bearings
             canvas.blit(glyph.pixels, start + x, margin_y + y)
         # move to next line
-        baseline += font.line_height
+        baseline -= font.line_height
     return canvas
 
 def _render_vertical(
@@ -235,16 +231,16 @@ def _render_vertical(
         for count, glyph in enumerate(glyph_row):
             # advance origin to next glyph
             if count:
-                y += adjust_bearings
-            y += glyph.advance_height
-            grid_y.append(y - glyph.bottom_bearing)
+                y -= adjust_bearings
+            y -= glyph.advance_height
+            grid_y.append(y + glyph.bottom_bearing)
             grid_x.append(
                 baseline - glyph.width // 2 - glyph.shift_left
             )
         if align == 'bottom':
-            start = len(canvas) - margin_y - y
+            start = margin_y - y
         else:
-            start = margin_y
+            start = canvas.height - margin_y
         for glyph, x, y in zip(glyph_row, grid_x, grid_y):
             # add ink, taking into account there may be ink already
             # in case of negative bearings
