@@ -274,10 +274,10 @@ def _create_resident_name_table(pack):
     return bytes([len(mname)]) + mname.encode('ascii') + b'\0\0\0'
 
 
-def _create_resource_data(pack, version):
+def _create_resource_data(pack, version, vector):
     """Store the actual font resources."""
     # construct the FNT resources
-    fonts = [create_fnt(_font, version) for _font in pack]
+    fonts = [create_fnt(_font, version, vector) for _font in pack]
     # construct the FONTDIR (FONTGROUPHDR)
     # https://docs.microsoft.com/en-us/windows/desktop/menurc/fontgrouphdr
     fontdir_struct = le.Struct(
@@ -298,7 +298,7 @@ def _create_resource_data(pack, version):
     return resdata, font_start
 
 
-def _create_fon(pack, version=0x200):
+def _create_fon(pack, version=0x200, vector=False):
     """Create a .FON font library."""
     n_fonts = len(pack)
     # MZ DOS executable stub
@@ -309,7 +309,7 @@ def _create_fon(pack, version=0x200):
     # entry table / imported names table should contain a zero word.
     entry = b'\0\0'
     # the actual font data
-    resdata, font_start = _create_resource_data(pack, version)
+    resdata, font_start = _create_resource_data(pack, version, vector)
     # create resource table and align
     header_size = len(stubdata) + _NE_HEADER.size
     post_size = len(res) + len(entry) + len(nonres)

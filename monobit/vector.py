@@ -44,6 +44,10 @@ class StrokePath:
             ' '.join(str(_i) for _i in _move) for _move in self._path
         )
 
+    def as_moves(self):
+        """Tuple of moves."""
+        return tuple(self._path)
+
     @classmethod
     def from_string(cls, pathstr):
         """Build from string representation."""

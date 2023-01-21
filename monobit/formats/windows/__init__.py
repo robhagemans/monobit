@@ -32,16 +32,17 @@ def load_win_fnt(instream, where=None):
     return font
 
 @savers.register(linked=load_win_fnt)
-def save_win_fnt(fonts, outstream, where=None, version:int=2):
+def save_win_fnt(fonts, outstream, where=None, version:int=2, vector:bool=False):
     """
     Save font to a Windows .FNT resource.
 
-    version: Windows font format version
+    version: Windows font format version (default 2)
+    vector: output a vector font (if the input font has stroke paths defined; default False)
     """
     if len(fonts) > 1:
         raise FileFormatError('Can only save one font to Windows font resource.')
     font = fonts[0]
-    outstream.write(create_fnt(font, version*0x100))
+    outstream.write(create_fnt(font, version*0x100, vector))
     return font
 
 
@@ -79,10 +80,11 @@ def load_win_fon(instream, where=None):
     return fonts
 
 @savers.register(linked=load_win_fon)
-def save_win_fon(fonts, outstream, where=None, version:int=2):
+def save_win_fon(fonts, outstream, where=None, version:int=2, vector:bool=False):
     """
     Save fonts to a Windows .FON container.
 
-    version: Windows font format version
+    version: Windows font format version (default 2)
+    vector: output a vector font (if the input font has stroke paths defined; default False)
     """
-    outstream.write(_create_fon(fonts, version*0x100))
+    outstream.write(_create_fon(fonts, version*0x100, vector))
