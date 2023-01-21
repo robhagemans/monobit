@@ -678,27 +678,7 @@ def create_fnt(font, version=0x200):
         break_ord, = word_break
     else:
         break_ord = _FALLBACK_BREAK
-    # create the bitmaps
-    bitmaps = (_glyph.as_bytes() for _glyph in font.glyphs)
-    # bytewise transpose - .FNT stores as contiguous 8-pixel columns
-    bitmaps = tuple(
-        b''.join(
-            _bm[_col::len(_bm)//_glyph.height]
-            for _col in range(len(_bm)//_glyph.height)
-        )
-        for _glyph, _bm in zip(font.glyphs, bitmaps)
-    )
-    glyph_offsets = [0] + list(itertools.accumulate(len(_bm) for _bm in bitmaps))
-    glyph_entry = _GLYPH_ENTRY[version]
-    fnt_header_ext = _FNT_HEADER_EXT[version]
-    offset_bitmaps = (
-        _FNT_HEADER.size + fnt_header_ext.size
-        + len(font.glyphs)*glyph_entry.size
-    )
-    char_table = (
-        bytes(glyph_entry(_glyph.width, offset_bitmaps + _glyph_offset))
-        for _glyph, _glyph_offset in zip(font.glyphs, glyph_offsets)
-    )
+    bitmaps, glyph_offsets, char_table, offset_bitmaps = _convert_to_fnt_bitmaps(font, version)
     file_size = offset_bitmaps + glyph_offsets[-1]
     # add name and device strings
     face_name_offset = file_size
@@ -758,7 +738,7 @@ def create_fnt(font, version=0x200):
         dfBitsOffset=offset_bitmaps,
     )
     # version-specific header extension
-    header_ext = fnt_header_ext()
+    header_ext = _FNT_HEADER_EXT[version]()
     if version == 0x300:
         # all are zeroes (default) except the flags for v3
         header_ext.dfFlags = v3_flags
@@ -769,3 +749,32 @@ def create_fnt(font, version=0x200):
     )
     assert len(data) == file_size
     return data
+
+
+def _convert_to_fnt_bitmaps(font, version):
+    """Convert glyphs to FNT bitmaps and offset tables."""
+    if version not in (0x200, 0x300):
+        raise FileFormatError(
+            f'Writing to version {version:#x} bitmap FNT not supported.'
+        )
+    # create the bitmaps
+    bitmaps = (_glyph.as_bytes() for _glyph in font.glyphs)
+    # bytewise transpose - .FNT stores as contiguous 8-pixel columns
+    bitmaps = tuple(
+        b''.join(
+            _bm[_col::len(_bm)//_glyph.height]
+            for _col in range(len(_bm)//_glyph.height)
+        )
+        for _glyph, _bm in zip(font.glyphs, bitmaps)
+    )
+    glyph_offsets = [0] + list(itertools.accumulate(len(_bm) for _bm in bitmaps))
+    glyph_entry = _GLYPH_ENTRY[version]
+    offset_bitmaps = (
+        _FNT_HEADER.size + _FNT_HEADER_EXT[version].size
+        + len(font.glyphs)*glyph_entry.size
+    )
+    char_table = (
+        bytes(glyph_entry(_glyph.width, offset_bitmaps + _glyph_offset))
+        for _glyph, _glyph_offset in zip(font.glyphs, glyph_offsets)
+    )
+    return bitmaps, glyph_offsets, char_table, offset_bitmaps
