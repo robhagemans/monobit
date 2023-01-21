@@ -98,6 +98,9 @@ class GlyphProperties(DefaultProps):
     tracking: int
     offset: Coord
 
+    # path segments for stroke fonts
+    path: str
+
 
     @checked_property
     def advance_width(self):
