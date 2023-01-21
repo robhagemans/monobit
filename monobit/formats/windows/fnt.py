@@ -335,7 +335,7 @@ _GLYPH_ENTRY = {
 }
 
 # proportional vector font
-# these have width and offset swapped compared to thhe v2 bitmap format
+# these have width and offset swapped compared to the v2 bitmap format
 _GLYPH_ENTRY_PVECTOR = le.Struct(
     geOffset='word',
     geWidth='word',
@@ -646,23 +646,36 @@ def _normalise_metrics(font):
     font = font.modify(ord_glyphs)
     return font, add_shift_up
 
+
 def create_fnt(font, version=0x200):
-    """Create .FNT from properties."""
+    """Create .FNT from monobit font."""
     # take only the glyphs we can store
     font = _subset_storable(font)
     font, add_shift_up = _normalise_metrics(font)
     if font.spacing == 'proportional':
-        # low bit set for proportional
-        pitch_and_family = 0x01 | _STYLE_REVERSE_MAP.get(font.style, 0)
         pix_width = 0
-        v3_flags = _DFF_PROPORTIONAL
     else:
-        # CHECK: is this really always set for fixed-pitch?
-        pitch_and_family = _FF_MODERN
         # x_width should equal average width
         pix_width = font.raster_size.x
-        v3_flags = _DFF_FIXED
     font = _make_contiguous(font, pix_width)
+    bitmaps, char_table, offset_bitmaps = _convert_to_fnt_bitmaps(font, version)
+    bitmap_size = sum(len(_b) for _b in bitmaps)
+    win_props, header_ext, stringtable = _convert_to_fnt_props(
+        font, version, offset_bitmaps, bitmap_size, add_shift_up
+    )
+    data = (
+        bytes(win_props) + bytes(header_ext)
+        + b''.join(char_table)
+        + b''.join(bitmaps)
+        + b''.join(stringtable)
+    )
+    return data
+
+
+def _convert_to_fnt_props(
+        font, version, offset_bitmaps, bitmap_size, add_shift_up
+    ):
+    """Convert font to FNT headers."""
     # get lowest and highest codepoints (contiguous glyphs followed by blank)
     min_ord = font.glyphs[0].codepoint[0]
     max_ord = font.glyphs[-2].codepoint[0]
@@ -678,10 +691,19 @@ def create_fnt(font, version=0x200):
         break_ord, = word_break
     else:
         break_ord = _FALLBACK_BREAK
-    bitmaps, glyph_offsets, char_table, offset_bitmaps = _convert_to_fnt_bitmaps(font, version)
-    file_size = offset_bitmaps + glyph_offsets[-1]
+    if font.spacing == 'proportional':
+        # low bit set for proportional
+        pitch_and_family = 0x01 | _STYLE_REVERSE_MAP.get(font.style, 0)
+        v3_flags = _DFF_PROPORTIONAL
+        pix_width = 0
+    else:
+        # CHECK: is this really always set for fixed-pitch?
+        pitch_and_family = _FF_MODERN
+        v3_flags = _DFF_FIXED
+        # x_width should equal average width
+        pix_width = font.raster_size.x
     # add name and device strings
-    face_name_offset = file_size
+    face_name_offset = offset_bitmaps + bitmap_size
     face_name = font.family.encode('latin-1', 'replace') + b'\0'
     device_name_offset = face_name_offset + len(face_name)
     device_name = font.device.encode('latin-1', 'replace') + b'\0'
@@ -742,13 +764,8 @@ def create_fnt(font, version=0x200):
     if version == 0x300:
         # all are zeroes (default) except the flags for v3
         header_ext.dfFlags = v3_flags
-    data = (
-        bytes(win_props) + bytes(header_ext) + b''.join(char_table)
-        + b''.join(bitmaps)
-        + face_name + device_name
-    )
-    assert len(data) == file_size
-    return data
+    stringtable = face_name, device_name
+    return win_props, header_ext, stringtable
 
 
 def _convert_to_fnt_bitmaps(font, version):
@@ -777,4 +794,4 @@ def _convert_to_fnt_bitmaps(font, version):
         bytes(glyph_entry(_glyph.width, offset_bitmaps + _glyph_offset))
         for _glyph, _glyph_offset in zip(font.glyphs, glyph_offsets)
     )
-    return bitmaps, glyph_offsets, char_table, offset_bitmaps
+    return bitmaps, char_table, offset_bitmaps
