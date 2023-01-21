@@ -83,7 +83,7 @@ def _convert_hurt(glyphdata, baseline, top, bottom):
         cx, cy = 0, 0
         # first point given is always a move, not a line
         ink = StrokePath.MOVE
-        # move from our origin to Hershey's
+        # move from top left to Hershey's origin
         path = [(ink, -glyphrec.left_margin, starty)]
         for x, y in zip(glyphrec.code[::2], glyphrec.code[1::2]):
             if (x, y) == (-50, 0):
@@ -95,7 +95,8 @@ def _convert_hurt(glyphdata, baseline, top, bottom):
             minx, miny = min(minx, cx), min(miny, cy)
             maxx, maxy = max(maxx, cx), max(maxy, cy)
             ink = StrokePath.LINE
-        path = StrokePath(path)
+        # convert from top-left to bottom-left coordinates
+        path = StrokePath(path).flip().shift(0, baseline-top)
         glyphs.append(
             Glyph.blank(
                 path=path, codepoint=glyphrec.number,

@@ -114,13 +114,12 @@ def _convert_borland(
     for codepoint, (code, width) in enumerate(
             zip(glyphbytes, widths), old_header.first_char
         ):
-        absmoves = ((StrokePath.MOVE, 0, old_header.capital_top),) + tuple(
+        absmoves = ((StrokePath.MOVE, 0, -old_header.baseline),) + tuple(
             _convert_stroke_code(first, second)
             for first, second in zip(code[::2], code[1::2])
         )
-        # we invert the y axis
         relmoves = (
-            (cmd, nx-x, -ny+y)
+            (cmd, nx-x, ny-y)
             for (cmd, nx, ny), (_, x, y) in zip(absmoves[1:], absmoves)
         )
         path = StrokePath(relmoves)

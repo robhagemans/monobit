@@ -460,10 +460,10 @@ def _extract_vector_glyphs(data, win_props):
             win_props.dfFirstChar
         )
     )
-    return _convert_vector_glyphs(glyphdata)
+    return _convert_vector_glyphs(glyphdata, win_props)
 
 
-def _convert_vector_glyphs(glyphdata):
+def _convert_vector_glyphs(glyphdata, win_props):
     """Convert a vector character table to paths."""
     # convert glyphdata to paths
     glyphs = []
@@ -485,8 +485,10 @@ def _convert_vector_glyphs(glyphdata):
                 break
             path.append((ink, x, y))
             ink = StrokePath.LINE
+        # Windows uses top-left coordinates
+        path = StrokePath(path).flip().shift(0, win_props.dfAscent)
         glyph = Glyph.blank(
-            path=StrokePath(path),
+            path=path,
             codepoint=glyphrec.codepoint,
             right_bearing=glyphrec.width
         )
@@ -520,7 +522,7 @@ def _convert_win_props(data, win_props):
         'ascent': win_props.dfAscent - win_props.dfInternalLeading,
         # the dfPixHeight is the 'height of the character bitmap', i.e. our raster-size.y
         # and dfAscent is the distance between the raster top and the baseline,
-        #'descent': win_props.dfPixHeight - win_props.dfAscent,
+        'descent': win_props.dfPixHeight - win_props.dfAscent,
         'shift-up': win_props.dfAscent - win_props.dfPixHeight,
         # dfExternalLeading is the 'amount of extra leading ... the application add between rows'
         'line-height': win_props.dfPixHeight + win_props.dfExternalLeading,

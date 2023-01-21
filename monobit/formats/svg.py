@@ -43,7 +43,7 @@ def save_svg(
     outfile.write(f'<font-face font-family="{font.family}" units-per-em="{font.line_height}" />\n')
     for i, glyph in enumerate(font.glyphs):
         if glyph.path:
-            svgpath = ' '.join(glyph.path.split('\n'))
+            svgpath = glyph.path.flip().shift(0, font.line_height-font.descent).as_svg()
             d = f' d="{svgpath}"'
         else:
             d = ''
