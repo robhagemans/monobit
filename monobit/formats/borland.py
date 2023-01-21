@@ -11,6 +11,7 @@ from ..storage import loaders, savers
 from ..font import Font
 from ..glyph import Glyph
 from ..struct import little_endian as le, bitfield
+from ..vector import StrokePath
 
 
 _BGI_MAGIC = b'PK\b\bBGI '
@@ -113,7 +114,7 @@ def _convert_borland(
     for codepoint, (code, width) in enumerate(
             zip(glyphbytes, widths), old_header.first_char
         ):
-        absmoves = (('m', 0, old_header.capital_top),) + tuple(
+        absmoves = ((StrokePath.MOVE, 0, old_header.capital_top),) + tuple(
             _convert_stroke_code(first, second)
             for first, second in zip(code[::2], code[1::2])
         )
@@ -122,10 +123,7 @@ def _convert_borland(
             (cmd, nx-x, -ny+y)
             for (cmd, nx, ny), (_, x, y) in zip(absmoves[1:], absmoves)
         )
-        path = '\n'.join(
-            ' '.join(str(_c) for _c in _move)
-            for _move in relmoves
-        )
+        path = StrokePath(relmoves)
         glyphs.append(
             Glyph.blank(path=path, codepoint=codepoint, right_bearing=width)
         )
@@ -141,12 +139,12 @@ def _convert_stroke_code(first, second):
     code = _STROKE_CODE.from_bytes(bytes((first, second)))
     opcode = code.op0, code.op1
     if opcode == (0, 0):
-        return ('m', 0, 0)
+        return (StrokePath.MOVE, 0, 0)
     if opcode == (0, -1):
         logging.warning('Do not know how to process opcode (0, 1)')
-        return ('m', 0, 0)
+        return (StrokePath.MOVE, 0, 0)
     if opcode == (-1, 0):
-        return 'm', code.x, code.y
+        return StrokePath.MOVE, code.x, code.y
     if opcode == (-1, -1):
-        return 'l', code.x, code.y
+        return StrokePath.LINE, code.x, code.y
     raise ValueError(opcode)

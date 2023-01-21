@@ -14,6 +14,7 @@ from ..streams import FileFormatError
 from ..font import Font
 from ..glyph import Glyph
 from ..raster import Raster
+from ..vector import StrokePath
 
 
 @loaders.register('dsf', name='dosstart', magic=(b'DosStartFont',))
@@ -83,10 +84,10 @@ def _read_dsf_format_0(instream):
             move = mode != 'n'
             step, offset = _read_stepsize(code, offset)
             dx, dy = _move_turtle(direction)
-            pathmove = 'l' if ink else 'm'
-            path.append(f'{pathmove} {dx*step} {dy*step}')
+            pathmove = StrokePath.LINE if ink else StrokePath.MOVE
+            path.append((pathmove, dx*step, dy*step))
             if not move:
-                path.append(f'm {-dx*step} {-dy*step}')
+                path.append((StrokePath.MOVE, -dx*step, -dy*step))
             nx, ny = x, y
             for _ in range(step):
                 if ink:
@@ -119,7 +120,7 @@ def _read_dsf_format_0(instream):
             right_bearing=advance-max_x,
             codepoint=0x20+i,
             shift_up=min_y if min_y else None,
-            path='\n'.join(path),
+            path=StrokePath(path),
         )
         glyphs.append(glyph)
     return glyphs

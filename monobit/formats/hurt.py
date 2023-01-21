@@ -12,6 +12,7 @@ from ..font import Font
 from ..glyph import Glyph
 from ..struct import big_endian as be, bitfield
 from ..properties import Props
+from ..vector import StrokePath
 
 
 @loaders.register(
@@ -80,19 +81,21 @@ def _convert_hurt(glyphdata, baseline, top, bottom):
     starty = -top
     for glyphrec in glyphdata:
         cx, cy = 0, 0
-        ink = 'm'
-        path = [f'm {-glyphrec.left_margin} {starty}']
+        # first point given is always a move, not a line
+        ink = StrokePath.MOVE
+        # move from our origin to Hershey's
+        path = [(ink, -glyphrec.left_margin, starty)]
         for x, y in zip(glyphrec.code[::2], glyphrec.code[1::2]):
             if (x, y) == (-50, 0):
                 # code ' R'
-                ink = 'm'
+                ink = StrokePath.MOVE
                 continue
-            path.append(f'{ink} {x-cx} {y-cy}')
+            path.append((ink, x-cx, y-cy))
             cx, cy = x, y
             minx, miny = min(minx, cx), min(miny, cy)
             maxx, maxy = max(maxx, cx), max(maxy, cy)
-            ink = 'l'
-        path = '\n'.join(path)
+            ink = StrokePath.LINE
+        path = StrokePath(path)
         glyphs.append(
             Glyph.blank(
                 path=path, codepoint=glyphrec.number,

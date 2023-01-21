@@ -21,6 +21,7 @@ from ...streams import FileFormatError
 from ...properties import Props
 from ...font import Font
 from ...glyph import Glyph
+from ...vector import StrokePath
 
 
 ##############################################################################
@@ -471,21 +472,21 @@ def _convert_vector_glyphs(glyphdata):
         # all other bytes form signed int8 coordinate pairs
         code = le.int8.array(len(glyphrec.code)).from_bytes(glyphrec.code)
         it = iter(code)
-        ink = 'l'
+        ink = StrokePath.LINE
         path = []
         for x in it:
             if x == -128:
-                ink = 'm'
+                ink = StrokePath.MOVE
                 continue
             try:
                 y = next(it)
             except StopIteration:
                 logging.warning('Vector glyph has truncated path definition')
                 break
-            path.append(f'{ink} {x} {y}')
-            ink = 'l'
+            path.append((ink, x, y))
+            ink = StrokePath.LINE
         glyph = Glyph.blank(
-            path='\n'.join(path),
+            path=StrokePath(path),
             codepoint=glyphrec.codepoint,
             right_bearing=glyphrec.width
         )
@@ -503,7 +504,7 @@ def _convert_win_props(data, win_props):
     """Convert WinFont properties to yaff properties."""
     version = win_props.dfVersion
     if win_props.dfType & 1:
-        logging.warning('This is a vector font')
+        logging.info('This is a vector font')
     logging.info('Windows FNT properties:')
     for key, value in win_props.__dict__.items():
         logging.info('    {}: {}'.format(key, value))
