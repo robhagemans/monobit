@@ -127,6 +127,32 @@ class Canvas(Raster):
         )
         return blockstr(''.join((start, contents, end)))
 
+    def draw_pixel(self, x, y):
+        """Draw a pixel."""
+        self._pixels[self.height - y - 1][x] = 1
+
+    def draw_line(self, x0, y0, x1, y1):
+        """Draw a line between the given points."""
+        # Bresenham algorithm
+        dx, dy = abs(x1-x0), abs(y1-y0)
+        steep = dy > dx
+        if steep:
+            x0, y0, x1, y1 = y0, x0, y1, x1
+            dx, dy = dy, dx
+        sx = 1 if x1 > x0 else -1
+        sy = 1 if y1 > y0 else -1
+        line_error = dx // 2
+        x, y = x0, y0
+        for x in range(x0, x1+sx, sx):
+            if steep:
+                self.draw_pixel(y, x)
+            else:
+                self.draw_pixel(x, y)
+            line_error -= dy
+            if line_error < 0:
+                y += sy
+                line_error += dx
+
 
 ###############################################################################
 # text rendering

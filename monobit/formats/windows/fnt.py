@@ -487,12 +487,10 @@ def _convert_vector_glyphs(glyphdata, win_props):
             ink = StrokePath.LINE
         # Windows uses top-left coordinates
         path = StrokePath(path).flip().shift(0, win_props.dfAscent)
-        glyph = Glyph.blank(
-            path=path,
-            codepoint=glyphrec.codepoint,
-            right_bearing=glyphrec.width
-        )
-        glyphs.append(glyph)
+        glyphs.append(path.as_glyph(
+            advance_width=glyphrec.width,
+            codepoint=glyphrec.codepoint
+        ))
     return glyphs
 
 

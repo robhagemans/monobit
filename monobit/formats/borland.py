@@ -123,9 +123,7 @@ def _convert_borland(
             for (cmd, nx, ny), (_, x, y) in zip(absmoves[1:], absmoves)
         )
         path = StrokePath(relmoves)
-        glyphs.append(
-            Glyph.blank(path=path, codepoint=codepoint, right_bearing=width)
-        )
+        glyphs.append(path.as_glyph(advance_width=width, codepoint=codepoint))
     return Font(
         glyphs, ascent=old_header.capital_top, descent=-old_header.descent,
         shift_up=-old_header.baseline,
