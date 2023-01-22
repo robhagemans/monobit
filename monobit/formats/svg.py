@@ -65,15 +65,18 @@ def load_svg(instream, where=None):
     )
     # convert path to monobit notation
     paths = tuple(convert_path(_p) for _p in orig_paths)
-    chars = tuple(
-        _g.attrib.get('unicode', '')
+    glyph_props = tuple(
+        dict(
+            char=_g.attrib.get('unicode', ''),
+            advance_width=int(_g.attrib.get('horiz-adv-x')),
+        )
         for _g in glyph_elems
     )
     glyphs = tuple(
         _path.shift(0, -props.line_height + props.descent)
             .flip()
-            .as_glyph(char=_char)
-        for _path, _char in zip(paths, chars)
+            .as_glyph(**_gprop)
+        for _path, _gprop in zip(paths, glyph_props)
     )
     return Font(glyphs, **vars(props))
 
@@ -86,7 +89,6 @@ def convert_path(svgpath):
     startx, starty = 0, 0
     path = []
     try:
-        # todo: repeats
         for item in pathit:
             if not item:
                 continue
