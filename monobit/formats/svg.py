@@ -24,6 +24,7 @@ _STYLE_MAP = {
 }
 _STYLE_REVERSE_MAP = reverse_dict(_STYLE_MAP)
 
+
 @loaders.register('svg', name='svg')
 def load_svg(instream, where=None):
     """Load vector font from Scalable Vector Graphics font."""
@@ -175,22 +176,29 @@ def save_svg(fonts, outfile, where=None):
         'font-style': _STYLE_REVERSE_MAP.get(font.slant, 'normal'),
     }
     outfile.write(f'  <font-face{attr_str(font_face, indent=6)}/>\n')
+    if font.default_char:
+        _write_glyph(outfile, font, font.get_default_glyph(), tag='missing-glyph')
     for i, glyph in enumerate(font.glyphs):
-        if glyph.path:
-            path = StrokePath.from_string(glyph.path).flip().shift(0, font.line_height-font.descent)
-            svgpath = path.as_svg()
-            d = f'\n      d="{svgpath}"'
-        else:
-            d = ''
-        charstr = ''.join(f'&#{ord(_c)};' for _c in glyph.char)
-        if charstr:
-            unicode = f' unicode="{charstr}"'
-        else:
-            unicode = ''
-        outfile.write(f'  <glyph{unicode} horiz-adv-x="{glyph.advance_width}">\n')
-        outfile.write(f'    <path{d}\n      fill="none" stroke="currentColor" stroke-width="1"/>\n')
-        outfile.write(f'  </glyph>\n')
-        # this is shorter but not recognised as single-stroke font by FontForge
-        #outfile.write(f'  <glyph{unicode} horiz-adv-x="{glyph.advance_width}"{d}/>\n')
+        _write_glyph(outfile, font, glyph)
     outfile.write('</font>\n')
     outfile.write('</svg>\n')
+
+
+def _write_glyph(outfile, font, glyph, tag='glyph'):
+    """rite out a glyph to SVG."""
+    if glyph.path:
+        path = StrokePath.from_string(glyph.path).flip().shift(0, font.line_height-font.descent)
+        svgpath = path.as_svg()
+        d = f'\n      d="{svgpath}"'
+    else:
+        d = ''
+    charstr = ''.join(f'&#{ord(_c)};' for _c in glyph.char)
+    if charstr and tag != 'missing-glyph':
+        unicode = f' unicode="{charstr}"'
+    else:
+        unicode = ''
+    outfile.write(f'  <{tag}{unicode} horiz-adv-x="{glyph.advance_width}">\n')
+    outfile.write(f'    <path{d}\n      fill="none" stroke="currentColor" stroke-width="1"/>\n')
+    outfile.write(f'  </{tag}>\n')
+    # this is shorter but not recognised as single-stroke font by FontForge
+    #outfile.write(f'  <{tag}{unicode} horiz-adv-x="{glyph.advance_width}"{d}/>\n')
