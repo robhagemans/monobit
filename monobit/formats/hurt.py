@@ -19,15 +19,20 @@ from ..vector import StrokePath
     'jhf',
     name='hurt',
 )
-def load_hurt(instream, where=None, baseline:int=9, top:int=-12, bottom:int=16):
+def load_hurt(
+        instream, where=None,
+        baseline:int=9, top:int=-12, bottom:int=16,
+        renumber:bool=False,
+    ):
     """
     Load a stroke font in Jim Hurt's format for Hershey's fonts.
 
     top: y-coordinate of top line (default: -12)
     baseline: y-coordinate of baseline (default: 9)
     bottom: y-coordinate of bottom (default: 16)
+    renumber: set codepoint to ordinal value in file
     """
-    jhf_data = _read_hurt(instream)
+    jhf_data = _read_hurt(instream, renumber)
     logging.debug(jhf_data)
     font = _convert_hurt(jhf_data, baseline, top, bottom)
     return font
@@ -48,11 +53,12 @@ _LINEHEADER = be.Struct(
     right_margin='uint8',
 )
 
-def _read_hurt(instream):
+def _read_hurt(instream, renumber=False):
     """Read a stroke font in James Hurt's format ('R' format)."""
     text = instream.text
     glyphdata = []
     data = b''
+    count = 0
     for line in text:
         data += line.encode('ascii', 'replace').rstrip()
         if not data:
@@ -62,12 +68,13 @@ def _read_hurt(instream):
             continue
         code = tuple(_b - ord(b'R') for _b in data[_LINEHEADER.size:])
         glyphdata.append(Props(
-            number=int(header.number),
+            number=count if renumber else int(header.number),
             left_margin=header.left_margin - ord(b'R'),
             right_margin=header.right_margin - ord(b'R'),
             code=code,
         ))
         data = b''
+        count += 1
     return glyphdata
 
 
