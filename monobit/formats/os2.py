@@ -23,6 +23,7 @@ from ..storage import loaders, savers
 from ..streams import FileFormatError
 from ..font import Font
 from ..glyph import Glyph
+from ..properties import Props
 from ..struct import little_endian as le
 
 
@@ -39,7 +40,16 @@ def load_os2(
         _parse_os2_font_resource(_data)
         for _data in resources
     )
-    logging.debug(parsed[0])
+    for parsed_font, data in zip(parsed, resources):
+        for _index in range(
+                parsed_font.pMetrics.usFirstChar,
+                parsed_font.pMetrics.usFirstChar + parsed_font.pMetrics.usLastChar
+            ):
+            glyph = _extract_os2_font_glyph(_index, parsed_font, data)
+            logging.debug(Glyph.from_bytes(glyph.bitmap, width=glyph.width))
+
+        break
+
 
 
 # from os2res.h
@@ -668,6 +678,7 @@ def _parse_os2_font_resource(pBuffer):
     of the pFont structure may be NULL.  The application must check for this
     if it intends to use these fields.
     """
+    pFont = Props()
     # Verify the file format
     pRecord = GENERICRECORD.from_bytes(pBuffer)
     if (
@@ -676,25 +687,30 @@ def _parse_os2_font_resource(pBuffer):
         ):
         raise FileFormatError('Not an OS/2 font resource.')
     # Now set the pointers in our font type to the correct offsets
-    pSignature = OS2FONTSTART.from_bytes(pBuffer)
+    pFont.pSignature = OS2FONTSTART.from_bytes(pBuffer)
     ofs = OS2FONTSTART.size
-    pMetrics = OS2FOCAMETRICS.from_bytes(pBuffer, ofs)
-    ofs += pMetrics.ulSize
-    pKerning = None
-    pPanose = None
+    pFont.pMetrics = OS2FOCAMETRICS.from_bytes(pBuffer, ofs)
+    ofs += pFont.pMetrics.ulSize
+    pFont.pKerning = None
+    pFont.pPanose = None
     pRecord = GENERICRECORD.from_bytes(pBuffer, ofs)
     if pRecord.Identity != SIG_OS2FONTDEF:
         raise FileFormatError('Not an OS/2 font resource.')
-    pFontDef = OS2FONTDEFHEADER.from_bytes(pBuffer, ofs)
-    if pFontDef.fsChardef == OS2FONTDEF_CHAR3:
-        pABC = OS2CHARDEF3.from_bytes(pBuffer, ofs)
-        pChars = pABC
+    pFont.pFontDef = OS2FONTDEFHEADER.from_bytes(pBuffer, ofs)
+    logging.debug(pFont.pFontDef)
+
+    pFont.chardef_offset = ofs + OS2FONTDEFHEADER.size
+    if pFont.pFontDef.fsChardef == OS2FONTDEF_CHAR3:
+        chardeftype = OS2CHARDEF3
     else:
-        pChars = OS2CHARDEF1.from_bytes(pBuffer, ofs)
-    ofs += pFontDef.ulSize
+        chardeftype = OS2CHARDEF1
+    pChars = (chardeftype * pFont.pMetrics.usLastChar).from_bytes(pBuffer, pFont.chardef_offset)
+
+    ofs += pFont.pFontDef.ulSize
     pRecord = GENERICRECORD.from_bytes(pBuffer, ofs)
-    if pMetrics.usKerningPairs and pRecord.Identity == SIG_OS2KERN:
-        pKerning = OS2KERNPAIRTABLE.from_bytes(pBuffer, ofs)
+    logging.debug(pRecord)
+    if pFont.pMetrics.usKerningPairs and pRecord.Identity == SIG_OS2KERN:
+        pFont.pKerning = OS2KERNPAIRTABLE.from_bytes(pBuffer, ofs)
         # Advance to the next record (whether OS2ADDMETRICS or OS2FONTEND).
         # This is a guess; since the actual format, and thus size, of the
         # kerning information is unclear (see remarks in gpifont.h), there is
@@ -702,11 +718,11 @@ def _parse_os2_font_resource(pBuffer):
         # important stuff.
         ofs += (
             OS2KERNPAIRTABLE.size
-            + pMetrics.usKerningPairs * OS2KERNINGPAIRS.size
+            + pFont.pMetrics.usKerningPairs * OS2KERNINGPAIRS.size
         )
         pRecord = GENERICRECORD.from_bytes(pBuffer, ofs)
     if pRecord.Identity == SIG_OS2ADDMETRICS:
-        pPanose = OS2ADDMETRICS.from_bytes(pBuffer, ofs)
+        pFont.pPanose = OS2ADDMETRICS.from_bytes(pBuffer, ofs)
         ofs += pRecord.ulSize
         pRecord = GENERICRECORD.from_bytes(pBuffer, ofs)
     # We set the pointer to the end signature, but there's really no need to
@@ -714,12 +730,84 @@ def _parse_os2_font_resource(pBuffer):
     # valid (if we did miscalculate the kern table size above, then it could
     # well be wrong) before setting the pointer.
     if pRecord.Identity == SIG_OS2FONTEND:
-        pEnd = OS2FONTEND.from_bytes(pBuffer, ofs)
-    return dict(
-        pSignature=pSignature,
-        pMetrics=pMetrics,
-        pKerning=pKerning,
-        pPanose=pPanose,
-        pFontDef=pFontDef,
-        pChars=pChars,
+        pFont.pEnd = OS2FONTEND.from_bytes(pBuffer, ofs)
+    return pFont
+
+
+def _extract_os2_font_glyph(ulIndex, pFont, pBuffer):
+    """
+    Extracts the bitmap data for the OS/2 font glyph at the given index, and
+    converts it into standard bitmap format.  The bitmap will be written into
+    the buffer field of the provided glyph information structure; the buffer
+    will be allocated by this function and should be freed by the caller when
+    no longer needed.
+
+    The bitmap has to be converted manually by this function because the
+    standard OS/2 font format stores bitmap data with consecutive bytes
+    representing vertical columns, rather than rows as with standard bitmaps.
+
+    The written bitmap buffer contains the image bits only, no header
+    information is included.  The image format is 1 bit per pixel.
+
+    ARGUMENTS:
+      ULONG            ulIndex: Glyph index (codepoint) within the font.  (I)
+      POS2FONTRESOURCE pFont  : Pointer to the font resource data.        (I)
+    """
+    # Map index 0 to the default/substitution glyph
+    # if ulIndex == 0:
+    #     ulIndex = pFont.pMetrics.usDefaultChar
+    # Make sure our index actually falls within the range contained in the font
+    if (
+            ulIndex < pFont.pMetrics.usFirstChar
+            or ulIndex > pFont.pMetrics.usFirstChar + pFont.pMetrics.usLastChar
+        ):
+        return None
+    ulIndex -= pFont.pMetrics.usFirstChar
+    # Find the character data for the given offset
+    if pFont.pFontDef.fsChardef == OS2FONTDEF_CHAR3:
+        pChar = OS2CHARDEF3.from_bytes(
+            pBuffer, pFont.chardef_offset + ulIndex * pFont.pFontDef.usCellSize
+        )
+        if pChar.ulOffset == 0:
+            return None
+
+        pBitmap = pBuffer[pChar.ulOffset:]
+
+        cx = pChar.bSpace
+        bearingL = pChar.aSpace
+        bearingR = pChar.cSpace
+    else:
+        pChar = OS2CHARDEF1.from_bytes(
+            pBuffer, pFont.chardef_offset + ulIndex * pFont.pFontDef.usCellSize
+        )
+        logging.debug(pChar)
+
+        pBitmap = pBuffer[pChar.ulOffset:]
+
+        if pChar.ulOffset == 0:
+            return None
+        cx = pChar.ulWidth
+        bearingL = 0
+        bearingR = 0
+    cy = pFont.pFontDef.yCellHeight
+    usWidth = cx // 8
+    if cx % 8:
+        usWidth += 1
+    # Now convert the bitmap
+    bitmap = tuple(
+        pBitmap[i + (cy * j)]
+        for i in range(cy)
+        for j in range(usWidth)
     )
+    pGlyph = Props(
+        height=cy,
+        width=cx,
+        pitch=usWidth,
+        bearingL=bearingL,
+        bearingR=bearingR,
+        # horiAdvance=bearingL + cx + bearingR,
+        # vertBearingY=pFont.pMetrics.yExternalLeading,
+        # vertAdvance=cy + pFont.pMetrics.yExternalLeading,
+        bitmap=bitmap
+    )
+    return pGlyph
