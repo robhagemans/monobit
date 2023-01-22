@@ -15,19 +15,6 @@ from ..vector import StrokePath
 from ..font import Font
 
 
-_HEADER = """\
-<?xml version="1.0" standalone="no"?>
-<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1">
-<defs>
-"""
-
-_FOOTER = """\
-</defs>
-</svg>
-"""
-
-
 @loaders.register('svg', name='svg')
 def load_svg(instream, where=None):
     """Load vector font from Scalable Vector Graphics font."""
@@ -75,9 +62,9 @@ def save_svg(fonts, outfile, where=None):
             "SVG file will have empty glyphs: no stroke path found"
         )
     outfile = outfile.text
-    outfile.write(_HEADER)
+    outfile.write('<svg>\n')
     outfile.write(f'<font id="{font.family}" horiz-adv-x="{ceil(font.average_width)}">\n')
-    outfile.write(f'<font-face font-family="{font.family}" units-per-em="{font.line_height}" />\n')
+    outfile.write(f'  <font-face font-family="{font.family}" units-per-em="{font.line_height}" />\n')
     for i, glyph in enumerate(font.glyphs):
         if glyph.path:
             svgpath = StrokePath.from_string(glyph.path).flip().shift(0, font.line_height-font.descent).as_svg()
@@ -95,4 +82,4 @@ def save_svg(fonts, outfile, where=None):
         # this is shorter but not recognised as single-stroke font by FontForge
         #outfile.write(f'  <glyph{unicode} horiz-adv-x="{glyph.advance_width}"{d}/>\n')
     outfile.write('</font>\n')
-    outfile.write(_FOOTER)
+    outfile.write('</svg>\n')
