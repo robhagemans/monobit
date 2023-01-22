@@ -24,6 +24,8 @@ _STYLE_MAP = {
 }
 _STYLE_REVERSE_MAP = reverse_dict(_STYLE_MAP)
 
+DEFAULT_NAME = 'missing'
+
 
 @loaders.register('svg', name='svg')
 def load_svg(instream, where=None):
@@ -51,7 +53,10 @@ def load_svg(instream, where=None):
             weight=_WEIGHT_MAP[round(weight, -2)],
             slant=_STYLE_MAP.get(font_face.attrib.get('font-style')),
         )
-    glyph_elems = tuple(font.iterfind('{*}glyph'))
+    glyph_elems = list(font.iterfind('{*}glyph'))
+    missing_glyph = font.find('{*}missing-glyph')
+    if missing_glyph is not None:
+        glyph_elems.append(missing_glyph)
     # get the first element containing a path definition
     # either the <glyph> element itself or an enclosed <path>
     # or that path enclosed in <g>s etc
@@ -72,6 +77,9 @@ def load_svg(instream, where=None):
         )
         for _g in glyph_elems
     )
+    if missing_glyph is not None:
+        glyph_props[-1].update(tag=DEFAULT_NAME)
+        props |= Props(default_char=DEFAULT_NAME)
     glyphs = tuple(
         _path.shift(0, -props.line_height + props.descent)
             .flip()
