@@ -74,6 +74,7 @@ def load_svg(instream, where=None):
         dict(
             char=_g.attrib.get('unicode', ''),
             advance_width=int(_g.attrib.get('horiz-adv-x', 0)),
+            tag=_g.attrib.get('glyph-name', '')
         )
         for _g in glyph_elems
     )
@@ -146,9 +147,9 @@ def convert_path(svgpath):
     return StrokePath(path)
 
 
-def attr_str(attr_dict, indent=0):
+def attr_str(attr_dict, indent=0, sep='\n'):
     """Convert a dict to svg element attributes."""
-    sep = '\n' + ' ' * indent
+    sep += ' ' * indent
     return sep + sep.join(f'{_k}="{_v}"' for _k, _v in attr_dict.items())
 
 
@@ -195,7 +196,7 @@ def save_svg(fonts, outfile, where=None):
 
 
 def _write_glyph(outfile, font, glyph, tag='glyph'):
-    """rite out a glyph to SVG."""
+    """Write out a glyph to SVG."""
     if glyph.path:
         path = StrokePath.from_string(glyph.path).flip().shift(0, font.line_height-font.descent)
         svgpath = path.as_svg()
@@ -203,11 +204,15 @@ def _write_glyph(outfile, font, glyph, tag='glyph'):
     else:
         d = ''
     charstr = ''.join(f'&#{ord(_c)};' for _c in glyph.char)
-    if charstr and tag != 'missing-glyph':
-        unicode = f' unicode="{charstr}"'
-    else:
-        unicode = ''
-    outfile.write(f'  <{tag}{unicode} horiz-adv-x="{glyph.advance_width}">\n')
+    glyphprops = {
+        'horiz-adv-x': glyph.advance_width,
+    }
+    if tag != 'missing-glyph':
+        if charstr:
+            glyphprops.update({'unicode': charstr})
+        if glyph.tags:
+            glyphprops.update({'glyph-name': glyph.tags[0]})
+    outfile.write(f'  <{tag}{attr_str(glyphprops, indent=0, sep=" ")}>\n')
     outfile.write(f'    <path{d}\n      fill="none" stroke="currentColor" stroke-width="1"/>\n')
     outfile.write(f'  </{tag}>\n')
     # this is shorter but not recognised as single-stroke font by FontForge
