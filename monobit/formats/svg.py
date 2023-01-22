@@ -64,7 +64,14 @@ def save_svg(fonts, outfile, where=None):
     outfile = outfile.text
     outfile.write('<svg>\n')
     outfile.write(f'<font id="{font.family}" horiz-adv-x="{ceil(font.average_width)}">\n')
-    outfile.write(f'  <font-face font-family="{font.family}" units-per-em="{font.line_height}" />\n')
+    font_face = {
+        'font-family': font.family,
+        'units-per-em': font.line_height,
+        'ascent': -font.ascent,
+        'descent': -font.descent,
+    }
+    attrib = ' '.join(f'{_k}="{_v}"' for _k, _v in font_face.items())
+    outfile.write(f'  <font-face {attrib}/>\n')
     for i, glyph in enumerate(font.glyphs):
         if glyph.path:
             svgpath = StrokePath.from_string(glyph.path).flip().shift(0, font.line_height-font.descent).as_svg()
