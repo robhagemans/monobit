@@ -73,7 +73,7 @@ def load_svg(instream, where=None):
     glyph_props = tuple(
         dict(
             char=_g.attrib.get('unicode', ''),
-            advance_width=int(_g.attrib.get('horiz-adv-x')),
+            advance_width=int(_g.attrib.get('horiz-adv-x', 0)),
         )
         for _g in glyph_elems
     )
