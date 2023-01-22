@@ -13,6 +13,7 @@ from ..storage import loaders, savers
 from ..streams import FileFormatError
 from ..vector import StrokePath
 from ..font import Font
+from ..properties import Props
 
 
 @loaders.register('svg', name='svg')
@@ -25,6 +26,16 @@ def load_svg(instream, where=None):
     font = root.find('.//{*}font')
     if not font:
         raise FileFormatError('Not an SVG font file')
+    props = {}
+    font_face = font.find('{*}font-face')
+    if font_face is not None:
+        props = Props(
+            ascent=int(font_face.attrib.get('ascent')),
+            descent=-int(font_face.attrib.get('descent')),
+            family=font_face.attrib.get('font-family'),
+            ##
+            line_height=int(font_face.attrib.get('units-per-em')),
+        )
     glyph_elems = tuple(font.iterfind('{*}glyph'))
     # get the first element containing a path definition
     # either the <glyph> element itself or an enclosed <path>
@@ -42,11 +53,13 @@ def load_svg(instream, where=None):
         for _g in glyph_elems
     )
     glyphs = tuple(
-        # .shift(0, font.line_height-font.descent)
-        StrokePath.from_string(_path).flip().as_glyph(char=_char)
+        StrokePath.from_string(_path)
+            .shift(0, -props.line_height + props.descent)
+            .flip()
+            .as_glyph(char=_char)
         for _path, _char in zip(paths, chars)
     )
-    return Font(glyphs)
+    return Font(glyphs, **vars(props))
 
 
 @savers.register(linked=load_svg)
@@ -67,14 +80,15 @@ def save_svg(fonts, outfile, where=None):
     font_face = {
         'font-family': font.family,
         'units-per-em': font.line_height,
-        'ascent': -font.ascent,
+        'ascent': font.ascent,
         'descent': -font.descent,
     }
     attrib = ' '.join(f'{_k}="{_v}"' for _k, _v in font_face.items())
     outfile.write(f'  <font-face {attrib}/>\n')
     for i, glyph in enumerate(font.glyphs):
         if glyph.path:
-            svgpath = StrokePath.from_string(glyph.path).flip().shift(0, font.line_height-font.descent).as_svg()
+            path = StrokePath.from_string(glyph.path).flip().shift(0, font.line_height-font.descent)
+            svgpath = path.as_svg()
             d = f' d="{svgpath}"'
         else:
             d = ''
