@@ -74,35 +74,48 @@ def convert_path(svgpath):
     try:
         # todo: repeats
         for item in pathit:
-            if item in ('m', 'l', 'M', 'L'):
-                dx = int(next(pathit))
+            if not item:
+                continue
+            # if it's a number group, the last character must be a digit
+            # a number group here mean's we're repeating the last svg path command
+            if item[-1].isdigit():
+                ds = int(item)
+            else:
+                svgcommand = item
+                ds = None
+            if svgcommand in ('m', 'l', 'M', 'L'):
+                dx = ds if ds is not None else int(next(pathit))
                 dy = int(next(pathit))
-                if item in ('M', 'L'):
+                if svgcommand in ('M', 'L'):
                     dx -= x
                     dy -= y
-                command = item.lower()
-            elif item in ('h', 'v', 'H', 'V'):
-                command = 'l'
-                ds = int(next(pathit))
-                if item == 'H':
+                if svgcommand in ('m', 'M'):
+                    command = StrokePath.MOVE
+                else:
+                    command = StrokePath.LINE
+            elif svgcommand in ('h', 'v', 'H', 'V'):
+                command = StrokePath.LINE
+                if ds is None:
+                    ds = int(next(pathit))
+                if svgcommand == 'H':
                     ds -= x
-                elif item == 'V':
+                elif svgcommand == 'V':
                     ds -= y
-                if item in ('H', 'h'):
+                if svgcommand in ('H', 'h'):
                     dx, dy = ds, 0
-                elif item in ('V', 'v'):
+                elif svgcommand in ('V', 'v'):
                     dx, dy = 0, ds
-            elif item in ('z', 'Z'):
+            elif svgcommand in ('z', 'Z'):
                 # close subpath
                 # we asssume that's from the start or the latest move
-                command = 'l'
+                command = StrokePath.LINE
                 dx, dy = startx - x, starty - y
             else:
                 raise ValueError('Curves in paths are not supported.')
             path.append((command, dx, dy))
             x += dx
             y += dy
-            if command == 'm':
+            if command == StrokePath.MOVE:
                 startx, starty = x, y
     except StopIteration:
         logging.warning('Truncated SVG path')
