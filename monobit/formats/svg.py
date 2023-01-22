@@ -27,15 +27,19 @@ def load_svg(instream, where=None):
     font = root.find('.//{*}font')
     if not font:
         raise FileFormatError('Not an SVG font file')
-    props = {}
+    props = Props(
+        font_id=font.attrib.get('id'),
+    )
     font_face = font.find('{*}font-face')
     if font_face is not None:
-        props = Props(
+        props |= Props(
             ascent=int(font_face.attrib.get('ascent')),
             descent=-int(font_face.attrib.get('descent')),
             family=font_face.attrib.get('font-family'),
             ##
             line_height=int(font_face.attrib.get('units-per-em')),
+            underline_thickness=int(font_face.attrib.get('underline-thickness')),
+            underline_descent=-int(font_face.attrib.get('underline-position')),
         )
     glyph_elems = tuple(font.iterfind('{*}glyph'))
     # get the first element containing a path definition
@@ -122,6 +126,12 @@ def convert_path(svgpath):
     return StrokePath(path)
 
 
+def attr_str(attr_dict, indent=0):
+    """Convert a dict to svg element attributes."""
+    sep = '\n' + ' ' * indent
+    return sep + sep.join(f'{_k}="{_v}"' for _k, _v in attr_dict.items())
+
+
 @savers.register(linked=load_svg)
 def save_svg(fonts, outfile, where=None):
     """Export vector font to Scalable Vector Graphics font."""
@@ -136,15 +146,23 @@ def save_svg(fonts, outfile, where=None):
         )
     outfile = outfile.text
     outfile.write('<svg>\n')
-    outfile.write(f'<font id="{font.family}" horiz-adv-x="{ceil(font.average_width)}">\n')
+    font_attr = {
+        'id': font.font_id or font.family or '0',
+        # default advance
+        'horiz-adv-x': ceil(font.average_width),
+    }
+    outfile.write(f'<font{attr_str(font_attr, indent=4)}>\n')
     font_face = {
         'font-family': font.family,
         'units-per-em': font.line_height,
         'ascent': font.ascent,
         'descent': -font.descent,
+        'cap-height': font.cap_height,
+        'x-height': font.x_height,
+        'underline-thickness': font.underline_thickness,
+        'underline-position': -font.underline_descent,
     }
-    attrib = '\n      '.join(f'{_k}="{_v}"' for _k, _v in font_face.items())
-    outfile.write(f'  <font-face\n      {attrib}/>\n')
+    outfile.write(f'  <font-face{attr_str(font_face, indent=6)}/>\n')
     for i, glyph in enumerate(font.glyphs):
         if glyph.path:
             path = StrokePath.from_string(glyph.path).flip().shift(0, font.line_height-font.descent)
