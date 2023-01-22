@@ -5,6 +5,7 @@ monobit.formats.svg - svg writer for vector fonts
 licence: https://opensource.org/licenses/MIT
 """
 
+import re
 import logging
 from math import ceil
 import xml.etree.ElementTree as etree
@@ -40,26 +41,72 @@ def load_svg(instream, where=None):
     # get the first element containing a path definition
     # either the <glyph> element itself or an enclosed <path>
     # or that path enclosed in <g>s etc
-    path_elems = tuple(
+    path_elems = (
         _g.find('.//*[@d]')
         for _g in glyph_elems
     )
-    paths = tuple(
+    orig_paths = tuple(
         _g.attrib.get('d', '') if _g is not None else ''
         for _g in path_elems
     )
+    # convert path to monobit notation
+    paths = tuple(convert_path(_p) for _p in orig_paths)
     chars = tuple(
         _g.attrib.get('unicode', '')
         for _g in glyph_elems
     )
     glyphs = tuple(
-        StrokePath.from_string(_path)
-            .shift(0, -props.line_height + props.descent)
+        _path.shift(0, -props.line_height + props.descent)
             .flip()
-            .as_glyph(char=_char)
-        for _path, _char in zip(paths, chars)
+            .as_glyph(char=_char, code=_code)
+        for _path, _code, _char in zip(paths, orig_paths, chars)
     )
     return Font(glyphs, **vars(props))
+
+def convert_path(svgpath):
+    """Convert SVG path to monobit path."""
+    # split into individual letters and groups of digits (including minus sign)
+    splitgroups = re.compile('[-0-9]+|[a-zA-Z]').findall
+    pathit = iter(splitgroups(svgpath))
+    x, y = 0, 0
+    startx, starty = 0, 0
+    path = []
+    try:
+        # todo: repeats
+        for item in pathit:
+            if item in ('m', 'l', 'M', 'L'):
+                dx = int(next(pathit))
+                dy = int(next(pathit))
+                if item in ('M', 'L'):
+                    dx -= x
+                    dy -= y
+                command = item.lower()
+            elif item in ('h', 'v', 'H', 'V'):
+                command = 'l'
+                ds = int(next(pathit))
+                if item == 'H':
+                    ds -= x
+                elif item == 'V':
+                    ds -= y
+                if item in ('H', 'h'):
+                    dx, dy = ds, 0
+                elif item in ('V', 'v'):
+                    dx, dy = 0, ds
+            elif item in ('z', 'Z'):
+                # close subpath
+                # we asssume that's from the start or the latest move
+                command = 'l'
+                dx, dy = startx - x, starty - y
+            else:
+                raise ValueError('Curves in paths are not supported.')
+            path.append((command, dx, dy))
+            x += dx
+            y += dy
+            if command == 'm':
+                startx, starty = x, y
+    except StopIteration:
+        logging.warning('Truncated SVG path')
+    return StrokePath(path)
 
 
 @savers.register(linked=load_svg)
