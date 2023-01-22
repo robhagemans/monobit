@@ -143,13 +143,13 @@ def save_svg(fonts, outfile, where=None):
         'ascent': font.ascent,
         'descent': -font.descent,
     }
-    attrib = ' '.join(f'{_k}="{_v}"' for _k, _v in font_face.items())
-    outfile.write(f'  <font-face {attrib}/>\n')
+    attrib = '\n      '.join(f'{_k}="{_v}"' for _k, _v in font_face.items())
+    outfile.write(f'  <font-face\n      {attrib}/>\n')
     for i, glyph in enumerate(font.glyphs):
         if glyph.path:
             path = StrokePath.from_string(glyph.path).flip().shift(0, font.line_height-font.descent)
             svgpath = path.as_svg()
-            d = f' d="{svgpath}"'
+            d = f'\n      d="{svgpath}"'
         else:
             d = ''
         charstr = ''.join(f'&#{ord(_c)};' for _c in glyph.char)
@@ -157,9 +157,9 @@ def save_svg(fonts, outfile, where=None):
             unicode = f' unicode="{charstr}"'
         else:
             unicode = ''
-        outfile.write(f'  <glyph{unicode} horiz-adv-x="{glyph.advance_width}">')
-        outfile.write(f'<path{d} fill="none" stroke="currentColor" stroke-width="1"/>')
-        outfile.write(f'</glyph>\n')
+        outfile.write(f'  <glyph{unicode} horiz-adv-x="{glyph.advance_width}">\n')
+        outfile.write(f'    <path{d}\n      fill="none" stroke="currentColor" stroke-width="1"/>\n')
+        outfile.write(f'  </glyph>\n')
         # this is shorter but not recognised as single-stroke font by FontForge
         #outfile.write(f'  <glyph{unicode} horiz-adv-x="{glyph.advance_width}"{d}/>\n')
     outfile.write('</font>\n')
