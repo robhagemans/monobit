@@ -504,7 +504,8 @@ def bytes_to_str(s, encoding='latin-1'):
 def _convert_win_props(data, win_props):
     """Convert WinFont properties to yaff properties."""
     version = win_props.dfVersion
-    if win_props.dfType & 1:
+    vector = win_props.dfType & 1
+    if vector:
         logging.info('This is a vector font')
     logging.info('Windows FNT properties:')
     for key, value in win_props.__dict__.items():
@@ -522,11 +523,13 @@ def _convert_win_props(data, win_props):
         # the dfPixHeight is the 'height of the character bitmap', i.e. our raster-size.y
         # and dfAscent is the distance between the raster top and the baseline,
         'descent': win_props.dfPixHeight - win_props.dfAscent,
-        'shift-up': win_props.dfAscent - win_props.dfPixHeight,
         # dfExternalLeading is the 'amount of extra leading ... the application add between rows'
         'line-height': win_props.dfPixHeight + win_props.dfExternalLeading,
         'default-char': win_props.dfDefaultChar + win_props.dfFirstChar,
     }
+    if not vector:
+        # vector font determines shift-up (which only applies to raster) from path
+        properties['shift-up'] = -properties['descent']
     if win_props.dfPixWidth:
         properties['spacing'] = 'character-cell'
     else:
