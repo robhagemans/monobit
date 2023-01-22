@@ -22,15 +22,15 @@ def load_svg(instream, where=None):
     if not root.tag.endswith('svg'):
         raise FileFormatError(f'Not an SVG file: root tag is {root.tag}')
     # the <font> may optionally be enclosed in a <defs> block
-    root = root.find('{*}defs') or root
-    font = root.find('{*}font')
+    font = root.find('.//{*}font')
     if not font:
         raise FileFormatError('Not an SVG font file')
     glyph_elems = tuple(font.iterfind('{*}glyph'))
-    # get the element containing the path definition
+    # get the first element containing a path definition
     # either the <glyph> element itself or an enclosed <path>
+    # or that path enclosed in <g>s etc
     path_elems = tuple(
-        _g if 'd' in _g.attrib else _g.find('{*}path')
+        _g.find('.//*[@d]')
         for _g in glyph_elems
     )
     paths = tuple(
