@@ -34,18 +34,25 @@ def load_svg(instream, where=None):
     root = etree.parse(instream).getroot()
     if not root.tag.endswith('svg'):
         raise FileFormatError(f'Not an SVG file: root tag is {root.tag}')
-    root = root.find('{*}defs', namespaces='') or root
+    # the <font> may optionally be enclosed in a <defs> block
+    root = root.find('{*}defs') or root
     font = root.find('{*}font')
     if not font:
         raise FileFormatError('Not an SVG font file')
-    glyphdata = tuple(font.iterfind('{*}glyph'))
+    glyph_elems = tuple(font.iterfind('{*}glyph'))
+    # get the element containing the path definition
+    # either the <glyph> element itself or an enclosed <path>
+    path_elems = tuple(
+        _g if 'd' in _g.attrib else _g.find('{*}path')
+        for _g in glyph_elems
+    )
     paths = tuple(
-        _g.attrib.get('d', '') or _g.find('{*}path').attrib.get('d', '')
-        for _g in glyphdata
+        _g.attrib.get('d', '') if _g is not None else ''
+        for _g in path_elems
     )
     chars = tuple(
         _g.attrib.get('unicode', '')
-        for _g in glyphdata
+        for _g in glyph_elems
     )
     glyphs = tuple(
         # .shift(0, font.line_height-font.descent)
