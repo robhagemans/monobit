@@ -138,7 +138,7 @@ LXRTENTRY = le.Struct(
 
 # The font metrics structure ("IBM Font Object Content Architecture" metrics).
 OS2FOCAMETRICS = le.Struct(
-    # /* 0x00000001
+    # 0x00000001
     ulIdentity='uint32',
     # size of this structure
     ulSize='uint32',
@@ -326,26 +326,22 @@ LXOPMENTRY = le.Struct(
 
 def _lx_extract_resource(instream, lx_hd, lx_rte, ulBase):
     """
-    /* ------------------------------------------------------------------------- *
-     * LXExtractResource                                                         *
-     *                                                                           *
-     * Extracts a binary resource from an LX-format (32-bit OS/2) module.  The   *
-     * function takes a pointer to a buffer which will receive the extracted     *
-     * data of the object containing the resource.  It is up to the caller to    *
-     * locate the actual resource data within this buffer (this should be        *
-     * lx_rte.offset bytes from the start of the buffer).  The buffer is         *
-     * allocated by this function on successful return, and must be freed once   *
-     * no longer needed.                                                         *
-     *                                                                           *
-     * This routine is based on information made available by Martin Lafaix,     *
-     * Veit Kannegieser and Max Alekseyev.                                       *
-     *                                                                           *
-     * ARGUMENTS:                                                                *
-     *   FILE      *pf      : Pointer to the open file.                      (I) *
-     *   LXHEADER   lx_hd   : LX-format executable header                    (I) *
-     *   LXRTENTRY  lx_rte  : Resource-table entry of the requested resource (I) *
-     *   ULONG      ulBase  : File offset of the LX-format header            (I) *
-     * ------------------------------------------------------------------------- */
+    Extracts a binary resource from an LX-format (32-bit OS/2) module.  The
+    function takes a pointer to a buffer which will receive the extracted
+    data of the object containing the resource.  It is up to the caller to
+    locate the actual resource data within this buffer (this should be
+    lx_rte.offset bytes from the start of the buffer).  The buffer is
+    allocated by this function on successful return, and must be freed once
+    no longer needed.
+
+    This routine is based on information made available by Martin Lafaix,
+    Veit Kannegieser and Max Alekseyev.
+
+    ARGUMENTS:
+      FILE      *pf      : Pointer to the open file.                      (I)
+      LXHEADER   lx_hd   : LX-format executable header                    (I)
+      LXRTENTRY  lx_rte  : Resource-table entry of the requested resource (I)
+      ULONG      ulBase  : File offset of the LX-format header            (I)
     """
     cb_obj = LXOTENTRY.size
     cb_pme = LXOPMENTRY.size
@@ -385,18 +381,12 @@ def _lx_extract_resource(instream, lx_hd, lx_rte, ulBase):
 
 def _lx_unpack1(pBuf):
     """
-    /* ------------------------------------------------------------------------- *
-     * LXUnpack1                                                                 *
-     *                                                                           *
-     * Unpacks a (max 4096-byte) page which has been compressed using the OS/2   *
-     * /EXEPACK1 method (a simple form of run-length encoding).  The unpacked    *
-     * data (max 4096 bytes) is written back into the input buffer.  The input   *
-     * buffer must therefore provide at least 4096 bytes.                        *
-     *                                                                           *
-     * This algorithm was derived from public-domain Pascal code by Veit         *
-     * Kannegieser (based on previous work by Max Alekseyev).                    *
-     * ------------------------------------------------------------------------- */
-     """
+    Unpacks a (max 4096-byte) page which has been compressed using the OS/2
+    /EXEPACK1 method (a simple form of run-length encoding).
+
+    This algorithm was derived from public-domain Pascal code by Veit
+    Kannegieser (based on previous work by Max Alekseyev).
+    """
     cbPage = len(pBuf)
     if cbPage > 4096:
         return pBuf
@@ -422,24 +412,11 @@ def _lx_unpack1(pBuf):
 
 def _lx_unpack2(pBuf):
     """
-    /* ------------------------------------------------------------------------- *
-     * LXUnpack2                                                                 *
-     *                                                                           *
-     * Unpacks a (max 4096-byte) page which has been compressed using the OS/2   *
-     * /EXEPACK2 method (which is apparently a modified Lempel-Ziv algorithm).   *
-     * The unpacked data (max 4096 bytes) is written back into the input buffer. *
-     * The input buffer must therefore provide at least 4096 bytes.              *
-     *                                                                           *
-     * This algorithm was derived from public-domain Pascal-and-x86-assembly     *
-     * code by Veit Kannegieser (based on previous work by Max Alekseyev).       *
-     *                                                                           *
-     * ARGUMENTS:                                                                *
-     *   PBYTE  pBuf  : Buffer containing the page data.                    (IO) *
-     *   USHORT cbPage: The size of the input page data.                     (I) *
-     *                                                                           *
-     * RETURNS: USHORT                                                           *
-     *   The number of output bytes written back to the buffer.                  *
-     * ------------------------------------------------------------------------- */
+    Unpacks a (max 4096-byte) page which has been compressed using the OS/2
+    /EXEPACK2 method (which is apparently a modified Lempel-Ziv algorithm).
+
+    This algorithm was derived from public-domain Pascal-and-x86-assembly
+    code by Veit Kannegieser (based on previous work by Max Alekseyev).
     """
     cbPage = len(pBuf)
     if cbPage > 4096:
@@ -448,15 +425,15 @@ def _lx_unpack2(pBuf):
     abOut = bytearray()
     while True:
         ulControl = int(le.uint16.from_bytes(pBuf, ofIn))
-        # /* Bits 1 & 0 hold the case flag (0-3); the interpretation of the
-        #  * remaining bits depend on the flag value.
+        # Bits 1 & 0 hold the case flag (0-3); the interpretation of the
+        # remaining bits depend on the flag value.
         case_flag = ulControl & 0x3
         if case_flag == 0:
-            # /* bits 15..8  = length2
-            #  * bits  7..2  = length1
+            # bits 15..8  = length2
+            # bits  7..2  = length1
             if ulControl & 0xff == 0:
-                # /* When length1 == 0, fill (length2) bytes with the byte
-                #  * value following ulControl; if length2 is 0 we're done.
+                # When length1 == 0, fill (length2) bytes with the byte
+                # value following ulControl; if length2 is 0 we're done.
                 ulLen = ulControl >> 8
                 if not ulLen:
                     break
@@ -464,65 +441,59 @@ def _lx_unpack2(pBuf):
                 abOut.extend([pBuf[ofIn + 2]] * ulLen)
                 ofIn += 3
             else:
-                # // block copy (length1) bytes from after ulControl
+                # block copy (length1) bytes from after ulControl
                 ulLen = (ulControl & 0xff) >> 2
                 # memcpy( abOut + ofOut, pBuf + ofIn + 1, ulLen );
                 abOut.extend(pBuf[ofIn+1:ofIn+1+ulLen])
                 ofIn  += ulLen + 1
         elif case_flag == 1:
-            # /* bits 15..7     = backwards reference
-            #  * bits  6..4  +3 = length2
-            #  * bits  3..2     = length1
-            # // copy length1 bytes following ulControl
+            # bits 15..7     = backwards reference
+            # bits  6..4  +3 = length2
+            # bits  3..2     = length1
+            # copy length1 bytes following ulControl
             ulLen = (ulControl >> 2) & 0x3;
             # memcpy( abOut + ofOut, pBuf + ofIn + 2, ulLen );
             abOut.extend(pBuf[ofIn+2:ofIn+2+ulLen])
             ofIn += ulLen + 2
-            # // get length2 from what's been unpacked already
+            # get length2 from what's been unpacked already
             ulLen = (( ulControl >> 4 ) & 0x7 ) + 3
             _copy_byte_seq(abOut, -((ulControl >> 7) & 0x1FF), ulLen)
         elif case_flag == 2:
-            # /* bits 15.. 4     = backwards reference
-            #  * bits  3.. 2  +3 = length
+            # bits 15.. 4     = backwards reference
+            # bits  3.. 2  +3 = length
             ulLen = (( ulControl >> 2 ) & 0x3 ) + 3
             _copy_byte_seq(abOut, -((ulControl >> 4) & 0xFFF), ulLen)
             ofIn  += 2
         elif case_flag == 3:
             ulControl = int(le.uint32.from_bytes(pBuf, ofIn))
-            # /* bits 23..21  = ?
-            #  * bits 20..12  = backwards reference
-            #  * bits 11.. 6  = length2
-            #  * bits  5.. 2  = length1
-            #  */
-            # // block copy (length1) bytes
+            # bits 23..21  = ?
+            # bits 20..12  = backwards reference
+            # bits 11.. 6  = length2
+            # bits  5.. 2  = length1
+            # block copy (length1) bytes
             ulLen = (ulControl >> 2) & 0xF
             # memcpy( abOut + ofOut, pBuf + ofIn + 3, ulLen );
             abOut.extend(pBuf[ofIn+3 : ofIn+3+ulLen])
             ofIn  += ulLen + 3
-            # // copy (length2) bytes from previously-unpacked data
+            # copy (length2) bytes from previously-unpacked data
             ulLen = (ulControl >> 6) & 0x3F
             _copy_byte_seq(abOut, -((ulControl >> 12) & 0xFFF), ulLen)
         if ofIn >= cbPage:
             break
-
-    # /* It seems that the unpacked data will always be 4096 bytes, except for
-    #  * the final page (which will be taken care of when the caller uses the
-    #  * total object length to read the concatenated buffer).
+    # It seems that the unpacked data will always be 4096 bytes, except for
+    # the final page (which will be taken care of when the caller uses the
+    # total object length to read the concatenated buffer).
     return bytes(abOut)
 
 
 def _copy_byte_seq(target, source_offset, count):
     """
-    /* ------------------------------------------------------------------------- *
-    * CopyByteSeq                                                               *
-    *                                                                           *
-    * Perform a byte-over-byte iterative copy from one byte array into another, *
-    * or from one point to another within the same array.  Used by LXUnpack2(). *
-    * Note that memcpy() does not work for this purpose, because the source and *
-    * target address spaces could overlap - that is, the end of the source      *
-    * sequence could extend into the start of the target sequence, thus copying *
-    * bytes that were previously written by the same call to this function.     *
-    * ------------------------------------------------------------------------- */
+    Perform a byte-over-byte iterative copy from one byte array into another,
+    or from one point to another within the same array.  Used by LXUnpack2().
+    Note that memcpy() does not work for this purpose, because the source and
+    target address spaces could overlap - that is, the end of the source
+    sequence could extend into the start of the target sequence, thus copying
+    bytes that were previously written by the same call to this function.
     """
     for _ in range(count):
         target.append(target[source_offset])
