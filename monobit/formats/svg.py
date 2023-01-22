@@ -14,8 +14,15 @@ from ..storage import loaders, savers
 from ..streams import FileFormatError
 from ..vector import StrokePath
 from ..font import Font
-from ..properties import Props
+from ..properties import Props, reverse_dict
+from .windows.fnt import _WEIGHT_MAP, _WEIGHT_REVERSE_MAP
 
+_STYLE_MAP = {
+    'normal': 'roman',
+    'italic': 'italic',
+    'oblique': 'oblique'
+}
+_STYLE_REVERSE_MAP = reverse_dict(_STYLE_MAP)
 
 @loaders.register('svg', name='svg')
 def load_svg(instream, where=None):
@@ -32,14 +39,16 @@ def load_svg(instream, where=None):
     )
     font_face = font.find('{*}font-face')
     if font_face is not None:
+        weight = max(100, min(900, int(font_face.attrib.get('font-weight', 400))))
         props |= Props(
             ascent=int(font_face.attrib.get('ascent')),
             descent=-int(font_face.attrib.get('descent')),
             family=font_face.attrib.get('font-family'),
-            ##
-            line_height=int(font_face.attrib.get('units-per-em')),
+            line_height=int(font_face.attrib.get('font-size', font_face.attrib.get('units-per-em'))),
             underline_thickness=int(font_face.attrib.get('underline-thickness')),
             underline_descent=-int(font_face.attrib.get('underline-position')),
+            weight=_WEIGHT_MAP[round(weight, -2)],
+            slant=_STYLE_MAP.get(font_face.attrib.get('font-style')),
         )
     glyph_elems = tuple(font.iterfind('{*}glyph'))
     # get the first element containing a path definition
@@ -62,8 +71,8 @@ def load_svg(instream, where=None):
     glyphs = tuple(
         _path.shift(0, -props.line_height + props.descent)
             .flip()
-            .as_glyph(char=_char, code=_code)
-        for _path, _code, _char in zip(paths, orig_paths, chars)
+            .as_glyph(char=_char)
+        for _path, _char in zip(paths, chars)
     )
     return Font(glyphs, **vars(props))
 
@@ -155,12 +164,15 @@ def save_svg(fonts, outfile, where=None):
     font_face = {
         'font-family': font.family,
         'units-per-em': font.line_height,
+        'font-size': font.line_height,
         'ascent': font.ascent,
         'descent': -font.descent,
         'cap-height': font.cap_height,
         'x-height': font.x_height,
         'underline-thickness': font.underline_thickness,
         'underline-position': -font.underline_descent,
+        'font-weight': _WEIGHT_REVERSE_MAP.get(font.weight, 400),
+        'font-style': _STYLE_REVERSE_MAP.get(font.slant, 'normal'),
     }
     outfile.write(f'  <font-face{attr_str(font_face, indent=6)}/>\n')
     for i, glyph in enumerate(font.glyphs):
