@@ -20,6 +20,7 @@ notice for gpifont.c:
 import logging
 
 from ..storage import loaders, savers
+from ..streams import FileFormatError
 from ..font import Font
 from ..glyph import Glyph
 from ..struct import little_endian as le
@@ -34,7 +35,11 @@ def load_os2(
     ):
     """Load an OS/2 font file."""
     resources = _read_os2_font(instream)
-    logging.debug(resources)
+    parsed = tuple(
+        _parse_os2_font_resource(_data)
+        for _data in resources
+    )
+    logging.debug(parsed[0])
 
 
 # from os2res.h
@@ -497,3 +502,224 @@ def _copy_byte_seq(target, source_offset, count):
     """
     for _ in range(count):
         target.append(target[source_offset])
+
+
+###############################################################################
+# font resource parser
+
+# Text signatures for standard OS/2 bitmap fonts.
+OS2FNT_SIGNATURE = "OS/2 FONT"
+OS2FNT2_SIGNATURE = "OS/2 FONT 2"
+
+# Binary signatures for various OS/2 font records.
+SIG_OS2FONTSTART = 0xFFFFFFFE
+SIG_OS2METRICS = 0x1
+SIG_OS2FONTDEF = 0x2
+SIG_OS2KERN = 0x3
+SIG_OS2ADDMETRICS = 0x4
+SIG_OS2FONTEND = 0xFFFFFFFF
+
+
+# GPI categorizes fonts in 3 types according to character increment definition:
+# Type 1 : Fixed-width font
+# Type 2 : Proportional-width font with each character increment defined as
+#          one value in the character definition.
+# Type 3 : Proportional-width font with each character increment defined in
+#          terms of: a_space + b_space + c_space
+#             Where: a_space = leading space in front of the character
+#                    b_space = width of the character glyph
+#                    c_space = space following the character
+#
+# Each type is required to have specific values of flFontDef and flCharDef
+# in the font definition header.  These values are defined below.
+OS2FONTDEF_FONT1 = 0x47
+OS2FONTDEF_FONT2 = 0x42
+OS2FONTDEF_FONT3 = 0x42
+OS2FONTDEF_CHAR1 = 0x81
+OS2FONTDEF_CHAR2 = 0x81
+OS2FONTDEF_CHAR3 = 0XB8
+
+
+# A generic font record structure, mostly used for typecasting.
+GENERICRECORD = le.Struct(
+    # structure identity code
+    Identity='uint32',
+    # structure size in bytes
+    ulSize='uint32',
+)
+
+# A font signature (header) block.
+OS2FONTSTART = le.Struct(
+    # 0xFFFFFFFE
+    Identity='uint32',
+    # size of this structure
+    ulSize='uint32',
+    # string indicating font format
+    achSignature='12s',
+)
+
+# A font end signature block (identical to the generic record).  The
+# Identity field in this case should be 0xFFFFFFFF.
+OS2FONTEND = GENERICRECORD
+
+
+# The font definition header.  Not all of these fields may be used, depending
+# on the font type (indicated by the flags in fsFontdef).
+OS2FONTDEFHEADER = le.Struct(
+    # 0x00000002
+    ulIdentity='uint32',
+    # size of this structure
+    ulSize='uint32',
+    # flags indicating which fields are used
+    fsFontdef='uint16',
+    # flags indicating format of char defs
+    fsChardef='uint16',
+    # size (in bytes) of each char definition
+    usCellSize='uint16',
+    # char cell-width in pixels (type 1 only)
+    xCellWidth='int16',
+    # char cell-height in pixels
+    yCellHeight='int16',
+    # char increment in pixels (type 1 only)
+    xCellIncrement='int16',
+    # character a_space (type 3 only)
+    xCellA='int16',
+    # character b_space (type 3 only)
+    xCellB='int16',
+    # character c_space (type 3 only)
+    xCellC='int16',
+    # distance between baseline & top of cell
+    pCellBaseOffset='int16',
+)
+
+# The font kerning-pairs table.  This and the following structure are a bit
+# of a mystery.  They are defined here as the specification in the OS/2 GPI
+# programming guide describes them.  However, the specification also says
+# that the ulSize field should be 10 bytes (not 9), and doesn't describe at
+# all what the cFirstpair field does.  The KERNINGPAIRS structure is even more
+# problematic, as the standard GPI toolkit headers define a KERNINGPAIRS
+# structure which is different from what the documentation describes.
+#
+# Unfortunately, I cannot find any examples of fonts which actually contain
+# kerning information, and the IBM Font Editor doesn't support kerning at
+# all... so there's no way to analyze how it really works.  (It's entirely
+# possible that kerning support was never actually implemented.)
+#
+# The good news is that the kerning information is right at the end of the
+# font file (except for the PANOSE structure and the font-end signature),
+# so even if our kern-table parsing is flawed it shouldn't be fatal.
+OS2KERNPAIRTABLE = le.Struct(
+    # 0x00000003
+    ulIdentity='uint32',
+    # must be 10 (??)
+    ulSize='uint32',
+    # undocumented
+    cFirstpair='uint8',
+)
+
+OS2KERNINGPAIRS = le.Struct(
+    # first character of pair
+    sFirstChar='uint16',
+    # second character of pair
+    sSecondChar='uint16',
+    # kerning amount
+    sKerningAmount='int16',
+)
+
+# The "additional metrics" structure contains the PANOSE table.
+OS2ADDMETRICS = le.Struct(
+    # 0x00000004
+    ulIdentity='uint32',
+    # structure size (20 bytes)
+    ulSize='uint32',
+    # PANOSE table padded to 12 bytes
+    panose=le.uint8.array(12),
+)
+
+# An individual character definition for a type 1 or 2 font.
+OS2CHARDEF1 = le.Struct(
+    # offset of glyph bitmap within the font
+    ulOffset='uint32',
+    # width of the glyph bitmap (in pixels)
+    ulWidth='uint16',
+)
+
+# An individual character definition for a type 3 font.
+OS2CHARDEF3 = le.Struct(
+    # offset of glyph bitmap within the font
+    ulOffset='uint32',
+    # character a_space (in pixels)
+    aSpace='int16',
+    # character b_space (in pixels)
+    bSpace='int16',
+    # character c_space (in pixels)
+    cSpace='int16',
+)
+
+
+def _parse_os2_font_resource(pBuffer):
+    """
+    Parses a standard GPI-format OS/2 font resource.  Takes as input an
+    already-populated memory buffer containing the raw font resource data.
+    On successful return, the fields within the OS2FONTRESOURCE structure
+    will point to the appropriate structures within the font file data.
+
+    NOTE: Even if this function returns success, the pPanose and pEnd fields
+    of the pFont structure may be NULL.  The application must check for this
+    if it intends to use these fields.
+    """
+    # Verify the file format
+    pRecord = GENERICRECORD.from_bytes(pBuffer)
+    if (
+            pRecord.Identity != SIG_OS2FONTSTART
+            or pRecord.ulSize != OS2FONTSTART.size
+        ):
+        raise FileFormatError('Not an OS/2 font resource.')
+    # Now set the pointers in our font type to the correct offsets
+    pSignature = OS2FONTSTART.from_bytes(pBuffer)
+    ofs = OS2FONTSTART.size
+    pMetrics = OS2FOCAMETRICS.from_bytes(pBuffer, ofs)
+    ofs += pMetrics.ulSize
+    pKerning = None
+    pPanose = None
+    pRecord = GENERICRECORD.from_bytes(pBuffer, ofs)
+    if pRecord.Identity != SIG_OS2FONTDEF:
+        raise FileFormatError('Not an OS/2 font resource.')
+    pFontDef = OS2FONTDEFHEADER.from_bytes(pBuffer, ofs)
+    if pFontDef.fsChardef == OS2FONTDEF_CHAR3:
+        pABC = OS2CHARDEF3.from_bytes(pBuffer, ofs)
+        pChars = pABC
+    else:
+        pChars = OS2CHARDEF1.from_bytes(pBuffer, ofs)
+    ofs += pFontDef.ulSize
+    pRecord = GENERICRECORD.from_bytes(pBuffer, ofs)
+    if pMetrics.usKerningPairs and pRecord.Identity == SIG_OS2KERN:
+        pKerning = OS2KERNPAIRTABLE.from_bytes(pBuffer, ofs)
+        # Advance to the next record (whether OS2ADDMETRICS or OS2FONTEND).
+        # This is a guess; since the actual format, and thus size, of the
+        # kerning information is unclear (see remarks in gpifont.h), there is
+        # no guarantee this will work.  Fortunately, we've already parsed the
+        # important stuff.
+        ofs += (
+            OS2KERNPAIRTABLE.size
+            + pMetrics.usKerningPairs * OS2KERNINGPAIRS.size
+        )
+        pRecord = GENERICRECORD.from_bytes(pBuffer, ofs)
+    if pRecord.Identity == SIG_OS2ADDMETRICS:
+        pPanose = OS2ADDMETRICS.from_bytes(pBuffer, ofs)
+        ofs += pRecord.ulSize
+        pRecord = GENERICRECORD.from_bytes(pBuffer, ofs)
+    # We set the pointer to the end signature, but there's really no need to
+    # use it for anything.  We check the Identity field to make sure it's
+    # valid (if we did miscalculate the kern table size above, then it could
+    # well be wrong) before setting the pointer.
+    if pRecord.Identity == SIG_OS2FONTEND:
+        pEnd = OS2FONTEND.from_bytes(pBuffer, ofs)
+    return dict(
+        pSignature=pSignature,
+        pMetrics=pMetrics,
+        pKerning=pKerning,
+        pPanose=pPanose,
+        pFontDef=pFontDef,
+        pChars=pChars,
+    )
