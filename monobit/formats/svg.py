@@ -190,6 +190,10 @@ def save_svg(fonts, outfile, where=None):
     if font.default_char:
         _write_glyph(outfile, font, font.get_default_glyph(), tag='missing-glyph')
     for i, glyph in enumerate(font.glyphs):
+        if font.default_char in glyph.tags and len(glyph.get_labels()) == 1:
+            # this is *only* the default char, we keep it as missing-glyph
+            logging.debug('Skipping default-only glyph `%s`', font.default_char)
+            continue
         _write_glyph(outfile, font, glyph)
     outfile.write('</font>\n')
     outfile.write('</svg>\n')
