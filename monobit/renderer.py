@@ -213,7 +213,7 @@ def _render_horizontal(
         for glyph, x, y in zip(glyph_row, grid_x, grid_y):
             # add ink, taking into account there may be ink already
             # in case of negative bearings
-            canvas.blit(glyph.pixels, start + x, margin_y + y)
+            canvas.blit(glyph.pixels, start + x, y)
         # move to next line
         baseline -= font.line_height
     return canvas
