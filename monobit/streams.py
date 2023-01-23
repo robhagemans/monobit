@@ -136,14 +136,16 @@ class Stream(StreamWrapper):
         if not where:
             # open on filesystem
             if not overwrite and mode == 'w' and path.exists():
-                raise FileExistsError(f'Will not overwrite existing file `{file}`.')
+                raise FileExistsError(
+                    f'Use option `-overwrite` to replace existing file `{file}`.'
+                )
             logging.debug("Opening file `%s` for mode '%s'.", file, mode)
             file = io.open(path, mode + 'b')
         else:
             # open on container
             if not overwrite and mode == 'w' and file in where:
                 raise FileExistsError(
-                    f'Will not overwrite existing file `{file}` on `{where.name}`.'
+                    f'Use option `-overwrite` to replace existing file `{file}` on `{where.name}`.'
                 )
             file = where.open(path, mode)
         return file

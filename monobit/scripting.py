@@ -31,7 +31,8 @@ class ArgumentError(TypeError):
 _record = True
 
 def scriptable(
-        *args, script_args=None, name=None, record=True, unknown_args='raise'
+        *args, script_args=None, name=None, record=True, pack_operation=False,
+        unknown_args='raise'
     ):
     """
     Decorator to register operation for scripting.
@@ -39,6 +40,7 @@ def scriptable(
     Decorated functions get
     - a script_args record for argument parsing
     - automatic type conversion
+    - application of a font operation to all elements in a pack (unless pack_operation is set)
     - recorded history
     """
     if not args:
@@ -46,16 +48,15 @@ def scriptable(
         # return decorator with these arguments set as extra args
         return partial(
             scriptable, script_args=script_args,
-            name=name, record=record, unknown_args=unknown_args
+            name=name, record=record, pack_operation=pack_operation,
+            unknown_args=unknown_args
         )
     else:
         # called as @scriptable
         func, = args
         name = name or func.__name__
         script_args = script_args or {}
-        script_args = ScriptArgs(
-            func, name=name, extra_args=script_args,
-        )
+        script_args = ScriptArgs(func, name=name, extra_args=script_args)
 
         @wraps(func)
         def _scriptable_func(*args, **kwargs):
@@ -101,6 +102,7 @@ def scriptable(
             return result
 
         _scriptable_func.script_args = script_args
+        _scriptable_func.pack_operation = pack_operation
         _scriptable_func.__name__ = name
         return _scriptable_func
 
@@ -118,10 +120,13 @@ def get_scriptables(cls):
 ###############################################################################
 # argument parsing
 
-class ScriptArgs():
+class ScriptArgs:
     """Record of script arguments."""
 
-    def __init__(self, func=None, *, name='', extra_args=None):
+    def __init__(
+            self, func=None, *,
+            name='', extra_args=None,
+        ):
         """Extract script name, arguments and docs."""
         self.name = name
         self._script_args = {}

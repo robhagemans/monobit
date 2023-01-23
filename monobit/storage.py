@@ -157,7 +157,7 @@ def _load_all(container, format, **kwargs):
 
 
 
-@scriptable(unknown_args='passthrough', record=False)
+@scriptable(unknown_args='passthrough', record=False, pack_operation=True)
 def save(
         pack_or_font,
         outfile:Any='', *,
@@ -185,6 +185,7 @@ def save(
             _save_all(pack, container, format, **kwargs)
         else:
             _save_to_file(pack, stream, container, format, **kwargs)
+    return pack_or_font
 
 def _save_all(pack, where, format, **kwargs):
     """Save fonts to a container."""
