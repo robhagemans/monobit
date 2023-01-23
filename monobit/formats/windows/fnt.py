@@ -9,6 +9,7 @@ See `LICENSE.md` in this package's directory.
 """
 
 
+import io
 import string
 import logging
 import itertools
@@ -17,8 +18,11 @@ from ...binary import bytes_to_bits, ceildiv, align
 from ...struct import little_endian as le
 from ...properties import reverse_dict
 from ...streams import FileFormatError
+from ...properties import Props
 from ...font import Font
 from ...glyph import Glyph
+from ...raster import Raster
+from ...vector import StrokePath
 
 
 ##############################################################################
@@ -331,6 +335,13 @@ _GLYPH_ENTRY = {
     0x300: _GLYPH_ENTRY_3,
 }
 
+# proportional vector font
+# these have width and offset swapped compared to the v2 bitmap format
+_GLYPH_ENTRY_PVECTOR = le.Struct(
+    geOffset='word',
+    geWidth='word',
+)
+
 
 ##############################################################################
 # windows .FNT reader
@@ -358,6 +369,8 @@ def _extract_win_props(data):
 
 def _extract_glyphs(data, win_props):
     """Read a WinFont character table."""
+    if win_props.dfType & 1:
+        return _extract_vector_glyphs(data, win_props)
     if win_props.dfVersion == 0x100:
         return _extract_glyphs_v1(data, win_props)
     return _extract_glyphs_v2(data, win_props)
@@ -392,7 +405,8 @@ def _extract_glyphs_v1(data, win_props):
             _srow[offset:offset+width]
             for _srow in strikerows
         )
-        glyphs.append(Glyph(rows, codepoint=(win_props.dfFirstChar + ord,)))
+        glyph = Glyph(rows, codepoint=(win_props.dfFirstChar + ord,))
+        glyphs.append(glyph)
     return glyphs
 
 def _extract_glyphs_v2(data, win_props):
@@ -418,6 +432,69 @@ def _extract_glyphs_v2(data, win_props):
         glyphs.append(glyph)
     return glyphs
 
+
+def _extract_vector_glyphs(data, win_props):
+    """Read a vector character table."""
+    n_chars = win_props.dfLastChar - win_props.dfFirstChar + 1
+    ct_start = _FNT_HEADER_SIZE[win_props.dfVersion]
+    if not win_props.dfPixWidth:
+        # proportional font
+        # always 2x2 bytes for prop. vector
+        glyph_entry_array = _GLYPH_ENTRY_PVECTOR.array(n_chars+1)
+    else:
+        # fixed-width vector font
+        glyph_entry_array = _GLYPH_ENTRY_1.array(n_chars+1)
+    entries = glyph_entry_array.from_bytes(data, ct_start)
+    offsets = tuple(_entry.geOffset for _entry in entries)
+    if not win_props.dfPixWidth:
+        widths = tuple(_entry.geWidth for _entry in entries)
+    else:
+        widths = tuple(win_props.dfPixWidth) * (n_chars+1)
+    offset = win_props.dfBitsOffset
+    glyphbytes = tuple(
+        data[offset+_offset:offset+_next]
+        for _offset, _next in zip(offsets, offsets[1:])
+    )
+    glyphdata = tuple(
+        Props(codepoint=_cp, width=_w, code=_b)
+        for _cp, (_w, _b) in enumerate(
+            zip(widths, glyphbytes),
+            win_props.dfFirstChar
+        )
+    )
+    return _convert_vector_glyphs(glyphdata, win_props)
+
+
+def _convert_vector_glyphs(glyphdata, win_props):
+    """Convert a vector character table to paths."""
+    glyphs = []
+    for i, glyphrec in enumerate(glyphdata):
+        # \x80 (-128) is the pen-up sentinel
+        # all other bytes form signed int8 coordinate pairs
+        code = le.int8.array(len(glyphrec.code)).from_bytes(glyphrec.code)
+        it = iter(code)
+        ink = StrokePath.LINE
+        path = []
+        for x in it:
+            if x == -128:
+                ink = StrokePath.MOVE
+                continue
+            try:
+                y = next(it)
+            except StopIteration:
+                logging.warning('Vector glyph has truncated path definition')
+                break
+            path.append((ink, x, y))
+            ink = StrokePath.LINE
+        # Windows uses top-left coordinates
+        path = StrokePath(path).flip().shift(0, win_props.dfAscent)
+        glyphs.append(path.as_glyph(
+            advance_width=glyphrec.width,
+            codepoint=glyphrec.codepoint
+        ))
+    return glyphs
+
+
 def bytes_to_str(s, encoding='latin-1'):
     """Extract null-terminated string from bytes."""
     if b'\0' in s:
@@ -427,8 +504,9 @@ def bytes_to_str(s, encoding='latin-1'):
 def _convert_win_props(data, win_props):
     """Convert WinFont properties to yaff properties."""
     version = win_props.dfVersion
-    if win_props.dfType & 1:
-        raise FileFormatError('Not a Windows bitmap font')
+    vector = win_props.dfType & 1
+    if vector:
+        logging.info('This is a vector font')
     logging.info('Windows FNT properties:')
     for key, value in win_props.__dict__.items():
         logging.info('    {}: {}'.format(key, value))
@@ -444,12 +522,14 @@ def _convert_win_props(data, win_props):
         'ascent': win_props.dfAscent - win_props.dfInternalLeading,
         # the dfPixHeight is the 'height of the character bitmap', i.e. our raster-size.y
         # and dfAscent is the distance between the raster top and the baseline,
-        #'descent': win_props.dfPixHeight - win_props.dfAscent,
-        'shift-up': win_props.dfAscent - win_props.dfPixHeight,
+        'descent': win_props.dfPixHeight - win_props.dfAscent,
         # dfExternalLeading is the 'amount of extra leading ... the application add between rows'
         'line-height': win_props.dfPixHeight + win_props.dfExternalLeading,
         'default-char': win_props.dfDefaultChar + win_props.dfFirstChar,
     }
+    if not vector:
+        # vector font determines shift-up (which only applies to raster) from path
+        properties['shift-up'] = -properties['descent']
     if win_props.dfPixWidth:
         properties['spacing'] = 'character-cell'
     else:
@@ -570,23 +650,38 @@ def _normalise_metrics(font):
     font = font.modify(ord_glyphs)
     return font, add_shift_up
 
-def create_fnt(font, version=0x200):
-    """Create .FNT from properties."""
+
+def create_fnt(font, version=0x200, vector=False):
+    """Create .FNT from monobit font."""
     # take only the glyphs we can store
     font = _subset_storable(font)
     font, add_shift_up = _normalise_metrics(font)
     if font.spacing == 'proportional':
-        # low bit set for proportional
-        pitch_and_family = 0x01 | _STYLE_REVERSE_MAP.get(font.style, 0)
         pix_width = 0
-        v3_flags = _DFF_PROPORTIONAL
     else:
-        # CHECK: is this really always set for fixed-pitch?
-        pitch_and_family = _FF_MODERN
         # x_width should equal average width
         pix_width = font.raster_size.x
-        v3_flags = _DFF_FIXED
     font = _make_contiguous(font, pix_width)
+    bitmaps, char_table, offset_bitmaps = _convert_to_fnt_glyphs(
+        font, version, vector, add_shift_up
+    )
+    bitmap_size = sum(len(_b) for _b in bitmaps)
+    win_props, header_ext, stringtable = _convert_to_fnt_props(
+        font, version, vector, offset_bitmaps, bitmap_size, add_shift_up
+    )
+    data = (
+        bytes(win_props) + bytes(header_ext)
+        + b''.join(char_table)
+        + b''.join(bitmaps)
+        + b''.join(stringtable)
+    )
+    return data
+
+
+def _convert_to_fnt_props(
+        font, version, vector, offset_bitmaps, bitmap_size, add_shift_up
+    ):
+    """Convert font to FNT headers."""
     # get lowest and highest codepoints (contiguous glyphs followed by blank)
     min_ord = font.glyphs[0].codepoint[0]
     max_ord = font.glyphs[-2].codepoint[0]
@@ -602,30 +697,19 @@ def create_fnt(font, version=0x200):
         break_ord, = word_break
     else:
         break_ord = _FALLBACK_BREAK
-    # create the bitmaps
-    bitmaps = (_glyph.as_bytes() for _glyph in font.glyphs)
-    # bytewise transpose - .FNT stores as contiguous 8-pixel columns
-    bitmaps = tuple(
-        b''.join(
-            _bm[_col::len(_bm)//_glyph.height]
-            for _col in range(len(_bm)//_glyph.height)
-        )
-        for _glyph, _bm in zip(font.glyphs, bitmaps)
-    )
-    glyph_offsets = [0] + list(itertools.accumulate(len(_bm) for _bm in bitmaps))
-    glyph_entry = _GLYPH_ENTRY[version]
-    fnt_header_ext = _FNT_HEADER_EXT[version]
-    offset_bitmaps = (
-        _FNT_HEADER.size + fnt_header_ext.size
-        + len(font.glyphs)*glyph_entry.size
-    )
-    char_table = (
-        bytes(glyph_entry(_glyph.width, offset_bitmaps + _glyph_offset))
-        for _glyph, _glyph_offset in zip(font.glyphs, glyph_offsets)
-    )
-    file_size = offset_bitmaps + glyph_offsets[-1]
+    if font.spacing == 'proportional' or vector:
+        # low bit set for proportional
+        pitch_and_family = 0x01 | _STYLE_REVERSE_MAP.get(font.style, 0)
+        v3_flags = _DFF_PROPORTIONAL
+        pix_width = 0
+    else:
+        # CHECK: is this really always set for fixed-pitch?
+        pitch_and_family = _FF_MODERN
+        v3_flags = _DFF_FIXED
+        # x_width should equal average width
+        pix_width = font.raster_size.x
     # add name and device strings
-    face_name_offset = file_size
+    face_name_offset = offset_bitmaps + bitmap_size
     face_name = font.family.encode('latin-1', 'replace') + b'\0'
     device_name_offset = face_name_offset + len(face_name)
     device_name = font.device.encode('latin-1', 'replace') + b'\0'
@@ -646,7 +730,7 @@ def create_fnt(font, version=0x200):
         dfVersion=version,
         dfSize=file_size,
         dfCopyright=font.copyright.encode('ascii', 'replace')[:60].ljust(60, b'\0'),
-        dfType=0, # raster, not in memory
+        dfType=1 if vector else 0,
         dfPoints=int(font.point_size),
         dfVertRes=font.dpi.y,
         dfHorizRes=font.dpi.x,
@@ -675,21 +759,79 @@ def create_fnt(font, version=0x200):
         dfDefaultChar=default_ord - min_ord,
         dfBreakChar=break_ord - min_ord,
         # round up to multiple of 2 bytes to word-align v1.0 strikes (not used for v2.0+ ?)
-        dfWidthBytes=align(ceildiv(font.raster_size.x, 8), 1),
+        dfWidthBytes=align(ceildiv(font.raster_size.x*(max_ord-min_ord+1), 8), 1),
         dfDevice=device_name_offset,
         dfFace=face_name_offset,
         dfBitsPointer=0, # used on loading
         dfBitsOffset=offset_bitmaps,
     )
     # version-specific header extension
-    header_ext = fnt_header_ext()
+    header_ext = _FNT_HEADER_EXT[version]()
     if version == 0x300:
         # all are zeroes (default) except the flags for v3
         header_ext.dfFlags = v3_flags
-    data = (
-        bytes(win_props) + bytes(header_ext) + b''.join(char_table)
-        + b''.join(bitmaps)
-        + face_name + device_name
+    stringtable = face_name, device_name
+    return win_props, header_ext, stringtable
+
+
+def _convert_to_fnt_glyphs(font, version, vector, add_shift_up):
+    """Convert glyphs to FNT bitmaps and offset tables."""
+    if vector:
+        # vector glyph data
+        # this should equal the dfAscent value
+        win_ascent = font.raster_size.y - add_shift_up
+        bitmaps = _convert_vector_glyphs_to_fnt(font.glyphs, win_ascent)
+    elif version == 0x100:
+        strike = Raster.concatenate(*(_g.pixels for _g in font.glyphs))
+        bitmaps = (strike.as_bytes(),)
+    else:
+        # create the bitmaps
+        bitmaps = (_glyph.as_bytes() for _glyph in font.glyphs)
+        # bytewise transpose - .FNT stores as contiguous 8-pixel columns
+        bitmaps = tuple(
+            b''.join(
+                _bm[_col::len(_bm)//_glyph.height]
+                for _col in range(len(_bm)//_glyph.height)
+            )
+            for _glyph, _bm in zip(font.glyphs, bitmaps)
+        )
+    glyph_offsets = [0] + list(itertools.accumulate(len(_bm) for _bm in bitmaps))
+    if not vector:
+        glyph_entry = _GLYPH_ENTRY[version]
+    else:
+        glyph_entry = _GLYPH_ENTRY_PVECTOR
+    offset_bitmaps = (
+        _FNT_HEADER.size + _FNT_HEADER_EXT[version].size
     )
-    assert len(data) == file_size
-    return data
+    # vector format and v1 do not include dfBitmapOffset in the table
+    if vector or version==0x100:
+        base_offset = 0
+    else:
+        base_offset = offset_bitmaps
+    if version==0x100 and font.spacing == 'character-cell':
+        char_table = (b'',)
+    else:
+        char_table = (
+            bytes(glyph_entry(
+                geWidth=_glyph.width,
+                geOffset=base_offset + _glyph_offset
+            ))
+            for _glyph, _glyph_offset in zip(font.glyphs, glyph_offsets)
+        )
+        offset_bitmaps += len(font.glyphs) * glyph_entry.size
+    return bitmaps, char_table, offset_bitmaps
+
+
+def _convert_vector_glyphs_to_fnt(glyphs, win_ascent):
+    """Convert paths to a vector character table."""
+    glyphdata = []
+    for glyph in glyphs:
+        path = StrokePath.from_string(glyph.path).shift(0, -win_ascent).flip()
+        code = (
+            (-128, _x, _y) if _ink == StrokePath.MOVE else (_x, _y)
+            for _ink, _x, _y in path.as_moves()
+        )
+        code = tuple(_b for _tuple in code for _b in _tuple)
+        code = le.int8.array(len(code))(code)
+        glyphdata.append(bytes(code))
+    return glyphdata

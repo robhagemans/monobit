@@ -200,7 +200,6 @@ class FontProperties(DefaultProps):
     max_advance: int
     cap_advance: int
 
-
     @writable_property
     def name(self):
         """Full human-friendly name."""
@@ -271,7 +270,7 @@ class FontProperties(DefaultProps):
         """Vertical distance between consecutive baselines, in pixels."""
         if 'leading' in vars(self):
             return self.pixel_size + self.leading
-        return self.raster_size.y
+        return max(self.raster_size.y, self.pixel_size)
 
     @writable_property
     def line_width(self):
@@ -931,7 +930,7 @@ class Font:
             self, *,
             codepoint_from:encoder='', char_from:encoder='',
             tag_from:tagger='', comment_from:tagger='',
-            overwrite:bool=False
+            overwrite:bool=False, match_whitespace:bool=True,
         ):
         """
         Add character and codepoint labels.
@@ -941,6 +940,7 @@ class Font:
         tag_from: tagger registered name or filename to use to set tag labels
         comment_from: tagger registered name or filename to use to set comments
         overwrite: overwrite existing codepoints and/or characters
+        match_whitespace: do not give blank glyphs a non-whitespace char label (default: true)
         """
         nargs = sum(
             bool(_arg)
@@ -963,27 +963,24 @@ class Font:
                 encoding = char_from.name
             elif codepoint_from:
                 encoding = codepoint_from.name
+        kwargs = dict(
+            overwrite=overwrite,
+            match_whitespace=match_whitespace,
+        )
         if codepoint_from:
-            return self.modify(encoding=encoding, glyphs=tuple(
-                _glyph.label(codepoint_from=codepoint_from, overwrite=overwrite)
-                for _glyph in self._glyphs
-            ))
-        if char_from:
-            return self.modify(encoding=encoding, glyphs=tuple(
-                _glyph.label(char_from=char_from, overwrite=overwrite)
-                for _glyph in self._glyphs
-            ))
-        if tag_from:
-            return self.modify(encoding=encoding, glyphs=tuple(
-                _glyph.label(tag_from=tag_from, overwrite=overwrite)
-                for _glyph in self._glyphs
-            ))
-        if comment_from:
-            return self.modify(encoding=encoding, glyphs=tuple(
-                _glyph.label(comment_from=comment_from, overwrite=overwrite)
-                for _glyph in self._glyphs
-            ))
-        return self
+            kwargs.update(dict(codepoint_from=codepoint_from))
+        elif char_from:
+            kwargs.update(dict(char_from=char_from))
+        elif tag_from:
+            kwargs.update(dict(tag_from=tag_from))
+        elif comment_from:
+            kwargs.update(dict(comment_from=comment_from))
+        else:
+            return self
+        return self.modify(encoding=encoding, glyphs=tuple(
+            _glyph.label(**kwargs)
+            for _glyph in self._glyphs
+        ))
 
     # need converter from string to set of labels to script this
     #@scriptable

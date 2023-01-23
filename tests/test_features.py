@@ -11,6 +11,10 @@ import monobit
 from .base import BaseTester, get_stringio
 
 
+def assert_text_eq(text, model):
+    assert text == model, f'"""{text}"""\n != \n"""{model}"""'
+
+
 class TestFeatures(BaseTester):
     """Test specific features."""
 
@@ -49,6 +53,139 @@ class TestFeatures(BaseTester):
         vert1, *_ = monobit.load(self.font_path / 'vertical.yaff')
         text1 = monobit.render(vert1, b'\x27\x27', direction='top-to-bottom').as_text()
         assert text1 == self.verttext, f'"""{text1}"""\n != \n"""{self.verttext}"""'
+
+    # all directions
+
+    def test_render_ltr_ttb(self):
+        text = monobit.render(self.fixed4x6, 't\n12', direction='l t f').as_text()
+        assert_text_eq(text, """\
+.@......
+@@@.....
+.@......
+.@......
+..@.....
+........
+.@...@..
+@@..@.@.
+.@....@.
+.@...@..
+@@@.@@@.
+........""")
+
+    def test_render_ltr_btt(self):
+        text = monobit.render(self.fixed4x6, 't\n12', direction='l b f').as_text()
+        assert_text_eq(text, """\
+.@...@..
+@@..@.@.
+.@....@.
+.@...@..
+@@@.@@@.
+........
+.@......
+@@@.....
+.@......
+.@......
+..@.....
+........""")
+
+    def test_render_rtl_ttb(self):
+        text = monobit.render(self.fixed4x6, 't\n12', direction='r t f').as_text()
+        assert_text_eq(text, """\
+.....@..
+....@@@.
+.....@..
+.....@..
+......@.
+........
+.@...@..
+@.@.@@..
+..@..@..
+.@...@..
+@@@.@@@.
+........""")
+
+    def test_render_rtl_btt(self):
+        text = monobit.render(self.fixed4x6, 't\n12', direction='r b f').as_text()
+        assert_text_eq(text, """\
+.@...@..
+@.@.@@..
+..@..@..
+.@...@..
+@@@.@@@.
+........
+.....@..
+....@@@.
+.....@..
+.....@..
+......@.
+........""")
+
+
+    def test_render_ttb_rtl(self):
+        text = monobit.render(self.fixed4x6, 't\n12', direction='t r f').as_text()
+        assert_text_eq(text, """\
+.@...@..
+@@..@@@.
+.@...@..
+.@...@..
+@@@...@.
+........
+.@......
+@.@.....
+..@.....
+.@......
+@@@.....
+........""")
+
+
+    def test_render_ttb_ltr(self):
+        text = monobit.render(self.fixed4x6, 't\n12', direction='t l f').as_text()
+        assert_text_eq(text, """\
+.@...@..
+@@@.@@..
+.@...@..
+.@...@..
+..@.@@@.
+........
+.....@..
+....@.@.
+......@.
+.....@..
+....@@@.
+........""")
+
+
+    def test_render_btt_rtl(self):
+        text = monobit.render(self.fixed4x6, 't\n12', direction='b r f').as_text()
+        assert_text_eq(text, """\
+.@......
+@.@.....
+..@.....
+.@......
+@@@.....
+........
+.@...@..
+@@..@@@.
+.@...@..
+.@...@..
+@@@...@.
+........""")
+
+    def test_render_btt_ltr(self):
+        text = monobit.render(self.fixed4x6, 't\n12', direction='b l f').as_text()
+        assert_text_eq(text, """\
+.....@..
+....@.@.
+......@.
+.....@..
+....@@@.
+........
+.@...@..
+@@@.@@..
+.@...@..
+.@...@..
+..@.@@@.
+........""")
 
 
     # proportional rendering

@@ -27,7 +27,7 @@ from ..raster import Raster
 from ..labels import Tag, Char
 from ..storage import loaders, savers
 from ..streams import FileFormatError
-
+from .windows.fnt import _WEIGHT_MAP
 
 # errors that invalidates only one strike or resource, not the whole file
 
@@ -810,17 +810,8 @@ def _convert_name_props(name):
 # 'OS/2' table
 
 # usWeightClass
-_WEIGHT_MAP = {
-    100: 'thin',
-    200: 'extra-light',
-    300: 'light',
-    400: 'regular', # 'semi-light' in bdf
-    500: 'medium', # 'regular' in bdf
-    600: 'semi-bold',
-    700: 'bold',
-    800: 'extra-bold',
-    900: 'heavy',
-}
+# these align with Windows values
+#_WEIGHT_MAP
 
 # usWidthClass
 _SETWIDTH_MAP = {

@@ -98,6 +98,9 @@ class GlyphProperties(DefaultProps):
     tracking: int
     offset: Coord
 
+    # path segments for stroke fonts
+    path: str
+
 
     @checked_property
     def advance_width(self):
@@ -295,7 +298,7 @@ class Glyph:
     def label(
             self, codepoint_from=None, char_from=None,
             tag_from=None, comment_from=None,
-            overwrite=False
+            overwrite=False, match_whitespace=True,
         ):
         """
            Set labels or comment using provided encoder or tagger object.
@@ -305,6 +308,7 @@ class Glyph:
            tag_from: Tagger object used to set tag labels
            comment_from: Tagger object used to set comment
            overwrite: overwrite codepoint or char if already given
+           match_whitespace: do not give blank glyphs a non-whitespace char label (default: true)
         """
         if sum(
                 _arg is not None
@@ -321,7 +325,7 @@ class Glyph:
         # use codepage to find char if not set
         if char_from and (overwrite or not self.char):
             char = char_from.char(*labels)
-            if not self.is_blank() or is_whitespace(char):
+            if not match_whitespace or not self.is_blank() or is_whitespace(char):
                 return self.modify(char=char)
         if tag_from:
             return self.modify(tag=tag_from.tag(*labels))
