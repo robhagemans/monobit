@@ -25,6 +25,7 @@ from ..font import Font
 from ..glyph import Glyph
 from ..properties import Props
 from ..struct import little_endian as le
+from ..binary import ceildiv
 
 
 @loaders.register(
@@ -36,20 +37,16 @@ def load_os2(
     ):
     """Load an OS/2 font file."""
     resources = _read_os2_font(instream)
-    parsed = tuple(
+    parsed = (
         _parse_os2_font_resource(_data)
         for _data in resources
     )
-    for parsed_font, data in zip(parsed, resources):
-        for _index in range(
-                parsed_font.pMetrics.usFirstChar,
-                parsed_font.pMetrics.usFirstChar + parsed_font.pMetrics.usLastChar
-            ):
-            glyph = _extract_os2_font_glyph(_index, parsed_font, data)
-            logging.debug(Glyph.from_bytes(glyph.bitmap, width=glyph.width))
-
-        break
-
+    # TODO: convert font metrics
+    fonts = tuple(
+        Font(_convert_os2_glyphs(_pfont))
+        for _pfont in parsed
+    )
+    return fonts
 
 
 # from os2res.h
@@ -376,7 +373,6 @@ def _lx_extract_resource(instream, lx_hd, lx_rte, ulBase):
         else:
             cbData += lx_opm.size
         plxpages.append(lx_opm)
-
     if cbData >= lx_rte.offset + lx_rte.cb - 1:
         # Now read each page from its indicated location into our buffer
         pBuf = bytearray()
@@ -697,18 +693,32 @@ def _parse_os2_font_resource(pBuffer):
     if pRecord.Identity != SIG_OS2FONTDEF:
         raise FileFormatError('Not an OS/2 font resource.')
     pFont.pFontDef = OS2FONTDEFHEADER.from_bytes(pBuffer, ofs)
+
     logging.debug(pFont.pFontDef)
 
-    pFont.chardef_offset = ofs + OS2FONTDEFHEADER.size
+    chardef_offset = ofs + OS2FONTDEFHEADER.size
     if pFont.pFontDef.fsChardef == OS2FONTDEF_CHAR3:
         chardeftype = OS2CHARDEF3
+        cx = 'bSpace'
     else:
         chardeftype = OS2CHARDEF1
-    pChars = (chardeftype * pFont.pMetrics.usLastChar).from_bytes(pBuffer, pFont.chardef_offset)
+        cx = 'ulWidth'
 
+    cy = pFont.pFontDef.yCellHeight
+
+    pFont.pChars = (chardeftype * pFont.pMetrics.usLastChar).from_bytes(pBuffer, chardef_offset)
+    if pFont.pFontDef.fsChardef == OS2FONTDEF_CHAR3:
+        widths = (_c.bSpace for _c in pFont.pChars)
+    else:
+        widths = (_c.ulWidth for _c in pFont.pChars)
+    usWidths = (ceildiv(_w, 8) for _w in widths)
+
+    pFont.bitmaps = tuple(
+        '' if not _c.ulOffset else pBuffer[_c.ulOffset : _c.ulOffset+_uw*cy]
+        for _c, _uw in zip(pFont.pChars, usWidths)
+    )
     ofs += pFont.pFontDef.ulSize
     pRecord = GENERICRECORD.from_bytes(pBuffer, ofs)
-    logging.debug(pRecord)
     if pFont.pMetrics.usKerningPairs and pRecord.Identity == SIG_OS2KERN:
         pFont.pKerning = OS2KERNPAIRTABLE.from_bytes(pBuffer, ofs)
         # Advance to the next record (whether OS2ADDMETRICS or OS2FONTEND).
@@ -734,80 +744,28 @@ def _parse_os2_font_resource(pBuffer):
     return pFont
 
 
-def _extract_os2_font_glyph(ulIndex, pFont, pBuffer):
-    """
-    Extracts the bitmap data for the OS/2 font glyph at the given index, and
-    converts it into standard bitmap format.  The bitmap will be written into
-    the buffer field of the provided glyph information structure; the buffer
-    will be allocated by this function and should be freed by the caller when
-    no longer needed.
-
-    The bitmap has to be converted manually by this function because the
-    standard OS/2 font format stores bitmap data with consecutive bytes
-    representing vertical columns, rather than rows as with standard bitmaps.
-
-    The written bitmap buffer contains the image bits only, no header
-    information is included.  The image format is 1 bit per pixel.
-
-    ARGUMENTS:
-      ULONG            ulIndex: Glyph index (codepoint) within the font.  (I)
-      POS2FONTRESOURCE pFont  : Pointer to the font resource data.        (I)
-    """
-    # Map index 0 to the default/substitution glyph
-    # if ulIndex == 0:
-    #     ulIndex = pFont.pMetrics.usDefaultChar
-    # Make sure our index actually falls within the range contained in the font
-    if (
-            ulIndex < pFont.pMetrics.usFirstChar
-            or ulIndex > pFont.pMetrics.usFirstChar + pFont.pMetrics.usLastChar
-        ):
-        return None
-    ulIndex -= pFont.pMetrics.usFirstChar
-    # Find the character data for the given offset
-    if pFont.pFontDef.fsChardef == OS2FONTDEF_CHAR3:
-        pChar = OS2CHARDEF3.from_bytes(
-            pBuffer, pFont.chardef_offset + ulIndex * pFont.pFontDef.usCellSize
+def _convert_os2_glyphs(pFont):
+    """Convert glyph definitions and bitmaps to monobit glyphs."""
+    glyphs = []
+    for pChar, pBitmap in zip(pFont.pChars, pFont.bitmaps):
+        # Find the character data for the given offset
+        if pFont.pFontDef.fsChardef == OS2FONTDEF_CHAR3:
+            cx = pChar.bSpace
+            props = dict(
+                left_bearing=pChar.aSpace,
+                right_bearing=pChar.cSpace,
+            )
+        else:
+            cx = pChar.ulWidth
+            props = {}
+        cy = pFont.pFontDef.yCellHeight
+        usWidth = ceildiv(cx, 8)
+        # consecutive bytes represent vertical 8-pixel-wide columns
+        bitmap = tuple(
+            pBitmap[i + (cy * j)]
+            for i in range(cy)
+            for j in range(usWidth)
         )
-        if pChar.ulOffset == 0:
-            return None
-
-        pBitmap = pBuffer[pChar.ulOffset:]
-
-        cx = pChar.bSpace
-        bearingL = pChar.aSpace
-        bearingR = pChar.cSpace
-    else:
-        pChar = OS2CHARDEF1.from_bytes(
-            pBuffer, pFont.chardef_offset + ulIndex * pFont.pFontDef.usCellSize
-        )
-        logging.debug(pChar)
-
-        pBitmap = pBuffer[pChar.ulOffset:]
-
-        if pChar.ulOffset == 0:
-            return None
-        cx = pChar.ulWidth
-        bearingL = 0
-        bearingR = 0
-    cy = pFont.pFontDef.yCellHeight
-    usWidth = cx // 8
-    if cx % 8:
-        usWidth += 1
-    # Now convert the bitmap
-    bitmap = tuple(
-        pBitmap[i + (cy * j)]
-        for i in range(cy)
-        for j in range(usWidth)
-    )
-    pGlyph = Props(
-        height=cy,
-        width=cx,
-        pitch=usWidth,
-        bearingL=bearingL,
-        bearingR=bearingR,
-        # horiAdvance=bearingL + cx + bearingR,
-        # vertBearingY=pFont.pMetrics.yExternalLeading,
-        # vertAdvance=cy + pFont.pMetrics.yExternalLeading,
-        bitmap=bitmap
-    )
-    return pGlyph
+        glyph = Glyph.from_bytes(bitmap, width=cx, **props)
+        glyphs.append(glyph)
+    return glyphs
