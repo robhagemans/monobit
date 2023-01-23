@@ -13,6 +13,7 @@ import io
 import string
 import logging
 import itertools
+from types import SimpleNamespace
 
 from ...binary import bytes_to_bits, ceildiv, align
 from ...struct import little_endian as le
@@ -357,14 +358,16 @@ def parse_fnt(data):
 
 def _extract_win_props(data):
     """Read the header information in the FNT resource."""
-    win_props = _FNT_HEADER.from_bytes(data)
+    header = _FNT_HEADER.from_bytes(data)
     try:
-        header_ext = _FNT_HEADER_EXT[win_props.dfVersion]
+        header_ext_type = _FNT_HEADER_EXT[header.dfVersion]
     except KeyError:
         raise FileFormatError(
-            f'Not a Windows .FNT resource or unsupported version (0x{win_props.dfVersion:04x}).'
-            ) from None
-    win_props += header_ext.from_bytes(data, _FNT_HEADER.size)
+            'Not a Windows .FNT resource or unsupported version'
+            f' (0x{header.dfVersion:04x}).'
+        ) from None
+    extension = header_ext_type.from_bytes(data, _FNT_HEADER.size)
+    win_props = SimpleNamespace(**vars(header), **vars(extension))
     return win_props
 
 def _extract_glyphs(data, win_props):

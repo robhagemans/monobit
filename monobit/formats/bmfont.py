@@ -23,7 +23,6 @@ from ..streams import FileFormatError
 from ..binary import int_to_bytes, bytes_to_int
 from ..struct import little_endian as le
 from ..properties import reverse_dict
-from .. import struct
 from ..storage import loaders, savers
 from ..font import Font, Coord
 from ..glyph import Glyph
@@ -109,7 +108,7 @@ def _info(size):
         spacingHoriz='uint8',
         spacingVert='uint8',
         outline='uint8',
-        fontName = struct.char * (size-14),
+        fontName = le.char * (size-14),
     )
 
 # info bitfield
@@ -171,7 +170,7 @@ _COMMON = le.Struct(
 def _pages(npages, size):
     strlen = size // npages
     return le.Struct(
-        pageNames=(struct.char * strlen) * int(npages)
+        pageNames=(le.char * strlen) * int(npages)
     )
 
 

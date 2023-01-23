@@ -12,7 +12,6 @@ from ..storage import loaders, savers
 from ..font import Font
 from ..glyph import Glyph
 from ..raster import Raster
-from .. import struct
 from ..struct import little_endian as le
 from ..binary import ceildiv, align
 from .raw import load_binary
@@ -315,7 +314,7 @@ def _load_geos_cvt(instream, merge_mega):
     logging.debug('signature: %s', bytes(sig_block.signature).decode('ascii', 'replace'))
     info_block = _INFO_BLOCK.read_from(instream)
     logging.debug('class: %s', info_block.class_text.decode('ascii', 'replace'))
-    icon = Raster.from_bytes(tuple(info_block.icon.value), width=24)
+    icon = Raster.from_bytes(tuple(info_block.icon), width=24)
     record_block = _RECORD_BLOCK.read_from(instream)
     logging.debug(info_block)
     logging.debug(list(x for x in record_block if not bytes(x) == b'\0\xff'))
@@ -330,8 +329,8 @@ def _load_geos_cvt(instream, merge_mega):
     ))
     fonts = []
     for data_size, ghptsize in zip(
-            info_block.O_GHSETLEN.value,
-            info_block.O_GHPTSIZES.value
+            info_block.O_GHSETLEN,
+            info_block.O_GHPTSIZES
         ):
         if not ghptsize or not data_size:
             continue

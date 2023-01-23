@@ -10,7 +10,6 @@ import logging
 
 from ..binary import bytes_to_bits, align
 from ..struct import bitfield, big_endian as be
-from .. import struct
 from ..storage import loaders, savers
 from ..font import Font, Coord
 from ..glyph import Glyph, KernTable
@@ -338,9 +337,9 @@ _FOND_HEADER = be.Struct(
    # {offset to style-mapping table}
    ffStylOff='uint32',
    # {style properties info}
-   ffProperty=struct.uint16 * 9,
+   ffProperty=be.uint16 * 9,
    # {for international use}
-   ffIntl=struct.uint16 * 2,
+   ffIntl=be.uint16 * 2,
    # {version number}
    ffVersion='uint16',
 )
@@ -373,7 +372,7 @@ _OFFS_ENTRY = be.Struct(
 # p. 4-99
 # > Each width is in 16-bit fixed-point format, with the integer part
 # > in the high-order 4 bits and the fractional part in the low-order 12 bits.
-_FIXED_TYPE = struct.int16
+_FIXED_TYPE = be.int16
 # remember to divide by 2**12...
 
 # bounding-box table
@@ -391,9 +390,9 @@ _BBX_ENTRY = be.Struct(
 # Family glyph width table
 # definitions I.M. p.4-109 / p.4-115
 # handle; elsewhere 4 bytes
-_HANDLE = struct.uint32
+_HANDLE = be.uint32
 # guess
-_BOOLEAN = struct.uint8
+_BOOLEAN = be.uint8
 # Point data type; 4 bytes e.g. I.M. C-29
 # 4-29 "two integers: vertical, horizontal"
 _POINT = be.Struct(
@@ -457,7 +456,7 @@ _STYLE_TABLE = be.Struct(
     # indexes into the font suffix name table that follows this table
     # "This is an array of 48 integer index values"
     # note C summary has 47 but Pascal summary has 0..47 inclusive
-    indexes=struct.int8 * 48,
+    indexes=be.int8 * 48,
 )
 # https://www6.uniovi.es/cscene/CS5/CS5-04.html
 # > In Pascal, on the other hand, the first character of the string is the length of the
@@ -465,7 +464,7 @@ _STYLE_TABLE = be.Struct(
 # > On the Mac, there is a predefined type for Pascal strings, namely, Str255.
 _STR255 = be.Struct(
     length='uint8',
-    string=struct.char * 255, #*length
+    string=be.char * 255, #*length
 )
 _NAME_TABLE = be.Struct(
     stringCount='int16',
@@ -473,7 +472,7 @@ _NAME_TABLE = be.Struct(
 )
 
 def string_from_bytes(data, offset):
-    length = be.uint8.from_bytes(data, offset)
+    length = int(be.uint8.from_bytes(data, offset))
     string = data[offset+1:offset+1+length]
     return string, offset+1+length
 
@@ -483,7 +482,7 @@ _ENC_TABLE = be.Struct(
 )
 _ENC_ENTRY = be.Struct(
     char='uint8',
-    name=struct.char * 255,
+    name=be.char * 255,
 )
 
 # Kerning table

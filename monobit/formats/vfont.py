@@ -106,20 +106,17 @@ _DISPATCH = {
 def _read_vfont(instream):
     """Read vfont binary file and return as properties."""
     endian = 'l'
-    data = instream.read()
-    header = _HEADER[endian].from_bytes(data)
+    header = _HEADER[endian].read_from(instream)
     if header.magic == 0x1e01:
         endian = 'b'
-        header = _HEADER[endian].from_bytes(data)
+        header = _HEADER[endian].from_bytes(bytes(header))
     if header.magic != _VFONT_MAGIC:
         raise FileFormatError(
             'Not a vfont file: '
             f'incorrect magic number 0o{header.magic:o} != 0o436'
         )
-    dispatch = _DISPATCH[endian].array(256).from_bytes(
-        data, _HEADER[endian].size
-    )
-    bitmap = data[_HEADER[endian].size + dispatch.size:]
+    dispatch = _DISPATCH[endian].array(256).read_from(instream)
+    bitmap = instream.read()
     glyph_bytes = tuple(
         bitmap[_entry.addr:_entry.addr+_entry.nbytes]
         for _entry in dispatch
