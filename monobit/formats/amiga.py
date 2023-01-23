@@ -15,7 +15,6 @@ from ..font import Font, Coord
 from ..glyph import Glyph
 from ..struct import flag, bitfield, big_endian as be
 from ..properties import Props
-from .. import struct
 
 
 @loaders.register('font', magic=(b'\x0f\0', b'\x0f\2'), name='amiga-fc')
@@ -164,7 +163,7 @@ _AMIGA_HEADER = be.Struct(
     dfh_Revision='H',
     dfh_Segment='i',
     # use array of bytes instead of char, to preserve tags post NUL
-    dfh_Name=struct.char * _MAXFONTNAME,
+    dfh_Name=be.char * _MAXFONTNAME,
     # struct Message at start of struct TextFont
     # struct Message http://amigadev.elowar.com/read/ADCD_2.1/Libraries_Manual_guide/node02EF.html
     tf_ln_Succ='I',
@@ -202,7 +201,7 @@ _FONT_CONTENTS_HEADER = be.Struct(
 
 # struct FontContents
 _FONT_CONTENTS = be.Struct(
-    fc_FileName=struct.char * _MAXFONTPATH,
+    fc_FileName=be.char * _MAXFONTPATH,
     fc_YSize='uword',
     fc_Style='ubyte',
     fc_Flags='ubyte',
@@ -211,7 +210,7 @@ _FONT_CONTENTS = be.Struct(
 # struct TFontContents
 # extra tags stored at the back of the tfc_FileName field
 _T_FONT_CONTENTS = be.Struct(
-    tfc_FileName=struct.char * (_MAXFONTPATH-2),
+    tfc_FileName=be.char * (_MAXFONTPATH-2),
     tfc_TagCount='uword',
     tfc_YSize='uword',
     tfc_Style='ubyte',

@@ -13,7 +13,6 @@ from itertools import accumulate
 
 from ..binary import ceildiv
 from ..struct import little_endian as le, sizeof
-from .. import struct
 from ..storage import loaders, savers
 from ..streams import FileFormatError
 from ..font import Font
@@ -126,8 +125,8 @@ _FONT_INFO_HEADER = le.Struct(
 def drdos_ext_header(num_fonts_per_codepage=0):
     return le.Struct(
         num_fonts_per_codepage='byte',
-        font_cellsize=struct.uint8 * num_fonts_per_codepage,
-        dfd_offset=struct.uint32 * num_fonts_per_codepage,
+        font_cellsize=le.uint8 * num_fonts_per_codepage,
+        dfd_offset=le.uint32 * num_fonts_per_codepage,
     )
 
 
@@ -249,7 +248,7 @@ _SCREEN_FONT_HEADER = le.Struct(
 )
 # DRFONT character index table
 _CHARACTER_INDEX_TABLE = le.Struct(
-    FontIndex=struct.int16 * 256,
+    FontIndex=le.int16 * 256,
 )
 
 def _read_cp_header(data, start_offset, format, standalone):
@@ -565,8 +564,8 @@ def _save_dr_cpi(fonts, outstream, format, codepage_prefix):
     dfd_offsets = tuple(accumulate(lengths, initial=bitmap_start))
     ddeff = ddeff_type(
         num_fonts_per_codepage=num_fonts_per_codepage,
-        font_cellsize=(struct.uint8 * num_fonts_per_codepage)(*cell_sizes),
-        dfd_offset=(struct.uint32 * num_fonts_per_codepage)(*dfd_offsets[:-1]),
+        font_cellsize=(le.uint8 * num_fonts_per_codepage)(*cell_sizes),
+        dfd_offset=(le.uint32 * num_fonts_per_codepage)(*dfd_offsets[:-1]),
     )
     ffh = _CPI_HEADER(
         id0=0x7f,

@@ -16,49 +16,39 @@ from functools import partial
 ##############################################################################
 # binary structs
 
-# base types
-char = ctypes.c_char
-uint8 = ctypes.c_uint8
-int8 = ctypes.c_int8
-uint16 = ctypes.c_uint16
-int16 = ctypes.c_int16
-uint32 = ctypes.c_uint32
-int32 = ctypes.c_int32
-
 
 # type strings
 TYPES = {
-    'byte': uint8,
-    'ubyte': uint8,
-    'uint8': uint8,
-    'B': uint8,
+    'byte': ctypes.c_uint8,
+    'ubyte': ctypes.c_uint8,
+    'uint8': ctypes.c_uint8,
+    'B': ctypes.c_uint8,
 
-    'int8': int8,
-    'b': int8,
+    'int8': ctypes.c_int8,
+    'b': ctypes.c_int8,
 
-    'word': uint16,
-    'uword': uint16,
-    'uint16': uint16,
-    'H': uint16,
+    'word': ctypes.c_uint16,
+    'uword': ctypes.c_uint16,
+    'uint16': ctypes.c_uint16,
+    'H': ctypes.c_uint16,
 
-    'short': int16,
-    'int16': int16,
-    'h': int16,
+    'short': ctypes.c_int16,
+    'int16': ctypes.c_int16,
+    'h': ctypes.c_int16,
 
-    'dword': uint32,
-    'uint32': uint32,
-    'I': uint32,
-    'L': uint32,
+    'dword': ctypes.c_uint32,
+    'uint32': ctypes.c_uint32,
+    'I': ctypes.c_uint32,
+    'L': ctypes.c_uint32,
 
-    'long': int32,
-    'int32': int32,
-    'i': int32,
-    'l': int32,
+    'long': ctypes.c_int32,
+    'int32': ctypes.c_int32,
+    'i': ctypes.c_int32,
+    'l': ctypes.c_int32,
 
-    'char': char,
-    's': char,
+    'char': ctypes.c_char,
+    's': ctypes.c_char,
 }
-
 
 class bitfield:
     """Pair (type, bit_width) to describe bit field."""
@@ -84,7 +74,7 @@ def _parse_type(atype):
     except KeyError:
         pass
     if isinstance(atype, str) and atype.endswith('s'):
-        return char * int(atype[:-1]),
+        return ctypes.c_char * int(atype[:-1]),
     raise ValueError('Field type `{}` not understood'.format(atype))
 
 
@@ -183,7 +173,7 @@ class ScalarType(_WrappedCType):
             self._ctype = ctype.__ctype_le__
         else:
             raise ValueError(f"Endianness '{endian}' not recognised.")
-        if ctype == char:
+        if ctype == ctypes.c_char:
             self._value_cls = CharValue
         else:
             self._value_cls = IntValue
@@ -309,22 +299,22 @@ def sizeof(wrapped):
 
 big_endian = SimpleNamespace(
     Struct=partial(StructType, '>'),
-    char=ScalarType('>', char),
-    uint8=ScalarType('>', uint8),
-    int8=ScalarType('>', int8),
-    uint16=ScalarType('>', uint16),
-    int16=ScalarType('>', int16),
-    uint32=ScalarType('>', uint32),
-    int32=ScalarType('>', int32),
+    char=ScalarType('>', ctypes.c_char),
+    uint8=ScalarType('>', ctypes.c_uint8),
+    int8=ScalarType('>', ctypes.c_int8),
+    uint16=ScalarType('>', ctypes.c_uint16),
+    int16=ScalarType('>', ctypes.c_int16),
+    uint32=ScalarType('>', ctypes.c_uint32),
+    int32=ScalarType('>', ctypes.c_int32),
 )
 
 little_endian = SimpleNamespace(
     Struct=partial(StructType, '<'),
-    char=ScalarType('<', char),
-    uint8=ScalarType('<', uint8),
-    int8=ScalarType('<', int8),
-    uint16=ScalarType('<', uint16),
-    int16=ScalarType('<', int16),
-    uint32=ScalarType('<', uint32),
-    int32=ScalarType('<', int32),
+    char=ScalarType('<', ctypes.c_char),
+    uint8=ScalarType('<', ctypes.c_uint8),
+    int8=ScalarType('<', ctypes.c_int8),
+    uint16=ScalarType('<', ctypes.c_uint16),
+    int16=ScalarType('<', ctypes.c_int16),
+    uint32=ScalarType('<', ctypes.c_uint32),
+    int32=ScalarType('<', ctypes.c_int32),
 )
