@@ -515,7 +515,6 @@ def _copy_byte_seq(target, source_offset, count):
 ###############################################################################
 # OS/2 font resource parser
 
-
 # Text signatures for standard OS/2 bitmap fonts.
 OS2FNT_SIGNATURE = "OS/2 FONT"
 OS2FNT2_SIGNATURE = "OS/2 FONT 2"
@@ -677,7 +676,6 @@ def _parse_os2_font_resource(pBuffer):
     of the pFont structure may be NULL.  The application must check for this
     if it intends to use these fields.
     """
-    pFont = Props()
     # Verify the file format
     pRecord = GENERICRECORD.from_bytes(pBuffer)
     if (
@@ -686,6 +684,7 @@ def _parse_os2_font_resource(pBuffer):
         ):
         raise FileFormatError('Not an OS/2 font resource.')
     # Now set the pointers in our font type to the correct offsets
+    pFont = Props()
     pFont.pSignature = OS2FONTSTART.from_bytes(pBuffer)
     ofs = OS2FONTSTART.size
     pFont.pMetrics = OS2FOCAMETRICS.from_bytes(pBuffer, ofs)
@@ -696,30 +695,29 @@ def _parse_os2_font_resource(pBuffer):
     if pRecord.Identity != SIG_OS2FONTDEF:
         raise FileFormatError('Not an OS/2 font resource.')
     pFont.pFontDef = OS2FONTDEFHEADER.from_bytes(pBuffer, ofs)
-
-    logging.debug(pFont.pFontDef)
-
+    #
+    # read character definitions and bitmaps
+    #
     chardef_offset = ofs + OS2FONTDEFHEADER.size
     if pFont.pFontDef.fsChardef == OS2FONTDEF_CHAR3:
         chardeftype = OS2CHARDEF3
-        cx = 'bSpace'
     else:
         chardeftype = OS2CHARDEF1
-        cx = 'ulWidth'
-
-    cy = pFont.pFontDef.yCellHeight
-
-    pFont.pChars = (chardeftype * pFont.pMetrics.usLastChar).from_bytes(pBuffer, chardef_offset)
+    chardefarray = chardeftype * pFont.pMetrics.usLastChar
+    pFont.pChars = chardefarray.from_bytes(pBuffer, chardef_offset)
     if pFont.pFontDef.fsChardef == OS2FONTDEF_CHAR3:
         widths = (_c.bSpace for _c in pFont.pChars)
     else:
         widths = (_c.ulWidth for _c in pFont.pChars)
     usWidths = (ceildiv(_w, 8) for _w in widths)
-
+    cy = pFont.pFontDef.yCellHeight
     pFont.bitmaps = tuple(
         '' if not _c.ulOffset else pBuffer[_c.ulOffset : _c.ulOffset+_uw*cy]
         for _c, _uw in zip(pFont.pChars, usWidths)
     )
+    #
+    # read optional tables (kerning, panose)
+    #
     ofs += pFont.pFontDef.ulSize
     pRecord = GENERICRECORD.from_bytes(pBuffer, ofs)
     if pFont.pMetrics.usKerningPairs and pRecord.Identity == SIG_OS2KERN:
