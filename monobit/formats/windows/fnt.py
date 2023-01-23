@@ -818,7 +818,7 @@ def _convert_to_fnt_glyphs(font, version, vector, add_shift_up):
             ))
             for _glyph, _glyph_offset in zip(font.glyphs, glyph_offsets)
         )
-        offseet_bitmaps += len(font.glyphs) * glyph_entry.size
+        offset_bitmaps += len(font.glyphs) * glyph_entry.size
     return bitmaps, char_table, offset_bitmaps
 
 
