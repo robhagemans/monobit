@@ -510,8 +510,11 @@ def _copy_byte_seq(target, source_offset, count):
         target.append(target[source_offset])
 
 
+
 ###############################################################################
-# font resource parser
+###############################################################################
+# OS/2 font resource parser
+
 
 # Text signatures for standard OS/2 bitmap fonts.
 OS2FNT_SIGNATURE = "OS/2 FONT"
@@ -744,27 +747,31 @@ def _parse_os2_font_resource(pBuffer):
     return pFont
 
 
-def _convert_os2_glyphs(pFont):
+def _convert_os2_glyphs(font_data):
     """Convert glyph definitions and bitmaps to monobit glyphs."""
     glyphs = []
-    for pChar, pBitmap in zip(pFont.pChars, pFont.bitmaps):
-        # Find the character data for the given offset
-        if pFont.pFontDef.fsChardef == OS2FONTDEF_CHAR3:
-            cx = pChar.bSpace
-            props = dict(
-                left_bearing=pChar.aSpace,
-                right_bearing=pChar.cSpace,
-            )
+    for codepoint, (chardef, bitmap) in enumerate(
+            zip(font_data.pChars, font_data.bitmaps),
+            font_data.pMetrics.usFirstChar
+        ):
+        props = dict(
+            codepoint=codepoint,
+        )
+        if font_data.pFontDef.fsChardef == OS2FONTDEF_CHAR3:
+            cx = chardef.bSpace
+            props.update(dict(
+                left_bearing=chardef.aSpace,
+                right_bearing=chardef.cSpace,
+            ))
         else:
-            cx = pChar.ulWidth
-            props = {}
-        cy = pFont.pFontDef.yCellHeight
-        usWidth = ceildiv(cx, 8)
+            cx = chardef.ulWidth
+        cy = font_data.pFontDef.yCellHeight
+        byte_width = ceildiv(cx, 8)
         # consecutive bytes represent vertical 8-pixel-wide columns
         bitmap = tuple(
-            pBitmap[i + (cy * j)]
+            bitmap[i + (cy * j)]
             for i in range(cy)
-            for j in range(usWidth)
+            for j in range(byte_width)
         )
         glyph = Glyph.from_bytes(bitmap, width=cx, **props)
         glyphs.append(glyph)
