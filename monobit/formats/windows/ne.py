@@ -13,7 +13,6 @@ import logging
 
 from ...binary import align
 from ...struct import little_endian as le
-from ... import struct
 from ...streams import FileFormatError
 from .mz import _create_mz_stub, _ALIGN_SHIFT
 from .fnt import parse_fnt, create_fnt
@@ -95,7 +94,7 @@ _RES_TABLE_HEAD = le.Struct(
     rscAlignShift='word',
     #rscTypes=[type_info ...],
     #rscEndTypes='word',
-    #rscResourceNames=struct.char * len_names,
+    #rscResourceNames=le.char * len_names,
     #rscEndNames='byte'
 )
 
@@ -179,7 +178,7 @@ def _create_resource_table(header_size, post_size, resdata_size, n_fonts, font_s
         rscTypes_fontdir=typeinfo_fontdir_struct,
         rscTypes_font=typeinfo_font_struct,
         rscEndTypes='word', # 0
-        rscResourceNames=struct.char * len(res_names),
+        rscResourceNames=le.char * len(res_names),
         rscEndNames='byte', # 0
     )
     # calculate offset to resource data
