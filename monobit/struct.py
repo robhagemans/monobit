@@ -88,6 +88,7 @@ def _parse_type(atype):
     raise ValueError('Field type `{}` not understood'.format(atype))
 
 
+
 class NewType:
 
     def __mul__(self, count):
@@ -96,11 +97,15 @@ class NewType:
 
     def __call__(self, *args, **kwargs):
         """Instantiate a struct variable."""
-        return self._value_cls.from_cvalue(self._ctype(*args, **kwargs))
+        return self.from_cvalue(self._ctype(*args, **kwargs))
+
+    def from_cvalue(self, cvalue):
+        """Instantiate a struct variable from a cvalue."""
+        return self._value_cls.from_cvalue(cvalue, self)
 
     def from_bytes(self, *args):
         cvalue = self._ctype.from_buffer_copy(*args)
-        return self._value_cls.from_cvalue(cvalue)
+        return self.from_cvalue(cvalue)
 
     def read_from(self, stream):
         return self.from_bytes(stream.read(self.size))
@@ -117,22 +122,36 @@ class NewValue:
     """Wrapper for ctypes value."""
 
     @classmethod
-    def from_cvalue(cls, cvalue):
+    def from_cvalue(cls, cvalue, type):
         obj = cls()
         obj._cvalue = cvalue
+        obj._type = type
         return obj
 
     def __bytes__(self):
         return bytes(self._cvalue)
-
-    def __repr__(self):
-        return type(self).__name__ + '({})'.format(self._cvalue.value)
 
 
 class IntValue(NewValue):
 
     def __int__(self):
         return self._cvalue.value
+
+    def __repr__(self):
+        return type(self).__name__ + '({})'.format(self._cvalue.value)
+
+    # the following allow this class to mostly stand in for an int
+    # we should not aften need this as struct/array elements
+    # come out as Pyton basetype int/bytes
+
+    def __index__(self):
+        return int(self)
+
+    def __add__(self, rhs):
+        return int(self) + rhs
+
+    def __radd__(self, lhs):
+        return lhs + int(self)
 
 
 class ScalarType(NewType):
@@ -154,13 +173,17 @@ class StructValue(NewValue):
 
     def __getattr__(self, attr):
         if not attr.startswith('__'):
-            return getattr(self._cvalue, attr)
+            value = getattr(self._cvalue, attr)
+            if isinstance(value, (ctypes.Array, ctypes.Structure)):
+                wrapper = self._type.element_types[attr]
+                return wrapper.from_cvalue(value)
+            return value
         raise AttributeError(attr)
 
     @property
     def __dict__(self):
         return dict(
-            (field, getattr(self._cvalue, field))
+            (field, getattr(self, field))
             for field, *_ in self._cvalue._fields_
         )
 
@@ -204,6 +227,7 @@ class StructType(NewType):
             _pack_ = True
 
         self._ctype = _CStruct
+        self.element_types = description
 
     def __call__(self, **kwargs):
         """Instantiate a struct variable."""
@@ -211,16 +235,20 @@ class StructType(NewType):
             _k: (_v._cvalue if isinstance(_v, NewValue) else _v)
             for _k, _v in kwargs.items()
         }
-        return StructValue.from_cvalue(self._ctype(**kwargs))
+        return self.from_cvalue(self._ctype(**kwargs))
 
 
 class ArrayValue(NewValue):
 
     def __getitem__(self, item):
-        return self._cvalue[item]
+        value = self._cvalue[item]
+        if isinstance(value, (ctypes.Array, ctypes.Structure)):
+            wrapper = self._type.element_type
+            return wrapper.from_cvalue(value)
+        return value
 
     def __iter__(self):
-        return iter(self._cvalue)
+        return (self[_i] for _i in range(len(self)))
 
     def __len__(self):
         return len(self._cvalue)
@@ -239,13 +267,14 @@ class ArrayType(NewType):
 
     def __init__(self, struct, count):
         self._count = count
+        self.element_type = struct
         self._ctype = struct._ctype * count
 
     def __call__(self, *args):
         """Instantiate a struct variable."""
         if args and isinstance(args[0], NewValue):
             args = (_arg._cvalue for _arg in args)
-        return ArrayValue.from_cvalue(self._ctype(*args))
+        return ArrayValue.from_cvalue(self._ctype(*args), self)
 
 
 def sizeof(wrapped):
