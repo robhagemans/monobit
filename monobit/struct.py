@@ -88,8 +88,22 @@ def _parse_type(atype):
     raise ValueError('Field type `{}` not understood'.format(atype))
 
 
+class _WrappedCValue:
+    """Wrapper for ctypes value."""
+
+    @classmethod
+    def from_cvalue(cls, cvalue, type):
+        obj = cls()
+        obj._cvalue = cvalue
+        obj._type = type
+        return obj
+
+    def __bytes__(self):
+        return bytes(self._cvalue)
+
 
 class _WrappedCType:
+    """Wrapper for ctypes type, factory for _WrappedCValue objects."""
 
     def __mul__(self, count):
         """Create an array."""
@@ -118,21 +132,8 @@ class _WrappedCType:
         return ctypes.sizeof(self._ctype)
 
 
-class _WrappedCValue:
-    """Wrapper for ctypes value."""
-
-    @classmethod
-    def from_cvalue(cls, cvalue, type):
-        obj = cls()
-        obj._cvalue = cvalue
-        obj._type = type
-        return obj
-
-    def __bytes__(self):
-        return bytes(self._cvalue)
-
-
 class IntValue(_WrappedCValue):
+    """Wrapper for integer scalars."""
 
     def __int__(self):
         return self._cvalue.value
@@ -155,6 +156,7 @@ class IntValue(_WrappedCValue):
 
 
 class ScalarType(_WrappedCType):
+    """Wrapper for scalar types. Mostly used to define arrays and structs."""
 
     _value_cls = IntValue
 
@@ -165,7 +167,6 @@ class ScalarType(_WrappedCType):
             self._ctype = ctype.__ctype_le__
         else:
             raise ValueError(f"Endianness '{endian}' not recognised.")
-
 
 
 class StructValue(_WrappedCValue):
@@ -239,6 +240,7 @@ class StructType(_WrappedCType):
 
 
 class ArrayValue(_WrappedCValue):
+    """Wrapper for ctypes arrays."""
 
     def __getitem__(self, item):
         value = self._cvalue[item]
@@ -262,6 +264,7 @@ class ArrayValue(_WrappedCValue):
         )
 
 class ArrayType(_WrappedCType):
+    """Wrapper for ctypes array type."""
 
     _value_cls = ArrayValue
 
