@@ -109,6 +109,8 @@ class _WrappedCType:
         """Create an array."""
         return self.array(count)
 
+    __rmul__ = __mul__
+
     def __call__(self, *args, **kwargs):
         """Instantiate a struct variable."""
         return self.from_cvalue(self._ctype(*args, **kwargs))
@@ -132,7 +134,29 @@ class _WrappedCType:
         return ctypes.sizeof(self._ctype)
 
 
-class IntValue(_WrappedCValue):
+
+class ScalarValue(_WrappedCValue):
+    """Wrapper for scalars."""
+
+    def __repr__(self):
+        return type(self).__name__ + '({})'.format(self._cvalue.value)
+
+    def __add__(self, value):
+        return self._cvalue.value + value
+
+    __radd__ = __add__
+
+    def __mul__(self, value):
+        return self._cvalue.value * value
+
+    __rmul__ = __mul__
+
+
+class CharValue(ScalarValue):
+    pass
+
+
+class IntValue(ScalarValue):
     """Wrapper for integer scalars."""
 
     def __int__(self):
@@ -148,17 +172,9 @@ class IntValue(_WrappedCValue):
     def __index__(self):
         return int(self)
 
-    def __add__(self, rhs):
-        return int(self) + rhs
-
-    def __radd__(self, lhs):
-        return lhs + int(self)
-
 
 class ScalarType(_WrappedCType):
     """Wrapper for scalar types. Mostly used to define arrays and structs."""
-
-    _value_cls = IntValue
 
     def __init__(self, endian, ctype):
         if endian[:1].lower() in ('b', '>'):
@@ -167,6 +183,10 @@ class ScalarType(_WrappedCType):
             self._ctype = ctype.__ctype_le__
         else:
             raise ValueError(f"Endianness '{endian}' not recognised.")
+        if ctype == char:
+            self._value_cls = CharValue
+        else:
+            self._value_cls = IntValue
 
 
 class StructValue(_WrappedCValue):
