@@ -336,7 +336,6 @@ def _write_glyph(outstream, glyph, label=None):
     else:
         labels = glyph.get_labels()
     if not labels:
-        logging.debug('No labels for glyph: %s', glyph)
         outstream.write(f'{YaffParams.separator}\n')
     for _label in labels:
         outstream.write(f'{str(_label)}{YaffParams.separator}\n')
