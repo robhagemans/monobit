@@ -746,7 +746,7 @@ def _parse_os2_font_resource(pBuffer):
 
 
 def _convert_os2_glyphs(font_data):
-    """Convert glyph definitions and bitmaps to monobit glyphs."""
+    """Convert OS/2 glyph definitions and bitmaps to monobit glyphs."""
     glyphs = []
     for codepoint, (chardef, bitmap) in enumerate(
             zip(font_data.pChars, font_data.bitmaps),
@@ -765,11 +765,11 @@ def _convert_os2_glyphs(font_data):
             cx = chardef.ulWidth
         cy = font_data.pFontDef.yCellHeight
         byte_width = ceildiv(cx, 8)
+        # bytewise transpose the bitmap
         # consecutive bytes represent vertical 8-pixel-wide columns
-        bitmap = tuple(
-            bitmap[i + (cy * j)]
-            for i in range(cy)
-            for j in range(byte_width)
+        bitmap = b''.join(
+            bitmap[_i::cy]
+            for _i in range(cy)
         )
         glyph = Glyph.from_bytes(bitmap, width=cx, **props)
         glyphs.append(glyph)
