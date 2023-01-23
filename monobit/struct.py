@@ -75,7 +75,7 @@ def _parse_type(atype):
     """Convert struct member type specification to ctypes base type or array."""
     if isinstance(atype, bitfield):
         return (*_parse_type(atype.type), atype.bits)
-    if isinstance(atype, NewType):
+    if isinstance(atype, _WrappedCType):
         return _parse_type(atype._ctype)
     if isinstance(atype, type):
         return atype,
@@ -89,7 +89,7 @@ def _parse_type(atype):
 
 
 
-class NewType:
+class _WrappedCType:
 
     def __mul__(self, count):
         """Create an array."""
@@ -118,7 +118,7 @@ class NewType:
         return ctypes.sizeof(self._ctype)
 
 
-class NewValue:
+class _WrappedCValue:
     """Wrapper for ctypes value."""
 
     @classmethod
@@ -132,7 +132,7 @@ class NewValue:
         return bytes(self._cvalue)
 
 
-class IntValue(NewValue):
+class IntValue(_WrappedCValue):
 
     def __int__(self):
         return self._cvalue.value
@@ -154,7 +154,7 @@ class IntValue(NewValue):
         return lhs + int(self)
 
 
-class ScalarType(NewType):
+class ScalarType(_WrappedCType):
 
     _value_cls = IntValue
 
@@ -168,7 +168,7 @@ class ScalarType(NewType):
 
 
 
-class StructValue(NewValue):
+class StructValue(_WrappedCValue):
     """Wrapper for ctypes Structure."""
 
     def __getattr__(self, attr):
@@ -197,7 +197,7 @@ class StructValue(NewValue):
         )
 
 
-class StructType(NewType):
+class StructType(_WrappedCType):
     """
     Represent a structured type.
 
@@ -232,13 +232,13 @@ class StructType(NewType):
     def __call__(self, **kwargs):
         """Instantiate a struct variable."""
         kwargs = {
-            _k: (_v._cvalue if isinstance(_v, NewValue) else _v)
+            _k: (_v._cvalue if isinstance(_v, _WrappedCValue) else _v)
             for _k, _v in kwargs.items()
         }
         return self.from_cvalue(self._ctype(**kwargs))
 
 
-class ArrayValue(NewValue):
+class ArrayValue(_WrappedCValue):
 
     def __getitem__(self, item):
         value = self._cvalue[item]
@@ -261,7 +261,7 @@ class ArrayValue(NewValue):
             )
         )
 
-class ArrayType(NewType):
+class ArrayType(_WrappedCType):
 
     _value_cls = ArrayValue
 
@@ -272,14 +272,14 @@ class ArrayType(NewType):
 
     def __call__(self, *args):
         """Instantiate a struct variable."""
-        if args and isinstance(args[0], NewValue):
+        if args and isinstance(args[0], _WrappedCValue):
             args = (_arg._cvalue for _arg in args)
         return ArrayValue.from_cvalue(self._ctype(*args), self)
 
 
 def sizeof(wrapped):
     """Get size in bytes of a type or value."""
-    if isinstance(wrapped, NewType):
+    if isinstance(wrapped, _WrappedCType):
         return wrapped.size
     return ctypes.sizeof(wrapped._cvalue)
 
