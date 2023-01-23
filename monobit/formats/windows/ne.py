@@ -156,7 +156,7 @@ def _parse_ne(data, ne_offset):
 
 def _create_fontdirentry(ordinal, data, font):
     """Return the DIRENTRY+FONTDIRENTRY, given the data in a .FNT file."""
-    direntry = _DIRENTRY(ordinal)
+    direntry = _DIRENTRY(fontOrdinal=ordinal)
     face_name = font.family.encode('latin-1', 'replace') + b'\0'
     device_name = font.device.encode('latin-1', 'replace') + b'\0'
     return (
@@ -283,7 +283,7 @@ def _create_resource_data(pack, version, vector):
         NumberOfFonts='word',
         # + array of DIRENTRY/FONTDIRENTRY structs
     )
-    fontdir = bytes(fontdir_struct(len(fonts))) + b''.join(
+    fontdir = bytes(fontdir_struct(NumberOfFonts=len(fonts))) + b''.join(
         _create_fontdirentry(_i+1, fonts[_i], _font)
         for _i, _font in enumerate(pack)
     )
