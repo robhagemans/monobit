@@ -150,6 +150,7 @@ def _read_lx(instream):
         # This is either our target font, or else a font directory
         pBuf = _lx_extract_resource(instream, lx_hd, lx_rte, ulAddr)
         if lx_rte.type == OS2RES_FONTDIR:
+            logging.debug('Parsing font directory %d', lx_rte.name)
             # If a font directory exists we use that to find the face's
             # resource ID, as in this case it is not guaranteed to have
             # a type of OS2RES_FONTFACE (7).
@@ -162,6 +163,7 @@ def _read_lx(instream):
             # continue scanning the resource table.
             ulResID = tuple(_fe.usIndex for _fe in fntEntry)
         else:
+            logging.debug('Parsing font resource %d', lx_rte.name)
             # pBuf contains our font, so parse it.
             resources.append(pBuf)
     return resources

@@ -21,7 +21,7 @@ import logging
 from ...streams import FileFormatError
 from ...glyph import Glyph
 from ...properties import Props
-from ...struct import little_endian as le
+from ...struct import little_endian as le, bitfield
 from ...binary import ceildiv
 
 
@@ -110,6 +110,67 @@ OS2FONTDEFHEADER = le.Struct(
     pCellBaseOffset='int16',
 )
 
+
+# flag values
+# http://cd.textfiles.com/hobbesos29411/LIB/EMX/INCLUDE/OS2EMX.H
+
+#define FATTR_SEL_ITALIC		0x0001
+#define FATTR_SEL_UNDERSCORE		0x0002
+#define FATTR_SEL_OUTLINE		0x0008
+#define FATTR_SEL_STRIKEOUT		0x0010
+#define FATTR_SEL_BOLD			0x0020
+
+#define FATTR_TYPE_KERNING		0x0004
+#define FATTR_TYPE_MBCS			0x0008
+#define FATTR_TYPE_DBCS			0x0010
+#define FATTR_TYPE_ANTIALIASED		0x0020
+
+#define FATTR_FONTUSE_NOMIX		0x0002
+#define FATTR_FONTUSE_OUTLINE		0x0004
+#define FATTR_FONTUSE_TRANSFORMABLE	0x0008
+
+#define FM_TYPE_FIXED			0x0001
+#define FM_TYPE_LICENSED		0x0002
+#define FM_TYPE_KERNING			0x0004
+#define FM_TYPE_DBCS			0x0010
+#define FM_TYPE_MBCS			0x0018
+#define FM_TYPE_64K			0x8000
+#define FM_TYPE_ATOMS			0x4000
+#define FM_TYPE_FAMTRUNC		0x2000
+#define FM_TYPE_FACETRUNC		0x1000
+
+#define FM_DEFN_OUTLINE			0x0001
+#define FM_DEFN_IFI			0x0002
+#define FM_DEFN_WIN			0x0004
+#define FM_DEFN_GENERIC			0x8000
+
+#define FM_SEL_ITALIC			0x0001
+#define FM_SEL_UNDERSCORE		0x0002
+#define FM_SEL_NEGATIVE			0x0004
+#define FM_SEL_OUTLINE			0x0008
+#define FM_SEL_STRIKEOUT		0x0010
+#define FM_SEL_BOLD			0x0020
+#define FM_SEL_ISO9241_TESTED		0x0040
+
+_SELECTION_FLAGS = le.Struct(
+    FM_SEL_ITALIC=bitfield('uint16', 1),
+    FM_SEL_UNDERSCORE=bitfield('uint16', 1),
+    FM_SEL_NEGATIVE=bitfield('uint16', 1),
+    FM_SEL_OUTLINE=bitfield('uint16', 1),
+    FM_SEL_STRIKEOUT=bitfield('uint16', 1),
+    FM_SEL_BOLD=bitfield('uint16', 1),
+    FM_SEL_ISO9241_TESTED=bitfield('uint16', 1),
+    unused=bitfield('uint16', 9),
+)
+#define FM_CAP_NOMIX			0x0001
+
+#define FM_ISO_9518_640			0x01
+#define FM_ISO_9515_640			0x02
+#define FM_ISO_9515_1024		0x04
+#define FM_ISO_9517_640			0x08
+#define FM_ISO_9517_1024		0x10
+
+
 # from gpifont.h
 
 # The font metrics structure ("IBM Font Object Content Architecture" metrics).
@@ -183,7 +244,7 @@ OS2FOCAMETRICS = le.Struct(
     # font definition flags
     fsDefn='uint16',
     # font selection flags
-    fsSelectionFlags='uint16',
+    fsSelectionFlags=_SELECTION_FLAGS,
     # font capability flags
     fsCapabilities='uint16',
     # width of subscript characters
@@ -412,3 +473,94 @@ def convert_os2_glyphs(font_data):
         glyph = Glyph.from_bytes(bitmap, width=cx, **props)
         glyphs.append(glyph)
     return glyphs
+
+
+_WEIGHT_MAP = {
+    0: '',
+    1: 'thin',
+    2: 'extra-light',
+    3: 'light',
+    4: 'semi-light',
+    5: 'regular',
+    6: 'semi-bold',
+    7: 'bold',
+    8: 'extra-bold',
+    9: 'heavy',
+}
+
+_SETWIDTH_MAP = {
+    0: '',
+    1: 'ultra-condensed',
+    2: 'extra-condensed',
+    3: 'condensed',
+    4: 'semi-condensed',
+    5: 'medium',
+    6: 'semi-expanded',
+    7: 'expanded',
+    8: 'extra-expanded',
+    9: 'ultra-expanded',
+}
+
+def convert_os2_properties(font_data):
+    """Convert OS/2 font properties to monobit properties."""
+    # should we use the information in the fontdefheader?
+    metrics = font_data.pMetrics
+    # font encoding (850 indicates PMUGL)
+    # > usCodePage - This field is the registered code page for which the font was
+    # > designed. Often, this field is 0, which means the font can be used with any of
+    # > the OS/2 supported code pages. Hence, if this field is 0, you can specify the
+    # > code page you want when you create a logical font. (Logical font creation is
+    # > discussed later.) When you create a logical font, the font character to code
+    # > point mappings will be made for you. If the font contains special symbols
+    # > which have no register code page, a value of 65400 is returned in this field.
+    # > In this case, you must use the returned code page value during logical font
+    # > creation.
+    if metrics.usCodePage in (0, 850):
+        encoding = 'ibm-ugl'
+    elif metrics.usCodePage == 65400:
+        encoding = ''
+    else:
+        encoding = f'ibm-{metrics.usCodePage}'
+    # font selection flags
+    decoration = []
+    if metrics.fsSelectionFlags.FM_SEL_OUTLINE:
+        decoration.append('outline')
+    if metrics.fsSelectionFlags.FM_SEL_NEGATIVE:
+        decoration.append('negative')
+    if metrics.fsSelectionFlags.FM_SEL_UNDERSCORE:
+        decoration.append('underline')
+    if metrics.fsSelectionFlags.FM_SEL_STRIKEOUT:
+        decoration.append('strikethrough')
+    properties = Props(
+        family=metrics.szFamilyname.decode('latin-1'),
+        name=metrics.szFacename.decode('latin-1'),
+        font_id=metrics.usRegistryId,
+        encoding=encoding,
+        ascent=metrics.yLowerCaseAscent,
+        descent=metrics.yLowerCaseDescent,
+        # total cell depth below baseline
+        shift_up=-metrics.yMaxDescender,
+        line_height=metrics.yMaxBaselineExt + metrics.yExternalLeading,
+        dpi=(metrics.xDeviceRes, metrics.yDeviceRes),
+        default_char=metrics.usFirstChar + metrics.usDefaultChar,
+        word_boundary=metrics.usFirstChar + metrics.usBreakChar,
+        point_size=metrics.usNominalPointSize / 10,
+        underline_thickness=metrics.yUnderscoreSize,
+        underline_descent=metrics.yUnderscorePosition,
+        #ySubscriptXSize='int16',
+        subscript_size=metrics.ySubscriptYSize,
+        subscript_offset=(metrics.ySubscriptXOffset, metrics.ySubscriptYOffset),
+        #ySuperscriptXSize='int16',
+        superscript_size=metrics.ySuperscriptYSize,
+        superscript_offset=(metrics.ySuperscriptXOffset, metrics.ySuperscriptYOffset),
+        #also fsSelectionFlags.FL_SEL_BOLD
+        weight=_WEIGHT_MAP.get(metrics.usWeightClass, ''),
+        setwidth=_SETWIDTH_MAP.get(metrics.usWidthClass, ''),
+        slant='italic' if metrics.fsSelectionFlags.FM_SEL_ITALIC else 'roman',
+        decoration=' '.join(decoration)
+        # # strikeout stroke thickness
+        # yStrikeoutSize='int16',
+        # # strikeout height above baseline
+        # yStrikeoutPosition='int16',
+    )
+    return properties
