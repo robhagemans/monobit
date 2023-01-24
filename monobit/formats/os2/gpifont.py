@@ -114,43 +114,64 @@ OS2FONTDEFHEADER = le.Struct(
 # flag values
 # http://cd.textfiles.com/hobbesos29411/LIB/EMX/INCLUDE/OS2EMX.H
 
-#define FATTR_SEL_ITALIC		0x0001
-#define FATTR_SEL_UNDERSCORE		0x0002
-#define FATTR_SEL_OUTLINE		0x0008
-#define FATTR_SEL_STRIKEOUT		0x0010
-#define FATTR_SEL_BOLD			0x0020
+#define FATTR_SEL_ITALIC 0x0001
+#define FATTR_SEL_UNDERSCORE 0x0002
+#define FATTR_SEL_OUTLINE 0x0008
+#define FATTR_SEL_STRIKEOUT 0x0010
+#define FATTR_SEL_BOLD 0x0020
 
-#define FATTR_TYPE_KERNING		0x0004
-#define FATTR_TYPE_MBCS			0x0008
-#define FATTR_TYPE_DBCS			0x0010
-#define FATTR_TYPE_ANTIALIASED		0x0020
+#define FATTR_TYPE_KERNING 0x0004
+#define FATTR_TYPE_MBCS 0x0008
+#define FATTR_TYPE_DBCS 0x0010
+#define FATTR_TYPE_ANTIALIASED	0x0020
 
-#define FATTR_FONTUSE_NOMIX		0x0002
-#define FATTR_FONTUSE_OUTLINE		0x0004
+#define FATTR_FONTUSE_NOMIX 0x0002
+#define FATTR_FONTUSE_OUTLINE	0x0004
 #define FATTR_FONTUSE_TRANSFORMABLE	0x0008
 
-#define FM_TYPE_FIXED			0x0001
-#define FM_TYPE_LICENSED		0x0002
-#define FM_TYPE_KERNING			0x0004
-#define FM_TYPE_DBCS			0x0010
-#define FM_TYPE_MBCS			0x0018
-#define FM_TYPE_64K			0x8000
-#define FM_TYPE_ATOMS			0x4000
-#define FM_TYPE_FAMTRUNC		0x2000
-#define FM_TYPE_FACETRUNC		0x1000
+#define FM_TYPE_FIXED 0x0001
+#define FM_TYPE_LICENSED 0x0002
+#define FM_TYPE_KERNING 0x0004
+#define FM_TYPE_DBCS 0x0010
+#define FM_TYPE_MBCS 0x0018
+#define FM_TYPE_64K  0x8000
+#define FM_TYPE_ATOMS 0x4000
+#define FM_TYPE_FAMTRUNC 0x2000
+#define FM_TYPE_FACETRUNC 0x1000
 
-#define FM_DEFN_OUTLINE			0x0001
-#define FM_DEFN_IFI			0x0002
-#define FM_DEFN_WIN			0x0004
-#define FM_DEFN_GENERIC			0x8000
+_TYPE_FLAGS = le.Struct(
+    FM_TYPE_FIXED=bitfield('uint16', 1),
+    FM_TYPE_LICENSED=bitfield('uint16', 1),
+    FM_TYPE_KERNING=bitfield('uint16', 1),
+    FM_TYPE_MBCS=bitfield('uint16', 1),
+    FM_TYPE_DBCS=bitfield('uint16', 1),
+    unknnown=bitfield('uint16', 7),
+    FM_TYPE_FACETRUNC=bitfield('uint16', 1),
+    FM_TYPE_FAMTRUNC=bitfield('uint16', 1),
+    FM_TYPE_ATOMS=bitfield('uint16', 1),
+    FM_TYPE_64K=bitfield('uint16', 1),
+)
 
-#define FM_SEL_ITALIC			0x0001
-#define FM_SEL_UNDERSCORE		0x0002
-#define FM_SEL_NEGATIVE			0x0004
-#define FM_SEL_OUTLINE			0x0008
-#define FM_SEL_STRIKEOUT		0x0010
-#define FM_SEL_BOLD			0x0020
-#define FM_SEL_ISO9241_TESTED		0x0040
+#define FM_DEFN_OUTLINE 0x0001
+#define FM_DEFN_IFI 0x0002
+#define FM_DEFN_WIN 0x0004
+#define FM_DEFN_GENERIC 0x8000
+
+_DEFN_FLAGS = le.Struct(
+    FM_DEFN_OUTLINE=bitfield('uint16', 1),
+    FM_DEFN_IFI=bitfield('uint16', 1),
+    FM_DEFN_WIN=bitfield('uint16', 1),
+    unknown=bitfield('uint16', 12),
+    FM_DEFN_GENERIC=bitfield('uint16', 1),
+)
+
+#define FM_SEL_ITALIC 0x0001
+#define FM_SEL_UNDERSCORE 0x0002
+#define FM_SEL_NEGATIVE 0x0004
+#define FM_SEL_OUTLINE 0x0008
+#define FM_SEL_STRIKEOUT 0x0010
+#define FM_SEL_BOLD 0x0020
+#define FM_SEL_ISO9241_TESTED 0x0040
 
 _SELECTION_FLAGS = le.Struct(
     FM_SEL_ITALIC=bitfield('uint16', 1),
@@ -162,13 +183,13 @@ _SELECTION_FLAGS = le.Struct(
     FM_SEL_ISO9241_TESTED=bitfield('uint16', 1),
     unused=bitfield('uint16', 9),
 )
-#define FM_CAP_NOMIX			0x0001
+#define FM_CAP_NOMIX 0x0001
 
-#define FM_ISO_9518_640			0x01
-#define FM_ISO_9515_640			0x02
-#define FM_ISO_9515_1024		0x04
-#define FM_ISO_9517_640			0x08
-#define FM_ISO_9517_1024		0x10
+#define FM_ISO_9518_640 0x01
+#define FM_ISO_9515_640 0x02
+#define FM_ISO_9515_1024 0x04
+#define FM_ISO_9517_640 0x08
+#define FM_ISO_9517_1024 0x10
 
 
 # from gpifont.h
@@ -240,9 +261,9 @@ OS2FOCAMETRICS = le.Struct(
     # (same as above for bitmap fonts)
     usMaximumPointSize='uint16',
     # font type flags
-    fsTypeFlags='uint16',
+    fsTypeFlags=_TYPE_FLAGS,
     # font definition flags
-    fsDefn='uint16',
+    fsDefn=_DEFN_FLAGS,
     # font selection flags
     fsSelectionFlags=_SELECTION_FLAGS,
     # font capability flags
