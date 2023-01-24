@@ -108,6 +108,7 @@ Supported bitmap formats
 | Fontraption           | `frapt`    |          | `.com`                      | DOS           | ✔     |       |
 | Fontraption TSR       | `frapt-tsr`|          | `.com`                      | DOS           | ✔     |       |
 | Hanzi Bitmap Font     | `hbf`      |          | `.hbf` + raw binary         | Unix          | ✔     | ✔     |
+| OS/2 GPI font         | `os2`      | LX       | `.fon`                      | OS/2          | ✔     |       |
 | Atari GDOS / GEM      | `gdos`     |          | `.fnt` `.gft` `.vga`        | Atari ST, GEM | ✔     | ✔     |
 | C64 GEOS ConVerT      | `geos`     |          | `.cvt`                      | Commodore 64  | ✔     |       |
 | Bare GEOS resource    | `vlir`     |          |                             | Commodore 64  | ✔     |       |
