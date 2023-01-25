@@ -103,12 +103,13 @@ Supported bitmap formats
 | DosStart!             | `dosstart` |          | `.dsf`                      | DOS           | ✔     |       |
 | FZX font              | `fzx`      |          | `.fzx`                      | ZX Spectrum   | ✔     | ✔     |
 | Figlet font           | `figlet`   |          | `.flf`                      | Unix          | ✔     | ✔     |
+| Windows or OS/2 font  | `fon`      | NE PE LX | `.fon`                      | Windows, OS/2 | ✔     | ✔ (16-bit Windows only) |
 | FONTX2                | `fontx`    |          | `.fnt`                      | DOS/V         | ✔     | ✔     |
 | FONTEDIT              | `fontedit` |          | `.com`                      | DOS           | ✔     |       |
 | Fontraption           | `frapt`    |          | `.com`                      | DOS           | ✔     |       |
 | Fontraption TSR       | `frapt-tsr`|          | `.com`                      | DOS           | ✔     |       |
 | Hanzi Bitmap Font     | `hbf`      |          | `.hbf` + raw binary         | Unix          | ✔     | ✔     |
-| OS/2 GPI font         | `os2`      | LX       | `.fon`                      | OS/2          | ✔     |       |
+| OS/2 GPI resource     | `gpi`      |          | `.fnt`                      | OS/2          | ✔     |       |
 | Atari GDOS / GEM      | `gdos`     |          | `.fnt` `.gft` `.vga`        | Atari ST, GEM | ✔     | ✔     |
 | C64 GEOS ConVerT      | `geos`     |          | `.cvt`                      | Commodore 64  | ✔     |       |
 | Bare GEOS resource    | `vlir`     |          |                             | Commodore 64  | ✔     |       |
@@ -133,8 +134,7 @@ Supported bitmap formats
 | SFNT embedded bitmap  | `sfnt`     |          | `.otb` `.ttf` `.otf` [F] [**] |             | ✔     |       |
 | Signum! 2  | `signum-*` | editor 9-pin 24-pin laser | `.e24` `.p9` `.p24` `.l30` | Atari ST | ✔     |       |
 | vfont                 | `vfont`    |          |                             | BSD, SunOS    | ✔     | ✔     |
-| Windows resource      | `win-fnt`  | 1.0 2.0 3.0    | `.fnt`                | 16-bit Windows | ✔    | ✔     |
-| Windows font          | `win-fon`  | 1.0 2.0 3.0 NE PE | `.fon`             | 16-bit Windows | ✔   | ✔ (NE) |
+| Windows FNT resource  | `win`      | 1.0 2.0 3.0 | `.fnt`                   | 16-bit Windows | ✔    | ✔     |
 | XBIN font section     | `xbin`     |          | `.xb`                       | DOS           | ✔     |       |
 
 
