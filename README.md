@@ -89,21 +89,20 @@ Supported bitmap formats
 
 | Format                | Short Name | Version  | Typical Extension           | Native OS     | Read  | Write |
 |-----------------------|------------|----------|-----------------------------|---------------|-------|-------|
-| monobit yaff          | `yaff`     |          | `.yaff`                     |               | ✔     | ✔     |
 | Amiga Font Contents   | `amiga-fc` |          | `.font`                     | Amiga OS      | ✔     |       |
 | Amiga font            | `amiga`    |          |                             | Amiga OS      | ✔     |       |
 | BBC soft font         | `bbc`      |          |                             | BBC Micro     | ✔     | ✔     |
 | X11/Adobe BDF         | `bdf`      |          | `.bdf`                      | Unix          | ✔     | ✔     |
 | AngelCode BMFont [P]  | `bmfont` | text binary XML JSON | `.fnt` `.xml` `.json` + images  | | ✔     | ✔ (text, JSON) |
-| Raw binary            | `raw`      |          | `.fnt` `.rom` [*]           |  | ✔     | ✔     |
+| Raw binary            | `raw`      |          | `.fnt` `.rom` [*]           |               | ✔     | ✔     |
 | C or C++ coded binary | `c`        |          | `.c` `.cpp` `.cc` `.h`      |               | ✔     | ✔     |
 | Codepage Information  | `cpi` | FONT FONT.NT DRFONT | `.cpi` | MS-DOS, Windows NT, DR-DOS   | ✔     | ✔     |
 | Daisy-Dot             | `daisy` | II III Magnified | `.nlq` `.nl2` `.nl3` `.nl4` | Atari    | ✔     |       |
-| DEC DRCS soft font    | `dec-drcs` |          |                             | DEC VT        | ✔     | ✔     |
+| DEC DRCS soft font    | `dec`      |          |                             | DEC VT        | ✔     | ✔     |
 | DosStart!             | `dosstart` |          | `.dsf`                      | DOS           | ✔     |       |
 | FZX font              | `fzx`      |          | `.fzx`                      | ZX Spectrum   | ✔     | ✔     |
 | Figlet font           | `figlet`   |          | `.flf`                      | Unix          | ✔     | ✔     |
-| Windows or OS/2 font  | `fon`      | NE PE LX | `.fon`                      | Windows, OS/2 | ✔     | ✔ (16-bit Windows only) |
+| Windows or OS/2 font  | `fon`      | NE PE LX | `.fon`                      | Windows, OS/2 | ✔     | ✔ (16-bit Windows) |
 | FONTX2                | `fontx`    |          | `.fnt`                      | DOS/V         | ✔     | ✔     |
 | FONTEDIT              | `fontedit` |          | `.com`                      | DOS           | ✔     |       |
 | Fontraption           | `frapt`    |          | `.com`                      | DOS           | ✔     |       |
@@ -112,16 +111,15 @@ Supported bitmap formats
 | OS/2 GPI resource     | `gpi`      |          | `.fnt`                      | OS/2          | ✔     |       |
 | Atari GDOS / GEM      | `gdos`     |          | `.fnt` `.gft` `.vga`        | Atari ST, GEM | ✔     | ✔     |
 | C64 GEOS ConVerT      | `geos`     |          | `.cvt`                      | Commodore 64  | ✔     |       |
-| Bare GEOS resource    | `vlir`     |          |                             | Commodore 64  | ✔     |       |
 | GNU Unifont           | `hex`      |          | `.hex`                      |               | ✔     | ✔     |
 | Extended Hex          | `hext`     |          | `.hex`                      |               | ✔     | ✔     |
 | hexdraw               | `hexdraw`  |          | `.draw`                     |               | ✔     | ✔     |
 | Bitmap image [P]      | `image`    |          | `.png` `.gif` `.bmp`        |               | ✔     | ✔     |
 | JSON coded binary     | `json`     |          | `.json`                     |               | ✔     | ✔     |
-| Bare codepage (`kbd`) | `kbd-cp`   |          | `.cp`                       | DOS, Linux    | ✔     | ✔     |
+| Bare codepage         | `kbd`      |          | `.cp`                       | DOS, Linux    | ✔     | ✔     |
 | REXXCOM Font Mania    | `mania`    |          | `.com`                      | DOS           | ✔     |       |
 | MacOS font            | `mac`      | FONT NFNT SFNT | `.dfont` `.suit`      | Classic MacOS | ✔     |       |
-| Bare NFNT resource    | `nfnt`     |          |                             | Classic MacOS, PalmOS | ✔ |   |
+| Bare NFNT resource    | `nfnt`     |          |                     | Classic MacOS, PalmOS | ✔     |       |
 | Palm OS font          | `palm`     | 1 (NFNT) | `.pdb`                      | Palm OS       | ✔     |       |
 | Optiks PCR Font       | `pcr`      |          | `.pcr`                      | DOS           | ✔     |       |
 | PCPaint, GRASP, ChiWriter | `pcpaint` | old 3 4 | `.set` `.fnt`  `.sft` `.pft` `.eft` ... | DOS | ✔ |       |
@@ -134,8 +132,10 @@ Supported bitmap formats
 | SFNT embedded bitmap  | `sfnt`     |          | `.otb` `.ttf` `.otf` [F] [**] |             | ✔     |       |
 | Signum! 2  | `signum-*` | editor 9-pin 24-pin laser | `.e24` `.p9` `.p24` `.l30` | Atari ST | ✔     |       |
 | vfont                 | `vfont`    |          |                             | BSD, SunOS    | ✔     | ✔     |
+| Bare GEOS resource    | `vlir`     |          |                             | Commodore 64  | ✔     |       |
 | Windows FNT resource  | `win`      | 1.0 2.0 3.0 | `.fnt`                   | 16-bit Windows | ✔    | ✔     |
 | XBIN font section     | `xbin`     |          | `.xb`                       | DOS           | ✔     |       |
+| monobit yaff          | `yaff`     |          | `.yaff`                     |               | ✔     | ✔     |
 
 
 [P] - requires **PIL**  
@@ -242,8 +242,8 @@ Additionally, the fonts currently supported consist of straight line segments on
 |----------------------------|------------|-------------------|-------|-------|
 | monobit yaff               | `yaff`     | `.yaff`           | ✔     | ✔     |
 | SVG Fonts                  | `svg`      | `.svg`            | ✔     | ✔     |
-| Windows resource           | `win-fnt`  | `.fnt`            | ✔     | ✔     |
-| Windows font               | `win-fon`  | `.fon`            | ✔    | ✔ (NE) |
+| Windows resource           | `win`      | `.fnt`            | ✔     | ✔     |
+| Windows font               | `fon`      | `.fon`            | ✔    | ✔ (NE) |
 | Borland Graphics Interface | `borland`  | `.bgi`            | ✔     |       |
 | Hershey fonts (Jim Hurt)   | `hurt`     | `.jhf`            | ✔     |       |
 | DOSStart                   | `dosstart` | `.dsf`            | ✔     |       |

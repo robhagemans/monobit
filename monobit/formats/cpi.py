@@ -40,7 +40,7 @@ def load_cpi(instream, where=None):
     fonts = _parse_cpi(data)
     return fonts
 
-@loaders.register('cp', name='kbd-cp')
+@loaders.register('cp', name='kbd')
 def load_cp(instream, where=None):
     """Load character-cell fonts from Linux Keyboard Codepage (.CP) file."""
     data = instream.read()
