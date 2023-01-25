@@ -25,6 +25,10 @@ from ...glyph import Glyph
 from ...raster import Raster
 from ...vector import StrokePath
 
+FNT_MAGIC_1 = b'\0\1'
+FNT_MAGIC_2 = b'\0\2'
+FNT_MAGIC_3 = b'\0\3'
+
 
 ##############################################################################
 # windows .FNT format definitions
@@ -347,8 +351,8 @@ _GLYPH_ENTRY_PVECTOR = le.Struct(
 ##############################################################################
 # windows .FNT reader
 
-def parse_fnt(data):
-    """Create an internal font description from a .FNT-shaped string."""
+def convert_win_fnt_resource(data):
+    """Convert Windows FNT resource to monobit Font."""
     win_props = _extract_win_props(data)
     properties = _convert_win_props(data, win_props)
     glyphs = _extract_glyphs(data, win_props)

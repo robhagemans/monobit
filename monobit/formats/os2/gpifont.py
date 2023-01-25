@@ -20,9 +20,13 @@ import logging
 
 from ...streams import FileFormatError
 from ...glyph import Glyph
+from ...font import Font
 from ...properties import Props
 from ...struct import little_endian as le, bitfield
 from ...binary import ceildiv
+
+
+GPI_MAGIC = b'\xfe\xff\xff\xff'
 
 
 # Text signatures for standard OS/2 bitmap fonts.
@@ -383,6 +387,17 @@ OS2CHARDEF3 = le.Struct(
     # character c_space (in pixels)
     cSpace='int16',
 )
+
+
+def convert_os2_font_resource(resource):
+    """Convert an OS/2 font resource."""
+    parsed = parse_os2_font_resource(resource)
+    font = Font(
+        convert_os2_glyphs(parsed),
+        source_format='OS/2 GPI',
+        **vars(convert_os2_properties(parsed))
+    )
+    return font
 
 
 def parse_os2_font_resource(pBuffer):

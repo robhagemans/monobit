@@ -12,10 +12,8 @@ import logging
 
 from ...storage import loaders, savers
 from ...streams import FileFormatError
-from .fnt import parse_fnt, create_fnt
-from .ne import _parse_ne, _create_fon
-from .pe import _parse_pe
-from .mz import _MZ_HEADER
+from .fnt import create_fnt
+from .fnt import convert_win_fnt_resource, FNT_MAGIC_1, FNT_MAGIC_2, FNT_MAGIC_3
 
 # used by other formats
 from .fnt import _normalise_metrics, CHARSET_MAP, CHARSET_REVERSE_MAP
@@ -23,12 +21,13 @@ from .fnt import _normalise_metrics, CHARSET_MAP, CHARSET_REVERSE_MAP
 
 @loaders.register(
     #'fnt',
-    magic=(b'\0\x01', b'\0\x02', b'\0\x03'),
-    name='win-fnt',
+    magic=(FNT_MAGIC_1, FNT_MAGIC_2, FNT_MAGIC_3),
+    name='win',
 )
 def load_win_fnt(instream, where=None):
     """Load font from a Windows .FNT resource."""
-    font = parse_fnt(instream.read())
+    resource = instream.read()
+    font = convert_win_fnt_resource(resource)
     return font
 
 @savers.register(linked=load_win_fnt)
@@ -44,47 +43,3 @@ def save_win_fnt(fonts, outstream, where=None, version:int=2, vector:bool=False)
     font = fonts[0]
     outstream.write(create_fnt(font, version*0x100, vector))
     return font
-
-
-@loaders.register(
-    'fon',
-    magic=(b'MZ',),
-    name='win-fon',
-)
-def load_win_fon(instream, where=None):
-    """Load fonts from a Windows .FON container."""
-    data = instream.read()
-    mz_header = _MZ_HEADER.from_bytes(data)
-    if mz_header.magic not in (b'MZ', b'ZM'):
-        raise FileFormatError('MZ signature not found. Not a Windows .FON file')
-    ne_magic = data[mz_header.ne_offset:mz_header.ne_offset+2]
-    if ne_magic == b'NE':
-        logging.debug('File is in NE (16-bit Windows executable) format')
-        fonts = _parse_ne(data, mz_header.ne_offset)
-    elif ne_magic == b'PE':
-        # PE magic should be padded by \0\0 but I'll believe it at this stage
-        logging.debug('File is in PE (32-bit Windows executable) format')
-        fonts = _parse_pe(data, mz_header.ne_offset)
-    else:
-        raise FileFormatError(
-            'Executable signature is `{}`, not NE or PE. Not a Windows .FON file'.format(
-                ne_magic.decode('latin-1', 'replace')
-            )
-        )
-    fonts = [
-        font.modify(
-            source_format=font.source_format+' ({} FON container)'.format(ne_magic.decode('ascii'))
-        )
-        for font in fonts
-    ]
-    return fonts
-
-@savers.register(linked=load_win_fon)
-def save_win_fon(fonts, outstream, where=None, version:int=2, vector:bool=False):
-    """
-    Save fonts to a Windows .FON container.
-
-    version: Windows font format version (default 2)
-    vector: output a vector font (if the input font has stroke paths defined; default False)
-    """
-    outstream.write(_create_fon(fonts, version*0x100, vector))

@@ -41,13 +41,17 @@ class StrikeFormatError(ResourceFormatError):
 # must be importable by mac module
 load_sfnt = None
 
+# resource header
+SFNT_MAGIC = b'\0\1\0\0'
+
 
 if ttLib:
     @loaders.register(
         'otb', 'ttf', 'otf', 'woff', 'tte',
         magic=(
+            SFNT_MAGIC,
+            # alternative headers which also occur:
             # TrueType
-            b'\0\1\0\0',
             b'true',
             # OpenType
             b'OTTO',
