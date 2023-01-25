@@ -113,7 +113,10 @@ class _WrappedCType:
         cvalue = self._ctype.from_buffer_copy(*args)
         return self.from_cvalue(cvalue)
 
-    def read_from(self, stream):
+    def read_from(self, stream, offset=None):
+        """Read struct from file."""
+        if offset is not None:
+            stream.seek(offset, 0)
         return self.from_bytes(stream.read(self.size))
 
     def array(self, count):

@@ -116,8 +116,12 @@ _MODULE_NAME = b'FONTLIB'
 def _parse_ne(data, ne_offset):
     """Parse an NE-format FON file."""
     header = _NE_HEADER.from_bytes(data, ne_offset)
+    logging.debug(header)
+    if header.target_os not in (2, 4):
+        logging.warning('This is not a Windows NE file.')
     # parse the first elements of the resource table
     res_table = _RES_TABLE_HEAD.from_bytes(data, ne_offset+header.res_table_offset)
+    logging.debug(res_table)
     # loop over the rest of the resource table until exhausted - we don't know the number of entries
     fonts = []
     # skip over rscAlignShift word
@@ -126,25 +130,36 @@ def _parse_ne(data, ne_offset):
         # parse typeinfo excluding nameinfo array (of as yet unknown size)
         type_info_head = type_info_struct(0)
         type_info = type_info_head.from_bytes(data, ti_offset)
+        logging.debug(type_info)
         if type_info.rtTypeID == 0:
             # end of resource table
             break
         # type, count, 4 bytes reserved
         nameinfo_array = _NAMEINFO.array(type_info.rtResourceCount)
         for name_info in nameinfo_array.from_bytes(data, ti_offset + type_info_head.size):
+            logging.debug(name_info)
             # the are offsets w.r.t. the file start, not the NE header
             # they could be *before* the NE header for all we know
             start = name_info.rnOffset << res_table.rscAlignShift
             size = name_info.rnLength << res_table.rscAlignShift
             if start < 0 or size < 0 or start + size > len(data):
-                raise FileFormatError('Resource overruns file boundaries')
+                logging.warning('Resource overruns file boundaries, skipped')
+                continue
             if type_info.rtTypeID == _RT_FONT:
+                logging.debug(
+                    'Reading font resource at offset %x [%x]',
+                    start, name_info.rnOffset
+                )
                 try:
                     fonts.append(parse_fnt(data[start : start+size]))
                 except ValueError as e:
                     # e.g. not a bitmap font
                     # don't raise exception so we can continue with other resources
                     logging.error('Failed to read font resource at {:x}: {}'.format(start, e))
+            logging.debug(
+                'Skipping resource of type %d at offset %x [%x]',
+                type_info.rtTypeID, start, name_info.rnOffset
+            )
         # rtResourceCount * 12
         ti_offset += type_info_head.size + nameinfo_array.size
     return fonts

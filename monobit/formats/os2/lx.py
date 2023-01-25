@@ -22,6 +22,7 @@ from ...streams import FileFormatError
 from ...struct import little_endian as le
 
 from .gpifont import OS2FONTDIRENTRY, OS2FONTDIRECTORY
+from .ne import read_os2_ne
 
 
 # from os2res.h
@@ -73,8 +74,7 @@ def read_os2_font(instream):
     if magic == MAGIC_LX:
         return _read_lx(instream)
     else:
-        # plug in ne reader from Windows here, allowing for an OS/2 font resource
-        raise NotImplementedError()
+        return read_os2_ne(instream)
 
 
 # 32-bit EXE header
@@ -359,3 +359,67 @@ def _copy_byte_seq(target, source_offset, count):
     """
     for _ in range(count):
         target.append(target[source_offset])
+
+
+
+from ..windows.ne import _NE_HEADER
+
+# Resource table entry
+# this diverges form the Windows format
+NERTENTRY = le.Struct(
+    etype='uint16',
+    ename='uint16',
+)
+
+# https://www.pcjs.org/documents/books/mspl13/msdos/encyclopedia/appendix-k/
+NESTENTRY = le.Struct(
+    # Offset of segment relative to beginning
+    # of file after shifting value left by alignment shift count
+    sector='uint16',
+    # Length of segment (0000H for segment of 65536 bytes)
+    length='uint16',
+    # Segment flag word
+    segflag='uint16',
+    # Minimum allocation size for segment
+    minalloc='uint16',
+)
+
+
+def _read_os2_ne(instream):
+    """Read an OS/2 16-bit NE executable."""
+    # the header is the same as for the Windows NE format
+    ne_offset = instream.tell()
+    header = _NE_HEADER.read_from(instream)
+    if header.target_os != 1:
+        logging.warning('This is not an OS/2 NE file.')
+    logging.debug(header)
+    # parse the segment table
+    cseg = header.segment_count
+    seg_table = NESTENTRY.array(cseg).read_from(
+        instream, ne_offset+header.seg_table_offset
+    )
+    logging.debug(seg_table)
+    # parse the OS/2 resource table
+    cres = header.number_res_table_entries
+    res_table = NERTENTRY.array(cres).read_from(
+        instream, ne_offset+header.res_table_offset
+    )
+    logging.debug(res_table)
+    # locate resources
+    # do something like http://www.edm2.com/0206/resources.html
+    resources = []
+    # first segment is start of file, skip
+    for rte, ste in zip(res_table, seg_table[1:]):
+        offset = ste.sector << header.file_alignment_size_shift_count
+        if rte.etype != OS2RES_FONTFACE:
+            logging.debug(
+                'Skipping resource of type %d at %x', rte.etype, offset
+            )
+        else:
+            logging.debug(
+                'Reading font resource at %x', offset
+            )
+            instream.seek(offset)
+            rsrc = instream.read(ste.length)
+            resources.append(rsrc)
+    return resources

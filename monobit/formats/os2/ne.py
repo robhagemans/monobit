@@ -1,0 +1,80 @@
+"""
+monobit.formats.os2.ne - read OS/2 NE containers
+
+(c) 2023 Rob Hagemans
+licence: https://opensource.org/licenses/MIT
+"""
+
+import logging
+
+from ...streams import FileFormatError
+from ...struct import little_endian as le
+from ..windows.ne import _NE_HEADER
+
+
+# resource ids
+OS2RES_FONTDIR = 6
+OS2RES_FONTFACE = 7
+
+# Resource table entry
+# this diverges form the Windows format
+RT_ENTRY = le.Struct(
+    # resource type
+    etype='uint16',
+    # the resource name (well, for OS/2, it's a number).
+    ename='uint16',
+)
+
+# https://www.pcjs.org/documents/books/mspl13/msdos/encyclopedia/appendix-k/
+ST_ENTRY = le.Struct(
+    # Offset of segment relative to beginning
+    # of file after shifting value left by alignment shift count
+    sector='uint16',
+    # Length of segment (0000H for segment of 65536 bytes)
+    length='uint16',
+    # Segment flag word
+    segflag='uint16',
+    # Minimum allocation size for segment
+    minalloc='uint16',
+)
+
+
+def read_os2_ne(instream):
+    """Read an OS/2 16-bit NE executable."""
+    # the header is the same as for the Windows NE format
+    ne_offset = instream.tell()
+    header = _NE_HEADER.read_from(instream)
+    if header.target_os != 1:
+        logging.warning('This is not an OS/2 NE file.')
+    logging.debug(header)
+    # parse the segment table
+    cseg = header.segment_count
+    seg_table = ST_ENTRY.array(cseg).read_from(
+        instream, ne_offset+header.seg_table_offset
+    )
+    logging.debug(seg_table)
+    # parse the OS/2 resource table
+    cres = header.number_res_table_entries
+    res_table = RT_ENTRY.array(cres).read_from(
+        instream, ne_offset+header.res_table_offset
+    )
+    logging.debug(res_table)
+    # locate resources
+    # do something like http://www.edm2.com/0206/resources.html
+    resources = []
+    # first segment is start of file, skip
+    for rte, ste in zip(res_table, seg_table[1:]):
+        offset = ste.sector << header.file_alignment_size_shift_count
+        if rte.etype != OS2RES_FONTFACE:
+            logging.debug(
+                'Skipping resource of type %d at %x', rte.etype, offset
+            )
+        else:
+            # we're ignoring the font directory and other resources
+            logging.debug(
+                'Reading font resource at %x', offset
+            )
+            instream.seek(offset)
+            rsrc = instream.read(ste.length)
+            resources.append(rsrc)
+    return resources
