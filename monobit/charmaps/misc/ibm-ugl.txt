@@ -1,0 +1,1186 @@
+;
+;
+; Codepoints 0x00 - 0xff match codepage 850
+;
+; dec; IBM CGID   Uni   PostScript       Microsoft      # hex  Comment
+;
+000  ; 00000000  U0000  .null            .null          # 0000 <control>
+001  ; SS000000  U263A  SS000000         smileface      # 0001 white smiling face
+002  ; SS010000  U263B  SS010000         invsmileface   # 0002 black smiling face
+003  ; SS020000  U2665  heart            heart          # 0003 black heart suit
+004  ; SS030000  U2666  diamond          diamond        # 0004 black diamond suit
+005  ; SS040000  U2663  club             club           # 0005 black club suit
+006  ; SS050000  U2660  spade            spade          # 0006 black spade suit
+007  ; SM570000  U2022  bullet           bullet         # 0007 bullet
+008  ; SM570001  U25D8  SM570001         invbullet      # 0008 inverse bullet
+009  ; SM750000  U25CB  SM750000         circle         # 0009 white circle
+010  ; SM750002  U25D9  SM750002         invcircle      # 000a inverse white circle
+011  ; SM280000  U2642  male             male           # 000b male sign
+012  ; SM290000  U2640  female           female         # 000c female sign
+013  ; SM930000  U266A  musicalnote      musicalnote    # 000d eighth note
+014  ; SM910000  U266B  musicalnotedbl   musicalnotedbl # 000e beamed eighth notes
+015  ; SM690000  U263C  SM690000         sun            # 000f white sun with rays
+016  ; SM590000  U25BA  SM590000         triagrt        # 0010 black right-pointing pointer
+017  ; SM630000  U25C4  SM630000         triaglf        # 0011 black left-pointing pointer
+018  ; SM760000  U2195  SM760000         arrowupdn      # 0012 up down arrow
+019  ; SP330000  U203C  exclamdbl        exclamdbl      # 0013 double exclamation mark
+;
+; Positions 20 and 21 used by duplicates in the 850 codepage
+;
+022  ; SM700000  U25AC  SM700000         filledrect     # 0016 black rectangle
+023  ; SM770000  U21A8  SM770000         arrowupdnbse   # 0017 up down arrow with base
+024  ; SM320000  U2191  arrowup          arrowup        # 0018 upwards arrow
+025  ; SM330000  U2193  arrowdown        arrowdown      # 0019 downwards arrow
+026  ; SM310000  U2192  arrowright       arrowright     # 001a rightwards arrow
+027  ; SM300000  U2190  arrowleft        arrowleft      # 001b leftwards arrow
+028  ; SA420000  U221F  rightangle       orthogonal     # 001c right angle
+029  ; SM780000  U2194  arrowboth        arrowboth      # 001d left right arrow
+030  ; SM600000  U25B2  SM600000         triagup        # 001e black up-pointing triangle
+031  ; SV040000  U25BC  SV040000         triagdn        # 001f black down-pointing triangle
+032  ; SP010000  U0020  space            space          # 0020 space
+033  ; SP020000  U0021  exclam           exclam         # 0021 exclamation mark
+034  ; SP040000  U0022  quotedbl         quotedbl       # 0022 quotation mark
+035  ; SM010000  U0023  numbersign       numbersign     # 0023 number sign
+036  ; SC030000  U0024  dollar           dollar         # 0024 dollar sign
+037  ; SM020000  U0025  percent          percent        # 0025 percent sign
+038  ; SM030000  U0026  ampersand        ampersand      # 0026 ampersand
+039  ; SP050000  U0027  quotesingle      quotesingle    # 0027 apostrophe
+040  ; SP060000  U0028  parenleft        parenleft      # 0028 left parenthesis
+041  ; SP070000  U0029  parenright       parenright     # 0029 right parenthesis
+042  ; SM040000  U002A  asterisk         asterisk       # 002a asterisk
+043  ; SA010000  U002B  plus             plus           # 002b plus sign
+044  ; SP080000  U002C  comma            comma          # 002c comma
+045  ; SP100000  U002D  hyphen           hyphen         # 002d hyphen-minus
+046  ; SP110000  U002E  period           period         # 002e full stop
+047  ; SP120000  U002F  slash            slash          # 002f solidus
+048  ; ND100000  U0030  zero             zero           # 0030 digit zero
+049  ; ND010000  U0031  one              one            # 0031 digit one
+050  ; ND020000  U0032  two              two            # 0032 digit two
+051  ; ND030000  U0033  three            three          # 0033 digit three
+052  ; ND040000  U0034  four             four           # 0034 digit four
+053  ; ND050000  U0035  five             five           # 0035 digit five
+054  ; ND060000  U0036  six              six            # 0036 digit six
+055  ; ND070000  U0037  seven            seven          # 0037 digit seven
+056  ; ND080000  U0038  eight            eight          # 0038 digit eight
+057  ; ND090000  U0039  nine             nine           # 0039 digit nine
+058  ; SP130000  U003A  colon            colon          # 003a colon
+059  ; SP140000  U003B  semicolon        semicolon      # 003b semicolon
+060  ; SA030000  U003C  less             less           # 003c less-than sign
+061  ; SA040000  U003D  equal            equal          # 003d equals sign
+062  ; SA050000  U003E  greater          greater        # 003e greater-than sign
+063  ; SP150000  U003F  question         question       # 003f question mark
+064  ; SM050000  U0040  at               at             # 0040 commercial at
+065  ; LA020000  U0041  A                A              # 0041 Latin capital a
+066  ; LB020000  U0042  B                B              # 0042 Latin capital b
+067  ; LC020000  U0043  C                C              # 0043 Latin capital c
+068  ; LD020000  U0044  D                D              # 0044 Latin capital d
+069  ; LE020000  U0045  E                E              # 0045 Latin capital e
+070  ; LF020000  U0046  F                F              # 0046 Latin capital f
+071  ; LG020000  U0047  G                G              # 0047 Latin capital g
+072  ; LH020000  U0048  H                H              # 0048 Latin capital h
+073  ; LI020000  U0049  I                I              # 0049 Latin capital i
+074  ; LJ020000  U004A  J                J              # 004a Latin capital j
+075  ; LK020000  U004B  K                K              # 004b Latin capital k
+076  ; LL020000  U004C  L                L              # 004c Latin capital l
+077  ; LM020000  U004D  M                M              # 004d Latin capital m
+078  ; LN020000  U004E  N                N              # 004e Latin capital n
+079  ; LO020000  U004F  O                O              # 004f Latin capital o
+080  ; LP020000  U0050  P                P              # 0050 Latin capital p
+081  ; LQ020000  U0051  Q                Q              # 0051 Latin capital q
+082  ; LR020000  U0052  R                R              # 0052 Latin capital r
+083  ; LS020000  U0053  S                S              # 0053 Latin capital s
+084  ; LT020000  U0054  T                T              # 0054 Latin capital t
+085  ; LU020000  U0055  U                U              # 0055 Latin capital u
+086  ; LV020000  U0056  V                V              # 0056 Latin capital v
+087  ; LW020000  U0057  W                W              # 0057 Latin capital w
+088  ; LX020000  U0058  X                X              # 0058 Latin capital x
+089  ; LY020000  U0059  Y                Y              # 0059 Latin capital y
+090  ; LZ020000  U005A  Z                Z              # 005a Latin capital z
+091  ; SM060000  U005B  bracketleft      bracketleft    # 005b left square bracket
+092  ; SM070000  U005C  backslash        backslash      # 005c reverse solidus
+093  ; SM080000  U005D  bracketright     bracketright   # 005d right square bracket
+094  ; SD150000  U005E  asciicircum      asciicircum    # 005e circumflex accent
+095  ; SP090000  U005F  underscore       underscore     # 005f low line
+096  ; SD130000  U0060  grave            grave          # 0060 grave accent
+097  ; LA010000  U0061  a                a              # 0061 Latin small a
+098  ; LB010000  U0062  b                b              # 0062 Latin small b
+099  ; LC010000  U0063  c                c              # 0063 Latin small c
+100  ; LD010000  U0064  d                d              # 0064 Latin small d
+101  ; LE010000  U0065  e                e              # 0065 Latin small e
+102  ; LF010000  U0066  f                f              # 0066 Latin small f
+103  ; LG010000  U0067  g                g              # 0067 Latin small g
+104  ; LH010000  U0068  h                h              # 0068 Latin small h
+105  ; LI010000  U0069  i                i              # 0069 Latin small i
+106  ; LJ010000  U006A  j                j              # 006a Latin small j
+107  ; LK010000  U006B  k                k              # 006b Latin small k
+108  ; LL010000  U006C  l                l              # 006c Latin small l
+109  ; LM010000  U006D  m                m              # 006d Latin small m
+110  ; LN010000  U006E  n                n              # 006e Latin small n
+111  ; LO010000  U006F  o                o              # 006f Latin small o
+112  ; LP010000  U0070  p                p              # 0070 Latin small p
+113  ; LQ010000  U0071  q                q              # 0071 Latin small q
+114  ; LR010000  U0072  r                r              # 0072 Latin small r
+115  ; LS010000  U0073  s                s              # 0073 Latin small s
+116  ; LT010000  U0074  t                t              # 0074 Latin small t
+117  ; LU010000  U0075  u                u              # 0075 Latin small u
+118  ; LV010000  U0076  v                v              # 0076 Latin small v
+119  ; LW010000  U0077  w                w              # 0077 Latin small w
+120  ; LX010000  U0078  x                x              # 0078 Latin small x
+121  ; LY010000  U0079  y                y              # 0079 Latin small y
+122  ; LZ010000  U007A  z                z              # 007a Latin small z
+123  ; SM110000  U007B  braceleft        braceleft      # 007b left curly bracket
+124  ; SM130000  U007C  bar              bar            # 007c vertical line
+125  ; SM140000  U007D  braceright       braceright     # 007d right curly bracket
+126  ; SD190000  U007E  asciitilde       asciitilde     # 007e tilde
+127  ; SM790000  U2302  SM790000         house          # 007f house
+128  ; LC420000  U00C7  Ccedilla         Ccedilla       # 0080 Latin capital c cedilla
+129  ; LU170000  U00FC  udieresis        udieresis      # 0081 Latin small u diaeresis
+130  ; LE110000  U00E9  eacute           eacute         # 0082 Latin small e acute
+131  ; LA150000  U00E2  acircumflex      acircumflex    # 0083 Latin small a circumflex
+132  ; LA170000  U00E4  adieresis        adieresis      # 0084 Latin small a diaeresis
+133  ; LA130000  U00E0  agrave           agrave         # 0085 Latin small a grave
+134  ; LA270000  U00E5  aring            aring          # 0086 Latin small a ring above
+135  ; LC410000  U00E7  ccedilla         ccedilla       # 0087 Latin small c cedilla
+136  ; LE150000  U00EA  ecircumflex      ecircumflex    # 0088 Latin small e circumflex
+137  ; LE170000  U00EB  edieresis        edieresis      # 0089 Latin small e diaeresis
+138  ; LE130000  U00E8  egrave           egrave         # 008a Latin small e grave
+139  ; LI170000  U00EF  idieresis        idieresis      # 008b Latin small i diaeresis
+140  ; LI150000  U00EE  icircumflex      icircumflex    # 008c Latin small i circumflex
+141  ; LI130000  U00EC  igrave           igrave         # 008d Latin small i grave
+142  ; LA180000  U00C4  Adieresis        Adieresis      # 008e Latin capital a diaeresis
+143  ; LA280000  U00C5  Aring            Aring          # 008f Latin capital a ring above
+144  ; LE120000  U00C9  Eacute           Eacute         # 0090 Latin capital e acute
+145  ; LA510000  U00E6  ae               ae             # 0091 Latin small ae
+146  ; LA520000  U00C6  AE               AE             # 0092 Latin capital ae
+147  ; LO150000  U00F4  ocircumflex      ocircumflex    # 0093 Latin small o circumflex
+148  ; LO170000  U00F6  odieresis        odieresis      # 0094 Latin small o diaeresis
+149  ; LO130000  U00F2  ograve           ograve         # 0095 Latin small o grave
+150  ; LU150000  U00FB  ucircumflex      ucircumflex    # 0096 Latin small u circumflex
+151  ; LU130000  U00F9  ugrave           ugrave         # 0097 Latin small u grave
+152  ; LY170000  U00FF  ydieresis        ydieresis      # 0098 Latin small y diaeresis
+153  ; LO180000  U00D6  Odieresis        Odieresis      # 0099 Latin capital o diaeresis
+154  ; LU180000  U00DC  Udieresis        Udieresis      # 009a Latin capital u diaeresis
+155  ; LO610000  U00F8  oslash           oslash         # 009b Latin small o stroke
+156  ; SC020000  U00A3  sterling         sterling       # 009c pound sign
+157  ; LO620000  U00D8  Oslash           Oslash         # 009d Latin capital o stroke
+158  ; SA070000  U00D7  multiply         multiply       # 009e multiplication sign
+159  ; SC070000  U0192  florin           florin         # 009f Latin small f hook
+160  ; LA110000  U00E1  aacute           aacute         # 00a0 Latin small a acute
+161  ; LI110000  U00ED  iacute           iacute         # 00a1 Latin small i acute
+162  ; LO110000  U00F3  oacute           oacute         # 00a2 Latin small o acute
+163  ; LU110000  U00FA  uacute           uacute         # 00a3 Latin small u acute
+164  ; LN190000  U00F1  ntilde           ntilde         # 00a4 Latin small n tilde
+165  ; LN200000  U00D1  Ntilde           Ntilde         # 00a5 Latin capital n tilde
+166  ; SM210000  U00AA  ordfeminine      ordfeminine    # 00a6 feminine ordinal indicator
+167  ; SM200000  U00BA  ordmasculine     ordmasculine   # 00a7 masculine ordinal indicator
+168  ; SP160000  U00BF  questiondown     questiondown   # 00a8 inverted question mark
+169  ; SM530000  U00AE  registered       registered     # 00a9 registered sign
+170  ; SM660000  U00AC  logicalnot       logicalnot     # 00aa not sign
+171  ; NF010000  U00BD  onehalf          onehalf        # 00ab vulgar fraction one half
+172  ; NF040000  U00BC  onequarter       onequarter     # 00ac vulgar fraction one quarter
+173  ; SP030000  U00A1  exclamdown       exclamdown     # 00ad inverted exclamation mark
+174  ; SP170000  U00AB  guillemotleft    guillemotleft  # 00ae left-pointing double angle quotation mark
+175  ; SP180000  U00BB  guillemotright   guillemotright # 00af right-pointing double angle quotation mark
+176  ; SF140000  U2591  SF140000         ltshade        # 00b0 light shade
+177  ; SF150000  U2592  SF150000         shade          # 00b1 medium shade
+178  ; SF160000  U2593  SF160000         dkshade        # 00b2 dark shade
+179  ; SF110000  U2502  SF110000         SF110000       # 00b3 box drawings light vertical
+180  ; SF090000  U2524  SF090000         SF090000       # 00b4 box drawings light vertical and left
+181  ; LA120000  U00C1  Aacute           Aacute         # 00b5 Latin capital a acute
+182  ; LA160000  U00C2  Acircumflex      Acircumflex    # 00b6 Latin capital a circumflex
+183  ; LA140000  U00C0  Agrave           Agrave         # 00b7 Latin capital a grave
+184  ; SM520000  U00A9  copyright        copyright      # 00b8 copyright sign
+185  ; SF230000  U2563  SF230000         SF230000       # 00b9 box drawings double vertical and left
+186  ; SF240000  U2551  SF240000         SF240000       # 00ba box drawings double vertical
+187  ; SF250000  U2557  SF250000         SF250000       # 00bb box drawings double down and left
+188  ; SF260000  U255D  SF260000         SF260000       # 00bc box drawings double up and left
+189  ; SC040000  U00A2  cent             cent           # 00bd cent sign
+190  ; SC050000  U00A5  yen              yen            # 00be yen sign
+191  ; SF030000  U2510  SF030000         SF030000       # 00bf box drawings light down and left
+192  ; SF020000  U2514  SF020000         SF020000       # 00c0 box drawings light up and right
+193  ; SF070000  U2534  SF070000         SF070000       # 00c1 box drawings light up and horizontal
+194  ; SF060000  U252C  SF060000         SF060000       # 00c2 box drawings light down and horizontal
+195  ; SF080000  U251C  SF080000         SF080000       # 00c3 box drawings light vertical and right
+196  ; SF100000  U2500  SF100000         SF100000       # 00c4 box drawings light horizontal
+197  ; SF050000  U253C  SF050000         SF050000       # 00c5 box drawings light vertical and horizontal
+198  ; LA190000  U00E3  atilde           atilde         # 00c6 Latin small a tilde
+199  ; LA200000  U00C3  Atilde           Atilde         # 00c7 Latin capital a tilde
+200  ; SF380000  U255A  SF380000         SF380000       # 00c8 box drawings double up and right
+201  ; SF390000  U2554  SF390000         SF390000       # 00c9 box drawings double down and right
+202  ; SF400000  U2569  SF400000         SF400000       # 00ca box drawings double up and horizontal
+203  ; SF410000  U2566  SF410000         SF410000       # 00cb box drawings double down and horizontal
+204  ; SF420000  U2560  SF420000         SF420000       # 00cc box drawings double vertical and right
+205  ; SF430000  U2550  SF430000         SF430000       # 00cd box drawings double horizontal
+206  ; SF440000  U256C  SF440000         SF440000       # 00ce box drawings double vertical and horizontal
+207  ; SC010000  U00A4  currency         currency       # 00cf currency sign
+208  ; LD630000  U00F0  eth              eth            # 00d0 Latin small eth
+209  ; LD620000  U00D0  Eth              Eth            # 00d1 Latin capital eth
+210  ; LE160000  U00CA  Ecircumflex      Ecircumflex    # 00d2 Latin capital e circumflex
+211  ; LE180000  U00CB  Edieresis        Edieresis      # 00d3 Latin capital e diaeresis
+212  ; LE140000  U00C8  Egrave           Egrave         # 00d4 Latin capital e grave
+213  ; SC200000  U20AC  Euro             Euro           # 00d5 euro sign
+214  ; LI120000  U00CD  Iacute           Iacute         # 00d6 Latin capital i acute
+215  ; LI160000  U00CE  Icircumflex      Icircumflex    # 00d7 Latin capital i circumflex
+216  ; LI180000  U00CF  Idieresis        Idieresis      # 00d8 Latin capital i diaeresis
+217  ; SF040000  U2518  SF040000         SF040000       # 00d9 box drawings light up and left
+218  ; SF010000  U250C  SF010000         SF010000       # 00da box drawings light down and right
+219  ; SF610000  U2588  SF610000         block          # 00db full block
+220  ; SF570000  U2584  SF570000         dnblock        # 00dc lower half block
+221  ; SM650000  U00A6  brokenbar        brokenbar      # 00dd broken bar
+222  ; LI140000  U00CC  Igrave           Igrave         # 00de Latin capital i grave
+223  ; SF600000  U2580  SF600000         upblock        # 00df upper half block
+224  ; LO120000  U00D3  Oacute           Oacute         # 00e0 Latin capital o acute
+225  ; LS610000  U00DF  germandbls       germandbls     # 00e1 Latin small sharp s
+226  ; LO160000  U00D4  Ocircumflex      Ocircumflex    # 00e2 Latin capital o circumflex
+227  ; LO140000  U00D2  Ograve           Ograve         # 00e3 Latin capital o grave
+228  ; LO190000  U00F5  otilde           otilde         # 00e4 Latin small o tilde
+229  ; LO200000  U00D5  Otilde           Otilde         # 00e5 Latin capital o tilde
+230  ; SM170000  U00B5  micro            mu1            # 00e6 micro sign
+231  ; LT630000  U00FE  thorn            thorn          # 00e7 Latin small thorn
+232  ; LT640000  U00DE  Thorn            Thorn          # 00e8 Latin capital thorn
+233  ; LU120000  U00DA  Uacute           Uacute         # 00e9 Latin capital u acute
+234  ; LU160000  U00DB  Ucircumflex      Ucircumflex    # 00ea Latin capital u circumflex
+235  ; LU140000  U00D9  Ugrave           Ugrave         # 00eb Latin capital u grave
+236  ; LY110000  U00FD  yacute           yacute         # 00ec Latin small y acute
+237  ; LY120000  U00DD  Yacute           Yacute         # 00ed Latin capital y acute
+238  ; SM150000  U00AF  overline         overscore      # 00ee macron
+239  ; SD110000  U00B4  acute            acute          # 00ef acute accent
+240  ; SP320000  U00AD  syllable         sfthyphen      # 00f0 soft hyphen
+241  ; SA020000  U00B1  plusminus        plusminus      # 00f1 plus-minus sign
+242  ; SM100000  U2017  underscoredbl    underscoredbl  # 00f2 double low line
+243  ; NF050000  U00BE  threequarters    threequarters  # 00f3 vulgar fraction three quarters
+244  ; SM250000  U00B6  paragraph        paragraph      # 00f4 pilcrow sign
+245  ; SM240000  U00A7  section          section        # 00f5 section sign
+246  ; SA060000  U00F7  divide           divide         # 00f6 division sign
+247  ; SD410000  U00B8  cedilla          cedilla        # 00f7 cedilla
+248  ; SM190000  U00B0  degree           degree         # 00f8 degree sign
+249  ; SD170000  U00A8  dieresis         dieresis       # 00f9 diaeresis
+250  ; SD630000  U00B7  periodcentered   middot         # 00fa middle dot
+251  ; ND011000  U00B9  onesuperior      onesuperior    # 00fb superscript one
+252  ; ND031000  U00B3  threesuperior    threesuperior  # 00fc superscript three
+253  ; ND021000  U00B2  twosuperior      twosuperior    # 00fd superscript two
+254  ; SM470000  U25A0  filledbox        filledbox      # 00fe black square
+255  ; SP300000  U00A0  spacerequired    nbspace        # 00ff no-break space
+;
+; Codepage 437 extra characters
+;
+256  ; SC060000  U20A7  Pts              peseta         # 0100 peseta sign
+257  ; SM680000  U2310  SM680000         revlogicalnot  # 0101 reversed not sign
+258  ; SF190000  U2561  SF190000         SF190000       # 0102 box drawings vertical single and left double
+259  ; SF200000  U2562  SF200000         SF200000       # 0103 box drawings vertical double and left single
+260  ; SF210000  U2556  SF210000         SF210000       # 0104 box drawings down double and left single
+261  ; SF220000  U2555  SF220000         SF220000       # 0105 box drawings down single and left double
+262  ; SF270000  U255C  SF270000         SF270000       # 0106 box drawings up double and left single
+263  ; SF280000  U255B  SF280000         SF280000       # 0107 box drawings up single and left double
+264  ; SF360000  U255E  SF360000         SF360000       # 0108 box drawings vertical single and right double
+265  ; SF370000  U255F  SF370000         SF370000       # 0109 box drawings vertical double and right single
+266  ; SF450000  U2567  SF450000         SF450000       # 010a box drawings up single and horizontal double
+267  ; SF460000  U2568  SF460000         SF460000       # 010b box drawings up double and horizontal single
+268  ; SF470000  U2564  SF470000         SF470000       # 010c box drawings down single and horizontal double
+269  ; SF480000  U2565  SF480000         SF480000       # 010d box drawings down double and horizontal single
+270  ; SF490000  U2559  SF490000         SF490000       # 010e box drawings up double and right single
+271  ; SF500000  U2558  SF500000         SF500000       # 010f box drawings up single and right double
+272  ; SF510000  U2552  SF510000         SF510000       # 0110 box drawings down single and right double
+273  ; SF520000  U2553  SF520000         SF520000       # 0111 box drawings down double and right single
+274  ; SF530000  U256B  SF530000         SF530000       # 0112 box drawings vertical double and horizontal single
+275  ; SF540000  U256A  SF540000         SF540000       # 0113 box drawings vertical single and horizontal double
+276  ; SF580000  U258C  SF580000         lfblock        # 0114 left half block
+277  ; SF590000  U2590  SF590000         rtblock        # 0115 right half block
+278  ; GA010000  U03B1  alpha            alpha          # 0116 Greek small alpha
+279  ; GG020000  U0393  Gamma            Gamma          # 0117 Greek capital gamma
+280  ; GP010000  U03C0  pi               pi             # 0118 Greek small pi
+281  ; GS020000  U03A3  Sigma            Sigma          # 0119 Greek capital sigma
+282  ; GS010000  U03C3  sigma            sigma          # 011a Greek small sigma
+283  ; GT010000  U03C4  tau              tau            # 011b Greek small tau
+284  ; GF020000  U03A6  Phi              Phi            # 011c Greek capital phi
+285  ; GT620000  U0398  Theta            Theta          # 011d Greek capital theta
+286  ; GO320000  U03A9  Omega            Omega          # 011e Greek capital omega
+287  ; GD010000  U03B4  delta            delta          # 011f Greek small delta
+288  ; SA450000  U221E  infinity         infinity       # 0120 infinity
+289  ; GF010001  U03D5  phi1                            # 0121 Greek symbol phi
+290  ; GE010000  U03B5  epsilon          epsilon        # 0122 Greek small epsilon
+291  ; SA380000  U2229  intersection     intersection   # 0123 intersection
+292  ; SA480000  U2261  equivalence      equivalence    # 0124 identical to
+293  ; SA530000  U2265  greaterequal     greaterequal   # 0125 greater-than or equal to
+294  ; SA520000  U2264  lessequal        lessequal      # 0126 less-than or equal to
+295  ; SS260000  U2320  SS260000         integraltp     # 0127 top half integral
+296  ; SS270000  U2321  SS260000         integralbt     # 0128 bottom half integral
+297  ; SA700000  U2248  approxequal      approxequal    # 0129 almost equal to
+298  ; SA790000  U2219  productdot       productdot     # 012a bullet operator
+299  ; SA800000  U221A  radical          radical        # 012b square root
+300  ; LN011000  U207F  nsuperior        nsuperior      # 012c superscript Latin small n
+;
+; Codepage 1004 extra characters
+;
+301  ; SD310000  U02C9  macron           macron         # 012d modifier macron
+302  ; SD230000  U02D8  breve            breve          # 012e breve
+303  ; SD290000  U02D9  dotaccent        dot            # 012f dot above
+304  ; SD270000  U02DA  ring             ring           # 0130 ring above
+305  ; SD250000  U02DD  hungarumlaut     hungarumlaut   # 0131 double acute accent
+306  ; SD430000  U02DB  ogonek           ogonek         # 0132 ogonek
+307  ; SD210000  U02C7  caron            caron          # 0133 caron
+308  ; SP190000  U2018  quoteleft        quoteleft      # 0134 left single quotation mark
+309  ; SP200000  U2019  quoteright       quoteright     # 0135 right single quotation mark
+310  ; SP210000  U201C  quotedblleft     quotedblleft   # 0136 left double quotation mark
+311  ; SP220000  U201D  quotedblright    quotedblright  # 0137 right double quotation mark
+312  ; SS680000  U2013  endash           endash         # 0138 en dash
+313  ; SM900000  U2014  emdash           emdash         # 0139 em dash
+314  ; SC120000  UFFE5  yuan             yuan           # 013a fullwidth yen sign
+315  ; LI610000  U0131  dotlessi         dotlessi       # 013b Latin small dotless i
+316  ; SP260000  U201A  quotesinglbase   quotesinglbase # 013c single low-9 quotation mark
+317  ; SP230000  U201E  quotedblbase     quotedblbase   # 013d double low-9 quotation mark
+318  ; SV520000  U2026  ellipsis         ellipsis       # 013e horizontal ellipsis
+319  ; SM340000  U2020  dagger           dagger         # 013f dagger
+320  ; SM350000  U2021  daggerdbl        daggerdbl      # 0140 double dagger
+321  ; SD150100  U02C6  circumflex       circumflex     # 0141 modifier circumflex accent
+322  ; SM560000  U2030  perthousand      perthousand    # 0142 per mille sign
+323  ; LS220000  U0160  Scaron           Scaron         # 0143 Latin capital s caron
+324  ; SP270000  U2039  guilsinglleft    guilsinglleft  # 0144 single left-pointing angle quotation mark
+325  ; LO520000  U0152  OE               OE             # 0145 Latin capital ligature oe
+326  ; SD190100  U02DC  tilde            tilde          # 0146 small tilde
+327  ; SM540000  U2122  trademark        trademark      # 0147 trade mark sign
+328  ; LS210000  U0161  scaron           scaron         # 0148 Latin small s caron
+329  ; SP280000  U203A  guilsinglright   guilsinglright # 0149 single right-pointing angle quotation mark
+330  ; LO510000  U0153  oe               oe             # 014a Latin small ligature oe
+331  ; LY180000  U0178  Ydieresis        Ydieresis      # 014b Latin capital y diaeresis
+;
+; OS/2 2.0 ended at this point, Latin 2 characters
+;
+332  ; LG230000  U011F  gbreve           gbreve         # 014c Latin small g breve
+333  ; LG240000  U011E  Gbreve           Gbreve         # 014d Latin capital g breve
+334  ; LI300000  U0130  Idotaccent       Idot           # 014e Latin capital i dot above
+335  ; LS410000  U015F  scedilla         scedilla       # 014f Latin small s cedilla
+336  ; LS420000  U015E  Scedilla         Scedilla       # 0150 Latin capital s cedilla
+337  ; LA230000  U0103  abreve           abreve         # 0151 Latin small a breve
+338  ; LA240000  U0102  Abreve           Abreve         # 0152 Latin capital a breve
+339  ; LA430000  U0105  aogonek          aogonek        # 0153 Latin small a ogonek
+340  ; LA440000  U0104  Aogonek          Aogonek        # 0154 Latin capital a ogonek
+341  ; LC110000  U0107  cacute           cacute         # 0155 Latin small c acute
+342  ; LC120000  U0106  Cacute           Cacute         # 0156 Latin capital c acute
+343  ; LC210000  U010D  ccaron           ccaron         # 0157 Latin small c caron
+344  ; LC220000  U010C  Ccaron           Ccaron         # 0158 Latin capital c caron
+345  ; LD210000  U010F  dcaron           dcaron         # 0159 Latin small d caron
+346  ; LD220000  U010E  Dcaron           Dcaron         # 015a Latin capital d caron
+347  ; LD610000  U0111  dbar             dbar           # 015b Latin small d stroke
+348  ; LE210000  U011B  ecaron           ecaron         # 015c Latin small e caron
+349  ; LE220000  U011A  Ecaron           Ecaron         # 015d Latin capital e caron
+350  ; LE430000  U0119  eogonek          eogonek        # 015e Latin small e ogonek
+351  ; LE440000  U0118  Eogonek          Eogonek        # 015f Latin capital e ogonek
+352  ; LL110000  U013A  lacute           lacute         # 0160 Latin small l acute
+353  ; LL120000  U0139  Lacute           Lacute         # 0161 Latin capital l acute
+354  ; LL210000  U013E  lcaron           lcaron         # 0162 Latin small l caron
+355  ; LL220000  U013D  Lcaron           Lcaron         # 0163 Latin capital l caron
+356  ; LL610000  U0142  lslash           lslash         # 0164 Latin small l stroke
+357  ; LL620000  U0141  Lslash           Lslash         # 0165 Latin capital l stroke
+358  ; LN110000  U0144  nacute           nacute         # 0166 Latin small n acute
+359  ; LN120000  U0143  Nacute           Nacute         # 0167 Latin capital n acute
+360  ; LN210000  U0148  ncaron           ncaron         # 0168 Latin small n caron
+361  ; LN220000  U0147  Ncaron           Ncaron         # 0169 Latin capital n caron
+362  ; LO250000  U0151  ohungarumlaut    odblacute      # 016a Latin small o double acute
+363  ; LO260000  U0150  Ohungarumlaut    Odblacute      # 016b Latin capital o double acute
+364  ; LR110000  U0155  racute           racute         # 016c Latin small r acute
+365  ; LR120000  U0154  Racute           Racute         # 016d Latin capital r acute
+366  ; LR210000  U0159  rcaron           rcaron         # 016e Latin small r caron
+367  ; LR220000  U0158  Rcaron           Rcaron         # 016f Latin capital r caron
+368  ; LS110000  U015B  sacute           sacute         # 0170 Latin small s acute
+369  ; LS120000  U015A  Sacute           Sacute         # 0171 Latin capital s acute
+370  ; LT210000  U0165  tcaron           tcaron         # 0172 Latin small t caron
+371  ; LT220000  U0164  Tcaron           Tcaron         # 0173 Latin capital t caron
+372  ; LT410000  U0163  tcedilla         tcedilla       # 0174 Latin small t cedilla
+373  ; LT420000  U0162  Tcedilla         Tcedilla       # 0175 Latin capital t cedilla
+374  ; LU250000  U0171  uhungarumlaut    udblacute      # 0176 Latin small u double acute
+375  ; LU260000  U0170  Uhungarumlaut    Udblacute      # 0177 Latin capital u double acute
+376  ; LU270000  U016F  uring            uring          # 0178 Latin small u ring above
+377  ; LU280000  U016E  Uring            Uring          # 0179 Latin capital u ring above
+378  ; LZ110000  U017A  zacute           zacute         # 017a Latin small z acute
+379  ; LZ120000  U0179  Zacute           Zacute         # 017b Latin capital z acute
+380  ; LZ210000  U017E  zcaron           zcaron         # 017c Latin small z caron
+381  ; LZ220000  U017D  Zcaron           Zcaron         # 017d Latin capital z caron
+382  ; LZ290000  U017C  zdotaccent       zdot           # 017e Latin small z dot above
+383  ; LZ300000  U017B  Zdotaccent       Zdot           # 017f Latin capital z dot above
+;
+; OS/2 Warp 3 end at this point, Cyrillic
+;
+384  ; KE180000  U0401  afii10023        afii10023      # 0180 Cyrillic capital io
+385  ; KD620000  U0402  afii10051        afii10051      # 0181 Cyrillic capital dje
+386  ; KG120000  U0403  afii10052        afii10052      # 0182 Cyrillic capital gje
+387  ; KE160000  U0404  afii10053        afii10053      # 0183 Cyrillic capital ukrainian ie
+388  ; KZ160000  U0405  afii10054        afii10054      # 0184 Cyrillic capital dze
+389  ; KI120000  U0406  afii10055        afii10055      # 0185 Cyrillic capital ukrainian i
+390  ; KI180000  U0407  afii10056        afii10056      # 0186 Cyrillic capital yi
+391  ; KJ020000  U0408  afii10057        afii10057      # 0187 Cyrillic capital je
+392  ; KL420000  U0409  afii10058        afii10058      # 0188 Cyrillic capital lje
+393  ; KN120000  U040A  afii10059        afii10059      # 0189 Cyrillic capital nje
+394  ; KC120000  U040B  afii10060        afii10060      # 018A Cyrillic capital tshe
+395  ; KK120000  U040C  afii10061        afii10061      # 018B Cyrillic capital kje
+396  ; KU240000  U040E  afii10062        afii10062      # 018C Cyrillic capital short u
+397  ; KG220000  U040F  afii10145        afii10145      # 018D Cyrillic capital dzhe
+398  ; KA020000  U0410  afii10017        afii10017      # 018E Cyrillic capital a
+399  ; KB020000  U0411  afii10018        afii10018      # 018F Cyrillic capital be
+400  ; KV020000  U0412  afii10019        afii10019      # 0190 Cyrillic capital ve
+401  ; KG020000  U0413  afii10020        afii10020      # 0191 Cyrillic capital ghe
+402  ; KD020000  U0414  afii10021        afii10021      # 0192 Cyrillic capital de
+403  ; KE020000  U0415  afii10022        afii10022      # 0193 Cyrillic capital ie
+404  ; KZ220000  U0416  afii10024        afii10024      # 0194 Cyrillic capital zhe
+405  ; KZ020000  U0417  afii10025        afii10025      # 0195 Cyrillic capital ze
+406  ; KI020000  U0418  afii10026        afii10026      # 0196 Cyrillic capital i
+407  ; KJ120000  U0419  afii10027        afii10027      # 0197 Cyrillic capital short i
+408  ; KK020000  U041A  afii10028        afii10028      # 0198 Cyrillic capital ka
+409  ; KL020000  U041B  afii10029        afii10029      # 0199 Cyrillic capital el
+410  ; KM020000  U041C  afii10030        afii10030      # 019A Cyrillic capital em
+411  ; KN020000  U041D  afii10031        afii10031      # 019B Cyrillic capital en
+412  ; KO020000  U041E  afii10032        afii10032      # 019C Cyrillic capital o
+413  ; KP020000  U041F  afii10033        afii10033      # 019D Cyrillic capital pe
+414  ; KR020000  U0420  afii10034        afii10034      # 019E Cyrillic capital er
+415  ; KS020000  U0421  afii10035        afii10035      # 019F Cyrillic capital es
+416  ; KT020000  U0422  afii10036        afii10036      # 01A0 Cyrillic capital te
+417  ; KU020000  U0423  afii10037        afii10037      # 01A1 Cyrillic capital u
+418  ; KF020000  U0424  afii10038        afii10038      # 01A2 Cyrillic capital ef
+419  ; KH020000  U0425  afii10039        afii10039      # 01A3 Cyrillic capital ha
+420  ; KC020000  U0426  afii10040        afii10040      # 01A4 Cyrillic capital tse
+421  ; KC220000  U0427  afii10041        afii10041      # 01A5 Cyrillic capital che
+422  ; KS220000  U0428  afii10042        afii10042      # 01A6 Cyrillic capital sha
+423  ; KS160000  U0429  afii10043        afii10043      # 01A7 Cyrillic capital shcha
+424  ; KU220000  U042A  afii10044        afii10044      # 01A8 Cyrillic capital hard sign
+425  ; KY020000  U042B  afii10045        afii10045      # 01A9 Cyrillic capital yeru
+426  ; KX120000  U042C  afii10046        afii10046      # 01AA Cyrillic capital soft sign
+427  ; KE140000  U042D  afii10047        afii10047      # 01AB Cyrillic capital e
+428  ; KU160000  U042E  afii10048        afii10048      # 01AC Cyrillic capital yu
+429  ; KA160000  U042F  afii10049        afii10049      # 01AD Cyrillic capital ya
+430  ; KA010000  U0430  afii10065        afii10065      # 01AE Cyrillic small a
+431  ; KB010000  U0431  afii10066        afii10066      # 01AF Cyrillic small be
+432  ; KV010000  U0432  afii10067        afii10067      # 01B0 Cyrillic small ve
+433  ; KG010000  U0433  afii10068        afii10068      # 01B1 Cyrillic small ghe
+434  ; KD010000  U0434  afii10069        afii10069      # 01B2 Cyrillic small de
+435  ; KE010000  U0435  afii10070        afii10070      # 01B3 Cyrillic small ie
+436  ; KZ210000  U0436  afii10072        afii10072      # 01B4 Cyrillic small zhe
+437  ; KZ010000  U0437  afii10073        afii10073      # 01B5 Cyrillic small ze
+438  ; KI010000  U0438  afii10074        afii10074      # 01B6 Cyrillic small i
+439  ; KJ110000  U0439  afii10075        afii10075      # 01B7 Cyrillic small short i
+440  ; KK010000  U043A  afii10076        afii10076      # 01B8 Cyrillic small ka
+441  ; KL010000  U043B  afii10077        afii10077      # 01B9 Cyrillic small el
+442  ; KM010000  U043C  afii10078        afii10078      # 01BA Cyrillic small em
+443  ; KN010000  U043D  afii10079        afii10079      # 01BB Cyrillic small en
+444  ; KO010000  U043E  afii10080        afii10080      # 01BC Cyrillic small o
+445  ; KP010000  U043F  afii10081        afii10081      # 01BD Cyrillic small pe
+446  ; KR010000  U0440  afii10082        afii10082      # 01BE Cyrillic small er
+447  ; KS010000  U0441  afii10083        afii10083      # 01BF Cyrillic small es
+448  ; KT010000  U0442  afii10084        afii10084      # 01C0 Cyrillic small te
+449  ; KU010000  U0443  afii10085        afii10085      # 01C1 Cyrillic small u
+450  ; KF010000  U0444  afii10086        afii10086      # 01C2 Cyrillic small ef
+451  ; KH010000  U0445  afii10087        afii10087      # 01C3 Cyrillic small ha
+452  ; KC010000  U0446  afii10088        afii10088      # 01C4 Cyrillic small tse
+453  ; KC210000  U0447  afii10089        afii10089      # 01C5 Cyrillic small che
+454  ; KS210000  U0448  afii10090        afii10090      # 01C6 Cyrillic small sha
+455  ; KS150000  U0449  afii10091        afii10091      # 01C7 Cyrillic small shcha
+456  ; KU210000  U044A  afii10092        afii10092      # 01C8 Cyrillic small hard sign
+457  ; KY010000  U044B  afii10093        afii10093      # 01C9 Cyrillic small yeru
+458  ; KX110000  U044C  afii10094        afii10094      # 01CA Cyrillic small soft sign
+459  ; KE130000  U044D  afii10095        afii10095      # 01CB Cyrillic small e
+460  ; KU150000  U044E  afii10096        afii10096      # 01CC Cyrillic small yu
+461  ; KA150000  U044F  afii10097        afii10097      # 01CD Cyrillic small ya
+462  ; SM000000  U2116  afii61352        afii61352      # 01CE numero sign
+463  ; KE170000  U0451  afii10071        afii10071      # 01CF Cyrillic small io
+464  ; KD610000  U0452  afii10099        afii10099      # 01D0 Cyrillic small dje
+465  ; KG110000  U0453  afii10100        afii10100      # 01D1 Cyrillic small gje
+466  ; KE150000  U0454  afii10101        afii10101      # 01D2 Cyrillic small ukrainian ie
+467  ; KZ150000  U0455  afii10102        afii10102      # 01D3 Cyrillic small dze
+468  ; KI110000  U0456  afii10103        afii10103      # 01D4 Cyrillic small ukrainian i
+469  ; KI170000  U0457  afii10104        afii10104      # 01D5 Cyrillic small yi
+470  ; KJ010000  U0458  afii10105        afii10105      # 01D6 Cyrillic small je
+471  ; KL410000  U0459  afii10106        afii10106      # 01D7 Cyrillic small lje
+472  ; KN110000  U045A  afii10107        afii10107      # 01D8 Cyrillic small nje
+473  ; KC110000  U045B  afii10108        afii10108      # 01D9 Cyrillic small tshe
+474  ; KK110000  U045C  afii10109        afii10109      # 01DA Cyrillic small kje
+475  ; KU230000  U045E  afii10110        afii10110      # 01DB Cyrillic small short u
+476  ; KG210000  U045F  afii10193        afii10193      # 01DC Cyrillic small dzhe
+477  ; KG300000  U0490  afii10050        afii10050      # 01DD Cyrillic capital ghe upturn
+478  ; KG290000  U0491  afii10098        afii10098      # 01DE Cyrillic small ghe upturn
+;
+; Baltic characters
+;
+479  ; LR420000  U0156  Rcedilla         Rcedilla       # 01DF Latin capital r cedilla
+480  ; LI440000  U012E  Iogonek          Iogonek        # 01E0 Latin capital i ogonek
+481  ; LA320000  U0100  Amacron          Amacron        # 01E1 Latin capital a macron
+482  ; LE320000  U0112  Emacron          Emacron        # 01E2 Latin capital e macron
+483  ; LE300000  U0116  Edotaccent       Edot           # 01E3 Latin capital e dot above
+484  ; LG420000  U0122  Gcedilla         Gcedilla       # 01E4 Latin capital g cedilla
+485  ; LK420000  U0136  Kcedilla         Kcedilla       # 01E5 Latin capital k cedilla
+486  ; LI320000  U012A  Imacron          Imacron        # 01E6 Latin capital i macron
+487  ; LL420000  U013B  Lcedilla         Lcedilla       # 01E7 Latin capital l cedilla
+488  ; LN420000  U0145  Ncedilla         Ncedilla       # 01E8 Latin capital n cedilla
+489  ; LO320000  U014C  Omacron          Omacron        # 01E9 Latin capital o macron
+490  ; LU440000  U0172  Uogonek          Uogonek        # 01EA Latin capital u ogonek
+491  ; LU320000  U016A  Umacron          Umacron        # 01EB Latin capital u macron
+492  ; LR410000  U0157  rcedilla         rcedilla       # 01EC Latin small r cedilla
+493  ; LI430000  U012F  iogonek          iogonek        # 01ED Latin small i ogonek
+494  ; LA310000  U0101  amacron          amacron        # 01EE Latin small a macron
+495  ; LE310000  U0113  emacron          emacron        # 01EF Latin small e macron
+496  ; LE290000  U0117  edotaccent       edot           # 01F0 Latin small e dot above
+497  ; LG410000  U0123  gcedilla         gcedilla       # 01F1 Latin small g cedilla
+498  ; LK410000  U0137  kcedilla         kcedilla       # 01F2 Latin small k cedilla
+499  ; LI310000  U012B  imacron          imacron        # 01F3 Latin small i macron
+500  ; LL410000  U013C  lcedilla         lcedilla       # 01F4 Latin small l cedilla
+501  ; LN410000  U0146  ncedilla         ncedilla       # 01F5 Latin small n cedilla
+502  ; LO310000  U014D  omacron          omacron        # 01F6 Latin small o macron
+503  ; LU430000  U0173  uogonek          uogonek        # 01F7 Latin small u ogonek
+504  ; LU310000  U016B  umacron          umacron        # 01F8 Latin small u macron
+;
+; OS/2 Warp 4 ended at this point
+;
+
+;
+; Additional characters from Apple codepages
+;
+505  ; SV320000  UFFFD  replace          replace        # 01f9 replacement character
+506  ; SA540000  U2260  notequal         notequal       # 01FA not equal to
+507  ; SA660000  U25CA  lozenge          lozenge        # 01FB lozenge
+508  ; SS300000  U2318  option           propellor      # 01FC place of interest sign
+509  ; SM160000  U2113  liter            afii61289      # 01FD script small l
+510  ; SP120001  U2044  fraction         fraction       # 01FE fraction slash
+511  ; SA490000  U2022  partialdiff      partialdiff    # 01FF partial differential
+;
+; Dead keys.  These characters are used in the keyboard logic
+;
+512  ; SD118000  U0300  deadacute                       # 0200 combining grave accent
+513  ; SD138000  U0301  deadgrave                       # 0201 combining acute accent
+514  ; SD158000  U0302  deadcircumflex                  # 0202 combining circumflex accent
+515  ; SD178000  U0308  deaddieresis                    # 0203 combining diaeresis
+516  ; SD198000  U0303  deadtilde                       # 0204 combining tilde
+517  ; SD418000  U0327  deadcedilla                     # 0205 combining cedilla
+518  ; SD218000  U030C  deadcaron                       # 0206 combining caron
+519  ; SD258000  U030B  deadhungarumlaut                # 0207 combining double acute accent
+520  ; SD278000  U030A  deadring                        # 0208 combining ring above
+521  ; SD238000  U0306  deadbreve                       # 0209 combining breve
+522  ; SD438000  U0328  deadogonek                      # 020a combining ogonek
+523  ; SD398000  U0307  deaddotaccent                   # 020b combining dot above
+524  ; SD118001  U034F  deadacute1                      # 020c NOTUNI
+525  ; SD138001  U034E  deaddieresis1                   # 020d NOTUNI
+526  ; SD118007  U034D  tonos                           # 020e NOTUNI
+527  ; SD178007  U034C  dialysis                        # 020f NOTUNI
+528  ; SD738000  U0344  dialtonos                       # 0210 combining Greek dialytika tonos
+529  ; SD318000  U0304  deadmacron                      # 0211 combining macron
+530  ; -                                                # 0212
+;
+; Bidi controls from Windows codepages
+;
+531  ; SP5300Z0  U200C  nonjoiner                       # 0213 zero width non-joiner
+532  ; SP5400Z0  U200D  joiner                          # 0214 zero width joiner
+533  ; SP5500Z0  U200E  lefttoright                     # 0215 left-to-right mark
+534  ; SP5600Z0  U200F  righttoleft                     # 0216 right-to-left mark
+;
+; Hebrew
+;
+535  ; SC170000  U20AA  afii57636                       # 0217 new sheqel sign
+536  ; HX330000  U05D0  afii57664                       # 0218 Hebrew alef
+537  ; HB010000  U05D1  afii57665                       # 0219 Hebrew bet
+538  ; HG010000  U05D2  afii57666                       # 021a Hebrew gimel
+539  ; HD010000  U05D3  afii57667                       # 021b Hebrew dalet
+540  ; HH010000  U05D4  afii57668                       # 021c Hebrew he
+541  ; HW010000  U05D5  afii57669                       # 021d Hebrew vav
+542  ; HZ010000  U05D6  afii57670                       # 021e Hebrew zayin
+543  ; HH450000  U05D7  afii57671                       # 021f Hebrew het
+544  ; HT450000  U05D8  afii57672                       # 0220 Hebrew tet
+545  ; HY010000  U05D9  afii57673                       # 0221 Hebrew yod
+546  ; HK610000  U05DA  afii57674                       # 0222 Hebrew final kaf
+547  ; HK010000  U05DB  afii57675                       # 0223 Hebrew kaf
+548  ; HL010000  U05DC  afii57676                       # 0224 Hebrew lamed
+549  ; HM610000  U05DD  afii57677                       # 0225 Hebrew final mem
+550  ; HM010000  U05DE  afii57678                       # 0226 Hebrew mem
+551  ; HN610000  U05DF  afii57679                       # 0227 Hebrew final nun
+552  ; HN010000  U05E0  afii57680                       # 0228 Hebrew nun
+553  ; HS010000  U05E1  afii57681                       # 0229 Hebrew samekh
+554  ; HX350000  U05E2  afii57682                       # 022a Hebrew ayin
+555  ; HP610000  U05E3  afii57683                       # 022b Hebrew final pe
+556  ; HP010000  U05E4  afii57684                       # 022c Hebrew pe
+557  ; HS610000  U05E5  afii57685                       # 022d Hebrew final tsadi
+558  ; HS450000  U05E6  afii57686                       # 022e Hebrew tsadi
+559  ; HQ010000  U05E7  afii57687                       # 022f Hebrew qof
+560  ; HR010000  U05E8  afii57688                       # 0230 Hebrew resh
+561  ; HS210000  U05E9  afii57689                       # 0231 Hebrew shin
+562  ; HT010000  U05EA  afii57690                       # 0232 Hebrew tav
+;
+; Hebrew codepage support - vowels and Yiddish
+;
+563  ; SD808000  U05B0  afii57799                       # 0233 Hebrew point sheva
+564  ; SD818000  U05B1  afii57801                       # 0234 Hebrew point hataf segol
+565  ; SD828000  U05B2  afii57800                       # 0235 Hebrew point hataf patah
+566  ; SD838000  U05B3  afii57802                       # 0236 Hebrew point hataf qamats
+567  ; SD848000  U05B4  afii57793                       # 0237 Hebrew point hiriq
+568  ; SD858000  U05B5  afii57794                       # 0238 Hebrew point tsere
+569  ; SD868000  U05B6  afii57795                       # 0239 Hebrew point segol
+570  ; SD878000  U05B7  afii57798                       # 023a Hebrew point patah
+571  ; SD888000  U05B8  afii57797                       # 023b Hebrew point qamats
+572  ; SD898000  U05B9  afii57806                       # 023c Hebrew point holam
+573  ; SD928000  U05BB  afii57796                       # 023d Hebrew point qubuts
+574  ; SD938000  U05BC  afii57807                       # 023e Hebrew point dagesh or mapiq
+575  ; SD948000  U05BD  afii57839                       # 023f Hebrew point meteg
+576  ; SD640000  U05BE  afii57645                       # 0240 Hebrew punctuation maqaf
+577  ; SD958000  U05BF  afii57841                       # 0241 Hebrew point rafe
+578  ; SD650000  U05C0  afii57842                       # 0242 Hebrew punctuation paseq
+579  ; SD968000  U05C1  afii57804                       # 0243 Hebrew point shin dot
+580  ; SD978000  U05C2  afii57803                       # 0244 Hebrew point sin dot
+581  ; SD660000  U05C3  afii57658                       # 0245 Hebrew punctuation sof pasuq
+582  ; HW610000  U05F0  afii57716                       # 0246 Hebrew ligature yiddish double vav
+583  ; HW630000  U05F1  afii57717                       # 0247 Hebrew ligature yiddish vav yod
+584  ; HY610000  U05F2  afii57718                       # 0248 Hebrew ligature yiddish double yod
+;
+; Greek
+;
+585  ; SM120000  U2015  longdash         afii00208      # 0249 horizontal bar
+586  ; SD110001  U0384  tonos            tonos          # 024a Greek tonos
+587  ; SD730000  U0385  dieresistonos    dieresistonos  # 024b Greek dialytika tonos
+588  ; GA020000  U0391  Alpha            Alpha          # 024c Greek capital alpha
+589  ; GB020000  U0392  Beta             Beta           # 024d Greek capital beta
+590  ; GD020000  U0394  Delta            Delta          # 024e Greek capital delta
+591  ; GE020000  U0395  Epsilon          Epsilon        # 024f Greek capital epsilon
+592  ; GZ020000  U0396  Zeta             Zeta           # 0250 Greek capital zeta
+593  ; GE320000  U0397  Eta              Eta            # 0251 Greek capital eta
+594  ; GT610001  U03D1  theta1                          # 0252 Greek theta symbol
+595  ; GI020000  U0399  Iota             Iota           # 0253 Greek capital iota
+596  ; GK020000  U039A  Kappa            Kappa          # 0254 Greek capital kappa
+597  ; GL020000  U039B  Lambda           Lambda         # 0255 Greek capital lamda
+598  ; GM020000  U039C  Mu               Mu             # 0256 Greek capital mu
+599  ; GN020000  U039D  Nu               Nu             # 0257 Greek capital nu
+600  ; GX020000  U039E  Xi               Xi             # 0258 Greek capital xi
+601  ; GO020000  U039F  Omicron          Omicron        # 0259 Greek capital omicron
+602  ; GP020000  U03A0  Pi               Pi             # 025a Greek capital pi
+603  ; GR020000  U03A1  Rho              Rho            # 025b Greek capital rho
+604  ; GT020000  U03A4  Tau              Tau            # 025c Greek capital tau
+605  ; GU020000  U03A5  Upsilon          Upsilon        # 025d Greek capital upsilon
+606  ; GP620000  U03A6  Phi              Phi            # 025e Greek capital phi
+607  ; GH020000  U03A7  Chi              Chi            # 025f Greek capital chi
+608  ; GB010000  U03B2  beta             beta           # 0260 Greek small beta
+609  ; GG010000  U03B3  gamma            gamma          # 0261 Greek small gamma
+610  ; GZ010000  U03B6  zeta             zeta           # 0262 Greek small zeta
+611  ; GE310000  U03B7  eta              eta            # 0263 Greek small eta
+612  ; GT610000  U03B8  theta            theta          # 0264 Greek small theta
+613  ; GI010000  U03B9  iota             iota           # 0265 Greek small iota
+614  ; GK010000  U03BA  kappa            kappa          # 0266 Greek small kappa
+615  ; GL010000  U03BB  lambda           lambda         # 0267 Greek small lamda
+616  ; GM010000  U03BC  mu               mu             # 0268 Greek small mu
+617  ; GN010000  U03BD  nu               nu             # 0269 Greek small nu
+618  ; GX010000  U03BE  xi               xi             # 026a Greek small xi
+619  ; GO010000  U03BF  omicron          omicron        # 026b Greek small omicron
+620  ; GR010000  U03C1  rho              rho            # 026c Greek small rho
+621  ; GS610000  U03C2  sigma1           sigma1         # 026d Greek small final sigma
+622  ; GU010000  U03C5  upsilon          upsilon        # 026e Greek small upsilon
+623  ; GF010000  U03C6  phi              phi            # 026f Greek small phi
+624  ; GH010000  U03C7  chi              chi            # 0270 Greek small chi
+625  ; GP610000  U03C8  psi              psi            # 0271 Greek small psi
+626  ; GO310000  U03C9  omega            omega          # 0272 Greek small omega
+627  ; GA120000  U0386  Alphatonos       Alphatonos     # 0273 Greek capital alpha tonos
+628  ; GE120000  U0388  Epsilontonos     Epsilontonos   # 0274 Greek capital epsilon tonos
+629  ; GE720000  U0389  Etatonos         Etatonos       # 0275 Greek capital eta tonos
+630  ; GI120000  U038A  Iotatonos        Iotatonos      # 0276 Greek capital iota tonos
+631  ; GO120000  U038C  Omicrontonos     Omicrontonos   # 0277 Greek capital omicron tonos
+632  ; GU120000  U038E  Upsilontonos     Upsilontonos   # 0278 Greek capital upsilon tonos
+633  ; GO720000  U038F  Omegatonos       Omegatonos     # 0279 Greek capital omega tonos
+634  ; GI180000  U03AA  Iotadieresis     Iotadieresis   # 027a Greek capital iota dialytika
+635  ; GU180000  U03AB  Upsilondieresis  Upsilondieresis# 027b Greek Upsilon dia
+636  ; GA110000  U03AC  alphatonos       alphatonos     # 027c Greek small alpha tonos
+637  ; GE110000  U03AD  epsilontonos     epsilontonos   # 027d Greek small epsilon tonos
+638  ; GE710000  U03AE  etatonos         etatonos       # 027e Greek small eta tonos
+639  ; GI110000  U03AF  iotatonos        iotatonos      # 027f Greek small iota tonos
+640  ; GO110000  U03CC  omicrontonos     omicrontonos   # 0280 Greek small omicron tonos
+641  ; GU110000  U03CD  upsilontonos     upsilontonos   # 0281 Greek small upsilon tonos
+642  ; GO710000  U03CE  omegatonos       omegatonos     # 0282 Greek small omega tonos
+643  ; GI170000  U03CA  iotadieresis     iotadieresis   # 0283 Greek small iota dialytika
+644  ; GU170000  U03CB  upsilondieresis  upsilondieresis# 0284 Greek upsilon dia
+645  ; GI730000  U0390  iotadieresistonos  iotadieresistonos      # 0285 Greek small iota dialytika and tonos
+646  ; GU730000  U03B0  upsilondieresistonos upsilondieresistonos # 0286 Greek small upsilon dialytika and tonos
+;
+; Arabic 864 support
+;
+647  ; AL320000  UFEF7  afii62836                       # 0287 Arabic ligature lam alef hamza above isolated form
+648  ; AL320003  UFEF8  afii62837                       # 0288 Arabic ligature lam alef hamza above final form
+649  ; AL020000  UFEFB  afii62840                       # 0289 Arabic ligature lam alef isolated form
+650  ; AL020003  UFEFC  afii62841                       # 028a Arabic ligature lam alef final form
+651  ; SM870000  UF8FC  afii63167                       # 028b Arabic kasseh (tail)
+652  ; AA210002  UFE82  afii62753                       # 028c Arabic alef madda above final form
+653  ; AA310002  UFE84  afii62754                       # 028d Arabic alef hamza above final form
+654  ; AA010002  UFE8E  afii62760                       # 028e Arabic alef final form
+655  ; AB010000  U0628  afii57416                       # 028f Arabic beh
+656  ; AT010000  U062A  afii57418                       # 0290 Arabic teh
+657  ; AT470000  U062B  afii57419                       # 0291 Arabic theh
+658  ; SP080007  U060C  afii57388                       # 0292 Arabic comma
+659  ; AG230000  U062C  afii57420                       # 0293 Arabic jeem
+660  ; AH450000  U062D  afii57421                       # 0294 Arabic hah
+661  ; AH470000  U062E  afii57422                       # 0295 Arabic khah
+662  ; ND100001  U0660  afii57392                       # 0296 Arabic-indic digit zero
+663  ; ND010001  U0661  afii57393                       # 0297 Arabic-indic digit one
+664  ; ND020001  U0662  afii57394                       # 0298 Arabic-indic digit two
+665  ; ND030001  U0663  afii57395                       # 0299 Arabic-indic digit three
+666  ; ND040001  U0664  afii57396                       # 029a Arabic-indic digit four
+667  ; ND050001  U0665  afii57397                       # 029b Arabic-indic digit five
+668  ; ND060001  U0666  afii57398                       # 029c Arabic-indic digit six
+669  ; ND070001  U0667  afii57399                       # 029d Arabic-indic digit seven
+670  ; ND080001  U0668  afii57400                       # 029e Arabic-indic digit eight
+671  ; ND090001  U0669  afii57401                       # 029f Arabic-indic digit nine
+672  ; AF010000  U0641  afii57441                       # 02a0 Arabic feh
+673  ; SP140007  U061B  afii57403                       # 02a1 Arabic semicolon
+674  ; AS010000  UF8F6  AS010000                        # 02a2 Arabic seen (1st part) (a) - isolated-final
+675  ; AS230000  UF8F5  AS230000                        # 02a3 Arabic sheen (1st part) (a) - isolated-final
+676  ; AS450000  UF8F4  AS450000                        # 02a4 Arabic sad (1st part) (a) - isolated-final
+677  ; SP150007  U061F  afii57407                       # 02a5 Arabic question mark
+678  ; AX300000  U0621  afii57409                       # 02a6 Arabic hamza
+679  ; AA210000  U0622  afii57410                       # 02a7 Arabic alef madda above
+680  ; AA310000  U0623  afii57411                       # 02a8 Arabic alef hamza above
+681  ; AW310000  U0624  afii57412                       # 02a9 Arabic waw hamza above
+682  ; AC470002  UFECA  afii62804                       # 02aa Arabic ain final form
+683  ; AY310000  U0626  afii57414                       # 02ab Arabic yeh hamza above
+684  ; AA010000  U0627  afii57415                       # 02ac Arabic alef
+685  ; AB010003  UFE91  afii62761                       # 02ad Arabic beh initial form
+686  ; AT020000  U0629  afii57417                       # 02ae Arabic teh marbuta
+687  ; AT010003  UFE97  afii62765                       # 02af Arabic teh initial form
+688  ; AT470003  UFE9B  afii62768                       # 02b0 Arabic theh initial form
+689  ; AG230003  UFE9F  afii62771                       # 02b1 Arabic jeem initial form
+690  ; AH450003  UFEA3  afii62774                       # 02b2 Arabic hah initial form
+691  ; AH470003  UFEA7  afii62777                       # 02b3 Arabic khah initial form
+692  ; AD010000  U062F  afii57423                       # 02b4 Arabic dal
+693  ; AD470000  U0630  afii57424                       # 02b5 Arabic thal
+694  ; AR010000  U0631  afii57425                       # 02b6 Arabic reh
+695  ; AZ010000  U0632  afii57426                       # 02b7 Arabic zain
+696  ; AS010003  UFEB3  afii62784                       # 02b8 Arabic seen initial form
+697  ; AS230003  UFEB7  afii62787                       # 02b9 Arabic sheen initial form
+698  ; AS450003  UFEBB  afii62790                       # 02bA Arabic sad initial form
+699  ; AD450000  UFEC0  afii62794                       # 02bB Arabic dad medial form
+700  ; AT450000  U0637  afii57431                       # 02bC Arabic tah
+701  ; AZ450000  U0638  afii57432                       # 02bD Arabic zah
+702  ; AC470003  UFECB  afii62802                       # 02bE Arabic ain initial form
+703  ; AG310003  UFECF  afii62805                       # 02bF Arabic ghain initial form
+704  ; AC470000  U0639  afii57433                       # 02c0 Arabic ain
+705  ; SM860000  U0640  afii57440                       # 02c1 Arabic tatweel
+706  ; AF010003  UFED3  afii62808                       # 02c2 Arabic feh initial form
+707  ; AQ010003  UFED7  afii62811                       # 02c3 Arabic qaf initial form
+708  ; AK010003  UFED8  afii62814                       # 02c4 Arabic qaf medial form
+709  ; AL010003  UFEDF  afii62817                       # 02c5 Arabic lam initial form
+710  ; AM010003  UFEE3  afii62820                       # 02c6 Arabic meem initial form
+711  ; AN010003  UFEE7  afii62823                       # 02c7 Arabic noon initial form
+712  ; AH010003  UFEEB  afii62826                       # 02c8 Arabic heh initial form
+713  ; AW010000  U0648  afii57448                       # 02c9 Arabic waw
+714  ; AA020000  U0649  afii57449                       # 02cA Arabic alef maksura
+715  ; AY010003  UFEF3  afii62831                       # 02cB Arabic yeh initial form
+716  ; AD450003  UF8F7  AD450000                        # 02cC Arabic dud (1st part) (a) - isolated-final
+717  ; AC470004  UFECC  afii62803                       # 02cD Arabic ain medial form
+718  ; AG310002  UFECE  afii62807                       # 02cE Arabic ghain final form
+719  ; AG310000  U063A  afii57434                       # 02cF Arabic ghain
+720  ; AM010000  U0645  afii57445                       # 02d0 Arabic meem
+721  ; AX100004  UFE7D  afii52396                       # 02d1 Arabic shadda medial form
+722  ; AX100000  U0651  afii57457                       # 02d2 Arabic shadda
+723  ; AN010000  U0646  afii57446                       # 02d3 Arabic noon
+724  ; AH010000  U0647  afii57447                       # 02d4 Arabic heh
+725  ; AH010004  UFEEC  afii62827                       # 02d5 Arabic heh medial form
+726  ; AA020002  UFEF0  afii62830                       # 02d6 Arabic alef maksura final form
+727  ; AY010002  UFEF2  afii62833                       # 02d7 Arabic yeh final form
+728  ; AG310004  UFED0  afii62806                       # 02d8 Arabic ghain medial form
+729  ; AQ010000  U0642  afii57442                       # 02d9 Arabic qaf
+730  ; AL220000  UFEF5  afii62834                       # 02dA Arabic ligature lam alef madda above isolated form
+731  ; AL220003  UFEF6  afii62835                       # 02dB Arabic ligature lam alef madda above final form
+732  ; AL010000  U0644  afii57444                       # 02dC Arabic lam
+733  ; AK010000  U0643  afii57443                       # 02dD Arabic kaf
+734  ; AY010000  U064A  afii57450                       # 02dE Arabic yeh
+;
+; Arabic from 1256
+;
+735  ; AC210000  U0686  afii57507                       # 02df Arabic tcheh
+736  ; AG010000  U06AF  afii57509                       # 02e0 Arabic gaf
+737  ; AP010000  U067E  afii57506                       # 02e1 Arabic peh
+738  ; AX210000  U0698  afii57508                       # 02e2 Arabic jeh
+739  ; AA310400  U0625  afii57413                       # 02e3 Arabic alef hamza below
+740  ; AA070000  U064B  afii57451                       # 02e4 Arabic fathatan
+741  ; AU070000  U064C  afii57452                       # 02e5 Arabic dammatan
+742  ; AI070000  U064D  afii57453                       # 02e6 Arabic kasratan isolated form
+743  ; AA050000  U064E  afii57454                       # 02e7 Arabic fatha
+744  ; AU050000  U064F  afii57455                       # 02e8 Arabic damma
+745  ; AI050000  U0650  afii57456                       # 02e9 Arabic kasra
+746  ; AE050000  U0652  afii57458                       # 02ea Arabic sukun
+747  ; AZ210000  U0698  afii57508                       # 02eb Arabic jeh
+;
+; More unicode bidi controls
+;
+748  ; SP5700Z0  U202A  lefttorightembed                # 02ec left-to-right embedding
+749  ; SP5800Z0  U202B  righttoleftembed                # 02ed right-to-left embedding
+750  ; SP5900Z0  U202C  popformatdirection              # 02ee pop directional formatting
+751  ; SP6000Z0  U202D  lefttorightoverride             # 02ef left-to-right override
+752  ; SP6100Z0  U202E  righttoleftoverride             # 02f0 right-to-left override
+;
+; Publishing
+;
+753  ; SM580000  U25C5  SM580000                        # 02f1 large bullet
+754  ; SP310000  U2007  spacenumeric                    # 02f2 numeric space
+755  ; SV640000  UF8FF  logo             applelogo      # 02f3 corporate logo
+756  ; LF510000  UFB00  ff                              # 02f4 Latin small ligature ff
+757  ; LF530000  UFB01  fi               fi             # 02f5 Latin small ligature fi
+758  ; LF550000  UFB02  fl               fl             # 02f6 Latin small ligature fl
+759  ; LF570000  UFB03  ffi                             # 02f7 Latin small ligature ffi
+760  ; LF590000  UFB04  ffl                             # 02f8 Latin small ligature ffl
+761  ; LI510000  U0133  ij               ij             # 02f9 Latin small ligature ij
+762  ; SA510000  U222B  integral                        # 02fa integral
+763  ; NF180000  U215B  oneeighth        oneeighth      # 02fb vulgar fraction one eighth
+764  ; NF190000  U215C  threeeighths     threeeighths   # 02fc vulgar fraction three eighths
+765  ; NF200000  U215D  fiveeighths      fiveeighths    # 02fd vulgar fraction five eighths
+766  ; NF210000  U215E  seveneighths     seveneighths   # 02fe vulgar fraction seven eighths
+767  ; ND100008  UF8B3  zeroslash                       # 02ff zero slash
+;
+; Start of Japanese characters at 0x0300
+;
+768  ; SP500000  U303F  SP500000                        # 0300 ideographic half fill space
+769  ; SM720000  U21B5  carriagereturn                  # 0301 downwards arrow corner leftwards
+770  ; JQ700000  U3002  periodjapan                     # 0302 ideographic full stop
+771  ; JQ710000  U300C  leftquotejapan                  # 0303 left corner bracket
+772  ; JQ720000  U300D  rightquotejapan                 # 0304 right corner bracket
+773  ; JQ730000  U3001  commajapan                      # 0305 ideographic comma
+774  ; JQ740000  U30FB  middotkana                      # 0306 katakana middle dot
+775  ; JW500000  U30F2  Wokana                          # 0307 katakana wo
+776  ; JA010000  U30A1  Akanasmall                      # 0308 katakana small a
+777  ; JI010000  U30A3  Ikanasmall                      # 0309 katakana small i
+778  ; JU010000  U30A5  Ukanasmall                      # 030a katakana small u
+779  ; JE010000  U30A7  Ekanasmall                      # 030b katakana small e
+780  ; JO010000  U30A9  Okanasmall                      # 030c katakana small o
+781  ; JY110000  U30E3  Yakanasmall                     # 030d katakana small ya
+782  ; JY310000  U30E5  Yukanasmall                     # 030e katakana small yu
+783  ; JY510000  U30E7  Yokanasmall                     # 030f katakana small yo
+784  ; JT310000  U30C3  Tukanasmall                     # 0310 katakana small tu
+785  ; JX700000  U30FC  Longsoundkana                   # 0311 katakana-hiragana prolonged sound mark
+786  ; JA000000  U30A2  Akana                           # 0312 katakana a
+787  ; JI000000  U30A4  Ikana                           # 0313 katakana i
+788  ; JU000000  U30A6  Ukana                           # 0314 katakana u
+789  ; JE000000  U30A8  Ekana                           # 0315 katakana e
+790  ; JO000000  U30AA  Okana                           # 0316 katakana o
+791  ; JK100000  U30AB  Kakana                          # 0317 katakana ka
+792  ; JK200000  U30AD  Kikana                          # 0318 katakana ki
+793  ; JK300000  U30AF  Kukana                          # 0319 katakana ku
+794  ; JK400000  U30B1  Kekana                          # 031a katakana ke
+795  ; JK500000  U30B3  Kokana                          # 031b katakana ko
+796  ; JS100000  U30B5  Sakana                          # 031c katakana sa
+797  ; JS200000  U30B7  Sikana                          # 031d katakana si
+798  ; JS300000  U30B9  Sukana                          # 031e katakana su
+799  ; JS400000  U30BB  Sekana                          # 031f katakana se
+800  ; JS500000  U30BD  Sokana                          # 0320 katakana so
+801  ; JT100000  U30BF  Takana                          # 0321 katakana ta
+802  ; JT200000  U30C1  Tikana                          # 0322 katakana ti
+803  ; JT300000  U30C4  Tukana                          # 0323 katakana tu
+804  ; JT400000  U30C6  Tekana                          # 0324 katakana te
+805  ; JT500000  U30C8  Tokana                          # 0325 katakana to
+806  ; JN100000  U30CA  Nakana                          # 0326 katakana na
+807  ; JN200000  U30CB  Nikana                          # 0327 katakana ni
+808  ; JN300000  U30CC  Nukana                          # 0328 katakana nu
+809  ; JN400000  U30CD  Nekana                          # 0329 katakana ne
+810  ; JN500000  U30CE  Nokana                          # 032a katakana no
+811  ; JH100000  U30CF  Hakana                          # 032b katakana ha
+812  ; JH200000  U30D2  Hikana                          # 032c katakana hi
+813  ; JH300000  U30D5  Hukana                          # 032d katakana hu
+814  ; JH400000  U30D8  Hekana                          # 032e katakana he
+815  ; JH500000  U30DB  Hokana                          # 032f katakana ho
+816  ; JM100000  U30DE  Makana                          # 0330 katakana ma
+817  ; JM200000  U30DF  Mikana                          # 0331 katakana mi
+818  ; JM300000  U30E0  Mukana                          # 0332 katakana mu
+819  ; JM400000  U30E1  Mekana                          # 0333 katakana me
+820  ; JM500000  U30E2  Mokana                          # 0334 katakana mo
+821  ; JY100000  U30E4  Yakana                          # 0335 katakana ya
+822  ; JY300000  U30E6  Yukana                          # 0336 katakana yu
+823  ; JY500000  U30E8  Yokana                          # 0337 katakana yo
+824  ; JR100000  U30E9  Rakana                          # 0338 katakana ra
+825  ; JR200000  U30EA  Rikana                          # 0339 katakana ri
+826  ; JR300000  U30EB  Rukana                          # 033a katakana ru
+827  ; JR400000  U30EC  Rekana                          # 033b katakana re
+828  ; JR500000  U30ED  Rokana                          # 033c katakana ro
+829  ; JW100000  U30EF  Wakana                          # 033d katakana wa
+830  ; JN000000  U30F3  Nkana                           # 033e katakana n
+831  ; JX710000  U309B  Voicedjapan                     # 033f katakana-hiragana voiced sound mark
+832  ; JX720000  U309C  Semivoicedjapan                 # 0340 katakana-hiragana semi-voiced sound mark
+;
+; Hiragana.  These are not actually in any single byte codepage
+;
+833  ; RA010000  U3041  ahiraganasmall                  # 0341 hiragana small a
+834  ; RI010000  U3043  ihiraganasmall                  # 0342 hiragana small i
+835  ; RU010000  U3045  uhiraganasmall                  # 0343 hiragana small u
+836  ; RE010000  U3047  ehiraganasmall                  # 0344 hiragana small e
+837  ; RO010000  U3049  ohiraganasmall                  # 0345 hiragana small o
+838  ; RY110000  U3083  yahiraganasmall                 # 0346 hiragana small ya
+839  ; RY310000  U3085  yuhiraganasmall                 # 0347 hiragana small yu
+840  ; RO010000  U3049  ohiraganasmall                  # 0348 hiragana small o
+841  ; RT310000  U3063  tuhiraganasmall                 # 0349 hiragana small tu
+842  ; RA000000  U3042  ahiragana                       # 034a hiragana a
+843  ; RI000000  U3044  ihiragana                       # 034b hiragana i
+844  ; RU000000  U3046  uhiragana                       # 034c hiragana u
+845  ; RE000000  U3048  ehiragana                       # 034d hiragana e
+846  ; RO000000  U304A  ohiragana                       # 034e hiragana o
+847  ; RK100000  U304B  kahiragana                      # 034f hiragana ka
+848  ; RK200000  U304D  kihiragana                      # 0350 hiragana ki
+849  ; RK300000  U304F  kuhiragana                      # 0351 hiragana ku
+850  ; RK400000  U3051  kehiragana                      # 0352 hiragana ke
+851  ; RK500000  U3053  kohiragana                      # 0353 hiragana ko
+852  ; RS100000  U3055  sahiragana                      # 0354 hiragana sa
+853  ; RS200000  U3057  sihiragana                      # 0355 hiragana si
+854  ; RS300000  U3059  suhiragana                      # 0356 hiragana su
+855  ; RS400000  U305B  sehiragana                      # 0357 hiragana se
+856  ; RS500000  U305D  sohiragana                      # 0358 hiragana so
+857  ; RT100000  U305F  tahiragana                      # 0359 hiragana ta
+858  ; RT200000  U3061  tihiragana                      # 035a hiragana ti
+859  ; RT300000  U3064  tuhiragana                      # 035b hiragana tu
+860  ; RT400000  U3066  tehiragana                      # 035c hiragana te
+861  ; RT500000  U3068  tohiragana                      # 035d hiragana to
+862  ; RN100000  U306A  nahiragana                      # 035e hiragana na
+863  ; RN200000  U306B  nihiragana                      # 035f hiragana ni
+864  ; RN300000  U306C  nuhiragana                      # 0360 hiragana nu
+865  ; RN400000  U306D  nehiragana                      # 0361 hiragana ne
+866  ; RN500000  U306E  nohiragana                      # 0362 hiragana no
+867  ; RH100000  U306F  hahiragana                      # 0363 hiragana ha
+868  ; RH200000  U3072  hihiragana                      # 0364 hiragana hi
+869  ; RH300000  U3075  huhiragana                      # 0365 hiragana hu
+870  ; RH400000  U3078  hehiragana                      # 0366 hiragana he
+871  ; RH500000  U307B  hohiragana                      # 0367 hiragana ho
+872  ; RM100000  U307E  mahiragana                      # 0368 hiragana ma
+873  ; RM200000  U307F  mihiragana                      # 0369 hiragana mi
+874  ; RM300000  U3080  muhiragana                      # 036a hiragana mu
+875  ; RM400000  U3081  mehiragana                      # 036b hiragana me
+876  ; RM500000  U3082  mohiragana                      # 036c hiragana mo
+877  ; RY100000  U3084  yahiragana                      # 036d hiragana ya
+878  ; RY300000  U3086  yuhiragana                      # 036e hiragana yu
+879  ; RY500000  U3088  yohiragana                      # 036f hiragana yo
+880  ; RR100000  U3089  rahiragana                      # 0370 hiragana ra
+881  ; RR200000  U308A  rihiragana                      # 0371 hiragana ri
+882  ; RR300000  U308B  ruhiragana                      # 0372 hiragana ru
+883  ; RR400000  U308C  rehiragana                      # 0373 hiragana re
+884  ; RR500000  U308D  rohiragana                      # 0374 hiragana ro
+885  ; RW100000  U308F  wahiragana                      # 0375 hiragana wa
+886  ; RW500000  U3092  wohiragana                      # 0376 hiragana wo
+887  ; RN000000  U3093  nhiragana                       # 0377 hiragana n
+888  ; JQ710001  U300E  leftquoteopenjapan              # 0378 left white corner bracket
+889  ; JQ720001  U300F  rightquoteopenjapan             # 0379 right white corner bracket
+890  ; JK410000  U30F6  kekanasmall                     # 037a katakana small ke
+891  ; SS770000  U3005  iterate                         # 037b ideographic iteration mark
+892  ; -                                                # 037c
+893  ; -                                                # 037d
+894  ; -                                                # 037e
+895  ; -                                                # 037f
+;
+; Start Korean
+;
+896  ; OG000000  U3131  Giyeog                          # 0380 hangul kiyeok
+897  ; OG100000  U3132  Ssanggiyeog                     # 0381 hangul ssangkiyeok
+898  ; OG200000  U3133  Giyeogsios                      # 0382 hangul kiyeok-sios
+899  ; ON000000  U3134  Nieun                           # 0383 hangul nieun
+900  ; ON150000  U3135  Nieunjieuj                      # 0384 hangul nieun-cieuc
+901  ; ON100000  U3136  Nieunhieuh                      # 0385 hangul nieun-hieuh
+902  ; OD000000  U3137  Digeud                          # 0386 hangul tikeut
+903  ; OD100000  U3138  Ssangdigeud                     # 0387 hangul ssangtikeut
+904  ; OL000000  U3139  Lieul                           # 0388 hangul rieul
+905  ; OL200000  U313A  Lieulgiyeog                     # 0389 hangul rieul-kiyeok
+906  ; OL400000  U313B  Lieulmieum                      # 038a hangul rieul-mieum
+907  ; OL100000  U313C  Lieulbieub                      # 038b hangul rieul-pieup
+908  ; OL600000  U313D  Lieulsios                       # 038c hangul rieul-sios
+909  ; OL700000  U313E  Lieultieut                      # 038d hangul rieul-thieuth
+910  ; OL500000  U313F  Lieulpieup                      # 038e hangul rieul-phieuph
+911  ; OL300000  U3140  Lieulhieuh                      # 038f hangul rieul-hieuh
+912  ; OM000000  U3141  Mieum                           # 0390 hangul mieum
+913  ; OB000000  U3142  Bieub                           # 0391 hangul pieup
+914  ; OB100000  U3143  Ssangbieub                      # 0392 hangul ssangpieup
+915  ; OB200000  U3144  Bieubsios                       # 0393 hangul pieup-sios
+916  ; OS000000  U3145  Sios                            # 0394 hangul sios
+917  ; OS100000  U3146  Ssangsios                       # 0395 hangul ssangsios
+918  ; ON200000  U3147  Ieung                           # 0396 hangul ieung
+919  ; OJ000000  U3148  Jieuj                           # 0397 hangul cieuc
+920  ; OJ100000  U3149  Ssangjieuj                      # 0398 hangul ssangcieuc
+921  ; OC200000  U314A  Cieuc                           # 0399 hangul chieuch
+922  ; OK000000  U314B  Kiyeok                          # 039a hangul khieukh
+923  ; OT000000  U314C  Tieut                           # 039b hangul thieuth
+924  ; OP000000  U314D  Pieup                           # 039c hangul phieuph
+925  ; OH000000  U314E  Hieuh                           # 039d hangul hieuh
+926  ; OA000000  U314F  Ahangul                         # 039e hangul a
+927  ; OA200000  U3150  Aehangul                        # 039f hangul ae
+928  ; OY200000  U3151  Yahangul                        # 03a0 hangul ya
+929  ; OY250000  U3152  Yaehangul                       # 03a1 hangul yae
+930  ; OE200000  U3153  Eohangul                        # 03a2 hangul eo
+931  ; OE000000  U3154  Ehangul                         # 03a3 hangul e
+932  ; OY400000  U3155  Yeohangul                       # 03a4 hangul yeo
+933  ; OY300000  U3156  Yehangul                        # 03a5 hangul ye
+934  ; OO000000  U3157  Ohangul                         # 03a6 hangul o
+935  ; OO100000  U3158  Wahangul                        # 03a7 hangul wa
+936  ; OO200000  U3159  Waehangul                       # 03a8 hangul wae
+937  ; OO300000  U315A  Oehangul                        # 03a9 hangul oe
+938  ; OY500000  U315B  Yohangul                        # 03aa hangul yo
+939  ; OU000000  U315C  Uhangul                         # 03ab hangul u
+940  ; OU300000  U315D  Weohangul                       # 03ac hangul weo
+941  ; OU200000  U315E  Wehangul                        # 03ad hangul we
+942  ; OU400000  U315F  Wihangul                        # 03ae hangul wi
+943  ; OY600000  U3160  Yuhangul                        # 03af hangul yu
+944  ; OE300000  U3161  Euhangul                        # 03b0 hangul eu
+945  ; OE400000  U3162  Yihangul                        # 03b1 hangul yi
+946  ; OI000000  U3163  Ihangul                         # 03b2 hangul i
+947  ; SC140000  U20A9  Won                             # 03b3 won sign
+948  ; -                                                # 03b4
+949  ; SP490000  U3164  Caeomhangul                     # 03b5 hangul filler
+;
+; Thai
+;
+950  ; SC130000  U0E3F  U0E3F                           # 03B6 currency symbol baht
+951  ; BK100000  U0E01  U0E01                           # 03B7 thai character ko kai
+952  ; BK200000  U0E02  U0E02                           # 03B8 thai character kho khai
+953  ; BK300000  U0E03  U0E03                           # 03B9 thai character kho khuat
+954  ; BK400000  U0E04  U0E04                           # 03BA thai character kho khwai
+955  ; BK500000  U0E05  U0E05                           # 03BB thai character kho khon
+956  ; BK600000  U0E06  U0E06                           # 03BC thai character kho rakhang
+957  ; BN100000  U0E07  U0E07                           # 03BD thai character ngo ngu
+958  ; BC100000  U0E08  U0E08                           # 03BE thai character cho chan
+959  ; BX100000  U0E09  U0E09                           # 03BF thai character cho ching
+960  ; BS100000  U0E0A  U0E0A                           # 03C0 thai character cho chang
+961  ; BX200000  U0E0B  U0E0B                           # 03C1 thai character so so
+962  ; BX300000  U0E0C  U0E0C                           # 03C2 thai character cho choe
+963  ; BY100000  U0E0D  U0E0D                           # 03C3 thai character yo ying
+964  ; BD100000  U0E0E  U0E0E                           # 03C4 thai character do chada
+965  ; BT100000  U0E0F  U0E0F                           # 03C5 thai character to patak
+966  ; BT200000  U0E10  U0E10                           # 03C6 thai character tho than
+967  ; BT300000  U0E11  U0E11                           # 03C7 thai character tho nangmontho
+968  ; BT400000  U0E12  U0E12                           # 03C8 thai character tho phuthao
+969  ; BN200000  U0E13  U0E13                           # 03C9 thai character no nen
+970  ; BD200000  U0E14  U0E14                           # 03CA thai character do dek
+971  ; BT500000  U0E15  U0E15                           # 03CB thai character to tao
+972  ; BT600000  U0E16  U0E16                           # 03CC thai character tho thung
+973  ; BT700000  U0E17  U0E17                           # 03CD thai character tho thahan
+974  ; BT800000  U0E18  U0E18                           # 03CE thai character tho thong
+975  ; BN300000  U0E19  U0E19                           # 03CF thai character no nu
+976  ; BB100000  U0E1A  U0E1A                           # 03D0 thai character bo baimai
+977  ; BP100000  U0E1B  U0E1B                           # 03D1 thai character po pla
+978  ; BP200000  U0E1C  U0E1C                           # 03D2 thai character pho phung
+979  ; BF100000  U0E1D  U0E1D                           # 03D3 thai character fo fa
+980  ; BP300000  U0E1E  U0E1E                           # 03D4 thai character pho phan
+981  ; BF200000  U0E1F  U0E1F                           # 03D5 thai character fo fan
+982  ; BP400000  U0E20  U0E20                           # 03D6 thai character pho samphao
+983  ; BM100000  U0E21  U0E21                           # 03D7 thai character mo ma
+984  ; BY200000  U0E22  U0E22                           # 03D8 thai character yo yak
+985  ; BR100000  U0E23  U0E23                           # 03D9 thai character ro rua
+986  ; BR200000  U0E24  U0E24                           # 03DA thai character ru
+987  ; BL100000  U0E25  U0E25                           # 03DB thai character lo ling
+988  ; BL200000  U0E26  U0E26                           # 03DC thai character lu
+989  ; BW100000  U0E27  U0E27                           # 03DD thai character wo waen
+990  ; BS200000  U0E28  U0E28                           # 03DE thai character so sala
+991  ; BS300000  U0E29  U0E29                           # 03DF thai character so rusi
+992  ; BS400000  U0E2A  U0E2A                           # 03E0 thai character so sua
+993  ; BH100000  U0E2B  U0E2B                           # 03E1 thai character ho hip
+994  ; BL300000  U0E2C  U0E2C                           # 03E2 thai character lo chula
+995  ; BO100000  U0E2D  U0E2D                           # 03E3 thai character o ang
+996  ; BH200000  U0E2E  U0E2E                           # 03E4 thai character ho nokhuk
+997  ; BQ200000  U0E2F  U0E2F                           # 03E5 thai character paiyannoi
+998  ; BA200000  U0E30  U0E30                           # 03E6 thai character sara a
+999  ; BA100000  U0E31  U0E31                           # 03E7 thai character mai han-akat
+1000 ; BA300000  U0E32  U0E32                           # 03E8 thai character sara aa
+1001 ; BA400000  U0E33  U0E33                           # 03E9 thai character sara am
+1002 ; BI100000  U0E34  U0E34                           # 03EA thai character sara i
+1003 ; BI200000  U0E35  U0E35                           # 03EB thai character sara ii
+1004 ; BU100000  U0E36  U0E36                           # 03EC thai character sara ue
+1005 ; BU200000  U0E37  U0E37                           # 03ED thai character sara uee
+1006 ; BU300000  U0E38  U0E38                           # 03EE thai character sara u
+1007 ; BU400000  U0E39  U0E39                           # 03EF thai character sara uu
+1008 ; BQ300000  U0E3A  U0E3A                           # 03F0 thai character phinthu
+1009 ; BE200000  U0E40  U0E40                           # 03F1 thai character sara e
+1010 ; BE300000  U0E41  U0E41                           # 03F2 thai character sara ae
+1011 ; BO200000  U0E42  U0E42                           # 03F3 thai character sara o
+1012 ; BA500000  U0E43  U0E43                           # 03F4 thai character sara ai maimuan
+1013 ; BA600000  U0E44  U0E44                           # 03F5 thai character sara ai maimalai
+1014 ; BA700000  U0E45  U0E45                           # 03F6 thai character lakkhangyao
+1015 ; BQ100000  U0E46  U0E46                           # 03F7 thai character maiyamok
+1016 ; BE100000  U0E47  U0E47                           # 03F8 thai character maitaikhu
+1017 ; BZ100000  U0E48  U0E48                           # 03F9 thai character mai ek
+1018 ; BZ200000  U0E49  U0E49                           # 03FA thai character mai tho
+1019 ; BZ300000  U0E4A  U0E4A                           # 03FB thai character mai tri
+1020 ; BZ400000  U0E4B  U0E4B                           # 03FC thai character mai chattawa
+1021 ; BZ500000  U0E4C  U0E4C                           # 03FD thai character thanthakhat
+1022 ; BN400000  U0E4D  U0E4D                           # 03FE thai character nikhahit
+1023 ; BE400000  U0E4E  U0E4E                           # 03FF thai character yamakkan
+1024 ; BQ400000  U0E4F  U0E4F                           # 0400 thai character fongman
+1025 ; BQ500000  U0E5A  U0E5A                           # 0401 thai character angkhankhu
+1026 ; BQ600000  U0E5B  U0E5B                           # 0402 thai character khomut
+1027 ; ND100002  U0E50  U0E50                           # 0403 thai digit zero
+1028 ; ND010002  U0E51  U0E51                           # 0404 thai digit one
+1029 ; ND020002  U0E52  U0E52                           # 0405 thai digit two
+1030 ; ND030002  U0E53  U0E53                           # 0406 thai digit three
+1031 ; ND040002  U0E54  U0E54                           # 0407 thai digit four
+1032 ; ND050002  U0E55  U0E55                           # 0408 thai digit five
+1033 ; ND060002  U0E56  U0E56                           # 0409 thai digit six
+1034 ; ND070002  U0E57  U0E57                           # 040a thai digit seven
+1035 ; ND080002  U0E58  U0E58                           # 040b thai digit eight
+1036 ; ND090002  U0E59  U0E59                           # 040c thai digit nine
+1037 ; BK100001  U2E01  TH874001                        # 040d NOTUNI
+1038 ; BK100002  U2E02  TH874002                        # 040e NOTUNI
+1039 ; BK100003  U2E03  TH874003                        # 040f NOTUNI
+1040 ; BK100004  U2E04  TH874004                        # 0410 NOTUNI
+1041 ; BK100005  U2E05  TH874005                        # 0411 NOTUNI
+1042 ; BK100006  U2E06  TH874006                        # 0412 NOTUNI
+1043 ; BK100007  U2E07  TH874007                        # 0413 NOTUNI
+1044 ; BK100008  U2E08  TH874008                        # 0414 NOTUNI
+1045 ; BK100009  U2E09  TH874009                        # 0415 NOTUNI
+1046 ; BK100010  U2E0A  TH874010                        # 0416 NOTUNI
+1047 ; BK100011  U2E0B  TH874011                        # 0417 NOTUNI
+1048 ; BK100012  U2E0C  TH874012                        # 0418 NOTUNI
+1049 ; BK100013  U2E0D  TH874013                        # 0419 NOTUNI
+1050 ; BK100014  U2E0E  TH874014                        # 041a NOTUNI
+1051 ; BK100015  U2E0F  TH874015                        # 041b NOTUNI
+1052 ; BK100016  U2E10  TH874016                        # 041c NOTUNI
+1053 ; BK100017  U2E11  TH874017                        # 041d NOTUNI
+1054 ; BK100018  U2E12  TH874018                        # 041e NOTUNI
+1055 ; BK100019  U2E13  TH874019                        # 041f NOTUNI
+1056 ; BK100020  U2E14  TH874020                        # 0420 NOTUNI
+1057 ; BK100021  U2E15  TH874021                        # 0421 NOTUNI
+1058 ; BK100022  U2E16  TH874022                        # 0422 NOTUNI
+1059 ; BK100023  U2E17  TH874023                        # 0423 NOTUNI
+1060 ; BK100024  U2E18  TH874024                        # 0424 NOTUNI
+1061 ; BK100025  U2E19  TH874025                        # 0425 NOTUNI
+1062 ; BK100026  U2E1A  TH874026                        # 0426 NOTUNI
+1063 ; BK100027  U2E1B  TH874027                        # 0427 NOTUNI
+1064 ; BK100028  U2E1C  TH874028                        # 0428 NOTUNI
+1065 ; BK100029  U2E1D  TH874029                        # 0429 NOTUNI
+1066 ; BK100030  U2E1E  TH874030                        # 042a NOTUNI
+1067 ; BK100031  U2E1F  TH874031                        # 042b NOTUNI
+1068 ; BK100127  U2E7F  TH874127                        # 042c NOTUNI
+1069 ; BK100128  U2E80  TH874128                        # 042d NOTUNI
+1070 ; BK100129  U2E81  TH874129                        # 042e NOTUNI
+1071 ; BK100130  U2E82  TH874130                        # 043f NOTUNI
+1072 ; BK100131  U2E83  TH874131                        # 0430 NOTUNI
+1073 ; BK100132  U2E84  TH874132                        # 0431 NOTUNI
+1074 ; BK100133  U2E85  TH874133                        # 0432 NOTUNI
+1075 ; BK100134  U2E86  TH874134                        # 0433 NOTUNI
+1076 ; BK100135  U2E87  TH874135                        # 0434 NOTUNI
+1077 ; BK100136  U2E88  TH874136                        # 0435 NOTUNI
+1078 ; BK100137  U2E89  TH874137                        # 0436 NOTUNI
+1079 ; BK100138  U2E8A  TH874138                        # 0437 NOTUNI
+1080 ; BK100139  U2E8B  TH874139                        # 0438 NOTUNI
+1081 ; BK100140  U2E8C  TH874140                        # 0439 NOTUNI
+1082 ; BK100141  U2E8D  TH874141                        # 043a NOTUNI
+1083 ; BK100142  U2E8E  TH874142                        # 043b NOTUNI
+1084 ; BK100143  U2E8F  TH874143                        # 043c NOTUNI
+1085 ; BK100144  U2E90  TH874144                        # 043d NOTUNI
+1086 ; BK100145  U2E91  TH874145                        # 043e NOTUNI
+1087 ; BK100146  U2E92  TH874146                        # 044f NOTUNI
+1088 ; BK100147  U2E93  TH874147                        # 0440 NOTUNI
+1089 ; BK100148  U2E94  TH874148                        # 0441 NOTUNI
+1090 ; BK100149  U2E95  TH874149                        # 0442 NOTUNI
+1091 ; BK100150  U2E96  TH874150                        # 0443 NOTUNI
+1092 ; BK100151  U2E97  TH874151                        # 0444 NOTUNI
+1093 ; BK100152  U2E98  TH874152                        # 0445 NOTUNI
+1094 ; BK100153  U2E99  TH874153                        # 0446 NOTUNI
+1095 ; BK100154  U2E9A  TH874154                        # 0447 NOTUNI
+1096 ; BK100155  U2E9B  TH874155                        # 0448 NOTUNI
+1097 ; BK100156  U2E9C  TH874156                        # 0449 NOTUNI
+1098 ; BK100157  U2E9D  TH874157                        # 044a NOTUNI
+1099 ; BK100158  U2E9E  TH874158                        # 044b NOTUNI
+1100 ; BK100159  U2E9F  TH874159                        # 044c NOTUNI
+1101 ; BZ100300  U2EA0  TH874160                        # 044d NOTUNI
+1102 ; BZ200300  U2EDB  TH874219                        # 044e NOTUNI
+1103 ; BZ300300  U2EDC  TH874220                        # 044f NOTUNI
+1104 ; BZ400300  U2EDD  TH874221                        # 0450 NOTUNI
+1105 ; BZ500300  U2EDE  TH874222                        # 0451 NOTUNI
+;
+; More deadkeys - Assign new deadkeys at end
+;
+2066 ; SP048003  U0350  deadquotedbllvp                 # 0812 NOTUNI
+2067 ; SP058003  U0351  deadquotesinglelvp              # 0813 NOTUNI
+2068 ; SP058004  U0352  deadquotesinglelvl              # 0814 NOTUNI
+2069 ; SD138003  U0353  deadgraveltp                    # 0815 NOTUNI
+2070 ; SD198003  U0354  deadtildeltl                    # 0816 NOTUNI
+2069 ; SD138004  U0355  deadgraveltp                    # 0817 NOTUNI
+2070 ; SD198004  U0356  deadtildeltl                    # 0818 NOTUNI
+2069 ; SD138005  U0357  deadaltgrltp                    # 0819 NOTUNI
+2070 ; SD198005  U0358  deadaltgrltl                    # 0820 NOTUNI

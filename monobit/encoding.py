@@ -459,6 +459,13 @@ _ENCODING_FILES = (
         ('misc/JIS0208.TXT', 'jisx0208'),
     )),
 
+    # IBM OS/2 Universal Glyph List
+    # https://www.borgendale.com/glyphs.htm
+    ('txt', dict(codepoint_column=0, unicode_column=3, comment=';', codepoint_base=10, inline_comments=False), (
+        ('misc/ibm-ugl.txt', 'ibm-ugl'),
+    )),
+
+
     # Windows-1252 extensions
     ('html', dict(table=1), (
         ('wikipedia/windows-1252.html', 'windows-extended', 'ibm-1004', 'os2-1004'),
@@ -1088,6 +1095,9 @@ def _from_text_columns(
             # czyborra's codepages have U+ in front
             if uni_str.upper().startswith('U+'):
                 uni_str = uni_str[2:]
+            # ibm-ugl codepage has U in front
+            if uni_str.upper().startswith('U'):
+                uni_str = uni_str[1:]
             # czyborra's codepages have = in front
             if cp_str.upper().startswith('='):
                 cp_str = cp_str[1:]
