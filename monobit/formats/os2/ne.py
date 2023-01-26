@@ -39,7 +39,7 @@ ST_ENTRY = le.Struct(
 )
 
 
-def read_os2_ne(instream):
+def read_os2_ne(instream, all_type_ids):
     """Read an OS/2 16-bit NE executable."""
     # the header is the same as for the Windows NE format
     ne_offset = instream.tell()
@@ -62,17 +62,18 @@ def read_os2_ne(instream):
     # locate resources
     # do something like http://www.edm2.com/0206/resources.html
     resources = []
-    # first segment is start of file, skip
-    for rte, ste in zip(res_table, seg_table[1:]):
+    # assume resource segments are at end of file
+    non_res_segs = header.segment_count - header.number_res_table_entries
+    for rte, ste in zip(res_table, seg_table[non_res_segs:]):
         offset = ste.sector << header.file_alignment_size_shift_count
-        if rte.etype != OS2RES_FONTFACE:
+        if not all_type_ids and rte.etype != OS2RES_FONTFACE:
             logging.debug(
                 'Skipping resource of type %d at %x', rte.etype, offset
             )
         else:
             # we're ignoring the font directory and other resources
             logging.debug(
-                'Reading font resource at %x', offset
+                'Reading resource of type %d at %x', rte.etype, offset
             )
             instream.seek(offset)
             rsrc = instream.read(ste.length)

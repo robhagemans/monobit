@@ -28,8 +28,12 @@ from .sfnt import load_sfnt, SFNT_MAGIC
     magic=(b'MZ', b'ZM', b'LX'),
     name='fon',
 )
-def load_fon(instream, where=None):
-    """Load fonts from a Windows or OS/2 .FON container."""
+def load_fon(instream, where=None, all_type_ids:bool=False):
+    """
+    Load fonts from a Windows or OS/2 .FON container.
+
+    all_type_ids: try to extract font from any resource, regardless of type id
+    """
     mz_header = MZ_HEADER.read_from(instream)
     if mz_header.magic == b'LX':
         # apparently LX files don't always have an MZ header
@@ -43,7 +47,7 @@ def load_fon(instream, where=None):
         format = header.magic
     if format == b'NE' and header.target_os == 1:
         logging.debug('File is in NE (16-bit OS/2) format')
-        resources = read_os2_ne(instream)
+        resources = read_os2_ne(instream, all_type_ids)
         format_name = 'OS/2 NE'
     elif format == b'LX':
         logging.debug('File is in LX (32-bit OS/2) format')
