@@ -461,7 +461,11 @@ _ENCODING_FILES = (
 
     # IBM OS/2 Universal Glyph List
     # https://www.borgendale.com/glyphs.htm
-    ('txt', dict(codepoint_column=0, unicode_column=3, comment=';', codepoint_base=10, inline_comments=False), (
+    ('txt',
+    dict(
+            codepoint_column=0, unicode_column=3, comment=';',
+            codepoint_base=10, inline_comments=False,
+    ), (
         ('misc/ibm-ugl.txt', 'ibm-ugl'),
     )),
 
@@ -1090,7 +1094,7 @@ def _from_text_columns(
             uni_str = uni_str.strip()
             # right-to-left marker in mac codepages
             uni_str = uni_str.replace('<RL>+', '').replace('<LR>+', '')
-            # reverse-vdeo marker in kreativekorp codepages
+            # reverse-video marker in kreativekorp codepages
             uni_str = uni_str.replace('<RV>+', '')
             # czyborra's codepages have U+ in front
             if uni_str.upper().startswith('U+'):
@@ -1123,7 +1127,7 @@ def _from_text_columns(
                     mapping[cp_point] = char
             except (ValueError, TypeError) as e:
                 # ignore malformed lines
-                logging.warning('Could not parse line in text charmap file: %s [%s]', e, repr(line))
+                logging.debug('Could not parse line in text charmap file: %s [%s]', e, repr(line))
     return mapping
 
 
