@@ -217,19 +217,21 @@ def _lx_unpack1(pBuf):
     ofIn  = 0;
     abOut = bytearray()
     while True:
+        logging.debug('%s %d', ofIn, cbPage)
+
         usReps = pBuf[ofIn] | (pBuf[ofIn+1] << 8)
         if not usReps:
             break
         ofIn += 2
         usLen = pBuf[ofIn] | (pBuf[ofIn+1] << 8)
         ofIn += 2
-        if ofOut + usReps * usLen > 4096:
+        if len(abOut) + usReps * usLen > 4096:
             break
         while usReps:
             abOut.extend(pBuf[ofIn:ofIn+usLen])
             usReps -= 1
         ofIn += usLen
-        if ofIn > cbPage:
+        if ofIn >= cbPage:
             break
     return bytes(abOut)
 
