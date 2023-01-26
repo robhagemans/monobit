@@ -397,6 +397,7 @@ def convert_os2_font_resource(resource):
         source_format='OS/2 GPI',
         **vars(convert_os2_properties(parsed))
     )
+    font = font.label()
     return font
 
 
