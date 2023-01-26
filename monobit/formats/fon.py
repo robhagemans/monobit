@@ -24,7 +24,7 @@ from .sfnt import load_sfnt, SFNT_MAGIC
 
 
 @loaders.register(
-    'fon',
+    'fon', 'exe', 'dll',
     magic=(b'MZ', b'ZM', b'LX'),
     name='fon',
 )
