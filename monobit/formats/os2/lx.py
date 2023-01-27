@@ -84,7 +84,7 @@ LXRTENTRY = le.Struct(
 )
 
 
-def read_lx(instream):
+def read_lx(instream, all_type_ids):
     """Read font resources from an LX container."""
     resources = []
     ulAddr = instream.tell()
@@ -99,15 +99,15 @@ def read_lx(instream):
         cbInc = cb_rte * i
         instream.seek(ulAddr + lx_hd.res_tbl + cbInc)
         lx_rte = LXRTENTRY.read_from(instream)
-        logging.debug(
-            'Found resource of type %d with id %d',
-            lx_rte.type, lx_rte.name
-        )
         # don't insist on the type being 7 if the id matches the font directory
-        if (
+        if not all_type_ids and (
                 lx_rte.type not in (OS2RES_FONTFACE, OS2RES_FONTDIR)
                 and lx_rte.name not in ulResID
             ):
+            logging.debug(
+                'Skipping resource of type %d with id %d',
+                lx_rte.type, lx_rte.name
+            )
             continue
         # This is either our target font, or else a font directory
         pBuf = _lx_extract_resource(instream, lx_hd, lx_rte, ulAddr)
@@ -125,7 +125,10 @@ def read_lx(instream):
             # continue scanning the resource table.
             ulResID = tuple(_fe.usIndex for _fe in fntEntry)
         else:
-            logging.debug('Parsing font resource %d', lx_rte.name)
+            logging.debug(
+                'Reading resource of type %d with id %d',
+                lx_rte.type, lx_rte.name
+            )
             # pBuf contains our font, so parse it.
             resources.append(pBuf)
     return resources

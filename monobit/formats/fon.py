@@ -50,7 +50,7 @@ def load_fon(instream, where=None, all_type_ids:bool=False):
         format_name = 'OS/2 NE'
     elif format == b'LX':
         logging.debug('File is in LX (32-bit OS/2) format')
-        resources = read_lx(instream)
+        resources = read_lx(instream, all_type_ids)
         format_name = 'OS/2 LX'
     elif format == b'NE':
         logging.debug('File is in NE (16-bit Windows) format')
