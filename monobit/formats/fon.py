@@ -12,10 +12,11 @@ from ..storage import loaders, savers
 from ..streams import FileFormatError
 
 from .windows.mz import MZ_HEADER, create_mz_stub
-from .windows.ne import create_fon, read_ne, _NE_HEADER
+from .windows.ne import create_ne, read_ne, _NE_HEADER
 from .windows.pe import read_pe
 from .windows.fnt import (
-    convert_win_fnt_resource, FNT_MAGIC_1, FNT_MAGIC_2, FNT_MAGIC_3
+    convert_win_fnt_resource,
+    FNT_MAGIC_1, FNT_MAGIC_2, FNT_MAGIC_3
 )
 from .os2.lx import read_lx
 from .os2.ne import read_os2_ne
@@ -114,5 +115,5 @@ def save_win_fon(fonts, outstream, where=None, version:int=2, vector:bool=False)
     stubdata = create_mz_stub()
     outstream.write(
         stubdata +
-        create_fon(fonts, stubdata, version*0x100, vector)
+        create_ne(fonts, stubdata, version*0x100, vector)
     )

@@ -344,7 +344,7 @@ def _create_resource_data(pack, version, vector):
     return resdata, font_start
 
 
-def create_fon(pack, stubdata, version=0x200, vector=False):
+def create_ne(pack, stubdata, version=0x200, vector=False):
     """Create an NE .FON font library."""
     n_fonts = len(pack)
     # (non)resident name tables
