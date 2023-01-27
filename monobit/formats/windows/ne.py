@@ -113,7 +113,7 @@ _MODULE_NAME = b'FONTLIB'
 ##############################################################################
 # .FON (NE executable) file reader
 
-def read_ne(instream):
+def read_ne(instream, all_type_ids):
     """Read font resources from an NE-format FON file."""
     # stream pointer is at the start of the NE header
     # but some offsets in the file are given from the MZ header before that
@@ -151,10 +151,10 @@ def read_ne(instream):
             if start < 0 or size < 0 or start + size > len(data):
                 logging.warning('Resource overruns file boundaries, skipped')
                 continue
-            if type_info.rtTypeID == _RT_FONT:
+            if all_type_ids or type_info.rtTypeID == _RT_FONT:
                 logging.debug(
-                    'Reading font resource at offset %x [%x]',
-                    start, name_info.rnOffset
+                    'Reading resource of type %d at offset %x [%x]',
+                    type_info.rtTypeID, start, name_info.rnOffset
                 )
                 try:
                     resources.append(data[start : start+size])

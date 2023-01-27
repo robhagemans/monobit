@@ -53,13 +53,13 @@ def load_fon(instream, where=None, all_type_ids:bool=False):
         resources = read_lx(instream, all_type_ids)
         format_name = 'OS/2 LX'
     elif format == b'NE':
-        logging.debug('File is in NE (16-bit Windows) format')
-        resources = read_ne(instream)
+        logging.debug('File is in NE (16-bit DOS/Windows) format')
+        resources = read_ne(instream, all_type_ids)
         format_name = 'Windows NE'
     elif format == b'PE':
         # PE magic should be padded by \0\0 but I'll believe it at this stage
         logging.debug('File is in PE (32-bit Windows) format')
-        resources = read_pe(instream)
+        resources = read_pe(instream, all_type_ids)
         format_name = 'Windows PE'
     else:
         raise FileFormatError(

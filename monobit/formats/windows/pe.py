@@ -75,7 +75,7 @@ _IMAGE_RESOURCE_DATA_ENTRY = le.Struct(
 )
 
 
-def read_pe(instream):
+def read_pe(instream, all_type_ids):
     """Read resources from a PE-format FON file."""
     # stream pointer is at the start of the PE header
     peoff = instream.tell()
@@ -109,7 +109,11 @@ def read_pe(instream):
     # Resource Directory Table and look up type 0x08 (font) in it.
     # If it yields another Resource Directory Table, we recurse
     # into that; below the top level of type font we accept all Ids
-    dataentries = _traverse_dirtable(rsrc, 0, _ID_FONT)
+    if all_type_ids:
+        target_type = None
+    else:
+        target_type = _ID_FONT
+    dataentries = _traverse_dirtable(rsrc, 0, target_type)
     # Each of these describes a font.
     ret = []
     for data_entry in dataentries:
