@@ -10,7 +10,7 @@ import logging
 from ...streams import FileFormatError
 from ...struct import little_endian as le
 from ..windows.ne import _NE_HEADER
-
+from .gpifont import parse_os2_font_directory
 
 # resource ids
 OS2RES_FONTDIR = 6
@@ -62,20 +62,30 @@ def read_os2_ne(instream, all_type_ids):
     # locate resources
     # do something like http://www.edm2.com/0206/resources.html
     resources = []
+    font_resource_ids = ()
     # assume resource segments are at end of file
     non_res_segs = header.segment_count - header.number_res_table_entries
     for rte, ste in zip(res_table, seg_table[non_res_segs:]):
         offset = ste.sector << header.file_alignment_size_shift_count
-        if not all_type_ids and rte.etype != OS2RES_FONTFACE:
+        if (
+                not all_type_ids
+                and rte.ename not in font_resource_ids
+                and rte.etype not in (OS2RES_FONTFACE, OS2RES_FONTDIR)
+            ):
             logging.debug(
-                'Skipping resource of type %d at %x', rte.etype, offset
+                'Skipping resource of type %d with id %d at %x',
+                rte.etype, rte.ename, offset
             )
+            continue
+        logging.debug(
+            'Reading resource of type %d with id %d at %x',
+            rte.etype, rte.ename, offset
+        )
+        instream.seek(offset)
+        rsrc = instream.read(ste.length)
+        if rte.etype == OS2RES_FONTDIR:
+            font_dir = parse_os2_font_directory(rsrc)
+            font_resource_ids = tuple(_fe.usIndex for _fe in font_dir)
         else:
-            # we're ignoring the font directory and other resources
-            logging.debug(
-                'Reading resource of type %d at %x', rte.etype, offset
-            )
-            instream.seek(offset)
-            rsrc = instream.read(ste.length)
             resources.append(rsrc)
     return resources

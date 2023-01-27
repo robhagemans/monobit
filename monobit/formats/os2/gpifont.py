@@ -313,6 +313,11 @@ OS2FONTDIRENTRY = le.Struct(
     panose=le.uint8*12,
 )
 
+OS2FONTDIRENTRY_SMALL = le.Struct(
+    usIndex='uint16',
+    metrics=OS2FOCAMETRICS,
+)
+
 OS2FONTDIRECTORY = le.Struct(
 # The size of this header
     usHeaderSize='uint16',
@@ -483,24 +488,26 @@ def parse_os2_font_resource(pBuffer):
     return pFont
 
 
-def parse_os2_font_directory(pBuf):
+def parse_os2_font_directory(data):
     """
     Parse a font directory resource, return as font directory entries.
     Return an empty tuple if parsing failed.
     """
-    offset = 0
     logging.debug('Parsing font directory')
     try:
         # If a font directory exists we use that to find the face's
         # resource ID, as in this case it is not guaranteed to have
         # a type of OS2RES_FONTFACE (7).
-        pFD = OS2FONTDIRECTORY.from_bytes(pBuf, offset)
-        fntEntry = OS2FONTDIRENTRY.array(pFD.usnFonts).from_bytes(
-            pBuf, offset + OS2FONTDIRECTORY.size
-        )
-        return fntEntry
-    except ValueError:
-        logging.debug('Failed to parse font directory')
+        fontdir = OS2FONTDIRECTORY.from_bytes(data)
+        data = data[OS2FONTDIRECTORY.size:]
+        if len(data) >= fontdir.usnFonts * OS2FONTDIRENTRY.size:
+            direntry_type = OS2FONTDIRENTRY
+        else:
+            direntry_type = OS2FONTDIRENTRY_SMALL
+        entries = direntry_type.array(fontdir.usnFonts).from_bytes(data)
+        return entries
+    except ValueError as e:
+        logging.debug('Failed to parse font directory: %s', e)
         return ()
 
 
