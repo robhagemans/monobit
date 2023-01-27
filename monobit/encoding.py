@@ -464,7 +464,7 @@ _ENCODING_FILES = (
     ('txt',
     dict(
             codepoint_column=0, unicode_column=3, comment=';',
-            codepoint_base=10, inline_comments=False,
+            codepoint_base=10, inline_comments=False, ignore_errors=True,
     ), (
         ('misc/ibm-ugl.txt', 'ibm-ugl'),
     )),
@@ -1072,7 +1072,7 @@ class Index(Encoder):
 @Charmap.register_loader('adobe', separator='\t', joiner=None, codepoint_column=1, unicode_column=0)
 def _from_text_columns(
         data, *, comment='#', separator=None, joiner='+', codepoint_column=0, unicode_column=1,
-        codepoint_base=16, unicode_base=16, inline_comments=True
+        codepoint_base=16, unicode_base=16, inline_comments=True, ignore_errors=False,
     ):
     """Extract character mapping from text columns in file data (as bytes)."""
     mapping = {}
@@ -1127,7 +1127,8 @@ def _from_text_columns(
                     mapping[cp_point] = char
             except (ValueError, TypeError) as e:
                 # ignore malformed lines
-                logging.debug('Could not parse line in text charmap file: %s [%s]', e, repr(line))
+                if not ignore_errors:
+                    logging.warning('Could not parse line in text charmap file: %s [%s]', e, repr(line))
     return mapping
 
 
