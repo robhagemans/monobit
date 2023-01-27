@@ -25,7 +25,7 @@ from .sfnt import load_sfnt, SFNT_MAGIC
 
 @loaders.register(
     'fon', 'exe', 'dll',
-    magic=(b'MZ', b'ZM', b'LX'),
+    magic=(b'MZ', b'ZM', b'LX', b'NE', b'PE'),
     name='fon',
 )
 def load_fon(instream, where=None, all_type_ids:bool=False):
@@ -35,12 +35,11 @@ def load_fon(instream, where=None, all_type_ids:bool=False):
     all_type_ids: try to extract font from any resource, regardless of type id
     """
     mz_header = MZ_HEADER.read_from(instream)
-    if mz_header.magic == b'LX':
-        # apparently LX files don't always have an MZ header
+    if mz_header.magic not in (b'MZ', b'ZM'):
+        # apparently LX files don't always have an MZ stub
+        # we allow stubless NE and PE too, in case they exist
         instream.seek(0)
-        format = b'LX'
-    elif mz_header.magic not in (b'MZ', b'ZM'):
-        raise FileFormatError('MZ signature not found. Not a Windows or OS/2 .FON file')
+        format = mz_header.magic
     else:
         header = _NE_HEADER.read_from(instream, mz_header.ne_offset)
         instream.seek(mz_header.ne_offset)
@@ -65,7 +64,7 @@ def load_fon(instream, where=None, all_type_ids:bool=False):
     else:
         raise FileFormatError(
             'Not a FON file: expected signature `NE`, `PE` or `LX`, '
-            f'found `{header.magic.decode("latin-1")}`'
+            f'found `{format.decode("latin-1")}`'
         )
     fonts = []
     for resource in resources:
