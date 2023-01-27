@@ -503,6 +503,12 @@ class TestFormats(BaseTester):
         font, *_ = monobit.load(self.font_path / 'Alpha-2B.pdb')
         self.assertEqual(len(font.glyphs), 230)
 
+    # OS/2
+
+    def test_import_os2_lx(self):
+        """Test importing OS/2 fonts (LX container)."""
+        font, *_ = monobit.load(self.font_path / 'WARPSANS.FON')
+        self.assertEqual(len(font.glyphs), 950)
 
 
 if __name__ == '__main__':
