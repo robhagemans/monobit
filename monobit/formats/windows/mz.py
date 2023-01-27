@@ -30,10 +30,10 @@ _STUB_CODE = bytes((
 ))
 
 # align on 16-byte (1<<4) boundaries
-_ALIGN_SHIFT = 4
+ALIGN_SHIFT = 4
 
 # DOS executable (MZ) header
-_MZ_HEADER = le.Struct(
+MZ_HEADER = le.Struct(
     # EXE signature, 'MZ' or 'ZM'
     magic='2s',
     # number of bytes in last 512-byte page of executable
@@ -57,16 +57,16 @@ _MZ_HEADER = le.Struct(
     ne_offset='L',
 )
 
-def _create_mz_stub():
+def create_mz_stub():
     """Create a small MZ executable."""
-    dos_stub_size = _MZ_HEADER.size + len(_STUB_CODE) + len(_STUB_MSG) + 1
-    ne_offset = align(dos_stub_size, _ALIGN_SHIFT)
-    mz_header = _MZ_HEADER(
+    dos_stub_size = MZ_HEADER.size + len(_STUB_CODE) + len(_STUB_MSG) + 1
+    ne_offset = align(dos_stub_size, ALIGN_SHIFT)
+    mz_header = MZ_HEADER(
         magic=b'MZ',
         last_page_length=dos_stub_size % 512,
         num_pages=ceildiv(dos_stub_size, 512),
         # 4-para header, where a paragraph == 16 bytes
-        header_size=ceildiv(_MZ_HEADER.size, 16),
+        header_size=ceildiv(MZ_HEADER.size, 16),
         # 16 extra para for stack
         min_allocation=0x10,
         # maximum extra paras: LOTS
@@ -76,7 +76,7 @@ def _create_mz_stub():
         # CS:IP = 0:0, start at beginning
         initial_csip=0,
         # we have no relocations, but if we did, they'd be right after this header
-        relocation_table_offset=_MZ_HEADER.size,
+        relocation_table_offset=MZ_HEADER.size,
         ne_offset=ne_offset,
     )
     return (bytes(mz_header) + _STUB_CODE + _STUB_MSG + b'$').ljust(ne_offset, b'\0')

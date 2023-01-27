@@ -8,13 +8,10 @@ monobit.formats.windows.pe - Windows 32-bit PE executable header
 See `LICENSE.md` in this package's directory.
 """
 
-import io
 import logging
 
 from ...struct import little_endian as le
 from ...streams import FileFormatError
-from ..sfnt import load_sfnt
-from .fnt import parse_fnt
 
 
 ##############################################################################
@@ -78,8 +75,12 @@ _IMAGE_RESOURCE_DATA_ENTRY = le.Struct(
 )
 
 
-def _parse_pe(data, peoff):
-    """Parse a PE-format FON file."""
+def read_pe(instream, all_type_ids):
+    """Read resources from a PE-format FON file."""
+    # stream pointer is at the start of the PE header
+    peoff = instream.tell()
+    instream.seek(0)
+    data = instream.read()
     # We could try finding the Resource Table entry in the Optional
     # Header, but it talks about RVAs instead of file offsets, so
     # it's probably easiest just to go straight to the section table.
@@ -108,30 +109,17 @@ def _parse_pe(data, peoff):
     # Resource Directory Table and look up type 0x08 (font) in it.
     # If it yields another Resource Directory Table, we recurse
     # into that; below the top level of type font we accept all Ids
-    dataentries = _traverse_dirtable(rsrc, 0, _ID_FONT)
+    if all_type_ids:
+        target_type = None
+    else:
+        target_type = _ID_FONT
+    dataentries = _traverse_dirtable(rsrc, 0, target_type)
     # Each of these describes a font.
     ret = []
     for data_entry in dataentries:
         start = data_entry.OffsetToData - section.VirtualAddress
-        try:
-            # in a PE this could also be an sfnt resource.
-            # both may start with \0\1 (sfnt \0\1\0\0, FNT \0\1, \0\2 or \0\3
-            # but it is unlikely that a Windows 1.0 FNT \0\1 resource
-            # is stored in a Windows NT PE file.
-            magic = rsrc[start:start+4]
-            if magic == b'\0\1\0\0':
-                # parse as sfnt
-                bytesio = io.BytesIO(rsrc[start:])
-                fonts = load_sfnt(bytesio)
-                ret.extend(fonts)
-            else:
-                # parse as FNT
-                font = parse_fnt(rsrc[start : start+data_entry.Size])
-                ret.append(font)
-        except ValueError as e:
-            raise FileFormatError(
-                'Failed to read font resource at {:x}: {}'.format(start, e)
-            )
+        resource = rsrc[start : start+data_entry.Size]
+        ret.append(resource)
     return ret
 
 def _traverse_dirtable(rsrc, off, rtype):
@@ -144,15 +132,16 @@ def _traverse_dirtable(rsrc, off, rtype):
     direntries = direntry_array.from_bytes(rsrc, off+_IMAGE_RESOURCE_DIRECTORY.size)
     dataentries = []
     for entry in direntries:
-        logging.debug('Found resource of type %d', entry.Id)
         if rtype in (entry.Id, None):
             off = entry.OffsetToData
             if off & (1<<31):
+                logging.debug('Found resource subdirectory of type %d', entry.Id)
                 # if it's a subdir, traverse recursively
                 dataentries.extend(
                     _traverse_dirtable(rsrc, off & ~(1<<31), None)
                 )
             else:
+                logging.debug('Found resource of type %d', entry.Id)
                 # if it's a data entry, get the data
                 dataentries.append(
                     _IMAGE_RESOURCE_DATA_ENTRY.from_bytes(rsrc, off)

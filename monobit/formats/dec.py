@@ -22,7 +22,7 @@ from ..properties import reverse_dict
 
 @loaders.register(
     magic=(b'\x90', b'\x1bP'),
-    name='dec-drcs'
+    name='dec'
 )
 def load_dec_drcs(instream, where=None):
     """Load character-cell fonts from DEC DRCS file."""

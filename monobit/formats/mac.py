@@ -27,7 +27,8 @@ def load_mac_dfont(instream, where=None):
     data = instream.read()
     return _parse_mac_resource(data)
 
-@loaders.register('nfnt', name='nfnt')
+# \x90\0 is not a formal signature, but the most common set of FONT_TYPE flags
+@loaders.register('nfnt', name='nfnt', magic=(b'\x90\0',))
 def load_nfnt(instream, where=None, offset:int=0):
     """
     Load font from a bare FONT/NFNT resource.

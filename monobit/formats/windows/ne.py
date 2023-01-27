@@ -14,8 +14,8 @@ import logging
 from ...binary import align
 from ...struct import little_endian as le
 from ...streams import FileFormatError
-from .mz import _create_mz_stub, _ALIGN_SHIFT
-from .fnt import parse_fnt, create_fnt
+from .mz import create_mz_stub, ALIGN_SHIFT
+from .fnt import create_fnt
 
 
 ##############################################################################
@@ -113,41 +113,62 @@ _MODULE_NAME = b'FONTLIB'
 ##############################################################################
 # .FON (NE executable) file reader
 
-def _parse_ne(data, ne_offset):
-    """Parse an NE-format FON file."""
+def read_ne(instream, all_type_ids):
+    """Read font resources from an NE-format FON file."""
+    # stream pointer is at the start of the NE header
+    # but some offsets in the file are given from the MZ header before that
+    ne_offset = instream.tell()
+    instream.seek(0)
+    data = instream.read()
     header = _NE_HEADER.from_bytes(data, ne_offset)
+    logging.debug(header)
+    if header.target_os not in (2, 4):
+        logging.warning('This is not a Windows NE file.')
     # parse the first elements of the resource table
     res_table = _RES_TABLE_HEAD.from_bytes(data, ne_offset+header.res_table_offset)
-    # loop over the rest of the resource table until exhausted - we don't know the number of entries
-    fonts = []
+    logging.debug(res_table)
+    # loop over the rest of the resource table until exhausted
+    # we don't know the number of entries
+    resources = []
     # skip over rscAlignShift word
     ti_offset = ne_offset + header.res_table_offset + _RES_TABLE_HEAD.size
     while True:
         # parse typeinfo excluding nameinfo array (of as yet unknown size)
         type_info_head = type_info_struct(0)
         type_info = type_info_head.from_bytes(data, ti_offset)
+        logging.debug(type_info)
         if type_info.rtTypeID == 0:
             # end of resource table
             break
         # type, count, 4 bytes reserved
         nameinfo_array = _NAMEINFO.array(type_info.rtResourceCount)
         for name_info in nameinfo_array.from_bytes(data, ti_offset + type_info_head.size):
+            logging.debug(name_info)
             # the are offsets w.r.t. the file start, not the NE header
             # they could be *before* the NE header for all we know
             start = name_info.rnOffset << res_table.rscAlignShift
             size = name_info.rnLength << res_table.rscAlignShift
             if start < 0 or size < 0 or start + size > len(data):
-                raise FileFormatError('Resource overruns file boundaries')
-            if type_info.rtTypeID == _RT_FONT:
+                logging.warning('Resource overruns file boundaries, skipped')
+                continue
+            if all_type_ids or type_info.rtTypeID == _RT_FONT:
+                logging.debug(
+                    'Reading resource of type %d at offset %x [%x]',
+                    type_info.rtTypeID, start, name_info.rnOffset
+                )
                 try:
-                    fonts.append(parse_fnt(data[start : start+size]))
+                    resources.append(data[start : start+size])
                 except ValueError as e:
                     # e.g. not a bitmap font
                     # don't raise exception so we can continue with other resources
                     logging.error('Failed to read font resource at {:x}: {}'.format(start, e))
+            logging.debug(
+                'Skipping resource of type %d at offset %x [%x]',
+                type_info.rtTypeID, start, name_info.rnOffset
+            )
         # rtResourceCount * 12
         ti_offset += type_info_head.size + nameinfo_array.size
-    return fonts
+    return resources
 
 
 ##############################################################################
@@ -182,16 +203,16 @@ def _create_resource_table(header_size, post_size, resdata_size, n_fonts, font_s
         rscEndNames='byte', # 0
     )
     # calculate offset to resource data
-    res_size_aligned = align(res_table_struct.size, _ALIGN_SHIFT)
-    resdata_offset = align(header_size + res_size_aligned + post_size, _ALIGN_SHIFT)
+    res_size_aligned = align(res_table_struct.size, ALIGN_SHIFT)
+    resdata_offset = align(header_size + res_size_aligned + post_size, ALIGN_SHIFT)
     # FONTDIR resource table entry
     typeinfo_fontdir = typeinfo_fontdir_struct(
         rtTypeID=_RT_FONTDIR,
         rtResourceCount=1,
         rtNameInfo=(_NAMEINFO*1)(
             _NAMEINFO(
-                rnOffset=resdata_offset >> _ALIGN_SHIFT,
-                rnLength=resdata_size >> _ALIGN_SHIFT,
+                rnOffset=resdata_offset >> ALIGN_SHIFT,
+                rnLength=resdata_size >> ALIGN_SHIFT,
                 # PRELOAD=0x0040 | MOVEABLE=0x0010 | 0x0c00 ?
                 rnFlags=0x0c50,
                 # rnID is set below
@@ -204,8 +225,8 @@ def _create_resource_table(header_size, post_size, resdata_size, n_fonts, font_s
         rtResourceCount=n_fonts,
         rtNameInfo=(_NAMEINFO*n_fonts)(*(
             _NAMEINFO(
-                rnOffset=(resdata_offset+font_start[_i]) >> _ALIGN_SHIFT,
-                rnLength=(font_start[_i+1]-font_start[_i]) >> _ALIGN_SHIFT,
+                rnOffset=(resdata_offset+font_start[_i]) >> ALIGN_SHIFT,
+                rnLength=(font_start[_i+1]-font_start[_i]) >> ALIGN_SHIFT,
                 # PURE=0x0020 | MOVEABLE=0x0010 | 0x1c00 ?
                 rnFlags=0x1c30,
                 rnID=0x8001 + _i,
@@ -220,7 +241,7 @@ def _create_resource_table(header_size, post_size, resdata_size, n_fonts, font_s
     # -- i.e. offset to FONTDIR string
     typeinfo_fontdir.rtNameInfo[0].rnID = res_table_struct.size - len(res_names) - 1
     res_table = res_table_struct(
-        rscAlignShift=_ALIGN_SHIFT,
+        rscAlignShift=ALIGN_SHIFT,
         rscTypes_fontdir=typeinfo_fontdir,
         rscTypes_font=typeinfo_font,
         rscResourceNames=res_names,
@@ -287,21 +308,21 @@ def _create_resource_data(pack, version, vector):
         _create_fontdirentry(_i+1, fonts[_i], _font)
         for _i, _font in enumerate(pack)
     )
-    resdata = fontdir.ljust(align(len(fontdir), _ALIGN_SHIFT), b'\0')
+    resdata = fontdir.ljust(align(len(fontdir), ALIGN_SHIFT), b'\0')
     font_start = [len(resdata)]
     # append FONT resources
     for i in range(len(fonts)):
         resdata = resdata + fonts[i]
-        resdata = resdata.ljust(align(len(resdata), _ALIGN_SHIFT), b'\0')
+        resdata = resdata.ljust(align(len(resdata), ALIGN_SHIFT), b'\0')
         font_start.append(len(resdata))
     return resdata, font_start
 
 
-def _create_fon(pack, version=0x200, vector=False):
-    """Create a .FON font library."""
+def create_fon(pack, version=0x200, vector=False):
+    """Create an NE .FON font library."""
     n_fonts = len(pack)
     # MZ DOS executable stub
-    stubdata = _create_mz_stub()
+    stubdata = create_mz_stub()
     # (non)resident name tables
     nonres = _create_nonresident_name_table(pack)
     res = _create_resident_name_table(pack)
@@ -317,7 +338,7 @@ def _create_fon(pack, version=0x200, vector=False):
     off_res = _NE_HEADER.size + len(restable)
     off_entry = off_res + len(res)
     off_nonres = off_entry + len(entry)
-    size_aligned = align(off_nonres + len(nonres), _ALIGN_SHIFT)
+    size_aligned = align(off_nonres + len(nonres), ALIGN_SHIFT)
     # create the NE header and put everything in place
     ne_header = _NE_HEADER(
         magic=b'NE',
@@ -340,7 +361,7 @@ def _create_fon(pack, version=0x200, vector=False):
         imp_names_table_offset=off_entry,
         # nonresident names table offset is w.r.t. file start
         nonresident_names_table_offset=len(stubdata) + off_nonres,
-        file_alignment_size_shift_count=_ALIGN_SHIFT,
+        file_alignment_size_shift_count=ALIGN_SHIFT,
         # target Windows 3.0
         target_os=2,
         expected_windows_version=0x300
