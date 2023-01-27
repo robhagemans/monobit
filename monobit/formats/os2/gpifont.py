@@ -429,8 +429,10 @@ def parse_os2_font_resource(pBuffer):
     pFont.pPanose = None
     pRecord = GENERICRECORD.from_bytes(pBuffer, ofs)
     if pRecord.Identity != SIG_OS2FONTDEF:
-        raise FileFormatError('Not an OS/2 font resource.')
+        raise FileFormatError('Not an OS/2 font resource')
     pFont.pFontDef = OS2FONTDEFHEADER.from_bytes(pBuffer, ofs)
+    if pFont.pMetrics.fsDefn.FM_DEFN_OUTLINE:
+        raise FileFormatError('OS/2 outline fonts not supported')
     #
     # read character definitions and bitmaps
     #
