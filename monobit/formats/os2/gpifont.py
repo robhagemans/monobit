@@ -448,7 +448,7 @@ def parse_os2_font_resource(pBuffer):
     usWidths = (ceildiv(_w, 8) for _w in widths)
     cy = pFont.pFontDef.yCellHeight
     pFont.bitmaps = tuple(
-        '' if not _c.ulOffset else pBuffer[_c.ulOffset : _c.ulOffset+_uw*cy]
+        b'' if not _c.ulOffset else pBuffer[_c.ulOffset : _c.ulOffset+_uw*cy]
         for _c, _uw in zip(pFont.pChars, usWidths)
     )
     #
