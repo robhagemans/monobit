@@ -6,7 +6,6 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import ctypes
-from ctypes import sizeof
 
 import logging
 from types import SimpleNamespace

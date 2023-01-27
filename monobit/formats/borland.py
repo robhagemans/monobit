@@ -8,6 +8,7 @@ licence: https://opensource.org/licenses/MIT
 import logging
 
 from ..storage import loaders, savers
+from ..streams import FileFormatError
 from ..font import Font
 from ..glyph import Glyph
 from ..struct import little_endian as le, bitfield
