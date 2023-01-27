@@ -483,6 +483,27 @@ def parse_os2_font_resource(pBuffer):
     return pFont
 
 
+def parse_os2_font_directory(pBuf):
+    """
+    Parse a font directory resource, return as font directory entries.
+    Return an empty tuple if parsing failed.
+    """
+    offset = 0
+    logging.debug('Parsing font directory')
+    try:
+        # If a font directory exists we use that to find the face's
+        # resource ID, as in this case it is not guaranteed to have
+        # a type of OS2RES_FONTFACE (7).
+        pFD = OS2FONTDIRECTORY.from_bytes(pBuf, offset)
+        fntEntry = OS2FONTDIRENTRY.array(pFD.usnFonts).from_bytes(
+            pBuf, offset + OS2FONTDIRECTORY.size
+        )
+        return fntEntry
+    except ValueError:
+        logging.debug('Failed to parse font directory')
+        return ()
+
+
 def convert_os2_glyphs(font_data):
     """Convert OS/2 glyph definitions and bitmaps to monobit glyphs."""
     glyphs = []

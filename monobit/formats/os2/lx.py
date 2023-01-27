@@ -21,7 +21,7 @@ import logging
 from ...streams import FileFormatError
 from ...struct import little_endian as le
 
-from .gpifont import OS2FONTDIRENTRY, OS2FONTDIRECTORY
+from .gpifont import parse_os2_font_directory
 
 
 # from os2res.h
@@ -112,18 +112,10 @@ def read_lx(instream, all_type_ids):
         # This is either our target font, or else a font directory
         pBuf = _lx_extract_resource(instream, lx_hd, lx_rte, ulAddr)
         if lx_rte.type == OS2RES_FONTDIR:
-            logging.debug('Parsing font directory %d', lx_rte.name)
-            # If a font directory exists we use that to find the face's
-            # resource ID, as in this case it is not guaranteed to have
-            # a type of OS2RES_FONTFACE (7).
-            pFD = OS2FONTDIRECTORY.from_bytes(pBuf, lx_rte.offset)
-            ulFaceCount = pFD.usnFonts
-            fntEntry = OS2FONTDIRENTRY.array(ulFaceCount).from_bytes(
-                pBuf, lx_rte.offset + OS2FONTDIRECTORY.size
-            )
+            font_dir = parse_os2_font_directory(pBuf)
             # Set ulResID to the ID of the requested font number, then
             # continue scanning the resource table.
-            ulResID = tuple(_fe.usIndex for _fe in fntEntry)
+            ulResID = tuple(_fe.usIndex for _fe in font_dir)
         else:
             logging.debug(
                 'Reading resource of type %d with id %d',
@@ -220,8 +212,6 @@ def _lx_unpack1(pBuf):
     ofIn  = 0;
     abOut = bytearray()
     while True:
-        logging.debug('%s %d', ofIn, cbPage)
-
         usReps = pBuf[ofIn] | (pBuf[ofIn+1] << 8)
         if not usReps:
             break
