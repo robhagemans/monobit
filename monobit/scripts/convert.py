@@ -83,6 +83,12 @@ def main():
                 ):
                 command_args[0].command = 'load'
                 command_args[0].func = operations['load']
+                # special case `convert infile outfile` for convenience
+                if len(command_args[0].args) == 2:
+                    command_args.append(argrecord(
+                        command='save', func=operations['save'],
+                        args=[command_args[0].args.pop()])
+                    )
             # ensure last command is save
             if command_args[-1].command not in ('to', 'save'):
                 command_args.append(argrecord(command='save', func=operations['save']))
