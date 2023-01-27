@@ -25,7 +25,7 @@ from .sfnt import load_sfnt, SFNT_MAGIC
 
 @loaders.register(
     'fon', 'exe', 'dll',
-    magic=(b'MZ', b'ZM', b'LX', b'NE', b'PE'),
+    magic=(b'MZ', b'LX', b'LE', b'NE', b'PE'),
     name='fon',
 )
 def load_fon(instream, where=None, all_type_ids:bool=False):
@@ -35,15 +35,17 @@ def load_fon(instream, where=None, all_type_ids:bool=False):
     all_type_ids: try to extract font from any resource, regardless of type id
     """
     mz_header = MZ_HEADER.read_from(instream)
-    if mz_header.magic not in (b'MZ', b'ZM'):
+    if mz_header.magic == b'MZ':
+        header = _NE_HEADER.read_from(instream, mz_header.ne_offset)
+        instream.seek(mz_header.ne_offset)
+        format = header.magic
+    elif mz_header.magic == b'ZM':
+        raise FileFormatError('Big-endian MZ executables not supported')
+    else:
         # apparently LX files don't always have an MZ stub
         # we allow stubless NE and PE too, in case they exist
         instream.seek(0)
         format = mz_header.magic
-    else:
-        header = _NE_HEADER.read_from(instream, mz_header.ne_offset)
-        instream.seek(mz_header.ne_offset)
-        format = header.magic
     if format == b'NE' and header.target_os == 1:
         logging.debug('File is in NE (16-bit OS/2) format')
         resources = read_os2_ne(instream, all_type_ids)
@@ -52,6 +54,12 @@ def load_fon(instream, where=None, all_type_ids:bool=False):
         logging.debug('File is in LX (32-bit OS/2) format')
         resources = read_lx(instream, all_type_ids)
         format_name = 'OS/2 LX'
+    elif format == b'LE':
+        logging.debug('File is in LE (32-bit DOS/Windows) format')
+        # apparently LE has the same structure as LX, at least for our tables.
+        # there may not exist any with font resources in them...
+        resources = read_lx(instream, all_type_ids)
+        format_name = 'Windows LE'
     elif format == b'NE':
         logging.debug('File is in NE (16-bit DOS/Windows) format')
         resources = read_ne(instream, all_type_ids)
@@ -63,7 +71,7 @@ def load_fon(instream, where=None, all_type_ids:bool=False):
         format_name = 'Windows PE'
     else:
         raise FileFormatError(
-            'Not a FON file: expected signature `NE`, `PE` or `LX`, '
+            'Not a FON file: expected signature `NE`, `PE`, `LE`, or `LX`, '
             f'found `{format.decode("latin-1")}`'
         )
     fonts = []
