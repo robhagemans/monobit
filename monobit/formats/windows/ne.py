@@ -28,40 +28,66 @@ from .fnt import create_fnt
 #   http://benoit.papillault.free.fr/c/disc2/exefmt.txt
 #
 
-
 # Windows executable (NE) header
 _NE_HEADER = le.Struct(
-    magic='2s',
-    linker_major_version='B',
-    linker_minor_version='B',
-    entry_table_offset='H',
-    entry_table_length='H',
-    file_load_crc='L',
-    program_flags='B',
-    application_flags='B',
-    auto_data_seg_index='H', # says 1 byte in table, but offsets make it clear it should be 2 bytes
-    initial_heap_size='H',
-    initial_stack_size='H',
-    entry_point_csip='L',
-    initial_stack_pointer_sssp='L',
-    segment_count='H',
-    module_ref_count='H',
-    nonresident_names_table_size='H',
-    seg_table_offset='H',
-    res_table_offset='H',
-    resident_names_table_offset='H',
-    module_ref_table_offset='H',
-    imp_names_table_offset='H',
-    nonresident_names_table_offset='L',
-    movable_entry_point_count='H',
-    file_alignment_size_shift_count='H',
-    number_res_table_entries='H',
-    target_os='B',
-    other_os2_exe_flags='B',
-    return_thunks_offset='H',
-    seg_ref_thunks_offset='H',
-    min_code_swap_size='H',
-    expected_windows_version='H',
+    # 00 Magic number NE_MAGIC
+    ne_magic='2s',
+    # 02 Linker Version number
+    ne_ver='uint8',
+    # 03 Linker Revision number
+    ne_rev='uint8',
+    # Offset of Entry Table
+    ne_enttab='uint16',
+    # 06 Number of bytes in Entry Table
+    ne_cbenttab='uint16',
+    # 08 Checksum of whole file
+    ne_crc='uint32',
+    # 0C Flag word
+    ne_flags='uint16',
+    # 0E Automatic data segment number
+    ne_autodata='uint16',
+    # 10 Initial heap allocation
+    ne_heap='uint16',
+    # 12 Initial stack allocation
+    ne_stack='uint16',
+    # 14 Initial CS:IP setting
+    ne_csip='uint32',
+    # /18 Initial SS:SP setting
+    ne_sssp='uint32',
+    # 1C Count of file segments
+    ne_cseg='uint16',
+    # 1E Entries in Module Reference Table
+    ne_cmod='uint16',
+    # 20 Size of non-resident name table
+    ne_cbnrestab='uint16',
+    # 22 Offset of Segment Table
+    ne_segtab='uint16',
+    # 24 Offset of Resource Table
+    ne_rsrctab='uint16',
+    # 26 Offset of resident name table
+    ne_restab='uint16',
+    # 28 Offset of Module Reference Table
+    ne_modtab='uint16',
+    # 2A Offset of Imported Names Table
+    ne_imptab='uint16',
+    # 2C Offset of Non-resident Names Table
+    ne_nrestab='uint32',
+    # 30 Count of movable entries
+    ne_cmovent='uint16',
+    # 32 Segment alignment shift count
+    ne_align='uint16',
+    # 34 Count of resource entries
+    ne_cres='uint16',
+    # 36 Target operating system
+    ne_exetyp='uint8',
+    # 37 Additional flags
+    ne_addflags='uint8',
+    # 38 3 reserved words
+    ne_res=le.uint16 * 3,
+    # 3E Windows SDK revison number
+    ne_sdkrev='uint8',
+    # 3F Windows SDK version number
+    ne_sdkver='uint8',
 )
 
 # TYPEINFO structure and components
@@ -122,16 +148,16 @@ def read_ne(instream, all_type_ids):
     data = instream.read()
     header = _NE_HEADER.from_bytes(data, ne_offset)
     logging.debug(header)
-    if header.target_os not in (2, 4):
+    if header.ne_exetyp not in (2, 4):
         logging.warning('This is not a Windows NE file.')
     # parse the first elements of the resource table
-    res_table = _RES_TABLE_HEAD.from_bytes(data, ne_offset+header.res_table_offset)
+    res_table = _RES_TABLE_HEAD.from_bytes(data, ne_offset + header.ne_rsrctab)
     logging.debug(res_table)
     # loop over the rest of the resource table until exhausted
     # we don't know the number of entries
     resources = []
     # skip over rscAlignShift word
-    ti_offset = ne_offset + header.res_table_offset + _RES_TABLE_HEAD.size
+    ti_offset = ne_offset + header.ne_rsrctab + _RES_TABLE_HEAD.size
     while True:
         # parse typeinfo excluding nameinfo array (of as yet unknown size)
         type_info_head = type_info_struct(0)
@@ -341,33 +367,36 @@ def create_fon(pack, version=0x200, vector=False):
     size_aligned = align(off_nonres + len(nonres), ALIGN_SHIFT)
     # create the NE header and put everything in place
     ne_header = _NE_HEADER(
-        magic=b'NE',
-        linker_major_version=5,
-        linker_minor_version=10,
-        entry_table_offset=off_entry,
-        entry_table_length=len(entry),
+        ne_magic=b'NE',
+        ne_ver=5,
+        ne_rev=10,
+        ne_enttab=off_entry,
+        ne_cbenttab=len(entry),
         # 1<<3: protected mode only
-        program_flags=0x08,
         # 0x03: uses windows/p.m. api | 1<<7: dll or driver
-        application_flags=0x83,
-        nonresident_names_table_size=len(nonres),
+        ne_flags=0x8308,
+        ne_cbnrestab=len(nonres),
         # seg table is empty
-        seg_table_offset=_NE_HEADER.size,
-        res_table_offset=_NE_HEADER.size,
-        resident_names_table_offset=off_res,
+        ne_segtab=_NE_HEADER.size,
+        ne_rsrctab=_NE_HEADER.size,
+        ne_restab=off_res,
         # point to empty table
-        module_ref_table_offset=off_entry,
+        ne_modtab=off_entry,
         # point to empty table
-        imp_names_table_offset=off_entry,
+        ne_imptab=off_entry,
         # nonresident names table offset is w.r.t. file start
-        nonresident_names_table_offset=len(stubdata) + off_nonres,
-        file_alignment_size_shift_count=ALIGN_SHIFT,
+        ne_nrestab=len(stubdata) + off_nonres,
+        ne_align=ALIGN_SHIFT,
         # target Windows 3.0
-        target_os=2,
-        expected_windows_version=0x300
+        ne_exetyp=2,
+        ne_sdkrev=0,
+        ne_sdkver=3,
     )
     return (
         stubdata
-        + (bytes(ne_header) + restable + res + entry + nonres).ljust(size_aligned, b'\0')
+        + (
+            bytes(ne_header)
+            + restable + res + entry + nonres
+        ).ljust(size_aligned, b'\0')
         + resdata
     )

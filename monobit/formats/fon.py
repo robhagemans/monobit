@@ -38,7 +38,7 @@ def load_fon(instream, where=None, all_type_ids:bool=False):
     if mz_header.e_magic == b'MZ':
         header = _NE_HEADER.read_from(instream, mz_header.e_lfanew)
         instream.seek(mz_header.e_lfanew)
-        format = header.magic
+        format = header.ne_magic
     elif mz_header.e_magic == b'ZM':
         raise FileFormatError('Big-endian MZ executables not supported')
     else:
@@ -46,7 +46,7 @@ def load_fon(instream, where=None, all_type_ids:bool=False):
         # we allow stubless NE and PE too, in case they exist
         instream.seek(0)
         format = mz_header.e_magic
-    if format == b'NE' and header.target_os == 1:
+    if format == b'NE' and header.ne_exetyp == 1:
         logging.debug('File is in NE (16-bit OS/2) format')
         resources = read_os2_ne(instream, all_type_ids)
         format_name = 'OS/2 NE'
@@ -80,7 +80,7 @@ def load_fon(instream, where=None, all_type_ids:bool=False):
             magic = resource[:4]
             # PE files may have bitmap SFNTs embedded in them
             # be restrictive as FNT_MAGIC_1 and SFNT_MAGIC clash
-            if magic == SFNT_MAGIC and header.magic == b'PE':
+            if magic == SFNT_MAGIC and format == b'PE':
                 bytesio = io.BytesIO(resource)
                 fonts = load_sfnt(bytesio)
                 fonts.extend(fonts)
