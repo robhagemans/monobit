@@ -11,7 +11,7 @@ import io
 from ..storage import loaders, savers
 from ..streams import FileFormatError
 
-from .windows.mz import MZ_HEADER
+from .windows.mz import MZ_HEADER, create_mz_stub
 from .windows.ne import create_fon, read_ne, _NE_HEADER
 from .windows.pe import read_pe
 from .windows.fnt import (
@@ -111,4 +111,8 @@ def save_win_fon(fonts, outstream, where=None, version:int=2, vector:bool=False)
     version: Windows font format version (default 2)
     vector: output a vector font (if the input font has stroke paths defined; default False)
     """
-    outstream.write(create_fon(fonts, version*0x100, vector))
+    stubdata = create_mz_stub()
+    outstream.write(
+        stubdata +
+        create_fon(fonts, stubdata, version*0x100, vector)
+    )

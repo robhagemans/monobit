@@ -14,7 +14,7 @@ import logging
 from ...binary import align
 from ...struct import little_endian as le
 from ...streams import FileFormatError
-from .mz import create_mz_stub, ALIGN_SHIFT
+from .mz import ALIGN_SHIFT
 from .fnt import create_fnt
 
 
@@ -344,11 +344,9 @@ def _create_resource_data(pack, version, vector):
     return resdata, font_start
 
 
-def create_fon(pack, version=0x200, vector=False):
+def create_fon(pack, stubdata, version=0x200, vector=False):
     """Create an NE .FON font library."""
     n_fonts = len(pack)
-    # MZ DOS executable stub
-    stubdata = create_mz_stub()
     # (non)resident name tables
     nonres = _create_nonresident_name_table(pack)
     res = _create_resident_name_table(pack)
