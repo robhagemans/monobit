@@ -35,17 +35,17 @@ def load_fon(instream, where=None, all_type_ids:bool=False):
     all_type_ids: try to extract font from any resource, regardless of type id
     """
     mz_header = MZ_HEADER.read_from(instream)
-    if mz_header.magic == b'MZ':
-        header = _NE_HEADER.read_from(instream, mz_header.ne_offset)
-        instream.seek(mz_header.ne_offset)
+    if mz_header.e_magic == b'MZ':
+        header = _NE_HEADER.read_from(instream, mz_header.e_lfanew)
+        instream.seek(mz_header.e_lfanew)
         format = header.magic
-    elif mz_header.magic == b'ZM':
+    elif mz_header.e_magic == b'ZM':
         raise FileFormatError('Big-endian MZ executables not supported')
     else:
         # apparently LX files don't always have an MZ stub
         # we allow stubless NE and PE too, in case they exist
         instream.seek(0)
-        format = mz_header.magic
+        format = mz_header.e_magic
     if format == b'NE' and header.target_os == 1:
         logging.debug('File is in NE (16-bit OS/2) format')
         resources = read_os2_ne(instream, all_type_ids)
