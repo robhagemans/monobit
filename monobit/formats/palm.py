@@ -217,6 +217,7 @@ def _convert_palm(palm_data):
         _font.modify(
             family=palm_data.header.name.decode('latin-1'),
             revision=palm_data.header.modificationNumber,
+            source_format=f'[Palm] {_font.source_format}',
         ).label(char_from='palm-os')
         for _font in fonts
     )

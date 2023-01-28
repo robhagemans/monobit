@@ -239,7 +239,7 @@ def _convert_mac_font(parsed_rsrc, info, formatstr):
             rsrc_fonts = kwargs['fonts']
             rsrc_fonts = (
                 _font.modify(
-                    source_format = f'MacOS {_font.source_format}',
+                    source_format = f'[Mac] {_font.source_format}',
                 )
                 for _font in rsrc_fonts
             )
@@ -251,7 +251,7 @@ def _convert_mac_font(parsed_rsrc, info, formatstr):
             ))
             props = {
                 'family': kwargs.get('name', '') or f'{rsrc_id}',
-                'source-format': f'MacOS {format}',
+                'source-format': f'[Mac] {format}',
             }
             if rsrc_type == b'FONT':
                 # get name and size info from resource ID
@@ -948,5 +948,6 @@ def _convert_nfnt(properties, glyphs, fontrec):
         # remove the kerning table and encoding table now stored in glyphs
         'kerning-table': None,
         'encoding-table': None,
+        'source-format': 'NFNT',
     })
     return Font(glyphs, **properties)
