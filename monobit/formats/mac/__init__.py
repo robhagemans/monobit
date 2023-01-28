@@ -11,6 +11,7 @@ from ...storage import loaders, savers
 
 from .dfont import _parse_mac_resource
 from .nfnt import _extract_nfnt, _convert_nfnt
+from .lisa import _load_lisa
 
 
 # the magic is optional - a 'maybe magic'
@@ -22,7 +23,12 @@ def load_mac_dfont(instream, where=None):
     return _parse_mac_resource(data)
 
 # \x90\0 is not a formal signature, but the most common set of FONT_TYPE flags
-@loaders.register('nfnt', name='nfnt', magic=(b'\x90\0',))
+# the \x80 sigs are LISA compressed NFNTs
+@loaders.register(
+    'nfnt', 'f',
+    name='nfnt',
+    magic=(b'\x90\0', b'\xb0\0', b'\x90\x80', b'\xb0\x80')
+)
 def load_nfnt(instream, where=None, offset:int=0):
     """
     Load font from a bare FONT/NFNT resource.
@@ -33,3 +39,9 @@ def load_nfnt(instream, where=None, offset:int=0):
     data = instream.read()
     fontdata = _extract_nfnt(data, 0)
     return _convert_nfnt({}, **fontdata)
+
+
+@loaders.register(name='lisa')
+def load_lisa(instream, where=None):
+    """Load a LISA font library."""
+    return _load_lisa(instream)

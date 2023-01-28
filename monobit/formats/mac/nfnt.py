@@ -261,7 +261,10 @@ def _uncompress_nfnt(data, offset):
             if bit:
                 output.append(0)
             else:
-                output.append(next(iter))
+                try:
+                    output.append(next(iter))
+                except StopIteration:
+                    break
     # bitmap rows still need to be XORed afterwards
     return bytes((data[0], data[1] ^ 0x80)) + bytes(reversed(output))
 
