@@ -151,6 +151,12 @@ _HEIGHT_ENTRY = be.Struct(
 
 def _extract_nfnt(data, offset):
     """Read a MacOS NFNT or FONT resource."""
+    # this is not in the header documentation but is is mentioned here:
+    # https://www.kreativekorp.com/swdownload/lisa/AppleLisaFontFormat.pdf
+    compressed = data[offset+1] & 0x80
+    if compressed:
+        data = _uncompress_nfnt(data, offset)
+        offset = 0
     fontrec = _NFNT_HEADER.from_bytes(data, offset)
     if not (fontrec.rowWords and fontrec.widMax and fontrec.fRectWidth and fontrec.fRectHeight):
         logging.debug('Empty FONT/NFNT resource.')
@@ -194,6 +200,12 @@ def _extract_nfnt(data, offset):
         bitmap_strike[_offs:_offs+fontrec.rowWords*16]
         for _offs in range(0, len(bitmap_strike), fontrec.rowWords*16)
     ]
+    # if the font was compressed, we need to XOR the bitmap rows
+    if compressed:
+        xoredrows = rows
+        rows = [xoredrows[0]]
+        for row in xoredrows[1:]:
+            rows.append(tuple(_r ^ _p for _r, _p in zip(row, rows[-1])))
     # extract width from width/offset table
     # (do we need to consider the width table, if defined?)
     locs = [_loc.offset for _loc in loc_table]
@@ -228,6 +240,30 @@ def _extract_nfnt(data, offset):
         glyphs=glyphs,
         fontrec=fontrec,
     )
+
+
+# https://www.kreativekorp.com/swdownload/lisa/AppleLisaFontFormat.pdf
+_COMPRESSED_HEADER = be.Struct(
+    type='uint16',
+    compressedLength='uint32',
+    decompressedLength='uint32',
+)
+
+def _uncompress_nfnt(data, offset):
+    """Decompress a compressed FONT/NFNT resource."""
+    header = _COMPRESSED_HEADER.from_bytes(data, offset)
+    offset += _COMPRESSED_HEADER.size
+    payload = data[offset:offset+header.compressedLength]
+    iter = reversed(payload)
+    output = bytearray()
+    for byte in iter:
+        for bit in reversed(bytes_to_bits(bytes((byte,)))):
+            if bit:
+                output.append(0)
+            else:
+                output.append(next(iter))
+    # bitmap rows still need to be XORed afterwards
+    return bytes((data[0], data[1] ^ 0x80)) + bytes(reversed(output))
 
 
 def _convert_nfnt(properties, glyphs, fontrec):
