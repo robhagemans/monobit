@@ -118,8 +118,9 @@ Supported bitmap formats
 | JSON coded binary     | `json`     |          | `.json`                     |               | ✔     | ✔     |
 | Bare codepage         | `kbd`      |          | `.cp`                       | DOS, Linux    | ✔     | ✔     |
 | REXXCOM Font Mania    | `mania`    |          | `.com`                      | DOS           | ✔     |       |
-| MacOS font            | `mac`      | FONT NFNT SFNT | `.dfont` `.suit`      | Classic MacOS | ✔     |       |
-| Bare NFNT resource    | `nfnt`     |          |                     | Classic MacOS, PalmOS | ✔     |       |
+| LISA font library     | `lisa`     |          | `.bin`                      | LISA          | ✔     |       |
+| MacOS font            | `mac`      | FONT NFNT SFNT | `.dfont` `.suit`      | Classic Mac OS| ✔     |       |
+| Bare NFNT resource    | `nfnt`     |          | `.f`         | LISA, Classic Mac OS, PalmOS | ✔     |       |
 | Palm OS font          | `palm`     | 1 (NFNT) | `.pdb`                      | Palm OS       | ✔     |       |
 | Optiks PCR Font       | `pcr`      |          | `.pcr`                      | DOS           | ✔     |       |
 | PCPaint, GRASP, ChiWriter | `pcpaint` | old 3 4 | `.set` `.fnt`  `.sft` `.pft` `.eft` ... | DOS | ✔ |       |
