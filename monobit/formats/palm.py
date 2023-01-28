@@ -13,20 +13,7 @@ from ..storage import loaders, savers
 from ..font import Font
 from ..streams import FileFormatError
 
-from .mac import _extract_nfnt, _convert_nfnt
-
-
-#
-# def load_nfnt(instream, where=None, offset:int=0):
-#     """
-#     Load font from a bare FONT/NFNT resource.
-#
-#     offset: starting offset in bytes of the NFNT record in the file (default 0)
-#     """
-#     instream.seek(offset)
-#     data = instream.read()
-#     fontdata = _extract_nfnt(data, 0)
-#     return _convert_nfnt({}, **fontdata)
+from .mac.nfnt import _extract_nfnt, _convert_nfnt
 
 
 # offset magic: b'FontFont' at offset 0x3c (type, creator fields)
