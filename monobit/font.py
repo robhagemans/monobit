@@ -814,6 +814,13 @@ class Font:
     @cache
     def _compose_glyph(self, char):
         """Compose glyph by overlaying components."""
+        # first check if a canonical equivalent is stored
+        nfc = Char(normalize('NFC', char))
+        try:
+            index = self.get_index(nfc)
+            return self._glyphs[index]
+        except KeyError:
+            pass
         char = Char(normalize('NFD', char))
         indices = (self.get_index(_c) for _c in char)
         indices = tuple(indices)

@@ -122,17 +122,6 @@ class Char(str, Label):
             for _uc in self
         )
 
-    def __hash__(self):
-        """Ensure NFC-equivalent char labels match."""
-        # make sure tag and Char don't collide
-        return hash(normalize('NFC', self.value))
-
-    def __eq__(self, other):
-        """Ensure NFC-equivalent char labels match."""
-        if not isinstance(other, str):
-            return False
-        return normalize('NFC', self.value) == normalize('NFC', other)
-
     @property
     def value(self):
         """Get our str contents without calling __str__."""
