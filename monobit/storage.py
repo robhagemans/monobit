@@ -248,7 +248,11 @@ class ConverterRegistry(MagicRegistry):
         if not converter:
             if format:
                 converter = self[format]
-            elif not file or not file.name or (do_open and maybe_text(file)):
+            elif (
+                    not file
+                    or not file.name or file.name == '<stdout>'
+                    or (do_open and maybe_text(file))
+                ):
                 converter = self[DEFAULT_TEXT_FORMAT]
             elif do_open:
                 converter = self[DEFAULT_BINARY_FORMAT]
