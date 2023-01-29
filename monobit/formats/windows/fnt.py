@@ -815,6 +815,7 @@ def _convert_to_fnt_glyphs(font, version, vector, add_shift_up):
         base_offset = 0
     else:
         base_offset = offset_bitmaps
+    base_offset += len(font.glyphs) * glyph_entry.size
     if version==0x100 and font.spacing == 'character-cell':
         char_table = (b'',)
     else:
@@ -825,8 +826,7 @@ def _convert_to_fnt_glyphs(font, version, vector, add_shift_up):
             ))
             for _glyph, _glyph_offset in zip(font.glyphs, glyph_offsets)
         )
-        offset_bitmaps += len(font.glyphs) * glyph_entry.size
-    return bitmaps, char_table, offset_bitmaps
+    return bitmaps, char_table, base_offset
 
 
 def _convert_vector_glyphs_to_fnt(glyphs, win_ascent):
