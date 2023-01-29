@@ -765,8 +765,10 @@ def _convert_to_fnt_props(
         dfLastChar=max_ord,
         dfDefaultChar=default_ord - min_ord,
         dfBreakChar=break_ord - min_ord,
-        # round up to multiple of 2 bytes to word-align v1.0 strikes (not used for v2.0+ ?)
-        dfWidthBytes=align(ceildiv(font.raster_size.x*(max_ord-min_ord+1), 8), 1),
+        # round up to multiple of 2 bytes to word-align v1.0 strikes
+        # (not used for v2.0+ ?)
+        # +2 as we append the guaranteed-blank glyph
+        dfWidthBytes=ceildiv(font.raster_size.x*(max_ord-min_ord+2), 16)*2,
         dfDevice=device_name_offset,
         dfFace=face_name_offset,
         dfBitsPointer=0, # used on loading
@@ -790,6 +792,9 @@ def _convert_to_fnt_glyphs(font, version, vector, add_shift_up):
         bitmaps = _convert_vector_glyphs_to_fnt(font.glyphs, win_ascent)
     elif version == 0x100:
         strike = Raster.concatenate(*(_g.pixels for _g in font.glyphs))
+        # spacer to ensure we'll be word-aligned (as_bytes will byte-align)
+        spacer = Raster.blank(width=16-(strike.width%16), height=strike.height)
+        strike = Raster.concatenate(strike, spacer)
         bitmaps = (strike.as_bytes(),)
     else:
         # create the bitmaps
