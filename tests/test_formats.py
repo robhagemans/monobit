@@ -38,7 +38,9 @@ class TestFormats(BaseTester):
         """Test exporting fon files."""
         fon_file = self.temp_path / '4x6.fon'
         monobit.save(self.fixed4x6, fon_file)
-        self.assertTrue(os.path.getsize(fon_file) > 0)
+        # read back
+        font, *_ = monobit.load(fon_file)
+        self.assertEqual(len(font.glyphs), 224)
 
     def test_import_fnt(self):
         """Test importing fnt files."""
@@ -46,11 +48,29 @@ class TestFormats(BaseTester):
         # there will be fewer chars if we drop blanks as undefined
         self.assertEqual(len(font.glyphs), 256)
 
-    def test_export_fnt(self):
+    def test_export_fnt_v1(self):
+        """Test exporting v1 fnt files."""
+        fnt_file = self.temp_path / '4x6.fnt'
+        monobit.save(self.fixed4x6, fnt_file, format='win', version=1)
+        # read back
+        font, *_ = monobit.load(fnt_file)
+        self.assertEqual(len(font.glyphs), 224)
+
+    def test_export_fnt_v2(self):
         """Test exporting fnt files."""
         fnt_file = self.temp_path / '4x6.fnt'
-        monobit.save(self.fixed4x6, fnt_file)
-        self.assertTrue(os.path.getsize(fnt_file) > 0)
+        monobit.save(self.fixed4x6, fnt_file, format='win', version=2)
+        # read back
+        font, *_ = monobit.load(fnt_file)
+        self.assertEqual(len(font.glyphs), 224)
+
+    def test_export_fnt_v3(self):
+        """Test exporting fnt files."""
+        fnt_file = self.temp_path / '4x6.fnt'
+        monobit.save(self.fixed4x6, fnt_file, format='win', version=3)
+        # read back
+        font, *_ = monobit.load(fnt_file)
+        self.assertEqual(len(font.glyphs), 224)
 
     # Unifont
 
