@@ -276,7 +276,7 @@ class TestFormats(BaseTester):
         """Test exporting CPI (FONT) files"""
         fnt_file = self.temp_path / '8x16.cpi'
         font = self.fixed8x16.modify(encoding='cp437')
-        monobit.save(font, fnt_file, cpi_version='FONT')
+        monobit.save(font, fnt_file, version='FONT')
         font, *_ = monobit.load(fnt_file)
         self.assertEqual(len(font.glyphs), 256)
         self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed8x16_A)
@@ -291,7 +291,7 @@ class TestFormats(BaseTester):
         """Test exporting CPI (FONT.NT) files"""
         fnt_file = self.temp_path / '8x16.cpi'
         font = self.fixed8x16.modify(encoding='cp437')
-        monobit.save(font, fnt_file, cpi_version='FONT.NT')
+        monobit.save(font, fnt_file, version='FONT.NT')
         font, *_ = monobit.load(fnt_file)
         self.assertEqual(len(font.glyphs), 256)
         self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed8x16_A)
@@ -306,7 +306,7 @@ class TestFormats(BaseTester):
         """Test exporting CPI (DRFONT) files"""
         fnt_file = self.temp_path / '8x16.cpi'
         font = self.fixed8x16.modify(encoding='cp437')
-        monobit.save(font, fnt_file, cpi_version='DRFONT')
+        monobit.save(font, fnt_file, version='DRFONT')
         font, *_ = monobit.load(fnt_file)
         self.assertEqual(len(font.glyphs), 256)
         self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed8x16_A)

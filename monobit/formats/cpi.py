@@ -67,7 +67,7 @@ def save_cp(fonts, outstream, where=None, codepage_prefix:str='cp'):
 @savers.register(linked=load_cpi)
 def save_cpi(
         fonts, outstream, where=None,
-        cpi_version:str=_ID_MS, codepage_prefix:str='cp'
+        version:str=_ID_MS, codepage_prefix:str='cp'
     ):
     """
     Save character-cell fonts to Linux Keyboard Codepage (.CP) file.
@@ -75,7 +75,7 @@ def save_cpi(
     version: CPI format version. One of 'DRFONT', 'FONT.NT', or 'FONT' (default)
     codepage_prefix: prefix to use to find numbered codepage in encodings. Default: 'cp'.
     """
-    format = cpi_version[:7].upper().ljust(7)
+    format = version[:7].upper().ljust(7)
     if isinstance(format, str):
         format = format.encode('ascii', 'replace')
     if format in (_ID_MS, _ID_NT):
@@ -448,7 +448,7 @@ def _convert_to_cp(fonts):
             device_type=_DT_SCREEN,
             device_name=device,
             codepage=cp_number,
-            cpih_offset=0,
+            #cpih_offset=0,
         )
         cp_output.cpih = _CODEPAGE_INFO_HEADER(
             #version=_CP_DRFONT if format==_ID_DR else _CP_FONT,
