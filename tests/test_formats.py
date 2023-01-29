@@ -326,6 +326,24 @@ class TestFormats(BaseTester):
         self.assertEqual(len(font.glyphs), 256)
         self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed8x16_A)
 
+    def test_export_cp_nt(self):
+        """Test exporting bare FONT.NT codepage."""
+        fnt_file = self.temp_path / '8x16.cp'
+        font = self.fixed8x16.modify(encoding='cp437')
+        monobit.save(font, fnt_file, format='kbd', version='FONT.NT')
+        font, *_ = monobit.load(fnt_file)
+        self.assertEqual(len(font.glyphs), 256)
+        self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed8x16_A)
+
+    def test_export_cp(self):
+        """Test exporting bare DRFONT codepage."""
+        fnt_file = self.temp_path / '8x16.cp'
+        font = self.fixed8x16.modify(encoding='cp437')
+        monobit.save(font, fnt_file, format='kbd', version='DRFONT')
+        font, *_ = monobit.load(fnt_file)
+        self.assertEqual(len(font.glyphs), 256)
+        self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed8x16_A)
+
     # Figlet
 
     def test_import_flf(self):

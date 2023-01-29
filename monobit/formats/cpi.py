@@ -49,19 +49,26 @@ def load_cp(instream, where=None):
 
 
 @savers.register(linked=load_cp)
-def save_cp(fonts, outstream, where=None, codepage_prefix:str='cp'):
+def save_cp(
+        fonts, outstream, where=None,
+        version:str=_ID_MS, codepage_prefix:str='cp'
+    ):
     """
     Save character-cell fonts to Linux Keyboard Codepage (.CP) file.
 
+    version: CPI format version. One of 'DRFONT', 'FONT.NT', or 'FONT' (default)
     codepage_prefix: prefix to use to find numbered codepage in encodings. Default: 'cp'.
     """
+    format = version[:7].upper().ljust(7)
+    if isinstance(format, str):
+        format = format.encode('ascii', 'replace')
     fonts = _make_fit(fonts, codepage_prefix)
     cpdata, _ = _convert_to_cp(fonts)
     if len(cpdata) > 1:
         raise FileFormatError(
             'All fonts in a single .cp file must have the same encoding.'
         )
-    _write_cp(outstream, cpdata[0])
+    _write_cp(outstream, cpdata[0], format=format)
 
 
 @savers.register(linked=load_cpi)
