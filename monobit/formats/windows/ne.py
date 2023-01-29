@@ -344,7 +344,7 @@ def _create_resource_data(pack, version, vector):
     return resdata, font_start
 
 
-def create_ne(pack, stubdata, version=0x200, vector=False):
+def create_ne(pack, stubsize, version=0x200, vector=False):
     """Create an NE .FON font library."""
     n_fonts = len(pack)
     # (non)resident name tables
@@ -355,7 +355,7 @@ def create_ne(pack, stubdata, version=0x200, vector=False):
     # the actual font data
     resdata, font_start = _create_resource_data(pack, version, vector)
     # create resource table and align
-    header_size = len(stubdata) + _NE_HEADER.size
+    header_size = stubsize + _NE_HEADER.size
     post_size = len(res) + len(entry) + len(nonres)
     restable = _create_resource_table(header_size, post_size, len(resdata), n_fonts, font_start)
     # calculate offsets of stuff after the NE header.
@@ -383,7 +383,7 @@ def create_ne(pack, stubdata, version=0x200, vector=False):
         # point to empty table
         ne_imptab=off_entry,
         # nonresident names table offset is w.r.t. file start
-        ne_nrestab=len(stubdata) + off_nonres,
+        ne_nrestab=stubsize + off_nonres,
         ne_align=ALIGN_SHIFT,
         # target Windows 3.0
         ne_exetyp=2,
@@ -391,8 +391,7 @@ def create_ne(pack, stubdata, version=0x200, vector=False):
         ne_sdkver=3,
     )
     return (
-        stubdata
-        + (
+        (
             bytes(ne_header)
             + restable + res + entry + nonres
         ).ljust(size_aligned, b'\0')

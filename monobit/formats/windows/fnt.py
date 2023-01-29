@@ -765,8 +765,10 @@ def _convert_to_fnt_props(
         dfLastChar=max_ord,
         dfDefaultChar=default_ord - min_ord,
         dfBreakChar=break_ord - min_ord,
-        # round up to multiple of 2 bytes to word-align v1.0 strikes (not used for v2.0+ ?)
-        dfWidthBytes=align(ceildiv(font.raster_size.x*(max_ord-min_ord+1), 8), 1),
+        # round up to multiple of 2 bytes to word-align v1.0 strikes
+        # (not used for v2.0+ ?)
+        # +2 as we append the guaranteed-blank glyph
+        dfWidthBytes=ceildiv(font.raster_size.x*(max_ord-min_ord+2), 16)*2,
         dfDevice=device_name_offset,
         dfFace=face_name_offset,
         dfBitsPointer=0, # used on loading
@@ -790,6 +792,9 @@ def _convert_to_fnt_glyphs(font, version, vector, add_shift_up):
         bitmaps = _convert_vector_glyphs_to_fnt(font.glyphs, win_ascent)
     elif version == 0x100:
         strike = Raster.concatenate(*(_g.pixels for _g in font.glyphs))
+        # spacer to ensure we'll be word-aligned (as_bytes will byte-align)
+        spacer = Raster.blank(width=16-(strike.width%16), height=strike.height)
+        strike = Raster.concatenate(strike, spacer)
         bitmaps = (strike.as_bytes(),)
     else:
         # create the bitmaps
@@ -802,30 +807,37 @@ def _convert_to_fnt_glyphs(font, version, vector, add_shift_up):
             )
             for _glyph, _bm in zip(font.glyphs, bitmaps)
         )
-    glyph_offsets = [0] + list(itertools.accumulate(len(_bm) for _bm in bitmaps))
+    glyph_offsets = [0] + list(
+        itertools.accumulate(len(_bm) for _bm in bitmaps)
+    )
     if not vector:
         glyph_entry = _GLYPH_ENTRY[version]
     else:
         glyph_entry = _GLYPH_ENTRY_PVECTOR
-    offset_bitmaps = (
-        _FNT_HEADER.size + _FNT_HEADER_EXT[version].size
-    )
+    base_offset = _FNT_HEADER.size + _FNT_HEADER_EXT[version].size
     # vector format and v1 do not include dfBitmapOffset in the table
-    if vector or version==0x100:
-        base_offset = 0
-    else:
-        base_offset = offset_bitmaps
+    glyph_table_size = len(font.glyphs) * glyph_entry.size
     if version==0x100 and font.spacing == 'character-cell':
         char_table = (b'',)
-    else:
+        offset_bitmaps = base_offset
+    elif vector or version==0x100:
         char_table = (
             bytes(glyph_entry(
                 geWidth=_glyph.width,
-                geOffset=base_offset + _glyph_offset
+                geOffset=_glyph_offset
             ))
             for _glyph, _glyph_offset in zip(font.glyphs, glyph_offsets)
         )
-        offset_bitmaps += len(font.glyphs) * glyph_entry.size
+        offset_bitmaps = base_offset + glyph_table_size
+    else:
+        offset_bitmaps = base_offset + glyph_table_size
+        char_table = (
+            bytes(glyph_entry(
+                geWidth=_glyph.width,
+                geOffset=offset_bitmaps + _glyph_offset
+            ))
+            for _glyph, _glyph_offset in zip(font.glyphs, glyph_offsets)
+        )
     return bitmaps, char_table, offset_bitmaps
 
 

@@ -115,5 +115,5 @@ def save_win_fon(fonts, outstream, where=None, version:int=2, vector:bool=False)
     stubdata = create_mz_stub()
     outstream.write(
         stubdata +
-        create_ne(fonts, stubdata, version*0x100, vector)
+        create_ne(fonts, len(stubdata), version*0x100, vector)
     )
