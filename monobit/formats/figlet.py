@@ -54,7 +54,6 @@ def save_figlet(fonts, outstream, where=None):
 ##############################################################################
 # structure definitions
 
-_ENCODING = 'unicode'
 _CODEPOINTS = list(range(32, 127)) + [196, 214, 220, 228, 246, 252, 223]
 
 _DIRECTIONS = {
@@ -129,18 +128,19 @@ def _read_glyphs(instream, props, ink=''):
             # codepoints below zero are used for things like "KATAMAP" which we can't parse
             content = '\n'.join(_read_glyph_lines(instream, props))
             # should preserve as unparsed content
-            # but multi-line values in subproperty not correctly supported
-            #props[tag.strip()] = content
+            props[tag.strip()] = content
         else:
             glyphs.append(_read_glyph(instream, props, codepoint=codepoint, tag=tag, ink=ink))
     return glyphs, props
 
 
 def _read_glyph_lines(instream, props):
+    """Read the lines in the file for a single figlet glyph."""
     return [_line.rstrip() for _, _line, in zip(range(int(props.height)), instream)]
 
 
 def _read_glyph(instream, props, codepoint, tag='', ink=''):
+    """Read a single figlet glyph."""
     glyph_lines = _read_glyph_lines(instream, props)
     # > In most FIGfonts, the endmark character is either "@" or "#".  The FIGdriver
     # > will eliminate the last block of consecutive equal characters from each line
@@ -148,7 +148,10 @@ def _read_glyph(instream, props, codepoint, tag='', ink=''):
     # > a FIGcharacter has two endmarks, while all the rest have one. This makes it
     # > easy to see where FIGcharacters begin and end.  No line should have more
     # > than two endmarks.
-    glyph_lines = (_line.rstrip(_line[-1]) for _line in glyph_lines)
+    glyph_lines = (
+        (_line.rstrip(_line[-1]) if _line else '')
+        for _line in glyph_lines
+    )
     # apply hardblanks
     glyph_lines = tuple(_line.replace(props.hardblank, ' ') for _line in glyph_lines)
     # check number of characters excluding spaces
@@ -160,26 +163,33 @@ def _read_glyph(instream, props, codepoint, tag='', ink=''):
                 'Multiple ink characters not supported: '
                 f'encountered {list(charset)}.'
             )
-        else:
-            for c in charset:
-                if c != ink:
-                    glyph_lines = (_line.replace(c, ' ') for _line in glyph_lines)
-            glyph_lines = tuple(glyph_lines)
-    return Glyph(
-        glyph_lines, paper=' ', ink=ink,
-        char=chr(codepoint), tag=tag
+    elif charset:
+        ink = charset.pop()
+        for c in charset:
+            if c != ink:
+                glyph_lines = (_line.replace(c, ' ') for _line in glyph_lines)
+        glyph_lines = tuple(glyph_lines)
+    elif not ink:
+        # glyph only has ' '
+        # anything but ' ' goes here
+        ink = '#'
+    char = chr(codepoint)
+    glyph = Glyph(
+        glyph_lines, _0=' ', _1=ink,
+        char=char, tag=tag
     )
+    return glyph
 
 def _convert_from_flf(glyphs, props):
     """Convert figlet glyphs and properties to monobit."""
     properties = Props(
         shift_up=-int(props.height)+int(props.baseline),
         direction=_DIRECTIONS[int(props.print_direction)],
-        encoding=_ENCODING,
+        encoding='unicode',
     )
     # > If a FIGcharacter with code 0 is present, it is treated
     # > specially.  It is a FIGfont's "missing character".
-    if any(_g.codepoint == 0 for _g in glyphs):
+    if any(_g.char == '\0' for _g in glyphs):
         properties['default_char'] = '\0'
     # keep uninterpreted parameters in namespace
     properties.figlet = ' '.join(
@@ -197,17 +207,18 @@ def _convert_from_flf(glyphs, props):
 
 def _convert_to_flf(font, hardblank='$'):
     """Convert monobit glyphs and properties to figlet."""
-    # convert to unicode
-    font = font.modify(encoding=_ENCODING)
+    # ensure we have unicode labels where possible
+    font = font.label()
     # count glyphs outside the default set
     # we can only encode glyphs that have chars
     # latin-1 codepoints, so we can just use chr()
     flf_chars = tuple(chr(_cp) for _cp in _CODEPOINTS)
-    coded_chars = set(font.get_chars()) - set(flf_chars)
+    # exclude NULL which is used for the default char
+    coded_chars = set(font.get_chars()) - set(flf_chars) - set('\0')
     # construct flf properties
     props = Props(
         signature_hardblank=_SIGNATURE + hardblank,
-        height=font.pixel_size,
+        height=font.line_height,
         baseline=font.ascent,
         # > The Max_Length parameter is the maximum length of any line describing a
         # > FIGcharacter.  This is usually the width of the widest FIGcharacter, plus 2
@@ -233,14 +244,14 @@ def _convert_to_flf(font, hardblank='$'):
     # fill missing glyphs with empties
     glyphs = [font.get_glyph(_chr, missing='empty') for _chr in flf_chars]
     # code-tagged glyphs
-    glyphs.extend(font.get_glyph(_chr) for _chr in coded_chars)
+    glyphs.extend(font.get_glyph(_chr) for _chr in sorted(coded_chars))
     # map default glyph to codepoint zero
     # > If a FIGcharacter with code 0 is present, it is treated
     # > specially.  It is a FIGfont's "missing character".  Whenever
     # > the FIGdriver is told to print a character which doesn't exist
     # > in the current FIGfont, it will print FIGcharacter 0.  If there
     # > is no FIGcharacter 0, nothing will be printed.
-    glyphs.append(font.get_default_glyph().modify(codepoint=0))
+    glyphs.append(font.get_default_glyph().modify(char='\0'))
     # expand glyphs by bearings
     glyphs = [
         _g.expand(
@@ -263,14 +274,18 @@ def _write_flf(
     header = _FLF_HEADER(**vars(flf_props))
     outstream.write(' '.join(str(_elem) for _elem in header) + '\n')
     # global comment
-    outstream.write(comments + '\n')
+    if comments:
+        outstream.write(comments + '\n')
     # use hardblank for space char (first char)
     outstream.write(_format_glyph(flf_glyphs[0], ink=ink, paper=hardblank))
     for glyph in flf_glyphs[1:len(_CODEPOINTS)]:
         outstream.write(_format_glyph(glyph, ink=ink, paper=paper))
     for glyph in flf_glyphs[len(_CODEPOINTS):]:
-        tag = glyph.tags[0] if glyph.tags else tagmaps['unicode'].tag(*glyph.get_labels()).value
-        outstream.write('{} {}\n'.format(str(glyph.codepoint), tag))
+        tag = glyph.tags[0] if glyph.tags else tagmaps['name'].tag(*glyph.get_labels()).value
+        if glyph.char > chr(255):
+            outstream.write(f'{ord(glyph.char):#04x} {tag}\n')
+        else:
+            outstream.write(f'{ord(glyph.char)} {tag}\n')
         outstream.write(_format_glyph(glyph, ink=ink, paper=paper))
 
 
