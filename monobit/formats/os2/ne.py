@@ -44,19 +44,17 @@ def read_os2_ne(instream, all_type_ids):
     # the header is the same as for the Windows NE format
     ne_offset = instream.tell()
     header = _NE_HEADER.read_from(instream)
-    if header.target_os != 1:
+    if header.ne_exetyp != 1:
         logging.warning('This is not an OS/2 NE file.')
     logging.debug(header)
     # parse the segment table
-    cseg = header.segment_count
-    seg_table = ST_ENTRY.array(cseg).read_from(
-        instream, ne_offset+header.seg_table_offset
+    seg_table = ST_ENTRY.array(header.ne_cseg).read_from(
+        instream, ne_offset + header.ne_segtab
     )
     logging.debug(seg_table)
     # parse the OS/2 resource table
-    cres = header.number_res_table_entries
-    res_table = RT_ENTRY.array(cres).read_from(
-        instream, ne_offset+header.res_table_offset
+    res_table = RT_ENTRY.array(header.ne_cres).read_from(
+        instream, ne_offset + header.ne_rsrctab
     )
     logging.debug(res_table)
     # locate resources
@@ -64,9 +62,9 @@ def read_os2_ne(instream, all_type_ids):
     resources = []
     font_resource_ids = ()
     # assume resource segments are at end of file
-    non_res_segs = header.segment_count - header.number_res_table_entries
+    non_res_segs = header.ne_cseg - header.ne_cres
     for rte, ste in zip(res_table, seg_table[non_res_segs:]):
-        offset = ste.sector << header.file_alignment_size_shift_count
+        offset = ste.sector << header.ne_align
         if (
                 not all_type_ids
                 and rte.ename not in font_resource_ids

@@ -11,11 +11,12 @@ import io
 from ..storage import loaders, savers
 from ..streams import FileFormatError
 
-from .windows.mz import MZ_HEADER
-from .windows.ne import create_fon, read_ne, _NE_HEADER
+from .windows.mz import MZ_HEADER, create_mz_stub
+from .windows.ne import create_ne, read_ne, _NE_HEADER
 from .windows.pe import read_pe
 from .windows.fnt import (
-    convert_win_fnt_resource, FNT_MAGIC_1, FNT_MAGIC_2, FNT_MAGIC_3
+    convert_win_fnt_resource,
+    FNT_MAGIC_1, FNT_MAGIC_2, FNT_MAGIC_3
 )
 from .os2.lx import read_lx
 from .os2.ne import read_os2_ne
@@ -35,18 +36,18 @@ def load_fon(instream, where=None, all_type_ids:bool=False):
     all_type_ids: try to extract font from any resource, regardless of type id
     """
     mz_header = MZ_HEADER.read_from(instream)
-    if mz_header.magic == b'MZ':
-        header = _NE_HEADER.read_from(instream, mz_header.ne_offset)
-        instream.seek(mz_header.ne_offset)
-        format = header.magic
-    elif mz_header.magic == b'ZM':
+    if mz_header.e_magic == b'MZ':
+        header = _NE_HEADER.read_from(instream, mz_header.e_lfanew)
+        instream.seek(mz_header.e_lfanew)
+        format = header.ne_magic
+    elif mz_header.e_magic == b'ZM':
         raise FileFormatError('Big-endian MZ executables not supported')
     else:
         # apparently LX files don't always have an MZ stub
         # we allow stubless NE and PE too, in case they exist
         instream.seek(0)
-        format = mz_header.magic
-    if format == b'NE' and header.target_os == 1:
+        format = mz_header.e_magic
+    if format == b'NE' and header.ne_exetyp == 1:
         logging.debug('File is in NE (16-bit OS/2) format')
         resources = read_os2_ne(instream, all_type_ids)
         format_name = 'OS/2 NE'
@@ -80,7 +81,7 @@ def load_fon(instream, where=None, all_type_ids:bool=False):
             magic = resource[:4]
             # PE files may have bitmap SFNTs embedded in them
             # be restrictive as FNT_MAGIC_1 and SFNT_MAGIC clash
-            if magic == SFNT_MAGIC and header.magic == b'PE':
+            if magic == SFNT_MAGIC and format == b'PE':
                 bytesio = io.BytesIO(resource)
                 fonts = load_sfnt(bytesio)
                 fonts.extend(fonts)
@@ -111,4 +112,8 @@ def save_win_fon(fonts, outstream, where=None, version:int=2, vector:bool=False)
     version: Windows font format version (default 2)
     vector: output a vector font (if the input font has stroke paths defined; default False)
     """
-    outstream.write(create_fon(fonts, version*0x100, vector))
+    stubdata = create_mz_stub()
+    outstream.write(
+        stubdata +
+        create_ne(fonts, stubdata, version*0x100, vector)
+    )

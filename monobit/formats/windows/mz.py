@@ -33,28 +33,49 @@ _STUB_CODE = bytes((
 ALIGN_SHIFT = 4
 
 # DOS executable (MZ) header
+# 40h size of structure
 MZ_HEADER = le.Struct(
+    # 00 Magic number
     # EXE signature, 'MZ' or 'ZM'
-    magic='2s',
+    e_magic='2s',
+    # 02 Bytes on last page of file
     # number of bytes in last 512-byte page of executable
-    last_page_length='H',
+    e_cblp='uint16',
+    # 04 Pages in file
     # total number of 512-byte pages in executable
-    num_pages='H',
-    num_relocations='H',
-    header_size='H',
-    min_allocation='H',
-    max_allocation='H',
-    initial_ss='H',
-    initial_sp='H',
-    checksum='H',
-    initial_csip='L',
-    relocation_table_offset='H',
-    overlay_number='H',
-    reserved_0='4s',
-    behavior_bits='H',
-    reserved_1='26s',
-    # NE offset is at 0x3c
-    ne_offset='L',
+    e_cp='uint16',
+    # 06 Relocations
+    e_crclc='uint16',
+    # 08 Size of header in paragraphs
+    e_cparhdr='uint16',
+    # 0A Minimum extra paragraphs needed
+    e_minalloc='uint16',
+    # 0C Maximum extra paragraphs needed
+    e_maxalloc='uint16',
+    # 0E Initial (relative) SS value
+    e_ss='uint16',
+    # 10 Initial SP value
+    e_sp='uint16',
+    # 12 Checksum
+    e_csum='uint16',
+    # 14 Initial IP value
+    e_ip='uint16',
+    # 16 Initial (relative) CS value
+    e_cs='uint16',
+    # 18 File address of relocation table
+    e_lfarlc='uint16',
+    # 1A Overlay number
+    e_ovno='uint16',
+    # 1C Reserved words
+    e_res=le.uint16 * 0x0004,
+    # 24 OEM identifier (for e_oeminfo)
+    e_oemid='uint16',
+    # 26 OEM information; e_oemid specific
+    e_oeminfo='uint16',
+    # 28 Reserved words
+    e_res2=le.uint16 * 0x000A,
+    # 3C File address of new exe header
+    e_lfanew='uint32',
 )
 
 def create_mz_stub():
@@ -62,21 +83,25 @@ def create_mz_stub():
     dos_stub_size = MZ_HEADER.size + len(_STUB_CODE) + len(_STUB_MSG) + 1
     ne_offset = align(dos_stub_size, ALIGN_SHIFT)
     mz_header = MZ_HEADER(
-        magic=b'MZ',
-        last_page_length=dos_stub_size % 512,
-        num_pages=ceildiv(dos_stub_size, 512),
+        e_magic=b'MZ',
+        e_cblp=dos_stub_size % 512,
+        e_cp=ceildiv(dos_stub_size, 512),
         # 4-para header, where a paragraph == 16 bytes
-        header_size=ceildiv(MZ_HEADER.size, 16),
+        e_cparhdr=ceildiv(MZ_HEADER.size, 16),
         # 16 extra para for stack
-        min_allocation=0x10,
+        e_minalloc=0x10,
         # maximum extra paras: LOTS
-        max_allocation=0xffff,
-        initial_ss=0,
-        initial_sp=0x100,
+        e_maxalloc=0xffff,
+        e_ss=0,
+        e_sp=0x100,
         # CS:IP = 0:0, start at beginning
-        initial_csip=0,
-        # we have no relocations, but if we did, they'd be right after this header
-        relocation_table_offset=MZ_HEADER.size,
-        ne_offset=ne_offset,
+        e_ip=0,
+        e_cs=0,
+        # we have no relocations
+        # but if we did, they'd be right after this header
+        e_lfarlc=MZ_HEADER.size,
+        e_lfanew=ne_offset,
     )
-    return (bytes(mz_header) + _STUB_CODE + _STUB_MSG + b'$').ljust(ne_offset, b'\0')
+    return (
+        bytes(mz_header) + _STUB_CODE + _STUB_MSG + b'$'
+    ).ljust(ne_offset, b'\0')
