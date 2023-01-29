@@ -289,7 +289,7 @@ class FontProperties(DefaultProps):
         """
         if not self._font.glyphs:
             return 0
-        return self.ink_bounds.top
+        return max(0, self.ink_bounds.top)
 
     @writable_property
     def descent(self):
@@ -299,7 +299,8 @@ class FontProperties(DefaultProps):
         """
         if not self._font.glyphs:
             return 0
-        return -self.ink_bounds.bottom
+        # if ink bounds go below the baseline, use them as descent
+        return max(0, -self.ink_bounds.bottom)
 
     @checked_property
     def pixel_size(self):
