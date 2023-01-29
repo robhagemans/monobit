@@ -41,6 +41,19 @@ class BaseTester(unittest.TestCase):
 @.@
 """
 
+    fixed8x16_A = """\
+..@@..
+..@@..
+@@..@@
+@@..@@
+@@@@@@
+@@@@@@
+@@..@@
+@@..@@
+@@..@@
+@@..@@
+"""
+
     def setUp(self):
         """Setup ahead of each test."""
         self.temp_dir = tempfile.TemporaryDirectory()
