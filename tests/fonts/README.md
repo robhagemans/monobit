@@ -40,6 +40,11 @@ Original sources:
     these fonts to shareware or commercial software, please contact me. For freeware
     it's free, of course. If you want to publish it - do it! But have a look at
     PalmGear for the latest version.
+* `WARPSANS.FON`
+  - http://www.altsan.org
+  - The WarpSans Extended Sizes may be freely used, redistributed, and/or
+    modified, by any individual, group or organization, for any purpose.  
+    (C) 2013 Alexander Taylor
 
 
 ### Derivatives of `4x6`

@@ -84,9 +84,7 @@ _BLOCK_OFFSET = le.Struct(
 def _read_fontx(instream):
     """Read fontx binary file and return as properties."""
     endian = 'l'
-    data = instream.read()
-    sbcs_header = _SBCS_HEADER.from_bytes(data)
-    ofs = sbcs_header.size
+    sbcs_header = _SBCS_HEADER.read_from(instream)
     if sbcs_header.magic != _FONTX_MAGIC:
         raise FileFormatError(
             'Not a FONTX file: '
@@ -98,26 +96,24 @@ def _read_fontx(instream):
     if not sbcs_header.code_flag:
         glyphs = tuple(
             Glyph.from_bytes(
-                data[ofs+_cp*bytesize:ofs+(_cp+1)*bytesize],
+                instream.read(bytesize),
                 width=sbcs_header.width,
                 codepoint=_cp
             )
             for _cp in range(0, 256)
         )
     else:
-        dbcs_header = _DBCS_HEADER.from_bytes(data, ofs)
+        dbcs_header = _DBCS_HEADER.read_from(instream)
         props.update(vars(dbcs_header))
-        blocks = _BLOCK_OFFSET.array(dbcs_header.n_blocks).from_bytes(
-            data, ofs + dbcs_header.size
-        )
-        ofs += dbcs_header.size + blocks.size
+        blocks = _BLOCK_OFFSET.array(dbcs_header.n_blocks).read_from(instream)
         block_offs = (0, ) + tuple(accumulate(
             (_entry.end-_entry.start+1)*bytesize
             for _entry in blocks
         ))
+        data = instream.read()
         glyphs = tuple(
             Glyph.from_bytes(
-                data[ofs+_ofs+_i*bytesize:ofs+_ofs+(_i+1)*bytesize],
+                data[_ofs+_i*bytesize:_ofs+(_i+1)*bytesize],
                 width=sbcs_header.width,
                 codepoint=_cp
             )

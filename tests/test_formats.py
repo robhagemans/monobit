@@ -111,7 +111,7 @@ class TestFormats(BaseTester):
     def test_export_dec_drcs(self):
         """Test exporting dec-drcs files."""
         dec_file = self.temp_path / '8x16.dec'
-        monobit.save(self.fixed8x16, dec_file, format='dec-drcs')
+        monobit.save(self.fixed8x16, dec_file, format='dec')
         self.assertTrue(os.path.getsize(dec_file) > 0)
 
     # yaff
@@ -267,7 +267,7 @@ class TestFormats(BaseTester):
         """Test exporting kbd CP files"""
         fnt_file = self.temp_path / '8x16.cp'
         font = self.fixed8x16.modify(encoding='cp437')
-        monobit.save(font, fnt_file, format='kbd-cp')
+        monobit.save(font, fnt_file, format='kbd')
         self.assertTrue(os.path.getsize(fnt_file) > 0)
 
     # Figlet
@@ -503,6 +503,12 @@ class TestFormats(BaseTester):
         font, *_ = monobit.load(self.font_path / 'Alpha-2B.pdb')
         self.assertEqual(len(font.glyphs), 230)
 
+    # OS/2
+
+    def test_import_os2_lx(self):
+        """Test importing OS/2 fonts (LX container)."""
+        font, *_ = monobit.load(self.font_path / 'WARPSANS.FON')
+        self.assertEqual(len(font.glyphs), 950)
 
 
 if __name__ == '__main__':

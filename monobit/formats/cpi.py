@@ -12,8 +12,7 @@ from io import BytesIO
 from itertools import accumulate
 
 from ..binary import ceildiv
-from ..struct import little_endian as le
-from .. import struct
+from ..struct import little_endian as le, sizeof
 from ..storage import loaders, savers
 from ..streams import FileFormatError
 from ..font import Font
@@ -41,7 +40,7 @@ def load_cpi(instream, where=None):
     fonts = _parse_cpi(data)
     return fonts
 
-@loaders.register('cp', name='kbd-cp')
+@loaders.register('cp', name='kbd')
 def load_cp(instream, where=None):
     """Load character-cell fonts from Linux Keyboard Codepage (.CP) file."""
     data = instream.read()
@@ -126,8 +125,8 @@ _FONT_INFO_HEADER = le.Struct(
 def drdos_ext_header(num_fonts_per_codepage=0):
     return le.Struct(
         num_fonts_per_codepage='byte',
-        font_cellsize=struct.uint8 * num_fonts_per_codepage,
-        dfd_offset=struct.uint32 * num_fonts_per_codepage,
+        font_cellsize=le.uint8 * num_fonts_per_codepage,
+        dfd_offset=le.uint32 * num_fonts_per_codepage,
     )
 
 
@@ -249,7 +248,7 @@ _SCREEN_FONT_HEADER = le.Struct(
 )
 # DRFONT character index table
 _CHARACTER_INDEX_TABLE = le.Struct(
-    FontIndex=struct.int16 * 256,
+    FontIndex=le.int16 * 256,
 )
 
 def _read_cp_header(data, start_offset, format, standalone):
@@ -483,7 +482,7 @@ def _write_cp(outstream, cpo, format=_ID_MS, start_offset=0):
     cpo.cpih.version = _CP_FONT
     # set pointers
     # cpih follows immediately
-    cpo.cpeh.cpih_offset = cpo.cpeh.size
+    cpo.cpeh.cpih_offset = sizeof(cpo.cpeh)
     if format == _ID_MS:
         cpo.cpeh.cpih_offset += start_offset
     cpo.cpih.size_to_end = sum(
@@ -491,7 +490,7 @@ def _write_cp(outstream, cpo, format=_ID_MS, start_offset=0):
         for _bmp in cpo.bitmaps
     )
     cpo.cpeh.next_cpeh_offset = (
-        cpo.cpeh.cpih_offset + cpo.cpih.size
+        cpo.cpeh.cpih_offset + sizeof(cpo.cpih)
         + cpo.cpih.size_to_end
     )
     outstream.write(bytes(cpo.cpeh) + bytes(cpo.cpih))
@@ -505,17 +504,17 @@ def _write_dr_cp_header(outstream, cpo, start_offset, last):
     # format params
     cpo.cpih.version = _CP_DRFONT
     # set pointers
-    cpo.cpeh.cpih_offset = start_offset + cpo.cpeh.size
+    cpo.cpeh.cpih_offset = start_offset + sizeof(cpo.cpeh)
     # (For DRFONT) This is the number of bytes up to the character index table.
     cpo.cpih.size_to_end = _SCREEN_FONT_HEADER.size * len(cpo.fhs)
     if not last:
         cpo.cpeh.next_cpeh_offset = (
-            start_offset + cpo.cpih.size
+            start_offset + sizeof(cpo.cpih)
             + cpo.cpih.size_to_end
             + _CHARACTER_INDEX_TABLE.size
         )
     # we define all chars in order
-    cit = _CHARACTER_INDEX_TABLE(tuple(range(256)))
+    cit = _CHARACTER_INDEX_TABLE(FontIndex=tuple(range(256)))
     outstream.write(bytes(cpo.cpeh) + bytes(cpo.cpih))
     outstream.write(b''.join(bytes(_fh) for _fh in cpo.fhs))
     outstream.write(bytes(cit))
@@ -537,7 +536,7 @@ def _save_ms_cpi(fonts, outstream, format, codepage_prefix):
         num_codepages=len(cpdata),
     )
     outstream.write(bytes(ffh) + bytes(fih))
-    offset = ffh.size + fih.size
+    offset = _CPI_HEADER.size + _FONT_INFO_HEADER.size
     for cpo in cpdata:
         offset = _write_cp(outstream, cpo, format, offset)
     outstream.write(notice.encode('ascii', 'replace'))
@@ -564,9 +563,9 @@ def _save_dr_cpi(fonts, outstream, format, codepage_prefix):
     lengths = (sum(len(_bmp) for _bmp in _cpo.bitmaps) for _cpo in cpdata)
     dfd_offsets = tuple(accumulate(lengths, initial=bitmap_start))
     ddeff = ddeff_type(
-        num_fonts_per_codepage,
-        (struct.uint8 * num_fonts_per_codepage)(*cell_sizes),
-        (struct.uint32 * num_fonts_per_codepage)(*dfd_offsets[:-1]),
+        num_fonts_per_codepage=num_fonts_per_codepage,
+        font_cellsize=(le.uint8 * num_fonts_per_codepage)(*cell_sizes),
+        dfd_offset=(le.uint32 * num_fonts_per_codepage)(*dfd_offsets[:-1]),
     )
     ffh = _CPI_HEADER(
         id0=0x7f,

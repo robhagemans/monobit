@@ -11,7 +11,6 @@ from ..storage import loaders, savers
 from ..font import Font
 from ..glyph import Glyph
 from ..raster import Raster
-from .. import struct
 from ..struct import little_endian as le
 from ..binary import ceildiv
 from .raw import load_binary
@@ -59,7 +58,7 @@ _HEADER = le.Struct(
 
     # here file formats diverge in their interpretation. [ChiWriter v4] gives:
     # [23]
-    #unused2=struct.uint8 * 9,
+    #unused2=le.uint8 * 9,
     # [32] defined but seems unused
     #copyright='56s',
     # [88] table of 256 uint8 advance widths
@@ -80,22 +79,22 @@ _HEADER = le.Struct(
     # space before the width table is used for offsets into the bitmap. Chiwriter
     # 0x10 format leaves these zero, but this overlaps with the width table in 0x11.
     # [23]
-    #unknown3=struct.uint8*2,
+    #unknown3=le.uint8*2,
     # [25]
     #filesize='uint16',
     # [27]
-    #unknown4=struct.uint8*32,
+    #unknown4=le.uint8*32,
     # [59]
     # Unknown (not a pointer to the bitmap for the space character)
     #unknown5='uint16',
     # [61]
-    #offsets=struct.uint16 * 94,
+    #offsets=le.uint16 * 94,
     # [249]
     # Unknown; possibly the width of a space character
     # however one sample file has 0 here so maybe not
     #space_width='uint8',
     # [250]
-    #widths=struct.uint8 * 94,
+    #widths=le.uint8 * 94,
 )
 
 _WIDTH_OFFSET_V3 = 0xFA # 250

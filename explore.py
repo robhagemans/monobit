@@ -9,9 +9,12 @@ licence: https://opensource.org/licenses/MIT
 
 import sys
 import argparse
+import logging
 from PIL import Image, ImageDraw, ImageFont
 from itertools import zip_longest
+from pathlib import Path
 
+logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 
 # parse command line
 parser = argparse.ArgumentParser()
@@ -85,24 +88,34 @@ def main():
     data = args.infile.read(args.bytes)
     bytesize = len(data)
 
-    if args.image:
+    if args.image or args.outfile and not args.outfile.endswith('.txt'):
         if args.stride_bits is not None:
             raise ValueError('Bit-aligned strides not supported for images.')
-        bitdump_image(
-            args.outfile,
-            data, bytesize, args.stride_from, args.stride_to,
-            args.margin, args.padding, args.scale
-        )
-    else:
+        # output filename does not end with .txt
+        # see if PIL recognises the suffix, otherwise dump as text
         try:
-            bitdump_text(
+            return bitdump_image(
                 args.outfile,
-                data, bytesize,
-                args.stride_from, args.stride_to, args.stride_bits,
-                args.paper, args.ink, start=args.offset
+                data, bytesize, args.stride_from, args.stride_to,
+                args.margin, args.padding, args.scale
             )
-        except BrokenPipeError:
-            pass
+        except ValueError as e:
+            # unknown file extension
+            if not str(e).startswith('unknown file extension'):
+                raise
+            logging.warning(
+                'Output file extension `%s` not recognised, using text output.',
+                Path(args.outfile).suffix
+            )
+    try:
+        bitdump_text(
+            args.outfile,
+            data, bytesize,
+            args.stride_from, args.stride_to, args.stride_bits,
+            args.paper, args.ink, start=args.offset
+        )
+    except BrokenPipeError:
+        pass
 
 
 def ceildiv(num, den):

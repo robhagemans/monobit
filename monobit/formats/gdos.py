@@ -8,7 +8,7 @@ licence: https://opensource.org/licenses/MIT
 import logging
 from itertools import accumulate
 
-from ..struct import bitfield, little_endian as le, big_endian as be
+from ..struct import bitfield, little_endian as le, big_endian as be, sizeof
 from ..properties import Props
 from ..storage import loaders, savers
 from ..font import Font
@@ -676,9 +676,9 @@ def _write_gdos(outstream, header, glyphs, endianness):
         for _o in offsets
     ))
     # add pointers to header
-    header.hor_table = header.size
-    header.off_table = header.hor_table + hor_table.size
-    header.dat_table = header.off_table + off_table.size
+    header.hor_table = sizeof(header)
+    header.off_table = header.hor_table + sizeof(hor_table)
+    header.dat_table = header.off_table + sizeof(off_table)
     header.form_width = ceildiv(strike.width, 8)
     header.form_height = strike.height
     # write output
