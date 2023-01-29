@@ -33,6 +33,15 @@ class BaseTester(unittest.TestCase):
     fixed4x6 = fixed4x6.label(codepoint_from='unicode')
     fixed8x16, *_ = monobit.load(font_path / '8x16.hex')
 
+    fixed4x6_A = """\
+.@..
+@.@.
+@@@.
+@.@.
+@.@.
+....
+"""
+
     def setUp(self):
         """Setup ahead of each test."""
         self.temp_dir = tempfile.TemporaryDirectory()

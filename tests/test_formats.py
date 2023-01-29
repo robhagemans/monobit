@@ -41,6 +41,7 @@ class TestFormats(BaseTester):
         # read back
         font, *_ = monobit.load(fon_file)
         self.assertEqual(len(font.glyphs), 224)
+        self.assertEqual(font.get_glyph(b'A').as_text(), self.fixed4x6_A)
 
     def test_import_fnt(self):
         """Test importing fnt files."""
@@ -55,6 +56,7 @@ class TestFormats(BaseTester):
         # read back
         font, *_ = monobit.load(fnt_file)
         self.assertEqual(len(font.glyphs), 224)
+        self.assertEqual(font.get_glyph(b'A').as_text(), self.fixed4x6_A)
 
     def test_export_fnt_v2(self):
         """Test exporting fnt files."""
@@ -63,6 +65,7 @@ class TestFormats(BaseTester):
         # read back
         font, *_ = monobit.load(fnt_file)
         self.assertEqual(len(font.glyphs), 224)
+        self.assertEqual(font.get_glyph(b'A').as_text(), self.fixed4x6_A)
 
     def test_export_fnt_v3(self):
         """Test exporting fnt files."""
@@ -71,6 +74,7 @@ class TestFormats(BaseTester):
         # read back
         font, *_ = monobit.load(fnt_file)
         self.assertEqual(len(font.glyphs), 224)
+        self.assertEqual(font.get_glyph(b'A').as_text(), self.fixed4x6_A)
 
     # Unifont
 
