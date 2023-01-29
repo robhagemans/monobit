@@ -248,10 +248,19 @@ class ConverterRegistry(MagicRegistry):
         if not converter:
             if format:
                 converter = self[format]
-            elif not file or maybe_text(file):
+            elif not file or not file.name or (do_open and maybe_text(file)):
                 converter = self[DEFAULT_TEXT_FORMAT]
-            else:
+            elif do_open:
                 converter = self[DEFAULT_BINARY_FORMAT]
+            else:
+                if format:
+                    msg = f'Format `{format}` not recognised'
+                else:
+                    msg = 'Could not determine format'
+                    if file:
+                        msg += f' from file name `{file.name}`'
+                    msg += '. Please provide a -format option'
+                raise ValueError(msg)
         return converter
 
     def get_args(self, file=None, format='', do_open=False):
