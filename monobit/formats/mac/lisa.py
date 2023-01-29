@@ -52,7 +52,10 @@ def _load_lisa(instream):
         try:
             fontdata = _extract_nfnt(data, 0)
             font = _convert_nfnt({}, **fontdata)
-            font = font.modify(name=name.decode('mac-roman'))
+            font = font.modify(
+                name=name.decode('mac-roman'),
+                source_format=f'[Lisa] {font.source_format}',
+            )
             fonts.append(font)
         except (ValueError, FileFormatError):
             pass
