@@ -1,6 +1,7 @@
+
 [project]
 name = "monobit"
-version = "0.34.0"
+version = "0.34.1"
 authors = [
     { name = "Rob Hagemans", email = "rob.hagemans@hotmail.com" },
 ]
