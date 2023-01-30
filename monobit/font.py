@@ -730,11 +730,12 @@ class Font:
         for key, value in properties.items():
             if key in self._props:
                 properties[key] = extend_string(self._props[key], value)
-        return self.modify(
-            self._glyphs + tuple(glyphs),
-            comment={**comment},
-            **properties
-        )
+        if glyphs:
+            # apply any _LazyTransformedItems
+            glyphs = (*self.glyphs, *glyphs)
+        else:
+            glyphs = NOT_SET
+        return self.modify(glyphs, comment={**comment}, **properties)
 
     def drop(self, *args):
         """Remove glyphs, comments or properties."""
@@ -987,7 +988,7 @@ class Font:
             return self
         return self.modify(encoding=encoding, glyphs=tuple(
             _glyph.label(**kwargs)
-            for _glyph in self._glyphs
+            for _glyph in self.glyphs
         ))
 
     # need converter from string to set of labels to script this
@@ -1029,7 +1030,7 @@ class Font:
             return self
         glyphs = [
             _glyph
-            for _glyph in self._glyphs
+            for _glyph in self.glyphs
             if not (set(_glyph.get_labels()) & set(labels))
         ]
         return self.modify(glyphs)
@@ -1248,7 +1249,7 @@ class Font:
                 left=max(0, (self.line_width-_g.width)//2),
                 right=max(0, (self.line_width-_g.width + 1)//2),
             )
-            for _g in self._glyphs
+            for _g in self.glyphs
         )
         # fix line-advances to ensure they remain unchanged
         return font.modify(
@@ -1271,7 +1272,7 @@ class Font:
         factor_y: number of times to repeat vertically
         adjust_metrics: also stretch metrics (default: True)
         """
-        font = self._apply_to_all_glyphs(
+        font = self._apply_to_all(
             Glyph.stretch,
             factor_x=factor_x, factor_y=factor_y,
             adjust_metrics=adjust_metrics,
@@ -1296,7 +1297,7 @@ class Font:
         factor_y: factor to shrink vertically
         adjust_metrics: also stretch metrics (default: True)
         """
-        font = self._apply_to_all_glyphs(
+        font = self._apply_to_all(
             Glyph.shrink,
             factor_x=factor_x, factor_y=factor_y,
             adjust_metrics=adjust_metrics,
@@ -1332,7 +1333,7 @@ class Font:
         left = left or 0
         down = down or 0
         up = up or 0
-        return self._apply_to_all_glyphs(
+        return self._apply_to_all(
             Glyph.smear,
             left=left, down=down, right=right, up=up,
             adjust_metrics=adjust_metrics,
@@ -1352,7 +1353,7 @@ class Font:
             descent = self.underline_descent
         if thickness is None:
             thickness = self.underline_thickness
-        return self._apply_to_all_glyphs(
+        return self._apply_to_all(
             Glyph.underline,
             descent=descent, thickness=thickness
         )
@@ -1369,7 +1370,7 @@ class Font:
         """
         if pitch is None:
             pitch = self.italic_pitch
-        return self._apply_to_all_glyphs(
+        return self._apply_to_all(
             Glyph.shear,
             direction=direction, pitch=pitch
         )
@@ -1384,7 +1385,7 @@ class Font:
         """
         if thickness is None:
             thickness = self.outline_thickness
-        return self._apply_to_all_glyphs(
+        return self._apply_to_all(
             Glyph.outline,
             thickness = thickness
         )
@@ -1445,8 +1446,13 @@ class _LazyTransformedFont(Font):
             self._func = partial(transformation, **kwargs)
         self._transformed_glyphs = _LazyTransformedItems(self._glyphs, self._func)
 
-    def modify(self, *args, **kwargs):
-        return type(self)(super().modify(*args, **kwargs), self._func)
+    def modify(self, glyphs=NOT_SET, **kwargs):
+        if glyphs is NOT_SET or isinstance(glyphs, _LazyTransformedItems):
+            return type(self)(super().modify(glyphs, **kwargs), self._func)
+        # glyphs have been accessed and are no longer LazyTransformed
+        # avoid double-applying transformations
+        return super().modify(glyphs, **kwargs)
+
 
     @property
     def glyphs(self):
