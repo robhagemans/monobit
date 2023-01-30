@@ -1272,7 +1272,7 @@ class Font:
         factor_y: number of times to repeat vertically
         adjust_metrics: also stretch metrics (default: True)
         """
-        font = self._apply_to_all(
+        font = self._apply_to_all_glyphs(
             Glyph.stretch,
             factor_x=factor_x, factor_y=factor_y,
             adjust_metrics=adjust_metrics,
@@ -1297,7 +1297,7 @@ class Font:
         factor_y: factor to shrink vertically
         adjust_metrics: also stretch metrics (default: True)
         """
-        font = self._apply_to_all(
+        font = self._apply_to_all_glyphs(
             Glyph.shrink,
             factor_x=factor_x, factor_y=factor_y,
             adjust_metrics=adjust_metrics,
@@ -1333,7 +1333,7 @@ class Font:
         left = left or 0
         down = down or 0
         up = up or 0
-        return self._apply_to_all(
+        return self._apply_to_all_glyphs(
             Glyph.smear,
             left=left, down=down, right=right, up=up,
             adjust_metrics=adjust_metrics,
@@ -1353,7 +1353,7 @@ class Font:
             descent = self.underline_descent
         if thickness is None:
             thickness = self.underline_thickness
-        return self._apply_to_all(
+        return self._apply_to_all_glyphs(
             Glyph.underline,
             descent=descent, thickness=thickness
         )
@@ -1370,7 +1370,7 @@ class Font:
         """
         if pitch is None:
             pitch = self.italic_pitch
-        return self._apply_to_all(
+        return self._apply_to_all_glyphs(
             Glyph.shear,
             direction=direction, pitch=pitch
         )
@@ -1385,7 +1385,7 @@ class Font:
         """
         if thickness is None:
             thickness = self.outline_thickness
-        return self._apply_to_all(
+        return self._apply_to_all_glyphs(
             Glyph.outline,
             thickness = thickness
         )
