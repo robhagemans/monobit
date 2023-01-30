@@ -253,7 +253,12 @@ def _convert_to_flf(font, hardblank='$'):
     # > is no FIGcharacter 0, nothing will be printed.
     glyphs.append(font.get_default_glyph().modify(char='\0'))
     # expand glyphs by bearings
-    glyphs = [
+    glyphs = inflate_horizontal(font, glyphs)
+    return glyphs, props, font.get_comment()
+
+def inflate_horizontal(font, glyphs):
+    """Expand glyphs by positiv bearings (horizontal metrics only)."""
+    glyphs = tuple(
         _g.expand(
             left=max(0, _g.left_bearing),
             bottom=max(0, _g.shift_up),
@@ -262,8 +267,8 @@ def _convert_to_flf(font, hardblank='$'):
             top=max(0, font.line_height - _g.height - max(0, _g.shift_up)),
         )
         for _g in glyphs
-    ]
-    return glyphs, props, font.get_comment()
+    )
+    return glyphs
 
 def _write_flf(
         outstream, flf_glyphs, flf_props, comments,
