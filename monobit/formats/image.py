@@ -72,7 +72,7 @@ if Image:
             background:str='most-common',
             first_codepoint:int=0,
             order:str='row-major',
-            direction:Coord=(1, 1),
+            direction:Coord=(1, -1),
         ):
         """
         Extract character-cell font from image.
@@ -86,7 +86,7 @@ if Image:
         background: determine background from "most-common", "least-common", "brightest", "darkest", "top-left" colour
         first_codepoint: codepoint value assigned to first glyph
         order: start with "r" for row-major order, "c" for column-major order
-        direction: X, Y direction where +1, +1 means left-to-right, top-to-bottom
+        direction: X, Y direction where +1, -1 (default) means left-to-right, top-to-bottom
         """
         width, height = cell
         scale_x, scale_y = scale
@@ -108,9 +108,9 @@ if Image:
         crops = [
             img.crop((
                 margin_x + _col*step_x,
-                margin_y + _row*step_y,
+                img.height - (margin_y + _row*step_y + height * scale_y),
                 margin_x + _col*step_x + width * scale_x,
-                margin_y + _row*step_y + height * scale_y,
+                img.height - (margin_y + _row*step_y),
             ))
             for _row, _col in traverse
         ]
@@ -174,7 +174,7 @@ if Image:
             padding:Coord=(0, 0),
             scale:Coord=(1, 1),
             order:str='row-major',
-            direction:Coord=(1, 1),
+            direction:Coord=(1, -1),
             border:RGB=(32, 32, 32), paper:RGB=(0, 0, 0), ink:RGB=(255, 255, 255),
         ):
         """
@@ -187,7 +187,7 @@ if Image:
         scale: number of pixels in X,Y direction per glyph bit
         border: border colour R,G,B 0--255
         order: start with "r" for row-major order, "c" for column-major order
-        direction: X, Y direction where +1, +1 means left-to-right, top-to-bottom
+        direction: X, Y direction where +1, -1 means left-to-right, top-to-bottom
         paper: background colour R,G,B 0--255
         ink: foreground colour R,G,B 0--255
         """

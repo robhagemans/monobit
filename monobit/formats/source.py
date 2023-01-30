@@ -263,7 +263,6 @@ def _save_coded_binary(fonts, outstream, assignment_pattern, delimiters, comment
     Returns:
         Font: Used font.
     """
-
     if len(fonts) > 1:
         raise FileFormatError('Can only save one font to source file.')
     font = fonts[0]

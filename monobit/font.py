@@ -289,7 +289,7 @@ class FontProperties(DefaultProps):
         """
         if not self._font.glyphs:
             return 0
-        return self.ink_bounds.top
+        return max(0, self.ink_bounds.top)
 
     @writable_property
     def descent(self):
@@ -299,7 +299,8 @@ class FontProperties(DefaultProps):
         """
         if not self._font.glyphs:
             return 0
-        return -self.ink_bounds.bottom
+        # if ink bounds go below the baseline, use them as descent
+        return max(0, -self.ink_bounds.bottom)
 
     @checked_property
     def pixel_size(self):
@@ -729,11 +730,12 @@ class Font:
         for key, value in properties.items():
             if key in self._props:
                 properties[key] = extend_string(self._props[key], value)
-        return self.modify(
-            self._glyphs + tuple(glyphs),
-            comment={**comment},
-            **properties
-        )
+        if glyphs:
+            # apply any _LazyTransformedItems
+            glyphs = (*self.glyphs, *glyphs)
+        else:
+            glyphs = NOT_SET
+        return self.modify(glyphs, comment={**comment}, **properties)
 
     def drop(self, *args):
         """Remove glyphs, comments or properties."""
@@ -814,6 +816,13 @@ class Font:
     @cache
     def _compose_glyph(self, char):
         """Compose glyph by overlaying components."""
+        # first check if a canonical equivalent is stored
+        nfc = Char(normalize('NFC', char))
+        try:
+            index = self.get_index(nfc)
+            return self._glyphs[index]
+        except KeyError:
+            pass
         char = Char(normalize('NFD', char))
         indices = (self.get_index(_c) for _c in char)
         indices = tuple(indices)
@@ -979,7 +988,7 @@ class Font:
             return self
         return self.modify(encoding=encoding, glyphs=tuple(
             _glyph.label(**kwargs)
-            for _glyph in self._glyphs
+            for _glyph in self.glyphs
         ))
 
     # need converter from string to set of labels to script this
@@ -1021,7 +1030,7 @@ class Font:
             return self
         glyphs = [
             _glyph
-            for _glyph in self._glyphs
+            for _glyph in self.glyphs
             if not (set(_glyph.get_labels()) & set(labels))
         ]
         return self.modify(glyphs)
@@ -1240,7 +1249,7 @@ class Font:
                 left=max(0, (self.line_width-_g.width)//2),
                 right=max(0, (self.line_width-_g.width + 1)//2),
             )
-            for _g in self._glyphs
+            for _g in self.glyphs
         )
         # fix line-advances to ensure they remain unchanged
         return font.modify(
@@ -1437,8 +1446,13 @@ class _LazyTransformedFont(Font):
             self._func = partial(transformation, **kwargs)
         self._transformed_glyphs = _LazyTransformedItems(self._glyphs, self._func)
 
-    def modify(self, *args, **kwargs):
-        return type(self)(super().modify(*args, **kwargs), self._func)
+    def modify(self, glyphs=NOT_SET, **kwargs):
+        if glyphs is NOT_SET or isinstance(glyphs, _LazyTransformedItems):
+            return type(self)(super().modify(glyphs, **kwargs), self._func)
+        # glyphs have been accessed and are no longer LazyTransformed
+        # avoid double-applying transformations
+        return super().modify(glyphs, **kwargs)
+
 
     @property
     def glyphs(self):

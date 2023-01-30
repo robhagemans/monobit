@@ -34,12 +34,24 @@ class BaseTester(unittest.TestCase):
     fixed8x16, *_ = monobit.load(font_path / '8x16.hex')
 
     fixed4x6_A = """\
-.@..
-@.@.
-@@@.
-@.@.
-@.@.
-....
+.@.
+@.@
+@@@
+@.@
+@.@
+"""
+
+    fixed8x16_A = """\
+..@@..
+..@@..
+@@..@@
+@@..@@
+@@@@@@
+@@@@@@
+@@..@@
+@@..@@
+@@..@@
+@@..@@
 """
 
     def setUp(self):

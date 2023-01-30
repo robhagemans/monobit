@@ -265,14 +265,26 @@ class Glyph:
         """Return a copy of the glyph with changes."""
         if pixels is NOT_SET:
             pixels = self._pixels
-        if tag is NOT_SET:
-            tag = ''
-        if codepoint is NOT_SET:
-            codepoint = b''
-        if char is NOT_SET:
-            char = ''
         if labels is NOT_SET:
             labels = self._labels
+        if tag is NOT_SET:
+            tag = ''
+        else:
+            labels = tuple(
+                _l for _l in labels if not isinstance(_l, Tag)
+            )
+        if codepoint is NOT_SET:
+            codepoint = b''
+        else:
+            labels = tuple(
+                _l for _l in labels if not isinstance(_l, Codepoint)
+            )
+        if char is NOT_SET:
+            char = ''
+        else:
+            labels = tuple(
+                _l for _l in labels if not isinstance(_l, Char)
+            )
         if comment is NOT_SET:
             comment = self._comment
         properties = {

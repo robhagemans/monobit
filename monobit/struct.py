@@ -185,13 +185,23 @@ class StructValue(_WrappedCValue):
     """Wrapper for ctypes Structure."""
 
     def __getattr__(self, attr):
-        if not attr.startswith('__'):
+        if not attr.startswith('_'):
             value = getattr(self._cvalue, attr)
             if isinstance(value, (ctypes.Array, ctypes.Structure)):
                 wrapper = self._type.element_types[attr]
                 return wrapper.from_cvalue(value)
             return value
         raise AttributeError(attr)
+
+    def __setattr__(self, attr, value):
+        if not attr.startswith('_'):
+            return setattr(self._cvalue, attr, value)
+        return super().__setattr__(attr, value)
+
+    def __delattr__(self, attr):
+        if not attr.startswith('_'):
+            return delattr(self._cvalue, attr)
+        return super().__delattr__(attr, value)
 
     @property
     def __dict__(self):

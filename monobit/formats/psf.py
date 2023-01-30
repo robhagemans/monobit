@@ -117,10 +117,11 @@ def load_psf(instream, where=None):
     if has_unicode_table:
         table = _read_unicode_table(instream, separator, startseq, encoding)
         # convert unicode table to labels
-        cells = [
-            _glyph.modify(char=''.join(table[_index]))
+        # ordinal-based codepoint is not meaningful
+        cells = tuple(
+            _glyph.modify(char=''.join(table[_index]), codepoint=None)
             for _index, _glyph in enumerate(cells)
-        ]
+        )
         properties['encoding'] = 'unicode'
     return Font(cells, **properties)
 

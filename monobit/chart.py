@@ -12,7 +12,7 @@ from .binary import ceildiv
 def chart(
         font,
         columns=16, margin=(0, 0), padding=(0, 0), scale=(1, 1),
-        order='row-major', direction=(1, 1),
+        order='row-major', direction=(1, -1),
     ):
     """Create font chart matrix."""
     scale_x, scale_y = scale
@@ -33,9 +33,9 @@ def chart(
             continue
         row, col = pos
         left = margin_x + col*step_x + glyph.left_bearing
-        bottom = margin_y + (row+1)*step_y - padding_y - glyph.shift_up
+        top = margin_y + row*step_y
         mx = glyph.stretch(scale_x, scale_y)
-        canvas.blit(mx, left, bottom, operator=max)
+        canvas.blit(mx, left, top, operator=max)
     return canvas
 
 
