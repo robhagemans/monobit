@@ -541,5 +541,260 @@ class TestGlyphTrafo(BaseTester):
         assert m.shift_left == one.shift_left
 
 
+    def test_smear(self):
+        file = get_stringio(test)
+        f,  *_ = monobit.load(file)
+        one = f.glyphs[0]
+        m = one.reduce().smear()
+        assert m.as_text() == '\n'.join((
+            '..@@@..',
+            '.@@@@..',
+            '@@@@@..',
+            '..@@@..',
+            '..@@@..',
+            '..@@@..',
+            '..@@@..',
+            '..@@@..',
+            '..@@@..',
+            '..@@@..',
+            '@@@@@@@\n',
+        )), m
+        assert m.advance_width == one.advance_width
+        assert m.advance_height == one.advance_height
+        assert m.shift_up == one.shift_up + one.padding.bottom
+
+
+class TestFontTrafo:
+    """Test applying the transformation to the whole font."""
+
+    def test_font_smear(self):
+        file = get_stringio(test)
+        f,  *_ = monobit.load(file)
+        one = f.glyphs[0]
+        f = f.smear()
+        m = f.glyphs[0].reduce()
+        assert m.as_text() == '\n'.join((
+            '..@@@..',
+            '.@@@@..',
+            '@@@@@..',
+            '..@@@..',
+            '..@@@..',
+            '..@@@..',
+            '..@@@..',
+            '..@@@..',
+            '..@@@..',
+            '..@@@..',
+            '@@@@@@@\n',
+        )), m
+        assert m.advance_width == one.advance_width
+        assert m.advance_height == one.advance_height
+        assert m.shift_up == one.shift_up + one.padding.bottom
+
+    def test_font_shear(self):
+        file = get_stringio(test)
+        f,  *_ = monobit.load(file)
+        one = f.glyphs[0]
+        f = f.shear(pitch=(2, 5))
+        m = f.glyphs[0].reduce()
+        # if metrics are correct, prior reduce should make no difference
+        assert m == one.reduce().shear(pitch=(2, 5)).reduce()
+        assert m.as_text() == '\n'.join((
+            '......@@',
+            '....@@@.',
+            '...@@@@.',
+            '....@@..',
+            '....@@..',
+            '....@@..',
+            '...@@...',
+            '...@@...',
+            '..@@....',
+            '..@@....',
+            '@@@@@@..\n',
+        )), m
+
+    def test_font_underline(self):
+        file = get_stringio(test)
+        f,  *_ = monobit.load(file)
+        one = f.glyphs[0]
+        f = f.underline(descent=2)
+        m = f.glyphs[0].reduce()
+        assert m.as_text() == '\n'.join((
+            '...@@...',
+            '..@@@...',
+            '.@@@@...',
+            '...@@...',
+            '...@@...',
+            '...@@...',
+            '...@@...',
+            '...@@...',
+            '...@@...',
+            '...@@...',
+            '.@@@@@@.',
+            '........',
+            '@@@@@@@@\n',
+        )), m
+        assert m.advance_width == one.advance_width
+        assert m.advance_height == one.advance_height
+        assert m.shift_up == one.shift_up
+        assert m.shift_left == one.shift_left
+
+
+    def test_reduce(self):
+        file = get_stringio(test)
+        f,  *_ = monobit.load(file)
+        one = f.glyphs[0]
+        f = f.reduce()
+        m = f.glyphs[0]
+        assert m.as_text() == '\n'.join((
+            '..@@..',
+            '.@@@..',
+            '@@@@..',
+            '..@@..',
+            '..@@..',
+            '..@@..',
+            '..@@..',
+            '..@@..',
+            '..@@..',
+            '..@@..',
+            '@@@@@@\n',
+        )), m
+        assert m.advance_width == one.advance_width
+        assert m.advance_height == one.advance_height
+        assert m.shift_up == one.shift_up + one.padding.bottom
+
+    def test_expand(self):
+        file = get_stringio(test)
+        f,  *_ = monobit.load(file)
+        one = f.glyphs[0]
+        f = f.expand(1, 1, 1, 1)
+        m = f.glyphs[0]
+        assert m.as_text() == '\n'.join((
+            '..........',
+            '..........',
+            '..........',
+            '....@@....',
+            '...@@@....',
+            '..@@@@....',
+            '....@@....',
+            '....@@....',
+            '....@@....',
+            '....@@....',
+            '....@@....',
+            '....@@....',
+            '....@@....',
+            '..@@@@@@..',
+            '..........',
+            '..........',
+            '..........',
+            '..........\n',
+        )), m
+        assert m.advance_width == one.advance_width
+        assert m.advance_height == one.advance_height
+        assert m.shift_up == one.shift_up - 1
+
+    def test_stretch(self):
+        file = get_stringio(test)
+        f,  *_ = monobit.load(file)
+        one = f.glyphs[0]
+        f = f.stretch(2, 1)
+        m = f.glyphs[0]
+        assert m.as_text() == '\n'.join((
+            '................',
+            '................',
+            '......@@@@......',
+            '....@@@@@@......',
+            '..@@@@@@@@......',
+            '......@@@@......',
+            '......@@@@......',
+            '......@@@@......',
+            '......@@@@......',
+            '......@@@@......',
+            '......@@@@......',
+            '......@@@@......',
+            '..@@@@@@@@@@@@..',
+            '................',
+            '................',
+            '................\n',
+        )), m
+        assert m.advance_width == one.advance_width * 2
+        assert m.advance_height == one.advance_height
+        assert m.shift_up == one.shift_up
+
+    def test_shrink(self):
+        file = get_stringio(test)
+        f,  *_ = monobit.load(file)
+        one = f.glyphs[0]
+        f = f.shrink(2, 2)
+        m = f.glyphs[0]
+        assert m.as_text() == '\n'.join((
+            '....',
+            '..@.',
+            '.@@.',
+            '..@.',
+            '..@.',
+            '..@.',
+            '.@@@',
+            '....\n',
+        )), m
+        assert m.advance_width == one.advance_width // 2
+        assert m.advance_height == one.advance_height // 2
+        assert m.shift_up == one.shift_up // 2
+
+    def test_inflate(self):
+        file = get_stringio(test)
+        f,  *_ = monobit.load(file)
+        one = f.glyphs[0]
+        f = f.inflate()
+        m = f.glyphs[0]
+        assert m.as_text() == '\n'.join((
+            '.........',
+            '.........',
+            '....@@...',
+            '...@@@...',
+            '..@@@@...',
+            '....@@...',
+            '....@@...',
+            '....@@...',
+            '....@@...',
+            '....@@...',
+            '....@@...',
+            '....@@...',
+            '..@@@@@@.',
+            '.........',
+            '.........',
+            '.........\n',
+        )), m
+        assert m.advance_width == one.advance_width
+        assert m.advance_height == one.advance_height
+        assert m.shift_up == one.shift_up
+        # shift_left is unaffected here as 9//2 == 8//2
+
+    def test_outline(self):
+        file = get_stringio(test)
+        f,  *_ = monobit.load(file)
+        one = f.glyphs[0]
+        f = f.outline()
+        m = f.glyphs[0].reduce()
+        assert m.as_text() == '\n'.join((
+            '..@@@@..',
+            '.@@..@..',
+            '@@...@..',
+            '@....@..',
+            '@@@..@..',
+            '..@..@..',
+            '..@..@..',
+            '..@..@..',
+            '..@..@..',
+            '..@..@..',
+            '@@@..@@@',
+            '@......@',
+            '@@@@@@@@\n',
+        )), m
+        assert m.advance_width == one.advance_width
+        assert m.advance_height == one.advance_height
+        assert m.shift_up == -1
+        assert m.shift_left == 1
+
+
 if __name__ == '__main__':
     unittest.main()
