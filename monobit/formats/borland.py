@@ -127,6 +127,8 @@ def _convert_borland(
     for codepoint, (code, width) in enumerate(
             zip(glyphbytes, widths), old_header.first_char
         ):
+        if code.endswith(b'\0\0'):
+            code =  code[:-2]
         absmoves = ((StrokePath.MOVE, 0, -old_header.baseline),) + tuple(
             _convert_stroke_code(first, second)
             for first, second in zip(code[::2], code[1::2])
