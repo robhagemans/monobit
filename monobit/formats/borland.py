@@ -6,16 +6,39 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import logging
+from collections import deque
+from itertools import accumulate
 
 from ..storage import loaders, savers
 from ..streams import FileFormatError
 from ..font import Font
 from ..glyph import Glyph
 from ..struct import little_endian as le, bitfield
-from ..vector import StrokePath
+from ..vector import StrokePath, StrokeMove
 
 
 _BGI_MAGIC = b'PK\b\bBGI '
+
+@loaders.register(
+    #'chr',
+    name='borland',
+    magic = (_BGI_MAGIC,),
+)
+def load_borland(instream, where=None):
+    """Load a Borland BGI stroke font."""
+    bgi_data = _read_borland(instream)
+    logging.debug(bgi_data)
+    font = _convert_borland(**bgi_data)
+    return font
+
+@savers.register(linked=load_borland)
+def save_borland(fonts, outstream, where=None):
+    """Save a Borland BGI stroke font."""
+    if len(fonts) > 1:
+        raise FileFormatError('BBC font file can only store one font.')
+    bgi_data = _convert_to_borland(fonts[0])
+    _write_borland(outstream, **bgi_data)
+
 
 # from the BGIKIT: BGIFNT.ZIP/FE.DOC
 # e.g. at http://annex.retroarchive.org/cdrom/nightowl-004/025A/index.html
@@ -42,6 +65,7 @@ _HEADER2 = le.Struct(
     # > 84h      ASCII value of first char in file
     first_char='byte',
     # > 85h-86h  offset to stroke definitions (8+3n)
+    # actually, 16 + 3n ?
     stroke_offset='word',
     # normally 0
     scan_flag='byte',
@@ -64,18 +88,6 @@ _STROKE_CODE = le.Struct(
     y=bitfield('int16', 7),
     op1=bitfield('int16', 1),
 )
-
-@loaders.register(
-    #'chr',
-    name='borland',
-    magic = (_BGI_MAGIC,),
-)
-def load_borland(instream, where=None):
-    """Load a Borland BGI stroke font."""
-    bgi_data = _read_borland(instream)
-    logging.debug(bgi_data)
-    font = _convert_borland(**bgi_data)
-    return font
 
 
 def _read_borland(instream):
@@ -146,3 +158,100 @@ def _convert_stroke_code(first, second):
     if opcode == (-1, -1):
         return StrokePath.LINE, code.x, code.y
     raise ValueError(opcode)
+
+
+###############################################################################
+# BGI writer
+
+def _convert_to_stroke_code(command, absx, absy):
+    """Convert path command to two-byte stroke code."""
+    return _STROKE_CODE(
+        op0=-1, op1=-1 * (command==StrokePath.LINE),
+        x=absx, y=absy)
+    return code
+
+def _make_contiguous(font):
+    """Fill out a contiguous range of glyphs."""
+    # we need a contiguous range between the min and max codepoints
+    codepoints = font.get_codepoints()
+    ord_glyphs = [
+        font.get_glyph(_codepoint, missing='empty')
+        for _codepoint in range(min(codepoints)[0], max(codepoints)[0]+1)
+    ]
+    font = font.modify(ord_glyphs)
+    return font
+
+
+def _convert_to_borland(font):
+    """Convert monobit Font to BGI font data."""
+    font = _make_contiguous(font)
+    glyphbytes = []
+    widths = []
+    offsets = []
+    for glyph in font.glyphs:
+        code = []
+        if glyph.path:
+            path = deque(StrokePath.from_string(glyph.path).as_moves())
+            cmd = (_move.command for _move in path)
+            absx = accumulate(_move.dx for _move in path)
+            absy = accumulate(_move.dy for _move in path)
+            absmoves = deque(zip(cmd, absx, absy))
+            # tidy up to not build up no-op moves
+            if absmoves[-1] == (StrokePath.MOVE, 0, 0):
+                absmoves.pop()
+            code = [
+                bytes(_convert_to_stroke_code(*_triplet))
+                for _triplet in absmoves
+            ]
+            # terminator
+            code.append(bytes(_STROKE_CODE(op0=0, op1=0, x=0, y=0)))
+        glyphbytes.append(b''.join(code))
+    stroke_offset = _HEADER2.size + 3*len(font.glyphs)
+    header = _HEADER(
+        HeaderSize=0x80,
+        fname=font.name[:4].encode('ascii', 'replace').upper(),
+        DataSize=stroke_offset+sum(len(_code) for _code in glyphbytes),
+        MajorVersion=1,
+        MinorVersion=0,
+        minimal_version=1,
+    )
+    description = font.notice
+    old_header = _HEADER2(
+        signature=b'+',
+        number_chars=len(font.glyphs),
+        first_char=int(font.glyphs[0].codepoint),
+        stroke_offset=stroke_offset,
+        capital_top=font.ascent,
+        # our paths start at the baseline
+        baseline=0,
+        # is negative in BGI file
+        descent=-font.descent,
+        # seems to be kept empty by BGI
+        #four_char_name=font.name[:4].encode('ascii', 'replace'),
+    )
+    offsets = (0, *accumulate(len(_b) for _b in glyphbytes[:-1]))
+    offsets = le.uint16.array(old_header.number_chars)(*offsets)
+    widths = le.uint8.array(old_header.number_chars)(
+        *(_g.advance_width for _g in font.glyphs)
+    )
+    return dict(
+        header=header,
+        description=description,
+        old_header=old_header,
+        offsets=offsets,
+        widths=widths,
+        glyphbytes=glyphbytes,
+    )
+
+
+def _write_borland(outstream, header, description, old_header, offsets, widths, glyphbytes):
+    """Write a Borland BGI stroke font."""
+    outstream.write(_BGI_MAGIC)
+    outstream.write(description.encode('ascii','replace'))
+    outstream.write(b'\0\x1a')
+    outstream.write(bytes(header))
+    outstream.write(b'\0'*(0x80-outstream.tell()))
+    outstream.write(b''.join((
+        bytes(old_header), bytes(offsets), bytes(widths),
+        *glyphbytes
+    )))
