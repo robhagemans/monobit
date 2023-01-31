@@ -646,6 +646,12 @@ class TestFormats(BaseTester):
         self.assertEqual(len(font.glyphs), 26)
         self.assertEqual(font.glyphs[0].path, self.hershey_A_path)
 
+    def test_import_chr(self):
+        """Test importing Hershey font in Borland CHR format."""
+        font, *_ = monobit.load(self.font_path / 'hershey' / 'hershey.chr')
+        self.assertEqual(len(font.glyphs), 26)
+        self.assertEqual(font.glyphs[0].path, self.hershey_A_path)
+
     def test_export_svg(self):
         """Test exporting Hershey font in SVG format."""
         monobit.save(self.hershey, self.temp_path / 'hershey.svg')
@@ -664,6 +670,13 @@ class TestFormats(BaseTester):
         """Test exporting Hershey font in yaff format."""
         monobit.save(self.hershey, self.temp_path / 'hershey.yaff')
         font, *_ = monobit.load(self.temp_path / 'hershey.yaff')
+        self.assertEqual(len(font.glyphs), 26)
+        self.assertEqual(font.glyphs[0].path, self.hershey_A_path)
+
+    def test_export_chr(self):
+        """Test exporting Hershey font in Borland CHR format."""
+        monobit.save(self.hershey, self.temp_path / 'hershey.chr', format='borland')
+        font, *_ = monobit.load(self.temp_path / 'hershey.chr')
         self.assertEqual(len(font.glyphs), 26)
         self.assertEqual(font.glyphs[0].path, self.hershey_A_path)
 
