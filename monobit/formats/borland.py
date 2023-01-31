@@ -6,7 +6,6 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import logging
-from collections import deque
 from itertools import accumulate
 
 from ..storage import loaders, savers
@@ -193,14 +192,11 @@ def _convert_to_borland(font):
     for glyph in font.glyphs:
         code = []
         if glyph.path:
-            path = deque(StrokePath.from_string(glyph.path).as_moves())
+            path = StrokePath.from_string(glyph.path).as_moves()
             cmd = (_move.command for _move in path)
             absx = accumulate(_move.dx for _move in path)
             absy = accumulate(_move.dy for _move in path)
-            absmoves = deque(zip(cmd, absx, absy))
-            # tidy up to not build up no-op moves
-            if absmoves[-1] == (StrokePath.MOVE, 0, 0):
-                absmoves.pop()
+            absmoves = zip(cmd, absx, absy)
             code = [
                 bytes(_convert_to_stroke_code(*_triplet))
                 for _triplet in absmoves
