@@ -851,6 +851,6 @@ def _convert_vector_glyphs_to_fnt(glyphs, win_ascent):
             for _ink, _x, _y in path.as_moves()
         )
         code = tuple(_b for _tuple in code for _b in _tuple)
-        code = le.int8.array(len(code))(code)
+        code = le.int8.array(len(code))(*code)
         glyphdata.append(bytes(code))
     return glyphdata
