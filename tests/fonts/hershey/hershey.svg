@@ -1,0 +1,148 @@
+<svg>
+<font
+    id="Hershey-Az"
+    horiz-adv-x="10">
+  <font-face
+      font-family="Hershey-Az"
+      units-per-em="28"
+      font-size="28"
+      ascent="21"
+      descent="-7"
+      cap-height="0"
+      x-height="0"
+      underline-thickness="1"
+      underline-position="1"
+      font-weight="400"
+      font-style="normal"/>
+  <glyph horiz-adv-x="10">
+    <path
+      d="m 5 12 m 0 -5 l -4 9 m 4 -9 l 4 9 m -6 -3 l 4 0"
+      fill="none" stroke="currentColor" stroke-width="1"/>
+  </glyph>
+  <glyph horiz-adv-x="10">
+    <path
+      d="m 5 12 m -3 -5 l 0 9 m 0 -9 l 4 0 l 2 1 l 0 2 l -2 1 m -4 0 l 4 0 l 2 1 l 0 3 l -2 1 l -4 0"
+      fill="none" stroke="currentColor" stroke-width="1"/>
+  </glyph>
+  <glyph horiz-adv-x="11">
+    <path
+      d="m 5 12 m 4 -4 l -2 -1 l -2 0 l -2 1 l -1 2 l 0 3 l 1 2 l 2 1 l 2 0 l 2 -1"
+      fill="none" stroke="currentColor" stroke-width="1"/>
+  </glyph>
+  <glyph horiz-adv-x="10">
+    <path
+      d="m 5 12 m -3 -5 l 0 9 m 0 -9 l 3 0 l 2 1 l 1 2 l 0 3 l -1 2 l -2 1 l -3 0"
+      fill="none" stroke="currentColor" stroke-width="1"/>
+  </glyph>
+  <glyph horiz-adv-x="10">
+    <path
+      d="m 5 12 m -3 -5 l 0 9 m 0 -9 l 6 0 m -6 4 l 4 0 m -4 5 l 6 0"
+      fill="none" stroke="currentColor" stroke-width="1"/>
+  </glyph>
+  <glyph horiz-adv-x="9">
+    <path
+      d="m 5 12 m -3 -5 l 0 9 m 0 -9 l 6 0 m -6 4 l 4 0"
+      fill="none" stroke="currentColor" stroke-width="1"/>
+  </glyph>
+  <glyph horiz-adv-x="11">
+    <path
+      d="m 5 12 m 4 -4 l -2 -1 l -2 0 l -2 1 l -1 2 l 0 3 l 1 2 l 2 1 l 2 0 l 2 -1 l 0 -3 m -3 0 l 3 0"
+      fill="none" stroke="currentColor" stroke-width="1"/>
+  </glyph>
+  <glyph horiz-adv-x="10">
+    <path
+      d="m 5 12 m -3 -5 l 0 9 m 6 -9 l 0 9 m -6 -5 l 6 0"
+      fill="none" stroke="currentColor" stroke-width="1"/>
+  </glyph>
+  <glyph horiz-adv-x="4">
+    <path
+      d="m 2 12 m 0 -5 l 0 9"
+      fill="none" stroke="currentColor" stroke-width="1"/>
+  </glyph>
+  <glyph horiz-adv-x="7">
+    <path
+      d="m 4 12 m 1 -5 l 0 7 l -1 2 l -2 0 l -1 -2 l 0 -1"
+      fill="none" stroke="currentColor" stroke-width="1"/>
+  </glyph>
+  <glyph horiz-adv-x="10">
+    <path
+      d="m 5 12 m -3 -5 l 0 9 m 6 -9 l -6 6 m 2 -2 l 4 5"
+      fill="none" stroke="currentColor" stroke-width="1"/>
+  </glyph>
+  <glyph horiz-adv-x="9">
+    <path
+      d="m 5 12 m -3 -5 l 0 9 m 0 0 l 6 0"
+      fill="none" stroke="currentColor" stroke-width="1"/>
+  </glyph>
+  <glyph horiz-adv-x="12">
+    <path
+      d="m 6 12 m -4 -5 l 0 9 m 0 -9 l 4 9 m 4 -9 l -4 9 m 4 -9 l 0 9"
+      fill="none" stroke="currentColor" stroke-width="1"/>
+  </glyph>
+  <glyph horiz-adv-x="10">
+    <path
+      d="m 5 12 m -3 -5 l 0 9 m 0 -9 l 6 9 m 0 -9 l 0 9"
+      fill="none" stroke="currentColor" stroke-width="1"/>
+  </glyph>
+  <glyph horiz-adv-x="11">
+    <path
+      d="m 5 12 m 0 -5 l -2 1 l -1 2 l 0 3 l 1 2 l 2 1 l 1 0 l 2 -1 l 1 -2 l 0 -3 l -1 -2 l -2 -1 l -1 0"
+      fill="none" stroke="currentColor" stroke-width="1"/>
+  </glyph>
+  <glyph horiz-adv-x="10">
+    <path
+      d="m 5 12 m -3 -5 l 0 9 m 0 -9 l 4 0 l 2 1 l 0 3 l -2 1 l -4 0"
+      fill="none" stroke="currentColor" stroke-width="1"/>
+  </glyph>
+  <glyph horiz-adv-x="11">
+    <path
+      d="m 5 12 m 0 -5 l -2 1 l -1 2 l 0 3 l 1 2 l 2 1 l 1 0 l 2 -1 l 1 -2 l 0 -3 l -1 -2 l -2 -1 l -1 0 m 1 7 l 3 3"
+      fill="none" stroke="currentColor" stroke-width="1"/>
+  </glyph>
+  <glyph horiz-adv-x="10">
+    <path
+      d="m 5 12 m -3 -5 l 0 9 m 0 -9 l 4 0 l 2 1 l 0 3 l -2 1 l -4 0 m 3 0 l 3 4"
+      fill="none" stroke="currentColor" stroke-width="1"/>
+  </glyph>
+  <glyph horiz-adv-x="10">
+    <path
+      d="m 5 12 m 3 -4 l -2 -1 l -2 0 l -2 1 l 0 1 l 1 1 l 4 2 l 1 1 l 0 2 l -2 1 l -2 0 l -2 -1"
+      fill="none" stroke="currentColor" stroke-width="1"/>
+  </glyph>
+  <glyph horiz-adv-x="10">
+    <path
+      d="m 5 12 m 0 -5 l 0 9 m -4 -9 l 8 0"
+      fill="none" stroke="currentColor" stroke-width="1"/>
+  </glyph>
+  <glyph horiz-adv-x="11">
+    <path
+      d="m 5 12 m -3 -5 l 0 6 l 1 2 l 2 1 l 1 0 l 2 -1 l 1 -2 l 0 -6"
+      fill="none" stroke="currentColor" stroke-width="1"/>
+  </glyph>
+  <glyph horiz-adv-x="10">
+    <path
+      d="m 5 12 m -4 -5 l 4 9 m 4 -9 l -4 9"
+      fill="none" stroke="currentColor" stroke-width="1"/>
+  </glyph>
+  <glyph horiz-adv-x="12">
+    <path
+      d="m 6 12 m -4 -5 l 2 9 m 2 -9 l -2 9 m 2 -9 l 2 9 m 2 -9 l -2 9"
+      fill="none" stroke="currentColor" stroke-width="1"/>
+  </glyph>
+  <glyph horiz-adv-x="10">
+    <path
+      d="m 5 12 m -3 -5 l 6 9 m 0 -9 l -6 9"
+      fill="none" stroke="currentColor" stroke-width="1"/>
+  </glyph>
+  <glyph horiz-adv-x="10">
+    <path
+      d="m 5 12 m -4 -5 l 4 4 l 0 5 m 4 -9 l -4 4"
+      fill="none" stroke="currentColor" stroke-width="1"/>
+  </glyph>
+  <glyph horiz-adv-x="10">
+    <path
+      d="m 5 12 m 3 -5 l -6 9 m 0 -9 l 6 0 m -6 9 l 6 0"
+      fill="none" stroke="currentColor" stroke-width="1"/>
+  </glyph>
+</font>
+</svg>

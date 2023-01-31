@@ -9,10 +9,18 @@ import logging
 from collections import deque
 from functools import cached_property
 from itertools import accumulate
+from typing import NamedTuple
 
 from .renderer import Canvas
 from .basetypes import Coord, Bounds
 from .glyph import Glyph
+
+
+class StrokeMove(NamedTuple):
+    """Stroke path element."""
+    command: str
+    dx: int
+    dy: int
 
 
 class StrokePath:
@@ -30,7 +38,7 @@ class StrokePath:
         if isinstance(path, type(self)):
             self._path = path._path
         else:
-            self._path = tuple(path)
+            self._path = tuple(StrokeMove(*_m) for _m in path)
 
     def __str__(self):
         """String representation."""
@@ -56,7 +64,7 @@ class StrokePath:
         args = [iter(elements)] * 3
         # raise an error if the path does not cleanly split
         path = zip(*args, strict=True)
-        path = ((_ink, int(_x), int(_y)) for _ink, _x, _y in path)
+        path = (StrokeMove(_ink, int(_x), int(_y)) for _ink, _x, _y in path)
         return cls(path)
 
     def flip(self):
@@ -75,7 +83,7 @@ class StrokePath:
         if path[0][0] != self.MOVE:
             path.appendleft((self.MOVE, x, y))
         else:
-            path[0] = (self.MOVE, x + path[0][1], y + path[0][2])
+            path[0] = StrokeMove(self.MOVE, x + path[0][1], y + path[0][2])
         return type(self)(path)
 
     @cached_property
@@ -83,8 +91,8 @@ class StrokePath:
         """Bounding box of path (not necessarily of ink)."""
         if not self._path:
             return Bounds(0, 0, 0, 0)
-        xs = tuple(accumulate(_elem[1] for _elem in self._path))
-        ys = tuple(accumulate(_elem[2] for _elem in self._path))
+        xs = tuple(accumulate(_elem.dx for _elem in self._path))
+        ys = tuple(accumulate(_elem.dy for _elem in self._path))
         return Bounds(
             left=min(xs), right=max(xs)+1,
             bottom=min(ys), top=max(ys)+1,

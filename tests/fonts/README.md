@@ -45,7 +45,11 @@ Original sources:
   - The WarpSans Extended Sizes may be freely used, redistributed, and/or
     modified, by any individual, group or organization, for any purpose.  
     (C) 2013 Alexander Taylor
-
+* `hershey-az.jhf`
+   - first 26 lines of `hersh.oc1` from Peter Holzmann's USENET distribution of the Hershey fonts
+   - see e.g. https://www.galleyrack.com/hershey/additional-fonts-for-VARKON/hershey/index.html
+   - The Hershey Fonts were originally created by Dr. A. V. Hershey
+   - See README for conditions
 
 ### Derivatives of `4x6`
 
@@ -81,3 +85,7 @@ Original sources:
 
 * `webby-small-kerned.yaff` was created from `WebbySmall.pcf` using `pcf2bdf` and `monobit`
   and manually edited to add some kerning and remove non-ascii glyphs.
+
+
+### Derivatives of Hershey Fonts:
+* `hershey.yaff`, `hershey.svg` and `hershey.fon` were created from `hershey-az.jhf` using `monobit`

@@ -602,17 +602,6 @@ class Glyph:
             )
         return self.modify(pixels)
 
-    @staticmethod
-    def _calc_turns(clockwise, anti):
-        if clockwise is NOT_SET:
-            if anti is NOT_SET:
-                clockwise, anti = 1, 0
-            else:
-                clockwise = 0
-        elif anti is NOT_SET:
-            anti = 0
-        turns = (clockwise - anti) % 4
-        return turns
 
     turn = scriptable(turn_method)
 
