@@ -245,7 +245,7 @@ Additionally, the fonts currently supported consist of straight line segments on
 | SVG Fonts                  | `svg`      | `.svg`            | ✔     | ✔     |
 | Windows resource           | `win`      | `.fnt`            | ✔     | ✔     |
 | Windows font               | `fon`      | `.fon`            | ✔    | ✔ (NE) |
-| Borland Graphics Interface | `borland`  | `.bgi`            | ✔     |       |
+| Borland Graphics Interface | `borland`  | `.chr`            | ✔     | ✔     |
 | Hershey fonts (Jim Hurt)   | `hurt`     | `.jhf`            | ✔     |       |
 | DOSStart                   | `dosstart` | `.dsf`            | ✔     |       |
 
