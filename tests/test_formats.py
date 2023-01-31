@@ -620,6 +620,53 @@ class TestFormats(BaseTester):
         font, *_ = monobit.load(self.font_path / 'WARPSANS.FON')
         self.assertEqual(len(font.glyphs), 950)
 
+    # stroke formats
+
+    def test_import_hershey(self):
+        """Test importing Hershey font in Jim Hurt's format."""
+        font, *_ = monobit.load(self.font_path / 'hershey' / 'hershey-az.jhf')
+        self.assertEqual(len(font.glyphs), 26)
+        self.assertEqual(font.glyphs[0].path, self.hershey_A_path)
+
+    def test_import_svg(self):
+        """Test importing Hershey font in SVG format."""
+        font, *_ = monobit.load(self.font_path / 'hershey' / 'hershey.svg')
+        self.assertEqual(len(font.glyphs), 26)
+        self.assertEqual(font.glyphs[0].path, self.hershey_A_path)
+
+    def test_import_vector_fon(self):
+        """Test importing Hershey font in Windows vector format."""
+        font, *_ = monobit.load(self.font_path / 'hershey' / 'hershey.fon')
+        self.assertEqual(len(font.glyphs), 26)
+        self.assertEqual(font.glyphs[0].path, self.hershey_A_path)
+
+    def test_import_vector_yaff(self):
+        """Test importing Hershey font in yaff format."""
+        font, *_ = monobit.load(self.font_path / 'hershey' / 'hershey.yaff')
+        self.assertEqual(len(font.glyphs), 26)
+        self.assertEqual(font.glyphs[0].path, self.hershey_A_path)
+
+    def test_export_svg(self):
+        """Test exporting Hershey font in SVG format."""
+        monobit.save(self.hershey, self.temp_path / 'hershey.svg')
+        font, *_ = monobit.load(self.temp_path / 'hershey.svg')
+        self.assertEqual(len(font.glyphs), 26)
+        self.assertEqual(font.glyphs[0].path, self.hershey_A_path)
+
+    def test_export_vector_fon(self):
+        """Test exporting Hershey font in Windows vector format."""
+        monobit.save(self.hershey, self.temp_path / 'hershey.fon', vector=True)
+        font, *_ = monobit.load(self.temp_path / 'hershey.fon')
+        self.assertEqual(len(font.glyphs), 26)
+        self.assertEqual(font.glyphs[0].path, self.hershey_A_path)
+
+    def test_export_vector_yaff(self):
+        """Test exporting Hershey font in yaff format."""
+        monobit.save(self.hershey, self.temp_path / 'hershey.yaff')
+        font, *_ = monobit.load(self.temp_path / 'hershey.yaff')
+        self.assertEqual(len(font.glyphs), 26)
+        self.assertEqual(font.glyphs[0].path, self.hershey_A_path)
+
 
 if __name__ == '__main__':
     unittest.main()

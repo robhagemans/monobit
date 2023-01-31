@@ -32,6 +32,7 @@ class BaseTester(unittest.TestCase):
     fixed4x6, *_ = monobit.load(font_path / '4x6.yaff')
     fixed4x6 = fixed4x6.label(codepoint_from='unicode')
     fixed8x16, *_ = monobit.load(font_path / '8x16.hex')
+    hershey, *_ = monobit.load(font_path / 'hershey' / 'hershey-az.jhf')
 
     fixed4x6_A = """\
 .@.
@@ -53,6 +54,11 @@ class BaseTester(unittest.TestCase):
 @@..@@
 @@..@@
 """
+
+    hershey_A_path = '\n'.join((
+        'm 5 9', 'm 0 5', 'l -4 -9', 'm 4 9', 'l 4 -9', 'm -6 3', 'l 4 0'
+    ))
+
 
     def setUp(self):
         """Setup ahead of each test."""
