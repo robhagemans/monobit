@@ -201,7 +201,7 @@ class StructValue(_WrappedCValue):
     def __delattr__(self, attr):
         if not attr.startswith('_'):
             return delattr(self._cvalue, attr)
-        return super().__delattr__(attr, value)
+        return super().__delattr__(attr)
 
     @property
     def __dict__(self):
