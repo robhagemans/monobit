@@ -270,15 +270,22 @@ All can be installed through Pip:
 Without these packages, some functionality may not be available.
 
 
-Licence
--------
+Copyright and licences
+----------------------
 
-`monobit` and the `yaff` specification are released under the
-[Expat MIT licence](https://opensource.org/licenses/MIT).
+`monobit` and the `yaff` specification are copyright 2019--2023 Rob Hagemans and
+released under the [MIT licence](https://opensource.org/licenses/MIT).
 
-The font files in `tests/fonts` may be subject to more restrictive
-licences. These files are not included in the packaged
-distribution. Please check `tests/fonts/README.md`.
+`monobit` contains code from:  
+- [`mkwinfont`](https://www.chiark.greenend.org.uk/~sgtatham/fonts/) copyright 2001 Simon Tatham. All rights reserved.  
+- [`dewinfont`](https://www.chiark.greenend.org.uk/~sgtatham/fonts/) copyright 2001,2017 Simon Tatham. All rights reserved.  
+- [OS/2 GPI Font Tools](https://github.com/altsan/os2-gpi-font-tools) (C) 2012 Alexander Taylor  
+
+Please refer to the notices in the `windows` and `os2` subpackages for licences and more information.
+
+The font files in `tests/fonts` are subject to their own
+licences, some of which are more restrictive. These are files used for testing
+and development and are not included in the packaged distribution. See `tests/fonts/README.md` and notices included with individual files.
 
 
 Acknowledgements
@@ -290,7 +297,7 @@ reverse-engineering, implementing and preserving font formats and files:
 - [Archive Team](http://fileformats.archiveteam.org/wiki/Fonts)
 - [Jason Scott's textfiles.com](http://textfiles.com)
 - [John Elliott's homepage](http://www.seasip.info)
-- [Simon Tatham's fonts page](https://www.chiark.greenend.org.uk/~sgtatham/fonts/): `monobit` contains code from `mkwinfont` and `dewinfont`
+- [Simon Tatham's fonts page](https://www.chiark.greenend.org.uk/~sgtatham/fonts/):
 - [Aivosto's character set documentation](https://www.aivosto.com/articles/charsets.html)
 - [Rebecca Bettencourt's character set documentation](https://www.kreativekorp.com/charset/)
 - [Xiphoseer's Signum Document Toolbox](https://sdo.dseiler.eu/)
@@ -305,7 +312,6 @@ Other bitmap font tools you could use in conjunction with (or instead of) `monob
 - Rebecca Bettencourt's [Bits'n'Picas](https://github.com/kreativekorp/bitsnpicas)
 - John Elliott's [PSFTools](http://www.seasip.info/Unix/PSF/)
 - Mark Leisher's [`gbdfed`](http://sofia.nmsu.edu/~mleisher/Software/gbdfed/)
-- Simon Tatham's [`mkwinfont`/`dewinfont`](https://www.chiark.greenend.org.uk/~sgtatham/fonts/)
 - [RECOIL](https://recoil.sourceforge.net/)
 - John Zaitseff's [console font utilities](https://www.zap.org.au/projects/console-fonts-utils/)
 - George Williams's [Fondu](https://fondu.sourceforge.net)
