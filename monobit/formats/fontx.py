@@ -17,7 +17,6 @@ from ..streams import FileFormatError
 from ..binary import ceildiv
 
 from .raw import load_bitmap
-from .windows import _normalise_metrics
 
 
 _FONTX_MAGIC = b'FONTX2'
@@ -141,7 +140,7 @@ def _convert_to_fontx(font):
             'FONTX2 format can only store character-cell fonts.'
         )
     # inflate glyphs to fill positive horizontal bearings
-    font, _ = _normalise_metrics(font)
+    font = font.equalise_horizontal()
     blank = Glyph.blank(*font.raster_size)
     # ensure codepoint values are set if possible
     if font.encoding:

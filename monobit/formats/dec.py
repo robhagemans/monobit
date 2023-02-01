@@ -46,6 +46,8 @@ def save_dec_drcs(fonts, outstream, where=None, *, use_8bit:bool=False):
         )
     # ensure codepoint values are set if possible
     font = font.label(codepoint_from=font.encoding)
+    # fill out bearings and equalise heights
+    font = font.equalise_horizontal()
     # upper size limits vary by device, not enforced.
     # lower sizes would conflict with vt200 size values
     if font.raster_size.x < 5 or font.raster_size.y < 1:
