@@ -50,6 +50,12 @@ def _validate(fonts):
         raise FileFormatError(
             'This format only supports character-cell or multi-cell fonts.'
         )
+    if font.cell_size != (8, 16):
+        raise FileFormatError(
+            'Hex format only supports (multiples of) 8x16 cells, '
+            f'this font is {font.cell_size.x}x{font.cell_size.y}'
+        )
+        return False
     return font
 
 
