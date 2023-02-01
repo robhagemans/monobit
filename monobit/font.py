@@ -1229,35 +1229,6 @@ class Font:
             line_width=self.line_width,
         )
 
-    @scriptable
-    def inflate(self, *, adjust_metrics:bool=True):
-        """
-        Pad glyphs to include positive bearings and line spacing.
-        Any negative bearings remain unchanged.
-
-        adjust_metrics: make the operation render-invariant (default: True)
-        """
-        font = self._apply_to_all_glyphs(
-            Glyph.inflate,
-            adjust_metrics=adjust_metrics,
-        )
-        if not adjust_metrics:
-            return font
-        glyphs = tuple(
-            _g.expand(
-                top=max(0, self.line_height-_g.height),
-                left=max(0, (self.line_width-_g.width)//2),
-                right=max(0, (self.line_width-_g.width + 1)//2),
-            )
-            for _g in self.glyphs
-        )
-        # fix line-advances to ensure they remain unchanged
-        return font.modify(
-            glyphs,
-            line_height=self.line_height,
-            line_width=self.line_width,
-        )
-
     # scaling
 
     @scriptable

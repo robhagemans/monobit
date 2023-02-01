@@ -676,19 +676,6 @@ class Glyph:
         """
         return self.crop(*self.padding, adjust_metrics=adjust_metrics)
 
-    @scriptable
-    def inflate(self, *, adjust_metrics:bool=True):
-        """
-        Return a glyph padded to include positive bearings.
-        Any negative bearings remain unchanged.
-
-        adjust_metrics: make the operation render-invariant (default: True)
-        """
-        return self.expand(
-            left=max(0, self.left_bearing), bottom=max(0, self.bottom_bearing),
-            right=max(0, self.right_bearing), top=max(0, self.top_bearing),
-            adjust_metrics=adjust_metrics
-        )
 
     # scaling
 

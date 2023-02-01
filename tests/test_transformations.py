@@ -312,34 +312,6 @@ class TestGlyphTrafo(BaseTester):
         assert m.advance_height == one.advance_height // 2
         assert m.shift_up == one.shift_up // 2
 
-    def test_inflate(self):
-        file = get_stringio(test)
-        f,  *_ = monobit.load(file)
-        one = f.glyphs[0]
-        m = one.inflate()
-        assert m.as_text() == '\n'.join((
-            '.........',
-            '.........',
-            '....@@...',
-            '...@@@...',
-            '..@@@@...',
-            '....@@...',
-            '....@@...',
-            '....@@...',
-            '....@@...',
-            '....@@...',
-            '....@@...',
-            '....@@...',
-            '..@@@@@@.',
-            '.........',
-            '.........',
-            '.........\n',
-        )), m
-        assert m.advance_width == one.advance_width
-        assert m.advance_height == one.advance_height
-        assert m.shift_up == one.shift_up
-        # shift_left is unaffected here as 9//2 == 8//2
-
     def test_outline(self):
         file = get_stringio(test)
         f,  *_ = monobit.load(file)
@@ -739,35 +711,6 @@ class TestFontTrafo:
         assert m.advance_width == one.advance_width // 2
         assert m.advance_height == one.advance_height // 2
         assert m.shift_up == one.shift_up // 2
-
-    def test_inflate(self):
-        file = get_stringio(test)
-        f,  *_ = monobit.load(file)
-        one = f.glyphs[0]
-        f = f.inflate()
-        m = f.glyphs[0]
-        assert m.as_text() == '\n'.join((
-            '.........',
-            '.........',
-            '....@@...',
-            '...@@@...',
-            '..@@@@...',
-            '....@@...',
-            '....@@...',
-            '....@@...',
-            '....@@...',
-            '....@@...',
-            '....@@...',
-            '....@@...',
-            '..@@@@@@.',
-            '.........',
-            '.........',
-            '.........\n',
-        )), m
-        assert m.advance_width == one.advance_width
-        assert m.advance_height == one.advance_height
-        assert m.shift_up == one.shift_up
-        # shift_left is unaffected here as 9//2 == 8//2
 
     def test_outline(self):
         file = get_stringio(test)
