@@ -161,6 +161,8 @@ def split_global_comment(lines):
 
 def _save_hex(font, outstream, fits):
     """Save 8x16 multi-cell font to Unifont or PC-BASIC Extended .HEX file."""
+    # fill out character cell including shifts, bearings and line height
+    font = font.equalise_horizontal()
     # global comment
     if font.get_comment():
         outstream.write(_format_comment(font.get_comment(), comm_char='#') + '\n\n')

@@ -1229,6 +1229,31 @@ class Font:
             line_width=self.line_width,
         )
 
+    @scriptable
+    def equalise_horizontal(self):
+        """
+        Pad glyphs to include positive horizontal bearings and line height.
+        Negative bearings and upshifts are equalised.
+        """
+        # absolute value of most negative upshift, left_bearing, right_bearing
+        add_shift_up = max(0, -min(_g.shift_up for _g in self.glyphs))
+        add_left_bearing = max(0, -min(_g.left_bearing for _g in self.glyphs))
+        add_right_bearing = max(0, -min(_g.right_bearing for _g in self.glyphs))
+        glyphs = tuple(
+            _g.expand(
+                # bring all glyphs to same height
+                top=max(0, self.line_height -_g.height - _g.shift_up - add_shift_up),
+                # expand by positive shift to make all upshifts equal
+                bottom=_g.shift_up + add_shift_up,
+                # expand into positive bearings
+                left=max(0, _g.left_bearing + add_left_bearing),
+                right=max(0, _g.right_bearing + add_right_bearing),
+            )
+            for _g in self.glyphs
+        )
+        return self.modify(glyphs)
+
+
     # scaling
 
     @scriptable

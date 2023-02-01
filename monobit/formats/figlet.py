@@ -257,7 +257,7 @@ def _convert_to_flf(font, hardblank='$'):
     return glyphs, props, font.get_comment()
 
 def inflate_horizontal(font, glyphs):
-    """Expand glyphs by positiv bearings (horizontal metrics only)."""
+    """Expand glyphs by positive bearings (horizontal metrics only)."""
     glyphs = tuple(
         _g.expand(
             left=max(0, _g.left_bearing),
