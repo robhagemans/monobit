@@ -377,7 +377,10 @@ def _make_fit(fonts, codepage_prefix):
     fonts = (_make_one_fit(_font, codepage_prefix) for _font in fonts)
     fonts = tuple(_font for _font in fonts if _font)
     if not fonts:
-        raise FileFormatError('No storable fonts provided')
+        raise FileFormatError(
+            'CPI format can only store 8xN character-cell fonts'
+            ' encoded with a numbered codepage.'
+        )
     sizes = set(_f.cell_size for _f in fonts)
     codepages = sorted(set(_f.encoding for _f in fonts))
     # ensure all sizes exist for all codepages
