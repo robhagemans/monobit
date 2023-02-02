@@ -8,11 +8,8 @@ import io
 import unittest
 
 import monobit
-from .base import BaseTester, get_stringio
+from .base import BaseTester, get_stringio, assert_text_eq
 
-
-def assert_text_eq(text, model):
-    assert text == model, f'"""{text}"""\n != \n"""{model}"""'
 
 
 class TestFeatures(BaseTester):
