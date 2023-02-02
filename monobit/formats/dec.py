@@ -18,6 +18,7 @@ from ..streams import FileFormatError
 from ..font import Font
 from ..glyph import Glyph
 from ..binary import ceildiv
+from ..basetypes import Coord
 from ..properties import reverse_dict
 
 @loaders.register(
@@ -28,7 +29,7 @@ def load_dec_drcs(instream, where=None):
     """Load character-cell fonts from DEC DRCS file."""
     dec_glyphs, dec_props = _read_drcs(instream)
     props, count, first_codepoint = _parse_drcs_props(dec_props)
-    glyphs = _parse_drcs_glyphs(dec_glyphs, first_codepoint)
+    glyphs = _parse_drcs_glyphs(dec_glyphs, props, first_codepoint)
     if len(glyphs) != count:
         logging.warning('Expected %d glyphs, found %d.', count, len(glyphs))
     return Font(glyphs, **props)
@@ -253,7 +254,7 @@ def _read_drcs(f):
     return glyphdefs, dec_props
 
 
-def _convert_drcs_glyph(glyphdef):
+def _convert_drcs_glyph(glyphdef, raster_size):
     """Convert DRCS glyph to monobit glyph."""
     glyphbytes = (
         tuple(_b - ord(b'?') for _b in _block)
@@ -265,13 +266,18 @@ def _convert_drcs_glyph(glyphdef):
         for _pair in glyphbytes
     )
     glyph = Glyph(glyphstrs, _0='0', _1='1')
-    return glyph.turn(anti=1)
+    glyph = glyph.turn(anti=1)
+    glyph = glyph.crop(
+        right=glyph.width-raster_size.x,
+        bottom=glyph.height-raster_size.y
+    )
+    return glyph
 
 
-def _parse_drcs_glyphs(glyphdefs, first_codepoint):
+def _parse_drcs_glyphs(glyphdefs, props, first_codepoint):
     """Convert DRCS glyphs to monobit glyphs."""
     glyphs = (
-        _convert_drcs_glyph(_g)
+        _convert_drcs_glyph(_g, Coord(*props['raster_size']))
         for _g in glyphdefs
     )
     glyphs = tuple(
