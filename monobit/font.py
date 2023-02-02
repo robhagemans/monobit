@@ -731,7 +731,6 @@ class Font:
             if key in self._props:
                 properties[key] = extend_string(self._props[key], value)
         if glyphs:
-            # apply any _LazyTransformedItems
             glyphs = (*self.glyphs, *glyphs)
         else:
             glyphs = NOT_SET
@@ -1086,8 +1085,10 @@ class Font:
     # transformations
 
     def _apply_to_all_glyphs(self, operation, **kwargs):
-        return _LazyTransformedFont(self, operation, **kwargs)
-
+        glyphs = tuple(
+            operation(_g, **kwargs) for _g in self.glyphs
+        )
+        return self.modify(glyphs)
 
     # orthogonal transformations
 
@@ -1402,62 +1403,3 @@ class Font:
 
 # scriptable font/glyph operations
 operations = get_scriptables(Font)
-
-
-from collections.abc import Sequence
-
-class _LazyTransformedItems(Sequence):
-    """Sequence that applies transformation on access."""
-
-    def __init__(self, items, func):
-        self._items = items
-        self._func = func
-
-    @cache
-    def __getitem__(self, index):
-        return self._func(self._items[index])
-
-    def __len__(self):
-        return len(self._items)
-
-
-class _LazyTransformedFont(Font):
-    """Font that applies transformation on glyph access."""
-
-    def __init__(self, font, transformation, **kwargs):
-        """Initialise, compose functions if needed."""
-        self._glyphs = font._glyphs
-        self._labels = font._labels
-        # TODO: fix hack
-        self._props = font._props
-        self._props._frozen = False
-        self._props._font = self
-        self._props._frozen = True
-        if isinstance(font, _LazyTransformedFont):
-            prev_func = font._func
-            def _wrapped(font):
-                return transformation(prev_func(font), **kwargs)
-            self._func = _wrapped
-        else:
-            self._func = partial(transformation, **kwargs)
-        self._transformed_glyphs = _LazyTransformedItems(self._glyphs, self._func)
-
-    def modify(self, glyphs=NOT_SET, **kwargs):
-        if glyphs is NOT_SET or isinstance(glyphs, _LazyTransformedItems):
-            return type(self)(super().modify(glyphs, **kwargs), self._func)
-        # glyphs have been accessed and are no longer LazyTransformed
-        # avoid double-applying transformations
-        return super().modify(glyphs, **kwargs)
-
-
-    @property
-    def glyphs(self):
-        return self._transformed_glyphs
-
-    @cache
-    def _compose_glyph(self, char):
-        """Compose glyph by overlaying components."""
-        # transformation may not commute with composition (e.g. outline)
-        # don't compose transformed glyphs, but transform the composed glyph
-        glyph = super()._compose_glyph(char)
-        return self._func(glyph)
