@@ -193,8 +193,10 @@ if Image:
         """
         if len(fonts) > 1:
             raise FileFormatError('Can only save one font to image file.')
+        font = fonts[0]
+        font = font.equalise_horizontal()
         img = (
-            chart(fonts[0], columns, margin, padding, scale, order, direction)
+            chart(font, columns, margin, padding, scale, order, direction)
             .as_image(border=border, paper=paper, ink=ink)
         )
         try:

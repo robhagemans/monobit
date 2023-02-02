@@ -15,6 +15,7 @@ def chart(
         order='row-major', direction=(1, -1),
     ):
     """Create font chart matrix."""
+    font = font.equalise_horizontal()
     scale_x, scale_y = scale
     padding_x, padding_y = padding
     margin_x, margin_y = margin

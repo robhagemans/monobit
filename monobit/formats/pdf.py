@@ -35,6 +35,7 @@ if reportlab:
         if len(fonts) > 1:
             raise FileFormatError('Can only export one font to PDF file.')
         font = fonts[0]
+        font = font.equalise_horizontal()
         canvas = Canvas(outfile)
         # assume A4
         page_x, page_y = 210*mm, 297*mm
