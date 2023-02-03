@@ -170,14 +170,15 @@ def render(
         font, text, direction, line_direction, base_direction, missing
     )
     # subset font to glyphs needed only
-    font = font.modify(_g for _row in glyphs for _g in _row)
     if transformations:
-        # apply transformations
+        # apply transformations to subsetted font
+        # note we keep the original font as implied line metrics can differ
+        rfont = font.modify(_g for _row in glyphs for _g in _row)
         for func, args, kwargs in transformations:
-            func(font, *args, **kwargs)
+            rfont = func(rfont, *args, **kwargs)
         # get glyph rows again, from transformed font
         glyphs = _get_text_glyphs(
-            font, text, direction, line_direction, base_direction, missing
+            rfont, text, direction, line_direction, base_direction, missing
         )
     margin_x, margin_y = margin
     if direction in ('top-to-bottom', 'bottom-to-top'):
