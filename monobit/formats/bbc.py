@@ -15,7 +15,6 @@ from ..streams import FileFormatError
 
 # common utilities
 from .gdos import _subset_storable
-from .figlet import inflate_horizontal
 
 
 _BBC_VDU = b'\x17'
@@ -73,10 +72,10 @@ def _write_bbc(outstream, font):
     font = font.label(codepoint_from=font.encoding)
     font = _subset_storable(font, _BBC_RANGE)
     # expand into horizontal bearings, align vertically
-    glyphs = inflate_horizontal(font, font.glyphs)
+    font = font.equalise_horizontal()
     glyph_bytes = tuple(
         b''.join((_BBC_VDU, bytes(_g.codepoint), _g.as_bytes()))
-        for _g in glyphs
+        for _g in font.glyphs
     )
     bitmap = b''.join(glyph_bytes)
     outstream.write(bitmap)

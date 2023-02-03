@@ -191,10 +191,10 @@ Here is a comparison of what you can and cannot store in selected formats suppor
 | `yaff`        | ✔ | ✔ | ✔ | ✔ | ✔ | any  | ✔ | ✔ |   | visual text
 | `bmfont`      | ✔ |   | ✔ | ✔ |   | any  | ✔ | ✔ | ✔ | image
 | `bdf`         | ✔ |   | ✔ | ✔ |   | any  | ✔ |   |   | hex
-| `mac-*`       |   |   | ✔ | ✔ | ✔ | any  | ✔ | ✔ | ✔ | binary
-| `win-fon`     |   |   | ✔ | ✔ | ✔ | any  | ✔ |   |   | binary
+| `nfnt`        |   |   | ✔ | ✔ | ✔ | any  | ✔ | ✔ | ✔ | binary
+| `win`         |   |   | ✔ | ✔ | ✔ | any  | ✔ |   |   | binary
 | `hexdraw`     | ✔ |   |   |   |   | any  | ✔ |   |   | visual text
-| `amiga-*`     |   |   |   |   | ✔ | any  | ✔ |   | ✔ | binary
+| `amiga`       |   |   |   |   | ✔ | any  | ✔ |   | ✔ | binary
 | `gdos`        |   |   |   |   |   | any  | ✔ |   |   | binary
 | `fzx`         |   |   |   |   |   | any  | ✔ |   |   | binary
 | `figlet`      | ✔ |   |   |   |   | any  | ✔ |   | ✔ | visual text
@@ -202,11 +202,11 @@ Here is a comparison of what you can and cannot store in selected formats suppor
 | `hext`        | ✔ | ✔ |   |   |   | 8xN  | multi-cell |   |   | hex
 | `hex`         | ✔ |   |   |   |   | 8x16 | multi-cell |   |   | hex
 | `hbf`         |   |   | ✔ | ✔ |   | any  |   |   |   | binary
-| `psf.2`       | ✔ | ✔ |   |   |   | any  |   |   |   | binary
-| `psf.1`       | ✔ |   |   |   |   | 8xN  |   |   |   | binary
+| `psf` (v2)    | ✔ | ✔ |   |   |   | any  |   |   |   | binary
+| `psf` (v1)    | ✔ |   |   |   |   | 8xN  |   |   |   | binary
 | `fontx`       |   |   |   | ✔ |   | any  |   |   |   | binary
 | `cpi`         |   |   | ✔ |   | ✔ | 8xN  |   |   |   | binary
-| `dec-drcs`    |   |   |   |   |   | >4xN |   |   |   | binary
+| `dec`         |   |   |   |   |   | >4xN |   |   |   | binary
 | `bbc`         |   |   |   |   |   | 8x8  |   |   |   | binary
 
 

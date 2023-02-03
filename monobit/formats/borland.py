@@ -168,8 +168,8 @@ def _convert_to_stroke_code(command, absx, absy):
     """Convert path command to two-byte stroke code."""
     return _STROKE_CODE(
         op0=-1, op1=-1 * (command==StrokePath.LINE),
-        x=absx, y=absy)
-    return code
+        x=absx, y=absy
+    )
 
 def _make_contiguous(font):
     """Fill out a contiguous range of glyphs."""

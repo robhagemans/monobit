@@ -8,11 +8,8 @@ import io
 import unittest
 
 import monobit
-from .base import BaseTester, get_stringio
+from .base import BaseTester, get_stringio, assert_text_eq
 
-
-def assert_text_eq(text, model):
-    assert text == model, f'"""{text}"""\n != \n"""{model}"""'
 
 
 class TestFeatures(BaseTester):
@@ -204,14 +201,14 @@ class TestFeatures(BaseTester):
     def test_render_amiga_proportional(self):
         prop1, *_ = monobit.load(self.font_path / 'wbfont.amiga/wbfont_prop.font')
         text1 = monobit.render(prop1, b'testing').as_text()
-        assert text1 == self.proptext, f'"""{text1}"""\n != \n"""{self.proptext}"""'
+        assert_text_eq(text1, self.proptext)
 
     def test_render_yaff_proportional(self):
         prop1, *_ = monobit.load(self.font_path / 'wbfont.amiga/wbfont_prop.font')
         monobit.save(prop1, self.temp_path / 'wbfont_prop.yaff')
         prop2, *_ = monobit.load(self.temp_path / 'wbfont_prop.yaff')
         text2 = monobit.render(prop2, b'testing').as_text()
-        assert text2 == self.proptext, f'"""{text2}"""\n != \n"""{self.proptext}"""'
+        assert_text_eq(text2, self.proptext)
 
 
     # kerning
@@ -231,14 +228,14 @@ class TestFeatures(BaseTester):
     def test_render_yaff_kerning(self):
         webby_mod1, *_ = monobit.load(self.font_path / 'webby-small-kerned.yaff')
         text1 = monobit.render(webby_mod1, b'sjifjij').as_text()
-        assert text1 == self.kerntext, f'"""{text1}"""\n != \n"""{self.kerntext}"""'
+        assert_text_eq(text1, self.kerntext)
 
     def test_render_bmf_kerning(self):
         webby_mod1, *_ = monobit.load(self.font_path / 'webby-small-kerned.yaff')
         monobit.save(webby_mod1, self.temp_path / 'webby-small-kerned.bmf', where=self.temp_path)
         webby_mod2, *_ = monobit.load(self.temp_path / 'webby-small-kerned.bmf')
         text2 = monobit.render(webby_mod2, b'sjifjij').as_text()
-        assert text2 == self.kerntext, f'"""{text2}"""\n != \n"""{self.kerntext}"""'
+        assert_text_eq(text2, self.kerntext)
 
 
     # tiny sample from unscii-8.hex at https://github.com/viznut/unscii
@@ -267,7 +264,7 @@ class TestFeatures(BaseTester):
         text = monobit.render(
             f, 'u\u0305\u0327u \u0305\u0327 \u0305 \u0327'
         ).as_text()
-        assert text == self.composed, f'"""{text}"""\n != \n"""{self.composed}"""'
+        assert_text_eq(text, self.composed)
 
 
 if __name__ == '__main__':

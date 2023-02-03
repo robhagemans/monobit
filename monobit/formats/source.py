@@ -14,7 +14,7 @@ from ..font import Font
 from ..glyph import Glyph
 from ..streams import FileFormatError
 from ..basetypes import Coord
-from .raw import load_bitmap
+from .raw import load_bitmap, save_bitmap
 
 
 _C_PARAMS = dict(
@@ -161,7 +161,7 @@ def _load_coded_binary(
     """Load font from binary encoded in source code."""
     width, height = cell
     payload = _get_payload(infile.text, identifier, delimiters, comment)
-    data = bytes(_int_from_c(_s) for _s in payload.split(',') if _s)
+    data = bytes(_int_from_c(_s) for _s in payload.split(',') if _s.strip())
     bytesio = BytesIO(data[offset:])
     return load_bitmap(
         bytesio, width, height, count, padding, align, strike_count, strike_bytes, first_codepoint
@@ -245,33 +245,23 @@ def save_source(
     """
     return _save_coded_binary(fonts, outstream, f'{identifier} {assign} ', delimiters, comment)
 
-def _save_coded_binary(fonts, outstream, assignment_pattern, delimiters, comment):
+def _save_coded_binary(
+        fonts, outstream, assignment_pattern, delimiters, comment,
+        bytes_per_line=16
+    ):
     """
     Generate bitmap encoded source code from a font.
 
-    Args:
-        fonts (List[Font]): Exactly one font must be given.
-        outstream: Stream to write the source code to.
-        assignment_pattern: Format pattern for the assignment statement. May include `compactname` amd `bytesize` variables.
-        delimiters (str): Must contain two characters, building the opening and closing delimiters of the collection. E.g. []
-        comment (str): Line Comment character(s). Currently not used.
-
-    Raises:
-        FileFormatError: If more the one Font is passed or if it is not a character-cell font.
-        ValueError: If delimiter does not contain at least two characters.
-
-    Returns:
-        Font: Used font.
+    fonts (List[Font]): Exactly one font must be given.
+    outstream: Stream to write the source code to.
+    assignment_pattern: Format pattern for the assignment statement. May include `compactname` amd `bytesize` variables.
+    delimiters (str): Must contain two characters, building the opening and closing delimiters of the collection. E.g. []
+    comment (str): Line Comment character(s). Currently not used.
+    bytes_per_line (int): number of encoded bytes in a source line
     """
     if len(fonts) > 1:
         raise FileFormatError('Can only save one font to source file.')
     font = fonts[0]
-    outstream = outstream.text
-    # check if font is fixed-width and fixed-height
-    if font.spacing != 'character-cell':
-        raise FileFormatError(
-            'This format only supports character-cell fonts.'
-        )
     if len(delimiters) < 2:
         raise ValueError('A start and end delimiter must be given. E.g. []')
     start_delimiter = delimiters[0]
@@ -282,12 +272,27 @@ def _save_coded_binary(fonts, outstream, assignment_pattern, delimiters, comment
     width, height = font.raster_size
     bytesize = ceildiv(width, 8) * height * len(font.glyphs)
     assignment = assignment_pattern.format(compactname=ascii_name, bytesize=bytesize)
+    # get the raw data
+    bytesio = BytesIO()
+    save_bitmap(bytesio, font)
+    rawbytes = bytesio.getbuffer()
     # emit code
+    outstream = outstream.text
     outstream.write(f'{assignment}{start_delimiter}\n')
-    for glyph in font.glyphs:
-        outstream.write('  ')
-        for byte in glyph.as_bytes():
-            outstream.write(f'0x{byte:02x}, ')
+    # grouper
+    args = [iter(rawbytes)] * bytes_per_line
+    groups = zip(*args)
+    lines = [
+        ', '.join(f'0x{_b:02x}' for _b in _group)
+        for _group in groups
+    ]
+    rem = len(rawbytes) % bytes_per_line
+    if rem:
+        lines.append(', '.join(f'0x{_b:02x}' for _b in rawbytes[-rem:]))
+    for i, line in enumerate(lines):
+        outstream.write(f'  {line}')
+        if i < len(lines) - 1:
+            outstream.write(',')
         outstream.write('\n')
     outstream.write(f'{end_delimiter}\n')
     return font

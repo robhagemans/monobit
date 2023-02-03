@@ -20,6 +20,9 @@ def get_bytesio(bytestring):
     """Workaround as our streams objects require a buffer."""
     return io.BufferedReader(io.BytesIO(bytestring))
 
+def assert_text_eq(text, model):
+    assert text == model, f'"""\\\n{text}"""\n != \n"""\\\n{model}"""'
+
 
 class BaseTester(unittest.TestCase):
     """Base class for testers."""

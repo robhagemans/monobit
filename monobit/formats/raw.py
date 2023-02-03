@@ -539,7 +539,7 @@ def save_bitmap(
         raise FileFormatError(
             'This format only supports character-cell fonts.'
         )
-    # TODO: normalise
+    font = font.equalise_horizontal()
     # get pixel rasters
     rasters = (_g.pixels for _g in font.glyphs)
     # contruct rows (itertools.grouper recipe)
