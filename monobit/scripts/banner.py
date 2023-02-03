@@ -14,6 +14,7 @@ import monobit
 from monobit.scripting import wrap_main
 from monobit.basetypes import Coord, RGB
 from monobit.renderer import render
+from monobit.font import Font
 
 
 def unescape(text):
@@ -200,23 +201,25 @@ def main():
         elif args.encoding:
             font = font.modify(encoding=args.encoding).label()
         #######################################################################
-        # apply effects
+        # line up effects
         # these use default arguments as defined by rendering hints
+        transformations  = []
         if args.bold:
-            font = font.smear()
+            transformations.append((Font.smear, (), {}))
         if args.italic:
-            font = font.shear()
+            transformations.append((Font.shear, (), {}))
         if args.underline:
-            font = font.underline()
+            transformations.append((Font.underline, (), {}))
         if args.outline:
-            font = font.outline()
+            transformations.append((Font.outline, (), {}))
         #######################################################################
         # render
         canvas = render(
             font, args.text,
             margin=args.margin,
             direction=args.direction, align=args.align, adjust_bearings=args.expand,
-            missing='default'
+            missing='default',
+            transformations=transformations,
         )
         # transformations
         canvas = canvas.stretch(*args.scale)

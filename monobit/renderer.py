@@ -159,16 +159,26 @@ class Canvas(Raster):
 def render(
         font, text, *, margin=(0, 0), adjust_bearings=0,
         direction='', align='',
-        missing='default'
+        missing='default', transformations=(),
     ):
     """Render text string to bitmap."""
     direction, line_direction, base_direction, align = _get_direction(
         font, text, direction, align
     )
-    # get glyphs for rendering
+    # get glyph rows for rendering (tuple of tuples)
     glyphs = _get_text_glyphs(
         font, text, direction, line_direction, base_direction, missing
     )
+    # subset font to glyphs needed only
+    font = font.modify(_g for _row in glyphs for _g in _row)
+    if transformations:
+        # apply transformations
+        for func, args, kwargs in transformations:
+            func(font, *args, **kwargs)
+        # get glyph rows again, from transformed font
+        glyphs = _get_text_glyphs(
+            font, text, direction, line_direction, base_direction, missing
+        )
     margin_x, margin_y = margin
     if direction in ('top-to-bottom', 'bottom-to-top'):
         _get_canvas = _get_canvas_vertical
