@@ -66,7 +66,7 @@ def _identify_container(file, mode, overwrite):
         if mode == 'w' and not suffix and isinstance(file, (str, Path)):
             return DirContainer
         # no container type found
-        raise ContainerFormatError('Expected container format, got non-container stream.')
+        raise ContainerFormatError('Stream is not a known container format.')
     return container_type
 
 

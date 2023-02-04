@@ -69,7 +69,7 @@ def open_location(file, mode, where=None, overwrite=False):
                     yield None, container
                 return
             except ContainerFormatError as e:
-                logging.debug('Not a container: %s', e)
+                logging.debug(e)
                 pass
             # infile is not a container, load/save single file
             yield stream, container
@@ -253,9 +253,15 @@ class ConverterRegistry(MagicRegistry):
                     or not file.name or file.name == '<stdout>'
                     or (do_open and maybe_text(file))
                 ):
+                logging.debug(
+                    'Fallback to default `%s` format', DEFAULT_TEXT_FORMAT
+                )
                 converter = self[DEFAULT_TEXT_FORMAT]
             elif do_open:
                 converter = self[DEFAULT_BINARY_FORMAT]
+                logging.debug(
+                    'Fallback to default `%s` format', DEFAULT_BINARY_FORMAT
+                )
             else:
                 if format:
                     msg = f'Format `{format}` not recognised'
