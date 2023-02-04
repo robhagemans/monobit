@@ -104,34 +104,41 @@ def _load_from_location(infile, where, format, **kwargs):
 def _load_from_file(instream, where, format, **kwargs):
     """Open file and load font(s) from it."""
     # identify file type
-    loader = loaders.get_for(instream, format=format, do_open=True)
-    if not loader:
+    fitting_loaders = loaders.get_for(instream, format=format, do_open=True)
+    if not fitting_loaders:
         raise FileFormatError('Cannot load from format `{}`.'.format(format)) from None
-    logging.info('Loading `%s` on `%s` as %s', instream.name, where.name, loader.name)
-    fonts = loader(instream, where, **kwargs)
-    # convert font or pack to pack
-    if not fonts:
-        raise FileFormatError('No fonts found in file.')
-    pack = Pack(fonts)
-    # set conversion properties
-    filename = Path(instream.name).name
-    # if the source filename contains surrogate-escaped non-utf8 bytes
-    # preserve the byte values as backslash escapes
-    try:
-        filename.encode('utf-8')
-    except UnicodeError:
-        filename = (
-            filename.encode('utf-8', 'surrogateescape')
-            .decode('ascii', 'backslashreplace')
+    for loader in fitting_loaders:
+        instream.seek(0)
+        logging.info('Loading `%s` on `%s` as %s', instream.name, where.name, loader.name)
+        try:
+            fonts = loader(instream, where, **kwargs)
+        except FileFormatError as e:
+            logging.debug(e)
+            continue
+        if not fonts:
+            logging.debug('No fonts found in file.')
+            continue
+        # convert font or pack to pack
+        pack = Pack(fonts)
+        # set conversion properties
+        filename = Path(instream.name).name
+        # if the source filename contains surrogate-escaped non-utf8 bytes
+        # preserve the byte values as backslash escapes
+        try:
+            filename.encode('utf-8')
+        except UnicodeError:
+            filename = (
+                filename.encode('utf-8', 'surrogateescape')
+                .decode('ascii', 'backslashreplace')
+            )
+        return Pack(
+            _font.modify(
+                converter=CONVERTER_NAME,
+                source_format=_font.source_format or loader.name,
+                source_name=_font.source_name or filename
+            )
+            for _font in pack
         )
-    return Pack(
-        _font.modify(
-            converter=CONVERTER_NAME,
-            source_format=_font.source_format or loader.name,
-            source_name=_font.source_name or filename
-        )
-        for _font in pack
-    )
 
 def _load_all(container, format, **kwargs):
     """Open container and load all fonts found in it into one pack."""
@@ -206,9 +213,10 @@ def _save_all(pack, where, format, **kwargs):
 
 def _save_to_file(pack, outfile, where, format, **kwargs):
     """Save fonts to a single file."""
-    saver = savers.get_for(outfile, format=format, do_open=False)
-    if not saver:
+    matching_savers = savers.get_for(outfile, format=format, do_open=False)
+    if not matching_savers:
         raise FileFormatError('Cannot save to format `{}`.'.format(format))
+    saver, *_ = matching_savers
     logging.info('Saving `%s` on `%s` as %s.', outfile.name, where.name, saver.name)
     saver(pack, outfile, where, **kwargs)
 
@@ -242,12 +250,12 @@ class ConverterRegistry(MagicRegistry):
         Get loader/saver function for this format.
         infile must be a Stream or empty
         """
-        converter = None
+        converter = ()
         if not format:
             converter = self.identify(file, do_open=do_open)
         if not converter:
             if format:
-                converter = self[format]
+                converter = self._suffixes.get(format, ())
             elif (
                     not file
                     or not file.name or file.name == '<stdout>'
@@ -256,9 +264,9 @@ class ConverterRegistry(MagicRegistry):
                 logging.debug(
                     'Fallback to default `%s` format', DEFAULT_TEXT_FORMAT
                 )
-                converter = self[DEFAULT_TEXT_FORMAT]
+                converter = self._suffixes[DEFAULT_TEXT_FORMAT]
             elif do_open:
-                converter = self[DEFAULT_BINARY_FORMAT]
+                converter = self._suffixes[DEFAULT_BINARY_FORMAT]
                 logging.debug(
                     'Fallback to default `%s` format', DEFAULT_BINARY_FORMAT
                 )
@@ -272,16 +280,6 @@ class ConverterRegistry(MagicRegistry):
                     msg += '. Please provide a -format option'
                 raise ValueError(msg)
         return converter
-
-    def get_args(self, file=None, format='', do_open=False):
-        """
-        Get loader/saver arguments for this format.
-        infile must be a Stream or empty
-        """
-        converter = self.get_for(file, format, do_open)
-        if not converter:
-            return ScriptArgs()
-        return converter.script_args
 
     def register(self, *formats, magic=(), name='', linked=None):
         """

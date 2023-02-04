@@ -30,10 +30,15 @@ def open_container(file, mode, overwrite=False):
     if not file:
         # no-container, will throw errors when used
         return Container(None)
-    container_type = _identify_container(file, mode, overwrite)
-    container = container_type(file, mode, overwrite=overwrite)
-    logging.debug("Opening %s container `%s` for '%s'.", container_type.__name__, container.name, mode)
-    return container
+    container_types = _identify_container(file, mode, overwrite)
+    for container_type in container_types:
+        try:
+            container = container_type(file, mode, overwrite=overwrite)
+            logging.debug("Opening %s container `%s` for '%s'.", container_type.__name__, container.name, mode)
+            return container
+        except ContainerFormatError as e:
+            logging.debug(e)
+    raise ContainerFormatError('No matching container type found.')
 
 def _identify_container(file, mode, overwrite):
     """Get container of the appropriate type."""
@@ -41,17 +46,17 @@ def _identify_container(file, mode, overwrite):
         raise ValueError('No location provided.')
     # if it already is a directory there is no choice
     if isinstance(file, (str, Path)) and Path(file).is_dir():
-        container_type = Directory
+        container_types = (Directory,)
     else:
-        container_type = containers.identify(file, do_open=(mode == 'r'))
-    if not container_type:
+        container_types = containers.identify(file, do_open=(mode == 'r'))
+    if not container_types:
         suffix = get_suffix(file)
         # output to file with no suffix - default to directory
         if mode == 'w' and not suffix and isinstance(file, (str, Path)):
-            return Directory
+            return (Directory,)
         # no container type found
-        raise ContainerFormatError('Stream is not a known container format.')
-    return container_type
+        #raise ContainerFormatError('Stream is not a known container format.')
+    return container_types
 
 
 class Container(StreamBase):

@@ -8,7 +8,7 @@ licence: https://opensource.org/licenses/MIT
 import logging
 from pathlib import Path
 
-from .streams import open_stream, get_name
+from .streams import Stream, get_name
 
 
 # number of bytes to read to check if something looks like text
@@ -96,7 +96,10 @@ class MagicRegistry:
         def decorator(klass):
             for suffix in suffixes:
                 suffix = normalise_suffix(suffix)
-                self._suffixes[suffix] = klass
+                if suffix in self._suffixes:
+                    self._suffixes[suffix].append(klass)
+                else:
+                    self._suffixes[suffix] = [klass]
             for sequence in magic:
                 self._magic[sequence] = klass
             # sort the magic registry long to short to manage conflicts
@@ -112,24 +115,17 @@ class MagicRegistry:
             return klass
         return decorator
 
-    def __contains__(self, suffix):
-        """Suffix is covered."""
-        return normalise_suffix(suffix) in self._suffixes.keys()
-
-    def __getitem__(self, suffix):
-        """Get type by suffix."""
-        return self._suffixes.get(suffix, None)
-
     def identify(self, file, do_open=False):
         """Identify a type from magic sequence on input file."""
         if not file:
-            return None
+            return ()
+        matches = []
         # can't read magic on write-only file
         if do_open:
             if isinstance(file, (str, Path)):
                 # only use context manager if string provided
                 # if we got an open stream we should not close it
-                with open_stream(file, 'r') as stream:
+                with Stream(file, 'r') as stream:
                     return self.identify(stream, do_open=do_open)
             for magic, klass in self._magic.items():
                 if has_magic(file, magic):
@@ -137,12 +133,13 @@ class MagicRegistry:
                         'Magic bytes %a: identifying stream as %s.',
                         magic.decode('latin-1'), klass.__name__
                     )
-                    return klass
+                    matches.append(klass)
         suffix = get_suffix(file)
-        converter = self[suffix]
-        if converter:
+        converters = self._suffixes.get(suffix, ())
+        for converter in converters:
             logging.debug(
                 'Filename suffix `%s`: identifying stream as %s.',
                 suffix, converter.__name__
             )
-        return converter
+        matches.extend(converters)
+        return tuple(matches)

@@ -101,23 +101,25 @@ class Stream(StreamWrapper):
         if isinstance(file, (str, Path)):
             file = self._open_path(file, mode, where, overwrite)
             self._raw = file
-        elif mode == 'r' and not file.seekable():
-            # we need streams to be seekable - drain to buffer
-            # note you can only do this once on the input stream!
-            file = get_bytesio(file.read())
         else:
             # don't close externally provided stream
             file = KeepOpen(file)
             self._raw = None
-        self._anchor = file.tell()
+        if mode == 'r':
+            self._anchor = file.tell()
+        else:
+            self._anchor = 0
         # initialise wrapper
         super().__init__(file, mode=mode, name=name)
         # check r/w mode is consistent
         self._ensure_rw()
-        # placeholder for text wrapper
-        self._textstream = None
         # Ensure we have a binary stream
         self._ensure_binary()
+        if mode == 'r' and not self._stream.seekable():
+            # we need streams to be seekable - drain to buffer
+            # note you can only do this once on the input stream!
+            self._stream = get_bytesio(self._stream.read())
+            self._ensure_binary()
 
     @staticmethod
     def _open_path(file, mode, where, overwrite):
@@ -168,6 +170,9 @@ class Stream(StreamWrapper):
             except AttributeError as e:
                 raise ValueError('Unable to access binary stream.') from e
             logging.debug('Getting buffer %r from text stream %r.', self._stream, self._textstream)
+        else:
+            # placeholder for text wrapper
+            self._textstream = None
 
     @property
     def text(self):
