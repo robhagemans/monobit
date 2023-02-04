@@ -215,7 +215,7 @@ def _read_collection(instream, tags):
         try:
             ttfc_data.append(_sfnt_props(ttf, tags))
         except ResourceFormatError as e:
-            logging.warning(e)
+            logging.debug(e)
     return ttfc_data
 
 
@@ -232,7 +232,7 @@ def _sfnt_props(ttf, tags):
         except (TTLibError, AssertionError) as e:
             if not str(e):
                 e = f'{type(e).__name__} in fontTools library.'
-            logging.warning('Could not read `%s` table in sfnt: %s', tag, e)
+            logging.debug('Could not read `%s` table in sfnt: %s', tag, e)
     return Props(**_to_props(tables))
 
 

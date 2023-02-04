@@ -276,6 +276,7 @@ def save_bdf(fonts, outstream, where=None):
 _UNDEFINED_ENCODINGS = [
     'fontspecific-0',
     'adobe-fontspecific',
+    'fontspecific',
 ]
 
 # names to be used when writing bdf
@@ -578,7 +579,7 @@ def _parse_properties(glyphs, glyph_props, bdf_props, x_props):
         properties[key] = value
     for key, value in xlfd_props.items():
         if key in properties and properties[key] != value:
-            logging.warning(
+            logging.debug(
                 'Inconsistency between BDF and XLFD properties: '
                 '%s=%s (from XLFD) but %s=%s (from BDF). Taking BDF property.',
                 key, value, key, properties[key]
@@ -614,8 +615,8 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
     size, xdpi, ydpi = size_prop
     properties = {
         'source-format': 'BDF v{}'.format(bdf_props.pop('STARTFONT')),
-        'point-size': size,
-        'dpi': (xdpi, ydpi),
+        'point-size': int(size),
+        'dpi': _all_ints(xdpi, ydpi),
         'revision': bdf_props.pop('CONTENTVERSION', None),
     }
     writing_direction = bdf_props.pop('METRICSSET', '0')
