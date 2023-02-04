@@ -17,6 +17,11 @@ def open_stream(file, mode, *, where=None, overwrite=False):
     return Stream(file, mode, where=where, overwrite=overwrite)
 
 
+def get_bytesio(bytestring):
+    """Workaround as our streams objects require a buffer."""
+    return io.BufferedReader(io.BytesIO(bytestring))
+
+
 class StreamBase:
     """Shared base for stream and container."""
 
@@ -135,9 +140,9 @@ class Stream(StreamWrapper):
     def _ensure_rw(self):
         """Ensure r/w mode is consistent."""
         if self.mode == 'r' and not self._stream.readable():
-            raise FileFormatError('Expected readable stream, got writable.')
+            raise ValueError('Expected readable stream, got writable.')
         if self.mode == 'w' and not self._stream.writable():
-            raise FileFormatError('Expected writable stream, got readable.')
+            raise ValueError('Expected writable stream, got readable.')
 
     def _ensure_binary(self):
         """Ensure we have a binary stream."""
@@ -147,7 +152,7 @@ class Stream(StreamWrapper):
             try:
                 self._stream = self._stream.buffer
             except AttributeError as e:
-                raise FileFormatError('Unable to access binary stream.') from e
+                raise ValueError('Unable to access binary stream.') from e
             logging.debug('Getting buffer %r from text stream %r.', self._stream, self._textstream)
 
     @property

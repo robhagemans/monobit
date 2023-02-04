@@ -11,7 +11,7 @@ from pathlib import Path
 from contextlib import contextmanager
 
 from .constants import VERSION, CONVERTER_NAME
-from .containers import ContainerFormatError, open_container
+from .container import ContainerFormatError, open_container
 from .font import Font
 from .pack import Pack
 from .streams import open_stream
