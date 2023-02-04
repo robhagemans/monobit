@@ -11,7 +11,7 @@ from ..struct import big_endian as be
 from ..properties import Props
 from ..storage import loaders, savers
 from ..font import Font
-from ..streams import FileFormatError
+from ..magic import FileFormatError
 
 from .mac.nfnt import _extract_nfnt, _convert_nfnt
 

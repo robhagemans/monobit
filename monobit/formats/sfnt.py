@@ -26,7 +26,7 @@ from ..glyph import Glyph
 from ..raster import Raster
 from ..labels import Tag, Char
 from ..storage import loaders, savers
-from ..streams import FileFormatError
+from ..magic import FileFormatError
 from .windows.fnt import _WEIGHT_MAP
 
 # errors that invalidates only one strike or resource, not the whole file

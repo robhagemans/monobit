@@ -18,7 +18,7 @@ notice for gpifont.c and os2res.h:
 
 import logging
 
-from ...streams import FileFormatError
+from ...magic import FileFormatError
 from ...struct import little_endian as le
 
 from .gpifont import parse_os2_font_directory

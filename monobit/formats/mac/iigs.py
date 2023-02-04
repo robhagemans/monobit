@@ -14,7 +14,7 @@ from ... import struct
 from ...storage import loaders, savers
 from ...font import Font, Coord
 from ...glyph import Glyph, KernTable
-from ...streams import FileFormatError
+from ...magic import FileFormatError
 
 from itertools import chain, accumulate
 

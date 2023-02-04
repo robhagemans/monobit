@@ -12,7 +12,7 @@ from ..binary import ceildiv
 from ..storage import loaders, savers
 from ..font import Font
 from ..glyph import Glyph
-from ..streams import FileFormatError
+from ..magic import FileFormatError
 from ..basetypes import Coord
 from .raw import load_bitmap, save_bitmap
 

@@ -9,7 +9,7 @@ import logging
 import io
 
 from ..storage import loaders, savers
-from ..streams import FileFormatError
+from ..magic import FileFormatError
 
 from .windows.mz import MZ_HEADER, create_mz_stub
 from .windows.ne import create_ne, read_ne, _NE_HEADER

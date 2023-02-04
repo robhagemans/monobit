@@ -9,7 +9,7 @@ import logging
 
 from ..properties import normalise_property
 from ..storage import loaders, savers
-from ..streams import FileFormatError
+from ..magic import FileFormatError
 from ..font import Font, Coord
 from ..glyph import Glyph
 from ..binary import ceildiv

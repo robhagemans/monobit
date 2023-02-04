@@ -19,7 +19,7 @@ except ImportError:
 from ..basetypes import Coord
 from ..encoding import charmaps
 from .. import streams
-from ..streams import FileFormatError
+from ..magic import FileFormatError
 from ..binary import int_to_bytes, bytes_to_int
 from ..struct import little_endian as le
 from ..properties import reverse_dict

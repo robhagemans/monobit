@@ -19,10 +19,10 @@ import lzma
 import bz2
 from pathlib import Path, PurePath, PurePosixPath
 
+from .magic import MagicRegistry, FileFormatError, get_suffix
 from .streams import (
-    MagicRegistry, FileFormatError,
     StreamBase, StreamWrapper, Stream, KeepOpen,
-    get_suffix, open_stream, get_name
+    open_stream, get_name
 )
 
 DEFAULT_ROOT = 'fonts'

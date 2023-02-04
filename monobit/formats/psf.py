@@ -12,7 +12,7 @@ from ..struct import bitfield, flag, little_endian as le
 from ..storage import loaders, savers
 from ..font import Font
 from ..glyph import Glyph
-from ..streams import FileFormatError
+from ..magic import FileFormatError
 
 from .raw import load_bitmap
 

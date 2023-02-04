@@ -15,7 +15,7 @@ except ImportError:
     reportlab = None
 
 from ..storage import savers
-from ..streams import FileFormatError
+from ..magic import FileFormatError
 
 
 if reportlab:

@@ -11,7 +11,7 @@ See `LICENSE.md` in this package's directory.
 import logging
 
 from ...storage import loaders, savers
-from ...streams import FileFormatError
+from ...magic import FileFormatError
 from .fnt import create_fnt
 from .fnt import convert_win_fnt_resource, FNT_MAGIC_1, FNT_MAGIC_2, FNT_MAGIC_3
 

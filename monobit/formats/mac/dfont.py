@@ -9,7 +9,7 @@ import io
 import logging
 
 from ...struct import big_endian as be
-from ...streams import FileFormatError
+from ...magic import FileFormatError
 
 from ..sfnt import load_sfnt
 from .nfnt import _extract_nfnt, _convert_nfnt

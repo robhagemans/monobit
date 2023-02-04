@@ -14,7 +14,8 @@ from .constants import VERSION, CONVERTER_NAME
 from .containers import ContainerFormatError, open_container
 from .font import Font
 from .pack import Pack
-from .streams import MagicRegistry, FileFormatError, open_stream, maybe_text
+from .streams import open_stream
+from .magic import MagicRegistry, FileFormatError, maybe_text
 from .scripting import scriptable, ScriptArgs, ARG_PREFIX
 from .basetypes import Any
 
@@ -22,8 +23,6 @@ from .basetypes import Any
 DEFAULT_TEXT_FORMAT = 'yaff'
 DEFAULT_BINARY_FORMAT = 'raw'
 
-
-##############################################################################
 
 @contextmanager
 def open_location(file, mode, where=None, overwrite=False):
@@ -70,6 +69,7 @@ def open_location(file, mode, where=None, overwrite=False):
                     yield None, container
                 return
             except ContainerFormatError as e:
+                logging.debug('Not a container: %s', e)
                 pass
             # infile is not a container, load/save single file
             yield stream, container
