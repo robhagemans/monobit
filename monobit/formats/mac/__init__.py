@@ -12,7 +12,7 @@ from ...storage import loaders, savers
 from .dfont import _parse_mac_resource
 from .nfnt import _extract_nfnt, _convert_nfnt
 from .lisa import _load_lisa
-
+from .iigs import _load_iigs, _save_iigs
 
 # the magic is optional - a 'maybe magic'
 # .rsrc is what we use as a 'filename' for resources inside containers
@@ -45,3 +45,18 @@ def load_nfnt(instream, where=None, offset:int=0):
 def load_lisa(instream, where=None):
     """Load a LISA font library."""
     return _load_lisa(instream)
+
+@loaders.register(name='IIgs')
+def load_iigs(instream, where=None):
+    """Load a IIgs font."""
+    return _load_iigs(instream)
+
+
+@savers.register(linked=load_iigs)
+def save_iigs(fonts, outstream, where=None):
+    """Write font to a IIgs font file."""
+
+    if len(fonts) > 1:
+        logging.warning('IIgs font file can only store one font.')
+    font = fonts[0]
+    _save_iigs(outstream, font)
