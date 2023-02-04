@@ -10,6 +10,7 @@ import string
 
 from ..binary import ceildiv
 from ..storage import loaders, savers
+from ..streams import Stream
 from ..font import Font
 from ..glyph import Glyph
 from ..magic import FileFormatError
@@ -162,7 +163,7 @@ def _load_coded_binary(
     width, height = cell
     payload = _get_payload(infile.text, identifier, delimiters, comment)
     data = bytes(_int_from_c(_s) for _s in payload.split(',') if _s.strip())
-    bytesio = BytesIO(data[offset:])
+    bytesio = Stream.from_data(data[offset:], mode='r')
     return load_bitmap(
         bytesio, width, height, count, padding, align, strike_count, strike_bytes, first_codepoint
     )

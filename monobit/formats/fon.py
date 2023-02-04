@@ -6,9 +6,9 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import logging
-import io
 
 from ..storage import loaders, savers
+from ..streams import Stream
 from ..magic import FileFormatError
 
 from .windows.mz import MZ_HEADER, create_mz_stub
@@ -82,7 +82,7 @@ def load_fon(instream, where=None, all_type_ids:bool=False):
             # PE files may have bitmap SFNTs embedded in them
             # be restrictive as FNT_MAGIC_1 and SFNT_MAGIC clash
             if magic == SFNT_MAGIC and format == b'PE':
-                bytesio = io.BytesIO(resource)
+                bytesio = Stream.from_data(resource, mode='r')
                 fonts = load_sfnt(bytesio)
                 fonts.extend(fonts)
             elif magic == GPI_MAGIC:

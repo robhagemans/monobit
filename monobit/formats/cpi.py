@@ -8,7 +8,6 @@ licence: https://opensource.org/licenses/MIT
 import os
 import string
 import logging
-from io import BytesIO
 from itertools import accumulate
 
 from ..binary import ceildiv
