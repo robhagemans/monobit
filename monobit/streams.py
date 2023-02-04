@@ -109,6 +109,7 @@ class Stream(StreamWrapper):
             # don't close externally provided stream
             file = KeepOpen(file)
             self._raw = None
+        self._anchor = file.tell()
         # initialise wrapper
         super().__init__(file, mode=mode, name=name)
         # check r/w mode is consistent
@@ -181,6 +182,16 @@ class Stream(StreamWrapper):
                 errors='ignore'
             )
         return self._textstream
+
+    def seek(self, loc, whence=0, /):
+        """Seek relative to anchor."""
+        if whence == 0:
+            loc += self._anchor
+        self._stream.seek(loc, whence)
+
+    def tell(self):
+        """Location relative to anchor."""
+        return self._stream.tell() - self._anchor
 
     def __getattr__(self, attr):
         """Delegate undefined attributes to wrapped stream."""
