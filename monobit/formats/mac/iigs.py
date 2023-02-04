@@ -1,5 +1,5 @@
 """
-monobit.formats.iigs - Apple IIgs font file
+monobit.formats.mac.iigs - Apple IIgs font file
 
 Kelvin Sherlock 2023
 licence: https://opensource.org/licenses/MIT
