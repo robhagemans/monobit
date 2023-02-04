@@ -57,14 +57,14 @@ def _identify_container(file, mode, overwrite):
         raise ValueError('No location provided.')
     # if it already is a directory there is no choice
     if isinstance(file, (str, Path)) and Path(file).is_dir():
-        container_type = DirContainer
+        container_type = Directory
     else:
         container_type = containers.identify(file, do_open=(mode == 'r'))
     if not container_type:
         suffix = get_suffix(file)
         # output to file with no suffix - default to directory
         if mode == 'w' and not suffix and isinstance(file, (str, Path)):
-            return DirContainer
+            return Directory
         # no container type found
         raise ContainerFormatError('Stream is not a known container format.')
     return container_type
@@ -94,7 +94,7 @@ class Container(StreamBase):
 ###################################################################################################
 # directory
 
-class DirContainer(Container):
+class Directory(Container):
     """Treat directory tree as a container."""
 
     def __init__(self, path, mode='r', *, overwrite=False):
