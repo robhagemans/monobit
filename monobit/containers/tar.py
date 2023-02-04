@@ -15,7 +15,7 @@ from ..container import containers, DEFAULT_ROOT, Container, ContainerFormatErro
 from ..streams import Stream, KeepOpen
 
 
-@containers.register('.tar')
+@containers.register('.tar', name='tar')
 class TarContainer(Container):
     """Tar-file wrapper."""
 

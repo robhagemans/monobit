@@ -215,7 +215,13 @@ def _save_to_file(pack, outfile, where, format, **kwargs):
     """Save fonts to a single file."""
     matching_savers = savers.get_for(outfile, format=format, do_open=False)
     if not matching_savers:
-        raise FileFormatError('Cannot save to format `{}`.'.format(format))
+        raise ValueError(f'Format specification `{format}` not recognised')
+    if len(matching_savers) > 1:
+        raise ValueError(
+            f"Format for filename '{outfile.name}' is ambiguous: "
+            f'specify -format with one of the values '
+            f'({", ".join(_s.name for _s in matching_savers)})'
+        )
     saver, *_ = matching_savers
     logging.info('Saving `%s` on `%s` as %s.', outfile.name, where.name, saver.name)
     saver(pack, outfile, where, **kwargs)
@@ -255,7 +261,10 @@ class ConverterRegistry(MagicRegistry):
             converter = self.identify(file, do_open=do_open)
         if not converter:
             if format:
-                converter = self._suffixes.get(format, ())
+                try:
+                    converter = (self._names[format],)
+                except KeyError:
+                    converter = self._suffixes.get(format,  ())
             elif (
                     not file
                     or not file.name or file.name == '<stdout>'
@@ -264,9 +273,9 @@ class ConverterRegistry(MagicRegistry):
                 logging.debug(
                     'Fallback to default `%s` format', DEFAULT_TEXT_FORMAT
                 )
-                converter = self._suffixes[DEFAULT_TEXT_FORMAT]
+                converter = (self._names[DEFAULT_TEXT_FORMAT],)
             elif do_open:
-                converter = self._suffixes[DEFAULT_BINARY_FORMAT]
+                converter = (self._names[DEFAULT_BINARY_FORMAT],)
                 logging.debug(
                     'Fallback to default `%s` format', DEFAULT_BINARY_FORMAT
                 )
@@ -316,7 +325,7 @@ class ConverterRegistry(MagicRegistry):
                 _func.formats = formats
                 _func.magic = magic
             # register magic sequences
-            register_magic(_func.name, *_func.formats, magic=_func.magic)(_func)
+            register_magic(*_func.formats, magic=_func.magic, name=_func.name)(_func)
             return _func
 
         return _decorator

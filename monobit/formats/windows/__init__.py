@@ -20,7 +20,7 @@ from .fnt import _normalise_metrics, CHARSET_MAP, CHARSET_REVERSE_MAP
 
 
 @loaders.register(
-    #'fnt',
+    'fnt',
     magic=(FNT_MAGIC_1, FNT_MAGIC_2, FNT_MAGIC_3),
     name='win',
 )

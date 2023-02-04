@@ -14,7 +14,7 @@ from ..container import containers, DEFAULT_ROOT, Container, ContainerFormatErro
 from ..streams import KeepOpen, Stream
 
 
-@containers.register('.zip', magic=(b'PK\x03\x04',))
+@containers.register('.zip', magic=(b'PK\x03\x04',), name='zip')
 class ZipContainer(Container):
     """Zip-file wrapper."""
 

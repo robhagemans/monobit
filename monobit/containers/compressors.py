@@ -63,7 +63,7 @@ class Compressor(Container):
 
 _GZ_MAGIC = b'\x1f\x8b'
 
-@containers.register('.gz', magic=(_GZ_MAGIC,))
+@containers.register('.gz', magic=(_GZ_MAGIC,), name='gzip')
 class GzipCompressor(Compressor):
     compressor = gzip
     error = gzip.BadGzipFile
@@ -72,7 +72,7 @@ class GzipCompressor(Compressor):
 
 _XZ_MAGIC = b'\xFD7zXZ\x00'
 
-@containers.register('.xz', magic=(_XZ_MAGIC,))
+@containers.register('.xz', magic=(_XZ_MAGIC,), name='xzip')
 class XZCompressor(Compressor):
     compressor = lzma
     error = lzma.LZMAError
@@ -80,7 +80,7 @@ class XZCompressor(Compressor):
 
 
 # the magic is a 'maybe'
-@containers.register('.lzma', magic=(b'\x5d\0\0',))
+@containers.register('.lzma', magic=(b'\x5d\0\0',), name='lzma')
 class LzmaCompressor(Compressor):
     compressor = lzma
     error = lzma.LZMAError
@@ -88,7 +88,7 @@ class LzmaCompressor(Compressor):
 
 _BZ2_MAGIC = b'BZh'
 
-@containers.register('.bz2', magic=(_BZ2_MAGIC,))
+@containers.register('.bz2', magic=(_BZ2_MAGIC,), name='bzip2')
 class Bzip2Compressor(Compressor):
     compressor = bz2
     error = OSError

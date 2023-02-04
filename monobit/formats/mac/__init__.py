@@ -49,7 +49,7 @@ def load_lisa(instream, where=None):
     return _load_lisa(instream)
 
 
-@loaders.register(name='iigs')
+@loaders.register('fon', name='iigs')
 def load_iigs(instream, where=None):
     """Load a IIgs font."""
     return _load_iigs(instream)

@@ -90,10 +90,16 @@ class MagicRegistry:
         """Set up registry."""
         self._magic = {}
         self._suffixes = {}
+        self._names = {}
 
-    def register(self, *suffixes, magic=()):
+    def register(self, *suffixes, name='', magic=()):
         """Decorator to register class that handles file type."""
         def decorator(klass):
+            if not name:
+                raise ValueError('No registration name given')
+            if name in self._names:
+                raise ValueError('Registration name `{name} already in use')
+            self._names[name] = klass
             for suffix in suffixes:
                 suffix = normalise_suffix(suffix)
                 if suffix in self._suffixes:

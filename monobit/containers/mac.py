@@ -158,7 +158,7 @@ def _parse_binhex(stream):
 
 
 @containers.register(
-    '.hqx', magic=(
+    '.hqx', name='binhex', magic=(
         b'(This file must be converted',
         b'\r(This file must be converted',
     ),
@@ -256,7 +256,7 @@ def _parse_macbinary(stream):
     return name, data_fork, rsrc_fork
 
 
-@containers.register('.bin')
+@containers.register('.bin', name='macbin')
 class MacBinaryContainer(MacContainer):
     """MacBinary Container."""
     parse = staticmethod(_parse_macbinary)
@@ -341,7 +341,7 @@ def _parse_apple_container(stream):
 
 
 @containers.register(
-    '.as',
+    '.as', name='applesingle',
     magic=(
         _APPLESINGLE_MAGIC.to_bytes(4, 'big'),
     ),
@@ -353,6 +353,7 @@ class AppleSingleContainer(MacContainer):
 
 @containers.register(
     '.adf', #'rsrc',
+    name='appledouble',
     magic=(
         _APPLEDOUBLE_MAGIC.to_bytes(4, 'big'),
     ),

@@ -19,7 +19,7 @@ from .gpifont import convert_os2_font_resource, GPI_MAGIC
 
 
 @loaders.register(
-    #'fnt',
+    'fnt',
     name='gpi',
     magic=(GPI_MAGIC,)
 )
