@@ -41,15 +41,15 @@ class TestCompressed(BaseTester):
         font, *_ = monobit.load(container_file)
         self.assertEqual(len(font.glyphs), 919)
 
-    def test_gzip2(self):
+    def test_double_gzip2(self):
         """Test importing doubly gzip compressed files."""
         self._test_double('gz')
 
-    def test_lzma(self):
+    def test_double_lzma(self):
         """Test importing doubly lzma compressed files."""
         self._test_double('xz')
 
-    def test_bz2(self):
+    def test_double_bz2(self):
         """Test importing doubly bzip2 compressed files."""
         self._test_double('bz2')
 
