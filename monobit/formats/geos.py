@@ -9,6 +9,7 @@ import logging
 from itertools import count
 
 from ..storage import loaders, savers
+from ..streams import Stream
 from ..font import Font
 from ..glyph import Glyph
 from ..raster import Raster
@@ -338,7 +339,7 @@ def _load_geos_cvt(instream, merge_mega):
         logging.debug('Loading font id %d height %d', font_id, height)
         anchor = instream.tell()
         try:
-            font = _load_geos_vlir(instream)
+            font = _load_geos_vlir(Stream(instream, mode='r'))
         except ValueError as e:
             logging.warning(
                 'Could not load font id %d size %d: %s', font_id, height, e
