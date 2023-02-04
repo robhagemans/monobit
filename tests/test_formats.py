@@ -388,6 +388,20 @@ class TestFormats(BaseTester):
         font, *_ = monobit.load(self.font_path / '4x6.hqx')
         self.assertEqual(len(font.glyphs), 195)
 
+    def test_import_iigs(self):
+        """Test importing Apple IIgs font files."""
+        font, *_ = monobit.load(self.font_path / '4x6.iigs', format='iigs')
+        # only 220 glyphs in the font as it's in mac-roman encoding now
+        self.assertEqual(len(font.glyphs), 220)
+
+    def test_export_iigs(self):
+        """Test exporting Apple IIgs font files."""
+        file = self.temp_path / '4x6.iigs'
+        monobit.save(self.fixed4x6, file, format='iigs')
+        font, *_ = monobit.load(file, format='iigs')
+        self.assertEqual(len(font.glyphs), 220)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+
     # Amiga
 
     def test_import_amiga(self):
