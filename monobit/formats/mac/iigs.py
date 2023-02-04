@@ -98,9 +98,9 @@ _IIGS_HEADER = le.Struct(
 # font style:
 # bit 0 = bold
 # bit 1 = italic
-# bit 2 = underline  
-# bit 3 = outline  
-# bit 4 = shadow 
+# bit 2 = underline
+# bit 3 = outline
+# bit 4 = shadow
 #
 _STYLE_MAP = {
     0: 'bold',
@@ -415,7 +415,7 @@ def _save_iigs(outstream, font):
         bytes(_LOC_ENTRY(offset = _offset))
         for _offset in accumulate( (_g.width for _g in glyph_table), initial=0)
     )
- 
+
 
     header = _IIGS_HEADER()
     fontrec = _NFNT_HEADER()
@@ -448,7 +448,7 @@ def _save_iigs(outstream, font):
 
     header.offset = 6
     header.family = family_id
-    header.style = 0 
+    header.style = 0
     header.style += 0b00000001 * (font.weight in ('bold', 'extra-bold', 'ultrabold', 'heavy'))
     header.style += 0b00000010 * (font.slant in ('italic', 'oblique'))
     header.style += 0b00000100 * ('underline' in font.decoration)
@@ -489,5 +489,3 @@ def _save_iigs(outstream, font):
     ])
 
     outstream.write(data)
-
-
