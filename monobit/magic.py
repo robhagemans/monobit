@@ -142,6 +142,8 @@ class MagicRegistry:
                     matches.append(klass)
         suffix = get_suffix(file)
         converters = self._suffixes.get(suffix, ())
+        # don't repeat matches
+        converters = [_c for _c in converters if _c not in matches]
         for converter in converters:
             logging.debug(
                 'Filename suffix `%s`: identifying stream as %s.',
