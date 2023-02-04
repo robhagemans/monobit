@@ -18,10 +18,12 @@ from ...streams import FileFormatError
 
 from itertools import chain, accumulate
 
-#
+
 # IIgs font file is essentially a little-endian MacOS FONT resource,
 # without the resource, plus an extra header.
 # Documented in the Apple IIgs Toolbox Reference Volume II, chapter 16-41
+# https://archive.org/details/AppleIIGSToolboxReferenceVolume2/mode/2up?view=theater
+
 
 _NFNT_HEADER = le.Struct(
     #    {font type -- ignored!}
