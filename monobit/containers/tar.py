@@ -12,7 +12,7 @@ import logging
 from pathlib import Path, PurePosixPath
 
 from ..container import containers, DEFAULT_ROOT, Container, ContainerFormatError
-from ..streams import open_stream, get_bytesio, Stream, KeepOpen
+from ..streams import Stream, KeepOpen
 
 
 @containers.register('.tar')
@@ -24,13 +24,7 @@ class TarContainer(Container):
         # mode really should just be 'r' or 'w'
         mode = mode[:1]
         # reading tarfile needs a seekable stream, drain to buffer if needed
-        # note you can only do this once on the input stream!
-        if (mode == 'r' and not isinstance(file, (str, Path)) and not file.seekable()):
-            # note file is externally provided so we shouldn't close it
-            # but the BytesIO is ours
-            stream = get_bytesio(file.read())
-        else:
-            stream = open_stream(file, mode, overwrite=overwrite)
+        stream = Stream(file, mode, overwrite=overwrite)
         # create the tarfile
         try:
             self._tarfile = tarfile.open(fileobj=stream, mode=mode)

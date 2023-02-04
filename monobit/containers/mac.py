@@ -9,7 +9,7 @@ import logging
 import itertools
 
 from ..container import ContainerFormatError, containers, Container
-from ..streams import Stream, open_stream, get_bytesio
+from ..streams import Stream
 
 
 class MacContainer(Container):
@@ -25,7 +25,7 @@ class MacContainer(Container):
             raise ContainerFormatError(
                 'Writing to Mac resource container is not implemented.'
             )
-        with open_stream(file, mode, overwrite=overwrite) as stream:
+        with Stream(file, mode, overwrite=overwrite) as stream:
             self._fork_name, self._data, self._rsrc = self.parse(stream)
         super().__init__(None, mode, stream.name)
 
@@ -64,7 +64,7 @@ class MacContainer(Container):
             fork = self._rsrc
         if not fork:
             raise FileNotFoundError(filename)
-        newfile = Stream(get_bytesio(fork), mode=mode, name=filename)
+        newfile = Stream.from_data(fork, mode=mode, name=filename)
         return newfile
 
 

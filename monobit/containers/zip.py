@@ -11,7 +11,7 @@ import zipfile
 from pathlib import Path, PurePosixPath
 
 from ..container import containers, DEFAULT_ROOT, Container, ContainerFormatError
-from ..streams import open_stream, get_bytesio, KeepOpen, Stream
+from ..streams import KeepOpen, Stream
 
 
 @containers.register('.zip', magic=(b'PK\x03\x04',))
@@ -23,13 +23,7 @@ class ZipContainer(Container):
         # mode really should just be 'r' or 'w'
         mode = mode[:1]
         # reading zipfile needs a seekable stream, drain to buffer if needed
-        # note you can only do this once on the input stream!
-        if (mode == 'r' and not isinstance(file, (str, Path)) and not file.seekable()):
-            # note file is externally provided so we shouldn't close it
-            # but the BytesIO is ours
-            stream = get_bytesio(file.read())
-        else:
-            stream = open_stream(file, mode, overwrite=overwrite)
+        stream = Stream(file, mode, overwrite=overwrite)
         # create the zipfile
         try:
             self._zip = zipfile.ZipFile(stream, mode, compression=zipfile.ZIP_DEFLATED)

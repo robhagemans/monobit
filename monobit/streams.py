@@ -11,15 +11,13 @@ import logging
 from pathlib import Path
 
 
-
-def open_stream(file, mode, *, where=None, overwrite=False):
-    """Ensure file is a stream of the right type, open or wrap if necessary."""
-    return Stream(file, mode, where=where, overwrite=overwrite)
-
-
 def get_bytesio(bytestring):
     """Workaround as our streams objects require a buffer."""
     return io.BufferedReader(io.BytesIO(bytestring))
+
+def get_stringio(string):
+    """Workaround as our streams objetcs require a buffer."""
+    return io.TextIOWrapper(get_bytesio(string.encode()))
 
 
 class StreamBase:
@@ -103,6 +101,10 @@ class Stream(StreamWrapper):
         if isinstance(file, (str, Path)):
             file = self._open_path(file, mode, where, overwrite)
             self._raw = file
+        elif mode == 'r' and not file.seekable():
+            # we need streams to be seekable - drain to buffer
+            # note you can only do this once on the input stream!
+            file = get_bytesio(file.read())
         else:
             # don't close externally provided stream
             file = KeepOpen(file)
@@ -136,6 +138,17 @@ class Stream(StreamWrapper):
                 )
             file = where.open(path, mode)
         return file
+
+    @classmethod
+    def from_data(cls, data, **kwargs):
+        """BytesIO stream on bytes data."""
+        # Stream requires a buffer so we wrap
+        return cls(get_bytesio(data), **kwargs)
+
+    @classmethod
+    def from_string(cls, text, **kwargs):
+        """StringIO stream on string data."""
+        return cls.from_data(text.encode(), **kwargs)
 
     def _ensure_rw(self):
         """Ensure r/w mode is consistent."""
@@ -212,3 +225,6 @@ def get_name(stream):
     except AttributeError:
         # not all streams have one (e.g. BytesIO)
         return ''
+
+# compatibility
+open_stream = Stream

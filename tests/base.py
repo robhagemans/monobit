@@ -10,15 +10,8 @@ import io
 from pathlib import Path
 
 import monobit
+from monobit.streams import get_stringio
 
-
-def get_stringio(string):
-    """Workaround as our streams objetcs require a buffer."""
-    return io.TextIOWrapper(get_bytesio(string.encode()))
-
-def get_bytesio(bytestring):
-    """Workaround as our streams objects require a buffer."""
-    return io.BufferedReader(io.BytesIO(bytestring))
 
 def assert_text_eq(text, model):
     assert text == model, f'"""\\\n{text}"""\n != \n"""\\\n{model}"""'
