@@ -60,6 +60,7 @@ if ttLib:
         ),
         name='sfnt',
     )
+    # pylint: disable=function-redefined
     def load_sfnt(
             infile, where=None,
             hmtx:bool=False, vmtx:bool=False,

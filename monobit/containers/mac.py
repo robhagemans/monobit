@@ -26,6 +26,7 @@ class MacContainer(Container):
                 'Writing to Mac resource container is not implemented.'
             )
         with Stream(file, mode, overwrite=overwrite) as stream:
+            # pylint: disable=not-callable
             self._fork_name, self._data, self._rsrc = self.parse(stream)
         super().__init__(None, mode, stream.name)
 

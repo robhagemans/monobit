@@ -102,13 +102,16 @@ class _WrappedCType:
 
     def __call__(self, *args, **kwargs):
         """Instantiate a struct variable."""
+        # pylint: disable=no-member
         return self.from_cvalue(self._ctype(*args, **kwargs))
 
     def from_cvalue(self, cvalue):
         """Instantiate a struct variable from a cvalue."""
+        # pylint: disable=no-member
         return self._value_cls.from_cvalue(cvalue, self)
 
     def from_bytes(self, *args):
+        # pylint: disable=no-member
         cvalue = self._ctype.from_buffer_copy(*args)
         return self.from_cvalue(cvalue)
 
@@ -123,6 +126,7 @@ class _WrappedCType:
 
     @property
     def size(self):
+        # pylint: disable=no-member
         return ctypes.sizeof(self._ctype)
 
 
