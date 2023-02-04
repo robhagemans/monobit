@@ -241,6 +241,3 @@ def get_name(stream):
     except AttributeError:
         # not all streams have one (e.g. BytesIO)
         return ''
-
-# compatibility
-open_stream = Stream

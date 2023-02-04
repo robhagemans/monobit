@@ -14,7 +14,7 @@ from .constants import VERSION, CONVERTER_NAME
 from .container import ContainerFormatError, open_container
 from .font import Font
 from .pack import Pack
-from .streams import open_stream
+from .streams import Stream
 from .magic import MagicRegistry, FileFormatError, maybe_text
 from .scripting import scriptable, ScriptArgs, ARG_PREFIX
 from .basetypes import Any
@@ -62,7 +62,7 @@ def open_location(file, mode, where=None, overwrite=False):
             file = Path(file).name
     # we have a stream and maybe a container
     with open_container(where, mode, overwrite=True) as container:
-        with open_stream(file, mode, where=container, overwrite=overwrite) as stream:
+        with Stream(file, mode, where=container, overwrite=overwrite) as stream:
             # see if file is itself a container
             try:
                 with open_container(stream, mode, overwrite=overwrite) as container:
@@ -147,7 +147,7 @@ def _load_all(container, format, **kwargs):
     # try opening a container on input file for read, will raise error if not container format
     for name in container:
         logging.debug('Trying `%s` on `%s`.', name, container.name)
-        with open_stream(name, 'r', where=container) as stream:
+        with Stream(name, 'r', where=container) as stream:
             try:
                 pack = _load_from_location(stream, where=container, format=format, **kwargs)
             except Exception as exc:
@@ -203,7 +203,7 @@ def _save_all(pack, where, format, **kwargs):
         format = format or DEFAULT_TEXT_FORMAT
         filename = where.unused_name(name, format)
         try:
-            with open_stream(filename, 'w', where=where) as stream:
+            with Stream(filename, 'w', where=where) as stream:
                 _save_to_file(Pack(font), stream, where, format, **kwargs)
         except BrokenPipeError:
             pass
