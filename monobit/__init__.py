@@ -15,7 +15,8 @@ from .font import Font, operations as _operations
 from .glyph import Glyph
 from . import formats
 from . import containers as _containers
-from .storage import open_location, load, save, loaders, savers
+from .storage import load, save, loaders, savers
+from .magic import FileFormatError
 from .encoding import charmaps, encoder
 from .taggers import tagmaps
 from .renderer import render

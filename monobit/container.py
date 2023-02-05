@@ -12,6 +12,7 @@ from pathlib import Path
 
 from .magic import MagicRegistry, FileFormatError, get_suffix
 from .streams import StreamBase, Stream
+from .pack import Pack
 
 
 DEFAULT_ROOT = 'fonts'
@@ -30,7 +31,7 @@ def open_container(file, mode, overwrite=False):
     if not file:
         # no-container, will throw errors when used
         return Container(None)
-    container_types = _identify_container(file, mode, overwrite)
+    container_types = _identify_container(file, mode, overwrite)  #, where=
     for container_type in container_types:
         try:
             container = container_type(file, mode, overwrite=overwrite)
@@ -41,25 +42,26 @@ def open_container(file, mode, overwrite=False):
             return container
         except ContainerFormatError as e:
             logging.debug(e)
-    raise ContainerFormatError('No matching container type found.')
+    return Container(None)
 
-
-def _identify_container(file, mode, overwrite):
+def _identify_container(file, mode, overwrite, where=None):
     """Get container of the appropriate type."""
     if not file:
         raise ValueError('No location provided.')
+    if isinstance(file, str):
+        file = Path(file)
     # if it already is a directory there is no choice
-    if isinstance(file, (str, Path)) and Path(file).is_dir():
+    if isinstance(file, Path) and file.is_dir():
         container_types = (Directory,)
     else:
-        container_types = containers.identify(file, do_open=(mode == 'r'))
+        if isinstance(file, Path) and mode == 'r' and where:
+            file = where.open(file)
+        container_types = containers.identify(file)
     if not container_types:
         suffix = get_suffix(file)
         # output to file with no suffix - default to directory
-        if mode == 'w' and not suffix and isinstance(file, (str, Path)):
+        if mode == 'w' and not suffix and isinstance(file, Path):
             return (Directory,)
-        # no container type found
-        #raise ContainerFormatError('Stream is not a known container format.')
     return container_types
 
 
@@ -84,9 +86,49 @@ class Container(StreamBase):
             if filename not in self:
                 return filename
 
+    def load(self, **kwargs):
+        return _load_all(self, **kwargs)
 
-###############################################################################
-# directory
+    def save(self, fonts, **kwargs):
+        return _save_all(fonts, where=self, **kwargs)
+
+
+def _load_all(container, **kwargs):
+    """Open container and load all fonts found in it into one pack."""
+    format = ''
+    logging.info('Reading all from `%s`.', container.name)
+    packs = Pack()
+    # try opening a container on input file for read, will raise error if not container format
+    for name in container:
+        logging.debug('Trying `%s` on `%s`.', name, container.name)
+        with Stream(name, 'r', where=container) as stream:
+            try:
+                pack = _load_from_location(stream, where=container, format=format, **kwargs)
+            except Exception as exc:
+                # if one font fails for any reason, try the next
+                # loaders raise ValueError if unable to parse
+                logging.debug('Could not load `%s`: %s', name, exc)
+            else:
+                packs += Pack(pack)
+    return packs
+
+def _save_all(pack, where, **kwargs):
+    """Save fonts to a container."""
+    format = ''
+    logging.info('Writing all to `%s`.', where.name)
+    for font in pack:
+        # generate unique filename
+        name = font.name.replace(' ', '_')
+        filename = where.unused_name(name, format)
+        try:
+            with Stream(filename, 'w', where=where) as stream:
+                _save_to_file(Pack(font), stream, where, format, **kwargs)
+        except BrokenPipeError:
+            pass
+        except Exception as e:
+            logging.error('Could not save `%s`: %s', filename, e)
+            #raise
+
 
 class Directory(Container):
     """Treat directory tree as a container."""
@@ -96,7 +138,10 @@ class Directory(Container):
         # if empty path, this refers to the whole filesystem
         if not path:
             path = ''
-        self._path = Path(path)
+        elif isinstance(path, Directory):
+            self._path = path._path
+        else:
+            self._path = Path(path)
         # mode really should just be 'r' or 'w'
         mode = mode[:1]
         if mode == 'w':
@@ -115,12 +160,15 @@ class Directory(Container):
             path = pathname.parent
             logging.debug('Creating directory `%s`', self._path / path)
             (self._path / path).mkdir(parents=True, exist_ok=True)
+        logging.debug("Opening file `%s` for mode '%s'.", name, mode)
+        file = open(self._path / pathname, mode + 'b')
         # provide name relative to directory container
-        file = Stream(
-            self._path / pathname, mode=mode,
-            name=str(pathname), overwrite=True
+        stream = Stream(
+            file, mode=mode,
+            name=str(pathname), overwrite=True,
+            where=self,
         )
-        return file
+        return stream
 
     def __iter__(self):
         """List contents."""

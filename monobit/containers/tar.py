@@ -13,6 +13,16 @@ from pathlib import Path, PurePosixPath
 
 from ..container import containers, DEFAULT_ROOT, Container, ContainerFormatError
 from ..streams import Stream, KeepOpen
+from ..storage import loaders, savers
+
+
+@loaders.register('tar', name='tar')
+def load_tar(instream, where=None):
+    return TarContainer(instream).load()
+
+@savers.register(linked=load_tar)
+def save_tar(fonts, outstream, where=None):
+    return TarContainer(outstream, 'w').save(fonts)
 
 
 @containers.register('.tar', name='tar')
@@ -73,10 +83,10 @@ class TarContainer(Container):
         if mode == 'r':
             file = self._tarfile.extractfile(name)
             # .name is not writeable, so we need to wrap
-            return Stream(file, mode, name=name)
+            return Stream(file, mode, name=name, where=self)
         else:
             # stop BytesIO from being closed until we want it to be
-            newfile = KeepOpen(io.BytesIO(), mode=mode, name=name)
+            newfile = KeepOpen(io.BytesIO(), mode=mode, name=name, where=self)
             if name in self._files:
                 logging.warning('Creating multiple files of the same name `%s`.', name)
             self._files.append(newfile)

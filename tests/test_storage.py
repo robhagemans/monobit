@@ -92,8 +92,8 @@ class TestContainers(BaseTester):
     def test_empty(self):
         """Test empty container."""
         container_file = self.font_path / 'empty.zip'
-        fonts = monobit.load(container_file)
-        self.assertEqual(len(fonts), 0)
+        with self.assertRaises(monobit.FileFormatError):
+            fonts = monobit.load(container_file)
 
 
 class TestStreams(BaseTester):

@@ -12,6 +12,17 @@ from pathlib import Path, PurePosixPath
 
 from ..container import containers, DEFAULT_ROOT, Container, ContainerFormatError
 from ..streams import KeepOpen, Stream
+from ..storage import loaders, savers
+
+
+@loaders.register('zip', magic=(b'PK\x03\x04',), name='zip')
+def load_zip(instream, where=None):
+    return ZipContainer(instream).load()
+
+@savers.register(linked=load_zip)
+def save_zip(fonts, outstream, where=None):
+    return ZipContainer(outstream, 'w').save(fonts)
+
 
 
 @containers.register('.zip', magic=(b'PK\x03\x04',), name='zip')
@@ -71,10 +82,10 @@ class ZipContainer(Container):
         # always open as binary
         logging.debug('Opening file `%s` on zip container `%s`.', filename, self.name)
         if mode == 'r':
-            return Stream(self._zip.open(filename, mode), mode=mode)
+            return Stream(self._zip.open(filename, mode), mode=mode, where=self)
         else:
             # stop BytesIO from being closed until we want it to be
-            newfile = KeepOpen(io.BytesIO(), mode=mode, name=filename)
+            newfile = KeepOpen(io.BytesIO(), mode=mode, name=filename, where=self)
             if filename in self._files:
                 logging.warning('Creating multiple files of the same name `%s`.', filename)
             self._files.append(newfile)

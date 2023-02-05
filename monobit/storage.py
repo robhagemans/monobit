@@ -11,10 +11,10 @@ from pathlib import Path
 from contextlib import contextmanager
 
 from .constants import VERSION, CONVERTER_NAME
-from .container import ContainerFormatError, open_container
+from .container import open_container, Container, Directory
 from .font import Font
 from .pack import Pack
-from .streams import Stream
+from .streams import Stream, StreamBase, KeepOpen
 from .magic import MagicRegistry, FileFormatError, maybe_text
 from .scripting import scriptable, ScriptArgs, ARG_PREFIX
 from .basetypes import Any
@@ -26,53 +26,36 @@ DEFAULT_BINARY_FORMAT = 'raw'
 
 @contextmanager
 def open_location(file, mode, where=None, overwrite=False):
-    """
-    Open a binary stream on a container or filesystem
-    both `file` and `where` may be Streams, files, or file/directory names
-    `where` may also be a Container
-    if `where` is empty, the whole filesystem is taken as the container/location.
-    if `overwrite` is True, will overwrite `file`. Note that `where` is always considered overwritable
-    returns a Steam and a Container object
-    """
+    """Parse file specification, open file and container."""
     if mode not in ('r', 'w'):
         raise ValueError(f"Unsupported mode '{mode}'.")
     if not file and not where:
         raise ValueError(f'No location provided.')
+    if isinstance(file, str):
+        file = Path(file)
     # interpret incomplete arguments
-    # no choice - can't open a stream on a directory
-    if isinstance(file, (str, Path)) and Path(file).is_dir():
-        where = file
-        file = None
-    # only container location provided - traverse into it
-    if where and not file:
-        with open_container(where, mode, overwrite=True) as container:
-            # empty file parameter means 'load/save all'
-            yield None, container
-        return
-    if not where and isinstance(file, (str, Path)):
-        # see if file is itself a container
-        # don't open containers if we only have a stream - we don't want surprise directory creation
-        try:
-            with open_container(file, mode, overwrite=overwrite) as container:
-                yield None, container
-            return
-        except ContainerFormatError as e:
-            # file is not itself a container, use enclosing dir as container
-            where = Path(file).parent
-            file = Path(file).name
-    # we have a stream and maybe a container
-    with open_container(where, mode, overwrite=True) as container:
-        with Stream(file, mode, where=container, overwrite=overwrite) as stream:
-            # see if file is itself a container
-            try:
-                with open_container(stream, mode, overwrite=overwrite) as container:
-                    yield None, container
-                return
-            except ContainerFormatError as e:
-                logging.debug(e)
-                pass
-            # infile is not a container, load/save single file
+    if isinstance(file, Path):
+        if file.is_dir():
+            where = file
+            file = None
+        elif not where:
+            where = file.parent
+            file = Path(file.name)
+    container = open_container(where, mode, overwrite=True)
+    with container:
+        if not file:
+            stream = container
             yield stream, container
+        elif isinstance(file, Path):
+            stream = container.open(file, mode=mode)
+            with stream:
+                yield stream, container
+        else:
+            # we didn't open the stream, so we don't own it
+            # we neeed KeepOpen for when the yielded object goes out of scope in the caller
+            stream = Stream(KeepOpen(file), mode=mode)
+            yield stream, container
+
 
 
 ##############################################################################
@@ -96,17 +79,14 @@ def _load_from_location(infile, where, format, **kwargs):
     """Read font(s) from file."""
     # if container/file provided as string or steam, open them
     with open_location(infile, 'r', where=where) as (stream, container):
-        # infile not provided - load all from container
-        if not stream:
-            return _load_all(container, format, **kwargs)
         return _load_from_file(stream, container, format, **kwargs)
 
 def _load_from_file(instream, where, format, **kwargs):
     """Open file and load font(s) from it."""
     # identify file type
-    fitting_loaders = loaders.get_for(instream, format=format, do_open=True)
+    fitting_loaders = loaders.get_for(instream, format=format)
     if not fitting_loaders:
-        raise FileFormatError('Cannot load from format `{}`.'.format(format)) from None
+        raise FileFormatError(f'Cannot load from format `{format}`')
     for loader in fitting_loaders:
         instream.seek(0)
         logging.info('Loading `%s` on `%s` as %s', instream.name, where.name, loader.name)
@@ -139,24 +119,7 @@ def _load_from_file(instream, where, format, **kwargs):
             )
             for _font in pack
         )
-
-def _load_all(container, format, **kwargs):
-    """Open container and load all fonts found in it into one pack."""
-    logging.info('Reading all from `%s`.', container.name)
-    packs = Pack()
-    # try opening a container on input file for read, will raise error if not container format
-    for name in container:
-        logging.debug('Trying `%s` on `%s`.', name, container.name)
-        with Stream(name, 'r', where=container) as stream:
-            try:
-                pack = _load_from_location(stream, where=container, format=format, **kwargs)
-            except Exception as exc:
-                # if one font fails for any reason, try the next
-                # loaders raise ValueError if unable to parse
-                logging.debug('Could not load `%s`: %s', name, exc)
-            else:
-                packs += Pack(pack)
-    return packs
+    raise FileFormatError('No fonts found in file')
 
 
 ##############################################################################
@@ -164,7 +127,7 @@ def _load_all(container, format, **kwargs):
 
 
 
-@scriptable(unknown_args='passthrough', record=False, pack_operation=True)
+#@scriptable(unknown_args='passthrough', record=False, pack_operation=True)
 def save(
         pack_or_font,
         outfile:Any='', *,
@@ -188,32 +151,12 @@ def save(
         # these may come from filesystem names using 'surrogateescape'
         sys.stdout.reconfigure(errors='replace')
     with open_location(outfile, 'w', where=where, overwrite=overwrite) as (stream, container):
-        if not stream:
-            _save_all(pack, container, format, **kwargs)
-        else:
-            _save_to_file(pack, stream, container, format, **kwargs)
+        _save_to_file(pack, stream, container, format, **kwargs)
     return pack_or_font
-
-def _save_all(pack, where, format, **kwargs):
-    """Save fonts to a container."""
-    logging.info('Writing all to `%s`.', where.name)
-    for font in pack:
-        # generate unique filename
-        name = font.name.replace(' ', '_')
-        format = format or DEFAULT_TEXT_FORMAT
-        filename = where.unused_name(name, format)
-        try:
-            with Stream(filename, 'w', where=where) as stream:
-                _save_to_file(Pack(font), stream, where, format, **kwargs)
-        except BrokenPipeError:
-            pass
-        except Exception as e:
-            logging.error('Could not save `%s`: %s', filename, e)
-            #raise
 
 def _save_to_file(pack, outfile, where, format, **kwargs):
     """Save fonts to a single file."""
-    matching_savers = savers.get_for(outfile, format=format, do_open=False)
+    matching_savers = savers.get_for(outfile, format=format)
     if not matching_savers:
         raise ValueError(f'Format specification `{format}` not recognised')
     if len(matching_savers) > 1:
@@ -238,7 +181,7 @@ class ConverterRegistry(MagicRegistry):
         super().__init__()
         self._func_name = func_name
 
-    def get_for_location(self, file, format='', where='', do_open=True):
+    def get_for_location(self, file, format='', where=''):
         """Get loader/saver for font file location."""
         if not file and not where:
             return self.get_for(format=format)
@@ -246,19 +189,19 @@ class ConverterRegistry(MagicRegistry):
             # if container/file provided as string or steam, open them to check magic bytes
             with open_location(file, 'r', where=where) as (stream, container):
                 # identify file type if possible
-                return self.get_for(stream, format=format, do_open=do_open)
+                return self.get_for(stream, format=format)
         else:
-            return self.get_for(file, format=format, do_open=do_open)
+            return self.get_for(file, format=format)
 
 
-    def get_for(self, file=None, format='', do_open=False):
+    def get_for(self, file=None, format=''):
         """
         Get loader/saver function for this format.
         infile must be a Stream or empty
         """
         converter = ()
         if not format:
-            converter = self.identify(file, do_open=do_open)
+            converter = self.identify(file)
         if not converter:
             if format:
                 try:
@@ -268,13 +211,13 @@ class ConverterRegistry(MagicRegistry):
             elif (
                     not file
                     or not file.name or file.name == '<stdout>'
-                    or (do_open and maybe_text(file))
+                    or (file.mode == 'r' and maybe_text(file))
                 ):
                 logging.debug(
                     'Fallback to default `%s` format', DEFAULT_TEXT_FORMAT
                 )
                 converter = (self._names[DEFAULT_TEXT_FORMAT],)
-            elif do_open:
+            elif file.mode == 'r':
                 converter = (self._names[DEFAULT_BINARY_FORMAT],)
                 logging.debug(
                     'Fallback to default `%s` format', DEFAULT_BINARY_FORMAT
@@ -333,3 +276,12 @@ class ConverterRegistry(MagicRegistry):
 
 loaders = ConverterRegistry('load')
 savers = ConverterRegistry('save')
+
+
+@loaders.register(name='dir')
+def load_dir(instream, where=None):
+    return Directory(instream).load()
+
+@savers.register(linked=load_dir)
+def save_dir(fonts, outstream, where=None):
+    return Directory(outstream).save(fonts)
