@@ -16,12 +16,12 @@ from .streams import StreamBase, Stream
 
 DEFAULT_ROOT = 'fonts'
 
+containers = MagicRegistry()
+
 
 class ContainerFormatError(FileFormatError):
     """Incorrect container format."""
 
-
-containers = MagicRegistry()
 
 def open_container(file, mode, overwrite=False):
     """Open container of the appropriate type."""
@@ -34,11 +34,15 @@ def open_container(file, mode, overwrite=False):
     for container_type in container_types:
         try:
             container = container_type(file, mode, overwrite=overwrite)
-            logging.debug("Opening %s container `%s` for '%s'.", container_type.__name__, container.name, mode)
+            logging.debug(
+                "Opening %s container `%s` for '%s'.",
+                container_type.__name__, container.name, mode
+            )
             return container
         except ContainerFormatError as e:
             logging.debug(e)
     raise ContainerFormatError('No matching container type found.')
+
 
 def _identify_container(file, mode, overwrite):
     """Get container of the appropriate type."""
@@ -81,7 +85,7 @@ class Container(StreamBase):
                 return filename
 
 
-###################################################################################################
+###############################################################################
 # directory
 
 class Directory(Container):
@@ -97,7 +101,8 @@ class Directory(Container):
         mode = mode[:1]
         if mode == 'w':
             logging.debug('Creating directory `%s`', self._path)
-            # exist_ok raises FileExistsError only if the *target* already exists, not the parents
+            # exist_ok raises FileExistsError only if the *target* already
+            # exists, not the parents
             self._path.mkdir(parents=True, exist_ok=overwrite)
         super().__init__(None, mode, str(self._path))
 
@@ -111,7 +116,10 @@ class Directory(Container):
             logging.debug('Creating directory `%s`', self._path / path)
             (self._path / path).mkdir(parents=True, exist_ok=True)
         # provide name relative to directory container
-        file = Stream(self._path / pathname, mode=mode, name=str(pathname), overwrite=True)
+        file = Stream(
+            self._path / pathname, mode=mode,
+            name=str(pathname), overwrite=True
+        )
         return file
 
     def __iter__(self):
