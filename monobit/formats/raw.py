@@ -17,7 +17,7 @@ from ..magic import FileFormatError
 from ..basetypes import Coord
 
 
-@loaders.register('bin', 'rom', name='raw')
+@loaders.register(name='raw')
 def load_binary(
         instream, where=None, *,
         cell:Coord=(8, 8), count:int=-1, offset:int=0, padding:int=0,
