@@ -8,65 +8,67 @@ licence: https://opensource.org/licenses/MIT
 import logging
 import itertools
 
-from ..container import ContainerFormatError, containers, Container
 from ..streams import Stream
+from ..storage import loaders, load
+from ..magic import FileFormatError
 
 
-class MacContainer(Container):
-    """Mac data/resource fork container."""
+@loaders.register(
+    'hqx', name='binhex', magic=(
+        b'(This file must be converted',
+        b'\r(This file must be converted',
+    ),
+)
+def load_binhex(instream, where=None, format='', **kwargs):
+    """BinHex 4.0 loader."""
+    return _load_macforks(_parse_binhex, instream, **kwargs)
 
-    parse = None
+@loaders.register('bin', name='macbin')
+def load_macbin(instream, where=None, format='', **kwargs):
+    """MacBinary loader."""
+    return _load_macforks(_parse_macbinary, instream, **kwargs)
 
-    def __init__(self, file, mode='r', *, overwrite=False):
-        """Create wrapper."""
-        # mode really should just be 'r' or 'w'
-        mode = mode[:1]
-        if mode != 'r':
-            raise ContainerFormatError(
-                'Writing to Mac resource container is not implemented.'
-            )
-        with Stream(file, mode, overwrite=overwrite) as stream:
-            # pylint: disable=not-callable
-            self._fork_name, self._data, self._rsrc = self.parse(stream)
-        super().__init__(None, mode, stream.name)
 
-    def __iter__(self):
-        """List contents."""
-        contents = []
-        if self._data:
-            contents.append(f'{self._fork_name}.data')
-        if self._rsrc:
-            contents.append(f'{self._fork_name}.rsrc')
-        return iter(contents)
+_APPLESINGLE_MAGIC = 0x00051600
+_APPLEDOUBLE_MAGIC = 0x00051607
 
-    def open(self, name, mode):
-        """Open a stream in the container."""
-        # using posixpath for internal paths in the archive
-        # as forward slash should always work, but backslash would fail on unix
-        mode = mode[:1]
-        if mode != 'r':
-            raise ContainerFormatError(
-                'Writing to Mac resource container is not implemented.'
-            )
-        filename = str(name)[-4:].lower()
-        if filename not in ('data', 'rsrc'):
-            raise FileNotFoundError(
-                'Stream name on Mac resource container must end with `rsrc` or `data`'
-            )
-        filename = f'{self._fork_name}.{filename}'
-        # always open as binary
-        logging.debug(
-            'Opening fork `%s` on %s `%s`.', filename,
-            type(self).__name__, self.name
-        )
-        if filename.endswith('data'):
-            fork = self._data
-        else:
-            fork = self._rsrc
-        if not fork:
-            raise FileNotFoundError(filename)
-        newfile = Stream.from_data(fork, mode=mode, name=filename)
-        return newfile
+
+@loaders.register(
+    'as', name='applesingle',
+    magic=(
+        _APPLESINGLE_MAGIC.to_bytes(4, 'big'),
+    ),
+)
+def load_single(instream, where=None, format='', **kwargs):
+    """AppleSingle loader."""
+    return _load_macforks(_parse_apple_container, instream, **kwargs)
+
+
+@loaders.register(
+    'adf', #'rsrc',
+    name='appledouble',
+    magic=(
+        _APPLEDOUBLE_MAGIC.to_bytes(4, 'big'),
+    ),
+)
+def load_double(instream, where=None, format='', **kwargs):
+    """AppleDouble loader."""
+    return _load_macforks(_parse_apple_container, instream, **kwargs)
+
+
+def _load_macforks(parser, instream, **kwargs):
+    """Resource and data foork loader."""
+    name, data, rsrc = parser(instream)
+    fonts = []
+    for fork in rsrc, data:
+        if fork:
+            stream = Stream.from_data(fork, mode='r', name=f'{name}')
+            try:
+                forkfonts = load(stream, **kwargs)
+            except FileFormatError:
+                pass
+            fonts.extend(forkfonts)
+    return fonts
 
 
 ###############################################################################
@@ -157,17 +159,6 @@ def _parse_binhex(stream):
     return name, data, rsrc
 
 
-@containers.register(
-    '.hqx', name='binhex', magic=(
-        b'(This file must be converted',
-        b'\r(This file must be converted',
-    ),
-)
-class BinHexContainer(MacContainer):
-    """BinHex 4.0 Container."""
-    parse = staticmethod(_parse_binhex)
-
-
 ##############################################################################
 # MacBinary container
 # v1: https://www.cryer.co.uk/file-types/b/bin_/original_mac_binary_format_proposal.htm
@@ -256,21 +247,12 @@ def _parse_macbinary(stream):
     return name, data_fork, rsrc_fork
 
 
-@containers.register('.bin', name='macbin')
-class MacBinaryContainer(MacContainer):
-    """MacBinary Container."""
-    parse = staticmethod(_parse_macbinary)
-
-
 ##############################################################################
 # AppleSingle/AppleDouble container
 # v1: see https://web.archive.org/web/20160304101440/http://kaiser-edv.de/documents/Applesingle_AppleDouble_v1.html
 # v2: https://web.archive.org/web/20160303215152/http://kaiser-edv.de/documents/AppleSingle_AppleDouble.pdf
 # the difference between v1 and v2 affects the file info sections
 # not the resource fork which is what we care about
-
-_APPLESINGLE_MAGIC = 0x00051600
-_APPLEDOUBLE_MAGIC = 0x00051607
 
 
 _APPLE_HEADER = be.Struct(
@@ -337,27 +319,3 @@ def _parse_apple_container(stream):
             name = data[entry.offset:entry.offset+entry.length]
             name = name.decode('mac-roman')
     return name, data_fork, rsrc_fork
-
-
-
-@containers.register(
-    '.as', name='applesingle',
-    magic=(
-        _APPLESINGLE_MAGIC.to_bytes(4, 'big'),
-    ),
-)
-class AppleSingleContainer(MacContainer):
-    """AppleSingle Container."""
-    parse = staticmethod(_parse_apple_container)
-
-
-@containers.register(
-    '.adf', #'rsrc',
-    name='appledouble',
-    magic=(
-        _APPLEDOUBLE_MAGIC.to_bytes(4, 'big'),
-    ),
-)
-class AppleDoubleContainer(MacContainer):
-    """AppleDouble Container."""
-    parse = staticmethod(_parse_apple_container)
