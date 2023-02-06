@@ -75,7 +75,12 @@ def _load_yaff(text_stream):
     while has_next_section:
         reader = YaffReader()
         has_next_section = reader.parse_section(text_stream)
-        fonts.append(reader.get_font())
+        font = reader.get_font()
+        # if no glyphs, ignore it - may not be yaff at all
+        if font.glyphs:
+            fonts.append(font)
+    if not fonts:
+        raise FileFormatError('No fonts found in file')
     return fonts
 
 
