@@ -33,7 +33,6 @@ def load_hurt(
     renumber: set codepoint to ordinal value in file
     """
     jhf_data = _read_hurt(instream, renumber)
-    logging.debug(jhf_data)
     font = _convert_hurt(jhf_data, baseline, top, bottom)
     return font
 
