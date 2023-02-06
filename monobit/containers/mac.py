@@ -9,7 +9,7 @@ import logging
 import itertools
 
 from ..streams import Stream
-from ..storage import loaders, load
+from ..storage import loaders, load_stream
 from ..magic import FileFormatError
 
 
@@ -64,7 +64,7 @@ def _load_macforks(parser, instream, **kwargs):
         if fork:
             stream = Stream.from_data(fork, mode='r', name=f'{name}')
             try:
-                forkfonts = load(stream, **kwargs)
+                forkfonts = load_stream(stream, **kwargs)
             except FileFormatError:
                 pass
             fonts.extend(forkfonts)

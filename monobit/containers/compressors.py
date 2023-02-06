@@ -11,7 +11,7 @@ import gzip
 import lzma
 import bz2
 
-from ..storage import loaders, savers, load, save
+from ..storage import loaders, savers, load_stream, save_stream
 from ..streams import Stream
 from ..magic import FileFormatError
 
@@ -41,9 +41,10 @@ class Compressor:
         )
         try:
             with wrapped:
-                return load(wrapped, where=where, **kwargs)
+                return load_stream(wrapped, **kwargs)
         except cls.error as e:
             raise FileFormatError(e)
+
 
     @classmethod
     def save(cls, fonts, outstream, where=None, format='', **kwargs):
@@ -55,7 +56,7 @@ class Compressor:
         )
         try:
             with wrapped:
-                return save(fonts, wrapped, where=where, **kwargs)
+                return save_stream(fonts, wrapped, **kwargs)
         except cls.error as e:
             raise FileFormatError(e)
 

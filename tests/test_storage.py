@@ -6,6 +6,7 @@ storage tests
 import os
 import io
 import unittest
+import logging
 
 import monobit
 from .base import BaseTester

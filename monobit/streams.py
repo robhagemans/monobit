@@ -31,10 +31,13 @@ class StreamBase:
             if not self.name:
                 self.name = get_name(stream)
             if not self.mode:
-                if self._stream.readable():
-                    self.mode = 'r'
-                else:
-                    self.mode = 'w'
+                try:
+                    self.mode = self._stream.mode[:1]
+                except AttributeError:
+                    if self._stream.readable():
+                        self.mode = 'r'
+                    else:
+                        self.mode = 'w'
         self._refcount = 0
         # embedding container
         self.where = where

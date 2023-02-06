@@ -11,21 +11,23 @@ import tarfile
 import logging
 from pathlib import Path, PurePosixPath
 
-from ..container import containers, DEFAULT_ROOT, Container, ContainerFormatError
+from ..container import DEFAULT_ROOT, Container
 from ..streams import Stream, KeepOpen
-from ..storage import loaders, savers
+from ..storage import loaders, savers, load_all, save_all
+from ..magic import FileFormatError
 
 
 @loaders.register('tar', name='tar')
 def load_tar(instream, where=None):
-    return TarContainer(instream).load()
+    with TarContainer(instream) as container:
+        return load_all(container)
 
 @savers.register(linked=load_tar)
 def save_tar(fonts, outstream, where=None):
-    return TarContainer(outstream, 'w').save(fonts)
+    with TarContainer(outstream, 'w') as container:
+        return save_all(fonts, container)
 
 
-@containers.register('.tar', name='tar')
 class TarContainer(Container):
     """Tar-file wrapper."""
 
@@ -33,14 +35,14 @@ class TarContainer(Container):
         """Create wrapper."""
         # mode really should just be 'r' or 'w'
         mode = mode[:1]
+        super().__init__(mode, file.name)
         # reading tarfile needs a seekable stream, drain to buffer if needed
         stream = Stream(file, mode, overwrite=overwrite)
         # create the tarfile
         try:
             self._tarfile = tarfile.open(fileobj=stream, mode=mode)
         except tarfile.ReadError as exc:
-            raise ContainerFormatError(exc) from exc
-        super().__init__(stream, mode, self._tarfile.name)
+            raise FileFormatError(exc) from exc
         # on output, put all files in a directory with the same name as the archive (without suffix)
         if mode == 'w':
             self._root = Path(self.name).stem or DEFAULT_ROOT
@@ -86,7 +88,7 @@ class TarContainer(Container):
             return Stream(file, mode, name=name, where=self)
         else:
             # stop BytesIO from being closed until we want it to be
-            newfile = KeepOpen(io.BytesIO(), mode=mode, name=name, where=self)
+            newfile = Stream(KeepOpen(io.BytesIO()), mode=mode, name=name, where=self)
             if name in self._files:
                 logging.warning('Creating multiple files of the same name `%s`.', name)
             self._files.append(newfile)
