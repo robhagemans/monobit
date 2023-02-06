@@ -26,9 +26,9 @@ from ..properties import normalise_property
 
 
 @loaders.register('yaff', 'yaffs', magic=(b'---',), name='yaff')
-def load_yaff(instream, where=None):
+def load_yaff(instream, where=None, allow_empty:bool=False):
     """Load font from a monobit .yaff file."""
-    return _load_yaff(instream.text)
+    return _load_yaff(instream.text, allow_empty)
 
 @savers.register(linked=load_yaff)
 def save_yaff(fonts, outstream, where=None):
@@ -67,7 +67,7 @@ class YaffParams:
 # read file
 
 
-def _load_yaff(text_stream):
+def _load_yaff(text_stream, allow_empty):
     """Parse a yaff/yaffs file."""
     reader = YaffReader()
     fonts = []
@@ -77,7 +77,7 @@ def _load_yaff(text_stream):
         has_next_section = reader.parse_section(text_stream)
         font = reader.get_font()
         # if no glyphs, ignore it - may not be yaff at all
-        if font.glyphs:
+        if font.glyphs or allow_empty:
             fonts.append(font)
     if not fonts:
         raise FileFormatError('No fonts found in file')

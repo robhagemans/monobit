@@ -213,7 +213,7 @@ leading: 3
 
     def test_properties(self):
         file = get_stringio(self.props)
-        f,  *_ = monobit.load(file)
+        f,  *_ = monobit.load(file, allow_empty=True)
         # recognised property
         assert f.line_width == 1
         # compatibility synonym
@@ -231,7 +231,7 @@ multi-line:
 
     def test_multiline_properties(self):
         file = get_stringio(self.multiline)
-        f,  *_ = monobit.load(file)
+        f,  *_ = monobit.load(file, allow_empty=True)
         assert f.single_line == 'single line'
         assert f.multi_line == 'this is a\n  multiline  \nproperty'
 
