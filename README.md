@@ -115,6 +115,7 @@ Supported bitmap formats
 | Extended Hex          | `hext`     |          | `.hex`                      |               | ✔     | ✔     |
 | hexdraw               | `hexdraw`  |          | `.draw`                     |               | ✔     | ✔     |
 | Bitmap image [P]      | `image`    |          | `.png` `.gif` `.bmp`        |               | ✔     | ✔     |
+| Apple IIgs font       | `iigs`     |          | `.fon`                      | Apple IIgs    | ✔     | ✔     |
 | JSON coded binary     | `json`     |          | `.json`                     |               | ✔     | ✔     |
 | Bare codepage         | `kbd`      |          | `.cp`                       | DOS, Linux    | ✔     | ✔     |
 | REXXCOM Font Mania    | `mania`    |          | `.com`                      | DOS           | ✔     |       |
