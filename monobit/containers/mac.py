@@ -234,7 +234,7 @@ def _parse_macbinary(stream):
     header = _MACBINARY_HEADER.from_bytes(data)
     ofs = 128
     if header.old_version != 0:
-        raise ContainerFormatError(
+        raise FileFormatError(
             'Not a MacBinary file: incorrect version field'
             f' ({header.old_version}).'
         )
@@ -301,7 +301,7 @@ def _parse_apple_container(stream):
     elif header.magic == _APPLEDOUBLE_MAGIC:
         container = 'AppleDouble'
     else:
-        raise ContainerFormatError('Not an AppleSingle or AppleDouble file.')
+        raise FileFormatError('Not an AppleSingle or AppleDouble file.')
     entry_array = _APPLE_ENTRY.array(header.number_entities)
     entries = entry_array.from_bytes(data, _APPLE_HEADER.size)
     name, data_fork, rsrc_fork = '', b'', b''

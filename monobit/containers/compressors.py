@@ -19,11 +19,13 @@ from ..magic import FileFormatError
 class Compressor:
     """Base class for single-file compression helpers."""
 
+    name = ''
     format = ''
     compressor = None
     # error raised for bad format
     error = Exception
     magic = b''
+    suffixes = ()
     must_have_magic = True
 
     @classmethod
