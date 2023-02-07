@@ -14,6 +14,7 @@ from .constants import VERSION, CONVERTER_NAME
 from .font import Font
 from .pack import Pack
 from .streams import Stream, StreamBase, KeepOpen
+from .container import Container, Directory
 from .magic import MagicRegistry, FileFormatError, maybe_text
 from .scripting import scriptable, ScriptArgs, ARG_PREFIX
 from .basetypes import Any
@@ -114,6 +115,27 @@ def load_stream(instream, format='', **kwargs):
     raise FileFormatError('No fonts found in file')
 
 
+def load_all(container, **kwargs):
+    """Open container and load all fonts found in it into one pack."""
+    format = ''
+    logging.info('Reading all from `%s`.', container.name)
+    packs = Pack()
+    names = list(container)
+    for name in container:
+        logging.debug('Trying `%s` on `%s`.', name, container.name)
+        stream = container.open(name, 'r')
+        with stream:
+            try:
+                pack = load_stream(
+                    stream, format=format, **kwargs
+                )
+            except FileFormatError as exc:
+                logging.debug('Could not load `%s`: %s', name, exc)
+            else:
+                packs += Pack(pack)
+    return packs
+
+
 ##############################################################################
 # saving
 
@@ -161,6 +183,28 @@ def save_stream(pack, outstream, format='', **kwargs):
     saver(pack, outstream, where, **kwargs)
 
 
+def save_all(pack, container, **kwargs):
+    """Save fonts to a container."""
+    suffixes = Path(container.name).suffixes
+    if len(suffixes) > 1:
+        format = suffixes[-2][1:]
+    else:
+        format = ''
+    logging.info('Writing all to `%s`.', container.name)
+    for font in pack:
+        # generate unique filename
+        name = font.name.replace(' ', '_')
+        filename = container.unused_name(name, format)
+        stream = container.open(filename, 'w')
+        try:
+            with stream:
+                save_stream(Pack(font), stream, format=format, **kwargs)
+        except BrokenPipeError:
+            pass
+        except FileFormatError as e:
+            logging.error('Could not save `%s`: %s', filename, e)
+
+
 ##############################################################################
 # loader/saver registry
 
@@ -172,11 +216,11 @@ class ConverterRegistry(MagicRegistry):
         super().__init__()
         self._func_name = func_name
 
-    def get_for_location(self, file, format=''):
+    def get_for_location(self, file, mode, format=''):
         """Get loader/saver for font file location."""
         if not file:
             return self.get_for(format=format)
-        with open_location(file) as stream:
+        with open_location(file, mode) as stream:
             return self.get_for(file, format=format)
 
     def get_for(self, file=None, format=''):
@@ -261,153 +305,3 @@ class ConverterRegistry(MagicRegistry):
 
 loaders = ConverterRegistry('load')
 savers = ConverterRegistry('save')
-
-###############################################################################
-
-import os
-import itertools
-
-
-class Container:
-    """Base class for container types."""
-
-    def __init__(self, mode='r', name=''):
-        self.mode = mode[:1]
-        self.name = name
-        self.refcount = 0
-        self.closed = False
-
-    def __iter__(self):
-        """List contents."""
-        raise NotImplementedError
-
-    def __enter__(self):
-        # we don't support nesting the same archive
-        assert self.refcount == 0
-        self.refcount += 1
-        logging.debug('Entering archive %r', self)
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        if exc_type == BrokenPipeError:
-            return True
-        logging.debug('Exiting archive %r', self)
-        self.close()
-
-    def close(self):
-        """Close the archive."""
-        self.closed = True
-
-    def open(self, name, mode):
-        """Open a binary stream in the container."""
-        raise NotImplementedError
-
-    def unused_name(self, stem, suffix):
-        """Generate unique name for container file."""
-        for i in itertools.count():
-            if i:
-                filename = '{}.{}.{}'.format(stem, i, suffix)
-            else:
-                filename = '{}.{}'.format(stem, suffix)
-            if filename not in self:
-                return filename
-
-
-def load_all(container, **kwargs):
-    """Open container and load all fonts found in it into one pack."""
-    format = ''
-    logging.info('Reading all from `%s`.', container.name)
-    packs = Pack()
-    names = list(container)
-    for name in container:
-        logging.debug('Trying `%s` on `%s`.', name, container.name)
-        stream = container.open(name, 'r')
-        with stream:
-            try:
-                pack = load_stream(
-                    stream, format=format, **kwargs
-                )
-            except FileFormatError as exc:
-                logging.debug('Could not load `%s`: %s', name, exc)
-            else:
-                packs += Pack(pack)
-    return packs
-
-def save_all(pack, container, **kwargs):
-    """Save fonts to a container."""
-    suffixes = Path(container.name).suffixes
-    if len(suffixes) > 1:
-        format = suffixes[-2][1:]
-    else:
-        format = ''
-    logging.info('Writing all to `%s`.', container.name)
-    for font in pack:
-        # generate unique filename
-        name = font.name.replace(' ', '_')
-        filename = container.unused_name(name, format)
-        stream = container.open(filename, 'w')
-        try:
-            with stream:
-                save_stream(Pack(font), stream, format=format, **kwargs)
-        except BrokenPipeError:
-            pass
-        except FileFormatError as e:
-            logging.error('Could not save `%s`: %s', filename, e)
-
-
-###############################################################################
-
-class Directory(Container):
-    """Treat directory tree as a container."""
-
-    def __init__(self, path, mode='r', *, overwrite=False):
-        """Create directory wrapper."""
-        # if empty path, this refers to the whole filesystem
-        if not path:
-            path = ''
-        elif isinstance(path, Directory):
-            self._path = path._path
-        else:
-            self._path = Path(path)
-        # mode really should just be 'r' or 'w'
-        mode = mode[:1]
-        if mode == 'w':
-            logging.debug('Creating directory `%s`', self._path)
-            # exist_ok raises FileExistsError only if the *target* already
-            # exists, not the parents
-            self._path.mkdir(parents=True, exist_ok=overwrite)
-        super().__init__(mode, str(self._path))
-
-    def open(self, name, mode):
-        """Open a stream in the container."""
-        # mode in 'r', 'w'
-        mode = mode[:1]
-        pathname = Path(name)
-        if mode == 'w':
-            path = pathname.parent
-            logging.debug('Creating directory `%s`', self._path / path)
-            (self._path / path).mkdir(parents=True, exist_ok=True)
-        logging.debug("Opening file `%s` for mode '%s'.", name, mode)
-        file = open(self._path / pathname, mode + 'b')
-        # provide name relative to directory container
-        stream = Stream(
-            file, mode=mode,
-            name=str(pathname), overwrite=True,
-            where=self,
-        )
-        return stream
-
-    def __iter__(self):
-        """List contents."""
-        # don't walk the whole filesystem - no path is no contents
-        if not self._path:
-            return ()
-        return (
-            str((Path(_r) / _f).relative_to(self._path))
-            for _r, _, _files in os.walk(self._path)
-            for _f in _files
-        )
-
-    def __contains__(self, name):
-        """File exists in container."""
-        return (self._path / name).exists()
