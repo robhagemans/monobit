@@ -17,25 +17,24 @@ from ..font import Font
 from ..glyph import Glyph
 
 
-
 @loaders.register('hext', name='hext')
-def load_hext(instream, where=None):
+def load_hext(instream):
     """Load 8xN multi-cell font from PC-BASIC extended .HEX file."""
     return _load_hex(instream.text)
 
 @loaders.register('hex', name='hex')
-def load_hex(instream, where=None):
+def load_hex(instream):
     """Load 8x16 multi-cell font from Unifont .HEX file."""
     return _load_hex(instream.text)
 
 @savers.register(linked=load_hex)
-def save_hex(fonts, outstream, where=None):
+def save_hex(fonts, outstream):
     """Save 8x16 multi-cell font to Unifont .HEX file."""
     font = _validate(fonts)
     _save_hex(font, outstream.text, _fits_in_hex)
 
 @savers.register(linked=load_hext)
-def save_hext(fonts, outstream, where=None):
+def save_hext(fonts, outstream):
     """Save 8xN multi-cell font to PC-BASIC extended .HEX file."""
     font = _validate(fonts)
     _save_hex(font, outstream.text, _fits_in_hext)

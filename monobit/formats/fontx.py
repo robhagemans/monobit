@@ -23,7 +23,7 @@ _FONTX_MAGIC = b'FONTX2'
 
 
 @loaders.register(name='fontx', magic=(_FONTX_MAGIC,))
-def load_fontx(instream, where=None):
+def load_fontx(instream):
     """Load font from fontx file."""
     fontx_props, glyphs = _read_fontx(instream)
     logging.info('fontx properties:')
@@ -34,7 +34,7 @@ def load_fontx(instream, where=None):
 
 
 @savers.register(linked=load_fontx)
-def save_fontx(fonts, outstream, where=None, endianness:str='little'):
+def save_fontx(fonts, outstream, endianness:str='little'):
     """Save font to fontx file."""
     if len(fonts) > 1:
         raise FileFormatError('Can only save one font to fontx file.')

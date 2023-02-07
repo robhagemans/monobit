@@ -19,7 +19,7 @@ from ..labels import Char
 
 
 @loaders.register('bdf', magic=(b'STARTFONT ',), name='bdf')
-def load_bdf(instream, where=None):
+def load_bdf(instream):
     """
     Load font from Adobe Glyph Bitmap Distribution Format (BDF) file.
     """
@@ -42,7 +42,7 @@ def load_bdf(instream, where=None):
 
 
 @savers.register(linked=load_bdf)
-def save_bdf(fonts, outstream, where=None):
+def save_bdf(fonts, outstream):
     """
     Save font to Adobe Glyph Bitmap Distribution Format (BDF) file.
     """

@@ -20,7 +20,7 @@ from ..vector import StrokePath
     name='hurt',
 )
 def load_hurt(
-        instream, where=None,
+        instream,
         baseline:int=9, top:int=-12, bottom:int=16,
         renumber:bool=False,
     ):

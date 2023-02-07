@@ -25,7 +25,7 @@ from ..properties import reverse_dict
     magic=(b'\x90', b'\x1bP'),
     name='dec'
 )
-def load_dec_drcs(instream, where=None):
+def load_dec_drcs(instream):
     """Load character-cell fonts from DEC DRCS file."""
     dec_glyphs, dec_props = _read_drcs(instream)
     props, count, first_codepoint = _parse_drcs_props(dec_props)
@@ -35,7 +35,7 @@ def load_dec_drcs(instream, where=None):
     return Font(glyphs, **props)
 
 @savers.register(linked=load_dec_drcs)
-def save_dec_drcs(fonts, outstream, where=None, *, use_8bit:bool=False):
+def save_dec_drcs(fonts, outstream, *, use_8bit:bool=False):
     """Write font to a DEC DRCS file."""
     if len(fonts) > 1:
         raise FileFormatError('Can only save one font to dec-drcs file.')

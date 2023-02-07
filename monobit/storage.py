@@ -83,8 +83,7 @@ def load_stream(instream, format='', **kwargs):
         instream.seek(0)
         logging.info('Loading `%s` as %s', instream.name, loader.name)
         try:
-            where = instream.where
-            fonts = loader(instream, where, **kwargs)
+            fonts = loader(instream, **kwargs)
         except FileFormatError as e:
             logging.debug(e)
             continue
@@ -178,9 +177,8 @@ def save_stream(pack, outstream, format='', **kwargs):
             f'({", ".join(_s.name for _s in matching_savers)})'
         )
     saver, *_ = matching_savers
-    where = outstream.where
     logging.info('Saving `%s` as %s.', outstream.name, saver.name)
-    saver(pack, outstream, where, **kwargs)
+    saver(pack, outstream, **kwargs)
 
 
 def save_all(pack, container, **kwargs):

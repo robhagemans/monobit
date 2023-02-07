@@ -18,12 +18,12 @@ from ..magic import FileFormatError
 
 
 @loaders.register('tar', name='tar')
-def load_tar(instream, where=None):
+def load_tar(instream):
     with TarContainer(instream) as container:
         return load_all(container)
 
 @savers.register(linked=load_tar)
-def save_tar(fonts, outstream, where=None):
+def save_tar(fonts, outstream):
     with TarContainer(outstream, 'w') as container:
         return save_all(fonts, container)
 

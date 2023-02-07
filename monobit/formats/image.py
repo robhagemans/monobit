@@ -62,7 +62,7 @@ if Image:
         name='image',
     )
     def load_image(
-            infile, where=None,
+            infile,
             cell:Coord=(8, 8),
             margin:Coord=(0, 0),
             padding:Coord=(0, 0),
@@ -167,7 +167,7 @@ if Image:
 
     @savers.register(linked=load_image)
     def save_image(
-            fonts, outfile, where=None, *,
+            fonts, outfile, *,
             image_format:str='',
             columns:int=32,
             margin:Coord=(0, 0),

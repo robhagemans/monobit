@@ -19,12 +19,12 @@ from ..magic import FileFormatError
         b'\r(This file must be converted',
     ),
 )
-def load_binhex(instream, where=None, format='', **kwargs):
+def load_binhex(instream, **kwargs):
     """BinHex 4.0 loader."""
     return _load_macforks(_parse_binhex, instream, **kwargs)
 
 @loaders.register('bin', name='macbin')
-def load_macbin(instream, where=None, format='', **kwargs):
+def load_macbin(instream, **kwargs):
     """MacBinary loader."""
     return _load_macforks(_parse_macbinary, instream, **kwargs)
 
@@ -39,7 +39,7 @@ _APPLEDOUBLE_MAGIC = 0x00051607
         _APPLESINGLE_MAGIC.to_bytes(4, 'big'),
     ),
 )
-def load_single(instream, where=None, format='', **kwargs):
+def load_single(instream, **kwargs):
     """AppleSingle loader."""
     return _load_macforks(_parse_apple_container, instream, **kwargs)
 
@@ -51,7 +51,7 @@ def load_single(instream, where=None, format='', **kwargs):
         _APPLEDOUBLE_MAGIC.to_bytes(4, 'big'),
     ),
 )
-def load_double(instream, where=None, format='', **kwargs):
+def load_double(instream, **kwargs):
     """AppleDouble loader."""
     return _load_macforks(_parse_apple_container, instream, **kwargs)
 

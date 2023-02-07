@@ -23,7 +23,7 @@ _BGI_MAGIC = b'PK\b\bBGI '
     name='borland',
     magic = (_BGI_MAGIC,),
 )
-def load_borland(instream, where=None):
+def load_borland(instream):
     """Load a Borland BGI stroke font."""
     bgi_data = _read_borland(instream)
     logging.debug(bgi_data)
@@ -31,7 +31,7 @@ def load_borland(instream, where=None):
     return font
 
 @savers.register(linked=load_borland)
-def save_borland(fonts, outstream, where=None):
+def save_borland(fonts, outstream):
     """Save a Borland BGI stroke font."""
     if len(fonts) > 1:
         raise FileFormatError('BBC font file can only store one font.')

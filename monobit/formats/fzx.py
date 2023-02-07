@@ -22,7 +22,7 @@ _FZX_RANGE = range(32, 256)
 
 
 @loaders.register('fzx', name='fzx')
-def load_fzx(instream, where=None):
+def load_fzx(instream):
     """Load font from ZX Spectrum .FZX file."""
     fzx_props, fzx_glyphs = _read_fzx(instream)
     logging.info('FZX properties:')
@@ -36,7 +36,7 @@ def load_fzx(instream, where=None):
 
 
 @savers.register(linked=load_fzx)
-def save_fzx(fonts, outstream, where=None):
+def save_fzx(fonts, outstream):
     """Save font to ZX Spectrum .FZX file."""
     if len(fonts) > 1:
         raise FileFormatError('Can only save one font to FZX file.')

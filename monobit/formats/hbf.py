@@ -21,10 +21,11 @@ from .windows import _normalise_metrics
 
 
 @loaders.register('hbf', magic=(b'HBF_START_FONT ',), name='hanzi-bf')
-def load_hbf(instream, where):
+def load_hbf(instream):
     """
     Load font from Hanzi Bitmap Format (HBF) file.
     """
+    where = instream.where
     instream = instream.text
     (
         comments, hbf_props, x_props,
@@ -49,7 +50,7 @@ def load_hbf(instream, where):
     return font
 
 @savers.register(linked=load_hbf)
-def save_hbf(fonts, outstream, where):
+def save_hbf(fonts, outstream):
     """
     Save font to Hanzi Bitmap Format (HBF) file.
     """
@@ -57,7 +58,7 @@ def save_hbf(fonts, outstream, where):
         raise FileFormatError('Can only save one font to HBF file.')
     # ensure codepoint values are set
     font = fonts[0]
-    _save_hbf(font, outstream.text, where)
+    _save_hbf(font, outstream.text, outstream.where)
 
 
 ##############################################################################

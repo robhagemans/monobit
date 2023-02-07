@@ -109,7 +109,7 @@ _BITMAP_OFFSET = 0x158 # 344
     'cft', 'eft', 'lft', 'mft', 'nft', 'pft', 'sft', 'xft',
     name='pcpaint'
 )
-def load_chiwriter(instream, where=None, filetype:int=None):
+def load_chiwriter(instream, filetype:int=None):
     """
     Load a ChiWriter font.
 
@@ -202,7 +202,7 @@ _GRASP_HEADER = le.Struct(
     glyphsize='uint8',
 )
 
-def _load_grasp_old(instream, where=None):
+def _load_grasp_old(instream):
     """Load a GRASP font (original format)."""
     header = _GRASP_HEADER.read_from(instream)
     font = load_binary(

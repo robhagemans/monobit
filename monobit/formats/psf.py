@@ -77,7 +77,7 @@ _PSF2_STARTSEQ = b'\xFE'
     magic=(_PSF1_MAGIC, _PSF2_MAGIC),
     name='psf',
 )
-def load_psf(instream, where=None):
+def load_psf(instream):
     """Load character-cell font from PC Screen Font (.PSF) file."""
     magic = instream.read(2)
     properties = {}
@@ -139,7 +139,7 @@ def _read_unicode_table(instream, separator, startseq, encoding):
 
 
 @savers.register(linked=load_psf)
-def save_psf(fonts, outstream, where=None):
+def save_psf(fonts, outstream):
     """Save character-cell font to PC Screen Font version 2 (.PSF) file."""
     if len(fonts) > 1:
         raise FileFormatError('Can only save one font to PSF file.')

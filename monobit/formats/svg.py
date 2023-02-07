@@ -28,7 +28,7 @@ DEFAULT_NAME = 'missing'
 
 
 @loaders.register('svg', name='svg')
-def load_svg(instream, where=None):
+def load_svg(instream):
     """Load vector font from Scalable Vector Graphics font."""
     root = etree.parse(instream).getroot()
     if not root.tag.endswith('svg'):
@@ -154,7 +154,7 @@ def attr_str(attr_dict, indent=0, sep='\n'):
 
 
 @savers.register(linked=load_svg)
-def save_svg(fonts, outfile, where=None):
+def save_svg(fonts, outfile):
     """Export vector font to Scalable Vector Graphics font."""
     if len(fonts) > 1:
         raise FileFormatError('Can only export one font to SVG file.')

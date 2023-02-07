@@ -29,7 +29,7 @@ class Compressor:
     must_have_magic = True
 
     @classmethod
-    def load(cls, instream, where=None, format='', **kwargs):
+    def load(cls, instream, **kwargs):
         """Load fonts from compressed stream."""
         magic = instream.peek(len(cls.magic))
         if cls.must_have_magic and not magic.startswith(cls.magic):
@@ -49,7 +49,7 @@ class Compressor:
 
 
     @classmethod
-    def save(cls, fonts, outstream, where=None, format='', **kwargs):
+    def save(cls, fonts, outstream, **kwargs):
         """Load fonts from compressed stream."""
         name = Path(outstream.name).stem
         wrapped = Stream(

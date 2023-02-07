@@ -17,12 +17,12 @@ from ..magic import FileFormatError
 
 
 @loaders.register('zip', magic=(b'PK\x03\x04',), name='zip')
-def load_zip(instream, where=None):
+def load_zip(instream):
     with ZipContainer(instream) as container:
         return load_all(container)
 
 @savers.register(linked=load_zip)
-def save_zip(fonts, outstream, where=None):
+def save_zip(fonts, outstream):
     with ZipContainer(outstream, 'w') as container:
         return save_all(fonts, container)
 
