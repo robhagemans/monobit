@@ -36,15 +36,15 @@ def open_location(file, mode, overwrite=False):
     # interpret incomplete arguments
     if isinstance(file, Path):
         if file.is_dir():
-            # TODO: load all in directory
-            raise NotImplementedError
+            # special case: load all in directory
+            yield Directory(file)
         else:
             container = Directory(file.parent)
             stream = container.open(file.name, mode=mode)
             with stream:
                 yield stream
     else:
-        if isinstance(file, StreamBase):
+        if isinstance(file, (StreamBase, Container)):
             stream = file
         else:
             stream = Stream(KeepOpen(file), mode=mode)
@@ -71,6 +71,9 @@ def load(infile:Any='', *, format:str='', **kwargs):
 
 def load_stream(instream, format='', **kwargs):
     """Load fonts from open stream."""
+    # special case - directory or container object supplied
+    if isinstance(instream, Container):
+        return load_all(instream)
     # identify file type
     fitting_loaders = loaders.get_for(instream, format=format)
     if not fitting_loaders:
@@ -114,8 +117,6 @@ def load_stream(instream, format='', **kwargs):
 ##############################################################################
 # saving
 
-
-
 @scriptable(unknown_args='passthrough', record=False, pack_operation=True)
 def save(
         pack_or_font,
@@ -142,6 +143,9 @@ def save(
 
 def save_stream(pack, outstream, format='', **kwargs):
     """Save fonts to an open stream."""
+    # special case - directory or container object supplied
+    if isinstance(outstream, Container):
+        return save_all(pack, outstream)
     matching_savers = savers.get_for(outstream, format=format)
     if not matching_savers:
         raise ValueError(f'Format specification `{format}` not recognised')
