@@ -1,7 +1,7 @@
 """
 monobit.formats.iigs - Apple IIgs font file
 
-(c) 2019--2023 Rob Hagemans
+Kelvin Sherlock 2023
 licence: https://opensource.org/licenses/MIT
 """
 
