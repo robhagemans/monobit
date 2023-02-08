@@ -23,7 +23,7 @@ def load_binhex(instream, **kwargs):
     """BinHex 4.0 loader."""
     return _load_macforks(_parse_binhex, instream, **kwargs)
 
-@loaders.register('bin', name='macbin')
+@loaders.register(name='macbin')
 def load_macbin(instream, **kwargs):
     """MacBinary loader."""
     return _load_macforks(_parse_macbinary, instream, **kwargs)
