@@ -37,7 +37,7 @@ _PY_PARAMS = dict(
 
 @loaders.register('c', 'cc', 'cpp', 'h', name='c')
 def load_c(
-        infile, where=None, *,
+        infile, *,
         identifier:str='',
         cell:Coord=(8, 8), count:int=-1, offset:int=0, padding:int=0,
         align:str='left', strike_count:int=1, strike_bytes:int=-1,
@@ -57,7 +57,7 @@ def load_c(
     first_codepoint: first code point in bitmap (default: 0)
     """
     return _load_coded_binary(
-        infile, where, identifier=identifier,
+        infile, identifier=identifier,
         cell=cell, count=count, offset=offset, padding=padding,
         align=align, strike_count=strike_count, strike_bytes=strike_bytes,
         first_codepoint=first_codepoint,
@@ -66,7 +66,7 @@ def load_c(
 
 @loaders.register('js', 'json', name='json')
 def load_json(
-        infile, where=None, *,
+        infile, *,
         identifier:str='',
         cell:Coord=(8, 8), count:int=-1, offset:int=0, padding:int=0,
         align:str='left', strike_count:int=1, strike_bytes:int=-1,
@@ -86,7 +86,7 @@ def load_json(
     first_codepoint: first code point in bitmap (default: 0)
     """
     return _load_coded_binary(
-        infile, where, identifier=identifier,
+        infile, identifier=identifier,
         cell=cell, count=count, offset=offset, padding=padding,
         align=align, strike_count=strike_count, strike_bytes=strike_bytes,
         first_codepoint=first_codepoint,
@@ -95,7 +95,7 @@ def load_json(
 
 @loaders.register('py', name='python')
 def load_python(
-        infile, where=None, *,
+        infile, *,
         identifier:str='',
         cell:Coord=(8, 8), count:int=-1, offset:int=0, padding:int=0,
         align:str='left', strike_count:int=1, strike_bytes:int=-1,
@@ -115,7 +115,7 @@ def load_python(
     first_codepoint: first code point in bitmap (default: 0)
     """
     return _load_coded_binary(
-        infile, where, identifier=identifier,
+        infile, identifier=identifier,
         cell=cell, count=count, offset=offset, padding=padding,
         align=align, strike_count=strike_count, strike_bytes=strike_bytes,
         first_codepoint=first_codepoint,
@@ -124,7 +124,7 @@ def load_python(
 
 @loaders.register(name='source')
 def load_source(
-        infile, where=None, *,
+        infile, *,
         identifier:str='', delimiters:str='{}', comment:str='//',
         cell:Coord=(8, 8), count:int=-1, strike_count:int=1, strike_bytes:int=-1,
         offset:int=0, padding:int=0, align:str='left',
@@ -147,7 +147,7 @@ def load_source(
     """
 
     return _load_coded_binary(
-        infile, where, identifier=identifier,
+        infile, identifier=identifier,
         cell=cell, count=count, offset=offset, padding=padding,
         align=align, strike_count=strike_count, strike_bytes=strike_bytes,
         first_codepoint=first_codepoint,
@@ -156,7 +156,7 @@ def load_source(
 
 
 def _load_coded_binary(
-        infile, where, identifier, delimiters, comment,
+        infile, identifier, delimiters, comment,
         cell, count, offset, padding, align, strike_count, strike_bytes, first_codepoint
     ):
     """Load font from binary encoded in source code."""
@@ -216,21 +216,21 @@ def _get_payload(instream, identifier, delimiters, comment):
 ###################################################################################################
 
 @savers.register('c', linked=load_c)
-def save_c(fonts, outstream, where=None):
+def save_c(fonts, outstream):
     """
     Save font to bitmap encoded in C source code.
     """
     return _save_coded_binary(fonts, outstream, 'char font_{compactname}[{bytesize}] = ', **_C_PARAMS)
 
 @savers.register('py', 'python', linked=load_python)
-def save_python(fonts, outstream, where=None):
+def save_python(fonts, outstream):
     """
     Save font to bitmap encoded in Python source code.
     """
     return _save_coded_binary(fonts, outstream, 'font_{compactname} = ', **_PY_PARAMS)
 
 @savers.register('json', linked=load_json)
-def save_json(fonts, outstream, where=None):
+def save_json(fonts, outstream):
     """
     Save font to bitmap encoded in JSON code.
     """
@@ -238,7 +238,7 @@ def save_json(fonts, outstream, where=None):
 
 @savers.register('source', linked=load_source)
 def save_source(
-        fonts, outstream, where=None, *,
+        fonts, outstream, *,
         identifier:str, assign:str='=', delimiters:str='{}', comment:str='//',
     ):
     """

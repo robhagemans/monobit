@@ -24,14 +24,14 @@ from .fnt import _normalise_metrics, CHARSET_MAP, CHARSET_REVERSE_MAP
     magic=(FNT_MAGIC_1, FNT_MAGIC_2, FNT_MAGIC_3),
     name='win',
 )
-def load_win_fnt(instream, where=None):
+def load_win_fnt(instream):
     """Load font from a Windows .FNT resource."""
     resource = instream.read()
     font = convert_win_fnt_resource(resource)
     return font
 
 @savers.register(linked=load_win_fnt)
-def save_win_fnt(fonts, outstream, where=None, version:int=2, vector:bool=False):
+def save_win_fnt(fonts, outstream, version:int=2, vector:bool=False):
     """
     Save font to a Windows .FNT resource.
 

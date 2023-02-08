@@ -8,7 +8,7 @@ licence: https://opensource.org/licenses/MIT
 import logging
 from pathlib import Path
 
-from .streams import Stream, get_name
+from .streams import get_name
 
 
 # number of bytes to read to check if something looks like text
@@ -46,18 +46,17 @@ def get_suffix(file):
 
 def has_magic(instream, magic):
     """Check if a binary stream matches the given signature."""
-    try:
-        return instream.peek(len(magic)).startswith(magic)
-    except EnvironmentError:
-        # e.g. write-only stream
+    if instream.mode == 'w':
         return False
+    return instream.peek(len(magic)).startswith(magic)
+
 
 def maybe_text(instream):
     """
     Check if a binary input stream looks a bit like it might hold utf-8 text.
     Currently just checks for unexpected bytes in a short sample.
     """
-    if instream.writable():
+    if instream.mode == 'w':
         # output binary streams *could* hold text
         # (this is not about the file type, but about the content)
         return True
@@ -121,18 +120,13 @@ class MagicRegistry:
             return klass
         return decorator
 
-    def identify(self, file, do_open=False):
+    def identify(self, file):
         """Identify a type from magic sequence on input file."""
         if not file:
             return ()
         matches = []
         # can't read magic on write-only file
-        if do_open:
-            if isinstance(file, (str, Path)):
-                # only use context manager if string provided
-                # if we got an open stream we should not close it
-                with Stream(file, 'r') as stream:
-                    return self.identify(stream, do_open=do_open)
+        if not isinstance(file, (str, Path)):
             for magic, klass in self._magic.items():
                 if has_magic(file, magic):
                     logging.debug(

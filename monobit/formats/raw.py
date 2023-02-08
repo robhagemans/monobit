@@ -17,9 +17,9 @@ from ..magic import FileFormatError
 from ..basetypes import Coord
 
 
-@loaders.register('bin', 'rom', name='raw')
+@loaders.register(name='raw')
 def load_binary(
-        instream, where=None, *,
+        instream, *,
         cell:Coord=(8, 8), count:int=-1, offset:int=0, padding:int=0,
         align:str='left', strike_count:int=1, strike_bytes:int=-1,
         first_codepoint:int=0
@@ -46,7 +46,7 @@ def load_binary(
 
 @savers.register(linked=load_binary)
 def save_binary(
-        fonts, outstream, where=None, *,
+        fonts, outstream, *,
         strike_count:int=1, align:str='left', padding:int=0,
     ):
     """
@@ -68,9 +68,9 @@ def save_binary(
 # CHET .814 - http://fileformats.archiveteam.org/wiki/CHET_font
 
 @loaders.register('814', name='8x14')
-def load_chet(instream, where=None):
+def load_chet(instream):
     """Load a raw 8x14 font."""
-    return load_binary(instream, where, cell=(8, 14))
+    return load_binary(instream, cell=(8, 14))
 
 
 ###############################################################################
@@ -78,17 +78,17 @@ def load_chet(instream, where=None):
 # https://www.seasip.info/Unix/PSF/Amstrad/UDG/index.html
 
 @loaders.register('64c', 'udg', 'ch8', name='8x8')
-def load_8x8(instream, where=None):
+def load_8x8(instream):
     """Load a raw 8x8 font."""
-    return load_binary(instream, where, cell=(8, 8))
+    return load_binary(instream, cell=(8, 8))
 
 # https://www.seasip.info/Unix/PSF/Amstrad/Genecar/index.html
 # GENECAR included three fonts in a format it calls .CAR. This is basically a
 # raw dump of the font, but using a 16×16 character cell rather than the usual 16×8.
 @loaders.register('car', name='16x16')
-def load_16x16(instream, where=None):
+def load_16x16(instream):
     """Load a raw 16x16 font."""
-    return load_binary(instream, where, cell=(16, 16))
+    return load_binary(instream, cell=(16, 16))
 
 
 ###############################################################################
@@ -100,14 +100,14 @@ from pathlib import PurePath
 _F_SUFFIXES = tuple(f'f{_height:02}' for _height in range(4, 33))
 
 @loaders.register(*_F_SUFFIXES, name='8xn')
-def load_8xn(instream, where=None):
+def load_8xn(instream):
     """Load a raw 8xN font."""
     suffix = PurePath(instream.name).suffix
     try:
         height = int(suffix[2:])
     except ValueError:
         height=8
-    return load_binary(instream, where, cell=(8, height))
+    return load_binary(instream, cell=(8, height))
 
 
 ###############################################################################
@@ -144,10 +144,10 @@ _PCR_HEADER = le.Struct(
 )
 
 @loaders.register('pcr', name='pcr', magic=(b'KPG\1\2\x20\1', b'KPG\1\1\x20\1'))
-def load_pcr(instream, where=None):
+def load_pcr(instream):
     """Load an OPTIKS .PCR font."""
     header = _PCR_HEADER.read_from(instream)
-    font = load_binary(instream, where, cell=(8, header.height), count=256)
+    font = load_binary(instream, cell=(8, header.height), count=256)
     font = font.modify(source_format='Optiks PCR')
     return font
 
@@ -181,12 +181,12 @@ _FM_HEADER = le.Struct(
     #'com',
     name='mania', magic=(b'\xEB\x4D', b'\xEB\x4E', b'\xEB\x47\xA2\x05')
 )
-def load_mania(instream, where=None):
+def load_mania(instream):
     """Load a REXXCOM Font Mania font."""
     header = _FM_HEADER.read_from(instream)
     logging.debug('Version string %r', header.version_string.decode('latin-1'))
     font = load_binary(
-        instream, where,
+        instream,
         offset=header.bitmap_offset - _FM_HEADER.size,
         cell=(8, header.bitmap_size//256),
         count=256
@@ -214,14 +214,14 @@ _FRAPT_HEADER = le.Struct(
     #'com',
     name='frapt', magic=(_FRAPT_SIG,)
 )
-def load_frapt(instream, where=None):
+def load_frapt(instream):
     """Load a Fontraption plain .COM font."""
     header = _FRAPT_HEADER.read_from(instream)
     if header.magic != _FRAPT_SIG:
         raise FileFormatError(
             f'Not a Fontraption .COM file: incorrect signature {header.magic}.'
         )
-    font = load_binary(instream, where, cell=(8, header.height))
+    font = load_binary(instream, cell=(8, header.height))
     font = font.modify(source_format='DOS loader (Fontraption)')
     return font
 
@@ -229,7 +229,7 @@ def load_frapt(instream, where=None):
     #'com',
     name='frapt-tsr', magic=(b'\xe9\x60',)
 )
-def load_frapt_tsr(instream, where=None):
+def load_frapt_tsr(instream):
     """Load a Fontraption TSR .COM font."""
     instream.seek(0x28)
     sig = instream.read(5)
@@ -240,7 +240,7 @@ def load_frapt_tsr(instream, where=None):
     instream.seek(0x5d)
     height, = instream.read(1)
     instream.seek(0x63)
-    font = load_binary(instream, where, cell=(8, height), count=256)
+    font = load_binary(instream, cell=(8, height), count=256)
     font = font.modify(source_format='DOS TSR (Fontraption)')
     return font
 
@@ -253,7 +253,7 @@ _FONTEDIT_SIG = b'\xeb\x33\x90\r   \r\n PC Magazine \xfe Michael J. Mefford\0\x1
     #'com',
     name='fontedit', magic=(_FONTEDIT_SIG,)
 )
-def load_fontedit(instream, where=None):
+def load_fontedit(instream):
     """Load a FONTEDIT .COM font."""
     sig = instream.read(99)
     if not sig.startswith(_FONTEDIT_SIG):
@@ -262,7 +262,7 @@ def load_fontedit(instream, where=None):
             f'{sig[:len(_FONTEDIT_SIG)]}.'
         )
     height = sig[50]
-    font = load_binary(instream, where, cell=(8, height), count=256)
+    font = load_binary(instream, cell=(8, height), count=256)
     font = font.modify(source_format='DOS loader (FONTEDIT)')
     return font
 
@@ -294,7 +294,7 @@ _PSFCOM_HEADER = le.Struct(
     name='psfcom',
     magic=(b'\xeb\x04\xeb\xc3',)
 )
-def load_psfcom(instream, where=None):
+def load_psfcom(instream):
     """Load a PSFCOM font."""
     header = _PSFCOM_HEADER.read_from(instream)
     logging.debug('Version string %r', header.sig.decode('latin-1'))
@@ -303,7 +303,7 @@ def load_psfcom(instream, where=None):
     else:
         height = 8
     font = load_binary(
-        instream, where,
+        instream,
         offset=header.address - _PSFCOM_HEADER.size - 0x100,
         cell=(8, height),
     )
@@ -345,7 +345,7 @@ _XBIN_HEADER = le.Struct(
 )
 
 @loaders.register('.xb', name='xbin', magic=(_XBIN_MAGIC,))
-def load_xbin(instream, where=None):
+def load_xbin(instream):
     """Load a XBIN font."""
     header = _XBIN_HEADER.read_from(instream)
     if header.magic != _XBIN_MAGIC:
@@ -362,13 +362,13 @@ def load_xbin(instream, where=None):
     # skip 48-byte palette, if present
     if header.palette:
         instream.read(48)
-    font = load_binary(instream, where, cell=(8, height), count=count)
+    font = load_binary(instream, cell=(8, height), count=count)
     font = font.modify(source_format='XBIN')
     return font
 
 
 @savers.register(linked=load_xbin)
-def save_xbin(fonts, outstream, where=None):
+def save_xbin(fonts, outstream):
     """Save an XBIN font."""
     font, *extra = fonts
     if extra:
@@ -411,7 +411,7 @@ _DRHALO_SIG = b'AH'
     #'fon',
     name='drhalo', magic=(_DRHALO_SIG,)
 )
-def load_drhalo(instream, where=None):
+def load_drhalo(instream):
     """Load a Dr Halo / Dr Genius .FON font."""
     start = instream.read(16)
     if not start.startswith(_DRHALO_SIG):
@@ -425,7 +425,7 @@ def load_drhalo(instream, where=None):
             'Not a Dr. Halo bitmap .FON: may be stroked format.'
         )
     font = load_binary(
-        instream, where, cell=(width, height),
+        instream, cell=(width, height),
     )
     font = font.modify(source_format='Dr. Halo')
     return font

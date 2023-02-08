@@ -24,14 +24,14 @@ _BBC_RANGE = range(32, 256)
 
 
 @loaders.register(name='bbc', magic=(_BBC_VDU,))
-def load_bbc(instream, where=None):
+def load_bbc(instream):
     """Load font from bbc file."""
     glyphs = _read_bbc(instream)
     return Font(glyphs)
 
 
 @savers.register(linked=load_bbc)
-def save_bbc(fonts, outstream, where=None):
+def save_bbc(fonts, outstream):
     """Save font to bbc file."""
     if len(fonts) > 1:
         raise FileFormatError('BBC font file can only store one font.')

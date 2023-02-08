@@ -10,11 +10,23 @@ import logging
 import zipfile
 from pathlib import Path, PurePosixPath
 
-from ..container import containers, DEFAULT_ROOT, Container, ContainerFormatError
+from ..container import DEFAULT_ROOT, Container
 from ..streams import KeepOpen, Stream
+from ..storage import loaders, savers, load_all, save_all
+from ..magic import FileFormatError
 
 
-@containers.register('.zip', magic=(b'PK\x03\x04',), name='zip')
+@loaders.register('zip', magic=(b'PK\x03\x04',), name='zip')
+def load_zip(instream):
+    with ZipContainer(instream) as container:
+        return load_all(container)
+
+@savers.register(linked=load_zip)
+def save_zip(fonts, outstream):
+    with ZipContainer(outstream, 'w') as container:
+        return save_all(fonts, container)
+
+
 class ZipContainer(Container):
     """Zip-file wrapper."""
 
@@ -22,14 +34,17 @@ class ZipContainer(Container):
         """Create wrapper."""
         # mode really should just be 'r' or 'w'
         mode = mode[:1]
+        super().__init__(mode, file.name)
         # reading zipfile needs a seekable stream, drain to buffer if needed
         stream = Stream(file, mode, overwrite=overwrite)
         # create the zipfile
         try:
-            self._zip = zipfile.ZipFile(stream, mode, compression=zipfile.ZIP_DEFLATED)
+            self._zip = zipfile.ZipFile(
+                stream, mode,
+                compression=zipfile.ZIP_DEFLATED
+            )
         except zipfile.BadZipFile as exc:
-            raise ContainerFormatError(exc) from exc
-        super().__init__(stream, mode, self._zip.filename)
+            raise FileFormatError(exc) from exc
         # on output, put all files in a directory with the same name as the archive (without suffix)
         if mode == 'w':
             self._root = Path(self.name).stem or DEFAULT_ROOT
@@ -37,7 +52,6 @@ class ZipContainer(Container):
             self._root = ''
         # output files, to be written on close
         self._files = []
-
 
     def close(self):
         """Close the zip file, ignoring errors."""
@@ -53,13 +67,14 @@ class ZipContainer(Container):
             # e.g. BrokenPipeError
             pass
         super().close()
-        self.closed = True
 
     def __iter__(self):
         """List contents."""
         return (
             str(PurePosixPath(_name).relative_to(self._root))
             for _name in self._zip.namelist()
+            # exclude directories
+            if not _name.endswith('/')
         )
 
     def open(self, name, mode):
@@ -71,10 +86,10 @@ class ZipContainer(Container):
         # always open as binary
         logging.debug('Opening file `%s` on zip container `%s`.', filename, self.name)
         if mode == 'r':
-            return Stream(self._zip.open(filename, mode), mode=mode)
+            return Stream(self._zip.open(filename, mode), mode=mode, where=self)
         else:
             # stop BytesIO from being closed until we want it to be
-            newfile = KeepOpen(io.BytesIO(), mode=mode, name=filename)
+            newfile = Stream(KeepOpen(io.BytesIO()), mode=mode, name=filename, where=self)
             if filename in self._files:
                 logging.warning('Creating multiple files of the same name `%s`.', filename)
             self._files.append(newfile)

@@ -23,7 +23,7 @@ def get_stringio(string):
 class StreamBase:
     """Shared base for stream and container."""
 
-    def __init__(self, stream, mode='', name=''):
+    def __init__(self, stream, mode='', name='', where=None):
         self._stream = stream
         self.name = name
         self.mode = mode[:1]
@@ -31,11 +31,16 @@ class StreamBase:
             if not self.name:
                 self.name = get_name(stream)
             if not self.mode:
-                if self._stream.readable():
-                    self.mode = 'r'
-                else:
-                    self.mode = 'w'
+                try:
+                    self.mode = self._stream.mode[:1]
+                except AttributeError:
+                    if self._stream.readable():
+                        self.mode = 'r'
+                    else:
+                        self.mode = 'w'
         self._refcount = 0
+        # embedding container
+        self.where = where
         self.closed = False
 
     def __enter__(self):
@@ -47,7 +52,9 @@ class StreamBase:
         if exc_type == BrokenPipeError:
             return True
         self._refcount -= 1
-        logging.debug('Exiting %r with reference count %d.', self, self._refcount)
+        logging.debug(
+            'Exiting %r with reference count %d. '
+            '[Underlying stream %r]', self, self._refcount, self._stream)
         if not self._refcount:
             self.close()
 
@@ -90,27 +97,23 @@ class Stream(StreamWrapper):
     def __init__(self, file, mode, *, name='', where=None, overwrite=False):
         """
         Ensure file is a stream of the right type, open or wrap if necessary.
-            file: stream, string or path-like object
-            mode: 'r' or 'w'
-            where: container to open any new stream on
+
+        file: stream or file-like object
+        mode: 'r' or 'w'
+        where: embedding container
         """
         if not file:
             raise ValueError('No file name, path or stream provided.')
         mode = mode[:1]
         # if a path is provided, open a (binary) stream
         if isinstance(file, (str, Path)):
-            file = self._open_path(file, mode, where, overwrite)
-            self._raw = file
-        else:
-            # don't close externally provided stream
-            file = KeepOpen(file)
-            self._raw = None
+            raise ValueError('Argument `file` must be a Python file or stream-like object.')
         if mode == 'r':
             self._anchor = file.tell()
         else:
             self._anchor = 0
         # initialise wrapper
-        super().__init__(file, mode=mode, name=name)
+        super().__init__(file, mode=mode, name=name, where=where)
         # check r/w mode is consistent
         self._ensure_rw()
         # Ensure we have a binary stream
@@ -120,27 +123,6 @@ class Stream(StreamWrapper):
             # note you can only do this once on the input stream!
             self._stream = get_bytesio(self._stream.read())
             self._ensure_binary()
-
-    @staticmethod
-    def _open_path(file, mode, where, overwrite):
-        """Open a raw stream on path and container provided."""
-        path = Path(file)
-        if not where:
-            # open on filesystem
-            if not overwrite and mode == 'w' and path.exists():
-                raise FileExistsError(
-                    f'Use option `-overwrite` to replace existing file `{file}`.'
-                )
-            logging.debug("Opening file `%s` for mode '%s'.", file, mode)
-            file = io.open(path, mode + 'b')
-        else:
-            # open on container
-            if not overwrite and mode == 'w' and file in where:
-                raise FileExistsError(
-                    f'Use option `-overwrite` to replace existing file `{file}` on `{where.name}`.'
-                )
-            file = where.open(path, mode)
-        return file
 
     @classmethod
     def from_data(cls, data, **kwargs):
@@ -215,11 +197,6 @@ class Stream(StreamWrapper):
             super().close()
         except EnvironmentError:
             pass
-        if self._raw:
-            try:
-                self._raw.close()
-            except EnvironmentError:
-                pass
 
 
 def is_binary(stream):

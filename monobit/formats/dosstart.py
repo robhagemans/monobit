@@ -18,7 +18,7 @@ from ..vector import StrokePath
 
 
 @loaders.register('dsf', name='dosstart', magic=(b'DosStartFont',))
-def load_dosstart(instream, where=None):
+def load_dosstart(instream):
     """Load font from DosStart! .DSF file."""
     return _load_dsf(instream.text)
 

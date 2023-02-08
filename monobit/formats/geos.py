@@ -20,12 +20,12 @@ from .raw import load_binary
 
 # offset CVT signature b'formatted GEOS file' could be used as magic
 @loaders.register('cvt', name='geos')
-def load_geos(instream, where=None,  merge_mega:bool=True):
+def load_geos(instream, merge_mega:bool=True):
     """Load fonts from a GEOS ConVerT container."""
     return _load_geos_cvt(instream, merge_mega)
 
 @loaders.register('vlir', name='geos-vlir')
-def load_geos_vlir(instream, where=None, offset:int=0):
+def load_geos_vlir(instream, offset:int=0):
     """
     Load a bare GEOS font VLIR.
 

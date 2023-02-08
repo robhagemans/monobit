@@ -62,7 +62,7 @@ if ttLib:
     )
     # pylint: disable=function-redefined
     def load_sfnt(
-            infile, where=None,
+            infile,
             hmtx:bool=False, vmtx:bool=False,
             hhea:bool=False, vhea:bool=False,
             os_2:bool=True
@@ -92,7 +92,7 @@ if ttLib:
         name='ttcf',
     )
     def load_collection(
-            infile, where=None,
+            infile,
             hmtx:bool=False, vmtx:bool=False,
             hhea:bool=False, vhea:bool=False,
             os_2:bool=True

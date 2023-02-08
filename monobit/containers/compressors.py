@@ -6,90 +6,109 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import logging
+from pathlib import Path
 import gzip
 import lzma
 import bz2
 
-from ..magic import get_suffix
-from ..container import containers, ContainerFormatError, Container
+from ..storage import loaders, savers, load_stream, save_stream
 from ..streams import Stream
+from ..magic import FileFormatError
 
 
-###################################################################################################
-# single-file compression
+class Compressor:
+    """Base class for single-file compression helpers."""
 
-class Compressor(Container):
-    """Base class for compression helpers."""
-
+    name = ''
     format = ''
     compressor = None
     # error raised for bad format
     error = Exception
     magic = b''
+    suffixes = ()
+    must_have_magic = True
 
-    def __init__(self, infile, mode='r', *, overwrite=False):
-        """Set up a compressor wrapper."""
-        stream = Stream(infile, mode, overwrite=overwrite)
-        super().__init__(stream, mode)
-        # drop the .gz etc
-        last_suffix = get_suffix(self.name)
-        if last_suffix == self.format:
-            self._content_name = self.name[:-1-len(last_suffix)]
-        else:
-            self._content_name = self.name
-        if self.mode == 'r':
-            magic = stream.peek(len(self.magic))[:len(self.magic)]
-            if self.magic and magic != self.magic:
-                raise ContainerFormatError(
-                    f'Not a {self.format} container: magic bytes {magic};'
-                    f' expected {self.magic}'
-                )
-
-    def __iter__(self):
-        """Iterate over content (single file)."""
-        return iter((self._content_name,))
-
-    def open(self, name='', mode=''):
-        """Open a stream in the container."""
-        mode = mode[:1] or self.mode
-        wrapped = self.compressor.open(self._stream, mode + 'b')
-        wrapped = Stream(wrapped, mode, name=self._content_name)
-        logging.debug(
-            "Opening %s-compressed stream `%s` on `%s` for mode '%s'",
-            self.format, wrapped.name, self.name, mode
+    @classmethod
+    def load(cls, instream, **kwargs):
+        """Load fonts from compressed stream."""
+        magic = instream.peek(len(cls.magic))
+        if cls.must_have_magic and not magic.startswith(cls.magic):
+            raise FileFormatError(
+                f'Not a {cls.name}-compressed file'
+            )
+        name = Path(instream.name).stem
+        wrapped = Stream(
+            cls.compressor.open(instream, mode='rb'),
+            mode='r', name=name
         )
-        return wrapped
+        try:
+            with wrapped:
+                return load_stream(wrapped, **kwargs)
+        except cls.error as e:
+            raise FileFormatError(e)
 
 
-_GZ_MAGIC = b'\x1f\x8b'
+    @classmethod
+    def save(cls, fonts, outstream, **kwargs):
+        """Load fonts from compressed stream."""
+        name = Path(outstream.name).stem
+        wrapped = Stream(
+            cls.compressor.open(outstream, mode='wb'),
+            mode='w', name=name
+        )
+        try:
+            with wrapped:
+                return save_stream(fonts, wrapped, **kwargs)
+        except cls.error as e:
+            raise FileFormatError(e)
 
-@containers.register('.gz', magic=(_GZ_MAGIC,), name='gzip')
+    @classmethod
+    def register(cls):
+        loaders.register(
+            *cls.suffixes, name=cls.name, magic=(cls.magic,)
+        )(cls.load)
+        savers.register(
+            *cls.suffixes, name=cls.name, magic=(cls.magic,)
+        )(cls.save)
+
+
+
 class GzipCompressor(Compressor):
+    name  = 'gzip'
     compressor = gzip
     error = gzip.BadGzipFile
-    magic = _GZ_MAGIC
+    magic = b'\x1f\x8b'
+    suffixes = ('gz',)
+
+GzipCompressor.register()
 
 
-_XZ_MAGIC = b'\xFD7zXZ\x00'
-
-@containers.register('.xz', magic=(_XZ_MAGIC,), name='xzip')
 class XZCompressor(Compressor):
+    name = 'xz'
     compressor = lzma
     error = lzma.LZMAError
-    magic = _XZ_MAGIC
+    magic = b'\xFD7zXZ\x00'
+    suffixes = ('xz',)
 
+XZCompressor.register()
 
-# the magic is a 'maybe'
-@containers.register('.lzma', magic=(b'\x5d\0\0',), name='lzma')
 class LzmaCompressor(Compressor):
+    name = 'lzma'
     compressor = lzma
     error = lzma.LZMAError
+    # the magic is a 'maybe'
+    magic = b'\x5d\0\0'
+    must_have_magic = False
+    suffixes = ('lzma',)
+
+LzmaCompressor.register()
 
 
-_BZ2_MAGIC = b'BZh'
-
-@containers.register('.bz2', magic=(_BZ2_MAGIC,), name='bzip2')
 class Bzip2Compressor(Compressor):
+    name = 'bzip2'
     compressor = bz2
     error = OSError
-    magic = _BZ2_MAGIC
+    magic = b'BZh'
+    suffixes = ('bz2',)
+
+Bzip2Compressor.register()

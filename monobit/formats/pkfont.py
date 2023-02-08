@@ -21,7 +21,7 @@ from .raw import load_binary
 
 # file name pattern is '{name}.{dpi}PK' but we only check suffixes
 @loaders.register('pk', name='pkfont', magic=(b'\xf7\x59',))
-def load_pkfont(instream, where=None):
+def load_pkfont(instream):
     """Load fonts from a METAFONT/TeX PKFONT."""
     return _load_pkfont(instream)
 

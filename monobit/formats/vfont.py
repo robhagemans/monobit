@@ -20,7 +20,7 @@ from .gdos import _subset_storable
 
 
 @loaders.register(name='vfont', magic=(b'\x01\x1e', b'\x1e\x01'))
-def load_vfont(instream, where=None):
+def load_vfont(instream):
     """Load font from vfont file."""
     vfont_props, vfont_glyphs = _read_vfont(instream)
     logging.info('vfont properties:')
@@ -31,7 +31,7 @@ def load_vfont(instream, where=None):
 
 
 @savers.register(linked=load_vfont)
-def save_vfont(fonts, outstream, where=None, endianness:str='little'):
+def save_vfont(fonts, outstream, endianness:str='little'):
     """Save font to vfont file."""
     if len(fonts) > 1:
         raise FileFormatError('Can only save one font to vfont file.')

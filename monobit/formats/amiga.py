@@ -18,7 +18,7 @@ from ..properties import Props
 
 
 @loaders.register('font', magic=(b'\x0f\0', b'\x0f\2'), name='amiga-fc')
-def load_amiga_fc(f, where):
+def load_amiga_fc(f):
     """Load font from Amiga disk font contents (.FONT) file."""
     fch = _FONT_CONTENTS_HEADER.read_from(f)
     if fch.fch_FileID == _FCH_ID:
@@ -49,20 +49,20 @@ def load_amiga_fc(f, where):
         else:
             tags = ()
         # amiga fs is case insensitive, so we need to loop over listdir and match
-        for filename in where:
+        for filename in f.where:
             if filename.lower() == name.lower():
-                with where.open(filename, 'r') as stream:
-                    pack.append(_load_amiga(stream, where, tags))
+                with f.where.open(filename, 'r') as stream:
+                    pack.append(_load_amiga(stream, tags))
     return pack
 
 
 @loaders.register('amiga', magic=(b'\0\0\x03\xf3',), name='amiga')
-def load_amiga(f, where=None, tags=()):
+def load_amiga(f, tags=()):
     """Load font from Amiga disk font file."""
-    return _load_amiga(f, where, tags)
+    return _load_amiga(f, tags)
 
 @savers.register(linked=load_amiga)
-def save_amiga(pack, outstream, where=None):
+def save_amiga(pack, outstream):
     raise FileFormatError('Saving to Amiga disk font file not supported.')
 
 
@@ -229,7 +229,7 @@ _TAG_ITEM = be.Struct(
 # read Amiga font
 
 
-def _load_amiga(f, where, tags):
+def _load_amiga(f, tags):
     """Load font from Amiga disk font file."""
     # read & ignore header
     _read_header(f)

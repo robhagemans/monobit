@@ -20,7 +20,7 @@ from ..vector import StrokePath
     name='hurt',
 )
 def load_hurt(
-        instream, where=None,
+        instream,
         baseline:int=9, top:int=-12, bottom:int=16,
         renumber:bool=False,
     ):
@@ -33,7 +33,6 @@ def load_hurt(
     renumber: set codepoint to ordinal value in file
     """
     jhf_data = _read_hurt(instream, renumber)
-    logging.debug(jhf_data)
     font = _convert_hurt(jhf_data, baseline, top, bottom)
     return font
 

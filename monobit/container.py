@@ -1,5 +1,5 @@
 """
-monobit.container - file containers
+monobit.container - directory and base class for archives
 
 (c) 2021--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -10,65 +10,41 @@ import logging
 import itertools
 from pathlib import Path
 
-from .magic import MagicRegistry, FileFormatError, get_suffix
-from .streams import StreamBase, Stream
+from .streams import Stream
 
 
 DEFAULT_ROOT = 'fonts'
 
-containers = MagicRegistry()
 
-
-class ContainerFormatError(FileFormatError):
-    """Incorrect container format."""
-
-
-def open_container(file, mode, overwrite=False):
-    """Open container of the appropriate type."""
-    if isinstance(file, Container):
-        return file
-    if not file:
-        # no-container, will throw errors when used
-        return Container(None)
-    container_types = _identify_container(file, mode, overwrite)
-    for container_type in container_types:
-        try:
-            container = container_type(file, mode, overwrite=overwrite)
-            logging.debug(
-                "Opening %s container `%s` for '%s'.",
-                container_type.__name__, container.name, mode
-            )
-            return container
-        except ContainerFormatError as e:
-            logging.debug(e)
-    raise ContainerFormatError('No matching container type found.')
-
-
-def _identify_container(file, mode, overwrite):
-    """Get container of the appropriate type."""
-    if not file:
-        raise ValueError('No location provided.')
-    # if it already is a directory there is no choice
-    if isinstance(file, (str, Path)) and Path(file).is_dir():
-        container_types = (Directory,)
-    else:
-        container_types = containers.identify(file, do_open=(mode == 'r'))
-    if not container_types:
-        suffix = get_suffix(file)
-        # output to file with no suffix - default to directory
-        if mode == 'w' and not suffix and isinstance(file, (str, Path)):
-            return (Directory,)
-        # no container type found
-        #raise ContainerFormatError('Stream is not a known container format.')
-    return container_types
-
-
-class Container(StreamBase):
+class Container:
     """Base class for container types."""
+
+    def __init__(self, mode='r', name=''):
+        self.mode = mode[:1]
+        self.name = name
+        self.refcount = 0
+        self.closed = False
 
     def __iter__(self):
         """List contents."""
         raise NotImplementedError
+
+    def __enter__(self):
+        # we don't support nesting the same archive
+        assert self.refcount == 0
+        self.refcount += 1
+        logging.debug('Entering archive %r', self)
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        if exc_type == BrokenPipeError:
+            return True
+        logging.debug('Exiting archive %r', self)
+        self.close()
+
+    def close(self):
+        """Close the archive."""
+        self.closed = True
 
     def open(self, name, mode):
         """Open a binary stream in the container."""
@@ -86,7 +62,6 @@ class Container(StreamBase):
 
 
 ###############################################################################
-# directory
 
 class Directory(Container):
     """Treat directory tree as a container."""
@@ -96,7 +71,10 @@ class Directory(Container):
         # if empty path, this refers to the whole filesystem
         if not path:
             path = ''
-        self._path = Path(path)
+        elif isinstance(path, Directory):
+            self._path = path._path
+        else:
+            self._path = Path(path)
         # mode really should just be 'r' or 'w'
         mode = mode[:1]
         if mode == 'w':
@@ -104,7 +82,7 @@ class Directory(Container):
             # exist_ok raises FileExistsError only if the *target* already
             # exists, not the parents
             self._path.mkdir(parents=True, exist_ok=overwrite)
-        super().__init__(None, mode, str(self._path))
+        super().__init__(mode, str(self._path))
 
     def open(self, name, mode):
         """Open a stream in the container."""
@@ -115,12 +93,15 @@ class Directory(Container):
             path = pathname.parent
             logging.debug('Creating directory `%s`', self._path / path)
             (self._path / path).mkdir(parents=True, exist_ok=True)
+        logging.debug("Opening file `%s` for mode '%s'.", name, mode)
+        file = open(self._path / pathname, mode + 'b')
         # provide name relative to directory container
-        file = Stream(
-            self._path / pathname, mode=mode,
-            name=str(pathname), overwrite=True
+        stream = Stream(
+            file, mode=mode,
+            name=str(pathname), overwrite=True,
+            where=self,
         )
-        return file
+        return stream
 
     def __iter__(self):
         """List contents."""
