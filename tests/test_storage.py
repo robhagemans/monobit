@@ -78,9 +78,15 @@ class TestContainers(BaseTester):
         """Test importing/exporting compressed tar files."""
         self._test_container('tar.gz')
 
-    def test_recursive(self):
-        """Test recursively traversing container."""
+    def test_recursive_tgz(self):
+        """Test recursively traversing tar.gz container."""
         container_file = self.font_path / f'fontdir.tar.gz'
+        fonts = monobit.load(container_file)
+        self.assertEqual(len(fonts), 3)
+
+    def test_recursive_zip(self):
+        """Test recursively traversing zip container."""
+        container_file = self.font_path / f'fontdir.zip'
         fonts = monobit.load(container_file)
         self.assertEqual(len(fonts), 3)
 
