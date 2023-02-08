@@ -10,7 +10,7 @@ import string
 from io import StringIO
 
 from ..storage import loaders, savers
-from ..streams import FileFormatError
+from ..magic import FileFormatError
 from ..font import Font
 from ..glyph import Glyph
 from ..raster import Raster

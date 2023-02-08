@@ -1,15 +1,15 @@
 """
-monobit.formats.mac - MacOS suitcases and resources
+monobit.formats.mac.dfont - MacOS suitcases and resources
 
 (c) 2019--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
-import io
 import logging
 
 from ...struct import big_endian as be
-from ...streams import FileFormatError
+from ...magic import FileFormatError
+from ...streams import Stream
 
 from ..sfnt import load_sfnt
 from .nfnt import _extract_nfnt, _convert_nfnt
@@ -202,7 +202,7 @@ def _extract_resources(data, resources):
                 'TrueType font resource #%d: type %s name `%s`',
                 rsrc_id, rsrc_type.decode('mac-roman'), name
             )
-            bytesio = io.BytesIO(data[offset:])
+            bytesio = Stream.from_data(data[offset:], mode='r')
             fonts = load_sfnt(bytesio)
             parsed_rsrc.append((
                 rsrc_type, rsrc_id, dict(fonts=fonts)

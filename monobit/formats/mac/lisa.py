@@ -1,5 +1,5 @@
 """
-monobit.formats.lisa - Apple LISA fonts
+monobit.formats.mac.lisa - Apple Lisa fonts
 
 (c) 2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -9,7 +9,7 @@ import logging
 
 from ...struct import big_endian as be
 from ...binary import align
-from ...streams import FileFormatError
+from ...magic import FileFormatError
 
 from .nfnt import _extract_nfnt, _convert_nfnt
 

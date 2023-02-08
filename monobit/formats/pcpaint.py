@@ -105,8 +105,7 @@ _BITMAP_OFFSET = 0x158 # 344
 
 # magic 0x10 or 0x11 is a bit too generic
 @loaders.register(
-    'set',
-    #'fnt',
+    'set', 'fnt',
     'cft', 'eft', 'lft', 'mft', 'nft', 'pft', 'sft', 'xft',
     name='pcpaint'
 )

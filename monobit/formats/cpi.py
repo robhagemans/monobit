@@ -8,13 +8,12 @@ licence: https://opensource.org/licenses/MIT
 import os
 import string
 import logging
-from io import BytesIO
 from itertools import accumulate
 
 from ..binary import ceildiv
 from ..struct import little_endian as le, sizeof
 from ..storage import loaders, savers
-from ..streams import FileFormatError
+from ..magic import FileFormatError
 from ..font import Font
 from ..glyph import Glyph
 from ..properties import Props

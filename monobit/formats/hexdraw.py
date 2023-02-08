@@ -11,7 +11,7 @@ from ..storage import loaders, savers
 from ..font import Font
 from ..glyph import Glyph
 from ..labels import Tag, Char
-from ..streams import FileFormatError
+from ..magic import FileFormatError
 from .yaff import format_comment, normalise_comment
 
 

@@ -14,7 +14,7 @@ from ..properties import Props
 from ..storage import loaders, savers
 from ..font import Font
 from ..glyph import Glyph
-from ..streams import FileFormatError
+from ..magic import FileFormatError
 
 
 # beyond ASCII, multiple encodings are in use - set these manually after extraction

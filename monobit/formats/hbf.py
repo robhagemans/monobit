@@ -9,7 +9,7 @@ import logging
 
 from ..properties import normalise_property
 from ..storage import loaders, savers
-from ..streams import FileFormatError
+from ..magic import FileFormatError
 from ..font import Font, Coord
 from ..glyph import Glyph
 from ..binary import ceildiv
@@ -265,7 +265,7 @@ def _parse_properties(hbf_props, x_props):
         properties[key] = value
     for key, value in xlfd_props.items():
         if key in properties and properties[key] != value:
-            logging.warning(
+            logging.debug(
                 'Inconsistency between HBF and XLFD properties: '
                 '%s=%s (from XLFD) but %s=%s (from HBF). Taking HBF property.',
                 key, value, key, properties[key]

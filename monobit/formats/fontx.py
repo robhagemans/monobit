@@ -13,7 +13,7 @@ from ..properties import Props
 from ..storage import loaders, savers
 from ..font import Font
 from ..glyph import Glyph
-from ..streams import FileFormatError
+from ..magic import FileFormatError
 from ..binary import ceildiv
 
 from .raw import load_bitmap

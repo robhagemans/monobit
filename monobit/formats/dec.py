@@ -14,7 +14,7 @@ import shlex
 import logging
 
 from ..storage import loaders, savers
-from ..streams import FileFormatError
+from ..magic import FileFormatError
 from ..font import Font
 from ..glyph import Glyph
 from ..binary import ceildiv
@@ -266,6 +266,7 @@ def _convert_drcs_glyph(glyphdef, raster_size):
         for _pair in glyphbytes
     )
     glyph = Glyph(glyphstrs, _0='0', _1='1')
+    # pylint: disable=unexpected-keyword-arg
     glyph = glyph.turn(anti=1)
     glyph = glyph.crop(
         right=glyph.width-raster_size.x,

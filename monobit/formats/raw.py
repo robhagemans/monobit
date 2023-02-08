@@ -13,7 +13,7 @@ from ..storage import loaders, savers
 from ..font import Font
 from ..glyph import Glyph
 from ..raster import Raster
-from ..streams import FileFormatError
+from ..magic import FileFormatError
 from ..basetypes import Coord
 
 

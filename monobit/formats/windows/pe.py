@@ -11,7 +11,7 @@ See `LICENSE.md` in this package's directory.
 import logging
 
 from ...struct import little_endian as le
-from ...streams import FileFormatError
+from ...magic import FileFormatError
 
 
 ##############################################################################

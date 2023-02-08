@@ -518,6 +518,7 @@ class Raster:
 
     # effects
 
+    # pylint: disable=no-method-argument
     def overlay(*others, operator=any):
         """
         Overlay equal-sized rasters.

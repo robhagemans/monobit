@@ -26,7 +26,7 @@ from ..glyph import Glyph
 from ..raster import Raster
 from ..labels import Tag, Char
 from ..storage import loaders, savers
-from ..streams import FileFormatError
+from ..magic import FileFormatError
 from .windows.fnt import _WEIGHT_MAP
 
 # errors that invalidates only one strike or resource, not the whole file
@@ -60,6 +60,7 @@ if ttLib:
         ),
         name='sfnt',
     )
+    # pylint: disable=function-redefined
     def load_sfnt(
             infile, where=None,
             hmtx:bool=False, vmtx:bool=False,
@@ -214,7 +215,7 @@ def _read_collection(instream, tags):
         try:
             ttfc_data.append(_sfnt_props(ttf, tags))
         except ResourceFormatError as e:
-            logging.warning(e)
+            logging.debug(e)
     return ttfc_data
 
 
@@ -231,7 +232,7 @@ def _sfnt_props(ttf, tags):
         except (TTLibError, AssertionError) as e:
             if not str(e):
                 e = f'{type(e).__name__} in fontTools library.'
-            logging.warning('Could not read `%s` table in sfnt: %s', tag, e)
+            logging.debug('Could not read `%s` table in sfnt: %s', tag, e)
     return Props(**_to_props(tables))
 
 

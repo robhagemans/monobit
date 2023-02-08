@@ -992,6 +992,7 @@ class Font:
 
     # need converter from string to set of labels to script this
     #@scriptable
+    # pylint: disable=used-before-assignment
     def subset(self, labels=(), *, chars:set=(), codepoints:set=(), tags:set=()):
         """
         Return a subset of the font.
