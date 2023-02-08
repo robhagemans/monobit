@@ -32,18 +32,29 @@ def open_location(file, mode, overwrite=False):
         raise ValueError(f"Unsupported mode '{mode}'.")
     if not file:
         raise ValueError(f'No location provided.')
+    # find existing file and any deep link to archive member
+    member = ''
     if isinstance(file, str):
         file = Path(file)
-    # interpret incomplete arguments
     if isinstance(file, Path):
+        if mode == 'r' and not file.exists():
+            # not on filesystem - can interpret as deep link into archive?
+            # pare back path until an existing ancestor is found
+            for parent in file.parents:
+                if parent.exists():
+                    member = file.relative_to(parent)
+                    file = parent
+                    break
         if file.is_dir():
+            if member:
+                raise FileNotFoundError(file / member)
             # special case: load all in directory
-            yield Directory(file)
+            yield Directory(file), ''
         else:
-            container = Directory(file.parent)
-            stream = container.open(file.name, mode=mode)
+            # use parent directory as enclosing container
+            stream = Directory(file.parent).open(file.name, mode=mode)
             with stream:
-                yield stream
+                yield stream, member
     else:
         if isinstance(file, (StreamBase, Container)):
             stream = file
@@ -51,7 +62,7 @@ def open_location(file, mode, overwrite=False):
             stream = Stream(KeepOpen(file), mode=mode)
         # we didn't open the file, so we don't own it
         # we neeed KeepOpen for when the yielded object goes out of scope in the caller
-        yield stream
+        yield stream, member
 
 
 ##############################################################################
@@ -66,19 +77,47 @@ def load(infile:Any='', *, format:str='', **kwargs):
     format: input format (default: infer from magic number or filename)
     """
     infile = infile or sys.stdin
-    with open_location(infile, 'r') as stream:
-        return load_stream(stream, format, **kwargs)
+    with open_location(infile, 'r') as (stream, member):
+        return load_stream(stream, format, member, **kwargs)
 
 
-def load_stream(instream, format='', **kwargs):
+def load_stream(instream, format='', member='', **kwargs):
     """Load fonts from open stream."""
     # special case - directory or container object supplied
     if isinstance(instream, Container):
-        return load_all(instream)
+        if member:
+            stream = instream.open(member, mode='r')
+            return load_stream(stream, format=format)
+        return load_all(instream, format=format)
+    # stream supplied and link to member - only works if stream holds a container
+    if member:
+        # split up e.g. 'yaff.zip' format
+        member_format, _, format = format.partition('.')
+        # member given - can we find a fitting container?
+        fitting_containers = containers.get_for(instream, format=format)
+        if not fitting_containers:
+            message = (
+                f'Cannot open `{member}` on `{instream.name}`: '
+                'not recognised as container'
+            )
+            if format:
+                message += f' of format `{format}`'
+            raise FileFormatError(message)
+        for opener in fitting_containers:
+            try:
+                container = opener(instream)
+            except FileFormatError:
+                continue
+            else:
+                return load_stream(container, member=member, format=member_format)
+        raise FileFormatError('Cannot open container')
     # identify file type
     fitting_loaders = loaders.get_for(instream, format=format)
     if not fitting_loaders:
-        raise FileFormatError(f'Cannot load from format `{format}`')
+        message = f'Cannot load `{instream.name}`'
+        if format:
+            message += f' as format `{format}`'
+        raise FileFormatError(message)
     for loader in fitting_loaders:
         instream.seek(0)
         logging.info('Loading `%s` as %s', instream.name, loader.name)
@@ -114,9 +153,8 @@ def load_stream(instream, format='', **kwargs):
     raise FileFormatError('No fonts found in file')
 
 
-def load_all(container, **kwargs):
+def load_all(container, format='', **kwargs):
     """Open container and load all fonts found in it into one pack."""
-    format = ''
     logging.info('Reading all from `%s`.', container.name)
     packs = Pack()
     names = list(container)
@@ -158,7 +196,8 @@ def save(
         # errors can occur if the strings we write contain surrogates
         # these may come from filesystem names using 'surrogateescape'
         sys.stdout.reconfigure(errors='replace')
-    with open_location(outfile, 'w', overwrite=overwrite) as stream:
+    with open_location(outfile, 'w', overwrite=overwrite) as (stream, member):
+        # TODO member
         save_stream(pack, stream, format, **kwargs)
     return pack_or_font
 
@@ -218,7 +257,8 @@ class ConverterRegistry(MagicRegistry):
         """Get loader/saver for font file location."""
         if not file:
             return self.get_for(format=format)
-        with open_location(file, mode) as stream:
+        with open_location(file, mode) as (stream, member):
+            # ignore member?
             return self.get_for(file, format=format)
 
     def get_for(self, file=None, format=''):
@@ -281,7 +321,7 @@ class ConverterRegistry(MagicRegistry):
                 # use the standard name, not that of the registered function
                 name=funcname,
                 # don't record history of loading from default format
-                record=(DEFAULT_TEXT_FORMAT not in formats),
+                record=(name=='load' and DEFAULT_TEXT_FORMAT not in formats),
             )
             # register converter
             if linked:
@@ -303,3 +343,4 @@ class ConverterRegistry(MagicRegistry):
 
 loaders = ConverterRegistry('load')
 savers = ConverterRegistry('save')
+containers = ConverterRegistry('open')

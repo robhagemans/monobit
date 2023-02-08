@@ -12,7 +12,7 @@ from pathlib import Path, PurePosixPath
 
 from ..container import DEFAULT_ROOT, Container
 from ..streams import KeepOpen, Stream
-from ..storage import loaders, savers, load_all, save_all
+from ..storage import loaders, savers, containers, load_all, save_all
 from ..magic import FileFormatError
 
 
@@ -25,6 +25,10 @@ def load_zip(instream):
 def save_zip(fonts, outstream):
     with ZipContainer(outstream, 'w') as container:
         return save_all(fonts, container)
+
+@containers.register(linked=load_zip)
+def open_zip(instream):
+    return ZipContainer(instream)
 
 
 class ZipContainer(Container):

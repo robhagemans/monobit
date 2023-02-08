@@ -131,7 +131,7 @@ class MagicRegistry:
                 if has_magic(file, magic):
                     logging.debug(
                         'Magic bytes %a: identifying stream as %s.',
-                        magic.decode('latin-1'), klass.__name__
+                        magic.decode('latin-1'), klass.name
                     )
                     matches.append(klass)
         suffix = get_suffix(file)
@@ -141,7 +141,7 @@ class MagicRegistry:
         for converter in converters:
             logging.debug(
                 'Filename suffix `%s`: identifying stream as %s.',
-                suffix, converter.__name__
+                suffix, converter.name
             )
         matches.extend(converters)
         return tuple(matches)

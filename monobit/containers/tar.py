@@ -13,7 +13,7 @@ from pathlib import Path, PurePosixPath
 
 from ..container import DEFAULT_ROOT, Container
 from ..streams import Stream, KeepOpen
-from ..storage import loaders, savers, load_all, save_all
+from ..storage import loaders, savers, containers, load_all, save_all
 from ..magic import FileFormatError
 
 
@@ -26,6 +26,10 @@ def load_tar(instream):
 def save_tar(fonts, outstream):
     with TarContainer(outstream, 'w') as container:
         return save_all(fonts, container)
+
+@containers.register(linked=load_tar)
+def open_tar(instream):
+    return TarContainer(instream)
 
 
 class TarContainer(Container):
