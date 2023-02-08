@@ -523,7 +523,7 @@ class Raster:
 
     def invert(self):
         """Reverse video."""
-        return type(self)(_0=self._1, _1=self._0)
+        return type(self)(self._pixels, _0=self._1, _1=self._0)
 
     def smear(self, *, left:int=0, right:int=0, up:int=0, down:int=0):
         """
