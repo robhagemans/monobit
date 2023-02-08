@@ -481,7 +481,6 @@ class TestGlyphTrafo(BaseTester):
         assert m.shift_up == one.shift_up
         assert m.shift_left == one.shift_left
 
-
     def test_underline_thickness(self):
         file = get_stringio(test)
         f,  *_ = monobit.load(file)
@@ -512,7 +511,6 @@ class TestGlyphTrafo(BaseTester):
         assert m.shift_up == one.shift_up-2
         assert m.shift_left == one.shift_left
 
-
     def test_smear(self):
         file = get_stringio(test)
         f,  *_ = monobit.load(file)
@@ -534,6 +532,42 @@ class TestGlyphTrafo(BaseTester):
         assert m.advance_width == one.advance_width
         assert m.advance_height == one.advance_height
         assert m.shift_up == one.shift_up + one.padding.bottom
+
+
+    def test_invert(self):
+        file = get_stringio(test)
+        f,  *_ = monobit.load(file)
+        one = f.glyphs[0]
+        m = one.invert()
+        assert (m.as_text() == """\
+@@@@@@@@
+@@@@@@@@
+@@@..@@@
+@@...@@@
+@....@@@
+@@@..@@@
+@@@..@@@
+@@@..@@@
+@@@..@@@
+@@@..@@@
+@@@..@@@
+@@@..@@@
+@......@
+@@@@@@@@
+@@@@@@@@
+@@@@@@@@
+"""), m
+        # metrics
+        # unchanged
+        assert m.shift_left == one.shift_left
+        assert m.left_bearing == one.left_bearing
+        assert m.right_bearing == one.right_bearing
+        assert m.shift_up == one.shift_up
+        assert m.top_bearing == one.top_bearing
+        assert m.bottom_bearing == one.bottom_bearing
+        # non-metrics preserved
+        assert m.test == one.test
+        assert m.comment == one.comment
 
 
 class TestFontTrafo:
@@ -737,6 +771,41 @@ class TestFontTrafo:
         assert m.advance_height == one.advance_height
         assert m.shift_up == -1
         assert m.shift_left == 1
+
+    def test_invert(self):
+        file = get_stringio(test)
+        f,  *_ = monobit.load(file)
+        one = f.glyphs[0]
+        m = one.invert()
+        assert (m.as_text() == """\
+@@@@@@@@
+@@@@@@@@
+@@@..@@@
+@@...@@@
+@....@@@
+@@@..@@@
+@@@..@@@
+@@@..@@@
+@@@..@@@
+@@@..@@@
+@@@..@@@
+@@@..@@@
+@......@
+@@@@@@@@
+@@@@@@@@
+@@@@@@@@
+"""), m
+        # metrics
+        # unchanged
+        assert m.shift_left == one.shift_left
+        assert m.left_bearing == one.left_bearing
+        assert m.right_bearing == one.right_bearing
+        assert m.shift_up == one.shift_up
+        assert m.top_bearing == one.top_bearing
+        assert m.bottom_bearing == one.bottom_bearing
+        # non-metrics preserved
+        assert m.test == one.test
+        assert m.comment == one.comment
 
 
 if __name__ == '__main__':
