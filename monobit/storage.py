@@ -49,20 +49,48 @@ def open_location(file, mode, overwrite=False):
             if member:
                 raise FileNotFoundError(file / member)
             # special case: load all in directory
-            yield Directory(file), ''
+            yield Directory(file)
         else:
             # use parent directory as enclosing container
             stream = Directory(file.parent).open(file.name, mode=mode)
+            if member:
+                stream = open_container(stream, member)
             with stream:
-                yield stream, member
+                yield stream
     else:
         if isinstance(file, (StreamBase, Container)):
             stream = file
         else:
+            # we didn't open the file, so we don't own it
+            # we neeed KeepOpen for when the yielded object goes out of scope in the caller
             stream = Stream(KeepOpen(file), mode=mode)
-        # we didn't open the file, so we don't own it
-        # we neeed KeepOpen for when the yielded object goes out of scope in the caller
-        yield stream, member
+        if member:
+            stream = open_container(stream, member)
+        yield stream
+
+
+def open_container(instream, member, format=''):
+    # split up e.g. 'yaff.zip' format
+    member_format, _, format = format.partition('.')
+    # member given - can we find a fitting container?
+    fitting_containers = containers.get_for(instream, format=format)
+    if not fitting_containers:
+        message = (
+            f'Cannot open `{member}` on `{instream.name}`: '
+            'not recognised as container'
+        )
+        if format:
+            message += f' of format `{format}`'
+        raise FileFormatError(message)
+    for opener in fitting_containers:
+        try:
+            container = opener(instream)
+        except FileFormatError:
+            continue
+        else:
+            stream = container.open(member, mode='r')
+            return stream
+    raise FileFormatError('Cannot open container')
 
 
 ##############################################################################
@@ -77,40 +105,16 @@ def load(infile:Any='', *, format:str='', **kwargs):
     format: input format (default: infer from magic number or filename)
     """
     infile = infile or sys.stdin
-    with open_location(infile, 'r') as (stream, member):
-        return load_stream(stream, format, member, **kwargs)
+    with open_location(infile, 'r') as stream:
+        return load_stream(stream, format, **kwargs)
 
 
-def load_stream(instream, format='', member='', **kwargs):
+def load_stream(instream, format='', **kwargs):
     """Load fonts from open stream."""
     # special case - directory or container object supplied
     if isinstance(instream, Container):
-        if member:
-            stream = instream.open(member, mode='r')
-            return load_stream(stream, format=format)
         return load_all(instream, format=format)
     # stream supplied and link to member - only works if stream holds a container
-    if member:
-        # split up e.g. 'yaff.zip' format
-        member_format, _, format = format.partition('.')
-        # member given - can we find a fitting container?
-        fitting_containers = containers.get_for(instream, format=format)
-        if not fitting_containers:
-            message = (
-                f'Cannot open `{member}` on `{instream.name}`: '
-                'not recognised as container'
-            )
-            if format:
-                message += f' of format `{format}`'
-            raise FileFormatError(message)
-        for opener in fitting_containers:
-            try:
-                container = opener(instream)
-            except FileFormatError:
-                continue
-            else:
-                return load_stream(container, member=member, format=member_format)
-        raise FileFormatError('Cannot open container')
     # identify file type
     fitting_loaders = loaders.get_for(instream, format=format)
     if not fitting_loaders:
@@ -196,8 +200,7 @@ def save(
         # errors can occur if the strings we write contain surrogates
         # these may come from filesystem names using 'surrogateescape'
         sys.stdout.reconfigure(errors='replace')
-    with open_location(outfile, 'w', overwrite=overwrite) as (stream, member):
-        # TODO member
+    with open_location(outfile, 'w', overwrite=overwrite) as stream:
         save_stream(pack, stream, format, **kwargs)
     return pack_or_font
 
@@ -257,8 +260,7 @@ class ConverterRegistry(MagicRegistry):
         """Get loader/saver for font file location."""
         if not file:
             return self.get_for(format=format)
-        with open_location(file, mode) as (stream, member):
-            # ignore member?
+        with open_location(file, mode) as stream:
             return self.get_for(file, format=format)
 
     def get_for(self, file=None, format=''):
