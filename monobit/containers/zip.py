@@ -27,8 +27,8 @@ def save_zip(fonts, outstream):
         return save_all(fonts, container)
 
 @containers.register(linked=load_zip)
-def open_zip(instream):
-    return ZipContainer(instream)
+def open_zip(instream, mode='r', *, overwrite=False):
+    return ZipContainer(instream, mode, overwrite=overwrite)
 
 
 class ZipContainer(Container):

@@ -28,14 +28,14 @@ def save_tar(fonts, outstream):
         return save_all(fonts, container)
 
 @containers.register(linked=load_tar)
-def open_tar(instream):
-    return TarContainer(instream)
+def open_tar(instream, mode='r', *, overwrite=False):
+    return TarContainer(instream, mode, overwrite=overwrite)
 
 
 class TarContainer(Container):
     """Tar-file wrapper."""
 
-    def __init__(self, file, mode='r',*, overwrite=False):
+    def __init__(self, file, mode='r', *, overwrite=False):
         """Create wrapper."""
         # mode really should just be 'r' or 'w'
         mode = mode[:1]
