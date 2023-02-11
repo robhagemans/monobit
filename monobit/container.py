@@ -29,6 +29,13 @@ class Container:
         """List contents."""
         raise NotImplementedError
 
+    def iter_sub(self, prefix):
+        """List contents of a subpath."""
+        return (
+            _item for _item in self
+            if _item.name.startswith(prefix)
+        )
+
     def __enter__(self):
         # we don't support nesting the same archive
         assert self.refcount == 0
@@ -110,12 +117,15 @@ class Directory(Container):
 
     def __iter__(self):
         """List contents."""
-        # don't walk the whole filesystem - no path is no contents
         if not self._path:
-            return iter(())
+            raise ValueError('Will not walk over whole filesystem.')
+        return self.iter_sub('')
+
+    def iter_sub(self, prefix):
+        """List contents of a subpath."""
         return (
             str((Path(_r) / _f).relative_to(self._path))
-            for _r, _, _files in os.walk(self._path)
+            for _r, _, _files in os.walk(self._path / prefix)
             for _f in _files
         )
 

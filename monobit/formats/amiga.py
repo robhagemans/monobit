@@ -7,6 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 import os
 import logging
+from pathlib import Path
 
 from ..binary import bytes_to_bits
 from ..storage import loaders, savers
@@ -48,10 +49,12 @@ def load_amiga_fc(f):
             tags = _TAG_ITEM.array(fc.tfc_TagCount).from_bytes(fc.tfc_FileName[tag_start:])
         else:
             tags = ()
-        # amiga fs is case insensitive, so we need to loop over listdir and match
-        for filename in f.where:
-            if filename.lower() == name.lower():
-                logging.debug('Reading font file %s', filename)
+        # amiga fs is case insensitive; need to loop over listdir and match
+        # font files given relative to local directory
+        local_dir = Path(f.name).parent
+        for filename in f.where.iter_sub(local_dir):
+            if Path(filename.lower()).relative_to(local_dir) == Path(name.lower()):
+                logging.debug('Reading font file %s on %r', filename, f.where)
                 with f.where.open(filename, 'r') as stream:
                     pack.append(_load_amiga(stream, tags))
             else:
