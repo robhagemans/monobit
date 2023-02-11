@@ -36,6 +36,9 @@ class Container:
             if _item.name.startswith(prefix)
         )
 
+    def __contains__(self, item):
+        return any(str(item) == str(_item) for _item in iter(self))
+
     def __enter__(self):
         # we don't support nesting the same archive
         assert self.refcount == 0
