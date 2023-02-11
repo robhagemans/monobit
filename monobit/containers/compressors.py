@@ -17,6 +17,39 @@ from ..streams import Stream
 from ..magic import FileFormatError
 
 
+class _WrappedContainer:
+    """Wrapper for compressed coontainer objects, manages compressed stream."""
+
+    def __init__(self, container, wrapping_stream):
+        self._container = container
+        self._stream = wrapping_stream
+
+    def close(self):
+        """Ensure wrapping stream is closed."""
+        logging.debug('wrappedcontainer close')
+        self._container.close()
+        self._stream.close()
+
+    def __enter__(self):
+        return self._container.__enter__()
+
+    def __exit__(self, *args, **kwargs):
+        logging.debug('wrappedcontainer exit')
+        self._container.__exit__(*args, **kwargs)
+        self._stream.close()
+
+    def __iter__(self):
+        return self._container.__iter__()
+
+    def __contains__(self, *args, **kwargs):
+        return self._container.__contains__(*args, **kwargs)
+
+    def __getattr__(self, attr):
+        if attr.startswith('_'):
+            raise AttributeError(attr)
+        return getattr(self._container, attr)
+
+
 class Compressor:
     """Base class for single-file compression helpers."""
 
@@ -78,9 +111,10 @@ class Compressor:
             mode=mode, name=name
         )
         try:
-            return open_container(wrapped, mode, **kwargs)
+            container = open_container(wrapped, mode, **kwargs)
         except cls.error as e:
             raise FileFormatError(e)
+        return _WrappedContainer(container, stream)
 
     @classmethod
     def register(cls):

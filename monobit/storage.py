@@ -104,8 +104,8 @@ def split_path_suffix(path):
 
 def open_container(stream, mode, format=''):
     """Interpret stream as (archive) container."""
-    # Directory.open() may return Directory objects
-    if isinstance(stream, Container):
+    # Directory.open() may return Directory objects (which are Container instances)
+    if hasattr(stream, 'open'):
         return stream
     fitting_containers = containers.get_for(stream, format=format)
     for opener in fitting_containers:
@@ -143,7 +143,7 @@ def load(infile:Any='', *, format:str='', **kwargs):
 def load_stream(instream, format='', **kwargs):
     """Load fonts from open stream."""
     # special case - directory or container object supplied
-    if isinstance(instream, Container):
+    if hasattr(instream, 'open'):
         return load_all(instream, format=format)
     # stream supplied and link to member - only works if stream holds a container
     # identify file type
@@ -238,7 +238,7 @@ def save(
 def save_stream(pack, outstream, format='', **kwargs):
     """Save fonts to an open stream."""
     # special case - directory or container object supplied
-    if isinstance(outstream, Container):
+    if hasattr(outstream, 'open'):
         return save_all(pack, outstream)
     matching_savers = savers.get_for(outstream, format=format)
     if not matching_savers:
