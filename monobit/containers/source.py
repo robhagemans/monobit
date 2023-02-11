@@ -17,6 +17,29 @@ from ..magic import FileFormatError
 from ..basetypes import Coord
 
 
+
+def _int_from_c(cvalue):
+    """Parse integer from C/Python/JS code."""
+    # C suffixes
+    while cvalue[-1:].lower() in ('u', 'l'):
+        cvalue = cvalue[:-1]
+    if cvalue.startswith('0') and cvalue[1:2] and cvalue[1:2] in string.digits:
+        # C / Python-2 octal 0777
+        cvalue = '0o' + cvalue[1:]
+    # 0x, 0b, decimals - like Python
+    return int(cvalue, 0)
+
+
+def _int_from_pascal(cvalue):
+    """Parse integer from Pascal code."""
+    if cvalue.startswith('#'):
+        # char literal
+        cvalue = cvalue[1:]
+    if cvalue.startswith('$') and cvalue[1:2] and cvalue[1:2] in string.digits:
+        cvalue = '0x' + cvalue[1:]
+    return int(cvalue, 0)
+
+
 _C_PARAMS = dict(
     delimiters='{}',
     comment='//',
@@ -28,11 +51,18 @@ _JS_PARAMS = dict(
 )
 
 _PY_PARAMS = dict(
-    delimiters='[]',
     comment='#',
 )
 
-###################################################################################################
+_PAS_PARAMS = dict(
+    delimiters='()',
+    comment='{',
+    int_conv=_int_from_pascal,
+)
+
+
+###############################################################################
+
 
 @loaders.register('c', 'cc', 'cpp', 'h', name='c', wrapper=True)
 def load_c(infile, *, identifier:str='', payload:str='raw', **kwargs):
@@ -47,6 +77,7 @@ def load_c(infile, *, identifier:str='', payload:str='raw', **kwargs):
         **_C_PARAMS, **kwargs
     )
 
+
 @loaders.register('js', 'json', name='json', wrapper=True)
 def load_json(infile, *, identifier:str='', payload:str='raw', **kwargs):
     """
@@ -60,6 +91,7 @@ def load_json(infile, *, identifier:str='', payload:str='raw', **kwargs):
         **_JS_PARAMS, **kwargs
     )
 
+
 @loaders.register('py', name='python', wrapper=True)
 def load_python(infile, *, identifier:str='', payload:str='raw', **kwargs):
     """
@@ -70,8 +102,37 @@ def load_python(infile, *, identifier:str='', payload:str='raw', **kwargs):
     """
     return _load_coded_binary(
         infile, identifier=identifier, payload=payload,
-        **_PY_PARAMS, **kwargs
+        delimiters='[]', **_PY_PARAMS, **kwargs
     )
+
+
+@loaders.register('py', name='python-tuple', wrapper=True)
+def load_python_tuple(infile, *, identifier:str='', payload:str='raw', **kwargs):
+    """
+    Extract font from bitmap encoded as a list in Python source code.
+
+    identifier: text at start of line where bitmap starts (default: first tuple)
+    payload: format of payload (default: 'raw')
+    """
+    return _load_coded_binary(
+        infile, identifier=identifier, payload=payload,
+        delimiters='()', **_PY_PARAMS, **kwargs
+    )
+
+
+@loaders.register('pas', name='pascal', wrapper=True)
+def load_pascal(infile, *, identifier:str='', payload:str='raw', **kwargs):
+    """
+    Extract font from bitmap encoded as a list in Pascal source code.
+
+    identifier: text at start of line where bitmap starts (default: first array)
+    payload: format of payload (default: 'raw')
+    """
+    return _load_coded_binary(
+        infile, identifier=identifier, payload=payload,
+        **_PAS_PARAMS, **kwargs
+    )
+
 
 @loaders.register(name='source', wrapper=True)
 def load_source(
@@ -98,24 +159,14 @@ def load_source(
 
 def _load_coded_binary(
         infile, *, identifier, delimiters, comment,
-        payload='raw', **kwargs,
+        payload='raw', int_conv=_int_from_c, **kwargs,
     ):
     """Load font from binary encoded in source code."""
     coded_data = _get_payload(infile.text, identifier, delimiters, comment)
-    data = bytes(_int_from_c(_s) for _s in coded_data.split(',') if _s.strip())
+    data = bytes(int_conv(_s) for _s in coded_data.split(',') if _s.strip())
     bytesio = Stream.from_data(data, mode='r')
     return load_stream(bytesio, format=payload, **kwargs)
 
-def _int_from_c(cvalue):
-    """Parse integer from c code."""
-    # suffixes
-    while cvalue[-1:].lower() in ('u', 'l'):
-        cvalue = cvalue[:-1]
-    if cvalue.startswith('0') and cvalue[1:2] and cvalue[1:2] in string.digits:
-        # C / Python-2 octal 0777
-        cvalue = '0o' + cvalue[1:]
-    # 0x, 0b, decimals - like Python
-    return int(cvalue, 0)
 
 def _get_payload(instream, identifier, delimiters, comment):
     """Find the identifier and get the part between delimiters."""
@@ -131,7 +182,9 @@ def _get_payload(instream, identifier, delimiters, comment):
                 _, line = line.split(start)
                 break
     else:
-        raise ValueError('No payload with identifier `{}` found in file'.format(identifier))
+        raise FileFormatError(
+            f'No payload with identifier `{identifier}` found in file'
+        )
     if end in line:
         line, _ = line.split(end, 1)
         return line
@@ -151,9 +204,9 @@ def _get_payload(instream, identifier, delimiters, comment):
     return ''.join(payload)
 
 
-###################################################################################################
+###############################################################################
 
-@savers.register('c', linked=load_c, wrapper=True)
+@savers.register(linked=load_c, wrapper=True)
 def save_c(fonts, outstream, payload:str='raw', bytes_per_line:int=16, **kwargs):
     """
     Save font to bitmap encoded in C source code.
@@ -167,23 +220,29 @@ def save_c(fonts, outstream, payload:str='raw', bytes_per_line:int=16, **kwargs)
         **_C_PARAMS, **kwargs
     )
 
-@savers.register('py', 'python', linked=load_python, wrapper=True)
+
+@savers.register(linked=load_python, wrapper=True)
 def save_python(
-        fonts, outstream, payload:str='raw', bytes_per_line:int=16, **kwargs
+        fonts, outstream,
+        delimiters:str='[]',
+        payload:str='raw', bytes_per_line:int=16,
+        **kwargs
     ):
     """
     Save font to bitmap encoded in Python source code.
 
+    delimiters: pair of delimiters that enclose the bitmap (default: [])
     bytes_per_line: number of encoded bytes in a source line (default: 16)
     payload: format of payload (default: 'raw')
     """
     return _save_coded_binary(
         fonts, outstream, 'font_{compactname} = ',
         payload=payload, bytes_per_line=bytes_per_line,
-        **_PY_PARAMS, **kwargs
+        delimiters=delimiters, **_PY_PARAMS, **kwargs
     )
 
-@savers.register('json', linked=load_json, wrapper=True)
+
+@savers.register(linked=load_json, wrapper=True)
 def save_json(
         fonts, outstream, payload:str='raw', bytes_per_line:int=16, **kwargs
     ):
@@ -199,7 +258,7 @@ def save_json(
         **_JS_PARAMS, **kwargs
     )
 
-@savers.register('source', linked=load_source, wrapper=True)
+@savers.register(linked=load_source, wrapper=True)
 def save_source(
         fonts, outstream, *,
         identifier:str, assign:str='=', delimiters:str='{}', comment:str='//',
