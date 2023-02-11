@@ -49,6 +49,9 @@ def open_location(location, mode, overwrite=False):
 @contextmanager
 def open_stream_or_container(container, path, mode):
     head, tail = split_path(container, path)
+    if mode == 'w' and str(head) == '.':
+        head2, tail = split_path_suffix(tail)
+        head /= head2
     if str(head) == '.':
         # base condition
         next_container = None
@@ -88,6 +91,16 @@ def split_path(container, path):
             return head, tail
     # nothing exists
     return Path('.'), path
+
+def split_path_suffix(path):
+    # pare forward path until a suffix is found
+    for head in reversed((path, *path.parents)):
+        if head.suffixes:
+            tail = path.relative_to(head)
+            return head, tail
+    # no suffix
+    return path, Path('.')
+
 
 def open_container(stream, mode, format=''):
     """Interpret stream as (archive) container."""
