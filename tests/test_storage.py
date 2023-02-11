@@ -148,6 +148,14 @@ class TestContainers(BaseTester):
         )
         self.assertEqual(len(fonts), 1)
 
+    def test_deeplink_nested_zip_write(self):
+        """Test writing deep linked into nested zip container."""
+        file = self.temp_path / 'fontdir.zip' / 'a' / 'subdir.zip' / 'b' / '4x6.yaff'
+        monobit.save(self.fixed4x6, file)
+        # write creates an extra subdir
+        file = self.temp_path / 'fontdir.zip' / 'fontdir' / 'a' / 'subdir.zip' / 'subdir' / 'b' / '4x6.yaff'
+        font, *_ = monobit.load(file)
+        self.assertEqual(len(font.glyphs), 919)
 
 class TestStreams(BaseTester):
     """Test stream i/o."""
