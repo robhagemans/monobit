@@ -64,14 +64,12 @@ def open_stream_or_container(container, path, mode):
             yield next_container
     else:
         if isinstance(next_container, Directory):
-            if mode == 'r':
-                raise FileNotFoundError(path)
-            else:
-                with next_container:
-                    stream = next_container.open(tail, mode)
-                    with stream:
-                        yield stream
-                return
+            with next_container:
+                # this'll raise a FileNotFoundError if we're reading
+                stream = next_container.open(tail, mode)
+                with stream:
+                    yield stream
+            return
         with next_container:
             with open_stream_or_container(next_container, tail, mode) as soc:
                 yield soc
