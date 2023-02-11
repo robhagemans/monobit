@@ -132,6 +132,22 @@ class TestContainers(BaseTester):
         fonts = monobit.load(file)
         self.assertEqual(len(fonts), 1)
 
+    def test_nested_zip(self):
+        """Test zipfile in zipfile."""
+        fonts = monobit.load(self.font_path / 'zipinzip.zip')
+        self.assertEqual(len(fonts), 1)
+        fonts1 = monobit.load(self.font_path / 'zipinzip.zip' / 'zipinzip' / 'zipinzip.zip')
+        self.assertEqual(len(fonts1), 1)
+
+    def test_deeplink_nested_zip(self):
+        """Test deeplinking into zipfile in zipfile."""
+        fonts = monobit.load(
+            self.font_path / 'zipinzip.zip'
+            / 'zipinzip' / 'zipinzip.zip'
+            / 'zipinzip' / '4x6.yaff'
+        )
+        self.assertEqual(len(fonts), 1)
+
 
 class TestStreams(BaseTester):
     """Test stream i/o."""
