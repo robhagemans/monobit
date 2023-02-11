@@ -102,15 +102,27 @@ class TestContainers(BaseTester):
         fonts = monobit.load(container_file)
         assert not fonts
 
-    def test_deeplink_tgz(self):
+    def test_baddeeplink_tgz(self):
         """Test deep linking into tar.gz container."""
         file = self.font_path / 'fontdir.tar.gz' / 'subdir' / '6x13.fon.bz2'
+        with self.assertRaises(FileNotFoundError):
+            fonts = monobit.load(file)
+
+    def test_baddeeplink_zip(self):
+        """Test deep linking into zip container."""
+        file = self.font_path / 'fontdir.zip' / 'subdir' / '6x13.fon.bz2'
+        with self.assertRaises(FileNotFoundError):
+            fonts = monobit.load(file)
+
+    def test_deeplink_tgz(self):
+        """Test deep linking into tar.gz container."""
+        file = self.font_path / 'fontdir.tar.gz' / 'fontdir' / 'subdir' / '6x13.fon.bz2'
         fonts = monobit.load(file)
         self.assertEqual(len(fonts), 1)
 
     def test_deeplink_zip(self):
         """Test deep linking into zip container."""
-        file = self.font_path / 'fontdir.zip' / 'subdir' / '6x13.fon.bz2'
+        file = self.font_path / 'fontdir.zip' / 'fontdir' / 'subdir' / '6x13.fon.bz2'
         fonts = monobit.load(file)
         self.assertEqual(len(fonts), 1)
 
