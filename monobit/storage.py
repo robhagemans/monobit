@@ -25,58 +25,74 @@ DEFAULT_BINARY_FORMAT = 'raw'
 
 
 @contextmanager
-def open_location(file, mode, overwrite=False):
+def open_location(location, mode, overwrite=False):
     """Parse file specification, open stream."""
     # enclosing container is stream.where
     if mode not in ('r', 'w'):
         raise ValueError(f"Unsupported mode '{mode}'.")
-    if not file:
+    if not location:
         raise ValueError(f'No location provided.')
-    # find existing file and any deep link to archive member
-    member = ''
-    if isinstance(file, str):
-        file = Path(file)
-    if isinstance(file, Path):
-        if mode == 'r' and not file.exists():
-            # not on filesystem - can interpret as deep link into archive?
-            # pare back path until an existing ancestor is found
-            for parent in file.parents:
-                if parent.exists():
-                    member = file.relative_to(parent)
-                    file = parent
-                    break
-        if file.is_dir():
-            if member:
-                raise FileNotFoundError(file / member)
-            # special case: load all in directory
-            yield Directory(file)
+    if isinstance(location, str):
+        location = Path(location)
+    if isinstance(location, Path):
+        container = Directory()
+        with container:
+            with open_stream_or_container(container, location, mode) as soc:
+                yield soc
+    elif isinstance(location, (StreamBase, Container)):
+        yield location
+    else:
+        # we didn't open the file, so we don't own it
+        # we neeed KeepOpen for when the yielded object goes out of scope in the caller
+        yield Stream(KeepOpen(location), mode=mode)
+
+@contextmanager
+def open_stream_or_container(container, path, mode):
+    head, tail = split_path(container, path)
+    stream = container.open(head, mode)
+    try:
+        next_container = open_container(stream, mode)
+    except FileFormatError:
+        if str(tail) != '.':
+            raise
+        next_container = None
+    if str(tail) == '.':
+        if next_container:
+            with next_container:
+                yield next_container
         else:
-            # use parent directory as enclosing container
-            stream = Directory(file.parent).open(file.name, mode=mode)
-            if member:
-                stream = open_container(stream, member)
             with stream:
                 yield stream
     else:
-        if isinstance(file, (StreamBase, Container)):
-            stream = file
-        else:
-            # we didn't open the file, so we don't own it
-            # we neeed KeepOpen for when the yielded object goes out of scope in the caller
-            stream = Stream(KeepOpen(file), mode=mode)
-        if member:
-            stream = open_container(stream, member)
-        yield stream
+        if isinstance(next_container, Directory):
+            if mode == 'r':
+                raise FileNotFoundError(path)
+            else:
+                with next_container:
+                    stream = next_container.open(tail, mode)
+                    with stream:
+                        yield stream
+                return
+        with next_container:
+            with open_stream_or_container(next_container, tail, mode) as soc:
+                yield soc
 
+def split_path(container, path):
+    # pare back path until an existing ancestor is found
+    for head in (path, *path.parents):
+        if head in container:
+            tail = path.relative_to(head)
+            return head, tail
 
-def open_container(instream, member, format=''):
-    # split up e.g. 'yaff.zip' format
-    member_format, _, format = format.partition('.')
-    # member given - can we find a fitting container?
-    fitting_containers = containers.get_for(instream, format=format)
+def open_container(stream, mode, format=''):
+    """Interpret stream as (archive) container."""
+    # Directory.open() may return Directory objects
+    if isinstance(stream, Container):
+        return stream
+    fitting_containers = containers.get_for(stream, format=format)
     if not fitting_containers:
         message = (
-            f'Cannot open `{member}` on `{instream.name}`: '
+            f'Cannot open `{stream.name}`: '
             'not recognised as container'
         )
         if format:
@@ -84,12 +100,11 @@ def open_container(instream, member, format=''):
         raise FileFormatError(message)
     for opener in fitting_containers:
         try:
-            container = opener(instream)
+            container = opener(stream, mode)
         except FileFormatError:
             continue
         else:
-            stream = container.open(member, mode='r')
-            return stream
+            return container
     raise FileFormatError('Cannot open container')
 
 
@@ -251,10 +266,12 @@ def save_all(pack, container, **kwargs):
 class ConverterRegistry(MagicRegistry):
     """Loader/Saver registry."""
 
-    def __init__(self, func_name):
+    def __init__(self, func_name, default_text='', default_binary=''):
         """Set up registry and function name."""
         super().__init__()
         self._func_name = func_name
+        self._default_text = default_text
+        self._default_binary = default_binary
 
     def get_for_location(self, file, mode, format=''):
         """Get loader/saver for font file location."""
@@ -277,29 +294,26 @@ class ConverterRegistry(MagicRegistry):
                     converter = (self._names[format],)
                 except KeyError:
                     converter = self._suffixes.get(format,  ())
-            elif (
-                    not file
-                    or not file.name or file.name == '<stdout>'
-                    or (file.mode == 'r' and maybe_text(file))
+            elif ((
+                        not file
+                        or not file.name or file.name == '<stdout>'
+                        or (file.mode == 'r' and maybe_text(file))
+                    )
+                    and self._default_text
                 ):
                 logging.debug(
-                    'Fallback to default `%s` format', DEFAULT_TEXT_FORMAT
+                    'Fallback to default `%s` format', self._default_text
                 )
-                converter = (self._names[DEFAULT_TEXT_FORMAT],)
-            elif file.mode == 'r':
-                converter = (self._names[DEFAULT_BINARY_FORMAT],)
+                converter = (self._names[self._default_text],)
+            elif file.mode == 'r' and self._default_binary:
+                converter = (self._names[self._default_binary],)
                 logging.debug(
-                    'Fallback to default `%s` format', DEFAULT_BINARY_FORMAT
+                    'Fallback to default `%s` format', self._default_binary
                 )
             else:
                 if format:
-                    msg = f'Format `{format}` not recognised'
-                else:
-                    msg = 'Could not determine format'
-                    if file:
-                        msg += f' from file name `{file.name}`'
-                    msg += '. Please provide a -format option'
-                raise ValueError(msg)
+                    raise ValueError( f'Format `{format}` not recognised')
+                converter = ()
         return converter
 
     def register(self, *formats, magic=(), name='', linked=None):
@@ -343,6 +357,6 @@ class ConverterRegistry(MagicRegistry):
         return _decorator
 
 
-loaders = ConverterRegistry('load')
-savers = ConverterRegistry('save')
+loaders = ConverterRegistry('load', DEFAULT_TEXT_FORMAT, DEFAULT_BINARY_FORMAT)
+savers = ConverterRegistry('save', DEFAULT_TEXT_FORMAT, DEFAULT_BINARY_FORMAT)
 containers = ConverterRegistry('open')

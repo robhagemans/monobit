@@ -37,6 +37,7 @@ class Container:
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
+        self.refcount -= 1
         if exc_type == BrokenPipeError:
             return True
         logging.debug('Exiting archive %r', self)
@@ -66,11 +67,11 @@ class Container:
 class Directory(Container):
     """Treat directory tree as a container."""
 
-    def __init__(self, path, mode='r', *, overwrite=False):
+    def __init__(self, path='', mode='r', *, overwrite=False):
         """Create directory wrapper."""
         # if empty path, this refers to the whole filesystem
         if not path:
-            path = ''
+            self._path = ''
         elif isinstance(path, Directory):
             self._path = path._path
         else:
@@ -94,7 +95,11 @@ class Directory(Container):
             logging.debug('Creating directory `%s`', self._path / path)
             (self._path / path).mkdir(parents=True, exist_ok=True)
         logging.debug("Opening file `%s` for mode '%s'.", name, mode)
-        file = open(self._path / pathname, mode + 'b')
+        filepath = Path(self._path / pathname)
+        # return Directory  object instead of stream if the path is a directory
+        if filepath.is_dir():
+            return Directory(filepath)
+        file = open(filepath, mode + 'b')
         # provide name relative to directory container
         stream = Stream(
             file, mode=mode,
@@ -107,7 +112,7 @@ class Directory(Container):
         """List contents."""
         # don't walk the whole filesystem - no path is no contents
         if not self._path:
-            return ()
+            return iter(())
         return (
             str((Path(_r) / _f).relative_to(self._path))
             for _r, _, _files in os.walk(self._path)
@@ -116,4 +121,7 @@ class Directory(Container):
 
     def __contains__(self, name):
         """File exists in container."""
-        return (self._path / name).exists()
+        return Path(self._path / name).exists()
+
+    def __repr__(self):
+        return f"{type(self).__name__}('{self._path}')"
