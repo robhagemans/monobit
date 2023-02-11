@@ -11,7 +11,7 @@ import tarfile
 import logging
 from pathlib import Path, PurePosixPath
 
-from ..container import DEFAULT_ROOT, Container
+from ..container import Container
 from ..streams import Stream, KeepOpen
 from ..storage import loaders, savers, containers, load_all, save_all
 from ..magic import FileFormatError
@@ -48,10 +48,14 @@ class TarContainer(Container):
         except tarfile.ReadError as exc:
             raise FileFormatError(exc) from exc
         # on output, put all files in a directory with the same name as the archive (without suffix)
+        stem = Path(self.name).stem
         if mode == 'w':
-            self._root = Path(self.name).stem or DEFAULT_ROOT
+            self._root = stem
         else:
+            # on read, only set root if it is a common parent
             self._root = ''
+            if all(Path(_item).is_relative_to(stem) for _item in iter(self)):
+                self._root = stem
         # output files, to be written on close
         self._files = []
 
@@ -79,7 +83,17 @@ class TarContainer(Container):
     def __iter__(self):
         """List contents."""
         # list regular files only, skip symlinks and dirs and block devices
-        return (_ti.name for _ti in self._tarfile.getmembers() if _ti.isfile())
+        namelist = (
+            _ti.name
+            for _ti in self._tarfile.getmembers()
+            if _ti.isfile()
+        )
+        return (
+            str(PurePosixPath(_name).relative_to(self._root))
+            for _name in namelist
+            # exclude directories
+            if not _name.endswith('/')
+        )
 
     def open(self, name, mode):
         """Open a stream in the container."""

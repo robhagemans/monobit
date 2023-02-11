@@ -104,25 +104,25 @@ class TestContainers(BaseTester):
 
     def test_baddeeplink_tgz(self):
         """Test deep linking into tar.gz container."""
-        file = self.font_path / 'fontdir.tar.gz' / 'subdir' / '6x13.fon.bz2'
+        file = self.font_path / 'fontdir.tar.gz' / 'not_the_subdir' / '6x13.fon.bz2'
         with self.assertRaises(FileNotFoundError):
             fonts = monobit.load(file)
 
     def test_baddeeplink_zip(self):
         """Test deep linking into zip container."""
-        file = self.font_path / 'fontdir.zip' / 'subdir' / '6x13.fon.bz2'
+        file = self.font_path / 'fontdir.zip' / 'not_the_subdir' / '6x13.fon.bz2'
         with self.assertRaises(FileNotFoundError):
             fonts = monobit.load(file)
 
     def test_deeplink_tgz(self):
         """Test deep linking into tar.gz container."""
-        file = self.font_path / 'fontdir.tar.gz' / 'fontdir' / 'subdir' / '6x13.fon.bz2'
+        file = self.font_path / 'fontdir.tar.gz' / 'subdir' / '6x13.fon.bz2'
         fonts = monobit.load(file)
         self.assertEqual(len(fonts), 1)
 
     def test_deeplink_zip(self):
         """Test deep linking into zip container."""
-        file = self.font_path / 'fontdir.zip' / 'fontdir' / 'subdir' / '6x13.fon.bz2'
+        file = self.font_path / 'fontdir.zip' / 'subdir' / '6x13.fon.bz2'
         fonts = monobit.load(file)
         self.assertEqual(len(fonts), 1)
 
@@ -136,15 +136,13 @@ class TestContainers(BaseTester):
         """Test zipfile in zipfile."""
         fonts = monobit.load(self.font_path / 'zipinzip.zip')
         self.assertEqual(len(fonts), 1)
-        fonts1 = monobit.load(self.font_path / 'zipinzip.zip' / 'zipinzip' / 'zipinzip.zip')
+        fonts1 = monobit.load(self.font_path / 'zipinzip.zip' / 'zipinzip.zip')
         self.assertEqual(len(fonts1), 1)
 
     def test_deeplink_nested_zip(self):
         """Test deeplinking into zipfile in zipfile."""
         fonts = monobit.load(
-            self.font_path / 'zipinzip.zip'
-            / 'zipinzip' / 'zipinzip.zip'
-            / 'zipinzip' / '4x6.yaff'
+            self.font_path / 'zipinzip.zip' / 'zipinzip.zip' / '4x6.yaff'
         )
         self.assertEqual(len(fonts), 1)
 
@@ -152,8 +150,6 @@ class TestContainers(BaseTester):
         """Test writing deep linked into nested zip container."""
         file = self.temp_path / 'fontdir.zip' / 'a' / 'subdir.zip' / 'b' / '4x6.yaff'
         monobit.save(self.fixed4x6, file)
-        # write creates an extra subdir
-        file = self.temp_path / 'fontdir.zip' / 'fontdir' / 'a' / 'subdir.zip' / 'subdir' / 'b' / '4x6.yaff'
         font, *_ = monobit.load(file)
         self.assertEqual(len(font.glyphs), 919)
 

@@ -13,9 +13,6 @@ from pathlib import Path
 from .streams import Stream
 
 
-DEFAULT_ROOT = 'fonts'
-
-
 class Container:
     """Base class for container types."""
 

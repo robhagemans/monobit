@@ -10,7 +10,7 @@ import logging
 import zipfile
 from pathlib import Path, PurePosixPath
 
-from ..container import DEFAULT_ROOT, Container
+from ..container import Container
 from ..streams import KeepOpen, Stream
 from ..storage import loaders, savers, containers, load_all, save_all
 from ..magic import FileFormatError
@@ -50,10 +50,14 @@ class ZipContainer(Container):
         except zipfile.BadZipFile as exc:
             raise FileFormatError(exc) from exc
         # on output, put all files in a directory with the same name as the archive (without suffix)
+        stem = Path(self.name).stem
         if mode == 'w':
-            self._root = Path(self.name).stem or DEFAULT_ROOT
+            self._root = stem
         else:
+            # on read, only set root if it is a common parent
             self._root = ''
+            if all(Path(_item).is_relative_to(stem) for _item in iter(self)):
+                self._root = stem
         # output files, to be written on close
         self._files = []
 
