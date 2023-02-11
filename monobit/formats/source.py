@@ -9,13 +9,12 @@ from io import BytesIO
 import string
 
 from ..binary import ceildiv
-from ..storage import loaders, savers
+from ..storage import loaders, savers, load_stream, save_stream
 from ..streams import Stream
 from ..font import Font
 from ..glyph import Glyph
 from ..magic import FileFormatError
 from ..basetypes import Coord
-from .raw import load_bitmap, save_bitmap
 
 
 _C_PARAMS = dict(
@@ -35,100 +34,47 @@ _PY_PARAMS = dict(
 
 ###################################################################################################
 
-@loaders.register('c', 'cc', 'cpp', 'h', name='c')
-def load_c(
-        infile, *,
-        identifier:str='',
-        cell:Coord=(8, 8), count:int=-1, offset:int=0, padding:int=0,
-        align:str='left', strike_count:int=1, strike_bytes:int=-1,
-        first_codepoint:int=0
-    ):
+@loaders.register('c', 'cc', 'cpp', 'h', name='c', wrapper=True)
+def load_c(infile, *, identifier:str='', **kwargs):
     """
     Extract font from bitmap encoded in C or C++ source code.
 
     identifier: text at start of line where bitmap starts. (default: first array literal {})
-    cell: size X,Y of character cell (default: 8x8)
-    offset: number of bytes in file before bitmap starts (default: 0)
-    padding: number of bytes between encoded glyphs (default: 0)
-    count: number of glyphs to extract (<=0 means all; default: all glyphs)
-    align: alignment of glyph in byte (left for most-, right for least-significant; default: left)
-    strike_count: number of glyphs in glyph row (<=0 for all; default: 1)
-    strike_bytes: strike width in bytes (<=0 means as many as needed to fit the glyphs; default: as needed)
-    first_codepoint: first code point in bitmap (default: 0)
     """
     return _load_coded_binary(
         infile, identifier=identifier,
-        cell=cell, count=count, offset=offset, padding=padding,
-        align=align, strike_count=strike_count, strike_bytes=strike_bytes,
-        first_codepoint=first_codepoint,
-        **_C_PARAMS
+        **_C_PARAMS, **kwargs
     )
 
-@loaders.register('js', 'json', name='json')
-def load_json(
-        infile, *,
-        identifier:str='',
-        cell:Coord=(8, 8), count:int=-1, offset:int=0, padding:int=0,
-        align:str='left', strike_count:int=1, strike_bytes:int=-1,
-        first_codepoint:int=0
-    ):
+@loaders.register('js', 'json', name='json', wrapper=True)
+def load_json(infile, *, identifier:str='', **kwargs):
     """
     Extract font from bitmap encoded in JavaScript source code.
 
     identifier: text at start of line where bitmap starts (default: first list [])
-    cell: size X,Y of character cell (default: 8x8)
-    offset: number of bytes in file before bitmap starts (default: 0)
-    padding: number of bytes between encoded glyphs (default: 0)
-    count: number of glyphs to extract (<=0 means all; default: all)
-    align: alignment of glyph in byte (left for most-, right for least-significant; default: left)
-    strike_count: number of glyphs in glyph row (<=0 for all; default: 1)
-    strike_bytes: strike width in bytes (<=0 means as many as needed to fit the glyphs; default: as needed)
-    first_codepoint: first code point in bitmap (default: 0)
     """
     return _load_coded_binary(
         infile, identifier=identifier,
-        cell=cell, count=count, offset=offset, padding=padding,
-        align=align, strike_count=strike_count, strike_bytes=strike_bytes,
-        first_codepoint=first_codepoint,
-        **_JS_PARAMS
+        **_JS_PARAMS, **kwargs
     )
 
-@loaders.register('py', name='python')
-def load_python(
-        infile, *,
-        identifier:str='',
-        cell:Coord=(8, 8), count:int=-1, offset:int=0, padding:int=0,
-        align:str='left', strike_count:int=1, strike_bytes:int=-1,
-        first_codepoint:int=0
-    ):
+@loaders.register('py', name='python', wrapper=True)
+def load_python(infile, *, identifier:str='', **kwargs):
     """
     Extract font from bitmap encoded as a list in Python source code.
 
     identifier: text at start of line where bitmap starts (default: first list [])
-    cell: size X,Y of character cell (default: 8x8)
-    offset: number of bytes in file before bitmap starts (default: 0)
-    padding: number of bytes between encoded glyphs (default: 0)
-    count: number of glyphs to extract (<=0 means all; default: all)
-    align: alignment of glyph in byte (left for most-, right for least-significant; default: left)
-    strike_count: number of glyphs in glyph row (<=0 for all; default: 1)
-    strike_bytes: strike width in bytes (<=0 means as many as needed to fit the glyphs; default: as needed)
-    first_codepoint: first code point in bitmap (default: 0)
     """
     return _load_coded_binary(
         infile, identifier=identifier,
-        cell=cell, count=count, offset=offset, padding=padding,
-        align=align, strike_count=strike_count, strike_bytes=strike_bytes,
-        first_codepoint=first_codepoint,
-        **_PY_PARAMS
+        **_PY_PARAMS, **kwargs
     )
 
-@loaders.register(name='source')
+@loaders.register(name='source', wrapper=True)
 def load_source(
         infile, *,
         identifier:str='', delimiters:str='{}', comment:str='//',
-        cell:Coord=(8, 8), count:int=-1, strike_count:int=1, strike_bytes:int=-1,
-        offset:int=0, padding:int=0, align:str='left',
-        first_codepoint:int=0
+        **kwargs
     ):
     """
     Extract font from bitmap encoded in source code.
@@ -136,37 +82,23 @@ def load_source(
     identifier: text at start of line where bitmap starts (default: first delimiter)
     delimiters: pair of delimiters that enclose the bitmap (default: {})
     comment: string that introduces inline comment (default: //)
-    cell: size X,Y of character cell (default: 8x8)
-    offset: number of bytes in file before bitmap starts (default: 0)
-    padding: number of bytes between encoded glyphs (default: 0)
-    count: number of glyphs to extract (<=0 means all; default: all)
-    align: alignment of glyph in byte (left for most-, right for least-significant; default: left)
-    strike_count: number of glyphs in glyph row (<=0 for all; default: 1)
-    strike_bytes: strike width in bytes (<=0 means as many as needed to fit the glyphs; default: as needed)
-    first_codepoint: first code point in bitmap (default: 0)
     """
-
     return _load_coded_binary(
         infile, identifier=identifier,
-        cell=cell, count=count, offset=offset, padding=padding,
-        align=align, strike_count=strike_count, strike_bytes=strike_bytes,
-        first_codepoint=first_codepoint,
-        delimiters=delimiters, comment=comment
+        delimiters=delimiters, comment=comment,
+        **kwargs
     )
 
 
 def _load_coded_binary(
         infile, identifier, delimiters, comment,
-        cell, count, offset, padding, align, strike_count, strike_bytes, first_codepoint
+        offset=0, format='raw', **kwargs,
     ):
     """Load font from binary encoded in source code."""
-    width, height = cell
     payload = _get_payload(infile.text, identifier, delimiters, comment)
     data = bytes(_int_from_c(_s) for _s in payload.split(',') if _s.strip())
     bytesio = Stream.from_data(data[offset:], mode='r')
-    return load_bitmap(
-        bytesio, width, height, count, padding, align, strike_count, strike_bytes, first_codepoint
-    )
+    return load_stream(bytesio, format=format, **kwargs)
 
 def _int_from_c(cvalue):
     """Parse integer from c code."""
@@ -215,40 +147,50 @@ def _get_payload(instream, identifier, delimiters, comment):
 
 ###################################################################################################
 
-@savers.register('c', linked=load_c)
-def save_c(fonts, outstream):
+@savers.register('c', linked=load_c, wrapper=True)
+def save_c(fonts, outstream, **kwargs):
     """
     Save font to bitmap encoded in C source code.
     """
-    return _save_coded_binary(fonts, outstream, 'char font_{compactname}[{bytesize}] = ', **_C_PARAMS)
+    return _save_coded_binary(
+        fonts, outstream, 'char font_{compactname}[{bytesize}] = ',
+        **_C_PARAMS, **kwargs
+    )
 
-@savers.register('py', 'python', linked=load_python)
-def save_python(fonts, outstream):
+@savers.register('py', 'python', linked=load_python, wrapper=True)
+def save_python(fonts, outstream, **kwargs):
     """
     Save font to bitmap encoded in Python source code.
     """
-    return _save_coded_binary(fonts, outstream, 'font_{compactname} = ', **_PY_PARAMS)
+    return _save_coded_binary(
+        fonts, outstream, 'font_{compactname} = ', **_PY_PARAMS, **kwargs
+    )
 
-@savers.register('json', linked=load_json)
-def save_json(fonts, outstream):
+@savers.register('json', linked=load_json, wrapper=True)
+def save_json(fonts, outstream, **kwargs):
     """
     Save font to bitmap encoded in JSON code.
     """
-    return _save_coded_binary(fonts, outstream, '', **_JS_PARAMS)
+    return _save_coded_binary(fonts, outstream, '', **_JS_PARAMS, **kwargs)
 
-@savers.register('source', linked=load_source)
+@savers.register('source', linked=load_source, wrapper=True)
 def save_source(
         fonts, outstream, *,
         identifier:str, assign:str='=', delimiters:str='{}', comment:str='//',
+        **kwargs
     ):
     """
     Save font to bitmap encoded in source code.
     """
-    return _save_coded_binary(fonts, outstream, f'{identifier} {assign} ', delimiters, comment)
+    return _save_coded_binary(
+        fonts, outstream,
+        f'{identifier} {assign} ', delimiters, comment,
+        **kwargs
+    )
 
 def _save_coded_binary(
         fonts, outstream, assignment_pattern, delimiters, comment,
-        bytes_per_line=16
+        bytes_per_line=16, format='raw', **kwargs
     ):
     """
     Generate bitmap encoded source code from a font.
@@ -259,24 +201,22 @@ def _save_coded_binary(
     delimiters (str): Must contain two characters, building the opening and closing delimiters of the collection. E.g. []
     comment (str): Line Comment character(s). Currently not used.
     bytes_per_line (int): number of encoded bytes in a source line
+    format (str): format of payload
     """
-    if len(fonts) > 1:
-        raise FileFormatError('Can only save one font to source file.')
-    font = fonts[0]
     if len(delimiters) < 2:
         raise ValueError('A start and end delimiter must be given. E.g. []')
     start_delimiter = delimiters[0]
     end_delimiter = delimiters[1]
-    # build the identifier
-    ascii_name = font.name.encode('ascii', 'ignore').decode('ascii')
+    # build the identifier from first font name
+    ascii_name = fonts[0].name.encode('ascii', 'ignore').decode('ascii')
     ascii_name = ''.join(_c if _c.isalnum() else '_' for _c in ascii_name)
-    width, height = font.raster_size
-    bytesize = ceildiv(width, 8) * height * len(font.glyphs)
-    assignment = assignment_pattern.format(compactname=ascii_name, bytesize=bytesize)
     # get the raw data
-    bytesio = BytesIO()
-    save_bitmap(bytesio, font)
+    bytesio = Stream(BytesIO(), mode='w')
+    save_stream(fonts, bytesio, format=format, **kwargs)
     rawbytes = bytesio.getbuffer()
+    assignment = assignment_pattern.format(
+        compactname=ascii_name, bytesize=len(rawbytes)
+    )
     # emit code
     outstream = outstream.text
     outstream.write(f'{assignment}{start_delimiter}\n')
@@ -296,4 +236,4 @@ def _save_coded_binary(
             outstream.write(',')
         outstream.write('\n')
     outstream.write(f'{end_delimiter}\n')
-    return font
+    return fonts

@@ -27,7 +27,6 @@ class _WrappedContainer:
 
     def close(self):
         """Ensure wrapping stream is closed."""
-        logging.debug('wrappedcontainer close')
         self._container.close()
         self._stream.close()
 
@@ -35,7 +34,6 @@ class _WrappedContainer:
         return self._container.__enter__()
 
     def __exit__(self, *args, **kwargs):
-        logging.debug('wrappedcontainer exit')
         self._container.__exit__(*args, **kwargs)
         self._stream.close()
 
@@ -121,13 +119,13 @@ class Compressor:
     @classmethod
     def register(cls):
         loaders.register(
-            *cls.suffixes, name=cls.name, magic=(cls.magic,)
+            *cls.suffixes, name=cls.name, magic=(cls.magic,), wrapper=True
         )(cls.load)
         savers.register(
-            *cls.suffixes, name=cls.name, magic=(cls.magic,)
+            *cls.suffixes, name=cls.name, magic=(cls.magic,), wrapper=True
         )(cls.save)
         containers.register(
-            *cls.suffixes, name=cls.name, magic=(cls.magic,)
+            *cls.suffixes, name=cls.name, magic=(cls.magic,), wrapper=True
         )(cls.open)
 
 

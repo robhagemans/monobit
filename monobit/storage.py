@@ -336,7 +336,7 @@ class ConverterRegistry(MagicRegistry):
                 converter = ()
         return converter
 
-    def register(self, *formats, magic=(), name='', linked=None):
+    def register(self, *formats, magic=(), name='', linked=None, wrapper=False):
         """
         Decorator to register font loader/saver.
 
@@ -344,6 +344,7 @@ class ConverterRegistry(MagicRegistry):
         magic: magic sequences covered by the converter (no effect for savers)
         name: name of the format
         linked: loader/saver linked to saver/loader
+        wrapper: this is a single-file wrapper format, enable argument passthrough
         """
         register_magic = super().register
 
@@ -358,6 +359,7 @@ class ConverterRegistry(MagicRegistry):
                 name=funcname,
                 # don't record history of loading from default format
                 record=(name=='load' and DEFAULT_TEXT_FORMAT not in formats),
+                unknown_args='passthrough' if wrapper else 'raise',
             )
             # register converter
             if linked:
