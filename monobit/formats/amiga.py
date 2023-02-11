@@ -51,8 +51,11 @@ def load_amiga_fc(f):
         # amiga fs is case insensitive, so we need to loop over listdir and match
         for filename in f.where:
             if filename.lower() == name.lower():
+                logging.debug('Reading font file %s', filename)
                 with f.where.open(filename, 'r') as stream:
                     pack.append(_load_amiga(stream, tags))
+            else:
+                logging.debug('Skipping file %s', filename)
     return pack
 
 

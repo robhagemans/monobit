@@ -67,6 +67,7 @@ class StreamBase:
 
     def close(self):
         if self._stream and not self._refcount:
+            logging.debug('Closing %r', self)
             self._stream.close()
         self.closed = True
 

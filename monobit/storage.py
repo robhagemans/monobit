@@ -52,17 +52,16 @@ def open_stream_or_container(container, path, mode):
     stream = container.open(head, mode)
     try:
         next_container = open_container(stream, mode)
-    except FileFormatError:
+    except FileFormatError as e:
+        logging.debug(e)
         if str(tail) != '.':
             raise
-        next_container = None
+        with stream:
+            yield stream
+        return
     if str(tail) == '.':
-        if next_container:
-            with next_container:
-                yield next_container
-        else:
-            with stream:
-                yield stream
+        with next_container:
+            yield next_container
     else:
         if isinstance(next_container, Directory):
             if mode == 'r':

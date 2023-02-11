@@ -40,11 +40,11 @@ class ZipContainer(Container):
         mode = mode[:1]
         super().__init__(mode, file.name)
         # reading zipfile needs a seekable stream, drain to buffer if needed
-        stream = Stream(file, mode, overwrite=overwrite)
+        self._stream = Stream(file, mode, overwrite=overwrite)
         # create the zipfile
         try:
             self._zip = zipfile.ZipFile(
-                stream, mode,
+                self._stream, mode,
                 compression=zipfile.ZIP_DEFLATED
             )
         except zipfile.BadZipFile as exc:
@@ -67,9 +67,10 @@ class ZipContainer(Container):
                 self._zip.writestr(file.name, bytearray)
         try:
             self._zip.close()
-        except EnvironmentError:
+        except EnvironmentError as e:
             # e.g. BrokenPipeError
-            pass
+            logging.debug(e)
+        self._stream.close()
         super().close()
 
     def __iter__(self):
