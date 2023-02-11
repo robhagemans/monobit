@@ -12,6 +12,7 @@ import lzma
 import bz2
 
 from ..storage import loaders, savers, load_stream, save_stream
+from ..storage import open_container, containers
 from ..streams import Stream
 from ..magic import FileFormatError
 
@@ -63,6 +64,25 @@ class Compressor:
             raise FileFormatError(e)
 
     @classmethod
+    def open(cls, stream, mode, **kwargs):
+        """Open container on compressed stream."""
+        if mode == 'r':
+            magic = stream.peek(len(cls.magic))
+            if cls.must_have_magic and not magic.startswith(cls.magic):
+                raise FileFormatError(
+                    f'Not a {cls.name}-compressed file'
+                )
+        name = Path(stream.name).stem
+        wrapped = Stream(
+            cls.compressor.open(stream, mode=mode + 'b'),
+            mode=mode, name=name
+        )
+        try:
+            return open_container(wrapped, mode, **kwargs)
+        except cls.error as e:
+            raise FileFormatError(e)
+
+    @classmethod
     def register(cls):
         loaders.register(
             *cls.suffixes, name=cls.name, magic=(cls.magic,)
@@ -70,7 +90,9 @@ class Compressor:
         savers.register(
             *cls.suffixes, name=cls.name, magic=(cls.magic,)
         )(cls.save)
-
+        containers.register(
+            *cls.suffixes, name=cls.name, magic=(cls.magic,)
+        )(cls.open)
 
 
 class GzipCompressor(Compressor):
