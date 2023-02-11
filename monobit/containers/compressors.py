@@ -90,21 +90,29 @@ class Compressor:
             raise FileFormatError(e)
 
     @classmethod
-    def load(cls, instream, **kwargs):
-        """Load fonts from compressed stream."""
+    def load(cls, instream, payload:str='', **kwargs):
+        """
+        Load fonts from compressed stream.
+
+        payload: format of compressed font file.
+        """
         cls._check_magic(instream)
         wrapped = cls._get_payload_stream(instream, 'r')
         with cls._translate_errors():
             with wrapped:
-                return load_stream(wrapped, **kwargs)
+                return load_stream(wrapped, format=payload, **kwargs)
 
     @classmethod
-    def save(cls, fonts, outstream, **kwargs):
-        """Load fonts from compressed stream."""
+    def save(cls, fonts, outstream, payload:str='', **kwargs):
+        """
+        Save fonts to compressed stream.
+
+        payload: format of compressed font file.
+        """
         wrapped = cls._get_payload_stream(outstream, 'w')
         with cls._translate_errors():
             with wrapped:
-                return save_stream(fonts, wrapped, **kwargs)
+                return save_stream(fonts, wrapped, format=payload, **kwargs)
 
     @classmethod
     def open(cls, stream, mode, **kwargs):

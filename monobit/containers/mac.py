@@ -19,14 +19,23 @@ from ..magic import FileFormatError
         b'\r(This file must be converted',
     ), wrapper=True,
 )
-def load_binhex(instream, **kwargs):
-    """BinHex 4.0 loader."""
-    return _load_macforks(_parse_binhex, instream, **kwargs)
+def load_binhex(instream, payload:str='dfont', **kwargs):
+    """
+    BinHex 4.0 loader.
+
+    payload: format of wrapped file (default: 'dfont')
+    """
+    return _load_macforks(_parse_binhex, instream, payload, **kwargs)
+
 
 @loaders.register(name='macbin', wrapper=True)
-def load_macbin(instream, **kwargs):
-    """MacBinary loader."""
-    return _load_macforks(_parse_macbinary, instream, **kwargs)
+def load_macbin(instream, payload:str='dfont', **kwargs):
+    """
+    MacBinary loader.
+
+    payload: format of wrapped file (default: 'dfont')
+    """
+    return _load_macforks(_parse_macbinary, instream, payload, **kwargs)
 
 
 _APPLESINGLE_MAGIC = 0x00051600
@@ -39,9 +48,13 @@ _APPLEDOUBLE_MAGIC = 0x00051607
         _APPLESINGLE_MAGIC.to_bytes(4, 'big'),
     ), wrapper=True,
 )
-def load_single(instream, **kwargs):
-    """AppleSingle loader."""
-    return _load_macforks(_parse_apple_container, instream, **kwargs)
+def load_single(instream, payload:str='dfont', **kwargs):
+    """
+    AppleSingle loader.
+
+    payload: format of wrapped file (default: 'dfont')
+    """
+    return _load_macforks(_parse_apple_container, instream, payload, **kwargs)
 
 
 @loaders.register(
@@ -51,12 +64,16 @@ def load_single(instream, **kwargs):
         _APPLEDOUBLE_MAGIC.to_bytes(4, 'big'),
     ), wrapper=True,
 )
-def load_double(instream, **kwargs):
-    """AppleDouble loader."""
-    return _load_macforks(_parse_apple_container, instream, **kwargs)
+def load_double(instream, payload:str='dfont', **kwargs):
+    """
+    AppleDouble loader.
+
+    payload: format of wrapped file (default: 'dfont')
+    """
+    return _load_macforks(_parse_apple_container, instream, payload, **kwargs)
 
 
-def _load_macforks(parser, instream, **kwargs):
+def _load_macforks(parser, instream, payload, **kwargs):
     """Resource and data foork loader."""
     name, data, rsrc = parser(instream)
     fonts = []
@@ -64,7 +81,7 @@ def _load_macforks(parser, instream, **kwargs):
         if fork:
             stream = Stream.from_data(fork, mode='r', name=f'{name}')
             try:
-                forkfonts = load_stream(stream, **kwargs)
+                forkfonts = load_stream(stream, format=payload, **kwargs)
             except FileFormatError:
                 pass
             fonts.extend(forkfonts)

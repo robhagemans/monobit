@@ -98,12 +98,12 @@ def load_source(
 
 def _load_coded_binary(
         infile, *, identifier, delimiters, comment,
-        offset=0, payload='raw', **kwargs,
+        payload='raw', **kwargs,
     ):
     """Load font from binary encoded in source code."""
     coded_data = _get_payload(infile.text, identifier, delimiters, comment)
     data = bytes(_int_from_c(_s) for _s in coded_data.split(',') if _s.strip())
-    bytesio = Stream.from_data(data[offset:], mode='r')
+    bytesio = Stream.from_data(data, mode='r')
     return load_stream(bytesio, format=payload, **kwargs)
 
 def _int_from_c(cvalue):
