@@ -49,15 +49,21 @@ def open_location(location, mode, overwrite=False):
 @contextmanager
 def open_stream_or_container(container, path, mode):
     head, tail = split_path(container, path)
-    stream = container.open(head, mode)
-    try:
-        next_container = open_container(stream, mode)
-    except FileFormatError as e:
-        logging.debug(e)
-        # not a container file, must be leaf node
-        if str(tail) != '.':
-            raise
+    if str(head) == '.':
+        # base condition
         next_container = None
+        # this'll raise a FileNotFoundError if we're reading
+        stream = container.open(tail, mode)
+    else:
+        stream = container.open(head, mode)
+        try:
+            next_container = open_container(stream, mode)
+        except FileFormatError as e:
+            logging.debug(e)
+            # not a container file, must be leaf node
+            if str(tail) != '.':
+                raise
+            next_container = None
     if not next_container:
         with stream:
             yield stream
@@ -70,14 +76,6 @@ def open_stream_or_container(container, path, mode):
             yield next_container
     else:
         # recursively open containers-in-containers
-        # base condition
-        if str(head) == '.':
-            with next_container:
-                # this'll raise a FileNotFoundError if we're reading
-                stream = next_container.open(tail, mode)
-                with stream:
-                    yield stream
-            return
         with next_container:
             with open_stream_or_container(next_container, tail, mode) as soc:
                 yield soc
@@ -88,6 +86,8 @@ def split_path(container, path):
         if head in container:
             tail = path.relative_to(head)
             return head, tail
+    # nothing exists
+    return Path('.'), path
 
 def open_container(stream, mode, format=''):
     """Interpret stream as (archive) container."""

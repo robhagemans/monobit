@@ -88,7 +88,10 @@ class TarContainer(Container):
         # always open as binary
         logging.debug('Opening file `%s` on tar container `%s`.', name, self.name)
         if mode == 'r':
-            file = self._tarfile.extractfile(name)
+            try:
+                file = self._tarfile.extractfile(name)
+            except KeyError as e:
+                raise FileNotFoundError(e) from e
             # .name is not writeable, so we need to wrap
             return Stream(file, mode, name=name, where=self)
         else:

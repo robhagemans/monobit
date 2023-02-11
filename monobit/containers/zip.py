@@ -91,7 +91,10 @@ class ZipContainer(Container):
         # always open as binary
         logging.debug('Opening file `%s` on zip container `%s`.', filename, self.name)
         if mode == 'r':
-            return Stream(self._zip.open(filename, mode), mode=mode, where=self)
+            try:
+                return Stream(self._zip.open(filename, mode), mode=mode, where=self)
+            except KeyError as e:
+                raise FileNotFoundError(e) from e
         else:
             # stop BytesIO from being closed until we want it to be
             newfile = Stream(KeepOpen(io.BytesIO()), mode=mode, name=filename, where=self)
