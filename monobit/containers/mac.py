@@ -17,13 +17,13 @@ from ..magic import FileFormatError
     'hqx', name='binhex', magic=(
         b'(This file must be converted',
         b'\r(This file must be converted',
-    ),
+    ), wrapper=True,
 )
 def load_binhex(instream, **kwargs):
     """BinHex 4.0 loader."""
     return _load_macforks(_parse_binhex, instream, **kwargs)
 
-@loaders.register(name='macbin')
+@loaders.register(name='macbin', wrapper=True)
 def load_macbin(instream, **kwargs):
     """MacBinary loader."""
     return _load_macforks(_parse_macbinary, instream, **kwargs)
@@ -37,7 +37,7 @@ _APPLEDOUBLE_MAGIC = 0x00051607
     'as', name='applesingle',
     magic=(
         _APPLESINGLE_MAGIC.to_bytes(4, 'big'),
-    ),
+    ), wrapper=True,
 )
 def load_single(instream, **kwargs):
     """AppleSingle loader."""
@@ -49,7 +49,7 @@ def load_single(instream, **kwargs):
     name='appledouble',
     magic=(
         _APPLEDOUBLE_MAGIC.to_bytes(4, 'big'),
-    ),
+    ), wrapper=True,
 )
 def load_double(instream, **kwargs):
     """AppleDouble loader."""
