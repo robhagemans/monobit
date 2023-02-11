@@ -27,7 +27,6 @@ DEFAULT_BINARY_FORMAT = 'raw'
 @contextmanager
 def open_location(location, mode, overwrite=False):
     """Parse file specification, open stream."""
-    # enclosing container is stream.where
     if mode not in ('r', 'w'):
         raise ValueError(f"Unsupported mode '{mode}'.")
     if not location:
@@ -46,11 +45,13 @@ def open_location(location, mode, overwrite=False):
         # we neeed KeepOpen for when the yielded object goes out of scope in the caller
         yield Stream(KeepOpen(location), mode=mode)
 
+
 @contextmanager
 def open_stream_or_container(container, path, mode):
-    head, tail = split_path(container, path)
+    """Open stream or sub-container given container and path."""
+    head, tail = _split_path(container, path)
     if mode == 'w' and str(head) == '.':
-        head2, tail = split_path_suffix(tail)
+        head2, tail = _split_path_suffix(tail)
         head /= head2
     if str(head) == '.':
         # base condition
@@ -83,8 +84,9 @@ def open_stream_or_container(container, path, mode):
             with open_stream_or_container(next_container, tail, mode) as soc:
                 yield soc
 
-def split_path(container, path):
-    # pare back path until an existing ancestor is found
+
+def _split_path(container, path):
+    """Pare back path until an existing ancestor is found."""
     for head in (path, *path.parents):
         if head in container:
             tail = path.relative_to(head)
@@ -92,8 +94,9 @@ def split_path(container, path):
     # nothing exists
     return Path('.'), path
 
-def split_path_suffix(path):
-    # pare forward path until a suffix is found
+
+def _split_path_suffix(path):
+    """Pare forward path until a suffix is found."""
     for head in reversed((path, *path.parents)):
         if head.suffixes:
             tail = path.relative_to(head)
@@ -234,6 +237,7 @@ def save(
     with open_location(outfile, 'w', overwrite=overwrite) as stream:
         save_stream(pack, stream, format, **kwargs)
     return pack_or_font
+
 
 def save_stream(pack, outstream, format='', **kwargs):
     """Save fonts to an open stream."""
