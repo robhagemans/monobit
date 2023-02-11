@@ -80,13 +80,13 @@ class TestContainers(BaseTester):
 
     def test_recursive_tgz(self):
         """Test recursively traversing tar.gz container."""
-        container_file = self.font_path / f'fontdir.tar.gz'
+        container_file = self.font_path / 'fontdir.tar.gz'
         fonts = monobit.load(container_file)
         self.assertEqual(len(fonts), 3)
 
     def test_recursive_zip(self):
         """Test recursively traversing zip container."""
-        container_file = self.font_path / f'fontdir.zip'
+        container_file = self.font_path / 'fontdir.zip'
         fonts = monobit.load(container_file)
         self.assertEqual(len(fonts), 3)
 
@@ -101,6 +101,24 @@ class TestContainers(BaseTester):
         container_file = self.font_path / 'empty.zip'
         fonts = monobit.load(container_file)
         assert not fonts
+
+    def test_deeplink_tgz(self):
+        """Test deep linking into tar.gz container."""
+        file = self.font_path / 'fontdir.tar.gz' / 'subdir' / '6x13.fon.bz2'
+        fonts = monobit.load(file)
+        self.assertEqual(len(fonts), 1)
+
+    def test_deeplink_zip(self):
+        """Test deep linking into zip container."""
+        file = self.font_path / 'fontdir.zip' / 'subdir' / '6x13.fon.bz2'
+        fonts = monobit.load(file)
+        self.assertEqual(len(fonts), 1)
+
+    def test_deeplink_dir(self):
+        """Test deep linking into directory."""
+        file = self.font_path / 'fontdir' / 'subdir' / '6x13.fon.bz2'
+        fonts = monobit.load(file)
+        self.assertEqual(len(fonts), 1)
 
 
 class TestStreams(BaseTester):
