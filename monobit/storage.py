@@ -54,16 +54,24 @@ def open_stream_or_container(container, path, mode):
         next_container = open_container(stream, mode)
     except FileFormatError as e:
         logging.debug(e)
+        # not a container file, must be leaf node
         if str(tail) != '.':
             raise
+        next_container = None
+    if not next_container:
         with stream:
             yield stream
         return
-    if str(tail) == '.':
+    elif str(tail) == '.':
+        # special case: leaf node is container file
+        # return the whole container instead of a stream
+        # caller can decide to extract the whole container
         with next_container:
             yield next_container
     else:
-        if isinstance(next_container, Directory):
+        # recursively open containers-in-containers
+        # base condition
+        if str(head) == '.':
             with next_container:
                 # this'll raise a FileNotFoundError if we're reading
                 stream = next_container.open(tail, mode)
@@ -87,14 +95,6 @@ def open_container(stream, mode, format=''):
     if isinstance(stream, Container):
         return stream
     fitting_containers = containers.get_for(stream, format=format)
-    if not fitting_containers:
-        message = (
-            f'Cannot open `{stream.name}`: '
-            'not recognised as container'
-        )
-        if format:
-            message += f' of format `{format}`'
-        raise FileFormatError(message)
     for opener in fitting_containers:
         try:
             container = opener(stream, mode)
@@ -102,7 +102,13 @@ def open_container(stream, mode, format=''):
             continue
         else:
             return container
-    raise FileFormatError('Cannot open container')
+    message = (
+        f'Cannot open `{stream.name}` as container: '
+        'format not recognised'
+    )
+    if format:
+        message += f' of format `{format}`'
+    raise FileFormatError(message)
 
 
 ##############################################################################
