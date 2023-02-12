@@ -20,6 +20,7 @@ from ..basetypes import Coord
 
 def _int_from_c(cvalue):
     """Parse integer from C/Python/JS code."""
+    cvalue = cvalue.strip()
     # C suffixes
     while cvalue[-1:].lower() in ('u', 'l'):
         cvalue = cvalue[:-1]
@@ -32,10 +33,11 @@ def _int_from_c(cvalue):
 
 def _int_from_pascal(cvalue):
     """Parse integer from Pascal code."""
+    cvalue = cvalue.strip()
     if cvalue.startswith('#'):
         # char literal
         cvalue = cvalue[1:]
-    if cvalue.startswith('$') and cvalue[1:2] and cvalue[1:2] in string.digits:
+    if cvalue.startswith('$'):
         cvalue = '0x' + cvalue[1:]
     return int(cvalue, 0)
 
@@ -137,7 +139,7 @@ def load_pascal(infile, *, identifier:str='', payload:str='raw', **kwargs):
 @loaders.register(name='source', wrapper=True)
 def load_source(
         infile, *,
-        identifier:str='', delimiters:str='{}', comment:str='//',
+        identifier:str='', delimiters:str='{}', comment:str='//', assign:str='=',
         payload:str='raw',
         **kwargs
     ):
@@ -152,30 +154,33 @@ def load_source(
     return _load_coded_binary(
         infile, identifier=identifier,
         delimiters=delimiters, comment=comment,
-        payload=payload,
+        payload=payload, assign=assign,
         **kwargs
     )
 
 
 def _load_coded_binary(
         infile, *, identifier, delimiters, comment,
-        payload='raw', int_conv=_int_from_c, **kwargs,
+        assign='=', int_conv=_int_from_c,
+        payload='raw', **kwargs,
     ):
     """Load font from binary encoded in source code."""
-    coded_data = _get_payload(infile.text, identifier, delimiters, comment)
+    coded_data = _get_payload(
+        infile.text, identifier, delimiters, comment, assign
+    )
     data = bytes(int_conv(_s) for _s in coded_data.split(',') if _s.strip())
     bytesio = Stream.from_data(data, mode='r')
     return load_stream(bytesio, format=payload, **kwargs)
 
 
-def _get_payload(instream, identifier, delimiters, comment):
+def _get_payload(instream, identifier, delimiters, comment, assign):
     """Find the identifier and get the part between delimiters."""
     start, end = delimiters
     for line in instream:
         if comment in line:
             line, _ = line.split(comment, 1)
         line = line.strip(' \r\n')
-        if identifier in line:
+        if identifier in line and assign in line:
             if identifier:
                 _, line = line.split(identifier)
             if start in line:
