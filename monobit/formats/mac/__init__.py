@@ -16,7 +16,6 @@ from .iigs import _load_iigs, _save_iigs
 
 
 # the magic is optional - a 'maybe magic'
-# .rsrc is what we use as a 'filename' for resources inside containers
 @loaders.register('dfont', 'suit', 'rsrc', name='mac', magic=(b'\0\0\1\0\0',))
 def load_mac_dfont(instream):
     """Load font from a MacOS suitcase."""

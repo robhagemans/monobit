@@ -10,7 +10,7 @@ import itertools
 
 from ..streams import Stream
 from ..storage import loaders, load_stream
-from ..magic import FileFormatError
+from ..magic import FileFormatError, Magic
 
 
 @loaders.register(
@@ -28,7 +28,13 @@ def load_binhex(instream, payload:str='dfont', **kwargs):
     return _load_macforks(_parse_binhex, instream, payload, **kwargs)
 
 
-@loaders.register(name='macbin', wrapper=True)
+# FFILDMOV is a maybe
+@loaders.register(
+    name='macbin', wrapper=True,
+    magic=(
+        Magic.offset(65) + b'FFILDMOV',
+    )
+)
 def load_macbin(instream, payload:str='dfont', **kwargs):
     """
     MacBinary loader.

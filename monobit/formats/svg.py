@@ -27,7 +27,13 @@ _STYLE_REVERSE_MAP = reverse_dict(_STYLE_MAP)
 DEFAULT_NAME = 'missing'
 
 
-@loaders.register('svg', name='svg')
+@loaders.register(
+    'svg', name='svg',
+    magic=(
+        b'<svg>',
+        b'<?xml version="1.0" standalone="yes"?>\n<svg'
+    )
+)
 def load_svg(instream):
     """Load vector font from Scalable Vector Graphics font."""
     root = etree.parse(instream).getroot()

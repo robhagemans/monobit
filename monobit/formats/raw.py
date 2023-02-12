@@ -159,6 +159,7 @@ def load_pcr(instream):
 # http://fileformats.archiveteam.org/wiki/Font_Mania_(REXXCOM)
 
 from ..struct import little_endian as le
+from ..magic import Magic
 
 # guessed by inspection, with reference to Intel 8086 opcodes
 _FM_HEADER = le.Struct(
@@ -176,10 +177,9 @@ _FM_HEADER = le.Struct(
     # 'FONT MANIA, VERSION 2.2 \r\n COPYRIGHT (C) 1992  REXXCOM SYSTEMS'
 )
 
-# the version string would be a much better signature, but we need an offset
 @loaders.register(
     #'com',
-    name='mania', magic=(b'\xEB\x4D', b'\xEB\x4E', b'\xEB\x47\xA2\x05')
+    name='mania', magic=(Magic.offset(8) + b'FONT MANIA, VERSION',)
 )
 def load_mania(instream):
     """Load a REXXCOM Font Mania font."""
@@ -292,7 +292,10 @@ _PSFCOM_HEADER = le.Struct(
 @loaders.register(
     #'com',
     name='psfcom',
-    magic=(b'\xeb\x04\xeb\xc3',)
+    magic=(
+        b'\xeb\x04\xeb\xc3' + Magic.offset(11) + _PSFCOM_SIG08,
+        b'\xeb\x04\xeb\xc3' + Magic.offset(11) + _PSFCOM_SIG16,
+    )
 )
 def load_psfcom(instream):
     """Load a PSFCOM font."""
@@ -408,7 +411,7 @@ from ..struct import little_endian as le
 _DRHALO_SIG = b'AH'
 
 @loaders.register(
-    #'fon',
+    'fon',
     name='drhalo', magic=(_DRHALO_SIG,)
 )
 def load_drhalo(instream):
@@ -416,7 +419,8 @@ def load_drhalo(instream):
     start = instream.read(16)
     if not start.startswith(_DRHALO_SIG):
         raise FileFormatError(
-            'Not a Dr. Halo bitmap .FON: incorrect signature ' f'{start[:len(_DRHALO_SIG)]}.'
+            'Not a Dr. Halo bitmap .FON: incorrect signature '
+            f'{start[:len(_DRHALO_SIG)]}.'
         )
     width = int(le.int16.read_from(instream))
     height = int(le.int16.read_from(instream))
