@@ -5,8 +5,9 @@ monobit.containers.source - fonts embedded in C/Python/JS source files
 licence: https://opensource.org/licenses/MIT
 """
 
-from io import BytesIO
 import string
+import logging
+from io import BytesIO
 
 from ..binary import ceildiv
 from ..storage import loaders, savers, load_stream, save_stream
