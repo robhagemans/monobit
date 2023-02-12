@@ -43,7 +43,7 @@ _APPLEDOUBLE_MAGIC = 0x00051607
 
 
 @loaders.register(
-    'as', name='applesingle',
+    'as', name='apple1',
     magic=(
         _APPLESINGLE_MAGIC.to_bytes(4, 'big'),
     ), wrapper=True,
@@ -59,7 +59,7 @@ def load_single(instream, payload:str='dfont', **kwargs):
 
 @loaders.register(
     'adf', #'rsrc',
-    name='appledouble',
+    name='apple2',
     magic=(
         _APPLEDOUBLE_MAGIC.to_bytes(4, 'big'),
     ), wrapper=True,
