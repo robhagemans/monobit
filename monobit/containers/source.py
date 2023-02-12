@@ -17,7 +17,6 @@ from ..magic import FileFormatError
 from ..basetypes import Coord
 
 
-
 def _int_from_c(cvalue):
     """Parse integer from C/Python/JS code."""
     cvalue = cvalue.strip()
@@ -83,7 +82,7 @@ def load_c(infile, *, identifier:str='', payload:str='raw', **kwargs):
     """
     Extract font file encoded in C or C++ source code.
 
-    identifier: text at start of line where bitmap starts. (default: first array literal {})
+    identifier: text at start of line where encoded file starts. (default: first array literal {})
     payload: format of payload (default: 'raw')
     """
     return _load_coded_binary(
@@ -97,7 +96,7 @@ def load_json(infile, *, identifier:str='', payload:str='raw', **kwargs):
     """
     Extract font file encoded in JSON or JavaScript source code.
 
-    identifier: text at start of line where bitmap starts (default: first list [])
+    identifier: text at start of line where encoded file starts (default: first list [])
     payload: format of payload (default: 'raw')
     """
     return _load_coded_binary(
@@ -111,7 +110,7 @@ def load_python(infile, *, identifier:str='', payload:str='raw', **kwargs):
     """
     Extract font file encoded as a list in Python source code.
 
-    identifier: text at start of line where bitmap starts (default: first list [])
+    identifier: text at start of line where encoded file starts (default: first list [])
     payload: format of payload (default: 'raw')
     """
     return _load_coded_binary(
@@ -123,9 +122,9 @@ def load_python(infile, *, identifier:str='', payload:str='raw', **kwargs):
 @loaders.register('py', name='python-tuple', wrapper=True)
 def load_python_tuple(infile, *, identifier:str='', payload:str='raw', **kwargs):
     """
-    Extract font from bitmap encoded as a list in Python source code.
+    Extract font file encoded as a list in Python source code.
 
-    identifier: text at start of line where bitmap starts (default: first tuple)
+    identifier: text at start of line where encoded file starts (default: first tuple)
     payload: format of payload (default: 'raw')
     """
     return _load_coded_binary(
@@ -139,7 +138,7 @@ def load_pascal(infile, *, identifier:str='', payload:str='raw', **kwargs):
     """
     Extract font file encoded as a list in Pascal source code.
 
-    identifier: text at start of line where bitmap starts (default: first array)
+    identifier: text at start of line where encoded file starts (default: first array)
     payload: format of payload (default: 'raw')
     """
     return _load_coded_binary(
@@ -158,8 +157,8 @@ def load_source(
     """
     Extract font file encoded in source code.
 
-    identifier: text at start of line where bitmap starts (default: first delimiter)
-    delimiters: pair of delimiters that enclose the bitmap (default: {})
+    identifier: text at start of line where encoded file starts (default: first delimiter)
+    delimiters: pair of delimiters that enclose the file data (default: {})
     comment: string that introduces inline comment (default: //)
     payload: format of payload (default: 'raw')
     """
@@ -237,7 +236,7 @@ def _get_payload(instream, identifier, delimiters, comment, assign):
 @loaders.register('bas', name='basic', wrapper=True)
 def load_basic(infile, *, payload:str='raw', **kwargs):
     """
-    Extract font from bitmap encoded in DATA lines in classic BASIC source code.
+    Extract font file encoded in DATA lines in classic BASIC source code.
     Tokenised BASIC files are not supported.
 
     payload: format of payload (default: 'raw')
@@ -265,7 +264,7 @@ def save_c(
         **kwargs
     ):
     """
-    Save font to bitmap encoded in C source code.
+    Save to font file encoded in C source code.
 
     bytes_per_line: number of encoded bytes in a source line (default: 16)
     payload: format of payload (default: 'raw')
@@ -286,9 +285,9 @@ def save_python(
         **kwargs
     ):
     """
-    Save font to bitmap encoded in Python source code.
+    Save to font file encoded in Python source code.
 
-    delimiters: pair of delimiters that enclose the bitmap (default: [])
+    delimiters: pair of delimiters that enclose the file data (default: [])
     bytes_per_line: number of encoded bytes in a source line (default: 16)
     payload: format of payload (default: 'raw')
     distribute: save each font as a separate identifier (default: True)
@@ -307,7 +306,7 @@ def save_json(
         **kwargs
     ):
     """
-    Save font to bitmap encoded in JSON code.
+    Save to font file encoded in JSON code.
 
     bytes_per_line: number of encoded bytes in a source line (default: 16)
     payload: format of payload (default: 'raw')
@@ -331,11 +330,11 @@ def save_source(
         **kwargs
     ):
     """
-    Save font to bitmap encoded in source code.
+    Save to font file encoded in source code.
 
-    identifier: text at start of line where bitmap starts (default: first delimiter)
+    identifier: text at start of line where file data starts (default: first delimiter)
     assign: assignment operator (default: =)
-    delimiters: pair of delimiters that enclose the bitmap (default: {})
+    delimiters: pair of delimiters that enclose the file data (default: {})
     comment: string that introduces inline comment (default: //)
     separator: string to separate statements (default: ;)
     bytes_per_line: number of encoded bytes in a source line (default: 16)
@@ -406,4 +405,50 @@ def _save_coded_binary(
         if count < len(packs) - 1:
             outstream.write(separator)
         outstream.write('\n')
+    return fonts
+
+
+@savers.register(linked=load_basic, wrapper=True)
+def save_basic(
+        fonts, outfile, *,
+        line_number_start:int=1000, line_number_inc:int=10,
+        bytes_per_line:int=8, payload:str='raw',
+        **kwargs
+    ):
+    """
+    Save to font file encoded in DATA lines in classic BASIC source code.
+
+    line_number_start: line number of first DATA line (-1 for no line numbers; default: 1000)
+    line_number_inc: increment between line numbers (default: 10)
+    bytes_per_line: number of encoded bytes in a source line (default: 8)
+    payload: format of payload (default: 'raw')
+    """
+    if (
+            line_number_inc <= 0
+            and line_number_start is not None and line_number_start > -1
+        ):
+        raise ValueError('line_number_inc must be > 0')
+    with Stream(BytesIO(), mode='w') as bytesio:
+        save_stream(fonts, bytesio, format=payload, **kwargs)
+        rawbytes = bytes(bytesio.getbuffer())
+    # grouper
+    args = [iter(rawbytes)] * bytes_per_line
+    groups = zip(*args)
+    lines = [
+        ', '.join(f'&h{_b:02x}' for _b in _group)
+        for _group in groups
+    ]
+    rem = len(rawbytes) % bytes_per_line
+    if rem:
+        lines.append(', '.join(f'&h{_b:02x}' for _b in rawbytes[-rem:]))
+    outfile = outfile.text
+    if line_number_start is not None and line_number_start >= 0:
+        line_number = line_number_start
+    else:
+        line_number = None
+    for line in lines:
+        if line_number is not None:
+            outfile.write(f'{line_number} ')
+            line_number += line_number_inc
+        outfile.write(f'DATA {line}\n')
     return fonts
