@@ -6,6 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import logging
+from pathlib import Path
 
 from ..properties import normalise_property
 from ..storage import loaders, savers
@@ -227,7 +228,8 @@ def _read_hbf_glyphs(instream, where, b2_ranges, b3_ranges, c_ranges, props):
         code_range = _split_hbf_ints(code_range, sep='-')
         code_range = range(code_range[0], code_range[1]+1)
         offset = hbf_int(offset)
-        with where.open(filename, 'r') as bitmapfile:
+        path = Path(instream.name).parent
+        with where.open(path / filename, 'r') as bitmapfile:
             # discard offset bytes
             bitmapfile.read(offset)
             for codepoint in indexer(plane, code_range, b2_ranges, b3_ranges):

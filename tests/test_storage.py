@@ -80,13 +80,13 @@ class TestContainers(BaseTester):
 
     def test_recursive_tgz(self):
         """Test recursively traversing tar.gz container."""
-        container_file = self.font_path / f'fontdir.tar.gz'
+        container_file = self.font_path / 'fontdir.tar.gz'
         fonts = monobit.load(container_file)
         self.assertEqual(len(fonts), 3)
 
     def test_recursive_zip(self):
         """Test recursively traversing zip container."""
-        container_file = self.font_path / f'fontdir.zip'
+        container_file = self.font_path / 'fontdir.zip'
         fonts = monobit.load(container_file)
         self.assertEqual(len(fonts), 3)
 
@@ -99,9 +99,59 @@ class TestContainers(BaseTester):
     def test_empty(self):
         """Test empty container."""
         container_file = self.font_path / 'empty.zip'
-        with self.assertRaises(monobit.FileFormatError):
-            fonts = monobit.load(container_file)
+        fonts = monobit.load(container_file)
+        assert not fonts
 
+    def test_baddeeplink_tgz(self):
+        """Test deep linking into tar.gz container."""
+        file = self.font_path / 'fontdir.tar.gz' / 'not_the_subdir' / '6x13.fon.bz2'
+        with self.assertRaises(FileNotFoundError):
+            fonts = monobit.load(file)
+
+    def test_baddeeplink_zip(self):
+        """Test deep linking into zip container."""
+        file = self.font_path / 'fontdir.zip' / 'not_the_subdir' / '6x13.fon.bz2'
+        with self.assertRaises(FileNotFoundError):
+            fonts = monobit.load(file)
+
+    def test_deeplink_tgz(self):
+        """Test deep linking into tar.gz container."""
+        file = self.font_path / 'fontdir.tar.gz' / 'subdir' / '6x13.fon.bz2'
+        fonts = monobit.load(file)
+        self.assertEqual(len(fonts), 1)
+
+    def test_deeplink_zip(self):
+        """Test deep linking into zip container."""
+        file = self.font_path / 'fontdir.zip' / 'subdir' / '6x13.fon.bz2'
+        fonts = monobit.load(file)
+        self.assertEqual(len(fonts), 1)
+
+    def test_deeplink_dir(self):
+        """Test deep linking into directory."""
+        file = self.font_path / 'fontdir' / 'subdir' / '6x13.fon.bz2'
+        fonts = monobit.load(file)
+        self.assertEqual(len(fonts), 1)
+
+    def test_nested_zip(self):
+        """Test zipfile in zipfile."""
+        fonts = monobit.load(self.font_path / 'zipinzip.zip')
+        self.assertEqual(len(fonts), 1)
+        fonts1 = monobit.load(self.font_path / 'zipinzip.zip' / 'zipinzip.zip')
+        self.assertEqual(len(fonts1), 1)
+
+    def test_deeplink_nested_zip(self):
+        """Test deeplinking into zipfile in zipfile."""
+        fonts = monobit.load(
+            self.font_path / 'zipinzip.zip' / 'zipinzip.zip' / '4x6.yaff'
+        )
+        self.assertEqual(len(fonts), 1)
+
+    def test_deeplink_nested_zip_write(self):
+        """Test writing deep linked into nested zip container."""
+        file = self.temp_path / 'fontdir.zip' / 'a' / 'subdir.zip' / 'b' / '4x6.yaff'
+        monobit.save(self.fixed4x6, file)
+        font, *_ = monobit.load(file)
+        self.assertEqual(len(font.glyphs), 919)
 
 class TestStreams(BaseTester):
     """Test stream i/o."""

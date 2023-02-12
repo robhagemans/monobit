@@ -58,6 +58,8 @@ class BaseTester(unittest.TestCase):
 
     def setUp(self):
         """Setup ahead of each test."""
+        bar = '-' * 20
+        logging.debug('%s %s %s', bar, self.id(), bar)
         self.temp_dir = tempfile.TemporaryDirectory()
         self.temp_path = Path(self.temp_dir.name)
 

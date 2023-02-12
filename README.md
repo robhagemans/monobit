@@ -95,7 +95,6 @@ Supported bitmap formats
 | X11/Adobe BDF         | `bdf`      |          | `.bdf`                      | Unix          | ✔     | ✔     |
 | AngelCode BMFont [P]  | `bmfont` | text binary XML JSON | `.fnt` `.xml` `.json` + images  | | ✔     | ✔ (text, JSON) |
 | Raw binary            | `raw`      |          | `.fnt` `.rom` [*]           |               | ✔     | ✔     |
-| C or C++ coded binary | `c`        |          | `.c` `.cpp` `.cc` `.h`      |               | ✔     | ✔     |
 | Codepage Information  | `cpi` | FONT FONT.NT DRFONT | `.cpi` | MS-DOS, Windows NT, DR-DOS   | ✔     | ✔     |
 | Daisy-Dot             | `daisy` | II III Magnified | `.nlq` `.nl2` `.nl3` `.nl4` | Atari    | ✔     |       |
 | DEC DRCS soft font    | `dec`      |          |                             | DEC VT        | ✔     | ✔     |
@@ -116,7 +115,6 @@ Supported bitmap formats
 | hexdraw               | `hexdraw`  |          | `.draw`                     |               | ✔     | ✔     |
 | Bitmap image [P]      | `image`    |          | `.png` `.gif` `.bmp`        |               | ✔     | ✔     |
 | Apple IIgs font       | `iigs`     |          | `.fon`                      | Apple IIgs    | ✔     | ✔     |
-| JSON coded binary     | `json`     |          | `.json`                     |               | ✔     | ✔     |
 | Bare codepage         | `kbd`      |          | `.cp`                       | DOS, Linux    | ✔     | ✔     |
 | REXXCOM Font Mania    | `mania`    |          | `.com`                      | DOS           | ✔     |       |
 | LISA font library     | `lisa`     |          | `.bin`                      | LISA          | ✔     |       |
@@ -130,7 +128,6 @@ Supported bitmap formats
 | The Print Shop        | `printshop`|          | `.pnf`                      | DOS           | ✔     |       |
 | PC Screen Font        | `psf`      | 1 2      | `.psf` `.psfu`              | MS-DOS, Linux | ✔     | ✔ (version 2) |
 | PSF2AMS PSFCOM        | `psfcom`   |          | `.com`                      | Z80 CP/M      | ✔     |       |
-| Python coded binary   | `python`   |          | `.py`                       |               | ✔     | ✔     |
 | SFNT embedded bitmap  | `sfnt`     |          | `.otb` `.ttf` `.otf` [F] [**] |             | ✔     |       |
 | Signum! 2  | `signum-*` | editor 9-pin 24-pin laser | `.e24` `.p9` `.p24` `.l30` | Atari ST | ✔     |       |
 | vfont                 | `vfont`    |          |                             | BSD, SunOS    | ✔     | ✔     |
@@ -211,24 +208,28 @@ Here is a comparison of what you can and cannot store in selected formats suppor
 | `bbc`         |   |   |   |   |   | 8x8  |   |   |   | binary
 
 
-Container formats
+Wrapper formats
 -----------------
 
 `monobit` will recurse and extract font files from a number of common container,
-archive and compression formats:
+archive, compression and encoding formats:
 
-| Format        | Typical Extension           | Read  | Write |
-|---------------|-----------------------------|-------|-------|
-| PKZip/WinZip  | `.zip`                      | ✔     | ✔     |
-| GNU tar       | `.tar` `.tgz`               | ✔     | ✔     |
-| GZip          | `.gz`                       | ✔     | ✔     |
-| BZip2         | `.bz2`                      | ✔     | ✔     |
-| XZ/LZMA       | `.xz` `.lzma`               | ✔     | ✔     |
-| AppleSingle   | `.as`                       | ✔     |       |
-| AppleDouble   | `.adf` `.rsrc`              | ✔     |       |
-| MacBinary     | `.bin`                      | ✔     |       |
-| BinHex 4.0    | `.hqx`                      | ✔     |       |
-
+| Format                | Name     | Typical Extension       | Read  | Write |
+|-----------------------|----------|-------------------------|-------|-------|
+| PKZip/WinZip          | `zip`    | `.zip`                  | ✔     | ✔     |
+| GNU tar               | `tar`    | `.tar` `.tgz`           | ✔     | ✔     |
+| GZip                  | `gzip`   | `.gz`                   | ✔     | ✔     |
+| BZip2                 | `bzip2`  | `.bz2`                  | ✔     | ✔     |
+| XZ/LZMA               | `lzma`   | `.xz` `.lzma`           | ✔     | ✔     |
+| AppleSingle           | `apple1` | `.as`                   | ✔     |       |
+| AppleDouble           | `apple2` | `.adf` `.rsrc           | ✔     |       |
+| MacBinary             | `macbin` | `.bin`                  | ✔     |       |
+| BinHex 4.0            | `binhex  | `.hqx`                  | ✔     |       |
+| C or C++ coded binary | `c`      | `.c` `.cpp` `.cc` `.h`  | ✔     | ✔     |
+| JSON coded binary     | `json`   | `.json`                 | ✔     | ✔     |
+| Python coded binary   | `python` | `.py`                   | ✔     | ✔     |
+| Pascal coded binary   | `pascal` | `.pas`                  | ✔     |       |
+| BASIC coded binary    | `basic`  | `.bas`                  | ✔     | ✔     |
 
 
 Stroke formats

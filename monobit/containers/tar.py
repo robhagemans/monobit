@@ -11,9 +11,9 @@ import tarfile
 import logging
 from pathlib import Path, PurePosixPath
 
-from ..container import DEFAULT_ROOT, Container
+from ..container import Container
 from ..streams import Stream, KeepOpen
-from ..storage import loaders, savers, load_all, save_all
+from ..storage import loaders, savers, containers, load_all, save_all
 from ..magic import FileFormatError
 
 
@@ -27,27 +27,35 @@ def save_tar(fonts, outstream):
     with TarContainer(outstream, 'w') as container:
         return save_all(fonts, container)
 
+@containers.register(linked=load_tar)
+def open_tar(instream, mode='r', *, overwrite=False):
+    return TarContainer(instream, mode, overwrite=overwrite)
+
 
 class TarContainer(Container):
     """Tar-file wrapper."""
 
-    def __init__(self, file, mode='r',*, overwrite=False):
+    def __init__(self, file, mode='r', *, overwrite=False):
         """Create wrapper."""
         # mode really should just be 'r' or 'w'
         mode = mode[:1]
         super().__init__(mode, file.name)
         # reading tarfile needs a seekable stream, drain to buffer if needed
-        stream = Stream(file, mode, overwrite=overwrite)
+        self._stream = Stream(file, mode, overwrite=overwrite)
         # create the tarfile
         try:
-            self._tarfile = tarfile.open(fileobj=stream, mode=mode)
+            self._tarfile = tarfile.open(fileobj=self._stream, mode=mode)
         except tarfile.ReadError as exc:
             raise FileFormatError(exc) from exc
         # on output, put all files in a directory with the same name as the archive (without suffix)
+        stem = Path(self.name).stem
         if mode == 'w':
-            self._root = Path(self.name).stem or DEFAULT_ROOT
+            self._root = stem
         else:
+            # on read, only set root if it is a common parent
             self._root = ''
+            if all(Path(_item).is_relative_to(stem) for _item in iter(self)):
+                self._root = stem
         # output files, to be written on close
         self._files = []
 
@@ -65,16 +73,27 @@ class TarContainer(Container):
                 file.close()
         try:
             self._tarfile.close()
-        except EnvironmentError:
+        except EnvironmentError as e:
             # e.g. BrokenPipeError
-            pass
+            logging.debug(e)
+        self._stream.close()
         super().close()
         self.closed = True
 
     def __iter__(self):
         """List contents."""
         # list regular files only, skip symlinks and dirs and block devices
-        return (_ti.name for _ti in self._tarfile.getmembers() if _ti.isfile())
+        namelist = (
+            _ti.name
+            for _ti in self._tarfile.getmembers()
+            if _ti.isfile()
+        )
+        return (
+            str(PurePosixPath(_name).relative_to(self._root))
+            for _name in namelist
+            # exclude directories
+            if not _name.endswith('/')
+        )
 
     def open(self, name, mode):
         """Open a stream in the container."""
@@ -83,7 +102,10 @@ class TarContainer(Container):
         # always open as binary
         logging.debug('Opening file `%s` on tar container `%s`.', name, self.name)
         if mode == 'r':
-            file = self._tarfile.extractfile(name)
+            try:
+                file = self._tarfile.extractfile(name)
+            except KeyError as e:
+                raise FileNotFoundError(e) from e
             # .name is not writeable, so we need to wrap
             return Stream(file, mode, name=name, where=self)
         else:

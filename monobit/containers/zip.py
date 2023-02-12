@@ -10,9 +10,9 @@ import logging
 import zipfile
 from pathlib import Path, PurePosixPath
 
-from ..container import DEFAULT_ROOT, Container
+from ..container import Container
 from ..streams import KeepOpen, Stream
-from ..storage import loaders, savers, load_all, save_all
+from ..storage import loaders, savers, containers, load_all, save_all
 from ..magic import FileFormatError
 
 
@@ -26,6 +26,10 @@ def save_zip(fonts, outstream):
     with ZipContainer(outstream, 'w') as container:
         return save_all(fonts, container)
 
+@containers.register(linked=load_zip)
+def open_zip(instream, mode='r', *, overwrite=False):
+    return ZipContainer(instream, mode, overwrite=overwrite)
+
 
 class ZipContainer(Container):
     """Zip-file wrapper."""
@@ -36,20 +40,24 @@ class ZipContainer(Container):
         mode = mode[:1]
         super().__init__(mode, file.name)
         # reading zipfile needs a seekable stream, drain to buffer if needed
-        stream = Stream(file, mode, overwrite=overwrite)
+        self._stream = Stream(file, mode, overwrite=overwrite)
         # create the zipfile
         try:
             self._zip = zipfile.ZipFile(
-                stream, mode,
+                self._stream, mode,
                 compression=zipfile.ZIP_DEFLATED
             )
         except zipfile.BadZipFile as exc:
             raise FileFormatError(exc) from exc
         # on output, put all files in a directory with the same name as the archive (without suffix)
+        stem = Path(self.name).stem
         if mode == 'w':
-            self._root = Path(self.name).stem or DEFAULT_ROOT
+            self._root = stem
         else:
+            # on read, only set root if it is a common parent
             self._root = ''
+            if all(Path(_item).is_relative_to(stem) for _item in iter(self)):
+                self._root = stem
         # output files, to be written on close
         self._files = []
 
@@ -63,9 +71,10 @@ class ZipContainer(Container):
                 self._zip.writestr(file.name, bytearray)
         try:
             self._zip.close()
-        except EnvironmentError:
+        except EnvironmentError as e:
             # e.g. BrokenPipeError
-            pass
+            logging.debug(e)
+        self._stream.close()
         super().close()
 
     def __iter__(self):
@@ -86,7 +95,10 @@ class ZipContainer(Container):
         # always open as binary
         logging.debug('Opening file `%s` on zip container `%s`.', filename, self.name)
         if mode == 'r':
-            return Stream(self._zip.open(filename, mode), mode=mode, where=self)
+            try:
+                return Stream(self._zip.open(filename, mode), mode=mode, where=self)
+            except KeyError as e:
+                raise FileNotFoundError(e) from e
         else:
             # stop BytesIO from being closed until we want it to be
             newfile = Stream(KeepOpen(io.BytesIO()), mode=mode, name=filename, where=self)
