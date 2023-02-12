@@ -109,10 +109,6 @@ class Stream(StreamWrapper):
         # if a path is provided, open a (binary) stream
         if isinstance(file, (str, Path)):
             raise ValueError('Argument `file` must be a Python file or stream-like object.')
-        if mode == 'r':
-            self._anchor = file.tell()
-        else:
-            self._anchor = 0
         # initialise wrapper
         super().__init__(file, mode=mode, name=name, where=where)
         # check r/w mode is consistent
@@ -124,6 +120,10 @@ class Stream(StreamWrapper):
             # note you can only do this once on the input stream!
             self._stream = get_bytesio(self._stream.read())
             self._ensure_binary()
+        if mode == 'r':
+            self._anchor = self._stream.tell()
+        else:
+            self._anchor = 0
 
     @classmethod
     def from_data(cls, data, **kwargs):
