@@ -229,6 +229,7 @@ archive, compression and encoding formats:
 | JSON coded binary     | `json`   | `.json`                 | ✔     | ✔     |
 | Python coded binary   | `python` | `.py`                   | ✔     | ✔     |
 | Pascal coded binary   | `pascal` | `.pas`                  | ✔     |       |
+| BASIC coded binary    | `basic`  | `.bas`                  | ✔     | ✔     |
 
 
 Stroke formats
