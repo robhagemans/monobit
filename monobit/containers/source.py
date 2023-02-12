@@ -42,6 +42,14 @@ def _int_from_pascal(cvalue):
     return int(cvalue, 0)
 
 
+def _int_from_basic(cvalue):
+    """Parse integer from BASIC code."""
+    cvalue = cvalue.strip().lower()
+    if cvalue.startswith('&h'):
+        cvalue = '0x' + cvalue[2:]
+    return int(cvalue, 0)
+
+
 _C_PARAMS = dict(
     delimiters='{}',
     comment='//',
@@ -73,7 +81,7 @@ _PAS_PARAMS = dict(
 @loaders.register('c', 'cc', 'cpp', 'h', name='c', wrapper=True)
 def load_c(infile, *, identifier:str='', payload:str='raw', **kwargs):
     """
-    Extract font from bitmap encoded in C or C++ source code.
+    Extract font file encoded in C or C++ source code.
 
     identifier: text at start of line where bitmap starts. (default: first array literal {})
     payload: format of payload (default: 'raw')
@@ -87,7 +95,7 @@ def load_c(infile, *, identifier:str='', payload:str='raw', **kwargs):
 @loaders.register('js', 'json', name='json', wrapper=True)
 def load_json(infile, *, identifier:str='', payload:str='raw', **kwargs):
     """
-    Extract font from bitmap encoded in JavaScript source code.
+    Extract font file encoded in JSON or JavaScript source code.
 
     identifier: text at start of line where bitmap starts (default: first list [])
     payload: format of payload (default: 'raw')
@@ -101,7 +109,7 @@ def load_json(infile, *, identifier:str='', payload:str='raw', **kwargs):
 @loaders.register('py', name='python', wrapper=True)
 def load_python(infile, *, identifier:str='', payload:str='raw', **kwargs):
     """
-    Extract font from bitmap encoded as a list in Python source code.
+    Extract font file encoded as a list in Python source code.
 
     identifier: text at start of line where bitmap starts (default: first list [])
     payload: format of payload (default: 'raw')
@@ -129,7 +137,7 @@ def load_python_tuple(infile, *, identifier:str='', payload:str='raw', **kwargs)
 @loaders.register('pas', name='pascal', wrapper=True)
 def load_pascal(infile, *, identifier:str='', payload:str='raw', **kwargs):
     """
-    Extract font from bitmap encoded as a list in Pascal source code.
+    Extract font file encoded as a list in Pascal source code.
 
     identifier: text at start of line where bitmap starts (default: first array)
     payload: format of payload (default: 'raw')
@@ -148,7 +156,7 @@ def load_source(
         **kwargs
     ):
     """
-    Extract font from bitmap encoded in source code.
+    Extract font file encoded in source code.
 
     identifier: text at start of line where bitmap starts (default: first delimiter)
     delimiters: pair of delimiters that enclose the bitmap (default: {})
@@ -224,6 +232,28 @@ def _get_payload(instream, identifier, delimiters, comment, assign):
         if line:
             payload.append(line)
     return ''.join(payload)
+
+
+@loaders.register('bas', name='basic', wrapper=True)
+def load_basic(infile, *, payload:str='raw', **kwargs):
+    """
+    Extract font from bitmap encoded in DATA lines in classic BASIC source code.
+    Tokenised BASIC files are not supported.
+
+    payload: format of payload (default: 'raw')
+    """
+    infile = infile.text
+    coded_data = []
+    for line in infile:
+        _, _, dataline = line.partition('DATA')
+        dataline = dataline.strip()
+        if not dataline:
+            continue
+        values = dataline.split(',')
+        coded_data.extend(values)
+    data = bytes(_int_from_basic(_s) for _s in coded_data)
+    with Stream.from_data(data, mode='r') as bytesio:
+        return load_stream(bytesio, format=payload, **kwargs)
 
 
 ###############################################################################
