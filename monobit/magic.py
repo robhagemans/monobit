@@ -44,13 +44,6 @@ def get_suffix(file):
         suffix = Path(get_name(file)).suffix
     return normalise_suffix(suffix)
 
-def has_magic(instream, magic):
-    """Check if a binary stream matches the given signature."""
-    if instream.mode == 'w':
-        return False
-    return instream.peek(len(magic)).startswith(magic)
-
-
 def maybe_text(instream):
     """
     Check if a binary input stream looks a bit like it might hold utf-8 text.
@@ -87,37 +80,36 @@ class MagicRegistry:
 
     def __init__(self):
         """Set up registry."""
-        self._magic = {}
+        self._magic = []
         self._suffixes = {}
         self._names = {}
 
     def register(self, *suffixes, name='', magic=()):
-        """Decorator to register class that handles file type."""
-        def decorator(klass):
+        """Decorator to register converter for file type."""
+        def decorator(converter):
             if not name:
                 raise ValueError('No registration name given')
             if name in self._names:
                 raise ValueError('Registration name `{name} already in use')
-            self._names[name] = klass
+            self._names[name] = converter
             for suffix in suffixes:
                 suffix = normalise_suffix(suffix)
                 if suffix in self._suffixes:
-                    self._suffixes[suffix].append(klass)
+                    self._suffixes[suffix].append(converter)
                 else:
-                    self._suffixes[suffix] = [klass]
+                    self._suffixes[suffix] = [converter]
             for sequence in magic:
-                self._magic[sequence] = klass
+                self._magic.append((Magic(sequence), converter))
             # sort the magic registry long to short to manage conflicts
-            self._magic = {
-                _k: _v for _k, _v in sorted(
-                    self._magic.items(),
+            self._magic = list(sorted(
+                    self._magic,
                     key=lambda _i:len(_i[0]), reverse=True
                 )
-            }
+            )
             # use first suffix given as standard
             if suffixes:
-                klass.format = normalise_suffix(suffixes[0])
-            return klass
+                converter.format = normalise_suffix(suffixes[0])
+            return converter
         return decorator
 
     def identify(self, file):
@@ -127,21 +119,77 @@ class MagicRegistry:
         matches = []
         # can't read magic on write-only file
         if not isinstance(file, (str, Path)):
-            for magic, klass in self._magic.items():
-                if has_magic(file, magic):
+            for magic, converter in self._magic:
+                if magic.fits(file):
                     logging.debug(
-                        'Magic bytes %a: identifying stream as %s.',
-                        magic.decode('latin-1'), klass.name
+                        'Stream matches signature for format `%s`.',
+                        converter.name
                     )
-                    matches.append(klass)
+                    matches.append(converter)
         suffix = get_suffix(file)
         converters = self._suffixes.get(suffix, ())
         # don't repeat matches
         converters = [_c for _c in converters if _c not in matches]
         for converter in converters:
             logging.debug(
-                'Filename suffix `%s`: identifying stream as %s.',
-                suffix, converter.name
+                'Filename matches pattern for format `%s`.',
+                converter.name
             )
         matches.extend(converters)
         return tuple(matches)
+
+
+class Magic:
+    """Define and match against bytes mask."""
+
+    def __init__(self, value, offset=0):
+        """Initialise bytes mask from bytes or Magic object."""
+        if isinstance(value, Magic):
+            self._mask = tuple(
+                (_item[0] + offset, _item[1])
+                for _item in  value._mask
+            )
+        elif not isinstance(value, bytes):
+            raise TypeError(
+                'Initialiser must be bytes or Magic,'
+                f' not {type(value).__name__}'
+            )
+        else:
+            self._mask = ((offset, value),)
+
+    def __len__(self):
+        """Mask length."""
+        return max(_item[0] + len(_item[1]) for _item in self._mask)
+
+    def __add__(self, other):
+        """Concatenate masks."""
+        other = Magic(other, offset=len(self))
+        new = Magic(self)
+        new._mask += other._mask
+        return new
+
+    def __radd__(self, other):
+        """Concatenate masks."""
+        other = Magic(other)
+        return other + self
+
+    def matches(self, target):
+        """Target bytes match the mask."""
+        if len(target) < len(self):
+            logging.debug(f'Target of insufficient length: {target}')
+            return False
+        for offset, value in self._mask:
+            if target[offset:offset+len(value)] != value:
+                return False
+        return True
+
+    def fits(self, instream):
+        """Binary stream matches the signature."""
+        if instream.mode == 'w':
+            return False
+        return self.matches(instream.peek(len(self)))
+
+    @classmethod
+    def offset(cls, offset=0):
+        """Represent offset in concatenated mask."""
+        return cls(value=b'', offset=offset)
