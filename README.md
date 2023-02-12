@@ -222,9 +222,9 @@ archive, compression and encoding formats:
 | BZip2                 | `bzip2`  | `.bz2`                  | ✔     | ✔     |
 | XZ/LZMA               | `lzma`   | `.xz` `.lzma`           | ✔     | ✔     |
 | AppleSingle           | `apple1` | `.as`                   | ✔     |       |
-| AppleDouble           | `apple2` | `.adf` `.rsrc           | ✔     |       |
+| AppleDouble           | `apple2` | `.adf` `.rsrc`          | ✔     |       |
 | MacBinary             | `macbin` | `.bin`                  | ✔     |       |
-| BinHex 4.0            | `binhex  | `.hqx`                  | ✔     |       |
+| BinHex 4.0            | `binhex` | `.hqx`                  | ✔     |       |
 | C or C++ coded binary | `c`      | `.c` `.cpp` `.cc` `.h`  | ✔     | ✔     |
 | JSON coded binary     | `json`   | `.json`                 | ✔     | ✔     |
 | Python coded binary   | `python` | `.py`                   | ✔     | ✔     |
