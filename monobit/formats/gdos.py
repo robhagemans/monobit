@@ -13,7 +13,7 @@ from ..properties import Props
 from ..storage import loaders, savers
 from ..font import Font
 from ..glyph import Glyph
-from ..streams import FileFormatError
+from ..magic import FileFormatError
 from ..binary import bytes_to_bits, ceildiv
 from ..raster import Raster
 
@@ -25,7 +25,7 @@ from .windows import _normalise_metrics
     'gft', 'cga', 'ega', 'vga', #'fnt'
     name='gdos'
 )
-def load_gdos(instream, where=None, endianness:str=''):
+def load_gdos(instream, endianness:str=''):
     """
     Load font from Atari GDOS/GEM .FNT file.
 
@@ -46,7 +46,7 @@ def load_gdos(instream, where=None, endianness:str=''):
 
 
 @savers.register(linked=load_gdos)
-def save_gdos(fonts, outstream, where=None, endianness:str='little'):
+def save_gdos(fonts, outstream, endianness:str='little'):
     """
     Save font to Atari GDOS/GEM .FNT file.
 

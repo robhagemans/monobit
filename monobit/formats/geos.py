@@ -9,6 +9,7 @@ import logging
 from itertools import count
 
 from ..storage import loaders, savers
+from ..streams import Stream
 from ..font import Font
 from ..glyph import Glyph
 from ..raster import Raster
@@ -19,12 +20,12 @@ from .raw import load_binary
 
 # offset CVT signature b'formatted GEOS file' could be used as magic
 @loaders.register('cvt', name='geos')
-def load_geos(instream, where=None,  merge_mega:bool=True):
+def load_geos(instream, merge_mega:bool=True):
     """Load fonts from a GEOS ConVerT container."""
     return _load_geos_cvt(instream, merge_mega)
 
 @loaders.register('vlir', name='geos-vlir')
-def load_geos_vlir(instream, where=None, offset:int=0):
+def load_geos_vlir(instream, offset:int=0):
     """
     Load a bare GEOS font VLIR.
 
@@ -53,12 +54,11 @@ _OFFSETS = le.uint16.array(96)
 
 def _load_geos_vlir(instream):
     """Load a bare GEOS font VLIR."""
-    anchor = instream.tell()
     header = _HEADER.read_from(instream)
     logging.debug(header)
-    instream.seek(anchor + header.index_offset)
+    instream.seek(header.index_offset)
     offsets = _OFFSETS.read_from(instream)
-    instream.seek(anchor + header.bitstream_offset)
+    instream.seek(header.bitstream_offset)
     strikebytes = instream.read(header.height * header.stride)
     strikebytes = strikebytes.ljust(header.height * header.stride, b'\0')
     strike = Raster.from_bytes(
@@ -339,7 +339,7 @@ def _load_geos_cvt(instream, merge_mega):
         logging.debug('Loading font id %d height %d', font_id, height)
         anchor = instream.tell()
         try:
-            font = _load_geos_vlir(instream)
+            font = _load_geos_vlir(Stream(instream, mode='r'))
         except ValueError as e:
             logging.warning(
                 'Could not load font id %d size %d: %s', font_id, height, e

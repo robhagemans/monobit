@@ -39,7 +39,7 @@ class TestFormats(BaseTester):
     def test_export_fon(self):
         """Test exporting fon files."""
         fon_file = self.temp_path / '4x6.fon'
-        monobit.save(self.fixed4x6, fon_file)
+        monobit.save(self.fixed4x6, fon_file, format='fon')
         # read back
         font, *_ = monobit.load(fon_file)
         self.assertEqual(len(font.glyphs), 224)
@@ -194,25 +194,25 @@ class TestFormats(BaseTester):
     def test_import_bmf(self):
         """Test importing bmfont files."""
         base_path = self.font_path / '6x13.bmf'
-        font, *_ = monobit.load('6x13-text.fnt', where=base_path, format='bmf')
+        font, *_ = monobit.load(base_path / '6x13-text.fnt', format='bmf')
         self.assertEqual(len(font.glyphs), 189)
-        font, *_ = monobit.load('6x13-xml.fnt', where=base_path, format='bmf')
+        font, *_ = monobit.load(base_path / '6x13-xml.fnt', format='bmf')
         self.assertEqual(len(font.glyphs), 189)
-        font, *_ = monobit.load('6x13-json.fnt', where=base_path, format='bmf')
+        font, *_ = monobit.load(base_path / '6x13-json.fnt', format='bmf')
         self.assertEqual(len(font.glyphs), 189)
-        font, *_ = monobit.load('6x13-8bit.fnt', where=base_path, format='bmf')
+        font, *_ = monobit.load(base_path / '6x13-8bit.fnt', format='bmf')
         self.assertEqual(len(font.glyphs), 189)
-        font, *_ = monobit.load('6x13-32bit-packed.fnt', where=base_path, format='bmf')
+        font, *_ = monobit.load(base_path / '6x13-32bit-packed.fnt', format='bmf')
         self.assertEqual(len(font.glyphs), 189)
-        font, *_ = monobit.load('6x13-32bit-nonpacked.fnt', where=base_path, format='bmf')
+        font, *_ = monobit.load(base_path / '6x13-32bit-nonpacked.fnt', format='bmf')
         self.assertEqual(len(font.glyphs), 189)
-        font, *_ = monobit.load('6x13-binary.fnt', where=base_path, format='bmf')
+        font, *_ = monobit.load(base_path / '6x13-binary.fnt', format='bmf')
         self.assertEqual(len(font.glyphs), 189)
 
     def test_export_bmf_text(self):
         """Test exporting bmfont files with text descriptor."""
         fnt_file = self.temp_path / '4x6.bmf'
-        monobit.save(self.fixed4x6, fnt_file, where=self.temp_path)
+        monobit.save(self.fixed4x6, fnt_file)
         font, *_ = monobit.load(fnt_file)
         self.assertEqual(len(font.glyphs), 919)
         self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
@@ -220,7 +220,7 @@ class TestFormats(BaseTester):
     def test_export_bmf_json(self):
         """Test exporting bmfont files with json descriptor."""
         fnt_file = self.temp_path / '4x6.bmf'
-        monobit.save(self.fixed4x6, fnt_file, where=self.temp_path, descriptor='json', overwrite=True)
+        monobit.save(self.fixed4x6, fnt_file, descriptor='json', overwrite=True)
         font, *_ = monobit.load(fnt_file)
         self.assertEqual(len(font.glyphs), 919)
         self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
@@ -232,6 +232,13 @@ class TestFormats(BaseTester):
         font, *_ = monobit.load(
             self.font_path / '4x6.c',
             identifier='char font_Fixed_Medium_6', cell=(4, 6)
+        )
+        self.assertEqual(len(font.glyphs), 919)
+
+    def test_import_bas(self):
+        """Test importing BASIC source files."""
+        font, *_ = monobit.load(
+            self.font_path / '4x6.bas', cell=(4, 6)
         )
         self.assertEqual(len(font.glyphs), 919)
 
@@ -254,6 +261,14 @@ class TestFormats(BaseTester):
     def test_export_json(self):
         """Test exporting JSON source files."""
         file = self.temp_path  / '4x6.json'
+        monobit.save(self.fixed4x6, file)
+        font, *_ = monobit.load(file, cell=(4, 6), first_codepoint=31)
+        self.assertEqual(len(font.glyphs), 919)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+
+    def test_export_bas(self):
+        """Test exporting BASIC source files."""
+        file = self.temp_path  / '4x6.bas'
         monobit.save(self.fixed4x6, file)
         font, *_ = monobit.load(file, cell=(4, 6), first_codepoint=31)
         self.assertEqual(len(font.glyphs), 919)
@@ -380,13 +395,27 @@ class TestFormats(BaseTester):
 
     def test_import_macbinary(self):
         """Test importing macbinary files."""
-        font, *_ = monobit.load(self.font_path / '4x6.bin')
+        font, *_ = monobit.load(self.font_path / '4x6.bin', format='macbin')
         self.assertEqual(len(font.glyphs), 195)
 
     def test_import_hexbin(self):
         """Test importing hexbin files."""
         font, *_ = monobit.load(self.font_path / '4x6.hqx')
         self.assertEqual(len(font.glyphs), 195)
+
+    def test_import_iigs(self):
+        """Test importing Apple IIgs font files."""
+        font, *_ = monobit.load(self.font_path / '4x6.iigs', format='iigs')
+        # only 220 glyphs in the font as it's in mac-roman encoding now
+        self.assertEqual(len(font.glyphs), 220)
+
+    def test_export_iigs(self):
+        """Test exporting Apple IIgs font files."""
+        file = self.temp_path / '4x6.iigs'
+        monobit.save(self.fixed4x6, file, format='iigs')
+        font, *_ = monobit.load(file, format='iigs')
+        self.assertEqual(len(font.glyphs), 220)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
     # Amiga
 
@@ -661,7 +690,10 @@ class TestFormats(BaseTester):
 
     def test_export_vector_fon(self):
         """Test exporting Hershey font in Windows vector format."""
-        monobit.save(self.hershey, self.temp_path / 'hershey.fon', vector=True)
+        monobit.save(
+            self.hershey, self.temp_path / 'hershey.fon',
+            format='fon', vector=True
+        )
         font, *_ = monobit.load(self.temp_path / 'hershey.fon')
         self.assertEqual(len(font.glyphs), 26)
         self.assertEqual(font.glyphs[0].path, self.hershey_A_path)

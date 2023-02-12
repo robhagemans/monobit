@@ -7,7 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
-from ...streams import FileFormatError
+from ...magic import FileFormatError
 from ...struct import little_endian as le
 from ..windows.ne import _NE_HEADER
 from .gpifont import parse_os2_font_directory

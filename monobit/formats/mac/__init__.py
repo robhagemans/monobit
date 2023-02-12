@@ -12,15 +12,17 @@ from ...storage import loaders, savers
 from .dfont import _parse_mac_resource
 from .nfnt import _extract_nfnt, _convert_nfnt
 from .lisa import _load_lisa
+from .iigs import _load_iigs, _save_iigs
 
 
 # the magic is optional - a 'maybe magic'
 # .rsrc is what we use as a 'filename' for resources inside containers
 @loaders.register('dfont', 'suit', 'rsrc', name='mac', magic=(b'\0\0\1\0\0',))
-def load_mac_dfont(instream, where=None):
+def load_mac_dfont(instream):
     """Load font from a MacOS suitcase."""
     data = instream.read()
     return _parse_mac_resource(data)
+
 
 # \x90\0 is not a formal signature, but the most common set of FONT_TYPE flags
 # the \x80 sigs are LISA compressed NFNTs
@@ -29,7 +31,7 @@ def load_mac_dfont(instream, where=None):
     name='nfnt',
     magic=(b'\x90\0', b'\xb0\0', b'\x90\x80', b'\xb0\x80')
 )
-def load_nfnt(instream, where=None, offset:int=0):
+def load_nfnt(instream, offset:int=0):
     """
     Load font from a bare FONT/NFNT resource.
 
@@ -42,6 +44,21 @@ def load_nfnt(instream, where=None, offset:int=0):
 
 
 @loaders.register(name='lisa')
-def load_lisa(instream, where=None):
+def load_lisa(instream):
     """Load a LISA font library."""
     return _load_lisa(instream)
+
+
+@loaders.register('fon', name='iigs')
+def load_iigs(instream):
+    """Load a IIgs font."""
+    return _load_iigs(instream)
+
+
+@savers.register(linked=load_iigs)
+def save_iigs(fonts, outstream):
+    """Write font to a IIgs font file."""
+    if len(fonts) > 1:
+        logging.warning('IIgs font file can only store one font.')
+    font = fonts[0]
+    _save_iigs(outstream, font)

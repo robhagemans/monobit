@@ -6,10 +6,11 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import logging
+from pathlib import Path
 
 from ..properties import normalise_property
 from ..storage import loaders, savers
-from ..streams import FileFormatError
+from ..magic import FileFormatError
 from ..font import Font, Coord
 from ..glyph import Glyph
 from ..binary import ceildiv
@@ -21,10 +22,11 @@ from .windows import _normalise_metrics
 
 
 @loaders.register('hbf', magic=(b'HBF_START_FONT ',), name='hanzi-bf')
-def load_hbf(instream, where):
+def load_hbf(instream):
     """
     Load font from Hanzi Bitmap Format (HBF) file.
     """
+    where = instream.where
     instream = instream.text
     (
         comments, hbf_props, x_props,
@@ -49,7 +51,7 @@ def load_hbf(instream, where):
     return font
 
 @savers.register(linked=load_hbf)
-def save_hbf(fonts, outstream, where):
+def save_hbf(fonts, outstream):
     """
     Save font to Hanzi Bitmap Format (HBF) file.
     """
@@ -57,7 +59,7 @@ def save_hbf(fonts, outstream, where):
         raise FileFormatError('Can only save one font to HBF file.')
     # ensure codepoint values are set
     font = fonts[0]
-    _save_hbf(font, outstream.text, where)
+    _save_hbf(font, outstream.text, outstream.where)
 
 
 ##############################################################################
@@ -226,7 +228,8 @@ def _read_hbf_glyphs(instream, where, b2_ranges, b3_ranges, c_ranges, props):
         code_range = _split_hbf_ints(code_range, sep='-')
         code_range = range(code_range[0], code_range[1]+1)
         offset = hbf_int(offset)
-        with where.open(filename, 'r') as bitmapfile:
+        path = Path(instream.name).parent
+        with where.open(path / filename, 'r') as bitmapfile:
             # discard offset bytes
             bitmapfile.read(offset)
             for codepoint in indexer(plane, code_range, b2_ranges, b3_ranges):
@@ -265,7 +268,7 @@ def _parse_properties(hbf_props, x_props):
         properties[key] = value
     for key, value in xlfd_props.items():
         if key in properties and properties[key] != value:
-            logging.warning(
+            logging.debug(
                 'Inconsistency between HBF and XLFD properties: '
                 '%s=%s (from XLFD) but %s=%s (from HBF). Taking HBF property.',
                 key, value, key, properties[key]

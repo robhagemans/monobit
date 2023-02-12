@@ -125,6 +125,7 @@ class GlyphProperties(DefaultProps):
     @checked_property
     def ink_bounds(self):
         """Minimum box encompassing all ink, relative to bottom left."""
+        # pylint: disable=no-member
         bounds = Bounds(
             self.raster.left + self.padding.left,
             self.raster.bottom + self.padding.bottom,
@@ -139,6 +140,7 @@ class GlyphProperties(DefaultProps):
     @checked_property
     def bounding_box(self):
         """Dimensions of minimum bounding box encompassing all ink."""
+        # pylint: disable=no-member
         return Coord(
             self.ink_bounds.right - self.ink_bounds.left,
             self.ink_bounds.top - self.ink_bounds.bottom
@@ -845,6 +847,7 @@ class Glyph:
     ##########################################################################
     # operations on multiple glyphs
 
+    # pylint: disable=no-method-argument
     def _get_common_raster(*glyphs):
         """
         Minimum box encompassing all glyph matrices overlaid at fixed origin.
@@ -859,6 +862,7 @@ class Glyph:
             top=max(_r.top for _r in rasters)
         )
 
+    # pylint: disable=no-method-argument
     def overlay(*glyphs, operator=any):
         """
         Superimpose glyphs, taking into account metrics.

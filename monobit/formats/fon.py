@@ -6,10 +6,10 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import logging
-import io
 
 from ..storage import loaders, savers
-from ..streams import FileFormatError
+from ..streams import Stream
+from ..magic import FileFormatError
 
 from .windows.mz import MZ_HEADER, create_mz_stub
 from .windows.ne import create_ne, read_ne, _NE_HEADER
@@ -29,7 +29,7 @@ from .sfnt import load_sfnt, SFNT_MAGIC
     magic=(b'MZ', b'LX', b'LE', b'NE', b'PE'),
     name='fon',
 )
-def load_fon(instream, where=None, all_type_ids:bool=False):
+def load_fon(instream, all_type_ids:bool=False):
     """
     Load fonts from a Windows or OS/2 .FON container.
 
@@ -82,7 +82,7 @@ def load_fon(instream, where=None, all_type_ids:bool=False):
             # PE files may have bitmap SFNTs embedded in them
             # be restrictive as FNT_MAGIC_1 and SFNT_MAGIC clash
             if magic == SFNT_MAGIC and format == b'PE':
-                bytesio = io.BytesIO(resource)
+                bytesio = Stream.from_data(resource, mode='r')
                 fonts = load_sfnt(bytesio)
                 fonts.extend(fonts)
             elif magic == GPI_MAGIC:
@@ -105,7 +105,7 @@ def load_fon(instream, where=None, all_type_ids:bool=False):
 
 
 @savers.register('fon', name='fon')
-def save_win_fon(fonts, outstream, where=None, version:int=2, vector:bool=False):
+def save_win_fon(fonts, outstream, version:int=2, vector:bool=False):
     """
     Save fonts to a Windows .FON container.
 

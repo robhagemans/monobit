@@ -89,7 +89,7 @@ def _str_to_tuple(value):
 
 def to_tuple(value=0, *, length=2):
     if isinstance(value, tuple):
-        return value
+        return tuple(to_int(_i) for _i in value)
     if isinstance(value, Real):
         return (value,) * length
     if isinstance(value, str):

@@ -105,12 +105,11 @@ _BITMAP_OFFSET = 0x158 # 344
 
 # magic 0x10 or 0x11 is a bit too generic
 @loaders.register(
-    'set',
-    #'fnt',
+    'set', 'fnt',
     'cft', 'eft', 'lft', 'mft', 'nft', 'pft', 'sft', 'xft',
     name='pcpaint'
 )
-def load_chiwriter(instream, where=None, filetype:int=None):
+def load_chiwriter(instream, filetype:int=None):
     """
     Load a ChiWriter font.
 
@@ -119,12 +118,12 @@ def load_chiwriter(instream, where=None, filetype:int=None):
     data = instream.read()
     header = _HEADER.from_bytes(data)
     logging.debug(header)
-    if any(_c not in range(32, 128) for _c in header.filename):
-        # not a DOS filename, which suggests the old version
-        header.filetype = filetype
     # apply filetype override
     if filetype is not None:
         header.filetype = filetype
+    elif any(_c not in range(32, 128) for _c in header.filename):
+        # not a DOS filename, which suggests the old version
+        header.filetype = 0
     # locate width table
     # the V3 format only has space for 94 widths as bitmaps start at 344
     # the V4 format files have the earlier offset even if they have <= 94 glyphs
@@ -203,11 +202,11 @@ _GRASP_HEADER = le.Struct(
     glyphsize='uint8',
 )
 
-def _load_grasp_old(instream, where=None):
+def _load_grasp_old(instream):
     """Load a GRASP font (original format)."""
     header = _GRASP_HEADER.read_from(instream)
     font = load_binary(
-        instream, where,
+        instream,
         cell=(header.width, header.height),
         strike_bytes=header.glyphsize // header.height,
         count=header.count,

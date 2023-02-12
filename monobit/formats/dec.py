@@ -14,7 +14,7 @@ import shlex
 import logging
 
 from ..storage import loaders, savers
-from ..streams import FileFormatError
+from ..magic import FileFormatError
 from ..font import Font
 from ..glyph import Glyph
 from ..binary import ceildiv
@@ -25,7 +25,7 @@ from ..properties import reverse_dict
     magic=(b'\x90', b'\x1bP'),
     name='dec'
 )
-def load_dec_drcs(instream, where=None):
+def load_dec_drcs(instream):
     """Load character-cell fonts from DEC DRCS file."""
     dec_glyphs, dec_props = _read_drcs(instream)
     props, count, first_codepoint = _parse_drcs_props(dec_props)
@@ -35,7 +35,7 @@ def load_dec_drcs(instream, where=None):
     return Font(glyphs, **props)
 
 @savers.register(linked=load_dec_drcs)
-def save_dec_drcs(fonts, outstream, where=None, *, use_8bit:bool=False):
+def save_dec_drcs(fonts, outstream, *, use_8bit:bool=False):
     """Write font to a DEC DRCS file."""
     if len(fonts) > 1:
         raise FileFormatError('Can only save one font to dec-drcs file.')
@@ -266,6 +266,7 @@ def _convert_drcs_glyph(glyphdef, raster_size):
         for _pair in glyphbytes
     )
     glyph = Glyph(glyphstrs, _0='0', _1='1')
+    # pylint: disable=unexpected-keyword-arg
     glyph = glyph.turn(anti=1)
     glyph = glyph.crop(
         right=glyph.width-raster_size.x,

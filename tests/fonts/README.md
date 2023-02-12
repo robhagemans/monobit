@@ -1,7 +1,7 @@
 ## Testing fonts
 
 The fonts are included here for testing and some have been modified. If you wish to use these fonts
-for other purposes, it is recommended that you download them from the original source, not from here.
+for other purposes, it is recommended that you download them from the original sources, not from here.
 
 Original sources:
 * `4x6.bdf`
@@ -51,18 +51,15 @@ Original sources:
    - The Hershey Fonts were originally created by Dr. A. V. Hershey
    - See README for conditions
 
+
 ### Derivatives of `4x6`
 
-* `4x6.yaff` was created from `4x6.bdf` using `monobit`
-* `4x6.psf` was created from `4x6.yaff` using `monobit`
-* `4x6.fzx` was created from `4x6.bdf` using `monobit`
-* `4x6.c` was created from `4x6.yaff` using `monobit`
+* `4x6.yaff`, `4x6.fzx` were created from `4x6.bdf` using `monobit`
+* `4x6.c`, `4x6.c`, `4x6.iigs` were created from `4x6.yaff` using `monobit`
 * `4x6.dfont` and `4x6.bin` were created from `4x6.bdf` using `ufond` (part of `fondu`)
-* `4x6.vfont*` were created from `4x6.psf` using `psftools` v1.1.1
-* `4x6-ams.com*` were created from `4x6.psf` using `psftools` v1.1.1
+* `8x8.bbc`, `4x6.vfont*`, `4x6-ams.com*` were created from `4x6.psf` using `psftools` v1.1.1
 * `4x6.ttf` was created from `4x6.bdf` using `fonttosfnt`
 * `4x6.otb`, `4x6.sfnt.dfont` and `4x6.ffms.ttf` were created from `4x6.bdf` using FontForge
-* `8x8.bbc` was created from `4x6.psf` using `psftools` v1.1.1
 * `8x16.hex` was created from `4x6.yaff` using `bittermelon`
 * `8x16.draw` was created from `8x16.hex` using `hexdraw`
 * `8x16-*.cpi` were created from `8x16.hex` through a PSF intermediate using `monobit` and `psftools`

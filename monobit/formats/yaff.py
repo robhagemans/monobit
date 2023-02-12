@@ -13,7 +13,7 @@ from collections import deque
 
 from ..storage import loaders, savers
 from ..encoding import charmaps
-from ..streams import FileFormatError
+from ..magic import FileFormatError
 from ..font import Font
 from ..glyph import Glyph
 from ..raster import Raster
@@ -26,12 +26,12 @@ from ..properties import normalise_property
 
 
 @loaders.register('yaff', 'yaffs', magic=(b'---',), name='yaff')
-def load_yaff(instream, where=None):
+def load_yaff(instream, allow_empty:bool=False):
     """Load font from a monobit .yaff file."""
-    return _load_yaff(instream.text)
+    return _load_yaff(instream.text, allow_empty)
 
 @savers.register(linked=load_yaff)
-def save_yaff(fonts, outstream, where=None):
+def save_yaff(fonts, outstream):
     """Write fonts to a monobit .yaff file."""
     _save_yaff(fonts, outstream.text)
 
@@ -67,7 +67,7 @@ class YaffParams:
 # read file
 
 
-def _load_yaff(text_stream):
+def _load_yaff(text_stream, allow_empty):
     """Parse a yaff/yaffs file."""
     reader = YaffReader()
     fonts = []
@@ -75,7 +75,12 @@ def _load_yaff(text_stream):
     while has_next_section:
         reader = YaffReader()
         has_next_section = reader.parse_section(text_stream)
-        fonts.append(reader.get_font())
+        font = reader.get_font()
+        # if no glyphs, ignore it - may not be yaff at all
+        if font.glyphs or allow_empty:
+            fonts.append(font)
+    if not fonts:
+        raise FileFormatError('No fonts found in file')
     return fonts
 
 

@@ -17,7 +17,7 @@ except ImportError:
 from ..basetypes import Coord, RGB
 from ..binary import ceildiv
 from ..storage import loaders, savers
-from ..streams import FileFormatError
+from ..magic import FileFormatError
 from ..font import Font
 from ..glyph import Glyph
 from ..chart import chart, traverse_chart
@@ -62,7 +62,7 @@ if Image:
         name='image',
     )
     def load_image(
-            infile, where=None,
+            infile,
             cell:Coord=(8, 8),
             margin:Coord=(0, 0),
             padding:Coord=(0, 0),
@@ -167,7 +167,7 @@ if Image:
 
     @savers.register(linked=load_image)
     def save_image(
-            fonts, outfile, where=None, *,
+            fonts, outfile, *,
             image_format:str='',
             columns:int=32,
             margin:Coord=(0, 0),

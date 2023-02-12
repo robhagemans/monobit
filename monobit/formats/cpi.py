@@ -8,13 +8,12 @@ licence: https://opensource.org/licenses/MIT
 import os
 import string
 import logging
-from io import BytesIO
 from itertools import accumulate
 
 from ..binary import ceildiv
 from ..struct import little_endian as le, sizeof
 from ..storage import loaders, savers
-from ..streams import FileFormatError
+from ..magic import FileFormatError
 from ..font import Font
 from ..glyph import Glyph
 from ..properties import Props
@@ -33,14 +32,14 @@ _ID_DR = b'DRFONT '
     magic=(b'\xff'+_ID_MS, b'\xff'+_ID_NT, b'\x7f'+_ID_DR),
     name='cpi'
 )
-def load_cpi(instream, where=None):
+def load_cpi(instream):
     """Load character-cell fonts from DOS Codepage Information (.CPI) file."""
     data = instream.read()
     fonts = _parse_cpi(data)
     return fonts
 
 @loaders.register('cp', name='kbd')
-def load_cp(instream, where=None):
+def load_cp(instream):
     """Load character-cell fonts from Linux Keyboard Codepage (.CP) file."""
     data = instream.read()
     fonts, _ = _parse_cp(data, 0, standalone=True)
@@ -49,7 +48,7 @@ def load_cp(instream, where=None):
 
 @savers.register(linked=load_cp)
 def save_cp(
-        fonts, outstream, where=None,
+        fonts, outstream,
         version:str=_ID_MS, codepage_prefix:str='cp'
     ):
     """
@@ -72,7 +71,7 @@ def save_cp(
 
 @savers.register(linked=load_cpi)
 def save_cpi(
-        fonts, outstream, where=None,
+        fonts, outstream,
         version:str=_ID_MS, codepage_prefix:str='cp'
     ):
     """

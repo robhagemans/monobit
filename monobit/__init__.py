@@ -13,12 +13,16 @@ from .constants import VERSION as __version__
 from .pack import Pack, operations as _pack_operations
 from .font import Font, operations as _operations
 from .glyph import Glyph
-from . import formats
-from .storage import open_location, load, save, loaders, savers
+from .storage import load, save, loaders, savers
+from .magic import FileFormatError
 from .encoding import charmaps, encoder
 from .taggers import tagmaps
 from .renderer import render
 from .labels import Char, Codepoint, Tag
+
+# ensure plugins get registered
+from . import formats
+from . import containers as _containers
 
 
 _operations.update(_pack_operations)

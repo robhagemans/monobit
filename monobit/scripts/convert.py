@@ -43,9 +43,9 @@ def _get_context_help(rec):
         file = rec.kwargs.get('infile', '')
     format = rec.kwargs.get('format', '')
     if rec.command == 'load':
-        func = monobit.loaders.get_for_location(file, format=format)
+        func, *_ = monobit.loaders.get_for_location(file, mode='r', format=format)
     else:
-        func = monobit.savers.get_for_location(file, format=format, do_open=False)
+        func, *_ = monobit.savers.get_for_location(file, mode='w', format=format)
     if func:
         return func.script_args
     return None

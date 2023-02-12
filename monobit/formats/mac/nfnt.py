@@ -11,7 +11,7 @@ from ...binary import bytes_to_bits
 from ...struct import bitfield, big_endian as be
 from ...font import Font
 from ...glyph import Glyph, KernTable
-from ...streams import FileFormatError
+from ...magic import FileFormatError
 
 
 ##############################################################################

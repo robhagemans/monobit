@@ -10,7 +10,7 @@ import logging
 from ..binary import int_to_bytes, bytes_to_int, ceildiv
 from ..properties import normalise_property
 from ..storage import loaders, savers
-from ..streams import FileFormatError
+from ..magic import FileFormatError
 from ..font import Font, Coord
 from ..glyph import Glyph
 from ..encoding import charmaps, NotFoundError
@@ -19,7 +19,7 @@ from ..labels import Char
 
 
 @loaders.register('bdf', magic=(b'STARTFONT ',), name='bdf')
-def load_bdf(instream, where=None):
+def load_bdf(instream):
     """
     Load font from Adobe Glyph Bitmap Distribution Format (BDF) file.
     """
@@ -42,7 +42,7 @@ def load_bdf(instream, where=None):
 
 
 @savers.register(linked=load_bdf)
-def save_bdf(fonts, outstream, where=None):
+def save_bdf(fonts, outstream):
     """
     Save font to Adobe Glyph Bitmap Distribution Format (BDF) file.
     """
@@ -276,6 +276,7 @@ def save_bdf(fonts, outstream, where=None):
 _UNDEFINED_ENCODINGS = [
     'fontspecific-0',
     'adobe-fontspecific',
+    'fontspecific',
 ]
 
 # names to be used when writing bdf
@@ -578,7 +579,7 @@ def _parse_properties(glyphs, glyph_props, bdf_props, x_props):
         properties[key] = value
     for key, value in xlfd_props.items():
         if key in properties and properties[key] != value:
-            logging.warning(
+            logging.debug(
                 'Inconsistency between BDF and XLFD properties: '
                 '%s=%s (from XLFD) but %s=%s (from BDF). Taking BDF property.',
                 key, value, key, properties[key]
@@ -614,8 +615,8 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
     size, xdpi, ydpi = size_prop
     properties = {
         'source-format': 'BDF v{}'.format(bdf_props.pop('STARTFONT')),
-        'point-size': size,
-        'dpi': (xdpi, ydpi),
+        'point-size': int(size),
+        'dpi': _all_ints(xdpi, ydpi),
         'revision': bdf_props.pop('CONTENTVERSION', None),
     }
     writing_direction = bdf_props.pop('METRICSSET', '0')

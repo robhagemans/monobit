@@ -11,7 +11,7 @@ from ..storage import loaders, savers
 from ..font import Font
 from ..glyph import Glyph
 from ..labels import Tag, Char
-from ..streams import FileFormatError
+from ..magic import FileFormatError
 from .yaff import format_comment, normalise_comment
 
 
@@ -28,10 +28,7 @@ class DrawParams:
 # interface
 
 @loaders.register('draw', 'text', 'txt', name='hexdraw')
-def load_hexdraw(
-        instream, where=None,
-        ink:str='#', paper:str='-'
-    ):
+def load_hexdraw(instream, ink:str='#', paper:str='-'):
     """
     Load font from a hexdraw file.
 
@@ -46,10 +43,7 @@ def load_hexdraw(
     )
 
 @savers.register(linked=load_hexdraw)
-def save_hexdraw(
-        fonts, outstream, where=None,
-        ink:str='#', paper:str='-'
-    ):
+def save_hexdraw(fonts, outstream, ink:str='#', paper:str='-'):
     """
     Save font to a hexdraw file.
 

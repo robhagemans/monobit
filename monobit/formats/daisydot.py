@@ -13,7 +13,7 @@ from ..storage import loaders, savers
 from ..font import Font
 from ..glyph import Glyph
 from ..raster import Raster
-from ..streams import FileFormatError
+from ..magic import FileFormatError
 from ..binary import ceildiv, bytes_to_bits
 
 
@@ -29,9 +29,9 @@ _DD_RANGE = tuple(_c for _c in range(32, 125) if _c not in (96, 123))
 
 
 @loaders.register('nlq', name='daisy', magic=(_DD2_MAGIC, _DD3_MAGIC, _DDM_MAGIC))
-def load_daisy(instream, where=None):
+def load_daisy(instream):
     """Load font from fontx file."""
-    version, props, glyphs = _read_daisy(instream, where)
+    version, props, glyphs = _read_daisy(instream)
     # logging.info('daisy properties:')
     # for line in str(props).splitlines():
     #     logging.info('    ' + line)
@@ -50,7 +50,7 @@ _DD3_FINAL = be.Struct(
     space_width='uint8',
 )
 
-def _read_daisy(instream, where):
+def _read_daisy(instream):
     """Read daisy-dot binary file and return glyphs."""
     data = instream.read()
     if data.startswith(_DD2_MAGIC):
@@ -59,7 +59,7 @@ def _read_daisy(instream, where):
         return _parse_daisy3(data)
     elif data.startswith(_DDM_MAGIC):
         # multi-file format
-        return _parse_daisy_mag(data, instream.name, where)
+        return _parse_daisy_mag(data, instream.name, instream.where)
     raise FileFormatError(
         'Not a Daisy-Dot file: magic does not match either version'
     )

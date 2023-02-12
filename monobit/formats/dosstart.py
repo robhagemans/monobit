@@ -10,7 +10,7 @@ import string
 from io import StringIO
 
 from ..storage import loaders, savers
-from ..streams import FileFormatError
+from ..magic import FileFormatError
 from ..font import Font
 from ..glyph import Glyph
 from ..raster import Raster
@@ -18,7 +18,7 @@ from ..vector import StrokePath
 
 
 @loaders.register('dsf', name='dosstart', magic=(b'DosStartFont',))
-def load_dosstart(instream, where=None):
+def load_dosstart(instream):
     """Load font from DosStart! .DSF file."""
     return _load_dsf(instream.text)
 

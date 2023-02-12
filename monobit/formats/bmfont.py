@@ -19,7 +19,7 @@ except ImportError:
 from ..basetypes import Coord
 from ..encoding import charmaps
 from .. import streams
-from ..streams import FileFormatError
+from ..magic import FileFormatError
 from ..binary import int_to_bytes, bytes_to_int
 from ..struct import little_endian as le
 from ..properties import reverse_dict
@@ -41,17 +41,17 @@ from .windows import CHARSET_MAP, CHARSET_REVERSE_MAP
 
 if Image:
     @loaders.register('bmf', name='bmfont')
-    def load_bmfont(infile, where, outline:bool=False):
+    def load_bmfont(infile, outline:bool=False):
         """
         Load fonts from Angelcode BMFont format.
 
         outline: extract outline layer instead of glyph layer
         """
-        return _read_bmfont(infile, where, outline)
+        return _read_bmfont(infile, outline)
 
     @savers.register(linked=load_bmfont)
     def save(
-            fonts, outfile, where,
+            fonts, outfile,
             image_size:Coord=(256, 256),
             image_format:str='png',
             packed:bool=True,
@@ -67,7 +67,10 @@ if Image:
         """
         if len(fonts) > 1:
             raise FileFormatError("Can only save one font to BMFont file.")
-        _create_bmfont(outfile, where, fonts[0], image_size, packed, image_format, descriptor)
+        _create_bmfont(
+            outfile, fonts[0],
+            image_size, packed, image_format, descriptor
+        )
 
 
 ##############################################################################
@@ -543,8 +546,9 @@ def _parse_bmfont_props(name, bmformat, imgformats, info, common):
     return properties
 
 
-def _read_bmfont(infile, container, outline):
+def _read_bmfont(infile, outline):
     """Read a bmfont from a container."""
+    container = infile.where
     magic = infile.peek(3)
     fontinfo = {}
     if magic.startswith(b'BMF'):
@@ -704,10 +708,11 @@ def _create_textdict(name, dict):
     )
 
 def _create_bmfont(
-        outfile, container, font,
+        outfile, font,
         size=(256, 256), packed=False, imageformat='png', descriptor='text'
     ):
     """Create a bmfont package."""
+    container = outfile.where
     path = Path('.') / font.family
     fontname = font.name.replace(' ', '_')
     encoding = font.encoding

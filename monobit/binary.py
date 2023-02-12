@@ -22,6 +22,7 @@ def bytes_to_bits(inbytes, width=None, align='left'):
     if width is None:
         return bits
     elif align.startswith('r'):
+        # pylint: disable=invalid-unary-operand-type
         return bits[-width:]
     else:
         return bits[:width]
