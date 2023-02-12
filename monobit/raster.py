@@ -215,7 +215,8 @@ class Raster:
 
     @classmethod
     def from_vector(
-            cls, bitseq, *, stride, width=NOT_SET, align='left',
+            cls, bitseq, *,
+            stride, width=NOT_SET, height=NOT_SET, align='left',
             _0=NOT_SET, _1=NOT_SET
         ):
         """Create raster from flat immutable sequence representing bits."""
@@ -235,10 +236,13 @@ class Raster:
                     excess, bitseq[-excess:]
                 )
             bitseq = bitseq[:-excess]
+        if height is NOT_SET:
+            # used as slice bound, None means all
+            height = None
         rows = tuple(
             bitseq[_offs:_offs+width]
             for _offs in range(offset, len(bitseq), stride)
-        )
+        )[:height]
         return cls(rows, _0=_0, _1=_1)
 
     def as_vector(self, ink=1, paper=0):
@@ -251,7 +255,7 @@ class Raster:
 
     @classmethod
     def from_bytes(
-                cls, byteseq, width, height=NOT_SET,
+                cls, byteseq, width=NOT_SET, height=NOT_SET,
                 *, align='left', stride=NOT_SET,
                 **kwargs
         ):
@@ -263,28 +267,35 @@ class Raster:
         stride: number of pixels per row (default: what's needed for alignment)
         align: 'left' or 'right' for byte-alignment; 'bit' for bit-alignment
         """
+        if all(_arg is NOT_SET for _arg in (width, height, stride)):
+            raise ValueError(
+                'At least one of width, height or stride must be speecified'
+            )
         if width == 0 or height == 0:
             if height is NOT_SET:
                 height = 0
             return cls.blank(width, height)
         if stride is not NOT_SET:
-            pass
+            if width is NOT_SET:
+                width = stride
         elif align != 'bit':
-            if height is not NOT_SET:
+            if width is NOT_SET:
                 stride = 8 * (len(byteseq) // height)
             else:
                 stride = 8 * ceildiv(width, 8)
         else:
-            if height is not NOT_SET:
+            if width is NOT_SET:
                 stride = (8 * len(byteseq)) // height
             else:
                 stride = width
         if not byteseq:
             bitseq = ''
         else:
-            bitseq = bin(int.from_bytes(byteseq, 'big'))[2:].zfill(8*len(byteseq))
+            bitseq = bin(
+                int.from_bytes(byteseq, 'big'))[2:].zfill(8*len(byteseq)
+            )
         return cls.from_vector(
-            bitseq, width=width, stride=stride, align=align,
+            bitseq, width=width, height=height, stride=stride, align=align,
             _0='0', _1='1',
         )
 
