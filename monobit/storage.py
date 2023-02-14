@@ -295,13 +295,6 @@ class ConverterRegistry(MagicRegistry):
         self._default_text = default_text
         self._default_binary = default_binary
 
-    def get_for_location(self, file, mode, format=''):
-        """Get loader/saver for font file location."""
-        if not file:
-            return self.get_for(format=format)
-        with open_location(file, mode) as stream:
-            return self.get_for(stream, format=format)
-
     def get_for(self, file=None, format=''):
         """
         Get loader/saver function for this format.
