@@ -32,12 +32,6 @@ class FileFormatError(Exception):
     """Incorrect file format."""
 
 
-def normalise_suffix(suffix):
-    """Bring suffix to lowercase without dot."""
-    if suffix.startswith('.'):
-        suffix = suffix[1:]
-    return suffix.lower()
-
 def maybe_text(instream):
     """
     Check if a binary input stream looks a bit like it might hold utf-8 text.
@@ -76,25 +70,21 @@ class MagicRegistry:
         """Set up registry."""
         self._magic = []
         self._patterns = []
-        self._suffixes = {}
         self._names = {}
 
-    def register(self, *suffixes, name='', magic=(), patterns=()):
+    def register(self, name='', magic=(), patterns=()):
         """Decorator to register converter for file type."""
         def decorator(converter):
             if not name:
                 raise ValueError('No registration name given')
             if name in self._names:
                 raise ValueError('Registration name `{name} already in use')
+            if not isinstance(magic, (list, tuple)):
+                raise TypeError('Registration parameter `magic` must be list or tuple')
+            if not isinstance(patterns, (list, tuple)):
+                raise TypeError('Registration parameter `patterns` must be list or tuple')
             converter.format = name
             self._names[name] = converter
-            ## suffixes
-            for suffix in suffixes:
-                suffix = normalise_suffix(suffix)
-                if suffix in self._suffixes:
-                    self._suffixes[suffix].append(converter)
-                else:
-                    self._suffixes[suffix] = [converter]
             ## magic signatures
             for sequence in magic:
                 self._magic.append((Magic(sequence), converter))
@@ -134,17 +124,6 @@ class MagicRegistry:
                 )
                 glob_matches.append(converter)
         matches.extend(_c for _c in glob_matches if _c not in matches)
-        ## match suffixes
-        suffix = normalise_suffix(Path(file.name).suffix)
-        converters = self._suffixes.get(suffix, ())
-        # don't repeat matches
-        converters = [_c for _c in converters if _c not in matches]
-        for converter in converters:
-            logging.debug(
-                'Suffix matches for format `%s`.',
-                converter.name
-            )
-        matches.extend(converters)
         return tuple(matches)
 
 
