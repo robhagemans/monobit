@@ -417,6 +417,12 @@ class TestFormats(BaseTester):
         self.assertEqual(len(font.glyphs), 220)
         self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
+    def test_import_mgtk(self):
+        """Testing importing Apple II MouseGraphics ToolKit font files."""
+        font, *_ = monobit.load(self.font_path / '4x6.mgtk', format='mgtk')
+        self.assertEqual(len(font.glyphs), 128)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+
     # Amiga
 
     def test_import_amiga(self):
