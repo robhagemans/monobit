@@ -130,7 +130,7 @@ def open_container(stream, mode, format=''):
 ##############################################################################
 # loading
 
-@scriptable(unknown_args='passthrough', record=False)
+@scriptable(wrapper=True, record=False)
 def load(infile:Any='', *, format:str='', **kwargs):
     """
     Read font(s) from file.
@@ -214,7 +214,7 @@ def load_all(container, format='', **kwargs):
 ##############################################################################
 # saving
 
-@scriptable(unknown_args='passthrough', record=False, pack_operation=True)
+@scriptable(wrapper=True, record=False, pack_operation=True)
 def save(
         pack_or_font,
         outfile:Any='', *,
@@ -331,10 +331,8 @@ class ConverterRegistry(MagicRegistry):
         return converter
 
     def register(
-            self,
-            name='',
-            magic=(), patterns=(),
-            linked=None, wrapper=False
+            self, name='', magic=(), patterns=(),
+            linked=None, **kwargs
         ):
         """
         Decorator to register font loader/saver.
@@ -343,7 +341,6 @@ class ConverterRegistry(MagicRegistry):
         magic: magic sequences for this format (no effect for savers)
         patterns: filename patterns for this foormat
         linked: loader/saver linked to saver/loader
-        wrapper: this is a single-file wrapper format, enable argument passthrough
         """
         register_magic = super().register
 
@@ -356,9 +353,7 @@ class ConverterRegistry(MagicRegistry):
                 original_func,
                 # use the standard name, not that of the registered function
                 name=funcname,
-                # don't record history of loading from default format
-                record=(name=='load' and name != DEFAULT_TEXT_FORMAT),
-                unknown_args='passthrough' if wrapper else 'raise',
+                **kwargs
             )
             # register converter
             if linked:
