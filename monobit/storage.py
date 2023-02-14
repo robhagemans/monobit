@@ -154,7 +154,7 @@ def load_stream(instream, format='', **kwargs):
     if not fitting_loaders:
         message = f'Cannot load `{instream.name}`'
         if format:
-            message += f' as format `{format}`'
+            message += f': format specifier `{format}` not recognised'
         raise FileFormatError(message)
     for loader in fitting_loaders:
         instream.seek(0)
@@ -246,10 +246,16 @@ def save_stream(pack, outstream, format='', **kwargs):
         return save_all(pack, outstream)
     matching_savers = savers.get_for(outstream, format=format)
     if not matching_savers:
-        raise ValueError(f'Format specification `{format}` not recognised')
+        if format:
+            raise ValueError(f'Format specification `{format}` not recognised')
+        else:
+            raise ValueError(
+                f'Could not infer output file format from filename `{outstream.name}`, '
+                'please specify -format'
+            )
     if len(matching_savers) > 1:
         raise ValueError(
-            f"Format for filename '{outstream.name}' is ambiguous: "
+            f"Format for output filename '{outstream.name}' is ambiguous: "
             f'specify -format with one of the values '
             f'({", ".join(_s.name for _s in matching_savers)})'
         )
@@ -298,12 +304,12 @@ class ConverterRegistry(MagicRegistry):
         if not file:
             return self.get_for(format=format)
         with open_location(file, mode) as stream:
-            return self.get_for(file, format=format)
+            return self.get_for(stream, format=format)
 
     def get_for(self, file=None, format=''):
         """
         Get loader/saver function for this format.
-        infile must be a Stream or empty
+        file must be a Stream or None
         """
         converter = ()
         if not format:
@@ -336,13 +342,19 @@ class ConverterRegistry(MagicRegistry):
                 converter = ()
         return converter
 
-    def register(self, *formats, magic=(), name='', linked=None, wrapper=False):
+    def register(
+            self, *formats,
+            name='',
+            magic=(), patterns=(),
+            linked=None, wrapper=False
+        ):
         """
         Decorator to register font loader/saver.
 
-        *formats: extensions covered by registered function
-        magic: magic sequences covered by the converter (no effect for savers)
+        *formats: extensions covered by the converter
         name: name of the format
+        magic: magic sequences covered by the converter (no effect for savers)
+        patterns: filename patterns covered by the converter
         linked: loader/saver linked to saver/loader
         wrapper: this is a single-file wrapper format, enable argument passthrough
         """
@@ -363,17 +375,24 @@ class ConverterRegistry(MagicRegistry):
             )
             # register converter
             if linked:
-                linked.linked = _func
+                # linked.linked = _func
                 _func.name = name or linked.name
                 _func.formats = formats or linked.formats
                 _func.magic = magic or linked.magic
+                _func.patterns = patterns or linked.patterns
             else:
                 _func.name = name
-                _func.linked = linked
+                # _func.linked = linked
                 _func.formats = formats
                 _func.magic = magic
+                _func.patterns = patterns
             # register magic sequences
-            register_magic(*_func.formats, magic=_func.magic, name=_func.name)(_func)
+            register_magic(
+                *_func.formats,
+                name=_func.name,
+                magic=_func.magic,
+                patterns=_func.patterns,
+            )(_func)
             return _func
 
         return _decorator

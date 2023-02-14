@@ -38,9 +38,12 @@ DEFAULT_IMAGE_FORMAT = 'png'
 
 if Image:
     @loaders.register(
-        'png', 'bmp', 'gif', 'tif', 'tiff',
-        'ppm', 'pgm', 'pbm', 'pnm', 'webp',
-        'pcx', 'tga', 'jpg', 'jpeg',
+        name='image',
+        patterns=(
+            '*.png', '*.bmp', '*.gif', '*.tif', '*.tiff',
+            '*.ppm', '*.pgm', '*.pbm', '*.pnm', '*.webp',
+            '*.pcx', '*.tga', '*.jpg', '*.jpeg',
+        ),
         magic=(
             # PNG
             b'\x89PNG\r\n\x1a\n',
@@ -59,7 +62,6 @@ if Image:
             # JPEG
             b'\xFF\xD8\xFF',
         ),
-        name='image',
     )
     def load_image(
             infile,

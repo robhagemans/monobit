@@ -13,7 +13,7 @@ from ..properties import Props
 from ..storage import loaders, savers
 from ..font import Font
 from ..glyph import Glyph
-from ..magic import FileFormatError
+from ..magic import FileFormatError, Magic
 from ..binary import bytes_to_bits, ceildiv
 from ..raster import Raster
 
@@ -22,8 +22,10 @@ from .windows import _normalise_metrics
 
 
 @loaders.register(
-    'gft', 'cga', 'ega', 'vga', #'fnt'
-    name='gdos'
+    name='gdos',
+    patterns=('*.fnt', '*.gft', '*.[cev]ga'),
+    # maybe - this is the usual value for 'lighten' and 'skew'
+    magic=(Magic.offset(62) + b'UUUU',),
 )
 def load_gdos(instream, endianness:str=''):
     """

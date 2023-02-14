@@ -67,7 +67,10 @@ def save_binary(
 # raw 8x14 format
 # CHET .814 - http://fileformats.archiveteam.org/wiki/CHET_font
 
-@loaders.register('814', name='8x14')
+@loaders.register(
+    name='8x14',
+    patterns=('*.814',),
+)
 def load_chet(instream):
     """Load a raw 8x14 font."""
     return load_binary(instream, cell=(8, 14))
@@ -77,7 +80,10 @@ def load_chet(instream):
 # raw 8x8 format
 # https://www.seasip.info/Unix/PSF/Amstrad/UDG/index.html
 
-@loaders.register('64c', 'udg', 'ch8', name='8x8')
+@loaders.register(
+    name='8x8',
+    patterns=('*.64c', '*.udg', '*.ch8'), 
+)
 def load_8x8(instream):
     """Load a raw 8x8 font."""
     return load_binary(instream, cell=(8, 8))
@@ -85,7 +91,10 @@ def load_8x8(instream):
 # https://www.seasip.info/Unix/PSF/Amstrad/Genecar/index.html
 # GENECAR included three fonts in a format it calls .CAR. This is basically a
 # raw dump of the font, but using a 16×16 character cell rather than the usual 16×8.
-@loaders.register('car', name='16x16')
+@loaders.register(
+    name='16x16',
+    patterns=('*.car',),
+)
 def load_16x16(instream):
     """Load a raw 16x16 font."""
     return load_binary(instream, cell=(16, 16))
@@ -93,20 +102,22 @@ def load_16x16(instream):
 
 ###############################################################################
 # raw 8xN format with height in suffix
-# guess we won't have them less than 4 or greater than 32
 
 from pathlib import PurePath
+from ..magic import Regex
 
-_F_SUFFIXES = tuple(f'f{_height:02}' for _height in range(4, 33))
 
-@loaders.register(*_F_SUFFIXES, name='8xn')
+@loaders.register(
+    name='8xn',
+    patterns=(Regex(r'.+\.f\d\d'),),
+)
 def load_8xn(instream):
     """Load a raw 8xN font."""
     suffix = PurePath(instream.name).suffix
     try:
         height = int(suffix[2:])
     except ValueError:
-        height=8
+        height = 8
     return load_binary(instream, cell=(8, height))
 
 
@@ -143,7 +154,11 @@ _PCR_HEADER = le.Struct(
     bytesize='uint16',
 )
 
-@loaders.register('pcr', name='pcr', magic=(b'KPG\1\2\x20\1', b'KPG\1\1\x20\1'))
+@loaders.register(
+    name='pcr',
+    magic=(b'KPG\1\2\x20\1', b'KPG\1\1\x20\1'),
+    patterns=('*.pcr',),
+)
 def load_pcr(instream):
     """Load an OPTIKS .PCR font."""
     header = _PCR_HEADER.read_from(instream)
@@ -178,8 +193,9 @@ _FM_HEADER = le.Struct(
 )
 
 @loaders.register(
-    #'com',
-    name='mania', magic=(Magic.offset(8) + b'FONT MANIA, VERSION',)
+    name='mania',
+    magic=(Magic.offset(8) + b'FONT MANIA, VERSION',),
+    patterns=('*.com',),
 )
 def load_mania(instream):
     """Load a REXXCOM Font Mania font."""
@@ -211,8 +227,9 @@ _FRAPT_HEADER = le.Struct(
     loader_1='3s',
 )
 @loaders.register(
-    #'com',
-    name='frapt', magic=(_FRAPT_SIG,)
+    name='frapt',
+    magic=(_FRAPT_SIG,),
+    patterns=('*.com',),
 )
 def load_frapt(instream):
     """Load a Fontraption plain .COM font."""
@@ -226,8 +243,9 @@ def load_frapt(instream):
     return font
 
 @loaders.register(
-    #'com',
-    name='frapt-tsr', magic=(b'\xe9\x60',)
+    name='frapt-tsr',
+    magic=(b'\xe9\x60',),
+    patterns=('*.com',),
 )
 def load_frapt_tsr(instream):
     """Load a Fontraption TSR .COM font."""
@@ -250,8 +268,9 @@ def load_frapt_tsr(instream):
 _FONTEDIT_SIG = b'\xeb\x33\x90\r   \r\n PC Magazine \xfe Michael J. Mefford\0\x1a'
 
 @loaders.register(
-    #'com',
-    name='fontedit', magic=(_FONTEDIT_SIG,)
+    name='fontedit',
+    magic=(_FONTEDIT_SIG,),
+    patterns=('*.com',),
 )
 def load_fontedit(instream):
     """Load a FONTEDIT .COM font."""
@@ -290,12 +309,12 @@ _PSFCOM_HEADER = le.Struct(
 )
 
 @loaders.register(
-    #'com',
     name='psfcom',
     magic=(
         b'\xeb\x04\xeb\xc3' + Magic.offset(11) + _PSFCOM_SIG08,
         b'\xeb\x04\xeb\xc3' + Magic.offset(11) + _PSFCOM_SIG16,
-    )
+    ),
+    patterns=('*.com',),
 )
 def load_psfcom(instream):
     """Load a PSFCOM font."""
@@ -347,7 +366,11 @@ _XBIN_HEADER = le.Struct(
     unused_flags=bitfield('byte', 3)
 )
 
-@loaders.register('.xb', name='xbin', magic=(_XBIN_MAGIC,))
+@loaders.register(
+    name='xbin',
+    magic=(_XBIN_MAGIC,),
+    patterns=('*.xb',),
+)
 def load_xbin(instream):
     """Load a XBIN font."""
     header = _XBIN_HEADER.read_from(instream)
@@ -411,8 +434,9 @@ from ..struct import little_endian as le
 _DRHALO_SIG = b'AH'
 
 @loaders.register(
-    'fon',
-    name='drhalo', magic=(_DRHALO_SIG,)
+    name='drhalo',
+    magic=(_DRHALO_SIG,),
+    patterns=('*.fon',),
 )
 def load_drhalo(instream):
     """Load a Dr Halo / Dr Genius .FON font."""

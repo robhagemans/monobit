@@ -194,25 +194,25 @@ class TestFormats(BaseTester):
     def test_import_bmf(self):
         """Test importing bmfont files."""
         base_path = self.font_path / '6x13.bmf'
-        font, *_ = monobit.load(base_path / '6x13-text.fnt', format='bmf')
+        font, *_ = monobit.load(base_path / '6x13-text.fnt', format='bmfont')
         self.assertEqual(len(font.glyphs), 189)
-        font, *_ = monobit.load(base_path / '6x13-xml.fnt', format='bmf')
+        font, *_ = monobit.load(base_path / '6x13-xml.fnt', format='bmfont')
         self.assertEqual(len(font.glyphs), 189)
-        font, *_ = monobit.load(base_path / '6x13-json.fnt', format='bmf')
+        font, *_ = monobit.load(base_path / '6x13-json.fnt', format='bmfont')
         self.assertEqual(len(font.glyphs), 189)
-        font, *_ = monobit.load(base_path / '6x13-8bit.fnt', format='bmf')
+        font, *_ = monobit.load(base_path / '6x13-8bit.fnt', format='bmfont')
         self.assertEqual(len(font.glyphs), 189)
-        font, *_ = monobit.load(base_path / '6x13-32bit-packed.fnt', format='bmf')
+        font, *_ = monobit.load(base_path / '6x13-32bit-packed.fnt', format='bmfont')
         self.assertEqual(len(font.glyphs), 189)
-        font, *_ = monobit.load(base_path / '6x13-32bit-nonpacked.fnt', format='bmf')
+        font, *_ = monobit.load(base_path / '6x13-32bit-nonpacked.fnt', format='bmfont')
         self.assertEqual(len(font.glyphs), 189)
-        font, *_ = monobit.load(base_path / '6x13-binary.fnt', format='bmf')
+        font, *_ = monobit.load(base_path / '6x13-binary.fnt', format='bmfont')
         self.assertEqual(len(font.glyphs), 189)
 
     def test_export_bmf_text(self):
         """Test exporting bmfont files with text descriptor."""
         fnt_file = self.temp_path / '4x6.bmf'
-        monobit.save(self.fixed4x6, fnt_file)
+        monobit.save(self.fixed4x6, fnt_file, format='bmfont')
         font, *_ = monobit.load(fnt_file)
         self.assertEqual(len(font.glyphs), 919)
         self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
@@ -220,8 +220,11 @@ class TestFormats(BaseTester):
     def test_export_bmf_json(self):
         """Test exporting bmfont files with json descriptor."""
         fnt_file = self.temp_path / '4x6.bmf'
-        monobit.save(self.fixed4x6, fnt_file, descriptor='json', overwrite=True)
-        font, *_ = monobit.load(fnt_file)
+        monobit.save(
+            self.fixed4x6, fnt_file,
+            format='bmfont', descriptor='json',
+        )
+        font, *_ = monobit.load(fnt_file, format='bmfont')
         self.assertEqual(len(font.glyphs), 919)
         self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
 

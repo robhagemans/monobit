@@ -232,7 +232,10 @@ class TestFeatures(BaseTester):
 
     def test_render_bmf_kerning(self):
         webby_mod1, *_ = monobit.load(self.font_path / 'webby-small-kerned.yaff')
-        monobit.save(webby_mod1, self.temp_path / 'webby-small-kerned.bmf')
+        monobit.save(
+            webby_mod1, self.temp_path / 'webby-small-kerned.bmf',
+            format='bmfont',
+        )
         webby_mod2, *_ = monobit.load(self.temp_path / 'webby-small-kerned.bmf')
         text2 = monobit.render(webby_mod2, b'sjifjij').as_text()
         assert_text_eq(text2, self.kerntext)

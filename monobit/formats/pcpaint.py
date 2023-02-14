@@ -103,11 +103,14 @@ _WIDTH_OFFSET_V4 = 0x58 # 88
 _BITMAP_OFFSET = 0x158 # 344
 
 
-# magic 0x10 or 0x11 is a bit too generic
 @loaders.register(
-    'set', 'fnt',
-    'cft', 'eft', 'lft', 'mft', 'nft', 'pft', 'sft', 'xft',
-    name='pcpaint'
+    name='pcpaint',
+    patterns=(
+        '*.set', '*.fnt',
+        '*.[celmnpsx]ft',
+    ),
+    # (maybe) 1-byte magics - a bit too generic
+    magic=(b'\x10', b'\x11'),
 )
 def load_chiwriter(instream, filetype:int=None):
     """

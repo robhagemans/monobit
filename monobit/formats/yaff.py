@@ -25,10 +25,16 @@ from ..properties import normalise_property
 # interface
 
 
-@loaders.register('yaff', 'yaffs', magic=(b'---',), name='yaff')
+@loaders.register(
+    name='yaff',
+    # maybe, if multi-section
+    magic=(b'---',),
+    patterns=('*.yaff', '*.yaffs',),
+)
 def load_yaff(instream, allow_empty:bool=False):
     """Load font from a monobit .yaff file."""
     return _load_yaff(instream.text, allow_empty)
+
 
 @savers.register(linked=load_yaff)
 def save_yaff(fonts, outstream):

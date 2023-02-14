@@ -7,6 +7,8 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 from pathlib import Path
+from fnmatch import fnmatch
+import re
 
 from .streams import get_name
 
@@ -35,14 +37,6 @@ def normalise_suffix(suffix):
     if suffix.startswith('.'):
         suffix = suffix[1:]
     return suffix.lower()
-
-def get_suffix(file):
-    """Get normalised suffix for file or path."""
-    if isinstance(file, (str, Path)):
-        suffix = Path(file).suffix
-    else:
-        suffix = Path(get_name(file)).suffix
-    return normalise_suffix(suffix)
 
 def maybe_text(instream):
     """
@@ -81,23 +75,27 @@ class MagicRegistry:
     def __init__(self):
         """Set up registry."""
         self._magic = []
+        self._patterns = []
         self._suffixes = {}
         self._names = {}
 
-    def register(self, *suffixes, name='', magic=()):
+    def register(self, *suffixes, name='', magic=(), patterns=()):
         """Decorator to register converter for file type."""
         def decorator(converter):
             if not name:
                 raise ValueError('No registration name given')
             if name in self._names:
                 raise ValueError('Registration name `{name} already in use')
+            converter.format = name
             self._names[name] = converter
+            ## suffixes
             for suffix in suffixes:
                 suffix = normalise_suffix(suffix)
                 if suffix in self._suffixes:
                     self._suffixes[suffix].append(converter)
                 else:
                     self._suffixes[suffix] = [converter]
+            ## magic signatures
             for sequence in magic:
                 self._magic.append((Magic(sequence), converter))
             # sort the magic registry long to short to manage conflicts
@@ -106,9 +104,9 @@ class MagicRegistry:
                     key=lambda _i:len(_i[0]), reverse=True
                 )
             )
-            # use first suffix given as standard
-            if suffixes:
-                converter.format = normalise_suffix(suffixes[0])
+            ## glob patterns
+            for pattern in patterns:
+                self._patterns.append((to_pattern(pattern), converter))
             return converter
         return decorator
 
@@ -117,8 +115,8 @@ class MagicRegistry:
         if not file:
             return ()
         matches = []
-        # can't read magic on write-only file
-        if not isinstance(file, (str, Path)):
+        ## match magic on readable files
+        if file.mode == 'r':
             for magic, converter in self._magic:
                 if magic.fits(file):
                     logging.debug(
@@ -126,13 +124,24 @@ class MagicRegistry:
                         converter.name
                     )
                     matches.append(converter)
-        suffix = get_suffix(file)
+        ## match glob patterns
+        glob_matches = []
+        for pattern, converter in self._patterns:
+            if pattern.fits(file):
+                logging.debug(
+                    'Filename matches pattern for format `%s`.',
+                    converter.name
+                )
+                glob_matches.append(converter)
+        matches.extend(_c for _c in glob_matches if _c not in matches)
+        ## match suffixes
+        suffix = normalise_suffix(Path(file.name).suffix)
         converters = self._suffixes.get(suffix, ())
         # don't repeat matches
         converters = [_c for _c in converters if _c not in matches]
         for converter in converters:
             logging.debug(
-                'Filename matches pattern for format `%s`.',
+                'Suffix matches for format `%s`.',
                 converter.name
             )
         matches.extend(converters)
@@ -140,7 +149,7 @@ class MagicRegistry:
 
 
 class Magic:
-    """Define and match against bytes mask."""
+    """Match file contents against bytes mask."""
 
     def __init__(self, value, offset=0):
         """Initialise bytes mask from bytes or Magic object."""
@@ -193,3 +202,46 @@ class Magic:
     def offset(cls, offset=0):
         """Represent offset in concatenated mask."""
         return cls(value=b'', offset=offset)
+
+
+class Pattern:
+    """Match filename against pattern."""
+
+    def matches(self, target):
+        """Target string matches the pattern."""
+        raise NotImplementedError()
+
+    def fits(self, instream):
+        """Stream filename matches the pattern."""
+        return self.matches(Path(instream.name).name)
+
+
+class Glob(Pattern):
+    """Match filename against pattern using case-insensitive glob."""
+
+    def __init__(self, pattern):
+        """Set up pattern matcher."""
+        self._pattern = pattern.lower()
+
+    def matches(self, target):
+        """Target string matches the pattern."""
+        return fnmatch(str(target).lower(), self._pattern.lower())
+
+
+class Regex(Pattern):
+    """Match filename against pattern using regular expressiion."""
+
+    def __init__(self, pattern):
+        """Set up pattern matcher."""
+        self._pattern = re.compile(pattern)
+
+    def matches(self, target):
+        """Target string matches the pattern."""
+        return self._pattern.fullmatch(str(target).lower()) is not None
+
+
+def to_pattern(obj):
+    """Convert to Pattern object."""
+    if isinstance(obj, Pattern):
+        return obj
+    return Glob(str(obj))

@@ -21,7 +21,11 @@ from .yaff import _globalise_glyph_metrics
 from .windows import _normalise_metrics
 
 
-@loaders.register('hbf', magic=(b'HBF_START_FONT ',), name='hanzi-bf')
+@loaders.register(
+    name='hbf',
+    magic=(b'HBF_START_FONT ',),
+    patterns=('*.hbf',),
+)
 def load_hbf(instream):
     """
     Load font from Hanzi Bitmap Format (HBF) file.

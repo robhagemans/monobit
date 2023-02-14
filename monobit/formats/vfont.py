@@ -19,7 +19,11 @@ from ..magic import FileFormatError
 from .gdos import _subset_storable
 
 
-@loaders.register(name='vfont', magic=(b'\x01\x1e', b'\x1e\x01'))
+@loaders.register(
+    name='vfont',
+    magic=(b'\x01\x1e', b'\x1e\x01'),
+    patterns=('*.vfont',),
+)
 def load_vfont(instream):
     """Load font from vfont file."""
     vfont_props, vfont_glyphs = _read_vfont(instream)

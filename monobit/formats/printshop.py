@@ -58,7 +58,10 @@ _BITMAP_HEADER = le.Struct(
 # moving the next glyph as far left as possible so that a certain amount
 # of space remains between inked pixels
 
-@loaders.register('pnf', name='printshop')
+@loaders.register(
+    name='printshop',
+    patterns=('*.pnf',),
+)
 def load_printshop(instream):
     """
     Load a Broderbund The Print Shop font.

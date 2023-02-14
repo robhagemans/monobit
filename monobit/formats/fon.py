@@ -25,9 +25,9 @@ from .sfnt import load_sfnt, SFNT_MAGIC
 
 
 @loaders.register(
-    'fon', 'exe', 'dll',
-    magic=(b'MZ', b'LX', b'LE', b'NE', b'PE'),
     name='fon',
+    magic=(b'MZ', b'LX', b'LE', b'NE', b'PE'),
+    patterns=('*.fon', '*.exe', '*.dll'),
 )
 def load_fon(instream, all_type_ids:bool=False):
     """
@@ -104,7 +104,7 @@ def load_fon(instream, all_type_ids:bool=False):
     return fonts
 
 
-@savers.register('fon', name='fon')
+@savers.register(name='fon', patterns=('*.fon',))
 def save_win_fon(fonts, outstream, version:int=2, vector:bool=False):
     """
     Save fonts to a Windows .FON container.

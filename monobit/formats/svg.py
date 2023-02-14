@@ -28,11 +28,12 @@ DEFAULT_NAME = 'missing'
 
 
 @loaders.register(
-    'svg', name='svg',
+    name='svg',
+    patterns=('*.svg',),
     magic=(
         b'<svg>',
         b'<?xml version="1.0" standalone="yes"?>\n<svg'
-    )
+    ),
 )
 def load_svg(instream):
     """Load vector font from Scalable Vector Graphics font."""

@@ -43,12 +43,13 @@ _BMF_MAGIC = b'BMF'
 if Image:
     # the magic is optional - only for binary descriptor file
     @loaders.register(
-        'bmf', name='bmfont',
+        name='bmfont',
         magic=(
             _BMF_MAGIC,
             b'info',
             b'<?xml version="1.0"?>\n<font>',
         ),
+        patterns=('*.fnt',),
     )
     def load_bmfont(infile, outline:bool=False):
         """

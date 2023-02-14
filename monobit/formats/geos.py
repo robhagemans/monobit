@@ -15,16 +15,24 @@ from ..glyph import Glyph
 from ..raster import Raster
 from ..struct import little_endian as le
 from ..binary import ceildiv, align
+from ..magic import Magic
 from .raw import load_binary
 
 
-# offset CVT signature b'formatted GEOS file' could be used as magic
-@loaders.register('cvt', name='geos')
+@loaders.register(
+    name='geos',
+    patterns=('*.cvt',),
+    magic=(
+        Magic.offset(34) + b'formatted GEOS file',
+    ),
+)
 def load_geos(instream, merge_mega:bool=True):
     """Load fonts from a GEOS ConVerT container."""
     return _load_geos_cvt(instream, merge_mega)
 
-@loaders.register('vlir', name='geos-vlir')
+@loaders.register(
+    name='vlir',
+)
 def load_geos_vlir(instream, offset:int=0):
     """
     Load a bare GEOS font VLIR.

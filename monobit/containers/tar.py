@@ -14,10 +14,17 @@ from pathlib import Path, PurePosixPath
 from ..container import Container
 from ..streams import Stream, KeepOpen
 from ..storage import loaders, savers, containers, load_all, save_all
-from ..magic import FileFormatError
+from ..magic import FileFormatError, Magic
 
 
-@loaders.register('tar', name='tar')
+@loaders.register(
+    name='tar',
+    # maybe
+    magic=(
+        Magic.offset(257) + b'ustar',
+    ),
+    patterns=('*.tar',),
+)
 def load_tar(instream):
     with TarContainer(instream) as container:
         return load_all(container)
