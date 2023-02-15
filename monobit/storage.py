@@ -334,5 +334,5 @@ class ConverterRegistry(MagicRegistry):
 
 
 loaders = ConverterRegistry('load', DEFAULT_TEXT_FORMAT, DEFAULT_BINARY_FORMAT)
-savers = ConverterRegistry('save', DEFAULT_TEXT_FORMAT, DEFAULT_BINARY_FORMAT)
+savers = ConverterRegistry('save', DEFAULT_TEXT_FORMAT)
 containers = ConverterRegistry('open')
