@@ -158,7 +158,7 @@ def load_stream(instream, format='', **kwargs):
         raise FileFormatError(message)
     for loader in fitting_loaders:
         instream.seek(0)
-        logging.info('Loading `%s` as %s', instream.name, loader.name)
+        logging.info('Loading `%s` as %s', instream.name, loader.format)
         try:
             fonts = loader(instream, **kwargs)
         except FileFormatError as e:
@@ -183,7 +183,7 @@ def load_stream(instream, format='', **kwargs):
         return Pack(
             _font.modify(
                 converter=CONVERTER_NAME,
-                source_format=_font.source_format or loader.name,
+                source_format=_font.source_format or loader.format,
                 source_name=_font.source_name or filename
             )
             for _font in pack
@@ -260,7 +260,7 @@ def save_stream(pack, outstream, format='', **kwargs):
             f'({", ".join(_s.name for _s in matching_savers)})'
         )
     saver, *_ = matching_savers
-    logging.info('Saving `%s` as %s.', outstream.name, saver.name)
+    logging.info('Saving `%s` as %s.', outstream.name, saver.format)
     saver(pack, outstream, **kwargs)
 
 
@@ -315,16 +315,16 @@ class ConverterRegistry(MagicRegistry):
             )
             # register converter
             if linked:
-                _func.name = name or linked.name
+                format = name or linked.format
                 _func.magic = magic or linked.magic
                 _func.patterns = patterns or linked.patterns
             else:
-                _func.name = name
+                format = name
                 _func.magic = magic
                 _func.patterns = patterns
             # register magic sequences
             register_magic(
-                name=_func.name,
+                name=format,
                 magic=_func.magic,
                 patterns=_func.patterns,
             )(_func)

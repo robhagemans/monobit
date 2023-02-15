@@ -110,9 +110,13 @@ class MagicRegistry:
                     pass
         return converter
 
-    def register(self, name='', magic=(), patterns=()):
+    def register(
+            self, name='', magic=(), patterns=(),
+            funcwrapper=lambda _:_
+        ):
         """Decorator to register converter for file type."""
-        def decorator(converter):
+
+        def _decorator(converter):
             if not name:
                 raise ValueError('No registration name given')
             if name in self._names:
@@ -135,8 +139,9 @@ class MagicRegistry:
             ## glob patterns
             for pattern in patterns:
                 self._patterns.append((to_pattern(pattern), converter))
-            return converter
-        return decorator
+            return funcwrapper(converter)
+
+        return _decorator
 
     def identify(self, file):
         """Identify a type from magic sequence on input file."""
@@ -149,7 +154,7 @@ class MagicRegistry:
                 if magic.fits(file):
                     logging.debug(
                         'Stream matches signature for format `%s`.',
-                        converter.name
+                        converter.format
                     )
                     matches.append(converter)
         ## match glob patterns
@@ -158,12 +163,15 @@ class MagicRegistry:
             if pattern.fits(file):
                 logging.debug(
                     'Filename matches pattern for format `%s`.',
-                    converter.name
+                    converter.format
                 )
                 glob_matches.append(converter)
         matches.extend(_c for _c in glob_matches if _c not in matches)
         return tuple(matches)
 
+
+###############################################################################
+# file format matchers
 
 class Magic:
     """Match file contents against bytes mask."""
