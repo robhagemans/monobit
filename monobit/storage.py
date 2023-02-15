@@ -288,48 +288,6 @@ def save_all(pack, container, format, **kwargs):
 class ConverterRegistry(MagicRegistry):
     """Loader/Saver registry."""
 
-    def __init__(self, func_name, default_text='', default_binary=''):
-        """Set up registry and function name."""
-        super().__init__()
-        self._func_name = func_name
-        self._default_text = default_text
-        self._default_binary = default_binary
-
-    def get_for(self, file=None, format=''):
-        """
-        Get loader/saver function for this format.
-        file must be a Stream or None
-        """
-        if format:
-            try:
-                converter = (self._names[format],)
-            except KeyError:
-                raise ValueError(
-                    f'Format specifier `{format}` not recognised'
-                )
-        else:
-            converter = self.identify(file)
-            if not converter:
-                if not file or file.mode == 'w' or maybe_text(file):
-                    format = self._default_text
-                else:
-                    format = self._default_binary
-                if file and format:
-                    if Path(file.name).suffix:
-                        level = logging.WARNING
-                    else:
-                        level = logging.DEBUG
-                    logging.log(
-                        level,
-                        f'Could not infer format from filename `{file.name}`. '
-                        f'Falling back to default `{format}` format'
-                    )
-                try:
-                    converter = (self._names[format],)
-                except KeyError:
-                    pass
-        return converter
-
     def register(
             self, name='', magic=(), patterns=(),
             linked=None, **kwargs
