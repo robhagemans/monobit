@@ -13,7 +13,7 @@ from ..glyph import Glyph
 from ..raster import Raster
 from ..struct import little_endian as le
 from ..binary import ceildiv
-from .raw import load_binary
+from .raw import load_bitmap
 
 
 ###############################################################################
@@ -208,9 +208,9 @@ _GRASP_HEADER = le.Struct(
 def _load_grasp_old(instream):
     """Load a GRASP font (original format)."""
     header = _GRASP_HEADER.read_from(instream)
-    font = load_binary(
+    font = load_bitmap(
         instream,
-        cell=(header.width, header.height),
+        width=header.width, height=header.height,
         strike_bytes=header.glyphsize // header.height,
         count=header.count,
         first_codepoint=header.first,

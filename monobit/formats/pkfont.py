@@ -17,7 +17,6 @@ from ..struct import big_endian as be, bitfield, sizeof
 from ..binary import ceildiv, align
 from ..properties import Props
 from ..magic import Regex
-from .raw import load_binary
 
 
 @loaders.register(

@@ -38,10 +38,10 @@ def load_binary(
     """
     width, height = cell
     # get through the offset
-    # we don't assume instream is seekable - it may be sys.stdin
     instream.read(offset)
     return load_bitmap(
-        instream, width, height, count, padding, align, strike_count, strike_bytes, first_codepoint
+        instream, width, height, count, padding, align,
+        strike_count, strike_bytes, first_codepoint
     )
 
 @savers.register(linked=load_binary)

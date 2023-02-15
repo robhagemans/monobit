@@ -15,7 +15,6 @@ from ..raster import Raster
 from .. import struct
 from ..struct import little_endian as le
 from ..binary import ceildiv
-from .raw import load_binary
 
 # offset 0
 _HEADER = le.Struct(

@@ -16,7 +16,6 @@ from ..raster import Raster
 from ..struct import little_endian as le
 from ..binary import ceildiv, align
 from ..magic import Magic
-from .raw import load_binary
 
 
 @loaders.register(
