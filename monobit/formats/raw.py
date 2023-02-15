@@ -82,7 +82,7 @@ def load_chet(instream):
 
 @loaders.register(
     name='8x8',
-    patterns=('*.64c', '*.udg', '*.ch8'), 
+    patterns=('*.64c', '*.udg', '*.ch8'),
 )
 def load_8x8(instream):
     """Load a raw 8x8 font."""
