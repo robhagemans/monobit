@@ -17,7 +17,7 @@ from ..struct import little_endian as le
 
 
 _HEADER = le.Struct(
-    type='uint8', # $00 = single byte, $80 = double-byte 
+    type='uint8', # $00 = single byte, $80 = double-byte
     lastChar='uint8',
     height='uint8'
 )
@@ -91,4 +91,3 @@ def _parse_mgtk(data):
     ]
 
     return Font(glyphs)
-
