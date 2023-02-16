@@ -31,16 +31,26 @@ from ..labels import Codepoint, Char
 from .windows import CHARSET_MAP, CHARSET_REVERSE_MAP
 
 
-##############################################################################
-
 # text/xml/binary format: https://www.angelcode.com/products/bmfont/doc/file_format.html
 # json format: https://github.com/Jam3/load-bmfont/blob/master/json-spec.md
+
+_BMF_MAGIC = b'BMF'
+
 
 ##############################################################################
 # top-level calls
 
 if Image:
-    @loaders.register('bmf', name='bmfont')
+    # the magic is optional - only for binary descriptor file
+    @loaders.register(
+        name='bmfont',
+        magic=(
+            _BMF_MAGIC,
+            b'info',
+            b'<?xml version="1.0"?>\n<font>',
+        ),
+        patterns=('*.fnt',),
+    )
     def load_bmfont(infile, outline:bool=False):
         """
         Load fonts from Angelcode BMFont format.
@@ -76,6 +86,7 @@ if Image:
 ##############################################################################
 # BMFont spec
 # see http://www.angelcode.com/products/bmfont/doc/file_format.html
+
 
 _HEAD = le.Struct(
     magic='3s',
@@ -551,7 +562,7 @@ def _read_bmfont(infile, outline):
     container = infile.where
     magic = infile.peek(3)
     fontinfo = {}
-    if magic.startswith(b'BMF'):
+    if magic.startswith(_BMF_MAGIC):
         logging.debug('found binary: %s', infile.name)
         fontinfo = _parse_binary(infile.read())
     else:

@@ -27,7 +27,10 @@ class DrawParams:
 ##############################################################################
 # interface
 
-@loaders.register('draw', 'text', 'txt', name='hexdraw')
+@loaders.register(
+    name='hexdraw',
+    patterns=('*.draw',),
+)
 def load_hexdraw(instream, ink:str='#', paper:str='-'):
     """
     Load font from a hexdraw file.

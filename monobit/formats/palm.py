@@ -11,22 +11,29 @@ from ..struct import big_endian as be
 from ..properties import Props
 from ..storage import loaders, savers
 from ..font import Font
-from ..magic import FileFormatError
+from ..magic import FileFormatError, Magic
 
 from .mac.nfnt import _extract_nfnt, _convert_nfnt
 
 
 # offset magic: b'FontFont' at offset 0x3c (type, creator fields)
-@loaders.register('pdb', name='palm')
+@loaders.register(
+    name='palm',
+    magic=(Magic.offset(0x3c) + b'FontFont',),
+    patterns=('*.pdb',),
+)
 def load_palm(instream):
-    """Load fonts from a Palm OS PDB fiile."""
+    """Load fonts from a Palm OS PDB file."""
     palm_data = _read_palm(instream)
     fonts = _convert_palm(palm_data)
     return fonts
 
-@loaders.register('prc', name='palm-prc')
+@loaders.register(
+    name='palm-prc',
+    patterns=('*.prc',),
+)
 def load_palm_prc(instream):
-    """Load fonts from a Palm OS PRC fiile."""
+    """Load fonts from a Palm OS PRC file."""
     palm_data = _read_palm_prc(instream)
     fonts = _convert_palm(palm_data)
     return fonts

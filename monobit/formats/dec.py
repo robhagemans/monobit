@@ -21,9 +21,10 @@ from ..binary import ceildiv
 from ..basetypes import Coord
 from ..properties import reverse_dict
 
+
 @loaders.register(
+    name='dec',
     magic=(b'\x90', b'\x1bP'),
-    name='dec'
 )
 def load_dec_drcs(instream):
     """Load character-cell fonts from DEC DRCS file."""
@@ -33,6 +34,7 @@ def load_dec_drcs(instream):
     if len(glyphs) != count:
         logging.warning('Expected %d glyphs, found %d.', count, len(glyphs))
     return Font(glyphs, **props)
+
 
 @savers.register(linked=load_dec_drcs)
 def save_dec_drcs(fonts, outstream, *, use_8bit:bool=False):

@@ -47,7 +47,7 @@ SFNT_MAGIC = b'\0\1\0\0'
 
 if ttLib:
     @loaders.register(
-        'otb', 'ttf', 'otf', 'woff', 'tte',
+        name='sfnt',
         magic=(
             SFNT_MAGIC,
             # alternative headers which also occur:
@@ -58,7 +58,7 @@ if ttLib:
             # WOFF
             b'wOFF',
         ),
-        name='sfnt',
+        patterns=('*.otb', '*.ttf', '*.otf', '*.woff', '*.tte',),
     )
     # pylint: disable=function-redefined
     def load_sfnt(
@@ -84,12 +84,12 @@ if ttLib:
 
 
     @loaders.register(
-        'ttc', 'otc',
+        name='ttcf',
         magic=(
             # TrueType
             b'ttcf',
         ),
-        name='ttcf',
+        patterns=('*.ttc', '*.otc'),
     )
     def load_collection(
             infile,

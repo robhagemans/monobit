@@ -130,7 +130,7 @@ def open_container(stream, mode, format=''):
 ##############################################################################
 # loading
 
-@scriptable(unknown_args='passthrough', record=False)
+@scriptable(wrapper=True, record=False)
 def load(infile:Any='', *, format:str='', **kwargs):
     """
     Read font(s) from file.
@@ -154,11 +154,11 @@ def load_stream(instream, format='', **kwargs):
     if not fitting_loaders:
         message = f'Cannot load `{instream.name}`'
         if format:
-            message += f' as format `{format}`'
+            message += f': format specifier `{format}` not recognised'
         raise FileFormatError(message)
     for loader in fitting_loaders:
         instream.seek(0)
-        logging.info('Loading `%s` as %s', instream.name, loader.name)
+        logging.info('Loading `%s` as %s', instream.name, loader.format)
         try:
             fonts = loader(instream, **kwargs)
         except FileFormatError as e:
@@ -183,7 +183,7 @@ def load_stream(instream, format='', **kwargs):
         return Pack(
             _font.modify(
                 converter=CONVERTER_NAME,
-                source_format=_font.source_format or loader.name,
+                source_format=_font.source_format or loader.format,
                 source_name=_font.source_name or filename
             )
             for _font in pack
@@ -214,7 +214,7 @@ def load_all(container, format='', **kwargs):
 ##############################################################################
 # saving
 
-@scriptable(unknown_args='passthrough', record=False, pack_operation=True)
+@scriptable(wrapper=True, record=False, pack_operation=True)
 def save(
         pack_or_font,
         outfile:Any='', *,
@@ -243,32 +243,34 @@ def save_stream(pack, outstream, format='', **kwargs):
     """Save fonts to an open stream."""
     # special case - directory or container object supplied
     if hasattr(outstream, 'open'):
-        return save_all(pack, outstream)
+        return save_all(pack, outstream, format=format)
     matching_savers = savers.get_for(outstream, format=format)
     if not matching_savers:
-        raise ValueError(f'Format specification `{format}` not recognised')
+        if format:
+            raise ValueError(f'Format specification `{format}` not recognised')
+        else:
+            raise ValueError(
+                f'Could not infer output file format from filename `{outstream.name}`, '
+                'please specify -format'
+            )
     if len(matching_savers) > 1:
         raise ValueError(
-            f"Format for filename '{outstream.name}' is ambiguous: "
+            f"Format for output filename '{outstream.name}' is ambiguous: "
             f'specify -format with one of the values '
             f'({", ".join(_s.name for _s in matching_savers)})'
         )
     saver, *_ = matching_savers
-    logging.info('Saving `%s` as %s.', outstream.name, saver.name)
+    logging.info('Saving `%s` as %s.', outstream.name, saver.format)
     saver(pack, outstream, **kwargs)
 
 
-def save_all(pack, container, **kwargs):
+def save_all(pack, container, format, **kwargs):
     """Save fonts to a container."""
-    suffixes = Path(container.name).suffixes
-    if len(suffixes) > 1:
-        format = suffixes[-2][1:]
-    else:
-        format = ''
     logging.info('Writing all to `%s`.', container.name)
     for font in pack:
         # generate unique filename
         name = font.name.replace(' ', '_')
+        # FIXME: confusing format name and suffix
         filename = container.unused_name(name, format)
         stream = container.open(filename, 'w')
         try:
@@ -286,65 +288,17 @@ def save_all(pack, container, **kwargs):
 class ConverterRegistry(MagicRegistry):
     """Loader/Saver registry."""
 
-    def __init__(self, func_name, default_text='', default_binary=''):
-        """Set up registry and function name."""
-        super().__init__()
-        self._func_name = func_name
-        self._default_text = default_text
-        self._default_binary = default_binary
-
-    def get_for_location(self, file, mode, format=''):
-        """Get loader/saver for font file location."""
-        if not file:
-            return self.get_for(format=format)
-        with open_location(file, mode) as stream:
-            return self.get_for(file, format=format)
-
-    def get_for(self, file=None, format=''):
-        """
-        Get loader/saver function for this format.
-        infile must be a Stream or empty
-        """
-        converter = ()
-        if not format:
-            converter = self.identify(file)
-        if not converter:
-            if format:
-                try:
-                    converter = (self._names[format],)
-                except KeyError:
-                    converter = self._suffixes.get(format,  ())
-            elif ((
-                        not file
-                        or not file.name or file.name == '<stdout>'
-                        or (file.mode == 'r' and maybe_text(file))
-                    )
-                    and self._default_text
-                ):
-                logging.debug(
-                    'Fallback to default `%s` format', self._default_text
-                )
-                converter = (self._names[self._default_text],)
-            elif file.mode == 'r' and self._default_binary:
-                converter = (self._names[self._default_binary],)
-                logging.debug(
-                    'Fallback to default `%s` format', self._default_binary
-                )
-            else:
-                if format:
-                    raise ValueError( f'Format `{format}` not recognised')
-                converter = ()
-        return converter
-
-    def register(self, *formats, magic=(), name='', linked=None, wrapper=False):
+    def register(
+            self, name='', magic=(), patterns=(),
+            linked=None, **kwargs
+        ):
         """
         Decorator to register font loader/saver.
 
-        *formats: extensions covered by registered function
-        magic: magic sequences covered by the converter (no effect for savers)
-        name: name of the format
+        name: unique name of the format
+        magic: magic sequences for this format (no effect for savers)
+        patterns: filename patterns for this foormat
         linked: loader/saver linked to saver/loader
-        wrapper: this is a single-file wrapper format, enable argument passthrough
         """
         register_magic = super().register
 
@@ -357,28 +311,28 @@ class ConverterRegistry(MagicRegistry):
                 original_func,
                 # use the standard name, not that of the registered function
                 name=funcname,
-                # don't record history of loading from default format
-                record=(name=='load' and DEFAULT_TEXT_FORMAT not in formats),
-                unknown_args='passthrough' if wrapper else 'raise',
+                **kwargs
             )
             # register converter
             if linked:
-                linked.linked = _func
-                _func.name = name or linked.name
-                _func.formats = formats or linked.formats
+                format = name or linked.format
                 _func.magic = magic or linked.magic
+                _func.patterns = patterns or linked.patterns
             else:
-                _func.name = name
-                _func.linked = linked
-                _func.formats = formats
+                format = name
                 _func.magic = magic
+                _func.patterns = patterns
             # register magic sequences
-            register_magic(*_func.formats, magic=_func.magic, name=_func.name)(_func)
+            register_magic(
+                name=format,
+                magic=_func.magic,
+                patterns=_func.patterns,
+            )(_func)
             return _func
 
         return _decorator
 
 
 loaders = ConverterRegistry('load', DEFAULT_TEXT_FORMAT, DEFAULT_BINARY_FORMAT)
-savers = ConverterRegistry('save', DEFAULT_TEXT_FORMAT, DEFAULT_BINARY_FORMAT)
+savers = ConverterRegistry('save', DEFAULT_TEXT_FORMAT)
 containers = ConverterRegistry('open')

@@ -69,7 +69,7 @@ class TestCharCell(BaseTester):
 
     def test_export_py_r(self):
         """Test exporting Python source files."""
-        self._test_export_charcell_reduced('py', first_codepoint=0x20)
+        self._test_export_charcell_reduced('python', first_codepoint=0x20)
 
     def test_export_json_r(self):
         """Test exporting JSON source files."""
@@ -77,7 +77,7 @@ class TestCharCell(BaseTester):
 
     def test_export_png_r(self):
         """Test exporting image files."""
-        self._test_export_charcell_reduced('png', count=192, first_codepoint=0x20)
+        self._test_export_charcell_reduced('image', count=192, first_codepoint=0x20)
 
     def test_export_cpi_r(self):
         """Test exporting CPI (FONT) files."""

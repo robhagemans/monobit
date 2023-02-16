@@ -19,14 +19,22 @@ from ..magic import FileFormatError
 from .gdos import _subset_storable
 
 
-@loaders.register(name='vfont', magic=(b'\x01\x1e', b'\x1e\x01'))
-def load_vfont(instream):
-    """Load font from vfont file."""
+@loaders.register(
+    name='vfont',
+    magic=(b'\x01\x1e', b'\x1e\x01'),
+    patterns=('*.vfont',),
+)
+def load_vfont(instream, first_codepoint:int=0):
+    """
+    Load font from vfont file.
+
+    first_codepoint: first codepoint in file (default: 0)
+    """
     vfont_props, vfont_glyphs = _read_vfont(instream)
     logging.info('vfont properties:')
     for line in str(vfont_props).splitlines():
         logging.info('    ' + line)
-    glyphs = _convert_from_vfont(vfont_glyphs)
+    glyphs = _convert_from_vfont(vfont_glyphs, first_codepoint)
     return Font(glyphs)
 
 
@@ -136,7 +144,7 @@ def _read_vfont(instream):
     return Props(**vars(header)), glyphs
 
 
-def _convert_from_vfont(vfont_glyphs):
+def _convert_from_vfont(vfont_glyphs, first_codepoint):
     """Convert vfont properties and glyphs to standard."""
     # set glyph properties
     glyphs = (
@@ -146,7 +154,7 @@ def _convert_from_vfont(vfont_glyphs):
             right_bearing=_glyph.vfont.width-_glyph.width+_glyph.vfont.left,
             shift_up=-_glyph.vfont.down,
         ).drop('vfont')
-        for _codepoint, _glyph in enumerate(vfont_glyphs)
+        for _codepoint, _glyph in enumerate(vfont_glyphs, first_codepoint)
     )
     # drop undefined glyphs (zero advance empty)
     glyphs = tuple(

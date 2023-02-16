@@ -22,7 +22,11 @@ from .raw import load_bitmap
 _FONTX_MAGIC = b'FONTX2'
 
 
-@loaders.register(name='fontx', magic=(_FONTX_MAGIC,))
+@loaders.register(
+    name='fontx',
+    magic=(_FONTX_MAGIC,),
+    patterns=('*.fnt',),
+)
 def load_fontx(instream):
     """Load font from fontx file."""
     fontx_props, glyphs = _read_fontx(instream)

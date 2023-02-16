@@ -17,12 +17,17 @@ from ..font import Font
 from ..glyph import Glyph
 
 
-@loaders.register('hext', name='hext')
+@loaders.register(
+    name='hext',
+)
 def load_hext(instream):
     """Load 8xN multi-cell font from PC-BASIC extended .HEX file."""
     return _load_hex(instream.text)
 
-@loaders.register('hex', name='hex')
+@loaders.register(
+    name='hex',
+    patterns=('*.hex',),
+)
 def load_hex(instream):
     """Load 8x16 multi-cell font from Unifont .HEX file."""
     return _load_hex(instream.text)

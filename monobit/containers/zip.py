@@ -16,7 +16,11 @@ from ..storage import loaders, savers, containers, load_all, save_all
 from ..magic import FileFormatError
 
 
-@loaders.register('zip', magic=(b'PK\x03\x04',), name='zip')
+@loaders.register(
+    name='zip',
+    magic=(b'PK\x03\x04',),
+    patterns=('*.zip',),
+)
 def load_zip(instream):
     with ZipContainer(instream) as container:
         return load_all(container)

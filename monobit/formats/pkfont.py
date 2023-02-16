@@ -16,11 +16,16 @@ from .. import struct
 from ..struct import big_endian as be, bitfield, sizeof
 from ..binary import ceildiv, align
 from ..properties import Props
-from .raw import load_binary
+from ..magic import Regex
 
 
-# file name pattern is '{name}.{dpi}PK' but we only check suffixes
-@loaders.register('pk', name='pkfont', magic=(b'\xf7\x59',))
+@loaders.register(
+    name='pkfont',
+    magic=(b'\xf7\x59',),
+    # file name pattern is '{name}.{dpi}PK'
+    patterns=(Regex(r'.+\.\d+pk'),),
+
+)
 def load_pkfont(instream):
     """Load fonts from a METAFONT/TeX PKFONT."""
     return _load_pkfont(instream)

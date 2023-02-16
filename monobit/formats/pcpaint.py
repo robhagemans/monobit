@@ -13,7 +13,7 @@ from ..glyph import Glyph
 from ..raster import Raster
 from ..struct import little_endian as le
 from ..binary import ceildiv
-from .raw import load_binary
+from .raw import load_bitmap
 
 
 ###############################################################################
@@ -103,11 +103,14 @@ _WIDTH_OFFSET_V4 = 0x58 # 88
 _BITMAP_OFFSET = 0x158 # 344
 
 
-# magic 0x10 or 0x11 is a bit too generic
 @loaders.register(
-    'set', 'fnt',
-    'cft', 'eft', 'lft', 'mft', 'nft', 'pft', 'sft', 'xft',
-    name='pcpaint'
+    name='pcpaint',
+    patterns=(
+        '*.set', '*.fnt',
+        '*.[celmnpsx]ft',
+    ),
+    # (maybe) 1-byte magics - a bit too generic
+    magic=(b'\x10', b'\x11'),
 )
 def load_chiwriter(instream, filetype:int=None):
     """
@@ -205,9 +208,9 @@ _GRASP_HEADER = le.Struct(
 def _load_grasp_old(instream):
     """Load a GRASP font (original format)."""
     header = _GRASP_HEADER.read_from(instream)
-    font = load_binary(
+    font = load_bitmap(
         instream,
-        cell=(header.width, header.height),
+        width=header.width, height=header.height,
         strike_bytes=header.glyphsize // header.height,
         count=header.count,
         first_codepoint=header.first,

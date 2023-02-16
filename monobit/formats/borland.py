@@ -19,9 +19,9 @@ from ..vector import StrokePath, StrokeMove
 _BGI_MAGIC = b'PK\b\bBGI '
 
 @loaders.register(
-    #'chr',
     name='borland',
-    magic = (_BGI_MAGIC,),
+    magic=(_BGI_MAGIC,),
+    patterns=('*.chr',),
 )
 def load_borland(instream):
     """Load a Borland BGI stroke font."""
