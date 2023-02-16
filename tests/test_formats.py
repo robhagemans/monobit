@@ -600,7 +600,7 @@ class TestFormats(BaseTester):
 
     def test_import_frapt(self):
         """Test importing FONTEDIT files."""
-        font, *_ = monobit.load(self.font_path / '8X16-FE.COM')
+        font, *_ = monobit.load(self.font_path / '8X16-FRA.COM')
         self.assertEqual(len(font.glyphs), 256)
 
     def test_import_psfcom(self):
