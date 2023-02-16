@@ -113,7 +113,7 @@ def load_frapt(instream):
         raise FileFormatError(
             f'Not a Fontraption .COM file: incorrect signature {header.magic}.'
         )
-    font = load_bitmap(instream, cell=(8, header.height))
+    font = load_bitmap(instream, width=8, height=header.height)
     font = font.modify(source_format='DOS loader (Fontraption)')
     return font
 
