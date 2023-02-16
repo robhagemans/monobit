@@ -119,6 +119,7 @@ Supported bitmap formats
 | REXXCOM Font Mania    | `mania`    |          | `.com`                      | DOS           | ✔     |       |
 | LISA font library     | `lisa`     |          | `.bin`                      | LISA          | ✔     |       |
 | MacOS font            | `mac`      | FONT NFNT SFNT | `.dfont` `.suit`      | Classic Mac OS| ✔     |       |
+| MouseGraphics         | `mgtk`     |          |                             | Apple IIe     | ✔     |       |
 | Bare NFNT resource    | `nfnt`     |          | `.f`         | LISA, Classic Mac OS, PalmOS | ✔     |       |
 | Palm OS font          | `palm`     | 1 (NFNT) | `.pdb`                      | Palm OS       | ✔     |       |
 | Optiks PCR Font       | `pcr`      |          | `.pcr`                      | DOS           | ✔     |       |
