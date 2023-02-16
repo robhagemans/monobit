@@ -192,8 +192,12 @@ _PSFCOM_HEADER = le.Struct(
     ),
     patterns=('*.com',),
 )
-def load_psfcom(instream):
-    """Load a PSFCOM font."""
+def load_psfcom(instream, first_codepoint:int=0):
+    """
+    Load a PSFCOM font.
+
+    first_codepoint: first codepoint in file (default: 0)
+    """
     header = _PSFCOM_HEADER.read_from(instream)
     logging.debug('Version string %r', header.sig.decode('latin-1'))
     if header.sig == _PSFCOM_SIG16:
@@ -201,7 +205,9 @@ def load_psfcom(instream):
     else:
         height = 8
     instream.read(header.address - _PSFCOM_HEADER.size - 0x100)
-    font = load_bitmap(instream, width=8, height=height)
+    font = load_bitmap(
+        instream, width=8, height=height, first_codepoint=first_codepoint
+    )
     font = font.modify(
         source_format='Amstrad/Spectrum CP/M loader (PSFCOM)',
         encoding='amstrad-cpm-plus',
