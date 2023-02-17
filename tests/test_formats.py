@@ -466,6 +466,15 @@ class TestFormats(BaseTester):
         self.assertEqual(len(font.glyphs), 128)
         self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
+    # Bare NFNT
+    lisafonts = 'https://github.com/azumanga/apple-lisa/raw/main/LISA_OS/FONTS/'
+
+    def test_import_bare_nfnt(self):
+        """Test importing bare NFNT files."""
+        file = ensure_asset(self.lisafonts, 'TILE7R20S.F')
+        font, *_ = monobit.load(file)
+        self.assertEqual(len(font.glyphs), 193)
+
     # Amiga
 
     def test_import_amiga(self):
