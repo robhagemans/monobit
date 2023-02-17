@@ -880,6 +880,14 @@ class TestFormats(BaseTester):
 @.....@
 """)
 
+    printshop = 'https://archive.org/download/msdos_broderbund_print_shop/printshop.zip/'
+
+    def test_import_printshop(self):
+        """Test importing The Print Shop for DOS files."""
+        file = ensure_asset(self.printshop, 'FONT8.PSF')
+        font, *_ = monobit.load(file)
+        self.assertEqual(len(font.glyphs), 95)
+
     # DosStart
 
     dosstart = 'https://archive.org/download/dosstart-19b/dosstart.zip/'
