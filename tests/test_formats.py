@@ -100,6 +100,21 @@ class TestFormats(BaseTester):
         font, *_ = monobit.load(file)
         self.assertEqual(len(font.glyphs), 224)
 
+    # ChiWriter
+    horstmann = 'https://horstmann.com/ChiWriter/'
+
+    def test_import_chiwriter_v4(self):
+        """Test importing ChiWriter v4 files."""
+        file = ensure_asset(self.horstmann, 'cw4.zip')
+        font, *_ = monobit.load(file / 'CW4/BOLD.CFT')
+        self.assertEqual(len(font.glyphs), 159)
+
+    def test_import_chiwriter_v3(self):
+        """Test importing ChiWriter v3 files."""
+        file = ensure_asset(self.horstmann, 'cw4.zip')
+        font, *_ = monobit.load(file / 'CW4/GREEK.CFT')
+        self.assertEqual(len(font.glyphs), 59)
+
     # Unifont
 
     def test_import_hex(self):
