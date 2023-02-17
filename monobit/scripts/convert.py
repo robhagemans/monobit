@@ -41,7 +41,7 @@ def _get_for_location(registry, file, mode, format=''):
     """Get loader/saver for font file location."""
     if not file:
         return registry.get_for(format=format)
-    with open_location(file, mode) as stream:
+    with monobit.open_location(file, mode) as stream:
         return registry.get_for(stream, format=format)
 
 def _get_context_help(rec):
