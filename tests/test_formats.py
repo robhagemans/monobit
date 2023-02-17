@@ -7,7 +7,7 @@ import os
 import unittest
 
 import monobit
-from .base import BaseTester
+from .base import BaseTester, ensure_asset
 
 
 class TestFormats(BaseTester):
@@ -78,6 +78,72 @@ class TestFormats(BaseTester):
         self.assertEqual(len(font.glyphs), 224)
         self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
+    # Windows PE files
+    pelib = 'https://github.com/cubiclesoft/windows-pe-artifact-library/raw/master/'
+
+    def test_import_pe_32(self):
+        """Test 32-bit PE executables."""
+        file = ensure_asset(
+            self.pelib + '32_pe/',
+            '32_pe_data_dir_resources_dir_entries_rt_font.dat'
+        )
+        with self.assertRaises(monobit.FileFormatError):
+            # sample file does not contain an actual font
+            font, *_ = monobit.load(file)
+
+    def test_import_pe_64(self):
+        """Test 64-bit PE executables."""
+        file = ensure_asset(
+            self.pelib + '64_pe/',
+            '64_pe_data_dir_resources_dir_entries_rt_font.dat'
+        )
+        font, *_ = monobit.load(file)
+        self.assertEqual(len(font.glyphs), 224)
+
+    # ChiWriter
+
+    horstmann = 'https://horstmann.com/ChiWriter/'
+
+    def test_import_chiwriter_v4(self):
+        """Test importing ChiWriter v4 files."""
+        file = ensure_asset(self.horstmann, 'cw4.zip')
+        font, *_ = monobit.load(file / 'CW4/BOLD.CFT')
+        self.assertEqual(len(font.glyphs), 159)
+
+    def test_import_chiwriter_v3(self):
+        """Test importing ChiWriter v3 files."""
+        file = ensure_asset(self.horstmann, 'cw4.zip')
+        font, *_ = monobit.load(file / 'CW4/GREEK.CFT')
+        self.assertEqual(len(font.glyphs), 59)
+
+    # Signum
+
+    sigfonts = 'http://cd.textfiles.com/atarilibrary/atari_cd11/GRAFIK/SIGFONTS/'
+
+    def test_import_signum_p9(self):
+        """Test importing Signum P9 files."""
+        file = ensure_asset(self.sigfonts + '9NADEL/', 'FONT_001.P9')
+        font, *_ = monobit.load(file)
+        self.assertEqual(len(font.glyphs), 68)
+
+    def test_import_signum_e24(self):
+        """Test importing Signum E24 files."""
+        file = ensure_asset(self.sigfonts + '9NADEL/', 'FONT_001.E24')
+        font, *_ = monobit.load(file)
+        self.assertEqual(len(font.glyphs), 68)
+
+    def test_import_signum_p24(self):
+        """Test importing Signum P24 files."""
+        file = ensure_asset(self.sigfonts + '24NADEL/', 'FONT_001.P24')
+        font, *_ = monobit.load(file)
+        self.assertEqual(len(font.glyphs), 68)
+
+    def test_import_signum_l30(self):
+        """Test importing Signum L30 files."""
+        file = ensure_asset(self.sigfonts + 'LASER/', 'FONT_001.L30')
+        font, *_ = monobit.load(file)
+        self.assertEqual(len(font.glyphs), 68)
+
     # Unifont
 
     def test_import_hex(self):
@@ -104,7 +170,6 @@ class TestFormats(BaseTester):
         font, *_ = monobit.load(draw_file)
         self.assertEqual(len(font.glyphs), 919)
         self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed8x16_A)
-
 
     # PSF
 
@@ -428,6 +493,15 @@ class TestFormats(BaseTester):
         font, *_ = monobit.load(self.font_path / '4x6.mgtk', format='mgtk')
         self.assertEqual(len(font.glyphs), 128)
         self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+
+    # Bare NFNT
+    lisafonts = 'https://github.com/azumanga/apple-lisa/raw/main/LISA_OS/FONTS/'
+
+    def test_import_bare_nfnt(self):
+        """Test importing bare NFNT files."""
+        file = ensure_asset(self.lisafonts, 'TILE7R20S.F')
+        font, *_ = monobit.load(file)
+        self.assertEqual(len(font.glyphs), 193)
 
     # Amiga
 
@@ -805,6 +879,40 @@ class TestFormats(BaseTester):
 @.....@
 @.....@
 """)
+
+    bgafon = 'http://discmaster.textfiles.com/file/21050/NOVEMBER.bin/nov95/nov9/nov9022.zip/whbdlt1.zip/BGAFON.ZIP/'
+
+    def test_import_os2_ne(self):
+        """Test importing OS/2 NE FON files."""
+        file = ensure_asset(self.bgafon, 'sysmono.fon')
+        font, *_ = monobit.load(file)
+        self.assertEqual(len(font.glyphs), 382)
+
+    # The Print Shop
+
+    printshop = 'https://archive.org/download/msdos_broderbund_print_shop/printshop.zip/'
+
+    def test_import_printshop(self):
+        """Test importing The Print Shop for DOS files."""
+        file = ensure_asset(self.printshop, 'FONT8.PSF')
+        font, *_ = monobit.load(file)
+        self.assertEqual(len(font.glyphs), 95)
+
+    # DosStart
+
+    dosstart = 'https://archive.org/download/dosstart-19b/dosstart.zip/'
+
+    def test_import_dosstart_bitmap(self):
+        """Test importing DosStart bitmap files."""
+        file = ensure_asset(self.dosstart, 'COUR.DSF')
+        font, *_ = monobit.load(file)
+        self.assertEqual(len(font.glyphs), 95)
+
+    def test_import_dosstart_stroke(self):
+        """Test importing DosStart stroke files."""
+        file = ensure_asset(self.dosstart, 'DOSSTART.DSF')
+        font, *_ = monobit.load(file)
+        self.assertEqual(len(font.glyphs), 95)
 
     # stroke formats
 

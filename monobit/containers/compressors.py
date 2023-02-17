@@ -59,6 +59,7 @@ class Compressor:
     error = Exception
     magic = b''
     suffixes = ()
+    patterns = ()
     must_have_magic = True
 
     @classmethod

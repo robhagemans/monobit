@@ -59,7 +59,7 @@ _BITMAP_HEADER = le.Struct(
 
 @loaders.register(
     name='printshop',
-    patterns=('*.pnf',),
+    patterns=('*.pnf', '*.psf'),
 )
 def load_printshop(instream):
     """

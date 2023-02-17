@@ -5,3 +5,4 @@ __pycache__/
 htmlcov/
 workspace/
 dist/
+tests/fonts/downloads/

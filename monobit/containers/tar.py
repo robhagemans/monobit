@@ -27,14 +27,14 @@ from ..magic import FileFormatError, Magic
 )
 def load_tar(instream):
     with TarContainer(instream) as container:
-        return load_all(container)
+        return load_all(container, format='')
 
 @savers.register(linked=load_tar)
 def save_tar(fonts, outstream):
     with TarContainer(outstream, 'w') as container:
-        return save_all(fonts, container)
+        return save_all(fonts, container, format='')
 
-@containers.register(linked=load_tar)
+@containers.register(linked=load_tar, record=False)
 def open_tar(instream, mode='r', *, overwrite=False):
     return TarContainer(instream, mode, overwrite=overwrite)
 

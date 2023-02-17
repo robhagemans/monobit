@@ -148,9 +148,11 @@ def _extract_data_and_geometry(
             strike_bytes = ceildiv(strike_count*width, 8)
     else:
         strike_count = -1
-    # deteermine number of cells per strike row
+    # determine number of cells per strike row
     if strike_count <= 0:
         strike_count = (strike_bytes * 8) // width
+    if not strike_count:
+        raise FileFormatError('Bad file geometry')
     # determine bytes per strike row
     row_bytes = strike_bytes*height + padding
     # determine number of strike rows

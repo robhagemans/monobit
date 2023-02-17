@@ -13,6 +13,7 @@ from ..glyph import Glyph
 from ..raster import Raster
 from ..struct import little_endian as le
 from ..binary import ceildiv
+from ..magic import FileFormatError
 from .raw import load_bitmap
 
 
@@ -132,7 +133,7 @@ def load_chiwriter(instream, filetype:int=None):
     # the V4 format files have the earlier offset even if they have <= 94 glyphs
     if header.filetype == 0x11 or header.numchars > 94:
         woffset = _WIDTH_OFFSET_V4 + 0x20 + header.firstchar
-    elif header.filetype == 0x11:
+    elif header.filetype == 0x10:
         woffset = _WIDTH_OFFSET_V3
     else:
         # other values => old format, where this is a size field
@@ -208,6 +209,8 @@ _GRASP_HEADER = le.Struct(
 def _load_grasp_old(instream):
     """Load a GRASP font (original format)."""
     header = _GRASP_HEADER.read_from(instream)
+    if not header.count or not header.glyphsize or not header.height:
+        raise FileFormatError('Bad geometry for GRASP font')
     font = load_bitmap(
         instream,
         width=header.width, height=header.height,

@@ -127,11 +127,11 @@ def _read_signum(instream, fixed_byte_width, baseline, line_height, dpi):
     """Read Signum! printer binary file and return glyphs."""
     data = instream.read()
     header = _HEADER.from_bytes(data)
-    ofs = header.size
+    ofs = _HEADER.size
     glyphs = []
     for cp in _SIGNUM_RANGE:
         glyph_header = _GLYPH_HEADER.from_bytes(data, ofs)
-        ofs += glyph_header.size
+        ofs += _GLYPH_HEADER.size
         # printer fonts provide byte width in width field
         # whereas editor files provide advance width
         if fixed_byte_width:
