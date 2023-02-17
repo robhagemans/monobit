@@ -101,6 +101,7 @@ class TestFormats(BaseTester):
         self.assertEqual(len(font.glyphs), 224)
 
     # ChiWriter
+
     horstmann = 'https://horstmann.com/ChiWriter/'
 
     def test_import_chiwriter_v4(self):
@@ -114,6 +115,34 @@ class TestFormats(BaseTester):
         file = ensure_asset(self.horstmann, 'cw4.zip')
         font, *_ = monobit.load(file / 'CW4/GREEK.CFT')
         self.assertEqual(len(font.glyphs), 59)
+
+    # Signum
+
+    sigfonts = 'http://cd.textfiles.com/atarilibrary/atari_cd11/GRAFIK/SIGFONTS/'
+
+    def test_import_signum_p9(self):
+        """Test importing Signum P9 files."""
+        file = ensure_asset(self.sigfonts + '9NADEL/', 'FONT_001.P9')
+        font, *_ = monobit.load(file)
+        self.assertEqual(len(font.glyphs), 68)
+
+    def test_import_signum_e24(self):
+        """Test importing Signum E24 files."""
+        file = ensure_asset(self.sigfonts + '9NADEL/', 'FONT_001.E24')
+        font, *_ = monobit.load(file)
+        self.assertEqual(len(font.glyphs), 68)
+
+    def test_import_signum_p24(self):
+        """Test importing Signum P24 files."""
+        file = ensure_asset(self.sigfonts + '24NADEL/', 'FONT_001.P24')
+        font, *_ = monobit.load(file)
+        self.assertEqual(len(font.glyphs), 68)
+
+    def test_import_signum_l30(self):
+        """Test importing Signum L30 files."""
+        file = ensure_asset(self.sigfonts + 'LASER/', 'FONT_001.L30')
+        font, *_ = monobit.load(file)
+        self.assertEqual(len(font.glyphs), 68)
 
     # Unifont
 
@@ -141,7 +170,6 @@ class TestFormats(BaseTester):
         font, *_ = monobit.load(draw_file)
         self.assertEqual(len(font.glyphs), 919)
         self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed8x16_A)
-
 
     # PSF
 
