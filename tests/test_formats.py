@@ -743,6 +743,16 @@ class TestFormats(BaseTester):
         self.assertEqual(len(font.glyphs), 256)
         self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed8x16_A)
 
+    # Optiks PCR
+
+    telparia = 'https://telparia.com/fileFormatSamples/font/pcrFont/'
+
+    def test_optiks(self):
+        """Test importing Optiks PCR files."""
+        file = ensure_asset(self.telparia, 'FONT1.PCR')
+        font, *_ = monobit.load(file)
+        self.assertEqual(len(font.glyphs), 256)
+
     # COM loaders
 
     def test_import_frapt(self):
