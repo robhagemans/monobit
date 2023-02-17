@@ -132,7 +132,7 @@ def load_chiwriter(instream, filetype:int=None):
     # the V4 format files have the earlier offset even if they have <= 94 glyphs
     if header.filetype == 0x11 or header.numchars > 94:
         woffset = _WIDTH_OFFSET_V4 + 0x20 + header.firstchar
-    elif header.filetype == 0x11:
+    elif header.filetype == 0x10:
         woffset = _WIDTH_OFFSET_V3
     else:
         # other values => old format, where this is a size field
