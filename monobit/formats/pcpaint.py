@@ -13,6 +13,7 @@ from ..glyph import Glyph
 from ..raster import Raster
 from ..struct import little_endian as le
 from ..binary import ceildiv
+from ..magic import FileFormatError
 from .raw import load_bitmap
 
 
