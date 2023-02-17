@@ -880,6 +880,22 @@ class TestFormats(BaseTester):
 @.....@
 """)
 
+    # DosStart
+
+    dosstart = 'https://archive.org/download/dosstart-19b/dosstart.zip/'
+
+    def test_import_dosstart_bitmap(self):
+        """Test importing DosStart bitmap files."""
+        file = ensure_asset(self.dosstart, 'COUR.DSF')
+        font, *_ = monobit.load(file)
+        self.assertEqual(len(font.glyphs), 95)
+
+    def test_import_dosstart_stroke(self):
+        """Test importing DosStart stroke files."""
+        file = ensure_asset(self.dosstart, 'DOSSTART.DSF')
+        font, *_ = monobit.load(file)
+        self.assertEqual(len(font.glyphs), 95)
+
     # stroke formats
 
     def test_import_hershey(self):
