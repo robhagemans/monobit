@@ -763,9 +763,9 @@ class TestFormats(BaseTester):
         self.assertEqual(len(font.glyphs), 256)
         self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed8x16_A)
 
-    def test_import_frapt(self):
+    def test_import_fontedit(self):
         """Test importing FONTEDIT files."""
-        font, *_ = monobit.load(self.font_path / '8X16-FRA.COM')
+        font, *_ = monobit.load(self.font_path / '8X16-FE.COM')
         self.assertEqual(len(font.glyphs), 256)
         self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed8x16_A)
 
