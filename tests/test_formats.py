@@ -880,6 +880,16 @@ class TestFormats(BaseTester):
 @.....@
 """)
 
+    bgafon = 'http://discmaster.textfiles.com/file/21050/NOVEMBER.bin/nov95/nov9/nov9022.zip/whbdlt1.zip/BGAFON.ZIP/'
+
+    def test_import_os2_ne(self):
+        """Test importing OS/2 NE FON files."""
+        file = ensure_asset(self.bgafon, 'sysmono.fon')
+        font, *_ = monobit.load(file)
+        self.assertEqual(len(font.glyphs), 382)
+
+    # The Print Shop
+
     printshop = 'https://archive.org/download/msdos_broderbund_print_shop/printshop.zip/'
 
     def test_import_printshop(self):
