@@ -208,6 +208,8 @@ _GRASP_HEADER = le.Struct(
 def _load_grasp_old(instream):
     """Load a GRASP font (original format)."""
     header = _GRASP_HEADER.read_from(instream)
+    if not header.count or not header.glyphsize or not header.height:
+        raise FileFormatError('Bad geometry for GRASP font')
     font = load_bitmap(
         instream,
         width=header.width, height=header.height,
