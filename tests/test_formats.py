@@ -7,7 +7,7 @@ import os
 import unittest
 
 import monobit
-from .base import BaseTester
+from .base import BaseTester, ensure_asset
 
 
 class TestFormats(BaseTester):
@@ -77,6 +77,28 @@ class TestFormats(BaseTester):
         font, *_ = monobit.load(fnt_file)
         self.assertEqual(len(font.glyphs), 224)
         self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+
+    # Windows PE files
+    pelib = 'https://github.com/cubiclesoft/windows-pe-artifact-library/raw/master/'
+
+    def test_import_pe_32(self):
+        """Test 32-bit PE executables."""
+        file = ensure_asset(
+            self.pelib + '32_pe/',
+            '32_pe_data_dir_resources_dir_entries_rt_font.dat'
+        )
+        with self.assertRaises(monobit.FileFormatError):
+            # sample file does not contain an actual font
+            font, *_ = monobit.load(file)
+
+    def test_import_pe_64(self):
+        """Test 64-bit PE executables."""
+        file = ensure_asset(
+            self.pelib + '64_pe/',
+            '64_pe_data_dir_resources_dir_entries_rt_font.dat'
+        )
+        font, *_ = monobit.load(file)
+        self.assertEqual(len(font.glyphs), 224)
 
     # Unifont
 

@@ -8,9 +8,21 @@ import unittest
 import logging
 import io
 from pathlib import Path
+from urllib.request import urlretrieve
 
 import monobit
 from monobit.streams import get_stringio
+
+
+
+def ensure_asset(urlbase, name):
+    """Download non-redistributable testing assets."""
+    dir = Path('tests/fonts/downloads')
+    target = dir / name
+    if not target.exists():
+        dir.mkdir(parents=True, exist_ok=True)
+        urlretrieve(urlbase + name, filename=target)
+    return target
 
 
 def assert_text_eq(text, model):
