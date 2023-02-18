@@ -60,6 +60,19 @@ class TestFormats(BaseTester):
         self.assertEqual(len(font.glyphs), 224)
         self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
+    def test_export_fnt_v1_proportional(self):
+        """Test exporting v1 fnt files."""
+        webby_mod, *_ = monobit.load(self.font_path / 'webby-small-kerned.yaff')
+        fnt_file = self.temp_path / 'webby.fnt'
+        monobit.save(webby_mod, fnt_file, format='win', version=1)
+        # read back
+        font, *_ = monobit.load(fnt_file)
+        self.assertEqual(len(font.glyphs), 96)
+        self.assertEqual(
+            font.get_glyph(b'A').reduce().as_text(),
+            webby_mod.get_glyph(b'A').reduce().as_text(),
+        )
+
     def test_export_fnt_v2(self):
         """Test exporting fnt files."""
         fnt_file = self.temp_path / '4x6.fnt'
