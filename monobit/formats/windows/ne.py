@@ -182,16 +182,12 @@ def read_ne(instream, all_type_ids):
                     'Reading resource of type %d at offset %x [%x]',
                     type_info.rtTypeID, start, name_info.rnOffset
                 )
-                try:
-                    resources.append(data[start : start+size])
-                except ValueError as e:
-                    # e.g. not a bitmap font
-                    # don't raise exception so we can continue with other resources
-                    logging.error('Failed to read font resource at {:x}: {}'.format(start, e))
-            logging.debug(
-                'Skipping resource of type %d at offset %x [%x]',
-                type_info.rtTypeID, start, name_info.rnOffset
-            )
+                resources.append(data[start : start+size])
+            else:
+                logging.debug(
+                    'Skipping resource of type %d at offset %x [%x]',
+                    type_info.rtTypeID, start, name_info.rnOffset
+                )
         # rtResourceCount * 12
         ti_offset += type_info_head.size + nameinfo_array.size
     return resources
