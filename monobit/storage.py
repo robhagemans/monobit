@@ -257,7 +257,7 @@ def save_stream(pack, outstream, format='', **kwargs):
         raise ValueError(
             f"Format for output filename '{outstream.name}' is ambiguous: "
             f'specify -format with one of the values '
-            f'({", ".join(_s.name for _s in matching_savers)})'
+            f'({", ".join(_s.format for _s in matching_savers)})'
         )
     saver, *_ = matching_savers
     logging.info('Saving `%s` as %s.', outstream.name, saver.format)
