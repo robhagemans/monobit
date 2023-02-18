@@ -45,7 +45,9 @@ def read_os2_ne(instream, all_type_ids):
     ne_offset = instream.tell()
     header = _NE_HEADER.read_from(instream)
     if header.ne_exetyp != 1:
-        logging.warning('This is not an OS/2 NE file.')
+        logging.warning(
+            'Not an OS/2 NE file: EXE type %d', header.ne_exetyp
+        )
     logging.debug(header)
     # parse the segment table
     seg_table = ST_ENTRY.array(header.ne_cseg).read_from(

@@ -140,7 +140,7 @@ _MODULE_NAME = b'FONTLIB'
 # .FON (NE executable) file reader
 
 def read_ne(instream, all_type_ids):
-    """Read font resources from an NE-format FON file."""
+    """Read font resources from a Windows NE-format FON file."""
     # stream pointer is at the start of the NE header
     # but some offsets in the file are given from the MZ header before that
     ne_offset = instream.tell()
@@ -148,8 +148,16 @@ def read_ne(instream, all_type_ids):
     data = instream.read()
     header = _NE_HEADER.from_bytes(data, ne_offset)
     logging.debug(header)
-    if header.ne_exetyp not in (2, 4):
-        logging.warning('This is not a Windows NE file.')
+    if header.ne_exetyp not in (0, 2, 4):
+        # 0 unknown (but used by Windows 1.0)
+        # 1 OS/2
+        # 2 Windows
+        # 3 European MS_DOS 4.x
+        # 4 Windows 386
+        # 5 Borland Operating System Services
+        logging.warning(
+            'Not a Windows NE file: EXE type %d', header.ne_exetyp
+        )
     # parse the first elements of the resource table
     res_table = _RES_TABLE_HEAD.from_bytes(data, ne_offset + header.ne_rsrctab)
     logging.debug(res_table)
