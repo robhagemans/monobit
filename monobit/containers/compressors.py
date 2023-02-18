@@ -19,7 +19,7 @@ from ..magic import FileFormatError
 
 
 class _WrappedContainer:
-    """Wrapper for compressed coontainer objects, manages compressed stream."""
+    """Wrapper for compressed container objects, manages compressed stream."""
 
     def __init__(self, container, wrapping_stream):
         self._container = container
@@ -59,6 +59,7 @@ class Compressor:
     error = Exception
     magic = b''
     suffixes = ()
+    patterns = ()
     must_have_magic = True
 
     @classmethod
@@ -127,13 +128,13 @@ class Compressor:
     @classmethod
     def register(cls):
         loaders.register(
-            *cls.suffixes, name=cls.name, magic=(cls.magic,), wrapper=True
+            name=cls.name, magic=(cls.magic,), patterns=cls.patterns, wrapper=True
         )(cls.load)
         savers.register(
-            *cls.suffixes, name=cls.name, magic=(cls.magic,), wrapper=True
+            name=cls.name, magic=(cls.magic,), patterns=cls.patterns, wrapper=True
         )(cls.save)
         containers.register(
-            *cls.suffixes, name=cls.name, magic=(cls.magic,), wrapper=True
+            name=cls.name, magic=(cls.magic,), patterns=cls.patterns, wrapper=True
         )(cls.open)
 
 
@@ -142,7 +143,7 @@ class GzipCompressor(Compressor):
     compressor = gzip
     error = gzip.BadGzipFile
     magic = b'\x1f\x8b'
-    suffixes = ('gz',)
+    patterns = ('*.gz',)
 
 GzipCompressor.register()
 
@@ -152,7 +153,7 @@ class XZCompressor(Compressor):
     compressor = lzma
     error = lzma.LZMAError
     magic = b'\xFD7zXZ\x00'
-    suffixes = ('xz',)
+    patterns = ('*.xz',)
 
 XZCompressor.register()
 
@@ -163,7 +164,7 @@ class LzmaCompressor(Compressor):
     # the magic is a 'maybe'
     magic = b'\x5d\0\0'
     must_have_magic = False
-    suffixes = ('lzma',)
+    patterns = ('*.lzma',)
 
 LzmaCompressor.register()
 
@@ -173,6 +174,6 @@ class Bzip2Compressor(Compressor):
     compressor = bz2
     error = OSError
     magic = b'BZh'
-    suffixes = ('bz2',)
+    patterns = ('*.bz2',)
 
 Bzip2Compressor.register()

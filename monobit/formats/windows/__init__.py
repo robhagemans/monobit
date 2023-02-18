@@ -20,9 +20,9 @@ from .fnt import _normalise_metrics, CHARSET_MAP, CHARSET_REVERSE_MAP
 
 
 @loaders.register(
-    'fnt',
-    magic=(FNT_MAGIC_1, FNT_MAGIC_2, FNT_MAGIC_3),
     name='win',
+    magic=(FNT_MAGIC_1, FNT_MAGIC_2, FNT_MAGIC_3),
+    patterns=('*.fnt',),
 )
 def load_win_fnt(instream):
     """Load font from a Windows .FNT resource."""

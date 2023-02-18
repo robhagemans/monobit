@@ -58,13 +58,15 @@ class Container:
         """Open a binary stream in the container."""
         raise NotImplementedError
 
-    def unused_name(self, stem, suffix):
+    def unused_name(self, name):
         """Generate unique name for container file."""
+        if name not in self:
+            return name
+        stem, _, suffix = name.rpartition('.')
         for i in itertools.count():
-            if i:
-                filename = '{}.{}.{}'.format(stem, i, suffix)
-            else:
-                filename = '{}.{}'.format(stem, suffix)
+            filename = '{}.{}'.format(stem, i)
+            if suffix:
+                filename = '{}.{}'.format(filename, suffix)
             if filename not in self:
                 return filename
 

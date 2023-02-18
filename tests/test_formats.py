@@ -7,7 +7,7 @@ import os
 import unittest
 
 import monobit
-from .base import BaseTester
+from .base import BaseTester, ensure_asset
 
 
 class TestFormats(BaseTester):
@@ -60,6 +60,19 @@ class TestFormats(BaseTester):
         self.assertEqual(len(font.glyphs), 224)
         self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
+    def test_export_fnt_v1_proportional(self):
+        """Test exporting v1 fnt files."""
+        webby_mod, *_ = monobit.load(self.font_path / 'webby-small-kerned.yaff')
+        fnt_file = self.temp_path / 'webby.fnt'
+        monobit.save(webby_mod, fnt_file, format='win', version=1)
+        # read back
+        font, *_ = monobit.load(fnt_file)
+        self.assertEqual(len(font.glyphs), 96)
+        self.assertEqual(
+            font.get_glyph(b'A').reduce().as_text(),
+            webby_mod.get_glyph(b'A').reduce().as_text(),
+        )
+
     def test_export_fnt_v2(self):
         """Test exporting fnt files."""
         fnt_file = self.temp_path / '4x6.fnt'
@@ -77,6 +90,72 @@ class TestFormats(BaseTester):
         font, *_ = monobit.load(fnt_file)
         self.assertEqual(len(font.glyphs), 224)
         self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+
+    # Windows PE files
+    pelib = 'https://github.com/cubiclesoft/windows-pe-artifact-library/raw/master/'
+
+    def test_import_pe_32(self):
+        """Test 32-bit PE executables."""
+        file = ensure_asset(
+            self.pelib + '32_pe/',
+            '32_pe_data_dir_resources_dir_entries_rt_font.dat'
+        )
+        with self.assertRaises(monobit.FileFormatError):
+            # sample file does not contain an actual font
+            font, *_ = monobit.load(file)
+
+    def test_import_pe_64(self):
+        """Test 64-bit PE executables."""
+        file = ensure_asset(
+            self.pelib + '64_pe/',
+            '64_pe_data_dir_resources_dir_entries_rt_font.dat'
+        )
+        font, *_ = monobit.load(file)
+        self.assertEqual(len(font.glyphs), 224)
+
+    # ChiWriter
+
+    horstmann = 'https://horstmann.com/ChiWriter/'
+
+    def test_import_chiwriter_v4(self):
+        """Test importing ChiWriter v4 files."""
+        file = ensure_asset(self.horstmann, 'cw4.zip')
+        font, *_ = monobit.load(file / 'CW4/BOLD.CFT')
+        self.assertEqual(len(font.glyphs), 159)
+
+    def test_import_chiwriter_v3(self):
+        """Test importing ChiWriter v3 files."""
+        file = ensure_asset(self.horstmann, 'cw4.zip')
+        font, *_ = monobit.load(file / 'CW4/GREEK.CFT')
+        self.assertEqual(len(font.glyphs), 59)
+
+    # Signum
+
+    sigfonts = 'http://cd.textfiles.com/atarilibrary/atari_cd11/GRAFIK/SIGFONTS/'
+
+    def test_import_signum_p9(self):
+        """Test importing Signum P9 files."""
+        file = ensure_asset(self.sigfonts + '9NADEL/', 'FONT_001.P9')
+        font, *_ = monobit.load(file)
+        self.assertEqual(len(font.glyphs), 68)
+
+    def test_import_signum_e24(self):
+        """Test importing Signum E24 files."""
+        file = ensure_asset(self.sigfonts + '9NADEL/', 'FONT_001.E24')
+        font, *_ = monobit.load(file)
+        self.assertEqual(len(font.glyphs), 68)
+
+    def test_import_signum_p24(self):
+        """Test importing Signum P24 files."""
+        file = ensure_asset(self.sigfonts + '24NADEL/', 'FONT_001.P24')
+        font, *_ = monobit.load(file)
+        self.assertEqual(len(font.glyphs), 68)
+
+    def test_import_signum_l30(self):
+        """Test importing Signum L30 files."""
+        file = ensure_asset(self.sigfonts + 'LASER/', 'FONT_001.L30')
+        font, *_ = monobit.load(file)
+        self.assertEqual(len(font.glyphs), 68)
 
     # Unifont
 
@@ -104,7 +183,6 @@ class TestFormats(BaseTester):
         font, *_ = monobit.load(draw_file)
         self.assertEqual(len(font.glyphs), 919)
         self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed8x16_A)
-
 
     # PSF
 
@@ -181,6 +259,17 @@ class TestFormats(BaseTester):
         self.assertEqual(len(font.glyphs), 919)
         self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
+    def test_export_raw_wide(self):
+        """Test exporting raw binary files with wiide strike."""
+        fnt_file = self.temp_path / '4x6.raw'
+        monobit.save(self.fixed4x6, fnt_file, format='raw', strike_count=256)
+        font, *_ = monobit.load(
+            fnt_file, format='raw', cell=(4, 6), first_codepoint=31,
+            strike_count=256, count=919
+        )
+        self.assertEqual(len(font.glyphs), 919)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+
     # PDF chart
 
     def test_export_pdf(self):
@@ -194,25 +283,25 @@ class TestFormats(BaseTester):
     def test_import_bmf(self):
         """Test importing bmfont files."""
         base_path = self.font_path / '6x13.bmf'
-        font, *_ = monobit.load(base_path / '6x13-text.fnt', format='bmf')
+        font, *_ = monobit.load(base_path / '6x13-text.fnt', format='bmfont')
         self.assertEqual(len(font.glyphs), 189)
-        font, *_ = monobit.load(base_path / '6x13-xml.fnt', format='bmf')
+        font, *_ = monobit.load(base_path / '6x13-xml.fnt', format='bmfont')
         self.assertEqual(len(font.glyphs), 189)
-        font, *_ = monobit.load(base_path / '6x13-json.fnt', format='bmf')
+        font, *_ = monobit.load(base_path / '6x13-json.fnt', format='bmfont')
         self.assertEqual(len(font.glyphs), 189)
-        font, *_ = monobit.load(base_path / '6x13-8bit.fnt', format='bmf')
+        font, *_ = monobit.load(base_path / '6x13-8bit.fnt', format='bmfont')
         self.assertEqual(len(font.glyphs), 189)
-        font, *_ = monobit.load(base_path / '6x13-32bit-packed.fnt', format='bmf')
+        font, *_ = monobit.load(base_path / '6x13-32bit-packed.fnt', format='bmfont')
         self.assertEqual(len(font.glyphs), 189)
-        font, *_ = monobit.load(base_path / '6x13-32bit-nonpacked.fnt', format='bmf')
+        font, *_ = monobit.load(base_path / '6x13-32bit-nonpacked.fnt', format='bmfont')
         self.assertEqual(len(font.glyphs), 189)
-        font, *_ = monobit.load(base_path / '6x13-binary.fnt', format='bmf')
+        font, *_ = monobit.load(base_path / '6x13-binary.fnt', format='bmfont')
         self.assertEqual(len(font.glyphs), 189)
 
     def test_export_bmf_text(self):
         """Test exporting bmfont files with text descriptor."""
         fnt_file = self.temp_path / '4x6.bmf'
-        monobit.save(self.fixed4x6, fnt_file)
+        monobit.save(self.fixed4x6, fnt_file, format='bmfont')
         font, *_ = monobit.load(fnt_file)
         self.assertEqual(len(font.glyphs), 919)
         self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
@@ -220,8 +309,11 @@ class TestFormats(BaseTester):
     def test_export_bmf_json(self):
         """Test exporting bmfont files with json descriptor."""
         fnt_file = self.temp_path / '4x6.bmf'
-        monobit.save(self.fixed4x6, fnt_file, descriptor='json', overwrite=True)
-        font, *_ = monobit.load(fnt_file)
+        monobit.save(
+            self.fixed4x6, fnt_file,
+            format='bmfont', descriptor='json',
+        )
+        font, *_ = monobit.load(fnt_file, format='bmfont')
         self.assertEqual(len(font.glyphs), 919)
         self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
 
@@ -392,16 +484,27 @@ class TestFormats(BaseTester):
         font, *_ = monobit.load(self.font_path / '4x6.dfont')
         # only 195 glyphs in the font as it's in mac-roman encoding now
         self.assertEqual(len(font.glyphs), 195)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
     def test_import_macbinary(self):
         """Test importing macbinary files."""
         font, *_ = monobit.load(self.font_path / '4x6.bin', format='macbin')
         self.assertEqual(len(font.glyphs), 195)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
     def test_import_hexbin(self):
         """Test importing hexbin files."""
         font, *_ = monobit.load(self.font_path / '4x6.hqx')
         self.assertEqual(len(font.glyphs), 195)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+
+    macfonts = 'https://github.com/JohnDDuncanIII/macfonts/raw/master/Macintosh%20OS%201-6/Originals/'
+
+    def test_import_appledouble(self):
+        """Test importing appledouble files."""
+        file = ensure_asset(self.macfonts, 'Originals.zip')
+        font, *_ = monobit.load(file / '__MACOSX/._Times  9')
+        self.assertEqual(len(font.glyphs), 228)
 
     def test_import_iigs(self):
         """Test importing Apple IIgs font files."""
@@ -417,12 +520,36 @@ class TestFormats(BaseTester):
         self.assertEqual(len(font.glyphs), 220)
         self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
+    def test_import_mgtk(self):
+        """Testing importing Apple II MouseGraphics ToolKit font files."""
+        font, *_ = monobit.load(self.font_path / '4x6.mgtk', format='mgtk')
+        self.assertEqual(len(font.glyphs), 128)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+
+    # Bare NFNT
+    lisafonts = 'https://github.com/azumanga/apple-lisa/raw/main/LISA_OS/FONTS/'
+
+    def test_import_bare_nfnt(self):
+        """Test importing bare NFNT files."""
+        file = ensure_asset(self.lisafonts, 'TILE7R20S.F')
+        font, *_ = monobit.load(file)
+        self.assertEqual(len(font.glyphs), 193)
+
     # Amiga
 
     def test_import_amiga(self):
         """Test importing amiga font files."""
         font, *_ = monobit.load(self.font_path / 'wbfont.amiga' / 'wbfont_prop.font')
         self.assertEqual(len(font.glyphs), 225)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), """\
+..@@@..
+..@@@..
+.@@.@@.
+.@@.@@.
+@@@@@@@
+@@...@@
+@@...@@
+""")
 
     # GDOS
 
@@ -439,6 +566,41 @@ class TestFormats(BaseTester):
             self.font_path / 'gdos' / 'AI360GVP.VGA', format='gdos'
         )
         self.assertEqual(len(font.glyphs), 194)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), """\
+.................@@.................
+.................@@@................
+.................@@@................
+................@@@@................
+................@@@@@...............
+...............@@@@@@...............
+...............@@@@@@@..............
+..............@@.@@@@@..............
+..............@@..@@@@@.............
+.............@@...@@@@@.............
+.............@@...@@@@@@............
+............@@.....@@@@@............
+............@@.....@@@@@............
+...........@@.......@@@@@...........
+...........@@.......@@@@@...........
+..........@@@........@@@@@..........
+..........@@.........@@@@@..........
+.........@@@.........@@@@@@.........
+.........@@...........@@@@@.........
+.........@@...........@@@@@@........
+........@@@@@@@@@@@@@@@@@@@@........
+........@@@@@@@@@@@@@@@@@@@@........
+.......@@...............@@@@@.......
+.......@@...............@@@@@.......
+......@@@...............@@@@@@......
+......@@.................@@@@@......
+.....@@@.................@@@@@@.....
+.....@@...................@@@@@.....
+....@@@...................@@@@@@....
+....@@@...................@@@@@@....
+...@@@@...................@@@@@@@...
+..@@@@@@.................@@@@@@@@@..
+@@@@@@@@@@.............@@@@@@@@@@@@@
+""")
 
     def test_export_gdos(self):
         """Test exporting uncompressed gdos files."""
@@ -454,15 +616,19 @@ class TestFormats(BaseTester):
         """Test importing little-endian vfont file."""
         font, *_ = monobit.load(
             self.font_path / '4x6.vfontle',
+            first_codepoint=0x1f
         )
         self.assertEqual(len(font.glyphs), 256)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
     def test_import_vfont_be(self):
         """Test importing big-endian vfont file."""
         font, *_ = monobit.load(
             self.font_path / '4x6.vfontbe',
+            first_codepoint=0x1f
         )
         self.assertEqual(len(font.glyphs), 256)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
     def test_export_vfont(self):
         """Test exporting vfont files."""
@@ -481,6 +647,7 @@ class TestFormats(BaseTester):
             self.font_path / '8x16-fontx-sbcs.fnt',
         )
         self.assertEqual(len(font.glyphs), 256)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed8x16_A)
 
     def test_import_fontx_dbcs(self):
         """Test importing multi-page fontx file."""
@@ -489,6 +656,7 @@ class TestFormats(BaseTester):
         )
         # including 1000 blanks due to (our way of dealing with) contiguous-block structure
         self.assertEqual(len(font.glyphs), 1919)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed8x16_A)
 
     def test_export_fontx(self):
         """Test exporting fontx files."""
@@ -507,6 +675,21 @@ class TestFormats(BaseTester):
             self.font_path / 'daisy' / 'times.nlq',
         )
         self.assertEqual(len(font.glyphs), 91)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), """\
+.....@.....
+.....@.....
+....@@@....
+....@@@....
+...@..@....
+...@..@@...
+...@..@@...
+..@....@...
+..@@@@@@@..
+..@....@@..
+.@......@@.
+.@......@@.
+@@@....@@@@
+""")
 
     def test_import_daisy3(self):
         """Test importing daisy-dot III file."""
@@ -515,6 +698,26 @@ class TestFormats(BaseTester):
         )
         # the space glyph should be generated
         self.assertEqual(len(font.glyphs), 91)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), """\
+.......@.......
+.......@.......
+.......@.......
+......@.@......
+......@.@......
+.....@...@.....
+.....@...@.....
+....@.....@....
+....@.....@....
+...@.......@...
+...@.......@...
+..@@@@@@@@@@@..
+..@.........@..
+..@.........@..
+.@...........@.
+.@...........@.
+@.............@
+@.............@
+""")
 
     # BBC
 
@@ -572,32 +775,50 @@ class TestFormats(BaseTester):
         self.assertEqual(len(font.glyphs), 256)
         self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed8x16_A)
 
+    # Optiks PCR
+
+    telparia = 'https://telparia.com/fileFormatSamples/font/pcrFont/'
+
+    def test_optiks(self):
+        """Test importing Optiks PCR files."""
+        file = ensure_asset(self.telparia, 'FONT1.PCR')
+        font, *_ = monobit.load(file)
+        self.assertEqual(len(font.glyphs), 256)
+
     # COM loaders
 
     def test_import_frapt(self):
         """Test importing Fontraptor files."""
         font, *_ = monobit.load(self.font_path / '8X16-FRA.COM')
         self.assertEqual(len(font.glyphs), 256)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed8x16_A)
 
     def test_import_frapt_tsr(self):
         """Test importing Fontraptor TSR files."""
         font, *_ = monobit.load(self.font_path / '8X16-TSR.COM')
         self.assertEqual(len(font.glyphs), 256)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed8x16_A)
 
     def test_import_mania(self):
         """Test importing Font Mania files."""
         font, *_ = monobit.load(self.font_path / '8X16-REX.COM')
         self.assertEqual(len(font.glyphs), 256)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed8x16_A)
 
-    def test_import_frapt(self):
+    def test_import_fontedit(self):
         """Test importing FONTEDIT files."""
         font, *_ = monobit.load(self.font_path / '8X16-FE.COM')
         self.assertEqual(len(font.glyphs), 256)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed8x16_A)
 
     def test_import_psfcom(self):
         """Test importing PSF2AMS files."""
-        font, *_ = monobit.load(self.font_path / '4x6-ams.com')
+        font, *_ = monobit.load(
+            self.font_path / '4x6-ams.com',
+            first_codepoint=0x1f
+        )
         self.assertEqual(len(font.glyphs), 512)
+        self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
 
     # TeX PKFONT
 
@@ -605,6 +826,19 @@ class TestFormats(BaseTester):
         """Test importing PKFONT files."""
         font, *_ = monobit.load(self.font_path / 'cmbx10.120pk')
         self.assertEqual(len(font.glyphs), 128)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), """\
+.....@.....
+....@@@....
+....@@@....
+....@@@....
+...@.@@@...
+...@.@@@...
+...@.@@@...
+..@...@@@..
+..@@@@@@@..
+.@....@@@@.
+@@@@.@@@@@@
+""")
 
     # sfnt
 
@@ -612,21 +846,25 @@ class TestFormats(BaseTester):
         """Test importing sfnt bitmap files produced by fonttosfnt."""
         font, *_ = monobit.load(self.font_path / '4x6.ttf')
         self.assertEqual(len(font.glyphs), 919)
+        self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
 
     def test_import_fontforge(self):
         """Test importing sfnt bitmap files produced by fontforge."""
         font, *_ = monobit.load(self.font_path / '4x6.otb')
         self.assertEqual(len(font.glyphs), 922)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
     def test_import_fontforge_fakems(self):
         """Test importing 'fake MS' sfnt bitmap files produced by fontforge."""
         font, *_ = monobit.load(self.font_path / '4x6.ffms.ttf')
         self.assertEqual(len(font.glyphs), 922)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
     def test_import_fontforge_dfont(self):
         """Test importing dfont-wrapped sfnt bitmap files produced by fontforge."""
         font, *_ = monobit.load(self.font_path / '4x6.sfnt.dfont')
         self.assertEqual(len(font.glyphs), 922)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
     # geos
 
@@ -634,6 +872,16 @@ class TestFormats(BaseTester):
         """Test importing GEOS fonts."""
         font, *_ = monobit.load(self.font_path / 'SHILLING.cvt.gz')
         self.assertEqual(len(font.glyphs), 95)
+        self.assertEqual(font.get_glyph(b'\x2a').reduce().as_text(), """\
+.@@@.
+.@@@.
+.@@@.
+.@@@.
+.@@@.
+@@@@@
+.@@@.
+..@..
+""")
 
     # palm
 
@@ -641,6 +889,19 @@ class TestFormats(BaseTester):
         """Test importing Palm OS fonts."""
         font, *_ = monobit.load(self.font_path / 'Alpha-2B.pdb')
         self.assertEqual(len(font.glyphs), 230)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), """\
+...@@...
+...@@...
+..@@@@..
+..@@@@..
+..@..@..
+.@@..@@.
+.@@..@@.
+.@@@@@@.
+@@....@@
+@@....@@
+"""
+)
 
     # OS/2
 
@@ -648,6 +909,52 @@ class TestFormats(BaseTester):
         """Test importing OS/2 fonts (LX container)."""
         font, *_ = monobit.load(self.font_path / 'WARPSANS.FON')
         self.assertEqual(len(font.glyphs), 950)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), """\
+...@...
+...@...
+..@.@..
+..@.@..
+.@...@.
+.@...@.
+.@@@@@.
+@.....@
+@.....@
+@.....@
+""")
+
+    bgafon = 'http://discmaster.textfiles.com/file/21050/NOVEMBER.bin/nov95/nov9/nov9022.zip/whbdlt1.zip/BGAFON.ZIP/'
+
+    def test_import_os2_ne(self):
+        """Test importing OS/2 NE FON files."""
+        file = ensure_asset(self.bgafon, 'sysmono.fon')
+        font, *_ = monobit.load(file)
+        self.assertEqual(len(font.glyphs), 382)
+
+    # The Print Shop
+
+    printshop = 'https://archive.org/download/msdos_broderbund_print_shop/printshop.zip/'
+
+    def test_import_printshop(self):
+        """Test importing The Print Shop for DOS files."""
+        file = ensure_asset(self.printshop, 'FONT8.PSF')
+        font, *_ = monobit.load(file)
+        self.assertEqual(len(font.glyphs), 95)
+
+    # DosStart
+
+    dosstart = 'https://archive.org/download/dosstart-19b/dosstart.zip/'
+
+    def test_import_dosstart_bitmap(self):
+        """Test importing DosStart bitmap files."""
+        file = ensure_asset(self.dosstart, 'COUR.DSF')
+        font, *_ = monobit.load(file)
+        self.assertEqual(len(font.glyphs), 95)
+
+    def test_import_dosstart_stroke(self):
+        """Test importing DosStart stroke files."""
+        file = ensure_asset(self.dosstart, 'DOSSTART.DSF')
+        font, *_ = monobit.load(file)
+        self.assertEqual(len(font.glyphs), 95)
 
     # stroke formats
 

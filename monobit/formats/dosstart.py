@@ -17,7 +17,11 @@ from ..raster import Raster
 from ..vector import StrokePath
 
 
-@loaders.register('dsf', name='dosstart', magic=(b'DosStartFont',))
+@loaders.register(
+    name='dosstart',
+    magic=(b'DosStartFont',),
+    patterns=('*.dsf',),
+)
 def load_dosstart(instream):
     """Load font from DosStart! .DSF file."""
     return _load_dsf(instream.text)

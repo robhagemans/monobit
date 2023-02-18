@@ -13,7 +13,7 @@ from itertools import accumulate
 from ..binary import ceildiv
 from ..struct import little_endian as le, sizeof
 from ..storage import loaders, savers
-from ..magic import FileFormatError
+from ..magic import FileFormatError, Magic
 from ..font import Font
 from ..glyph import Glyph
 from ..properties import Props
@@ -28,9 +28,13 @@ _ID_DR = b'DRFONT '
 
 
 @loaders.register(
-    'cpi',
-    magic=(b'\xff'+_ID_MS, b'\xff'+_ID_NT, b'\x7f'+_ID_DR),
-    name='cpi'
+    name='cpi',
+    magic=(
+        b'\xff'+_ID_MS,
+        b'\xff'+_ID_NT,
+        b'\x7f'+_ID_DR,
+    ),
+    patterns=('*.cpi',),
 )
 def load_cpi(instream):
     """Load character-cell fonts from DOS Codepage Information (.CPI) file."""
@@ -38,7 +42,17 @@ def load_cpi(instream):
     fonts = _parse_cpi(data)
     return fonts
 
-@loaders.register('cp', name='kbd')
+
+@loaders.register(
+    name='kbd',
+    patterns=('*.cp',),
+    magic=(
+        # FONT
+        Magic.offset(6) + b'\1\0' + Magic.offset(20) + b'\1\0',
+        # DRFONT
+        Magic.offset(6) + b'\1\0' + Magic.offset(20) + b'\2\0',
+    ),
+)
 def load_cp(instream):
     """Load character-cell fonts from Linux Keyboard Codepage (.CP) file."""
     data = instream.read()

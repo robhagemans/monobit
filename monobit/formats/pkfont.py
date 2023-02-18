@@ -16,11 +16,16 @@ from .. import struct
 from ..struct import big_endian as be, bitfield, sizeof
 from ..binary import ceildiv, align
 from ..properties import Props
-from .raw import load_binary
+from ..magic import Regex
 
 
-# file name pattern is '{name}.{dpi}PK' but we only check suffixes
-@loaders.register('pk', name='pkfont', magic=(b'\xf7\x59',))
+@loaders.register(
+    name='pkfont',
+    magic=(b'\xf7\x59',),
+    # file name pattern is '{name}.{dpi}PK'
+    patterns=(Regex(r'.+\.\d+pk'),),
+
+)
 def load_pkfont(instream):
     """Load fonts from a METAFONT/TeX PKFONT."""
     return _load_pkfont(instream)
@@ -40,7 +45,7 @@ _PK_PRE0 = be.Struct(
 # x[k] k-byte name string
 
 _PK_PRE1 = be.Struct(
-    # design size oof the file in 1/2**16 points
+    # design size of the file in 1/2**16 points
     ds='uint32',
     # checksum of the file
     cs='uint32',
@@ -239,7 +244,7 @@ def _read_chardef(first, instream):
 
 
 def _convert_char(char):
-    """Convert pkfont character definiition to glyph."""
+    """Convert pkfont character definition to glyph."""
     if char.dyn_f == 14:
         # plain bitmap data
         raster = Raster.from_bytes(

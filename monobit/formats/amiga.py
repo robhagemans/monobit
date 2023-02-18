@@ -11,14 +11,18 @@ from pathlib import Path
 
 from ..binary import bytes_to_bits
 from ..storage import loaders, savers
-from ..magic import FileFormatError
+from ..magic import FileFormatError, Regex
 from ..font import Font, Coord
 from ..glyph import Glyph
 from ..struct import flag, bitfield, big_endian as be
 from ..properties import Props
 
 
-@loaders.register('font', magic=(b'\x0f\0', b'\x0f\2'), name='amiga-fc')
+@loaders.register(
+    name='amiga-fc',
+    magic=(b'\x0f\0', b'\x0f\2'),
+    patterns=('*.font',),
+)
 def load_amiga_fc(f):
     """Load font from Amiga disk font contents (.FONT) file."""
     fch = _FONT_CONTENTS_HEADER.read_from(f)
@@ -62,10 +66,15 @@ def load_amiga_fc(f):
     return pack
 
 
-@loaders.register('amiga', magic=(b'\0\0\x03\xf3',), name='amiga')
-def load_amiga(f, tags=()):
+@loaders.register(
+    name='amiga',
+    magic=(b'\0\0\x03\xf3',),
+    # digits-only filename
+    patterns=(Regex(r'\d+'),),
+)
+def load_amiga(instream, tags=()):
     """Load font from Amiga disk font file."""
-    return _load_amiga(f, tags)
+    return _load_amiga(instream, tags)
 
 @savers.register(linked=load_amiga)
 def save_amiga(pack, outstream):

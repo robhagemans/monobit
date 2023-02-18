@@ -36,6 +36,14 @@ usage = (
     + ' [to [OUTFILE] [SAVE-OPTIONS]]'
 )
 
+
+def _get_for_location(registry, file, mode, format=''):
+    """Get loader/saver for font file location."""
+    if not file:
+        return registry.get_for(format=format)
+    with monobit.open_location(file, mode) as stream:
+        return registry.get_for(stream, format=format)
+
 def _get_context_help(rec):
     if rec.args:
         file = rec.args[0]
@@ -43,9 +51,9 @@ def _get_context_help(rec):
         file = rec.kwargs.get('infile', '')
     format = rec.kwargs.get('format', '')
     if rec.command == 'load':
-        func, *_ = monobit.loaders.get_for_location(file, mode='r', format=format)
+        func, *_ = _get_for_location(monobit.loaders, file, 'r', format)
     else:
-        func, *_ = monobit.savers.get_for_location(file, mode='w', format=format)
+        func, *_ = _get_for_location(monobit.savers, file, 'w', format)
     if func:
         return func.script_args
     return None

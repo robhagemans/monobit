@@ -10,30 +10,40 @@ import itertools
 
 from ..streams import Stream
 from ..storage import loaders, load_stream
-from ..magic import FileFormatError
+from ..magic import FileFormatError, Magic
 
 
 @loaders.register(
-    'hqx', name='binhex', magic=(
+    name='binhex',
+    magic=(
         b'(This file must be converted',
         b'\r(This file must be converted',
-    ), wrapper=True,
+    ),
+    patterns=('*.hqx',),
+    wrapper=True,
 )
-def load_binhex(instream, payload:str='dfont', **kwargs):
+def load_binhex(instream, payload:str='mac', **kwargs):
     """
     BinHex 4.0 loader.
 
-    payload: format of wrapped file (default: 'dfont')
+    payload: format of wrapped file (default: 'mac')
     """
     return _load_macforks(_parse_binhex, instream, payload, **kwargs)
 
 
-@loaders.register(name='macbin', wrapper=True)
-def load_macbin(instream, payload:str='dfont', **kwargs):
+@loaders.register(
+    name='macbin',
+    magic=(
+        # FFILDMOV is a maybe
+        Magic.offset(65) + b'FFILDMOV',
+    ),
+    wrapper=True,
+)
+def load_macbin(instream, payload:str='mac', **kwargs):
     """
     MacBinary loader.
 
-    payload: format of wrapped file (default: 'dfont')
+    payload: format of wrapped file (default: 'mac')
     """
     return _load_macforks(_parse_macbinary, instream, payload, **kwargs)
 
@@ -43,38 +53,43 @@ _APPLEDOUBLE_MAGIC = 0x00051607
 
 
 @loaders.register(
-    'as', name='apple1',
+    name='apple1',
     magic=(
         _APPLESINGLE_MAGIC.to_bytes(4, 'big'),
-    ), wrapper=True,
+    ),
+    patterns=('*.as',),
+    wrapper=True,
 )
-def load_single(instream, payload:str='dfont', **kwargs):
+def load_single(instream, payload:str='mac', **kwargs):
     """
     AppleSingle loader.
 
-    payload: format of wrapped file (default: 'dfont')
+    payload: format of wrapped file (default: 'mac')
     """
     return _load_macforks(_parse_apple_container, instream, payload, **kwargs)
 
 
 @loaders.register(
-    'adf', #'rsrc',
     name='apple2',
     magic=(
         _APPLEDOUBLE_MAGIC.to_bytes(4, 'big'),
-    ), wrapper=True,
+    ),
+    # .adf, .rsrc - per http://fileformats.archiveteam.org/wiki/AppleDouble
+    # ._<name> is OS X representation
+    patterns=('*.adf', '*.rsrc', '._*'),
+    wrapper=True,
 )
-def load_double(instream, payload:str='dfont', **kwargs):
+def load_double(instream, payload:str='mac', **kwargs):
     """
     AppleDouble loader.
 
-    payload: format of wrapped file (default: 'dfont')
+    payload: format of wrapped file (default: 'mac')
     """
     return _load_macforks(_parse_apple_container, instream, payload, **kwargs)
 
 
 def _load_macforks(parser, instream, payload, **kwargs):
-    """Resource and data foork loader."""
+    """Resource and data fork loader."""
     name, data, rsrc = parser(instream)
     fonts = []
     for fork in rsrc, data:
@@ -82,9 +97,10 @@ def _load_macforks(parser, instream, payload, **kwargs):
             stream = Stream.from_data(fork, mode='r', name=f'{name}')
             try:
                 forkfonts = load_stream(stream, format=payload, **kwargs)
-            except FileFormatError:
+                fonts.extend(forkfonts)
+            except FileFormatError as e:
+                logging.debug(e)
                 pass
-            fonts.extend(forkfonts)
     return fonts
 
 

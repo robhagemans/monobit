@@ -78,7 +78,11 @@ _PAS_PARAMS = dict(
 ###############################################################################
 
 
-@loaders.register('c', 'cc', 'cpp', 'h', name='c', wrapper=True)
+@loaders.register(
+    name='c',
+    patterns=('*.c', '*.cc', '*.cpp', '*.h'),
+    wrapper=True,
+)
 def load_c(infile, *, identifier:str='', payload:str='raw', **kwargs):
     """
     Extract font file encoded in C or C++ source code.
@@ -92,7 +96,11 @@ def load_c(infile, *, identifier:str='', payload:str='raw', **kwargs):
     )
 
 
-@loaders.register('js', 'json', name='json', wrapper=True)
+@loaders.register(
+    name='json',
+    patterns=('*.js', '*.json',),
+    wrapper=True,
+)
 def load_json(infile, *, identifier:str='', payload:str='raw', **kwargs):
     """
     Extract font file encoded in JSON or JavaScript source code.
@@ -106,7 +114,11 @@ def load_json(infile, *, identifier:str='', payload:str='raw', **kwargs):
     )
 
 
-@loaders.register('py', name='python', wrapper=True)
+@loaders.register(
+    name='python',
+    patterns=('*.py',),
+    wrapper=True
+)
 def load_python(infile, *, identifier:str='', payload:str='raw', **kwargs):
     """
     Extract font file encoded as a list in Python source code.
@@ -120,7 +132,11 @@ def load_python(infile, *, identifier:str='', payload:str='raw', **kwargs):
     )
 
 
-@loaders.register('py', name='python-tuple', wrapper=True)
+@loaders.register(
+    name='python-tuple',
+    patterns=('*.py',),
+    wrapper=True,
+)
 def load_python_tuple(infile, *, identifier:str='', payload:str='raw', **kwargs):
     """
     Extract font file encoded as a list in Python source code.
@@ -134,7 +150,11 @@ def load_python_tuple(infile, *, identifier:str='', payload:str='raw', **kwargs)
     )
 
 
-@loaders.register('pas', name='pascal', wrapper=True)
+@loaders.register(
+    name='pascal',
+    patterns=('*.pas',),
+    wrapper=True,
+)
 def load_pascal(infile, *, identifier:str='', payload:str='raw', **kwargs):
     """
     Extract font file encoded as a list in Pascal source code.
@@ -234,7 +254,11 @@ def _get_payload(instream, identifier, delimiters, comment, assign):
     return ''.join(payload)
 
 
-@loaders.register('bas', name='basic', wrapper=True)
+@loaders.register(
+    name='basic',
+    patterns=('*.bas',),
+    wrapper=True,
+)
 def load_basic(infile, *, payload:str='raw', **kwargs):
     """
     Extract font file encoded in DATA lines in classic BASIC source code.

@@ -7,6 +7,8 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 from pathlib import Path
+from fnmatch import fnmatch
+import re
 
 from .streams import get_name
 
@@ -28,27 +30,6 @@ _NON_TEXT_BYTES = (
 
 class FileFormatError(Exception):
     """Incorrect file format."""
-
-
-def normalise_suffix(suffix):
-    """Bring suffix to lowercase without dot."""
-    if suffix.startswith('.'):
-        suffix = suffix[1:]
-    return suffix.lower()
-
-def get_suffix(file):
-    """Get normalised suffix for file or path."""
-    if isinstance(file, (str, Path)):
-        suffix = Path(file).suffix
-    else:
-        suffix = Path(get_name(file)).suffix
-    return normalise_suffix(suffix)
-
-def has_magic(instream, magic):
-    """Check if a binary stream matches the given signature."""
-    if instream.mode == 'w':
-        return False
-    return instream.peek(len(magic)).startswith(magic)
 
 
 def maybe_text(instream):
@@ -83,65 +64,227 @@ def maybe_text(instream):
 
 
 class MagicRegistry:
-    """Registry of file types and their magic sequences."""
+    """Retrieve file converters through magic sequences and name patterns."""
 
-    def __init__(self):
+    def __init__(self, func_name, default_text='', default_binary=''):
         """Set up registry."""
-        self._magic = {}
-        self._suffixes = {}
+        self._magic = []
+        self._patterns = []
         self._names = {}
+        self._func_name = func_name
+        self._default_text = default_text
+        self._default_binary = default_binary
 
-    def register(self, *suffixes, name='', magic=()):
-        """Decorator to register class that handles file type."""
-        def decorator(klass):
+    def get_for(self, file=None, format=''):
+        """
+        Get loader/saver function for this format.
+        file must be a Stream or None
+        """
+        if format:
+            try:
+                converter = (self._names[format],)
+            except KeyError:
+                raise ValueError(
+                    f'Format specifier `{format}` not recognised'
+                )
+        else:
+            converter = self.identify(file)
+            if not converter:
+                if not file or file.mode == 'w' or maybe_text(file):
+                    format = self._default_text
+                else:
+                    format = self._default_binary
+                if file and format:
+                    if Path(file.name).suffix:
+                        level = logging.WARNING
+                    else:
+                        level = logging.DEBUG
+                    logging.log(
+                        level,
+                        f'Could not infer format from filename `{file.name}`. '
+                        f'Falling back to default `{format}` format'
+                    )
+                try:
+                    converter = (self._names[format],)
+                except KeyError:
+                    pass
+        return converter
+
+    def register(
+            self, name='', magic=(), patterns=(),
+            funcwrapper=lambda _:_
+        ):
+        """Decorator to register converter for file type."""
+
+        def _decorator(converter):
             if not name:
                 raise ValueError('No registration name given')
             if name in self._names:
                 raise ValueError('Registration name `{name} already in use')
-            self._names[name] = klass
-            for suffix in suffixes:
-                suffix = normalise_suffix(suffix)
-                if suffix in self._suffixes:
-                    self._suffixes[suffix].append(klass)
-                else:
-                    self._suffixes[suffix] = [klass]
+            if not isinstance(magic, (list, tuple)):
+                raise TypeError('Registration parameter `magic` must be list or tuple')
+            if not isinstance(patterns, (list, tuple)):
+                raise TypeError('Registration parameter `patterns` must be list or tuple')
+            converter.format = name
+            self._names[name] = converter
+            ## magic signatures
             for sequence in magic:
-                self._magic[sequence] = klass
+                self._magic.append((Magic(sequence), converter))
             # sort the magic registry long to short to manage conflicts
-            self._magic = {
-                _k: _v for _k, _v in sorted(
-                    self._magic.items(),
+            self._magic = list(sorted(
+                    self._magic,
                     key=lambda _i:len(_i[0]), reverse=True
                 )
-            }
-            # use first suffix given as standard
-            if suffixes:
-                klass.format = normalise_suffix(suffixes[0])
-            return klass
-        return decorator
+            )
+            ## glob patterns
+            for pattern in patterns:
+                self._patterns.append((to_pattern(pattern), converter))
+            return funcwrapper(converter)
+
+        return _decorator
 
     def identify(self, file):
         """Identify a type from magic sequence on input file."""
         if not file:
             return ()
         matches = []
-        # can't read magic on write-only file
-        if not isinstance(file, (str, Path)):
-            for magic, klass in self._magic.items():
-                if has_magic(file, magic):
+        ## match magic on readable files
+        if file.mode == 'r':
+            for magic, converter in self._magic:
+                if magic.fits(file):
                     logging.debug(
-                        'Magic bytes %a: identifying stream as %s.',
-                        magic.decode('latin-1'), klass.name
+                        'Stream matches signature for format `%s`.',
+                        converter.format
                     )
-                    matches.append(klass)
-        suffix = get_suffix(file)
-        converters = self._suffixes.get(suffix, ())
-        # don't repeat matches
-        converters = [_c for _c in converters if _c not in matches]
-        for converter in converters:
-            logging.debug(
-                'Filename suffix `%s`: identifying stream as %s.',
-                suffix, converter.name
-            )
-        matches.extend(converters)
+                    matches.append(converter)
+        ## match glob patterns
+        glob_matches = []
+        for pattern, converter in self._patterns:
+            if pattern.fits(file):
+                logging.debug(
+                    'Filename matches pattern for format `%s`.',
+                    converter.format
+                )
+                glob_matches.append(converter)
+        matches.extend(_c for _c in glob_matches if _c not in matches)
         return tuple(matches)
+
+
+###############################################################################
+# file format matchers
+
+class Magic:
+    """Match file contents against bytes mask."""
+
+    def __init__(self, value, offset=0):
+        """Initialise bytes mask from bytes or Magic object."""
+        if isinstance(value, Magic):
+            self._mask = tuple(
+                (_item[0] + offset, _item[1])
+                for _item in  value._mask
+            )
+        elif not isinstance(value, bytes):
+            raise TypeError(
+                'Initialiser must be bytes or Magic,'
+                f' not {type(value).__name__}'
+            )
+        else:
+            self._mask = ((offset, value),)
+
+    def __len__(self):
+        """Mask length."""
+        return max(_item[0] + len(_item[1]) for _item in self._mask)
+
+    def __add__(self, other):
+        """Concatenate masks."""
+        other = Magic(other, offset=len(self))
+        new = Magic(self)
+        new._mask += other._mask
+        return new
+
+    def __radd__(self, other):
+        """Concatenate masks."""
+        other = Magic(other)
+        return other + self
+
+    def matches(self, target):
+        """Target bytes match the mask."""
+        if len(target) < len(self):
+            logging.debug(f'Target of insufficient length: {target}')
+            return False
+        for offset, value in self._mask:
+            if target[offset:offset+len(value)] != value:
+                return False
+        return True
+
+    def fits(self, instream):
+        """Binary stream matches the signature."""
+        if instream.mode == 'w':
+            return False
+        return self.matches(instream.peek(len(self)))
+
+    @classmethod
+    def offset(cls, offset=0):
+        """Represent offset in concatenated mask."""
+        return cls(value=b'', offset=offset)
+
+
+class Pattern:
+    """Match filename against pattern."""
+
+    def matches(self, target):
+        """Target string matches the pattern."""
+        raise NotImplementedError()
+
+    def fits(self, instream):
+        """Stream filename matches the pattern."""
+        return self.matches(Path(instream.name).name)
+
+    def generate(self, name):
+        """Generate name that fits pattern. Failure -> empty"""
+        raise NotImplementedError()
+
+
+class Glob(Pattern):
+    """Match filename against pattern using case-insensitive glob."""
+
+    def __init__(self, pattern):
+        """Set up pattern matcher."""
+        self._pattern = pattern.lower()
+
+    def matches(self, target):
+        """Target string matches the pattern."""
+        return fnmatch(str(target).lower(), self._pattern.lower())
+
+    def generate(self, name):
+        """Generate name that fits pattern. Failure -> empty"""
+        if not '?' in self._pattern and not '[' in self._pattern:
+            try:
+                return self._pattern.replace('*', '{}').format(name)
+            except IndexError:
+                # multiple *
+                pass
+        return ''
+
+
+class Regex(Pattern):
+    """Match filename against pattern using regular expression."""
+
+    def __init__(self, pattern):
+        """Set up pattern matcher."""
+        self._pattern = re.compile(pattern)
+
+    def matches(self, target):
+        """Target string matches the pattern."""
+        return self._pattern.fullmatch(str(target).lower()) is not None
+
+    def generate(self, name):
+        """Generate name that fits pattern. Failure -> empty"""
+        return ''
+
+
+def to_pattern(obj):
+    """Convert to Pattern object."""
+    if isinstance(obj, Pattern):
+        return obj
+    return Glob(str(obj))

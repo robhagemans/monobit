@@ -20,12 +20,14 @@ from ..taggers import tagmaps
 # as we only work with monochrome bitmaps
 
 
-
 ##############################################################################
 # interface
 
-
-@loaders.register('flf', magic=(b'flf2a',), name='figlet')
+@loaders.register(
+    name='figlet',
+    magic=(b'flf2a',),
+    patterns=('*.flf',),
+)
 def load_figlet(instream, *, ink:str=''):
     """Load font from a FIGlet .flf file."""
     flf_glyphs, flf_props, comments = _read_flf(instream.text, ink=ink)

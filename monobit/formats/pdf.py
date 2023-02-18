@@ -20,7 +20,10 @@ from ..magic import FileFormatError
 
 if reportlab:
 
-    @savers.register('pdf', name='pdf')
+    @savers.register(
+        name='pdf',
+        patterns=('*.pdf',),
+    )
     def save_pdf(
             fonts, outfile,
             columns:int=16,

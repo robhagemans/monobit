@@ -18,7 +18,11 @@ from ..taggers import tagmaps
 from ..labels import Char
 
 
-@loaders.register('bdf', magic=(b'STARTFONT ',), name='bdf')
+@loaders.register(
+    name='bdf',
+    magic=(b'STARTFONT ',),
+    patterns=('*.bdf',),
+)
 def load_bdf(instream):
     """
     Load font from Adobe Glyph Bitmap Distribution Format (BDF) file.

@@ -21,7 +21,10 @@ from ..magic import FileFormatError
 _FZX_RANGE = range(32, 256)
 
 
-@loaders.register('fzx', name='fzx')
+@loaders.register(
+    name='fzx',
+    patterns=('*.fzx',),
+)
 def load_fzx(instream):
     """Load font from ZX Spectrum .FZX file."""
     fzx_props, fzx_glyphs = _read_fzx(instream)

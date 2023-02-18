@@ -20,7 +20,7 @@ class ArgumentError(TypeError):
     """Invalid keyword argument."""
 
     def __init__(self, func, arg):
-        super().__init__(f'{arg} is an invalid keyword for {func}()')
+        super().__init__(f'{arg} is an invalid keyword for {func}')
 
 
 ###############################################################################
@@ -31,8 +31,8 @@ class ArgumentError(TypeError):
 _record = True
 
 def scriptable(
-        *args, script_args=None, name=None, record=True, pack_operation=False,
-        unknown_args='raise'
+        *args, script_args=None, name=None,
+        record=True, pack_operation=False, wrapper=False,
     ):
     """
     Decorator to register operation for scripting.
@@ -42,6 +42,12 @@ def scriptable(
     - automatic type conversion
     - application of a font operation to all elements in a pack (unless pack_operation is set)
     - recorded history
+
+    script_args: additional arguments not given in annotations
+    name: name of function for use in history
+    record: record in history log
+    pack_operation: function works on sequence of fonts
+    wrapper: enable keyword argument passthrough
     """
     if not args:
         # called as @scriptable(script_args=...)
@@ -49,7 +55,7 @@ def scriptable(
         return partial(
             scriptable, script_args=script_args,
             name=name, record=record, pack_operation=pack_operation,
-            unknown_args=unknown_args
+            wrapper=wrapper,
         )
     else:
         # called as @scriptable
@@ -71,14 +77,7 @@ def scriptable(
                 try:
                     _type, _ = script_args[kwarg]
                 except KeyError:
-                    if unknown_args == 'drop':
-                        continue
-                    if unknown_args == 'passthrough':
-                        pass
-                    elif unknown_args == 'warn':
-                        logging.warning(ArgumentError(name, kwarg))
-                        continue
-                    else:
+                    if not wrapper:
                         raise ArgumentError(name, kwarg) from None
                     _type = Any
                 converter = CONVERTERS.get(_type, _type)

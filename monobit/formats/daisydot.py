@@ -28,7 +28,11 @@ _DDM_MAGIC = b'B\x9b'
 _DD_RANGE = tuple(_c for _c in range(32, 125) if _c not in (96, 123))
 
 
-@loaders.register('nlq', name='daisy', magic=(_DD2_MAGIC, _DD3_MAGIC, _DDM_MAGIC))
+@loaders.register(
+    name='daisy',
+    magic=(_DD2_MAGIC, _DD3_MAGIC, _DDM_MAGIC),
+    patterns=('*.nl[q234]',),
+)
 def load_daisy(instream):
     """Load font from fontx file."""
     version, props, glyphs = _read_daisy(instream)

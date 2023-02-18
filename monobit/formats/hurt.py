@@ -16,8 +16,8 @@ from ..vector import StrokePath
 
 
 @loaders.register(
-    'jhf',
     name='hurt',
+    patterns=('*.jhf',),
 )
 def load_hurt(
         instream,

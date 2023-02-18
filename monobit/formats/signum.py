@@ -58,23 +58,38 @@ _parameters = {
 }
 
 
-
-@loaders.register('e24', name='signum-e24', magic=(_E24_MAGIC,))
+@loaders.register(
+    name='signum-e24',
+    magic=(_E24_MAGIC,),
+    patterns=('*.e24',),
+)
 def load_signum_e24(instream):
     """Load font from signum file."""
     return _read_signum(instream, **_parameters['e24'])
 
-@loaders.register('l30', name='signum-l30', magic=(_L30_MAGIC,))
+@loaders.register(
+    name='signum-l30',
+    magic=(_L30_MAGIC,),
+    patterns=('*.l30',),
+)
 def load_signum_l30(instream):
     """Load font from signum file."""
     return _read_signum(instream, **_parameters['l30'])
 
-@loaders.register('p9', name='signum-p9', magic=(_P9_MAGIC,))
+@loaders.register(
+    name='signum-p9',
+    magic=(_P9_MAGIC,),
+    patterns=('*.p9',),
+)
 def load_signum_p9(instream):
     """Load font from signum file."""
     return _read_signum(instream, **_parameters['l30'])
 
-@loaders.register('p24', name='signum-p24', magic=(_P24_MAGIC,))
+@loaders.register(
+    name='signum-p24',
+    magic=(_P24_MAGIC,),
+    patterns=('*.p24',),
+)
 def load_signum_p24(instream):
     """Load font from signum file."""
     return _read_signum(instream, **_parameters['p24'])
@@ -112,11 +127,11 @@ def _read_signum(instream, fixed_byte_width, baseline, line_height, dpi):
     """Read Signum! printer binary file and return glyphs."""
     data = instream.read()
     header = _HEADER.from_bytes(data)
-    ofs = header.size
+    ofs = _HEADER.size
     glyphs = []
     for cp in _SIGNUM_RANGE:
         glyph_header = _GLYPH_HEADER.from_bytes(data, ofs)
-        ofs += glyph_header.size
+        ofs += _GLYPH_HEADER.size
         # printer fonts provide byte width in width field
         # whereas editor files provide advance width
         if fixed_byte_width:
