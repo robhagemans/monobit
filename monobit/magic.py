@@ -240,6 +240,10 @@ class Pattern:
         """Stream filename matches the pattern."""
         return self.matches(Path(instream.name).name)
 
+    def generate(self, name):
+        """Generate name that fits pattern. Failure -> empty"""
+        raise NotImplementedError()
+
 
 class Glob(Pattern):
     """Match filename against pattern using case-insensitive glob."""
@@ -252,6 +256,16 @@ class Glob(Pattern):
         """Target string matches the pattern."""
         return fnmatch(str(target).lower(), self._pattern.lower())
 
+    def generate(self, name):
+        """Generate name that fits pattern. Failure -> empty"""
+        if not '?' in self._pattern and not '[' in self._pattern:
+            try:
+                return self._pattern.replace('*', '{}').format(name)
+            except IndexError:
+                # multiple *
+                pass
+        return ''
+
 
 class Regex(Pattern):
     """Match filename against pattern using regular expression."""
@@ -263,6 +277,10 @@ class Regex(Pattern):
     def matches(self, target):
         """Target string matches the pattern."""
         return self._pattern.fullmatch(str(target).lower()) is not None
+
+    def generate(self, name):
+        """Generate name that fits pattern. Failure -> empty"""
+        return ''
 
 
 def to_pattern(obj):

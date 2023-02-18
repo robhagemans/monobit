@@ -271,7 +271,7 @@ def save_all(pack, container, format, **kwargs):
         # generate unique filename
         name = font.name.replace(' ', '_')
         # FIXME: confusing format name and suffix
-        filename = container.unused_name(name, format)
+        filename = container.unused_name(f'{name}.{format}')
         stream = container.open(filename, 'w')
         try:
             with stream:
