@@ -43,7 +43,7 @@ def scriptable(
     - application of a font operation to all elements in a pack (unless pack_operation is set)
     - recorded history
 
-    script_args: addiitional arguments not given in annotations
+    script_args: additional arguments not given in annotations
     name: name of function for use in history
     record: record in history log
     pack_operation: function works on sequence of fonts

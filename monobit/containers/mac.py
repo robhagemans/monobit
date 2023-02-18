@@ -88,7 +88,7 @@ def load_double(instream, payload:str='mac', **kwargs):
 
 
 def _load_macforks(parser, instream, payload, **kwargs):
-    """Resource and data foork loader."""
+    """Resource and data fork loader."""
     name, data, rsrc = parser(instream)
     fonts = []
     for fork in rsrc, data:

@@ -420,7 +420,7 @@ _UNICODE_CHOICES = (
     # Unicode platform, full repertoire
     (0, 4),
     (0, 6),
-    # Windows platform, full repertoiire
+    # Windows platform, full repertoire
     (3, 10),
     # Unicode platform BMP
     (0, 3),

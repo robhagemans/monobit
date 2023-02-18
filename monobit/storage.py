@@ -297,7 +297,7 @@ class ConverterRegistry(MagicRegistry):
 
         name: unique name of the format
         magic: magic sequences for this format (no effect for savers)
-        patterns: filename patterns for this foormat
+        patterns: filename patterns for this format
         linked: loader/saver linked to saver/loader
         """
         register_magic = super().register

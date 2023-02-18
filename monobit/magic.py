@@ -254,7 +254,7 @@ class Glob(Pattern):
 
 
 class Regex(Pattern):
-    """Match filename against pattern using regular expressiion."""
+    """Match filename against pattern using regular expression."""
 
     def __init__(self, pattern):
         """Set up pattern matcher."""
