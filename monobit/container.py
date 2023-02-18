@@ -54,7 +54,7 @@ class Container:
         """Close the archive."""
         self.closed = True
 
-    def open(self, name, mode):
+    def open(self, name, mode, overwrite=False):
         """Open a binary stream in the container."""
         raise NotImplementedError
 
@@ -94,7 +94,7 @@ class Directory(Container):
             self._path.mkdir(parents=True, exist_ok=overwrite)
         super().__init__(mode, str(self._path))
 
-    def open(self, name, mode):
+    def open(self, name, mode, overwrite=False):
         """Open a stream in the container."""
         # mode in 'r', 'w'
         mode = mode[:1]
@@ -108,6 +108,11 @@ class Directory(Container):
         # return Directory  object instead of stream if the path is a directory
         if filepath.is_dir():
             return Directory(filepath)
+        if mode == 'w' and not overwrite and filepath.exists():
+            raise ValueError(
+                f'Overwriting existing file {str(filepath)}'
+                ' requires -overwrite to be set'
+            )
         file = open(filepath, mode + 'b')
         # provide name relative to directory container
         stream = Stream(

@@ -90,7 +90,7 @@ class ZipContainer(Container):
             if not _name.endswith('/')
         )
 
-    def open(self, name, mode):
+    def open(self, name, mode, overwrite=False):
         """Open a stream in the container."""
         # using posixpath for internal paths in the archive
         # as forward slash should always work, but backslash would fail on unix
@@ -104,6 +104,11 @@ class ZipContainer(Container):
             except KeyError as e:
                 raise FileNotFoundError(e) from e
         else:
+            if filename in self and not overwrite:
+                raise ValueError(
+                    f'Overwriting existing file {str(filename)}'
+                    ' requires -overwrite to be set'
+                )
             # stop BytesIO from being closed until we want it to be
             newfile = Stream(KeepOpen(io.BytesIO()), mode=mode, name=filename, where=self)
             if filename in self._files:
