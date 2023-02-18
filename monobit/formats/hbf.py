@@ -50,7 +50,7 @@ def load_hbf(instream):
     #     logging.warning('Number of characters found does not match CHARS declaration.')
     properties = _parse_properties(hbf_props, x_props)
     font = Font(glyphs, comment=comments, **properties)
-    # label glyphs with code scheme, if known and recoognised
+    # label glyphs with code scheme, if known and recognised
     font = font.label()
     return font
 
@@ -95,7 +95,7 @@ _HBF_CODE_SCHEMES_BASE = {
     'Big5 ETen': 'big5-eten',
     # CNS11643-92p1 to CNS11643-92p7
     # Chinese National Standard of ROC, containing 7 planes.
-    # complicatiion is that HBF defines 2-byte coding only
+    # complication is that HBF defines 2-byte coding only
     # so the plane number would need to be extracted from the HBF_CODE_SCHEME
     'CNS11643': 'cns11643',
     # > Unicode 1.1

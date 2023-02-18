@@ -257,7 +257,7 @@ def save_stream(pack, outstream, format='', **kwargs):
         raise ValueError(
             f"Format for output filename '{outstream.name}' is ambiguous: "
             f'specify -format with one of the values '
-            f'({", ".join(_s.name for _s in matching_savers)})'
+            f'({", ".join(_s.format for _s in matching_savers)})'
         )
     saver, *_ = matching_savers
     logging.info('Saving `%s` as %s.', outstream.name, saver.format)
@@ -271,7 +271,7 @@ def save_all(pack, container, format, **kwargs):
         # generate unique filename
         name = font.name.replace(' ', '_')
         # FIXME: confusing format name and suffix
-        filename = container.unused_name(name, format)
+        filename = container.unused_name(f'{name}.{format}')
         stream = container.open(filename, 'w')
         try:
             with stream:
@@ -297,7 +297,7 @@ class ConverterRegistry(MagicRegistry):
 
         name: unique name of the format
         magic: magic sequences for this format (no effect for savers)
-        patterns: filename patterns for this foormat
+        patterns: filename patterns for this format
         linked: loader/saver linked to saver/loader
         """
         register_magic = super().register

@@ -750,7 +750,7 @@ def _create_bmfont(
     # >  file   The texture file name.
     props['pages'] = []
     for page_id, page in enumerate(pages):
-        name = container.unused_name(f'{path}/{fontname}_{page_id}', imageformat)
+        name = container.unused_name(f'{path}/{fontname}_{page_id}.{imageformat}')
         with container.open(name, 'w') as imgfile:
             page.save(imgfile, format=imageformat)
         props['pages'].append({

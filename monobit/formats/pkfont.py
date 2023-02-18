@@ -45,7 +45,7 @@ _PK_PRE0 = be.Struct(
 # x[k] k-byte name string
 
 _PK_PRE1 = be.Struct(
-    # design size oof the file in 1/2**16 points
+    # design size of the file in 1/2**16 points
     ds='uint32',
     # checksum of the file
     cs='uint32',
@@ -244,7 +244,7 @@ def _read_chardef(first, instream):
 
 
 def _convert_char(char):
-    """Convert pkfont character definiition to glyph."""
+    """Convert pkfont character definition to glyph."""
     if char.dyn_f == 14:
         # plain bitmap data
         raster = Raster.from_bytes(

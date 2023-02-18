@@ -285,7 +285,7 @@ def _convert_nfnt(properties, glyphs, fontrec):
     #   (total) advance_width == (font) left_bearing + glyph.advance_width + (font) right_bearing
     # and (font) left_bearing = -kernMax
     # we need to adjust for kernMax on both left and right bearings - it is an
-    # offset only, not a tightening of the advance wiidth
+    # offset only, not a tightening of the advance width
     if not glyphs:
         return Font()
     glyphs = tuple(

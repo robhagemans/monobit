@@ -19,7 +19,7 @@ from ..magic import FileFormatError
 
 
 class _WrappedContainer:
-    """Wrapper for compressed coontainer objects, manages compressed stream."""
+    """Wrapper for compressed container objects, manages compressed stream."""
 
     def __init__(self, container, wrapping_stream):
         self._container = container

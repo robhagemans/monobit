@@ -60,6 +60,19 @@ class TestFormats(BaseTester):
         self.assertEqual(len(font.glyphs), 224)
         self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
+    def test_export_fnt_v1_proportional(self):
+        """Test exporting v1 fnt files."""
+        webby_mod, *_ = monobit.load(self.font_path / 'webby-small-kerned.yaff')
+        fnt_file = self.temp_path / 'webby.fnt'
+        monobit.save(webby_mod, fnt_file, format='win', version=1)
+        # read back
+        font, *_ = monobit.load(fnt_file)
+        self.assertEqual(len(font.glyphs), 96)
+        self.assertEqual(
+            font.get_glyph(b'A').reduce().as_text(),
+            webby_mod.get_glyph(b'A').reduce().as_text(),
+        )
+
     def test_export_fnt_v2(self):
         """Test exporting fnt files."""
         fnt_file = self.temp_path / '4x6.fnt'
@@ -243,6 +256,17 @@ class TestFormats(BaseTester):
         fnt_file = self.temp_path / '4x6.raw'
         monobit.save(self.fixed4x6, fnt_file, format='raw')
         font, *_ = monobit.load(fnt_file, cell=(4, 6), first_codepoint=31)
+        self.assertEqual(len(font.glyphs), 919)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+
+    def test_export_raw_wide(self):
+        """Test exporting raw binary files with wiide strike."""
+        fnt_file = self.temp_path / '4x6.raw'
+        monobit.save(self.fixed4x6, fnt_file, format='raw', strike_count=256)
+        font, *_ = monobit.load(
+            fnt_file, format='raw', cell=(4, 6), first_codepoint=31,
+            strike_count=256, count=919
+        )
         self.assertEqual(len(font.glyphs), 919)
         self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
@@ -473,6 +497,14 @@ class TestFormats(BaseTester):
         font, *_ = monobit.load(self.font_path / '4x6.hqx')
         self.assertEqual(len(font.glyphs), 195)
         self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+
+    macfonts = 'https://github.com/JohnDDuncanIII/macfonts/raw/master/Macintosh%20OS%201-6/Originals/'
+
+    def test_import_appledouble(self):
+        """Test importing appledouble files."""
+        file = ensure_asset(self.macfonts, 'Originals.zip')
+        font, *_ = monobit.load(file / '__MACOSX/._Times  9')
+        self.assertEqual(len(font.glyphs), 228)
 
     def test_import_iigs(self):
         """Test importing Apple IIgs font files."""
@@ -743,6 +775,16 @@ class TestFormats(BaseTester):
         self.assertEqual(len(font.glyphs), 256)
         self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed8x16_A)
 
+    # Optiks PCR
+
+    telparia = 'https://telparia.com/fileFormatSamples/font/pcrFont/'
+
+    def test_optiks(self):
+        """Test importing Optiks PCR files."""
+        file = ensure_asset(self.telparia, 'FONT1.PCR')
+        font, *_ = monobit.load(file)
+        self.assertEqual(len(font.glyphs), 256)
+
     # COM loaders
 
     def test_import_frapt(self):
@@ -763,9 +805,9 @@ class TestFormats(BaseTester):
         self.assertEqual(len(font.glyphs), 256)
         self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed8x16_A)
 
-    def test_import_frapt(self):
+    def test_import_fontedit(self):
         """Test importing FONTEDIT files."""
-        font, *_ = monobit.load(self.font_path / '8X16-FRA.COM')
+        font, *_ = monobit.load(self.font_path / '8X16-FE.COM')
         self.assertEqual(len(font.glyphs), 256)
         self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed8x16_A)
 
