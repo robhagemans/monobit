@@ -74,8 +74,9 @@ def load_single(instream, payload:str='mac', **kwargs):
     magic=(
         _APPLEDOUBLE_MAGIC.to_bytes(4, 'big'),
     ),
-    #'*.rsrc',
-    patterns=('*.adf',),
+    # .adf, .rsrc - per http://fileformats.archiveteam.org/wiki/AppleDouble
+    # ._<name> is OS X representation
+    patterns=('*.adf', '*.rsrc', '._*'),
     wrapper=True,
 )
 def load_double(instream, payload:str='mac', **kwargs):
