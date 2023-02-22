@@ -14,7 +14,7 @@ from .constants import VERSION, CONVERTER_NAME
 from .font import Font
 from .pack import Pack
 from .streams import Stream, StreamBase, KeepOpen
-from .container import Container, Directory
+from .container import Directory
 from .magic import MagicRegistry, FileFormatError, maybe_text
 from .scripting import scriptable, ScriptArgs, ARG_PREFIX
 from .basetypes import Any
@@ -37,12 +37,9 @@ def open_location(location, mode, overwrite=False):
         container = Directory()
         with container:
             with open_stream_or_container(container, location, mode, overwrite) as (soc, subpath):
-                assert not isinstance(soc, Container)
                 yield soc, subpath
     elif isinstance(location, StreamBase):
         yield location, ''
-    elif isinstance(location, Container):
-        raise ValueError('location must be stream or path')
     else:
         # we didn't open the file, so we don't own it
         # we neeed KeepOpen for when the yielded object goes out of scope in the caller
@@ -202,7 +199,6 @@ def save(
         # these may come from filesystem names using 'surrogateescape'
         sys.stdout.reconfigure(errors='replace')
     with open_location(outfile, 'w', overwrite=overwrite) as (stream, subpath):
-        assert not isinstance(stream, Directory)
         save_stream(pack, stream, format=format, subpath=subpath, **kwargs)
     return pack_or_font
 
