@@ -148,7 +148,7 @@ def load_stream(instream, format='', **kwargs):
     """Load fonts from open stream."""
     # special case - directory or container object supplied
     if hasattr(instream, 'open'):
-        return load_all(instream, format=format)
+        return load_all(instream, format=format, **kwargs)
     # stream supplied and link to member - only works if stream holds a container
     # identify file type
     fitting_loaders = loaders.get_for(instream, format=format)
@@ -244,7 +244,7 @@ def save_stream(pack, outstream, format='', **kwargs):
     """Save fonts to an open stream."""
     # special case - directory or container object supplied
     if hasattr(outstream, 'open'):
-        return save_all(pack, outstream, format=format)
+        return save_all(pack, outstream, format=format, **kwargs)
     matching_savers = savers.get_for(outstream, format=format)
     if not matching_savers:
         if format:

@@ -30,9 +30,9 @@ def load_tar(instream):
         return load_all(container, format='')
 
 @savers.register(linked=load_tar)
-def save_tar(fonts, outstream):
+def save_tar(fonts, outstream, payload:str=''):
     with TarContainer(outstream, 'w') as container:
-        return save_all(fonts, container, format='')
+        return save_all(fonts, container, format=payload)
 
 @containers.register(linked=load_tar, record=False)
 def open_tar(instream, mode='r', *, overwrite=False):
