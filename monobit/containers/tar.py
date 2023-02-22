@@ -13,7 +13,10 @@ from pathlib import Path, PurePosixPath
 
 from ..container import Container
 from ..streams import Stream, KeepOpen
-from ..storage import loaders, savers, containers, load_all, save_all
+from ..storage import (
+    loaders, savers, load_all, save_all,
+    open_stream_or_container, load_stream, save_stream
+)
 from ..magic import FileFormatError, Magic
 
 
@@ -25,18 +28,22 @@ from ..magic import FileFormatError, Magic
     ),
     patterns=('*.tar',),
 )
-def load_tar(instream):
+def load_tar(instream, subpath:str='', payload:str='', **kwargs):
     with TarContainer(instream) as container:
-        return load_all(container, format='')
+        if not subpath:
+            return load_all(container, format=payload, **kwargs)
+        with open_stream_or_container(container, subpath, mode='r', overwrite=False) as (stream, subpath):
+            return load_stream(stream, format=payload, subpath=subpath, **kwargs)
+
 
 @savers.register(linked=load_tar)
-def save_tar(fonts, outstream, payload:str=''):
+def save_tar(fonts, outstream, subpath:str='', payload:str='', **kwargs):
     with TarContainer(outstream, 'w') as container:
-        return save_all(fonts, container, format=payload)
+        if not subpath:
+            return save_all(fonts, container, format=payload, **kwargs)
+        with open_stream_or_container(container, subpath, mode='w', overwrite=False) as (stream, subpath):
+            return save_stream(fonts, stream, format=payload, subpath=subpath, **kwargs)
 
-@containers.register(linked=load_tar, record=False)
-def open_tar(instream, mode='r', *, overwrite=False):
-    return TarContainer(instream, mode, overwrite=overwrite)
 
 
 class TarContainer(Container):

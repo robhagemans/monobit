@@ -724,7 +724,7 @@ def _create_bmfont(
     ):
     """Create a bmfont package."""
     container = outfile.where
-    path = Path('.') / font.family
+    path = Path(outfile.name).parent / font.family
     fontname = font.name.replace(' ', '_')
     encoding = font.encoding
     if not charmaps.is_unicode(encoding):

@@ -80,9 +80,9 @@ class Directory(Container):
         """Create directory wrapper."""
         # if empty path, this refers to the whole filesystem
         if not path:
-            self._path = ''
+            self._path = Path('')
         elif isinstance(path, Directory):
-            self._path = path._path
+            self._path = Path(path._path)
         else:
             self._path = Path(path)
         # mode really should just be 'r' or 'w'

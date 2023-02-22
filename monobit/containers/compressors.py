@@ -13,40 +13,8 @@ import lzma
 import bz2
 
 from ..storage import loaders, savers, load_stream, save_stream
-from ..storage import open_container, containers
 from ..streams import Stream
 from ..magic import FileFormatError
-
-
-class _WrappedContainer:
-    """Wrapper for compressed container objects, manages compressed stream."""
-
-    def __init__(self, container, wrapping_stream):
-        self._container = container
-        self._stream = wrapping_stream
-
-    def close(self):
-        """Ensure wrapping stream is closed."""
-        self._container.close()
-        self._stream.close()
-
-    def __enter__(self):
-        return self._container.__enter__()
-
-    def __exit__(self, *args, **kwargs):
-        self._container.__exit__(*args, **kwargs)
-        self._stream.close()
-
-    def __iter__(self):
-        return self._container.__iter__()
-
-    def __contains__(self, *args, **kwargs):
-        return self._container.__contains__(*args, **kwargs)
-
-    def __getattr__(self, attr):
-        if attr.startswith('_'):
-            raise AttributeError(attr)
-        return getattr(self._container, attr)
 
 
 class Compressor:
@@ -116,16 +84,6 @@ class Compressor:
                 return save_stream(fonts, wrapped, format=payload, **kwargs)
 
     @classmethod
-    def open(cls, stream, mode, **kwargs):
-        """Open container on compressed stream."""
-        if mode == 'r':
-            cls._check_magic(stream)
-        wrapped = cls._get_payload_stream(stream, mode)
-        with cls._translate_errors():
-            container = open_container(wrapped, mode, **kwargs)
-        return _WrappedContainer(container, stream)
-
-    @classmethod
     def register(cls):
         loaders.register(
             name=cls.name, magic=(cls.magic,), patterns=cls.patterns, wrapper=True
@@ -133,9 +91,6 @@ class Compressor:
         savers.register(
             name=cls.name, magic=(cls.magic,), patterns=cls.patterns, wrapper=True
         )(cls.save)
-        containers.register(
-            name=cls.name, magic=(cls.magic,), patterns=cls.patterns, wrapper=True
-        )(cls.open)
 
 
 class GzipCompressor(Compressor):
