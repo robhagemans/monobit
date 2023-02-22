@@ -303,3 +303,24 @@ class ConverterRegistry(MagicRegistry):
 
 loaders = ConverterRegistry('load', DEFAULT_TEXT_FORMAT, DEFAULT_BINARY_FORMAT)
 savers = ConverterRegistry('save', DEFAULT_TEXT_FORMAT)
+
+
+
+@loaders.register(
+    name='dir',
+)
+def load_dir(instream, subpath:str='', payload:str='', **kwargs):
+    with Directory(instream) as container:
+        if not subpath:
+            return load_all(container, format=payload, **kwargs)
+        with open_stream_or_container(container, subpath, mode='r', overwrite=False) as (stream, subpath):
+            return load_stream(stream, format=payload, subpath=subpath, **kwargs)
+
+
+@savers.register(linked=load_dir)
+def save_zip(fonts, outstream, subpath:str='', payload:str='', **kwargs):
+    with Directory(outstream, 'w') as container:
+        if not subpath:
+            return save_all(fonts, container, format=payload, **kwargs)
+        with open_stream_or_container(container, subpath, mode='w', overwrite=False) as (stream, subpath):
+            return save_stream(fonts, stream, format=payload, subpath=subpath, **kwargs)

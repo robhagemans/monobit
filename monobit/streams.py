@@ -6,6 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import io
+import os
 import sys
 import logging
 from pathlib import Path
@@ -21,7 +22,7 @@ def get_stringio(string):
 
 
 class StreamBase:
-    """Shared base for stream and container."""
+    """Base class for streams."""
 
     def __init__(self, stream, mode='', name='', where=None):
         self._stream = stream
@@ -48,7 +49,7 @@ class StreamBase:
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        """Ensure archive is closed and essential records written."""
+        """Ensure stream is closed."""
         if exc_type == BrokenPipeError:
             return True
         self._refcount -= 1
@@ -95,7 +96,7 @@ class KeepOpen(StreamWrapper):
 class Stream(StreamWrapper):
     """Manage file resource."""
 
-    def __init__(self, file, mode, *, name='', where=None, overwrite=False):
+    def __init__(self, file, mode, *, name='', where=None):
         """
         Ensure file is a stream of the right type, open or wrap if necessary.
 
@@ -104,9 +105,8 @@ class Stream(StreamWrapper):
         where: embedding container
         """
         if not file:
-            raise ValueError('No file name, path or stream provided.')
+            raise ValueError('No stream provided.')
         mode = mode[:1]
-        # if a path is provided, open a (binary) stream
         if isinstance(file, (str, Path)):
             raise ValueError('Argument `file` must be a Python file or stream-like object.')
         # initialise wrapper
@@ -199,6 +199,26 @@ class Stream(StreamWrapper):
         except EnvironmentError:
             pass
 
+
+class DirectoryStream(Stream):
+    """Fake stream to represent directory."""
+
+    def __init__(self, file, mode, *, name='', where=None):
+        if not file:
+            raise ValueError('No stream provided.')
+        mode = mode[:1]
+        if isinstance(file, DirectoryStream):
+            file = file.name
+        if not isinstance(file, (str, Path)):
+            raise TypeError(
+                'DirectoryStream initialiser must be DirectoryStream, Path or str.'
+            )
+        dummystream = open(os.devnull, mode + 'b')
+        # initialise wrapper
+        super().__init__(dummystream, mode=mode, name=name, where=where)
+
+
+###############################################################################
 
 def is_binary(stream):
     """Check if stream is binary."""

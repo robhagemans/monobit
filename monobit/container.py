@@ -10,7 +10,7 @@ import logging
 import itertools
 from pathlib import Path
 
-from .streams import Stream
+from .streams import Stream, DirectoryStream
 
 
 class Container:
@@ -81,6 +81,9 @@ class Directory(Container):
         # if empty path, this refers to the whole filesystem
         if not path:
             self._path = Path('')
+        elif isinstance(path, DirectoryStream):
+            # directory 'streams'
+            self._path = Path(path.name)
         elif isinstance(path, Directory):
             self._path = Path(path._path)
         else:
@@ -105,19 +108,21 @@ class Directory(Container):
             (self._path / path).mkdir(parents=True, exist_ok=True)
         logging.debug("Opening file `%s` for mode '%s'.", name, mode)
         filepath = Path(self._path / pathname)
-        # return Directory  object instead of stream if the path is a directory
-        if filepath.is_dir():
-            return Directory(filepath)
         if mode == 'w' and not overwrite and filepath.exists():
             raise ValueError(
                 f'Overwriting existing file {str(filepath)}'
                 ' requires -overwrite to be set'
             )
+        # return DirectoryStream if the path is a directory
+        if filepath.is_dir():
+            return DirectoryStream(
+                filepath, name=str(pathname), mode=mode, where=self
+            )
         file = open(filepath, mode + 'b')
         # provide name relative to directory container
         stream = Stream(
             file, mode=mode,
-            name=str(pathname), overwrite=True,
+            name=str(pathname),
             where=self,
         )
         return stream

@@ -50,7 +50,7 @@ class ZipContainer(Container):
         mode = mode[:1]
         super().__init__(mode, file.name)
         # reading zipfile needs a seekable stream, drain to buffer if needed
-        self._stream = Stream(file, mode, overwrite=overwrite)
+        self._stream = Stream(file, mode)
         # create the zipfile
         try:
             self._zip = zipfile.ZipFile(

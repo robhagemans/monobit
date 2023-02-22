@@ -55,7 +55,7 @@ class TarContainer(Container):
         mode = mode[:1]
         super().__init__(mode, file.name)
         # reading tarfile needs a seekable stream, drain to buffer if needed
-        self._stream = Stream(file, mode, overwrite=overwrite)
+        self._stream = Stream(file, mode)
         # create the tarfile
         try:
             self._tarfile = tarfile.open(fileobj=self._stream, mode=mode)
