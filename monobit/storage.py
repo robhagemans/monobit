@@ -49,11 +49,7 @@ def open_location(location, mode, overwrite=False):
 @contextmanager
 def open_stream_or_container(container, path, mode, overwrite):
     """Open stream or sub-container given container and path."""
-    head, tail = _split_path(container, path)
-    if mode == 'w':
-        if str(head) == '.':
-            head2, tail = _split_path_suffix(tail)
-            head /= head2
+    head, tail = _find_next_node(container, path, mode)
     if str(head) == '.':
         # base condition
         next_container = None
@@ -84,6 +80,16 @@ def open_stream_or_container(container, path, mode, overwrite):
         with next_container:
             with open_stream_or_container(next_container, tail, mode, overwrite) as soc:
                 yield soc
+
+
+def _find_next_node(container, path, mode):
+    """Find the next node (container or file) in the path."""
+    head, tail = _split_path(container, path)
+    if mode == 'w':
+        if str(head) == '.':
+            head2, tail = _split_path_suffix(tail)
+            head /= head2
+    return head, tail
 
 
 def _split_path(container, path):
