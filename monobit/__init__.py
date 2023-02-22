@@ -13,7 +13,7 @@ from .constants import VERSION as __version__
 from .pack import Pack, operations as _pack_operations
 from .font import Font, operations as _operations
 from .glyph import Glyph
-from .storage import load, save, loaders, savers, open_location
+from .storage import load, save, loaders, savers
 from .magic import FileFormatError
 from .encoding import charmaps, encoder
 from .taggers import tagmaps
