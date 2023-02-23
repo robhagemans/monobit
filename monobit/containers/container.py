@@ -7,10 +7,11 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 import itertools
+from pathlib import Path
+from contextlib import contextmanager
 
 from ..storage import (
-    loaders, savers, load_all, save_all,
-    open_stream_or_container, load_stream, save_stream
+    loaders, savers, load_all, save_all, load_stream, save_stream
 )
 
 
@@ -59,6 +60,20 @@ class Container:
         """Open a binary stream in the container."""
         raise NotImplementedError
 
+    @contextmanager
+    def _open_stream_at(self, path, mode, overwrite):
+        """Open stream recursively an container(s) given path."""
+        head, tail = find_next_node(self, path, mode)
+        if str(head) == '.':
+            # no next node found, path is leaf
+            # this'll raise a FileNotFoundError if we're reading
+            stream = self.open(tail, mode, overwrite)
+            tail = ''
+        else:
+            stream = self.open(head, mode, overwrite)
+        with stream:
+            yield stream, tail
+
     def unused_name(self, name):
         """Generate unique name for container file."""
         if name not in self:
@@ -77,8 +92,8 @@ class Container:
         with cls(instream) as container:
             if not subpath:
                 return load_all(container, **kwargs)
-            with open_stream_or_container(
-                        container, subpath, mode='r', overwrite=False
+            with container._open_stream_at(
+                        subpath, mode='r', overwrite=False
                     ) as (stream, subpath):
                 return load_stream(stream, subpath=subpath, **kwargs)
 
@@ -88,8 +103,8 @@ class Container:
         with cls(outstream, 'w') as container:
             if not subpath:
                 return save_all(fonts, container, **kwargs)
-            with open_stream_or_container(
-                        container, subpath, mode='w', overwrite=False
+            with container._open_stream_at(
+                        subpath, mode='w', overwrite=False
                     ) as (stream, subpath):
                 return save_stream(fonts, stream, subpath=subpath, **kwargs)
 
@@ -97,3 +112,32 @@ class Container:
     def register(cls, name, magic=(), patterns=()):
         loaders.register(name, magic, patterns, wrapper=True)(cls.load)
         savers.register(name, magic, patterns, wrapper=True)(cls.save)
+
+
+def find_next_node(container, path, mode):
+    """Find the next node (container or file) in the path."""
+    head, tail = _split_path(container, path)
+    if mode == 'w':
+        #if str(head) == '.':
+        head2, tail = _split_path_suffix(tail)
+        head /= head2
+    return head, tail
+
+def _split_path(container, path):
+    """Pare back path until an existing ancestor is found."""
+    path = Path(path)
+    for head in (path, *path.parents):
+        if head in container:
+            tail = path.relative_to(head)
+            return head, tail
+    # nothing exists
+    return Path('.'), path
+
+def _split_path_suffix(path):
+    """Pare forward path until a suffix is found."""
+    for head in reversed((path, *path.parents)):
+        if head.suffixes:
+            tail = path.relative_to(head)
+            return head, tail
+    # no suffix
+    return path, Path('.')

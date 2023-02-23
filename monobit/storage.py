@@ -45,52 +45,6 @@ def open_location(location, mode, overwrite=False):
         yield Stream(KeepOpen(location), mode=mode), ''
 
 
-@contextmanager
-def open_stream_or_container(container, path, mode, overwrite):
-    """Open stream or sub-container given container and path."""
-    head, tail = find_next_node(container, path, mode)
-    if str(head) == '.':
-        # no next node found, path is leaf
-        # this'll raise a FileNotFoundError if we're reading
-        stream = container.open(tail, mode, overwrite)
-        tail = ''
-    else:
-        stream = container.open(head, mode, overwrite)
-    with stream:
-        yield stream, tail
-
-
-def find_next_node(container, path, mode):
-    """Find the next node (container or file) in the path."""
-    head, tail = _split_path(container, path)
-    if mode == 'w':
-        #if str(head) == '.':
-        head2, tail = _split_path_suffix(tail)
-        head /= head2
-    return head, tail
-
-
-def _split_path(container, path):
-    """Pare back path until an existing ancestor is found."""
-    path = Path(path)
-    for head in (path, *path.parents):
-        if head in container:
-            tail = path.relative_to(head)
-            return head, tail
-    # nothing exists
-    return Path('.'), path
-
-
-def _split_path_suffix(path):
-    """Pare forward path until a suffix is found."""
-    for head in reversed((path, *path.parents)):
-        if head.suffixes:
-            tail = path.relative_to(head)
-            return head, tail
-    # no suffix
-    return path, Path('.')
-
-
 ##############################################################################
 # loading
 
