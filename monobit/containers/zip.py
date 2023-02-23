@@ -52,7 +52,9 @@ class ZipContainer(Container):
                 logging.debug('Writing out `%s` to zip container `%s`.', file.name, self.name)
                 bytearray = file.getvalue()
                 file.close()
-                self._zip.writestr(file.name, bytearray)
+                self._zip.writestr(
+                    str(PurePosixPath(self._root) / file.name), bytearray
+                )
         try:
             self._zip.close()
         except EnvironmentError as e:
@@ -80,7 +82,10 @@ class ZipContainer(Container):
         logging.debug('Opening file `%s` on zip container `%s`.', filename, self.name)
         if mode == 'r':
             try:
-                return Stream(self._zip.open(filename, mode), mode=mode, where=self)
+                return Stream(
+                    self._zip.open(filename, mode),
+                    mode=mode, where=self, name=name,
+                )
             except KeyError as e:
                 raise FileNotFoundError(e) from e
         else:
@@ -90,7 +95,7 @@ class ZipContainer(Container):
                     ' requires -overwrite to be set'
                 )
             # stop BytesIO from being closed until we want it to be
-            newfile = Stream(KeepOpen(io.BytesIO()), mode=mode, name=filename, where=self)
+            newfile = Stream(KeepOpen(io.BytesIO()), mode=mode, name=name, where=self)
             if filename in self._files:
                 logging.warning('Creating multiple files of the same name `%s`.', filename)
             self._files.append(newfile)

@@ -48,8 +48,10 @@ class TarContainer(Container):
         if self.mode == 'w' and not self.closed:
             for file in self._files:
                 name = file.name
-                logging.debug('Writing out `%s` to tar container `%s`.', name, self.name)
-                tinfo = tarfile.TarInfo(name)
+                logging.debug(
+                    'Writing out `%s` to tar container `%s`.', name, self.name
+                )
+                tinfo = tarfile.TarInfo(str(PurePosixPath(self._root) / name))
                 tinfo.mtime = time.time()
                 tinfo.size = len(file.getvalue())
                 file.seek(0)
@@ -81,13 +83,13 @@ class TarContainer(Container):
 
     def open(self, name, mode, overwrite=False):
         """Open a stream in the container."""
-        name = str(PurePosixPath(self._root) / name)
+        filename = str(PurePosixPath(self._root) / name)
         mode = mode[:1]
         # always open as binary
         logging.debug('Opening file `%s` on tar container `%s`.', name, self.name)
         if mode == 'r':
             try:
-                file = self._tarfile.extractfile(name)
+                file = self._tarfile.extractfile(filename)
             except KeyError as e:
                 raise FileNotFoundError(e) from e
             # .name is not writeable, so we need to wrap

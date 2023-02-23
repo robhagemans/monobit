@@ -63,8 +63,9 @@ def load(infile:Any='', *, format:str='', **kwargs):
 
 def load_stream(instream, format='', subpath='', **kwargs):
     """Load fonts from open stream."""
+    new_format, _, outer = format.rpartition('.')
     # identify file type
-    fitting_loaders = loaders.get_for(instream, format=format)
+    fitting_loaders = loaders.get_for(instream, format=outer)
     if not fitting_loaders:
         message = f'Cannot load `{instream.name}`'
         if format:
@@ -74,8 +75,7 @@ def load_stream(instream, format='', subpath='', **kwargs):
         instream.seek(0)
         logging.info('Loading `%s` as %s', instream.name, loader.format)
         # update format name, removing the most recently found wrapper format
-        new_format, _, last = format.rpartition('.')
-        if last == loader.format:
+        if outer == loader.format:
             format = new_format
         # only provide subpath and format args if non-empty
         if Path(subpath) != Path('.'):
@@ -164,7 +164,8 @@ def save(
 
 def save_stream(pack, outstream, format='', subpath='', **kwargs):
     """Save fonts to an open stream."""
-    matching_savers = savers.get_for(outstream, format=format)
+    new_format, _, outer = format.rpartition('.')
+    matching_savers = savers.get_for(outstream, format=outer)
     if not matching_savers:
         if format:
             raise ValueError(f'Format specification `{format}` not recognised')
@@ -187,8 +188,7 @@ def save_stream(pack, outstream, format='', subpath='', **kwargs):
             'Saving `%s` on `%s` as %s.', subpath, outstream.name, saver.format
         )
     # update format name, removing the most recently found wrapper format
-    new_format, _, last = format.rpartition('.')
-    if last == saver.format:
+    if outer == saver.format:
         format = new_format
     # only provide subpath and format args if non-empty
     if Path(subpath) != Path('.'):
