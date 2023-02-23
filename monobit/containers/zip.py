@@ -12,34 +12,7 @@ from pathlib import Path, PurePosixPath
 
 from .container import Container
 from ..streams import KeepOpen, Stream
-from ..storage import (
-    loaders, savers, load_all, save_all,
-    open_stream_or_container, load_stream, save_stream
-)
 from ..magic import FileFormatError
-
-
-@loaders.register(
-    name='zip',
-    magic=(b'PK\x03\x04',),
-    patterns=('*.zip',),
-    wrapper=True,
-)
-def load_zip(instream, subpath:str='', payload:str='', **kwargs):
-    with ZipContainer(instream) as container:
-        if not subpath:
-            return load_all(container, format=payload, **kwargs)
-        with open_stream_or_container(container, subpath, mode='r', overwrite=False) as (stream, subpath):
-            return load_stream(stream, format=payload, subpath=subpath, **kwargs)
-
-
-@savers.register(linked=load_zip, wrapper=True)
-def save_zip(fonts, outstream, subpath:str='', payload:str='', **kwargs):
-    with ZipContainer(outstream, 'w') as container:
-        if not subpath:
-            return save_all(fonts, container, format=payload, **kwargs)
-        with open_stream_or_container(container, subpath, mode='w', overwrite=False) as (stream, subpath):
-            return save_stream(fonts, stream, format=payload, subpath=subpath, **kwargs)
 
 
 class ZipContainer(Container):
@@ -122,3 +95,10 @@ class ZipContainer(Container):
                 logging.warning('Creating multiple files of the same name `%s`.', filename)
             self._files.append(newfile)
             return newfile
+
+
+ZipContainer.register(
+    name='zip',
+    magic=(b'PK\x03\x04',),
+    patterns=('*.zip',),
+)

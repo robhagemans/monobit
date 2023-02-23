@@ -244,7 +244,7 @@ def save_stream(pack, outstream, format='', subpath='', **kwargs):
     saver(pack, outstream, **kwargs)
 
 
-def save_all(pack, container, format, **kwargs):
+def save_all(pack, container, format=DEFAULT_TEXT_FORMAT, **kwargs):
     """Save fonts to a container."""
     logging.info('Writing all to `%s`.', container.name)
     for font in pack:

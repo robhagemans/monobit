@@ -8,6 +8,11 @@ licence: https://opensource.org/licenses/MIT
 import logging
 import itertools
 
+from ..storage import (
+    loaders, savers, load_all, save_all,
+    open_stream_or_container, load_stream, save_stream
+)
+
 
 class Container:
     """Base class for container types."""
@@ -65,3 +70,30 @@ class Container:
                 filename = '{}.{}'.format(filename, suffix)
             if filename not in self:
                 return filename
+
+    @classmethod
+    def load(cls, instream, subpath:str='', **kwargs):
+        """Load fonts from container."""
+        with cls(instream) as container:
+            if not subpath:
+                return load_all(container, **kwargs)
+            with open_stream_or_container(
+                        container, subpath, mode='r', overwrite=False
+                    ) as (stream, subpath):
+                return load_stream(stream, subpath=subpath, **kwargs)
+
+    @classmethod
+    def save(cls, fonts, outstream, subpath:str='', **kwargs):
+        """Save fonts to container."""
+        with cls(outstream, 'w') as container:
+            if not subpath:
+                return save_all(fonts, container, **kwargs)
+            with open_stream_or_container(
+                        container, subpath, mode='w', overwrite=False
+                    ) as (stream, subpath):
+                return save_stream(fonts, stream, subpath=subpath, **kwargs)
+
+    @classmethod
+    def register(cls, name, magic=(), patterns=()):
+        loaders.register(name, magic, patterns, wrapper=True)(cls.load)
+        savers.register(name, magic, patterns, wrapper=True)(cls.save)

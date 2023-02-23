@@ -13,38 +13,7 @@ from pathlib import Path, PurePosixPath
 
 from .container import Container
 from ..streams import Stream, KeepOpen
-from ..storage import (
-    loaders, savers, load_all, save_all,
-    open_stream_or_container, load_stream, save_stream
-)
 from ..magic import FileFormatError, Magic
-
-
-@loaders.register(
-    name='tar',
-    # maybe
-    magic=(
-        Magic.offset(257) + b'ustar',
-    ),
-    patterns=('*.tar',),
-    wrapper=True,
-)
-def load_tar(instream, subpath:str='', payload:str='', **kwargs):
-    with TarContainer(instream) as container:
-        if not subpath:
-            return load_all(container, format=payload, **kwargs)
-        with open_stream_or_container(container, subpath, mode='r', overwrite=False) as (stream, subpath):
-            return load_stream(stream, format=payload, subpath=subpath, **kwargs)
-
-
-@savers.register(linked=load_tar, wrapper=True)
-def save_tar(fonts, outstream, subpath:str='', payload:str='', **kwargs):
-    with TarContainer(outstream, 'w') as container:
-        if not subpath:
-            return save_all(fonts, container, format=payload, **kwargs)
-        with open_stream_or_container(container, subpath, mode='w', overwrite=False) as (stream, subpath):
-            return save_stream(fonts, stream, format=payload, subpath=subpath, **kwargs)
-
 
 
 class TarContainer(Container):
@@ -135,3 +104,13 @@ class TarContainer(Container):
                 logging.warning('Creating multiple files of the same name `%s`.', name)
             self._files.append(newfile)
             return newfile
+
+
+TarContainer.register(
+    name='tar',
+    # maybe
+    magic=(
+        Magic.offset(257) + b'ustar',
+    ),
+    patterns=('*.tar',),
+)

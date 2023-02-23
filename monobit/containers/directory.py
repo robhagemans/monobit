@@ -10,32 +10,7 @@ import logging
 from pathlib import Path
 
 from ..streams import Stream, DirectoryStream
-from ..storage import (
-    loaders, savers, load_all, save_all,
-    open_stream_or_container, load_stream, save_stream
-)
 from .container import Container
-
-
-@loaders.register(
-    name='dir',
-    wrapper=True,
-)
-def load_dir(instream, subpath:str='', **kwargs):
-    with Directory(instream) as container:
-        if not subpath:
-            return load_all(container, **kwargs)
-        with open_stream_or_container(container, subpath, mode='r', overwrite=False) as (stream, subpath):
-            return load_stream(stream, subpath=subpath, **kwargs)
-
-
-@savers.register(linked=load_dir, wrapper=True)
-def save_dir(fonts, outstream, subpath:str='', **kwargs):
-    with Directory(outstream, 'w') as container:
-        if not subpath:
-            return save_all(fonts, container, **kwargs)
-        with open_stream_or_container(container, subpath, mode='w', overwrite=False) as (stream, subpath):
-            return save_stream(fonts, stream, subpath=subpath, **kwargs)
 
 
 class Directory(Container):
@@ -113,3 +88,6 @@ class Directory(Container):
 
     def __repr__(self):
         return f"{type(self).__name__}('{self._path}')"
+
+
+Directory.register(name='dir')
