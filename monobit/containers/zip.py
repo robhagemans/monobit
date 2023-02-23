@@ -23,6 +23,7 @@ from ..magic import FileFormatError
     name='zip',
     magic=(b'PK\x03\x04',),
     patterns=('*.zip',),
+    wrapper=True,
 )
 def load_zip(instream, subpath:str='', payload:str='', **kwargs):
     with ZipContainer(instream) as container:
@@ -32,7 +33,7 @@ def load_zip(instream, subpath:str='', payload:str='', **kwargs):
             return load_stream(stream, format=payload, subpath=subpath, **kwargs)
 
 
-@savers.register(linked=load_zip)
+@savers.register(linked=load_zip, wrapper=True)
 def save_zip(fonts, outstream, subpath:str='', payload:str='', **kwargs):
     with ZipContainer(outstream, 'w') as container:
         if not subpath:

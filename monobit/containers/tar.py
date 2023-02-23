@@ -27,6 +27,7 @@ from ..magic import FileFormatError, Magic
         Magic.offset(257) + b'ustar',
     ),
     patterns=('*.tar',),
+    wrapper=True,
 )
 def load_tar(instream, subpath:str='', payload:str='', **kwargs):
     with TarContainer(instream) as container:
@@ -36,7 +37,7 @@ def load_tar(instream, subpath:str='', payload:str='', **kwargs):
             return load_stream(stream, format=payload, subpath=subpath, **kwargs)
 
 
-@savers.register(linked=load_tar)
+@savers.register(linked=load_tar, wrapper=True)
 def save_tar(fonts, outstream, subpath:str='', payload:str='', **kwargs):
     with TarContainer(outstream, 'w') as container:
         if not subpath:
