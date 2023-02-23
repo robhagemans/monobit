@@ -13,8 +13,7 @@ from contextlib import contextmanager
 from .constants import VERSION, CONVERTER_NAME
 from .font import Font
 from .pack import Pack
-from .streams import Stream, StreamBase, KeepOpen
-from .container import Directory
+from .streams import Stream, StreamBase, KeepOpen, DirectoryStream
 from .magic import MagicRegistry, FileFormatError, maybe_text
 from .scripting import scriptable, ScriptArgs, ARG_PREFIX
 from .basetypes import Any
@@ -34,10 +33,10 @@ def open_location(location, mode, overwrite=False):
     if isinstance(location, str):
         location = Path(location)
     if isinstance(location, Path):
-        container = Directory()
-        with container:
-            with open_stream_or_container(container, location, mode, overwrite) as (soc, subpath):
-                yield soc, subpath
+        root = Path(location.root)
+        subpath = location.relative_to(root)
+        with DirectoryStream(root, mode) as stream:
+            yield stream, subpath
     elif isinstance(location, StreamBase):
         yield location, ''
     else:
@@ -120,11 +119,17 @@ def load_stream(instream, format='', subpath='', **kwargs):
     for loader in fitting_loaders:
         instream.seek(0)
         logging.info('Loading `%s` as %s', instream.name, loader.format)
+        # update format name, removing the most recently found wrapper format
+        new_format, _, last = format.rpartition('.')
+        if last == loader.format:
+            format = new_format
+        # only provide subpath and format args if non-empty
+        if Path(subpath) != Path('.'):
+            kwargs['subpath'] = subpath
+        if format:
+            kwargs['format'] = format
         try:
-            if subpath and str(subpath) != '.':
-                fonts = loader(instream, subpath=subpath, **kwargs)
-            else:
-                fonts = loader(instream, **kwargs)
+            fonts = loader(instream, **kwargs)
         except FileFormatError as e:
             logging.debug(e)
             continue
@@ -221,11 +226,22 @@ def save_stream(pack, outstream, format='', subpath='', **kwargs):
             f'({", ".join(_s.format for _s in matching_savers)})'
         )
     saver, *_ = matching_savers
-    logging.info('Saving `%s` as %s.', outstream.name, saver.format)
-    if subpath and str(subpath) != '.':
-        saver(pack, outstream, subpath=subpath, **kwargs)
+    if Path(subpath) == Path('.'):
+        logging.info('Saving `%s` as %s.', outstream.name, saver.format)
     else:
-        saver(pack, outstream, **kwargs)
+        logging.info(
+            'Saving `%s` on `%s` as %s.', subpath, outstream.name, saver.format
+        )
+    # update format name, removing the most recently found wrapper format
+    new_format, _, last = format.rpartition('.')
+    if last == saver.format:
+        format = new_format
+    # only provide subpath and format args if non-empty
+    if Path(subpath) != Path('.'):
+        kwargs['subpath'] = subpath
+    if format:
+        kwargs['format'] = format
+    saver(pack, outstream, **kwargs)
 
 
 def save_all(pack, container, format, **kwargs):
@@ -299,24 +315,3 @@ class ConverterRegistry(MagicRegistry):
 
 loaders = ConverterRegistry('load', DEFAULT_TEXT_FORMAT, DEFAULT_BINARY_FORMAT)
 savers = ConverterRegistry('save', DEFAULT_TEXT_FORMAT)
-
-
-
-@loaders.register(
-    name='dir',
-)
-def load_dir(instream, subpath:str='', payload:str='', **kwargs):
-    with Directory(instream) as container:
-        if not subpath:
-            return load_all(container, format=payload, **kwargs)
-        with open_stream_or_container(container, subpath, mode='r', overwrite=False) as (stream, subpath):
-            return load_stream(stream, format=payload, subpath=subpath, **kwargs)
-
-
-@savers.register(linked=load_dir)
-def save_zip(fonts, outstream, subpath:str='', payload:str='', **kwargs):
-    with Directory(outstream, 'w') as container:
-        if not subpath:
-            return save_all(fonts, container, format=payload, **kwargs)
-        with open_stream_or_container(container, subpath, mode='w', overwrite=False) as (stream, subpath):
-            return save_stream(fonts, stream, format=payload, subpath=subpath, **kwargs)

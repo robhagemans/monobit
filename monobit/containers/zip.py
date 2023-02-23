@@ -10,7 +10,7 @@ import logging
 import zipfile
 from pathlib import Path, PurePosixPath
 
-from ..container import Container
+from .container import Container
 from ..streams import KeepOpen, Stream
 from ..storage import (
     loaders, savers, load_all, save_all,

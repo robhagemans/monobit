@@ -204,8 +204,7 @@ class DirectoryStream(Stream):
     """Fake stream to represent directory."""
 
     def __init__(self, file, mode, *, name='', where=None):
-        if not file:
-            raise ValueError('No stream provided.')
+        name = name or str(file)
         mode = mode[:1]
         if isinstance(file, DirectoryStream):
             file = file.name

@@ -80,6 +80,9 @@ class MagicRegistry:
         Get loader/saver function for this format.
         file must be a Stream or None
         """
+        if isinstance(file, DirectoryStream):
+            # directory 'stream'
+            return (self._names['dir'],)
         if format:
             try:
                 converter = (self._names[format],)
@@ -88,9 +91,6 @@ class MagicRegistry:
                     f'Format specifier `{format}` not recognised'
                 )
         else:
-            if isinstance(file, DirectoryStream):
-                # directory 'stream'
-                return (self._names['dir'],)
             converter = self.identify(file)
             if not converter:
                 if not file or file.mode == 'w' or maybe_text(file):

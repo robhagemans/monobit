@@ -11,7 +11,7 @@ import tarfile
 import logging
 from pathlib import Path, PurePosixPath
 
-from ..container import Container
+from .container import Container
 from ..streams import Stream, KeepOpen
 from ..storage import (
     loaders, savers, load_all, save_all,
