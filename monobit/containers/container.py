@@ -8,7 +8,6 @@ licence: https://opensource.org/licenses/MIT
 import logging
 import itertools
 from pathlib import Path
-from contextlib import contextmanager
 
 from ..storage import (
     loaders, savers, load_all, save_all, load_stream, save_stream
@@ -60,7 +59,6 @@ class Container:
         """Open a binary stream in the container."""
         raise NotImplementedError
 
-    @contextmanager
     def _open_stream_at(self, path, mode, overwrite):
         """Open stream recursively an container(s) given path."""
         head, tail = find_next_node(self, path, mode)
@@ -71,8 +69,7 @@ class Container:
             tail = ''
         else:
             stream = self.open(head, mode, overwrite)
-        with stream:
-            yield stream, tail
+        return stream, tail
 
     def unused_name(self, name):
         """Generate unique name for container file."""
@@ -92,10 +89,11 @@ class Container:
         with cls(instream) as container:
             if not subpath:
                 return load_all(container, **kwargs)
-            with container._open_stream_at(
-                        subpath, mode='r', overwrite=False
-                    ) as (stream, subpath):
-                return load_stream(stream, subpath=subpath, **kwargs)
+            stream, subsubpath = container._open_stream_at(
+                subpath, mode='r', overwrite=False
+            )
+            with stream:
+                return load_stream(stream, subpath=subsubpath, **kwargs)
 
     @classmethod
     def save(cls, fonts, outstream, subpath:str='', **kwargs):
@@ -103,10 +101,11 @@ class Container:
         with cls(outstream, 'w') as container:
             if not subpath:
                 return save_all(fonts, container, **kwargs)
-            with container._open_stream_at(
-                        subpath, mode='w', overwrite=False
-                    ) as (stream, subpath):
-                return save_stream(fonts, stream, subpath=subpath, **kwargs)
+            stream, subsubpath = container._open_stream_at(
+                subpath, mode='w', overwrite=False
+            )
+            with stream:
+                return save_stream(fonts, stream, subpath=subsubpath, **kwargs)
 
     @classmethod
     def register(cls, name, magic=(), patterns=()):
