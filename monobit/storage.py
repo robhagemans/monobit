@@ -250,14 +250,9 @@ class ConverterRegistry(MagicRegistry):
         register_magic = super().register
 
         def _decorator(original_func):
-            # set script arguments
-            funcname = self._func_name
-            if name:
-                funcname += f' {ARG_PREFIX}format={name}'
             _func = scriptable(
                 original_func,
-                # use the standard name, not that of the registered function
-                name=funcname,
+                record=False,
                 **kwargs
             )
             # register converter

@@ -30,8 +30,6 @@ from ..properties import normalise_property
     # maybe, if multi-section
     magic=(b'---',),
     patterns=('*.yaff', '*.yaffs',),
-    # don't record history of loading/saving to standard yaff format
-    record=False,
 )
 def load_yaff(instream, allow_empty:bool=False):
     """
@@ -44,7 +42,6 @@ def load_yaff(instream, allow_empty:bool=False):
 
 @savers.register(
     linked=load_yaff,
-    record=False,
 )
 def save_yaff(fonts, outstream):
     """Write fonts to a monobit .yaff file."""

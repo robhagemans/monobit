@@ -31,7 +31,7 @@ class ArgumentError(TypeError):
 _record = True
 
 def scriptable(
-        *args, script_args=None, name=None,
+        *args, script_args=None,
         record=True, pack_operation=False, wrapper=False,
     ):
     """
@@ -44,7 +44,6 @@ def scriptable(
     - recorded history
 
     script_args: additional arguments not given in annotations
-    name: name of function for use in history
     record: record in history log
     pack_operation: function works on sequence of fonts
     wrapper: enable keyword argument passthrough
@@ -54,13 +53,13 @@ def scriptable(
         # return decorator with these arguments set as extra args
         return partial(
             scriptable, script_args=script_args,
-            name=name, record=record, pack_operation=pack_operation,
+            record=record, pack_operation=pack_operation,
             wrapper=wrapper,
         )
     else:
         # called as @scriptable
         func, = args
-        name = name or func.__name__
+        name = func.__name__
         script_args = script_args or {}
         script_args = ScriptArgs(func, name=name, extra_args=script_args)
 
