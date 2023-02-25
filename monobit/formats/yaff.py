@@ -34,7 +34,11 @@ from ..properties import normalise_property
     record=False,
 )
 def load_yaff(instream, allow_empty:bool=False):
-    """Load font from a monobit .yaff file."""
+    """
+    Load font from a monobit .yaff file.
+
+    allow_empty: allow files with no glyphs (default: False)
+    """
     return _load_yaff(instream.text, allow_empty)
 
 
@@ -90,8 +94,6 @@ def _load_yaff(text_stream, allow_empty):
         # if no glyphs, ignore it - may not be yaff at all
         if font.glyphs or allow_empty:
             fonts.append(font)
-    if not fonts:
-        raise FileFormatError('No fonts found in file')
     return fonts
 
 
