@@ -43,9 +43,9 @@ def _get_context_help(rec):
         file = rec.kwargs.get('infile', '')
     format = rec.kwargs.get('format', '')
     if rec.command == 'load':
-        func, *_ = monobit.loaders.get_for(format)
+        func, *_ = monobit.loaders.get_for(format=format)
     else:
-        func, *_ = monobit.savers.get_for(format)
+        func, *_ = monobit.savers.get_for(format=format)
     if func:
         return func.script_args
     return None
