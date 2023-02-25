@@ -24,7 +24,7 @@ DEFAULT_BINARY_FORMAT = 'raw'
 
 
 @contextmanager
-def open_location(location, mode, overwrite=False):
+def open_location(location, mode):
     """Parse file specification, open stream."""
     if mode not in ('r', 'w'):
         raise ValueError(f"Unsupported mode '{mode}'.")
@@ -61,7 +61,7 @@ def load(infile:Any='', *, format:str='', **kwargs):
         return load_stream(stream, format=format, subpath=subpath, **kwargs)
 
 
-def load_stream(instream, format='', subpath='', **kwargs):
+def load_stream(instream, *, format='', subpath='', **kwargs):
     """Load fonts from open stream."""
     new_format, _, outer = format.rpartition('.')
     # identify file type
@@ -114,7 +114,7 @@ def load_stream(instream, format='', subpath='', **kwargs):
     raise FileFormatError('No fonts found in file')
 
 
-def load_all(container, format='', **kwargs):
+def load_all(container, *, format='', **kwargs):
     """Open container and load all fonts found in it into one pack."""
     logging.info('Reading all from `%s`.', container.name)
     packs = Pack()
@@ -147,9 +147,9 @@ def save(
     """
     Write font(s) to file.
 
-    outfile: output file (default: stdout)
+    outfile: output file or path (default: stdout)
     format: font file format
-    overwrite: if outfile is a filename, allow overwriting existing file
+    overwrite: if outfile is a path, allow overwriting existing file
     """
     pack = Pack(pack_or_font)
     outfile = outfile or sys.stdout
@@ -157,12 +157,20 @@ def save(
         # errors can occur if the strings we write contain surrogates
         # these may come from filesystem names using 'surrogateescape'
         sys.stdout.reconfigure(errors='replace')
-    with open_location(outfile, 'w', overwrite=overwrite) as (stream, subpath):
-        save_stream(pack, stream, format=format, subpath=subpath, **kwargs)
+    with open_location(outfile, 'w') as (stream, subpath):
+        save_stream(
+            pack, stream,
+            format=format, subpath=subpath, overwrite=overwrite,
+            **kwargs
+        )
     return pack_or_font
 
 
-def save_stream(pack, outstream, format='', subpath='', **kwargs):
+def save_stream(
+        pack, outstream, *,
+        format='', subpath='', overwrite=False,
+        **kwargs
+    ):
     """Save fonts to an open stream."""
     new_format, _, outer = format.rpartition('.')
     matching_savers = savers.get_for(outstream, format=outer)
@@ -193,12 +201,17 @@ def save_stream(pack, outstream, format='', subpath='', **kwargs):
     # only provide subpath and format args if non-empty
     if Path(subpath) != Path('.'):
         kwargs['subpath'] = subpath
+        kwargs['overwrite'] = overwrite
     if format:
         kwargs['format'] = format
     saver(pack, outstream, **kwargs)
 
 
-def save_all(pack, container, format=DEFAULT_TEXT_FORMAT, **kwargs):
+def save_all(
+        pack, container, *,
+        format=DEFAULT_TEXT_FORMAT, overwrite=False,
+        **kwargs
+    ):
     """Save fonts to a container."""
     logging.info('Writing all to `%s`.', container.name)
     for font in pack:
@@ -206,7 +219,7 @@ def save_all(pack, container, format=DEFAULT_TEXT_FORMAT, **kwargs):
         name = font.name.replace(' ', '_')
         # FIXME: confusing format name and suffix
         filename = container.unused_name(f'{name}.{format}')
-        stream = container.open(filename, 'w')
+        stream = container.open(filename, 'w', overwrite=overwrite)
         try:
             with stream:
                 save_stream(Pack(font), stream, format=format, **kwargs)

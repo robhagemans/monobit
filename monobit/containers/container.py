@@ -84,7 +84,7 @@ class Container:
                 return filename
 
     @classmethod
-    def load(cls, instream, subpath:str='', **kwargs):
+    def load(cls, instream, *, subpath='', **kwargs):
         """Load fonts from container."""
         with cls(instream) as container:
             if not subpath:
@@ -96,16 +96,19 @@ class Container:
                 return load_stream(stream, subpath=subsubpath, **kwargs)
 
     @classmethod
-    def save(cls, fonts, outstream, subpath:str='', **kwargs):
+    def save(cls, fonts, outstream, *, subpath='', overwrite=False, **kwargs):
         """Save fonts to container."""
         with cls(outstream, 'w') as container:
             if not subpath:
-                return save_all(fonts, container, **kwargs)
+                return save_all(fonts, container, overwrite=overwrite, **kwargs)
             stream, subsubpath = container._open_stream_at(
-                subpath, mode='w', overwrite=False
+                subpath, mode='w', overwrite=overwrite
             )
             with stream:
-                return save_stream(fonts, stream, subpath=subsubpath, **kwargs)
+                return save_stream(
+                    fonts, stream,
+                    subpath=subsubpath, overwrite=overwrite, **kwargs
+                )
 
     @classmethod
     def register(cls, name, magic=(), patterns=()):

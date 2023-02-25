@@ -16,7 +16,7 @@ from .container import Container
 class Directory(Container):
     """Treat directory tree as a container."""
 
-    def __init__(self, path='', mode='r', *, overwrite=False):
+    def __init__(self, path='', mode='r'):
         """Create directory wrapper."""
         # if empty path, this refers to the whole filesystem
         if not path:
@@ -34,7 +34,6 @@ class Directory(Container):
             logging.debug('Creating directory `%s`', self._path)
             # exist_ok raises FileExistsError only if the *target* already
             # exists, not the parents
-            #self._path.mkdir(parents=True, exist_ok=overwrite)
             self._path.mkdir(parents=True, exist_ok=True)
         super().__init__(mode, str(self._path))
 

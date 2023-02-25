@@ -19,7 +19,7 @@ from ..magic import FileFormatError, Magic
 class TarContainer(Container):
     """Tar-file wrapper."""
 
-    def __init__(self, file, mode='r', *, overwrite=False):
+    def __init__(self, file, mode='r'):
         """Create wrapper."""
         # mode really should just be 'r' or 'w'
         mode = mode[:1]
