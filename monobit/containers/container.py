@@ -119,8 +119,7 @@ class Container:
 def find_next_node(container, path, mode):
     """Find the next node (container or file) in the path."""
     head, tail = _split_path(container, path)
-    if mode == 'w':
-        #if str(head) == '.':
+    if mode == 'w' and not head.suffixes:
         head2, tail = _split_path_suffix(tail)
         head /= head2
     return head, tail
