@@ -70,9 +70,9 @@ class TestHex(BaseTester):
     def test_draw_glyph(self):
         """Test HexDraw glyph."""
         file = get_stringio(self.draw_glyph)
-        f,  *_ = monobit.load(file, format='draw')
+        f,  *_ = monobit.load(file, format='hexdraw')
         assert len(f.glyphs) == 1, repr(f.glyphs)
-        assert f.raster_size == (8, 10), f.raster_size
+        assert f.raster_size == (6, 10), f.raster_size
 
 
     draw_glyph_spaced = """
@@ -92,9 +92,9 @@ class TestHex(BaseTester):
     def test_draw_glyph_spaced(self):
         """Test HexDraw glyph with extra newline and spaces instead of tabs."""
         file = get_stringio(self.draw_glyph_spaced)
-        f,  *_ = monobit.load(file, format='draw')
+        f,  *_ = monobit.load(file, format='hexdraw')
         assert len(f.glyphs) == 1, repr(f.glyphs)
-        assert f.raster_size == (8, 10), f.raster_size
+        assert f.raster_size == (6, 10), f.raster_size
 
 
 if __name__ == '__main__':
