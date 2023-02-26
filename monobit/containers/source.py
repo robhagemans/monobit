@@ -288,7 +288,7 @@ def save_c(
     distribute: save each font as a separate identifier (default: True)
     """
     return _save_coded_binary(
-        fonts, outstream, 'char font_{compactname}[{bytesize}] = ',
+        fonts, outstream, 'font_{name}', 'char {identifier}[{bytesize}] = ',
         format=format, bytes_per_line=bytes_per_line, distribute=distribute,
         **_C_PARAMS, **kwargs
     )
@@ -310,7 +310,7 @@ def save_python(
     distribute: save each font as a separate identifier (default: True)
     """
     return _save_coded_binary(
-        fonts, outstream, 'font_{compactname} = ',
+        fonts, outstream, 'font_{name}', '{identifier} = ',
         format=format, bytes_per_line=bytes_per_line, distribute=distribute,
         delimiters=delimiters, **_PY_PARAMS, **kwargs
     )
@@ -331,7 +331,7 @@ def save_json(
     """
     outstream.text.write('{\n')
     fonts = _save_coded_binary(
-        fonts, outstream, '"font_{compactname}": ',
+        fonts, outstream, 'font_{name}', '"{identifier}": ',
         format=format, bytes_per_line=bytes_per_line, distribute=distribute,
         **_JS_PARAMS, **kwargs
     )
@@ -360,20 +360,21 @@ def save_source(
     """
     return _save_coded_binary(
         fonts, outstream,
-        f'{identifier} {assign} ', delimiters, comment,
+        identifier, f'{identifier} {assign} ', delimiters, comment,
         format=format, distribute=distribute, separator=separator,
         **kwargs
     )
 
 def _save_coded_binary(
         fonts, outstream,
-        assignment_pattern, delimiters, comment, separator,
+        identifier_template, assign_template, delimiters, comment, separator,
         bytes_per_line=16, format='raw', distribute=True, **kwargs
     ):
     """
     Generate font file encoded as source code.
 
-    assignment_pattern: Format pattern for the assignment statement. May include `compactname` amd `bytesize` variables.
+    identifier_template: Template for the identifier. May include font properties.
+    assign_template: assignment operator. May include `identifier` and `bytesize` variable.
     delimiters: Must contain two characters, building the opening and closing delimiters of the collection. E.g. []
     comment: Line comment character(s).
     separator: string to separate statements
@@ -391,18 +392,20 @@ def _save_coded_binary(
     else:
         packs = (fonts,)
     for count, fonts in enumerate(packs):
-        # if multiple fonts, build the identifier from first font name
-        ascii_name = fonts[0].name.encode('ascii', 'ignore').decode('ascii')
-        ascii_name = ''.join(_c if _c.isalnum() else '_' for _c in ascii_name)
         # get the raw data
         bytesio = Stream(BytesIO(), mode='w')
         save_stream(fonts, bytesio, format=format, **kwargs)
         rawbytes = bytesio.getbuffer()
-        assignment = assignment_pattern.format(
-            compactname=ascii_name, bytesize=len(rawbytes)
+        # if multiple fonts, build the identifier from first font name
+        identifier = fonts[0].format_properties(identifier_template)
+        # remove non-ascii
+        identifier = identifier.encode('ascii', 'ignore').decode('ascii')
+        identifier = ''.join(_c if _c.isalnum() else '_' for _c in identifier)
+        assign = assign_template.format(
+            identifier=identifier, bytesize=len(rawbytes)
         )
         # emit code
-        outstream.write(f'{assignment}{start_delimiter}\n')
+        outstream.write(f'{assign}{start_delimiter}\n')
         # grouper
         args = [iter(rawbytes)] * bytes_per_line
         groups = zip(*args)
