@@ -140,7 +140,7 @@ class MagicRegistry:
                 )
             )
             ## glob patterns
-            for pattern in patterns:
+            for pattern in (f'*.{name}', *patterns):
                 self._patterns.append((to_pattern(pattern), converter))
             return funcwrapper(converter)
 
