@@ -1,5 +1,5 @@
 """
-monobit.bmfont - AngelCode BMFont format
+monobit.formats.bmfont - AngelCode BMFont format
 
 (c) 2019--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

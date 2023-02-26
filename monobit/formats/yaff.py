@@ -1,5 +1,5 @@
 """
-monobit.yaff - monobit-yaff and Unifont HexDraw formats
+monobit.formats.yaff - monobit-yaff format
 
 (c) 2019--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

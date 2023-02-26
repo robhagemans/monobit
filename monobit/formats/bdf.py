@@ -1,5 +1,5 @@
 """
-monobit.bdf - Adobe Glyph Bitmap Distribution Format
+monobit.formats.bdf - Adobe Glyph Bitmap Distribution Format
 
 (c) 2019--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

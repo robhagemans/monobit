@@ -1,5 +1,5 @@
 """
-monobit.dosstart - DosStart! format
+monobit.formats.dosstart - DosStart! format
 
 (c) 2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

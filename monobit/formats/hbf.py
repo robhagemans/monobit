@@ -1,5 +1,5 @@
 """
-monobit.hbf - Hanzi Bitmap File Format
+monobit.formats.hbf - Hanzi Bitmap File Format
 
 (c) 2022--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
