@@ -101,7 +101,7 @@ Supported bitmap formats
 | DosStart!             | `dosstart` |          | `.dsf`                      | DOS           | ✔     |       |
 | FZX font              | `fzx`      |          | `.fzx`                      | ZX Spectrum   | ✔     | ✔     |
 | Figlet font           | `figlet`   |          | `.flf`                      | Unix          | ✔     | ✔     |
-| Windows or OS/2 font  | `fon`      | NE PE LX | `.fon` `.exe` `.dll`        | Windows, OS/2 | ✔     | ✔ (16-bit Windows) |
+| Windows or OS/2 font  | `mzfon`    | NE PE LX | `.fon` `.exe` `.dll`        | Windows, OS/2 | ✔     | ✔ (16-bit Windows) |
 | FONTX2                | `fontx`    |          | `.fnt`                      | DOS/V         | ✔     | ✔     |
 | FONTEDIT              | `fontedit` |          | `.com`                      | DOS           | ✔     |       |
 | Fontraption           | `frapt`    |          | `.com`                      | DOS           | ✔     |       |

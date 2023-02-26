@@ -39,7 +39,7 @@ class TestFormats(BaseTester):
     def test_export_fon(self):
         """Test exporting fon files."""
         fon_file = self.temp_path / '4x6.fon'
-        monobit.save(self.fixed4x6, fon_file, format='fon')
+        monobit.save(self.fixed4x6, fon_file, format='mzfon')
         # read back
         font, *_ = monobit.load(fon_file)
         self.assertEqual(len(font.glyphs), 224)
@@ -999,7 +999,7 @@ class TestFormats(BaseTester):
         """Test exporting Hershey font in Windows vector format."""
         monobit.save(
             self.hershey, self.temp_path / 'hershey.fon',
-            format='fon', vector=True
+            format='mzfon', vector=True
         )
         font, *_ = monobit.load(self.temp_path / 'hershey.fon')
         self.assertEqual(len(font.glyphs), 26)
