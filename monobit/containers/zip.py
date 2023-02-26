@@ -10,41 +10,21 @@ import logging
 import zipfile
 from pathlib import Path, PurePosixPath
 
-from ..container import Container
+from .container import Container
 from ..streams import KeepOpen, Stream
-from ..storage import loaders, savers, containers, load_all, save_all
 from ..magic import FileFormatError
-
-
-@loaders.register(
-    name='zip',
-    magic=(b'PK\x03\x04',),
-    patterns=('*.zip',),
-)
-def load_zip(instream):
-    with ZipContainer(instream) as container:
-        return load_all(container, format='')
-
-@savers.register(linked=load_zip)
-def save_zip(fonts, outstream):
-    with ZipContainer(outstream, 'w') as container:
-        return save_all(fonts, container, format='')
-
-@containers.register(linked=load_zip, record=False)
-def open_zip(instream, mode='r', *, overwrite=False):
-    return ZipContainer(instream, mode, overwrite=overwrite)
 
 
 class ZipContainer(Container):
     """Zip-file wrapper."""
 
-    def __init__(self, file, mode='r', *, overwrite=False):
+    def __init__(self, file, mode='r'):
         """Create wrapper."""
         # mode really should just be 'r' or 'w'
         mode = mode[:1]
         super().__init__(mode, file.name)
         # reading zipfile needs a seekable stream, drain to buffer if needed
-        self._stream = Stream(file, mode, overwrite=overwrite)
+        self._stream = Stream(file, mode)
         # create the zipfile
         try:
             self._zip = zipfile.ZipFile(
@@ -72,7 +52,9 @@ class ZipContainer(Container):
                 logging.debug('Writing out `%s` to zip container `%s`.', file.name, self.name)
                 bytearray = file.getvalue()
                 file.close()
-                self._zip.writestr(file.name, bytearray)
+                self._zip.writestr(
+                    str(PurePosixPath(self._root) / file.name), bytearray
+                )
         try:
             self._zip.close()
         except EnvironmentError as e:
@@ -100,7 +82,10 @@ class ZipContainer(Container):
         logging.debug('Opening file `%s` on zip container `%s`.', filename, self.name)
         if mode == 'r':
             try:
-                return Stream(self._zip.open(filename, mode), mode=mode, where=self)
+                return Stream(
+                    self._zip.open(filename, mode),
+                    mode=mode, where=self, name=name,
+                )
             except KeyError as e:
                 raise FileNotFoundError(e) from e
         else:
@@ -110,8 +95,15 @@ class ZipContainer(Container):
                     ' requires -overwrite to be set'
                 )
             # stop BytesIO from being closed until we want it to be
-            newfile = Stream(KeepOpen(io.BytesIO()), mode=mode, name=filename, where=self)
+            newfile = Stream(KeepOpen(io.BytesIO()), mode=mode, name=name, where=self)
             if filename in self._files:
                 logging.warning('Creating multiple files of the same name `%s`.', filename)
             self._files.append(newfile)
             return newfile
+
+
+ZipContainer.register(
+    name='zip',
+    magic=(b'PK\x03\x04',),
+    patterns=('*.zip',),
+)

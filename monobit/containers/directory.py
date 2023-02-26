@@ -1,5 +1,5 @@
 """
-monobit.container - directory and base class for archives
+monobit.containers.directory - directory traversal
 
 (c) 2021--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -7,82 +7,25 @@ licence: https://opensource.org/licenses/MIT
 
 import os
 import logging
-import itertools
 from pathlib import Path
 
-from .streams import Stream
+from ..streams import Stream, DirectoryStream
+from .container import Container
 
-
-class Container:
-    """Base class for container types."""
-
-    def __init__(self, mode='r', name=''):
-        self.mode = mode[:1]
-        self.name = name
-        self.refcount = 0
-        self.closed = False
-
-    def __iter__(self):
-        """List contents."""
-        raise NotImplementedError
-
-    def iter_sub(self, prefix):
-        """List contents of a subpath."""
-        return (
-            _item for _item in self
-            if _item.name.startswith(prefix)
-        )
-
-    def __contains__(self, item):
-        return any(str(item) == str(_item) for _item in iter(self))
-
-    def __enter__(self):
-        # we don't support nesting the same archive
-        assert self.refcount == 0
-        self.refcount += 1
-        logging.debug('Entering archive %r', self)
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.refcount -= 1
-        if exc_type == BrokenPipeError:
-            return True
-        logging.debug('Exiting archive %r', self)
-        self.close()
-
-    def close(self):
-        """Close the archive."""
-        self.closed = True
-
-    def open(self, name, mode, overwrite=False):
-        """Open a binary stream in the container."""
-        raise NotImplementedError
-
-    def unused_name(self, name):
-        """Generate unique name for container file."""
-        if name not in self:
-            return name
-        stem, _, suffix = name.rpartition('.')
-        for i in itertools.count():
-            filename = '{}.{}'.format(stem, i)
-            if suffix:
-                filename = '{}.{}'.format(filename, suffix)
-            if filename not in self:
-                return filename
-
-
-###############################################################################
 
 class Directory(Container):
     """Treat directory tree as a container."""
 
-    def __init__(self, path='', mode='r', *, overwrite=False):
+    def __init__(self, path='', mode='r'):
         """Create directory wrapper."""
         # if empty path, this refers to the whole filesystem
         if not path:
-            self._path = ''
+            self._path = Path('/')
+        elif isinstance(path, DirectoryStream):
+            # directory 'streams'
+            self._path = Path(path.name)
         elif isinstance(path, Directory):
-            self._path = path._path
+            self._path = Path(path._path)
         else:
             self._path = Path(path)
         # mode really should just be 'r' or 'w'
@@ -91,7 +34,7 @@ class Directory(Container):
             logging.debug('Creating directory `%s`', self._path)
             # exist_ok raises FileExistsError only if the *target* already
             # exists, not the parents
-            self._path.mkdir(parents=True, exist_ok=overwrite)
+            self._path.mkdir(parents=True, exist_ok=True)
         super().__init__(mode, str(self._path))
 
     def open(self, name, mode, overwrite=False):
@@ -105,19 +48,21 @@ class Directory(Container):
             (self._path / path).mkdir(parents=True, exist_ok=True)
         logging.debug("Opening file `%s` for mode '%s'.", name, mode)
         filepath = Path(self._path / pathname)
-        # return Directory  object instead of stream if the path is a directory
-        if filepath.is_dir():
-            return Directory(filepath)
         if mode == 'w' and not overwrite and filepath.exists():
             raise ValueError(
                 f'Overwriting existing file {str(filepath)}'
                 ' requires -overwrite to be set'
             )
+        # return DirectoryStream if the path is a directory
+        if filepath.is_dir():
+            return DirectoryStream(
+                filepath, name=str(pathname), mode=mode, where=self
+            )
         file = open(filepath, mode + 'b')
         # provide name relative to directory container
         stream = Stream(
             file, mode=mode,
-            name=str(pathname), overwrite=True,
+            name=str(pathname),
             where=self,
         )
         return stream
@@ -142,3 +87,6 @@ class Directory(Container):
 
     def __repr__(self):
         return f"{type(self).__name__}('{self._path}')"
+
+
+Directory.register(name='dir')

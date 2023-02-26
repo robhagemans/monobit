@@ -10,7 +10,7 @@ from pathlib import Path
 from fnmatch import fnmatch
 import re
 
-from .streams import get_name
+from .streams import get_name, DirectoryStream
 
 
 # number of bytes to read to check if something looks like text
@@ -80,6 +80,9 @@ class MagicRegistry:
         Get loader/saver function for this format.
         file must be a Stream or None
         """
+        if isinstance(file, DirectoryStream):
+            # directory 'stream'
+            return (self._names['dir'],)
         if format:
             try:
                 converter = (self._names[format],)

@@ -99,8 +99,8 @@ class TestContainers(BaseTester):
     def test_empty(self):
         """Test empty container."""
         container_file = self.font_path / 'empty.zip'
-        fonts = monobit.load(container_file)
-        assert not fonts
+        with self.assertRaises(monobit.FileFormatError):
+            fonts = monobit.load(container_file)
 
     def test_baddeeplink_tgz(self):
         """Test deep linking into tar.gz container."""
