@@ -130,7 +130,7 @@ Supported bitmap formats
 | PC Screen Font        | `psf`      | 1 2      | `.psf` `.psfu`              | MS-DOS, Linux | ✔     | ✔ (version 2) |
 | PSF2AMS PSFCOM        | `psfcom`   |          | `.com`                      | Z80 CP/M      | ✔     |       |
 | SFNT embedded bitmap  | `sfnt`     |          | `.otb` `.ttf` `.otf` [F] [**] |             | ✔     |       |
-| Signum! 2  | `signum-*` | editor 9-pin 24-pin laser | `.e24` `.p9` `.p24` `.l30` | Atari ST | ✔     |       |
+| Signum! 2    | `signum` | editor 9-pin 24-pin laser | `.e24` `.p9` `.p24` `.l30` | Atari ST | ✔     |       |
 | vfont                 | `vfont`    |          |                             | BSD, SunOS    | ✔     | ✔     |
 | Bare GEOS resource    | `vlir`     |          |                             | Commodore 64  | ✔     |       |
 | Windows FNT resource  | `win`      | 1.0 2.0 3.0 | `.fnt`                   | 16-bit Windows | ✔    | ✔     |
