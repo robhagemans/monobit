@@ -1,4 +1,3 @@
 """
 monobit test suite
 """
-

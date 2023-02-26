@@ -1,5 +1,5 @@
 """
-mousegraphics.bdf - Apple II MouseGraphics ToolKit Font Format
+monobit.formats.mousegraphics - Apple II MouseGraphics ToolKit Font Format
 
 (c) 2023 Kelvin Sherlock
 licence: https://opensource.org/licenses/MIT

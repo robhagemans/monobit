@@ -1,5 +1,5 @@
 """
-monobit.hex - Unifont Hex format
+monobit.formats.hex - Unifont Hex format
 
 (c) 2019--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
