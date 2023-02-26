@@ -102,7 +102,7 @@ class TarContainer(Container):
             if not _name.endswith('/')
         )
 
-    def open(self, name, mode):
+    def open(self, name, mode, overwrite=False):
         """Open a stream in the container."""
         name = str(PurePosixPath(self._root) / name)
         mode = mode[:1]
@@ -116,6 +116,11 @@ class TarContainer(Container):
             # .name is not writeable, so we need to wrap
             return Stream(file, mode, name=name, where=self)
         else:
+            if name in self and not overwrite:
+                raise ValueError(
+                    f'Overwriting existing file {str(name)}'
+                    ' requires -overwrite to be set'
+                )
             # stop BytesIO from being closed until we want it to be
             newfile = Stream(KeepOpen(io.BytesIO()), mode=mode, name=name, where=self)
             if name in self._files:
