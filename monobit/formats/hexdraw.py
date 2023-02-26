@@ -6,6 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import logging
+import string
 
 from ..storage import loaders, savers
 from ..font import Font
@@ -73,9 +74,13 @@ def _load_text(text_stream, *, ink, paper, comment, separator):
     label = ''
     glyphlines = []
     for line in text_stream:
-        if line.startswith(comment):
-            comments.append(line[len(comment):])
         line = line.rstrip()
+        # anything not starting with whitespace or a number is a comment
+        if line and line[:1] not in string.hexdigits + string.whitespace:
+            if line.startswith(comment):
+                line = line[len(comment):]
+            comments.append(line)
+            continue
         stripline = line.lstrip()
         # no leading whitespace?
         if line and len(line) == len(stripline):
@@ -87,7 +92,7 @@ def _load_text(text_stream, *, ink, paper, comment, separator):
                 glyphlines = []
             label, _, stripline = line.partition(separator)
             stripline = stripline.lstrip()
-        if len(line) != len(stripline):
+        if stripline and len(line) != len(stripline):
             glyphlines.append(stripline)
     if glyphlines:
         glyphs.append(Glyph(
