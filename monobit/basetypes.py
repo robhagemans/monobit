@@ -67,6 +67,9 @@ class Bounds(_VectorMixin, namedtuple('Bounds', 'left bottom right top')):
 class Coord(_VectorMixin, namedtuple('Coord', 'x y')):
     """Coordinate tuple."""
 
+    def __str__(self):
+        return 'x'.join(str(_x) for _x in self)
+
     @classmethod
     def create(cls, coord=0):
         coord = to_tuple(coord, length=2)

@@ -209,16 +209,20 @@ def save_stream(
 
 def save_all(
         pack, container, *,
-        format=DEFAULT_TEXT_FORMAT, overwrite=False,
+        format=DEFAULT_TEXT_FORMAT, template='',
+        overwrite=False,
         **kwargs
     ):
     """Save fonts to a container."""
     logging.info('Writing all to `%s`.', container.name)
     for font in pack:
+        if format and not template:
+            # use format name as suffix
+            template = '{name}.' f'{format}'
+        # fill out template
+        name = font.format_properties(template)
         # generate unique filename
-        name = font.name.replace(' ', '_')
-        # FIXME: confusing format name and suffix
-        filename = container.unused_name(f'{name}.{format}')
+        filename = container.unused_name(name.replace(' ', '_'))
         stream = container.open(filename, 'w', overwrite=overwrite)
         try:
             with stream:
@@ -250,14 +254,9 @@ class ConverterRegistry(MagicRegistry):
         register_magic = super().register
 
         def _decorator(original_func):
-            # set script arguments
-            funcname = self._func_name
-            if name:
-                funcname += f' {ARG_PREFIX}format={name}'
             _func = scriptable(
                 original_func,
-                # use the standard name, not that of the registered function
-                name=funcname,
+                record=False,
                 **kwargs
             )
             # register converter

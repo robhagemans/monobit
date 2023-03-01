@@ -96,18 +96,34 @@ class Container:
                 return load_stream(stream, subpath=subsubpath, **kwargs)
 
     @classmethod
-    def save(cls, fonts, outstream, *, subpath='', overwrite=False, **kwargs):
-        """Save fonts to container."""
+    def save(
+            cls, fonts, outstream, *,
+            subpath='', overwrite=False,
+            template:str='',
+            **kwargs
+        ):
+        """
+        Save fonts to container (directory or archive).
+
+        template: naming template for files in container
+        """
         with cls(outstream, 'w') as container:
             if not subpath:
-                return save_all(fonts, container, overwrite=overwrite, **kwargs)
+                return save_all(
+                    fonts, container,
+                    template=template, overwrite=overwrite,
+                    **kwargs
+                )
             stream, subsubpath = container._open_stream_at(
                 subpath, mode='w', overwrite=overwrite
             )
             with stream:
+                if template:
+                    kwargs['template'] = template
                 return save_stream(
                     fonts, stream,
-                    subpath=subsubpath, overwrite=overwrite, **kwargs
+                    subpath=subsubpath, overwrite=overwrite,
+                    **kwargs
                 )
 
     @classmethod

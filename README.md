@@ -50,7 +50,7 @@ Display usage summary and additional format-specific command-line options for co
 Recognise the source file format from "magic bytes" or suffix (here, a Windows font) and write fonts
 to standard output in `yaff` format.
 
-`monobit-convert roman.bdf to --format=hex`
+`monobit-convert roman.bdf to --format=unifont`
 
 Read font from BDF file and write to standard output as Unifont HEX.
 
@@ -101,7 +101,7 @@ Supported bitmap formats
 | DosStart!             | `dosstart` |          | `.dsf`                      | DOS           | ✔     |       |
 | FZX font              | `fzx`      |          | `.fzx`                      | ZX Spectrum   | ✔     | ✔     |
 | Figlet font           | `figlet`   |          | `.flf`                      | Unix          | ✔     | ✔     |
-| Windows or OS/2 font  | `fon`      | NE PE LX | `.fon` `.exe` `.dll`        | Windows, OS/2 | ✔     | ✔ (16-bit Windows) |
+| Windows or OS/2 font  | `mzfon`    | NE PE LX | `.fon` `.exe` `.dll`        | Windows, OS/2 | ✔     | ✔ (16-bit Windows) |
 | FONTX2                | `fontx`    |          | `.fnt`                      | DOS/V         | ✔     | ✔     |
 | FONTEDIT              | `fontedit` |          | `.com`                      | DOS           | ✔     |       |
 | Fontraption           | `frapt`    |          | `.com`                      | DOS           | ✔     |       |
@@ -110,8 +110,8 @@ Supported bitmap formats
 | OS/2 GPI resource     | `gpi`      |          | `.fnt`                      | OS/2          | ✔     |       |
 | Atari GDOS / GEM      | `gdos`     |          | `.fnt` `.gft` `.vga`        | Atari ST, GEM | ✔     | ✔     |
 | C64 GEOS ConVerT      | `geos`     |          | `.cvt`                      | Commodore 64  | ✔     |       |
-| GNU Unifont           | `hex`      |          | `.hex`                      |               | ✔     | ✔     |
-| Extended Hex          | `hext`     |          | `.hex`                      |               | ✔     | ✔     |
+| GNU Unifont           | `unifont`  |          | `.hex`                      |               | ✔     | ✔     |
+| Extended Hex          | `pcbasic`  |          | `.hex`                      |               | ✔     | ✔     |
 | hexdraw               | `hexdraw`  |          | `.draw`                     |               | ✔     | ✔     |
 | Bitmap image [P]      | `image`    |          | `.png` `.gif` `.bmp`        |               | ✔     | ✔     |
 | Apple IIgs font       | `iigs`     |          | `.fon`                      | Apple IIgs    | ✔     | ✔     |
@@ -130,7 +130,7 @@ Supported bitmap formats
 | PC Screen Font        | `psf`      | 1 2      | `.psf` `.psfu`              | MS-DOS, Linux | ✔     | ✔ (version 2) |
 | PSF2AMS PSFCOM        | `psfcom`   |          | `.com`                      | Z80 CP/M      | ✔     |       |
 | SFNT embedded bitmap  | `sfnt`     |          | `.otb` `.ttf` `.otf` [F] [**] |             | ✔     |       |
-| Signum! 2  | `signum-*` | editor 9-pin 24-pin laser | `.e24` `.p9` `.p24` `.l30` | Atari ST | ✔     |       |
+| Signum! 2    | `signum` | editor 9-pin 24-pin laser | `.e24` `.p9` `.p24` `.l30` | Atari ST | ✔     |       |
 | vfont                 | `vfont`    |          |                             | BSD, SunOS    | ✔     | ✔     |
 | Bare GEOS resource    | `vlir`     |          |                             | Commodore 64  | ✔     |       |
 | Windows FNT resource  | `win`      | 1.0 2.0 3.0 | `.fnt`                   | 16-bit Windows | ✔    | ✔     |
@@ -198,8 +198,8 @@ Here is a comparison of what you can and cannot store in selected formats suppor
 | `fzx`         |   |   |   |   |   | any  | ✔ |   |   | binary
 | `figlet`      | ✔ |   |   |   |   | any  | ✔ |   | ✔ | visual text
 | `vfont`       |   |   |   |   |   | any  | ✔ |   |   | binary
-| `hext`        | ✔ | ✔ |   |   |   | 8xN  | multi-cell |   |   | hex
-| `hex`         | ✔ |   |   |   |   | 8x16 | multi-cell |   |   | hex
+| `pcbasic`     | ✔ | ✔ |   |   |   | 8xN  | multi-cell |   |   | hex
+| `unifont`     | ✔ |   |   |   |   | 8x16 | multi-cell |   |   | hex
 | `hbf`         |   |   | ✔ | ✔ |   | any  |   |   |   | binary
 | `psf` (v2)    | ✔ | ✔ |   |   |   | any  |   |   |   | binary
 | `psf` (v1)    | ✔ |   |   |   |   | 8xN  |   |   |   | binary

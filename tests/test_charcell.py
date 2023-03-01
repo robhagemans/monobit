@@ -48,8 +48,8 @@ class TestCharCell(BaseTester):
 
 
     def test_export_hex_r(self):
-        """Test exporting hex files."""
-        self._test_export_charcell_reduced('hext', label='A')
+        """Test exporting extended hex files."""
+        self._test_export_charcell_reduced('pcbasic', label='A')
 
     def test_export_psf_r(self):
         """Test exporting psf files."""

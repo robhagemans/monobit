@@ -804,6 +804,18 @@ class Font:
         key = normalise_property(key)
         return getattr(self._props, key, '')
 
+    def format_properties(self, template, **kwargs):
+        """Format a string template using font properties."""
+        from string import Formatter
+
+        class FontFormatter(Formatter):
+            def get_value(inner_self, key, inner_args, inner_kwargs):
+                if key in inner_kwargs:
+                    return inner_kwargs[key]
+                return getattr(self, key)
+
+        return FontFormatter().format(template, **kwargs)
+
 
     ##########################################################################
     # glyph access
