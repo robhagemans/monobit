@@ -18,14 +18,14 @@ from ..glyph import Glyph
 
 
 @loaders.register(
-    name='hext',
+    name='pcbasic',
 )
 def load_hext(instream):
     """Load 8xN multi-cell font from PC-BASIC extended .HEX file."""
     return _load_hex(instream.text)
 
 @loaders.register(
-    name='hex',
+    name='unifont',
     patterns=('*.hex',),
 )
 def load_hex(instream):

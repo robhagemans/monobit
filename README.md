@@ -50,7 +50,7 @@ Display usage summary and additional format-specific command-line options for co
 Recognise the source file format from "magic bytes" or suffix (here, a Windows font) and write fonts
 to standard output in `yaff` format.
 
-`monobit-convert roman.bdf to --format=hex`
+`monobit-convert roman.bdf to --format=unifont`
 
 Read font from BDF file and write to standard output as Unifont HEX.
 
@@ -110,8 +110,8 @@ Supported bitmap formats
 | OS/2 GPI resource     | `gpi`      |          | `.fnt`                      | OS/2          | ✔     |       |
 | Atari GDOS / GEM      | `gdos`     |          | `.fnt` `.gft` `.vga`        | Atari ST, GEM | ✔     | ✔     |
 | C64 GEOS ConVerT      | `geos`     |          | `.cvt`                      | Commodore 64  | ✔     |       |
-| GNU Unifont           | `hex`      |          | `.hex`                      |               | ✔     | ✔     |
-| Extended Hex          | `hext`     |          | `.hex`                      |               | ✔     | ✔     |
+| GNU Unifont           | `unifont`  |          | `.hex`                      |               | ✔     | ✔     |
+| Extended Hex          | `pcbasic`  |          | `.hex`                      |               | ✔     | ✔     |
 | hexdraw               | `hexdraw`  |          | `.draw`                     |               | ✔     | ✔     |
 | Bitmap image [P]      | `image`    |          | `.png` `.gif` `.bmp`        |               | ✔     | ✔     |
 | Apple IIgs font       | `iigs`     |          | `.fon`                      | Apple IIgs    | ✔     | ✔     |
@@ -198,8 +198,8 @@ Here is a comparison of what you can and cannot store in selected formats suppor
 | `fzx`         |   |   |   |   |   | any  | ✔ |   |   | binary
 | `figlet`      | ✔ |   |   |   |   | any  | ✔ |   | ✔ | visual text
 | `vfont`       |   |   |   |   |   | any  | ✔ |   |   | binary
-| `hext`        | ✔ | ✔ |   |   |   | 8xN  | multi-cell |   |   | hex
-| `hex`         | ✔ |   |   |   |   | 8x16 | multi-cell |   |   | hex
+| `pcbasic`     | ✔ | ✔ |   |   |   | 8xN  | multi-cell |   |   | hex
+| `unifont`     | ✔ |   |   |   |   | 8x16 | multi-cell |   |   | hex
 | `hbf`         |   |   | ✔ | ✔ |   | any  |   |   |   | binary
 | `psf` (v2)    | ✔ | ✔ |   |   |   | any  |   |   |   | binary
 | `psf` (v1)    | ✔ |   |   |   |   | 8xN  |   |   |   | binary

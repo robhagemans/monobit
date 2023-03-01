@@ -27,7 +27,7 @@ class TestHex(BaseTester):
 
     def test_glyphs(self):
         file = get_stringio(self.unscii8_u)
-        f,  *_ = monobit.load(file, format='hex')
+        f,  *_ = monobit.load(file, format='unifont')
         assert len(f.glyphs) == 2, repr(f.glyphs)
         assert f.raster_size == (8, 8), f.raster_size
         space = Glyph((
