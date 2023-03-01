@@ -140,7 +140,7 @@ class MagicRegistry:
                 )
             )
             ## glob patterns
-            for pattern in (f'*.{name}', *patterns):
+            for pattern in (*patterns, f'*.{name}'):
                 self._patterns.append((to_pattern(pattern), converter))
             return funcwrapper(converter)
 
@@ -171,6 +171,15 @@ class MagicRegistry:
                 glob_matches.append(converter)
         matches.extend(_c for _c in glob_matches if _c not in matches)
         return tuple(matches)
+
+    def get_template(self, format):
+        """Get output filename template for format."""
+        for pattern, converter in self._patterns:
+            if converter.format == format:
+                template = pattern.generate('{name}')
+                if template:
+                    return template
+        return '{name}' f'.{format}'
 
 
 ###############################################################################
@@ -259,7 +268,7 @@ class Glob(Pattern):
         return fnmatch(str(target).lower(), self._pattern.lower())
 
     def generate(self, name):
-        """Generate name that fits pattern. Failure -> empty"""
+        """Generate template that fits pattern. Failure -> empty"""
         if not '?' in self._pattern and not '[' in self._pattern:
             try:
                 return self._pattern.replace('*', '{}').format(name)
