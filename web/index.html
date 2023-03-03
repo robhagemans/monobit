@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+
+<!--
+    monobit web app - hoard of bitfonts
+    (c) 2023 Rob Hagemans
+    licence: https://opensource.org/licenses/MIT
+-->
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Collection of bitmap fonts from old systems" />
+    <meta name="keywords" content="font, bitmap, bitfont, pixelfont, 8bit, retrocomputing, c64, zx-spectrum, bbc, trs-80, msx" />
+    <link rel="stylesheet" href="app.css">
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.22.1/full/pyodide.js"></script>
+    <script src="app.js"></script>
+    <title>Hoard of bitfonts</title>
+</head>
+
+<body onload="setup();">
+
+    <div id="screen">
+        <h1 id="name">...</h1>
+        <div id="screen-wrapper">
+            <canvas id="sample" tabIndex="1"></canvas>
+        </div>
+    </div>
+
+    <div class="tabs">
+
+        <div id="fonts">
+            <a class="tab" href="#fonts">Fonts</a>
+            <div>
+                <div id="font-list" class="floppy"></div>
+            </div>
+        </div>
+
+        <div id="yaff">
+            <a class="tab" href="#yaff">Yaff</a>
+            <div>
+                <textarea id="filename" spellcheck=false></textarea>
+                <textarea id="listing0" spellcheck=false></textarea>
+            </div>
+        </div>
+
+    </div>
+
+    <small>
+        (c) 2023 Rob Hagemans. Powered by <a href="https://github.com/robhagemans/monobit">monobit</a>
+        running on <a href="https://pyodide.org">Pyodide</a>.
+    </small>
+
+</body>
+</html>

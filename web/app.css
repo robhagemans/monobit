@@ -1,0 +1,292 @@
+/* monobit demonstration
+ * (c) 2017, 2023 Rob Hagemans
+ * licence: https://opensource.org/licenses/MIT
+ */
+
+html {
+    height: 100%;
+    padding: 0;
+}
+
+body {
+    height: 100%;
+    background-color: #222;
+    padding: 0;
+    margin: 0;
+    overflow: hidden;
+}
+
+small {
+    display: block;
+    right: 0;
+    left: 0;
+    text-align: center;
+    color: #555;
+    font-family: sans-serif;
+    position: fixed;
+    bottom: 0px;
+    background-color: #111;
+    padding: 1em;
+    height: 3%;
+}
+
+small a, small a:visited {
+    color: #555;
+}
+
+
+/* display */
+
+#screen {
+    float: left;
+    padding-left: 1%;
+    width: 50%;
+}
+
+#screen-wrapper {
+    /* 4*3 aspect ratio */
+    position: relative;
+    padding: 0;
+    width: 100%;
+    float: left;
+    padding-bottom: 75%;
+}
+#screen-wrapper > canvas {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+}
+
+
+#screen-wrapper > canvas {
+    width: 100%;
+    height: 100%;
+    background-color: #333;
+    outline: none;
+}
+
+#screen-wrapper > canvas:focus {
+}
+
+
+h1 {
+    color: #555;
+    font-family: sans-serif;
+    padding: 0 0.5em 0 0.5em;
+    margin-top: 0;
+    font-size: 100%;
+    font-weight: blod;
+    background-color: black;
+    border-top: 0.4em solid black;
+    border-bottom: 1px solid black;
+    height: 1.4em;
+}
+
+.basicode {
+    width: 100%;
+    height: 100%;
+    background-color: #333;
+    outline: none;
+}
+
+.basicode:focus {
+}
+
+.buttons {
+    background-color: #111;
+}
+
+.buttons button {
+    background-color: black;
+    color: #555;
+    outline: none;
+    border: none;
+    padding: 0.5em 1.5em 0.5em 1.5em;
+    float: right;
+    margin-top: 0.5em;
+    margin-bottom: 0;
+}
+
+.buttons button:hover, .keyboard button:hover, .keyboard .pressed {
+    background-color: #111;
+    color: #999;
+}
+
+/* storage visualisation */
+
+.floppy {
+    box-sizing: border-box;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 2em 1em 2em 1em;
+    word-wrap: break-word;
+    overflow: scroll;
+}
+.floppy a {
+    font-family: sans-serif;
+    padding: 0 0.2em 0 0.2em;
+    margin: 0.1em 0 0.1em 0;
+    color: #999;
+    text-decoration: none;
+}
+.floppy .hidden {
+    color: #222;
+    padding: 0 0.2em 0 0.2em;
+    margin: 0.1em 0 0.1em 0;
+}
+.floppy .title {
+    color: #555;
+    padding: 0 0.2em 0 0.2em;
+    margin: 0.1em 0 0.1em 0;
+    font-style: italic;
+}
+.floppy a:hover, .floppy a:hover .hidden {
+    background-color: steelblue;
+    color: black;
+}
+.floppy .delete:hover {
+    background-color:red;
+}
+.floppy .delete:hover ~ a {
+    background-color:red;
+    color: black;
+}
+.floppy .delete:hover ~ a .hidden,  .floppy .delete:hover ~ .hidden{
+    color:red;
+}
+.floppy .download:hover {
+    background-color:green;
+}
+.floppy .download:hover ~ a {
+    background-color:green;
+    color: black;
+}
+.floppy .download:hover ~ a .hidden,  .floppy .download:hover ~ .hidden{
+    color: green;
+}
+
+
+.floppy ul, .floppy ol {
+    font-family: sans-serif;
+    list-style-type: none;
+    padding: 0.5em 0 0 0;
+    margin-top:0;
+    margin-bottom: 1.5em;
+}
+.floppy ul > li {
+    padding: 0.5em 0 0 0;
+    background-color: #999;
+    color: black;
+    font-weight: bold;
+}
+
+.floppy ol > li {
+    background-color: black;
+    color: red;
+    font-weight: normal;
+}
+.floppy ol > li:first-child {
+    padding: 0.2em 0 0 0;
+}
+.floppy ol > li:last-child {
+    padding: 0 0 0.2em 0;
+}
+
+/* Tabbed example */
+/* https://www.w3.org/Style/Examples/007/target.en.html#tab3 */
+div.tabs {
+    margin-top: 1em;
+    margin-left: 52%;
+    width: 47%;
+    margin-bottom: 0;
+    height: 100%;
+    position: relative;
+    z-index: 0;
+    background: black;
+    border-top: 0.4em solid black;
+}
+div.tabs > div {
+    float: left;
+    padding: 0;
+    margin: 0;
+    background: black;
+    max-width: 14.25%;
+}
+div.tabs > div > a {
+    font-family: sans-serif;
+    text-decoration: none;
+    color: #555;
+    padding: 0.2em 1em 0.2em 1em;
+    margin: 0;
+    border-top: 0.2em solid black;
+    border-bottom: 1px solid black;
+}
+/* inactive tabs */
+div.tabs > div:not(:target) > a {
+    background: black;
+}
+/* active or default tab */
+div.tabs > div:target > a {
+    background: #222;
+    color: #aaa;
+    border-top: 0.15em solid lightblue;
+    border-bottom: 0.15em solid #222;
+}
+/* tab content */
+div.tabs > div > div {
+    background: #222;
+    border: none;
+    z-index: -2;
+    left: 0;
+    top: 1.3em;
+    bottom: 0;
+    right: 0;
+    padding-top: 0.3em;
+    position: absolute;
+    border-top: 0.15em solid black;
+}
+/* visible tab content */
+div.tabs > div:target > div {
+    z-index: -1;
+}
+
+textarea {
+    border: none;
+    margin: 0;
+    padding: 0;
+    color: grey;
+    background-color: #222;
+    width: 100%;
+    overflow: auto;
+    outline: none;
+}
+
+textarea:focus {
+    color: #999;
+}
+
+#listing0 {
+    height: 93%;
+}
+#filename {
+    font-style: italic;
+}
+
+@media (orientation: portrait) {
+    body {
+        overflow: scroll;
+    }
+
+    #screen {
+        width: 98%;
+    }
+
+    div.tabs {
+         margin-left: 0;
+         width: 100%;
+         clear: left;
+    }
+}
