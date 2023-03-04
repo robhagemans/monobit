@@ -228,7 +228,7 @@ function buildCollection(collection) {
     attachList();
 }
 
-function createDownloadLink(elementt) {
+function createDownloadLink(element) {
     //
     // create download link to file
     //

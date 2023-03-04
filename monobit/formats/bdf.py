@@ -1021,10 +1021,12 @@ def _save_bdf(font, outstream):
                 # multi-codepoint grapheme cluster or not set
                 # -1 means no encoding value in bdf
                 encoding = -1
-        else:
+        elif glyph.codepoint:
             # encoding values above 256 become multi-byte
             # unless we're working in unicode
             encoding = bytes_to_int(glyph.codepoint)
+        else:
+            encoding = -1
         # char must have a name in bdf
         # keep the first tag as the glyph name if available
         if glyph.tags:
