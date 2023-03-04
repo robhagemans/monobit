@@ -353,7 +353,6 @@ async function setupPyodide() {
     await pyodide.loadPackage("micropip");
     const micropip = pyodide.pyimport("micropip");
     await Promise.all([
-        micropip.install("setuptools"),
         micropip.install("lzma"),
         micropip.install("monobit", /*keep_going*/ true, /*deps*/ false),
     ]);

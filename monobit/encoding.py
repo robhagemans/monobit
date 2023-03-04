@@ -10,8 +10,7 @@ import logging
 from pathlib import Path
 import unicodedata
 from html.parser import HTMLParser
-
-from pkg_resources import resource_listdir
+from importlib.resources import files
 
 from .binary import int_to_bytes, align
 from .labels import Codepoint, to_label
@@ -1338,6 +1337,6 @@ for _overlay, _range, _format, _kwargs, _names in _OVERLAYS:
         charmaps.overlay(_name, f'charmaps/{_overlay}', _range, _format, **_kwargs)
 
 # FreeDOS charmaps
-for _file in resource_listdir(__name__, 'charmaps/freedos'):
-    if Path(_file).suffix != '.md':
-        charmaps.register(f'freedos-{Path(_file).stem}', f'charmaps/freedos/{_file}')
+for _file in files('monobit.charmaps.freedos').iterdir():
+    if Path(_file.name).suffix != '.md':
+        charmaps.register(f'freedos-{Path(_file.name).stem}', f'charmaps/freedos/{_file.name}')
