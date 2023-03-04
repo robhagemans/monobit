@@ -13,8 +13,7 @@ from contextlib import contextmanager
 from .constants import VERSION, CONVERTER_NAME
 from .font import Font
 from .pack import Pack
-from .streams import Stream, StreamBase, KeepOpen
-from .container import Container, Directory
+from .streams import Stream, StreamBase, KeepOpen, DirectoryStream
 from .magic import MagicRegistry, FileFormatError, maybe_text
 from .scripting import scriptable, ScriptArgs, ARG_PREFIX
 from .basetypes import Any
@@ -25,7 +24,7 @@ DEFAULT_BINARY_FORMAT = 'raw'
 
 
 @contextmanager
-def open_location(location, mode, overwrite=False):
+def open_location(location, mode):
     """Parse file specification, open stream."""
     if mode not in ('r', 'w'):
         raise ValueError(f"Unsupported mode '{mode}'.")
@@ -34,98 +33,16 @@ def open_location(location, mode, overwrite=False):
     if isinstance(location, str):
         location = Path(location)
     if isinstance(location, Path):
-        container = Directory()
-        with container:
-            with open_stream_or_container(container, location, mode, overwrite) as soc:
-                yield soc
-    elif isinstance(location, (StreamBase, Container)):
-        yield location
+        root = Path(location.root)
+        subpath = location.relative_to(root)
+        with DirectoryStream(root, mode) as stream:
+            yield stream, subpath
+    elif isinstance(location, StreamBase):
+        yield location, ''
     else:
         # we didn't open the file, so we don't own it
         # we neeed KeepOpen for when the yielded object goes out of scope in the caller
-        yield Stream(KeepOpen(location), mode=mode)
-
-
-@contextmanager
-def open_stream_or_container(container, path, mode, overwrite):
-    """Open stream or sub-container given container and path."""
-    head, tail = _split_path(container, path)
-    if mode == 'w':
-        if str(head) == '.':
-            head2, tail = _split_path_suffix(tail)
-            head /= head2
-    if str(head) == '.':
-        # base condition
-        next_container = None
-        # this'll raise a FileNotFoundError if we're reading
-        stream = container.open(tail, mode, overwrite)
-    else:
-        stream = container.open(head, mode, overwrite)
-        try:
-            next_container = open_container(stream, mode)
-        except FileFormatError as e:
-            logging.debug(e)
-            # not a container file, must be leaf node
-            if str(tail) != '.':
-                raise
-            next_container = None
-    if not next_container:
-        with stream:
-            yield stream
-        return
-    elif str(tail) == '.':
-        # special case: leaf node is container file
-        # return the whole container instead of a stream
-        # caller can decide to extract the whole container
-        with next_container:
-            yield next_container
-    else:
-        # recursively open containers-in-containers
-        with next_container:
-            with open_stream_or_container(next_container, tail, mode, overwrite) as soc:
-                yield soc
-
-
-def _split_path(container, path):
-    """Pare back path until an existing ancestor is found."""
-    for head in (path, *path.parents):
-        if head in container:
-            tail = path.relative_to(head)
-            return head, tail
-    # nothing exists
-    return Path('.'), path
-
-
-def _split_path_suffix(path):
-    """Pare forward path until a suffix is found."""
-    for head in reversed((path, *path.parents)):
-        if head.suffixes:
-            tail = path.relative_to(head)
-            return head, tail
-    # no suffix
-    return path, Path('.')
-
-
-def open_container(stream, mode, format=''):
-    """Interpret stream as (archive) container."""
-    # Directory.open() may return Directory objects (which are Container instances)
-    if hasattr(stream, 'open'):
-        return stream
-    fitting_containers = containers.get_for(stream, format=format)
-    for opener in fitting_containers:
-        try:
-            container = opener(stream, mode)
-        except FileFormatError:
-            continue
-        else:
-            return container
-    message = (
-        f'Cannot open `{stream.name}` as container: '
-        'format not recognised'
-    )
-    if format:
-        message += f' of format `{format}`'
-    raise FileFormatError(message)
+        yield Stream(KeepOpen(location), mode=mode), ''
 
 
 ##############################################################################
@@ -140,18 +57,15 @@ def load(infile:Any='', *, format:str='', **kwargs):
     format: input format (default: infer from magic number or filename)
     """
     infile = infile or sys.stdin
-    with open_location(infile, 'r') as stream:
-        return load_stream(stream, format, **kwargs)
+    with open_location(infile, 'r') as (stream, subpath):
+        return load_stream(stream, format=format, subpath=subpath, **kwargs)
 
 
-def load_stream(instream, format='', **kwargs):
+def load_stream(instream, *, format='', subpath='', **kwargs):
     """Load fonts from open stream."""
-    # special case - directory or container object supplied
-    if hasattr(instream, 'open'):
-        return load_all(instream, format=format)
-    # stream supplied and link to member - only works if stream holds a container
+    new_format, _, outer = format.rpartition('.')
     # identify file type
-    fitting_loaders = loaders.get_for(instream, format=format)
+    fitting_loaders = loaders.get_for(instream, format=outer)
     if not fitting_loaders:
         message = f'Cannot load `{instream.name}`'
         if format:
@@ -160,6 +74,14 @@ def load_stream(instream, format='', **kwargs):
     for loader in fitting_loaders:
         instream.seek(0)
         logging.info('Loading `%s` as %s', instream.name, loader.format)
+        # update format name, removing the most recently found wrapper format
+        if outer == loader.format:
+            format = new_format
+        # only provide subpath and format args if non-empty
+        if Path(subpath) != Path('.'):
+            kwargs['subpath'] = subpath
+        if format:
+            kwargs['format'] = format
         try:
             fonts = loader(instream, **kwargs)
         except FileFormatError as e:
@@ -179,7 +101,7 @@ def load_stream(instream, format='', **kwargs):
         except UnicodeError:
             filename = (
                 filename.encode('utf-8', 'surrogateescape')
-                .decode('ascii', 'backslashreplace')
+                .decode('ascii', 'backsl hreplace')
             )
         return Pack(
             _font.modify(
@@ -192,7 +114,7 @@ def load_stream(instream, format='', **kwargs):
     raise FileFormatError('No fonts found in file')
 
 
-def load_all(container, format='', **kwargs):
+def load_all(container, *, format='', **kwargs):
     """Open container and load all fonts found in it into one pack."""
     logging.info('Reading all from `%s`.', container.name)
     packs = Pack()
@@ -225,9 +147,9 @@ def save(
     """
     Write font(s) to file.
 
-    outfile: output file (default: stdout)
+    outfile: output file or path (default: stdout)
     format: font file format
-    overwrite: if outfile is a filename, allow overwriting existing file
+    overwrite: if outfile is a path, allow overwriting existing file
     """
     pack = Pack(pack_or_font)
     outfile = outfile or sys.stdout
@@ -235,17 +157,23 @@ def save(
         # errors can occur if the strings we write contain surrogates
         # these may come from filesystem names using 'surrogateescape'
         sys.stdout.reconfigure(errors='replace')
-    with open_location(outfile, 'w', overwrite=overwrite) as stream:
-        save_stream(pack, stream, format, **kwargs)
+    with open_location(outfile, 'w') as (stream, subpath):
+        save_stream(
+            pack, stream,
+            format=format, subpath=subpath, overwrite=overwrite,
+            **kwargs
+        )
     return pack_or_font
 
 
-def save_stream(pack, outstream, format='', **kwargs):
+def save_stream(
+        pack, outstream, *,
+        format='', subpath='', overwrite=False,
+        **kwargs
+    ):
     """Save fonts to an open stream."""
-    # special case - directory or container object supplied
-    if hasattr(outstream, 'open'):
-        return save_all(pack, outstream, format=format)
-    matching_savers = savers.get_for(outstream, format=format)
+    new_format, _, outer = format.rpartition('.')
+    matching_savers = savers.get_for(outstream, format=outer)
     if not matching_savers:
         if format:
             raise ValueError(f'Format specification `{format}` not recognised')
@@ -261,19 +189,41 @@ def save_stream(pack, outstream, format='', **kwargs):
             f'({", ".join(_s.format for _s in matching_savers)})'
         )
     saver, *_ = matching_savers
-    logging.info('Saving `%s` as %s.', outstream.name, saver.format)
+    if Path(subpath) == Path('.'):
+        logging.info('Saving `%s` as %s.', outstream.name, saver.format)
+    else:
+        logging.info(
+            'Saving `%s` on `%s` as %s.', subpath, outstream.name, saver.format
+        )
+    # update format name, removing the most recently found wrapper format
+    if outer == saver.format:
+        format = new_format
+    # only provide subpath and format args if non-empty
+    if Path(subpath) != Path('.'):
+        kwargs['subpath'] = subpath
+        kwargs['overwrite'] = overwrite
+    if format:
+        kwargs['format'] = format
     saver(pack, outstream, **kwargs)
 
 
-def save_all(pack, container, format, **kwargs):
+def save_all(
+        pack, container, *,
+        format=DEFAULT_TEXT_FORMAT, template='',
+        overwrite=False,
+        **kwargs
+    ):
     """Save fonts to a container."""
     logging.info('Writing all to `%s`.', container.name)
     for font in pack:
+        if format and not template:
+            # use format name as suffix
+            template = '{name}.' f'{format}'
+        # fill out template
+        name = font.format_properties(template)
         # generate unique filename
-        name = font.name.replace(' ', '_')
-        # FIXME: confusing format name and suffix
-        filename = container.unused_name(f'{name}.{format}')
-        stream = container.open(filename, 'w')
+        filename = container.unused_name(name.replace(' ', '_'))
+        stream = container.open(filename, 'w', overwrite=overwrite)
         try:
             with stream:
                 save_stream(Pack(font), stream, format=format, **kwargs)
@@ -304,14 +254,9 @@ class ConverterRegistry(MagicRegistry):
         register_magic = super().register
 
         def _decorator(original_func):
-            # set script arguments
-            funcname = self._func_name
-            if name:
-                funcname += f' {ARG_PREFIX}format={name}'
             _func = scriptable(
                 original_func,
-                # use the standard name, not that of the registered function
-                name=funcname,
+                record=False,
                 **kwargs
             )
             # register converter
@@ -336,4 +281,3 @@ class ConverterRegistry(MagicRegistry):
 
 loaders = ConverterRegistry('load', DEFAULT_TEXT_FORMAT, DEFAULT_BINARY_FORMAT)
 savers = ConverterRegistry('save', DEFAULT_TEXT_FORMAT)
-containers = ConverterRegistry('open')

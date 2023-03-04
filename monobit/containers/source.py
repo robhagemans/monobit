@@ -83,15 +83,14 @@ _PAS_PARAMS = dict(
     patterns=('*.c', '*.cc', '*.cpp', '*.h'),
     wrapper=True,
 )
-def load_c(infile, *, identifier:str='', payload:str='raw', **kwargs):
+def load_c(infile, *, identifier:str='', format='', **kwargs):
     """
     Extract font file encoded in C or C++ source code.
 
     identifier: text at start of line where encoded file starts. (default: first array literal {})
-    payload: format of payload (default: 'raw')
     """
     return _load_coded_binary(
-        infile, identifier=identifier, payload=payload,
+        infile, identifier=identifier, format=format,
         **_C_PARAMS, **kwargs
     )
 
@@ -101,15 +100,14 @@ def load_c(infile, *, identifier:str='', payload:str='raw', **kwargs):
     patterns=('*.js', '*.json',),
     wrapper=True,
 )
-def load_json(infile, *, identifier:str='', payload:str='raw', **kwargs):
+def load_json(infile, *, identifier:str='', format='', **kwargs):
     """
     Extract font file encoded in JSON or JavaScript source code.
 
     identifier: text at start of line where encoded file starts (default: first list [])
-    payload: format of payload (default: 'raw')
     """
     return _load_coded_binary(
-        infile, identifier=identifier, payload=payload, assign='',
+        infile, identifier=identifier, format=format, assign='',
         **_JS_PARAMS, **kwargs
     )
 
@@ -119,15 +117,14 @@ def load_json(infile, *, identifier:str='', payload:str='raw', **kwargs):
     patterns=('*.py',),
     wrapper=True
 )
-def load_python(infile, *, identifier:str='', payload:str='raw', **kwargs):
+def load_python(infile, *, identifier:str='', format='', **kwargs):
     """
     Extract font file encoded as a list in Python source code.
 
     identifier: text at start of line where encoded file starts (default: first list [])
-    payload: format of payload (default: 'raw')
     """
     return _load_coded_binary(
-        infile, identifier=identifier, payload=payload,
+        infile, identifier=identifier, format=format,
         delimiters='[]', **_PY_PARAMS, **kwargs
     )
 
@@ -137,15 +134,14 @@ def load_python(infile, *, identifier:str='', payload:str='raw', **kwargs):
     patterns=('*.py',),
     wrapper=True,
 )
-def load_python_tuple(infile, *, identifier:str='', payload:str='raw', **kwargs):
+def load_python_tuple(infile, *, identifier:str='', format='', **kwargs):
     """
     Extract font file encoded as a list in Python source code.
 
     identifier: text at start of line where encoded file starts (default: first tuple)
-    payload: format of payload (default: 'raw')
     """
     return _load_coded_binary(
-        infile, identifier=identifier, payload=payload,
+        infile, identifier=identifier, format=format,
         delimiters='()', **_PY_PARAMS, **kwargs
     )
 
@@ -155,15 +151,14 @@ def load_python_tuple(infile, *, identifier:str='', payload:str='raw', **kwargs)
     patterns=('*.pas',),
     wrapper=True,
 )
-def load_pascal(infile, *, identifier:str='', payload:str='raw', **kwargs):
+def load_pascal(infile, *, identifier:str='', format='', **kwargs):
     """
     Extract font file encoded as a list in Pascal source code.
 
     identifier: text at start of line where encoded file starts (default: first array)
-    payload: format of payload (default: 'raw')
     """
     return _load_coded_binary(
-        infile, identifier=identifier, payload=payload,
+        infile, identifier=identifier, format=format,
         **_PAS_PARAMS, **kwargs
     )
 
@@ -172,7 +167,7 @@ def load_pascal(infile, *, identifier:str='', payload:str='raw', **kwargs):
 def load_source(
         infile, *,
         identifier:str='', delimiters:str='{}', comment:str='//', assign:str='=',
-        payload:str='raw',
+        format='',
         **kwargs
     ):
     """
@@ -181,12 +176,11 @@ def load_source(
     identifier: text at start of line where encoded file starts (default: first delimiter)
     delimiters: pair of delimiters that enclose the file data (default: {})
     comment: string that introduces inline comment (default: //)
-    payload: format of payload (default: 'raw')
     """
     return _load_coded_binary(
         infile, identifier=identifier,
         delimiters=delimiters, comment=comment,
-        payload=payload, assign=assign,
+        format=format, assign=assign,
         **kwargs
     )
 
@@ -196,7 +190,7 @@ def _load_coded_binary(
         assign='=', int_conv=_int_from_c,
         # dummy for load; keep out of kwargs
         separator='',
-        payload='raw', **kwargs,
+        format='', **kwargs,
     ):
     """Load font from binary encoded in source code."""
     fonts = []
@@ -211,7 +205,7 @@ def _load_coded_binary(
         data = bytes(int_conv(_s) for _s in coded_data.split(',') if _s.strip())
         try:
             with Stream.from_data(data, mode='r') as bytesio:
-                fonts.extend(load_stream(bytesio, format=payload, **kwargs))
+                fonts.extend(load_stream(bytesio, format=format, **kwargs))
         except FileFormatError as e:
             logging.debug(e)
             continue
@@ -259,12 +253,10 @@ def _get_payload(instream, identifier, delimiters, comment, assign):
     patterns=('*.bas',),
     wrapper=True,
 )
-def load_basic(infile, *, payload:str='raw', **kwargs):
+def load_basic(infile, *, format='raw', **kwargs):
     """
     Extract font file encoded in DATA lines in classic BASIC source code.
     Tokenised BASIC files are not supported.
-
-    payload: format of payload (default: 'raw')
     """
     infile = infile.text
     coded_data = []
@@ -277,7 +269,7 @@ def load_basic(infile, *, payload:str='raw', **kwargs):
         coded_data.extend(values)
     data = bytes(_int_from_basic(_s) for _s in coded_data)
     with Stream.from_data(data, mode='r') as bytesio:
-        return load_stream(bytesio, format=payload, **kwargs)
+        return load_stream(bytesio, format=format, **kwargs)
 
 
 ###############################################################################
@@ -285,19 +277,19 @@ def load_basic(infile, *, payload:str='raw', **kwargs):
 @savers.register(linked=load_c, wrapper=True)
 def save_c(
         fonts, outstream,
-        payload:str='raw', bytes_per_line:int=16, distribute:bool=True,
+        bytes_per_line:int=16, distribute:bool=True,
+        format='raw',
         **kwargs
     ):
     """
     Save to font file encoded in C source code.
 
     bytes_per_line: number of encoded bytes in a source line (default: 16)
-    payload: format of payload (default: 'raw')
     distribute: save each font as a separate identifier (default: True)
     """
     return _save_coded_binary(
-        fonts, outstream, 'char font_{compactname}[{bytesize}] = ',
-        payload=payload, bytes_per_line=bytes_per_line, distribute=distribute,
+        fonts, outstream, 'font_{name}', 'char {identifier}[{bytesize}] = ',
+        format=format, bytes_per_line=bytes_per_line, distribute=distribute,
         **_C_PARAMS, **kwargs
     )
 
@@ -306,7 +298,8 @@ def save_c(
 def save_python(
         fonts, outstream,
         delimiters:str='[]',
-        payload:str='raw', bytes_per_line:int=16, distribute:bool=True,
+        bytes_per_line:int=16, distribute:bool=True,
+        format='raw',
         **kwargs
     ):
     """
@@ -314,12 +307,11 @@ def save_python(
 
     delimiters: pair of delimiters that enclose the file data (default: [])
     bytes_per_line: number of encoded bytes in a source line (default: 16)
-    payload: format of payload (default: 'raw')
     distribute: save each font as a separate identifier (default: True)
     """
     return _save_coded_binary(
-        fonts, outstream, 'font_{compactname} = ',
-        payload=payload, bytes_per_line=bytes_per_line, distribute=distribute,
+        fonts, outstream, 'font_{name}', '{identifier} = ',
+        format=format, bytes_per_line=bytes_per_line, distribute=distribute,
         delimiters=delimiters, **_PY_PARAMS, **kwargs
     )
 
@@ -327,20 +319,20 @@ def save_python(
 @savers.register(linked=load_json, wrapper=True)
 def save_json(
         fonts, outstream,
-        payload:str='raw', bytes_per_line:int=16, distribute:bool=True,
+        bytes_per_line:int=16, distribute:bool=True,
+        format='raw',
         **kwargs
     ):
     """
     Save to font file encoded in JSON code.
 
     bytes_per_line: number of encoded bytes in a source line (default: 16)
-    payload: format of payload (default: 'raw')
     distribute: save each font as a separate identifier (default: True)
     """
     outstream.text.write('{\n')
     fonts = _save_coded_binary(
-        fonts, outstream, '"font_{compactname}": ',
-        payload=payload, bytes_per_line=bytes_per_line, distribute=distribute,
+        fonts, outstream, 'font_{name}', '"{identifier}": ',
+        format=format, bytes_per_line=bytes_per_line, distribute=distribute,
         **_JS_PARAMS, **kwargs
     )
     outstream.text.write('}\n')
@@ -351,7 +343,8 @@ def save_source(
         fonts, outstream, *,
         identifier:str, assign:str='=', delimiters:str='{}', comment:str='//',
         separator=';',
-        bytes_per_line:int=16, payload:str='raw', distribute:bool=True,
+        bytes_per_line:int=16, distribute:bool=True,
+        format='raw',
         **kwargs
     ):
     """
@@ -363,31 +356,31 @@ def save_source(
     comment: string that introduces inline comment (default: //)
     separator: string to separate statements (default: ;)
     bytes_per_line: number of encoded bytes in a source line (default: 16)
-    payload: format of payload (default: 'raw')
     distribute: save each font as a separate identifier (default: True)
     """
     return _save_coded_binary(
         fonts, outstream,
-        f'{identifier} {assign} ', delimiters, comment,
-        payload=payload, distribute=distribute, separator=separator,
+        identifier, f'{identifier} {assign} ', delimiters, comment,
+        format=format, distribute=distribute, separator=separator,
         **kwargs
     )
 
 def _save_coded_binary(
         fonts, outstream,
-        assignment_pattern, delimiters, comment, separator,
-        bytes_per_line=16, payload='raw', distribute=True, **kwargs
+        identifier_template, assign_template, delimiters, comment, separator,
+        bytes_per_line=16, format='raw', distribute=True, **kwargs
     ):
     """
     Generate font file encoded as source code.
 
-    assignment_pattern: Format pattern for the assignment statement. May include `compactname` amd `bytesize` variables.
+    identifier_template: Template for the identifier. May include font properties.
+    assign_template: assignment operator. May include `identifier` and `bytesize` variable.
     delimiters: Must contain two characters, building the opening and closing delimiters of the collection. E.g. []
     comment: Line comment character(s).
     separator: string to separate statements
     bytes_per_line: number of encoded bytes in a source line
     distribute: save each font as a separate identifier (default: True)
-    payload: format of payload
+    format: format of payload
     """
     if len(delimiters) < 2:
         raise ValueError('A start and end delimiter must be given. E.g. []')
@@ -399,18 +392,20 @@ def _save_coded_binary(
     else:
         packs = (fonts,)
     for count, fonts in enumerate(packs):
-        # if multiple fonts, build the identifier from first font name
-        ascii_name = fonts[0].name.encode('ascii', 'ignore').decode('ascii')
-        ascii_name = ''.join(_c if _c.isalnum() else '_' for _c in ascii_name)
         # get the raw data
         bytesio = Stream(BytesIO(), mode='w')
-        save_stream(fonts, bytesio, format=payload, **kwargs)
+        save_stream(fonts, bytesio, format=format, **kwargs)
         rawbytes = bytesio.getbuffer()
-        assignment = assignment_pattern.format(
-            compactname=ascii_name, bytesize=len(rawbytes)
+        # if multiple fonts, build the identifier from first font name
+        identifier = fonts[0].format_properties(identifier_template)
+        # remove non-ascii
+        identifier = identifier.encode('ascii', 'ignore').decode('ascii')
+        identifier = ''.join(_c if _c.isalnum() else '_' for _c in identifier)
+        assign = assign_template.format(
+            identifier=identifier, bytesize=len(rawbytes)
         )
         # emit code
-        outstream.write(f'{assignment}{start_delimiter}\n')
+        outstream.write(f'{assign}{start_delimiter}\n')
         # grouper
         args = [iter(rawbytes)] * bytes_per_line
         groups = zip(*args)
@@ -437,7 +432,7 @@ def _save_coded_binary(
 def save_basic(
         fonts, outfile, *,
         line_number_start:int=1000, line_number_inc:int=10,
-        bytes_per_line:int=8, payload:str='raw',
+        bytes_per_line:int=8, format='raw',
         **kwargs
     ):
     """
@@ -446,7 +441,6 @@ def save_basic(
     line_number_start: line number of first DATA line (-1 for no line numbers; default: 1000)
     line_number_inc: increment between line numbers (default: 10)
     bytes_per_line: number of encoded bytes in a source line (default: 8)
-    payload: format of payload (default: 'raw')
     """
     if (
             line_number_inc <= 0
@@ -454,7 +448,7 @@ def save_basic(
         ):
         raise ValueError('line_number_inc must be > 0')
     with Stream(BytesIO(), mode='w') as bytesio:
-        save_stream(fonts, bytesio, format=payload, **kwargs)
+        save_stream(fonts, bytesio, format=format, **kwargs)
         rawbytes = bytes(bytesio.getbuffer())
     # grouper
     args = [iter(rawbytes)] * bytes_per_line

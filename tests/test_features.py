@@ -263,7 +263,7 @@ class TestFeatures(BaseTester):
 
     def test_compose(self):
         file = get_stringio(self.unscii8_sample)
-        f,  *_ = monobit.load(file, format='hex')
+        f,  *_ = monobit.load(file, format='unifont')
         text = monobit.render(
             f, 'u\u0305\u0327u \u0305\u0327 \u0305 \u0327'
         ).as_text()

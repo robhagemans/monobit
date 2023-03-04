@@ -724,7 +724,8 @@ def _create_bmfont(
     ):
     """Create a bmfont package."""
     container = outfile.where
-    path = Path('.') / font.family
+    basepath = Path(outfile.name).parent
+    path = basepath / font.family
     fontname = font.name.replace(' ', '_')
     encoding = font.encoding
     if not charmaps.is_unicode(encoding):
@@ -755,7 +756,7 @@ def _create_bmfont(
             page.save(imgfile, format=imageformat)
         props['pages'].append({
             'id': page_id,
-            'file': name
+            'file': str(Path(name).relative_to(basepath)),
         })
     # > info
     # > ----

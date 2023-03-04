@@ -26,8 +26,8 @@ _P9_MAGIC = b'ps090001'
 
 _SIGNUM_RANGE = range(127)
 
-_parameters = {
-    'e24': dict(
+_PARAMS = {
+    _E24_MAGIC: dict(
         fixed_byte_width=2,
         # guess based on file contents
         baseline=18,
@@ -37,19 +37,19 @@ _parameters = {
     ),
     # below settings taken from
     # https://github.com/Xiphoseer/sdo-tool/blob/main/crates/signum/src/chsets/printer.rs
-    'l30': dict(
+    _L30_MAGIC: dict(
         fixed_byte_width=None,
         baseline=48,
         line_height=52,
         dpi=(300, 300),
     ),
-    'p24': dict(
+    _P24_MAGIC: dict(
         fixed_byte_width=None,
         baseline=58,
         line_height=64,
         dpi=(300, 300),
     ),
-    'p9': dict(
+    _P9_MAGIC: dict(
         fixed_byte_width=None,
         baseline=36,
         line_height=48,
@@ -59,40 +59,20 @@ _parameters = {
 
 
 @loaders.register(
-    name='signum-e24',
-    magic=(_E24_MAGIC,),
-    patterns=('*.e24',),
+    name='signum',
+    magic=(_E24_MAGIC, _L30_MAGIC, _P9_MAGIC, _P24_MAGIC),
+    patterns=('*.e24', '*.l30', '*.p9', '*.p24'),
 )
-def load_signum_e24(instream):
+def load_signum(instream):
     """Load font from signum file."""
-    return _read_signum(instream, **_parameters['e24'])
-
-@loaders.register(
-    name='signum-l30',
-    magic=(_L30_MAGIC,),
-    patterns=('*.l30',),
-)
-def load_signum_l30(instream):
-    """Load font from signum file."""
-    return _read_signum(instream, **_parameters['l30'])
-
-@loaders.register(
-    name='signum-p9',
-    magic=(_P9_MAGIC,),
-    patterns=('*.p9',),
-)
-def load_signum_p9(instream):
-    """Load font from signum file."""
-    return _read_signum(instream, **_parameters['l30'])
-
-@loaders.register(
-    name='signum-p24',
-    magic=(_P24_MAGIC,),
-    patterns=('*.p24',),
-)
-def load_signum_p24(instream):
-    """Load font from signum file."""
-    return _read_signum(instream, **_parameters['p24'])
+    magic = instream.peek(8)[:8]
+    try:
+        params = _PARAMS[magic]
+    except KeyError:
+        raise FileFormatError(
+            'Not a Signum file: signature {magic} does not match'
+        )
+    return _read_signum(instream, **params)
 
 
 ################################################################################

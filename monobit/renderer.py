@@ -209,8 +209,8 @@ def _render_horizontal(
             # adjust origin for kerning
             if count:
                 x += adjust_bearings
-                x += prev.right_kerning.get_for_glyph(glyph)
-                x += glyph.left_kerning.get_for_glyph(prev)
+                x += round(prev.right_kerning.get_for_glyph(glyph))
+                x += round(glyph.left_kerning.get_for_glyph(prev))
             prev = glyph
             # offset + (x, y) is the coordinate of glyph matrix origin
             grid_x.append(glyph.left_bearing + x)

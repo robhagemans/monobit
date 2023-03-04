@@ -11,44 +11,21 @@ import tarfile
 import logging
 from pathlib import Path, PurePosixPath
 
-from ..container import Container
+from .container import Container
 from ..streams import Stream, KeepOpen
-from ..storage import loaders, savers, containers, load_all, save_all
 from ..magic import FileFormatError, Magic
-
-
-@loaders.register(
-    name='tar',
-    # maybe
-    magic=(
-        Magic.offset(257) + b'ustar',
-    ),
-    patterns=('*.tar',),
-)
-def load_tar(instream):
-    with TarContainer(instream) as container:
-        return load_all(container, format='')
-
-@savers.register(linked=load_tar)
-def save_tar(fonts, outstream):
-    with TarContainer(outstream, 'w') as container:
-        return save_all(fonts, container, format='')
-
-@containers.register(linked=load_tar, record=False)
-def open_tar(instream, mode='r', *, overwrite=False):
-    return TarContainer(instream, mode, overwrite=overwrite)
 
 
 class TarContainer(Container):
     """Tar-file wrapper."""
 
-    def __init__(self, file, mode='r', *, overwrite=False):
+    def __init__(self, file, mode='r'):
         """Create wrapper."""
         # mode really should just be 'r' or 'w'
         mode = mode[:1]
         super().__init__(mode, file.name)
         # reading tarfile needs a seekable stream, drain to buffer if needed
-        self._stream = Stream(file, mode, overwrite=overwrite)
+        self._stream = Stream(file, mode)
         # create the tarfile
         try:
             self._tarfile = tarfile.open(fileobj=self._stream, mode=mode)
@@ -71,8 +48,10 @@ class TarContainer(Container):
         if self.mode == 'w' and not self.closed:
             for file in self._files:
                 name = file.name
-                logging.debug('Writing out `%s` to tar container `%s`.', name, self.name)
-                tinfo = tarfile.TarInfo(name)
+                logging.debug(
+                    'Writing out `%s` to tar container `%s`.', name, self.name
+                )
+                tinfo = tarfile.TarInfo(str(PurePosixPath(self._root) / name))
                 tinfo.mtime = time.time()
                 tinfo.size = len(file.getvalue())
                 file.seek(0)
@@ -104,13 +83,13 @@ class TarContainer(Container):
 
     def open(self, name, mode, overwrite=False):
         """Open a stream in the container."""
-        name = str(PurePosixPath(self._root) / name)
+        filename = str(PurePosixPath(self._root) / name)
         mode = mode[:1]
         # always open as binary
         logging.debug('Opening file `%s` on tar container `%s`.', name, self.name)
         if mode == 'r':
             try:
-                file = self._tarfile.extractfile(name)
+                file = self._tarfile.extractfile(filename)
             except KeyError as e:
                 raise FileNotFoundError(e) from e
             # .name is not writeable, so we need to wrap
@@ -127,3 +106,13 @@ class TarContainer(Container):
                 logging.warning('Creating multiple files of the same name `%s`.', name)
             self._files.append(newfile)
             return newfile
+
+
+TarContainer.register(
+    name='tar',
+    # maybe
+    magic=(
+        Magic.offset(257) + b'ustar',
+    ),
+    patterns=('*.tar',),
+)

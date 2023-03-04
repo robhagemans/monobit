@@ -30,17 +30,18 @@ from ..properties import normalise_property
     # maybe, if multi-section
     magic=(b'---',),
     patterns=('*.yaff', '*.yaffs',),
-    # don't record history of loading/saving to standard yaff format
-    record=False,
 )
 def load_yaff(instream, allow_empty:bool=False):
-    """Load font from a monobit .yaff file."""
+    """
+    Load font from a monobit .yaff file.
+
+    allow_empty: allow files with no glyphs (default: False)
+    """
     return _load_yaff(instream.text, allow_empty)
 
 
 @savers.register(
     linked=load_yaff,
-    record=False,
 )
 def save_yaff(fonts, outstream):
     """Write fonts to a monobit .yaff file."""
@@ -90,8 +91,6 @@ def _load_yaff(text_stream, allow_empty):
         # if no glyphs, ignore it - may not be yaff at all
         if font.glyphs or allow_empty:
             fonts.append(font)
-    if not fonts:
-        raise FileFormatError('No fonts found in file')
     return fonts
 
 

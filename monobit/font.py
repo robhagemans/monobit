@@ -262,6 +262,14 @@ class FontProperties(DefaultProps):
         # stretch/shrink dpi.x if aspect ratio is not square
         return Coord((dpi*self.pixel_aspect.x)//self.pixel_aspect.y, dpi)
 
+    @writable_property
+    def encoding(self):
+        """Encoding."""
+        # if we have no codepoints, we can always assume unicode encoding
+        if self._font.get_chars() and not self._font.get_codepoints():
+            return charmaps.normalise('unicode')
+        return ''
+
     ##########################################################################
     # metrics
 
@@ -803,6 +811,19 @@ class Font:
         """Get value for property."""
         key = normalise_property(key)
         return getattr(self._props, key, '')
+
+    def format_properties(self, template, **kwargs):
+        """Format a string template using font properties."""
+        from string import Formatter
+
+        # pylint: disable=no-self-argument
+        class FontFormatter(Formatter):
+            def get_value(inner_self, key, inner_args, inner_kwargs):
+                if key in inner_kwargs:
+                    return inner_kwargs[key]
+                return getattr(self, key)
+
+        return FontFormatter().format(template, **kwargs)
 
 
     ##########################################################################
