@@ -8,9 +8,7 @@ licence: https://opensource.org/licenses/MIT
 import logging
 from pathlib import Path
 from contextlib import contextmanager
-import gzip
-import lzma
-import bz2
+from importlib import import_module
 
 from ..storage import loaders, savers, load_stream, save_stream
 from ..streams import Stream
@@ -29,6 +27,9 @@ class Compressor:
     suffixes = ()
     patterns = ()
     must_have_magic = True
+    # late import machinery
+    module = ''
+    errorclass = ''
 
     @classmethod
     def _check_magic(cls, instream):
@@ -59,12 +60,23 @@ class Compressor:
             raise FileFormatError(e)
 
     @classmethod
+    def _ensure_imports(cls):
+        """Late import compressor library."""
+        if cls.module:
+            cls.compressor = import_module(cls.module)
+            cls.module = ''
+        if cls.errorclass:
+            cls.error = getattr(cls.compressor, cls.errorclass)
+            cls.errorclass = ''
+
+    @classmethod
     def load(cls, instream, payload:str='', **kwargs):
         """
         Load fonts from compressed stream.
 
         payload: format of compressed font file.
         """
+        cls._ensure_imports()
         cls._check_magic(instream)
         wrapped = cls._get_payload_stream(instream, 'r')
         with cls._translate_errors():
@@ -78,6 +90,7 @@ class Compressor:
 
         payload: format of compressed font file.
         """
+        cls._ensure_imports()
         wrapped = cls._get_payload_stream(outstream, 'w')
         with cls._translate_errors():
             with wrapped:
@@ -95,8 +108,10 @@ class Compressor:
 
 class GzipCompressor(Compressor):
     name  = 'gzip'
-    compressor = gzip
-    error = gzip.BadGzipFile
+    module = 'gzip'
+    errorclass = 'BadGzipFile'
+    #compressor = gzip
+    #error = gzip.BadGzipFile
     magic = b'\x1f\x8b'
     patterns = ('*.gz',)
 
@@ -105,8 +120,8 @@ GzipCompressor.register()
 
 class XZCompressor(Compressor):
     name = 'xz'
-    compressor = lzma
-    error = lzma.LZMAError
+    module = 'lzma'
+    errorclass = 'LZMAError'
     magic = b'\xFD7zXZ\x00'
     patterns = ('*.xz',)
 
@@ -114,8 +129,8 @@ XZCompressor.register()
 
 class LzmaCompressor(Compressor):
     name = 'lzma'
-    compressor = lzma
-    error = lzma.LZMAError
+    module = 'lzma'
+    errorclass = 'LZMAError'
     # the magic is a 'maybe'
     magic = b'\x5d\0\0'
     must_have_magic = False
@@ -126,7 +141,7 @@ LzmaCompressor.register()
 
 class Bzip2Compressor(Compressor):
     name = 'bzip2'
-    compressor = bz2
+    module = 'bz2'
     error = OSError
     magic = b'BZh'
     patterns = ('*.bz2',)
