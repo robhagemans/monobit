@@ -44,8 +44,11 @@ async function showFont() {
     clearCanvas();
 
     let listing = document.getElementById("listing0");
-    let path = "/" + baseName(document.getElementById("filename").value)
+    let path = baseName(document.getElementById("filename").value)
     console.log(path);
+    if (!path) return;
+
+    path = "/" + path;
 
     let py = await pyodide;
     py.FS.writeFile(path, listing.value);
@@ -178,7 +181,7 @@ function buildCollection(collection) {
             a.onclick = () => { downloadFromGithub(element); return false; }
 
             let play = document.createElement("a");
-            play.innerHTML = '<span class="hidden">&#9656;</span> ' + element.path;
+            play.innerHTML = '<span class="hidden">&#9656;</span> ' + baseName(element.path);
             play.className = "run";
             play.onclick = () => { loadFont(element); return false; }
 
