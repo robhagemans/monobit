@@ -11,7 +11,7 @@ function setup() {
     // reload code if listing changes
     let listing = document.getElementById("listing0");
     listing.onblur = showFont;
-    //setupHandlers();
+    setupHandlers();
     setupFonts();
     setupButtons();
     pyodide = setupPyodide();
@@ -20,6 +20,34 @@ function setup() {
 
 ///////////////////////////////////////////////////////////////////////////
 // font sample
+
+
+async function loadDroppedFont(file) {
+
+    let py = await pyodide;
+    let outname = file.name + '.yaff'
+    py.globals.set("path", file.name);
+    py.globals.set("outname", outname);
+    let arraybuffer = await file.arrayBuffer();
+    console.log(file.name);
+    py.FS.writeFile(file.name, new Uint8Array(arraybuffer));
+
+    let pycode = `if 1:
+        import monobit
+        font, *_ = monobit.load(path)
+        monobit.save(font, outname, overwrite=True)
+    `
+    await py.runPython(pycode);
+
+    let bytes = py.FS.readFile(outname);
+    let blob = new Blob([bytes]);
+
+    let listing = document.getElementById("listing0");
+    listing.value = await blob.text();
+    document.getElementById("filename").innerHTML = outname;
+    showFont();
+}
+
 
 async function loadFont(element) {
     let blob = await blobFromGithub(element);
@@ -117,44 +145,39 @@ function setupButtons() {
 }
 
 
-//
-// function setupHandlers() {
-//     var app = apps[app_id];
-//
-//     // load files on drag & drop
-//     function nop(e) {
-//         e.stopPropagation();
-//         e.preventDefault();
-//     }
-//
-//     function drop(e) {
-//         e.stopPropagation();
-//         e.preventDefault();
-//         var files = e.dataTransfer.files;
-//         var reader = new FileReader();
-//         reader.onload = function() {
-//
-//             app.load(reader.result);
-//
-//         };
-//         reader.readAsText(files[0]);
-//     }
-//
-//     var element = app.canvas;
-//     element.addEventListener("dragenter", nop);
-//     element.addEventListener("dragover", nop);
-//     element.addEventListener("drop", drop);
-//
-//     var listing = document.getElementById("listing0");
-//     listing.addEventListener("dragenter", nop);
-//     listing.addEventListener("dragover", nop);
-//     listing.addEventListener("drop", drop);
-//
-//     var storage = document.getElementById("flop1");
-//     storage.addEventListener("dragenter", nop);
-//     storage.addEventListener("dragover", nop);
-//     storage.addEventListener("drop", nop);
-// }
+
+function setupHandlers() {
+    //
+    // handlers to load files on drag & drop
+    //
+
+    function nop(e) {
+        e.stopPropagation();
+        e.preventDefault();
+    }
+
+    function drop(e) {
+        e.stopPropagation();
+        e.preventDefault();
+        let files = e.dataTransfer.files;
+        loadDroppedFont(files[0]);
+    }
+
+    let canvas = document.getElementById("sample");
+    canvas.addEventListener("dragenter", nop);
+    canvas.addEventListener("dragover", nop);
+    canvas.addEventListener("drop", drop);
+
+    var listing = document.getElementById("listing0");
+    listing.addEventListener("dragenter", nop);
+    listing.addEventListener("dragover", nop);
+    listing.addEventListener("drop", drop);
+
+    var storage = document.getElementById("font-list");
+    storage.addEventListener("dragenter", nop);
+    storage.addEventListener("dragover", nop);
+    storage.addEventListener("drop", drop);
+}
 
 
 ///////////////////////////////////////////////////////////////////////////////
