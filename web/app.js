@@ -352,12 +352,13 @@ async function setupPyodide() {
     let pyodide = await loadPyodide();
     await pyodide.loadPackage("micropip");
     const micropip = pyodide.pyimport("micropip");
+    // do not await optional format dependencies
     await Promise.all([
-        micropip.install("lzma"),
         micropip.install("monobit", /*keep_going*/ true, /*deps*/ false),
     ]);
+    micropip.install("lzma")
+    console.log('Pyodide setup complete.')
     clearCanvas();
-    showFont();
     return pyodide;
 }
 
