@@ -139,7 +139,7 @@ function setupButtons() {
     //
     // conversion/download buttons
     //
-    document.getElementById("dl-mzfon").onclick = () => { download('fon', 'fon') };
+    document.getElementById("dl-mzfon").onclick = () => { download('fon', 'mzfon') };
     document.getElementById("dl-bdf").onclick = () => { download('bdf', 'bdf') };
     document.getElementById("dl-yaff").onclick = () => { download('yaff') };
 }
