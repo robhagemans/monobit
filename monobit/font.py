@@ -262,6 +262,14 @@ class FontProperties(DefaultProps):
         # stretch/shrink dpi.x if aspect ratio is not square
         return Coord((dpi*self.pixel_aspect.x)//self.pixel_aspect.y, dpi)
 
+    @writable_property
+    def encoding(self):
+        """Encoding."""
+        # if we have no codepoints, we can always assume unicode encoding
+        if self._font.get_chars() and not self._font.get_codepoints():
+            return charmaps.normalise('unicode')
+        return ''
+
     ##########################################################################
     # metrics
 
