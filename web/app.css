@@ -26,8 +26,8 @@ small {
     position: fixed;
     bottom: 0px;
     background-color: #111;
-    padding: 1em;
-    height: 3%;
+    padding: 0.8em;
+    height: 2.5%;
 }
 
 small a, small a:visited {
@@ -70,6 +70,10 @@ small a, small a:visited {
 #screen-wrapper > canvas:focus {
 }
 
+#buttons {
+    text-align: right;
+}
+
 
 h1 {
     color: #555;
@@ -82,36 +86,6 @@ h1 {
     border-top: 0.4em solid black;
     border-bottom: 1px solid black;
     height: 1.4em;
-}
-
-.basicode {
-    width: 100%;
-    height: 100%;
-    background-color: #333;
-    outline: none;
-}
-
-.basicode:focus {
-}
-
-.buttons {
-    background-color: #111;
-}
-
-.buttons button {
-    background-color: black;
-    color: #555;
-    outline: none;
-    border: none;
-    padding: 0.5em 1.5em 0.5em 1.5em;
-    float: right;
-    margin-top: 0.5em;
-    margin-bottom: 0;
-}
-
-.buttons button:hover, .keyboard button:hover, .keyboard .pressed {
-    background-color: #111;
-    color: #999;
 }
 
 /* storage visualisation */
@@ -272,6 +246,18 @@ textarea:focus {
 }
 #filename {
     font-style: italic;
+}
+
+button {
+  border-radius: 3px;
+  margin: 0.05em;
+  border: none;
+  background: #666;
+  color: #000;
+}
+
+button:focus {
+  outline: 0;
 }
 
 @media (orientation: portrait) {

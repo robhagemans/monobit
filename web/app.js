@@ -13,6 +13,7 @@ function setup() {
     listing.onblur = showFont;
     //setupHandlers();
     setupFonts();
+    setupButtons();
     pyodide = setupPyodide();
 }
 
@@ -104,6 +105,17 @@ async function showFont() {
 
 ///////////////////////////////////////////////////////////////////////////
 // event handlers
+
+function setupButtons() {
+    //
+    // conversion/download buttons
+    //
+    document.getElementById("dl-mzfon").onclick = () => { download('fon', 'fon') };
+    document.getElementById("dl-bdf").onclick = () => { download('bdf', 'bdf') };
+    document.getElementById("dl-yaff").onclick = () => { download('yaff') };
+}
+
+
 //
 // function setupHandlers() {
 //     var app = apps[app_id];
@@ -278,6 +290,35 @@ async function blobFromGithub(element) {
     return blob;
 }
 
+
+///////////////////////////////////////////////////////////////////////////////
+// conversions
+
+async function download(suffix, format) {
+
+    let listing = document.getElementById("listing0");
+    let path = "/" + baseName(document.getElementById("filename").innerHTML);
+    console.log(path);
+
+    let outname = path.split(".")[0] + '.' + suffix
+
+    let py = await pyodide;
+    py.FS.writeFile(path, listing.value);
+    py.globals.set("path", path);
+    py.globals.set("outname", outname);
+    py.globals.set("format", format);
+
+    let pycode = `if 1:
+        import monobit
+        font, *_ = monobit.load(path)
+        monobit.save(font, outname, format=format, overwrite=True)
+    `
+    await py.runPython(pycode);
+
+    let bytes = py.FS.readFile(outname);
+    let blob = new Blob([bytes]);
+    downloadBytes(outname, blob);
+}
 
 
 ///////////////////////////////////////////////////////////////////////////////
