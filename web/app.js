@@ -146,21 +146,7 @@ async function setupFonts() {
     //
     // retrieve font list from Github and show
     //
-    let tree = null;
-    let refreshTime = JSON.parse(localStorage.getItem("refresh_time"));
-    // hit github no more than once per hour (rate limit)
-    if (refreshTime && Date.now() - refreshTime < 3.6e+6) {
-        tree = JSON.parse(localStorage.getItem("github_tree"));
-    }
-    if (!tree) {
-        console.log('refresh github tree');
-        let url = "https://api.github.com/repos/robhagemans/hoard-of-bitfonts/git/trees/master?recursive=1";
-        tree = await fetch(url)
-            .then((response) => response.json())
-            .then((result) => result.tree);
-        localStorage.setItem("github_tree", JSON.stringify(tree));
-        localStorage.setItem("refresh_time", JSON.stringify(Date.now()));
-    }
+    let tree = await fontListFromGithub();
     buildCollection(tree);
 }
 
@@ -219,6 +205,42 @@ function downloadBytes(name, blob) {
     a.remove();
 }
 
+
+///////////////////////////////////////////////////////////////////////////////
+// Github interface
+
+async function fontListFromGithub() {
+    //
+    // retrieve font list from Github
+    //
+    let tree = null;
+    let refreshTime = JSON.parse(localStorage.getItem("refresh_time"));
+    // hit github no more than once per hour (rate limit)
+    if (refreshTime && Date.now() - refreshTime < 3.6e+6) {
+        tree = JSON.parse(localStorage.getItem("github_tree"));
+    }
+    if (!tree) {
+        console.log('refresh github tree');
+        let url = "https://api.github.com/repos/robhagemans/hoard-of-bitfonts/git/trees/master?recursive=1";
+        tree = await fetch(url)
+            .then((response) => response.json())
+            .then((result) => result.tree);
+        localStorage.setItem("github_tree", JSON.stringify(tree));
+        localStorage.setItem("refresh_time", JSON.stringify(Date.now()));
+    }
+    return tree;
+}
+
+async function downloadFromGithub(element) {
+    //
+    // user download of file from Github
+    //
+    let blob = await blobFromGithub(element);
+    downloadBytes(element.path, blob);
+    // do not follow link
+    return false;
+}
+
 async function blobFromGithub(element) {
     //
     // get file from Github as blob
@@ -230,16 +252,6 @@ async function blobFromGithub(element) {
     return blob;
 }
 
-
-async function downloadFromGithub(element) {
-    //
-    // user download of file from Github
-    //
-    let blob = await blobFromGithub(element);
-    downloadBytes(element.path, blob);
-    // do not follow link
-    return false;
-}
 
 
 ///////////////////////////////////////////////////////////////////////////////
