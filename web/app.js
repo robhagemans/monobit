@@ -43,11 +43,14 @@ function baseName(filename) {
 async function showFont() {
     clearCanvas();
 
+    let canvas = document.getElementById("sample");
     let listing = document.getElementById("listing0");
     let path = baseName(document.getElementById("filename").value)
     console.log(path);
-    if (!path) return;
-
+    if (!path) {
+        canvas.focus();
+        return;
+    }
     path = "/" + path;
 
     let py = await pyodide;
@@ -87,7 +90,6 @@ async function showFont() {
     let imagedata = new ImageData(
         array, py.globals.get("width"), py.globals.get("height")
     );
-    let canvas = document.getElementById("sample");
     let context = canvas.getContext("2d");
 
     // resize canvas to fit width
@@ -151,46 +153,67 @@ async function setupFonts() {
     //
     let tree = await fontListFromGithub();
     buildCollection(tree);
+
+    // bring fonts list to front
+    location.hash = "#fonts";
 }
 
 
 function buildCollection(collection) {
     //
     // show list of available fonts
+    // structure: ul > li > ol > li
     //
     let parent = document.getElementById("font-list");
+    let ul = parent.appendChild(document.createElement("ul"))
+    let ulli = document.createElement("li");
+    let ol = document.createElement("ol");
 
-    let topli = document.createElement("li");
-    let list = document.createElement("ol");
-    parent.appendChild(document.createElement("ul")).appendChild(topli).appendChild(list);
-
-    for(let element of collection) {
-
-        if (element.type == "tree") {
-            topli = document.createElement("li");
-            topli.innerHTML = "&nbsp;&#x2605; " + element.path;
-
-            list = document.createElement("ol");
-            parent.appendChild(document.createElement("ul")).appendChild(topli).appendChild(list);
-        }
-        else {
-            // create download link to file
-            let a = document.createElement("a");
-            a.innerHTML = "&#9662;";
-            a.className = "hidden download";
-            a.onclick = () => { downloadFromGithub(element); return false; }
-
-            let play = document.createElement("a");
-            play.innerHTML = '<span class="hidden">&#9656;</span> ' + baseName(element.path);
-            play.className = "run";
-            play.onclick = () => { loadFont(element); return false; }
-
-            let li = list.appendChild(document.createElement("li"));
-            li.appendChild(a);
-            li.appendChild(play);
+    function attachList() {
+        // attach last subdirectory list, if not empty
+        if (ol.children.length) {
+            ul.appendChild(ulli).appendChild(ol);
         }
     }
+
+    for(let element of collection) {
+        if (element.type == "tree") {
+            attachList();
+            ulli = document.createElement("li");
+            ulli.innerHTML = "&nbsp;&#x2605; " + element.path;
+            ol = document.createElement("ol");
+        }
+        else if (element.path.endsWith('.yaff') || element.path.endsWith('.draw')) {
+            let li = ol.appendChild(document.createElement("li"));
+            li.appendChild(createDownloadLink(element));
+            li.appendChild(createPlayLink(element));
+        }
+    }
+    attachList();
 }
+
+function createDownloadLink(elementt) {
+    //
+    // create download link to file
+    //
+    let a = document.createElement("a");
+    a.innerHTML = "&#9662;";
+    a.className = "hidden download";
+    a.onclick = () => { downloadFromGithub(element); return false; };
+    return a;
+}
+
+function createPlayLink(element) {
+    //
+    // create "play" / show-font link
+    //
+    let play = document.createElement("a");
+    play.innerHTML = '<span class="hidden">&#9656;</span> ' + baseName(element.path);
+    play.className = "run";
+    play.onclick = () => { loadFont(element); return false; };
+    return play;
+}
+
 
 
 function downloadBytes(name, blob) {
