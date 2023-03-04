@@ -260,7 +260,7 @@ function downloadBytes(name, blob) {
     // create another anchor and trigger download
     let a = document.createElement("a");
     a.className = "hidden download";
-    a.download = name;
+    a.download = baseName(name);
     a.href = window.URL.createObjectURL(blob);
     // trigger download
     a.click();
