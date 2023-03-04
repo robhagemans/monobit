@@ -92,7 +92,7 @@ async function showFont() {
     import monobit
 
     font, *_ = monobit.load(path)
-    raster = monobit.chart.chart(font, columns=32)
+    raster = monobit.chart(font, columns=32)
     #raster = monobit.render(font, sample, direction='ltr f')
 
     # scale for crisper result on JS canvas

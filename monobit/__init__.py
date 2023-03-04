@@ -18,6 +18,7 @@ from .magic import FileFormatError
 from .encoding import charmaps, encoder
 from .taggers import tagmaps
 from .renderer import render
+from .chart import chart
 from .labels import Char, Codepoint, Tag
 
 # ensure plugins get registered
