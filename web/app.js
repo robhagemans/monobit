@@ -43,6 +43,7 @@ function baseName(filename) {
 
 async function showFont() {
     clearCanvas();
+    window.scrollTo(0, 0);
 
     let canvas = document.getElementById("sample");
     let listing = document.getElementById("listing0");
