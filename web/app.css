@@ -213,7 +213,6 @@ div.tabs > div {
     padding: 0;
     margin: 0;
     background: black;
-    max-width: 14.25%;
 }
 div.tabs > div > a {
     font-family: sans-serif;

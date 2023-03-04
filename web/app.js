@@ -24,7 +24,7 @@ async function loadFont(element) {
     let blob = await blobFromGithub(element);
     let listing = document.getElementById("listing0");
     listing.value = await blob.text();
-    document.getElementById("filename").value = element.path;
+    document.getElementById("filename").innerHTML = element.path;
     showFont();
 }
 
@@ -45,7 +45,7 @@ async function showFont() {
 
     let canvas = document.getElementById("sample");
     let listing = document.getElementById("listing0");
-    let path = baseName(document.getElementById("filename").value)
+    let path = baseName(document.getElementById("filename").innerHTML)
     console.log(path);
     if (!path) {
         canvas.focus();
