@@ -36,11 +36,15 @@ function clearCanvas() {
     context.fillRect(0, 0, canvas.width, canvas.height);
 }
 
+function baseName(filename) {
+    return filename.split("/").pop();
+}
+
 async function showFont() {
     clearCanvas();
 
     let listing = document.getElementById("listing0");
-    let path = "/" + document.getElementById("filename").value.split("/").pop();
+    let path = "/" + baseName(document.getElementById("filename").value)
     console.log(path);
 
     let py = await pyodide;
@@ -51,33 +55,17 @@ async function showFont() {
     import js
     import monobit
 
-    sample = b'\\n'.join(
-        bytes(range(_c, _c+32))
-        for _c in range(0, 256, 32)
-    )
-
-    sample = b'''...and the (quick & brown) fox jumps: over lazy dog #0123456789.
-THE QUICK, BROWN FOX JUMPS OVER A LAZY DOG!
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor
-incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis
-nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
-Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu
-fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in
-culpa qui officia deserunt mollit anim id est laborum.'''
-
     font, *_ = monobit.load(path)
-    #raster = monobit.render(font, sample, direction='ltr f')
     raster = monobit.chart.chart(font, columns=32)
+    #raster = monobit.render(font, sample, direction='ltr f')
 
     # scale for crisper result on JS canvas
     raster = raster.stretch(2, 2)
 
     # convert to RGBA vector
-    rgba = tuple(
-        (255, 255, 255, 255) if _e else (0, 0, 0, 255)
-        for _e in raster.as_vector()
-    )
+    rgba = raster.as_vector(ink=(255, 255, 255, 255), paper=(0, 0, 0, 255))
+
+    # outputs for javascript
     rgba = bytes(_b for _e in rgba for _b in _e)
     width = raster.width
     height = raster.height
