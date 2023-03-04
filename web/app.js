@@ -92,7 +92,7 @@ async function showFont() {
     import monobit
 
     font, *_ = monobit.load(path)
-    raster = monobit.chart.chart(font, columns=32)
+    raster = monobit.chart(font, columns=32)
     #raster = monobit.render(font, sample, direction='ltr f')
 
     # scale for crisper result on JS canvas
@@ -352,13 +352,13 @@ async function setupPyodide() {
     let pyodide = await loadPyodide();
     await pyodide.loadPackage("micropip");
     const micropip = pyodide.pyimport("micropip");
+    // do not await optional format dependencies
     await Promise.all([
-        micropip.install("setuptools"),
-        micropip.install("lzma"),
         micropip.install("monobit", /*keep_going*/ true, /*deps*/ false),
     ]);
+    micropip.install("lzma")
+    console.log('Pyodide setup complete.')
     clearCanvas();
-    showFont();
     return pyodide;
 }
 

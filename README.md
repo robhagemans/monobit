@@ -23,7 +23,7 @@ The `monobit` tools let you modify bitmap fonts and convert between several form
 Roman Czyborra's `hexdraw`, Simon Tatham's `mkwinfont` and John Elliott's `psftools`. Details are
 given in [the `yaff` font file format specification](YAFF.md).
 
-Monobit requires Python 3.8 or above. Install through `pip install monobit`. Some formats or features require additional packages; see _Dependencies_ below for a list. These
+Monobit requires Python 3.9 or above. Install through `pip install monobit`. Some formats or features require additional packages; see _Dependencies_ below for a list. These
 will be installed automatically if you use `pip`.
 
 `monobit` can be used as a Python package or as a command-line tool.
