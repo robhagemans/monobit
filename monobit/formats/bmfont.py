@@ -21,7 +21,7 @@ from ..basetypes import Coord, Bounds
 from ..encoding import charmaps
 from .. import streams
 from ..magic import FileFormatError
-from ..binary import int_to_bytes, bytes_to_int
+from ..binary import int_to_bytes, bytes_to_int, ceildiv
 from ..struct import little_endian as le
 from ..properties import reverse_dict
 from ..storage import loaders, savers
@@ -635,21 +635,22 @@ def _create_spritesheets(
         for _index, _p in enumerate(sorted_glyphs)
     }
     # determine spritesheet size
+    max_width = max(_g.width for _g in cropped_glyphs)
+    max_height = max(_g.height for _g in cropped_glyphs)
     if size is None:
         total_area = sum(
             (_g.width+spacing.x) * (_g.height+spacing.y)
             for _g in cropped_glyphs
         )
-        # 10% slack
-        edge = int(ceil(1.10 * sqrt(total_area / n_layers)))
+        edge = int(ceil(sqrt(total_area / n_layers)))
         size = Coord(
-            edge + padding.left + padding.right,
-            edge + padding.top + padding.bottom,
+            max_width * ceildiv(edge, max_width) + padding.left + padding.right,
+            max_height * ceildiv(edge, max_height) + padding.top + padding.bottom,
         )
     width, height = size
     # ensure sheet is larger than largest glyph
-    width = max(width, max(_g.width for _g in cropped_glyphs))
-    height = max(height, max(_g.height for _g in cropped_glyphs))
+    width = max(width, max_width)
+    height = max(height, max_height)
     chars = []
     pages = []
     empty = Image.new('L', (width, height), border)
