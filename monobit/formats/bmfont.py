@@ -903,13 +903,18 @@ class SpriteNode:
         height = self._bottom - self._top
         if img.width > width or img.height > height:
             raise DoesNotFitError()
+        if self._full:
+            raise DoesNotFitError()
         if self._children:
             try:
                 return self._children[0].insert(img)
             except DoesNotFitError as e:
+                pass
+            try:
                 return self._children[1].insert(img)
-        if self._full:
-            raise DoesNotFitError()
+            except DoesNotFitError as e:
+                self._full = True
+                raise
         if img.width == width and img.height == height:
             self._full = True
             return self._left, self._top
