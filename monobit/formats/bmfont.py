@@ -16,7 +16,7 @@ try:
 except ImportError:
     Image = None
 
-from ..basetypes import Coord
+from ..basetypes import Coord, Bounds
 from ..encoding import charmaps
 from .. import streams
 from ..magic import FileFormatError
@@ -66,6 +66,7 @@ if Image:
             image_format:str='png',
             packed:bool=True,
             spacing:Coord=Coord(0, 0),
+            padding:Bounds=Bounds(0, 0, 0, 0),
             descriptor:str='text',
         ):
         """
@@ -75,13 +76,14 @@ if Image:
         image_format: image format of the spritesheets (default: 'png')
         packed: if true, use each of the RGB channels as a separate spritesheet (default: True)
         spacing: x,y spacing between individual glyphs (default: 0x0)
+        padding: left, top, right, bottom unused spacing around edges (default: 0,0,0,0)
         descriptor: font descriptor file format, one of 'text', 'json' (default: 'text')
         """
         if len(fonts) > 1:
             raise FileFormatError("Can only save one font to BMFont file.")
         _create_bmfont(
             outfile, fonts[0],
-            size=image_size, packed=packed, spacing=spacing,
+            size=image_size, packed=packed, spacing=spacing, padding=padding,
             image_format=image_format, descriptor=descriptor
         )
 
@@ -609,7 +611,7 @@ def _glyph_id(glyph, encoding):
 def _create_spritesheets(
         font, *,
         size, packed,
-        spacing,
+        spacing, padding,
         paper=0, ink=255, border=0,
     ):
     """Dump font to sprite sheets."""
@@ -635,7 +637,12 @@ def _create_spritesheets(
         sheets[layer] = img
         # output glyphs
         x, y = 0, 0
-        tree = SpriteNode(x, y, width, height, 0)
+        tree = SpriteNode(
+            x, y,
+            width-padding.left-padding.right,
+            height-padding.top-padding.bottom,
+            depth=0
+        )
         for number, glyph in enumerate(glyphs):
             cropped = glyph.reduce()
             if cropped.height and cropped.width:
@@ -651,7 +658,7 @@ def _create_spritesheets(
                 charimg = Image.new('L', (cropped.width, cropped.height))
                 data = cropped.as_vector(ink, paper)
                 charimg.putdata(data)
-                img.paste(charimg, (x, y))
+                img.paste(charimg, (x + padding.left, y + padding.top))
             try:
                 id = _glyph_id(glyph, font.encoding)
             except ValueError as e:
@@ -672,8 +679,8 @@ def _create_spritesheets(
             # >  chnl       The texture channel where the character image is found (1 = blue, 2 = green, 4 = red, 8 = alpha, 15 = all channels).
             chars.append(dict(
                 id=id,
-                x=x,
-                y=y,
+                x=x + padding.left,
+                y=y + padding.top,
                 width=cropped.width,
                 height=cropped.height,
                 # > The `xoffset` gives the horizontal offset that should be added to the cursor
@@ -730,7 +737,7 @@ def _create_textdict(name, dict):
 
 def _create_bmfont(
         outfile, font, *,
-        size, packed, spacing,
+        size, packed, spacing, padding,
         image_format, descriptor,
     ):
     """Create a bmfont package."""
@@ -750,7 +757,7 @@ def _create_bmfont(
         font = font.label(char_from=encoding)
     # create images
     pages, chars = _create_spritesheets(
-        font, size=size, packed=packed, spacing=spacing,
+        font, size=size, packed=packed, spacing=spacing, padding=padding,
     )
     props = {}
     props['chars'] = chars
@@ -806,7 +813,7 @@ def _create_bmfont(
         'stretchH': 100,
         'smooth': False,
         'aa': 1,
-        'padding': (0, 0, 0, 0),
+        'padding': tuple(padding),
         'spacing': tuple(spacing),
         'outline': 0,
     }

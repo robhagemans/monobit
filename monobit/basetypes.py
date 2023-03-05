@@ -116,5 +116,6 @@ CONVERTERS = {
     Real: to_number,
     Any: passthrough,
     Coord: Coord.create,
+    Bounds: Bounds.create,
     RGB: RGB.create,
 }
