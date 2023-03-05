@@ -709,7 +709,7 @@ def _create_spritesheets(
         # bmfont channel order is B, G, R, A
         pages = [Image.merge('RGBA', [_sh[2], _sh[1], _sh[0], _sh[3]]) for _sh in pages]
     else:
-        pages = [Image.merge('RGBA', _sh*4) for _sh in pages]
+        pages = [_sh[0] for _sh in pages]
     return pages, chars
 
 
