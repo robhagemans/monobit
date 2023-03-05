@@ -629,7 +629,7 @@ def _create_spritesheets(font, size=(256, 256), packed=False):
         sheets[layer] = img
         # output glyphs
         x, y = 0, 0
-        tree = SpriteNode(x, y, width, height)
+        tree = SpriteNode(x, y, width, height, 0)
         for number, glyph in enumerate(font.glyphs):
             cropped = glyph.reduce()
             if cropped.height and cropped.width:
@@ -888,11 +888,12 @@ class SpriteNode:
     """Tree structure to fill up spritesheet."""
     # see http://blackpawn.com/texts/lightmaps/
 
-    def __init__(self, left, top, right, bottom):
+    def __init__(self, left, top, right, bottom, depth):
         """Create a new node."""
         self._left, self._top, self._right, self._bottom = left, top, right, bottom
         self._children = None
         self._image = None
+        self._depth = depth
 
     def insert(self, img):
         """Insert an image into this node or descendant node."""
@@ -915,12 +916,12 @@ class SpriteNode:
             dh = height - img.height
             if dw > dh:
                 self._children = (
-                    SpriteNode(self._left, self._top, self._left + img.width, self._bottom),
-                    SpriteNode(self._left + img.width, self._top, self._right, self._bottom)
+                    SpriteNode(self._left, self._top, self._left + img.width, self._bottom, self._depth+1),
+                    SpriteNode(self._left + img.width, self._top, self._right, self._bottom, self._depth+1)
                 )
             else:
                 self._children = (
-                    SpriteNode(self._left, self._top, self._right, self._top + img.height),
-                    SpriteNode(self._left, self._top + img.height, self._right, self._bottom)
+                    SpriteNode(self._left, self._top, self._right, self._top + img.height, self._depth+1),
+                    SpriteNode(self._left, self._top + img.height, self._right, self._bottom, self._depth+1)
                 )
             return self._children[0].insert(img)
