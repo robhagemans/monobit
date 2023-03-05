@@ -622,6 +622,7 @@ def _create_spritesheets(font, size=(256, 256), packed=False):
     pages.append(sheets)
     page_id = 0
     layer = 0
+    glyphs = font.glyphs
     while True:
         if packed:
             channels = 1 << layer
@@ -630,13 +631,14 @@ def _create_spritesheets(font, size=(256, 256), packed=False):
         # output glyphs
         x, y = 0, 0
         tree = SpriteNode(x, y, width, height, 0)
-        for number, glyph in enumerate(font.glyphs):
+        for number, glyph in enumerate(glyphs):
             cropped = glyph.reduce()
             if cropped.height and cropped.width:
                 try:
                     x, y = tree.insert(cropped)
                 except DoesNotFitError:
                     # we don't fit, get next sheet
+                    glyphs = glyphs[number:]
                     break
                 charimg = Image.new('L', (cropped.width, cropped.height))
                 data = cropped.as_vector(ink, paper)
