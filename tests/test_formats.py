@@ -317,6 +317,28 @@ class TestFormats(BaseTester):
         self.assertEqual(len(font.glyphs), 919)
         self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
 
+    def test_export_bmf_xml(self):
+        """Test exporting bmfont files with xml descriptor."""
+        fnt_file = self.temp_path / '4x6.bmf'
+        monobit.save(
+            self.fixed4x6, fnt_file,
+            format='bmfont', descriptor='xml',
+        )
+        font, *_ = monobit.load(fnt_file, format='bmfont')
+        self.assertEqual(len(font.glyphs), 919)
+        self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
+
+    def test_export_bmf_binary(self):
+        """Test exporting bmfont files with binary descriptor."""
+        fnt_file = self.temp_path / '4x6.bmf'
+        monobit.save(
+            self.fixed4x6, fnt_file,
+            format='bmfont', descriptor='binary',
+        )
+        font, *_ = monobit.load(fnt_file, format='bmfont')
+        self.assertEqual(len(font.glyphs), 919)
+        self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
+
     # Source coded binary
 
     def test_import_c(self):
