@@ -63,6 +63,8 @@ function clearCanvas() {
     let context = canvas.getContext("2d");
     context.fillStyle = "black";
     context.fillRect(0, 0, canvas.width, canvas.height);
+    // move to top of page instead of line of hash anchors for tabs
+    window.scrollTo(0, 0);
 }
 
 function baseName(filename) {
@@ -71,7 +73,6 @@ function baseName(filename) {
 
 async function showFont() {
     clearCanvas();
-    window.scrollTo(0, 0);
 
     let canvas = document.getElementById("sample");
     let listing = document.getElementById("listing0");
@@ -141,6 +142,8 @@ function setupButtons() {
     //
     document.getElementById("dl-mzfon").onclick = () => { download('fon', 'mzfon') };
     document.getElementById("dl-bdf").onclick = () => { download('bdf', 'bdf') };
+    document.getElementById("dl-png").onclick = () => { download('png', 'image') };
+    document.getElementById("dl-bmfont").onclick = () => { download('fnt.zip', 'bmfont.zip') };
     document.getElementById("dl-yaff").onclick = () => { download('yaff') };
 }
 
@@ -321,10 +324,16 @@ async function blobFromGithub(element) {
 async function download(suffix, format) {
 
     let listing = document.getElementById("listing0");
-    let path = "/" + baseName(document.getElementById("filename").innerHTML);
+    let basename = baseName(document.getElementById("filename").innerHTML);
+    let stem = basename.split(".")[0];
+    let path = "/" + basename;
     console.log(path);
 
-    let outname = path.split(".")[0] + '.' + suffix
+    let outNames = [];
+    for (let suffixElem of suffix.split(".").reverse()) {
+        outNames.push(stem + '.' + suffixElem);
+    }
+    let outname = outNames.join("/")
 
     let py = await pyodide;
     py.FS.writeFile(path, listing.value);
@@ -339,6 +348,8 @@ async function download(suffix, format) {
     `
     await py.runPython(pycode);
 
+    outname = outNames[0];
+    console.log(outname);
     let bytes = py.FS.readFile(outname);
     let blob = new Blob([bytes]);
     downloadBytes(outname, blob);
@@ -355,10 +366,14 @@ async function setupPyodide() {
     // do not await optional format dependencies
     await Promise.all([
         micropip.install("monobit", /*keep_going*/ true, /*deps*/ false),
+        micropip.install("pillow"),
+        micropip.install("fonttools"),
     ]);
     micropip.install("lzma")
+
     console.log('Pyodide setup complete.')
     clearCanvas();
+    document.getElementById("name").innerHTML = "Drop a font file - or choose from the Hoard"
     return pyodide;
 }
 
