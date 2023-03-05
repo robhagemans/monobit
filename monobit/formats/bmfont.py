@@ -10,6 +10,7 @@ import shlex
 import logging
 from pathlib import Path
 import xml.etree.ElementTree as etree
+from math import ceil, sqrt
 
 try:
     from PIL import Image
@@ -62,7 +63,7 @@ if Image:
     @savers.register(linked=load_bmfont)
     def save(
             fonts, outfile, *,
-            image_size:Coord=Coord(256, 256),
+            image_size:Coord=None,
             image_format:str='png',
             packed:bool=True,
             spacing:Coord=Coord(0, 0),
@@ -72,7 +73,7 @@ if Image:
         """
         Save fonts to Angelcode BMFont format.
 
-        image_size: pixel width,height of the spritesheet(s) storing the glyphs (default: 256x256)
+        image_size: pixel width,height of the spritesheet(s) storing the glyphs (default: estimate)
         image_format: image format of the spritesheets (default: 'png')
         packed: if true, use each of the RGB channels as a separate spritesheet (default: True)
         spacing: x,y spacing between individual glyphs (default: 0x0)
@@ -621,7 +622,23 @@ def _create_spritesheets(
         n_layers = 1
     else:
         n_layers = 4
+    cropped_glyphs = tuple(_g.reduce() for _g in font.glyphs)
+    # determine spritesheet size
+    if size is None:
+        total_area = sum(
+            (_g.width+spacing.x) * (_g.height+spacing.y)
+            for _g in cropped_glyphs
+        )
+        # 10% slack
+        edge = int(ceil(1.10 * sqrt(total_area / n_layers)))
+        size = Coord(
+            edge + padding.left + padding.right,
+            edge + padding.top + padding.bottom,
+        )
     width, height = size
+    # ensure sheet is larger than largest glyph
+    width = max(width, max(_g.width for _g in cropped_glyphs))
+    height = max(height, max(_g.height for _g in cropped_glyphs))
     chars = []
     pages = []
     empty = Image.new('L', (width, height), border)
@@ -629,7 +646,6 @@ def _create_spritesheets(
     pages.append(sheets)
     page_id = 0
     layer = 0
-    glyphs = font.glyphs
     while True:
         if packed:
             channels = 1 << layer
@@ -643,8 +659,7 @@ def _create_spritesheets(
             height-padding.top-padding.bottom,
             depth=0
         )
-        for number, glyph in enumerate(glyphs):
-            cropped = glyph.reduce()
+        for number, cropped in enumerate(cropped_glyphs):
             if cropped.height and cropped.width:
                 try:
                     x, y = tree.insert(
@@ -653,14 +668,14 @@ def _create_spritesheets(
                     )
                 except DoesNotFitError:
                     # we don't fit, get next sheet
-                    glyphs = glyphs[number:]
+                    cropped_glyphs = cropped_glyphs[number:]
                     break
                 charimg = Image.new('L', (cropped.width, cropped.height))
                 data = cropped.as_vector(ink, paper)
                 charimg.putdata(data)
                 img.paste(charimg, (x + padding.left, y + padding.top))
             try:
-                id = _glyph_id(glyph, font.encoding)
+                id = _glyph_id(cropped, font.encoding)
             except ValueError as e:
                 logging.warning(e)
                 continue
@@ -843,8 +858,8 @@ def _create_bmfont(
         # > in the font should be placed. Characters can of course extend above or below this base
         # > line, which is entirely up to the font design.
         'base': font.raster.top,
-        'scaleW': size[0],
-        'scaleH': size[1],
+        'scaleW': pages[0].width,
+        'scaleH': pages[0].height,
         'pages': len(pages),
         'packed': packed,
         'alphaChnl': 0,
