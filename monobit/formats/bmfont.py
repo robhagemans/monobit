@@ -635,7 +635,7 @@ def _create_spritesheets(font, size=(256, 256), packed=False):
             if cropped.height and cropped.width:
                 try:
                     x, y = tree.insert(cropped)
-                except ValueError:
+                except DoesNotFitError:
                     # we don't fit, get next sheet
                     break
                 charimg = Image.new('L', (cropped.width, cropped.height))
@@ -879,6 +879,11 @@ def _write_json(outfile, props, chars):
     json.dump(tree, outfile.text)
 
 
+
+class DoesNotFitError(Exception):
+    """Image does not fit."""
+
+
 class SpriteNode:
     """Tree structure to fill up spritesheet."""
     # see http://blackpawn.com/texts/lightmaps/
@@ -893,13 +898,15 @@ class SpriteNode:
         """Insert an image into this node or descendant node."""
         width = self._right - self._left
         height = self._bottom - self._top
+        if img.width > width or img.height > height:
+            raise DoesNotFitError()
         if self._children:
             try:
                 return self._children[0].insert(img)
-            except ValueError:
+            except DoesNotFitError as e:
                 return self._children[1].insert(img)
-        if self._image or img.width > width or img.height > height:
-            raise ValueError("Image doesn't fit.")
+        if self._image:
+            raise DoesNotFitError()
         if img.width == width and img.height == height:
             self._image = img
             return self._left, self._top
