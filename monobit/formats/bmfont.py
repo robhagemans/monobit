@@ -905,8 +905,13 @@ def _create_bmfont(
         _write_json(outfile, props)
     elif descriptor == 'xml':
         _write_xml(outfile, props)
+    elif descriptor == 'binary':
+        _write_binary(outfile, props)
     else:
-        raise FileFormatError(f'Writing to descriptor format {format} not supported.')
+        raise FileFormatError(
+            'Descriptor format should be one of `test`, `xml`, `binary`, `json`;'
+            f' `{format}` not recognised.'
+        )
 
 def _write_fnt_descriptor(outfile, props):
     """Write the .fnt descriptor file."""
@@ -949,6 +954,58 @@ def _write_xml(outfile, props):
         etree.SubElement(kerns, 'kerning', **_tostrdict(kern))
     outfile.write(b'<?xml version="1.0"?>\n')
     etree.ElementTree(root).write(outfile)
+
+def _write_binary(outfile, props):
+    """Write binary bmfont description."""
+    head = _HEAD(magic=b'BMF', version=3)
+    outfile.write(bytes(head))
+    # INFO section
+    info = props['info']
+    pages = props['pages']
+    padding = Bounds.create(info['padding'])
+    spacing = Coord.create(info['spacing'])
+    bininfo = dict(
+        fontName=info['face'].encode('ascii', 'replace') + b'\0',
+        fontSize=info['size'],
+        bitField=(
+            (_INFO_BOLD if info['bold'] else 0)
+            | (_INFO_ITALIC if info['italic'] else 0)
+            | (_INFO_UNICODE if info['unicode'] else 0)
+            | (_INFO_SMOOTH if info['smooth'] else 0)
+        ),
+        charset=CHARSET_REVERSE_MAP.get(info['charset'], 0xff),
+        aa=info['aa'],
+        paddingUp=padding.top,
+        paddingLeft=padding.left,
+        paddingDown=padding.bottom,
+        paddingRight=padding.right,
+        spacingHoriz=spacing.x,
+        spacingVert=spacing.y,
+        outline=info['outline'],
+    )
+    infosize = len(bininfo['fontName']) + 14
+    infoblk = bytes(_info(infosize)(**bininfo))
+    outfile.write(bytes(_BLKHEAD(typeId=_BLK_INFO, blkSize=infosize)))
+    outfile.write(infoblk)
+    # COMMON section
+    commonblk = bytes(_COMMON(**props['common']))
+    outfile.write(bytes(_BLKHEAD(typeId=_BLK_COMMON, blkSize=len(commonblk))))
+    outfile.write(commonblk)
+    # PAGES section
+    binpages = b''.join((
+        _page['file'].encode('ascii', 'replace') + b'\0'
+        for _page in pages
+    ))
+    outfile.write(bytes(_BLKHEAD(typeId=_BLK_PAGES, blkSize=len(binpages))))
+    outfile.write(binpages)
+    # CHARS section
+    binchars = b''.join(bytes(_CHAR(**_c)) for _c in props['chars'])
+    outfile.write(bytes(_BLKHEAD(typeId=_BLK_CHARS, blkSize=len(binchars))))
+    outfile.write(binchars)
+    # KERNINGS section
+    binkerns = b''.join(bytes(_KERNING(**_c)) for _c in props['kernings'])
+    outfile.write(bytes(_BLKHEAD(typeId=_BLK_KERNINGS, blkSize=len(binkerns))))
+    outfile.write(binkerns)
 
 
 class DoesNotFitError(Exception):
