@@ -10,17 +10,18 @@ import shlex
 import logging
 from pathlib import Path
 import xml.etree.ElementTree as etree
+from math import ceil, sqrt
 
 try:
     from PIL import Image
 except ImportError:
     Image = None
 
-from ..basetypes import Coord
+from ..basetypes import Coord, Bounds
 from ..encoding import charmaps
 from .. import streams
 from ..magic import FileFormatError
-from ..binary import int_to_bytes, bytes_to_int
+from ..binary import int_to_bytes, bytes_to_int, ceildiv
 from ..struct import little_endian as le
 from ..properties import reverse_dict
 from ..storage import loaders, savers
@@ -48,6 +49,7 @@ if Image:
             _BMF_MAGIC,
             b'info',
             b'<?xml version="1.0"?>\n<font>',
+            b'<?xml version="1.0"?>\r\n<font>',
         ),
         patterns=('*.fnt',),
     )
@@ -61,25 +63,30 @@ if Image:
 
     @savers.register(linked=load_bmfont)
     def save(
-            fonts, outfile,
-            image_size:Coord=(256, 256),
+            fonts, outfile, *,
+            image_size:Coord=None,
             image_format:str='png',
             packed:bool=True,
+            spacing:Coord=Coord(0, 0),
+            padding:Bounds=Bounds(0, 0, 0, 0),
             descriptor:str='text',
         ):
         """
         Save fonts to Angelcode BMFont format.
 
-        image_size: pixel width,height of the spritesheet(s) storing the glyphs (default: 256x256)
+        image_size: pixel width,height of the spritesheet(s) storing the glyphs (default: estimate)
         image_format: image format of the spritesheets (default: 'png')
         packed: if true, use each of the RGB channels as a separate spritesheet (default: True)
+        spacing: x,y spacing between individual glyphs (default: 0x0)
+        padding: left, top, right, bottom unused spacing around edges (default: 0,0,0,0)
         descriptor: font descriptor file format, one of 'text', 'json' (default: 'text')
         """
         if len(fonts) > 1:
             raise FileFormatError("Can only save one font to BMFont file.")
         _create_bmfont(
             outfile, fonts[0],
-            image_size, packed, image_format, descriptor
+            size=image_size, packed=packed, spacing=spacing, padding=padding,
+            image_format=image_format, descriptor=descriptor
         )
 
 
@@ -270,12 +277,12 @@ def _parse_xml(data):
     """Parse XML bmfont description."""
     root = etree.fromstring(data)
     if root.tag != 'font':
-        raise ValueError(
+        raise FileFormatError(
             f'Not a valid BMFont XML file: root should be <font>, not <{root.tag}>'
         )
     for tag in ('info', 'common', 'pages', 'chars'):
         if root.find(tag) is None:
-            raise ValueError(
+            raise FileFormatError(
                 f'Not a valid BMFont XML file: no <{tag}> tag found.'
             )
     result = dict(
@@ -302,7 +309,7 @@ def _parse_json(data):
     tree = json.loads(data)
     for tag in ('info', 'common', 'pages', 'chars'):
         if tag not in tree:
-            raise ValueError(
+            raise FileFormatError(
                 f'Not a valid BMFont JSON file: no <{tag}> key found.'
             )
     result = dict(
@@ -463,7 +470,7 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=(),
             bg, fg = colourset[0], None
             # note that if colourset is empty, all char widths/heights must be zero
         elif len(colourset) > 2:
-            raise ValueError(
+            raise FileFormatError(
                 'Greyscale, colour and antialiased fonts not supported.'
             )
         elif len(colourset) == 2:
@@ -593,17 +600,22 @@ def _glyph_id(glyph, encoding):
     if charmaps.is_unicode(encoding):
         char = glyph.char
         if len(char) > 1:
-            raise ValueError(
+            raise FileFormatError(
                 f"Can't store multi-codepoint grapheme sequence {ascii(char)}."
             )
         return ord(char)
     if not glyph.codepoint:
-        raise ValueError(f"Can't store glyph with no codepoint: {glyph}.")
+        raise FileFormatError(f"Can't store glyph with no codepoint: {glyph}.")
     else:
         return bytes_to_int(glyph.codepoint)
 
 
-def _create_spritesheets(font, size=(256, 256), packed=False):
+def _create_spritesheets(
+        font, *,
+        size, packed,
+        spacing, padding,
+        paper=0, ink=255, border=0,
+    ):
     """Dump font to sprite sheets."""
     # use all channels
     if not packed:
@@ -611,10 +623,35 @@ def _create_spritesheets(font, size=(256, 256), packed=False):
         n_layers = 1
     else:
         n_layers = 4
-    paper = 0
-    ink = 255
-    border = 0
+    cropped_glyphs = tuple(_g.reduce() for _g in font.glyphs)
+    # sort by area, large to small. keep mapping table
+    sorted_glyphs = tuple(sorted(
+        enumerate(cropped_glyphs),
+        key=lambda _p: _p[1].width*_p[1].height,
+        reverse=True,
+    ))
+    cropped_glyphs = tuple(_p[1] for _p in sorted_glyphs)
+    order_mapping = {
+        _p[0]: _index
+        for _index, _p in enumerate(sorted_glyphs)
+    }
+    # determine spritesheet size
+    max_width = max(_g.width for _g in cropped_glyphs)
+    max_height = max(_g.height for _g in cropped_glyphs)
+    if size is None:
+        total_area = sum(
+            (_g.width+spacing.x) * (_g.height+spacing.y)
+            for _g in cropped_glyphs
+        )
+        edge = int(ceil(sqrt(total_area / n_layers)))
+        size = Coord(
+            max_width * ceildiv(edge, max_width) + padding.left + padding.right,
+            max_height * ceildiv(edge, max_height) + padding.top + padding.bottom,
+        )
     width, height = size
+    # ensure sheet is larger than largest glyph
+    width = max(width, max_width)
+    height = max(height, max_height)
     chars = []
     pages = []
     empty = Image.new('L', (width, height), border)
@@ -629,21 +666,29 @@ def _create_spritesheets(font, size=(256, 256), packed=False):
         sheets[layer] = img
         # output glyphs
         x, y = 0, 0
-        tree = SpriteNode(x, y, width, height)
-        for number, glyph in enumerate(font.glyphs):
-            cropped = glyph.reduce()
+        tree = SpriteNode(
+            x, y,
+            width-padding.left-padding.right,
+            height-padding.top-padding.bottom,
+            depth=0
+        )
+        for number, cropped in enumerate(cropped_glyphs):
             if cropped.height and cropped.width:
                 try:
-                    x, y = tree.insert(cropped)
-                except ValueError:
+                    x, y = tree.insert(
+                        cropped.width + spacing.x,
+                        cropped.height + spacing.y
+                    )
+                except DoesNotFitError:
                     # we don't fit, get next sheet
+                    cropped_glyphs = cropped_glyphs[number:]
                     break
                 charimg = Image.new('L', (cropped.width, cropped.height))
                 data = cropped.as_vector(ink, paper)
                 charimg.putdata(data)
-                img.paste(charimg, (x, y))
+                img.paste(charimg, (x + padding.left, y + padding.top))
             try:
-                id = _glyph_id(glyph, font.encoding)
+                id = _glyph_id(cropped, font.encoding)
             except ValueError as e:
                 logging.warning(e)
                 continue
@@ -662,8 +707,8 @@ def _create_spritesheets(font, size=(256, 256), packed=False):
             # >  chnl       The texture channel where the character image is found (1 = blue, 2 = green, 4 = red, 8 = alpha, 15 = all channels).
             chars.append(dict(
                 id=id,
-                x=x,
-                y=y,
+                x=x + padding.left,
+                y=y + padding.top,
                 width=cropped.width,
                 height=cropped.height,
                 # > The `xoffset` gives the horizontal offset that should be added to the cursor
@@ -699,8 +744,10 @@ def _create_spritesheets(font, size=(256, 256), packed=False):
         # bmfont channel order is B, G, R, A
         pages = [Image.merge('RGBA', [_sh[2], _sh[1], _sh[0], _sh[3]]) for _sh in pages]
     else:
-        pages = [Image.merge('RGBA', _sh*4) for _sh in pages]
-    return pages, chars
+        pages = [_sh[0] for _sh in pages]
+    # put chars in original glyph order
+    orig_chars = [chars[order_mapping[_i]] for _i in range(len(chars))]
+    return pages, orig_chars
 
 
 def _to_str(value):
@@ -719,8 +766,9 @@ def _create_textdict(name, dict):
     )
 
 def _create_bmfont(
-        outfile, font,
-        size=(256, 256), packed=False, imageformat='png', descriptor='text'
+        outfile, font, *,
+        size, packed, spacing, padding,
+        image_format, descriptor,
     ):
     """Create a bmfont package."""
     container = outfile.where
@@ -738,7 +786,9 @@ def _create_bmfont(
         # ensure char values are set
         font = font.label(char_from=encoding)
     # create images
-    pages, chars = _create_spritesheets(font, size, packed)
+    pages, chars = _create_spritesheets(
+        font, size=size, packed=packed, spacing=spacing, padding=padding,
+    )
     props = {}
     props['chars'] = chars
     # save images; create page table
@@ -751,9 +801,9 @@ def _create_bmfont(
     # >  file   The texture file name.
     props['pages'] = []
     for page_id, page in enumerate(pages):
-        name = container.unused_name(f'{path}/{fontname}_{page_id}.{imageformat}')
+        name = container.unused_name(f'{path}/{fontname}_{page_id}.{image_format}')
         with container.open(name, 'w') as imgfile:
-            page.save(imgfile, format=imageformat)
+            page.save(imgfile, format=image_format)
         props['pages'].append({
             'id': page_id,
             'file': str(Path(name).relative_to(basepath)),
@@ -793,8 +843,8 @@ def _create_bmfont(
         'stretchH': 100,
         'smooth': False,
         'aa': 1,
-        'padding': (0, 0, 0, 0),
-        'spacing': (0, 0),
+        'padding': tuple(padding),
+        'spacing': tuple(spacing),
         'outline': 0,
     }
     # > common
@@ -823,8 +873,8 @@ def _create_bmfont(
         # > in the font should be placed. Characters can of course extend above or below this base
         # > line, which is entirely up to the font design.
         'base': font.raster.top,
-        'scaleW': size[0],
-        'scaleH': size[1],
+        'scaleW': pages[0].width,
+        'scaleH': pages[0].height,
         'pages': len(pages),
         'packed': packed,
         'alphaChnl': 0,
@@ -850,70 +900,162 @@ def _create_bmfont(
     ]
     # write the .fnt description
     if descriptor == 'text':
-        _write_fnt_descriptor(outfile, props, chars)
+        _write_fnt_descriptor(outfile, props)
     elif descriptor == 'json':
-        _write_json(outfile, props, chars)
+        _write_json(outfile, props)
+    elif descriptor == 'xml':
+        _write_xml(outfile, props)
+    elif descriptor == 'binary':
+        _write_binary(outfile, props)
     else:
-        raise FileFormatError(f'Writing to descriptor format {format} not supported.')
+        raise FileFormatError(
+            'Descriptor format should be one of `test`, `xml`, `binary`, `json`;'
+            f' `{format}` not recognised.'
+        )
 
-def _write_fnt_descriptor(outfile, props, chars):
+def _write_fnt_descriptor(outfile, props):
     """Write the .fnt descriptor file."""
     bmf = outfile.text
     bmf.write(_create_textdict('info', props['info']))
     bmf.write(_create_textdict('common', props['common']))
     for page in props['pages']:
         bmf.write(_create_textdict('page', page))
-    bmf.write('chars count={}\n'.format(len(chars)))
-    for char in chars:
+    bmf.write('chars count={}\n'.format(len(props['chars'])))
+    for char in props['chars']:
         bmf.write(_create_textdict('char', char))
     bmf.write('kernings count={}\n'.format(len(props['kernings'])))
     for kern in props['kernings']:
         bmf.write(_create_textdict('kerning', kern))
 
-def _write_json(outfile, props, chars):
+def _write_json(outfile, props):
     """Write JSON bmfont description."""
     tree = {**props}
     # assume the pages list is ordered
     tree['pages'] = [_elem['file'] for _elem in tree['pages']]
-    tree['chars'] = chars
     json.dump(tree, outfile.text)
+
+def _write_xml(outfile, props):
+    """Write XML bmfont description."""
+    tree = {**props}
+    # convert values to str
+    def _tostrdict(indict):
+        return {_k: str(_v) for _k, _v in indict.items()}
+    root = etree.Element('font')
+    etree.SubElement(root, 'info', **_tostrdict(tree['info']))
+    etree.SubElement(root, 'common', **_tostrdict(tree['common']))
+    pages =etree.SubElement(root, 'pages')
+    for elem in tree['pages']:
+        etree.SubElement(pages, 'page', **_tostrdict(elem))
+    chars = etree.SubElement(root, 'chars', count=str(len(props['chars'])))
+    for char in props['chars']:
+        etree.SubElement(chars, 'char', **_tostrdict(char))
+    if props['kernings']:
+        kerns = etree.SubElement(root, 'kernings', count=str(len(props['kernings'])))
+        for kern in props['kernings']:
+            etree.SubElement(kerns, 'kerning', **_tostrdict(kern))
+    outfile.write(b'<?xml version="1.0"?>\n')
+    etree.ElementTree(root).write(outfile)
+
+def _write_binary(outfile, props):
+    """Write binary bmfont description."""
+    head = _HEAD(magic=b'BMF', version=3)
+    outfile.write(bytes(head))
+    # INFO section
+    info = props['info']
+    pages = props['pages']
+    padding = Bounds.create(info['padding'])
+    spacing = Coord.create(info['spacing'])
+    bininfo = dict(
+        fontName=info['face'].encode('ascii', 'replace') + b'\0',
+        fontSize=info['size'],
+        bitField=(
+            (_INFO_BOLD if info['bold'] else 0)
+            | (_INFO_ITALIC if info['italic'] else 0)
+            | (_INFO_UNICODE if info['unicode'] else 0)
+            | (_INFO_SMOOTH if info['smooth'] else 0)
+        ),
+        charset=CHARSET_REVERSE_MAP.get(info['charset'], 0xff),
+        aa=info['aa'],
+        paddingUp=padding.top,
+        paddingLeft=padding.left,
+        paddingDown=padding.bottom,
+        paddingRight=padding.right,
+        spacingHoriz=spacing.x,
+        spacingVert=spacing.y,
+        outline=info['outline'],
+    )
+    infosize = len(bininfo['fontName']) + 14
+    infoblk = bytes(_info(infosize)(**bininfo))
+    outfile.write(bytes(_BLKHEAD(typeId=_BLK_INFO, blkSize=infosize)))
+    outfile.write(infoblk)
+    # COMMON section
+    commonblk = bytes(_COMMON(**props['common']))
+    outfile.write(bytes(_BLKHEAD(typeId=_BLK_COMMON, blkSize=len(commonblk))))
+    outfile.write(commonblk)
+    # PAGES section
+    binpages = b''.join((
+        _page['file'].encode('ascii', 'replace') + b'\0'
+        for _page in pages
+    ))
+    outfile.write(bytes(_BLKHEAD(typeId=_BLK_PAGES, blkSize=len(binpages))))
+    outfile.write(binpages)
+    # CHARS section
+    binchars = b''.join(bytes(_CHAR(**_c)) for _c in props['chars'])
+    outfile.write(bytes(_BLKHEAD(typeId=_BLK_CHARS, blkSize=len(binchars))))
+    outfile.write(binchars)
+    # KERNINGS section
+    binkerns = b''.join(bytes(_KERNING(**_c)) for _c in props['kernings'])
+    outfile.write(bytes(_BLKHEAD(typeId=_BLK_KERNINGS, blkSize=len(binkerns))))
+    outfile.write(binkerns)
+
+
+class DoesNotFitError(Exception):
+    """Image does not fit."""
 
 
 class SpriteNode:
     """Tree structure to fill up spritesheet."""
     # see http://blackpawn.com/texts/lightmaps/
 
-    def __init__(self, left, top, right, bottom):
+    def __init__(self, left, top, right, bottom, depth):
         """Create a new node."""
         self._left, self._top, self._right, self._bottom = left, top, right, bottom
         self._children = None
-        self._image = None
+        self._full = False
+        self._depth = depth
 
-    def insert(self, img):
+    def insert(self, target_width, target_height):
         """Insert an image into this node or descendant node."""
         width = self._right - self._left
         height = self._bottom - self._top
+        if target_width > width or target_height > height:
+            raise DoesNotFitError()
+        if self._full:
+            raise DoesNotFitError()
         if self._children:
             try:
-                return self._children[0].insert(img)
-            except ValueError:
-                return self._children[1].insert(img)
-        if self._image or img.width > width or img.height > height:
-            raise ValueError("Image doesn't fit.")
-        if img.width == width and img.height == height:
-            self._image = img
+                return self._children[0].insert(target_width, target_height)
+            except DoesNotFitError as e:
+                pass
+            try:
+                return self._children[1].insert(target_width, target_height)
+            except DoesNotFitError as e:
+                self._full = True
+                raise
+        if target_width == width and target_height == height:
+            self._full = True
             return self._left, self._top
         else:
-            dw = width - img.width
-            dh = height - img.height
+            dw = width - target_width
+            dh = height - target_height
             if dw > dh:
                 self._children = (
-                    SpriteNode(self._left, self._top, self._left + img.width, self._bottom),
-                    SpriteNode(self._left + img.width, self._top, self._right, self._bottom)
+                    SpriteNode(self._left, self._top, self._left + target_width, self._bottom, self._depth+1),
+                    SpriteNode(self._left + target_width, self._top, self._right, self._bottom, self._depth+1)
                 )
             else:
                 self._children = (
-                    SpriteNode(self._left, self._top, self._right, self._top + img.height),
-                    SpriteNode(self._left, self._top + img.height, self._right, self._bottom)
+                    SpriteNode(self._left, self._top, self._right, self._top + target_height, self._depth+1),
+                    SpriteNode(self._left, self._top + target_height, self._right, self._bottom, self._depth+1)
                 )
-            return self._children[0].insert(img)
+            return self._children[0].insert(target_width, target_height)
