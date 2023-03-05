@@ -623,6 +623,17 @@ def _create_spritesheets(
     else:
         n_layers = 4
     cropped_glyphs = tuple(_g.reduce() for _g in font.glyphs)
+    # sort by area, large to small. keep mapping table
+    sorted_glyphs = tuple(sorted(
+        enumerate(cropped_glyphs),
+        key=lambda _p: _p[1].width*_p[1].height,
+        reverse=True,
+    ))
+    cropped_glyphs = tuple(_p[1] for _p in sorted_glyphs)
+    order_mapping = {
+        _p[0]: _index
+        for _index, _p in enumerate(sorted_glyphs)
+    }
     # determine spritesheet size
     if size is None:
         total_area = sum(
@@ -732,7 +743,9 @@ def _create_spritesheets(
         pages = [Image.merge('RGBA', [_sh[2], _sh[1], _sh[0], _sh[3]]) for _sh in pages]
     else:
         pages = [_sh[0] for _sh in pages]
-    return pages, chars
+    # put chars in original glyph order
+    orig_chars = [chars[order_mapping[_i]] for _i in range(len(chars))]
+    return pages, orig_chars
 
 
 def _to_str(value):
