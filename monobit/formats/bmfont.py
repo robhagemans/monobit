@@ -270,12 +270,12 @@ def _parse_xml(data):
     """Parse XML bmfont description."""
     root = etree.fromstring(data)
     if root.tag != 'font':
-        raise ValueError(
+        raise FileFormatError(
             f'Not a valid BMFont XML file: root should be <font>, not <{root.tag}>'
         )
     for tag in ('info', 'common', 'pages', 'chars'):
         if root.find(tag) is None:
-            raise ValueError(
+            raise FileFormatError(
                 f'Not a valid BMFont XML file: no <{tag}> tag found.'
             )
     result = dict(
@@ -302,7 +302,7 @@ def _parse_json(data):
     tree = json.loads(data)
     for tag in ('info', 'common', 'pages', 'chars'):
         if tag not in tree:
-            raise ValueError(
+            raise FileFormatError(
                 f'Not a valid BMFont JSON file: no <{tag}> key found.'
             )
     result = dict(
@@ -463,7 +463,7 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=(),
             bg, fg = colourset[0], None
             # note that if colourset is empty, all char widths/heights must be zero
         elif len(colourset) > 2:
-            raise ValueError(
+            raise FileFormatError(
                 'Greyscale, colour and antialiased fonts not supported.'
             )
         elif len(colourset) == 2:
@@ -593,12 +593,12 @@ def _glyph_id(glyph, encoding):
     if charmaps.is_unicode(encoding):
         char = glyph.char
         if len(char) > 1:
-            raise ValueError(
+            raise FileFormatError(
                 f"Can't store multi-codepoint grapheme sequence {ascii(char)}."
             )
         return ord(char)
     if not glyph.codepoint:
-        raise ValueError(f"Can't store glyph with no codepoint: {glyph}.")
+        raise FileFormatError(f"Can't store glyph with no codepoint: {glyph}.")
     else:
         return bytes_to_int(glyph.codepoint)
 
