@@ -93,7 +93,7 @@ Supported bitmap formats
 | Amiga font            | `amiga`    |          |                             | Amiga OS      | ✔     |       |
 | BBC soft font         | `bbc`      |          |                             | BBC Micro     | ✔     | ✔     |
 | X11/Adobe BDF         | `bdf`      |          | `.bdf`                      | Unix          | ✔     | ✔     |
-| AngelCode BMFont [P]  | `bmfont` | text binary XML JSON | `.fnt` `.xml` `.json` + images  | | ✔     | ✔ (text, JSON) |
+| AngelCode BMFont [P]  | `bmfont` | text binary XML JSON | `.fnt` `.xml` `.json` + images  | | ✔     | ✔     |
 | Raw binary            | `raw`      |          | `.fnt` `.rom` [*]           |               | ✔     | ✔     |
 | Codepage Information  | `cpi` | FONT FONT.NT DRFONT | `.cpi` | MS-DOS, Windows NT, DR-DOS   | ✔     | ✔     |
 | Daisy-Dot             | `daisy` | II III Magnified | `.nlq` `.nl2` `.nl3` `.nl4` | Atari    | ✔     |       |
