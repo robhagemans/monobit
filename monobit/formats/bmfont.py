@@ -49,6 +49,7 @@ if Image:
             _BMF_MAGIC,
             b'info',
             b'<?xml version="1.0"?>\n<font>',
+            b'<?xml version="1.0"?>\r\n<font>',
         ),
         patterns=('*.fnt',),
     )
@@ -899,34 +900,55 @@ def _create_bmfont(
     ]
     # write the .fnt description
     if descriptor == 'text':
-        _write_fnt_descriptor(outfile, props, chars)
+        _write_fnt_descriptor(outfile, props)
     elif descriptor == 'json':
-        _write_json(outfile, props, chars)
+        _write_json(outfile, props)
+    elif descriptor == 'xml':
+        _write_xml(outfile, props)
     else:
         raise FileFormatError(f'Writing to descriptor format {format} not supported.')
 
-def _write_fnt_descriptor(outfile, props, chars):
+def _write_fnt_descriptor(outfile, props):
     """Write the .fnt descriptor file."""
     bmf = outfile.text
     bmf.write(_create_textdict('info', props['info']))
     bmf.write(_create_textdict('common', props['common']))
     for page in props['pages']:
         bmf.write(_create_textdict('page', page))
-    bmf.write('chars count={}\n'.format(len(chars)))
-    for char in chars:
+    bmf.write('chars count={}\n'.format(len(props['chars'])))
+    for char in props['chars']:
         bmf.write(_create_textdict('char', char))
     bmf.write('kernings count={}\n'.format(len(props['kernings'])))
     for kern in props['kernings']:
         bmf.write(_create_textdict('kerning', kern))
 
-def _write_json(outfile, props, chars):
+def _write_json(outfile, props):
     """Write JSON bmfont description."""
     tree = {**props}
     # assume the pages list is ordered
     tree['pages'] = [_elem['file'] for _elem in tree['pages']]
-    tree['chars'] = chars
     json.dump(tree, outfile.text)
 
+def _write_xml(outfile, props):
+    """Write XML bmfont description."""
+    tree = {**props}
+    # convert values to str
+    def _tostrdict(indict):
+        return {_k: str(_v) for _k, _v in indict.items()}
+    root = etree.Element('font')
+    etree.SubElement(root, 'info', **_tostrdict(tree['info']))
+    etree.SubElement(root, 'common', **_tostrdict(tree['common']))
+    pages =etree.SubElement(root, 'pages')
+    for elem in tree['pages']:
+        etree.SubElement(pages, 'page', **_tostrdict(elem))
+    chars = etree.SubElement(root, 'chars', count=str(len(props['chars'])))
+    for char in props['chars']:
+        etree.SubElement(chars, 'char', **_tostrdict(char))
+    kerns = etree.SubElement(root, 'kernings', count=str(len(props['kernings'])))
+    for kern in props['kernings']:
+        etree.SubElement(kerns, 'kerning', **_tostrdict(kern))
+    outfile.write(b'<?xml version="1.0"?>\n')
+    etree.ElementTree(root).write(outfile)
 
 
 class DoesNotFitError(Exception):
