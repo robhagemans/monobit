@@ -360,6 +360,7 @@ async function setupPyodide() {
     micropip.install("lzma")
     console.log('Pyodide setup complete.')
     clearCanvas();
+    document.getElementById("name").innerHTML = "Drop a font file - or choose from the Hoard"
     return pyodide;
 }
 
