@@ -949,9 +949,10 @@ def _write_xml(outfile, props):
     chars = etree.SubElement(root, 'chars', count=str(len(props['chars'])))
     for char in props['chars']:
         etree.SubElement(chars, 'char', **_tostrdict(char))
-    kerns = etree.SubElement(root, 'kernings', count=str(len(props['kernings'])))
-    for kern in props['kernings']:
-        etree.SubElement(kerns, 'kerning', **_tostrdict(kern))
+    if props['kernings']:
+        kerns = etree.SubElement(root, 'kernings', count=str(len(props['kernings'])))
+        for kern in props['kernings']:
+            etree.SubElement(kerns, 'kerning', **_tostrdict(kern))
     outfile.write(b'<?xml version="1.0"?>\n')
     etree.ElementTree(root).write(outfile)
 
