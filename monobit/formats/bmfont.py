@@ -61,10 +61,11 @@ if Image:
 
     @savers.register(linked=load_bmfont)
     def save(
-            fonts, outfile,
-            image_size:Coord=(256, 256),
+            fonts, outfile, *,
+            image_size:Coord=Coord(256, 256),
             image_format:str='png',
             packed:bool=True,
+            spacing:Coord=Coord(0, 0),
             descriptor:str='text',
         ):
         """
@@ -73,13 +74,15 @@ if Image:
         image_size: pixel width,height of the spritesheet(s) storing the glyphs (default: 256x256)
         image_format: image format of the spritesheets (default: 'png')
         packed: if true, use each of the RGB channels as a separate spritesheet (default: True)
+        spacing: x,y spacing between individual glyphs (default: 0x0)
         descriptor: font descriptor file format, one of 'text', 'json' (default: 'text')
         """
         if len(fonts) > 1:
             raise FileFormatError("Can only save one font to BMFont file.")
         _create_bmfont(
             outfile, fonts[0],
-            image_size, packed, image_format, descriptor
+            size=image_size, packed=packed, spacing=spacing,
+            image_format=image_format, descriptor=descriptor
         )
 
 
@@ -603,7 +606,12 @@ def _glyph_id(glyph, encoding):
         return bytes_to_int(glyph.codepoint)
 
 
-def _create_spritesheets(font, size=(256, 256), packed=False):
+def _create_spritesheets(
+        font, *,
+        size, packed,
+        spacing,
+        paper=0, ink=255, border=0,
+    ):
     """Dump font to sprite sheets."""
     # use all channels
     if not packed:
@@ -611,9 +619,6 @@ def _create_spritesheets(font, size=(256, 256), packed=False):
         n_layers = 1
     else:
         n_layers = 4
-    paper = 0
-    ink = 255
-    border = 0
     width, height = size
     chars = []
     pages = []
@@ -635,7 +640,10 @@ def _create_spritesheets(font, size=(256, 256), packed=False):
             cropped = glyph.reduce()
             if cropped.height and cropped.width:
                 try:
-                    x, y = tree.insert(cropped)
+                    x, y = tree.insert(
+                        cropped.width + spacing.x,
+                        cropped.height + spacing.y
+                    )
                 except DoesNotFitError:
                     # we don't fit, get next sheet
                     glyphs = glyphs[number:]
@@ -721,8 +729,9 @@ def _create_textdict(name, dict):
     )
 
 def _create_bmfont(
-        outfile, font,
-        size=(256, 256), packed=False, imageformat='png', descriptor='text'
+        outfile, font, *,
+        size, packed, spacing,
+        image_format, descriptor,
     ):
     """Create a bmfont package."""
     container = outfile.where
@@ -740,7 +749,9 @@ def _create_bmfont(
         # ensure char values are set
         font = font.label(char_from=encoding)
     # create images
-    pages, chars = _create_spritesheets(font, size, packed)
+    pages, chars = _create_spritesheets(
+        font, size=size, packed=packed, spacing=spacing,
+    )
     props = {}
     props['chars'] = chars
     # save images; create page table
@@ -753,9 +764,9 @@ def _create_bmfont(
     # >  file   The texture file name.
     props['pages'] = []
     for page_id, page in enumerate(pages):
-        name = container.unused_name(f'{path}/{fontname}_{page_id}.{imageformat}')
+        name = container.unused_name(f'{path}/{fontname}_{page_id}.{image_format}')
         with container.open(name, 'w') as imgfile:
-            page.save(imgfile, format=imageformat)
+            page.save(imgfile, format=image_format)
         props['pages'].append({
             'id': page_id,
             'file': str(Path(name).relative_to(basepath)),
@@ -796,7 +807,7 @@ def _create_bmfont(
         'smooth': False,
         'aa': 1,
         'padding': (0, 0, 0, 0),
-        'spacing': (0, 0),
+        'spacing': tuple(spacing),
         'outline': 0,
     }
     # > common
@@ -897,38 +908,38 @@ class SpriteNode:
         self._full = False
         self._depth = depth
 
-    def insert(self, img):
+    def insert(self, target_width, target_height):
         """Insert an image into this node or descendant node."""
         width = self._right - self._left
         height = self._bottom - self._top
-        if img.width > width or img.height > height:
+        if target_width > width or target_height > height:
             raise DoesNotFitError()
         if self._full:
             raise DoesNotFitError()
         if self._children:
             try:
-                return self._children[0].insert(img)
+                return self._children[0].insert(target_width, target_height)
             except DoesNotFitError as e:
                 pass
             try:
-                return self._children[1].insert(img)
+                return self._children[1].insert(target_width, target_height)
             except DoesNotFitError as e:
                 self._full = True
                 raise
-        if img.width == width and img.height == height:
+        if target_width == width and target_height == height:
             self._full = True
             return self._left, self._top
         else:
-            dw = width - img.width
-            dh = height - img.height
+            dw = width - target_width
+            dh = height - target_height
             if dw > dh:
                 self._children = (
-                    SpriteNode(self._left, self._top, self._left + img.width, self._bottom, self._depth+1),
-                    SpriteNode(self._left + img.width, self._top, self._right, self._bottom, self._depth+1)
+                    SpriteNode(self._left, self._top, self._left + target_width, self._bottom, self._depth+1),
+                    SpriteNode(self._left + target_width, self._top, self._right, self._bottom, self._depth+1)
                 )
             else:
                 self._children = (
-                    SpriteNode(self._left, self._top, self._right, self._top + img.height, self._depth+1),
-                    SpriteNode(self._left, self._top + img.height, self._right, self._bottom, self._depth+1)
+                    SpriteNode(self._left, self._top, self._right, self._top + target_height, self._depth+1),
+                    SpriteNode(self._left, self._top + target_height, self._right, self._bottom, self._depth+1)
                 )
-            return self._children[0].insert(img)
+            return self._children[0].insert(target_width, target_height)
