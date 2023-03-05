@@ -894,7 +894,7 @@ class SpriteNode:
         """Create a new node."""
         self._left, self._top, self._right, self._bottom = left, top, right, bottom
         self._children = None
-        self._image = None
+        self._full = False
         self._depth = depth
 
     def insert(self, img):
@@ -908,10 +908,10 @@ class SpriteNode:
                 return self._children[0].insert(img)
             except DoesNotFitError as e:
                 return self._children[1].insert(img)
-        if self._image:
+        if self._full:
             raise DoesNotFitError()
         if img.width == width and img.height == height:
-            self._image = img
+            self._full = True
             return self._left, self._top
         else:
             dw = width - img.width
