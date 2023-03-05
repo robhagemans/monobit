@@ -63,6 +63,8 @@ function clearCanvas() {
     let context = canvas.getContext("2d");
     context.fillStyle = "black";
     context.fillRect(0, 0, canvas.width, canvas.height);
+    // move to top of page instead of line of hash anchors for tabs
+    window.scrollTo(0, 0);
 }
 
 function baseName(filename) {
@@ -71,7 +73,6 @@ function baseName(filename) {
 
 async function showFont() {
     clearCanvas();
-    window.scrollTo(0, 0);
 
     let canvas = document.getElementById("sample");
     let listing = document.getElementById("listing0");
