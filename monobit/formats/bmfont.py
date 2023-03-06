@@ -1003,67 +1003,46 @@ def _draw_images(glyph_map, width, height, packed, paper, ink, border):
 
 def _map_glyphs_to_image(glyphs, *, size, packed, spacing, padding):
     """Determine where to draw glyphs in sprite sheets."""
-    cropped_glyphs = tuple(_g.reduce() for _g in glyphs)
+    glyphs = tuple(_g.reduce() for _g in glyphs)
     # sort by area, large to small. keep mapping table
     sorted_glyphs = tuple(sorted(
-        enumerate(cropped_glyphs),
+        enumerate(glyphs),
         key=lambda _p: _p[1].width*_p[1].height,
         reverse=True,
     ))
-    cropped_glyphs = tuple(_p[1] for _p in sorted_glyphs)
-    order_mapping = {
-        _p[0]: _index
-        for _index, _p in enumerate(sorted_glyphs)
-    }
+    order_mapping = {_p[0]: _index for _index, _p in enumerate(sorted_glyphs)}
+    glyphs = tuple(_p[1] for _p in sorted_glyphs)
     # determine spritesheet size
     if not packed:
         n_layers = 1
     else:
         n_layers = 4
-    max_width = max(_g.width for _g in cropped_glyphs)
-    max_height = max(_g.height for _g in cropped_glyphs)
     if size is None:
-        total_area = sum(
-            (_g.width+spacing.x) * (_g.height+spacing.y)
-            for _g in cropped_glyphs
-        )
-        edge = int(ceil(sqrt(total_area / n_layers)))
-        size = Coord(
-            max_width * ceildiv(edge, max_width) + padding.left + padding.right,
-            max_height * ceildiv(edge, max_height) + padding.top + padding.bottom,
-        )
+        size = _estimate_size(glyphs, n_layers, padding, spacing)
     width, height = size
+    usable_width = width-padding.left-padding.right
+    usable_height = height-padding.top-padding.bottom
+    spx, spy = spacing
     # ensure sheet is larger than largest glyph
-    width = max(width, max_width)
-    height = max(height, max_height)
+    if any(_g.width + spx > usable_width or _g.height + spy > usable_height for _g in glyphs):
+        raise ValueError('Image size is too small for largest glyph.')
     glyph_map = []
     page_id = 0
     layer = 0
     while True:
         # output glyphs
-        tree = SpriteNode(
-            0, 0,
-            width-padding.left-padding.right,
-            height-padding.top-padding.bottom,
-            depth=0
-        )
-        for number, cropped in enumerate(cropped_glyphs):
-            if cropped.height and cropped.width:
+        tree = SpriteNode(0, 0, usable_width, usable_height, depth=0)
+        for number, glyph in enumerate(glyphs):
+            if glyph.height and glyph.width:
                 try:
-                    x, y = tree.insert(
-                        cropped.width + spacing.x,
-                        cropped.height + spacing.y
-                    )
+                    x, y = tree.insert(glyph.width + spx, glyph.height + spy)
                 except DoesNotFitError:
                     # we don't fit, get next sheet
-                    cropped_glyphs = cropped_glyphs[number:]
+                    glyphs = glyphs[number:]
                     break
             glyph_map.append(Props(
-                glyph=cropped,
-                x=x + padding.left,
-                y=y + padding.top,
-                page=page_id,
-                layer=layer,
+                glyph=glyph,
+                page=page_id, layer=layer, x=x+padding.left, y=y+padding.top, 
             ))
         else:
             # all done, get out
@@ -1077,6 +1056,21 @@ def _map_glyphs_to_image(glyphs, *, size, packed, spacing, padding):
     # put chars in original glyph order
     glyph_map = [glyph_map[order_mapping[_i]] for _i in range(len(glyph_map))]
     return glyph_map, width, height
+
+
+def _estimate_size(glyphs, n_layers, padding, spacing):
+    """Estimate required size of sprite sheet."""
+    max_width = max(_g.width for _g in glyphs)
+    max_height = max(_g.height for _g in glyphs)
+    total_area = sum(
+        (_g.width+spacing.x) * (_g.height+spacing.y)
+        for _g in glyphs
+    )
+    edge = int(ceil(sqrt(total_area / n_layers)))
+    return Coord(
+        max_width * ceildiv(edge, max_width) + padding.left + padding.right,
+        max_height * ceildiv(edge, max_height) + padding.top + padding.bottom,
+    )
 
 
 class DoesNotFitError(Exception):
