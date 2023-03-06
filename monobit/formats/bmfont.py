@@ -23,7 +23,7 @@ from .. import streams
 from ..magic import FileFormatError
 from ..binary import int_to_bytes, bytes_to_int, ceildiv
 from ..struct import little_endian as le
-from ..properties import reverse_dict
+from ..properties import Props, reverse_dict
 from ..storage import loaders, savers
 from ..font import Font, Coord
 from ..glyph import Glyph
@@ -677,7 +677,7 @@ def _create_bmfont(
     else:
         font = font.label(char_from=encoding)
     # create images
-    sheets, chars = _create_spritesheets(
+    sheets, glyph_map = _create_spritesheets(
         font, size=size, packed=packed, spacing=spacing, padding=padding,
     )
     # save images and record names
@@ -695,7 +695,7 @@ def _create_bmfont(
             'file': str(Path(name).relative_to(basepath)),
         })
     props = _convert_to_bmfont(
-        font, pages, chars,
+        font, pages, glyph_map,
         sheets[0].width, sheets[0].height, packed, padding, spacing
     )
     # write the .fnt description
@@ -715,12 +715,38 @@ def _create_bmfont(
 
 
 def _convert_to_bmfont(
-        font, pages, chars,
+        font, pages, glyph_map,
         width, height, packed, padding, spacing
     ):
     """Convert to bmfont property structure."""
     props = {}
-    props['chars'] = chars
+    props['chars'] = [
+        dict(
+            id=_glyph_id(_entry.glyph, font.encoding),
+            x=_entry.x,
+            y=_entry.y,
+            width=_entry.glyph.width,
+            height=_entry.glyph.height,
+            # > The `xoffset` gives the horizontal offset that should be added to the cursor
+            # > position to find the left position where the character should be drawn.
+            # > A negative value here would mean that the character slightly overlaps
+            # > the previous character.
+            xoffset=_entry.glyph.left_bearing,
+            # > The `yoffset` gives the distance from the top of the cell height to the top
+            # > of the character. A negative value here would mean that the character extends
+            # > above the cell height.
+            yoffset=font.raster.top-(_entry.glyph.height+_entry.glyph.shift_up),
+            # xadvance is the advance width from origin to next origin
+            # > The filled red dot marks the current cursor position, and the hollow red dot
+            # > marks the position of the cursor after drawing the character. You get to this
+            # > position by moving the cursor horizontally with the xadvance value.
+            # > If kerning pairs are used the cursor should also be moved accordingly.
+            xadvance=_entry.glyph.advance_width,
+            page=_entry.page,
+            chnl=(1 << _entry.layer) if packed else 15,
+        )
+        for _entry in glyph_map
+    ]
     # save images; create page table
     props['pages'] = pages
     # info section
@@ -792,12 +818,14 @@ def _glyph_id(glyph, encoding):
     if charmaps.is_unicode(encoding):
         char = glyph.char
         if len(char) > 1:
-            raise FileFormatError(
+            logging.warning(
                 f"Can't store multi-codepoint grapheme sequence {ascii(char)}."
             )
+            return -1
         return ord(char)
     if not glyph.codepoint:
-        raise FileFormatError(f"Can't store glyph with no codepoint: {glyph}.")
+        logging.warning(f"Can't store glyph with no codepoint: {glyph}.")
+        return -1
     else:
         return bytes_to_int(glyph.codepoint)
 
@@ -934,9 +962,7 @@ def _create_spritesheets(
         paper=0, ink=255, border=0,
     ):
     """Dump font to sprite sheets."""
-    # use all channels
     if not packed:
-        channels = 15
         n_layers = 1
     else:
         n_layers = 4
@@ -969,7 +995,7 @@ def _create_spritesheets(
     # ensure sheet is larger than largest glyph
     width = max(width, max_width)
     height = max(height, max_height)
-    chars = []
+    glyph_map = []
     pages = []
     empty = Image.new('L', (width, height), border)
     sheets = [empty] * n_layers
@@ -977,8 +1003,6 @@ def _create_spritesheets(
     page_id = 0
     layer = 0
     while True:
-        if packed:
-            channels = 1 << layer
         img = Image.new('L', (width, height), border)
         sheets[layer] = img
         # output glyphs
@@ -1004,34 +1028,12 @@ def _create_spritesheets(
                 data = cropped.as_vector(ink, paper)
                 charimg.putdata(data)
                 img.paste(charimg, (x + padding.left, y + padding.top))
-            try:
-                id = _glyph_id(cropped, font.encoding)
-            except ValueError as e:
-                logging.warning(e)
-                continue
-            chars.append(dict(
-                id=id,
+            glyph_map.append(Props(
+                glyph=cropped,
                 x=x + padding.left,
                 y=y + padding.top,
-                width=cropped.width,
-                height=cropped.height,
-                # > The `xoffset` gives the horizontal offset that should be added to the cursor
-                # > position to find the left position where the character should be drawn.
-                # > A negative value here would mean that the character slightly overlaps
-                # > the previous character.
-                xoffset=cropped.left_bearing,
-                # > The `yoffset` gives the distance from the top of the cell height to the top
-                # > of the character. A negative value here would mean that the character extends
-                # > above the cell height.
-                yoffset=font.raster.top-(cropped.height+cropped.shift_up),
-                # xadvance is the advance width from origin to next origin
-                # > The filled red dot marks the current cursor position, and the hollow red dot
-                # > marks the position of the cursor after drawing the character. You get to this
-                # > position by moving the cursor horizontally with the xadvance value.
-                # > If kerning pairs are used the cursor should also be moved accordingly.
-                xadvance=cropped.advance_width,
                 page=page_id,
-                chnl=channels,
+                layer=layer,
             ))
         else:
             # iterator runs out, get out
@@ -1050,8 +1052,8 @@ def _create_spritesheets(
     else:
         pages = [_sh[0] for _sh in pages]
     # put chars in original glyph order
-    orig_chars = [chars[order_mapping[_i]] for _i in range(len(chars))]
-    return pages, orig_chars
+    glyph_map = [glyph_map[order_mapping[_i]] for _i in range(len(glyph_map))]
+    return pages, glyph_map
 
 
 class DoesNotFitError(Exception):
