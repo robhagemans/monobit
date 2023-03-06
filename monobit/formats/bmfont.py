@@ -679,7 +679,7 @@ def _create_bmfont(
         font = font.label(char_from=encoding)
     # map glyphs to image
     glyph_map, width, height = _map_glyphs_to_image(
-        font, size=size, packed=packed, spacing=spacing, padding=padding,
+        font.glyphs, size=size, packed=packed, spacing=spacing, padding=padding,
     )
     # draw images
     sheets = _draw_images(glyph_map, width, height, packed, paper, ink, border)
@@ -1001,9 +1001,9 @@ def _draw_images(glyph_map, width, height, packed, paper, ink, border):
 ###############################################################################
 # packed spritesheets
 
-def _map_glyphs_to_image(font, *, size, packed, spacing, padding):
+def _map_glyphs_to_image(glyphs, *, size, packed, spacing, padding):
     """Determine where to draw glyphs in sprite sheets."""
-    cropped_glyphs = tuple(_g.reduce() for _g in font.glyphs)
+    cropped_glyphs = tuple(_g.reduce() for _g in glyphs)
     # sort by area, large to small. keep mapping table
     sorted_glyphs = tuple(sorted(
         enumerate(cropped_glyphs),
