@@ -94,6 +94,7 @@ if Image:
 # BMFont spec
 # see http://www.angelcode.com/products/bmfont/doc/file_format.html
 
+# file and block headers for binary file
 
 _HEAD = le.Struct(
     magic='3s',
@@ -113,7 +114,23 @@ _BLK_CHARS = 4
 _BLK_KERNINGS = 5
 
 
-# info struct
+# info section - binary and text/xml/json formats diverge slightly
+#
+# > info
+# > ----
+# > This tag holds information on how the font was generated.
+# > face        This is the name of the true type font.
+# > size        The size of the true type font.
+# > bold        The font is bold.
+# > italic      The font is italic.
+# > charset     The name of the OEM charset used (when not unicode).
+# > unicode     Set to 1 if it is the unicode charset.
+# > stretchH    The font height stretch in percentage. 100% means no stretch.
+# > smooth      Set to 1 if smoothing was turned on.
+# > aa          The supersampling level used. 1 means no supersampling was used.
+# > padding     The padding for each character (up, right, down, left).
+# > spacing     The spacing for each character (horizontal, vertical).
+# > outline     The outline thickness for the characters.
 
 def _info(size):
     return le.Struct(
@@ -171,7 +188,24 @@ _CHARSET_STR_MAP = {
 }
 _CHARSET_STR_REVERSE_MAP = reverse_dict(_CHARSET_STR_MAP)
 
-# common struct
+# common section
+#
+# > common
+# > ------
+# > This tag holds information common to all characters.
+# > lineHeight  This is the distance in pixels between each line of text.
+# > base        The number of pixels from the absolute top of the line to the base of the characters.
+# > scaleW      The width of the texture, normally used to scale the x pos of the character image.
+# > scaleH      The height of the texture, normally used to scale the y pos of the character image.
+# > pages       The number of texture pages included in the font.
+# > packed      Set to 1 if the monochrome characters have been packed into each of the texture
+# >             channels. In this case alphaChnl describes what is stored in each channel.
+# > alphaChnl   Set to 0 if the channel holds the glyph data, 1 if it holds the outline,
+# >             2 if it holds the glyph and the outline, 3 if its set to zero,
+# >             and 4 if its set to one.
+# > redChnl     ..(value as alphaChnl)..
+# > greenChnl   ..(value as alphaChnl)..
+# > blueChnl    ..(value as alphaChnl)..
 
 _COMMON = le.Struct(
     lineHeight='uint16',
@@ -188,6 +222,17 @@ _COMMON = le.Struct(
     blueChnl='uint8',
 )
 
+# page tag
+# part of common struct in binary file
+
+# https://www.angelcode.com/products/bmfont/doc/file_format.html
+#
+# >  page
+# >  ----
+# >  This tag gives the name of a texture file. There is one for each page in the font.
+# >  id     The page id.
+# >  file   The texture file name.
+
 def _pages(npages, size):
     strlen = size // npages
     return le.Struct(
@@ -196,6 +241,20 @@ def _pages(npages, size):
 
 
 # char struct
+#
+# >  char
+# >  ----
+# >  This tag describes on character in the font. There is one for each included character in the font.
+# >  id         The character id.
+# >  x          The left position of the character image in the texture.
+# >  y          The top position of the character image in the texture.
+# >  width      The width of the character image in the texture.
+# >  height     The height of the character image in the texture.
+# >  xoffset    How much the current position should be offset when copying the image from the texture to the screen.
+# >  yoffset    How much the current position should be offset when copying the image from the texture to the screen.
+# >  xadvance   How much the current position should be advanced after drawing the character.
+# >  page       The texture page where the character image is found.
+# >  chnl       The texture channel where the character image is found (1 = blue, 2 = green, 4 = red, 8 = alpha, 15 = all channels).
 
 _CHAR = le.Struct(
     id='uint32',
@@ -223,7 +282,16 @@ def _chars(size):
     )
 
 
-# kerning struct
+# kerning section
+#
+# >  kerning
+# >  -------
+# >  The kerning information is used to adjust the distance between certain characters, e.g.
+# >  some characters should be placed closer to each other than others.
+# >  first  The first character id.
+# >  second The second character id.
+# >  amount	How much the x position should be adjusted when drawing the second character
+# >  immediately following the first.
 
 _KERNING = le.Struct(
     first='uint32',
@@ -623,13 +691,6 @@ def _create_bmfont(
     props = {}
     props['chars'] = chars
     # save images; create page table
-    # https://www.angelcode.com/products/bmfont/doc/file_format.html
-    #
-    # >  page
-    # >  ----
-    # >  This tag gives the name of a texture file. There is one for each page in the font.
-    # >  id     The page id.
-    # >  file   The texture file name.
     props['pages'] = []
     for page_id, page in enumerate(pages):
         name = container.unused_name(f'{path}/{fontname}_{page_id}.{image_format}')
@@ -639,21 +700,7 @@ def _create_bmfont(
             'id': page_id,
             'file': str(Path(name).relative_to(basepath)),
         })
-    # > info
-    # > ----
-    # > This tag holds information on how the font was generated.
-    # > face        This is the name of the true type font.
-    # > size        The size of the true type font.
-    # > bold        The font is bold.
-    # > italic      The font is italic.
-    # > charset     The name of the OEM charset used (when not unicode).
-    # > unicode     Set to 1 if it is the unicode charset.
-    # > stretchH    The font height stretch in percentage. 100% means no stretch.
-    # > smooth      Set to 1 if smoothing was turned on.
-    # > aa          The supersampling level used. 1 means no supersampling was used.
-    # > padding     The padding for each character (up, right, down, left).
-    # > spacing     The spacing for each character (horizontal, vertical).
-    # > outline     The outline thickness for the characters.
+    # info section
     props['info'] = {
         'face': font.family,
         # size can be given as negative for an undocumented reason:
@@ -678,22 +725,7 @@ def _create_bmfont(
         'spacing': tuple(spacing),
         'outline': 0,
     }
-    # > common
-    # > ------
-    # > This tag holds information common to all characters.
-    # > lineHeight  This is the distance in pixels between each line of text.
-    # > base        The number of pixels from the absolute top of the line to the base of the characters.
-    # > scaleW      The width of the texture, normally used to scale the x pos of the character image.
-    # > scaleH      The height of the texture, normally used to scale the y pos of the character image.
-    # > pages       The number of texture pages included in the font.
-    # > packed      Set to 1 if the monochrome characters have been packed into each of the texture
-    # >             channels. In this case alphaChnl describes what is stored in each channel.
-    # > alphaChnl   Set to 0 if the channel holds the glyph data, 1 if it holds the outline,
-    # >             2 if it holds the glyph and the outline, 3 if its set to zero,
-    # >             and 4 if its set to one.
-    # > redChnl     ..(value as alphaChnl)..
-    # > greenChnl   ..(value as alphaChnl)..
-    # > blueChnl    ..(value as alphaChnl)..
+    # common section
     props['common'] = {
         # https://www.angelcode.com/products/bmfont/doc/render_text.html
         # > [...] the lineHeight, i.e. how far the cursor should be moved vertically when
@@ -713,14 +745,7 @@ def _create_bmfont(
         'greenChnl': 0,
         'blueChnl': 0,
     }
-    # >  kerning
-    # >  -------
-    # >  The kerning information is used to adjust the distance between certain characters, e.g.
-    # >  some characters should be placed closer to each other than others.
-    # >  first  The first character id.
-    # >  second The second character id.
-    # >  amount	How much the x position should be adjusted when drawing the second character
-    # >  immediately following the first.
+    # kerning section
     props['kernings'] = [{
             'first': _glyph_id(_glyph, font.encoding),
             'second': _glyph_id(font.get_glyph(_to), font.encoding),
@@ -966,19 +991,6 @@ def _create_spritesheets(
             except ValueError as e:
                 logging.warning(e)
                 continue
-            # >  char
-            # >  ----
-            # >  This tag describes on character in the font. There is one for each included character in the font.
-            # >  id         The character id.
-            # >  x          The left position of the character image in the texture.
-            # >  y          The top position of the character image in the texture.
-            # >  width      The width of the character image in the texture.
-            # >  height     The height of the character image in the texture.
-            # >  xoffset    How much the current position should be offset when copying the image from the texture to the screen.
-            # >  yoffset    How much the current position should be offset when copying the image from the texture to the screen.
-            # >  xadvance   How much the current position should be advanced after drawing the character.
-            # >  page       The texture page where the character image is found.
-            # >  chnl       The texture channel where the character image is found (1 = blue, 2 = green, 4 = red, 8 = alpha, 15 = all channels).
             chars.append(dict(
                 id=id,
                 x=x + padding.left,
