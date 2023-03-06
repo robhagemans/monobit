@@ -684,19 +684,7 @@ def _create_bmfont(
     # draw images
     sheets = _draw_images(glyph_map, width, height, packed, paper, ink, border)
     # save images and record names
-    container = outfile.where
-    basepath = Path(outfile.name).parent
-    path = basepath / font.family
-    fontname = font.name.replace(' ', '_')
-    pages = []
-    for page_id, sheet in enumerate(sheets):
-        name = container.unused_name(f'{path}/{fontname}_{page_id}.{image_format}')
-        with container.open(name, 'w') as imgfile:
-            sheet.save(imgfile, format=image_format)
-        pages.append({
-            'id': page_id,
-            'file': str(Path(name).relative_to(basepath)),
-        })
+    pages = _save_pages(outfile, font, sheets, image_format)
     # create the descriptor data structure
     props = _convert_to_bmfont(
         font, pages, glyph_map, width, height, packed, padding, spacing
@@ -953,6 +941,27 @@ def _write_binary_descriptor(outfile, props):
     binkerns = b''.join(bytes(_KERNING(**_c)) for _c in props['kernings'])
     outfile.write(bytes(_BLKHEAD(typeId=_BLK_KERNINGS, blkSize=len(binkerns))))
     outfile.write(binkerns)
+
+
+###############################################################################
+# image files
+
+def _save_pages(outfile, font, sheets, image_format):
+    """Save images and record names."""
+    container = outfile.where
+    basepath = Path(outfile.name).parent
+    path = basepath / font.family
+    fontname = font.name.replace(' ', '_')
+    pages = []
+    for page_id, sheet in enumerate(sheets):
+        name = container.unused_name(f'{path}/{fontname}_{page_id}.{image_format}')
+        with container.open(name, 'w') as imgfile:
+            sheet.save(imgfile, format=image_format)
+        pages.append({
+            'id': page_id,
+            'file': str(Path(name).relative_to(basepath)),
+        })
+    return pages
 
 
 ###############################################################################
