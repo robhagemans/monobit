@@ -682,34 +682,7 @@ def _create_bmfont(
         font, size=size, packed=packed, spacing=spacing, padding=padding,
     )
     # draw images
-    images = {}
-    for entry in glyph_map:
-        try:
-            img = images[entry.page, entry.layer]
-        except KeyError:
-            img = Image.new('L', (width, height), border)
-            images[entry.page, entry.layer] = img
-        charimg = Image.new('L', (entry.glyph.width, entry.glyph.height))
-        data = entry.glyph.as_vector(ink, paper)
-        charimg.putdata(data)
-        img.paste(charimg, (entry.x, entry.y))
-    max_page, _ = max(images.keys())
-    if packed:
-        empty = Image.new('L', (width, height), border)
-        sheets = tuple(
-            Image.merge(
-                'RGBA', (
-                    # bmfont channel order is B, G, R, A
-                    images.get((_p, 2), empty),
-                    images.get((_p, 1), empty),
-                    images.get((_p, 0), empty),
-                    images.get((_p, 3), empty),
-                )
-            )
-            for _p in range(max_page+1)
-        )
-    else:
-        sheets = tuple(images[_p, 0] for _p in range(max_page+1))
+    sheets = _draw_images(glyph_map, width, height, packed, paper, ink, border)
     # save images and record names
     container = outfile.where
     basepath = Path(outfile.name).parent
@@ -980,6 +953,40 @@ def _write_binary_descriptor(outfile, props):
     binkerns = b''.join(bytes(_KERNING(**_c)) for _c in props['kernings'])
     outfile.write(bytes(_BLKHEAD(typeId=_BLK_KERNINGS, blkSize=len(binkerns))))
     outfile.write(binkerns)
+
+
+###############################################################################
+# draw spritesheets
+
+def _draw_images(glyph_map, width, height, packed, paper, ink, border):
+    """Draw images based on glyph map."""
+    images = {}
+    for entry in glyph_map:
+        try:
+            img = images[entry.page, entry.layer]
+        except KeyError:
+            img = Image.new('L', (width, height), border)
+            images[entry.page, entry.layer] = img
+        charimg = Image.new('L', (entry.glyph.width, entry.glyph.height))
+        data = entry.glyph.as_vector(ink, paper)
+        charimg.putdata(data)
+        img.paste(charimg, (entry.x, entry.y))
+    max_page, _ = max(images.keys())
+    if packed:
+        empty = Image.new('L', (width, height), border)
+        return tuple(
+            Image.merge(
+                'RGBA', (
+                    # bmfont channel order is B, G, R, A
+                    images.get((_p, 2), empty),
+                    images.get((_p, 1), empty),
+                    images.get((_p, 0), empty),
+                    images.get((_p, 3), empty),
+                )
+            )
+            for _p in range(max_page+1)
+        )
+    return tuple(images[_p, 0] for _p in range(max_page+1))
 
 
 ###############################################################################
