@@ -596,6 +596,155 @@ def _read_bmfont(infile, outline):
 ##############################################################################
 # bmfont writer
 
+def _create_bmfont(
+        outfile, font, *,
+        size, packed, spacing, padding,
+        image_format, descriptor,
+    ):
+    """Create a bmfont package."""
+    container = outfile.where
+    basepath = Path(outfile.name).parent
+    path = basepath / font.family
+    fontname = font.name.replace(' ', '_')
+    encoding = font.encoding
+    if not charmaps.is_unicode(encoding):
+        # if encoding is unknown, call it OEM
+        charset = _CHARSET_STR_REVERSE_MAP.get(encoding, _CHARSET_STR_REVERSE_MAP[''])
+        # ensure codepoint values are set
+        font = font.label(codepoint_from=encoding)
+    else:
+        charset = ''
+        # ensure char values are set
+        font = font.label(char_from=encoding)
+    # create images
+    pages, chars = _create_spritesheets(
+        font, size=size, packed=packed, spacing=spacing, padding=padding,
+    )
+    props = {}
+    props['chars'] = chars
+    # save images; create page table
+    # https://www.angelcode.com/products/bmfont/doc/file_format.html
+    #
+    # >  page
+    # >  ----
+    # >  This tag gives the name of a texture file. There is one for each page in the font.
+    # >  id     The page id.
+    # >  file   The texture file name.
+    props['pages'] = []
+    for page_id, page in enumerate(pages):
+        name = container.unused_name(f'{path}/{fontname}_{page_id}.{image_format}')
+        with container.open(name, 'w') as imgfile:
+            page.save(imgfile, format=image_format)
+        props['pages'].append({
+            'id': page_id,
+            'file': str(Path(name).relative_to(basepath)),
+        })
+    # > info
+    # > ----
+    # > This tag holds information on how the font was generated.
+    # > face        This is the name of the true type font.
+    # > size        The size of the true type font.
+    # > bold        The font is bold.
+    # > italic      The font is italic.
+    # > charset     The name of the OEM charset used (when not unicode).
+    # > unicode     Set to 1 if it is the unicode charset.
+    # > stretchH    The font height stretch in percentage. 100% means no stretch.
+    # > smooth      Set to 1 if smoothing was turned on.
+    # > aa          The supersampling level used. 1 means no supersampling was used.
+    # > padding     The padding for each character (up, right, down, left).
+    # > spacing     The spacing for each character (horizontal, vertical).
+    # > outline     The outline thickness for the characters.
+    props['info'] = {
+        'face': font.family,
+        # size can be given as negative for an undocumented reason:
+        #
+        # https://gamedev.net/forums/topic/657937-strange-34size34-of-generated-bitmapfont/5161902/
+        # > The 'info' block is just a little information on the original truetype font used to
+        # > generate the bitmap font. This is normally not used while rendering the text.
+        # > A negative size here reflects that the size is matching the cell height, rather than
+        # > the character height.
+        #
+        # we're assuming size == pixel-size == ascent + descent
+        # so it should be positive - negative means matching "cell height" (~ font.raster_size.y ?)
+        'size': font.pixel_size,
+        'bold': font.weight == 'bold',
+        'italic': font.slant in ('italic', 'oblique'),
+        'charset': charset,
+        'unicode': charmaps.is_unicode(encoding),
+        'stretchH': 100,
+        'smooth': False,
+        'aa': 1,
+        'padding': tuple(padding),
+        'spacing': tuple(spacing),
+        'outline': 0,
+    }
+    # > common
+    # > ------
+    # > This tag holds information common to all characters.
+    # > lineHeight  This is the distance in pixels between each line of text.
+    # > base        The number of pixels from the absolute top of the line to the base of the characters.
+    # > scaleW      The width of the texture, normally used to scale the x pos of the character image.
+    # > scaleH      The height of the texture, normally used to scale the y pos of the character image.
+    # > pages       The number of texture pages included in the font.
+    # > packed      Set to 1 if the monochrome characters have been packed into each of the texture
+    # >             channels. In this case alphaChnl describes what is stored in each channel.
+    # > alphaChnl   Set to 0 if the channel holds the glyph data, 1 if it holds the outline,
+    # >             2 if it holds the glyph and the outline, 3 if its set to zero,
+    # >             and 4 if its set to one.
+    # > redChnl     ..(value as alphaChnl)..
+    # > greenChnl   ..(value as alphaChnl)..
+    # > blueChnl    ..(value as alphaChnl)..
+    props['common'] = {
+        # https://www.angelcode.com/products/bmfont/doc/render_text.html
+        # > [...] the lineHeight, i.e. how far the cursor should be moved vertically when
+        # > moving to the next line.
+        'lineHeight': font.line_height,
+        # "base" is the distance between top-line and baseline
+        # > The base value is how far from the top of the cell height the base of the characters
+        # > in the font should be placed. Characters can of course extend above or below this base
+        # > line, which is entirely up to the font design.
+        'base': font.raster.top,
+        'scaleW': pages[0].width,
+        'scaleH': pages[0].height,
+        'pages': len(pages),
+        'packed': packed,
+        'alphaChnl': 0,
+        'redChnl': 0,
+        'greenChnl': 0,
+        'blueChnl': 0,
+    }
+    # >  kerning
+    # >  -------
+    # >  The kerning information is used to adjust the distance between certain characters, e.g.
+    # >  some characters should be placed closer to each other than others.
+    # >  first  The first character id.
+    # >  second The second character id.
+    # >  amount	How much the x position should be adjusted when drawing the second character
+    # >  immediately following the first.
+    props['kernings'] = [{
+            'first': _glyph_id(_glyph, font.encoding),
+            'second': _glyph_id(font.get_glyph(_to), font.encoding),
+            'amount': int(_amount)
+        }
+        for _glyph in font.glyphs
+        for _to, _amount in _glyph.right_kerning.items()
+    ]
+    # write the .fnt description
+    if descriptor == 'text':
+        _write_text_descriptor(outfile, props)
+    elif descriptor == 'json':
+        _write_json_descriptor(outfile, props)
+    elif descriptor == 'xml':
+        _write_xml_descriptor(outfile, props)
+    elif descriptor == 'binary':
+        _write_binary_descriptor(outfile, props)
+    else:
+        raise FileFormatError(
+            'Descriptor format should be one of `test`, `xml`, `binary`, `json`;'
+            f' `{format}` not recognised.'
+        )
+
+
 def _glyph_id(glyph, encoding):
     if charmaps.is_unicode(encoding):
         char = glyph.char
@@ -609,6 +758,131 @@ def _glyph_id(glyph, encoding):
     else:
         return bytes_to_int(glyph.codepoint)
 
+
+###############################################################################
+# text descriptor files
+
+def _write_text_descriptor(outfile, props):
+    """Write a text-based .fnt descriptor file."""
+    bmf = outfile.text
+    bmf.write(_create_textdict('info', props['info']))
+    bmf.write(_create_textdict('common', props['common']))
+    for page in props['pages']:
+        bmf.write(_create_textdict('page', page))
+    bmf.write('chars count={}\n'.format(len(props['chars'])))
+    for char in props['chars']:
+        bmf.write(_create_textdict('char', char))
+    bmf.write('kernings count={}\n'.format(len(props['kernings'])))
+    for kern in props['kernings']:
+        bmf.write(_create_textdict('kerning', kern))
+
+def _create_textdict(name, dict):
+    """Create a text-dictionary line for bmfontfile."""
+    return '{} {}\n'.format(name, ' '.join(
+        '{}={}'.format(_k, _to_str(_v))
+        for _k, _v in dict.items())
+    )
+
+def _to_str(value):
+    """Convert value to str for bmfont file."""
+    if isinstance(value, str) :
+        return '"{}"'.format(value)
+    if isinstance(value, (list, tuple)):
+        return ','.join(str(_item) for _item in value)
+    return str(int(value))
+
+
+###############################################################################
+# json, xml descriptor files
+
+def _write_json_descriptor(outfile, props):
+    """Write JSON bmfont description."""
+    tree = {**props}
+    # assume the pages list is ordered
+    tree['pages'] = [_elem['file'] for _elem in tree['pages']]
+    json.dump(tree, outfile.text)
+
+def _write_xml_descriptor(outfile, props):
+    """Write XML bmfont description."""
+    tree = {**props}
+    # convert values to str
+    def _tostrdict(indict):
+        return {_k: str(_v) for _k, _v in indict.items()}
+    root = etree.Element('font')
+    etree.SubElement(root, 'info', **_tostrdict(tree['info']))
+    etree.SubElement(root, 'common', **_tostrdict(tree['common']))
+    pages =etree.SubElement(root, 'pages')
+    for elem in tree['pages']:
+        etree.SubElement(pages, 'page', **_tostrdict(elem))
+    chars = etree.SubElement(root, 'chars', count=str(len(props['chars'])))
+    for char in props['chars']:
+        etree.SubElement(chars, 'char', **_tostrdict(char))
+    if props['kernings']:
+        kerns = etree.SubElement(root, 'kernings', count=str(len(props['kernings'])))
+        for kern in props['kernings']:
+            etree.SubElement(kerns, 'kerning', **_tostrdict(kern))
+    outfile.write(b'<?xml version="1.0"?>\n')
+    etree.ElementTree(root).write(outfile)
+
+
+###############################################################################
+# binary descriptor files
+
+def _write_binary_descriptor(outfile, props):
+    """Write binary bmfont description."""
+    head = _HEAD(magic=b'BMF', version=3)
+    outfile.write(bytes(head))
+    # INFO section
+    info = props['info']
+    pages = props['pages']
+    padding = Bounds.create(info['padding'])
+    spacing = Coord.create(info['spacing'])
+    bininfo = dict(
+        fontName=info['face'].encode('ascii', 'replace') + b'\0',
+        fontSize=info['size'],
+        bitField=(
+            (_INFO_BOLD if info['bold'] else 0)
+            | (_INFO_ITALIC if info['italic'] else 0)
+            | (_INFO_UNICODE if info['unicode'] else 0)
+            | (_INFO_SMOOTH if info['smooth'] else 0)
+        ),
+        charset=CHARSET_REVERSE_MAP.get(info['charset'], 0xff),
+        aa=info['aa'],
+        paddingUp=padding.top,
+        paddingLeft=padding.left,
+        paddingDown=padding.bottom,
+        paddingRight=padding.right,
+        spacingHoriz=spacing.x,
+        spacingVert=spacing.y,
+        outline=info['outline'],
+    )
+    infosize = len(bininfo['fontName']) + 14
+    infoblk = bytes(_info(infosize)(**bininfo))
+    outfile.write(bytes(_BLKHEAD(typeId=_BLK_INFO, blkSize=infosize)))
+    outfile.write(infoblk)
+    # COMMON section
+    commonblk = bytes(_COMMON(**props['common']))
+    outfile.write(bytes(_BLKHEAD(typeId=_BLK_COMMON, blkSize=len(commonblk))))
+    outfile.write(commonblk)
+    # PAGES section
+    binpages = b''.join((
+        _page['file'].encode('ascii', 'replace') + b'\0'
+        for _page in pages
+    ))
+    outfile.write(bytes(_BLKHEAD(typeId=_BLK_PAGES, blkSize=len(binpages))))
+    outfile.write(binpages)
+    # CHARS section
+    binchars = b''.join(bytes(_CHAR(**_c)) for _c in props['chars'])
+    outfile.write(bytes(_BLKHEAD(typeId=_BLK_CHARS, blkSize=len(binchars))))
+    outfile.write(binchars)
+    # KERNINGS section
+    binkerns = b''.join(bytes(_KERNING(**_c)) for _c in props['kernings'])
+    outfile.write(bytes(_BLKHEAD(typeId=_BLK_KERNINGS, blkSize=len(binkerns))))
+    outfile.write(binkerns)
+
+
+###############################################################################
+# packed spritesheets
 
 def _create_spritesheets(
         font, *,
@@ -748,265 +1022,6 @@ def _create_spritesheets(
     # put chars in original glyph order
     orig_chars = [chars[order_mapping[_i]] for _i in range(len(chars))]
     return pages, orig_chars
-
-
-def _to_str(value):
-    """Convert value to str for bmfont file."""
-    if isinstance(value, str) :
-        return '"{}"'.format(value)
-    if isinstance(value, (list, tuple)):
-        return ','.join(str(_item) for _item in value)
-    return str(int(value))
-
-def _create_textdict(name, dict):
-    """Create a text-dictionary line for bmfontfile."""
-    return '{} {}\n'.format(name, ' '.join(
-        '{}={}'.format(_k, _to_str(_v))
-        for _k, _v in dict.items())
-    )
-
-def _create_bmfont(
-        outfile, font, *,
-        size, packed, spacing, padding,
-        image_format, descriptor,
-    ):
-    """Create a bmfont package."""
-    container = outfile.where
-    basepath = Path(outfile.name).parent
-    path = basepath / font.family
-    fontname = font.name.replace(' ', '_')
-    encoding = font.encoding
-    if not charmaps.is_unicode(encoding):
-        # if encoding is unknown, call it OEM
-        charset = _CHARSET_STR_REVERSE_MAP.get(encoding, _CHARSET_STR_REVERSE_MAP[''])
-        # ensure codepoint values are set
-        font = font.label(codepoint_from=encoding)
-    else:
-        charset = ''
-        # ensure char values are set
-        font = font.label(char_from=encoding)
-    # create images
-    pages, chars = _create_spritesheets(
-        font, size=size, packed=packed, spacing=spacing, padding=padding,
-    )
-    props = {}
-    props['chars'] = chars
-    # save images; create page table
-    # https://www.angelcode.com/products/bmfont/doc/file_format.html
-    #
-    # >  page
-    # >  ----
-    # >  This tag gives the name of a texture file. There is one for each page in the font.
-    # >  id     The page id.
-    # >  file   The texture file name.
-    props['pages'] = []
-    for page_id, page in enumerate(pages):
-        name = container.unused_name(f'{path}/{fontname}_{page_id}.{image_format}')
-        with container.open(name, 'w') as imgfile:
-            page.save(imgfile, format=image_format)
-        props['pages'].append({
-            'id': page_id,
-            'file': str(Path(name).relative_to(basepath)),
-        })
-    # > info
-    # > ----
-    # > This tag holds information on how the font was generated.
-    # > face        This is the name of the true type font.
-    # > size        The size of the true type font.
-    # > bold        The font is bold.
-    # > italic      The font is italic.
-    # > charset     The name of the OEM charset used (when not unicode).
-    # > unicode     Set to 1 if it is the unicode charset.
-    # > stretchH    The font height stretch in percentage. 100% means no stretch.
-    # > smooth      Set to 1 if smoothing was turned on.
-    # > aa          The supersampling level used. 1 means no supersampling was used.
-    # > padding     The padding for each character (up, right, down, left).
-    # > spacing     The spacing for each character (horizontal, vertical).
-    # > outline     The outline thickness for the characters.
-    props['info'] = {
-        'face': font.family,
-        # size can be given as negative for an undocumented reason:
-        #
-        # https://gamedev.net/forums/topic/657937-strange-34size34-of-generated-bitmapfont/5161902/
-        # > The 'info' block is just a little information on the original truetype font used to
-        # > generate the bitmap font. This is normally not used while rendering the text.
-        # > A negative size here reflects that the size is matching the cell height, rather than
-        # > the character height.
-        #
-        # we're assuming size == pixel-size == ascent + descent
-        # so it should be positive - negative means matching "cell height" (~ font.raster_size.y ?)
-        'size': font.pixel_size,
-        'bold': font.weight == 'bold',
-        'italic': font.slant in ('italic', 'oblique'),
-        'charset': charset,
-        'unicode': charmaps.is_unicode(encoding),
-        'stretchH': 100,
-        'smooth': False,
-        'aa': 1,
-        'padding': tuple(padding),
-        'spacing': tuple(spacing),
-        'outline': 0,
-    }
-    # > common
-    # > ------
-    # > This tag holds information common to all characters.
-    # > lineHeight  This is the distance in pixels between each line of text.
-    # > base        The number of pixels from the absolute top of the line to the base of the characters.
-    # > scaleW      The width of the texture, normally used to scale the x pos of the character image.
-    # > scaleH      The height of the texture, normally used to scale the y pos of the character image.
-    # > pages       The number of texture pages included in the font.
-    # > packed      Set to 1 if the monochrome characters have been packed into each of the texture
-    # >             channels. In this case alphaChnl describes what is stored in each channel.
-    # > alphaChnl   Set to 0 if the channel holds the glyph data, 1 if it holds the outline,
-    # >             2 if it holds the glyph and the outline, 3 if its set to zero,
-    # >             and 4 if its set to one.
-    # > redChnl     ..(value as alphaChnl)..
-    # > greenChnl   ..(value as alphaChnl)..
-    # > blueChnl    ..(value as alphaChnl)..
-    props['common'] = {
-        # https://www.angelcode.com/products/bmfont/doc/render_text.html
-        # > [...] the lineHeight, i.e. how far the cursor should be moved vertically when
-        # > moving to the next line.
-        'lineHeight': font.line_height,
-        # "base" is the distance between top-line and baseline
-        # > The base value is how far from the top of the cell height the base of the characters
-        # > in the font should be placed. Characters can of course extend above or below this base
-        # > line, which is entirely up to the font design.
-        'base': font.raster.top,
-        'scaleW': pages[0].width,
-        'scaleH': pages[0].height,
-        'pages': len(pages),
-        'packed': packed,
-        'alphaChnl': 0,
-        'redChnl': 0,
-        'greenChnl': 0,
-        'blueChnl': 0,
-    }
-    # >  kerning
-    # >  -------
-    # >  The kerning information is used to adjust the distance between certain characters, e.g.
-    # >  some characters should be placed closer to each other than others.
-    # >  first  The first character id.
-    # >  second The second character id.
-    # >  amount	How much the x position should be adjusted when drawing the second character
-    # >  immediately following the first.
-    props['kernings'] = [{
-            'first': _glyph_id(_glyph, font.encoding),
-            'second': _glyph_id(font.get_glyph(_to), font.encoding),
-            'amount': int(_amount)
-        }
-        for _glyph in font.glyphs
-        for _to, _amount in _glyph.right_kerning.items()
-    ]
-    # write the .fnt description
-    if descriptor == 'text':
-        _write_fnt_descriptor(outfile, props)
-    elif descriptor == 'json':
-        _write_json(outfile, props)
-    elif descriptor == 'xml':
-        _write_xml(outfile, props)
-    elif descriptor == 'binary':
-        _write_binary(outfile, props)
-    else:
-        raise FileFormatError(
-            'Descriptor format should be one of `test`, `xml`, `binary`, `json`;'
-            f' `{format}` not recognised.'
-        )
-
-def _write_fnt_descriptor(outfile, props):
-    """Write the .fnt descriptor file."""
-    bmf = outfile.text
-    bmf.write(_create_textdict('info', props['info']))
-    bmf.write(_create_textdict('common', props['common']))
-    for page in props['pages']:
-        bmf.write(_create_textdict('page', page))
-    bmf.write('chars count={}\n'.format(len(props['chars'])))
-    for char in props['chars']:
-        bmf.write(_create_textdict('char', char))
-    bmf.write('kernings count={}\n'.format(len(props['kernings'])))
-    for kern in props['kernings']:
-        bmf.write(_create_textdict('kerning', kern))
-
-def _write_json(outfile, props):
-    """Write JSON bmfont description."""
-    tree = {**props}
-    # assume the pages list is ordered
-    tree['pages'] = [_elem['file'] for _elem in tree['pages']]
-    json.dump(tree, outfile.text)
-
-def _write_xml(outfile, props):
-    """Write XML bmfont description."""
-    tree = {**props}
-    # convert values to str
-    def _tostrdict(indict):
-        return {_k: str(_v) for _k, _v in indict.items()}
-    root = etree.Element('font')
-    etree.SubElement(root, 'info', **_tostrdict(tree['info']))
-    etree.SubElement(root, 'common', **_tostrdict(tree['common']))
-    pages =etree.SubElement(root, 'pages')
-    for elem in tree['pages']:
-        etree.SubElement(pages, 'page', **_tostrdict(elem))
-    chars = etree.SubElement(root, 'chars', count=str(len(props['chars'])))
-    for char in props['chars']:
-        etree.SubElement(chars, 'char', **_tostrdict(char))
-    if props['kernings']:
-        kerns = etree.SubElement(root, 'kernings', count=str(len(props['kernings'])))
-        for kern in props['kernings']:
-            etree.SubElement(kerns, 'kerning', **_tostrdict(kern))
-    outfile.write(b'<?xml version="1.0"?>\n')
-    etree.ElementTree(root).write(outfile)
-
-def _write_binary(outfile, props):
-    """Write binary bmfont description."""
-    head = _HEAD(magic=b'BMF', version=3)
-    outfile.write(bytes(head))
-    # INFO section
-    info = props['info']
-    pages = props['pages']
-    padding = Bounds.create(info['padding'])
-    spacing = Coord.create(info['spacing'])
-    bininfo = dict(
-        fontName=info['face'].encode('ascii', 'replace') + b'\0',
-        fontSize=info['size'],
-        bitField=(
-            (_INFO_BOLD if info['bold'] else 0)
-            | (_INFO_ITALIC if info['italic'] else 0)
-            | (_INFO_UNICODE if info['unicode'] else 0)
-            | (_INFO_SMOOTH if info['smooth'] else 0)
-        ),
-        charset=CHARSET_REVERSE_MAP.get(info['charset'], 0xff),
-        aa=info['aa'],
-        paddingUp=padding.top,
-        paddingLeft=padding.left,
-        paddingDown=padding.bottom,
-        paddingRight=padding.right,
-        spacingHoriz=spacing.x,
-        spacingVert=spacing.y,
-        outline=info['outline'],
-    )
-    infosize = len(bininfo['fontName']) + 14
-    infoblk = bytes(_info(infosize)(**bininfo))
-    outfile.write(bytes(_BLKHEAD(typeId=_BLK_INFO, blkSize=infosize)))
-    outfile.write(infoblk)
-    # COMMON section
-    commonblk = bytes(_COMMON(**props['common']))
-    outfile.write(bytes(_BLKHEAD(typeId=_BLK_COMMON, blkSize=len(commonblk))))
-    outfile.write(commonblk)
-    # PAGES section
-    binpages = b''.join((
-        _page['file'].encode('ascii', 'replace') + b'\0'
-        for _page in pages
-    ))
-    outfile.write(bytes(_BLKHEAD(typeId=_BLK_PAGES, blkSize=len(binpages))))
-    outfile.write(binpages)
-    # CHARS section
-    binchars = b''.join(bytes(_CHAR(**_c)) for _c in props['chars'])
-    outfile.write(bytes(_BLKHEAD(typeId=_BLK_CHARS, blkSize=len(binchars))))
-    outfile.write(binchars)
-    # KERNINGS section
-    binkerns = b''.join(bytes(_KERNING(**_c)) for _c in props['kernings'])
-    outfile.write(bytes(_BLKHEAD(typeId=_BLK_KERNINGS, blkSize=len(binkerns))))
-    outfile.write(binkerns)
 
 
 class DoesNotFitError(Exception):
