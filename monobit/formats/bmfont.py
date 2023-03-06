@@ -668,6 +668,7 @@ def _create_bmfont(
         outfile, font, *,
         size, packed, spacing, padding,
         image_format, descriptor,
+        paper=0, ink=255, border=0,
     ):
     """Create a bmfont package."""
     # ensure codepoint/char values are set as appropriate
@@ -676,10 +677,39 @@ def _create_bmfont(
         font = font.label(codepoint_from=encoding)
     else:
         font = font.label(char_from=encoding)
-    # create images
-    sheets, glyph_map = _create_spritesheets(
+    # map glyphs to image
+    glyph_map, width, height = _map_glyphs_to_image(
         font, size=size, packed=packed, spacing=spacing, padding=padding,
     )
+    # draw images
+    images = {}
+    for entry in glyph_map:
+        try:
+            img = images[entry.page, entry.layer]
+        except KeyError:
+            img = Image.new('L', (width, height), border)
+            images[entry.page, entry.layer] = img
+        charimg = Image.new('L', (entry.glyph.width, entry.glyph.height))
+        data = entry.glyph.as_vector(ink, paper)
+        charimg.putdata(data)
+        img.paste(charimg, (entry.x, entry.y))
+    max_page, _ = max(images.keys())
+    if packed:
+        empty = Image.new('L', (width, height), border)
+        sheets = tuple(
+            Image.merge(
+                'RGBA', (
+                    # bmfont channel order is B, G, R, A
+                    images.get((_p, 2), empty),
+                    images.get((_p, 1), empty),
+                    images.get((_p, 0), empty),
+                    images.get((_p, 3), empty),
+                )
+            )
+            for _p in range(max_page+1)
+        )
+    else:
+        sheets = tuple(images[_p, 0] for _p in range(max_page+1))
     # save images and record names
     container = outfile.where
     basepath = Path(outfile.name).parent
@@ -694,11 +724,11 @@ def _create_bmfont(
             'id': page_id,
             'file': str(Path(name).relative_to(basepath)),
         })
+    # create the descriptor data structure
     props = _convert_to_bmfont(
-        font, pages, glyph_map,
-        sheets[0].width, sheets[0].height, packed, padding, spacing
+        font, pages, glyph_map, width, height, packed, padding, spacing
     )
-    # write the .fnt description
+    # write the descriptor file
     if descriptor == 'text':
         _write_text_descriptor(outfile, props)
     elif descriptor == 'json':
@@ -955,17 +985,8 @@ def _write_binary_descriptor(outfile, props):
 ###############################################################################
 # packed spritesheets
 
-def _create_spritesheets(
-        font, *,
-        size, packed,
-        spacing, padding,
-        paper=0, ink=255, border=0,
-    ):
-    """Dump font to sprite sheets."""
-    if not packed:
-        n_layers = 1
-    else:
-        n_layers = 4
+def _map_glyphs_to_image(font, *, size, packed, spacing, padding):
+    """Determine where to draw glyphs in sprite sheets."""
     cropped_glyphs = tuple(_g.reduce() for _g in font.glyphs)
     # sort by area, large to small. keep mapping table
     sorted_glyphs = tuple(sorted(
@@ -979,6 +1000,10 @@ def _create_spritesheets(
         for _index, _p in enumerate(sorted_glyphs)
     }
     # determine spritesheet size
+    if not packed:
+        n_layers = 1
+    else:
+        n_layers = 4
     max_width = max(_g.width for _g in cropped_glyphs)
     max_height = max(_g.height for _g in cropped_glyphs)
     if size is None:
@@ -996,19 +1021,12 @@ def _create_spritesheets(
     width = max(width, max_width)
     height = max(height, max_height)
     glyph_map = []
-    pages = []
-    empty = Image.new('L', (width, height), border)
-    sheets = [empty] * n_layers
-    pages.append(sheets)
     page_id = 0
     layer = 0
     while True:
-        img = Image.new('L', (width, height), border)
-        sheets[layer] = img
         # output glyphs
-        x, y = 0, 0
         tree = SpriteNode(
-            x, y,
+            0, 0,
             width-padding.left-padding.right,
             height-padding.top-padding.bottom,
             depth=0
@@ -1024,10 +1042,6 @@ def _create_spritesheets(
                     # we don't fit, get next sheet
                     cropped_glyphs = cropped_glyphs[number:]
                     break
-                charimg = Image.new('L', (cropped.width, cropped.height))
-                data = cropped.as_vector(ink, paper)
-                charimg.putdata(data)
-                img.paste(charimg, (x + padding.left, y + padding.top))
             glyph_map.append(Props(
                 glyph=cropped,
                 x=x + padding.left,
@@ -1036,24 +1050,17 @@ def _create_spritesheets(
                 layer=layer,
             ))
         else:
-            # iterator runs out, get out
+            # all done, get out
             break
         # move to next layer or page
         if layer == n_layers - 1:
             page_id += 1
             layer = 0
-            sheets = [empty] * n_layers
-            pages.append(sheets)
         else:
             layer += 1
-    if packed:
-        # bmfont channel order is B, G, R, A
-        pages = [Image.merge('RGBA', [_sh[2], _sh[1], _sh[0], _sh[3]]) for _sh in pages]
-    else:
-        pages = [_sh[0] for _sh in pages]
     # put chars in original glyph order
     glyph_map = [glyph_map[order_mapping[_i]] for _i in range(len(glyph_map))]
-    return pages, glyph_map
+    return glyph_map, width, height
 
 
 class DoesNotFitError(Exception):
