@@ -670,37 +670,67 @@ def _create_bmfont(
         image_format, descriptor,
     ):
     """Create a bmfont package."""
+    # ensure codepoint/char values are set as appropriate
+    encoding = font.encoding
+    if not charmaps.is_unicode(encoding):
+        font = font.label(codepoint_from=encoding)
+    else:
+        font = font.label(char_from=encoding)
+    # create images
+    sheets, chars = _create_spritesheets(
+        font, size=size, packed=packed, spacing=spacing, padding=padding,
+    )
+    # save images and record names
     container = outfile.where
     basepath = Path(outfile.name).parent
     path = basepath / font.family
     fontname = font.name.replace(' ', '_')
-    encoding = font.encoding
-    if not charmaps.is_unicode(encoding):
-        # if encoding is unknown, call it OEM
-        charset = _CHARSET_STR_REVERSE_MAP.get(encoding, _CHARSET_STR_REVERSE_MAP[''])
-        # ensure codepoint values are set
-        font = font.label(codepoint_from=encoding)
-    else:
-        charset = ''
-        # ensure char values are set
-        font = font.label(char_from=encoding)
-    # create images
-    pages, chars = _create_spritesheets(
-        font, size=size, packed=packed, spacing=spacing, padding=padding,
-    )
-    props = {}
-    props['chars'] = chars
-    # save images; create page table
-    props['pages'] = []
-    for page_id, page in enumerate(pages):
+    pages = []
+    for page_id, sheet in enumerate(sheets):
         name = container.unused_name(f'{path}/{fontname}_{page_id}.{image_format}')
         with container.open(name, 'w') as imgfile:
-            page.save(imgfile, format=image_format)
-        props['pages'].append({
+            sheet.save(imgfile, format=image_format)
+        pages.append({
             'id': page_id,
             'file': str(Path(name).relative_to(basepath)),
         })
+    props = _convert_to_bmfont(
+        font, pages, chars,
+        sheets[0].width, sheets[0].height, packed, padding, spacing
+    )
+    # write the .fnt description
+    if descriptor == 'text':
+        _write_text_descriptor(outfile, props)
+    elif descriptor == 'json':
+        _write_json_descriptor(outfile, props)
+    elif descriptor == 'xml':
+        _write_xml_descriptor(outfile, props)
+    elif descriptor == 'binary':
+        _write_binary_descriptor(outfile, props)
+    else:
+        raise FileFormatError(
+            'Descriptor format should be one of `test`, `xml`, `binary`, `json`;'
+            f' `{format}` not recognised.'
+        )
+
+
+def _convert_to_bmfont(
+        font, pages, chars,
+        width, height, packed, padding, spacing
+    ):
+    """Convert to bmfont property structure."""
+    props = {}
+    props['chars'] = chars
+    # save images; create page table
+    props['pages'] = pages
     # info section
+    if not charmaps.is_unicode(font.encoding):
+        # if encoding is unknown, call it OEM
+        charset = _CHARSET_STR_REVERSE_MAP.get(
+            font.encoding, _CHARSET_STR_REVERSE_MAP['']
+        )
+    else:
+        charset = ''
     props['info'] = {
         'face': font.family,
         # size can be given as negative for an undocumented reason:
@@ -717,7 +747,7 @@ def _create_bmfont(
         'bold': font.weight == 'bold',
         'italic': font.slant in ('italic', 'oblique'),
         'charset': charset,
-        'unicode': charmaps.is_unicode(encoding),
+        'unicode': charmaps.is_unicode(font.encoding),
         'stretchH': 100,
         'smooth': False,
         'aa': 1,
@@ -736,8 +766,8 @@ def _create_bmfont(
         # > in the font should be placed. Characters can of course extend above or below this base
         # > line, which is entirely up to the font design.
         'base': font.raster.top,
-        'scaleW': pages[0].width,
-        'scaleH': pages[0].height,
+        'scaleW': width,
+        'scaleH': height,
         'pages': len(pages),
         'packed': packed,
         'alphaChnl': 0,
@@ -746,7 +776,8 @@ def _create_bmfont(
         'blueChnl': 0,
     }
     # kerning section
-    props['kernings'] = [{
+    props['kernings'] = [
+        {
             'first': _glyph_id(_glyph, font.encoding),
             'second': _glyph_id(font.get_glyph(_to), font.encoding),
             'amount': int(_amount)
@@ -754,20 +785,7 @@ def _create_bmfont(
         for _glyph in font.glyphs
         for _to, _amount in _glyph.right_kerning.items()
     ]
-    # write the .fnt description
-    if descriptor == 'text':
-        _write_text_descriptor(outfile, props)
-    elif descriptor == 'json':
-        _write_json_descriptor(outfile, props)
-    elif descriptor == 'xml':
-        _write_xml_descriptor(outfile, props)
-    elif descriptor == 'binary':
-        _write_binary_descriptor(outfile, props)
-    else:
-        raise FileFormatError(
-            'Descriptor format should be one of `test`, `xml`, `binary`, `json`;'
-            f' `{format}` not recognised.'
-        )
+    return props
 
 
 def _glyph_id(glyph, encoding):
