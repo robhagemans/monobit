@@ -1021,26 +1021,28 @@ def _map_glyphs_to_image(glyphs, *, size, spacing, padding):
         ):
         raise ValueError('Image size is too small for largest glyph.')
     glyph_map = []
-    sheet = 0
+    sheets = []
     while True:
         # output glyphs
-        tree = SpriteNode(0, 0, use_width, use_height, depth=0)
+        sheets.append(SpriteNode(0, 0, use_width, use_height, depth=0))
         for number, glyph in enumerate(glyphs):
             if glyph.height and glyph.width:
-                try:
-                    x, y = tree.insert(glyph.width + spx, glyph.height + spy)
-                except DoesNotFitError:
+                for i, sheet in enumerate(sheets):
+                    try:
+                        x, y = sheet.insert(glyph.width+spx, glyph.height+spy)
+                        break
+                    except (FullError, DoesNotFitError):
+                        pass
+                else:
                     # we don't fit, get next sheet
                     glyphs = glyphs[number:]
                     break
             glyph_map.append(Props(
-                glyph=glyph, sheet=sheet, x=x+padding.left, y=y+padding.top,
+                glyph=glyph, sheet=i, x=x+padding.left, y=y+padding.top,
             ))
         else:
             # all done, get out
             break
-        # move to next layer or page
-        sheet += 1
     # put chars in original glyph order
     glyph_map = [glyph_map[order_mapping[_i]] for _i in range(len(glyph_map))]
     return glyph_map, width, height
@@ -1054,7 +1056,7 @@ def _estimate_size(glyphs, n_layers, padding, spacing):
         (_g.width+spacing.x) * (_g.height+spacing.y)
         for _g in glyphs
     )
-    edge = int(ceil(sqrt(total_area / n_layers)))
+    edge = int(ceil(1.01 * sqrt(total_area / n_layers)))
     return Coord(
         max_width * ceildiv(edge, max_width) + padding.left + padding.right,
         max_height * ceildiv(edge, max_height) + padding.top + padding.bottom,
@@ -1063,6 +1065,9 @@ def _estimate_size(glyphs, n_layers, padding, spacing):
 
 class DoesNotFitError(Exception):
     """Image does not fit."""
+
+class FullError(Exception):
+    """Branch is full."""
 
 
 class SpriteNode:
@@ -1083,15 +1088,15 @@ class SpriteNode:
         if target_width > width or target_height > height:
             raise DoesNotFitError()
         if self._full:
-            raise DoesNotFitError()
+            raise FullError()
         if self._children:
             try:
                 return self._children[0].insert(target_width, target_height)
-            except DoesNotFitError as e:
+            except (DoesNotFitError, FullError) as e:
                 pass
             try:
                 return self._children[1].insert(target_width, target_height)
-            except DoesNotFitError as e:
+            except FullError as e:
                 self._full = True
                 raise
         if target_width == width and target_height == height:
