@@ -6,6 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import os
+import io
 import logging
 from pathlib import Path
 
@@ -16,7 +17,7 @@ from .container import Container
 class Directory(Container):
     """Treat directory tree as a container."""
 
-    def __init__(self, path='', mode='r'):
+    def __init__(self, path='', mode='r', ignore_case=True):
         """Create directory wrapper."""
         # if empty path, this refers to the whole filesystem
         if not path:
@@ -35,7 +36,7 @@ class Directory(Container):
             # exist_ok raises FileExistsError only if the *target* already
             # exists, not the parents
             self._path.mkdir(parents=True, exist_ok=True)
-        super().__init__(mode, str(self._path))
+        super().__init__(mode, str(self._path), ignore_case=ignore_case)
 
     def open(self, name, mode, overwrite=False):
         """Open a stream in the container."""
@@ -47,7 +48,7 @@ class Directory(Container):
             logging.debug('Creating directory `%s`', self._path / path)
             (self._path / path).mkdir(parents=True, exist_ok=True)
         logging.debug("Opening file `%s` for mode '%s'.", name, mode)
-        filepath = Path(self._path / pathname)
+        filepath = self._path / pathname
         if mode == 'w' and not overwrite and filepath.exists():
             raise ValueError(
                 f'Overwriting existing file {str(filepath)}'
@@ -58,13 +59,14 @@ class Directory(Container):
             return DirectoryStream(
                 filepath, name=str(pathname), mode=mode, where=self
             )
-        file = open(filepath, mode + 'b')
+        try:
+            file = open(filepath, mode + 'b')
+        except FileNotFoundError:
+            # match_name will raise FileNotFoundError if no match
+            filepath = self._path / self._match_name(name)
+            file = open(filepath, mode + 'b')
         # provide name relative to directory container
-        stream = Stream(
-            file, mode=mode,
-            name=str(pathname),
-            where=self,
-        )
+        stream = Stream(file, name=str(pathname), mode=mode, where=self)
         return stream
 
     def __iter__(self):
@@ -83,7 +85,7 @@ class Directory(Container):
 
     def __contains__(self, name):
         """File exists in container."""
-        return Path(self._path / name).exists()
+        return (self._path / name).exists()
 
     def __repr__(self):
         return f"{type(self).__name__}('{self._path}')"

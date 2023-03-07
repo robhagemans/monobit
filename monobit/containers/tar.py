@@ -19,11 +19,11 @@ from ..magic import FileFormatError, Magic
 class TarContainer(Container):
     """Tar-file wrapper."""
 
-    def __init__(self, file, mode='r'):
+    def __init__(self, file, mode='r', ignore_case=True):
         """Create wrapper."""
         # mode really should just be 'r' or 'w'
         mode = mode[:1]
-        super().__init__(mode, file.name)
+        super().__init__(mode, file.name, ignore_case=ignore_case)
         # reading tarfile needs a seekable stream, drain to buffer if needed
         self._stream = Stream(file, mode)
         # create the tarfile
@@ -90,8 +90,8 @@ class TarContainer(Container):
         if mode == 'r':
             try:
                 file = self._tarfile.extractfile(filename)
-            except KeyError as e:
-                raise FileNotFoundError(e) from e
+            except KeyError:
+                file = self._tarfile.extractfile(self._match_name(filename))
             # .name is not writeable, so we need to wrap
             return Stream(file, mode, name=name, where=self)
         else:

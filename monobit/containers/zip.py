@@ -18,11 +18,11 @@ from ..magic import FileFormatError
 class ZipContainer(Container):
     """Zip-file wrapper."""
 
-    def __init__(self, file, mode='r'):
+    def __init__(self, file, mode='r', ignore_case=True):
         """Create wrapper."""
         # mode really should just be 'r' or 'w'
         mode = mode[:1]
-        super().__init__(mode, file.name)
+        super().__init__(mode, file.name, ignore_case=ignore_case)
         # reading zipfile needs a seekable stream, drain to buffer if needed
         self._stream = Stream(file, mode)
         # create the zipfile
@@ -82,12 +82,10 @@ class ZipContainer(Container):
         logging.debug('Opening file `%s` on zip container `%s`.', filename, self.name)
         if mode == 'r':
             try:
-                return Stream(
-                    self._zip.open(filename, mode),
-                    mode=mode, where=self, name=name,
-                )
-            except KeyError as e:
-                raise FileNotFoundError(e) from e
+                file = self._zip.open(filename, mode)
+            except KeyError:
+                file = self._zip.open(self._match_name(filename), mode)
+            return Stream(file, mode=mode, where=self, name=name)
         else:
             if filename in self and not overwrite:
                 raise ValueError(
