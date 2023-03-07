@@ -11,6 +11,7 @@ import logging
 from pathlib import Path
 import xml.etree.ElementTree as etree
 from math import ceil, sqrt
+from itertools import zip_longest
 
 try:
     from PIL import Image
@@ -677,9 +678,14 @@ def _create_bmfont(
         font = font.label(codepoint_from=encoding)
     else:
         font = font.label(char_from=encoding)
+    # crop glyphs
+    glyphs = tuple(_g.reduce() for _g in font.glyphs)
     # map glyphs to image
+    if size is None:
+        n_layers = 4 if packed else 1
+        size = _estimate_size(glyphs, n_layers, padding, spacing)
     glyph_map, width, height = _map_glyphs_to_image(
-        font.glyphs, size=size, packed=packed, spacing=spacing, padding=padding,
+        glyphs, size=size, spacing=spacing, padding=padding,
     )
     # draw images
     sheets = _draw_images(glyph_map, width, height, packed, paper, ink, border)
@@ -733,8 +739,8 @@ def _convert_to_bmfont(
             # > position by moving the cursor horizontally with the xadvance value.
             # > If kerning pairs are used the cursor should also be moved accordingly.
             xadvance=_entry.glyph.advance_width,
-            page=_entry.page,
-            chnl=(1 << _entry.layer) if packed else 15,
+            page=_entry.sheet // 4 if packed else _entry.sheet,
+            chnl=(1 << (_entry.sheet%4)) if packed else 15,
         )
         for _entry in glyph_map
     ]
@@ -969,41 +975,32 @@ def _save_pages(outfile, font, sheets, image_format):
 
 def _draw_images(glyph_map, width, height, packed, paper, ink, border):
     """Draw images based on glyph map."""
-    images = {}
+    last = max(_entry.sheet for _entry in glyph_map)
+    images = [Image.new('L', (width, height), border) for _ in range(last+1)]
     for entry in glyph_map:
-        try:
-            img = images[entry.page, entry.layer]
-        except KeyError:
-            img = Image.new('L', (width, height), border)
-            images[entry.page, entry.layer] = img
         charimg = Image.new('L', (entry.glyph.width, entry.glyph.height))
         data = entry.glyph.as_vector(ink, paper)
         charimg.putdata(data)
-        img.paste(charimg, (entry.x, entry.y))
-    max_page, _ = max(images.keys())
+        images[entry.sheet].paste(charimg, (entry.x, entry.y))
+    # pack 4 sheets per image in RGBA layers
     if packed:
+        # grouper: quartets, fill with empties
         empty = Image.new('L', (width, height), border)
+        args = [iter(images)] * 4
+        quartets = zip_longest(*args, fillvalue=empty)
         return tuple(
-            Image.merge(
-                'RGBA', (
-                    # bmfont channel order is B, G, R, A
-                    images.get((_p, 2), empty),
-                    images.get((_p, 1), empty),
-                    images.get((_p, 0), empty),
-                    images.get((_p, 3), empty),
-                )
-            )
-            for _p in range(max_page+1)
+            # bmfont channel order is B, G, R, A
+            Image.merge('RGBA', (_q[2], _q[1], _q[0], _q[3]))
+            for _q in quartets
         )
-    return tuple(images[_p, 0] for _p in range(max_page+1))
+    return images
 
 
 ###############################################################################
 # packed spritesheets
 
-def _map_glyphs_to_image(glyphs, *, size, packed, spacing, padding):
+def _map_glyphs_to_image(glyphs, *, size, spacing, padding):
     """Determine where to draw glyphs in sprite sheets."""
-    glyphs = tuple(_g.reduce() for _g in glyphs)
     # sort by area, large to small. keep mapping table
     sorted_glyphs = tuple(sorted(
         enumerate(glyphs),
@@ -1013,25 +1010,21 @@ def _map_glyphs_to_image(glyphs, *, size, packed, spacing, padding):
     order_mapping = {_p[0]: _index for _index, _p in enumerate(sorted_glyphs)}
     glyphs = tuple(_p[1] for _p in sorted_glyphs)
     # determine spritesheet size
-    if not packed:
-        n_layers = 1
-    else:
-        n_layers = 4
-    if size is None:
-        size = _estimate_size(glyphs, n_layers, padding, spacing)
     width, height = size
-    usable_width = width-padding.left-padding.right
-    usable_height = height-padding.top-padding.bottom
+    use_width = width-padding.left-padding.right
+    use_height = height-padding.top-padding.bottom
     spx, spy = spacing
     # ensure sheet is larger than largest glyph
-    if any(_g.width + spx > usable_width or _g.height + spy > usable_height for _g in glyphs):
+    if any(
+            _g.width + spx > use_width or _g.height + spy > use_height
+            for _g in glyphs
+        ):
         raise ValueError('Image size is too small for largest glyph.')
     glyph_map = []
-    page_id = 0
-    layer = 0
+    sheet = 0
     while True:
         # output glyphs
-        tree = SpriteNode(0, 0, usable_width, usable_height, depth=0)
+        tree = SpriteNode(0, 0, use_width, use_height, depth=0)
         for number, glyph in enumerate(glyphs):
             if glyph.height and glyph.width:
                 try:
@@ -1041,18 +1034,13 @@ def _map_glyphs_to_image(glyphs, *, size, packed, spacing, padding):
                     glyphs = glyphs[number:]
                     break
             glyph_map.append(Props(
-                glyph=glyph,
-                page=page_id, layer=layer, x=x+padding.left, y=y+padding.top, 
+                glyph=glyph, sheet=sheet, x=x+padding.left, y=y+padding.top,
             ))
         else:
             # all done, get out
             break
         # move to next layer or page
-        if layer == n_layers - 1:
-            page_id += 1
-            layer = 0
-        else:
-            layer += 1
+        sheet += 1
     # put chars in original glyph order
     glyph_map = [glyph_map[order_mapping[_i]] for _i in range(len(glyph_map))]
     return glyph_map, width, height
