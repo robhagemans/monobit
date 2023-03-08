@@ -14,12 +14,12 @@ from .basetypes import Coord
 
 def chart(
         font,
-        columns=32, margin=(0, 0), padding=(0, 0), scale=(1, 1),
+        columns=32, margin=(0, 0), padding=(0, 0),
         order='row-major', direction=(1, -1),
     ):
     """Create font chart matrix."""
     glyph_map, width, height = grid_map(
-        font, columns, margin, padding, scale, order, direction,
+        font, columns, margin, padding, order, direction,
     )
     canvas = Canvas.blank(width, height)
     for entry in glyph_map:
@@ -29,23 +29,22 @@ def chart(
 
 def grid_map(
         font,
-        columns=32, margin=(0, 0), padding=(0, 0), scale=(1, 1),
+        columns=32, margin=(0, 0), padding=(0, 0),
         order='row-major', direction=(1, -1),
     ):
     """Create glyph map for font chart matrix."""
     font = font.equalise_horizontal()
-    scale_x, scale_y = scale
     padding_x, padding_y = padding
     margin_x, margin_y = margin
     # work out image geometry
-    step_x = font.raster_size.x * scale_x + padding_x
-    step_y = font.raster_size.y * scale_y + padding_y
+    step_x = font.raster_size.x + padding_x
+    step_y = font.raster_size.y + padding_y
     rows = ceildiv(len(font.glyphs), columns)
     # output glyph map
     traverse = grid_traverser(columns, rows, order, direction)
     glyph_map = tuple(
         Props(
-            glyph=_glyph.stretch(scale_x, scale_y), sheet=0,
+            glyph=_glyph, sheet=0,
             x=margin_x + col*step_x, y=margin_y + row*step_y,
         )
         for _glyph, (row, col) in zip(font.glyphs, traverse)

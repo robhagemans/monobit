@@ -172,11 +172,11 @@ if Image:
             fonts, outfile, *,
             image_format:str='',
             columns:int=32,
-            margin:Coord=(0, 0),
-            padding:Coord=(0, 0),
-            scale:Coord=(1, 1),
+            margin:Coord=Coord(0, 0),
+            padding:Coord=Coord(0, 0),
+            scale:Coord=Coord(1, 1),
             order:str='row-major',
-            direction:Coord=(1, -1),
+            direction:Coord=Coord(1, -1),
             border:RGB=(32, 32, 32), paper:RGB=(0, 0, 0), ink:RGB=(255, 255, 255),
         ):
         """
@@ -197,8 +197,9 @@ if Image:
             raise FileFormatError('Can only save one font to image file.')
         font = fonts[0]
         font = font.equalise_horizontal()
+        font = font.stretch(*scale)
         img = (
-            chart(font, columns, margin, padding, scale, order, direction)
+            chart(font, columns, margin, padding, order, direction)
             .as_image(border=border, paper=paper, ink=ink)
         )
         try:

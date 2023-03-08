@@ -687,7 +687,7 @@ def _create_bmfont(
         margin  = Coord(padding.left, padding.top)
         glyph_map, width, height = grid_map(
             font,
-            columns=32, margin=margin, padding=spacing, scale=(1, 1),
+            columns=32, margin=margin, padding=spacing,
             # direction - note Image coordinates are ltr, ttb
             order='row-major', direction=(1, 1),
         )
