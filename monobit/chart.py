@@ -55,10 +55,6 @@ def grid_map(
     return glyph_map, width, height
 
 
-def traverse_chart(columns, rows, order, direction):
-    """Traverse a glyph chart in the specified order and directions."""
-    return tuple(grid_traverser(columns, rows, order, direction))
-
 def grid_traverser(columns, rows, order, direction):
     """Traverse a glyph chart in the specified order and directions."""
     dir_x, dir_y = direction

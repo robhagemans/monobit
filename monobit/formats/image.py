@@ -20,7 +20,7 @@ from ..storage import loaders, savers
 from ..magic import FileFormatError
 from ..font import Font
 from ..glyph import Glyph
-from ..chart import chart, traverse_chart
+from ..chart import chart, grid_traverser
 
 
 DEFAULT_IMAGE_FORMAT = 'png'
@@ -105,7 +105,7 @@ if Image:
             ncells_x = (img.width - margin_x) // step_x
         if ncells_y <= 0:
             ncells_y = (img.height - margin_y) // step_y
-        traverse = traverse_chart(ncells_x, ncells_y, order, direction)
+        traverse = grid_traverser(ncells_x, ncells_y, order, direction)
         # extract sub-images
         crops = [
             img.crop((
