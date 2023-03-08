@@ -11,7 +11,7 @@ from .properties import Props
 
 def chart(
         font,
-        columns=16, margin=(0, 0), padding=(0, 0), scale=(1, 1),
+        columns=32, margin=(0, 0), padding=(0, 0), scale=(1, 1),
         order='row-major', direction=(1, -1),
     ):
     """Create font chart matrix."""
@@ -26,7 +26,7 @@ def chart(
 
 def grid_map(
         font,
-        columns=16, margin=(0, 0), padding=(0, 0), scale=(1, 1),
+        columns=32, margin=(0, 0), padding=(0, 0), scale=(1, 1),
         order='row-major', direction=(1, -1),
     ):
     """Create glyph map for font chart matrix."""
