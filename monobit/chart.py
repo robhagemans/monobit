@@ -7,7 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 from .renderer import Canvas
 from .binary import ceildiv
-
+from .properties import Props
 
 def chart(
         font,
@@ -15,6 +15,21 @@ def chart(
         order='row-major', direction=(1, -1),
     ):
     """Create font chart matrix."""
+    glyph_map, width, height = grid_map(
+        font, columns, margin, padding, scale, order, direction,
+    )
+    canvas = Canvas.blank(width, height)
+    for entry in glyph_map:
+        canvas.blit(entry.glyph, entry.x, entry.y, operator=max)
+    return canvas
+
+
+def grid_map(
+        font,
+        columns=16, margin=(0, 0), padding=(0, 0), scale=(1, 1),
+        order='row-major', direction=(1, -1),
+    ):
+    """Create glyph map for font chart matrix."""
     font = font.equalise_horizontal()
     scale_x, scale_y = scale
     padding_x, padding_y = padding
@@ -23,21 +38,19 @@ def chart(
     step_x = font.raster_size.x * scale_x + padding_x
     step_y = font.raster_size.y * scale_y + padding_y
     rows = ceildiv(len(font.glyphs), columns)
+    # output glyph map
+    traverse = traverse_chart(columns, rows, order, direction)
+    glyph_map = tuple(
+        Props(
+            glyph=_glyph.stretch(scale_x, scale_y), sheet=0,
+            x=margin_x + col*step_x, y=margin_y + row*step_y,
+        )
+        for _glyph, (row, col) in zip(font.glyphs, traverse)
+    )
     # determine image geometry
     width = columns * step_x + 2 * margin_x - padding_x
     height = rows * step_y + 2 * margin_y - padding_y
-    canvas = Canvas.blank(width, height)
-    # output glyphs
-    traverse = traverse_chart(columns, rows, order, direction)
-    for glyph, pos in zip(font.glyphs, traverse):
-        if not glyph.width or not glyph.height:
-            continue
-        row, col = pos
-        left = margin_x + col*step_x + glyph.left_bearing
-        top = margin_y + row*step_y
-        mx = glyph.stretch(scale_x, scale_y)
-        canvas.blit(mx, left, top, operator=max)
-    return canvas
+    return glyph_map, width, height
 
 
 def traverse_chart(columns, rows, order, direction):
