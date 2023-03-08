@@ -79,15 +79,15 @@ if Image:
         """
         Extract character-cell font from image.
 
-        cell: size X,Y of character cell
-        margin: number of pixels in X,Y direction around glyph chart
-        padding: number of pixels in X,Y direction between glyph
-        scale: number of pixels in X,Y direction per glyph bit
-        table_size: number of glyphs in X, Y direction. 0 or negative means as much as fits on the axis.
-        count: maximum number of glyphs to extract (within constraints of table_size). 0 or negative means extract all.
-        background: determine background from "most-common", "least-common", "brightest", "darkest", "top-left" colour
-        first_codepoint: codepoint value assigned to first glyph
-        order: start with "r" for row-major order, "c" for column-major order
+        cell: size X,Y of character cell (default: 8x8)
+        margin: number of pixels in X,Y direction around glyph chart (default: 0x0)
+        padding: number of pixels in X,Y direction between glyph (default: 0x0)
+        scale: number of pixels in X,Y direction per glyph bit (default: 1x1)
+        table_size: number of glyphs in X, Y direction. 0 or negative means as much as fits on the axis (default).
+        count: maximum number of glyphs to extract (within constraints of table_size). 0 or negative means extract all (default).
+        background: determine background from "most-common" (default), "least-common", "brightest", "darkest", "top-left" colour
+        first_codepoint: codepoint value assigned to first glyph (default: 0)
+        order: start with "r" for row-major order (default), "c" for column-major order
         direction: X, Y direction where +1, -1 (default) means left-to-right, top-to-bottom
         """
         width, height = cell
@@ -182,16 +182,16 @@ if Image:
         """
         Export character-cell font to image.
 
-        image_format: image file format
-        columns: number of columns in glyph chart
-        margin: number of pixels in X,Y direction around glyph chart
-        padding: number of pixels in X,Y direction between glyph
-        scale: number of pixels in X,Y direction per glyph bit
-        border: border colour R,G,B 0--255
-        order: start with "r" for row-major order, "c" for column-major order
-        direction: X, Y direction where +1, -1 means left-to-right, top-to-bottom
-        paper: background colour R,G,B 0--255
-        ink: foreground colour R,G,B 0--255
+        image_format: image file format (default: png)
+        columns: number of columns in glyph chart (default: 32)
+        margin: number of pixels in X,Y direction around glyph chart (default: 0x0)
+        padding: number of pixels in X,Y direction between glyph (default: 0x0)
+        scale: number of pixels in X,Y direction per glyph bit (default: 1x1)
+        order: start with "r" for row-major order (default), "c" for column-major order
+        direction: X, Y direction where +1, -1 (default) means left-to-right, top-to-bottom
+        paper: background colour R,G,B 0--255 (default: 0,0,0)
+        ink: foreground colour R,G,B 0--255 (default: 255,255,255)
+        border: border colour R,G,B 0--255 (default 32,32,32)
         """
         if len(fonts) > 1:
             raise FileFormatError('Can only save one font to image file.')
