@@ -5,9 +5,12 @@ monobit.chart - create font chart
 licence: https://opensource.org/licenses/MIT
 """
 
+from itertools import product
+
 from .renderer import Canvas
 from .binary import ceildiv
 from .properties import Props
+from .basetypes import Coord
 
 def chart(
         font,
@@ -39,7 +42,7 @@ def grid_map(
     step_y = font.raster_size.y * scale_y + padding_y
     rows = ceildiv(len(font.glyphs), columns)
     # output glyph map
-    traverse = traverse_chart(columns, rows, order, direction)
+    traverse = grid_traverser(columns, rows, order, direction)
     glyph_map = tuple(
         Props(
             glyph=_glyph.stretch(scale_x, scale_y), sheet=0,
@@ -55,30 +58,23 @@ def grid_map(
 
 def traverse_chart(columns, rows, order, direction):
     """Traverse a glyph chart in the specified order and directions."""
+    return tuple(grid_traverser(columns, rows, order, direction))
+
+def grid_traverser(columns, rows, order, direction):
+    """Traverse a glyph chart in the specified order and directions."""
     dir_x, dir_y = direction
-    x_traverse = range(columns)
-    if dir_x < 0:
-        x_traverse = reversed(x_traverse)
-    y_traverse = range(rows)
-    if dir_y < 0:
-        y_traverse = reversed(y_traverse)
-    if order.startswith('r'):
-        # row-major left-to-right top-to-bottom
-        x_traverse = list(x_traverse)
-        return (
-            (_row, _col)
-            for _row in y_traverse
-            for _col in x_traverse
-        )
-    elif order.startswith('c'):
-        # row-major top-to-bottom left-to-right
-        y_traverse = list(y_traverse)
-        return (
-            (_row, _col)
-            for _col in x_traverse
-            for _row in y_traverse
-        )
+    if not dir_x or not dir_y:
+        raise ValueError('direction values must not be 0.')
+    if dir_x > 0:
+        x_traverse = range(columns)
     else:
-        raise ValueError(
-            f'order should start with one of `r`, `c`, not `{order}`.'
-        )
+        x_traverse = range(columns-1, -1, -1)
+    if dir_y > 0:
+        y_traverse = range(rows)
+    else:
+        y_traverse = range(rows-1, -1, -1)
+    if order.startswith('r'):
+        return product(y_traverse, x_traverse)
+    elif order.startswith('c'):
+        return product(x_traverse, y_traverse)
+    raise ValueError(f'order should start with one of `r`, `c`, not `{order}`.')
