@@ -29,6 +29,7 @@ from ..storage import loaders, savers
 from ..font import Font, Coord
 from ..glyph import Glyph
 from ..labels import Codepoint, Char
+from ..chart import grid_map
 
 from .windows import CHARSET_MAP, CHARSET_REVERSE_MAP
 
@@ -67,6 +68,7 @@ if Image:
             fonts, outfile, *,
             image_size:Coord=None,
             image_format:str='png',
+            grid:bool=False,
             packed:bool=True,
             spacing:Coord=Coord(0, 0),
             padding:Bounds=Bounds(0, 0, 0, 0),
@@ -78,6 +80,7 @@ if Image:
         image_size: pixel width,height of the spritesheet(s) storing the glyphs (default: estimate)
         image_format: image format of the spritesheets (default: 'png')
         packed: if true, use each of the RGB channels as a separate spritesheet (default: True)
+        grid: if true, use grid image instead of spritesheet (default: False)
         spacing: x,y spacing between individual glyphs (default: 0x0)
         padding: left, top, right, bottom unused spacing around edges (default: 0,0,0,0)
         descriptor: font descriptor file format, one of 'text', 'json' (default: 'text')
@@ -86,7 +89,8 @@ if Image:
             raise FileFormatError("Can only save one font to BMFont file.")
         _create_bmfont(
             outfile, fonts[0],
-            size=image_size, packed=packed, spacing=spacing, padding=padding,
+            size=image_size, packed=packed, grid=grid,
+            spacing=spacing, padding=padding,
             image_format=image_format, descriptor=descriptor
         )
 
@@ -667,7 +671,7 @@ def _read_bmfont(infile, outline):
 
 def _create_bmfont(
         outfile, font, *,
-        size, packed, spacing, padding,
+        size, packed, grid, spacing, padding,
         image_format, descriptor,
         paper=0, ink=255, border=0,
     ):
@@ -678,15 +682,24 @@ def _create_bmfont(
         font = font.label(codepoint_from=encoding)
     else:
         font = font.label(char_from=encoding)
-    # crop glyphs
-    glyphs = tuple(_g.reduce() for _g in font.glyphs)
     # map glyphs to image
-    if size is None:
-        n_layers = 4 if packed else 1
-        size = _estimate_size(glyphs, n_layers, padding, spacing)
-    glyph_map, width, height = _map_glyphs_to_image(
-        glyphs, size=size, spacing=spacing, padding=padding,
-    )
+    if grid:
+        margin  = Coord(padding.left, padding.top)
+        glyph_map, width, height = grid_map(
+            font,
+            columns=32, margin=margin, padding=spacing, scale=(1, 1),
+            # direction - note Image coordinates are ltr, ttb
+            order='row-major', direction=(1, 1),
+        )
+    else:
+        # crop glyphs
+        glyphs = tuple(_g.reduce() for _g in font.glyphs)
+        if size is None:
+            n_layers = 4 if packed else 1
+            size = _estimate_size(glyphs, n_layers, padding, spacing)
+        glyph_map, width, height = _map_glyphs_to_image(
+            glyphs, size=size, spacing=spacing, padding=padding,
+        )
     # draw images
     sheets = _draw_images(glyph_map, width, height, packed, paper, ink, border)
     # save images and record names
