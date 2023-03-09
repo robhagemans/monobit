@@ -119,13 +119,27 @@ if Image:
             crops = crops[:count]
         # scale
         crops = tuple(_crop.resize(cell) for _crop in crops)
+        # get border/padding colour
+        if margin.x or margin.y:
+            border = img.getpixel((0, 0))
+        elif padding.x:
+            border = img.getpixel((cell.x, 0))
+        elif padding.y:
+            border = img.getpixel((0, cell.y))
+        else:
+            # can't determine border colour without padding or margin
+            border = None
+        # clip off border colour from cells
+        crops = tuple(_crop_border(_crop, border) for _crop in crops)
         # get pixels
-        crops = tuple(tuple(_crop.getdata()) for _crop in crops)
         paper, ink = _identify_colours(crops, background)
         # convert to glyphs, set codepoints
         glyphs = tuple(
-            Glyph.from_vector(_data, codepoint=_index, stride=cell.x, _0=paper, _1=ink)
-            for _index, _data in enumerate(crops, first_codepoint)
+            Glyph.from_vector(
+                tuple(_crop.getdata()), stride=_crop.width, _0=paper, _1=ink,
+                codepoint=_index,
+            )
+            for _index, _crop in enumerate(crops, first_codepoint)
         )
         return Font(glyphs)
 
@@ -133,6 +147,7 @@ if Image:
     def _identify_colours(crops, background):
         """Identify paper and ink colours from cells."""
         # check that cells are monochrome
+        crops = tuple(tuple(_crop.getdata()) for _crop in crops)
         colourset = set.union(*(set(_data) for _data in crops))
         if len(colourset) > 2:
             raise FileFormatError(
@@ -159,6 +174,19 @@ if Image:
         # 2 colour image - not-paper means ink
         ink = (colourset - {paper}).pop()
         return paper, ink
+
+
+    def _crop_border(image, border):
+        """Remove border area from image."""
+        while image.width:
+            right_colours = image.crop((
+                image.width-1, 0, image.width, image.height
+            )).getcolors()
+            if len(right_colours) == 1 and right_colours[0][1] == border:
+                image = image.crop((0, 0, image.width-1, image.height))
+            else:
+                break
+        return image
 
 
     @savers.register(linked=load_image)

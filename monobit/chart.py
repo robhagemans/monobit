@@ -12,6 +12,7 @@ from .binary import ceildiv
 from .properties import Props
 from .basetypes import Coord
 
+
 def chart(
         font,
         columns=32, margin=(0, 0), padding=(0, 0),
