@@ -125,6 +125,17 @@ if Image:
         crops = tuple(_crop.resize(cell) for _crop in crops)
         # get pixels
         crops = tuple(tuple(_crop.getdata()) for _crop in crops)
+        paper, ink = _identify_colours(crops, background)
+        # convert to glyphs, set codepoints
+        glyphs = tuple(
+            Glyph.from_vector(_cell, codepoint=_index, stride=width, _0=paper, _1=ink)
+            for _index, _cell in enumerate(crops, first_codepoint)
+        )
+        return Font(glyphs)
+
+
+    def _identify_colours(crops, background):
+        """Identify paper and ink colours from cells."""
         # check that cells are monochrome
         colourset = set.union(*(set(_data) for _data in crops))
         if len(colourset) > 2:
@@ -151,12 +162,7 @@ if Image:
             paper = crops[0][0]
         # 2 colour image - not-paper means ink
         ink = (colourset - {paper}).pop()
-        # convert to glyphs, set codepoints
-        glyphs = tuple(
-            Glyph.from_vector(_cell, codepoint=_index, stride=width, _0=paper, _1=ink)
-            for _index, _cell in enumerate(crops, first_codepoint)
-        )
-        return Font(glyphs)
+        return paper, ink
 
 
     @savers.register(linked=load_image)
