@@ -65,11 +65,11 @@ if Image:
     )
     def load_image(
             infile,
-            cell:Coord=Coord(0, 0),
+            cell:Coord=None,
             margin:Coord=Coord(0, 0),
             padding:Coord=Coord(0, 0),
             scale:Coord=Coord(1, 1),
-            table_size:Coord=Coord(32, 8),
+            table_size:Coord=None,
             count:int=0,
             background:str='most-common',
             first_codepoint:int=0,
@@ -90,6 +90,13 @@ if Image:
         order: start with "r" for row-major order (default), "c" for column-major order
         direction: X, Y direction where +1, -1 (default) means left-to-right, top-to-bottom
         """
+        # determine defaults & whether to work with cell-size or table size
+        if table_size is None:
+            if cell is None:
+                table_size = Coord(32, 8)
+                cell = Coord(0, 0)
+            else:
+                table_size = Coord(0, 0)
         # maximum number of cells that fits
         img = Image.open(infile)
         img = img.convert('RGB')
