@@ -91,79 +91,71 @@ if Image:
         direction: X, Y direction where +1, -1 (default) means left-to-right, top-to-bottom
         """
         width, height = cell
-        scale_x, scale_y = scale
-        padding_x, padding_y = padding
-        margin_x, margin_y = margin
+        scale = Coord(*scale)
+        padding = Coord(*padding)
+        margin = Coord(*margin)
         # work out image geometry
-        step_x = width * scale_x + padding_x
-        step_y = height * scale_y + padding_y
+        step_x = width * scale.x + padding.x
+        step_y = height * scale.y + padding.y
         # maximum number of cells that fits
         img = Image.open(infile)
         img = img.convert('RGB')
         ncells_x, ncells_y = table_size
         if ncells_x <= 0:
-            ncells_x = (img.width - margin_x) // step_x
+            ncells_x = (img.width - margin.x) // step_x
         if ncells_y <= 0:
-            ncells_y = (img.height - margin_y) // step_y
+            ncells_y = (img.height - margin.y) // step_y
         traverse = grid_traverser(ncells_x, ncells_y, order, direction)
         # extract sub-images
-        crops = [
+        crops = tuple(
             img.crop((
-                margin_x + _col*step_x,
-                img.height - (margin_y + _row*step_y + height * scale_y),
-                margin_x + _col*step_x + width * scale_x,
-                img.height - (margin_y + _row*step_y),
+                margin.x + _col*step_x,
+                img.height - (margin.y + _row*step_y + height * scale.y),
+                margin.x + _col*step_x + width * scale.x,
+                img.height - (margin.y + _row*step_y),
             ))
             for _row, _col in traverse
-        ]
+        )
         if not crops:
             logging.error('Image too small; no characters found.')
             return Font()
         if count > 0:
             crops = crops[:count]
         # scale
-        crops = [_crop.resize(cell) for _crop in crops]
+        crops = tuple(_crop.resize(cell) for _crop in crops)
         # get pixels
-        crops = [list(_crop.getdata()) for _crop in crops]
+        crops = tuple(tuple(_crop.getdata()) for _crop in crops)
         # check that cells are monochrome
         colourset = set.union(*(set(_data) for _data in crops))
         if len(colourset) > 2:
-            logging.warning('Colour, greyscale and antialiased glyphs are not supported. ')
-            logging.warning(
-                f'More than two colours ({len(colourset)}) found in payload. '
-                'All non-background colours will be converted to foreground.'
+            raise FileFormatError(
+                f'More than two colours ({len(colourset)}) found in image. '
+                'Colour, greyscale and antialiased glyphs are not supported. '
             )
         colourfreq = Counter(_c for _data in crops for _c in _data)
         brightness = sorted((sum(_v for _v in _c), _c) for _c in colourset)
         if background == 'most-common':
             # most common colour in image assumed to be background colour
-            bg, _ = colourfreq.most_common(1)[0]
+            paper, _ = colourfreq.most_common(1)[0]
         elif background == 'least-common':
             # least common colour in image assumed to be background colour
-            bg, _ = colourfreq.most_common()[-1]
+            paper, _ = colourfreq.most_common()[-1]
         elif background == 'brightest':
             # brightest colour assumed to be background
-            _, bg = brightness[-1]
+            _, paper = brightness[-1]
         elif background == 'darkest':
             # darkest colour assumed to be background
-            _, bg = brightness[0]
+            _, paper = brightness[0]
         elif background == 'top-left':
             # top-left pixel of first char assumed to be background colour
-            bg = crops[0][0]
-        # replace colours with characters
-        crops = tuple(
-            [_c != bg for _c in _cell]
-            for _cell in crops
-        )
-        # reshape cells
-        glyphs = [
-            Glyph(tuple(
-                _cell[_offs: _offs+width]
-                for _offs in range(0, len(_cell), width)
-            ), codepoint=_index)
+            paper = crops[0][0]
+        # 2 colour image - not-paper means ink
+        ink = (colourset - {paper}).pop()
+        # convert to glyphs, set codepoints
+        glyphs = tuple(
+            Glyph.from_vector(_cell, codepoint=_index, stride=width, _0=paper, _1=ink)
             for _index, _cell in enumerate(crops, first_codepoint)
-        ]
-        # set code points
+        )
         return Font(glyphs)
 
 

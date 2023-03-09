@@ -38,10 +38,11 @@ class TestCharCell(BaseTester):
 ........
 """
 
-    def _test_export_charcell_reduced(self, format, count=191, label=b'A', **load_kwargs):
+    def _test_export_charcell_reduced(self, format, count=191, label=b'A', save_kwargs=None, **load_kwargs):
         """Test exporting a reduced-raster character-cell font."""
         file = self.temp_path / 'testfont.fnt'
-        monobit.save(self.fixed8x8r, file, format=format)
+        save_kwargs = save_kwargs or {}
+        monobit.save(self.fixed8x8r, file, format=format, **save_kwargs)
         font, *_ = monobit.load(file, format=format, **load_kwargs)
         self.assertEqual(len(font.glyphs), count)
         assert_text_eq(font.get_glyph(label).as_text(), self.fixed8x8_A)
@@ -77,7 +78,7 @@ class TestCharCell(BaseTester):
 
     def test_export_png_r(self):
         """Test exporting image files."""
-        self._test_export_charcell_reduced('image', count=192, first_codepoint=0x20)
+        self._test_export_charcell_reduced('image', count=192, first_codepoint=0x20, save_kwargs=dict(border=(0,0,0)))
 
     def test_export_cpi_r(self):
         """Test exporting CPI (FONT) files."""

@@ -398,7 +398,7 @@ class TestFormats(BaseTester):
     def test_export_png(self):
         """Test exporting image files."""
         file = self.temp_path / '4x6.png'
-        monobit.save(self.fixed4x6, file)
+        monobit.save(self.fixed4x6, file, border=(0,0,0))
         font, *_ = monobit.load(file, cell=(4, 6), first_codepoint=31)
         # we pick up empty glyphs due to matrix chart structure
         self.assertEqual(len(font.glyphs), 928)
