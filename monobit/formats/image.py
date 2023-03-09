@@ -77,9 +77,9 @@ if Image:
             direction:Coord=Coord(1, -1),
         ):
         """
-        Extract character-cell font from image.
+        Extract font from grid-based image.
 
-        cell: size X,Y of character cell (default: 8x8)
+        cell: glyph raster size X,Y (default: 8x8)
         margin: number of pixels in X,Y direction around glyph chart (default: 0x0)
         padding: number of pixels in X,Y direction between glyph (default: 0x0)
         scale: number of pixels in X,Y direction per glyph bit (default: 1x1)
@@ -120,15 +120,7 @@ if Image:
         # scale
         crops = tuple(_crop.resize(cell) for _crop in crops)
         # get border/padding colour
-        if margin.x or margin.y:
-            border = img.getpixel((0, 0))
-        elif padding.x:
-            border = img.getpixel((cell.x, 0))
-        elif padding.y:
-            border = img.getpixel((0, cell.y))
-        else:
-            # can't determine border colour without padding or margin
-            border = None
+        border = _get_border_colour(img, cell, margin, padding)
         # clip off border colour from cells
         crops = tuple(_crop_border(_crop, border) for _crop in crops)
         # get pixels
@@ -143,6 +135,16 @@ if Image:
         )
         return Font(glyphs)
 
+    def _get_border_colour(img, cell, margin, padding):
+        """Get border/padding colour."""
+        if margin.x or margin.y:
+            return img.getpixel((0, 0))
+        elif padding.x:
+            return img.getpixel((cell.x, 0))
+        elif padding.y:
+            return img.getpixel((0, cell.y))
+        # can't determine border colour without padding or margin
+        return None
 
     def _identify_colours(crops, background):
         """Identify paper and ink colours from cells."""
@@ -175,9 +177,10 @@ if Image:
         ink = (colourset - {paper}).pop()
         return paper, ink
 
-
     def _crop_border(image, border):
         """Remove border area from image."""
+        if border is None:
+            return image
         while image.width:
             right_colours = image.crop((
                 image.width-1, 0, image.width, image.height
