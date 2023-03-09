@@ -65,16 +65,16 @@ if Image:
     )
     def load_image(
             infile,
-            cell:Coord=(8, 8),
-            margin:Coord=(0, 0),
-            padding:Coord=(0, 0),
-            scale:Coord=(1, 1),
-            table_size:Coord=(0,0),
+            cell:Coord=Coord(8, 8),
+            margin:Coord=Coord(0, 0),
+            padding:Coord=Coord(0, 0),
+            scale:Coord=Coord(1, 1),
+            table_size:Coord=Coord(0, 0),
             count:int=0,
             background:str='most-common',
             first_codepoint:int=0,
             order:str='row-major',
-            direction:Coord=(1, -1),
+            direction:Coord=Coord(1, -1),
         ):
         """
         Extract character-cell font from image.
@@ -90,13 +90,9 @@ if Image:
         order: start with "r" for row-major order (default), "c" for column-major order
         direction: X, Y direction where +1, -1 (default) means left-to-right, top-to-bottom
         """
-        width, height = cell
-        scale = Coord(*scale)
-        padding = Coord(*padding)
-        margin = Coord(*margin)
         # work out image geometry
-        step_x = width * scale.x + padding.x
-        step_y = height * scale.y + padding.y
+        step_x = cell.x * scale.x + padding.x
+        step_y = cell.y * scale.y + padding.y
         # maximum number of cells that fits
         img = Image.open(infile)
         img = img.convert('RGB')
@@ -110,8 +106,8 @@ if Image:
         crops = tuple(
             img.crop((
                 margin.x + _col*step_x,
-                img.height - (margin.y + _row*step_y + height * scale.y),
-                margin.x + _col*step_x + width * scale.x,
+                img.height - (margin.y + _row*step_y + cell.y * scale.y),
+                margin.x + _col*step_x + cell.x * scale.x,
                 img.height - (margin.y + _row*step_y),
             ))
             for _row, _col in traverse
@@ -128,8 +124,8 @@ if Image:
         paper, ink = _identify_colours(crops, background)
         # convert to glyphs, set codepoints
         glyphs = tuple(
-            Glyph.from_vector(_cell, codepoint=_index, stride=width, _0=paper, _1=ink)
-            for _index, _cell in enumerate(crops, first_codepoint)
+            Glyph.from_vector(_data, codepoint=_index, stride=cell.x, _0=paper, _1=ink)
+            for _index, _data in enumerate(crops, first_codepoint)
         )
         return Font(glyphs)
 
