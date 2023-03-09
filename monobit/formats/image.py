@@ -217,7 +217,7 @@ if Image:
             codepoint_range:Coord=None,
         ):
         """
-        Export character-cell font to image.
+        Export font to grid-based image.
 
         image_format: image file format (default: png)
         columns: number of columns in glyph chart (default: 32)
