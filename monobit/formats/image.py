@@ -65,11 +65,11 @@ if Image:
     )
     def load_image(
             infile,
-            cell:Coord=Coord(8, 8),
+            cell:Coord=Coord(0, 0),
             margin:Coord=Coord(0, 0),
             padding:Coord=Coord(0, 0),
             scale:Coord=Coord(1, 1),
-            table_size:Coord=Coord(0, 0),
+            table_size:Coord=Coord(32, 8),
             count:int=0,
             background:str='most-common',
             first_codepoint:int=0,
@@ -79,29 +79,40 @@ if Image:
         """
         Extract font from grid-based image.
 
-        cell: glyph raster size X,Y (default: 8x8)
+        cell: glyph raster size X,Y. 0 or negative: calculate from table_size (default)
         margin: number of pixels in X,Y direction around glyph chart (default: 0x0)
         padding: number of pixels in X,Y direction between glyph (default: 0x0)
         scale: number of pixels in X,Y direction per glyph bit (default: 1x1)
-        table_size: number of glyphs in X, Y direction. 0 or negative means as much as fits on the axis (default).
+        table_size: number of glyphs in X, Y direction. 0 or negative means as much as fits on the axis. (default: 32x8).
         count: maximum number of glyphs to extract (within constraints of table_size). 0 or negative means extract all (default).
         background: determine background from "most-common" (default), "least-common", "brightest", "darkest", "top-left" colour
         first_codepoint: codepoint value assigned to first glyph (default: 0)
         order: start with "r" for row-major order (default), "c" for column-major order
         direction: X, Y direction where +1, -1 (default) means left-to-right, top-to-bottom
         """
-        # work out image geometry
-        step_x = cell.x * scale.x + padding.x
-        step_y = cell.y * scale.y + padding.y
         # maximum number of cells that fits
         img = Image.open(infile)
         img = img.convert('RGB')
-        ncells_x, ncells_y = table_size
-        if ncells_x <= 0:
-            ncells_x = (img.width - margin.x) // step_x
-        if ncells_y <= 0:
-            ncells_y = (img.height - margin.y) // step_y
-        traverse = grid_traverser(ncells_x, ncells_y, order, direction)
+        cell_x, cell_y = cell
+        if cell.x <= 0:
+            if table_size.x <= 0:
+                raise ValueError('Either cell or table size must be specified.')
+            cell_x = ceildiv(img.width, table_size.x) - padding.x
+        if cell.y <= 0:
+            if table_size.y <= 0:
+                raise ValueError('Either cell or table size must be specified.')
+            cell_y = ceildiv(img.height, table_size.y) - padding.y
+        logging.debug('Cell size %dx%d', cell_x, cell_y)
+        cell = Coord(cell_x, cell_y)
+        # work out image geometry
+        step_x = cell.x * scale.x + padding.x
+        step_y = cell.y * scale.y + padding.y
+        table_size_x, table_size_y = table_size
+        if table_size.x <= 0:
+            table_size_x = (img.width - margin.x) // step_x
+        if table_size.y <= 0:
+            table_size_y = (img.height - margin.y) // step_y
+        traverse = grid_traverser(table_size_x, table_size_y, order, direction)
         # extract sub-images
         crops = tuple(
             img.crop((
