@@ -178,6 +178,7 @@ if Image:
             order:str='row-major',
             direction:Coord=Coord(1, -1),
             border:RGB=(32, 32, 32), paper:RGB=(0, 0, 0), ink:RGB=(255, 255, 255),
+            codepoint_range:Coord=None,
         ):
         """
         Export character-cell font to image.
@@ -192,10 +193,18 @@ if Image:
         paper: background colour R,G,B 0--255 (default: 0,0,0)
         ink: foreground colour R,G,B 0--255 (default: 255,255,255)
         border: border colour R,G,B 0--255 (default 32,32,32)
+        codepoint_range: first and last codepoint to include (includes bounds and undefined codepoints; default: False)
         """
         if len(fonts) > 1:
             raise FileFormatError('Can only save one font to image file.')
         font = fonts[0]
+        if codepoint_range:
+            # make contiguous
+            glyphs = tuple(
+                font.get_glyph(_codepoint, missing='empty')
+                for _codepoint in range(codepoint_range[0], codepoint_range[1]+1)
+            )
+            font = font.modify(glyphs)
         font = font.equalise_horizontal()
         font = font.stretch(*scale)
         img = (
