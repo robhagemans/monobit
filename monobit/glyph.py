@@ -17,6 +17,7 @@ from .properties import (
 )
 from .basetypes import Coord, Bounds, to_number
 from .scripting import scriptable
+from .vector import StrokePath
 
 
 ##############################################################################
@@ -93,7 +94,7 @@ class GlyphProperties(DefaultProps):
     offset: Coord
 
     # path segments for stroke fonts
-    path: str
+    path: StrokePath
 
 
     @checked_property
@@ -499,6 +500,20 @@ class Glyph:
         """Create glyph from hex string."""
         pixels = Raster.from_hex(hexstr, width, height, align=align)
         return cls(pixels, **kwargs)
+
+    @classmethod
+    def from_path(cls, strokepath, *, advance_width=None, **kwargs):
+        """Draw the StrokePath and create a Glyph."""
+        raster = strokepath.draw()
+        if advance_width is None:
+            advance_width = strokepath.bounds.right
+        return cls(
+            raster, path=strokepath,
+            right_bearing=advance_width-strokepath.bounds.right,
+            left_bearing=strokepath.bounds.left,
+            shift_up=strokepath.bounds.bottom,
+            **kwargs
+        )
 
     ##########################################################################
     # conversion

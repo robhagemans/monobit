@@ -14,8 +14,10 @@ from ..storage import loaders, savers
 from ..magic import FileFormatError
 from ..vector import StrokePath
 from ..font import Font
+from ..glyph import Glyph
 from ..properties import Props, reverse_dict
 from .windows.fnt import _WEIGHT_MAP, _WEIGHT_REVERSE_MAP
+
 
 _STYLE_MAP = {
     'normal': 'roman',
@@ -89,9 +91,10 @@ def load_svg(instream):
         glyph_props[-1].update(tag=DEFAULT_NAME)
         props |= Props(default_char=DEFAULT_NAME)
     glyphs = tuple(
-        _path.shift(0, -props.line_height + props.descent)
-            .flip()
-            .as_glyph(**_gprop)
+        Glyph.from_path(
+            _path.shift(0, -props.line_height + props.descent).flip(),
+            **_gprop
+        )
         for _path, _gprop in zip(paths, glyph_props)
     )
     return Font(glyphs, **vars(props))
@@ -209,7 +212,7 @@ def save_svg(fonts, outfile):
 def _write_glyph(outfile, font, glyph, tag='glyph'):
     """Write out a glyph to SVG."""
     if glyph.path:
-        path = StrokePath.from_string(glyph.path).flip().shift(0, font.line_height-font.descent)
+        path = glyph.path.flip().shift(0, font.line_height-font.descent)
         svgpath = path.as_svg()
         d = f'\n      d="{svgpath}"'
     else:
