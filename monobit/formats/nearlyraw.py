@@ -312,7 +312,7 @@ _DRHALO_SIG = b'AH'
     magic=(_DRHALO_SIG,),
     patterns=('*.fon',),
 )
-def load_drhalo(instream):
+def load_drhalo(instream, first_codepoint:int=0):
     """Load a Dr Halo / Dr Genius .FON font."""
     start = instream.read(16)
     if not start.startswith(_DRHALO_SIG):
@@ -327,7 +327,7 @@ def load_drhalo(instream):
             'Not a Dr. Halo bitmap .FON: may be stroked format.'
         )
     font = load_bitmap(
-        instream, width=width, height=height,
+        instream, width=width, height=height, first_codepoint=first_codepoint,
     )
     font = font.modify(source_format='Dr. Halo')
     return font
