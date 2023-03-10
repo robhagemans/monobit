@@ -202,7 +202,7 @@ def _adjust_margins_horizontal(glyphs):
     min_right = min(_row[-1].right_bearing for _row in glyphs)
     return -min(0, min_left, min_right)
 
-def _adjust_margins_vertical(glyphs, margin_y):
+def _adjust_margins_vertical(glyphs):
     """Ensure margins are wide enough for any negative bearings."""
     min_top = min(_row[0].top_bearing for _row in glyphs)
     min_bottom = min(_row[-1].bottom_bearing for _row in glyphs)
