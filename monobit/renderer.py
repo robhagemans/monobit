@@ -157,7 +157,7 @@ class Canvas(Raster):
 # text rendering
 
 def render(
-        font, text, *, margin=(0, 0), adjust_bearings=0,
+        font, text, *, margin=None, adjust_bearings=0,
         direction='', align='',
         missing='default', transformations=(),
     ):
@@ -180,18 +180,34 @@ def render(
         glyphs = _get_text_glyphs(
             rfont, text, direction, line_direction, base_direction, missing
         )
-    margin_x, margin_y = margin
     if direction in ('top-to-bottom', 'bottom-to-top'):
         _get_canvas = _get_canvas_vertical
         _render = _render_vertical
+        min_margin = 0, _adjust_margins_vertical(glyphs)
     else:
         _get_canvas = _get_canvas_horizontal
         _render = _render_horizontal
+        min_margin = _adjust_margins_horizontal(glyphs), 0
+    margin_x, margin_y = margin or min_margin
     canvas = _get_canvas(font, glyphs, margin_x, margin_y, adjust_bearings)
     canvas = _render(
         font, glyphs, canvas, margin_x, margin_y, align, adjust_bearings
     )
     return canvas
+
+
+def _adjust_margins_horizontal(glyphs):
+    """Ensure margins are wide enough for any negative bearings."""
+    min_left = min(_row[0].left_bearing for _row in glyphs)
+    min_right = min(_row[-1].right_bearing for _row in glyphs)
+    return -min(0, min_left, min_right)
+
+def _adjust_margins_vertical(glyphs, margin_y):
+    """Ensure margins are wide enough for any negative bearings."""
+    min_top = min(_row[0].top_bearing for _row in glyphs)
+    min_bottom = min(_row[-1].bottom_bearing for _row in glyphs)
+    return -min(0, min_top, min_bottom)
+
 
 def _render_horizontal(
         font, glyphs, canvas, margin_x, margin_y, align, adjust_bearings

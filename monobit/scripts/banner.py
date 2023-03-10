@@ -75,10 +75,10 @@ def main():
         )
     )
     parser.add_argument(
-        '--margin', '-m', type=Coord.create, default=(0, 0),
+        '--margin', '-m', type=Coord.create, default=None,
         help=(
             'number of background characters to use as a margin '
-            'in x and y direction (default: 0,0)'
+            'in x and y direction (default: minimum necessary)'
         )
     )
     parser.add_argument(
