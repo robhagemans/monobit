@@ -6,15 +6,9 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import logging
-from functools import wraps, partial
+from functools import wraps, partial, cache
 from pathlib import PurePath
 from unicodedata import normalize
-try:
-    # python 3.9
-    from functools import cache
-except ImportError:
-    from functools import lru_cache
-    cache = lru_cache()
 
 from .scripting import scriptable, get_scriptables, Any
 from .glyph import Glyph

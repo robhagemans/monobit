@@ -6,13 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import logging
-
-try:
-    # python 3.9
-    from functools import cache
-except ImportError:
-    from functools import lru_cache
-    cache = lru_cache()
+from functools import cache
 
 from .encoding import is_graphical, is_whitespace
 from .labels import Codepoint, Char, Tag, to_label

@@ -8,15 +8,9 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 from types import SimpleNamespace
-from functools import partial, wraps
+from functools import partial, wraps, cache
 from itertools import chain
 from textwrap import indent, wrap
-try:
-    # python 3.9
-    from functools import cache
-except ImportError:
-    from functools import lru_cache
-    cache = lru_cache()
 
 from .basetypes import CONVERTERS
 
