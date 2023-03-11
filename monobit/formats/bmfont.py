@@ -373,7 +373,7 @@ def _parse_xml(data):
         result['kernings'] = [
             _KERNING(**_dict_to_ints(_elem.attrib))
             for _elem in root.find('kernings').iterfind('kerning')
-        ],
+        ]
     return result
 
 def _parse_json(data):
