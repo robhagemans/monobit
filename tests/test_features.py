@@ -203,12 +203,39 @@ class TestFeatures(BaseTester):
         text1 = monobit.render(prop1, b'testing').as_text()
         assert_text_eq(text1, self.proptext)
 
-    def test_render_yaff_proportional(self):
+    def _render_proportional(self, format):
         prop1, *_ = monobit.load(self.font_path / 'wbfont.amiga/wbfont_prop.font')
-        monobit.save(prop1, self.temp_path / 'wbfont_prop.yaff')
-        prop2, *_ = monobit.load(self.temp_path / 'wbfont_prop.yaff')
+        monobit.save(prop1, self.temp_path / f'wbfont_prop.{format}', format=format)
+        prop2, *_ = monobit.load(self.temp_path / f'wbfont_prop.{format}', format=format)
         text2 = monobit.render(prop2, b'testing').as_text()
         assert_text_eq(text2, self.proptext)
+
+    def test_yaff_proportional(self):
+        self._render_proportional('yaff')
+
+    def test_draw_proportional(self):
+        self._render_proportional('hexdraw')
+
+    def test_win_proportional(self):
+        self._render_proportional('mzfon')
+
+    def test_fzx_proportional(self):
+        self._render_proportional('fzx')
+
+    def test_bdf_proportional(self):
+        self._render_proportional('bdf')
+
+    def test_gdos_proportional(self):
+        self._render_proportional('gdos')
+
+    def test_gdos_proportional(self):
+        self._render_proportional('gdos')
+
+    def test_figlet_proportional(self):
+        self._render_proportional('figlet')
+
+    def test_vfont_proportional(self):
+        self._render_proportional('vfont')
 
 
     # kerning
