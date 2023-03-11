@@ -157,7 +157,7 @@ class ScriptArgs:
                     f'{ARG_PREFIX}{_k.replace("_", "-")}={shlex.join((str(_v),))}'
                     for _k, _v in kwargs.items()
                     # exclude non-operation parameters
-                    if _k in self._script_args
+                    if _k.replace('-', '_') in self._script_args
                 ),
             )
             if _e
