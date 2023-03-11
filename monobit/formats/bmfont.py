@@ -538,9 +538,8 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=(),
         # check if font is monochromatic
         colourset = list(set(_tup for _sprite in sprites for _tup in _sprite))
         if len(colourset) <= 1:
-            logging.warning('All glyphs are blank.')
             # only one colour found
-            bg, fg = colourset[0], None
+            bg, fg = None, colourset[0]
             # note that if colourset is empty, all char widths/heights must be zero
         elif len(colourset) > 2:
             raise FileFormatError(
