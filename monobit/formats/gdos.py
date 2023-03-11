@@ -587,7 +587,6 @@ def _convert_to_gdos(font, endianness):
         use_full_id=0,
     )
     header = _FNT_HEADER[endian](
-        # TODO -  base on name using list, override parameter?
         font_id=add_props.get('font-id', 255),
         point=font.point_size,
         name=font.name.encode('ascii', 'replace'),
