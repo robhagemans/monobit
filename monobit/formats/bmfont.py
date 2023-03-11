@@ -811,15 +811,30 @@ def _convert_to_bmfont(
         'blueChnl': 0,
     }
     # kerning section
-    props['kernings'] = [
-        {
-            'first': _glyph_id(_glyph, font.encoding),
-            'second': _glyph_id(font.get_glyph(_to), font.encoding),
-            'amount': int(_amount)
-        }
+    kerningtable = [
+        (_glyph, font.get_glyph(_to), _amount)
         for _glyph in font.glyphs
         for _to, _amount in _glyph.right_kerning.items()
     ]
+    kerningtable.extend(
+        (font.get_glyph(_to), _glyph, _amount)
+        for _glyph in font.glyphs
+        for _to, _amount in _glyph.left_kerning.items()
+    )
+    kerningtable = (
+        (_glyph_id(_l, font.encoding), _glyph_id(_r, font.encoding), int(_amt))
+        for _l, _r, _amt in kerningtable
+    )
+    # exclude unsupported ids
+    props['kernings'] = tuple(
+        {
+            'first': _left,
+            'second': _right,
+            'amount': _amount,
+        }
+        for _left, _right, _amount in kerningtable
+        if _left >= 0 and _right >= 0
+    )
     return props
 
 
