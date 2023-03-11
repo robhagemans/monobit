@@ -1006,9 +1006,11 @@ class Font:
         ))
 
     # need converter from string to set of labels to script this
-    #@scriptable
-    # pylint: disable=used-before-assignment
-    def subset(self, labels=(), *, chars:set=(), codepoints:set=(), tags:set=()):
+    @scriptable
+    def subset(
+            self, labels:tuple[Label]=(), *,
+            chars:tuple[Char]=(), codepoints:tuple[Codepoint]=(), tags:tuple[Tag]=(),
+        ):
         """
         Return a subset of the font.
 
@@ -1025,8 +1027,11 @@ class Font:
         )
         return self.modify(_glyph for _glyph in glyphs if _glyph is not None)
 
-    #@scriptable
-    def exclude(self, labels=(), *, chars:set=(), codepoints:set=(), tags:set=()):
+    @scriptable
+    def exclude(
+            self, labels:tuple[Label]=(), *,
+            chars:tuple[Char]=(), codepoints:tuple[Codepoint]=(), tags:tuple[Tag]=(),
+        ):
         """
         Return a font excluding a subset.
 
