@@ -241,6 +241,45 @@ class TestFeatures(BaseTester):
         assert_text_eq(text2, self.kerntext)
 
 
+    # kerning and negative bearings using overlapping test font
+
+    testtext="""
+..@..
+..@..
+@@@@@
+..@..
+..@..
+""".strip()
+
+    def test_render_yaff_kerning_bearings(self):
+        font, *_ = monobit.load(self.font_path / 'positioning.yaff')
+        text = monobit.render(font, b'\0\1\2\3\4').as_text()
+        assert_text_eq(text, self.testtext)
+
+    def _render_bmf_kerning_bearings(self, descriptor):
+        font, *_ = monobit.load(self.font_path / 'positioning.yaff')
+        monobit.save(
+            font, self.temp_path / 'positioning.fnt',
+            format='bmfont', descriptor=descriptor,
+        )
+        font, *_ = monobit.load(self.temp_path / 'positioning.fnt', format='bmfont')
+        text = monobit.render(font, b'\0\1\2\3\4').as_text()
+        assert_text_eq(text, self.testtext)
+
+    def test_render_bmf_kerning_bearings_binary(self):
+        self._render_bmf_kerning_bearings('binary')
+
+    def test_render_bmf_kerning_bearings_text(self):
+        self._render_bmf_kerning_bearings('text')
+
+    def test_render_bmf_kerning_bearings_xml(self):
+        self._render_bmf_kerning_bearings('xml')
+
+    def test_render_bmf_kerning_bearings_json(self):
+        self._render_bmf_kerning_bearings('json')
+
+    # composition
+
     # tiny sample from unscii-8.hex at https://github.com/viznut/unscii
     # "Licensing: You can consider it Public Domain (or CC-0)" for unscii-8
     unscii8_sample = """
