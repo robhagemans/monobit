@@ -128,12 +128,11 @@ def _save_text(font, outstream, *, ink, paper, comment):
             comment
         )
     # write glyphs
-    for glyph in font.glyphs:
+    for i, glyph in enumerate(font.glyphs):
         if not glyph.char:
             logging.warning(
                 "Can't encode glyph without Unicode character label in .draw file;"
-                " skipping\n%s\n",
-                glyph
+                " skipping index %d", i
             )
         elif len(glyph.char) > 1:
             logging.warning(

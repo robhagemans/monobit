@@ -936,9 +936,9 @@ def _create_xlfd_properties(font):
         else:
             default_codepoint = default_glyph.codepoint
         if not len(default_codepoint):
-            logging.error('BDF default glyph must have a character or codepoint.')
+            logging.debug('Cannot store default glyph in BDF without character or codepoint label.')
         elif len(default_codepoint) > 1:
-            logging.error('BDF default glyph must not be a grapheme sequence.')
+            logging.warning('Cannot store grapheme sequence as a BDF default glyph.')
         else:
             xlfd_props['DEFAULT_CHAR'] = default_codepoint[0]
         # unicode encoding
@@ -947,7 +947,7 @@ def _create_xlfd_properties(font):
     else:
         default_codepoint = default_glyph.codepoint
         if not len(default_codepoint):
-            logging.error('BDF default glyph must have a character or codepoint.')
+            logging.debug('Cannot store default glyph in BDF without character or codepoint label.')
         else:
             xlfd_props['DEFAULT_CHAR'] = bytes_to_int(default_codepoint)
         # try preferred name
