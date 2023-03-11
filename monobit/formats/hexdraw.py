@@ -118,6 +118,7 @@ def convert_key(key):
 
 def _save_text(font, outstream, *, ink, paper, comment):
     """Write one font to a plaintext stream as hexdraw."""
+    font = font.equalise_horizontal()
     # ensure char labels are set
     font = font.label(char_from=font.encoding)
     # write global comment
