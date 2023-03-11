@@ -217,6 +217,8 @@ def _convert_to_flf(font, hardblank='$'):
     flf_chars = tuple(chr(_cp) for _cp in _CODEPOINTS)
     # exclude NULL which is used for the default char
     coded_chars = set(font.get_chars()) - set(flf_chars) - set('\0')
+    if not font.get_chars():
+        raise FileFormatError('No figlet-storable codepoints in font.')
     # construct flf properties
     props = Props(
         signature_hardblank=_SIGNATURE + hardblank,
