@@ -1261,8 +1261,8 @@ class Font:
         """
         # absolute value of most negative upshift, left_bearing, right_bearing
         add_shift_up = max(0, -min(_g.shift_up for _g in self.glyphs))
-        add_left_bearing = max(0, -min(_g.left_bearing for _g in self.glyphs))
-        add_right_bearing = max(0, -min(_g.right_bearing for _g in self.glyphs))
+        add_left_bearing = 0 #max(0, -min(_g.left_bearing for _g in self.glyphs))
+        add_right_bearing = 0 #max(0, -min(_g.right_bearing for _g in self.glyphs))
         glyphs = tuple(
             _g.expand(
                 # bring all glyphs to same height
