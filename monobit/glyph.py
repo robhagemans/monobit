@@ -307,7 +307,7 @@ class Glyph:
     def label(
             self, codepoint_from=None, char_from=None,
             tag_from=None, comment_from=None,
-            overwrite=False, match_whitespace=True,
+            overwrite=False, match_whitespace=True, match_graphical=True,
         ):
         """
            Set labels or comment using provided encoder or tagger object.
@@ -317,7 +317,8 @@ class Glyph:
            tag_from: Tagger object used to set tag labels
            comment_from: Tagger object used to set comment
            overwrite: overwrite codepoint or char if already given
-           match_whitespace: do not give blank glyphs a non-whitespace char label (default: true)
+           match_whitespace: do not give blank glyphs a non-whitespace char label (default: True)
+           match_graphical: do not give non-blank glyphs a non-graphical label (default: True)
         """
         if sum(
                 _arg is not None
@@ -334,8 +335,11 @@ class Glyph:
         # use codepage to find char if not set
         if char_from and (overwrite or not self.char):
             char = char_from.char(*labels)
-            if not match_whitespace or not self.is_blank() or is_whitespace(char):
-                return self.modify(char=char)
+            if match_whitespace and self.is_blank() and not is_whitespace(char):
+                return self
+            if match_graphical and not self.is_blank() and not is_graphical(char):
+                return self
+            return self.modify(char=char)
         if tag_from:
             return self.modify(tag=tag_from.tag(*labels))
         if comment_from:

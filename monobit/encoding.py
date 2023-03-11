@@ -851,8 +851,11 @@ class Charmap(Encoder):
             mapping = {}
             name = ''
         super().__init__(CharmapRegistry.normalise(name))
-        # copy dict - ignore mappings to non-graphical characters (controls etc.)
-        self._ord2chr = {_k: _v for _k, _v in mapping.items() if is_graphical(_v)}
+        # copy dict
+        self._ord2chr = {**mapping}
+        # ignore mappings to non-graphical characters (controls etc.)
+        #self._ord2chr = {_k: _v for _k, _v in mapping.items() if is_graphical(_v)}
+        # if is_graphical(_v)}
         self._chr2ord = {_v: _k for _k, _v in self._ord2chr.items()}
 
     @classmethod
