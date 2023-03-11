@@ -228,9 +228,6 @@ class TestFeatures(BaseTester):
     def test_gdos_proportional(self):
         self._render_proportional('gdos')
 
-    def test_gdos_proportional(self):
-        self._render_proportional('gdos')
-
     def test_figlet_proportional(self):
         self._render_proportional('figlet')
 
@@ -280,7 +277,7 @@ class TestFeatures(BaseTester):
 
     def test_render_yaff_kerning_bearings(self):
         font, *_ = monobit.load(self.font_path / 'positioning.yaff')
-        text = monobit.render(font, b'\0\1\2\3\4').as_text()
+        text = monobit.render(font, b'01234').as_text()
         assert_text_eq(text, self.testtext)
 
     def _render_bmf_kerning_bearings(self, descriptor):
@@ -290,7 +287,7 @@ class TestFeatures(BaseTester):
             format='bmfont', descriptor=descriptor,
         )
         font, *_ = monobit.load(self.temp_path / 'positioning.fnt', format='bmfont')
-        text = monobit.render(font, b'\0\1\2\3\4').as_text()
+        text = monobit.render(font, b'01234').as_text()
         assert_text_eq(text, self.testtext)
 
     def test_render_bmf_kerning_bearings_binary(self):
@@ -304,6 +301,41 @@ class TestFeatures(BaseTester):
 
     def test_render_bmf_kerning_bearings_json(self):
         self._render_bmf_kerning_bearings('json')
+
+
+    bearing_testtext="""
+..@..
+..@..
+..@..
+..@..
+..@..
+""".strip()
+
+    def _render_bearings(self, format):
+        font, *_ = monobit.load(self.font_path / 'positioning.yaff')
+        monobit.save(font, self.temp_path / f'positioning.{format}', format=format)
+        font, *_ = monobit.load(self.temp_path / f'positioning.{format}', format=format)
+        text = monobit.render(font, b'012').as_text()
+        assert_text_eq(text, self.bearing_testtext)
+
+    # def test_win_negbearings(self):
+    #     self._render_bearings('mzfon')
+
+    def test_fzx_negbearings(self):
+        self._render_bearings('fzx')
+
+    def test_bdf_negbearings(self):
+        self._render_bearings('bdf')
+
+    def test_gdos_negbearings(self):
+        self._render_bearings('gdos')
+
+    # def test_figlet_negbearings(self):
+    #     self._render_bearings('figlet')
+
+    def test_vfont_negbearings(self):
+        self._render_bearings('vfont')
+
 
     # composition
 
