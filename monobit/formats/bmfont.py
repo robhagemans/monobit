@@ -755,6 +755,7 @@ def _convert_to_bmfont(
             chnl=(1 << (_entry.sheet%4)) if packed else 15,
         )
         for _entry in glyph_map
+        if _glyph_id(_entry.glyph, font.encoding) >= 0
     ]
     # save images; create page table
     props['pages'] = pages
@@ -845,6 +846,8 @@ def _glyph_id(glyph, encoding):
             logging.warning(
                 f"Can't store multi-codepoint grapheme sequence {ascii(char)}."
             )
+            return -1
+        if not char:
             return -1
         return ord(char)
     if not glyph.codepoint:
