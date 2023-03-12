@@ -30,7 +30,7 @@ class Canvas(Raster):
     default_blit_operator = lambda _m, _c: 1 if (_m==1 or _c==1) else _c
 
     @classmethod
-    def from_glyph_map(cls, glyph_map, operator=default_blit_operator):
+    def from_glyph_map(cls, glyph_map):
         """Create canvas froom glyph map."""
         min_x = min(_entry.x for _entry in glyph_map)
         min_y = min(_entry.y for _entry in glyph_map)
@@ -41,7 +41,7 @@ class Canvas(Raster):
         canvas = cls.blank(max_x - min_x, max_y - min_y)
         for entry in glyph_map:
             canvas.blit(
-                entry.glyph, entry.x - min_x, entry.y - min_y, operator=operator
+                entry.glyph, entry.x - min_x, entry.y - min_y, operator=max
             )
         return canvas
 

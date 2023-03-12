@@ -7,7 +7,6 @@ licence: https://opensource.org/licenses/MIT
 
 from itertools import product
 
-from .canvas import Canvas
 from .binary import ceildiv
 from .properties import Props
 from .basetypes import Coord
@@ -32,11 +31,10 @@ def chart(
         for _codepoint in range(codepoint_range[0], codepoint_range[1]+1)
     )
     font = font.modify(glyphs)
-    glyph_map, _, _ = grid_map(
+    glyph_map = grid_map(
         font, columns, margin, padding, order, direction,
     )
-    canvas = Canvas.from_glyph_map(glyph_map, operator=max)
-    return canvas
+    return glyph_map
 
 
 def grid_map(
@@ -64,7 +62,7 @@ def grid_map(
     # determine image geometry
     width = columns * step_x + 2 * margin.x - padding.x
     height = rows * step_y + 2 * margin.y - padding.y
-    return glyph_map, width, height
+    return glyph_map
 
 
 def grid_traverser(columns, rows, order, direction):
