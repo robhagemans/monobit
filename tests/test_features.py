@@ -203,26 +203,50 @@ class TestFeatures(BaseTester):
         text1 = monobit.render(prop1, b'testing').as_text()
         assert_text_eq(text1, self.proptext)
 
-    def test_render_yaff_proportional(self):
+    def _render_proportional(self, format):
         prop1, *_ = monobit.load(self.font_path / 'wbfont.amiga/wbfont_prop.font')
-        monobit.save(prop1, self.temp_path / 'wbfont_prop.yaff')
-        prop2, *_ = monobit.load(self.temp_path / 'wbfont_prop.yaff')
+        monobit.save(prop1, self.temp_path / f'wbfont_prop.{format}', format=format)
+        prop2, *_ = monobit.load(self.temp_path / f'wbfont_prop.{format}', format=format)
         text2 = monobit.render(prop2, b'testing').as_text()
         assert_text_eq(text2, self.proptext)
+
+    def test_yaff_proportional(self):
+        self._render_proportional('yaff')
+
+    def test_draw_proportional(self):
+        self._render_proportional('hexdraw')
+
+    def test_win_proportional(self):
+        self._render_proportional('mzfon')
+
+    def test_fzx_proportional(self):
+        self._render_proportional('fzx')
+
+    def test_bdf_proportional(self):
+        self._render_proportional('bdf')
+
+    def test_gdos_proportional(self):
+        self._render_proportional('gdos')
+
+    def test_figlet_proportional(self):
+        self._render_proportional('figlet')
+
+    def test_vfont_proportional(self):
+        self._render_proportional('vfont')
 
 
     # kerning
 
     kerntext="""
-.........................
-......@..@..@@@.@..@.@...
-...........@.............
-.@@@..@..@.@@@..@..@.@...
-@@....@..@.@....@..@.@...
-..@@..@..@.@....@..@.@...
-@@@...@..@.@....@..@.@...
-......@.........@....@...
-....@@........@@...@@....
+.......................
+......@..@..@@@.@..@.@.
+...........@...........
+.@@@..@..@.@@@..@..@.@.
+@@....@..@.@....@..@.@.
+..@@..@..@.@....@..@.@.
+@@@...@..@.@....@..@.@.
+......@.........@....@.
+....@@........@@...@@..
 """.strip()
 
     def test_render_yaff_kerning(self):
@@ -240,6 +264,80 @@ class TestFeatures(BaseTester):
         text2 = monobit.render(webby_mod2, b'sjifjij').as_text()
         assert_text_eq(text2, self.kerntext)
 
+
+    # kerning and negative bearings using overlapping test font
+
+    testtext="""
+..@..
+..@..
+@@@@@
+..@..
+..@..
+""".strip()
+
+    def test_render_yaff_kerning_bearings(self):
+        font, *_ = monobit.load(self.font_path / 'positioning.yaff')
+        text = monobit.render(font, b'01234').as_text()
+        assert_text_eq(text, self.testtext)
+
+    def _render_bmf_kerning_bearings(self, descriptor):
+        font, *_ = monobit.load(self.font_path / 'positioning.yaff')
+        monobit.save(
+            font, self.temp_path / 'positioning.fnt',
+            format='bmfont', descriptor=descriptor,
+        )
+        font, *_ = monobit.load(self.temp_path / 'positioning.fnt', format='bmfont')
+        text = monobit.render(font, b'01234').as_text()
+        assert_text_eq(text, self.testtext)
+
+    def test_render_bmf_kerning_bearings_binary(self):
+        self._render_bmf_kerning_bearings('binary')
+
+    def test_render_bmf_kerning_bearings_text(self):
+        self._render_bmf_kerning_bearings('text')
+
+    def test_render_bmf_kerning_bearings_xml(self):
+        self._render_bmf_kerning_bearings('xml')
+
+    def test_render_bmf_kerning_bearings_json(self):
+        self._render_bmf_kerning_bearings('json')
+
+
+    bearing_testtext="""
+..@..
+..@..
+..@..
+..@..
+..@..
+""".strip()
+
+    def _render_bearings(self, format):
+        font, *_ = monobit.load(self.font_path / 'positioning.yaff')
+        monobit.save(font, self.temp_path / f'positioning.{format}', format=format)
+        font, *_ = monobit.load(self.temp_path / f'positioning.{format}', format=format)
+        text = monobit.render(font, b'012').as_text()
+        assert_text_eq(text, self.bearing_testtext)
+
+    # def test_win_negbearings(self):
+    #     self._render_bearings('mzfon')
+
+    def test_fzx_negbearings(self):
+        self._render_bearings('fzx')
+
+    def test_bdf_negbearings(self):
+        self._render_bearings('bdf')
+
+    def test_gdos_negbearings(self):
+        self._render_bearings('gdos')
+
+    # def test_figlet_negbearings(self):
+    #     self._render_bearings('figlet')
+
+    def test_vfont_negbearings(self):
+        self._render_bearings('vfont')
+
+
+    # composition
 
     # tiny sample from unscii-8.hex at https://github.com/viznut/unscii
     # "Licensing: You can consider it Public Domain (or CC-0)" for unscii-8

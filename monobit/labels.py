@@ -233,3 +233,53 @@ class Tag(Label):
         """Tag contents as str."""
         # pylint: disable=no-member
         return self._value
+
+
+##############################################################################
+# label sets
+
+def to_labels(set_str):
+    """Convert from iterable or string representation to tuple of labels."""
+    return to_tuple(set_str, to_label, label_range)
+
+def to_chars(set_str):
+    """Convert from iterable or string representation to tuple of labels."""
+    return to_tuple(set_str, Char, label_range)
+
+def to_codepoints(set_str):
+    """Convert from iterable or string representation to tuple of labels."""
+    return to_tuple(set_str, Codepoint, label_range)
+
+def to_tags(set_str):
+    """Convert from iterable or string representation to tuple of labels."""
+    return to_tuple(set_str, Tag, label_range)
+
+def to_tuple(set_str, converter=to_int, inclusive_range=lambda _l, _u: range(_l, _u+1)):
+    """Convert from iterable or string representation to tuple."""
+    if not isinstance(set_str, str):
+        return tuple(converter(_item) for _item in set_str)
+    elements = set_str.split(',')
+    elements = (_e.partition('-') for _e in elements)
+    elements = (
+        inclusive_range(converter(_e[0]), converter(_e[2]))
+        if all(_e) else (converter(_e[0]),)
+        for _e in elements
+    )
+    elements = (_i for _e in elements for _i in _e)
+    return tuple(converter(_i) for _i in elements)
+
+def label_range(lower, upper):
+    """Range of labels, inclusive of bounds."""
+    if not type(lower) == type(upper):
+        raise TypeError('Bounds must be of same type')
+    if isinstance(lower, bytes):
+        return (Codepoint(_i) for _i in range(ord(lower), ord(upper)+1))
+    if isinstance(lower, str):
+        return (Char(chr(_i)) for _i in range(ord(lower), ord(upper)+1))
+    raise TypeError(f'Bounds must be Char or Codepoint, not {type(lower)}')
+
+
+CONVERTERS[tuple[Label]] = to_labels
+CONVERTERS[tuple[Char]] = to_chars
+CONVERTERS[tuple[Codepoint]] = to_codepoints
+CONVERTERS[tuple[Tag]] = to_tags

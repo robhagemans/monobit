@@ -103,8 +103,8 @@ def _convert_hurt(glyphdata, baseline, top, bottom):
             ink = StrokePath.LINE
         # convert from top-left to bottom-left coordinates
         path = StrokePath(path).flip().shift(0, baseline-top)
-        glyphs.append(path.as_glyph(
-            codepoint=glyphrec.number,
+        glyphs.append(Glyph.from_path(
+            path, codepoint=glyphrec.number,
             advance_width=glyphrec.right_margin-glyphrec.left_margin,
         ))
     return Font(

@@ -10,23 +10,26 @@ import shlex
 import logging
 from pathlib import Path
 import xml.etree.ElementTree as etree
+from math import ceil, sqrt
+from itertools import zip_longest
 
 try:
     from PIL import Image
 except ImportError:
     Image = None
 
-from ..basetypes import Coord
+from ..basetypes import Coord, Bounds
 from ..encoding import charmaps
 from .. import streams
 from ..magic import FileFormatError
-from ..binary import int_to_bytes, bytes_to_int
+from ..binary import int_to_bytes, bytes_to_int, ceildiv
 from ..struct import little_endian as le
-from ..properties import reverse_dict
+from ..properties import Props, reverse_dict
 from ..storage import loaders, savers
 from ..font import Font, Coord
 from ..glyph import Glyph
 from ..labels import Codepoint, Char
+from ..chart import grid_map
 
 from .windows import CHARSET_MAP, CHARSET_REVERSE_MAP
 
@@ -48,6 +51,7 @@ if Image:
             _BMF_MAGIC,
             b'info',
             b'<?xml version="1.0"?>\n<font>',
+            b'<?xml version="1.0"?>\r\n<font>',
         ),
         patterns=('*.fnt',),
     )
@@ -61,25 +65,33 @@ if Image:
 
     @savers.register(linked=load_bmfont)
     def save(
-            fonts, outfile,
-            image_size:Coord=(256, 256),
+            fonts, outfile, *,
+            image_size:Coord=None,
             image_format:str='png',
+            grid:bool=False,
             packed:bool=True,
+            spacing:Coord=Coord(0, 0),
+            padding:Bounds=Bounds(0, 0, 0, 0),
             descriptor:str='text',
         ):
         """
         Save fonts to Angelcode BMFont format.
 
-        image_size: pixel width,height of the spritesheet(s) storing the glyphs (default: 256x256)
+        image_size: pixel width,height of the spritesheet(s) storing the glyphs (default: estimate)
         image_format: image format of the spritesheets (default: 'png')
         packed: if true, use each of the RGB channels as a separate spritesheet (default: True)
+        grid: if true, use grid image instead of spritesheet (default: False)
+        spacing: x,y spacing between individual glyphs (default: 0x0)
+        padding: left, top, right, bottom unused spacing around edges (default: 0,0,0,0)
         descriptor: font descriptor file format, one of 'text', 'json' (default: 'text')
         """
         if len(fonts) > 1:
             raise FileFormatError("Can only save one font to BMFont file.")
         _create_bmfont(
             outfile, fonts[0],
-            image_size, packed, image_format, descriptor
+            size=image_size, packed=packed, grid=grid,
+            spacing=spacing, padding=padding,
+            image_format=image_format, descriptor=descriptor
         )
 
 
@@ -87,6 +99,7 @@ if Image:
 # BMFont spec
 # see http://www.angelcode.com/products/bmfont/doc/file_format.html
 
+# file and block headers for binary file
 
 _HEAD = le.Struct(
     magic='3s',
@@ -106,7 +119,23 @@ _BLK_CHARS = 4
 _BLK_KERNINGS = 5
 
 
-# info struct
+# info section - binary and text/xml/json formats diverge slightly
+#
+# > info
+# > ----
+# > This tag holds information on how the font was generated.
+# > face        This is the name of the true type font.
+# > size        The size of the true type font.
+# > bold        The font is bold.
+# > italic      The font is italic.
+# > charset     The name of the OEM charset used (when not unicode).
+# > unicode     Set to 1 if it is the unicode charset.
+# > stretchH    The font height stretch in percentage. 100% means no stretch.
+# > smooth      Set to 1 if smoothing was turned on.
+# > aa          The supersampling level used. 1 means no supersampling was used.
+# > padding     The padding for each character (up, right, down, left).
+# > spacing     The spacing for each character (horizontal, vertical).
+# > outline     The outline thickness for the characters.
 
 def _info(size):
     return le.Struct(
@@ -164,7 +193,24 @@ _CHARSET_STR_MAP = {
 }
 _CHARSET_STR_REVERSE_MAP = reverse_dict(_CHARSET_STR_MAP)
 
-# common struct
+# common section
+#
+# > common
+# > ------
+# > This tag holds information common to all characters.
+# > lineHeight  This is the distance in pixels between each line of text.
+# > base        The number of pixels from the absolute top of the line to the base of the characters.
+# > scaleW      The width of the texture, normally used to scale the x pos of the character image.
+# > scaleH      The height of the texture, normally used to scale the y pos of the character image.
+# > pages       The number of texture pages included in the font.
+# > packed      Set to 1 if the monochrome characters have been packed into each of the texture
+# >             channels. In this case alphaChnl describes what is stored in each channel.
+# > alphaChnl   Set to 0 if the channel holds the glyph data, 1 if it holds the outline,
+# >             2 if it holds the glyph and the outline, 3 if its set to zero,
+# >             and 4 if its set to one.
+# > redChnl     ..(value as alphaChnl)..
+# > greenChnl   ..(value as alphaChnl)..
+# > blueChnl    ..(value as alphaChnl)..
 
 _COMMON = le.Struct(
     lineHeight='uint16',
@@ -181,6 +227,17 @@ _COMMON = le.Struct(
     blueChnl='uint8',
 )
 
+# page tag
+# part of common struct in binary file
+
+# https://www.angelcode.com/products/bmfont/doc/file_format.html
+#
+# >  page
+# >  ----
+# >  This tag gives the name of a texture file. There is one for each page in the font.
+# >  id     The page id.
+# >  file   The texture file name.
+
 def _pages(npages, size):
     strlen = size // npages
     return le.Struct(
@@ -189,6 +246,20 @@ def _pages(npages, size):
 
 
 # char struct
+#
+# >  char
+# >  ----
+# >  This tag describes on character in the font. There is one for each included character in the font.
+# >  id         The character id.
+# >  x          The left position of the character image in the texture.
+# >  y          The top position of the character image in the texture.
+# >  width      The width of the character image in the texture.
+# >  height     The height of the character image in the texture.
+# >  xoffset    How much the current position should be offset when copying the image from the texture to the screen.
+# >  yoffset    How much the current position should be offset when copying the image from the texture to the screen.
+# >  xadvance   How much the current position should be advanced after drawing the character.
+# >  page       The texture page where the character image is found.
+# >  chnl       The texture channel where the character image is found (1 = blue, 2 = green, 4 = red, 8 = alpha, 15 = all channels).
 
 _CHAR = le.Struct(
     id='uint32',
@@ -216,7 +287,16 @@ def _chars(size):
     )
 
 
-# kerning struct
+# kerning section
+#
+# >  kerning
+# >  -------
+# >  The kerning information is used to adjust the distance between certain characters, e.g.
+# >  some characters should be placed closer to each other than others.
+# >  first  The first character id.
+# >  second The second character id.
+# >  amount	How much the x position should be adjusted when drawing the second character
+# >  immediately following the first.
 
 _KERNING = le.Struct(
     first='uint32',
@@ -270,12 +350,12 @@ def _parse_xml(data):
     """Parse XML bmfont description."""
     root = etree.fromstring(data)
     if root.tag != 'font':
-        raise ValueError(
+        raise FileFormatError(
             f'Not a valid BMFont XML file: root should be <font>, not <{root.tag}>'
         )
     for tag in ('info', 'common', 'pages', 'chars'):
         if root.find(tag) is None:
-            raise ValueError(
+            raise FileFormatError(
                 f'Not a valid BMFont XML file: no <{tag}> tag found.'
             )
     result = dict(
@@ -293,7 +373,7 @@ def _parse_xml(data):
         result['kernings'] = [
             _KERNING(**_dict_to_ints(_elem.attrib))
             for _elem in root.find('kernings').iterfind('kerning')
-        ],
+        ]
     return result
 
 def _parse_json(data):
@@ -302,7 +382,7 @@ def _parse_json(data):
     tree = json.loads(data)
     for tag in ('info', 'common', 'pages', 'chars'):
         if tag not in tree:
-            raise ValueError(
+            raise FileFormatError(
                 f'Not a valid BMFont JSON file: no <{tag}> key found.'
             )
     result = dict(
@@ -458,12 +538,11 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=(),
         # check if font is monochromatic
         colourset = list(set(_tup for _sprite in sprites for _tup in _sprite))
         if len(colourset) <= 1:
-            logging.warning('All glyphs are blank.')
             # only one colour found
-            bg, fg = colourset[0], None
+            bg, fg = None, colourset[0]
             # note that if colourset is empty, all char widths/heights must be zero
         elif len(colourset) > 2:
-            raise ValueError(
+            raise FileFormatError(
                 'Greyscale, colour and antialiased fonts not supported.'
             )
         elif len(colourset) == 2:
@@ -589,190 +668,105 @@ def _read_bmfont(infile, outline):
 ##############################################################################
 # bmfont writer
 
-def _glyph_id(glyph, encoding):
-    if charmaps.is_unicode(encoding):
-        char = glyph.char
-        if len(char) > 1:
-            raise ValueError(
-                f"Can't store multi-codepoint grapheme sequence {ascii(char)}."
-            )
-        return ord(char)
-    if not glyph.codepoint:
-        raise ValueError(f"Can't store glyph with no codepoint: {glyph}.")
-    else:
-        return bytes_to_int(glyph.codepoint)
-
-
-def _create_spritesheets(font, size=(256, 256), packed=False):
-    """Dump font to sprite sheets."""
-    # use all channels
-    if not packed:
-        channels = 15
-        n_layers = 1
-    else:
-        n_layers = 4
-    paper = 0
-    ink = 255
-    border = 0
-    width, height = size
-    chars = []
-    pages = []
-    empty = Image.new('L', (width, height), border)
-    sheets = [empty] * n_layers
-    pages.append(sheets)
-    page_id = 0
-    layer = 0
-    while True:
-        if packed:
-            channels = 1 << layer
-        img = Image.new('L', (width, height), border)
-        sheets[layer] = img
-        # output glyphs
-        x, y = 0, 0
-        tree = SpriteNode(x, y, width, height)
-        for number, glyph in enumerate(font.glyphs):
-            cropped = glyph.reduce()
-            if cropped.height and cropped.width:
-                try:
-                    x, y = tree.insert(cropped)
-                except ValueError:
-                    # we don't fit, get next sheet
-                    break
-                charimg = Image.new('L', (cropped.width, cropped.height))
-                data = cropped.as_vector(ink, paper)
-                charimg.putdata(data)
-                img.paste(charimg, (x, y))
-            try:
-                id = _glyph_id(glyph, font.encoding)
-            except ValueError as e:
-                logging.warning(e)
-                continue
-            # >  char
-            # >  ----
-            # >  This tag describes on character in the font. There is one for each included character in the font.
-            # >  id         The character id.
-            # >  x          The left position of the character image in the texture.
-            # >  y          The top position of the character image in the texture.
-            # >  width      The width of the character image in the texture.
-            # >  height     The height of the character image in the texture.
-            # >  xoffset    How much the current position should be offset when copying the image from the texture to the screen.
-            # >  yoffset    How much the current position should be offset when copying the image from the texture to the screen.
-            # >  xadvance   How much the current position should be advanced after drawing the character.
-            # >  page       The texture page where the character image is found.
-            # >  chnl       The texture channel where the character image is found (1 = blue, 2 = green, 4 = red, 8 = alpha, 15 = all channels).
-            chars.append(dict(
-                id=id,
-                x=x,
-                y=y,
-                width=cropped.width,
-                height=cropped.height,
-                # > The `xoffset` gives the horizontal offset that should be added to the cursor
-                # > position to find the left position where the character should be drawn.
-                # > A negative value here would mean that the character slightly overlaps
-                # > the previous character.
-                xoffset=cropped.left_bearing,
-                # > The `yoffset` gives the distance from the top of the cell height to the top
-                # > of the character. A negative value here would mean that the character extends
-                # > above the cell height.
-                yoffset=font.raster.top-(cropped.height+cropped.shift_up),
-                # xadvance is the advance width from origin to next origin
-                # > The filled red dot marks the current cursor position, and the hollow red dot
-                # > marks the position of the cursor after drawing the character. You get to this
-                # > position by moving the cursor horizontally with the xadvance value.
-                # > If kerning pairs are used the cursor should also be moved accordingly.
-                xadvance=cropped.advance_width,
-                page=page_id,
-                chnl=channels,
-            ))
-        else:
-            # iterator runs out, get out
-            break
-        # move to next layer or page
-        if layer == n_layers - 1:
-            page_id += 1
-            layer = 0
-            sheets = [empty] * n_layers
-            pages.append(sheets)
-        else:
-            layer += 1
-    if packed:
-        # bmfont channel order is B, G, R, A
-        pages = [Image.merge('RGBA', [_sh[2], _sh[1], _sh[0], _sh[3]]) for _sh in pages]
-    else:
-        pages = [Image.merge('RGBA', _sh*4) for _sh in pages]
-    return pages, chars
-
-
-def _to_str(value):
-    """Convert value to str for bmfont file."""
-    if isinstance(value, str) :
-        return '"{}"'.format(value)
-    if isinstance(value, (list, tuple)):
-        return ','.join(str(_item) for _item in value)
-    return str(int(value))
-
-def _create_textdict(name, dict):
-    """Create a text-dictionary line for bmfontfile."""
-    return '{} {}\n'.format(name, ' '.join(
-        '{}={}'.format(_k, _to_str(_v))
-        for _k, _v in dict.items())
-    )
-
 def _create_bmfont(
-        outfile, font,
-        size=(256, 256), packed=False, imageformat='png', descriptor='text'
+        outfile, font, *,
+        size, packed, grid, spacing, padding,
+        image_format, descriptor,
+        paper=0, ink=255, border=0,
     ):
     """Create a bmfont package."""
-    container = outfile.where
-    basepath = Path(outfile.name).parent
-    path = basepath / font.family
-    fontname = font.name.replace(' ', '_')
+    # ensure codepoint/char values are set as appropriate
     encoding = font.encoding
     if not charmaps.is_unicode(encoding):
-        # if encoding is unknown, call it OEM
-        charset = _CHARSET_STR_REVERSE_MAP.get(encoding, _CHARSET_STR_REVERSE_MAP[''])
-        # ensure codepoint values are set
         font = font.label(codepoint_from=encoding)
     else:
-        charset = ''
-        # ensure char values are set
         font = font.label(char_from=encoding)
-    # create images
-    pages, chars = _create_spritesheets(font, size, packed)
+    # map glyphs to image
+    if grid:
+        margin  = Coord(padding.left, padding.top)
+        glyph_map, width, height = grid_map(
+            font,
+            columns=32, margin=margin, padding=spacing,
+            # direction - note Image coordinates are ltr, ttb
+            order='row-major', direction=(1, 1),
+        )
+    else:
+        # crop glyphs
+        glyphs = tuple(_g.reduce() for _g in font.glyphs)
+        if size is None:
+            n_layers = 4 if packed else 1
+            size = _estimate_size(glyphs, n_layers, padding, spacing)
+        glyph_map, width, height = _map_glyphs_to_image(
+            glyphs, size=size, spacing=spacing, padding=padding,
+        )
+    # draw images
+    sheets = _draw_images(glyph_map, width, height, packed, paper, ink, border)
+    # save images and record names
+    pages = _save_pages(outfile, font, sheets, image_format)
+    # create the descriptor data structure
+    props = _convert_to_bmfont(
+        font, pages, glyph_map, width, height, packed, padding, spacing
+    )
+    # write the descriptor file
+    if descriptor == 'text':
+        _write_text_descriptor(outfile, props)
+    elif descriptor == 'json':
+        _write_json_descriptor(outfile, props)
+    elif descriptor == 'xml':
+        _write_xml_descriptor(outfile, props)
+    elif descriptor == 'binary':
+        _write_binary_descriptor(outfile, props)
+    else:
+        raise FileFormatError(
+            'Descriptor format should be one of `test`, `xml`, `binary`, `json`;'
+            f' `{format}` not recognised.'
+        )
+
+
+def _convert_to_bmfont(
+        font, pages, glyph_map,
+        width, height, packed, padding, spacing
+    ):
+    """Convert to bmfont property structure."""
     props = {}
-    props['chars'] = chars
+    props['chars'] = [
+        dict(
+            id=_glyph_id(_entry.glyph, font.encoding),
+            x=_entry.x,
+            y=_entry.y,
+            width=_entry.glyph.width,
+            height=_entry.glyph.height,
+            # > The `xoffset` gives the horizontal offset that should be added to the cursor
+            # > position to find the left position where the character should be drawn.
+            # > A negative value here would mean that the character slightly overlaps
+            # > the previous character.
+            xoffset=_entry.glyph.left_bearing,
+            # > The `yoffset` gives the distance from the top of the cell height to the top
+            # > of the character. A negative value here would mean that the character extends
+            # > above the cell height.
+            yoffset=font.raster.top-(_entry.glyph.height+_entry.glyph.shift_up),
+            # xadvance is the advance width from origin to next origin
+            # > The filled red dot marks the current cursor position, and the hollow red dot
+            # > marks the position of the cursor after drawing the character. You get to this
+            # > position by moving the cursor horizontally with the xadvance value.
+            # > If kerning pairs are used the cursor should also be moved accordingly.
+            xadvance=_entry.glyph.advance_width,
+            page=_entry.sheet // 4 if packed else _entry.sheet,
+            chnl=(1 << (_entry.sheet%4)) if packed else 15,
+        )
+        for _entry in glyph_map
+        if _glyph_id(_entry.glyph, font.encoding) >= 0
+    ]
     # save images; create page table
-    # https://www.angelcode.com/products/bmfont/doc/file_format.html
-    #
-    # >  page
-    # >  ----
-    # >  This tag gives the name of a texture file. There is one for each page in the font.
-    # >  id     The page id.
-    # >  file   The texture file name.
-    props['pages'] = []
-    for page_id, page in enumerate(pages):
-        name = container.unused_name(f'{path}/{fontname}_{page_id}.{imageformat}')
-        with container.open(name, 'w') as imgfile:
-            page.save(imgfile, format=imageformat)
-        props['pages'].append({
-            'id': page_id,
-            'file': str(Path(name).relative_to(basepath)),
-        })
-    # > info
-    # > ----
-    # > This tag holds information on how the font was generated.
-    # > face        This is the name of the true type font.
-    # > size        The size of the true type font.
-    # > bold        The font is bold.
-    # > italic      The font is italic.
-    # > charset     The name of the OEM charset used (when not unicode).
-    # > unicode     Set to 1 if it is the unicode charset.
-    # > stretchH    The font height stretch in percentage. 100% means no stretch.
-    # > smooth      Set to 1 if smoothing was turned on.
-    # > aa          The supersampling level used. 1 means no supersampling was used.
-    # > padding     The padding for each character (up, right, down, left).
-    # > spacing     The spacing for each character (horizontal, vertical).
-    # > outline     The outline thickness for the characters.
+    props['pages'] = pages
+    # info section
+    if not charmaps.is_unicode(font.encoding):
+        # if encoding is unknown, call it OEM
+        charset = _CHARSET_STR_REVERSE_MAP.get(
+            font.encoding, _CHARSET_STR_REVERSE_MAP['']
+        )
+    else:
+        charset = ''
     props['info'] = {
         'face': font.family,
         # size can be given as negative for an undocumented reason:
@@ -789,30 +783,15 @@ def _create_bmfont(
         'bold': font.weight == 'bold',
         'italic': font.slant in ('italic', 'oblique'),
         'charset': charset,
-        'unicode': charmaps.is_unicode(encoding),
+        'unicode': charmaps.is_unicode(font.encoding),
         'stretchH': 100,
         'smooth': False,
         'aa': 1,
-        'padding': (0, 0, 0, 0),
-        'spacing': (0, 0),
+        'padding': tuple(padding),
+        'spacing': tuple(spacing),
         'outline': 0,
     }
-    # > common
-    # > ------
-    # > This tag holds information common to all characters.
-    # > lineHeight  This is the distance in pixels between each line of text.
-    # > base        The number of pixels from the absolute top of the line to the base of the characters.
-    # > scaleW      The width of the texture, normally used to scale the x pos of the character image.
-    # > scaleH      The height of the texture, normally used to scale the y pos of the character image.
-    # > pages       The number of texture pages included in the font.
-    # > packed      Set to 1 if the monochrome characters have been packed into each of the texture
-    # >             channels. In this case alphaChnl describes what is stored in each channel.
-    # > alphaChnl   Set to 0 if the channel holds the glyph data, 1 if it holds the outline,
-    # >             2 if it holds the glyph and the outline, 3 if its set to zero,
-    # >             and 4 if its set to one.
-    # > redChnl     ..(value as alphaChnl)..
-    # > greenChnl   ..(value as alphaChnl)..
-    # > blueChnl    ..(value as alphaChnl)..
+    # common section
     props['common'] = {
         # https://www.angelcode.com/products/bmfont/doc/render_text.html
         # > [...] the lineHeight, i.e. how far the cursor should be moved vertically when
@@ -823,8 +802,8 @@ def _create_bmfont(
         # > in the font should be placed. Characters can of course extend above or below this base
         # > line, which is entirely up to the font design.
         'base': font.raster.top,
-        'scaleW': size[0],
-        'scaleH': size[1],
+        'scaleW': width,
+        'scaleH': height,
         'pages': len(pages),
         'packed': packed,
         'alphaChnl': 0,
@@ -832,88 +811,338 @@ def _create_bmfont(
         'greenChnl': 0,
         'blueChnl': 0,
     }
-    # >  kerning
-    # >  -------
-    # >  The kerning information is used to adjust the distance between certain characters, e.g.
-    # >  some characters should be placed closer to each other than others.
-    # >  first  The first character id.
-    # >  second The second character id.
-    # >  amount	How much the x position should be adjusted when drawing the second character
-    # >  immediately following the first.
-    props['kernings'] = [{
-            'first': _glyph_id(_glyph, font.encoding),
-            'second': _glyph_id(font.get_glyph(_to), font.encoding),
-            'amount': int(_amount)
-        }
+    # kerning section
+    kerningtable = [
+        (_glyph, font.get_glyph(_to), _amount)
         for _glyph in font.glyphs
         for _to, _amount in _glyph.right_kerning.items()
     ]
-    # write the .fnt description
-    if descriptor == 'text':
-        _write_fnt_descriptor(outfile, props, chars)
-    elif descriptor == 'json':
-        _write_json(outfile, props, chars)
-    else:
-        raise FileFormatError(f'Writing to descriptor format {format} not supported.')
+    kerningtable.extend(
+        (font.get_glyph(_to), _glyph, _amount)
+        for _glyph in font.glyphs
+        for _to, _amount in _glyph.left_kerning.items()
+    )
+    kerningtable = (
+        (_glyph_id(_l, font.encoding), _glyph_id(_r, font.encoding), int(_amt))
+        for _l, _r, _amt in kerningtable
+    )
+    # exclude unsupported ids
+    props['kernings'] = tuple(
+        {
+            'first': _left,
+            'second': _right,
+            'amount': _amount,
+        }
+        for _left, _right, _amount in kerningtable
+        if _left >= 0 and _right >= 0
+    )
+    return props
 
-def _write_fnt_descriptor(outfile, props, chars):
-    """Write the .fnt descriptor file."""
+
+def _glyph_id(glyph, encoding):
+    if charmaps.is_unicode(encoding):
+        char = glyph.char
+        if len(char) > 1:
+            logging.warning(
+                f"Can't store multi-codepoint grapheme sequence {ascii(char)}."
+            )
+            return -1
+        if not char:
+            return -1
+        return ord(char)
+    if not glyph.codepoint:
+        logging.warning(f"Can't store glyph with no codepoint: {glyph}.")
+        return -1
+    else:
+        return bytes_to_int(glyph.codepoint)
+
+
+###############################################################################
+# text descriptor files
+
+def _write_text_descriptor(outfile, props):
+    """Write a text-based .fnt descriptor file."""
     bmf = outfile.text
     bmf.write(_create_textdict('info', props['info']))
     bmf.write(_create_textdict('common', props['common']))
     for page in props['pages']:
         bmf.write(_create_textdict('page', page))
-    bmf.write('chars count={}\n'.format(len(chars)))
-    for char in chars:
+    bmf.write('chars count={}\n'.format(len(props['chars'])))
+    for char in props['chars']:
         bmf.write(_create_textdict('char', char))
     bmf.write('kernings count={}\n'.format(len(props['kernings'])))
     for kern in props['kernings']:
         bmf.write(_create_textdict('kerning', kern))
 
-def _write_json(outfile, props, chars):
+def _create_textdict(name, dict):
+    """Create a text-dictionary line for bmfontfile."""
+    return '{} {}\n'.format(name, ' '.join(
+        '{}={}'.format(_k, _to_str(_v))
+        for _k, _v in dict.items())
+    )
+
+def _to_str(value):
+    """Convert value to str for bmfont file."""
+    if isinstance(value, str) :
+        return '"{}"'.format(value)
+    if isinstance(value, (list, tuple)):
+        return ','.join(str(_item) for _item in value)
+    return str(int(value))
+
+
+###############################################################################
+# json, xml descriptor files
+
+def _write_json_descriptor(outfile, props):
     """Write JSON bmfont description."""
     tree = {**props}
     # assume the pages list is ordered
     tree['pages'] = [_elem['file'] for _elem in tree['pages']]
-    tree['chars'] = chars
     json.dump(tree, outfile.text)
+
+def _write_xml_descriptor(outfile, props):
+    """Write XML bmfont description."""
+    tree = {**props}
+    # convert values to str
+    def _tostrdict(indict):
+        return {_k: str(_v) for _k, _v in indict.items()}
+    root = etree.Element('font')
+    etree.SubElement(root, 'info', **_tostrdict(tree['info']))
+    etree.SubElement(root, 'common', **_tostrdict(tree['common']))
+    pages =etree.SubElement(root, 'pages')
+    for elem in tree['pages']:
+        etree.SubElement(pages, 'page', **_tostrdict(elem))
+    chars = etree.SubElement(root, 'chars', count=str(len(props['chars'])))
+    for char in props['chars']:
+        etree.SubElement(chars, 'char', **_tostrdict(char))
+    if props['kernings']:
+        kerns = etree.SubElement(root, 'kernings', count=str(len(props['kernings'])))
+        for kern in props['kernings']:
+            etree.SubElement(kerns, 'kerning', **_tostrdict(kern))
+    outfile.write(b'<?xml version="1.0"?>\n')
+    etree.ElementTree(root).write(outfile)
+
+
+###############################################################################
+# binary descriptor files
+
+def _write_binary_descriptor(outfile, props):
+    """Write binary bmfont description."""
+    head = _HEAD(magic=b'BMF', version=3)
+    outfile.write(bytes(head))
+    # INFO section
+    info = props['info']
+    pages = props['pages']
+    padding = Bounds.create(info['padding'])
+    spacing = Coord.create(info['spacing'])
+    bininfo = dict(
+        fontName=info['face'].encode('ascii', 'replace') + b'\0',
+        fontSize=info['size'],
+        bitField=(
+            (_INFO_BOLD if info['bold'] else 0)
+            | (_INFO_ITALIC if info['italic'] else 0)
+            | (_INFO_UNICODE if info['unicode'] else 0)
+            | (_INFO_SMOOTH if info['smooth'] else 0)
+        ),
+        charset=CHARSET_REVERSE_MAP.get(info['charset'], 0xff),
+        aa=info['aa'],
+        paddingUp=padding.top,
+        paddingLeft=padding.left,
+        paddingDown=padding.bottom,
+        paddingRight=padding.right,
+        spacingHoriz=spacing.x,
+        spacingVert=spacing.y,
+        outline=info['outline'],
+    )
+    infosize = len(bininfo['fontName']) + 14
+    infoblk = bytes(_info(infosize)(**bininfo))
+    outfile.write(bytes(_BLKHEAD(typeId=_BLK_INFO, blkSize=infosize)))
+    outfile.write(infoblk)
+    # COMMON section
+    commonblk = bytes(_COMMON(**props['common']))
+    outfile.write(bytes(_BLKHEAD(typeId=_BLK_COMMON, blkSize=len(commonblk))))
+    outfile.write(commonblk)
+    # PAGES section
+    binpages = b''.join((
+        _page['file'].encode('ascii', 'replace') + b'\0'
+        for _page in pages
+    ))
+    outfile.write(bytes(_BLKHEAD(typeId=_BLK_PAGES, blkSize=len(binpages))))
+    outfile.write(binpages)
+    # CHARS section
+    binchars = b''.join(bytes(_CHAR(**_c)) for _c in props['chars'])
+    outfile.write(bytes(_BLKHEAD(typeId=_BLK_CHARS, blkSize=len(binchars))))
+    outfile.write(binchars)
+    # KERNINGS section
+    binkerns = b''.join(bytes(_KERNING(**_c)) for _c in props['kernings'])
+    outfile.write(bytes(_BLKHEAD(typeId=_BLK_KERNINGS, blkSize=len(binkerns))))
+    outfile.write(binkerns)
+
+
+###############################################################################
+# image files
+
+def _save_pages(outfile, font, sheets, image_format):
+    """Save images and record names."""
+    container = outfile.where
+    basepath = Path(outfile.name).parent
+    path = basepath / font.family
+    fontname = font.name.replace(' ', '_')
+    pages = []
+    for page_id, sheet in enumerate(sheets):
+        name = container.unused_name(f'{path}/{fontname}_{page_id}.{image_format}')
+        with container.open(name, 'w') as imgfile:
+            sheet.save(imgfile, format=image_format)
+        pages.append({
+            'id': page_id,
+            'file': str(Path(name).relative_to(basepath)),
+        })
+    return pages
+
+
+###############################################################################
+# draw spritesheets
+
+def _draw_images(glyph_map, width, height, packed, paper, ink, border):
+    """Draw images based on glyph map."""
+    last = max(_entry.sheet for _entry in glyph_map)
+    images = [Image.new('L', (width, height), border) for _ in range(last+1)]
+    for entry in glyph_map:
+        charimg = Image.new('L', (entry.glyph.width, entry.glyph.height))
+        data = entry.glyph.as_vector(ink, paper)
+        charimg.putdata(data)
+        images[entry.sheet].paste(charimg, (entry.x, entry.y))
+    # pack 4 sheets per image in RGBA layers
+    if packed:
+        # grouper: quartets, fill with empties
+        empty = Image.new('L', (width, height), border)
+        args = [iter(images)] * 4
+        quartets = zip_longest(*args, fillvalue=empty)
+        return tuple(
+            # bmfont channel order is B, G, R, A
+            Image.merge('RGBA', (_q[2], _q[1], _q[0], _q[3]))
+            for _q in quartets
+        )
+    return images
+
+
+###############################################################################
+# packed spritesheets
+
+def _map_glyphs_to_image(glyphs, *, size, spacing, padding):
+    """Determine where to draw glyphs in sprite sheets."""
+    # sort by area, large to small. keep mapping table
+    sorted_glyphs = tuple(sorted(
+        enumerate(glyphs),
+        key=lambda _p: _p[1].width*_p[1].height,
+        reverse=True,
+    ))
+    order_mapping = {_p[0]: _index for _index, _p in enumerate(sorted_glyphs)}
+    glyphs = tuple(_p[1] for _p in sorted_glyphs)
+    # determine spritesheet size
+    width, height = size
+    use_width = width-padding.left-padding.right
+    use_height = height-padding.top-padding.bottom
+    spx, spy = spacing
+    # ensure sheet is larger than largest glyph
+    if any(
+            _g.width + spx > use_width or _g.height + spy > use_height
+            for _g in glyphs
+        ):
+        raise ValueError('Image size is too small for largest glyph.')
+    glyph_map = []
+    sheets = []
+    while True:
+        # output glyphs
+        sheets.append(SpriteNode(0, 0, use_width, use_height, depth=0))
+        for number, glyph in enumerate(glyphs):
+            if glyph.height and glyph.width:
+                for i, sheet in enumerate(sheets):
+                    try:
+                        x, y = sheet.insert(glyph.width+spx, glyph.height+spy)
+                        break
+                    except (FullError, DoesNotFitError):
+                        pass
+                else:
+                    # we don't fit, get next sheet
+                    glyphs = glyphs[number:]
+                    break
+            glyph_map.append(Props(
+                glyph=glyph, sheet=i, x=x+padding.left, y=y+padding.top,
+            ))
+        else:
+            # all done, get out
+            break
+    # put chars in original glyph order
+    glyph_map = [glyph_map[order_mapping[_i]] for _i in range(len(glyph_map))]
+    return glyph_map, width, height
+
+
+def _estimate_size(glyphs, n_layers, padding, spacing):
+    """Estimate required size of sprite sheet."""
+    max_width = max(_g.width for _g in glyphs)
+    max_height = max(_g.height for _g in glyphs)
+    total_area = sum(
+        (_g.width+spacing.x) * (_g.height+spacing.y)
+        for _g in glyphs
+    )
+    edge = int(ceil(1.01 * sqrt(total_area / n_layers)))
+    return Coord(
+        max_width * ceildiv(edge, max_width) + padding.left + padding.right,
+        max_height * ceildiv(edge, max_height) + padding.top + padding.bottom,
+    )
+
+
+class DoesNotFitError(Exception):
+    """Image does not fit."""
+
+class FullError(Exception):
+    """Branch is full."""
 
 
 class SpriteNode:
     """Tree structure to fill up spritesheet."""
     # see http://blackpawn.com/texts/lightmaps/
 
-    def __init__(self, left, top, right, bottom):
+    def __init__(self, left, top, right, bottom, depth):
         """Create a new node."""
         self._left, self._top, self._right, self._bottom = left, top, right, bottom
         self._children = None
-        self._image = None
+        self._full = False
+        self._depth = depth
 
-    def insert(self, img):
+    def insert(self, target_width, target_height):
         """Insert an image into this node or descendant node."""
         width = self._right - self._left
         height = self._bottom - self._top
+        if target_width > width or target_height > height:
+            raise DoesNotFitError()
+        if self._full:
+            raise FullError()
         if self._children:
             try:
-                return self._children[0].insert(img)
-            except ValueError:
-                return self._children[1].insert(img)
-        if self._image or img.width > width or img.height > height:
-            raise ValueError("Image doesn't fit.")
-        if img.width == width and img.height == height:
-            self._image = img
+                return self._children[0].insert(target_width, target_height)
+            except (DoesNotFitError, FullError) as e:
+                pass
+            try:
+                return self._children[1].insert(target_width, target_height)
+            except FullError as e:
+                self._full = True
+                raise
+        if target_width == width and target_height == height:
+            self._full = True
             return self._left, self._top
         else:
-            dw = width - img.width
-            dh = height - img.height
+            dw = width - target_width
+            dh = height - target_height
             if dw > dh:
                 self._children = (
-                    SpriteNode(self._left, self._top, self._left + img.width, self._bottom),
-                    SpriteNode(self._left + img.width, self._top, self._right, self._bottom)
+                    SpriteNode(self._left, self._top, self._left + target_width, self._bottom, self._depth+1),
+                    SpriteNode(self._left + target_width, self._top, self._right, self._bottom, self._depth+1)
                 )
             else:
                 self._children = (
-                    SpriteNode(self._left, self._top, self._right, self._top + img.height),
-                    SpriteNode(self._left, self._top + img.height, self._right, self._bottom)
+                    SpriteNode(self._left, self._top, self._right, self._top + target_height, self._depth+1),
+                    SpriteNode(self._left, self._top + target_height, self._right, self._bottom, self._depth+1)
                 )
-            return self._children[0].insert(img)
+            return self._children[0].insert(target_width, target_height)

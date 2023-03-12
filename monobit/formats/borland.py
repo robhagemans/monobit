@@ -137,7 +137,9 @@ def _convert_borland(
             for (cmd, nx, ny), (_, x, y) in zip(absmoves[1:], absmoves)
         )
         path = StrokePath(relmoves)
-        glyphs.append(path.as_glyph(advance_width=width, codepoint=codepoint))
+        glyphs.append(Glyph.from_path(
+            path, advance_width=width, codepoint=codepoint
+        ))
     return Font(
         glyphs, ascent=old_header.capital_top, descent=-old_header.descent,
         shift_up=-old_header.baseline,
@@ -192,7 +194,7 @@ def _convert_to_borland(font):
     for glyph in font.glyphs:
         code = []
         if glyph.path:
-            path = StrokePath.from_string(glyph.path).as_moves()
+            path = glyph.path.as_moves()
             cmd = (_move.command for _move in path)
             absx = accumulate(_move.dx for _move in path)
             absy = accumulate(_move.dy for _move in path)

@@ -89,7 +89,7 @@ def scriptable(
                 _record = save
             # update history tracker
             if record and _record and result and not 'history' in kwargs:
-                history = script_args.get_history_item(*args, **conv_kwargs)
+                history = script_args.get_history_item(*args, **kwargs)
                 try:
                     result = tuple(
                         _item.append(history=history)
@@ -157,7 +157,7 @@ class ScriptArgs:
                     f'{ARG_PREFIX}{_k.replace("_", "-")}={shlex.join((str(_v),))}'
                     for _k, _v in kwargs.items()
                     # exclude non-operation parameters
-                    if _k in self._script_args
+                    if _k.replace('-', '_') in self._script_args
                 ),
             )
             if _e

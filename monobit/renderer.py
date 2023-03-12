@@ -37,15 +37,12 @@ except ImportError:
         for c in normalize('NFC', text):
             yield c
 
-try:
-    from PIL import Image
-except ImportError:
-    Image = None
-
 from .binary import ceildiv
 from .labels import Char, Codepoint
 from .raster import Raster, blockstr
-
+from .canvas import Canvas
+from .properties import Props
+from .glyph import Glyph
 
 
 DIRECTIONS = {
@@ -64,100 +61,12 @@ ALIGNMENTS = {
 }
 
 
-###############################################################################
-# canvas operations
-
-class Canvas(Raster):
-    """Mutable raster."""
-
-    _sequence = list
-
-    @classmethod
-    def blank(cls, width, height, fill=-1):
-        """Create a canvas in background colour."""
-        canvas = [[fill]*width for _ in range(height)]
-        # setting 0 and 1 will make Raster init leave the input alone
-        return cls(canvas, _0=0, _1=1)
-
-    def blit(self, raster, grid_x, grid_y, operator=lambda _m, _c: 1 if (_m==1 or _c==1) else _c):
-        """
-        Draw a matrix onto a canvas
-        (leaving exising ink in place, depending on operator).
-        """
-        if not raster.width or not self.width:
-            return self
-        matrix = raster.as_matrix()
-        for work_y in reversed(range(raster.height)):
-            if 0 <= grid_y + work_y < self.height:
-                row = self._pixels[self.height - (grid_y + work_y) - 1]
-                for work_x, ink in enumerate(matrix[raster.height - work_y - 1]):
-                    if 0 <= grid_x + work_x < self.width:
-                        row[grid_x + work_x] = operator(ink, row[grid_x + work_x])
-        return self
-
-    def as_image(
-            self, *,
-            ink=(255, 255, 255), paper=(0, 0, 0), border=(0, 0, 0)
-        ):
-        """Convert raster to image."""
-        if not Image:
-            raise ImportError('Rendering to image requires PIL module.')
-        if not self.height:
-            return Image.new('RGB', (0, 0))
-        img = Image.new('RGB', (self.width, self.height), border)
-        img.putdata([
-            {-1: border, 0: paper, 1: ink}[_pix]
-            for _row in self._pixels for _pix in _row
-        ])
-        return img
-
-    def as_text(
-            self, *,
-            ink='@', paper='.', border='.',
-            start='', end=''
-        ):
-        """Convert raster to text."""
-        if not self.height:
-            return ''
-        colourdict = {-1: border, 0: paper, 1: ink}
-        contents = '\n'.join(
-            ''.join(colourdict[_pix] for _pix in _row)
-            for _row in self._pixels
-        )
-        return blockstr(''.join((start, contents, end)))
-
-    def draw_pixel(self, x, y):
-        """Draw a pixel."""
-        self._pixels[self.height - y - 1][x] = 1
-
-    def draw_line(self, x0, y0, x1, y1):
-        """Draw a line between the given points."""
-        # Bresenham algorithm
-        dx, dy = abs(x1-x0), abs(y1-y0)
-        steep = dy > dx
-        if steep:
-            x0, y0, x1, y1 = y0, x0, y1, x1
-            dx, dy = dy, dx
-        sx = 1 if x1 > x0 else -1
-        sy = 1 if y1 > y0 else -1
-        line_error = dx // 2
-        x, y = x0, y0
-        for x in range(x0, x1+sx, sx):
-            if steep:
-                self.draw_pixel(y, x)
-            else:
-                self.draw_pixel(x, y)
-            line_error -= dy
-            if line_error < 0:
-                y += sy
-                line_error += dx
-
 
 ###############################################################################
 # text rendering
 
 def render(
-        font, text, *, margin=(0, 0), adjust_bearings=0,
+        font, text, *, margin=None, adjust_bearings=0,
         direction='', align='',
         missing='default', transformations=(),
     ):
@@ -180,27 +89,46 @@ def render(
         glyphs = _get_text_glyphs(
             rfont, text, direction, line_direction, base_direction, missing
         )
-    margin_x, margin_y = margin
+    # reduce all glyphs to avoid creating overwide margins
+    glyphs = tuple(tuple(_g.reduce() for _g in _row) for _row in glyphs)
     if direction in ('top-to-bottom', 'bottom-to-top'):
-        _get_canvas = _get_canvas_vertical
         _render = _render_vertical
+        min_margin = 0, _adjust_margins_vertical(glyphs)
     else:
-        _get_canvas = _get_canvas_horizontal
         _render = _render_horizontal
-    canvas = _get_canvas(font, glyphs, margin_x, margin_y, adjust_bearings)
-    canvas = _render(
-        font, glyphs, canvas, margin_x, margin_y, align, adjust_bearings
+        min_margin = _adjust_margins_horizontal(glyphs), 0
+    margin_x, margin_y = margin or min_margin
+    glyph_map = _render(
+        font, glyphs, margin_x, margin_y, align, adjust_bearings
     )
+    canvas = Canvas.from_glyph_map(glyph_map)
     return canvas
 
+
+def _adjust_margins_horizontal(glyphs):
+    """Ensure margins are wide enough for any negative bearings."""
+    min_left = min(_row[0].left_bearing for _row in glyphs)
+    min_right = min(_row[-1].right_bearing for _row in glyphs)
+    return -min(0, min_left, min_right)
+
+def _adjust_margins_vertical(glyphs):
+    """Ensure margins are wide enough for any negative bearings."""
+    min_top = min(_row[0].top_bearing for _row in glyphs)
+    min_bottom = min(_row[-1].bottom_bearing for _row in glyphs)
+    return -min(0, min_top, min_bottom)
+
+
 def _render_horizontal(
-        font, glyphs, canvas, margin_x, margin_y, align, adjust_bearings
+        font, glyphs, margin_x, margin_y, align, adjust_bearings
     ):
     """Render text horizontally."""
     # descent-line of the bottom-most row is at bottom margin
     # if a glyph extends below the descent line or left of the origin,
     # it may draw into the margin
-    baseline = canvas.height - margin_y - font.ascent
+    baseline = -margin_y - font.ascent
+    glyph_map = []
+    # append empty glyph at start and end for margins
+    glyph_map.append(Props(glyph=Glyph(), sheet=0, x=0, y=0))
     for glyph_row in glyphs:
         # x, y are relative to the left margin & baseline
         x = 0
@@ -218,24 +146,30 @@ def _render_horizontal(
             # advance origin to next glyph
             x += glyph.advance_width
         if align == 'right':
-            start = canvas.width - margin_x - x
+            start = -margin_x - x
         else:
             start = margin_x
+        # append empty glyph at start and end for margins
+        glyph_map.append(Props(
+            glyph=Glyph(), sheet=0,
+            x=start+x+margin_x, y=baseline-font.descent-margin_y
+        ))
         for glyph, x, y in zip(glyph_row, grid_x, grid_y):
-            # add ink, taking into account there may be ink already
-            # in case of negative bearings
-            canvas.blit(glyph.pixels, start + x, y)
+            glyph_map.append(Props(glyph=glyph, sheet=0, x=start+x, y=y))
         # move to next line
         baseline -= font.line_height
-    return canvas
+    return glyph_map
+
 
 def _render_vertical(
-        font, glyphs, canvas, margin_x, margin_y, align, adjust_bearings
+        font, glyphs, margin_x, margin_y, align, adjust_bearings
     ):
     """Render text vertically."""
     # central axis (with leftward bias)
     baseline = font.line_width // 2
     # default is ttb right-to-left
+    glyph_map = []
+    glyph_map.append(Props(glyph=Glyph(), sheet=0, x=0, y=0))
     for glyph_row in glyphs:
         y = 0
         grid_x, grid_y = [], []
@@ -245,62 +179,22 @@ def _render_vertical(
                 y -= adjust_bearings
             y -= glyph.advance_height
             grid_y.append(y + glyph.bottom_bearing)
-            grid_x.append(
-                baseline - glyph.width // 2 - glyph.shift_left
-            )
+            grid_x.append(baseline - glyph.width // 2 - glyph.shift_left)
         if align == 'bottom':
             start = margin_y - y
         else:
-            start = canvas.height - margin_y
+            start = -margin_y
+        # append empty glyph at start and end for margins
+        glyph_map.append(Props(
+            glyph=Glyph(), sheet=0,
+            x=baseline+(font.line_width+1)//2+margin_x*2,
+            y=start+y-margin_y
+        ))
         for glyph, x, y in zip(glyph_row, grid_x, grid_y):
-            # add ink, taking into account there may be ink already
-            # in case of negative bearings
-            canvas.blit(glyph.pixels, margin_x + x, start + y)
+            glyph_map.append(Props(glyph=glyph, sheet=0, x=margin_x+x, y=start+y))
         # move to next line
         baseline += font.line_width
-    return canvas
-
-def _get_canvas_horizontal(font, glyphs, margin_x, margin_y, adjust_bearings):
-    """Get the right size for vertical rendering."""
-    # find required width - margins plus max row width
-    if not glyphs:
-        width = 0
-    else:
-        width = max(
-            adjust_bearings * max(0, len(_row) - 1)
-            + sum(_glyph.advance_width for _glyph in _row)
-            for _row in glyphs
-        )
-    # find required height - margins plus line height for each row
-    # descent-line of the bottom-most row is at bottom margin
-    # ascent-line of top-most row is at top margin
-    # if a glyph extends below the descent line or left of the origin,
-    # it may draw into the margin
-    height = font.pixel_size + font.line_height * (len(glyphs)-1)
-    return _get_canvas(width, height, margin_x, margin_y)
-
-def _get_canvas_vertical(font, glyphs, margin_x, margin_y, adjust_bearings):
-    """Get the right size for vertical rendering."""
-    # find required height - margins plus max column height
-    height = 2 * margin_y
-    if glyphs:
-        height += max(
-            adjust_bearings * max(0, len(_col) - 1)
-            + sum(_glyph.advance_height + adjust_bearings for _glyph in _col)
-            for _col in glyphs
-        )
-    width = 2 * margin_x + font.line_width * len(glyphs)
-    return _get_canvas(width, height, margin_x, margin_y)
-
-def _get_canvas(width, height, margin_x, margin_y):
-    """Create canvas."""
-    # margin in border colour
-    canvas = Canvas.blank(2*margin_x + width, 2*margin_y + height, fill=-1)
-    # regular background
-    background = Canvas.blank(width, height, 0)
-    # blit coordinate is bottom left, but our coordinates work from top left
-    canvas.blit(background, margin_x, margin_y+height, operator=max)
-    return canvas
+    return glyph_map
 
 
 def _get_direction(font, text, direction, align):
@@ -357,7 +251,7 @@ def _get_direction(font, text, direction, align):
             base_direction = ('left-to-right', 'right-to-left')[base_level]
     else:
         if direction == 'normal':
-            if isstr:
+            if not isstr:
                 raise ValueError(
                     f'Writing direction `{direction}` only supported for Unicode text.'
                 )

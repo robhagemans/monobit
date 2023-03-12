@@ -11,9 +11,8 @@ from functools import cached_property
 from itertools import accumulate
 from typing import NamedTuple
 
-from .renderer import Canvas
+from .canvas import Canvas
 from .basetypes import Coord, Bounds
-from .glyph import Glyph
 
 
 class StrokeMove(NamedTuple):
@@ -29,7 +28,7 @@ class StrokePath:
     MOVE = 'm'
     LINE = 'l'
 
-    def __init__(self, path):
+    def __init__(self, path=()):
         """
         Initialise with sequence of moves.
         m {x} {y}  move by x units horizontally (right +) and y vertically (up +)
@@ -37,6 +36,8 @@ class StrokePath:
         """
         if isinstance(path, type(self)):
             self._path = path._path
+        elif isinstance(path, str):
+            self._path = self.from_string(path)._path
         else:
             self._path = tuple(StrokeMove(*_m) for _m in path)
 
@@ -45,6 +46,10 @@ class StrokePath:
         return '\n'.join(
             ' '.join(str(_i) for _i in _move) for _move in self._path
         )
+
+    def __bool__(self):
+        """Path is not empty."""
+        return bool(self._path)
 
     def as_svg(self):
         """SVG path 'd' value"""
@@ -114,16 +119,3 @@ class StrokePath:
             x += dx
             y += dy
         return canvas
-
-    def as_glyph(self, advance_width=None, **kwargs):
-        """Draw the path and create a Glyph."""
-        raster = self.draw()
-        if advance_width is None:
-            advance_width = self.bounds.right
-        return Glyph(
-            raster, path=self,
-            right_bearing=advance_width-self.bounds.right,
-            left_bearing=self.bounds.left,
-            shift_up=self.bounds.bottom,
-            **kwargs
-        )

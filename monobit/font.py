@@ -6,15 +6,9 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import logging
-from functools import wraps, partial
+from functools import wraps, partial, cache
 from pathlib import PurePath
 from unicodedata import normalize
-try:
-    # python 3.9
-    from functools import cache
-except ImportError:
-    from functools import lru_cache
-    cache = lru_cache()
 
 from .scripting import scriptable, get_scriptables, Any
 from .glyph import Glyph
@@ -309,6 +303,29 @@ class FontProperties(DefaultProps):
             return 0
         # if ink bounds go below the baseline, use them as descent
         return max(0, -self.ink_bounds.bottom)
+
+
+    @writable_property
+    def right_extent(self):
+        """
+        Horizontal ascent relative to baseline for vertical rendering.
+        Defaults to ink-right.
+        """
+        if not self._font.glyphs:
+            return 0
+        return max(0, self.ink_bounds.right)
+
+    @writable_property
+    def left_extent(self):
+        """
+        Horizontal descent relative to baseline for vertical rendering.
+        Defaults to ink-left.
+        """
+        if not self._font.glyphs:
+            return 0
+        # if ink bounds go below the baseline, use them as descent
+        return max(0, -self.ink_bounds.left)
+
 
     @checked_property
     def pixel_size(self):
@@ -959,7 +976,8 @@ class Font:
             self, *,
             codepoint_from:encoder='', char_from:encoder='',
             tag_from:tagger='', comment_from:tagger='',
-            overwrite:bool=False, match_whitespace:bool=True,
+            overwrite:bool=False,
+            match_whitespace:bool=True, match_graphical:bool=True
         ):
         """
         Add character and codepoint labels.
@@ -969,7 +987,8 @@ class Font:
         tag_from: tagger registered name or filename to use to set tag labels
         comment_from: tagger registered name or filename to use to set comments
         overwrite: overwrite existing codepoints and/or characters
-        match_whitespace: do not give blank glyphs a non-whitespace char label (default: true)
+        match_whitespace: do not give blank glyphs a non-whitespace char label (default: True)
+        match_graphical: do not give non-blank glyphs a non-graphical label (default: True)
         """
         nargs = sum(
             bool(_arg)
@@ -1012,9 +1031,11 @@ class Font:
         ))
 
     # need converter from string to set of labels to script this
-    #@scriptable
-    # pylint: disable=used-before-assignment
-    def subset(self, labels=(), *, chars:set=(), codepoints:set=(), tags:set=()):
+    @scriptable
+    def subset(
+            self, labels:tuple[Label]=(), *,
+            chars:tuple[Char]=(), codepoints:tuple[Codepoint]=(), tags:tuple[Tag]=(),
+        ):
         """
         Return a subset of the font.
 
@@ -1031,8 +1052,11 @@ class Font:
         )
         return self.modify(_glyph for _glyph in glyphs if _glyph is not None)
 
-    #@scriptable
-    def exclude(self, labels=(), *, chars:set=(), codepoints:set=(), tags:set=()):
+    @scriptable
+    def exclude(
+            self, labels:tuple[Label]=(), *,
+            chars:tuple[Char]=(), codepoints:tuple[Codepoint]=(), tags:tuple[Tag]=(),
+        ):
         """
         Return a font excluding a subset.
 
@@ -1260,8 +1284,8 @@ class Font:
         """
         # absolute value of most negative upshift, left_bearing, right_bearing
         add_shift_up = max(0, -min(_g.shift_up for _g in self.glyphs))
-        add_left_bearing = max(0, -min(_g.left_bearing for _g in self.glyphs))
-        add_right_bearing = max(0, -min(_g.right_bearing for _g in self.glyphs))
+        add_left_bearing = 0 #max(0, -min(_g.left_bearing for _g in self.glyphs))
+        add_right_bearing = 0 #max(0, -min(_g.right_bearing for _g in self.glyphs))
         glyphs = tuple(
             _g.expand(
                 # bring all glyphs to same height
