@@ -327,7 +327,7 @@ def _convert_nfnt(properties, glyphs, fontrec):
             _glyph.modify(right_kerning=KernTable({
                 _right: f'{_width:.2f}'
                 for _left, _right, _width in kern_table
-                if _left == int(_glyph.codepoint)
+                if _glyph.codepoint and _left == int(_glyph.codepoint)
             }))
             for _glyph in glyphs
         )
