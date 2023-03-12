@@ -67,7 +67,7 @@ if Image:
             infile,
             cell:Coord=None,
             margin:Coord=Coord(0, 0),
-            padding:Coord=Coord(0, 0),
+            padding:Coord=Coord(1, 1),
             scale:Coord=Coord(1, 1),
             table_size:Coord=None,
             count:int=0,
@@ -75,6 +75,7 @@ if Image:
             first_codepoint:int=0,
             order:str='row-major',
             direction:Coord=Coord(1, -1),
+            keep_empty:bool=False,
         ):
         """
         Extract font from grid-based image.
@@ -89,6 +90,7 @@ if Image:
         first_codepoint: codepoint value assigned to first glyph (default: 0)
         order: start with "r" for row-major order (default), "c" for column-major order
         direction: X, Y direction where +1, -1 (default) means left-to-right, top-to-bottom
+        keep_empty: keep empty glyphs (default: False)
         """
         # determine defaults & whether to work with cell-size or table size
         if table_size is None:
@@ -151,6 +153,9 @@ if Image:
             )
             for _index, _crop in enumerate(crops, first_codepoint)
         )
+        # drop empty glyphs
+        if not keep_empty:
+            glyphs = tuple(_g for _g in glyphs if _g.height and _g.width)
         return Font(glyphs)
 
     def _get_border_colour(img, cell, margin, padding):
@@ -216,7 +221,7 @@ if Image:
             image_format:str='',
             columns:int=32,
             margin:Coord=Coord(0, 0),
-            padding:Coord=Coord(0, 0),
+            padding:Coord=Coord(1, 1),
             scale:Coord=Coord(1, 1),
             order:str='row-major',
             direction:Coord=Coord(1, -1),
