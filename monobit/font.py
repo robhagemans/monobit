@@ -304,6 +304,29 @@ class FontProperties(DefaultProps):
         # if ink bounds go below the baseline, use them as descent
         return max(0, -self.ink_bounds.bottom)
 
+
+    @writable_property
+    def right_extent(self):
+        """
+        Horizontal ascent relative to baseline for vertical rendering.
+        Defaults to ink-right.
+        """
+        if not self._font.glyphs:
+            return 0
+        return max(0, self.ink_bounds.right)
+
+    @writable_property
+    def left_extent(self):
+        """
+        Horizontal descent relative to baseline for vertical rendering.
+        Defaults to ink-left.
+        """
+        if not self._font.glyphs:
+            return 0
+        # if ink bounds go below the baseline, use them as descent
+        return max(0, -self.ink_bounds.left)
+
+
     @checked_property
     def pixel_size(self):
         """Get nominal pixel size. Equals ascent + descent."""
