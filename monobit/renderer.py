@@ -373,7 +373,7 @@ def _get_direction(font, text, direction, align):
             base_direction = ('left-to-right', 'right-to-left')[base_level]
     else:
         if direction == 'normal':
-            if isstr:
+            if not isstr:
                 raise ValueError(
                     f'Writing direction `{direction}` only supported for Unicode text.'
                 )
