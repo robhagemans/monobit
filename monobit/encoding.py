@@ -1019,8 +1019,7 @@ class Unicode(Encoder):
                     for _start in range(0, len(codepoint), 4)
                 )
                 try:
-                    # TODO: should we keep is_graphical? make it a setting?
-                    return ''.join(_c for _c in chars if is_graphical(_c))
+                    return ''.join(chars)
                 except ValueError:
                     return ''
 
