@@ -155,7 +155,7 @@ class Codepoint(bytes, Label):
                     f'Cannot convert value {repr(value)} of type `{type(value)}` to codepoint label.'
                 ) from None
         if len(value) > 1:
-            value = value.lstrip(b'\0')
+            value = value.lstrip(b'\0') or b'\0'
         return super().__new__(cls, value)
 
     def __repr__(self):
@@ -166,6 +166,10 @@ class Codepoint(bytes, Label):
         """Convert codepoint label to str."""
         return '0x' + self.hex()
 
+    def __lt__(self, other):
+        """Order like ints."""
+        return int(self) < int(other)
+
     @property
     def value(self):
         """Get bytes content."""
@@ -173,6 +177,8 @@ class Codepoint(bytes, Label):
 
     def __int__(self):
         """Get integer value."""
+        if not self:
+            raise ValueError('Empty codepoint cannot be converted to int.')
         return bytes_to_int(self)
 
 
