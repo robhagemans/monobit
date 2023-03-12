@@ -373,7 +373,7 @@ def _parse_xml(data):
         result['kernings'] = [
             _KERNING(**_dict_to_ints(_elem.attrib))
             for _elem in root.find('kernings').iterfind('kerning')
-        ],
+        ]
     return result
 
 def _parse_json(data):
@@ -538,9 +538,8 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=(),
         # check if font is monochromatic
         colourset = list(set(_tup for _sprite in sprites for _tup in _sprite))
         if len(colourset) <= 1:
-            logging.warning('All glyphs are blank.')
             # only one colour found
-            bg, fg = colourset[0], None
+            bg, fg = None, colourset[0]
             # note that if colourset is empty, all char widths/heights must be zero
         elif len(colourset) > 2:
             raise FileFormatError(
@@ -756,6 +755,7 @@ def _convert_to_bmfont(
             chnl=(1 << (_entry.sheet%4)) if packed else 15,
         )
         for _entry in glyph_map
+        if _glyph_id(_entry.glyph, font.encoding) >= 0
     ]
     # save images; create page table
     props['pages'] = pages
@@ -812,15 +812,30 @@ def _convert_to_bmfont(
         'blueChnl': 0,
     }
     # kerning section
-    props['kernings'] = [
-        {
-            'first': _glyph_id(_glyph, font.encoding),
-            'second': _glyph_id(font.get_glyph(_to), font.encoding),
-            'amount': int(_amount)
-        }
+    kerningtable = [
+        (_glyph, font.get_glyph(_to), _amount)
         for _glyph in font.glyphs
         for _to, _amount in _glyph.right_kerning.items()
     ]
+    kerningtable.extend(
+        (font.get_glyph(_to), _glyph, _amount)
+        for _glyph in font.glyphs
+        for _to, _amount in _glyph.left_kerning.items()
+    )
+    kerningtable = (
+        (_glyph_id(_l, font.encoding), _glyph_id(_r, font.encoding), int(_amt))
+        for _l, _r, _amt in kerningtable
+    )
+    # exclude unsupported ids
+    props['kernings'] = tuple(
+        {
+            'first': _left,
+            'second': _right,
+            'amount': _amount,
+        }
+        for _left, _right, _amount in kerningtable
+        if _left >= 0 and _right >= 0
+    )
     return props
 
 
@@ -831,6 +846,8 @@ def _glyph_id(glyph, encoding):
             logging.warning(
                 f"Can't store multi-codepoint grapheme sequence {ascii(char)}."
             )
+            return -1
+        if not char:
             return -1
         return ord(char)
     if not glyph.codepoint:

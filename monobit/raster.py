@@ -1,5 +1,5 @@
 """
-monobit.glyph - representation of single glyph
+monobit.raster - bitmap raster
 
 (c) 2019--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

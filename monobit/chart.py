@@ -7,7 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 from itertools import product
 
-from .renderer import Canvas
+from .canvas import Canvas
 from .binary import ceildiv
 from .properties import Props
 from .basetypes import Coord
@@ -19,12 +19,10 @@ def chart(
         order='row-major', direction=(1, -1),
     ):
     """Create font chart matrix."""
-    glyph_map, width, height = grid_map(
+    glyph_map, _, _ = grid_map(
         font, columns, margin, padding, order, direction,
     )
-    canvas = Canvas.blank(width, height)
-    for entry in glyph_map:
-        canvas.blit(entry.glyph, entry.x, entry.y, operator=max)
+    canvas = Canvas.from_glyph_map(glyph_map)
     return canvas
 
 

@@ -936,9 +936,9 @@ def _create_xlfd_properties(font):
         else:
             default_codepoint = default_glyph.codepoint
         if not len(default_codepoint):
-            logging.error('BDF default glyph must have a character or codepoint.')
+            logging.debug('Cannot store default glyph in BDF without character or codepoint label.')
         elif len(default_codepoint) > 1:
-            logging.error('BDF default glyph must not be a grapheme sequence.')
+            logging.warning('Cannot store grapheme sequence as a BDF default glyph.')
         else:
             xlfd_props['DEFAULT_CHAR'] = default_codepoint[0]
         # unicode encoding
@@ -947,7 +947,7 @@ def _create_xlfd_properties(font):
     else:
         default_codepoint = default_glyph.codepoint
         if not len(default_codepoint):
-            logging.error('BDF default glyph must have a character or codepoint.')
+            logging.debug('Cannot store default glyph in BDF without character or codepoint label.')
         else:
             xlfd_props['DEFAULT_CHAR'] = bytes_to_int(default_codepoint)
         # try preferred name
@@ -1081,15 +1081,16 @@ def _save_bdf(font, outstream):
                 ('DWIDTH1', f'0 {dwidth1_y}'),
             ])
         # bitmap
-        hex = glyph.as_hex().upper()
-        width = len(hex) // glyph.height
-        split_hex = [
-            hex[_offs:_offs+width]
-            for _offs in range(0, len(hex), width)
-        ]
-        glyphdata.append(
-            ('BITMAP', '' if not split_hex else '\n' + '\n'.join(split_hex))
-        )
+        if not glyph.height:
+            glyphdata.append(('BITMAP', ''))
+        else:
+            hex = glyph.as_hex().upper()
+            width = len(hex) // glyph.height
+            split_hex = [
+                hex[_offs:_offs+width]
+                for _offs in range(0, len(hex), width)
+            ]
+            glyphdata.append(('BITMAP', '\n' + '\n'.join(split_hex)))
         glyphs.append(glyphdata)
     # write out
     for key, value in bdf_props:
