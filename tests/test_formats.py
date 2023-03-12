@@ -42,7 +42,7 @@ class TestFormats(BaseTester):
         monobit.save(self.fixed4x6, fon_file, format='mzfon')
         # read back
         font, *_ = monobit.load(fon_file)
-        self.assertEqual(len(font.glyphs), 224)
+        self.assertEqual(len(font.glyphs), 256)
         self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
     def test_import_fnt(self):
@@ -57,7 +57,7 @@ class TestFormats(BaseTester):
         monobit.save(self.fixed4x6, fnt_file, format='win', version=1)
         # read back
         font, *_ = monobit.load(fnt_file)
-        self.assertEqual(len(font.glyphs), 224)
+        self.assertEqual(len(font.glyphs), 256)
         self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
     def test_export_fnt_v1_proportional(self):
@@ -79,7 +79,7 @@ class TestFormats(BaseTester):
         monobit.save(self.fixed4x6, fnt_file, format='win', version=2)
         # read back
         font, *_ = monobit.load(fnt_file)
-        self.assertEqual(len(font.glyphs), 224)
+        self.assertEqual(len(font.glyphs), 256)
         self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
     def test_export_fnt_v3(self):
@@ -88,7 +88,7 @@ class TestFormats(BaseTester):
         monobit.save(self.fixed4x6, fnt_file, format='win', version=3)
         # read back
         font, *_ = monobit.load(fnt_file)
-        self.assertEqual(len(font.glyphs), 224)
+        self.assertEqual(len(font.glyphs), 256)
         self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
     # Windows PE files
@@ -628,7 +628,7 @@ class TestFormats(BaseTester):
         file = self.temp_path / '4x6.gft'
         monobit.save(self.fixed4x6, file, format='gdos')
         font, *_ = monobit.load(file)
-        self.assertEqual(len(font.glyphs), 224)
+        self.assertEqual(len(font.glyphs), 256)
         self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
     # vfont
@@ -657,7 +657,7 @@ class TestFormats(BaseTester):
         monobit.save(self.fixed4x6, file, format='vfont')
         font, *_ = monobit.load(file)
         # only 8-bit codepoints; input font excludes [0, 0x20) and [0x80, 0xa0)
-        self.assertEqual(len(font.glyphs), 191)
+        self.assertEqual(len(font.glyphs), 192)
         self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
     # fontx
@@ -684,8 +684,9 @@ class TestFormats(BaseTester):
         file = self.temp_path / '4x6.fnt'
         monobit.save(self.fixed4x6, file, format='fontx')
         font, *_ = monobit.load(file)
-        # including 1000 blanks due to (our way of dealing with) contiguous-block structure
-        self.assertEqual(len(font.glyphs), 1919)
+        # including 1032 blanks due to (our way of dealing with) contiguous-block structure
+        # note 4x6 has a glyph at 0x0
+        self.assertEqual(len(font.glyphs), 1951)
         self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
     # Daisy-Dot
