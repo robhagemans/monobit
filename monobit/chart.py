@@ -17,8 +17,16 @@ def chart(
         font,
         columns=32, margin=(0, 0), padding=(0, 0),
         order='row-major', direction=(1, -1),
+        codepoint_range=None,
     ):
     """Create font chart matrix."""
+    if codepoint_range:
+        # make contiguous
+        glyphs = tuple(
+            font.get_glyph(_codepoint, missing='empty')
+            for _codepoint in range(codepoint_range[0], codepoint_range[1]+1)
+        )
+        font = font.modify(glyphs)
     glyph_map, _, _ = grid_map(
         font, columns, margin, padding, order, direction,
     )
