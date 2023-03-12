@@ -289,8 +289,6 @@ def save_xbin(fonts, outstream):
     else:
         count = 256
     glyphs = (font.get_glyph(_cp, missing=blank) for _cp in range(count))
-    # TODO: take codepoint or ordinal?
-    # TODO: bring to normal form
     header = _XBIN_HEADER(
         magic=_XBIN_MAGIC,
         fontsize=font.cell_size.y,
