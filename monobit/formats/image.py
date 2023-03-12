@@ -116,9 +116,9 @@ if Image:
         step_y = cell.y * scale.y + padding.y
         table_size_x, table_size_y = table_size
         if table_size.x <= 0:
-            table_size_x = (img.width - margin.x) // step_x
+            table_size_x = ceildiv(img.width - margin.x, step_x)
         if table_size.y <= 0:
-            table_size_y = (img.height - margin.y) // step_y
+            table_size_y = ceildiv(img.height - margin.y, step_y)
         traverse = grid_traverser(table_size_x, table_size_y, order, direction)
         # extract sub-images
         crops = tuple(
