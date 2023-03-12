@@ -89,6 +89,8 @@ def render(
         glyphs = _get_text_glyphs(
             rfont, text, direction, line_direction, base_direction, missing
         )
+    # reduce all glyphs to avoid creating overwide margins
+    glyphs = tuple(tuple(_g.reduce() for _g in _row) for _row in glyphs)
     if direction in ('top-to-bottom', 'bottom-to-top'):
         _render = _render_vertical
         min_margin = 0, _adjust_margins_vertical(glyphs)
