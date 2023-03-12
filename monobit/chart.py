@@ -32,7 +32,7 @@ def chart(
     glyph_map, _, _ = grid_map(
         font, columns, margin, padding, order, direction,
     )
-    canvas = Canvas.from_glyph_map(glyph_map)
+    canvas = Canvas.from_glyph_map(glyph_map, operator=max)
     return canvas
 
 
