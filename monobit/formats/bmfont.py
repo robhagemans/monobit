@@ -684,7 +684,7 @@ def _create_bmfont(
     # map glyphs to image
     if grid:
         margin  = Coord(padding.left, padding.top)
-        glyph_map, width, height = grid_map(
+        glyph_map = grid_map(
             font,
             columns=32, margin=margin, padding=spacing,
             # direction - note Image coordinates are ltr, ttb
@@ -696,14 +696,15 @@ def _create_bmfont(
         if size is None:
             n_layers = 4 if packed else 1
             size = _estimate_size(glyphs, n_layers, padding, spacing)
-        glyph_map, width, height = _map_glyphs_to_image(
+        glyph_map = _map_glyphs_to_image(
             glyphs, size=size, spacing=spacing, padding=padding,
         )
     # draw images
-    sheets = _draw_images(glyph_map, width, height, packed, paper, ink, border)
+    sheets = _draw_images(glyph_map, packed, paper, ink, border)
     # save images and record names
     pages = _save_pages(outfile, font, sheets, image_format)
     # create the descriptor data structure
+    width, height  = sheets[0].width, sheets[0].height
     props = _convert_to_bmfont(
         font, pages, glyph_map, width, height, packed, padding, spacing
     )
@@ -1003,15 +1004,10 @@ def _save_pages(outfile, font, sheets, image_format):
 ###############################################################################
 # draw spritesheets
 
-def _draw_images(glyph_map, width, height, packed, paper, ink, border):
+def _draw_images(glyph_map, packed, paper, ink, border):
     """Draw images based on glyph map."""
-    last = max(_entry.sheet for _entry in glyph_map)
-    images = [Image.new('L', (width, height), border) for _ in range(last+1)]
-    for entry in glyph_map:
-        charimg = Image.new('L', (entry.glyph.width, entry.glyph.height))
-        data = entry.glyph.as_vector(ink, paper)
-        charimg.putdata(data)
-        images[entry.sheet].paste(charimg, (entry.x, entry.y))
+    images = glyph_map_to_images(glyph_map, paper=paper, ink=ink, border=border)
+    width, height = images[0].width, images[0].height
     # pack 4 sheets per image in RGBA layers
     if packed:
         # grouper: quartets, fill with empties
@@ -1023,6 +1019,26 @@ def _draw_images(glyph_map, width, height, packed, paper, ink, border):
             Image.merge('RGBA', (_q[2], _q[1], _q[0], _q[3]))
             for _q in quartets
         )
+    return images
+
+
+def glyph_map_to_images(glyph_map, *, paper, ink, border):
+    """Draw images based on glyph map."""
+    paper, ink, border = 0, 255, 32
+    last = max(_entry.sheet for _entry in glyph_map)
+    min_x = min(_entry.x for _entry in glyph_map)
+    min_y = min(_entry.y for _entry in glyph_map)
+    max_x = max(_entry.x + _entry.glyph.width for _entry in glyph_map)
+    max_y = max(_entry.y + _entry.glyph.height for _entry in glyph_map)
+    # we don't need +1 as we already included the width/height of the glyphs
+    # e.g. if I have a 2-pixel wide glyph at x=0, I need a 2-pixel image
+    width, height = max_x - min_x, max_y - min_y
+    images = [Image.new('L', (width, height), border) for _ in range(last+1)]
+    for entry in glyph_map:
+        charimg = Image.new('L', (entry.glyph.width, entry.glyph.height))
+        data = entry.glyph.as_vector(ink, paper)
+        charimg.putdata(data)
+        images[entry.sheet].paste(charimg, (entry.x, entry.y))
     return images
 
 
@@ -1075,7 +1091,7 @@ def _map_glyphs_to_image(glyphs, *, size, spacing, padding):
             break
     # put chars in original glyph order
     glyph_map = [glyph_map[order_mapping[_i]] for _i in range(len(glyph_map))]
-    return glyph_map, width, height
+    return glyph_map
 
 
 def _estimate_size(glyphs, n_layers, padding, spacing):

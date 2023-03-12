@@ -7,7 +7,6 @@ licence: https://opensource.org/licenses/MIT
 
 from itertools import product
 
-from .canvas import Canvas
 from .binary import ceildiv
 from .properties import Props
 from .basetypes import Coord
@@ -17,13 +16,25 @@ def chart(
         font,
         columns=32, margin=(0, 0), padding=(0, 0),
         order='row-major', direction=(1, -1),
+        codepoint_range=None,
     ):
     """Create font chart matrix."""
-    glyph_map, _, _ = grid_map(
+    font = font.label(codepoint_from=font.encoding)
+    if not codepoint_range:
+        codepoints = font.get_codepoints()
+        if not codepoints:
+            raise ValueError('No codepoint labels found.')
+        codepoint_range = int(min(codepoints)), int(max(codepoints))
+    # make contiguous
+    glyphs = tuple(
+        font.get_glyph(_codepoint, missing='empty')
+        for _codepoint in range(codepoint_range[0], codepoint_range[1]+1)
+    )
+    font = font.modify(glyphs)
+    glyph_map = grid_map(
         font, columns, margin, padding, order, direction,
     )
-    canvas = Canvas.from_glyph_map(glyph_map)
-    return canvas
+    return glyph_map
 
 
 def grid_map(
@@ -51,7 +62,7 @@ def grid_map(
     # determine image geometry
     width = columns * step_x + 2 * margin.x - padding.x
     height = rows * step_y + 2 * margin.y - padding.y
-    return glyph_map, width, height
+    return glyph_map
 
 
 def grid_traverser(columns, rows, order, direction):

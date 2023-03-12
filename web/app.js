@@ -93,11 +93,11 @@ async function showFont() {
     import monobit
 
     font, *_ = monobit.load(path)
-    raster = monobit.chart(font, columns=32)
+    raster = monobit.chart(font, columns=16, codepoint_range=(0,255))
     #raster = monobit.render(font, sample, direction='ltr f')
 
     # scale for crisper result on JS canvas
-    raster = raster.stretch(2, 2)
+    raster = raster.stretch(4, 4)
 
     # convert to RGBA vector
     rgba = raster.as_vector(ink=(255, 255, 255, 255), paper=(0, 0, 0, 255))

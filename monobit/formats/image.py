@@ -21,6 +21,7 @@ from ..magic import FileFormatError
 from ..font import Font
 from ..glyph import Glyph
 from ..chart import chart, grid_traverser
+from ..canvas import Canvas
 
 
 DEFAULT_IMAGE_FORMAT = 'png'
@@ -67,7 +68,7 @@ if Image:
             infile,
             cell:Coord=None,
             margin:Coord=Coord(0, 0),
-            padding:Coord=Coord(0, 0),
+            padding:Coord=Coord(1, 1),
             scale:Coord=Coord(1, 1),
             table_size:Coord=None,
             count:int=0,
@@ -75,6 +76,7 @@ if Image:
             first_codepoint:int=0,
             order:str='row-major',
             direction:Coord=Coord(1, -1),
+            keep_empty:bool=False,
         ):
         """
         Extract font from grid-based image.
@@ -89,6 +91,7 @@ if Image:
         first_codepoint: codepoint value assigned to first glyph (default: 0)
         order: start with "r" for row-major order (default), "c" for column-major order
         direction: X, Y direction where +1, -1 (default) means left-to-right, top-to-bottom
+        keep_empty: keep empty glyphs (default: False)
         """
         # determine defaults & whether to work with cell-size or table size
         if table_size is None:
@@ -116,9 +119,9 @@ if Image:
         step_y = cell.y * scale.y + padding.y
         table_size_x, table_size_y = table_size
         if table_size.x <= 0:
-            table_size_x = (img.width - margin.x) // step_x
+            table_size_x = ceildiv(img.width - margin.x, step_x)
         if table_size.y <= 0:
-            table_size_y = (img.height - margin.y) // step_y
+            table_size_y = ceildiv(img.height - margin.y, step_y)
         traverse = grid_traverser(table_size_x, table_size_y, order, direction)
         # extract sub-images
         crops = tuple(
@@ -151,6 +154,9 @@ if Image:
             )
             for _index, _crop in enumerate(crops, first_codepoint)
         )
+        # drop empty glyphs
+        if not keep_empty:
+            glyphs = tuple(_g for _g in glyphs if _g.height and _g.width)
         return Font(glyphs)
 
     def _get_border_colour(img, cell, margin, padding):
@@ -216,7 +222,7 @@ if Image:
             image_format:str='',
             columns:int=32,
             margin:Coord=Coord(0, 0),
-            padding:Coord=Coord(0, 0),
+            padding:Coord=Coord(1, 1),
             scale:Coord=Coord(1, 1),
             order:str='row-major',
             direction:Coord=Coord(1, -1),
@@ -236,24 +242,15 @@ if Image:
         paper: background colour R,G,B 0--255 (default: 0,0,0)
         ink: foreground colour R,G,B 0--255 (default: 255,255,255)
         border: border colour R,G,B 0--255 (default 32,32,32)
-        codepoint_range: first and last codepoint to include (includes bounds and undefined codepoints; default: False)
+        codepoint_range: first and last codepoint to include (includes bounds and undefined codepoints; default: all codepoints)
         """
         if len(fonts) > 1:
             raise FileFormatError('Can only save one font to image file.')
         font = fonts[0]
-        if codepoint_range:
-            # make contiguous
-            glyphs = tuple(
-                font.get_glyph(_codepoint, missing='empty')
-                for _codepoint in range(codepoint_range[0], codepoint_range[1]+1)
-            )
-            font = font.modify(glyphs)
         font = font.equalise_horizontal()
         font = font.stretch(*scale)
-        img = (
-            chart(font, columns, margin, padding, order, direction)
-            .as_image(border=border, paper=paper, ink=ink)
-        )
+        glyph_map = chart(font, columns, margin, padding, order, direction, codepoint_range)
+        img = Canvas.from_glyph_map(glyph_map).as_image(border=border, paper=paper, ink=ink)
         try:
             img.save(outfile, format=image_format or Path(outfile).suffix[1:])
         except (KeyError, ValueError, TypeError):
