@@ -335,9 +335,9 @@ class Glyph:
         # use codepage to find char if not set
         if char_from and (overwrite or not self.char):
             char = char_from.char(*labels)
-            if match_whitespace and self.is_blank() and not is_whitespace(char):
+            if match_whitespace and self.is_blank() and char and not is_whitespace(char):
                 return self
-            if match_graphical and not self.is_blank() and not is_graphical(char):
+            if match_graphical and not self.is_blank() and char and not is_graphical(char):
                 return self
             return self.modify(char=char)
         if tag_from:
