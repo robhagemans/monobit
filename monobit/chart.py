@@ -20,9 +20,12 @@ def chart(
         codepoint_range=None,
     ):
     """Create font chart matrix."""
+    font = font.label(codepoint_from=font.encoding)
     if not codepoint_range:
         codepoints = font.get_codepoints()
-        codepoint_range = min(codepoints), max(codepoints)
+        if not codepoints:
+            raise ValueError('No codepoint labels found.')
+        codepoint_range = int(min(codepoints)), int(max(codepoints))
     # make contiguous
     glyphs = tuple(
         font.get_glyph(_codepoint, missing='empty')
