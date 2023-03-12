@@ -6,13 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import logging
-
-try:
-    # python 3.9
-    from functools import cache
-except ImportError:
-    from functools import lru_cache
-    cache = lru_cache()
+from functools import cache
 
 from .encoding import is_graphical, is_whitespace
 from .labels import Codepoint, Char, Tag, to_label
@@ -23,6 +17,7 @@ from .properties import (
 )
 from .basetypes import Coord, Bounds, to_number
 from .scripting import scriptable
+from .vector import StrokePath
 
 
 ##############################################################################
@@ -99,7 +94,7 @@ class GlyphProperties(DefaultProps):
     offset: Coord
 
     # path segments for stroke fonts
-    path: str
+    path: StrokePath
 
 
     @checked_property
@@ -312,7 +307,7 @@ class Glyph:
     def label(
             self, codepoint_from=None, char_from=None,
             tag_from=None, comment_from=None,
-            overwrite=False, match_whitespace=True,
+            overwrite=False, match_whitespace=True, match_graphical=True,
         ):
         """
            Set labels or comment using provided encoder or tagger object.
@@ -322,7 +317,8 @@ class Glyph:
            tag_from: Tagger object used to set tag labels
            comment_from: Tagger object used to set comment
            overwrite: overwrite codepoint or char if already given
-           match_whitespace: do not give blank glyphs a non-whitespace char label (default: true)
+           match_whitespace: do not give blank glyphs a non-whitespace char label (default: True)
+           match_graphical: do not give non-blank glyphs a non-graphical label (default: True)
         """
         if sum(
                 _arg is not None
@@ -339,8 +335,11 @@ class Glyph:
         # use codepage to find char if not set
         if char_from and (overwrite or not self.char):
             char = char_from.char(*labels)
-            if not match_whitespace or not self.is_blank() or is_whitespace(char):
-                return self.modify(char=char)
+            if match_whitespace and self.is_blank() and char and not is_whitespace(char):
+                return self
+            if match_graphical and not self.is_blank() and char and not is_graphical(char):
+                return self
+            return self.modify(char=char)
         if tag_from:
             return self.modify(tag=tag_from.tag(*labels))
         if comment_from:
@@ -505,6 +504,20 @@ class Glyph:
         """Create glyph from hex string."""
         pixels = Raster.from_hex(hexstr, width, height, align=align)
         return cls(pixels, **kwargs)
+
+    @classmethod
+    def from_path(cls, strokepath, *, advance_width=None, **kwargs):
+        """Draw the StrokePath and create a Glyph."""
+        raster = strokepath.draw()
+        if advance_width is None:
+            advance_width = strokepath.bounds.right
+        return cls(
+            raster, path=strokepath,
+            right_bearing=advance_width-strokepath.bounds.right,
+            left_bearing=strokepath.bounds.left,
+            shift_up=strokepath.bounds.bottom,
+            **kwargs
+        )
 
     ##########################################################################
     # conversion

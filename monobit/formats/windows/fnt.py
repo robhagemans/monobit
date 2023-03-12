@@ -495,9 +495,8 @@ def _convert_vector_glyphs(glyphdata, win_props):
             ink = StrokePath.LINE
         # Windows uses top-left coordinates
         path = StrokePath(path).flip().shift(0, win_props.dfAscent)
-        glyphs.append(path.as_glyph(
-            advance_width=glyphrec.width,
-            codepoint=glyphrec.codepoint
+        glyphs.append(Glyph.from_path(
+            path, advance_width=glyphrec.width, codepoint=glyphrec.codepoint
         ))
     return glyphs
 
@@ -857,7 +856,7 @@ def _convert_vector_glyphs_to_fnt(glyphs, win_ascent):
     """Convert paths to a vector character table."""
     glyphdata = []
     for glyph in glyphs:
-        path = StrokePath.from_string(glyph.path).shift(0, -win_ascent).flip()
+        path = glyph.path.shift(0, -win_ascent).flip()
         code = (
             (-128, _x, _y) if _ink == StrokePath.MOVE else (_x, _y)
             for _ink, _x, _y in path.as_moves()
