@@ -91,9 +91,11 @@ async function showFont() {
     let pycode = `if 1:
     import js
     import monobit
+    print(monobit.__version__)
 
     font, *_ = monobit.load(path)
-    raster = monobit.chart(font, columns=16, codepoint_range=(0,255))
+    glyph_map = monobit.chart(font, columns=16, codepoint_range=(0,255))
+    raster = monobit.canvas.Canvas.from_glyph_map(glyph_map)
     #raster = monobit.render(font, sample, direction='ltr f')
 
     # scale for crisper result on JS canvas
