@@ -396,6 +396,21 @@ Or they can be related to processing:
 - `history`: summary of processing steps applied since extraction.
 
 
+##### Stroke definitions
+
+- `path` is a special glyph property that contains a stroke sequence describing
+    how to draw the glyph. The stroke path is defined as a sequence of straight lines
+    and moves to be applied sequentially, starting from the glyph origin.
+    Path elements are given as a keyword followed by relative x,y offsets where the x coordinate
+    increases rightward and the y coordinate increases upward.
+        `m` _x_ _y_ moves _x_ design units to the right and _y_ design units up
+        `l` _x_ _y_ draws a line _x_ design units to the right and _y_ design units up
+    Stroke definitions are scalable and can be converted to pixel values by applying
+    a scaling factor, which may differ between x and y directions but must be
+    constant across path elements. The glyph bitmap to which the `path` property
+    attaches may be empty (`-`) or a realisation of the stroke drawing.
+
+
 ##### Deprecated properties
 
 The following properties are recognised for backward compatibility, but
