@@ -44,12 +44,16 @@ In the spirit of human-friendliness, a short example is probably more informativ
     # This is a global comment
     # spanning multiple lines.
 
+    # the file starts with global properties
+
     name: Test Roman 8px
     family: Test
     notice:
         Test is the property of T€$ţ0Яζ Inc.
         It's not a very useful font.
     encoding: totally-made-up
+
+    # glyph definitions follow after the global properties section
 
     # The letter A is the first letter of the Latin alphabet.
     # We've got three kinds of labels: unicode character, codepage, and tag.
@@ -161,8 +165,9 @@ Specification
   above, or UTF-8 noncharacters.
 
 #### Components
-`yaff` files consist of *glyph definitions*, *properties* and *comments*.
+`yaff` files consist of *properties*, *glyph definitions*, and *comments*.
 Each of these components is optional; an empty file is a valid (if pointless) `yaff` file.
+Font properties must not follow glyph definitions.
 
 #### Comments
 A line starting with a hash `#` contains a *comment* only.
