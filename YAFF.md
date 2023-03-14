@@ -302,11 +302,6 @@ Per-glyph only metrics are:
   specified in the `left-kerning` property of the `V` glyph, as a pair of the label for the `A` glyph and
   a numeric adjustment value. If both `left-kerning` and `right-kerning` are specified, they add up.
 
-Deprecated synonyms are:
-- `offset` (_x_ _y_ pair): equal to (`left-bearing`, `shift-up`).
-- `tracking`: equal to `right-bearing`.
-- `kern-to`: equal to `right-kerning`.
-
 
 ##### Rendering hints
 
@@ -368,11 +363,6 @@ Characteristics inferred from the glyphs are:
   - `character-cell`: all glyphs can be defined on a raster of fixed size and displayed without overlap.
   - `multi-cell`: like `character-cell`, but some glyphs may take up two cells.
 
-Deprecated synonyms are:
-- `average-advance`: equal to `average-width`.
-- `max-advance`: equal to `max-width`.
-- `cap-advance`: equal to `cap-width`.
-
 Characteristics that give a font's identity are:
 - `family`: typeface or font family name
 - `point-size`: nominal size of the font in points
@@ -404,6 +394,22 @@ Or they can be related to processing:
 - `source-name`: file name from which the font was originally extracted.
 - `source-format`: file format from which the font was originally extracted.
 - `history`: summary of processing steps applied since extraction.
+
+
+##### Deprecated properties
+
+The following properties are recognised for backward compatibility, but
+should not be used in new files:
+
+Per-glyph:
+- `offset` (_x_ _y_ pair): equal to (`left-bearing`, `shift-up`).
+- `tracking`: equal to `right-bearing`.
+- `kern-to`: equal to `right-kerning`.
+
+Global:
+- `average-advance`: equal to `average-width`.
+- `max-advance`: equal to `max-width`.
+- `cap-advance`: equal to `cap-width`.
 
 
 ##### Illustration of key properties
