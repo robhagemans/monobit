@@ -57,7 +57,7 @@ def load_amiga_fc(f):
         # font files given relative to local directory
         local_dir = Path(f.name).parent
         for filename in f.where.iter_sub(local_dir):
-            if Path(filename.lower()).relative_to(local_dir) == Path(name.lower()):
+            if Path(filename.lower()).relative_to(str(local_dir).lower()) == Path(name.lower()):
                 logging.debug('Reading font file %s on %r', filename, f.where)
                 with f.where.open(filename, 'r') as stream:
                     pack.append(_load_amiga(stream, tags))
