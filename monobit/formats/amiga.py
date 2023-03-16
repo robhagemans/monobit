@@ -32,6 +32,8 @@ def load_amiga_fc(f):
     elif fch.fch_FileID == _TFCH_ID:
         logging.debug('Amiga FCH using TFontContents')
         contentsarray = _T_FONT_CONTENTS.array(fch.fch_NumEntries).read_from(f)
+    elif fch.fch_FileID == _NONBITMAP_ID:
+        raise FileFormatError('IntelliFont Amiga outline fonts not supported.')
     else:
         raise FileFormatError(
             'Not an Amiga Font Contents file: '
@@ -105,6 +107,7 @@ _MAXFONTNAME = 32
 # https://wiki.amigaos.net/wiki/Graphics_Library_and_Text#The_Composition_of_a_Bitmap_Font_on_Disk
 _FCH_ID = 0x0f00
 _TFCH_ID = 0x0f02
+_NONBITMAP_ID = 0x0f03
 
 # hunk ids
 # http://amiga-dev.wikidot.com/file-format:hunk
