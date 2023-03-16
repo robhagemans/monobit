@@ -231,8 +231,8 @@ def save_all(
     logging.info('Writing all to `%s`.', container.name)
     for font in pack:
         if format and not template:
-            # use format name as suffix
-            template = '{name}.' f'{format}'
+            # generate name from format
+            template = savers.get_template(format)
         # fill out template
         name = font.format_properties(template)
         # generate unique filename
