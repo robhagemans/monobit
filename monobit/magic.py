@@ -75,6 +75,10 @@ class MagicRegistry:
         self._default_text = default_text
         self._default_binary = default_binary
 
+    def get_formats(self):
+        """Get tuple of all registered format names."""
+        return tuple(self._names.keys())
+
     def get_for(self, file=None, format=''):
         """
         Get loader/saver function for this format.
