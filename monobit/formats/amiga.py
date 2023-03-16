@@ -55,16 +55,10 @@ def load_amiga_fc(f):
             tags = _TAG_ITEM.array(fc.tfc_TagCount).from_bytes(fc.tfc_FileName[tag_start:])
         else:
             tags = ()
-        # amiga fs is case insensitive; need to loop over listdir and match
-        # font files given relative to local directory
+        # note case insensitive match on open (amiga os is case-insensitive
         local_dir = Path(f.name).parent
-        for filename in f.where.iter_sub(local_dir):
-            if Path(filename.lower()).relative_to(str(local_dir).lower()) == Path(name.lower()):
-                logging.debug('Reading font file %s on %r', filename, f.where)
-                with f.where.open(filename, 'r') as stream:
-                    pack.append(_load_amiga(stream, tags))
-            else:
-                logging.debug('Skipping file %s', filename)
+        with f.where.open(local_dir / name, 'r') as stream:
+            pack.append(_load_amiga(stream, tags))
     return pack
 
 
