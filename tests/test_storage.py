@@ -7,6 +7,7 @@ import os
 import io
 import unittest
 import logging
+import glob
 
 import monobit
 from .base import BaseTester
@@ -77,6 +78,16 @@ class TestContainers(BaseTester):
     def test_tgz(self):
         """Test importing/exporting compressed tar files."""
         self._test_container('tar.gz')
+
+    def test_dir(self):
+        """Test exporting to directory."""
+        dir = self.temp_path / f'test4x6/4x6'
+        from pathlib import Path
+        #dir =  Path('./test4x6/4x6')
+        monobit.save(self.fixed4x6, dir, format='dir')
+        self.assertTrue(dir.is_dir())
+        fonts = monobit.load(dir, format='dir')
+        self.assertEqual(len(fonts), 1)
 
     def test_recursive_tgz(self):
         """Test recursively traversing tar.gz container."""

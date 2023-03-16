@@ -31,7 +31,7 @@ class Container:
         """List contents of a subpath."""
         return (
             _item for _item in self
-            if _item.name.startswith(prefix)
+            if _item.startswith(str(prefix))
         )
 
     def __contains__(self, item):

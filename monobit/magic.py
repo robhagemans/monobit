@@ -213,7 +213,6 @@ class Magic:
     def matches(self, target):
         """Target bytes match the mask."""
         if len(target) < len(self):
-            logging.debug(f'Target of insufficient length: {target}')
             return False
         for offset, value in self._mask:
             if target[offset:offset+len(value)] != value:
