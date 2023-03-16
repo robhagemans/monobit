@@ -82,11 +82,9 @@ def scriptable(
                 converter = CONVERTERS.get(_type, _type)
                 conv_kwargs[kwarg] = converter(value)
             # call wrapped function
-            if record:
-                _record, save = False, _record
+            _record, save = False, _record
             result = func(*args, **conv_kwargs)
-            if record:
-                _record = save
+            _record = save
             # update history tracker
             if record and _record and result and not 'history' in kwargs:
                 history = script_args.get_history_item(*args, **kwargs)
