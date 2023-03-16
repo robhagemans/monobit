@@ -71,6 +71,8 @@ def load_stream(instream, *, format='', subpath='', **kwargs):
         if format:
             message += f': format specifier `{format}` not recognised'
         raise FileFormatError(message)
+    errors = {}
+    last_error = None
     for loader in fitting_loaders:
         instream.seek(0)
         logging.info('Loading `%s` as %s', instream.name, loader.format)
@@ -86,6 +88,8 @@ def load_stream(instream, *, format='', subpath='', **kwargs):
             fonts = loader(instream, **kwargs)
         except FileFormatError as e:
             logging.debug(e)
+            errors[format] = e
+            last_error = e
             continue
         if not fonts:
             logging.debug('No fonts found in file.')
@@ -111,7 +115,9 @@ def load_stream(instream, *, format='', subpath='', **kwargs):
             )
             for _font in pack
         )
-    raise FileFormatError('No fonts found in file')
+    if last_error:
+        raise last_error
+    raise FileFormatError('Unable to reaad fonts from file')
 
 
 def load_all(container, *, format='', **kwargs):
