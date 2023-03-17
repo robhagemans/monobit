@@ -97,8 +97,15 @@ def _load_iigs(instream):
     header.offset *= 2
     extra = data[offset + 12:header.offset]
     offset += header.offset
+    has_extended_header = header.version >= 0x0105 and len(extra.length) >= 2
+    if not has_extended_header:
+        extra = None
+    glyphs, fontrec = _parse_iigs_nfnt(data, offset, extra)
+    return _convert_iigs(glyphs, fontrec, header, name)
 
-    # read NFNT resource (but little-endian)
+
+def _parse_iigs_nfnt(data, offset, extra):
+    """Read little-endian NFNT resource."""
     # see mac._extract_nfnt
     fontrec = _NFNT_HEADER.from_bytes(data, offset)
     # table offsets
@@ -116,7 +123,7 @@ def _load_iigs(instream):
     wo_offset = fontrec.owTLoc * 2
     # extended header for IIgs
     # n.b. -- this differs slightly from macintosh
-    if header.version >= 0x0105 and len(extra.length) >= 2:
+    if extra:
         eh = _EXTENDED_HEADER.from_bytes(extra)
         wo_offset += eh.owTLocHigh << 32 # << 16 * 2
 
@@ -144,13 +151,14 @@ def _load_iigs(instream):
         _glyph.modify(wo_offset=_wo.offset, wo_width=_wo.width)
         for _glyph, _wo in zip(glyphs, wo_table)
     )
+    return glyphs, fontrec
 
-    #
+
+def _convert_iigs_nfnt(glyphs, fontrec):
+    """Convert iigs NFNT resource to monobit."""
     # see mac._convert_nfnt
-    #
     if not glyphs:
         return Font()
-
     glyphs = tuple(
         _glyph.modify(
             left_bearing=_glyph.wo_offset + fontrec.kernMax,
@@ -162,7 +170,6 @@ def _load_iigs(instream):
         if _glyph.wo_width != 0xff and _glyph.wo_offset != 0xff else _glyph
         for _glyph in glyphs
     )
-
     # codepoint labels
     labelled = [
         _glyph.modify(codepoint=(_codepoint,))
@@ -189,6 +196,11 @@ def _load_iigs(instream):
         'line-height': fontrec.ascent + fontrec.descent + fontrec.leading,
         'shift-up': -fontrec.descent,
     }
+    return glyphs, properties
+
+
+def _convert_iigs(glyphs, fontrec, header, name):
+    glyphs, properties = _convert_iigs_nfnt(glyphs, fontrec)
     # properties from IIgs header
     style = ' '.join(
         _tag for _bit, _tag in _STYLE_MAP.items() if header.style & (1 << _bit)
@@ -214,7 +226,6 @@ def _load_iigs(instream):
         decoration.append('outline')
     if header.style & 0x10:
         decoration.append('shadow')
-
     properties['decoration'] = ' '.join(decoration);
     return Font(glyphs, **properties).label()
 
