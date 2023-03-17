@@ -18,7 +18,8 @@ from ...glyph import Glyph, KernTable
 from ...magic import FileFormatError
 
 from .nfnt import (
-    nfnt_header_struct, loc_entry_struct, wo_entry_struct, width_entry_struct
+    nfnt_header_struct, loc_entry_struct, wo_entry_struct, width_entry_struct,
+    _convert_nfnt,
 )
 from .dfont import _FONT_NAMES, _NON_ROMAN_NAMES
 
@@ -154,64 +155,19 @@ def _parse_iigs_nfnt(data, offset, extra):
     return glyphs, fontrec
 
 
-def _convert_iigs_nfnt(glyphs, fontrec):
-    """Convert iigs NFNT resource to monobit."""
-    # see mac._convert_nfnt
-    if not glyphs:
-        return Font()
-    glyphs = tuple(
-        _glyph.modify(
-            left_bearing=_glyph.wo_offset + fontrec.kernMax,
-            right_bearing=(
-                _glyph.wo_width - _glyph.width
-                - (_glyph.wo_offset + fontrec.kernMax)
-            )
-        )
-        if _glyph.wo_width != 0xff and _glyph.wo_offset != 0xff else _glyph
-        for _glyph in glyphs
-    )
-    # codepoint labels
-    labelled = [
-        _glyph.modify(codepoint=(_codepoint,))
-        for _codepoint, _glyph in enumerate(glyphs[:-1], start=fontrec.firstChar)
-    ]
-    # last glyph is the "missing" glyph
-    labelled.append(glyphs[-1].modify(tag='missing'))
-    # drop undefined glyphs & their labels, so long as they're empty
-    glyphs = tuple(
-        _glyph for _glyph in labelled
-        if (_glyph.wo_width != 0xff and _glyph.wo_offset != 0xff) or (_glyph.width and _glyph.height)
-    )
-    # drop mac glyph metrics
-    # keep scalable_width
-    glyphs = tuple(_glyph.drop('wo_offset', 'wo_width') for _glyph in glyphs)
-    # n.b. no kerning table.
-    # n.b. no encoding table.
-    # store properties
-    properties = {
-        'default-char': 'missing',
-        'ascent': fontrec.ascent,
-        'descent': fontrec.descent,
-        'leading': fontrec.leading,
-        'line-height': fontrec.ascent + fontrec.descent + fontrec.leading,
-        'shift-up': -fontrec.descent,
-    }
-    return glyphs, properties
-
-
 def _convert_iigs(glyphs, fontrec, header, name):
-    glyphs, properties = _convert_iigs_nfnt(glyphs, fontrec)
+    font = _convert_nfnt({}, glyphs, fontrec)
     # properties from IIgs header
     style = ' '.join(
         _tag for _bit, _tag in _STYLE_MAP.items() if header.style & (1 << _bit)
     )
-    properties.update({
+    properties = {
         'family': name,
         'style': style,
         'point-size': header.pointSize,
         'source-format': 'IIgs v{}.{}'.format(*divmod(header.version, 256)),
         'iigs.family-id': header.family,
-    })
+    }
     if name not in _NON_ROMAN_NAMES:
         properties['encoding'] = 'mac-roman'
     # decode style field
@@ -227,7 +183,7 @@ def _convert_iigs(glyphs, fontrec, header, name):
     if header.style & 0x10:
         decoration.append('shadow')
     properties['decoration'] = ' '.join(decoration);
-    return Font(glyphs, **properties).label()
+    return font.modify(**properties).label()
 
 
 def _subset(font):
