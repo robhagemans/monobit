@@ -16,6 +16,7 @@ from ...storage import loaders, savers
 from ...font import Font, Coord
 from ...glyph import Glyph, KernTable
 from ...magic import FileFormatError
+from ...raster import Raster
 
 from .nfnt import (
     nfnt_header_struct, loc_entry_struct, wo_entry_struct, width_entry_struct,
@@ -65,25 +66,6 @@ _STYLE_MAP = {
     3: 'outline',
     4: 'shadow',
 }
-
-
-def _bits_to_bytes(iter):
-    # output is padded to 16-bits
-    rv = []
-    i = 7
-    scratch = 0
-    for b in iter:
-        scratch |= b << i
-        i -= 1
-        if i < 0:
-            rv.append(scratch)
-            i = 7
-            scratch = 0
-    if i != 7:
-        rv.append(scratch)
-    if len(rv) & 0x01:
-        rv.append(0)
-    return bytes(rv)
 
 
 def _load_iigs(instream):
@@ -282,11 +264,7 @@ def _save_iigs(outstream, font):
     rowbits = sum(_g.width for _g in glyphs)
     rowbits = (rowbits + 0x0f) & ~0x0f
     # build the font-strike data
-    mm = (_g.as_matrix() for _g in glyphs)
-    font_strike = b''.join(
-        _bits_to_bytes(chain(*_row))
-        for _row in zip(*mm)
-    )
+    font_strike = Raster.concatenate(*(_g.pixels for _g in glyphs)).as_bytes()
     # get contiguous glyph list
     empty = Glyph(wo_offset=255, wo_width=255)
     glyph_table = [
