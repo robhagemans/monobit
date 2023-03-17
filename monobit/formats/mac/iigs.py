@@ -24,7 +24,6 @@ from itertools import chain, accumulate
 # Documented in the Apple IIgs Toolbox Reference Volume II, chapter 16-41
 # https://archive.org/details/AppleIIGSToolboxReferenceVolume2/mode/2up?view=theater
 
-
 _NFNT_HEADER = le.Struct(
     #    {font type -- ignored!}
     fontType='uint16',
@@ -96,14 +95,12 @@ _IIGS_HEADER = le.Struct(
     fbrExtent='uint16'
 )
 
-#
 # font style:
 # bit 0 = bold
 # bit 1 = italic
 # bit 2 = underline
 # bit 3 = outline
 # bit 4 = shadow
-#
 _STYLE_MAP = {
     0: 'bold',
     1: 'italic',
@@ -164,6 +161,7 @@ def _bits_to_bytes(iter):
     if len(rv) & 0x01:
         rv.append(0)
     return bytes(rv)
+
 
 def _load_iigs(instream):
 
@@ -303,8 +301,8 @@ def _load_iigs(instream):
 
 
 def _subset(font):
+    """Subset to glyphs storable in NFNT and append default glyph."""
     font.label(codepoint_from=font.encoding)
-
     if font.encoding in ('raw', 'mac-roman', '', None):
         glyphs = [
             font.get_glyph(codepoint=_chr, missing=None)
@@ -317,121 +315,118 @@ def _subset(font):
         ]
     else:
         glyphs = [
-            font.get_glyph(char=str(bytes([_chr]),encoding="mac-roman"), missing=None)
+            font.get_glyph(
+                char=str(bytes([_chr]), encoding='mac-roman'),
+                missing=None
+            )
             for _chr in range(0, 256)
         ]
-
     if not glyphs:
-        raise FileFormatError('No suitable characters for IIgs font.')
-
+        raise FileFormatError('No suitable characters for IIgs font')
     glyphs = [_g.modify(codepoint=_ix) for _ix, _g in enumerate(glyphs) if _g]
-
     glyphs.append(font.get_default_glyph())
-
     font = font.modify(glyphs, encoding=None)
     return font
 
-# trim the horizontal and expand the vertical
-# in preparation for generating the font strike data
+
 def _normalize_glyph(g, ascent, descent):
+    """
+    Trim the horizontal and expand the vertical
+    in preparation for generating the font strike data
+    """
     if not g: return None
-    g = g.reduce() # shrink to fit
+    # shrink to fit
+    g = g.reduce()
     shift = g.shift_up
     height = g.height
     if shift == -descent and height == ascent + descent : return g
     return g.expand(bottom = shift + descent, top = ascent - height - shift)
 
 
-
 def _normalize_metrics(font):
-    # recalculate ascent/descent.
-
+    """Calculate metrics for Apple IIgs format."""
+    # Recalculate ascent/descent.
     bounds = font.ink_bounds
     ascent = font.ascent
     descent = font.descent
-
+    # ensure ascent/deescent do not exceed ink bounds
     if ascent != bounds.top:
-        logging.info("Ascent = %d ; calculated ascent = %d", ascent, bounds.top)
+        logging.info(
+            "Ascent = %d ; calculated ascent = %d",
+            ascent, bounds.top
+        )
         ascent = max(ascent, bounds.top)
     if descent != -bounds.bottom:
-        logging.info("Descent = %d ; calculated descent = %d", descent, -bounds.bottom)
+        logging.info(
+            "Descent = %d ; calculated descent = %d",
+            descent, -bounds.bottom
+        )
         descent = max(descent, -bounds.bottom)
-
-
     glyphs = font.glyphs
     glyphs = tuple(_normalize_glyph(_g, ascent, descent) for _g in glyphs)
-
-    # calculate kerning.  only negative kerning is handled
-    kern = min( _g.left_bearing for _g in glyphs)
-    if kern < 0 : kern = -kern
-    else: kern = 0
-
-    glyphs = tuple(_g.modify(wo_offset = _g.left_bearing + kern, wo_width = _g.advance_width) for _g in glyphs)
-
+    # calculate kerning. only negative kerning is handled
+    kern = min(_g.left_bearing for _g in glyphs)
+    if kern < 0:
+        kern = -kern
+    else:
+        kern = 0
+    glyphs = tuple(
+        _g.modify(wo_offset=_g.left_bearing+kern, wo_width=_g.advance_width)
+        for _g in glyphs
+    )
+    # check that glyph widths and offsets fit
     if any(_g for _g in glyphs if _g.wo_width >= 255):
         raise FileFormatError('IIgs character width must be < 255')
-
     if any(_g for _g in glyphs if _g.wo_offset >= 255):
         raise FileFormatError('IIgs character offset must be < 255')
-
-
     font = font.modify(glyphs, ascent=ascent, descent=descent, kern=kern)
     return font
 
-def _save_iigs(outstream, font):
 
+def _save_iigs(outstream, font):
+    """Save an Apple IIgs font file."""
     font = _subset(font)
     font = _normalize_metrics(font)
-
+    # convert to IIgs format
     glyphs = font.glyphs
-    firstChar = int(glyphs[0].codepoint)
-    lastChar = int(glyphs[-2].codepoint)
+    first_char = int(glyphs[0].codepoint)
+    last_char = int(glyphs[-2].codepoint)
     missing = glyphs[-1]
-
-    rowbits = sum( _g.width for _g in glyphs)
+    # byte-aligned bit width of strike
+    rowbits = sum(_g.width for _g in glyphs)
     rowbits = (rowbits + 0x0f) & ~0x0f
-
-
     # build the font-strike data
     mm = (_g.as_matrix() for _g in glyphs)
-
-    fontStrike = b''.join(
+    font_strike = b''.join(
         _bits_to_bytes(chain(*_row))
         for _row in zip(*mm)
     )
-
-
-    # build the location table
-    empty = Glyph(wo_offset=255,wo_width=255)
-    glyph_table = [font.get_glyph(codepoint=_code, missing=empty) for _code in range(firstChar, lastChar+1)]
+    # get contiguous glyph list
+    empty = Glyph(wo_offset=255, wo_width=255)
+    glyph_table = [
+        font.get_glyph(codepoint=_code, missing=empty)
+        for _code in range(first_char, last_char+1)
+    ]
     glyph_table.append(missing)
-
-
     # empty entry needed at the end.
     wo_table = b''.join(
-        bytes(_WO_ENTRY(width = _g.wo_width, offset = _g.wo_offset))
+        bytes(_WO_ENTRY(width=_g.wo_width, offset=_g.wo_offset))
         for _g in chain(glyph_table, [empty])
     )
-
+    # build the location table
     loc_table = b''.join(
-        bytes(_LOC_ENTRY(offset = _offset))
-        for _offset in accumulate( (_g.width for _g in glyph_table), initial=0)
+        bytes(_LOC_ENTRY(offset=_offset))
+        for _offset in accumulate((_g.width for _g in glyph_table), initial=0)
     )
-
-
-    header = _IIGS_HEADER()
-    fontrec = _NFNT_HEADER()
-
-    extra = bytes()
-
-    fontrec.fontType = 0
-    fontrec.firstChar = firstChar
-    fontrec.lastChar = lastChar
-
+    # generate NFNT header
     ascent = font.ascent
     descent = font.descent
+    # font.kern and glyph.wo_width and .wo_offset set in normalise_metrics
     kern = font.kern
-
+    fontrec = _NFNT_HEADER()
+    fontrec.fontType = 0
+    fontrec.firstChar = first_char
+    fontrec.lastChar = last_char
     fontrec.widMax = max(_g.advance_width for _g in glyphs)
     fontrec.kernMax = -kern
     fontrec.nDescent = -descent
@@ -440,14 +435,13 @@ def _save_iigs(outstream, font):
     fontrec.ascent = ascent
     fontrec.descent = descent
     fontrec.leading = font.leading
-
     fontrec.rowWords = rowbits >> 4 # / 16
-
+    # generate IIgs header
     try:
         family_id = int(font.get_property('iigs.family-id'), 10)
     except Exception as e:
         family_id = 0
-
+    header = _IIGS_HEADER()
     header.offset = 6
     header.family = family_id
     header.style = 0
@@ -456,38 +450,33 @@ def _save_iigs(outstream, font):
     header.style += 0b00000100 * ('underline' in font.decoration)
     header.style += 0b00001000 * ('outline' in font.decoration)
     header.style += 0b00010000 * ('shadow' in font.decoration)
-
     header.version = 0x0101
-
-
     # fbr = max width from origin (including whitespace) and right kerned pixels
     header.fbrExtent = max(
         _g.width + _g.left_bearing + max(_g.right_bearing, 0)
         for _g in glyphs
     )
     header.pointSize = font.point_size
-
-
+    # font format version
     # if offset > 32 bits, need to use v 1.05
-    offset = (len(fontStrike) + len(loc_table) + 10) >> 1
+    extra = bytes()
+    offset = (len(font_strike) + len(loc_table) + 10) >> 1
     if offset > 0xffff:
         header.version = 0x0105
-        offset += 1 # account for extra header word.
+        # account for extra header word.
+        offset += 1
         extra = _EXTENDED_HEADER(owTLocHigh = offset >> 16)
-
     fontrec.owTLoc = offset & 0xffff
-
     logging.debug("Fontrec: %s", fontrec)
-
+    # write out headers and NFNT
     name = font.family.encode('mac-roman', errors='replace')
     data = b''.join([
         bytes([len(name)]), name,
         bytes(header),
         bytes(extra),
         bytes(fontrec),
-        fontStrike,
+        font_strike,
         loc_table,
         wo_table
     ])
-
     outstream.write(data)
