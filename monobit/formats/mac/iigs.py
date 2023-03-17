@@ -7,6 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 import io
 import logging
+from itertools import chain, accumulate
 
 from ...binary import bytes_to_bits, align
 from ...struct import bitfield, little_endian as le
@@ -16,75 +17,26 @@ from ...font import Font, Coord
 from ...glyph import Glyph, KernTable
 from ...magic import FileFormatError
 
-from itertools import chain, accumulate
+from .nfnt import (
+    nfnt_header_struct, loc_entry_struct, wo_entry_struct, width_entry_struct
+)
+from .dfont import _FONT_NAMES, _NON_ROMAN_NAMES
 
 
 # IIgs font file is essentially a little-endian MacOS FONT resource,
 # without the resource, plus an extra header.
 # Documented in the Apple IIgs Toolbox Reference Volume II, chapter 16-41
-# https://archive.org/details/AppleIIGSToolboxReferenceVolume2/mode/2up?view=theater
+# https://archive.org/details/AppleIIGSToolboxReferenceVolume2/
 
-_NFNT_HEADER = le.Struct(
-    #    {font type -- ignored!}
-    fontType='uint16',
-    #    {character code of first glyph}
-    firstChar='uint16',
-    #    {character code of last glyph}
-    lastChar='uint16',
-    #    {maximum glyph width}
-    widMax='uint16',
-    #    {maximum glyph kern}
-    kernMax='int16',
-    #    {negative of descent}
-    nDescent='int16',
-    #    {width of font rectangle}
-    fRectWidth='uint16',
-    #    {height of font rectangle}
-    fRectHeight='uint16',
-    #    {offset to width/offset table}
-    owTLoc='uint16',
-    #    {maximum ascent measurement}
-    ascent='uint16',
-    #    {maximum descent measurement}
-    descent='uint16',
-    #    {leading measurement}
-    leading='uint16',
-    #    {row width of bit image in 16-bit wds}
-    rowWords='uint16',
-    # followed by:
-    # bit image table
-    # bitmap location table
-    # width offset table
-)
 
+# fontType is ignored
+# glyph-width table and image-height table not included
+
+_NFNT_HEADER = nfnt_header_struct(le)
 _EXTENDED_HEADER = le.Struct(
     #   {high bits of owTLoc -- optional }
     owTLocHigh='uint16',
 )
-
-# location table entry
-_LOC_ENTRY = le.Struct(
-    offset='uint16',
-)
-# width/offset table entry
-# Width/offset table. For every glyph in the font, this table contains a word with the glyph offset
-# in the high-order byte and the glyph's width, in integer form, in the low-order byte. The value of
-# the offset, when added to the maximum kerning  value for the font, determines the horizontal
-# distance from the glyph origin to the left edge of the bit image of the glyph, in pixels. If this
-# sum is negative, the glyph origin  is to the right of the glyph image's left edge, meaning the
-# glyph kerns to the left.  If the sum is positive, the origin is to the left of the image's left
-# edge. If the sum equals zero, the glyph origin corresponds with the left edge of the bit image.
-# Missing glyphs are represented by a word value of -1. The last word of this table is also -1,
-# representing the end.
-_WO_ENTRY = le.Struct(
-    width='uint8',
-    offset='uint8',
-)
-# glyph width table entry
-_WIDTH_ENTRY = le.Struct(
-    width='uint16',
-)
-
 
 _IIGS_HEADER = le.Struct(
     offset='uint16',
@@ -92,13 +44,17 @@ _IIGS_HEADER = le.Struct(
     style='uint16',
     pointSize='uint16',
     version='uint16',
-    fbrExtent='uint16'
+    fbrExtent='uint16',
 )
 
+_LOC_ENTRY = loc_entry_struct(le)
+_WO_ENTRY = wo_entry_struct(le)
+_WIDTH_ENTRY = width_entry_struct(le)
+
 # font style:
-# bit 0 = bold
 # bit 1 = italic
 # bit 2 = underline
+# bit 0 = bold
 # bit 3 = outline
 # bit 4 = shadow
 _STYLE_MAP = {
@@ -107,40 +63,6 @@ _STYLE_MAP = {
     2: 'underline',
     3: 'outline',
     4: 'shadow',
-}
-
-# Apple IIgs Technote #41, Font Family Numbers
-_FONT_NAMES = {
-    2: 'New York',
-    3: 'Geneva',
-    4: 'Monaco',
-    5: 'Venice',
-    6: 'London',
-    7: 'Athens',
-    8: 'San Francisco',
-    9: 'Toronto',
-    11: 'Cairo',
-    12: 'Los Angeles',
-    13: 'Zapf Dingbats',
-    14: 'Bookman',
-    15: 'Helvetica Narrow',
-    16: 'Palatino',
-    18: 'Zapf Chancery',
-    20: 'Times',
-    21: 'Helvetica',
-    22: 'Courier',
-    23: 'Symbol',
-    24: 'Taliesin',
-    33: 'Avant Garde',
-    65533: 'Chicago',
-    65534: 'Shaston',
-}
-
-_NON_ROMAN_NAMES = {
-    'Symbol': '',
-    'Cairo': '',
-    'Taliesin': '',
-    'Zapf Dingbats': '',
 }
 
 
@@ -424,7 +346,7 @@ def _save_iigs(outstream, font):
     # font.kern and glyph.wo_width and .wo_offset set in normalise_metrics
     kern = font.kern
     fontrec = _NFNT_HEADER()
-    fontrec.fontType = 0
+    #fontrec.fontType = 0
     fontrec.firstChar = first_char
     fontrec.lastChar = last_char
     fontrec.widMax = max(_g.advance_width for _g in glyphs)

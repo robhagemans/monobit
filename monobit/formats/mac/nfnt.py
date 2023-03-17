@@ -19,98 +19,107 @@ from ...magic import FileFormatError
 
 # the Font Type Element
 # https://developer.apple.com/library/archive/documentation/mac/Text/Text-251.html#MARKER-9-442
-_FONT_TYPE = be.Struct(
-    # 15    Reserved. Should be set to 0.
-    reserved_15=bitfield('uint16', 1),
-    # 14    This bit is set to 1 if the font is not to be expanded to match the screen depth. The
-    #       font is for color Macintosh computers only if this bit is set to 1. This is for some
-    #       fonts, such as Kanji, which are too large for synthetic fonts to be effective or
-    #       meaningful, or bitmapped fonts that are larger than 50 points.
-    dont_expand_to_match_screen_depth=bitfield('uint16', 1),
-    # 13    This bit is set to 1 if the font describes a fixed-width font, and is set to 0 if the
-    #       font describes a proportional font. The Font Manager does not check the setting of this bit.
-    fixed_width=bitfield('uint16', 1),
-    # 12    Reserved. Should be set to 1.
-    reserved_12=bitfield('uint16', 1),
-    # 10-11 Reserved. Should be set to 0.
-    reserved_10_11=bitfield('uint16', 2),
-    # 9     This bit is set to 1 if the font contains colors other than black. This font is for
-    #       color Macintosh computers only if this bit is set to 1.
-    has_colors=bitfield('uint16', 1),
-    # 8     This bit is set to 1 if the font is a synthetic font, created dynamically from the
-    #       available font resources in response to a certain color and screen depth combination.
-    #       The font is for color Macintosh computers only if this bit is set to 1.
-    synthetic=bitfield('uint16', 1),
-    # 7     This bit is set to 1 if the font has a font color table ('fctb') resource. The font
-    #       is for color Macintosh computers only if this bit is set to 1.
-    has_fctb=bitfield('uint16', 1),
-    # 4-6   Reserved. Should be set to 0.
-    reserved_4_6=bitfield('uint16', 3),
-    # 2-3   These two bits define the depth of the font. Each of the four possible values indicates
-    #       the number of bits (and therefore, the number of colors) used to represent each pixel
-    #       in the glyph images.
-    #       Value    Font depth    Number of colors
-    #           0    1-bit    1
-    #           1    2-bit    4
-    #           2    4-bit    16
-    #           3    8-bit    256
-    #       Normally the font depth is 0 and the glyphs are specified as monochrome images. If
-    #       bit 7 of this field is set to 1, a resource of type 'fctb' with the same ID as the font
-    #       can optionally be provided to assign RGB colors to specific pixel values.
-    #
-    # If this font resource is a member of a font family, the settings of bits 8 and 9 of the
-    # fontStyle field in this font's association table entry should be the same as the settings of
-    # bits 2 and 3 in the fontType field. For more information, see "The Font Association Table"
-    # on page 4-89.
-    depth=bitfield('uint16', 2),
-    # 1    This bit is set to 1 if the font resource contains a glyph-width table.
-    has_width_table=bitfield('uint16', 1),
-    # 0 This bit is set to 1 if the font resource contains an image height table.
-    has_height_table=bitfield('uint16', 1),
-)
+def font_type_struct(base):
+    return base.Struct(
+        # 15    Reserved. Should be set to 0.
+        reserved_15=bitfield('uint16', 1),
+        # 14    This bit is set to 1 if the font is not to be expanded to match the screen depth. The
+        #       font is for color Macintosh computers only if this bit is set to 1. This is for some
+        #       fonts, such as Kanji, which are too large for synthetic fonts to be effective or
+        #       meaningful, or bitmapped fonts that are larger than 50 points.
+        dont_expand_to_match_screen_depth=bitfield('uint16', 1),
+        # 13    This bit is set to 1 if the font describes a fixed-width font, and is set to 0 if the
+        #       font describes a proportional font. The Font Manager does not check the setting of this bit.
+        fixed_width=bitfield('uint16', 1),
+        # 12    Reserved. Should be set to 1.
+        reserved_12=bitfield('uint16', 1),
+        # 10-11 Reserved. Should be set to 0.
+        reserved_10_11=bitfield('uint16', 2),
+        # 9     This bit is set to 1 if the font contains colors other than black. This font is for
+        #       color Macintosh computers only if this bit is set to 1.
+        has_colors=bitfield('uint16', 1),
+        # 8     This bit is set to 1 if the font is a synthetic font, created dynamically from the
+        #       available font resources in response to a certain color and screen depth combination.
+        #       The font is for color Macintosh computers only if this bit is set to 1.
+        synthetic=bitfield('uint16', 1),
+        # 7     This bit is set to 1 if the font has a font color table ('fctb') resource. The font
+        #       is for color Macintosh computers only if this bit is set to 1.
+        has_fctb=bitfield('uint16', 1),
+        # 4-6   Reserved. Should be set to 0.
+        reserved_4_6=bitfield('uint16', 3),
+        # 2-3   These two bits define the depth of the font. Each of the four possible values indicates
+        #       the number of bits (and therefore, the number of colors) used to represent each pixel
+        #       in the glyph images.
+        #       Value    Font depth    Number of colors
+        #           0    1-bit    1
+        #           1    2-bit    4
+        #           2    4-bit    16
+        #           3    8-bit    256
+        #       Normally the font depth is 0 and the glyphs are specified as monochrome images. If
+        #       bit 7 of this field is set to 1, a resource of type 'fctb' with the same ID as the font
+        #       can optionally be provided to assign RGB colors to specific pixel values.
+        #
+        # If this font resource is a member of a font family, the settings of bits 8 and 9 of the
+        # fontStyle field in this font's association table entry should be the same as the settings of
+        # bits 2 and 3 in the fontType field. For more information, see "The Font Association Table"
+        # on page 4-89.
+        depth=bitfield('uint16', 2),
+        # 1    This bit is set to 1 if the font resource contains a glyph-width table.
+        has_width_table=bitfield('uint16', 1),
+        # 0 This bit is set to 1 if the font resource contains an image height table.
+        has_height_table=bitfield('uint16', 1),
+    )
 
+_FONT_TYPE = font_type_struct(be)
 
 # the header of the NFNT is a FontRec
 # https://developer.apple.com/library/archive/documentation/mac/Text/Text-214.html
-_NFNT_HEADER = be.Struct(
-    #    {font type}
-    fontType=_FONT_TYPE,
-    #    {character code of first glyph}
-    firstChar='uint16',
-    #    {character code of last glyph}
-    lastChar='uint16',
-    #    {maximum glyph width}
-    widMax='uint16',
-    #    {maximum glyph kern}
-    kernMax='int16',
-    #    {negative of descent}
-    nDescent='int16',
-    #    {width of font rectangle}
-    fRectWidth='uint16',
-    #    {height of font rectangle}
-    fRectHeight='uint16',
-    #    {offset to width/offset table}
-    owTLoc='uint16',
-    #    {maximum ascent measurement}
-    ascent='uint16',
-    #    {maximum descent measurement}
-    descent='uint16',
-    #    {leading measurement}
-    leading='uint16',
-    #    {row width of bit image in 16-bit wds}
-    rowWords='uint16',
-    # followed by:
-    # bit image table
-    # bitmap location table
-    # width offset table
-    # glyph-width table
-    # image height table
-)
+def nfnt_header_struct(base):
+    return base.Struct(
+        #    {font type}
+        fontType=font_type_struct(base),
+        #    {character code of first glyph}
+        firstChar='uint16',
+        #    {character code of last glyph}
+        lastChar='uint16',
+        #    {maximum glyph width}
+        widMax='uint16',
+        #    {maximum glyph kern}
+        kernMax='int16',
+        #    {negative of descent}
+        nDescent='int16',
+        #    {width of font rectangle}
+        fRectWidth='uint16',
+        #    {height of font rectangle}
+        fRectHeight='uint16',
+        #    {offset to width/offset table}
+        owTLoc='uint16',
+        #    {maximum ascent measurement}
+        ascent='uint16',
+        #    {maximum descent measurement}
+        descent='uint16',
+        #    {leading measurement}
+        leading='uint16',
+        #    {row width of bit image in 16-bit wds}
+        rowWords='uint16',
+        # followed by:
+        # bit image table
+        # bitmap location table
+        # width offset table
+        # glyph-width table
+        # image height table
+    )
+
+_NFNT_HEADER = nfnt_header_struct(be)
 
 # location table entry
-_LOC_ENTRY = be.Struct(
-    offset='uint16',
-)
+def loc_entry_struct(base):
+    return base.Struct(
+        offset='uint16',
+    )
+
+_LOC_ENTRY = loc_entry_struct(be)
+
 # width/offset table entry
 # Width/offset table. For every glyph in the font, this table contains a word with the glyph offset
 # in the high-order byte and the glyph's width, in integer form, in the low-order byte. The value of
@@ -121,10 +130,13 @@ _LOC_ENTRY = be.Struct(
 # edge. If the sum equals zero, the glyph origin corresponds with the left edge of the bit image.
 # Missing glyphs are represented by a word value of -1. The last word of this table is also -1,
 # representing the end.
-_WO_ENTRY = be.Struct(
-    offset='uint8',
-    width='uint8',
-)
+def wo_entry_struct(base):
+    return base.Struct(
+        offset='uint8',
+        width='uint8',
+    )
+_WO_ENTRY = wo_entry_struct(be)
+
 # glyph width table entry
 # > Glyph-width table. For every glyph in the font, this table contains a word
 # > that specifies the glyph's fixed-point glyph width at the given point size
@@ -132,9 +144,14 @@ _WO_ENTRY = be.Struct(
 # > in this table over those in the font family glyph-width table. There is an
 # > unsigned integer in the high-order byte and a fractional part in the
 # > low-order byte. This table is optional.
-_WIDTH_ENTRY = be.Struct(
-    width='uint16', # divide by 256
-)
+def width_entry_struct(base):
+    return base.Struct(
+        # divide by 256
+        width='uint16',
+    )
+
+_WIDTH_ENTRY = width_entry_struct(be)
+
 # height table entry
 # Image height table. For every glyph in the font, this table contains a word that specifies the
 # image height of the glyph, in pixels. The image height is the height of the glyph image and is
