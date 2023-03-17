@@ -86,9 +86,8 @@ def _bits_to_bytes(iter):
 
 
 def _load_iigs(instream):
-
+    """Load a IIgs font."""
     data = instream.read()
-
     # p-string name
     offset = data[0]
     name = data[1:offset+1]
@@ -99,10 +98,9 @@ def _load_iigs(instream):
     extra = data[offset + 12:header.offset]
     offset += header.offset
 
+    # read NFNT resource (but little-endian)
     # see mac._extract_nfnt
-
     fontrec = _NFNT_HEADER.from_bytes(data, offset)
-
     # table offsets
     strike_offset = offset + _NFNT_HEADER.size
     loc_offset = offset + _NFNT_HEADER.size + fontrec.fRectHeight * fontrec.rowWords * 2
@@ -116,7 +114,7 @@ def _load_iigs(instream):
 
     # width offset table
     wo_offset = fontrec.owTLoc * 2
-
+    # extended header for IIgs
     # n.b. -- this differs slightly from macintosh
     if header.version >= 0x0105 and len(extra.length) >= 2:
         eh = _EXTENDED_HEADER.from_bytes(extra)
@@ -182,29 +180,29 @@ def _load_iigs(instream):
     glyphs = tuple(_glyph.drop('wo_offset', 'wo_width') for _glyph in glyphs)
     # n.b. no kerning table.
     # n.b. no encoding table.
-
     # store properties
-
-    style = ' '.join(
-        _tag for _bit, _tag in _STYLE_MAP.items() if header.style & (1 << _bit)
-    )
-
-
     properties = {
-        'family': name,
-        'style': style,
-        'source-format': 'IIgs v{}.{}'.format(*divmod(header.version, 256)),
-        'point-size': header.pointSize,
         'default-char': 'missing',
         'ascent': fontrec.ascent,
         'descent': fontrec.descent,
         'leading': fontrec.leading,
         'line-height': fontrec.ascent + fontrec.descent + fontrec.leading,
         'shift-up': -fontrec.descent,
-        'iigs.family-id': header.family,
     }
-    if name not in _NON_ROMAN_NAMES: properties['encoding'] = 'mac-roman'
-
+    # properties from IIgs header
+    style = ' '.join(
+        _tag for _bit, _tag in _STYLE_MAP.items() if header.style & (1 << _bit)
+    )
+    properties.update({
+        'family': name,
+        'style': style,
+        'point-size': header.pointSize,
+        'source-format': 'IIgs v{}.{}'.format(*divmod(header.version, 256)),
+        'iigs.family-id': header.family,
+    })
+    if name not in _NON_ROMAN_NAMES:
+        properties['encoding'] = 'mac-roman'
+    # decode style field
     if header.style & 0x01:
         properties['weight'] = 'bold'
     if header.style & 0x02:
@@ -218,7 +216,6 @@ def _load_iigs(instream):
         decoration.append('shadow')
 
     properties['decoration'] = ' '.join(decoration);
-
     return Font(glyphs, **properties).label()
 
 
