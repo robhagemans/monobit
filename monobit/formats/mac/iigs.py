@@ -54,9 +54,9 @@ _WO_ENTRY = wo_entry_struct(le)
 _WIDTH_ENTRY = width_entry_struct(le)
 
 # font style:
+# bit 0 = bold
 # bit 1 = italic
 # bit 2 = underline
-# bit 0 = bold
 # bit 3 = outline
 # bit 4 = shadow
 _STYLE_MAP = {
@@ -239,21 +239,21 @@ def _save_iigs(outstream, font):
     # subset the font. we need a font structure to calculate ink bounds
     font = _subset(font)
     font, kern = _normalize_metrics(font)
+    # build the font-strike data
+    strike_raster = Raster.concatenate(*(_g.pixels for _g in font.glyphs))
+    # word-align strike
+    strike_raster = strike_raster.expand(right=16-(strike_raster.width%16))
+    font_strike = strike_raster.as_bytes()
+    # get contiguous glyph list
     glyphs = font.glyphs
     first_char = int(glyphs[0].codepoint)
     last_char = int(glyphs[-2].codepoint)
-    missing = glyphs[-1]
-    # byte-aligned bit width of strike
-    rowbits = sum(_g.width for _g in glyphs)
-    rowbits = (rowbits + 0x0f) & ~0x0f
-    # build the font-strike data
-    font_strike = Raster.concatenate(*(_g.pixels for _g in glyphs)).as_bytes()
-    # get contiguous glyph list
     empty = Glyph(wo_offset=255, wo_width=255)
     glyph_table = [
         font.get_glyph(codepoint=_code, missing=empty)
         for _code in range(first_char, last_char+1)
     ]
+    missing = glyphs[-1]
     glyph_table.append(missing)
     # empty entry needed at the end.
     wo_table = b''.join(
@@ -281,7 +281,7 @@ def _save_iigs(outstream, font):
     fontrec.ascent = ascent
     fontrec.descent = descent
     fontrec.leading = font.leading
-    fontrec.rowWords = rowbits >> 4 # / 16
+    fontrec.rowWords = strike_raster.width // 16
     # generate IIgs header
     try:
         family_id = int(font.get_property('iigs.family-id'), 10)
