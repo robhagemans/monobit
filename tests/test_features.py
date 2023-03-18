@@ -234,6 +234,12 @@ class TestFeatures(BaseTester):
     def test_vfont_proportional(self):
         self._render_proportional('vfont')
 
+    def test_iigs_proportional(self):
+        self._render_proportional('iigs')
+
+    def test_nfnt_proportional(self):
+        self._render_proportional('nfnt')
+
 
     # kerning
 
@@ -329,6 +335,12 @@ class TestFeatures(BaseTester):
 
     def test_gdos_negbearings(self):
         self._render_bearings('gdos')
+
+    def test_iigs_negbearings(self):
+        self._render_bearings('iigs')
+
+    def test_nfnt_negbearings(self):
+        self._render_bearings('nfnt')
 
     # def test_figlet_negbearings(self):
     #     self._render_bearings('figlet')

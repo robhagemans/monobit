@@ -541,6 +541,14 @@ class TestFormats(BaseTester):
         self.assertEqual(len(font.glyphs), 220)
         self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
+    def test_export_iigs_v15(self):
+        """Test exporting Apple IIgs v1.5 font files."""
+        file = self.temp_path / '4x6.iigs'
+        monobit.save(self.fixed4x6, file, format='iigs', version=0x105)
+        font, *_ = monobit.load(file, format='iigs')
+        self.assertEqual(len(font.glyphs), 220)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+
     def test_import_mgtk(self):
         """Testing importing Apple II MouseGraphics ToolKit font files."""
         font, *_ = monobit.load(self.font_path / '4x6.mgtk', format='mgtk')
@@ -555,6 +563,15 @@ class TestFormats(BaseTester):
         file = ensure_asset(self.lisafonts, 'TILE7R20S.F')
         font, *_ = monobit.load(file)
         self.assertEqual(len(font.glyphs), 193)
+
+    def test_export_bare_nfnt(self):
+        """Test exporting bare NFNT files."""
+        file = self.temp_path / '4x6.nfnt'
+        monobit.save(self.fixed4x6, file, format='nfnt')
+        font, *_ = monobit.load(file, format='nfnt')
+        self.assertEqual(len(font.glyphs), 220)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+
 
     # Amiga
 
