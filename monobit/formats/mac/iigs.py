@@ -30,42 +30,42 @@ from .dfont import _FONT_NAMES, _NON_ROMAN_NAMES
 # Documented in the Apple IIgs Toolbox Reference Volume II, chapter 16-41
 # https://archive.org/details/AppleIIGSToolboxReferenceVolume2/
 
-
-# fontType is ignored
-# glyph-width table and image-height table not included
-
-_NFNT_HEADER = nfnt_header_struct(le)
-_EXTENDED_HEADER = le.Struct(
-    #   {high bits of owTLoc -- optional }
-    owTLocHigh='uint16',
+# font style:
+_STYLE_TYPE = le.Struct(
+    # bit 0 = bold
+    bold=bitfield('uint16', 1),
+    # bit 1 = italic
+    italic=bitfield('uint16', 1),
+    # bit 2 = underline
+    underline=bitfield('uint16', 1),
+    # bit 3 = outline
+    outline=bitfield('uint16', 1),
+    # bit 4 = shadow
+    shadow=bitfield('uint16', 1),
 )
 
 _IIGS_HEADER = le.Struct(
     offset='uint16',
     family='uint16',
-    style='uint16',
+    style=_STYLE_TYPE,
     pointSize='uint16',
     version='uint16',
     fbrExtent='uint16',
 )
+_EXTENDED_HEADER = le.Struct(
+    #   {high bits of owTLoc -- optional }
+    owTLocHigh='uint16',
+)
+
+
+# fontType is ignored
+# glyph-width table and image-height table not included
+_NFNT_HEADER = nfnt_header_struct(le)
 
 _LOC_ENTRY = loc_entry_struct(le)
 _WO_ENTRY = wo_entry_struct(le)
 _WIDTH_ENTRY = width_entry_struct(le)
 
-# font style:
-# bit 0 = bold
-# bit 1 = italic
-# bit 2 = underline
-# bit 3 = outline
-# bit 4 = shadow
-_STYLE_MAP = {
-    0: 'bold',
-    1: 'italic',
-    2: 'underline',
-    3: 'outline',
-    4: 'shadow',
-}
 
 
 def _load_iigs(instream):
@@ -140,12 +140,8 @@ def _parse_iigs_nfnt(data, offset, extra):
 def _convert_iigs(glyphs, fontrec, header, name):
     font = _convert_nfnt({}, glyphs, fontrec)
     # properties from IIgs header
-    style = ' '.join(
-        _tag for _bit, _tag in _STYLE_MAP.items() if header.style & (1 << _bit)
-    )
     properties = {
         'family': name,
-        'style': style,
         'point-size': header.pointSize,
         'source-format': 'IIgs v{}.{}'.format(*divmod(header.version, 256)),
         'iigs.family-id': header.family,
@@ -153,16 +149,16 @@ def _convert_iigs(glyphs, fontrec, header, name):
     if name not in _NON_ROMAN_NAMES:
         properties['encoding'] = 'mac-roman'
     # decode style field
-    if header.style & 0x01:
+    if header.style.bold:
         properties['weight'] = 'bold'
-    if header.style & 0x02:
+    if header.style.italic:
         properties['slant'] = 'italic'
     decoration = []
-    if header.style & 0x04:
+    if header.style.underline:
         decoration.append('underline')
-    if header.style & 0x08:
+    if header.style.outline:
         decoration.append('outline')
-    if header.style & 0x10:
+    if header.style.shadow:
         decoration.append('shadow')
     properties['decoration'] = ' '.join(decoration);
     return font.modify(**properties).label()
@@ -295,12 +291,13 @@ def _save_iigs(outstream, font):
     header = _IIGS_HEADER()
     header.offset = 6
     header.family = family_id
-    header.style = 0
-    header.style += 0b00000001 * (font.weight in ('bold', 'extra-bold', 'ultrabold', 'heavy'))
-    header.style += 0b00000010 * (font.slant in ('italic', 'oblique'))
-    header.style += 0b00000100 * ('underline' in font.decoration)
-    header.style += 0b00001000 * ('outline' in font.decoration)
-    header.style += 0b00010000 * ('shadow' in font.decoration)
+    header.style = _STYLE_TYPE(
+        bold=font.weight in ('bold', 'extra-bold', 'ultrabold', 'heavy'),
+        italic=font.slant in ('italic', 'oblique'),
+        underline='underline' in font.decoration,
+        outline='outline' in font.decoration,
+        shadow='shadow' in font.decoration,
+    )
     header.version = 0x0101
     # fbr = max width from origin (including whitespace) and right kerned pixels
     header.fbrExtent = max(
