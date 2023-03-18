@@ -8,7 +8,7 @@ licence: https://opensource.org/licenses/MIT
 import logging
 
 from ...binary import bytes_to_bits
-from ...struct import bitfield, big_endian as be
+from ...struct import bitfield, big_endian as be, little_endian as le
 from ...font import Font
 from ...glyph import Glyph, KernTable
 from ...magic import FileFormatError
@@ -70,7 +70,6 @@ def font_type_struct(base):
         has_height_table=bitfield('uint16', 1),
     )
 
-_FONT_TYPE = font_type_struct(be)
 
 # the header of the NFNT is a FontRec
 # https://developer.apple.com/library/archive/documentation/mac/Text/Text-214.html
@@ -110,7 +109,6 @@ def nfnt_header_struct(base):
         # image height table
     )
 
-_NFNT_HEADER = nfnt_header_struct(be)
 
 # location table entry
 def loc_entry_struct(base):
@@ -118,7 +116,6 @@ def loc_entry_struct(base):
         offset='uint16',
     )
 
-_LOC_ENTRY = loc_entry_struct(be)
 
 # width/offset table entry
 # Width/offset table. For every glyph in the font, this table contains a word with the glyph offset
@@ -135,7 +132,6 @@ def wo_entry_struct(base):
         offset='uint8',
         width='uint8',
     )
-_WO_ENTRY = wo_entry_struct(be)
 
 # glyph width table entry
 # > Glyph-width table. For every glyph in the font, this table contains a word
@@ -150,8 +146,6 @@ def width_entry_struct(base):
         width='uint16',
     )
 
-_WIDTH_ENTRY = width_entry_struct(be)
-
 # height table entry
 # Image height table. For every glyph in the font, this table contains a word that specifies the
 # image height of the glyph, in pixels. The image height is the height of the glyph image and is
@@ -160,21 +154,32 @@ _WIDTH_ENTRY = width_entry_struct(be)
 # the offset from the top of the font rectangle of the first non-blank (or nonwhite) row in the
 # glyph, and the low-order byte is the number of rows that must be drawn. The Font Manager creates
 # this table.
-_HEIGHT_ENTRY = be.Struct(
-    offset='uint8',
-    height='uint8',
-)
+def height_entry_struct(base):
+    return base.Struct(
+        offset='uint8',
+        height='uint8',
+    )
 
 
-def _extract_nfnt(data, offset):
+def _extract_nfnt(data, offset, endian='big', owt_loc_high=0, font_type=None):
     """Read a MacOS NFNT or FONT resource."""
+    # create struct types; IIgs NFNTs are little-endian
+    base = {'b': be, 'l': le}[endian[:1].lower()]
+    NFNTHeader = nfnt_header_struct(base)
+    LocEntry = loc_entry_struct(base)
+    WOEntry = wo_entry_struct(base)
+    WidthEntry = width_entry_struct(base)
+    HeightEntry = height_entry_struct(base)
+    # font type override (for IIgs)
+    if font_type is not None:
+        data = font_type + data[2:]
     # this is not in the header documentation but is is mentioned here:
     # https://www.kreativekorp.com/swdownload/lisa/AppleLisaFontFormat.pdf
     compressed = data[offset+1] & 0x80
     if compressed:
         data = _uncompress_nfnt(data, offset)
         offset = 0
-    fontrec = _NFNT_HEADER.from_bytes(data, offset)
+    fontrec = NFNTHeader.from_bytes(data, offset)
     if not (fontrec.rowWords and fontrec.widMax and fontrec.fRectWidth and fontrec.fRectHeight):
         logging.debug('Empty FONT/NFNT resource.')
         return dict(glyphs=(), fontrec=fontrec)
@@ -182,35 +187,37 @@ def _extract_nfnt(data, offset):
         raise FileFormatError('Anti-aliased or colour fonts not supported.')
     # read char tables & bitmaps
     # table offsets
-    strike_offset = offset + _NFNT_HEADER.size
-    loc_offset = offset + _NFNT_HEADER.size + fontrec.fRectHeight * fontrec.rowWords * 2
+    strike_offset = offset + NFNTHeader.size
+    loc_offset = offset + NFNTHeader.size + fontrec.fRectHeight * fontrec.rowWords * 2
     # bitmap strike
     strike = data[strike_offset:loc_offset]
     # location table
     # number of chars: coded chars plus missing symbol
     n_chars = fontrec.lastChar - fontrec.firstChar + 2
     # loc table should have one extra entry to be able to determine widths
-    loc_table = _LOC_ENTRY.array(n_chars+1).from_bytes(data, loc_offset)
+    loc_table = LocEntry.array(n_chars+1).from_bytes(data, loc_offset)
     # width offset table
+    # the high word of the table's offset (in words) is either:
+    # - stored in a separate header (for IIgs)
+    # - provided in the repurposed positive nDescent field (dfont)
     # https://developer.apple.com/library/archive/documentation/mac/Text/Text-252.html
     if fontrec.nDescent > 0:
-        wo_offset = fontrec.nDescent << 16 + fontrec.owTLoc * 2
-    else:
-        wo_offset = fontrec.owTLoc * 2
+        owt_loc_high = fontrec.nDescent
+    wo_offset = (fontrec.owTLoc + (owt_loc_high << 16)) * 2
     # owtTLoc is offset "from itself" to table
-    wo_table = _WO_ENTRY.array(n_chars).from_bytes(data, offset + 16 + wo_offset)
+    wo_table = WOEntry.array(n_chars).from_bytes(data, offset + 16 + wo_offset)
     # scalable width table
-    width_offset = wo_offset + _WO_ENTRY.size * n_chars
+    width_offset = wo_offset + WOEntry.size * n_chars
     if fontrec.fontType.has_width_table:
-        width_table = _WIDTH_ENTRY.array(n_chars).from_bytes(data, width_offset)
+        width_table = WidthEntry.array(n_chars).from_bytes(data, width_offset)
     # image height table: this can be deduced from the bitmaps
     # https://developer.apple.com/library/archive/documentation/mac/Text/Text-250.html#MARKER-9-414
     # > The Font Manager creates this table.
     if fontrec.fontType.has_height_table:
         height_offset = width_offset
         if fontrec.fontType.has_width_table:
-            height_offset += _WIDTH_ENTRY.size * n_chars
-        height_table = _HEIGHT_ENTRY.array(n_chars).from_bytes(data, height_offset)
+            height_offset += WidthEntry.size * n_chars
+        height_table = HeightEntry.array(n_chars).from_bytes(data, height_offset)
     # parse bitmap strike
     bitmap_strike = bytes_to_bits(strike)
     rows = [

@@ -20,7 +20,7 @@ from ...raster import Raster
 
 from .nfnt import (
     nfnt_header_struct, loc_entry_struct, wo_entry_struct, width_entry_struct,
-    _convert_nfnt,
+    _convert_nfnt, _extract_nfnt
 )
 from .dfont import _FONT_NAMES, _NON_ROMAN_NAMES
 
@@ -88,57 +88,16 @@ def _load_iigs(instream):
         logging.debug('extended header: %s', eh)
     else:
         eh = _EXTENDED_HEADER()
-    glyphs, fontrec = _parse_iigs_nfnt(data, offset, eh.owTLocHigh)
-    return _convert_iigs(glyphs, fontrec, header, name)
-
-
-def _parse_iigs_nfnt(data, offset, owt_loc_high=0):
-    """Read little-endian NFNT resource."""
-    # see mac._extract_nfnt
-    fontrec = _NFNT_HEADER.from_bytes(data, offset)
-    logging.debug('NFNT header: %s', fontrec)
-    # table offsets
-    strike_offset = offset + _NFNT_HEADER.size
-    loc_offset = offset + _NFNT_HEADER.size + fontrec.fRectHeight * fontrec.rowWords * 2
-    # bitmap strike
-    strike = data[strike_offset:loc_offset]
-    # location table
-    # number of chars: coded chars plus missing symbol
-    n_chars = fontrec.lastChar - fontrec.firstChar + 2
-    # loc table should have one extra entry to be able to determine widths
-    loc_table = _LOC_ENTRY.array(n_chars+1).from_bytes(data, loc_offset)
-
-    # width offset table
-    # n.b. -- this differs slightly from macintosh
-    wo_offset = (fontrec.owTLoc + (owt_loc_high << 16)) * 2
-    # owtTLoc is offset "from itself" to table
-    wo_table = _WO_ENTRY.array(n_chars).from_bytes(data, offset + 16 + wo_offset)
-    # scalable width table
-    width_offset = wo_offset + _WO_ENTRY.size * n_chars
-
-    # n.b. -- fontType field is unused; there is no width or height table.
-
-    # parse bitmap strike
-    bitmap_strike = bytes_to_bits(strike)
-    rows = [
-        bitmap_strike[_offs:_offs+fontrec.rowWords*16]
-        for _offs in range(0, len(bitmap_strike), fontrec.rowWords*16)
-    ]
-    # extract width from width/offset table
-    locs = [_loc.offset for _loc in loc_table]
-    glyphs = [
-        Glyph([_row[_offs:_next] for _row in rows])
-        for _offs, _next in zip(locs[:-1], locs[1:])
-    ]
-    # width & offset
-    glyphs = tuple(
-        _glyph.modify(wo_offset=_wo.offset, wo_width=_wo.width)
-        for _glyph, _wo in zip(glyphs, wo_table)
+    # read IIgs-style NFNT resource
+    fontdata = _extract_nfnt(
+        data, offset, endian='little',
+        owt_loc_high=eh.owTLocHigh, font_type=b'\0\0'
     )
-    return glyphs, fontrec
+    return _convert_iigs(**fontdata, header=header, name=name)
 
 
 def _convert_iigs(glyphs, fontrec, header, name):
+    """Convert IIgs font data to monobit font."""
     font = _convert_nfnt({}, glyphs, fontrec)
     # properties from IIgs header
     properties = {
