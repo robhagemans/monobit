@@ -62,9 +62,13 @@ def load_iigs(instream):
 
 
 @savers.register(linked=load_iigs)
-def save_iigs(fonts, outstream):
-    """Write font to a IIgs font file."""
+def save_iigs(fonts, outstream, version:int=None):
+    """
+    Write font to a IIgs font file.
+
+    version: IIgs font format version (0x101, 0x105). Default: 0x101 unless needed for bitmap size.
+    """
     if len(fonts) > 1:
         logging.warning('IIgs font file can only store one font.')
     font = fonts[0]
-    _save_iigs(outstream, font)
+    _save_iigs(outstream, font, version=version)

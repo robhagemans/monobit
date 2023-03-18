@@ -80,10 +80,10 @@ def _load_iigs(instream):
     header = _IIGS_HEADER.from_bytes(data, offset)
     logging.debug('IIgs header: %s', header)
     # offset given in 16-bit words
-    extra = data[offset+_IIGS_HEADER.size : header.offset*2]
+    extra = data[offset+_IIGS_HEADER.size : offset + header.offset*2]
     offset += header.offset * 2
     # extended header for IIgs
-    if header.version >= 0x0105 and len(extra) >= 2:
+    if header.version >= 0x0105: #  and len(extra) >= 2:
         eh = _EXTENDED_HEADER.from_bytes(extra)
         logging.debug('extended header: %s', eh)
     else:
@@ -231,8 +231,8 @@ def _normalize_metrics(font):
     return font, kern
 
 
-def _save_iigs(outstream, font):
-    """Save an Apple IIgs font file."""
+def _create_iigs_nfnt(font):
+    """Create NFNT section of Apple IIgs font file."""
     # subset the font. we need a font structure to calculate ink bounds
     font = _subset(font)
     font, kern = _normalize_metrics(font)
@@ -264,6 +264,9 @@ def _save_iigs(outstream, font):
         bytes(_LOC_ENTRY(offset=_offset))
         for _offset in accumulate((_g.width for _g in glyph_table), initial=0)
     )
+    # owTLoc is the offset from the field itself
+    # the remaining size of the header including owTLoc is 5 words
+    owt_loc = (len(font_strike) + len(loc_table) + 10) >> 1
     # generate NFNT header
     fontrec = _NFNT_HEADER(
         #fontType=0,
@@ -271,23 +274,54 @@ def _save_iigs(outstream, font):
         lastChar=last_char,
         widMax=max(_g.advance_width for _g in glyphs),
         kernMax=-kern,
+        nDescent=font.ink_bounds.bottom,
         # font rectangle == font bounding box
         #max(_g.width + _g.left_bearing + kern for _g in glyphs),
         fRectWidth=font.bounding_box.x,
         fRectHeight=font.bounding_box.y,
+        # word offset to width/offset table
+        owTLoc=owt_loc & 0xffff,
         # docs define fRectHeight = ascent + descent
         # and generally suggest ascent and descent equal ink bounds
         # that's also monobit's *default* ascent & descent but is overridable
         ascent=font.ink_bounds.top,
         descent=-font.ink_bounds.bottom,
-        nDescent=font.ink_bounds.bottom,
         # define leading in terms of bounding box, not pixel-height
         leading=font.line_height - font.bounding_box.y,
         rowWords=strike_raster.width // 16,
     )
+    owt_loc_high = owt_loc >> 16
+    logging.debug('NFNT header: %s', fontrec)
+    data = b''.join((
+        bytes(fontrec),
+        font_strike,
+        loc_table,
+        wo_table
+    ))
+    # fbr = max width from origin (including whitespace) and right kerned pixels
+    # for IIgs header
+    fbr_extent = max(
+        _g.width + _g.left_bearing + max(_g.right_bearing, 0)
+        for _g in glyphs
+    )
+    return data, owt_loc_high, fbr_extent
+
+
+def _save_iigs(outstream, font, version=None):
+    """Save an Apple IIgs font file."""
+    nfnt, owt_loc_high, fbr_extent = _create_iigs_nfnt(font)
+    # if offset > 32 bits, need to use iigs format v1.05
+    if version is None:
+        if owt_loc_high:
+            version = 0x0105
+        else:
+            version = 0x0101
     # generate IIgs header
+    # note that this only includes font metadata
+    # so no need for the subsetted font that NFNT stored
     header = _IIGS_HEADER(
-        offset=_IIGS_HEADER.size // 2,
+        # include 1 word for extended header if used
+        offset=_IIGS_HEADER.size // 2 + (version >= 0x105),
         family=int(font.get_property('iigs.family-id') or '0', 10),
         style=_STYLE_TYPE(
             bold=font.weight in ('bold', 'extra-bold', 'ultrabold', 'heavy'),
@@ -296,36 +330,27 @@ def _save_iigs(outstream, font):
             outline='outline' in font.decoration,
             shadow='shadow' in font.decoration,
         ),
-        version = 0x0101,
+        # font format version
+        version=version,
         # fbr = max width from origin (including whitespace) and right kerned pixels
-        fbrExtent=max(
-            _g.width + _g.left_bearing + max(_g.right_bearing, 0)
-            for _g in glyphs
-        ),
+        fbrExtent=fbr_extent,
         pointSize=font.point_size,
     )
-    # font format version
-    # if offset > 32 bits, need to use v 1.05
-    extra = bytes()
-    # owTLoc is the offset from the field itself
-    # the remaining size of the header including owTLoc is 5 words
-    owt_loc = (len(font_strike) + len(loc_table) + 10) >> 1
-    if owt_loc > 0xffff:
-        header.version = 0x0105
+    if version == 0x0105:
         # extended header comes before fontrec
         # so no need to increase owTLoc by 1 word because of its existence
-        extra = _EXTENDED_HEADER(owTLocHigh=owt_loc>>16)
-    fontrec.owTLoc = owt_loc & 0xffff
-    logging.debug("Fontrec: %s", fontrec)
-    # write out headers and NFNT
+        extra = _EXTENDED_HEADER(owTLocHigh=owt_loc_high)
+    else:
+        extra = b''
+        if owt_loc_high:
+            raise FileFormatError(
+                'Bitmap strike too large for IIgs v1.1, use v1.5 instead.'
+            )
+    # write out name field, headers and NFNT
     name = font.family.encode('mac-roman', errors='replace')
-    data = b''.join([
-        bytes([len(name)]), name,
+    outstream.write(b''.join((
+        bytes((len(name),)), name,
         bytes(header),
         bytes(extra),
-        bytes(fontrec),
-        font_strike,
-        loc_table,
-        wo_table
-    ])
-    outstream.write(data)
+    )))
+    outstream.write(nfnt)
