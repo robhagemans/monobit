@@ -62,15 +62,6 @@ _EXTENDED_HEADER = le.Struct(
 )
 
 
-# fontType is ignored
-# glyph-width table and image-height table not included
-_NFNT_HEADER = nfnt_header_struct(le)
-
-_LOC_ENTRY = loc_entry_struct(le)
-_WO_ENTRY = wo_entry_struct(le)
-_WIDTH_ENTRY = width_entry_struct(le)
-
-
 def _load_iigs(instream):
     """Load a IIgs font."""
     data = instream.read()
@@ -122,6 +113,67 @@ def _convert_iigs(glyphs, fontrec, header, name):
         decoration.append('shadow')
     properties['decoration'] = ' '.join(decoration);
     return font.modify(**properties).label()
+
+
+def _save_iigs(outstream, font, version=None):
+    """Save an Apple IIgs font file."""
+    nfnt, owt_loc_high, fbr_extent = _create_iigs_nfnt(font)
+    # if offset > 32 bits, need to use iigs format v1.05
+    if version is None:
+        if owt_loc_high:
+            version = 0x0105
+        else:
+            version = 0x0101
+    # generate IIgs header
+    # note that this only includes font metadata
+    # so no need for the subsetted font that NFNT stored
+    header = _IIGS_HEADER(
+        # include 1 word for extended header if used
+        offset=_IIGS_HEADER.size // 2 + (version >= 0x105),
+        family=int(font.get_property('iigs.family-id') or '0', 10),
+        style=_STYLE_TYPE(
+            bold=font.weight in ('bold', 'extra-bold', 'ultrabold', 'heavy'),
+            italic=font.slant in ('italic', 'oblique'),
+            underline='underline' in font.decoration,
+            outline='outline' in font.decoration,
+            shadow='shadow' in font.decoration,
+        ),
+        # font format version
+        version=version,
+        # fbr = max width from origin (including whitespace) and right kerned pixels
+        fbrExtent=fbr_extent,
+        pointSize=font.point_size,
+    )
+    if version == 0x0105:
+        # extended header comes before fontrec
+        # so no need to increase owTLoc by 1 word because of its existence
+        extra = _EXTENDED_HEADER(owTLocHigh=owt_loc_high)
+    else:
+        extra = b''
+        if owt_loc_high:
+            raise FileFormatError(
+                'Bitmap strike too large for IIgs v1.1, use v1.5 instead.'
+            )
+    # write out name field, headers and NFNT
+    name = font.family.encode('mac-roman', errors='replace')
+    outstream.write(b''.join((
+        bytes((len(name),)), name,
+        bytes(header),
+        bytes(extra),
+    )))
+    outstream.write(nfnt)
+
+
+###############################################################################
+# NFNT writer
+
+# fontType is ignored
+# glyph-width table and image-height table not included
+_NFNT_HEADER = nfnt_header_struct(le)
+
+_LOC_ENTRY = loc_entry_struct(le)
+_WO_ENTRY = wo_entry_struct(le)
+_WIDTH_ENTRY = width_entry_struct(le)
 
 
 def _subset(font):
@@ -264,52 +316,3 @@ def _create_iigs_nfnt(font):
         for _g in glyphs
     )
     return data, owt_loc_high, fbr_extent
-
-
-def _save_iigs(outstream, font, version=None):
-    """Save an Apple IIgs font file."""
-    nfnt, owt_loc_high, fbr_extent = _create_iigs_nfnt(font)
-    # if offset > 32 bits, need to use iigs format v1.05
-    if version is None:
-        if owt_loc_high:
-            version = 0x0105
-        else:
-            version = 0x0101
-    # generate IIgs header
-    # note that this only includes font metadata
-    # so no need for the subsetted font that NFNT stored
-    header = _IIGS_HEADER(
-        # include 1 word for extended header if used
-        offset=_IIGS_HEADER.size // 2 + (version >= 0x105),
-        family=int(font.get_property('iigs.family-id') or '0', 10),
-        style=_STYLE_TYPE(
-            bold=font.weight in ('bold', 'extra-bold', 'ultrabold', 'heavy'),
-            italic=font.slant in ('italic', 'oblique'),
-            underline='underline' in font.decoration,
-            outline='outline' in font.decoration,
-            shadow='shadow' in font.decoration,
-        ),
-        # font format version
-        version=version,
-        # fbr = max width from origin (including whitespace) and right kerned pixels
-        fbrExtent=fbr_extent,
-        pointSize=font.point_size,
-    )
-    if version == 0x0105:
-        # extended header comes before fontrec
-        # so no need to increase owTLoc by 1 word because of its existence
-        extra = _EXTENDED_HEADER(owTLocHigh=owt_loc_high)
-    else:
-        extra = b''
-        if owt_loc_high:
-            raise FileFormatError(
-                'Bitmap strike too large for IIgs v1.1, use v1.5 instead.'
-            )
-    # write out name field, headers and NFNT
-    name = font.family.encode('mac-roman', errors='replace')
-    outstream.write(b''.join((
-        bytes((len(name),)), name,
-        bytes(header),
-        bytes(extra),
-    )))
-    outstream.write(nfnt)
