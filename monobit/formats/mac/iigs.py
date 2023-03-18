@@ -20,10 +20,7 @@ from ...raster import Raster
 from ...labels import Char
 from ...encoding import charmaps
 
-from .nfnt import (
-    nfnt_header_struct, loc_entry_struct, wo_entry_struct, width_entry_struct,
-    _convert_nfnt, _extract_nfnt
-)
+from .nfnt import _convert_nfnt, _extract_nfnt
 from .dfont import _FONT_NAMES, _NON_ROMAN_NAMES
 
 
@@ -169,13 +166,8 @@ def _save_iigs(outstream, font, version=None):
 ###############################################################################
 # NFNT writer
 
-# fontType is ignored
-# glyph-width table and image-height table not included
-_NFNT_HEADER = nfnt_header_struct(le)
-
-_LOC_ENTRY = loc_entry_struct(le)
-_WO_ENTRY = wo_entry_struct(le)
-_WIDTH_ENTRY = width_entry_struct(le)
+from ...struct import big_endian as be
+from .nfnt import nfnt_header_struct, loc_entry_struct, wo_entry_struct
 
 
 def _subset(font):
@@ -232,8 +224,14 @@ def _normalize_metrics(font):
     return font, kern
 
 
-def _create_iigs_nfnt(font):
+def _create_iigs_nfnt(font, endian='little'):
     """Create NFNT section of Apple IIgs font file."""
+    # fontType is ignored
+    # glyph-width table and image-height table not included
+    base = {'b': be, 'l': le}[endian[:1].lower()]
+    NFNTHeader = nfnt_header_struct(base)
+    LocEntry = loc_entry_struct(base)
+    WOEntry = wo_entry_struct(base)
     # subset the font. we need a font structure to calculate ink bounds
     font = _subset(font)
     font, kern = _normalize_metrics(font)
@@ -256,20 +254,20 @@ def _create_iigs_nfnt(font):
     # build the width-offset table
     wo_table = b''.join(
         # glyph.wo_width and .wo_offset set in normalise_metrics
-        bytes(_WO_ENTRY(width=_g.wo_width, offset=_g.wo_offset))
+        bytes(WOEntry(width=_g.wo_width, offset=_g.wo_offset))
         # empty entry needed at the end.
         for _g in chain(glyph_table, [empty])
     )
     # build the location table
     loc_table = b''.join(
-        bytes(_LOC_ENTRY(offset=_offset))
+        bytes(LocEntry(offset=_offset))
         for _offset in accumulate((_g.width for _g in glyph_table), initial=0)
     )
     # owTLoc is the offset from the field itself
     # the remaining size of the header including owTLoc is 5 words
     owt_loc = (len(font_strike) + len(loc_table) + 10) >> 1
     # generate NFNT header
-    fontrec = _NFNT_HEADER(
+    fontrec = NFNTHeader(
         #fontType=0,
         firstChar=first_char,
         lastChar=last_char,
