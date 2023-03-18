@@ -448,7 +448,7 @@ def _normalize_metrics(font):
     return font, kern
 
 
-def _create_nfnt(font, endian='little', ndescent_is_high=False):
+def _create_nfnt(font, endian, ndescent_is_high):
     """Create FONT/NFNT resource."""
     # fontType is ignored
     # glyph-width table and image-height table not included

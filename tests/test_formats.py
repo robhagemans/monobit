@@ -564,6 +564,15 @@ class TestFormats(BaseTester):
         font, *_ = monobit.load(file)
         self.assertEqual(len(font.glyphs), 193)
 
+    def test_export_bare_nfnt(self):
+        """Test exporting bare NFNT files."""
+        file = self.temp_path / '4x6.nfnt'
+        monobit.save(self.fixed4x6, file, format='nfnt')
+        font, *_ = monobit.load(file, format='nfnt')
+        self.assertEqual(len(font.glyphs), 220)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+
+
     # Amiga
 
     def test_import_amiga(self):
