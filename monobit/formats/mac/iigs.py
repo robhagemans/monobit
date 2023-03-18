@@ -251,9 +251,10 @@ def _save_iigs(outstream, font):
     ]
     missing = glyphs[-1]
     glyph_table.append(missing)
-    # empty entry needed at the end.
     wo_table = b''.join(
+        # glyph.wo_width and .wo_offset set in normalise_metrics
         bytes(_WO_ENTRY(width=_g.wo_width, offset=_g.wo_offset))
+        # empty entry needed at the end.
         for _g in chain(glyph_table, [empty])
     )
     # build the location table
@@ -262,7 +263,6 @@ def _save_iigs(outstream, font):
         for _offset in accumulate((_g.width for _g in glyph_table), initial=0)
     )
     # generate NFNT header
-    # glyph.wo_width and .wo_offset set in normalise_metrics
     fontrec = _NFNT_HEADER(
         #fontType=0,
         firstChar=first_char,
@@ -284,27 +284,24 @@ def _save_iigs(outstream, font):
         rowWords=strike_raster.width // 16,
     )
     # generate IIgs header
-    try:
-        family_id = int(font.get_property('iigs.family-id'), 10)
-    except Exception as e:
-        family_id = 0
-    header = _IIGS_HEADER()
-    header.offset = 6
-    header.family = family_id
-    header.style = _STYLE_TYPE(
-        bold=font.weight in ('bold', 'extra-bold', 'ultrabold', 'heavy'),
-        italic=font.slant in ('italic', 'oblique'),
-        underline='underline' in font.decoration,
-        outline='outline' in font.decoration,
-        shadow='shadow' in font.decoration,
+    header = _IIGS_HEADER(
+        offset=6,
+        family=int(font.get_property('iigs.family-id') or '0', 10),
+        style=_STYLE_TYPE(
+            bold=font.weight in ('bold', 'extra-bold', 'ultrabold', 'heavy'),
+            italic=font.slant in ('italic', 'oblique'),
+            underline='underline' in font.decoration,
+            outline='outline' in font.decoration,
+            shadow='shadow' in font.decoration,
+        ),
+        version = 0x0101,
+        # fbr = max width from origin (including whitespace) and right kerned pixels
+        fbrExtent=max(
+            _g.width + _g.left_bearing + max(_g.right_bearing, 0)
+            for _g in glyphs
+        ),
+        pointSize=font.point_size,
     )
-    header.version = 0x0101
-    # fbr = max width from origin (including whitespace) and right kerned pixels
-    header.fbrExtent = max(
-        _g.width + _g.left_bearing + max(_g.right_bearing, 0)
-        for _g in glyphs
-    )
-    header.pointSize = font.point_size
     # font format version
     # if offset > 32 bits, need to use v 1.05
     extra = bytes()
