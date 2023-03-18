@@ -234,6 +234,9 @@ class TestFeatures(BaseTester):
     def test_vfont_proportional(self):
         self._render_proportional('vfont')
 
+    def test_iigs_proportional(self):
+        self._render_proportional('iigs')
+
 
     # kerning
 
