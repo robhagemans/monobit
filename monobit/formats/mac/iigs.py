@@ -17,6 +17,8 @@ from ...font import Font, Coord
 from ...glyph import Glyph, KernTable
 from ...magic import FileFormatError
 from ...raster import Raster
+from ...labels import Char
+from ...encoding import charmaps
 
 from .nfnt import (
     nfnt_header_struct, loc_entry_struct, wo_entry_struct, width_entry_struct,
@@ -179,28 +181,16 @@ _WIDTH_ENTRY = width_entry_struct(le)
 def _subset(font):
     """Subset to glyphs storable in NFNT and append default glyph."""
     font.label(codepoint_from=font.encoding)
-    if font.encoding in ('raw', 'mac-roman', '', None):
-        glyphs = [
-            font.get_glyph(codepoint=_chr, missing=None)
-            for _chr in range(0, 256)
-        ]
+    if font.encoding in ('mac-roman', 'mac-symbol', 'raw', '', None):
+        labels = tuple(range(0, 256))
     elif font.encoding == 'ascii':
-        glyphs = [
-            font.get_glyph(codepoint=_chr, missing=None)
-            for _chr in range(0, 128)
-        ]
+        labels = tuple(range(0, 128))
     else:
-        glyphs = [
-            font.get_glyph(
-                char=str(bytes([_chr]), encoding='mac-roman'),
-                missing=None
-            )
-            for _chr in range(0, 256)
-        ]
-    if not glyphs:
+        labels = tuple(Char(_c) for _c in charmaps['mac-roman'].mapping.values())
+    subfont = font.subset(labels=labels)
+    if not subfont.glyphs:
         raise FileFormatError('No suitable characters for IIgs font')
-    glyphs = [_g.modify(codepoint=_ix) for _ix, _g in enumerate(glyphs) if _g]
-    glyphs.append(font.get_default_glyph())
+    glyphs = [*subfont.glyphs, font.get_default_glyph()]
     font = font.modify(glyphs, encoding=None)
     return font
 
