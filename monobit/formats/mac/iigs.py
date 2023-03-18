@@ -30,6 +30,7 @@ from .dfont import _FONT_NAMES, _NON_ROMAN_NAMES
 # Documented in the Apple IIgs Toolbox Reference Volume II, chapter 16-41
 # https://archive.org/details/AppleIIGSToolboxReferenceVolume2/
 
+
 # font style:
 _STYLE_TYPE = le.Struct(
     # bit 0 = bold
@@ -52,6 +53,9 @@ _IIGS_HEADER = le.Struct(
     version='uint16',
     fbrExtent='uint16',
 )
+
+# the extended header is defined in Apple IIgs Toolbox Reference Volume III, ch. 43-5
+# https://archive.org/details/Apple_IIGS_Toolbox_Reference_vol_3/page/n459/
 _EXTENDED_HEADER = le.Struct(
     #   {high bits of owTLoc -- optional }
     owTLocHigh='uint16',
@@ -67,30 +71,32 @@ _WO_ENTRY = wo_entry_struct(le)
 _WIDTH_ENTRY = width_entry_struct(le)
 
 
-
 def _load_iigs(instream):
     """Load a IIgs font."""
     data = instream.read()
     # p-string name
-    offset = data[0]
-    name = data[1:offset+1]
-    name = name.decode('mac-roman')
-    offset += 1
+    offset = data[0] + 1
+    name = data[1:offset].decode('mac-roman')
     header = _IIGS_HEADER.from_bytes(data, offset)
-    header.offset *= 2
-    extra = data[offset + 12:header.offset]
-    offset += header.offset
-    has_extended_header = header.version >= 0x0105 and len(extra.length) >= 2
-    if not has_extended_header:
-        extra = None
-    glyphs, fontrec = _parse_iigs_nfnt(data, offset, extra)
+    logging.debug('IIgs header: %s', header)
+    # offset given in 16-bit words
+    extra = data[offset+_IIGS_HEADER.size : header.offset*2]
+    offset += header.offset * 2
+    # extended header for IIgs
+    if header.version >= 0x0105 and len(extra) >= 2:
+        eh = _EXTENDED_HEADER.from_bytes(extra)
+        logging.debug('extended header: %s', eh)
+    else:
+        eh = _EXTENDED_HEADER()
+    glyphs, fontrec = _parse_iigs_nfnt(data, offset, eh.owTLocHigh)
     return _convert_iigs(glyphs, fontrec, header, name)
 
 
-def _parse_iigs_nfnt(data, offset, extra):
+def _parse_iigs_nfnt(data, offset, owt_loc_high=0):
     """Read little-endian NFNT resource."""
     # see mac._extract_nfnt
     fontrec = _NFNT_HEADER.from_bytes(data, offset)
+    logging.debug('NFNT header: %s', fontrec)
     # table offsets
     strike_offset = offset + _NFNT_HEADER.size
     loc_offset = offset + _NFNT_HEADER.size + fontrec.fRectHeight * fontrec.rowWords * 2
@@ -103,13 +109,8 @@ def _parse_iigs_nfnt(data, offset, extra):
     loc_table = _LOC_ENTRY.array(n_chars+1).from_bytes(data, loc_offset)
 
     # width offset table
-    wo_offset = fontrec.owTLoc * 2
-    # extended header for IIgs
     # n.b. -- this differs slightly from macintosh
-    if extra:
-        eh = _EXTENDED_HEADER.from_bytes(extra)
-        wo_offset += eh.owTLocHigh << 32 # << 16 * 2
-
+    wo_offset = (fontrec.owTLoc + (owt_loc_high << 16)) * 2
     # owtTLoc is offset "from itself" to table
     wo_table = _WO_ENTRY.array(n_chars).from_bytes(data, offset + 16 + wo_offset)
     # scalable width table
@@ -251,6 +252,7 @@ def _save_iigs(outstream, font):
     ]
     missing = glyphs[-1]
     glyph_table.append(missing)
+    # build the width-offset table
     wo_table = b''.join(
         # glyph.wo_width and .wo_offset set in normalise_metrics
         bytes(_WO_ENTRY(width=_g.wo_width, offset=_g.wo_offset))
@@ -285,7 +287,7 @@ def _save_iigs(outstream, font):
     )
     # generate IIgs header
     header = _IIGS_HEADER(
-        offset=6,
+        offset=_IIGS_HEADER.size // 2,
         family=int(font.get_property('iigs.family-id') or '0', 10),
         style=_STYLE_TYPE(
             bold=font.weight in ('bold', 'extra-bold', 'ultrabold', 'heavy'),
@@ -305,13 +307,15 @@ def _save_iigs(outstream, font):
     # font format version
     # if offset > 32 bits, need to use v 1.05
     extra = bytes()
-    offset = (len(font_strike) + len(loc_table) + 10) >> 1
-    if offset > 0xffff:
+    # owTLoc is the offset from the field itself
+    # the remaining size of the header including owTLoc is 5 words
+    owt_loc = (len(font_strike) + len(loc_table) + 10) >> 1
+    if owt_loc > 0xffff:
         header.version = 0x0105
-        # account for extra header word.
-        offset += 1
-        extra = _EXTENDED_HEADER(owTLocHigh=offset>>16)
-    fontrec.owTLoc = offset & 0xffff
+        # extended header comes before fontrec
+        # so no need to increase owTLoc by 1 word because of its existence
+        extra = _EXTENDED_HEADER(owTLocHigh=owt_loc>>16)
+    fontrec.owTLoc = owt_loc & 0xffff
     logging.debug("Fontrec: %s", fontrec)
     # write out headers and NFNT
     name = font.family.encode('mac-roman', errors='replace')

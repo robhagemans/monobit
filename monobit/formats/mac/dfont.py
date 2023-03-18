@@ -37,6 +37,8 @@ _NON_ROMAN_NAMES = {
 
 # Apple IIgs Technote #41, Font Family Numbers
 _FONT_NAMES = {
+    # 0: 'System Font',
+    # 1: 'System Font',
     2: 'New York',
     3: 'Geneva',
     4: 'Monaco',
@@ -58,6 +60,7 @@ _FONT_NAMES = {
     23: 'Symbol',
     24: 'Taliesin',
     33: 'Avant Garde',
+    34: 'New Century Schoolbook',
     65533: 'Chicago',
     65534: 'Shaston',
 }
