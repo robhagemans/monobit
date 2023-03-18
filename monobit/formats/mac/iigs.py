@@ -273,12 +273,18 @@ def _save_iigs(outstream, font):
         lastChar=last_char,
         widMax=max(_g.advance_width for _g in glyphs),
         kernMax=-kern,
-        nDescent=-font.descent,
-        fRectWidth=max(_g.width + _g.left_bearing + kern for _g in glyphs),
-        fRectHeight=font.ascent + font.descent,
-        ascent=font.ascent,
-        descent=font.descent,
-        leading=font.leading,
+        # font rectangle == font bounding box
+        #max(_g.width + _g.left_bearing + kern for _g in glyphs),
+        fRectWidth=font.bounding_box.x,
+        fRectHeight=font.bounding_box.y,
+        # docs define fRectHeight = ascent + descent
+        # and generally suggest ascent and descent equal ink bounds
+        # that's also monobit's *default* ascent & descent but is overridable
+        ascent=font.ink_bounds.top,
+        descent=-font.ink_bounds.bottom,
+        nDescent=font.ink_bounds.bottom,
+        # define leading in terms of bounding box, not pixel-height
+        leading=font.line_height - font.bounding_box.y,
         rowWords=strike_raster.width // 16,
     )
     # generate IIgs header
