@@ -197,65 +197,48 @@ def _subset(font):
     return font
 
 
-def _normalize_glyph(g, ascent, descent):
+def _normalize_glyph(g, ink_bounds):
     """
-    Trim the horizontal and expand the vertical
+    Trim the horizontal to glyph's ink bounds
+    and expand the vertical to font's ink bounds
     in preparation for generating the font strike data
     """
-    if not g: return None
+    if not g:
+        return None
     # shrink to fit
     g = g.reduce()
-    shift = g.shift_up
-    height = g.height
-    if shift == -descent and height == ascent + descent : return g
-    return g.expand(bottom = shift + descent, top = ascent - height - shift)
+    return g.expand(
+        bottom=g.shift_up - ink_bounds.bottom,
+        top=ink_bounds.top-g.height-g.shift_up
+    )
 
 
 def _normalize_metrics(font):
     """Calculate metrics for Apple IIgs format."""
-    # Recalculate ascent/descent.
-    bounds = font.ink_bounds
-    ascent = font.ascent
-    descent = font.descent
-    # ensure ascent/deescent do not exceed ink bounds
-    if ascent != bounds.top:
-        logging.info(
-            "Ascent = %d ; calculated ascent = %d",
-            ascent, bounds.top
-        )
-        ascent = max(ascent, bounds.top)
-    if descent != -bounds.bottom:
-        logging.info(
-            "Descent = %d ; calculated descent = %d",
-            descent, -bounds.bottom
-        )
-        descent = max(descent, -bounds.bottom)
-    glyphs = font.glyphs
-    glyphs = tuple(_normalize_glyph(_g, ascent, descent) for _g in glyphs)
+    # reduce to ink bounds horizontally, font ink bounds vertically
+    glyphs = tuple(_normalize_glyph(_g, font.ink_bounds) for _g in font.glyphs)
     # calculate kerning. only negative kerning is handled
     kern = min(_g.left_bearing for _g in glyphs)
-    if kern < 0:
-        kern = -kern
-    else:
-        kern = 0
+    kern = max(0, -kern)
+    # add apple metrics to glyphs
     glyphs = tuple(
         _g.modify(wo_offset=_g.left_bearing+kern, wo_width=_g.advance_width)
         for _g in glyphs
     )
     # check that glyph widths and offsets fit
-    if any(_g for _g in glyphs if _g.wo_width >= 255):
+    if any(_g.wo_width >= 255 for _g in glyphs):
         raise FileFormatError('IIgs character width must be < 255')
-    if any(_g for _g in glyphs if _g.wo_offset >= 255):
+    if any(_g.wo_offset >= 255 for _g in glyphs):
         raise FileFormatError('IIgs character offset must be < 255')
-    font = font.modify(glyphs, ascent=ascent, descent=descent, kern=kern)
-    return font
+    font = font.modify(glyphs)
+    return font, kern
 
 
 def _save_iigs(outstream, font):
     """Save an Apple IIgs font file."""
+    # subset the font. we need a font structure to calculate ink bounds
     font = _subset(font)
-    font = _normalize_metrics(font)
-    # convert to IIgs format
+    font, kern = _normalize_metrics(font)
     glyphs = font.glyphs
     first_char = int(glyphs[0].codepoint)
     last_char = int(glyphs[-2].codepoint)
@@ -286,7 +269,6 @@ def _save_iigs(outstream, font):
     ascent = font.ascent
     descent = font.descent
     # font.kern and glyph.wo_width and .wo_offset set in normalise_metrics
-    kern = font.kern
     fontrec = _NFNT_HEADER()
     #fontrec.fontType = 0
     fontrec.firstChar = first_char
