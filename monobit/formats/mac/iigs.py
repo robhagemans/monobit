@@ -266,22 +266,21 @@ def _save_iigs(outstream, font):
         for _offset in accumulate((_g.width for _g in glyph_table), initial=0)
     )
     # generate NFNT header
-    ascent = font.ascent
-    descent = font.descent
-    # font.kern and glyph.wo_width and .wo_offset set in normalise_metrics
-    fontrec = _NFNT_HEADER()
-    #fontrec.fontType = 0
-    fontrec.firstChar = first_char
-    fontrec.lastChar = last_char
-    fontrec.widMax = max(_g.advance_width for _g in glyphs)
-    fontrec.kernMax = -kern
-    fontrec.nDescent = -descent
-    fontrec.fRectWidth = max(_g.width + _g.left_bearing + kern for _g in glyphs)
-    fontrec.fRectHeight = ascent + descent
-    fontrec.ascent = ascent
-    fontrec.descent = descent
-    fontrec.leading = font.leading
-    fontrec.rowWords = strike_raster.width // 16
+    # glyph.wo_width and .wo_offset set in normalise_metrics
+    fontrec = _NFNT_HEADER(
+        #fontType=0,
+        firstChar=first_char,
+        lastChar=last_char,
+        widMax=max(_g.advance_width for _g in glyphs),
+        kernMax=-kern,
+        nDescent=-font.descent,
+        fRectWidth=max(_g.width + _g.left_bearing + kern for _g in glyphs),
+        fRectHeight=font.ascent + font.descent,
+        ascent=font.ascent,
+        descent=font.descent,
+        leading=font.leading,
+        rowWords=strike_raster.width // 16,
+    )
     # generate IIgs header
     try:
         family_id = int(font.get_property('iigs.family-id'), 10)
@@ -311,7 +310,7 @@ def _save_iigs(outstream, font):
         header.version = 0x0105
         # account for extra header word.
         offset += 1
-        extra = _EXTENDED_HEADER(owTLocHigh = offset >> 16)
+        extra = _EXTENDED_HEADER(owTLocHigh=offset>>16)
     fontrec.owTLoc = offset & 0xffff
     logging.debug("Fontrec: %s", fontrec)
     # write out headers and NFNT
