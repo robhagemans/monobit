@@ -396,16 +396,17 @@ def _convert_nfnt(properties, glyphs, fontrec):
 
 def _subset(font):
     """Subset to glyphs storable in NFNT and append default glyph."""
-    font.label(codepoint_from=font.encoding)
+    font = font.label(codepoint_from=font.encoding)
     if font.encoding in ('mac-roman', 'mac-symbol', 'raw', '', None):
         labels = tuple(range(0, 256))
     elif font.encoding == 'ascii':
         labels = tuple(range(0, 128))
     else:
+        font = font.label()
         labels = tuple(Char(_c) for _c in charmaps['mac-roman'].mapping.values())
     subfont = font.subset(labels=labels)
     if not subfont.glyphs:
-        raise FileFormatError('No suitable characters for IIgs font')
+        raise FileFormatError('No suitable characters for NFNT font')
     glyphs = [*subfont.glyphs, font.get_default_glyph()]
     font = font.modify(glyphs, encoding=None)
     return font
@@ -428,7 +429,7 @@ def _normalize_glyph(g, ink_bounds):
 
 
 def _normalize_metrics(font):
-    """Calculate metrics for Apple IIgs format."""
+    """Calculate metrics for NFNT format."""
     # reduce to ink bounds horizontally, font ink bounds vertically
     glyphs = tuple(_normalize_glyph(_g, font.ink_bounds) for _g in font.glyphs)
     # calculate kerning. only negative kerning is handled
@@ -441,9 +442,9 @@ def _normalize_metrics(font):
     )
     # check that glyph widths and offsets fit
     if any(_g.wo_width >= 255 for _g in glyphs):
-        raise FileFormatError('IIgs character width must be < 255')
+        raise FileFormatError('NFNT character width must be < 255')
     if any(_g.wo_offset >= 255 for _g in glyphs):
-        raise FileFormatError('IIgs character offset must be < 255')
+        raise FileFormatError('NFNT character offset must be < 255')
     font = font.modify(glyphs)
     return font, kern
 
