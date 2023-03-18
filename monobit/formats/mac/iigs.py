@@ -116,7 +116,7 @@ def _convert_iigs(glyphs, fontrec, header, name):
 
 def _save_iigs(outstream, font, version=None):
     """Save an Apple IIgs font file."""
-    nfnt, owt_loc_high, fbr_extent = _create_iigs_nfnt(font)
+    nfnt, owt_loc_high, fbr_extent = _create_nfnt(font)
     # if offset > 32 bits, need to use iigs format v1.05
     if version is None:
         if owt_loc_high:
@@ -167,7 +167,9 @@ def _save_iigs(outstream, font, version=None):
 # NFNT writer
 
 from ...struct import big_endian as be
-from .nfnt import nfnt_header_struct, loc_entry_struct, wo_entry_struct
+from .nfnt import (
+    nfnt_header_struct, loc_entry_struct, wo_entry_struct, font_type_struct
+)
 
 
 def _subset(font):
@@ -224,12 +226,13 @@ def _normalize_metrics(font):
     return font, kern
 
 
-def _create_iigs_nfnt(font, endian='little'):
-    """Create NFNT section of Apple IIgs font file."""
+def _create_nfnt(font, endian='little', ndescent_is_high=False):
+    """Create FONT/NFNT resource."""
     # fontType is ignored
     # glyph-width table and image-height table not included
     base = {'b': be, 'l': le}[endian[:1].lower()]
     NFNTHeader = nfnt_header_struct(base)
+    FontType = NFNTHeader.element_types['fontType']
     LocEntry = loc_entry_struct(base)
     WOEntry = wo_entry_struct(base)
     # subset the font. we need a font structure to calculate ink bounds
@@ -268,7 +271,13 @@ def _create_iigs_nfnt(font, endian='little'):
     owt_loc = (len(font_strike) + len(loc_table) + 10) >> 1
     # generate NFNT header
     fontrec = NFNTHeader(
-        #fontType=0,
+        # this seems to be always 0x9000, 0xb000
+        # even if docs say reserved_15 should be 0
+        # we don't provide a scalable width or height tables
+        fontType=FontType(
+            reserved_15=1, reserved_12=1,
+            fixed_width=font.spacing in ('monospace', 'character-cell'),
+        ),
         firstChar=first_char,
         lastChar=last_char,
         widMax=max(_g.advance_width for _g in glyphs),
@@ -290,6 +299,8 @@ def _create_iigs_nfnt(font, endian='little'):
         rowWords=strike_raster.width // 16,
     )
     owt_loc_high = owt_loc >> 16
+    if ndescent_is_high and owt_loc_high:
+        fontrec.nDescent = owt_loc_high
     logging.debug('NFNT header: %s', fontrec)
     data = b''.join((
         bytes(fontrec),

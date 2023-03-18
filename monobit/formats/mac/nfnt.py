@@ -70,7 +70,6 @@ def font_type_struct(base):
         has_height_table=bitfield('uint16', 1),
     )
 
-
 # the header of the NFNT is a FontRec
 # https://developer.apple.com/library/archive/documentation/mac/Text/Text-214.html
 def nfnt_header_struct(base):
