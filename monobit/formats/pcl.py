@@ -207,14 +207,16 @@ def _read_hppcl_glyphs(instream):
         if not esc_cmd:
             break
         if esc_cmd != b'\x1b*c':
-            raise FileFormatError(f'Expected character code, got {esc_cmd}')
+            logging.warning(f'Expected character code; ignoring unexpected PCL command {esc_cmd}')
+            continue
         codestr, _ = read_until(instream, b'Ee', 1)
         code = bytestr_to_int(codestr)
         skipped, esc_cmd = read_until(instream, b'\x1b', 3)
         if skipped:
             logging.debug('Skipped bytes: %s', skipped)
         if esc_cmd != b'\x1b(s':
-            raise FileFormatError(f'Expected glyph definition, got {esc_cmd}')
+            logging.warning(f'Expected glyph definition; ignoring unexpected PCL command {esc_cmd}')
+            continue
         sizestr, _ = read_until(instream, b'W', 1)
         size = bytestr_to_int(sizestr)
         chardef = _LASERJET_CHAR_DEF.read_from(instream)
