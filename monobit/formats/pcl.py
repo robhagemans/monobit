@@ -5,7 +5,6 @@ monobit.formats.pcl - HP PCL soft fonts
 licence: https://opensource.org/licenses/MIT
 """
 
-
 import logging
 
 from ..storage import loaders, savers
@@ -27,73 +26,21 @@ from ..properties import Props
 )
 def load_hppcl(instream):
     """Load a HP PCL soft font."""
-    pre, esc_cmd = read_until(instream, b'\x1b', 3)
-    if pre:
-        logging.debug(pre)
-    if esc_cmd != b'\x1b)s':
-        raise FileFormatError('Not a PCL soft font')
-    sizestr, _ = read_until(instream, b'W', 1)
-    size = bytestr_to_int(sizestr)
-    logging.debug('header size %d', size)
-    fontdef = _BITMAP_FONT_DEF.read_from(instream)
+    fontdef, copyright = _read_hppcl_header(instream)
     logging.debug(fontdef)
     if fontdef.descriptor_format not in (0, 5, 6, 7, 9, 12, 16, 20):
         raise FileFormatError('PCL soft font is not a bitmap font.')
-    copyright, _ = read_until(instream, b'\x1b\x1a\0', 0)
-
-    props = dict(
-        name=fontdef.font_name.strip().decode('ascii', 'replace'),
-        notice=copyright.decode('ascii', 'replace'),
-        x_height=fontdef.x_height//4,
-        setwidth=_SETWIDTH_MAP.get(fontdef.width_type, ''),
-        weight=_WEIGHT_MAP.get(fontdef.stroke_weight, ''),
-        style=(
-            'sans serif' if fontdef.serif_style & 64
-            else 'serif' if fontdef.serif_style & 128 else ''
-        ),
-        # ignoring height_extended, pitch_extended
-        descent=fontdef.baseline_position//4,
-        ascent=(fontdef.height-fontdef.baseline_position)//4,
-        # ignoring fractional dot sizes
-        cap_height=(fontdef.cap_height * fontdef.height / 65536) // 4 or None,
-        line_height=fontdef.text_height//4 or None,
-        average_width=fontdef.pitch / 4 or None,
-        underline_descent=-fontdef.underline_position or None,
-        underline_thickness=fontdef.underline_thickness,
-        fontdef=Props(**vars(fontdef))
-    )
-
-    glyphs = []
-    while True:
-        skipped, esc_cmd = read_until(instream, b'\x1b', 3)
-        if skipped:
-            logging.debug('Skipped bytes: %s', skipped)
-        if not esc_cmd:
-            break
-        if esc_cmd != b'\x1b*c':
-            raise FileFormatError(f'Expected character code, got {esc_cmd}')
-        codestr, _ = read_until(instream, b'Ee', 1)
-        code = bytestr_to_int(codestr)
-        skipped, esc_cmd = read_until(instream, b'\x1b', 3)
-        if skipped:
-            logging.debug('Skipped bytes: %s', skipped)
-        if esc_cmd != b'\x1b(s':
-            raise FileFormatError(f'Expected glyph definition, got {esc_cmd}')
-        sizestr, _ = read_until(instream, b'W', 1)
-        size = bytestr_to_int(sizestr)
-        chardef = _LASERJET_CHAR_DEF.read_from(instream)
-        glyphbytes = instream.read(size - _LASERJET_CHAR_DEF.size)
-        glyph = Glyph.from_bytes(
-            glyphbytes, width=chardef.character_width,
-            left_bearing=chardef.left_offset,
-            shift_up=chardef.top_offset-chardef.character_height,
-            right_bearing=max(0, chardef.delta_x//4 - chardef.character_width - chardef.left_offset),
-            codepoint=code,
-            chardef=Props(**vars(chardef)),
-        )
-        glyphs.append(glyph)
+    glyphdefs = _read_hppcl_glyphs(instream)
+    props = _convert_hppcl_props(fontdef, copyright)
+    glyphs = _convert_hppcl_glyphs(glyphdefs)
     return Font(glyphs, **props)
 
+
+###############################################################################
+# PCL soft font format
+
+# font definition structures
+# https://developers.hp.com/system/files/attachments/PCL%20Implementors%20Guide-10-downloading%20fonts.pdf
 
 _BITMAP_FONT_DEF = be.Struct(
     font_descriptor_size='uint16',
@@ -106,6 +53,7 @@ _BITMAP_FONT_DEF = be.Struct(
     cell_height='uint16',
     orientation='uint8',
     spacing='uint8',
+    # Symbol Set (UINT16): Specifies the symbol set characteristic of the font
     symbol_set='uint16',
     pitch='uint16',
     height='uint16',
@@ -127,31 +75,13 @@ _BITMAP_FONT_DEF = be.Struct(
     pitch_extended='uint8',
     height_extended='uint8',
     cap_height='uint16',
+    # Font Number (UINT32): Bitmap font - should be ignored and set to 0
     font_number='uint32',
+    # Font Name (ASC16)
     font_name='16s',
     # followed by optional copyright notice
 )
 
-_LASERJET_CHAR_DEF = be.Struct(
-    format='uint8',
-    continuation='uint8',
-    descriptor_size='uint8',
-    class_='uint8',
-    orientation='uint8',
-    reserved='uint8',
-    left_offset='int16',
-    top_offset='int16',
-    character_width='uint16',
-    character_height='uint16',
-    delta_x='int16',
-    # followed by character data
-)
-
-_LASERJET_CHAR_CONT = be.Struct(
-    format='uint8',
-    continuation='uint8',
-    # followed by character data
-)
 
 _SETWIDTH_MAP = {
     -5: 'ultra-compressed',
@@ -183,6 +113,118 @@ _WEIGHT_MAP = {
     7: 'ultra-heavy', # Ultra Black
 }
 
+# character definition structures
+# https://developers.hp.com/system/files/attachments/PCL%20Implementors%20Guide-11-downloading%20characters.pdf
+
+_LASERJET_CHAR_DEF = be.Struct(
+    format='uint8',
+    continuation='uint8',
+    descriptor_size='uint8',
+    class_='uint8',
+    orientation='uint8',
+    reserved='uint8',
+    left_offset='int16',
+    top_offset='int16',
+    character_width='uint16',
+    character_height='uint16',
+    delta_x='int16',
+    # followed by character data
+)
+
+_LASERJET_CHAR_CONT = be.Struct(
+    format='uint8',
+    continuation='uint8',
+    # followed by character data
+)
+
+
+###############################################################################
+# converter
+
+def _convert_hppcl_props(fontdef, copyright):
+    props = dict(
+        name=fontdef.font_name.strip().decode('ascii', 'replace'),
+        notice=copyright.decode('ascii', 'replace'),
+        x_height=fontdef.x_height//4,
+        setwidth=_SETWIDTH_MAP.get(fontdef.width_type, ''),
+        weight=_WEIGHT_MAP.get(fontdef.stroke_weight, ''),
+        style=(
+            'sans serif' if fontdef.serif_style & 64
+            else 'serif' if fontdef.serif_style & 128 else ''
+        ),
+        # ignoring height_extended, pitch_extended
+        descent=fontdef.baseline_position//4,
+        ascent=(fontdef.height-fontdef.baseline_position)//4,
+        # ignoring fractional dot sizes
+        cap_height=(fontdef.cap_height * fontdef.height / 65536) // 4 or None,
+        line_height=fontdef.text_height//4 or None,
+        average_width=fontdef.pitch / 4 or None,
+        underline_descent=-fontdef.underline_position or None,
+        underline_thickness=fontdef.underline_thickness,
+        fontdef=Props(**vars(fontdef))
+    )
+    return props
+
+
+def _convert_hppcl_glyphs(glyphdefs):
+    glyphs = tuple(
+        Glyph.from_bytes(
+            glyphbytes, width=chardef.character_width,
+            left_bearing=chardef.left_offset,
+            shift_up=chardef.top_offset-chardef.character_height,
+            right_bearing=max(0, chardef.delta_x//4 - chardef.character_width - chardef.left_offset),
+            codepoint=code,
+            chardef=Props(**vars(chardef)),
+        )
+        for code, chardef, glyphbytes in glyphdefs
+    )
+    return glyphs
+
+
+###############################################################################
+# reader
+
+def _read_hppcl_header(instream):
+    pre, esc_cmd = read_until(instream, b'\x1b', 3)
+    if pre:
+        logging.debug(pre)
+    if esc_cmd != b'\x1b)s':
+        raise FileFormatError('Not a PCL soft font')
+    sizestr, _ = read_until(instream, b'W', 1)
+    size = bytestr_to_int(sizestr)
+    logging.debug('header size %d', size)
+    fontdef = _BITMAP_FONT_DEF.read_from(instream)
+    copyright, _ = read_until(instream, b'\x1b\x1a\0', 0)
+    return fontdef, copyright
+
+
+def _read_hppcl_glyphs(instream):
+    glyphdefs = []
+    while True:
+        skipped, esc_cmd = read_until(instream, b'\x1b', 3)
+        if skipped:
+            logging.debug('Skipped bytes: %s', skipped)
+        if not esc_cmd:
+            break
+        if esc_cmd != b'\x1b*c':
+            raise FileFormatError(f'Expected character code, got {esc_cmd}')
+        codestr, _ = read_until(instream, b'Ee', 1)
+        code = bytestr_to_int(codestr)
+        skipped, esc_cmd = read_until(instream, b'\x1b', 3)
+        if skipped:
+            logging.debug('Skipped bytes: %s', skipped)
+        if esc_cmd != b'\x1b(s':
+            raise FileFormatError(f'Expected glyph definition, got {esc_cmd}')
+        sizestr, _ = read_until(instream, b'W', 1)
+        size = bytestr_to_int(sizestr)
+        chardef = _LASERJET_CHAR_DEF.read_from(instream)
+        glyphbytes = instream.read(size - _LASERJET_CHAR_DEF.size)
+        glyphdefs.append((code, chardef, glyphbytes))
+    return glyphdefs
+
+
+###############################################################################
+# reader utility functions
 
 def read_until(instream, break_char, then_read=1):
     """Read bytes from stream until a given sentinel."""
