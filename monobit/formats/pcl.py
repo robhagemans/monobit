@@ -33,7 +33,7 @@ def load_hppcl(instream):
     glyphdefs = _read_hppcl_glyphs(instream)
     props = _convert_hppcl_props(fontdef, copyright)
     glyphs = _convert_hppcl_glyphs(glyphdefs)
-    return Font(glyphs, **props)
+    return Font(glyphs, **props).label()
 
 
 ###############################################################################
@@ -137,6 +137,32 @@ _LASERJET_CHAR_CONT = be.Struct(
     # followed by character data
 )
 
+# symbol sets
+# https://developers.hp.com/system/files/attachments/PCL%20Implementors%20Guide-09-font%20selection.pdf
+
+_SYMBOL_SETS = {
+    '': None,
+    '0U': 'ascii',
+    '8U': 'hp-roman8',
+    # win 3.0 latin-1
+    '9U': 'windows-1252',
+    # win 3.1 latin-1
+    '19U': 'windows-1252',
+    '10U': 'cp437',
+    '13J': 'pcl-ventura',
+    '0N': 'latin-1',
+    '2N': 'latin-2',
+    '3N': 'latin-3',
+    '4N': 'latin-4',
+    '5N': 'latin-5',
+    '6N': 'latin-6',
+    '9N': 'latin-9',
+    '10N': 'iso8859-5',
+    '11N': 'iso8859-6',
+    '12N': 'iso8859-7',
+    '8L': 'ms-linedraw',
+}
+
 
 ###############################################################################
 # converter
@@ -145,6 +171,7 @@ def _convert_hppcl_props(fontdef, copyright):
     props = dict(
         name=fontdef.font_name.strip().decode('ascii', 'replace'),
         notice=copyright.decode('ascii', 'replace'),
+        encoding=_encoding_from_symbol_set(fondef.symbol_set),
         x_height=fontdef.x_height//4,
         setwidth=_SETWIDTH_MAP.get(fontdef.width_type, ''),
         weight=_WEIGHT_MAP.get(fontdef.stroke_weight, ''),
@@ -161,9 +188,20 @@ def _convert_hppcl_props(fontdef, copyright):
         average_width=fontdef.pitch / 4 or None,
         underline_descent=-fontdef.underline_position or None,
         underline_thickness=fontdef.underline_thickness,
-        fontdef=Props(**vars(fontdef))
+        # debugging
+        fontdef=Props(**vars(fontdef)),
     )
     return props
+
+
+def _encoding_from_symbol_set(symbol_set):
+    """Convert symbol set code to encoding name."""
+    if symbol_set:
+        num, lett = divmod(symbol_set, 32)
+        pcl_symbol_set_id = f'{num}{chr(lett+64)}'
+    else:
+        pcl_symbol_set_id = ''
+    return _SYMBOL_SETS.get(pcl_symbol_set_id, f'pcl-{pcl_symbol_set_id}')
 
 
 def _convert_hppcl_glyphs(glyphdefs):
