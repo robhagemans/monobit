@@ -69,8 +69,16 @@ _BITMAP_FONT_DEF = be.Struct(
     # Style MSB (UINT16): The style MSB combines with the style LSB to make the style word
     style_msb='uint8',
     reserved='uint8',
+    # Baseline Position (UINT16): Bitmap Font - Specifies the distance from the baseline
+    # (an imaginary dot row on which the characters stand) to the top of the cell.
     baseline_position='uint16',
+    # Cell Width (UINT16): Specifies the width from the leftmost extent of any
+    # character in the font to the rightmost extent of any character in the font.
+    # Bitmap Font - Specified in PCL coordinate system dots.
     cell_width='uint16',
+    # Cell Height (UINT16): Specifies the distance from the lowest descent of any
+    # character in the font to the highest ascent of any character in the font.
+    # Bitmap Font - Specified in PCL coordinate system dots.
     cell_height='uint16',
     orientation='uint8',
     spacing='uint8',
