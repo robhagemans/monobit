@@ -118,7 +118,7 @@ def load_stream(instream, *, format='', subpath='', **kwargs):
         )
     if last_error:
         raise last_error
-    raise FileFormatError('Unable to reaad fonts from file')
+    raise FileFormatError('Unable to read fonts from file')
 
 
 def load_all(container, *, format='', **kwargs):
