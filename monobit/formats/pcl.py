@@ -6,6 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import logging
+from io import BytesIO
 
 from ..storage import loaders, savers
 from ..magic import FileFormatError, Magic
@@ -341,12 +342,29 @@ def _convert_hppcl_glyph(code, chardef, glyphbytes):
     raster = ()
     if chardef.class_ not in (1, 2):
         logging.error('Unsupported character data format.')
-    elif chardef.class_ == 1:
+    elif chardef.class_ == 2:
+        # decompress RLE data
+        reader = BytesIO(glyphbytes)
+        outbits = []
+        outrow = []
+        while True:
+            repeats = reader.read(1)
+            if not repeats:
+                break
+            length = 0
+            bit = False
+            while length < chardef.character_width:
+                n = reader.read(1)
+                if not n:
+                    break
+                outrow.extend([bit] * ord(n))
+                bit = not bit
+            outbits.extend(outrow * ord(repeats))
+        raster = Raster(outbits, _0=False, _1=True)
+    else:
         raster = Raster.from_bytes(
             glyphbytes, width=chardef.character_width,
         ).turn(clockwise=chardef.orientation)
-    else:
-        logging.error('Compressed character data format not supported.')
     if chardef.orientation == 0:
         props = dict(
             left_bearing=chardef.left_offset,
