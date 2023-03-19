@@ -404,24 +404,30 @@ def _convert_hppcl_glyphs(glyphdefs):
 
 def _read_hppcl_header(instream):
     """Read the PCL font definition header."""
-    pre, esc_cmd = read_until(instream, b'\x1b', 3)
-    if pre:
-        logging.debug(pre)
-    if esc_cmd != b'\x1b)s':
-        raise FileFormatError('Not a PCL soft font')
+    while True:
+        pre, esc_cmd = read_until(instream, b'\x1b', 3)
+        if pre:
+            logging.debug(pre)
+        if not esc_cmd:
+            break
+        if esc_cmd != b'\x1b)s':
+            logging.warning(f'Expected font header; ignoring unexpected PCL command {esc_cmd}')
+        else:
+            break
     sizestr, _ = read_until(instream, b'W', 1)
     size = bytestr_to_int(sizestr)
     logging.debug('header size %d', size)
     headerbytes = instream.read(_BITMAP_FONT_HEAD.size)
     fontdef = _BITMAP_FONT_HEAD.from_bytes(headerbytes)
-    headerbytes += instream.read(fontdef.font_descriptor_size - _BITMAP_FONT_HEAD.size)
+    header_length = min(fontdef.font_descriptor_size, size)
+    headerbytes += instream.read(header_length - _BITMAP_FONT_HEAD.size)
     # if the header is shorter than 64 bytes, set everything beyond that to 0
     # by the spec, underline_position should be 5; we're ignoring that
     if len(headerbytes) < _BITMAP_FONT_DEF.size:
         headerbytes += bytes(_BITMAP_FONT_DEF.size - len(headerbytes))
     fontdef = _BITMAP_FONT_DEF.from_bytes(headerbytes[:_BITMAP_FONT_DEF.size])
     logging.debug('skipped: %s', headerbytes[_BITMAP_FONT_DEF.size:])
-    copyright = instream.read(size - fontdef.font_descriptor_size)
+    copyright = instream.read(size - header_length)
     read_until(instream, b'\x1b\x1a\0', 0)
     return fontdef, copyright
 
