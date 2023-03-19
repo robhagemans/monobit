@@ -154,9 +154,15 @@ _WEIGHT_MAP = {
 # character definition structures
 # https://developers.hp.com/system/files/attachments/PCL%20Implementors%20Guide-11-downloading%20characters.pdf
 
-_LASERJET_CHAR_DEF = be.Struct(
+
+_LASERJET_CHAR_COMMON = be.Struct(
     format='uint8',
     continuation='uint8',
+    # followed by character data
+)
+_LASERJET_CHAR_DEF = be.Struct(
+    #format='uint8',
+    #continuation='uint8',
     descriptor_size='uint8',
     class_='uint8',
     orientation='uint8',
@@ -169,11 +175,6 @@ _LASERJET_CHAR_DEF = be.Struct(
     # followed by character data
 )
 
-_LASERJET_CHAR_CONT = be.Struct(
-    format='uint8',
-    continuation='uint8',
-    # followed by character data
-)
 
 # Style Word = Posture + (4 x Width) + (32 x Structure)
 _STYLE_WORD = be.Struct(
@@ -394,22 +395,29 @@ def _read_hppcl_glyphs(instream):
             logging.debug('Skipped bytes: %s', skipped)
         if not esc_cmd:
             break
-        if esc_cmd != b'\x1b*c':
-            logging.warning(f'Expected character code; ignoring unexpected PCL command {esc_cmd}')
-            continue
-        codestr, _ = read_until(instream, b'Ee', 1)
-        code = bytestr_to_int(codestr)
-        skipped, esc_cmd = read_until(instream, b'\x1b', 3)
-        if skipped:
-            logging.debug('Skipped bytes: %s', skipped)
         if esc_cmd != b'\x1b(s':
-            logging.warning(f'Expected glyph definition; ignoring unexpected PCL command {esc_cmd}')
-            continue
+            if esc_cmd != b'\x1b*c':
+                logging.warning(f'Expected character code; ignoring unexpected PCL command {esc_cmd}')
+                continue
+            codestr, _ = read_until(instream, b'Ee', 1)
+            code = bytestr_to_int(codestr)
+            skipped, esc_cmd = read_until(instream, b'\x1b', 3)
+            if skipped:
+                logging.debug('Skipped bytes: %s', skipped)
+            if esc_cmd != b'\x1b(s':
+                logging.warning(f'Expected glyph definition; ignoring unexpected PCL command {esc_cmd}')
+                continue
         sizestr, _ = read_until(instream, b'W', 1)
         size = bytestr_to_int(sizestr)
-        chardef = _LASERJET_CHAR_DEF.read_from(instream)
-        glyphbytes = instream.read(size - _LASERJET_CHAR_DEF.size)
-        glyphdefs.append((code, chardef, glyphbytes))
+        common = _LASERJET_CHAR_COMMON.read_from(instream)
+        if common.continuation:
+            glyphbytes = instream.read(size - _LASERJET_CHAR_COMMON.size)
+            code, chardef, last_glyphbytes = glyphdefs[-1]
+            glyphdefs[-1] = code, chardef, last_glyphbytes + glyphbytes
+        else:
+            chardef = _LASERJET_CHAR_DEF.read_from(instream)
+            glyphbytes = instream.read(size - _LASERJET_CHAR_COMMON.size - _LASERJET_CHAR_DEF.size)
+            glyphdefs.append((code, chardef, glyphbytes))
     return glyphdefs
 
 
