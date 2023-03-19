@@ -155,6 +155,8 @@ _WEIGHT_MAP = {
 # https://developers.hp.com/system/files/attachments/PCL%20Implementors%20Guide-11-downloading%20characters.pdf
 
 
+_CHAR_FMT_LASERJET = 4
+
 _LASERJET_CHAR_COMMON = be.Struct(
     format='uint8',
     continuation='uint8',
@@ -335,9 +337,16 @@ def _encoding_from_symbol_set(symbol_set):
 
 def _convert_hppcl_glyph(code, chardef, glyphbytes):
     """Convert from PCL to monobit glyph."""
-    raster = Raster.from_bytes(
-        glyphbytes, width=chardef.character_width,
-    ).turn(clockwise=chardef.orientation)
+    props = {}
+    raster = ()
+    if chardef.class_ not in (1, 2):
+        logging.error('Unsupported character data format.')
+    elif chardef.class_ == 1:
+        raster = Raster.from_bytes(
+            glyphbytes, width=chardef.character_width,
+        ).turn(clockwise=chardef.orientation)
+    else:
+        logging.error('Compressed character data format not supported.')
     if chardef.orientation == 0:
         props = dict(
             left_bearing=chardef.left_offset,
@@ -410,6 +419,10 @@ def _read_hppcl_glyphs(instream):
         sizestr, _ = read_until(instream, b'W', 1)
         size = bytestr_to_int(sizestr)
         common = _LASERJET_CHAR_COMMON.read_from(instream)
+        if common.format != _CHAR_FMT_LASERJET:
+            raise FileFormatError(
+                f'Unsupported charcter definition format ({common.format}.'
+            )
         if common.continuation:
             glyphbytes = instream.read(size - _LASERJET_CHAR_COMMON.size)
             code, chardef, last_glyphbytes = glyphdefs[-1]
