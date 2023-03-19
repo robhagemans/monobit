@@ -168,6 +168,7 @@ _SYMBOL_SETS = {
 # converter
 
 def _convert_hppcl_props(fontdef, copyright):
+    """Convert from PCL to monobit properties."""
     props = dict(
         name=fontdef.font_name.strip().decode('ascii', 'replace'),
         notice=copyright.decode('ascii', 'replace'),
@@ -205,6 +206,7 @@ def _encoding_from_symbol_set(symbol_set):
 
 
 def _convert_hppcl_glyphs(glyphdefs):
+    """Convert from PCL to monobit glyphs."""
     glyphs = tuple(
         Glyph.from_bytes(
             glyphbytes, width=chardef.character_width,
@@ -223,6 +225,7 @@ def _convert_hppcl_glyphs(glyphdefs):
 # reader
 
 def _read_hppcl_header(instream):
+    """Read the PCL font definition header."""
     pre, esc_cmd = read_until(instream, b'\x1b', 3)
     if pre:
         logging.debug(pre)
@@ -237,6 +240,7 @@ def _read_hppcl_header(instream):
 
 
 def _read_hppcl_glyphs(instream):
+    """Read PCL character definitions."""
     glyphdefs = []
     while True:
         skipped, esc_cmd = read_until(instream, b'\x1b', 3)
@@ -278,4 +282,5 @@ def read_until(instream, break_char, then_read=1):
 
 
 def bytestr_to_int(bytestr):
+    """Convert a bytes string representation to integer."""
     return int(bytestr.decode('ascii', 'replace'), 10)
