@@ -9,7 +9,7 @@ import logging
 
 from ..storage import loaders, savers
 from ..magic import FileFormatError, Magic
-from ..struct import big_endian as be
+from ..struct import big_endian as be, bitfield
 from ..glyph import Glyph
 from ..font import Font
 from ..properties import Props
@@ -43,9 +43,30 @@ def load_hppcl(instream):
 # https://developers.hp.com/system/files/attachments/PCL%20Implementors%20Guide-10-downloading%20fonts.pdf
 
 _BITMAP_FONT_DEF = be.Struct(
+    # Font Descriptor Size (UINT): The number of bytes in the font descriptor
     font_descriptor_size='uint16',
+    # Descriptor Format (UBYTE)
+    # 0 Standard Bitmap
+    # 5 DeskJet Bitmap
+    # 6 PaintJet Bitmap
+    # 7 PaintJet XL Bitmap
+    # 9 DeskJet Plus Bitmap
+    # 10 Bound Intellifont Scalable
+    # 11 Unbound Intellifont Scalable
+    # 12 DeskJet 500 Bitmap
+    # 15 TrueType Scalable
+    # 16 Universal
+    # 20 Resolution-Specified Bitmap
     descriptor_format='uint8',
+    # Symbol Set Type (UBYTE)
+    # 0 Bound font, 7-bit (96 characters) ⎯ Character codes 32-127 [decimal] are printable.*
+    # 1 Bound, 8-bit (192 characters) ⎯ Character codes 32-127 and160-255 printable.*
+    # 2 Bound, 8-bit (256 characters) ⎯ All codes are printable except 0, 7-15, and 27.*
+    # 3 Bound, 16-bit (65535 characters) ⎯ All are printable except 0, 7-15, 27, 65279, 65534, 65535
+    # 10 Unbound ⎯ Character codes correspond to MSL numbers (Intellifont).
+    # 11 Unbound ⎯ Character codes correspond to Unicode numbers (TrueType).
     symbol_set_type='uint8',
+    # Style MSB (UINT16): The style MSB combines with the style LSB to make the style word
     style_msb='uint8',
     reserved='uint8',
     baseline_position='uint16',
@@ -137,6 +158,65 @@ _LASERJET_CHAR_CONT = be.Struct(
     # followed by character data
 )
 
+# Style Word = Posture + (4 x Width) + (32 x Structure)
+_STYLE_WORD = be.Struct(
+    x=bitfield('uint16', 1),
+    reserved=bitfield('uint16', 5),
+    structure=bitfield('uint16', 5),
+    width=bitfield('uint16', 3),
+    posture=bitfield('uint16', 2),
+)
+
+# Posture (style word partial sum)
+_STYLE_POSTURE_MAP = {
+    # 0 - Upright
+    0: 'roman',
+    # 1 - Italic
+    1: 'italic',
+    # 2 - Alternate Italic
+    2: 'oblique',
+    # 3 - Reserved
+    3: ''
+}
+
+# = Width (style word partial sum multiplied by 4)
+_STYLE_WIDTH_MAP = {
+    # 0 - Normal
+    0: 'medium',
+    # 1 - Condensed
+    1: 'condensed',
+    # 2 - Compressed or extra condensed
+    2: 'extra-condensed',
+    # 3 - Extra compressed
+    3: 'ultra-condensed',
+    # 4 - Ultra compressed
+    4: 'ultra-compressed',
+    # 5 - Reserved
+    5: '',
+    # 6 - Extended or expanded
+    6: 'expanded',
+    # 7 - Extra extended or extra expanded
+    7: 'extra-expanded',
+}
+
+_STYLE_STRUCTURE_MAP = {}
+# = Structure (style word partial sum multiplied by 32)
+# 0 - Solid
+# 1 - Outline
+# 2 - Inline
+# 3 - Contour, Edge effects
+# 4 - Solid with shadow
+# 5 - Outline with shadow
+# 6 - Inline with shadow
+# 7 - Contour with shadow
+# 8-11 - Patterned (complex patterns, subjective to typeface)
+# 12-15 - Patterned with shadow
+# 16 - Inverse
+# 17 - Inverse in open border
+# 18-30 - Reserved
+# 31 - Unknown structure
+
+
 # symbol sets
 # https://developers.hp.com/system/files/attachments/PCL%20Implementors%20Guide-09-font%20selection.pdf
 
@@ -169,28 +249,36 @@ _SYMBOL_SETS = {
 
 def _convert_hppcl_props(fontdef, copyright):
     """Convert from PCL to monobit properties."""
+    style_word = _STYLE_WORD.from_bytes(bytes((fontdef.style_msb, fontdef.style_lsb)))
     props = dict(
+        # metadata
         name=fontdef.font_name.strip().decode('ascii', 'replace'),
         notice=copyright.decode('ascii', 'replace'),
-        encoding=_encoding_from_symbol_set(fondef.symbol_set),
-        x_height=fontdef.x_height//4,
+        # descriptive properties
+        slant=_STYLE_POSTURE_MAP.get(style_word.posture, None),
         setwidth=_SETWIDTH_MAP.get(fontdef.width_type, ''),
         weight=_WEIGHT_MAP.get(fontdef.stroke_weight, ''),
         style=(
             'sans serif' if fontdef.serif_style & 64
             else 'serif' if fontdef.serif_style & 128 else ''
         ),
-        # ignoring height_extended, pitch_extended
+        # encoding
+        encoding=_encoding_from_symbol_set(fontdef.symbol_set),
+        # metrics
         descent=fontdef.baseline_position//4,
         ascent=(fontdef.height-fontdef.baseline_position)//4,
-        # ignoring fractional dot sizes
-        cap_height=(fontdef.cap_height * fontdef.height / 65536) // 4 or None,
         line_height=fontdef.text_height//4 or None,
-        average_width=fontdef.pitch / 4 or None,
+        # decoration metrics
         underline_descent=-fontdef.underline_position or None,
-        underline_thickness=fontdef.underline_thickness,
+        underline_thickness=fontdef.underline_thickness or None,
+        # characteristics
+        x_height=fontdef.x_height//4,
+        cap_height=(fontdef.cap_height * fontdef.height / 65536) // 4 or None,
+        average_width=fontdef.pitch / 4 or None,
         # debugging
         fontdef=Props(**vars(fontdef)),
+        # ignoring height_extended, pitch_extended
+        # ignoring fractional dot sizes
     )
     return props
 
