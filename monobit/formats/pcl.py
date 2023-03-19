@@ -131,10 +131,14 @@ _BITMAP_FONT_DEF = be.Struct(
     # followed by optional copyright notice
 )
 
+# resolution-specified bitmap font definition
 _RESOLUTION_EXT = be.Struct(
     x_resolution='uint16',
     y_resolution='uint16',
 )
+
+# omitted: universal font definition
+# additional fields have no info for bitmaps and can be safely ignored
 
 _SETWIDTH_MAP = {
     -5: 'ultra-compressed',
@@ -436,6 +440,10 @@ def _read_hppcl_header(instream):
     # if the header is shorter than 64 bytes, set everything beyond that to 0
     # by the spec, underline_position should be 5; we're ignoring that
     if len(headerbytes) < _BITMAP_FONT_DEF.size:
+        logging.debug(
+            'Truncated bitmap font header (descriptor size %d, header size %d)',
+            fontdef.font_descriptor_size, size
+        )
         headerbytes += bytes(_BITMAP_FONT_DEF.size - len(headerbytes))
     fontdef = _BITMAP_FONT_DEF.from_bytes(headerbytes[:_BITMAP_FONT_DEF.size])
     fontdef = Props(**vars(fontdef))
