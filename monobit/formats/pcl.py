@@ -30,7 +30,9 @@ def load_hppcl(instream):
     """Load a HP PCL soft font."""
     fontdef, copyright = _read_hppcl_header(instream)
     logging.debug(fontdef)
-    if fontdef.descriptor_format not in (0, 5, 6, 7, 9, 12, 16, 20):
+    if fontdef.descriptor_format not in (
+            _HEADER_FMT_BITMAP, 5, 6, 7, 9, 12, 16, _HEADER_FMT_RES_BITMAP
+        ):
         raise FileFormatError('PCL soft font is not a bitmap font.')
     glyphdefs = _read_hppcl_glyphs(instream)
     props = _convert_hppcl_props(fontdef, copyright)
@@ -43,6 +45,10 @@ def load_hppcl(instream):
 
 # font definition structures
 # https://developers.hp.com/system/files/attachments/PCL%20Implementors%20Guide-10-downloading%20fonts.pdf
+
+_HEADER_FMT_BITMAP = 0
+_HEADER_FMT_RES_BITMAP = 20
+
 
 _BITMAP_FONT_HEAD = be.Struct(
     font_descriptor_size='uint16',
@@ -125,6 +131,10 @@ _BITMAP_FONT_DEF = be.Struct(
     # followed by optional copyright notice
 )
 
+_RESOLUTION_EXT = be.Struct(
+    x_resolution='uint16',
+    y_resolution='uint16',
+)
 
 _SETWIDTH_MAP = {
     -5: 'ultra-compressed',
@@ -327,6 +337,8 @@ def _convert_hppcl_props(fontdef, copyright):
         # ignoring height_extended, pitch_extended
         # ignoring fractional dot sizes
     )
+    if fontdef.descriptor_format == _HEADER_FMT_RES_BITMAP:
+        props['dpi'] = (fontdef.x_resolution, fontdef.y_resolution)
     return props
 
 
@@ -426,7 +438,12 @@ def _read_hppcl_header(instream):
     if len(headerbytes) < _BITMAP_FONT_DEF.size:
         headerbytes += bytes(_BITMAP_FONT_DEF.size - len(headerbytes))
     fontdef = _BITMAP_FONT_DEF.from_bytes(headerbytes[:_BITMAP_FONT_DEF.size])
-    logging.debug('skipped: %s', headerbytes[_BITMAP_FONT_DEF.size:])
+    fontdef = Props(**vars(fontdef))
+    if fontdef.descriptor_format == _HEADER_FMT_RES_BITMAP:
+        extra = _RESOLUTION_EXT.from_bytes(headerbytes[_BITMAP_FONT_DEF.size:][:_RESOLUTION_EXT.size])
+        fontdef |= Props(**vars(extra))
+    else:
+        logging.debug('skipped: %s', headerbytes[_BITMAP_FONT_DEF.size:])
     copyright = instream.read(size - header_length)
     read_until(instream, b'\x1b\x1a\0', 0)
     return fontdef, copyright
