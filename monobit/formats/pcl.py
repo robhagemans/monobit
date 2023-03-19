@@ -11,6 +11,7 @@ from ..storage import loaders, savers
 from ..magic import FileFormatError, Magic
 from ..struct import big_endian as be, bitfield
 from ..glyph import Glyph
+from ..raster import Raster
 from ..font import Font
 from ..properties import Props
 
@@ -80,6 +81,13 @@ _BITMAP_FONT_DEF = be.Struct(
     # character in the font to the highest ascent of any character in the font.
     # Bitmap Font - Specified in PCL coordinate system dots.
     cell_height='uint16',
+    # Orientation (UBYTE): Specifies font orientation. All font characters must have
+    # the same orientation as those specified in the font descriptor; otherwise they
+    # are discarded as they are downloaded.
+    # 0 = portrait (0 degrees)
+    # 1 = landscape (90 degrees counterclockwise)
+    # 2 = reverse portrait (180 degrees counterclockwise)
+    # 3 = reverse landscape (270 degrees counterclockwise)
     orientation='uint8',
     spacing='uint8',
     # Symbol Set (UINT16): Specifies the symbol set characteristic of the font
@@ -324,18 +332,37 @@ def _encoding_from_symbol_set(symbol_set):
     return _SYMBOL_SETS.get(pcl_symbol_set_id, f'pcl-{pcl_symbol_set_id}')
 
 
+def _convert_hppcl_glyph(code, chardef, glyphbytes):
+    """Convert from PCL to monobit glyph."""
+    raster = Raster.from_bytes(
+        glyphbytes, width=chardef.character_width,
+    ).turn(clockwise=chardef.orientation)
+    if chardef.orientation == 0:
+        props = dict(
+            left_bearing=chardef.left_offset,
+            shift_up=chardef.top_offset-chardef.character_height+1,
+            right_bearing=max(0, chardef.delta_x//4 - chardef.character_width - chardef.left_offset),
+        )
+    elif chardef.orientation == 1:
+        props = dict(
+            left_bearing=chardef.top_offset-chardef.character_height+1,
+            shift_up=-chardef.left_offset-chardef.character_width+1,
+            right_bearing=max(0, chardef.delta_x//4 - chardef.top_offset - 1),
+        )
+    else:
+        raise FileFormatError('Unsupported orientation')
+    props.update(dict(
+        codepoint=code,
+        chardef=Props(**vars(chardef)),
+    ))
+    return Glyph(raster, **props)
+
+
 def _convert_hppcl_glyphs(glyphdefs):
     """Convert from PCL to monobit glyphs."""
     glyphs = tuple(
-        Glyph.from_bytes(
-            glyphbytes, width=chardef.character_width,
-            left_bearing=chardef.left_offset,
-            shift_up=chardef.top_offset-chardef.character_height,
-            right_bearing=max(0, chardef.delta_x//4 - chardef.character_width - chardef.left_offset),
-            codepoint=code,
-            chardef=Props(**vars(chardef)),
-        )
-        for code, chardef, glyphbytes in glyphdefs
+        _convert_hppcl_glyph(*_gd)
+        for _gd in glyphdefs
     )
     return glyphs
 
