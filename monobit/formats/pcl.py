@@ -43,7 +43,7 @@ def load_hppcl(instream):
 
     props = dict(
         name=fontdef.font_name.strip().decode('ascii', 'replace'),
-        copyright=copyright.decode('ascii', 'replace'),
+        notice=copyright.decode('ascii', 'replace'),
         x_height=fontdef.x_height//4,
         setwidth=_SETWIDTH_MAP.get(fontdef.width_type, ''),
         weight=_WEIGHT_MAP.get(fontdef.stroke_weight, ''),
@@ -51,8 +51,15 @@ def load_hppcl(instream):
             'sans serif' if fontdef.serif_style & 64
             else 'serif' if fontdef.serif_style & 128 else ''
         ),
-        cap_height=(fontdef.cap_height / 65536) * fontdef.height//4 or None,
+        # ignoring height_extended, pitch_extended
+        descent=fontdef.baseline_position//4,
+        ascent=(fontdef.height-fontdef.baseline_position)//4,
+        # ignoring fractional dot sizes
+        cap_height=(fontdef.cap_height * fontdef.height / 65536) // 4 or None,
         line_height=fontdef.text_height//4 or None,
+        average_width=fontdef.pitch / 4 or None,
+        underline_descent=-fontdef.underline_position or None,
+        underline_thickness=fontdef.underline_thickness,
         fontdef=Props(**vars(fontdef))
     )
 
