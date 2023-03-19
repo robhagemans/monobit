@@ -90,6 +90,7 @@ _BITMAP_FONT_DEF = be.Struct(
     width_type='uint8',
     style_lsb='uint8',
     stroke_weight='int8',
+    # Typeface [LSB/MSB] (UBYTE individually, UINT16 together)
     typeface_lsb='uint8',
     typeface_msb='uint8',
     serif_style='uint8',
@@ -224,6 +225,21 @@ _STYLE_STRUCTURE_MAP = {}
 # 18-30 - Reserved
 # 31 - Unknown structure
 
+# Typeface Family Number = Typeface Base Value + (Vendor Value x 4096)
+_TYPEFACE_WORD = be.Struct(
+    vendor=bitfield('uint16', 4),
+    typeface_family=bitfield('uint16', 12),
+)
+
+_VENDOR_MAP = {
+    # 0 Reserved
+    1: 'Agfa Division, Miles Inc.',
+    2: 'Bitstream Inc.',
+    3: 'Linotype Company',
+    4: 'The Monotype Corporation plc',
+    5: 'Adobe Systems, Inc'
+    # 6-15 Reserved
+}
 
 # symbol sets
 # https://developers.hp.com/system/files/attachments/PCL%20Implementors%20Guide-09-font%20selection.pdf
@@ -257,10 +273,17 @@ _SYMBOL_SETS = {
 
 def _convert_hppcl_props(fontdef, copyright):
     """Convert from PCL to monobit properties."""
-    style_word = _STYLE_WORD.from_bytes(bytes((fontdef.style_msb, fontdef.style_lsb)))
+    style_word = _STYLE_WORD.from_bytes(bytes((
+        fontdef.style_msb, fontdef.style_lsb
+    )))
+    typeface_word = _TYPEFACE_WORD.from_bytes(bytes((
+        fontdef.typeface_msb, fontdef.typeface_lsb
+    )))
     props = dict(
         # metadata
         name=fontdef.font_name.strip().decode('ascii', 'replace'),
+        foundry=_VENDOR_MAP.get(typeface_word.vendor, None),
+        #family_id=typeface_word.typeface_family,
         notice=copyright.decode('ascii', 'replace'),
         # descriptive properties
         slant=_STYLE_POSTURE_MAP.get(style_word.posture, None),
