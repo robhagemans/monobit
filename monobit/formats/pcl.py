@@ -14,7 +14,7 @@ from ..struct import big_endian as be, bitfield
 from ..glyph import Glyph
 from ..raster import Raster
 from ..font import Font
-from ..properties import Props
+from ..properties import Props, reverse_dict
 
 
 @loaders.register(
@@ -283,6 +283,13 @@ _STYLE_WIDTH_MAP = {
     7: 'extra-expanded',
 }
 
+# upper two bits of serif style field
+# can't be both set (192 is reserved)
+_SERIF_MAP = {
+    64: 'sans serif',
+    128: 'serif',
+}
+
 _STYLE_STRUCTURE_MAP = {}
 # = Structure (style word partial sum multiplied by 32)
 # 0 - Solid
@@ -364,10 +371,7 @@ def _convert_hppcl_props(fontdef, copyright):
         slant=_STYLE_POSTURE_MAP.get(style_word.posture, None),
         setwidth=_SETWIDTH_MAP.get(fontdef.width_type, ''),
         weight=_WEIGHT_MAP.get(fontdef.stroke_weight, ''),
-        style=(
-            'sans serif' if fontdef.serif_style & 64
-            else 'serif' if fontdef.serif_style & 128 else ''
-        ),
+        style=_SERIF_MAP.get(fontdef.serif_style & 192, ''),
         # encoding
         encoding=_encoding_from_symbol_set(fontdef.symbol_set),
         # metrics
