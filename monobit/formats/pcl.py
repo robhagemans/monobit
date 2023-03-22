@@ -100,23 +100,54 @@ _BITMAP_FONT_DEF = be.Struct(
     # 2 = reverse portrait (180 degrees counterclockwise)
     # 3 = reverse landscape (270 degrees counterclockwise)
     orientation='uint8',
+    # Spacing (UBYTE):
+    # 0 Fixed
+    # 1 Proportional
+    # 2 Dual-fixed
     spacing='uint8',
     # Symbol Set (UINT16): Specifies the symbol set characteristic of the font
     symbol_set='uint16',
+    # Pitch (UINT16): Bitmap Font - Specifies the pitch of the font in quarter-dot units
+    # For example, at 300 dpi (1200 quarter-dots/inch), a 17 cpi font has a pitch field of 70 and a non-zero pitch
+    # extended field. (1inch / 17char) x (300 dots / inch) x (4 radix dots / dot) = 70.588 radix dots/char
     pitch='uint16',
+    # Height (UINT16): Bitmap Font - Specifies font height in quarter-dots. The value,
+    # converted to points (1/72 inch), is the font's height characteristic
     height='uint16',
+    # xHeight (UINT16): Bitmap Font - Specifies the height of the lower case "x" in quarter dots.
     x_height='uint16',
+    # Width Type (SBYTE): Specifies the proportionate width of characters in the font
+    # see _SETWIDTH_MAP
     width_type='uint8',
+    # Style LSB (UBYTE): The least significant byte of the Style word.
     style_lsb='uint8',
+    # Stroke Weight (SBYTE): Specifies the thickness of the font characters.
     stroke_weight='int8',
     # Typeface [LSB/MSB] (UBYTE individually, UINT16 together)
     typeface_lsb='uint8',
     typeface_msb='uint8',
+    # Serif Style (UBYTE)
     serif_style='uint8',
+    # Quality (UBYTE): Specifies the quality or density of the font.
+    # 0 Data Processing (Draft)
+    # 1 Near Letter Quality
+    # 2 Letter Quality
     quality='uint8',
+    # Placement (SBYTE): Specifies the position of character patterns relative to the baseline.
+    # Bitmap Font - The placement values for bitmap fonts are listed below.
+    # 1 Superior (superscript)
+    # 0 Normal
+    # -1 Inferior (subscript)
     placement='int8',
+    # Underline Position (SBYTE): Bitmap Font - Specifies the distance from the
+    # baseline to the top dot row of the underline in dots. Zero
+    # specifies an underline position at the baseline.
     underline_position='int8',
+    # Underline Thickness (UBYTE): Specifies the thickness of the underline in dots for a bitmap font
     underline_thickness='uint8',
+    # Text Height (UINT16): Specifies the font's optimum inter-line spacing.
+    # This value is typically 120% of the height of the font.
+    # Bitmap Font - Specified in quarter-dot units (radix dots)
     text_height='uint16',
     text_width='uint16',
     first_code='uint16',
@@ -136,9 +167,9 @@ _RESOLUTION_EXT = be.Struct(
     x_resolution='uint16',
     y_resolution='uint16',
 )
-
 # omitted: universal font definition
 # additional fields have no info for bitmaps and can be safely ignored
+
 
 _SETWIDTH_MAP = {
     -5: 'ultra-compressed',
