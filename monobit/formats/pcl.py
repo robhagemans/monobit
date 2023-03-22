@@ -149,11 +149,25 @@ _BITMAP_FONT_DEF = be.Struct(
     # This value is typically 120% of the height of the font.
     # Bitmap Font - Specified in quarter-dot units (radix dots)
     text_height='uint16',
+    # Text Width (UINT16): Specifies the font's average lowercase character width
+    # (which can be weighted on the basis of relative frequency).
+    # Bitmap Font - Specified in quarter-dots (radix dots).
     text_width='uint16',
+    # First Code (UINT16): Specifies the character code of the first printable character in the font.
     first_code='uint16',
+    # Last Code / Number of Characters (UINT16): Specifies the last downloadable character code in the font.
     last_code='uint16',
+    # Pitch Extended (UBYTE): Bitmap Font - This is an addition to the Pitch field
+    # which extends pitch an extra eight bits to allow 10 bits of fractional dots.
     pitch_extended='uint8',
+    # Height Extended (UBYTE): Bitmap Font - This is an addition to the Height field
+    # which extends the height an extra eight bits to allow 10 bits of fractional dots.
     height_extended='uint8',
+    # Cap Height (UINT): Cap height is a percentage of the Em of a font and is used
+    # to calculate the distance from the capline (top of an unaccented, upper-case
+    # letter, e.g., "H") to the baseline.
+    # For nonzero values the Cap Height percentage is calculated as follows:
+    # % = (Cap Height Data / 65535) x 100
     cap_height='uint16',
     # Font Number (UINT32): Bitmap font - should be ignored and set to 0
     font_number='uint32',
