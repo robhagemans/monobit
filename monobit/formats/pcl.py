@@ -40,6 +40,35 @@ def load_hppcl(instream):
     return Font(glyphs, **props).label()
 
 
+@savers.register(linked=load_hppcl)
+
+def save_hppcl(fonts, outstream):
+    """Save to a HP PCL soft font."""
+    if len(fonts) > 1:
+        raise FileFormatError('Can only save one font to HP PCL file.')
+    font = fonts[0]
+    # get storable glyphs (8-bit bound)
+    font = font.label(codepoint_from=font.encoding)
+    font = font.subset(codepoints=range(256))
+    # convert
+    fontdef, copyright = _convert_to_hppcl_props(font)
+    glyphdefs = (_convert_to_hppcl_glyph(glyph) for glyph in font.glyphs)
+    # write
+    size = _BITMAP_FONT_DEF.size + len(copyright)
+    outstream.write(b'\x1b)s%dW' % (size,))
+    outstream.write(bytes(fontdef))
+    outstream.write(copyright)
+    for code, chardef, glyphbytes in glyphdefs:
+        outstream.write(b'\x1b*c%dE' % (code,))
+        common = _LASERJET_CHAR_COMMON(format=_CHAR_FMT_LASERJET, continuation=0)
+        size = _LASERJET_CHAR_COMMON.size + _LASERJET_CHAR_DEF.size + len(glyphbytes)
+        outstream.write(b'\x1b(s%dW' % (size,))
+        outstream.write(bytes(common))
+        outstream.write(bytes(chardef))
+        outstream.write(glyphbytes)
+    return font
+
+
 ###############################################################################
 # PCL soft font format
 
@@ -562,3 +591,92 @@ def read_until(instream, break_char, then_read=1):
 def bytestr_to_int(bytestr):
     """Convert a bytes string representation to integer."""
     return int(bytestr.decode('ascii', 'replace'), 10)
+
+
+###############################################################################
+# writer
+
+def _convert_to_hppcl_props(font):
+    """Convert from monobit to PCL properties."""
+    fontdef = _BITMAP_FONT_DEF(
+        font_descriptor_size=_BITMAP_FONT_DEF.size,
+        descriptor_format=_HEADER_FMT_BITMAP,
+        # docs suggest (but do not say) bitmap font def only supports 7/8-bit bound
+        symbol_set_type=2,
+        # TODO: style word
+        style_msb=0,
+        reserved=0,
+        baseline_position=4*font.descent,
+        cell_width=font.bounding_box.x,
+        cell_height=font.bounding_box.y,
+        # TODO: landscape option
+        orientation=0,
+        spacing=1 if font.spacing=='proportional' else 2 if font.spacing=='multi-cell' else 0,
+        symbol_set=_symbol_set_from_encoding(font.encoding),
+        pitch=4*int(font.average_width),
+        height=4*font.point_size,
+        x_height=4*font.x_height,
+        width_type=reverse_dict(_SETWIDTH_MAP).get(font.setwidth, 0),
+        style_lsb=0,
+        stroke_weight=reverse_dict(_WEIGHT_MAP).get(font.weight, 0),
+        # TODO: typeface word
+        typeface_lsb=0,
+        typeface_msb=0,
+        serif_style=reverse_dict(_SERIF_MAP).get(font.style, 0),
+        # TODO quality
+        quality=0,
+        # > DEVICE NOTE: All DJ5xx fonts are treated as normal. LaserJets ignore this field.
+        placement=0,
+        underline_position=-font.underline_descent,
+        underline_thickness=font.underline_thickness,
+        text_height=4*font.line_height,
+        # same as pitch?
+        text_width=4*int(font.average_width),
+        first_code=int(min(font.get_codepoints())),
+        last_code=int(max(font.get_codepoints())),
+        # ignoring the extra-precision bits
+        pitch_extended=0,
+        height_extended=0,
+        cap_height=int(65536 * font.cap_height / font.pixel_size),
+        # Bitmap Font - Should be ignored and set to 0
+        font_number=0,
+        font_name=font.name.encode('ascii', 'replace')[:16],
+    )
+    copyright = font.notice.encode('ascii', 'replace') + b'\0'
+    return fontdef, copyright
+
+
+def _convert_to_hppcl_glyph(glyph):
+    """Convert from monobit to PCL glyph."""
+    glyphbytes = glyph.as_bytes()
+    chardef = _LASERJET_CHAR_DEF(
+        #format='uint8',
+        #continuation='uint8',
+        descriptor_size=_LASERJET_CHAR_DEF.size + _LASERJET_CHAR_COMMON.size,
+        # class 1 is uncompressed bitmapp
+        class_=1,
+        # TODO: orientation choice
+        orientation=0,
+        reserved=0,
+        left_offset=glyph.left_bearing,
+        top_offset=glyph.height+glyph.shift_up-1,
+        character_width=glyph.width,
+        character_height=glyph.height,
+        delta_x=4*glyph.advance_width,
+    )
+    return int(glyph.codepoint), chardef, glyphbytes
+
+
+#  TODO normalise
+def _symbol_set_from_encoding(encoding):
+    """Convert encoding to symbol set code."""
+    try:
+        code = reverse_dict(_SYMBOL_SETS)[encoding]
+    except KeyError:
+        if not encoding.startswith('pcl-'):
+            return 0
+        code = encoding.removeprefix('pcl-')
+    if not len(code) == 2 or not code[0].isdigit():
+        return 0
+    num, lett = code
+    return ord(lett)-64 + int(num)*32
