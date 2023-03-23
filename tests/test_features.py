@@ -203,9 +203,9 @@ class TestFeatures(BaseTester):
         text1 = monobit.render(prop1, b'testing').as_text()
         assert_text_eq(text1, self.proptext)
 
-    def _render_proportional(self, format):
+    def _render_proportional(self, format, **save_kwargs):
         prop1, *_ = monobit.load(self.font_path / 'wbfont.amiga/wbfont_prop.font')
-        monobit.save(prop1, self.temp_path / f'wbfont_prop.{format}', format=format)
+        monobit.save(prop1, self.temp_path / f'wbfont_prop.{format}', format=format, **save_kwargs)
         prop2, *_ = monobit.load(self.temp_path / f'wbfont_prop.{format}', format=format)
         text2 = monobit.render(prop2, b'testing').as_text()
         assert_text_eq(text2, self.proptext)
@@ -240,6 +240,11 @@ class TestFeatures(BaseTester):
     def test_nfnt_proportional(self):
         self._render_proportional('nfnt')
 
+    def test_hppcl_proportional(self):
+        self._render_proportional('hppcl')
+
+    def test_hppcl_landscape_proportional(self):
+        self._render_proportional('hppcl', orientation='landscape')
 
     # kerning
 
