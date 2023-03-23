@@ -419,6 +419,7 @@ def _convert_hppcl_props(fontdef, copyright):
         # ignoring height_extended, pitch_extended
         # ignoring fractional dot sizes
     )
+    props['hppcl.family-id'] = typeface_word.typeface_family
     if fontdef.descriptor_format == _HEADER_FMT_RES_BITMAP:
         props['dpi'] = (fontdef.x_resolution, fontdef.y_resolution)
     return props
@@ -598,13 +599,23 @@ def bytestr_to_int(bytestr):
 
 def _convert_to_hppcl_props(font):
     """Convert from monobit to PCL properties."""
+    # Style Word = Posture + (4 x Width) + (32 x Structure)
+    style_msb, style_lsb = bytes(_STYLE_WORD(
+        # set structure to 'solid'
+        structure=0,
+        width=reverse_dict(_STYLE_WIDTH_MAP).get(font.setwidth, 0),
+        posture=reverse_dict(_STYLE_POSTURE_MAP).get(font.slant, 0),
+    ))
+    typeface_msb, typeface_lsb = bytes(_TYPEFACE_WORD(
+        vendor=reverse_dict(_VENDOR_MAP).get(font.foundry, 0),
+        typeface_family=int(font.get_property('hppcl.family-id') or '0'),
+    ))
     fontdef = _BITMAP_FONT_DEF(
         font_descriptor_size=_BITMAP_FONT_DEF.size,
         descriptor_format=_HEADER_FMT_BITMAP,
         # docs suggest (but do not say) bitmap font def only supports 7/8-bit bound
         symbol_set_type=2,
-        # TODO: style word
-        style_msb=0,
+        style_msb=style_msb,
         reserved=0,
         baseline_position=4*font.descent,
         cell_width=font.bounding_box.x,
@@ -617,13 +628,12 @@ def _convert_to_hppcl_props(font):
         height=4*font.point_size,
         x_height=4*font.x_height,
         width_type=reverse_dict(_SETWIDTH_MAP).get(font.setwidth, 0),
-        style_lsb=0,
+        style_lsb=style_lsb,
         stroke_weight=reverse_dict(_WEIGHT_MAP).get(font.weight, 0),
-        # TODO: typeface word
-        typeface_lsb=0,
-        typeface_msb=0,
+        typeface_lsb=typeface_lsb,
+        typeface_msb=typeface_msb,
         serif_style=reverse_dict(_SERIF_MAP).get(font.style, 0),
-        # TODO quality
+        # set quality to draft
         quality=0,
         # > DEVICE NOTE: All DJ5xx fonts are treated as normal. LaserJets ignore this field.
         placement=0,
