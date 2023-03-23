@@ -263,21 +263,64 @@ _WEIGHT_MAP = {
 _CHAR_FMT_LASERJET = 4
 
 _LASERJET_CHAR_COMMON = be.Struct(
+    # Format (UBYTE): Specifies the character descriptor format.
+    # 0 82906A
+    # 1 82450A
+    # 3 QuietJet
+    # 4 LaserJet bitmap
+    # 5 DeskJet
+    # 6 PaintJet
+    # 7 PaintJet XL
+    # 8 RuggedWriter
+    # 9 DeskJet Plus
+    # 10 Intellifont
+    # 12 DeskJet 500
+    # 15 TrueType
     format='uint8',
+    # Continuation (BOOL)
+    # Specifies whether the subsequent data is a character descriptor block (0) or
+    # a continuation (non-zero) of the data associated with the previous character descriptor.
     continuation='uint8',
     # followed by character data
 )
 _LASERJET_CHAR_DEF = be.Struct(
     #format='uint8',
     #continuation='uint8',
+    # Descriptor Size (UBYTE): Specifies character descriptor size in bytes
+    # 8 DeskJet 5xx except 540 (Format 5 or 9 character descriptor)
+    # 8 DeskJet 5xx except 540 (Format 12 character descriptor)
+    # 2 Intellifont
+    # 2+ TrueType (additional descriptor information can be added)
+    # 14 LaserJet bitmap
     descriptor_size='uint8',
+    # Class (UBYTE): Specifies the format of the character data.
+    # 1 Bitmap
+    # 2 Compressed bitmap
+    # 3 Intellifont
+    # 4 Compound Intellifont
+    # 15 TrueType
     class_='uint8',
+    # Orientation (UBYTE): Bitmap fonts only. Specifies the orientation of the character.
+    # Character orientation must match the orientation in the font descriptor,
     orientation='uint8',
     reserved='uint8',
+    # Left Offset (SINT16): Bitmap fonts only. Specifies the distance in dots from the reference point to the left side of the
+    # character pattern on the physical page coordinate system (i.e.. this value is orientation dependent).
     left_offset='int16',
+    # Top Offset (SINT16): Bitmap fonts only. Specifies the distance in dots from the reference point to the top of the
+    # character pattern on the physical page coordinate system (i.e., this value is orientation dependent).
     top_offset='int16',
+    # Character Width (UINT16): Bitmap fonts only. Specifies the width of the character in dots on the physical coordinate system
+    # (i.e., this value is orientation dependent). Generally, this width is from the farthest left black dot
+    # to the farthest right black dot.
     character_width='uint16',
+    # Character Height (UINT16): Bitmap fonts only. Specifies the height of the character in dots on the physical coordinate system
+    # (i.e., this value is orientation dependent).
     character_height='uint16',
+    # Delta X (SINT16): Bitmap fonts only. Specifies the number of quarter-dot units (radix dots) by which the horizontal
+    # position within the PCL logical page coordinate system is incremented after printing the
+    # character. If the value field is negative, the value is set to 0. This value is used by the printer only
+    # when the font is proportionally spaced.
     delta_x='int16',
     # followed by character data
 )
