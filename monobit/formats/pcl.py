@@ -523,13 +523,13 @@ def _convert_hppcl_glyph(code, chardef, glyphbytes):
         props = dict(
             left_bearing=chardef.left_offset,
             shift_up=chardef.top_offset-chardef.character_height+1,
-            right_bearing=max(0, chardef.delta_x//4 - chardef.character_width - chardef.left_offset),
+            right_bearing=chardef.delta_x//4 - chardef.character_width - chardef.left_offset,
         )
     elif chardef.orientation == 1:
         props = dict(
             left_bearing=chardef.top_offset-chardef.character_height+1,
             shift_up=-chardef.left_offset-chardef.character_width+1,
-            right_bearing=max(0, chardef.delta_x//4 - chardef.top_offset - 1),
+            right_bearing=chardef.delta_x//4 - chardef.top_offset - 1,
         )
     else:
         raise FileFormatError('Unsupported orientation')
