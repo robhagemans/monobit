@@ -41,18 +41,30 @@ def load_hppcl(instream):
 
 
 @savers.register(linked=load_hppcl)
+def save_hppcl(fonts, outstream, orientation:str='portrait'):
+    """
+    Save to a HP PCL soft font.
 
-def save_hppcl(fonts, outstream):
-    """Save to a HP PCL soft font."""
+    orientation: 'portrait' or 'landscape'
+    """
     if len(fonts) > 1:
         raise FileFormatError('Can only save one font to HP PCL file.')
     font = fonts[0]
+    if orientation.lower().startswith('p'):
+        orientation = 0
+    elif orientation.lower().startswith('l'):
+        orientation = 1
+    else:
+        raise ValueError(f"orientation must be one of 'portrait' or 'landscape', not {orientation}")
     # get storable glyphs (8-bit bound)
     font = font.label(codepoint_from=font.encoding)
     font = font.subset(codepoints=range(256))
     # convert
-    fontdef, copyright = _convert_to_hppcl_props(font)
-    glyphdefs = (_convert_to_hppcl_glyph(glyph) for glyph in font.glyphs)
+    fontdef, copyright = _convert_to_hppcl_props(font, orientation)
+    glyphdefs = (
+        _convert_to_hppcl_glyph(glyph, orientation)
+        for glyph in font.glyphs
+    )
     # write
     size = _BITMAP_FONT_DEF.size + len(copyright)
     outstream.write(b'\x1b)s%dW' % (size,))
@@ -597,7 +609,7 @@ def bytestr_to_int(bytestr):
 ###############################################################################
 # writer
 
-def _convert_to_hppcl_props(font):
+def _convert_to_hppcl_props(font, orientation):
     """Convert from monobit to PCL properties."""
     # Style Word = Posture + (4 x Width) + (32 x Structure)
     style_msb, style_lsb = bytes(_STYLE_WORD(
@@ -620,8 +632,7 @@ def _convert_to_hppcl_props(font):
         baseline_position=4*font.descent,
         cell_width=font.bounding_box.x,
         cell_height=font.bounding_box.y,
-        # TODO: landscape option
-        orientation=0,
+        orientation=orientation,
         spacing=1 if font.spacing=='proportional' else 2 if font.spacing=='multi-cell' else 0,
         symbol_set=_symbol_set_from_encoding(font.encoding),
         pitch=4*int(font.average_width),
@@ -656,24 +667,30 @@ def _convert_to_hppcl_props(font):
     return fontdef, copyright
 
 
-def _convert_to_hppcl_glyph(glyph):
+def _convert_to_hppcl_glyph(glyph, orientation):
     """Convert from monobit to PCL glyph."""
-    glyphbytes = glyph.as_bytes()
     chardef = _LASERJET_CHAR_DEF(
         #format='uint8',
         #continuation='uint8',
         descriptor_size=_LASERJET_CHAR_DEF.size + _LASERJET_CHAR_COMMON.size,
         # class 1 is uncompressed bitmapp
         class_=1,
-        # TODO: orientation choice
-        orientation=0,
+        orientation=orientation,
         reserved=0,
-        left_offset=glyph.left_bearing,
-        top_offset=glyph.height+glyph.shift_up-1,
-        character_width=glyph.width,
-        character_height=glyph.height,
         delta_x=4*glyph.advance_width,
     )
+    if orientation == 0:
+        glyphbytes = glyph.as_bytes()
+        chardef.left_offset = glyph.left_bearing
+        chardef.top_offset = glyph.height+glyph.shift_up-1
+        chardef.character_width=glyph.width
+        chardef.character_height=glyph.height
+    else:
+        glyphbytes = glyph.turn(clockwise=-1).as_bytes()
+        chardef.left_offset = -glyph.shift_up-glyph.height+1
+        chardef.top_offset = glyph.left_bearing+glyph.width-1
+        chardef.character_width = glyph.height
+        chardef.character_height = glyph.width
     return int(glyph.codepoint), chardef, glyphbytes
 
 
