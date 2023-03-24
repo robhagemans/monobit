@@ -15,6 +15,7 @@ from ..glyph import Glyph
 from ..raster import Raster
 from ..font import Font
 from ..properties import Props, reverse_dict
+from ..encoding import charmaps
 
 
 @loaders.register(
@@ -409,17 +410,71 @@ _VENDOR_MAP = {
 
 # symbol sets
 # https://developers.hp.com/system/files/attachments/PCL%20Implementors%20Guide-09-font%20selection.pdf
-
+# https://www.pclviewer.com/resources/pcl_symbolset.html
 _SYMBOL_SETS = {
-    '': None,
+    '0@': '',
+    #
+    # iso 646
     '0U': 'ascii',
+    #'0D': 'iso646-no', # iso-ir-60
+    #'1D': 'iso646-no2', # -61
+    '1E': 'iso646-gb', # -4
+    '1F': 'iso646-fr', # -69
+    '0F': 'iso-ir-25', # fr (1973)
+    '1G': 'iso646-de', # -21
+    '0I': 'iso646-it', # -15
+    '0K': 'iso646-jp', # -14
+    '1K': 'iso-ir-13', # katakana
+    '2K': 'iso646-cn', # -57
+    #'0S': 'iso-ir-11' # swedish
+    '2S': 'iso646-es', # -17
+    #'3S': 'iso-ir-10' # swedish
+    #'4S': 'iso-ir-16', # portuguese
+    #'5S': 'iso-ir-84', # portuguese
+    '6S': 'iso646-es2', # -85
+    # '2U': 'iso-ir-2', # 1973 international reference version
+    #
+    # PCL commonly used
     '8U': 'hp-roman8',
     # win 3.0 latin-1
     '9U': 'windows-1252',
     # win 3.1 latin-1
     '19U': 'windows-1252',
-    '10U': 'cp437',
+    '10U': 'cp437', # pcl pc-8
+    # '12G': 'pcl-pc-8',
+    # '9T': # pcl pc-8 tk code page 437T
+    # '11U': # pcl pc-8 d/n code page 437N
     '13J': 'pcl-ventura',
+    # '9E': #windows 3.1 latin-2 == cp1250?
+    # '0G': 'pcl-german',
+    # '1S': 'pcl-spanish',
+    '8G': 'pcl-greek8',
+    '10G': 'cp851',
+    '15h': 'cp862',
+    '0T': 'tis-620',
+    '1T': 'windows-874',
+    #'5T': # pcl windows-3.1 latin 5
+    '8T': 'cp857',
+    '16U': 'cp857',
+    # '6J': 'pcl-ms-publishing',
+    # '7J': 'pcl-desktop',
+    # '9J': 'pcl-pc-1004',
+    # '10J': 'pcl-ps-text',
+    # '12j': 'pcl-macintosh',
+    # '14j': 'pcl-ventura-us',
+    # '1U': 'pcl-legal',
+    '12U': 'cp850',
+    '13U': 'cp858',
+    '17U': 'cp852',
+    '20U': 'cp860',
+    '21U': 'cp861',
+    '23U': 'cp863',
+    '25U': 'cp865',
+    '26U': 'cp775',
+    '8V': 'cp864', # PCL Code Page 864 Latin/Arabic 8V
+    #'10V': # PCL Code Page 864 Latin/Arabic 10V 342
+    #
+    # iso-8859
     '0N': 'latin-1',
     '2N': 'latin-2',
     '3N': 'latin-3',
@@ -430,7 +485,19 @@ _SYMBOL_SETS = {
     '10N': 'iso8859-5',
     '11N': 'iso8859-6',
     '12N': 'iso8859-7',
+    '7H': 'iso8859-8',
+    #
+    # line draw, symbols
     '8L': 'ms-linedraw',
+    # '0B': 'pcl-linedraw-7', # == pcl-linedraw-71
+    # '0L': 'pcl-linedraw-7',
+    # '14L': # pcl itc zapf dingbats
+    # '5M': # pcl ps math symbol set
+    # '19M': # pcl math symbol set
+}
+_REV_SYMBOL_SETS = {
+    charmaps.normalise(_k): _v
+    for _k, _v in reverse_dict(_SYMBOL_SETS).items()
 }
 
 
@@ -457,7 +524,7 @@ def _convert_hppcl_props(fontdef, copyright):
         weight=_WEIGHT_MAP.get(fontdef.stroke_weight, ''),
         style=_SERIF_MAP.get(fontdef.serif_style & 192, ''),
         # encoding
-        encoding=_encoding_from_symbol_set(fontdef.symbol_set),
+        encoding=_encoding_from_symbol_set(fontdef.symbol_set) or None,
         # metrics
         descent=fontdef.baseline_position//4,
         ascent=(fontdef.height-fontdef.baseline_position)//4,
@@ -482,11 +549,8 @@ def _convert_hppcl_props(fontdef, copyright):
 
 def _encoding_from_symbol_set(symbol_set):
     """Convert symbol set code to encoding name."""
-    if symbol_set:
-        num, lett = divmod(symbol_set, 32)
-        pcl_symbol_set_id = f'{num}{chr(lett+64)}'
-    else:
-        pcl_symbol_set_id = ''
+    num, lett = divmod(symbol_set, 32)
+    pcl_symbol_set_id = f'{num}{chr(lett+64)}'
     return _SYMBOL_SETS.get(pcl_symbol_set_id, f'pcl-{pcl_symbol_set_id}')
 
 
@@ -737,11 +801,10 @@ def _convert_to_hppcl_glyph(glyph, orientation):
     return int(glyph.codepoint), chardef, glyphbytes
 
 
-#  TODO normalise
 def _symbol_set_from_encoding(encoding):
     """Convert encoding to symbol set code."""
     try:
-        code = reverse_dict(_SYMBOL_SETS)[encoding]
+        code = _REV_SYMBOL_SETS[charmaps.normalise(encoding)]
     except KeyError:
         if not encoding.startswith('pcl-'):
             return 0

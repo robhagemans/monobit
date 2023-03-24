@@ -94,7 +94,7 @@ _ENCODING_FILES = (
         ('microsoft/PC/CP864.TXT', 'cp864', 'oem-864', 'ibm-864'), # dos-arabic
         ('microsoft/PC/CP865.TXT', 'cp865', 'oem-865', 'ibm-865', 'dos-nordic'),
         ('microsoft/PC/CP866.TXT', 'cp866', 'oem-866', 'ibm-866', 'dos-cyrillic-russian'),
-        ('microsoft/PC/CP869.TXT', 'cp869', 'oem-869', 'ibm-869', 'dos-greek2'),
+        ('microsoft/PC/CP869.TXT', 'cp869', 'oem-869', 'ibm-869', 'dos-greek2', 'pcl-greek8'),
         ('microsoft/PC/CP874.TXT', 'ibm-874', 'ibm-9066'), # dos-thai
 
         # EBCDIC
