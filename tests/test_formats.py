@@ -648,6 +648,32 @@ class TestFormats(BaseTester):
         self.assertEqual(len(font.glyphs), 256)
         self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
+    # pcl
+
+    def test_import_hppcl(self):
+        """Test importing PCL files."""
+        fnt_file = self.font_path / '4x6.sfp'
+        font, *_ = monobit.load(fnt_file)
+        self.assertEqual(len(font.glyphs), 192)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+
+    def test_export_hppcl(self):
+        """Test exporting PCL files."""
+        fnt_file = self.temp_path / '4x6.sft'
+        monobit.save(self.fixed4x6, fnt_file, format='hppcl')
+        font, *_ = monobit.load(fnt_file)
+        self.assertEqual(len(font.glyphs), 192)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+
+
+    def test_export_hppcl_landscape(self):
+        """Test exporting PCL files in landscape orientation."""
+        fnt_file = self.temp_path / '4x6.sft'
+        monobit.save(self.fixed4x6, fnt_file, format='hppcl', orientation='landscape')
+        font, *_ = monobit.load(fnt_file)
+        self.assertEqual(len(font.glyphs), 192)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+
     # vfont
 
     def test_import_vfont_le(self):

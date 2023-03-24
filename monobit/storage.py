@@ -8,6 +8,7 @@ licence: https://opensource.org/licenses/MIT
 import os
 import sys
 import logging
+import shlex
 from pathlib import Path
 from contextlib import contextmanager
 
@@ -106,12 +107,19 @@ def load_stream(instream, *, format='', subpath='', **kwargs):
         except UnicodeError:
             filename = (
                 filename.encode('utf-8', 'surrogateescape')
-                .decode('ascii', 'backsl hreplace')
+                .decode('ascii', 'backslashreplace')
             )
+        # source format argumets
+        loader_args = ' '.join(
+            f'{_k.replace("_", "-")}={shlex.join((str(_v),))}'
+            for _k, _v in kwargs.items()
+            if _k != 'subpath'
+        )
+        loader_args = f' [{loader_args}]' if loader_args else ''
         return Pack(
             _font.modify(
                 converter=CONVERTER_NAME,
-                source_format=_font.source_format or loader.format,
+                source_format=_font.source_format or f'{loader.format}{loader_args}',
                 source_name=_font.source_name or filename
             )
             for _font in pack

@@ -110,6 +110,7 @@ Supported bitmap formats
 | OS/2 GPI resource     | `gpi`      |          | `.fnt`                      | OS/2          | ✔     |       |
 | Atari GDOS / GEM      | `gdos`     |          | `.fnt` `.gft` `.vga`        | Atari ST, GEM | ✔     | ✔     |
 | C64 GEOS ConVerT      | `geos`     |          | `.cvt`                      | Commodore 64  | ✔     |       |
+| HP PCL soft font      | `hppcl`    |          | `.sft` `.sfp` `.sfl`        |               | ✔     | ✔     |
 | GNU Unifont           | `unifont`  |          | `.hex`                      |               | ✔     | ✔     |
 | Extended Hex          | `pcbasic`  |          | `.hex`                      |               | ✔     | ✔     |
 | hexdraw               | `hexdraw`  |          | `.draw`                     |               | ✔     | ✔     |
