@@ -441,11 +441,11 @@ _SYMBOL_SETS = {
     # win 3.1 latin-1
     '19U': 'windows-1252',
     '10U': 'cp437', # pcl pc-8
-    # '12G': 'pcl-pc-8',
+    '12G': 'cp437', #'pcl-pc-8', same as 10U?
     # '9T': # pcl pc-8 tk code page 437T
     # '11U': # pcl pc-8 d/n code page 437N
     '13J': 'pcl-ventura',
-    # '9E': #windows 3.1 latin-2 == cp1250?
+    '9E': 'windows-1250', #windows 3.1 latin-2
     # '0G': 'pcl-german',
     # '1S': 'pcl-spanish',
     '8G': 'pcl-greek8',
@@ -453,15 +453,15 @@ _SYMBOL_SETS = {
     '15h': 'cp862',
     '0T': 'tis-620',
     '1T': 'windows-874',
-    #'5T': # pcl windows-3.1 latin 5
+    '5T': 'windows-1254', # pcl windows-3.1 latin 5
     '8T': 'cp857',
     '16U': 'cp857',
     # '6J': 'pcl-ms-publishing',
     # '7J': 'pcl-desktop',
-    # '9J': 'pcl-pc-1004',
+    '9J': 'ibm-1004',
     # '10J': 'pcl-ps-text',
-    # '12j': 'pcl-macintosh',
-    # '14j': 'pcl-ventura-us',
+    '12J': 'mac-roman', #'pcl-macintosh',
+    # '14J': 'pcl-ventura-us',
     # '1U': 'pcl-legal',
     '12U': 'cp850',
     '13U': 'cp858',
