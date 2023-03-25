@@ -97,6 +97,7 @@ Supported bitmap formats
 | Raw binary            | `raw`      |          | `.fnt` `.rom` [*]           |               | ✔     | ✔     |
 | Codepage Information  | `cpi` | FONT FONT.NT DRFONT | `.cpi` | MS-DOS, Windows NT, DR-DOS   | ✔     | ✔     |
 | Daisy-Dot             | `daisy` | II III Magnified | `.nlq` `.nl2` `.nl3` `.nl4` | Atari    | ✔     |       |
+| Dashen                | `dashen`   |          | `.pft`                      | DOS           | ✔     |       |
 | DEC DRCS soft font    | `dec`      |          |                             | DEC VT        | ✔     | ✔     |
 | DosStart!             | `dosstart` |          | `.dsf`                      | DOS           | ✔     |       |
 | FZX font              | `fzx`      |          | `.fzx`                      | ZX Spectrum   | ✔     | ✔     |

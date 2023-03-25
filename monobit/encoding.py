@@ -468,7 +468,6 @@ _ENCODING_FILES = (
         ('misc/ibm-ugl.txt', 'ibm-ugl'),
     )),
 
-
     # Windows-1252 extensions
     ('html', dict(table=1), (
         ('wikipedia/windows-1252.html', 'windows-extended', 'ibm-1004', 'os2-1004'),
@@ -482,6 +481,11 @@ _ENCODING_FILES = (
 
     ('html', dict(table=1), (
         ('wikipedia/ventura.html', 'pcl-ventura-international', 'pcl-ventura'),
+    )),
+
+    # Dashen codepage
+    ('txt', dict(unicode_column=1, codepoint_column=2, separator='\t'), (
+        ('misc/dashen-map.txt', 'dashen'),
     )),
 )
 
