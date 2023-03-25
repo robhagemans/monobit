@@ -34,6 +34,7 @@ def load_dashen(instream):
     # PCL printer font
     if instream.peek(1):
         printer = load_hppcl(instream)
+        printer = printer.modify(encoding='dashen').label()
         return screen, printer
     else:
         return screen
@@ -113,6 +114,6 @@ def _convert_dashen(props, glyphdata, headers, codepoints):
     font = Font(
         glyphs,
         line_height=props.line_height,
-        dashen=props
+        encoding='dashen',
     )
-    return font
+    return font.label()
