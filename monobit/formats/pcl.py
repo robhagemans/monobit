@@ -537,7 +537,7 @@ def _convert_hppcl_props(fontdef, copyright):
         cap_height=(fontdef.cap_height * fontdef.height / 65536) // 4 or None,
         average_width=fontdef.pitch / 4 or None,
         # debugging
-        fontdef=Props(**vars(fontdef)),
+        #fontdef=Props(**vars(fontdef)),
         # ignoring height_extended, pitch_extended
         # ignoring fractional dot sizes
     )
@@ -599,7 +599,7 @@ def _convert_hppcl_glyph(code, chardef, glyphbytes):
         raise FileFormatError('Unsupported orientation')
     props.update(dict(
         codepoint=code,
-        chardef=Props(**vars(chardef)),
+        #chardef=Props(**vars(chardef)),
     ))
     return Glyph(raster, **props)
 
