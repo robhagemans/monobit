@@ -87,57 +87,57 @@ Check `monobit-banner --help` for usage.
 Supported bitmap formats
 ------------------------
 
-| Format                | Short Name | Version  | Typical Extension           | Native OS     | Read  | Write |
-|-----------------------|------------|----------|-----------------------------|---------------|-------|-------|
-| Amiga Font Contents   | `amiga-fc` |          | `.font`                     | Amiga OS      | ✔     |       |
-| Amiga font            | `amiga`    |          |                             | Amiga OS      | ✔     |       |
-| BBC soft font         | `bbc`      |          |                             | BBC Micro     | ✔     | ✔     |
-| X11/Adobe BDF         | `bdf`      |          | `.bdf`                      | Unix          | ✔     | ✔     |
-| AngelCode BMFont [P]  | `bmfont` | text binary XML JSON | `.fnt` `.xml` `.json` + images  | | ✔     | ✔     |
-| Raw binary            | `raw`      |          | `.fnt` `.rom` [*]           |               | ✔     | ✔     |
-| Codepage Information  | `cpi` | FONT FONT.NT DRFONT | `.cpi` | MS-DOS, Windows NT, DR-DOS   | ✔     | ✔     |
-| Daisy-Dot             | `daisy` | II III Magnified | `.nlq` `.nl2` `.nl3` `.nl4` | Atari    | ✔     |       |
-| Dashen                | `dashen`   |          | `.pft`                      | DOS           | ✔     |       |
-| DEC DRCS soft font    | `dec`      |          |                             | DEC VT        | ✔     | ✔     |
-| DosStart!             | `dosstart` |          | `.dsf`                      | DOS           | ✔     |       |
-| FZX font              | `fzx`      |          | `.fzx`                      | ZX Spectrum   | ✔     | ✔     |
-| Figlet font           | `figlet`   |          | `.flf`                      | Unix          | ✔     | ✔     |
-| Windows or OS/2 font  | `mzfon`    | NE PE LX | `.fon` `.exe` `.dll`        | Windows, OS/2 | ✔     | ✔ (16-bit Windows) |
-| FONTX2                | `fontx`    |          | `.fnt`                      | DOS/V         | ✔     | ✔     |
-| FONTEDIT              | `fontedit` |          | `.com`                      | DOS           | ✔     |       |
-| Fontraption           | `frapt`    |          | `.com`                      | DOS           | ✔     |       |
-| Fontraption TSR       | `frapt-tsr`|          | `.com`                      | DOS           | ✔     |       |
-| Hanzi Bitmap Font     | `hbf`      |          | `.hbf` + raw binary         | Unix          | ✔     | ✔     |
-| OS/2 GPI resource     | `gpi`      |          | `.fnt`                      | OS/2          | ✔     |       |
-| Atari GDOS / GEM      | `gdos`     |          | `.fnt` `.gft` `.vga`        | Atari ST, GEM | ✔     | ✔     |
-| C64 GEOS ConVerT      | `geos`     |          | `.cvt`                      | Commodore 64  | ✔     |       |
-| HP PCL soft font      | `hppcl`    |          | `.sft` `.sfp` `.sfl`        |               | ✔     | ✔     |
-| GNU Unifont           | `unifont`  |          | `.hex`                      |               | ✔     | ✔     |
-| Extended Hex          | `pcbasic`  |          | `.hex`                      |               | ✔     | ✔     |
-| hexdraw               | `hexdraw`  |          | `.draw`                     |               | ✔     | ✔     |
-| Bitmap image [P]      | `image`    |          | `.png` `.gif` `.bmp`        |               | ✔     | ✔     |
-| Apple IIgs font       | `iigs`     |          | `.fon`                      | Apple IIgs    | ✔     | ✔     |
-| Bare codepage         | `kbd`      |          | `.cp`                       | DOS, Linux    | ✔     | ✔     |
-| REXXCOM Font Mania    | `mania`    |          | `.com`                      | DOS           | ✔     |       |
-| LISA font library     | `lisa`     |          | `.bin`                      | LISA          | ✔     |       |
-| MacOS font            | `mac`      | FONT NFNT SFNT | `.dfont` `.suit`      | Classic Mac OS| ✔     |       |
-| MouseGraphics         | `mgtk`     |          |                             | Apple IIe     | ✔     |       |
-| Bare NFNT resource    | `nfnt`     |          | `.f`         | LISA, Classic Mac OS, PalmOS | ✔     | ✔     |
-| Palm OS font          | `palm`     | 1 (NFNT) | `.pdb`                      | Palm OS       | ✔     |       |
-| Optiks PCR Font       | `pcr`      |          | `.pcr`                      | DOS           | ✔     |       |
-| PCPaint, GRASP, ChiWriter | `pcpaint` | old 3 4 | `.set` `.fnt`  `.sft` `.pft` `.eft` ... | DOS | ✔ |       |
-| PDF chart [R]         | `pdf`      |          | `.pdf`                      |               |       | ✔     |
-| TeX PKFONT            | `pkfont`   |          | `.pk`                       |               | ✔     |       |
-| The Print Shop        | `printshop`|          | `.pnf`                      | DOS           | ✔     |       |
-| PC Screen Font        | `psf`      | 1 2      | `.psf` `.psfu`              | MS-DOS, Linux | ✔     | ✔ (version 2) |
-| PSF2AMS PSFCOM        | `psfcom`   |          | `.com`                      | Z80 CP/M      | ✔     |       |
-| SFNT embedded bitmap  | `sfnt`     |          | `.otb` `.ttf` `.otf` [F] [**] |             | ✔     |       |
-| Signum! 2    | `signum` | editor 9-pin 24-pin laser | `.e24` `.p9` `.p24` `.l30` | Atari ST | ✔     |       |
-| vfont                 | `vfont`    |          |                             | BSD, SunOS    | ✔     | ✔     |
-| Bare GEOS resource    | `vlir`     |          |                             | Commodore 64  | ✔     |       |
-| Windows FNT resource  | `win`      | 1.0 2.0 3.0 | `.fnt`                   | 16-bit Windows | ✔    | ✔     |
-| XBIN font section     | `xbin`     |          | `.xb`                       | DOS           | ✔     | ✔     |
-| monobit yaff          | `yaff`     |          | `.yaff`                     |               | ✔     | ✔     |
+| Format                | Short Name | Typical Extension           | Read  | Write |
+|-----------------------|------------|-----------------------------|-------|-------|
+| Amiga Font Contents   | `amiga-fc` | `.font`                     | ✔     |       |
+| Amiga font            | `amiga`    |                             | ✔     |       |
+| BBC soft font         | `bbc`      |                             | ✔     | ✔     |
+| X11/Adobe BDF         | `bdf`      | `.bdf`                      | ✔     | ✔     |
+| AngelCode BMFont [P]  | `bmfont` | `.fnt` `.xml` `.json` + images | ✔    | ✔     |
+| Raw binary            | `raw`      | `.fnt` `.rom` [*]           | ✔     | ✔     |
+| Codepage Information  | `cpi`      | `.cpi`                      | ✔     | ✔     |
+| Daisy-Dot             | `daisy`    | `.nlq` `.nl2` `.nl3` `.nl4` | ✔     |       |
+| Dashen                | `dashen`   | `.pft`                      | ✔     |       |
+| DEC DRCS soft font    | `dec`      |                             | ✔     | ✔     |
+| DosStart!             | `dosstart` | `.dsf`                      | ✔     |       |
+| FZX font              | `fzx`      | `.fzx`                      | ✔     | ✔     |
+| Figlet font           | `figlet`   | `.flf`                      | ✔     | ✔     |
+| Windows or OS/2 font  | `mzfon`    | `.fon` `.exe` `.dll`        | ✔     | ✔ (16-bit Windows) |
+| FONTX2                | `fontx`    | `.fnt`                      | ✔     | ✔     |
+| FONTEDIT              | `fontedit` | `.com`                      | ✔     |       |
+| Fontraption           | `frapt`    | `.com`                      | ✔     |       |
+| Fontraption TSR       | `frapt-tsr`| `.com`                      | ✔     |       |
+| Hanzi Bitmap Font     | `hbf`      | `.hbf` + raw binary         | ✔     | ✔     |
+| OS/2 GPI resource     | `gpi`      | `.fnt`                      | ✔     |       |
+| Atari GDOS / GEM      | `gdos`     | `.fnt` `.gft` `.vga`        | ✔     | ✔     |
+| C64 GEOS ConVerT      | `geos`     | `.cvt`                      | ✔     |       |
+| HP PCL soft font      | `hppcl`    | `.sft` `.sfp` `.sfl`        | ✔     | ✔     |
+| GNU Unifont           | `unifont`  | `.hex`                      | ✔     | ✔     |
+| Extended Hex          | `pcbasic`  | `.hex`                      | ✔     | ✔     |
+| hexdraw               | `hexdraw`  | `.draw`                     | ✔     | ✔     |
+| Bitmap image [P]      | `image`    | `.png` `.gif` `.bmp`        | ✔     | ✔     |
+| Apple IIgs font       | `iigs`     | `.fon`                      | ✔     | ✔     |
+| Bare codepage         | `kbd`      | `.cp`                       | ✔     | ✔     |
+| REXXCOM Font Mania    | `mania`    | `.com`                      | ✔     |       |
+| LISA font library     | `lisa`     | `.bin`                      | ✔     |       |
+| MacOS font            | `mac`      | `.dfont` `.suit`            | ✔     |       |
+| MouseGraphics         | `mgtk`     |                             | ✔     |       |
+| Bare NFNT resource    | `nfnt`     | `.f`                        | ✔     | ✔     |
+| Palm OS font (v1/NFNT)| `palm`     | `.pdb`                      | ✔     |       |
+| Optiks PCR Font       | `pcr`      | `.pcr`                      | ✔     |       |
+| PCPaint, GRASP, ChiWriter | `pcpaint` | `.set` `.fnt`  `.sft` `.pft` `.eft` ... | ✔ |  |
+| PDF chart [R]         | `pdf`      | `.pdf`                      |       | ✔     |
+| TeX PKFONT            | `pkfont`   | `.pk`                       | ✔     |       |
+| The Print Shop        | `printshop`| `.pnf`                      | ✔     |       |
+| PC Screen Font        | `psf`      | `.psf` `.psfu`              | ✔     | ✔ (version 2) |
+| PSF2AMS PSFCOM        | `psfcom`   | `.com`                      | ✔     |       |
+| SFNT embedded bitmap  | `sfnt`     | `.otb` `.ttf` `.otf` [F] [**] | ✔   |       |
+| Signum! 2             | `signum`   | `.e24` `.p9` `.p24` `.l30`  | ✔     |       |
+| vfont                 | `vfont`    |                             | ✔     | ✔     |
+| Bare GEOS resource    | `vlir`     |                             | ✔     |       |
+| Windows FNT resource  | `win`      | `.fnt`                      | ✔     | ✔     |
+| XBIN font section     | `xbin`     | `.xb`                       | ✔     | ✔     |
+| monobit yaff          | `yaff`     | `.yaff`                     | ✔     | ✔     |
 
 
 [P] - requires **PIL**  
