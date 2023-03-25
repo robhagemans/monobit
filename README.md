@@ -136,7 +136,7 @@ Supported bitmap formats
 | vfont                 | `vfont`    |          |                             | BSD, SunOS    | ✔     | ✔     |
 | Bare GEOS resource    | `vlir`     |          |                             | Commodore 64  | ✔     |       |
 | Windows FNT resource  | `win`      | 1.0 2.0 3.0 | `.fnt`                   | 16-bit Windows | ✔    | ✔     |
-| XBIN font section     | `xbin`     |          | `.xb`                       | DOS           | ✔     |       |
+| XBIN font section     | `xbin`     |          | `.xb`                       | DOS           | ✔     | ✔     |
 | monobit yaff          | `yaff`     |          | `.yaff`                     |               | ✔     | ✔     |
 
 
