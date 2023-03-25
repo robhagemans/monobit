@@ -31,13 +31,14 @@ _NON_ROMAN_NAMES = {
     'Cairo': '',
     'Taliesin': '',
     'Mobile': '',
+    'Zapf Dingbats': '',
 }
 
 
-# font names for system fonts in FONT resources
+# Apple IIgs Technote #41, Font Family Numbers
 _FONT_NAMES = {
-    0: 'Chicago', # system font
-    1: 'application font',
+    # 0: 'System Font',
+    # 1: 'System Font',
     2: 'New York',
     3: 'Geneva',
     4: 'Monaco',
@@ -48,12 +49,20 @@ _FONT_NAMES = {
     9: 'Toronto',
     11: 'Cairo',
     12: 'Los Angeles',
-    16: 'Palatino', # found experimentally
+    13: 'Zapf Dingbats',
+    14: 'Bookman',
+    15: 'Helvetica Narrow',
+    16: 'Palatino',
+    18: 'Zapf Chancery',
     20: 'Times',
     21: 'Helvetica',
     22: 'Courier',
     23: 'Symbol',
-    24: 'Taliesin', # later named Mobile, but it has a FOND entry then.
+    24: 'Taliesin',
+    33: 'Avant Garde',
+    34: 'New Century Schoolbook',
+    65533: 'Chicago',
+    65534: 'Shaston',
 }
 
 

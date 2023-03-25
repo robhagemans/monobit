@@ -199,6 +199,11 @@ class StructValue(_WrappedCValue):
 
     def __setattr__(self, attr, value):
         if not attr.startswith('_'):
+            # deal with StructValue objects
+            try:
+                value = value._cvalue
+            except AttributeError:
+                pass
             return setattr(self._cvalue, attr, value)
         return super().__setattr__(attr, value)
 

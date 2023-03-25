@@ -10,7 +10,7 @@ import logging
 from ...storage import loaders, savers
 
 from .dfont import _parse_mac_resource
-from .nfnt import _extract_nfnt, _convert_nfnt
+from .nfnt import _extract_nfnt, _convert_nfnt, _create_nfnt
 from .lisa import _load_lisa
 from .iigs import _load_iigs, _save_iigs
 
@@ -62,9 +62,23 @@ def load_iigs(instream):
 
 
 @savers.register(linked=load_iigs)
-def save_iigs(fonts, outstream):
-    """Write font to a IIgs font file."""
+def save_iigs(fonts, outstream, version:int=None):
+    """
+    Write font to a IIgs font file.
+
+    version: IIgs font format version (0x101, 0x105). Default: 0x101 unless needed for bitmap size.
+    """
     if len(fonts) > 1:
         logging.warning('IIgs font file can only store one font.')
     font = fonts[0]
-    _save_iigs(outstream, font)
+    _save_iigs(outstream, font, version=version)
+
+
+@savers.register(linked=load_nfnt)
+def save_nfnt(fonts, outstream):
+    """Write font to a bare FONT/NFNT resource."""
+    if len(fonts) > 1:
+        logging.warning('NFNT resource can only store one font.')
+    font = fonts[0]
+    data, _, _ = _create_nfnt(font, endian='big', ndescent_is_high=True)
+    outstream.write(data)

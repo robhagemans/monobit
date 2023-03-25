@@ -75,6 +75,10 @@ class MagicRegistry:
         self._default_text = default_text
         self._default_binary = default_binary
 
+    def get_formats(self):
+        """Get tuple of all registered format names."""
+        return tuple(self._names.keys())
+
     def get_for(self, file=None, format=''):
         """
         Get loader/saver function for this format.
@@ -140,7 +144,7 @@ class MagicRegistry:
                 )
             )
             ## glob patterns
-            for pattern in (f'*.{name}', *patterns):
+            for pattern in (*patterns, f'*.{name}'):
                 self._patterns.append((to_pattern(pattern), converter))
             return funcwrapper(converter)
 
@@ -171,6 +175,15 @@ class MagicRegistry:
                 glob_matches.append(converter)
         matches.extend(_c for _c in glob_matches if _c not in matches)
         return tuple(matches)
+
+    def get_template(self, format):
+        """Get output filename template for format."""
+        for pattern, converter in self._patterns:
+            if converter.format == format:
+                template = pattern.generate('{name}')
+                if template:
+                    return template
+        return '{name}' f'.{format}'
 
 
 ###############################################################################
@@ -213,7 +226,6 @@ class Magic:
     def matches(self, target):
         """Target bytes match the mask."""
         if len(target) < len(self):
-            logging.debug(f'Target of insufficient length: {target}')
             return False
         for offset, value in self._mask:
             if target[offset:offset+len(value)] != value:
@@ -260,7 +272,7 @@ class Glob(Pattern):
         return fnmatch(str(target).lower(), self._pattern.lower())
 
     def generate(self, name):
-        """Generate name that fits pattern. Failure -> empty"""
+        """Generate template that fits pattern. Failure -> empty"""
         if not '?' in self._pattern and not '[' in self._pattern:
             try:
                 return self._pattern.replace('*', '{}').format(name)

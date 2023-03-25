@@ -7,6 +7,7 @@ import os
 import io
 import unittest
 import logging
+import glob
 
 import monobit
 from .base import BaseTester
@@ -78,6 +79,16 @@ class TestContainers(BaseTester):
         """Test importing/exporting compressed tar files."""
         self._test_container('tar.gz')
 
+    def test_dir(self):
+        """Test exporting to directory."""
+        dir = self.temp_path / f'test4x6/4x6'
+        from pathlib import Path
+        #dir =  Path('./test4x6/4x6')
+        monobit.save(self.fixed4x6, dir, format='dir')
+        self.assertTrue(dir.is_dir())
+        fonts = monobit.load(dir, format='dir')
+        self.assertEqual(len(fonts), 1)
+
     def test_recursive_tgz(self):
         """Test recursively traversing tar.gz container."""
         container_file = self.font_path / 'fontdir.tar.gz'
@@ -132,6 +143,12 @@ class TestContainers(BaseTester):
         fonts = monobit.load(file)
         self.assertEqual(len(fonts), 1)
 
+    def test_deeplink_dir_case_insensitive(self):
+        """Test case insensitive deep linking into directory."""
+        file = self.font_path / 'fontdir' / 'SUBDIR' / '6x13.FON.bz2'
+        fonts = monobit.load(str(file).upper())
+        self.assertEqual(len(fonts), 1)
+
     def test_nested_zip(self):
         """Test zipfile in zipfile."""
         fonts = monobit.load(self.font_path / 'zipinzip.zip')
@@ -152,6 +169,7 @@ class TestContainers(BaseTester):
         monobit.save(self.fixed4x6, file)
         font, *_ = monobit.load(file)
         self.assertEqual(len(font.glyphs), 919)
+
 
 class TestStreams(BaseTester):
     """Test stream i/o."""

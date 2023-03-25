@@ -161,7 +161,7 @@ class FontProperties(DefaultProps):
     # number of pixels in underline
     # we don't implement the XLFD calculation based on average stem width
     underline_thickness: int = 1
-    # position of underline below baseline. 0 means underline on baseline itself, 1 is one line below
+    # position of underline below baseline. 0 means underline rests on baseline itself, 1 is one line below
     underline_descent: int
     # recommended superscript size in pixels.
     superscript_size: int

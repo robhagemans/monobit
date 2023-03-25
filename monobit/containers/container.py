@@ -17,11 +17,14 @@ from ..storage import (
 class Container:
     """Base class for container types."""
 
-    def __init__(self, mode='r', name=''):
+    def __init__(self, mode='r', name='', ignore_case=True):
         self.mode = mode[:1]
         self.name = name
         self.refcount = 0
         self.closed = False
+        # ignore case on read - open any case insensitive match
+        # case sensitivity of writing depends on file system
+        self._ignore_case = ignore_case
 
     def __iter__(self):
         """List contents."""
@@ -31,10 +34,11 @@ class Container:
         """List contents of a subpath."""
         return (
             _item for _item in self
-            if _item.name.startswith(prefix)
+            if _item.startswith(str(prefix))
         )
 
     def __contains__(self, item):
+        """Check if file is in container. Case sensitive if container/fs is."""
         return any(str(item) == str(_item) for _item in iter(self))
 
     def __enter__(self):
@@ -58,6 +62,15 @@ class Container:
     def open(self, name, mode, overwrite=False):
         """Open a binary stream in the container."""
         raise NotImplementedError
+
+    def _match_name(self, filepath):
+        """Find case insensitive match, if the case sensitive match doesn't."""
+        if self._ignore_case:
+            for name in self:
+                logging.debug('trying %s', name)
+                if name.lower() == str(filepath).lower():
+                    return name
+        raise FileNotFoundError(filepath)
 
     def _open_stream_at(self, path, mode, overwrite):
         """Open stream recursively an container(s) given path."""

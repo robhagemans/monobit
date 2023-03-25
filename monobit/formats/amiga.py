@@ -32,6 +32,8 @@ def load_amiga_fc(f):
     elif fch.fch_FileID == _TFCH_ID:
         logging.debug('Amiga FCH using TFontContents')
         contentsarray = _T_FONT_CONTENTS.array(fch.fch_NumEntries).read_from(f)
+    elif fch.fch_FileID == _NONBITMAP_ID:
+        raise FileFormatError('IntelliFont Amiga outline fonts not supported.')
     else:
         raise FileFormatError(
             'Not an Amiga Font Contents file: '
@@ -53,16 +55,10 @@ def load_amiga_fc(f):
             tags = _TAG_ITEM.array(fc.tfc_TagCount).from_bytes(fc.tfc_FileName[tag_start:])
         else:
             tags = ()
-        # amiga fs is case insensitive; need to loop over listdir and match
-        # font files given relative to local directory
+        # note case insensitive match on open (amiga os is case-insensitive
         local_dir = Path(f.name).parent
-        for filename in f.where.iter_sub(local_dir):
-            if Path(filename.lower()).relative_to(local_dir) == Path(name.lower()):
-                logging.debug('Reading font file %s on %r', filename, f.where)
-                with f.where.open(filename, 'r') as stream:
-                    pack.append(_load_amiga(stream, tags))
-            else:
-                logging.debug('Skipping file %s', filename)
+        with f.where.open(local_dir / name, 'r') as stream:
+            pack.append(_load_amiga(stream, tags))
     return pack
 
 
@@ -105,6 +101,7 @@ _MAXFONTNAME = 32
 # https://wiki.amigaos.net/wiki/Graphics_Library_and_Text#The_Composition_of_a_Bitmap_Font_on_Disk
 _FCH_ID = 0x0f00
 _TFCH_ID = 0x0f02
+_NONBITMAP_ID = 0x0f03
 
 # hunk ids
 # http://amiga-dev.wikidot.com/file-format:hunk

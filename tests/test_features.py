@@ -203,9 +203,9 @@ class TestFeatures(BaseTester):
         text1 = monobit.render(prop1, b'testing').as_text()
         assert_text_eq(text1, self.proptext)
 
-    def _render_proportional(self, format):
+    def _render_proportional(self, format, **save_kwargs):
         prop1, *_ = monobit.load(self.font_path / 'wbfont.amiga/wbfont_prop.font')
-        monobit.save(prop1, self.temp_path / f'wbfont_prop.{format}', format=format)
+        monobit.save(prop1, self.temp_path / f'wbfont_prop.{format}', format=format, **save_kwargs)
         prop2, *_ = monobit.load(self.temp_path / f'wbfont_prop.{format}', format=format)
         text2 = monobit.render(prop2, b'testing').as_text()
         assert_text_eq(text2, self.proptext)
@@ -234,6 +234,17 @@ class TestFeatures(BaseTester):
     def test_vfont_proportional(self):
         self._render_proportional('vfont')
 
+    def test_iigs_proportional(self):
+        self._render_proportional('iigs')
+
+    def test_nfnt_proportional(self):
+        self._render_proportional('nfnt')
+
+    def test_hppcl_proportional(self):
+        self._render_proportional('hppcl')
+
+    def test_hppcl_landscape_proportional(self):
+        self._render_proportional('hppcl', orientation='landscape')
 
     # kerning
 
@@ -311,9 +322,9 @@ class TestFeatures(BaseTester):
 ..@..
 """.strip()
 
-    def _render_bearings(self, format):
+    def _render_bearings(self, format, **save_kwargs):
         font, *_ = monobit.load(self.font_path / 'positioning.yaff')
-        monobit.save(font, self.temp_path / f'positioning.{format}', format=format)
+        monobit.save(font, self.temp_path / f'positioning.{format}', format=format, **save_kwargs)
         font, *_ = monobit.load(self.temp_path / f'positioning.{format}', format=format)
         text = monobit.render(font, b'012').as_text()
         assert_text_eq(text, self.bearing_testtext)
@@ -330,12 +341,23 @@ class TestFeatures(BaseTester):
     def test_gdos_negbearings(self):
         self._render_bearings('gdos')
 
+    def test_iigs_negbearings(self):
+        self._render_bearings('iigs')
+
+    def test_nfnt_negbearings(self):
+        self._render_bearings('nfnt')
+
     # def test_figlet_negbearings(self):
     #     self._render_bearings('figlet')
 
     def test_vfont_negbearings(self):
         self._render_bearings('vfont')
 
+    def test_hppcl_negbearings(self):
+        self._render_bearings('hppcl')
+
+    def test_hppcl_negbearings_landscape(self):
+        self._render_bearings('hppcl', orientation='landscape')
 
     # composition
 

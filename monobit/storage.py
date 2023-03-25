@@ -5,8 +5,10 @@ monobit.storage - load and save fonts
 licence: https://opensource.org/licenses/MIT
 """
 
+import os
 import sys
 import logging
+import shlex
 from pathlib import Path
 from contextlib import contextmanager
 
@@ -71,6 +73,8 @@ def load_stream(instream, *, format='', subpath='', **kwargs):
         if format:
             message += f': format specifier `{format}` not recognised'
         raise FileFormatError(message)
+    errors = {}
+    last_error = None
     for loader in fitting_loaders:
         instream.seek(0)
         logging.info('Loading `%s` as %s', instream.name, loader.format)
@@ -86,6 +90,8 @@ def load_stream(instream, *, format='', subpath='', **kwargs):
             fonts = loader(instream, **kwargs)
         except FileFormatError as e:
             logging.debug(e)
+            errors[format] = e
+            last_error = e
             continue
         if not fonts:
             logging.debug('No fonts found in file.')
@@ -101,17 +107,26 @@ def load_stream(instream, *, format='', subpath='', **kwargs):
         except UnicodeError:
             filename = (
                 filename.encode('utf-8', 'surrogateescape')
-                .decode('ascii', 'backsl hreplace')
+                .decode('ascii', 'backslashreplace')
             )
+        # source format argumets
+        loader_args = ' '.join(
+            f'{_k.replace("_", "-")}={shlex.join((str(_v),))}'
+            for _k, _v in kwargs.items()
+            if _k != 'subpath'
+        )
+        loader_args = f' [{loader_args}]' if loader_args else ''
         return Pack(
             _font.modify(
                 converter=CONVERTER_NAME,
-                source_format=_font.source_format or loader.format,
+                source_format=_font.source_format or f'{loader.format}{loader_args}',
                 source_name=_font.source_name or filename
             )
             for _font in pack
         )
-    raise FileFormatError('No fonts found in file')
+    if last_error:
+        raise last_error
+    raise FileFormatError('Unable to read fonts from file')
 
 
 def load_all(container, *, format='', **kwargs):
@@ -195,6 +210,13 @@ def save_stream(
         logging.info(
             'Saving `%s` on `%s` as %s.', subpath, outstream.name, saver.format
         )
+    # special case - saving to directory
+    # we need to create the dir before opening a stream,
+    # or the stream will be a regular file
+    if isinstance(outstream, DirectoryStream) and format == 'dir':
+        if not (Path(outstream.name) / subpath).exists():
+            os.makedirs(Path(outstream.name) / subpath, exist_ok=True)
+            overwrite = True
     # update format name, removing the most recently found wrapper format
     if outer == saver.format:
         format = new_format
@@ -217,8 +239,8 @@ def save_all(
     logging.info('Writing all to `%s`.', container.name)
     for font in pack:
         if format and not template:
-            # use format name as suffix
-            template = '{name}.' f'{format}'
+            # generate name from format
+            template = savers.get_template(format)
         # fill out template
         name = font.format_properties(template)
         # generate unique filename

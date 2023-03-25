@@ -94,7 +94,7 @@ _ENCODING_FILES = (
         ('microsoft/PC/CP864.TXT', 'cp864', 'oem-864', 'ibm-864'), # dos-arabic
         ('microsoft/PC/CP865.TXT', 'cp865', 'oem-865', 'ibm-865', 'dos-nordic'),
         ('microsoft/PC/CP866.TXT', 'cp866', 'oem-866', 'ibm-866', 'dos-cyrillic-russian'),
-        ('microsoft/PC/CP869.TXT', 'cp869', 'oem-869', 'ibm-869', 'dos-greek2'),
+        ('microsoft/PC/CP869.TXT', 'cp869', 'oem-869', 'ibm-869', 'dos-greek2', 'pcl-greek8'),
         ('microsoft/PC/CP874.TXT', 'ibm-874', 'ibm-9066'), # dos-thai
 
         # EBCDIC
@@ -468,7 +468,6 @@ _ENCODING_FILES = (
         ('misc/ibm-ugl.txt', 'ibm-ugl'),
     )),
 
-
     # Windows-1252 extensions
     ('html', dict(table=1), (
         ('wikipedia/windows-1252.html', 'windows-extended', 'ibm-1004', 'os2-1004'),
@@ -482,6 +481,11 @@ _ENCODING_FILES = (
 
     ('html', dict(table=1), (
         ('wikipedia/ventura.html', 'pcl-ventura-international', 'pcl-ventura'),
+    )),
+
+    # Dashen codepage
+    ('txt', dict(unicode_column=1, codepoint_column=2, separator='\t'), (
+        ('misc/dashen-map.txt', 'dashen'),
     )),
 )
 

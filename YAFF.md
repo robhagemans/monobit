@@ -44,12 +44,16 @@ In the spirit of human-friendliness, a short example is probably more informativ
     # This is a global comment
     # spanning multiple lines.
 
+    # the file starts with global properties
+
     name: Test Roman 8px
     family: Test
     notice:
         Test is the property of T€$ţ0Яζ Inc.
         It's not a very useful font.
     encoding: totally-made-up
+
+    # glyph definitions follow after the global properties section
 
     # The letter A is the first letter of the Latin alphabet.
     # We've got three kinds of labels: unicode character, codepage, and tag.
@@ -161,8 +165,9 @@ Specification
   above, or UTF-8 noncharacters.
 
 #### Components
-`yaff` files consist of *glyph definitions*, *properties* and *comments*.
+`yaff` files consist of *properties*, *glyph definitions*, and *comments*.
 Each of these components is optional; an empty file is a valid (if pointless) `yaff` file.
+Font properties must not follow glyph definitions.
 
 #### Comments
 A line starting with a hash `#` contains a *comment* only.
@@ -297,11 +302,6 @@ Per-glyph only metrics are:
   specified in the `left-kerning` property of the `V` glyph, as a pair of the label for the `A` glyph and
   a numeric adjustment value. If both `left-kerning` and `right-kerning` are specified, they add up.
 
-Deprecated synonyms are:
-- `offset` (_x_ _y_ pair): equal to (`left-bearing`, `shift-up`).
-- `tracking`: equal to `right-bearing`.
-- `kern-to`: equal to `right-kerning`.
-
 
 ##### Rendering hints
 
@@ -363,11 +363,6 @@ Characteristics inferred from the glyphs are:
   - `character-cell`: all glyphs can be defined on a raster of fixed size and displayed without overlap.
   - `multi-cell`: like `character-cell`, but some glyphs may take up two cells.
 
-Deprecated synonyms are:
-- `average-advance`: equal to `average-width`.
-- `max-advance`: equal to `max-width`.
-- `cap-advance`: equal to `cap-width`.
-
 Characteristics that give a font's identity are:
 - `family`: typeface or font family name
 - `point-size`: nominal size of the font in points
@@ -399,6 +394,37 @@ Or they can be related to processing:
 - `source-name`: file name from which the font was originally extracted.
 - `source-format`: file format from which the font was originally extracted.
 - `history`: summary of processing steps applied since extraction.
+
+
+##### Stroke definitions
+
+- `path` is a special glyph property that contains a stroke sequence describing
+    how to draw the glyph. The stroke path is defined as a sequence of straight lines
+    and moves to be applied sequentially, starting from the glyph origin.
+    Path elements are given as a keyword followed by relative x,y offsets where the x coordinate
+    increases rightward and the y coordinate increases upward.
+        `m` _x_ _y_ moves _x_ design units to the right and _y_ design units up
+        `l` _x_ _y_ draws a line _x_ design units to the right and _y_ design units up
+    Stroke definitions are scalable and can be converted to pixel values by applying
+    a scaling factor, which may differ between x and y directions but must be
+    constant across path elements. The glyph bitmap to which the `path` property
+    attaches may be empty (`-`) or a realisation of the stroke drawing.
+
+
+##### Deprecated properties
+
+The following properties are recognised for backward compatibility, but
+should not be used in new files:
+
+Per-glyph:
+- `offset` (_x_ _y_ pair): equal to (`left-bearing`, `shift-up`).
+- `tracking`: equal to `right-bearing`.
+- `kern-to`: equal to `right-kerning`.
+
+Global:
+- `average-advance`: equal to `average-width`.
+- `max-advance`: equal to `max-width`.
+- `cap-advance`: equal to `cap-width`.
 
 
 ##### Illustration of key properties
