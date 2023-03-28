@@ -107,12 +107,18 @@ def render(
 
 def _adjust_margins_horizontal(glyphs):
     """Ensure margins are wide enough for any negative bearings."""
+    glyphs = tuple(_row for _row in glyphs if _row)
+    if not glyphs:
+        return 0
     min_left = min(_row[0].left_bearing for _row in glyphs)
     min_right = min(_row[-1].right_bearing for _row in glyphs)
     return -min(0, min_left, min_right)
 
 def _adjust_margins_vertical(glyphs):
     """Ensure margins are wide enough for any negative bearings."""
+    glyphs = tuple(_row for _row in glyphs if _row)
+    if not glyphs:
+        return 0
     min_top = min(_row[0].top_bearing for _row in glyphs)
     min_bottom = min(_row[-1].bottom_bearing for _row in glyphs)
     return -min(0, min_top, min_bottom)
