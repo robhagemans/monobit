@@ -352,14 +352,22 @@ def _iter_labels(font, text, missing='raise'):
         max_length = max(len(_c) for _c in labelset)
     remaining = text
     while remaining:
-        # try multibyte clusters first
+        # try multibyte/multi-grapheme cluster clusters first
         for try_len in range(max_length, 1, -1):
+            label = labeltype(remaining[:try_len])
+            # what about combining chars?
+            # - For str text, we iterate over grapheme clusters already,
+            #   so we really only want multi-grapheme cluster clusters
+            #   if they're actually defined in the font. Note that grapheme clusters
+            #   may well be realised through combining glyphs.
+            # - For bytes, we'll do the same. So there is no auto-combining glyphs
+            #   in bytes-based fonts, they have to be provided as MBCS in the font.
+            if try_len > 1 and label not in labelset:
+                continue
             try:
                 # convert to explicit label type,
                 # avoids matching tags as well as chars
-                yield font.get_glyph(
-                    labeltype(remaining[:try_len]), missing='raise'
-                )
+                yield font.get_glyph(label, missing='raise')
             except KeyError:
                 pass
             else:
