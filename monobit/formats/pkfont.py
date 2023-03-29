@@ -226,14 +226,17 @@ def _read_chardef(first, instream):
         chardef = _CHAR_LONG.read_from(instream)
         packet_length = chardef.pl
         tfm_offset = 8
+        denominator = 2**16
     elif flag.two_byte == 1:
         chardef = _CHAR_EXTENDED.read_from(instream)
         packet_length = flag.prepend * 0x10000 + chardef.pl
         tfm_offset = 3
+        denominator = 1
     else:
         chardef = _CHAR_SHORT.read_from(instream)
         packet_length = flag.prepend * 0x100 + chardef.pl
         tfm_offset = 2
+        denominator = 1
     # The parameter pl (packet length) contains the offset of
     # the byte following this character descriptor, with
     # respect to the beginning of the tfm width parameter
@@ -244,6 +247,7 @@ def _read_chardef(first, instream):
     char = Props(
         **vars(flag),
         **vars(chardef),
+        denominator=denominator,
         raster_data=payload
     )
     return char
@@ -267,7 +271,7 @@ def _convert_char(char):
         shift_up=char.voff-raster.height+1,
         # how is 'escapement' defined? is it the advance width?
         # or does it exclude the initial offset?
-        right_bearing=char.dx-char.w+char.hoff,
+        right_bearing=char.dx//char.denominator-char.w+char.hoff,
         # if there's a dy 'vertical escapement' defined, what do we do with it?
         # also, what _is_ the TFM width??
     )
