@@ -222,19 +222,25 @@ _CHAR_LONG = be.Struct(
 def _read_chardef(first, instream):
     """Read a character definition."""
     flag = _CHAR_FLAG.from_bytes(first)
-    if flag.two_byte == 1 and flag.prepend == 0x11:
+    if flag.two_byte == 1 and flag.prepend == 3:
         chardef = _CHAR_LONG.read_from(instream)
         packet_length = chardef.pl
+        tfm_offset = 8
     elif flag.two_byte == 1:
         chardef = _CHAR_EXTENDED.read_from(instream)
         packet_length = flag.prepend * 0x10000 + chardef.pl
+        tfm_offset = 3
     else:
         chardef = _CHAR_SHORT.read_from(instream)
         packet_length = flag.prepend * 0x100 + chardef.pl
-    payload_size = packet_length + 2 - sizeof(chardef)
+        tfm_offset = 2
+    # The parameter pl (packet length) contains the offset of
+    # the byte following this character descriptor, with
+    # respect to the beginning of the tfm width parameter
+    payload_size = packet_length + tfm_offset - sizeof(chardef)
     payload = instream.read(payload_size)
     if len(payload) != payload_size:
-        logging.warning('Raster data truncated.')
+        logging.warning('Raster data truncated: %d < %d', len(payload), payload_size)
     char = Props(
         **vars(flag),
         **vars(chardef),
