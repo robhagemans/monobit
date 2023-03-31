@@ -29,7 +29,8 @@ from ..storage import loaders, savers
 from ..magic import FileFormatError
 from .windows.fnt import _WEIGHT_MAP
 
-# errors that invalidates only one strike or resource, not the whole file
+
+# errors that invalidate only one strike or resource, not the whole file
 
 class ResourceFormatError(FileFormatError):
     """Unsupported parameters in resource."""
