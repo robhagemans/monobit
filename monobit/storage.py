@@ -17,6 +17,7 @@ from .font import Font
 from .pack import Pack
 from .streams import Stream, StreamBase, KeepOpen, DirectoryStream
 from .magic import MagicRegistry, FileFormatError, maybe_text
+from .struct import StructError
 from .scripting import scriptable, ScriptArgs, ARG_PREFIX
 from .basetypes import Any
 
@@ -88,7 +89,7 @@ def load_stream(instream, *, format='', subpath='', **kwargs):
             kwargs['format'] = format
         try:
             fonts = loader(instream, **kwargs)
-        except FileFormatError as e:
+        except (FileFormatError, StructError) as e:
             logging.debug(e)
             errors[format] = e
             last_error = e

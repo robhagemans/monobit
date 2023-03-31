@@ -12,6 +12,10 @@ from types import SimpleNamespace
 from functools import partial
 
 
+class StructError(ValueError):
+    pass
+
+
 ##############################################################################
 # binary structs
 
@@ -112,7 +116,10 @@ class _WrappedCType:
 
     def from_bytes(self, *args):
         # pylint: disable=no-member
-        cvalue = self._ctype.from_buffer_copy(*args)
+        try:
+            cvalue = self._ctype.from_buffer_copy(*args)
+        except ValueError as e:
+            raise StructError(e) from e
         return self.from_cvalue(cvalue)
 
     def read_from(self, stream, offset=None):
