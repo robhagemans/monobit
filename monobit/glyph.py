@@ -299,7 +299,7 @@ class Glyph:
             codepoint=codepoint,
             char=char,
             tag=tag,
-            comment=comment,
+            comment=comment or '',
             _0=_0, _1=_1,
             **properties
         )
