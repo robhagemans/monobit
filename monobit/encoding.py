@@ -576,12 +576,12 @@ def is_printable(char):
         for _c in char
     )
 
-def is_whitespace(char):
-    """Check if a sequence is whitespace."""
+def is_blank(char):
+    """Check if a sequence is whitespace or non-graphical."""
     if not char:
         return False
     return all(
-        unicodedata.category(_c) == 'Zs'
+        unicodedata.category(_c) == 'Zs' or not is_graphical(_c)
         for _c in char
     )
 
