@@ -1282,6 +1282,8 @@ class Font:
         Pad glyphs to include positive horizontal bearings and line height.
         Negative bearings and upshifts are equalised.
         """
+        if not self.glyphs:
+            return self
         # absolute value of most negative upshift, left_bearing, right_bearing
         add_shift_up = max(0, -min(_g.shift_up for _g in self.glyphs))
         add_left_bearing = 0 #max(0, -min(_g.left_bearing for _g in self.glyphs))
