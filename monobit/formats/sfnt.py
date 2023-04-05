@@ -619,7 +619,7 @@ def _convert_bloc_props(bloc, i_strike):
         )
         bmst.flags = 1
     props = Props()
-    # asppect ratio is the inverse of pixels-per-em ratio
+    # aspect ratio is the inverse of pixels-per-em ratio
     den = math.gcd(bmst.ppemY, bmst.ppemX)
     props.pixel_aspect = (bmst.ppemY//den, bmst.ppemX//den)
     small_metrics_are_vert = bmst.flags == 2
