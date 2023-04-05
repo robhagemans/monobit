@@ -546,6 +546,10 @@ class Glyph:
         """Return flat tuple of user-specified foreground and background objects."""
         return self._pixels.as_vector(ink=ink, paper=paper)
 
+    def as_byterows(self, *, align='left'):
+        """Convert glyph to rows of bytes."""
+        return self._pixels.as_byterows(align=align)
+
     def as_bytes(self, *, align='left'):
         """Convert glyph to flat bytes."""
         return self._pixels.as_bytes(align=align)
