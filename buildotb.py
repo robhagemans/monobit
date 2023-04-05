@@ -2,11 +2,14 @@ from fontTools.fontBuilder import FontBuilder
 from fontTools.ttLib.tables.E_B_D_T_ import ebdt_bitmap_format_1
 from fontTools.ttLib.tables.BitmapGlyphMetrics import SmallGlyphMetrics
 from fontTools.ttLib.tables.E_B_L_C_ import Strike, BitmapSizeTable, eblc_index_sub_table_3, SbitLineMetrics
-from fontTools.ttLib.tables._g_l_y_f import Glyph
+from fontTools.ttLib.tables._g_l_y_f import Glyph as Glyf
 from fontTools import ttLib
 
 import logging
 logging.basicConfig(level=logging.DEBUG)
+
+from monobit import Glyph
+
 
 fb = FontBuilder(1024, isTTF=True)
 glyphnames = [".notdef", ".null", "space", "A", "a"]
@@ -26,7 +29,7 @@ nameStrings = dict(
     version="Version " + version,
 )
 
-glyph = Glyph()
+glyph = Glyf()
 # fontBuilder needs all these defined, even if empty
 # that aligns with fonttosfnt default, but we should be able to leave glyf table empty (fontforge default)
 glyphs = {".notdef": glyph, "space": glyph, "A": glyph, "a": glyph, ".null": glyph}
@@ -34,19 +37,30 @@ fb.setupGlyf(glyphs)
 
 # EBLC, EBDT
 ebdt = ttLib.newTable('EBDT')
+fb.font['EBDT'] = ebdt
 ebdt.version = 2.0
 
-bmga = ebdt_bitmap_format_1(data=b'', ttFont=fb.font)
-bmga.metrics = SmallGlyphMetrics()
-bmga.metrics.height = 8
-bmga.metrics.width = 8
-bmga.metrics.BearingX = 1
-bmga.metrics.BearingY = 8
-bmga.metrics.Advance = 9
-bmga.setRows(tuple(bytes((_x,)) for _x in b'\0\xff\x81\x81\xff\x81\x81\x81'))
-bmga.compile(fb.font)
-print(bmga.imageData)
+eblc = ttLib.newTable('EBLC')
+fb.font['EBLC'] = eblc
+eblc.version = 2.0
 
+
+def convert_to_glyph(glyph, fb):
+    """Create fontTools bitmap glyph."""
+    bmga = ebdt_bitmap_format_1(data=b'', ttFont=fb.font)
+    # horizontal metrics
+    bmga.metrics = SmallGlyphMetrics()
+    bmga.metrics.height = glyph.height
+    bmga.metrics.width = glyph.width
+    bmga.metrics.BearingX = glyph.left_bearing
+    bmga.metrics.BearingY = glyph.shift_up + glyph.height
+    bmga.metrics.Advance = glyph.advance_width
+    bmga.setRows(glyph.as_byterows())
+    # bmga.compile(fb.font)
+    return bmga
+
+glyph = Glyph.from_bytes(b'\0\xff\x81\x81\xff\x81\x81\x81', width=8)
+bmga = convert_to_glyph(glyph, fb)
 
 from copy import copy
 
@@ -58,12 +72,6 @@ ebdt.strikeData = [{
     ".null": copy(bmga)
 }]
 
-eblc = ttLib.newTable('EBLC')
-
-fb.font['EBLC'] = eblc
-fb.font['EBDT'] = ebdt
-
-eblc.version = 2.0
 
 strike = Strike()
 
