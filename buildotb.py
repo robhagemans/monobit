@@ -29,8 +29,8 @@ f = f.label(tag_from=monobit.tagmaps['adobe'])
 funits_per_em = 1024
 
 fb = FontBuilder(funits_per_em, isTTF=True)
-#glyphnames = ('.notdef', *(str(_t) for _t in f.get_tags()))
-glyphnames= ['.notdef', '.null', 'space', 'A', 'a']
+glyphnames = ('.notdef', *(_t.value for _t in f.get_tags()))
+#glyphnames= ['.notdef', '.null', 'space', 'A', 'a']
 fb.setupGlyphOrder(glyphnames)
 
 
