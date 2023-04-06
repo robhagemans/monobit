@@ -99,8 +99,10 @@ bst = BitmapSizeTable()
 bst.colorRef = 0
 bst.flags = 0x01  # hori | 0x02 for vert
 bst.bitDepth = 1
-bst.ppemX = f.bounding_box.x
-bst.ppemY = f.line_height
+
+# ppem need to be the same both ways for fontforge
+bst.ppemX = f.pixel_size
+bst.ppemY = f.pixel_size
 
 bst.hori = SbitLineMetrics()
 bst.hori.ascender = f.ascent
