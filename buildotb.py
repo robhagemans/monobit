@@ -8,32 +8,53 @@ from fontTools import ttLib
 import logging
 logging.basicConfig(level=logging.DEBUG)
 
+import monobit
 from monobit import Glyph
 
 
-fb = FontBuilder(1024, isTTF=True)
-glyphnames = [".notdef", ".null", "space", "A", "a"]
+f, *_ = monobit.load('tests/fonts/4x6.yaff')
+# f, *_ = monobit.load('tests/fonts/8x8.bbc')
+# f = f.modify(encoding='unicode')
+
+# get char labels if we don't have them
+f = f.label()
+
+# TODO: drop glyphs without char labels as not-storable
+
+# label with unicode
+f = f.label(codepoint_from='unicode', overwrite=True)
+# we need Adobe glyph names
+f = f.label(tag_from=monobit.tagmaps['adobe'])
+
+funits_per_em = 1024
+
+fb = FontBuilder(funits_per_em, isTTF=True)
+#glyphnames = ('.notdef', *(str(_t) for _t in f.get_tags()))
+glyphnames= ['.notdef', '.null', 'space', 'A', 'a']
 fb.setupGlyphOrder(glyphnames)
-fb.setupCharacterMap({32: "space", 65: "A", 97: "a"})
-advanceWidths = {".notdef": 600, "space": 500, "A": 600, "a": 600, ".null": 0}
 
-familyName = "HelloTestFont"
-styleName = "TotallyNormal"
-version = "0.1"
-nameStrings = dict(
-    familyName=familyName, #dict(en=familyName, nl="HalloTestFont"),
-    styleName=styleName, #dict(en=styleName, nl="TotaalNormaal"),
-    uniqueFontIdentifier="fontBuilder: " + familyName + "." + styleName,
-    fullName=familyName + "-" + styleName,
-    psName=familyName + "-" + styleName,
-    version="Version " + version,
-)
 
-glyph = Glyf()
+glyphs = {
+    _name: f.get_glyph(tag=_name, missing='default')
+    for _name in glyphnames
+}
+
+map = {
+    int(_g.codepoint): _name
+    for _name, _g in glyphs.items() if _g.codepoint and _name not in ('.notdef', '.null')
+}
+# map[0] = '.null'
+print(map.keys())
+fb.setupCharacterMap(map)
+
+
+
 # fontBuilder needs all these defined, even if empty
-# that aligns with fonttosfnt default, but we should be able to leave glyf table empty (fontforge default)
-glyphs = {".notdef": glyph, "space": glyph, "A": glyph, "a": glyph, ".null": glyph}
-fb.setupGlyf(glyphs)
+# that aligns with fonttosfnt, but fonttforge leaves glyf table empty (both by default)
+fb.setupGlyf({
+    _name: Glyf()
+    for _name in glyphnames
+})
 
 # EBLC, EBDT
 ebdt = ttLib.newTable('EBDT')
@@ -59,21 +80,14 @@ def convert_to_glyph(glyph, fb):
     # bmga.compile(fb.font)
     return bmga
 
-glyph = Glyph.from_bytes(b'\0\xff\x81\x81\xff\x81\x81\x81', width=8)
-bmga = convert_to_glyph(glyph, fb)
 
-from copy import copy
-
-ebdt.strikeData = [{
-    ".notdef": bmga,
-    "space": copy(bmga),
-    "A": copy(bmga),
-    "a": copy(bmga),
-    ".null": copy(bmga)
-}]
+glyphtable = {
+    _name: convert_to_glyph(_g, fb)
+    for _name, _g in glyphs.items()
+}
+ebdt.strikeData = [glyphtable]
 
 
-strike = Strike()
 
 # create the BitmapSize record
 # this is not contructed by any compile() method as far as I can see
@@ -84,20 +98,19 @@ strike = Strike()
 bst = BitmapSizeTable()
 bst.colorRef = 0
 bst.flags = 0x01  # hori | 0x02 for vert
-bst.ppemX = 8
-bst.ppemY = 8
 bst.bitDepth = 1
+bst.ppemX = f.bounding_box.x
+bst.ppemY = f.line_height
 
 bst.hori = SbitLineMetrics()
-# check: sbit ascender/descender are in pixels? this is what we assume in the reader
-bst.hori.ascender = 7
-bst.hori.descender = 0
-bst.hori.widthMax = 8
+bst.hori.ascender = f.ascent
+bst.hori.descender = f.descent
+bst.hori.widthMax = f.max_width
+
 # ?
 bst.hori.caretSlopeNumerator = 0
 bst.hori.caretSlopeDenominator = 1
 bst.hori.caretOffset = 0
-
 # shld be minimum of horibearingx. pixels? funits?
 bst.hori.minOriginSB = 0
 bst.hori.minAdvanceSB = 0
@@ -107,8 +120,7 @@ bst.hori.pad1 = 0
 bst.hori.pad2 = 0
 
 
-
-
+# ignore vertical metrics for now
 bst.vert = SbitLineMetrics()
 bst.vert.ascender = 0
 bst.vert.descender = 0
@@ -126,13 +138,15 @@ bst.vert.pad2 = 0
 
 
 
-
+strike = Strike()
 strike.bitmapSizeTable = bst
 ist = eblc_index_sub_table_3(data=b'', ttFont=fb.font)
+
 ist.names = glyphnames
+
 ist.indexFormat = 3
 
-# FIXME - base on BDAT info (ebdt_bitmap_format_1)
+# this should be based on EBDT info (ebdt_bitmap_format_1)
 ist.imageFormat = 1
 
 strike.indexSubTables = [ist]
@@ -145,21 +159,44 @@ eblc.strikes = [strike]
 # bitmap size table is not updated by fontTools, do it explicitly
 bst.numberOfIndexSubTables = len(strike.indexSubTables)
 
+fuppx = funits_per_em // bst.ppemX
+fuppy = funits_per_em // bst.ppemY
 
-# ebdt.compile(fb.font)
-# print(dir(eblc.strikes[0].bitmapSizeTable))
-# eblc.strikes[0].indexSubTables[0].imageFormat  = 0
-# eblc.strikes[0].indexSubTables[0].indexFormat  = 3
+# horizontal metrics tables
+metrics = {
+    # CHECK: should this have left_bearing instead of xMin?
+    _name: (_g.advance_width * fuppx
 
-metrics = {}
-glyphTable = fb.font["glyf"]
-for gn, advanceWidth in advanceWidths.items():
-    metrics[gn] = (advanceWidth, glyphTable[gn].xMin)
+    # number of h metrics gets reduced from the right so long as metrics are the same
+    # -len(_name)
 
+    , _g.left_bearing * fuppx)
+    for _name, _g in glyphs.items()
+}
+
+
+# glyphs MUST BE SORTED by GlyphID (codepoint??) or fontTools will calculate numberOfHMetrics wrong
+metrics['.null'] = (0, 0)
+
+print(metrics)
 fb.setupHorizontalMetrics(metrics)
-fb.setupHorizontalHeader(ascent=824, descent=-200)
-fb.setupNameTable(nameStrings)
+fb.setupHorizontalHeader(ascent=f.ascent*fuppx, descent=-f.descent*fuppy)
 
-fb.setupOS2(sTypoAscender=824, usWinAscent=824, usWinDescent=200)
+
+styleName = "TotallyNormal"
+
+fb.setupNameTable(dict(
+    familyName=f.family,
+    styleName=styleName,
+    uniqueFontIdentifier=f.font_id or 'test',
+    fullName=f.name,
+    psName=f.family + "-" + styleName,
+    version=f.revision,
+))
+
+fb.setupOS2(sTypoAscender=f.ascent*fuppx, usWinAscent=f.ascent*fuppx, usWinDescent=f.descent*fuppx)
+
+# todo: store Adobe names, or move to version-3 table
 fb.setupPost()
+
 fb.save("test.otb")
