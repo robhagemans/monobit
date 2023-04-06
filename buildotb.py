@@ -13,8 +13,6 @@ from monobit import Glyph
 
 
 f, *_ = monobit.load('tests/fonts/4x6.yaff')
-# f, *_ = monobit.load('tests/fonts/8x8.bbc')
-# f = f.modify(encoding='unicode')
 
 # get char labels if we don't have them
 f = f.label()
@@ -30,7 +28,6 @@ funits_per_em = 1024
 
 fb = FontBuilder(funits_per_em, isTTF=True)
 glyphnames = ('.notdef', *(_t.value for _t in f.get_tags()))
-#glyphnames= ['.notdef', '.null', 'space', 'A', 'a']
 fb.setupGlyphOrder(glyphnames)
 
 
@@ -43,8 +40,6 @@ map = {
     int(_g.codepoint): _name
     for _name, _g in glyphs.items() if _g.codepoint and _name not in ('.notdef', '.null')
 }
-# map[0] = '.null'
-print(map.keys())
 fb.setupCharacterMap(map)
 
 
@@ -77,7 +72,6 @@ def convert_to_glyph(glyph, fb):
     bmga.metrics.BearingY = glyph.shift_up + glyph.height
     bmga.metrics.Advance = glyph.advance_width
     bmga.setRows(glyph.as_byterows())
-    # bmga.compile(fb.font)
     return bmga
 
 
@@ -138,8 +132,6 @@ bst.vert.pad1 = 0
 bst.vert.pad2 = 0
 
 
-
-
 strike = Strike()
 strike.bitmapSizeTable = bst
 ist = eblc_index_sub_table_3(data=b'', ttFont=fb.font)
@@ -155,9 +147,6 @@ strike.indexSubTables = [ist]
 eblc.strikes = [strike]
 # eblc strike locations are filled out by ebdt compiler
 
-# is this needed? or does ft do this automatically?
-# eblc.numSizes = len(eblc.strikes)
-
 # bitmap size table is not updated by fontTools, do it explicitly
 bst.numberOfIndexSubTables = len(strike.indexSubTables)
 
@@ -167,20 +156,11 @@ fuppy = funits_per_em // bst.ppemY
 # horizontal metrics tables
 metrics = {
     # CHECK: should this have left_bearing instead of xMin?
-    _name: (_g.advance_width * fuppx
-
-    # number of h metrics gets reduced from the right so long as metrics are the same
-    # -len(_name)
-
-    , _g.left_bearing * fuppx)
+    _name: (_g.advance_width * fuppx, _g.left_bearing * fuppx)
     for _name, _g in glyphs.items()
 }
 
 
-# glyphs MUST BE SORTED by GlyphID (codepoint??) or fontTools will calculate numberOfHMetrics wrong
-metrics['.null'] = (0, 0)
-
-print(metrics)
 fb.setupHorizontalMetrics(metrics)
 fb.setupHorizontalHeader(ascent=f.ascent*fuppx, descent=-f.descent*fuppy)
 
