@@ -40,10 +40,12 @@ def _convert_to_os_2_props(font, _to_funits):
         sxHeight=_to_funits(font.x_height),
         sCapHeight=_to_funits(font.cap_height),
         # subscript metrics
+        ySubscriptXSize=_to_funits(font.subscript_size),
         ySubscriptYSize=_to_funits(font.subscript_size),
         ySubscriptXOffset=_to_funits(font.subscript_offset.x),
         ySubscriptYOffset=-_to_funits(font.subscript_offset.y),
         # superscript metrics
+        ySuperscriptXSize=_to_funits(font.superscript_size),
         ySuperscriptYSize=_to_funits(font.superscript_size),
         ySuperscriptXOffset=_to_funits(font.superscript_offset.x),
         ySuperscriptYOffset=_to_funits(font.superscript_offset.y),
