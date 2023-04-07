@@ -545,7 +545,7 @@ def _convert_gpos_metrics(glyphs, gpos, hori_fu_p_pix):
                 if subtable._type != 'PairPos':
                     continue
                 # per the docs, in logical order
-                # i.e first is left for LTR, first is right ror RTL
+                # i.e first is left for LTR, first is right for RTL
                 # presumably to be determined from glyph unicode properties?
                 # what happens if one glyph is LTR and the other RTL is unclear
                 # the one RTL file I have does things differently,
@@ -853,7 +853,7 @@ def _convert_os_2_props(os_2, vert_fu_p_pix, hori_fu_p_pix):
         #ascent=os_2.sTypoAscender // vert_fu_p_pix,
         # the spec states sTypoDescender is 'usually' negative,
         # but fonttosfnt produces + values while fontforge -
-        # abs should be fine as I have nno interpretation for a negative descent
+        # abs should be fine as I have no interpretation for a negative descent
         # note the sign also affects int division
         #descent=abs(os_2.sTypoDescender // vert_fu_p_pix),
         line_height=(
