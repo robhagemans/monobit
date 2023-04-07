@@ -251,25 +251,25 @@ def convert_to_glyph(glyph, fb):
     return bmga
 
 
-def _write_sfnt(f, outfile, funits_per_em):
+def _write_sfnt(font, outfile, funits_per_em):
     """Convert to SFNT and write out."""
 
     def _to_funits(pixel_amount):
         # note that x and y ppem are equal - if not, fontforge rejects the bitmap
-        return ceildiv(pixel_amount * funits_per_em, f.pixel_size)
+        return ceildiv(pixel_amount * funits_per_em, font.pixel_size)
 
     # get char labels if we don't have them
     # label with unicode and Adobe glyph names
-    f = f.label()
-    f = f.label(codepoint_from='unicode', overwrite=True)
-    f = f.label(tag_from='adobe')
+    font = font.label()
+    font = font.label(codepoint_from='unicode', overwrite=True)
+    font = font.label(tag_from='adobe')
     # TODO: drop glyphs without char labels as not-storable
     # cut back to glyph bounding boxes
-    f = f.reduce()
+    font = font.reduce()
     # get the storable glyphs
-    glyphnames = ('.notdef', *(_t.value for _t in f.get_tags()))
+    glyphnames = ('.notdef', *(_t.value for _t in font.get_tags()))
     glyphs = {
-        _name: f.get_glyph(tag=_name, missing='default')
+        _name: font.get_glyph(tag=_name, missing='default')
         for _name in glyphnames
     }
     # build font object
@@ -277,11 +277,11 @@ def _write_sfnt(f, outfile, funits_per_em):
     fb.setupGlyphOrder(glyphnames)
     fb.setupCharacterMap(_convert_to_cmap_props(glyphs))
     fb.setupGlyf(_create_empty_glyf_props(glyphs))
-    _setup_bitmap_tables(fb, f, glyphs)
+    _setup_bitmap_tables(fb, font, glyphs)
     fb.setupHorizontalMetrics(_convert_to_hmtx_props(glyphs, _to_funits))
-    fb.setupHorizontalHeader(**_convert_to_hhea_props(f, _to_funits))
-    fb.setupNameTable(_convert_to_name_props(f))
-    fb.setupOS2(**_convert_to_os_2_props(f, _to_funits))
+    fb.setupHorizontalHeader(**_convert_to_hhea_props(font, _to_funits))
+    fb.setupNameTable(_convert_to_name_props(font))
+    fb.setupOS2(**_convert_to_os_2_props(font, _to_funits))
     # for otb: version-3 table, defines no names
     fb.setupPost(keepGlyphNames=False)
 
