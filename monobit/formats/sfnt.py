@@ -789,7 +789,7 @@ def _convert_name_props(name):
         copyright=_decode_name(name.names, 0),
         family=_decode_name(name.names, 1),
         # weight or slant or both
-        #subfamily=_decode_name(name.names, 2),
+        subfamily=_decode_name(name.names, 2),
         font_id=_decode_name(name.names, 3),
         name=_decode_name(name.names, 4),
         #

@@ -365,6 +365,7 @@ Characteristics inferred from the glyphs are:
 
 Characteristics that give a font's identity are:
 - `family`: typeface or font family name
+- `subfamily`: additional font name components; usually style, weight, slant
 - `point-size`: nominal size of the font in points
 - `name`: full name of the font
 - `revision`: version
