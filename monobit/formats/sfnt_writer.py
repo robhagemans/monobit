@@ -29,17 +29,19 @@ if ttLib:
     from .sfnt import load_sfnt
 
     @savers.register(linked=load_sfnt)
-    def save_sfnt(fonts, outfile):
+    def save_sfnt(fonts, outfile, funits_per_em:int=1024):
         """
         Save font to an SFNT resource.
         Currently only saves bitmap-only SFNTs (OTB flavour)
+
+        funits_per_em: number of design units (FUnits) per em-width (default 1024)
         """
         font, *rest = fonts
         if rest:
             raise ValueError(
                 'Currently only supporting saving one font to SFNT.'
             )
-        _write_sfnt(font, outfile)
+        _write_sfnt(font, outfile, funits_per_em)
         return font
 
 
@@ -250,8 +252,13 @@ def convert_to_glyph(glyph, fb):
     return bmga
 
 
-def _write_sfnt(f, outfile):
+def _write_sfnt(f, outfile, funits_per_em):
     """Convert to SFNT and write out."""
+
+    def _to_funits(pixel_amount):
+        # note that x and y ppem are equal - if not, fontforge rejects the bitmap
+        return ceildiv(pixel_amount * funits_per_em, f.pixel_size)
+
     # get char labels if we don't have them
     f = f.label()
 
@@ -263,14 +270,6 @@ def _write_sfnt(f, outfile):
     f = f.label(tag_from=tagmaps['adobe'])
     # cut back to glyph bounding boxes
     f = f.reduce()
-
-    funits_per_em = 1024
-
-    def _to_funits(pixel_amount):
-        # note that x and y ppem are equal - if not, fontforge rejects the bitmap
-        return ceildiv(pixel_amount * funits_per_em, f.pixel_size)
-
-
     glyphnames = ('.notdef', *(_t.value for _t in f.get_tags()))
     glyphs = {
         _name: f.get_glyph(tag=_name, missing='default')
