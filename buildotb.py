@@ -160,7 +160,7 @@ bst.ppemY = f.pixel_size
 
 bst.hori = SbitLineMetrics()
 bst.hori.ascender = f.ascent
-bst.hori.descender = f.descent
+bst.hori.descender = -f.descent
 bst.hori.widthMax = f.max_width
 
 # ?
@@ -177,19 +177,7 @@ bst.hori.pad2 = 0
 
 
 # ignore vertical metrics for now
-bst.vert = SbitLineMetrics()
-bst.vert.ascender = 0
-bst.vert.descender = 0
-bst.vert.widthMax = 8
-bst.vert.caretSlopeNumerator = 0
-bst.vert.caretSlopeDenominator = 0
-bst.vert.caretOffset = 0
-bst.vert.minOriginSB = 0
-bst.vert.minAdvanceSB = 0
-bst.vert.maxBeforeBL = 0
-bst.vert.minAfterBL = 0
-bst.vert.pad1 = 0
-bst.vert.pad2 = 0
+bst.vert = bst.hori
 
 
 strike = Strike()
