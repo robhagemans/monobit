@@ -261,38 +261,29 @@ def _write_sfnt(f, outfile, funits_per_em):
 
     # get char labels if we don't have them
     f = f.label()
-
     # TODO: drop glyphs without char labels as not-storable
-
     # label with unicode
     f = f.label(codepoint_from='unicode', overwrite=True)
     # we need Adobe glyph names
     f = f.label(tag_from=tagmaps['adobe'])
     # cut back to glyph bounding boxes
     f = f.reduce()
+    # get the storable glyphs
     glyphnames = ('.notdef', *(_t.value for _t in f.get_tags()))
     glyphs = {
         _name: f.get_glyph(tag=_name, missing='default')
         for _name in glyphnames
     }
-
+    # build font object
     fb = FontBuilder(funits_per_em, isTTF=True)
     fb.setupGlyphOrder(glyphnames)
-    # cmap
     fb.setupCharacterMap(_convert_to_cmap_props(glyphs))
-    # glyf
     fb.setupGlyf(_create_empty_glyf_props(glyphs))
-    # EBLC, EBDT
     _setup_bitmap_tables(fb, f, glyphs)
-    # hmtx
     fb.setupHorizontalMetrics(_convert_to_hmtx_props(glyphs, _to_funits))
-    # hhea
     fb.setupHorizontalHeader(**_convert_to_hhea_props(f, _to_funits))
-    # name
     fb.setupNameTable(_convert_to_name_props(f))
-    # OS/2
     fb.setupOS2(**_convert_to_os_2_props(f, _to_funits))
-    # post
     # for otb: version-3 table, defines no names
     fb.setupPost(keepGlyphNames=False)
 
