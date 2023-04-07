@@ -170,6 +170,72 @@ def _create_empty_glyf_props(glyphs):
     return {_name: Glyf() for _name in glyphs}
 
 
+def _setup_bitmap_tables(fb, font, glyphs):
+    """Build `EBLC` and `EBDT` tables."""
+    ebdt = ttLib.newTable('EBDT')
+    fb.font['EBDT'] = ebdt
+    ebdt.version = 2.0
+
+    eblc = ttLib.newTable('EBLC')
+    fb.font['EBLC'] = eblc
+    eblc.version = 2.0
+
+    glyphtable = {
+        _name: convert_to_glyph(_g, fb)
+        for _name, _g in glyphs.items()
+    }
+    ebdt.strikeData = [glyphtable]
+
+    # create the BitmapSize record
+    # this is not contructed by any compile() method as far as I can see
+
+    # > The line metrics are not used directly by the rasterizer, but are available to applications that want to parse the EBLC table.
+    bst = BitmapSizeTable()
+    bst.colorRef = 0
+    bst.flags = 0x01  # hori | 0x02 for vert
+    bst.bitDepth = 1
+
+    # ppem need to be the same both ways for fontforge
+    bst.ppemX = font.pixel_size
+    bst.ppemY = font.pixel_size
+    # build horizontal line metrics
+    bst.hori = SbitLineMetrics()
+    bst.hori.ascender = font.ascent
+    bst.hori.descender = -font.descent
+    bst.hori.widthMax = font.max_width
+    # defaults for caret metrics
+    bst.hori.caretSlopeNumerator = 0
+    bst.hori.caretSlopeDenominator = 1
+    bst.hori.caretOffset = 0
+    # shld be minimum of horibearingx. pixels? funits?
+    bst.hori.minOriginSB = 0
+    bst.hori.minAdvanceSB = 0
+    bst.hori.maxBeforeBL = 0
+    bst.hori.minAfterBL = 0
+    bst.hori.pad1 = 0
+    bst.hori.pad2 = 0
+
+    # ignore vertical metrics for now
+    bst.vert = bst.hori
+
+    strike = Strike()
+    strike.bitmapSizeTable = bst
+    ist = eblc_index_sub_table_3(data=b'', ttFont=fb.font)
+
+    ist.names = tuple(glyphs.keys())
+
+    ist.indexFormat = 3
+
+    # this should be based on EBDT info (ebdt_bitmap_format_1)
+    ist.imageFormat = 1
+
+    strike.indexSubTables = [ist]
+    eblc.strikes = [strike]
+    # eblc strike locations are filled out by ebdt compiler
+    # bitmap size table is not updated by fontTools, do it explicitly
+    bst.numberOfIndexSubTables = len(strike.indexSubTables)
+
+
 def convert_to_glyph(glyph, fb):
     """Create fontTools bitmap glyph."""
     bmga = ebdt_bitmap_format_1(data=b'', ttFont=fb.font)
@@ -200,6 +266,11 @@ def _write_sfnt(f, outfile):
 
     funits_per_em = 1024
 
+    def _to_funits(pixel_amount):
+        # note that x and y ppem are equal - if not, fontforge rejects the bitmap
+        return ceildiv(pixel_amount * funits_per_em, f.pixel_size)
+
+
     glyphnames = ('.notdef', *(_t.value for _t in f.get_tags()))
     glyphs = {
         _name: f.get_glyph(tag=_name, missing='default')
@@ -212,78 +283,8 @@ def _write_sfnt(f, outfile):
     fb.setupCharacterMap(_convert_to_cmap_props(glyphs))
     # glyf
     fb.setupGlyf(_create_empty_glyf_props(glyphs))
-
     # EBLC, EBDT
-
-    ebdt = ttLib.newTable('EBDT')
-    fb.font['EBDT'] = ebdt
-    ebdt.version = 2.0
-
-    eblc = ttLib.newTable('EBLC')
-    fb.font['EBLC'] = eblc
-    eblc.version = 2.0
-
-    glyphtable = {
-        _name: convert_to_glyph(_g, fb)
-        for _name, _g in glyphs.items()
-    }
-    ebdt.strikeData = [glyphtable]
-
-    # create the BitmapSize record
-    # this is not contructed by any compile() method as far as I can see
-
-    # > The line metrics are not used directly by the rasterizer, but are available to applications that want to parse the EBLC table.
-    bst = BitmapSizeTable()
-    bst.colorRef = 0
-    bst.flags = 0x01  # hori | 0x02 for vert
-    bst.bitDepth = 1
-
-    # ppem need to be the same both ways for fontforge
-    bst.ppemX = f.pixel_size
-    bst.ppemY = f.pixel_size
-
-    bst.hori = SbitLineMetrics()
-    bst.hori.ascender = f.ascent
-    bst.hori.descender = -f.descent
-    bst.hori.widthMax = f.max_width
-
-    # ?
-    bst.hori.caretSlopeNumerator = 0
-    bst.hori.caretSlopeDenominator = 1
-    bst.hori.caretOffset = 0
-    # shld be minimum of horibearingx. pixels? funits?
-    bst.hori.minOriginSB = 0
-    bst.hori.minAdvanceSB = 0
-    bst.hori.maxBeforeBL = 0
-    bst.hori.minAfterBL = 0
-    bst.hori.pad1 = 0
-    bst.hori.pad2 = 0
-
-    # ignore vertical metrics for now
-    bst.vert = bst.hori
-
-    strike = Strike()
-    strike.bitmapSizeTable = bst
-    ist = eblc_index_sub_table_3(data=b'', ttFont=fb.font)
-
-    ist.names = glyphnames
-
-    ist.indexFormat = 3
-
-    # this should be based on EBDT info (ebdt_bitmap_format_1)
-    ist.imageFormat = 1
-
-    strike.indexSubTables = [ist]
-    eblc.strikes = [strike]
-    # eblc strike locations are filled out by ebdt compiler
-
-    # bitmap size table is not updated by fontTools, do it explicitly
-    bst.numberOfIndexSubTables = len(strike.indexSubTables)
-
-    def _to_funits(pixel_amount):
-        # note that x and y ppem are equal - if not, fontforge rejects the bitmap
-        return ceildiv(pixel_amount * funits_per_em, f.pixel_size)
-
+    _setup_bitmap_tables(fb, f, glyphs)
     # hmtx
     fb.setupHorizontalMetrics(_convert_to_hmtx_props(glyphs, _to_funits))
     # hhea
