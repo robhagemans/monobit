@@ -23,7 +23,6 @@ else:
 from ..glyph import Glyph
 from ..binary import ceildiv
 from ..storage import loaders, savers
-from ..taggers import tagmaps
 
 if ttLib:
     from .sfnt import load_sfnt
@@ -260,12 +259,11 @@ def _write_sfnt(f, outfile, funits_per_em):
         return ceildiv(pixel_amount * funits_per_em, f.pixel_size)
 
     # get char labels if we don't have them
+    # label with unicode and Adobe glyph names
     f = f.label()
-    # TODO: drop glyphs without char labels as not-storable
-    # label with unicode
     f = f.label(codepoint_from='unicode', overwrite=True)
-    # we need Adobe glyph names
-    f = f.label(tag_from=tagmaps['adobe'])
+    f = f.label(tag_from='adobe')
+    # TODO: drop glyphs without char labels as not-storable
     # cut back to glyph bounding boxes
     f = f.reduce()
     # get the storable glyphs
