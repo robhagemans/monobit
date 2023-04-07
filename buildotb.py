@@ -276,4 +276,16 @@ fb.setupPost()
 # TODO: vmtx, big glyph metrics
 # TODO: AAT version with bhed, bdat, bloc
 
+# remove glyf and loca tables
+def compile(self, ttFont=None):
+    """Empty glyf table."""
+    return b''
+# ttLib.tables._g_l_y_f.table__g_l_y_f.compile == compile
+fb.font['glyf'].compile = compile
+def compile(self, ttFont=None):
+    """loca table with nulll for every glyph."""
+    return bytes(len(glyphnames))
+fb.font['loca'].compile = compile
+
+
 fb.save("test.otb")
