@@ -278,11 +278,13 @@ fb.setupPost(keepGlyphNames=False)
 def compile(self, ttFont=None):
     """Empty glyf table."""
     return b''
-# ttLib.tables._g_l_y_f.table__g_l_y_f.compile == compile
+
 fb.font['glyf'].compile = compile
+
 def compile(self, ttFont=None):
-    """loca table with nulll for every glyph."""
-    return bytes(len(glyphnames))
+    """loca table with null for every glyph."""
+    return bytes(len(glyphnames)*2+2)
+
 fb.font['loca'].compile = compile
 
 
