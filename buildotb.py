@@ -222,17 +222,47 @@ fb.setupHorizontalHeader(
     # other values are compiled by fontTools
 )
 
+
 # name
 
-styleName = "TotallyNormal"
-
 fb.setupNameTable(dict(
+    # 0
+    copyright=f.copyright,
+    # 1
     familyName=f.family,
-    styleName=styleName,
-    uniqueFontIdentifier=f.font_id or 'test',
+    # 2
+    styleName=f.subfamily,
+    # 3
+    uniqueFontIdentifier=f.font_id,
+    # 4
     fullName=f.name,
-    psName=f.family + "-" + styleName,
+    # 5
+    # TODO: should be 'Version x.y'
     version=f.revision,
+    # 6
+    #psName=f.name.replace(' ', '-'),
+    # trademark (nameID 7)
+    # 8
+    manufacturer=f.foundry,
+    # 9
+    designer=f.author,
+    # 10
+    # description=f.description,
+    # vendorURL (nameID 11)
+    # designerURL (nameID 12)
+    # 13
+    licenseDescription=f.notice,
+    # licenseInfoURL (nameID 14)
+    # typographicFamily (nameID 16)
+    # typographicSubfamily (nameID 17)
+    # compatibleFullName (nameID 18)
+    # sampleText (nameID 19)
+    # postScriptCIDFindfontName (nameID 20)
+    # wwsFamilyName (nameID 21)
+    # wwsSubfamilyName (nameID 22)
+    # lightBackgroundPalette (nameID 23)
+    # darkBackgroundPalette (nameID 24)
+    # variationsPostScriptNamePrefix (nameID 25)
 ))
 
 fb.setupOS2(**_convert_to_os_2_props(f, _to_funits))
