@@ -10,6 +10,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 import monobit
 from monobit import Glyph
+from monobit.binary import ceildiv
 
 
 
@@ -28,7 +29,7 @@ def _label_to_utf16(font, label):
     return utf16
 
 
-def _convert_to_os_2_props(font, fuppx, fuppy):
+def _convert_to_os_2_props(font, _to_funits):
     """Convert font properties to OS/2 table."""
     # weight = min(900, max(100, 100 * round(os_2.usWeightClass / 100)))
     props = dict(
@@ -36,24 +37,24 @@ def _convert_to_os_2_props(font, fuppx, fuppy):
         # characteristics
         # TODO weight=_WEIGHT_MAP.get(weight, None),
         # TODO setwidth=_SETWIDTH_MAP.get(os_2.usWidthClass, None),
-        sxHeight=font.x_height*fuppy,
-        sCapHeight=font.cap_height*fuppy,
+        sxHeight=_to_funits(font.x_height),
+        sCapHeight=_to_funits(font.cap_height),
         # subscript metrics
-        ySubscriptYSize=font.subscript_size*fuppy,
-        ySubscriptXOffset=font.subscript_offset.x*fuppx,
-        ySubscriptYOffset=-font.subscript_offset.y*fuppy,
+        ySubscriptYSize=_to_funits(font.subscript_size),
+        ySubscriptXOffset=_to_funits(font.subscript_offset.x),
+        ySubscriptYOffset=-_to_funits(font.subscript_offset.y),
         # superscript metrics
-        ySuperscriptYSize=font.superscript_size*fuppy,
-        ySuperscriptXOffset=font.superscript_offset.x*fuppx,
-        ySuperscriptYOffset=font.superscript_offset.y*fuppy,
+        ySuperscriptYSize=_to_funits(font.superscript_size),
+        ySuperscriptXOffset=_to_funits(font.superscript_offset.x),
+        ySuperscriptYOffset=_to_funits(font.superscript_offset.y),
         # typographic extents
-        usWinAscent=font.ascent*fuppy,
-        usWinDescent=font.descent*fuppy,
-        sTypoAscender=font.ascent*fuppy,
+        usWinAscent=_to_funits(font.ascent),
+        usWinDescent=_to_funits(font.descent),
+        sTypoAscender=_to_funits(font.ascent),
         # the spec states sTypoDescender is 'usually' negative,
         # but fonttosfnt produces + values while fontforge -
-        sTypoDescender=-font.descent*fuppy,
-        sTypoLineGap=font.leading*fuppy,
+        sTypoDescender=-_to_funits(font.descent),
+        sTypoLineGap=_to_funits(font.leading),
         # not included: strikeout metrics
         # not included: panose table
         # special characters
@@ -207,16 +208,17 @@ eblc.strikes = [strike]
 # bitmap size table is not updated by fontTools, do it explicitly
 bst.numberOfIndexSubTables = len(strike.indexSubTables)
 
-# FIXME - rounding down causes errors, we need to round later.
-fuppx = funits_per_em // bst.ppemX
-fuppy = funits_per_em // bst.ppemY
+
+def _to_funits(pixel_amount):
+    # note that x and y ppem are equal - if not, fontforge rejects the bitmap
+    return ceildiv(pixel_amount * funits_per_em, f.pixel_size)
 
 # hmtx
 
 # horizontal metrics tables
 metrics = {
     # CHECK: should this have left_bearing instead of xMin?
-    _name: (_g.advance_width * fuppx, _g.left_bearing * fuppx)
+    _name: (_to_funits(_g.advance_width), _to_funits(_g.left_bearing))
     for _name, _g in glyphs.items()
 }
 fb.setupHorizontalMetrics(metrics)
@@ -224,9 +226,9 @@ fb.setupHorizontalMetrics(metrics)
 # hhea
 
 fb.setupHorizontalHeader(
-    ascent=f.ascent*fuppy,
-    descent=-f.descent*fuppy,
-    lineGap=f.leading*fuppy,
+    ascent=_to_funits(f.ascent),
+    descent=-_to_funits(f.descent),
+    lineGap=_to_funits(f.leading),
     # other values are compiled by fontTools
 )
 
@@ -243,7 +245,7 @@ fb.setupNameTable(dict(
     version=f.revision,
 ))
 
-fb.setupOS2(**_convert_to_os_2_props(f, fuppx, fuppy))
+fb.setupOS2(**_convert_to_os_2_props(f, _to_funits))
 
 # version-3 table, defines no names
 fb.setupPost()
