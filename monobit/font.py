@@ -45,6 +45,8 @@ class FontProperties(DefaultProps):
     name: str
     # typeface/font family
     family: str
+    # further specifiers
+    subfamily: str
     # unique id
     font_id: str
 
