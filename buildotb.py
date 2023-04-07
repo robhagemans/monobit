@@ -78,7 +78,7 @@ f = f.label(codepoint_from='unicode', overwrite=True)
 # we need Adobe glyph names
 f = f.label(tag_from=monobit.tagmaps['adobe'])
 
-
+f = f.reduce()
 
 funits_per_em = 1024
 
@@ -267,11 +267,9 @@ fb.setupNameTable(dict(
 
 fb.setupOS2(**_convert_to_os_2_props(f, _to_funits))
 
-# version-3 table, defines no names
-fb.setupPost()
+# for otb: version-3 table, defines no names
+fb.setupPost(keepGlyphNames=False)
 
-
-# TODO: name table cleanup
 # TODO: kern table (GPOS? only needed for CFF opentype)
 # TODO: vmtx, big glyph metrics
 # TODO: AAT version with bhed, bdat, bloc
