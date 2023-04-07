@@ -23,6 +23,8 @@ else:
 from ..glyph import Glyph
 from ..binary import ceildiv
 from ..storage import loaders, savers
+from ..properties import reverse_dict
+from .sfnt import _WEIGHT_MAP, _SETWIDTH_MAP
 
 if ttLib:
     from .sfnt import load_sfnt
@@ -62,8 +64,8 @@ def _convert_to_os_2_props(font, _to_funits):
     props = dict(
         version=3,
         # characteristics
-        # TODO weight=_WEIGHT_MAP.get(weight, None),
-        # TODO setwidth=_SETWIDTH_MAP.get(os_2.usWidthClass, None),
+        usWeightClass=reverse_dict(_WEIGHT_MAP).get(font.weight, 400),
+        usWidthClass=reverse_dict(_SETWIDTH_MAP).get(font.setwidth, 5),
         sxHeight=_to_funits(font.x_height),
         sCapHeight=_to_funits(font.cap_height),
         # subscript metrics
