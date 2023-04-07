@@ -56,7 +56,7 @@ def _label_to_utf16(font, label):
 
 
 def _convert_to_os_2_props(font, _to_funits):
-    """Convert font properties to OS/2 table."""
+    """Convert font properties to `OS/2` table."""
     # weight = min(900, max(100, 100 * round(os_2.usWeightClass / 100)))
     props = dict(
         version=3,
@@ -92,6 +92,64 @@ def _convert_to_os_2_props(font, _to_funits):
         achVendID=b'    ',
     )
     return props
+
+
+def _convert_to_name_props(font):
+    """Convert font properties to `name` table."""
+    props = dict(
+        # 0
+        copyright=font.copyright,
+        # 1
+        familyName=font.family,
+        # 2
+        styleName=font.subfamily,
+        # 3
+        uniqueFontIdentifier=font.font_id,
+        # 4
+        fullName=font.name,
+        # 5
+        # TODO: should be 'Version x.y'
+        version=font.revision,
+        # 6
+        #psName=font.name.replace(' ', '-'),
+        # trademark (nameID 7)
+        # 8
+        manufacturer=font.foundry,
+        # 9
+        designer=font.author,
+        # 10
+        # description=font.description,
+        # vendorURL (nameID 11)
+        # designerURL (nameID 12)
+        # 13
+        licenseDescription=font.notice,
+        # licenseInfoURL (nameID 14)
+        # typographicFamily (nameID 16)
+        # typographicSubfamily (nameID 17)
+        # compatibleFullName (nameID 18)
+        # sampleText (nameID 19)
+        # postScriptCIDFindfontName (nameID 20)
+        # wwsFamilyName (nameID 21)
+        # wwsSubfamilyName (nameID 22)
+        # lightBackgroundPalette (nameID 23)
+        # darkBackgroundPalette (nameID 24)
+        # variationsPostScriptNamePrefix (nameID 25)
+    )
+    return props
+
+def _convert_to_hhea_props(font, _to_funits):
+    return dict(
+        ascent=_to_funits(font.ascent),
+        descent=-_to_funits(font.descent),
+        lineGap=_to_funits(font.leading),
+        # other values are compiled by fontTools
+    )
+
+def _convert_to_hmtx_props(glyphs, _to_funits):
+    return {
+        _name: (_to_funits(_g.advance_width), _to_funits(_g.left_bearing))
+        for _name, _g in glyphs.items()
+    }
 
 
 def convert_to_glyph(glyph, fb):
@@ -141,15 +199,10 @@ def _write_sfnt(f, outfile):
     }
     fb.setupCharacterMap(map)
 
-
     # glyf
-
     # fontBuilder needs all these defined, even if empty
-    # that aligns with fonttosfnt, but fonttforge leaves glyf table empty (both by default)
-    fb.setupGlyf({
-        _name: Glyf()
-        for _name in glyphnames
-    })
+    # we'll remove it at the end as OTB files should not have any
+    fb.setupGlyf({_name: Glyf() for _name in glyphnames})
 
     # EBLC, EBDT
 
@@ -197,10 +250,8 @@ def _write_sfnt(f, outfile):
     bst.hori.pad1 = 0
     bst.hori.pad2 = 0
 
-
     # ignore vertical metrics for now
     bst.vert = bst.hori
-
 
     strike = Strike()
     strike.bitmapSizeTable = bst
@@ -220,75 +271,19 @@ def _write_sfnt(f, outfile):
     # bitmap size table is not updated by fontTools, do it explicitly
     bst.numberOfIndexSubTables = len(strike.indexSubTables)
 
-
     def _to_funits(pixel_amount):
         # note that x and y ppem are equal - if not, fontforge rejects the bitmap
         return ceildiv(pixel_amount * funits_per_em, f.pixel_size)
 
     # hmtx
-
-    # horizontal metrics tables
-    metrics = {
-        # CHECK: should this have left_bearing instead of xMin?
-        _name: (_to_funits(_g.advance_width), _to_funits(_g.left_bearing))
-        for _name, _g in glyphs.items()
-    }
-    fb.setupHorizontalMetrics(metrics)
-
+    fb.setupHorizontalMetrics(_convert_to_hmtx_props(glyphs, _to_funits))
     # hhea
-
-    fb.setupHorizontalHeader(
-        ascent=_to_funits(f.ascent),
-        descent=-_to_funits(f.descent),
-        lineGap=_to_funits(f.leading),
-        # other values are compiled by fontTools
-    )
-
-
+    fb.setupHorizontalHeader(**_convert_to_hhea_props(f, _to_funits))
     # name
-
-    fb.setupNameTable(dict(
-        # 0
-        copyright=f.copyright,
-        # 1
-        familyName=f.family,
-        # 2
-        styleName=f.subfamily,
-        # 3
-        uniqueFontIdentifier=f.font_id,
-        # 4
-        fullName=f.name,
-        # 5
-        # TODO: should be 'Version x.y'
-        version=f.revision,
-        # 6
-        #psName=f.name.replace(' ', '-'),
-        # trademark (nameID 7)
-        # 8
-        manufacturer=f.foundry,
-        # 9
-        designer=f.author,
-        # 10
-        # description=f.description,
-        # vendorURL (nameID 11)
-        # designerURL (nameID 12)
-        # 13
-        licenseDescription=f.notice,
-        # licenseInfoURL (nameID 14)
-        # typographicFamily (nameID 16)
-        # typographicSubfamily (nameID 17)
-        # compatibleFullName (nameID 18)
-        # sampleText (nameID 19)
-        # postScriptCIDFindfontName (nameID 20)
-        # wwsFamilyName (nameID 21)
-        # wwsSubfamilyName (nameID 22)
-        # lightBackgroundPalette (nameID 23)
-        # darkBackgroundPalette (nameID 24)
-        # variationsPostScriptNamePrefix (nameID 25)
-    ))
-
+    fb.setupNameTable(_convert_to_name_props(f))
+    # OS/2
     fb.setupOS2(**_convert_to_os_2_props(f, _to_funits))
-
+    # post
     # for otb: version-3 table, defines no names
     fb.setupPost(keepGlyphNames=False)
 
