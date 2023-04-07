@@ -138,6 +138,7 @@ def _convert_to_name_props(font):
     return props
 
 def _convert_to_hhea_props(font, _to_funits):
+    """Convert font properties to `hhea` table."""
     return dict(
         ascent=_to_funits(font.ascent),
         descent=-_to_funits(font.descent),
@@ -145,11 +146,28 @@ def _convert_to_hhea_props(font, _to_funits):
         # other values are compiled by fontTools
     )
 
+
 def _convert_to_hmtx_props(glyphs, _to_funits):
+    """Convert glyph properties to `hmtx` table."""
     return {
         _name: (_to_funits(_g.advance_width), _to_funits(_g.left_bearing))
         for _name, _g in glyphs.items()
     }
+
+
+def _convert_to_cmap_props(glyphs):
+    """Convert glyph properties to `cmap` table."""
+    return {
+        int(_g.codepoint): _name
+        for _name, _g in glyphs.items() if _g.codepoint and _name not in ('.notdef', '.null')
+    }
+
+
+def _create_empty_glyf_props(glyphs):
+    """Create `glyf` table withh empty glyphs."""
+    # fontBuilder needs all these defined, even if empty
+    # we'll remove it at the end as OTB files should not have any
+    return {_name: Glyf() for _name in glyphs}
 
 
 def convert_to_glyph(glyph, fb):
@@ -177,32 +195,23 @@ def _write_sfnt(f, outfile):
     f = f.label(codepoint_from='unicode', overwrite=True)
     # we need Adobe glyph names
     f = f.label(tag_from=tagmaps['adobe'])
-
+    # cut back to glyph bounding boxes
     f = f.reduce()
 
     funits_per_em = 1024
 
-    fb = FontBuilder(funits_per_em, isTTF=True)
     glyphnames = ('.notdef', *(_t.value for _t in f.get_tags()))
-    fb.setupGlyphOrder(glyphnames)
-
-    # cmap
-
     glyphs = {
         _name: f.get_glyph(tag=_name, missing='default')
         for _name in glyphnames
     }
 
-    map = {
-        int(_g.codepoint): _name
-        for _name, _g in glyphs.items() if _g.codepoint and _name not in ('.notdef', '.null')
-    }
-    fb.setupCharacterMap(map)
-
+    fb = FontBuilder(funits_per_em, isTTF=True)
+    fb.setupGlyphOrder(glyphnames)
+    # cmap
+    fb.setupCharacterMap(_convert_to_cmap_props(glyphs))
     # glyf
-    # fontBuilder needs all these defined, even if empty
-    # we'll remove it at the end as OTB files should not have any
-    fb.setupGlyf({_name: Glyf() for _name in glyphnames})
+    fb.setupGlyf(_create_empty_glyf_props(glyphs))
 
     # EBLC, EBDT
 
