@@ -552,7 +552,7 @@ class FontProperties(DefaultProps):
     def superscript_offset(self):
         """Recommended superscript horizontal, vertical offset in pixels."""
         shift = round(self.pixel_size * 0.4)
-        return Coord(shift, shift)
+        return Coord(0, shift)
 
     @writable_property
     def subscript_size(self):
@@ -563,7 +563,7 @@ class FontProperties(DefaultProps):
     def subscript_offset(self):
         """Recommended subscript horizontal, vertical offset in pixels."""
         shift = round(self.pixel_size * 0.4)
-        return Coord(shift, shift)
+        return Coord(0, shift)
 
     @writable_property
     def small_cap_size(self):
