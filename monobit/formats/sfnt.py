@@ -797,17 +797,17 @@ def _convert_name_props(name):
         #
         #postscript_name
         #
-        trademark=_decode_name(name.names, 7),
+        #trademark=_decode_name(name.names, 7),
         foundry=_decode_name(name.names, 8),
         author=_decode_name(name.names, 9),
         #
-        description=_decode_name(name.names, 10),
+        #description=_decode_name(name.names, 10),
         #
-        vendor_url=_decode_name(name.names, 11),
+        #vendor_url=_decode_name(name.names, 11),
         #
-        author_url=_decode_name(name.names, 12),
+        #author_url=_decode_name(name.names, 12),
         notice=_decode_name(name.names, 13),
-        license_url=_decode_name(name.names, 14),
+        #license_url=_decode_name(name.names, 14),
     )
     return props
 
