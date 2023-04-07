@@ -62,6 +62,8 @@ def _convert_to_os_2_props(font, _to_funits):
         # special characters
         usDefaultChar=_label_to_utf16(font, font.default_char),
         usBreakChar=_label_to_utf16(font, font.word_boundary),
+        # vendor ID - can be left blank (four spaces)
+        achVendID=b'    ',
     )
     return props
 
