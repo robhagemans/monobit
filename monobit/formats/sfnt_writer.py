@@ -300,17 +300,9 @@ def _write_sfnt(f, outfile):
     # TODO: vmtx, big glyph metrics
     # TODO: AAT version with bhed, bdat, bloc
 
-    # remove glyf and loca tables
-    def compile(self, ttFont=None):
-        """Empty glyf table."""
-        return b''
-
-    fb.font['glyf'].compile = compile
-
-    def compile(self, ttFont=None):
-        """loca table with null for every glyph."""
-        return bytes(len(glyphnames)*2+2)
-
-    fb.font['loca'].compile = compile
-
+    # OTB output
+    # ensure we get an empty glyf table
+    fb.font['glyf'].compile = lambda self: b''
+    # loca table with null for every glyph
+    fb.font['loca'].compile = lambda self: bytes(len(glyphnames)*2+2)
     fb.save(outfile)
