@@ -235,6 +235,7 @@ def _setup_ebdt_table(fb, font, glyphs):
     """Build `EBDT` bitmap data table."""
     ebdt = ttLib.newTable('EBDT')
     ebdt.version = 2.0
+    # create one strike - multiple strikes of different size are possible
     ebdt.strikeData = [{
         _name: convert_to_glyph(_g, fb)
         for _name, _g in glyphs.items()
@@ -242,24 +243,20 @@ def _setup_ebdt_table(fb, font, glyphs):
     fb.font['EBDT'] = ebdt
 
 
-def _setup_eblc_table(fb, font, glyphs):
+def _setup_eblc_table(fb, font):
     """Build `EBLC` bitmap locations table."""
     eblc = ttLib.newTable('EBLC')
     eblc.version = 2.0
-    # create index sub table
-    ist = eblc_index_sub_table_3(data=b'', ttFont=fb.font)
-    ist.names = tuple(glyphs.keys())
-    ist.indexFormat = 3
-    # this should be based on EBDT info (ebdt_bitmap_format_1)
-    ist.imageFormat = 1
-    # create strike
-    strike = Strike()
-    strike.bitmapSizeTable = _create_bitmap_size_table(font)
-    strike.indexSubTables = [ist]
-    # eblc strike locations are filled out by ebdt compiler
-    # bitmap size table is not updated by fontTools, do it explicitly
-    strike.bitmapSizeTable.numberOfIndexSubTables = len(strike.indexSubTables)
-    eblc.strikes = [strike]
+    eblc.strikes = []
+    for sdata in fb.font['EBDT'].strikeData:
+        # create strike
+        strike = Strike()
+        strike.bitmapSizeTable = _create_bitmap_size_table(font)
+        strike.indexSubTables = _create_index_subtables(fb, sdata)
+        # eblc strike locations are filled out by ebdt compiler
+        # bitmap size table is not updated by fontTools, do it explicitly
+        strike.bitmapSizeTable.numberOfIndexSubTables = len(strike.indexSubTables)
+        eblc.strikes.append(strike)
     fb.font['EBLC'] = eblc
 
 
@@ -293,6 +290,24 @@ def _create_bitmap_size_table(font):
     # ignore vertical metrics for now
     bst.vert = bst.hori
     return bst
+
+
+def _create_index_subtables(fb, sdata):
+    """Create the IndexSubTables"""
+    imageformats = {_n: _g.getFormat() for _n, _g in sdata.items()}
+    istables = []
+    last_format = None
+    for name, format in imageformats.items():
+        if format !=  last_format:
+            # create index sub table
+            ist = eblc_index_sub_table_3(data=b'', ttFont=fb.font)
+            ist.indexFormat = 3
+            ist.imageFormat = format
+            ist.names = []
+            istables.append(ist)
+        ist.names.append(name)
+        last_format = format
+    return istables
 
 
 def convert_to_glyph(glyph, fb):
@@ -353,7 +368,7 @@ def _write_sfnt(font, outfile, funits_per_em):
     fb.setupCharacterMap(_convert_to_cmap_props(glyphs))
     fb.setupGlyf(_create_empty_glyf_props(glyphs))
     _setup_ebdt_table(fb, font, glyphs)
-    _setup_eblc_table(fb, font, glyphs)
+    _setup_eblc_table(fb, font)
     fb.setupHorizontalMetrics(_convert_to_hmtx_props(glyphs, _to_funits))
     fb.setupHorizontalHeader(**_convert_to_hhea_props(font, _to_funits))
     # check for vertical metrics, include `vhea` and `vmtx` if present
