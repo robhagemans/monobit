@@ -25,6 +25,7 @@ from ..binary import ceildiv
 from ..storage import loaders, savers
 from ..properties import reverse_dict
 from .sfnt import _WEIGHT_MAP, _SETWIDTH_MAP
+from ..labels import Tag
 
 if ttLib:
     from .sfnt import load_sfnt
@@ -46,15 +47,15 @@ if ttLib:
         return font
 
 
-def _label_to_utf16(font, label):
+def _label_to_utf16(font, label, default):
     """Convert a glyph label to a UTF-16 codepoint, if possible; 0 if not."""
     try:
         utf16 = ord(font.get_glyph(label).char)
     except KeyError:
-        utf16 = 0
+        utf16 = default
     else:
         if utf16 > 0x1000:
-            utf16 = 0
+            utf16 = default
     return utf16
 
 
@@ -89,8 +90,11 @@ def _convert_to_os_2_props(font, _to_funits):
         # not included: strikeout metrics
         # not included: panose table
         # special characters
-        usDefaultChar=_label_to_utf16(font, font.default_char),
-        usBreakChar=_label_to_utf16(font, font.word_boundary),
+        # if default_char can't be mappped to a utf-16 codepoint,
+        # it falls back to 0 which is taken to mean .notdef (not u+0000)
+        usDefaultChar=_label_to_utf16(font, font.default_char, 0),
+        # if break char can't be matched, fall back to SPACE
+        usBreakChar=_label_to_utf16(font, font.word_boundary, 0x20),
         # vendor ID - can be left blank (four spaces)
         achVendID=b'    ',
     )
@@ -263,6 +267,7 @@ def _write_sfnt(font, outfile, funits_per_em):
     # get char labels if we don't have them
     # label with unicode and Adobe glyph names
     font = font.label()
+    default = font.get_default_glyph()
     font = font.label(codepoint_from='unicode', overwrite=True)
     font = font.label(tag_from='adobe')
     # TODO: drop glyphs without char labels as not-storable
@@ -271,7 +276,7 @@ def _write_sfnt(font, outfile, funits_per_em):
     # get the storable glyphs
     glyphnames = ('.notdef', *(_t.value for _t in font.get_tags()))
     glyphs = {
-        _name: font.get_glyph(tag=_name, missing='default')
+        _name: font.get_glyph(tag=_name, missing=default)
         for _name in glyphnames
     }
     # build font object

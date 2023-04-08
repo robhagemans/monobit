@@ -867,4 +867,10 @@ def _convert_os_2_props(os_2, vert_fu_p_pix, hori_fu_p_pix):
             default_char=Char(chr(os_2.usDefaultChar)),
             word_boundary=Char(chr(os_2.usBreakChar)),
         )
+        # > This is the Unicode code point, in UTF-16 encoding, of a character
+        # > that can be used for a default glyph if a requested character is not
+        # > supported in the font. If the value of this field is zero,
+        # > glyph ID 0 is to be used for the default character.
+        if props.default_char == Char('\0'):
+            props.default_char = Tag('.notdef')
     return props
