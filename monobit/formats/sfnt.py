@@ -208,16 +208,16 @@ def _read_collection(instream, tags):
     # let fonttools parse the SFNT
     _init_fonttools()
     try:
-        ttfc = TTCollection(instream)
+        ttcf = TTCollection(instream)
     except (TTLibError, AssertionError) as e:
         raise FileFormatError(f'Could not read collection file: {e}')
-    ttfc_data = []
-    for ttf in ttfc:
+    ttcf_data = []
+    for ttf in ttcf:
         try:
-            ttfc_data.append(_sfnt_props(ttf, tags))
+            ttcf_data.append(_sfnt_props(ttf, tags))
         except ResourceFormatError as e:
             logging.debug(e)
-    return ttfc_data
+    return ttcf_data
 
 
 def _sfnt_props(ttf, tags):

@@ -133,7 +133,7 @@ Supported bitmap formats
 | PSF2AMS PSFCOM        | `psfcom`   | `.com`                      | ✔     |       |
 | Signum! 2             | `signum`   | `.e24` `.p9` `.p24` `.l30`  | ✔     |       |
 | SFNT embedded bitmap  | `sfnt`     | `.otb` `.ttf` `.otf` [F] [**] | ✔   | ✔ (OTB) |
-| SFNT collection       | `ttfc`     | `.otc` `.ttc` [F] [**]      | ✔     | ✔ (OTB) |
+| SFNT collection       | `ttcf`     | `.otc` `.ttc` [F] [**]      | ✔     | ✔ (OTB) |
 | vfont                 | `vfont`    |                             | ✔     | ✔     |
 | Bare GEOS resource    | `vlir`     |                             | ✔     |       |
 | Windows FNT resource  | `win`      | `.fnt`                      | ✔     | ✔     |
