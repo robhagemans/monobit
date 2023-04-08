@@ -13,6 +13,7 @@ except ImportError:
     ttLib = None
 else:
     from fontTools.fontBuilder import FontBuilder
+    from fontTools.ttLib import TTCollection
     from fontTools.ttLib.tables import E_B_D_T_
     from fontTools.ttLib.tables.E_B_D_T_ import ebdt_bitmap_classes
     from fontTools.ttLib.tables.BitmapGlyphMetrics import (
@@ -28,11 +29,11 @@ from ..glyph import Glyph
 from ..binary import ceildiv
 from ..storage import loaders, savers
 from ..properties import reverse_dict
-from .sfnt import _WEIGHT_MAP, _SETWIDTH_MAP
+from .sfnt import _WEIGHT_MAP, _SETWIDTH_MAP, _init_fonttools
 from ..labels import Tag
 
 if ttLib:
-    from .sfnt import load_sfnt
+    from .sfnt import load_sfnt, load_collection
 
     @savers.register(linked=load_sfnt)
     def save_sfnt(fonts, outfile, funits_per_em:int=1024):
@@ -47,8 +48,19 @@ if ttLib:
             raise ValueError(
                 'Currently only supporting saving one font to SFNT.'
             )
-        _write_sfnt(font, outfile, funits_per_em)
+        tt_font = _create_sfnt(font, funits_per_em)
+        tt_font.save(outfile)
         return font
+
+    @savers.register(linked=load_collection)
+    def save_collection(fonts, outfile, funits_per_em:int=1024):
+        """
+        Save fonts to a TrueType/OpenType Collection file.
+
+        funits_per_em: number of design units (FUnits) per em-width (default 1024)
+        """
+        _write_collection(fonts, outfile, funits_per_em)
+        return fonts
 
 
 def _label_to_utf16(font, label, default):
@@ -406,13 +418,14 @@ def _prepare_for_sfnt(font):
     return font, default, features
 
 
-def _write_sfnt(font, outfile, funits_per_em):
-    """Convert to SFNT and write out."""
+def _create_sfnt(font, funits_per_em):
+    """Convert to a fontTools TTFont object."""
     # converter from pixels to design units
     # note that x and y ppem are equal - if not, fontforge rejects the bitmap
     def _to_funits(pixel_amount):
         return ceildiv(pixel_amount * funits_per_em, font.pixel_size)
 
+    _init_fonttools()
     font, default, features = _prepare_for_sfnt(font)
     # get the storable glyphs
     glyphnames = ('.notdef', *(_t.value for _t in font.get_tags()))
@@ -443,4 +456,10 @@ def _write_sfnt(font, outfile, funits_per_em):
     fb.font['glyf'].compile = lambda self: b''
     # loca table with null for every glyph
     fb.font['loca'].compile = lambda self: bytes(len(glyphnames)*2+2)
-    fb.save(outfile)
+    return fb.font
+
+def _write_collection(fonts, outfile, funits_per_em):
+    """Convert to TrueType collection and write out."""
+    ttc = TTCollection()
+    ttc.fonts = tuple(_create_sfnt(_font, funits_per_em) for _font in fonts)
+    ttc.save(outfile)
