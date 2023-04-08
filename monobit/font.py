@@ -852,6 +852,17 @@ class Font:
         return FontFormatter().format(template, **kwargs)
 
 
+    def get_features(self):
+        """Get set of special features for this font."""
+        feats = set.union(*(_g.features for _g in self.glyphs))
+        if any(
+                self._props._defined(_p)
+                for _p in ('line_width', 'left-extent', 'right-extent')
+            ):
+            feats.add('vertical')
+        return feats
+
+
     ##########################################################################
     # glyph access
 

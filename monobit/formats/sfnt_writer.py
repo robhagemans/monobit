@@ -324,6 +324,7 @@ def _prepare_for_sfnt(font):
         )
         logging.debug('Dropped glyphs: %s', tuple(_g.get_labels()[0] for _g in dropped if _g.get_labels()))
     default = font.get_default_glyph()
+    features = font.get_features()
     font = font.label(
         codepoint_from='unicode', overwrite=True,
         match_whitespace=False, match_graphical=False
@@ -331,7 +332,7 @@ def _prepare_for_sfnt(font):
     font = font.label(tag_from='adobe')
     # cut back to glyph bounding boxes
     font = font.reduce()
-    return font, default
+    return font, default, features
 
 
 def _write_sfnt(font, outfile, funits_per_em):
@@ -341,7 +342,7 @@ def _write_sfnt(font, outfile, funits_per_em):
     def _to_funits(pixel_amount):
         return ceildiv(pixel_amount * funits_per_em, font.pixel_size)
 
-    font, default = _prepare_for_sfnt(font)
+    font, default, features = _prepare_for_sfnt(font)
     # get the storable glyphs
     glyphnames = ('.notdef', *(_t.value for _t in font.get_tags()))
     glyphs = {
@@ -356,9 +357,10 @@ def _write_sfnt(font, outfile, funits_per_em):
     _setup_bitmap_tables(fb, font, glyphs)
     fb.setupHorizontalMetrics(_convert_to_hmtx_props(glyphs, _to_funits))
     fb.setupHorizontalHeader(**_convert_to_hhea_props(font, _to_funits))
-    # todo: check for vertical metrics, omit if not present
-    fb.setupVerticalMetrics(_convert_to_vmtx_props(glyphs, _to_funits))
-    fb.setupVerticalHeader(**_convert_to_vhea_props(font, _to_funits))
+    # check for vertical metrics, include `vhea` and `vmtx` if present
+    if 'vertical' in features:
+        fb.setupVerticalMetrics(_convert_to_vmtx_props(glyphs, _to_funits))
+        fb.setupVerticalHeader(**_convert_to_vhea_props(font, _to_funits))
     fb.setupNameTable(_convert_to_name_props(font))
     fb.setupOS2(**_convert_to_os_2_props(font, _to_funits))
     # for otb: version-3 table, defines no names

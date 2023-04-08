@@ -434,7 +434,29 @@ class Glyph:
         key = normalise_property(key)
         return getattr(self._props, key, '')
 
-
+    @property
+    def features(self):
+        """Get set of special features for this glyph."""
+        feats = set()
+        if any(
+                self._props._defined(_p)
+                for _p in ('top-bearing', 'bottom-bearing', 'shift-left')
+            ):
+            feats.add('vertical')
+        if any(
+                self._props._defined(_p)
+                for _p in ('left-kerning', 'right-kerning')
+            ):
+            feats.add('kerning')
+        if any(
+                self.get_property(_p) < 0
+                for _p in (
+                    'left-bearing', 'right-bearing',
+                    'top-bearing', 'bottom-bearing'
+                )
+            ):
+            feats.add('overlap')
+        return feats
 
     ##########################################################################
     # label access
