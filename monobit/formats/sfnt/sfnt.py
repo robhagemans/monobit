@@ -20,14 +20,14 @@ else:
     from fontTools.ttLib.ttFont import TTFont
     from fontTools.ttLib.ttCollection import TTCollection
 
-from ..properties import Props
-from ..font import Font
-from ..glyph import Glyph
-from ..raster import Raster
-from ..labels import Tag, Char
-from ..storage import loaders, savers
-from ..magic import FileFormatError
-from .windows.fnt import _WEIGHT_MAP
+from ...properties import Props
+from ...font import Font
+from ...glyph import Glyph
+from ...raster import Raster
+from ...labels import Tag, Char
+from ...storage import loaders, savers
+from ...magic import FileFormatError
+from ..windows.fnt import _WEIGHT_MAP
 
 
 # errors that invalidate only one strike or resource, not the whole file
@@ -145,9 +145,9 @@ def _init_fonttools():
     class table__b_d_a_t(table_E_B_D_T_):
         locatorName = "bloc"
 
-    ttLib.registerCustomTableClass('bhed', 'monobit.formats.sfnt')
-    ttLib.registerCustomTableClass('bloc', 'monobit.formats.sfnt')
-    ttLib.registerCustomTableClass('bdat', 'monobit.formats.sfnt')
+    ttLib.registerCustomTableClass('bhed', 'monobit.formats.sfnt.sfnt')
+    ttLib.registerCustomTableClass('bloc', 'monobit.formats.sfnt.sfnt')
+    ttLib.registerCustomTableClass('bdat', 'monobit.formats.sfnt.sfnt')
 
 
 ###############################################################################
@@ -159,7 +159,7 @@ _TAGS = (
     # check `maxp` first to catch any assertion errors on decompile
     'maxp',
     # core bitmap tables
-    'bhed', 'head',
+    'head', 'bhed',
     'EBLC', 'bloc',
     'EBDT', 'bdat',
     # sbix: currently just warn we don't parse it

@@ -25,12 +25,12 @@ else:
     from fontTools.ttLib.tables._g_l_y_f import Glyph as Glyf
     from fontTools.ttLib.tables._k_e_r_n import KernTable_format_0
 
-from ..glyph import Glyph
-from ..binary import ceildiv
-from ..storage import loaders, savers
-from ..properties import reverse_dict
+from ...glyph import Glyph
+from ...binary import ceildiv
+from ...storage import loaders, savers
+from ...properties import reverse_dict
 from .sfnt import _WEIGHT_MAP, _SETWIDTH_MAP, _init_fonttools
-from ..labels import Tag
+from ...labels import Tag
 
 if ttLib:
     from .sfnt import load_sfnt, load_collection
