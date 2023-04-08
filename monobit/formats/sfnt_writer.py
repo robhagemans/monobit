@@ -203,7 +203,8 @@ def _setup_kern_table(fb, version=0, kernTables=()):
         subtable = KernTable_format_0(apple=version==1.0)
         subtable.__dict__.update(subdict)
         kern_table.kernTables.append(subtable)
-    fb.font['kern'] = kern_table
+    if any(_k.kernTable for _k in kern_table.kernTables):
+        fb.font['kern'] = kern_table
 
 
 def _create_empty_glyf_props(glyphs):
