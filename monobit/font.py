@@ -1032,7 +1032,6 @@ class Font:
             for _glyph in self.glyphs
         ))
 
-    # need converter from string to set of labels to script this
     @scriptable
     def subset(
             self, labels:tuple[Label]=(), *,
