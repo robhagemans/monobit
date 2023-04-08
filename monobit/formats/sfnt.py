@@ -698,7 +698,7 @@ def _convert_vhea_props(vhea, horiz_fu_p_pix):
         # > from the centerline to the next line’s descent
         left_extent=abs(vhea.descent) // horiz_fu_p_pix,
         line_width=(
-            (vhea.ascender + abs(vhea.descender) + vhea.lineGap)
+            (vhea.ascent + abs(vhea.descent) + vhea.lineGap)
             // horiz_fu_p_pix
         ),
     )
