@@ -231,31 +231,46 @@ def _create_empty_glyf_props(glyphs):
     return {_name: Glyf() for _name in glyphs}
 
 
-def _setup_bitmap_tables(fb, font, glyphs):
-    """Build `EBLC` and `EBDT` tables."""
+def _setup_ebdt_table(fb, font, glyphs):
+    """Build `EBDT` bitmap data table."""
     ebdt = ttLib.newTable('EBDT')
-    fb.font['EBDT'] = ebdt
     ebdt.version = 2.0
-
-    eblc = ttLib.newTable('EBLC')
-    fb.font['EBLC'] = eblc
-    eblc.version = 2.0
-
-    glyphtable = {
+    ebdt.strikeData = [{
         _name: convert_to_glyph(_g, fb)
         for _name, _g in glyphs.items()
-    }
-    ebdt.strikeData = [glyphtable]
+    }]
+    fb.font['EBDT'] = ebdt
 
-    # create the BitmapSize record
+
+def _setup_eblc_table(fb, font, glyphs):
+    """Build `EBLC` bitmap locations table."""
+    eblc = ttLib.newTable('EBLC')
+    eblc.version = 2.0
+    # create index sub table
+    ist = eblc_index_sub_table_3(data=b'', ttFont=fb.font)
+    ist.names = tuple(glyphs.keys())
+    ist.indexFormat = 3
+    # this should be based on EBDT info (ebdt_bitmap_format_1)
+    ist.imageFormat = 1
+    # create strike
+    strike = Strike()
+    strike.bitmapSizeTable = _create_bitmap_size_table(font)
+    strike.indexSubTables = [ist]
+    # eblc strike locations are filled out by ebdt compiler
+    # bitmap size table is not updated by fontTools, do it explicitly
+    strike.bitmapSizeTable.numberOfIndexSubTables = len(strike.indexSubTables)
+    eblc.strikes = [strike]
+    fb.font['EBLC'] = eblc
+
+
+def _create_bitmap_size_table(font):
+    """Create the BitmapSize record."""
     # this is not contructed by any compile() method as far as I can see
-
     # > The line metrics are not used directly by the rasterizer, but are available to applications that want to parse the EBLC table.
     bst = BitmapSizeTable()
     bst.colorRef = 0
     bst.flags = 0x01  # hori | 0x02 for vert
     bst.bitDepth = 1
-
     # ppem need to be the same both ways for fontforge
     bst.ppemX = font.pixel_size
     bst.ppemY = font.pixel_size
@@ -275,26 +290,9 @@ def _setup_bitmap_tables(fb, font, glyphs):
     bst.hori.minAfterBL = 0
     bst.hori.pad1 = 0
     bst.hori.pad2 = 0
-
     # ignore vertical metrics for now
     bst.vert = bst.hori
-
-    strike = Strike()
-    strike.bitmapSizeTable = bst
-    ist = eblc_index_sub_table_3(data=b'', ttFont=fb.font)
-
-    ist.names = tuple(glyphs.keys())
-
-    ist.indexFormat = 3
-
-    # this should be based on EBDT info (ebdt_bitmap_format_1)
-    ist.imageFormat = 1
-
-    strike.indexSubTables = [ist]
-    eblc.strikes = [strike]
-    # eblc strike locations are filled out by ebdt compiler
-    # bitmap size table is not updated by fontTools, do it explicitly
-    bst.numberOfIndexSubTables = len(strike.indexSubTables)
+    return bst
 
 
 def convert_to_glyph(glyph, fb):
@@ -354,7 +352,8 @@ def _write_sfnt(font, outfile, funits_per_em):
     fb.setupGlyphOrder(glyphnames)
     fb.setupCharacterMap(_convert_to_cmap_props(glyphs))
     fb.setupGlyf(_create_empty_glyf_props(glyphs))
-    _setup_bitmap_tables(fb, font, glyphs)
+    _setup_ebdt_table(fb, font, glyphs)
+    _setup_eblc_table(fb, font, glyphs)
     fb.setupHorizontalMetrics(_convert_to_hmtx_props(glyphs, _to_funits))
     fb.setupHorizontalHeader(**_convert_to_hhea_props(font, _to_funits))
     # check for vertical metrics, include `vhea` and `vmtx` if present
