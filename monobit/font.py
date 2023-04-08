@@ -45,6 +45,8 @@ class FontProperties(DefaultProps):
     name: str
     # typeface/font family
     family: str
+    # further specifiers
+    subfamily: str
     # unique id
     font_id: str
 
@@ -197,6 +199,17 @@ class FontProperties(DefaultProps):
     @writable_property
     def name(self):
         """Full human-friendly name."""
+        if self.spacing in ('character-cell', 'multi-cell'):
+            size = 'x'.join(str(_x) for _x in self.cell_size)
+        else:
+            size = str(self.point_size)
+        return ' '.join(
+            _x for _x in (self.family, self.subfamily, size) if _x
+        )
+
+    @writable_property
+    def subfamily(self):
+        """Font additional names."""
         if self.slant == self._get_default('slant'):
             slant = ''
         else:
@@ -210,12 +223,8 @@ class FontProperties(DefaultProps):
             weight = ''
         else:
             weight = self.weight.title()
-        if self.spacing in ('character-cell', 'multi-cell'):
-            size = 'x'.join(str(_x) for _x in self.cell_size)
-        else:
-            size = str(self.point_size)
         return ' '.join(
-            str(_x) for _x in (self.family, setwidth, weight, slant, size) if _x
+            _x for _x in (setwidth, weight, slant) if _x
         )
 
     @writable_property
@@ -552,7 +561,7 @@ class FontProperties(DefaultProps):
     def superscript_offset(self):
         """Recommended superscript horizontal, vertical offset in pixels."""
         shift = round(self.pixel_size * 0.4)
-        return Coord(shift, shift)
+        return Coord(0, shift)
 
     @writable_property
     def subscript_size(self):
@@ -563,7 +572,7 @@ class FontProperties(DefaultProps):
     def subscript_offset(self):
         """Recommended subscript horizontal, vertical offset in pixels."""
         shift = round(self.pixel_size * 0.4)
-        return Coord(shift, shift)
+        return Coord(0, shift)
 
     @writable_property
     def small_cap_size(self):
@@ -843,6 +852,17 @@ class Font:
         return FontFormatter().format(template, **kwargs)
 
 
+    def get_features(self):
+        """Get set of special features for this font."""
+        feats = set.union(*(_g.features for _g in self.glyphs))
+        if any(
+                self._props._defined(_p)
+                for _p in ('line_width', 'left-extent', 'right-extent')
+            ):
+            feats.add('vertical')
+        return feats
+
+
     ##########################################################################
     # glyph access
 
@@ -1023,7 +1043,6 @@ class Font:
             for _glyph in self.glyphs
         ))
 
-    # need converter from string to set of labels to script this
     @scriptable
     def subset(
             self, labels:tuple[Label]=(), *,
@@ -1251,23 +1270,28 @@ class Font:
         )
 
     @scriptable
-    def reduce(self, *, adjust_metrics:bool=True):
+    def reduce(self, *, adjust_metrics:bool=True, create_vertical_metrics:bool=False):
         """
         Reduce glyphs to their bounding box.
 
         adjust_metrics: make the operation render-invariant (default: True)
+        create_vertical_metrics: create vertical metrics if they don't exist (default: False)
         """
+        create_vertical_metrics = (
+            create_vertical_metrics or 'vertical' in self.get_features()
+        )
         font = self._apply_to_all_glyphs(
             Glyph.reduce,
             adjust_metrics=adjust_metrics,
+            create_vertical_metrics=create_vertical_metrics,
         )
         if not adjust_metrics:
             return font
         # fix line-advances to ensure they remain unchanged
-        return font.modify(
-            line_height=self.line_height,
-            line_width=self.line_width,
-        )
+        font = font.modify(line_height=self.line_height)
+        if create_vertical_metrics:
+            font = font.modify(line_width=self.line_width)
+        return font
 
     @scriptable
     def equalise_horizontal(self):

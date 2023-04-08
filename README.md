@@ -131,7 +131,7 @@ Supported bitmap formats
 | The Print Shop        | `printshop`| `.pnf`                      | ✔     |       |
 | PC Screen Font        | `psf`      | `.psf` `.psfu`              | ✔     | ✔ (version 2) |
 | PSF2AMS PSFCOM        | `psfcom`   | `.com`                      | ✔     |       |
-| SFNT embedded bitmap  | `sfnt`     | `.otb` `.ttf` `.otf` [F] [**] | ✔   |       |
+| SFNT embedded bitmap  | `sfnt`     | `.otb` `.ttf` `.otf` [F] [**] | ✔   | ✔ (OTB) |
 | Signum! 2             | `signum`   | `.e24` `.p9` `.p24` `.l30`  | ✔     |       |
 | vfont                 | `vfont`    |                             | ✔     | ✔     |
 | Bare GEOS resource    | `vlir`     |                             | ✔     |       |
@@ -190,6 +190,7 @@ Here is a comparison of what you can and cannot store in selected formats suppor
 | Format        | Unicode | Unicode sequences | Encoding | MBCS | Multiple fonts | Cell size | Proportional | Kerning | Colour/antialiasing | Glyph representation
 |---------------|---|---|---|---|---|------|---|---|---|--------------
 | `yaff`        | ✔ | ✔ | ✔ | ✔ | ✔ | any  | ✔ | ✔ |   | visual text
+| `sfnt`        | ✔ | ✔ | ✔ | ✔ | ✔ | any  | ✔ | ✔ | ✔ | binary
 | `bmfont`      | ✔ |   | ✔ | ✔ |   | any  | ✔ | ✔ | ✔ | image
 | `bdf`         | ✔ |   | ✔ | ✔ |   | any  | ✔ |   |   | hex
 | `nfnt`        |   |   | ✔ | ✔ | ✔ | any  | ✔ | ✔ | ✔ | binary

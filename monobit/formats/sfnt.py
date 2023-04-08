@@ -509,13 +509,13 @@ def _convert_vmtx_metrics(vmtx, glyph_name, vert_fu_p_pix, height):
 def _convert_kern_metrics(glyphs, kern, hori_fu_p_pix):
     """Convert kerning values form kern table."""
     if kern:
-        if kern.version != 0:
-            logging.warning(f'`kern` table version {kern.version} not supported.')
-            return {}
         glyph_props = {}
         for table in kern.kernTables:
+            if not hasattr(table, 'coverage') or not hasattr(table, 'kernTable'):
+                logging.warning('Kerning subtable format not supported')
+                continue
             if table.coverage != 1:
-                logging.warning('Vertical or cross-stream kerning not supported.')
+                logging.warning('Vertical or cross-stream kerning not supported')
                 continue
             for pair, kern_value in table.kernTable.items():
                 left, right = pair
@@ -545,7 +545,7 @@ def _convert_gpos_metrics(glyphs, gpos, hori_fu_p_pix):
                 if subtable._type != 'PairPos':
                     continue
                 # per the docs, in logical order
-                # i.e first is left for LTR, first is right ror RTL
+                # i.e first is left for LTR, first is right for RTL
                 # presumably to be determined from glyph unicode properties?
                 # what happens if one glyph is LTR and the other RTL is unclear
                 # the one RTL file I have does things differently,
@@ -619,7 +619,7 @@ def _convert_bloc_props(bloc, i_strike):
         )
         bmst.flags = 1
     props = Props()
-    # asppect ratio is the inverse of pixels-per-em ratio
+    # aspect ratio is the inverse of pixels-per-em ratio
     den = math.gcd(bmst.ppemY, bmst.ppemX)
     props.pixel_aspect = (bmst.ppemY//den, bmst.ppemX//den)
     small_metrics_are_vert = bmst.flags == 2
@@ -698,7 +698,7 @@ def _convert_vhea_props(vhea, horiz_fu_p_pix):
         # > from the centerline to the next line’s descent
         left_extent=abs(vhea.descent) // horiz_fu_p_pix,
         line_width=(
-            (vhea.ascender + abs(vhea.descender) + vhea.lineGap)
+            (vhea.ascent + abs(vhea.descent) + vhea.lineGap)
             // horiz_fu_p_pix
         ),
     )
@@ -789,7 +789,7 @@ def _convert_name_props(name):
         copyright=_decode_name(name.names, 0),
         family=_decode_name(name.names, 1),
         # weight or slant or both
-        #subfamily=_decode_name(name.names, 2),
+        subfamily=_decode_name(name.names, 2),
         font_id=_decode_name(name.names, 3),
         name=_decode_name(name.names, 4),
         #
@@ -797,17 +797,17 @@ def _convert_name_props(name):
         #
         #postscript_name
         #
-        trademark=_decode_name(name.names, 7),
+        #trademark=_decode_name(name.names, 7),
         foundry=_decode_name(name.names, 8),
         author=_decode_name(name.names, 9),
         #
-        description=_decode_name(name.names, 10),
+        #description=_decode_name(name.names, 10),
         #
-        vendor_url=_decode_name(name.names, 11),
+        #vendor_url=_decode_name(name.names, 11),
         #
-        author_url=_decode_name(name.names, 12),
+        #author_url=_decode_name(name.names, 12),
         notice=_decode_name(name.names, 13),
-        license_url=_decode_name(name.names, 14),
+        #license_url=_decode_name(name.names, 14),
     )
     return props
 
@@ -853,7 +853,7 @@ def _convert_os_2_props(os_2, vert_fu_p_pix, hori_fu_p_pix):
         #ascent=os_2.sTypoAscender // vert_fu_p_pix,
         # the spec states sTypoDescender is 'usually' negative,
         # but fonttosfnt produces + values while fontforge -
-        # abs should be fine as I have nno interpretation for a negative descent
+        # abs should be fine as I have no interpretation for a negative descent
         # note the sign also affects int division
         #descent=abs(os_2.sTypoDescender // vert_fu_p_pix),
         line_height=(
@@ -867,4 +867,10 @@ def _convert_os_2_props(os_2, vert_fu_p_pix, hori_fu_p_pix):
             default_char=Char(chr(os_2.usDefaultChar)),
             word_boundary=Char(chr(os_2.usBreakChar)),
         )
+        # > This is the Unicode code point, in UTF-16 encoding, of a character
+        # > that can be used for a default glyph if a requested character is not
+        # > supported in the font. If the value of this field is zero,
+        # > glyph ID 0 is to be used for the default character.
+        if props.default_char == Char('\0'):
+            props.default_char = Tag('.notdef')
     return props

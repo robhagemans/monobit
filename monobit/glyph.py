@@ -434,7 +434,29 @@ class Glyph:
         key = normalise_property(key)
         return getattr(self._props, key, '')
 
-
+    @property
+    def features(self):
+        """Get set of special features for this glyph."""
+        feats = set()
+        if any(
+                self._props._defined(_p)
+                for _p in ('top-bearing', 'bottom-bearing', 'shift-left')
+            ):
+            feats.add('vertical')
+        if any(
+                self._props._defined(_p)
+                for _p in ('left-kerning', 'right-kerning')
+            ):
+            feats.add('kerning')
+        if any(
+                self.get_property(_p) < 0
+                for _p in (
+                    'left-bearing', 'right-bearing',
+                    'top-bearing', 'bottom-bearing'
+                )
+            ):
+            feats.add('overlap')
+        return feats
 
     ##########################################################################
     # label access
@@ -546,6 +568,10 @@ class Glyph:
         """Return flat tuple of user-specified foreground and background objects."""
         return self._pixels.as_vector(ink=ink, paper=paper)
 
+    def as_byterows(self, *, align='left'):
+        """Convert glyph to rows of bytes."""
+        return self._pixels.as_byterows(align=align)
+
     def as_bytes(self, *, align='left'):
         """Convert glyph to flat bytes."""
         return self._pixels.as_bytes(align=align)
@@ -625,7 +651,7 @@ class Glyph:
     @scriptable
     def crop(
             self, left:int=0, bottom:int=0, right:int=0, top:int=0,
-            *, adjust_metrics:bool=True
+            *, adjust_metrics:bool=True, create_vertical_metrics:bool=False
         ):
         """
         Crop the raster.
@@ -635,22 +661,30 @@ class Glyph:
         right: number of columns to remove from right
         top: number of rows to remove from top
         adjust_metrics: make the operation render-invariant (default: True)
+        create_vertical_metrics: create vertical metrics if they don't exist (default: False)
         """
+        create_vertical_metrics = (
+            create_vertical_metrics or 'vertical' in self.features
+        )
         # reduce raster
         pixels = self._pixels.crop(left, bottom, right, top)
+        glyph = self.modify(pixels)
         if adjust_metrics:
-            return self.modify(
+            # horizontal metrics
+            glyph = glyph.modify(
                 pixels,
-                # horizontal metrics
                 left_bearing=self.left_bearing + left,
                 right_bearing=self.right_bearing + right,
                 shift_up=self.shift_up + bottom,
-                # vertical metrics
-                top_bearing=self.top_bearing + top,
-                bottom_bearing=self.bottom_bearing + bottom,
-                shift_left=self.shift_left + self.width//2 - pixels.width//2,
             )
-        return self.modify(pixels)
+            if create_vertical_metrics:
+                # vertical metrics
+                glyph = glyph.modify(
+                    top_bearing=self.top_bearing + top,
+                    bottom_bearing=self.bottom_bearing + bottom,
+                    shift_left=self.shift_left + self.width//2 - pixels.width//2,
+                )
+        return glyph
 
     @scriptable
     def expand(
@@ -683,13 +717,16 @@ class Glyph:
         return self.modify(pixels)
 
     @scriptable
-    def reduce(self, *, adjust_metrics:bool=True):
+    def reduce(self, *, adjust_metrics:bool=True, create_vertical_metrics:bool=False):
         """
         Return a glyph reduced to the bounding box.
 
-        adjust_metrics: make the operation render-invariant (default: True)
+        adjust_metrics: make the operation render-invariant (default: True)                create_vertical_metrics: create vertical metrics if they don't exist (default: False)
         """
-        return self.crop(*self.padding, adjust_metrics=adjust_metrics)
+        return self.crop(
+            *self.padding, adjust_metrics=adjust_metrics,
+            create_vertical_metrics=create_vertical_metrics,
+        )
 
 
     # scaling

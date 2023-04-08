@@ -299,6 +299,24 @@ class Raster:
             _0='0', _1='1',
         )
 
+    def as_byterows(self, *, align='left'):
+        """
+        Convert raster to bytes, by row
+
+        align: 'left' or 'right'
+        """
+        if not self.height or not self.width:
+            return ()
+        rows = (
+            ''.join(_row)
+            for _row in self.as_matrix(paper='0', ink='1')
+        )
+        bytewidth = ceildiv(self.width, 8)
+        if align.startswith('l'):
+            rows = (_row.ljust(8*bytewidth, '0') for _row in rows)
+        byterows = (int(_row, 2).to_bytes(bytewidth, 'big') for _row in rows)
+        return byterows
+
     def as_bytes(self, *, align='left'):
         """
         Convert raster to flat bytes.
@@ -307,20 +325,16 @@ class Raster:
         """
         if not self.height or not self.width:
             return b''
-        rows = (
-            ''.join(_row)
-            for _row in self.as_matrix(paper='0', ink='1')
-        )
         if align.startswith('b'):
-            bits = ''.join(rows)
+            bits = ''.join(
+                ''.join(_row)
+                for _row in self.as_matrix(paper='0', ink='1')
+            )
             bytesize = ceildiv(len(bits), 8)
             byterow = int(bits, 2).to_bytes(bytesize, 'big')
             return byterow
         else:
-            bytewidth = ceildiv(self.width, 8)
-            if align.startswith('l'):
-                rows = (_row.ljust(8*bytewidth, '0') for _row in rows)
-            byterows = (int(_row, 2).to_bytes(bytewidth, 'big') for _row in rows)
+            byterows = self.as_byterows(align=align)
             return b''.join(byterows)
 
     @classmethod
