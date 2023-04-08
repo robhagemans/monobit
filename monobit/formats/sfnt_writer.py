@@ -13,6 +13,7 @@ except ImportError:
     ttLib = None
 else:
     from fontTools.fontBuilder import FontBuilder
+    from fontTools.ttLib.tables import E_B_D_T_
     from fontTools.ttLib.tables.E_B_D_T_ import ebdt_bitmap_classes
     from fontTools.ttLib.tables.BitmapGlyphMetrics import (
         SmallGlyphMetrics, BigGlyphMetrics
@@ -327,17 +328,23 @@ def _create_index_subtables(fb, sdata):
     return istables
 
 
-def convert_to_glyph(glyph, fb):
+def convert_to_glyph(glyph, fb, align='bit'):
     """Create fontTools bitmap glyph."""
     if 'vertical' in glyph.features:
-        # byte-aligned, big metrics
-        format = 6
+        # big metrics
+        if align == 'byte':
+            format = 6
+        else:
+            format = 7
     else:
-        # byte-aligned, small metrics
-        format = 1
+        # small metrics
+        if align == 'byte':
+            format = 1
+        else:
+            format = 2
     ebdt_bitmap = ebdt_bitmap_classes[format]
     bmga = ebdt_bitmap(data=b'', ttFont=fb.font)
-    if format == 1:
+    if format in (1, 2):
         # horizontal metrics
         bmga.metrics = SmallGlyphMetrics()
         bmga.metrics.height = glyph.height
@@ -346,6 +353,7 @@ def convert_to_glyph(glyph, fb):
         bmga.metrics.BearingY = glyph.shift_up + glyph.height
         bmga.metrics.Advance = glyph.advance_width
     else:
+        # 6, 7 - big glyph metrics
         bmga.metrics = BigGlyphMetrics()
         bmga.metrics.height = glyph.height
         bmga.metrics.width = glyph.width
@@ -357,6 +365,21 @@ def convert_to_glyph(glyph, fb):
         bmga.metrics.vertAdvance = glyph.advance_height
     bmga.setRows(glyph.as_byterows())
     return bmga
+
+
+# monkey patch to fix a bug in fontTools
+def _reverseBytes(data):
+    if len(data) != 1:
+        # this is where the bug was
+        return E_B_D_T_.bytesjoin(map(_reverseBytes, map(chr, data)))
+    byte = E_B_D_T_.byteord(data)
+    result = 0
+    for i in range(8):
+        result = result << 1
+        result |= byte & 1
+        byte = byte >> 1
+    return E_B_D_T_.bytechr(result)
+E_B_D_T_._reverseBytes = _reverseBytes
 
 
 def _prepare_for_sfnt(font):
