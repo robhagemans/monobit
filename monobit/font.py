@@ -1270,23 +1270,28 @@ class Font:
         )
 
     @scriptable
-    def reduce(self, *, adjust_metrics:bool=True):
+    def reduce(self, *, adjust_metrics:bool=True, create_vertical_metrics:bool=False):
         """
         Reduce glyphs to their bounding box.
 
         adjust_metrics: make the operation render-invariant (default: True)
+        create_vertical_metrics: create vertical metrics if they don't exist (default: False)
         """
+        create_vertical_metrics = (
+            create_vertical_metrics or 'vertical' in self.get_features()
+        )
         font = self._apply_to_all_glyphs(
             Glyph.reduce,
             adjust_metrics=adjust_metrics,
+            create_vertical_metrics=create_vertical_metrics,
         )
         if not adjust_metrics:
             return font
         # fix line-advances to ensure they remain unchanged
-        return font.modify(
-            line_height=self.line_height,
-            line_width=self.line_width,
-        )
+        font = font.modify(line_height=self.line_height)
+        if create_vertical_metrics:
+            font = font.modify(line_width=self.line_width)
+        return font
 
     @scriptable
     def equalise_horizontal(self):
