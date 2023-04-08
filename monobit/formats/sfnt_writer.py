@@ -257,13 +257,8 @@ def convert_to_glyph(glyph, fb):
     return bmga
 
 
-def _write_sfnt(font, outfile, funits_per_em):
-    """Convert to SFNT and write out."""
-
-    def _to_funits(pixel_amount):
-        # note that x and y ppem are equal - if not, fontforge rejects the bitmap
-        return ceildiv(pixel_amount * funits_per_em, font.pixel_size)
-
+def _prepare_for_sfnt(font):
+    """Prepare monobit font for storing in sfnt."""
     # get char labels if we don't have them
     # label with unicode and Adobe glyph names
     font = font.label()
@@ -279,6 +274,17 @@ def _write_sfnt(font, outfile, funits_per_em):
     font = font.label(tag_from='adobe')
     # cut back to glyph bounding boxes
     font = font.reduce()
+    return font, default
+
+
+def _write_sfnt(font, outfile, funits_per_em):
+    """Convert to SFNT and write out."""
+    # converter from pixels to design units
+    # note that x and y ppem are equal - if not, fontforge rejects the bitmap
+    def _to_funits(pixel_amount):
+        return ceildiv(pixel_amount * funits_per_em, font.pixel_size)
+
+    font, default = _prepare_for_sfnt(font)
     # get the storable glyphs
     glyphnames = ('.notdef', *(_t.value for _t in font.get_tags()))
     glyphs = {
@@ -297,11 +303,6 @@ def _write_sfnt(font, outfile, funits_per_em):
     fb.setupOS2(**_convert_to_os_2_props(font, _to_funits))
     # for otb: version-3 table, defines no names
     fb.setupPost(keepGlyphNames=False)
-
-    # TODO: kern table (GPOS? only needed for CFF opentype)
-    # TODO: vmtx, big glyph metrics
-    # TODO: AAT version with bhed, bdat, bloc
-
     # OTB output
     # ensure we get an empty glyf table
     fb.font['glyf'].compile = lambda self: b''
