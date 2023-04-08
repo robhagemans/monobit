@@ -36,30 +36,32 @@ if ttLib:
     from .sfnt import load_sfnt, load_collection
 
     @savers.register(linked=load_sfnt)
-    def save_sfnt(fonts, outfile, funits_per_em:int=1024):
+    def save_sfnt(fonts, outfile, funits_per_em:int=1024, align:str='bit'):
         """
         Save font to an SFNT resource.
         Currently only saves bitmap-only SFNTs (OTB flavour)
 
         funits_per_em: number of design units (FUnits) per em-width (default 1024)
+        align: 'byte' or 'bit' (default) alignment of the bitmaps
         """
         font, *rest = fonts
         if rest:
             raise ValueError(
                 'Currently only supporting saving one font to SFNT.'
             )
-        tt_font = _create_sfnt(font, funits_per_em)
+        tt_font = _create_sfnt(font, funits_per_em, align)
         tt_font.save(outfile)
         return font
 
     @savers.register(linked=load_collection)
-    def save_collection(fonts, outfile, funits_per_em:int=1024):
+    def save_collection(fonts, outfile, funits_per_em:int=1024, align:str='bit'):
         """
         Save fonts to a TrueType/OpenType Collection file.
 
         funits_per_em: number of design units (FUnits) per em-width (default 1024)
+        align: 'byte' or 'bit' (default) alignment of the bitmaps
         """
-        _write_collection(fonts, outfile, funits_per_em)
+        _write_collection(fonts, outfile, funits_per_em, align)
         return fonts
 
 
@@ -246,13 +248,13 @@ def _create_empty_glyf_props(glyphs):
     return {_name: Glyf() for _name in glyphs}
 
 
-def _setup_ebdt_table(fb, font, glyphs):
+def _setup_ebdt_table(fb, font, glyphs, align):
     """Build `EBDT` bitmap data table."""
     ebdt = ttLib.newTable('EBDT')
     ebdt.version = 2.0
     # create one strike - multiple strikes of different size are possible
     ebdt.strikeData = [{
-        _name: convert_to_glyph(_g, fb)
+        _name: convert_to_glyph(_g, fb, align)
         for _name, _g in glyphs.items()
     }]
     fb.font['EBDT'] = ebdt
@@ -340,19 +342,21 @@ def _create_index_subtables(fb, sdata):
     return istables
 
 
-def convert_to_glyph(glyph, fb, align='bit'):
+def convert_to_glyph(glyph, fb, align):
     """Create fontTools bitmap glyph."""
     if 'vertical' in glyph.features:
         # big metrics
         if align == 'byte':
             format = 6
         else:
+            # bit aligned
             format = 7
     else:
         # small metrics
         if align == 'byte':
             format = 1
         else:
+            # bit aligned
             format = 2
     ebdt_bitmap = ebdt_bitmap_classes[format]
     bmga = ebdt_bitmap(data=b'', ttFont=fb.font)
@@ -418,7 +422,7 @@ def _prepare_for_sfnt(font):
     return font, default, features
 
 
-def _create_sfnt(font, funits_per_em):
+def _create_sfnt(font, funits_per_em, align):
     """Convert to a fontTools TTFont object."""
     # converter from pixels to design units
     # note that x and y ppem are equal - if not, fontforge rejects the bitmap
@@ -438,7 +442,7 @@ def _create_sfnt(font, funits_per_em):
     fb.setupGlyphOrder(glyphnames)
     fb.setupCharacterMap(_convert_to_cmap_props(glyphs))
     fb.setupGlyf(_create_empty_glyf_props(glyphs))
-    _setup_ebdt_table(fb, font, glyphs)
+    _setup_ebdt_table(fb, font, glyphs, align)
     _setup_eblc_table(fb, font)
     fb.setupHorizontalMetrics(_convert_to_hmtx_props(glyphs, _to_funits))
     fb.setupHorizontalHeader(**_convert_to_hhea_props(font, _to_funits))
@@ -458,8 +462,11 @@ def _create_sfnt(font, funits_per_em):
     fb.font['loca'].compile = lambda self: bytes(len(glyphnames)*2+2)
     return fb.font
 
-def _write_collection(fonts, outfile, funits_per_em):
+def _write_collection(fonts, outfile, funits_per_em, align):
     """Convert to TrueType collection and write out."""
     ttc = TTCollection()
-    ttc.fonts = tuple(_create_sfnt(_font, funits_per_em) for _font in fonts)
+    ttc.fonts = tuple(
+        _create_sfnt(_font, funits_per_em, align)
+        for _font in fonts
+    )
     ttc.save(outfile)
