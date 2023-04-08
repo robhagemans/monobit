@@ -261,6 +261,25 @@ def _setup_eblc_table(fb, font):
         eblc.strikes.append(strike)
     fb.font['EBLC'] = eblc
 
+def _create_sbit_line_metrics(ascender=0, descender=0, widthMax=0):
+    """Create SbitLineMetrics object."""
+    sblm = SbitLineMetrics()
+    sblm.ascender = ascender
+    sblm.descender = descender
+    sblm.widthMax = widthMax
+    # defaults for caret metrics
+    sblm.caretSlopeNumerator = 0
+    sblm.caretSlopeDenominator = 1
+    sblm.caretOffset = 0
+    # shld be minimum of horibearingx. pixels? funits?
+    sblm.minOriginSB = 0
+    sblm.minAdvanceSB = 0
+    sblm.maxBeforeBL = 0
+    sblm.minAfterBL = 0
+    sblm.pad1 = 0
+    sblm.pad2 = 0
+    return sblm
+
 
 def _create_bitmap_size_table(font):
     """Create the BitmapSize record."""
@@ -274,23 +293,19 @@ def _create_bitmap_size_table(font):
     bst.ppemX = font.pixel_size
     bst.ppemY = font.pixel_size
     # build horizontal line metrics
-    bst.hori = SbitLineMetrics()
-    bst.hori.ascender = font.ascent
-    bst.hori.descender = -font.descent
-    bst.hori.widthMax = font.max_width
-    # defaults for caret metrics
-    bst.hori.caretSlopeNumerator = 0
-    bst.hori.caretSlopeDenominator = 1
-    bst.hori.caretOffset = 0
-    # shld be minimum of horibearingx. pixels? funits?
-    bst.hori.minOriginSB = 0
-    bst.hori.minAdvanceSB = 0
-    bst.hori.maxBeforeBL = 0
-    bst.hori.minAfterBL = 0
-    bst.hori.pad1 = 0
-    bst.hori.pad2 = 0
-    # ignore vertical metrics for now
-    bst.vert = bst.hori
+    bst.hori = _create_sbit_line_metrics(
+        ascender=font.ascent,
+        descender=-font.descent,
+        widthMax=font.max_width,
+    )
+    if 'vertical' in font.get_features():
+        bst.vert = _create_sbit_line_metrics(
+            ascender=font.right_extent,
+            descender=-font.left_extent,
+            widthMax=max((_g.advance_height for _g in font.glyphs), default=0),
+        )
+    else:
+        bst.vert = _create_sbit_line_metrics()
     return bst
 
 
