@@ -267,10 +267,16 @@ def _write_sfnt(font, outfile, funits_per_em):
     # get char labels if we don't have them
     # label with unicode and Adobe glyph names
     font = font.label()
+    # warn we're dropping glyphs without char labels as not-storable
+    dropped = tuple(_g for _g in font.glyphs if not _g.char)
+    if dropped:
+        logging.warning(
+            '%d glyphs could not be stored: could not label with unicode character', len(dropped)
+        )
+        logging.debug('Dropped glyphs: %s', tuple(_g.get_labels()[0] for _g in dropped if _g.get_labels()))
     default = font.get_default_glyph()
     font = font.label(codepoint_from='unicode', overwrite=True)
     font = font.label(tag_from='adobe')
-    # TODO: drop glyphs without char labels as not-storable
     # cut back to glyph bounding boxes
     font = font.reduce()
     # get the storable glyphs
