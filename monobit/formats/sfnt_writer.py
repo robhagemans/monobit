@@ -19,6 +19,7 @@ else:
         Strike, BitmapSizeTable, eblc_index_sub_table_3, SbitLineMetrics
     )
     from fontTools.ttLib.tables._g_l_y_f import Glyph as Glyf
+    from fontTools.ttLib.tables._k_e_r_n import KernTable_format_0
 
 from ..glyph import Glyph
 from ..binary import ceildiv
@@ -170,6 +171,41 @@ def _convert_to_cmap_props(glyphs):
     }
 
 
+def _convert_to_kern_props(font, glyphs, _to_funits):
+    """Convert kerning values to `kern` table."""
+    kern_table = {}
+    for tag, glyph in glyphs.items():
+        for label, value in glyph.right_kerning.items():
+            try:
+                rtag, *_ = font.get_glyph(label).tags
+            except (KeyError, ValueError) as e:
+                continue
+            kern_table[(tag, rtag.value)] = _to_funits(value)
+        for label, value in glyph.left_kerning.items():
+            try:
+                ltag, *_ = font.get_glyph(label).tags
+            except (KeyError, ValueError) as e:
+                continue
+            kern_table[(ltag.value, tag)] = _to_funits(value)
+    return dict(
+        # version 1.0 means apple==True
+        version=0,
+        # coverage=1 means horizontal kerning
+        kernTables=(dict(coverage=1, kernTable=kern_table),),
+    )
+
+def _setup_kern_table(fb, version=0, kernTables=()):
+    """Build `kern` table."""
+    kern_table = ttLib.newTable('kern')
+    kern_table.version = version
+    kern_table.kernTables = []
+    for subdict in kernTables:
+        subtable = KernTable_format_0(apple=version==1.0)
+        subtable.__dict__.update(subdict)
+        kern_table.kernTables.append(subtable)
+    fb.font['kern'] = kern_table
+
+
 def _create_empty_glyf_props(glyphs):
     """Create `glyf` table withh empty glyphs."""
     # fontBuilder needs all these defined, even if empty
@@ -261,7 +297,7 @@ def _prepare_for_sfnt(font):
     """Prepare monobit font for storing in sfnt."""
     # get char labels if we don't have them
     # label with unicode and Adobe glyph names
-    font = font.label()
+    font = font.label(match_whitespace=False, match_graphical=False)
     # warn we're dropping glyphs without char labels as not-storable
     dropped = tuple(_g for _g in font.glyphs if not _g.char)
     if dropped:
@@ -270,7 +306,10 @@ def _prepare_for_sfnt(font):
         )
         logging.debug('Dropped glyphs: %s', tuple(_g.get_labels()[0] for _g in dropped if _g.get_labels()))
     default = font.get_default_glyph()
-    font = font.label(codepoint_from='unicode', overwrite=True)
+    font = font.label(
+        codepoint_from='unicode', overwrite=True,
+        match_whitespace=False, match_graphical=False
+    )
     font = font.label(tag_from='adobe')
     # cut back to glyph bounding boxes
     font = font.reduce()
@@ -303,6 +342,7 @@ def _write_sfnt(font, outfile, funits_per_em):
     fb.setupOS2(**_convert_to_os_2_props(font, _to_funits))
     # for otb: version-3 table, defines no names
     fb.setupPost(keepGlyphNames=False)
+    _setup_kern_table(fb, **_convert_to_kern_props(font, glyphs, _to_funits))
     # OTB output
     # ensure we get an empty glyf table
     fb.font['glyf'].compile = lambda self: b''

@@ -509,13 +509,13 @@ def _convert_vmtx_metrics(vmtx, glyph_name, vert_fu_p_pix, height):
 def _convert_kern_metrics(glyphs, kern, hori_fu_p_pix):
     """Convert kerning values form kern table."""
     if kern:
-        if kern.version != 0:
-            logging.warning(f'`kern` table version {kern.version} not supported.')
-            return {}
         glyph_props = {}
         for table in kern.kernTables:
+            if not hasattr(table, 'coverage') or not hasattr(table, 'kernTable'):
+                logging.warning('Kerning subtable format not supported')
+                continue
             if table.coverage != 1:
-                logging.warning('Vertical or cross-stream kerning not supported.')
+                logging.warning('Vertical or cross-stream kerning not supported')
                 continue
             for pair, kern_value in table.kernTable.items():
                 left, right = pair
