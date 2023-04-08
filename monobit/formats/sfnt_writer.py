@@ -154,6 +154,15 @@ def _convert_to_hhea_props(font, _to_funits):
         # other values are compiled by fontTools
     )
 
+def _convert_to_vhea_props(font, _to_funits):
+    """Convert font properties to `vhea` table."""
+    return dict(
+        ascent=_to_funits(font.right_extent),
+        descent=-_to_funits(font.left_extent),
+        lineGap=_to_funits(font.line_width - font.right_extent - font.left_extent),
+        # other values are compiled by fontTools
+    )
+
 
 def _convert_to_hmtx_props(glyphs, _to_funits):
     """Convert glyph properties to `hmtx` table."""
@@ -161,6 +170,14 @@ def _convert_to_hmtx_props(glyphs, _to_funits):
         _name: (_to_funits(_g.advance_width), _to_funits(_g.left_bearing))
         for _name, _g in glyphs.items()
     }
+
+def _convert_to_vmtx_props(glyphs, _to_funits):
+    """Convert glyph properties to `vmtx` table."""
+    return {
+        _name: (_to_funits(_g.advance_height), _to_funits(_g.top_bearing))
+        for _name, _g in glyphs.items()
+    }
+
 
 
 def _convert_to_cmap_props(glyphs):
@@ -339,6 +356,9 @@ def _write_sfnt(font, outfile, funits_per_em):
     _setup_bitmap_tables(fb, font, glyphs)
     fb.setupHorizontalMetrics(_convert_to_hmtx_props(glyphs, _to_funits))
     fb.setupHorizontalHeader(**_convert_to_hhea_props(font, _to_funits))
+    # todo: check for vertical metrics, omit if not present
+    fb.setupVerticalMetrics(_convert_to_vmtx_props(glyphs, _to_funits))
+    fb.setupVerticalHeader(**_convert_to_vhea_props(font, _to_funits))
     fb.setupNameTable(_convert_to_name_props(font))
     fb.setupOS2(**_convert_to_os_2_props(font, _to_funits))
     # for otb: version-3 table, defines no names
