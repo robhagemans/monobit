@@ -36,32 +36,40 @@ if ttLib:
     from .sfnt import load_sfnt, load_collection
 
     @savers.register(linked=load_sfnt)
-    def save_sfnt(fonts, outfile, funits_per_em:int=1024, align:str='bit'):
+    def save_sfnt(
+            fonts, outfile,
+            funits_per_em:int=1024, align:str='bit', version:str='otb',
+        ):
         """
         Save font to an SFNT resource.
         Currently only saves bitmap-only SFNTs (OTB flavour)
 
         funits_per_em: number of design units (FUnits) per em-width (default 1024)
         align: 'byte' or 'bit' (default) alignment of the bitmaps
+        version: file type flavour, 'otb' (default) or 'apple'
         """
         font, *rest = fonts
         if rest:
             raise ValueError(
                 'Currently only supporting saving one font to SFNT.'
             )
-        tt_font = _create_sfnt(font, funits_per_em, align)
+        tt_font = _create_sfnt(font, funits_per_em, align, flavour=version.lower())
         tt_font.save(outfile)
         return font
 
     @savers.register(linked=load_collection)
-    def save_collection(fonts, outfile, funits_per_em:int=1024, align:str='bit'):
+    def save_collection(
+            fonts, outfile,
+            funits_per_em:int=1024, align:str='bit', version:str='otb',
+        ):
         """
         Save fonts to a TrueType/OpenType Collection file.
 
         funits_per_em: number of design units (FUnits) per em-width (default 1024)
         align: 'byte' or 'bit' (default) alignment of the bitmaps
+        version: file type flavour, 'otb' (default) or 'apple'
         """
-        _write_collection(fonts, outfile, funits_per_em, align)
+        _write_collection(fonts, outfile, funits_per_em, align, flavour=version.lower())
         return fonts
 
 
@@ -248,24 +256,34 @@ def _create_empty_glyf_props(glyphs):
     return {_name: Glyf() for _name in glyphs}
 
 
-def _setup_ebdt_table(fb, font, glyphs, align):
+def _setup_ebdt_table(fb, font, glyphs, align, flavour):
     """Build `EBDT` bitmap data table."""
-    ebdt = ttLib.newTable('EBDT')
+    if flavour == 'apple':
+        tag = 'bdat'
+    else:
+        tag = 'EBDT'
+    ebdt = ttLib.newTable(tag)
     ebdt.version = 2.0
     # create one strike - multiple strikes of different size are possible
     ebdt.strikeData = [{
         _name: convert_to_glyph(_g, fb, align)
         for _name, _g in glyphs.items()
     }]
-    fb.font['EBDT'] = ebdt
+    fb.font[tag] = ebdt
 
 
-def _setup_eblc_table(fb, font):
+def _setup_eblc_table(fb, font, flavour):
     """Build `EBLC` bitmap locations table."""
-    eblc = ttLib.newTable('EBLC')
+    if flavour == 'apple':
+        tag = 'bloc'
+        ebdt = 'bdat'
+    else:
+        tag = 'EBLC'
+        ebdt = 'EBDT'
+    eblc = ttLib.newTable(tag)
     eblc.version = 2.0
     eblc.strikes = []
-    for sdata in fb.font['EBDT'].strikeData:
+    for sdata in fb.font[ebdt].strikeData:
         # create strike
         strike = Strike()
         strike.bitmapSizeTable = _create_bitmap_size_table(font)
@@ -274,7 +292,7 @@ def _setup_eblc_table(fb, font):
         # bitmap size table is not updated by fontTools, do it explicitly
         strike.bitmapSizeTable.numberOfIndexSubTables = len(strike.indexSubTables)
         eblc.strikes.append(strike)
-    fb.font['EBLC'] = eblc
+    fb.font[tag] = eblc
 
 def _create_sbit_line_metrics(ascender=0, descender=0, widthMax=0):
     """Create SbitLineMetrics object."""
@@ -422,7 +440,7 @@ def _prepare_for_sfnt(font):
     return font, default, features
 
 
-def _create_sfnt(font, funits_per_em, align):
+def _create_sfnt(font, funits_per_em, align, flavour):
     """Convert to a fontTools TTFont object."""
     # converter from pixels to design units
     # note that x and y ppem are equal - if not, fontforge rejects the bitmap
@@ -442,31 +460,40 @@ def _create_sfnt(font, funits_per_em, align):
     fb.setupGlyphOrder(glyphnames)
     fb.setupCharacterMap(_convert_to_cmap_props(glyphs))
     fb.setupGlyf(_create_empty_glyf_props(glyphs))
-    _setup_ebdt_table(fb, font, glyphs, align)
-    _setup_eblc_table(fb, font)
-    fb.setupHorizontalMetrics(_convert_to_hmtx_props(glyphs, _to_funits))
-    fb.setupHorizontalHeader(**_convert_to_hhea_props(font, _to_funits))
-    # check for vertical metrics, include `vhea` and `vmtx` if present
-    if 'vertical' in features:
-        fb.setupVerticalMetrics(_convert_to_vmtx_props(glyphs, _to_funits))
-        fb.setupVerticalHeader(**_convert_to_vhea_props(font, _to_funits))
+    _setup_ebdt_table(fb, font, glyphs, align, flavour)
+    _setup_eblc_table(fb, font, flavour)
+    if flavour != 'apple':
+        fb.setupHorizontalMetrics(_convert_to_hmtx_props(glyphs, _to_funits))
+        fb.setupHorizontalHeader(**_convert_to_hhea_props(font, _to_funits))
+        # check for vertical metrics, include `vhea` and `vmtx` if present
+        if 'vertical' in features:
+            fb.setupVerticalMetrics(_convert_to_vmtx_props(glyphs, _to_funits))
+            fb.setupVerticalHeader(**_convert_to_vhea_props(font, _to_funits))
     fb.setupNameTable(_convert_to_name_props(font))
-    fb.setupOS2(**_convert_to_os_2_props(font, _to_funits))
+    if flavour != 'apple':
+        fb.setupOS2(**_convert_to_os_2_props(font, _to_funits))
     # for otb: version-3 table, defines no names
     fb.setupPost(keepGlyphNames=False)
     _setup_kern_table(fb, **_convert_to_kern_props(font, glyphs, _to_funits))
-    # OTB output
-    # ensure we get an empty glyf table
-    fb.font['glyf'].compile = lambda self: b''
-    # loca table with null for every glyph
-    fb.font['loca'].compile = lambda self: bytes(len(glyphnames)*2+2)
+    if flavour == 'otb':
+        # OTB output
+        # ensure we get an empty glyf table
+        fb.font['glyf'].compile = lambda self: b''
+        # loca table with null for every glyph
+        fb.font['loca'].compile = lambda self: bytes(len(glyphnames)*2+2)
+    elif flavour == 'apple':
+        fb.font['bhed'] = fb.font['head']
+        del fb.font['head']
+        del fb.font['glyf']
+        del fb.font['loca']
+        fb.font.recalcBBoxes = False
     return fb.font
 
-def _write_collection(fonts, outfile, funits_per_em, align):
+def _write_collection(fonts, outfile, funits_per_em, align, flavour):
     """Convert to TrueType collection and write out."""
     ttc = TTCollection()
     ttc.fonts = tuple(
-        _create_sfnt(_font, funits_per_em, align)
+        _create_sfnt(_font, funits_per_em, align, flavour)
         for _font in fonts
     )
     ttc.save(outfile)
