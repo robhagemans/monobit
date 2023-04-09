@@ -60,3 +60,69 @@ else:
 
     from fontTools.ttLib import newTable
     from fontTools.fontBuilder import FontBuilder
+
+
+    # `EBLC` builder
+
+    from fontTools.ttLib.tables.E_B_L_C_ import (
+        Strike, BitmapSizeTable, eblc_index_sub_table_3, SbitLineMetrics
+    )
+
+    def _create_index_subtables(fb, sdata):
+        """Create the IndexSubTables"""
+        imageformats = {_n: _g.getFormat() for _n, _g in sdata.items()}
+        istables = []
+        last_format = None
+        for name, format in imageformats.items():
+            if format !=  last_format:
+                # create index sub table
+                ist = eblc_index_sub_table_3(data=b'', ttFont=fb.font)
+                ist.indexFormat = 3
+                ist.imageFormat = format
+                ist.names = []
+                istables.append(ist)
+            ist.names.append(name)
+            last_format = format
+        return istables
+
+
+    def _create_sbit_line_metrics(ascender=0, descender=0, widthMax=0):
+        """Create SbitLineMetrics object."""
+        sblm = SbitLineMetrics()
+        sblm.ascender = ascender
+        sblm.descender = descender
+        sblm.widthMax = widthMax
+        # defaults for caret metrics
+        sblm.caretSlopeNumerator = 0
+        sblm.caretSlopeDenominator = 1
+        sblm.caretOffset = 0
+        # shld be minimum of horibearingx. pixels? funits?
+        sblm.minOriginSB = 0
+        sblm.minAdvanceSB = 0
+        sblm.maxBeforeBL = 0
+        sblm.minAfterBL = 0
+        sblm.pad1 = 0
+        sblm.pad2 = 0
+        return sblm
+
+
+    # `kern` builder
+
+    from fontTools.ttLib.tables._k_e_r_n import KernTable_format_0
+
+    def _setup_kern_table(fb, version=0, kernTables=()):
+        """Build `kern` table."""
+        kern_table = newTable('kern')
+        kern_table.version = version
+        kern_table.kernTables = []
+        for subdict in kernTables:
+            subtable = KernTable_format_0(apple=version==1.0)
+            subtable.__dict__.update(subdict)
+            kern_table.kernTables.append(subtable)
+        if any(_k.kernTable for _k in kern_table.kernTables):
+            fb.font['kern'] = kern_table
+
+
+    # `glyf`
+
+    from fontTools.ttLib.tables._g_l_y_f import Glyph

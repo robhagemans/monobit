@@ -11,15 +11,19 @@ from . import fonttools
 from .fonttools import check_fonttools
 
 if fonttools.loaded:
+    from .fonttools import (
+        _setup_kern_table,
+        _create_sbit_line_metrics,
+        _create_index_subtables
+    )
+
     from fontTools.ttLib.tables.E_B_D_T_ import ebdt_bitmap_classes
     from fontTools.ttLib.tables.BitmapGlyphMetrics import (
         SmallGlyphMetrics, BigGlyphMetrics
     )
     from fontTools.ttLib.tables.E_B_L_C_ import (
-        Strike, BitmapSizeTable, eblc_index_sub_table_3, SbitLineMetrics
+        Strike, BitmapSizeTable
     )
-    from fontTools.ttLib.tables._g_l_y_f import Glyph as Glyf
-    from fontTools.ttLib.tables._k_e_r_n import KernTable_format_0
 
 from ...glyph import Glyph
 from ...binary import ceildiv
@@ -204,7 +208,6 @@ def _convert_to_vmtx_props(glyphs, _to_funits):
     }
 
 
-
 def _convert_to_cmap_props(glyphs):
     """Convert glyph properties to `cmap` table."""
     return {
@@ -236,27 +239,15 @@ def _convert_to_kern_props(font, glyphs, _to_funits):
         kernTables=(dict(coverage=1, kernTable=kern_table),),
     )
 
-def _setup_kern_table(fb, version=0, kernTables=()):
-    """Build `kern` table."""
-    kern_table = fonttools.newTable('kern')
-    kern_table.version = version
-    kern_table.kernTables = []
-    for subdict in kernTables:
-        subtable = KernTable_format_0(apple=version==1.0)
-        subtable.__dict__.update(subdict)
-        kern_table.kernTables.append(subtable)
-    if any(_k.kernTable for _k in kern_table.kernTables):
-        fb.font['kern'] = kern_table
-
 
 def _create_empty_glyf_props(glyphs):
-    """Create `glyf` table withh empty glyphs."""
+    """Create `glyf` table with empty glyphs."""
     # fontBuilder needs all these defined, even if empty
     # we'll remove it at the end as OTB files should not have any
-    return {_name: Glyf() for _name in glyphs}
+    return {_name: fonttools.Glyph() for _name in glyphs}
 
 
-def _setup_ebdt_table(fb, font, glyphs, align, flavour):
+def _setup_ebdt_table(fb, glyphs, align, flavour):
     """Build `EBDT` bitmap data table."""
     if flavour == 'apple':
         tag = 'bdat'
@@ -270,94 +261,6 @@ def _setup_ebdt_table(fb, font, glyphs, align, flavour):
         for _name, _g in glyphs.items()
     }]
     fb.font[tag] = ebdt
-
-
-def _setup_eblc_table(fb, font, flavour):
-    """Build `EBLC` bitmap locations table."""
-    if flavour == 'apple':
-        tag = 'bloc'
-        ebdt = 'bdat'
-    else:
-        tag = 'EBLC'
-        ebdt = 'EBDT'
-    eblc = fonttools.newTable(tag)
-    eblc.version = 2.0
-    eblc.strikes = []
-    for sdata in fb.font[ebdt].strikeData:
-        # create strike
-        strike = Strike()
-        strike.bitmapSizeTable = _create_bitmap_size_table(font)
-        strike.indexSubTables = _create_index_subtables(fb, sdata)
-        # eblc strike locations are filled out by ebdt compiler
-        # bitmap size table is not updated by fontTools, do it explicitly
-        strike.bitmapSizeTable.numberOfIndexSubTables = len(strike.indexSubTables)
-        eblc.strikes.append(strike)
-    fb.font[tag] = eblc
-
-def _create_sbit_line_metrics(ascender=0, descender=0, widthMax=0):
-    """Create SbitLineMetrics object."""
-    sblm = SbitLineMetrics()
-    sblm.ascender = ascender
-    sblm.descender = descender
-    sblm.widthMax = widthMax
-    # defaults for caret metrics
-    sblm.caretSlopeNumerator = 0
-    sblm.caretSlopeDenominator = 1
-    sblm.caretOffset = 0
-    # shld be minimum of horibearingx. pixels? funits?
-    sblm.minOriginSB = 0
-    sblm.minAdvanceSB = 0
-    sblm.maxBeforeBL = 0
-    sblm.minAfterBL = 0
-    sblm.pad1 = 0
-    sblm.pad2 = 0
-    return sblm
-
-
-def _create_bitmap_size_table(font):
-    """Create the BitmapSize record."""
-    # this is not contructed by any compile() method as far as I can see
-    # > The line metrics are not used directly by the rasterizer, but are available to applications that want to parse the EBLC table.
-    bst = BitmapSizeTable()
-    bst.colorRef = 0
-    bst.flags = 0x01  # hori | 0x02 for vert
-    bst.bitDepth = 1
-    # ppem need to be the same both ways for fontforge
-    bst.ppemX = font.pixel_size
-    bst.ppemY = font.pixel_size
-    # build horizontal line metrics
-    bst.hori = _create_sbit_line_metrics(
-        ascender=font.ascent,
-        descender=-font.descent,
-        widthMax=font.max_width,
-    )
-    if 'vertical' in font.get_features():
-        bst.vert = _create_sbit_line_metrics(
-            ascender=font.right_extent,
-            descender=-font.left_extent,
-            widthMax=max((_g.advance_height for _g in font.glyphs), default=0),
-        )
-    else:
-        bst.vert = _create_sbit_line_metrics()
-    return bst
-
-
-def _create_index_subtables(fb, sdata):
-    """Create the IndexSubTables"""
-    imageformats = {_n: _g.getFormat() for _n, _g in sdata.items()}
-    istables = []
-    last_format = None
-    for name, format in imageformats.items():
-        if format !=  last_format:
-            # create index sub table
-            ist = eblc_index_sub_table_3(data=b'', ttFont=fb.font)
-            ist.indexFormat = 3
-            ist.imageFormat = format
-            ist.names = []
-            istables.append(ist)
-        ist.names.append(name)
-        last_format = format
-    return istables
 
 
 def convert_to_glyph(glyph, fb, align):
@@ -399,6 +302,57 @@ def convert_to_glyph(glyph, fb, align):
         bmga.metrics.vertAdvance = glyph.advance_height
     bmga.setRows(glyph.as_byterows())
     return bmga
+
+
+def _setup_eblc_table(fb, font, flavour):
+    """Build `EBLC` bitmap locations table."""
+    if flavour == 'apple':
+        tag = 'bloc'
+        ebdt = 'bdat'
+    else:
+        tag = 'EBLC'
+        ebdt = 'EBDT'
+    eblc = fonttools.newTable(tag)
+    eblc.version = 2.0
+    eblc.strikes = []
+    for sdata in fb.font[ebdt].strikeData:
+        # create strike
+        strike = Strike()
+        strike.bitmapSizeTable = _create_bitmap_size_table(font)
+        strike.indexSubTables = _create_index_subtables(fb, sdata)
+        # eblc strike locations are filled out by ebdt compiler
+        # bitmap size table is not updated by fontTools, do it explicitly
+        strike.bitmapSizeTable.numberOfIndexSubTables = len(strike.indexSubTables)
+        eblc.strikes.append(strike)
+    fb.font[tag] = eblc
+
+
+def _create_bitmap_size_table(font):
+    """Create the BitmapSize record."""
+    # this is not contructed by any compile() method as far as I can see
+    # > The line metrics are not used directly by the rasterizer, but are available to applications that want to parse the EBLC table.
+    bst = BitmapSizeTable()
+    bst.colorRef = 0
+    bst.flags = 0x01  # hori | 0x02 for vert
+    bst.bitDepth = 1
+    # ppem need to be the same both ways for fontforge
+    bst.ppemX = font.pixel_size
+    bst.ppemY = font.pixel_size
+    # build horizontal line metrics
+    bst.hori = _create_sbit_line_metrics(
+        ascender=font.ascent,
+        descender=-font.descent,
+        widthMax=font.max_width,
+    )
+    if 'vertical' in font.get_features():
+        bst.vert = _create_sbit_line_metrics(
+            ascender=font.right_extent,
+            descender=-font.left_extent,
+            widthMax=max((_g.advance_height for _g in font.glyphs), default=0),
+        )
+    else:
+        bst.vert = _create_sbit_line_metrics()
+    return bst
 
 
 def _prepare_for_sfnt(font):
@@ -445,7 +399,7 @@ def _create_sfnt(font, funits_per_em, align, flavour):
     fb.setupGlyphOrder(glyphnames)
     fb.setupCharacterMap(_convert_to_cmap_props(glyphs))
     fb.setupGlyf(_create_empty_glyf_props(glyphs))
-    _setup_ebdt_table(fb, font, glyphs, align, flavour)
+    _setup_ebdt_table(fb, glyphs, align, flavour)
     _setup_eblc_table(fb, font, flavour)
     if flavour != 'apple':
         fb.setupHorizontalMetrics(_convert_to_hmtx_props(glyphs, _to_funits))
