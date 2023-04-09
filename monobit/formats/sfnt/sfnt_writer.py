@@ -21,6 +21,7 @@ from .fonttools import check_fonttools
 if fonttools.loaded:
     from .fonttools import (
         _setup_kern_table,
+        _setup_ebsc_table,
         _create_sbit_line_metrics,
         _create_index_subtables,
         _create_bitmap_size_table,
@@ -69,6 +70,9 @@ if fonttools.loaded:
 else:
     save_sfnt = check_fonttools
     save_collection = check_fonttools
+
+# sizes defined in EBSC table (following fontforge)
+EBSC_SIZES = (*range(8, 26), 30, 32, 33, 40)
 
 
 def _label_to_utf16(font, label, default):
@@ -391,6 +395,8 @@ def _create_sfnt(font, funits_per_em, align, flavour):
     fb.setupGlyf(_create_empty_glyf_props(glyphs))
     _setup_ebdt_table(fb, glyphs, align, flavour)
     _setup_eblc_table(fb, font, flavour)
+    if flavour == 'ms':
+        _setup_ebsc_table(fb, {font.pixel_size: EBSC_SIZES})
     if flavour != 'apple':
         fb.setupHorizontalMetrics(_convert_to_hmtx_props(glyphs, _to_funits))
         fb.setupHorizontalHeader(**_convert_to_hhea_props(font, _to_funits))
@@ -404,18 +410,19 @@ def _create_sfnt(font, funits_per_em, align, flavour):
     # for otb: version-3 table, defines no names
     fb.setupPost(keepGlyphNames=False)
     _setup_kern_table(fb, **_convert_to_kern_props(font, glyphs, _to_funits))
-    if flavour == 'otb':
+    fb.font.recalcBBoxes = False
+    if flavour in ('otb', 'ms'):
         # OTB output
         # ensure we get an empty glyf table
         fb.font['glyf'].compile = lambda self: b''
         # loca table with null for every glyph
         fb.font['loca'].compile = lambda self: bytes(len(glyphnames)*2+2)
+        # del `loca` in ms file? fontforge does.
     elif flavour == 'apple':
         fb.font['bhed'] = fb.font['head']
         del fb.font['head']
         del fb.font['glyf']
         del fb.font['loca']
-        fb.font.recalcBBoxes = False
     return fb.font
 
 def _write_collection(fonts, outfile, funits_per_em, align, flavour):

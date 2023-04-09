@@ -163,3 +163,32 @@ else:
     from fontTools.ttLib.tables.BitmapGlyphMetrics import (
         SmallGlyphMetrics, BigGlyphMetrics
     )
+
+    # `EBSC`
+
+    from .E_B_S_C_ import BitmapScaleTable
+
+    def _setup_ebsc_table(fb, scaler_mapping):
+        # EBSC should only be used with EBDT, EBLC tables
+        # not the apple ones
+        fb.font['EBSC'] = ebsc = newTable('EBSC')
+        ebsc.version = 2.0
+        for to_size, from_sizes in scaler_mapping.items():
+            for strike in fb.font['EBLC'].strikes:
+                if strike.bitmapSizeTable.ppemY == to_size:
+                    break
+            else:
+                # no strike with to_size found, ignore
+                continue
+            ebsc.bitmapScaleTables = [
+                BitmapScaleTable(
+                    hori=strike.bitmapSizeTable.hori,
+                    vert=strike.bitmapSizeTable.vert,
+                    ppemX=size,
+                    ppemY=size,
+                    substitutePpemX=to_size,
+                    substitutePpemY=to_size,
+                )
+                for size in from_sizes
+            ]
+        ebsc.numSizes = len(ebsc.bitmapScaleTables)

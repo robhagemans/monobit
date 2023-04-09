@@ -29,9 +29,6 @@ bitmapScaleTableFormatPart2 = """
 class table_E_B_S_C_(DefaultTable.DefaultTable):
 
     def decompile(self, data, ttFont):
-
-        # # Save the original data because offsets are from the start of the table.
-        # origData = data
         i = 0
 
         dummy = sstruct.unpack(ebscHeaderFormat, data[:8], self)
@@ -101,6 +98,9 @@ class table_E_B_S_C_(DefaultTable.DefaultTable):
 
 
 class BitmapScaleTable(object):
+
+    def __init__(self, **kwargs):
+        vars(self).update(kwargs)
 
     # Returns all the simple metric names that bitmap size table
     # cares about in terms of XML creation.
