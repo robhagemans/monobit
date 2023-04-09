@@ -39,9 +39,6 @@ class StrikeFormatError(ResourceFormatError):
     """Unsupported parameters in bitmap strike."""
 
 
-# must be importable by mac module
-load_sfnt = None
-
 # resource header
 SFNT_MAGIC = b'\0\1\0\0'
 
@@ -118,13 +115,16 @@ if ttLib:
 ###############################################################################
 # fontTools extensions
 
+def _no_fonttools():
+    raise FileFormatError(
+        'Parsing `sfnt` resources requires package `fontTools`, '
+        'which is not available.'
+    )
+
 def _init_fonttools():
     """Register extension classes for fontTools."""
     if not ttLib:
-        raise FileFormatError(
-            'Parsing `sfnt` resources requires module `fontTools`, '
-            'which is not available.'
-        )
+        _no_fonttools()
     ttLib.registerCustomTableClass('bhed', 'monobit.formats.sfnt.tables._b_h_e_d')
     ttLib.registerCustomTableClass('bloc', 'monobit.formats.sfnt.tables._b_l_o_c')
     ttLib.registerCustomTableClass('bdat', 'monobit.formats.sfnt.tables._b_d_a_t')

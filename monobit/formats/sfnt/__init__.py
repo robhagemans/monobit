@@ -5,5 +5,13 @@ monobit.formats.sfnt - TrueType/OpenType and related formats
 licence: https://opensource.org/licenses/MIT
 """
 
-from .sfnt import load_sfnt, load_collection, MAC_ENCODING, mac_style_name, SFNT_MAGIC
-from .sfnt_writer import save_sfnt, save_collection
+try:
+    from .sfnt import load_sfnt, load_collection
+    from .sfnt_writer import save_sfnt, save_collection
+except ImportError:
+    from .sfnt import _no_fonttools
+    # load_sfnt must be importable by mac, win modules
+    def load_sfnt(*args, **kwargs):
+        _no_fonttools()
+
+from .sfnt import MAC_ENCODING, mac_style_name, SFNT_MAGIC
