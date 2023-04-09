@@ -1,3 +1,6 @@
+from importlib.resources import files
+from pathlib import Path
+
 try:
     from fontTools import ttLib
 except ImportError:
@@ -19,7 +22,9 @@ def _init_fonttools():
 
 
 if ttLib:
-    ttLib.registerCustomTableClass('bhed', 'monobit.formats.sfnt.tables._b_h_e_d')
-    ttLib.registerCustomTableClass('bloc', 'monobit.formats.sfnt.tables._b_l_o_c')
-    ttLib.registerCustomTableClass('bdat', 'monobit.formats.sfnt.tables._b_d_a_t')
-    ttLib.registerCustomTableClass('EBSC', 'monobit.formats.sfnt.tables.E_B_S_C_')
+    for file in files(__name__).iterdir():
+        name = Path(file.name).stem
+        if name.startswith('__'):
+            continue
+        tag = name.replace('_', '')
+        ttLib.registerCustomTableClass(tag, f'{__package__}.{name}')
