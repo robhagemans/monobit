@@ -139,6 +139,8 @@ def _init_fonttools():
     from fontTools.ttLib.tables.E_B_L_C_ import table_E_B_L_C_
     from fontTools.ttLib.tables.E_B_D_T_ import table_E_B_D_T_
 
+    from .tables.E_B_S_C_ import table_E_B_S_C_
+
     class table__b_h_e_d(table__h_e_a_d): pass
     class table__b_l_o_c(table_E_B_L_C_): pass
 
@@ -148,6 +150,7 @@ def _init_fonttools():
     ttLib.registerCustomTableClass('bhed', 'monobit.formats.sfnt.sfnt')
     ttLib.registerCustomTableClass('bloc', 'monobit.formats.sfnt.sfnt')
     ttLib.registerCustomTableClass('bdat', 'monobit.formats.sfnt.sfnt')
+    ttLib.registerCustomTableClass('EBSC', 'monobit.formats.sfnt.tables.E_B_S_C_')
 
 
 ###############################################################################
@@ -162,6 +165,7 @@ _TAGS = (
     'head', 'bhed',
     'EBLC', 'bloc',
     'EBDT', 'bdat',
+    'EBSC',
     # sbix: currently just warn we don't parse it
     'sbix',
     # metrics
