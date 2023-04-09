@@ -405,21 +405,6 @@ def convert_to_glyph(glyph, fb, align):
     return bmga
 
 
-# monkey patch to fix a bug in fontTools
-def _reverseBytes(data):
-    if len(data) != 1:
-        # this is where the bug was
-        return E_B_D_T_.bytesjoin(map(_reverseBytes, map(chr, data)))
-    byte = E_B_D_T_.byteord(data)
-    result = 0
-    for i in range(8):
-        result = result << 1
-        result |= byte & 1
-        byte = byte >> 1
-    return E_B_D_T_.bytechr(result)
-E_B_D_T_._reverseBytes = _reverseBytes
-
-
 def _prepare_for_sfnt(font):
     """Prepare monobit font for storing in sfnt."""
     # get char labels if we don't have them
