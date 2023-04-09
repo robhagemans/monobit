@@ -29,7 +29,7 @@ from ...glyph import Glyph
 from ...binary import ceildiv
 from ...storage import loaders, savers
 from ...properties import reverse_dict
-from .sfnt import _WEIGHT_MAP, _SETWIDTH_MAP, _init_fonttools
+from .sfnt import _WEIGHT_MAP, _SETWIDTH_MAP, check_fonttools
 from ...labels import Tag
 
 if ttLib:
@@ -71,6 +71,10 @@ if ttLib:
         """
         _write_collection(fonts, outfile, funits_per_em, align, flavour=version.lower())
         return fonts
+
+else:
+    save_sfnt = check_fonttools
+    save_collection = check_fonttools
 
 
 def _label_to_utf16(font, label, default):
@@ -447,7 +451,7 @@ def _create_sfnt(font, funits_per_em, align, flavour):
     def _to_funits(pixel_amount):
         return ceildiv(pixel_amount * funits_per_em, font.pixel_size)
 
-    _init_fonttools()
+    check_fonttools()
     font, default, features = _prepare_for_sfnt(font)
     # get the storable glyphs
     glyphnames = ('.notdef', *(_t.value for _t in font.get_tags()))
@@ -491,6 +495,7 @@ def _create_sfnt(font, funits_per_em, align, flavour):
 
 def _write_collection(fonts, outfile, funits_per_em, align, flavour):
     """Convert to TrueType collection and write out."""
+    check_fonttools()
     ttc = TTCollection()
     ttc.fonts = tuple(
         _create_sfnt(_font, funits_per_em, align, flavour)

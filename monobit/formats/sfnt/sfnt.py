@@ -19,7 +19,7 @@ else:
     from fontTools.ttLib import TTLibError
     from fontTools.ttLib.ttFont import TTFont
     from fontTools.ttLib.ttCollection import TTCollection
-from .fonttools import _init_fonttools, _no_fonttools
+from .fonttools import check_fonttools
 
 from ...properties import Props
 from ...font import Font
@@ -112,7 +112,10 @@ if ttLib:
             fonts.extend(_convert_sfnt(_sfnt))
         return fonts
 
-
+else:
+    # ensure names are importable; sfnt used by mac, win modules
+    load_sfnt = check_fonttools
+    load_collection = check_fonttools
 
 ###############################################################################
 # sfnt resource reader
@@ -161,7 +164,7 @@ def _get_tags(hmtx, vmtx, hhea, vhea, os_2):
 def _read_sfnt(instream, tags):
     """Read an SFNT resource into data structure."""
     # let fonttools parse the SFNT
-    _init_fonttools()
+    check_fonttools()
     try:
         ttf = TTFont(instream)
     except (TTLibError, AssertionError) as e:
@@ -171,7 +174,7 @@ def _read_sfnt(instream, tags):
 def _read_collection(instream, tags):
     """Read a collection into data structures."""
     # let fonttools parse the SFNT
-    _init_fonttools()
+    check_fonttools()
     try:
         ttcf = TTCollection(instream)
     except (TTLibError, AssertionError) as e:
