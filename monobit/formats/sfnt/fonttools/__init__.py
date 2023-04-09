@@ -57,3 +57,6 @@ else:
     from fontTools.ttLib import TTLibError
     from fontTools.ttLib.ttFont import TTFont
     from fontTools.ttLib.ttCollection import TTCollection
+
+    from fontTools.ttLib import newTable
+    from fontTools.fontBuilder import FontBuilder

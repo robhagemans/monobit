@@ -7,14 +7,10 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
-try:
-    from fontTools import ttLib
-except ImportError:
-    ttLib = None
-else:
-    from fontTools.fontBuilder import FontBuilder
-    from fontTools.ttLib import TTCollection
-    from fontTools.ttLib.tables import E_B_D_T_
+from . import fonttools
+from .fonttools import check_fonttools
+
+if fonttools.loaded:
     from fontTools.ttLib.tables.E_B_D_T_ import ebdt_bitmap_classes
     from fontTools.ttLib.tables.BitmapGlyphMetrics import (
         SmallGlyphMetrics, BigGlyphMetrics
@@ -30,10 +26,10 @@ from ...binary import ceildiv
 from ...storage import loaders, savers
 from ...properties import reverse_dict
 from .sfnt import _WEIGHT_MAP, _SETWIDTH_MAP, check_fonttools
+from .sfnt import load_sfnt, load_collection
 from ...labels import Tag
 
-if ttLib:
-    from .sfnt import load_sfnt, load_collection
+if fonttools.loaded:
 
     @savers.register(linked=load_sfnt)
     def save_sfnt(
@@ -242,7 +238,7 @@ def _convert_to_kern_props(font, glyphs, _to_funits):
 
 def _setup_kern_table(fb, version=0, kernTables=()):
     """Build `kern` table."""
-    kern_table = ttLib.newTable('kern')
+    kern_table = fonttools.newTable('kern')
     kern_table.version = version
     kern_table.kernTables = []
     for subdict in kernTables:
@@ -266,7 +262,7 @@ def _setup_ebdt_table(fb, font, glyphs, align, flavour):
         tag = 'bdat'
     else:
         tag = 'EBDT'
-    ebdt = ttLib.newTable(tag)
+    ebdt = fonttools.newTable(tag)
     ebdt.version = 2.0
     # create one strike - multiple strikes of different size are possible
     ebdt.strikeData = [{
@@ -284,7 +280,7 @@ def _setup_eblc_table(fb, font, flavour):
     else:
         tag = 'EBLC'
         ebdt = 'EBDT'
-    eblc = ttLib.newTable(tag)
+    eblc = fonttools.newTable(tag)
     eblc.version = 2.0
     eblc.strikes = []
     for sdata in fb.font[ebdt].strikeData:
@@ -445,7 +441,7 @@ def _create_sfnt(font, funits_per_em, align, flavour):
         for _name in glyphnames
     }
     # build font object
-    fb = FontBuilder(funits_per_em, isTTF=True)
+    fb = fonttools.FontBuilder(funits_per_em, isTTF=True)
     fb.setupGlyphOrder(glyphnames)
     fb.setupCharacterMap(_convert_to_cmap_props(glyphs))
     fb.setupGlyf(_create_empty_glyf_props(glyphs))
@@ -481,7 +477,7 @@ def _create_sfnt(font, funits_per_em, align, flavour):
 def _write_collection(fonts, outfile, funits_per_em, align, flavour):
     """Convert to TrueType collection and write out."""
     check_fonttools()
-    ttc = TTCollection()
+    ttc = fonttools.TTCollection()
     ttc.fonts = tuple(
         _create_sfnt(_font, funits_per_em, align, flavour)
         for _font in fonts
