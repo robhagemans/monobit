@@ -14,16 +14,15 @@ if fonttools.loaded:
     from .fonttools import (
         _setup_kern_table,
         _create_sbit_line_metrics,
-        _create_index_subtables
+        _create_index_subtables,
+        _create_bitmap_size_table,
     )
 
     from fontTools.ttLib.tables.E_B_D_T_ import ebdt_bitmap_classes
     from fontTools.ttLib.tables.BitmapGlyphMetrics import (
         SmallGlyphMetrics, BigGlyphMetrics
     )
-    from fontTools.ttLib.tables.E_B_L_C_ import (
-        Strike, BitmapSizeTable
-    )
+    from fontTools.ttLib.tables.E_B_L_C_ import Strike
 
 from ...glyph import Glyph
 from ...binary import ceildiv
@@ -318,41 +317,28 @@ def _setup_eblc_table(fb, font, flavour):
     for sdata in fb.font[ebdt].strikeData:
         # create strike
         strike = Strike()
-        strike.bitmapSizeTable = _create_bitmap_size_table(font)
+        hori = _create_sbit_line_metrics(
+            ascender=font.ascent,
+            descender=-font.descent,
+            widthMax=font.max_width,
+        )
+        if 'vertical' in font.get_features():
+            vert = _create_sbit_line_metrics(
+                ascender=font.right_extent,
+                descender=-font.left_extent,
+                widthMax=max((_g.advance_height for _g in font.glyphs), default=0),
+            )
+        else:
+            vert = _create_sbit_line_metrics()
+        strike.bitmapSizeTable = _create_bitmap_size_table(
+            font.pixel_size, hori, vert
+        )
         strike.indexSubTables = _create_index_subtables(fb, sdata)
         # eblc strike locations are filled out by ebdt compiler
         # bitmap size table is not updated by fontTools, do it explicitly
         strike.bitmapSizeTable.numberOfIndexSubTables = len(strike.indexSubTables)
         eblc.strikes.append(strike)
     fb.font[tag] = eblc
-
-
-def _create_bitmap_size_table(font):
-    """Create the BitmapSize record."""
-    # this is not contructed by any compile() method as far as I can see
-    # > The line metrics are not used directly by the rasterizer, but are available to applications that want to parse the EBLC table.
-    bst = BitmapSizeTable()
-    bst.colorRef = 0
-    bst.flags = 0x01  # hori | 0x02 for vert
-    bst.bitDepth = 1
-    # ppem need to be the same both ways for fontforge
-    bst.ppemX = font.pixel_size
-    bst.ppemY = font.pixel_size
-    # build horizontal line metrics
-    bst.hori = _create_sbit_line_metrics(
-        ascender=font.ascent,
-        descender=-font.descent,
-        widthMax=font.max_width,
-    )
-    if 'vertical' in font.get_features():
-        bst.vert = _create_sbit_line_metrics(
-            ascender=font.right_extent,
-            descender=-font.left_extent,
-            widthMax=max((_g.advance_height for _g in font.glyphs), default=0),
-        )
-    else:
-        bst.vert = _create_sbit_line_metrics()
-    return bst
 
 
 def _prepare_for_sfnt(font):
