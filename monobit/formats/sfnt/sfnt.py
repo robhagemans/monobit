@@ -19,7 +19,7 @@ else:
     from fontTools.ttLib import TTLibError
     from fontTools.ttLib.ttFont import TTFont
     from fontTools.ttLib.ttCollection import TTCollection
-from .tables import _init_fonttools, _no_fonttools
+from .fonttools import _init_fonttools, _no_fonttools
 
 from ...properties import Props
 from ...font import Font
