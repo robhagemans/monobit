@@ -291,7 +291,7 @@ def convert_to_glyph(glyph, fb, align):
         bmga.metrics.horiBearingX = glyph.left_bearing
         bmga.metrics.horiBearingY = glyph.shift_up + glyph.height
         bmga.metrics.horiAdvance = glyph.advance_width
-        bmga.metrics.vertBearingX = glyph.shift_left
+        bmga.metrics.vertBearingX = glyph.shift_left + glyph.width//2
         bmga.metrics.vertBearingY = glyph.top_bearing
         bmga.metrics.vertAdvance = glyph.advance_height
     bmga.setRows(glyph.as_byterows())
