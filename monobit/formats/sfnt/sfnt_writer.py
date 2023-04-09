@@ -316,12 +316,21 @@ def _setup_eblc_table(fb, font, flavour):
             ascender=font.ascent,
             descender=-font.descent,
             widthMax=font.max_width,
+            minOriginSB=min((_g.left_bearing for _g in font.glyphs)),
+            minAdvanceSB=min((_g.right_bearing for _g in font.glyphs)),
+            maxBeforeBL=max((_g.height + _g.shift_up for _g in font.glyphs)),
+            minAfterBL=min((_g.shift_up for _g in font.glyphs)),
         )
         if 'vertical' in font.get_features():
             vert = _create_sbit_line_metrics(
                 ascender=font.right_extent,
                 descender=-font.left_extent,
                 widthMax=max((_g.advance_height for _g in font.glyphs), default=0),
+                minOriginSB=min((_g.top_bearing for _g in font.glyphs)),
+                minAdvanceSB=min((_g.bottom_bearing for _g in font.glyphs)),
+                maxBeforeBL=max((_g.shift_left + _g.width//2 for _g in font.glyphs)),
+                # ??
+                minAfterBL=min((-_g.shift_left - _g.width//2 + _g.width for _g in font.glyphs)),
             )
         else:
             vert = _create_sbit_line_metrics()

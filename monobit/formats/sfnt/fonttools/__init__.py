@@ -96,10 +96,21 @@ else:
         sblm.caretSlopeNumerator = 0
         sblm.caretSlopeDenominator = 1
         sblm.caretOffset = 0
-        # shld be minimum of horibearingx. pixels? funits?
+        # aggregate glyph metrics
+        # based on pictures in spec
+        # note that formulas in spec make no sense
+        # min of horiBearingX
+        # min of vertBearingY
         sblm.minOriginSB = 0
+        # min of horiAdvance - (horiBearingX + width)
+        # == minimum right side bearing
+        # min of vertAdvance - (vertBearingY + height)
         sblm.minAdvanceSB = 0
+        # max of horiBearingY
+        # max of vertBearingX
         sblm.maxBeforeBL = 0
+        # min of horiBearingY - height
+        # min of vertBearingX - width
         sblm.minAfterBL = 0
         sblm.pad1 = 0
         sblm.pad2 = 0
