@@ -19,6 +19,7 @@ else:
     from fontTools.ttLib import TTLibError
     from fontTools.ttLib.ttFont import TTFont
     from fontTools.ttLib.ttCollection import TTCollection
+from .tables import _init_fonttools, _no_fonttools
 
 from ...properties import Props
 from ...font import Font
@@ -111,24 +112,6 @@ if ttLib:
             fonts.extend(_convert_sfnt(_sfnt))
         return fonts
 
-
-###############################################################################
-# fontTools extensions
-
-def _no_fonttools():
-    raise FileFormatError(
-        'Parsing `sfnt` resources requires package `fontTools`, '
-        'which is not available.'
-    )
-
-def _init_fonttools():
-    """Register extension classes for fontTools."""
-    if not ttLib:
-        _no_fonttools()
-    ttLib.registerCustomTableClass('bhed', 'monobit.formats.sfnt.tables._b_h_e_d')
-    ttLib.registerCustomTableClass('bloc', 'monobit.formats.sfnt.tables._b_l_o_c')
-    ttLib.registerCustomTableClass('bdat', 'monobit.formats.sfnt.tables._b_d_a_t')
-    ttLib.registerCustomTableClass('EBSC', 'monobit.formats.sfnt.tables.E_B_S_C_')
 
 
 ###############################################################################
