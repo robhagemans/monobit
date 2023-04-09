@@ -118,12 +118,6 @@ if ttLib:
 ###############################################################################
 # fontTools extensions
 
-# bdat/bloc tables are Apple's version of EBDT/EBLC.
-# They have the same structure but a different tag.
-table__b_h_e_d = None
-table__b_l_o_c = None
-table__b_d_a_t = None
-
 def _init_fonttools():
     """Register extension classes for fontTools."""
     if not ttLib:
@@ -131,25 +125,9 @@ def _init_fonttools():
             'Parsing `sfnt` resources requires module `fontTools`, '
             'which is not available.'
         )
-    global table__b_h_e_d, table__b_l_o_c, table__b_d_a_t
-    if table__b_d_a_t:
-        return
-
-    from fontTools.ttLib.tables._h_e_a_d import table__h_e_a_d
-    from fontTools.ttLib.tables.E_B_L_C_ import table_E_B_L_C_
-    from fontTools.ttLib.tables.E_B_D_T_ import table_E_B_D_T_
-
-    from .tables.E_B_S_C_ import table_E_B_S_C_
-
-    class table__b_h_e_d(table__h_e_a_d): pass
-    class table__b_l_o_c(table_E_B_L_C_): pass
-
-    class table__b_d_a_t(table_E_B_D_T_):
-        locatorName = "bloc"
-
-    ttLib.registerCustomTableClass('bhed', 'monobit.formats.sfnt.sfnt')
-    ttLib.registerCustomTableClass('bloc', 'monobit.formats.sfnt.sfnt')
-    ttLib.registerCustomTableClass('bdat', 'monobit.formats.sfnt.sfnt')
+    ttLib.registerCustomTableClass('bhed', 'monobit.formats.sfnt.tables._b_h_e_d')
+    ttLib.registerCustomTableClass('bloc', 'monobit.formats.sfnt.tables._b_l_o_c')
+    ttLib.registerCustomTableClass('bdat', 'monobit.formats.sfnt.tables._b_d_a_t')
     ttLib.registerCustomTableClass('EBSC', 'monobit.formats.sfnt.tables.E_B_S_C_')
 
 

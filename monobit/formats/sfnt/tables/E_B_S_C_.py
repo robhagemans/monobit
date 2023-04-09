@@ -14,7 +14,7 @@ ebscHeaderFormat = """
 	numSizes: I
 """
 
-#  hori
+# hori
 # vert
 bitmapScaleTableFormatPart2 = """
 	> # big endian
