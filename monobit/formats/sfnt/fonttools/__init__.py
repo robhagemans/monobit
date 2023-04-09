@@ -144,3 +144,11 @@ else:
     # `glyf`
 
     from fontTools.ttLib.tables._g_l_y_f import Glyph
+
+
+    # `EBDT`
+
+    from fontTools.ttLib.tables.E_B_D_T_ import ebdt_bitmap_classes
+    from fontTools.ttLib.tables.BitmapGlyphMetrics import (
+        SmallGlyphMetrics, BigGlyphMetrics
+    )

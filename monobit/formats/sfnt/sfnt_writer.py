@@ -7,6 +7,14 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
+from ...glyph import Glyph
+from ...binary import ceildiv
+from ...storage import loaders, savers
+from ...properties import reverse_dict
+from .sfnt import _WEIGHT_MAP, _SETWIDTH_MAP, check_fonttools
+from .sfnt import load_sfnt, load_collection
+from ...labels import Tag
+
 from . import fonttools
 from .fonttools import check_fonttools
 
@@ -16,23 +24,10 @@ if fonttools.loaded:
         _create_sbit_line_metrics,
         _create_index_subtables,
         _create_bitmap_size_table,
+        ebdt_bitmap_classes,
+        SmallGlyphMetrics, BigGlyphMetrics,
+        Strike
     )
-
-    from fontTools.ttLib.tables.E_B_D_T_ import ebdt_bitmap_classes
-    from fontTools.ttLib.tables.BitmapGlyphMetrics import (
-        SmallGlyphMetrics, BigGlyphMetrics
-    )
-    from fontTools.ttLib.tables.E_B_L_C_ import Strike
-
-from ...glyph import Glyph
-from ...binary import ceildiv
-from ...storage import loaders, savers
-from ...properties import reverse_dict
-from .sfnt import _WEIGHT_MAP, _SETWIDTH_MAP, check_fonttools
-from .sfnt import load_sfnt, load_collection
-from ...labels import Tag
-
-if fonttools.loaded:
 
     @savers.register(linked=load_sfnt)
     def save_sfnt(
