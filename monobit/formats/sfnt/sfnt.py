@@ -11,14 +11,7 @@ import json
 import math
 from unicodedata import bidirectional
 
-try:
-    from fontTools import ttLib
-except ImportError:
-    ttLib = None
-else:
-    from fontTools.ttLib import TTLibError
-    from fontTools.ttLib.ttFont import TTFont
-    from fontTools.ttLib.ttCollection import TTCollection
+from . import fonttools
 from .fonttools import check_fonttools
 
 from ...properties import Props
@@ -44,7 +37,7 @@ class StrikeFormatError(ResourceFormatError):
 SFNT_MAGIC = b'\0\1\0\0'
 
 
-if ttLib:
+if fonttools.loaded:
     @loaders.register(
         name='sfnt',
         magic=(
@@ -166,8 +159,8 @@ def _read_sfnt(instream, tags):
     # let fonttools parse the SFNT
     check_fonttools()
     try:
-        ttf = TTFont(instream)
-    except (TTLibError, AssertionError) as e:
+        ttf = fonttools.TTFont(instream)
+    except (fonttools.TTLibError, AssertionError) as e:
         raise FileFormatError(f'Could not read sfnt file: {e}')
     return _sfnt_props(ttf, tags)
 
@@ -176,8 +169,8 @@ def _read_collection(instream, tags):
     # let fonttools parse the SFNT
     check_fonttools()
     try:
-        ttcf = TTCollection(instream)
-    except (TTLibError, AssertionError) as e:
+        ttcf = fonttools.TTCollection(instream)
+    except (fonttools.TTLibError, AssertionError) as e:
         raise FileFormatError(f'Could not read collection file: {e}')
     ttcf_data = []
     for ttf in ttcf:
@@ -198,7 +191,7 @@ def _sfnt_props(ttf, tags):
         try:
             # __getitem__ forces a decompilation of the table
             tables[tag] = ttf.get(tag, None)
-        except (TTLibError, AssertionError) as e:
+        except (fonttools.TTLibError, AssertionError) as e:
             if not str(e):
                 e = f'{type(e).__name__} in fontTools library.'
             logging.debug('Could not read `%s` table in sfnt: %s', tag, e)
@@ -208,7 +201,7 @@ def _sfnt_props(ttf, tags):
 def _to_props(obj):
     """Recursively convert fontTools objects to namespaces."""
     # avoid infinite recursion
-    if isinstance(obj, TTFont):
+    if isinstance(obj, fonttools.TTFont):
         return str(obj)
     if obj is None:
         return obj

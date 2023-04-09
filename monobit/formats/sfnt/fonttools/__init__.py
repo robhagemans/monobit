@@ -3,8 +3,10 @@ from pathlib import Path
 
 try:
     from fontTools import ttLib
+    loaded = True
 except ImportError:
     ttLib = None
+    loaded = False
 
 from ....magic import FileFormatError
 
@@ -39,7 +41,7 @@ def ebdt_monkey_patch():
     E_B_D_T_._reverseBytes = _reverseBytes
 
 
-if not ttLib:
+if not loaded:
     def check_fonttools(*args, **kwargs):
         raise FileFormatError(
             'Parsing `sfnt` resources requires package `fontTools`, '
@@ -51,3 +53,7 @@ else:
 
     ebdt_monkey_patch()
     register_extensions()
+
+    from fontTools.ttLib import TTLibError
+    from fontTools.ttLib.ttFont import TTFont
+    from fontTools.ttLib.ttCollection import TTCollection
