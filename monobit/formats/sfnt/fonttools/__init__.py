@@ -86,12 +86,12 @@ else:
         return istables
 
 
-    def _create_sbit_line_metrics(ascender=0, descender=0, widthMax=0):
+    def _create_sbit_line_metrics(**kwargs):
         """Create SbitLineMetrics object."""
         sblm = SbitLineMetrics()
-        sblm.ascender = ascender
-        sblm.descender = descender
-        sblm.widthMax = widthMax
+        sblm.ascender = 0
+        sblm.descender = 0
+        sblm.widthMax = 0
         # defaults for caret metrics
         sblm.caretSlopeNumerator = 0
         sblm.caretSlopeDenominator = 1
@@ -103,6 +103,7 @@ else:
         sblm.minAfterBL = 0
         sblm.pad1 = 0
         sblm.pad2 = 0
+        sblm.__dict__.update(kwargs)
         return sblm
 
 
