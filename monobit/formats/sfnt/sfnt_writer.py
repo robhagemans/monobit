@@ -35,6 +35,7 @@ if fonttools.loaded:
     def save_sfnt(
             fonts, outfile,
             funits_per_em:int=1024, align:str='bit', version:str='otb',
+            glyph_names:str=None,
         ):
         """
         Save font to an SFNT resource.
@@ -43,13 +44,18 @@ if fonttools.loaded:
         funits_per_em: number of design units (FUnits) per em-width (default 1024)
         align: 'byte' or 'bit' (default) alignment of the bitmaps
         version: file type flavour, 'otb' (default) or 'apple'
+        glyph_names: tagger to set glyph names with. Default is no glyph names. Use 'tags' to use existing tags as glyph names.
         """
         font, *rest = fonts
         if rest:
             raise ValueError(
                 'Currently only supporting saving one font to SFNT.'
             )
-        tt_font = _create_sfnt(font, funits_per_em, align, flavour=version.lower())
+        tt_font = _create_sfnt(
+            font, funits_per_em, align,
+            flavour=version.lower(),
+            glyph_names=glyph_names,
+        )
         tt_font.save(outfile)
         return font
 
@@ -366,17 +372,10 @@ def _setup_eblc_table(fb, font, flavour):
     fb.font[tag] = eblc
 
 
-def _prepare_for_sfnt(font):
+def _prepare_for_sfnt(font, glyph_names):
     """Prepare monobit font for storing in sfnt."""
     # get char labels if we don't have them but we do have an encoding
     font = font.label(match_whitespace=False, match_graphical=False)
-    # warn we're dropping glyphs without char labels as not-storable
-    dropped = tuple(_g for _g in font.glyphs if not _g.char)
-    if dropped:
-        logging.warning(
-            '%d glyphs could not be stored: could not label with unicode character', len(dropped)
-        )
-        logging.debug('Dropped glyphs: %s', tuple(_g.get_labels()[0] for _g in dropped if _g.get_labels()))
     default = font.get_default_glyph()
     features = font.get_features()
     # get unicode code points for cmap
@@ -385,13 +384,23 @@ def _prepare_for_sfnt(font):
         match_whitespace=False, match_graphical=False
     )
     # we need a name for each glyph to be able to store it
-    font = font.label(tag_from='truetype')
+    # if glyph_names == 'tags', must be tagged already
+    if glyph_names != 'tags':
+        font = font.label(tag_from=glyph_names or 'truetype')
+    # warn we're dropping glyphs without tags as not-storable
+    dropped = tuple(_g for _g in font.glyphs if not _g.tags)
+    if dropped:
+        logging.warning(
+            '%d glyphs could not be stored: no glyph name', len(dropped)
+        )
+        logging.debug('Dropped glyphs: %s', tuple(_g.get_labels()[0] for _g in dropped if _g.get_labels()))
     # cut back to glyph bounding boxes
     font = font.reduce()
     return font, default, features
 
 
-def _create_sfnt(font, funits_per_em, align, flavour):
+
+def _create_sfnt(font, funits_per_em, align, flavour, glyph_names):
     """Convert to a fontTools TTFont object."""
     # converter from pixels to design units
     # note that x and y ppem are equal - if not, fontforge rejects the bitmap
@@ -399,7 +408,7 @@ def _create_sfnt(font, funits_per_em, align, flavour):
         return ceildiv(pixel_amount * funits_per_em, font.pixel_size)
 
     check_fonttools()
-    font, default, features = _prepare_for_sfnt(font)
+    font, default, features = _prepare_for_sfnt(font, glyph_names)
     # get the storable glyphs
     glyphnames = ('.notdef', *(_t.value for _t in font.get_tags()))
     glyphs = {
@@ -427,7 +436,7 @@ def _create_sfnt(font, funits_per_em, align, flavour):
         fb.setupOS2(**_convert_to_os_2_props(font, _to_funits))
     # for otb: version-3 table, defines no names
     fb.setupPost(
-        keepGlyphNames=False,
+        keepGlyphNames=bool(glyph_names),
         isFixedPitch=font.spacing in ('monospace', 'character-cell'),
         # descriptive italic angle, counter-clockwise degrees from vertical
         #italicAngle
