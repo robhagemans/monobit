@@ -567,13 +567,13 @@ def _convert_win_props(data, win_props):
     weight = win_props.dfWeight
     if weight:
         weight = max(100, min(900, weight))
-        properties['weight'] = _WEIGHT_MAP[round(weight, -2)]
+        properties['weight'] = _WEIGHT_MAP.get(round(weight, -2), None)
     charset = win_props.dfCharSet
     if charset in CHARSET_MAP:
         properties['encoding'] = CHARSET_MAP[charset]
     else:
         properties['windows.dfCharSet'] = str(charset)
-    properties['style'] = _STYLE_MAP[win_props.dfPitchAndFamily & 0xff00]
+    properties['style'] = _STYLE_MAP.get(win_props.dfPitchAndFamily & 0xff00, None)
     if win_props.dfBreakChar:
         properties['word-boundary'] = win_props.dfFirstChar + win_props.dfBreakChar
     properties['device'] = bytes_to_str(data[win_props.dfDevice:])
