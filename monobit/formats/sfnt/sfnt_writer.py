@@ -424,10 +424,12 @@ def _create_sfnt(font, funits_per_em, align, flavour):
     # for otb: version-3 table, defines no names
     fb.setupPost(
         keepGlyphNames=False,
-        isFixedPitch=font.spacing in ('monospace', 'character-cell')
+        isFixedPitch=font.spacing in ('monospace', 'character-cell'),
+        # descriptive italic angle, counter-clockwise degrees from vertical
         #italicAngle
-        #underlinePosition
-        #underlineThickness
+        # negative is below baseline
+        underlinePosition=-_to_funits(font.underline_descent),
+        underlineThickness=_to_funits(font.underline_thickness),
     )
     _setup_kern_table(fb, **_convert_to_kern_props(font, glyphs, _to_funits))
     # bitmap-only formats
