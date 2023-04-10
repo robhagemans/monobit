@@ -14,6 +14,7 @@ from ...properties import reverse_dict
 from .sfnt import _WEIGHT_MAP, _SETWIDTH_MAP, check_fonttools
 from .sfnt import load_sfnt, load_collection
 from ...labels import Tag
+from ...basetypes import to_number
 
 from . import fonttools
 from .fonttools import check_fonttools
@@ -131,6 +132,18 @@ def _convert_to_os_2_props(font, _to_funits):
 
 def _convert_to_name_props(font):
     """Convert font properties to `name` table."""
+    # `name` table should only store x.y version numbers
+    # while font.revision could be any string
+    try:
+        version_number = to_number(font.revision)
+    except ValueError:
+        version_number = 0.0
+    # postscript name must be printable ascii, no [](){}<>/%, max 63 chars
+    ps_name = ''.join(
+        _c if _c.isalnum() and _c.isascii() else '-'
+        for _c in font.name
+    )
+    ps_name = restricted_name[:63]
     props = dict(
         # 0
         copyright=font.copyright,
@@ -139,14 +152,15 @@ def _convert_to_name_props(font):
         # 2
         styleName=font.subfamily,
         # 3
-        uniqueFontIdentifier=font.font_id,
+        uniqueFontIdentifier=font.font_id or ps_name,
         # 4
         fullName=font.name,
         # 5
-        # TODO: should be 'Version x.y'
-        version=font.revision,
+        # must start with 'Version x.y'
+        # but may contain additional info after `;`
+        version=f'Version {version_number:1.1f}; {font.revision}',
         # 6
-        #psName=font.name.replace(' ', '-'),
+        psName=ps_name,
         # trademark (nameID 7)
         # 8
         manufacturer=font.foundry,
