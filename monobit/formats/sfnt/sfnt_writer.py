@@ -384,22 +384,25 @@ def _prepare_for_sfnt(font, glyph_names):
     # we need a name for each glyph to be able to store it
     # if glyph_names == 'tags', must be tagged already
     # otherwise, only glyphs without chars must have names
-    cp_tagger = CodepointTagger(prefix='glyph')
-    if glyph_names == 'codepoint':
-        glyph_names  = cp_tagger
     if glyph_names != 'tag':
         font = font.label(tag_from=glyph_names or 'truetype', overwrite=True)
-        font = font.label(tag_from=cp_tagger)
-    # warn we're dropping glyphs without tags as not-storable
-    dropped = tuple(_g for _g in font.glyphs if not _g.tags)
-    if dropped:
-        logging.warning(
-            '%d glyphs could not be stored: no usable label', len(dropped)
+        # tag remaining glyphs based on index
+        glyphs = (
+            _g.modify(tag=f'glyph{_i}') if not _g.tags else _g
+            for _i, _g in enumerate(font.glyphs)
         )
-        logging.debug(
-            'Dropped glyphs: %s',
-            tuple(_g.get_labels()[0] for _g in dropped if _g.get_labels())
-        )
+        font = font.modify(glyphs)
+    else:
+        # warn we're dropping glyphs without tags as not-storable
+        dropped = tuple(_g for _g in font.glyphs if not _g.tags)
+        if dropped:
+            logging.warning(
+                '%d untagged glyphs could not be stored', len(dropped)
+            )
+            logging.debug(
+                'Dropped glyphs: %s',
+                tuple(_g.get_labels()[0] for _g in dropped if _g.get_labels())
+            )
     # cut back to glyph bounding boxes
     font = font.reduce()
     return font, default, features
