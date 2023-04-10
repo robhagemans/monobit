@@ -9,6 +9,7 @@ import sys
 import logging
 import json
 import math
+import re
 from unicodedata import bidirectional
 
 from . import fonttools
@@ -57,7 +58,7 @@ if fonttools.loaded:
             infile,
             hmtx:bool=False, vmtx:bool=False,
             hhea:bool=False, vhea:bool=False,
-            os_2:bool=True
+            os_2:bool=True, post:bool=True,
         ):
         """
         Load an SFNT resource and convert to Font.
@@ -66,9 +67,10 @@ if fonttools.loaded:
         vmtx: override vertical bitmap metrics with `vmtx` table (default: False)
         hhea: include horizontal line metrics from `hhea` table (default: False)
         vhea: include vertical line metrics from `vhea` table (default: False)
-        os_2: include metrics from OS/2 table (default: True)
+        os_2: include metrics from `OS/2` table (default: True)
+        post: include metrics from `post` table (default: True)
         """
-        tags = _get_tags(hmtx, vmtx, hhea, vhea, os_2)
+        tags = _get_tags(hmtx, vmtx, hhea, vhea, os_2, post)
         sfnt = _read_sfnt(infile, tags)
         logging.debug(str(sfnt))
         fonts = _convert_sfnt(sfnt)
@@ -87,7 +89,7 @@ if fonttools.loaded:
             infile,
             hmtx:bool=False, vmtx:bool=False,
             hhea:bool=False, vhea:bool=False,
-            os_2:bool=True
+            os_2:bool=True, post:bool=True,
         ):
         """
         Load a TrueType/OpenType Collection file.
@@ -96,9 +98,10 @@ if fonttools.loaded:
         vmtx: override vertical bitmap metrics with `vmtx` table (default: False)
         hhea: include horizontal line metrics from `hhea` table (default: False)
         vhea: include vertical line metrics from `vhea` table (default: False)
-        os_2: include metrics from OS/2 table (default: True)
+        os_2: include metrics from `OS/2` table (default: True)
+        post: include metrics from `post` table (default: True)
         """
-        tags = _get_tags(hmtx, vmtx, hhea, vhea, os_2)
+        tags = _get_tags(hmtx, vmtx, hhea, vhea, os_2, post)
         sfnts = _read_collection(infile, tags)
         fonts = []
         for _sfnt in sfnts:
@@ -129,6 +132,8 @@ _TAGS = (
     'hmtx', 'hhea',
     'vmtx', 'vhea',
     'OS/2',
+    # underline metrics and glyph name tags
+    'post',
     # metadata
     'name',
     # kerning information
@@ -138,7 +143,7 @@ _TAGS = (
     'cmap',
 )
 
-def _get_tags(hmtx, vmtx, hhea, vhea, os_2):
+def _get_tags(hmtx, vmtx, hhea, vhea, os_2, post):
     """Get list of tables to extract."""
     tags = list(_TAGS)
     if not hmtx:
@@ -151,6 +156,8 @@ def _get_tags(hmtx, vmtx, hhea, vhea, os_2):
         tags.remove('vhea')
     if not os_2:
         tags.remove('OS/2')
+    if not post:
+        tags.remove('post')
     return tags
 
 
@@ -278,6 +285,7 @@ def _convert_props(sfnt, i_strike):
     props |= _convert_os_2_props(getattr(sfnt, 'OS/2'), vert_fu_p_pix, hori_fu_p_pix)
     props |= _convert_hhea_props(sfnt.hhea, vert_fu_p_pix)
     props |= _convert_vhea_props(sfnt.vhea, hori_fu_p_pix)
+    props |= _convert_post_props(sfnt.post, vert_fu_p_pix)
     props._hfupp = hori_fu_p_pix
     props._vfupp = vert_fu_p_pix
     return props
@@ -742,6 +750,27 @@ def _decode_name(namerecs, nameid):
         return namerec.string.decode('latin-1')
     return None
 
+
+def _convert_version_string(version_string):
+    """Convert standard sfnt version string to something more like ours."""
+    # version is encoded as 'Version x.y', optionally followed by non-numeric info
+    # split by non-(digit or dot)
+    groups = re.split(r'([\d\.]+)', version_string)
+    if len(groups) < 2 or groups[0].lower() != 'version ':
+        # non-compliant version string, preserve as is
+        pass
+    else:
+        version_number = str(float(groups[1]))
+        if len(groups) == 2:
+            return version_number
+        version_string = ''.join(groups[2:])
+        if version_number not in version_string:
+            version_string = version_number + version_string
+        # non-alpha separator
+        if not version_string[0].isalnum():
+            version_string = version_string[1:]
+    return version_string.strip()
+
 def _convert_name_props(name):
     """Convert font properties from name table."""
     if not name:
@@ -754,7 +783,7 @@ def _convert_name_props(name):
         font_id=_decode_name(name.names, 3),
         name=_decode_name(name.names, 4),
         #
-        revision=_decode_name(name.names, 5),
+        revision=_convert_version_string(_decode_name(name.names, 5)),
         #
         #postscript_name
         #
@@ -834,4 +863,18 @@ def _convert_os_2_props(os_2, vert_fu_p_pix, hori_fu_p_pix):
         # > glyph ID 0 is to be used for the default character.
         if props.default_char == Char('\0'):
             props.default_char = Tag('.notdef')
+    return props
+
+
+###############################################################################
+# 'post' table
+
+def _convert_post_props(post, vert_fu_p_pix):
+    """Convert font properties from `post` table."""
+    if not post:
+        return Props()
+    props = Props(
+        underline_descent=-post.underlinePosition // vert_fu_p_pix or None,
+        underline_thickness=post.underlineThickness // vert_fu_p_pix or None,
+    )
     return props
