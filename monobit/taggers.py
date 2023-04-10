@@ -90,12 +90,16 @@ class CodepointTagger(Tagger):
 
     name = 'codepoint'
 
+    def __init__(self, prefix=''):
+        """Create codepoint tagger with prefix"""
+        self._prefix = prefix
+
     def comment(self, *labels):
         """Get codepoint string."""
         cp = _get_codepoint(labels)
         if not cp:
             return ''
-        return str(cp)
+        return f'{self._prefix}{cp}'
 
 
 class MappingTagger(Tagger):

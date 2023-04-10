@@ -19,7 +19,7 @@ from ...properties import Props
 from ...font import Font
 from ...glyph import Glyph
 from ...raster import Raster
-from ...labels import Tag, Char
+from ...labels import Tag, Char, Codepoint
 from ...storage import loaders, savers
 from ...magic import FileFormatError
 from ..windows.fnt import _WEIGHT_MAP
@@ -270,6 +270,15 @@ def _convert_sfnt(sfnt):
             # if there's no post table or it is empty
             if not sfnt.post or sfnt.post.formatType == 3.0:
                 glyphs = (_g.modify(tag=None) if _g.char else _g for _g in glyphs)
+            else:
+                # convert glyphXX tags to codepoints
+                def _to_codepoint(tag):
+                    try:
+                        return Codepoint(tag.removeprefix('glyph'))
+                    except ValueError as e:
+                        return None
+                glyphs = (_g.modify(codepoint=_to_codepoint(_g.tags[0].value)) for _g in glyphs)
+                glyphs = (_g.modify(tag=None) if _g.codepoint else _g for _g in glyphs)
             fonts.append(Font(glyphs, source_format=source_format, **vars(props)))
         except StrikeFormatError:
             pass

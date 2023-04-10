@@ -14,6 +14,7 @@ from ...properties import reverse_dict
 from .sfnt import _WEIGHT_MAP, _SETWIDTH_MAP, check_fonttools
 from .sfnt import load_sfnt, load_collection
 from ...labels import Tag
+from ...taggers import CodepointTagger
 from ...basetypes import to_number
 
 from . import fonttools
@@ -232,8 +233,10 @@ def _convert_to_vmtx_props(glyphs, _to_funits):
 def _convert_to_cmap_props(glyphs):
     """Convert glyph properties to `cmap` table."""
     return {
-        int(_g.codepoint): _name
-        for _name, _g in glyphs.items() if _g.codepoint and _name not in ('.notdef', '.null')
+        ord(_g.char): _name
+        for _name, _g in glyphs.items()
+        # .notdef should not be mapped  in cmap
+        if _g.char and _name != '.notdef'
     }
 
 
@@ -378,22 +381,25 @@ def _prepare_for_sfnt(font, glyph_names):
     font = font.label(match_whitespace=False, match_graphical=False)
     default = font.get_default_glyph()
     features = font.get_features()
-    # get unicode code points for cmap
-    font = font.label(
-        codepoint_from='unicode', overwrite=True,
-        match_whitespace=False, match_graphical=False
-    )
     # we need a name for each glyph to be able to store it
     # if glyph_names == 'tags', must be tagged already
-    if glyph_names != 'tags':
-        font = font.label(tag_from=glyph_names or 'truetype')
+    # otherwise, only glyphs without chars must have names
+    cp_tagger = CodepointTagger(prefix='glyph')
+    if glyph_names == 'codepoint':
+        glyph_names  = cp_tagger
+    if glyph_names != 'tag':
+        font = font.label(tag_from=glyph_names or 'truetype', overwrite=True)
+        font = font.label(tag_from=cp_tagger)
     # warn we're dropping glyphs without tags as not-storable
     dropped = tuple(_g for _g in font.glyphs if not _g.tags)
     if dropped:
         logging.warning(
-            '%d glyphs could not be stored: no glyph name', len(dropped)
+            '%d glyphs could not be stored: no usable label', len(dropped)
         )
-        logging.debug('Dropped glyphs: %s', tuple(_g.get_labels()[0] for _g in dropped if _g.get_labels()))
+        logging.debug(
+            'Dropped glyphs: %s',
+            tuple(_g.get_labels()[0] for _g in dropped if _g.get_labels())
+        )
     # cut back to glyph bounding boxes
     font = font.reduce()
     return font, default, features
