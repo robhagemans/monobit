@@ -769,7 +769,7 @@ def _convert_version_string(version_string):
         # non-alpha separator
         if not version_string[0].isalnum():
             version_string = version_string[1:]
-    return version_string.strip()
+    return version_string.strip().rstrip('0').rstrip('.')
 
 def _convert_name_props(name):
     """Convert font properties from name table."""

@@ -136,8 +136,13 @@ def _convert_to_name_props(font):
     # while font.revision could be any string
     try:
         version_number = to_number(font.revision)
+        extra = ''
     except ValueError:
         version_number = 0.0
+        extra = f'; {font.revision}'
+    # must start with 'Version x.y'
+    # but may contain additional info after `;`
+    version_string = f'Version {version_number:1.1f}{extra}'
     # postscript name must be printable ascii, no [](){}<>/%, max 63 chars
     ps_name = ''.join(
         _c if _c.isalnum() and _c.isascii() else '-'
@@ -156,9 +161,7 @@ def _convert_to_name_props(font):
         # 4
         fullName=font.name,
         # 5
-        # must start with 'Version x.y'
-        # but may contain additional info after `;`
-        version=f'Version {version_number:1.1f}; {font.revision}',
+        version=version_string,
         # 6
         psName=ps_name,
         # trademark (nameID 7)
