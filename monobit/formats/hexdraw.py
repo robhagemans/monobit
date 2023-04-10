@@ -1,5 +1,5 @@
 """
-monobit.formats.draw - Unifont HexDraw format
+monobit.formats.draw - visual-text formats
 
 (c) 2019--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -241,3 +241,40 @@ def _convert_mkwinfont(props, glyphs, comments):
         for _rows, _props in glyphs
     )
     return Font(mb_glyphs, **mb_props)
+
+
+###############################################################################
+# consoleet / vfontas / hxtools
+
+from pathlib import Path
+from ..containers.directory import Directory
+
+@loaders.register(
+    name='consoleet',
+)
+def load_clt(instream):
+    """Load font from consoleet files."""
+    # this format consists of separate image files, without a manifest
+    # instream.where does not give the nearest enclosing container but the root where we're calling!
+    # we also can't use a directory as instream as it would be recursively read
+    container = instream.where
+    glyphs = []
+    for name in sorted(container):
+        if Path(name).parent != Path(instream.name).parent:
+            continue
+        with container.open(name, mode='r') as stream:
+            glyphs.append(_read_clt_glyph(stream))
+    return Font(glyphs, source_name=Path(instream.name).parent)
+
+def _read_clt_glyph(instream):
+    text = instream.text
+    name = instream.name
+    codepoint = Path(name).stem
+    magic = text.readline().strip()
+    if magic != 'PCLT':
+        return Glyph()
+    width, _, height = text.readline().strip().partition(' ')
+    glyphtext = text.read().splitlines()
+    return Glyph(
+        glyphtext, _0='.', _1='#', codepoint=f'0x{codepoint}'
+    ).shrink(factor_x=2)
