@@ -145,3 +145,99 @@ def _save_text(font, outstream, *, ink, paper, comment):
             )
             outstream.write(f'\n{ord(glyph.char):04x}{DrawParams.separator}')
             outstream.write(glyphtxt)
+
+
+###############################################################################
+# mkwinfont .fd
+
+from ..properties import Props
+from .windows.fnt import _WEIGHT_MAP, CHARSET_MAP
+
+
+FD_KEYS = {
+    'facename',
+    'copyright',
+    'height',
+    'ascent',
+    'pointsize',
+    'weight',
+    'charset',
+    'italic',
+    'underline',
+    'strikeout',
+}
+
+FD_CHAR_KEYS = {
+    'char',
+    'width',
+}
+
+
+def _add_key_value(line, keyset, target):
+    for key in keyset:
+        if line.startswith(key):
+            _, _, value = line.partition(' ')
+            target[key] = value
+            return True
+    return False
+
+@loaders.register(
+    name='mkwinfont',
+    patterns=('*.fd',),
+)
+def load_mkwinfont(instream):
+    """Load font from a mkwinfont .fd file."""
+    properties, glyphs, comments = _read_mkwinfont(instream.text)
+    return _convert_mkwinfont(properties, glyphs, comments)
+
+
+def _read_mkwinfont(text_stream):
+    """Read a mkwinfont file into a properties object."""
+    comment = '#'
+    ink = '1'
+    paper = '0'
+    comments = []
+    glyphs = []
+    properties = {_k: None for _k in FD_KEYS}
+    current_props = {}
+    current_glyph = []
+    while True:
+        line = text_stream.readline()
+        if not line:
+            break
+        line = line.rstrip()
+        if not line:
+            continue
+        if line.startswith(comment):
+            comments.append(line.removeprefix(comment))
+            continue
+        stripline = line.lstrip()
+        if _add_key_value(line, FD_KEYS, properties):
+            continue
+        if _add_key_value(line, FD_CHAR_KEYS, current_props):
+            continue
+        while line[:1] in (paper, ink):
+            current_glyph.append(line)
+            line = text_stream.readline()
+        if current_glyph:
+            glyphs.append((current_glyph, Props(**current_props)))
+            current_glyph = []
+            current_props = {}
+    return Props(**properties), glyphs, comments
+
+def _convert_mkwinfont(props, glyphs, comments):
+    mb_props = dict(
+        name=props.facename,
+        copyright=props.copyright,
+        descent=int(props.height)-int(props.ascent),
+        ascent=props.ascent,
+        point_size=props.pointsize,
+        weight=_WEIGHT_MAP.get(round(max(100, min(900, props.weight or 400)), -2), ''),
+        encoding=CHARSET_MAP.get(props.charset, None),
+        comment=normalise_comment(comments),
+    )
+    mb_glyphs = tuple(
+        Glyph(_rows, _0='0', _1='1', codepoint=_props['char'])
+        for _rows, _props in glyphs
+    )
+    return Font(mb_glyphs, **mb_props)
