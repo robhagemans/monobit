@@ -266,6 +266,10 @@ def _convert_sfnt(sfnt):
             glyphs = _convert_glyphs(sfnt, i_strike, props._hfupp, props._vfupp)
             del props._hfupp
             del props._vfupp
+            # remove temporary names created by fontTools
+            # if there's no post table or it is empty
+            if not sfnt.post or sfnt.post.formatType == 3.0:
+                glyphs = (_g.modify(tag=None) if _g.char else _g for _g in glyphs)
             fonts.append(Font(glyphs, source_format=source_format, **vars(props)))
         except StrikeFormatError:
             pass
