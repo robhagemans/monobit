@@ -22,7 +22,7 @@ from ...raster import Raster
 from ...labels import Tag, Char, Codepoint
 from ...storage import loaders, savers
 from ...magic import FileFormatError
-from ..windows.fnt import _WEIGHT_MAP
+from ..windows.fnt import _WEIGHT_MAP, CHARSET_MAP
 
 
 # errors that invalidate only one strike or resource, not the whole file
@@ -113,9 +113,84 @@ else:
     load_sfnt = check_fonttools
     load_collection = check_fonttools
 
+
+###############################################################################
+# common encoding tables
+
+# shared with mac
+
+# based on:
+# [1] Apple Technotes (As of 2002)/te/te_02.html
+# [2] https://developer.apple.com/library/archive/documentation/mac/Text/Text-367.html#HEADING367-0
+MAC_ENCODING = {
+    0: 'mac-roman',
+    1: 'mac-japanese',
+    2: 'mac-trad-chinese',
+    3: 'mac-korean',
+    4: 'mac-arabic',
+    5: 'mac-hebrew',
+    6: 'mac-greek',
+    7: 'mac-cyrillic', # [1] russian
+    # 8: [2] right-to-left symbols
+    9: 'mac-devanagari',
+    10: 'mac-gurmukhi',
+    11: 'mac-gujarati',
+    12: 'mac-oriya',
+    13: 'mac-bengali',
+    14: 'mac-tamil',
+    15: 'mac-telugu',
+    16: 'mac-kannada',
+    17: 'mac-malayalam',
+    18: 'mac-sinhalese',
+    19: 'mac-burmese',
+    20: 'mac-khmer',
+    21: 'mac-thai',
+    22: 'mac-laotian',
+    23: 'mac-georgian',
+    24: 'mac-armenian',
+    25: 'mac-simp-chinese', # [1] maldivian
+    26: 'mac-tibetan',
+    27: 'mac-mongolian',
+    28: 'mac-ethiopic', # [2] == geez
+    29: 'mac-centraleurope', # [1] non-cyrillic slavic
+    30: 'mac-vietnamese',
+    31: 'mac-sindhi', # [2] == ext-arabic
+    #32: [1] [2] 'uninterpreted symbols'
+}
+
+WIN_ENCODING = {
+    # Symbol, but apparently not windows-symbol but any undefined encoding
+    0: '',
+    1: 'utf-16le', # unicode bmp
+    2: 'ms932', # shift-jis
+    3: 'ms936', # PRC
+    4: 'ms950', # Big-5
+    5: 'ms949', # Wansung
+    6: 'ms1361', # Johab
+    10: 'utf-16le', # Unicode full repertoire
+}
+
+ISO_ENCODING = {
+    0: 'ascii',
+    # unicode
+    1: 'iso-10646',
+    # latin-1
+    2: 'iso-8859-1',
+}
+
+PLATFORM_ENCODING = {
+    # macintosh platform
+    1: MAC_ENCODING,
+    # ISO platform
+    2: ISO_ENCODING,
+    # Windows platform
+    3: WIN_ENCODING,
+    # legacy windows charset value
+    4: CHARSET_MAP,
+}
+
 ###############################################################################
 # sfnt resource reader
-
 
 # tags we will decompile and process
 _TAGS = (
@@ -260,17 +335,24 @@ def _convert_sfnt(sfnt):
             'No `EBDT` or `bdat` bitmap strikes found in sfnt resource.'
         )
     fonts = []
+    unitable = _get_unicode_table(sfnt)
+    enctable, encoding = _get_encoding_table(sfnt)
     for i_strike in range(sfnt.bloc.numSizes):
         try:
             props = _convert_props(sfnt, i_strike)
-            glyphs = _convert_glyphs(sfnt, i_strike, props._hfupp, props._vfupp)
+            glyphs = _convert_glyphs(
+                sfnt, i_strike, props._hfupp, props._vfupp, unitable, enctable
+            )
             del props._hfupp
             del props._vfupp
             # remove temporary names created by fontTools
             # if there's no post table or it is empty
             if not sfnt.post or sfnt.post.formatType == 3.0:
                 glyphs = (_g.modify(tag=None) if _g.char else _g for _g in glyphs)
-            fonts.append(Font(glyphs, source_format=source_format, **vars(props)))
+            fonts.append(Font(
+                glyphs, source_format=source_format, encoding=encoding,
+                **vars(props)
+            ))
         except StrikeFormatError:
             pass
     return fonts
@@ -295,10 +377,8 @@ def _convert_props(sfnt, i_strike):
     return props
 
 
-def _convert_glyphs(sfnt, i_strike, hori_fu_p_pix, vert_fu_p_pix):
+def _convert_glyphs(sfnt, i_strike, hori_fu_p_pix, vert_fu_p_pix, unitable, enctable):
     """Build glyphs and glyph properties from sfnt data."""
-    unitable = _get_unicode_table(sfnt)
-    enctable = _get_encoding_table(sfnt)
     glyphs = []
     strike = sfnt.bdat.strikeData[i_strike]
     blocstrike = sfnt.bloc.strikes[i_strike]
@@ -407,9 +487,8 @@ _UNICODE_CHOICES = (
 def _get_unicode_table(sfnt):
     """Get unicode mapping from sfnt data."""
     # find unicode encoding
-    known_tables = tuple(_t for _t in sfnt.cmap.tables)
     for id_pair in _UNICODE_CHOICES:
-        for table in known_tables:
+        for table in sfnt.cmap.tables:
             if (int(table.platformID), int(table.platEncID)) == id_pair:
                 unitable = {
                     _name: chr(int(_ord))
@@ -425,22 +504,28 @@ def _get_unicode_table(sfnt):
 
 def _get_encoding_table(sfnt):
     """Get non-unicode encoding from sfnt data."""
-    known_tables = tuple(_t for _t in sfnt.cmap.tables)
     # get the largest table for non-unicode mappings
     non_unicode_tables = (
-        _t.cmap for _t in known_tables
+        _t for _t in sfnt.cmap.tables
         if (int(_t.platformID), int(_t.platEncID)) not in _UNICODE_CHOICES
     )
     non_unicode_tables = sorted(
-        ((len(_t), _t) for _t in non_unicode_tables),
+        ((len(_t.cmap), _t) for _t in non_unicode_tables),
         reverse=True
     )
-    enctable = non_unicode_tables[0][1] if non_unicode_tables else {}
+    if not non_unicode_tables:
+        return {}, ''
+    largest_table = non_unicode_tables[0][1]
+    encoding = (
+        PLATFORM_ENCODING
+        .get(largest_table.platformID, {})
+        .get(largest_table.platEncID, '')
+    )
     enctable = {
         _name: int(_ord)
-        for _ord, _name in enctable.items()
+        for _ord, _name in largest_table.cmap.items()
     }
-    return enctable
+    return enctable, encoding
 
 
 ###############################################################################
@@ -681,55 +766,6 @@ def _convert_vhea_props(vhea, horiz_fu_p_pix):
 ###############################################################################
 # 'name' table
 
-# based on:
-# [1] Apple Technotes (As of 2002)/te/te_02.html
-# [2] https://developer.apple.com/library/archive/documentation/mac/Text/Text-367.html#HEADING367-0
-MAC_ENCODING = {
-    0: 'mac-roman',
-    1: 'mac-japanese',
-    2: 'mac-trad-chinese',
-    3: 'mac-korean',
-    4: 'mac-arabic',
-    5: 'mac-hebrew',
-    6: 'mac-greek',
-    7: 'mac-cyrillic', # [1] russian
-    # 8: [2] right-to-left symbols
-    9: 'mac-devanagari',
-    10: 'mac-gurmukhi',
-    11: 'mac-gujarati',
-    12: 'mac-oriya',
-    13: 'mac-bengali',
-    14: 'mac-tamil',
-    15: 'mac-telugu',
-    16: 'mac-kannada',
-    17: 'mac-malayalam',
-    18: 'mac-sinhalese',
-    19: 'mac-burmese',
-    20: 'mac-khmer',
-    21: 'mac-thai',
-    22: 'mac-laotian',
-    23: 'mac-georgian',
-    24: 'mac-armenian',
-    25: 'mac-simp-chinese', # [1] maldivian
-    26: 'mac-tibetan',
-    27: 'mac-mongolian',
-    28: 'mac-ethiopic', # [2] == geez
-    29: 'mac-centraleurope', # [1] non-cyrillic slavic
-    30: 'mac-vietnamese',
-    31: 'mac-sindhi', # [2] == ext-arabic
-    #32: [1] [2] 'uninterpreted symbols'
-}
-#
-# WIN_ENCODING = {
-#     0: 'windows-symbol',
-#     1: 'utf-16le', # unicode bmp
-#     2: 'ms932', # shift-jis
-#     3: 'ms936', # PRC
-#     4: 'ms950', # Big-5
-#     5: 'ms949', # Wansung
-#     6: 'ms1361', # Johab
-#     10: 'utf-16le', # Unicode full repertoire
-# }
 def _decode_name(namerecs, nameid):
     for namerec in namerecs:
         if namerec.nameID != nameid:
