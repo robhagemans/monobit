@@ -368,8 +368,7 @@ def _setup_eblc_table(fb, font, flavour):
 
 def _prepare_for_sfnt(font):
     """Prepare monobit font for storing in sfnt."""
-    # get char labels if we don't have them
-    # label with unicode and Adobe glyph names
+    # get char labels if we don't have them but we do have an encoding
     font = font.label(match_whitespace=False, match_graphical=False)
     # warn we're dropping glyphs without char labels as not-storable
     dropped = tuple(_g for _g in font.glyphs if not _g.char)
@@ -380,11 +379,13 @@ def _prepare_for_sfnt(font):
         logging.debug('Dropped glyphs: %s', tuple(_g.get_labels()[0] for _g in dropped if _g.get_labels()))
     default = font.get_default_glyph()
     features = font.get_features()
+    # get unicode code points for cmap
     font = font.label(
         codepoint_from='unicode', overwrite=True,
         match_whitespace=False, match_graphical=False
     )
-    font = font.label(tag_from='adobe')
+    # we need a name for each glyph to be able to store it
+    font = font.label(tag_from='truetype')
     # cut back to glyph bounding boxes
     font = font.reduce()
     return font, default, features
