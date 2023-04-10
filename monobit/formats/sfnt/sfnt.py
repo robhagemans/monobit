@@ -9,25 +9,20 @@ import sys
 import logging
 import json
 import math
+import re
 from unicodedata import bidirectional
 
-try:
-    from fontTools import ttLib
-except ImportError:
-    ttLib = None
-else:
-    from fontTools.ttLib import TTLibError
-    from fontTools.ttLib.ttFont import TTFont
-    from fontTools.ttLib.ttCollection import TTCollection
+from . import fonttools
+from .fonttools import check_fonttools
 
-from ..properties import Props
-from ..font import Font
-from ..glyph import Glyph
-from ..raster import Raster
-from ..labels import Tag, Char
-from ..storage import loaders, savers
-from ..magic import FileFormatError
-from .windows.fnt import _WEIGHT_MAP
+from ...properties import Props
+from ...font import Font
+from ...glyph import Glyph
+from ...raster import Raster
+from ...labels import Tag, Char, Codepoint
+from ...storage import loaders, savers
+from ...magic import FileFormatError
+from ..windows.fnt import _WEIGHT_MAP, CHARSET_MAP
 
 
 # errors that invalidate only one strike or resource, not the whole file
@@ -39,14 +34,11 @@ class StrikeFormatError(ResourceFormatError):
     """Unsupported parameters in bitmap strike."""
 
 
-# must be importable by mac module
-load_sfnt = None
-
 # resource header
 SFNT_MAGIC = b'\0\1\0\0'
 
 
-if ttLib:
+if fonttools.loaded:
     @loaders.register(
         name='sfnt',
         magic=(
@@ -66,7 +58,7 @@ if ttLib:
             infile,
             hmtx:bool=False, vmtx:bool=False,
             hhea:bool=False, vhea:bool=False,
-            os_2:bool=True
+            os_2:bool=True, post:bool=True,
         ):
         """
         Load an SFNT resource and convert to Font.
@@ -75,9 +67,10 @@ if ttLib:
         vmtx: override vertical bitmap metrics with `vmtx` table (default: False)
         hhea: include horizontal line metrics from `hhea` table (default: False)
         vhea: include vertical line metrics from `vhea` table (default: False)
-        os_2: include metrics from OS/2 table (default: True)
+        os_2: include metrics from `OS/2` table (default: True)
+        post: include metrics from `post` table (default: True)
         """
-        tags = _get_tags(hmtx, vmtx, hhea, vhea, os_2)
+        tags = _get_tags(hmtx, vmtx, hhea, vhea, os_2, post)
         sfnt = _read_sfnt(infile, tags)
         logging.debug(str(sfnt))
         fonts = _convert_sfnt(sfnt)
@@ -96,7 +89,7 @@ if ttLib:
             infile,
             hmtx:bool=False, vmtx:bool=False,
             hhea:bool=False, vhea:bool=False,
-            os_2:bool=True
+            os_2:bool=True, post:bool=True,
         ):
         """
         Load a TrueType/OpenType Collection file.
@@ -105,69 +98,117 @@ if ttLib:
         vmtx: override vertical bitmap metrics with `vmtx` table (default: False)
         hhea: include horizontal line metrics from `hhea` table (default: False)
         vhea: include vertical line metrics from `vhea` table (default: False)
-        os_2: include metrics from OS/2 table (default: True)
+        os_2: include metrics from `OS/2` table (default: True)
+        post: include metrics from `post` table (default: True)
         """
-        tags = _get_tags(hmtx, vmtx, hhea, vhea, os_2)
+        tags = _get_tags(hmtx, vmtx, hhea, vhea, os_2, post)
         sfnts = _read_collection(infile, tags)
         fonts = []
         for _sfnt in sfnts:
             fonts.extend(_convert_sfnt(_sfnt))
         return fonts
 
+else:
+    # ensure names are importable; sfnt used by mac, win modules
+    load_sfnt = check_fonttools
+    load_collection = check_fonttools
+
 
 ###############################################################################
-# fontTools extensions
+# common encoding tables
 
-# bdat/bloc tables are Apple's version of EBDT/EBLC.
-# They have the same structure but a different tag.
-table__b_h_e_d = None
-table__b_l_o_c = None
-table__b_d_a_t = None
+# shared with mac
 
-def _init_fonttools():
-    """Register extension classes for fontTools."""
-    if not ttLib:
-        raise FileFormatError(
-            'Parsing `sfnt` resources requires module `fontTools`, '
-            'which is not available.'
-        )
-    global table__b_h_e_d, table__b_l_o_c, table__b_d_a_t
-    if table__b_d_a_t:
-        return
+# based on:
+# [1] Apple Technotes (As of 2002)/te/te_02.html
+# [2] https://developer.apple.com/library/archive/documentation/mac/Text/Text-367.html#HEADING367-0
+MAC_ENCODING = {
+    0: 'mac-roman',
+    1: 'mac-japanese',
+    2: 'mac-trad-chinese',
+    3: 'mac-korean',
+    4: 'mac-arabic',
+    5: 'mac-hebrew',
+    6: 'mac-greek',
+    7: 'mac-cyrillic', # [1] russian
+    # 8: [2] right-to-left symbols
+    9: 'mac-devanagari',
+    10: 'mac-gurmukhi',
+    11: 'mac-gujarati',
+    12: 'mac-oriya',
+    13: 'mac-bengali',
+    14: 'mac-tamil',
+    15: 'mac-telugu',
+    16: 'mac-kannada',
+    17: 'mac-malayalam',
+    18: 'mac-sinhalese',
+    19: 'mac-burmese',
+    20: 'mac-khmer',
+    21: 'mac-thai',
+    22: 'mac-laotian',
+    23: 'mac-georgian',
+    24: 'mac-armenian',
+    25: 'mac-simp-chinese', # [1] maldivian
+    26: 'mac-tibetan',
+    27: 'mac-mongolian',
+    28: 'mac-ethiopic', # [2] == geez
+    29: 'mac-centraleurope', # [1] non-cyrillic slavic
+    30: 'mac-vietnamese',
+    31: 'mac-sindhi', # [2] == ext-arabic
+    #32: [1] [2] 'uninterpreted symbols'
+}
 
-    from fontTools.ttLib.tables._h_e_a_d import table__h_e_a_d
-    from fontTools.ttLib.tables.E_B_L_C_ import table_E_B_L_C_
-    from fontTools.ttLib.tables.E_B_D_T_ import table_E_B_D_T_
+WIN_ENCODING = {
+    # Symbol, but apparently not windows-symbol but any undefined encoding
+    0: '',
+    1: 'utf-16le', # unicode bmp
+    2: 'ms932', # shift-jis
+    3: 'ms936', # PRC
+    4: 'ms950', # Big-5
+    5: 'ms949', # Wansung
+    6: 'ms1361', # Johab
+    10: 'utf-16le', # Unicode full repertoire
+}
 
-    class table__b_h_e_d(table__h_e_a_d): pass
-    class table__b_l_o_c(table_E_B_L_C_): pass
+ISO_ENCODING = {
+    0: 'ascii',
+    # unicode
+    1: 'iso-10646',
+    # latin-1
+    2: 'iso-8859-1',
+}
 
-    class table__b_d_a_t(table_E_B_D_T_):
-        locatorName = "bloc"
-
-    ttLib.registerCustomTableClass('bhed', 'monobit.formats.sfnt')
-    ttLib.registerCustomTableClass('bloc', 'monobit.formats.sfnt')
-    ttLib.registerCustomTableClass('bdat', 'monobit.formats.sfnt')
-
+PLATFORM_ENCODING = {
+    # macintosh platform
+    1: MAC_ENCODING,
+    # ISO platform
+    2: ISO_ENCODING,
+    # Windows platform
+    3: WIN_ENCODING,
+    # legacy windows charset value
+    4: CHARSET_MAP,
+}
 
 ###############################################################################
 # sfnt resource reader
-
 
 # tags we will decompile and process
 _TAGS = (
     # check `maxp` first to catch any assertion errors on decompile
     'maxp',
     # core bitmap tables
-    'bhed', 'head',
+    'head', 'bhed',
     'EBLC', 'bloc',
     'EBDT', 'bdat',
+    'EBSC',
     # sbix: currently just warn we don't parse it
     'sbix',
     # metrics
     'hmtx', 'hhea',
     'vmtx', 'vhea',
     'OS/2',
+    # underline metrics and glyph name tags
+    'post',
     # metadata
     'name',
     # kerning information
@@ -177,7 +218,7 @@ _TAGS = (
     'cmap',
 )
 
-def _get_tags(hmtx, vmtx, hhea, vhea, os_2):
+def _get_tags(hmtx, vmtx, hhea, vhea, os_2, post):
     """Get list of tables to extract."""
     tags = list(_TAGS)
     if not hmtx:
@@ -190,34 +231,36 @@ def _get_tags(hmtx, vmtx, hhea, vhea, os_2):
         tags.remove('vhea')
     if not os_2:
         tags.remove('OS/2')
+    if not post:
+        tags.remove('post')
     return tags
 
 
 def _read_sfnt(instream, tags):
     """Read an SFNT resource into data structure."""
     # let fonttools parse the SFNT
-    _init_fonttools()
+    check_fonttools()
     try:
-        ttf = TTFont(instream)
-    except (TTLibError, AssertionError) as e:
+        ttf = fonttools.TTFont(instream)
+    except (fonttools.TTLibError, AssertionError) as e:
         raise FileFormatError(f'Could not read sfnt file: {e}')
     return _sfnt_props(ttf, tags)
 
 def _read_collection(instream, tags):
     """Read a collection into data structures."""
     # let fonttools parse the SFNT
-    _init_fonttools()
+    check_fonttools()
     try:
-        ttfc = TTCollection(instream)
-    except (TTLibError, AssertionError) as e:
+        ttcf = fonttools.TTCollection(instream)
+    except (fonttools.TTLibError, AssertionError) as e:
         raise FileFormatError(f'Could not read collection file: {e}')
-    ttfc_data = []
-    for ttf in ttfc:
+    ttcf_data = []
+    for ttf in ttcf:
         try:
-            ttfc_data.append(_sfnt_props(ttf, tags))
+            ttcf_data.append(_sfnt_props(ttf, tags))
         except ResourceFormatError as e:
             logging.debug(e)
-    return ttfc_data
+    return ttcf_data
 
 
 def _sfnt_props(ttf, tags):
@@ -230,7 +273,7 @@ def _sfnt_props(ttf, tags):
         try:
             # __getitem__ forces a decompilation of the table
             tables[tag] = ttf.get(tag, None)
-        except (TTLibError, AssertionError) as e:
+        except (fonttools.TTLibError, AssertionError) as e:
             if not str(e):
                 e = f'{type(e).__name__} in fontTools library.'
             logging.debug('Could not read `%s` table in sfnt: %s', tag, e)
@@ -240,7 +283,7 @@ def _sfnt_props(ttf, tags):
 def _to_props(obj):
     """Recursively convert fontTools objects to namespaces."""
     # avoid infinite recursion
-    if isinstance(obj, TTFont):
+    if isinstance(obj, fonttools.TTFont):
         return str(obj)
     if obj is None:
         return obj
@@ -292,13 +335,24 @@ def _convert_sfnt(sfnt):
             'No `EBDT` or `bdat` bitmap strikes found in sfnt resource.'
         )
     fonts = []
+    unitable = _get_unicode_table(sfnt)
+    enctable, encoding = _get_encoding_table(sfnt)
     for i_strike in range(sfnt.bloc.numSizes):
         try:
             props = _convert_props(sfnt, i_strike)
-            glyphs = _convert_glyphs(sfnt, i_strike, props._hfupp, props._vfupp)
+            glyphs = _convert_glyphs(
+                sfnt, i_strike, props._hfupp, props._vfupp, unitable, enctable
+            )
             del props._hfupp
             del props._vfupp
-            fonts.append(Font(glyphs, source_format=source_format, **vars(props)))
+            # remove temporary names created by fontTools
+            # if there's no post table or it is empty
+            if not sfnt.post or sfnt.post.formatType == 3.0:
+                glyphs = (_g.modify(tag=None) if _g.char else _g for _g in glyphs)
+            fonts.append(Font(
+                glyphs, source_format=source_format, encoding=encoding,
+                **vars(props)
+            ))
         except StrikeFormatError:
             pass
     return fonts
@@ -317,15 +371,14 @@ def _convert_props(sfnt, i_strike):
     props |= _convert_os_2_props(getattr(sfnt, 'OS/2'), vert_fu_p_pix, hori_fu_p_pix)
     props |= _convert_hhea_props(sfnt.hhea, vert_fu_p_pix)
     props |= _convert_vhea_props(sfnt.vhea, hori_fu_p_pix)
+    props |= _convert_post_props(sfnt.post, vert_fu_p_pix)
     props._hfupp = hori_fu_p_pix
     props._vfupp = vert_fu_p_pix
     return props
 
 
-def _convert_glyphs(sfnt, i_strike, hori_fu_p_pix, vert_fu_p_pix):
+def _convert_glyphs(sfnt, i_strike, hori_fu_p_pix, vert_fu_p_pix, unitable, enctable):
     """Build glyphs and glyph properties from sfnt data."""
-    unitable = _get_unicode_table(sfnt)
-    enctable = _get_encoding_table(sfnt)
     glyphs = []
     strike = sfnt.bdat.strikeData[i_strike]
     blocstrike = sfnt.bloc.strikes[i_strike]
@@ -434,9 +487,8 @@ _UNICODE_CHOICES = (
 def _get_unicode_table(sfnt):
     """Get unicode mapping from sfnt data."""
     # find unicode encoding
-    known_tables = tuple(_t for _t in sfnt.cmap.tables)
     for id_pair in _UNICODE_CHOICES:
-        for table in known_tables:
+        for table in sfnt.cmap.tables:
             if (int(table.platformID), int(table.platEncID)) == id_pair:
                 unitable = {
                     _name: chr(int(_ord))
@@ -452,22 +504,28 @@ def _get_unicode_table(sfnt):
 
 def _get_encoding_table(sfnt):
     """Get non-unicode encoding from sfnt data."""
-    known_tables = tuple(_t for _t in sfnt.cmap.tables)
     # get the largest table for non-unicode mappings
     non_unicode_tables = (
-        _t.cmap for _t in known_tables
+        _t for _t in sfnt.cmap.tables
         if (int(_t.platformID), int(_t.platEncID)) not in _UNICODE_CHOICES
     )
     non_unicode_tables = sorted(
-        ((len(_t), _t) for _t in non_unicode_tables),
+        ((len(_t.cmap), _t) for _t in non_unicode_tables),
         reverse=True
     )
-    enctable = non_unicode_tables[0][1] if non_unicode_tables else {}
+    if not non_unicode_tables:
+        return {}, ''
+    largest_table = non_unicode_tables[0][1]
+    encoding = (
+        PLATFORM_ENCODING
+        .get(largest_table.platformID, {})
+        .get(largest_table.platEncID, '')
+    )
     enctable = {
         _name: int(_ord)
-        for _ord, _name in enctable.items()
+        for _ord, _name in largest_table.cmap.items()
     }
-    return enctable
+    return enctable, encoding
 
 
 ###############################################################################
@@ -708,55 +766,6 @@ def _convert_vhea_props(vhea, horiz_fu_p_pix):
 ###############################################################################
 # 'name' table
 
-# based on:
-# [1] Apple Technotes (As of 2002)/te/te_02.html
-# [2] https://developer.apple.com/library/archive/documentation/mac/Text/Text-367.html#HEADING367-0
-MAC_ENCODING = {
-    0: 'mac-roman',
-    1: 'mac-japanese',
-    2: 'mac-trad-chinese',
-    3: 'mac-korean',
-    4: 'mac-arabic',
-    5: 'mac-hebrew',
-    6: 'mac-greek',
-    7: 'mac-cyrillic', # [1] russian
-    # 8: [2] right-to-left symbols
-    9: 'mac-devanagari',
-    10: 'mac-gurmukhi',
-    11: 'mac-gujarati',
-    12: 'mac-oriya',
-    13: 'mac-bengali',
-    14: 'mac-tamil',
-    15: 'mac-telugu',
-    16: 'mac-kannada',
-    17: 'mac-malayalam',
-    18: 'mac-sinhalese',
-    19: 'mac-burmese',
-    20: 'mac-khmer',
-    21: 'mac-thai',
-    22: 'mac-laotian',
-    23: 'mac-georgian',
-    24: 'mac-armenian',
-    25: 'mac-simp-chinese', # [1] maldivian
-    26: 'mac-tibetan',
-    27: 'mac-mongolian',
-    28: 'mac-ethiopic', # [2] == geez
-    29: 'mac-centraleurope', # [1] non-cyrillic slavic
-    30: 'mac-vietnamese',
-    31: 'mac-sindhi', # [2] == ext-arabic
-    #32: [1] [2] 'uninterpreted symbols'
-}
-#
-# WIN_ENCODING = {
-#     0: 'windows-symbol',
-#     1: 'utf-16le', # unicode bmp
-#     2: 'ms932', # shift-jis
-#     3: 'ms936', # PRC
-#     4: 'ms950', # Big-5
-#     5: 'ms949', # Wansung
-#     6: 'ms1361', # Johab
-#     10: 'utf-16le', # Unicode full repertoire
-# }
 def _decode_name(namerecs, nameid):
     for namerec in namerecs:
         if namerec.nameID != nameid:
@@ -781,6 +790,27 @@ def _decode_name(namerecs, nameid):
         return namerec.string.decode('latin-1')
     return None
 
+
+def _convert_version_string(version_string):
+    """Convert standard sfnt version string to something more like ours."""
+    # version is encoded as 'Version x.y', optionally followed by non-numeric info
+    # split by non-(digit or dot)
+    groups = re.split(r'([\d\.]+)', version_string)
+    if len(groups) < 2 or groups[0].lower() != 'version ':
+        # non-compliant version string, preserve as is
+        pass
+    else:
+        version_number = str(float(groups[1]))
+        if len(groups) == 2:
+            return version_number
+        version_string = ''.join(groups[2:])
+        if version_number not in version_string:
+            version_string = version_number + version_string
+        # non-alpha separator
+        if not version_string[0].isalnum():
+            version_string = version_string[1:]
+    return version_string.strip().rstrip('0').rstrip('.')
+
 def _convert_name_props(name):
     """Convert font properties from name table."""
     if not name:
@@ -793,7 +823,7 @@ def _convert_name_props(name):
         font_id=_decode_name(name.names, 3),
         name=_decode_name(name.names, 4),
         #
-        revision=_decode_name(name.names, 5),
+        revision=_convert_version_string(_decode_name(name.names, 5)),
         #
         #postscript_name
         #
@@ -873,4 +903,18 @@ def _convert_os_2_props(os_2, vert_fu_p_pix, hori_fu_p_pix):
         # > glyph ID 0 is to be used for the default character.
         if props.default_char == Char('\0'):
             props.default_char = Tag('.notdef')
+    return props
+
+
+###############################################################################
+# 'post' table
+
+def _convert_post_props(post, vert_fu_p_pix):
+    """Convert font properties from `post` table."""
+    if not post:
+        return Props()
+    props = Props(
+        underline_descent=-post.underlinePosition // vert_fu_p_pix or None,
+        underline_thickness=post.underlineThickness // vert_fu_p_pix or None,
+    )
     return props

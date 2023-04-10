@@ -131,8 +131,9 @@ Supported bitmap formats
 | The Print Shop        | `printshop`| `.pnf`                      | ✔     |       |
 | PC Screen Font        | `psf`      | `.psf` `.psfu`              | ✔     | ✔ (version 2) |
 | PSF2AMS PSFCOM        | `psfcom`   | `.com`                      | ✔     |       |
-| SFNT embedded bitmap  | `sfnt`     | `.otb` `.ttf` `.otf` [F] [**] | ✔   | ✔ (OTB) |
 | Signum! 2             | `signum`   | `.e24` `.p9` `.p24` `.l30`  | ✔     |       |
+| SFNT embedded bitmap  | `sfnt`     | `.otb` `.ttf` `.otf` [F] [**] | ✔   | ✔ (OTB) |
+| SFNT collection       | `ttcf`     | `.otc` `.ttc` [F] [**]      | ✔     | ✔ (OTB) |
 | vfont                 | `vfont`    |                             | ✔     | ✔     |
 | Bare GEOS resource    | `vlir`     |                             | ✔     |       |
 | Windows FNT resource  | `win`      | `.fnt`                      | ✔     | ✔     |
@@ -180,6 +181,9 @@ _The vast majority of `.ttf`, `.otf`, `.dfont` etc. files do not contain bitmaps
 This is true even for fonts with a pixelised look.
 To convert these you first need to _rasterise_ them, which `monobit` does not do.
 Some of the other font tools linked below do have rasterising features.
+
+`monobit` can experimentally output OpenType Bitmap (`.otb`) files, a bitmap-only
+file format supported by Linux desktops.
 
 
 Font format features
