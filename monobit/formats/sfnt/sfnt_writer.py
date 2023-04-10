@@ -143,7 +143,7 @@ def _convert_to_name_props(font):
         _c if _c.isalnum() and _c.isascii() else '-'
         for _c in font.name
     )
-    ps_name = restricted_name[:63]
+    ps_name = ps_name[:63]
     props = dict(
         # 0
         copyright=font.copyright,
