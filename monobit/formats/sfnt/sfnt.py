@@ -270,28 +270,10 @@ def _convert_sfnt(sfnt):
             # if there's no post table or it is empty
             if not sfnt.post or sfnt.post.formatType == 3.0:
                 glyphs = (_g.modify(tag=None) if _g.char else _g for _g in glyphs)
-            else:
-                # convert glyphXX tags to codepoints
-                glyphs = (_to_codepoint(_g) for _g in glyphs)
             fonts.append(Font(glyphs, source_format=source_format, **vars(props)))
         except StrikeFormatError:
             pass
     return fonts
-
-
-def _to_codepoint(glyph):
-    """Convert glyphXX tag to codepoint."""
-    prefix = 'glyph'
-    tag = glyph.tags[0].value
-    if glyph.codepoint or not tag.startswith(prefix):
-        return glyph
-    try:
-        return glyph.modify(
-            codepoint=Codepoint(tag.removeprefix(prefix)),
-            tag=None,
-        )
-    except ValueError as e:
-        return glyph
 
 
 def _convert_props(sfnt, i_strike):
