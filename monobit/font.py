@@ -1014,6 +1014,7 @@ class Font:
         kwargs = dict(
             overwrite=overwrite,
             match_whitespace=match_whitespace,
+            match_graphical=match_graphical,
         )
         if codepoint_from:
             kwargs.update(dict(codepoint_from=codepoint_from))
