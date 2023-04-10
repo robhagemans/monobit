@@ -422,7 +422,13 @@ def _create_sfnt(font, funits_per_em, align, flavour):
     if flavour != 'apple':
         fb.setupOS2(**_convert_to_os_2_props(font, _to_funits))
     # for otb: version-3 table, defines no names
-    fb.setupPost(keepGlyphNames=False)
+    fb.setupPost(
+        keepGlyphNames=False,
+        isFixedPitch=font.spacing in ('monospace', 'character-cell')
+        #italicAngle
+        #underlinePosition
+        #underlineThickness
+    )
     _setup_kern_table(fb, **_convert_to_kern_props(font, glyphs, _to_funits))
     fb.font.recalcBBoxes = False
     if flavour in ('otb', 'ms'):
