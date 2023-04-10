@@ -430,15 +430,17 @@ def _create_sfnt(font, funits_per_em, align, flavour):
         #underlineThickness
     )
     _setup_kern_table(fb, **_convert_to_kern_props(font, glyphs, _to_funits))
-    fb.font.recalcBBoxes = False
-    if flavour in ('otb', 'ms'):
+    # bitmap-only formats
+    if flavour == 'otb':
         # OTB output
+        fb.font.recalcBBoxes = False
         # ensure we get an empty glyf table
         fb.font['glyf'].compile = lambda self: b''
         # loca table with null for every glyph
         fb.font['loca'].compile = lambda self: bytes(len(glyphnames)*2+2)
         # del `loca` in ms file? fontforge does.
     elif flavour == 'apple':
+        fb.font.recalcBBoxes = False
         fb.font['bhed'] = fb.font['head']
         del fb.font['head']
         del fb.font['glyf']
