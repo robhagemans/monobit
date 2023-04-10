@@ -917,19 +917,19 @@ class TestFormats(BaseTester):
         """Test importing sfnt bitmap files produced by fontforge."""
         font, *_ = monobit.load(self.font_path / '4x6.otb')
         self.assertEqual(len(font.glyphs), 922)
-        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+        self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
 
     def test_import_fontforge_fakems(self):
         """Test importing 'fake MS' sfnt bitmap files produced by fontforge."""
         font, *_ = monobit.load(self.font_path / '4x6.ffms.ttf')
         self.assertEqual(len(font.glyphs), 922)
-        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+        self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
 
     def test_import_fontforge_dfont(self):
         """Test importing dfont-wrapped sfnt bitmap files produced by fontforge."""
         font, *_ = monobit.load(self.font_path / '4x6.sfnt.dfont')
         self.assertEqual(len(font.glyphs), 922)
-        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+        self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
 
     # geos
 
