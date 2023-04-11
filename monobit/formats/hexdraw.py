@@ -275,7 +275,9 @@ def _read_clt_glyph(instream):
     width, _, height = text.readline().strip().partition(' ')
     glyphtext = text.read().splitlines()
     return Glyph(
-        glyphtext, _0='.', _1='#', codepoint=f'0x{codepoint}'
+        glyphtext, _0='.', _1='#',
+        # encoding is not specified by spec or file - can be unicode or codepage
+        codepoint=f'0x{codepoint}'
     ).shrink(factor_x=2)
 
 
