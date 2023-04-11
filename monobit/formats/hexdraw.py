@@ -142,7 +142,7 @@ def _save_text(font, outstream, *, ink, paper, comment):
 
 
 ###############################################################################
-# mkwinfont .fd
+# mkwinfon .fd
 
 from ..properties import Props
 from .windows.fnt import _WEIGHT_MAP, CHARSET_MAP
@@ -167,13 +167,13 @@ FD_CHAR_KEYS = {
 }
 
 @loaders.register(
-    name='mkwinfont',
+    name='mkwinfon',
     patterns=('*.fd',),
 )
-def load_mkwinfont(instream):
-    """Load font from a mkwinfont .fd file."""
-    properties, glyphs, comments = _read_mkwinfont(instream.text)
-    return _convert_mkwinfont(properties, glyphs, comments)
+def load_mkwinfon(instream):
+    """Load font from a mkwinfon .fd file."""
+    properties, glyphs, comments = _read_mkwinfon(instream.text)
+    return _convert_mkwinfon(properties, glyphs, comments)
 
 
 def _add_key_value(line, keyset, target, sep=' '):
@@ -184,8 +184,8 @@ def _add_key_value(line, keyset, target, sep=' '):
             return True
     return False
 
-def _read_mkwinfont(text_stream):
-    """Read a mkwinfont file into a properties object."""
+def _read_mkwinfon(text_stream):
+    """Read a mkwinfon file into a properties object."""
     comment = '#'
     ink = '1'
     paper = '0'
@@ -218,7 +218,7 @@ def _read_mkwinfont(text_stream):
             current_props = {}
     return Props(**properties), glyphs, comments
 
-def _convert_mkwinfont(props, glyphs, comments):
+def _convert_mkwinfon(props, glyphs, comments):
     mb_props = dict(
         name=props.facename,
         copyright=props.copyright,
