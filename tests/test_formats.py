@@ -176,8 +176,8 @@ class TestFormats(BaseTester):
         font, *_ = monobit.load(self.font_path / '8x16.draw')
         self.assertEqual(len(font.glyphs), 919)
 
-    def test_export_draw(self):
-        """Test exporting draw files."""
+    def test_export_hexdraw(self):
+        """Test exporting hexdraw files."""
         draw_file = self.temp_path / '8x16.draw'
         monobit.save(self.fixed8x16, draw_file)
         font, *_ = monobit.load(draw_file)
@@ -185,6 +185,14 @@ class TestFormats(BaseTester):
         self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed8x16_A)
 
     # other text formats
+
+    def test_export_draw(self):
+        """Test exporting non-8x16 draw files with comments."""
+        draw_file = self.temp_path / '4x6.draw'
+        monobit.save(self.fixed4x6, draw_file)
+        font, *_ = monobit.load(draw_file)
+        self.assertEqual(len(font.glyphs), 919)
+        self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
 
     def test_import_psf2txt(self):
         """Test importing psf2txt files."""
