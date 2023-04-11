@@ -16,6 +16,9 @@ from ..magic import FileFormatError
 from .yaff import format_comment, normalise_comment
 
 
+##############################################################################
+# hexdraw
+
 class DrawParams:
     """Parameters for hexdraw format."""
     separator = ':'
@@ -24,9 +27,6 @@ class DrawParams:
     #ink = '#'
     #paper = '-'
 
-
-##############################################################################
-# interface
 
 @loaders.register(
     name='hexdraw',
@@ -62,10 +62,7 @@ def save_hexdraw(fonts, outstream, ink:str='#', paper:str='-'):
     )
 
 
-##############################################################################
-##############################################################################
-# read file
-
+# read hexdraw file
 
 def _load_text(text_stream, *, ink, paper, comment, separator):
     """Parse a hexdraw-style file."""
@@ -111,10 +108,7 @@ def convert_key(key):
         return Tag(key)
 
 
-##############################################################################
-##############################################################################
-# write file
-
+# write hexdraw file
 
 def _save_text(font, outstream, *, ink, paper, comment):
     """Write one font to a plaintext stream as hexdraw."""
@@ -172,15 +166,6 @@ FD_CHAR_KEYS = {
     'width',
 }
 
-
-def _add_key_value(line, keyset, target):
-    for key in keyset:
-        if line.startswith(key):
-            _, _, value = line.partition(' ')
-            target[key] = value
-            return True
-    return False
-
 @loaders.register(
     name='mkwinfont',
     patterns=('*.fd',),
@@ -190,6 +175,14 @@ def load_mkwinfont(instream):
     properties, glyphs, comments = _read_mkwinfont(instream.text)
     return _convert_mkwinfont(properties, glyphs, comments)
 
+
+def _add_key_value(line, keyset, target, sep=' '):
+    for key in keyset:
+        if line.startswith(key):
+            _, _, value = line.partition(sep)
+            target[key.strip()] = value.strip()
+            return True
+    return False
 
 def _read_mkwinfont(text_stream):
     """Read a mkwinfont file into a properties object."""
@@ -278,3 +271,93 @@ def _read_clt_glyph(instream):
     return Glyph(
         glyphtext, _0='.', _1='#', codepoint=f'0x{codepoint}'
     ).shrink(factor_x=2)
+
+
+###############################################################################
+# psf2txt
+
+PSFT_KEYS = {
+    'Version',
+    'Flags',
+    'Length',
+    'Width',
+    'Height',
+}
+
+PSFT_CHAR_KEYS = {
+    'Unicode',
+}
+
+
+
+@loaders.register(
+    name='psf2txt',
+    magic=(b'%PSF2',),
+    patterns=('*.txt',),
+)
+def load_psf2txt(instream):
+    """Load font from apsftoools .txt file."""
+    properties, glyphs, comments = _read_psf2txt(instream.text)
+    return _convert_psf2txt(properties, glyphs, comments)
+
+
+def _read_psf2txt(text_stream):
+    """Read a psf2txt file into a properties object."""
+    comment = '//'
+    ink = '#'
+    paper = '-'
+    comments = []
+    glyphs = []
+    properties = {_k: None for _k in PSFT_KEYS}
+    if text_stream.readline().strip() != '%PSF2':
+        raise FileFormatError('Not a PSF2TXT file.')
+    while True:
+        line = text_stream.readline()
+        if not line or line.startswith('%'):
+            break
+        line = line.rstrip()
+        if not line:
+            continue
+        if line.startswith(comment):
+            comments.append(line.removeprefix(comment))
+            continue
+        stripline = line.lstrip()
+        if _add_key_value(line, PSFT_KEYS, properties):
+            continue
+    current_props = {}
+    current_glyph = []
+    while True:
+        line = text_stream.readline()
+        # print(repr(line))
+        if not line:
+            break
+        if line.startswith(comment):
+            comments.append(line.removeprefix(comment))
+            continue
+        if line.startswith('Bitmap:'):
+            line = line.removeprefix('Bitmap:')
+            while line.strip()[:1] in (paper, ink):
+                line = line.strip()
+                line = line.rstrip('\\').strip()
+                current_glyph.append(line)
+                line = text_stream.readline()
+        if _add_key_value(line, PSFT_CHAR_KEYS, current_props):
+            continue
+        # print(current_glyph)
+        if line.startswith('%'): # and current_glyph:
+            glyphs.append((current_glyph, Props(**current_props)))
+            current_glyph = []
+            current_props = {}
+    return Props(**properties), glyphs, comments
+
+
+def _convert_psf2txt(props, glyphs, comments):
+    mb_props = dict(
+        revision=props.Version,
+        # ignore Flags, we don't need the others
+    )
+    mb_glyphs = tuple(
+        Glyph(_rows, _0='-', _1='#', comment=_props.Unicode)
+        for _rows, _props in glyphs
+    )
+    return Font(mb_glyphs, **mb_props)
