@@ -79,7 +79,7 @@ def _save_draw(font, outstream, *, ink, paper):
     """Write one font to a plaintext stream as hexdraw."""
     font = font.equalise_horizontal()
     # ensure char labels are set
-    font = font.label(char_from=font.encoding)
+    font = font.label(char_from=font.encoding, match_whitespace=False, match_graphical=False)
     # write global comment
     if font.get_comment():
         outstream.write(
