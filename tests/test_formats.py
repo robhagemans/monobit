@@ -7,7 +7,7 @@ import os
 import unittest
 
 import monobit
-from .base import BaseTester, ensure_asset
+from .base import BaseTester, ensure_asset, assert_text_eq
 
 
 class TestFormats(BaseTester):
@@ -202,7 +202,7 @@ class TestFormats(BaseTester):
         """Test importing mkwinfont .fd files."""
         font, *_ = monobit.load(self.font_path / '6x13.fd', format='mkwinfon')
         self.assertEqual(len(font.glyphs), 256)
-        self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed6x13_A)
+        assert_text_eq(font.get_glyph('A').reduce().as_text(), self.fixed6x13_A)
 
     # PSF
 
