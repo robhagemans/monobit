@@ -210,7 +210,7 @@ def _read_mkwinfon(text_stream):
         if _add_key_value(line, FD_CHAR_KEYS, current_props):
             continue
         while line[:1] in (paper, ink):
-            current_glyph.append(line)
+            current_glyph.append(line.strip())
             line = text_stream.readline()
         if current_glyph:
             glyphs.append((current_glyph, Props(**current_props)))
@@ -225,15 +225,21 @@ def _convert_mkwinfon(props, glyphs, comments):
         descent=int(props.height)-int(props.ascent),
         ascent=props.ascent,
         point_size=props.pointsize,
-        weight=_WEIGHT_MAP.get(round(max(100, min(900, props.weight or 400)), -2), ''),
-        encoding=CHARSET_MAP.get(props.charset, None),
+        weight=(
+            None if props.weight is None else
+            _WEIGHT_MAP.get(round(max(100, min(900, int(props.weight))), -2), None)
+        ),
+        encoding=(
+            None if props.charset is None else
+            CHARSET_MAP.get(int(props.charset), None)
+        ),
         comment=normalise_comment(comments),
     )
     mb_glyphs = tuple(
         Glyph(_rows, _0='0', _1='1', codepoint=_props['char'])
         for _rows, _props in glyphs
     )
-    return Font(mb_glyphs, **mb_props)
+    return Font(mb_glyphs, **mb_props).label()
 
 
 ###############################################################################
