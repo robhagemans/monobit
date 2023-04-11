@@ -19,15 +19,6 @@ from .yaff import format_comment, normalise_comment
 ##############################################################################
 # hexdraw
 
-class DrawParams:
-    """Parameters for hexdraw format."""
-    separator = ':'
-    comment = '%'
-    tab = '\t'
-    #ink = '#'
-    #paper = '-'
-
-
 @loaders.register(
     name='hexdraw',
     patterns=('*.draw',),
@@ -39,12 +30,7 @@ def load_hexdraw(instream, ink:str='#', paper:str='-'):
     ink: character used for inked/foreground pixels (default #)
     paper: character used for uninked/background pixels (default -)
     """
-    return _load_text(
-        instream.text,
-        ink=ink, paper=paper,
-        comment=DrawParams.comment,
-        separator=DrawParams.separator
-    )
+    return _load_text(instream.text, ink=ink, paper=paper)
 
 @savers.register(linked=load_hexdraw)
 def save_hexdraw(fonts, outstream, ink:str='#', paper:str='-'):
@@ -56,15 +42,12 @@ def save_hexdraw(fonts, outstream, ink:str='#', paper:str='-'):
     """
     if len(fonts) > 1:
         raise FileFormatError("Can only save one font to hexdraw file.")
-    _save_text(
-        fonts[0], outstream.text,
-        ink=ink, paper=paper, comment=DrawParams.comment
-    )
+    _save_text(fonts[0], outstream.text, ink=ink, paper=paper)
 
 
 # read hexdraw file
 
-def _load_text(text_stream, *, ink, paper, comment, separator):
+def _load_text(text_stream, *, ink, paper):
     """Parse a hexdraw-style file."""
     comments = []
     glyphs = []
@@ -74,9 +57,7 @@ def _load_text(text_stream, *, ink, paper, comment, separator):
         line = line.rstrip()
         # anything not starting with whitespace or a number is a comment
         if line and line[:1] not in string.hexdigits + string.whitespace:
-            if line.startswith(comment):
-                line = line[len(comment):]
-            comments.append(line)
+            comments.append(line.removeprefix('%'))
             continue
         stripline = line.lstrip()
         # no leading whitespace?
@@ -87,7 +68,7 @@ def _load_text(text_stream, *, ink, paper, comment, separator):
                     labels=(convert_key(label),)
                 ))
                 glyphlines = []
-            label, _, stripline = line.partition(separator)
+            label, _, stripline = line.partition(':')
             stripline = stripline.lstrip()
         if stripline and len(line) != len(stripline):
             glyphlines.append(stripline)
@@ -110,7 +91,7 @@ def convert_key(key):
 
 # write hexdraw file
 
-def _save_text(font, outstream, *, ink, paper, comment):
+def _save_text(font, outstream, *, ink, paper):
     """Write one font to a plaintext stream as hexdraw."""
     font = font.equalise_horizontal()
     # ensure char labels are set
@@ -118,8 +99,7 @@ def _save_text(font, outstream, *, ink, paper, comment):
     # write global comment
     if font.get_comment():
         outstream.write(
-            format_comment(font.get_comment(), comment_char='#') + '\n',
-            comment
+            format_comment(font.get_comment(), comment_char='%') + '\n'
         )
     # write glyphs
     for i, glyph in enumerate(font.glyphs):
@@ -134,10 +114,8 @@ def _save_text(font, outstream, *, ink, paper, comment):
                 ascii(glyph.char)
             )
         else:
-            glyphtxt = glyph.as_text(
-                start=DrawParams.tab, ink=ink, paper=paper, end='\n'
-            )
-            outstream.write(f'\n{ord(glyph.char):04x}{DrawParams.separator}')
+            glyphtxt = glyph.as_text(start='\t', ink=ink, paper=paper, end='\n')
+            outstream.write(f'\n{ord(glyph.char):04x}:')
             outstream.write(glyphtxt)
 
 
