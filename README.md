@@ -96,6 +96,7 @@ Supported bitmap formats
 | AngelCode BMFont [P]  | `bmfont` | `.fnt` `.xml` `.json` + images | ✔    | ✔     |
 | Raw binary            | `raw`      | `.fnt` `.rom` [*]           | ✔     | ✔     |
 | Codepage Information  | `cpi`      | `.cpi`                      | ✔     | ✔     |
+| Consoleet / vfontas   | `consoleet`| `.txt`                      | ✔     |       |
 | Daisy-Dot             | `daisy`    | `.nlq` `.nl2` `.nl3` `.nl4` | ✔     |       |
 | Dashen                | `dashen`   | `.pft`                      | ✔     |       |
 | DEC DRCS soft font    | `dec`      |                             | ✔     | ✔     |
@@ -121,7 +122,8 @@ Supported bitmap formats
 | REXXCOM Font Mania    | `mania`    | `.com`                      | ✔     |       |
 | LISA font library     | `lisa`     | `.bin`                      | ✔     |       |
 | MacOS font            | `mac`      | `.dfont` `.suit`            | ✔     |       |
-| MouseGraphics         | `mgtk`     |                             | ✔     |       |
+| mkwinfon text format  | `mkwinfon` | `.fd`                       | ✔     |       |
+| PSF2AMS PSFCOM        | `psfcom`   | `.com`                      | ✔     |       |
 | Bare NFNT resource    | `nfnt`     | `.f`                        | ✔     | ✔     |
 | Palm OS font (v1/NFNT)| `palm`     | `.pdb`                      | ✔     |       |
 | Optiks PCR Font       | `pcr`      | `.pcr`                      | ✔     |       |
@@ -131,6 +133,7 @@ Supported bitmap formats
 | The Print Shop        | `printshop`| `.pnf`                      | ✔     |       |
 | PC Screen Font        | `psf`      | `.psf` `.psfu`              | ✔     | ✔ (version 2) |
 | PSF2AMS PSFCOM        | `psfcom`   | `.com`                      | ✔     |       |
+| PSF2TXT               | `psf2txt`  | `.txt`                      | ✔     |       |
 | Signum! 2             | `signum`   | `.e24` `.p9` `.p24` `.l30`  | ✔     |       |
 | SFNT embedded bitmap  | `sfnt`     | `.otb` `.ttf` `.otf` [F] [**] | ✔   | ✔ (OTB) |
 | SFNT collection       | `ttcf`     | `.otc` `.ttc` [F] [**]      | ✔     | ✔ (OTB) |
