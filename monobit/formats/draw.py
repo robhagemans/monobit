@@ -296,15 +296,13 @@ PSFT_CHAR_KEYS = {
     'Unicode',
 }
 
-
-
 @loaders.register(
     name='psf2txt',
     magic=(b'%PSF2',),
     patterns=('*.txt',),
 )
 def load_psf2txt(instream):
-    """Load font from apsftoools .txt file."""
+    """Load font from a psf2txt .txt file."""
     properties, glyphs, comments = _read_psf2txt(instream.text)
     return _convert_psf2txt(properties, glyphs, comments)
 
@@ -363,8 +361,21 @@ def _convert_psf2txt(props, glyphs, comments):
         revision=props.Version,
         # ignore Flags, we don't need the others
     )
+    labels = tuple(
+        _props.Unicode.strip()[1:-2].split('];[')
+        for _, _props in glyphs
+    )
+    labels = tuple(
+        tuple(
+            Char(''.join(
+                chr(int(_cp, 16)) for _cp in _l.split('+'))
+            )
+            for _l in _llist
+        )
+        for _llist in labels
+    )
     mb_glyphs = tuple(
-        Glyph(_rows, _0='-', _1='#', comment=_props.Unicode)
-        for _rows, _props in glyphs
+        Glyph(_rows, _0='-', _1='#', labels=_labels)
+        for _labels, (_rows, _props) in zip(labels, glyphs)
     )
     return Font(mb_glyphs, **mb_props)
