@@ -49,7 +49,7 @@ def save_hexdraw(fonts, outstream, ink:str='#', paper:str='-'):
 
 def _load_draw(text_stream, *, ink, paper):
     """Parse a hexdraw-style file."""
-    blocks = tuple(iter_blocks(text_stream))
+    blocks = tuple(iter_blocks(text_stream, BlockBuilder))
     comment = '\n'.join(
         _l
         for _b in blocks if _b.is_comment()
@@ -346,17 +346,18 @@ def _convert_psf2txt(props, glyphs, comments):
 ##############################################################################
 # common utilities
 
-def iter_blocks(text_stream):
-    block = BlockBuilder()
+def iter_blocks(text_stream, block_builder):
+    block = block_builder()
     for line in text_stream:
         while not block.append(line):
             yield block
-            block = BlockBuilder()
+            block = block_builder()
     yield block
 
 
 class BlockBuilder:
     notcomment = string.hexdigits + string.whitespace
+    separator = ':'
 
     def __init__(self):
         self.lines = []
@@ -372,13 +373,15 @@ class BlockBuilder:
     def ends(self, line):
         if not self.lines:
             return False
-        if self.lines[-1][:1] not in self.notcomment:
-            return not line[:1] not in self.notcomment
+        if self.is_comment():
+            return not self._is_comment_line(line)
         return not line[:1] in string.whitespace
 
-
     def is_comment(self):
-        return self.lines and self.lines[-1][:1] not in self.notcomment
+        return self.lines and self._is_comment_line(self.lines[-1])
+
+    def _is_comment_line(self, line):
+        return line[:1] not in self.notcomment
 
     def get_comment_value(self):
         lines = tuple(self.lines)
@@ -390,10 +393,10 @@ class BlockBuilder:
         return lines
 
     def is_glyph(self):
-        return self.lines and self.lines[0][0] in string.hexdigits
+        return self.lines and self.lines[0][:1] in string.hexdigits
 
     def get_value(self):
-        _, _, value =  self.lines[0].partition(':')
+        _, _, value =  self.lines[0].partition(self.separator)
         value = value.strip()
         lines = self.lines[1:]
         if value:
@@ -402,8 +405,8 @@ class BlockBuilder:
         return lines
 
     def get_key(self):
-        key, _, _ =  self.lines[0].partition(':')
-        return key
+        key, _, _ =  self.lines[0].partition(self.separator)
+        return key.strip()
 
 
 def equal_firsts(lines):
