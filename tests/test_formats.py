@@ -184,6 +184,26 @@ class TestFormats(BaseTester):
         self.assertEqual(len(font.glyphs), 919)
         self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed8x16_A)
 
+    # other text formats
+
+    def test_import_psf2txt(self):
+        """Test importing psf2txt files."""
+        font, *_ = monobit.load(self.font_path / '4x6.txt', format='psf2txt')
+        self.assertEqual(len(font.glyphs), 919)
+        self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
+
+    def test_import_clt(self):
+        """Test importing consoleet files."""
+        font, *_ = monobit.load(self.font_path / '4x6.clt' / '0000.txt', format='consoleet')
+        self.assertEqual(len(font.glyphs), 919)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+
+    def test_import_mkwinfon(self):
+        """Test importing mkwinfont .fd files."""
+        font, *_ = monobit.load(self.font_path / '6x13.fd', format='mkwinfon')
+        self.assertEqual(len(font.glyphs), 256)
+        self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed6x13_A)
+
     # PSF
 
     def test_import_psf(self):
