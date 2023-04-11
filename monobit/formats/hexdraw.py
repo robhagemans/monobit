@@ -336,8 +336,8 @@ def _read_psf2txt(text_stream):
     current_glyph = []
     while True:
         line = text_stream.readline()
-        # print(repr(line))
         if not line:
+            glyphs.append((current_glyph, Props(**current_props)))
             break
         if line.startswith(comment):
             comments.append(line.removeprefix(comment))
@@ -351,7 +351,6 @@ def _read_psf2txt(text_stream):
                 line = text_stream.readline()
         if _add_key_value(line, PSFT_CHAR_KEYS, current_props):
             continue
-        # print(current_glyph)
         if line.startswith('%'): # and current_glyph:
             glyphs.append((current_glyph, Props(**current_props)))
             current_glyph = []
