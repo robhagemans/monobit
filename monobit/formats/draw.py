@@ -30,7 +30,7 @@ def load_hexdraw(instream, ink:str='#', paper:str='-'):
     ink: character used for inked/foreground pixels (default #)
     paper: character used for uninked/background pixels (default -)
     """
-    return _load_text(instream.text, ink=ink, paper=paper)
+    return _load_draw(instream.text, ink=ink, paper=paper)
 
 @savers.register(linked=load_hexdraw)
 def save_hexdraw(fonts, outstream, ink:str='#', paper:str='-'):
@@ -42,43 +42,27 @@ def save_hexdraw(fonts, outstream, ink:str='#', paper:str='-'):
     """
     if len(fonts) > 1:
         raise FileFormatError("Can only save one font to hexdraw file.")
-    _save_text(fonts[0], outstream.text, ink=ink, paper=paper)
+    _save_draw(fonts[0], outstream.text, ink=ink, paper=paper)
 
 
 # read hexdraw file
 
-def _load_text(text_stream, *, ink, paper):
+def _load_draw(text_stream, *, ink, paper):
     """Parse a hexdraw-style file."""
-    comments = []
-    glyphs = []
-    label = ''
-    glyphlines = []
-    for line in text_stream:
-        line = line.rstrip()
-        # anything not starting with whitespace or a number is a comment
-        if line and line[:1] not in string.hexdigits + string.whitespace:
-            comments.append(line.removeprefix('%'))
-            continue
-        stripline = line.lstrip()
-        # no leading whitespace?
-        if line and len(line) == len(stripline):
-            if glyphlines:
-                glyphs.append(Glyph(
-                    tuple(glyphlines), _0=paper, _1=ink,
-                    labels=(convert_key(label),)
-                ))
-                glyphlines = []
-            label, _, stripline = line.partition(':')
-            stripline = stripline.lstrip()
-        if stripline and len(line) != len(stripline):
-            glyphlines.append(stripline)
-    if glyphlines:
-        glyphs.append(Glyph(
-            tuple(glyphlines), _0=paper, _1=ink,
-            labels=(convert_key(label),)
-        ))
-    comments = normalise_comment(comments)
-    return Font(glyphs, comment=comments)
+    blocks = tuple(iter_blocks(text_stream))
+    comment = '\n'.join(
+        _l
+        for _b in blocks if _b.is_comment()
+        for _l in _b.get_comment_value()
+    )
+    glyphs = (
+        Glyph(
+            _b.get_value(), _0=paper, _1=ink,
+            labels=(convert_key(_b.get_key()),)
+        )
+        for _b in blocks if _b.is_glyph()
+    )
+    return Font(glyphs, comment=comment)
 
 
 def convert_key(key):
@@ -91,7 +75,7 @@ def convert_key(key):
 
 # write hexdraw file
 
-def _save_text(font, outstream, *, ink, paper):
+def _save_draw(font, outstream, *, ink, paper):
     """Write one font to a plaintext stream as hexdraw."""
     font = font.equalise_horizontal()
     # ensure char labels are set
@@ -357,3 +341,73 @@ def _convert_psf2txt(props, glyphs, comments):
         for _labels, (_rows, _props) in zip(labels, glyphs)
     )
     return Font(mb_glyphs, **mb_props)
+
+
+##############################################################################
+# common utilities
+
+def iter_blocks(text_stream):
+    block = BlockBuilder()
+    for line in text_stream:
+        while not block.append(line):
+            yield block
+            block = BlockBuilder()
+    yield block
+
+
+class BlockBuilder:
+    notcomment = string.hexdigits + string.whitespace
+
+    def __init__(self):
+        self.lines = []
+
+    def append(self, line):
+        if self.ends(line):
+            return False
+        line = line.rstrip()
+        if line:
+            self.lines.append(line)
+        return True
+
+    def ends(self, line):
+        if not self.lines:
+            return False
+        if self.lines[-1][:1] not in self.notcomment:
+            return not line[:1] not in self.notcomment
+        return not line[:1] in string.whitespace
+
+
+    def is_comment(self):
+        return self.lines and self.lines[-1][:1] not in self.notcomment
+
+    def get_comment_value(self):
+        lines = tuple(self.lines)
+        first = equal_firsts(lines)
+        if first and first not in string.ascii_letters + string.digits:
+            lines = (_line[1:] for _line in lines)
+        if equal_firsts(lines) == ' ':
+            lines = (_line[1:] for _line in lines)
+        return lines
+
+    def is_glyph(self):
+        return self.lines and self.lines[0][0] in string.hexdigits
+
+    def get_value(self):
+        _, _, value =  self.lines[0].partition(':')
+        value = value.strip()
+        lines = self.lines[1:]
+        if value:
+            lines = [value] + lines
+        lines = tuple(_l.strip() for _l in lines)
+        return lines
+
+    def get_key(self):
+        key, _, _ =  self.lines[0].partition(':')
+        return key
+
+
+def equal_firsts(lines):
+    first_chars = set(_line[:1] for _line in lines)
+    if len(first_chars) == 1:
+        return first_chars.pop()
+    return None
