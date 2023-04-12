@@ -49,28 +49,24 @@ def save_hexdraw(fonts, outstream, ink:str='#', paper:str='-'):
 
 def _load_draw(text_stream, *, ink, paper):
     """Parse a hexdraw-style file."""
-    blocks = tuple(iter_blocks(text_stream, BlockBuilder))
+    blocks = tuple(iter_blocks(text_stream, (DrawGlyph, DrawComment)))
     comment = '\n'.join(
         _l
-        for _b in blocks if _b.is_comment()
-        for _l in _b.get_comment_value()
+        for _b in blocks if isinstance(_b, DrawComment)
+        for _l in _b.get_value()
     )
     glyphs = (
         Glyph(
             _b.get_value(), _0=paper, _1=ink,
-            labels=(convert_key(_b.get_key()),)
+            labels=(_b.get_key(),)
         )
-        for _b in blocks if _b.is_glyph()
+        for _b in blocks if isinstance(_b, DrawGlyph)
     )
+    unparsed = (_b.get_value() for _b in blocks if isinstance(_b, Unparsed))
+    unparsed = tuple(_b for _b in unparsed if _b)
+    if unparsed:
+        logging.debug('Unparsed lines: %s', unparsed)
     return Font(glyphs, comment=comment)
-
-
-def convert_key(key):
-    """Convert keys on input from .draw."""
-    try:
-        return Char(chr(int(key, 16)))
-    except (TypeError, ValueError):
-        return Tag(key)
 
 
 # write hexdraw file
@@ -346,44 +342,88 @@ def _convert_psf2txt(props, glyphs, comments):
 ##############################################################################
 # common utilities
 
-def iter_blocks(text_stream, block_builder):
-    block = block_builder()
+def iter_blocks(text_stream, classes):
+    block = BlockBuilder(classes)
     for line in text_stream:
-        while not block.append(line):
-            yield block
-            block = block_builder()
-    yield block
+        while not block.append(line.rstrip('\r\n')):
+            yield block.emit()
+            block = BlockBuilder(classes)
+    yield block.emit()
 
 
 class BlockBuilder:
-    notcomment = string.hexdigits + string.whitespace
-    separator = ':'
 
-    def __init__(self):
-        self.lines = []
+    def __init__(self, classes):
+        self.block = None
+        self.classes = (*classes, Unparsed)
 
     def append(self, line):
-        if self.ends(line):
+        if not self.block:
+            for blocktype in self.classes:
+                try:
+                    self.block = blocktype(line)
+                    return True
+                except ValueError:
+                    pass
+            else:
+                # this should not happen - BaseBlock absorbs
+                raise ValueError('unparsed block')
+        if self.block.ends(line):
             return False
-        line = line.rstrip()
-        if line:
-            self.lines.append(line)
+        self.block.append(line)
+        return True
+
+    def emit(self):
+        return self.block
+
+
+class BaseBlock:
+
+    def __init__(self, line):
+        if not self.starts(line):
+            print(f'{line:r} cannot start a {type(self).__name__}')
+            raise ValueError(f'{line:r} cannot start a {type(self).__name__}')
+        self.lines = []
+        self.append(line)
+
+    def starts(self, line):
         return True
 
     def ends(self, line):
-        if not self.lines:
-            return False
-        if self.is_comment():
-            return not self._is_comment_line(line)
-        return not line[:1] in string.whitespace
+        return True
 
-    def is_comment(self):
-        return self.lines and self._is_comment_line(self.lines[-1])
+    def append(self, line):
+        self.lines.append(line)
+
+    def get_value(self):
+        return tuple(self.lines)
+
+
+class Unparsed(BaseBlock):
+    pass
+
+
+class NonEmptyBlock(BaseBlock):
+
+    def append(self, line):
+        line = line.rstrip()
+        if line:
+            self.lines.append(line)
+
+
+class DrawComment(NonEmptyBlock):
+    notcomment = string.hexdigits + string.whitespace
+
+    def starts(self, line):
+        return self._is_comment_line(line)
+
+    def ends(self, line):
+        return not self._is_comment_line(line)
 
     def _is_comment_line(self, line):
         return line[:1] not in self.notcomment
 
-    def get_comment_value(self):
+    def get_value(self):
         lines = tuple(self.lines)
         first = equal_firsts(lines)
         if first and first not in string.ascii_letters + string.digits:
@@ -392,8 +432,22 @@ class BlockBuilder:
             lines = (_line[1:] for _line in lines)
         return lines
 
-    def is_glyph(self):
-        return self.lines and self.lines[0][:1] in string.hexdigits
+def equal_firsts(lines):
+    first_chars = set(_line[:1] for _line in lines)
+    if len(first_chars) == 1:
+        return first_chars.pop()
+    return None
+
+
+class DrawGlyph(NonEmptyBlock):
+    separator = ':'
+
+    def starts(self, line):
+        return line and line[:1] in string.hexdigits
+
+    def ends(self, line):
+        # empty or non-indented
+        return not line[:1] in string.whitespace
 
     def get_value(self):
         _, _, value =  self.lines[0].partition(self.separator)
@@ -406,11 +460,12 @@ class BlockBuilder:
 
     def get_key(self):
         key, _, _ =  self.lines[0].partition(self.separator)
-        return key.strip()
+        return convert_key(key.strip())
 
 
-def equal_firsts(lines):
-    first_chars = set(_line[:1] for _line in lines)
-    if len(first_chars) == 1:
-        return first_chars.pop()
-    return None
+def convert_key(key):
+    """Convert keys on input from .draw."""
+    try:
+        return Char(chr(int(key, 16)))
+    except (TypeError, ValueError):
+        return Tag(key)
