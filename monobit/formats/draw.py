@@ -13,7 +13,7 @@ from ..font import Font
 from ..glyph import Glyph
 from ..labels import Tag, Char
 from ..magic import FileFormatError
-from .yaff import format_comment, normalise_comment
+from .yaff import format_comment
 
 
 ##############################################################################
@@ -256,76 +256,44 @@ def load_psf2txt(instream):
 
 def _read_psf2txt(text_stream):
     """Read a psf2txt file into a properties object."""
-    comment = '//'
-    ink = '#'
-    paper = '-'
-    comments = []
-    glyphs = []
-    properties = {_k: None for _k in PSFT_KEYS}
     if text_stream.readline().strip() != '%PSF2':
         raise FileFormatError('Not a PSF2TXT file.')
-    while True:
-        line = text_stream.readline()
-        if not line or line.startswith('%'):
-            break
-        line = line.rstrip()
-        if not line:
-            continue
-        if line.startswith(comment):
-            comments.append(line.removeprefix(comment))
-            continue
-        stripline = line.lstrip()
-        if _add_key_value(line, PSFT_KEYS, properties):
-            continue
-    current_props = {}
-    current_glyph = []
-    while True:
-        line = text_stream.readline()
-        if not line:
-            glyphs.append((current_glyph, Props(**current_props)))
-            break
-        if line.startswith(comment):
-            comments.append(line.removeprefix(comment))
-            continue
-        if line.startswith('Bitmap:'):
-            line = line.removeprefix('Bitmap:')
-            while line.strip()[:1] in (paper, ink):
-                line = line.strip()
-                line = line.rstrip('\\').strip()
-                current_glyph.append(line)
-                line = text_stream.readline()
-        if _add_key_value(line, PSFT_CHAR_KEYS, current_props):
-            continue
-        if line.startswith('%'): # and current_glyph:
-            glyphs.append((current_glyph, Props(**current_props)))
-            current_glyph = []
+    properties = {_k: None for _k in PSFT_KEYS}
+    comment = []
+    glyphs = []
+    current_comment = comment
+    current_props = properties
+    for block in iter_blocks(text_stream, (PTSeparator, PTComment, PTGlyph, PTLabel, PTProperties)):
+        if isinstance(block, PTSeparator):
+            if glyphs:
+                glyphs[-1] = glyphs[-1].modify(
+                    comment='\n'.join(current_comment), **current_props
+                )
+            else:
+                comment.extend(current_comment)
+                properties.update(current_props)
+            current_comment = []
             current_props = {}
-    return Props(**properties), glyphs, comments
+        elif isinstance(block, PTComment):
+            current_comment.extend(block.get_value())
+        elif isinstance(block, PTProperties):
+            current_props.update(block.get_value())
+        elif isinstance(block, PTGlyph):
+            glyphs.append(Glyph(block.get_value(), _0='-', _1='#'))
+        elif isinstance(block, PTLabel):
+            glyphs[-1] = glyphs[-1].modify(labels=block.get_value())
+        elif isinstance(block, Unparsed):
+            unparsed = block.get_value()
+            if unparsed:
+                logging.debug('Unparsed lines: %s', unparsed)
+    return Props(**properties), glyphs, comment
 
-
-def _convert_psf2txt(props, glyphs, comments):
+def _convert_psf2txt(props, glyphs, comment):
     mb_props = dict(
         revision=props.Version,
         # ignore Flags, we don't need the others
     )
-    labels = tuple(
-        _props.Unicode.strip()[1:-2].split('];[')
-        for _, _props in glyphs
-    )
-    labels = tuple(
-        tuple(
-            Char(''.join(
-                chr(int(_cp, 16)) for _cp in _l.split('+'))
-            )
-            for _l in _llist
-        )
-        for _llist in labels
-    )
-    mb_glyphs = tuple(
-        Glyph(_rows, _0='-', _1='#', labels=_labels)
-        for _labels, (_rows, _props) in zip(labels, glyphs)
-    )
-    return Font(mb_glyphs, **mb_props)
+    return Font(glyphs, **mb_props, comment='\n'.join(comment))
 
 
 ##############################################################################
@@ -370,7 +338,6 @@ class BaseBlock:
 
     def __init__(self, line):
         if not self.starts(line):
-            print(f'{line:r} cannot start a {type(self).__name__}')
             raise ValueError(f'{line:r} cannot start a {type(self).__name__}')
         self.lines = []
         self.append(line)
@@ -404,13 +371,10 @@ class DrawComment(NonEmptyBlock):
     notcomment = string.hexdigits + string.whitespace
 
     def starts(self, line):
-        return self._is_comment_line(line)
+        return line[:1] not in self.notcomment
 
     def ends(self, line):
-        return not self._is_comment_line(line)
-
-    def _is_comment_line(self, line):
-        return line[:1] not in self.notcomment
+        return not self.starts(line)
 
     def get_value(self):
         lines = tuple(self.lines)
@@ -485,3 +449,67 @@ class MWFProperties(NonEmptyBlock):
 
 class MWFComment(DrawComment):
     pass
+
+
+class PTSeparator(NonEmptyBlock):
+
+    def starts(self, line):
+        return line[:1] == '%'
+
+
+class PTComment(NonEmptyBlock):
+
+    def starts(self, line):
+        return line.startswith('//')
+
+    def ends(self, line):
+        return not self.starts(line)
+
+    def get_value(self):
+        lines = (_l.removeprefix('//') for _l in self.lines)
+        if equal_firsts(lines) == ' ':
+            lines = (_line[1:] for _line in lines)
+        return tuple(lines)
+
+
+class PTGlyph(DrawGlyph):
+
+    def starts(self, line):
+        return line.startswith('Bitmap:')
+
+    def ends(self, line):
+        return line[:1] not in string.whitespace
+
+    def append(self, line):
+        line = line.rstrip('\\').strip()
+        if line:
+            self.lines.append(line)
+
+
+
+class PTProperties(NonEmptyBlock):
+
+    def starts(self, line):
+        return line[:1] in string.ascii_letters and ':' in line
+
+    def ends(self, line):
+        return not self.starts(line)
+
+    def get_value(self):
+        return dict((_e.strip() for _e in _l.split(':', 1)) for _l in self.lines)
+
+
+class PTLabel(NonEmptyBlock):
+
+    def starts(self, line):
+        return line.startswith('Unicode:')
+
+    def get_value(self):
+        _, _, value =  self.lines[0].partition(':')
+        value = value.strip()[1:-2].split('];[')
+        return tuple(
+            Char(''.join(
+                chr(int(_cp, 16)) for _cp in _l.split('+'))
+            )
+            for _l in value
+        )
