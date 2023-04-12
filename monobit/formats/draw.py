@@ -49,24 +49,30 @@ def save_hexdraw(fonts, outstream, ink:str='#', paper:str='-'):
 
 def _load_draw(text_stream, *, ink, paper):
     """Parse a hexdraw-style file."""
-    blocks = tuple(iter_blocks(text_stream, (DrawGlyph, DrawComment)))
-    comment = '\n'.join(
-        _l
-        for _b in blocks if isinstance(_b, DrawComment)
-        for _l in _b.get_value()
+    glyphs = []
+    font_comments = []
+    current_comment = []
+    for block in iter_blocks(text_stream, (DrawGlyph, DrawComment, Empty)):
+        if isinstance(block, DrawComment):
+            if not glyphs:
+                font_comments.extend(current_comment)
+                current_comment = []
+            current_comment.append(block.get_value())
+        elif isinstance(block, DrawGlyph):
+            glyphs.append(Glyph(
+                block.get_value(), _0=paper, _1=ink,
+                labels=(block.get_key(),),
+                comment='\n\n'.join('\n'.join(_c) for _c in current_comment),
+            ))
+            glyph_props = {}
+            current_comment = []
+        elif isinstance(block, Unparsed):
+            logging.debug('Unparsed lines: %s', block.get_value())
+    font_comments.extend(current_comment)
+    return Font(
+        glyphs,
+        comment='\n\n'.join('\n'.join(_c) for _c in font_comments)
     )
-    glyphs = (
-        Glyph(
-            _b.get_value(), _0=paper, _1=ink,
-            labels=(_b.get_key(),)
-        )
-        for _b in blocks if isinstance(_b, DrawGlyph)
-    )
-    unparsed = (_b.get_value() for _b in blocks if isinstance(_b, Unparsed))
-    unparsed = tuple(_b for _b in unparsed if _b)
-    if unparsed:
-        logging.debug('Unparsed lines: %s', unparsed)
-    return Font(glyphs, comment=comment)
 
 
 # write hexdraw file
