@@ -422,7 +422,6 @@ def equal_firsts(lines):
 
 
 class DrawGlyph(NonEmptyBlock):
-    separator = ':'
     paper = '-'
     ink = '#'
 
@@ -434,7 +433,7 @@ class DrawGlyph(NonEmptyBlock):
         return not line[:1] in string.whitespace
 
     def get_value(self):
-        key, _, value =  self.lines[0].partition(self.separator)
+        key, _, value =  self.lines[0].partition(':')
         value = value.strip()
         lines = self.lines[1:]
         if value:
@@ -442,17 +441,17 @@ class DrawGlyph(NonEmptyBlock):
         lines = tuple(_l.strip() for _l in lines)
         return Glyph(
             lines, _0=self.paper, _1=self.ink,
-            labels=(convert_key(key),),
+            labels=(self.convert_key(key),),
         )
 
-
-def convert_key(key):
-    """Convert keys on input from .draw."""
-    key = key.strip()
-    try:
-        return Char(''.join(chr(int(_key, 16)) for _key in key.split(',')))
-    except (TypeError, ValueError):
-        return Tag(key)
+    @staticmethod
+    def convert_key(key):
+        """Convert keys on input from .draw."""
+        key = key.strip()
+        try:
+            return Char(''.join(chr(int(_key, 16)) for _key in key.split(',')))
+        except (TypeError, ValueError):
+            return Tag(key)
 
 
 # mkwinfont block readers
@@ -521,7 +520,7 @@ class PTGlyph(NonEmptyBlock):
             self.lines.append(line)
 
     def get_value(self):
-        _, _, value =  self.lines[0].partition(self.separator)
+        _, _, value =  self.lines[0].partition(':')
         value = value.strip()
         lines = self.lines[1:]
         if value:
