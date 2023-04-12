@@ -144,30 +144,38 @@ def _add_key_value(line, keyset, target, sep=' '):
 
 def _read_mkwinfon(text_stream):
     """Read a mkwinfon file into a properties object."""
-    comments = []
+    # this will be a list of tuples
+    font_comments = []
     font_props = {_k: None for _k in FD_KEYS}
     glyphs = []
     glyph_props = {}
-    for block in iter_blocks(text_stream, (MWFGlyph, MWFProperties, MWFComment)):
+    glyph_comments = []
+    current_comment = []
+    for block in iter_blocks(text_stream, (MWFGlyph, MWFProperties, MWFComment, Empty)):
         if isinstance(block, MWFComment):
-            comments.extend(block.get_value())
+            if current_comment:
+                font_comments.append(current_comment)
+            current_comment = block.get_value()
         elif isinstance(block, MWFProperties):
             properties = block.get_value()
             if glyphs or 'char' in properties:
                 glyph_props.update(properties)
             else:
                 font_props.update(properties)
+            if current_comment:
+                font_comments.append(current_comment)
+                current_comment = []
         elif isinstance(block, MWFGlyph):
             glyphs.append(Glyph(
                 block.get_value(), _0='0', _1='1',
                 codepoint=glyph_props.pop('char', b''),
+                comment='\n'.join(current_comment),
             ))
             glyph_props = {}
+            current_comment = []
         elif isinstance(block, Unparsed):
-            unparsed = block.get_value()
-            if unparsed:
-                logging.debug('Unparsed lines: %s', unparsed)
-    return Props(**font_props), glyphs, comments
+            logging.debug('Unparsed lines: %s', block.get_value())
+    return Props(**font_props), glyphs, font_comments
 
 def _convert_mkwinfon(props, glyphs, comments):
     mb_props = dict(
@@ -184,7 +192,7 @@ def _convert_mkwinfon(props, glyphs, comments):
             None if props.charset is None else
             CHARSET_MAP.get(int(props.charset), None)
         ),
-        comment='\n'.join(comments),
+        comment='\n'.join('\n'.join(_c) for _c in comments),
     )
     return Font(glyphs, **mb_props).label()
 
@@ -263,19 +271,19 @@ def _read_psf2txt(text_stream):
     glyphs = []
     current_comment = comment
     current_props = properties
-    for block in iter_blocks(text_stream, (PTSeparator, PTComment, PTGlyph, PTLabel, PTProperties)):
+    for block in iter_blocks(text_stream, (PTSeparator, PTComment, PTGlyph, PTLabel, PTProperties, Empty)):
         if isinstance(block, PTSeparator):
             if glyphs:
                 glyphs[-1] = glyphs[-1].modify(
-                    comment='\n'.join(current_comment), **current_props
+                    comment='\n\n'.join('\n'.join(_c) for _c in current_comment),
+                    **current_props
                 )
             else:
-                comment.extend(current_comment)
                 properties.update(current_props)
             current_comment = []
             current_props = {}
         elif isinstance(block, PTComment):
-            current_comment.extend(block.get_value())
+            current_comment.append(block.get_value())
         elif isinstance(block, PTProperties):
             current_props.update(block.get_value())
         elif isinstance(block, PTGlyph):
@@ -283,9 +291,12 @@ def _read_psf2txt(text_stream):
         elif isinstance(block, PTLabel):
             glyphs[-1] = glyphs[-1].modify(labels=block.get_value())
         elif isinstance(block, Unparsed):
-            unparsed = block.get_value()
-            if unparsed:
-                logging.debug('Unparsed lines: %s', unparsed)
+            logging.debug('Unparsed lines: %s', block.get_value())
+    if current_comment or current_props:
+        glyphs[-1] = glyphs[-1].modify(
+            comment='\n\n'.join('\n'.join(_c) for _c in current_comment),
+            **current_props
+        )
     return Props(**properties), glyphs, comment
 
 def _convert_psf2txt(props, glyphs, comment):
@@ -293,7 +304,10 @@ def _convert_psf2txt(props, glyphs, comment):
         revision=props.Version,
         # ignore Flags, we don't need the others
     )
-    return Font(glyphs, **mb_props, comment='\n'.join(comment))
+    return Font(
+        glyphs, **mb_props,
+        comment='\n\n'.join('\n'.join(_c) for _c in comment)
+    )
 
 
 ##############################################################################
@@ -359,6 +373,12 @@ class Unparsed(BaseBlock):
     pass
 
 
+class Empty(BaseBlock):
+
+    def starts(self, line):
+        return not line
+
+
 class NonEmptyBlock(BaseBlock):
 
     def append(self, line):
@@ -380,10 +400,10 @@ class DrawComment(NonEmptyBlock):
         lines = tuple(self.lines)
         first = equal_firsts(lines)
         if first and first not in string.ascii_letters + string.digits:
-            lines = (_line[1:] for _line in lines)
+            lines = tuple(_line[1:] for _line in lines)
         if equal_firsts(lines) == ' ':
             lines = (_line[1:] for _line in lines)
-        return lines
+        return tuple(lines)
 
 def equal_firsts(lines):
     first_chars = set(_line[:1] for _line in lines)
@@ -466,7 +486,7 @@ class PTComment(NonEmptyBlock):
         return not self.starts(line)
 
     def get_value(self):
-        lines = (_l.removeprefix('//') for _l in self.lines)
+        lines = tuple(_l.removeprefix('//') for _l in self.lines)
         if equal_firsts(lines) == ' ':
             lines = (_line[1:] for _line in lines)
         return tuple(lines)
