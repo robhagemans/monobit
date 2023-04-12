@@ -144,37 +144,30 @@ def _add_key_value(line, keyset, target, sep=' '):
 
 def _read_mkwinfon(text_stream):
     """Read a mkwinfon file into a properties object."""
-    comment = '#'
-    ink = '1'
-    paper = '0'
     comments = []
+    font_props = {_k: None for _k in FD_KEYS}
     glyphs = []
-    properties = {_k: None for _k in FD_KEYS}
-    current_props = {}
-    current_glyph = []
-    while True:
-        line = text_stream.readline()
-        if not line:
-            break
-        line = line.rstrip()
-        if not line:
-            continue
-        if line.startswith(comment):
-            comments.append(line.removeprefix(comment))
-            continue
-        stripline = line.lstrip()
-        if _add_key_value(line, FD_KEYS, properties):
-            continue
-        if _add_key_value(line, FD_CHAR_KEYS, current_props):
-            continue
-        while line[:1] in (paper, ink):
-            current_glyph.append(line.strip())
-            line = text_stream.readline()
-        if current_glyph:
-            glyphs.append((current_glyph, Props(**current_props)))
-            current_glyph = []
-            current_props = {}
-    return Props(**properties), glyphs, comments
+    glyph_props = {}
+    for block in iter_blocks(text_stream, (MWFGlyph, MWFProperties, MWFComment)):
+        if isinstance(block, MWFComment):
+            comments.extend(block.get_value())
+        elif isinstance(block, MWFProperties):
+            properties = block.get_value()
+            if glyphs or 'char' in properties:
+                glyph_props.update(properties)
+            else:
+                font_props.update(properties)
+        elif isinstance(block, MWFGlyph):
+            glyphs.append(Glyph(
+                block.get_value(), _0='0', _1='1',
+                codepoint=glyph_props.pop('char', b''),
+            ))
+            glyph_props = {}
+        elif isinstance(block, Unparsed):
+            unparsed = block.get_value()
+            if unparsed:
+                logging.debug('Unparsed lines: %s', unparsed)
+    return Props(**font_props), glyphs, comments
 
 def _convert_mkwinfon(props, glyphs, comments):
     mb_props = dict(
@@ -191,13 +184,9 @@ def _convert_mkwinfon(props, glyphs, comments):
             None if props.charset is None else
             CHARSET_MAP.get(int(props.charset), None)
         ),
-        comment=normalise_comment(comments),
+        comment='\n'.join(comments),
     )
-    mb_glyphs = tuple(
-        Glyph(_rows, _0='0', _1='1', codepoint=_props['char'])
-        for _rows, _props in glyphs
-    )
-    return Font(mb_glyphs, **mb_props).label()
+    return Font(glyphs, **mb_props).label()
 
 
 ###############################################################################
@@ -469,3 +458,30 @@ def convert_key(key):
         return Char(chr(int(key, 16)))
     except (TypeError, ValueError):
         return Tag(key)
+
+
+class MWFGlyph(NonEmptyBlock):
+
+    def starts(self, line):
+        return line[:1] in ('0', '1')
+
+    def ends(self, line):
+        return line[:1] not in ('0', '1')
+
+    def get_value(self):
+        return tuple(_l.strip() for _l in self.lines)
+
+
+class MWFProperties(NonEmptyBlock):
+
+    def starts(self, line):
+        return line[:1] in string.ascii_letters and ' ' in line
+
+    def ends(self, line):
+        return not self.starts(line)
+
+    def get_value(self):
+        return dict(_l.split(' ', 1) for _l in self.lines)
+
+class MWFComment(DrawComment):
+    pass
