@@ -30,7 +30,12 @@ def load_hexdraw(instream, ink:str='#', paper:str='-'):
     ink: character used for inked/foreground pixels (default #)
     paper: character used for uninked/background pixels (default -)
     """
-    return _load_draw(instream.text, ink=ink, paper=paper)
+    DrawGlyph.ink = ink
+    DrawGlyph.paper = paper
+    return _load_draw(
+        instream.text, blocktypes=(DrawGlyph, DrawComment, Empty)
+    )
+
 
 @savers.register(linked=load_hexdraw)
 def save_hexdraw(fonts, outstream, ink:str='#', paper:str='-'):
@@ -47,14 +52,12 @@ def save_hexdraw(fonts, outstream, ink:str='#', paper:str='-'):
 
 # read hexdraw file
 
-def _load_draw(text_stream, *, ink, paper):
+def _load_draw(text_stream, *, blocktypes):
     """Parse a hexdraw-style file."""
     glyphs = []
     font_comments = []
     current_comment = []
-    DrawGlyph.ink = ink
-    DrawGlyph.paper = paper
-    for block in iter_blocks(text_stream, (DrawGlyph, DrawComment, Empty)):
+    for block in iter_blocks(text_stream, blocktypes):
         if isinstance(block, DrawComment):
             if not glyphs:
                 font_comments.extend(current_comment)
@@ -447,7 +450,7 @@ def convert_key(key):
     """Convert keys on input from .draw."""
     key = key.strip()
     try:
-        return Char(chr(int(key, 16)))
+        return Char(''.join(chr(int(_key, 16)) for _key in key.split(',')))
     except (TypeError, ValueError):
         return Tag(key)
 
