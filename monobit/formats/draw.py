@@ -151,36 +151,38 @@ def _add_key_value(line, keyset, target, sep=' '):
 def _read_mkwinfon(text_stream):
     """Read a mkwinfon file into a properties object."""
     # this will be a list of tuples
-    font_comments = []
     font_props = {_k: None for _k in FD_KEYS}
+    font_comments = []
     glyphs = []
     glyph_props = {}
-    glyph_comments = []
     current_comment = []
     for block in iter_blocks(text_stream, (MWFGlyph, MWFProperties, MWFComment, Empty)):
         if isinstance(block, MWFComment):
-            if current_comment:
-                font_comments.append(current_comment)
-            current_comment = block.get_value()
+            # print(block.get_value(), glyphs)
+            if not glyphs:
+                font_comments.extend(current_comment)
+                current_comment = []
+            current_comment.append(block.get_value())
         elif isinstance(block, MWFProperties):
             properties = block.get_value()
             if glyphs or 'char' in properties:
                 glyph_props.update(properties)
             else:
                 font_props.update(properties)
-            if current_comment:
-                font_comments.append(current_comment)
-                current_comment = []
+                if current_comment:
+                    font_comments.extend(current_comment)
+                    current_comment = []
         elif isinstance(block, MWFGlyph):
             glyphs.append(Glyph(
                 block.get_value(), _0='0', _1='1',
                 codepoint=glyph_props.pop('char', b''),
-                comment='\n'.join(current_comment),
+                comment='\n\n'.join('\n'.join(_c) for _c in current_comment),
             ))
             glyph_props = {}
             current_comment = []
         elif isinstance(block, Unparsed):
             logging.debug('Unparsed lines: %s', block.get_value())
+    font_comments.extend(current_comment)
     return Props(**font_props), glyphs, font_comments
 
 def _convert_mkwinfon(props, glyphs, comments):
