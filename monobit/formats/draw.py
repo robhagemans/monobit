@@ -52,6 +52,8 @@ def _load_draw(text_stream, *, ink, paper):
     glyphs = []
     font_comments = []
     current_comment = []
+    DrawGlyph.ink = ink
+    DrawGlyph.paper = paper
     for block in iter_blocks(text_stream, (DrawGlyph, DrawComment, Empty)):
         if isinstance(block, DrawComment):
             if not glyphs:
@@ -59,12 +61,9 @@ def _load_draw(text_stream, *, ink, paper):
                 current_comment = []
             current_comment.append(block.get_value())
         elif isinstance(block, DrawGlyph):
-            glyphs.append(Glyph(
-                block.get_value(), _0=paper, _1=ink,
-                labels=(block.get_key(),),
+            glyphs.append(block.get_value().modify(
                 comment='\n\n'.join(current_comment),
             ))
-            glyph_props = {}
             current_comment = []
         elif isinstance(block, Unparsed):
             logging.debug('Unparsed lines: %s', block.get_value())
@@ -421,6 +420,8 @@ def equal_firsts(lines):
 
 class DrawGlyph(NonEmptyBlock):
     separator = ':'
+    paper = '-'
+    ink = '#'
 
     def starts(self, line):
         return line and line[:1] in string.hexdigits
@@ -430,21 +431,21 @@ class DrawGlyph(NonEmptyBlock):
         return not line[:1] in string.whitespace
 
     def get_value(self):
-        _, _, value =  self.lines[0].partition(self.separator)
+        key, _, value =  self.lines[0].partition(self.separator)
         value = value.strip()
         lines = self.lines[1:]
         if value:
             lines = [value] + lines
         lines = tuple(_l.strip() for _l in lines)
-        return lines
-
-    def get_key(self):
-        key, _, _ =  self.lines[0].partition(self.separator)
-        return convert_key(key.strip())
+        return Glyph(
+            lines, _0=self.paper, _1=self.ink,
+            labels=(convert_key(key),),
+        )
 
 
 def convert_key(key):
     """Convert keys on input from .draw."""
+    key = key.strip()
     try:
         return Char(chr(int(key, 16)))
     except (TypeError, ValueError):
@@ -503,7 +504,7 @@ class PTComment(NonEmptyBlock):
         return '\n'.join(lines)
 
 
-class PTGlyph(DrawGlyph):
+class PTGlyph(NonEmptyBlock):
 
     def starts(self, line):
         return line.startswith('Bitmap:')
@@ -516,6 +517,14 @@ class PTGlyph(DrawGlyph):
         if line:
             self.lines.append(line)
 
+    def get_value(self):
+        _, _, value =  self.lines[0].partition(self.separator)
+        value = value.strip()
+        lines = self.lines[1:]
+        if value:
+            lines = [value] + lines
+        lines = tuple(_l.strip() for _l in lines)
+        return lines
 
 
 class PTProperties(NonEmptyBlock):
