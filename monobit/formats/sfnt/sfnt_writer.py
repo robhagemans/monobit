@@ -64,6 +64,7 @@ if fonttools.loaded:
     def save_collection(
             fonts, outfile,
             funits_per_em:int=1024, align:str='bit', version:str='otb',
+            glyph_names:str=None,
         ):
         """
         Save fonts to a TrueType/OpenType Collection file.
@@ -71,8 +72,12 @@ if fonttools.loaded:
         funits_per_em: number of design units (FUnits) per em-width (default 1024)
         align: 'byte' or 'bit' (default) alignment of the bitmaps
         version: file type flavour, 'otb' (default) or 'apple'
+        glyph_names: tagger to set glyph names with. Default is no glyph names. Use 'tags' to use existing tags as glyph names.
         """
-        _write_collection(fonts, outfile, funits_per_em, align, flavour=version.lower())
+        _write_collection(
+            fonts, outfile, funits_per_em, align, flavour=version.lower(),
+            glyph_names=glyph_names,
+        )
         return fonts
 
 else:
@@ -471,12 +476,12 @@ def _create_sfnt(font, funits_per_em, align, flavour, glyph_names):
         del fb.font['loca']
     return fb.font
 
-def _write_collection(fonts, outfile, funits_per_em, align, flavour):
+def _write_collection(fonts, outfile, funits_per_em, align, flavour, glyph_names):
     """Convert to TrueType collection and write out."""
     check_fonttools()
     ttc = fonttools.TTCollection()
     ttc.fonts = tuple(
-        _create_sfnt(_font, funits_per_em, align, flavour)
+        _create_sfnt(_font, funits_per_em, align, flavour, glyph_names)
         for _font in fonts
     )
     ttc.save(outfile)
