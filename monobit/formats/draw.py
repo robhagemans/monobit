@@ -62,7 +62,7 @@ def _load_draw(text_stream, *, ink, paper):
             glyphs.append(Glyph(
                 block.get_value(), _0=paper, _1=ink,
                 labels=(block.get_key(),),
-                comment='\n\n'.join('\n'.join(_c) for _c in current_comment),
+                comment='\n\n'.join(current_comment),
             ))
             glyph_props = {}
             current_comment = []
@@ -71,7 +71,7 @@ def _load_draw(text_stream, *, ink, paper):
     font_comments.extend(current_comment)
     return Font(
         glyphs,
-        comment='\n\n'.join('\n'.join(_c) for _c in font_comments)
+        comment='\n\n'.join(font_comments)
     )
 
 
@@ -176,7 +176,7 @@ def _read_mkwinfon(text_stream):
             glyphs.append(Glyph(
                 block.get_value(), _0='0', _1='1',
                 codepoint=glyph_props.pop('char', b''),
-                comment='\n\n'.join('\n'.join(_c) for _c in current_comment),
+                comment='\n\n'.join(current_comment),
             ))
             glyph_props = {}
             current_comment = []
@@ -200,7 +200,7 @@ def _convert_mkwinfon(props, glyphs, comments):
             None if props.charset is None else
             CHARSET_MAP.get(int(props.charset), None)
         ),
-        comment='\n'.join('\n'.join(_c) for _c in comments),
+        comment='\n\n'.join(comments),
     )
     return Font(glyphs, **mb_props).label()
 
@@ -283,7 +283,7 @@ def _read_psf2txt(text_stream):
         if isinstance(block, PTSeparator):
             if glyphs:
                 glyphs[-1] = glyphs[-1].modify(
-                    comment='\n\n'.join('\n'.join(_c) for _c in current_comment),
+                    comment='\n\n'.join(current_comment),
                     **current_props
                 )
             else:
@@ -302,7 +302,7 @@ def _read_psf2txt(text_stream):
             logging.debug('Unparsed lines: %s', block.get_value())
     if current_comment or current_props:
         glyphs[-1] = glyphs[-1].modify(
-            comment='\n\n'.join('\n'.join(_c) for _c in current_comment),
+            comment='\n\n'.join(current_comment),
             **current_props
         )
     return Props(**properties), glyphs, comment
@@ -312,14 +312,11 @@ def _convert_psf2txt(props, glyphs, comment):
         revision=props.Version,
         # ignore Flags, we don't need the others
     )
-    return Font(
-        glyphs, **mb_props,
-        comment='\n\n'.join('\n'.join(_c) for _c in comment)
-    )
+    return Font(glyphs, **mb_props, comment='\n\n'.join(comment))
 
 
 ##############################################################################
-# common utilities
+# common utilities and reader classes
 
 def iter_blocks(text_stream, classes):
     block = BlockBuilder(classes)
@@ -395,6 +392,8 @@ class NonEmptyBlock(BaseBlock):
             self.lines.append(line)
 
 
+# draw format block readers
+
 class DrawComment(NonEmptyBlock):
     notcomment = string.hexdigits + string.whitespace
 
@@ -411,7 +410,7 @@ class DrawComment(NonEmptyBlock):
             lines = tuple(_line[1:] for _line in lines)
         if equal_firsts(lines) == ' ':
             lines = (_line[1:] for _line in lines)
-        return tuple(lines)
+        return '\n'.join(lines)
 
 def equal_firsts(lines):
     first_chars = set(_line[:1] for _line in lines)
@@ -452,6 +451,8 @@ def convert_key(key):
         return Tag(key)
 
 
+# mkwinfont block readers
+
 class MWFGlyph(NonEmptyBlock):
 
     def starts(self, line):
@@ -479,6 +480,8 @@ class MWFComment(DrawComment):
     pass
 
 
+# psf2txt block readers
+
 class PTSeparator(NonEmptyBlock):
 
     def starts(self, line):
@@ -497,7 +500,7 @@ class PTComment(NonEmptyBlock):
         lines = tuple(_l.removeprefix('//') for _l in self.lines)
         if equal_firsts(lines) == ' ':
             lines = (_line[1:] for _line in lines)
-        return tuple(lines)
+        return '\n'.join(lines)
 
 
 class PTGlyph(DrawGlyph):
