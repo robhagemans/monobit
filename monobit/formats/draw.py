@@ -13,7 +13,6 @@ from ..font import Font
 from ..glyph import Glyph
 from ..labels import Tag, Char
 from ..magic import FileFormatError
-from .yaff import format_comment
 
 
 ##############################################################################
@@ -64,6 +63,9 @@ def _load_draw(text_stream, *, blocktypes):
                 current_comment = []
             current_comment.append(block.get_value())
         elif isinstance(block, DrawGlyph):
+            if not glyphs and not font_comments:
+                font_comments.extend(current_comment)
+                current_comment = []
             glyphs.append(block.get_value().modify(
                 comment='\n\n'.join(current_comment),
             ))
@@ -105,6 +107,14 @@ def _save_draw(font, outstream, *, ink, paper):
             glyphtxt = glyph.as_text(start='\t', ink=ink, paper=paper, end='\n')
             outstream.write(f'\n{ord(glyph.char):04x}:')
             outstream.write(glyphtxt)
+
+
+def format_comment(comments, comment_char):
+    """Format a multiline comment."""
+    return '\n'.join(
+        f'{comment_char} {_line}'
+        for _line in comments.splitlines()
+    )
 
 
 ###############################################################################
@@ -160,7 +170,6 @@ def _read_mkwinfon(text_stream):
     current_comment = []
     for block in iter_blocks(text_stream, (MWFGlyph, MWFProperties, MWFComment, Empty)):
         if isinstance(block, MWFComment):
-            # print(block.get_value(), glyphs)
             if not glyphs:
                 font_comments.extend(current_comment)
                 current_comment = []
@@ -175,6 +184,9 @@ def _read_mkwinfon(text_stream):
                     font_comments.extend(current_comment)
                     current_comment = []
         elif isinstance(block, MWFGlyph):
+            if not glyphs and not font_comments:
+                font_comments.extend(current_comment)
+                current_comment = []
             glyphs.append(Glyph(
                 block.get_value(), _0='0', _1='1',
                 codepoint=glyph_props.pop('char', b''),
@@ -363,6 +375,9 @@ class BaseBlock:
         self.lines = []
         self.append(line)
 
+    def __repr__(self):
+        return f'{type(self).__name__}({repr(self.lines)})'
+
     def starts(self, line):
         return True
 
@@ -396,7 +411,9 @@ class NonEmptyBlock(BaseBlock):
 
 # draw format block readers
 
+
 class DrawComment(NonEmptyBlock):
+
     notcomment = string.hexdigits + string.whitespace
 
     def starts(self, line):
@@ -415,7 +432,7 @@ class DrawComment(NonEmptyBlock):
         return '\n'.join(lines)
 
 def equal_firsts(lines):
-    first_chars = set(_line[:1] for _line in lines)
+    first_chars = set(_line[:1] for _line in lines if _line)
     if len(first_chars) == 1:
         return first_chars.pop()
     return None
