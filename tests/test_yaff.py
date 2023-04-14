@@ -9,7 +9,7 @@ import unittest
 
 import monobit
 from monobit import Glyph, Tag, Codepoint, Char
-from .base import BaseTester, get_stringio
+from .base import BaseTester, get_stringio, assert_text_eq
 
 
 class TestYaff(BaseTester):
@@ -232,8 +232,8 @@ multi-line:
     def test_multiline_properties(self):
         file = get_stringio(self.multiline)
         f,  *_ = monobit.load(file, allow_empty=True)
-        assert f.single_line == 'single line'
-        assert f.multi_line == 'this is a\n  multiline  \nproperty'
+        assert_text_eq(f.single_line, 'single line')
+        assert_text_eq(f.multi_line, 'this is a\n  multiline  \nproperty')
 
     weird_props = """
 has-colon: ::myprop
@@ -280,9 +280,9 @@ b:
         file = get_stringio(self.glyphprops)
         f,  *_ = monobit.load(file)
         a = f.get_glyph('a')
-        assert a.prop == 'value'
-        assert a.multiline == 'another value'
-        assert f.get_glyph('b').other_prop == 'also a value'
+        assert_text_eq(a.prop, 'value')
+        assert_text_eq(a.multiline, 'another value')
+        assert_text_eq(f.get_glyph('b').other_prop, 'also a value')
 
     # comments
 
@@ -307,17 +307,17 @@ glyph:
     def test_comments(self):
         file = get_stringio(self.comments)
         f,  *_ = monobit.load(file)
-        assert f.get_comment() == (
+        assert_text_eq(f.get_comment(), (
             'this is the top comment\n\n'
             'this too\n\n'
             'even this'
-        ), repr(f.get_comment())
-        assert f.get_comment('property') == 'but this is not', repr(f.get_comment('property'))
-        assert f.get_comment('another-property') == ''
-        assert f.get_comment('commented-property') == (
+        ))
+        assert_text_eq(f.get_comment('property'), 'but this is not')
+        assert_text_eq(f.get_comment('another-property'), '')
+        assert_text_eq(f.get_comment('commented-property'), (
             'property comment\nspanning two lines'
-        ), repr(f.get_comment('commented-property'))
-        assert f.glyphs[0].comment == 'glyph comment'
+        ))
+        assert_text_eq(f.glyphs[0].comment, 'glyph comment')
 
 
 if __name__ == '__main__':
