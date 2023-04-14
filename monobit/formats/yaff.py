@@ -10,6 +10,7 @@ import string
 from dataclasses import dataclass, field
 from itertools import count, zip_longest
 from collections import deque
+from functools import cached_property
 
 from ..storage import loaders, savers
 from ..encoding import charmaps
@@ -27,7 +28,6 @@ from .draw import format_comment
 ##############################################################################
 # interface
 
-
 @loaders.register(
     name='yaff',
     # maybe, if multi-section
@@ -40,7 +40,7 @@ def load_yaff(instream, allow_empty:bool=False):
 
     allow_empty: allow files with no glyphs (default: False)
     """
-    return _load_yaff(instream.text, allow_empty)
+    return _load_yaffs(instream.text, allow_empty)
 
 
 @savers.register(
@@ -79,16 +79,15 @@ class YaffParams:
 
 
 ##############################################################################
-##############################################################################
 # read file
 
 
-def _load_yaff(text_stream, allow_empty):
-    """Parse a yaff/yaffs file."""
+def _load_yaffs(text_stream, allow_empty):
+    """Parse a yaff or yaffs file."""
     fonts = []
     reader = SectionIterator(text_stream)
     while not reader.eof:
-        font = _load_one_yaff(reader)
+        font = _read_yaff(reader)
         # if no glyphs, ignore it - may not be yaff at all
         if font.glyphs or allow_empty:
             fonts.append(font)
@@ -117,10 +116,8 @@ class SectionIterator:
             return line
 
 
-
-
-def _load_one_yaff(text_stream):
-    """Parse a hexdraw-style file."""
+def _read_yaff(text_stream):
+    """Parse a monobit yaff file."""
     blocktypes = (
         YaffComment, YaffProperty, YaffGlyph, YaffPropertyOrGlyph,
         Empty, Unparsed
@@ -131,26 +128,22 @@ def _load_one_yaff(text_stream):
     font_prop_comms = {}
     current_comment = []
     for block in iter_blocks(text_stream, blocktypes):
+        if isinstance(block, (YaffGlyph, YaffPropertyOrGlyph)) and block.is_glyph():
+            glyphs.append(block.get_glyph_value().modify(
+                comment='\n\n'.join(current_comment),
+            ))
+            current_comment = []
+        elif isinstance(block, (YaffProperty, YaffPropertyOrGlyph)):
+            key = block.get_key()
+            font_props[key] = block.get_value()
+            font_prop_comms[key] = '\n\n'.join(current_comment)
+            current_comment = []
+        if not glyphs and not font_props:
+            font_comments.extend(current_comment)
+            current_comment = []
         if isinstance(block, YaffComment):
-            if not glyphs and not font_props:
-                font_comments.extend(current_comment)
-                current_comment = []
             current_comment.append(block.get_value())
-        elif isinstance(block, (YaffGlyph, YaffProperty, YaffPropertyOrGlyph)):
-            if not glyphs and not font_props and not font_comments:
-                font_comments.extend(current_comment)
-                current_comment = []
-            if not isinstance(block, YaffProperty) and block.is_glyph():
-                glyphs.append(block.get_glyph_value().modify(
-                    comment='\n\n'.join(current_comment),
-                ))
-                current_comment = []
-            else:
-                key = block.get_key()
-                font_props[key] = block.get_value()
-                font_prop_comms[key] = '\n\n'.join(current_comment)
-                current_comment = []
-        elif isinstance(block, Unparsed):
+        else:
             logging.debug('Unparsed lines: %s', block.get_value())
     font_comments.extend(current_comment)
     return Font(
@@ -159,14 +152,13 @@ def _load_one_yaff(text_stream):
     )
 
 
-
 class YaffComment(DrawComment):
 
     def starts(self, line):
-        return line[:1] == '#'
+        return line[:1] == YaffParams.comment
 
 
-class YaffMultiline(NonEmptyBlock):
+class YaffMultiline(NonEmptyBlock, YaffParams):
 
     def __init__(self, line):
         self.indent = 0
@@ -179,7 +171,7 @@ class YaffMultiline(NonEmptyBlock):
         if line and line[:1] in self.whitespace:
             return False
         # gather multiple labels without values, but break on line with value
-        return line.rstrip()[-1:] != ':'
+        return line.rstrip()[-1:] != self.separator
 
     def append(self, line):
         line = line.rstrip()
@@ -188,7 +180,7 @@ class YaffMultiline(NonEmptyBlock):
             self.indent = len(line) - len(line.lstrip())
 
 
-class YaffGlyph(YaffMultiline, YaffParams):
+class YaffGlyph(YaffMultiline):
 
     label_chars = tuple('"' + "'" + string.digits)
 
@@ -217,7 +209,7 @@ class YaffGlyph(YaffMultiline, YaffParams):
                     properties[key] = '\n'.join((properties[key], line.strip()))
             else:
                 # one-line glyph properties
-                key, _, value = line.partition(':')
+                key, _, value = line.partition(self.separator)
                 value = value.strip()
                 properties[key] = value.strip()
         # deal with sized empties (why?)
@@ -228,12 +220,14 @@ class YaffGlyph(YaffMultiline, YaffParams):
             labels=labels, **properties
         )
 
-    def is_glyph(self):
-        # we neeed to ensure n_keys has been set
-        self.n_keys = sum(
-            _line[-1:] == ':' and _line[:1] not in self.whitespace
+    def _count_keys(self):
+        return sum(
+            _line[-1:] == self.separator and _line[:1] not in self.whitespace
             for _line in self.lines
         )
+    n_keys = cached_property(_count_keys)
+
+    def is_glyph(self):
         return True
 
     get_glyph_value = get_value
@@ -242,14 +236,18 @@ class YaffGlyph(YaffMultiline, YaffParams):
 class YaffProperty(NonEmptyBlock, YaffParams):
 
     def starts(self, line):
-        return line[:1] not in self.whitespace and line[-1:] != ':' and ':' in line
+        return (
+            line[:1] not in self.whitespace
+            and line[-1:] != self.separator
+            and self.separator in line
+        )
 
     def get_value(self):
-        _, _, value = self.lines[0].partition(':')
+        _, _, value = self.lines[0].partition(self.separator)
         return _strip_quotes(value)
 
     def get_key(self):
-        key, _, _ = self.lines[0].partition(':')
+        key, _, _ = self.lines[0].partition(self.separator)
         return key
 
 
@@ -260,10 +258,10 @@ def _strip_quotes(line):
     return line
 
 
-class YaffPropertyOrGlyph(YaffMultiline, YaffParams):
+class YaffPropertyOrGlyph(YaffMultiline):
 
     def starts(self, line):
-        return line[:1] not in self.whitespace and line[-1:] == ':'
+        return line[:1] not in self.whitespace and line[-1:] == self.separator
 
     def get_value(self):
         return '\n'.join(_strip_quotes(_l) for _l in self.lines[1:])
@@ -274,12 +272,9 @@ class YaffPropertyOrGlyph(YaffMultiline, YaffParams):
     # glyph block with plain label
 
     get_glyph_value = YaffGlyph.get_value
+    n_keys = cached_property(YaffGlyph._count_keys)
 
     def is_glyph(self):
-        self.n_keys = sum(
-            _line[-1:] == ':' and _line[:1] not in self.whitespace
-            for _line in self.lines
-        )
         if self.n_keys > 1:
             return True
         # n_keys == 1, so first non-key line is 1
@@ -291,9 +286,7 @@ class YaffPropertyOrGlyph(YaffMultiline, YaffParams):
 
 
 ##############################################################################
-##############################################################################
 # write file
-
 
 def _globalise_glyph_metrics(mod_glyphs):
     """If all glyph props are equal, take them global."""

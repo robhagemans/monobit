@@ -127,7 +127,7 @@ class MagicRegistry:
             if not name:
                 raise ValueError('No registration name given')
             if name in self._names:
-                raise ValueError('Registration name `{name} already in use')
+                raise ValueError(f'Registration name `{name}` already in use for {self._names[name]}')
             if not isinstance(magic, (list, tuple)):
                 raise TypeError('Registration parameter `magic` must be list or tuple')
             if not isinstance(patterns, (list, tuple)):
