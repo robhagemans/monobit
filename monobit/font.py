@@ -431,7 +431,7 @@ class FontProperties(DefaultProps):
             return Coord(0, 0)
         # smaller of the (at most two) advance widths is the cell size
         # in a multi-cell font, some glyphs may take up two cells.
-        cells = (
+        cells = tuple(
             (_g.advance_width, _g.advance_height)
             for _g in self._font.glyphs
         )
