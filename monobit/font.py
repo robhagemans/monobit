@@ -908,16 +908,8 @@ class Font:
             label = Codepoint(codepoint)
         elif tag is not None:
             label = Tag(tag)
-        elif isinstance(label, str):
-            # first look for char - expected to be shorter - then tags
-            try:
-                return self._labels[Char(label)]
-            except KeyError:
-                pass
-            try:
-                return self._labels[Tag(label)]
-            except KeyError:
-                pass
+        elif isinstance(label, Label):
+            pass
         # do we have the input string directly as a char or tag?
         elif label is not None:
             # convert strings, numerics through standard rules
@@ -1014,6 +1006,7 @@ class Font:
         kwargs = dict(
             overwrite=overwrite,
             match_whitespace=match_whitespace,
+            match_graphical=match_graphical,
         )
         if codepoint_from:
             kwargs.update(dict(codepoint_from=codepoint_from))
