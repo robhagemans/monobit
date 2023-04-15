@@ -231,8 +231,8 @@ class Raster:
         excess = len(bitseq) % stride
         if excess:
             if _1 in bitseq[-excess:]:
-                logging.warning(
-                    'Bit string will be truncated by %d bits. Dropping [%s].',
+                raise ValueError(
+                    'Bit string overruns by nonzero %d-bit sequence [%s].',
                     excess, bitseq[-excess:]
                 )
             bitseq = bitseq[:-excess]

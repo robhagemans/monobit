@@ -273,19 +273,22 @@ def _convert_to_fzx(font):
         for _glyph in glyphs
     )
     common_right_bearing = min(_glyph.right_bearing for _glyph in glyphs)
+    # absorb per-glyph right_bearing by extending width
+    glyphs = (
+        _g.expand(right=_g.right_bearing - common_right_bearing)
+        for _g in glyphs
+    )
+    # make zero-width glyphs into 1-width glyphs with 1 step back
+    # as we can't store zero width
+    glyphs = (_g.expand(left=1) if _g.width == 0 else _g for _g in glyphs)
     # set glyph FZX properties
     fzx_glyphs = tuple(
-        # make zero-width glyphs into 1-width glyphs with 1 step back
-        # as we can't store zero width
-        Glyph(fzx_kern=1, fzx_shift=font.line_height, fzx_width=0)
-        if not _glyph.width else
         _glyph.modify(
             fzx_kern=-_glyph.left_bearing,
             # line height includes leading
             fzx_shift=font.line_height-_glyph.shift_up-_glyph.height,
-            # absorb per-glyph right_bearing by extending fzx width
-            fzx_width=_glyph.width + _glyph.right_bearing - common_right_bearing - 1,
-        ).drop('left-bearing', 'right-bearing', 'shift-up')
+            fzx_width=_glyph.width-1,
+        ).drop('left-bearing', 'shift-up')
         for _glyph in glyphs
     )
     # check glyph dimensions / bitfield ranges
@@ -304,6 +307,6 @@ def _convert_to_fzx(font):
     fzx_props = Props(
         tracking=common_right_bearing,
         height=font.line_height,
-        lastchar=len(glyphs) + min(_FZX_RANGE) - 1
+        lastchar=len(fzx_glyphs) + min(_FZX_RANGE) - 1
     )
     return fzx_props, fzx_glyphs
