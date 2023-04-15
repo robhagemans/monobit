@@ -386,21 +386,25 @@ class FontProperties(DefaultProps):
             _glyph.advance_width
             for _glyph in self._font.glyphs if _glyph.advance_width
         )
+        if len(set(advances)) > 2:
+            return 'proportional'
         monospaced = len(set(advances)) == 1
-        bispaced = len(set(advances)) == 2
-        ink_contained_y = self.line_height >= self.bounding_box.y
-        ink_contained_x = all(
-            _glyph.advance_width >= _glyph.bounding_box.x
-            for _glyph in self._font.glyphs
+        negative = tuple(
+            _g for _g in self._font.glyphs
+            if _g.left_bearing < 0 or _g.right_bearing < 0
+            or _g.top_bearing < 0 or _g.bottom_bearing < 0
         )
-        if ink_contained_x and ink_contained_y:
-            if monospaced:
-                return 'character-cell'
-            if bispaced:
-                return 'multi-cell'
-        if monospaced:
-            return 'monospace'
-        return 'proportional'
+        if not negative:
+            return 'character-cell' if monospaced else 'multi-cell'
+        # we have negative bearings; need to check if there's ink in them
+        # this should be rare (monospaced/bispaced with negative bearings)
+        if all(
+                (_g.advance_width >= _g.bounding_box.x)
+                and (_g.advance_height >= _g.bounding_box.y)
+                for _g in negative
+            ):
+            return 'character-cell' if monospaced else 'multi-cell'
+        return 'monospace' if monospaced else 'proportional'
 
     @checked_property
     def raster(self):
@@ -427,11 +431,11 @@ class FontProperties(DefaultProps):
             return Coord(0, 0)
         # smaller of the (at most two) advance widths is the cell size
         # in a multi-cell font, some glyphs may take up two cells.
-        cell_x = min(
-            _glyph.advance_width
-            for _glyph in self._font.glyphs if _glyph.advance_width
+        cells = (
+            (_g.advance_width, _g.advance_height)
+            for _g in self._font.glyphs
         )
-        return Coord(cell_x, self.line_height)
+        return Coord(*min(_c for _c in cells if all(_c)))
 
     @checked_property
     def ink_bounds(self):
