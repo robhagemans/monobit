@@ -537,7 +537,7 @@ class Glyph:
     @classmethod
     def from_path(cls, strokepath, *, advance_width=None, **kwargs):
         """Draw the StrokePath and create a Glyph."""
-        raster = strokepath.draw()
+        raster = Raster(strokepath.draw())
         if advance_width is None:
             advance_width = strokepath.bounds.right
         return cls(
