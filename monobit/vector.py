@@ -68,7 +68,8 @@ class StrokePath:
         # group in triplets
         args = [iter(elements)] * 3
         # raise an error if the path does not cleanly split
-        path = zip(*args, strict=True)
+        #path = zip(*args, strict=True) # python3.10 and above
+        path = zip(*args)
         path = (StrokeMove(_ink, int(_x), int(_y)) for _ink, _x, _y in path)
         return cls(path)
 
