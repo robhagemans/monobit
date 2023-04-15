@@ -195,10 +195,16 @@ class Glyph:
     def __init__(
             self, pixels=(), *,
             labels=(), codepoint=b'', char='', tag='', comment='',
-            _0=NOT_SET, _1=NOT_SET,
+            _0=NOT_SET, _1=NOT_SET, _trustme=False,
             **properties
         ):
         """Create glyph from tuple of tuples."""
+        if _trustme:
+            self._pixels = Raster(pixels, _0=_0, _1=_1)
+            self._labels = labels
+            self._comment = comment
+            self._props = GlyphProperties(_glyph=self, **properties)
+            return
         # raster data
         self._pixels = Raster(pixels, _0=_0, _1=_1)
         # labels
@@ -264,24 +270,20 @@ class Glyph:
             pixels = self._pixels
         if labels is NOT_SET:
             labels = self._labels
-        if tag is NOT_SET:
-            tag = ''
         else:
-            labels = tuple(
-                _l for _l in labels if not isinstance(_l, Tag)
-            )
-        if codepoint is NOT_SET:
-            codepoint = b''
-        else:
-            labels = tuple(
-                _l for _l in labels if not isinstance(_l, Codepoint)
-            )
-        if char is NOT_SET:
-            char = ''
-        else:
-            labels = tuple(
-                _l for _l in labels if not isinstance(_l, Char)
-            )
+            labels = tuple(to_label(_l) for _l in labels)
+        if tag is not NOT_SET:
+            labels = [_l for _l in labels if not isinstance(_l, Tag)]
+            if tag:
+                labels.append(Tag(tag))
+        if codepoint is not NOT_SET:
+            labels = [_l for _l in labels if not isinstance(_l, Codepoint)]
+            if codepoint or codepoint == 0:
+                labels.append(Codepoint(codepoint))
+        if char is not NOT_SET:
+            labels = [_l for _l in labels if not isinstance(_l, Char)]
+            if char:
+                labels.append(Char(char))
         if comment is NOT_SET:
             comment = self._comment
         properties = {
@@ -296,12 +298,9 @@ class Glyph:
         return type(self)(
             pixels,
             labels=labels,
-            codepoint=codepoint,
-            char=char,
-            tag=tag,
             comment=comment or '',
-            _0=_0, _1=_1,
-            **properties
+            **properties,
+            _trustme=True,
         )
 
     def label(
