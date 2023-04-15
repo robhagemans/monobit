@@ -19,7 +19,7 @@ from ..font import Font
 from ..glyph import Glyph
 from ..raster import Raster
 from ..labels import Label, strip_matching
-from ..properties import normalise_property
+from ..properties import Props, normalise_property
 from ..basetypes import passthrough
 from .draw import NonEmptyBlock, DrawComment, Empty, Unparsed, iter_blocks
 from .draw import format_comment
@@ -129,7 +129,7 @@ def _read_yaff(text_stream):
     current_comment = []
     for block in iter_blocks(text_stream, blocktypes):
         if isinstance(block, (YaffGlyph, YaffPropertyOrGlyph)) and block.is_glyph():
-            glyphs.append(block.get_glyph_value().modify(
+            glyphs.append(block.get_glyph_value() | Props(
                 comment='\n\n'.join(current_comment),
             ))
             current_comment = []
@@ -147,7 +147,7 @@ def _read_yaff(text_stream):
             logging.debug('Unparsed lines: %s', block.get_value())
     font_comments.extend(current_comment)
     return Font(
-        glyphs, **font_props,
+        (Glyph(**vars(_g)) for _g in glyphs), **font_props,
         comment={'': '\n\n'.join(font_comments), **font_prop_comms},
     )
 
@@ -215,8 +215,8 @@ class YaffGlyph(YaffMultiline):
         # deal with sized empties (why?)
         if all(set(_line) == set([self.empty]) for _line in raster):
             raster = Raster.blank(width=len(raster[0])-1, height=len(raster)-1)
-        return Glyph(
-            raster, _0=self.paper, _1=self.ink,
+        return Props(
+            pixels=Raster(raster, _0=self.paper, _1=self.ink),
             labels=labels, **properties
         )
 
@@ -288,19 +288,18 @@ class YaffPropertyOrGlyph(YaffMultiline):
 ##############################################################################
 # write file
 
-def _globalise_glyph_metrics(mod_glyphs):
+def _globalise_glyph_metrics(glyphs):
     """If all glyph props are equal, take them global."""
     properties = {}
     for key in (
             'shift-up', 'left-bearing', 'right-bearing',
             'shift-left', 'top-bearing', 'bottom-bearing',
         ):
-        distinct = set(
-            getattr(_g, normalise_property(key))
-            for _g in mod_glyphs
-        )
+        mod_glyphs = tuple(_g.get_data() for _g in glyphs)
+        key = normalise_property(key)
+        distinct = set(_g[key] for _g in mod_glyphs if key in _g)
         if len(distinct) == 1:
-            mod_glyphs = tuple(_g.drop(key) for _g in mod_glyphs)
+            mod_glyphs = tuple(_g - key for _g in mod_glyphs)
             value = distinct.pop()
             # NOTE - these all have zero defaults
             if value != 0:
@@ -331,47 +330,48 @@ def _save_yaff(fonts, outstream):
         else:
             props['bounding_box'] = font.bounding_box
         props.update(font.properties)
-        glyphs, global_metrics = _globalise_glyph_metrics(font.glyphs)
+        glyphdata, global_metrics = _globalise_glyph_metrics(font.glyphs)
         props.update(global_metrics)
         if props:
             # write recognised yaff properties first, in defined order
             for key, value in props.items():
                 _write_property(outstream, key, value, font.get_comment(key))
             outstream.write('\n')
-        for glyph in glyphs:
+        for glyph in glyphdata:
             _write_glyph(outstream, glyph)
 
-def _write_glyph(outstream, glyph, label=None):
+def _write_glyph(outstream, glyph):
     """Write out a single glyph in text format."""
     # glyph comments
     if glyph.comment:
         outstream.write(
             '\n' + format_comment(glyph.comment, YaffParams.comment) + '\n'
         )
-    if label:
-        labels = [label]
-    else:
-        labels = glyph.get_labels()
-    if not labels:
+    if not glyph.labels:
         outstream.write(f'{YaffParams.separator}\n')
-    for _label in labels:
+    for _label in glyph.labels:
         outstream.write(f'{str(_label)}{YaffParams.separator}\n')
     # glyph matrix
     # empty glyphs are stored as 0x0, not 0xm or nx0
-    if not glyph.width or not glyph.height:
+    if not glyph.pixels.width or not glyph.pixels.height:
         glyphtxt = f'{YaffParams.tab}{YaffParams.empty}\n'
     else:
-        glyphtxt = glyph.as_text(
+        glyphtxt = glyph.pixels.as_text(
             start=YaffParams.tab,
             ink=YaffParams.ink, paper=YaffParams.paper,
             end='\n'
         )
     outstream.write(glyphtxt)
-    if glyph.properties:
+    properties = {
+        _k: _v
+        for _k, _v in vars(glyph).items()
+        if _k not in ('pixels', 'labels', 'comment')
+    }
+    if properties:
         outstream.write(f'\n')
-    for key, value in glyph.properties.items():
+    for key, value in properties.items():
         _write_property(outstream, key, value, None, indent=YaffParams.tab)
-    if glyph.properties:
+    if properties:
         outstream.write('\n')
     outstream.write('\n')
 

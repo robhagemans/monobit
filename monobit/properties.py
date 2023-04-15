@@ -111,6 +111,18 @@ class Props(SimpleNamespace):
         new |= rhs
         return new
 
+    def __isub__(self, rhs):
+        """Remove a key, does not need to exist."""
+        self.__dict__.pop(rhs, None)
+        return self
+
+    def __sub__(self, rhs):
+        """Remove a key, does not need to exist."""
+        new = Props(**vars(self))
+        new -= rhs
+        return new
+
+
 
 ##############################################################################
 # property sets with default values, override policy and type conversion
@@ -150,7 +162,7 @@ class DefaultProps(Props):
     """
 
     # set to True when defaults have been set for a given type
-    # on first instatntiation
+    # on first instantiation
     _init = False
 
     def __init__(self, *args, **kwargs):

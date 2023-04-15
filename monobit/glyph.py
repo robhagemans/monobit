@@ -12,7 +12,7 @@ from .encoding import is_graphical, is_blank
 from .labels import Codepoint, Char, Tag, to_label
 from .raster import Raster, NOT_SET, turn_method
 from .properties import (
-    DefaultProps, normalise_property, extend_string,
+    Props, DefaultProps, normalise_property, extend_string,
     writable_property, as_tuple, checked_property
 )
 from .basetypes import Coord, Bounds, to_number
@@ -395,6 +395,14 @@ class Glyph:
             **none_args
         )
 
+    def get_data(self):
+        """Return a dataclass containing the glyph's data."""
+        return Props(
+            pixels=self._pixels,
+            labels=self._labels,
+            comment=self._comment,
+            **{_k: _v for _k, _v in vars(self._props).items() if not _k.startswith('_')},
+        )
 
     ##########################################################################
     # property access
