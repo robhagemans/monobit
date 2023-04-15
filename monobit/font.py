@@ -908,16 +908,8 @@ class Font:
             label = Codepoint(codepoint)
         elif tag is not None:
             label = Tag(tag)
-        elif isinstance(label, str):
-            # first look for char - expected to be shorter - then tags
-            try:
-                return self._labels[Char(label)]
-            except KeyError:
-                pass
-            try:
-                return self._labels[Tag(label)]
-            except KeyError:
-                pass
+        elif isinstance(label, Label):
+            pass
         # do we have the input string directly as a char or tag?
         elif label is not None:
             # convert strings, numerics through standard rules

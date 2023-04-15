@@ -45,12 +45,16 @@ def to_label(value):
     if not value:
         return Char()
     # protect commas, pluses etc. if enclosed
-    if is_enclosed(value, '"'):
+    try:
         # strip matching double quotes
         # this allows to set a label starting with a digit by quoting it
-        return Tag(value[1:-1])
-    if is_enclosed(value, "'"):
-        return Char(value[1:-1])
+        return Tag(strip_matching(value, '"', allow_no_match=False))
+    except ValueError:
+        pass
+    try:
+        return Char(strip_matching(value, "'", allow_no_match=False))
+    except ValueError:
+        pass
     # codepoints start with an ascii digit
     try:
         return Codepoint(value)
@@ -59,11 +63,11 @@ def to_label(value):
     # length-one -> always a character
     if len(value) == 1:
         return Char(value)
-    # unquoted non-ascii -> always a character
+    # unquoted non-ascii -> always a character (this is to cover grapheme sequences)
     # note that this includes non-printables such as controls but these should not be used.
     if any(ord(_c) > 0x7f for _c in value):
         return Char(value)
-    # deal with other options such as single-quoted, u+codepoint and sequences
+    # deal with other options such as u+codepoint and comma-separated sequences
     try:
         return Char(''.join(
             _convert_char_element(_elem)
@@ -77,8 +81,10 @@ def _convert_char_element(element):
     """Convert character label element to char if possible."""
     # string delimited by single quotes denotes a character or sequence
     element = element.strip()
-    if is_enclosed(element, "'"):
-        return element[1:-1]
+    try:
+        return strip_matching(element, "'", allow_no_match=False)
+    except ValueError:
+        pass
     # not a delimited char
     element = element.lower()
     if not element.startswith('u+'):

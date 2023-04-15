@@ -17,8 +17,9 @@ from ..magic import FileFormatError
 from ..font import Font
 from ..glyph import Glyph
 from ..raster import Raster
-from ..labels import strip_matching
+from ..labels import Label, strip_matching
 from ..properties import normalise_property
+from ..basetypes import passthrough
 
 
 ##############################################################################
@@ -377,8 +378,6 @@ def _write_property(outstream, key, value, comments, indent=''):
     """Write out a property."""
     if value is None:
         return
-    # this may use custom string converter (e.g codepoint labels)
-    value = str(value)
     # write property comment
     if comments:
         outstream.write(
@@ -387,14 +386,22 @@ def _write_property(outstream, key, value, comments, indent=''):
     if not key.startswith('_'):
         key = key.replace('_', '-')
     # write key-value pair
+    if isinstance(value, Label) or not isinstance(value, str):
+        # do not quote converted non-strings (plus Tag and Char which are str)
+        # FIXME: reader will strip quotes and misinterpret some labels
+        # so non-ascii or single-char tags will be converted to Char not Tag
+        # common cases (.notdef, missing, default, uniFFFD) will be OK
+        quoter = passthrough
+    else:
+        quoter = _quote_if_needed
+    value = str(value)
     if '\n' not in value:
-        outstream.write(f'{indent}{key}: {_quote_if_needed(value)}\n')
+        outstream.write(f'{indent}{key}: {quoter(value)}\n')
     else:
         outstream.write(
             f'{indent}{key}:\n{indent}{YaffParams.tab}' + '{}\n'.format(
                 f'\n{indent}{YaffParams.tab}'.join(
-                    _quote_if_needed(_line)
-                    for _line in value.splitlines()
+                    quoter(_line) for _line in value.splitlines()
                 )
             )
         )
