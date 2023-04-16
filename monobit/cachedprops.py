@@ -96,13 +96,17 @@ class DefaultProps:
         if field.startswith('_'):
             raise AttributeError(field)
         try:
+            return self._get_property(field)
+        except KeyError as e:
+            raise AttributeError(e)
+
+    def _get_property(self, field):
+        field = normalise_property(field)
+        try:
             return self._props[field]
         except KeyError:
             pass
-        try:
-            return self._defaults[field]
-        except KeyError as e:
-            raise AttributeError(e)
+        return self._defaults[field]
 
     def _set_property(self, field, value):
         field = normalise_property(field)

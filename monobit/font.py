@@ -28,15 +28,15 @@ from .taggers import tagmaps
 NOT_SET = object()
 
 
-# pylint: disable=redundant-keyword-arg, no-member
-
 ###############################################################################
-# property management
+# font class
 
+# pylint: disable=redundant-keyword-arg, no-member
+class Font(DefaultProps):
+    """Representation of font, including glyphs and metadata."""
 
-# recognised yaff properties and converters from str
-# this also defines the default order in yaff files
-class FontProperties(DefaultProps):
+    # recognised properties and converters from str
+    # this also defines the default order in yaff files
 
     # naming - can be determined from source file if needed
     # full human name
@@ -194,6 +194,10 @@ class FontProperties(DefaultProps):
     max_advance: int
     cap_advance: int
 
+    # non-overridable, for pylint's benefit
+    raster: Bounds
+
+
     @writable_property
     def name(self):
         """Full human-friendly name."""
@@ -267,7 +271,7 @@ class FontProperties(DefaultProps):
     def encoding(self):
         """Encoding."""
         # if we have no codepoints, we can always assume unicode encoding
-        if self._font.get_chars() and not self._font.get_codepoints():
+        if self.get_chars() and not self.get_codepoints():
             return charmaps.normalise('unicode')
         return ''
 
@@ -296,7 +300,7 @@ class FontProperties(DefaultProps):
         Recommended typographic ascent relative to baseline.
         Defaults to ink-top.
         """
-        if not self._font.glyphs:
+        if not self.glyphs:
             return 0
         return max(0, self.ink_bounds.top)
 
@@ -306,7 +310,7 @@ class FontProperties(DefaultProps):
         Recommended typographic descent relative to baseline.
         Defaults to ink-bottom.
         """
-        if not self._font.glyphs:
+        if not self.glyphs:
             return 0
         # if ink bounds go below the baseline, use them as descent
         return max(0, -self.ink_bounds.bottom)
@@ -318,7 +322,7 @@ class FontProperties(DefaultProps):
         Horizontal ascent relative to baseline for vertical rendering.
         Defaults to ink-right.
         """
-        if not self._font.glyphs:
+        if not self.glyphs:
             return 0
         return max(0, self.ink_bounds.right)
 
@@ -328,7 +332,7 @@ class FontProperties(DefaultProps):
         Horizontal descent relative to baseline for vertical rendering.
         Defaults to ink-left.
         """
-        if not self._font.glyphs:
+        if not self.glyphs:
             return 0
         # if ink bounds go below the baseline, use them as descent
         return max(0, -self.ink_bounds.left)
@@ -371,24 +375,24 @@ class FontProperties(DefaultProps):
         #
         # a _monospace_ font is a font where all glyphs have equal advance_width.
         #
-        if not self._font.glyphs:
+        if not self.glyphs:
             return 'character-cell'
         if any(
                 _glyph.advance_width < 0 or _glyph.right_kerning
-                for _glyph in self._font.glyphs
+                for _glyph in self.glyphs
             ):
             return 'proportional'
         # don't count void glyphs (0 width and/or height)
         # to determine whether it's monospace
         advances = set(
             _glyph.advance_width
-            for _glyph in self._font.glyphs if _glyph.advance_width
+            for _glyph in self.glyphs if _glyph.advance_width
         )
         if len(set(advances)) > 2:
             return 'proportional'
         monospaced = len(set(advances)) == 1
         negative = tuple(
-            _g for _g in self._font.glyphs
+            _g for _g in self.glyphs
             if _g.left_bearing < 0 or _g.right_bearing < 0
             or _g.top_bearing < 0 or _g.bottom_bearing < 0
         )
@@ -410,9 +414,9 @@ class FontProperties(DefaultProps):
         Minimum box encompassing all glyph matrices overlaid at fixed origin,
         bottom-left origin coordinates.
         """
-        if not self._font.glyphs:
+        if not self.glyphs:
             return Bounds(0, 0, 0, 0)
-        return Glyph._get_common_raster(*self._font.glyphs)
+        return Glyph._get_common_raster(*self.glyphs)
 
     @checked_property
     def raster_size(self):
@@ -425,13 +429,13 @@ class FontProperties(DefaultProps):
     @checked_property
     def cell_size(self):
         """Width, height of the character cell."""
-        if not self._font.glyphs or self.spacing == 'proportional':
+        if not self.glyphs or self.spacing == 'proportional':
             return Coord(0, 0)
         # smaller of the (at most two) advance widths is the cell size
         # in a multi-cell font, some glyphs may take up two cells.
         cells = tuple(
             (_g.advance_width, _g.advance_height)
-            for _g in self._font.glyphs
+            for _g in self.glyphs
         )
         return Coord(*min(_c for _c in cells if all(_c)))
 
@@ -442,7 +446,7 @@ class FontProperties(DefaultProps):
         bottom-left origin cordinates.
         """
         nonempty = [
-            _glyph for _glyph in self._font.glyphs
+            _glyph for _glyph in self.glyphs
             if _glyph.bounding_box.x and _glyph.bounding_box.y
         ]
         if not nonempty:
@@ -482,25 +486,25 @@ class FontProperties(DefaultProps):
     @writable_property
     def average_width(self):
         """Get average glyph advance width."""
-        if not self._font.glyphs:
+        if not self.glyphs:
             return 0
         return (
-            sum(_glyph.advance_width for _glyph in self._font.glyphs)
-            / len(self._font.glyphs)
+            sum(_glyph.advance_width for _glyph in self.glyphs)
+            / len(self.glyphs)
         )
 
     @writable_property
     def max_width(self):
         """Maximum glyph advance width."""
-        if not self._font.glyphs:
+        if not self.glyphs:
             return 0
-        return max(_glyph.advance_width for _glyph in self._font.glyphs)
+        return max(_glyph.advance_width for _glyph in self.glyphs)
 
     @writable_property
     def cap_width(self):
         """Advance width of uppercase X."""
         try:
-            return self._font.get_glyph(char='X').advance_width
+            return self.get_glyph(char='X').advance_width
         except KeyError:
             return 0
 
@@ -508,7 +512,7 @@ class FontProperties(DefaultProps):
     def x_height(self):
         """Ink height of lowercase x."""
         try:
-            return self._font.get_glyph(char='x').bounding_box.y
+            return self.get_glyph(char='x').bounding_box.y
         except KeyError:
             return 0
 
@@ -516,7 +520,7 @@ class FontProperties(DefaultProps):
     def cap_height(self):
         """Ink height of uppercase X."""
         try:
-            return self._font.get_glyph(char='X').bounding_box.y
+            return self.get_glyph(char='X').bounding_box.y
         except KeyError:
             return 0
 
@@ -525,7 +529,7 @@ class FontProperties(DefaultProps):
         """Advance width of digits, if fixed."""
         try:
             widths = set(
-                self._font.get_glyph(char=_d).advance_width
+                self.get_glyph(char=_d).advance_width
                 for _d in '$0123456789'
             )
         except KeyError:
@@ -544,11 +548,11 @@ class FontProperties(DefaultProps):
         Position of underline below baseline.
         0 means underline on baseline itself.
         """
-        if not self._font.glyphs:
+        if not self.glyphs:
             return 0
         max_descent = -min(
             _glyph.shift_up + _glyph.padding.bottom
-            for _glyph in self._font.glyphs
+            for _glyph in self.glyphs
         )
         # XLFD calculation says round(max_descent/2) but I think they mean this
         # they may meam something else with the 'top of the baseline'?
@@ -592,7 +596,7 @@ class FontProperties(DefaultProps):
     def word_space(self):
         """Recommended space between words, in pixels."""
         try:
-            return self._font.get_glyph(char=' ').advance_width
+            return self.get_glyph(char=' ').advance_width
         except KeyError:
             # convoluted XLFD calc just boils down to this?
             return round(self.pixel_size / 3)
@@ -620,7 +624,7 @@ class FontProperties(DefaultProps):
     def default_char(self):
         """Label for default character."""
         repl = '\ufffd'
-        if repl not in self._font.get_chars():
+        if repl not in self.get_chars():
             repl = ''
         return Char(repl)
 
@@ -644,12 +648,8 @@ class FontProperties(DefaultProps):
         return self.cap_width
 
 
-###############################################################################
-# Font class
+    ###########################################################################
 
-
-class Font:
-    """Representation of font glyphs and metadata."""
 
     def __init__(self, glyphs=(), *, comment=None, **properties):
         """Create new font."""
@@ -668,8 +668,7 @@ class Font:
         # set encoding first so we can set labels
         # NOTE - we must be careful NOT TO ACCESS CACHED PROPERTIES
         #        until the constructor is complete
-        self._props = FontProperties(**properties, _comments=comment)
-        self._props._font = self
+        super().__init__(**properties, _comments=comment)
 
     @staticmethod
     def _apply_metrics(glyphs, props):
@@ -736,7 +735,7 @@ class Font:
         elif comment is not NOT_SET:
             old_comment.update(comment)
         # comment and properties are replaced keyword by keyword
-        properties = self._props._props
+        properties = self._props
         properties.update(kwargs)
         return Font(
             tuple(glyphs),
@@ -756,8 +755,8 @@ class Font:
             if old_comment:
                 comment[key] = extend_string(old_comment, comment)
         for key, value in properties.items():
-            if self._props._defined(key):
-                properties[key] = extend_string(getattr(self._props, key), value)
+            if self._defined(key):
+                properties[key] = extend_string(self._props[key], value)
         if glyphs:
             glyphs = (*self.glyphs, *glyphs)
         else:
@@ -790,41 +789,30 @@ class Font:
     ##########################################################################
     # property access
 
-    def __getattr__(self, attr):
-        """Take property from property table."""
-        if '_props' not in vars(self):
-            logging.error(type(self).__name__ + '._props not defined')
-            raise AttributeError(attr)
-        if attr.startswith('_'):
-            # don't delegate private members
-            raise AttributeError(attr)
-        return getattr(self._props, attr)
-
     def get_comment(self, key=''):
         """Get global or property comment."""
         key = normalise_property(key)
-        return self._props._comments.get(key, '')
+        return self._comments.get(key, '')
 
     def _get_comment_dict(self):
         """Get all global and property comments as a dict."""
-        return self._props._comments
+        return self._comments
 
     @property
     def properties(self):
         """Non-defaulted properties in order of default definition list."""
-        return {
-            _k.replace('_', '-'): _v
-            for _k, _v in self._props._props.items()
-        }
+        return {_k.replace('_', '-'): _v for _k, _v in self._props.items()}
 
     def is_known_property(self, key):
         """Field is a recognised property."""
-        return self._props._known(key)
+        return self._known(key)
 
     def get_property(self, key):
         """Get value for property."""
-        key = normalise_property(key)
-        return getattr(self._props, key, '')
+        try:
+            return self._get_property(key)
+        except KeyError:
+            return None
 
     def format_properties(self, template, **kwargs):
         """Format a string template using font properties."""
@@ -839,12 +827,11 @@ class Font:
 
         return FontFormatter().format(template, **kwargs)
 
-
     def get_features(self):
         """Get set of special features for this font."""
         feats = set.union(*(_g.features for _g in self.glyphs))
         if any(
-                self._props._defined(_p)
+                self._defined(_p)
                 for _p in ('line_width', 'left-extent', 'right-extent')
             ):
             feats.add('vertical')
@@ -1081,9 +1068,7 @@ class Font:
         return self.modify(glyphs)
 
 
-    # WARNING: this shadows builtin set() in any annotations for method definitions below
-    @scriptable(script_args=FontProperties.__annotations__.items())
-    def set(self, **kwargs):
+    def _set(self, **kwargs):
         """Return a copy of the font with one or more recognised properties changed."""
         kwargs = {
             _k: (_v if _v != '' else None)
@@ -1453,6 +1438,9 @@ class Font:
 
             locals()[_name] = _modify_glyphs
 
+
+# set properties from script
+Font.set = scriptable(script_args=Font.__annotations__.items())(Font._set)
 
 # scriptable font/glyph operations
 operations = get_scriptables(Font)

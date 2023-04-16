@@ -64,8 +64,8 @@ class KernTable(dict):
 ##############################################################################
 # glyph properties
 
-class GlyphProperties(DefaultProps):
-    """Recognised properties for Glyph."""
+class Glyph(DefaultProps):
+    """Single glyph including raster and properties."""
 
     # horizontal offset from leftward origin to matrix left edge
     left_bearing: int
@@ -94,6 +94,10 @@ class GlyphProperties(DefaultProps):
     # path segments for stroke fonts
     path: StrokePath
 
+    # non-overridable, hinted for pylint
+    padding: Bounds
+    height: int
+
 
     @checked_property
     def advance_width(self):
@@ -108,12 +112,12 @@ class GlyphProperties(DefaultProps):
     @checked_property
     def width(self):
         """Raster width of glyph."""
-        return self._glyph._pixels.width
+        return self._pixels.width
 
     @checked_property
     def height(self):
         """Raster height of glyph."""
-        return self._glyph._pixels.height
+        return self._pixels.height
 
     @checked_property
     def ink_bounds(self):
@@ -142,7 +146,7 @@ class GlyphProperties(DefaultProps):
     @checked_property
     def padding(self):
         """Offset from raster sides to bounding box. Left, bottom, right, top."""
-        return self._glyph._pixels.padding
+        return self._pixels.padding
 
     @checked_property
     def raster(self):
@@ -184,11 +188,8 @@ class GlyphProperties(DefaultProps):
         """
 
 
-##############################################################################
-# glyph
-
-class Glyph:
-    """Single glyph."""
+    ##########################################################################
+    # dunder methods
 
     def __init__(
             self, pixels=(), *,
@@ -201,8 +202,7 @@ class Glyph:
             self._pixels = Raster(pixels, _0=_0, _1=_1)
             self._labels = labels
             self._comment = comment
-            self._props = GlyphProperties(**properties)
-            self._props._glyph = self
+            super().__init__(**properties)
             return
         # raster data
         self._pixels = Raster(pixels, _0=_0, _1=_1)
@@ -217,9 +217,7 @@ class Glyph:
             raise TypeError('Glyph comment must be a single string.')
         self._comment = comment
         # recognised properties
-        # access needed for calculated properties
-        self._props = GlyphProperties(**properties)
-        self._props._glyph = self
+        super().__init__(**properties)
 
     def __eq__(self, other):
         """Equality."""
@@ -232,10 +230,6 @@ class Glyph:
             if not getattr(self, p) == getattr(other, p):
                 return False
         return self.as_matrix() == other.as_matrix()
-
-
-    ##########################################################################
-    # representation
 
     def __repr__(self):
         """Text representation."""
@@ -286,7 +280,7 @@ class Glyph:
                 labels.append(Char(char))
         if comment is NOT_SET:
             comment = self._comment
-        properties = {**self._props._props}
+        properties = {**self._props}
         properties.update({
             normalise_property(_k): _v
             for _k, _v in kwargs.items()
@@ -352,8 +346,8 @@ class Glyph:
             comment = ''
         comment = extend_string(self._comment, comment)
         for key, value in properties.items():
-            if self._props._defined(key):
-                properties[key] = extend_string(getattr(self._props, key), value)
+            if self._defined(key):
+                properties[key] = extend_string(self._props[key], value)
         # do not record glyph history
         try:
             history = properties.pop('history')
@@ -395,54 +389,46 @@ class Glyph:
     ##########################################################################
     # property access
 
-    def __getattr__(self, attr):
-        """Take attribute from property table if not defined here."""
-        if attr.startswith('_'):
-            # don't delegate private members
-            raise AttributeError(attr)
-        return getattr(self._props, attr)
-
     @property
     def comment(self):
         return self._comment
 
     def default(self, property):
         """Default value for a property."""
-        return self._props._get_default(property)
+        return self._get_default(property)
 
     @property
     def properties(self):
         """Non-defaulted properties in order of default definition list."""
-        return {
-            _k.replace('_', '-'): _v
-            for _k, _v in self._props._props.items()
-        }
+        return {_k.replace('_', '-'): _v for _k, _v in self._props.items()}
 
     def get_property(self, key):
         """Get value for property."""
-        key = normalise_property(key)
-        return getattr(self._props, key, None)
+        try:
+            return self._get_property(key)
+        except KeyError:
+            return None
 
     def get_defined(self, key):
         """Get value for property, if explicitly defined."""
-        return self._props._defined(key)
+        return self._defined(key)
 
     @property
     def features(self):
         """Get set of special features for this glyph."""
         feats = set()
         if any(
-                self._props._defined(_p)
+                self._defined(_p)
                 for _p in ('top-bearing', 'bottom-bearing', 'shift-left')
             ):
             feats.add('vertical')
         if any(
-                self._props._defined(_p)
+                self._defined(_p)
                 for _p in ('left-kerning', 'right-kerning')
             ):
             feats.add('kerning')
         if any(
-                self.get_property(_p) < 0
+                self._get_property(_p) < 0
                 for _p in (
                     'left-bearing', 'right-bearing',
                     'top-bearing', 'bottom-bearing'
