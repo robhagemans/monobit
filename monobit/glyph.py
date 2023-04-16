@@ -11,10 +11,8 @@ from functools import cache
 from .encoding import is_graphical, is_blank
 from .labels import Codepoint, Char, Tag, to_label
 from .raster import Raster, NOT_SET, turn_method
-from .properties import (
-    Props, DefaultProps, normalise_property, extend_string,
-    writable_property, as_tuple, checked_property
-)
+from .properties import Props, normalise_property, extend_string
+from .cachedprops import DefaultProps, writable_property, as_tuple, checked_property
 from .basetypes import Coord, Bounds, to_number
 from .scripting import scriptable
 from .vector import StrokePath

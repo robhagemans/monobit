@@ -19,10 +19,8 @@ from .encoding import charmaps, encoder
 from .taggers import tagger
 from .labels import Tag, Char, Codepoint, Label, to_label
 from .binary import ceildiv
-from .properties import (
-    extend_string, DefaultProps, normalise_property, as_tuple,
-    writable_property, checked_property
-)
+from .properties import normalise_property, extend_string
+from .cachedprops import DefaultProps, writable_property, as_tuple, checked_property
 from .taggers import tagmaps
 
 
