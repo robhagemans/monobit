@@ -642,6 +642,8 @@ class Glyph(DefaultProps):
         adjust_metrics: make the operation render-invariant (default: True)
         create_vertical_metrics: create vertical metrics if they don't exist (default: False)
         """
+        if not any((left, bottom, right, top)):
+            return self
         create_vertical_metrics = (
             create_vertical_metrics or 'vertical' in self.features
         )
@@ -679,6 +681,8 @@ class Glyph(DefaultProps):
         top: number of rows to add on top
         adjust_metrics: make the operation render-invariant (default: True)
         """
+        if not any((left, bottom, right, top)):
+            return self
         # reduce raster
         pixels = self._pixels.expand(left, bottom, right, top)
         if adjust_metrics:
@@ -700,7 +704,8 @@ class Glyph(DefaultProps):
         """
         Return a glyph reduced to the bounding box.
 
-        adjust_metrics: make the operation render-invariant (default: True)                create_vertical_metrics: create vertical metrics if they don't exist (default: False)
+        adjust_metrics: make the operation render-invariant (default: True)
+        create_vertical_metrics: create vertical metrics if they don't exist (default: False)
         """
         return self.crop(
             *self.padding, adjust_metrics=adjust_metrics,
@@ -722,6 +727,8 @@ class Glyph(DefaultProps):
         factor_y: number of times to repeat vertically
         adjust_metrics: also stretch metrics (default: True)
         """
+        if factor_x == factor_y == 1:
+            return self
         pixels = self._pixels.stretch(factor_x, factor_y)
         if adjust_metrics:
             return self.modify(
@@ -747,6 +754,8 @@ class Glyph(DefaultProps):
         factor_y: factor to shrink vertically
         adjust_metrics: also stretch metrics (default: True)
         """
+        if factor_x == factor_y == 1:
+            return self
         pixels = self._pixels.shrink(factor_x, factor_y)
         if adjust_metrics:
             return self.modify(
