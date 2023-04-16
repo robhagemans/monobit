@@ -391,23 +391,12 @@ class Glyph:
             **none_args
         )
 
-    def get_data(self):
-        """Return a dataclass containing the glyph's data."""
-        return Props(
-            pixels=self._pixels,
-            labels=self._labels,
-            comment=self._comment,
-            **self._props._props,
-        )
 
     ##########################################################################
     # property access
 
     def __getattr__(self, attr):
         """Take attribute from property table if not defined here."""
-        if '_props' not in vars(self):
-            logging.error(type(self).__name__ + '._props not defined')
-            raise AttributeError(attr)
         if attr.startswith('_'):
             # don't delegate private members
             raise AttributeError(attr)
@@ -420,7 +409,7 @@ class Glyph:
     @classmethod
     def default(cls, property):
         """Default value for a property."""
-        return vars(GlyphProperties).get(normalise_property(property), '')
+        return self._props.get_default(property)
 
     @property
     def properties(self):
@@ -433,7 +422,11 @@ class Glyph:
     def get_property(self, key):
         """Get value for property."""
         key = normalise_property(key)
-        return getattr(self._props, key, '')
+        return getattr(self._props, key, None)
+
+    def get_defined(self, key):
+        """Get value for property, if explicitly defined."""
+        return self._props._defined(key)
 
     @property
     def features(self):

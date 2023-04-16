@@ -79,6 +79,9 @@ class Props(SimpleNamespace):
     def __iter__(self):
         return iter(vars(self))
 
+    def __contains__(self, key):
+        return key in vars(self)
+
     def __str__(self):
         strs = tuple(
             (str(_k), str(_v))

@@ -295,8 +295,7 @@ def _globalise_glyph_metrics(glyphs):
             'shift_up', 'left_bearing', 'right_bearing',
             'shift_left', 'top_bearing', 'bottom_bearing',
         ):
-        # NOTE - these all happen to have zero defaults
-        distinct = set(_g._props._props.get(key, 0) for _g in glyphs) - {0}
+        distinct = set(_g.get_defined(key) for _g in glyphs) - {None}
         if len(distinct) == 1:
             properties[key] = distinct.pop()
     return properties
