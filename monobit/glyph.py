@@ -406,10 +406,9 @@ class Glyph:
     def comment(self):
         return self._comment
 
-    @classmethod
-    def default(cls, property):
+    def default(self, property):
         """Default value for a property."""
-        return self._props.get_default(property)
+        return self._props._get_default(property)
 
     @property
     def properties(self):
