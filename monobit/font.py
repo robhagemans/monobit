@@ -765,7 +765,7 @@ class Font:
                 comment[key] = extend_string(old_comment, comment)
         for key, value in properties.items():
             if key in self._props:
-                properties[key] = extend_string(self._props[key], value)
+                properties[key] = extend_string(getattr(self._props, key), value)
         if glyphs:
             glyphs = (*self.glyphs, *glyphs)
         else:
@@ -816,7 +816,7 @@ class Font:
     def _get_comment_dict(self):
         """Get all global and property comments as a dict."""
         return {
-            _k[1:]: self._props[_k]
+            _k[1:]: getattr(self._props, _k)
             for _k in self._props
             if _k.startswith('#')
         }
@@ -825,10 +825,10 @@ class Font:
     def properties(self):
         """Non-defaulted properties in order of default definition list."""
         return {
-            _k.replace('_', '-'): self._props[_k]
+            _k.replace('_', '-'): getattr(self._props, _k)
             for _k in self._props
             if not _k.startswith('_') and not _k.startswith('#')
-            and self._props[_k] != self._props._get_default(_k)
+            and getattr(self._props, _k) != self._props._get_default(_k)
         }
 
     def is_known_property(self, key):

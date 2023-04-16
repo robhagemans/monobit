@@ -17,7 +17,7 @@ from .properties import Props, normalise_property
 
 
 
-class DefaultProps(Props):
+class DefaultProps(SimpleNamespace):
     """
     Namespace with recognised fields and defaults.
     Define field types (converters) and defaults in class definition.

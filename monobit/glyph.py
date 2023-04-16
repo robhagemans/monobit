@@ -428,10 +428,10 @@ class Glyph:
     def properties(self):
         """Non-defaulted properties in order of default definition list."""
         return {
-            _k.replace('_', '-'): self._props[_k]
+            _k.replace('_', '-'): getattr(self._props, _k)
             for _k in self._props
             if not _k.startswith('_')
-            and self._props[_k] != self._props._get_default(_k)
+            and getattr(self._props, _k) != self._props._get_default(_k)
         }
 
     def get_property(self, key):
