@@ -37,7 +37,7 @@ class DefaultProps:
         self._set_defaults()
         self._props = {}
         [
-            self._set_property(_field, _value)
+            setattr(self, _field, _value)
             for _field, _value in kwargs.items()
             #if not _field.startswith('_')
         ]
@@ -108,6 +108,12 @@ class DefaultProps:
             pass
         return self._defaults[field]
 
+    def __setattr__(self, field, value):
+        field = normalise_property(field)
+        if field.startswith('_') or field in dir(self):
+            return super().__setattr__(field, value)
+        return self._set_property(field, value)
+
     def _set_property(self, field, value):
         field = normalise_property(field)
         if value is None:
@@ -143,8 +149,6 @@ def writable_property(arg=None, *, field=None):
 
     @wraps(fn)
     def _setter(self, value):
-        if self._frozen:
-            raise ValueError('Cannot set property on frozen object.')
         #logging.debug(f'Setting overridable property {field}={value}.')
         self._set_property(field, value)
 
@@ -159,8 +163,6 @@ def checked_property(fn):
 
     @wraps(fn)
     def _setter(self, value):
-        if self._frozen:
-            raise ValueError('Cannot set property on frozen object.')
         logging.info(f'Non-overridable property {field} cannot be set to {value}; ignored.')
 
     return property(_getter, _setter)
