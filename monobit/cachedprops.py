@@ -34,7 +34,6 @@ class DefaultProps:
 
     def __init__(self, _comments=None, **kwargs):
         # disable cacheing while building the object
-        self._frozen = False
         self._set_defaults()
         self._props = {}
         [
@@ -49,7 +48,6 @@ class DefaultProps:
         }
         # enable cacheing
         self._cache = {}
-        self._frozen = True
 
     def __repr__(self):
         return (
@@ -105,11 +103,6 @@ class DefaultProps:
             return self._defaults[field]
         except KeyError as e:
             raise AttributeError(e)
-
-    def __setattr__(self, field, value):
-        if hasattr(self, '_frozen') and self._frozen and not field.startswith('_'):
-            raise ValueError('Cannot set property on frozen object.')
-        super().__setattr__(field, value)
 
     def _set_property(self, field, value):
         field = normalise_property(field)
@@ -205,20 +198,18 @@ def as_tuple(arg=None, *, fields=None, tuple_type=None):
     return property(_getter, _setter)
 
 
-
 def delayed_cache(fn):
     """Cache only once _frozen attribute is set."""
     field = normalise_property(fn.__name__)
 
     @wraps(fn)
     def _getter(self):
-        if not self._frozen:
-            return fn(self)
         try:
             return self._cache[field]
         except KeyError:
             pass
-        self._cache[field] = fn(self)
-        return self._cache[field]
+        value = fn(self)
+        self._cache[field] = value
+        return value
 
     return _getter
