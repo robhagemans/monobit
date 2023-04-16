@@ -292,19 +292,14 @@ def _globalise_glyph_metrics(glyphs):
     """If all glyph props are equal, take them global."""
     properties = {}
     for key in (
-            'shift-up', 'left-bearing', 'right-bearing',
-            'shift-left', 'top-bearing', 'bottom-bearing',
+            'shift_up', 'left_bearing', 'right_bearing',
+            'shift_left', 'top_bearing', 'bottom_bearing',
         ):
-        mod_glyphs = tuple(_g.get_data() for _g in glyphs)
-        key = normalise_property(key)
-        distinct = set(_g[key] for _g in mod_glyphs if key in _g)
+        # NOTE - these all happen to have zero defaults
+        distinct = set(_g._props._props.get(key, 0) for _g in glyphs) - {0}
         if len(distinct) == 1:
-            mod_glyphs = tuple(_g - key for _g in mod_glyphs)
-            value = distinct.pop()
-            # NOTE - these all have zero defaults
-            if value != 0:
-                properties[key] = value
-    return mod_glyphs, properties
+            properties[key] = distinct.pop()
+    return properties
 
 
 def _save_yaff(fonts, outstream):
@@ -330,26 +325,25 @@ def _save_yaff(fonts, outstream):
         else:
             props['bounding_box'] = font.bounding_box
         props.update(font.properties)
-        glyphdata, global_metrics = _globalise_glyph_metrics(font.glyphs)
+        global_metrics = _globalise_glyph_metrics(font.glyphs)
         props.update(global_metrics)
         if props:
             # write recognised yaff properties first, in defined order
             for key, value in props.items():
                 _write_property(outstream, key, value, font.get_comment(key))
             outstream.write('\n')
-        for glyph in glyphdata:
-            _write_glyph(outstream, glyph)
+        for glyph in font.glyphs:
+            _write_glyph(outstream, glyph, global_metrics)
 
-def _write_glyph(outstream, glyph):
+def _write_glyph(outstream, glyph, global_metrics):
     """Write out a single glyph in text format."""
     # glyph comments
     if glyph.comment:
         outstream.write(
             '\n' + format_comment(glyph.comment, YaffParams.comment) + '\n'
         )
-    if not glyph.labels:
-        outstream.write(f'{YaffParams.separator}\n')
-    for _label in glyph.labels:
+    labels = glyph.get_labels() or ['']
+    for _label in labels:
         outstream.write(f'{str(_label)}{YaffParams.separator}\n')
     # glyph matrix
     # empty glyphs are stored as 0x0, not 0xm or nx0
@@ -362,11 +356,9 @@ def _write_glyph(outstream, glyph):
             end='\n'
         )
     outstream.write(glyphtxt)
-    properties = {
-        _k: _v
-        for _k, _v in vars(glyph).items()
-        if _k not in ('pixels', 'labels', 'comment')
-    }
+    properties = glyph.properties
+    for key in global_metrics:
+        properties.pop(key, None)
     if properties:
         outstream.write(f'\n')
     for key, value in properties.items():
