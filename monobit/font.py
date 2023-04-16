@@ -277,7 +277,7 @@ class FontProperties(DefaultProps):
     @writable_property
     def line_height(self):
         """Vertical distance between consecutive baselines, in pixels."""
-        if 'leading' in vars(self):
+        if self._defined('leading') is not None:
             return self.pixel_size + self.leading
         return max(self.raster_size.y, self.pixel_size)
 
@@ -579,6 +579,8 @@ class FontProperties(DefaultProps):
     @writable_property
     def small_cap_size(self):
         """Recommended small-capital size in pixels."""
+        if not self.cap_height:
+            return 0
         return round(
             self.pixel_size * (
                 (self.x_height + (self.cap_height - self.x_height) / 3)
@@ -659,18 +661,15 @@ class Font:
             for _label in _glyph.get_labels()
         }
         # comment can be str (just global comment) or mapping of property comments
-        if not comment:
-            pass
-        elif isinstance(comment, str):
-            properties['#'] = comment
-        else:
-            properties.update({f'#{_k}': _v for _k, _v in comment.items()})
+        if isinstance(comment, str):
+            comment = {'': comment}
         self._glyphs, properties = self._apply_metrics(self._glyphs, properties)
         # update properties
         # set encoding first so we can set labels
         # NOTE - we must be careful NOT TO ACCESS CACHED PROPERTIES
         #        until the constructor is complete
-        self._props = FontProperties(_font=self, **properties)
+        self._props = FontProperties(**properties, _comments=comment)
+        self._props._font = self
 
     @staticmethod
     def _apply_metrics(glyphs, props):
@@ -737,15 +736,8 @@ class Font:
         elif comment is not NOT_SET:
             old_comment.update(comment)
         # comment and properties are replaced keyword by keyword
-        properties = {
-            _k: _v
-            for _k, _v in vars(self._props).items()
-            if not _k.startswith('_') and not _k.startswith('#')
-        }
-        properties.update({
-            normalise_property(_k): _v
-            for _k, _v in kwargs.items()
-        })
+        properties = self._props._props
+        properties.update(kwargs)
         return Font(
             tuple(glyphs),
             comment=old_comment,
@@ -811,24 +803,18 @@ class Font:
     def get_comment(self, key=''):
         """Get global or property comment."""
         key = normalise_property(key)
-        return getattr(self._props, f'#{key}', '')
+        return self._props._comments.get(key, '')
 
     def _get_comment_dict(self):
         """Get all global and property comments as a dict."""
-        return {
-            _k[1:]: getattr(self._props, _k)
-            for _k in self._props
-            if _k.startswith('#')
-        }
+        return self._props._comments
 
     @property
     def properties(self):
         """Non-defaulted properties in order of default definition list."""
         return {
-            _k.replace('_', '-'): getattr(self._props, _k)
-            for _k in self._props
-            if not _k.startswith('_') and not _k.startswith('#')
-            and getattr(self._props, _k) != self._props._get_default(_k)
+            _k.replace('_', '-'): _v
+            for _k, _v in self._props._props.items()
         }
 
     def is_known_property(self, key):

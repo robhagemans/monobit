@@ -17,7 +17,7 @@ from .properties import Props, normalise_property
 
 
 
-class DefaultProps(SimpleNamespace):
+class DefaultProps:
     """
     Namespace with recognised fields and defaults.
     Define field types (converters) and defaults in class definition.
@@ -32,28 +32,21 @@ class DefaultProps(SimpleNamespace):
     where field_1 has an implied default, int() == 0
     """
 
-    # set to True when defaults have been set for a given type
-    # on first instantiation
-    _init = False
-
-    def __init__(self, *args, **kwargs):
+    def __init__(self, _comments=None, **kwargs):
         # disable cacheing while building the object
         self._frozen = False
-        super().__init__(*args)
-        # if a type constructor is given in the annotations, use that to set the default
-        # note that we're changing the *class* namespace on the *instance* initialiser
-        # which feels a bit hacky
-        # but this will be a no-op after the first instance has initialised
-        if not type(self)._init:
-            self._set_defaults()
-            type(self)._init = True
-        # use Props.__setitem__ for value conversion
-        # we use None to *unset* properties
+        self._set_defaults()
+        self._props = {}
         [
-            setattr(self, normalise_property(field), value)
-            for field, value in kwargs.items()
-            if value is not None
+            self._set_property(_field, _value)
+            for _field, _value in kwargs.items()
+            #if not _field.startswith('_')
         ]
+        _comments = _comments or {}
+        self._comments = {
+            normalise_property(_k): _v
+            for _k, _v in _comments.items()
+        }
         # enable cacheing
         self._cache = {}
         self._frozen = True
@@ -63,51 +56,79 @@ class DefaultProps(SimpleNamespace):
             type(self).__name__
             + '(\n    ' +
             '\n    '.join(
-                f'{_k}={_v!r},' for _k, _v in vars(self).items()
+                f'{_k}={_v!r},' for _k, _v in self._props.items()
                 if not _k.startswith('_')
             )
             + '\n)'
         )
 
-    def _set_defaults(self):
+    @classmethod
+    def _set_defaults(cls):
         """If a type constructor is given in the annotations, use that to set the default."""
-        cls = type(self)
-        for field, field_type in cls.__annotations__.items():
-            if field not in vars(cls):
-                setattr(cls, field, field_type())
+        # if a type constructor is given in the annotations, use that to set the default
+        # note that we're changing the *class* namespace on the *instance* initialiser
+        # which feels a bit hacky
+        # but this will be a no-op after the first instance has initialised
+        if not hasattr(cls, '_init'):
+            cls._init = True
+            cls._types = {**cls.__annotations__}
+            cls._defaults = {
+                # can't use .get() as _type() would fail for some defaulted fields
+                _field: vars(cls)[_field] if _field in vars(cls) else _type()
+                #CONVERTERS(_type, _type()
+                for _field, _type in cls.__annotations__.items()
+            }
 
     @classmethod
     def _get_default(cls, field):
         """Default value for a property."""
-        return vars(cls).get(normalise_property(field), None)
+        return cls._defaults.get(normalise_property(field), None)
 
     def _defined(self, field):
         """Writable property has been explicitly set."""
-        return vars(self).get(normalise_property(field), None)
+        return self._props.get(normalise_property(field), None)
 
     @classmethod
     def _known(cls, field):
         """Field is a writable property."""
         # note that checked_properties are not included, writable_properties and regular fields are
-        return normalise_property(field) in vars(cls)
+        return normalise_property(field) in cls._defaults
 
-    def __setattr__(self, field, value):
-        if field != '_frozen' and self._frozen:
-            raise ValueError('Cannot set property on frozen object.')
+    def __getattr__(self, field):
+        if field.startswith('_'):
+            raise AttributeError(field)
         try:
-            converter = type(self).__annotations__[field]
-            converter = CONVERTERS.get(converter, converter)
+            return self._props[field]
         except KeyError:
             pass
-        else:
-            value = converter(value)
+        try:
+            return self._defaults[field]
+        except KeyError as e:
+            raise AttributeError(e)
+
+    def __setattr__(self, field, value):
+        if hasattr(self, '_frozen') and self._frozen and not field.startswith('_'):
+            raise ValueError('Cannot set property on frozen object.')
         super().__setattr__(field, value)
+
+    def _set_property(self, field, value):
+        field = normalise_property(field)
+        if value is None:
+            self._props.pop(field, None)
+        else:
+            try:
+                converter = self._types[field]
+                converter = CONVERTERS.get(converter, converter)
+            except KeyError:
+                pass
+            else:
+                value = converter(value)
+            self._props[field] = value
 
     def __iter__(self):
         """Iterate on default definition order first, then remaining keys."""
-        keys = vars(super()).keys()
-        have_defaults = (_k for _k in type(self).__annotations__ if _k in keys)
-        others = (_k for _k in keys if _k not in type(self).__annotations__)
+        have_defaults = (_k for _k in self._defaults)
+        others = (_k for _k in self._props.keys() if _k not in self._defaults)
         return chain(have_defaults, others)
 
 
@@ -123,9 +144,8 @@ def writable_property(arg=None, *, field=None):
     @wraps(fn)
     def _getter(self):
         try:
-            # get property through vars()
             # only use if explicitly set on the instance
-            return vars(self)[field]
+            return self._props[field]
         except KeyError:
             pass
         return cached_fn(self)
@@ -135,7 +155,7 @@ def writable_property(arg=None, *, field=None):
         if self._frozen:
             raise ValueError('Cannot set property on frozen object.')
         #logging.debug(f'Setting overridable property {field}={value}.')
-        vars(self)[field] = value
+        self._set_property(field, value)
 
     return property(_getter, _setter)
 
@@ -173,14 +193,14 @@ def as_tuple(arg=None, *, fields=None, tuple_type=None):
     def _getter(self):
         # in this case, always use the fields, whether defaulted or set
         return tuple_type(tuple(
-            self[normalise_property(_field)]
+            getattr(self, _field)
             for _field in fields
         ))
 
     @wraps(fn)
     def _setter(self, value):
         for field, element in zip(fields, tuple_type(value)):
-            self[normalise_property(field)] = element
+            self._set_property(field, element)
 
     return property(_getter, _setter)
 

@@ -201,7 +201,8 @@ class Glyph:
             self._pixels = Raster(pixels, _0=_0, _1=_1)
             self._labels = labels
             self._comment = comment
-            self._props = GlyphProperties(_glyph=self, **properties)
+            self._props = GlyphProperties(**properties)
+            self._props._glyph = self
             return
         # raster data
         self._pixels = Raster(pixels, _0=_0, _1=_1)
@@ -217,7 +218,8 @@ class Glyph:
         self._comment = comment
         # recognised properties
         # access needed for calculated properties
-        self._props = GlyphProperties(_glyph=self, **properties)
+        self._props = GlyphProperties(**properties)
+        self._props._glyph = self
 
     def __eq__(self, other):
         """Equality."""
@@ -284,11 +286,7 @@ class Glyph:
                 labels.append(Char(char))
         if comment is NOT_SET:
             comment = self._comment
-        properties = {
-            _k: _v
-            for _k, _v in vars(self._props).items()
-            if not _k.startswith('_') and not _k.startswith('#')
-        }
+        properties = {**self._props._props}
         properties.update({
             normalise_property(_k): _v
             for _k, _v in kwargs.items()
@@ -399,7 +397,7 @@ class Glyph:
             pixels=self._pixels,
             labels=self._labels,
             comment=self._comment,
-            **{_k: _v for _k, _v in vars(self._props).items() if not _k.startswith('_')},
+            **self._props._props,
         )
 
     ##########################################################################
@@ -428,10 +426,8 @@ class Glyph:
     def properties(self):
         """Non-defaulted properties in order of default definition list."""
         return {
-            _k.replace('_', '-'): getattr(self._props, _k)
-            for _k in self._props
-            if not _k.startswith('_')
-            and getattr(self._props, _k) != self._props._get_default(_k)
+            _k.replace('_', '-'): _v
+            for _k, _v in self._props._props.items()
         }
 
     def get_property(self, key):
