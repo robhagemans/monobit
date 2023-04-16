@@ -118,12 +118,6 @@ class DefaultProps:
                 value = converter(value)
             self._props[field] = value
 
-    def __iter__(self):
-        """Iterate on default definition order first, then remaining keys."""
-        have_defaults = (_k for _k in self._defaults)
-        others = (_k for _k in self._props.keys() if _k not in self._defaults)
-        return chain(have_defaults, others)
-
 
 def writable_property(arg=None, *, field=None):
     """Decorator to take property from property table, if defined; calculate otherwise."""

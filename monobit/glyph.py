@@ -351,9 +351,9 @@ class Glyph:
         if not comment:
             comment = ''
         comment = extend_string(self._comment, comment)
-        for property, value in properties.items():
-            if property in self._props:
-                properties[property] = extend_string(self._props[property], value)
+        for key, value in properties.items():
+            if self._props._defined(key):
+                properties[key] = extend_string(getattr(self._props, key), value)
         # do not record glyph history
         try:
             history = properties.pop('history')

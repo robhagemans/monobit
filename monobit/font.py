@@ -756,7 +756,7 @@ class Font:
             if old_comment:
                 comment[key] = extend_string(old_comment, comment)
         for key, value in properties.items():
-            if key in self._props:
+            if self._props._defined(key):
                 properties[key] = extend_string(getattr(self._props, key), value)
         if glyphs:
             glyphs = (*self.glyphs, *glyphs)
