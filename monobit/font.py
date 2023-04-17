@@ -197,6 +197,7 @@ class Font(DefaultProps):
     # non-overridable, for pylint's benefit
     raster: Bounds
 
+    __start_properties__ = True
 
     @writable_property
     def name(self):
@@ -647,6 +648,8 @@ class Font(DefaultProps):
         """Advance width of LATIN CAPITAL LETTER X."""
         return self.cap_width
 
+
+    __end_properties__ = True
 
     ###########################################################################
 

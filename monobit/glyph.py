@@ -98,6 +98,8 @@ class Glyph(DefaultProps):
     padding: Bounds
     height: int
 
+    # sentinel to help build the list of calculated properties
+    __properties_start__ = True
 
     @checked_property
     def advance_width(self):
@@ -187,6 +189,8 @@ class Glyph(DefaultProps):
         Deprecated synonym for left-bearing, shift-up.
         """
 
+
+    __properties_end__ = True
 
     ##########################################################################
     # dunder methods

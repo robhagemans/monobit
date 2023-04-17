@@ -68,14 +68,26 @@ class DefaultProps:
         # which feels a bit hacky
         # but this will be a no-op after the first instance has initialised
         if not hasattr(cls, '_init'):
-            cls._init = True
+            # type's attributes - these are the calculated properties
+            cls._attribs = list(vars(cls))
+            try:
+                start = cls._attribs.index('__properties_start__')
+                end = cls._attribs.index('__properties_end__')
+            except ValueError:
+                pass
+            else:
+                # cut back the list, speeds up setattr
+                cls._attribs = cls._attribs[start+1:end]
+            cls._attribs = set(cls._attribs)
+            # types, converters and default values for overriding/custom properties
             cls._types = {**cls.__annotations__}
             cls._defaults = {
                 # can't use .get() as _type() would fail for some defaulted fields
                 _field: vars(cls)[_field] if _field in vars(cls) else _type()
-                #CONVERTERS(_type, _type()
+                #CONVERTERS(_type, _type)()
                 for _field, _type in cls.__annotations__.items()
             }
+            cls._init = True
 
     @classmethod
     def _get_default(cls, field):
@@ -110,7 +122,7 @@ class DefaultProps:
 
     def __setattr__(self, field, value):
         field = normalise_property(field)
-        if field.startswith('_') or field in dir(self):
+        if field.startswith('_') or field in self._attribs:
             return super().__setattr__(field, value)
         return self._set_property(field, value)
 
