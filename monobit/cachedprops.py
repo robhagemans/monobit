@@ -81,6 +81,10 @@ class DefaultProps:
             cls._attribs = set(cls._attribs)
             # types, converters and default values for overriding/custom properties
             cls._types = {**cls.__annotations__}
+            cls._converters = {
+                _field: CONVERTERS.get(_type, _type)
+                for _field, _type in cls._types.items()
+            }
             cls._defaults = {
                 # can't use .get() as _type() would fail for some defaulted fields
                 _field: vars(cls)[_field] if _field in vars(cls) else _type()
@@ -121,8 +125,11 @@ class DefaultProps:
         return self._defaults[field]
 
     def __setattr__(self, field, value):
+        if field.startswith('_'):
+            return super().__setattr__(field, value)
         field = normalise_property(field)
-        if field.startswith('_') or field in self._attribs:
+        if field in self._attribs:
+            self._cache = {}
             return super().__setattr__(field, value)
         return self._set_property(field, value)
 
@@ -131,14 +138,14 @@ class DefaultProps:
         if value is None:
             self._props.pop(field, None)
         else:
-            try:
-                converter = self._types[field]
-                converter = CONVERTERS.get(converter, converter)
-            except KeyError:
-                pass
-            else:
+            # this fails because not all our annotations are actual types
+            #field_type = self._types.get(field, None)
+            #if field_type and not isinstance(field, field_type):
+            converter = self._converters.get(field, None)
+            if converter:
                 value = converter(value)
             self._props[field] = value
+        self._cache = {}
 
 
 def writable_property(arg=None, *, field=None):
