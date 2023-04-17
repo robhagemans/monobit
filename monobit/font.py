@@ -738,8 +738,11 @@ class Font(DefaultProps):
         elif comment is not NOT_SET:
             old_comment.update(comment)
         # comment and properties are replaced keyword by keyword
-        properties = self._props
-        properties.update(kwargs)
+        properties = {**self._props}
+        properties.update({
+            normalise_property(_k): _v
+            for _k, _v in kwargs.items()
+        })
         return Font(
             tuple(glyphs),
             comment=old_comment,
