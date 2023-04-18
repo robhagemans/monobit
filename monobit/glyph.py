@@ -11,10 +11,8 @@ from functools import cache
 from .encoding import is_graphical, is_blank
 from .labels import Codepoint, Char, Tag, to_label
 from .raster import Raster, NOT_SET, turn_method
-from .properties import (
-    Props, DefaultProps, normalise_property, extend_string,
-    writable_property, as_tuple, checked_property
-)
+from .properties import Props, normalise_property, extend_string
+from .cachedprops import DefaultProps, writable_property, as_tuple, checked_property
 from .basetypes import Coord, Bounds, to_number
 from .scripting import scriptable
 from .vector import StrokePath
@@ -66,8 +64,8 @@ class KernTable(dict):
 ##############################################################################
 # glyph properties
 
-class GlyphProperties(DefaultProps):
-    """Recognised properties for Glyph."""
+class Glyph(DefaultProps):
+    """Single glyph including raster and properties."""
 
     # horizontal offset from leftward origin to matrix left edge
     left_bearing: int
@@ -96,6 +94,12 @@ class GlyphProperties(DefaultProps):
     # path segments for stroke fonts
     path: StrokePath
 
+    # non-overridable, hinted for pylint
+    padding: Bounds
+    height: int
+
+    # sentinel to help build the list of calculated properties
+    __properties_start__ = True
 
     @checked_property
     def advance_width(self):
@@ -110,12 +114,12 @@ class GlyphProperties(DefaultProps):
     @checked_property
     def width(self):
         """Raster width of glyph."""
-        return self._glyph._pixels.width
+        return self._pixels.width
 
     @checked_property
     def height(self):
         """Raster height of glyph."""
-        return self._glyph._pixels.height
+        return self._pixels.height
 
     @checked_property
     def ink_bounds(self):
@@ -144,7 +148,7 @@ class GlyphProperties(DefaultProps):
     @checked_property
     def padding(self):
         """Offset from raster sides to bounding box. Left, bottom, right, top."""
-        return self._glyph._pixels.padding
+        return self._pixels.padding
 
     @checked_property
     def raster(self):
@@ -186,11 +190,10 @@ class GlyphProperties(DefaultProps):
         """
 
 
-##############################################################################
-# glyph
+    __properties_end__ = True
 
-class Glyph:
-    """Single glyph."""
+    ##########################################################################
+    # dunder methods
 
     def __init__(
             self, pixels=(), *,
@@ -203,7 +206,7 @@ class Glyph:
             self._pixels = Raster(pixels, _0=_0, _1=_1)
             self._labels = labels
             self._comment = comment
-            self._props = GlyphProperties(_glyph=self, **properties)
+            super().__init__(**properties)
             return
         # raster data
         self._pixels = Raster(pixels, _0=_0, _1=_1)
@@ -218,8 +221,7 @@ class Glyph:
             raise TypeError('Glyph comment must be a single string.')
         self._comment = comment
         # recognised properties
-        # access needed for calculated properties
-        self._props = GlyphProperties(_glyph=self, **properties)
+        super().__init__(**properties)
 
     def __eq__(self, other):
         """Equality."""
@@ -232,10 +234,6 @@ class Glyph:
             if not getattr(self, p) == getattr(other, p):
                 return False
         return self.as_matrix() == other.as_matrix()
-
-
-    ##########################################################################
-    # representation
 
     def __repr__(self):
         """Text representation."""
@@ -286,11 +284,7 @@ class Glyph:
                 labels.append(Char(char))
         if comment is NOT_SET:
             comment = self._comment
-        properties = {
-            _k: _v
-            for _k, _v in vars(self._props).items()
-            if not _k.startswith('_') and not _k.startswith('#')
-        }
+        properties = {**self._props}
         properties.update({
             normalise_property(_k): _v
             for _k, _v in kwargs.items()
@@ -355,9 +349,9 @@ class Glyph:
         if not comment:
             comment = ''
         comment = extend_string(self._comment, comment)
-        for property, value in properties.items():
-            if property in self._props:
-                properties[property] = extend_string(self._props[property], value)
+        for key, value in properties.items():
+            if self._defined(key):
+                properties[key] = extend_string(self._props[key], value)
         # do not record glyph history
         try:
             history = properties.pop('history')
@@ -395,68 +389,50 @@ class Glyph:
             **none_args
         )
 
-    def get_data(self):
-        """Return a dataclass containing the glyph's data."""
-        return Props(
-            pixels=self._pixels,
-            labels=self._labels,
-            comment=self._comment,
-            **{_k: _v for _k, _v in vars(self._props).items() if not _k.startswith('_')},
-        )
 
     ##########################################################################
     # property access
-
-    def __getattr__(self, attr):
-        """Take attribute from property table if not defined here."""
-        if '_props' not in vars(self):
-            logging.error(type(self).__name__ + '._props not defined')
-            raise AttributeError(attr)
-        if attr.startswith('_'):
-            # don't delegate private members
-            raise AttributeError(attr)
-        return getattr(self._props, attr)
 
     @property
     def comment(self):
         return self._comment
 
-    @classmethod
-    def default(cls, property):
+    def default(self, property):
         """Default value for a property."""
-        return vars(GlyphProperties).get(normalise_property(property), '')
+        return self._get_default(property)
 
     @property
     def properties(self):
         """Non-defaulted properties in order of default definition list."""
-        return {
-            _k.replace('_', '-'): self._props[_k]
-            for _k in self._props
-            if not _k.startswith('_')
-            and self._props[_k] != self._props._get_default(_k)
-        }
+        return {_k.replace('_', '-'): _v for _k, _v in self._props.items()}
 
     def get_property(self, key):
         """Get value for property."""
-        key = normalise_property(key)
-        return getattr(self._props, key, '')
+        try:
+            return self._get_property(key)
+        except KeyError:
+            return None
+
+    def get_defined(self, key):
+        """Get value for property, if explicitly defined."""
+        return self._defined(key)
 
     @property
     def features(self):
         """Get set of special features for this glyph."""
         feats = set()
         if any(
-                self._props._defined(_p)
+                self._defined(_p)
                 for _p in ('top-bearing', 'bottom-bearing', 'shift-left')
             ):
             feats.add('vertical')
         if any(
-                self._props._defined(_p)
+                self._defined(_p)
                 for _p in ('left-kerning', 'right-kerning')
             ):
             feats.add('kerning')
         if any(
-                self.get_property(_p) < 0
+                self._get_property(_p) < 0
                 for _p in (
                     'left-bearing', 'right-bearing',
                     'top-bearing', 'bottom-bearing'
@@ -670,6 +646,8 @@ class Glyph:
         adjust_metrics: make the operation render-invariant (default: True)
         create_vertical_metrics: create vertical metrics if they don't exist (default: False)
         """
+        if not any((left, bottom, right, top)):
+            return self
         create_vertical_metrics = (
             create_vertical_metrics or 'vertical' in self.features
         )
@@ -707,6 +685,8 @@ class Glyph:
         top: number of rows to add on top
         adjust_metrics: make the operation render-invariant (default: True)
         """
+        if not any((left, bottom, right, top)):
+            return self
         # reduce raster
         pixels = self._pixels.expand(left, bottom, right, top)
         if adjust_metrics:
@@ -728,7 +708,8 @@ class Glyph:
         """
         Return a glyph reduced to the bounding box.
 
-        adjust_metrics: make the operation render-invariant (default: True)                create_vertical_metrics: create vertical metrics if they don't exist (default: False)
+        adjust_metrics: make the operation render-invariant (default: True)
+        create_vertical_metrics: create vertical metrics if they don't exist (default: False)
         """
         return self.crop(
             *self.padding, adjust_metrics=adjust_metrics,
@@ -750,6 +731,8 @@ class Glyph:
         factor_y: number of times to repeat vertically
         adjust_metrics: also stretch metrics (default: True)
         """
+        if factor_x == factor_y == 1:
+            return self
         pixels = self._pixels.stretch(factor_x, factor_y)
         if adjust_metrics:
             return self.modify(
@@ -775,6 +758,8 @@ class Glyph:
         factor_y: factor to shrink vertically
         adjust_metrics: also stretch metrics (default: True)
         """
+        if factor_x == factor_y == 1:
+            return self
         pixels = self._pixels.shrink(factor_x, factor_y)
         if adjust_metrics:
             return self.modify(

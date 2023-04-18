@@ -17,6 +17,8 @@ def passthrough(var):
 
 def to_int(int_str):
     """Convert from int-like or string in any representation."""
+    if isinstance(int_str, int):
+        return int_str
     try:
         # '0xFF' - hex
         # '0o77' - octal

@@ -507,18 +507,16 @@ class Raster:
         if not top+self.height+bottom:
             return type(self).blank(width=right+self.width+left)
         new_width = left + self.width + right
-        _0, _1 = '0', '1'
-        pixels = (
-            ''.join(_row)
-            for _row in self.as_matrix(paper=_0, ink=_1)
-        )
-        empty_row = _0 * new_width
+        empty_row = self._0 * new_width
         pixels = (
             self._outer((empty_row,)) * top
-            + self._outer(_0 * left + _row + _0 * right for _row in pixels)
+            + self._outer(
+                self._0 * left + _row + self._0 * right
+                for _row in self._pixels
+            )
             + self._outer((empty_row,)) * bottom
         )
-        return type(self)(pixels, _0=_0, _1=_1)
+        return type(self)(pixels, _0=self._0, _1=self._1)
 
     def stretch(self, factor_x:int=1, factor_y:int=1):
         """
@@ -596,32 +594,27 @@ class Raster:
         """Transform raster by shearing diagonally."""
         direction = direction[0].lower()
         xpitch, ypitch = pitch
-        _0, _1 = '0', '1'
         shiftrange = range(self.height)[::-1]
         shiftrange = (
             (_y*xpitch + modulo)//ypitch - (modulo==ypitch)
             for _y in shiftrange
         )
-        pixels = (
-            ''.join(_row)
-            for _row in self.as_matrix(paper=_0, ink=_1)
-        )
-        empty = _0 * self.width
+        empty = self._0 * self.width
         if direction == 'l':
             return type(self)(
                 self._outer(
                     _row[_y:] + empty[:_y]
-                    for _row, _y in zip(pixels, shiftrange)
+                    for _row, _y in zip(self._pixels, shiftrange)
                 ),
-                _0=_0, _1=_1
+                _0=self._0, _1=self._1
             )
         elif direction == 'r':
             return type(self)(
                 self._outer(
                     empty[:_y] + _row[:self.width-_y]
-                    for _row, _y in zip(pixels, shiftrange)
+                    for _row, _y in zip(self._pixels, shiftrange)
                 ),
-                _0=_0, _1=_1
+                _0=self._0, _1=self._1
             )
         raise ValueError(
             f'Shear direction must be `left` or `right`, not `{direction}`'
