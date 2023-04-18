@@ -17,7 +17,7 @@ from ..binary import ceildiv
 
 from .bdf import read_props, _parse_xlfd_properties, _create_xlfd_properties
 from .bdf import _create_xlfd_name
-from .yaff import _globalise_glyph_metrics
+# from .text.yaff import _globalise_glyph_metrics
 from .windows import _normalise_metrics
 
 

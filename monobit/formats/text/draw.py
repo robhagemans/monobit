@@ -1,5 +1,5 @@
 """
-monobit.formats.draw - visual-text formats
+monobit.formats.text.draw - visual-text formats
 
 (c) 2019--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -8,11 +8,11 @@ licence: https://opensource.org/licenses/MIT
 import logging
 import string
 
-from ..storage import loaders, savers
-from ..font import Font
-from ..glyph import Glyph
-from ..labels import Tag, Char
-from ..magic import FileFormatError
+from ...storage import loaders, savers
+from ...font import Font
+from ...glyph import Glyph
+from ...labels import Tag, Char
+from ...magic import FileFormatError
 
 
 ##############################################################################
@@ -120,8 +120,8 @@ def format_comment(comments, comment_char):
 ###############################################################################
 # mkwinfon .fd
 
-from ..properties import Props
-from .windows.fnt import _WEIGHT_MAP, CHARSET_MAP
+from ...properties import Props
+from ..windows.fnt import _WEIGHT_MAP, CHARSET_MAP
 
 
 FD_KEYS = {
@@ -223,7 +223,7 @@ def _convert_mkwinfon(props, glyphs, comments):
 # consoleet / vfontas / hxtools
 
 from pathlib import Path
-from ..containers.directory import Directory
+from ...containers.directory import Directory
 
 @loaders.register(
     name='consoleet',

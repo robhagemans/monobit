@@ -1,5 +1,5 @@
 """
-monobit.formats.hex - Unifont Hex format
+monobit.formats.text.hex - Unifont Hex format
 
 (c) 2019--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -11,10 +11,10 @@ licence: https://opensource.org/licenses/MIT
 import logging
 import string
 
-from ..storage import loaders, savers
-from ..magic import FileFormatError
-from ..font import Font
-from ..glyph import Glyph
+from ...storage import loaders, savers
+from ...magic import FileFormatError
+from ...font import Font
+from ...glyph import Glyph
 from .draw import _load_draw, DrawGlyph, DrawComment, Empty
 
 

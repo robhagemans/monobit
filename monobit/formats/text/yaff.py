@@ -1,5 +1,5 @@
 """
-monobit.formats.yaff - monobit-yaff format
+monobit.formats.text.yaff - monobit-yaff format
 
 (c) 2019--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -12,15 +12,15 @@ from itertools import count, zip_longest
 from collections import deque
 from functools import cached_property
 
-from ..storage import loaders, savers
-from ..encoding import charmaps
-from ..magic import FileFormatError
-from ..font import Font
-from ..glyph import Glyph
-from ..raster import Raster
-from ..labels import Label, strip_matching
-from ..properties import Props, normalise_property
-from ..basetypes import passthrough
+from ...storage import loaders, savers
+from ...encoding import charmaps
+from ...magic import FileFormatError
+from ...font import Font
+from ...glyph import Glyph
+from ...raster import Raster
+from ...labels import Label, strip_matching
+from ...properties import Props, normalise_property
+from ...basetypes import passthrough
 from .draw import NonEmptyBlock, DrawComment, Empty, Unparsed, iter_blocks
 from .draw import format_comment
 
