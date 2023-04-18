@@ -1,5 +1,5 @@
 """
-monobit.formats.hbf - Hanzi Bitmap File Format
+monobit.formats.xlfd.hbf - Hanzi Bitmap File Format
 
 (c) 2022--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -8,17 +8,17 @@ licence: https://opensource.org/licenses/MIT
 import logging
 from pathlib import Path
 
-from ..properties import normalise_property
-from ..storage import loaders, savers
-from ..magic import FileFormatError
-from ..font import Font, Coord
-from ..glyph import Glyph
-from ..binary import ceildiv
+from ...properties import normalise_property
+from ...storage import loaders, savers
+from ...magic import FileFormatError
+from ...font import Font, Coord
+from ...glyph import Glyph
+from ...binary import ceildiv
 
 from .bdf import read_props, _parse_xlfd_properties, _create_xlfd_properties
 from .bdf import _create_xlfd_name
-# from .text.yaff import _globalise_glyph_metrics
-from .windows import _normalise_metrics
+# from ..text.yaff import _globalise_glyph_metrics
+from ..windows import _normalise_metrics
 
 
 @loaders.register(
