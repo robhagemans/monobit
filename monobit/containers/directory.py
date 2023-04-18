@@ -24,7 +24,7 @@ class Directory(Container):
             self._path = Path('/')
         elif isinstance(path, DirectoryStream):
             # directory 'streams'
-            self._path = Path(path.name)
+            self._path = Path(path.path)
         elif isinstance(path, Directory):
             self._path = Path(path._path)
         else:

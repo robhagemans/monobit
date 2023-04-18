@@ -82,8 +82,6 @@ class TestContainers(BaseTester):
     def test_dir(self):
         """Test exporting to directory."""
         dir = self.temp_path / f'test4x6/4x6'
-        from pathlib import Path
-        #dir =  Path('./test4x6/4x6')
         monobit.save(self.fixed4x6, dir, format='dir')
         self.assertTrue(dir.is_dir())
         fonts = monobit.load(dir, format='dir')
