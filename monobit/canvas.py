@@ -17,7 +17,11 @@ from .raster import Raster, blockstr
 class Canvas(Raster):
     """Mutable raster."""
 
-    _sequence = list
+    _inner = list
+    _outer = list
+    _0 = 0
+    _1 = 1
+    _itemtype = int
 
     @classmethod
     def blank(cls, width, height, fill=-1):
