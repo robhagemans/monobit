@@ -10,6 +10,7 @@ import string
 from dataclasses import dataclass, field
 from itertools import count, zip_longest
 from collections import deque
+from functools import cached_property
 
 from ..storage import loaders, savers
 from ..encoding import charmaps
@@ -20,11 +21,12 @@ from ..raster import Raster
 from ..labels import Label, strip_matching
 from ..properties import normalise_property
 from ..basetypes import passthrough
+from .draw import NonEmptyBlock, DrawComment, Empty, Unparsed, iter_blocks
+from .draw import format_comment
 
 
 ##############################################################################
 # interface
-
 
 @loaders.register(
     name='yaff',
@@ -38,7 +40,7 @@ def load_yaff(instream, allow_empty:bool=False):
 
     allow_empty: allow files with no glyphs (default: False)
     """
-    return _load_yaff(instream.text, allow_empty)
+    return _load_yaffs(instream.text, allow_empty)
 
 
 @savers.register(
@@ -75,217 +77,216 @@ class YaffParams:
     quotable = (':', ' ')
     glyphchars = (ink, paper, empty)
 
-##############################################################################
+
 ##############################################################################
 # read file
 
 
-def _load_yaff(text_stream, allow_empty):
-    """Parse a yaff/yaffs file."""
-    reader = YaffReader()
+def _load_yaffs(text_stream, allow_empty):
+    """Parse a yaff or yaffs file."""
     fonts = []
-    has_next_section = True
-    while has_next_section:
-        reader = YaffReader()
-        has_next_section = reader.parse_section(text_stream)
-        font = reader.get_font()
+    reader = SectionIterator(text_stream)
+    while not reader.eof:
+        font = _read_yaff(reader)
         # if no glyphs, ignore it - may not be yaff at all
         if font.glyphs or allow_empty:
             fonts.append(font)
     return fonts
 
 
-@dataclass
-class YaffElement:
-    keys: list = field(default_factory=list)
-    value: list = field(default_factory=list)
-    comment: list = field(default_factory=list)
-    indent: int = 0
+class SectionIterator:
 
+    def __init__(self, textstream):
+        self._stream = textstream
+        self.eof = False
 
-class YaffReader:
-    """Parser for text-based font file."""
+    def __iter__(self):
+        return self
 
-    def __init__(self):
-        """Set up text reader."""
-        # current element appending to
-        # elements done
-        self._elements = deque()
-
-    # first pass: lines to elements
-
-    def _yield_element(self, current):
-        """Close and append current element and start a new one."""
-        if current.keys or current.value or current.comment:
-            self._elements.append(current)
-        return YaffElement()
-
-    def parse_section(self, text_stream):
-        """Parse a single yaff section."""
-        current = YaffElement()
-        for line in text_stream:
-            # strip trailing whitespace
-            contents = line.rstrip()
-            if contents == BOUNDARY_MARKER:
-                self._yield_element(current)
-                # ignore empty sections
-                if self._elements:
-                    return True
-            if not contents:
-                # ignore empty lines except while already parsing comments
-                if (
-                        current.comment
-                        and not current.value
-                        and not current.keys
-                    ):
-                    current.comment.append('')
-            else:
-                startchar = contents[:1]
-                if startchar == YaffParams.comment:
-                    if current.keys or current.value:
-                        # new comment starts new element
-                        current = self._yield_element(current)
-                    current.comment.append(contents[1:])
-                elif startchar not in YaffParams.whitespace:
-                    if current.value:
-                        # new key when we have a value starts a new element
-                        current = self._yield_element(current)
-                    # note that we don't use partition() for the first check
-                    # as we have to allow for : inside (quoted) glyph labels
-                    if contents[-1:] == YaffParams.separator:
-                        current.keys.append(contents[:-1])
-                    else:
-                        # this must be a property key, not a glyph label
-                        # new key, separate at the first :
-                        # prop keys must be alphanum so no need to worry about quoting
-                        key, sep, value = contents.partition(YaffParams.separator)
-                        # yield key and value
-                        # yaff does not allow multiline values starting on the key line
-                        current.keys.append(key.rstrip())
-                        current.value.append(value.lstrip())
-                        current = self._yield_element(current)
-                else:
-                    # first line in value
-                    if not current.value:
-                        current.indent = len(contents) - len(contents.lstrip())
-                    # continue building value
-                    # do not strip all whitespace as we need it for multiline glyph props
-                    # but strip the first line's indent
-                    current.value.append(contents[current.indent:])
-        self._yield_element(current)
-        return False
-
-    # second pass: top comment
-
-    def get_clusters(self):
-        """Convert top comment cluster and return."""
-        clusters = self._elements
-        # separate out global top comment
-        if clusters and clusters[0]:
-            top = clusters[0]
-            comments = top.comment
-            # find last empty line which separates global from prop comment
-            try:
-                index = len(comments) - comments[::-1].index('')
-            except ValueError:
-                index = len(comments) + 1
-            if len(comments) > 1:
-                global_comment = YaffElement(comment=comments[:index-1])
-                top.comment = comments[index:]
-                clusters.appendleft(global_comment)
-        return clusters
-
-
-    # third pass: interpret clusters
-
-    def get_font(self):
-        """Get clusters from reader and convert to Font."""
-        clusters = self.get_clusters()
-        # recursive call
-        glyphs, props, comments = convert_clusters(clusters)
-        return Font(glyphs, comment=comments, **props)
-
-
-def convert_clusters(clusters):
-    """Convert cluster."""
-    props = {}
-    comments = {}
-    glyphs = []
-    for cluster in clusters:
-        if not cluster.keys:
-            # global comment
-            comments[''] = normalise_comment(cluster.comment)
-        elif not set(cluster.value[0]) - set(YaffParams.glyphchars):
-            # if first line in the value consists of glyph symbols, it's a glyph
-            # note that the set diff is significantly faster than all() on a genexp
-            glyphs.append(_convert_glyph(cluster))
+    def __next__(self):
+        if self.eof:
+            raise StopIteration()
+        line = self._stream.readline()
+        if not line:
+            self.eof = True
+            raise StopIteration()
+        if line[:3] == BOUNDARY_MARKER:
+            raise StopIteration()
         else:
-            key, value, comment = convert_property(cluster)
-            if value:
-                props[key] = value
-            # property comments
-            if comment:
-                comments[key] = comment
-    return glyphs, props, comments
+            return line
 
-def convert_property(cluster):
-    """Convert property cluster."""
-    # there should not be multiple keys for a property
-    key = cluster.keys.pop(0)
-    if cluster.keys:
-        logging.warning('ignored excess keys: %s', cluster.keys)
-    # Props object converts only non-leading underscores
-    # so we need to make sure we turn those into dashes
-    key = key.replace('_', '-')
-    value = '\n'.join(strip_matching(_line, '"') for _line in cluster.value)
-    comment = normalise_comment(cluster.comment)
-    return key, value, comment
 
-def _convert_glyph(cluster):
-    """Parse single glyph."""
-    keys = cluster.keys
-    lines = cluster.value
-    comment = normalise_comment(cluster.comment)
-    # find first property row
-    # note empty lines have already been dropped by reader
-    is_prop = tuple(YaffParams.separator in _line for _line in lines)
-    try:
-        first_prop = is_prop.index(True)
-    except ValueError:
-        first_prop = len(lines)
-    raster = lines[:first_prop]
-    prop_lines = lines[first_prop:]
-    if all(set(_line) == set([YaffParams.empty]) for _line in raster):
-        raster = Raster.blank(width=len(raster[0])-1, height=len(raster)-1)
-    # new text reader on glyph property lines
-    reader = YaffReader()
-    reader.parse_section(prop_lines)
-    # ignore in-glyph comments
-    props = dict(
-        convert_property(cluster)[:2]
-        for cluster in reader.get_clusters()
-        if cluster.keys
+def _read_yaff(text_stream):
+    """Parse a monobit yaff file."""
+    blocktypes = (
+        YaffComment, YaffProperty, YaffGlyph, YaffPropertyOrGlyph,
+        Empty, Unparsed
     )
-    # labels
-    glyph = Glyph(
-        raster, _0=YaffParams.paper, _1=YaffParams.ink,
-        labels=keys, comment=comment, **props
+    glyphs = []
+    font_comments = []
+    font_props = {}
+    font_prop_comms = {}
+    current_comment = []
+    for block in iter_blocks(text_stream, blocktypes):
+        if isinstance(block, (YaffGlyph, YaffPropertyOrGlyph)) and block.is_glyph():
+            glyphs.append(block.get_glyph_value().modify(
+                comment='\n\n'.join(current_comment),
+            ))
+            current_comment = []
+        elif isinstance(block, (YaffProperty, YaffPropertyOrGlyph)):
+            key = block.get_key()
+            font_props[key] = block.get_value()
+            font_prop_comms[key] = '\n\n'.join(current_comment)
+            current_comment = []
+        if not glyphs and not font_props:
+            font_comments.extend(current_comment)
+            current_comment = []
+        if isinstance(block, YaffComment):
+            current_comment.append(block.get_value())
+        else:
+            logging.debug('Unparsed lines: %s', block.get_value())
+    font_comments.extend(current_comment)
+    return Font(
+        glyphs, **font_props,
+        comment={'': '\n\n'.join(font_comments), **font_prop_comms},
     )
-    return glyph
 
 
-def normalise_comment(lines):
-    """Remove common single leading space"""
-    if all(_line[0] == ' ' for _line in lines if _line):
-        return '\n'.join(_line[1:] for _line in lines)
-    return '\n'.join(lines)
+class YaffComment(DrawComment):
+
+    def starts(self, line):
+        return line[:1] == YaffParams.comment
 
 
+class YaffMultiline(NonEmptyBlock, YaffParams):
 
-##############################################################################
+    def __init__(self, line):
+        self.indent = 0
+        super().__init__(line)
+
+    def ends(self, line):
+        if self.indent:
+            # dedent
+            return line and line[:1] not in self.whitespace
+        if line and line[:1] in self.whitespace:
+            return False
+        # gather multiple labels without values, but break on line with value
+        return line.rstrip()[-1:] != self.separator
+
+    def append(self, line):
+        line = line.rstrip()
+        self.lines.append(line)
+        if not self.indent and line and line[:1] in self.whitespace:
+            self.indent = len(line) - len(line.lstrip())
+
+
+class YaffGlyph(YaffMultiline):
+
+    label_chars = tuple('"' + "'" + string.digits)
+
+    def starts(self, line):
+        return line and (line[:1] in self.label_chars) or '+' in line
+
+    def get_value(self):
+        labels = tuple(_l[:-1] for _l in self.lines[:self.n_keys])
+        lines = (_l[self.indent:] for _l in self.lines[self.n_keys:])
+        lines = tuple(_l for _l in lines if _l)
+        # locate glyph properties
+        for i, line in enumerate(lines):
+            if line[:1] not in (self.paper, self.ink) and set(line) != set(self.empty):
+                break
+        else:
+            i += 1
+        raster = lines[:i]
+        properties = {}
+        key = None
+        for line in lines[i:]:
+            if line[:1] in self.whitespace:
+                # multiline glyph properties
+                if not properties[key]:
+                    properties[key] = line.strip()
+                else:
+                    properties[key] = '\n'.join((properties[key], line.strip()))
+            else:
+                # one-line glyph properties
+                key, _, value = line.partition(self.separator)
+                value = value.strip()
+                properties[key] = value.strip()
+        # deal with sized empties (why?)
+        if all(set(_line) == set([self.empty]) for _line in raster):
+            raster = Raster.blank(width=len(raster[0])-1, height=len(raster)-1)
+        return Glyph(
+            raster, _0=self.paper, _1=self.ink,
+            labels=labels, **properties
+        )
+
+    def _count_keys(self):
+        return sum(
+            _line[-1:] == self.separator and _line[:1] not in self.whitespace
+            for _line in self.lines
+        )
+    n_keys = cached_property(_count_keys)
+
+    def is_glyph(self):
+        return True
+
+    get_glyph_value = get_value
+
+
+class YaffProperty(NonEmptyBlock, YaffParams):
+
+    def starts(self, line):
+        return (
+            line[:1] not in self.whitespace
+            and line[-1:] != self.separator
+            and self.separator in line
+        )
+
+    def get_value(self):
+        _, _, value = self.lines[0].partition(self.separator)
+        return _strip_quotes(value)
+
+    def get_key(self):
+        key, _, _ = self.lines[0].partition(self.separator)
+        return key
+
+
+def _strip_quotes(line):
+    line = line.strip()
+    if len(line) > 1 and line[0] == line[-1] == '"':
+        return line[1:-1]
+    return line
+
+
+class YaffPropertyOrGlyph(YaffMultiline):
+
+    def starts(self, line):
+        return line[:1] not in self.whitespace and line[-1:] == self.separator
+
+    def get_value(self):
+        return '\n'.join(_strip_quotes(_l) for _l in self.lines[1:])
+
+    def get_key(self):
+        return self.lines[0][:-1]
+
+    # glyph block with plain label
+
+    get_glyph_value = YaffGlyph.get_value
+    n_keys = cached_property(YaffGlyph._count_keys)
+
+    def is_glyph(self):
+        if self.n_keys > 1:
+            return True
+        # n_keys == 1, so first non-key line is 1
+        first = self.lines[1].lstrip()
+        # multiline block with single key
+        # may be property or (deprecated) glyph with plain label
+        # we need to check the contents
+        return first[:1] in (self.ink, self.paper) or set(first) == set(self.empty)
+
+
 ##############################################################################
 # write file
-
 
 def _globalise_glyph_metrics(mod_glyphs):
     """If all glyph props are equal, take them global."""
@@ -418,11 +419,3 @@ def _quote_if_needed(value):
         ):
         return f'"{value}"'
     return value
-
-
-def format_comment(comments, comment_char):
-    """Format a multiline comment."""
-    return '\n'.join(
-        f'{comment_char} {_line}'
-        for _line in comments.splitlines()
-    )
