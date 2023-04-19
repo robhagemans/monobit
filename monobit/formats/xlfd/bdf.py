@@ -7,15 +7,15 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
-from ..binary import int_to_bytes, bytes_to_int, ceildiv
-from ..properties import normalise_property
-from ..storage import loaders, savers
-from ..magic import FileFormatError
-from ..font import Font, Coord
-from ..glyph import Glyph
-from ..encoding import charmaps, NotFoundError
-from ..taggers import tagmaps
-from ..labels import Char
+from ...binary import int_to_bytes, bytes_to_int, ceildiv
+from ...properties import normalise_property
+from ...storage import loaders, savers
+from ...magic import FileFormatError
+from ...font import Font, Coord
+from ...glyph import Glyph
+from ...encoding import charmaps, NotFoundError
+from ...taggers import tagmaps
+from ...labels import Char
 
 
 @loaders.register(
