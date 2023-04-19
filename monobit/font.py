@@ -135,7 +135,7 @@ class Font(DefaultProps):
     # horizontal distance between consecutive baselines, in pixels
     line_width: int
 
-    # character properties
+    # encoding parameters
     # can't be calculated, affect rendering
 
     # character map, stored as normalised name
@@ -599,6 +599,8 @@ class Font(DefaultProps):
         try:
             return self.get_glyph(char=' ').advance_width
         except KeyError:
+            if self.spacing in ('character-cell', 'multi-cell'):
+                return self.cell_size.x
             # convoluted XLFD calc just boils down to this?
             return round(self.pixel_size / 3)
 
@@ -889,6 +891,8 @@ class Font(DefaultProps):
                 except KeyError:
                     pass
             if missing == 'default':
+                if label == self.word_boundary:
+                    return self.get_space_glyph()
                 return self.get_default_glyph()
             if missing == 'empty':
                 return self.get_empty_glyph()
@@ -927,8 +931,13 @@ class Font(DefaultProps):
         return self.get_glyph(self.default_char, missing='empty')
 
     @cache
+    def get_space_glyph(self):
+        """Get blank glyph with advance width defined by word-space property."""
+        return Glyph.blank(width=self.word_space, height=self.pixel_size)
+
+    @cache
     def get_empty_glyph(self):
-        """Get blank glyph with zero advance_width and advance_height"""
+        """Get blank glyph with zero advance_width and advance_height."""
         return Glyph.blank()
 
 
