@@ -143,7 +143,7 @@ def _read_yaff(text_stream):
             current_comment = []
         if isinstance(block, YaffComment):
             current_comment.append(block.get_value())
-        else:
+        elif not isinstance(block, (YaffProperty, YaffGlyph, YaffPropertyOrGlyph)):
             logging.debug('Unparsed lines: %s', block.get_value())
     font_comments.extend(current_comment)
     return Font(
