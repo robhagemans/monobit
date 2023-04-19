@@ -13,7 +13,7 @@ from .base import BaseTester, get_stringio, assert_text_eq
 
 
 class TestFeatures(BaseTester):
-    """Test specific features."""
+    """Test directionality, proportional rendering and negative bearings."""
 
     # vertical metrics
 
