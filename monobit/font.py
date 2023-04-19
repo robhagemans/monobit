@@ -938,7 +938,10 @@ class Font(DefaultProps):
     @cache
     def get_space_glyph(self):
         """Get blank glyph with advance width defined by word-space property."""
-        return Glyph.blank(width=self.word_space, height=self.pixel_size)
+        return Glyph.blank(
+            width=self.word_space, height=self.pixel_size,
+            shift_up=-self.descent
+        )
 
     @cache
     def get_empty_glyph(self):
