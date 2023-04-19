@@ -928,7 +928,12 @@ class Font(DefaultProps):
     @cache
     def get_default_glyph(self):
         """Get default glyph; empty if not defined."""
-        return self.get_glyph(self.default_char, missing='empty')
+        try:
+            return self.get_glyph(self.default_char, missing='raise')
+        except KeyError:
+            # use fully inked space-sized block if default glyph undefined
+            return self.get_space_glyph().invert()
+
 
     @cache
     def get_space_glyph(self):
