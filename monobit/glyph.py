@@ -667,7 +667,10 @@ class Glyph(DefaultProps):
                 glyph = glyph.modify(
                     top_bearing=self.top_bearing + top,
                     bottom_bearing=self.bottom_bearing + bottom,
-                    shift_left=self.shift_left + self.width//2 - pixels.width//2,
+                    shift_left=(
+                        self.shift_left - left
+                        + self.width//2 - pixels.width//2
+                    ),
                 )
         return glyph
 
