@@ -90,6 +90,7 @@ class DefaultProps:
                 _field: vars(cls)[_field] if _field in vars(cls) else _type()
                 #CONVERTERS(_type, _type)()
                 for _field, _type in cls.__annotations__.items()
+                if _field not in cls._attribs
             }
             cls._init = True
 
@@ -106,7 +107,8 @@ class DefaultProps:
     def _known(cls, field):
         """Field is a writable property."""
         # note that checked_properties are not included, writable_properties and regular fields are
-        return normalise_property(field) in cls._defaults
+        field = normalise_property(field)
+        return field in cls._defaults or field in cls._attribs
 
     def __getattr__(self, field):
         if field.startswith('_'):
