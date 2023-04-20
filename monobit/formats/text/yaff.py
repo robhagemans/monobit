@@ -357,7 +357,7 @@ def _write_glyph(outstream, glyph, global_metrics):
     outstream.write(glyphtxt)
     properties = glyph.properties
     for key in global_metrics:
-        properties.pop(key, None)
+        properties.pop(key.replace('_', '-'), None)
     if properties:
         outstream.write(f'\n')
     for key, value in properties.items():
