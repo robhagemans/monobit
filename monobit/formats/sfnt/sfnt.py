@@ -351,7 +351,7 @@ def _convert_sfnt(sfnt):
             # if not sfnt.post or sfnt.post.formatType == 3.0:
             #     glyphs = (_g.modify(tag=None) if _g.char else _g for _g in glyphs)
             fonts.append(Font(
-                glyphs, source_format=source_format, encoding=encoding,
+                glyphs, source_format=source_format, encoding=encoding or None,
                 **vars(props)
             ))
         except StrikeFormatError:
@@ -720,7 +720,7 @@ def _convert_head_props(head):
         return Props()
     props = Props(
         revision=head.fontRevision,
-        style=mac_style_name(head.macStyle),
+        style=mac_style_name(head.macStyle) or None,
     )
     return props
 
@@ -783,12 +783,12 @@ def _decode_name(namerecs, nameid):
             # unicode platform
             encoding = 'utf-16be'
         try:
-            return namerec.string.decode(encoding)
+            return namerec.string.decode(encoding) or None
         except UnicodeError:
             pass
         # not all these encodings will be recognised by Python
         # fallback to latin-1
-        return namerec.string.decode('latin-1')
+        return namerec.string.decode('latin-1') or None
     return None
 
 
