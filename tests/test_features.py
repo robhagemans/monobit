@@ -388,6 +388,34 @@ class TestFeatures(BaseTester):
     def test_hppcl_negbearings_landscape(self):
         self._render_bearings('hppcl', orientation='landscape')
 
+    # vertical negative bearings
+
+    testvert = """
+....@
+...@.
+..@..
+.@...
+@....
+""".strip()
+
+    def _render_vert_bearings(self, format, **save_kwargs):
+        font, *_ = monobit.load(self.font_path / 'positioning.yaff')
+        monobit.save(font, self.temp_path / f'positioning.{format}', format=format, **save_kwargs)
+        font, *_ = monobit.load(self.temp_path / f'positioning.{format}', format=format)
+        text = monobit.render(font, '678', direction='ttb').as_text()
+        assert_text_eq(text, self.testvert)
+
+    def test_vert_neg_bearings_yaff(self):
+        self._render_vert_bearings('yaff')
+
+    def test_vert_neg_bearings_bdf(self):
+        self._render_vert_bearings('bdf')
+
+    def test_vert_neg_bearings_otb(self):
+        self._render_vert_bearings('sfnt')
+
+
+
     # composition
 
     # tiny sample from unscii-8.hex at https://github.com/viznut/unscii
