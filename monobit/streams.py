@@ -17,7 +17,7 @@ def get_bytesio(bytestring):
     return io.BufferedReader(io.BytesIO(bytestring))
 
 def get_stringio(string):
-    """Workaround as our streams objetcs require a buffer."""
+    """Workaround as our streams objects require a buffer."""
     return io.TextIOWrapper(get_bytesio(string.encode()))
 
 
