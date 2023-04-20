@@ -441,7 +441,7 @@ def _convert_glyph_metrics(metrics, small_is_vert):
             ),
             shift_up=metrics.horiBearingY - metrics.height,
             # vert
-            shift_left=metrics.vertBearingX,
+            shift_left=metrics.vertBearingX - metrics.width//2,
             top_bearing=metrics.vertBearingY,
             bottom_bearing=(
                 metrics.vertAdvance - metrics.height
@@ -458,7 +458,7 @@ def _convert_glyph_metrics(metrics, small_is_vert):
     else:
         # small metrics, interpret as vert
         return dict(
-            shift_left=metrics.BearingX,
+            shift_left=metrics.BearingX - metrics.width//2,
             top_bearing=metrics.BearingY,
             bottom_bearing=(
                 metrics.Advance - metrics.height - metrics.BearingY
