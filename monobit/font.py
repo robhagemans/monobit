@@ -822,6 +822,10 @@ class Font(DefaultProps):
         except KeyError:
             return None
 
+    def get_default(self, property):
+        """Default value for a property."""
+        return self._get_default(property)
+
     def format_properties(self, template, **kwargs):
         """Format a string template using font properties."""
         from string import Formatter

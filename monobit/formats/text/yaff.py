@@ -331,7 +331,8 @@ def _save_yaff(fonts, outstream):
         if props:
             # write recognised yaff properties first, in defined order
             for key, value in props.items():
-                _write_property(outstream, key, value, font.get_comment(key))
+                if value != font.get_default(key):
+                    _write_property(outstream, key, value, font.get_comment(key))
             outstream.write('\n')
         for glyph in font.glyphs:
             _write_glyph(outstream, glyph, global_metrics)
@@ -363,7 +364,8 @@ def _write_glyph(outstream, glyph, global_metrics):
     if properties:
         outstream.write(f'\n')
     for key, value in properties.items():
-        _write_property(outstream, key, value, None, indent=YaffParams.tab)
+        if value != glyph.get_default(key):
+            _write_property(outstream, key, value, None, indent=YaffParams.tab)
     if properties:
         outstream.write('\n')
     outstream.write('\n')
