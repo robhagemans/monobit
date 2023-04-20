@@ -51,6 +51,12 @@ class TestFeatures(BaseTester):
         text1 = monobit.render(vert1, b'\x27\x27', direction='top-to-bottom').as_text()
         assert text1 == self.verttext, f'"""{text1}"""\n != \n"""{self.verttext}"""'
 
+    def test_render_sfnt_vertical(self):
+        vert1, *_ = monobit.load(self.font_path / 'vertical.otb')
+        # we currently don't support storing non-unicode encoding in sfnt
+        text1 = monobit.render(vert1, '\x27\x27', direction='top-to-bottom').as_text()
+        assert text1 == self.verttext, f'"""{text1}"""\n != \n"""{self.verttext}"""'
+
     # all directions
 
     def test_render_ltr_ttb(self):
@@ -246,6 +252,16 @@ class TestFeatures(BaseTester):
     def test_hppcl_landscape_proportional(self):
         self._render_proportional('hppcl', orientation='landscape')
 
+    def test_otb_proportional(self):
+        format = 'sfnt'
+        prop1, *_ = monobit.load(self.font_path / 'wbfont.amiga/wbfont_prop.font')
+        monobit.save(prop1, self.temp_path / f'wbfont_prop.{format}', format=format)
+        prop2, *_ = monobit.load(self.temp_path / f'wbfont_prop.{format}', format=format)
+        # need unicode here
+        text2 = monobit.render(prop2, 'testing').as_text()
+        assert_text_eq(text2, self.proptext)
+
+
     # kerning
 
     kerntext="""
@@ -273,6 +289,13 @@ class TestFeatures(BaseTester):
         )
         webby_mod2, *_ = monobit.load(self.temp_path / 'webby-small-kerned.bmf')
         text2 = monobit.render(webby_mod2, b'sjifjij').as_text()
+        assert_text_eq(text2, self.kerntext)
+
+    def test_render_otb_kerning(self):
+        webby_mod1, *_ = monobit.load(self.font_path / 'webby-small-kerned.yaff')
+        monobit.save(webby_mod1, self.temp_path / 'webby-small-kerned.otb')
+        webby_mod2, *_ = monobit.load(self.temp_path / 'webby-small-kerned.otb')
+        text2 = monobit.render(webby_mod2, 'sjifjij').as_text()
         assert_text_eq(text2, self.kerntext)
 
 
@@ -313,6 +336,12 @@ class TestFeatures(BaseTester):
     def test_render_bmf_kerning_bearings_json(self):
         self._render_bmf_kerning_bearings('json')
 
+    def test_render_otb_kerning_bearings(self):
+        font, *_ = monobit.load(self.font_path / 'positioning.yaff')
+        monobit.save(font, self.temp_path / 'positioning.otb')
+        font, *_ = monobit.load(self.temp_path / 'positioning.otb')
+        text = monobit.render(font, '01234').as_text()
+        assert_text_eq(text, self.testtext)
 
     bearing_testtext="""
 ..@..
