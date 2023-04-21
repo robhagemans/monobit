@@ -152,14 +152,6 @@ def load_mkwinfon(instream):
     return _convert_mkwinfon(properties, glyphs, comments)
 
 
-def _add_key_value(line, keyset, target, sep=' '):
-    for key in keyset:
-        if line.startswith(key):
-            _, _, value = line.partition(sep)
-            target[key.strip()] = value.strip()
-            return True
-    return False
-
 def _read_mkwinfon(text_stream):
     """Read a mkwinfon file into a properties object."""
     # this will be a list of tuples
