@@ -802,12 +802,14 @@ class Glyph(DefaultProps):
             work = self.modify(
                 left_bearing=self.left_bearing-pre,
                 right_bearing=self.right_bearing+pre,
+                shift_left=self.shift_left+pre,
             )
             work = work.expand(right=extra_width)
         elif direction == 'l':
             work = self.modify(
                 left_bearing=self.left_bearing+pre,
                 right_bearing=self.right_bearing-pre,
+                shift_left=self.shift_left-pre,
             )
             work = work.expand(left=extra_width)
         else:
