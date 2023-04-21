@@ -188,7 +188,7 @@ def _render_vertical(
                 y -= adjust_bearings
             y -= glyph.advance_height
             grid_y.append(y + glyph.bottom_bearing)
-            grid_x.append(baseline - glyph.width // 2 - glyph.shift_left)
+            grid_x.append(baseline - (glyph.width//2) - glyph.shift_left)
         if align == 'bottom':
             start = margin_y - y
         else:
@@ -196,7 +196,7 @@ def _render_vertical(
         # append empty glyph at start and end for margins
         glyph_map.append(Props(
             glyph=Glyph(), sheet=0,
-            x=baseline+(font.line_width+1)//2+margin_x*2,
+            x=baseline + (font.line_width+1)//2 + margin_x*2,
             y=start+y-margin_y
         ))
         for glyph, x, y in zip(glyph_row, grid_x, grid_y):
