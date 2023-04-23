@@ -653,25 +653,30 @@ class Glyph(DefaultProps):
         )
         # reduce raster
         pixels = self._pixels.crop(left, bottom, right, top)
-        glyph = self.modify(pixels)
-        if adjust_metrics:
+        if not adjust_metrics:
+            return self.modify(pixels)
+        else:
             # shift-left adjustment rounds differently for odd-width than even width
             sign = 1 if (self.width%2) else -1
-            # horizontal metrics
-            glyph = glyph.modify(
-                pixels,
-                left_bearing=self.left_bearing + left,
-                right_bearing=self.right_bearing + right,
-                shift_up=self.shift_up + bottom,
-            )
-            if create_vertical_metrics:
-                # vertical metrics
-                glyph = glyph.modify(
+            if not create_vertical_metrics:
+                return self.modify(
+                    pixels,
+                    left_bearing=self.left_bearing + left,
+                    right_bearing=self.right_bearing + right,
+                    shift_up=self.shift_up + bottom,
+                )
+            else:
+                return self.modify(
+                    pixels,
+                    # horizontal metrics
+                    left_bearing=self.left_bearing + left,
+                    right_bearing=self.right_bearing + right,
+                    shift_up=self.shift_up + bottom,
+                    # vertical metrics
                     top_bearing=self.top_bearing + top,
                     bottom_bearing=self.bottom_bearing + bottom,
                     shift_left=self.shift_left + sign*((sign*(right-left))//2),
                 )
-        return glyph
 
     @scriptable
     def expand(

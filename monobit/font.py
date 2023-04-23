@@ -1287,11 +1287,12 @@ class Font(DefaultProps):
         )
         if not adjust_metrics:
             return font
-        # fix line-advances to ensure they remain unchanged
-        font = font.modify(line_height=self.line_height)
-        if create_vertical_metrics:
-            font = font.modify(line_width=self.line_width)
-        return font
+        if not create_vertical_metrics:
+            # fix line-advances to ensure they remain unchanged
+            return font.modify(line_height=self.line_height)
+        return font.modify(
+            line_height=self.line_height, line_width=self.line_width
+        )
 
     @scriptable
     def equalise_horizontal(self):
