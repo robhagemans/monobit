@@ -284,6 +284,31 @@ b:
         assert_text_eq(a.multiline, 'another value')
         assert_text_eq(f.get_glyph('b').other_prop, 'also a value')
 
+
+    globalprops = """
+a:
+    .....
+    left-bearing: 1
+
+b:
+    .@@..
+    left-bearing: 1
+"""
+    def test_global_glyph_properties(self):
+        file = get_stringio(self.globalprops)
+        f,  *_ = monobit.load(file)
+        outfile = io.BytesIO()
+        monobit.save(f, outfile)
+        text = outfile.getvalue().decode()
+        text = '\n'.join(_row for _row in text.splitlines() if _row)
+        assert text.endswith("""
+left-bearing: 1
+u+0061:
+    .....
+u+0062:
+    .@@.."""), repr(text)
+
+
     # comments
 
     comments = """

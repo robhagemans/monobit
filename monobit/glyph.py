@@ -397,7 +397,7 @@ class Glyph(DefaultProps):
     def comment(self):
         return self._comment
 
-    def default(self, property):
+    def get_default(self, property):
         """Default value for a property."""
         return self._get_default(property)
 
@@ -655,6 +655,8 @@ class Glyph(DefaultProps):
         pixels = self._pixels.crop(left, bottom, right, top)
         glyph = self.modify(pixels)
         if adjust_metrics:
+            # shift-left adjustment rounds differently for odd-width than even width
+            sign = 1 if (self.width%2) else -1
             # horizontal metrics
             glyph = glyph.modify(
                 pixels,
@@ -667,7 +669,7 @@ class Glyph(DefaultProps):
                 glyph = glyph.modify(
                     top_bearing=self.top_bearing + top,
                     bottom_bearing=self.bottom_bearing + bottom,
-                    shift_left=self.shift_left + self.width//2 - pixels.width//2,
+                    shift_left=self.shift_left + sign*((sign*(right-left))//2),
                 )
         return glyph
 
@@ -690,6 +692,8 @@ class Glyph(DefaultProps):
         # reduce raster
         pixels = self._pixels.expand(left, bottom, right, top)
         if adjust_metrics:
+            # shift-left adjustment rounds differently for odd-width than even width
+            sign = 1 if (self.width%2) else -1
             return self.modify(
                 pixels,
                 # horizontal metrics
@@ -699,7 +703,8 @@ class Glyph(DefaultProps):
                 # vertical metrics
                 top_bearing=self.top_bearing - top,
                 bottom_bearing=self.bottom_bearing - bottom,
-                shift_left=self.shift_left + self.width//2 - pixels.width//2,
+                # for shift-left, expand left is like crop right, and v.v.
+                shift_left=self.shift_left + sign*((sign*(left-right))//2),
             )
         return self.modify(pixels)
 
@@ -797,12 +802,14 @@ class Glyph(DefaultProps):
             work = self.modify(
                 left_bearing=self.left_bearing-pre,
                 right_bearing=self.right_bearing+pre,
+                shift_left=self.shift_left+pre,
             )
             work = work.expand(right=extra_width)
         elif direction == 'l':
             work = self.modify(
                 left_bearing=self.left_bearing+pre,
                 right_bearing=self.right_bearing-pre,
+                shift_left=self.shift_left-pre,
             )
             work = work.expand(left=extra_width)
         else:

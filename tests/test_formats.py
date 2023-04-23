@@ -959,6 +959,33 @@ class TestFormats(BaseTester):
         self.assertEqual(len(font.glyphs), 922)
         self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
 
+    def test_export_sfnt_otb(self):
+        """Test exporting otb files."""
+        file = self.temp_path / '4x6.otb'
+        monobit.save(self.fixed4x6, file)
+        font, *_ = monobit.load(file)
+        # 920 as .notdef is added
+        self.assertEqual(len(font.glyphs), 920)
+        self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
+
+    def test_export_sfnt_apple_sbit(self):
+        """Test exporting apple-style sbit files (bare, not in dfont container)."""
+        file = self.temp_path / '4x6.ttf'
+        monobit.save(self.fixed4x6, file, version='apple')
+        font, *_ = monobit.load(file)
+        # 920 as .notdef is added
+        self.assertEqual(len(font.glyphs), 920)
+        self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
+
+    def test_export_sfnt_ttc(self):
+        """Test exporting ttc files."""
+        file = self.temp_path / '4x6.ttc'
+        monobit.save(self.fixed4x6, file)
+        font, *_ = monobit.load(file)
+        # 920 as .notdef is added
+        self.assertEqual(len(font.glyphs), 920)
+        self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
+
     # geos
 
     def test_import_geos(self):

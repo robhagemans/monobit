@@ -197,7 +197,7 @@ class Font(DefaultProps):
     # non-overridable, for pylint's benefit
     raster: Bounds
 
-    __start_properties__ = True
+    __properties_start__ = True
 
     @writable_property
     def name(self):
@@ -651,7 +651,7 @@ class Font(DefaultProps):
         return self.cap_width
 
 
-    __end_properties__ = True
+    __properties_end__ = True
 
     ###########################################################################
 
@@ -821,6 +821,10 @@ class Font(DefaultProps):
             return self._get_property(key)
         except KeyError:
             return None
+
+    def get_default(self, property):
+        """Default value for a property."""
+        return self._get_default(property)
 
     def format_properties(self, template, **kwargs):
         """Format a string template using font properties."""

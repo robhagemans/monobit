@@ -1010,6 +1010,9 @@ def _save_bdf(font, outstream):
     )
     if has_vertical_metrics:
         bdf_props.append(('METRICSSET', '2'))
+    # minimize glyphs to ink-bounds (BBX) before storing, except "cell" fonts
+    if font.spacing not in ('character-cell', 'multi-cell'):
+        font = font.reduce()
     # labels
     # get glyphs for encoding values
     encoded_glyphs = []
@@ -1045,9 +1048,6 @@ def _save_bdf(font, outstream):
         encoded_glyphs.append((encoding, name, glyph))
     glyphs = []
     for encoding, name, glyph in encoded_glyphs:
-        # minimize glyphs to ink-bounds (BBX) before storing, except "cell" fonts
-        if font.spacing not in ('character-cell', 'multi-cell'):
-            glyph = glyph.reduce()
         swidth_y, dwidth_y = 0, 0
         # SWIDTH = DWIDTH / ( points/1000 * dpi / 72 )
         # DWIDTH specifies the widths in x and y, dwx0 and dwy0, in device pixels.

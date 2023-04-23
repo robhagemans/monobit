@@ -295,9 +295,11 @@ def _globalise_glyph_metrics(glyphs):
             'shift_up', 'left_bearing', 'right_bearing',
             'shift_left', 'top_bearing', 'bottom_bearing',
         ):
-        distinct = set(_g.get_defined(key) for _g in glyphs) - {None}
+        distinct = set(_g.get_defined(key) for _g in glyphs)
         if len(distinct) == 1:
-            properties[key] = distinct.pop()
+            value = distinct.pop()
+            if value is not None:
+                properties[key] = value
     return properties
 
 
@@ -329,7 +331,8 @@ def _save_yaff(fonts, outstream):
         if props:
             # write recognised yaff properties first, in defined order
             for key, value in props.items():
-                _write_property(outstream, key, value, font.get_comment(key))
+                if value != font.get_default(key):
+                    _write_property(outstream, key, value, font.get_comment(key))
             outstream.write('\n')
         for glyph in font.glyphs:
             _write_glyph(outstream, glyph, global_metrics)
@@ -357,11 +360,12 @@ def _write_glyph(outstream, glyph, global_metrics):
     outstream.write(glyphtxt)
     properties = glyph.properties
     for key in global_metrics:
-        properties.pop(key, None)
+        properties.pop(key.replace('_', '-'), None)
     if properties:
         outstream.write(f'\n')
     for key, value in properties.items():
-        _write_property(outstream, key, value, None, indent=YaffParams.tab)
+        if value != glyph.get_default(key):
+            _write_property(outstream, key, value, None, indent=YaffParams.tab)
     if properties:
         outstream.write('\n')
     outstream.write('\n')
