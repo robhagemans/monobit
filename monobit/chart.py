@@ -43,7 +43,6 @@ def grid_map(
         order='row-major', direction=(1, -1),
     ):
     """Create glyph map for font chart matrix."""
-    font = font.equalise_horizontal()
     padding = Coord(*padding)
     margin = Coord(*margin)
     # work out image geometry

@@ -7,7 +7,7 @@ Original sources:
 * `4x6.bdf`
   - https://www.cl.cam.ac.uk/~mgk25/ucs-fonts.html
   - in the public domain
-* `6x13.fon`
+* `6x13.fon` and `6x13.fd` (originally `fixed.*`)
   - https://www.chiark.greenend.org.uk/~sgtatham/fonts/
   - in the public domain
 * `WebbySmall.fon` and `WebbySmall.pcf`
@@ -57,9 +57,10 @@ Original sources:
 * `4x6.yaff`, `4x6.fzx` were created from `4x6.bdf` using `monobit`
 * `4x6.c`, `4x6.c`, `4x6.iigs`, `4x6.sfp` were created from `4x6.yaff` using `monobit`
 * `4x6.dfont` and `4x6.bin` were created from `4x6.bdf` using `ufond` (part of `fondu`)
-* `8x8.bbc`, `4x6.vfont*`, `4x6-ams.com*` were created from `4x6.psf` using `psftools` v1.1.1
+* `8x8.bbc`, `4x6.vfont*`, `4x6-ams.com*`, `4x6.txt` were created from `4x6.psf` using `psftools` v1.1.1
 * `4x6.ttf` was created from `4x6.bdf` using `fonttosfnt`
 * `4x6.otb`, `4x6.sfnt.dfont` and `4x6.ffms.ttf` were created from `4x6.bdf` using FontForge
+* `4x6.clt` was created from `4x6.bdf` using `vfontas`
 * `4x6.mgtk` was created by Kelvin Sherlock
 * `8x16.hex` was created from `4x6.yaff` using `bittermelon`
 * `8x16.draw` was created from `8x16.hex` using `hexdraw`

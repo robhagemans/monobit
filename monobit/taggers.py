@@ -90,12 +90,16 @@ class CodepointTagger(Tagger):
 
     name = 'codepoint'
 
+    def __init__(self, prefix=''):
+        """Create codepoint tagger with prefix"""
+        self._prefix = prefix
+
     def comment(self, *labels):
         """Get codepoint string."""
         cp = _get_codepoint(labels)
         if not cp:
             return ''
-        return str(cp)
+        return f'{self._prefix}{cp}'
 
 
 class MappingTagger(Tagger):
@@ -207,5 +211,10 @@ tagmaps = {
     'name': UnicodeTagger(),
     'desc': UnicodeTagger(include_char=True),
     'adobe': AdobeTagger.load('charmaps/agl/aglfn.txt', separator=';', unicode_column=0, tag_column=1),
+    'truetype': AdobeTagger.load('charmaps/agl/aglfn.txt', separator=';', unicode_column=0, tag_column=1),
     'sgml': SGMLTagger.load('charmaps/misc/SGML.TXT', separator='\t', unicode_column=2),
 }
+
+# truetype mapping is adobe mapping *but* with .null for NUL
+# https://developer.apple.com/fonts/TrueType-Reference-Manual/RM06/Chap6post.html
+tagmaps['truetype']._chr2tag['\0'] = '.null'

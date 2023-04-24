@@ -7,7 +7,7 @@ import os
 import unittest
 
 import monobit
-from .base import BaseTester, ensure_asset
+from .base import BaseTester, ensure_asset, assert_text_eq
 
 
 class TestFormats(BaseTester):
@@ -176,13 +176,41 @@ class TestFormats(BaseTester):
         font, *_ = monobit.load(self.font_path / '8x16.draw')
         self.assertEqual(len(font.glyphs), 919)
 
-    def test_export_draw(self):
-        """Test exporting draw files."""
+    def test_export_hexdraw(self):
+        """Test exporting hexdraw files."""
         draw_file = self.temp_path / '8x16.draw'
         monobit.save(self.fixed8x16, draw_file)
         font, *_ = monobit.load(draw_file)
         self.assertEqual(len(font.glyphs), 919)
         self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed8x16_A)
+
+    # other text formats
+
+    def test_export_draw(self):
+        """Test exporting non-8x16 draw files with comments."""
+        draw_file = self.temp_path / '4x6.draw'
+        monobit.save(self.fixed4x6, draw_file)
+        font, *_ = monobit.load(draw_file)
+        self.assertEqual(len(font.glyphs), 919)
+        self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
+
+    def test_import_psf2txt(self):
+        """Test importing psf2txt files."""
+        font, *_ = monobit.load(self.font_path / '4x6.txt', format='psf2txt')
+        self.assertEqual(len(font.glyphs), 919)
+        self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
+
+    def test_import_clt(self):
+        """Test importing consoleet files."""
+        font, *_ = monobit.load(self.font_path / '4x6.clt' / '0000.txt', format='consoleet')
+        self.assertEqual(len(font.glyphs), 919)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+
+    def test_import_mkwinfon(self):
+        """Test importing mkwinfont .fd files."""
+        font, *_ = monobit.load(self.font_path / '6x13.fd', format='mkwinfon')
+        self.assertEqual(len(font.glyphs), 256)
+        assert_text_eq(font.get_glyph('A').reduce().as_text(), self.fixed6x13_A)
 
     # PSF
 
@@ -398,9 +426,9 @@ class TestFormats(BaseTester):
     def test_export_png(self):
         """Test exporting image files."""
         file = self.temp_path / '4x6.png'
-        monobit.save(self.fixed4x6, file)
+        monobit.save(self.fixed4x6, file, codepoint_range=(0, 255))
         font, *_ = monobit.load(file, cell=(4, 6))
-        self.assertEqual(len(font.glyphs), 919)
+        self.assertEqual(len(font.glyphs), 192)
         self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
     # CPI
@@ -917,19 +945,46 @@ class TestFormats(BaseTester):
         """Test importing sfnt bitmap files produced by fontforge."""
         font, *_ = monobit.load(self.font_path / '4x6.otb')
         self.assertEqual(len(font.glyphs), 922)
-        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+        self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
 
     def test_import_fontforge_fakems(self):
         """Test importing 'fake MS' sfnt bitmap files produced by fontforge."""
         font, *_ = monobit.load(self.font_path / '4x6.ffms.ttf')
         self.assertEqual(len(font.glyphs), 922)
-        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+        self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
 
     def test_import_fontforge_dfont(self):
         """Test importing dfont-wrapped sfnt bitmap files produced by fontforge."""
         font, *_ = monobit.load(self.font_path / '4x6.sfnt.dfont')
         self.assertEqual(len(font.glyphs), 922)
-        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+        self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
+
+    def test_export_sfnt_otb(self):
+        """Test exporting otb files."""
+        file = self.temp_path / '4x6.otb'
+        monobit.save(self.fixed4x6, file)
+        font, *_ = monobit.load(file)
+        # 920 as .notdef is added
+        self.assertEqual(len(font.glyphs), 920)
+        self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
+
+    def test_export_sfnt_apple_sbit(self):
+        """Test exporting apple-style sbit files (bare, not in dfont container)."""
+        file = self.temp_path / '4x6.ttf'
+        monobit.save(self.fixed4x6, file, version='apple')
+        font, *_ = monobit.load(file)
+        # 920 as .notdef is added
+        self.assertEqual(len(font.glyphs), 920)
+        self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
+
+    def test_export_sfnt_ttc(self):
+        """Test exporting ttc files."""
+        file = self.temp_path / '4x6.ttc'
+        monobit.save(self.fixed4x6, file)
+        font, *_ = monobit.load(file)
+        # 920 as .notdef is added
+        self.assertEqual(len(font.glyphs), 920)
+        self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
 
     # geos
 

@@ -365,6 +365,7 @@ Characteristics inferred from the glyphs are:
 
 Characteristics that give a font's identity are:
 - `family`: typeface or font family name
+- `subfamily`: additional font name components; usually style, weight, slant
 - `point-size`: nominal size of the font in points
 - `name`: full name of the font
 - `revision`: version
@@ -396,9 +397,18 @@ Or they can be related to processing:
 - `history`: summary of processing steps applied since extraction.
 
 
+##### Encoding parameters
+
+_Encoding parameters_ affect how text is converted into glyphs.
+
+- `encoding`: name of the codepage or encoding that matches codepoints to characters, e.g. `unicode`, `oem-437`.
+- `default-char`: label indicating the glyph to be used as the _missing_, _undefined_ or _default_ glyph
+- `word-boundary`: label indicating the glyph to be used as a word boundary. Usually u+0020 (space).
+
+
 ##### Stroke definitions
 
-- `path` is a special glyph property that contains a stroke sequence describing
+- `path` is a glyph property that contains a stroke sequence describing
     how to draw the glyph. The stroke path is defined as a sequence of straight lines
     and moves to be applied sequentially, starting from the glyph origin.
     Path elements are given as a keyword followed by relative x,y offsets where the x coordinate

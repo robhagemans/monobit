@@ -17,7 +17,7 @@ def get_bytesio(bytestring):
     return io.BufferedReader(io.BytesIO(bytestring))
 
 def get_stringio(string):
-    """Workaround as our streams objetcs require a buffer."""
+    """Workaround as our streams objects require a buffer."""
     return io.TextIOWrapper(get_bytesio(string.encode()))
 
 
@@ -212,6 +212,8 @@ class DirectoryStream(Stream):
             raise TypeError(
                 'DirectoryStream initialiser must be DirectoryStream, Path or str.'
             )
+        # path is what should be used to open the actual directory
+        self.path = Path(file)
         dummystream = open(os.devnull, mode + 'b')
         # initialise wrapper
         super().__init__(dummystream, mode=mode, name=name, where=where)
