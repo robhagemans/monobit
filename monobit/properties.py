@@ -28,10 +28,6 @@ def extend_string(string, line):
         if _line
     )
 
-def normalise_property(field):
-    # preserve distinction between starting underscore (internal) and starting dash (user property)
-    return field[:1] + field[1:].replace('-', '_')
-
 
 ##############################################################################
 # property sets

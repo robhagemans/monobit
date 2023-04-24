@@ -19,7 +19,7 @@ from ...font import Font
 from ...glyph import Glyph
 from ...raster import Raster
 from ...labels import Label, strip_matching
-from ...properties import Props, normalise_property
+from ...properties import Props
 from ...basetypes import passthrough
 from .draw import NonEmptyBlock, DrawComment, Empty, Unparsed, iter_blocks
 from .draw import format_comment
@@ -232,6 +232,13 @@ class YaffGlyph(YaffMultiline):
         return True
 
     get_glyph_value = get_value
+
+
+
+def normalise_property(field):
+    # preserve distinction between starting underscore (internal) and starting dash (user property)
+    return field[:1] + field[1:].replace('-', '_')
+
 
 
 class YaffProperty(NonEmptyBlock, YaffParams):
