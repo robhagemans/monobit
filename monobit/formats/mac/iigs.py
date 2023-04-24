@@ -91,9 +91,9 @@ def _convert_iigs(glyphs, fontrec, header, name):
     # properties from IIgs header
     properties = {
         'family': name,
-        'point-size': header.pointSize,
-        'source-format': 'IIgs v{}.{}'.format(*divmod(header.version, 256)),
-        'iigs.family-id': header.family,
+        'point_size': header.pointSize,
+        'source_format': 'IIgs v{}.{}'.format(*divmod(header.version, 256)),
+        'iigs.family_id': header.family,
     }
     if name not in _NON_ROMAN_NAMES:
         properties['encoding'] = 'mac-roman'

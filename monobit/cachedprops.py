@@ -13,7 +13,7 @@ from itertools import chain
 from textwrap import indent, wrap
 
 from .basetypes import CONVERTERS
-from .properties import Props, normalise_property
+from .properties import Props
 
 
 
@@ -42,10 +42,7 @@ class DefaultProps:
             #if not _field.startswith('_')
         ]
         _comments = _comments or {}
-        self._comments = {
-            normalise_property(_k): _v
-            for _k, _v in _comments.items()
-        }
+        self._comments = _comments
         # enable cacheing
         self._cache = {}
 
@@ -97,17 +94,16 @@ class DefaultProps:
     @classmethod
     def _get_default(cls, field):
         """Default value for a property."""
-        return cls._defaults.get(normalise_property(field), None)
+        return cls._defaults.get(field, None)
 
     def _defined(self, field):
         """Writable property has been explicitly set."""
-        return self._props.get(normalise_property(field), None)
+        return self._props.get(field, None)
 
     @classmethod
     def _known(cls, field):
         """Field is a writable property."""
         # note that checked_properties are not included, writable_properties and regular fields are
-        field = normalise_property(field)
         return field in cls._defaults or field in cls._attribs
 
     def __getattr__(self, field):
@@ -119,7 +115,6 @@ class DefaultProps:
             raise AttributeError(e)
 
     def _get_property(self, field):
-        field = normalise_property(field)
         try:
             return self._props[field]
         except KeyError:
@@ -129,14 +124,12 @@ class DefaultProps:
     def __setattr__(self, field, value):
         if field.startswith('_'):
             return super().__setattr__(field, value)
-        field = normalise_property(field)
         if field in self._attribs:
             self._cache = {}
             return super().__setattr__(field, value)
         return self._set_property(field, value)
 
     def _set_property(self, field, value):
-        field = normalise_property(field)
         if value is None:
             self._props.pop(field, None)
         else:
@@ -156,7 +149,6 @@ def writable_property(arg=None, *, field=None):
         return partial(writable_property, field=arg)
     fn = arg
     field = field or fn.__name__
-    field = normalise_property(field)
     cached_fn = delayed_cache(fn)
 
     @wraps(fn)
@@ -178,7 +170,7 @@ def writable_property(arg=None, *, field=None):
 
 def checked_property(fn):
     """Non-overridable property, attempted writes will be logged and dropped."""
-    field = normalise_property(fn.__name__)
+    field = fn.__name__
 
     _getter = delayed_cache(fn)
 
@@ -221,7 +213,7 @@ def as_tuple(arg=None, *, fields=None, tuple_type=None):
 
 def delayed_cache(fn):
     """Cache only once _frozen attribute is set."""
-    field = normalise_property(fn.__name__)
+    field = fn.__name__
 
     @wraps(fn)
     def _getter(self):

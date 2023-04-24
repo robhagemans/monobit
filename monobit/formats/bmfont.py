@@ -612,11 +612,11 @@ def _parse_bmfont_props(name, bmformat, imgformats, info, common):
         charset = bmfont_props.pop('charset')
         encoding = _CHARSET_STR_MAP.get(charset.upper(), charset)
     properties = {
-        'source-format':
+        'source_format':
             'BMFont ({} descriptor; {} spritesheet)'.format(bmformat, ','.join(imgformats)),
-        'source-name': Path(name).name,
+        'source_name': Path(name).name,
         'family': bmfont_props.pop('face'),
-        'line-height': common.lineHeight,
+        'line_height': common.lineHeight,
         # shift-up is set per-glyph
         'encoding': encoding,
     }

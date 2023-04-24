@@ -157,6 +157,6 @@ def _read_signum(instream, fixed_byte_width, baseline, line_height, dpi):
             glyph = glyph.crop(
                 right=glyph.padding.right,
                 adjust_metrics=bool(fixed_byte_width)
-            ).drop('shift-left')
+            )
         glyphs.append(glyph)
     return Font(glyphs, line_height=line_height, dpi=dpi)

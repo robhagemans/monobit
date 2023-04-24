@@ -8,7 +8,6 @@ licence: https://opensource.org/licenses/MIT
 import logging
 
 from ...binary import int_to_bytes, bytes_to_int, ceildiv
-from ...properties import normalise_property
 from ...storage import loaders, savers
 from ...magic import FileFormatError
 from ...font import Font, Coord
@@ -618,8 +617,8 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
         size_prop = size_prop[:3]
     size, xdpi, ydpi = size_prop
     properties = {
-        'source-format': 'BDF v{}'.format(bdf_props.pop('STARTFONT')),
-        'point-size': int(size),
+        'source_format': 'BDF v{}'.format(bdf_props.pop('STARTFONT')),
+        'point_size': int(size),
         'dpi': _all_ints(xdpi, ydpi),
         'revision': bdf_props.pop('CONTENTVERSION', None),
     }
@@ -647,7 +646,7 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
         bbx = props.get('BBX', global_bbx)
         if writing_direction in (0, 2):
             _bbx_width, _bbx_height, bboffx, shift_up = (int(_p) for _p in bbx.split(' '))
-            new_props['shift-up'] = shift_up
+            new_props['shift_up'] = shift_up
             # advance width
             dwidth = props.get('DWIDTH', global_dwidth)
             dwidth_x, dwidth_y = (int(_p) for _p in dwidth.split(' '))
@@ -660,8 +659,8 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
                 advance_width = -dwidth_x
                 # bboffx would likely be negative
                 left_bearing = advance_width + bboffx
-            new_props['left-bearing'] = left_bearing
-            new_props['right-bearing'] = advance_width - glyph.width - left_bearing
+            new_props['left_bearing'] = left_bearing
+            new_props['right_bearing'] = advance_width - glyph.width - left_bearing
         if writing_direction in (1, 2):
             vvector = props.get('VVECTOR', global_vvector)
             bbx_width, _bbx_height, bboffx, bboffy = (int(_p) for _p in bbx.split(' '))
@@ -670,7 +669,7 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
             # vector from baseline to raster left; negative: baseline to right of left raster edge
             to_left = bboffx - voffx
             # leftward shift from baseline to raster central axis
-            new_props['shift-left'] = ceildiv(bbx_width, 2) + to_left
+            new_props['shift_left'] = ceildiv(bbx_width, 2) + to_left
             # advance height
             dwidth1 = props.get('DWIDTH1', global_dwidth1)
             dwidth1_x, dwidth1_y = (int(_p) for _p in dwidth1.split(' '))
@@ -685,8 +684,8 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
                 advance_height = dwidth1_y
                 bottom_bearing = to_bottom
                 top_bearing = advance_height - glyph.height - bottom_bearing
-            new_props['top-bearing'] = top_bearing
-            new_props['bottom-bearing'] = bottom_bearing
+            new_props['top_bearing'] = top_bearing
+            new_props['bottom_bearing'] = bottom_bearing
         mod_glyphs.append(glyph.modify(**new_props))
     # check char counters
     nchars = int(bdf_props.pop('CHARS'))
@@ -748,34 +747,34 @@ def _parse_xlfd_properties(x_props, xlfd_name, to_int=int):
         'style': _from_quoted_string(x_props.pop('ADD_STYLE_NAME', '')).lower(),
         'ascent': x_props.pop('FONT_ASCENT', None),
         'descent': x_props.pop('FONT_DESCENT', None),
-        'x-height': x_props.pop('X_HEIGHT', None),
-        'cap-height': x_props.pop('CAP_HEIGHT', None),
-        'pixel-size': x_props.pop('PIXEL_SIZE', None),
+        'x_height': x_props.pop('X_HEIGHT', None),
+        'cap_height': x_props.pop('CAP_HEIGHT', None),
+        'pixel_size': x_props.pop('PIXEL_SIZE', None),
         'slant': _SLANT_MAP.get(
             _from_quoted_string(x_props.pop('SLANT', '')), None
         ),
         'spacing': _SPACING_MAP.get(
             _from_quoted_string(x_props.pop('SPACING', '')), None
         ),
-        'underline-descent': x_props.pop('UNDERLINE_POSITION', None),
-        'underline-thickness': x_props.pop('UNDERLINE_THICKNESS', None),
-        'superscript-size': x_props.pop('SUPERSCRIPT_SIZE', None),
-        'subscript-size': x_props.pop('SUBSCRIPT_SIZE', None),
-        'small-cap-size': x_props.pop('SMALL_CAP_SIZE', None),
-        'digit-width': x_props.pop('FIGURE_WIDTH', None),
-        'min-word-space': x_props.pop('MIN_SPACE', None),
-        'word-space': x_props.pop('NORM_SPACE', None),
-        'max-word-space': x_props.pop('MAX_SPACE', None),
-        'sentence-space': x_props.pop('END_SPACE', None),
+        'underline_descent': x_props.pop('UNDERLINE_POSITION', None),
+        'underline_thickness': x_props.pop('UNDERLINE_THICKNESS', None),
+        'superscript_size': x_props.pop('SUPERSCRIPT_SIZE', None),
+        'subscript_size': x_props.pop('SUBSCRIPT_SIZE', None),
+        'small_cap_size': x_props.pop('SMALL_CAP_SIZE', None),
+        'digit_width': x_props.pop('FIGURE_WIDTH', None),
+        'min_word_space': x_props.pop('MIN_SPACE', None),
+        'word_space': x_props.pop('NORM_SPACE', None),
+        'max_word_space': x_props.pop('MAX_SPACE', None),
+        'sentence_space': x_props.pop('END_SPACE', None),
     }
     if 'DESTINATION' in x_props and to_int(x_props['DESTINATION']) < 2:
         dest = to_int(x_props.pop('DESTINATION'))
         properties['device'] = 'screen' if dest else 'printer'
     if 'POINT_SIZE' in x_props:
-        properties['point-size'] = round(to_int(x_props.pop('POINT_SIZE')) / 10)
+        properties['point_size'] = round(to_int(x_props.pop('POINT_SIZE')) / 10)
     if 'AVERAGE_WIDTH' in x_props:
         # average width can have a tilde for negative - because it occurs in the xlfd font name
-        properties['average-width'] = to_int(
+        properties['average_width'] = to_int(
             x_props.pop('AVERAGE_WIDTH').replace('~', '-')
         ) / 10
     # prefer the more precise relative weight and setwidth measures
@@ -805,12 +804,12 @@ def _parse_xlfd_properties(x_props, xlfd_name, to_int=int):
             x_props.get('RESOLUTION'), x_props.pop('RESOLUTION'), to_int=to_int
         )
     if 'SUPERSCRIPT_X' in x_props and 'SUPERSCRIPT_Y' in x_props:
-        properties['superscript-offset'] = _all_ints(
+        properties['superscript_offset'] = _all_ints(
             x_props.pop('SUPERSCRIPT_X'), x_props.pop('SUPERSCRIPT_Y'),
             to_int=to_int
         )
     if 'SUBSCRIPT_X' in x_props and 'SUBSCRIPT_Y' in x_props:
-        properties['subscript-offset'] = _all_ints(
+        properties['subscript_offset'] = _all_ints(
             x_props.pop('SUBSCRIPT_X'), x_props.pop('SUBSCRIPT_Y'),
             to_int=to_int
         )
@@ -828,19 +827,19 @@ def _parse_xlfd_properties(x_props, xlfd_name, to_int=int):
     if 'DEFAULT_CHAR' in x_props:
         default_ord = to_int(x_props.pop('DEFAULT_CHAR', None))
         if charmaps.is_unicode(properties['encoding']):
-            properties['default-char'] = Char(chr(default_ord))
+            properties['default_char'] = Char(chr(default_ord))
         else:
-            properties['default-char'] = default_ord
+            properties['default_char'] = default_ord
     # keep original FontName if invalid or conflicting
     if not xlfd_name_props or conflicting:
-        properties['xlfd.font-name'] = xlfd_name
+        properties['xlfd.font_name'] = xlfd_name
     # keep unparsed but known properties
     for key in _XLFD_UNPARSED:
         try:
             value = x_props.pop(key)
         except KeyError:
             continue
-        key = key.lower().replace('_', '-')
+        key = key.lower()
         value = _from_quoted_string(value)
         if value:
             properties[f'xlfd.{key}'] = value
@@ -851,7 +850,7 @@ def _parse_xlfd_properties(x_props, xlfd_name, to_int=int):
     }
     # keep unrecognised properties
     properties.update({
-        _k.lower().replace('_', '-'): _from_quoted_string(_v)
+        _k.lower(): _from_quoted_string(_v)
         for _k, _v in x_props.items()
     })
     return properties
@@ -883,8 +882,8 @@ def _create_xlfd_properties(font):
         'FONT_ASCENT': font.properties.get('ascent'),
         'FONT_DESCENT': font.properties.get('descent'),
         'PIXEL_SIZE': font.pixel_size,
-        'X_HEIGHT': font.properties.get('x-height', None),
-        'CAP_HEIGHT': font.properties.get('cap-height', None),
+        'X_HEIGHT': font.properties.get('x_height', None),
+        'CAP_HEIGHT': font.properties.get('cap_height', None),
         'RESOLUTION_X': font.dpi.x,
         'RESOLUTION_Y': font.dpi.y,
         'POINT_SIZE': int(font.point_size) * 10,
@@ -912,21 +911,21 @@ def _create_xlfd_properties(font):
         'ADD_STYLE_NAME': _quoted_string(font.style.title()),
         'AVERAGE_WIDTH': str(round(float(font.average_width) * 10)).replace('-', '~'),
         # only set if explicitly defined
-        'UNDERLINE_POSITION': font.properties.get('underline-descent', None),
-        'UNDERLINE_THICKNESS': font.properties.get('underline-thickness', None),
+        'UNDERLINE_POSITION': font.properties.get('underline_descent', None),
+        'UNDERLINE_THICKNESS': font.properties.get('underline_thickness', None),
         'DESTINATION': {'printer': 0, 'screen': 1, None: None}.get(font.device.lower(), None),
-        'SUPERSCRIPT_SIZE': font.properties.get('superscript-size', None),
-        'SUBSCRIPT_SIZE': font.properties.get('subscript-size', None),
-        'SMALL_CAP_SIZE': font.properties.get('small-cap-size', None),
-        'SUPERSCRIPT_X': font.superscript_offset.x if 'superscript-offset' in font.properties else None,
-        'SUPERSCRIPT_Y': font.superscript_offset.y if 'superscript-offset' in font.properties else None,
-        'SUBSCRIPT_X': font.subscript_offset.x if 'subscript-offset' in font.properties else None,
-        'SUBSCRIPT_Y': font.subscript_offset.y if 'subscript-offset' in font.properties else None,
-        'FIGURE_WIDTH': font.properties.get('digit-width', None),
-        'MIN_SPACE': font.properties.get('min-word-space', None),
-        'NORM_SPACE': font.properties.get('word-space', None),
-        'MAX_SPACE': font.properties.get('max-word-space', None),
-        'END_SPACE': font.properties.get('sentence-space', None),
+        'SUPERSCRIPT_SIZE': font.properties.get('superscript_size', None),
+        'SUBSCRIPT_SIZE': font.properties.get('subscript_size', None),
+        'SMALL_CAP_SIZE': font.properties.get('small_cap_size', None),
+        'SUPERSCRIPT_X': font.superscript_offset.x if 'superscript_offset' in font.properties else None,
+        'SUPERSCRIPT_Y': font.superscript_offset.y if 'superscript_offset' in font.properties else None,
+        'SUBSCRIPT_X': font.subscript_offset.x if 'subscript_offset' in font.properties else None,
+        'SUBSCRIPT_Y': font.subscript_offset.y if 'subscript_offset' in font.properties else None,
+        'FIGURE_WIDTH': font.properties.get('digit_width', None),
+        'MIN_SPACE': font.properties.get('min_word_space', None),
+        'NORM_SPACE': font.properties.get('word_space', None),
+        'MAX_SPACE': font.properties.get('max_word_space', None),
+        'END_SPACE': font.properties.get('sentence_space', None),
     }
     # encoding dependent values
     default_glyph = font.get_default_glyph()
@@ -1002,7 +1001,7 @@ def _save_bdf(font, outstream):
             )
         )
     ]
-    vertical_metrics = ('shift-left', 'top-bearing', 'bottom-bearing')
+    vertical_metrics = ('shift_left', 'top_bearing', 'bottom_bearing')
     has_vertical_metrics = any(
         _k in _g.properties
         for _g in font.glyphs

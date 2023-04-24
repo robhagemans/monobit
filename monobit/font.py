@@ -19,7 +19,7 @@ from .encoding import charmaps, encoder
 from .taggers import tagger
 from .labels import Tag, Char, Codepoint, Label, to_label
 from .binary import ceildiv
-from .properties import normalise_property, extend_string
+from .properties import extend_string
 from .cachedprops import DefaultProps, writable_property, as_tuple, checked_property
 from .taggers import tagmaps
 
@@ -714,7 +714,7 @@ class Font(DefaultProps):
         elements = (
             f'glyphs=(...{len(self._glyphs)} glyphs...)' if self._glyphs else '',
             ',\n    '.join(
-                f'{normalise_property(_k)}={repr(_v)}'
+                f'{_k}={repr(_v)}'
                 for _k, _v in self.properties.items()
             ),
         )
@@ -741,10 +741,7 @@ class Font(DefaultProps):
             old_comment.update(comment)
         # comment and properties are replaced keyword by keyword
         properties = {**self._props}
-        properties.update({
-            normalise_property(_k): _v
-            for _k, _v in kwargs.items()
-        })
+        properties.update(kwargs)
         return Font(
             tuple(glyphs),
             comment=old_comment,
@@ -785,7 +782,7 @@ class Font(DefaultProps):
             comment = {'': None}
         except ValueError:
             comment = {}
-        none_args = {normalise_property(_k): None for _k in args}
+        none_args = {_k: None for _k in args}
         # remove property comments for dropped properties
         comment.update(none_args)
         return self.modify(
@@ -799,7 +796,6 @@ class Font(DefaultProps):
 
     def get_comment(self, key=''):
         """Get global or property comment."""
-        key = normalise_property(key)
         return self._comments.get(key, '')
 
     def _get_comment_dict(self):
@@ -809,7 +805,7 @@ class Font(DefaultProps):
     @property
     def properties(self):
         """Non-defaulted properties in order of default definition list."""
-        return {_k.replace('_', '-'): _v for _k, _v in self._props.items()}
+        return {_k: _v for _k, _v in self._props.items()}
 
     def is_known_property(self, key):
         """Field is a recognised property."""
@@ -844,7 +840,7 @@ class Font(DefaultProps):
         feats = set.union(*(_g.features for _g in self.glyphs))
         if any(
                 self._defined(_p)
-                for _p in ('line_width', 'left-extent', 'right-extent')
+                for _p in ('line_width', 'left_extent', 'right_extent')
             ):
             feats.add('vertical')
         return feats

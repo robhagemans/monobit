@@ -350,7 +350,7 @@ def _convert_nfnt(properties, glyphs, fontrec):
         kern_table = sorted(
             (
                 _entry.kernFirst, _entry.kernSecond,
-                _entry.kernWidth * properties['point-size'] / 2**12
+                _entry.kernWidth * properties['point_size'] / 2**12
             )
             for _entry in properties['kerning-table']
         )
@@ -376,15 +376,15 @@ def _convert_nfnt(properties, glyphs, fontrec):
     properties.update({
         # not overridable; also seems incorrect for system fonts
         #'spacing': 'monospace' if fontrec.fontType.fixed_width else 'proportional',
-        'default-char': 'missing',
+        'default_char': 'missing',
         'ascent': fontrec.ascent,
         'descent': fontrec.descent,
-        'line-height': fontrec.ascent + fontrec.descent + fontrec.leading,
-        'shift-up': -fontrec.descent,
+        'line_height': fontrec.ascent + fontrec.descent + fontrec.leading,
+        'shift_up': -fontrec.descent,
         # remove the kerning table and encoding table now stored in glyphs
-        'kerning-table': None,
-        'encoding-table': None,
-        'source-format': 'NFNT',
+        'kerning_table': None,
+        'encoding_table': None,
+        'source_format': 'NFNT',
     })
     return Font(glyphs, **properties)
 

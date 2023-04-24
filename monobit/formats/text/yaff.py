@@ -211,6 +211,7 @@ class YaffGlyph(YaffMultiline):
                 # one-line glyph properties
                 key, _, value = line.partition(self.separator)
                 value = value.strip()
+                key = normalise_property(key)
                 properties[key] = value.strip()
         # deal with sized empties (why?)
         if all(set(_line) == set([self.empty]) for _line in raster):
@@ -248,7 +249,7 @@ class YaffProperty(NonEmptyBlock, YaffParams):
 
     def get_key(self):
         key, _, _ = self.lines[0].partition(self.separator)
-        return key
+        return normalise_property(key)
 
 
 def _strip_quotes(line):
@@ -267,7 +268,7 @@ class YaffPropertyOrGlyph(YaffMultiline):
         return '\n'.join(_strip_quotes(_l) for _l in self.lines[1:])
 
     def get_key(self):
-        return self.lines[0][:-1]
+        return normalise_property(self.lines[0][:-1])
 
     # glyph block with plain label
 
@@ -360,7 +361,7 @@ def _write_glyph(outstream, glyph, global_metrics):
     outstream.write(glyphtxt)
     properties = glyph.properties
     for key in global_metrics:
-        properties.pop(key.replace('_', '-'), None)
+        properties.pop(key, None)
     if properties:
         outstream.write(f'\n')
     for key, value in properties.items():

@@ -11,7 +11,7 @@ from functools import cache
 from .encoding import is_graphical, is_blank
 from .labels import Codepoint, Char, Tag, to_label
 from .raster import Raster, NOT_SET, turn_method
-from .properties import Props, normalise_property, extend_string
+from .properties import Props, extend_string
 from .cachedprops import DefaultProps, writable_property, as_tuple, checked_property
 from .basetypes import Coord, Bounds, to_number
 from .scripting import scriptable
@@ -230,7 +230,6 @@ class Glyph(DefaultProps):
         if (self.width, self.height) != (other.width, other.height):
             return False
         for p in (*self.properties.keys(), *other.properties.keys()):
-            p = normalise_property(p)
             if not getattr(self, p) == getattr(other, p):
                 return False
         return self.as_matrix() == other.as_matrix()
@@ -285,10 +284,7 @@ class Glyph(DefaultProps):
         if comment is NOT_SET:
             comment = self._comment
         properties = {**self._props}
-        properties.update({
-            normalise_property(_k): _v
-            for _k, _v in kwargs.items()
-        })
+        properties.update(kwargs)
         return type(self)(
             pixels,
             labels=labels,
@@ -381,7 +377,7 @@ class Glyph(DefaultProps):
             comment = ''
         except ValueError:
             comment = NOT_SET
-        none_args = {normalise_property(_k): None for _k in args}
+        none_args = {_k: None for _k in args}
         return self.modify(
             pixels,
             labels=labels,
@@ -404,7 +400,7 @@ class Glyph(DefaultProps):
     @property
     def properties(self):
         """Non-defaulted properties in order of default definition list."""
-        return {_k.replace('_', '-'): _v for _k, _v in self._props.items()}
+        return {_k: _v for _k, _v in self._props.items()}
 
     def get_property(self, key):
         """Get value for property."""
@@ -423,19 +419,19 @@ class Glyph(DefaultProps):
         feats = set()
         if any(
                 self._defined(_p)
-                for _p in ('top-bearing', 'bottom-bearing', 'shift-left')
+                for _p in ('top_bearing', 'bottom_bearing', 'shift_left')
             ):
             feats.add('vertical')
         if any(
                 self._defined(_p)
-                for _p in ('left-kerning', 'right-kerning')
+                for _p in ('left_kerning', 'right_kerning')
             ):
             feats.add('kerning')
         if any(
                 self._get_property(_p) < 0
                 for _p in (
-                    'left-bearing', 'right-bearing',
-                    'top-bearing', 'bottom-bearing'
+                    'left_bearing', 'right_bearing',
+                    'top_bearing', 'bottom_bearing'
                 )
             ):
             feats.add('overlap')
