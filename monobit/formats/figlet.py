@@ -192,7 +192,7 @@ def _convert_from_flf(glyphs, props):
     # > If a FIGcharacter with code 0 is present, it is treated
     # > specially.  It is a FIGfont's "missing character".
     if any(_g.char == '\0' for _g in glyphs):
-        properties['default_char'] = '\0'
+        properties.default_char = '\0'
     # keep uninterpreted parameters in namespace
     properties.figlet = ' '.join(
         f'{_k}={_v}' for _k, _v in vars(props).items() if _k not in (
