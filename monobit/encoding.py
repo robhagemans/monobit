@@ -838,9 +838,17 @@ class Encoder:
         """Representation."""
         return f"{type(self).__name__}(name='{self.name}')"
 
-    def __str__(self):
-        """Yaff representation."""
-        return CharmapRegistry.normalise(self.name)
+
+class EncodingName(str):
+
+    def __new__(cls, value=''):
+        """Convert char or char sequence to char label."""
+        if not isinstance(value, str):
+            raise ValueError(
+                f'Can only convert `str` to encoding name, not `{type(value)}`.'
+            )
+        value = CharmapRegistry.normalise(value)
+        return super().__new__(cls, value)
 
 
 class Charmap(Encoder):

@@ -15,7 +15,7 @@ from .glyph import Glyph
 from .raster import turn_method
 from .basetypes import Coord, Bounds
 from .basetypes import to_int
-from .encoding import charmaps, encoder
+from .encoding import charmaps, encoder, EncodingName
 from .taggers import tagger
 from .labels import Tag, Char, Codepoint, Label, to_label
 from .binary import ceildiv
@@ -139,7 +139,7 @@ class Font(DefaultProps):
     # can't be calculated, affect rendering
 
     # character map, stored as normalised name
-    encoding: charmaps.normalise
+    encoding: EncodingName
     # replacement for missing glyph
     default_char: Label
     # word-break character (usually space)
