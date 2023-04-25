@@ -12,7 +12,7 @@ from .encoding import is_graphical, is_blank
 from .labels import Codepoint, Char, Tag, to_label
 from .raster import Raster, NOT_SET, turn_method
 from .properties import Props, extend_string
-from .cachedprops import DefaultProps, writable_property, as_tuple, checked_property
+from .cachedprops import DefaultProps, writable_property, checked_property
 from .basetypes import Coord, Bounds, to_number
 from .scripting import scriptable
 from .vector import StrokePath
@@ -85,11 +85,6 @@ class Glyph(DefaultProps):
     bottom_bearing: int
     # leftward offset from origin to matrix left edge
     shift_left: int
-
-    # compatibility synonyms
-    kern_to: KernTable
-    tracking: int
-    offset: Coord
 
     # path segments for stroke fonts
     path: StrokePath
@@ -164,30 +159,6 @@ class Glyph(DefaultProps):
     def raster_size(self):
         """Raster dimensions."""
         return Coord(self.width, self.height)
-
-
-    ##########################################################################
-    # deprecated compatibility synonymms
-
-    @writable_property('kern_to')
-    def kern_to(self):
-        """Deprecated synonym of right-kerning."""
-        return self.right_kerning
-
-    @writable_property('right_bearing')
-    def tracking(self):
-        """
-        Horizontal offset from matrix right edge to rightward origin
-        Deprecated synonym for right-bearing.
-        """
-        return self.right_bearing
-
-    @as_tuple(('left_bearing', 'shift_up'), tuple_type=Coord.create)
-    def offset(self):
-        """
-        (horiz, vert) offset from origin to matrix start
-        Deprecated synonym for left-bearing, shift-up.
-        """
 
 
     __properties_end__ = True

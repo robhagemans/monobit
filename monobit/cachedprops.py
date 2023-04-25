@@ -181,36 +181,6 @@ def checked_property(fn):
     return property(_getter, _setter)
 
 
-def as_tuple(arg=None, *, fields=None, tuple_type=None):
-    """
-    Decorator to take summarise multiple fields as a (settable) tuple.
-
-    The decorated function is discarded except for the name, so use as:
-    @as_tuple(('x', 'y'))
-        def coord(): pass
-    """
-    if not callable(arg):
-        return partial(as_tuple, fields=arg, tuple_type=tuple_type)
-    fn = arg
-
-    tuple_type = tuple_type or tuple
-
-    @wraps(fn)
-    def _getter(self):
-        # in this case, always use the fields, whether defaulted or set
-        return tuple_type(tuple(
-            getattr(self, _field)
-            for _field in fields
-        ))
-
-    @wraps(fn)
-    def _setter(self, value):
-        for field, element in zip(fields, tuple_type(value)):
-            self._set_property(field, element)
-
-    return property(_getter, _setter)
-
-
 def delayed_cache(fn):
     """Cache only once _frozen attribute is set."""
     field = fn.__name__

@@ -20,7 +20,7 @@ from .taggers import tagger
 from .labels import Tag, Char, Codepoint, Label, to_label
 from .binary import ceildiv
 from .properties import extend_string
-from .cachedprops import DefaultProps, writable_property, as_tuple, checked_property
+from .cachedprops import DefaultProps, writable_property, checked_property
 from .taggers import tagmaps
 
 

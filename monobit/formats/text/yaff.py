@@ -78,6 +78,24 @@ class YaffParams:
     glyphchars = (ink, paper, empty)
 
 
+# deprecated compatibility synonymms
+_DEPRECATED_SYNONYMS = {
+    'kern-to': 'right-kerning',
+    'tracking': 'right-bearing',
+    'offset': ('left_bearing', 'shift_up'),
+}
+def _set_property(propsdict, key, value):
+    try:
+        key = _DEPRECATED_SYNONYMS[key]
+    except KeyError:
+        pass
+    if isinstance(key, tuple):
+        for key, value in zip(key, Coord.create(value)):
+            propsdict[key] = value
+    else:
+        propsdict[key] = value
+
+
 ##############################################################################
 # read file
 
@@ -135,7 +153,8 @@ def _read_yaff(text_stream):
             current_comment = []
         elif isinstance(block, (YaffProperty, YaffPropertyOrGlyph)):
             key = block.get_key()
-            font_props[key] = block.get_value()
+            value = block.get_value()
+            _set_property(font_props, key, value)
             font_prop_comms[key] = '\n\n'.join(current_comment)
             current_comment = []
         if not glyphs and not font_props:
@@ -202,17 +221,19 @@ class YaffGlyph(YaffMultiline):
         key = None
         for line in lines[i:]:
             if line[:1] in self.whitespace:
-                # multiline glyph properties
+                # follow-up lines in multiline glyph properties
+                # note - won't work with deprecated synonyms
                 if not properties[key]:
                     properties[key] = line.strip()
                 else:
                     properties[key] = '\n'.join((properties[key], line.strip()))
             else:
+                # first line of property
                 # one-line glyph properties
                 key, _, value = line.partition(self.separator)
-                value = value.strip()
                 key = normalise_property(key)
-                properties[key] = value.strip()
+                value = value.strip()
+                _set_property(properties, key, value)
         # deal with sized empties (why?)
         if all(set(_line) == set([self.empty]) for _line in raster):
             raster = Raster.blank(width=len(raster[0])-1, height=len(raster)-1)
