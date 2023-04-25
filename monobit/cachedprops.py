@@ -141,12 +141,9 @@ class DefaultProps:
         self._cache = {}
 
 
-def writable_property(arg=None, *, field=None):
+def writable_property(fn):
     """Decorator to take property from property table, if defined; calculate otherwise."""
-    if not callable(arg):
-        return partial(writable_property, field=arg)
-    fn = arg
-    field = field or fn.__name__
+    field = fn.__name__
     cached_fn = delayed_cache(fn)
 
     @wraps(fn)
@@ -169,7 +166,6 @@ def writable_property(arg=None, *, field=None):
 def checked_property(fn):
     """Non-overridable property, attempted writes will be logged and dropped."""
     field = fn.__name__
-
     _getter = delayed_cache(fn)
 
     @wraps(fn)
