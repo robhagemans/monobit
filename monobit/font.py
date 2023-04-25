@@ -632,25 +632,6 @@ class Font(DefaultProps):
         return Char(repl)
 
 
-    ##########################################################################
-    # deprecated compatibility synonyms
-
-    @writable_property('average_width')
-    def average_advance(self):
-        """Average advance width, rounded to tenths."""
-        return self.average_width
-
-    @writable_property('max_width')
-    def max_advance(self):
-        """Maximum glyph advance width."""
-        return self.max_width
-
-    @writable_property('cap_width')
-    def cap_advance(self):
-        """Advance width of LATIN CAPITAL LETTER X."""
-        return self.cap_width
-
-
     __properties_end__ = True
 
     ###########################################################################

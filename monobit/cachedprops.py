@@ -85,7 +85,6 @@ class DefaultProps:
             cls._defaults = {
                 # can't use .get() as _type() would fail for some defaulted fields
                 _field: vars(cls)[_field] if _field in vars(cls) else _type()
-                #CONVERTERS(_type, _type)()
                 for _field, _type in cls.__annotations__.items()
                 if _field not in cls._attribs
             }

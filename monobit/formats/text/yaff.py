@@ -80,9 +80,13 @@ class YaffParams:
 
 # deprecated compatibility synonymms
 _DEPRECATED_SYNONYMS = {
-    'kern-to': 'right-kerning',
-    'tracking': 'right-bearing',
+    'kern_to': 'right_kerning',
+    'tracking': 'right_bearing',
     'offset': ('left_bearing', 'shift_up'),
+
+    'average_advance': 'average_width',
+    'max_advance': 'max_width',
+    'cap_advance': 'cap_width',
 }
 def _set_property(propsdict, key, value):
     try:

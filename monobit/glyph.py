@@ -12,7 +12,7 @@ from .encoding import is_graphical, is_blank
 from .labels import Codepoint, Char, Tag, to_label
 from .raster import Raster, NOT_SET, turn_method
 from .properties import Props, extend_string
-from .cachedprops import DefaultProps, writable_property, checked_property
+from .cachedprops import DefaultProps, checked_property
 from .basetypes import Coord, Bounds, to_number
 from .scripting import scriptable
 from .vector import StrokePath
