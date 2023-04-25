@@ -133,12 +133,11 @@ class DefaultProps:
         if value is None:
             self._props.pop(field, None)
         else:
-            # this fails because not all our annotations are actual types
-            #field_type = self._types.get(field, None)
-            #if field_type and not isinstance(field, field_type):
-            converter = self._converters.get(field, None)
-            if converter:
-                value = converter(value)
+            field_type = self._types.get(field, None)
+            if field_type and not isinstance(field, field_type):
+                converter = self._converters.get(field, None)
+                if converter:
+                    value = converter(value)
             self._props[field] = value
         self._cache = {}
 
