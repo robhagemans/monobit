@@ -28,19 +28,12 @@ def extend_string(string, line):
         if _line
     )
 
-def normalise_property(field):
-    # preserve distinction between starting underscore (internal) and starting dash (user property)
-    return field[:1] + field[1:].replace('-', '_')
-
 
 ##############################################################################
 # property sets
 
 class Props(SimpleNamespace):
-    """
-    SimpleNamespace with the dunder methods of a dict
-    Not a mapping but allows both key-style and attribute-style access
-    """
+    """SimpleNamespace with additional methods"""
 
     # don't pollute the object namespace
     # we only have __dunder__ methods
@@ -54,33 +47,6 @@ class Props(SimpleNamespace):
             )
             args = ()
         super().__init__(*args, **kwargs)
-
-    def __getitem__(self, field):
-        try:
-            return getattr(self, normalise_property(field))
-        except AttributeError as e:
-            raise KeyError(field) from e
-
-    def __setitem__(self, field, value):
-        try:
-            setattr(self, normalise_property(field), value)
-        except AttributeError as e:
-            raise KeyError(field) from e
-
-    def __delitem__(self, field):
-        try:
-            delattr(self, normalise_property(field))
-        except AttributeError as e:
-            raise KeyError(field) from e
-
-    def __len__(self):
-        return len(vars(self))
-
-    def __iter__(self):
-        return iter(vars(self))
-
-    def __contains__(self, key):
-        return key in vars(self)
 
     def __str__(self):
         strs = tuple(

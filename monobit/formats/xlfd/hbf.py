@@ -8,7 +8,6 @@ licence: https://opensource.org/licenses/MIT
 import logging
 from pathlib import Path
 
-from ...properties import normalise_property
 from ...storage import loaders, savers
 from ...magic import FileFormatError
 from ...font import Font, Coord
@@ -280,8 +279,8 @@ def _parse_properties(hbf_props, x_props):
         else:
             properties[key] = value
     # ensure default codepoint gets a plane value
-    if plane is not None and 'default-char' in properties:
-        properties['default-char'] += (0x80+plane) * 0x10000
+    if plane is not None and 'default_char' in properties:
+        properties['default_char'] += (0x80+plane) * 0x10000
     # prefer hbf code scheme to charset values from xlfd
     logging.info('yaff properties:')
     for name, value in properties.items():
@@ -292,8 +291,8 @@ def _parse_hbf_properties(hbf_props):
     """Parse HBF properties."""
     size, xdpi, ydpi = _split_hbf_ints(hbf_props.pop('SIZE'))
     properties = {
-        'source-format': 'HBF v{}'.format(hbf_props.pop('HBF_START_FONT')),
-        'point-size': size,
+        'source_format': 'HBF v{}'.format(hbf_props.pop('HBF_START_FONT')),
+        'point_size': size,
         'dpi': (xdpi, ydpi),
     }
     width, height, offset_x, offset_y = _split_hbf_ints(
@@ -308,10 +307,10 @@ def _parse_hbf_properties(hbf_props):
         hbf_props.pop('FONTBOUNDINGBOX')
     )
     properties.update({
-        'line-height': full_height,
+        'line_height': full_height,
         # full_width :==: advance-width == left-bearing + width + right-bearing
-        'left-bearing': offset_x,
-        'right-bearing': full_width - width - offset_x,
+        'left_bearing': offset_x,
+        'right_bearing': full_width - width - offset_x,
         # I think the fontboundingbox offsets actually go unused
         'shift_up': offset_y,
     })
@@ -365,7 +364,7 @@ def _convert_to_hbf(font, bitmap_name):
     #glyphs, properties = _globalise_glyph_metrics(font)
     # convert properties
     xlfd_props = _create_xlfd_properties(font)
-    if 'hbf.font' in font.properties:
+    if 'hbf.font' in font.get_properties():
         fontname = font.get_property('hbf.font')
         xlfd_props.pop('HBF.FONT')
     else:

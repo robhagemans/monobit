@@ -338,8 +338,8 @@ glyph:
             'even this'
         ))
         assert_text_eq(f.get_comment('property'), 'but this is not')
-        assert_text_eq(f.get_comment('another-property'), '')
-        assert_text_eq(f.get_comment('commented-property'), (
+        assert_text_eq(f.get_comment('another_property'), '')
+        assert_text_eq(f.get_comment('commented_property'), (
             'property comment\nspanning two lines'
         ))
         assert_text_eq(f.glyphs[0].comment, 'glyph comment')

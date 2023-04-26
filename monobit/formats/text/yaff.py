@@ -19,8 +19,8 @@ from ...font import Font
 from ...glyph import Glyph
 from ...raster import Raster
 from ...labels import Label, strip_matching
-from ...properties import Props, normalise_property
-from ...basetypes import passthrough
+from ...properties import Props
+from ...basetypes import Coord, passthrough
 from .draw import NonEmptyBlock, DrawComment, Empty, Unparsed, iter_blocks
 from .draw import format_comment
 
@@ -76,6 +76,28 @@ class YaffParams:
     # string to be quoted if one of these chars at start and/or end
     quotable = (':', ' ')
     glyphchars = (ink, paper, empty)
+
+
+# deprecated compatibility synonymms
+_DEPRECATED_SYNONYMS = {
+    'kern_to': 'right_kerning',
+    'tracking': 'right_bearing',
+    'offset': ('left_bearing', 'shift_up'),
+
+    'average_advance': 'average_width',
+    'max_advance': 'max_width',
+    'cap_advance': 'cap_width',
+}
+def _set_property(propsdict, key, value):
+    try:
+        key = _DEPRECATED_SYNONYMS[key]
+    except KeyError:
+        pass
+    if isinstance(key, tuple):
+        for key, value in zip(key, Coord.create(value)):
+            propsdict[key] = value
+    else:
+        propsdict[key] = value
 
 
 ##############################################################################
@@ -135,7 +157,8 @@ def _read_yaff(text_stream):
             current_comment = []
         elif isinstance(block, (YaffProperty, YaffPropertyOrGlyph)):
             key = block.get_key()
-            font_props[key] = block.get_value()
+            value = block.get_value()
+            _set_property(font_props, key, value)
             font_prop_comms[key] = '\n\n'.join(current_comment)
             current_comment = []
         if not glyphs and not font_props:
@@ -202,16 +225,19 @@ class YaffGlyph(YaffMultiline):
         key = None
         for line in lines[i:]:
             if line[:1] in self.whitespace:
-                # multiline glyph properties
+                # follow-up lines in multiline glyph properties
+                # note - won't work with deprecated synonyms
                 if not properties[key]:
                     properties[key] = line.strip()
                 else:
                     properties[key] = '\n'.join((properties[key], line.strip()))
             else:
+                # first line of property
                 # one-line glyph properties
                 key, _, value = line.partition(self.separator)
+                key = normalise_property(key)
                 value = value.strip()
-                properties[key] = value.strip()
+                _set_property(properties, key, value)
         # deal with sized empties (why?)
         if all(set(_line) == set([self.empty]) for _line in raster):
             raster = Raster.blank(width=len(raster[0])-1, height=len(raster)-1)
@@ -233,6 +259,13 @@ class YaffGlyph(YaffMultiline):
     get_glyph_value = get_value
 
 
+
+def normalise_property(field):
+    # preserve distinction between starting underscore (internal) and starting dash (user property)
+    return field[:1] + field[1:].replace('-', '_')
+
+
+
 class YaffProperty(NonEmptyBlock, YaffParams):
 
     def starts(self, line):
@@ -248,7 +281,7 @@ class YaffProperty(NonEmptyBlock, YaffParams):
 
     def get_key(self):
         key, _, _ = self.lines[0].partition(self.separator)
-        return key
+        return normalise_property(key)
 
 
 def _strip_quotes(line):
@@ -267,7 +300,7 @@ class YaffPropertyOrGlyph(YaffMultiline):
         return '\n'.join(_strip_quotes(_l) for _l in self.lines[1:])
 
     def get_key(self):
-        return self.lines[0][:-1]
+        return normalise_property(self.lines[0][:-1])
 
     # glyph block with plain label
 
@@ -325,7 +358,7 @@ def _save_yaff(fonts, outstream):
             props['cell_size'] = font.cell_size
         else:
             props['bounding_box'] = font.bounding_box
-        props.update(font.properties)
+        props.update(font.get_properties())
         global_metrics = _globalise_glyph_metrics(font.glyphs)
         props.update(global_metrics)
         if props:
@@ -358,9 +391,9 @@ def _write_glyph(outstream, glyph, global_metrics):
             end='\n'
         )
     outstream.write(glyphtxt)
-    properties = glyph.properties
+    properties = glyph.get_properties()
     for key in global_metrics:
-        properties.pop(key.replace('_', '-'), None)
+        properties.pop(key, None)
     if properties:
         outstream.write(f'\n')
     for key, value in properties.items():

@@ -588,6 +588,7 @@ def _extract(container, name, bmformat, info, common, pages, chars, kernings=(),
     # > The `yoffset` gives the distance from the top of the cell height to the top
     # > of the character. A negative value here would mean that the character extends
     # > above the cell height.
+    # pylint: disable=no-member
     raster_top = Font(glyphs, **properties).raster.top
     glyphs = [
         _glyph.modify(
@@ -612,11 +613,11 @@ def _parse_bmfont_props(name, bmformat, imgformats, info, common):
         charset = bmfont_props.pop('charset')
         encoding = _CHARSET_STR_MAP.get(charset.upper(), charset)
     properties = {
-        'source-format':
+        'source_format':
             'BMFont ({} descriptor; {} spritesheet)'.format(bmformat, ','.join(imgformats)),
-        'source-name': Path(name).name,
+        'source_name': Path(name).name,
         'family': bmfont_props.pop('face'),
-        'line-height': common.lineHeight,
+        'line_height': common.lineHeight,
         # shift-up is set per-glyph
         'encoding': encoding,
     }

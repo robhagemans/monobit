@@ -163,7 +163,7 @@ def load_chiwriter(instream, filetype:int=None):
         for _i, _wid in enumerate(widths)
     )
     glyphs = [
-        _g.crop(right=max(0, -_g.right_bearing)).drop('shift-left')
+        _g.crop(right=max(0, -_g.right_bearing))
         for _g in glyphs
     ]
     if header.line_gap:

@@ -171,7 +171,7 @@ def save_svg(fonts, outfile):
     font = fonts[0]
     # matching whitespace doesn't work as label thinks path-only glyphs are empty
     font = font.label(match_whitespace=False)
-    if not any('path' in _g.properties for _g in font.glyphs):
+    if not any('path' in _g.get_properties() for _g in font.glyphs):
         logging.warning(
             "SVG file will have empty glyphs: no stroke path found"
         )

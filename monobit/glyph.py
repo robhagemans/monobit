@@ -11,8 +11,8 @@ from functools import cache
 from .encoding import is_graphical, is_blank
 from .labels import Codepoint, Char, Tag, to_label
 from .raster import Raster, NOT_SET, turn_method
-from .properties import Props, normalise_property, extend_string
-from .cachedprops import DefaultProps, writable_property, as_tuple, checked_property
+from .properties import Props, extend_string
+from .cachedprops import HasProps, checked_property
 from .basetypes import Coord, Bounds, to_number
 from .scripting import scriptable
 from .vector import StrokePath
@@ -64,42 +64,49 @@ class KernTable(dict):
 ##############################################################################
 # glyph properties
 
-class Glyph(DefaultProps):
-    """Single glyph including raster and properties."""
+class GlyphProperties:
+    """Default, calculated and settable properties for glyph."""
 
     # horizontal offset from leftward origin to matrix left edge
-    left_bearing: int
+    left_bearing: int = 0
     # horizontal offset from matrix right edge to rightward origin
-    right_bearing: int
+    right_bearing: int = 0
     # upward offset from origin to matrix bottom
-    shift_up: int
+    shift_up: int = 0
     # kerning - pairwaise additional right-bearing
-    right_kerning: KernTable
+    right_kerning: KernTable = KernTable()
     # kerning - pairwaise additional left-bearing
-    left_kerning: KernTable
+    left_kerning: KernTable = KernTable()
 
     # vertical metrics
     # vertical offset from upward origin to matrix top edge
-    top_bearing: int
+    top_bearing: int = 0
     # vertical offset from matrix bottom edge to downward origin
-    bottom_bearing: int
+    bottom_bearing: int = 0
     # leftward offset from origin to matrix left edge
-    shift_left: int
-
-    # compatibility synonyms
-    kern_to: KernTable
-    tracking: int
-    offset: Coord
+    shift_left: int = 0
 
     # path segments for stroke fonts
-    path: StrokePath
+    path: StrokePath = StrokePath()
 
-    # non-overridable, hinted for pylint
-    padding: Bounds
+    # non overridable known properties
+    advance_width: int
+    advance_height: int
+    width: int
     height: int
+    ink_bounds: Bounds
+    bounding_box: Coord
+    padding: Bounds
+    raster: Bounds
+    raster_size: Coord
 
-    # sentinel to help build the list of calculated properties
-    __properties_start__ = True
+
+class Glyph(HasProps):
+    """Single glyph including raster and properties."""
+
+    _defaults = vars(GlyphProperties)
+    _converters = HasProps.get_converters(GlyphProperties)
+
 
     @checked_property
     def advance_width(self):
@@ -166,31 +173,7 @@ class Glyph(DefaultProps):
         return Coord(self.width, self.height)
 
 
-    ##########################################################################
-    # deprecated compatibility synonymms
 
-    @writable_property('kern_to')
-    def kern_to(self):
-        """Deprecated synonym of right-kerning."""
-        return self.right_kerning
-
-    @writable_property('right_bearing')
-    def tracking(self):
-        """
-        Horizontal offset from matrix right edge to rightward origin
-        Deprecated synonym for right-bearing.
-        """
-        return self.right_bearing
-
-    @as_tuple(('left_bearing', 'shift_up'), tuple_type=Coord.create)
-    def offset(self):
-        """
-        (horiz, vert) offset from origin to matrix start
-        Deprecated synonym for left-bearing, shift-up.
-        """
-
-
-    __properties_end__ = True
 
     ##########################################################################
     # dunder methods
@@ -202,11 +185,12 @@ class Glyph(DefaultProps):
             **properties
         ):
         """Create glyph from tuple of tuples."""
+        super().__init__()
         if _trustme:
             self._pixels = Raster(pixels, _0=_0, _1=_1)
             self._labels = labels
             self._comment = comment
-            super().__init__(**properties)
+            self._set_properties(properties)
             return
         # raster data
         self._pixels = Raster(pixels, _0=_0, _1=_1)
@@ -221,7 +205,7 @@ class Glyph(DefaultProps):
             raise TypeError('Glyph comment must be a single string.')
         self._comment = comment
         # recognised properties
-        super().__init__(**properties)
+        self._set_properties(properties)
 
     def __eq__(self, other):
         """Equality."""
@@ -229,8 +213,7 @@ class Glyph(DefaultProps):
             return False
         if (self.width, self.height) != (other.width, other.height):
             return False
-        for p in (*self.properties.keys(), *other.properties.keys()):
-            p = normalise_property(p)
+        for p in (*self._props.keys(), *other._props.keys()):
             if not getattr(self, p) == getattr(other, p):
                 return False
         return self.as_matrix() == other.as_matrix()
@@ -242,7 +225,7 @@ class Glyph(DefaultProps):
             "comment=({})".format(
                 "\n  '" + "\n',\n  '".join(self.comment.splitlines()) + "'"
             ) if self._comment else '',
-            ', '.join(f'{_k}={_v}' for _k, _v in self.properties.items()),
+            ', '.join(f'{_k}={_v}' for _k, _v in self.get_properties().items()),
             "pixels=({})".format(
                 self.as_text(start="\n  '", end="',")
             ) if self._pixels else ''
@@ -285,10 +268,7 @@ class Glyph(DefaultProps):
         if comment is NOT_SET:
             comment = self._comment
         properties = {**self._props}
-        properties.update({
-            normalise_property(_k): _v
-            for _k, _v in kwargs.items()
-        })
+        properties.update(kwargs)
         return type(self)(
             pixels,
             labels=labels,
@@ -350,7 +330,7 @@ class Glyph(DefaultProps):
             comment = ''
         comment = extend_string(self._comment, comment)
         for key, value in properties.items():
-            if self._defined(key):
+            if self.get_defined(key):
                 properties[key] = extend_string(self._props[key], value)
         # do not record glyph history
         try:
@@ -381,7 +361,7 @@ class Glyph(DefaultProps):
             comment = ''
         except ValueError:
             comment = NOT_SET
-        none_args = {normalise_property(_k): None for _k in args}
+        none_args = {_k: None for _k in args}
         return self.modify(
             pixels,
             labels=labels,
@@ -393,49 +373,31 @@ class Glyph(DefaultProps):
     ##########################################################################
     # property access
 
+    # __getattr__ = HasProps._getattr
+
     @property
     def comment(self):
         return self._comment
-
-    def get_default(self, property):
-        """Default value for a property."""
-        return self._get_default(property)
-
-    @property
-    def properties(self):
-        """Non-defaulted properties in order of default definition list."""
-        return {_k.replace('_', '-'): _v for _k, _v in self._props.items()}
-
-    def get_property(self, key):
-        """Get value for property."""
-        try:
-            return self._get_property(key)
-        except KeyError:
-            return None
-
-    def get_defined(self, key):
-        """Get value for property, if explicitly defined."""
-        return self._defined(key)
 
     @property
     def features(self):
         """Get set of special features for this glyph."""
         feats = set()
         if any(
-                self._defined(_p)
-                for _p in ('top-bearing', 'bottom-bearing', 'shift-left')
+                self.get_defined(_p)
+                for _p in ('top_bearing', 'bottom_bearing', 'shift_left')
             ):
             feats.add('vertical')
         if any(
-                self._defined(_p)
-                for _p in ('left-kerning', 'right-kerning')
+                self.get_defined(_p)
+                for _p in ('left_kerning', 'right_kerning')
             ):
             feats.add('kerning')
         if any(
                 self._get_property(_p) < 0
                 for _p in (
-                    'left-bearing', 'right-bearing',
-                    'top-bearing', 'bottom-bearing'
+                    'left_bearing', 'right_bearing',
+                    'top_bearing', 'bottom_bearing'
                 )
             ):
             feats.add('overlap')
@@ -596,6 +558,7 @@ class Glyph(DefaultProps):
         """
         pixels = self._pixels.flip()
         if adjust_metrics:
+            # pylint: disable=invalid-unary-operand-type
             return self.modify(
                 pixels,
                 top_bearing=self.bottom_bearing,
@@ -721,6 +684,7 @@ class Glyph(DefaultProps):
         adjust_metrics: make the operation render-invariant (default: True)
         create_vertical_metrics: create vertical metrics if they don't exist (default: False)
         """
+        # pylint: disable=not-an-iterable
         return self.crop(
             *self.padding, adjust_metrics=adjust_metrics,
             create_vertical_metrics=create_vertical_metrics,
@@ -842,6 +806,7 @@ class Glyph(DefaultProps):
         down: number of times to repeat inked pixel downwards
         adjust_metrics: ensure advances stay the same (default: True)
         """
+        # pylint: disable=unpacking-non-sequence
         pleft, pdown, pright, pup = self.padding
         work = self.expand(
             max(0, left-pleft), max(0, down-pdown),

@@ -331,7 +331,7 @@ def _convert_fond(name, fond_header, fa_list, kerning_table, encoding_table):
         fa_entry.fontID: {
             'family': name,
             'style': mac_style_name(fa_entry.fontStyle),
-            'point-size': fa_entry.fontSize,
+            'point_size': fa_entry.fontSize,
             #'spacing': 'monospace' if fond_header.ffFlags.fixed_width else 'proportional',
             'encoding': encoding,
             'kerning-table': kerning_table.get(fa_entry.fontStyle, ()),

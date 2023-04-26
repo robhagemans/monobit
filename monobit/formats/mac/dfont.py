@@ -259,7 +259,7 @@ def _convert_mac_font(parsed_rsrc, info, formatstr):
             ))
             props = {
                 'family': kwargs.get('name', '') or f'{rsrc_id}',
-                'source-format': f'[Mac] {format}',
+                'source_format': f'[Mac] {format}',
             }
             if rsrc_type == b'FONT':
                 # get name and size info from resource ID
@@ -273,7 +273,7 @@ def _convert_mac_font(parsed_rsrc, info, formatstr):
                 font_number, font_size = divmod(rsrc_id, 128)
                 # we've already filtered out the case font_size == 0
                 props.update({
-                    'point-size': font_size,
+                    'point_size': font_size,
                     'family': _FONT_NAMES.get(font_number, str(font_number))
                 })
                 # prefer directory info to info inferred from resource ID

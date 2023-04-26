@@ -516,10 +516,10 @@ def _convert_win_props(data, win_props):
     for key, value in win_props.__dict__.items():
         logging.info('    {}: {}'.format(key, value))
     properties = {
-        'source-format': 'Windows FNT v{}.{}'.format(*divmod(version, 256)),
+        'source_format': 'Windows FNT v{}.{}'.format(*divmod(version, 256)),
         'family': bytes_to_str(data[win_props.dfFace:]),
         'copyright': bytes_to_str(win_props.dfCopyright),
-        'point-size': win_props.dfPoints,
+        'point_size': win_props.dfPoints,
         'slant': 'italic' if win_props.dfItalic else 'roman',
         # Windows dfAscent means distance between matrix top and baseline
         # and it calls the space where accents go the dfInternalLeading
@@ -529,12 +529,12 @@ def _convert_win_props(data, win_props):
         # and dfAscent is the distance between the raster top and the baseline,
         'descent': win_props.dfPixHeight - win_props.dfAscent,
         # dfExternalLeading is the 'amount of extra leading ... the application add between rows'
-        'line-height': win_props.dfPixHeight + win_props.dfExternalLeading,
-        'default-char': win_props.dfDefaultChar + win_props.dfFirstChar,
+        'line_height': win_props.dfPixHeight + win_props.dfExternalLeading,
+        'default_char': win_props.dfDefaultChar + win_props.dfFirstChar,
     }
     if not vector:
         # vector font determines shift-up (which only applies to raster) from path
-        properties['shift-up'] = -properties['descent']
+        properties['shift_up'] = -properties['descent']
     if win_props.dfPixWidth:
         properties['spacing'] = 'character-cell'
     else:
@@ -546,9 +546,9 @@ def _convert_win_props(data, win_props):
         # fontforge follows the "new" definition while mkwinfont follows the "old".
         # we'll make it depend on the version
         if version == 0x100:
-            properties['cap-width'] = win_props.dfAvgWidth
+            properties['cap_width'] = win_props.dfAvgWidth
         else:
-            properties['average-width'] = win_props.dfAvgWidth
+            properties['average_width'] = win_props.dfAvgWidth
     # check prop/fixed flag
     if bool(win_props.dfPitchAndFamily & 1) == bool(win_props.dfPixWidth):
         logging.warning(
@@ -575,7 +575,7 @@ def _convert_win_props(data, win_props):
         properties['windows.dfCharSet'] = str(charset)
     properties['style'] = _STYLE_MAP.get(win_props.dfPitchAndFamily & 0xff00, None)
     if win_props.dfBreakChar:
-        properties['word-boundary'] = win_props.dfFirstChar + win_props.dfBreakChar
+        properties['word_boundary'] = win_props.dfFirstChar + win_props.dfBreakChar
     properties['device'] = bytes_to_str(data[win_props.dfDevice:])
     # unparsed properties: dfMaxWidth - but this can be calculated from the matrices
     if version == 0x300:
@@ -651,7 +651,7 @@ def _normalise_metrics(font):
             right=max(0, _g.right_bearing),
             # expand by positive shift to make all upshifts equal
             bottom=_g.shift_up + add_shift_up
-        ).drop('shift-up')
+        ).drop('shift_up')
         for _g in font.glyphs
     )
     font = font.modify(ord_glyphs)
@@ -749,7 +749,7 @@ def _convert_to_fnt_props(
         dfAscent=font.raster_size.y - add_shift_up,
         #'ascent': win_props.dfAscent - win_props.dfInternalLeading,
         dfInternalLeading=font.raster_size.y - add_shift_up - font.ascent,
-        #'line-height': win_props.dfPixHeight + win_props.dfExternalLeading,
+        #'line_height': win_props.dfPixHeight + win_props.dfExternalLeading,
         dfExternalLeading=font.line_height-font.raster_size.y,
         dfItalic=(font.slant in ('italic', 'oblique')),
         dfUnderline=('underline' in font.decoration),

@@ -440,7 +440,7 @@ def _get_consistent(fonts, property):
     values = tuple(set(
         _font.get_property(property)
         for _font in fonts
-        if property in _font.properties
+        if property in _font.get_properties()
     ))
     if len(values) == 1:
         return values[0]
@@ -481,7 +481,7 @@ def _convert_to_cp(fonts):
         cp_output.bitmaps = []
         for font in cp_fonts:
             # apparently never used
-            if 'cpi' in font.properties:
+            if 'cpi' in font.get_properties():
                 propsplit = (item.partition('=') for item in font.cpi.split())
                 cpiprops = {_k: _v for _k, _, _v in propsplit}
             else:

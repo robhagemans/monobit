@@ -571,7 +571,7 @@ def _convert_to_gdos(font, endianness):
             'GDOS format: negative bearings must not exceed 127.'
         )
     # keep namespace properties
-    if 'gdos' in font.properties:
+    if 'gdos' in font.get_properties():
         propsplit = (item.partition('=') for item in font.gdos.split())
         add_props = {_k: int(_v) for _k, _, _v in propsplit}
     else:
