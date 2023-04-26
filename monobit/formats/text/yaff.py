@@ -20,7 +20,7 @@ from ...glyph import Glyph
 from ...raster import Raster
 from ...labels import Label, strip_matching
 from ...properties import Props
-from ...basetypes import passthrough
+from ...basetypes import Coord, passthrough
 from .draw import NonEmptyBlock, DrawComment, Empty, Unparsed, iter_blocks
 from .draw import format_comment
 
@@ -358,7 +358,7 @@ def _save_yaff(fonts, outstream):
             props['cell_size'] = font.cell_size
         else:
             props['bounding_box'] = font.bounding_box
-        props.update(font.properties)
+        props.update(font.get_properties())
         global_metrics = _globalise_glyph_metrics(font.glyphs)
         props.update(global_metrics)
         if props:
@@ -391,7 +391,7 @@ def _write_glyph(outstream, glyph, global_metrics):
             end='\n'
         )
     outstream.write(glyphtxt)
-    properties = glyph.properties
+    properties = glyph.get_properties()
     for key in global_metrics:
         properties.pop(key, None)
     if properties:

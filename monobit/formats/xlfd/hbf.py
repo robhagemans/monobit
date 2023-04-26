@@ -364,7 +364,7 @@ def _convert_to_hbf(font, bitmap_name):
     #glyphs, properties = _globalise_glyph_metrics(font)
     # convert properties
     xlfd_props = _create_xlfd_properties(font)
-    if 'hbf.font' in font.properties:
+    if 'hbf.font' in font.get_properties():
         fontname = font.get_property('hbf.font')
         xlfd_props.pop('HBF.FONT')
     else:

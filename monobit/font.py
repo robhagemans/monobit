@@ -20,7 +20,7 @@ from .taggers import tagger
 from .labels import Tag, Char, Codepoint, Label, to_label
 from .binary import ceildiv
 from .properties import extend_string
-from .cachedprops import DefaultProps, writable_property, checked_property
+from .cachedprops import HasProps, writable_property, checked_property
 from .taggers import tagmaps
 
 
@@ -32,7 +32,7 @@ NOT_SET = object()
 # font class
 
 # pylint: disable=redundant-keyword-arg, no-member
-class Font(DefaultProps):
+class FontProperties:
     """Representation of font, including glyphs and metadata."""
 
     # recognised properties and types
@@ -186,32 +186,44 @@ class Font(DefaultProps):
     source_format: str = ''
     history: str = ''
 
-    __properties_start__ = True
+
+
+
+class Font(HasProps):
+    """Representation of font, including glyphs and metadata."""
+
+    _defaults = vars(FontProperties)
+    _converters = HasProps.get_converters(FontProperties)
+
 
     @writable_property
     def name(self):
         """Full human-friendly name."""
         if self.spacing in ('character-cell', 'multi-cell'):
-            size = 'x'.join(str(_x) for _x in self.cell_size)
+            size = str(self.cell_size)
         else:
             size = str(self.point_size)
-        return ' '.join(
-            _x for _x in (self.family, self.subfamily, size) if _x
-        )
+        try:
+            name = ' '.join(
+                _x for _x in (self.family, self.subfamily, size) if _x
+            )
+        except AttributeError as e:
+            raise
+        return name
 
     @writable_property
     def subfamily(self):
         """Font additional names."""
-        if self.slant == self._get_default('slant'):
+        if self.slant == self.get_default('slant'):
             slant = ''
         else:
             # title-case
             slant = self.slant.title()
-        if self.setwidth == self._get_default('setwidth'):
+        if self.setwidth == self.get_default('setwidth'):
             setwidth = ''
         else:
             setwidth = self.setwidth.title()
-        if (slant or setwidth) and self.weight == self._get_default('weight'):
+        if (slant or setwidth) and self.weight == self.get_default('weight'):
             weight = ''
         else:
             weight = self.weight.title()
@@ -249,7 +261,7 @@ class Font(DefaultProps):
     def dpi(self):
         """Target screen resolution in dots per inch."""
         # if point-size has been overridden and dpi not set, determine from pixel-size & point-size
-        if self._defined('point-size') is not None:
+        if 'point_size' in self._props:
             dpi = (72 * self.pixel_size) // self.point_size
         else:
             # default: 72 dpi; 1 point == 1 pixel
@@ -271,7 +283,7 @@ class Font(DefaultProps):
     @writable_property
     def line_height(self):
         """Vertical distance between consecutive baselines, in pixels."""
-        if self._defined('leading') is not None:
+        if 'leading' in self._props:
             return self.pixel_size + self.leading
         return max(self.raster_size.y, self.pixel_size)
 
@@ -621,13 +633,12 @@ class Font(DefaultProps):
         return Char(repl)
 
 
-    __properties_end__ = True
-
     ###########################################################################
 
 
     def __init__(self, glyphs=(), *, comment=None, **properties):
         """Create new font."""
+        super().__init__()
         self._glyphs = tuple(glyphs)
         # construct lookup tables
         self._labels = {
@@ -638,12 +649,14 @@ class Font(DefaultProps):
         # comment can be str (just global comment) or mapping of property comments
         if isinstance(comment, str):
             comment = {'': comment}
+        else:
+            comment = comment or {}
         self._glyphs, properties = self._apply_metrics(self._glyphs, properties)
+        self._comment = {**comment}
         # update properties
-        # set encoding first so we can set labels
         # NOTE - we must be careful NOT TO ACCESS CACHED PROPERTIES
         #        until the constructor is complete
-        super().__init__(**properties, _comments=comment)
+        self._set_properties(properties)
 
     @staticmethod
     def _apply_metrics(glyphs, props):
@@ -668,8 +681,8 @@ class Font(DefaultProps):
             # localise glyph metrics
             glyphs = tuple(
                 _g.modify(**{
-                    _k: _g.get_property(_k) + _v
-                    for _k, _v in glob.properties.items()
+                    _k: _g._get_property(_k) + _v
+                    for _k, _v in glob.get_properties().items()
                 })
                 for _g in glyphs
             )
@@ -685,7 +698,7 @@ class Font(DefaultProps):
             f'glyphs=(...{len(self._glyphs)} glyphs...)' if self._glyphs else '',
             ',\n    '.join(
                 f'{_k}={repr(_v)}'
-                for _k, _v in self.properties.items()
+                for _k, _v in self.get_properties().items()
             ),
         )
         return '{}({})'.format(
@@ -730,7 +743,7 @@ class Font(DefaultProps):
             if old_comment:
                 comment[key] = extend_string(old_comment, comment)
         for key, value in properties.items():
-            if self._defined(key):
+            if key in self._props:
                 properties[key] = extend_string(self._props[key], value)
         if glyphs:
             glyphs = (*self.glyphs, *glyphs)
@@ -764,33 +777,15 @@ class Font(DefaultProps):
     ##########################################################################
     # property access
 
+    # __getattr__ = HasProps._getattr
+
     def get_comment(self, key=''):
         """Get global or property comment."""
-        return self._comments.get(key, '')
+        return self._comment.get(key, '')
 
     def _get_comment_dict(self):
         """Get all global and property comments as a dict."""
-        return self._comments
-
-    @property
-    def properties(self):
-        """Non-defaulted properties in order of default definition list."""
-        return {_k: _v for _k, _v in self._props.items()}
-
-    def is_known_property(self, key):
-        """Field is a recognised property."""
-        return self._known(key)
-
-    def get_property(self, key):
-        """Get value for property."""
-        try:
-            return self._get_property(key)
-        except KeyError:
-            return None
-
-    def get_default(self, property):
-        """Default value for a property."""
-        return self._get_default(property)
+        return {**self._comment}
 
     def format_properties(self, template, **kwargs):
         """Format a string template using font properties."""
@@ -809,7 +804,7 @@ class Font(DefaultProps):
         """Get set of special features for this font."""
         feats = set.union(*(_g.features for _g in self.glyphs))
         if any(
-                self._defined(_p)
+                self.get_defined(_p)
                 for _p in ('line_width', 'left_extent', 'right_extent')
             ):
             feats.add('vertical')
@@ -903,7 +898,6 @@ class Font(DefaultProps):
         except KeyError:
             # use fully inked space-sized block if default glyph undefined
             return self.get_space_glyph().invert()
-
 
     @cache
     def get_space_glyph(self):

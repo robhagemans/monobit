@@ -237,7 +237,7 @@ def _convert_to_flf(font, hardblank='$'):
         codetag_count = len(coded_chars)
     )
     # keep namespace properties
-    if 'figlet' in font.properties:
+    if 'figlet' in font.get_properties():
         propsplit = (item.partition('=') for item in font.figlet.split())
         figprops = {_k: _v for _k, _, _v in propsplit}
     else:

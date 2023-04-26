@@ -879,18 +879,18 @@ def _create_xlfd_properties(font):
     """Construct XLFD properties."""
     # construct the fields needed for FontName if not defined, leave others optional
     xlfd_props = {
-        'FONT_ASCENT': font.properties.get('ascent'),
-        'FONT_DESCENT': font.properties.get('descent'),
+        'FONT_ASCENT': font.get_defined('ascent'),
+        'FONT_DESCENT': font.get_defined('descent'),
         'PIXEL_SIZE': font.pixel_size,
-        'X_HEIGHT': font.properties.get('x_height', None),
-        'CAP_HEIGHT': font.properties.get('cap_height', None),
+        'X_HEIGHT': font.get_defined('x_height'),
+        'CAP_HEIGHT': font.get_defined('cap_height'),
         'RESOLUTION_X': font.dpi.x,
         'RESOLUTION_Y': font.dpi.y,
         'POINT_SIZE': int(font.point_size) * 10,
-        'FACE_NAME': _quoted_string(font.name) if 'name' in font.properties else None,
-        'FONT_VERSION': _quoted_string(font.revision) if 'revision' in font.properties else None,
-        'COPYRIGHT': _quoted_string(font.copyright) if 'copyright' in font.properties else None,
-        'NOTICE': _quoted_string(font.notice) if 'notice' in font.properties else None,
+        'FACE_NAME': _quoted_string(font.name) if 'name' in font.get_properties() else None,
+        'FONT_VERSION': _quoted_string(font.revision) if 'revision' in font.get_properties() else None,
+        'COPYRIGHT': _quoted_string(font.copyright) if 'copyright' in font.get_properties() else None,
+        'NOTICE': _quoted_string(font.notice) if 'notice' in font.get_properties() else None,
         'FOUNDRY': _quoted_string(font.foundry),
         'FAMILY_NAME': _quoted_string(font.family),
         'WEIGHT_NAME': _quoted_string(font.weight.title()),
@@ -911,21 +911,21 @@ def _create_xlfd_properties(font):
         'ADD_STYLE_NAME': _quoted_string(font.style.title()),
         'AVERAGE_WIDTH': str(round(float(font.average_width) * 10)).replace('-', '~'),
         # only set if explicitly defined
-        'UNDERLINE_POSITION': font.properties.get('underline_descent', None),
-        'UNDERLINE_THICKNESS': font.properties.get('underline_thickness', None),
-        'DESTINATION': {'printer': 0, 'screen': 1, None: None}.get(font.device.lower(), None),
-        'SUPERSCRIPT_SIZE': font.properties.get('superscript_size', None),
-        'SUBSCRIPT_SIZE': font.properties.get('subscript_size', None),
-        'SMALL_CAP_SIZE': font.properties.get('small_cap_size', None),
-        'SUPERSCRIPT_X': font.superscript_offset.x if 'superscript_offset' in font.properties else None,
-        'SUPERSCRIPT_Y': font.superscript_offset.y if 'superscript_offset' in font.properties else None,
-        'SUBSCRIPT_X': font.subscript_offset.x if 'subscript_offset' in font.properties else None,
-        'SUBSCRIPT_Y': font.subscript_offset.y if 'subscript_offset' in font.properties else None,
-        'FIGURE_WIDTH': font.properties.get('digit_width', None),
-        'MIN_SPACE': font.properties.get('min_word_space', None),
-        'NORM_SPACE': font.properties.get('word_space', None),
-        'MAX_SPACE': font.properties.get('max_word_space', None),
-        'END_SPACE': font.properties.get('sentence_space', None),
+        'UNDERLINE_POSITION': font.get_defined('underline_descent'),
+        'UNDERLINE_THICKNESS': font.get_defined('underline_thickness'),
+        'DESTINATION': {'printer': 0, 'screen': 1}.get(font.device.lower(), None),
+        'SUPERSCRIPT_SIZE': font.get_defined('superscript_size'),
+        'SUBSCRIPT_SIZE': font.get_defined('subscript_size'),
+        'SMALL_CAP_SIZE': font.get_defined('small_cap_size'),
+        'SUPERSCRIPT_X': font.superscript_offset.x if 'superscript_offset' in font.get_properties() else None,
+        'SUPERSCRIPT_Y': font.superscript_offset.y if 'superscript_offset' in font.get_properties() else None,
+        'SUBSCRIPT_X': font.subscript_offset.x if 'subscript_offset' in font.get_properties() else None,
+        'SUBSCRIPT_Y': font.subscript_offset.y if 'subscript_offset' in font.get_properties() else None,
+        'FIGURE_WIDTH': font.get_defined('digit_width'),
+        'MIN_SPACE': font.get_defined('min_word_space'),
+        'NORM_SPACE': font.get_defined('word_space'),
+        'MAX_SPACE': font.get_defined('max_word_space'),
+        'END_SPACE': font.get_defined('sentence_space'),
     }
     # encoding dependent values
     default_glyph = font.get_default_glyph()
@@ -963,13 +963,13 @@ def _create_xlfd_properties(font):
     # keep unparsed properties
     xlfd_props.update({
         _k.split('.')[1].replace('-', '_').upper(): _quoted_string(' '.join(_v.splitlines()))
-        for _k, _v in font.properties.items()
+        for _k, _v in font.get_properties().items()
         if _k.startswith('xlfd.')
     })
     # keep unknown properties
     xlfd_props.update({
         _k.replace('-', '_').upper(): _quoted_string(' '.join(_v.splitlines()))
-        for _k, _v in font.properties.items()
+        for _k, _v in font.get_properties().items()
         if not _k.startswith('xlfd.') and not font.is_known_property(_k)
     })
     return xlfd_props
@@ -1003,7 +1003,7 @@ def _save_bdf(font, outstream):
     ]
     vertical_metrics = ('shift_left', 'top_bearing', 'bottom_bearing')
     has_vertical_metrics = any(
-        _k in _g.properties
+        _k in _g.get_properties()
         for _g in font.glyphs
         for _k in vertical_metrics
     )
