@@ -23,6 +23,8 @@ from ..glyph import Glyph
 from ..chart import chart, grid_traverser
 from ..canvas import Canvas
 
+from .bmfont import glyph_map_to_images
+
 
 DEFAULT_IMAGE_FORMAT = 'png'
 
@@ -250,7 +252,7 @@ if Image:
         font = font.equalise_horizontal()
         font = font.stretch(*scale)
         glyph_map = chart(font, columns, margin, padding, order, direction, codepoint_range)
-        img = Canvas.from_glyph_map(glyph_map).as_image(border=border, paper=paper, ink=ink)
+        img, = glyph_map_to_images(glyph_map, border=border, paper=paper, ink=ink)
         try:
             img.save(outfile, format=image_format or Path(outfile).suffix[1:])
         except (KeyError, ValueError, TypeError):
