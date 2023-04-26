@@ -37,9 +37,8 @@ class DefaultProps:
         self._set_defaults()
         self._props = {}
         [
-            setattr(self, _field, _value)
+            self._convert_set_property(_field, _value)
             for _field, _value in kwargs.items()
-            #if not _field.startswith('_')
         ]
         _comments = _comments or {}
         self._comments = _comments
@@ -132,13 +131,17 @@ class DefaultProps:
         if value is None:
             self._props.pop(field, None)
         else:
+            self._props[field] = value
+        self._cache = {}
+
+    def _convert_set_property(self, field, value):
+        if value is not None:
             field_type = self._types.get(field, None)
             if field_type and not isinstance(field, field_type):
                 converter = self._converters.get(field, None)
                 if converter:
                     value = converter(value)
-            self._props[field] = value
-        self._cache = {}
+        self._set_property(field, value)
 
 
 def writable_property(fn):
