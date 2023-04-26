@@ -35,10 +35,11 @@ NOT_SET = object()
 class Font(DefaultProps):
     """Representation of font, including glyphs and metadata."""
 
-    # recognised properties and converters from str
+    # recognised properties and types
     # this also defines the default order in yaff files
 
     # naming - can be determined from source file if needed
+
     # full human name
     name: str
     # typeface/font family
@@ -46,24 +47,24 @@ class Font(DefaultProps):
     # further specifiers
     subfamily: str
     # unique id
-    font_id: str
+    font_id: str = ''
 
     # font metadata
-    # can't be calculated
+
     # author or issuer
-    author: str
+    author: str = ''
     foundry: str
     # copyright string
-    copyright: str
+    copyright: str = ''
     # license string or similar
-    notice: str
+    notice: str = ''
     # font version
     revision: str = '0'
 
     # font description
-    # can't be calculated
+
     # serif, sans, etc.
-    style: str
+    style: str = ''
     # nominal point size
     point_size: float
     # normal, bold, light, ...
@@ -73,29 +74,30 @@ class Font(DefaultProps):
     # normal, condensed, expanded, ...
     setwidth: str = 'normal'
     # underline, strikethrough, etc.
-    decoration: str
+    decoration: str = ''
 
-    # target info
-    # can't be calculated
+    # rendering target
+
     # target device name
-    device: str
+    device: str = ''
     # calculated or given
     # pixel aspect ratio - square pixel
     pixel_aspect: Coord = Coord(1, 1)
     # target resolution in dots per inch
     dpi: Coord
 
-    # summarising quantities
-    # determined from the bitmaps only
+    # summarising quantities, determined from bitmaps (not writable)
 
     # proportional, monospace, character-cell, multi-cell
     spacing: str
     # maximum raster (not necessarily ink) width/height
     raster_size: Coord
+    raster: Bounds
     # width, height of the character cell
     cell_size: Coord
     # overall ink bounds - overlay all glyphs with fixed origin and determine maximum ink extent
     bounding_box: Coord
+    ink_bounds: Bounds
     # average advance width, rounded to tenths
     average_width: float
     # maximum glyph advance width
@@ -106,37 +108,33 @@ class Font(DefaultProps):
     digit_width: int
 
     # descriptive typographic quantities
-    # can be calculated or given, may affect rendering
 
     # height of lowercase x relative to baseline
     x_height: int
     # height of capital relative to baseline
     cap_height: int
-    # can't be calculated, affect rendering (vertical positioning)
-    # might affect e.g. composition of characters
+
+    # metrics
+
     # recommended typographic ascent relative to baseline (not necessarily equal to top)
     ascent: int
     # recommended typographic descent relative to baseline (not necessarily equal to bottom)
     descent: int
-    # 'descent' for vertical rendering
-    left_extent: int
-    # 'ascent' for vertical rendering
-    right_extent: int
+    # vertical distance between consecutive baselines, in pixels
+    line_height: int
     # nominal pixel size, always equals ascent + descent
     pixel_size: int
     # vertical interline spacing, defined as line_height - pixel_size
     leading: int
 
-    # metrics
-    # can't be calculated, affect rendering
-
-    # vertical distance between consecutive baselines, in pixels
-    line_height: int
+    # 'descent' for vertical rendering
+    left_extent: int
+    # 'ascent' for vertical rendering
+    right_extent: int
     # horizontal distance between consecutive baselines, in pixels
     line_width: int
 
     # encoding parameters
-    # can't be calculated, affect rendering
 
     # character map, stored as normalised name
     encoding: EncodingName
@@ -183,19 +181,10 @@ class Font(DefaultProps):
     sentence_space: int
 
     # conversion metadata
-    # can't be calculated, informational
-    converter: str
-    source_name: str
-    source_format: str
-    history: str
-
-    # type converters for compatibility synonyms
-    average_advance: float
-    max_advance: int
-    cap_advance: int
-
-    # non-overridable, for pylint's benefit
-    raster: Bounds
+    converter: str = ''
+    source_name: str = ''
+    source_format: str = ''
+    history: str = ''
 
     __properties_start__ = True
 
