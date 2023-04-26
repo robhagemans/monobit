@@ -900,6 +900,7 @@ class Font(HasProps):
     @cache
     def get_space_glyph(self):
         """Get blank glyph with advance width defined by word-space property."""
+        # pylint: disable=invalid-unary-operand-type
         return Glyph.blank(
             width=self.word_space, height=self.pixel_size,
             shift_up=-self.descent

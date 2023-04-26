@@ -154,6 +154,7 @@ def _read_signum(instream, fixed_byte_width, baseline, line_height, dpi):
             # from actual files it looks reasonable to preserve only left bearing
             # it is unclear how the advance width of whitespace is determined
             # perhaps this is encoded in the unknown parts of the file header
+            # pylint: disable=no-member
             glyph = glyph.crop(
                 right=glyph.padding.right,
                 adjust_metrics=bool(fixed_byte_width)

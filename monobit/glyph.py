@@ -558,6 +558,7 @@ class Glyph(HasProps):
         """
         pixels = self._pixels.flip()
         if adjust_metrics:
+            # pylint: disable=invalid-unary-operand-type
             return self.modify(
                 pixels,
                 top_bearing=self.bottom_bearing,
@@ -683,6 +684,7 @@ class Glyph(HasProps):
         adjust_metrics: make the operation render-invariant (default: True)
         create_vertical_metrics: create vertical metrics if they don't exist (default: False)
         """
+        # pylint: disable=not-an-iterable
         return self.crop(
             *self.padding, adjust_metrics=adjust_metrics,
             create_vertical_metrics=create_vertical_metrics,
@@ -804,6 +806,7 @@ class Glyph(HasProps):
         down: number of times to repeat inked pixel downwards
         adjust_metrics: ensure advances stay the same (default: True)
         """
+        # pylint: disable=unpacking-non-sequence
         pleft, pdown, pright, pup = self.padding
         work = self.expand(
             max(0, left-pleft), max(0, down-pdown),
