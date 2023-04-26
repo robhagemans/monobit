@@ -7,7 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
-from .font import Font
+from .font import Font, FontProperties
 from .scripting import scriptable, get_scriptables
 
 
@@ -47,7 +47,7 @@ class Pack:
 
     @scriptable(
         pack_operation=True,
-        script_args=Font.__annotations__.items()
+        script_args=FontProperties.__annotations__.items()
     )
     def select(self, **properties):
         """Get a subset of fonts from the pack by property. E.g. select(name='Times')."""

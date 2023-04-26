@@ -187,8 +187,6 @@ class FontProperties:
     history: str = ''
 
 
-
-
 class Font(HasProps):
     """Representation of font, including glyphs and metadata."""
 
@@ -1054,8 +1052,8 @@ class Font(HasProps):
         ]
         return self.modify(glyphs)
 
-
-    def _set(self, **kwargs):
+    @scriptable(script_args=FontProperties.__annotations__.items())
+    def set(self, **kwargs):
         """Return a copy of the font with one or more recognised properties changed."""
         kwargs = {
             _k: (_v if _v != '' else None)
@@ -1427,8 +1425,6 @@ class Font(HasProps):
             locals()[_name] = _modify_glyphs
 
 
-# set properties from script
-Font.set = scriptable(script_args=Font.__annotations__.items())(Font._set)
 
 # scriptable font/glyph operations
 operations = get_scriptables(Font)
