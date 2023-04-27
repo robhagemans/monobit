@@ -282,7 +282,7 @@ def glyph_map_to_images(glyph_map, *, paper, ink, border):
     images = [Image.new('L', (width, height), border) for _ in range(last+1)]
     for entry in glyph_map:
         charimg = Image.new('L', (entry.glyph.width, entry.glyph.height))
-        data = entry.glyph.as_vector(ink, paper)
+        data = entry.glyph.as_bits(ink, paper)
         charimg.putdata(data)
         # Image has ttb y coords, we have btt
         # our character origin is bottom left
