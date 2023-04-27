@@ -32,7 +32,7 @@ class GlyphMap:
         return canvas
 
     @staticmethod
-    def to_images(glyph_map, *, paper, ink, border):
+    def to_images(glyph_map, *, paper, ink, border, invert_y=False):
         """Draw images based on glyph map."""
         if not Image:
             raise ImportError('Rendering to image requires PIL module.')
@@ -50,7 +50,11 @@ class GlyphMap:
             charimg = Image.new('L', (entry.glyph.width, entry.glyph.height))
             data = entry.glyph.as_bits(ink, paper)
             charimg.putdata(data)
-            # Image has ttb y coords, we have btt
-            # our character origin is bottom left
-            images[entry.sheet].paste(charimg, (entry.x, height-entry.glyph.height-entry.y))
+            if invert_y:
+                target = (entry.x, entry.y)
+            else:
+                # Image has ttb y coords, we have btt
+                # our character origin is bottom left
+                target = (entry.x, height-entry.glyph.height-entry.y)
+            images[entry.sheet].paste(charimg, target)
         return images
