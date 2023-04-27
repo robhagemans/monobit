@@ -33,21 +33,6 @@ class Canvas(Raster):
 
     default_blit_operator = lambda _m, _c: 1 if (_m==1 or _c==1) else _c
 
-    @classmethod
-    def from_glyph_map(cls, glyph_map):
-        """Create canvas froom glyph map."""
-        min_x = min(_entry.x for _entry in glyph_map)
-        min_y = min(_entry.y for _entry in glyph_map)
-        max_x = max(_entry.x + _entry.glyph.width for _entry in glyph_map)
-        max_y = max(_entry.y + _entry.glyph.height for _entry in glyph_map)
-        # we don't need +1 as we already included the width/height of the glyphs
-        # e.g. if I have a 2-pixel wide glyph at x=0, I need a 2-pixel image
-        canvas = cls.blank(max_x - min_x, max_y - min_y)
-        for entry in glyph_map:
-            canvas.blit(
-                entry.glyph, entry.x - min_x, entry.y - min_y, operator=max
-            )
-        return canvas
 
     def blit(self, raster, grid_x, grid_y, operator=default_blit_operator):
         """

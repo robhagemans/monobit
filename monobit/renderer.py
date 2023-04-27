@@ -40,7 +40,7 @@ except ImportError:
 from .binary import ceildiv
 from .labels import Char, Codepoint
 from .raster import Raster, blockstr
-from .canvas import Canvas
+from .glyphmap import GlyphMap
 from .properties import Props
 from .glyph import Glyph
 
@@ -104,7 +104,7 @@ def render(
     glyph_map = _render(
         font, glyphs, margin_x, margin_y, align, adjust_bearings
     )
-    canvas = Canvas.from_glyph_map(glyph_map)
+    canvas = GlyphMap.to_canvas(glyph_map)
     return canvas
 
 
