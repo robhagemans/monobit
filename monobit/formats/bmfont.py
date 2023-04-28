@@ -698,7 +698,7 @@ def _create_bmfont(
         if size is None:
             n_layers = 4 if packed else 1
             size = _estimate_size(glyphs, n_layers, padding, spacing)
-        glyph_map = _map_glyphs_to_image(
+        glyph_map = spritesheet(
             glyphs, size=size, spacing=spacing, padding=padding,
         )
     # draw images
@@ -1027,7 +1027,7 @@ def _draw_images(glyph_map, packed, paper, ink, border):
 ###############################################################################
 # packed spritesheets
 
-def _map_glyphs_to_image(glyphs, *, size, spacing, padding):
+def spritesheet(glyphs, *, size, spacing, padding):
     """Determine where to draw glyphs in sprite sheets."""
     # sort by area, large to small. keep mapping table
     sorted_glyphs = tuple(sorted(
@@ -1048,7 +1048,7 @@ def _map_glyphs_to_image(glyphs, *, size, spacing, padding):
             for _g in glyphs
         ):
         raise ValueError('Image size is too small for largest glyph.')
-    glyph_map = []
+    glyph_map = GlyphMap()
     sheets = []
     while True:
         # output glyphs
@@ -1065,14 +1065,14 @@ def _map_glyphs_to_image(glyphs, *, size, spacing, padding):
                     # we don't fit, get next sheet
                     glyphs = glyphs[number:]
                     break
-            glyph_map.append(Props(
-                glyph=glyph, sheet=i, x=x+padding.left, y=y+padding.top,
-            ))
+            glyph_map.append_glyph(
+                glyph, x+padding.left, y+padding.top, sheet=i
+            )
         else:
             # all done, get out
             break
     # put chars in original glyph order
-    glyph_map = [glyph_map[order_mapping[_i]] for _i in range(len(glyph_map))]
+    glyph_map.reorder(order_mapping)
     return glyph_map
 
 

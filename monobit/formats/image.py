@@ -21,8 +21,6 @@ from ..magic import FileFormatError
 from ..font import Font
 from ..glyph import Glyph
 from ..chart import chart, grid_traverser
-from ..canvas import Canvas
-from ..glyphmap import GlyphMap
 
 
 DEFAULT_IMAGE_FORMAT = 'png'
@@ -261,7 +259,7 @@ if Image:
         font = fonts[0]
         font = font.stretch(*scale)
         glyph_map = chart(font, columns, margin, padding, order, direction, codepoint_range)
-        img, = GlyphMap.to_images(glyph_map, border=border, paper=paper, ink=ink)
+        img, = glyph_map.to_images(border=border, paper=paper, ink=ink)
         try:
             img.save(outfile, format=image_format or Path(outfile).suffix[1:])
         except (KeyError, ValueError, TypeError):

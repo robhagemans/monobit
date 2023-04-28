@@ -10,6 +10,7 @@ from itertools import product
 from .binary import ceildiv
 from .properties import Props
 from .basetypes import Coord
+from .glyphmap import GlyphMap
 
 
 def chart(
@@ -52,7 +53,7 @@ def grid_map(
     rows = ceildiv(len(font.glyphs), columns)
     # output glyph map
     traverse = grid_traverser(columns, rows, order, direction)
-    glyph_map = tuple(
+    glyph_map = GlyphMap(
         Props(
             glyph=_glyph, sheet=0,
             x=margin.x + col*step_x, y=margin.y + row*step_y,
