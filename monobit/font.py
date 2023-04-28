@@ -1296,6 +1296,8 @@ class Font(HasProps):
         factor_y: number of times to repeat vertically
         adjust_metrics: also stretch metrics (default: True)
         """
+        if (factor_x, factor_y) == (1, 1):
+            return self
         font = self._apply_to_all_glyphs(
             Glyph.stretch,
             factor_x=factor_x, factor_y=factor_y,
@@ -1321,6 +1323,8 @@ class Font(HasProps):
         factor_y: factor to shrink vertically
         adjust_metrics: also stretch metrics (default: True)
         """
+        if (factor_x, factor_y) == (1, 1):
+            return self
         font = self._apply_to_all_glyphs(
             Glyph.shrink,
             factor_x=factor_x, factor_y=factor_y,

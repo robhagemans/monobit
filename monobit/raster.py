@@ -267,9 +267,16 @@ class Raster:
     def as_vector(self, ink=1, paper=0):
         """Return flat tuple of user-specified foreground and background objects."""
         return tuple(
-            _c
-            for _row in self.as_matrix(ink=ink, paper=paper)
-            for _c in _row
+            ink if _c == self._1 else paper
+            for _c in ''.join(self._pixels)
+        )
+
+    def as_bits(self, ink=1, paper=0):
+        """Return flat bits as bytes string."""
+        return (
+            ''.join(self._pixels).encode('latin-1')
+            .replace(self._1.encode('latin-1'), bytes((ink,)))
+            .replace(self._0.encode('latin-1'), bytes((paper,)))
         )
 
     @classmethod

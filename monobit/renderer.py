@@ -40,9 +40,9 @@ except ImportError:
 from .binary import ceildiv
 from .labels import Char, Codepoint
 from .raster import Raster, blockstr
-from .canvas import Canvas
 from .properties import Props
 from .glyph import Glyph
+from .glyphmap import GlyphMap
 
 
 DIRECTIONS = {
@@ -104,9 +104,7 @@ def render(
     glyph_map = _render(
         font, glyphs, margin_x, margin_y, align, adjust_bearings
     )
-    canvas = Canvas.from_glyph_map(glyph_map)
-    return canvas
-
+    return glyph_map
 
 def _adjust_margins_horizontal(glyphs):
     """Ensure margins are wide enough for any negative bearings."""
@@ -135,9 +133,9 @@ def _render_horizontal(
     # if a glyph extends below the descent line or left of the origin,
     # it may draw into the margin
     baseline = -margin_y - font.ascent
-    glyph_map = []
+    glyph_map = GlyphMap()
     # append empty glyph at start and end for margins
-    glyph_map.append(Props(glyph=Glyph(), sheet=0, x=0, y=0))
+    glyph_map.append_glyph(Glyph(), 0, 0, sheet=0)
     for glyph_row in glyphs:
         # x, y are relative to the left margin & baseline
         x = 0
@@ -159,12 +157,11 @@ def _render_horizontal(
         else:
             start = margin_x
         # append empty glyph at start and end for margins
-        glyph_map.append(Props(
-            glyph=Glyph(), sheet=0,
-            x=start+x+margin_x, y=baseline-font.descent-margin_y
-        ))
+        glyph_map.append_glyph(
+            Glyph(), start+x+margin_x, baseline-font.descent-margin_y, sheet=0,
+        )
         for glyph, x, y in zip(glyph_row, grid_x, grid_y):
-            glyph_map.append(Props(glyph=glyph, sheet=0, x=start+x, y=y))
+            glyph_map.append_glyph(glyph, start+x, y, sheet=0)
         # move to next line
         baseline -= font.line_height
     return glyph_map
@@ -177,8 +174,8 @@ def _render_vertical(
     # central axis (with leftward bias)
     baseline = font.line_width // 2
     # default is ttb right-to-left
-    glyph_map = []
-    glyph_map.append(Props(glyph=Glyph(), sheet=0, x=0, y=0))
+    glyph_map = GlyphMap()
+    glyph_map.append_glyph(Glyph(), 0, 0, sheet=0)
     for glyph_row in glyphs:
         y = 0
         grid_x, grid_y = [], []
@@ -194,13 +191,14 @@ def _render_vertical(
         else:
             start = -margin_y
         # append empty glyph at start and end for margins
-        glyph_map.append(Props(
-            glyph=Glyph(), sheet=0,
+        glyph_map.append_glyph(
+            Glyph(),
             x=baseline + (font.line_width+1)//2 + margin_x*2,
-            y=start+y-margin_y
-        ))
+            y=start+y-margin_y,
+            sheet=0,
+        )
         for glyph, x, y in zip(glyph_row, grid_x, grid_y):
-            glyph_map.append(Props(glyph=glyph, sheet=0, x=margin_x+x, y=start+y))
+            glyph_map.append_glyph(glyph, margin_x+x, start+y, sheet=0)
         # move to next line
         baseline += font.line_width
     return glyph_map
