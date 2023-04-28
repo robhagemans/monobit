@@ -94,7 +94,7 @@ class GlyphMap:
             else:
                 # Image has ttb y coords, we have btt
                 # our character origin is bottom left
-                target = (entry.x, height-entry.glyph.height-entry.y)
+                target = (entry.x-min_x, height-entry.glyph.height+min_y-entry.y)
             if transparent:
                 mask = charimg
             else:
@@ -102,7 +102,7 @@ class GlyphMap:
             images[entry.sheet].paste(charimg, target, mask)
         images = tuple(
             _im.resize((self._scale_x*_im.width, self._scale_y*_im.height))
-                .rotate(-90 * self._turns)
+                .rotate(-90 * self._turns, expand=True)
             for _im in images
         )
         return images
