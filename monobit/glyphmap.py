@@ -150,10 +150,7 @@ class Canvas(Raster):
         # setting 0 and 1 will make Raster init leave the input alone
         return cls(canvas, _0=0, _1=1)
 
-
-    default_blit_operator = lambda _m, _c: 1 if (_m==1 or _c==1) else _c
-
-    def blit(self, raster, grid_x, grid_y, operator=default_blit_operator):
+    def blit(self, raster, grid_x, grid_y, operator):
         """
         Draw a matrix onto a canvas
         (leaving exising ink in place, depending on operator).
@@ -168,23 +165,6 @@ class Canvas(Raster):
                     if 0 <= grid_x + work_x < self.width:
                         row[grid_x + work_x] = operator(ink, row[grid_x + work_x])
         return self
-
-    # unused
-    def as_image(
-            self, *,
-            ink=(255, 255, 255), paper=(0, 0, 0), border=(0, 0, 0)
-        ):
-        """Convert raster to image."""
-        if not Image:
-            raise ImportError('Rendering to image requires PIL module.')
-        if not self.height:
-            return Image.new('RGB', (0, 0))
-        img = Image.new('RGB', (self.width, self.height), border)
-        img.putdata([
-            {-1: border, 0: paper, 1: ink}[_pix]
-            for _row in self._pixels for _pix in _row
-        ])
-        return img
 
     def as_text(
             self, *,
