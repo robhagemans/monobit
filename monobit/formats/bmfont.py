@@ -1008,7 +1008,10 @@ def _save_pages(outfile, font, sheets, image_format):
 
 def _draw_images(glyph_map, packed, paper, ink, border):
     """Draw images based on glyph map."""
-    images = GlyphMap.to_images(glyph_map, paper=paper, ink=ink, border=border, invert_y=True)
+    images = glyph_map.to_images(
+        paper=paper, ink=ink, border=border,
+        invert_y=True, transparent=False
+    )
     width, height = images[0].width, images[0].height
     # pack 4 sheets per image in RGBA layers
     if packed:

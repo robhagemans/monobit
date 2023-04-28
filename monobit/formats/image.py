@@ -259,7 +259,9 @@ if Image:
         font = fonts[0]
         font = font.stretch(*scale)
         glyph_map = chart(font, columns, margin, padding, order, direction, codepoint_range)
-        img, = glyph_map.to_images(border=border, paper=paper, ink=ink)
+        img, = glyph_map.to_images(
+            border=border, paper=paper, ink=ink, transparent=False
+        )
         try:
             img.save(outfile, format=image_format or Path(outfile).suffix[1:])
         except (KeyError, ValueError, TypeError):

@@ -104,9 +104,7 @@ def render(
     glyph_map = _render(
         font, glyphs, margin_x, margin_y, align, adjust_bearings
     )
-    canvas = glyph_map.to_canvas()
-    return canvas
-
+    return glyph_map
 
 def _adjust_margins_horizontal(glyphs):
     """Ensure margins are wide enough for any negative bearings."""

@@ -11,19 +11,32 @@ except ImportError:
     Image = None
 
 from .properties import Props
-from .canvas import Canvas
+from .raster import Raster, blockstr
 
 
 class GlyphMap:
 
     def __init__(self, map=()):
         self._map = list(map)
+        self._turns = 0
+        self._scale_x = 1
+        self._scale_y = 1
 
     def __iter__(self):
         return iter(self._map)
 
     def __contains__(self, item):
         return item in self._map
+
+    def turn(self, clockwise=1, *, anti=0):
+        turns = clockwise - anti
+        if turns%2:
+            self._scale_x, self._scale_y = self._scale_y, self._scale_x
+        self._turns += turns
+
+    def stretch(self, scale_x=1, scale_y=1):
+        self._scale_x *= scale_x
+        self._scale_y *= scale_y
 
     def append_glyph(self, glyph, x, y, sheet=0):
         """Insert glyph in glyph map."""
@@ -58,9 +71,12 @@ class GlyphMap:
                 canvas.blit(
                     entry.glyph, entry.x - min_x, entry.y - min_y, operator=max
                 )
-        return canvas
+        return canvas.stretch(self._scale_x, self._scale_y).turn(self._turns)
 
-    def to_images(self, *, paper, ink, border, invert_y=False):
+    def to_images(
+            self, *, paper, ink, border, invert_y=False,
+            transparent=True
+        ):
         """Draw images based on shhets in glyph map."""
         if not Image:
             raise ImportError('Rendering to image requires PIL module.')
@@ -79,5 +95,108 @@ class GlyphMap:
                 # Image has ttb y coords, we have btt
                 # our character origin is bottom left
                 target = (entry.x, height-entry.glyph.height-entry.y)
-            images[entry.sheet].paste(charimg, target)
+            if transparent:
+                mask = charimg
+            else:
+                mask = None
+            images[entry.sheet].paste(charimg, target, mask)
+        images = tuple(
+            _im.resize((self._scale_x*_im.width, self._scale_y*_im.height))
+                .rotate(-90 * self._turns)
+            for _im in images
+        )
         return images
+
+    def as_image(
+            self, *,
+            ink=(255, 255, 255), paper=(0, 0, 0), border=(0, 0, 0),
+            sheet=0,
+        ):
+        """Convert glyph map to image."""
+        images = self.to_images(ink=ink, paper=paper, border=border)
+        return images[sheet]
+
+    def as_text(
+            self, *,
+            ink='@', paper='.', border='.',
+            start='', end='',
+            sheet=0,
+        ):
+        """Convert glyph map to text."""
+        canvas = self.to_canvas(sheet=sheet)
+        return canvas.as_text(
+            ink=ink, paper=paper, border=border, start=start, end=end
+        )
+
+    def as_blocks(self, *, ink='@', paper='.', start='', end='\n', sheet=0):
+        """Convert glyph map to a string of quadrant block characters."""
+        canvas = self.to_canvas(sheet=sheet)
+        return canvas.as_blocks(ink=ink, paper=paper, start=start, end=end)
+
+
+class Canvas(Raster):
+    """Mutable raster for glyph maps."""
+
+    _inner = list
+    _outer = list
+    _0 = 0
+    _1 = 1
+    _itemtype = int
+
+    @classmethod
+    def blank(cls, width, height, fill=-1):
+        """Create a canvas in background colour."""
+        canvas = [[fill]*width for _ in range(height)]
+        # setting 0 and 1 will make Raster init leave the input alone
+        return cls(canvas, _0=0, _1=1)
+
+
+    default_blit_operator = lambda _m, _c: 1 if (_m==1 or _c==1) else _c
+
+    def blit(self, raster, grid_x, grid_y, operator=default_blit_operator):
+        """
+        Draw a matrix onto a canvas
+        (leaving exising ink in place, depending on operator).
+        """
+        if not raster.width or not self.width:
+            return self
+        matrix = raster.as_matrix()
+        for work_y in reversed(range(raster.height)):
+            if 0 <= grid_y + work_y < self.height:
+                row = self._pixels[self.height - (grid_y + work_y) - 1]
+                for work_x, ink in enumerate(matrix[raster.height - work_y - 1]):
+                    if 0 <= grid_x + work_x < self.width:
+                        row[grid_x + work_x] = operator(ink, row[grid_x + work_x])
+        return self
+
+    # unused
+    def as_image(
+            self, *,
+            ink=(255, 255, 255), paper=(0, 0, 0), border=(0, 0, 0)
+        ):
+        """Convert raster to image."""
+        if not Image:
+            raise ImportError('Rendering to image requires PIL module.')
+        if not self.height:
+            return Image.new('RGB', (0, 0))
+        img = Image.new('RGB', (self.width, self.height), border)
+        img.putdata([
+            {-1: border, 0: paper, 1: ink}[_pix]
+            for _row in self._pixels for _pix in _row
+        ])
+        return img
+
+    def as_text(
+            self, *,
+            ink='@', paper='.', border='.',
+            start='', end=''
+        ):
+        """Convert raster to text."""
+        if not self.height:
+            return ''
+        colourdict = {-1: border, 0: paper, 1: ink}
+        contents = '\n'.join(
+            ''.join(colourdict[_pix] for _pix in _row)
+            for _row in self._pixels
+        )
+        return blockstr(''.join((start, contents, end)))
