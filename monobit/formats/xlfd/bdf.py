@@ -560,9 +560,15 @@ def _read_bdf_glyphs(instream):
 
 def _read_bdf_global(instream):
     """Read global section of BDF file."""
-    start_props, start_comments, _ = read_props(instream, ends=('STARTPROPERTIES',))
-    x_props, x_comments, _ = read_props(instream, ends=('ENDPROPERTIES',))
-    end_props, end_comments, _ = read_props(instream, ends=('CHARS',), keep_end=True)
+    start_props, start_comments, end = read_props(instream, ends=('STARTPROPERTIES', 'CHARS'), keep_end=True)
+    x_props, x_comments = {}, {}
+    end_props, end_comments = {}, {}
+    if end != 'CHARS':
+        del start_props[-1]
+        x_props, x_comments, end = read_props(instream, ends=('CHARS', 'ENDPROPERTIES'), keep_end=True)
+        if end != 'CHARS':
+            del x_props[-1]
+            end_props, end_comments, _ = read_props(instream, ends=('CHARS',), keep_end=True)
     bdf_props = {**dict(start_props), **dict(end_props)}
     comments = [*start_comments, *x_comments, *end_comments]
     return '\n'.join(comments), bdf_props, dict(x_props)
