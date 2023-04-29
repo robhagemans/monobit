@@ -234,7 +234,7 @@ def _convert_from_pf(pf_props, pf_masks):
                 _m.maskData, width=_m.width, height=_m.height,
                 left_bearing=_m.maskOffset.hx, shift_up=_m.maskOffset.hy-_m.height,
                 # we don't support hy
-                right_bearing=_m.maskWidth.hx-_m.maskOffset.hx-_m.width,
+                right_bearing=_m.maskWidth.hx+_m.maskOffset.hx-_m.width,
                 tag=_name.decode('latin-1'),
             )
             for _m, _name in zip(_strike, pf_props.names)
