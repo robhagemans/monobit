@@ -837,7 +837,12 @@ def _parse_xlfd_properties(x_props, xlfd_name, to_int=int):
         else:
             properties['default_char'] = default_ord
     # keep original FontName if invalid or conflicting
-    if not xlfd_name_props or conflicting:
+    if not xlfd_name_props:
+        if not properties['family']:
+            properties['family'] = xlfd_name
+        else:
+            properties['xlfd.font_name'] = xlfd_name
+    if conflicting:
         properties['xlfd.font_name'] = xlfd_name
     # keep unparsed but known properties
     for key in _XLFD_UNPARSED:
