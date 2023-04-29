@@ -39,6 +39,7 @@ _BASE = {'l': le, 'b': be}
 
 
 _PREBUILTFILEVERSION = 3
+_FIXEDSCALE = 65536
 
 # typedef struct _t_PrebuiltFile {
 _PREBUILT_FILE = {
@@ -206,7 +207,7 @@ def _read_pf(instream):
     pf_props.matrices = (_PREBUILT_MATRIX[endian] * header.numberMatrix).read_from(instream)
     if header.vertWidths:
         instream.seek(header.vertWidths)
-        pf_props.vert_idths = (_PREBUILT_VERT_WIDTHS[endian] * header.numberChar).read_from(instream)
+        pf_props.vertWidths = (_PREBUILT_VERT_WIDTHS[endian] * header.numberChar).read_from(instream)
     if header.vertMetrics:
         instream.seek(header.vertMetrics)
         pf_props.vertMetrics = ((_PREBUILT_VERT_METRICS[endian] * header.numberChar) * header.numberMatrix).read_from(instream)
@@ -234,19 +235,33 @@ def _convert_from_pf(pf_props, pf_masks):
             Glyph.from_bytes(
                 _m.maskData, width=_m.width, height=_m.height,
                 left_bearing=_m.maskOffset.hx, shift_up=_m.maskOffset.hy-_m.height,
-                # we don't support hy
+                # we don't support maskOffset.hy (cross-advance)
                 right_bearing=_m.maskWidth.hx+_m.maskOffset.hx-_m.width,
                 tag=_name.decode('latin-1'),
+                # we ignore hy (scalable cross-advance)
+                # this is bdf SWIDTH/1000
+                # so we need to multiply by point_size * xdpi / 72 (with ydpi==75)
+                # and point_size == _matrix.d / _FIXEDSCALE (below)
+                scalable_width=f'{(_width.hx/_FIXEDSCALE) * (_matrix.a/_FIXEDSCALE) * (75/72):.2f}',
             )
-            for _m, _name in zip(_strike, pf_props.names)
+            for _m, _name, _width in zip(_strike, pf_props.names, pf_props.widths)
         )
-        for _strike in pf_masks
+        for _matrix, _strike in zip(pf_props.matrices, pf_masks)
     )
     fonts = tuple(
         Font(
             _glyphs, font_id=pf_props.identifier,
-            family=pf_props.fontName.decode('latin-1')
+            family=pf_props.fontName.decode('latin-1'),
+            # from the source code, we deduce
+            #  matrix.a / fixedScale == bdf SIZE.PointSize * (75 dpi) / SIZE.Xres
+            #  matrix.d / fixedScale == bdf SIZE.PointSize * (75 dpi) / SIZE.Yres
+            # however the pf file doesn't include the point size or xres/yres separately
+            # if we assume Yres == 75 dpi by definition,
+            # d becomes point size and a gives us aspect ratio
+            dpi=(75 * _matrix.a / _matrix.d, 75),
+            point_size=_matrix.d / _FIXEDSCALE,
+            encoding='latin-1' if pf_props.characterSetName == b'ISOLatin1CharacterSet' else '',
         ).label(char_from=tagmaps['adobe'])
-        for _glyphs in strikes
+        for _matrix, _glyphs in zip(pf_props.matrices, strikes)
     )
     return fonts
