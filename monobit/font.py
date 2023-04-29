@@ -28,6 +28,13 @@ from .taggers import tagmaps
 NOT_SET = object()
 
 
+def encoder_or_tagger(obj):
+    try:
+        return encoder(obj)
+    except ValueError:
+        return tagger(obj)
+
+
 ###############################################################################
 # font class
 
@@ -949,7 +956,7 @@ class Font(HasProps):
     @scriptable
     def label(
             self, *,
-            codepoint_from:encoder='', char_from:encoder='',
+            codepoint_from:encoder='', char_from:encoder_or_tagger='',
             tag_from:tagger='', comment_from:tagger='',
             overwrite:bool=False,
             match_whitespace:bool=True, match_graphical:bool=True

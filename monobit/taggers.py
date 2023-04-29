@@ -11,6 +11,7 @@ from pathlib import Path
 
 from .encoding import unicode_name, is_printable, NotFoundError
 from .labels import to_label, Tag
+from .properties import reverse_dict
 
 
 class Tagger:
@@ -108,6 +109,7 @@ class MappingTagger(Tagger):
     def __init__(self, mapping, name=''):
         """Set up mapping."""
         self._chr2tag = mapping
+        self._tag2chr = reverse_dict(mapping)
         self.name = name
 
     @classmethod
@@ -134,6 +136,16 @@ class MappingTagger(Tagger):
 
     def get_default_tag(self, char):
         """Construct a default tag for unmapped glyphs."""
+        return ''
+
+    def char(self, *labels):
+        """Get char value from tagmap."""
+        for label in labels:
+            if isinstance(label, Tag):
+                try:
+                    return self._tag2chr[label.value]
+                except KeyError:
+                    pass
         return ''
 
 

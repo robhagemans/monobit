@@ -14,6 +14,7 @@ from ..storage import loaders, savers
 from ..font import Font
 from ..glyph import Glyph
 from ..magic import FileFormatError
+from ..taggers import tagmaps
 
 
 @loaders.register(
@@ -245,7 +246,7 @@ def _convert_from_pf(pf_props, pf_masks):
         Font(
             _glyphs, font_id=pf_props.identifier,
             family=pf_props.fontName.decode('latin-1')
-        )
+        ).label(char_from=tagmaps['adobe'])
         for _glyphs in strikes
     )
     return fonts
