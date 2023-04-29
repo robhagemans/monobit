@@ -401,8 +401,10 @@ class Font(HasProps):
         # we have negative bearings; need to check if there's ink in them
         # this should be rare (monospaced/bispaced with negative bearings)
         if all(
-                (_g.advance_width >= _g.bounding_box.x)
-                and (_g.advance_height >= _g.bounding_box.y)
+                (-_g.left_bearing < _g.padding.left)
+                and (-_g.right_bearing < _g.padding.right)
+                and (-_g.top_bearing < _g.padding.top)
+                and (-_g.bottom_bearing < _g.padding.bottom)
                 for _g in negative
             ):
             return 'character-cell' if monospaced else 'multi-cell'
