@@ -15,7 +15,7 @@ from .glyph import Glyph
 from .raster import turn_method
 from .basetypes import Coord, Bounds
 from .basetypes import to_int
-from .encoding import charmaps, encoder, EncodingName
+from .encoding import charmaps, encoder, EncodingName, Encoder
 from .taggers import tagger
 from .labels import Tag, Char, Codepoint, Label, to_label
 from .binary import ceildiv
@@ -989,7 +989,7 @@ class Font(HasProps):
                 return self
         encoding = self.encoding
         if overwrite or not self.encoding:
-            if char_from:
+            if char_from and isinstance(char_from, Encoder):
                 encoding = char_from.name
             elif codepoint_from:
                 encoding = codepoint_from.name

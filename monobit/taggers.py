@@ -222,9 +222,9 @@ tagmaps = {
     'codepoint': CodepointTagger(),
     'name': UnicodeTagger(),
     'desc': UnicodeTagger(include_char=True),
-    'adobe': AdobeTagger.load('charmaps/agl/aglfn.txt', separator=';', unicode_column=0, tag_column=1),
-    'truetype': AdobeTagger.load('charmaps/agl/aglfn.txt', separator=';', unicode_column=0, tag_column=1),
-    'sgml': SGMLTagger.load('charmaps/misc/SGML.TXT', separator='\t', unicode_column=2),
+    'adobe': AdobeTagger.load('charmaps/agl/aglfn.txt', name='adobe', separator=';', unicode_column=0, tag_column=1),
+    'truetype': AdobeTagger.load('charmaps/agl/aglfn.txt', name='truetype', separator=';', unicode_column=0, tag_column=1),
+    'sgml': SGMLTagger.load('charmaps/misc/SGML.TXT', name='sgml', separator='\t', unicode_column=2),
 }
 
 # truetype mapping is adobe mapping *but* with .null for NUL
