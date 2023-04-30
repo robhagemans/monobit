@@ -330,7 +330,8 @@ def iter_blocks(text_stream, classes):
         while not block.append(line.rstrip('\r\n')):
             yield block.emit()
             block = BlockBuilder(classes)
-    yield block.emit()
+    if block:
+        yield block.emit()
 
 
 class BlockBuilder:
@@ -338,6 +339,9 @@ class BlockBuilder:
     def __init__(self, classes):
         self.block = None
         self.classes = (*classes, Unparsed)
+
+    def __bool__(self):
+        return self.block is not None
 
     def append(self, line):
         if not self.block:
