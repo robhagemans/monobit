@@ -218,12 +218,10 @@ def _read_pf(instream):
         tuple(Props(**vars(_mask)) for _mask in _strike)
         for _strike in pf_masks
     )
-    for strike in pf_masks:
+    for strike, matrix in zip(pf_masks, pf_props.matrices):
         for mask in strike:
             instream.seek(mask.maskData)
-            # FIXME need to refer to corresponding matrix
-            depth = 1
-            size = ((mask.width * depth + 7) // 8) * mask.height
+            size = ((mask.width * matrix.depth + 7) // 8) * mask.height
             mask.maskData = instream.read(size)
     return pf_props, pf_masks
 
@@ -247,7 +245,14 @@ def _convert_from_pf(pf_props, pf_masks):
             for _m, _name, _width in zip(_strike, pf_props.names, pf_props.widths)
         )
         for _matrix, _strike in zip(pf_props.matrices, pf_masks)
+        # assume higher depth means colour or grayscale
+        if _matrix.depth == 1
     )
+    if len(strikes) < len(pf_masks):
+        logging.warning(
+            f'{len(pf_masks) - len(strikes)} bitmap strikes could not be converted: '
+            'colour, grayscale and antialiased bitmaps not supported.'
+        )
     fonts = tuple(
         Font(
             _glyphs, font_id=pf_props.identifier,
