@@ -33,6 +33,16 @@ def load_pf(instream):
 # Adobe prebuilt format
 # https://github.com/johnsonjh/NeXTDPS/blob/master/fonts-21/bin/prebuiltformat.h
 # https://github.com/johnsonjh/NeXTDPS/blob/master/fonts-21/bin/prebuild.c
+#
+# these appear to be the source of the `prebuild` command line tool
+# which converts BDF files into BEPF or LEPF.
+# man page: http://macosx.polarhome.com/service/man/?qf=prebuild&tf=2&of=NeXTSTEP&sf=1
+
+# The header file includes structures for vertical metrics but the tool does not
+# convert these from BDF.
+# Lacking a spec, sample files or other documentation, I don't think we can
+# meaningfully convert vertical metrics in these files
+
 
 # we have a choice of big and little endian files, need different base classes
 _BASE = {'l': le, 'b': be}
@@ -205,12 +215,22 @@ def _read_pf(instream):
     pf_props.widths = (_PREBUILT_WIDTH[endian] * header.numberChar).read_from(instream)
     instream.seek(header.matrices)
     pf_props.matrices = (_PREBUILT_MATRIX[endian] * header.numberMatrix).read_from(instream)
+    if header.vertWidths or header.vertMetrics:
+        logging.warning(
+            'Vertical metrics for this format not supported due to lack of documentation. '
+            'Please consider sharing your input file as a format sample '
+            'in an issue report at https://github.com/robhagemans/monobit/issues'
+        )
     if header.vertWidths:
         instream.seek(header.vertWidths)
         pf_props.vertWidths = (_PREBUILT_VERT_WIDTHS[endian] * header.numberChar).read_from(instream)
+    else:
+        pf_props.vertWidths = (None,) * header.numberChar
     if header.vertMetrics:
         instream.seek(header.vertMetrics)
         pf_props.vertMetrics = ((_PREBUILT_VERT_METRICS[endian] * header.numberChar) * header.numberMatrix).read_from(instream)
+    else:
+        pf_props.vertMetrics = ((None,) * header.numberChar,) * header.numberMatrix
     instream.seek(header.masks)
     # glyph data in pf_props.masks
     pf_masks = ((_PREBUILT_MASK[endian] * header.numberChar) * header.numberMatrix).read_from(instream)
