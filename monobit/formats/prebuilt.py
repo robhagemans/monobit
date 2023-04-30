@@ -201,8 +201,8 @@ MAX_STRING = 256
 def _read_pf(instream):
     """Read an Adobe prebuilt file."""
     pf_props = Props()
-    pf_props.byteOrder = instream.read(2)
-    endian = 'l' if pf_props.byteOrder == b'\0\0' else 'b'
+    pf_props.byteOrder = instream.read(2) != b'\0\0'
+    endian = 'b' if pf_props.byteOrder else 'l'
     header = _PREBUILT_FILE[endian].read_from(instream)
     pf_props |= Props(**vars(header))
     instream.seek(header.fontName)
@@ -252,6 +252,7 @@ def _convert_from_pf(pf_props, pf_masks):
         tuple(
             Glyph.from_bytes(
                 _m.maskData, width=_m.width, height=_m.height,
+                align='left' if pf_props.byteOrder else 'right',
                 tag=_name.decode('latin-1'),
                 ## horizontal
                 left_bearing=-_m.maskOffset.hx,
@@ -275,6 +276,12 @@ def _convert_from_pf(pf_props, pf_masks):
         logging.warning(
             f'{len(pf_masks) - len(strikes)} bitmap strikes could not be converted: '
             'colour, grayscale and antialiased bitmaps not supported.'
+        )
+    # little-endian format has bit order reversed as well
+    if not pf_props.byteOrder:
+        strikes = tuple(
+            tuple(_g.mirror(adjust_metrics=False) for _g in _strike)
+            for _strike in strikes
         )
     fonts = tuple(
         Font(
