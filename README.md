@@ -130,6 +130,7 @@ Supported bitmap formats
 | PCPaint, GRASP, ChiWriter | `pcpaint` | `.set` `.fnt`  `.sft` `.pft` `.eft` ... | ✔ |  |
 | PDF chart [R]         | `pdf`      | `.pdf`                      |       | ✔     |
 | TeX PKFONT            | `pkfont`   | `.pk`                       | ✔     |       |
+| Adobe Prebuilt Format | `prebuilt` | `.bepf` `.lepf`             | ✔     |       |
 | The Print Shop        | `printshop`| `.pnf`                      | ✔     |       |
 | PC Screen Font        | `psf`      | `.psf` `.psfu`              | ✔     | ✔ (version 2) |
 | PSF2AMS PSFCOM        | `psfcom`   | `.com`                      | ✔     |       |

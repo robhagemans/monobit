@@ -15,7 +15,7 @@ from .glyph import Glyph
 from .raster import turn_method
 from .basetypes import Coord, Bounds
 from .basetypes import to_int
-from .encoding import charmaps, encoder, EncodingName
+from .encoding import charmaps, encoder, EncodingName, Encoder
 from .taggers import tagger
 from .labels import Tag, Char, Codepoint, Label, to_label
 from .binary import ceildiv
@@ -26,6 +26,13 @@ from .taggers import tagmaps
 
 # sentinel object
 NOT_SET = object()
+
+
+def encoder_or_tagger(obj):
+    try:
+        return encoder(obj)
+    except ValueError:
+        return tagger(obj)
 
 
 ###############################################################################
@@ -949,7 +956,7 @@ class Font(HasProps):
     @scriptable
     def label(
             self, *,
-            codepoint_from:encoder='', char_from:encoder='',
+            codepoint_from:encoder='', char_from:encoder_or_tagger='',
             tag_from:tagger='', comment_from:tagger='',
             overwrite:bool=False,
             match_whitespace:bool=True, match_graphical:bool=True
@@ -982,7 +989,7 @@ class Font(HasProps):
                 return self
         encoding = self.encoding
         if overwrite or not self.encoding:
-            if char_from:
+            if char_from and isinstance(char_from, Encoder):
                 encoding = char_from.name
             elif codepoint_from:
                 encoding = codepoint_from.name
