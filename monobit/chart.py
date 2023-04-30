@@ -20,6 +20,7 @@ def chart(
     ):
     """Create font chart matrix."""
     font = font.label(codepoint_from=font.encoding)
+    font = font.equalise_horizontal()
     if not codepoint_range:
         codepoints = font.get_codepoints()
         if not codepoints:

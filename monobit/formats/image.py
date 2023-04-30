@@ -247,7 +247,6 @@ if Image:
         if len(fonts) > 1:
             raise FileFormatError('Can only save one font to image file.')
         font = fonts[0]
-        font = font.equalise_horizontal()
         font = font.stretch(*scale)
         glyph_map = chart(font, columns, margin, padding, order, direction, codepoint_range)
         img, = glyph_map_to_images(glyph_map, border=border, paper=paper, ink=ink)
