@@ -560,9 +560,15 @@ def _read_bdf_glyphs(instream):
 
 def _read_bdf_global(instream):
     """Read global section of BDF file."""
-    start_props, start_comments, _ = read_props(instream, ends=('STARTPROPERTIES',))
-    x_props, x_comments, _ = read_props(instream, ends=('ENDPROPERTIES',))
-    end_props, end_comments, _ = read_props(instream, ends=('CHARS',), keep_end=True)
+    start_props, start_comments, end = read_props(instream, ends=('STARTPROPERTIES', 'CHARS'), keep_end=True)
+    x_props, x_comments = {}, {}
+    end_props, end_comments = {}, {}
+    if end != 'CHARS':
+        del start_props[-1]
+        x_props, x_comments, end = read_props(instream, ends=('CHARS', 'ENDPROPERTIES'), keep_end=True)
+        if end != 'CHARS':
+            del x_props[-1]
+            end_props, end_comments, _ = read_props(instream, ends=('CHARS',), keep_end=True)
     bdf_props = {**dict(start_props), **dict(end_props)}
     comments = [*start_comments, *x_comments, *end_comments]
     return '\n'.join(comments), bdf_props, dict(x_props)
@@ -831,7 +837,12 @@ def _parse_xlfd_properties(x_props, xlfd_name, to_int=int):
         else:
             properties['default_char'] = default_ord
     # keep original FontName if invalid or conflicting
-    if not xlfd_name_props or conflicting:
+    if not xlfd_name_props:
+        if not properties['family']:
+            properties['family'] = xlfd_name
+        else:
+            properties['xlfd.font_name'] = xlfd_name
+    if conflicting:
         properties['xlfd.font_name'] = xlfd_name
     # keep unparsed but known properties
     for key in _XLFD_UNPARSED:
