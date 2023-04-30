@@ -221,7 +221,7 @@ class Font(HasProps):
             setwidth = ''
         else:
             setwidth = self.setwidth.title()
-        if (slant or setwidth) and self.weight == self.get_default('weight'):
+        if self.weight == self.get_default('weight'):
             weight = ''
         else:
             weight = self.weight.title()
