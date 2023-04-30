@@ -1076,6 +1076,26 @@ class TestFormats(BaseTester):
         font, *_ = monobit.load(file)
         self.assertEqual(len(font.glyphs), 95)
 
+    # bepf
+
+    ohlfs = 'https://github.com/AlexHorovitz/Ohlfs-font-to-ttf-conversion/raw/master/Ohlfs.font/'
+
+    def test_import_bepf(self):
+        """Test importing Adobe prebuilt files."""
+        file = ensure_asset(self.ohlfs, 'Ohlfs.bepf')
+        font, *_ = monobit.load(file, format='prebuilt')
+        self.assertEqual(len(font.glyphs), 228)
+        assert_text_eq(font.get_glyph('A').reduce().as_text(), """\
+.@@.
+@..@
+@..@
+@..@
+@@@@
+@..@
+@..@
+""")
+
+
     # stroke formats
 
     def test_import_hershey(self):
