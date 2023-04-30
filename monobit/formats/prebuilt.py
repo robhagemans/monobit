@@ -232,10 +232,13 @@ def _convert_from_pf(pf_props, pf_masks):
         tuple(
             Glyph.from_bytes(
                 _m.maskData, width=_m.width, height=_m.height,
-                left_bearing=_m.maskOffset.hx, shift_up=_m.maskOffset.hy-_m.height,
-                # we don't support maskOffset.hy (cross-advance)
-                right_bearing=_m.maskWidth.hx+_m.maskOffset.hx-_m.width,
                 tag=_name.decode('latin-1'),
+                ## horizontal
+                left_bearing=-_m.maskOffset.hx,
+                # we don't support maskOffset.hy (cross-advance)
+                right_bearing=_m.maskWidth.hx + _m.maskOffset.hx - _m.width,
+                shift_up=_m.maskOffset.hy - _m.height,
+                ## scalable
                 # we ignore hy (scalable cross-advance)
                 # this is bdf SWIDTH/1000
                 # so we need to multiply by point_size * xdpi / 72 (with ydpi==75)
@@ -244,7 +247,7 @@ def _convert_from_pf(pf_props, pf_masks):
             )
             for _m, _name, _width in zip(_strike, pf_props.names, pf_props.widths)
         )
-        for _matrix, _strike in zip(pf_props.matrices, pf_masks)
+        for _strike, _matrix in zip(pf_masks, pf_props.matrices)
         # assume higher depth means colour or grayscale
         if _matrix.depth == 1
     )
