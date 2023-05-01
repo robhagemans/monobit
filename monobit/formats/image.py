@@ -107,11 +107,11 @@ if Image:
         if cell.x <= 0:
             if table_size.x <= 0:
                 raise ValueError('Either cell or table size must be specified.')
-            cell_x = ceildiv(img.width, table_size.x) - padding.x
+            cell_x = ceildiv(img.width, table_size.x*scale.x) - padding.x
         if cell.y <= 0:
             if table_size.y <= 0:
                 raise ValueError('Either cell or table size must be specified.')
-            cell_y = ceildiv(img.height, table_size.y) - padding.y
+            cell_y = ceildiv(img.height, table_size.y*scale.y) - padding.y
         logging.debug('Cell size %dx%d', cell_x, cell_y)
         cell = Coord(cell_x, cell_y)
         # work out image geometry
