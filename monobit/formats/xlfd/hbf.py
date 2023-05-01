@@ -181,7 +181,7 @@ def _read_section(instream, subsections, end):
         comments.extend(sec_comments)
 
 def indexer(plane, code_range, b2_ranges, b3_ranges):
-    """Gnenerator to run through code range keeping to allowed low-bytes."""
+    """Generator to run through code range keeping to allowed low-bytes."""
     if not code_range:
         return
     n_bytes = 3 if b3_ranges else 2
