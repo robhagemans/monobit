@@ -140,10 +140,19 @@ if Image:
             crops = crops[:count]
         # scale
         crops = tuple(_crop.resize(cell, resample=Image.NEAREST) for _crop in crops)
-        # get border/padding colour
-        border = _get_border_colour(img, cell, margin, padding)
-        # clip off border colour from cells
-        crops = tuple(_crop_border(_crop, border) for _crop in crops)
+        # determine colour mode (2- or 3-colour)
+        colourset = set(img.getdata())
+        if len(colourset) > 3:
+            raise FileFormatError(
+                f'More than three colours ({len(colourset)}) found in image. '
+                'Colour, greyscale and antialiased glyphs are not supported. '
+            )
+        # three-colour mode - proportional width encoded with border colour
+        elif len(colourset) == 3:
+            # get border/padding colour
+            border = _get_border_colour(img, cell, margin, padding)
+            # clip off border colour from cells
+            crops = tuple(_crop_border(_crop, border) for _crop in crops)
         # get pixels
         paper, ink = _identify_colours(crops, background)
         # convert to glyphs, set codepoints
