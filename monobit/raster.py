@@ -105,6 +105,9 @@ class Raster:
             self._width = len(self._pixels[0])
 
 
+    def __bool__(self):
+        return bool(self.height and self.width)
+
     # NOTE - these following are shadowed in GlyphProperties
 
     @property
