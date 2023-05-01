@@ -139,7 +139,7 @@ if Image:
         if count > 0:
             crops = crops[:count]
         # scale
-        crops = tuple(_crop.resize(cell) for _crop in crops)
+        crops = tuple(_crop.resize(cell, resample=Image.NEAREST) for _crop in crops)
         # get border/padding colour
         border = _get_border_colour(img, cell, margin, padding)
         # clip off border colour from cells
