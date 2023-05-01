@@ -48,7 +48,8 @@ _FXX = Regex(r'.+\.f\d\d')
 def load_binary(
         instream, *,
         cell:Coord=NOT_SET, count:int=-1, offset:int=0, padding:int=0,
-        align:str='left', strike_count:int=1, strike_bytes:int=-1,
+        align:str='left', byte_order:str='row-major',
+        strike_count:int=1, strike_bytes:int=-1,
         first_codepoint:int=0
     ):
     """
@@ -61,6 +62,7 @@ def load_binary(
     strike_count: number of glyphs in glyph row (<=0 for all; default: 1)
     strike_bytes: strike width in bytes (<=0 means as many as needed to fit the glyphs; default: as needed)
     align: alignment of strike row ('left' for most-, 'right' for least-significant; 'bit' for bit-aligned; default: 'left')
+    byte_order: 'row-major' (default) or 'column-major' byte order (affect cell sizes wider than 8 pixels)
     first_codepoint: first code point in bitmap (default: 0)
     """
     # determine cell size from filename, if not given
@@ -87,7 +89,8 @@ def load_binary(
     instream.read(offset)
     return load_bitmap(
         instream, width, height, count, padding, align,
-        strike_count, strike_bytes, first_codepoint
+        strike_count, strike_bytes, first_codepoint,
+        byte_order=byte_order
     )
 
 @savers.register(linked=load_binary)
@@ -114,14 +117,16 @@ def save_binary(
 
 def load_bitmap(
         instream, width, height, count=-1, padding=0, align='left',
-        strike_count=1, strike_bytes=-1, first_codepoint=0,
+        strike_count=1, strike_bytes=-1, first_codepoint=0, *,
+        byte_order='row-major',
     ):
     """Load fixed-width font from bitmap."""
     data, count, cells_per_row, bytes_per_row, nrows = _extract_data_and_geometry(
         instream, width, height, count, padding, strike_count, strike_bytes,
     )
     cells = _extract_cells(
-        data, width, height, align, cells_per_row, bytes_per_row, nrows
+        data, width, height, align, cells_per_row, bytes_per_row, nrows,
+        byte_order=byte_order,
     )
     # reduce to given count, if exceeded
     cells = cells[:count]
@@ -174,7 +179,8 @@ def _extract_data_and_geometry(
 
 
 def _extract_cells(
-        data, width, height, align, cells_per_row, bytes_per_row, nrows
+        data, width, height, align, cells_per_row, bytes_per_row, nrows, *,
+        byte_order='row-major',
     ):
     """Extract glyphs from bitmap strike with given geometry."""
     # extract one strike row at a time
@@ -183,7 +189,7 @@ def _extract_cells(
         Raster.from_bytes(
             data[_i*bytes_per_row : (_i+1)*bytes_per_row],
             width*cells_per_row, height,
-            align=align
+            align=align, byte_order=byte_order,
         )
         for _i in range(nrows)
     )
