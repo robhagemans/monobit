@@ -112,6 +112,8 @@ if Image:
             if table_size.y <= 0:
                 raise ValueError('Either cell or table size must be specified.')
             cell_y = ceildiv(img.height, table_size.y*scale.y) - padding.y
+        if not cell_x or not cell_y:
+            raise ValueError('Empty cell. Please sepcify larger cell size or smaller table size.')
         logging.debug('Cell size %dx%d', cell_x, cell_y)
         cell = Coord(cell_x, cell_y)
         # work out image geometry
