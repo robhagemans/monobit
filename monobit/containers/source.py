@@ -54,6 +54,7 @@ _C_PARAMS = dict(
     delimiters='{}',
     comment='//',
     separator=';',
+    block_comment=('/*','*/'),
 )
 
 _JS_PARAMS = dict(
@@ -69,7 +70,9 @@ _PY_PARAMS = dict(
 
 _PAS_PARAMS = dict(
     delimiters='()',
-    comment='{',
+    # pascal has block comments only
+    comment='',
+    block_comment=('{','}'),
     int_conv=_int_from_pascal,
     separator=';',
 )
@@ -188,6 +191,7 @@ def load_source(
 def _load_coded_binary(
         infile, *, identifier, delimiters, comment,
         assign='=', int_conv=_int_from_c,
+        block_comment=(),
         # dummy for load; keep out of kwargs
         separator='',
         format='', **kwargs,
@@ -197,7 +201,8 @@ def _load_coded_binary(
     while True:
         try:
             coded_data = _get_payload(
-                infile.text, identifier, delimiters, comment, assign
+                infile.text, identifier, delimiters, comment, assign,
+                block_comment=block_comment,
             )
         except FileFormatError as e:
             # raised at end of file
@@ -212,31 +217,44 @@ def _load_coded_binary(
     return fonts
 
 
-def _get_payload(instream, identifier, delimiters, comment, assign):
+def _get_payload(
+        instream, identifier, delimiters, comment, assign, block_comment=()
+    ):
     """Find the identifier and get the part between delimiters."""
-    start, end = delimiters
-    for line in instream:
-        if comment in line:
-            line, _ = line.split(comment, 1)
+    def _strip_line(line):
+        if comment:
+            line, _, _ = line.partition(comment)
+        if block_comment:
+            while block_comment[0] in line:
+                before, _, after = line.partition(block_comment[0])
+                _, _, after = after.partition(block_comment[1])
+                line = before + after
         line = line.strip(' \r\n')
+        return line
+
+    start, end = delimiters
+    found = False
+    for line in instream:
+        line = _strip_line(line)
         if identifier in line and assign in line:
             if identifier:
                 _, line = line.split(identifier)
-            if start in line:
-                _, line = line.split(start)
-                break
+            found = True
+        if found and start in line:
+            _, line = line.split(start)
+            break
     else:
         raise FileFormatError(
             f'No payload with identifier `{identifier}` found in file'
         )
+    # special case: whole array in one line
     if end in line:
         line, _ = line.split(end, 1)
         return line
+    # multi-line array
     payload = [line]
     for line in instream:
-        if comment in line:
-            line, _ = line.split(comment, 1)
-        line = line.strip(' \r\n')
+        line = _strip_line(line)
         if start in line:
             _, line = line.split(start, 1)
         if end in line:
@@ -246,6 +264,7 @@ def _get_payload(instream, identifier, delimiters, comment, assign):
         if line:
             payload.append(line)
     return ''.join(payload)
+
 
 
 @loaders.register(
@@ -342,7 +361,7 @@ def save_json(
 def save_source(
         fonts, outstream, *,
         identifier:str, assign:str='=', delimiters:str='{}', comment:str='//',
-        separator=';',
+        separator:str=';',
         bytes_per_line:int=16, distribute:bool=True,
         format='raw',
         **kwargs
@@ -368,6 +387,8 @@ def save_source(
 def _save_coded_binary(
         fonts, outstream,
         identifier_template, assign_template, delimiters, comment, separator,
+        # block_comment is unused in writer but specified in arguments for reader
+        block_comment=None,
         bytes_per_line=16, format='raw', distribute=True, **kwargs
     ):
     """
