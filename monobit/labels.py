@@ -257,13 +257,13 @@ class Tag(Label):
 # label sets
 
 def to_labels(set_str):
-    """Convert from iterable or string representation to tuple of labels."""
-    return to_tuple(set_str, to_label, label_range)
+    """Convert from iterable or string representation to label generator."""
+    return to_range(set_str, to_label, label_range)
 
-def to_tuple(set_str, converter=to_int, inclusive_range=lambda _l, _u: range(_l, _u+1)):
-    """Convert from iterable or string representation to tuple."""
+def to_range(set_str, converter=to_int, inclusive_range=lambda _l, _u: range(_l, _u+1)):
+    """Convert from iterable or string representation to generator."""
     if not isinstance(set_str, str):
-        return tuple(converter(_item) for _item in set_str)
+        return (converter(_item) for _item in set_str)
     elements = set_str.split(',')
     elements = (_e.partition('-') for _e in elements)
     elements = (
@@ -272,8 +272,7 @@ def to_tuple(set_str, converter=to_int, inclusive_range=lambda _l, _u: range(_l,
         for _e in elements
     )
     elements = (_i for _e in elements for _i in _e)
-    # this constructs the whole thing in memory, not good for large ranges
-    return tuple(converter(_i) for _i in elements)
+    return (converter(_i) for _i in elements)
 
 def label_range(lower, upper):
     """Range of labels, inclusive of bounds."""

@@ -1059,8 +1059,8 @@ class Index(Encoder):
     def __init__(self, code_range=(0,)):
         """Index converter."""
         super().__init__('index')
+        # generator
         self._code_range = to_labels(code_range)
-        self._count = 0
 
     @staticmethod
     def char(*labels):
@@ -1069,15 +1069,14 @@ class Index(Encoder):
 
     def codepoint(self, *labels):
         """Convert character to codepoint."""
-        self._count += 1
         try:
-            return self._code_range[self._count-1]
-        except IndexError:
+            return next(self._code_range)
+        except StopIteration:
             return b''
 
     def __repr__(self):
         """Representation."""
-        return type(self).__name__ + f'(first_codepoint={self._count})'
+        return type(self).__name__ + '()'
 
 
 ###################################################################################################
