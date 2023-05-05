@@ -1314,12 +1314,9 @@ def encoder(initialiser):
     """Retrieve or create a charmap from object or string."""
     if isinstance(initialiser, Encoder):
         return initialiser
-    if not initialiser:
+    if initialiser is None or not str(initialiser):
         return None
-    elif not isinstance(initialiser, str):
-        raise ValueError(
-            f'Encoding value must be string or Encoder object, not `{type(initialiser)}`'
-        )
+    initialiser = str(initialiser)
     try:
         return charmaps[initialiser]
     except KeyError:
