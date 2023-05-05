@@ -105,12 +105,12 @@ def load_c(infile, *, identifier:str='', format='', **kwargs):
 )
 def load_json(infile, *, identifier:str='', format='', **kwargs):
     """
-    Extract font file encoded in JSON or JavaScript source code.
+    Extract font file encoded in JSON dictionary.
 
-    identifier: text at start of line where encoded file starts (default: first list [])
+    identifier: text at start of line where encoded file starts (default: first list [] in dict)
     """
     return _load_coded_binary(
-        infile, identifier=identifier, format=format, assign='',
+        infile, identifier=identifier, format=format, assign=':',
         **_JS_PARAMS, **kwargs
     )
 
@@ -200,16 +200,21 @@ def _load_coded_binary(
     fonts = []
     while True:
         try:
-            coded_data = _get_payload(
+            found_identifier, coded_data = _get_payload(
                 infile.text, identifier, delimiters, comment, assign,
                 block_comment=block_comment,
             )
         except FileFormatError as e:
             # raised at end of file
             break
-        data = bytes(int_conv(_s) for _s in coded_data.split(',') if _s.strip())
         try:
-            with Stream.from_data(data, mode='r') as bytesio:
+            data = bytes(int_conv(_s) for _s in coded_data.split(',') if _s.strip())
+        except ValueError:
+            logging.warning(
+                f'Could not convert coded data for identifier {found_identifier}'
+            )
+        try:
+            with Stream.from_data(data, mode='r', name=found_identifier) as bytesio:
                 fonts.extend(load_stream(bytesio, format=format, **kwargs))
         except FileFormatError as e:
             logging.debug(e)
@@ -233,14 +238,17 @@ def _get_payload(
         return line
 
     start, end = delimiters
-    found = False
+    found_identifier = ''
     for line in instream:
         line = _strip_line(line)
         if identifier in line and assign in line:
             if identifier:
-                _, line = line.split(identifier)
-            found = True
-        if found and start in line:
+                _, _, line = line.partition(identifier)
+                found_identifier = identifier
+            else:
+                found_identifier, _, _ = line.partition(assign)
+                *_, found_identifier = found_identifier.strip().split()
+        if found_identifier and start in line:
             _, line = line.split(start)
             break
     else:
@@ -263,7 +271,7 @@ def _get_payload(
             break
         if line:
             payload.append(line)
-    return ''.join(payload)
+    return found_identifier, ''.join(payload)
 
 
 
