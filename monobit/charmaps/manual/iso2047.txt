@@ -1,0 +1,39 @@
+# ISO 2047 - Information processing – Graphical representations for the control characters of the 7-bit coded character set
+# outdated symbols for control characters
+
+# based on https://en.wikipedia.org/wiki/ISO_2047
+
+00  U+2395     # NU
+01  U+2308     # SH
+02  U+22A5     # SX
+03  U+230B     # EX
+04  U+2301     # ET
+05  U+22A0     # EQ
+06  U+2713     # AK
+07  U+237E     # BL
+08  U+293A     # BS
+09  U+2AAB     # HT
+0A  U+2261     # LF
+0B  U+2A5B     # VT
+0C  U+21A1     # FF
+0D  U+2AAA     # CR
+0E  U+2297     # SO
+0F  U+2299     # SI
+10  U+229F     # DL
+11  U+25F7     # D1
+12  U+25F6     # D2
+13  U+25F5     # D3
+14  U+25F4     # D4
+15  U+237B     # NK
+16  U+238D     # SY
+17  U+22A3     # EB
+18  U+29D6     # CN
+19  U+237F     # EM
+1A  U+2426     # SB
+1B  U+2296     # EC
+1C  U+25F0     # FS
+1D  U+25F1     # GS
+1E  U+25F2     # RS
+1F  U+25F3     # US
+20  U+25B3     # SP
+7F  U+2592     # DT # using MEDIUM SHADE instead of Wikipedia suggestions

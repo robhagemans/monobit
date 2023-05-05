@@ -333,6 +333,7 @@ _ENCODING_FILES = (
         # manually adapted
         ('manual/ms-linedraw.txt', 'windows-linedraw', 'microsoft-linedraw', 'ms-linedraw'),
         ('manual/hp48.txt', 'hp-48', 'hp48', 'hp-rpl'),
+        ('manual/iso2047.txt', 'iso-2047'),
 
         # Mozilla Taiwan
         # Big5-ETen
