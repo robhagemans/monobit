@@ -13,6 +13,8 @@ from ...font import Font
 from ...glyph import Glyph
 from ...labels import Tag, Char
 from ...magic import FileFormatError
+from ...encoding import charmaps
+from ...binary import align
 
 
 ##############################################################################
@@ -22,36 +24,39 @@ from ...magic import FileFormatError
     name='hexdraw',
     patterns=('*.draw',),
 )
-def load_hexdraw(instream, ink:str='#', paper:str='-'):
+def load_hexdraw(instream, ink:str='#', paper:str='-', unicode:bool=True):
     """
     Load font from a hexdraw file.
 
     ink: character used for inked/foreground pixels (default #)
     paper: character used for uninked/background pixels (default -)
+    unicode: interpret codepoint as Unicode (default: True)
     """
     DrawGlyph.ink = ink
     DrawGlyph.paper = paper
     return _load_draw(
-        instream.text, blocktypes=(DrawGlyph, DrawComment, Empty)
+        instream.text, blocktypes=(DrawGlyph, DrawComment, Empty),
+        unicode=unicode
     )
 
 
 @savers.register(linked=load_hexdraw)
-def save_hexdraw(fonts, outstream, ink:str='#', paper:str='-'):
+def save_hexdraw(fonts, outstream, ink:str='#', paper:str='-', unicode:bool=True):
     """
     Save font to a hexdraw file.
 
     ink: character to use for inked/foreground pixels (default #)
     paper: character to use for uninked/background pixels (default -)
+    unicode: use unicode char labels for codepoints (default: True)
     """
     if len(fonts) > 1:
         raise FileFormatError("Can only save one font to hexdraw file.")
-    _save_draw(fonts[0], outstream.text, ink=ink, paper=paper)
+    _save_draw(fonts[0], outstream.text, ink=ink, paper=paper, unicode=unicode)
 
 
 # read hexdraw file
 
-def _load_draw(text_stream, *, blocktypes):
+def _load_draw(text_stream, *, blocktypes, unicode):
     """Parse a hexdraw-style file."""
     glyphs = []
     font_comments = []
@@ -73,19 +78,27 @@ def _load_draw(text_stream, *, blocktypes):
         elif isinstance(block, Unparsed):
             logging.debug('Unparsed lines: %s', block.get_value())
     font_comments.extend(current_comment)
-    return Font(
+    if not unicode:
+        glyphs = tuple(
+            _g.label(codepoint_from=charmaps['unicode']).modify(char=None)
+            for _g in glyphs
+        )
+    font = Font(
         glyphs,
         comment='\n\n'.join(font_comments)
     )
 
+    return font
+
 
 # write hexdraw file
 
-def _save_draw(font, outstream, *, ink, paper):
+def _save_draw(font, outstream, *, ink, paper, unicode):
     """Write one font to a plaintext stream as hexdraw."""
     font = font.equalise_horizontal()
-    # ensure char labels are set
-    font = font.label(char_from=font.encoding, match_whitespace=False, match_graphical=False)
+    if unicode:
+        # ensure char labels are set
+        font = font.label(char_from=font.encoding, match_whitespace=False, match_graphical=False)
     # write global comment
     if font.get_comment():
         outstream.write(
@@ -93,19 +106,25 @@ def _save_draw(font, outstream, *, ink, paper):
         )
     # write glyphs
     for i, glyph in enumerate(font.glyphs):
-        if not glyph.char:
+        if unicode:
+            char = glyph.char
+        else:
+            cpbytes = bytes(glyph.codepoint)
+            cpbytes = cpbytes.rjust(align(len(cpbytes), 2), b'\0')
+            char = cpbytes.decode('utf-32-be')
+        if not char:
             logging.warning(
                 "Can't encode glyph without Unicode character label in .draw file;"
                 " skipping index %d", i
             )
-        elif len(glyph.char) > 1:
+        elif len(char) > 1:
             logging.warning(
                 "Can't encode grapheme cluster %s in .draw file; skipping.",
-                ascii(glyph.char)
+                ascii(char)
             )
         else:
             glyphtxt = glyph.as_text(start='\t', ink=ink, paper=paper, end='\n')
-            outstream.write(f'\n{ord(glyph.char):04x}:')
+            outstream.write(f'\n{ord(char):04x}:')
             outstream.write(glyphtxt)
 
 
