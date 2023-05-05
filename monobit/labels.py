@@ -272,6 +272,7 @@ def to_tuple(set_str, converter=to_int, inclusive_range=lambda _l, _u: range(_l,
         for _e in elements
     )
     elements = (_i for _e in elements for _i in _e)
+    # this constructs the whole thing in memory, not good for large ranges
     return tuple(converter(_i) for _i in elements)
 
 def label_range(lower, upper):
@@ -280,7 +281,8 @@ def label_range(lower, upper):
         raise TypeError('Bounds must be of same type')
     lower, upper = to_label(lower), to_label(upper)
     if isinstance(lower, (bytes, int)):
-        return (Codepoint(_i) for _i in range(ord(lower), ord(upper)+1))
+        intrange = range(int(Codepoint(lower)), int(Codepoint(upper))+1)
+        return (Codepoint(_i) for _i in intrange)
     if isinstance(lower, str):
         return (Char(chr(_i)) for _i in range(ord(lower), ord(upper)+1))
     raise TypeError(f'Bounds must be Char or Codepoint, not {type(lower)}')

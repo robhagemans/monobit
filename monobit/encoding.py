@@ -13,7 +13,7 @@ from html.parser import HTMLParser
 from importlib.resources import files
 
 from .binary import int_to_bytes, align
-from .labels import Codepoint, to_label
+from .labels import Codepoint, to_label, to_labels
 
 
 _ENCODING_FILES = (
@@ -1056,10 +1056,11 @@ class Unicode(Encoder):
 class Index(Encoder):
     """Convert from index to ordinals."""
 
-    def __init__(self, first_codepoint=0):
+    def __init__(self, code_range=(0,)):
         """Index converter."""
         super().__init__('index')
-        self._count = first_codepoint
+        self._code_range = to_labels(code_range)
+        self._count = 0
 
     @staticmethod
     def char(*labels):
@@ -1069,7 +1070,10 @@ class Index(Encoder):
     def codepoint(self, *labels):
         """Convert character to codepoint."""
         self._count += 1
-        return Codepoint(self._count-1)
+        try:
+            return self._code_range[self._count-1]
+        except IndexError:
+            return b''
 
     def __repr__(self):
         """Representation."""
@@ -1317,6 +1321,10 @@ def encoder(initialiser):
     if initialiser is None or not str(initialiser):
         return None
     initialiser = str(initialiser)
+    # numeric ranges - interpreted as indexer
+    if initialiser[:1].isdigit():
+        initialiser = to_labels(initialiser)
+        return Index(code_range=initialiser)
     try:
         return charmaps[initialiser]
     except KeyError:
