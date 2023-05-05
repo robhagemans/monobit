@@ -329,9 +329,7 @@ class Glyph(HasProps):
         if comment_from is not NOT_SET:
             if not comment_from:
                 return self.modify(comment=None)
-            return self.modify(
-                comment=extend_string(self.comment, comment_from.comment(*labels))
-            )
+            return self.modify(comment=comment_from.comment(*labels))
         return self
 
     def append(
