@@ -105,6 +105,9 @@ class Raster:
             self._width = len(self._pixels[0])
 
 
+    def __bool__(self):
+        return bool(self.height and self.width)
+
     # NOTE - these following are shadowed in GlyphProperties
 
     @property
@@ -282,7 +285,7 @@ class Raster:
     @classmethod
     def from_bytes(
                 cls, byteseq, width=NOT_SET, height=NOT_SET,
-                *, align='left', stride=NOT_SET,
+                *, align='left', byte_order='row-major', stride=NOT_SET,
                 **kwargs
         ):
         """
@@ -292,6 +295,7 @@ class Raster:
         height: raster height in pixels
         stride: number of pixels per row (default: what's needed for alignment)
         align: 'left' or 'right' for byte-alignment; 'bit' for bit-alignment
+        byte_order: 'row-major' (default) or 'column-major' order of the byte array (no effect if align == 'bit')
         """
         if all(_arg is NOT_SET for _arg in (width, height, stride)):
             raise ValueError(
@@ -314,6 +318,12 @@ class Raster:
                 stride = (8 * len(byteseq)) // height
             else:
                 stride = width
+        # byte order. no effect for bit alignment
+        if byte_order == 'column-major' and align != 'bit':
+            byteseq = b''.join(
+                byteseq[_offs::height]
+                for _offs in range(height)
+            )
         if not byteseq:
             bitseq = ''
         else:

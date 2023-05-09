@@ -457,12 +457,13 @@ class Glyph(HasProps):
     @classmethod
     def from_bytes(
             cls, byteseq, width, height=NOT_SET,
-            *, align='left', stride=NOT_SET,
+            *, align='left', byte_order='row-major', stride=NOT_SET,
             **kwargs
         ):
         """Create glyph from bytes/bytearray/int sequence."""
         pixels = Raster.from_bytes(
-            byteseq, width, height, align=align, stride=stride
+            byteseq, width, height,
+            align=align, stride=stride, byte_order=byte_order,
         )
         return cls(pixels, **kwargs)
 
@@ -473,8 +474,9 @@ class Glyph(HasProps):
         return cls(pixels, **kwargs)
 
     @classmethod
-    def from_path(cls, strokepath, *, advance_width=None, **kwargs):
+    def from_path(cls, path, *, advance_width=None, **kwargs):
         """Draw the StrokePath and create a Glyph."""
+        strokepath = StrokePath(path)
         raster = Raster(strokepath.draw())
         if advance_width is None:
             advance_width = strokepath.bounds.right

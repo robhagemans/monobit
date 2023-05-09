@@ -446,7 +446,10 @@ class Font(HasProps):
             (_g.advance_width, _g.advance_height)
             for _g in self.glyphs
         )
-        return Coord(*min(_c for _c in cells if all(_c)))
+        sizes = tuple(_c for _c in cells if all(_c))
+        if not sizes:
+            return Coord(0, 0)
+        return Coord(*min(sizes))
 
     @checked_property
     def ink_bounds(self):
