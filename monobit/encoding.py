@@ -333,6 +333,8 @@ _ENCODING_FILES = (
         # manually adapted
         ('manual/ms-linedraw.txt', 'windows-linedraw', 'microsoft-linedraw', 'ms-linedraw'),
         ('manual/hp48.txt', 'hp-48', 'hp48', 'hp-rpl'),
+        ('manual/iso2047.txt', 'iso-2047'),
+        ('manual/c0-pictures.txt', 'control-pictures'),
 
         # Mozilla Taiwan
         # Big5-ETen
@@ -975,26 +977,25 @@ class Charmap(Encoder):
 
     def shift(self, by=0x80):
         """
-        Increment all codepoints in the first page by the given amount.
+        Increment all codepoints by the given amount.
 
         by: amount to increment
         """
         return Charmap(
             mapping={
-                bytes(((_k[0] + by,) if len(_k)==1 else _k)): _v
+                bytes(Codepoint(int(Codepoint(_k))+by)): _v
                 for _k, _v in self._ord2chr.items()
             },
-            name=f'shift[{self.name}]'
+            name=f'shift-{by:x}[{self.name}]'
         )
 
 
     # representations
 
     def table(self):
-        """Mapping table, first page."""
+        """Mapping table"""
         return '\n'.join(
-            f'0x{_k[0]:02X}: u+{ord(_v):04X}  # {unicode_name(_v)}' for _k, _v in self._ord2chr.items()
-            if len(_k) == 1
+            f'0x{_k.hex()}: u+{ord(_v):04X}  # {unicode_name(_v)}' for _k, _v in self._ord2chr.items()
         )
 
     def __repr__(self):
