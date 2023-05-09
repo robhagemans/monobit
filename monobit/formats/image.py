@@ -107,11 +107,13 @@ if Image:
         if cell.x <= 0:
             if table_size.x <= 0:
                 raise ValueError('Either cell or table size must be specified.')
-            cell_x = ceildiv(img.width, table_size.x) - padding.x
+            cell_x = ceildiv(img.width, table_size.x*scale.x) - padding.x
         if cell.y <= 0:
             if table_size.y <= 0:
                 raise ValueError('Either cell or table size must be specified.')
-            cell_y = ceildiv(img.height, table_size.y) - padding.y
+            cell_y = ceildiv(img.height, table_size.y*scale.y) - padding.y
+        if not cell_x or not cell_y:
+            raise ValueError('Empty cell. Please sepcify larger cell size or smaller table size.')
         logging.debug('Cell size %dx%d', cell_x, cell_y)
         cell = Coord(cell_x, cell_y)
         # work out image geometry
@@ -139,11 +141,20 @@ if Image:
         if count > 0:
             crops = crops[:count]
         # scale
-        crops = tuple(_crop.resize(cell) for _crop in crops)
-        # get border/padding colour
-        border = _get_border_colour(img, cell, margin, padding)
-        # clip off border colour from cells
-        crops = tuple(_crop_border(_crop, border) for _crop in crops)
+        crops = tuple(_crop.resize(cell, resample=Image.NEAREST) for _crop in crops)
+        # determine colour mode (2- or 3-colour)
+        colourset = set(img.getdata())
+        if len(colourset) > 3:
+            raise FileFormatError(
+                f'More than three colours ({len(colourset)}) found in image. '
+                'Colour, greyscale and antialiased glyphs are not supported. '
+            )
+        # three-colour mode - proportional width encoded with border colour
+        elif len(colourset) == 3:
+            # get border/padding colour
+            border = _get_border_colour(img, cell, margin, padding)
+            # clip off border colour from cells
+            crops = tuple(_crop_border(_crop, border) for _crop in crops)
         # get pixels
         paper, ink = _identify_colours(crops, background)
         # convert to glyphs, set codepoints
