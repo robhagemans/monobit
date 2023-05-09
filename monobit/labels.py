@@ -174,7 +174,13 @@ class Codepoint(bytes, Label):
 
     def __lt__(self, other):
         """Order like ints."""
-        return int(self) < int(other)
+        return other and (not self or int(self) < int(Codepoint(other)))
+
+    def __gt__(self, other):
+        """Order like ints."""
+        return other < self
+
+    # __eq__ and __hash__ remain as for bytes
 
     @property
     def value(self):
