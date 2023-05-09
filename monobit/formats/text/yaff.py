@@ -215,6 +215,7 @@ class YaffGlyph(YaffMultiline):
         lines = (_l[self.indent:] for _l in self.lines[self.n_keys:])
         lines = tuple(_l for _l in lines if _l)
         # locate glyph properties
+        i = 0
         for i, line in enumerate(lines):
             if line[:1] not in (self.paper, self.ink) and set(line) != set(self.empty):
                 break
