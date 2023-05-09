@@ -395,7 +395,7 @@ def _convert_nfnt(properties, glyphs, fontrec):
         # remove the kerning table and encoding table now stored in glyphs
         'kerning_table': None,
         'encoding_table': None,
-        'source_format': 'NFNT',
+        'source_format': properties.get('source_format', None) or 'NFNT',
     })
     return Font(glyphs, **properties)
 
