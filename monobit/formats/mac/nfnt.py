@@ -330,6 +330,18 @@ def _convert_nfnt(properties, glyphs, fontrec):
         if _glyph.wo_width != 0xff and _glyph.wo_offset != 0xff else _glyph
         for _glyph in glyphs
     )
+    # store glyph-name encoding table
+    # do this before setting codepoint labels so we don't drop the tag on the 'missing' glyph
+    encoding_table = properties.pop('encoding-table', None)
+    if encoding_table:
+        tag_table = {
+            _entry[:1]: _entry[1:].decode('mac-roman')
+            for _entry in encoding_table
+        }
+        glyphs = tuple(
+            _glyph.modify(tag=tag_table.get(_glyph.codepoint, ''))
+            for _glyph in glyphs
+        )
     # codepoint labels
     labelled = [
         _glyph.modify(codepoint=(_codepoint,))
@@ -360,16 +372,6 @@ def _convert_nfnt(properties, glyphs, fontrec):
                 for _left, _right, _width in kern_table
                 if _glyph.codepoint and _left == int(_glyph.codepoint)
             }))
-            for _glyph in glyphs
-        )
-    # store glyph-name encoding table
-    if properties.get('encoding-table', None):
-        tag_table = {
-            _entry[:1]: _entry[1:].decode('mac-roman')
-            for _entry in properties['encoding-table']
-        }
-        glyphs = tuple(
-            _glyph.modify(tag=tag_table.get(_glyph.codepoint, ''))
             for _glyph in glyphs
         )
     # store properties
