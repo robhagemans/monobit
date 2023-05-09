@@ -538,7 +538,11 @@ def _read_bdf_glyphs(instream):
         width, height, _, _ = meta['BBX'].split(' ')
         width, height = int(width), int(height)
         # convert from hex-string to list of bools
-        hexstr = ''.join(instream.readline().strip() for _ in range(height))
+        # remove trailing zeros on each hex line
+        hexstr = ''.join(
+            instream.readline().strip()[:ceildiv(width, 8)*2]
+            for _ in range(height)
+        )
         try:
             glyph = Glyph.from_hex(hexstr, width, height)
         except ValueError as e:
