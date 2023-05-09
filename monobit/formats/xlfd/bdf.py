@@ -529,7 +529,6 @@ def _read_bdf_glyphs(instream):
         elif not line.startswith('STARTCHAR'):
             raise FileFormatError(f'Expected STARTCHAR, not {line}')
         keyword, values = line.split(' ', 1)
-        # TODO: we're ignoring glyph comments
         meta, comments, _ = read_props(instream, ends=('BITMAP',))
         meta = dict(meta)
         meta[keyword] = values
@@ -544,7 +543,7 @@ def _read_bdf_glyphs(instream):
             for _ in range(height)
         )
         try:
-            glyph = Glyph.from_hex(hexstr, width, height)
+            glyph = Glyph.from_hex(hexstr, width, height, comment='\n'.join(comments))
         except ValueError as e:
             logging.warning(f'Could not read glyph `{label}` {hexstr}: {e}')
         else:
