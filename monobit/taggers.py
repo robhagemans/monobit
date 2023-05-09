@@ -206,10 +206,9 @@ def tagger(initialiser):
     """Retrieve or create a tagmap from object or string."""
     if isinstance(initialiser, Tagger):
         return initialiser
-    elif not isinstance(initialiser, str):
-        raise ValueError(
-            f'Tagger value must be string or Tagger object, not `{type(initialiser)}`'
-        )
+    if initialiser is None or not str(initialiser):
+        return None
+    initialiser = str(initialiser)
     try:
         return tagmaps[initialiser]
     except KeyError:

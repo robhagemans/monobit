@@ -12,7 +12,7 @@ from unicodedata import normalize
 
 from .scripting import scriptable, get_scriptables, Any
 from .glyph import Glyph
-from .raster import turn_method
+from .raster import turn_method, NOT_SET
 from .basetypes import Coord, Bounds
 from .basetypes import to_int
 from .encoding import charmaps, encoder, EncodingName, Encoder
@@ -24,15 +24,11 @@ from .cachedprops import HasProps, writable_property, checked_property
 from .taggers import tagmaps
 
 
-# sentinel object
-NOT_SET = object()
-
-
 def encoder_or_tagger(obj):
-    try:
-        return encoder(obj)
-    except ValueError:
+    enc = encoder(obj)
+    if enc is None:
         return tagger(obj)
+    return enc
 
 
 ###############################################################################
@@ -787,8 +783,6 @@ class Font(HasProps):
     ##########################################################################
     # property access
 
-    # __getattr__ = HasProps._getattr
-
     def get_comment(self, key=''):
         """Get global or property comment."""
         return self._comment.get(key, '')
@@ -959,8 +953,8 @@ class Font(HasProps):
     @scriptable
     def label(
             self, *,
-            codepoint_from:encoder='', char_from:encoder_or_tagger='',
-            tag_from:tagger='', comment_from:tagger='',
+            codepoint_from:encoder=NOT_SET, char_from:encoder_or_tagger=NOT_SET,
+            tag_from:tagger=NOT_SET, comment_from:tagger=NOT_SET,
             overwrite:bool=False,
             match_whitespace:bool=True, match_graphical:bool=True
         ):
@@ -976,7 +970,7 @@ class Font(HasProps):
         match_graphical: do not give non-blank glyphs a non-graphical label (default: True)
         """
         nargs = sum(
-            bool(_arg)
+            _arg is not NOT_SET
             for _arg in (codepoint_from, char_from, tag_from, comment_from)
         )
         if nargs > 1:
@@ -987,27 +981,27 @@ class Font(HasProps):
         # default action: label chars with font encoding
         if nargs == 0 and self.encoding:
             char_from = encoder(self.encoding)
-            if not char_from:
+            if char_from is NOT_SET:
                 logging.warning(f'Encoding `{self.encoding}` not recognised.')
                 return self
         encoding = self.encoding
         if overwrite or not self.encoding:
-            if char_from and isinstance(char_from, Encoder):
+            if char_from is not NOT_SET and isinstance(char_from, Encoder):
                 encoding = char_from.name
-            elif codepoint_from:
+            elif codepoint_from is not NOT_SET and codepoint_from is not None:
                 encoding = codepoint_from.name
         kwargs = dict(
             overwrite=overwrite,
             match_whitespace=match_whitespace,
             match_graphical=match_graphical,
         )
-        if codepoint_from:
+        if codepoint_from is not NOT_SET:
             kwargs.update(dict(codepoint_from=codepoint_from))
-        elif char_from:
+        elif char_from is not NOT_SET:
             kwargs.update(dict(char_from=char_from))
-        elif tag_from:
+        elif tag_from is not NOT_SET:
             kwargs.update(dict(tag_from=tag_from))
-        elif comment_from:
+        elif comment_from is not NOT_SET:
             kwargs.update(dict(comment_from=comment_from))
         else:
             return self

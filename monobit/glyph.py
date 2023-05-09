@@ -278,8 +278,8 @@ class Glyph(HasProps):
         )
 
     def label(
-            self, codepoint_from=None, char_from=None,
-            tag_from=None, comment_from=None,
+            self, codepoint_from=NOT_SET, char_from=NOT_SET,
+            tag_from=NOT_SET, comment_from=NOT_SET,
             overwrite=False, match_whitespace=True, match_graphical=True,
         ):
         """
@@ -294,7 +294,7 @@ class Glyph(HasProps):
            match_graphical: do not give non-blank glyphs a non-graphical label (default: True)
         """
         if sum(
-                _arg is not None
+                _arg is not NOT_SET
                 for _arg in (codepoint_from, char_from, tag_from, comment_from)
             ) > 1:
             raise ValueError(
@@ -303,22 +303,33 @@ class Glyph(HasProps):
            )
         labels = self.get_labels()
         # use codepage to find codepoint if not set
-        if codepoint_from and (overwrite or not self.codepoint):
-            return self.modify(codepoint=codepoint_from.codepoint(*labels))
+        if codepoint_from is not NOT_SET:
+            if not codepoint_from:
+                if overwrite:
+                    return self.modify(codepoint=None)
+            elif overwrite or not self.codepoint:
+                return self.modify(codepoint=codepoint_from.codepoint(*labels))
         # use codepage to find char if not set
-        if char_from and (overwrite or not self.char):
-            char = char_from.char(*labels)
-            if match_whitespace and self.is_blank() and char and not is_blank(char):
-                return self
-            if match_graphical and not self.is_blank() and char and not is_graphical(char):
-                return self
-            return self.modify(char=char)
-        if tag_from:
+        if char_from is not NOT_SET:
+            if not char_from:
+                if overwrite:
+                    return self.modify(char=None)
+            elif overwrite or not self.char:
+                char = char_from.char(*labels)
+                if match_whitespace and self.is_blank() and char and not is_blank(char):
+                    return self
+                if match_graphical and not self.is_blank() and char and not is_graphical(char):
+                    return self
+                return self.modify(char=char)
+        if tag_from is not NOT_SET:
+            if not tag_from:
+                if overwrite:
+                    return self.modify(tag=None)
             return self.modify(tag=tag_from.tag(*labels))
-        if comment_from:
-            return self.modify(
-                comment=extend_string(self.comment, comment_from.comment(*labels))
-            )
+        if comment_from is not NOT_SET:
+            if not comment_from:
+                return self.modify(comment=None)
+            return self.modify(comment=comment_from.comment(*labels))
         return self
 
     def append(
