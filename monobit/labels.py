@@ -174,7 +174,13 @@ class Codepoint(bytes, Label):
 
     def __lt__(self, other):
         """Order like ints."""
-        return int(self) < int(other)
+        return other and (not self or int(self) < int(Codepoint(other)))
+
+    def __gt__(self, other):
+        """Order like ints."""
+        return other < self
+
+    # __eq__ and __hash__ remain as for bytes
 
     @property
     def value(self):
@@ -254,18 +260,6 @@ def to_labels(set_str):
     """Convert from iterable or string representation to tuple of labels."""
     return to_tuple(set_str, to_label, label_range)
 
-def to_chars(set_str):
-    """Convert from iterable or string representation to tuple of labels."""
-    return to_tuple(set_str, Char, label_range)
-
-def to_codepoints(set_str):
-    """Convert from iterable or string representation to tuple of labels."""
-    return to_tuple(set_str, Codepoint, label_range)
-
-def to_tags(set_str):
-    """Convert from iterable or string representation to tuple of labels."""
-    return to_tuple(set_str, Tag, label_range)
-
 def to_tuple(set_str, converter=to_int, inclusive_range=lambda _l, _u: range(_l, _u+1)):
     """Convert from iterable or string representation to tuple."""
     if not isinstance(set_str, str):
@@ -284,7 +278,8 @@ def label_range(lower, upper):
     """Range of labels, inclusive of bounds."""
     if not type(lower) == type(upper):
         raise TypeError('Bounds must be of same type')
-    if isinstance(lower, bytes):
+    lower, upper = to_label(lower), to_label(upper)
+    if isinstance(lower, (bytes, int)):
         return (Codepoint(_i) for _i in range(ord(lower), ord(upper)+1))
     if isinstance(lower, str):
         return (Char(chr(_i)) for _i in range(ord(lower), ord(upper)+1))
@@ -292,6 +287,6 @@ def label_range(lower, upper):
 
 
 CONVERTERS[tuple[Label]] = to_labels
-CONVERTERS[tuple[Char]] = to_chars
-CONVERTERS[tuple[Codepoint]] = to_codepoints
-CONVERTERS[tuple[Tag]] = to_tags
+CONVERTERS[tuple[Char]] = to_labels
+CONVERTERS[tuple[Codepoint]] = to_labels
+CONVERTERS[tuple[Tag]] = to_labels

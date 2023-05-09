@@ -981,7 +981,7 @@ class Charmap(Encoder):
         """
         return Charmap(
             mapping={
-                ((_k[0] + by,) if len(_k)==1 else _k): _v
+                bytes(((_k[0] + by,) if len(_k)==1 else _k)): _v
                 for _k, _v in self._ord2chr.items()
             },
             name=f'shift[{self.name}]'

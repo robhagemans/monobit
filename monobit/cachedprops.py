@@ -74,7 +74,11 @@ class HasProps:
         self._props = {
             _k: _conv(_v) if _conv else _v
             for (_k, _v), _conv in zip(props.items(), converters)
-            if _v is not None
+            if _v is not None and (
+                not hasattr(type(self), _k)
+                # fset does not exist (not a property) or equals None (not settable)
+                or getattr(getattr(type(self), _k), 'fset', None) is not None
+            )
         }
         assert None not in self._props.values()
 
@@ -119,22 +123,15 @@ def writable_property(fn):
 
     @wraps(fn)
     def _setter(self, value):
-        #logging.debug(f'Setting overridable property {field}={value}.')
         self._props[field] = value
 
     return property(_getter, _setter)
 
 
 def checked_property(fn):
-    """Non-overridable property, attempted writes will be logged and dropped."""
-    field = fn.__name__
+    """Non-overridable cached property."""
     _getter = cached(fn)
-
-    @wraps(fn)
-    def _setter(self, value):
-        logging.info(f'Non-overridable property {field} cannot be set to {value}; ignored.')
-
-    return property(_getter, _setter)
+    return property(_getter)
 
 
 def cached(fn):

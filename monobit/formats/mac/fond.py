@@ -100,10 +100,38 @@ _OFFS_ENTRY = be.Struct(
 )
 
 # p. 4-99
-# > Each width is in 16-bit fixed-point format, with the integer part
-# > in the high-order 4 bits and the fractional part in the low-order 12 bits.
+# > Kerning distance. The kerning distance, in pixels, for the two glyphs
+# > at a point size of 1. This is a 16-bit fixed point value, with the
+# > integer part in the high-order 4 bits, and the fractional part in
+# > the low-order 12 bits. The Font Manager measures the distance in pixels
+# > and then multiplies it by the requested point size
 _FIXED_TYPE = be.int16
-# remember to divide by 2**12...
+
+# this leaves open the matter of negative numbers. there are two reasonable conventions
+# 1) true value * 2**12 represented as a two's complement 16-bit integer
+# 2) sign | 3-bit integer part | 12-bit fractional part
+# which agree for positive numbers but are different for negatives.
+# of course, both conventions are used:
+# Palatino uses convention (2) while Helvetica uses (1).
+
+# we use a heuristic assuming 1-point kerning values are small (less than 4)
+# this would fail only when a glyph is kerned more thans 4 pixels *per point in point-size*
+def _fixed_to_float(fixed):
+    # fixed is the input 2's complement 16-bit signed integer
+    if fixed < 0 and (-fixed & 0x4000):
+        # print(fixed, bin(fixed), (-fixed&0x4000))
+        # bit 14 is set - number is too large
+        # convert back from 2's complement
+        fixed = 0x10000 + fixed
+        # print(fixed)
+        # unset sign bit
+        fixed = 0x7fff & fixed
+        # print(fixed)
+        # make negative
+        fixed = - fixed
+        # print(fixed)
+    return fixed / 2**12
+
 
 # bounding-box table
 # Fig. 4.26

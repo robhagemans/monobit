@@ -21,6 +21,8 @@ from ...labels import Char
 from ...encoding import charmaps
 from ...raster import Raster
 
+from .fond import _fixed_to_float
+
 
 ##############################################################################
 # NFNT/FONT resource
@@ -330,6 +332,18 @@ def _convert_nfnt(properties, glyphs, fontrec):
         if _glyph.wo_width != 0xff and _glyph.wo_offset != 0xff else _glyph
         for _glyph in glyphs
     )
+    # store glyph-name encoding table
+    # do this before setting codepoint labels so we don't drop the tag on the 'missing' glyph
+    encoding_table = properties.pop('encoding-table', None)
+    if encoding_table:
+        tag_table = {
+            _entry[:1]: _entry[1:].decode('mac-roman')
+            for _entry in encoding_table
+        }
+        glyphs = tuple(
+            _glyph.modify(tag=tag_table.get(_glyph.codepoint, ''))
+            for _glyph in glyphs
+        )
     # codepoint labels
     labelled = [
         _glyph.modify(codepoint=(_codepoint,))
@@ -346,13 +360,20 @@ def _convert_nfnt(properties, glyphs, fontrec):
     # keep scalable_width
     glyphs = tuple(_glyph.drop('wo_offset', 'wo_width') for _glyph in glyphs)
     # store kerning table
-    if properties.get('kerning-table', None):
+    # last as this needs to refer to codepoint labels
+    kerning_table = properties.pop('kerning-table', None)
+    if kerning_table:
+        # > Kerning distance. The kerning distance, in pixels, for the two glyphs
+        # > at a point size of 1. This is a 16-bit fixed point value, with the
+        # > integer part in the high-order 4 bits, and the fractional part in
+        # > the low-order 12 bits. The Font Manager measures the distance in pixels
+        # > and then multiplies it by the requested point size
         kern_table = sorted(
             (
                 _entry.kernFirst, _entry.kernSecond,
-                _entry.kernWidth * properties['point_size'] / 2**12
+                _fixed_to_float(_entry.kernWidth) * properties['point_size']
             )
-            for _entry in properties['kerning-table']
+            for _entry in kerning_table
         )
         glyphs = tuple(
             _glyph.modify(right_kerning=KernTable({
@@ -360,16 +381,6 @@ def _convert_nfnt(properties, glyphs, fontrec):
                 for _left, _right, _width in kern_table
                 if _glyph.codepoint and _left == int(_glyph.codepoint)
             }))
-            for _glyph in glyphs
-        )
-    # store glyph-name encoding table
-    if properties.get('encoding-table', None):
-        tag_table = {
-            _entry[:1]: _entry[1:].decode('mac-roman')
-            for _entry in properties['encoding-table']
-        }
-        glyphs = tuple(
-            _glyph.modify(tag=tag_table.get(_glyph.codepoint, ''))
             for _glyph in glyphs
         )
     # store properties
@@ -384,7 +395,7 @@ def _convert_nfnt(properties, glyphs, fontrec):
         # remove the kerning table and encoding table now stored in glyphs
         'kerning_table': None,
         'encoding_table': None,
-        'source_format': 'NFNT',
+        'source_format': properties.get('source_format', None) or 'NFNT',
     })
     return Font(glyphs, **properties)
 
