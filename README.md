@@ -89,6 +89,7 @@ Supported bitmap formats
 
 | Format                | Short Name | Typical Extension           | Read  | Write |
 |-----------------------|------------|-----------------------------|-------|-------|
+| Xerox Alto screen font| `alto`     | `.al`                       | ✔     |       |
 | Amiga Font Contents   | `amiga-fc` | `.font`                     | ✔     |       |
 | Amiga font            | `amiga`    |                             | ✔     |       |
 | BBC soft font         | `bbc`      |                             | ✔     | ✔     |
