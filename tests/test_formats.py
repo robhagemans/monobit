@@ -1110,6 +1110,41 @@ class TestFormats(BaseTester):
 """)
 
 
+    alto2 = 'https://xeroxalto.computerhistory.org/Indigo/AltoFonts/'
+
+    def test_import_ks(self):
+        """Test importing Alto .KS files."""
+        file = ensure_asset(self.alto2, 'Elite10.ks!1')
+        font, *_ = monobit.load(file, format='bitblt')
+        self.assertEqual(len(font.glyphs), 88)
+        assert_text_eq(font.get_glyph(b'A').reduce().as_text(), """\
+...@...
+..@.@..
+..@.@..
+.@...@.
+.@...@.
+.@@@@@.
+.@...@.
+@@...@@
+""")
+
+    def test_import_strike(self):
+        """Test importing Alto .STRIKE files."""
+        file = ensure_asset(self.alto2, 'Elite10.strike!2')
+        font, *_ = monobit.load(file, format='bitblt')
+        self.assertEqual(len(font.glyphs), 88)
+        assert_text_eq(font.get_glyph(b'A').reduce().as_text(), """\
+...@...
+..@.@..
+..@.@..
+.@...@.
+.@...@.
+.@@@@@.
+.@...@.
+@@...@@
+""")
+
+
     # stroke formats
 
     def test_import_hershey(self):
