@@ -39,6 +39,16 @@ def load_bitblt(instream):
     return Font(glyphs, **props)
 
 
+@loaders.register(
+    name='prepress',
+    patterns=('*.ac',),
+)
+def load_bitblt(instream):
+    """Load font from Xerox Alto PrePress .ac file."""
+    props, glyphs =  _read_prepress(instream)
+    return Font(glyphs, **props)
+
+
 ##############################################################################
 # .AL "CONVERT" format
 # http://www.bitsavers.org/pdf/xerox/alto/printing/AltoFontFormats_Oct1980.pdf
@@ -259,5 +269,125 @@ def _read_bitblt(instream):
         ascent=body.ascent,
         descent=body.descent,
         default_char=Tag('dummy'),
+    )
+    return props, glyphs
+
+
+##############################################################################
+# PrePress format
+
+_IX = be.Struct(
+    # Various type codes are assigned
+    type=bitfield('uint16', 4),
+    # Length of entry in words, counting this one
+    length=bitfield('uint16', 12),
+)
+
+# name-definition index entry
+_IXN = be.Struct(
+    # Header with type == 1
+    ix=_IX,
+    # The numeric code
+    code='uint16',
+    # The number of characters in the name
+    nameLength='uint8',
+    # Room for the name
+    characters='19s',
+)
+
+_CHARACTER_INDEX_ENTRY = be.Struct(
+    # type = 3 for character index
+    ix=_IX,
+    # Family name, using a name code
+    family='uint8',
+    # (if bold then 2 elseif light then 4 else 0) +
+    # (if italic then 1 else 0) +
+    # (if codensed then 6 elseif expanded then 12 else 0) +
+    # (if Xerox then 0 elseif ASCII then 18 else 36)
+    face='uint8',
+    # Code for the "beginning character"
+    bc='uint8',
+    # Code for the "ending character"
+    ec='uint8',
+    # Size of the font segment [in micas == 10 micron units or 1/2540 in]
+    size='uint16',
+    # Rotation of the font segment
+    rotation='uint16',
+    # Starting address in file of the font segment
+    segmentSA='uint32',
+    # Length of the segment
+    segmentLength='uint32',
+    # Resolution in scan-lines/inch * 10
+    resolutionX='uint16',
+    # Resolution in bits/inch * 10
+    resolutionY='uint16',
+)
+
+
+_CHARACTER_DATA = be.Struct(
+    # X Width (scan-lines)
+    # fixed-point, divide by 0x10000
+    Wx='uint32',
+    # Y width (bits)
+    # fixed-point, divide by 0x10000
+    Wy='uint32',
+    # Bounding box offsets
+    BBox='int16',
+    BBoy='int16',
+    # Width of bounding box (scan-lines)
+    BBdx='uint16',
+    # Height of bounding box (bits) or -1 for not defined
+    BBdy='int16',
+)
+
+# relFilePos=uint32
+
+_RASTER_DEFN = be.Struct(
+    # Height of raster (in words)
+    BBdyW=bitfield('uint16', 6),
+    # Same as BBdx in CharacterData
+    BBdx=bitfield('uint16', 10),
+    # followed by raster, BBdyW*BBdx words
+)
+
+
+def _read_prepress(instream):
+    """Read a PrePress file."""
+    ixn = _IXN.read_from(instream)
+    if ixn.ix.type != 1:
+        raise FileFormatError('Not an .ac file: no name index entry')
+    cie = _CHARACTER_INDEX_ENTRY.read_from(instream)
+    if cie.ix.type != 3:
+        raise FileFormatError('Not an .ac file: no character index entry')
+    if cie.rotation != 0:
+        raise FileFormatError('Nonzero rotation not supported for this format.')
+    instream.seek(cie.segmentSA*2)
+    nchars = cie.ec - cie.bc + 1
+    char_data = (_CHARACTER_DATA * nchars).read_from(instream)
+    anchor = instream.tell()
+    directory = (be.uint32 * nchars).read_from(instream)
+    glyphs = []
+    for cp, offset, cd in zip(range(cie.bc, cie.ec+1), directory, char_data):
+        instream.seek(anchor+offset*2)
+        raster_defn = _RASTER_DEFN.read_from(instream)
+        raster = Raster.from_bytes(
+            instream.read(2*raster_defn.BBdyW*raster_defn.BBdx),
+            width=raster_defn.BBdyW*16,
+            height=raster_defn.BBdx,
+        ).turn(-1)
+        glyphs.append(Glyph(
+            raster, codepoint=cp,
+            left_bearing=cd.BBox,
+            shift_up=cd.BBoy,
+            right_bearing=cd.Wx//0x10000-cd.BBox-cd.BBdx,
+            # use Wy, BBdy ?
+        ))
+    props = dict(
+        family=ixn.characters.decode('ascii', 'replace'),
+        weight=('bold' if cie.face&2 else 'light' if cie.face&4 else 'regular'),
+        slant=('italic' if cie.face&1 else 'roman'),
+        setwidth=('condensed' if cie.face&6 == 6 else 'expanded' if cie.face&12 == 12 else 'normal'),
+        encoding=('ascii' if cie.face&18 == 18 else '' if cie.face&36 == 36 else 'xerox'),
+        dpi=(cie.resolutionX//10, cie.resolutionY//10),
     )
     return props, glyphs
