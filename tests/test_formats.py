@@ -1089,6 +1089,26 @@ class TestFormats(BaseTester):
 @..@
 """)
 
+    # Xerox Alto
+
+    alto = 'https://xeroxalto.computerhistory.org/_cd8_/alto/'
+
+    def test_import_al(self):
+        """Test importing Alto .AL files."""
+        file = ensure_asset(self.alto, 'sysfont.al!2')
+        font, *_ = monobit.load(file, format='alto')
+        self.assertEqual(len(font.glyphs), 95)
+        assert_text_eq(font.get_glyph(b'A').reduce().as_text(), """\
+....@....
+....@....
+...@.@...
+...@.@...
+..@...@..
+..@@@@@..
+.@.....@.
+@@@...@@@
+""")
+
 
     # stroke formats
 
