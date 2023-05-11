@@ -89,11 +89,12 @@ Supported bitmap formats
 
 | Format                | Short Name | Typical Extension           | Read  | Write |
 |-----------------------|------------|-----------------------------|-------|-------|
-| Xerox Alto screen font| `alto`     | `.al`                       | ✔     |       |
+| Xerox Alto CONVERT    | `alto`     | `.al`                       | ✔     |       |
 | Amiga Font Contents   | `amiga-fc` | `.font`                     | ✔     |       |
 | Amiga font            | `amiga`    |                             | ✔     |       |
 | BBC soft font         | `bbc`      |                             | ✔     | ✔     |
 | X11/Adobe BDF         | `bdf`      | `.bdf`                      | ✔     | ✔     |
+| Xerox Alto BITBLT     | `bitblt`   | `.strike` `.ks`             | ✔     |       |
 | AngelCode BMFont [P]  | `bmfont` | `.fnt` `.xml` `.json` + images | ✔    | ✔     |
 | Raw binary            | `raw`      | `.fnt` `.rom` [*]           | ✔     | ✔     |
 | Codepage Information  | `cpi`      | `.cpi`                      | ✔     | ✔     |
