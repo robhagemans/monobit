@@ -184,33 +184,75 @@ _STRIKE_BODY = be.Struct(
     # xinsegment ↑ min, max+2 word
 )
 
+_BOUNDING_BOX_BLOCK = be.Struct(
+    # X offset
+    FBBox='uint16',
+    # Y offset
+    FBBoy='uint16',
+    # X width
+    FBBdx='uint16',
+    # Y width
+    FBBdy='uint16',
+)
+
+_WIDTH_ENTRY = be.Struct(
+    # the entire spacing word will be = (-1) (both bytes =377b)
+    # to flag a non-existent character, else the bytes are:
+    offset='int8',
+    width='int8',
+)
 
 def _read_bitblt(instream):
+    # @StrikeHeader
     header = _STRIKE_HEADER.read_from(instream)
     if not header.format.oneBit:
         raise FileFormatError('Not a Xerox BITBLT strike')
     if header.format.index:
         raise FileFormatError('StrikeIndex format not supported')
-    # TODO
+    # @BoundingBoxBlock
     if header.format.kerned:
-        raise FileFormatError('KernedStrike format not supported')
+        bbox = _BOUNDING_BOX_BLOCK.read_from(instream)
+    # @StrikeBody
     body = _STRIKE_BODY.read_from(instream)
     height = body.ascent + body.descent
     strikebytes = instream.read(2*body.raster*height)
-    strike = Raster.from_bytes(strikebytes, 16*body.raster, height)
     # max is the highest included code; max+1 holds the replacement char
     # (if min==max we have 2 glyphs and 3 bounds)
     offsets = (be.uint16 * (header.max+3 - header.min)).read_from(instream)
+    # @WidthBody
+    if header.format.kerned:
+        spacing = (_WIDTH_ENTRY * (header.max+2 - header.min)).read_from(instream)
+    strike = Raster.from_bytes(strikebytes, 16*body.raster, height)
+    # conversion section
     # convert strike to glyphs
-    glyphs = [
-        Glyph(
-            strike.crop(left=_offset, right=max(0, 16*body.raster - _next)),
-            codepoint=_cp,
-            shift_up=-body.descent,
-        )
-        for _offset, _next, _cp in zip(offsets, offsets[1:], count(header.min))
-        if _offset != _next
-    ]
+    if header.format.kerned:
+        glyphs = [
+            Glyph(
+                strike.crop(left=_offset, right=max(0, 16*body.raster - _next)),
+                codepoint=_cp,
+                shift_up=-body.descent,
+                left_bearing=_spacing.offset+bbox.FBBox,
+                right_bearing=(
+                    _spacing.width
+                    -(_next-_offset)
+                    -(_spacing.offset+bbox.FBBox)
+                ),
+            )
+            for _offset, _next, _spacing, _cp in zip(
+                offsets, offsets[1:], spacing, count(header.min)
+            )
+            if _spacing.width >= 0 and _spacing.offset >= 0
+        ]
+    else:
+        glyphs = [
+            Glyph(
+                strike.crop(left=_offset, right=max(0, 16*body.raster - _next)),
+                codepoint=_cp,
+                shift_up=-body.descent,
+            )
+            for _offset, _next, _cp in zip(offsets, offsets[1:], count(header.min))
+            if _offset != _next
+        ]
     # last char is replacement char (referred to as "dummy character" in the docs)
     glyphs[-1] = glyphs[-1].modify(codepoint=None, tag='dummy')
     props = dict(
