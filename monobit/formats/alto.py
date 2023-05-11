@@ -6,8 +6,9 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import logging
+from itertools import count
 
-from ..struct import bitfield, big_endian as be
+from ..struct import bitfield, flag, big_endian as be
 from ..storage import loaders, savers
 from ..magic import FileFormatError
 from ..properties import Props
@@ -27,7 +28,18 @@ def load_alto(instream):
     return Font(glyphs, line_height=header.height)
 
 
+@loaders.register(
+    name='bitblt',
+    patterns=('*.strike',),
+)
+def load_bitblt(instream):
+    """Load font from Xerox Alto .strike file."""
+    props, glyphs =  _read_bitblt(instream)
+    return Font(glyphs, **props)
+
+
 ##############################################################################
+# .AL "CONVERT" format
 # http://www.bitsavers.org/pdf/xerox/alto/printing/AltoFontFormats_Oct1980.pdf
 
 _AL_HEADER = be.Struct(
@@ -124,3 +136,80 @@ def _convert_glyph(header, props):
     else:
         return Glyph(props.pixels, width=16, **glyph_props)
     return None
+
+
+##############################################################################
+# "plainstrike" or "BITBLT" format
+
+# a variant with a separate StrikeIndex file (.StrikeX) exists, but:
+# > to the best of my knowledge, no one has ever used a StrikeIndex format
+
+_FORMAT_STRUCT = be.Struct(
+    # always =1, meaning 'new style'
+    oneBit=bitfield('uint16', 1),
+    # =1 means StrikeIndex, =0 otherwise
+    index=bitfield('uint16', 1),
+    # =1 if all characters have same value of Wx, else =0
+    fixed=bitfield('uint16', 1),
+    # =1 if KernedStrike, =0 if PlainStrike
+    kerned=bitfield('uint16', 1),
+    blank=bitfield('uint16', 12),
+)
+
+_STRIKE_HEADER = be.Struct(
+    format=_FORMAT_STRUCT,
+    # minimum character code
+    min='uint16',
+    # maximum character code
+    max='uint16',
+    # maximum spacing width of any character = max{Wx}
+    maxwidth='uint16',
+)
+
+_STRIKE_BODY = be.Struct(
+    # number of words in the StrikeBody
+    length='uint16',
+    # number of scan-lines above the baseline
+    ascent='uint16',
+    # number of scan-lines below the baseline
+    descent='uint16',
+    # always =0 [used to be used for padding schemes]
+    xoffset='uint16',
+    # number of words per scan-line in the strike
+    raster='uint16',
+    # the bit map, where height = ascent + descent
+    # bitmap word raster*height
+    # pointers into the strike, indexed by code
+    # xinsegment ↑ min, max+2 word
+)
+
+
+def _read_bitblt(instream):
+    header = _STRIKE_HEADER.read_from(instream)
+    if not header.format.oneBit:
+        raise ValueError('Not a Xerox BITBLT strike')
+    if header.format.index:
+        raise ValueError('StrikeIndex format not supported')
+    # TODO
+    if header.format.kerned:
+        raise ValueError('KernedStrike format not supported')
+    body = _STRIKE_BODY.read_from(instream)
+    height = body.ascent + body.descent
+    strikebytes = instream.read(2*body.raster*height)
+    strike = Raster.from_bytes(strikebytes, 16*body.raster, height)
+    offsets = (be.uint16 * (header.max+2 - header.min)).read_from(instream)
+    # convert strike to glyphs
+    glyphs = tuple(
+        Glyph(
+            strike.crop(left=_offset, right=max(0, 16*body.raster - _next)),
+            codepoint=_cp,
+            shift_up=-body.descent,
+        )
+        for _offset, _next, _cp in zip(offsets, offsets[1:], count(header.min))
+        if _offset != _next
+    )
+    props = dict(
+        ascent=body.ascent,
+        descent=body.descent
+    )
+    return props, glyphs
