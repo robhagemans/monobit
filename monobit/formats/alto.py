@@ -15,6 +15,7 @@ from ..properties import Props
 from ..font import Font
 from ..glyph import Glyph
 from ..raster import Raster
+from ..labels import Tag
 
 
 @loaders.register(
@@ -197,9 +198,11 @@ def _read_bitblt(instream):
     height = body.ascent + body.descent
     strikebytes = instream.read(2*body.raster*height)
     strike = Raster.from_bytes(strikebytes, 16*body.raster, height)
-    offsets = (be.uint16 * (header.max+2 - header.min)).read_from(instream)
+    # max is the highest included code; max+1 holds the replacement char
+    # (if min==max we have 2 glyphs and 3 bounds)
+    offsets = (be.uint16 * (header.max+3 - header.min)).read_from(instream)
     # convert strike to glyphs
-    glyphs = tuple(
+    glyphs = [
         Glyph(
             strike.crop(left=_offset, right=max(0, 16*body.raster - _next)),
             codepoint=_cp,
@@ -207,9 +210,12 @@ def _read_bitblt(instream):
         )
         for _offset, _next, _cp in zip(offsets, offsets[1:], count(header.min))
         if _offset != _next
-    )
+    ]
+    # last char is replacement char (referred to as "dummy character" in the docs)
+    glyphs[-1] = glyphs[-1].modify(codepoint=None, tag='dummy')
     props = dict(
         ascent=body.ascent,
-        descent=body.descent
+        descent=body.descent,
+        default_char=Tag('dummy'),
     )
     return props, glyphs
