@@ -1070,12 +1070,6 @@ class TestFormats(BaseTester):
         font, *_ = monobit.load(file)
         self.assertEqual(len(font.glyphs), 95)
 
-    def test_import_dosstart_stroke(self):
-        """Test importing DosStart stroke files."""
-        file = ensure_asset(self.dosstart, 'DOSSTART.DSF')
-        font, *_ = monobit.load(file)
-        self.assertEqual(len(font.glyphs), 95)
-
     # bepf
 
     ohlfs = 'https://github.com/AlexHorovitz/Ohlfs-font-to-ttf-conversion/raw/master/Ohlfs.font/'
@@ -1127,6 +1121,12 @@ class TestFormats(BaseTester):
         font, *_ = monobit.load(self.font_path / 'hershey' / 'hershey.chr')
         self.assertEqual(len(font.glyphs), 26)
         self.assertEqual(str(font.glyphs[0].path), self.hershey_A_path)
+
+    def test_import_dosstart_stroke(self):
+        """Test importing DosStart stroke files."""
+        file = ensure_asset(self.dosstart, 'DOSSTART.DSF')
+        font, *_ = monobit.load(file)
+        self.assertEqual(len(font.glyphs), 95)
 
     def test_export_svg(self):
         """Test exporting Hershey font in SVG format."""
