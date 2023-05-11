@@ -187,12 +187,12 @@ _STRIKE_BODY = be.Struct(
 def _read_bitblt(instream):
     header = _STRIKE_HEADER.read_from(instream)
     if not header.format.oneBit:
-        raise ValueError('Not a Xerox BITBLT strike')
+        raise FileFormatError('Not a Xerox BITBLT strike')
     if header.format.index:
-        raise ValueError('StrikeIndex format not supported')
+        raise FileFormatError('StrikeIndex format not supported')
     # TODO
     if header.format.kerned:
-        raise ValueError('KernedStrike format not supported')
+        raise FileFormatError('KernedStrike format not supported')
     body = _STRIKE_BODY.read_from(instream)
     height = body.ascent + body.descent
     strikebytes = instream.read(2*body.raster*height)
