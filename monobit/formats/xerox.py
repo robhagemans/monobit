@@ -43,7 +43,7 @@ def load_bitblt(instream):
     name='prepress',
     patterns=('*.ac',),
 )
-def load_bitblt(instream):
+def load_prepress(instream):
     """Load font from Xerox Alto PrePress .ac file."""
     props, glyphs =  _read_prepress(instream)
     return Font(glyphs, **props)
@@ -368,6 +368,8 @@ def _read_prepress(instream):
     directory = (be.uint32 * nchars).read_from(instream)
     glyphs = []
     for cp, offset, cd in zip(range(cie.bc, cie.ec+1), directory, char_data):
+        if cd.BBdy < 0:
+            continue
         instream.seek(anchor+offset*2)
         raster_defn = _RASTER_DEFN.read_from(instream)
         raster = Raster.from_bytes(
@@ -380,7 +382,7 @@ def _read_prepress(instream):
             left_bearing=cd.BBox,
             shift_up=cd.BBoy,
             right_bearing=cd.Wx//0x10000-cd.BBox-cd.BBdx,
-            # use Wy, BBdy ?
+            # ignoring Wy - vertical advance
         ))
     props = dict(
         family=ixn.characters.decode('ascii', 'replace'),
