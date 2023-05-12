@@ -384,12 +384,33 @@ def _read_prepress(instream):
             right_bearing=cd.Wx//0x10000-cd.BBox-cd.BBdx,
             # ignoring Wy - vertical advance
         ))
+    # decode face number
+    encoding = None
+    setwidth = 'normal'
+    face = cie.face
+    if face >= 36:
+        face -= 36
+    elif face >= 18:
+        encoding = 'ascii'
+        face -= 18
+    else:
+        encoding = 'xerox'
+    if face >= 12:
+        setwidth = 'expanded'
+        face -= 12
+    elif face >= 6:
+        setwidth = 'condensed'
+        face -= 6
+    weight = ('bold' if face&2 else 'light' if face&4 else 'regular')
+    slant = ('italic' if face&1 else 'roman')
+    # remaining properties
     props = dict(
         family=ixn.characters.decode('ascii', 'replace'),
-        weight=('bold' if cie.face&2 else 'light' if cie.face&4 else 'regular'),
-        slant=('italic' if cie.face&1 else 'roman'),
-        setwidth=('condensed' if cie.face&6 == 6 else 'expanded' if cie.face&12 == 12 else 'normal'),
-        encoding=('ascii' if cie.face&18 == 18 else '' if cie.face&36 == 36 else 'xerox'),
+        weight=weight,
+        slant=slant,
+        setwidth=setwidth,
+        # encoding flag isn't set right in any of the .ac files seen
+        #encoding=encoding,
         dpi=(cie.resolutionX//10, cie.resolutionY//10),
     )
     return props, glyphs
