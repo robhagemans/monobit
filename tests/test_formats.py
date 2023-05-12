@@ -1144,8 +1144,17 @@ class TestFormats(BaseTester):
 @@...@@
 """)
 
+    alto3 = 'https://xeroxalto.computerhistory.org/Indigo/PressFonts/'
 
-    # stroke formats
+    def test_import_prepress(self):
+        """Test importing Xerox PrePress .AC files."""
+        file = ensure_asset(self.alto3, 'TESTFONT12.AC!1')
+        font, *_ = monobit.load(file, format='prepress')
+        self.assertEqual(len(font.glyphs), 75)
+        # I'd check a glyph but they are *huge*
+
+
+    # vector formats
 
     def test_import_hershey(self):
         """Test importing Hershey font in Jim Hurt's format."""
