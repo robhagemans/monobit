@@ -844,12 +844,8 @@ class Encoder:
 class EncodingName(str):
 
     def __new__(cls, value=''):
-        """Convert char or char sequence to char label."""
-        if not isinstance(value, str):
-            raise ValueError(
-                f'Can only convert `str` to encoding name, not `{type(value)}`.'
-            )
-        value = CharmapRegistry.normalise(value)
+        """Convert value to encoding name."""
+        value = CharmapRegistry.normalise(str(value))
         return super().__new__(cls, value)
 
 

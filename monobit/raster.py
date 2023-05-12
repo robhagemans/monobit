@@ -254,8 +254,8 @@ class Raster:
         if excess:
             if _1 in bitseq[-excess:]:
                 raise ValueError(
-                    'Bit string overruns by nonzero %d-bit sequence [%s].',
-                    excess, bitseq[-excess:]
+                    'Bit string overruns by nonzero %d-bit sequence [%s].'
+                    % (excess, bitseq[-excess:])
                 )
             bitseq = bitseq[:-excess]
         if height is NOT_SET:

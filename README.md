@@ -89,10 +89,12 @@ Supported bitmap formats
 
 | Format                | Short Name | Typical Extension           | Read  | Write |
 |-----------------------|------------|-----------------------------|-------|-------|
+| Xerox Alto CONVERT    | `alto`     | `.al`                       | ✔     |       |
 | Amiga Font Contents   | `amiga-fc` | `.font`                     | ✔     |       |
 | Amiga font            | `amiga`    |                             | ✔     |       |
 | BBC soft font         | `bbc`      |                             | ✔     | ✔     |
 | X11/Adobe BDF         | `bdf`      | `.bdf`                      | ✔     | ✔     |
+| Xerox Alto BITBLT     | `bitblt`   | `.strike` `.ks`             | ✔     |       |
 | AngelCode BMFont [P]  | `bmfont` | `.fnt` `.xml` `.json` + images | ✔    | ✔     |
 | Raw binary            | `raw`      | `.fnt` `.rom` [*]           | ✔     | ✔     |
 | Codepage Information  | `cpi`      | `.cpi`                      | ✔     | ✔     |
@@ -123,6 +125,7 @@ Supported bitmap formats
 | LISA font library     | `lisa`     | `.bin`                      | ✔     |       |
 | MacOS font            | `mac`      | `.dfont` `.suit`            | ✔     |       |
 | mkwinfon text format  | `mkwinfon` | `.fd`                       | ✔     |       |
+| Xerox Alto PrePress   | `prepress` | `.ac`                       | ✔     |       |
 | PSF2AMS PSFCOM        | `psfcom`   | `.com`                      | ✔     |       |
 | Bare NFNT resource    | `nfnt`     | `.f`                        | ✔     | ✔     |
 | Palm OS font (v1/NFNT)| `palm`     | `.pdb`                      | ✔     |       |

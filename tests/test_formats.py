@@ -1070,12 +1070,6 @@ class TestFormats(BaseTester):
         font, *_ = monobit.load(file)
         self.assertEqual(len(font.glyphs), 95)
 
-    def test_import_dosstart_stroke(self):
-        """Test importing DosStart stroke files."""
-        file = ensure_asset(self.dosstart, 'DOSSTART.DSF')
-        font, *_ = monobit.load(file)
-        self.assertEqual(len(font.glyphs), 95)
-
     # bepf
 
     ohlfs = 'https://github.com/AlexHorovitz/Ohlfs-font-to-ttf-conversion/raw/master/Ohlfs.font/'
@@ -1095,8 +1089,72 @@ class TestFormats(BaseTester):
 @..@
 """)
 
+    # Xerox Alto
 
-    # stroke formats
+    alto = 'https://xeroxalto.computerhistory.org/_cd8_/alto/'
+
+    def test_import_al(self):
+        """Test importing Alto .AL files."""
+        file = ensure_asset(self.alto, 'sysfont.al!2')
+        font, *_ = monobit.load(file, format='alto')
+        self.assertEqual(len(font.glyphs), 95)
+        assert_text_eq(font.get_glyph(b'A').reduce().as_text(), """\
+....@....
+....@....
+...@.@...
+...@.@...
+..@...@..
+..@@@@@..
+.@.....@.
+@@@...@@@
+""")
+
+
+    alto2 = 'https://xeroxalto.computerhistory.org/Indigo/AltoFonts/'
+
+    def test_import_ks(self):
+        """Test importing Alto .KS files."""
+        file = ensure_asset(self.alto2, 'Elite10.ks!1')
+        font, *_ = monobit.load(file, format='bitblt')
+        self.assertEqual(len(font.glyphs), 88)
+        assert_text_eq(font.get_glyph(b'A').reduce().as_text(), """\
+...@...
+..@.@..
+..@.@..
+.@...@.
+.@...@.
+.@@@@@.
+.@...@.
+@@...@@
+""")
+
+    def test_import_strike(self):
+        """Test importing Alto .STRIKE files."""
+        file = ensure_asset(self.alto2, 'Elite10.strike!2')
+        font, *_ = monobit.load(file, format='bitblt')
+        self.assertEqual(len(font.glyphs), 88)
+        assert_text_eq(font.get_glyph(b'A').reduce().as_text(), """\
+...@...
+..@.@..
+..@.@..
+.@...@.
+.@...@.
+.@@@@@.
+.@...@.
+@@...@@
+""")
+
+    alto3 = 'https://xeroxalto.computerhistory.org/Indigo/PressFonts/'
+
+    def test_import_prepress(self):
+        """Test importing Xerox PrePress .AC files."""
+        file = ensure_asset(self.alto3, 'TESTFONT12.AC!1')
+        font, *_ = monobit.load(file, format='prepress')
+        self.assertEqual(len(font.glyphs), 75)
+        # I'd check a glyph but they are *huge*
+
+
+    # vector formats
 
     def test_import_hershey(self):
         """Test importing Hershey font in Jim Hurt's format."""
@@ -1127,6 +1185,12 @@ class TestFormats(BaseTester):
         font, *_ = monobit.load(self.font_path / 'hershey' / 'hershey.chr')
         self.assertEqual(len(font.glyphs), 26)
         self.assertEqual(str(font.glyphs[0].path), self.hershey_A_path)
+
+    def test_import_dosstart_stroke(self):
+        """Test importing DosStart stroke files."""
+        file = ensure_asset(self.dosstart, 'DOSSTART.DSF')
+        font, *_ = monobit.load(file)
+        self.assertEqual(len(font.glyphs), 95)
 
     def test_export_svg(self):
         """Test exporting Hershey font in SVG format."""
