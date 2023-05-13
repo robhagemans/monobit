@@ -315,7 +315,7 @@ reverse-engineering, implementing and preserving font formats and files:
 - [Archive Team](http://fileformats.archiveteam.org/wiki/Fonts)
 - [Jason Scott's textfiles.com](http://textfiles.com)
 - [John Elliott's homepage](http://www.seasip.info)
-- [Simon Tatham's fonts page](https://www.chiark.greenend.org.uk/~sgtatham/fonts/):
+- [Simon Tatham's fonts page](https://www.chiark.greenend.org.uk/~sgtatham/fonts/)
 - [Aivosto's character set documentation](https://www.aivosto.com/articles/charsets.html)
 - [Rebecca Bettencourt's character set documentation](https://www.kreativekorp.com/charset/)
 - [Xiphoseer's Signum Document Toolbox](https://sdo.dseiler.eu/)
