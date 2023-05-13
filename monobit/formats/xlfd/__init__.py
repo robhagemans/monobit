@@ -7,3 +7,4 @@ licence: https://opensource.org/licenses/MIT
 
 from .bdf import load_bdf, save_bdf
 from .hbf import load_hbf, save_hbf
+from .pcf import load_pcf
