@@ -1,5 +1,5 @@
 """
-monobit.formats.lxfd.pcf - X11 portable compiled format
+monobit.formats.xlfd.pcf - X11 portable compiled format
 
 (c) 2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -17,6 +17,8 @@ from ...raster import Raster
 from ...labels import Tag, Codepoint
 from ...binary import align
 
+from .bdf import _parse_xlfd_properties
+
 
 MAGIC = b'\1fcp'
 
@@ -29,7 +31,8 @@ def load_pcf(instream):
     """Load font from X11 PCF font file."""
     pcf_data = _read_pcf(instream)
     glyphs = _convert_glyphs(pcf_data)
-    return Font(glyphs)
+    props = _convert_props(pcf_data)
+    return Font(glyphs, **props)
 
 
 ##############################################################################
@@ -119,7 +122,7 @@ def _read_properties_table(instream):
     padding = instream.read(0 if nprops&3 == 0 else 4-(nprops&3))
     string_size = base.int32.read_from(instream)
     strings = instream.read(string_size)
-    lxfd_props = {}
+    xlfd_props = {}
     for prop in props:
         name, _, rest = strings[prop.name_offset:].partition(b'\0')
         name = name.decode('latin-1', 'ignore')
@@ -128,8 +131,8 @@ def _read_properties_table(instream):
             value = value.decode('latin-1', 'ignore')
         else:
             value = int(prop.value)
-        lxfd_props[name] = value
-    return lxfd_props
+        xlfd_props[name] = value
+    return xlfd_props
 
 # Accelerator table
 
@@ -279,7 +282,7 @@ def _read_pcf(instream):
     for entry in toc:
         instream.seek(entry.offset)
         if entry.type == PCF_PROPERTIES:
-            props.lxfd_props = _read_properties_table(instream)
+            props.xlfd_props = _read_properties_table(instream)
         elif entry.type == PCF_ACCELERATORS:
             # mandatory if BDF_ACCELERATORS not defined
             props.acc_props = _read_acc_table(instream)
@@ -306,6 +309,9 @@ def _read_pcf(instream):
             props.glyph_names = _read_glyph_names(instream)
     return props
 
+
+###############################################################################
+# converter
 
 def _convert_glyphs(pcf_data):
     """Convert glyphs from X11 PCF data to monobit."""
@@ -363,3 +369,10 @@ def _convert_glyphs(pcf_data):
         for _gb, _met, _labs in zip(pcf_data.bitmaps, pcf_data.metrics, labelsets)
     )
     return glyphs
+
+
+def _convert_props(pcf_data):
+    xlfd_name = pcf_data.xlfd_props.pop('FONT', '')
+    pcf_data.xlfd_props = {_k: str(_v) for _k, _v in pcf_data.xlfd_props.items()}
+    props = _parse_xlfd_properties(pcf_data.xlfd_props, xlfd_name)
+    return props
