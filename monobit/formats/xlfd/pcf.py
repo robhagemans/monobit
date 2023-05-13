@@ -14,7 +14,7 @@ from ...properties import Props
 from ...font import Font
 from ...glyph import Glyph
 from ...raster import Raster
-from ...labels import Tag
+from ...labels import Tag, Codepoint
 from ...binary import align
 
 
@@ -231,8 +231,23 @@ def _read_encoding(instream):
     format, base = _read_format(instream)
     enc = base.Struct(**_ENCODING_TABLE).read_from(instream)
     count = (enc.max_char_or_byte2-enc.min_char_or_byte2+1)*(enc.max_byte1-enc.min_byte1+1)
+    # generate code points
+    if not enc.min_byte1 and not enc.max_byte1:
+        codepoints = (
+            bytes((_cp,))
+            for _cp in range(enc.min_char_or_byte2, enc.max_char_or_byte2+1)
+        )
+    else:
+        codepoints = (
+            bytes((_hi, _lo))
+            for _hi in range(enc.min_char_or_byte2, enc.max_char_or_byte2+1)
+            for _lo in range(enc.min_byte1, enc.max_byte1+1)
+        )
     glyph_indices = (base.int16 * count).read_from(instream)
-    return enc, glyph_indices
+    encoding_dict = {
+        _cp: _idx for _cp, _idx in zip(codepoints, glyph_indices)
+    }
+    return encoding_dict
 
 
 def _read_swidths(instream):
@@ -266,26 +281,45 @@ def _read_pcf(instream):
         if entry.type == PCF_PROPERTIES:
             props.lxfd_props = _read_properties_table(instream)
         elif entry.type == PCF_ACCELERATORS:
+            # mandatory if BDF_ACCELERATORS not defined
             props.acc_props = _read_acc_table(instream)
         elif entry.type == PCF_BDF_ACCELERATORS:
+            # optional
             props.bdf_acc_props = _read_acc_table(instream)
         elif entry.type == PCF_METRICS:
+            # mandatory
             props.metrics = _read_metrics(instream)
         elif entry.type == PCF_INK_METRICS:
+            # optional
             props.ink_metrics = _read_metrics(instream)
         elif entry.type == PCF_BITMAPS:
+            # mandatory
             props.bitmap_format, props.bitmaps = _read_bitmaps(instream)
         elif entry.type == PCF_BDF_ENCODINGS:
-            props.enc, props.glyph_indices = _read_encoding(instream)
+            # mandatory, but could be empty
+            props.encodings = _read_encoding(instream)
         elif entry.type == PCF_SWIDTHS:
+            # optional - does not exist in X11 R6.4 sources
             props.swidths = _read_swidths(instream)
         elif entry.type == PCF_GLYPH_NAMES:
+            # optional - does not exist in X11 R6.4 sources
             props.glyph_names = _read_glyph_names(instream)
     return props
 
 
 def _convert_glyphs(pcf_data):
     """Convert glyphs from X11 PCF data to monobit."""
+    # label sets
+    try:
+        # if the table exists, the count should be the same as metrics count
+        labelsets = [[Tag(_name)] for _name in pcf_data.glyph_names]
+    except AttributeError:
+        labelsets = [[] for _ in pcf_data.metrics]
+    try:
+        for _cp, _idx in pcf_data.encodings.items():
+            labelsets[_idx].append(Codepoint(_cp))
+    except AttributeError:
+        pass
     # /* how each row in each glyph's bitmap is padded (format&3) */
     # /*  0=>bytes, 1=>shorts, 2=>ints */
     glyph_pad_length = pcf_data.bitmap_format & PCF_GLYPH_PAD_MASK
@@ -324,8 +358,8 @@ def _convert_glyphs(pcf_data):
             left_bearing=_met.left_side_bearing,
             right_bearing=_met.character_width-_met.right_side_bearing,
             shift_up=-_met.character_descent,
-            # metrics=_met,s
+            labels=_labs,
         )
-        for _gb, _met in zip(pcf_data.bitmaps, pcf_data.metrics)
+        for _gb, _met, _labs in zip(pcf_data.bitmaps, pcf_data.metrics, labelsets)
     )
     return glyphs
