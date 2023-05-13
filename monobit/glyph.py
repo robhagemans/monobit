@@ -468,13 +468,15 @@ class Glyph(HasProps):
     @classmethod
     def from_bytes(
             cls, byteseq, width, height=NOT_SET,
-            *, align='left', byte_order='row-major', stride=NOT_SET,
+            *, align='left', order='row-major', stride=NOT_SET,
+            byte_swap=0, bit_order='big',
             **kwargs
         ):
         """Create glyph from bytes/bytearray/int sequence."""
         pixels = Raster.from_bytes(
             byteseq, width, height,
-            align=align, stride=stride, byte_order=byte_order,
+            align=align, stride=stride, order=order,
+            byte_swap=byte_swap, bit_order=bit_order,
         )
         return cls(pixels, **kwargs)
 

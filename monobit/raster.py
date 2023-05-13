@@ -284,9 +284,10 @@ class Raster:
 
     @classmethod
     def from_bytes(
-                cls, byteseq, width=NOT_SET, height=NOT_SET,
-                *, align='left', byte_order='row-major', stride=NOT_SET,
-                **kwargs
+            cls, byteseq, width=NOT_SET, height=NOT_SET,
+            *, align='left', order='row-major', stride=NOT_SET,
+            byte_swap=0, bit_order='big',
+            **kwargs
         ):
         """
         Create raster from bytes/bytearray/int sequence.
@@ -295,7 +296,9 @@ class Raster:
         height: raster height in pixels
         stride: number of pixels per row (default: what's needed for alignment)
         align: 'left' or 'right' for byte-alignment; 'bit' for bit-alignment
-        byte_order: 'row-major' (default) or 'column-major' order of the byte array (no effect if align == 'bit')
+        order: 'row-major' (default) or 'column-major' order of the byte array (no effect if align == 'bit')
+        byte_swap: swap byte order in units of n bytes, 0 (default) for no swap
+        bit_order: per-byte bit endianness little for lsb left, 'big' (default) for msb left
         """
         if all(_arg is NOT_SET for _arg in (width, height, stride)):
             raise ValueError(
@@ -318,8 +321,12 @@ class Raster:
                 stride = (8 * len(byteseq)) // height
             else:
                 stride = width
-        # byte order. no effect for bit alignment
-        if byte_order == 'column-major' and align != 'bit':
+        if byte_swap:
+            # grouper
+            args = [iter(byteseq)] * byte_swap
+            byteseq = b''.join(bytes(_chunk[::-1]) for _chunk in zip(*args))
+        # byte matrix order. no effect for bit alignment
+        if order == 'column-major' and align != 'bit':
             byteseq = b''.join(
                 byteseq[_offs::height]
                 for _offs in range(height)
@@ -330,6 +337,10 @@ class Raster:
             bitseq = bin(
                 int.from_bytes(byteseq, 'big'))[2:].zfill(8*len(byteseq)
             )
+        # per-byte bit swap.
+        if bit_order == 'little':
+            args = [iter(bitseq)] * 8
+            bitseq = ''.join(''.join(_chunk[::-1]) for _chunk in zip(*args))
         return cls.from_vector(
             bitseq, width=width, height=height, stride=stride, align=align,
             _0='0', _1='1',
