@@ -32,7 +32,9 @@ def load_pcf(instream):
     pcf_data = _read_pcf(instream)
     glyphs = _convert_glyphs(pcf_data)
     props = _convert_props(pcf_data)
-    return Font(glyphs, **props)
+    font = Font(glyphs, **props)
+    return font.label()
+
 
 
 ##############################################################################
