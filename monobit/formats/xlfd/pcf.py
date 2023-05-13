@@ -252,7 +252,7 @@ def _read_encoding(instream):
         # -1 means 'not used'
         if _idx >= 0
     }
-    return encoding_dict
+    return encoding_dict, enc.default_char
 
 
 def _read_swidths(instream):
@@ -302,7 +302,7 @@ def _read_pcf(instream):
             props.bitmap_format, props.bitmaps = _read_bitmaps(instream)
         elif entry.type == PCF_BDF_ENCODINGS:
             # mandatory, but could be empty
-            props.encodings = _read_encoding(instream)
+            props.encodings, props.default_char = _read_encoding(instream)
         elif entry.type == PCF_SWIDTHS:
             # optional - does not exist in X11 R6.4 sources
             props.swidths = _read_swidths(instream)
@@ -377,4 +377,7 @@ def _convert_props(pcf_data):
     xlfd_name = pcf_data.xlfd_props.pop('FONT', '')
     pcf_data.xlfd_props = {_k: str(_v) for _k, _v in pcf_data.xlfd_props.items()}
     props = _parse_xlfd_properties(pcf_data.xlfd_props, xlfd_name)
+    props.update(dict(
+        default_char=Codepoint(pcf_data.default_char),
+    ))
     return props
