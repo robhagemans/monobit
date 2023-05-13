@@ -249,6 +249,8 @@ def _read_encoding(instream):
     glyph_indices = (base.int16 * count).read_from(instream)
     encoding_dict = {
         _cp: _idx for _cp, _idx in zip(codepoints, glyph_indices)
+        # -1 means 'not used'
+        if _idx >= 0
     }
     return encoding_dict
 
