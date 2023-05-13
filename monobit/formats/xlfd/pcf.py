@@ -17,7 +17,7 @@ from ...raster import Raster
 from ...labels import Tag, Codepoint
 from ...binary import align
 
-from .bdf import _parse_xlfd_properties
+from .bdf import _parse_xlfd_properties, swidth_to_pixel
 
 
 MAGIC = b'\1fcp'
@@ -320,6 +320,7 @@ def _read_pcf(instream):
 def _convert_glyphs(pcf_data):
     """Convert glyphs from X11 PCF data to monobit."""
     # label sets
+    n_glyphs = len(pcf_data.metrics)
     try:
         # if the table exists, the count should be the same as metrics count
         labelsets = [[Tag(_name)] for _name in pcf_data.glyph_names]
@@ -330,6 +331,25 @@ def _convert_glyphs(pcf_data):
             labelsets[_idx].append(Codepoint(_cp))
     except AttributeError:
         pass
+    # scalable width reference values
+    if hasattr(pcf_data, 'swidths'):
+        dpi_y = pcf_data.xlfd_props.get('RESOLUTION_Y', 72)
+        try:
+            point_size = pcf_data.xlfd_props['POINT_SIZE'] / 10
+        except KeyError:
+            try:
+                point_size = pcf_data.xlfd_props['PIXEL_SIZE'] * dpi_y / 72 / 10
+            except KeyError:
+                logging.warning('No point-size information - dropping scalable width table')
+                # can't calculate swidths
+                pcf_data.swidths = None
+    if hasattr(pcf_data, 'swidths') and pcf_data.swidths:
+        pcf_data.swidths = tuple(
+            swidth_to_pixel(_swidth, point_size, dpi_y)
+            for _swidth in pcf_data.swidths
+        )
+    else:
+        pcf_data.swidths = (None,) * n_glyphs
     # /* how each row in each glyph's bitmap is padded (format&3) */
     # /*  0=>bytes, 1=>shorts, 2=>ints */
     glyph_pad_length = pcf_data.bitmap_format & PCF_GLYPH_PAD_MASK
@@ -368,9 +388,12 @@ def _convert_glyphs(pcf_data):
             left_bearing=_met.left_side_bearing,
             right_bearing=_met.character_width-_met.right_side_bearing,
             shift_up=-_met.character_descent,
+            scalable_width=_swidth if _swidth != _met.right_side_bearing-_met.left_side_bearing else None,
             labels=_labs,
         )
-        for _gb, _met, _labs in zip(pcf_data.bitmaps, pcf_data.metrics, labelsets)
+        for _gb, _met, _labs, _swidth in zip(
+            pcf_data.bitmaps, pcf_data.metrics, labelsets, pcf_data.swidths
+        )
     )
     return glyphs
 
