@@ -319,6 +319,8 @@ reverse-engineering, implementing and preserving font formats and files:
 - [Aivosto's character set documentation](https://www.aivosto.com/articles/charsets.html)
 - [Rebecca Bettencourt's character set documentation](https://www.kreativekorp.com/charset/)
 - [Xiphoseer's Signum Document Toolbox](https://sdo.dseiler.eu/)
+- [George Williams et al.'s FontForge documentation](https://fontforge.org/docs/index.html)
+- [FreeType Glyph Conventions](https://freetype.org/freetype2/docs/glyphs/index.html)
 - ... and many others
 
 
