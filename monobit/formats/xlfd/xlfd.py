@@ -11,6 +11,10 @@ from ...encoding import charmaps
 from ...labels import Char
 
 
+# dot property namespace for unrecognised properties
+CUSTOM_PROP = 'custom'
+
+
 ##############################################################################
 # specification
 
@@ -596,9 +600,10 @@ def _parse_xlfd_properties(x_props, xlfd_name, to_int=int):
         _k: _v for _k, _v in properties.items()
         if _v is not None and _v != ''
     }
-    # keep unrecognised properties
+    # keep unrecognised properties but in separate namespace
+    # to avoid any clashes with yaff properties
     properties.update({
-        _k.lower(): _from_quoted_string(_v)
+        f'{CUSTOM_PROP}.{_k}'.lower(): _from_quoted_string(_v)
         for _k, _v in x_props.items()
     })
     return properties
@@ -707,15 +712,21 @@ def _create_xlfd_properties(font):
     # remove unset properties
     xlfd_props = {_k: _v for _k, _v in xlfd_props.items() if _v is not None}
     # keep unparsed properties
-    xlfd_props.update({
-        _k.split('.')[1].replace('-', '_').upper(): _quoted_string(' '.join(_v.splitlines()))
+    unparsed = {
+        _k.replace('-', '_').upper():
+            _quoted_string(' '.join(_v.splitlines()))
         for _k, _v in font.get_properties().items()
-        if _k.startswith('xlfd.')
+        if not font.is_known_property(_k)
+    }
+    xlfd_props.update({
+        _k.removeprefix('XLFD.'): _v
+        for _k, _v in unparsed.items()
+        if _k.startswith('XLFD.')
     })
     # keep unknown properties
     xlfd_props.update({
-        _k.replace('-', '_').upper(): _quoted_string(' '.join(_v.splitlines()))
-        for _k, _v in font.get_properties().items()
-        if not _k.startswith('xlfd.') and not font.is_known_property(_k)
+        _k.removeprefix(f'{CUSTOM_PROP}.'.upper()): _v
+        for _k, _v in unparsed.items()
+        if not _k.startswith('XLFD.')
     })
     return xlfd_props

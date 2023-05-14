@@ -18,7 +18,7 @@ from ...taggers import tagmaps
 from ...labels import Char, Codepoint, Tag
 
 from .xlfd import _parse_xlfd_properties, _create_xlfd_properties
-from .xlfd import _create_xlfd_name
+from .xlfd import _create_xlfd_name, CUSTOM_PROP
 
 
 @loaders.register(
@@ -175,11 +175,10 @@ def _convert_from_bdf(bdf_glyphs, bdf_props, x_props):
     # consistency checks
     if known['NCHARS'] != len(bdf_glyphs):
         logging.warning('Number of characters found does not match CHARS declaration.')
-    # FIXME - unrecognised properties can overwrite yaff properties
     for key, value in bdf_unparsed.items():
-        logging.info(f'Unrecognised BDF property {key}={value}')
-        # preserve as property
-        properties[key] = value
+        logging.warning(f'Unrecognised BDF property {key}={value}')
+        # preserve as custom property namespace, avoid clashes with yaff props
+        properties[f'{CUSTOM_PROP}.{key}'] = value
     for key, value in xlfd_props.items():
         if key in properties and properties[key] != value:
             logging.debug(
