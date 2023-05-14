@@ -1154,6 +1154,16 @@ class TestFormats(BaseTester):
         # I'd check a glyph but they are *huge*
 
 
+    # pcf
+
+    def test_import_pcf(self):
+        """Test impporting PCF files"""
+        file = self.font_path / '4x6.pcf'
+        font, *_ = monobit.load(file)
+        self.assertEqual(len(font.glyphs), 919)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+
+
     # vector formats
 
     def test_import_hershey(self):

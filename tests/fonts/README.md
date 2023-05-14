@@ -62,6 +62,7 @@ Original sources:
 * `4x6.otb`, `4x6.sfnt.dfont` and `4x6.ffms.ttf` were created from `4x6.bdf` using FontForge
 * `4x6.clt` was created from `4x6.bdf` using `vfontas`
 * `4x6.mgtk` was created by Kelvin Sherlock
+* `4x6.pcf` was created from `4x6.bdf` using `bdftopcf`
 * `8x16.hex` was created from `4x6.yaff` using `bittermelon`
 * `8x16.draw` was created from `8x16.hex` using `hexdraw`
 * `8x16-*.cpi` were created from `8x16.hex` through a PSF intermediate using `monobit` and `psftools`

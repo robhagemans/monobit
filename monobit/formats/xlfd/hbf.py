@@ -14,8 +14,9 @@ from ...font import Font, Coord
 from ...glyph import Glyph
 from ...binary import ceildiv
 
-from .bdf import read_props, _parse_xlfd_properties, _create_xlfd_properties
-from .bdf import _create_xlfd_name
+from .bdf import read_props
+from .xlfd import _parse_xlfd_properties, _create_xlfd_properties
+from .xlfd import _create_xlfd_name
 # from ..text.yaff import _globalise_glyph_metrics
 from ..windows import _normalise_metrics
 
