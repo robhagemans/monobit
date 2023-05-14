@@ -379,73 +379,18 @@ def _save_bdf(font, outstream):
             )
         )
     ]
-    vertical_metrics = ('shift_left', 'top_bearing', 'bottom_bearing')
-    has_vertical_metrics = any(
-        _k in _g.get_properties()
-        for _g in font.glyphs
-        for _k in vertical_metrics
-    )
-    if has_vertical_metrics:
+    if 'vertical' in font.get_features():
         bdf_props.append(('METRICSSET', '2'))
     # minimize glyphs to ink-bounds (BBX) before storing, except "cell" fonts
     if font.spacing not in ('character-cell', 'multi-cell'):
         font = font.reduce()
-    # labels
+    # ensure character labels exist if needed
     if charmaps.is_unicode(font.encoding):
         font = font.label(match_whitespace=False, match_graphical=False)
-    glyphs = []
-    for glyph in font.glyphs:
-        encoding, name = _get_glyph_encvalue(
-            glyph, charmaps.is_unicode(font.encoding)
-        )
-        swidth_y, dwidth_y = 0, 0
-        # SWIDTH = DWIDTH / ( points/1000 * dpi / 72 )
-        # DWIDTH specifies the widths in x and y, dwx0 and dwy0, in device pixels.
-        # Like SWIDTH , this width information is a vector indicating the position of
-        # the next glyph’s origin relative to the origin of this glyph.
-        dwidth_x = glyph.advance_width
-        swidth_x = pixel_to_swidth(
-            glyph.scalable_width, font.point_size, font.dpi.x
-        )
-        glyphdata = [
-            ('STARTCHAR', name),
-            ('ENCODING', str(encoding)),
-            # "The SWIDTH y value should always be zero for a standard X font."
-            # "The DWIDTH y value should always be zero for a standard X font."
-            ('SWIDTH', f'{swidth_x} 0'),
-            ('DWIDTH', f'{dwidth_x} 0'),
-            ('BBX', (
-                f'{glyph.width} {glyph.height} '
-                f'{glyph.left_bearing} {glyph.shift_up}'
-            )),
-        ]
-        if has_vertical_metrics:
-            to_left = glyph.shift_left - ceildiv(glyph.width, 2)
-            to_bottom = -glyph.top_bearing - glyph.height
-            voffx = glyph.left_bearing - to_left
-            voffy = glyph.shift_up - to_bottom
-            # dwidth1 vector: negative is down
-            dwidth1_y = -glyph.advance_height
-            swidth1_y = pixel_to_swidth(
-                -glyph.scalable_height, font.point_size, font.dpi.y
-            )
-            glyphdata.extend([
-                ('VVECTOR', f'{voffx} {voffy}'),
-                ('SWIDTH1', f'0 {swidth1_y}'),
-                ('DWIDTH1', f'0 {dwidth1_y}'),
-            ])
-        # bitmap
-        if not glyph.height:
-            glyphdata.append(('BITMAP', ''))
-        else:
-            hex = glyph.as_hex().upper()
-            width = len(hex) // glyph.height
-            split_hex = [
-                hex[_offs:_offs+width]
-                for _offs in range(0, len(hex), width)
-            ]
-            glyphdata.append(('BITMAP', '\n' + '\n'.join(split_hex)))
-        glyphs.append(glyphdata)
+    glyphs = tuple(
+        _convert_to_bdf_glyph(glyph, font)
+        for glyph in font.glyphs
+    )
     # write out
     for key, value in bdf_props:
         if value:
@@ -501,3 +446,57 @@ def _get_glyph_encvalue(glyph, is_unicode):
                 "can't be stored as no name or character available."
             )
     return encoding, name
+
+
+def _convert_to_bdf_glyph(glyph, font):
+    encoding, name = _get_glyph_encvalue(
+        glyph, charmaps.is_unicode(font.encoding)
+    )
+    swidth_y, dwidth_y = 0, 0
+    # SWIDTH = DWIDTH / ( points/1000 * dpi / 72 )
+    # DWIDTH specifies the widths in x and y, dwx0 and dwy0, in device pixels.
+    # Like SWIDTH , this width information is a vector indicating the position of
+    # the next glyph’s origin relative to the origin of this glyph.
+    dwidth_x = glyph.advance_width
+    swidth_x = pixel_to_swidth(
+        glyph.scalable_width, font.point_size, font.dpi.x
+    )
+    glyphdata = [
+        ('STARTCHAR', name),
+        ('ENCODING', str(encoding)),
+        # "The SWIDTH y value should always be zero for a standard X font."
+        # "The DWIDTH y value should always be zero for a standard X font."
+        ('SWIDTH', f'{swidth_x} 0'),
+        ('DWIDTH', f'{dwidth_x} 0'),
+        ('BBX', (
+            f'{glyph.width} {glyph.height} '
+            f'{glyph.left_bearing} {glyph.shift_up}'
+        )),
+    ]
+    if 'vertical' in font.get_features():
+        to_left = glyph.shift_left - ceildiv(glyph.width, 2)
+        to_bottom = -glyph.top_bearing - glyph.height
+        voffx = glyph.left_bearing - to_left
+        voffy = glyph.shift_up - to_bottom
+        # dwidth1 vector: negative is down
+        dwidth1_y = -glyph.advance_height
+        swidth1_y = pixel_to_swidth(
+            -glyph.scalable_height, font.point_size, font.dpi.y
+        )
+        glyphdata.extend([
+            ('VVECTOR', f'{voffx} {voffy}'),
+            ('SWIDTH1', f'0 {swidth1_y}'),
+            ('DWIDTH1', f'0 {dwidth1_y}'),
+        ])
+    # bitmap
+    if not glyph.height:
+        glyphdata.append(('BITMAP', ''))
+    else:
+        hex = glyph.as_hex().upper()
+        width = len(hex) // glyph.height
+        split_hex = [
+            hex[_offs:_offs+width]
+            for _offs in range(0, len(hex), width)
+        ]
+        glyphdata.append(('BITMAP', '\n' + '\n'.join(split_hex)))
+    return glyphdata
