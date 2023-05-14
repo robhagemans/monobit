@@ -109,10 +109,20 @@ def _read_bdf_glyphs(instream):
             raise FileFormatError(f'Expected STARTCHAR, not {line}')
         glyph_props = {'STARTCHAR': tag}
         proplist, comments, _ = read_props(instream, ends=('BITMAP',))
-        glyph_props |= dict(proplist)
+        propdict = dict(proplist)
+        glyph_props |= dict(
+            DWIDTH=_bdf_ints(propdict.pop('DWIDTH', None)),
+            SWIDTH=_bdf_ints(propdict.pop('SWIDTH', None)),
+            VVECTOR=_bdf_ints(propdict.pop('VVECTOR', None)),
+            DWIDTH1=_bdf_ints(propdict.pop('DWIDTH1', None)),
+            SWIDTH1=_bdf_ints(propdict.pop('SWIDTH1', None)),
+            BBX=_bdf_ints(propdict.pop('BBX', None)),
+        )
+        glyph_props |= propdict
         glyph_props['COMMENT'] = '\n'.join(comments)
+        glyph_props = {_k: _v for _k, _v in glyph_props.items() if _v is not None}
         # convert from hex-string to raster
-        width, height, _, _ = _bdf_ints(glyph_props['BBX'])
+        width, height, _, _ = glyph_props['BBX']
         hexstr = ''.join(
             # remove excess bytes on each hex line
             instream.readline().strip()[:ceildiv(width, 8)*2]
@@ -150,7 +160,9 @@ def _read_bdf_global(instream):
 # converter
 
 def _bdf_ints(instr):
-    return (int(_p) for _p in instr.split())
+    if instr is not None:
+        return tuple(int(_p) for _p in instr.split())
+    return None
 
 
 def _convert_from_bdf(bdf_glyphs, bdf_props, x_props):
@@ -183,28 +195,27 @@ def _convert_from_bdf(bdf_glyphs, bdf_props, x_props):
 def _extract_known_bdf_properties(bdf_props):
     """Extract and classify global BDF properties that we know and use."""
     known = dict(
-        SIZE=tuple(_bdf_ints(bdf_props.pop('SIZE'))),
+        SIZE=_bdf_ints(bdf_props.pop('SIZE')),
         STARTFONT=bdf_props.pop('STARTFONT'),
         CONTENTVERSION=bdf_props.pop('CONTENTVERSION', None),
         NCHARS=int(bdf_props.pop('CHARS')),
         FONT=bdf_props.pop('FONT'),
         METRICSSET=int(bdf_props.pop('METRICSSET', '0')),
     )
-    if known['METRICSSET'] not in (0, 1, 2):
-        logging.warning(
-            f"Unsupported value METRICSSET={known['METRICSSET']} ignored"
-        )
-        known['METRICSSET'] = 0
     # we're not type converting global metrics
     # because we still need to override with (unconverted) glyph metrics
     global_metrics = dict(
         # global DWIDTH; use bounding box as fallback if not specified
-        DWIDTH=bdf_props.pop('DWIDTH', ' '.join(bdf_props['FONTBOUNDINGBOX'].split()[:2])),
-        SWIDTH=bdf_props.pop('SWIDTH', '0 0'),
-        VVECTOR=bdf_props.pop('VVECTOR', '0 0'),
-        DWIDTH1=bdf_props.pop('DWIDTH1', '0 0'),
-        SWIDTH1=bdf_props.pop('SWIDTH1', '0 0'),
-        BBX=bdf_props.pop('FONTBOUNDINGBOX'),
+        DWIDTH=_bdf_ints(
+            bdf_props.pop(
+                'DWIDTH', ' '.join(bdf_props['FONTBOUNDINGBOX'].split()[:2])
+            )
+        ),
+        SWIDTH=_bdf_ints(bdf_props.pop('SWIDTH', '0 0')),
+        VVECTOR=_bdf_ints(bdf_props.pop('VVECTOR', '0 0')),
+        DWIDTH1=_bdf_ints(bdf_props.pop('DWIDTH1', '0 0')),
+        SWIDTH1=_bdf_ints(bdf_props.pop('SWIDTH1', '0 0')),
+        BBX=_bdf_ints(bdf_props.pop('FONTBOUNDINGBOX')),
     )
     # keep unparsed bdf props
     return known, global_metrics, bdf_props
@@ -218,7 +229,7 @@ def _convert_bdf_properties(bdf_props):
         # https://fontforge.org/docs/techref/BDFGrey.html
         raise FileFormatError('Greymap BDF not supported.')
     properties = {
-        'source_format': 'BDF v{}'.format(bdf_props['STARTFONT']),
+        'source_format': "BDF v{bdf_props['STARTFONT']",
         'point_size': size,
         'dpi': (xdpi, ydpi),
         'revision': bdf_props['CONTENTVERSION'],
@@ -244,13 +255,17 @@ def _convert_bdf_labels(props):
 
 def _convert_bdf_glyphs(bdf_glyphs, global_metrics, bdf_props):
     """Convert glyph properties."""
+    if bdf_props['METRICSSET'] not in (0, 1, 2):
+        logging.warning(
+            f"Unsupported value METRICSSET={bdf_props['METRICSSET']} ignored"
+        )
     glyphs = []
     for props in bdf_glyphs:
         raster = props.pop('raster')
         # fall back to glabal metrics, if not defined per-glyph
         props = global_metrics | props
         new_props = {}
-        if bdf_props['METRICSSET'] in (0, 2):
+        if bdf_props['METRICSSET'] != 1:
             new_props.update(_convert_horiz_metrics(raster.width, props, bdf_props))
         if bdf_props['METRICSSET'] in (1, 2):
             new_props.update(_convert_vert_metrics(raster.height, props, bdf_props))
@@ -265,10 +280,10 @@ def _convert_horiz_metrics(glyph_width, props, bdf_props):
     """Convert glyph horizontal metrics."""
     new_props = {}
     # bounding box & offset
-    _bbx_width, _bbx_height, bboffx, shift_up = _bdf_ints(props['BBX'])
+    _bbx_width, _bbx_height, bboffx, shift_up = props['BBX']
     new_props['shift_up'] = shift_up
     # advance width
-    dwidth_x, dwidth_y = _bdf_ints(props['DWIDTH'])
+    dwidth_x, dwidth_y = props['DWIDTH']
     if dwidth_x > 0:
         advance_width = dwidth_x
         left_bearing = bboffx
@@ -279,7 +294,7 @@ def _convert_horiz_metrics(glyph_width, props, bdf_props):
     new_props['left_bearing'] = left_bearing
     new_props['right_bearing'] = advance_width - glyph_width - left_bearing
     # scalable width
-    swidth_x, swidth_y = _bdf_ints(props['SWIDTH'])
+    swidth_x, swidth_y = props['SWIDTH']
     new_props['scalable_width'] = swidth_to_pixel(
         swidth_x, point_size=bdf_props['SIZE'][0], dpi=bdf_props['SIZE'][1]
     )
@@ -296,15 +311,15 @@ def _convert_vert_metrics(glyph_height, props, bdf_props):
     """Convert glyph vertical metrics."""
     new_props = {}
     # bounding box & offset
-    bbx_width, _bbx_height, bboffx, bboffy = _bdf_ints(props['BBX'])
-    voffx, voffy = _bdf_ints(props['VVECTOR'])
+    bbx_width, _bbx_height, bboffx, bboffy = props['BBX']
+    voffx, voffy = props['VVECTOR']
     to_bottom = bboffy - voffy
     # vector from baseline to raster left; negative: baseline to right of left raster edge
     to_left = bboffx - voffx
     # leftward shift from baseline to raster central axis
     new_props['shift_left'] = ceildiv(bbx_width, 2) + to_left
     # advance height
-    dwidth1_x, dwidth1_y = _bdf_ints(props['DWIDTH1'])
+    dwidth1_x, dwidth1_y = props['DWIDTH1']
     # dwidth1 vector: negative is down
     if dwidth1_y < 0:
         advance_height = -dwidth1_y
@@ -316,7 +331,7 @@ def _convert_vert_metrics(glyph_height, props, bdf_props):
         top_bearing = advance_height - glyph_height - bottom_bearing
     new_props['top_bearing'] = top_bearing
     new_props['bottom_bearing'] = bottom_bearing
-    swidth1_x, swidth1_y = _bdf_ints(props['SWIDTH1'])
+    swidth1_x, swidth1_y = props['SWIDTH1']
     new_props['scalable_height'] = swidth_to_pixel(
         swidth1_y, point_size=bdf_props['SIZE'][0], dpi=bdf_props['SIZE'][2]
     )
