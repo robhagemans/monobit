@@ -362,25 +362,8 @@ def _save_bdf(font, outstream):
     """Write one font to X11 BDF 2.1."""
     # property table
     xlfd_props = _create_xlfd_properties(font)
-    bdf_props = [
-        ('STARTFONT', '2.1'),
-    ] + [
-        ('COMMENT', _comment) for _comment in font.get_comment().splitlines()
-    ] + [
-        ('FONT', _create_xlfd_name(xlfd_props)),
-        ('SIZE', f'{font.point_size} {font.dpi.x} {font.dpi.y}'),
-        (
-            # per the example in the BDF spec,
-            # the first two coordinates in FONTBOUNDINGBOX
-            # are the font's ink-bounds
-            'FONTBOUNDINGBOX', (
-                f'{font.bounding_box.x} {font.bounding_box.y} '
-                f'{font.ink_bounds.left} {font.ink_bounds.bottom}'
-            )
-        )
-    ]
-    if 'vertical' in font.get_features():
-        bdf_props.append(('METRICSSET', '2'))
+    xlfd_name = _create_xlfd_name(xlfd_props)
+    bdf_props = _convert_to_bdf_properties(font, xlfd_name)
     # minimize glyphs to ink-bounds (BBX) before storing, except "cell" fonts
     if font.spacing not in ('character-cell', 'multi-cell'):
         font = font.reduce()
@@ -406,6 +389,29 @@ def _save_bdf(font, outstream):
             outstream.write(f'{key} {value}\n')
         outstream.write('ENDCHAR\n')
     outstream.write('ENDFONT\n')
+
+
+def _convert_to_bdf_properties(font, xlfd_name):
+    bdf_props = [
+        ('STARTFONT', '2.1'),
+    ] + [
+        ('COMMENT', _comment) for _comment in font.get_comment().splitlines()
+    ] + [
+        ('FONT', xlfd_name),
+        ('SIZE', f'{font.point_size} {font.dpi.x} {font.dpi.y}'),
+        (
+            # per the example in the BDF spec,
+            # the first two coordinates in FONTBOUNDINGBOX
+            # are the font's ink-bounds
+            'FONTBOUNDINGBOX', (
+                f'{font.bounding_box.x} {font.bounding_box.y} '
+                f'{font.ink_bounds.left} {font.ink_bounds.bottom}'
+            )
+        )
+    ]
+    if 'vertical' in font.get_features():
+        bdf_props.append(('METRICSSET', '2'))
+    return bdf_props
 
 
 def _get_glyph_encvalue(glyph, is_unicode):
