@@ -283,6 +283,8 @@ def _convert_horiz_metrics(glyph_width, props, bdf_props):
     new_props['scalable_width'] = swidth_to_pixel(
         swidth_x, point_size=bdf_props['SIZE'][0], dpi=bdf_props['SIZE'][1]
     )
+    if new_props['scalable_width'] == advance_width:
+        new_props['scalable_width'] = None
     if dwidth_y or swidth_y:
         logging.warning(
             'Vertical advance in horizontal writing not supported; ignored'
@@ -318,6 +320,8 @@ def _convert_vert_metrics(glyph_height, props, bdf_props):
     new_props['scalable_height'] = swidth_to_pixel(
         swidth1_y, point_size=bdf_props['SIZE'][0], dpi=bdf_props['SIZE'][2]
     )
+    if new_props['scalable_height'] == advance_height:
+        new_props['scalable_height'] = None
     if dwidth1_x or swidth1_x:
         logging.warning(
             'Horizontal advance in vertical writing not supported; ignored'
