@@ -446,7 +446,11 @@ def _parse_xlfd_name(xlfd_str):
         return {}
     xlfd = xlfd_str.split('-')
     if len(xlfd) == 15:
-        properties = {_key: _value for _key, _value in zip(_XLFD_NAME_FIELDS, xlfd) if _key and _value}
+        properties = {
+            _key: _value.replace('~', '-')
+            for _key, _value in zip(_XLFD_NAME_FIELDS, xlfd)
+            if _key and _value
+        }
     else:
         logging.warning('Could not parse X font name string `%s`', xlfd_str)
         return {}
@@ -515,10 +519,7 @@ def _parse_xlfd_properties(x_props, xlfd_name, to_int=int):
     if 'POINT_SIZE' in x_props:
         properties['point_size'] = round(to_int(x_props.pop('POINT_SIZE')) / 10)
     if 'AVERAGE_WIDTH' in x_props:
-        # average width can have a tilde for negative - because it occurs in the xlfd font name
-        properties['average_width'] = to_int(
-            x_props.pop('AVERAGE_WIDTH').replace('~', '-')
-        ) / 10
+        properties['average_width'] = to_int(x_props.pop('AVERAGE_WIDTH')) / 10
     # prefer the more precise relative weight and setwidth measures
     if 'RELATIVE_SETWIDTH' in x_props:
         properties['setwidth'] = _SETWIDTH_MAP.get(
@@ -614,7 +615,7 @@ def _create_xlfd_name(xlfd_props):
     except KeyError:
         pass
     xlfd_fields = [xlfd_props.get(prop, '') for prop in _XLFD_NAME_FIELDS]
-    return '-'.join(str(_field).strip('"') for _field in xlfd_fields)
+    return '-'.join(str(_field).strip('"').replace('-', '~') for _field in xlfd_fields)
 
 def _quoted_string(unquoted):
     """Return quoted version of string, if any."""
