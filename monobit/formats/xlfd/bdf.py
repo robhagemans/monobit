@@ -200,12 +200,11 @@ def _parse_properties(glyphs, glyph_props, bdf_props, x_props):
 
 def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
     """Parse BDF global and per-glyph geometry."""
-    size_prop = tuple(_bdf_ints(bdf_props.pop('SIZE')))
-    if len(size_prop) > 3:
-        if size_prop[3] != 1:
-            raise ValueError('Anti-aliasing and colour not supported.')
-        size_prop = size_prop[:3]
-    size, xdpi, ydpi = size_prop
+    size, xdpi, ydpi, *depth_info = tuple(_bdf_ints(bdf_props.pop('SIZE')))
+    if depth_info and depth_info[0] != 1:
+        # Microsoft greymap extension of BDF, FontForge "BDF 2.3"
+        # https://fontforge.org/docs/techref/BDFGrey.html
+        raise FileFormatError('Greymap BDF not supported.')
     properties = {
         'source_format': 'BDF v{}'.format(bdf_props.pop('STARTFONT')),
         'point_size': size,
