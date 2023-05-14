@@ -388,7 +388,7 @@ def _convert_glyphs(pcf_data):
             left_bearing=_met.left_side_bearing,
             right_bearing=_met.character_width-_met.right_side_bearing,
             shift_up=-_met.character_descent,
-            scalable_width=_swidth if _swidth != _met.right_side_bearing-_met.left_side_bearing else None,
+            scalable_width=_swidth if _swidth != _met.character_width else None,
             labels=_labs,
         )
         for _gb, _met, _labs, _swidth in zip(
