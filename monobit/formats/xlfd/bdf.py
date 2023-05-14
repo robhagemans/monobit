@@ -417,7 +417,9 @@ def _save_bdf(font, outstream):
         # Like SWIDTH , this width information is a vector indicating the position of
         # the next glyph’s origin relative to the origin of this glyph.
         dwidth_x = glyph.advance_width
-        swidth_x = pixel_to_swidth(dwidth_x, font.point_size, font.dpi.x)
+        swidth_x = pixel_to_swidth(
+            glyph.scalable_width, font.point_size, font.dpi.x
+        )
         glyphdata = [
             ('STARTCHAR', name),
             ('ENCODING', str(encoding)),
@@ -437,7 +439,9 @@ def _save_bdf(font, outstream):
             voffy = glyph.shift_up - to_bottom
             # dwidth1 vector: negative is down
             dwidth1_y = -glyph.advance_height
-            swidth1_y = pixel_to_swidth(dwidth1_y, font.point_size, font.dpi.y)
+            swidth1_y = pixel_to_swidth(
+                -glyph.scalable_height, font.point_size, font.dpi.y
+            )
             glyphdata.extend([
                 ('VVECTOR', f'{voffx} {voffy}'),
                 ('SWIDTH1', f'0 {swidth1_y}'),
