@@ -7,7 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
-from ...binary import int_to_bytes, bytes_to_int, ceildiv
+from ...binary import ceildiv
 from ...storage import loaders, savers
 from ...magic import FileFormatError
 from ...font import Font, Coord
@@ -247,7 +247,7 @@ def _convert_bdf_labels(props):
         labels.append(Tag(tag))
     # ENCODING must be single integer or -1 followed by integer
     *_, encvalue = _bdf_ints(props['ENCODING'])
-    if encvalue > 0:
+    if encvalue >= 0:
         labels.append(Codepoint(encvalue))
     return labels
 
@@ -391,40 +391,13 @@ def _save_bdf(font, outstream):
     if font.spacing not in ('character-cell', 'multi-cell'):
         font = font.reduce()
     # labels
-    # get glyphs for encoding values
-    encoded_glyphs = []
-    for glyph in font.glyphs:
-        if charmaps.is_unicode(font.encoding):
-            if len(glyph.codepoint) == 1:
-                encoding, = glyph.codepoint
-            else:
-                # multi-codepoint grapheme cluster or not set
-                # -1 means no encoding value in bdf
-                encoding = -1
-        elif glyph.codepoint:
-            # encoding values above 256 become multi-byte
-            # unless we're working in unicode
-            encoding = bytes_to_int(glyph.codepoint)
-        else:
-            encoding = -1
-        # char must have a name in bdf
-        # keep the first tag as the glyph name if available
-        if glyph.tags:
-            name = glyph.tags[0].value
-        else:
-            # look up in adobe glyph list if character available
-            name = tagmaps['adobe'].tag(*glyph.get_labels()).value
-            # otherwise, use encoding value if available
-            if not name and encoding != -1:
-                name = f'char{encoding:02X}'
-            if not name:
-                logging.warning(
-                    f'Multi-codepoint glyph {glyph.codepoint}'
-                    "can't be stored as no name or character available."
-                )
-        encoded_glyphs.append((encoding, name, glyph))
+    if charmaps.is_unicode(font.encoding):
+        font = font.label(match_whitespace=False, match_graphical=False)
     glyphs = []
-    for encoding, name, glyph in encoded_glyphs:
+    for glyph in font.glyphs:
+        encoding, name = _get_glyph_encvalue(
+            glyph, charmaps.is_unicode(font.encoding)
+        )
         swidth_y, dwidth_y = 0, 0
         # SWIDTH = DWIDTH / ( points/1000 * dpi / 72 )
         # DWIDTH specifies the widths in x and y, dwx0 and dwy0, in device pixels.
@@ -488,3 +461,43 @@ def _save_bdf(font, outstream):
             outstream.write(f'{key} {value}\n')
         outstream.write('ENDCHAR\n')
     outstream.write('ENDFONT\n')
+
+
+def _get_glyph_encvalue(glyph, is_unicode):
+    """Get BDF ENCODING value and STARTCHAR tag."""
+    if is_unicode:
+        if len(glyph.char) == 1:
+            encoding = ord(glyph.char)
+        else:
+            # multi-codepoint grapheme cluster or not set
+            # -1 means no encoding value in bdf
+            encoding = -1
+    elif glyph.codepoint:
+        # encoding values above 256 become multi-byte
+        # unless we're working in unicode
+        encoding = int(glyph.codepoint)
+    else:
+        encoding = -1
+    # char must have a name in bdf
+    for tag in glyph.tags:
+        # bdf must only include printable ascii
+        # postscript names (AGL) are purely alphanumeric
+        # keep the first alphanumeric tag as the glyph name if available
+        try:
+            name = tag.value.encode('ascii').decode()
+            if all(_c.isalnum() for _c in name):
+                break
+        except UnicodeError:
+            pass
+    else:
+        # look up in adobe glyph list if character available
+        name = tagmaps['adobe'].tag(*glyph.get_labels()).value
+        # otherwise, use encoding value if available
+        if not name and encoding != -1:
+            name = f'char{encoding:02X}'
+        if not name:
+            logging.warning(
+                f'Multi-codepoint glyph {glyph.codepoint}'
+                "can't be stored as no name or character available."
+            )
+    return encoding, name
