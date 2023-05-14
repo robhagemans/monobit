@@ -211,25 +211,22 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
         'dpi': (xdpi, ydpi),
         'revision': bdf_props.pop('CONTENTVERSION', None),
     }
-    writing_direction = bdf_props.pop('METRICSSET', '0')
-    if writing_direction not in ('0', '1', '2'):
-        logging.warning(f'Unsupported value METRICSSET={writing_direction} ignored')
-        writing_direction = 0
-    else:
-        writing_direction = int(writing_direction)
-    # global settings, tend to be overridden by per-glyph settings
-    global_bbx = bdf_props.pop('FONTBOUNDINGBOX')
-    # global DWIDTH; use bounding box as fallback if not specified
-    global_dwidth = bdf_props.pop('DWIDTH', ' '.join(global_bbx.split()[:2]))
-    global_swidth = bdf_props.pop('SWIDTH', '0 0')
-    global_vvector = bdf_props.pop('VVECTOR', None)
-    global_dwidth1 = bdf_props.pop('DWIDTH1', '0 0')
-    global_swidth1 = bdf_props.pop('SWIDTH1', '0 0')
+    metricsset = int(bdf_props.pop('METRICSSET', '0'))
+    if metricsset not in (0, 1, 2):
+        logging.warning(f'Unsupported value METRICSSET={metricsset} ignored')
+        metricsset = 0
+    # global metrics, fallback if no per-glyph metrics
+    global_metrics = dict(
+        # global DWIDTH; use bounding box as fallback if not specified
+        DWIDTH=bdf_props.pop('DWIDTH', ' '.join(bdf_props['FONTBOUNDINGBOX'].split()[:2])),
+        SWIDTH=bdf_props.pop('SWIDTH', '0 0'),
+        VVECTOR=bdf_props.pop('VVECTOR', '0 0'),
+        DWIDTH1=bdf_props.pop('DWIDTH1', '0 0'),
+        SWIDTH1=bdf_props.pop('SWIDTH1', '0 0'),
+        BBX=bdf_props.pop('FONTBOUNDINGBOX'),
+    )
     mod_glyphs = _convert_glyph_properties(
-        glyphs, glyph_props,
-        global_bbx, global_dwidth, global_swidth,
-        global_vvector, global_dwidth1, global_swidth1,
-        writing_direction,
+        glyphs, global_metrics, glyph_props, metricsset
     )
     # check char counters
     nchars = int(bdf_props.pop('CHARS'))
@@ -241,41 +238,29 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
     return mod_glyphs, properties, xlfd_name, bdf_props
 
 
-def _convert_glyph_properties(
-        glyphs, glyph_props,
-        global_bbx, global_dwidth, global_swidth,
-        global_vvector, global_dwidth1, global_swidth1,
-        writing_direction,
-    ):
+def _convert_glyph_properties(glyphs, global_metrics, glyph_props, metricsset):
     """Convert glyph properties."""
     mod_glyphs = []
     for glyph, props in zip(glyphs, glyph_props):
+        # fall back to glabal metrics, if not defined per-glyph
+        props = global_metrics | props
         new_props = {}
-        # bounding box & offset
-        bbx = props.get('BBX', global_bbx)
-        if writing_direction in (0, 2):
-            new_props.update(_convert_horiz_metrics(
-                glyph.width, props, bbx, global_dwidth, global_swidth,
-            ))
-        if writing_direction in (1, 2):
-            new_props.update(_convert_vert_metrics(
-                glyph.height, props, bbx,
-                global_vvector, global_dwidth1, global_swidth1,
-            ))
+        if metricsset in (0, 2):
+            new_props.update(_convert_horiz_metrics(glyph.width, props))
+        if metricsset in (1, 2):
+            new_props.update(_convert_vert_metrics(glyph.height, props))
         mod_glyphs.append(glyph.modify(**new_props))
     return mod_glyphs
 
 
-def _convert_horiz_metrics(
-        glyph_width, props, bbx, global_dwidth, global_swidth,
-    ):
+def _convert_horiz_metrics(glyph_width, props):
     """Convert glyph horizontal metrics."""
     new_props = {}
-    _bbx_width, _bbx_height, bboffx, shift_up = _bdf_ints(bbx)
+    # bounding box & offset
+    _bbx_width, _bbx_height, bboffx, shift_up = _bdf_ints(props['BBX'])
     new_props['shift_up'] = shift_up
     # advance width
-    dwidth = props.get('DWIDTH', global_dwidth)
-    dwidth_x, dwidth_y = _bdf_ints(dwidth)
+    dwidth_x, dwidth_y = _bdf_ints(props['DWIDTH'])
     if dwidth_y:
         raise FileFormatError('Vertical advance in horizontal writing not supported.')
     if dwidth_x > 0:
@@ -290,24 +275,19 @@ def _convert_horiz_metrics(
     return new_props
 
 
-def _convert_vert_metrics(
-        glyph_height, props, bbx, global_vvector, global_dwidth1, global_swidth1,
-    ):
+def _convert_vert_metrics(glyph_height, props):
     """Convert glyph vertical metrics."""
     new_props = {}
-    vvector = props.get('VVECTOR', global_vvector)
-    if not vvector:
-        logging.warning('Could not convert vertical metrics: no VVECTOR defined')
-    bbx_width, _bbx_height, bboffx, bboffy = _bdf_ints(bbx)
-    voffx, voffy = _bdf_ints(vvector)
+    # bounding box & offset
+    bbx_width, _bbx_height, bboffx, bboffy = _bdf_ints(props['BBX'])
+    voffx, voffy = _bdf_ints(props['VVECTOR'])
     to_bottom = bboffy - voffy
     # vector from baseline to raster left; negative: baseline to right of left raster edge
     to_left = bboffx - voffx
     # leftward shift from baseline to raster central axis
     new_props['shift_left'] = ceildiv(bbx_width, 2) + to_left
     # advance height
-    dwidth1 = props.get('DWIDTH1', global_dwidth1)
-    dwidth1_x, dwidth1_y = _bdf_ints(dwidth1)
+    dwidth1_x, dwidth1_y = _bdf_ints(props['DWIDTH1'])
     if dwidth1_x:
         raise FileFormatError('Horizontal advance in vertical writing not supported.')
     # dwidth1 vector: negative is down
