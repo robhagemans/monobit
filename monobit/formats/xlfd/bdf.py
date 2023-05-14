@@ -138,6 +138,7 @@ def _read_bdf_glyphs(instream):
             raise FileFormatError(f'Expected ENDCHAR, not {line}')
     return glyphs, glyph_meta
 
+
 def _read_bdf_global(instream):
     """Read global section of BDF file."""
     start_props, start_comments, end = read_props(instream, ends=('STARTPROPERTIES', 'CHARS'), keep_end=True)
@@ -155,7 +156,7 @@ def _read_bdf_global(instream):
 
 
 ##############################################################################
-# properties
+# converter
 
 def _parse_properties(glyphs, glyph_props, bdf_props, x_props):
     """Parse metrics and metadata."""
@@ -251,49 +252,72 @@ def _convert_glyph_properties(
         # bounding box & offset
         bbx = props.get('BBX', global_bbx)
         if writing_direction in (0, 2):
-            _bbx_width, _bbx_height, bboffx, shift_up = (int(_p) for _p in bbx.split(' '))
-            new_props['shift_up'] = shift_up
-            # advance width
-            dwidth = props.get('DWIDTH', global_dwidth)
-            dwidth_x, dwidth_y = (int(_p) for _p in dwidth.split(' '))
-            if dwidth_y:
-                raise FileFormatError('Vertical advance in horizontal writing not supported.')
-            if dwidth_x > 0:
-                advance_width = dwidth_x
-                left_bearing = bboffx
-            else:
-                advance_width = -dwidth_x
-                # bboffx would likely be negative
-                left_bearing = advance_width + bboffx
-            new_props['left_bearing'] = left_bearing
-            new_props['right_bearing'] = advance_width - glyph.width - left_bearing
+            new_props.update(_convert_horiz_metrics(
+                glyph.width, props, bbx, global_dwidth, global_swidth,
+            ))
         if writing_direction in (1, 2):
-            vvector = props.get('VVECTOR', global_vvector)
-            bbx_width, _bbx_height, bboffx, bboffy = (int(_p) for _p in bbx.split(' '))
-            voffx, voffy = (int(_p) for _p in vvector.split(' '))
-            to_bottom = bboffy - voffy
-            # vector from baseline to raster left; negative: baseline to right of left raster edge
-            to_left = bboffx - voffx
-            # leftward shift from baseline to raster central axis
-            new_props['shift_left'] = ceildiv(bbx_width, 2) + to_left
-            # advance height
-            dwidth1 = props.get('DWIDTH1', global_dwidth1)
-            dwidth1_x, dwidth1_y = (int(_p) for _p in dwidth1.split(' '))
-            if dwidth1_x:
-                raise FileFormatError('Horizontal advance in vertical writing not supported.')
-            # dwidth1 vector: negative is down
-            if dwidth1_y < 0:
-                advance_height = -dwidth1_y
-                top_bearing = -to_bottom - glyph.height
-                bottom_bearing = advance_height - glyph.height - top_bearing
-            else:
-                advance_height = dwidth1_y
-                bottom_bearing = to_bottom
-                top_bearing = advance_height - glyph.height - bottom_bearing
-            new_props['top_bearing'] = top_bearing
-            new_props['bottom_bearing'] = bottom_bearing
+            new_props.update(_convert_vert_metrics(
+                glyph.height, props, bbx,
+                global_vvector, global_dwidth1, global_swidth1,
+            ))
         mod_glyphs.append(glyph.modify(**new_props))
     return mod_glyphs
+
+
+def _convert_horiz_metrics(
+        glyph_width, props, bbx, global_dwidth, global_swidth,
+    ):
+    """Convert glyph horizontal metrics."""
+    new_props = {}
+    _bbx_width, _bbx_height, bboffx, shift_up = (int(_p) for _p in bbx.split(' '))
+    new_props['shift_up'] = shift_up
+    # advance width
+    dwidth = props.get('DWIDTH', global_dwidth)
+    dwidth_x, dwidth_y = (int(_p) for _p in dwidth.split(' '))
+    if dwidth_y:
+        raise FileFormatError('Vertical advance in horizontal writing not supported.')
+    if dwidth_x > 0:
+        advance_width = dwidth_x
+        left_bearing = bboffx
+    else:
+        advance_width = -dwidth_x
+        # bboffx would likely be negative
+        left_bearing = advance_width + bboffx
+    new_props['left_bearing'] = left_bearing
+    new_props['right_bearing'] = advance_width - glyph_width - left_bearing
+    return new_props
+
+
+def _convert_vert_metrics(
+        glyph_height, props, bbx, global_vvector, global_dwidth1, global_swidth1,
+    ):
+    """Convert glyph vertical metrics."""
+    new_props = {}
+    vvector = props.get('VVECTOR', global_vvector)
+    bbx_width, _bbx_height, bboffx, bboffy = (int(_p) for _p in bbx.split(' '))
+    voffx, voffy = (int(_p) for _p in vvector.split(' '))
+    to_bottom = bboffy - voffy
+    # vector from baseline to raster left; negative: baseline to right of left raster edge
+    to_left = bboffx - voffx
+    # leftward shift from baseline to raster central axis
+    new_props['shift_left'] = ceildiv(bbx_width, 2) + to_left
+    # advance height
+    dwidth1 = props.get('DWIDTH1', global_dwidth1)
+    dwidth1_x, dwidth1_y = (int(_p) for _p in dwidth1.split(' '))
+    if dwidth1_x:
+        raise FileFormatError('Horizontal advance in vertical writing not supported.')
+    # dwidth1 vector: negative is down
+    if dwidth1_y < 0:
+        advance_height = -dwidth1_y
+        top_bearing = -to_bottom - glyph_height
+        bottom_bearing = advance_height - glyph_height - top_bearing
+    else:
+        advance_height = dwidth1_y
+        bottom_bearing = to_bottom
+        top_bearing = advance_height - glyph_height - bottom_bearing
+    new_props['top_bearing'] = top_bearing
+    new_props['bottom_bearing'] = bottom_bearing
+    return new_props
 
 
 def swidth_to_pixel(swidth, point_size, dpi):
