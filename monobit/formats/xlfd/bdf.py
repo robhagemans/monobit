@@ -411,7 +411,7 @@ def _save_bdf(font, outstream):
         # char must have a name in bdf
         # keep the first tag as the glyph name if available
         if glyph.tags:
-            name = glyph.tags[0]
+            name = glyph.tags[0].value
         else:
             # look up in adobe glyph list if character available
             name = tagmaps['adobe'].tag(*glyph.get_labels()).value
