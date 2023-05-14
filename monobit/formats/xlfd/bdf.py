@@ -11,10 +11,11 @@ from ...binary import int_to_bytes, bytes_to_int, ceildiv
 from ...storage import loaders, savers
 from ...magic import FileFormatError
 from ...font import Font, Coord
+from ...raster import Raster
 from ...glyph import Glyph
 from ...encoding import charmaps, NotFoundError
 from ...taggers import tagmaps
-from ...labels import Char
+from ...labels import Char, Codepoint, Tag
 
 from .xlfd import _parse_xlfd_properties, _create_xlfd_properties
 from .xlfd import _create_xlfd_name
@@ -37,13 +38,14 @@ def load_bdf(instream):
     logging.info('x properties:')
     for name, value in x_props.items():
         logging.info('    %s: %s', name, value)
-    glyphs, glyph_props = _read_bdf_glyphs(instream)
-    glyphs, properties = _parse_properties(glyphs, glyph_props, bdf_props, x_props)
+    bdf_glyphs = _read_bdf_glyphs(instream)
+    glyphs, properties = _convert_from_bdf(bdf_glyphs, bdf_props, x_props)
     font = Font(glyphs, comment=comments, **properties)
-    try:
-        font = font.label()
-    except NotFoundError:
-        pass
+    # create char labels, if encoding recognised
+    font = font.label()
+    # store labels as char only if we're working in unicode
+    if charmaps.is_unicode(font.encoding):
+        font = font.label(codepoint_from=None)
     return font
 
 
@@ -95,47 +97,37 @@ def read_props(instream, ends, keep_end=False):
 def _read_bdf_glyphs(instream):
     """Read character section."""
     # output
-    glyphs = []
-    glyph_meta = []
+    bdf_glyphs = []
     for line in instream:
-        line = line.rstrip('\r\n')
+        line = line.rstrip()
         if not line:
             continue
         if line.startswith('ENDFONT'):
             break
-        elif not line.startswith('STARTCHAR'):
+        keyword, _, tag = line.partition(' ')
+        if keyword != 'STARTCHAR':
             raise FileFormatError(f'Expected STARTCHAR, not {line}')
-        keyword, values = line.split(' ', 1)
-        meta, comments, _ = read_props(instream, ends=('BITMAP',))
-        meta = dict(meta)
-        meta[keyword] = values
-        # store labels, if they're not just ordinals
-        label = meta['STARTCHAR']
-        width, height, _, _ = _bdf_ints(meta['BBX'])
-        # convert from hex-string to list of bools
-        # remove trailing zeros on each hex line
+        glyph_props = {'STARTCHAR': tag}
+        proplist, comments, _ = read_props(instream, ends=('BITMAP',))
+        glyph_props |= dict(proplist)
+        glyph_props['COMMENT'] = '\n'.join(comments)
+        # convert from hex-string to raster
+        width, height, _, _ = _bdf_ints(glyph_props['BBX'])
         hexstr = ''.join(
+            # remove excess bytes on each hex line
             instream.readline().strip()[:ceildiv(width, 8)*2]
             for _ in range(height)
         )
         try:
-            glyph = Glyph.from_hex(hexstr, width, height, comment='\n'.join(comments))
+            raster = Raster.from_hex(hexstr, width, height)
         except ValueError as e:
-            logging.warning(f'Could not read glyph `{label}` {hexstr}: {e}')
+            logging.warning(f'Could not read glyph `{tag}` {hexstr}: {e}')
         else:
-            try:
-                int(label)
-            except ValueError:
-                glyph = glyph.modify(tag=label)
-            # ENCODING must be single integer or -1 followed by integer
-            *_, encvalue = _bdf_ints(meta['ENCODING'])
-            glyph = glyph.modify(encvalue=encvalue)
-            glyphs.append(glyph)
-            glyph_meta.append(meta)
+            bdf_glyphs.append(glyph_props | {'raster': raster})
         line = instream.readline()
         if not line.startswith('ENDCHAR'):
             raise FileFormatError(f'Expected ENDCHAR, not {line}')
-    return glyphs, glyph_meta
+    return bdf_glyphs
 
 
 def _read_bdf_global(instream):
@@ -161,15 +153,17 @@ def _bdf_ints(instr):
     return (int(_p) for _p in instr.split())
 
 
-def _parse_properties(glyphs, glyph_props, bdf_props, x_props):
-    """Parse metrics and metadata."""
+def _convert_from_bdf(bdf_glyphs, bdf_props, x_props):
+    """Convert BDF data to monobit glyphs and properties."""
     # parse meaningful metadata
     known, global_metrics, bdf_unparsed = _extract_known_bdf_properties(bdf_props)
-    if known['NCHARS'] != len(glyphs):
-        logging.warning('Number of characters found does not match CHARS declaration.')
     properties = _convert_bdf_properties(known)
-    glyphs = _convert_glyph_properties(glyphs, global_metrics, glyph_props)
+    glyphs = _convert_bdf_glyphs(bdf_glyphs, global_metrics)
     xlfd_props = _parse_xlfd_properties(x_props, known['FONT'])
+    # consistency checks
+    if known['NCHARS'] != len(bdf_glyphs):
+        logging.warning('Number of characters found does not match CHARS declaration.')
+    # FIXME - unrecognised properties can overwrite yaff properties
     for key, value in bdf_unparsed.items():
         logging.info(f'Unrecognised BDF property {key}={value}')
         # preserve as property
@@ -183,19 +177,6 @@ def _parse_properties(glyphs, glyph_props, bdf_props, x_props):
             )
         else:
             properties[key] = value
-    # store labels as char if we're working in unicode, codepoint otherwise
-    if not charmaps.is_unicode(properties.get('encoding', '')):
-        glyphs = [
-            _glyph.modify(codepoint=_glyph.encvalue).drop('encvalue')
-            if _glyph.encvalue != -1 else _glyph.drop('encvalue')
-            for _glyph in glyphs
-        ]
-    else:
-        glyphs = [
-            _glyph.modify(char=chr(_glyph.encvalue)).drop('encvalue')
-            if _glyph.encvalue != -1 else _glyph.drop('encvalue')
-            for _glyph in glyphs
-        ]
     return glyphs, properties
 
 
@@ -244,19 +225,37 @@ def _convert_bdf_properties(bdf_props):
     return properties
 
 
-def _convert_glyph_properties(glyphs, global_metrics, glyph_props):
+def _convert_bdf_labels(props):
+    """Convert BDF glyph tags and encoding values to monobit labels."""
+    labels = []
+    # store STARTCHAR labels, if they're not just ordinals
+    tag = props['STARTCHAR']
+    try:
+        int(tag)
+    except ValueError:
+        labels.append(Tag(tag))
+    # ENCODING must be single integer or -1 followed by integer
+    *_, encvalue = _bdf_ints(props['ENCODING'])
+    if encvalue > 0:
+        labels.append(Codepoint(encvalue))
+    return labels
+
+
+def _convert_bdf_glyphs(bdf_glyphs, global_metrics):
     """Convert glyph properties."""
-    mod_glyphs = []
-    for glyph, props in zip(glyphs, glyph_props):
+    glyphs = []
+    for props in bdf_glyphs:
+        raster = props.pop('raster')
         # fall back to glabal metrics, if not defined per-glyph
         props = global_metrics | props
         new_props = {}
         if global_metrics['METRICSSET'] in (0, 2):
-            new_props.update(_convert_horiz_metrics(glyph.width, props))
+            new_props.update(_convert_horiz_metrics(raster.width, props))
         if global_metrics['METRICSSET'] in (1, 2):
-            new_props.update(_convert_vert_metrics(glyph.height, props))
-        mod_glyphs.append(glyph.modify(**new_props))
-    return mod_glyphs
+            new_props.update(_convert_vert_metrics(raster.height, props))
+        labels = _convert_bdf_labels(props)
+        glyphs.append(Glyph(raster, labels=labels, **new_props))
+    return glyphs
 
 
 def _convert_horiz_metrics(glyph_width, props):
