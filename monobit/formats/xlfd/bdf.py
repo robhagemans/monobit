@@ -164,9 +164,12 @@ def _bdf_ints(instr):
 def _parse_properties(glyphs, glyph_props, bdf_props, x_props):
     """Parse metrics and metadata."""
     # parse meaningful metadata
-    global_metrics, properties, xlfd_name, bdf_unparsed = _parse_bdf_properties(glyphs, bdf_props)
+    known, global_metrics, bdf_unparsed = _extract_known_bdf_properties(bdf_props)
+    if known['NCHARS'] != len(glyphs):
+        logging.warning('Number of characters found does not match CHARS declaration.')
+    properties = _convert_bdf_properties(known)
     glyphs = _convert_glyph_properties(glyphs, global_metrics, glyph_props)
-    xlfd_props = _parse_xlfd_properties(x_props, xlfd_name)
+    xlfd_props = _parse_xlfd_properties(x_props, known['FONT'])
     for key, value in bdf_unparsed.items():
         logging.info(f'Unrecognised BDF property {key}={value}')
         # preserve as property
@@ -193,30 +196,24 @@ def _parse_properties(glyphs, glyph_props, bdf_props, x_props):
             if _glyph.encvalue != -1 else _glyph.drop('encvalue')
             for _glyph in glyphs
         ]
-    logging.info('yaff properties:')
-    for name, value in properties.items():
-        logging.info('    %s: %s', name, value)
     return glyphs, properties
 
 
-def _parse_bdf_properties(glyphs, bdf_props):
-    """Parse BDF global and per-glyph geometry."""
-    size, xdpi, ydpi, *depth_info = tuple(_bdf_ints(bdf_props.pop('SIZE')))
-    if depth_info and depth_info[0] != 1:
-        # Microsoft greymap extension of BDF, FontForge "BDF 2.3"
-        # https://fontforge.org/docs/techref/BDFGrey.html
-        raise FileFormatError('Greymap BDF not supported.')
-    properties = {
-        'source_format': 'BDF v{}'.format(bdf_props.pop('STARTFONT')),
-        'point_size': size,
-        'dpi': (xdpi, ydpi),
-        'revision': bdf_props.pop('CONTENTVERSION', None),
-    }
+def _extract_known_bdf_properties(bdf_props):
+    """Extract and classify global BDF properties that we know and use."""
+    known = dict(
+        SIZE=tuple(_bdf_ints(bdf_props.pop('SIZE'))),
+        STARTFONT=bdf_props.pop('STARTFONT'),
+        CONTENTVERSION=bdf_props.pop('CONTENTVERSION', None),
+        NCHARS=int(bdf_props.pop('CHARS')),
+        FONT=bdf_props.pop('FONT'),
+    )
     metricsset = int(bdf_props.pop('METRICSSET', '0'))
     if metricsset not in (0, 1, 2):
         logging.warning(f'Unsupported value METRICSSET={metricsset} ignored')
         metricsset = 0
-    # global metrics, fallback if no per-glyph metrics
+    # we're not type converting global metrics except METRICSSET
+    # because we still need to override with (unconverted) glyph metrics
     global_metrics = dict(
         METRICSSET=metricsset,
         # global DWIDTH; use bounding box as fallback if not specified
@@ -227,14 +224,24 @@ def _parse_bdf_properties(glyphs, bdf_props):
         SWIDTH1=bdf_props.pop('SWIDTH1', '0 0'),
         BBX=bdf_props.pop('FONTBOUNDINGBOX'),
     )
-    # check char counters
-    nchars = int(bdf_props.pop('CHARS'))
-    # check number of characters, but don't break if no match
-    if nchars != len(glyphs):
-        logging.warning('Number of characters found does not match CHARS declaration.')
-    xlfd_name = bdf_props.pop('FONT')
     # keep unparsed bdf props
-    return global_metrics, properties, xlfd_name, bdf_props
+    return known, global_metrics, bdf_props
+
+
+def _convert_bdf_properties(bdf_props):
+    """Convert BDF global properties."""
+    size, xdpi, ydpi, *depth_info = bdf_props['SIZE']
+    if depth_info and depth_info[0] != 1:
+        # Microsoft greymap extension of BDF, FontForge "BDF 2.3"
+        # https://fontforge.org/docs/techref/BDFGrey.html
+        raise FileFormatError('Greymap BDF not supported.')
+    properties = {
+        'source_format': 'BDF v{}'.format(bdf_props['STARTFONT']),
+        'point_size': size,
+        'dpi': (xdpi, ydpi),
+        'revision': bdf_props['CONTENTVERSION'],
+    }
+    return properties
 
 
 def _convert_glyph_properties(glyphs, global_metrics, glyph_props):
