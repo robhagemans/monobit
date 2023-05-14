@@ -16,7 +16,7 @@ from ...encoding import charmaps, NotFoundError
 from ...taggers import tagmaps
 from ...labels import Char
 
-from .xlfd import _parse_xlfd_properties, _create_xlfd_properties, _all_ints
+from .xlfd import _parse_xlfd_properties, _create_xlfd_properties
 from .xlfd import _create_xlfd_name
 
 
@@ -111,8 +111,7 @@ def _read_bdf_glyphs(instream):
         meta[keyword] = values
         # store labels, if they're not just ordinals
         label = meta['STARTCHAR']
-        width, height, _, _ = meta['BBX'].split(' ')
-        width, height = int(width), int(height)
+        width, height, _, _ = _bdf_ints(meta['BBX'])
         # convert from hex-string to list of bools
         # remove trailing zeros on each hex line
         hexstr = ''.join(
@@ -129,7 +128,7 @@ def _read_bdf_glyphs(instream):
             except ValueError:
                 glyph = glyph.modify(tag=label)
             # ENCODING must be single integer or -1 followed by integer
-            encvalue = int(meta['ENCODING'].split(' ')[-1])
+            *_, encvalue = _bdf_ints(meta['ENCODING'])
             glyph = glyph.modify(encvalue=encvalue)
             glyphs.append(glyph)
             glyph_meta.append(meta)
@@ -157,6 +156,10 @@ def _read_bdf_global(instream):
 
 ##############################################################################
 # converter
+
+def _bdf_ints(instr):
+    return (int(_p) for _p in instr.split())
+
 
 def _parse_properties(glyphs, glyph_props, bdf_props, x_props):
     """Parse metrics and metadata."""
@@ -197,7 +200,7 @@ def _parse_properties(glyphs, glyph_props, bdf_props, x_props):
 
 def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
     """Parse BDF global and per-glyph geometry."""
-    size_prop = bdf_props.pop('SIZE').split()
+    size_prop = tuple(_bdf_ints(bdf_props.pop('SIZE')))
     if len(size_prop) > 3:
         if size_prop[3] != 1:
             raise ValueError('Anti-aliasing and colour not supported.')
@@ -205,8 +208,8 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
     size, xdpi, ydpi = size_prop
     properties = {
         'source_format': 'BDF v{}'.format(bdf_props.pop('STARTFONT')),
-        'point_size': int(size),
-        'dpi': _all_ints(xdpi, ydpi),
+        'point_size': size,
+        'dpi': (xdpi, ydpi),
         'revision': bdf_props.pop('CONTENTVERSION', None),
     }
     writing_direction = bdf_props.pop('METRICSSET', '0')
@@ -218,11 +221,11 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
     # global settings, tend to be overridden by per-glyph settings
     global_bbx = bdf_props.pop('FONTBOUNDINGBOX')
     # global DWIDTH; use bounding box as fallback if not specified
-    global_dwidth = bdf_props.pop('DWIDTH', global_bbx[:2])
-    global_swidth = bdf_props.pop('SWIDTH', 0)
+    global_dwidth = bdf_props.pop('DWIDTH', ' '.join(global_bbx.split()[:2]))
+    global_swidth = bdf_props.pop('SWIDTH', '0 0')
     global_vvector = bdf_props.pop('VVECTOR', None)
-    global_dwidth1 = bdf_props.pop('DWIDTH1', 0)
-    global_swidth1 = bdf_props.pop('SWIDTH1', 0)
+    global_dwidth1 = bdf_props.pop('DWIDTH1', '0 0')
+    global_swidth1 = bdf_props.pop('SWIDTH1', '0 0')
     mod_glyphs = _convert_glyph_properties(
         glyphs, glyph_props,
         global_bbx, global_dwidth, global_swidth,
@@ -269,11 +272,11 @@ def _convert_horiz_metrics(
     ):
     """Convert glyph horizontal metrics."""
     new_props = {}
-    _bbx_width, _bbx_height, bboffx, shift_up = (int(_p) for _p in bbx.split(' '))
+    _bbx_width, _bbx_height, bboffx, shift_up = _bdf_ints(bbx)
     new_props['shift_up'] = shift_up
     # advance width
     dwidth = props.get('DWIDTH', global_dwidth)
-    dwidth_x, dwidth_y = (int(_p) for _p in dwidth.split(' '))
+    dwidth_x, dwidth_y = _bdf_ints(dwidth)
     if dwidth_y:
         raise FileFormatError('Vertical advance in horizontal writing not supported.')
     if dwidth_x > 0:
@@ -294,8 +297,10 @@ def _convert_vert_metrics(
     """Convert glyph vertical metrics."""
     new_props = {}
     vvector = props.get('VVECTOR', global_vvector)
-    bbx_width, _bbx_height, bboffx, bboffy = (int(_p) for _p in bbx.split(' '))
-    voffx, voffy = (int(_p) for _p in vvector.split(' '))
+    if not vvector:
+        logging.warning('Could not convert vertical metrics: no VVECTOR defined')
+    bbx_width, _bbx_height, bboffx, bboffy = _bdf_ints(bbx)
+    voffx, voffy = _bdf_ints(vvector)
     to_bottom = bboffy - voffy
     # vector from baseline to raster left; negative: baseline to right of left raster edge
     to_left = bboffx - voffx
@@ -303,7 +308,7 @@ def _convert_vert_metrics(
     new_props['shift_left'] = ceildiv(bbx_width, 2) + to_left
     # advance height
     dwidth1 = props.get('DWIDTH1', global_dwidth1)
-    dwidth1_x, dwidth1_y = (int(_p) for _p in dwidth1.split(' '))
+    dwidth1_x, dwidth1_y = _bdf_ints(dwidth1)
     if dwidth1_x:
         raise FileFormatError('Horizontal advance in vertical writing not supported.')
     # dwidth1 vector: negative is down
