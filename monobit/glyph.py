@@ -12,7 +12,7 @@ from .encoding import is_graphical, is_blank
 from .labels import Codepoint, Char, Tag, to_label
 from .raster import Raster, NOT_SET, turn_method
 from .properties import Props, extend_string
-from .cachedprops import HasProps, checked_property
+from .cachedprops import HasProps, checked_property, writable_property
 from .basetypes import Coord, Bounds, to_number
 from .scripting import scriptable
 from .vector import StrokePath
@@ -89,6 +89,10 @@ class GlyphProperties:
     # path segments for stroke fonts
     path: StrokePath = StrokePath()
 
+    # overridable
+    scalable_width: float
+    scalable_height: float
+
     # non overridable known properties
     advance_width: int
     advance_height: int
@@ -117,6 +121,16 @@ class Glyph(HasProps):
     def advance_height(self):
         """Internal advance width of glyph, including internal bearings."""
         return self.top_bearing + self.height + self.bottom_bearing
+
+    @writable_property
+    def scalable_width(self):
+        """Overridable, fractional advance width."""
+        return self.advance_width
+
+    @writable_property
+    def scalable_height(self):
+        """Overridable, fractional advance height."""
+        return self.advance_height
 
     @checked_property
     def width(self):

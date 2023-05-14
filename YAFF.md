@@ -301,6 +301,8 @@ Per-glyph only metrics are:
 - `left-kerning`: Adjustment to left bearing for specific glyph pairs. The same adjustment as above could be
   specified in the `left-kerning` property of the `V` glyph, as a pair of the label for the `A` glyph and
   a numeric adjustment value. If both `left-kerning` and `right-kerning` are specified, they add up.
+- `scalable-width`: Advance width in fractional pixels, can be used for scaled rendering.
+- `scalable-height`: Advance height in fractional pixels, can be used for scaled rendering.
 
 
 ##### Rendering hints
