@@ -217,14 +217,34 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
     # global settings, tend to be overridden by per-glyph settings
     global_bbx = bdf_props.pop('FONTBOUNDINGBOX')
     # global DWIDTH; use bounding box as fallback if not specified
-    if writing_direction in (0, 2):
-        global_dwidth = bdf_props.pop('DWIDTH', global_bbx[:2])
-        global_swidth = bdf_props.pop('SWIDTH', 0)
-    if writing_direction in (1, 2):
-        global_vvector = bdf_props.pop('VVECTOR', None)
-        global_dwidth1 = bdf_props.pop('DWIDTH1', 0)
-        global_swidth1 = bdf_props.pop('SWIDTH1', 0)
-    # convert glyph properties
+    global_dwidth = bdf_props.pop('DWIDTH', global_bbx[:2])
+    global_swidth = bdf_props.pop('SWIDTH', 0)
+    global_vvector = bdf_props.pop('VVECTOR', None)
+    global_dwidth1 = bdf_props.pop('DWIDTH1', 0)
+    global_swidth1 = bdf_props.pop('SWIDTH1', 0)
+    mod_glyphs = _convert_glyph_properties(
+        glyphs, glyph_props,
+        global_bbx, global_dwidth, global_swidth,
+        global_vvector, global_dwidth1, global_swidth1,
+        writing_direction,
+    )
+    # check char counters
+    nchars = int(bdf_props.pop('CHARS'))
+    # check number of characters, but don't break if no match
+    if nchars != len(glyphs):
+        logging.warning('Number of characters found does not match CHARS declaration.')
+    xlfd_name = bdf_props.pop('FONT')
+    # keep unparsed bdf props
+    return mod_glyphs, properties, xlfd_name, bdf_props
+
+
+def _convert_glyph_properties(
+        glyphs, glyph_props,
+        global_bbx, global_dwidth, global_swidth,
+        global_vvector, global_dwidth1, global_swidth1,
+        writing_direction,
+    ):
+    """Convert glyph properties."""
     mod_glyphs = []
     for glyph, props in zip(glyphs, glyph_props):
         new_props = {}
@@ -273,14 +293,7 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
             new_props['top_bearing'] = top_bearing
             new_props['bottom_bearing'] = bottom_bearing
         mod_glyphs.append(glyph.modify(**new_props))
-    # check char counters
-    nchars = int(bdf_props.pop('CHARS'))
-    # check number of characters, but don't break if no match
-    if nchars != len(glyphs):
-        logging.warning('Number of characters found does not match CHARS declaration.')
-    xlfd_name = bdf_props.pop('FONT')
-    # keep unparsed bdf props
-    return mod_glyphs, properties, xlfd_name, bdf_props
+    return mod_glyphs
 
 
 def swidth_to_pixel(swidth, point_size, dpi):
