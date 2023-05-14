@@ -158,7 +158,7 @@ def _convert_from_bdf(bdf_glyphs, bdf_props, x_props):
     # parse meaningful metadata
     known, global_metrics, bdf_unparsed = _extract_known_bdf_properties(bdf_props)
     properties = _convert_bdf_properties(known)
-    glyphs = _convert_bdf_glyphs(bdf_glyphs, global_metrics)
+    glyphs = _convert_bdf_glyphs(bdf_glyphs, global_metrics, known)
     xlfd_props = _parse_xlfd_properties(x_props, known['FONT'])
     # consistency checks
     if known['NCHARS'] != len(bdf_glyphs):
@@ -188,15 +188,16 @@ def _extract_known_bdf_properties(bdf_props):
         CONTENTVERSION=bdf_props.pop('CONTENTVERSION', None),
         NCHARS=int(bdf_props.pop('CHARS')),
         FONT=bdf_props.pop('FONT'),
+        METRICSSET=int(bdf_props.pop('METRICSSET', '0')),
     )
-    metricsset = int(bdf_props.pop('METRICSSET', '0'))
-    if metricsset not in (0, 1, 2):
-        logging.warning(f'Unsupported value METRICSSET={metricsset} ignored')
-        metricsset = 0
-    # we're not type converting global metrics except METRICSSET
+    if known['METRICSSET'] not in (0, 1, 2):
+        logging.warning(
+            f"Unsupported value METRICSSET={known['METRICSSET']} ignored"
+        )
+        known['METRICSSET'] = 0
+    # we're not type converting global metrics
     # because we still need to override with (unconverted) glyph metrics
     global_metrics = dict(
-        METRICSSET=metricsset,
         # global DWIDTH; use bounding box as fallback if not specified
         DWIDTH=bdf_props.pop('DWIDTH', ' '.join(bdf_props['FONTBOUNDINGBOX'].split()[:2])),
         SWIDTH=bdf_props.pop('SWIDTH', '0 0'),
@@ -241,7 +242,7 @@ def _convert_bdf_labels(props):
     return labels
 
 
-def _convert_bdf_glyphs(bdf_glyphs, global_metrics):
+def _convert_bdf_glyphs(bdf_glyphs, global_metrics, bdf_props):
     """Convert glyph properties."""
     glyphs = []
     for props in bdf_glyphs:
@@ -249,16 +250,18 @@ def _convert_bdf_glyphs(bdf_glyphs, global_metrics):
         # fall back to glabal metrics, if not defined per-glyph
         props = global_metrics | props
         new_props = {}
-        if global_metrics['METRICSSET'] in (0, 2):
-            new_props.update(_convert_horiz_metrics(raster.width, props))
-        if global_metrics['METRICSSET'] in (1, 2):
-            new_props.update(_convert_vert_metrics(raster.height, props))
+        if bdf_props['METRICSSET'] in (0, 2):
+            new_props.update(_convert_horiz_metrics(raster.width, props, bdf_props))
+        if bdf_props['METRICSSET'] in (1, 2):
+            new_props.update(_convert_vert_metrics(raster.height, props, bdf_props))
         labels = _convert_bdf_labels(props)
-        glyphs.append(Glyph(raster, labels=labels, **new_props))
+        glyphs.append(Glyph(
+            raster, labels=labels, comment=props['COMMENT'], **new_props
+        ))
     return glyphs
 
 
-def _convert_horiz_metrics(glyph_width, props):
+def _convert_horiz_metrics(glyph_width, props, bdf_props):
     """Convert glyph horizontal metrics."""
     new_props = {}
     # bounding box & offset
@@ -266,8 +269,6 @@ def _convert_horiz_metrics(glyph_width, props):
     new_props['shift_up'] = shift_up
     # advance width
     dwidth_x, dwidth_y = _bdf_ints(props['DWIDTH'])
-    if dwidth_y:
-        raise FileFormatError('Vertical advance in horizontal writing not supported.')
     if dwidth_x > 0:
         advance_width = dwidth_x
         left_bearing = bboffx
@@ -277,10 +278,19 @@ def _convert_horiz_metrics(glyph_width, props):
         left_bearing = advance_width + bboffx
     new_props['left_bearing'] = left_bearing
     new_props['right_bearing'] = advance_width - glyph_width - left_bearing
+    # scalable width
+    swidth_x, swidth_y = _bdf_ints(props['SWIDTH'])
+    new_props['scalable_width'] = swidth_to_pixel(
+        swidth_x, point_size=bdf_props['SIZE'][0], dpi=bdf_props['SIZE'][1]
+    )
+    if dwidth_y or swidth_y:
+        logging.warning(
+            'Vertical advance in horizontal writing not supported; ignored'
+        )
     return new_props
 
 
-def _convert_vert_metrics(glyph_height, props):
+def _convert_vert_metrics(glyph_height, props, bdf_props):
     """Convert glyph vertical metrics."""
     new_props = {}
     # bounding box & offset
@@ -293,8 +303,6 @@ def _convert_vert_metrics(glyph_height, props):
     new_props['shift_left'] = ceildiv(bbx_width, 2) + to_left
     # advance height
     dwidth1_x, dwidth1_y = _bdf_ints(props['DWIDTH1'])
-    if dwidth1_x:
-        raise FileFormatError('Horizontal advance in vertical writing not supported.')
     # dwidth1 vector: negative is down
     if dwidth1_y < 0:
         advance_height = -dwidth1_y
@@ -306,6 +314,14 @@ def _convert_vert_metrics(glyph_height, props):
         top_bearing = advance_height - glyph_height - bottom_bearing
     new_props['top_bearing'] = top_bearing
     new_props['bottom_bearing'] = bottom_bearing
+    swidth1_x, swidth1_y = _bdf_ints(props['SWIDTH1'])
+    new_props['scalable_height'] = swidth_to_pixel(
+        swidth1_y, point_size=bdf_props['SIZE'][0], dpi=bdf_props['SIZE'][2]
+    )
+    if dwidth1_x or swidth1_x:
+        logging.warning(
+            'Horizontal advance in vertical writing not supported; ignored'
+        )
     return new_props
 
 
