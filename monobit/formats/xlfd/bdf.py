@@ -229,7 +229,7 @@ def _convert_bdf_properties(bdf_props):
         # https://fontforge.org/docs/techref/BDFGrey.html
         raise FileFormatError('Greymap BDF not supported.')
     properties = {
-        'source_format': "BDF v{bdf_props['STARTFONT']",
+        'source_format': f"BDF v{bdf_props['STARTFONT']}",
         'point_size': size,
         'dpi': (xdpi, ydpi),
         'revision': bdf_props['CONTENTVERSION'],
