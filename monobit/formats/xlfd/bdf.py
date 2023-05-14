@@ -164,7 +164,8 @@ def _bdf_ints(instr):
 def _parse_properties(glyphs, glyph_props, bdf_props, x_props):
     """Parse metrics and metadata."""
     # parse meaningful metadata
-    glyphs, properties, xlfd_name, bdf_unparsed = _parse_bdf_properties(glyphs, glyph_props, bdf_props)
+    global_metrics, properties, xlfd_name, bdf_unparsed = _parse_bdf_properties(glyphs, bdf_props)
+    glyphs = _convert_glyph_properties(glyphs, global_metrics, glyph_props)
     xlfd_props = _parse_xlfd_properties(x_props, xlfd_name)
     for key, value in bdf_unparsed.items():
         logging.info(f'Unrecognised BDF property {key}={value}')
@@ -198,7 +199,7 @@ def _parse_properties(glyphs, glyph_props, bdf_props, x_props):
     return glyphs, properties
 
 
-def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
+def _parse_bdf_properties(glyphs, bdf_props):
     """Parse BDF global and per-glyph geometry."""
     size, xdpi, ydpi, *depth_info = tuple(_bdf_ints(bdf_props.pop('SIZE')))
     if depth_info and depth_info[0] != 1:
@@ -217,6 +218,7 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
         metricsset = 0
     # global metrics, fallback if no per-glyph metrics
     global_metrics = dict(
+        METRICSSET=metricsset,
         # global DWIDTH; use bounding box as fallback if not specified
         DWIDTH=bdf_props.pop('DWIDTH', ' '.join(bdf_props['FONTBOUNDINGBOX'].split()[:2])),
         SWIDTH=bdf_props.pop('SWIDTH', '0 0'),
@@ -225,9 +227,6 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
         SWIDTH1=bdf_props.pop('SWIDTH1', '0 0'),
         BBX=bdf_props.pop('FONTBOUNDINGBOX'),
     )
-    mod_glyphs = _convert_glyph_properties(
-        glyphs, global_metrics, glyph_props, metricsset
-    )
     # check char counters
     nchars = int(bdf_props.pop('CHARS'))
     # check number of characters, but don't break if no match
@@ -235,19 +234,19 @@ def _parse_bdf_properties(glyphs, glyph_props, bdf_props):
         logging.warning('Number of characters found does not match CHARS declaration.')
     xlfd_name = bdf_props.pop('FONT')
     # keep unparsed bdf props
-    return mod_glyphs, properties, xlfd_name, bdf_props
+    return global_metrics, properties, xlfd_name, bdf_props
 
 
-def _convert_glyph_properties(glyphs, global_metrics, glyph_props, metricsset):
+def _convert_glyph_properties(glyphs, global_metrics, glyph_props):
     """Convert glyph properties."""
     mod_glyphs = []
     for glyph, props in zip(glyphs, glyph_props):
         # fall back to glabal metrics, if not defined per-glyph
         props = global_metrics | props
         new_props = {}
-        if metricsset in (0, 2):
+        if global_metrics['METRICSSET'] in (0, 2):
             new_props.update(_convert_horiz_metrics(glyph.width, props))
-        if metricsset in (1, 2):
+        if global_metrics['METRICSSET'] in (1, 2):
             new_props.update(_convert_vert_metrics(glyph.height, props))
         mod_glyphs.append(glyph.modify(**new_props))
     return mod_glyphs
