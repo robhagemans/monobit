@@ -328,7 +328,7 @@ def wrap_main(debug=False):
         loglevel = logging.DEBUG
     else:
         loglevel = logging.WARNING
-    logging.basicConfig(level=loglevel, format='%(levelname)s: %(message)s')
+    logging.basicConfig(level=loglevel, format='%(levelname)s: %(message)s', force=True)
     # run main script
     try:
         yield
