@@ -61,6 +61,7 @@ _TOC_ENTRY = le.Struct(
 
 # format field
 #define PCF_DEFAULT_FORMAT       0x00000000
+PCF_DEFAULT_FORMAT = 0x00000000
 #define PCF_INKBOUNDS           0x00000200
 #define PCF_ACCEL_W_INKBOUNDS   0x00000100
 PCF_ACCEL_W_INKBOUNDS = 0x00000100
@@ -136,7 +137,30 @@ def _read_properties_table(instream):
         xlfd_props[name] = value
     return xlfd_props
 
-# Accelerator table
+
+# Glyph metrics and ink-metrics
+
+# There are two different metrics tables, PCF_METRICS and PCF_INK_METRICS, the
+# former contains the size of the stored bitmaps, while the latter contains the
+# minimum bounding box. The two may contain the same data, but many CJK fonts
+# pad the bitmaps so all bitmaps are the same size.
+
+# from https://tronche.com/gui/x/xlib/graphics/font-metrics/#XCharStruct
+# typedef struct {
+# 	short lbearing;			/* origin to left edge of raster */
+# 	short rbearing;			/* origin to right edge of raster */
+# 	short width;			/* advance to next char's origin */
+# 	short ascent;			/* baseline to top edge of raster */
+# 	short descent;			/* baseline to bottom edge of raster */
+# 	unsigned short attributes;	/* per char flags (not predefined) */
+# } XCharStruct;
+
+# X docs suggest a right-to-left character would have negative character_width (advance)
+# it is unclear about what this means for bearings, as the raster width is given to be rbearing-lbearing
+# in any case, in practice RTL chars appear to have positive metrics
+# see e.g. cuarabic12.pcf, 6x13-ISO8859-8.pcf
+# so we assume character width is always positive, and advance direction is
+# decided by the renderer (as we do it)
 
 _UNCOMPRESSED_METRICS = dict(
     left_side_bearing='int16',
@@ -158,6 +182,8 @@ _COMPRESSED_METRICS = dict(
 )
 
 
+# Accelerator table
+
 _ACC_TABLE = dict(
     noOverlap='uint8',
     constantMetrics='uint8',
@@ -170,8 +196,13 @@ _ACC_TABLE = dict(
     fontAscent='int32',
     fontDescent='int32',
     maxOverlap='int32',
-    # minbounds=_UNCOMPRESSED_METRICS,
-    # maxbounds=_UNCOMPRESSED_METRICS,
+    # minimum and maximum value for each metric
+    #minbounds=_UNCOMPRESSED_METRICS,
+    #maxbounds=_UNCOMPRESSED_METRICS,
+    # if format PCF_ACCEL_W_INKBOUNDS:
+    # maximum and maximum value for each ink metric
+    ##ink_minbounds=_UNCOMPRESSED_METRICS,
+    ##ink_maxbounds=_UNCOMPRESSED_METRICS,
 )
 
 
@@ -358,24 +389,8 @@ def _convert_glyphs(pcf_data):
     # /* what the bits are stored in (bytes, shorts, ints) (format>>4)&3 */
     # /*  0=>bytes, 1=>shorts, 2=>ints */
     scan_unit = pcf_data.bitmap_format & PCF_SCAN_UNIT_MASK
-    # metrics are as defined in XCharStruct
+    # metrics are as defined in XCharStruct (above)
     # https://tronche.com/gui/x/xlib/graphics/font-metrics/
-    # typedef struct {
-    # 	short lbearing;			/* origin to left edge of raster */
-    # 	short rbearing;			/* origin to right edge of raster */
-    # 	short width;			/* advance to next char's origin */
-    # 	short ascent;			/* baseline to top edge of raster */
-    # 	short descent;			/* baseline to bottom edge of raster */
-    # 	unsigned short attributes;	/* per char flags (not predefined) */
-    # } XCharStruct;
-    #
-    # X docs suggest a right-to-left character would have negative character_width (advance)
-    # it is unclear about what this means for bearings, as the raster width is given to be rbearing-lbearing
-    # in any case, in practice RTL chars appear to have positive metrics
-    # see e.g. cuarabic12.pcf, 6x13-ISO8859-8.pcf
-    # so we assume character width is always positive, and advance direction is
-    # decided by the renderer (as we do it)
-    #
     # ascent and descent determine the character height, which we instead infer
     # from bitmap and stride.
     glyphs = tuple(
