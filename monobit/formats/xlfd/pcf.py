@@ -209,17 +209,17 @@ _ACC_TABLE = dict(
 def _read_acc_table(instream):
     format, base = _read_format(instream)
     acc_table = base.Struct(**_ACC_TABLE).read_from(instream)
-    acc_table = vars(acc_table)
+    acc_table = Props(**vars(acc_table))
     uncompressed_metrics = base.Struct(**_UNCOMPRESSED_METRICS)
-    acc_table.update(dict(
+    acc_table |= Props(
         minbounds=uncompressed_metrics.read_from(instream),
         maxbounds=uncompressed_metrics.read_from(instream),
-    ))
+    )
     if format & PCF_ACCEL_W_INKBOUNDS:
-        acc_table.update(dict(
+        acc_table |= Props(
             ink_minbounds=uncompressed_metrics.read_from(instream),
             ink_maxbounds=uncompressed_metrics.read_from(instream),
-        ))
+        )
     return acc_table
 
 
@@ -420,4 +420,14 @@ def _convert_props(pcf_data):
     props.update(dict(
         default_char=Codepoint(pcf_data.default_char),
     ))
+    if hasattr(pcf_data, 'bdf_acc_props'):
+        props.update(dict(
+            ascent=pcf_data.bdf_acc_props.fontAscent,
+            descent=pcf_data.bdf_acc_props.fontDescent,
+        ))
+    elif hasattr(pcf_data, 'acc_props'):
+        props.update(dict(
+            ascent=pcf_data.acc_props.fontAscent,
+            descent=pcf_data.acc_props.fontDescent,
+        ))
     return props
