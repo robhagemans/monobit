@@ -404,6 +404,21 @@ class Raster:
             byteseq = b''.join(bytes(_chunk[::-1]) for _chunk in zip(*args))
         return byteseq
 
+    def get_byte_size(self, *, align='left', stride=NOT_SET):
+        """
+        Calculate size of bytes representation
+
+        stride: number of pixels per row (default: what's needed for alignment)
+        align: 'left' or 'right' for byte-alignment; 'bit' for bit-alignment
+        """
+        if not self.height or not self.width:
+            return 0
+        if stride is NOT_SET:
+            stride = self.width
+        if align == 'bit':
+            return ceildiv(stride * self.height, 8)
+        return ceildiv(stride, 8) * self.height
+
     @classmethod
     def from_hex(cls, hexstr, width, height=NOT_SET, *, align='left'):
         """Create raster from hex string."""

@@ -16,7 +16,7 @@ from ...font import Font
 from ...glyph import Glyph
 from ...raster import Raster
 from ...labels import Tag, Codepoint
-from ...binary import align
+from ...binary import align, ceildiv
 
 from .bdf import swidth_to_pixel, pixel_to_swidth
 from .xlfd import (
@@ -746,16 +746,11 @@ def _create_bitmaps(font, base, scan_unit_bytes=1, padding_bytes=1):
         format |= PCF_BYTE_MASK
     # /* how each row in each glyph's bitmap is padded (format&3) */
     # /*  0=>bytes, 1=>shorts, 2=>ints */
-    if padding_bytes == 2:
-        format |= 1
-    elif padding_bytes == 4:
-        format |= 2
+    # do a int(log2())
+    format |= (padding_bytes.bit_length()-1) & PCF_GLYPH_PAD_MASK
     # /* what the bits are stored in (bytes, shorts, ints) (format>>4)&3 */
     # /*  0=>bytes, 1=>shorts, 2=>ints */
-    if scan_unit_bytes == 2:
-        format |= 1 << 4
-    elif scan_unit_bytes == 4:
-        format |= 2 << 4
+    format |= ((scan_unit_bytes.bit_length()-1) << 4) & PCF_SCAN_UNIT_MASK
     bitmaps = tuple(
         _g.as_bytes(byte_swap=0 if base==be else scan_unit_bytes)
         for _g in font.glyphs
@@ -763,8 +758,17 @@ def _create_bitmaps(font, base, scan_unit_bytes=1, padding_bytes=1):
     offsets = tuple(accumulate((len(_b) for _b in bitmaps), initial=0))[:-1]
     offsets = (base.int32 * len(bitmaps))(*offsets)
     bitmap_data = b''.join(bitmaps)
-    # FIXME: apparently we do need to calculate all 4
-    bitmap_sizes = (base.int32 * 4)(*((len(bitmap_data),)*4))
+    # bytes # shorts # ints #?
+    # apparently we do need to calculate all 4
+    bitmap_sizes = [
+        sum(
+            _g.pixels.get_byte_size(stride=ceildiv(_g.width, 8*2**_p) * 8*(2**_p))
+            for _g in font.glyphs
+        )
+        for _p in range(4)
+    ]
+    assert bitmap_sizes[format&3] == len(bitmap_data)
+    bitmap_sizes = (base.int32 * 4)(*bitmap_sizes)
     table_bytes = (
         bytes(le.uint32(format))
         + bytes(base.int32(len(offsets)))
