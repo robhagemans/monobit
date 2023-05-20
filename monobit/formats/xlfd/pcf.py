@@ -19,7 +19,10 @@ from ...labels import Tag, Codepoint
 from ...binary import align
 
 from .bdf import swidth_to_pixel
-from .xlfd import _parse_xlfd_properties, _create_xlfd_properties, _from_quoted_string
+from .xlfd import (
+    _parse_xlfd_properties, _create_xlfd_properties, _create_xlfd_name,
+    _from_quoted_string
+)
 
 MAGIC = b'\1fcp'
 
@@ -536,6 +539,7 @@ def _create_properties_table(font, base):
         format |= PCF_BYTE_MASK
     propstrings = bytearray()
     xlfd_props = _create_xlfd_properties(font)
+    xlfd_props['FONT'] = _create_xlfd_name(xlfd_props)
     props = []
     props_struct = base.Struct(**_PROPS)
     for key, value in xlfd_props.items():
