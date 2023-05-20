@@ -28,7 +28,7 @@ MAGIC = b'\1fcp'
     patterns=('*.pcf',),
 )
 def load_pcf(instream):
-    """Load font from X11 PCF font file."""
+    """Load font from X11 Portable Compiled Format (PCF)."""
     pcf_data = _read_pcf(instream)
     glyphs = _convert_glyphs(pcf_data)
     props = _convert_props(pcf_data)
@@ -420,6 +420,7 @@ def _convert_props(pcf_data):
     props.update(dict(
         default_char=Codepoint(pcf_data.default_char),
     ))
+    # ascent and descent - these are stored in accelerator table rather than XLFD props
     if hasattr(pcf_data, 'bdf_acc_props'):
         props.update(dict(
             ascent=pcf_data.bdf_acc_props.fontAscent,
