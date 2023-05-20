@@ -6,6 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import logging
+from itertools import accumulate
 
 from ...struct import big_endian as be, little_endian as le
 from ...storage import loaders, savers
@@ -17,8 +18,8 @@ from ...raster import Raster
 from ...labels import Tag, Codepoint
 from ...binary import align
 
-from .bdf import _parse_xlfd_properties, swidth_to_pixel
-
+from .bdf import swidth_to_pixel
+from .xlfd import _parse_xlfd_properties, _create_xlfd_properties
 
 MAGIC = b'\1fcp'
 
@@ -35,7 +36,15 @@ def load_pcf(instream):
     font = Font(glyphs, **props)
     return font.label()
 
-
+@savers.register(linked=load_pcf)
+def save_pcf(fonts, outstream):
+    """Save font to X11 Portable Compiled Format (PCF)."""
+    font, *more = fonts
+    if more:
+        raise FileFormatError('Can only save one font to BDF file.')
+    # can only do big-endian for now
+    _write_pcf(outstream, font, endian='b', create_ink_bounds=True)
+    return font
 
 ##############################################################################
 # https://fontforge.org/docs/techref/pcf-format.html
@@ -263,11 +272,8 @@ _ENCODING_TABLE = dict(
     default_char = 'int16',
 )
 
-def _read_encoding(instream):
-    format, base = _read_format(instream)
-    enc = base.Struct(**_ENCODING_TABLE).read_from(instream)
-    count = (enc.max_char_or_byte2-enc.min_char_or_byte2+1)*(enc.max_byte1-enc.min_byte1+1)
-    # generate code points
+def _generate_codepoints(enc):
+    """Generate all code points based on encoding table."""
     if not enc.min_byte1 and not enc.max_byte1:
         codepoints = (
             bytes((_cp,))
@@ -279,6 +285,14 @@ def _read_encoding(instream):
             for _hi in range(enc.min_char_or_byte2, enc.max_char_or_byte2+1)
             for _lo in range(enc.min_byte1, enc.max_byte1+1)
         )
+    return codepoints
+
+def _read_encoding(instream):
+    format, base = _read_format(instream)
+    enc = base.Struct(**_ENCODING_TABLE).read_from(instream)
+    count = (enc.max_char_or_byte2-enc.min_char_or_byte2+1)*(enc.max_byte1-enc.min_byte1+1)
+    # generate code points
+    codepoints = _generate_codepoints(enc)
     glyph_indices = (base.int16 * count).read_from(instream)
     encoding_dict = {
         _cp: _idx for _cp, _idx in zip(codepoints, glyph_indices)
@@ -432,3 +446,327 @@ def _convert_props(pcf_data):
             descent=pcf_data.acc_props.fontDescent,
         ))
     return props
+
+
+
+###############################################################################
+# pcf writer
+
+
+def _write_pcf(outstream, font, endian, create_ink_bounds):
+    """Write font to X11 PCF font file."""
+    if endian[:1].lower() == 'b':
+        base = be
+    else:
+        base = le
+    tables = (
+        (PCF_PROPERTIES, *_create_properties_table(font, base)),
+        # we're using the same table for accelerators and BDF accelerators
+        # intended difference is unclear
+        (PCF_ACCELERATORS, *_create_acc_table(font, base, create_ink_bounds)),
+        (PCF_BDF_ACCELERATORS, *_create_acc_table(font, base, create_ink_bounds)),
+        (PCF_METRICS, *_create_metrics_table(font, base, _create_glyph_metrics)),
+        (PCF_INK_METRICS, *_create_metrics_table(font, base, _create_ink_metrics)),
+        (PCF_BITMAPS, *_create_bitmaps(font, base)),
+        (PCF_BDF_ENCODINGS, *_create_encoding(font, base)),
+    )
+
+    #     elif entry.type == PCF_SWIDTHS:
+    #         # optional - does not exist in X11 R6.4 sources
+    #         props.swidths = _read_swidths(instream)
+    #     elif entry.type == PCF_GLYPH_NAMES:
+    #         # optional - does not exist in X11 R6.4 sources
+    #         props.glyph_names = _read_glyph_names(instream)
+
+
+    # calculate offsets, construct ToC
+    offset = _HEADER.size + _TOC_ENTRY.size * len(tables)
+    toc = []
+    for type, table, format in tables:
+        toc.append(_TOC_ENTRY(
+            type=type,
+            format=format,
+            size=len(table),
+            offset=offset,
+        ))
+        # align on 2**5==32-bit boundaries
+        offset += align(len(table), 5)
+    # write out file
+    header = _HEADER(header=MAGIC, table_count=len(tables))
+    outstream.write(bytes(header))
+    for entry in toc:
+        outstream.write(bytes(entry))
+    for (_, table, _), next in zip(tables, toc[1:] + [None]):
+        outstream.write(table)
+        # padding
+        if next:
+            outstream.write(bytes(next.offset - outstream.tell()))
+
+
+
+def _create_properties_table(font, base):
+    format = PCF_DEFAULT_FORMAT
+    if base == be:
+        format |= PCF_BYTE_MASK
+    propstrings = bytearray()
+    xlfd_props = _create_xlfd_properties(font)
+    props = []
+    for key, value in xlfd_props.items():
+        prop = base.Struct(**_PROPS)(
+            name_offset=len(propstrings),
+            isStringProp=isinstance(value, str),
+        )
+        propstrings += key.encode('ascii', 'replace') + b'\0'
+        if prop.isStringProp:
+            propstrings += value.encode('ascii', 'replace') + b'\0'
+        else:
+            prop.value = int(value)
+    table_bytes = (
+        bytes(le.uint32(format))
+        + bytes(base.uint32(len(props)))
+        + bytes((base.Struct(**_PROPS) * len(props))(*props))
+        # pad to next int32 boundary
+        + bytes(0 if len(props)&3 == 0 else 4-(len(props)&3))
+        + bytes(base.uint32(len(propstrings)))
+        + bytes(propstrings)
+    )
+    return table_bytes, format
+
+
+def _create_glyph_metrics(glyph, base):
+    """Convert monobit glyph properties to PCF metrics."""
+    metrics = base.Struct(**_UNCOMPRESSED_METRICS)(
+        left_side_bearing=glyph.left_bearing,
+        right_side_bearing=glyph.left_bearing + glyph.width,
+        character_width=glyph.advance_width,
+        character_ascent=glyph.height+glyph.shift_up,
+        character_descent=-glyph.shift_up,
+        character_attributes=0,
+    )
+    return metrics
+
+def _create_ink_metrics(glyph, base):
+    return _create_glyph_metrics(glyph.reduce(), base)
+
+
+def _aggregate_metrics(metrics, aggfunc, base):
+    return base.Struct(**_UNCOMPRESSED_METRICS)(
+        left_side_bearing=aggfunc(_m.left_side_bearing for _m in metrics),
+        right_side_bearing=aggfunc(_m.right_side_bearing for _m in metrics),
+        character_width=aggfunc(_m.character_width for _m in metrics),
+        character_ascent=aggfunc(_m.character_ascent for _m in metrics),
+        character_descent=aggfunc(_m.character_descent for _m in metrics),
+        character_attributes=0,
+    )
+
+# xc/lib/font/util/fontaccel.c
+# FontComputeInfoAccelerators(pFontInfo)
+#     FontInfoPtr pFontInfo;
+# {
+#     pFontInfo->noOverlap = FALSE;
+#     if (pFontInfo->maxOverlap <= pFontInfo->minbounds.leftSideBearing)
+# 	pFontInfo->noOverlap = TRUE;
+#
+#     if ((pFontInfo->minbounds.ascent == pFontInfo->maxbounds.ascent) &&
+# 	    (pFontInfo->minbounds.descent == pFontInfo->maxbounds.descent) &&
+# 	    (pFontInfo->minbounds.leftSideBearing ==
+# 	     pFontInfo->maxbounds.leftSideBearing) &&
+# 	    (pFontInfo->minbounds.rightSideBearing ==
+# 	     pFontInfo->maxbounds.rightSideBearing) &&
+# 	    (pFontInfo->minbounds.characterWidth ==
+# 	     pFontInfo->maxbounds.characterWidth) &&
+#       (pFontInfo->minbounds.attributes == pFontInfo->maxbounds.attributes)) {
+# 	pFontInfo->constantMetrics = TRUE;
+# 	if ((pFontInfo->maxbounds.leftSideBearing == 0) &&
+# 		(pFontInfo->maxbounds.rightSideBearing ==
+# 		 pFontInfo->maxbounds.characterWidth) &&
+# 		(pFontInfo->maxbounds.ascent == pFontInfo->fontAscent) &&
+# 		(pFontInfo->maxbounds.descent == pFontInfo->fontDescent))
+# 	    pFontInfo->terminalFont = TRUE;
+# 	else
+# 	    pFontInfo->terminalFont = FALSE;
+#     } else {
+# 	pFontInfo->constantMetrics = FALSE;
+# 	pFontInfo->terminalFont = FALSE;
+#     }
+#     if (pFontInfo->minbounds.characterWidth == pFontInfo->maxbounds.characterWidth)
+# 	pFontInfo->constantWidth = TRUE;
+#     else
+# 	pFontInfo->constantWidth = FALSE;
+#
+#     if ((pFontInfo->minbounds.leftSideBearing >= 0) &&
+# 	    (pFontInfo->maxOverlap <= 0) &&
+# 	    (pFontInfo->minbounds.ascent >= -pFontInfo->fontDescent) &&
+# 	    (pFontInfo->maxbounds.ascent <= pFontInfo->fontAscent) &&
+# 	    (-pFontInfo->minbounds.descent <= pFontInfo->fontAscent) &&
+# 	    (pFontInfo->maxbounds.descent <= pFontInfo->fontDescent))
+# 	pFontInfo->inkInside = TRUE;
+#     else
+# 	pFontInfo->inkInside = FALSE;
+# }
+
+def _create_acc_table(font, base, create_ink_bounds):
+    format = PCF_DEFAULT_FORMAT
+    if base == be:
+        format |= PCF_BYTE_MASK
+    if create_ink_bounds:
+        format |= PCF_ACCEL_W_INKBOUNDS
+    if not font.glyphs:
+        raise ValueError('No glyphs in font.')
+    metrics = tuple(_create_glyph_metrics(_g, base) for _g in font.glyphs)
+    ink_metrics = tuple(_create_ink_metrics(_g, base) for _g in font.glyphs)
+    minbounds = _aggregate_metrics(metrics, min, base)
+    maxbounds = _aggregate_metrics(metrics, max, base)
+    if create_ink_bounds:
+        ink_minbounds = _aggregate_metrics(ink_metrics, min, base)
+        ink_maxbounds = _aggregate_metrics(ink_metrics, max, base)
+    # based on fontaccel.c code and FontForge's reverse engineered description
+    # this is max(left_bearing + width - advance_width) == max(-right_bearing)
+    maxOverlap = max(_m.right_side_bearing - _m.character_width for _m in metrics)
+    # based on fontaccel.c
+    constantMetrics = minbounds == maxbounds
+    # checked against bdftopcf and pcf2bdf - these are bdf's FONT_ASCENT and FONT_DESCENT
+    # which are kept only here and not in XLFD properties
+    fontAscent = font.ascent
+    fontDescent = font.descent
+    acc_table = base.Struct(**_ACC_TABLE)(
+        # /* if for all i, max(metrics[i].rightSideBearing - metrics[i].characterWidth) */
+        # /*      <= minbounds.leftSideBearing */
+        noOverlap=(maxOverlap <= minbounds.left_side_bearing),
+        # /* Means the perchar field of the XFontStruct can be NULL */
+        constantMetrics=constantMetrics,
+        # /* constantMetrics true and forall characters: */
+        # /*      the left side bearing==0 */
+        # /*      the right side bearing== the character's width */
+        # /*      the character's ascent==the font's ascent */
+        # /*      the character's descent==the font's descent */
+        terminalFont=(
+            constantMetrics
+            and (maxbounds.left_side_bearing == 0)
+            and (maxbounds.right_side_bearing == maxbounds.character_width)
+            and (maxbounds.character_ascent == fontAscent)
+            and (maxbounds.character_descent == fontDescent)
+        ),
+        # /* monospace font like courier */
+        constantWidth=(minbounds.character_width == maxbounds.character_width),
+        # /* Means that all inked bits are within the rectangle with x between [0,charwidth] */
+        # /*  and y between [-descent,ascent]. So no ink overlaps another char when drawing */
+        # ===> this seems to imply fontAscent + fontDescent includes leading
+        inkInside=(
+            (minbounds.left_side_bearing >= 0)
+            and (maxOverlap <= 0)
+            and (minbounds.character_ascent >= -fontDescent)
+            and (maxbounds.character_ascent <= fontAscent)
+            and (-minbounds.character_descent <= fontAscent)
+            and (maxbounds.character_descent <= fontDescent)
+        ),
+        # /* true if the ink metrics differ from the metrics somewhere */
+        inkMetrics=create_ink_bounds and any(_m != _i for _m, _i in zip(metrics, ink_metrics)),
+        # /* 0=>left to right, 1=>right to left */
+        # CHECK is this ever set to rtl even in rtl fonts?
+        drawDirection=1 if font.direction == 'right-to-left' else 0,
+        padding=0,
+        fontAscent=fontAscent,
+        fontDescent=fontDescent,
+        # where set in X11 code?
+        maxOverlap=maxOverlap,
+        # minbounds=_UNCOMPRESSED_METRICS,
+        # maxbounds=_UNCOMPRESSED_METRICS,
+    )
+    table_bytes = (
+        bytes(le.uint32(format))
+        + bytes(acc_table)
+    )
+    return table_bytes, format
+
+
+def _create_metrics_table(font, base, create_glyph_metrics):
+    format = PCF_DEFAULT_FORMAT
+    if base == be:
+        format |= PCF_BYTE_MASK
+    # we don't set PCF_COMPRESSED_METRICS
+    metrics = tuple(create_glyph_metrics(_g, base) for _g in font.glyphs)
+    table_bytes = (
+        bytes(le.uint32(format))
+        + bytes(base.int32(len(metrics)))
+        + b''.join(bytes(_t) for _t in metrics)
+    )
+    return table_bytes, format
+
+
+def _create_bitmaps(font, base):
+    # currently we can only do byte-aligned, byte-padded, msb first, msbyte first
+    # alignment /*  0=>bytes, 1=>shorts, 2=>ints */
+    format = PCF_DEFAULT_FORMAT | PCF_BIT_MASK
+    if base == be:
+        format |= PCF_BYTE_MASK
+    else:
+        raise ValueError('Writing little-endian PCF bitmaps not yet supported.')
+    bitmaps = tuple(_g.as_bytes() for _g in font.glyphs)
+    offsets = tuple(accumulate((len(_b) for _b in bitmaps), initial=0))[:-1]
+    offsets = (base.int32 * len(bitmaps))(*offsets)
+    bitmap_data = b''.join(bitmaps)
+    # FIXME: apparently we do need to calculate all 4
+    bitmap_sizes = (base.int32 * 4)(*((len(bitmap_data),)*4))
+    table_bytes = (
+        bytes(le.uint32(format))
+        + bytes(base.int32(len(offsets)))
+        + bytes(offsets)
+        + bytes(bitmap_sizes)
+        + bitmap_data
+    )
+    return table_bytes, format
+
+
+#
+# _ENCODING_TABLE = dict(
+#     min_char_or_byte2='int16',
+#     max_char_or_byte2='int16',
+#     min_byte1 = 'int16',
+#     max_byte1 = 'int16',
+#     default_char = 'int16',
+# )
+
+def _create_encoding(font, base):
+    format = PCF_DEFAULT_FORMAT | PCF_BIT_MASK
+    if base == be:
+        format |= PCF_BYTE_MASK
+    font = font.label(codepoint_from=font.encoding)
+    enc = base.Struct(**_ENCODING_TABLE)()
+    codepoints = font.get_codepoints()
+    if not codepoints:
+        raise ValueError('No storable code points in font.')
+    byte_length = len(max(codepoints))
+    if byte_length > 2:
+        logging.warning(
+            'Code points greater than 2 bytes cannot be stored in PCF.'
+        )
+    elif byte_length == 1:
+        enc.min_byte1 = enc.max_byte1 = 0
+        enc.min_byte2 = ord(min(codepoints))
+        enc.max_byte2 = ord(max(codepoints))
+    elif byte_length == 2:
+        byte1 = [_cp[0] for _cp in codepoints if len(_cp) == 2]
+        if any(len(_cp) == 1 for _cp in codepoints):
+            byte1.append(0)
+        enc.min_byte1 = min(byte1)
+        enc.max_byte1 = max(byte1)
+        byte2 = tuple(_cp[-1] for _cp in codepoints)
+        enc.min_byte2 = min(byte2)
+        enc.max_byte2 = max(byte2)
+    all_codepoints = _generate_codepoints(enc)
+    glyph_indices = []
+    for cp in all_codepoints:
+        try:
+            index = font.get_index(cp)
+        except KeyError:
+            # -1 means 'not used'
+            index = -1
+        glyph_indices.append(index)
+    glyph_indices = (base.int16 * len(glyph_indices))(*glyph_indices)
+    table_bytes = (
+        bytes(le.uint32(format))
+        + bytes(enc)
+        + bytes(glyph_indices)
+    )
+    return table_bytes, format
