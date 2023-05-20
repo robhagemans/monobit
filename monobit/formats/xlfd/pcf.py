@@ -481,16 +481,20 @@ def _write_pcf(outstream, font, endian, create_ink_bounds):
         base = be
     else:
         base = le
+    # tables MUST be in this order or pcf2bdf will reject the file
     tables = (
         (PCF_PROPERTIES, *_create_properties_table(font, base)),
-        # we're using the same table for accelerators and BDF accelerators
-        # intended difference is unclear
         (PCF_ACCELERATORS, *_create_acc_table(font, base, create_ink_bounds)),
-        (PCF_BDF_ACCELERATORS, *_create_acc_table(font, base, create_ink_bounds)),
         (PCF_METRICS, *_create_metrics_table(font, base, _create_glyph_metrics)),
+        # pcf2bdf doesn't read ink metrics
         (PCF_INK_METRICS, *_create_metrics_table(font, base, _create_ink_metrics)),
         (PCF_BITMAPS, *_create_bitmaps(font, base)),
         (PCF_BDF_ENCODINGS, *_create_encoding(font, base)),
+        # PCF_SWIDTHS
+        # PCF_GLYPH_NAMES
+        # we're using the same table for accelerators and BDF accelerators
+        # intended difference is unclear
+        (PCF_BDF_ACCELERATORS, *_create_acc_table(font, base, create_ink_bounds)),
     )
 
     #     elif entry.type == PCF_SWIDTHS:
