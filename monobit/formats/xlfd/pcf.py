@@ -40,13 +40,17 @@ def load_pcf(instream):
     return font.label()
 
 @savers.register(linked=load_pcf)
-def save_pcf(fonts, outstream):
-    """Save font to X11 Portable Compiled Format (PCF)."""
+def save_pcf(fonts, outstream, ink_bounds:bool=True):
+    """
+    Save font to X11 Portable Compiled Format (PCF).
+
+    ink_bounds: include optional ink-bounds metrics (default: True)
+    """
     font, *more = fonts
     if more:
         raise FileFormatError('Can only save one font to BDF file.')
     # can only do big-endian for now
-    _write_pcf(outstream, font, endian='b', create_ink_bounds=True)
+    _write_pcf(outstream, font, endian='b', create_ink_bounds=ink_bounds)
     return font
 
 ##############################################################################
