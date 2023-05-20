@@ -123,6 +123,51 @@ PCF_GLYPH_NAMES = (1<<7)
 PCF_BDF_ACCELERATORS = (1<<8)
 
 
+def _read_pcf(instream):
+    """Read font from X11 PCF font file."""
+    header = _HEADER.read_from(instream)
+    toc = (_TOC_ENTRY * header.table_count).read_from(instream)
+    props = Props()
+    for entry in toc:
+        instream.seek(entry.offset)
+        if entry.type == PCF_PROPERTIES:
+            props.xlfd_props = _read_properties_table(instream)
+        elif entry.type == PCF_ACCELERATORS:
+            # mandatory if BDF_ACCELERATORS not defined
+            props.acc_props = _read_acc_table(instream)
+        elif entry.type == PCF_BDF_ACCELERATORS:
+            # optional
+            props.bdf_acc_props = _read_acc_table(instream)
+        elif entry.type == PCF_METRICS:
+            # mandatory
+            props.metrics = _read_metrics(instream)
+        elif entry.type == PCF_INK_METRICS:
+            # optional
+            props.ink_metrics = _read_metrics(instream)
+        elif entry.type == PCF_BITMAPS:
+            # mandatory
+            props.bitmap_format, props.bitmaps = _read_bitmaps(instream)
+        elif entry.type == PCF_BDF_ENCODINGS:
+            # mandatory, but could be empty
+            props.encodings, props.default_char = _read_encoding(instream)
+        elif entry.type == PCF_SWIDTHS:
+            # optional - does not exist in X11 R6.4 sources
+            props.swidths = _read_swidths(instream)
+        elif entry.type == PCF_GLYPH_NAMES:
+            # optional - does not exist in X11 R6.4 sources
+            props.glyph_names = _read_glyph_names(instream)
+    return props
+
+
+def _read_format(instream):
+    """Read the format record at start of tables."""
+    format = int(le.uint32.read_from(instream))
+    if format & PCF_BYTE_MASK:
+        base = be
+    else:
+        base = le
+    return format, base
+
 
 # Properties table
 
@@ -133,15 +178,8 @@ _PROPS = dict(
     value='int32',
 )
 
-def _read_format(instream):
-    format = int(le.uint32.read_from(instream))
-    if format & PCF_BYTE_MASK:
-        base = be
-    else:
-        base = le
-    return format, base
-
 def _read_properties_table(instream):
+    """Read the Properties table."""
     format, base = _read_format(instream)
     nprops = base.uint32.read_from(instream)
     props = (base.Struct(**_PROPS) * nprops).read_from(instream)
@@ -231,6 +269,7 @@ _ACC_TABLE = dict(
 
 
 def _read_acc_table(instream):
+    """Read the Accelerator or BDF Accelerator table."""
     format, base = _read_format(instream)
     acc_table = base.Struct(**_ACC_TABLE).read_from(instream)
     acc_table = Props(**vars(acc_table))
@@ -248,6 +287,7 @@ def _read_acc_table(instream):
 
 
 def _read_metrics(instream):
+    """Read the Metrics or Ink-Metrics table."""
     format, base = _read_format(instream)
     if format & PCF_COMPRESSED_METRICS:
         compressed_metrics = base.Struct(**_COMPRESSED_METRICS)
@@ -266,11 +306,12 @@ def _read_metrics(instream):
 
 
 def _read_bitmaps(instream):
+    """Read the Bitmaps table."""
     format, base = _read_format(instream)
     glyph_count = base.int32.read_from(instream)
     offsets = (base.int32 * glyph_count).read_from(instream)
-    bitmapSizes = (base.int32 * 4).read_from(instream)
-    bitmap_size = bitmapSizes[format & 3]
+    bitmap_sizes = (base.int32 * 4).read_from(instream)
+    bitmap_size = bitmap_sizes[format & 3]
     bitmap_data = instream.read(bitmap_size)
     offsets = tuple(offsets) + (None,)
     return format, tuple(
@@ -340,6 +381,7 @@ def _read_encoding(instream):
 
 
 def _read_swidths(instream):
+    """Read the Scalable Widths table."""
     format, base = _read_format(instream)
     glyph_count = base.uint32.read_from(instream)
     swidths = (base.int32 * glyph_count).read_from(instream)
@@ -347,6 +389,7 @@ def _read_swidths(instream):
 
 
 def _read_glyph_names(instream):
+    """Read the Glyph Names table."""
     format, base = _read_format(instream)
     glyph_count = base.int32.read_from(instream)
     offsets = (base.int32 * glyph_count).read_from(instream)
@@ -358,42 +401,6 @@ def _read_glyph_names(instream):
         name = name.decode('latin-1', 'ignore')
         glyph_names.append(name)
     return glyph_names
-
-
-def _read_pcf(instream):
-    """Read font from X11 PCF font file."""
-    header = _HEADER.read_from(instream)
-    toc = (_TOC_ENTRY * header.table_count).read_from(instream)
-    props = Props()
-    for entry in toc:
-        instream.seek(entry.offset)
-        if entry.type == PCF_PROPERTIES:
-            props.xlfd_props = _read_properties_table(instream)
-        elif entry.type == PCF_ACCELERATORS:
-            # mandatory if BDF_ACCELERATORS not defined
-            props.acc_props = _read_acc_table(instream)
-        elif entry.type == PCF_BDF_ACCELERATORS:
-            # optional
-            props.bdf_acc_props = _read_acc_table(instream)
-        elif entry.type == PCF_METRICS:
-            # mandatory
-            props.metrics = _read_metrics(instream)
-        elif entry.type == PCF_INK_METRICS:
-            # optional
-            props.ink_metrics = _read_metrics(instream)
-        elif entry.type == PCF_BITMAPS:
-            # mandatory
-            props.bitmap_format, props.bitmaps = _read_bitmaps(instream)
-        elif entry.type == PCF_BDF_ENCODINGS:
-            # mandatory, but could be empty
-            props.encodings, props.default_char = _read_encoding(instream)
-        elif entry.type == PCF_SWIDTHS:
-            # optional - does not exist in X11 R6.4 sources
-            props.swidths = _read_swidths(instream)
-        elif entry.type == PCF_GLYPH_NAMES:
-            # optional - does not exist in X11 R6.4 sources
-            props.glyph_names = _read_glyph_names(instream)
-    return props
 
 
 ###############################################################################
@@ -466,6 +473,7 @@ def _convert_glyphs(pcf_data):
 
 
 def _convert_props(pcf_data):
+    """Convert properties for PCF to monobit."""
     xlfd_name = pcf_data.xlfd_props.pop('FONT', '')
     pcf_data.xlfd_props = {_k: str(_v) for _k, _v in pcf_data.xlfd_props.items()}
     props = _parse_xlfd_properties(pcf_data.xlfd_props, xlfd_name)
@@ -486,10 +494,8 @@ def _convert_props(pcf_data):
     return props
 
 
-
 ###############################################################################
 # pcf writer
-
 
 def _write_pcf(outstream, font, endian, create_ink_bounds, scan_unit):
     """Write font to X11 PCF font file."""
@@ -538,6 +544,7 @@ def _write_pcf(outstream, font, endian, create_ink_bounds, scan_unit):
 
 
 def _create_properties_table(font, base):
+    """Create the Properties table."""
     format = PCF_DEFAULT_FORMAT
     if base == be:
         format |= PCF_BYTE_MASK
@@ -584,10 +591,12 @@ def _create_glyph_metrics(glyph, base):
     return metrics
 
 def _create_ink_metrics(glyph, base):
+    """Create the Ink Metrics table."""
     return _create_glyph_metrics(glyph.reduce(), base)
 
 
 def _aggregate_metrics(metrics, aggfunc, base):
+    """Get minimum or maximum from listo of metrics."""
     return base.Struct(**_UNCOMPRESSED_METRICS)(
         left_side_bearing=aggfunc(_m.left_side_bearing for _m in metrics),
         right_side_bearing=aggfunc(_m.right_side_bearing for _m in metrics),
@@ -644,6 +653,7 @@ def _aggregate_metrics(metrics, aggfunc, base):
 # }
 
 def _create_acc_table(font, base, create_ink_bounds):
+    """Create the Accelerators table."""
     format = PCF_DEFAULT_FORMAT
     if base == be:
         format |= PCF_BYTE_MASK
@@ -726,6 +736,7 @@ def _create_acc_table(font, base, create_ink_bounds):
 
 
 def _create_metrics_table(font, base, create_glyph_metrics):
+    """Create the Metrics table."""
     format = PCF_DEFAULT_FORMAT
     if base == be:
         format |= PCF_BYTE_MASK
@@ -740,6 +751,7 @@ def _create_metrics_table(font, base, create_glyph_metrics):
 
 
 def _create_bitmaps(font, base, scan_unit_bytes=1, padding_bytes=1):
+    """Create the Bitmaps table."""
     # currently we can only do byte-aligned, byte-padded, msb first
     format = PCF_DEFAULT_FORMAT | PCF_BIT_MASK
     if base == be:
@@ -780,6 +792,7 @@ def _create_bitmaps(font, base, scan_unit_bytes=1, padding_bytes=1):
 
 
 def _create_encoding(font, base):
+    """Create the Encoding table."""
     format = PCF_DEFAULT_FORMAT | PCF_BIT_MASK
     if base == be:
         format |= PCF_BYTE_MASK
@@ -826,6 +839,7 @@ def _create_encoding(font, base):
 
 
 def _create_swidths(font, base):
+    """Create the Scalable Widths table."""
     format = PCF_DEFAULT_FORMAT
     if base == be:
         format |= PCF_BYTE_MASK
@@ -842,6 +856,7 @@ def _create_swidths(font, base):
 
 
 def _create_glyph_names(font, base):
+    """Create the Glyph Names table."""
     format = PCF_DEFAULT_FORMAT
     if base == be:
         format |= PCF_BYTE_MASK
