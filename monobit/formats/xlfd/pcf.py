@@ -263,13 +263,35 @@ def _read_bitmaps(instream):
         for _offs, _next in zip(offsets, offsets[1:])
     )
 
+# from https://tronche.com/gui/x/xlib/graphics/font-metrics/#XFontStruct
+# typedef struct {
+# 	XExtData *ext_data;		/* hook for extension to hang data */
+# 	Font fid;			/* Font id for this font */
+# 	unsigned direction;		/* hint about the direction font is painted */
+# 	unsigned min_char_or_byte2;	/* first character */
+# 	unsigned max_char_or_byte2;	/* last character */
+# 	unsigned min_byte1;		/* first row that exists */
+# 	unsigned max_byte1;		/* last row that exists */
+# 	Bool all_chars_exist;		/* flag if all characters have nonzero size */
+# 	unsigned default_char;		/* char to print for undefined character */
+# 	int n_properties;		/* how many properties there are */
+# 	XFontProp *properties;		/* pointer to array of additional properties */
+# 	XCharStruct min_bounds;		/* minimum bounds over all existing char */
+# 	XCharStruct max_bounds;		/* maximum bounds over all existing char */
+# 	XCharStruct *per_char;		/* first_char to last_char information */
+# 	int ascent;			/* logical extent above baseline for spacing */
+# 	int descent;			/* logical decent below baseline for spacing */
+# } XFontStruct;
 
+# FontForge docs suggest the encoding table has signed integers
+# but the XFontStruct has them unsigned
+# they also make more sense unsigned, especially default_char which may be two-byte.
 _ENCODING_TABLE = dict(
-    min_char_or_byte2='int16',
-    max_char_or_byte2='int16',
-    min_byte1 = 'int16',
-    max_byte1 = 'int16',
-    default_char = 'int16',
+    min_char_or_byte2='uint16',
+    max_char_or_byte2='uint16',
+    min_byte1='uint16',
+    max_byte1='uint16',
+    default_char='uint16',
 )
 
 def _generate_codepoints(enc):
@@ -723,7 +745,9 @@ def _create_encoding(font, base):
     if base == be:
         format |= PCF_BYTE_MASK
     font = font.label(codepoint_from=font.encoding)
-    enc = base.Struct(**_ENCODING_TABLE)()
+    enc = base.Struct(**_ENCODING_TABLE)(
+        default_char=int(font.get_default_glyph().codepoint or 0)
+    )
     codepoints = font.get_codepoints()
     if not codepoints:
         raise ValueError('No storable code points in font.')
