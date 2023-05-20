@@ -550,9 +550,19 @@ class Glyph(HasProps):
         """Convert glyph to rows of bytes."""
         return self._pixels.as_byterows(align=align)
 
-    def as_bytes(self, *, align='left'):
-        """Convert glyph to flat bytes."""
-        return self._pixels.as_bytes(align=align)
+    def as_bytes(
+            self, *, align='left', stride=NOT_SET, byte_swap=0,
+            # bit_order='big',
+        ):
+        """
+        Convert raster to flat bytes.
+
+        stride: number of pixels per row (default: what's needed for alignment)
+        align: 'left' or 'right' for byte-alignment; 'bit' for bit-alignment
+        byte_swap: swap byte order in units of n bytes, 0 (default) for no swap
+        """
+        # bit_order: per-byte bit endianness; 'little' for lsb left, 'big' (default) for msb left
+        return self._pixels.as_bytes(align=align, stride=stride, byte_swap=byte_swap)
 
     def as_hex(self, *, align='left'):
         """Convert glyph to hex string."""

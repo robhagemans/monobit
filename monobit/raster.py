@@ -298,7 +298,7 @@ class Raster:
         align: 'left' or 'right' for byte-alignment; 'bit' for bit-alignment
         order: 'row-major' (default) or 'column-major' order of the byte array (no effect if align == 'bit')
         byte_swap: swap byte order in units of n bytes, 0 (default) for no swap
-        bit_order: per-byte bit endianness little for lsb left, 'big' (default) for msb left
+        bit_order: per-byte bit endianness; 'little' for lsb left, 'big' (default) for msb left
         """
         if all(_arg is NOT_SET for _arg in (width, height, stride)):
             raise ValueError(
@@ -322,9 +322,12 @@ class Raster:
             else:
                 stride = width
         if byte_swap:
+            orig_length = len(byteseq)
+            byteseq = byteseq.ljust(ceildiv(len(byteseq), byte_swap)*byte_swap, b'\0')
             # grouper
             args = [iter(byteseq)] * byte_swap
             byteseq = b''.join(bytes(_chunk[::-1]) for _chunk in zip(*args))
+            byteseq = byteseq[:orig_length]
         # byte matrix order. no effect for bit alignment
         if order == 'column-major' and align != 'bit':
             byteseq = b''.join(
@@ -364,25 +367,42 @@ class Raster:
         byterows = (int(_row, 2).to_bytes(bytewidth, 'big') for _row in rows)
         return byterows
 
-    def as_bytes(self, *, align='left'):
+    def as_bytes(
+            self, *, align='left', stride=NOT_SET, byte_swap=0,
+            # bit_order='big',
+        ):
         """
         Convert raster to flat bytes.
 
+        stride: number of pixels per row (default: what's needed for alignment)
         align: 'left' or 'right' for byte-alignment; 'bit' for bit-alignment
+        byte_swap: swap byte order in units of n bytes, 0 (default) for no swap
         """
+        # bit_order: per-byte bit endianness; 'little' for lsb left, 'big' (default) for msb left
         if not self.height or not self.width:
             return b''
-        if align.startswith('b'):
+        if stride is not NOT_SET:
+            if align == 'right':
+                raster = self.expand(left=stride-self.width)
+            else:
+                # left or bit-aligned
+                raster = self.expand(right=stride-self.width)
+        if align == 'bit':
             bits = ''.join(
                 ''.join(_row)
                 for _row in self.as_matrix(paper='0', ink='1')
             )
             bytesize = ceildiv(len(bits), 8)
-            byterow = int(bits, 2).to_bytes(bytesize, 'big')
-            return byterow
+            byterows = (int(bits, 2).to_bytes(bytesize, 'big'),)
         else:
             byterows = self.as_byterows(align=align)
-            return b''.join(byterows)
+        byteseq = b''.join(byterows)
+        if byte_swap:
+            # grouper
+            byteseq = byteseq.ljust(ceildiv(len(byteseq), byte_swap)*byte_swap, b'\0')
+            args = [iter(byteseq)] * byte_swap
+            byteseq = b''.join(bytes(_chunk[::-1]) for _chunk in zip(*args))
+        return byteseq
 
     @classmethod
     def from_hex(cls, hexstr, width, height=NOT_SET, *, align='left'):

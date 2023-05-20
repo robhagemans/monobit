@@ -40,17 +40,25 @@ def load_pcf(instream):
     return font.label()
 
 @savers.register(linked=load_pcf)
-def save_pcf(fonts, outstream, ink_bounds:bool=True):
+def save_pcf(
+        fonts, outstream, *,
+        byte_order:str='big', ink_bounds:bool=True, scan_unit:int=1,
+    ):
     """
     Save font to X11 Portable Compiled Format (PCF).
 
     ink_bounds: include optional ink-bounds metrics (default: True)
+    byte_order: 'big'-endian (default) or 'little'-endian
+    scan_unit: number of bytes per unit in bitmap (1, 2, or 4; default is 1)
     """
     font, *more = fonts
     if more:
         raise FileFormatError('Can only save one font to BDF file.')
     # can only do big-endian for now
-    _write_pcf(outstream, font, endian='b', create_ink_bounds=ink_bounds)
+    _write_pcf(
+        outstream, font, endian=byte_order, create_ink_bounds=ink_bounds,
+        scan_unit=scan_unit
+    )
     return font
 
 ##############################################################################
@@ -431,7 +439,7 @@ def _convert_glyphs(pcf_data):
     bit_big = pcf_data.bitmap_format & PCF_BIT_MASK
     # /* what the bits are stored in (bytes, shorts, ints) (format>>4)&3 */
     # /*  0=>bytes, 1=>shorts, 2=>ints */
-    scan_unit = pcf_data.bitmap_format & PCF_SCAN_UNIT_MASK
+    scan_unit = (pcf_data.bitmap_format & PCF_SCAN_UNIT_MASK) >> 4
     # metrics are as defined in XCharStruct (above)
     # https://tronche.com/gui/x/xlib/graphics/font-metrics/
     # ascent and descent determine the character height, which we instead infer
@@ -441,8 +449,9 @@ def _convert_glyphs(pcf_data):
             _gb,
             width=_met.right_side_bearing-_met.left_side_bearing,
             stride=align(_met.right_side_bearing-_met.left_side_bearing, glyph_pad_length+3),
+            height=_met.character_ascent+_met.character_descent,
             bit_order='big' if bit_big else 'little',
-            byte_swap=0 if byte_big else scan_unit+1,
+            byte_swap=0 if byte_big else 2**scan_unit,
             left_bearing=_met.left_side_bearing,
             right_bearing=_met.character_width-_met.right_side_bearing,
             shift_up=-_met.character_descent,
@@ -482,7 +491,7 @@ def _convert_props(pcf_data):
 # pcf writer
 
 
-def _write_pcf(outstream, font, endian, create_ink_bounds):
+def _write_pcf(outstream, font, endian, create_ink_bounds, scan_unit):
     """Write font to X11 PCF font file."""
     if endian[:1].lower() == 'b':
         base = be
@@ -495,7 +504,7 @@ def _write_pcf(outstream, font, endian, create_ink_bounds):
         (PCF_METRICS, *_create_metrics_table(font, base, _create_glyph_metrics)),
         # pcf2bdf doesn't read ink metrics, assume they go here?
         (PCF_INK_METRICS, *_create_metrics_table(font, base, _create_ink_metrics)),
-        (PCF_BITMAPS, *_create_bitmaps(font, base)),
+        (PCF_BITMAPS, *_create_bitmaps(font, base, scan_unit_bytes=scan_unit)),
         (PCF_BDF_ENCODINGS, *_create_encoding(font, base)),
         (PCF_SWIDTHS, *_create_swidths(font, base)),
         (PCF_GLYPH_NAMES, *_create_glyph_names(font, base)),
@@ -730,15 +739,27 @@ def _create_metrics_table(font, base, create_glyph_metrics):
     return table_bytes, format
 
 
-def _create_bitmaps(font, base):
-    # currently we can only do byte-aligned, byte-padded, msb first, msbyte first
-    # alignment /*  0=>bytes, 1=>shorts, 2=>ints */
+def _create_bitmaps(font, base, scan_unit_bytes=1, padding_bytes=1):
+    # currently we can only do byte-aligned, byte-padded, msb first
     format = PCF_DEFAULT_FORMAT | PCF_BIT_MASK
     if base == be:
         format |= PCF_BYTE_MASK
-    else:
-        raise ValueError('Writing little-endian PCF bitmaps not yet supported.')
-    bitmaps = tuple(_g.as_bytes() for _g in font.glyphs)
+    # /* how each row in each glyph's bitmap is padded (format&3) */
+    # /*  0=>bytes, 1=>shorts, 2=>ints */
+    if padding_bytes == 2:
+        format |= 1
+    elif padding_bytes == 4:
+        format |= 2
+    # /* what the bits are stored in (bytes, shorts, ints) (format>>4)&3 */
+    # /*  0=>bytes, 1=>shorts, 2=>ints */
+    if scan_unit_bytes == 2:
+        format |= 1 << 4
+    elif scan_unit_bytes == 4:
+        format |= 2 << 4
+    bitmaps = tuple(
+        _g.as_bytes(byte_swap=0 if base==be else scan_unit_bytes)
+        for _g in font.glyphs
+    )
     offsets = tuple(accumulate((len(_b) for _b in bitmaps), initial=0))[:-1]
     offsets = (base.int32 * len(bitmaps))(*offsets)
     bitmap_data = b''.join(bitmaps)
