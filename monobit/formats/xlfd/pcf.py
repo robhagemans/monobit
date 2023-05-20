@@ -701,11 +701,18 @@ def _create_acc_table(font, base, create_ink_bounds):
         # minbounds=_UNCOMPRESSED_METRICS,
         # maxbounds=_UNCOMPRESSED_METRICS,
     )
-    table_bytes = (
-        bytes(le.uint32(format))
-        + bytes(acc_table)
-    )
-    return table_bytes, format
+    table_bytes = [
+        bytes(le.uint32(format)),
+        bytes(acc_table),
+        bytes(minbounds),
+        bytes(maxbounds),
+    ]
+    if create_ink_bounds:
+        table_bytes.extend([
+            bytes(ink_minbounds),
+            bytes(ink_maxbounds),
+    ])
+    return b''.join(table_bytes), format
 
 
 def _create_metrics_table(font, base, create_glyph_metrics):
