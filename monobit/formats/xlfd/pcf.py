@@ -533,8 +533,9 @@ def _create_properties_table(font, base):
     propstrings = bytearray()
     xlfd_props = _create_xlfd_properties(font)
     props = []
+    props_struct = base.Struct(**_PROPS)
     for key, value in xlfd_props.items():
-        prop = base.Struct(**_PROPS)(
+        prop = props_struct(
             name_offset=len(propstrings),
             isStringProp=isinstance(value, str),
         )
@@ -543,10 +544,11 @@ def _create_properties_table(font, base):
             propstrings += value.encode('ascii', 'replace') + b'\0'
         else:
             prop.value = int(value)
+        props.append(prop)
     table_bytes = (
         bytes(le.uint32(format))
         + bytes(base.uint32(len(props)))
-        + bytes((base.Struct(**_PROPS) * len(props))(*props))
+        + bytes((props_struct * len(props))(*props))
         # pad to next int32 boundary
         + bytes(0 if len(props)&3 == 0 else 4-(len(props)&3))
         + bytes(base.uint32(len(propstrings)))
