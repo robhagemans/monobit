@@ -387,15 +387,17 @@ class Raster:
             else:
                 # left or bit-aligned
                 raster = self.expand(right=stride-self.width)
+        else:
+            raster = self
         if align == 'bit':
             bits = ''.join(
                 ''.join(_row)
-                for _row in self.as_matrix(paper='0', ink='1')
+                for _row in raster.as_matrix(paper='0', ink='1')
             )
             bytesize = ceildiv(len(bits), 8)
             byterows = (int(bits, 2).to_bytes(bytesize, 'big'),)
         else:
-            byterows = self.as_byterows(align=align)
+            byterows = raster.as_byterows(align=align)
         byteseq = b''.join(byterows)
         if byte_swap:
             # grouper
