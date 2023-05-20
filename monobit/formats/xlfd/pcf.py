@@ -18,7 +18,7 @@ from ...raster import Raster
 from ...labels import Tag, Codepoint
 from ...binary import align
 
-from .bdf import swidth_to_pixel
+from .bdf import swidth_to_pixel, pixel_to_swidth
 from .xlfd import (
     _parse_xlfd_properties, _create_xlfd_properties, _create_xlfd_name,
     _from_quoted_string
@@ -329,7 +329,7 @@ def _read_encoding(instream):
 
 def _read_swidths(instream):
     format, base = _read_format(instream)
-    glyph_count = base.int32.read_from(instream)
+    glyph_count = base.uint32.read_from(instream)
     swidths = (base.int32 * glyph_count).read_from(instream)
     return swidths
 
@@ -489,25 +489,16 @@ def _write_pcf(outstream, font, endian, create_ink_bounds):
         (PCF_PROPERTIES, *_create_properties_table(font, base)),
         (PCF_ACCELERATORS, *_create_acc_table(font, base, create_ink_bounds)),
         (PCF_METRICS, *_create_metrics_table(font, base, _create_glyph_metrics)),
-        # pcf2bdf doesn't read ink metrics
+        # pcf2bdf doesn't read ink metrics, assume they go here?
         (PCF_INK_METRICS, *_create_metrics_table(font, base, _create_ink_metrics)),
         (PCF_BITMAPS, *_create_bitmaps(font, base)),
         (PCF_BDF_ENCODINGS, *_create_encoding(font, base)),
-        # PCF_SWIDTHS
-        # PCF_GLYPH_NAMES
+        (PCF_SWIDTHS, *_create_swidths(font, base)),
+        (PCF_GLYPH_NAMES, *_create_glyph_names(font, base)),
         # we're using the same table for accelerators and BDF accelerators
         # intended difference is unclear
         (PCF_BDF_ACCELERATORS, *_create_acc_table(font, base, create_ink_bounds)),
     )
-
-    #     elif entry.type == PCF_SWIDTHS:
-    #         # optional - does not exist in X11 R6.4 sources
-    #         props.swidths = _read_swidths(instream)
-    #     elif entry.type == PCF_GLYPH_NAMES:
-    #         # optional - does not exist in X11 R6.4 sources
-    #         props.glyph_names = _read_glyph_names(instream)
-
-
     # calculate offsets, construct ToC
     offset = _HEADER.size + _TOC_ENTRY.size * len(tables)
     toc = []
@@ -801,5 +792,43 @@ def _create_encoding(font, base):
         bytes(le.uint32(format))
         + bytes(enc)
         + bytes(glyph_indices)
+    )
+    return table_bytes, format
+
+
+def _create_swidths(font, base):
+    format = PCF_DEFAULT_FORMAT
+    if base == be:
+        format |= PCF_BYTE_MASK
+    swidths = (base.int32 * len(font.glyphs))(*(
+        pixel_to_swidth(_g.scalable_width, font.point_size, font.dpi.x)
+        for _g in font.glyphs
+    ))
+    table_bytes = (
+        bytes(le.uint32(format))
+        + bytes(base.uint32(len(swidths)))
+        + bytes(swidths)
+    )
+    return table_bytes, format
+
+
+def _create_glyph_names(font, base):
+    format = PCF_DEFAULT_FORMAT
+    if base == be:
+        format |= PCF_BYTE_MASK
+    names = tuple(
+        _g.tags[0].value.encode('ascii', 'replace') + b'\0'
+        if _g.tags else b'glyph%d\0' % (i,)
+        for _i, _g in enumerate(font.glyphs)
+    )
+    strings = b''.join(_n for _n in names)
+    offsets = tuple(accumulate((len(_n) for _n in names), initial=0))[:-1]
+    offsets = (base.uint32 * len(names))(*offsets)
+    table_bytes = (
+        bytes(le.uint32(format))
+        + bytes(base.uint32(len(offsets)))
+        + bytes(offsets)
+        + bytes(base.uint32(len(strings)))
+        + strings
     )
     return table_bytes, format
