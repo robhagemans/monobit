@@ -43,13 +43,15 @@ def load_pcf(instream):
 def save_pcf(
         fonts, outstream, *,
         byte_order:str='big', ink_bounds:bool=True, scan_unit:int=1,
+        padding_bytes:int=1,
     ):
     """
     Save font to X11 Portable Compiled Format (PCF).
 
     ink_bounds: include optional ink-bounds metrics (default: True)
     byte_order: 'big'-endian (default) or 'little'-endian
-    scan_unit: number of bytes per unit in bitmap (1, 2, or 4; default is 1)
+    scan_unit: number of bytes per unit in bitmap (1, 2, 4 or 8; default is 1)
+    padding_bytes: make raster row a multiple of this number of bytes (1, 2, 4 or 8; default is 1)
     """
     font, *more = fonts
     if more:
@@ -57,7 +59,7 @@ def save_pcf(
     # can only do big-endian for now
     _write_pcf(
         outstream, font, endian=byte_order, create_ink_bounds=ink_bounds,
-        scan_unit=scan_unit
+        scan_unit=scan_unit, padding_bytes=padding_bytes,
     )
     return font
 
@@ -497,7 +499,7 @@ def _convert_props(pcf_data):
 ###############################################################################
 # pcf writer
 
-def _write_pcf(outstream, font, endian, create_ink_bounds, scan_unit):
+def _write_pcf(outstream, font, endian, create_ink_bounds, scan_unit, padding_bytes):
     """Write font to X11 PCF font file."""
     if endian[:1].lower() == 'b':
         base = be
