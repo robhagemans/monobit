@@ -718,15 +718,6 @@ def _create_bitmaps(font, base):
     return table_bytes, format
 
 
-#
-# _ENCODING_TABLE = dict(
-#     min_char_or_byte2='int16',
-#     max_char_or_byte2='int16',
-#     min_byte1 = 'int16',
-#     max_byte1 = 'int16',
-#     default_char = 'int16',
-# )
-
 def _create_encoding(font, base):
     format = PCF_DEFAULT_FORMAT | PCF_BIT_MASK
     if base == be:
@@ -743,20 +734,19 @@ def _create_encoding(font, base):
         )
     elif byte_length == 1:
         enc.min_byte1 = enc.max_byte1 = 0
-        enc.min_byte2 = ord(min(codepoints))
-        enc.max_byte2 = ord(max(codepoints))
+        enc.min_char_or_byte2 = ord(min(codepoints))
+        enc.max_char_or_byte2 = ord(max(codepoints))
     elif byte_length == 2:
-        byte1 = [_cp[0] for _cp in codepoints if len(_cp) == 2]
+        byte2 = [_cp[0] for _cp in codepoints if len(_cp) == 2]
         if any(len(_cp) == 1 for _cp in codepoints):
-            byte1.append(0)
+            byte2.append(0)
+        enc.min_char_or_byte2 = min(byte2)
+        enc.max_char_or_byte2 = max(byte2)
+        byte1 = tuple(_cp[-1] for _cp in codepoints)
         enc.min_byte1 = min(byte1)
         enc.max_byte1 = max(byte1)
-        byte2 = tuple(_cp[-1] for _cp in codepoints)
-        enc.min_byte2 = min(byte2)
-        enc.max_byte2 = max(byte2)
-    all_codepoints = _generate_codepoints(enc)
     glyph_indices = []
-    for cp in all_codepoints:
+    for cp in _generate_codepoints(enc):
         try:
             index = font.get_index(cp)
         except KeyError:
