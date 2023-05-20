@@ -19,7 +19,7 @@ from ...labels import Tag, Codepoint
 from ...binary import align
 
 from .bdf import swidth_to_pixel
-from .xlfd import _parse_xlfd_properties, _create_xlfd_properties
+from .xlfd import _parse_xlfd_properties, _create_xlfd_properties, _from_quoted_string
 
 MAGIC = b'\1fcp'
 
@@ -136,10 +136,10 @@ def _read_properties_table(instream):
     strings = instream.read(string_size)
     xlfd_props = {}
     for prop in props:
-        name, _, rest = strings[prop.name_offset:].partition(b'\0')
+        name, _, _ = strings[prop.name_offset:].partition(b'\0')
         name = name.decode('latin-1', 'ignore')
         if prop.isStringProp:
-            value, _, _ = rest.partition(b'\0')
+            value, _, _ = strings[int(prop.value):].partition(b'\0')
             value = value.decode('latin-1', 'ignore')
         else:
             value = int(prop.value)
@@ -545,6 +545,8 @@ def _create_properties_table(font, base):
         )
         propstrings += key.encode('ascii', 'replace') + b'\0'
         if prop.isStringProp:
+            prop.value = len(propstrings)
+            value = _from_quoted_string(value)
             propstrings += value.encode('ascii', 'replace') + b'\0'
         else:
             prop.value = int(value)
