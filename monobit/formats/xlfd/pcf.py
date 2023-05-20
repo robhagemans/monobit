@@ -505,20 +505,36 @@ def _write_pcf(outstream, font, endian, create_ink_bounds, scan_unit, padding_by
         base = be
     else:
         base = le
+    # full format needs to be repeated in every table (at least the low byte)
+    # or pcf2bdf won't recognise the bitmaps correctly
+    # currently we can only do byte-aligned, byte-padded, msb first
+    format = PCF_DEFAULT_FORMAT | PCF_BIT_MASK
+    if base == be:
+        format |= PCF_BYTE_MASK
+    # /* how each row in each glyph's bitmap is padded (format&3) */
+    # /*  0=>bytes, 1=>shorts, 2=>ints */
+    # do a int(log2())
+    format |= (padding_bytes.bit_length()-1) & PCF_GLYPH_PAD_MASK
+    # /* what the bits are stored in (bytes, shorts, ints) (format>>4)&3 */
+    # /*  0=>bytes, 1=>shorts, 2=>ints */
+    format |= ((scan_unit.bit_length()-1) << 4) & PCF_SCAN_UNIT_MASK
     # tables MUST be in this order or pcf2bdf will reject the file
     tables = (
-        (PCF_PROPERTIES, *_create_properties_table(font, base)),
-        (PCF_ACCELERATORS, *_create_acc_table(font, base, create_ink_bounds)),
-        (PCF_METRICS, *_create_metrics_table(font, base, _create_glyph_metrics)),
+        (PCF_PROPERTIES, *_create_properties_table(font, format, base)),
+        (PCF_ACCELERATORS, *_create_acc_table(font, format, base, create_ink_bounds)),
+        (PCF_METRICS, *_create_metrics_table(font, format, base, _create_glyph_metrics)),
         # pcf2bdf doesn't read ink metrics, assume they go here?
-        (PCF_INK_METRICS, *_create_metrics_table(font, base, _create_ink_metrics)),
-        (PCF_BITMAPS, *_create_bitmaps(font, base, scan_unit_bytes=scan_unit)),
-        (PCF_BDF_ENCODINGS, *_create_encoding(font, base)),
-        (PCF_SWIDTHS, *_create_swidths(font, base)),
-        (PCF_GLYPH_NAMES, *_create_glyph_names(font, base)),
+        (PCF_INK_METRICS, *_create_metrics_table(font, format, base, _create_ink_metrics)),
+        (PCF_BITMAPS, *_create_bitmaps(
+            font, format, base,
+            scan_unit_bytes=scan_unit, padding_bytes=padding_bytes
+        )),
+        (PCF_BDF_ENCODINGS, *_create_encoding(font, format, base)),
+        (PCF_SWIDTHS, *_create_swidths(font, format, base)),
+        (PCF_GLYPH_NAMES, *_create_glyph_names(font, format, base)),
         # we're using the same table for accelerators and BDF accelerators
         # intended difference is unclear
-        (PCF_BDF_ACCELERATORS, *_create_acc_table(font, base, create_ink_bounds)),
+        (PCF_BDF_ACCELERATORS, *_create_acc_table(font, format, base, create_ink_bounds)),
     )
     # calculate offsets, construct ToC
     offset = _HEADER.size + _TOC_ENTRY.size * len(tables)
@@ -545,11 +561,8 @@ def _write_pcf(outstream, font, endian, create_ink_bounds, scan_unit, padding_by
 
 
 
-def _create_properties_table(font, base):
+def _create_properties_table(font, format, base):
     """Create the Properties table."""
-    format = PCF_DEFAULT_FORMAT
-    if base == be:
-        format |= PCF_BYTE_MASK
     propstrings = bytearray()
     xlfd_props = _create_xlfd_properties(font)
     xlfd_props['FONT'] = _create_xlfd_name(xlfd_props)
@@ -654,11 +667,8 @@ def _aggregate_metrics(metrics, aggfunc, base):
 # 	pFontInfo->inkInside = FALSE;
 # }
 
-def _create_acc_table(font, base, create_ink_bounds):
+def _create_acc_table(font, format, base, create_ink_bounds):
     """Create the Accelerators table."""
-    format = PCF_DEFAULT_FORMAT
-    if base == be:
-        format |= PCF_BYTE_MASK
     if create_ink_bounds:
         format |= PCF_ACCEL_W_INKBOUNDS
     if not font.glyphs:
@@ -737,11 +747,8 @@ def _create_acc_table(font, base, create_ink_bounds):
     return b''.join(table_bytes), format
 
 
-def _create_metrics_table(font, base, create_glyph_metrics):
+def _create_metrics_table(font, format, base, create_glyph_metrics):
     """Create the Metrics table."""
-    format = PCF_DEFAULT_FORMAT
-    if base == be:
-        format |= PCF_BYTE_MASK
     # we don't set PCF_COMPRESSED_METRICS
     metrics = tuple(create_glyph_metrics(_g, base) for _g in font.glyphs)
     table_bytes = (
@@ -752,21 +759,13 @@ def _create_metrics_table(font, base, create_glyph_metrics):
     return table_bytes, format
 
 
-def _create_bitmaps(font, base, scan_unit_bytes=1, padding_bytes=1):
+def _create_bitmaps(font, format, base, scan_unit_bytes=1, padding_bytes=1):
     """Create the Bitmaps table."""
-    # currently we can only do byte-aligned, byte-padded, msb first
-    format = PCF_DEFAULT_FORMAT | PCF_BIT_MASK
-    if base == be:
-        format |= PCF_BYTE_MASK
-    # /* how each row in each glyph's bitmap is padded (format&3) */
-    # /*  0=>bytes, 1=>shorts, 2=>ints */
-    # do a int(log2())
-    format |= (padding_bytes.bit_length()-1) & PCF_GLYPH_PAD_MASK
-    # /* what the bits are stored in (bytes, shorts, ints) (format>>4)&3 */
-    # /*  0=>bytes, 1=>shorts, 2=>ints */
-    format |= ((scan_unit_bytes.bit_length()-1) << 4) & PCF_SCAN_UNIT_MASK
     bitmaps = tuple(
-        _g.as_bytes(byte_swap=0 if base==be else scan_unit_bytes)
+        _g.as_bytes(
+            stride=ceildiv(_g.width, padding_bytes*8) * padding_bytes*8,
+            byte_swap=0 if base==be else scan_unit_bytes,
+        )
         for _g in font.glyphs
     )
     offsets = tuple(accumulate((len(_b) for _b in bitmaps), initial=0))[:-1]
@@ -793,11 +792,8 @@ def _create_bitmaps(font, base, scan_unit_bytes=1, padding_bytes=1):
     return table_bytes, format
 
 
-def _create_encoding(font, base):
+def _create_encoding(font, format, base):
     """Create the Encoding table."""
-    format = PCF_DEFAULT_FORMAT | PCF_BIT_MASK
-    if base == be:
-        format |= PCF_BYTE_MASK
     font = font.label(codepoint_from=font.encoding)
     enc = base.Struct(**_ENCODING_TABLE)(
         default_char=int(font.get_default_glyph().codepoint or 0)
@@ -840,11 +836,8 @@ def _create_encoding(font, base):
     return table_bytes, format
 
 
-def _create_swidths(font, base):
+def _create_swidths(font, format, base):
     """Create the Scalable Widths table."""
-    format = PCF_DEFAULT_FORMAT
-    if base == be:
-        format |= PCF_BYTE_MASK
     swidths = (base.int32 * len(font.glyphs))(*(
         pixel_to_swidth(_g.scalable_width, font.point_size, font.dpi.x)
         for _g in font.glyphs
@@ -857,11 +850,8 @@ def _create_swidths(font, base):
     return table_bytes, format
 
 
-def _create_glyph_names(font, base):
+def _create_glyph_names(font, format, base):
     """Create the Glyph Names table."""
-    format = PCF_DEFAULT_FORMAT
-    if base == be:
-        format |= PCF_BYTE_MASK
     names = tuple(
         _g.tags[0].value.encode('ascii', 'replace') + b'\0'
         if _g.tags else b'glyph%d\0' % (i,)
