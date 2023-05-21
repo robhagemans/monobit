@@ -772,13 +772,19 @@ def _create_bitmaps(
     """Create the Bitmaps table."""
     byte_big = base == be
     bit_big = bit_order[:1].lower() == 'b'
-    bitmaps = tuple(
+    bitmaps = (
         _g.as_bytes(
+            # align rows on padding_bytes boundaries
             stride=ceildiv(_g.width, padding_bytes*8) * padding_bytes*8,
             byte_swap=0 if (bool(byte_big) == bool(bit_big)) else scan_unit_bytes,
             bit_order='big' if bit_big else 'little',
         )
         for _g in font.glyphs
+    )
+    # align full byte sequence on scan_unit boundaries
+    bitmaps = tuple(
+        _bits.ljust(ceildiv(len(_bits), scan_unit_bytes) * scan_unit_bytes)
+        for _bits in bitmaps
     )
     offsets = tuple(accumulate((len(_b) for _b in bitmaps), initial=0))[:-1]
     offsets = (base.int32 * len(bitmaps))(*offsets)
@@ -787,12 +793,17 @@ def _create_bitmaps(
     # apparently we do need to calculate all 4
     bitmap_sizes = [
         sum(
-            _g.pixels.get_byte_size(stride=ceildiv(_g.width, 8*2**_p) * 8*(2**_p))
+            # align full byte sequence on scan_unit boundaries
+            ceildiv(
+                # align rows on padding_bytes boundaries
+                _g.pixels.get_byte_size(stride=ceildiv(_g.width, 8*2**_p) * 8*(2**_p)),
+                scan_unit_bytes
+            ) * scan_unit_bytes
             for _g in font.glyphs
         )
         for _p in range(4)
     ]
-    assert bitmap_sizes[format&3] == len(bitmap_data)
+    assert bitmap_sizes[format&3] == len(bitmap_data), f'{bitmap_sizes[format&3]} != {len(bitmap_data)}'
     bitmap_sizes = (base.int32 * 4)(*bitmap_sizes)
     table_bytes = (
         bytes(le.uint32(format))
