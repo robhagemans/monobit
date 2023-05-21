@@ -43,13 +43,14 @@ def load_pcf(instream):
 def save_pcf(
         fonts, outstream, *,
         byte_order:str='big', ink_bounds:bool=True, scan_unit:int=1,
-        padding_bytes:int=1,
+        padding_bytes:int=1, bit_order:str='big',
     ):
     """
     Save font to X11 Portable Compiled Format (PCF).
 
     ink_bounds: include optional ink-bounds metrics (default: True)
     byte_order: 'big'-endian (default) or 'little'-endian
+    bit_order: 'big'-endian (default) if left pixel is most significant bit, or 'little'-endian if left is lsb
     scan_unit: number of bytes per unit in bitmap (1, 2, 4 or 8; default is 1)
     padding_bytes: make raster row a multiple of this number of bytes (1, 2, 4 or 8; default is 1)
     """
@@ -59,7 +60,7 @@ def save_pcf(
     # can only do big-endian for now
     _write_pcf(
         outstream, font, endian=byte_order, create_ink_bounds=ink_bounds,
-        scan_unit=scan_unit, padding_bytes=padding_bytes,
+        scan_unit=scan_unit, padding_bytes=padding_bytes, bit_order=bit_order,
     )
     return font
 
@@ -460,7 +461,7 @@ def _convert_glyphs(pcf_data):
             stride=align(_met.right_side_bearing-_met.left_side_bearing, glyph_pad_length+3),
             height=_met.character_ascent+_met.character_descent,
             bit_order='big' if bit_big else 'little',
-            byte_swap=0 if byte_big else 2**scan_unit,
+            byte_swap=0 if (bool(byte_big) == bool(bit_big)) else 2**scan_unit,
             left_bearing=_met.left_side_bearing,
             right_bearing=_met.character_width-_met.right_side_bearing,
             shift_up=-_met.character_descent,
@@ -499,7 +500,10 @@ def _convert_props(pcf_data):
 ###############################################################################
 # pcf writer
 
-def _write_pcf(outstream, font, endian, create_ink_bounds, scan_unit, padding_bytes):
+def _write_pcf(
+        outstream, font,
+        endian, create_ink_bounds, scan_unit, padding_bytes, bit_order,
+    ):
     """Write font to X11 PCF font file."""
     if endian[:1].lower() == 'b':
         base = be
@@ -507,8 +511,9 @@ def _write_pcf(outstream, font, endian, create_ink_bounds, scan_unit, padding_by
         base = le
     # full format needs to be repeated in every table (at least the low byte)
     # or pcf2bdf won't recognise the bitmaps correctly
-    # currently we can only do byte-aligned, byte-padded, msb first
-    format = PCF_DEFAULT_FORMAT | PCF_BIT_MASK
+    format = PCF_DEFAULT_FORMAT
+    if bit_order[:1].lower() == 'b':
+        format |= PCF_BIT_MASK
     if base == be:
         format |= PCF_BYTE_MASK
     # /* how each row in each glyph's bitmap is padded (format&3) */
@@ -527,7 +532,8 @@ def _write_pcf(outstream, font, endian, create_ink_bounds, scan_unit, padding_by
         (PCF_INK_METRICS, *_create_metrics_table(font, format, base, _create_ink_metrics)),
         (PCF_BITMAPS, *_create_bitmaps(
             font, format, base,
-            scan_unit_bytes=scan_unit, padding_bytes=padding_bytes
+            scan_unit_bytes=scan_unit, padding_bytes=padding_bytes,
+            bit_order=bit_order,
         )),
         (PCF_BDF_ENCODINGS, *_create_encoding(font, format, base)),
         (PCF_SWIDTHS, *_create_swidths(font, format, base)),
@@ -759,12 +765,18 @@ def _create_metrics_table(font, format, base, create_glyph_metrics):
     return table_bytes, format
 
 
-def _create_bitmaps(font, format, base, scan_unit_bytes=1, padding_bytes=1):
+def _create_bitmaps(
+        font, format, base,
+        scan_unit_bytes=1, padding_bytes=1, bit_order='little',
+    ):
     """Create the Bitmaps table."""
+    byte_big = base == be
+    bit_big = bit_order[:1].lower() == 'b'
     bitmaps = tuple(
         _g.as_bytes(
             stride=ceildiv(_g.width, padding_bytes*8) * padding_bytes*8,
-            byte_swap=0 if base==be else scan_unit_bytes,
+            byte_swap=0 if (bool(byte_big) == bool(bit_big)) else scan_unit_bytes,
+            bit_order='big' if bit_big else 'little',
         )
         for _g in font.glyphs
     )

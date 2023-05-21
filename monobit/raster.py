@@ -8,7 +8,7 @@ licence: https://opensource.org/licenses/MIT
 import logging
 from itertools import zip_longest
 
-from .binary import ceildiv
+from .binary import ceildiv, reverse_by_group
 from .basetypes import Bounds, Coord
 
 # sentinel object
@@ -282,6 +282,7 @@ class Raster:
             .replace(self._0.encode('latin-1'), bytes((paper,)))
         )
 
+
     @classmethod
     def from_bytes(
             cls, byteseq, width=NOT_SET, height=NOT_SET,
@@ -342,18 +343,18 @@ class Raster:
             )
         # per-byte bit swap.
         if bit_order == 'little':
-            args = [iter(bitseq)] * 8
-            bitseq = ''.join(''.join(_chunk[::-1]) for _chunk in zip(*args))
+            bitseq = reverse_by_group(bitseq)
         return cls.from_vector(
             bitseq, width=width, height=height, stride=stride, align=align,
             _0='0', _1='1',
         )
 
-    def as_byterows(self, *, align='left'):
+    def as_byterows(self, *, align='left', bit_order='big'):
         """
         Convert raster to bytes, by row
 
         align: 'left' or 'right'
+        bit_order: per-byte bit endianness; 'little' for lsb left, 'big' (default) for msb left
         """
         if not self.height or not self.width:
             return ()
@@ -364,12 +365,16 @@ class Raster:
         bytewidth = ceildiv(self.width, 8)
         if align.startswith('l'):
             rows = (_row.ljust(8*bytewidth, '0') for _row in rows)
+        else:
+            rows = (_row.rjust(8*bytewidth, '0') for _row in rows)
+        if bit_order == 'little':
+            rows = (reverse_by_group(_row) for _row in rows)
         byterows = (int(_row, 2).to_bytes(bytewidth, 'big') for _row in rows)
         return byterows
 
     def as_bytes(
-            self, *, align='left', stride=NOT_SET, byte_swap=0,
-            # bit_order='big',
+            self, *,
+            align='left', stride=NOT_SET, byte_swap=0, bit_order='big',
         ):
         """
         Convert raster to flat bytes.
@@ -377,8 +382,8 @@ class Raster:
         stride: number of pixels per row (default: what's needed for alignment)
         align: 'left' or 'right' for byte-alignment; 'bit' for bit-alignment
         byte_swap: swap byte order in units of n bytes, 0 (default) for no swap
+        bit_order: per-byte bit endianness; 'little' for lsb left, 'big' (default) for msb left
         """
-        # bit_order: per-byte bit endianness; 'little' for lsb left, 'big' (default) for msb left
         if not self.height or not self.width:
             return b''
         if stride is not NOT_SET:
@@ -394,10 +399,13 @@ class Raster:
                 ''.join(_row)
                 for _row in raster.as_matrix(paper='0', ink='1')
             )
+            # per-byte bit swap.
+            if bit_order == 'little':
+                bits = reverse_by_group(bits)
             bytesize = ceildiv(len(bits), 8)
             byterows = (int(bits, 2).to_bytes(bytesize, 'big'),)
         else:
-            byterows = raster.as_byterows(align=align)
+            byterows = raster.as_byterows(align=align, bit_order=bit_order)
         byteseq = b''.join(byterows)
         if byte_swap:
             # grouper

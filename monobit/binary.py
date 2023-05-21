@@ -34,3 +34,14 @@ def int_to_bytes(in_int, byteorder='big'):
 def bytes_to_int(in_bytes, byteorder='big'):
     """Convert integer to bytes."""
     return int.from_bytes(bytes(in_bytes), byteorder)
+
+
+def reverse_by_group(bitseq, fill='0', group_size=8):
+    """
+    Reverse bits in every byte in string representation of binary
+    Bit sequence is extended to end on byte boundary.
+    """
+    bitseq = bitseq.ljust(ceildiv(len(bitseq), group_size) * group_size, fill)
+    args = [iter(bitseq)] * group_size
+    bitseq = ''.join(''.join(_chunk[::-1]) for _chunk in zip(*args))
+    return bitseq
