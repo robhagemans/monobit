@@ -6,12 +6,14 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import logging
+from collections import Counter
+from itertools import accumulate
 
 from ...struct import big_endian as be
 from ...magic import FileFormatError
 from ...streams import Stream
 
-from ..sfnt import load_sfnt
+from ..sfnt import load_sfnt, save_sfnt
 from .nfnt import _extract_nfnt, _convert_nfnt
 from .fond import _extract_fond, _convert_fond
 
@@ -289,3 +291,94 @@ def _convert_mac_font(parsed_rsrc, info, formatstr):
                 font = font.label()
                 fonts.append(font)
     return fonts
+
+
+###############################################################################
+# dfont writer
+
+
+def _write_dfont(outstream, resources):
+    """
+    Write a Mac dfont/resource fork.
+
+    resources: list of ns(type, id, name, data)
+    """
+    # order resources by type (so all resources of the same type are consecutive
+    resources.sort(key=lambda _res: _res.type)
+    # counter follows insertion order
+    types = Counter(_res.type for _res in resources)
+    # construct the resource map
+    map_header = _MAP_HEADER(
+        # not sure what these are
+        attributes=0,
+        # type list comes straight after this header
+        type_list_offset=_MAP_HEADER.size, #28,
+        # after type list plus reference lists
+        name_list_offset=(
+            _MAP_HEADER.size
+            + _TYPE_ENTRY.size * len(types)
+            + _REF_ENTRY.size * len(resources)
+        ),
+        # number of types minus 1
+        last_type=len(types) - 1,
+    )
+    # construct the type list
+    type_list = [
+        _TYPE_ENTRY(
+            rsrc_type=_type,
+            last_rsrc=_count - 1,
+            # ref_list_offset='uint16',
+        )
+        for _type, _count in types.items()
+    ]
+    offset = 2 + _TYPE_ENTRY.size * len(type_list)
+    for entry in type_list:
+        entry.ref_list_offset = offset
+        offset += _REF_ENTRY.size * (entry.last_rsrc + 1)
+    type_list = (_TYPE_ENTRY * len(types))(*type_list)
+    # construct the name list
+    name_list = tuple(
+        bytes((len(_res.name),)) + _res.name.encode('mac-roman')
+        for _res in resources
+    )
+    name_offsets = accumulate((len(_n) for _n in name_list), initial=0)
+    data_offsets = accumulate(
+        # include 4 bytes for length field
+        (4 + len(_res.data) for _res in resources),
+        initial=0
+    )
+    # construct the reference list
+    reference_list = (
+        _REF_ENTRY(
+            rsrc_id=_res.id,
+            name_offset=-1 if not _res.name else _name_offset,
+            attributes=0,
+            # we need a 3-byte offset, will have to construct ourselves...
+            data_offset_hi=_data_offset // 0x1000,
+            data_offset=_data_offset % 0x1000,
+        )
+        for _res, _name_offset, _data_offset in zip(resources, name_offsets, data_offsets)
+    )
+    reference_list = (_REF_ENTRY * len(resources))(*reference_list)
+    rsrc_map = (
+        bytes(map_header)
+        + bytes(type_list)
+        + bytes(reference_list)
+        + b''.join(name_list)
+    )
+    data = b''.join(
+        bytes(be.uint32(len(_res.data))) + _res.data
+        for _res in resources
+    )
+    rsrc_header = _RSRC_HEADER(
+        # data come right after the header and padding
+        data_offset=256,
+        map_offset=256 + len(data),
+        data_length=len(data),
+        map_length=len(rsrc_map),
+    )
+    outstream.write(
+        bytes(rsrc_header)
+        + data
+        + rsrc_map
+    )
