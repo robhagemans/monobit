@@ -1179,7 +1179,25 @@ class TestFormats(BaseTester):
             file = self.font_path / 'pcf' / pcf_file
             font, *_ = monobit.load(file)
             self.assertEqual(len(font.glyphs), 919)
-            self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+            self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
+
+
+    def test_export_pcf(self):
+        """Test exporting PCF files"""
+        for byte_order in ('big', 'little'):
+            for bit_order in ('big', 'little'):
+                for scan_unit in (1, 2, 4, 8):
+                    for padding_bytes in (1, 2, 4, 8):
+                        file = self.temp_path / f'4x6_{byte_order[0].upper()}{bit_order[0]}u{scan_unit}p{padding_bytes}.pcf'
+                        monobit.save(
+                            self.fixed4x6, file, format='pcf',
+                            byte_order=byte_order, bit_order=bit_order,
+                            scan_unit=scan_unit, padding_bytes=padding_bytes,
+                            overwrite=True
+                        )
+                        font, *_ = monobit.load(file)
+                        self.assertEqual(len(font.glyphs), 919)
+                        self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
 
 
     # vector formats
