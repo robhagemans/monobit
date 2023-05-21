@@ -125,7 +125,7 @@ Supported bitmap formats
 | LISA font library     | `lisa`     | `.bin`                      | ✔     |       |
 | MacOS font            | `mac`      | `.dfont` `.suit`            | ✔     |       |
 | mkwinfon text format  | `mkwinfon` | `.fd`                       | ✔     |       |
-| X11 Portable Compiled Format |  `pcf` | `.pcf`                   | ✔     |       |
+| X11 Portable Compiled Format |  `pcf` | `.pcf`                   | ✔     | ✔     |
 | Xerox Alto PrePress   | `prepress` | `.ac`                       | ✔     |       |
 | PSF2AMS PSFCOM        | `psfcom`   | `.com`                      | ✔     |       |
 | Bare NFNT resource    | `nfnt`     | `.f`                        | ✔     | ✔     |

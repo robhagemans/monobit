@@ -645,7 +645,7 @@ def _create_xlfd_properties(font):
         'FOUNDRY': _quoted_string(font.foundry),
         'FAMILY_NAME': _quoted_string(font.family),
         'WEIGHT_NAME': _quoted_string(font.weight.title()),
-        'RELATIVE_WEIGHT': (
+        'RELATIVE_WEIGHT': int(
             {_v: _k for _k, _v in _WEIGHT_MAP.items()}.get(font.weight, 50)
         ),
         'SLANT': _quoted_string(
@@ -655,12 +655,12 @@ def _create_xlfd_properties(font):
             {_v: _k for _k, _v in _SPACING_MAP.items()}.get(font.spacing, 'P')
         ),
         'SETWIDTH_NAME': _quoted_string(font.setwidth.title()),
-        'RELATIVE_SETWIDTH': (
+        'RELATIVE_SETWIDTH': int(
             # 50 is medium
             {_v: _k for _k, _v in _SETWIDTH_MAP.items()}.get(font.setwidth, 50)
         ),
         'ADD_STYLE_NAME': _quoted_string(font.style.title()),
-        'AVERAGE_WIDTH': str(round(float(font.average_width) * 10)).replace('-', '~'),
+        'AVERAGE_WIDTH': round(float(font.average_width) * 10),
         # only set if explicitly defined
         'UNDERLINE_POSITION': font.get_defined('underline_descent'),
         'UNDERLINE_THICKNESS': font.get_defined('underline_thickness'),
