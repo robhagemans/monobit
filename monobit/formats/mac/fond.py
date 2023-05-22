@@ -119,17 +119,13 @@ _FIXED_TYPE = be.int16
 def _fixed_to_float(fixed):
     # fixed is the input 2's complement 16-bit signed integer
     if fixed < 0 and (-fixed & 0x4000):
-        # print(fixed, bin(fixed), (-fixed&0x4000))
         # bit 14 is set - number is too large
         # convert back from 2's complement
         fixed = 0x10000 + fixed
-        # print(fixed)
         # unset sign bit
         fixed = 0x7fff & fixed
-        # print(fixed)
         # make negative
         fixed = - fixed
-        # print(fixed)
     return fixed / 2**12
 
 
