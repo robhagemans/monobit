@@ -312,7 +312,9 @@ def _write_dfont(outstream, resources):
         # not sure what these are
         attributes=0,
         # type list comes straight after this header
-        type_list_offset=_MAP_HEADER.size, #28,
+        # -2 because the last_type in this header definition
+        # is counted as part of the type list
+        type_list_offset=_MAP_HEADER.size-2, #28,
         # after type list plus reference lists
         name_list_offset=(
             _MAP_HEADER.size
