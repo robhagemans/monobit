@@ -6,13 +6,17 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import logging
+from io import BytesIO
 
 from ...storage import loaders, savers
 
-from .dfont import _parse_mac_resource
+from .dfont import _parse_mac_resource, _write_dfont
 from .nfnt import _extract_nfnt, _convert_nfnt, _create_nfnt
 from .lisa import _load_lisa
 from .iigs import _load_iigs, _save_iigs
+
+from ..sfnt import save_sfnt
+from ...properties import Props
 
 
 @loaders.register(
@@ -25,6 +29,17 @@ def load_mac_dfont(instream):
     """Load font from a MacOS suitcase."""
     data = instream.read()
     return _parse_mac_resource(data)
+
+
+@savers.register(linked=load_mac_dfont)
+def save_mac_dfont(fonts, outstream, version='sfnt'):
+    if version != 'sfnt':
+        raise ValueError('Only saving to sfnt resource currently supported')
+    sfnt_io = BytesIO()
+    result = save_sfnt(fonts, sfnt_io)
+    resources = [Props(type=b'sfnt', id=1, name='', data=sfnt_io.getvalue())]
+    _write_dfont(outstream, resources)
+    return result
 
 
 @loaders.register(
