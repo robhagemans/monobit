@@ -38,6 +38,23 @@ class TestCharCell(BaseTester):
 ........
 """
 
+    def test_cell_size_r_no_vert(self):
+        """Test cell size determination of reduced font."""
+        font = self.fixed8x8.reduce()
+        assert font.spacing == 'character-cell'
+        assert font.cell_size == (8, 8)
+
+    def test_cell_size_r(self):
+        """Test cell size determination of reduced font."""
+        assert self.fixed8x8r.spacing == 'character-cell'
+        assert self.fixed8x8r.cell_size == (8, 8)
+
+    def test_cell_size_(self):
+        """Test cell size determination of reduced font."""
+        assert self.fixed8x8.spacing == 'character-cell'
+        assert self.fixed8x8.cell_size == (8, 8)
+
+
     def _test_export_charcell_reduced(self, format, count=191, label=b'A', save_kwargs=None, **load_kwargs):
         """Test exporting a reduced-raster character-cell font."""
         file = self.temp_path / 'testfont.fnt'
