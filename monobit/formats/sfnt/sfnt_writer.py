@@ -294,7 +294,7 @@ def _setup_ebdt_table(fb, glyphs, align, flavour):
 
 def convert_to_glyph(glyph, fb, align):
     """Create fontTools bitmap glyph."""
-    if 'vertical' in glyph.features:
+    if glyph.has_vertical_metrics():
         # big metrics
         if align == 'byte':
             format = 6
@@ -356,7 +356,7 @@ def _setup_eblc_table(fb, font, flavour):
             maxBeforeBL=max((_g.height + _g.shift_up for _g in font.glyphs)),
             minAfterBL=min((_g.shift_up for _g in font.glyphs)),
         )
-        if 'vertical' in font.get_features():
+        if font.has_vertical_metrics():
             vert = _create_sbit_line_metrics(
                 ascender=font.right_extent,
                 descender=-font.left_extent,
@@ -385,7 +385,6 @@ def _prepare_for_sfnt(font, glyph_names):
     # get char labels if we don't have them but we do have an encoding
     font = font.label(match_whitespace=False, match_graphical=False)
     default = font.get_default_glyph()
-    features = font.get_features()
     # we need a name for each glyph to be able to store it
     # if glyph_names == 'tags', must be tagged already
     # otherwise, only glyphs without chars must have names
@@ -410,7 +409,7 @@ def _prepare_for_sfnt(font, glyph_names):
             )
     # cut back to glyph bounding boxes
     font = font.reduce()
-    return font, default, features
+    return font, default
 
 
 
@@ -422,7 +421,7 @@ def _create_sfnt(font, funits_per_em, align, flavour, glyph_names):
         return ceildiv(pixel_amount * funits_per_em, font.pixel_size)
 
     check_fonttools()
-    font, default, features = _prepare_for_sfnt(font, glyph_names)
+    font, default = _prepare_for_sfnt(font, glyph_names)
     # get the storable glyphs
     glyphnames = ('.notdef', *(_t.value for _t in font.get_tags()))
     glyphs = {
@@ -442,7 +441,7 @@ def _create_sfnt(font, funits_per_em, align, flavour, glyph_names):
         fb.setupHorizontalMetrics(_convert_to_hmtx_props(glyphs, _to_funits))
         fb.setupHorizontalHeader(**_convert_to_hhea_props(font, _to_funits))
         # check for vertical metrics, include `vhea` and `vmtx` if present
-        if 'vertical' in features:
+        if font.has_vertical_metrics():
             fb.setupVerticalMetrics(_convert_to_vmtx_props(glyphs, _to_funits))
             fb.setupVerticalHeader(**_convert_to_vhea_props(font, _to_funits))
     fb.setupNameTable(_convert_to_name_props(font))

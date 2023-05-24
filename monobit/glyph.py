@@ -232,6 +232,10 @@ class Glyph(HasProps):
                 return False
         return self.as_matrix() == other.as_matrix()
 
+    def __hash__(self):
+        """Needs to exist if __eq__ defined."""
+        return super().__hash__()
+
     def __repr__(self):
         """Text representation."""
         elements = (
@@ -404,29 +408,13 @@ class Glyph(HasProps):
     def comment(self):
         return self._comment
 
-    @property
-    def features(self):
-        """Get set of special features for this glyph."""
-        feats = set()
-        if any(
-                self.get_defined(_p)
-                for _p in ('top_bearing', 'bottom_bearing', 'shift_left')
-            ):
-            feats.add('vertical')
-        if any(
-                self.get_defined(_p)
-                for _p in ('left_kerning', 'right_kerning')
-            ):
-            feats.add('kerning')
-        if any(
-                self._get_property(_p) < 0
-                for _p in (
-                    'left_bearing', 'right_bearing',
-                    'top_bearing', 'bottom_bearing'
-                )
-            ):
-            feats.add('overlap')
-        return feats
+    @cache
+    def has_vertical_metrics(self):
+        """Check if this glyph has vertical metrics."""
+        return any(
+            self.get_defined(_p)
+            for _p in ('top_bearing', 'bottom_bearing', 'shift_left')
+        )
 
     ##########################################################################
     # label access
@@ -657,7 +645,7 @@ class Glyph(HasProps):
         if not any((left, bottom, right, top)):
             return self
         create_vertical_metrics = (
-            create_vertical_metrics or 'vertical' in self.features
+            create_vertical_metrics or self.has_vertical_metrics()
         )
         # reduce raster
         pixels = self._pixels.crop(left, bottom, right, top)
