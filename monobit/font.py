@@ -394,21 +394,18 @@ class Font(HasProps):
         if len(set(advances)) > 2:
             return 'proportional'
         monospaced = len(set(advances)) == 1
-        negative = tuple(
-            _g for _g in self.glyphs
-            if _g.left_bearing < 0 or _g.right_bearing < 0
-            or _g.top_bearing < 0 or _g.bottom_bearing < 0
-        )
-        if not negative:
-            return 'character-cell' if monospaced else 'multi-cell'
-        # we have negative bearings; need to check if there's ink in them
-        # this should be rare (monospaced/bispaced with negative bearings)
+        # horizontal rendering
+        # check if all glyphs are rendered within the line height
+        # if there are vertical overlaps, it is not a charcell font
+        if self.ink_bounds.top - self.ink_bounds.bottom > self.line_height:
+            return 'monospace' if monospaced else 'proportional'
         if all(
-                (-_g.left_bearing < _g.padding.left)
-                and (-_g.right_bearing < _g.padding.right)
-                and (-_g.top_bearing < _g.padding.top)
-                and (-_g.bottom_bearing < _g.padding.bottom)
-                for _g in negative
+                (-_g.left_bearing <= _g.padding.left)
+                and (-_g.right_bearing <= _g.padding.right)
+                # if no negative metrics, these will be zero and hence satisfied.
+                and (-_g.top_bearing <= _g.padding.top)
+                and (-_g.bottom_bearing <= _g.padding.bottom)
+                for _g in self.glyphs
             ):
             return 'character-cell' if monospaced else 'multi-cell'
         return 'monospace' if monospaced else 'proportional'
@@ -438,10 +435,16 @@ class Font(HasProps):
             return Coord(0, 0)
         # smaller of the (at most two) advance widths is the cell size
         # in a multi-cell font, some glyphs may take up two cells.
-        cells = tuple(
-            (_g.advance_width, _g.advance_height)
-            for _g in self.glyphs
-        )
+        if self.has_vertical_metrics():
+            cells = tuple(
+                (_g.advance_width, _g.advance_height)
+                for _g in self.glyphs
+            )
+        else:
+            cells = tuple(
+                (_g.advance_width, self.line_height)
+                for _g in self.glyphs
+            )
         sizes = tuple(_c for _c in cells if all(_c))
         if not sizes:
             return Coord(0, 0)
@@ -804,16 +807,15 @@ class Font(HasProps):
 
         return FontFormatter().format(template, **kwargs)
 
-    def get_features(self):
-        """Get set of special features for this font."""
-        feats = set.union(*(_g.features for _g in self.glyphs))
+    @cache
+    def has_vertical_metrics(self):
+        """Check if this font has vertical metrics."""
         if any(
                 self.get_defined(_p)
                 for _p in ('line_width', 'left_extent', 'right_extent')
             ):
-            feats.add('vertical')
-        return feats
-
+            return True
+        return any(_g.has_vertical_metrics for _g in self.glyphs)
 
     ##########################################################################
     # glyph access
@@ -1243,7 +1245,7 @@ class Font(HasProps):
         create_vertical_metrics: create vertical metrics if they don't exist (default: False)
         """
         create_vertical_metrics = (
-            create_vertical_metrics or 'vertical' in self.get_features()
+            create_vertical_metrics or self.has_vertical_metrics()
         )
         font = self._apply_to_all_glyphs(
             Glyph.reduce,

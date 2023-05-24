@@ -409,7 +409,7 @@ def _convert_to_bdf_properties(font, xlfd_name):
             )
         )
     ]
-    if 'vertical' in font.get_features():
+    if font.has_vertical_metrics():
         bdf_props.append(('METRICSSET', '2'))
     return bdf_props
 
@@ -479,7 +479,7 @@ def _convert_to_bdf_glyph(glyph, font):
             f'{glyph.left_bearing} {glyph.shift_up}'
         )),
     ]
-    if 'vertical' in font.get_features():
+    if font.has_vertical_metrics():
         to_left = glyph.shift_left - ceildiv(glyph.width, 2)
         to_bottom = -glyph.top_bearing - glyph.height
         voffx = glyph.left_bearing - to_left
