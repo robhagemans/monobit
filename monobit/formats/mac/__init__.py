@@ -6,17 +6,13 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import logging
-from io import BytesIO
 
 from ...storage import loaders, savers
 
-from .dfont import _parse_mac_resource, _write_dfont
+from .dfont import parse_resource_fork, save_dfont
 from .nfnt import _extract_nfnt, _convert_nfnt, _create_nfnt
 from .lisa import _load_lisa
 from .iigs import _load_iigs, _save_iigs
-
-from ..sfnt import save_sfnt, MAC_ENCODING
-from ...properties import Props, reverse_dict
 
 
 @loaders.register(
@@ -28,25 +24,7 @@ from ...properties import Props, reverse_dict
 def load_mac_dfont(instream):
     """Load font from MacOS resource fork or data-fork resource."""
     data = instream.read()
-    return _parse_mac_resource(data)
-
-
-def _hash_to_id(family_name, script):
-    """Generate a resource id based on the font family name."""
-    # see https://github.com/zoltan-dulac/fondu/blob/master/ufond.c
-    low = 128
-    high = 0x4000
-    hash = 0
-    if script:
-        low = 0x4000 + (script-1)*0x200;
-        high = low + 0x200;
-    for ch in family_name:
-        temp = (hash>>28) & 0xf
-        hash = (hash<<4) | temp
-        hash ^= ord(ch) - 0x20
-    hash %= (high-low)
-    hash += low
-    return hash
+    return parse_resource_fork(data)
 
 
 @savers.register(linked=load_mac_dfont)
@@ -56,19 +34,7 @@ def save_mac_dfont(fonts, outstream, resource_type='sfnt', family_id=None):
     resource_type: type of resource to store font in. One of `sfnt`, `NFNT`, `FONT`.
     family_id: font family-id to use. Default: calculate based on encoding and hash of font family name.
     """
-    if resource_type != 'sfnt':
-        raise ValueError('Only saving to sfnt resource currently supported')
-    sfnt_io = BytesIO()
-    result = save_sfnt(fonts, sfnt_io)
-    font, *_ = fonts
-    if family_id is None:
-        script_code = reverse_dict(MAC_ENCODING).get(font.encoding, 0)
-        family_id = _hash_to_id(font.family, script=script_code)
-    resources = [
-        Props(type=b'sfnt', id=family_id, name='', data=sfnt_io.getvalue())
-    ]
-    _write_dfont(outstream, resources)
-    return result
+    save_dfont(fonts, outstream, resource_type, family_id)
 
 
 @loaders.register(

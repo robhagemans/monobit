@@ -8,15 +8,16 @@ licence: https://opensource.org/licenses/MIT
 import logging
 from collections import Counter
 from itertools import accumulate
+from io import BytesIO
 
 from ...struct import big_endian as be
 from ...magic import FileFormatError
 from ...streams import Stream
+from ...properties import Props, reverse_dict
 
-from ..sfnt import load_sfnt, save_sfnt
+from ..sfnt import load_sfnt, save_sfnt, MAC_ENCODING
 from .nfnt import _extract_nfnt, _convert_nfnt
 from .fond import _extract_fond, _convert_fond
-
 
 
 ##############################################################################
@@ -127,7 +128,7 @@ _REF_ENTRY = be.Struct(
 # 1-byte length followed by bytes
 
 
-def _parse_mac_resource(data, formatstr=''):
+def parse_resource_fork(data, formatstr=''):
     """Parse a bare resource and convert to fonts."""
     resource_table = _extract_resource_fork_header(data)
     rsrc = _extract_resources(data, resource_table)
@@ -296,8 +297,46 @@ def _convert_mac_font(parsed_rsrc, info, formatstr):
 ###############################################################################
 # dfont writer
 
+def save_dfont(fonts, outstream, resource_type, family_id):
+    """Save font to MacOS resource fork or data-fork resource.
 
-def _write_dfont(outstream, resources):
+    resource_type: type of resource to store font in. One of `sfnt`, `NFNT`, `FONT`.
+    family_id: font family-id to use. Default: calculate based on encoding and hash of font family name.
+    """
+    if resource_type != 'sfnt':
+        raise ValueError('Only saving to sfnt resource currently supported')
+    sfnt_io = BytesIO()
+    result = save_sfnt(fonts, sfnt_io)
+    font, *_ = fonts
+    if family_id is None:
+        script_code = reverse_dict(MAC_ENCODING).get(font.encoding, 0)
+        family_id = _hash_to_id(font.family, script=script_code)
+    resources = [
+        Props(type=b'sfnt', id=family_id, name='', data=sfnt_io.getvalue())
+    ]
+    _write_resource_fork(outstream, resources)
+    return result
+
+
+def _hash_to_id(family_name, script):
+    """Generate a resource id based on the font family name."""
+    # see https://github.com/zoltan-dulac/fondu/blob/master/ufond.c
+    low = 128
+    high = 0x4000
+    hash = 0
+    if script:
+        low = 0x4000 + (script-1)*0x200;
+        high = low + 0x200;
+    for ch in family_name:
+        temp = (hash>>28) & 0xf
+        hash = (hash<<4) | temp
+        hash ^= ord(ch) - 0x20
+    hash %= (high-low)
+    hash += low
+    return hash
+
+
+def _write_resource_fork(outstream, resources):
     """
     Write a Mac dfont/resource fork.
 
