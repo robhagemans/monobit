@@ -877,7 +877,7 @@ def _create_glyph_names(font, format, base):
     """Create the Glyph Names table."""
     names = tuple(
         _g.tags[0].value.encode('ascii', 'replace') + b'\0'
-        if _g.tags else b'glyph%d\0' % (i,)
+        if _g.tags else b'glyph%d\0' % (_i,)
         for _i, _g in enumerate(font.glyphs)
     )
     strings = b''.join(_n for _n in names)
