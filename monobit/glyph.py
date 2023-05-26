@@ -12,7 +12,7 @@ from .encoding import is_graphical, is_blank
 from .labels import Codepoint, Char, Tag, to_label
 from .raster import Raster, NOT_SET, turn_method
 from .properties import Props, extend_string
-from .cachedprops import HasProps, checked_property
+from .cachedprops import HasProps, checked_property, writable_property
 from .basetypes import Coord, Bounds, to_number
 from .scripting import scriptable
 from .vector import StrokePath
@@ -89,6 +89,10 @@ class GlyphProperties:
     # path segments for stroke fonts
     path: StrokePath = StrokePath()
 
+    # overridable
+    scalable_width: float
+    scalable_height: float
+
     # non overridable known properties
     advance_width: int
     advance_height: int
@@ -117,6 +121,16 @@ class Glyph(HasProps):
     def advance_height(self):
         """Internal advance width of glyph, including internal bearings."""
         return self.top_bearing + self.height + self.bottom_bearing
+
+    @writable_property
+    def scalable_width(self):
+        """Overridable, fractional advance width."""
+        return self.advance_width
+
+    @writable_property
+    def scalable_height(self):
+        """Overridable, fractional advance height."""
+        return self.advance_height
 
     @checked_property
     def width(self):
@@ -218,6 +232,10 @@ class Glyph(HasProps):
                 return False
         return self.as_matrix() == other.as_matrix()
 
+    def __hash__(self):
+        """Needs to exist if __eq__ defined."""
+        return super().__hash__()
+
     def __repr__(self):
         """Text representation."""
         elements = (
@@ -278,8 +296,8 @@ class Glyph(HasProps):
         )
 
     def label(
-            self, codepoint_from=None, char_from=None,
-            tag_from=None, comment_from=None,
+            self, codepoint_from=NOT_SET, char_from=NOT_SET,
+            tag_from=NOT_SET, comment_from=NOT_SET,
             overwrite=False, match_whitespace=True, match_graphical=True,
         ):
         """
@@ -294,7 +312,7 @@ class Glyph(HasProps):
            match_graphical: do not give non-blank glyphs a non-graphical label (default: True)
         """
         if sum(
-                _arg is not None
+                _arg is not NOT_SET
                 for _arg in (codepoint_from, char_from, tag_from, comment_from)
             ) > 1:
             raise ValueError(
@@ -303,22 +321,33 @@ class Glyph(HasProps):
            )
         labels = self.get_labels()
         # use codepage to find codepoint if not set
-        if codepoint_from and (overwrite or not self.codepoint):
-            return self.modify(codepoint=codepoint_from.codepoint(*labels))
+        if codepoint_from is not NOT_SET:
+            if not codepoint_from:
+                if overwrite:
+                    return self.modify(codepoint=None)
+            elif overwrite or not self.codepoint:
+                return self.modify(codepoint=codepoint_from.codepoint(*labels))
         # use codepage to find char if not set
-        if char_from and (overwrite or not self.char):
-            char = char_from.char(*labels)
-            if match_whitespace and self.is_blank() and char and not is_blank(char):
-                return self
-            if match_graphical and not self.is_blank() and char and not is_graphical(char):
-                return self
-            return self.modify(char=char)
-        if tag_from:
+        if char_from is not NOT_SET:
+            if not char_from:
+                if overwrite:
+                    return self.modify(char=None)
+            elif overwrite or not self.char:
+                char = char_from.char(*labels)
+                if match_whitespace and self.is_blank() and char and not is_blank(char):
+                    return self
+                if match_graphical and not self.is_blank() and char and not is_graphical(char):
+                    return self
+                return self.modify(char=char)
+        if tag_from is not NOT_SET:
+            if not tag_from:
+                if overwrite:
+                    return self.modify(tag=None)
             return self.modify(tag=tag_from.tag(*labels))
-        if comment_from:
-            return self.modify(
-                comment=extend_string(self.comment, comment_from.comment(*labels))
-            )
+        if comment_from is not NOT_SET:
+            if not comment_from:
+                return self.modify(comment=None)
+            return self.modify(comment=comment_from.comment(*labels))
         return self
 
     def append(
@@ -379,29 +408,13 @@ class Glyph(HasProps):
     def comment(self):
         return self._comment
 
-    @property
-    def features(self):
-        """Get set of special features for this glyph."""
-        feats = set()
-        if any(
-                self.get_defined(_p)
-                for _p in ('top_bearing', 'bottom_bearing', 'shift_left')
-            ):
-            feats.add('vertical')
-        if any(
-                self.get_defined(_p)
-                for _p in ('left_kerning', 'right_kerning')
-            ):
-            feats.add('kerning')
-        if any(
-                self._get_property(_p) < 0
-                for _p in (
-                    'left_bearing', 'right_bearing',
-                    'top_bearing', 'bottom_bearing'
-                )
-            ):
-            feats.add('overlap')
-        return feats
+    @cache
+    def has_vertical_metrics(self):
+        """Check if this glyph has vertical metrics."""
+        return any(
+            self.get_defined(_p)
+            for _p in ('top_bearing', 'bottom_bearing', 'shift_left')
+        )
 
     ##########################################################################
     # label access
@@ -457,12 +470,15 @@ class Glyph(HasProps):
     @classmethod
     def from_bytes(
             cls, byteseq, width, height=NOT_SET,
-            *, align='left', stride=NOT_SET,
+            *, align='left', order='row-major', stride=NOT_SET,
+            byte_swap=0, bit_order='big',
             **kwargs
         ):
         """Create glyph from bytes/bytearray/int sequence."""
         pixels = Raster.from_bytes(
-            byteseq, width, height, align=align, stride=stride
+            byteseq, width, height,
+            align=align, stride=stride, order=order,
+            byte_swap=byte_swap, bit_order=bit_order,
         )
         return cls(pixels, **kwargs)
 
@@ -473,8 +489,9 @@ class Glyph(HasProps):
         return cls(pixels, **kwargs)
 
     @classmethod
-    def from_path(cls, strokepath, *, advance_width=None, **kwargs):
+    def from_path(cls, path, *, advance_width=None, **kwargs):
         """Draw the StrokePath and create a Glyph."""
+        strokepath = StrokePath(path)
         raster = Raster(strokepath.draw())
         if advance_width is None:
             advance_width = strokepath.bounds.right
@@ -513,13 +530,29 @@ class Glyph(HasProps):
         """Return flat tuple of user-specified foreground and background objects."""
         return self._pixels.as_vector(ink=ink, paper=paper)
 
+    def as_bits(self, ink=1, paper=0):
+        """Return flat bits as bytes string."""
+        return self._pixels.as_bits(ink=ink, paper=paper)
+
     def as_byterows(self, *, align='left'):
         """Convert glyph to rows of bytes."""
         return self._pixels.as_byterows(align=align)
 
-    def as_bytes(self, *, align='left'):
-        """Convert glyph to flat bytes."""
-        return self._pixels.as_bytes(align=align)
+    def as_bytes(
+            self, *, align='left', stride=NOT_SET, byte_swap=0,
+            bit_order='big',
+        ):
+        """
+        Convert raster to flat bytes.
+
+        stride: number of pixels per row (default: what's needed for alignment)
+        align: 'left' or 'right' for byte-alignment; 'bit' for bit-alignment
+        byte_swap: swap byte order in units of n bytes, 0 (default) for no swap
+        bit_order: per-byte bit endianness; 'little' for lsb left, 'big' (default) for msb left
+        """
+        return self._pixels.as_bytes(
+            align=align, stride=stride, byte_swap=byte_swap, bit_order=bit_order,
+        )
 
     def as_hex(self, *, align='left'):
         """Convert glyph to hex string."""
@@ -612,7 +645,7 @@ class Glyph(HasProps):
         if not any((left, bottom, right, top)):
             return self
         create_vertical_metrics = (
-            create_vertical_metrics or 'vertical' in self.features
+            create_vertical_metrics or self.has_vertical_metrics()
         )
         # reduce raster
         pixels = self._pixels.crop(left, bottom, right, top)

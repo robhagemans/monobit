@@ -89,10 +89,12 @@ Supported bitmap formats
 
 | Format                | Short Name | Typical Extension           | Read  | Write |
 |-----------------------|------------|-----------------------------|-------|-------|
+| Xerox Alto CONVERT    | `alto`     | `.al`                       | ✔     |       |
 | Amiga Font Contents   | `amiga-fc` | `.font`                     | ✔     |       |
 | Amiga font            | `amiga`    |                             | ✔     |       |
 | BBC soft font         | `bbc`      |                             | ✔     | ✔     |
 | X11/Adobe BDF         | `bdf`      | `.bdf`                      | ✔     | ✔     |
+| Xerox Alto BITBLT     | `bitblt`   | `.strike` `.ks`             | ✔     |       |
 | AngelCode BMFont [P]  | `bmfont` | `.fnt` `.xml` `.json` + images | ✔    | ✔     |
 | Raw binary            | `raw`      | `.fnt` `.rom` [*]           | ✔     | ✔     |
 | Codepage Information  | `cpi`      | `.cpi`                      | ✔     | ✔     |
@@ -123,6 +125,8 @@ Supported bitmap formats
 | LISA font library     | `lisa`     | `.bin`                      | ✔     |       |
 | MacOS font            | `mac`      | `.dfont` `.suit`            | ✔     |       |
 | mkwinfon text format  | `mkwinfon` | `.fd`                       | ✔     |       |
+| X11 Portable Compiled Format |  `pcf` | `.pcf`                   | ✔     | ✔     |
+| Xerox Alto PrePress   | `prepress` | `.ac`                       | ✔     |       |
 | PSF2AMS PSFCOM        | `psfcom`   | `.com`                      | ✔     |       |
 | Bare NFNT resource    | `nfnt`     | `.f`                        | ✔     | ✔     |
 | Palm OS font (v1/NFNT)| `palm`     | `.pdb`                      | ✔     |       |
@@ -130,6 +134,7 @@ Supported bitmap formats
 | PCPaint, GRASP, ChiWriter | `pcpaint` | `.set` `.fnt`  `.sft` `.pft` `.eft` ... | ✔ |  |
 | PDF chart [R]         | `pdf`      | `.pdf`                      |       | ✔     |
 | TeX PKFONT            | `pkfont`   | `.pk`                       | ✔     |       |
+| Adobe Prebuilt Format | `prebuilt` | `.bepf` `.lepf`             | ✔     |       |
 | The Print Shop        | `printshop`| `.pnf`                      | ✔     |       |
 | PC Screen Font        | `psf`      | `.psf` `.psfu`              | ✔     | ✔ (version 2) |
 | PSF2AMS PSFCOM        | `psfcom`   | `.com`                      | ✔     |       |
@@ -310,10 +315,12 @@ reverse-engineering, implementing and preserving font formats and files:
 - [Archive Team](http://fileformats.archiveteam.org/wiki/Fonts)
 - [Jason Scott's textfiles.com](http://textfiles.com)
 - [John Elliott's homepage](http://www.seasip.info)
-- [Simon Tatham's fonts page](https://www.chiark.greenend.org.uk/~sgtatham/fonts/):
+- [Simon Tatham's fonts page](https://www.chiark.greenend.org.uk/~sgtatham/fonts/)
 - [Aivosto's character set documentation](https://www.aivosto.com/articles/charsets.html)
 - [Rebecca Bettencourt's character set documentation](https://www.kreativekorp.com/charset/)
 - [Xiphoseer's Signum Document Toolbox](https://sdo.dseiler.eu/)
+- [George Williams et al.'s FontForge documentation](https://fontforge.org/docs/index.html)
+- [FreeType Glyph Conventions](https://freetype.org/freetype2/docs/glyphs/index.html)
 - ... and many others
 
 

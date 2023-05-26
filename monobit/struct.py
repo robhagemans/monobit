@@ -175,6 +175,13 @@ class IntValue(ScalarValue):
     def __index__(self):
         return int(self)
 
+    def __and__(self, rhs):
+        return int(self) & rhs
+
+    def __or__(self, rhs):
+        return int(self) & rhs
+
+
 
 class ScalarType(_WrappedCType):
     """Wrapper for scalar types. Mostly used to define arrays and structs."""

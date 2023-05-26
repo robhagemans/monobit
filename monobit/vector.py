@@ -11,8 +11,8 @@ from functools import cached_property
 from itertools import accumulate
 from typing import NamedTuple
 
-from .canvas import Canvas
 from .basetypes import Coord, Bounds
+from .raster import Raster, blockstr
 
 
 class StrokeMove(NamedTuple):
@@ -107,11 +107,10 @@ class StrokePath:
     def draw(self):
         """Draw the path."""
         if not self._path:
-            return Canvas.blank(0, 0, 0)
+            return Canvas.blank(0, 0)
         canvas = Canvas.blank(
             self.bounds.right - self.bounds.left,
             self.bounds.top - self.bounds.bottom,
-            fill=0
         )
         x, y = -self.bounds.left, -self.bounds.bottom
         for ink, dx, dy in self._path:
@@ -119,4 +118,47 @@ class StrokePath:
                 canvas.draw_line(x, y, x+dx, y+dy)
             x += dx
             y += dy
-        return canvas
+        return Raster(canvas)
+
+
+class Canvas(Raster):
+    """Mutable raster for line draw operations."""
+
+    _inner = list
+    _outer = list
+    _0 = 0
+    _1 = 1
+    _itemtype = int
+
+    @classmethod
+    def blank(cls, width, height):
+        """Create a canvas in background colour."""
+        canvas = [[cls._0]*width for _ in range(height)]
+        # setting 0 and 1 will make Raster init leave the input alone
+        return cls(canvas, _0=cls._0, _1=cls._1)
+
+    def draw_pixel(self, x, y):
+        """Draw a pixel."""
+        self._pixels[self.height - y - 1][x] = self._1
+
+    def draw_line(self, x0, y0, x1, y1):
+        """Draw a line between the given points."""
+        # Bresenham algorithm
+        dx, dy = abs(x1-x0), abs(y1-y0)
+        steep = dy > dx
+        if steep:
+            x0, y0, x1, y1 = y0, x0, y1, x1
+            dx, dy = dy, dx
+        sx = 1 if x1 > x0 else -1
+        sy = 1 if y1 > y0 else -1
+        line_error = dx // 2
+        x, y = x0, y0
+        for x in range(x0, x1+sx, sx):
+            if steep:
+                self.draw_pixel(y, x)
+            else:
+                self.draw_pixel(x, y)
+            line_error -= dy
+            if line_error < 0:
+                y += sy
+                line_error += dx

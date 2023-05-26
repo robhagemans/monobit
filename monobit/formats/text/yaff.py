@@ -169,8 +169,14 @@ def _read_yaff(text_stream):
         elif not isinstance(block, (YaffProperty, YaffGlyph, YaffPropertyOrGlyph)):
             logging.debug('Unparsed lines: %s', block.get_value())
     font_comments.extend(current_comment)
+    # construct glyphs, including path-only glyphs
+    glyphs = (
+        Glyph(**vars(_g)) if _g.pixels or not hasattr(_g, 'path')
+        else Glyph.from_path(**vars(_g - 'pixels'))
+        for _g in glyphs
+    )
     return Font(
-        (Glyph(**vars(_g)) for _g in glyphs), **font_props,
+        glyphs, **font_props,
         comment={'': '\n\n'.join(font_comments), **font_prop_comms},
     )
 

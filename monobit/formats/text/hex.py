@@ -49,7 +49,7 @@ def save_hext(fonts, outstream):
 def _load_hex(instream):
     """Load 8x16 multi-cell font from Unifont .HEX file."""
     return _load_draw(
-        instream.text, blocktypes=(HexGlyph, DrawComment, Empty)
+        instream.text, blocktypes=(HexGlyph, DrawComment, Empty), unicode=True
     )
 
 

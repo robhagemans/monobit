@@ -13,7 +13,7 @@ from html.parser import HTMLParser
 from importlib.resources import files
 
 from .binary import int_to_bytes, align
-from .labels import Codepoint, to_label
+from .labels import Codepoint, to_label, to_labels
 
 
 _ENCODING_FILES = (
@@ -844,12 +844,8 @@ class Encoder:
 class EncodingName(str):
 
     def __new__(cls, value=''):
-        """Convert char or char sequence to char label."""
-        if not isinstance(value, str):
-            raise ValueError(
-                f'Can only convert `str` to encoding name, not `{type(value)}`.'
-            )
-        value = CharmapRegistry.normalise(value)
+        """Convert value to encoding name."""
+        value = CharmapRegistry.normalise(str(value))
         return super().__new__(cls, value)
 
 
@@ -1056,10 +1052,11 @@ class Unicode(Encoder):
 class Index(Encoder):
     """Convert from index to ordinals."""
 
-    def __init__(self, first_codepoint=0):
+    def __init__(self, code_range=(0,)):
         """Index converter."""
         super().__init__('index')
-        self._count = first_codepoint
+        # generator
+        self._code_range = to_labels(code_range)
 
     @staticmethod
     def char(*labels):
@@ -1068,12 +1065,14 @@ class Index(Encoder):
 
     def codepoint(self, *labels):
         """Convert character to codepoint."""
-        self._count += 1
-        return Codepoint(self._count-1)
+        try:
+            return next(self._code_range)
+        except StopIteration:
+            return b''
 
     def __repr__(self):
         """Representation."""
-        return type(self).__name__ + f'(first_codepoint={self._count})'
+        return type(self).__name__ + '()'
 
 
 ###################################################################################################
@@ -1314,12 +1313,13 @@ def encoder(initialiser):
     """Retrieve or create a charmap from object or string."""
     if isinstance(initialiser, Encoder):
         return initialiser
-    if not initialiser:
+    if initialiser is None or not str(initialiser):
         return None
-    elif not isinstance(initialiser, str):
-        raise ValueError(
-            f'Encoding value must be string or Encoder object, not `{type(initialiser)}`'
-        )
+    initialiser = str(initialiser)
+    # numeric ranges - interpreted as indexer
+    if initialiser[:1].isdigit():
+        initialiser = to_labels(initialiser)
+        return Index(code_range=initialiser)
     try:
         return charmaps[initialiser]
     except KeyError:

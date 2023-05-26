@@ -30,6 +30,7 @@ from ..font import Font, Coord
 from ..glyph import Glyph
 from ..labels import Codepoint, Char
 from ..chart import grid_map
+from ..glyphmap import GlyphMap
 
 from .windows import CHARSET_MAP, CHARSET_REVERSE_MAP
 
@@ -697,7 +698,7 @@ def _create_bmfont(
         if size is None:
             n_layers = 4 if packed else 1
             size = _estimate_size(glyphs, n_layers, padding, spacing)
-        glyph_map = _map_glyphs_to_image(
+        glyph_map = spritesheet(
             glyphs, size=size, spacing=spacing, padding=padding,
         )
     # draw images
@@ -1007,7 +1008,10 @@ def _save_pages(outfile, font, sheets, image_format):
 
 def _draw_images(glyph_map, packed, paper, ink, border):
     """Draw images based on glyph map."""
-    images = glyph_map_to_images(glyph_map, paper=paper, ink=ink, border=border)
+    images = glyph_map.to_images(
+        paper=paper, ink=ink, border=border,
+        invert_y=True, transparent=False
+    )
     width, height = images[0].width, images[0].height
     # pack 4 sheets per image in RGBA layers
     if packed:
@@ -1023,30 +1027,10 @@ def _draw_images(glyph_map, packed, paper, ink, border):
     return images
 
 
-def glyph_map_to_images(glyph_map, *, paper, ink, border):
-    """Draw images based on glyph map."""
-    paper, ink, border = 0, 255, 32
-    last = max(_entry.sheet for _entry in glyph_map)
-    min_x = min(_entry.x for _entry in glyph_map)
-    min_y = min(_entry.y for _entry in glyph_map)
-    max_x = max(_entry.x + _entry.glyph.width for _entry in glyph_map)
-    max_y = max(_entry.y + _entry.glyph.height for _entry in glyph_map)
-    # we don't need +1 as we already included the width/height of the glyphs
-    # e.g. if I have a 2-pixel wide glyph at x=0, I need a 2-pixel image
-    width, height = max_x - min_x, max_y - min_y
-    images = [Image.new('L', (width, height), border) for _ in range(last+1)]
-    for entry in glyph_map:
-        charimg = Image.new('L', (entry.glyph.width, entry.glyph.height))
-        data = entry.glyph.as_vector(ink, paper)
-        charimg.putdata(data)
-        images[entry.sheet].paste(charimg, (entry.x, entry.y))
-    return images
-
-
 ###############################################################################
 # packed spritesheets
 
-def _map_glyphs_to_image(glyphs, *, size, spacing, padding):
+def spritesheet(glyphs, *, size, spacing, padding):
     """Determine where to draw glyphs in sprite sheets."""
     # sort by area, large to small. keep mapping table
     sorted_glyphs = tuple(sorted(
@@ -1067,7 +1051,7 @@ def _map_glyphs_to_image(glyphs, *, size, spacing, padding):
             for _g in glyphs
         ):
         raise ValueError('Image size is too small for largest glyph.')
-    glyph_map = []
+    glyph_map = GlyphMap()
     sheets = []
     while True:
         # output glyphs
@@ -1084,14 +1068,14 @@ def _map_glyphs_to_image(glyphs, *, size, spacing, padding):
                     # we don't fit, get next sheet
                     glyphs = glyphs[number:]
                     break
-            glyph_map.append(Props(
-                glyph=glyph, sheet=i, x=x+padding.left, y=y+padding.top,
-            ))
+            glyph_map.append_glyph(
+                glyph, x+padding.left, y+padding.top, sheet=i
+            )
         else:
             # all done, get out
             break
     # put chars in original glyph order
-    glyph_map = [glyph_map[order_mapping[_i]] for _i in range(len(glyph_map))]
+    glyph_map.reorder(order_mapping)
     return glyph_map
 
 

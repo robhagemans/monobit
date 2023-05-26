@@ -214,7 +214,7 @@ def main():
             transformations.append((Font.outline, (), {}))
         #######################################################################
         # render
-        canvas = render(
+        glyph_map = render(
             font, args.text,
             margin=args.margin,
             direction=args.direction, align=args.align, adjust_bearings=args.expand,
@@ -222,27 +222,27 @@ def main():
             transformations=transformations,
         )
         # transformations
-        canvas = canvas.stretch(*args.scale)
-        canvas = canvas.turn(clockwise=args.rotate)
+        glyph_map.stretch(*args.scale)
+        glyph_map.turn(clockwise=args.rotate)
         #######################################################################
         # output
         if args.image or args.output and not args.output.endswith('.txt'):
             ink = RGB.create(args.ink or (0, 0, 0))
             paper = RGB.create(args.paper or (255, 255, 255))
             border = RGB.create(args.border) if args.border else paper
-            image = canvas.as_image(ink=ink, paper=paper, border=border)
+            image = glyph_map.as_image(ink=ink, paper=paper, border=border)
             if args.output:
                 image.save(args.output)
             else:
                 image.show()
         else:
             if args.blocks:
-                text = canvas.as_blocks()
+                text = glyph_map.as_blocks()
             else:
                 ink = args.ink or '@'
                 paper = args.paper or '.'
                 border = args.border or paper
-                text = canvas.as_text(ink=ink, paper=paper, border=border) + '\n'
+                text = glyph_map.as_text(ink=ink, paper=paper, border=border) + '\n'
             if not args.output:
                 sys.stdout.write(text)
             else:

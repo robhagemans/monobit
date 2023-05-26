@@ -21,7 +21,6 @@ from ..magic import FileFormatError
 from ..font import Font
 from ..glyph import Glyph
 from ..chart import chart, grid_traverser
-from ..canvas import Canvas
 
 
 DEFAULT_IMAGE_FORMAT = 'png'
@@ -260,31 +259,10 @@ if Image:
         font = fonts[0]
         font = font.stretch(*scale)
         glyph_map = chart(font, columns, margin, padding, order, direction, codepoint_range)
-        img, = glyph_map_to_images(glyph_map, border=border, paper=paper, ink=ink)
+        img, = glyph_map.to_images(
+            border=border, paper=paper, ink=ink, transparent=False
+        )
         try:
             img.save(outfile, format=image_format or Path(outfile).suffix[1:])
         except (KeyError, ValueError, TypeError):
             img.save(outfile, format=DEFAULT_IMAGE_FORMAT)
-
-
-#FIXME merge with bmfont
-def glyph_map_to_images(glyph_map, *, paper, ink, border):
-    """Draw images based on glyph map."""
-    paper, ink, border = 0, 255, 32
-    last = max(_entry.sheet for _entry in glyph_map)
-    min_x = min(_entry.x for _entry in glyph_map)
-    min_y = min(_entry.y for _entry in glyph_map)
-    max_x = max(_entry.x + _entry.glyph.width for _entry in glyph_map)
-    max_y = max(_entry.y + _entry.glyph.height for _entry in glyph_map)
-    # we don't need +1 as we already included the width/height of the glyphs
-    # e.g. if I have a 2-pixel wide glyph at x=0, I need a 2-pixel image
-    width, height = max_x - min_x, max_y - min_y
-    images = [Image.new('L', (width, height), border) for _ in range(last+1)]
-    for entry in glyph_map:
-        charimg = Image.new('L', (entry.glyph.width, entry.glyph.height))
-        data = entry.glyph.as_vector(ink, paper)
-        charimg.putdata(data)
-        # Image has ttb y coords, we have btt
-        # our character origin is bottom left
-        images[entry.sheet].paste(charimg, (entry.x, height-entry.glyph.height-entry.y))
-    return images
