@@ -137,10 +137,16 @@ def loc_entry_struct(base):
 # Missing glyphs are represented by a word value of -1. The last word of this table is also -1,
 # representing the end.
 def wo_entry_struct(base):
-    return base.Struct(
-        offset='uint8',
-        width='uint8',
-    )
+    if base == be:
+        return base.Struct(
+            offset='uint8',
+            width='uint8',
+        )
+    else:
+        return base.Struct(
+            width='uint8',
+            offset='uint8',
+        )
 
 # glyph width table entry
 # > Glyph-width table. For every glyph in the font, this table contains a word
@@ -414,12 +420,13 @@ def _subset(font):
         labels = tuple(range(0, 128))
     else:
         font = font.label()
-        labels = tuple(Char(_c) for _c in charmaps['mac-roman'].mapping.values())
+        labels = tuple(Char(_c) for _i, _c in sorted(charmaps['mac-roman'].mapping.items()))
     subfont = font.subset(labels=labels)
     if not subfont.glyphs:
         raise FileFormatError('No suitable characters for NFNT font')
     glyphs = [*subfont.glyphs, font.get_default_glyph()]
     font = font.modify(glyphs, encoding=None)
+    font = font.label(codepoint_from='mac-roman', overwrite=True)
     return font
 
 
