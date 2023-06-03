@@ -388,17 +388,17 @@ def create_fond(font, nfnt_rec, family_id):
 
         # bit 14: This bit is set to 1 if the family fractional-width table is not used, and is cleared
         #         to 0 if the table is used.
-        frac_width_unused=bitfield('uint16', 1),
+        frac_width_unused=1, # TODO
         # bit 13: This bit is set to 1 if the font family should use integer extra width for stylistic
         #         variations. If not set, the font family should compute the fixed-point extra width
         #         from the family style-mapping table, but only if the FractEnable global variable
         #         has a value of TRUE.
-        use_int_extra_width=bitfield('uint16', 1),
+        use_int_extra_width=1, # TODO
         # bit 12: This bit is set to 1 if the font family ignores the value of the FractEnable global
         #         variable when deciding whether to use fixed-point values for stylistic variations;
         #         the value of bit 13 is then the deciding factor. The value of the FractEnable global
         #         variable is set by the SetFractEnable procedure.
-        ignore_global_fract_enable=bitfield('uint16', 1),
+        ignore_global_fract_enable=0,
         # bit 1: This bit is set to 1 if the resource contains a glyph-width table.
         has_width_table=0, # TODO
     )
@@ -455,7 +455,7 @@ def create_fond(font, nfnt_rec, family_id):
             # not sure if/how this avoids ID collisions
             fontID=family_id+_i,
         )
-        for _i, _font in enumaerate(fonts)
+        for _i, _font in enumerate(fonts)
     ))
     # # Offset table (optional)
     # offs_header = _OFFS_HEADER.from_bytes(data, offs_offset)
@@ -480,4 +480,4 @@ def create_fond(font, nfnt_rec, family_id):
 
 def mac_style_from_name(style_name):
     """Get font style from human-readable representation."""
-    return sum((2<<_bit for _bit in STYLE_MAP if _k in style_name), default=0)
+    return sum((2<<_bit for _bit, _k in STYLE_MAP.items() if _k in style_name))
