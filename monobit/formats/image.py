@@ -245,7 +245,7 @@ if Image:
         image_format: image file format (default: png)
         columns: number of columns in glyph chart (default: 32)
         margin: number of pixels in X,Y direction around glyph chart (default: 0x0)
-        padding: number of pixels in X,Y direction between glyph (default: 0x0)
+        padding: number of pixels in X,Y direction between glyph (default: 1x1)
         scale: number of pixels in X,Y direction per glyph bit (default: 1x1)
         order: start with "r" for row-major order (default), "c" for column-major order
         direction: X, Y direction where +1, -1 (default) means left-to-right, top-to-bottom
