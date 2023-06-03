@@ -467,8 +467,8 @@ def _normalize_metrics(font):
     return font, kern
 
 
-def _create_nfnt(font, endian, ndescent_is_high):
-    """Create FONT/NFNT resource."""
+def convert_to_nfnt(font, endian, ndescent_is_high):
+    """Convert monobit font to NFNT/FONT data structures."""
     # fontType is ignored
     # glyph-width table and image-height table not included
     base = {'b': be, 'l': le}[endian[:1].lower()]
@@ -543,16 +543,28 @@ def _create_nfnt(font, endian, ndescent_is_high):
     if ndescent_is_high and owt_loc_high:
         fontrec.nDescent = owt_loc_high
     logging.debug('NFNT header: %s', fontrec)
-    data = b''.join((
-        bytes(fontrec),
-        font_strike,
-        loc_table,
-        wo_table
-    ))
     # fbr = max width from origin (including whitespace) and right kerned pixels
     # for IIgs header
     fbr_extent = max(
         _g.width + _g.left_bearing + max(_g.right_bearing, 0)
         for _g in glyphs
     )
+    return fontrec, font_strike, loc_table, wo_table, owt_loc_high, fbr_extent
+
+
+def nfnt_data_to_bytes(fontrec, font_strike, loc_table, wo_table, owt_loc_high):
+    """Convert NFNT/FONT dtata structure to binary representation."""
+    return b''.join((
+        bytes(fontrec),
+        font_strike,
+        loc_table,
+        wo_table
+    ))
+
+
+def create_nfnt(font, endian, ndescent_is_high):
+    """Create NFNT/FONT resource."""
+    nfnt_data = convert_to_nfnt(font, endian, ndescent_is_high)
+    fontrec, font_strike, loc_table, wo_table, owt_loc_high, fbr_extent = nfnt_data
+    data = nfnt_data_to_bytes(fontrec, font_strike, loc_table, wo_table)
     return data, owt_loc_high, fbr_extent

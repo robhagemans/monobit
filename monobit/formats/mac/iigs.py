@@ -19,7 +19,7 @@ from ...font import Font, Coord
 from ...glyph import Glyph, KernTable
 from ...magic import FileFormatError
 
-from .nfnt import _convert_nfnt, _extract_nfnt, _create_nfnt
+from .nfnt import _convert_nfnt, _extract_nfnt, create_nfnt
 from .dfont import _FONT_NAMES, _NON_ROMAN_NAMES
 
 
@@ -115,7 +115,7 @@ def _convert_iigs(glyphs, fontrec, header, name):
 
 def _save_iigs(outstream, font, version=None):
     """Save an Apple IIgs font file."""
-    nfnt, owt_loc_high, fbr_extent = _create_nfnt(
+    nfnt, owt_loc_high, fbr_extent = create_nfnt(
         font, endian='little', ndescent_is_high=False
     )
     # if offset > 32 bits, need to use iigs format v1.05
