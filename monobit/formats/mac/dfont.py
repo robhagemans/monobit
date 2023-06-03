@@ -342,7 +342,7 @@ def save_dfont(fonts, outstream, resource_type):
                     id=family_id,
                     # are there any specifications for the name?
                     name=font.family,
-                    data=nfnt_data,
+                    data=fond_data,
                 ),
             )
     else:
