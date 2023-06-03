@@ -7,7 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
-from ..sfnt import MAC_ENCODING, mac_style_name
+from ..sfnt import MAC_ENCODING, mac_style_name, STYLE_MAP
 from ...binary import bytes_to_bits, align
 from ...struct import bitfield, big_endian as be
 
@@ -44,34 +44,34 @@ _FFLAGS = be.Struct(
 # p1-110
 # actually these are all signed??
 _FOND_HEADER = be.Struct(
-   # {flags for family}
-   ffFlags=_FFLAGS,
-   # {family ID number}
-   ffFamID='uint16',
-   # {ASCII code of first character}
-   ffFirstChar='uint16',
-   # {ASCII code of last character}
-   ffLastChar='uint16',
-   # {maximum ascent for 1-pt font}
-   ffAscent='uint16',
-   # {maximum descent for 1-pt font}
-   ffDescent='uint16',
-   # {maximum leading for 1-pt font}
-   ffLeading='uint16',
-   # {maximum glyph width for 1-pt font}
-   ffWidMax='uint16',
-   # {offset to family glyph-width table}
-   ffWTabOff='uint32',
-   # {offset to kerning table}
-   ffKernOff='uint32',
-   # {offset to style-mapping table}
-   ffStylOff='uint32',
-   # {style properties info}
-   ffProperty=be.uint16 * 9,
-   # {for international use}
-   ffIntl=be.uint16 * 2,
-   # {version number}
-   ffVersion='uint16',
+    # {flags for family}
+    ffFlags=_FFLAGS,
+    # {family ID number}
+    ffFamID='uint16',
+    # {ASCII code of first character}
+    ffFirstChar='uint16',
+    # {ASCII code of last character}
+    ffLastChar='uint16',
+    # {maximum ascent for 1-pt font}
+    ffAscent='uint16',
+    # {maximum descent for 1-pt font}
+    ffDescent='uint16',
+    # {maximum leading for 1-pt font}
+    ffLeading='uint16',
+    # {maximum glyph width for 1-pt font}
+    ffWidMax='uint16',
+    # {offset to family glyph-width table}
+    ffWTabOff='uint32',
+    # {offset to kerning table}
+    ffKernOff='uint32',
+    # {offset to style-mapping table}
+    ffStylOff='uint32',
+    # {style properties info}
+    ffProperty=be.uint16 * 9,
+    # {for international use}
+    ffIntl=be.uint16 * 2,
+    # {version number}
+    ffVersion='uint16',
 )
 
 # font association table
@@ -345,7 +345,7 @@ def _extract_fond(data, offset):
 
 
 def _convert_fond(name, fond_header, fa_list, kerning_table, encoding_table):
-    """Partially convert FOND properties to monobit peroperties."""
+    """Partially convert FOND properties to monobit properties."""
     # Inside Macintosh: Text 6-22
     # > Fonts with IDs below 16384 ($4000) are all Roman; starting with
     # > 16384 each non-Roman script system has a range of 512 ($200) font IDs available
@@ -376,3 +376,108 @@ def _convert_fond(name, fond_header, fa_list, kerning_table, encoding_table):
         )
         logging.debug(kerning_table[style])
     return info
+
+
+###############################################################################
+# FOND writer
+
+def create_fond(font, nfnt_rec, family_id):
+    """Convert monobit properties to FOND, requires NFNT data structure."""
+    ff_flags = _FFLAGS(
+        fixed_width=nfnt_rec.fontType.fixed_width,
+
+        # bit 14: This bit is set to 1 if the family fractional-width table is not used, and is cleared
+        #         to 0 if the table is used.
+        frac_width_unused=bitfield('uint16', 1),
+        # bit 13: This bit is set to 1 if the font family should use integer extra width for stylistic
+        #         variations. If not set, the font family should compute the fixed-point extra width
+        #         from the family style-mapping table, but only if the FractEnable global variable
+        #         has a value of TRUE.
+        use_int_extra_width=bitfield('uint16', 1),
+        # bit 12: This bit is set to 1 if the font family ignores the value of the FractEnable global
+        #         variable when deciding whether to use fixed-point values for stylistic variations;
+        #         the value of bit 13 is then the deciding factor. The value of the FractEnable global
+        #         variable is set by the SetFractEnable procedure.
+        ignore_global_fract_enable=bitfield('uint16', 1),
+        # bit 1: This bit is set to 1 if the resource contains a glyph-width table.
+        has_width_table=0, # TODO
+    )
+    fond_header = _FOND_HEADER(
+        # {flags for family}
+        ffFlags=ff_flags,
+        # {family ID number}
+        ffFamID=family_id,
+        # {ASCII code of first character}
+        ffFirstChar=nfnt_rec.firstChar,
+        # {ASCII code of last character}
+        ffLastChar=nfnt_rec.lastChar,
+        # {maximum ascent for 1-pt font}
+        # CHECK DEFINITIONS
+        ffAscent=nfnt_rec.ascent,
+        # {maximum descent for 1-pt font}
+        ffDescent=nfnt_rec.descent,
+        # {maximum leading for 1-pt font}
+        ffLeading=nfnt_rec.leading,
+        # {maximum glyph width for 1-pt font}
+        ffWidMax=nfnt_rec.widMax,
+        # {offset to family glyph-width table}
+        ffWTabOff=0, # TODO
+        # {offset to kerning table}
+        ffKernOff=0, # TODO
+        # {offset to style-mapping table}
+        ffStylOff=0, # TODO
+
+        # {style properties info}
+        # extra width for text styles (fixed point value) - currently left at all 0s
+        #ffProperty=be.uint16 * 9,
+        # {for international use}
+        # reserved for internal use by script management software
+        #ffIntl=be.uint16 * 2,
+        # {version number}
+        # An integer value that specifies the version number of the font family resource, which indicates whether certain tables are available. This value is represented by the ffVersion field in the FamRec data type. Because this field has been used inconsistently in the system software, it is better to analyze the data in the resource itself instead of relying on the version number. The possible values are as follows:
+        # Value	Meaning
+        # $0000	Created by the Macintosh system software. The font family resource will not have the glyph-width tables and the fields will contain 0.
+        # $0001	Original format as designed by the font developer. This font family record probably has the width tables and most of the fields are filled.
+        # $0002	This record may contain the offset and bounding-box tables.
+        # $0003	This record definitely contains the offset and bounding-box tables.
+        ffVersion=0,
+    )
+    ## only trying with a single font for now
+    ## extend to family of multiple fonts later
+    fonts = font,
+    ##
+    fa_header = _FA_HEADER(numAssoc=len(fonts)-1)
+    fa_list = _FA_ENTRY.array(fa_header.numAssoc+1)(*(
+        _FA_ENTRY(
+            fontSize=_font.point_size,
+            fontStyle=mac_style_from_name(font.style),
+            # following FONDU, just increment from the family id.
+            # not sure if/how this avoids ID collisions
+            fontID=family_id+_i,
+        )
+        for _i, _font in enumaerate(fonts)
+    ))
+    # # Offset table (optional)
+    # offs_header = _OFFS_HEADER.from_bytes(data, offs_offset)
+    # # Bounding-box table (optional)
+    # bbx_header = _BBX_HEADER.from_bytes(data, bbx_offset)
+    # # Family glyph-width table (optional)
+    # wtab = _WIDTH_TABLE.from_bytes(data, wtab_offset)
+    # # Style-mapping table (optional)
+    # stab = _STYLE_TABLE.from_bytes(data, stab_offset)
+    # # font name suffix subtable
+    # ntab = _NAME_TABLE.from_bytes(data, ntab_offset)
+    # # glyph-name encoding subtable
+    # etab = _ENC_TABLE.from_bytes(data, etab_offset)
+    # # Kerning table (optional)
+    # ktab = _KERN_TABLE.from_bytes(data, ktab_offset)
+    return (
+        bytes(fond_header)
+        + bytes(fa_header)
+        + bytes(fa_list)
+    )
+
+
+def mac_style_from_name(style_name):
+    """Get font style from human-readable representation."""
+    return sum((2<<_bit for _bit in STYLE_MAP if _k in style_name), default=0)

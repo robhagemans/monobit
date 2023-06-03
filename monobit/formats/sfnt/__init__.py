@@ -8,4 +8,4 @@ licence: https://opensource.org/licenses/MIT
 from .sfnt import load_sfnt, load_collection
 from .sfnt_writer import save_sfnt, save_collection
 
-from .sfnt import MAC_ENCODING, mac_style_name, SFNT_MAGIC
+from .sfnt import MAC_ENCODING, mac_style_name, SFNT_MAGIC, STYLE_MAP
