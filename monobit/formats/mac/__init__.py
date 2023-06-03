@@ -28,13 +28,12 @@ def load_mac_dfont(instream):
 
 
 @savers.register(linked=load_mac_dfont)
-def save_mac_dfont(fonts, outstream, resource_type='sfnt', family_id=None):
+def save_mac_dfont(fonts, outstream, resource_type:str='sfnt', family_id:int=None):
     """Save font to MacOS resource fork or data-fork resource.
 
     resource_type: type of resource to store font in. One of `sfnt`, `NFNT`, `FONT`.
-    family_id: font family-id to use. Default: calculate based on encoding and hash of font family name.
     """
-    save_dfont(fonts, outstream, resource_type, family_id)
+    save_dfont(fonts, outstream, resource_type)
 
 
 @loaders.register(
