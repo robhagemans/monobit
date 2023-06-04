@@ -89,5 +89,5 @@ def save_nfnt(fonts, outstream):
     if len(fonts) > 1:
         logging.warning('NFNT resource can only store one font.')
     font = fonts[0]
-    data, _, _ = _create_nfnt(font, endian='big', ndescent_is_high=True)
+    data, _, _ = create_nfnt(font, endian='big', ndescent_is_high=True)
     outstream.write(data)

@@ -566,5 +566,5 @@ def create_nfnt(font, endian, ndescent_is_high):
     """Create NFNT/FONT resource."""
     nfnt_data = convert_to_nfnt(font, endian, ndescent_is_high)
     fontrec, font_strike, loc_table, wo_table, owt_loc_high, fbr_extent = nfnt_data
-    data = nfnt_data_to_bytes(fontrec, font_strike, loc_table, wo_table)
+    data = nfnt_data_to_bytes(fontrec, font_strike, loc_table, wo_table, owt_loc_high)
     return data, owt_loc_high, fbr_extent
