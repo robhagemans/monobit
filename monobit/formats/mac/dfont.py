@@ -297,17 +297,14 @@ def _convert_mac_font(parsed_rsrc, info, formatstr):
 ###############################################################################
 # dfont writer
 
-def _get_family_id(font):
-    script_code = reverse_dict(MAC_ENCODING).get(font.encoding, 0)
-    return _hash_to_id(font.family, script=script_code)
-
 
 def save_dfont(fonts, outstream, resource_type):
-    """Save font to MacOS resource fork or data-fork resource.
+    """
+    Save font to MacOS resource fork or data-fork resource.
 
     resource_type: type of resource to store font in. One of `sfnt`, `NFNT`, `FONT`.
     """
-    if resource_type == 'sfnt':
+    if resource_type.lower() == 'sfnt':
         sfnt_io = BytesIO()
         result = save_sfnt(fonts, sfnt_io)
         font, *_ = fonts
@@ -315,7 +312,7 @@ def save_dfont(fonts, outstream, resource_type):
         resources = [
             Props(type=b'sfnt', id=family_id, name='', data=sfnt_io.getvalue()),
         ]
-    elif resource_type == 'NFNT':
+    elif resource_type.upper() == 'NFNT':
         resources = []
         for i, font in enumerate(fonts):
             family_id = _get_family_id(font)
@@ -331,23 +328,27 @@ def save_dfont(fonts, outstream, resource_type):
                     # note that we calculate this *separately* in the FOND builder
                     id=family_id + i,
                     # are there any specifications for the name?
-                    name=font.name,
-                    data=nfnt_data,
+                    name=font.name, data=nfnt_data,
                 ),
             )
             fond_data = create_fond(font, fontrec, family_id)
             resources.append(
                 Props(
-                    type=b'FOND',
-                    id=family_id,
-                    # are there any specifications for the name?
-                    name=font.family,
-                    data=fond_data,
+                    type=b'FOND', id=family_id,
+                    name=font.family, data=fond_data,
                 ),
             )
     else:
-        raise ValueError('Only saving to sfnt or NFNT resource currently supported')
+        raise ValueError(
+            'Only saving to sfnt or NFNT resource currently supported'
+        )
     _write_resource_fork(outstream, resources)
+
+
+def _get_family_id(font):
+    """Generate a resource id based on the font's properties."""
+    script_code = reverse_dict(MAC_ENCODING).get(font.encoding, 0)
+    return _hash_to_id(font.family, script=script_code)
 
 
 def _hash_to_id(family_name, script):
