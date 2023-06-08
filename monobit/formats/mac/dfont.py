@@ -351,24 +351,6 @@ def _get_family_id(font):
     return _hash_to_id(font.family, script=script_code)
 
 
-def _hash_to_id(family_name, script):
-    """Generate a resource id based on the font family name."""
-    # see https://github.com/zoltan-dulac/fondu/blob/master/ufond.c
-    low = 128
-    high = 0x4000
-    hash = 0
-    if script:
-        low = 0x4000 + (script-1)*0x200;
-        high = low + 0x200;
-    for ch in family_name:
-        temp = (hash>>28) & 0xf
-        hash = (hash<<4) | temp
-        hash ^= ord(ch) - 0x20
-    hash %= (high-low)
-    hash += low
-    return hash
-
-
 def _write_resource_fork(outstream, resources):
     """
     Write a Mac dfont/resource fork.
@@ -456,3 +438,53 @@ def _write_resource_fork(outstream, resources):
         + data
         + rsrc_map
     )
+
+
+# family name hash algorithm
+# ported from https://github.com/zoltan-dulac/fondu/blob/master/ufond.c
+# 
+# FONDU licence:
+# > PfaEdit is copyright (C) 2000,2001,2002,2003 by George Williams
+# >
+# >    Redistribution and use in source and binary forms, with or without
+# >    modification, are permitted provided that the following conditions are met:
+# >
+# >    Redistributions of source code must retain the above copyright notice, this
+# >    list of conditions and the following disclaimer.
+# >
+# >    Redistributions in binary form must reproduce the above copyright notice,
+# >    this list of conditions and the following disclaimer in the documentation
+# >    and/or other materials provided with the distribution.
+# >
+# >    The name of the author may not be used to endorse or promote products
+# >    derived from this software without specific prior written permission.
+# >
+# >    THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
+# >    WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+# >    MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO
+# >    EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+# >    SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+# >    PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+# >    OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+# >    WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+# >    OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+# >    ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# >
+# > The configure script is subject to the GNU public license. See the file
+# > COPYING.
+
+def _hash_to_id(family_name, script):
+    """Generate a resource id based on the font family name."""
+    low = 128
+    high = 0x4000
+    hash = 0
+    if script:
+        low = 0x4000 + (script-1)*0x200;
+        high = low + 0x200;
+    for ch in family_name:
+        temp = (hash>>28) & 0xf
+        hash = (hash<<4) | temp
+        hash ^= ord(ch) - 0x20
+    hash %= (high-low)
+    hash += low
+    return hash

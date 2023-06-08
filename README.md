@@ -298,8 +298,9 @@ released under the [MIT licence](https://opensource.org/licenses/MIT).
 - [`mkwinfont`](https://www.chiark.greenend.org.uk/~sgtatham/fonts/) copyright 2001 Simon Tatham. All rights reserved.  
 - [`dewinfont`](https://www.chiark.greenend.org.uk/~sgtatham/fonts/) copyright 2001,2017 Simon Tatham. All rights reserved.  
 - [OS/2 GPI Font Tools](https://github.com/altsan/os2-gpi-font-tools) (C) 2012 Alexander Taylor  
+- [FONDU](https://sourceforge.net/projects/fondu/) copyright (C) 2000,2001,2002,2003 by George Williams
 
-Please refer to the notices in the `windows` and `os2` subpackages for licences and more information.
+Please refer to the notices in the `windows` and `os2` subpackages and `mac/fond.py` module for licences and more information.
 
 The font files in `tests/fonts` are subject to their own
 licences, some of which are more restrictive. These are files used for testing
