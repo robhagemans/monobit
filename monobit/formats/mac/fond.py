@@ -128,6 +128,10 @@ def _fixed_to_float(fixed):
         fixed = - fixed
     return fixed / 2**12
 
+def _float_to_fixed(flt):
+    # using convention (1)
+    return int(flt * 2**12)
+
 
 # bounding-box table
 # Fig. 4.26
@@ -418,7 +422,7 @@ def create_fond(font, nfnt_rec, family_id):
         # $0001	Original format as designed by the font developer. This font family record probably has the width tables and most of the fields are filled.
         # $0002	This record may contain the offset and bounding-box tables.
         # $0003	This record definitely contains the offset and bounding-box tables.
-        ffVersion=0,
+        ffVersion=0, # TODO
     )
     ## only trying with a single font for now
     ## extend to family of multiple fonts later
@@ -435,10 +439,23 @@ def create_fond(font, nfnt_rec, family_id):
         )
         for _i, _font in enumerate(fonts)
     ))
-    # # Offset table (optional)
-    # offs_header = _OFFS_HEADER.from_bytes(data, offs_offset)
-    # # Bounding-box table (optional)
-    # bbx_header = _BBX_HEADER.from_bytes(data, bbx_offset)
+
+    # # Bounding-box table (optional, but no clear way to indicate if it's present)
+    # TODO - loop over styles
+    num_styles = 1
+    bbx_header = _BBX_HEADER(max_entry=num_styles-1,)
+    # we need one bounding box entry per style
+    # metrics are scalable given as fixed-point fraction for a 1pt font
+    # N.B. FONDU seems to just put integer pixel values here
+    bbx_list = [_BBX_ENTRY(
+        # _STYLE_MAP bitfield
+        style=0, # TODO
+        left=_float_to_fixed(font.ink_bounds.left / font.point_size),
+        bottom=_float_to_fixed(font.ink_bounds.bottom / font.point_size),
+        right=_float_to_fixed(font.ink_bounds.right / font.point_size),
+        top=_float_to_fixed(font.ink_bounds.top / font.point_size),
+    )]
+    bbx_entries = _BBX_ENTRY.array(bbx_header.max_entry+1)(*bbx_list)
     # # Family glyph-width table (optional)
     # wtab = _WIDTH_TABLE.from_bytes(data, wtab_offset)
     # # Style-mapping table (optional)
@@ -449,10 +466,25 @@ def create_fond(font, nfnt_rec, family_id):
     # etab = _ENC_TABLE.from_bytes(data, etab_offset)
     # # Kerning table (optional)
     # ktab = _KERN_TABLE.from_bytes(data, ktab_offset)
+    # # Offset table (mandatory if optional tables are present)
+    # one entry for each table, with its offsets
+    num_tables = 1
+    table_offsets = (
+        # > the number of bytes from the start of the offset table to the start of the table.
+        _OFFS_HEADER.size + num_tables*_OFFS_ENTRY.size,
+    )
+    offsets = (_OFFS_ENTRY * num_tables)(*(
+        _OFFS_ENTRY(offset=_ofs) for _ofs in table_offsets
+    ))
+    offs_header = _OFFS_HEADER(max_entry=num_tables-1)
     return (
         bytes(fond_header)
         + bytes(fa_header)
         + bytes(fa_list)
+        + bytes(offs_header)
+        + bytes(offsets)
+        + bytes(bbx_header)
+        + bytes(bbx_entries)
     )
 
 
