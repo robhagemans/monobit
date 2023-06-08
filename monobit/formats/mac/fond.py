@@ -142,55 +142,15 @@ _BBX_ENTRY = be.Struct(
 )
 
 # Family glyph width table
-# definitions I.M. p.4-109 / p.4-115
-# handle; elsewhere 4 bytes
-_HANDLE = be.uint32
-# guess
-_BOOLEAN = be.uint8
-# Point data type; 4 bytes e.g. I.M. C-29
-# 4-29 "two integers: vertical, horizontal"
-_POINT = be.Struct(
-    vert='int16',
-    horiz='int16',
-)
+# definitions I.M. p.4-48, 4-98
 _WIDTH_TABLE = be.Struct(
-    tabData=_FIXED_TYPE*256,
-    tabFont=_HANDLE,
-    # extra line spacing
-    sExtra='int32',
-    # extra line spacing due to style
-    style='int32',
-    # font family ID
-    fID='int16',
-    # font size request
-    fSize='int16',
-    # style (face) request
-    face='int16',
-    # device requested
-    device='int16',
-    # scale factors requested
-    inNumer=_POINT,
-    inDenom=_POINT,
-    # actual font family ID for table
-    aFID='int16',
-    # family record used to build up table
-    fHand=_HANDLE,
-    # used fixed-point family widths
-    usedFam=_BOOLEAN,
-    # actual face produced
-    aFace='uint8',
-    # vertical scale output value
-    vOutput='int16',
-    # horizontal scale output value
-    hOutput='int16',
-    # vertical scale output value
-    vFactor='int16',
-    # horizontal scale output value
-    hFactor='int16',
-    # actual size of font used
-    aSize='int16',
-    # total size of table
-    tabSize='int16',
+    # number of entries -1
+    numWidths='int16',
+)
+_WIDTH_ENTRY = be.Struct(
+    # style code
+    widStyle='int16',
+    # widths: ARRAY[0.n] of Fixed;
 )
 
 # Style-mapping table
@@ -268,7 +228,7 @@ def _extract_fond(data, offset):
     # check if any optional tables are expected
     # we don't have a field for bounding-box table offset
     if fond_header.ffWTabOff or fond_header.ffKernOff or fond_header.ffStylOff:
-        # Offset table (optional)
+        # Offset table (optional, not used by us)
         # > Whenever any table, including the glyph-width, kerning, and
         # > style-mapping tables, is included in the resource data, an offset table is included.
         # > The offset table contains a long integer offset value for each table that follows it
@@ -278,21 +238,39 @@ def _extract_fond(data, offset):
         offs_list = _OFFS_ENTRY.array(offs_header.max_entry+1).from_bytes(
             data, offs_offset + _OFFS_HEADER.size
         )
-        # we already have the offsets we need so no need to use the Offset Table
-        # Bounding-box table (optional)
+        # Bounding-box table (optional, not used by us)
+        # no offset given in font record. should use the Offset Table to find it?
+        # here we just assume it is the first table after the offset table
+        # is BBX table effectively mandatory if more tables follow?
         bbx_offset = offs_offset + _OFFS_HEADER.size + _OFFS_ENTRY.size * (offs_header.max_entry+1)
         bbx_header = _BBX_HEADER.from_bytes(data, bbx_offset)
         bbx_list = _BBX_ENTRY.array(bbx_header.max_entry+1).from_bytes(
             data, bbx_offset + _BBX_HEADER.size
         )
-        # Family glyph-width table (optional)
+        # Family glyph-width table (optional, not used by us)
         # use offset given in FOND header
-        # this could also be determined from current position ,or from offset table
         if not fond_header.ffWTabOff:
             wtab = ()
+            wtables = ()
         else:
             wtab_offset = offset + fond_header.ffWTabOff
             wtab = _WIDTH_TABLE.from_bytes(data, wtab_offset)
+            # number of characters in each width table - one more than in NFNT.
+            # poorly documented, but consistent with Classic Mac system resource
+            # and FONDU/FontForge
+            num_chars = fond_header.ffLastChar - fond_header.ffFirstChar + 3
+            wtables = []
+            wtab_offset += _WIDTH_TABLE.size
+            # numWidths is the number of width tables, i.e. the number of styles.- 1
+            for style in range(wtab.numWidths+1):
+                wentry = _WIDTH_ENTRY.from_bytes(data, wtab_offset)
+                widths = _FIXED_TYPE.array(num_chars).from_bytes(
+                    data, wtab_offset + _WIDTH_ENTRY.size
+                )
+                wtab_offset += (
+                    _WIDTH_ENTRY.size + _FIXED_TYPE.size * num_chars
+                )
+                wtables.append((wentry, widths))
         # Style-mapping table (optional)
         if not fond_header.ffStylOff:
             stab = ()
