@@ -7,7 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
-from ..sfnt import MAC_ENCODING, mac_style_name, STYLE_MAP
+from ..sfnt import MAC_ENCODING, mac_style_name, STYLE_MAP, to_postscript_name
 from ...binary import bytes_to_bits, align
 from ...struct import bitfield, big_endian as be, sizeof
 from ...glyph import Glyph
@@ -412,7 +412,7 @@ def create_fond(font, nfnt_rec, family_id):
         # {offset to kerning table}
         ffKernOff=0, # TODO
         # {offset to style-mapping table}
-        ffStylOff=0, # TODO
+        # ffStylOff=0,
         # {style properties info}
         # extra width for text styles (fixed point value) - currently left at all 0s
         #ffProperty=be.uint16 * 9,
@@ -444,7 +444,7 @@ def create_fond(font, nfnt_rec, family_id):
         for _i, _font in enumerate(fonts)
     ))
     # optional tables
-    num_tables = 2
+    num_tables = 3
     # # Bounding-box table (optional, but no clear way to indicate if it's present)
     # TODO - loop over styles
     num_styles = 1
@@ -482,22 +482,56 @@ def create_fond(font, nfnt_rec, family_id):
     wtab_offset = bbx_offset + _BBX_HEADER.size + sizeof(bbx_entries)
     # > The offset to the family glyph-width table from the beginning of
     # > the font family resource to the beginning of the table, in bytes.
-    fond_header.ffWTabOff = (
-        wtab_offset + _FOND_HEADER.size + _FA_HEADER.size + sizeof(fa_list)
-    )
+    header_size = _FOND_HEADER.size + _FA_HEADER.size + sizeof(fa_list)
+    fond_header.ffWTabOff = wtab_offset + header_size
     # # Style-mapping table (optional)
-    # stab = _STYLE_TABLE.from_bytes(data, stab_offset)
+    stab_offset = wtab_offset + _WIDTH_TABLE.size + sum(sizeof(_t) for _t in wtables)
     # # font name suffix subtable
-    # ntab = _NAME_TABLE.from_bytes(data, ntab_offset)
+    suffixes = tuple(
+        to_postscript_name(_suffix) for _suffix in font.subfamily.split()
+    )
+    stringtable = (
+        to_postscript_name(font.family),
+        # TODO: loop over styles
+        chr(len(suffixes)+1) + ''.join(chr(3+_x) for _x in range(len(suffixes)+1)),
+        '-',
+        *suffixes
+    )
+    # convert to P-strings
+    stringtable = tuple(
+        bytes((len(_str),)) + _str.encode('mac-roman', 'replace')
+        for _str in stringtable
+    )
+    ntab = _NAME_TABLE(stringCount=len(stringtable))
+    indexes = [len(stringtable[0])] + [0] * 47
     # # glyph-name encoding subtable
-    # etab = _ENC_TABLE.from_bytes(data, etab_offset)
+    # generate empty encoding table - I don't know how to construct correctly
+    # and FontForge code comments suggest that FontManager rejects fonts that have this table.
+    etab = _ENC_TABLE(stringCount=0)
+    # putting together the style-mapping table
+    stab = _STYLE_TABLE(
+        # bit field holding rendering hints - see I.M. p 4-101
+        # > 0 This bit is set to 1 if the font name needs coordinating.
+        # following FONDU, but allow all simulated styles
+        # TODO amend if looping over styles and we have bold, italic etc.
+        fontClass=1,
+        # offset from the start of this table to the glyph-encoding subtable component
+        offset=_STYLE_TABLE.size + sizeof(ntab) + sum(len(_s) for _s in stringtable),
+        # indexes into the font suffix name table that follows this table
+        # "This is an array of 48 integer index values"
+        # note C summary has 47 but Pascal summary has 0..47 inclusive
+        indexes=(be.int8 * 48)(*indexes),
+    )
+    fond_header.ffStylOff = stab_offset + header_size
+
     # # Kerning table (optional)
     # ktab = _KERN_TABLE.from_bytes(data, ktab_offset)
+
     # # Offset table (mandatory if optional tables are present)
     # one entry for each table, with its offsets
     table_offsets = (
         # > the number of bytes from the start of the offset table to the start of the table.
-        bbx_offset, wtab_offset,
+        bbx_offset, wtab_offset, stab_offset,
     )
     offsets = (_OFFS_ENTRY * num_tables)(*(
         _OFFS_ENTRY(offset=_ofs) for _ofs in table_offsets
@@ -513,6 +547,10 @@ def create_fond(font, nfnt_rec, family_id):
         + bytes(bbx_entries)
         + bytes(wtab)
         + b''.join(bytes(_t) for _t in wtables)
+        + bytes(stab)
+        + bytes(ntab)
+        + b''.join(stringtable)
+        + bytes(etab)
     )
 
 
