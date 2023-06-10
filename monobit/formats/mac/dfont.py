@@ -442,7 +442,7 @@ def _write_resource_fork(outstream, resources):
 
 # family name hash algorithm
 # ported from https://github.com/zoltan-dulac/fondu/blob/master/ufond.c
-# 
+#
 # FONDU licence:
 # > PfaEdit is copyright (C) 2000,2001,2002,2003 by George Williams
 # >

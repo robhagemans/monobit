@@ -9,7 +9,8 @@ import logging
 
 from ..sfnt import MAC_ENCODING, mac_style_name, STYLE_MAP
 from ...binary import bytes_to_bits, align
-from ...struct import bitfield, big_endian as be
+from ...struct import bitfield, big_endian as be, sizeof
+from ...glyph import Glyph
 
 
 ##############################################################################
@@ -367,7 +368,6 @@ def create_fond(font, nfnt_rec, family_id):
     """Convert monobit properties to FOND, requires NFNT data structure."""
     ff_flags = _FFLAGS(
         fixed_width=nfnt_rec.fontType.fixed_width,
-
         # bit 14: This bit is set to 1 if the family fractional-width table is not used, and is cleared
         #         to 0 if the table is used.
         frac_width_unused=1, # TODO
@@ -382,7 +382,7 @@ def create_fond(font, nfnt_rec, family_id):
         #         variable is set by the SetFractEnable procedure.
         ignore_global_fract_enable=0,
         # bit 1: This bit is set to 1 if the resource contains a glyph-width table.
-        has_width_table=0, # TODO
+        has_width_table=1,
     )
     fond_header = _FOND_HEADER(
         # {flags for family}
@@ -403,12 +403,11 @@ def create_fond(font, nfnt_rec, family_id):
         # {maximum glyph width for 1-pt font}
         ffWidMax=nfnt_rec.widMax,
         # {offset to family glyph-width table}
-        ffWTabOff=0, # TODO
+        # ffWTabOff=0,
         # {offset to kerning table}
         ffKernOff=0, # TODO
         # {offset to style-mapping table}
         ffStylOff=0, # TODO
-
         # {style properties info}
         # extra width for text styles (fixed point value) - currently left at all 0s
         #ffProperty=be.uint16 * 9,
@@ -439,7 +438,8 @@ def create_fond(font, nfnt_rec, family_id):
         )
         for _i, _font in enumerate(fonts)
     ))
-
+    # optional tables
+    num_tables = 2
     # # Bounding-box table (optional, but no clear way to indicate if it's present)
     # TODO - loop over styles
     num_styles = 1
@@ -456,8 +456,30 @@ def create_fond(font, nfnt_rec, family_id):
         top=_float_to_fixed(font.ink_bounds.top / font.point_size),
     )]
     bbx_entries = _BBX_ENTRY.array(bbx_header.max_entry+1)(*bbx_list)
+    # offset from the start of the offset table
+    bbx_offset = _OFFS_HEADER.size + num_tables*_OFFS_ENTRY.size
     # # Family glyph-width table (optional)
-    # wtab = _WIDTH_TABLE.from_bytes(data, wtab_offset)
+    wtab = _WIDTH_TABLE(numWidths=num_styles-1)
+    num_chars = fond_header.ffLastChar - fond_header.ffFirstChar + 3
+    # get contiguous vector of glyphs, add missing glyph and one extra with 1-em width
+    glyphs = [
+        font.get_glyph(_cp, missing='empty')
+        for _cp in range(fond_header.ffFirstChar, fond_header.ffLastChar+1)
+    ] + [font.glyphs[-1], Glyph(scalable_width=font.pixel_size)]
+    wtables = (
+        _WIDTH_ENTRY(widStyle=0), # TODO
+        _FIXED_TYPE.array(num_chars)(*(
+            _float_to_fixed(_g.scalable_width / font.pixel_size)
+            for _g in glyphs
+        )),
+    )
+    logging.debug(len([_g.scalable_width for _g in font.glyphs]))
+    wtab_offset = bbx_offset + _BBX_HEADER.size + sizeof(bbx_entries)
+    # > The offset to the family glyph-width table from the beginning of
+    # > the font family resource to the beginning of the table, in bytes.
+    fond_header.ffWTabOff = (
+        wtab_offset + _FOND_HEADER.size + _FA_HEADER.size + sizeof(fa_list)
+    )
     # # Style-mapping table (optional)
     # stab = _STYLE_TABLE.from_bytes(data, stab_offset)
     # # font name suffix subtable
@@ -468,10 +490,9 @@ def create_fond(font, nfnt_rec, family_id):
     # ktab = _KERN_TABLE.from_bytes(data, ktab_offset)
     # # Offset table (mandatory if optional tables are present)
     # one entry for each table, with its offsets
-    num_tables = 1
     table_offsets = (
         # > the number of bytes from the start of the offset table to the start of the table.
-        _OFFS_HEADER.size + num_tables*_OFFS_ENTRY.size,
+        bbx_offset, wtab_offset,
     )
     offsets = (_OFFS_ENTRY * num_tables)(*(
         _OFFS_ENTRY(offset=_ofs) for _ofs in table_offsets
@@ -485,6 +506,8 @@ def create_fond(font, nfnt_rec, family_id):
         + bytes(offsets)
         + bytes(bbx_header)
         + bytes(bbx_entries)
+        + bytes(wtab)
+        + b''.join(bytes(_t) for _t in wtables)
     )
 
 
