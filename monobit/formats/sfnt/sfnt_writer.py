@@ -171,7 +171,7 @@ def _convert_to_name_props(font):
         # 2
         styleName=font.subfamily,
         # 3
-        uniqueFontIdentifier=font.font_id or ps_name,
+        uniqueFontIdentifier=font.font_id or to_postscript_name(font.name),
         # 4
         fullName=font.name,
         # 5
