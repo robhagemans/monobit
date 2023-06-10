@@ -229,7 +229,7 @@ def _extract_fond(data, offset):
     fa_header = _FA_HEADER.from_bytes(data, fa_offset)
     fa_list = _FA_ENTRY.array(fa_header.numAssoc+1).from_bytes(data, fa_offset + _FA_HEADER.size)
     kerning_table = {}
-    encoding_table = []
+    encoding_table = {}
     # check if any optional tables are expected
     # we don't have a field for bounding-box table offset
     if fond_header.ffWTabOff or fond_header.ffKernOff or fond_header.ffStylOff:
@@ -299,9 +299,13 @@ def _extract_fond(data, offset):
             etab_offset = offs
             etab = _ENC_TABLE.from_bytes(data, etab_offset)
             offs += _ENC_TABLE.size
+            # encoding table - this is based on description in the docs
+            # but does not appear to work correctly for built in mac Palatino font
+            # which has a table that's just three nulls but stringCount=3
             for i in range(etab.stringCount):
-                string, offs = string_from_bytes(data, offs)
-                encoding_table.append(string)
+                codepoint = be.uint8.from_bytes(data, offs)
+                string, offs = string_from_bytes(data, offs+1)
+                encoding_table[codepoint] = string.decode('mac-roman', 'ignore')
             if encoding_table:
                 logging.debug('Glyph-name encoding table found')
         # Kerning table (optional)
@@ -323,11 +327,12 @@ def _extract_fond(data, offset):
         fond_header=fond_header,
         fa_list=fa_list,
         kerning_table=kerning_table,
-        encoding_table=encoding_table,
+        # do not include encoding table as I don't understand how it is structured
+        #encoding_table=encoding_table,
     )
 
 
-def _convert_fond(name, fond_header, fa_list, kerning_table, encoding_table):
+def _convert_fond(name, fond_header, fa_list, kerning_table, encoding_table=None):
     """Partially convert FOND properties to monobit properties."""
     # Inside Macintosh: Text 6-22
     # > Fonts with IDs below 16384 ($4000) are all Roman; starting with

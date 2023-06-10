@@ -342,12 +342,8 @@ def _convert_nfnt(properties, glyphs, fontrec):
     # do this before setting codepoint labels so we don't drop the tag on the 'missing' glyph
     encoding_table = properties.pop('encoding-table', None)
     if encoding_table:
-        tag_table = {
-            _entry[:1]: _entry[1:].decode('mac-roman')
-            for _entry in encoding_table
-        }
         glyphs = tuple(
-            _glyph.modify(tag=tag_table.get(_glyph.codepoint, ''))
+            _glyph.modify(tag=encoding_table.get(_glyph.codepoint, ''))
             for _glyph in glyphs
         )
     # codepoint labels
