@@ -195,6 +195,7 @@ def string_from_bytes(data, offset):
     string = data[offset+1:offset+1+length]
     return string, offset+1+length
 
+
 # glyph encoding subtable
 _ENC_TABLE = be.Struct(
     stringCount='int16',
@@ -230,6 +231,15 @@ def _extract_fond(data, offset):
     fa_list = _FA_ENTRY.array(fa_header.numAssoc+1).from_bytes(data, fa_offset + _FA_HEADER.size)
     kerning_table = {}
     encoding_table = {}
+    offs_header = None
+    offs_list = None
+    bbx_header = None
+    bbx_list = None
+    wtab = ()
+    wtables = ()
+    stab = ()
+    names = ()
+    ktab = None
     # check if any optional tables are expected
     # we don't have a field for bounding-box table offset
     if fond_header.ffWTabOff or fond_header.ffKernOff or fond_header.ffStylOff:
@@ -254,10 +264,7 @@ def _extract_fond(data, offset):
         )
         # Family glyph-width table (optional, not used by us)
         # use offset given in FOND header
-        if not fond_header.ffWTabOff:
-            wtab = ()
-            wtables = ()
-        else:
+        if fond_header.ffWTabOff:
             wtab_offset = offset + fond_header.ffWTabOff
             wtab = _WIDTH_TABLE.from_bytes(data, wtab_offset)
             # number of characters in each width table - one more than in NFNT.
@@ -277,10 +284,7 @@ def _extract_fond(data, offset):
                 )
                 wtables.append((wentry, widths))
         # Style-mapping table (optional)
-        if not fond_header.ffStylOff:
-            stab = ()
-            names = ()
-        else:
+        if fond_header.ffStylOff:
             stab_offset = offset + fond_header.ffStylOff
             stab = _STYLE_TABLE.from_bytes(data, stab_offset)
             # font name suffix subtable
@@ -293,8 +297,6 @@ def _extract_fond(data, offset):
             for i in range(ntab.stringCount):
                 string, offs = string_from_bytes(data, offs)
                 names.append(string)
-            if names:
-                logging.debug('Font family name suffix table found')
             # glyph-name encoding subtable
             etab_offset = offs
             etab = _ENC_TABLE.from_bytes(data, etab_offset)
@@ -306,8 +308,6 @@ def _extract_fond(data, offset):
                 codepoint = be.uint8.from_bytes(data, offs)
                 string, offs = string_from_bytes(data, offs+1)
                 encoding_table[codepoint] = string.decode('mac-roman', 'ignore')
-            if encoding_table:
-                logging.debug('Glyph-name encoding table found')
         # Kerning table (optional)
         if fond_header.ffKernOff:
             ktab_offset = offset + fond_header.ffKernOff
@@ -325,14 +325,22 @@ def _extract_fond(data, offset):
                 offs += _KERN_ENTRY.size + pair_array.size
     return dict(
         fond_header=fond_header,
-        fa_list=fa_list,
-        kerning_table=kerning_table,
+        fa_header=fa_header, fa_list=fa_list,
+        offs_header=offs_header, offs_list=offs_list,
+        bbx_header=bbx_header, bbx_list=bbx_list,
+        width_header=wtab, width_list=wtables,
+        style_header=stab, name_list=names,
         # do not include encoding table as I don't understand how it is structured
         #encoding_table=encoding_table,
+        kerning_header=ktab, kerning_table=kerning_table,
     )
 
 
-def _convert_fond(name, fond_header, fa_list, kerning_table, encoding_table=None):
+def _convert_fond(
+        name, fond_header, fa_list,
+        kerning_table, encoding_table=None,
+        **kwargs
+    ):
     """Partially convert FOND properties to monobit properties."""
     # Inside Macintosh: Text 6-22
     # > Fonts with IDs below 16384 ($4000) are all Roman; starting with

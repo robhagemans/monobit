@@ -132,6 +132,7 @@ def parse_resource_fork(data, formatstr=''):
     """Parse a bare resource and convert to fonts."""
     resource_table = _extract_resource_fork_header(data)
     rsrc = _extract_resources(data, resource_table)
+    logging.debug(rsrc)
     directory = _construct_directory(rsrc)
     fonts = _convert_mac_font(rsrc, directory, formatstr)
     return fonts
