@@ -70,6 +70,7 @@ _FOND_HEADER = be.Struct(
     # {style properties info}
     ffProperty=be.uint16 * 9,
     # {for international use}
+    # reserved for internal use by script management software
     ffIntl=be.uint16 * 2,
     # {version number}
     ffVersion='uint16',
@@ -421,18 +422,9 @@ def create_fond(font, nfnt_rec, family_id):
         ffLeading=nfnt_rec.leading,
         # {maximum glyph width for 1-pt font}
         ffWidMax=nfnt_rec.widMax,
-        # {offset to family glyph-width table}
-        # ffWTabOff=0,
-        # {offset to kerning table}
-        # ffKernOff=0,
-        # {offset to style-mapping table}
-        # ffStylOff=0,
         # {style properties info}
         # extra width for text styles (fixed point value) - currently left at all 0s
         #ffProperty=be.uint16 * 9,
-        # {for international use}
-        # reserved for internal use by script management software
-        #ffIntl=be.uint16 * 2,
         # {version number}
         # An integer value that specifies the version number of the font family resource, which indicates whether certain tables are available. This value is represented by the ffVersion field in the FamRec data type. Because this field has been used inconsistently in the system software, it is better to analyze the data in the resource itself instead of relying on the version number. The possible values are as follows:
         # Value	Meaning
@@ -507,6 +499,9 @@ def create_fond(font, nfnt_rec, family_id):
     stringtable = (
         to_postscript_name(font.family),
         # TODO: loop over styles
+        # this is the encoding of the postscript name for a given style
+        # [number of name parts] followed by pointer to name parts in this table,
+        # counting from 1, with element 1 (the family name) implicit
         chr(len(suffixes)+1) + ''.join(chr(3+_x) for _x in range(len(suffixes)+1)),
         '-',
         *suffixes
