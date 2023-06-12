@@ -190,10 +190,16 @@ _NAME_TABLE = be.Struct(
     #baseFontName=_STR255,
 )
 
-def string_from_bytes(data, offset):
+def string_from_pascal(data, offset):
+    """Convert Mac-encoded Pascal string to Python string."""
     length = int(be.uint8.from_bytes(data, offset))
     string = data[offset+1:offset+1+length]
+    string = string.decode('mac-roman', 'replace')
     return string, offset+1+length
+
+def string_to_pascal(str):
+    """Convert Python string to Mac-encoded Pascal string."""
+    return bytes((len(str),)) + str.encode('mac-roman', 'replace')
 
 
 # glyph encoding subtable
@@ -295,7 +301,7 @@ def _extract_fond(data, offset):
             # count + 1 as we take the base font name as well?
             # but using that leads to incorrect encoding table
             for i in range(ntab.stringCount):
-                string, offs = string_from_bytes(data, offs)
+                string, offs = string_from_pascal(data, offs)
                 names.append(string)
             # glyph-name encoding subtable
             etab_offset = offs
@@ -306,8 +312,8 @@ def _extract_fond(data, offset):
             # which has a table that's just three nulls but stringCount=3
             for i in range(etab.stringCount):
                 codepoint = be.uint8.from_bytes(data, offs)
-                string, offs = string_from_bytes(data, offs+1)
-                encoding_table[codepoint] = string.decode('mac-roman', 'ignore')
+                string, offs = string_from_pascal(data, offs+1)
+                encoding_table[codepoint] = string
         # Kerning table (optional)
         if fond_header.ffKernOff:
             ktab_offset = offset + fond_header.ffKernOff
@@ -506,10 +512,7 @@ def create_fond(font, nfnt_rec, family_id):
         *suffixes
     )
     # convert to P-strings
-    stringtable = tuple(
-        bytes((len(_str),)) + _str.encode('mac-roman', 'replace')
-        for _str in stringtable
-    )
+    stringtable = tuple(string_to_pascal(_str) for _str in stringtable)
     ntab = _NAME_TABLE(stringCount=len(stringtable))
     indexes = [len(stringtable[0])] + [0] * 47
     # # glyph-name encoding subtable
