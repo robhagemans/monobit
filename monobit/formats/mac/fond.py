@@ -6,6 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import logging
+from itertools import accumulate
 
 from ..sfnt import MAC_ENCODING, mac_style_name, STYLE_MAP, to_postscript_name
 from ...binary import bytes_to_bits, align
@@ -460,23 +461,23 @@ def create_fond(font, nfnt_rec, family_id):
     wtab_bytes = _create_width_table(font, fond_header, glyphs, num_styles)
     stab_bytes = _create_style_table(font)
     ktab_bytes = _create_kerning_table(font, glyphs, num_styles)
+    optional_tables = (bbx_bytes, wtab_bytes, stab_bytes, ktab_bytes)
     # # Offset table (mandatory if optional tables are present)
     # one entry for each table, with its offsets
     # offset from the start of the offset table
-    num_tables = 4
-    bbx_offset = _OFFS_HEADER.size + num_tables*_OFFS_ENTRY.size
-    wtab_offset = bbx_offset + len(bbx_bytes)
-    stab_offset = wtab_offset + len(wtab_bytes)
-    ktab_offset = stab_offset + len(stab_bytes)
-    table_offsets = (
-        # > the number of bytes from the start of the offset table to the start of the table.
-        bbx_offset, wtab_offset, stab_offset, ktab_offset
-    )
-    offsets = (_OFFS_ENTRY * num_tables)(*(
-        _OFFS_ENTRY(offset=_ofs) for _ofs in table_offsets
+    num_tables = len(optional_tables)
+    offset_table_size = _OFFS_HEADER.size + num_tables*_OFFS_ENTRY.size
+    # > the number of bytes from the start of the offset table to the start of the table.
+    table_offsets = tuple(accumulate(
+        (len(_t) for _t in optional_tables),
+        initial=offset_table_size
+    ))
+    bbx_offset, wtab_offset, stab_offset, ktab_offset, _ = table_offsets
+    table_offsets = (_OFFS_ENTRY * num_tables)(*(
+        _OFFS_ENTRY(offset=_ofs) for _ofs in table_offsets[:-1]
     ))
     offs_header = _OFFS_HEADER(max_entry=num_tables-1)
-    offs_bytes = bytes(offs_header) + bytes(offsets)
+    offs_bytes = bytes(offs_header) + bytes(table_offsets)
     # offset fields in header
     # > The offset to the family glyph-width table from the beginning of
     # > the font family resource to the beginning of the table, in bytes.
@@ -484,10 +485,9 @@ def create_fond(font, nfnt_rec, family_id):
     fond_header.ffWTabOff = wtab_offset + header_size
     fond_header.ffStylOff = stab_offset + header_size
     fond_header.ffKernOff = ktab_offset + header_size
-    header_bytes = bytes(fond_header) + bytes(fa_header) + bytes(fa_list)
     return (
-        header_bytes + offs_bytes
-        + bbx_bytes + wtab_bytes + stab_bytes + ktab_bytes
+        bytes(fond_header) + bytes(fa_header) + bytes(fa_list)
+        + offs_bytes + b''.join(optional_tables)
     )
 
 
