@@ -535,6 +535,24 @@ class TestFormats(BaseTester):
         self.assertEqual(len(font.glyphs), 195)
         self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
+    def test_export_dfont(self):
+        """Test exporting dfont files with NFNT resource."""
+        file = self.temp_path / '4x6.dfont'
+        monobit.save(self.fixed4x6, file, resource_type='NFNT')
+        font, *_ = monobit.load(file)
+        # mac-roman only, plus missing glyph
+        self.assertEqual(len(font.glyphs), 220)
+        self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
+
+    def test_export_sbit(self):
+        """Test exporting dfont files with bitamp sfnt resource."""
+        file = self.temp_path / '4x6.dfont'
+        monobit.save(self.fixed4x6, file, resource_type='sfnt')
+        font, *_ = monobit.load(file)
+        # 920 as missing glyph is added
+        self.assertEqual(len(font.glyphs), 920)
+        self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
+
     def test_import_macbinary(self):
         """Test importing macbinary files."""
         font, *_ = monobit.load(self.font_path / '4x6.bin', format='macbin')
