@@ -449,10 +449,51 @@ def create_fond(font, nfnt_rec, family_id):
         )
         for _i, _font in enumerate(fonts)
     ))
+    # get contiguous vector of glyphs, add missing glyph and one extra with 1-em width
+    glyphs = [
+        font.get_glyph(_cp, missing='empty')
+        for _cp in range(fond_header.ffFirstChar, fond_header.ffLastChar+1)
+    ] + [font.glyphs[-1], Glyph(scalable_width=font.pixel_size)]
     # optional tables
-    # # Bounding-box table (optional, but no clear way to indicate if it's present)
-    # TODO - loop over styles
     num_styles = 1
+    bbx_bytes = _create_bbx_table(font, num_styles)
+    wtab_bytes = _create_width_table(font, fond_header, glyphs, num_styles)
+    stab_bytes = _create_style_table(font)
+    ktab_bytes = _create_kerning_table(font, glyphs, num_styles)
+    # # Offset table (mandatory if optional tables are present)
+    # one entry for each table, with its offsets
+    # offset from the start of the offset table
+    num_tables = 4
+    bbx_offset = _OFFS_HEADER.size + num_tables*_OFFS_ENTRY.size
+    wtab_offset = bbx_offset + len(bbx_bytes)
+    stab_offset = wtab_offset + len(wtab_bytes)
+    ktab_offset = stab_offset + len(stab_bytes)
+    table_offsets = (
+        # > the number of bytes from the start of the offset table to the start of the table.
+        bbx_offset, wtab_offset, stab_offset, ktab_offset
+    )
+    offsets = (_OFFS_ENTRY * num_tables)(*(
+        _OFFS_ENTRY(offset=_ofs) for _ofs in table_offsets
+    ))
+    offs_header = _OFFS_HEADER(max_entry=num_tables-1)
+    offs_bytes = bytes(offs_header) + bytes(offsets)
+    # offset fields in header
+    # > The offset to the family glyph-width table from the beginning of
+    # > the font family resource to the beginning of the table, in bytes.
+    header_size = _FOND_HEADER.size + _FA_HEADER.size + sizeof(fa_list)
+    fond_header.ffWTabOff = wtab_offset + header_size
+    fond_header.ffStylOff = stab_offset + header_size
+    fond_header.ffKernOff = ktab_offset + header_size
+    header_bytes = bytes(fond_header) + bytes(fa_header) + bytes(fa_list)
+    return (
+        header_bytes + offs_bytes
+        + bbx_bytes + wtab_bytes + stab_bytes + ktab_bytes
+    )
+
+
+def _create_bbx_table(font, num_styles):
+    """Bounding-box table (optional, but no clear way to indicate if it's present)"""
+    # TODO - loop over styles
     bbx_header = _BBX_HEADER(max_entry=num_styles-1,)
     # we need one bounding box entry per style
     # metrics are scalable given as fixed-point fraction for a 1pt font
@@ -465,15 +506,15 @@ def create_fond(font, nfnt_rec, family_id):
         right=_float_to_fixed(font.ink_bounds.right / font.point_size),
         top=_float_to_fixed(font.ink_bounds.top / font.point_size),
     )]
-    bbx_entries = _BBX_ENTRY.array(bbx_header.max_entry+1)(*bbx_list)
-    # # Family glyph-width table (optional)
-    wtab = _WIDTH_TABLE(numWidths=num_styles-1)
+    bbx_entries = _BBX_ENTRY.array(num_styles)(*bbx_list)
+    bbx_bytes = bytes(bbx_header) + bytes(bbx_entries)
+    return bbx_bytes
+
+
+def _create_width_table(font, fond_header, glyphs, num_styles):
+    """Family glyph-width table (optional)"""
     num_chars = fond_header.ffLastChar - fond_header.ffFirstChar + 3
-    # get contiguous vector of glyphs, add missing glyph and one extra with 1-em width
-    glyphs = [
-        font.get_glyph(_cp, missing='empty')
-        for _cp in range(fond_header.ffFirstChar, fond_header.ffLastChar+1)
-    ] + [font.glyphs[-1], Glyph(scalable_width=font.pixel_size)]
+    wtab = _WIDTH_TABLE(numWidths=num_styles-1)
     wtables = (
         _WIDTH_ENTRY(widStyle=0), # TODO
         _FIXED_TYPE.array(num_chars)(*(
@@ -481,7 +522,12 @@ def create_fond(font, nfnt_rec, family_id):
             for _g in glyphs
         )),
     )
-    # # Style-mapping table (optional)
+    wtab_bytes = bytes(wtab) + b''.join(bytes(_t) for _t in wtables)
+    return wtab_bytes
+
+
+def _create_style_table(font):
+    """Style-mapping table (optional)"""
     # # font name suffix subtable
     suffixes = tuple(
         to_postscript_name(_suffix) for _suffix in font.subfamily.split()
@@ -518,7 +564,12 @@ def create_fond(font, nfnt_rec, family_id):
         # note C summary has 47 but Pascal summary has 0..47 inclusive
         indexes=(be.int8 * 48)(*indexes),
     )
-    # # Kerning table (optional)
+    stab_bytes = bytes(stab) + bytes(ntab) + b''.join(stringtable) + bytes(etab)
+    return stab_bytes
+
+
+def _create_kerning_table(font, glyphs, num_styles):
+    """Kerning table (optional)."""
     kerning_pairs = [
         _KERN_PAIR(
             kernFirst=int(_g.codepoint),
@@ -546,41 +597,9 @@ def create_fond(font, nfnt_rec, family_id):
         kernLength=len(kerning_pairs),
     )
     kpairs = (_KERN_PAIR * len(kerning_pairs))(*kerning_pairs)
-    # # Offset table (mandatory if optional tables are present)
-    # one entry for each table, with its offsets
-    # offset from the start of the offset table
-    num_tables = 4
-    bbx_offset = _OFFS_HEADER.size + num_tables*_OFFS_ENTRY.size
-    wtab_offset = bbx_offset + _BBX_HEADER.size + sizeof(bbx_entries)
-    stab_offset = wtab_offset + _WIDTH_TABLE.size + sum(sizeof(_t) for _t in wtables)
-    ktab_offset = stab_offset + (
-        _STYLE_TABLE.size + _NAME_TABLE.size
-        + sum(len(_s) for _s in stringtable) + _ENC_TABLE.size
-    )
-    table_offsets = (
-        # > the number of bytes from the start of the offset table to the start of the table.
-        bbx_offset, wtab_offset, stab_offset, ktab_offset
-    )
-    offsets = (_OFFS_ENTRY * num_tables)(*(
-        _OFFS_ENTRY(offset=_ofs) for _ofs in table_offsets
-    ))
-    offs_header = _OFFS_HEADER(max_entry=num_tables-1)
-    # offset fields in header
-    # > The offset to the family glyph-width table from the beginning of
-    # > the font family resource to the beginning of the table, in bytes.
-    header_size = _FOND_HEADER.size + _FA_HEADER.size + sizeof(fa_list)
-    fond_header.ffWTabOff = wtab_offset + header_size
-    fond_header.ffStylOff = stab_offset + header_size
-    fond_header.ffKernOff = ktab_offset + header_size
-    return (
-        bytes(fond_header)
-        + bytes(fa_header) + bytes(fa_list)
-        + bytes(offs_header) + bytes(offsets)
-        + bytes(bbx_header) + bytes(bbx_entries)
-        + bytes(wtab) + b''.join(bytes(_t) for _t in wtables)
-        + bytes(stab) + bytes(ntab) + b''.join(stringtable) + bytes(etab)
-        + bytes(ktab) + bytes(ke) + bytes(kpairs)
-    )
+    ktab_bytes = bytes(ktab) + bytes(ke) + bytes(kpairs)
+    return ktab_bytes
+
 
 
 def mac_style_from_name(style_name):
