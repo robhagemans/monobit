@@ -64,6 +64,11 @@ class Pack:
         """List property of fonts in collection."""
         return tuple(getattr(_font, property) for _font in self._fonts)
 
+    def itergroups(self, property):
+        """Iterate over subpacks with one value for a property."""
+        for value in sorted(set(self.list_by(property))):
+            yield value, self.select(**{property: value})
+
 
 # scriptable font/glyph operations
 operations = get_scriptables(Pack)
