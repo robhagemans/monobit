@@ -458,7 +458,7 @@ def create_fond(font, nfnt_rec, family_id):
     # optional tables
     num_styles = 1
     bbx_bytes = _create_bbx_table(font, num_styles)
-    wtab_bytes = _create_width_table(font, fond_header, glyphs, num_styles)
+    wtab_bytes = _create_width_table(font, glyphs, num_styles)
     stab_bytes = _create_style_table(font)
     ktab_bytes = _create_kerning_table(font, glyphs, num_styles)
     optional_tables = (bbx_bytes, wtab_bytes, stab_bytes, ktab_bytes)
@@ -511,9 +511,9 @@ def _create_bbx_table(font, num_styles):
     return bbx_bytes
 
 
-def _create_width_table(font, fond_header, glyphs, num_styles):
+def _create_width_table(font, glyphs, num_styles):
     """Family glyph-width table (optional)"""
-    num_chars = fond_header.ffLastChar - fond_header.ffFirstChar + 3
+    num_chars = len(glyphs)
     wtab = _WIDTH_TABLE(numWidths=num_styles-1)
     wtables = (
         _WIDTH_ENTRY(widStyle=0), # TODO
