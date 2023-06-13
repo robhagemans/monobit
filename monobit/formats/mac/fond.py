@@ -433,7 +433,11 @@ def create_fond(font, nfnt_rec, family_id):
         # $0001	Original format as designed by the font developer. This font family record probably has the width tables and most of the fields are filled.
         # $0002	This record may contain the offset and bounding-box tables.
         # $0003	This record definitely contains the offset and bounding-box tables.
-        ffVersion=0, # TODO
+        # Adobe docs 0091.Mac_Fond.pdf:
+        # > If the value of this word is 2 or greater, then negative numbers in
+        # > the FOND resource are kept as 2’s complement;
+        # > font version 0 and 1 have 1’s complement negative values.
+        ffVersion=2,
     )
     ## only trying with a single font for now
     ## extend to family of multiple fonts later
@@ -451,6 +455,7 @@ def create_fond(font, nfnt_rec, family_id):
         for _i, _font in enumerate(fonts)
     ))
     # get contiguous vector of glyphs, add missing glyph and one extra with 1-em width
+    # the latter is described as 'Unused Word' in Adobe docs
     glyphs = [
         font.get_glyph(_cp, missing='empty')
         for _cp in range(fond_header.ffFirstChar, fond_header.ffLastChar+1)
