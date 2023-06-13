@@ -532,7 +532,7 @@ def _create_width_table(font, glyphs, num_styles):
 
 
 def _create_style_table(font):
-    """Style-mapping table (optional)"""
+    """Style-mapping table (optional). This maps printer fonts to screen fonts."""
     # # font name suffix subtable
     suffixes = tuple(
         to_postscript_name(_suffix) for _suffix in font.subfamily.split()
@@ -550,7 +550,15 @@ def _create_style_table(font):
     # convert to P-strings
     stringtable = tuple(string_to_pascal(_str) for _str in stringtable)
     ntab = _NAME_TABLE(stringCount=len(stringtable))
-    indexes = [len(stringtable[0])] + [0] * 47
+    # indexes in the style name table count from 1, for some reason (Adobe docs):
+    # > Because the Suffix List is part of the Style Name Table, these indexes count
+    # > from the beginning of the Style Name Table. In particular, note that the
+    # > number of strings counts as an entry and has index value 0.
+    indexes = [2]
+    # we repeat the last index for unused entries. Adobe docs seem to suggest
+    # these could be 0 but that crashes FontForge
+    # FontForge treats repeated values as a not-in-use sentinel.
+    indexes += indexes[-1:] * (48 - len(indexes))
     # # glyph-name encoding subtable
     # generate empty encoding table - I don't know how to construct correctly
     # and FontForge code comments suggest that FontManager rejects fonts that have this table.
