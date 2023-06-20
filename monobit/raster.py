@@ -196,7 +196,7 @@ class Raster:
         )
         return blockstr(''.join((start, contents, end)))
 
-    def as_blocks(self, *, ink='@', paper='.', start='', end='\n'):
+    def as_blocks(self):
         """Convert glyph to a string of quadrant block characters."""
         if not self.height:
             return ''

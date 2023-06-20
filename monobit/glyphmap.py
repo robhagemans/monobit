@@ -128,10 +128,10 @@ class GlyphMap:
             ink=ink, paper=paper, border=border, start=start, end=end
         )
 
-    def as_blocks(self, *, ink='@', paper='.', start='', end='\n', sheet=0):
+    def as_blocks(self):
         """Convert glyph map to a string of quadrant block characters."""
         canvas = self.to_canvas(sheet=sheet)
-        return canvas.as_blocks(ink=ink, paper=paper, start=start, end=end)
+        return canvas.as_blocks()
 
 
 class Canvas(Raster):
