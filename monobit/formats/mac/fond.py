@@ -393,8 +393,6 @@ def create_fond(style_groups, nfnt_rec, family_id):
     # use last font in group as representative sample
     # this is also separately chosen as the source of the nfnt_rec
     # list of (style_id, list of fonts)
-    fonts_in_last_style = style_groups[-1][1]
-    sample_font = fonts_in_last_style[-1]
     ff_flags = _FFLAGS(
         fixed_width=nfnt_rec.fontType.fixed_width,
         # bit 14: This bit is set to 1 if the family fractional-width table is not used, and is cleared
@@ -465,13 +463,22 @@ def create_fond(style_groups, nfnt_rec, family_id):
     fa_header = _FA_HEADER(numAssoc=len(fa_list)-1)
     # get contiguous vector of glyphs, add missing glyph and one extra with 1-em width
     # the latter is described as 'Unused Word' in Adobe docs
-
-    # FIXME: do this for each font in style groups
-    glyphs = [
-        sample_font.get_glyph(_cp, missing='empty')
-        for _cp in range(fond_header.ffFirstChar, fond_header.ffLastChar+1)
-    ] + [sample_font.glyphs[-1], Glyph(scalable_width=sample_font.pixel_size)]
-
+    style_groups = tuple(
+        (
+            _style_id,
+            tuple(
+                _font.modify(glyphs=(
+                    [
+                        _font.get_glyph(_cp, missing='empty')
+                        for _cp in range(fond_header.ffFirstChar, fond_header.ffLastChar+1)
+                    ]
+                    + [_font.glyphs[-1], Glyph(scalable_width=_font.pixel_size)]
+                ))
+                for _font in _group
+            )
+        )
+        for _style_id, _group in style_groups
+    )
     # optional tables
     bbx_bytes = _create_bbx_table(style_groups)
     wtab_bytes = _create_width_table(style_groups)
