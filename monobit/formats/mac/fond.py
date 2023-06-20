@@ -8,7 +8,7 @@ licence: https://opensource.org/licenses/MIT
 import logging
 from itertools import accumulate
 
-from ..sfnt import MAC_ENCODING, mac_style_name, STYLE_MAP, to_postscript_name
+from ..sfnt import MAC_ENCODING, mac_style_name, to_postscript_name
 from ...binary import bytes_to_bits, align
 from ...struct import bitfield, big_endian as be, sizeof
 from ...glyph import Glyph
@@ -385,8 +385,16 @@ def _convert_fond(
 ###############################################################################
 # FOND writer
 
-def create_fond(font, nfnt_rec, family_id):
-    """Convert monobit properties to FOND, requires NFNT data structure."""
+def create_fond(style_groups, nfnt_rec, family_id):
+    """
+    Convert monobit properties to FOND.
+    Requires NFNT data structure for largest font.
+    """
+    # use last font in group as representative sample
+    # this is also separately chosen as the source of the nfnt_rec
+    # list of (style_id, list of fonts)
+    fonts_in_last_style = style_groups[-1][1]
+    sample_font = fonts_in_last_style[-1]
     ff_flags = _FFLAGS(
         fixed_width=nfnt_rec.fontType.fixed_width,
         # bit 14: This bit is set to 1 if the family fractional-width table is not used, and is cleared
@@ -439,33 +447,36 @@ def create_fond(font, nfnt_rec, family_id):
         # > font version 0 and 1 have 1’s complement negative values.
         ffVersion=2,
     )
-    ## only trying with a single font for now
-    ## extend to family of multiple fonts later
-    fonts = font,
-    ##
-    fa_header = _FA_HEADER(numAssoc=len(fonts)-1)
-    fa_list = _FA_ENTRY.array(fa_header.numAssoc+1)(*(
+    fa_list = tuple(
         _FA_ENTRY(
             fontSize=_font.point_size,
-            fontStyle=mac_style_from_name(font.style),
-            # following FONDU, just increment from the family id.
-            # not sure if/how this avoids ID collisions
-            fontID=family_id+_i,
+            fontStyle=_style,
+            # fontID=family_id+_i,
         )
-        for _i, _font in enumerate(fonts)
-    ))
+        for _style, _group in style_groups
+        for _font in _group
+    )
+    # following FONDU, just increment from the family id.
+    # not sure if/how this avoids ID collisions
+    for i, entry in enumerate(fa_list):
+        # TODO this should be NFNT's rsrc id
+        entry.fontID = family_id + i
+    fa_list = (_FA_ENTRY * len(fa_list))(*fa_list)
+    fa_header = _FA_HEADER(numAssoc=len(fa_list)-1)
     # get contiguous vector of glyphs, add missing glyph and one extra with 1-em width
     # the latter is described as 'Unused Word' in Adobe docs
+
+    # FIXME: do this for each font in style groups
     glyphs = [
-        font.get_glyph(_cp, missing='empty')
+        sample_font.get_glyph(_cp, missing='empty')
         for _cp in range(fond_header.ffFirstChar, fond_header.ffLastChar+1)
-    ] + [font.glyphs[-1], Glyph(scalable_width=font.pixel_size)]
+    ] + [sample_font.glyphs[-1], Glyph(scalable_width=sample_font.pixel_size)]
+
     # optional tables
-    num_styles = 1
-    bbx_bytes = _create_bbx_table(font, num_styles)
-    wtab_bytes = _create_width_table(font, glyphs, num_styles)
-    stab_bytes = _create_style_table(font)
-    ktab_bytes = _create_kerning_table(font, glyphs, num_styles)
+    bbx_bytes = _create_bbx_table(style_groups)
+    wtab_bytes = _create_width_table(style_groups)
+    stab_bytes = _create_style_table(style_groups)
+    ktab_bytes = _create_kerning_table(style_groups)
     optional_tables = (bbx_bytes, wtab_bytes, stab_bytes, ktab_bytes)
     # # Offset table (mandatory if optional tables are present)
     # one entry for each table, with its offsets
@@ -496,55 +507,73 @@ def create_fond(font, nfnt_rec, family_id):
     )
 
 
-def _create_bbx_table(font, num_styles):
+def _create_bbx_table(style_groups):
     """Bounding-box table (optional, but no clear way to indicate if it's present)"""
-    # TODO - loop over styles
-    bbx_header = _BBX_HEADER(max_entry=num_styles-1,)
+    bbx_header = _BBX_HEADER(max_entry=len(style_groups)-1,)
     # we need one bounding box entry per style
     # metrics are scalable given as fixed-point fraction for a 1pt font
     # N.B. FONDU seems to just put integer pixel values here
-    bbx_list = [_BBX_ENTRY(
-        # _STYLE_MAP bitfield
-        style=0, # TODO
-        left=_float_to_fixed(font.ink_bounds.left / font.point_size),
-        bottom=_float_to_fixed(font.ink_bounds.bottom / font.point_size),
-        right=_float_to_fixed(font.ink_bounds.right / font.point_size),
-        top=_float_to_fixed(font.ink_bounds.top / font.point_size),
-    )]
-    bbx_entries = _BBX_ENTRY.array(num_styles)(*bbx_list)
+    bbx_list = [
+        _BBX_ENTRY(
+            style=_style_code,
+            left=_float_to_fixed(_font.ink_bounds.left / _font.point_size),
+            bottom=_float_to_fixed(_font.ink_bounds.bottom / _font.point_size),
+            right=_float_to_fixed(_font.ink_bounds.right / _font.point_size),
+            top=_float_to_fixed(_font.ink_bounds.top / _font.point_size),
+        )
+        # use last (largest) font for each style
+        for _style_code, (*_, _font) in style_groups
+    ]
+    bbx_entries = (_BBX_ENTRY * len(bbx_list))(*bbx_list)
     bbx_bytes = bytes(bbx_header) + bytes(bbx_entries)
     return bbx_bytes
 
 
-def _create_width_table(font, glyphs, num_styles):
+def _create_width_table(style_groups):
     """Family glyph-width table (optional)"""
-    num_chars = len(glyphs)
-    wtab = _WIDTH_TABLE(numWidths=num_styles-1)
-    wtables = (
-        _WIDTH_ENTRY(widStyle=0), # TODO
-        _FIXED_TYPE.array(num_chars)(*(
-            _float_to_fixed(_g.scalable_width / font.pixel_size)
-            for _g in glyphs
-        )),
+    wtab = _WIDTH_TABLE(numWidths=len(style_groups)-1)
+    wtables = tuple(
+        (
+            _WIDTH_ENTRY(widStyle=_style_id),
+            _FIXED_TYPE.array(len(_group[-1].glyphs))(*(
+                _float_to_fixed(_g.scalable_width / _group[-1].pixel_size)
+                for _g in _group[-1].glyphs
+            ))
+        )
+        for _style_id, _group in style_groups
     )
-    wtab_bytes = bytes(wtab) + b''.join(bytes(_t) for _t in wtables)
+    wtab_bytes = bytes(wtab) + b''.join(
+        bytes(_t) for _pair in wtables for _t in _pair
+    )
     return wtab_bytes
 
 
-def _create_style_table(font):
+def _create_style_table(style_groups):
     """Style-mapping table (optional). This maps printer fonts to screen fonts."""
     # # font name suffix subtable
-    suffixes = tuple(
-        to_postscript_name(_suffix) for _suffix in font.subfamily.split()
+    suffixes = ('-',) + tuple(sorted(set(
+        to_postscript_name(_suffix)
+        for _, _group in style_groups
+        for _suffix in _group[-1].subfamily.split()
+    )))
+    # FIXME: should skip underline in style id map - see 0091.Mac_Fond.pdf
+    used_suffixes_per_style = tuple(
+        tuple(
+            suffixes.index(_suffix)
+            for _suffix in _group[-1].subfamily.split()
+        )
+        for _, _group in style_groups
     )
-    stringtable = (
-        to_postscript_name(font.family),
-        # TODO: loop over styles
+    suffix_subtable = (
         # this is the encoding of the postscript name for a given style
         # [number of name parts] followed by pointer to name parts in this table,
         # counting from 1, with element 1 (the family name) implicit
-        chr(len(suffixes)+1) + ''.join(chr(3+_x) for _x in range(len(suffixes)+1)),
-        '-',
+        chr(len(_used_suffixes)+1) + ''.join(chr(2+_x) for _x in _used_suffixes)
+        for _used_suffixes in used_suffixes_per_style
+    )
+    stringtable = (
+        to_postscript_name(style_groups[-1][1][-1].family),
+        *suffix_subtable,
         *suffixes
     )
     # convert to P-strings
@@ -581,40 +610,40 @@ def _create_style_table(font):
     return stab_bytes
 
 
-def _create_kerning_table(font, glyphs, num_styles):
-    """Kerning table (optional)."""
-    kerning_pairs = [
-        _KERN_PAIR(
-            kernFirst=int(_g.codepoint),
-            kernSecond=int(font.get_glyph(_label).codepoint),
-            # kerning value in 1pt fixed format
-            kernWidth=_float_to_fixed(_value / font.pixel_size),
-        )
-        for _g in glyphs
-        for _label, _value in _g.right_kerning.items()
-    ] + [
-        _KERN_PAIR(
-            kernFirst=int(font.get_glyph(_label).codepoint),
-            kernSecond=int(_g.codepoint),
-            # kerning value in 1pt fixed format
-            kernWidth=_float_to_fixed(_value / font.pixel_size),
-        )
-        for _g in glyphs
-        for _label, _value in _g.left_kerning.items()
-    ]
-    # number of entries - 1
+def _create_kerning_table(style_groups):
+    """Kerning table (optional).
+    """
+    num_styles = len(style_groups)
     ktab = _KERN_TABLE(numKerns=num_styles-1)
-    ke = _KERN_ENTRY(
-        # TODO: styles
-        kernStyle=0,
-        kernLength=len(kerning_pairs),
-    )
-    kpairs = (_KERN_PAIR * len(kerning_pairs))(*kerning_pairs)
-    ktab_bytes = bytes(ktab) + bytes(ke) + bytes(kpairs)
-    return ktab_bytes
-
-
-
-def mac_style_from_name(style_name):
-    """Get font style from human-readable representation."""
-    return sum((2<<_bit for _bit, _k in STYLE_MAP.items() if _k in style_name))
+    ktab_bytes = bytearray(bytes(ktab))
+    for style_id, group in style_groups:
+        # NOTE that the format assumes one kerning table per style,
+        # which is linearly scaled by pixel_size
+        sample_font = group[-1]
+        kerning_pairs = [
+            _KERN_PAIR(
+                kernFirst=int(_g.codepoint),
+                kernSecond=int(sample_font.get_glyph(_label).codepoint),
+                # kerning value in 1pt fixed format
+                kernWidth=_float_to_fixed(_value / sample_font.pixel_size),
+            )
+            for _g in sample_font.glyphs
+            for _label, _value in _g.right_kerning.items()
+        ] + [
+            _KERN_PAIR(
+                kernFirst=int(sample_font.get_glyph(_label).codepoint),
+                kernSecond=int(_g.codepoint),
+                # kerning value in 1pt fixed format
+                kernWidth=_float_to_fixed(_value / sample_font.pixel_size),
+            )
+            for _g in sample_font.glyphs
+            for _label, _value in _g.left_kerning.items()
+        ]
+        # number of entries - 1
+        ke = _KERN_ENTRY(
+            kernStyle=style_id,
+            kernLength=len(kerning_pairs),
+        )
+        kpairs = (_KERN_PAIR * len(kerning_pairs))(*kerning_pairs)
+        ktab_bytes += bytes(ke) + bytes(kpairs)
+    return bytes(ktab_bytes)

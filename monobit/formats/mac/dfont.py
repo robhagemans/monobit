@@ -15,7 +15,7 @@ from ...magic import FileFormatError
 from ...streams import Stream
 from ...properties import Props, reverse_dict
 
-from ..sfnt import load_sfnt, save_sfnt, MAC_ENCODING
+from ..sfnt import load_sfnt, save_sfnt, MAC_ENCODING, STYLE_MAP
 from .nfnt import _extract_nfnt, _convert_nfnt, convert_to_nfnt, nfnt_data_to_bytes
 from .fond import _extract_fond, _convert_fond, create_fond
 
@@ -309,30 +309,35 @@ def save_dfont(fonts, outstream, resource_type):
         sfnt_io = BytesIO()
         result = save_sfnt(fonts, sfnt_io)
         font, *_ = fonts
-        family_id = _get_family_id(font)
+        family_id = _get_family_id(font.family, font.encoding)
         resources = [
             Props(type=b'sfnt', id=family_id, name='', data=sfnt_io.getvalue()),
         ]
     elif resource_type.upper() == 'NFNT':
         resources = []
-        for i, font in enumerate(fonts):
-            family_id = _get_family_id(font)
-            fontrec, font_strike, loc_table, wo_table, owt_loc_high, _ = (
-                convert_to_nfnt(font, endian='big', ndescent_is_high=True)
-            )
-            nfnt_data = nfnt_data_to_bytes(
-                fontrec, font_strike, loc_table, wo_table, owt_loc_high
-            )
-            resources.append(
-                Props(
-                    type=b'NFNT',
-                    # note that we calculate this *separately* in the FOND builder
-                    id=family_id + i,
-                    # are there any specifications for the name?
-                    name=font.name, data=nfnt_data,
-                ),
-            )
-            fond_data = create_fond(font, fontrec, family_id)
+        for family_id, style_group in _group_families(fonts):
+            i = 0
+            for style_id, size_group in style_group:
+                for font in size_group:
+                    fontrec, font_strike, loc_table, wo_table, owt_loc_high, _ = (
+                        convert_to_nfnt(font, endian='big', ndescent_is_high=True)
+                    )
+                    nfnt_data = nfnt_data_to_bytes(
+                        fontrec, font_strike, loc_table, wo_table, owt_loc_high
+                    )
+                    resources.append(
+                        Props(
+                            type=b'NFNT',
+                            # note that we calculate this *separately* in the FOND builder
+                            id=family_id + i,
+                            # are there any specifications for the name?
+                            name=font.name, data=nfnt_data,
+                        ),
+                    )
+                    i += 1
+            # use the last fontrec (largest size, also highest style id)
+            # as the source of scalable values in FOND
+            fond_data = create_fond(style_group, fontrec, family_id)
             resources.append(
                 Props(
                     type=b'FOND', id=family_id,
@@ -346,10 +351,10 @@ def save_dfont(fonts, outstream, resource_type):
     _write_resource_fork(outstream, resources)
 
 
-def _get_family_id(font):
+def _get_family_id(name, encoding):
     """Generate a resource id based on the font's properties."""
-    script_code = reverse_dict(MAC_ENCODING).get(font.encoding, 0)
-    return _hash_to_id(font.family, script=script_code)
+    script_code = reverse_dict(MAC_ENCODING).get(encoding, 0)
+    return _hash_to_id(name, script=script_code)
 
 
 def _write_resource_fork(outstream, resources):
@@ -489,3 +494,51 @@ def _hash_to_id(family_name, script):
     hash %= (high-low)
     hash += low
     return hash
+
+
+def mac_style_from_name(style_name):
+    """Get font style from human-readable representation."""
+    return sum((2<<_bit for _bit, _k in STYLE_MAP.items() if _k in style_name))
+
+
+def _group_families(fonts):
+    """Group pack of fonts by families and subfamilies."""
+    families = tuple(sorted(
+        # assuming encoding stays the same across family
+        (_get_family_id(_name, _group[0].encoding), _group)
+        for _name, _group in fonts.itergroups('family')
+    ))
+    fond_families = []
+    for id, group in families:
+        chars = set(_font.get_codepoints() for _font in group)
+        if len(set(chars)) > 1:
+            logging.warning(
+                "Can't combine fonts into families: different character ranges."
+            )
+            return _group_individually(fonts)
+        style_groups = tuple(sorted(
+            (mac_style_from_name(_subfamily), _fonts)
+            for _subfamily, _fonts in group.itergroups('subfamily')
+        ))
+        for _, group in style_groups:
+            sizes = tuple(_f.point_size for _f in group)
+            if len(sizes) != len(set(sizes)):
+                logging.warning(
+                    "Can't combine fonts into families: duplicate style and size."
+                )
+            return _group_individually(fonts)
+        fond_families.append((id, style_groups))
+    return fond_families
+
+
+def _group_individually(fonts):
+    """Return each individual font as its own family."""
+    fond_families = tuple(sorted(
+        (
+            # we're assuming names differ
+            _get_family_id(_font.name, _font.encoding),
+            ((mac_style_from_name(_font.subfamily), [_font]),)
+        )
+        for _font in fonts
+    ))
+    return fond_families
