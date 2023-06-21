@@ -607,13 +607,23 @@ def _create_style_table(style_groups):
     # generate empty encoding table - I don't know how to construct correctly
     # and FontForge code comments suggest that FontManager rejects fonts that have this table.
     etab = _ENC_TABLE(stringCount=0)
+    # bit field holding rendering hints - see I.M. p 4-101
+    # > 0 This bit is set to 1 if the font name needs coordinating.
+    # following FONDU, allow simulated style if not explicitly defined
+    font_class = 1<<0
+    if any('outline' in _f.decoration for _, _group in style_groups for _f in _group):
+        font_class &= 1<<3
+    if any(_f.weight == 'bold' for _, _group in style_groups for _f in _group):
+        font_class &= 1<<4
+    if any(_f.slant == 'italic' for _, _group in style_groups for _f in _group):
+        font_class &= 1<<6
+    if any(_f.setwidth == 'condensed' for _, _group in style_groups for _f in _group):
+        font_class &= 1<<7
+    if any(_f.setwidth == 'expanded' for _, _group in style_groups for _f in _group):
+        font_class &= 1<<8
     # putting together the style-mapping table
     stab = _STYLE_TABLE(
-        # bit field holding rendering hints - see I.M. p 4-101
-        # > 0 This bit is set to 1 if the font name needs coordinating.
-        # following FONDU, but allow all simulated styles
-        # TODO amend if looping over styles and we have bold, italic etc.
-        fontClass=1,
+        fontClass=font_class,
         # offset from the start of this table to the glyph-encoding subtable component
         offset=_STYLE_TABLE.size + sizeof(ntab) + sum(len(_s) for _s in stringtable),
         # indexes into the font suffix name table that follows this table
