@@ -563,7 +563,6 @@ def _create_style_table(style_groups):
         for _, _group in style_groups
         for _suffix in _group[-1].subfamily.split()
     )))
-    # FIXME: should skip underline in style id map - see 0091.Mac_Fond.pdf
     used_suffixes_per_style = tuple(
         tuple(
             suffixes.index(_suffix)
@@ -571,6 +570,7 @@ def _create_style_table(style_groups):
         )
         for _, _group in style_groups
     )
+    used_style_ids = tuple(_id for _id, _ in style_groups)
     suffix_subtable = (
         # this is the encoding of the postscript name for a given style
         # [number of name parts] followed by pointer to name parts in this table,
@@ -590,11 +590,19 @@ def _create_style_table(style_groups):
     # > Because the Suffix List is part of the Style Name Table, these indexes count
     # > from the beginning of the Style Name Table. In particular, note that the
     # > number of strings counts as an entry and has index value 0.
-    indexes = [2]
-    # we repeat the last index for unused entries. Adobe docs seem to suggest
-    # these could be 0 but that crashes FontForge
-    # FontForge treats repeated values as a not-in-use sentinel.
-    indexes += indexes[-1:] * (48 - len(indexes))
+    style_ids = (
+        _style_mapping_to_style_id(_mapping_value)
+        for _mapping_value in range(48)
+    )
+    indexes = []
+    for id in style_ids:
+        try:
+            indexes.append(1 + used_style_ids.index(id))
+        except ValueError:
+            # we repeat the last index for unused entries. Adobe docs seem to suggest
+            # these could be 0 but that crashes FontForge
+            # FontForge treats repeated values as a not-in-use sentinel.
+            indexes.append(indexes[-1] if indexes else 0)
     # # glyph-name encoding subtable
     # generate empty encoding table - I don't know how to construct correctly
     # and FontForge code comments suggest that FontManager rejects fonts that have this table.
@@ -615,6 +623,14 @@ def _create_style_table(style_groups):
     )
     stab_bytes = bytes(stab) + bytes(ntab) + b''.join(stringtable) + bytes(etab)
     return stab_bytes
+
+
+def _style_mapping_to_style_id(mapping_value):
+    """Convert Mac style id to Style Mapping used for postscript table."""
+    # mapping removes bit 2, underline
+    # see 0091.Mac_Fond.pdf p13 table 2
+    return ((mapping_value & 0b111100) << 1) + (mapping_value & 0b11)
+
 
 
 def _create_kerning_table(style_groups):
