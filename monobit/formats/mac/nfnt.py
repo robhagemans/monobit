@@ -410,11 +410,18 @@ def _convert_nfnt(properties, glyphs, fontrec):
 def subset_for_nfnt(font):
     """Subset to glyphs storable in NFNT and append default glyph."""
     font = font.label(codepoint_from=font.encoding)
-    if font.encoding in ('mac-roman', 'mac-symbol', 'raw', '', None):
+    resample = False
+    if font.encoding.startswith('mac') or font.encoding in ('raw', '', None):
+        # it's not clear to me if/how NFNT resources are used for MBCS
+        # currently we just use the single-byte sector
+        # this affects mac-japanese, mac-korean which have multibyte codepoints
         labels = tuple(range(0, 256))
     elif font.encoding == 'ascii':
         labels = tuple(range(0, 128))
     else:
+        resample = True
+        # NFNT can only store encodings from a pre-defined list of 'scripts'
+        # for fonts with other encodings, get glyphs corresponding to mac-roman
         font = font.label()
         labels = tuple(Char(_c) for _i, _c in sorted(charmaps['mac-roman'].mapping.items()))
     subfont = font.subset(labels=labels)
@@ -422,7 +429,8 @@ def subset_for_nfnt(font):
         raise FileFormatError('No suitable characters for NFNT font')
     glyphs = [*subfont.glyphs, font.get_default_glyph().modify(labels=(), tag='missing')]
     font = font.modify(glyphs, encoding=None)
-    font = font.label(codepoint_from='mac-roman', overwrite=True)
+    if resample:
+        font = font.label(codepoint_from='mac-roman', overwrite=True)
     return font
 
 
