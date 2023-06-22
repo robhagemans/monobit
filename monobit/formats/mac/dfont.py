@@ -14,9 +14,13 @@ from ...struct import big_endian as be
 from ...magic import FileFormatError
 from ...streams import Stream
 from ...properties import Props, reverse_dict
+from ...pack import Pack
 
 from ..sfnt import load_sfnt, save_sfnt, MAC_ENCODING, STYLE_MAP
-from .nfnt import _extract_nfnt, _convert_nfnt, convert_to_nfnt, nfnt_data_to_bytes
+from .nfnt import (
+    _extract_nfnt, _convert_nfnt,
+    subset_for_nfnt, convert_to_nfnt, nfnt_data_to_bytes
+)
 from .fond import _extract_fond, _convert_fond, create_fond
 
 
@@ -315,6 +319,8 @@ def save_dfont(fonts, outstream, resource_type):
         ]
     elif resource_type.upper() == 'NFNT':
         resources = []
+        # we need a Pack for _group_families
+        fonts = Pack(subset_for_nfnt(_f) for _f in fonts)
         for family_id, style_group in _group_families(fonts):
             i = 0
             for style_id, size_group in style_group:
@@ -335,9 +341,7 @@ def save_dfont(fonts, outstream, resource_type):
                         ),
                     )
                     i += 1
-            # use the last fontrec (largest size, also highest style id)
-            # as the source of scalable values in FOND
-            fond_data = create_fond(style_group, fontrec, family_id)
+            fond_data = create_fond(style_group, family_id)
             resources.append(
                 Props(
                     type=b'FOND', id=family_id,
@@ -514,6 +518,12 @@ def _group_families(fonts):
         if len(set(chars)) > 1:
             logging.warning(
                 "Can't combine fonts into families: different character ranges."
+            )
+            return _group_individually(fonts)
+        spacings = set(_font.spacing for _font in group)
+        if len(set(spacings)) > 1:
+            logging.warning(
+                "Can't combine fonts into families: different spacing characteristics."
             )
             return _group_individually(fonts)
         style_groups = tuple(sorted(

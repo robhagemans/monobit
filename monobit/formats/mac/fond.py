@@ -385,17 +385,21 @@ def _convert_fond(
 ###############################################################################
 # FOND writer
 
-def create_fond(style_groups, nfnt_rec, family_id):
+def create_fond(style_groups, family_id):
     """
     Convert monobit properties to FOND.
     Requires NFNT data structure for largest font.
     """
-    # use last font in group as representative sample
-    # this is also separately chosen as the source of the nfnt_rec
+    # use last (largest) font in first group as representative sample
+    largest_per_style = tuple(
+        (_style_code, _font)
+        for _style_code, (*_, _font) in style_groups
+    )
+    _, sample_font = largest_per_style[0]
     # list of (style_id, list of fonts)
     # following FONDU/FontForge: 0x9000 for fixed, 0x1000 for proportional
     ff_flags = _FFLAGS(
-        fixed_width=nfnt_rec.fontType.fixed_width,
+        fixed_width=sample_font.spacing in ('character-cell', 'monospace'),
         # bit 14: This bit is set to 1 if the family fractional-width table is not used, and is cleared
         #         to 0 if the table is used.
         frac_width_unused=0,
@@ -418,18 +422,17 @@ def create_fond(style_groups, nfnt_rec, family_id):
         # {family ID number}
         ffFamID=family_id,
         # {ASCII code of first character}
-        ffFirstChar=nfnt_rec.firstChar,
+        ffFirstChar=int(min(sample_font.get_codepoints())),
         # {ASCII code of last character}
-        ffLastChar=nfnt_rec.lastChar,
+        ffLastChar=int(max(sample_font.get_codepoints())),
         # {maximum ascent for 1-pt font}
-        # CHECK DEFINITIONS
-        ffAscent=nfnt_rec.ascent,
+        ffAscent=_float_to_fixed(sample_font.ink_bounds.top / sample_font.bounding_box.y),
         # {maximum descent for 1-pt font}
-        ffDescent=nfnt_rec.descent,
+        ffDescent=_float_to_fixed(sample_font.ink_bounds.bottom / sample_font.bounding_box.y),
         # {maximum leading for 1-pt font}
-        ffLeading=nfnt_rec.leading,
+        ffLeading=_float_to_fixed(sample_font.line_height / sample_font.bounding_box.y - 1),
         # {maximum glyph width for 1-pt font}
-        ffWidMax=nfnt_rec.widMax,
+        ffWidMax=_float_to_fixed(sample_font.max_width / sample_font.bounding_box.y),
         # {style properties info}
         # extra width for text styles (fixed point value) - currently left at all 0s
         #ffProperty=be.uint16 * 9,
@@ -473,7 +476,7 @@ def create_fond(style_groups, nfnt_rec, family_id):
                         _font.get_glyph(_cp, missing='empty')
                         for _cp in range(fond_header.ffFirstChar, fond_header.ffLastChar+1)
                     ]
-                    + [_font.glyphs[-1], Glyph(scalable_width=_font.pixel_size)]
+                    + [_font.glyphs[-1], Glyph(scalable_width=_font.bounding_box.y)]
                 ))
                 for _font in _group
             )
@@ -521,7 +524,7 @@ def _create_bbx_table(style_groups):
     # we need one bounding box entry per style
     # metrics are scalable given as fixed-point fraction for a 1pt font
     # N.B. FONDU seems to just put integer pixel values here
-    bbx_list = [
+    bbx_list = tuple(
         _BBX_ENTRY(
             style=_style_code,
             left=_float_to_fixed(_font.ink_bounds.left / _font.point_size),
@@ -531,7 +534,7 @@ def _create_bbx_table(style_groups):
         )
         # use last (largest) font for each style
         for _style_code, (*_, _font) in style_groups
-    ]
+    )
     bbx_entries = (_BBX_ENTRY * len(bbx_list))(*bbx_list)
     bbx_bytes = bytes(bbx_header) + bytes(bbx_entries)
     return bbx_bytes
@@ -544,7 +547,7 @@ def _create_width_table(style_groups):
         (
             _WIDTH_ENTRY(widStyle=_style_id),
             _FIXED_TYPE.array(len(_group[-1].glyphs))(*(
-                _float_to_fixed(_g.scalable_width / _group[-1].pixel_size)
+                _float_to_fixed(_g.scalable_width / _group[-1].bounding_box.y)
                 for _g in _group[-1].glyphs
             ))
         )
@@ -652,14 +655,14 @@ def _create_kerning_table(style_groups):
     ktab_bytes = bytearray(bytes(ktab))
     for style_id, group in style_groups:
         # NOTE that the format assumes one kerning table per style,
-        # which is linearly scaled by pixel_size
+        # which is linearly scaled by bounding_box.y
         sample_font = group[-1]
         kerning_pairs = [
             _KERN_PAIR(
                 kernFirst=int(_g.codepoint),
                 kernSecond=int(sample_font.get_glyph(_label).codepoint),
                 # kerning value in 1pt fixed format
-                kernWidth=_float_to_fixed(_value / sample_font.pixel_size),
+                kernWidth=_float_to_fixed(_value / sample_font.bounding_box.y),
             )
             for _g in sample_font.glyphs
             for _label, _value in _g.right_kerning.items()
@@ -668,7 +671,7 @@ def _create_kerning_table(style_groups):
                 kernFirst=int(sample_font.get_glyph(_label).codepoint),
                 kernSecond=int(_g.codepoint),
                 # kerning value in 1pt fixed format
-                kernWidth=_float_to_fixed(_value / sample_font.pixel_size),
+                kernWidth=_float_to_fixed(_value / sample_font.bounding_box.y),
             )
             for _g in sample_font.glyphs
             for _label, _value in _g.left_kerning.items()

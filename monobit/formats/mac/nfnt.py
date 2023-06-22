@@ -407,7 +407,7 @@ def _convert_nfnt(properties, glyphs, fontrec):
 # NFNT writer
 
 
-def _subset(font):
+def subset_for_nfnt(font):
     """Subset to glyphs storable in NFNT and append default glyph."""
     font = font.label(codepoint_from=font.encoding)
     if font.encoding in ('mac-roman', 'mac-symbol', 'raw', '', None):
@@ -420,7 +420,7 @@ def _subset(font):
     subfont = font.subset(labels=labels)
     if not subfont.glyphs:
         raise FileFormatError('No suitable characters for NFNT font')
-    glyphs = [*subfont.glyphs, font.get_default_glyph()]
+    glyphs = [*subfont.glyphs, font.get_default_glyph().modify(labels=(), tag='missing')]
     font = font.modify(glyphs, encoding=None)
     font = font.label(codepoint_from='mac-roman', overwrite=True)
     return font
@@ -472,8 +472,6 @@ def convert_to_nfnt(font, endian, ndescent_is_high):
     FontType = NFNTHeader.element_types['fontType']
     LocEntry = loc_entry_struct(base)
     WOEntry = wo_entry_struct(base)
-    # subset the font. we need a font structure to calculate ink bounds
-    font = _subset(font)
     font, kern = _normalize_metrics(font)
     # build the font-strike data
     strike_raster = Raster.concatenate(*(_g.pixels for _g in font.glyphs))
@@ -481,15 +479,15 @@ def convert_to_nfnt(font, endian, ndescent_is_high):
     strike_raster = strike_raster.expand(right=16-(strike_raster.width%16))
     font_strike = strike_raster.as_bytes()
     # get contiguous glyph list
-    glyphs = font.glyphs
-    first_char = int(glyphs[0].codepoint)
-    last_char = int(glyphs[-2].codepoint)
+    # subset_for_nfnt has sorted on codepoint and added a 'missing' glyph
+    first_char = int(min(font.get_codepoints()))
+    last_char = int(max(font.get_codepoints()))
     empty = Glyph(wo_offset=255, wo_width=255)
     glyph_table = [
         font.get_glyph(codepoint=_code, missing=empty)
         for _code in range(first_char, last_char+1)
     ]
-    missing = glyphs[-1]
+    missing = font.glyphs[-1]
     glyph_table.append(missing)
     # build the width-offset table
     wo_table = b''.join(
@@ -517,11 +515,10 @@ def convert_to_nfnt(font, endian, ndescent_is_high):
         ),
         firstChar=first_char,
         lastChar=last_char,
-        widMax=max(_g.advance_width for _g in glyphs),
+        widMax=font.max_width,
         kernMax=-kern,
         nDescent=font.ink_bounds.bottom,
         # font rectangle == font bounding box
-        #max(_g.width + _g.left_bearing + kern for _g in glyphs),
         fRectWidth=font.bounding_box.x,
         fRectHeight=font.bounding_box.y,
         # word offset to width/offset table
@@ -543,7 +540,7 @@ def convert_to_nfnt(font, endian, ndescent_is_high):
     # for IIgs header
     fbr_extent = max(
         _g.width + _g.left_bearing + max(_g.right_bearing, 0)
-        for _g in glyphs
+        for _g in font.glyphs
     )
     return fontrec, font_strike, loc_table, wo_table, owt_loc_high, fbr_extent
 
@@ -560,6 +557,8 @@ def nfnt_data_to_bytes(fontrec, font_strike, loc_table, wo_table, owt_loc_high):
 
 def create_nfnt(font, endian, ndescent_is_high):
     """Create NFNT/FONT resource."""
+    # subset to characters storable in NFNT
+    font = subset_for_nfnt(font)
     nfnt_data = convert_to_nfnt(font, endian, ndescent_is_high)
     fontrec, font_strike, loc_table, wo_table, owt_loc_high, fbr_extent = nfnt_data
     data = nfnt_data_to_bytes(fontrec, font_strike, loc_table, wo_table, owt_loc_high)
