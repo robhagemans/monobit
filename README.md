@@ -123,7 +123,7 @@ Supported bitmap formats
 | Bare codepage         | `kbd`      | `.cp`                       | ✔     | ✔     |
 | REXXCOM Font Mania    | `mania`    | `.com`                      | ✔     |       |
 | LISA font library     | `lisa`     | `.bin`                      | ✔     |       |
-| MacOS font            | `mac`      | `.dfont` `.suit`            | ✔     |       |
+| MacOS font            | `mac`      | `.dfont` `.suit`            | ✔     | ✔     |
 | mkwinfon text format  | `mkwinfon` | `.fd`                       | ✔     |       |
 | X11 Portable Compiled Format |  `pcf` | `.pcf`                   | ✔     | ✔     |
 | Xerox Alto PrePress   | `prepress` | `.ac`                       | ✔     |       |
@@ -204,8 +204,8 @@ Here is a comparison of what you can and cannot store in selected formats suppor
 | `yaff`        | ✔ | ✔ | ✔ | ✔ | ✔ | any  | ✔ | ✔ |   | visual text
 | `sfnt`        | ✔ | ✔ | ✔ | ✔ | ✔ | any  | ✔ | ✔ | ✔ | binary
 | `bmfont`      | ✔ |   | ✔ | ✔ |   | any  | ✔ | ✔ | ✔ | image
+| `mac`         |   |   | ✔ | ✔ | ✔ | any  | ✔ | ✔ | ✔ | binary
 | `bdf`         | ✔ |   | ✔ | ✔ |   | any  | ✔ |   |   | hex
-| `nfnt`        |   |   | ✔ | ✔ | ✔ | any  | ✔ | ✔ | ✔ | binary
 | `win`         |   |   | ✔ | ✔ | ✔ | any  | ✔ |   |   | binary
 | `hexdraw`     | ✔ |   |   |   |   | any  | ✔ |   |   | visual text
 | `amiga`       |   |   |   |   | ✔ | any  | ✔ |   | ✔ | binary
