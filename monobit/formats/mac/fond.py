@@ -457,8 +457,8 @@ def create_fond(style_groups, nfnt_rec, family_id):
     )
     # following FONDU, just increment from the family id.
     # not sure if/how this avoids ID collisions
+    # NOTE this is calculated separately for NFNT's rsrc id
     for i, entry in enumerate(fa_list):
-        # TODO this should be NFNT's rsrc id
         entry.fontID = family_id + i
     fa_list = (_FA_ENTRY * len(fa_list))(*fa_list)
     fa_header = _FA_HEADER(numAssoc=len(fa_list)-1)
