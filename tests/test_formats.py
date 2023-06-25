@@ -545,7 +545,7 @@ class TestFormats(BaseTester):
         self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
 
     def test_export_sbit(self):
-        """Test exporting dfont files with bitamp sfnt resource."""
+        """Test exporting dfont files with bitmap sfnt resource."""
         file = self.temp_path / '4x6.dfont'
         monobit.save(self.fixed4x6, file, resource_type='sfnt')
         font, *_ = monobit.load(file)

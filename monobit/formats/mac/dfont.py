@@ -19,7 +19,7 @@ from ...pack import Pack
 from ..sfnt import load_sfnt, save_sfnt, MAC_ENCODING, STYLE_MAP
 from .nfnt import (
     _extract_nfnt, _convert_nfnt,
-    subset_for_nfnt, convert_to_nfnt, nfnt_data_to_bytes
+    subset_for_nfnt, convert_to_nfnt, nfnt_data_to_bytes, generate_nfnt_header
 )
 from .fond import _extract_fond, _convert_fond, create_fond
 
@@ -307,50 +307,54 @@ def save_dfont(fonts, outstream, resource_type):
     """
     Save font to MacOS resource fork or data-fork resource.
 
-    resource_type: type of resource to store font in. One of `sfnt`, `NFNT`, `FONT`.
+    resource_type: type of resource to store font in. One of `sfnt`, `NFNT`.
     """
-    if resource_type.lower() == 'sfnt':
+    resource_type = resource_type.lower()
+    if resource_type not in ('sfnt', 'nfnt'):
+        raise ValueError(
+            'Only saving to sfnt or NFNT resource currently supported'
+        )
+    resources = []
+    if resource_type == 'sfnt':
         sfnt_io = BytesIO()
         result = save_sfnt(fonts, sfnt_io)
         font, *_ = fonts
         family_id = _get_family_id(font.family, font.encoding)
-        resources = [
+        resources.append(
             Props(type=b'sfnt', id=family_id, name='', data=sfnt_io.getvalue()),
-        ]
-    elif resource_type.upper() == 'NFNT':
-        resources = []
-        # we need a Pack for _group_families
-        fonts = Pack(subset_for_nfnt(_f) for _f in fonts)
-        for family_id, style_group in _group_families(fonts):
-            i = 0
-            for style_id, size_group in style_group:
-                for font in size_group:
+        )
+    # we need a Pack for _group_families
+    fonts = Pack(subset_for_nfnt(_f) for _f in fonts)
+    for family_id, style_group in _group_families(fonts):
+        i = 0
+        for style_id, size_group in style_group:
+            for font in size_group:
+                if resource_type == 'sfnt':
+                    fontrec = generate_nfnt_header(font, endian='big')
+                    nfnt_bytes = bytes(fontrec)
+                else:
                     fontrec, font_strike, loc_table, wo_table, owt_loc_high, _ = (
                         convert_to_nfnt(font, endian='big', ndescent_is_high=True)
                     )
-                    nfnt_data = nfnt_data_to_bytes(
+                    nfnt_bytes = nfnt_data_to_bytes(
                         fontrec, font_strike, loc_table, wo_table, owt_loc_high
                     )
-                    resources.append(
-                        Props(
-                            type=b'NFNT',
-                            # note that we calculate this *separately* in the FOND builder
-                            id=family_id + i,
-                            # are there any specifications for the name?
-                            name=font.name, data=nfnt_data,
-                        ),
-                    )
-                    i += 1
-            fond_data = create_fond(style_group, family_id)
-            resources.append(
-                Props(
-                    type=b'FOND', id=family_id,
-                    name=font.family, data=fond_data,
-                ),
-            )
-    else:
-        raise ValueError(
-            'Only saving to sfnt or NFNT resource currently supported'
+                resources.append(
+                    Props(
+                        type=b'NFNT',
+                        # note that we calculate this *separately* in the FOND builder
+                        id=family_id + i,
+                        # are there any specifications for the name?
+                        name=font.name, data=nfnt_bytes,
+                    ),
+                )
+                i += 1
+        fond_data = create_fond(style_group, family_id)
+        resources.append(
+            Props(
+                type=b'FOND', id=family_id,
+                name=font.family, data=fond_data,
+            ),
         )
     _write_resource_fork(outstream, resources)
 
