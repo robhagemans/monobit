@@ -346,22 +346,17 @@ def save_dfont(fonts, outstream, resource_type):
             for font in size_group:
                 if resource_type == 'sfnt':
                     # create stub NFNT if the bitmaps are in an sfnt
-                    fontrec = generate_nfnt_header(font, endian='big')
-                    nfnt_bytes = bytes(fontrec)
+                    nfnt_data = generate_nfnt_header(font, endian='big')
                 else:
-                    fontrec, font_strike, loc_table, wo_table, owt_loc_high, _ = (
-                        convert_to_nfnt(font, endian='big', ndescent_is_high=True)
-                    )
-                    nfnt_bytes = nfnt_data_to_bytes(
-                        fontrec, font_strike, loc_table, wo_table, owt_loc_high
-                    )
+                    nfnt_data = convert_to_nfnt(font, endian='big', ndescent_is_high=True)
                 resources.append(
                     Props(
                         type=b'NFNT',
                         # note that we calculate this *separately* in the FOND builder
                         id=family_id + i,
                         # are there any specifications for the name?
-                        name=font.name, data=nfnt_bytes,
+                        name=font.name,
+                        data=nfnt_data_to_bytes(nfnt_data),
                     ),
                 )
                 i += 1

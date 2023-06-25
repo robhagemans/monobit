@@ -20,6 +20,7 @@ from ...magic import FileFormatError
 from ...labels import Char
 from ...encoding import charmaps
 from ...raster import Raster
+from ...properties import Props
 
 from .fond import _fixed_to_float
 
@@ -409,6 +410,15 @@ def _convert_nfnt(properties, glyphs, fontrec):
 ###############################################################################
 # NFNT writer
 
+def create_nfnt(font, endian, ndescent_is_high):
+    """Create NFNT/FONT resource."""
+    # subset to characters storable in NFNT
+    font = subset_for_nfnt(font)
+    nfnt_data = convert_to_nfnt(font, endian, ndescent_is_high)
+    data = nfnt_data_to_bytes(nfnt_data)
+    return data, nfnt_data.owt_loc_high, nfnt_data.fbr_extent
+
+
 def subset_for_nfnt(font):
     """Subset to glyphs storable in NFNT and append default glyph."""
     font = font.label(codepoint_from=font.encoding)
@@ -482,64 +492,6 @@ def _calculate_nfnt_glyph_metrics(glyphs):
     return glyphs
 
 
-def convert_to_nfnt(font, endian, ndescent_is_high):
-    """Convert monobit font to NFNT/FONT data structures."""
-    # fontType is ignored
-    # glyph-width table and image-height table not included
-    base = {'b': be, 'l': le}[endian[:1].lower()]
-    LocEntry = loc_entry_struct(base)
-    WOEntry = wo_entry_struct(base)
-    font = _normalize_metrics(font)
-    # build the font-strike data
-    strike_raster = Raster.concatenate(*(_g.pixels for _g in font.glyphs))
-    # word-align strike
-    strike_raster = strike_raster.expand(right=16-(strike_raster.width%16))
-    font_strike = strike_raster.as_bytes()
-    # get contiguous glyph list
-    # subset_for_nfnt has sorted on codepoint and added a 'missing' glyph
-    first_char = int(min(font.get_codepoints()))
-    last_char = int(max(font.get_codepoints()))
-    glyph_table = [
-        font.get_glyph(codepoint=_code, missing=None)
-        for _code in range(first_char, last_char+1)
-    ]
-    # reappend 'missing' glyph
-    glyph_table.append(font.glyphs[-1])
-    # calculate glyph metrics and fill in empties
-    glyph_table = _calculate_nfnt_glyph_metrics(glyph_table)
-    # build the width-offset table
-    empty = Glyph(wo_offset=255, wo_width=255)
-    wo_table = b''.join(
-        # glyph.wo_width and .wo_offset set in normalise_metrics
-        bytes(WOEntry(width=_g.wo_width, offset=_g.wo_offset))
-        # extra empty entry needed at the end.
-        for _g in chain(glyph_table, [empty])
-    )
-    # build the location table
-    loc_table = b''.join(
-        bytes(LocEntry(offset=_offset))
-        for _offset in accumulate((_g.width for _g in glyph_table), initial=0)
-    )
-    fontrec = generate_nfnt_header(font, endian)
-    # word offset to width/offset table
-    # owTLoc is the offset from the field itself
-    # the remaining size of the header including owTLoc is 5 words
-    owt_loc = (len(font_strike) + len(loc_table) + 10) >> 1
-    fontrec.owTLoc = owt_loc & 0xffff
-    owt_loc_high = owt_loc >> 16
-    if ndescent_is_high and owt_loc_high:
-        fontrec.nDescent = owt_loc_high
-    # fill in the rowWords, indicating that we do have a strike.
-    fontrec.rowWords = strike_raster.width // 16
-    # fbr = max width from origin (including whitespace) and right kerned pixels
-    # for IIgs header
-    fbr_extent = max(
-        _g.width + _g.left_bearing + max(_g.right_bearing, 0)
-        for _g in font.glyphs
-    )
-    return fontrec, font_strike, loc_table, wo_table, owt_loc_high, fbr_extent
-
-
 def generate_nfnt_header(font, endian):
     """Generate a bare NFNT header with no bitmaps yet."""
     base = {'b': be, 'l': le}[endian[:1].lower()]
@@ -583,24 +535,81 @@ def generate_nfnt_header(font, endian):
         rowWords=0,
     )
     logging.debug('NFNT header: %s', fontrec)
-    return fontrec
+    return Props(
+        fontrec=fontrec, font_strike=b'', loc_table=b'', wo_table=b'',
+    )
 
 
-def nfnt_data_to_bytes(fontrec, font_strike, loc_table, wo_table, owt_loc_high):
+def convert_to_nfnt(font, endian, ndescent_is_high):
+    """Convert monobit font to NFNT/FONT data structures."""
+    # fontType is ignored
+    # glyph-width table and image-height table not included
+    base = {'b': be, 'l': le}[endian[:1].lower()]
+    LocEntry = loc_entry_struct(base)
+    WOEntry = wo_entry_struct(base)
+    font = _normalize_metrics(font)
+    # build the font-strike data
+    strike_raster = Raster.concatenate(*(_g.pixels for _g in font.glyphs))
+    # word-align strike
+    strike_raster = strike_raster.expand(right=16-(strike_raster.width%16))
+    font_strike = strike_raster.as_bytes()
+    # get contiguous glyph list
+    # subset_for_nfnt has sorted on codepoint and added a 'missing' glyph
+    first_char = int(min(font.get_codepoints()))
+    last_char = int(max(font.get_codepoints()))
+    glyph_table = [
+        font.get_glyph(codepoint=_code, missing=None)
+        for _code in range(first_char, last_char+1)
+    ]
+    # reappend 'missing' glyph
+    glyph_table.append(font.glyphs[-1])
+    # calculate glyph metrics and fill in empties
+    glyph_table = _calculate_nfnt_glyph_metrics(glyph_table)
+    # build the width-offset table
+    empty = Glyph(wo_offset=255, wo_width=255)
+    wo_table = b''.join(
+        # glyph.wo_width and .wo_offset set in normalise_metrics
+        bytes(WOEntry(width=_g.wo_width, offset=_g.wo_offset))
+        # extra empty entry needed at the end.
+        for _g in chain(glyph_table, [empty])
+    )
+    # build the location table
+    loc_table = b''.join(
+        bytes(LocEntry(offset=_offset))
+        for _offset in accumulate((_g.width for _g in glyph_table), initial=0)
+    )
+    fontrec = generate_nfnt_header(font, endian).fontrec
+    # word offset to width/offset table
+    # owTLoc is the offset from the field itself
+    # the remaining size of the header including owTLoc is 5 words
+    owt_loc = (len(font_strike) + len(loc_table) + 10) >> 1
+    fontrec.owTLoc = owt_loc & 0xffff
+    owt_loc_high = owt_loc >> 16
+    if ndescent_is_high and owt_loc_high:
+        fontrec.nDescent = owt_loc_high
+    # fill in the rowWords, indicating that we do have a strike.
+    fontrec.rowWords = strike_raster.width // 16
+    # fbr = max width from origin (including whitespace) and right kerned pixels
+    # for IIgs header
+    fbr_extent = max(
+        _g.width + _g.left_bearing + max(_g.right_bearing, 0)
+        for _g in font.glyphs
+    )
+    return Props(
+        fontrec=fontrec,
+        font_strike=font_strike,
+        loc_table=loc_table,
+        wo_table=wo_table,
+        owt_loc_high=owt_loc_high,
+        fbr_extent=fbr_extent,
+    )
+
+
+def nfnt_data_to_bytes(nfnt_data):
     """Convert NFNT/FONT dtata structure to binary representation."""
     return b''.join((
-        bytes(fontrec),
-        font_strike,
-        loc_table,
-        wo_table
+        bytes(nfnt_data.fontrec),
+        nfnt_data.font_strike,
+        nfnt_data.loc_table,
+        nfnt_data.wo_table
     ))
-
-
-def create_nfnt(font, endian, ndescent_is_high):
-    """Create NFNT/FONT resource."""
-    # subset to characters storable in NFNT
-    font = subset_for_nfnt(font)
-    nfnt_data = convert_to_nfnt(font, endian, ndescent_is_high)
-    fontrec, font_strike, loc_table, wo_table, owt_loc_high, fbr_extent = nfnt_data
-    data = nfnt_data_to_bytes(fontrec, font_strike, loc_table, wo_table, owt_loc_high)
-    return data, owt_loc_high, fbr_extent
