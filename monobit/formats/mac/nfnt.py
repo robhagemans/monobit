@@ -406,7 +406,6 @@ def _convert_nfnt(properties, glyphs, fontrec):
 ###############################################################################
 # NFNT writer
 
-
 def subset_for_nfnt(font):
     """Subset to glyphs storable in NFNT and append default glyph."""
     font = font.label(codepoint_from=font.encoding)
@@ -451,24 +450,33 @@ def _normalize_glyph(g, ink_bounds):
 
 
 def _normalize_metrics(font):
-    """Calculate metrics for NFNT format."""
-    # reduce to ink bounds horizontally, font ink bounds vertically
+    """Reduce to ink bounds horizontally, font ink bounds vertically."""
     glyphs = tuple(_normalize_glyph(_g, font.ink_bounds) for _g in font.glyphs)
+    font = font.modify(glyphs)
+    return font
+
+
+def _calculate_nfnt_glyph_metrics(glyphs):
+    """Calculate metrics for NFNT format."""
     # calculate kerning. only negative kerning is handled
-    kern = min(_g.left_bearing for _g in glyphs)
+    kern = min(_g.left_bearing for _g in glyphs if _g)
     kern = max(0, -kern)
     # add apple metrics to glyphs
     glyphs = tuple(
-        _g.modify(wo_offset=_g.left_bearing+kern, wo_width=_g.advance_width)
+        (
+            None if _g is None else
+            _g.modify(wo_offset=_g.left_bearing+kern, wo_width=_g.advance_width)
+        )
         for _g in glyphs
     )
     # check that glyph widths and offsets fit
-    if any(_g.wo_width >= 255 for _g in glyphs):
+    if any(_g.wo_width >= 255 for _g in glyphs if _g):
         raise FileFormatError('NFNT character width must be < 255')
-    if any(_g.wo_offset >= 255 for _g in glyphs):
+    if any(_g.wo_offset >= 255 for _g in glyphs if _g):
         raise FileFormatError('NFNT character offset must be < 255')
-    font = font.modify(glyphs)
-    return font, kern
+    empty = Glyph(wo_offset=255, wo_width=255)
+    glyphs = tuple(empty if _g is None else _g for _g in glyphs)
+    return glyphs, kern
 
 
 def convert_to_nfnt(font, endian, ndescent_is_high):
@@ -476,11 +484,9 @@ def convert_to_nfnt(font, endian, ndescent_is_high):
     # fontType is ignored
     # glyph-width table and image-height table not included
     base = {'b': be, 'l': le}[endian[:1].lower()]
-    NFNTHeader = nfnt_header_struct(base)
-    FontType = NFNTHeader.element_types['fontType']
     LocEntry = loc_entry_struct(base)
     WOEntry = wo_entry_struct(base)
-    font, kern = _normalize_metrics(font)
+    font = _normalize_metrics(font)
     # build the font-strike data
     strike_raster = Raster.concatenate(*(_g.pixels for _g in font.glyphs))
     # word-align strike
@@ -490,18 +496,20 @@ def convert_to_nfnt(font, endian, ndescent_is_high):
     # subset_for_nfnt has sorted on codepoint and added a 'missing' glyph
     first_char = int(min(font.get_codepoints()))
     last_char = int(max(font.get_codepoints()))
-    empty = Glyph(wo_offset=255, wo_width=255)
     glyph_table = [
-        font.get_glyph(codepoint=_code, missing=empty)
+        font.get_glyph(codepoint=_code, missing=None)
         for _code in range(first_char, last_char+1)
     ]
-    missing = font.glyphs[-1]
-    glyph_table.append(missing)
+    # reappend 'missing' glyph
+    glyph_table.append(font.glyphs[-1])
+    # calculate glyph metrics and fill in empties
+    glyph_table, kern = _calculate_nfnt_glyph_metrics(glyph_table)
     # build the width-offset table
+    empty = Glyph(wo_offset=255, wo_width=255)
     wo_table = b''.join(
         # glyph.wo_width and .wo_offset set in normalise_metrics
         bytes(WOEntry(width=_g.wo_width, offset=_g.wo_offset))
-        # empty entry needed at the end.
+        # extra empty entry needed at the end.
         for _g in chain(glyph_table, [empty])
     )
     # build the location table
@@ -509,9 +517,34 @@ def convert_to_nfnt(font, endian, ndescent_is_high):
         bytes(LocEntry(offset=_offset))
         for _offset in accumulate((_g.width for _g in glyph_table), initial=0)
     )
+    fontrec = generate_nfnt_header(font, endian, kern)
+    # word offset to width/offset table
     # owTLoc is the offset from the field itself
     # the remaining size of the header including owTLoc is 5 words
     owt_loc = (len(font_strike) + len(loc_table) + 10) >> 1
+    fontrec.owTLoc = owt_loc & 0xffff
+    owt_loc_high = owt_loc >> 16
+    if ndescent_is_high and owt_loc_high:
+        fontrec.nDescent = owt_loc_high
+    # fill in the rowWords, indicating that we do have a strike.
+    fontrec.rowWords = strike_raster.width // 16
+    # fbr = max width from origin (including whitespace) and right kerned pixels
+    # for IIgs header
+    fbr_extent = max(
+        _g.width + _g.left_bearing + max(_g.right_bearing, 0)
+        for _g in font.glyphs
+    )
+    return fontrec, font_strike, loc_table, wo_table, owt_loc_high, fbr_extent
+
+
+def generate_nfnt_header(font, endian, kern):
+    """Generate a bare NFNT header with no bitmaps yet."""
+    base = {'b': be, 'l': le}[endian[:1].lower()]
+    NFNTHeader = nfnt_header_struct(base)
+    FontType = NFNTHeader.element_types['fontType']
+    # subset_for_nfnt has sorted on codepoint and added a 'missing' glyph
+    first_char = int(min(font.get_codepoints()))
+    last_char = int(max(font.get_codepoints()))
     # generate NFNT header
     fontrec = NFNTHeader(
         # this seems to be always 0x9000, 0xb000
@@ -524,13 +557,15 @@ def convert_to_nfnt(font, endian, ndescent_is_high):
         firstChar=first_char,
         lastChar=last_char,
         widMax=font.max_width,
+        # TODO: should this be negative again?
         kernMax=-kern,
         nDescent=font.ink_bounds.bottom,
         # font rectangle == font bounding box
         fRectWidth=font.bounding_box.x,
         fRectHeight=font.bounding_box.y,
         # word offset to width/offset table
-        owTLoc=owt_loc & 0xffff,
+        # keep 0 for empty NFNT
+        owTLoc=0,
         # docs define fRectHeight = ascent + descent
         # and generally suggest ascent and descent equal ink bounds
         # that's also monobit's *default* ascent & descent but is overridable
@@ -538,19 +573,11 @@ def convert_to_nfnt(font, endian, ndescent_is_high):
         descent=-font.ink_bounds.bottom,
         # define leading in terms of bounding box, not pixel-height
         leading=font.line_height - font.bounding_box.y,
-        rowWords=strike_raster.width // 16,
+        # rowWords is 0 for empty NFNT, strike width in words for NFNT with bitmaps.
+        rowWords=0,
     )
-    owt_loc_high = owt_loc >> 16
-    if ndescent_is_high and owt_loc_high:
-        fontrec.nDescent = owt_loc_high
     logging.debug('NFNT header: %s', fontrec)
-    # fbr = max width from origin (including whitespace) and right kerned pixels
-    # for IIgs header
-    fbr_extent = max(
-        _g.width + _g.left_bearing + max(_g.right_bearing, 0)
-        for _g in font.glyphs
-    )
-    return fontrec, font_strike, loc_table, wo_table, owt_loc_high, fbr_extent
+    return fontrec
 
 
 def nfnt_data_to_bytes(fontrec, font_strike, loc_table, wo_table, owt_loc_high):
