@@ -364,6 +364,7 @@ def _convert_nfnt(properties, glyphs, fontrec):
     # store kerning table
     # last as this needs to refer to codepoint labels
     kerning_table = properties.pop('kerning-table', None)
+    twos_complement = properties.pop('twos-complement', True)
     if kerning_table:
         # > Kerning distance. The kerning distance, in pixels, for the two glyphs
         # > at a point size of 1. This is a 16-bit fixed point value, with the
@@ -373,7 +374,9 @@ def _convert_nfnt(properties, glyphs, fontrec):
         kern_table = sorted(
             (
                 _entry.kernFirst, _entry.kernSecond,
-                _fixed_to_float(_entry.kernWidth) * properties['point_size']
+                properties['point_size'] * _fixed_to_float(
+                    _entry.kernWidth, twos_complement=twos_complement
+                )
             )
             for _entry in kerning_table
         )

@@ -117,13 +117,18 @@ _FIXED_TYPE = be.int16
 # of course, both conventions are used:
 # Palatino uses convention (2) while Helvetica uses (1).
 
-# we use a heuristic assuming 1-point kerning values are small (less than 4)
-# this would fail only when a glyph is kerned more thans 4 pixels *per point in point-size*
-def _fixed_to_float(fixed):
+# according to Adobe's 091.Mac_Fond.pdf (p.8):
+# > If the value of this word is 2 or greater, then
+# > negative numbers in the FOND resource are kept
+# > as 2’s complement; font version 0 and 1 have 1’s
+# > complement negative values.
+# Palatino (1's complement) has ffVersion=0, Helvetica and Times (2's complement) have ffVersion=3
+# mnany have ffVersion=1 but no kerning table
+
+def _fixed_to_float(fixed, twos_complement=True):
     # fixed is the input 2's complement 16-bit signed integer
-    if fixed < 0 and (-fixed & 0x4000):
-        # bit 14 is set - number is too large
-        # convert back from 2's complement
+    if not twos_complement:
+        # convert back from 2's complement (interpreted by the C struct reader)
         fixed = 0x10000 + fixed
         # unset sign bit
         fixed = 0x7fff & fixed
@@ -357,13 +362,16 @@ def _convert_fond(
     info = {
         # rsrc_id
         fa_entry.fontID: {
+            # monobit properties
             'family': name,
             'style': mac_style_name(fa_entry.fontStyle),
             'point_size': fa_entry.fontSize,
             #'spacing': 'monospace' if fond_header.ffFlags.fixed_width else 'proportional',
             'encoding': encoding,
+            # for use by NFNT parser
             'kerning-table': kerning_table.get(fa_entry.fontStyle, ()),
             'encoding-table': encoding_table,
+            'twos-complement': fond_header.ffVersion >= 2,
         }
         for fa_entry in fa_list
     }
