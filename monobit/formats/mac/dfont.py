@@ -348,7 +348,10 @@ def save_dfont(fonts, outstream, resource_type):
                     # create stub NFNT if the bitmaps are in an sfnt
                     nfnt_data = generate_nfnt_header(font, endian='big')
                 else:
-                    nfnt_data = convert_to_nfnt(font, endian='big', ndescent_is_high=True)
+                    nfnt_data = convert_to_nfnt(
+                        font, endian='big', ndescent_is_high=True,
+                        create_width_table=True,
+                    )
                 resources.append(
                     Props(
                         type=b'NFNT',

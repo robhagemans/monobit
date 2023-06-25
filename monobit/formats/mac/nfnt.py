@@ -224,15 +224,14 @@ def _extract_nfnt(data, offset, endian='big', owt_loc_high=0, font_type=None):
     wo_table = WOEntry.array(n_chars).from_bytes(data, offset + 16 + wo_offset)
     # scalable width table
     width_offset = wo_offset + WOEntry.size * n_chars
+    height_offset = width_offset
     if fontrec.fontType.has_width_table:
         width_table = WidthEntry.array(n_chars).from_bytes(data, width_offset)
+        height_offset += WidthEntry.size * n_chars
     # image height table: this can be deduced from the bitmaps
     # https://developer.apple.com/library/archive/documentation/mac/Text/Text-250.html#MARKER-9-414
     # > The Font Manager creates this table.
     if fontrec.fontType.has_height_table:
-        height_offset = width_offset
-        if fontrec.fontType.has_width_table:
-            height_offset += WidthEntry.size * n_chars
         height_table = HeightEntry.array(n_chars).from_bytes(data, height_offset)
     # parse bitmap strike
     bitmap_strike = bytes_to_bits(strike)
@@ -410,11 +409,11 @@ def _convert_nfnt(properties, glyphs, fontrec):
 ###############################################################################
 # NFNT writer
 
-def create_nfnt(font, endian, ndescent_is_high):
+def create_nfnt(font, endian, ndescent_is_high, create_width_table):
     """Create NFNT/FONT resource."""
     # subset to characters storable in NFNT
     font = subset_for_nfnt(font)
-    nfnt_data = convert_to_nfnt(font, endian, ndescent_is_high)
+    nfnt_data = convert_to_nfnt(font, endian, ndescent_is_high, create_width_table)
     data = nfnt_data_to_bytes(nfnt_data)
     return data, nfnt_data.owt_loc_high, nfnt_data.fbr_extent
 
@@ -536,17 +535,19 @@ def generate_nfnt_header(font, endian):
     )
     logging.debug('NFNT header: %s', fontrec)
     return Props(
-        fontrec=fontrec, font_strike=b'', loc_table=b'', wo_table=b'',
+        fontrec=fontrec,
+        font_strike=b'', loc_table=b'', wo_table=b'', width_table=b'',
     )
 
 
-def convert_to_nfnt(font, endian, ndescent_is_high):
+def convert_to_nfnt(font, endian, ndescent_is_high, create_width_table):
     """Convert monobit font to NFNT/FONT data structures."""
     # fontType is ignored
     # glyph-width table and image-height table not included
     base = {'b': be, 'l': le}[endian[:1].lower()]
     LocEntry = loc_entry_struct(base)
     WOEntry = wo_entry_struct(base)
+    WidthEntry = width_entry_struct(base)
     font = _normalize_metrics(font)
     # build the font-strike data
     strike_raster = Raster.concatenate(*(_g.pixels for _g in font.glyphs))
@@ -578,7 +579,18 @@ def convert_to_nfnt(font, endian, ndescent_is_high):
         bytes(LocEntry(offset=_offset))
         for _offset in accumulate((_g.width for _g in glyph_table), initial=0)
     )
+    # build the glyph-width table
+    if create_width_table:
+        width_table = b''.join(
+            bytes(WidthEntry(width=int(round(_g.scalable_width * 256))))
+            for _g in glyph_table
+        )
+    else:
+        width_table = b''
+    # generate base fontrec
     fontrec = generate_nfnt_header(font, endian).fontrec
+    if create_width_table:
+        fontrec.fontType.has_width_table = True
     # word offset to width/offset table
     # owTLoc is the offset from the field itself
     # the remaining size of the header including owTLoc is 5 words
@@ -600,6 +612,7 @@ def convert_to_nfnt(font, endian, ndescent_is_high):
         font_strike=font_strike,
         loc_table=loc_table,
         wo_table=wo_table,
+        width_table=width_table,
         owt_loc_high=owt_loc_high,
         fbr_extent=fbr_extent,
     )
@@ -611,5 +624,6 @@ def nfnt_data_to_bytes(nfnt_data):
         bytes(nfnt_data.fontrec),
         nfnt_data.font_strike,
         nfnt_data.loc_table,
-        nfnt_data.wo_table
+        nfnt_data.wo_table,
+        nfnt_data.width_table,
     ))
