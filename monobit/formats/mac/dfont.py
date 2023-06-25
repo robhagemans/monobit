@@ -302,6 +302,20 @@ def _convert_mac_font(parsed_rsrc, info, formatstr):
 ###############################################################################
 # dfont writer
 
+# from FontForge notes https://fontforge.org/docs/techref/macformats.html :
+# > When an ‘sfnt’ resource contains a font with a multibyte encoding (CJK or
+# > unicode) then the ‘FOND’ does not have entries for all the characters. The
+# > ‘sfnt’ will (always?) have a MacRoman encoding as well as the multibyte encoding
+# > and the ‘FOND’ will contain information on just that subset of the font. (I have
+# > determined this empirically, I have seen no documentation on the subject)
+#
+# > Currently bitmap fonts for multibyte encodings are stored inside an sfnt
+# > (truetype) resource in the ‘bloc’ and ‘bdat’ tables. When this happens there are
+# > a series of dummy ‘NFNT’ resources in the resource file, one for each strike.
+# > Each resource is 26 bytes long (which means they contain the FontRec structure
+# > but no data tables) and are flagged by having rowWords set to 0. (I have
+# > determined this empirically, I have seen no documentation on the subject)
+
 
 def save_dfont(fonts, outstream, resource_type):
     """
@@ -323,6 +337,7 @@ def save_dfont(fonts, outstream, resource_type):
         resources.append(
             Props(type=b'sfnt', id=family_id, name='', data=sfnt_io.getvalue()),
         )
+    # reduce fonts to what's storable in (stub) FOND/NFNT
     # we need a Pack for _group_families
     fonts = Pack(subset_for_nfnt(_f) for _f in fonts)
     for family_id, style_group in _group_families(fonts):
@@ -330,6 +345,7 @@ def save_dfont(fonts, outstream, resource_type):
         for style_id, size_group in style_group:
             for font in size_group:
                 if resource_type == 'sfnt':
+                    # create stub NFNT if the bitmaps are in an sfnt
                     fontrec = generate_nfnt_header(font, endian='big')
                     nfnt_bytes = bytes(fontrec)
                 else:
