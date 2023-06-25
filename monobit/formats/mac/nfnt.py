@@ -458,14 +458,14 @@ def _normalize_metrics(font):
 
 def _calculate_nfnt_glyph_metrics(glyphs):
     """Calculate metrics for NFNT format."""
-    # calculate kerning. only negative kerning is handled
-    kern = min(_g.left_bearing for _g in glyphs if _g)
-    kern = max(0, -kern)
+    # calculate maximum kerning (=most negative bearing), zero if all bearings positive
+    # this equals the kernMax field of the fontRec
+    kern_max = min(0, min(_g.left_bearing for _g in glyphs if _g))
     # add apple metrics to glyphs
     glyphs = tuple(
         (
             None if _g is None else
-            _g.modify(wo_offset=_g.left_bearing+kern, wo_width=_g.advance_width)
+            _g.modify(wo_offset=_g.left_bearing-kern_max, wo_width=_g.advance_width)
         )
         for _g in glyphs
     )
@@ -476,7 +476,7 @@ def _calculate_nfnt_glyph_metrics(glyphs):
         raise FileFormatError('NFNT character offset must be < 255')
     empty = Glyph(wo_offset=255, wo_width=255)
     glyphs = tuple(empty if _g is None else _g for _g in glyphs)
-    return glyphs, kern
+    return glyphs
 
 
 def convert_to_nfnt(font, endian, ndescent_is_high):
@@ -503,7 +503,7 @@ def convert_to_nfnt(font, endian, ndescent_is_high):
     # reappend 'missing' glyph
     glyph_table.append(font.glyphs[-1])
     # calculate glyph metrics and fill in empties
-    glyph_table, kern = _calculate_nfnt_glyph_metrics(glyph_table)
+    glyph_table = _calculate_nfnt_glyph_metrics(glyph_table)
     # build the width-offset table
     empty = Glyph(wo_offset=255, wo_width=255)
     wo_table = b''.join(
@@ -517,7 +517,7 @@ def convert_to_nfnt(font, endian, ndescent_is_high):
         bytes(LocEntry(offset=_offset))
         for _offset in accumulate((_g.width for _g in glyph_table), initial=0)
     )
-    fontrec = generate_nfnt_header(font, endian, kern)
+    fontrec = generate_nfnt_header(font, endian)
     # word offset to width/offset table
     # owTLoc is the offset from the field itself
     # the remaining size of the header including owTLoc is 5 words
@@ -537,7 +537,7 @@ def convert_to_nfnt(font, endian, ndescent_is_high):
     return fontrec, font_strike, loc_table, wo_table, owt_loc_high, fbr_extent
 
 
-def generate_nfnt_header(font, endian, kern):
+def generate_nfnt_header(font, endian):
     """Generate a bare NFNT header with no bitmaps yet."""
     base = {'b': be, 'l': le}[endian[:1].lower()]
     NFNTHeader = nfnt_header_struct(base)
@@ -557,8 +557,11 @@ def generate_nfnt_header(font, endian, kern):
         firstChar=first_char,
         lastChar=last_char,
         widMax=font.max_width,
-        # TODO: should this be negative again?
-        kernMax=-kern,
+        # An integer value that specifies the distance from the font rectangle's glyph origin
+        # to the left edge of the font rectangle, in pixels. If a glyph in the font kerns
+        # to the left, the amount is represented as a negative number. If the glyph origin
+        # lies on the left edge of the font rectangle, the value of the kernMax field is 0
+        kernMax=min(0, min(_g.left_bearing for _g in font.glyphs)),
         nDescent=font.ink_bounds.bottom,
         # font rectangle == font bounding box
         fRectWidth=font.bounding_box.x,
