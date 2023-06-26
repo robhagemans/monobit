@@ -409,11 +409,15 @@ def _convert_nfnt(properties, glyphs, fontrec):
 ###############################################################################
 # NFNT writer
 
-def create_nfnt(font, endian, ndescent_is_high, create_width_table):
+def create_nfnt(
+        font, endian, ndescent_is_high, create_width_table, create_height_table
+    ):
     """Create NFNT/FONT resource."""
     # subset to characters storable in NFNT
     font = subset_for_nfnt(font)
-    nfnt_data = convert_to_nfnt(font, endian, ndescent_is_high, create_width_table)
+    nfnt_data = convert_to_nfnt(
+        font, endian, ndescent_is_high, create_width_table, create_height_table
+    )
     data = nfnt_data_to_bytes(nfnt_data)
     return data, nfnt_data.owt_loc_high, nfnt_data.fbr_extent
 
@@ -536,11 +540,14 @@ def generate_nfnt_header(font, endian):
     logging.debug('NFNT header: %s', fontrec)
     return Props(
         fontrec=fontrec,
-        font_strike=b'', loc_table=b'', wo_table=b'', width_table=b'',
+        font_strike=b'', loc_table=b'', wo_table=b'',
+        width_table=b'', height_table=b'',
     )
 
 
-def convert_to_nfnt(font, endian, ndescent_is_high, create_width_table):
+def convert_to_nfnt(
+        font, endian, ndescent_is_high, create_width_table, create_height_table
+    ):
     """Convert monobit font to NFNT/FONT data structures."""
     # fontType is ignored
     # glyph-width table and image-height table not included
@@ -587,10 +594,24 @@ def convert_to_nfnt(font, endian, ndescent_is_high, create_width_table):
         )
     else:
         width_table = b''
+    # build the image-height table
+    # this isn't tested and probably won't be - seems this table gets ignored
+    if create_height_table:
+        height_table = b''.join(
+            bytes(HeightEntry(
+                # offset from top line to first ink row
+                # for normalised glyphs, this is the same as top padding
+                offset=font.ink_bounds.top-_g.ink_bounds.top,
+                height=_g.bounding_box.y
+            ))
+            for _g in glyph_table
+        )
+    else:
+        height_table = b''
     # generate base fontrec
     fontrec = generate_nfnt_header(font, endian).fontrec
-    if create_width_table:
-        fontrec.fontType.has_width_table = True
+    fontrec.fontType.has_width_table = create_width_table
+    fontrec.fontType.has_height_table = create_height_table
     # word offset to width/offset table
     # owTLoc is the offset from the field itself
     # the remaining size of the header including owTLoc is 5 words
@@ -613,6 +634,7 @@ def convert_to_nfnt(font, endian, ndescent_is_high, create_width_table):
         loc_table=loc_table,
         wo_table=wo_table,
         width_table=width_table,
+        height_table=height_table,
         owt_loc_high=owt_loc_high,
         fbr_extent=fbr_extent,
     )
@@ -626,4 +648,5 @@ def nfnt_data_to_bytes(nfnt_data):
         nfnt_data.loc_table,
         nfnt_data.wo_table,
         nfnt_data.width_table,
+        nfnt_data.height_table,
     ))

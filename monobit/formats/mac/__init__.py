@@ -84,11 +84,16 @@ def save_iigs(fonts, outstream, version:int=None):
 
 
 @savers.register(linked=load_nfnt)
-def save_nfnt(fonts, outstream, create_width_table:bool=True):
+def save_nfnt(
+        fonts, outstream,
+        create_width_table:bool=True,
+        create_height_table:bool=False,
+    ):
     """
     Write font to a bare FONT/NFNT resource.
 
-    create_width_table: include a fractional glyph-width table in the resource
+    create_width_table: include a fractional glyph-width table in the resource (default: True)
+    create_height_table: include an image-height table in the resource (default: False)
     """
     if len(fonts) > 1:
         logging.warning('NFNT resource can only store one font.')
@@ -96,5 +101,6 @@ def save_nfnt(fonts, outstream, create_width_table:bool=True):
     data, _, _ = create_nfnt(
         font, endian='big', ndescent_is_high=True,
         create_width_table=create_width_table,
+        create_height_table=create_height_table,
     )
     outstream.write(data)

@@ -350,7 +350,7 @@ def save_dfont(fonts, outstream, resource_type):
                 else:
                     nfnt_data = convert_to_nfnt(
                         font, endian='big', ndescent_is_high=True,
-                        create_width_table=True,
+                        create_width_table=True, create_height_table=False,
                     )
                 resources.append(
                     Props(
