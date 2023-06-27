@@ -106,6 +106,25 @@ BLOCKS[(2, 4)] = {
     for _i, (_7, _6, _5, _4, _3, _2, _1, _0) in enumerate(_EIGHTBITS)
 }
 
+BLOCKS[(2, 1)] = {
+    (_0, _1): BLOCKS[(2, 2)][(_0, _1, _0, _1)]
+    for _0 in range(2)
+    for _1 in range(2)
+}
+
+BLOCKS[(1, 2)] = {
+    (_0, _1): BLOCKS[(2, 2)][(_0, _0, _1, _1)]
+    for _0 in range(2)
+    for _1 in range(2)
+}
+
+BLOCKS[(1, 3)] = {
+    (_0, _1, _2): BLOCKS[(2, 3)][(_0, _0, _1, _1, _2, _2)]
+    for _0 in range(2)
+    for _1 in range(2)
+    for _2 in range(2)
+}
+
 
 # immutable bit matrix
 
