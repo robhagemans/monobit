@@ -12,7 +12,7 @@ from itertools import accumulate
 from typing import NamedTuple
 
 from .basetypes import Coord, Bounds
-from .raster import Raster, blockstr
+from .raster import Raster
 
 
 class StrokeMove(NamedTuple):

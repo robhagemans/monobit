@@ -11,7 +11,8 @@ except ImportError:
     Image = None
 
 from .properties import Props
-from .raster import Raster, blockstr
+from .raster import Raster
+from .blocks import  blockstr
 
 
 class GlyphMap:

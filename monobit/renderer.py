@@ -39,7 +39,7 @@ except ImportError:
 
 from .binary import ceildiv
 from .labels import Char, Codepoint
-from .raster import Raster, blockstr
+from .raster import Raster
 from .properties import Props
 from .glyph import Glyph
 from .glyphmap import GlyphMap
