@@ -92,6 +92,15 @@ BLOCKS_2x3 = {
     (1, 1, 1, 1, 1, 1): '\u2588',
 }
 
+_EIGHTBITS = tuple(
+    tuple(1*_b for _b in bytes_to_bits((_code,)))
+    for _code in range(2**8)
+)
+BLOCKS_2x4 = {
+    (_0, _3, _1, _4, _2, _5, _6, _7): chr(0x2800 + _i)
+    for _i, (_7, _6, _5, _4, _3, _2, _1, _0) in enumerate(_EIGHTBITS)
+}
+
 
 # immutable bit matrix
 
@@ -243,8 +252,10 @@ class Raster:
         matrix = self.as_matrix()
         if resolution == (2, 2):
             return self._as_blocks_2x2(matrix)
-        if resolution == (2, 3):
+        elif resolution == (2, 3):
             return self._as_blocks_2x3(matrix)
+        elif resolution == (2, 4):
+            return self._as_blocks_2x4(matrix)
         elif resolution == (1, 1):
             return self.as_text(ink='\u2588', paper=' ')
         raise ValueError(f'Unsupported block resolution {resolution}')
@@ -290,6 +301,31 @@ class Raster:
         blocks = '\n'.join(
             ''.join(blockdict[_sextet] for _sextet in _row)
             for _row in sextets
+        )
+        return blockstr(blocks + '\n')
+
+    @staticmethod
+    def _as_blocks_2x4(matrix):
+        """Convert glyph to a string of Braille characters."""
+        octets = tuple(
+            tuple(
+                _octet
+                for _octet in zip_longest(
+                    _row[::2], _row[1::2],
+                    _next[::2], _next[1::2],
+                    _three[::2], _three[1::2],
+                    _four[::2], _four[1::2],
+                    fillvalue=0
+                )
+            )
+            for _row, _next, _three, _four in zip_longest(
+                matrix[::4], matrix[1::4], matrix[2::4], matrix[3::4], fillvalue=()
+            )
+        )
+        blockdict = BLOCKS_2x4
+        blocks = '\n'.join(
+            ''.join(blockdict[_octet] for _octet in _row)
+            for _row in octets
         )
         return blockstr(blocks + '\n')
 
