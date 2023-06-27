@@ -56,25 +56,30 @@ class blockstr(str):
 # block elements
 # this has nothing to do with `blockstr` above
 
-BLOCKS_2x2 = {
-    (0, 0, 0, 0): ' ',
-    (0, 0, 0, 1): '\u2597',
-    (0, 0, 1, 0): '\u2596',
-    (0, 0, 1, 1): '\u2584',
-    (0, 1, 0, 0): '\u259d',
-    (0, 1, 0, 1): '\u2590',
-    (0, 1, 1, 0): '\u259e',
-    (0, 1, 1, 1): '\u259f',
-    (1, 0, 0, 0): '\u2598',
-    (1, 0, 0, 1): '\u259a',
-    (1, 0, 1, 0): '\u258c',
-    (1, 0, 1, 1): '\u2599',
-    (1, 1, 0, 0): '\u2580',
-    (1, 1, 0, 1): '\u259c',
-    (1, 1, 1, 0): '\u259b',
-    (1, 1, 1, 1): '\u2588',
+BLOCKS = {
+    (1, 1): {
+        (0,): ' ',
+        (1,): '\u2588',
+    },
+    (2, 2): {
+        (0, 0, 0, 0): ' ',
+        (0, 0, 0, 1): '\u2597',
+        (0, 0, 1, 0): '\u2596',
+        (0, 0, 1, 1): '\u2584',
+        (0, 1, 0, 0): '\u259d',
+        (0, 1, 0, 1): '\u2590',
+        (0, 1, 1, 0): '\u259e',
+        (0, 1, 1, 1): '\u259f',
+        (1, 0, 0, 0): '\u2598',
+        (1, 0, 0, 1): '\u259a',
+        (1, 0, 1, 0): '\u258c',
+        (1, 0, 1, 1): '\u2599',
+        (1, 1, 0, 0): '\u2580',
+        (1, 1, 0, 1): '\u259c',
+        (1, 1, 1, 0): '\u259b',
+        (1, 1, 1, 1): '\u2588',
+    },
 }
-
 
 # sixel block elements in Unicode do not include full- and half-block elements defined elsewhere
 _SIXBITS = tuple(
@@ -82,7 +87,7 @@ _SIXBITS = tuple(
     for _code in range(1, 2**6-1)
     if _code not in (0b010101, 0b101010)
 )
-BLOCKS_2x3 = {
+BLOCKS[(2, 3)] = {
     (_0, _1, _2, _3, _4, _5): chr(0x1Fb00 + _i)
     for _i, (_5, _4, _3, _2, _1, _0) in enumerate(_SIXBITS)
 } | {
@@ -96,7 +101,7 @@ _EIGHTBITS = tuple(
     tuple(1*_b for _b in bytes_to_bits((_code,)))
     for _code in range(2**8)
 )
-BLOCKS_2x4 = {
+BLOCKS[(2, 4)] = {
     (_0, _3, _1, _4, _2, _5, _6, _7): chr(0x2800 + _i)
     for _i, (_7, _6, _5, _4, _3, _2, _1, _0) in enumerate(_EIGHTBITS)
 }
@@ -250,80 +255,31 @@ class Raster:
         if not self.height:
             return ''
         matrix = self.as_matrix()
-        if resolution == (2, 2):
-            return self._as_blocks_2x2(matrix)
-        elif resolution == (2, 3):
-            return self._as_blocks_2x3(matrix)
-        elif resolution == (2, 4):
-            return self._as_blocks_2x4(matrix)
-        elif resolution == (1, 1):
-            return self.as_text(ink='\u2588', paper=' ')
-        raise ValueError(f'Unsupported block resolution {resolution}')
+        return self._as_blocks(matrix, *resolution)
 
     @staticmethod
-    def _as_blocks_2x2(matrix):
-        """Convert glyph to a string of quadrant block characters."""
-        quartets = tuple(
-            tuple(
-                _quartet
-                for _quartet in zip_longest(
-                    _row[::2], _row[1::2], _next[::2], _next[1::2],
-                    fillvalue=0
-                )
-            )
-            for _row, _next in zip_longest(matrix[::2], matrix[1::2], fillvalue=())
-        )
-        blockdict = BLOCKS_2x2
-        quartets = '\n'.join(
-            ''.join(blockdict[_quartet] for _quartet in _row)
-            for _row in quartets
-        )
-        return blockstr(quartets + '\n')
-
-    @staticmethod
-    def _as_blocks_2x3(matrix):
-        """Convert glyph to a string of sixel block characters."""
-        sextets = tuple(
-            tuple(
-                _sextet
-                for _sextet in zip_longest(
-                    _row[::2], _row[1::2],
-                    _next[::2], _next[1::2],
-                    _three[::2], _three[1::2],
-                    fillvalue=0
-                )
-            )
-            for _row, _next, _three in zip_longest(
-                matrix[::3], matrix[1::3], matrix[2::3], fillvalue=()
-            )
-        )
-        blockdict = BLOCKS_2x3
-        blocks = '\n'.join(
-            ''.join(blockdict[_sextet] for _sextet in _row)
-            for _row in sextets
-        )
-        return blockstr(blocks + '\n')
-
-    @staticmethod
-    def _as_blocks_2x4(matrix):
-        """Convert glyph to a string of Braille characters."""
+    def _as_blocks(matrix, ncols, nrows):
+        """Convert bit matrix to a string of block characters."""
+        try:
+            blockdict = BLOCKS[(ncols, nrows)]
+        except KeyError:
+            raise ValueError(f'Unsupported block resolution {resolution}')
         bitblockrows = tuple(
             tuple(
                 _bitblock
                 for _bitblock in zip_longest(
                     *(
-                        _bitrows[_row][_col::2]
-                        for _row in range(4)
-                        for _col in range(2)
+                        _bitrows[_row][_col::ncols]
+                        for _row in range(nrows)
+                        for _col in range(ncols)
                     ),
                     fillvalue=0
                 )
             )
             for _bitrows in zip_longest(
-                *(matrix[_ofs::4] for _ofs in range(4)), fillvalue=()
+                *(matrix[_ofs::nrows] for _ofs in range(nrows)), fillvalue=()
             )
         )
-        blockdict = BLOCKS_2x4
         blocks = '\n'.join(
             ''.join(blockdict[_bitblock] for _bitblock in _row)
             for _row in bitblockrows
