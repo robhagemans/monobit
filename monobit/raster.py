@@ -196,11 +196,20 @@ class Raster:
         )
         return blockstr(''.join((start, contents, end)))
 
-    def as_blocks(self):
-        """Convert glyph to a string of quadrant block characters."""
+    def as_blocks(self, resolution=(2, 2)):
+        """Convert glyph to a string of block characters."""
         if not self.height:
             return ''
         matrix = self.as_matrix()
+        if resolution == (2, 2):
+            return self._as_blocks_2x2(matrix)
+        elif resolution == (1, 1):
+            return self.as_text(ink='\u2588', paper=' ')
+        raise ValueError(f'Unsupported block resolution {resolution}')
+
+    @staticmethod
+    def _as_blocks_2x2(matrix):
+        """Convert glyph to a string of quadrant block characters."""
         quartets = tuple(
             tuple(
                 _quartet
@@ -234,6 +243,7 @@ class Raster:
             for _row in quartets
         )
         return blockstr(quartets + '\n')
+
 
     @classmethod
     def from_vector(
