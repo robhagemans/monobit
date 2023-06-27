@@ -307,25 +307,26 @@ class Raster:
     @staticmethod
     def _as_blocks_2x4(matrix):
         """Convert glyph to a string of Braille characters."""
-        octets = tuple(
+        bitblockrows = tuple(
             tuple(
-                _octet
-                for _octet in zip_longest(
-                    _row[::2], _row[1::2],
-                    _next[::2], _next[1::2],
-                    _three[::2], _three[1::2],
-                    _four[::2], _four[1::2],
+                _bitblock
+                for _bitblock in zip_longest(
+                    *(
+                        _bitrows[_row][_col::2]
+                        for _row in range(4)
+                        for _col in range(2)
+                    ),
                     fillvalue=0
                 )
             )
-            for _row, _next, _three, _four in zip_longest(
-                matrix[::4], matrix[1::4], matrix[2::4], matrix[3::4], fillvalue=()
+            for _bitrows in zip_longest(
+                *(matrix[_ofs::4] for _ofs in range(4)), fillvalue=()
             )
         )
         blockdict = BLOCKS_2x4
         blocks = '\n'.join(
-            ''.join(blockdict[_octet] for _octet in _row)
-            for _row in octets
+            ''.join(blockdict[_bitblock] for _bitblock in _row)
+            for _row in bitblockrows
         )
         return blockstr(blocks + '\n')
 
