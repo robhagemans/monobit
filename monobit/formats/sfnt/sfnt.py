@@ -698,7 +698,7 @@ def _convert_bloc_props(bloc, i_strike):
 # 'head' or 'bhed' table
 
 # interpretation of head.macStyle flags
-_STYLE_MAP = {
+STYLE_MAP = {
     0: 'bold',
     1: 'italic',
     2: 'underline',
@@ -711,7 +711,7 @@ _STYLE_MAP = {
 def mac_style_name(font_style):
     """Get human-readable representation of font style."""
     return ' '.join(
-        _tag for _bit, _tag in _STYLE_MAP.items() if font_style & (1 << _bit)
+        _tag for _bit, _tag in STYLE_MAP.items() if font_style & (1 << _bit)
     )
 
 def _convert_head_props(head):

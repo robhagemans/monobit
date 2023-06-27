@@ -27,9 +27,9 @@ def ebdt_monkey_patch():
     from fontTools.ttLib.tables.E_B_D_T_ import bytesjoin, byteord, bytechr
 
     def _reverseBytes(data):
-        if len(data) != 1:
+        if isinstance(data, bytes) and len(data) != 1:
             # this is where the bug was
-            return bytesjoin(map(_reverseBytes, map(chr, data)))
+            return bytesjoin(map(_reverseBytes, data))
         byte = byteord(data)
         result = 0
         for i in range(8):

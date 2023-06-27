@@ -142,6 +142,17 @@ def _convert_to_os_2_props(font, _to_funits):
     return props
 
 
+def to_postscript_name(name):
+    """Postscript name must be printable ascii, no [](){}<>/%, max 63 chars."""
+    ps_name = ''.join(
+        _c if _c.isalnum() and _c.isascii() else '-'
+        for _c in name
+    )
+    ps_name = ps_name[:63]
+    # expected to be Title-Cased (at least on Mac, see FontForge code comments)
+    return ps_name.title()
+
+
 def _convert_to_name_props(font):
     """Convert font properties to `name` table."""
     # `name` table should only store x.y version numbers
@@ -152,15 +163,6 @@ def _convert_to_name_props(font):
     except ValueError:
         version_number = 0.0
         extra = f'; {font.revision}'
-    # must start with 'Version x.y'
-    # but may contain additional info after `;`
-    version_string = f'Version {version_number:1.1f}{extra}'
-    # postscript name must be printable ascii, no [](){}<>/%, max 63 chars
-    ps_name = ''.join(
-        _c if _c.isalnum() and _c.isascii() else '-'
-        for _c in font.name
-    )
-    ps_name = ps_name[:63]
     props = dict(
         # 0
         copyright=font.copyright,
@@ -169,13 +171,15 @@ def _convert_to_name_props(font):
         # 2
         styleName=font.subfamily,
         # 3
-        uniqueFontIdentifier=font.font_id or ps_name,
+        uniqueFontIdentifier=font.font_id or to_postscript_name(font.name),
         # 4
         fullName=font.name,
         # 5
-        version=version_string,
+        # must start with 'Version x.y'
+        # but may contain additional info after `;`
+        version=f'Version {version_number:1.1f}{extra}',
         # 6
-        psName=ps_name,
+        psName=to_postscript_name(font.name),
         # trademark (nameID 7)
         # 8
         manufacturer=font.foundry,

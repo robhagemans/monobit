@@ -6,15 +6,22 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import logging
+from collections import Counter
+from itertools import accumulate
+from io import BytesIO
 
 from ...struct import big_endian as be
 from ...magic import FileFormatError
 from ...streams import Stream
+from ...properties import Props, reverse_dict
+from ...pack import Pack
 
-from ..sfnt import load_sfnt
-from .nfnt import _extract_nfnt, _convert_nfnt
-from .fond import _extract_fond, _convert_fond
-
+from ..sfnt import load_sfnt, save_sfnt, MAC_ENCODING, STYLE_MAP
+from .nfnt import (
+    _extract_nfnt, _convert_nfnt,
+    subset_for_nfnt, convert_to_nfnt, nfnt_data_to_bytes, generate_nfnt_header
+)
+from .fond import _extract_fond, _convert_fond, create_fond
 
 
 ##############################################################################
@@ -125,10 +132,11 @@ _REF_ENTRY = be.Struct(
 # 1-byte length followed by bytes
 
 
-def _parse_mac_resource(data, formatstr=''):
+def parse_resource_fork(data, formatstr=''):
     """Parse a bare resource and convert to fonts."""
     resource_table = _extract_resource_fork_header(data)
     rsrc = _extract_resources(data, resource_table)
+    logging.debug(rsrc)
     directory = _construct_directory(rsrc)
     fonts = _convert_mac_font(rsrc, directory, formatstr)
     return fonts
@@ -289,3 +297,276 @@ def _convert_mac_font(parsed_rsrc, info, formatstr):
                 font = font.label()
                 fonts.append(font)
     return fonts
+
+
+###############################################################################
+# dfont writer
+
+# from FontForge notes https://fontforge.org/docs/techref/macformats.html :
+# > When an ‘sfnt’ resource contains a font with a multibyte encoding (CJK or
+# > unicode) then the ‘FOND’ does not have entries for all the characters. The
+# > ‘sfnt’ will (always?) have a MacRoman encoding as well as the multibyte encoding
+# > and the ‘FOND’ will contain information on just that subset of the font. (I have
+# > determined this empirically, I have seen no documentation on the subject)
+#
+# > Currently bitmap fonts for multibyte encodings are stored inside an sfnt
+# > (truetype) resource in the ‘bloc’ and ‘bdat’ tables. When this happens there are
+# > a series of dummy ‘NFNT’ resources in the resource file, one for each strike.
+# > Each resource is 26 bytes long (which means they contain the FontRec structure
+# > but no data tables) and are flagged by having rowWords set to 0. (I have
+# > determined this empirically, I have seen no documentation on the subject)
+
+
+def save_dfont(fonts, outstream, resource_type):
+    """
+    Save font to MacOS resource fork or data-fork resource.
+
+    resource_type: type of resource to store font in. One of `sfnt`, `NFNT`.
+    """
+    resource_type = resource_type.lower()
+    if resource_type not in ('sfnt', 'nfnt'):
+        raise ValueError(
+            'Only saving to sfnt or NFNT resource currently supported'
+        )
+    resources = []
+    if resource_type == 'sfnt':
+        sfnt_io = BytesIO()
+        result = save_sfnt(fonts, sfnt_io)
+        font, *_ = fonts
+        family_id = _get_family_id(font.family, font.encoding)
+        resources.append(
+            Props(type=b'sfnt', id=family_id, name='', data=sfnt_io.getvalue()),
+        )
+    # reduce fonts to what's storable in (stub) FOND/NFNT
+    # we need a Pack for _group_families
+    fonts = Pack(subset_for_nfnt(_f) for _f in fonts)
+    for family_id, style_group in _group_families(fonts):
+        i = 0
+        for style_id, size_group in style_group:
+            for font in size_group:
+                if resource_type == 'sfnt':
+                    # create stub NFNT if the bitmaps are in an sfnt
+                    nfnt_data = generate_nfnt_header(font, endian='big')
+                else:
+                    nfnt_data = convert_to_nfnt(
+                        font, endian='big', ndescent_is_high=True,
+                        create_width_table=True, create_height_table=False,
+                    )
+                resources.append(
+                    Props(
+                        type=b'NFNT',
+                        # note that we calculate this *separately* in the FOND builder
+                        id=family_id + i,
+                        # are there any specifications for the name?
+                        name=font.name,
+                        data=nfnt_data_to_bytes(nfnt_data),
+                    ),
+                )
+                i += 1
+        fond_data = create_fond(style_group, family_id)
+        resources.append(
+            Props(
+                type=b'FOND', id=family_id,
+                name=font.family, data=fond_data,
+            ),
+        )
+    _write_resource_fork(outstream, resources)
+
+
+def _get_family_id(name, encoding):
+    """Generate a resource id based on the font's properties."""
+    script_code = reverse_dict(MAC_ENCODING).get(encoding, 0)
+    return _hash_to_id(name, script=script_code)
+
+
+def _write_resource_fork(outstream, resources):
+    """
+    Write a Mac dfont/resource fork.
+
+    resources: list of ns(type, id, name, data)
+    """
+    # order resources by type (so all resources of the same type are consecutive
+    resources.sort(key=lambda _res: _res.type)
+    # counter follows insertion order
+    types = Counter(_res.type for _res in resources)
+    # construct the resource map
+    map_header = _MAP_HEADER(
+        # not sure what these are
+        attributes=0,
+        # type list comes straight after this header
+        # -2 because the last_type in this header definition
+        # is counted as part of the type list
+        type_list_offset=_MAP_HEADER.size-2, #28,
+        # after type list plus reference lists
+        name_list_offset=(
+            _MAP_HEADER.size
+            + _TYPE_ENTRY.size * len(types)
+            + _REF_ENTRY.size * len(resources)
+        ),
+        # number of types minus 1
+        last_type=len(types) - 1,
+    )
+    # construct the type list
+    type_list = [
+        _TYPE_ENTRY(
+            rsrc_type=_type,
+            last_rsrc=_count - 1,
+            # ref_list_offset='uint16',
+        )
+        for _type, _count in types.items()
+    ]
+    offset = 2 + _TYPE_ENTRY.size * len(type_list)
+    for entry in type_list:
+        entry.ref_list_offset = offset
+        offset += _REF_ENTRY.size * (entry.last_rsrc + 1)
+    type_list = (_TYPE_ENTRY * len(types))(*type_list)
+    # construct the name list
+    name_list = tuple(
+        bytes((len(_res.name),)) + _res.name.encode('mac-roman')
+        for _res in resources
+    )
+    name_offsets = accumulate((len(_n) for _n in name_list), initial=0)
+    data_offsets = accumulate(
+        # include 4 bytes for length field
+        (4 + len(_res.data) for _res in resources),
+        initial=0
+    )
+    # construct the reference list
+    reference_list = (
+        _REF_ENTRY(
+            rsrc_id=_res.id,
+            name_offset=-1 if not _res.name else _name_offset,
+            attributes=0,
+            # we need a 3-byte offset, will have to construct ourselves...
+            data_offset_hi=_data_offset // 0x1000,
+            data_offset=_data_offset % 0x1000,
+        )
+        for _res, _name_offset, _data_offset in zip(resources, name_offsets, data_offsets)
+    )
+    reference_list = (_REF_ENTRY * len(resources))(*reference_list)
+    rsrc_map = (
+        bytes(map_header)
+        + bytes(type_list)
+        + bytes(reference_list)
+        + b''.join(name_list)
+    )
+    data = b''.join(
+        bytes(be.uint32(len(_res.data))) + _res.data
+        for _res in resources
+    )
+    rsrc_header = _RSRC_HEADER(
+        # data come right after the header and padding
+        data_offset=256,
+        map_offset=256 + len(data),
+        data_length=len(data),
+        map_length=len(rsrc_map),
+    )
+    outstream.write(
+        bytes(rsrc_header)
+        + data
+        + rsrc_map
+    )
+
+
+# family name hash algorithm
+# ported from https://github.com/zoltan-dulac/fondu/blob/master/ufond.c
+#
+# FONDU licence:
+# > PfaEdit is copyright (C) 2000,2001,2002,2003 by George Williams
+# >
+# >    Redistribution and use in source and binary forms, with or without
+# >    modification, are permitted provided that the following conditions are met:
+# >
+# >    Redistributions of source code must retain the above copyright notice, this
+# >    list of conditions and the following disclaimer.
+# >
+# >    Redistributions in binary form must reproduce the above copyright notice,
+# >    this list of conditions and the following disclaimer in the documentation
+# >    and/or other materials provided with the distribution.
+# >
+# >    The name of the author may not be used to endorse or promote products
+# >    derived from this software without specific prior written permission.
+# >
+# >    THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
+# >    WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+# >    MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO
+# >    EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+# >    SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+# >    PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+# >    OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+# >    WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+# >    OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+# >    ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# >
+# > The configure script is subject to the GNU public license. See the file
+# > COPYING.
+
+def _hash_to_id(family_name, script):
+    """Generate a resource id based on the font family name."""
+    low = 128
+    high = 0x4000
+    hash = 0
+    if script:
+        low = 0x4000 + (script-1)*0x200;
+        high = low + 0x200;
+    for ch in family_name:
+        temp = (hash>>28) & 0xf
+        hash = (hash<<4) | temp
+        hash ^= ord(ch) - 0x20
+    hash %= (high-low)
+    hash += low
+    return hash
+
+
+def mac_style_from_name(style_name):
+    """Get font style from human-readable representation."""
+    return sum((2<<_bit for _bit, _k in STYLE_MAP.items() if _k in style_name))
+
+
+def _group_families(fonts):
+    """Group pack of fonts by families and subfamilies."""
+    families = tuple(sorted(
+        # assuming encoding stays the same across family
+        (_get_family_id(_name, _group[0].encoding), _group)
+        for _name, _group in fonts.itergroups('family')
+    ))
+    fond_families = []
+    for id, group in families:
+        chars = set(_font.get_codepoints() for _font in group)
+        if len(set(chars)) > 1:
+            logging.warning(
+                "Can't combine fonts into families: different character ranges."
+            )
+            return _group_individually(fonts)
+        spacings = set(_font.spacing for _font in group)
+        if len(set(spacings)) > 1:
+            logging.warning(
+                "Can't combine fonts into families: different spacing characteristics."
+            )
+            return _group_individually(fonts)
+        style_groups = tuple(sorted(
+            (mac_style_from_name(_subfamily), _fonts)
+            for _subfamily, _fonts in group.itergroups('subfamily')
+        ))
+        for _, group in style_groups:
+            sizes = tuple(_f.point_size for _f in group)
+            if len(sizes) != len(set(sizes)):
+                logging.warning(
+                    "Can't combine fonts into families: duplicate style and size."
+                )
+            return _group_individually(fonts)
+        fond_families.append((id, style_groups))
+    return fond_families
+
+
+def _group_individually(fonts):
+    """Return each individual font as its own family."""
+    fond_families = tuple(sorted(
+        (
+            # we're assuming names differ
+            _get_family_id(_font.name, _font.encoding),
+            ((mac_style_from_name(_font.subfamily), [_font]),)
+        )
+        for _font in fonts
+    ))
+    return fond_families
