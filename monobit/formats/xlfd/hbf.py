@@ -55,15 +55,17 @@ def load_hbf(instream):
     return font
 
 @savers.register(linked=load_hbf)
-def save_hbf(fonts, outstream):
+def save_hbf(fonts, outstream, code_scheme:str=''):
     """
     Save font to Hanzi Bitmap Format (HBF) file.
+
+    code_scheme: override HBF_CODE_SCHEME value (default: use encoding)
     """
     if len(fonts) > 1:
         raise FileFormatError('Can only save one font to HBF file.')
     # ensure codepoint values are set
     font = fonts[0]
-    _save_hbf(font, outstream.text, outstream.where)
+    _save_hbf(font, outstream.text, outstream.where, code_scheme)
 
 
 ##############################################################################
@@ -333,10 +335,10 @@ def _parse_hbf_properties(hbf_props):
 ##############################################################################
 # hbf writer
 
-def _save_hbf(font, outstream, container):
+def _save_hbf(font, outstream, container, code_scheme):
     """Write one font to HBF."""
     bitmap_name = outstream.name + '.bin'
-    hbf_props, bitmaps = _convert_to_hbf(font, bitmap_name)
+    hbf_props, bitmaps = _convert_to_hbf(font, bitmap_name, code_scheme)
     for name, value in hbf_props:
         logging.info('    %s: %s', name, value)
     with container.open(bitmap_name, 'w') as binfile:
@@ -346,7 +348,7 @@ def _save_hbf(font, outstream, container):
         outstream.write(f'{name} {value}\n')
 
 
-def _convert_to_hbf(font, bitmap_name):
+def _convert_to_hbf(font, bitmap_name, code_scheme):
     """Convert to HBF properties."""
     # set codepoints
     font = font.label(codepoint_from=font.encoding)
@@ -374,7 +376,6 @@ def _convert_to_hbf(font, bitmap_name):
         f'{font.cell_size.x} {font.cell_size.y} '
         f'{left_bearing} {shift_up}'
     )
-    #TODO
     code_scheme = font.encoding
     props = [
         ('HBF_START_FONT', '1.1'),
@@ -460,24 +461,6 @@ def _get_code_ranges(font):
     cranges = _find_ranges(cps, gen)
     logging.debug('CODE_RANGES %s', cranges)
     return cps, cranges, b2ranges, b3ranges
-
-#
-# def __old_find_ranges(cps):
-#     """Convert a sorted list/tuple to a list of ranges."""
-#     start = int(cps[0])
-#     logging.debug(start)
-#     cur_range = [start, start]
-#     ranges = []
-#     for cp in cps[1:]:
-#         cp = int(cp)
-#         if cp == cur_range[1] + 1:
-#             cur_range[1] = cp
-#         else:
-#             ranges.append(range(cur_range[0], cur_range[1]+1))
-#             cur_range = [cp, cp]
-#     ranges.append(range(cur_range[0], cur_range[1]+1))
-#     logging.debug(ranges)
-#     return ranges
 
 
 def _find_ranges(cps, indexgen=None):
