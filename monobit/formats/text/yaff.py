@@ -15,7 +15,7 @@ from functools import cached_property
 from ...storage import loaders, savers
 from ...encoding import charmaps
 from ...magic import FileFormatError
-from ...font import Font
+from ...font import Font, FontProperties
 from ...glyph import Glyph
 from ...raster import Raster
 from ...labels import Label, strip_matching
@@ -272,6 +272,12 @@ def normalise_property(field):
     return field[:1] + field[1:].replace('-', '_')
 
 
+# keywords that take a label value
+# these need special treatment as quotes must not be stripped
+_LABEL_VALUED_KEYS = tuple(
+    _k for _k, _v in FontProperties.__annotations__.items() if _v == Label
+)
+
 
 class YaffProperty(NonEmptyBlock, YaffParams):
 
@@ -283,7 +289,10 @@ class YaffProperty(NonEmptyBlock, YaffParams):
         )
 
     def get_value(self):
-        _, _, value = self.lines[0].partition(self.separator)
+        key, _, value = self.lines[0].partition(self.separator)
+        # label values need special treatment as quotes must not be stripped
+        if key in _LABEL_VALUED_KEYS:
+            return value
         return _strip_quotes(value)
 
     def get_key(self):
@@ -424,9 +433,9 @@ def _write_property(outstream, key, value, comments, indent=''):
     # write key-value pair
     if isinstance(value, Label) or not isinstance(value, str):
         # do not quote converted non-strings (plus Tag and Char which are str)
-        # FIXME: reader will strip quotes and misinterpret some labels
+        # note that these need special treatment in the reader, or it
+        # will strip quotes and misinterpret some labels
         # so non-ascii or single-char tags will be converted to Char not Tag
-        # common cases (.notdef, missing, default, uniFFFD) will be OK
         quoter = passthrough
     else:
         quoter = _quote_if_needed
