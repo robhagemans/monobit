@@ -8,8 +8,10 @@ licence: https://opensource.org/licenses/MIT
 import logging
 from itertools import zip_longest
 
-from .binary import ceildiv, reverse_by_group
+from .binary import ceildiv, reverse_by_group, bytes_to_bits
 from .basetypes import Bounds, Coord
+from .blocks import matrix_to_blocks, blockstr
+
 
 # sentinel object
 NOT_SET = object()
@@ -45,12 +47,6 @@ def turn(self, clockwise:int=NOT_SET, *, anti:int=NOT_SET):
     return self
 
 turn_method = turn
-
-
-class blockstr(str):
-    """str that is shown as block text in interactive session."""
-    def __repr__(self):
-        return f'"""\\\n{self}"""'
 
 
 # immutable bit matrix
@@ -196,44 +192,12 @@ class Raster:
         )
         return blockstr(''.join((start, contents, end)))
 
-    def as_blocks(self, *, ink='@', paper='.', start='', end='\n'):
-        """Convert glyph to a string of quadrant block characters."""
+    def as_blocks(self, resolution=(2, 2)):
+        """Convert glyph to a string of block characters."""
         if not self.height:
             return ''
         matrix = self.as_matrix()
-        quartets = tuple(
-            tuple(
-                _quartet
-                for _quartet in zip_longest(
-                    _row[::2], _row[1::2], _next[::2], _next[1::2],
-                    fillvalue=0
-                )
-            )
-            for _row, _next in zip_longest(matrix[::2], matrix[1::2], fillvalue=())
-        )
-        blockdict = {
-            (0, 0, 0, 0): ' ',
-            (0, 0, 0, 1): '\u2597',
-            (0, 0, 1, 0): '\u2596',
-            (0, 0, 1, 1): '\u2584',
-            (0, 1, 0, 0): '\u259d',
-            (0, 1, 0, 1): '\u2590',
-            (0, 1, 1, 0): '\u259e',
-            (0, 1, 1, 1): '\u259f',
-            (1, 0, 0, 0): '\u2598',
-            (1, 0, 0, 1): '\u259a',
-            (1, 0, 1, 0): '\u258c',
-            (1, 0, 1, 1): '\u2599',
-            (1, 1, 0, 0): '\u2580',
-            (1, 1, 0, 1): '\u259c',
-            (1, 1, 1, 0): '\u259b',
-            (1, 1, 1, 1): '\u2588',
-        }
-        quartets = '\n'.join(
-            ''.join(blockdict[_quartet] for _quartet in _row)
-            for _row in quartets
-        )
-        return blockstr(quartets + '\n')
+        return matrix_to_blocks(matrix, *resolution)
 
     @classmethod
     def from_vector(

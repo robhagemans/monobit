@@ -11,7 +11,8 @@ except ImportError:
     Image = None
 
 from .properties import Props
-from .raster import Raster, blockstr
+from .raster import Raster
+from .blocks import  blockstr
 
 
 class GlyphMap:
@@ -128,10 +129,10 @@ class GlyphMap:
             ink=ink, paper=paper, border=border, start=start, end=end
         )
 
-    def as_blocks(self, *, ink='@', paper='.', start='', end='\n', sheet=0):
+    def as_blocks(self, resolution=(2, 2)):
         """Convert glyph map to a string of quadrant block characters."""
-        canvas = self.to_canvas(sheet=sheet)
-        return canvas.as_blocks(ink=ink, paper=paper, start=start, end=end)
+        canvas = self.to_canvas(sheet=0)
+        return canvas.as_blocks(resolution)
 
 
 class Canvas(Raster):

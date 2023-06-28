@@ -129,8 +129,8 @@ def main():
         help=('output as image')
     )
     parser.add_argument(
-        '--blocks',  action='store_true',
-        help=('output as quadrant blocks')
+        '--blocks',  nargs='?', const='2x2', default='',
+        help=('output as block element characters')
     )
     # font / glyph effects
     parser.add_argument(
@@ -237,7 +237,8 @@ def main():
                 image.show()
         else:
             if args.blocks:
-                text = glyph_map.as_blocks()
+                resolution = tuple(int(_v) for _v in args.blocks.split('x'))
+                text = glyph_map.as_blocks(resolution)
             else:
                 ink = args.ink or '@'
                 paper = args.paper or '.'
