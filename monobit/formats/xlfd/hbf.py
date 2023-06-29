@@ -360,15 +360,11 @@ def _convert_to_hbf(font, bitmap_name, code_scheme):
         raise FileFormatError(
             'Only character-cell fonts can be stored in HBF format.'
         )
-    # bring font to normal form
-    global_metrics = globalise_glyph_metrics(font.glyphs)
-    try:
-        left_bearing = global_metrics['left_bearing']
-    except KeyError:
-        left_bearing = 0
-    else:
-        font = font.crop(left=left_bearing)
+    # bring font to normal form, then extract common bearings
     font, shift_up = normalise_metrics(font)
+    padding = font.padding
+    shift_up += padding.bottom
+    font = font.crop(*padding)
     # convert properties
     xlfd_props = _create_xlfd_properties(font)
     if 'hbf.font' in font.get_properties():
@@ -378,7 +374,11 @@ def _convert_to_hbf(font, bitmap_name, code_scheme):
         fontname = _create_xlfd_name(xlfd_props)
     bbx = (
         f'{font.cell_size.x} {font.cell_size.y} '
-        f'{left_bearing} {shift_up}'
+        f'{padding.left} {shift_up}'
+    )
+    font_bbx = (
+        f'{font.cell_size.x+padding.right} {font.cell_size.y+padding.top} '
+        f'{padding.left} {shift_up}'
     )
     code_scheme = font.encoding
     props = [
@@ -390,7 +390,7 @@ def _convert_to_hbf(font, bitmap_name, code_scheme):
         ('FONT', fontname),
         ('SIZE', f'{font.point_size} {font.dpi.x} {font.dpi.y}'),
         ('HBF_BITMAP_BOUNDING_BOX', bbx),
-        ('FONTBOUNDINGBOX', bbx),
+        ('FONTBOUNDINGBOX', font_bbx),
     ]
     if xlfd_props:
         props.append(('STARTPROPERTIES', str(len(xlfd_props))))
