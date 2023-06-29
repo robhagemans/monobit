@@ -337,7 +337,7 @@ class YaffPropertyOrGlyph(YaffMultiline):
 ##############################################################################
 # write file
 
-def _globalise_glyph_metrics(glyphs):
+def globalise_glyph_metrics(glyphs):
     """If all glyph props are equal, take them global."""
     properties = {}
     for key in (
@@ -375,7 +375,7 @@ def _save_yaff(fonts, outstream):
         else:
             props['bounding_box'] = font.bounding_box
         props.update(font.get_properties())
-        global_metrics = _globalise_glyph_metrics(font.glyphs)
+        global_metrics = globalise_glyph_metrics(font.glyphs)
         props.update(global_metrics)
         if props:
             # write recognised yaff properties first, in defined order

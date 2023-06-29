@@ -18,7 +18,7 @@ from ..binary import bytes_to_bits, ceildiv
 from ..raster import Raster
 
 # common utilities
-from .windows import _normalise_metrics
+from .windows import normalise_metrics
 
 
 @loaders.register(
@@ -564,7 +564,7 @@ def _convert_to_gdos(font, endianness):
     font = font.label(codepoint_from=font.encoding)
     font = _subset_storable(font, _GDOS_RANGE)
     font = _make_contiguous(font)
-    font, add_shift_up = _normalise_metrics(font)
+    font, add_shift_up = normalise_metrics(font)
     # check glyph dimensions / bitfield ranges
     if any(_g.left_bearing < -127 or _g.right_bearing < -127 for _g in font.glyphs):
         raise FileFormatError(

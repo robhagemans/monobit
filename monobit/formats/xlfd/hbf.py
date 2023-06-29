@@ -17,8 +17,8 @@ from ...binary import ceildiv
 from .bdf import read_props
 from .xlfd import _parse_xlfd_properties, _create_xlfd_properties
 from .xlfd import _create_xlfd_name
-# from ..text.yaff import _globalise_glyph_metrics
-from ..windows import _normalise_metrics
+from ..text.yaff import globalise_glyph_metrics
+from ..windows import normalise_metrics
 
 
 @loaders.register(
@@ -361,10 +361,14 @@ def _convert_to_hbf(font, bitmap_name, code_scheme):
             'Only character-cell fonts can be stored in HBF format.'
         )
     # bring font to normal form
-    font, shift_up = _normalise_metrics(font)
-    #TODO
-    left_bearing = 0
-    #glyphs, properties = _globalise_glyph_metrics(font)
+    global_metrics = globalise_glyph_metrics(font.glyphs)
+    try:
+        left_bearing = global_metrics['left_bearing']
+    except KeyError:
+        left_bearing = 0
+    else:
+        font = font.crop(left=left_bearing)
+    font, shift_up = normalise_metrics(font)
     # convert properties
     xlfd_props = _create_xlfd_properties(font)
     if 'hbf.font' in font.get_properties():
