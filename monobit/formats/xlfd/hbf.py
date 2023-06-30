@@ -18,7 +18,6 @@ from .bdf import read_props
 from .xlfd import _parse_xlfd_properties, _create_xlfd_properties
 from .xlfd import _create_xlfd_name
 from ..text.yaff import globalise_glyph_metrics
-from ..windows import normalise_metrics
 
 
 @loaders.register(
@@ -360,10 +359,10 @@ def _convert_to_hbf(font, bitmap_name, code_scheme):
         raise FileFormatError(
             'Only character-cell fonts can be stored in HBF format.'
         )
-    # bring font to normal form, then extract common bearings
-    font, shift_up = normalise_metrics(font)
+    # bring font to padded, equalised normal form
+    # then extract common bearings
+    font = font.equalise_horizontal()
     padding = font.padding
-    shift_up += padding.bottom
     font = font.crop(*padding)
     # convert properties
     xlfd_props = _create_xlfd_properties(font)
@@ -373,12 +372,12 @@ def _convert_to_hbf(font, bitmap_name, code_scheme):
     else:
         fontname = _create_xlfd_name(xlfd_props)
     bbx = (
-        f'{font.cell_size.x} {font.cell_size.y} '
-        f'{padding.left} {shift_up}'
+        f'{font.raster_size.x} {font.raster_size.y} '
+        f'{padding.left} {padding.bottom}'
     )
     font_bbx = (
-        f'{font.cell_size.x+padding.right} {font.cell_size.y+padding.top} '
-        f'{padding.left} {shift_up}'
+        f'{font.raster_size.x+padding.right} {font.raster_size.y+padding.top} '
+        f'{padding.left} {padding.bottom}'
     )
     code_scheme = font.encoding
     props = [
