@@ -15,9 +15,6 @@ from ..font import Font
 from ..glyph import Glyph
 from ..magic import FileFormatError
 
-# common utilities
-from .gdos import _subset_storable
-
 
 @loaders.register(
     name='vfont',
@@ -171,7 +168,7 @@ def _convert_to_vfont(font):
     """Convert monobit font to vfont properties and glyphs."""
     # ensure codepoint values are set if possible
     font = font.label(codepoint_from=font.encoding)
-    font = _subset_storable(font, _VFONT_RANGE)
+    font = font.subset(_VFONT_RANGE)
     font = _make_contiguous(font)
     # set glyph properties
     glyphs = tuple(

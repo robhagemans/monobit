@@ -559,7 +559,7 @@ def _convert_to_gdos(font, endianness):
     """Convert monobit font to GDOS properties and glyphs."""
     # ensure codepoint values are set if possible
     font = font.label(codepoint_from=font.encoding)
-    font = _subset_storable(font, _GDOS_RANGE)
+    font = font.subset(_GDOS_RANGE)
     font = _make_contiguous(font)
     # bring to padded normal form with equalised upshifts
     font = font.equalise_horizontal()
@@ -619,16 +619,6 @@ def _convert_to_gdos(font, endianness):
     )
     return header, font.glyphs
 
-def _subset_storable(font, storable_range):
-    """Select glyphs that can be included."""
-    # only codepoints 0--255 inclusive
-    if any(int(_c) not in storable_range for _c in font.get_codepoints()):
-        logging.warning(
-            'Output format can only store codepoints 0--255. '
-            'Not all glyphs in this font can be included.'
-        )
-    font = font.subset(codepoints=set(storable_range))
-    return font
 
 def _make_contiguous(font):
     """Get contiguous range, fill gaps with empties."""

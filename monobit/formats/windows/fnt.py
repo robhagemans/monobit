@@ -46,6 +46,10 @@ _FALLBACK_DEFAULT = 0x80
 # "dfBreakChar is normally (32 - dfFirstChar), which is an ASCII space."
 _FALLBACK_BREAK = 0x20
 
+# despite the presence of MBCS character set codes,
+# FNT can only hold single-byte codepoints
+# as firstChar and lastChar are byte-sized
+_FNT_RANGE = range(256)
 
 # official but vague documentation:
 # https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-wmf/0d0b32ac-a836-4bd2-a112-b6000a1b4fc9
@@ -606,21 +610,6 @@ def _convert_win_props(data, win_props):
 ##############################################################################
 # windows .FNT writer
 
-def _subset_storable(font):
-    """Subset glyphs storable in Windows font."""
-    # ensure codepoint values are set, if possible
-    font = font.label(codepoint_from=font.encoding)
-    # only include single-byte encoded glyphs
-    # FNT can hold at most the codepoints 0..256 as these fields are byte-sized
-    codepoints = tuple(
-        _cp for _cp in font.get_codepoints() if len(_cp) == 1
-    )
-    if not codepoints:
-        raise FileFormatError(
-            'Windows font can only encode glyphs with single-byte codepoints; none found in font.'
-        )
-    font = font.subset(codepoints=codepoints)
-    return font
 
 def _make_contiguous(font):
     """Fill out a contiguous range of glyphs."""
@@ -643,8 +632,11 @@ def _make_contiguous(font):
 
 def create_fnt(font, version=0x200, vector=False):
     """Create .FNT from monobit font."""
-    # take only the glyphs we can store
-    font = _subset_storable(font)
+    # ensure codepoint values are set, if possible
+    font = font.label(codepoint_from=font.encoding)
+    # only include single-byte encoded glyphs
+    # as firstChar and lastChar are byte-sized
+    font = font.subset(codepoints=_FNT_RANGE)
     font = _make_contiguous(font)
     # bring to equal-height, equal-upshift, padded normal form
     font = font.equalise_horizontal()
