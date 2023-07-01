@@ -17,8 +17,8 @@ from ...encoding import charmaps, NotFoundError
 from ...taggers import tagmaps
 from ...labels import Char, Codepoint, Tag
 
-from .xlfd import _parse_xlfd_properties, _create_xlfd_properties
-from .xlfd import _create_xlfd_name, CUSTOM_PROP
+from .xlfd import parse_xlfd_properties, create_xlfd_properties
+from .xlfd import create_xlfd_name, CUSTOM_PROP
 
 
 @loaders.register(
@@ -171,7 +171,7 @@ def _convert_from_bdf(bdf_glyphs, bdf_props, x_props):
     known, global_metrics, bdf_unparsed = _extract_known_bdf_properties(bdf_props)
     properties = _convert_bdf_properties(known)
     glyphs = _convert_bdf_glyphs(bdf_glyphs, global_metrics, known)
-    xlfd_props = _parse_xlfd_properties(x_props, known['FONT'])
+    xlfd_props = parse_xlfd_properties(x_props, known['FONT'])
     # consistency checks
     if known['NCHARS'] != len(bdf_glyphs):
         logging.warning('Number of characters found does not match CHARS declaration.')
@@ -361,8 +361,8 @@ def pixel_to_swidth(dwidth, point_size, dpi):
 def _save_bdf(font, outstream):
     """Write one font to X11 BDF 2.1."""
     # property table
-    xlfd_props = _create_xlfd_properties(font)
-    xlfd_name = _create_xlfd_name(xlfd_props)
+    xlfd_props = create_xlfd_properties(font)
+    xlfd_name = create_xlfd_name(xlfd_props)
     bdf_props = _convert_to_bdf_properties(font, xlfd_name)
     # minimize glyphs to ink-bounds (BBX) before storing, except "cell" fonts
     if font.spacing not in ('character-cell', 'multi-cell'):
