@@ -1052,7 +1052,7 @@ class Unicode(Encoder):
 class Index(Encoder):
     """Convert from index to ordinals."""
 
-    def __init__(self, code_range=(0,)):
+    def __init__(self, code_range='0-'):
         """Index converter."""
         super().__init__('index')
         # generator
