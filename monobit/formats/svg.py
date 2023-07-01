@@ -16,7 +16,7 @@ from ..vector import StrokePath
 from ..font import Font
 from ..glyph import Glyph
 from ..properties import Props, reverse_dict
-from .windows.fnt import _WEIGHT_MAP, _WEIGHT_REVERSE_MAP
+from .windows import WEIGHT_MAP, WEIGHT_REVERSE_MAP
 
 
 _STYLE_MAP = {
@@ -59,7 +59,7 @@ def load_svg(instream):
             line_height=int(font_face.attrib.get('font-size', font_face.attrib.get('units-per-em'))),
             underline_thickness=int(font_face.attrib.get('underline-thickness')),
             underline_descent=-int(font_face.attrib.get('underline-position')),
-            weight=_WEIGHT_MAP[round(weight, -2)],
+            weight=WEIGHT_MAP[round(weight, -2)],
             slant=_STYLE_MAP.get(font_face.attrib.get('font-style')),
         )
     glyph_elems = list(font.iterfind('{*}glyph'))
@@ -193,7 +193,7 @@ def save_svg(fonts, outfile):
         'x-height': font.x_height,
         'underline-thickness': font.underline_thickness,
         'underline-position': -font.underline_descent,
-        'font-weight': _WEIGHT_REVERSE_MAP.get(font.weight, 400),
+        'font-weight': WEIGHT_REVERSE_MAP.get(font.weight, 400),
         'font-style': _STYLE_REVERSE_MAP.get(font.slant, 'normal'),
     }
     outfile.write(f'  <font-face{attr_str(font_face, indent=6)}/>\n')

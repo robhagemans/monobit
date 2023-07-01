@@ -140,7 +140,7 @@ def format_comment(comments, comment_char):
 # mkwinfon .fd
 
 from ...properties import Props
-from ..windows.fnt import _WEIGHT_MAP, CHARSET_MAP
+from ..windows import WEIGHT_MAP, CHARSET_MAP
 
 
 FD_KEYS = {
