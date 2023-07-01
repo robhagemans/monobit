@@ -336,7 +336,7 @@ def _parse_hbf_properties(hbf_props):
 
 def _save_hbf(font, outstream, container, code_scheme):
     """Write one font to HBF."""
-    bitmap_name = outstream.name + '.bin'
+    bitmap_name = container.unused_name(outstream.name + '.bin')
     hbf_props, bitmaps = _convert_to_hbf(font, bitmap_name, code_scheme)
     for name, value in hbf_props:
         logging.info('    %s: %s', name, value)
