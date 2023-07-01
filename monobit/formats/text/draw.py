@@ -34,7 +34,7 @@ def load_hexdraw(instream, ink:str='#', paper:str='-', unicode:bool=True):
     """
     DrawGlyph.ink = ink
     DrawGlyph.paper = paper
-    return _load_draw(
+    return load_draw(
         instream.text, blocktypes=(DrawGlyph, DrawComment, Empty),
         unicode=unicode
     )
@@ -56,7 +56,7 @@ def save_hexdraw(fonts, outstream, ink:str='#', paper:str='-', unicode:bool=True
 
 # read hexdraw file
 
-def _load_draw(text_stream, *, blocktypes, unicode):
+def load_draw(text_stream, *, blocktypes, unicode):
     """Parse a hexdraw-style file."""
     glyphs = []
     font_comments = []

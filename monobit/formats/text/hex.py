@@ -15,7 +15,7 @@ from ...storage import loaders, savers
 from ...magic import FileFormatError
 from ...font import Font
 from ...glyph import Glyph
-from .draw import _load_draw, DrawGlyph, DrawComment, Empty
+from .draw import load_draw, DrawGlyph, DrawComment, Empty
 
 
 @loaders.register(name='pcbasic',)
@@ -48,7 +48,7 @@ def save_hext(fonts, outstream):
 
 def _load_hex(instream):
     """Load 8x16 multi-cell font from Unifont .HEX file."""
-    return _load_draw(
+    return load_draw(
         instream.text, blocktypes=(HexGlyph, DrawComment, Empty), unicode=True
     )
 
