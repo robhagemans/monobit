@@ -18,17 +18,17 @@ from ...pack import Pack
 
 from ..sfnt import load_sfnt, save_sfnt, MAC_ENCODING, STYLE_MAP
 from .nfnt import (
-    _extract_nfnt, _convert_nfnt,
+    extract_nfnt, convert_nfnt,
     subset_for_nfnt, convert_to_nfnt, nfnt_data_to_bytes, generate_nfnt_header
 )
-from .fond import _extract_fond, _convert_fond, create_fond
+from .fond import extract_fond, convert_fond, create_fond
 
 
 ##############################################################################
 # encoding constants
 
 # fonts which claim mac-roman encoding but aren't
-_NON_ROMAN_NAMES = {
+NON_ROMAN_NAMES = {
     # https://www.unicode.org/Public/MAPPINGS/VENDORS/APPLE/SYMBOL.TXT
     # > The Mac OS Symbol encoding shares the script code smRoman
     # > (0) with the Mac OS Roman encoding. To determine if the Symbol
@@ -185,7 +185,7 @@ def _extract_resources(data, resources):
             )
             parsed_rsrc.append((
                 rsrc_type, rsrc_id, dict(
-                    name=name, **_extract_fond(data, offset)
+                    name=name, **extract_fond(data, offset)
                 )
             ))
         elif rsrc_type == b'FONT' and name and not (rsrc_id % 128):
@@ -212,7 +212,7 @@ def _extract_resources(data, resources):
                 rsrc_id, rsrc_type.decode('mac-roman'), name
             )
             parsed_rsrc.append((
-                rsrc_type, rsrc_id, _extract_nfnt(data, offset)
+                rsrc_type, rsrc_id, extract_nfnt(data, offset)
             ))
         elif rsrc_type == b'sfnt':
             logging.debug(
@@ -238,7 +238,7 @@ def _construct_directory(parsed_rsrc):
     for rsrc_type, rsrc_id, kwargs in parsed_rsrc:
         # new-style directory entries
         if rsrc_type == b'FOND':
-            props = _convert_fond(**kwargs)
+            props = convert_fond(**kwargs)
             info.update(props)
         # old-style name-only FONT resources (font_size 0)
         elif rsrc_type == b'':
@@ -290,9 +290,9 @@ def _convert_mac_font(parsed_rsrc, info, formatstr):
             else:
                 # update properties with directory info
                 props.update(info.get(rsrc_id, {}))
-            if 'encoding' not in props or props.get('family', '') in _NON_ROMAN_NAMES:
-                props['encoding'] = _NON_ROMAN_NAMES.get(props.get('family', ''), 'mac-roman')
-            font = _convert_nfnt(props, **kwargs)
+            if 'encoding' not in props or props.get('family', '') in NON_ROMAN_NAMES:
+                props['encoding'] = NON_ROMAN_NAMES.get(props.get('family', ''), 'mac-roman')
+            font = convert_nfnt(props, **kwargs)
             if font.glyphs:
                 font = font.label()
                 fonts.append(font)

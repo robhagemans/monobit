@@ -10,7 +10,7 @@ import logging
 from ...storage import loaders, savers
 
 from .dfont import parse_resource_fork, save_dfont
-from .nfnt import _extract_nfnt, _convert_nfnt, create_nfnt
+from .nfnt import extract_nfnt, convert_nfnt, create_nfnt
 from .lisa import _load_lisa
 from .iigs import _load_iigs, _save_iigs
 
@@ -51,8 +51,8 @@ def load_nfnt(instream, offset:int=0):
     """
     instream.seek(offset)
     data = instream.read()
-    fontdata = _extract_nfnt(data, 0)
-    return _convert_nfnt({}, **fontdata)
+    fontdata = extract_nfnt(data, 0)
+    return convert_nfnt({}, **fontdata)
 
 
 @loaders.register(name='lisa')
