@@ -343,6 +343,7 @@ def globalise_glyph_metrics(glyphs):
     for key in (
             'shift_up', 'left_bearing', 'right_bearing',
             'shift_left', 'top_bearing', 'bottom_bearing',
+            'scalable_width',
         ):
         distinct = set(_g.get_defined(key) for _g in glyphs)
         if len(distinct) == 1:
@@ -376,7 +377,11 @@ def _save_yaff(fonts, outstream):
             props['bounding_box'] = font.bounding_box
         props.update(font.get_properties())
         global_metrics = globalise_glyph_metrics(font.glyphs)
-        props.update(global_metrics)
+        # keep only nonzero or non-default globalised properties
+        props.update({
+            _k: _v for _k, _v in global_metrics.items()
+            if _v or _v != Glyph.get_default(_k)
+        })
         if props:
             # write recognised yaff properties first, in defined order
             for key, value in props.items():
