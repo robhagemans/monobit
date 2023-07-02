@@ -441,10 +441,8 @@ class Font(HasProps):
     @checked_property
     def cell_size(self):
         """Width, height of the character cell."""
-        if not self.glyphs or self.spacing == 'proportional':
+        if not self.glyphs or self.spacing not in ('character-cell', 'multi-cell'):
             return Coord(0, 0)
-        # smaller of the (at most two) advance widths is the cell size
-        # in a multi-cell font, some glyphs may take up two cells.
         if self.has_vertical_metrics():
             cells = tuple(
                 (_g.advance_width, _g.advance_height)
@@ -458,6 +456,8 @@ class Font(HasProps):
         sizes = tuple(_c for _c in cells if all(_c))
         if not sizes:
             return Coord(0, 0)
+        # smaller of the (at most two) advance widths is the cell size
+        # in a multi-cell font, some glyphs may take up two cells.
         return Coord(*min(sizes))
 
     @checked_property
