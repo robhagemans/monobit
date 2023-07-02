@@ -294,7 +294,9 @@ def _read_metrics(instream):
     format, base = _read_format(instream)
     if format & PCF_COMPRESSED_METRICS:
         compressed_metrics = base.Struct(**_COMPRESSED_METRICS)
-        count = base.int16.read_from(instream)
+        # documented as signed int, but unsigned it makes more sense
+        # also this is used as uint by bdftopcf for e.g. unifont
+        count = base.uint16.read_from(instream)
         metrics = (compressed_metrics * count).read_from(instream)
         # adjust unsigned bytes by 0x80 offset
         metrics = tuple(
@@ -303,7 +305,7 @@ def _read_metrics(instream):
         )
     else:
         uncompressed_metrics = base.Struct(**_UNCOMPRESSED_METRICS)
-        count = base.int32.read_from(instream)
+        count = base.uint32.read_from(instream)
         metrics = (uncompressed_metrics * count).read_from(instream)
     return metrics
 
