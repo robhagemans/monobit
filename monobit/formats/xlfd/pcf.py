@@ -731,8 +731,9 @@ def _create_acc_table(font, format, base, create_ink_bounds):
         # /* true if the ink metrics differ from the metrics somewhere */
         inkMetrics=create_ink_bounds and any(_m != _i for _m, _i in zip(metrics, ink_metrics)),
         # /* 0=>left to right, 1=>right to left */
-        # CHECK is this ever set to rtl even in rtl fonts?
-        drawDirection=1 if font.direction == 'right-to-left' else 0,
+        # however in practice this is set to 0 even on fonts with RTL glyphs
+        # e.g. /usr/share/fonts/arabic24.pcf.gz
+        drawDirection=0,
         padding=0,
         fontAscent=fontAscent,
         fontDescent=fontDescent,
