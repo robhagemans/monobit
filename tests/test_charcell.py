@@ -24,7 +24,7 @@ class TestCharCell(BaseTester):
         .modify(encoding='cp437')
         .label(codepoint_from='cp437')
         .subset(range(20, 256))
-        .reduce(create_vertical_metrics=True)
+        .reduce()
     )
 
     fixed8x8_A = """\
@@ -135,7 +135,7 @@ class TestCharCell(BaseTester):
 ....
 """
         file = self.temp_path / 'testfont.fnt'
-        monobit.save(self.fixed8x8.reduce(create_vertical_metrics=True), file, format=format)
+        monobit.save(self.fixed8x8.reduce(), file, format=format)
         font, *_ = monobit.load(file, format=format)
         self.assertEqual(len(font.glyphs), count)
         assert_text_eq(font.get_glyph(label).as_text(), glyph_0x100)
