@@ -343,7 +343,8 @@ class Glyph(HasProps):
             if not tag_from:
                 if overwrite:
                     return self.modify(tag=None)
-            return self.modify(tag=tag_from.tag(*labels))
+            elif overwrite or not self.tag:
+                return self.modify(tag=tag_from.tag(*labels))
         if comment_from is not NOT_SET:
             if not comment_from:
                 return self.modify(comment=None)
