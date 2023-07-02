@@ -38,7 +38,15 @@ def main():
     # parse command line
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        'text', nargs='*', type=str,
+        'text', nargs='*', type=str, action='extend',
+        help=(
+            'text to be printed. '
+            'multiple text arguments represent consecutive lines. '
+            'if not given, read from standard input'
+        )
+    )
+    parser.add_argument(
+        '--text', nargs='*', type=str, action='extend',
         help=(
             'text to be printed. '
             'multiple text arguments represent consecutive lines. '
