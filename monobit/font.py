@@ -381,28 +381,38 @@ class Font(HasProps):
         if not self.glyphs:
             return 'character-cell'
         if any(
-                _glyph.advance_width < 0 or _glyph.right_kerning
+                _glyph.right_kerning or _glyph.left_kerning
                 for _glyph in self.glyphs
             ):
             return 'proportional'
-        # don't count void glyphs (0 width and/or height)
-        # to determine whether it's monospace
-        advances = set(
-            _glyph.advance_width
-            for _glyph in self.glyphs if _glyph.advance_width
-        )
+        if self.has_vertical_metrics():
+            advances = set(
+                (_glyph.advance_width, _glyph.advance_height)
+                for _glyph in self.glyphs if _glyph.advance_width
+            )
+        else:
+            # don't count void glyphs (0 width and/or height)
+            # to determine whether it's monospace
+            advances = set(
+                _glyph.advance_width
+                for _glyph in self.glyphs if _glyph.advance_width
+            )
         if len(set(advances)) > 2:
             return 'proportional'
         monospaced = len(set(advances)) == 1
-        # horizontal rendering
         # check if all glyphs are rendered within the line height
         # if there are vertical overlaps, it is not a charcell font
-        if self.ink_bounds.top - self.ink_bounds.bottom > self.line_height:
+        if (
+                (self.ink_bounds.top - self.ink_bounds.bottom > self.line_height)
+                or self.has_vertical_metrics() and (
+                    self.ink_bounds.right - self.ink_bounds.left > self.line_width
+                )
+            ):
             return 'monospace' if monospaced else 'proportional'
         if all(
                 (-_g.left_bearing <= _g.padding.left)
                 and (-_g.right_bearing <= _g.padding.right)
-                # if no negative metrics, these will be zero and hence satisfied.
+                # if no vertical metrics, these will be zero and hence satisfied.
                 and (-_g.top_bearing <= _g.padding.top)
                 and (-_g.bottom_bearing <= _g.padding.bottom)
                 for _g in self.glyphs
