@@ -1049,7 +1049,7 @@ class Unicode(Encoder):
         return type(self).__name__ + '()'
 
 
-class Index(Encoder):
+class Indexer(Encoder):
     """Convert from index to ordinals."""
 
     def __init__(self, code_range='0-'):
@@ -1061,7 +1061,7 @@ class Index(Encoder):
     @staticmethod
     def char(*labels):
         """Convert codepoint to character, return empty string if missing."""
-        raise TypeError('Can only use Index encoder to set codepoints, not character labels.')
+        raise TypeError('Can only use Indexer to set codepoints, not character labels.')
 
     def codepoint(self, *labels):
         """Convert character to codepoint."""
@@ -1319,7 +1319,7 @@ def encoder(initialiser):
     # numeric ranges - interpreted as indexer
     if initialiser[:1].isdigit():
         initialiser = to_labels(initialiser)
-        return Index(code_range=initialiser)
+        return Indexer(code_range=initialiser)
     try:
         return charmaps[initialiser]
     except KeyError:
@@ -1331,7 +1331,7 @@ def encoder(initialiser):
 
 
 charmaps = CharmapRegistry()
-charmaps.add_type('index', Index)
+charmaps.add_type('index', Indexer)
 
 # unicode aliases
 charmaps.add_type('unicode', Unicode)

@@ -15,7 +15,7 @@ from .glyph import Glyph
 from .raster import turn_method, NOT_SET
 from .basetypes import Coord, Bounds
 from .basetypes import to_int
-from .encoding import charmaps, encoder, EncodingName, Encoder
+from .encoding import charmaps, encoder, EncodingName, Encoder, Indexer
 from .taggers import tagger
 from .labels import Tag, Char, Codepoint, Label, to_label
 from .binary import ceildiv
@@ -998,9 +998,14 @@ class Font(HasProps):
                 return self
         encoding = self.encoding
         if overwrite or not self.encoding:
-            if char_from is not NOT_SET and isinstance(char_from, Encoder):
+            # don't set encoding if we use a Tagger
+            if isinstance(char_from, Encoder):
                 encoding = char_from.name
-            elif codepoint_from is not NOT_SET and codepoint_from is not None:
+            # don't set encoding if we use an Indexer
+        elif (
+                isinstance(codepoint_from, Encoder)
+                and not isinstance(codepoint_from, Indexer)
+            ):
                 encoding = codepoint_from.name
         kwargs = dict(
             overwrite=overwrite,
