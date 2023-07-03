@@ -204,9 +204,9 @@ Here is a comparison of what you can and cannot store in selected formats suppor
 | `yaff`        | ✔ | ✔ | ✔ | ✔ | ✔ | any  | ✔ | ✔ |   | visual text
 | `sfnt`        | ✔ | ✔ | ✔ | ✔ | ✔ | any  | ✔ | ✔ | ✔ | binary
 | `bmfont`      | ✔ |   | ✔ | ✔ |   | any  | ✔ | ✔ | ✔ | image
-| `mac`         |   |   | ✔ | ✔ |   | any  | ✔ | ✔ | ✔ | binary
+| `mac`         |   |   | ✔ |   |   | any  | ✔ | ✔ | ✔ | binary
 | `bdf`         | ✔ |   | ✔ | ✔ |   | any  | ✔ |   |   | hex
-| `win`         |   |   | ✔ | ✔ | ✔ | any  | ✔ |   |   | binary
+| `win`         |   |   | ✔ |   | ✔ | any  | ✔ |   |   | binary
 | `hexdraw`     | ✔ |   |   |   |   | any  | ✔ |   |   | visual text
 | `amiga`       |   |   |   |   | ✔ | any  | ✔ |   | ✔ | binary
 | `gdos`        |   |   |   |   |   | any  | ✔ |   |   | binary
