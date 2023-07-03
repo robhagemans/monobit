@@ -12,7 +12,7 @@ from ..streams import Stream
 from ..magic import FileFormatError
 
 from .windows.mz import MZ_HEADER, create_mz_stub
-from .windows.ne import create_ne, read_ne, _NE_HEADER
+from .windows.ne import create_ne, read_ne, NE_HEADER
 from .windows.pe import read_pe
 from .windows.fnt import (
     convert_win_fnt_resource,
@@ -37,7 +37,7 @@ def load_mzfon(instream, all_type_ids:bool=False):
     """
     mz_header = MZ_HEADER.read_from(instream)
     if mz_header.e_magic == b'MZ':
-        header = _NE_HEADER.read_from(instream, mz_header.e_lfanew)
+        header = NE_HEADER.read_from(instream, mz_header.e_lfanew)
         instream.seek(mz_header.e_lfanew)
         format = header.ne_magic
     elif mz_header.e_magic == b'ZM':

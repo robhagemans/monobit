@@ -125,7 +125,7 @@ _FIXED_TYPE = be.int16
 # Palatino (1's complement) has ffVersion=0, Helvetica and Times (2's complement) have ffVersion=3
 # mnany have ffVersion=1 but no kerning table
 
-def _fixed_to_float(fixed, twos_complement=True):
+def fixed_to_float(fixed, twos_complement=True):
     # fixed is the input 2's complement 16-bit signed integer
     if not twos_complement:
         # convert back from 2's complement (interpreted by the C struct reader)
@@ -234,7 +234,7 @@ _KERN_PAIR = be.Struct(
     kernWidth=_FIXED_TYPE,
 )
 
-def _extract_fond(data, offset):
+def extract_fond(data, offset):
     """Read a MacOS FOND resource."""
     fond_header = _FOND_HEADER.from_bytes(data, offset)
     # Font Family Tables:
@@ -349,7 +349,7 @@ def _extract_fond(data, offset):
     )
 
 
-def _convert_fond(
+def convert_fond(
         name, fond_header, fa_list,
         kerning_table, encoding_table=None,
         **kwargs

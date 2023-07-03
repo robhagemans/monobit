@@ -190,7 +190,7 @@ CHARSET_REVERSE_MAP.update({
 # FW_ULTRABOLD	800
 # FW_HEAVY	900
 # FW_BLACK	900
-_WEIGHT_MAP = {
+WEIGHT_MAP = {
     0: '', # undefined/unknown
     100: 'thin', # bdf 'ultra-light' is windows' 'thin'
     200: 'extra-light', # windows 'ultralight' equals 'extralight'
@@ -202,7 +202,7 @@ _WEIGHT_MAP = {
     800: 'extra-bold', # windows 'ultrabold' equals 'extrabold'
     900: 'heavy', # bdf 'ultra-bold' is 'heavy'
 }
-_WEIGHT_REVERSE_MAP = reverse_dict(_WEIGHT_MAP)
+WEIGHT_REVERSE_MAP = reverse_dict(WEIGHT_MAP)
 
 # pitch and family
 # low bit: 1 - proportional 0 - monospace
@@ -567,7 +567,7 @@ def _convert_win_props(data, win_props):
     weight = win_props.dfWeight
     if weight:
         weight = max(100, min(900, weight))
-        properties['weight'] = _WEIGHT_MAP.get(round(weight, -2), None)
+        properties['weight'] = WEIGHT_MAP.get(round(weight, -2), None)
     charset = win_props.dfCharSet
     if charset in CHARSET_MAP:
         properties['encoding'] = CHARSET_MAP[charset]
@@ -709,13 +709,13 @@ def _convert_to_fnt_props(
     if not device_name or device_name == b'\0':
         device_name_offset = 0
     try:
-        weight = _WEIGHT_REVERSE_MAP[font.weight]
+        weight = WEIGHT_REVERSE_MAP[font.weight]
     except KeyError:
         logging.warning(
             f'Weight `{font.weight}` not supported by Windows FNT resource format, '
             '`regular` will be used instead.'
         )
-        weight = _WEIGHT_REVERSE_MAP['regular']
+        weight = WEIGHT_REVERSE_MAP['regular']
     # create FNT file
     win_props = _FNT_HEADER(
         dfVersion=version,
@@ -735,8 +735,8 @@ def _convert_to_fnt_props(
         dfItalic=(font.slant in ('italic', 'oblique')),
         dfUnderline=('underline' in font.decoration),
         dfStrikeOut=('strikethrough' in font.decoration),
-        dfWeight=_WEIGHT_REVERSE_MAP.get(
-            font.weight, _WEIGHT_REVERSE_MAP['regular']
+        dfWeight=WEIGHT_REVERSE_MAP.get(
+            font.weight, WEIGHT_REVERSE_MAP['regular']
         ),
         dfCharSet=charset,
         dfPixWidth=pix_width,

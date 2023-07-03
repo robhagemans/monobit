@@ -11,7 +11,7 @@ from ...glyph import Glyph
 from ...binary import ceildiv
 from ...storage import loaders, savers
 from ...properties import reverse_dict
-from .sfnt import _WEIGHT_MAP, _SETWIDTH_MAP, check_fonttools
+from .sfnt import WEIGHT_MAP, SETWIDTH_MAP, check_fonttools
 from .sfnt import load_sfnt, load_collection
 from ...labels import Tag
 from ...taggers import CodepointTagger
@@ -106,8 +106,8 @@ def _convert_to_os_2_props(font, _to_funits):
     props = dict(
         version=3,
         # characteristics
-        usWeightClass=reverse_dict(_WEIGHT_MAP).get(font.weight, 400),
-        usWidthClass=reverse_dict(_SETWIDTH_MAP).get(font.setwidth, 5),
+        usWeightClass=reverse_dict(WEIGHT_MAP).get(font.weight, 400),
+        usWidthClass=reverse_dict(SETWIDTH_MAP).get(font.setwidth, 5),
         sxHeight=_to_funits(font.x_height),
         sCapHeight=_to_funits(font.cap_height),
         # subscript metrics

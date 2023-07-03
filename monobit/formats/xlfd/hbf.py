@@ -15,8 +15,8 @@ from ...glyph import Glyph
 from ...binary import ceildiv
 
 from .bdf import read_props
-from .xlfd import _parse_xlfd_properties, _create_xlfd_properties
-from .xlfd import _create_xlfd_name
+from .xlfd import parse_xlfd_properties, create_xlfd_properties
+from .xlfd import create_xlfd_name
 from ..text.yaff import globalise_glyph_metrics
 
 
@@ -266,7 +266,7 @@ def _parse_properties(hbf_props, x_props):
     # parse meaningful metadata
     properties, unparsed, plane = _parse_hbf_properties(hbf_props)
     # the FONT field *may* conform to xlfd but doesn't have to. don't parse it
-    xlfd_props = _parse_xlfd_properties(x_props, xlfd_name='', to_int=hbf_int)
+    xlfd_props = parse_xlfd_properties(x_props, xlfd_name='', to_int=hbf_int)
     for key, value in unparsed.items():
         logging.info(f'Unrecognised HBF property {key}={value}')
         # preserve as property
@@ -365,12 +365,12 @@ def _convert_to_hbf(font, bitmap_name, code_scheme):
     padding = font.padding
     font = font.crop(*padding)
     # convert properties
-    xlfd_props = _create_xlfd_properties(font)
+    xlfd_props = create_xlfd_properties(font)
     if 'hbf.font' in font.get_properties():
         fontname = font.get_property('hbf.font')
         xlfd_props.pop('HBF.FONT')
     else:
-        fontname = _create_xlfd_name(xlfd_props)
+        fontname = create_xlfd_name(xlfd_props)
     bbx = (
         f'{font.raster_size.x} {font.raster_size.y} '
         f'{padding.left} {padding.bottom}'

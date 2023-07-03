@@ -9,7 +9,7 @@ import logging
 
 from ...magic import FileFormatError
 from ...struct import little_endian as le
-from ..windows.ne import _NE_HEADER
+from ..windows.ne import NE_HEADER
 from .gpifont import parse_os2_font_directory
 
 # resource ids
@@ -43,7 +43,7 @@ def read_os2_ne(instream, all_type_ids):
     """Read an OS/2 16-bit NE executable."""
     # the header is the same as for the Windows NE format
     ne_offset = instream.tell()
-    header = _NE_HEADER.read_from(instream)
+    header = NE_HEADER.read_from(instream)
     if header.ne_exetyp != 1:
         logging.warning(
             'Not an OS/2 NE file: EXE type %d', header.ne_exetyp

@@ -20,8 +20,8 @@ from ...binary import align, ceildiv
 
 from .bdf import swidth_to_pixel, pixel_to_swidth
 from .xlfd import (
-    _parse_xlfd_properties, _create_xlfd_properties, _create_xlfd_name,
-    _from_quoted_string
+    parse_xlfd_properties, create_xlfd_properties, create_xlfd_name,
+    from_quoted_string
 )
 
 MAGIC = b'\1fcp'
@@ -479,7 +479,7 @@ def _convert_props(pcf_data):
     """Convert properties for PCF to monobit."""
     xlfd_name = pcf_data.xlfd_props.pop('FONT', '')
     pcf_data.xlfd_props = {_k: str(_v) for _k, _v in pcf_data.xlfd_props.items()}
-    props = _parse_xlfd_properties(pcf_data.xlfd_props, xlfd_name)
+    props = parse_xlfd_properties(pcf_data.xlfd_props, xlfd_name)
     props.update(dict(
         default_char=Codepoint(pcf_data.default_char),
     ))
@@ -570,8 +570,8 @@ def _write_pcf(
 def _create_properties_table(font, format, base):
     """Create the Properties table."""
     propstrings = bytearray()
-    xlfd_props = _create_xlfd_properties(font)
-    xlfd_props['FONT'] = _create_xlfd_name(xlfd_props)
+    xlfd_props = create_xlfd_properties(font)
+    xlfd_props['FONT'] = create_xlfd_name(xlfd_props)
     props = []
     props_struct = base.Struct(**_PROPS)
     for key, value in xlfd_props.items():
@@ -582,7 +582,7 @@ def _create_properties_table(font, format, base):
         propstrings += key.encode('ascii', 'replace') + b'\0'
         if prop.isStringProp:
             prop.value = len(propstrings)
-            value = _from_quoted_string(value)
+            value = from_quoted_string(value)
             propstrings += value.encode('ascii', 'replace') + b'\0'
         else:
             prop.value = int(value)

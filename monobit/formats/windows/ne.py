@@ -29,7 +29,7 @@ from .fnt import create_fnt
 #
 
 # Windows executable (NE) header
-_NE_HEADER = le.Struct(
+NE_HEADER = le.Struct(
     # 00 Magic number NE_MAGIC
     ne_magic='2s',
     # 02 Linker Version number
@@ -146,7 +146,7 @@ def read_ne(instream, all_type_ids):
     ne_offset = instream.tell()
     instream.seek(0)
     data = instream.read()
-    header = _NE_HEADER.from_bytes(data, ne_offset)
+    header = NE_HEADER.from_bytes(data, ne_offset)
     logging.debug(header)
     if header.ne_exetyp not in (0, 2, 4):
         # 0 unknown (but used by Windows 1.0)
@@ -359,16 +359,16 @@ def create_ne(pack, stubsize, version=0x200, vector=False):
     # the actual font data
     resdata, font_start = _create_resource_data(pack, version, vector)
     # create resource table and align
-    header_size = stubsize + _NE_HEADER.size
+    header_size = stubsize + NE_HEADER.size
     post_size = len(res) + len(entry) + len(nonres)
     restable = _create_resource_table(header_size, post_size, len(resdata), n_fonts, font_start)
     # calculate offsets of stuff after the NE header.
-    off_res = _NE_HEADER.size + len(restable)
+    off_res = NE_HEADER.size + len(restable)
     off_entry = off_res + len(res)
     off_nonres = off_entry + len(entry)
     size_aligned = align(off_nonres + len(nonres), ALIGN_SHIFT)
     # create the NE header and put everything in place
-    ne_header = _NE_HEADER(
+    ne_header = NE_HEADER(
         ne_magic=b'NE',
         ne_ver=5,
         ne_rev=10,
@@ -379,8 +379,8 @@ def create_ne(pack, stubsize, version=0x200, vector=False):
         ne_flags=0x8308,
         ne_cbnrestab=len(nonres),
         # seg table is empty
-        ne_segtab=_NE_HEADER.size,
-        ne_rsrctab=_NE_HEADER.size,
+        ne_segtab=NE_HEADER.size,
+        ne_rsrctab=NE_HEADER.size,
         ne_restab=off_res,
         # point to empty table
         ne_modtab=off_entry,

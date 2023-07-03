@@ -11,7 +11,7 @@ from ...struct import big_endian as be
 from ...binary import align
 from ...magic import FileFormatError
 
-from .nfnt import _extract_nfnt, _convert_nfnt
+from .nfnt import extract_nfnt, convert_nfnt
 
 
 # https://www.kreativekorp.com/swdownload/lisa/AppleLisaFontFormat.pdf
@@ -50,8 +50,8 @@ def _load_lisa(instream):
     fonts = []
     for name, data in zip(names, resources):
         try:
-            fontdata = _extract_nfnt(data, 0)
-            font = _convert_nfnt({}, **fontdata)
+            fontdata = extract_nfnt(data, 0)
+            font = convert_nfnt({}, **fontdata)
             font = font.modify(
                 name=name.decode('mac-roman'),
                 source_format=f'[Lisa] {font.source_format}',

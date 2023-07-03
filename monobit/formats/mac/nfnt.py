@@ -22,7 +22,7 @@ from ...encoding import charmaps
 from ...raster import Raster
 from ...properties import Props
 
-from .fond import _fixed_to_float
+from .fond import fixed_to_float
 
 
 ##############################################################################
@@ -177,7 +177,7 @@ def height_entry_struct(base):
     )
 
 
-def _extract_nfnt(data, offset, endian='big', owt_loc_high=0, font_type=None):
+def extract_nfnt(data, offset, endian='big', owt_loc_high=0, font_type=None):
     """Read a MacOS NFNT or FONT resource."""
     # create struct types; IIgs NFNTs are little-endian
     base = {'b': be, 'l': le}[endian[:1].lower()]
@@ -308,7 +308,7 @@ def _uncompress_nfnt(data, offset):
     return bytes((data[0], data[1] ^ 0x80)) + bytes(reversed(output))
 
 
-def _convert_nfnt(properties, glyphs, fontrec):
+def convert_nfnt(properties, glyphs, fontrec):
     """Convert mac glyph metrics to monobit glyph metrics."""
     # the 'width' in the width/offset table is the pen advance
     # while the 'offset' is the (positive) offset after applying the
@@ -374,7 +374,7 @@ def _convert_nfnt(properties, glyphs, fontrec):
         kern_table = sorted(
             (
                 _entry.kernFirst, _entry.kernSecond,
-                properties['point_size'] * _fixed_to_float(
+                properties['point_size'] * fixed_to_float(
                     _entry.kernWidth, twos_complement=twos_complement
                 )
             )
