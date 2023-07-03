@@ -343,7 +343,8 @@ class Glyph(HasProps):
             if not tag_from:
                 if overwrite:
                     return self.modify(tag=None)
-            return self.modify(tag=tag_from.tag(*labels))
+            elif overwrite or not self.tag:
+                return self.modify(tag=tag_from.tag(*labels))
         if comment_from is not NOT_SET:
             if not comment_from:
                 return self.modify(comment=None)
@@ -565,42 +566,56 @@ class Glyph(HasProps):
     # orthogonal transformations
 
     @scriptable
-    def mirror(self, *, adjust_metrics:bool=True):
+    def mirror(
+            self, *,
+            adjust_metrics:bool=True, create_vertical_metrics:bool=False,
+        ):
         """
         Reverse pixels horizontally.
 
         adjust_metrics: also reverse metrics (default: True)
+        create_vertical_metrics: create vertical metrics if they don't exist (default: False)
         """
         pixels = self._pixels.mirror()
+        new_metrics = {}
         if adjust_metrics:
-            return self.modify(
-                pixels,
+            new_metrics |= dict(
                 left_bearing=self.right_bearing,
                 right_bearing=self.left_bearing,
-                shift_left=-self.shift_left
-                #shift_left around central axis, so should differ at most 1 pixel
             )
-        return self.modify(pixels)
+            if create_vertical_metrics or self.has_vertical_metrics():
+                new_metrics |= dict(
+                    shift_left=-self.shift_left
+                    #shift_left around central axis, so should differ at most 1 pixel
+                )
+        return self.modify(pixels, **new_metrics)
 
     @scriptable
-    def flip(self, *, adjust_metrics:bool=True):
+    def flip(
+            self, *,
+            adjust_metrics:bool=True, create_vertical_metrics:bool=False,
+        ):
         """
         Reverse pixels vertically.
 
         adjust_metrics: also reverse metrics (default: True)
+        create_vertical_metrics: create vertical metrics if they don't exist (default: False)
         """
         pixels = self._pixels.flip()
+        new_metrics = {}
         if adjust_metrics:
             # pylint: disable=invalid-unary-operand-type
-            return self.modify(
-                pixels,
-                top_bearing=self.bottom_bearing,
-                bottom_bearing=self.top_bearing,
+            new_metrics |= dict(
                 # flip about baseline
                 shift_up=-self.height - self.shift_up
             )
+            if create_vertical_metrics or self.has_vertical_metrics():
+                new_metrics |= dict(
+                    top_bearing=self.bottom_bearing,
+                    bottom_bearing=self.top_bearing,
+                )
         # Font should adjust ascent <-> descent and global bearings
-        return self.modify(pixels)
+        return self.modify(pixels, **new_metrics)
 
     @scriptable
     def transpose(self, *, adjust_metrics:bool=True):
@@ -630,7 +645,7 @@ class Glyph(HasProps):
     @scriptable
     def crop(
             self, left:int=0, bottom:int=0, right:int=0, top:int=0,
-            *, adjust_metrics:bool=True, create_vertical_metrics:bool=False
+            *, adjust_metrics:bool=True, create_vertical_metrics:bool=False,
         ):
         """
         Crop the raster.
@@ -644,40 +659,31 @@ class Glyph(HasProps):
         """
         if not any((left, bottom, right, top)):
             return self
-        create_vertical_metrics = (
-            create_vertical_metrics or self.has_vertical_metrics()
-        )
         # reduce raster
         pixels = self._pixels.crop(left, bottom, right, top)
-        if not adjust_metrics:
-            return self.modify(pixels)
-        else:
-            # shift-left adjustment rounds differently for odd-width than even width
-            sign = 1 if (self.width%2) else -1
-            if not create_vertical_metrics:
-                return self.modify(
-                    pixels,
-                    left_bearing=self.left_bearing + left,
-                    right_bearing=self.right_bearing + right,
-                    shift_up=self.shift_up + bottom,
-                )
-            else:
-                return self.modify(
-                    pixels,
-                    # horizontal metrics
-                    left_bearing=self.left_bearing + left,
-                    right_bearing=self.right_bearing + right,
-                    shift_up=self.shift_up + bottom,
-                    # vertical metrics
+        new_metrics = {}
+        if adjust_metrics:
+            # horizontal metrics
+            new_metrics |= dict(
+                left_bearing=self.left_bearing + left,
+                right_bearing=self.right_bearing + right,
+                shift_up=self.shift_up + bottom,
+            )
+            # vertical metrics
+            if create_vertical_metrics or self.has_vertical_metrics():
+                # shift-left adjustment rounds differently for odd-width than even width
+                sign = 1 if (self.width%2) else -1
+                new_metrics |= dict(
                     top_bearing=self.top_bearing + top,
                     bottom_bearing=self.bottom_bearing + bottom,
                     shift_left=self.shift_left + sign*((sign*(right-left))//2),
                 )
+        return self.modify(pixels, **new_metrics)
 
     @scriptable
     def expand(
             self, left:int=0, bottom:int=0, right:int=0, top:int=0,
-            *, adjust_metrics:bool=True
+            *, adjust_metrics:bool=True, create_vertical_metrics:bool=False,
         ):
         """
         Add blank space to raster.
@@ -687,30 +693,37 @@ class Glyph(HasProps):
         right: number of columns to add on right
         top: number of rows to add on top
         adjust_metrics: make the operation render-invariant (default: True)
+        create_vertical_metrics: create vertical metrics if they don't exist (default: False)
         """
         if not any((left, bottom, right, top)):
             return self
         # reduce raster
         pixels = self._pixels.expand(left, bottom, right, top)
+        new_metrics = {}
         if adjust_metrics:
-            # shift-left adjustment rounds differently for odd-width than even width
-            sign = 1 if (self.width%2) else -1
-            return self.modify(
-                pixels,
-                # horizontal metrics
+            # horizontal metrics
+            new_metrics |= dict(
                 left_bearing=self.left_bearing - left,
                 right_bearing=self.right_bearing - right,
                 shift_up=self.shift_up - bottom,
-                # vertical metrics
-                top_bearing=self.top_bearing - top,
-                bottom_bearing=self.bottom_bearing - bottom,
-                # for shift-left, expand left is like crop right, and v.v.
-                shift_left=self.shift_left + sign*((sign*(left-right))//2),
             )
-        return self.modify(pixels)
+            # vertical metrics
+            if create_vertical_metrics or self.has_vertical_metrics():
+                # shift-left adjustment rounds differently for odd-width than even width
+                sign = 1 if (self.width%2) else -1
+                new_metrics |= dict(
+                    top_bearing=self.top_bearing - top,
+                    bottom_bearing=self.bottom_bearing - bottom,
+                    # for shift-left, expand left is like crop right, and v.v.
+                    shift_left=self.shift_left + sign*((sign*(left-right))//2),
+                )
+        return self.modify(pixels, **new_metrics)
 
     @scriptable
-    def reduce(self, *, adjust_metrics:bool=True, create_vertical_metrics:bool=False):
+    def reduce(
+            self, *,
+            adjust_metrics:bool=True, create_vertical_metrics:bool=False,
+        ):
         """
         Return a glyph reduced to the bounding box.
 
@@ -729,7 +742,7 @@ class Glyph(HasProps):
     @scriptable
     def stretch(
             self, factor_x:int=1, factor_y:int=1,
-            *, adjust_metrics:bool=True
+            *, adjust_metrics:bool=True, create_vertical_metrics:bool=False,
         ):
         """
         Stretch glyph by repeating rows and/or columns.
@@ -737,26 +750,30 @@ class Glyph(HasProps):
         factor_x: number of times to repeat horizontally
         factor_y: number of times to repeat vertically
         adjust_metrics: also stretch metrics (default: True)
+        create_vertical_metrics: create vertical metrics if they don't exist (default: False)
         """
         if factor_x == factor_y == 1:
             return self
         pixels = self._pixels.stretch(factor_x, factor_y)
+        new_metrics = {}
         if adjust_metrics:
-            return self.modify(
-                pixels,
+            new_metrics |= dict(
                 left_bearing=factor_x*self.left_bearing,
                 right_bearing=factor_x*self.right_bearing,
-                top_bearing=factor_y*self.top_bearing,
-                bottom_bearing=factor_y*self.bottom_bearing,
                 shift_up=factor_y*self.shift_up,
-                shift_left=factor_x*self.shift_left,
             )
-        return self.modify(pixels)
+            if create_vertical_metrics or self.has_vertical_metrics():
+                new_metrics |= dict(
+                    top_bearing=factor_y*self.top_bearing,
+                    bottom_bearing=factor_y*self.bottom_bearing,
+                    shift_left=factor_x*self.shift_left,
+                )
+        return self.modify(pixels, **new_metrics)
 
     @scriptable
     def shrink(
             self, factor_x:int=1, factor_y:int=1,
-            *, adjust_metrics:bool=True
+            *, adjust_metrics:bool=True, create_vertical_metrics:bool=False,
         ):
         """
         Shrink by removing rows and/or columns.
@@ -764,32 +781,40 @@ class Glyph(HasProps):
         factor_x: factor to shrink horizontally
         factor_y: factor to shrink vertically
         adjust_metrics: also stretch metrics (default: True)
+        create_vertical_metrics: create vertical metrics if they don't exist (default: False)
         """
         if factor_x == factor_y == 1:
             return self
         pixels = self._pixels.shrink(factor_x, factor_y)
+        new_metrics = {}
         if adjust_metrics:
-            return self.modify(
-                pixels,
+            new_metrics |= dict(
                 left_bearing=self.left_bearing // factor_x,
                 right_bearing=self.right_bearing // factor_x,
-                top_bearing=self.top_bearing // factor_y,
-                bottom_bearing=self.bottom_bearing // factor_y,
                 shift_up=self.shift_up // factor_y,
-                shift_left=self.shift_left // factor_x,
             )
-        return self.modify(pixels)
+            if create_vertical_metrics or self.has_vertical_metrics():
+                new_metrics |= dict(
+                    top_bearing=self.top_bearing // factor_y,
+                    bottom_bearing=self.bottom_bearing // factor_y,
+                    shift_left=self.shift_left // factor_x,
+                )
+        return self.modify(pixels, **new_metrics)
 
     # shear
 
     @scriptable
-    def shear(self, *, direction:str='right', pitch:Coord=(1, 1)):
+    def shear(
+            self, *, direction:str='right', pitch:Coord=(1, 1),
+            create_vertical_metrics:bool=False,
+        ):
         """
         Create a slant by dislocating diagonally, keeping
         the horizontal baseline fixed.
 
         direction: direction to move the top of the glyph (default: 'right').
         pitch: angle of the slant, given as (x, y) coordinate (default: 1,1).
+        create_vertical_metrics: create vertical metrics if they don't exist (default: False)
         """
         if not self.height:
             return self
@@ -801,18 +826,26 @@ class Glyph(HasProps):
         # adjust for shift at baseline height, to keep it fixed
         pre = (-self.shift_up * pitch_x + modulo) // pitch_y - (modulo==pitch_y)
         if direction == 'r':
-            work = self.modify(
+            new_metrics = dict(
                 left_bearing=self.left_bearing-pre,
                 right_bearing=self.right_bearing+pre,
-                shift_left=self.shift_left+pre,
             )
+            if create_vertical_metrics or self.has_vertical_metrics():
+                new_metrics |= dict(
+                    shift_left=self.shift_left+pre,
+                )
+            work = self.modify(**new_metrics)
             work = work.expand(right=extra_width)
         elif direction == 'l':
-            work = self.modify(
+            new_metrics = dict(
                 left_bearing=self.left_bearing+pre,
                 right_bearing=self.right_bearing-pre,
-                shift_left=self.shift_left-pre,
             )
+            if create_vertical_metrics or self.has_vertical_metrics():
+                new_metrics |= dict(
+                    shift_left=self.shift_left-pre,
+                )
+            work = self.modify(**new_metrics)
             work = work.expand(left=extra_width)
         else:
             raise ValueError(
@@ -828,7 +861,7 @@ class Glyph(HasProps):
     @scriptable
     def smear(
             self, *, left:int=0, down:int=0, right:int=1, up:int=0,
-            adjust_metrics:bool=True
+            adjust_metrics:bool=True, create_vertical_metrics:bool=False,
         ):
         """
         Repeat inked pixels.
@@ -838,27 +871,31 @@ class Glyph(HasProps):
         up: number of times to repeat inked pixel upwards
         down: number of times to repeat inked pixel downwards
         adjust_metrics: ensure advances stay the same (default: True)
+        create_vertical_metrics: create vertical metrics if they don't exist (default: False)
         """
         # pylint: disable=unpacking-non-sequence
         pleft, pdown, pright, pup = self.padding
         work = self.expand(
             max(0, left-pleft), max(0, down-pdown),
             max(0, right-pright), max(0, up-pup),
-            adjust_metrics=adjust_metrics
+            adjust_metrics=adjust_metrics,
+            create_vertical_metrics=create_vertical_metrics,
         )
         return work.modify(work._pixels.smear(
             left=left, right=right, up=up, down=down,
         ))
 
     @scriptable
-    def outline(self, *, thickness:int=1):
+    def outline(self, *, thickness:int=1, create_vertical_metrics:bool=False):
         """
         Outline glyph.
 
         thickness: number of pixels in outline in each direction
+        create_vertical_metrics: create vertical metrics if they don't exist (default: False)
         """
         thicker = self.smear(
-            left=thickness, down=thickness, right=thickness, up=thickness
+            left=thickness, down=thickness, right=thickness, up=thickness,
+            create_vertical_metrics=create_vertical_metrics,
         )
         return thicker.overlay(self, operator=lambda x: bool(sum(x) % 2))
 

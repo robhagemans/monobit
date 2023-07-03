@@ -269,7 +269,7 @@ class YaffGlyph(YaffMultiline):
 
 def normalise_property(field):
     # preserve distinction between starting underscore (internal) and starting dash (user property)
-    return field[:1] + field[1:].replace('-', '_')
+    return field.replace('-', '_')
 
 
 # keywords that take a label value
@@ -433,8 +433,7 @@ def _write_property(outstream, key, value, comments, indent=''):
         outstream.write(
             f'\n{indent}{format_comment(comments, YaffParams.comment)}\n'
         )
-    if not key.startswith('_'):
-        key = key.replace('_', '-')
+    key = key.replace('_', '-')
     # write key-value pair
     if isinstance(value, Label) or not isinstance(value, str):
         # do not quote converted non-strings (plus Tag and Char which are str)

@@ -30,8 +30,8 @@ class HasProps:
             type(self).__name__
             + '(\n    ' +
             '\n    '.join(
-                f'{_k}={_v!r},' for _k, _v in self._props.items()
-                if not _k.startswith('_')
+                f'{_k}={_v!r},'
+                for _k, _v in self._props.items()
             )
             + '\n)'
         )
@@ -43,10 +43,11 @@ class HasProps:
             return type(self)._defaults[field]
 
     def __getattr__(self, field):
-        try:
-            return self._get_property(field)
-        except KeyError:
-            pass
+        if not field.startswith('_'):
+            try:
+                return self._get_property(field)
+            except KeyError:
+                pass
         raise AttributeError(field)
 
     @staticmethod
