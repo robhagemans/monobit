@@ -215,20 +215,14 @@ class Raster:
         else:
             offset = 0
         excess = len(bitseq) % stride
-        if excess:
-            if _1 in bitseq[-excess:]:
-                raise ValueError(
-                    'Bit string overruns by nonzero %d-bit sequence [%s].'
-                    % (excess, bitseq[-excess:])
-                )
-            bitseq = bitseq[:-excess]
-        if height is NOT_SET:
-            # used as slice bound, None means all
-            height = None
         rows = tuple(
             bitseq[_offs:_offs+width]
-            for _offs in range(offset, len(bitseq), stride)
-        )[:height]
+            for _offs in range(offset, len(bitseq) - excess, stride)
+        )
+        if height is not NOT_SET:
+            if len(rows) < height:
+                raise ValueError('Bit string too short')
+            rows = rows[:height]
         return cls(rows, _0=_0, _1=_1)
 
     def as_vector(self, ink=1, paper=0):

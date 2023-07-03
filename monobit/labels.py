@@ -7,6 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 from string import ascii_letters, digits
 from unicodedata import normalize
+from itertools import count
 
 from .binary import ceildiv, int_to_bytes, bytes_to_int
 from .scripting import to_int
@@ -193,6 +194,11 @@ class Codepoint(bytes, Label):
             raise ValueError('Empty codepoint cannot be converted to int.')
         return bytes_to_int(self)
 
+    def __add__(self, value):
+        """Add integer value."""
+        return Codepoint(int(self) + value)
+
+
 
 ##############################################################################
 # tags
@@ -267,8 +273,10 @@ def to_range(set_str, converter=to_int, inclusive_range=lambda _l, _u: range(_l,
     elements = set_str.split(',')
     elements = (_e.partition('-') for _e in elements)
     elements = (
-        inclusive_range(converter(_e[0]), converter(_e[2]))
-        if all(_e) else (converter(_e[0]),)
+        inclusive_range(converter(_e[0]), converter(_e[2])) if _e[2]
+        # deal with '1-' . This will only work for numbers
+        else count(converter(_e[0]),) if _e[1]
+        else (converter(_e[0]),)
         for _e in elements
     )
     elements = (_i for _e in elements for _i in _e)
