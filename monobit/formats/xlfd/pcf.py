@@ -294,7 +294,9 @@ def _read_metrics(instream):
     format, base = _read_format(instream)
     if format & PCF_COMPRESSED_METRICS:
         compressed_metrics = base.Struct(**_COMPRESSED_METRICS)
-        count = base.int16.read_from(instream)
+        # documented as signed int, but unsigned it makes more sense
+        # also this is used as uint by bdftopcf for e.g. unifont
+        count = base.uint16.read_from(instream)
         metrics = (compressed_metrics * count).read_from(instream)
         # adjust unsigned bytes by 0x80 offset
         metrics = tuple(
@@ -303,7 +305,7 @@ def _read_metrics(instream):
         )
     else:
         uncompressed_metrics = base.Struct(**_UNCOMPRESSED_METRICS)
-        count = base.int32.read_from(instream)
+        count = base.uint32.read_from(instream)
         metrics = (uncompressed_metrics * count).read_from(instream)
     return metrics
 
@@ -729,8 +731,9 @@ def _create_acc_table(font, format, base, create_ink_bounds):
         # /* true if the ink metrics differ from the metrics somewhere */
         inkMetrics=create_ink_bounds and any(_m != _i for _m, _i in zip(metrics, ink_metrics)),
         # /* 0=>left to right, 1=>right to left */
-        # CHECK is this ever set to rtl even in rtl fonts?
-        drawDirection=1 if font.direction == 'right-to-left' else 0,
+        # however in practice this is set to 0 even on fonts with RTL glyphs
+        # e.g. /usr/share/fonts/arabic24.pcf.gz
+        drawDirection=0,
         padding=0,
         fontAscent=fontAscent,
         fontDescent=fontDescent,
