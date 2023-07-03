@@ -637,8 +637,10 @@ def _make_contiguous(font, pix_width):
     font = font.modify(ord_glyphs)
     return font
 
-def _normalise_metrics(font):
-    """Normalise glyph representation for Windows."""
+def normalise_metrics(font):
+    """
+    Bring glyphs to equal height, expand bitmaps to fill bearings, equalise upshifts.
+    """
     # fix auto-generated values
     font = font.modify(ascent=font.ascent, descent=font.descent)
     add_shift_up = max(0, -min(_g.shift_up for _g in font.glyphs))
@@ -662,7 +664,7 @@ def create_fnt(font, version=0x200, vector=False):
     """Create .FNT from monobit font."""
     # take only the glyphs we can store
     font = _subset_storable(font)
-    font, add_shift_up = _normalise_metrics(font)
+    font, add_shift_up = normalise_metrics(font)
     if font.spacing == 'proportional':
         pix_width = 0
     else:

@@ -17,8 +17,7 @@ from ...binary import ceildiv
 from .bdf import read_props
 from .xlfd import _parse_xlfd_properties, _create_xlfd_properties
 from .xlfd import _create_xlfd_name
-# from ..text.yaff import _globalise_glyph_metrics
-from ..windows import _normalise_metrics
+from ..text.yaff import globalise_glyph_metrics
 
 
 @loaders.register(
@@ -55,15 +54,17 @@ def load_hbf(instream):
     return font
 
 @savers.register(linked=load_hbf)
-def save_hbf(fonts, outstream):
+def save_hbf(fonts, outstream, code_scheme:str=''):
     """
     Save font to Hanzi Bitmap Format (HBF) file.
+
+    code_scheme: override HBF_CODE_SCHEME value (default: use encoding)
     """
     if len(fonts) > 1:
         raise FileFormatError('Can only save one font to HBF file.')
     # ensure codepoint values are set
     font = fonts[0]
-    _save_hbf(font, outstream.text, outstream.where)
+    _save_hbf(font, outstream.text, outstream.where, code_scheme)
 
 
 ##############################################################################
@@ -333,10 +334,10 @@ def _parse_hbf_properties(hbf_props):
 ##############################################################################
 # hbf writer
 
-def _save_hbf(font, outstream, container):
+def _save_hbf(font, outstream, container, code_scheme):
     """Write one font to HBF."""
-    bitmap_name = outstream.name + '.bin'
-    hbf_props, bitmaps = _convert_to_hbf(font, bitmap_name)
+    bitmap_name = container.unused_name(outstream.name + '.bin')
+    hbf_props, bitmaps = _convert_to_hbf(font, bitmap_name, code_scheme)
     for name, value in hbf_props:
         logging.info('    %s: %s', name, value)
     with container.open(bitmap_name, 'w') as binfile:
@@ -346,7 +347,7 @@ def _save_hbf(font, outstream, container):
         outstream.write(f'{name} {value}\n')
 
 
-def _convert_to_hbf(font, bitmap_name):
+def _convert_to_hbf(font, bitmap_name, code_scheme):
     """Convert to HBF properties."""
     # set codepoints
     font = font.label(codepoint_from=font.encoding)
@@ -358,11 +359,11 @@ def _convert_to_hbf(font, bitmap_name):
         raise FileFormatError(
             'Only character-cell fonts can be stored in HBF format.'
         )
-    # bring font to normal form
-    font, shift_up = _normalise_metrics(font)
-    #TODO
-    left_bearing = 0
-    #glyphs, properties = _globalise_glyph_metrics(font)
+    # bring font to padded, equalised normal form
+    # then extract common bearings
+    font = font.equalise_horizontal()
+    padding = font.padding
+    font = font.crop(*padding)
     # convert properties
     xlfd_props = _create_xlfd_properties(font)
     if 'hbf.font' in font.get_properties():
@@ -371,10 +372,13 @@ def _convert_to_hbf(font, bitmap_name):
     else:
         fontname = _create_xlfd_name(xlfd_props)
     bbx = (
-        f'{font.cell_size.x} {font.cell_size.y} '
-        f'{left_bearing} {shift_up}'
+        f'{font.raster_size.x} {font.raster_size.y} '
+        f'{padding.left} {padding.bottom}'
     )
-    #TODO
+    font_bbx = (
+        f'{font.raster_size.x+padding.right} {font.raster_size.y+padding.top} '
+        f'{padding.left} {padding.bottom}'
+    )
     code_scheme = font.encoding
     props = [
         ('HBF_START_FONT', '1.1'),
@@ -385,7 +389,7 @@ def _convert_to_hbf(font, bitmap_name):
         ('FONT', fontname),
         ('SIZE', f'{font.point_size} {font.dpi.x} {font.dpi.y}'),
         ('HBF_BITMAP_BOUNDING_BOX', bbx),
-        ('FONTBOUNDINGBOX', bbx),
+        ('FONTBOUNDINGBOX', font_bbx),
     ]
     if xlfd_props:
         props.append(('STARTPROPERTIES', str(len(xlfd_props))))
@@ -460,24 +464,6 @@ def _get_code_ranges(font):
     cranges = _find_ranges(cps, gen)
     logging.debug('CODE_RANGES %s', cranges)
     return cps, cranges, b2ranges, b3ranges
-
-#
-# def __old_find_ranges(cps):
-#     """Convert a sorted list/tuple to a list of ranges."""
-#     start = int(cps[0])
-#     logging.debug(start)
-#     cur_range = [start, start]
-#     ranges = []
-#     for cp in cps[1:]:
-#         cp = int(cp)
-#         if cp == cur_range[1] + 1:
-#             cur_range[1] = cp
-#         else:
-#             ranges.append(range(cur_range[0], cur_range[1]+1))
-#             cur_range = [cp, cp]
-#     ranges.append(range(cur_range[0], cur_range[1]+1))
-#     logging.debug(ranges)
-#     return ranges
 
 
 def _find_ranges(cps, indexgen=None):
