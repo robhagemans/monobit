@@ -622,8 +622,11 @@ def _subset_storable(font):
     font = font.subset(codepoints=codepoints)
     return font
 
-def _make_contiguous(font, pix_width):
+def _make_contiguous(font):
     """Fill out a contiguous range of glyphs."""
+    # x_width should equal average width
+    # this is 0 for proportional fonts
+    pix_width = font.cell_size.x
     # blank glyph of standard size
     blank = Glyph.blank(pix_width, font.raster_size.y)
     # char table; we need a contiguous range between the min and max codepoints
@@ -637,48 +640,21 @@ def _make_contiguous(font, pix_width):
     font = font.modify(ord_glyphs)
     return font
 
-def normalise_metrics(font):
-    """
-    Bring glyphs to equal height, expand bitmaps to fill bearings, equalise upshifts.
-    """
-    # fix auto-generated values
-    font = font.modify(ascent=font.ascent, descent=font.descent)
-    add_shift_up = max(0, -min(_g.shift_up for _g in font.glyphs))
-    ord_glyphs = tuple(
-        _g.expand(
-            # bring all glyphs to same height
-            top=max(0, font.raster_size.y-_g.height - add_shift_up),
-            # expand into horizontal bearings
-            left=max(0, _g.left_bearing),
-            right=max(0, _g.right_bearing),
-            # expand by positive shift to make all upshifts equal
-            bottom=_g.shift_up + add_shift_up
-        ).drop('shift_up')
-        for _g in font.glyphs
-    )
-    font = font.modify(ord_glyphs)
-    return font, add_shift_up
-
 
 def create_fnt(font, version=0x200, vector=False):
     """Create .FNT from monobit font."""
     # take only the glyphs we can store
     font = _subset_storable(font)
-    font, add_shift_up = normalise_metrics(font)
-    if font.spacing == 'proportional':
-        pix_width = 0
-    else:
-        # x_width should equal average width
-        pix_width = font.raster_size.x
-    font = _make_contiguous(font, pix_width)
+    font = _make_contiguous(font)
+    # bring to equal-height, equal-upshift, padded normal form
+    font = font.equalise_horizontal()
     bitmaps, char_table, offset_bitmaps, byte_width = _convert_to_fnt_glyphs(
-        font, version, vector, add_shift_up
+        font, version, vector
     )
     bitmap_size = sum(len(_b) for _b in bitmaps)
     win_props, header_ext, stringtable = _convert_to_fnt_props(
         font, version, vector,
         offset_bitmaps, bitmap_size, byte_width,
-        add_shift_up
     )
     data = (
         bytes(win_props) + bytes(header_ext)
@@ -692,9 +668,11 @@ def create_fnt(font, version=0x200, vector=False):
 def _convert_to_fnt_props(
         font, version, vector,
         offset_bitmaps, bitmap_size, byte_width,
-        add_shift_up
     ):
     """Convert font to FNT headers."""
+    upshifts = set(_g.shift_up for _g in font.glyphs)
+    shift_up, *remainder = upshifts
+    assert not remainder
     # get lowest and highest codepoints (contiguous glyphs followed by blank)
     min_ord = font.glyphs[0].codepoint[0]
     max_ord = font.glyphs[-2].codepoint[0]
@@ -748,9 +726,10 @@ def _convert_to_fnt_props(
         dfVertRes=font.dpi.y,
         dfHorizRes=font.dpi.x,
         # Windows dfAscent means distance between matrix top and baseline
-        dfAscent=font.raster_size.y - add_shift_up,
+        # common shift_up is negative or zero in padded normal form
+        dfAscent=font.raster_size.y + shift_up,
         #'ascent': win_props.dfAscent - win_props.dfInternalLeading,
-        dfInternalLeading=font.raster_size.y - add_shift_up - font.ascent,
+        dfInternalLeading=font.raster_size.y + shift_up - font.ascent,
         #'line_height': win_props.dfPixHeight + win_props.dfExternalLeading,
         dfExternalLeading=font.line_height-font.raster_size.y,
         dfItalic=(font.slant in ('italic', 'oblique')),
@@ -787,12 +766,15 @@ def _convert_to_fnt_props(
     return win_props, header_ext, stringtable
 
 
-def _convert_to_fnt_glyphs(font, version, vector, add_shift_up):
+def _convert_to_fnt_glyphs(font, version, vector):
     """Convert glyphs to FNT bitmaps and offset tables."""
     if vector:
+        upshifts = set(_g.shift_up for _g in font.glyphs)
+        shift_up, *remainder = upshifts
+        assert not remainder
         # vector glyph data
         # this should equal the dfAscent value
-        win_ascent = font.raster_size.y - add_shift_up
+        win_ascent = font.raster_size.y + shift_up
         bitmaps = _convert_vector_glyphs_to_fnt(font.glyphs, win_ascent)
         byte_width = 0
     elif version == 0x100:
