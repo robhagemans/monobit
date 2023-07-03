@@ -460,7 +460,7 @@ def _parse_xlfd_name(xlfd_str):
         return {}
     return properties
 
-def _from_quoted_string(quoted):
+def from_quoted_string(quoted):
     """Strip quotes"""
     return quoted.strip('"').replace('""', '"')
 
@@ -468,7 +468,7 @@ def _all_ints(*value, to_int=int):
     """Convert all items in tuple to int."""
     return tuple(to_int(_x) for _x in value)
 
-def _parse_xlfd_properties(x_props, xlfd_name, to_int=int):
+def parse_xlfd_properties(x_props, xlfd_name, to_int=int):
     """Parse X metadata."""
     xlfd_name_props = _parse_xlfd_name(xlfd_name)
     # find fields in XLFD FontName that do not match the FontProperties
@@ -486,25 +486,25 @@ def _parse_xlfd_properties(x_props, xlfd_name, to_int=int):
     # PIXEL_SIZE = ROUND((RESOLUTION_Y * POINT_SIZE) / 722.7)
     properties = {
         # FULL_NAME is deprecated
-        'name': _from_quoted_string(
+        'name': from_quoted_string(
             x_props.pop('FACE_NAME', x_props.pop('FULL_NAME', ''))
         ),
-        'revision': _from_quoted_string(x_props.pop('FONT_VERSION', '')),
-        'foundry': _from_quoted_string(x_props.pop('FOUNDRY', '')),
-        'copyright': _from_quoted_string(x_props.pop('COPYRIGHT', '')),
-        'notice': _from_quoted_string(x_props.pop('NOTICE', '')),
-        'family': _from_quoted_string(x_props.pop('FAMILY_NAME', '')),
-        'style': _from_quoted_string(x_props.pop('ADD_STYLE_NAME', '')).lower(),
+        'revision': from_quoted_string(x_props.pop('FONT_VERSION', '')),
+        'foundry': from_quoted_string(x_props.pop('FOUNDRY', '')),
+        'copyright': from_quoted_string(x_props.pop('COPYRIGHT', '')),
+        'notice': from_quoted_string(x_props.pop('NOTICE', '')),
+        'family': from_quoted_string(x_props.pop('FAMILY_NAME', '')),
+        'style': from_quoted_string(x_props.pop('ADD_STYLE_NAME', '')).lower(),
         'ascent': x_props.pop('FONT_ASCENT', None),
         'descent': x_props.pop('FONT_DESCENT', None),
         'x_height': x_props.pop('X_HEIGHT', None),
         'cap_height': x_props.pop('CAP_HEIGHT', None),
         'pixel_size': x_props.pop('PIXEL_SIZE', None),
         'slant': _SLANT_MAP.get(
-            _from_quoted_string(x_props.pop('SLANT', '')), None
+            from_quoted_string(x_props.pop('SLANT', '')), None
         ),
         'spacing': _SPACING_MAP.get(
-            _from_quoted_string(x_props.pop('SPACING', '')), None
+            from_quoted_string(x_props.pop('SPACING', '')), None
         ),
         'underline_descent': x_props.pop('UNDERLINE_POSITION', None),
         'underline_thickness': x_props.pop('UNDERLINE_THICKNESS', None),
@@ -531,14 +531,14 @@ def _parse_xlfd_properties(x_props, xlfd_name, to_int=int):
         )
         x_props.pop('SETWIDTH_NAME', None)
     if 'setwidth' not in properties or not properties['setwidth']:
-        properties['setwidth'] = _from_quoted_string(
+        properties['setwidth'] = from_quoted_string(
             x_props.pop('SETWIDTH_NAME', '')
         ).lower()
     if 'RELATIVE_WEIGHT' in x_props:
         properties['weight'] = _WEIGHT_MAP.get(x_props.pop('RELATIVE_WEIGHT'), None)
         x_props.pop('WEIGHT_NAME', None)
     if 'weight' not in properties or not properties['weight']:
-        properties['weight'] = _from_quoted_string(x_props.pop('WEIGHT_NAME', '')).lower()
+        properties['weight'] = from_quoted_string(x_props.pop('WEIGHT_NAME', '')).lower()
     # resolution
     if 'RESOLUTION_X' in x_props and 'RESOLUTION_Y' in x_props:
         properties['dpi'] = _all_ints(
@@ -561,8 +561,8 @@ def _parse_xlfd_properties(x_props, xlfd_name, to_int=int):
             to_int=to_int
         )
     # encoding
-    registry = _from_quoted_string(x_props.pop('CHARSET_REGISTRY', '')).lower()
-    encoding = _from_quoted_string(x_props.pop('CHARSET_ENCODING', '')).lower()
+    registry = from_quoted_string(x_props.pop('CHARSET_REGISTRY', '')).lower()
+    encoding = from_quoted_string(x_props.pop('CHARSET_ENCODING', '')).lower()
     if registry and encoding and encoding != '0':
         properties['encoding'] = f'{registry}-{encoding}'
     elif registry:
@@ -592,7 +592,7 @@ def _parse_xlfd_properties(x_props, xlfd_name, to_int=int):
         except KeyError:
             continue
         key = key.lower()
-        value = _from_quoted_string(value)
+        value = from_quoted_string(value)
         if value:
             properties[f'xlfd.{key}'] = value
     # drop empty known properties
@@ -603,7 +603,7 @@ def _parse_xlfd_properties(x_props, xlfd_name, to_int=int):
     # keep unrecognised properties but in separate namespace
     # to avoid any clashes with yaff properties
     properties.update({
-        f'{CUSTOM_PROP}.{_k}'.lower(): _from_quoted_string(_v)
+        f'{CUSTOM_PROP}.{_k}'.lower(): from_quoted_string(_v)
         for _k, _v in x_props.items()
     })
     return properties
@@ -612,7 +612,7 @@ def _parse_xlfd_properties(x_props, xlfd_name, to_int=int):
 
 ##############################################################################
 
-def _create_xlfd_name(xlfd_props):
+def create_xlfd_name(xlfd_props):
     """Construct XLFD name from properties."""
     # if we stored a font name explicitly, keep it
     try:
@@ -626,7 +626,7 @@ def _quoted_string(unquoted):
     """Return quoted version of string, if any."""
     return '"{}"'.format(unquoted.replace('"', '""'))
 
-def _create_xlfd_properties(font):
+def create_xlfd_properties(font):
     """Construct XLFD properties."""
     # construct the fields needed for FontName if not defined, leave others optional
     xlfd_props = {

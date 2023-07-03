@@ -9,8 +9,8 @@ import logging
 
 from ...storage import loaders, savers
 
-from .dfont import _parse_mac_resource
-from .nfnt import _extract_nfnt, _convert_nfnt, _create_nfnt
+from .dfont import parse_resource_fork, save_dfont
+from .nfnt import extract_nfnt, convert_nfnt, create_nfnt
 from .lisa import _load_lisa
 from .iigs import _load_iigs, _save_iigs
 
@@ -22,9 +22,18 @@ from .iigs import _load_iigs, _save_iigs
     patterns=('*.dfont', '*.suit', '*.rsrc',),
 )
 def load_mac_dfont(instream):
-    """Load font from a MacOS suitcase."""
+    """Load font from MacOS resource fork or data-fork resource."""
     data = instream.read()
-    return _parse_mac_resource(data)
+    return parse_resource_fork(data)
+
+
+@savers.register(linked=load_mac_dfont)
+def save_mac_dfont(fonts, outstream, resource_type:str='NFNT', family_id:int=None):
+    """Save font to MacOS resource fork or data-fork resource.
+
+    resource_type: type of resource to store font in. One of `sfnt`, `NFNT`.
+    """
+    save_dfont(fonts, outstream, resource_type)
 
 
 @loaders.register(
@@ -42,8 +51,8 @@ def load_nfnt(instream, offset:int=0):
     """
     instream.seek(offset)
     data = instream.read()
-    fontdata = _extract_nfnt(data, 0)
-    return _convert_nfnt({}, **fontdata)
+    fontdata = extract_nfnt(data, 0)
+    return convert_nfnt({}, **fontdata)
 
 
 @loaders.register(name='lisa')
@@ -75,10 +84,23 @@ def save_iigs(fonts, outstream, version:int=None):
 
 
 @savers.register(linked=load_nfnt)
-def save_nfnt(fonts, outstream):
-    """Write font to a bare FONT/NFNT resource."""
+def save_nfnt(
+        fonts, outstream,
+        create_width_table:bool=True,
+        create_height_table:bool=False,
+    ):
+    """
+    Write font to a bare FONT/NFNT resource.
+
+    create_width_table: include a fractional glyph-width table in the resource (default: True)
+    create_height_table: include an image-height table in the resource (default: False)
+    """
     if len(fonts) > 1:
         logging.warning('NFNT resource can only store one font.')
     font = fonts[0]
-    data, _, _ = _create_nfnt(font, endian='big', ndescent_is_high=True)
+    data, _, _ = create_nfnt(
+        font, endian='big', ndescent_is_high=True,
+        create_width_table=create_width_table,
+        create_height_table=create_height_table,
+    )
     outstream.write(data)

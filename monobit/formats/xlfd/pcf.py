@@ -20,8 +20,8 @@ from ...binary import align, ceildiv
 
 from .bdf import swidth_to_pixel, pixel_to_swidth
 from .xlfd import (
-    _parse_xlfd_properties, _create_xlfd_properties, _create_xlfd_name,
-    _from_quoted_string
+    parse_xlfd_properties, create_xlfd_properties, create_xlfd_name,
+    from_quoted_string
 )
 
 MAGIC = b'\1fcp'
@@ -294,7 +294,9 @@ def _read_metrics(instream):
     format, base = _read_format(instream)
     if format & PCF_COMPRESSED_METRICS:
         compressed_metrics = base.Struct(**_COMPRESSED_METRICS)
-        count = base.int16.read_from(instream)
+        # documented as signed int, but unsigned it makes more sense
+        # also this is used as uint by bdftopcf for e.g. unifont
+        count = base.uint16.read_from(instream)
         metrics = (compressed_metrics * count).read_from(instream)
         # adjust unsigned bytes by 0x80 offset
         metrics = tuple(
@@ -303,7 +305,7 @@ def _read_metrics(instream):
         )
     else:
         uncompressed_metrics = base.Struct(**_UNCOMPRESSED_METRICS)
-        count = base.int32.read_from(instream)
+        count = base.uint32.read_from(instream)
         metrics = (uncompressed_metrics * count).read_from(instream)
     return metrics
 
@@ -479,7 +481,7 @@ def _convert_props(pcf_data):
     """Convert properties for PCF to monobit."""
     xlfd_name = pcf_data.xlfd_props.pop('FONT', '')
     pcf_data.xlfd_props = {_k: str(_v) for _k, _v in pcf_data.xlfd_props.items()}
-    props = _parse_xlfd_properties(pcf_data.xlfd_props, xlfd_name)
+    props = parse_xlfd_properties(pcf_data.xlfd_props, xlfd_name)
     props.update(dict(
         default_char=Codepoint(pcf_data.default_char),
     ))
@@ -570,8 +572,8 @@ def _write_pcf(
 def _create_properties_table(font, format, base):
     """Create the Properties table."""
     propstrings = bytearray()
-    xlfd_props = _create_xlfd_properties(font)
-    xlfd_props['FONT'] = _create_xlfd_name(xlfd_props)
+    xlfd_props = create_xlfd_properties(font)
+    xlfd_props['FONT'] = create_xlfd_name(xlfd_props)
     props = []
     props_struct = base.Struct(**_PROPS)
     for key, value in xlfd_props.items():
@@ -582,7 +584,7 @@ def _create_properties_table(font, format, base):
         propstrings += key.encode('ascii', 'replace') + b'\0'
         if prop.isStringProp:
             prop.value = len(propstrings)
-            value = _from_quoted_string(value)
+            value = from_quoted_string(value)
             propstrings += value.encode('ascii', 'replace') + b'\0'
         else:
             prop.value = int(value)
@@ -729,8 +731,9 @@ def _create_acc_table(font, format, base, create_ink_bounds):
         # /* true if the ink metrics differ from the metrics somewhere */
         inkMetrics=create_ink_bounds and any(_m != _i for _m, _i in zip(metrics, ink_metrics)),
         # /* 0=>left to right, 1=>right to left */
-        # CHECK is this ever set to rtl even in rtl fonts?
-        drawDirection=1 if font.direction == 'right-to-left' else 0,
+        # however in practice this is set to 0 even on fonts with RTL glyphs
+        # e.g. /usr/share/fonts/arabic24.pcf.gz
+        drawDirection=0,
         padding=0,
         fontAscent=fontAscent,
         fontDescent=fontDescent,

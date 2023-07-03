@@ -19,8 +19,8 @@ from ...font import Font, Coord
 from ...glyph import Glyph, KernTable
 from ...magic import FileFormatError
 
-from .nfnt import _convert_nfnt, _extract_nfnt, _create_nfnt
-from .dfont import _FONT_NAMES, _NON_ROMAN_NAMES
+from .nfnt import convert_nfnt, extract_nfnt, create_nfnt
+from .dfont import NON_ROMAN_NAMES
 
 
 # IIgs font file is essentially a little-endian MacOS FONT resource,
@@ -78,7 +78,7 @@ def _load_iigs(instream):
     else:
         eh = _EXTENDED_HEADER()
     # read IIgs-style NFNT resource
-    fontdata = _extract_nfnt(
+    fontdata = extract_nfnt(
         data, offset, endian='little',
         owt_loc_high=eh.owTLocHigh, font_type=b'\0\0'
     )
@@ -87,7 +87,7 @@ def _load_iigs(instream):
 
 def _convert_iigs(glyphs, fontrec, header, name):
     """Convert IIgs font data to monobit font."""
-    font = _convert_nfnt({}, glyphs, fontrec)
+    font = convert_nfnt({}, glyphs, fontrec)
     # properties from IIgs header
     properties = {
         'family': name,
@@ -95,7 +95,7 @@ def _convert_iigs(glyphs, fontrec, header, name):
         'source_format': 'IIgs v{}.{}'.format(*divmod(header.version, 256)),
         'iigs.family_id': header.family,
     }
-    if name not in _NON_ROMAN_NAMES:
+    if name not in NON_ROMAN_NAMES:
         properties['encoding'] = 'mac-roman'
     # decode style field
     if header.style.bold:
@@ -115,8 +115,9 @@ def _convert_iigs(glyphs, fontrec, header, name):
 
 def _save_iigs(outstream, font, version=None):
     """Save an Apple IIgs font file."""
-    nfnt, owt_loc_high, fbr_extent = _create_nfnt(
-        font, endian='little', ndescent_is_high=False
+    nfnt, owt_loc_high, fbr_extent = create_nfnt(
+        font, endian='little', ndescent_is_high=False,
+        create_width_table=False, create_height_table=False,
     )
     # if offset > 32 bits, need to use iigs format v1.05
     if version is None:

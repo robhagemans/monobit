@@ -173,6 +173,8 @@ def save(
         # errors can occur if the strings we write contain surrogates
         # these may come from filesystem names using 'surrogateescape'
         sys.stdout.reconfigure(errors='replace')
+    if not pack:
+        raise ValueError('No fonts to save')
     with open_location(outfile, 'w') as (stream, subpath):
         save_stream(
             pack, stream,

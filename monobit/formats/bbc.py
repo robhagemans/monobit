@@ -13,9 +13,6 @@ from ..font import Font
 from ..glyph import Glyph
 from ..magic import FileFormatError
 
-# common utilities
-from .gdos import _subset_storable
-
 
 _BBC_VDU = b'\x17'
 
@@ -70,7 +67,7 @@ def _write_bbc(outstream, font):
             'BBC font file can only store an 8x8 character-cell font.'
         )
     font = font.label(codepoint_from=font.encoding)
-    font = _subset_storable(font, _BBC_RANGE)
+    font = font.subset(_BBC_RANGE)
     # expand into horizontal bearings, align vertically
     font = font.equalise_horizontal()
     glyph_bytes = tuple(

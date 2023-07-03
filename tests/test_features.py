@@ -252,6 +252,9 @@ class TestFeatures(BaseTester):
     def test_hppcl_landscape_proportional(self):
         self._render_proportional('hppcl', orientation='landscape')
 
+    def test_dfont_proportional(self):
+        self._render_proportional('mac')
+
     def test_otb_proportional(self):
         format = 'sfnt'
         prop1, *_ = monobit.load(self.font_path / 'wbfont.amiga/wbfont_prop.font')
@@ -298,6 +301,13 @@ class TestFeatures(BaseTester):
         text2 = monobit.render(webby_mod2, 'sjifjij').as_text()
         assert_text_eq(text2, self.kerntext)
 
+    def test_render_mac_kerning(self):
+        webby_mod1, *_ = monobit.load(self.font_path / 'webby-small-kerned.yaff')
+        monobit.save(webby_mod1, self.temp_path / 'webby-small-kerned.dfont', resource_type='NFNT')
+        webby_mod2, *_ = monobit.load(self.temp_path / 'webby-small-kerned.dfont')
+        text2 = monobit.render(webby_mod2, 'sjifjij').as_text()
+        assert_text_eq(text2, self.kerntext)
+
 
     # kerning and negative bearings using overlapping test font
 
@@ -340,6 +350,13 @@ class TestFeatures(BaseTester):
         font, *_ = monobit.load(self.font_path / 'positioning.yaff')
         monobit.save(font, self.temp_path / 'positioning.otb')
         font, *_ = monobit.load(self.temp_path / 'positioning.otb')
+        text = monobit.render(font, '01234').as_text()
+        assert_text_eq(text, self.testtext)
+
+    def test_render_mac_kerning_bearings(self):
+        font, *_ = monobit.load(self.font_path / 'positioning.yaff')
+        monobit.save(font, self.temp_path / 'positioning.dfont', resource_type='NFNT')
+        font, *_ = monobit.load(self.temp_path / 'positioning.dfont')
         text = monobit.render(font, '01234').as_text()
         assert_text_eq(text, self.testtext)
 

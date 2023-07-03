@@ -26,7 +26,11 @@ def chart(
         codepoints = font.get_codepoints()
         if not codepoints:
             raise ValueError('No codepoint labels found.')
-        codepoint_range = int(min(codepoints)), int(max(codepoints))
+        codepoint_range = (
+            # start at a codepoint that is a multple of the number of columns
+            columns * (int(min(codepoints)) // columns),
+            int(max(codepoints))
+        )
     # make contiguous
     glyphs = tuple(
         font.get_glyph(_codepoint, missing='empty')

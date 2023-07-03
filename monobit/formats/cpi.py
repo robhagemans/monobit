@@ -19,7 +19,6 @@ from ..glyph import Glyph
 from ..properties import Props
 
 from .raw import load_bitmap
-from .gdos import _subset_storable
 
 
 _ID_MS = b'FONT   '
@@ -420,7 +419,7 @@ def _make_one_fit(font, codepage_prefix):
     # ensure codepoint values are set, if possible
     font = font.label(codepoint_from=font.encoding)
     # take only the glyphs that will fit
-    font = _subset_storable(font, _RANGE)
+    font = font.subset(_RANGE)
     font = font.equalise_horizontal()
     font = _fill_contiguous(font, _RANGE, Glyph.blank(*font.cell_size))
     return font

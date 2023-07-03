@@ -269,7 +269,7 @@ class YaffGlyph(YaffMultiline):
 
 def normalise_property(field):
     # preserve distinction between starting underscore (internal) and starting dash (user property)
-    return field[:1] + field[1:].replace('-', '_')
+    return field.replace('-', '_')
 
 
 # keywords that take a label value
@@ -337,12 +337,13 @@ class YaffPropertyOrGlyph(YaffMultiline):
 ##############################################################################
 # write file
 
-def _globalise_glyph_metrics(glyphs):
+def globalise_glyph_metrics(glyphs):
     """If all glyph props are equal, take them global."""
     properties = {}
     for key in (
             'shift_up', 'left_bearing', 'right_bearing',
             'shift_left', 'top_bearing', 'bottom_bearing',
+            'scalable_width',
         ):
         distinct = set(_g.get_defined(key) for _g in glyphs)
         if len(distinct) == 1:
@@ -375,8 +376,12 @@ def _save_yaff(fonts, outstream):
         else:
             props['bounding_box'] = font.bounding_box
         props.update(font.get_properties())
-        global_metrics = _globalise_glyph_metrics(font.glyphs)
-        props.update(global_metrics)
+        global_metrics = globalise_glyph_metrics(font.glyphs)
+        # keep only nonzero or non-default globalised properties
+        props.update({
+            _k: _v for _k, _v in global_metrics.items()
+            if _v or _v != Glyph.get_default(_k)
+        })
         if props:
             # write recognised yaff properties first, in defined order
             for key, value in props.items():
@@ -428,8 +433,7 @@ def _write_property(outstream, key, value, comments, indent=''):
         outstream.write(
             f'\n{indent}{format_comment(comments, YaffParams.comment)}\n'
         )
-    if not key.startswith('_'):
-        key = key.replace('_', '-')
+    key = key.replace('_', '-')
     # write key-value pair
     if isinstance(value, Label) or not isinstance(value, str):
         # do not quote converted non-strings (plus Tag and Char which are str)

@@ -17,9 +17,6 @@ from ..magic import FileFormatError, Magic
 from ..binary import bytes_to_bits, ceildiv
 from ..raster import Raster
 
-# common utilities
-from .windows import _normalise_metrics
-
 
 @loaders.register(
     name='gdos',
@@ -562,9 +559,13 @@ def _convert_to_gdos(font, endianness):
     """Convert monobit font to GDOS properties and glyphs."""
     # ensure codepoint values are set if possible
     font = font.label(codepoint_from=font.encoding)
-    font = _subset_storable(font, _GDOS_RANGE)
+    font = font.subset(_GDOS_RANGE)
     font = _make_contiguous(font)
-    font, add_shift_up = _normalise_metrics(font)
+    # bring to padded normal form with equalised upshifts
+    font = font.equalise_horizontal()
+    upshifts = set(_g.shift_up for _g in font.glyphs)
+    shift_up, *remainder = upshifts
+    assert not remainder
     # check glyph dimensions / bitfield ranges
     if any(_g.left_bearing < -127 or _g.right_bearing < -127 for _g in font.glyphs):
         raise FileFormatError(
@@ -592,13 +593,15 @@ def _convert_to_gdos(font, endianness):
         name=font.name.encode('ascii', 'replace')[:32],
         first_ade=int(min(font.get_codepoints())),
         last_ade=int(max(font.get_codepoints())),
-        top=font.raster_size.y+add_shift_up,
+        # common shift up must be negative as we brought to padded normal form
+        top=font.raster_size.y + shift_up,
         ascent=font.ascent-1,
         # Half line distance expressed as a positive offset from baseline.
         # interpreting as x-height
         half=font.x_height,
         descent=font.descent,
-        bottom=add_shift_up,
+        # common shift up must be negative as we brought to padded normal form
+        bottom=-shift_up,
         # Width of the widest character.
         # I'm interpreting this as the widest per-glyph bounding box
         max_char_width=max(_g.bounding_box.x for _g in font.glyphs),
@@ -616,16 +619,6 @@ def _convert_to_gdos(font, endianness):
     )
     return header, font.glyphs
 
-def _subset_storable(font, storable_range):
-    """Select glyphs that can be included."""
-    # only codepoints 0--255 inclusive
-    if any(int(_c) not in storable_range for _c in font.get_codepoints()):
-        logging.warning(
-            'Output format can only store codepoints 0--255. '
-            'Not all glyphs in this font can be included.'
-        )
-    font = font.subset(codepoints=set(storable_range))
-    return font
 
 def _make_contiguous(font):
     """Get contiguous range, fill gaps with empties."""

@@ -22,7 +22,7 @@ from ...raster import Raster
 from ...labels import Tag, Char, Codepoint
 from ...storage import loaders, savers
 from ...magic import FileFormatError
-from ..windows.fnt import _WEIGHT_MAP, CHARSET_MAP
+from ..windows import WEIGHT_MAP, CHARSET_MAP
 
 
 # errors that invalidate only one strike or resource, not the whole file
@@ -698,7 +698,7 @@ def _convert_bloc_props(bloc, i_strike):
 # 'head' or 'bhed' table
 
 # interpretation of head.macStyle flags
-_STYLE_MAP = {
+STYLE_MAP = {
     0: 'bold',
     1: 'italic',
     2: 'underline',
@@ -711,7 +711,7 @@ _STYLE_MAP = {
 def mac_style_name(font_style):
     """Get human-readable representation of font style."""
     return ' '.join(
-        _tag for _bit, _tag in _STYLE_MAP.items() if font_style & (1 << _bit)
+        _tag for _bit, _tag in STYLE_MAP.items() if font_style & (1 << _bit)
     )
 
 def _convert_head_props(head):
@@ -848,10 +848,10 @@ def _convert_name_props(name):
 
 # usWeightClass
 # these align with Windows values
-#_WEIGHT_MAP
+#WEIGHT_MAP
 
 # usWidthClass
-_SETWIDTH_MAP = {
+SETWIDTH_MAP = {
     1: 'ultra-condensed',
     2: 'extra-condensed',
     3: 'condensed',
@@ -869,8 +869,8 @@ def _convert_os_2_props(os_2, vert_fu_p_pix, hori_fu_p_pix):
         return Props()
     weight = min(900, max(100, 100 * round(os_2.usWeightClass / 100)))
     props = Props(
-        weight=_WEIGHT_MAP.get(weight, None),
-        setwidth=_SETWIDTH_MAP.get(os_2.usWidthClass, None),
+        weight=WEIGHT_MAP.get(weight, None),
+        setwidth=SETWIDTH_MAP.get(os_2.usWidthClass, None),
         subscript_size=os_2.ySubscriptYSize // vert_fu_p_pix,
         subscript_offset=(
             int(os_2.ySubscriptXOffset // hori_fu_p_pix),

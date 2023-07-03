@@ -15,7 +15,7 @@ from .glyph import Glyph
 from .raster import turn_method, NOT_SET
 from .basetypes import Coord, Bounds
 from .basetypes import to_int
-from .encoding import charmaps, encoder, EncodingName, Encoder
+from .encoding import charmaps, encoder, EncodingName, Encoder, Indexer
 from .taggers import tagger
 from .labels import Tag, Char, Codepoint, Label, to_label
 from .binary import ceildiv
@@ -381,28 +381,38 @@ class Font(HasProps):
         if not self.glyphs:
             return 'character-cell'
         if any(
-                _glyph.advance_width < 0 or _glyph.right_kerning
+                _glyph.right_kerning or _glyph.left_kerning
                 for _glyph in self.glyphs
             ):
             return 'proportional'
-        # don't count void glyphs (0 width and/or height)
-        # to determine whether it's monospace
-        advances = set(
-            _glyph.advance_width
-            for _glyph in self.glyphs if _glyph.advance_width
-        )
+        if self.has_vertical_metrics():
+            advances = set(
+                (_glyph.advance_width, _glyph.advance_height)
+                for _glyph in self.glyphs if _glyph.advance_width
+            )
+        else:
+            # don't count void glyphs (0 width and/or height)
+            # to determine whether it's monospace
+            advances = set(
+                _glyph.advance_width
+                for _glyph in self.glyphs if _glyph.advance_width
+            )
         if len(set(advances)) > 2:
             return 'proportional'
         monospaced = len(set(advances)) == 1
-        # horizontal rendering
         # check if all glyphs are rendered within the line height
         # if there are vertical overlaps, it is not a charcell font
-        if self.ink_bounds.top - self.ink_bounds.bottom > self.line_height:
+        if (
+                (self.ink_bounds.top - self.ink_bounds.bottom > self.line_height)
+                or self.has_vertical_metrics() and (
+                    self.ink_bounds.right - self.ink_bounds.left > self.line_width
+                )
+            ):
             return 'monospace' if monospaced else 'proportional'
         if all(
                 (-_g.left_bearing <= _g.padding.left)
                 and (-_g.right_bearing <= _g.padding.right)
-                # if no negative metrics, these will be zero and hence satisfied.
+                # if no vertical metrics, these will be zero and hence satisfied.
                 and (-_g.top_bearing <= _g.padding.top)
                 and (-_g.bottom_bearing <= _g.padding.bottom)
                 for _g in self.glyphs
@@ -431,10 +441,8 @@ class Font(HasProps):
     @checked_property
     def cell_size(self):
         """Width, height of the character cell."""
-        if not self.glyphs or self.spacing == 'proportional':
+        if not self.glyphs or self.spacing not in ('character-cell', 'multi-cell'):
             return Coord(0, 0)
-        # smaller of the (at most two) advance widths is the cell size
-        # in a multi-cell font, some glyphs may take up two cells.
         if self.has_vertical_metrics():
             cells = tuple(
                 (_g.advance_width, _g.advance_height)
@@ -448,6 +456,8 @@ class Font(HasProps):
         sizes = tuple(_c for _c in cells if all(_c))
         if not sizes:
             return Coord(0, 0)
+        # smaller of the (at most two) advance widths is the cell size
+        # in a multi-cell font, some glyphs may take up two cells.
         return Coord(*min(sizes))
 
     @checked_property
@@ -988,9 +998,14 @@ class Font(HasProps):
                 return self
         encoding = self.encoding
         if overwrite or not self.encoding:
-            if char_from is not NOT_SET and isinstance(char_from, Encoder):
+            # don't set encoding if we use a Tagger
+            if isinstance(char_from, Encoder):
                 encoding = char_from.name
-            elif codepoint_from is not NOT_SET and codepoint_from is not None:
+            # don't set encoding if we use an Indexer
+        elif (
+                isinstance(codepoint_from, Encoder)
+                and not isinstance(codepoint_from, Indexer)
+            ):
                 encoding = codepoint_from.name
         kwargs = dict(
             overwrite=overwrite,
@@ -1237,25 +1252,21 @@ class Font(HasProps):
         )
 
     @scriptable
-    def reduce(self, *, adjust_metrics:bool=True, create_vertical_metrics:bool=False):
+    def reduce(self, *, adjust_metrics:bool=True):
         """
         Reduce glyphs to their bounding box.
 
         adjust_metrics: make the operation render-invariant (default: True)
-        create_vertical_metrics: create vertical metrics if they don't exist (default: False)
         """
-        create_vertical_metrics = (
-            create_vertical_metrics or self.has_vertical_metrics()
-        )
         font = self._apply_to_all_glyphs(
             Glyph.reduce,
             adjust_metrics=adjust_metrics,
-            create_vertical_metrics=create_vertical_metrics,
+            create_vertical_metrics=self.has_vertical_metrics(),
         )
         if not adjust_metrics:
             return font
-        if not create_vertical_metrics:
-            # fix line-advances to ensure they remain unchanged
+        # fix line-advances to ensure they remain unchanged
+        if not self.has_vertical_metrics():
             return font.modify(line_height=self.line_height)
         return font.modify(
             line_height=self.line_height, line_width=self.line_width

@@ -13,7 +13,7 @@ from ..storage import loaders, savers
 from ..font import Font
 from ..magic import FileFormatError, Magic
 
-from .mac.nfnt import _extract_nfnt, _convert_nfnt
+from .mac.nfnt import extract_nfnt, convert_nfnt
 
 
 # offset magic: b'FontFont' at offset 0x3c (type, creator fields)
@@ -165,7 +165,7 @@ def _read_palm(instream):
         # or `afnx` format (?)
         # currently we're just assuming NFNT
         try:
-            nfnt = _extract_nfnt(data, offset=0)
+            nfnt = extract_nfnt(data, offset=0)
         except ValueError as e:
             logging.warning('Could not read record: %s', e)
             continue
@@ -193,7 +193,7 @@ def _read_palm_prc(instream):
         data = instream.read()
         # currently we're just assuming NFNT
         try:
-            nfnt = _extract_nfnt(data, offset=0)
+            nfnt = extract_nfnt(data, offset=0)
         except ValueError as e:
             logging.warning('Could not read record: %s', e)
             continue
@@ -204,7 +204,7 @@ def _read_palm_prc(instream):
 def _convert_palm(palm_data):
     """Convert a Palm OS font data structure to Font."""
     fonts = (
-        _convert_nfnt({}, **_nfnt)
+        convert_nfnt({}, **_nfnt)
         for _nfnt in palm_data.records
     )
     fonts = tuple(
