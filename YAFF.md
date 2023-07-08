@@ -55,11 +55,10 @@ In the spirit of human-friendliness, a short example is probably more informativ
 
     # glyph definitions follow after the global properties section
 
-    # The letter A is the first letter of the Latin alphabet.
     # We've got three kinds of labels: unicode character, codepage, and tag.
     u+0041:
     0x41:
-    latin_a:
+    "latin_a":
         ....
         .@..
         @.@.
@@ -80,7 +79,7 @@ In the spirit of human-friendliness, a short example is probably more informativ
 
     # Or for example, just a tag.
     # A glyph may contain per-glyph metrics
-    latin_c:
+    "latin_c":
         ....
         .@@.
         @..@
@@ -92,7 +91,7 @@ In the spirit of human-friendliness, a short example is probably more informativ
 
 
     # This is a special notation for a 0x0 empty glyph, with the tag "empty".
-    empty:
+    "empty":
         -
 
     # Multiple labels of the same type are OK. Numbers may be decimal, too.
@@ -100,7 +99,7 @@ In the spirit of human-friendliness, a short example is probably more informativ
     0x01:
     0x02:
     255:
-    smiley:
+    "smiley":
         ......
         .@..@.
         ......
@@ -109,7 +108,7 @@ In the spirit of human-friendliness, a short example is probably more informativ
 
     # Multiple code points may define a grapheme cluster
     u+0061, u+0300:
-    small_a_grave:
+    "small_a_grave":
         @...
         .@..
         ....
@@ -130,8 +129,7 @@ In the spirit of human-friendliness, a short example is probably more informativ
         .@.@.
         .@.@.
 
-    # While double quotes ensure a label is interpreted as a tag
-    "my_à":
+    'à':
         @...
         .@..
         ....
@@ -228,9 +226,7 @@ codepoint sequence).
 
 If a label:
 * is enclosed by single quote characters `'`, **or**
-* starts with `u+` or `U+`, **or**
-* starts with a character that is not in 7-bit ASCII, **or**
-* consists of a single Unicode character
+* starts with `u+` or `U+`
 
 it is a *character* label, which may be a grapheme sequence consisting of multiple Unicode code points.
 * A character label may consist of multiple elements, separated by commas and optional whitespace.
@@ -240,19 +236,29 @@ it is a *character* label, which may be a grapheme sequence consisting of multip
 * If a label element starts and ends with a single-quote character `'`,
   these quotes are stripped and the element consists of everything in between.
 
-Examples of valid character labels are `A`, `À`, `安` (all of which are single characters), `ते`
+Examples of valid character labels are `'A'`, `'À'`, `'安'` (all of which are single characters), `'ते'`
 (a grapheme sequence consisting of multiple non-ASCII characters), its equivalent `u+0924, u+0947`,
- and `'ffi'` (multiple characters enclosed in single quotes).
+and `'ffi'` (multiple characters enclosed in single quotes).
+
+It is also possible, but deprecated, to create a character label as a label that:
+* starts with a character that is not in 7-bit ASCII, **or**
+* consists of a single Unicode character
+
+Examples of deprecated character labels are the unquoted `A`, `À`, `安` (all of which are single characters), `ते`
+(a grapheme sequence consisting of multiple non-ASCII characters)
 
 If a label:
-* is enclosed in double quote characters `"`, **or**
-* starts with an ASCII letter, is at least 2 characters long, and consists only of
-  ASCII letters, ASCII digits, the underscore `_`, the dash `-`, or the full stop `.`,
+* is enclosed in double quote characters `"`
 
 it is a *tag*.
-* Tags are case-sensitive and (if double-quoted) may contain any kind of character.
+* Tags are case-sensitive and may contain any kind of character.
 * If a label starts and ends with a double-quote character `"`,
   these quotes are stripped and the tag consists of everything in between.
+
+It is also possible, but deprecated, to create a tag as a label that
+* starts with an ASCII letter, is at least 2 characters long, and consists only of
+ASCII letters, ASCII digits, the underscore `_`, the dash `-`, or the full stop `.`,
+
 
 ##### Glyphs
 
