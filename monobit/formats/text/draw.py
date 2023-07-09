@@ -87,7 +87,6 @@ def load_draw(text_stream, *, blocktypes, unicode):
         glyphs,
         comment='\n\n'.join(font_comments)
     )
-
     return font
 
 
