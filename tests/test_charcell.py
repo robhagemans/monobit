@@ -23,7 +23,7 @@ class TestCharCell(BaseTester):
         fixed8x8
         .modify(encoding='cp437')
         .label(codepoint_from='cp437')
-        .subset(range(20, 256))
+        .subset(range(32, 256))
         .reduce()
     )
 
