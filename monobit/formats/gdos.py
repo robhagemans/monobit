@@ -558,9 +558,9 @@ def _convert_from_gdos(gdos_props):
 def _convert_to_gdos(font, endianness):
     """Convert monobit font to GDOS properties and glyphs."""
     # ensure codepoint values are set if possible
-    font = font.label(codepoint_from=font.encoding)
-    font = font.subset(_GDOS_RANGE)
-    font = _make_contiguous(font)
+    min_range = max(int(min(font.get_codepoints())), min(_GDOS_RANGE))
+    max_range = min(int(max(font.get_codepoints())), max(_GDOS_RANGE))
+    font = font.resample(codepoints=range(min_range, max_range+1))
     # bring to padded normal form with equalised upshifts
     font = font.equalise_horizontal()
     upshifts = set(_g.shift_up for _g in font.glyphs)
@@ -591,8 +591,8 @@ def _convert_to_gdos(font, endianness):
         font_id=add_props.get('font-id', 255),
         point=font.point_size,
         name=font.name.encode('ascii', 'replace')[:32],
-        first_ade=int(min(font.get_codepoints())),
-        last_ade=int(max(font.get_codepoints())),
+        first_ade=min_range,
+        last_ade=max_range,
         # common shift up must be negative as we brought to padded normal form
         top=font.raster_size.y + shift_up,
         ascent=font.ascent-1,
@@ -619,25 +619,6 @@ def _convert_to_gdos(font, endianness):
     )
     return header, font.glyphs
 
-
-def _make_contiguous(font):
-    """Get contiguous range, fill gaps with empties."""
-    glyphs = tuple(
-        font.get_glyph(codepoint=_cp, missing='empty').modify(codepoint=_cp)
-        for _cp in range(
-            int(min(font.get_codepoints())),
-            int(max(font.get_codepoints()))+1
-        )
-    )
-    # remove empties at end
-    while glyphs and glyphs[-1].is_blank() and not glyphs[-1].advance_width:
-        glyphs = glyphs[:-1]
-    if not glyphs:
-        raise FileFormatError(
-            'Output format: no glyphs in storable codepoint range 0--255.'
-        )
-    font = font.modify(glyphs)
-    return font
 
 def _generate_bitmap_strike(glyphs):
     """Generate horizontal bitmap strike."""

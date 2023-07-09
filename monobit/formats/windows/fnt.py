@@ -619,14 +619,11 @@ def _make_contiguous(font):
     # blank glyph of standard size
     blank = Glyph.blank(pix_width, font.raster_size.y)
     # char table; we need a contiguous range between the min and max codepoints
-    codepoints = font.get_codepoints()
-    ord_glyphs = [
-        font.get_glyph(_codepoint, missing=blank)
-        for _codepoint in range(min(codepoints)[0], max(codepoints)[0]+1)
-    ]
+    min_range = int(min(font.get_codepoints()))
+    max_range = min(int(max(font.get_codepoints())), 255)
+    font = font.resample(codepoints=range(min_range, max_range+1), missing=blank)
     # add the guaranteed-blank glyph
-    ord_glyphs.append(blank)
-    font = font.modify(ord_glyphs)
+    font = font.modify(font.glyphs + (blank,))
     return font
 
 

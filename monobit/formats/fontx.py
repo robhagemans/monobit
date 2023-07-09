@@ -176,12 +176,9 @@ def _convert_to_fontx(font):
             range(min(_page), max(_page)+1)
             for _page in pages if _page
         )
-    glyphs = tuple(
-        font.get_glyph(codepoint=_cp, missing=blank).modify(codepoint=_cp)
-        for _range in blocks
-        for _cp in _range
-    )
-    return props, blocks, glyphs
+    codepoints = (_cp for _range in blocks for _cp in _range)
+    font = font.resample(codepoints=codepoints, missing=blank)
+    return props, blocks, font.glyphs
 
 def _write_fontx(outstream, props, blocks, glyphs):
     """Write fontx properties and glyphs to binary file."""

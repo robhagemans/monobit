@@ -167,9 +167,7 @@ def _convert_from_vfont(vfont_glyphs, first_codepoint):
 def _convert_to_vfont(font):
     """Convert monobit font to vfont properties and glyphs."""
     # ensure codepoint values are set if possible
-    font = font.label(codepoint_from=font.encoding)
-    font = font.subset(_VFONT_RANGE)
-    font = _make_contiguous(font)
+    font = font.resample(_VFONT_RANGE, missing='empty')
     # set glyph properties
     glyphs = tuple(
         _glyph.modify(
@@ -213,13 +211,3 @@ def _write_vfont(outstream, vfont_props, vfont_glyphs, endian):
         + bytes(dispatch)
         + bitmap
     )
-
-
-def _make_contiguous(font):
-    """Get contiguous range, fill gaps with empties."""
-    glyphs = tuple(
-        font.get_glyph(codepoint=_cp, missing='empty').modify(codepoint=_cp)
-        for _cp in _VFONT_RANGE
-    )
-    font = font.modify(glyphs)
-    return font
