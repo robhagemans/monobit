@@ -852,12 +852,13 @@ class Font(HasProps):
     def get_glyph(
             self, label=None, *,
             char=None, codepoint=None, tag=None,
-            missing='raise'
+            missing='raise', use_encoding=True
         ):
         """Get glyph by char, codepoint or tag; default if not present."""
         try:
             index = self.get_index(
-                label, tag=tag, char=char, codepoint=codepoint
+                label, tag=tag, char=char, codepoint=codepoint,
+                use_encoding=use_encoding,
             )
             return self.glyphs[index]
         except KeyError:
@@ -881,7 +882,10 @@ class Font(HasProps):
                 return missing
             raise
 
-    def get_index(self, label=None, *, char=None, codepoint=None, tag=None):
+    def get_index(
+            self, label=None, *, char=None, codepoint=None, tag=None,
+            use_encoding=True, raise_missing=True,
+        ):
         """Get index for given label, if defined."""
         if 1 != len([
                 _indexer for _indexer in (label, char, codepoint, tag)
@@ -900,11 +904,21 @@ class Font(HasProps):
         elif label is not None:
             # convert strings, numerics through standard rules
             label = to_label(label)
-        try:
-            return self._labels[label]
-        except KeyError:
-            pass
-        raise KeyError(f'No glyph found matching label={label}')
+        alt_labels = [label]
+        # use the encoder to find alternative labels to try
+        font_encoder = encoder(self.encoding)
+        if use_encoding and font_encoder:
+            alt_labels.extend(
+                (font_encoder.char(label), font_encoder.codepoint(label))
+            )
+        for try_label in alt_labels:
+            try:
+                return self._labels[try_label]
+            except KeyError:
+                pass
+        if raise_missing:
+            raise KeyError(f'No glyph found matching label={label}')
+        return -1
 
     @cache
     def get_default_glyph(self):
@@ -1040,13 +1054,18 @@ class Font(HasProps):
         codepoints: codepoints to include
         tags: tags to include
         """
-        glyphs = (
-            [self.get_glyph(_label, missing=None) for _label in labels]
-            + [self.get_glyph(char=_char, missing=None) for _char in chars]
-            + [self.get_glyph(codepoint=_codepoint, missing=None) for _codepoint in codepoints]
-            + [self.get_glyph(tag=_tag, missing=None) for _tag in tags]
+        labels = (
+            list(labels)
+            + [Char(_c) for _c in chars]
+            + [Codepoint(_c) for _c in codepoints]
+            + [Tag(_t) for _t in tags]
         )
-        return self.modify(_glyph for _glyph in glyphs if _glyph is not None)
+        indices = set(
+            self.get_index(_label, raise_missing=False, use_encoding=False)
+            for _label in labels
+        )
+        glyphs = (self._glyphs[_idx] for _idx in sorted(indices) if _idx > -1)
+        return self.modify(glyphs)
 
     @scriptable
     def exclude(
