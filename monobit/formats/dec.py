@@ -16,6 +16,7 @@ import logging
 from ..storage import loaders, savers
 from ..magic import FileFormatError
 from ..font import Font
+from ..raster import Raster
 from ..glyph import Glyph
 from ..binary import ceildiv
 from ..basetypes import Coord
@@ -267,14 +268,14 @@ def _convert_drcs_glyph(glyphdef, raster_size):
         ''.join(f'{_b:06b}' for _b in _pair[::-1])
         for _pair in glyphbytes
     )
-    glyph = Glyph(glyphstrs, _0='0', _1='1')
+    raster = Raster(glyphstrs, _0='0', _1='1')
     # pylint: disable=unexpected-keyword-arg
-    glyph = glyph.turn(anti=1)
-    glyph = glyph.crop(
-        right=glyph.width-raster_size.x,
-        bottom=glyph.height-raster_size.y
+    raster = raster.turn(anti=1)
+    raster = raster.crop(
+        right=max(0, raster.width-raster_size.x),
+        bottom=max(0, raster.height-raster_size.y),
     )
-    return glyph
+    return Glyph(raster)
 
 
 def _parse_drcs_glyphs(glyphdefs, props, first_codepoint):
@@ -338,12 +339,10 @@ def _parse_drcs_props(dec_props):
 def _write_dec_drcs(font, outstream, use_8bit=False):
     """Write a font to a DRCS file."""
     esc = not use_8bit
-    # we can onl store the printable ascii range
+    # we can only store the printable ascii range
     ascii = tuple(chr(_b) for _b in range(0x20, 0x80))
-    glyphs = tuple(
-        font.get_glyph(char=_c, missing='empty')
-        for _c in ascii
-    )
+    font = font.resample(ascii, missing='empty')
+    glyphs = font.glyphs
     # write 96 glyphs?
     is_big = not glyphs[0].is_blank() or not glyphs[-1].is_blank()
     if not is_big:

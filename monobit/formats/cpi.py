@@ -417,11 +417,9 @@ def _make_one_fit(font, codepage_prefix):
         )
         return None
     # ensure codepoint values are set, if possible
-    font = font.label(codepoint_from=font.encoding)
     # take only the glyphs that will fit
-    font = font.subset(_RANGE)
-    font = font.equalise_horizontal()
     font = font.resample(_RANGE, missing=Glyph.blank(*font.cell_size))
+    font = font.equalise_horizontal()
     return font
 
 
