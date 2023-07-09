@@ -421,18 +421,9 @@ def _make_one_fit(font, codepage_prefix):
     # take only the glyphs that will fit
     font = font.subset(_RANGE)
     font = font.equalise_horizontal()
-    font = _fill_contiguous(font, _RANGE, Glyph.blank(*font.cell_size))
+    font = font.resample(_RANGE, missing=Glyph.blank(*font.cell_size))
     return font
 
-
-def _fill_contiguous(font, full_range, filler):
-    """Get contiguous range, fill gaps with empties."""
-    glyphs = tuple(
-        font.get_glyph(codepoint=_cp, missing=filler).modify(codepoint=_cp)
-        for _cp in full_range
-    )
-    font = font.modify(glyphs)
-    return font
 
 def _get_consistent(fonts, property):
     """Get value for a property across fonts, or None if inconsistent."""

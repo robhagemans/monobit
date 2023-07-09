@@ -7,6 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 from functools import wraps, partial, cache
+from itertools import chain
 from pathlib import PurePath
 from unicodedata import normalize
 
@@ -1066,6 +1067,36 @@ class Font(HasProps):
         )
         glyphs = (self._glyphs[_idx] for _idx in sorted(indices) if _idx > -1)
         return self.modify(glyphs)
+
+    def resample(
+            self, labels=(), *,
+            chars=(), codepoints=(), tags=(),
+            missing='default',
+        ):
+        """
+        Return a (contiguous) sample of the font, filling in missing glyphs
+
+        labels: chars, codepoints or tags to include.
+        chars: chars to include
+        codepoints: codepoints to include
+        tags: tags to include
+        missing: how to deal with missing glyphs. 'default', 'empty', 'raise', None, or a user-defined Glyph
+        """
+        nargs = sum(
+            bool(_arg) for _arg in (labels, chars, codepoints, tags)
+        )
+        if nargs > 1:
+            raise ValueError('Can only set one of labels, chars, codepoints, tags.')
+        chars = (Char(_c) for _c in chars)
+        codepoints = (Codepoint(_c) for _c in codepoints)
+        tags = (Tag(_t) for _t in tags)
+        glyphs = (
+            self.get_glyph(_label, missing=missing, use_encoding=True)
+                .modify(labels=[_label])
+            for _label in chain(labels, chars, codepoints, tags)
+        )
+        return self.modify(glyphs)
+
 
     @scriptable
     def exclude(
