@@ -13,7 +13,7 @@ from html.parser import HTMLParser
 from importlib.resources import files
 
 from .binary import int_to_bytes, align
-from .labels import Codepoint, to_label, to_labels
+from .labels import Codepoint, Char, to_label, to_labels
 
 
 _ENCODING_FILES = (
@@ -905,9 +905,9 @@ class Charmap(Encoder):
             codepoint = to_label(label)
             if isinstance(codepoint, bytes):
                 try:
-                    return self._ord2chr[codepoint]
+                    return Char(self._ord2chr[codepoint])
                 except KeyError as e:
-                    return ''
+                    return Char('')
 
     def codepoint(self, *labels):
         """Convert character to codepoint sequence, return empty tuple if missing."""
@@ -915,9 +915,9 @@ class Charmap(Encoder):
             char = to_label(label)
             if isinstance(char, str):
                 try:
-                    return self._chr2ord[char]
+                    return Codepoint(self._chr2ord[char])
                 except KeyError as e:
-                    return ()
+                    return Codepoint()
 
     @property
     def mapping(self):
@@ -1028,9 +1028,9 @@ class Unicode(Encoder):
                     for _start in range(0, len(codepoint), 4)
                 )
                 try:
-                    return ''.join(chars)
+                    return Char(''.join(chars))
                 except ValueError:
-                    return ''
+                    return Char('')
 
     @staticmethod
     def codepoint(*labels):
@@ -1041,8 +1041,8 @@ class Unicode(Encoder):
                 # we used to normalise to NFC here, presumably to reduce multi-codepoint situations
                 # but it leads to inconsistency between char and codepoint for canonically equivalent chars
                 #char = unicodedata.normalize('NFC', char)
-                return b''.join(ord(_c).to_bytes(4, 'big') for _c in char)
-        return b''
+                return Codepoint(b''.join(ord(_c).to_bytes(4, 'big') for _c in char))
+        return Codepoint()
 
     def __repr__(self):
         """Representation."""
