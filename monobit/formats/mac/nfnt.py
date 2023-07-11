@@ -564,6 +564,8 @@ def convert_to_nfnt(
     font_strike = strike_raster.as_bytes()
     # get contiguous glyph list
     # subset_for_nfnt has sorted on codepoint and added a 'missing' glyph
+    if not font.get_codepoints():
+        raise ValueError('No storable codepoints in font.')
     first_char = int(min(font.get_codepoints()))
     last_char = int(max(font.get_codepoints()))
     glyph_table = [
