@@ -1002,7 +1002,7 @@ class Font(HasProps):
             if isinstance(char_from, Encoder):
                 encoding = char_from.name
             # don't set encoding if we use an Indexer
-        elif (
+            elif (
                 isinstance(codepoint_from, Encoder)
                 and not isinstance(codepoint_from, Indexer)
             ):
