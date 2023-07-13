@@ -320,11 +320,12 @@ def _convert_mac_font(parsed_rsrc, info, formatstr):
 # > determined this empirically, I have seen no documentation on the subject)
 
 
-def save_dfont(fonts, outstream, resource_type):
+def save_dfont(fonts, outstream, resource_type, resample_encoding):
     """
     Save font to MacOS resource fork or data-fork resource.
 
     resource_type: type of resource to store font in. One of `sfnt`, `NFNT`.
+    resample_encoding: encoding to use for NFNT resources. Must be one of the `mac-` encodings. Default: use font's encoding.
     """
     resource_type = resource_type.lower()
     if resource_type not in ('sfnt', 'nfnt'):
@@ -342,7 +343,7 @@ def save_dfont(fonts, outstream, resource_type):
         )
     # reduce fonts to what's storable in (stub) FOND/NFNT
     # we need a Pack for _group_families
-    fonts = Pack(subset_for_nfnt(_f) for _f in fonts)
+    fonts = Pack(subset_for_nfnt(_f, resample_encoding) for _f in fonts)
     for family_id, style_group in _group_families(fonts):
         i = 0
         for style_id, size_group in style_group:
