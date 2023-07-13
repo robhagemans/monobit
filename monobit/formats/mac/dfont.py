@@ -27,6 +27,9 @@ from .fond import extract_fond, convert_fond, create_fond
 ##############################################################################
 # encoding constants
 
+# 'uninterpreted symbols'
+_FALLBACK_ENCODING = 32
+
 # fonts which claim mac-roman encoding but aren't
 NON_ROMAN_NAMES = {
     # https://www.unicode.org/Public/MAPPINGS/VENDORS/APPLE/SYMBOL.TXT
@@ -375,7 +378,7 @@ def save_dfont(fonts, outstream, resource_type):
 
 def _get_family_id(name, encoding):
     """Generate a resource id based on the font's properties."""
-    script_code = reverse_dict(MAC_ENCODING).get(encoding, 0)
+    script_code = reverse_dict(MAC_ENCODING).get(encoding, _FALLBACK_ENCODING)
     return _hash_to_id(name, script=script_code)
 
 
