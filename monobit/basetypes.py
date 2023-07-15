@@ -11,6 +11,10 @@ from typing import Any
 from numbers import Real
 
 
+# sentinel object
+NOT_SET = ...
+
+
 def passthrough(var):
     """Passthrough type."""
     return var
