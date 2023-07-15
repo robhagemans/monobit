@@ -13,8 +13,8 @@ from unicodedata import normalize
 
 from .scripting import scriptable, get_scriptables, Any
 from .glyph import Glyph
-from .raster import turn_method, NOT_SET
-from .basetypes import Coord, Bounds
+from .raster import turn_method
+from .basetypes import Coord, Bounds, NOT_SET
 from .basetypes import to_int
 from .encoding import charmaps, encoder, EncodingName, Encoder, Indexer
 from .taggers import tagger

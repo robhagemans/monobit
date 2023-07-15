@@ -13,9 +13,10 @@ from ..binary import ceildiv, bytes_to_bits
 from ..storage import loaders, savers
 from ..font import Font
 from ..glyph import Glyph
-from ..raster import Raster, NOT_SET
+from ..raster import Raster
 from ..magic import FileFormatError, Regex, Glob
-from ..basetypes import Coord
+from ..basetypes import Coord, NOT_SET
+
 
 # patterns
 
