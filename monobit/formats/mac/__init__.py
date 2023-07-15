@@ -9,6 +9,7 @@ import logging
 
 from ...storage import loaders, savers
 from ...encoding import EncodingName
+from ...basetypes import NOT_SET
 
 from .dfont import parse_resource_fork, save_dfont
 from .nfnt import extract_nfnt, convert_nfnt, create_nfnt
@@ -31,7 +32,7 @@ def load_mac_dfont(instream):
 @savers.register(linked=load_mac_dfont)
 def save_mac_dfont(
         fonts, outstream, resource_type:str='NFNT', family_id:int=None,
-        resample_encoding:EncodingName=None,
+        resample_encoding:EncodingName=NOT_SET,
     ):
     """Save font to MacOS resource fork or data-fork resource.
 
@@ -77,7 +78,7 @@ def load_iigs(instream):
 
 @savers.register(linked=load_iigs)
 def save_iigs(
-        fonts, outstream, version:int=None, resample_encoding:EncodingName=None,
+        fonts, outstream, version:int=None, resample_encoding:EncodingName=NOT_SET,
     ):
     """
     Write font to a IIgs font file.
@@ -98,7 +99,7 @@ def save_nfnt(
         fonts, outstream,
         create_width_table:bool=True,
         create_height_table:bool=False,
-        resample_encoding:EncodingName=None,
+        resample_encoding:EncodingName=NOT_SET,
     ):
     """
     Write font to a bare FONT/NFNT resource.

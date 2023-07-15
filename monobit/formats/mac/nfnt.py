@@ -21,6 +21,8 @@ from ...labels import Char
 from ...encoding import charmaps, EncodingName
 from ...raster import Raster
 from ...properties import Props
+from ...basetypes import NOT_SET
+
 
 from .fond import fixed_to_float
 from ..sfnt import MAC_ENCODING
@@ -435,10 +437,11 @@ def subset_for_nfnt(font, resample_encoding):
     default = font.get_default_glyph().modify(labels=(), tag='missing')
     is_mac_encoding = str(EncodingName(font.encoding)) in MAC_ENCODING_NAMES
     if (
-            font.encoding and not is_mac_encoding
+            resample_encoding is NOT_SET
+            and font.encoding and not is_mac_encoding
             and not font.encoding in ('raw', 'ascii')
         ):
-        resample_encoding = resample_encoding or 'mac-roman'
+        resample_encoding = 'mac-roman'
     if resample_encoding:
         # NFNT can only store encodings from a pre-defined list of 'scripts'
         # for fonts with other encodings, get glyphs corresponding to mac-roman
