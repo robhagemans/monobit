@@ -6,7 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import logging
-from functools import wraps, partial, cache
+from functools import wraps, partial, cache, cached_property
 from itertools import chain
 from pathlib import PurePath
 from unicodedata import normalize
@@ -659,24 +659,28 @@ class Font(HasProps):
     def __init__(self, glyphs=(), *, comment=None, **properties):
         """Create new font."""
         super().__init__()
-        self._glyphs = tuple(glyphs)
-        # construct lookup tables
-        self._labels = {
-            _label: _index
-            for _index, _glyph in enumerate(self._glyphs)
-            for _label in _glyph.get_labels()
-        }
         # comment can be str (just global comment) or mapping of property comments
+        self._comment = {}
         if isinstance(comment, str):
-            comment = {'': comment}
-        else:
-            comment = comment or {}
+            self._comment[''] = comment
+        elif comment:
+            self._comment.update(comment)
+        self._glyphs = tuple(glyphs)
+        # update glyph list, apply globally specified metrics
         self._glyphs, properties = self._apply_metrics(self._glyphs, properties)
-        self._comment = {**comment}
         # update properties
         # NOTE - we must be careful NOT TO ACCESS CACHED PROPERTIES
         #        until the constructor is complete
         self._set_properties(properties)
+
+    @cached_property
+    def _labels(self):
+        """Label lookup table."""
+        return {
+            _label: _index
+            for _index, _glyph in enumerate(self._glyphs)
+            for _label in _glyph.get_labels()
+        }
 
     @staticmethod
     def _apply_metrics(glyphs, props):
