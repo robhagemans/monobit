@@ -279,7 +279,6 @@ def save_xbin(fonts, outstream):
         raise FileFormatError(
             'This format can only store 8xN character-cell fonts'
         )
-    font = font.label(codepoint_from=font.encoding)
     max_cp = max(int(_cp) for _cp in font.get_codepoints())
     if max_cp >= 512:
         logging.warning('Glyphs above codepoint 512 will not be stored.')

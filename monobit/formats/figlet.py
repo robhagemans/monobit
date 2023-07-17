@@ -210,7 +210,6 @@ def _convert_from_flf(glyphs, props):
 def _convert_to_flf(font, hardblank='$'):
     """Convert monobit glyphs and properties to figlet."""
     # ensure we have unicode labels where possible
-    font = font.label()
     if not font.get_chars():
         raise FileFormatError('No figlet-storable codepoints in font.')
     # count glyphs outside the default set
