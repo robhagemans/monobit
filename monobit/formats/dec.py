@@ -48,8 +48,6 @@ def save_dec_drcs(fonts, outstream, *, use_8bit:bool=False):
         raise FileFormatError(
             'This format only supports character-cell fonts.'
         )
-    # ensure codepoint values are set if possible
-    font = font.label(codepoint_from=font.encoding)
     # fill out bearings and equalise heights
     font = font.equalise_horizontal()
     # upper size limits vary by device, not enforced.

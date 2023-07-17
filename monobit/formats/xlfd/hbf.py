@@ -349,8 +349,6 @@ def _save_hbf(font, outstream, container, code_scheme):
 
 def _convert_to_hbf(font, bitmap_name, code_scheme):
     """Convert to HBF properties."""
-    # set codepoints
-    font = font.label(codepoint_from=font.encoding)
     # get ranges
     cps, cranges, b2ranges, b3ranges = _get_code_ranges(font)
     font = font.subset(cps)
