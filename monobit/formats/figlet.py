@@ -211,14 +211,14 @@ def _convert_to_flf(font, hardblank='$'):
     """Convert monobit glyphs and properties to figlet."""
     # ensure we have unicode labels where possible
     font = font.label()
+    if not font.get_chars():
+        raise FileFormatError('No figlet-storable codepoints in font.')
     # count glyphs outside the default set
     # we can only encode glyphs that have chars
     # latin-1 codepoints, so we can just use chr()
     flf_chars = tuple(chr(_cp) for _cp in _CODEPOINTS)
     # exclude NULL which is used for the default char
     coded_chars = set(font.get_chars()) - set(flf_chars) - set('\0')
-    if not font.get_chars():
-        raise FileFormatError('No figlet-storable codepoints in font.')
     # construct flf properties
     props = Props(
         signature_hardblank=_SIGNATURE + hardblank,
@@ -246,9 +246,14 @@ def _convert_to_flf(font, hardblank='$'):
     props.full_layout = figprops.get('full_layout', 0)
     # first get glyphs in default repertoire
     # fill missing glyphs with empties
-    glyphs = [font.get_glyph(_chr, missing='empty') for _chr in flf_chars]
+    glyphs = [
+        font.get_glyph(_chr, missing='empty').modify(char=_chr)
+        for _chr in flf_chars
+    ]
     # code-tagged glyphs
-    glyphs.extend(font.get_glyph(_chr) for _chr in sorted(coded_chars))
+    glyphs.extend(
+        font.get_glyph(_chr).modify(char=_chr) for _chr in sorted(coded_chars)
+    )
     # map default glyph to codepoint zero
     # > If a FIGcharacter with code 0 is present, it is treated
     # > specially.  It is a FIGfont's "missing character".  Whenever
