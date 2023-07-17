@@ -141,7 +141,7 @@ class FontProperties:
     # encoding parameters
 
     # character map, stored as normalised name
-    encoding: EncodingName
+    encoding: EncodingName = ''
     # replacement for missing glyph
     default_char: Label
     # word-break character (usually space)
@@ -271,13 +271,6 @@ class Font(HasProps):
         # stretch/shrink dpi.x if aspect ratio is not square
         return Coord((dpi*self.pixel_aspect.x)//self.pixel_aspect.y, dpi)
 
-    @writable_property
-    def encoding(self):
-        """Encoding."""
-        # if we have no codepoints, we can always assume unicode encoding
-        if self.get_chars() and not self.get_codepoints():
-            return charmaps.normalise('unicode')
-        return ''
 
     ##########################################################################
     # metrics
@@ -676,11 +669,27 @@ class Font(HasProps):
     @cached_property
     def _labels(self):
         """Label lookup table."""
-        return {
+        label_map = {
             _label: _index
             for _index, _glyph in enumerate(self._glyphs)
             for _label in _glyph.get_labels()
         }
+        if not self.encoding and all(isinstance(_l, Char) for _l in label_map):
+            self.encoding = EncodingName('unicode')
+        font_encoder = encoder(self.encoding)
+        if not font_encoder:
+            return label_map
+        char_label_map = {
+            font_encoder.char(_label): _index
+            for _label, _index in label_map.items()
+        }
+        char_label_map.pop(Char(''), None)
+        codepoint_label_map = {
+            font_encoder.codepoint(_label): _index
+            for _label, _index in label_map.items()
+        }
+        codepoint_label_map.pop(Codepoint(b''), None)
+        return char_label_map | codepoint_label_map | label_map
 
     @staticmethod
     def _apply_metrics(glyphs, props):
@@ -909,18 +918,10 @@ class Font(HasProps):
         elif label is not None:
             # convert strings, numerics through standard rules
             label = to_label(label)
-        alt_labels = [label]
-        # use the encoder to find alternative labels to try
-        font_encoder = encoder(self.encoding)
-        if use_encoding and font_encoder:
-            alt_labels.extend(
-                (font_encoder.char(label), font_encoder.codepoint(label))
-            )
-        for try_label in alt_labels:
-            try:
-                return self._labels[try_label]
-            except KeyError:
-                pass
+        try:
+            return self._labels[label]
+        except KeyError:
+            pass
         if raise_missing:
             raise KeyError(f'No glyph found matching label={label}')
         return -1
