@@ -274,12 +274,15 @@ def save_xbin(fonts, outstream):
     """Save an XBIN font."""
     font, *extra = fonts
     if extra:
-        raise FileFormatError('Can only save a single font to an XBIN file')
+        raise ValueError('Can only save a single font to an XBIN file')
     if font.spacing != 'character-cell' or font.cell_size.x != 8:
-        raise FileFormatError(
+        raise ValueError(
             'This format can only store 8xN character-cell fonts'
         )
-    max_cp = max(int(_cp) for _cp in font.get_codepoints())
+    codepoints = font.get_codepoints()
+    if not codepoints:
+        raise ValueError('No storable codepoints found in font.')
+    max_cp = max(int(_cp) for _cp in codepoints)
     if max_cp >= 512:
         logging.warning('Glyphs above codepoint 512 will not be stored.')
     blank = Glyph.blank(width=8, height=font.cell_size.y)
