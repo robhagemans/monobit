@@ -674,8 +674,6 @@ class Font(HasProps):
             for _index, _glyph in enumerate(self._glyphs)
             for _label in _glyph.get_labels()
         }
-        if not self.encoding and all(isinstance(_l, Char) for _l in label_map):
-            self.encoding = EncodingName('unicode')
         font_encoder = encoder(self.encoding)
         if not font_encoder:
             return label_map
