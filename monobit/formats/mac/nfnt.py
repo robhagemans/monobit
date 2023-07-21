@@ -555,6 +555,7 @@ def convert_to_nfnt(
     LocEntry = loc_entry_struct(base)
     WOEntry = wo_entry_struct(base)
     WidthEntry = width_entry_struct(base)
+    HeightEntry = height_entry_struct(base)
     font = _normalize_metrics(font)
     # build the font-strike data
     strike_raster = Raster.concatenate(*(_g.pixels for _g in font.glyphs))

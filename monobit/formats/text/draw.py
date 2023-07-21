@@ -219,7 +219,7 @@ def _convert_mkwinfon(props, glyphs, comments):
         point_size=props.pointsize,
         weight=(
             None if props.weight is None else
-            _WEIGHT_MAP.get(round(max(100, min(900, int(props.weight))), -2), None)
+            WEIGHT_MAP.get(round(max(100, min(900, int(props.weight))), -2), None)
         ),
         encoding=(
             None if props.charset is None else
