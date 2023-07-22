@@ -345,15 +345,15 @@ def _convert_sfnt(sfnt):
             )
             del props._hfupp
             del props._vfupp
-            # disabled - if we remove tags we break kerning (can label() adjust kerning too?)
-            # # remove temporary names created by fontTools
-            # # if there's no post table or it is empty
-            # if not sfnt.post or sfnt.post.formatType == 3.0:
-            #     glyphs = (_g.modify(tag=None) if _g.char else _g for _g in glyphs)
-            fonts.append(Font(
+            font = Font(
                 glyphs, source_format=source_format, encoding=encoding or None,
                 **vars(props)
-            ))
+            )
+            # remove temporary names created by fontTools
+            # if there's no post table or it is empty
+            if not sfnt.post or sfnt.post.formatType == 3.0:
+                font = font.label(tag_from=None)
+            fonts.append(font)
         except StrikeFormatError:
             pass
     return fonts
