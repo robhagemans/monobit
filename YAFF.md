@@ -87,17 +87,15 @@ In the spirit of human-friendliness, a short example is probably more informativ
         @..@
         .@@.
 
-        tracking: 1
+        right-bearing: 1
 
 
     # This is a special notation for a 0x0 empty glyph, with the tag "empty".
     "empty":
         -
 
-    # Multiple labels of the same type are OK. Numbers may be decimal, too.
+    # Numbers may be decimal, too.
     # Glyphs don't need to be the same width or height
-    0x01:
-    0x02:
     255:
     "smiley":
         ......
@@ -206,6 +204,7 @@ labels, all are considered to point to the glyph that follows.
 A *label* must be followed by a separator `:`, optional whitespace, and a line ending.
 * The label must be given at the start of the line. Leading whitespace is not allowed.
 * A label has one of three types: *character*, *codepoint*, or *tag*.
+* Multiple labels of the same time are allowed, but deprecated. 
 
 If a label starts with an ASCII digit, it is a *codepoint*.
 * A codepoint label may consist of multiple elements, separated by commas and optional whitespace.
