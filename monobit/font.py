@@ -980,6 +980,7 @@ class Font(HasProps):
     ##########################################################################
     # font operations
 
+
     @scriptable
     def label(
             self, *,
@@ -1025,25 +1026,52 @@ class Font(HasProps):
                 and not isinstance(codepoint_from, Indexer)
             ):
                 encoding = codepoint_from.name
-        kwargs = dict(
-            overwrite=overwrite,
-            match_whitespace=match_whitespace,
-            match_graphical=match_graphical,
-        )
-        if codepoint_from is not NOT_SET:
-            kwargs.update(dict(codepoint_from=codepoint_from))
-        elif char_from is not NOT_SET:
-            kwargs.update(dict(char_from=char_from))
-        elif tag_from is not NOT_SET:
-            kwargs.update(dict(tag_from=tag_from))
-        elif comment_from is not NOT_SET:
-            kwargs.update(dict(comment_from=comment_from))
-        else:
-            return self
-        return self.modify(encoding=encoding, glyphs=tuple(
-            _glyph.label(**kwargs)
+        glyphs = tuple(
+            _glyph.label(
+                overwrite=overwrite,
+                match_whitespace=match_whitespace,
+                match_graphical=match_graphical,
+                char_from=char_from,
+                codepoint_from=codepoint_from,
+                tag_from=tag_from,
+                comment_from=comment_from,
+            )
             for _glyph in self.glyphs
-        ))
+        )
+        glyphs, references = self._relink_glyphs(glyphs)
+        return self.modify(glyphs=glyphs, encoding=encoding, **references)
+
+
+    def _relink_glyphs(self, glyphs):
+
+        def _update_label(old_label):
+            index = self.get_index(old_label, raise_missing=False)
+            if index < 0:
+                return None
+            labels = glyphs[index].get_labels()
+            # drop references if referenced glyph has no labels
+            if not labels:
+                return None
+            return labels[0]
+
+        references = {
+            _k: _update_label(_v)
+            for _k, _v in self._props.items()
+            if isinstance(_v, Label)
+        }
+        left_kerning = (
+            {_update_label(_k): _v for _k, _v in _glyph.left_kerning.items()}
+            for _glyph in glyphs
+        )
+        right_kerning = (
+            {_update_label(_k): _v for _k, _v in _glyph.right_kerning.items()}
+            for _glyph in glyphs
+        )
+        glyphs = tuple(
+            _g.modify(left_kerning=_l, right_kerning=_r)
+            for _g, _l, _r in zip(glyphs, left_kerning, right_kerning)
+        )
+        return glyphs, references
 
     @scriptable
     def subset(
