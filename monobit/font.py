@@ -1043,6 +1043,7 @@ class Font(HasProps):
 
 
     def _relink_glyphs(self, glyphs):
+        """Update label and kerning table references after relabelling."""
 
         def _update_label(old_label):
             index = self.get_index(old_label, raise_missing=False)
@@ -1132,13 +1133,17 @@ class Font(HasProps):
             self.get_glyph(_label, missing=missing, use_encoding=True)
             for _label in labels
         )
+        glyphs, labels = zip(*(
+            (_g, _l) for _g, _l in zip(glyphs, labels) if _g is not None
+        ))
+        font = self.modify(glyphs)
         # if missing=None, drop missing glyphs
-        glyphs = (
+        glyphs = tuple(
             _g.modify(labels=[_label])
             for _g, _label in zip(glyphs, labels)
-            if _g is not None
         )
-        font = self.modify(glyphs)
+        glyphs, references = font._relink_glyphs(glyphs)
+        font = font.modify(glyphs, **references)
         if encoding:
             font = font.label(codepoint_from=encoding, overwrite=True)
         return font
