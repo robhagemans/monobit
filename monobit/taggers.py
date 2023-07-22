@@ -106,11 +106,13 @@ class CodepointTagger(Tagger):
 class MappingTagger(Tagger):
     """Tag on the basis of a mapping table."""
 
-    def __init__(self, mapping, name=''):
+    def __init__(self, mapping, name='', unmapped='glyph{:04}'):
         """Set up mapping."""
         self._chr2tag = mapping
         self._tag2chr = reverse_dict(mapping)
         self.name = name
+        self._unmapped_pattern = unmapped
+        self._unmapped_counter = -1
 
     @classmethod
     def load(cls, filename, *, name='', **kwargs):
@@ -134,8 +136,11 @@ class MappingTagger(Tagger):
         except KeyError:
             return self.get_default_tag(char)
 
-    def get_default_tag(self, char):
+    def get_default_tag(self, char=''):
         """Construct a default tag for unmapped glyphs."""
+        if self._unmapped_pattern:
+            self._unmapped_counter += 1
+            return self._unmapped_pattern.format(self._unmapped_counter)
         return ''
 
     def char(self, *labels):
@@ -153,10 +158,10 @@ class AdobeTagger(MappingTagger):
 
     name = 'adobe'
 
-    def get_default_tag(self, char):
+    def get_default_tag(self, char=''):
         """Construct a default tag for unmapped glyphs."""
         if not char:
-            return ''
+            return super().get_default_tag(char)
         cps = [ord(_c) for _c in char]
         # following agl recommendation for naming sequences
         return '_'.join(f'uni{_cp:04X}' if _cp < 0x10000 else f'u{_cp:06X}' for _cp in cps)
@@ -166,10 +171,10 @@ class SGMLTagger(MappingTagger):
 
     name = 'sgml'
 
-    def get_default_tag(self, char):
+    def get_default_tag(self, char=''):
         """Construct a default tag for unmapped glyphs."""
         if not char:
-            return ''
+            return super().get_default_tag(char)
         cps = [ord(_c) for _c in char]
         # joining numeric references by semicolons
         # note that each entity should really start with & and end with ; e.g. &eacute;
