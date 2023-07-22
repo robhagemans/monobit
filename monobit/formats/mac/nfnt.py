@@ -31,6 +31,8 @@ from ..sfnt import MAC_ENCODING
 # normalised names so we can test with `in`
 MAC_ENCODING_NAMES = tuple(str(EncodingName(_name) for _name in MAC_ENCODING))
 
+# tag used for the 'missing' glyph
+MISSING_TAG = 'missing'
 
 ##############################################################################
 # NFNT/FONT resource
@@ -361,7 +363,7 @@ def convert_nfnt(properties, glyphs, fontrec):
         for _codepoint, _glyph in enumerate(glyphs[:-1], start=fontrec.firstChar)
     ]
     # last glyph is the "missing" glyph
-    labelled.append(glyphs[-1].modify(tag='missing'))
+    labelled.append(glyphs[-1].modify(tag=MISSING_TAG))
     # drop undefined glyphs & their labels, so long as they're empty
     glyphs = tuple(
         _glyph for _glyph in labelled
@@ -401,7 +403,7 @@ def convert_nfnt(properties, glyphs, fontrec):
     properties.update({
         # not overridable; also seems incorrect for system fonts
         #'spacing': 'monospace' if fontrec.fontType.fixed_width else 'proportional',
-        'default_char': 'missing',
+        'default_char': MISSING_TAG,
         'ascent': fontrec.ascent,
         'descent': fontrec.descent,
         'line_height': fontrec.ascent + fontrec.descent + fontrec.leading,
@@ -434,7 +436,7 @@ def create_nfnt(
 
 def subset_for_nfnt(font, resample_encoding):
     """Subset to glyphs storable in NFNT and append default glyph."""
-    default = font.get_default_glyph().modify(labels=(), tag='missing')
+    default = font.get_default_glyph().modify(labels=(), tag=MISSING_TAG)
     is_mac_encoding = str(EncodingName(font.encoding)) in MAC_ENCODING_NAMES
     if (
             resample_encoding is NOT_SET

@@ -26,6 +26,7 @@ _STYLE_MAP = {
 }
 _STYLE_REVERSE_MAP = reverse_dict(_STYLE_MAP)
 
+# tag used for 'missing' glyph
 DEFAULT_NAME = 'missing'
 
 
