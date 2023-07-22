@@ -92,7 +92,7 @@ def _label_to_utf16(font, label, default):
     """Convert a glyph label to a UTF-16 codepoint, if possible; 0 if not."""
     try:
         utf16 = ord(font.get_glyph(label).char)
-    except KeyError:
+    except (KeyError, TypeError):
         utf16 = default
     else:
         if utf16 > 0x1000:
