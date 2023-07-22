@@ -11,7 +11,7 @@ from ...glyph import Glyph
 from ...binary import ceildiv
 from ...storage import loaders, savers
 from ...properties import reverse_dict
-from .sfnt import WEIGHT_MAP, SETWIDTH_MAP, check_fonttools
+from .sfnt import WEIGHT_MAP, SETWIDTH_MAP, NOTDEF_NAME, check_fonttools
 from .sfnt import load_sfnt, load_collection
 from ...labels import Tag
 from ...taggers import CodepointTagger
@@ -245,7 +245,7 @@ def _convert_to_cmap_props(glyphs):
         ord(_g.char): _name
         for _name, _g in glyphs.items()
         # .notdef should not be mapped  in cmap
-        if _g.char and _name != '.notdef'
+        if _g.char and _name != NOTDEF_NAME
     }
 
 
@@ -427,7 +427,7 @@ def _create_sfnt(font, funits_per_em, align, flavour, glyph_names):
     check_fonttools()
     font, default = _prepare_for_sfnt(font, glyph_names)
     # get the storable glyphs
-    glyphnames = ('.notdef', *(_t.value for _t in font.get_tags()))
+    glyphnames = (NOTDEF_NAME, *(_t.value for _t in font.get_tags()))
     glyphs = {
         _name: font.get_glyph(tag=_name, missing=default)
         for _name in glyphnames

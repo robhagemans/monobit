@@ -192,6 +192,8 @@ PLATFORM_ENCODING = {
 ###############################################################################
 # sfnt resource reader
 
+NOTDEF_NAME = '.notdef'
+
 # tags we will decompile and process
 _TAGS = (
     # check `maxp` first to catch any assertion errors on decompile
@@ -903,7 +905,7 @@ def _convert_os_2_props(os_2, vert_fu_p_pix, hori_fu_p_pix):
         # > supported in the font. If the value of this field is zero,
         # > glyph ID 0 is to be used for the default character.
         if props.default_char == Char('\0'):
-            props.default_char = Tag('.notdef')
+            props.default_char = Tag(NOTDEF_NAME)
     return props
 
 
