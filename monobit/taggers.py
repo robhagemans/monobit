@@ -9,7 +9,8 @@ import unicodedata
 import pkgutil
 from pathlib import Path
 
-from .encoding import unicode_name, is_printable, NotFoundError
+from .unicode import unicode_name, is_printable
+from .encoding import NotFoundError
 from .labels import to_label, Tag
 from .properties import reverse_dict
 
