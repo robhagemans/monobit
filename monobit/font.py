@@ -15,7 +15,7 @@ from .scripting import scriptable, get_scriptables, Any
 from .glyph import Glyph
 from .raster import turn_method
 from .basetypes import Coord, Bounds, NOT_SET
-from .basetypes import to_int
+from .basetypes import to_int, Any
 from .encoding import charmaps, encoder, EncodingName, Encoder, Indexer
 from .taggers import tagger
 from .labels import Tag, Char, Codepoint, Label, to_label
@@ -1100,10 +1100,11 @@ class Font(HasProps):
         glyphs = (self._glyphs[_idx] for _idx in sorted(indices) if _idx > -1)
         return self.modify(glyphs)
 
+    @scriptable
     def resample(
-            self, labels=(), *,
-            chars=(), codepoints=(), tags=(),
-            encoding=None, missing='default',
+            self, labels:tuple[Label]=(), *,
+            chars:tuple[Char]=(), codepoints:tuple[Codepoint]=(), tags:tuple[Tag]=(),
+            encoding:encoder=None, missing:Any='default',
         ):
         """
         Return a (contiguous) sample of the font, filling in missing glyphs.
