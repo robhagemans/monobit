@@ -13,7 +13,7 @@ from contextlib import contextmanager
 from functools import wraps, partial
 from types import SimpleNamespace
 
-from .basetypes import Any, passthrough, to_int, CONVERTERS
+from .basetypes import Any, passthrough, to_int, CONVERTERS, NOT_SET
 
 
 class ArgumentError(TypeError):
@@ -71,7 +71,7 @@ def scriptable(
             for kwarg, value in kwargs.items():
                 kwarg = kwarg.replace('-', '_')
                 # skip not-specified arguments
-                if value is None:
+                if value is NOT_SET:
                     continue
                 try:
                     _type, _ = script_args[kwarg]
