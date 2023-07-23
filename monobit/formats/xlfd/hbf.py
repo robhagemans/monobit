@@ -187,23 +187,19 @@ def indexer(plane, code_range, b2_ranges, b3_ranges):
     if not code_range:
         return
     n_bytes = 3 if b3_ranges else 2
-    planeshift = 8 * n_bytes
-    hishift = 8 * (n_bytes-1)
-    loshift = 8 * (n_bytes-2)
-    himask = (1 << hishift) - 1
-    lomask = (1 << loshift) - 1
     for codepoint in code_range:
-        byte2 = (codepoint & himask) >> loshift
+        codebytes = tuple(codepoint.to_bytes(n_bytes, 'big'))
+        byte2 = codebytes[1]
         if all(byte2 not in _range for _range in b2_ranges):
             continue
         if n_bytes == 3:
-            byte3 = codepoint & lomask
+            byte3 = codebytes[2]
             if all(byte3 not in _range for _range in b3_ranges):
                 continue
         if plane is None:
             yield codepoint
         else:
-            yield ((0x80 + plane) << planeshift) + codepoint
+            yield int.from_bytes((plane, *codebyes), 'big')
 
 def _convert_ranges(b2_ranges):
     """Convert range descriptors to ranges."""
