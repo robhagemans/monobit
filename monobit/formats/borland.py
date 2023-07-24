@@ -173,21 +173,11 @@ def _convert_to_stroke_code(command, absx, absy):
         x=absx, y=absy
     )
 
-def _make_contiguous(font):
-    """Fill out a contiguous range of glyphs."""
-    # we need a contiguous range between the min and max codepoints
-    codepoints = font.get_codepoints()
-    ord_glyphs = [
-        font.get_glyph(_codepoint, missing='empty')
-        for _codepoint in range(min(codepoints)[0], max(codepoints)[0]+1)
-    ]
-    font = font.modify(ord_glyphs)
-    return font
-
-
 def _convert_to_borland(font):
     """Convert monobit Font to BGI font data."""
-    font = _make_contiguous(font)
+    min_range = int(min(font.get_codepoints()))
+    max_range = min(int(max(font.get_codepoints())), 255)
+    font = font.resample(codepoints=range(min_range, max_range+1))
     glyphbytes = []
     widths = []
     offsets = []

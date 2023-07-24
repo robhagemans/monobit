@@ -619,24 +619,19 @@ def _make_contiguous(font):
     # blank glyph of standard size
     blank = Glyph.blank(pix_width, font.raster_size.y)
     # char table; we need a contiguous range between the min and max codepoints
-    codepoints = font.get_codepoints()
-    ord_glyphs = [
-        font.get_glyph(_codepoint, missing=blank)
-        for _codepoint in range(min(codepoints)[0], max(codepoints)[0]+1)
-    ]
+    min_range = max(int(min(font.get_codepoints())), min(_FNT_RANGE))
+    max_range = min(int(max(font.get_codepoints())), max(_FNT_RANGE))
+    font = font.resample(codepoints=range(min_range, max_range+1), missing=blank)
     # add the guaranteed-blank glyph
-    ord_glyphs.append(blank)
-    font = font.modify(ord_glyphs)
+    font = font.modify(font.glyphs + (blank,))
     return font
 
 
 def create_fnt(font, version=0x200, vector=False):
     """Create .FNT from monobit font."""
     # ensure codepoint values are set, if possible
-    font = font.label(codepoint_from=font.encoding)
     # only include single-byte encoded glyphs
     # as firstChar and lastChar are byte-sized
-    font = font.subset(codepoints=_FNT_RANGE)
     font = _make_contiguous(font)
     # bring to equal-height, equal-upshift, padded normal form
     font = font.equalise_horizontal()

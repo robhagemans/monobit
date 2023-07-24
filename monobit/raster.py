@@ -9,12 +9,9 @@ import logging
 from itertools import zip_longest
 
 from .binary import ceildiv, reverse_by_group, bytes_to_bits
-from .basetypes import Bounds, Coord
+from .basetypes import Bounds, Coord, NOT_SET
 from .blocks import matrix_to_blocks, blockstr
 
-
-# sentinel object
-NOT_SET = object()
 
 
 # turn function for Raster, Glyph and Font

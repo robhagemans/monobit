@@ -8,12 +8,12 @@ licence: https://opensource.org/licenses/MIT
 import logging
 from functools import cache
 
-from .encoding import is_graphical, is_blank
+from .unicode import is_graphical, is_blank
 from .labels import Codepoint, Char, Tag, to_label
-from .raster import Raster, NOT_SET, turn_method
+from .raster import Raster, turn_method
 from .properties import Props, extend_string
 from .cachedprops import HasProps, checked_property, writable_property
-from .basetypes import Coord, Bounds, to_number
+from .basetypes import Coord, Bounds, to_number, NOT_SET
 from .scripting import scriptable
 from .vector import StrokePath
 

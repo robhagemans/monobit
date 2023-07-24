@@ -6,15 +6,16 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import logging
-from functools import wraps, partial, cache
+from functools import wraps, partial, cache, cached_property
+from itertools import chain
 from pathlib import PurePath
 from unicodedata import normalize
 
 from .scripting import scriptable, get_scriptables, Any
 from .glyph import Glyph
-from .raster import turn_method, NOT_SET
-from .basetypes import Coord, Bounds
-from .basetypes import to_int
+from .raster import turn_method
+from .basetypes import Coord, Bounds, NOT_SET
+from .basetypes import to_int, Any
 from .encoding import charmaps, encoder, EncodingName, Encoder, Indexer
 from .taggers import tagger
 from .labels import Tag, Char, Codepoint, Label, to_label
@@ -140,7 +141,7 @@ class FontProperties:
     # encoding parameters
 
     # character map, stored as normalised name
-    encoding: EncodingName
+    encoding: EncodingName = ''
     # replacement for missing glyph
     default_char: Label
     # word-break character (usually space)
@@ -270,13 +271,6 @@ class Font(HasProps):
         # stretch/shrink dpi.x if aspect ratio is not square
         return Coord((dpi*self.pixel_aspect.x)//self.pixel_aspect.y, dpi)
 
-    @writable_property
-    def encoding(self):
-        """Encoding."""
-        # if we have no codepoints, we can always assume unicode encoding
-        if self.get_chars() and not self.get_codepoints():
-            return charmaps.normalise('unicode')
-        return ''
 
     ##########################################################################
     # metrics
@@ -658,24 +652,42 @@ class Font(HasProps):
     def __init__(self, glyphs=(), *, comment=None, **properties):
         """Create new font."""
         super().__init__()
-        self._glyphs = tuple(glyphs)
-        # construct lookup tables
-        self._labels = {
-            _label: _index
-            for _index, _glyph in enumerate(self._glyphs)
-            for _label in _glyph.get_labels()
-        }
         # comment can be str (just global comment) or mapping of property comments
+        self._comment = {}
         if isinstance(comment, str):
-            comment = {'': comment}
-        else:
-            comment = comment or {}
+            self._comment[''] = comment
+        elif comment:
+            self._comment.update(comment)
+        self._glyphs = tuple(glyphs)
+        # update glyph list, apply globally specified metrics
         self._glyphs, properties = self._apply_metrics(self._glyphs, properties)
-        self._comment = {**comment}
         # update properties
         # NOTE - we must be careful NOT TO ACCESS CACHED PROPERTIES
         #        until the constructor is complete
         self._set_properties(properties)
+
+    @cached_property
+    def _labels(self):
+        """Label lookup table."""
+        label_map = {
+            _label: _index
+            for _index, _glyph in enumerate(self._glyphs)
+            for _label in _glyph.get_labels()
+        }
+        font_encoder = encoder(self.encoding)
+        if not font_encoder:
+            return label_map
+        char_label_map = {
+            font_encoder.char(_label): _index
+            for _label, _index in label_map.items()
+        }
+        char_label_map.pop(Char(''), None)
+        codepoint_label_map = {
+            font_encoder.codepoint(_label): _index
+            for _label, _index in label_map.items()
+        }
+        codepoint_label_map.pop(Codepoint(b''), None)
+        return char_label_map | codepoint_label_map | label_map
 
     @staticmethod
     def _apply_metrics(glyphs, props):
@@ -852,12 +864,13 @@ class Font(HasProps):
     def get_glyph(
             self, label=None, *,
             char=None, codepoint=None, tag=None,
-            missing='raise'
+            missing='raise', use_encoding=True
         ):
         """Get glyph by char, codepoint or tag; default if not present."""
         try:
             index = self.get_index(
-                label, tag=tag, char=char, codepoint=codepoint
+                label, tag=tag, char=char, codepoint=codepoint,
+                use_encoding=use_encoding,
             )
             return self.glyphs[index]
         except KeyError:
@@ -881,7 +894,10 @@ class Font(HasProps):
                 return missing
             raise
 
-    def get_index(self, label=None, *, char=None, codepoint=None, tag=None):
+    def get_index(
+            self, label=None, *, char=None, codepoint=None, tag=None,
+            use_encoding=True, raise_missing=True,
+        ):
         """Get index for given label, if defined."""
         if 1 != len([
                 _indexer for _indexer in (label, char, codepoint, tag)
@@ -904,7 +920,9 @@ class Font(HasProps):
             return self._labels[label]
         except KeyError:
             pass
-        raise KeyError(f'No glyph found matching label={label}')
+        if raise_missing:
+            raise KeyError(f'No glyph found matching label={label}')
+        return -1
 
     @cache
     def get_default_glyph(self):
@@ -962,6 +980,7 @@ class Font(HasProps):
     ##########################################################################
     # font operations
 
+
     @scriptable
     def label(
             self, *,
@@ -1007,25 +1026,53 @@ class Font(HasProps):
                 and not isinstance(codepoint_from, Indexer)
             ):
                 encoding = codepoint_from.name
-        kwargs = dict(
-            overwrite=overwrite,
-            match_whitespace=match_whitespace,
-            match_graphical=match_graphical,
-        )
-        if codepoint_from is not NOT_SET:
-            kwargs.update(dict(codepoint_from=codepoint_from))
-        elif char_from is not NOT_SET:
-            kwargs.update(dict(char_from=char_from))
-        elif tag_from is not NOT_SET:
-            kwargs.update(dict(tag_from=tag_from))
-        elif comment_from is not NOT_SET:
-            kwargs.update(dict(comment_from=comment_from))
-        else:
-            return self
-        return self.modify(encoding=encoding, glyphs=tuple(
-            _glyph.label(**kwargs)
+        glyphs = tuple(
+            _glyph.label(
+                overwrite=overwrite,
+                match_whitespace=match_whitespace,
+                match_graphical=match_graphical,
+                char_from=char_from,
+                codepoint_from=codepoint_from,
+                tag_from=tag_from,
+                comment_from=comment_from,
+            )
             for _glyph in self.glyphs
-        ))
+        )
+        glyphs, references = self._relink_glyphs(glyphs)
+        return self.modify(glyphs=glyphs, encoding=encoding, **references)
+
+
+    def _relink_glyphs(self, glyphs):
+        """Update label and kerning table references after relabelling."""
+
+        def _update_label(old_label):
+            index = self.get_index(old_label, raise_missing=False)
+            if index < 0:
+                return None
+            labels = glyphs[index].get_labels()
+            # drop references if referenced glyph has no labels
+            if not labels:
+                return None
+            return labels[0]
+
+        references = {
+            _k: _update_label(_v)
+            for _k, _v in self._props.items()
+            if isinstance(_v, Label)
+        }
+        left_kerning = (
+            {_update_label(_k): _v for _k, _v in _glyph.left_kerning.items()}
+            for _glyph in glyphs
+        )
+        right_kerning = (
+            {_update_label(_k): _v for _k, _v in _glyph.right_kerning.items()}
+            for _glyph in glyphs
+        )
+        glyphs = tuple(
+            _g.modify(left_kerning=_l, right_kerning=_r)
+            for _g, _l, _r in zip(glyphs, left_kerning, right_kerning)
+        )
+        return glyphs, references
 
     @scriptable
     def subset(
@@ -1040,13 +1087,68 @@ class Font(HasProps):
         codepoints: codepoints to include
         tags: tags to include
         """
-        glyphs = (
-            [self.get_glyph(_label, missing=None) for _label in labels]
-            + [self.get_glyph(char=_char, missing=None) for _char in chars]
-            + [self.get_glyph(codepoint=_codepoint, missing=None) for _codepoint in codepoints]
-            + [self.get_glyph(tag=_tag, missing=None) for _tag in tags]
+        labels = (
+            list(labels)
+            + [Char(_c) for _c in chars]
+            + [Codepoint(_c) for _c in codepoints]
+            + [Tag(_t) for _t in tags]
         )
-        return self.modify(_glyph for _glyph in glyphs if _glyph is not None)
+        indices = set(
+            self.get_index(_label, raise_missing=False, use_encoding=True)
+            for _label in labels
+        )
+        glyphs = (self._glyphs[_idx] for _idx in sorted(indices) if _idx > -1)
+        return self.modify(glyphs)
+
+    @scriptable
+    def resample(
+            self, labels:tuple[Label]=(), *,
+            chars:tuple[Char]=(), codepoints:tuple[Codepoint]=(), tags:tuple[Tag]=(),
+            encoding:encoder=None, missing:Any='default',
+        ):
+        """
+        Return a (contiguous) sample of the font, filling in missing glyphs.
+        Changes the labels of the subsampled glyphs to those provided.
+
+        labels: chars, codepoints or tags to include.
+        chars: chars to include
+        codepoints: codepoints to include
+        tags: tags to include
+        encoding: encoding from which to sample all codepoints.
+        missing: how to deal with missing glyphs. 'default', 'empty', 'raise', None, or a user-defined Glyph
+        """
+        nargs = sum(
+            bool(_arg) for _arg in (labels, chars, codepoints, tags, encoding)
+        )
+        if nargs > 1:
+            raise ValueError('Can only set one of labels, chars, codepoints, tags, encoding.')
+        if encoding:
+            encoding = encoder(encoding)
+            chars = (Char(_c) for _c in encoding.mapping.values())
+        else:
+            chars = (Char(_c) for _c in chars)
+            codepoints = (Codepoint(_c) for _c in codepoints)
+            tags = (Tag(_t) for _t in tags)
+        labels = tuple(chain(labels, chars, codepoints, tags))
+        glyphs = (
+            self.get_glyph(_label, missing=missing, use_encoding=True)
+            for _label in labels
+        )
+        glyphs, labels = zip(*(
+            (_g, _l) for _g, _l in zip(glyphs, labels) if _g is not None
+        ))
+        font = self.modify(glyphs)
+        # if missing=None, drop missing glyphs
+        glyphs = tuple(
+            _g.modify(labels=[_label])
+            for _g, _label in zip(glyphs, labels)
+        )
+        glyphs, references = font._relink_glyphs(glyphs)
+        font = font.modify(glyphs, **references)
+        if encoding:
+            font = font.label(codepoint_from=encoding, overwrite=True)
+        return font
+
 
     @scriptable
     def exclude(

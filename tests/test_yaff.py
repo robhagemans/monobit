@@ -303,9 +303,9 @@ b:
         text = '\n'.join(_row for _row in text.splitlines() if _row)
         assert text.endswith("""
 left-bearing: 1
-u+0061:
+'a':
     .....
-u+0062:
+'b':
     .@@.."""), repr(text)
 
 

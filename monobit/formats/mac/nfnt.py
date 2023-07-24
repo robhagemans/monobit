@@ -18,12 +18,21 @@ from ...font import Font
 from ...glyph import Glyph, KernTable
 from ...magic import FileFormatError
 from ...labels import Char
-from ...encoding import charmaps
+from ...encoding import charmaps, EncodingName
 from ...raster import Raster
 from ...properties import Props
+from ...basetypes import NOT_SET
+
 
 from .fond import fixed_to_float
+from ..sfnt import MAC_ENCODING
 
+
+# normalised names so we can test with `in`
+MAC_ENCODING_NAMES = tuple(str(EncodingName(_name) for _name in MAC_ENCODING))
+
+# tag used for the 'missing' glyph
+MISSING_TAG = 'missing'
 
 ##############################################################################
 # NFNT/FONT resource
@@ -354,7 +363,7 @@ def convert_nfnt(properties, glyphs, fontrec):
         for _codepoint, _glyph in enumerate(glyphs[:-1], start=fontrec.firstChar)
     ]
     # last glyph is the "missing" glyph
-    labelled.append(glyphs[-1].modify(tag='missing'))
+    labelled.append(glyphs[-1].modify(tag=MISSING_TAG))
     # drop undefined glyphs & their labels, so long as they're empty
     glyphs = tuple(
         _glyph for _glyph in labelled
@@ -394,7 +403,7 @@ def convert_nfnt(properties, glyphs, fontrec):
     properties.update({
         # not overridable; also seems incorrect for system fonts
         #'spacing': 'monospace' if fontrec.fontType.fixed_width else 'proportional',
-        'default_char': 'missing',
+        'default_char': MISSING_TAG,
         'ascent': fontrec.ascent,
         'descent': fontrec.descent,
         'line_height': fontrec.ascent + fontrec.descent + fontrec.leading,
@@ -412,11 +421,12 @@ def convert_nfnt(properties, glyphs, fontrec):
 # NFNT writer
 
 def create_nfnt(
-        font, endian, ndescent_is_high, create_width_table, create_height_table
+        font, endian, ndescent_is_high, create_width_table, create_height_table,
+        resample_encoding,
     ):
     """Create NFNT/FONT resource."""
     # subset to characters storable in NFNT
-    font = subset_for_nfnt(font)
+    font = subset_for_nfnt(font, resample_encoding)
     nfnt_data = convert_to_nfnt(
         font, endian, ndescent_is_high, create_width_table, create_height_table
     )
@@ -424,30 +434,31 @@ def create_nfnt(
     return data, nfnt_data.owt_loc_high, nfnt_data.fbr_extent
 
 
-def subset_for_nfnt(font):
+def subset_for_nfnt(font, resample_encoding):
     """Subset to glyphs storable in NFNT and append default glyph."""
-    font = font.label(codepoint_from=font.encoding)
-    resample = False
-    if font.encoding.startswith('mac') or font.encoding in ('raw', '', None):
+    default = font.get_default_glyph().modify(labels=(), tag=MISSING_TAG)
+    is_mac_encoding = str(EncodingName(font.encoding)) in MAC_ENCODING_NAMES
+    if (
+            resample_encoding is NOT_SET
+            and font.encoding and not is_mac_encoding
+            and not font.encoding in ('raw', 'ascii')
+        ):
+        resample_encoding = 'mac-roman'
+    if resample_encoding:
+        # NFNT can only store encodings from a pre-defined list of 'scripts'
+        # for fonts with other encodings, get glyphs corresponding to mac-roman
+        font = font.resample(encoding=resample_encoding, missing=None)
+    if font.encoding == 'ascii':
+        font = font.subset(range(0, 128))
+    else:
         # it's not clear to me if/how NFNT resources are used for MBCS
         # currently we just use the single-byte sector
         # this affects mac-japanese, mac-korean which have multibyte codepoints
-        labels = tuple(range(0, 256))
-    elif font.encoding == 'ascii':
-        labels = tuple(range(0, 128))
-    else:
-        resample = True
-        # NFNT can only store encodings from a pre-defined list of 'scripts'
-        # for fonts with other encodings, get glyphs corresponding to mac-roman
-        font = font.label()
-        labels = tuple(Char(_c) for _i, _c in sorted(charmaps['mac-roman'].mapping.items()))
-    subfont = font.subset(labels=labels)
-    if not subfont.glyphs:
+        font = font.subset(range(0, 256))
+    if not font.glyphs:
         raise FileFormatError('No suitable characters for NFNT font')
-    glyphs = [*subfont.glyphs, font.get_default_glyph().modify(labels=(), tag='missing')]
-    font = font.modify(glyphs, encoding=None)
-    if resample:
-        font = font.label(codepoint_from='mac-roman', overwrite=True)
+    # add the default glyph at the end
+    font = font.append(glyphs=(default,))
     return font
 
 
