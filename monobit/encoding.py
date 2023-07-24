@@ -7,6 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 import pkgutil
 import logging
+import unicodedata
 from pathlib import Path
 from html.parser import HTMLParser
 from importlib.resources import files
