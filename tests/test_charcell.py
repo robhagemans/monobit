@@ -21,9 +21,7 @@ class TestCharCell(BaseTester):
     )
     fixed8x8r = (
         fixed8x8
-        .modify(encoding='cp437')
-        .label(codepoint_from='cp437')
-        .subset(range(20, 256))
+        .subset(range(32, 256))
         .reduce()
     )
 
@@ -55,11 +53,15 @@ class TestCharCell(BaseTester):
         assert self.fixed8x8.cell_size == (8, 8)
 
 
-    def _test_export_charcell_reduced(self, format, count=191, label=b'A', save_kwargs=None, **load_kwargs):
+    def _test_export_charcell_reduced(self, format, count=191, label=b'A', codepage=None, save_kwargs=None, **load_kwargs):
         """Test exporting a reduced-raster character-cell font."""
         file = self.temp_path / 'testfont.fnt'
         save_kwargs = save_kwargs or {}
-        monobit.save(self.fixed8x8r, file, format=format, **save_kwargs)
+        font = self.fixed8x8r
+        if codepage:
+            font = font.modify(encoding=codepage)
+            font = font.label(codepoint_from=codepage, overwrite=True)
+        monobit.save(font, file, format=format, **save_kwargs)
         font, *_ = monobit.load(file, format=format, **load_kwargs)
         self.assertEqual(len(font.glyphs), count)
         assert_text_eq(font.get_glyph(label).as_text(), self.fixed8x8_A)
@@ -101,11 +103,11 @@ class TestCharCell(BaseTester):
 
     def test_export_cpi_r(self):
         """Test exporting CPI (FONT) files."""
-        self._test_export_charcell_reduced('cpi', count=256)
+        self._test_export_charcell_reduced('cpi', count=256, codepage='cp437')
 
     def test_export_cp_r(self):
         """Test exporting kbd CP files"""
-        self._test_export_charcell_reduced('kbd', count=256)
+        self._test_export_charcell_reduced('kbd', count=256, codepage='cp437')
 
     def test_export_fontx_r(self):
         """Test exporting fontx files."""

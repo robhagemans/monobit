@@ -219,12 +219,14 @@ def extract_nfnt(data, offset, endian='big', owt_loc_high=0, font_type=None):
     # https://developer.apple.com/library/archive/documentation/mac/Text/Text-252.html
     if fontrec.nDescent > 0:
         owt_loc_high = fontrec.nDescent
-    wo_offset = (fontrec.owTLoc + (owt_loc_high << 16)) * 2
     # owtTLoc is offset "from itself" to table
-    wo_table = WOEntry.array(n_chars).from_bytes(data, offset + 16 + wo_offset)
-    # scalable width table
-    width_offset = wo_offset + WOEntry.size * n_chars
+    wo_offset = offset + 16 + (fontrec.owTLoc + (owt_loc_high << 16)) * 2
+    wo_table = WOEntry.array(n_chars).from_bytes(data, wo_offset)
+    # the width-offset table has an extra word:
+    # > The last word of this table is also -1, representing the end.
+    width_offset = wo_offset + WOEntry.size * (n_chars+1)
     height_offset = width_offset
+    # scalable width table
     if fontrec.fontType.has_width_table:
         width_table = WidthEntry.array(n_chars).from_bytes(data, width_offset)
         height_offset += WidthEntry.size * n_chars
@@ -557,13 +559,10 @@ def convert_to_nfnt(
     WidthEntry = width_entry_struct(base)
     HeightEntry = height_entry_struct(base)
     font = _normalize_metrics(font)
-    # build the font-strike data
-    strike_raster = Raster.concatenate(*(_g.pixels for _g in font.glyphs))
-    # word-align strike
-    strike_raster = strike_raster.expand(right=16-(strike_raster.width%16))
-    font_strike = strike_raster.as_bytes()
     # get contiguous glyph list
     # subset_for_nfnt has sorted on codepoint and added a 'missing' glyph
+    if not font.get_codepoints():
+        raise ValueError('No storable codepoints in font.')
     first_char = int(min(font.get_codepoints()))
     last_char = int(max(font.get_codepoints()))
     glyph_table = [
@@ -574,6 +573,11 @@ def convert_to_nfnt(
     glyph_table.append(font.glyphs[-1])
     # calculate glyph metrics and fill in empties
     glyph_table = _calculate_nfnt_glyph_metrics(glyph_table)
+    # build the font-strike data
+    strike_raster = Raster.concatenate(*(_g.pixels for _g in glyph_table))
+    # word-align strike
+    strike_raster = strike_raster.expand(right=16-(strike_raster.width%16))
+    font_strike = strike_raster.as_bytes()
     # build the width-offset table
     empty = Glyph(wo_offset=255, wo_width=255)
     wo_table = b''.join(

@@ -392,7 +392,7 @@ def _prepare_for_sfnt(font, glyph_names):
     # we need a name for each glyph to be able to store it
     # if glyph_names == 'tags', must be tagged already
     # otherwise, only glyphs without chars must have names
-    if glyph_names != 'tag':
+    if glyph_names != 'tags':
         font = font.label(tag_from=glyph_names or 'truetype', overwrite=True)
         # tag remaining glyphs based on index
         glyphs = (
