@@ -8,6 +8,8 @@ licence: https://opensource.org/licenses/MIT
 import logging
 
 from ...storage import loaders, savers
+from ...encoding import EncodingName
+from ...basetypes import NOT_SET
 
 from .dfont import parse_resource_fork, save_dfont
 from .nfnt import extract_nfnt, convert_nfnt, create_nfnt
@@ -28,12 +30,16 @@ def load_mac_dfont(instream):
 
 
 @savers.register(linked=load_mac_dfont)
-def save_mac_dfont(fonts, outstream, resource_type:str='NFNT', family_id:int=None):
+def save_mac_dfont(
+        fonts, outstream, resource_type:str='NFNT', family_id:int=None,
+        resample_encoding:EncodingName=NOT_SET,
+    ):
     """Save font to MacOS resource fork or data-fork resource.
 
     resource_type: type of resource to store font in. One of `sfnt`, `NFNT`.
+    resample_encoding: encoding to use for NFNT resources. Must be one of the `mac-` encodings. Default: use font's encoding.
     """
-    save_dfont(fonts, outstream, resource_type)
+    save_dfont(fonts, outstream, resource_type, resample_encoding)
 
 
 @loaders.register(
@@ -71,16 +77,21 @@ def load_iigs(instream):
 
 
 @savers.register(linked=load_iigs)
-def save_iigs(fonts, outstream, version:int=None):
+def save_iigs(
+        fonts, outstream, version:int=None, resample_encoding:EncodingName=NOT_SET,
+    ):
     """
     Write font to a IIgs font file.
 
     version: IIgs font format version (0x101, 0x105). Default: 0x101 unless needed for bitmap size.
+    resample_encoding: encoding to use for NFNT resources. Must be one of the `mac-` encodings. Default: use font's encoding.
     """
     if len(fonts) > 1:
         logging.warning('IIgs font file can only store one font.')
     font = fonts[0]
-    _save_iigs(outstream, font, version=version)
+    _save_iigs(
+        outstream, font, version=version, resample_encoding=resample_encoding
+    )
 
 
 @savers.register(linked=load_nfnt)
@@ -88,12 +99,14 @@ def save_nfnt(
         fonts, outstream,
         create_width_table:bool=True,
         create_height_table:bool=False,
+        resample_encoding:EncodingName=NOT_SET,
     ):
     """
     Write font to a bare FONT/NFNT resource.
 
     create_width_table: include a fractional glyph-width table in the resource (default: True)
     create_height_table: include an image-height table in the resource (default: False)
+    resample_encoding: encoding to use for NFNT resources. Must be one of the `mac-` encodings. Default: use font's encoding.
     """
     if len(fonts) > 1:
         logging.warning('NFNT resource can only store one font.')
@@ -102,5 +115,6 @@ def save_nfnt(
         font, endian='big', ndescent_is_high=True,
         create_width_table=create_width_table,
         create_height_table=create_height_table,
+        resample_encoding=resample_encoding,
     )
     outstream.write(data)

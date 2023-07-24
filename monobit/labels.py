@@ -8,10 +8,10 @@ licence: https://opensource.org/licenses/MIT
 from string import ascii_letters, digits
 from unicodedata import normalize
 from itertools import count
-
 from .binary import ceildiv, int_to_bytes, bytes_to_int
 from .scripting import to_int
 from .basetypes import CONVERTERS
+from .unicode import is_printable
 
 
 def is_enclosed(from_str, char):
@@ -124,10 +124,9 @@ class Char(str, Label):
 
     def __str__(self):
         """Convert to unicode label str for yaff."""
-        return ', '.join(
-            f'u+{ord(_uc):04x}'
-            for _uc in self
-        )
+        if all(is_printable(_uc) for _uc in self):
+            return f"'{super().__str__()}'"
+        return ', '.join(f'u+{ord(_uc):04x}' for _uc in self)
 
     @property
     def value(self):
@@ -170,7 +169,7 @@ class Codepoint(bytes, Label):
         return f"{type(self).__name__}({super().__repr__()})"
 
     def __str__(self):
-        """Convert codepoint label to str."""
+        """Convert codepoint label to str for yaff."""
         return '0x' + self.hex()
 
     def __lt__(self, other):
@@ -219,25 +218,15 @@ class Tag(Label):
             )
         self._value = value
 
-
     def __repr__(self):
         """Represent label."""
         return f"{type(self).__name__}({repr(self._value)})"
 
     def __str__(self):
-        """Convert tag to str."""
-        # quote otherwise ambiguous/illegal tags
+        """Convert tag to str for yaff."""
         # in particular, we need to quote 0x u+ ' ", non-ascii, and single chars
-        if (
-                len(self._value) < 2
-                or not (self._value[0] in ascii_letters)
-                or any(
-                    _c not in ascii_letters + digits + '_-.'
-                    for _c in self._value
-                )
-            ):
-            return f'"{self._value}"'
-        return self._value
+        # but we quote all as unquoted tags are deprecated
+        return f'"{self._value}"'
 
     def __hash__(self):
         """Allow use as dictionary key."""

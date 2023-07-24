@@ -1,4 +1,4 @@
-"""
+f"""
 monobit.formats.fontx - DOS/V FONTX2 format
 
 (c) 2022--2023 Rob Hagemans
@@ -146,9 +146,6 @@ def _convert_to_fontx(font):
     # inflate glyphs to fill positive horizontal bearings
     font = font.equalise_horizontal()
     blank = Glyph.blank(*font.raster_size)
-    # ensure codepoint values are set if possible
-    if font.encoding:
-        font = font.label(codepoint_from=font.encoding)
     props = Props(
         code_flag=len(max(font.get_codepoints())) > 1,
         name=font.name[:8].encode('ascii', 'replace'),
@@ -176,12 +173,9 @@ def _convert_to_fontx(font):
             range(min(_page), max(_page)+1)
             for _page in pages if _page
         )
-    glyphs = tuple(
-        font.get_glyph(codepoint=_cp, missing=blank).modify(codepoint=_cp)
-        for _range in blocks
-        for _cp in _range
-    )
-    return props, blocks, glyphs
+    codepoints = (_cp for _range in blocks for _cp in _range)
+    font = font.resample(codepoints=codepoints, missing=blank)
+    return props, blocks, font.glyphs
 
 def _write_fontx(outstream, props, blocks, glyphs):
     """Write fontx properties and glyphs to binary file."""

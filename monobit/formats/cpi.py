@@ -85,14 +85,24 @@ def save_cp(
 @savers.register(linked=load_cpi)
 def save_cpi(
         fonts, outstream,
-        version:str=_ID_MS, codepage_prefix:str='cp'
+        version:str=_ID_MS, codepage_prefix:str='cp',
+        codepages:str='',
     ):
     """
     Save character-cell fonts to Linux Keyboard Codepage (.CP) file.
 
     version: CPI format version. One of 'DRFONT', 'FONT.NT', or 'FONT' (default)
     codepage_prefix: prefix to use to find numbered codepage in encodings. Default: 'cp'.
+    codepages: codepages to resample from fonts provided
     """
+    if isinstance(codepages, str):
+        codepages = tuple(_cpg for _cpg in codepages.split(',') if _cpg)
+    if codepages:
+        fonts = tuple(
+            _f.resample(encoding=codepage_prefix+_cpg)
+            for _f in fonts
+            for _cpg in codepages
+        )
     format = version[:7].upper().ljust(7)
     if isinstance(format, str):
         format = format.encode('ascii', 'replace')
@@ -417,22 +427,11 @@ def _make_one_fit(font, codepage_prefix):
         )
         return None
     # ensure codepoint values are set, if possible
-    font = font.label(codepoint_from=font.encoding)
     # take only the glyphs that will fit
-    font = font.subset(_RANGE)
+    font = font.resample(_RANGE, missing=Glyph.blank(*font.cell_size))
     font = font.equalise_horizontal()
-    font = _fill_contiguous(font, _RANGE, Glyph.blank(*font.cell_size))
     return font
 
-
-def _fill_contiguous(font, full_range, filler):
-    """Get contiguous range, fill gaps with empties."""
-    glyphs = tuple(
-        font.get_glyph(codepoint=_cp, missing=filler).modify(codepoint=_cp)
-        for _cp in full_range
-    )
-    font = font.modify(glyphs)
-    return font
 
 def _get_consistent(fonts, property):
     """Get value for a property across fonts, or None if inconsistent."""

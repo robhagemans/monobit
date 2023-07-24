@@ -78,16 +78,19 @@ def load_draw(text_stream, *, blocktypes, unicode):
         elif isinstance(block, Unparsed):
             logging.debug('Unparsed lines: %s', block.get_value())
     font_comments.extend(current_comment)
-    if not unicode:
+    if unicode:
+        encoding = 'unicode'
+    else:
+        encoding = ''
         glyphs = tuple(
             _g.label(codepoint_from=charmaps['unicode']).modify(char=None)
             for _g in glyphs
         )
     font = Font(
         glyphs,
+        encoding=encoding,
         comment='\n\n'.join(font_comments)
     )
-
     return font
 
 

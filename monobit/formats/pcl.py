@@ -58,7 +58,6 @@ def save_hppcl(fonts, outstream, orientation:str='portrait'):
     else:
         raise ValueError(f"orientation must be one of 'portrait' or 'landscape', not {orientation}")
     # get storable glyphs (8-bit bound)
-    font = font.label(codepoint_from=font.encoding)
     font = font.subset(codepoints=range(256))
     # convert
     fontdef, copyright = _convert_to_hppcl_props(font, orientation)

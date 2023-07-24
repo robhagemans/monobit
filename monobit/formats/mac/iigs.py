@@ -113,11 +113,12 @@ def _convert_iigs(glyphs, fontrec, header, name):
     return font.modify(**properties).label()
 
 
-def _save_iigs(outstream, font, version=None):
+def _save_iigs(outstream, font, version, resample_encoding):
     """Save an Apple IIgs font file."""
     nfnt, owt_loc_high, fbr_extent = create_nfnt(
         font, endian='little', ndescent_is_high=False,
         create_width_table=False, create_height_table=False,
+        resample_encoding=resample_encoding,
     )
     # if offset > 32 bits, need to use iigs format v1.05
     if version is None:
