@@ -204,7 +204,7 @@ labels, all are considered to point to the glyph that follows.
 A *label* must be followed by a separator `:`, optional whitespace, and a line ending.
 * The label must be given at the start of the line. Leading whitespace is not allowed.
 * A label has one of three types: *character*, *codepoint*, or *tag*.
-* Multiple labels of the same time are allowed, but deprecated. 
+* Multiple labels of the same type are allowed, but deprecated.
 
 If a label starts with an ASCII digit, it is a *codepoint*.
 * A codepoint label may consist of multiple elements, separated by commas and optional whitespace.
