@@ -241,7 +241,7 @@ and `'ffi'` (multiple characters enclosed in single quotes).
 
 It is also possible, but deprecated, to create a character label as a label that:
 * starts with a character that is not in 7-bit ASCII, **or**
-* consists of a single Unicode character
+* consists of a single Unicode character that is not an ASCII digit
 
 Examples of deprecated character labels are the unquoted `A`, `À`, `安` (all of which are single characters), `ते`
 (a grapheme sequence consisting of multiple non-ASCII characters)
