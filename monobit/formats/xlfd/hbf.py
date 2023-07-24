@@ -199,7 +199,7 @@ def indexer(plane, code_range, b2_ranges, b3_ranges):
         if plane is None:
             yield codepoint
         else:
-            yield int.from_bytes((plane, *codebyes), 'big')
+            yield int.from_bytes((plane, *codebytes), 'big')
 
 def _convert_ranges(b2_ranges):
     """Convert range descriptors to ranges."""
