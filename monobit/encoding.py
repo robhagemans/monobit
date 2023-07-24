@@ -1015,6 +1015,14 @@ class Indexer(Encoder):
         """Representation."""
         return type(self).__name__ + '()'
 
+    @classmethod
+    def load(cls, tbl_file):
+        """Load indexer from FONTCONV .tbl file"""
+        with open(tbl_file) as f:
+            tbl = f.read()
+        rangestr = '0x' + ',0x'.join(('-0x'.join(tbl.split('-'))).split())
+        return cls(code_range=rangestr)
+
 
 ###################################################################################################
 # charmap file readers
