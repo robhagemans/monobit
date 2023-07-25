@@ -30,15 +30,37 @@ _get_codepoint = partial(_get_label, labeltype=Codepoint)
 _get_tag = partial(_get_label, labeltype=Tag)
 
 
-class UnicodeTagger(Encoder):
+class UnicodeNameTagger(Encoder):
+    """Tag with unicode name."""
+
+    def __init__(self):
+        super().__init__(name='name')
+
+    def tag(self, *labels):
+        """Get unicode glyph name."""
+        char = _get_char(labels)
+        if not char:
+            return Tag()
+        return Tag(unicode_name(char.value))
+
+    def char(self, *labels):
+        """Get char from unicode glyph name."""
+        tag = _get_tag(labels)
+        elements = tag.value.split(',')
+        try:
+            return Char(''.join(
+                unicodedata.lookup(elem.strip())
+                for elem in elements
+            ))
+        except KeyError:
+            return Char()
+
+
+class DescriptionTagger(Encoder):
     """Tag with unicode names and characters."""
 
-    def __init__(self, include_char=False):
-        self.include_char = include_char
-        if include_char:
-            self.name = 'desc'
-        else:
-            self.name = 'name'
+    def __init__(self):
+        super().__init__(name='desc')
 
     def tag(self, *labels):
         """Get unicode glyph name."""
@@ -47,9 +69,9 @@ class UnicodeTagger(Encoder):
             return Tag()
         char = char.value
         name = unicode_name(char)
-        if self.include_char and is_printable(char):
+        if is_printable(char):
             return Tag('[{}] {}'.format(char, name))
-        return Tag('{}'.format(name))
+        return Tag(name)
 
 
 class CharTagger(Encoder):
@@ -219,8 +241,8 @@ def tagger(initialiser):
 tagmaps = {
     'char': CharTagger(),
     'codepoint': CodepointTagger(),
-    'name': UnicodeTagger(),
-    'desc': UnicodeTagger(include_char=True),
+    'name': UnicodeNameTagger(),
+    'desc': DescriptionTagger(),
     'adobe': MappingTagger.load(
         'agl/aglfn.txt', name='adobe',
         separator=';', unicode_column=0, tag_column=1,
