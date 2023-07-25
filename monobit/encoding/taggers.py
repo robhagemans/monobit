@@ -8,29 +8,26 @@ licence: https://opensource.org/licenses/MIT
 import unicodedata
 from pathlib import Path
 from importlib.resources import files
+from functools import partial
 
 from ..unicode import unicode_name, is_printable
-from ..labels import to_label, Tag, Char
+from ..labels import to_label, Tag, Char, Codepoint
 from ..properties import reverse_dict
 from .base import NotFoundError, Encoder
 from . import tables
 
 
-def _get_char(labels):
-    """Get first char label from list."""
+def _get_label(labels, labeltype):
+    """Get first label of given type from list."""
     for label in labels:
-        char = to_label(label)
-        if isinstance(char, str):
-            return char
-    return ''
+        label = to_label(label)
+        if isinstance(label, labeltype):
+            return label
+    return labeltype()
 
-def _get_codepoint(labels):
-    """Get first codepoint label from list."""
-    for label in labels:
-        cp = to_label(label)
-        if isinstance(cp, bytes):
-            return cp
-    return b''
+_get_char = partial(_get_label, labeltype=Char)
+_get_codepoint = partial(_get_label, labeltype=Codepoint)
+_get_tag = partial(_get_label, labeltype=Tag)
 
 
 class UnicodeTagger(Encoder):
@@ -69,6 +66,26 @@ class CharTagger(Encoder):
         return Tag()
 
 
+class FallbackTagger(Encoder):
+    """Algorithmically generatte tags."""
+
+    def __init__(self, unmapped='glyph{count:04}'):
+        """Set up mapping."""
+        super().__init__(name='fallback')
+        self._pattern = unmapped
+        self._count = -1
+
+    def tag(self, *labels):
+        """Get value from tagmap."""
+        self._pattern += 1
+        return self._pattern.format(
+            count=self._count,
+            char=_get_char(labels),
+            codepoint=_get_codepoint(labels),
+            tag=_get_tag(labels),
+        )
+
+
 class CodepointTagger(Encoder):
     """Tag with codepoint numbers."""
 
@@ -88,16 +105,15 @@ class CodepointTagger(Encoder):
 class MappingTagger(Encoder):
     """Tag on the basis of a mapping table."""
 
-    def __init__(self, mapping, name='', unmapped='glyph{:04}'):
+    def __init__(self, mapping, name='', fallback=None):
         """Set up mapping."""
+        super().__init__(name=name)
         self._chr2tag = mapping
         self._tag2chr = reverse_dict(mapping)
-        self.name = name
-        self._unmapped_pattern = unmapped
-        self._unmapped_counter = -1
+        self._fallback = fallback or FallbackTagger()
 
     @classmethod
-    def load(cls, filename, *, name='', **kwargs):
+    def load(cls, filename, *, name='', fallback=None, **kwargs):
         """Create new charmap from file."""
         try:
             data = (files(tables) / filename).read_bytes()
@@ -108,7 +124,7 @@ class MappingTagger(Encoder):
         mapping = _read_tagmap(data, **kwargs)
         if not name:
             name = Path(filename).stem
-        return cls(mapping, name=name)
+        return cls(mapping, name=name, fallback=fallback)
 
     def tag(self, *labels):
         """Get value from tagmap."""
@@ -116,14 +132,7 @@ class MappingTagger(Encoder):
         try:
             return Tag(self._chr2tag[char])
         except KeyError:
-            return Tag(self.get_default_tag(char))
-
-    def get_default_tag(self, char=''):
-        """Construct a default tag for unmapped glyphs."""
-        if self._unmapped_pattern:
-            self._unmapped_counter += 1
-            return self._unmapped_pattern.format(self._unmapped_counter)
-        return ''
+            return self._fallback.tag(*labels)
 
     def char(self, *labels):
         """Get char value from tagmap."""
@@ -136,28 +145,36 @@ class MappingTagger(Encoder):
         return Char()
 
 
-class AdobeTagger(MappingTagger):
+class AdobeFallbackTagger(Encoder):
+    """Fallback tagger following AGL conventions."""
 
-    def get_default_tag(self, char=''):
+    def __init__(self):
+        super().__init__(name='adobe-fallback')
+
+    def tag(self, *labels):
         """Construct a default tag for unmapped glyphs."""
-        if not char:
-            return super().get_default_tag(char)
-        cps = [ord(_c) for _c in char]
+        char = _get_char(labels)
         # following agl recommendation for naming sequences
-        return '_'.join(f'uni{_cp:04X}' if _cp < 0x10000 else f'u{_cp:06X}' for _cp in cps)
+        cps = (ord(_c) for _c in char)
+        return Tag('_'.join(
+            f'uni{_cp:04X}' if _cp < 0x10000 else f'u{_cp:06X}'
+            for _cp in cps
+        ))
 
 
-class SGMLTagger(MappingTagger):
+class SGMLFallbackTagger(Encoder):
+    """Fallback tagger following SGML conventions."""
 
-    def get_default_tag(self, char=''):
+    def __init__(self):
+        super().__init__(name='sgml-fallback')
+
+    def tag(self, *labels):
         """Construct a default tag for unmapped glyphs."""
-        if not char:
-            return super().get_default_tag(char)
-        cps = [ord(_c) for _c in char]
+        char = _get_char(labels)
+        cps = (ord(_c) for _c in char)
         # joining numeric references by semicolons
         # note that each entity should really start with & and end with ; e.g. &eacute;
-        return ';'.join(f'#{_cp:X}' for _cp in cps)
-
+        return Tag(';'.join(f'#{_cp:X}' for _cp in cps))
 
 
 ###################################################################################################
@@ -204,9 +221,20 @@ tagmaps = {
     'codepoint': CodepointTagger(),
     'name': UnicodeTagger(),
     'desc': UnicodeTagger(include_char=True),
-    'adobe': AdobeTagger.load('agl/aglfn.txt', name='adobe', separator=';', unicode_column=0, tag_column=1),
-    'truetype': AdobeTagger.load('agl/aglfn.txt', name='truetype', separator=';', unicode_column=0, tag_column=1),
-    'sgml': SGMLTagger.load('misc/SGML.TXT', name='sgml', separator='\t', unicode_column=2),
+    'adobe': MappingTagger.load(
+        'agl/aglfn.txt', name='adobe',
+        separator=';', unicode_column=0, tag_column=1,
+        fallback=AdobeFallbackTagger()
+    ),
+    'truetype': MappingTagger.load(
+        'agl/aglfn.txt', name='truetype',
+        separator=';', unicode_column=0, tag_column=1,
+        fallback=AdobeFallbackTagger()
+    ),
+    'sgml': MappingTagger.load(
+        'misc/SGML.TXT', name='sgml', separator='\t', unicode_column=2,
+        fallback=SGMLFallbackTagger()
+    ),
 }
 
 # truetype mapping is adobe mapping *but* with .null for NUL
