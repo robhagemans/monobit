@@ -13,8 +13,7 @@ from ...magic import FileFormatError
 from ...font import Font, Coord
 from ...raster import Raster
 from ...glyph import Glyph
-from ...encoding import charmaps, NotFoundError
-from ...taggers import tagmaps
+from ...encoding import charmaps, tagmaps, NotFoundError
 from ...labels import Char, Codepoint, Tag
 
 from .xlfd import parse_xlfd_properties, create_xlfd_properties

@@ -14,7 +14,7 @@ from ..storage import loaders, savers
 from ..font import Font
 from ..glyph import Glyph
 from ..magic import FileFormatError
-from ..taggers import tagmaps
+from ..encoding import tagmaps
 
 
 @loaders.register(
