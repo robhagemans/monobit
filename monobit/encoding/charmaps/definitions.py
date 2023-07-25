@@ -1,5 +1,5 @@
 """
-monobit.charmaps.definitions - character map definitions
+monobit.encoding.charmaps.definitions - character map definitions
 
 (c) 2020--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -16,17 +16,17 @@ def register_charmaps(charmaps):
     """Register charmap files"""
     for _format, _kwargs, _records in _ENCODING_FILES:
         for _file, _name, *_aliases in _records:
-            charmaps.register(_name, f'charmaps/{_file}', _format, **_kwargs)
+            charmaps.register(_name, _file, _format, **_kwargs)
             for _alias in _aliases:
                 charmaps.alias(_alias, _name)
     # overlays
     for _overlay, _range, _format, _kwargs, _names in _OVERLAYS:
         for _name in _names:
-            charmaps.overlay(_name, f'charmaps/{_overlay}', _range, _format, **_kwargs)
+            charmaps.overlay(_name, _overlay, _range, _format, **_kwargs)
     # FreeDOS charmaps
-    for _file in files('monobit.encoding.charmaps.freedos').iterdir():
+    for _file in files('monobit.encoding.tables.freedos').iterdir():
         if Path(_file.name).suffix != '.md':
-            charmaps.register(f'freedos-{Path(_file.name).stem}', f'charmaps/freedos/{_file.name}')
+            charmaps.register(f'freedos-{Path(_file.name).stem}', 'freedos/{_file.name}')
 
 
 

@@ -1,5 +1,5 @@
 """
-monobit.charmapclass - character maps
+monobit.encoding.charmaps.charmapclass - character maps
 
 (c) 2020--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -11,10 +11,11 @@ import unicodedata
 from pathlib import Path
 from html.parser import HTMLParser
 
-from ..binary import align
-from ..labels import Codepoint, Char, to_label, to_labels
-from ..unicode import is_printable, is_fullwidth, unicode_name
-from .base import normalise_name, NotFoundError
+from ...binary import align
+from ...labels import Codepoint, Char, to_label, to_labels
+from ...unicode import is_printable, is_fullwidth, unicode_name
+from ..base import normalise_name, NotFoundError
+from ..tables import TABLE_PACKAGE
 
 
 ###################################################################################################
@@ -99,7 +100,7 @@ class Charmap(Encoder):
                 with open(filename, 'rb') as f:
                     data = f.read()
             else:
-                data = pkgutil.get_data(__name__, filename)
+                data = pkgutil.get_data(TABLE_PACKAGE, filename)
         except EnvironmentError as exc:
             raise NotFoundError(f'Could not load charmap file `{filename}`: {exc}')
         if not data:

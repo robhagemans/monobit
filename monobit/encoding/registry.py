@@ -1,5 +1,5 @@
 """
-monobit.encoding - encoding registry
+monobit.encoding.registry - encoding registry
 
 (c) 2020--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -9,7 +9,7 @@ import logging
 
 from ..labels import Char, to_labels
 from .base import normalise_name, NotFoundError
-from .charmapclass import Encoder, Unicode, Charmap
+from .charmaps import Encoder, Unicode, Charmap
 from .indexers import Indexer
 
 

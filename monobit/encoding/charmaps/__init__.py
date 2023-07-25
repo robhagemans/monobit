@@ -1,4 +1,10 @@
-# directory needs to be a package to be traversable by iterdir() in Python 3.9
+"""
+monobit.encoding.charmaps - character maps
+
+(c) 2020--2023 Rob Hagemans
+licence: https://opensource.org/licenses/MIT
+"""
 
 from . import loaders
 from .definitions import register_charmaps
+from .charmapclass import Charmap, Encoder, Unicode
