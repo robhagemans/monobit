@@ -10,7 +10,7 @@ from .registry import CharmapRegistry
 from .charmaps import register_charmaps, Charmap, Unicode
 from .base import Encoder
 from .indexers import Indexer
-from .taggers import Tagger, tagger, tagmaps
+from .taggers import tagger, tagmaps
 from ..labels import to_labels
 
 
