@@ -9,7 +9,8 @@ import logging
 
 from ..labels import Char, to_labels
 from .base import normalise_name, NotFoundError
-from .charmaps import Encoder, Unicode, Charmap
+from .charmaps import Unicode, Charmap
+from .base import Encoder
 from .indexers import Indexer
 
 
