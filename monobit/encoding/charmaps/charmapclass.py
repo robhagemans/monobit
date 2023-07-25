@@ -14,55 +14,8 @@ from importlib.resources import files
 from ...binary import align
 from ...labels import Codepoint, Char, to_label, to_labels
 from ...unicode import is_printable, is_fullwidth, unicode_name
-from ..base import normalise_name, NotFoundError
+from ..base import Encoder, normalise_name, NotFoundError
 from .. import tables
-
-
-###################################################################################################
-# encoder/charmap classes
-
-class Encoder:
-    """
-    Convert between unicode and ordinals.
-    Encoder objects act on single-glyph codes only, which may be single- or multi-codepoint.
-    They need not encode/decode between full strings and bytes.
-    """
-
-    def __init__(self, name):
-        """Set encoder name."""
-        self.name = name
-
-    def char(self, *labels):
-        """Convert codepoint to character, return empty string if missing."""
-        raise NotImplementedError
-
-    def codepoint(self, *labels):
-        """Convert character to codepoint, return None if missing."""
-        raise NotImplementedError
-
-    def chart(self, page=0):
-        """Chart of page in charmap."""
-        bg = '\u2591'
-        cps = range(256)
-        cps = (((page, _c) if page else (_c,)) for _c in cps)
-        chars = (self.char(_cp) for _cp in cps)
-        chars = ((_c if is_printable(_c) else '\ufffd') for _c in chars)
-        chars = ((_c if is_fullwidth(_c) else ((_c + ' ') if _c else bg*2)) for _c in chars)
-        # deal with Nonspacing Marks while keeping table format
-        chars = ((' ' +_c if unicodedata.category(_c[:1]) == 'Mn' else _c) for _c in chars)
-        chars = [*chars]
-        return ''.join((
-            '    ', ' '.join(f'_{_c:x}' for _c in range(16)), '\n',
-            '  +', '-'*48, '-', '\n',
-            '\n'.join(
-                ''.join((f'{_r:x}_|', bg, bg.join(chars[16*_r:16*(_r+1)]), bg))
-                for _r in range(16)
-            )
-        ))
-
-    def __repr__(self):
-        """Representation."""
-        return f"{type(self).__name__}(name='{self.name}')"
 
 
 class Charmap(Encoder):
@@ -206,6 +159,26 @@ class Charmap(Encoder):
 
 
     # representations
+
+    def chart(self, page=0):
+        """Chart of page in charmap."""
+        bg = '\u2591'
+        cps = range(256)
+        cps = (((page, _c) if page else (_c,)) for _c in cps)
+        chars = (self.char(_cp) for _cp in cps)
+        chars = ((_c if is_printable(_c) else '\ufffd') for _c in chars)
+        chars = ((_c if is_fullwidth(_c) else ((_c + ' ') if _c else bg*2)) for _c in chars)
+        # deal with Nonspacing Marks while keeping table format
+        chars = ((' ' +_c if unicodedata.category(_c[:1]) == 'Mn' else _c) for _c in chars)
+        chars = [*chars]
+        return ''.join((
+            '    ', ' '.join(f'_{_c:x}' for _c in range(16)), '\n',
+            '  +', '-'*48, '-', '\n',
+            '\n'.join(
+                ''.join((f'{_r:x}_|', bg, bg.join(chars[16*_r:16*(_r+1)]), bg))
+                for _r in range(16)
+            )
+        ))
 
     def table(self):
         """Mapping table"""

@@ -7,4 +7,4 @@ licence: https://opensource.org/licenses/MIT
 
 from . import loaders
 from .definitions import register_charmaps
-from .charmapclass import Charmap, Encoder, Unicode
+from .charmapclass import Charmap, Unicode

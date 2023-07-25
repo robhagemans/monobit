@@ -5,7 +5,7 @@ monobit.encoding.indexers - codepoint indexers
 licence: https://opensource.org/licenses/MIT
 """
 
-from .charmaps import Encoder
+from .base import Encoder
 from ..labels import to_labels
 
 
