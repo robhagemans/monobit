@@ -37,11 +37,15 @@ class Encoder:
         self.name = name
 
     def char(self, *labels):
-        """Convert codepoint to character, return empty string if missing."""
+        """Convert labels to character, return empty string if missing."""
         raise NotImplementedError
 
     def codepoint(self, *labels):
-        """Convert character to codepoint, return None if missing."""
+        """Convert labels to codepoint, return None if missing."""
+        raise NotImplementedError
+
+    def tag(self, *labels):
+        """Convert labels to tag, return None if missing."""
         raise NotImplementedError
 
     def __repr__(self):

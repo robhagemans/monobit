@@ -10,30 +10,14 @@ from pathlib import Path
 from importlib.resources import files
 
 from ..unicode import unicode_name, is_printable
-from ..labels import to_label, Tag
+from ..labels import to_label, Tag, Char
 from ..properties import reverse_dict
-from .base import NotFoundError
+from .base import NotFoundError, Encoder
 from . import tables
 
 
-class Tagger:
+class Tagger(Encoder):
     """Add tags or comments to a font's glyphs."""
-
-    name = 'unknown-tagger'
-
-    def comment(self, *labels):
-        raise NotImplementedError
-
-    def tag(self, *labels):
-        return Tag(self.comment(*labels))
-
-    def __repr__(self):
-        """Representation."""
-        return f"{type(self).__name__}(name='{self.name}')"
-
-    def __str__(self):
-        """Yaff representation."""
-        return self.name
 
 
 def _get_char(labels):
@@ -63,46 +47,46 @@ class UnicodeTagger(Tagger):
         else:
             self.name = 'name'
 
-    def comment(self, *labels):
+    def tag(self, *labels):
         """Get unicode glyph name."""
         char = _get_char(labels)
         if not char:
-            return ''
+            return Tag()
         char = char.value
         name = unicode_name(char)
         if self.include_char and is_printable(char):
-            return '[{}] {}'.format(char, name)
-        return '{}'.format(name)
+            return Tag('[{}] {}'.format(char, name))
+        return Tag('{}'.format(name))
 
 
 class CharTagger(Tagger):
     """Tag with unicode characters."""
 
-    name = 'char'
+    def __init__(self):
+        super().__init__(name='char')
 
-    def comment(self, *labels):
+    def tag(self, *labels):
         """Get printable char."""
         char = _get_char(labels).value
         if is_printable(char):
-            return char
-        return ''
+            return Tag(char)
+        return Tag()
 
 
 class CodepointTagger(Tagger):
     """Tag with codepoint numbers."""
 
-    name = 'codepoint'
-
     def __init__(self, prefix=''):
         """Create codepoint tagger with prefix"""
+        super().__init__(name='codepoint')
         self._prefix = prefix
 
-    def comment(self, *labels):
+    def tag(self, *labels):
         """Get codepoint string."""
         cp = _get_codepoint(labels)
         if not cp:
-            return ''
-        return f'{self._prefix}{cp}'
+            return Tag()
+        return Tag(f'{self._prefix}{cp}')
 
 
 class MappingTagger(Tagger):
@@ -130,13 +114,13 @@ class MappingTagger(Tagger):
             name = Path(filename).stem
         return cls(mapping, name=name)
 
-    def comment(self, *labels):
+    def tag(self, *labels):
         """Get value from tagmap."""
         char = _get_char(labels)
         try:
-            return self._chr2tag[char]
+            return Tag(self._chr2tag[char])
         except KeyError:
-            return self.get_default_tag(char)
+            return Tag(self.get_default_tag(char))
 
     def get_default_tag(self, char=''):
         """Construct a default tag for unmapped glyphs."""
@@ -150,15 +134,13 @@ class MappingTagger(Tagger):
         for label in labels:
             if isinstance(label, Tag):
                 try:
-                    return self._tag2chr[label.value]
+                    return Char(self._tag2chr[label.value])
                 except KeyError:
                     pass
-        return ''
+        return Char()
 
 
 class AdobeTagger(MappingTagger):
-
-    name = 'adobe'
 
     def get_default_tag(self, char=''):
         """Construct a default tag for unmapped glyphs."""
@@ -170,8 +152,6 @@ class AdobeTagger(MappingTagger):
 
 
 class SGMLTagger(MappingTagger):
-
-    name = 'sgml'
 
     def get_default_tag(self, char=''):
         """Construct a default tag for unmapped glyphs."""
