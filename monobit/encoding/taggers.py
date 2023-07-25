@@ -6,13 +6,14 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import unicodedata
-import pkgutil
 from pathlib import Path
+from importlib.resources import files
 
 from ..unicode import unicode_name, is_printable
 from ..labels import to_label, Tag
 from ..properties import reverse_dict
 from .base import NotFoundError
+from . import tables
 
 
 class Tagger:
@@ -119,7 +120,7 @@ class MappingTagger(Tagger):
     def load(cls, filename, *, name='', **kwargs):
         """Create new charmap from file."""
         try:
-            data = pkgutil.get_data(__name__, filename)
+            data = (files(tables) / filename).read_bytes()
         except EnvironmentError as exc:
             raise NotFoundError(f'Could not load tagmap file `{filename}`: {exc}')
         if not data:
@@ -227,9 +228,9 @@ tagmaps = {
     'codepoint': CodepointTagger(),
     'name': UnicodeTagger(),
     'desc': UnicodeTagger(include_char=True),
-    'adobe': AdobeTagger.load('tables/agl/aglfn.txt', name='adobe', separator=';', unicode_column=0, tag_column=1),
-    'truetype': AdobeTagger.load('tables/agl/aglfn.txt', name='truetype', separator=';', unicode_column=0, tag_column=1),
-    'sgml': SGMLTagger.load('tables/misc/SGML.TXT', name='sgml', separator='\t', unicode_column=2),
+    'adobe': AdobeTagger.load('agl/aglfn.txt', name='adobe', separator=';', unicode_column=0, tag_column=1),
+    'truetype': AdobeTagger.load('agl/aglfn.txt', name='truetype', separator=';', unicode_column=0, tag_column=1),
+    'sgml': SGMLTagger.load('misc/SGML.TXT', name='sgml', separator='\t', unicode_column=2),
 }
 
 # truetype mapping is adobe mapping *but* with .null for NUL

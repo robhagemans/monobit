@@ -10,6 +10,7 @@ from pathlib import Path
 from importlib.resources import files
 
 from . import loaders
+from .. import tables
 
 
 def register_charmaps(charmaps):
@@ -24,7 +25,7 @@ def register_charmaps(charmaps):
         for _name in _names:
             charmaps.overlay(_name, _overlay, _range, _format, **_kwargs)
     # FreeDOS charmaps
-    for _file in files('monobit.encoding.tables.freedos').iterdir():
+    for _file in (files(tables) / 'freedos').iterdir():
         if Path(_file.name).suffix != '.md':
             charmaps.register(f'freedos-{Path(_file.name).stem}', 'freedos/{_file.name}')
 
