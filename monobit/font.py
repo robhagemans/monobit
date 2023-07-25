@@ -16,13 +16,13 @@ from .glyph import Glyph
 from .raster import turn_method
 from .basetypes import Coord, Bounds, NOT_SET
 from .basetypes import to_int, Any
-from .encoding import charmaps, encoder, EncodingName, Encoder, Indexer
-from .taggers import tagger
+from .encoding import (
+    charmaps, encoder, EncodingName, Encoder, Indexer, tagger, tagmaps
+)
 from .labels import Tag, Char, Codepoint, Label, to_label
 from .binary import ceildiv
 from .properties import extend_string
 from .cachedprops import HasProps, writable_property, checked_property
-from .taggers import tagmaps
 
 
 def encoder_or_tagger(obj):

@@ -9,10 +9,10 @@ import unicodedata
 import pkgutil
 from pathlib import Path
 
-from .unicode import unicode_name, is_printable
-from .encoding import NotFoundError
-from .labels import to_label, Tag
-from .properties import reverse_dict
+from ..unicode import unicode_name, is_printable
+from ..labels import to_label, Tag
+from ..properties import reverse_dict
+from .base import NotFoundError
 
 
 class Tagger:
