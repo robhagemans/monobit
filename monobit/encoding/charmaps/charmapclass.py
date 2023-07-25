@@ -5,17 +5,17 @@ monobit.encoding.charmaps.charmapclass - character maps
 licence: https://opensource.org/licenses/MIT
 """
 
-import pkgutil
 import logging
 import unicodedata
 from pathlib import Path
 from html.parser import HTMLParser
+from importlib.resources import files
 
 from ...binary import align
 from ...labels import Codepoint, Char, to_label, to_labels
 from ...unicode import is_printable, is_fullwidth, unicode_name
 from ..base import normalise_name, NotFoundError
-from ..tables import TABLE_PACKAGE
+from .. import tables
 
 
 ###################################################################################################
@@ -95,12 +95,15 @@ class Charmap(Encoder):
     @classmethod
     def load(cls, filename, *, format=None, name='', **kwargs):
         """Create new charmap from file."""
+        filename = str(filename)
         try:
+            # inputs that look like explicit paths used directly
+            # otherwise it's relative to the tables package
             if filename.startswith('/') or filename.startswith('.'):
-                with open(filename, 'rb') as f:
-                    data = f.read()
+                path = Path(filename)
             else:
-                data = pkgutil.get_data(TABLE_PACKAGE, filename)
+                path = files(tables) / filename
+            data = path.read_bytes()
         except EnvironmentError as exc:
             raise NotFoundError(f'Could not load charmap file `{filename}`: {exc}')
         if not data:
