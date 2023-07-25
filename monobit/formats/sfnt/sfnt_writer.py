@@ -14,7 +14,6 @@ from ...properties import reverse_dict
 from .sfnt import WEIGHT_MAP, SETWIDTH_MAP, NOTDEF_NAME, check_fonttools
 from .sfnt import load_sfnt, load_collection
 from ...labels import Tag
-from ...encoding.taggers import CodepointTagger
 from ...basetypes import to_number
 
 from . import fonttools

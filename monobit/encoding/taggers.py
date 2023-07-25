@@ -16,10 +16,6 @@ from .base import NotFoundError, Encoder
 from . import tables
 
 
-class Tagger(Encoder):
-    """Add tags or comments to a font's glyphs."""
-
-
 def _get_char(labels):
     """Get first char label from list."""
     for label in labels:
@@ -37,7 +33,7 @@ def _get_codepoint(labels):
     return b''
 
 
-class UnicodeTagger(Tagger):
+class UnicodeTagger(Encoder):
     """Tag with unicode names and characters."""
 
     def __init__(self, include_char=False):
@@ -59,7 +55,7 @@ class UnicodeTagger(Tagger):
         return Tag('{}'.format(name))
 
 
-class CharTagger(Tagger):
+class CharTagger(Encoder):
     """Tag with unicode characters."""
 
     def __init__(self):
@@ -73,7 +69,7 @@ class CharTagger(Tagger):
         return Tag()
 
 
-class CodepointTagger(Tagger):
+class CodepointTagger(Encoder):
     """Tag with codepoint numbers."""
 
     def __init__(self, prefix=''):
@@ -89,7 +85,7 @@ class CodepointTagger(Tagger):
         return Tag(f'{self._prefix}{cp}')
 
 
-class MappingTagger(Tagger):
+class MappingTagger(Encoder):
     """Tag on the basis of a mapping table."""
 
     def __init__(self, mapping, name='', unmapped='glyph{:04}'):
@@ -191,7 +187,7 @@ def _read_tagmap(data, separator=':', comment='#', joiner=',', tag_column=0, uni
 # for use in function annotations
 def tagger(initialiser):
     """Retrieve or create a tagmap from object or string."""
-    if isinstance(initialiser, Tagger):
+    if isinstance(initialiser, Encoder):
         return initialiser
     if initialiser is None or not str(initialiser):
         return None
