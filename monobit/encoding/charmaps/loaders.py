@@ -1,5 +1,5 @@
 """
-monobit.charmaps.loaders - character map loaders
+monobit.encoding.charmaps.loaders - character map loaders
 
 (c) 2020--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -9,7 +9,7 @@ import logging
 from html.parser import HTMLParser
 
 from ...binary import int_to_bytes
-from ..charmapclass import Charmap
+from .charmapclass import Charmap
 
 
 @Charmap.register_loader('txt')

@@ -1,0 +1,3 @@
+# directory needs to be a package to be traversable by iterdir() in Python 3.9
+
+TABLE_PACKAGE = __name__

@@ -1,11 +1,11 @@
 """
-monobit.indexers - codepoint indexers
+monobit.encoding.indexers - codepoint indexers
 
 (c) 2022--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
-from .charmapclass import Encoder
+from .charmaps import Encoder
 from ..labels import to_labels
 
 
