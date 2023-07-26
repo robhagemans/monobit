@@ -131,7 +131,7 @@ class Charmap(Encoder):
             name=f'[{self.name}]-[{other.name}]'
         )
 
-    def __add__(self, other):
+    def __or__(self, other):
         """Return encoding overlaid with all characters defined in right-hand side."""
         mapping = {**self.mapping}
         mapping.update(other.mapping)
@@ -147,7 +147,7 @@ class Charmap(Encoder):
         )
         return len(different) + len(other_only) + len(self_only)
 
-    def take(self, codepoint_range):
+    def subset(self, codepoint_range):
         """Return encoding only for given range of codepoints."""
         return Charmap(
             mapping={
@@ -160,7 +160,7 @@ class Charmap(Encoder):
 
     def overlay(self, other, codepoint_range):
         """Return encoding overlaid with all characters in the overlay range taken from rhs."""
-        return self + other.take(codepoint_range)
+        return self | other.subset(codepoint_range)
 
     def shift(self, by=0x80):
         """
