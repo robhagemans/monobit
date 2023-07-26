@@ -17,7 +17,8 @@ from .raster import turn_method
 from .basetypes import Coord, Bounds, NOT_SET
 from .basetypes import to_int, Any
 from .encoding import (
-    charmaps, encoder, EncodingName, Encoder, Indexer, tagger, tagmaps
+    charmaps, encoder, tagger, tagmaps,
+    EncodingName, Encoder, Indexer, Charmap,
 )
 from .labels import Tag, Char, Codepoint, Label, to_label
 from .binary import ceildiv
@@ -969,7 +970,7 @@ class Font(HasProps):
     @cache
     def get_charmap(self):
         """Implied character map based on defined chars."""
-        return charmaps.create({
+        return Charmap({
             _glyph.codepoint: _glyph.char
             for _glyph in self._glyphs
             if _glyph.codepoint

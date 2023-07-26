@@ -138,16 +138,6 @@ class CharmapRegistry:
         # found in table after replacement?
         return cls._aliases.get(name, name)
 
-    @staticmethod
-    def load(*args, **kwargs):
-        """Create new charmap from file."""
-        return Charmap.load(*args, **kwargs)
-
-    @staticmethod
-    def create(*args, **kwargs):
-        """Create new charmap from mapping."""
-        return Charmap(*args, **kwargs)
-
     def __iter__(self):
         """Iterate over names of registered charmaps."""
         return iter(_v['name'] for _v in self._registered.values())
@@ -165,12 +155,12 @@ class CharmapRegistry:
             raise NotFoundError(
                 f"No registered character map matches '{name}' ['{normname}']."
             ) from None
-        charmap = self.load(**charmap_dict)
+        charmap = Charmap.load(**charmap_dict)
         for ovr_dict in self._overlays.get(normname, ()):
             # copy so pop() doesn't change the stored dict
             ovr_dict = {**ovr_dict}
             ovr_rng = ovr_dict.pop('codepoint_range')
-            overlay = self.load(**ovr_dict)
+            overlay = Charmap.load(**ovr_dict)
             charmap = charmap.overlay(overlay, ovr_rng)
         return charmap
 
