@@ -19,7 +19,7 @@ def register_charmaps(charmaps):
     """Register charmap files"""
     for _format, _kwargs, _records in _ENCODING_FILES:
         for _file, _name, *_aliases in _records:
-            charmaps.register(LoadableCharmap.load(
+            charmaps.register(LoadableCharmap(
                 name=_name, filename=_file, format=_format, **_kwargs
             ))
             for _alias in _aliases:
@@ -28,14 +28,14 @@ def register_charmaps(charmaps):
     for _overlay, _range, _format, _kwargs, _names in _OVERLAYS:
         for _name in _names:
             charmaps.register(
-                charmaps[_name] | LoadableCharmap.load(
+                charmaps[_name] | LoadableCharmap(
                     name=_name, filename=_overlay, format=_format, **_kwargs
                 ).subset(_range)
             )
     # FreeDOS charmaps
     for _file in (files(tables) / 'freedos').iterdir():
         if Path(_file.name).suffix == '.ucp':
-            charmaps.register(LoadableCharmap.load(
+            charmaps.register(LoadableCharmap(
                 name=f'freedos-{Path(_file.name).stem}',
                 filename=f'freedos/{_file.name}'
             ))

@@ -73,13 +73,16 @@ class Unicode(Encoder):
         return type(self).__name__ + '()'
 
 
-# pylint: disable=no-member
 class BaseCharmap(Encoder):
     """Convert between unicode and ordinals."""
 
     def __init__(self, *, name=''):
         """Create charmap from a dictionary codepoint -> char."""
         super().__init__(normalise_name(name))
+
+    @cached_property
+    def _ord2chr(self):
+        raise NotImplementedError()
 
     @cached_property
     def _chr2ord(self):
@@ -165,7 +168,6 @@ class BaseCharmap(Encoder):
             name=f'shift-{by:x}[{self.name}]'
         )
 
-
     # representations
 
     def chart(self, page=0):
@@ -223,19 +225,11 @@ class Charmap(BaseCharmap):
 class LoadableCharmap(BaseCharmap):
     """Convert between unicode and ordinals using mapping from file."""
 
-    def __init__(self, *, name=''):
-        super().__init__(name=name)
-
-    @cached_property
-    def _ord2chr(self):
-        return self._build_mapping()
-
-    @classmethod
-    def load(cls, filename, *, format=None, name='', **kwargs):
+    def __init__(self, filename, *, format=None, name='', **kwargs):
         """Lazily create new charmap from file."""
         if not name:
             name = Path(filename).stem
-        self = cls(name=name)
+        super().__init__(name=name)
         filename = str(filename)
         # inputs that look like explicit paths used directly
         # otherwise it's relative to the tables package
@@ -253,9 +247,9 @@ class LoadableCharmap(BaseCharmap):
         self._load_reader = reader
         self._load_path = path
         self._load_kwargs = {**format_kwargs, **kwargs}
-        return self
 
-    def _build_mapping(self):
+    @cached_property
+    def _ord2chr(self):
         """Create new charmap from file."""
         try:
             data = self._load_path.read_bytes()
@@ -271,7 +265,7 @@ class LoadableCharmap(BaseCharmap):
         return _OverlaidCharmap(self, other)
 
 
-class _OverlaidCharmap(LoadableCharmap):
+class _OverlaidCharmap(BaseCharmap):
 
     def __init__(self, base, overlay):
         super().__init__(name=base.name)
