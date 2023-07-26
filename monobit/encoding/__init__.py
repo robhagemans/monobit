@@ -10,11 +10,10 @@ from .registry import CharmapRegistry
 from .charmaps import register_charmaps, Charmap, LoadableCharmap, Unicode
 from .base import Encoder
 from .indexers import Indexer
-from .taggers import tagger, tagmaps
+from .taggers import tagmaps, Tagmap, LoadableTagmap
 from ..labels import to_labels
 
 
-# for use in function annotations
 def encoder(initialiser):
     """Retrieve or create a charmap from object or string."""
     if isinstance(initialiser, Encoder):
@@ -36,8 +35,22 @@ def encoder(initialiser):
         return None
 
 
+def tagger(initialiser):
+    """Retrieve or create a tagmap from object or string."""
+    if isinstance(initialiser, Encoder):
+        return initialiser
+    if initialiser is None or not str(initialiser):
+        return None
+    initialiser = str(initialiser)
+    try:
+        return tagmaps[initialiser]
+    except KeyError:
+        pass
+    return LoadableTagmap(initialiser)
+
+
 charmaps = CharmapRegistry()
-charmaps.register(Indexer())
+# charmaps.register(Indexer())
 
 # unicode aliases
 charmaps.register(Unicode())

@@ -13,6 +13,7 @@ from importlib.resources import files
 from functools import cached_property
 
 from ...binary import align
+from ...properties import reverse_dict
 from ...labels import Codepoint, Char, to_label, to_labels
 from ...unicode import is_printable, is_fullwidth, unicode_name
 from ..base import Encoder, normalise_name, NotFoundError
@@ -86,7 +87,7 @@ class BaseCharmap(Encoder):
 
     @cached_property
     def _chr2ord(self):
-        return {_v: _k for _k, _v in self._ord2chr.items()}
+        return reverse_dict(self._ord2chr)
 
     def char(self, *labels):
         """Convert codepoint sequence to character, return empty string if missing."""
