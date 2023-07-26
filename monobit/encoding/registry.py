@@ -11,18 +11,8 @@ from .base import normalise_name, NotFoundError
 from .charmaps import Charmap
 
 
-###################################################################################################
-# charmap registry
-
-
 class CharmapRegistry:
     """Register and retrieve charmaps."""
-
-    # table of user-registered or -overlaid charmaps
-    _registered = {}
-
-    # table of encoding aliases
-    _aliases = {}
 
     # replacement patterns for normalisation
     # longest first to avoid partial match
@@ -44,50 +34,49 @@ class CharmapRegistry:
         'x': '',
     }
 
-    @classmethod
-    def register(cls, encoder):
+    def __init__(self):
+        self._registered = {}
+        self._aliases = {}
+
+    def register(self, encoder):
         """Register a file to be loaded for a given charmap."""
         name = encoder.name
-        normname = cls._normalise_for_match(name)
-        if normname in cls._registered:
+        normname = self._normalise_for_match(name)
+        if normname in self._registered:
             logging.warning(
-                f"Redefining character map '{name}'=='{cls._registered[normname].name}'."
+                f"Redefining character map '{name}'=='{self._registered[normname].name}'."
             )
-        cls._registered[normname] = encoder
+        self._registered[normname] = encoder
 
-    @classmethod
-    def alias(cls, alias, name):
+    def alias(self, alias, name):
         """Define an alias for an encoding name."""
-        name = cls._normalise_for_match(name)
-        alias = cls._normalise_for_match(alias)
+        name = self._normalise_for_match(name)
+        alias = self._normalise_for_match(alias)
         if name == alias:
             # equal after normalisation
             return
-        if alias in cls._registered:
+        if alias in self._registered:
             raise ValueError(
                 f"Character set alias '{alias}' for '{name}' collides with registered name."
             )
-        if alias in cls._aliases:
+        if alias in self._aliases:
             logging.warning(
                 'Redefining character set alias: now %s==%s (was %s).',
-                alias, name, cls._aliases[alias]
+                alias, name, self._aliases[alias]
             )
-        cls._aliases[alias] = name
+        self._aliases[alias] = name
 
-    @classmethod
-    def is_unicode(cls, name):
+    def is_unicode(self, name):
         """Encoding name is equivalent to unicode."""
-        return cls.match(name, 'unicode')
+        return self.match(name, 'unicode')
 
     normalise = staticmethod(normalise_name)
 
-    @classmethod
-    def match(cls, name1, name2):
+    def match(self, name1, name2):
         """Check if two names match."""
-        return cls._normalise_for_match(name1) == cls._normalise_for_match(name2)
+        return self._normalise_for_match(name1) == self._normalise_for_match(name2)
 
-    @classmethod
-    def _normalise_for_match(cls, name):
+    def _normalise_for_match(self, name):
         """Further normalise names to base form and apply aliases for matching."""
         # all lowercase
         name = name.lower()
@@ -96,16 +85,16 @@ class CharmapRegistry:
             name = name.replace(char, '')
         try:
             # anything that's in the alias table
-            return cls._aliases[name]
+            return self._aliases[name]
         except KeyError:
             pass
         # try replacements
-        for start, replacement in cls._patterns.items():
+        for start, replacement in self._patterns.items():
             if name.startswith(start):
                 name = replacement + name[len(start):]
                 break
         # found in table after replacement?
-        return cls._aliases.get(name, name)
+        return self._aliases.get(name, name)
 
     def __iter__(self):
         """Iterate over names of registered charmaps."""
