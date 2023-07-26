@@ -10,6 +10,7 @@ import unicodedata
 from pathlib import Path
 from html.parser import HTMLParser
 from importlib.resources import files
+from functools import cached_property
 
 from ...binary import align
 from ...labels import Codepoint, Char, to_label, to_labels
@@ -24,18 +25,26 @@ class Charmap(Encoder):
     # charmap file format parameters
     _formats = {}
 
-    def __init__(self, mapping=None, *, name=''):
+    def __init__(self, mapping=None, *, name='', _late_load=False):
         """Create charmap from a dictionary codepoint -> char."""
-        if not mapping:
-            mapping = {}
-            name = ''
         super().__init__(normalise_name(name))
-        # copy dict
-        self._ord2chr = {**mapping}
-        # ignore mappings to non-graphical characters (controls etc.)
-        #self._ord2chr = {_k: _v for _k, _v in mapping.items() if is_graphical(_v)}
-        # if is_graphical(_v)}
-        self._chr2ord = {_v: _k for _k, _v in self._ord2chr.items()}
+        if not _late_load:
+            if not mapping:
+                mapping = {}
+                name = ''
+            # copy dict
+            self._init_ord2chr = {**mapping}
+
+    @cached_property
+    def _ord2chr(self):
+        try:
+            return self._init_ord2chr
+        except AttributeError:
+            return self._build_mapping()
+
+    @cached_property
+    def _chr2ord(self):
+        return {_v: _k for _k, _v in self._ord2chr.items()}
 
     @classmethod
     def register_loader(cls, format, **default_kwargs):
@@ -47,29 +56,39 @@ class Charmap(Encoder):
 
     @classmethod
     def load(cls, filename, *, format=None, name='', **kwargs):
-        """Create new charmap from file."""
+        """Lazily create new charmap from file."""
+        if not name:
+            name = Path(filename).stem
+        self = cls(name=normalise_name(name), _late_load=True)
         filename = str(filename)
-        try:
-            # inputs that look like explicit paths used directly
-            # otherwise it's relative to the tables package
-            if filename.startswith('/') or filename.startswith('.'):
-                path = Path(filename)
-            else:
-                path = files(tables) / filename
-            data = path.read_bytes()
-        except EnvironmentError as exc:
-            raise NotFoundError(f'Could not load charmap file `{filename}`: {exc}')
-        if not data:
-            raise NotFoundError(f'No data in charmap file `{filename}`.')
-        format = format or Path(filename).suffix[1:].lower()
+        # inputs that look like explicit paths used directly
+        # otherwise it's relative to the tables package
+        if filename.startswith('/') or filename.startswith('.'):
+            path = Path(filename)
+        else:
+            path = files(tables) / filename
+        if not path.exists():
+            raise NotFoundError(f'Charmap file `{filename}` does not exist')
+        format = format or path.suffix[1:].lower()
         try:
             reader, format_kwargs = cls._formats[format]
         except KeyError as exc:
             raise NotFoundError(f'Undefined charmap file format {format}.') from exc
-        mapping = reader(data, **{**format_kwargs, **kwargs})
-        if not name:
-            name = Path(filename).stem
-        return cls(mapping, name=name)
+        self._load_reader = reader
+        self._load_path = path
+        self._load_kwargs = {**format_kwargs, **kwargs}
+        return self
+
+    def _build_mapping(self):
+        """Create new charmap from file."""
+        try:
+            data = self._load_path.read_bytes()
+        except EnvironmentError as exc:
+            raise NotFoundError(f'Could not load charmap file `{str(self._load_path)}`: {exc}')
+        if not data:
+            raise NotFoundError(f'No data in charmap file `{str(self._load_path)}`.')
+        mapping = self._load_reader(data, **self._load_kwargs)
+        return mapping
 
     def char(self, *labels):
         """Convert codepoint sequence to character, return empty string if missing."""
