@@ -19,11 +19,62 @@ from ..base import Encoder, normalise_name, NotFoundError
 from .. import tables
 
 
+# registry of charmap file format readers
+charmap_readers = {}
+
+
+def register_reader(format, **default_kwargs):
+    """Decorator to register charmap reader."""
+    def decorator(reader):
+        charmap_readers[format] = (reader, default_kwargs)
+        return reader
+    return decorator
+
+
+class Unicode(Encoder):
+    """Convert between unicode and UTF-32 ordinals."""
+
+    def __init__(self):
+        """Unicode converter."""
+        super().__init__('unicode')
+
+    @staticmethod
+    def char(*labels):
+        """Convert codepoint to character."""
+        for label in labels:
+            codepoint = to_label(label)
+            if isinstance(codepoint, bytes):
+                # ensure codepoint length is a multiple of 4
+                codepoint = codepoint.rjust(align(len(codepoint), 2), b'\0')
+                # convert as utf-32 chunks
+                chars = tuple(
+                    chr(int.from_bytes(codepoint[_start:_start+4], 'big'))
+                    for _start in range(0, len(codepoint), 4)
+                )
+                try:
+                    return Char(''.join(chars))
+                except ValueError:
+                    return Char('')
+
+    @staticmethod
+    def codepoint(*labels):
+        """Convert character to codepoint."""
+        for label in labels:
+            char = to_label(label)
+            if isinstance(char, str):
+                # we used to normalise to NFC here, presumably to reduce multi-codepoint situations
+                # but it leads to inconsistency between char and codepoint for canonically equivalent chars
+                #char = unicodedata.normalize('NFC', char)
+                return Codepoint(b''.join(ord(_c).to_bytes(4, 'big') for _c in char))
+        return Codepoint()
+
+    def __repr__(self):
+        """Representation."""
+        return type(self).__name__ + '()'
+
+
 class Charmap(Encoder):
     """Convert between unicode and ordinals using stored mapping."""
-
-    # charmap file format parameters
-    _formats = {}
 
     def __init__(self, mapping=None, *, name='', _late_load=False):
         """Create charmap from a dictionary codepoint -> char."""
@@ -47,14 +98,6 @@ class Charmap(Encoder):
         return {_v: _k for _k, _v in self._ord2chr.items()}
 
     @classmethod
-    def register_loader(cls, format, **default_kwargs):
-        """Decorator to register charmap reader."""
-        def decorator(reader):
-            cls._formats[format] = (reader, default_kwargs)
-            return reader
-        return decorator
-
-    @classmethod
     def load(cls, filename, *, format=None, name='', **kwargs):
         """Lazily create new charmap from file."""
         if not name:
@@ -71,7 +114,7 @@ class Charmap(Encoder):
             raise NotFoundError(f'Charmap file `{filename}` does not exist')
         format = format or path.suffix[1:].lower()
         try:
-            reader, format_kwargs = cls._formats[format]
+            reader, format_kwargs = charmap_readers[format]
         except KeyError as exc:
             raise NotFoundError(f'Undefined charmap file format {format}.') from exc
         self._load_reader = reader
@@ -216,45 +259,3 @@ class Charmap(Encoder):
         return (
             f"{type(self).__name__}()"
         )
-
-
-class Unicode(Encoder):
-    """Convert between unicode and UTF-32 ordinals."""
-
-    def __init__(self):
-        """Unicode converter."""
-        super().__init__('unicode')
-
-    @staticmethod
-    def char(*labels):
-        """Convert codepoint to character."""
-        for label in labels:
-            codepoint = to_label(label)
-            if isinstance(codepoint, bytes):
-                # ensure codepoint length is a multiple of 4
-                codepoint = codepoint.rjust(align(len(codepoint), 2), b'\0')
-                # convert as utf-32 chunks
-                chars = tuple(
-                    chr(int.from_bytes(codepoint[_start:_start+4], 'big'))
-                    for _start in range(0, len(codepoint), 4)
-                )
-                try:
-                    return Char(''.join(chars))
-                except ValueError:
-                    return Char('')
-
-    @staticmethod
-    def codepoint(*labels):
-        """Convert character to codepoint."""
-        for label in labels:
-            char = to_label(label)
-            if isinstance(char, str):
-                # we used to normalise to NFC here, presumably to reduce multi-codepoint situations
-                # but it leads to inconsistency between char and codepoint for canonically equivalent chars
-                #char = unicodedata.normalize('NFC', char)
-                return Codepoint(b''.join(ord(_c).to_bytes(4, 'big') for _c in char))
-        return Codepoint()
-
-    def __repr__(self):
-        """Representation."""
-        return type(self).__name__ + '()'

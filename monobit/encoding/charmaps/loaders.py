@@ -9,14 +9,14 @@ import logging
 from html.parser import HTMLParser
 
 from ...binary import int_to_bytes
-from .charmapclass import Charmap
+from .charmapclass import register_reader
 
 
-@Charmap.register_loader('txt')
-@Charmap.register_loader('enc')
-@Charmap.register_loader('map')
-@Charmap.register_loader('ucp', separator=':', joiner=',')
-@Charmap.register_loader('adobe', separator='\t', joiner=None, codepoint_column=1, unicode_column=0)
+@register_reader('txt')
+@register_reader('enc')
+@register_reader('map')
+@register_reader('ucp', separator=':', joiner=',')
+@register_reader('adobe', separator='\t', joiner=None, codepoint_column=1, unicode_column=0)
 def _from_text_columns(
         data, *, comment='#', separator=None, joiner='+', codepoint_column=0, unicode_column=1,
         codepoint_base=16, unicode_base=16, inline_comments=True, ignore_errors=False,
@@ -79,7 +79,7 @@ def _from_text_columns(
     return mapping
 
 
-@Charmap.register_loader('ucm')
+@register_reader('ucm')
 def _from_ucm_charmap(data):
     """Extract character mapping from icu ucm / linux charmap file data (as bytes)."""
     # only deals with sbcs
@@ -141,7 +141,7 @@ def _from_ucm_charmap(data):
     return mapping
 
 
-@Charmap.register_loader('html')
+@register_reader('html')
 def _from_wikipedia(data, table=0, column=0, range=None):
     """
     Scrape charmap from table in Wikipedia.
