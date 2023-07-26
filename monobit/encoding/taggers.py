@@ -250,28 +250,29 @@ def _read_tagmap(data, separator=':', comment='#', joiner=',', tag_column=0, uni
 
 ###################################################################################################
 
+# truetype mapping is adobe mapping *but* with .null for NUL
+# https://developer.apple.com/fonts/TrueType-Reference-Manual/RM06/Chap6post.html
+_truetype = LoadableTagmap(
+    'agl/aglfn.txt', name='truetype',
+    separator=';', unicode_column=0, tag_column=1,
+    fallback=AdobeFallbackTagger()
+)
+_truetype._chr2tag['\0'] = '.null'
 
-tagmaps = {
-    'char': CharTagger(),
-    'codepoint': CodepointTagger(),
-    'name': UnicodeNameTagger(),
-    'desc': DescriptionTagger(),
-    'adobe': LoadableTagmap(
+
+TAGMAPS = (
+    CharTagger(),
+    CodepointTagger(),
+    UnicodeNameTagger(),
+    DescriptionTagger(),
+    LoadableTagmap(
         'agl/aglfn.txt', name='adobe',
         separator=';', unicode_column=0, tag_column=1,
         fallback=AdobeFallbackTagger()
     ),
-    'truetype': LoadableTagmap(
-        'agl/aglfn.txt', name='truetype',
-        separator=';', unicode_column=0, tag_column=1,
-        fallback=AdobeFallbackTagger()
-    ),
-    'sgml': LoadableTagmap(
+    LoadableTagmap(
         'misc/SGML.TXT', name='sgml', separator='\t', unicode_column=2,
         fallback=SGMLFallbackTagger()
     ),
-}
-
-# truetype mapping is adobe mapping *but* with .null for NUL
-# https://developer.apple.com/fonts/TrueType-Reference-Manual/RM06/Chap6post.html
-tagmaps['truetype']._chr2tag['\0'] = '.null'
+    _truetype,
+)

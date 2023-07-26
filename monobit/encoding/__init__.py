@@ -6,11 +6,11 @@ licence: https://opensource.org/licenses/MIT
 """
 
 from .base import NotFoundError, EncodingName
-from .registry import CharmapRegistry
+from .registry import EncodingRegistry
 from .charmaps import register_charmaps, Charmap, LoadableCharmap, Unicode
 from .base import Encoder
 from .indexers import Indexer
-from .taggers import tagmaps, Tagmap, LoadableTagmap
+from .taggers import TAGMAPS, Tagmap, LoadableTagmap
 from ..labels import to_labels
 
 
@@ -46,16 +46,33 @@ def tagger(initialiser):
         return tagmaps[initialiser]
     except KeyError:
         pass
-    return LoadableTagmap(initialiser)
+    try:
+        return LoadableTagmap(initialiser)
+    except NotFoundError:
+        return None
 
 
-charmaps = CharmapRegistry()
-# charmaps.register(Indexer())
+def encoder_or_tagger(obj):
+    enc = encoder(obj)
+    if enc is None:
+        return tagger(obj)
+    return enc
+
+
+encodings = EncodingRegistry()
+# encodings.register(Indexer())
 
 # unicode aliases
-charmaps.register(Unicode())
-charmaps.alias('ucs', 'unicode')
-charmaps.alias('iso10646', 'unicode')
-charmaps.alias('iso10646-1', 'unicode')
+encodings.register(Unicode())
+encodings.alias('ucs', 'unicode')
+encodings.alias('iso10646', 'unicode')
+encodings.alias('iso10646-1', 'unicode')
 
-register_charmaps(charmaps)
+register_charmaps(encodings)
+
+for tagmap in TAGMAPS:
+    encodings.register(tagmap)
+
+
+charmaps = encodings
+tagmaps = encodings

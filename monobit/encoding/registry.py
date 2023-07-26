@@ -11,7 +11,7 @@ from .base import normalise_name, NotFoundError
 from .charmaps import Charmap, Unicode
 
 
-class CharmapRegistry:
+class EncodingRegistry:
     """Register and retrieve charmaps."""
 
     # replacement patterns for normalisation
@@ -107,6 +107,8 @@ class CharmapRegistry:
         fit = Charmap()
         for registered in self:
             registered_map = self[registered]
+            if not isinstance(registered_map, Charmap):
+                continue
             dist = charmap.distance(registered_map)
             if dist == 0:
                 return registered_map

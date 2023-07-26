@@ -18,19 +18,12 @@ from .basetypes import Coord, Bounds, NOT_SET
 from .basetypes import to_int, Any
 from .encoding import (
     charmaps, encoder, tagger, tagmaps,
-    EncodingName, Encoder, Indexer, Charmap,
+    EncodingName, Encoder, Indexer, Charmap, encoder_or_tagger
 )
 from .labels import Tag, Char, Codepoint, Label, to_label
 from .binary import ceildiv
 from .properties import extend_string
 from .cachedprops import HasProps, writable_property, checked_property
-
-
-def encoder_or_tagger(obj):
-    enc = encoder(obj)
-    if enc is None:
-        return tagger(obj)
-    return enc
 
 
 ###############################################################################
