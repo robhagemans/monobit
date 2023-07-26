@@ -8,12 +8,12 @@ licence: https://opensource.org/licenses/MIT
 import unicodedata
 from pathlib import Path
 from importlib.resources import files
-from functools import partial
+from functools import partial, cached_property
 
 from ..unicode import unicode_name, is_printable
 from ..labels import to_label, Tag, Char, Codepoint
 from ..properties import reverse_dict
-from .base import NotFoundError, Encoder
+from .base import NotFoundError, Encoder, normalise_name
 from . import tables
 
 
@@ -124,29 +124,19 @@ class CodepointTagger(Encoder):
         return Tag(f'{self._prefix}{cp}')
 
 
-class MappingTagger(Encoder):
-    """Tag on the basis of a mapping table."""
+class BaseTagmap(Encoder):
 
-    def __init__(self, mapping, name='', fallback=None):
-        """Set up mapping."""
-        super().__init__(name=name)
-        self._chr2tag = mapping
-        self._tag2chr = reverse_dict(mapping)
+    def __init__(self, *, name='', fallback=None):
+        super().__init__(normalise_name(name))
         self._fallback = fallback or FallbackTagger()
 
-    @classmethod
-    def load(cls, filename, *, name='', fallback=None, **kwargs):
-        """Create new charmap from file."""
-        try:
-            data = (files(tables) / filename).read_bytes()
-        except EnvironmentError as exc:
-            raise NotFoundError(f'Could not load tagmap file `{filename}`: {exc}')
-        if not data:
-            raise NotFoundError(f'No data in tagmap file `{filename}`.')
-        mapping = _read_tagmap(data, **kwargs)
-        if not name:
-            name = Path(filename).stem
-        return cls(mapping, name=name, fallback=fallback)
+    @cached_property
+    def _chr2tag(self):
+        raise NotImplementedError()
+
+    @cached_property
+    def _tag2chr(self):
+        return reverse_dict(self._chr2tag)
 
     def tag(self, *labels):
         """Get value from tagmap."""
@@ -165,6 +155,10 @@ class MappingTagger(Encoder):
                 except KeyError:
                     pass
         return Char()
+
+    @property
+    def mapping(self):
+        return {**self._chr2tag}
 
 
 class AdobeFallbackTagger(Encoder):
@@ -199,6 +193,39 @@ class SGMLFallbackTagger(Encoder):
         return Tag(';'.join(f'#{_cp:X}' for _cp in cps))
 
 
+class Tagmap(BaseTagmap):
+    """Tag on the basis of a mapping table."""
+
+    def __init__(self, mapping, name='', fallback=None):
+        """Set up mapping."""
+        super().__init__(name=name, fallback=fallback)
+        self._chr2tag = mapping
+
+
+class LoadableTagmap(BaseTagmap):
+    """Tag on the basis of a mapping table from a file."""
+
+    def __init__(self, filename, *, name='', fallback=None, **kwargs):
+        """Create new charmap from file."""
+        if not name:
+            name = Path(filename).stem
+        super().__init__(name=name, fallback=fallback)
+        try:
+            self._load_path = (files(tables) / filename)
+        except EnvironmentError as exc:
+            raise NotFoundError(f'Could not load tagmap file `{filename}`: {exc}')
+        if not self._load_path.exists():
+            raise NotFoundError(f'Charmap file `{filename}` does not exist')
+        self._load_kwargs = kwargs
+
+    @cached_property
+    def _chr2tag(self):
+        data = self._load_path.read_bytes()
+        if not data:
+            raise NotFoundError(f'No data in tagmap file `{self._load_path}`.')
+        return _read_tagmap(data, **self._load_kwargs)
+
+
 ###################################################################################################
 # tag map format readers
 
@@ -223,37 +250,23 @@ def _read_tagmap(data, separator=':', comment='#', joiner=',', tag_column=0, uni
 
 ###################################################################################################
 
-# for use in function annotations
-def tagger(initialiser):
-    """Retrieve or create a tagmap from object or string."""
-    if isinstance(initialiser, Encoder):
-        return initialiser
-    if initialiser is None or not str(initialiser):
-        return None
-    initialiser = str(initialiser)
-    try:
-        return tagmaps[initialiser]
-    except KeyError:
-        pass
-    return MappingTagger.load(initialiser)
-
 
 tagmaps = {
     'char': CharTagger(),
     'codepoint': CodepointTagger(),
     'name': UnicodeNameTagger(),
     'desc': DescriptionTagger(),
-    'adobe': MappingTagger.load(
+    'adobe': LoadableTagmap(
         'agl/aglfn.txt', name='adobe',
         separator=';', unicode_column=0, tag_column=1,
         fallback=AdobeFallbackTagger()
     ),
-    'truetype': MappingTagger.load(
+    'truetype': LoadableTagmap(
         'agl/aglfn.txt', name='truetype',
         separator=';', unicode_column=0, tag_column=1,
         fallback=AdobeFallbackTagger()
     ),
-    'sgml': MappingTagger.load(
+    'sgml': LoadableTagmap(
         'misc/SGML.TXT', name='sgml', separator='\t', unicode_column=2,
         fallback=SGMLFallbackTagger()
     ),
