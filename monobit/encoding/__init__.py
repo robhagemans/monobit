@@ -31,7 +31,7 @@ def encoder(initialiser):
     except KeyError:
         pass
     try:
-        return LoadableCharmap.load(initialiser)
+        return LoadableCharmap(initialiser)
     except NotFoundError:
         return None
 
