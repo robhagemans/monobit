@@ -73,65 +73,17 @@ class Unicode(Encoder):
         return type(self).__name__ + '()'
 
 
-class Charmap(Encoder):
-    """Convert between unicode and ordinals using stored mapping."""
+# pylint: disable=no-member
+class BaseCharmap(Encoder):
+    """Convert between unicode and ordinals."""
 
-    def __init__(self, mapping=None, *, name='', _late_load=False):
+    def __init__(self, *, name=''):
         """Create charmap from a dictionary codepoint -> char."""
         super().__init__(normalise_name(name))
-        if not _late_load:
-            if not mapping:
-                mapping = {}
-                name = ''
-            # copy dict
-            self._init_ord2chr = {**mapping}
-
-    @cached_property
-    def _ord2chr(self):
-        try:
-            return self._init_ord2chr
-        except AttributeError:
-            return self._build_mapping()
 
     @cached_property
     def _chr2ord(self):
         return {_v: _k for _k, _v in self._ord2chr.items()}
-
-    @classmethod
-    def load(cls, filename, *, format=None, name='', **kwargs):
-        """Lazily create new charmap from file."""
-        if not name:
-            name = Path(filename).stem
-        self = cls(name=normalise_name(name), _late_load=True)
-        filename = str(filename)
-        # inputs that look like explicit paths used directly
-        # otherwise it's relative to the tables package
-        if filename.startswith('/') or filename.startswith('.'):
-            path = Path(filename)
-        else:
-            path = files(tables) / filename
-        if not path.exists():
-            raise NotFoundError(f'Charmap file `{filename}` does not exist')
-        format = format or path.suffix[1:].lower()
-        try:
-            reader, format_kwargs = charmap_readers[format]
-        except KeyError as exc:
-            raise NotFoundError(f'Undefined charmap file format {format}.') from exc
-        self._load_reader = reader
-        self._load_path = path
-        self._load_kwargs = {**format_kwargs, **kwargs}
-        return self
-
-    def _build_mapping(self):
-        """Create new charmap from file."""
-        try:
-            data = self._load_path.read_bytes()
-        except EnvironmentError as exc:
-            raise NotFoundError(f'Could not load charmap file `{str(self._load_path)}`: {exc}')
-        if not data:
-            raise NotFoundError(f'No data in charmap file `{str(self._load_path)}`.')
-        mapping = self._load_reader(data, **self._load_kwargs)
-        return mapping
 
     def char(self, *labels):
         """Convert codepoint sequence to character, return empty string if missing."""
@@ -201,10 +153,6 @@ class Charmap(Encoder):
             name=f'subset[{self.name}]'
         )
 
-    def overlay(self, other, codepoint_range):
-        """Return encoding overlaid with all characters in the overlay range taken from rhs."""
-        return self | other.subset(codepoint_range)
-
     def shift(self, by=0x80):
         """
         Increment all codepoints by the given amount.
@@ -259,3 +207,63 @@ class Charmap(Encoder):
         return (
             f"{type(self).__name__}()"
         )
+
+
+class Charmap(BaseCharmap):
+    """Convert between unicode and ordinals using stored dictionary."""
+
+    def __init__(self, mapping=None, *, name=''):
+        """Create charmap from a dictionary codepoint -> char."""
+        super().__init__(name=name)
+        if not mapping:
+            mapping = {}
+            name = ''
+        # copy dict
+        self._ord2chr = {**mapping}
+
+
+class LoadableCharmap(BaseCharmap):
+    """Convert between unicode and ordinals using mapping from file."""
+
+    def __init__(self, *, name=''):
+        super().__init__(name=name)
+
+    @cached_property
+    def _ord2chr(self):
+        return self._build_mapping()
+
+    @classmethod
+    def load(cls, filename, *, format=None, name='', **kwargs):
+        """Lazily create new charmap from file."""
+        if not name:
+            name = Path(filename).stem
+        self = cls(name=name)
+        filename = str(filename)
+        # inputs that look like explicit paths used directly
+        # otherwise it's relative to the tables package
+        if filename.startswith('/') or filename.startswith('.'):
+            path = Path(filename)
+        else:
+            path = files(tables) / filename
+        if not path.exists():
+            raise NotFoundError(f'Charmap file `{filename}` does not exist')
+        format = format or path.suffix[1:].lower()
+        try:
+            reader, format_kwargs = charmap_readers[format]
+        except KeyError as exc:
+            raise NotFoundError(f'Undefined charmap file format {format}.') from exc
+        self._load_reader = reader
+        self._load_path = path
+        self._load_kwargs = {**format_kwargs, **kwargs}
+        return self
+
+    def _build_mapping(self):
+        """Create new charmap from file."""
+        try:
+            data = self._load_path.read_bytes()
+        except EnvironmentError as exc:
+            raise NotFoundError(f'Could not load charmap file `{str(self._load_path)}`: {exc}')
+        if not data:
+            raise NotFoundError(f'No data in charmap file `{str(self._load_path)}`.')
+        mapping = self._load_reader(data, **self._load_kwargs)
+        return mapping
