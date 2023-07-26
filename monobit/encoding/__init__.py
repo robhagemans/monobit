@@ -37,10 +37,10 @@ def encoder(initialiser):
 
 
 charmaps = CharmapRegistry()
-charmaps.add_type('index', Indexer)
+charmaps.register(Indexer())
 
 # unicode aliases
-charmaps.add_type('unicode', Unicode)
+charmaps.register(Unicode())
 charmaps.alias('ucs', 'unicode')
 charmaps.alias('iso10646', 'unicode')
 charmaps.alias('iso10646-1', 'unicode')
