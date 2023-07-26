@@ -8,7 +8,7 @@ licence: https://opensource.org/licenses/MIT
 import logging
 
 from .base import normalise_name, NotFoundError
-from .charmaps import Charmap
+from .charmaps import Charmap, Unicode
 
 
 class CharmapRegistry:
@@ -36,7 +36,6 @@ class CharmapRegistry:
 
     def __init__(self):
         self._registered = {}
-        self._aliases = {}
 
     def register(self, encoder):
         """Register a file to be loaded for a given charmap."""
@@ -56,19 +55,17 @@ class CharmapRegistry:
             # equal after normalisation
             return
         if alias in self._registered:
-            raise ValueError(
-                f"Character set alias '{alias}' for '{name}' collides with registered name."
-            )
-        if alias in self._aliases:
             logging.warning(
-                'Redefining character set alias: now %s==%s (was %s).',
-                alias, name, self._aliases[alias]
+                f"Redefining character map alias '{alias}'."
             )
-        self._aliases[alias] = name
+        self._registered[alias] = self._registered[name]
 
     def is_unicode(self, name):
         """Encoding name is equivalent to unicode."""
-        return self.match(name, 'unicode')
+        try:
+            return isinstance(self[name], Unicode)
+        except NotFoundError:
+            return False
 
     normalise = staticmethod(normalise_name)
 
@@ -77,24 +74,18 @@ class CharmapRegistry:
         return self._normalise_for_match(name1) == self._normalise_for_match(name2)
 
     def _normalise_for_match(self, name):
-        """Further normalise names to base form and apply aliases for matching."""
+        """Further normalise names to base form."""
         # all lowercase
         name = name.lower()
         # remove spaces, dashes and dots
         for char in '._- ':
             name = name.replace(char, '')
-        try:
-            # anything that's in the alias table
-            return self._aliases[name]
-        except KeyError:
-            pass
         # try replacements
         for start, replacement in self._patterns.items():
             if name.startswith(start):
                 name = replacement + name[len(start):]
                 break
-        # found in table after replacement?
-        return self._aliases.get(name, name)
+        return name
 
     def __iter__(self):
         """Iterate over names of registered charmaps."""
