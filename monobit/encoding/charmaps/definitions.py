@@ -9,26 +9,36 @@ import logging
 from pathlib import Path
 from importlib.resources import files
 
+from .charmapclass import LoadableCharmap
 from . import loaders
 from .. import tables
+
 
 
 def register_charmaps(charmaps):
     """Register charmap files"""
     for _format, _kwargs, _records in _ENCODING_FILES:
         for _file, _name, *_aliases in _records:
-            charmaps.register(_name, _file, _format, **_kwargs)
+            charmaps.register(LoadableCharmap.load(
+                name=_name, filename=_file, format=_format, **_kwargs
+            ))
             for _alias in _aliases:
                 charmaps.alias(_alias, _name)
     # overlays
     for _overlay, _range, _format, _kwargs, _names in _OVERLAYS:
         for _name in _names:
-            charmaps.overlay(_name, _overlay, _range, _format, **_kwargs)
+            charmaps.register(
+                charmaps[_name] | LoadableCharmap.load(
+                    name=_name, filename=_overlay, format=_format, **_kwargs
+                ).subset(_range)
+            )
     # FreeDOS charmaps
     for _file in (files(tables) / 'freedos').iterdir():
-        if Path(_file.name).suffix != '.md':
-            charmaps.register(f'freedos-{Path(_file.name).stem}', 'freedos/{_file.name}')
-
+        if Path(_file.name).suffix == '.ucp':
+            charmaps.register(LoadableCharmap.load(
+                name=f'freedos-{Path(_file.name).stem}',
+                filename=f'freedos/{_file.name}'
+            ))
 
 
 _ENCODING_FILES = (
@@ -355,7 +365,7 @@ _ENCODING_FILES = (
         # Big5-ETen
         ('moztw/eten.txt', 'big5-eten', 'eten',),
         # Big5-2003
-        ('moztw/big5-2003-b2u.txt', 'big5'),
+        ('moztw/big5_2003-b2u.txt', 'big5'),
     )),
 
     ('adobe', {}, (
@@ -531,7 +541,7 @@ _OVERLAYS = (
         'cp437', 'cp720', 'cp737', 'cp775', 'cp806',
         'cp850', 'cp851', 'cp852', 'cp853', 'cp855', 'cp856', 'cp857', 'cp858',
         'cp860', 'cp861', 'cp862', 'cp863', 'cp865', 'cp866', 'cp868', 'cp869', # not cp864
-        'cp874',
+        # 'cp874',
         'windows-950',
         'mik', 'koi8-r', 'koi8-u', 'koi8-ru', 'ruscii', 'rs3', 'rs4', 'rs4ac',
         'mazovia', 'kamenicky', 'cwi-2',
@@ -542,7 +552,7 @@ _OVERLAYS = (
         'cp897', 'ibm-943',
     )),
     # Mac OS system fonts and euro vs currency sign
-    ('manual/mac-system.ucp', _MAC_GRAPH_RANGE, 'ucp', {}, ('mac-roman', 'mac-roman-8.5')),
+    ('manual/mac-system.ucp', _MAC_GRAPH_RANGE, 'ucp', {}, ('mac-roman',)), # 'mac-roman-8.5')),
     ('manual/currency-sign-0xdb.ucp', _0XDB, 'ucp', {}, (
         'mac-roman', 'mac-celtic', 'mac-icelandic', 'mac-croatian', 'mac-gaelic', 'mac-romanian',
     )),

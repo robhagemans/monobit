@@ -7,11 +7,8 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
-from ..labels import Char, to_labels
 from .base import normalise_name, NotFoundError
-from .charmaps import Unicode, Charmap, LoadableCharmap
-from .base import Encoder
-from .indexers import Indexer
+from .charmaps import Charmap
 
 
 ###################################################################################################
@@ -23,10 +20,6 @@ class CharmapRegistry:
 
     # table of user-registered or -overlaid charmaps
     _registered = {}
-    _overlays = {}
-
-    # directly stored encoders
-    _stored = {}
 
     # table of encoding aliases
     _aliases = {}
@@ -52,39 +45,15 @@ class CharmapRegistry:
     }
 
     @classmethod
-    def register(cls, name, filename, format=None, **kwargs):
+    def register(cls, encoder):
         """Register a file to be loaded for a given charmap."""
+        name = encoder.name
         normname = cls._normalise_for_match(name)
         if normname in cls._registered:
             logging.warning(
-                f"Redefining character map '{name}'=='{cls._registered[normname]['name']}'."
+                f"Redefining character map '{name}'=='{cls._registered[normname].name}'."
             )
-        if normname in cls._overlays:
-            del cls._overlays[normname]
-        cls._registered[normname] = dict(name=name, filename=filename, format=format, **kwargs)
-
-    @classmethod
-    def add_type(cls, name, encoder_class):
-        """Add an encoder class to the registry."""
-        normname = cls._normalise_for_match(name)
-        if normname in cls._registered:
-            logging.warning(
-                f"Redefining character map '{name}'=='{cls._registered[normname]['name']}'."
-            )
-        cls._stored[normname] = encoder_class
-
-    @classmethod
-    def overlay(cls, name, filename, overlay_range, format=None, **kwargs):
-        """Overlay a given charmap with an additional file."""
-        normname = cls._normalise_for_match(name)
-        ovr_dict = dict(
-            name=name, filename=filename, format=format, codepoint_range=overlay_range,
-            **kwargs
-        )
-        try:
-            cls._overlays[normname].append(ovr_dict)
-        except KeyError:
-            cls._overlays[normname] = [(ovr_dict)]
+        cls._registered[normname] = encoder
 
     @classmethod
     def alias(cls, alias, name):
@@ -140,29 +109,17 @@ class CharmapRegistry:
 
     def __iter__(self):
         """Iterate over names of registered charmaps."""
-        return iter(_v['name'] for _v in self._registered.values())
+        return iter(_v.name for _v in self._registered)
 
     def __getitem__(self, name):
         """Get charmap from registry by name; raise NotFoundError if not found."""
         normname = self._normalise_for_match(name)
         try:
-            return self._stored[normname]()
-        except KeyError:
-            pass
-        try:
-            charmap_dict = self._registered[normname]
+            return self._registered[normname]
         except KeyError as exc:
             raise NotFoundError(
                 f"No registered character map matches '{name}' ['{normname}']."
             ) from None
-        charmap = LoadableCharmap.load(**charmap_dict)
-        for ovr_dict in self._overlays.get(normname, ()):
-            # copy so pop() doesn't change the stored dict
-            ovr_dict = {**ovr_dict}
-            ovr_rng = ovr_dict.pop('codepoint_range')
-            overlay = LoadableCharmap.load(**ovr_dict)
-            charmap |= overlay.subset(ovr_rng)
-        return charmap
 
     def fit(self, charmap):
         """Return best-fit registered charmap."""
@@ -177,11 +134,3 @@ class CharmapRegistry:
                 min_dist = dist
                 fit = registered_map
         return fit
-
-    def __repr__(self):
-        """String representation."""
-        return (
-            "CharmapRegistry('"
-            + "', '".join(self)
-            + "')"
-        )
