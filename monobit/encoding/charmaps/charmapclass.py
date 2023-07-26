@@ -115,7 +115,7 @@ class BaseCharmap(Encoder):
 
     def __eq__(self, other):
         """Compare to other Charmap."""
-        return isinstance(other, Charmap) and (self._ord2chr == other._ord2chr)
+        return isinstance(other, BaseCharmap) and (self._ord2chr == other._ord2chr)
 
     # charmap operations
 
@@ -128,9 +128,7 @@ class BaseCharmap(Encoder):
 
     def __or__(self, other):
         """Return encoding overlaid with all characters defined in right-hand side."""
-        mapping = {**self.mapping}
-        mapping.update(other.mapping)
-        return Charmap(mapping=mapping, name=f'{self.name}')
+        return Charmap(mapping=self._ord2chr | other._ord2chr, name=f'{self.name}')
 
     def distance(self, other):
         """Return number of different code points."""
@@ -267,3 +265,19 @@ class LoadableCharmap(BaseCharmap):
             raise NotFoundError(f'No data in charmap file `{str(self._load_path)}`.')
         mapping = self._load_reader(data, **self._load_kwargs)
         return mapping
+
+    def __or__(self, other):
+        """Return encoding overlaid with all characters defined in right-hand side."""
+        return _OverlaidCharmap(self, other)
+
+
+class _OverlaidCharmap(LoadableCharmap):
+
+    def __init__(self, base, overlay):
+        super().__init__(name=base.name)
+        self._base = base
+        self._overlay = overlay
+
+    @cached_property
+    def _ord2chr(self):
+        return self._base._ord2chr | self._overlay._ord2chr
