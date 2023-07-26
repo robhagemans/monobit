@@ -9,7 +9,7 @@ import logging
 
 from ..labels import Char, to_labels
 from .base import normalise_name, NotFoundError
-from .charmaps import Unicode, Charmap
+from .charmaps import Unicode, Charmap, LoadableCharmap
 from .base import Encoder
 from .indexers import Indexer
 
@@ -155,13 +155,13 @@ class CharmapRegistry:
             raise NotFoundError(
                 f"No registered character map matches '{name}' ['{normname}']."
             ) from None
-        charmap = Charmap.load(**charmap_dict)
+        charmap = LoadableCharmap.load(**charmap_dict)
         for ovr_dict in self._overlays.get(normname, ()):
             # copy so pop() doesn't change the stored dict
             ovr_dict = {**ovr_dict}
             ovr_rng = ovr_dict.pop('codepoint_range')
-            overlay = Charmap.load(**ovr_dict)
-            charmap = charmap.overlay(overlay, ovr_rng)
+            overlay = LoadableCharmap.load(**ovr_dict)
+            charmap |= overlay.subset(ovr_rng)
         return charmap
 
     def fit(self, charmap):
