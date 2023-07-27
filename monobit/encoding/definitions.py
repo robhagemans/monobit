@@ -1,5 +1,5 @@
 """
-monobit.encoding.charmaps.definitions - character map definitions
+monobit.encoding.definitions - character map definitions
 
 (c) 2020--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -9,9 +9,8 @@ import logging
 from pathlib import Path
 from importlib.resources import files
 
-from .charmapclass import LoadableCharmap
-from . import loaders
-from .. import tables
+from .charmaps import LoadableCharmap, loaders
+from . import tables
 
 
 
