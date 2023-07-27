@@ -7,10 +7,11 @@ licence: https://opensource.org/licenses/MIT
 
 from .base import NotFoundError, EncodingName
 from .registry import EncodingRegistry
-from .charmaps import register_charmaps, Charmap, LoadableCharmap, Unicode
+from .charmaps import Charmap, LoadableCharmap, Unicode
 from .base import Encoder
 from .indexers import Indexer
 from .taggers import TAGMAPS, Tagmap, LoadableTagmap
+from .definitions import register_charmaps
 from ..labels import to_labels
 
 
