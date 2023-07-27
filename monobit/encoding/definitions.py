@@ -9,9 +9,8 @@ import logging
 from pathlib import Path
 from importlib.resources import files
 
-from .charmaps import LoadableCharmap, loaders
+from .charmaps import LoadableCharmap
 from . import tables
-
 
 
 def register_charmaps(charmaps):
