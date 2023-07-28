@@ -917,9 +917,6 @@
         "filename": "mleisher/GEO-PS.TXT"
     },
     "iran-system": {
-        "aliases": [
-            "iransystem"
-        ],
         "filename": "mleisher/IRANSYSTEM.TXT"
     },
     "koi8-ru": {
@@ -1337,15 +1334,10 @@
         "filename": "kreativekorp/ZXFZXSLT.TXT"
     },
     "windows-linedraw": {
-        "aliases": [
-            "microsoft-linedraw",
-            "ms-linedraw"
-        ],
         "filename": "manual/ms-linedraw.txt"
     },
     "hp-48": {
         "aliases": [
-            "hp48",
             "hp-rpl"
         ],
         "filename": "manual/hp48.txt"
