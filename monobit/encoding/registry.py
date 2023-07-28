@@ -37,10 +37,8 @@ class EncodingRegistry:
     def __init__(self):
         self._registered = {}
 
-    def register(self, encoder, name=None):
+    def __setitem__(self, name, encoder):
         """Register a file to be loaded for a given charmap."""
-        if name is None:
-            name = encoder.name
         normname = self._normalise_for_match(name)
         if normname in self._registered:
             logging.warning(
@@ -48,18 +46,19 @@ class EncodingRegistry:
             )
         self._registered[normname] = encoder
 
-    def alias(self, alias, name):
-        """Define an alias for an encoding name."""
-        name = self._normalise_for_match(name)
-        alias = self._normalise_for_match(alias)
-        if name == alias:
-            # equal after normalisation
-            return
-        if alias in self._registered:
-            logging.warning(
-                f"Redefining character map alias '{alias}'."
-            )
-        self._registered[alias] = self._registered[name]
+    def __getitem__(self, name):
+        """Get charmap from registry by name; raise NotFoundError if not found."""
+        normname = self._normalise_for_match(name)
+        try:
+            return self._registered[normname]
+        except KeyError as exc:
+            raise NotFoundError(
+                f"No registered character map matches '{name}' ['{normname}']."
+            ) from None
+
+    def __iter__(self):
+        """Iterate over names of registered charmaps."""
+        return iter(self._registered.keys())
 
     def is_unicode(self, name):
         """Encoding name is equivalent to unicode."""
@@ -87,20 +86,6 @@ class EncodingRegistry:
                 name = replacement + name[len(start):]
                 break
         return name
-
-    def __iter__(self):
-        """Iterate over names of registered charmaps."""
-        return iter(self._registered.keys())
-
-    def __getitem__(self, name):
-        """Get charmap from registry by name; raise NotFoundError if not found."""
-        normname = self._normalise_for_match(name)
-        try:
-            return self._registered[normname]
-        except KeyError as exc:
-            raise NotFoundError(
-                f"No registered character map matches '{name}' ['{normname}']."
-            ) from None
 
     def fit(self, charmap):
         """Return best-fit registered charmap."""
