@@ -246,33 +246,3 @@ def _read_tagmap(data, separator=':', comment='#', joiner=',', tag_column=0, uni
             else:
                 chr2tag[char] = tag
     return chr2tag
-
-
-###################################################################################################
-
-# truetype mapping is adobe mapping *but* with .null for NUL
-# https://developer.apple.com/fonts/TrueType-Reference-Manual/RM06/Chap6post.html
-_truetype = LoadableTagmap(
-    'agl/aglfn.txt', name='truetype',
-    separator=';', unicode_column=0, tag_column=1,
-    fallback=AdobeFallbackTagger()
-)
-_truetype._chr2tag['\0'] = '.null'
-
-
-TAGMAPS = (
-    CharTagger(),
-    CodepointTagger(),
-    UnicodeNameTagger(),
-    DescriptionTagger(),
-    LoadableTagmap(
-        'agl/aglfn.txt', name='adobe',
-        separator=';', unicode_column=0, tag_column=1,
-        fallback=AdobeFallbackTagger()
-    ),
-    LoadableTagmap(
-        'misc/SGML.TXT', name='sgml', separator='\t', unicode_column=2,
-        fallback=SGMLFallbackTagger()
-    ),
-    _truetype,
-)

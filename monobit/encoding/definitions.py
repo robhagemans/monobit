@@ -12,7 +12,11 @@ from importlib.resources import files
 
 from .registry import EncodingRegistry
 from .charmaps import LoadableCharmap, Unicode
-from .taggers import TAGMAPS
+from .taggers import (
+    LoadableTagmap, CharTagger, CodepointTagger,
+    UnicodeNameTagger, DescriptionTagger,
+    FallbackTagger, AdobeFallbackTagger, SGMLFallbackTagger,
+)
 from . import tables
 
 
@@ -45,5 +49,33 @@ encodings['iso10646-1'] = encodings['unicode']
 
 register_charmaps(encodings)
 
-for tagmap in TAGMAPS:
+
+###############################################################################
+
+# truetype mapping is adobe mapping *but* with .null for NUL
+# https://developer.apple.com/fonts/TrueType-Reference-Manual/RM06/Chap6post.html
+_truetype = LoadableTagmap(
+    'agl/aglfn.txt', name='truetype',
+    separator=';', unicode_column=0, tag_column=1,
+    fallback=AdobeFallbackTagger()
+)
+_truetype._chr2tag['\0'] = '.null'
+
+
+for tagmap in (
+        CharTagger(),
+        CodepointTagger(),
+        UnicodeNameTagger(),
+        DescriptionTagger(),
+        LoadableTagmap(
+            'agl/aglfn.txt', name='adobe',
+            separator=';', unicode_column=0, tag_column=1,
+            fallback=AdobeFallbackTagger()
+        ),
+        LoadableTagmap(
+            'misc/SGML.TXT', name='sgml', separator='\t', unicode_column=2,
+            fallback=SGMLFallbackTagger()
+        ),
+        _truetype,
+    ):
     encodings[tagmap.name] = tagmap
