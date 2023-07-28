@@ -29,21 +29,21 @@ def register_charmaps(charmaps):
         # overlays must be defined first
         for _overlay in _dict.get('overlays', ()):
             charmap |= charmaps[_overlay]
-        charmaps.register(charmap, name=_name)
+        charmaps[_name] = charmap
         for _alias in _dict.get('aliases', ()):
-            charmaps.alias(_alias, _name)
+            charmaps[_alias] = charmap
 
 
 encodings = EncodingRegistry()
 # encodings.register(Indexer())
 
 # unicode aliases
-encodings.register(Unicode())
-encodings.alias('ucs', 'unicode')
-encodings.alias('iso10646', 'unicode')
-encodings.alias('iso10646-1', 'unicode')
+encodings['unicode'] = Unicode()
+encodings['ucs'] = encodings['unicode']
+encodings['iso10646'] = encodings['unicode']
+encodings['iso10646-1'] = encodings['unicode']
 
 register_charmaps(encodings)
 
 for tagmap in TAGMAPS:
-    encodings.register(tagmap)
+    encodings[tagmap.name] = tagmap
