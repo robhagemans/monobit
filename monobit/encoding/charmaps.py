@@ -14,7 +14,7 @@ from functools import cached_property
 
 from ..binary import align, int_to_bytes
 from ..properties import reverse_dict
-from ..labels import Codepoint, Char, to_label, to_labels
+from ..labels import Codepoint, Char, to_label, to_range
 from ..unicode import is_printable, is_fullwidth, unicode_name
 from .base import Encoder, normalise_name, NotFoundError
 from . import tables
@@ -134,6 +134,7 @@ class BaseCharmap(Encoder):
 
     def subset(self, codepoint_range):
         """Return encoding only for given range of codepoints."""
+        codepoint_range = list(to_range(codepoint_range))
         return Charmap(
             mapping={
                 _k: _v

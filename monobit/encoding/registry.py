@@ -37,9 +37,10 @@ class EncodingRegistry:
     def __init__(self):
         self._registered = {}
 
-    def register(self, encoder):
+    def register(self, encoder, name=None):
         """Register a file to be loaded for a given charmap."""
-        name = encoder.name
+        if name is None:
+            name = encoder.name
         normname = self._normalise_for_match(name)
         if normname in self._registered:
             logging.warning(
@@ -89,7 +90,7 @@ class EncodingRegistry:
 
     def __iter__(self):
         """Iterate over names of registered charmaps."""
-        return iter(_v.name for _v in self._registered)
+        return iter(self._registered.keys())
 
     def __getitem__(self, name):
         """Get charmap from registry by name; raise NotFoundError if not found."""
