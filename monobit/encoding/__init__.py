@@ -10,8 +10,8 @@ from .registry import EncodingRegistry
 from .charmaps import Charmap, LoadableCharmap, Unicode
 from .base import Encoder
 from .indexers import Indexer
-from .taggers import TAGMAPS, Tagmap, LoadableTagmap
-from .definitions import register_charmaps
+from .taggers import Tagmap, LoadableTagmap
+from .definitions import encodings
 from ..labels import to_labels
 
 
@@ -58,22 +58,6 @@ def encoder_or_tagger(obj):
     if enc is None:
         return tagger(obj)
     return enc
-
-
-encodings = EncodingRegistry()
-# encodings.register(Indexer())
-
-# unicode aliases
-encodings.register(Unicode())
-encodings.alias('ucs', 'unicode')
-encodings.alias('iso10646', 'unicode')
-encodings.alias('iso10646-1', 'unicode')
-
-register_charmaps(encodings)
-
-for tagmap in TAGMAPS:
-    encodings.register(tagmap)
-
 
 charmaps = encodings
 tagmaps = encodings
