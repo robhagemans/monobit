@@ -10,7 +10,9 @@ import logging
 from pathlib import Path
 from importlib.resources import files
 
-from .charmaps import LoadableCharmap
+from .registry import EncodingRegistry
+from .charmaps import LoadableCharmap, Unicode
+from .taggers import TAGMAPS
 from . import tables
 
 
@@ -30,3 +32,18 @@ def register_charmaps(charmaps):
         charmaps.register(charmap, name=_name)
         for _alias in _dict.get('aliases', ()):
             charmaps.alias(_alias, _name)
+
+
+encodings = EncodingRegistry()
+# encodings.register(Indexer())
+
+# unicode aliases
+encodings.register(Unicode())
+encodings.alias('ucs', 'unicode')
+encodings.alias('iso10646', 'unicode')
+encodings.alias('iso10646-1', 'unicode')
+
+register_charmaps(encodings)
+
+for tagmap in TAGMAPS:
+    encodings.register(tagmap)
