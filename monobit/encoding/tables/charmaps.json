@@ -10,7 +10,8 @@
     },
     "overlay-ibm897graph": {
         "filename": "manual/ibm897graph.ucp",
-        "range": "0-0x1f,0x7f"
+        "range": "0-0x1f,0x7f",
+        "notes": "ibm-897 == jis-x0201 with graphics. see https://en.wikipedia.org/wiki/Code_page_897"
     },
     "overlay-macgraph": {
         "filename": "manual/mac-system.ucp",
@@ -39,7 +40,8 @@
             "codepoint_column": 2,
             "unicode_column": 0,
             "ignore_errors": true
-        }
+        },
+        "notes": "a different ordering of the IBM graphics range specially for cp864"
     },
     "overlay-iso-ms1252": {
         "filename": "microsoft/WINDOWS/CP1252.TXT",
@@ -168,7 +170,8 @@
             "latin-thai",
             "windows-28601"
         ],
-        "filename": "iso-8859/8859-11.TXT"
+        "filename": "iso-8859/8859-11.TXT",
+        "notes": "differs from tis-620 only in a code point mapping NBSP"
     },
     "iso8859-13": {
         "aliases": [
@@ -212,7 +215,8 @@
             "ibm-1162",
             "tis620-2"
         ],
-        "filename": "microsoft/WINDOWS/CP874.TXT"
+        "filename": "microsoft/WINDOWS/CP874.TXT",
+        "notes": "tis620-2 is the name used in Xorg. the Xorg encoding also adds some PUA mappings on undefined code points"
     },
     "windows-932": {
         "aliases": [
@@ -229,7 +233,8 @@
         "filename": "microsoft/WINDOWS/CP932.TXT",
         "overlays": [
             "overlay-ibm897graph"
-        ]
+        ],
+        "notes": "IBM variant adding graphical characters to ms-932"
     },
     "windows-949": {
         "aliases": [
@@ -237,7 +242,8 @@
             "uhc",
             "ibm-1363"
         ],
-        "filename": "microsoft/WINDOWS/CP949.TXT"
+        "filename": "microsoft/WINDOWS/CP949.TXT",
+        "notes": "Korean extended Wansung / unified Hangul code. this is an extension of euc-kr, wansung"
     },
     "windows-950": {
         "aliases": [
@@ -246,21 +252,24 @@
         "filename": "microsoft/WINDOWS/CP950.TXT",
         "overlays": [
             "overlay-ibmgraph"
-        ]
+        ],
+        "notes": "traditional Chinese Big-5"
     },
     "windows-1250": {
         "aliases": [
             "cp1250",
             "ibm-1250"
         ],
-        "filename": "microsoft/WINDOWS/CP1250.TXT"
+        "filename": "microsoft/WINDOWS/CP1250.TXT",
+        "notes": "Windows Latin - Central & Eastern Europe"
     },
     "windows-1251": {
         "aliases": [
             "cp1251",
             "ibm-1251"
         ],
-        "filename": "microsoft/WINDOWS/CP1251.TXT"
+        "filename": "microsoft/WINDOWS/CP1251.TXT",
+        "notes": "Windows Cyrillic"
     },
     "windows-1.0": {
         "aliases": [
@@ -291,7 +300,8 @@
             "cp1252",
             "ibm-1252"
         ],
-        "filename": "microsoft/WINDOWS/CP1252.TXT"
+        "filename": "microsoft/WINDOWS/CP1252.TXT",
+        "notes": "Windows Latin - Western Europe"
     },
     "windows-1253": {
         "aliases": [
@@ -299,28 +309,32 @@
             "cp1253",
             "ibm-1253"
         ],
-        "filename": "microsoft/WINDOWS/CP1253.TXT"
+        "filename": "microsoft/WINDOWS/CP1253.TXT",
+        "notes": "Windows Greek"
     },
     "windows-1254": {
         "aliases": [
             "cp1254",
             "ibm-1254"
         ],
-        "filename": "microsoft/WINDOWS/CP1254.TXT"
+        "filename": "microsoft/WINDOWS/CP1254.TXT",
+        "notes": "Windows Latin - Turkish"
     },
     "windows-1255": {
         "aliases": [
             "cp1255",
             "ibm-1255"
         ],
-        "filename": "microsoft/WINDOWS/CP1255.TXT"
+        "filename": "microsoft/WINDOWS/CP1255.TXT",
+        "notes": "Windows Hebrew"
     },
     "windows-1256": {
         "aliases": [
             "cp1256",
             "ibm-1256"
         ],
-        "filename": "microsoft/WINDOWS/CP1256.TXT"
+        "filename": "microsoft/WINDOWS/CP1256.TXT",
+        "notes": "Windows Arabic"
     },
     "windows-1257": {
         "aliases": [
@@ -329,14 +343,16 @@
             "ibm-1257",
             "lst-1590-3"
         ],
-        "filename": "microsoft/WINDOWS/CP1257.TXT"
+        "filename": "microsoft/WINDOWS/CP1257.TXT",
+        "notes": "Windows Latin - Baltic"
     },
     "windows-1258": {
         "aliases": [
             "cp1258",
             "ibm-1258"
         ],
-        "filename": "microsoft/WINDOWS/CP1258.TXT"
+        "filename": "microsoft/WINDOWS/CP1258.TXT",
+        "notes": "Windows Latin - Vietnamese"
     },
     "cp437": {
         "aliases": [
@@ -466,7 +482,8 @@
     "cp864": {
         "aliases": [
             "oem-864",
-            "ibm-864"
+            "ibm-864",
+            "dos-arabic"
         ],
         "filename": "microsoft/PC/CP864.TXT",
         "overlays": [
@@ -509,7 +526,8 @@
     },
     "ibm-874": {
         "aliases": [
-            "ibm-9066"
+            "ibm-9066",
+            "dos-thai"
         ],
         "filename": "microsoft/PC/CP874.TXT"
     },
@@ -553,7 +571,8 @@
         "overlays": [
             "overlay-macgraph",
             "overlay-ccy-db"
-        ]
+        ],
+        "notes": "microsoft's cp10000 table is pre-Euro and substitutes the capital Omega with the (equivalent) Ohm sign. 1985 mac-roman was undefined in the range 0xD9-0xFF inclusive: https://vintageapple.org/inside_o/pdf/Inside_Macintosh_Volume_I_1985.pdf#page=259"
     },
     "mac-japanese": {
         "aliases": [
@@ -603,7 +622,8 @@
         "filename": "apple/CYRILLIC.TXT",
         "overlays": [
             "overlay-mac-cyrillic"
-        ]
+        ],
+        "notes": "A2, B6, FF changed after mac-os 9.0. see https://en.wikipedia.org/wiki/Mac_OS_Cyrillic_encoding"
     },
     "mac-devanagari": {
         "filename": "apple/DEVANAGA.TXT"
@@ -743,13 +763,15 @@
         "filename": "misc/CP856.TXT",
         "overlays": [
             "overlay-ibmgraph"
-        ]
+        ],
+        "notes": "Hebrew"
     },
     "cp1006": {
         "aliases": [
             "ibm-1006"
         ],
-        "filename": "misc/CP1006.TXT"
+        "filename": "misc/CP1006.TXT",
+        "notes": "Arabic - Urdu"
     },
     "iso-ir-68": {
         "filename": "misc/APL-ISO-IR-68.TXT"
@@ -758,14 +780,16 @@
         "aliases": [
             "iso-ir-202"
         ],
-        "filename": "misc/KPS9566.TXT"
+        "filename": "misc/KPS9566.TXT",
+        "notes": "Korean"
     },
     "kz-1048": {
         "aliases": [
             "strk1048-2002",
             "rk-1048"
         ],
-        "filename": "misc/KZ1048.TXT"
+        "filename": "misc/KZ1048.TXT",
+        "notes": "Cyrillic - Kazakh"
     },
     "next": {
         "aliases": [
@@ -775,7 +799,8 @@
         "filename": "misc/NEXTSTEP.TXT",
         "overlays": [
             "overlay-ascii"
-        ]
+        ],
+        "notes": "per NEXTSTEP.TXT, 7-bit range is taken identical to ascii. wikipedia suggests it's us-ascii-quotes"
     },
     "gsm-03.38": {
         "aliases": [
@@ -937,7 +962,8 @@
             "tis620-0",
             "iso-ir-166"
         ],
-        "filename": "mleisher/TIS620.TXT"
+        "filename": "mleisher/TIS620.TXT",
+        "notes": "tis620-0 is an alias used in Xorg"
     },
     "amiga-1251": {
         "aliases": [
@@ -960,7 +986,8 @@
         "format": "txt",
         "overlays": [
             "overlay-ascii"
-        ]
+        ],
+        "notes": "variant of iso8859-7"
     },
     "mule-lao": {
         "aliases": [
@@ -970,68 +997,79 @@
         "format": "txt",
         "overlays": [
             "overlay-ascii"
-        ]
+        ],
+        "notes": "multilingual emacs"
     },
     "arabic-digit": {
         "aliases": [
             "mulearabic-0"
         ],
         "filename": "xfonts/mulearabic-0.enc",
-        "format": "txt"
+        "format": "txt",
+        "notes": "multilingual emacs"
     },
     "arabic-1-column": {
         "aliases": [
             "mulearabic-1"
         ],
         "filename": "xfonts/mulearabic-1.enc",
-        "format": "txt"
+        "format": "txt",
+        "notes": "multilingual emacs"
     },
     "arabic-2-column": {
         "aliases": [
             "mulearabic-2"
         ],
         "filename": "xfonts/mulearabic-2.enc",
-        "format": "txt"
+        "format": "txt",
+        "notes": "multilingual emacs"
     },
     "mule-ethiopic": {
         "filename": "emacs/MULE-ethiopic.map",
-        "format": "txt"
+        "format": "txt",
+        "notes": "multilingual emacs"
     },
     "mule-ipa": {
         "filename": "emacs/MULE-ipa.map",
-        "format": "txt"
+        "format": "txt",
+        "notes": "multilingual emacs"
     },
     "mule-sisheng": {
         "aliases": [
             "sisheng"
         ],
         "filename": "emacs/MULE-sisheng.map",
-        "format": "txt"
+        "format": "txt",
+        "notes": "multilingual emacs"
     },
     "mule-is13194": {
         "aliases": [
             "mule-iscii"
         ],
         "filename": "emacs/MULE-is13194.map",
-        "format": "txt"
+        "format": "txt",
+        "notes": "multilingual emacs"
     },
     "mule-tibetan": {
         "filename": "emacs/MULE-tibetan.map",
-        "format": "txt"
+        "format": "txt",
+        "notes": "multilingual emacs"
     },
     "mule-lviscii": {
         "aliases": [
             "viscii-lower"
         ],
         "filename": "emacs/MULE-lviscii.map",
-        "format": "txt"
+        "format": "txt",
+        "notes": "multilingual emacs"
     },
     "mule-uviscii": {
         "aliases": [
             "viscii-upper"
         ],
         "filename": "emacs/MULE-uviscii.map",
-        "format": "txt"
+        "format": "txt",
+        "notes": "multilingual emacs"
     },
     "coleco-adam-os7": {
         "aliases": [
@@ -1369,10 +1407,6 @@
         "filename": "adobe/zdingbat.txt",
         "format": "adobe"
     },
-    "ibm-graphics": {
-        "filename": "misc/IBMGRAPH.TXT",
-        "format": "adobe"
-    },
     "ascii": {
         "aliases": [
             "iso646-us",
@@ -1578,7 +1612,8 @@
             "gbk",
             "gbk-0"
         ],
-        "filename": "icu/windows-936-2000.ucm"
+        "filename": "icu/windows-936-2000.ucm",
+        "notes": "glibc and many others use gbk as an alias of windows-936, though it's complicated"
     },
     "big5-hkscs": {
         "aliases": [
@@ -1603,24 +1638,28 @@
             "johab",
             "ksc5601-1992-3"
         ],
-        "filename": "icu/windows-1361-2000.ucm"
+        "filename": "icu/windows-1361-2000.ucm",
+        "notes": "Unix/BDF call the Johab encoding ksc5601.1992-3 but it's Annex 3, i.e. not the main form of ks-c-5601"
     },
     "ks-c-5601": {
         "aliases": [
             "ksc5601-1987",
             "ksc5601-1992",
+            "ksc5601-1992-0",
             "wansung"
         ],
         "filename": "icu/aix-KSC5601.1987_0-4.3.6.ucm"
     },
     "ibm-932": {
-        "filename": "icu/ibm-932_P120-1999.ucm"
+        "filename": "icu/ibm-932_P120-1999.ucm",
+        "notes": "P12A variant has backslash, tilde; P120 has Yen, overline"
     },
     "cns-11643": {
         "aliases": [
             "csic"
         ],
-        "filename": "icu/cns-11643-1992.ucm"
+        "filename": "icu/cns-11643-1992.ucm",
+        "Notes": "CNS11643 - note that this has plane 15 (2007 standard) encoded as plane 9. Planes 10-14 (2007) are not included."
     },
     "cp891": {
         "aliases": [
