@@ -1805,7 +1805,8 @@
         "aliases": [
             "ibm-1090"
         ],
-        "filename": "wikipedia/dec-special.html"
+        "filename": "wikipedia/dec-special.html",
+        "notes": "this should be overlaid on ascii"
     },
     "dec-technical": {
         "aliases": [
