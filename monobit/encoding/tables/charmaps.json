@@ -1,47 +1,23 @@
 {
-    "overlay-ascii": {
+    "ascii": {
+        "aliases": [
+            "iso646-us",
+            "ascii-0",
+            "us-ascii",
+            "iso-ir-6",
+            "ansi-x3.4-1968",
+            "windows-20127"
+        ],
         "filename": "iso-8859/8859-1.TXT",
         "range": "0-0x7f"
     },
-    "overlay-ibmgraph": {
+    "ibmgraph": {
+        "aliases": [
+            "ibm-graphics"
+        ],
         "filename": "misc/IBMGRAPH.TXT",
         "range": "0-0x1f,0x7f",
         "format": "adobe"
-    },
-    "overlay-ibm897graph": {
-        "filename": "manual/ibm897graph.ucp",
-        "range": "0-0x1f,0x7f",
-        "notes": "ibm-897 == jis-x0201 with graphics. see https://en.wikipedia.org/wiki/Code_page_897"
-    },
-    "overlay-macgraph": {
-        "filename": "manual/mac-system.ucp",
-        "range": "0x11-0x14"
-    },
-    "overlay-ccy-db": {
-        "filename": "manual/currency-sign-0xdb.ucp",
-        "range": "0xdb"
-    },
-    "overlay-ccy-9c": {
-        "filename": "manual/currency-sign-0x9c.ucp",
-        "range": "0x9c"
-    },
-    "overlay-mac-cyrillic": {
-        "filename": "manual/mac-cyrillic-pre9.0.ucp",
-        "range": "0xa2,0xb6,0xff"
-    },
-    "overlay-mac-ukrainian": {
-        "filename": "manual/mac-ukrainian-pre9.0.ucp",
-        "range": "0xa2,0xb6,0xff"
-    },
-    "overlay-ibm864graph": {
-        "filename": "misc/IBMGRAPH.TXT",
-        "range": "0-0x1f,0x7f",
-        "kwargs": {
-            "codepoint_column": 2,
-            "unicode_column": 0,
-            "ignore_errors": true
-        },
-        "notes": "a different ordering of the IBM graphics range specially for cp864"
     },
     "overlay-iso-ms1252": {
         "filename": "microsoft/WINDOWS/CP1252.TXT",
@@ -49,17 +25,7 @@
     },
     "overlay-ansi-8859-1": {
         "filename": "iso-8859/8859-1.TXT",
-        "range": "0-0xff"
-    },
-    "overlay-ibm891": {
-        "filename": "ibm-cdra/037B34B0.UPMAP100",
-        "range": "0-0xff",
-        "format": "ucm"
-    },
-    "overlay-ibm904": {
-        "filename": "ibm-cdra/038834B0.UPMAP100",
-        "range": "0-0xff",
-        "format": "ucm"
+        "range": "0x20-0xff"
     },
     "latin-1": {
         "aliases": [
@@ -226,13 +192,28 @@
         ],
         "filename": "microsoft/WINDOWS/CP932.TXT"
     },
+    "ibm-897-graph": {
+        "filename": "manual/ibm897graph.ucp",
+        "range": "0-0x1f,0x7f",
+        "notes": "ibm-897 == jis-x0201 with graphics. see https://en.wikipedia.org/wiki/Code_page_897"
+    },
+    "cp897": {
+        "aliases": [
+            "ibm-897"
+        ],
+        "filename": "dkuug/jis_x0201",
+        "format": "ucm",
+        "overlays": [
+            "ibm-897-graph"
+        ]
+    },
     "ibm-943": {
         "aliases": [
             "cp943c"
         ],
         "filename": "microsoft/WINDOWS/CP932.TXT",
         "overlays": [
-            "overlay-ibm897graph"
+            "ibm-897-graph"
         ],
         "notes": "IBM variant adding graphical characters to ms-932"
     },
@@ -251,7 +232,7 @@
         ],
         "filename": "microsoft/WINDOWS/CP950.TXT",
         "overlays": [
-            "overlay-ibmgraph"
+            "ibmgraph"
         ],
         "notes": "traditional Chinese Big-5"
     },
@@ -364,7 +345,7 @@
         ],
         "filename": "microsoft/PC/CP437.TXT",
         "overlays": [
-            "overlay-ibmgraph"
+            "ibmgraph"
         ]
     },
     "cp737": {
@@ -375,7 +356,7 @@
         ],
         "filename": "microsoft/PC/CP737.TXT",
         "overlays": [
-            "overlay-ibmgraph"
+            "ibmgraph"
         ]
     },
     "cp775": {
@@ -387,7 +368,7 @@
         ],
         "filename": "microsoft/PC/CP775.TXT",
         "overlays": [
-            "overlay-ibmgraph"
+            "ibmgraph"
         ]
     },
     "cp850": {
@@ -398,7 +379,7 @@
         ],
         "filename": "microsoft/PC/CP850.TXT",
         "overlays": [
-            "overlay-ibmgraph"
+            "ibmgraph"
         ]
     },
     "cp852": {
@@ -409,7 +390,7 @@
         ],
         "filename": "microsoft/PC/CP852.TXT",
         "overlays": [
-            "overlay-ibmgraph"
+            "ibmgraph"
         ]
     },
     "cp855": {
@@ -420,7 +401,7 @@
         ],
         "filename": "microsoft/PC/CP855.TXT",
         "overlays": [
-            "overlay-ibmgraph"
+            "ibmgraph"
         ]
     },
     "cp857": {
@@ -431,7 +412,7 @@
         ],
         "filename": "microsoft/PC/CP857.TXT",
         "overlays": [
-            "overlay-ibmgraph"
+            "ibmgraph"
         ]
     },
     "cp860": {
@@ -442,7 +423,7 @@
         ],
         "filename": "microsoft/PC/CP860.TXT",
         "overlays": [
-            "overlay-ibmgraph"
+            "ibmgraph"
         ]
     },
     "cp861": {
@@ -454,7 +435,7 @@
         ],
         "filename": "microsoft/PC/CP861.TXT",
         "overlays": [
-            "overlay-ibmgraph"
+            "ibmgraph"
         ]
     },
     "cp862": {
@@ -465,7 +446,7 @@
         ],
         "filename": "microsoft/PC/CP862.TXT",
         "overlays": [
-            "overlay-ibmgraph"
+            "ibmgraph"
         ]
     },
     "cp863": {
@@ -476,8 +457,18 @@
         ],
         "filename": "microsoft/PC/CP863.TXT",
         "overlays": [
-            "overlay-ibmgraph"
+            "ibmgraph"
         ]
+    },
+    "ibm-864-graph": {
+        "filename": "misc/IBMGRAPH.TXT",
+        "range": "0-0x1f,0x7f",
+        "kwargs": {
+            "codepoint_column": 2,
+            "unicode_column": 0,
+            "ignore_errors": true
+        },
+        "notes": "a different ordering of the IBM graphics range specially for cp864"
     },
     "cp864": {
         "aliases": [
@@ -487,7 +478,7 @@
         ],
         "filename": "microsoft/PC/CP864.TXT",
         "overlays": [
-            "overlay-ibm864graph"
+            "ibm-864-graph"
         ]
     },
     "cp865": {
@@ -498,7 +489,7 @@
         ],
         "filename": "microsoft/PC/CP865.TXT",
         "overlays": [
-            "overlay-ibmgraph"
+            "ibmgraph"
         ]
     },
     "cp866": {
@@ -509,7 +500,7 @@
         ],
         "filename": "microsoft/PC/CP866.TXT",
         "overlays": [
-            "overlay-ibmgraph"
+            "ibmgraph"
         ]
     },
     "cp869": {
@@ -521,7 +512,7 @@
         ],
         "filename": "microsoft/PC/CP869.TXT",
         "overlays": [
-            "overlay-ibmgraph"
+            "ibmgraph"
         ]
     },
     "ibm-874": {
@@ -560,6 +551,18 @@
         ],
         "filename": "microsoft/EBCDIC/CP1026.TXT"
     },
+    "mac-graph": {
+        "filename": "manual/mac-system.ucp",
+        "range": "0x11-0x14"
+    },
+    "overlay-ccy-db": {
+        "filename": "manual/currency-sign-0xdb.ucp",
+        "range": "0xdb"
+    },
+    "overlay-ccy-9c": {
+        "filename": "manual/currency-sign-0x9c.ucp",
+        "range": "0x9c"
+    },
     "mac-roman": {
         "aliases": [
             "mac",
@@ -569,7 +572,7 @@
         ],
         "filename": "apple/ROMAN.TXT",
         "overlays": [
-            "overlay-macgraph",
+            "mac-graph",
             "overlay-ccy-db"
         ],
         "notes": "microsoft's cp10000 table is pre-Euro and substitutes the capital Omega with the (equivalent) Ohm sign. 1985 mac-roman was undefined in the range 0xD9-0xFF inclusive: https://vintageapple.org/inside_o/pdf/Inside_Macintosh_Volume_I_1985.pdf#page=259"
@@ -614,6 +617,10 @@
         "overlays": [
             "overlay-ccy-9c"
         ]
+    },
+    "overlay-mac-cyrillic": {
+        "filename": "manual/mac-cyrillic-pre9.0.ucp",
+        "range": "0xa2,0xb6,0xff"
     },
     "mac-cyrillic": {
         "aliases": [
@@ -725,6 +732,10 @@
         ],
         "filename": "apple/TURKISH.TXT"
     },
+    "overlay-mac-ukrainian": {
+        "filename": "manual/mac-ukrainian-pre9.0.ucp",
+        "range": "0xa2,0xb6,0xff"
+    },
     "mac-ukrainian": {
         "aliases": [
             "windows-10017"
@@ -740,13 +751,13 @@
         ],
         "filename": "misc/KOI8-R.TXT",
         "overlays": [
-            "overlay-ibmgraph"
+            "ibmgraph"
         ]
     },
     "koi8-u": {
         "filename": "misc/KOI8-U.TXT",
         "overlays": [
-            "overlay-ibmgraph"
+            "ibmgraph"
         ]
     },
     "cp424": {
@@ -762,7 +773,7 @@
         ],
         "filename": "misc/CP856.TXT",
         "overlays": [
-            "overlay-ibmgraph"
+            "ibmgraph"
         ],
         "notes": "Hebrew"
     },
@@ -798,7 +809,7 @@
         ],
         "filename": "misc/NEXTSTEP.TXT",
         "overlays": [
-            "overlay-ascii"
+            "ascii"
         ],
         "notes": "per NEXTSTEP.TXT, 7-bit range is taken identical to ascii. wikipedia suggests it's us-ascii-quotes"
     },
@@ -827,13 +838,13 @@
         ],
         "filename": "czyborra/koi8-a.txt",
         "overlays": [
-            "overlay-ascii"
+            "ascii"
         ]
     },
     "koi8-b": {
         "filename": "czyborra/koi8-b.txt",
         "overlays": [
-            "overlay-ascii"
+            "ascii"
         ]
     },
     "koi8-unified": {
@@ -843,7 +854,7 @@
         ],
         "filename": "czyborra/koi8-f.txt",
         "overlays": [
-            "overlay-ascii"
+            "ascii"
         ]
     },
     "koi8-e": {
@@ -853,13 +864,13 @@
         ],
         "filename": "czyborra/koi8-e.txt",
         "overlays": [
-            "overlay-ascii"
+            "ascii"
         ]
     },
     "gost-19768-87": {
         "filename": "czyborra/gost19768-87.txt",
         "overlays": [
-            "overlay-ascii"
+            "ascii"
         ]
     },
     "mik": {
@@ -869,8 +880,8 @@
         ],
         "filename": "czyborra/bulgarian-mik.txt",
         "overlays": [
-            "overlay-ascii",
-            "overlay-ibmgraph"
+            "ascii",
+            "ibmgraph"
         ]
     },
     "hp-roman8": {
@@ -947,7 +958,7 @@
     "koi8-ru": {
         "filename": "mleisher/KOI8RU.TXT",
         "overlays": [
-            "overlay-ibmgraph"
+            "ibmgraph"
         ]
     },
     "osnovnoj-variant": {
@@ -985,7 +996,7 @@
         "filename": "xfonts/suneu-greek.enc",
         "format": "txt",
         "overlays": [
-            "overlay-ascii"
+            "ascii"
         ],
         "notes": "variant of iso8859-7"
     },
@@ -996,7 +1007,7 @@
         "filename": "xfonts/mulelao-1.enc",
         "format": "txt",
         "overlays": [
-            "overlay-ascii"
+            "ascii"
         ],
         "notes": "multilingual emacs"
     },
@@ -1408,18 +1419,6 @@
         "filename": "adobe/zdingbat.txt",
         "format": "adobe"
     },
-    "ascii": {
-        "aliases": [
-            "iso646-us",
-            "ascii-0",
-            "us-ascii",
-            "iso-ir-6",
-            "ansi-x3.4-1968",
-            "windows-20127"
-        ],
-        "filename": "dkuug/iso646-us",
-        "format": "ucm"
-    },
     "iso646-ca": {
         "aliases": [
             "iso-ir-121",
@@ -1536,16 +1535,6 @@
         "filename": "dkuug/jis_x0201",
         "format": "ucm"
     },
-    "cp897": {
-        "aliases": [
-            "ibm-897"
-        ],
-        "filename": "dkuug/jis_x0201",
-        "format": "ucm",
-        "overlays": [
-            "overlay-ibm897graph"
-        ]
-    },
     "x0201-7": {
         "aliases": [
             "iso-ir-13"
@@ -1561,7 +1550,7 @@
         ],
         "filename": "icu/ibm-1125_P100-1997.ucm",
         "overlays": [
-            "overlay-ibmgraph"
+            "ibmgraph"
         ]
     },
     "cp720": {
@@ -1571,7 +1560,7 @@
         ],
         "filename": "icu/ibm-720_P100-1997.ucm",
         "overlays": [
-            "overlay-ibmgraph"
+            "ibmgraph"
         ]
     },
     "cp858": {
@@ -1581,7 +1570,7 @@
         ],
         "filename": "icu/ibm-858_P100-1997.ucm",
         "overlays": [
-            "overlay-ibmgraph"
+            "ibmgraph"
         ]
     },
     "cp868": {
@@ -1592,7 +1581,7 @@
         ],
         "filename": "icu/ibm-868_P100-1995.ucm",
         "overlays": [
-            "overlay-ibmgraph"
+            "ibmgraph"
         ]
     },
     "cp851": {
@@ -1602,7 +1591,7 @@
         ],
         "filename": "icu/ibm-851_P100-1995.ucm",
         "overlays": [
-            "overlay-ibmgraph"
+            "ibmgraph"
         ]
     },
     "windows-936": {
@@ -1631,7 +1620,7 @@
         ],
         "filename": "icu/ibm-806_P100-1998.ucm",
         "overlays": [
-            "overlay-ibmgraph"
+            "ibmgraph"
         ]
     },
     "windows-1361": {
@@ -1667,7 +1656,8 @@
             "ibm-891"
         ],
         "filename": "ibm-cdra/037B34B0.UPMAP100",
-        "format": "ucm"
+        "format": "ucm",
+        "notes": "SBCS range of ibm-926"
     },
     "cp926": {
         "aliases": [
@@ -1678,7 +1668,7 @@
         "filename": "ibm-cdra/039E44B0.UPMAP101",
         "format": "ucm",
         "overlays": [
-            "overlay-ibm891"
+            "ibm-891"
         ]
     },
     "cp904": {
@@ -1686,7 +1676,8 @@
             "ibm-904"
         ],
         "filename": "ibm-cdra/038834B0.UPMAP100",
-        "format": "ucm"
+        "format": "ucm",
+        "notes": "SBCS range of ibm-927"
     },
     "cp927": {
         "aliases": [
@@ -1697,7 +1688,7 @@
         "filename": "ibm-cdra/039F34B0.UPMAP100",
         "format": "ucm",
         "overlays": [
-            "overlay-ibm904"
+            "ibm-904"
         ]
     },
     "dos-russian-support-3": {
@@ -1707,8 +1698,8 @@
         ],
         "filename": "manual/russup3.ucp",
         "overlays": [
-            "overlay-ascii",
-            "overlay-ibmgraph"
+            "ascii",
+            "ibmgraph"
         ]
     },
     "dos-russian-support-4-academic": {
@@ -1718,8 +1709,8 @@
         ],
         "filename": "manual/russup4ac.ucp",
         "overlays": [
-            "overlay-ascii",
-            "overlay-ibmgraph"
+            "ascii",
+            "ibmgraph"
         ]
     },
     "dos-russian-support-4": {
@@ -1729,8 +1720,8 @@
         ],
         "filename": "manual/russup4na.ucp",
         "overlays": [
-            "overlay-ascii",
-            "overlay-ibmgraph"
+            "ascii",
+            "ibmgraph"
         ]
     },
     "dec-vt100": {
@@ -1739,7 +1730,7 @@
         ],
         "filename": "manual/dec-vt100.ucp",
         "overlays": [
-            "overlay-ascii"
+            "ascii"
         ]
     },
     "mazovia": {
@@ -1750,8 +1741,8 @@
         ],
         "filename": "wikipedia/mazovia.html",
         "overlays": [
-            "overlay-ascii",
-            "overlay-ibmgraph"
+            "ascii",
+            "ibmgraph"
         ]
     },
     "kamenicky": {
@@ -1763,8 +1754,8 @@
         ],
         "filename": "wikipedia/kamenicky.html",
         "overlays": [
-            "overlay-ascii",
-            "overlay-ibmgraph"
+            "ascii",
+            "ibmgraph"
         ]
     },
     "cwi-2": {
@@ -1776,8 +1767,8 @@
         ],
         "filename": "wikipedia/cwi2.html",
         "overlays": [
-            "overlay-ascii",
-            "overlay-ibmgraph"
+            "ascii",
+            "ibmgraph"
         ]
     },
     "pascii": {
@@ -1789,8 +1780,8 @@
         ],
         "filename": "wikipedia/cp853.html",
         "overlays": [
-            "overlay-ascii",
-            "overlay-ibmgraph"
+            "ascii",
+            "ibmgraph"
         ]
     },
     "brascii": {
@@ -1860,7 +1851,7 @@
             "codepoint_base": 10
         },
         "overlays": [
-            "overlay-ascii"
+            "ascii"
         ]
     },
     "jisx0208": {
