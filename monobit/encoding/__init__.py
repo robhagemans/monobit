@@ -5,6 +5,8 @@ monobit.encoding - encoding classes
 licence: https://opensource.org/licenses/MIT
 """
 
+from pathlib import Path
+
 from .base import NotFoundError, EncodingName
 from .registry import EncodingRegistry
 from .charmaps import Charmap, LoadableCharmap, Unicode
@@ -30,11 +32,15 @@ def encoder(initialiser):
         return encodings[initialiser]
     except KeyError:
         pass
+    # if not registered, see if it is a file spec we can load
+    filename, _, format = initialiser.partition(':')
+    if not format:
+        format = Path(filename).suffix[1:]
     try:
-        return LoadableCharmap(initialiser)
-    except NotFoundError:
-        pass
-    try:
-        return LoadableTagmap(initialiser)
-    except NotFoundError:
+        if format == 'tbl':
+            return Indexer.load(filename)
+        if format == 'tagmap':
+            return LoadableTagmap(filename)
+        return LoadableCharmap(filename, format=format)
+    except (EnvironmentError, NotFoundError):
         return None
