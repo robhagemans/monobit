@@ -135,6 +135,14 @@ MAC_ENCODING = {
     9: 'mac-devanagari',
     10: 'mac-gurmukhi',
     11: 'mac-gujarati',
+    21: 'mac-thai',
+    23: 'mac-georgian',
+    24: 'mac-armenian',
+    25: 'mac-simp-chinese', # [1] maldivian
+    29: 'mac-centraleurope', # [1] non-cyrillic slavic
+    # I don't have a codepage for the following Apple scripts
+    # - as Gurmukhi and Gujarati are ISCII-based
+    # perhaps we can infer the other ISCII scripts?
     12: 'mac-oriya',
     13: 'mac-bengali',
     14: 'mac-tamil',
@@ -144,15 +152,10 @@ MAC_ENCODING = {
     18: 'mac-sinhalese',
     19: 'mac-burmese',
     20: 'mac-khmer',
-    21: 'mac-thai',
     22: 'mac-laotian',
-    23: 'mac-georgian',
-    24: 'mac-armenian',
-    25: 'mac-simp-chinese', # [1] maldivian
     26: 'mac-tibetan',
     27: 'mac-mongolian',
     28: 'mac-ethiopic', # [2] == geez
-    29: 'mac-centraleurope', # [1] non-cyrillic slavic
     30: 'mac-vietnamese',
     31: 'mac-sindhi', # [2] == ext-arabic
     #32: [1] [2] 'uninterpreted symbols'
