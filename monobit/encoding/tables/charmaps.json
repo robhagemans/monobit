@@ -11,21 +11,18 @@
         "filename": "iso-8859/8859-1.TXT",
         "range": "0-0x7f"
     },
-    "ibmgraph": {
+    "c0-controls": {
+        "filename": "iso-8859/8859-1.TXT",
+        "range": "0-0x1f",
+        "notes": "C0 control codes"
+    },
+    "ibm-graphics": {
         "aliases": [
-            "ibm-graphics"
+            "ibm-graph"
         ],
         "filename": "misc/IBMGRAPH.TXT",
         "range": "0-0x1f,0x7f",
         "format": "adobe"
-    },
-    "overlay-iso-ms1252": {
-        "filename": "microsoft/WINDOWS/CP1252.TXT",
-        "range": "0x20-0x7e,0xa0-0xff"
-    },
-    "overlay-ansi-8859-1": {
-        "filename": "iso-8859/8859-1.TXT",
-        "range": "0x20-0xff"
     },
     "latin-1": {
         "aliases": [
@@ -35,6 +32,11 @@
             "windows-28591"
         ],
         "filename": "iso-8859/8859-1.TXT"
+    },
+    "latin-1-glyphs": {
+        "filename": "iso-8859/8859-1.TXT",
+        "range": "0x20-0x7e,0xa0-0xff",
+        "notes": "latin-1 excluding C0, C1 control codes"
     },
     "latin-2": {
         "aliases": [
@@ -1393,10 +1395,12 @@
         "filename": "manual/hp48.txt"
     },
     "iso-2047": {
-        "filename": "manual/iso2047.txt"
+        "filename": "manual/iso2047.txt",
+        "notes": "outdated C0 control symbols"
     },
     "control-pictures": {
-        "filename": "manual/c0-pictures.txt"
+        "filename": "manual/c0-pictures.txt",
+        "notes": "unicode C0 control symbols"
     },
     "big5-eten": {
         "aliases": [
@@ -1872,18 +1876,26 @@
             "ignore_errors": true
         }
     },
-    "windows-extended": {
+    "windows-1252-c1": {
+        "filename": "microsoft/WINDOWS/CP1252.TXT",
+        "range": "0x80-0x9f",
+        "notes": "C1 range of windows-1252"
+    },
+    "ibm-1004": {
         "aliases": [
-            "ibm-1004",
-            "os2-1004"
+            "os2-1004",
+            "windows-extended"
         ],
         "filename": "wikipedia/windows-1252.html",
         "kwargs": {
             "table": 1
         },
+        "range": "0-0x1f",
         "overlays": [
-            "overlay-iso-ms1252"
-        ]
+            "latin-1-glyphs",
+            "windows-1252-c1"
+        ],
+        "notes": "the name notwithstanding, an OS/2 codepage"
     },
     "windows-1252-msdos": {
         "filename": "wikipedia/windows-1252.html",
@@ -1891,7 +1903,8 @@
             "table": 2
         },
         "overlays": [
-            "overlay-ansi-8859-1"
+            "latin-1-glyphs",
+            "windows-1252-c1"
         ]
     },
     "palm-os": {
@@ -1900,7 +1913,8 @@
             "table": 3
         },
         "overlays": [
-            "overlay-iso-ms1252"
+            "latin-1-glyphs",
+            "c0-controls"
         ]
     },
     "pcl-ventura-international": {
