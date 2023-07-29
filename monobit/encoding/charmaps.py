@@ -141,7 +141,7 @@ class BaseCharmap(Encoder):
                 for _k, _v in self._ord2chr.items()
                 if (_k in codepoint_range) or (len(_k) == 1 and _k[0] in codepoint_range)
             },
-            name=f'subset[{self.name}]'
+            name=self.name
         )
 
     def shift(self, by=0x80):
@@ -212,7 +212,42 @@ class Charmap(BaseCharmap):
         self._ord2chr = {**mapping}
 
 
-class LoadableCharmap(BaseCharmap):
+class _LazyCharmap(BaseCharmap):
+
+    def __or__(self, other):
+        """Return encoding overlaid with all characters defined in right-hand side."""
+        return _OverlaidCharmap(self, other)
+
+    def subset(self, codepoint_range):
+        """Return encoding only for given range of codepoints."""
+        return _SubsetCharmap(self, codepoint_range)
+
+
+class _OverlaidCharmap(_LazyCharmap):
+
+    def __init__(self, base, overlay):
+        super().__init__(name=base.name)
+        self._base = base
+        self._overlay = overlay
+
+    @cached_property
+    def _ord2chr(self):
+        return self._base._ord2chr | self._overlay._ord2chr
+
+
+class _SubsetCharmap(_LazyCharmap):
+
+    def __init__(self, base, codepoint_range):
+        super().__init__(name=base.name)
+        self._base = base
+        self._codepoint_range = codepoint_range
+
+    @cached_property
+    def _ord2chr(self):
+        return BaseCharmap.subset(self._base, self._codepoint_range)._ord2chr
+
+
+class LoadableCharmap(_LazyCharmap):
     """Convert between unicode and ordinals using mapping from file."""
 
     def __init__(self, filename, *, format=None, name='', **kwargs):
@@ -249,22 +284,6 @@ class LoadableCharmap(BaseCharmap):
             raise NotFoundError(f'No data in charmap file `{str(self._load_path)}`.')
         mapping = self._load_reader(data, **self._load_kwargs)
         return mapping
-
-    def __or__(self, other):
-        """Return encoding overlaid with all characters defined in right-hand side."""
-        return _OverlaidCharmap(self, other)
-
-
-class _OverlaidCharmap(BaseCharmap):
-
-    def __init__(self, base, overlay):
-        super().__init__(name=base.name)
-        self._base = base
-        self._overlay = overlay
-
-    @cached_property
-    def _ord2chr(self):
-        return self._base._ord2chr | self._overlay._ord2chr
 
 
 ###############################################################################
