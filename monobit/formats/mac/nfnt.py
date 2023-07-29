@@ -18,7 +18,7 @@ from ...font import Font
 from ...glyph import Glyph, KernTable
 from ...magic import FileFormatError
 from ...labels import Char
-from ...encoding import charmaps, EncodingName
+from ...encoding import EncodingName
 from ...raster import Raster
 from ...properties import Props
 from ...basetypes import NOT_SET
