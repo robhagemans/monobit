@@ -13,7 +13,7 @@ from ...font import Font
 from ...glyph import Glyph
 from ...labels import Tag, Char
 from ...magic import FileFormatError
-from ...encoding import charmaps
+from ...encoding import encodings
 from ...binary import align
 
 
@@ -83,7 +83,7 @@ def load_draw(text_stream, *, blocktypes, unicode):
     else:
         encoding = ''
         glyphs = tuple(
-            _g.label(codepoint_from=charmaps['unicode']).modify(char=None)
+            _g.label(codepoint_from=encodings['unicode']).modify(char=None)
             for _g in glyphs
         )
     font = Font(

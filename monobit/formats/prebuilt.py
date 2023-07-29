@@ -14,7 +14,7 @@ from ..storage import loaders, savers
 from ..font import Font
 from ..glyph import Glyph
 from ..magic import FileFormatError
-from ..encoding import tagmaps
+from ..encoding import encodings
 
 
 @loaders.register(
@@ -296,7 +296,7 @@ def _convert_from_pf(pf_props, pf_masks):
             dpi=(75 * _matrix.a / _matrix.d, 75),
             point_size=_matrix.d / _FIXEDSCALE,
             encoding='latin-1' if pf_props.characterSetName == b'ISOLatin1CharacterSet' else '',
-        ).label(char_from=tagmaps['adobe'])
+        ).label(char_from=encodings['adobe'])
         for _matrix, _glyphs in zip(pf_props.matrices, strikes)
     )
     return fonts

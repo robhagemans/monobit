@@ -27,7 +27,7 @@ def encoder(initialiser):
         initialiser = to_labels(initialiser)
         return Indexer(code_range=initialiser)
     try:
-        return charmaps[initialiser]
+        return encodings[initialiser]
     except KeyError:
         pass
     try:
@@ -44,7 +44,7 @@ def tagger(initialiser):
         return None
     initialiser = str(initialiser)
     try:
-        return tagmaps[initialiser]
+        return encodings[initialiser]
     except KeyError:
         pass
     try:
@@ -58,6 +58,3 @@ def encoder_or_tagger(obj):
     if enc is None:
         return tagger(obj)
     return enc
-
-charmaps = encodings
-tagmaps = encodings

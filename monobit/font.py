@@ -17,7 +17,7 @@ from .raster import turn_method
 from .basetypes import Coord, Bounds, NOT_SET
 from .basetypes import to_int, Any
 from .encoding import (
-    charmaps, encoder, tagger, tagmaps,
+    encoder, tagger,
     EncodingName, Encoder, Indexer, Charmap, encoder_or_tagger
 )
 from .labels import Tag, Char, Codepoint, Label, to_label

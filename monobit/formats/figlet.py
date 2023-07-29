@@ -13,7 +13,7 @@ from ..magic import FileFormatError
 from ..font import Font
 from ..glyph import Glyph
 from ..properties import Props, reverse_dict, extend_string
-from ..encoding import tagmaps
+from ..encoding import encodings
 
 
 # note that we won't be able to use the "subcharacters" that are the defining feature of FIGlet
@@ -281,7 +281,7 @@ def _write_flf(
     for glyph in flf_glyphs[1:len(_CODEPOINTS)]:
         outstream.write(_format_glyph(glyph, ink=ink, paper=paper))
     for glyph in flf_glyphs[len(_CODEPOINTS):]:
-        tag = glyph.tags[0] if glyph.tags else tagmaps['name'].tag(*glyph.get_labels()).value
+        tag = glyph.tags[0] if glyph.tags else encodings['name'].tag(*glyph.get_labels()).value
         if glyph.char > chr(255):
             outstream.write(f'{ord(glyph.char):#04x} {tag}\n')
         else:

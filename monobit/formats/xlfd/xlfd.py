@@ -7,7 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
-from ...encoding import charmaps
+from ...encoding import encodings
 from ...labels import Char
 
 
@@ -573,7 +573,7 @@ def parse_xlfd_properties(x_props, xlfd_name, to_int=int):
         properties['encoding'] = ''
     if 'DEFAULT_CHAR' in x_props:
         default_ord = to_int(x_props.pop('DEFAULT_CHAR', None))
-        if charmaps.is_unicode(properties['encoding']):
+        if encodings.is_unicode(properties['encoding']):
             properties['default_char'] = Char(chr(default_ord))
         else:
             properties['default_char'] = default_ord
@@ -680,7 +680,7 @@ def create_xlfd_properties(font):
     }
     # encoding dependent values
     default_glyph = font.get_default_glyph()
-    if charmaps.is_unicode(font.encoding):
+    if encodings.is_unicode(font.encoding):
         if default_glyph.char:
             default_codepoint = tuple(ord(_c) for _c in default_glyph.char)
         else:
