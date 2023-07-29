@@ -1372,7 +1372,8 @@
         "filename": "kreativekorp/ZXFZXSLT.TXT"
     },
     "windows-linedraw": {
-        "filename": "manual/ms-linedraw.txt"
+        "filename": "microsoft/PC/CP437.TXT",
+        "range": "0xb0-0xdf"
     },
     "hp-48": {
         "aliases": [
