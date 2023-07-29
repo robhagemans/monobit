@@ -33,28 +33,8 @@ def encoder(initialiser):
     try:
         return LoadableCharmap(initialiser)
     except NotFoundError:
-        return None
-
-
-def tagger(initialiser):
-    """Retrieve or create a tagmap from object or string."""
-    if isinstance(initialiser, Encoder):
-        return initialiser
-    if initialiser is None or not str(initialiser):
-        return None
-    initialiser = str(initialiser)
-    try:
-        return encodings[initialiser]
-    except KeyError:
         pass
     try:
         return LoadableTagmap(initialiser)
     except NotFoundError:
         return None
-
-
-def encoder_or_tagger(obj):
-    enc = encoder(obj)
-    if enc is None:
-        return tagger(obj)
-    return enc
