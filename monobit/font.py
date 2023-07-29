@@ -16,10 +16,7 @@ from .glyph import Glyph
 from .raster import turn_method
 from .basetypes import Coord, Bounds, NOT_SET
 from .basetypes import to_int, Any
-from .encoding import (
-    encoder, tagger,
-    EncodingName, Encoder, Indexer, Charmap, encoder_or_tagger
-)
+from .encoding import encoder, EncodingName, Encoder, Indexer, Charmap
 from .labels import Tag, Char, Codepoint, Label, to_label
 from .binary import ceildiv
 from .properties import extend_string
@@ -978,8 +975,8 @@ class Font(HasProps):
     @scriptable
     def label(
             self, *,
-            codepoint_from:encoder=NOT_SET, char_from:encoder_or_tagger=NOT_SET,
-            tag_from:tagger=NOT_SET, comment_from:tagger=NOT_SET,
+            codepoint_from:encoder=NOT_SET, char_from:encoder=NOT_SET,
+            tag_from:encoder=NOT_SET, comment_from:encoder=NOT_SET,
             overwrite:bool=False,
             match_whitespace:bool=True, match_graphical:bool=True
         ):
