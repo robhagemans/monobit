@@ -13,7 +13,6 @@ from collections import deque
 from functools import cached_property
 
 from ...storage import loaders, savers
-from ...encoding import charmaps
 from ...magic import FileFormatError
 from ...font import Font, FontProperties
 from ...glyph import Glyph

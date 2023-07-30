@@ -16,20 +16,11 @@ from .glyph import Glyph
 from .raster import turn_method
 from .basetypes import Coord, Bounds, NOT_SET
 from .basetypes import to_int, Any
-from .encoding import charmaps, encoder, EncodingName, Encoder, Indexer
-from .taggers import tagger
+from .encoding import encoder, EncodingName, Encoder, Indexer, Charmap
 from .labels import Tag, Char, Codepoint, Label, to_label
 from .binary import ceildiv
 from .properties import extend_string
 from .cachedprops import HasProps, writable_property, checked_property
-from .taggers import tagmaps
-
-
-def encoder_or_tagger(obj):
-    enc = encoder(obj)
-    if enc is None:
-        return tagger(obj)
-    return enc
 
 
 ###############################################################################
@@ -969,7 +960,7 @@ class Font(HasProps):
     @cache
     def get_charmap(self):
         """Implied character map based on defined chars."""
-        return charmaps.create({
+        return Charmap({
             _glyph.codepoint: _glyph.char
             for _glyph in self._glyphs
             if _glyph.codepoint
@@ -984,8 +975,8 @@ class Font(HasProps):
     @scriptable
     def label(
             self, *,
-            codepoint_from:encoder=NOT_SET, char_from:encoder_or_tagger=NOT_SET,
-            tag_from:tagger=NOT_SET, comment_from:tagger=NOT_SET,
+            codepoint_from:encoder=NOT_SET, char_from:encoder=NOT_SET,
+            tag_from:encoder=NOT_SET, comment_from:encoder=NOT_SET,
             overwrite:bool=False,
             match_whitespace:bool=True, match_graphical:bool=True
         ):

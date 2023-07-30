@@ -15,7 +15,7 @@ from ..glyph import Glyph
 from ..raster import Raster
 from ..font import Font
 from ..properties import Props, reverse_dict
-from ..encoding import charmaps
+from ..encoding import EncodingName
 
 
 @loaders.register(
@@ -495,7 +495,7 @@ _SYMBOL_SETS = {
     # '19M': # pcl math symbol set
 }
 _REV_SYMBOL_SETS = {
-    charmaps.normalise(_k): _v
+    EncodingName(_k): _v
     for _k, _v in reverse_dict(_SYMBOL_SETS).items()
 }
 
@@ -803,7 +803,7 @@ def _convert_to_hppcl_glyph(glyph, orientation):
 def _symbol_set_from_encoding(encoding):
     """Convert encoding to symbol set code."""
     try:
-        code = _REV_SYMBOL_SETS[charmaps.normalise(encoding)]
+        code = _REV_SYMBOL_SETS[EncodingName(encoding)]
     except KeyError:
         if not encoding.startswith('pcl-'):
             return 0

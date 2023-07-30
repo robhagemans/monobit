@@ -13,8 +13,7 @@ from ...magic import FileFormatError
 from ...font import Font, Coord
 from ...raster import Raster
 from ...glyph import Glyph
-from ...encoding import charmaps, NotFoundError
-from ...taggers import tagmaps
+from ...encoding import encodings, NotFoundError
 from ...labels import Char, Codepoint, Tag
 
 from .xlfd import parse_xlfd_properties, create_xlfd_properties
@@ -44,7 +43,7 @@ def load_bdf(instream):
     # create char labels, if encoding recognised
     font = font.label()
     # store labels as char only if we're working in unicode
-    if charmaps.is_unicode(font.encoding):
+    if encodings.is_unicode(font.encoding):
         font = font.label(codepoint_from=None)
     return font
 
@@ -368,7 +367,7 @@ def _save_bdf(font, outstream):
     if font.spacing not in ('character-cell', 'multi-cell'):
         font = font.reduce()
     # ensure character labels exist if needed
-    if charmaps.is_unicode(font.encoding):
+    if encodings.is_unicode(font.encoding):
         font = font.label(match_whitespace=False, match_graphical=False)
     glyphs = tuple(
         _convert_to_bdf_glyph(glyph, font)
@@ -442,7 +441,7 @@ def _get_glyph_encvalue(glyph, is_unicode):
             pass
     else:
         # look up in adobe glyph list if character available
-        name = tagmaps['adobe'].tag(*glyph.get_labels()).value
+        name = encodings['adobe'].tag(*glyph.get_labels()).value
         # otherwise, use encoding value if available
         if not name and encoding != -1:
             name = f'char{encoding:02X}'
@@ -456,7 +455,7 @@ def _get_glyph_encvalue(glyph, is_unicode):
 
 def _convert_to_bdf_glyph(glyph, font):
     encoding, name = _get_glyph_encvalue(
-        glyph, charmaps.is_unicode(font.encoding)
+        glyph, encodings.is_unicode(font.encoding)
     )
     swidth_y, dwidth_y = 0, 0
     # SWIDTH = DWIDTH / ( points/1000 * dpi / 72 )

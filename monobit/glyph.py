@@ -305,8 +305,8 @@ class Glyph(HasProps):
 
            char_from: Encoder object used to set char labels
            codepoint_from: Encoder object used to set codepoint labels
-           tag_from: Tagger object used to set tag labels
-           comment_from: Tagger object used to set comment
+           tag_from: Encoder object used to set tag labels
+           comment_from: Encoder object used to set comment
            overwrite: overwrite codepoint or char if already given
            match_whitespace: do not give blank glyphs a non-whitespace char label (default: True)
            match_graphical: do not give non-blank glyphs a non-graphical label (default: True)
@@ -343,12 +343,12 @@ class Glyph(HasProps):
             if not tag_from:
                 if overwrite:
                     return self.modify(tag=None)
-            elif overwrite or not self.tag:
+            elif overwrite or not self.tags:
                 return self.modify(tag=tag_from.tag(*labels))
         if comment_from is not NOT_SET:
             if not comment_from:
                 return self.modify(comment=None)
-            return self.modify(comment=comment_from.comment(*labels))
+            return self.modify(comment=comment_from.tag(*labels).value)
         return self
 
     def append(
