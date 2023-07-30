@@ -124,15 +124,14 @@ class CodepointTagger(Encoder):
         return Tag(f'{self._prefix}{cp}')
 
 
-class BaseTagmap(Encoder):
+class Tagmap(Encoder):
+    """Tag on the basis of a mapping table."""
 
-    def __init__(self, *, name='', fallback=None):
-        super().__init__(name)
+    def __init__(self, mapping, name='', fallback=None):
+        """Set up mapping."""
+        super().__init__(name=name)
+        self._chr2tag = mapping
         self._fallback = fallback or FallbackTagger()
-
-    @cached_property
-    def _chr2tag(self):
-        raise NotImplementedError()
 
     @cached_property
     def _tag2chr(self):
@@ -195,15 +194,6 @@ class SGMLFallbackTagger(Encoder):
         # joining numeric references by semicolons
         # note that each entity should really start with & and end with ; e.g. &eacute;
         return Tag(';'.join(f'#{_cp:X}' for _cp in cps))
-
-
-class Tagmap(BaseTagmap):
-    """Tag on the basis of a mapping table."""
-
-    def __init__(self, mapping, name='', fallback=None):
-        """Set up mapping."""
-        super().__init__(name=name, fallback=fallback)
-        self._chr2tag = mapping
 
 
 ###################################################################################################

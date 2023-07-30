@@ -64,16 +64,17 @@ class Unicode(Encoder):
         return type(self).__name__ + '()'
 
 
-class BaseCharmap(Encoder):
-    """Convert between unicode and ordinals."""
+class Charmap(Encoder):
+    """Convert between unicode and ordinals using stored dictionary."""
 
-    def __init__(self, *, name=''):
+    def __init__(self, mapping=None, *, name=''):
         """Create charmap from a dictionary codepoint -> char."""
-        super().__init__(name)
-
-    @cached_property
-    def _ord2chr(self):
-        raise NotImplementedError()
+        super().__init__(name=name)
+        if not mapping:
+            mapping = {}
+            name = ''
+        # copy dict
+        self._ord2chr = {**mapping}
 
     @cached_property
     def _chr2ord(self):
@@ -109,7 +110,7 @@ class BaseCharmap(Encoder):
 
     def __eq__(self, other):
         """Compare to other Charmap."""
-        return isinstance(other, BaseCharmap) and (self._ord2chr == other._ord2chr)
+        return isinstance(other, Charmap) and (self._ord2chr == other._ord2chr)
 
     # charmap operations
 
@@ -199,19 +200,6 @@ class BaseCharmap(Encoder):
         return (
             f"{type(self).__name__}()"
         )
-
-
-class Charmap(BaseCharmap):
-    """Convert between unicode and ordinals using stored dictionary."""
-
-    def __init__(self, mapping=None, *, name=''):
-        """Create charmap from a dictionary codepoint -> char."""
-        super().__init__(name=name)
-        if not mapping:
-            mapping = {}
-            name = ''
-        # copy dict
-        self._ord2chr = {**mapping}
 
 
 class EncoderLoader(EncoderBuilder):
