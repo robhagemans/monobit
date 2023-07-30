@@ -1,0 +1,2229 @@
+{
+    "ascii": {
+        "aliases": [
+            "iso646-us",
+            "ascii-0",
+            "us-ascii",
+            "iso-ir-6",
+            "ansi-x3.4-1968",
+            "windows-20127"
+        ],
+        "filename": "iso-8859/8859-1.TXT",
+        "range": "0-0x7f"
+    },
+    "c0-controls": {
+        "filename": "iso-8859/8859-1.TXT",
+        "range": "0-0x1f",
+        "notes": "C0 control codes"
+    },
+    "ibm-graphics": {
+        "aliases": [
+            "ibm-graph"
+        ],
+        "filename": "misc/IBMGRAPH.TXT",
+        "range": "0-0x1f,0x7f",
+        "format": "adobe"
+    },
+    "latin-1": {
+        "aliases": [
+            "iso8859-1",
+            "iso-ir-100",
+            "ibm-819",
+            "windows-28591"
+        ],
+        "filename": "iso-8859/8859-1.TXT"
+    },
+    "latin-1-glyphs": {
+        "filename": "iso-8859/8859-1.TXT",
+        "range": "0x20-0x7e,0xa0-0xff",
+        "notes": "latin-1 excluding C0, C1 control codes"
+    },
+    "latin-2": {
+        "aliases": [
+            "iso8859-2",
+            "iso-ir-101",
+            "ibm-1111",
+            "windows-28592"
+        ],
+        "filename": "iso-8859/8859-2.TXT"
+    },
+    "latin-3": {
+        "aliases": [
+            "iso8859-3",
+            "iso-ir-109",
+            "ibm-913",
+            "windows-28593"
+        ],
+        "filename": "iso-8859/8859-3.TXT"
+    },
+    "latin-4": {
+        "aliases": [
+            "iso8859-4",
+            "iso-ir-110",
+            "ibm-914",
+            "windows-28594"
+        ],
+        "filename": "iso-8859/8859-4.TXT"
+    },
+    "iso8859-5": {
+        "aliases": [
+            "cyrillic",
+            "latin-cyrillic",
+            "iso-ir-144",
+            "ecma-113",
+            "windows-28595"
+        ],
+        "filename": "iso-8859/8859-5.TXT"
+    },
+    "iso8859-6": {
+        "aliases": [
+            "arabic",
+            "latin-arabic",
+            "asmo-708",
+            "iso-ir-127",
+            "ecma-114",
+            "windows-28596",
+            "windows-38596"
+        ],
+        "filename": "iso-8859/8859-6.TXT"
+    },
+    "iso8859-7": {
+        "aliases": [
+            "greek",
+            "latin-greek",
+            "greek8",
+            "iso-ir-126",
+            "ibm-813",
+            "elot-928",
+            "ecma-118",
+            "windows-28597"
+        ],
+        "filename": "iso-8859/8859-7.TXT"
+    },
+    "iso8859-8": {
+        "aliases": [
+            "hebrew",
+            "latin-hebrew",
+            "iso-ir-138",
+            "ibm-916",
+            "ecma-121",
+            "windows-28598",
+            "windows-38598"
+        ],
+        "filename": "iso-8859/8859-8.TXT"
+    },
+    "iso8859-9": {
+        "aliases": [
+            "latin-5",
+            "turkish",
+            "iso-ir-148",
+            "ibm-920",
+            "ecma-128",
+            "windows-28599"
+        ],
+        "filename": "iso-8859/8859-9.TXT"
+    },
+    "iso8859-10": {
+        "aliases": [
+            "latin-6",
+            "ibm-919",
+            "iso-ir-157",
+            "ecma-144",
+            "windows-28600"
+        ],
+        "filename": "iso-8859/8859-10.TXT"
+    },
+    "iso8859-11": {
+        "aliases": [
+            "latin-thai",
+            "windows-28601"
+        ],
+        "filename": "iso-8859/8859-11.TXT",
+        "notes": "differs from tis-620 only in a code point mapping NBSP"
+    },
+    "iso8859-13": {
+        "aliases": [
+            "latin-7",
+            "baltic-rim",
+            "ibm-921",
+            "iso-ir-179",
+            "windows-28603"
+        ],
+        "filename": "iso-8859/8859-13.TXT"
+    },
+    "iso8859-14": {
+        "aliases": [
+            "latin-8",
+            "celtic",
+            "iso-celtic",
+            "iso-ir-199",
+            "windows-28604"
+        ],
+        "filename": "iso-8859/8859-14.TXT"
+    },
+    "iso8859-15": {
+        "aliases": [
+            "latin-9",
+            "latin-0",
+            "windows-28605"
+        ],
+        "filename": "iso-8859/8859-15.TXT"
+    },
+    "iso8859-16": {
+        "aliases": [
+            "latin-10",
+            "sr-14111",
+            "iso-ir-226",
+            "windows-28606"
+        ],
+        "filename": "iso-8859/8859-16.TXT"
+    },
+    "windows-874": {
+        "aliases": [
+            "ibm-1162",
+            "tis620-2"
+        ],
+        "filename": "microsoft/WINDOWS/CP874.TXT",
+        "notes": "tis620-2 is the name used in Xorg. the Xorg encoding also adds some PUA mappings on undefined code points"
+    },
+    "windows-932": {
+        "aliases": [
+            "windows-31j",
+            "ms-kanji",
+            "windows-shift-jis"
+        ],
+        "filename": "microsoft/WINDOWS/CP932.TXT"
+    },
+    "ibm-897-graph": {
+        "filename": "manual/ibm897graph.ucp",
+        "range": "0-0x1f,0x7f",
+        "notes": "ibm-897 == jis-x0201 with graphics. see https://en.wikipedia.org/wiki/Code_page_897"
+    },
+    "cp897": {
+        "aliases": [
+            "ibm-897"
+        ],
+        "filename": "dkuug/jis_x0201",
+        "format": "ucm",
+        "overlays": [
+            "ibm-897-graph"
+        ]
+    },
+    "ibm-943": {
+        "aliases": [
+            "cp943c"
+        ],
+        "filename": "microsoft/WINDOWS/CP932.TXT",
+        "overlays": [
+            "ibm-897-graph"
+        ],
+        "notes": "IBM variant adding graphical characters to ms-932"
+    },
+    "windows-949": {
+        "aliases": [
+            "ext-wansung",
+            "uhc",
+            "ibm-1363"
+        ],
+        "filename": "microsoft/WINDOWS/CP949.TXT",
+        "notes": "Korean extended Wansung / unified Hangul code. this is an extension of euc-kr, wansung"
+    },
+    "windows-950": {
+        "aliases": [
+            "ms-big5"
+        ],
+        "filename": "microsoft/WINDOWS/CP950.TXT",
+        "overlays": [
+            "ibmgraph"
+        ],
+        "notes": "traditional Chinese Big-5"
+    },
+    "windows-1250": {
+        "aliases": [
+            "cp1250",
+            "ibm-1250"
+        ],
+        "filename": "microsoft/WINDOWS/CP1250.TXT",
+        "notes": "Windows Latin - Central & Eastern Europe"
+    },
+    "windows-1251": {
+        "aliases": [
+            "cp1251",
+            "ibm-1251"
+        ],
+        "filename": "microsoft/WINDOWS/CP1251.TXT",
+        "notes": "Windows Cyrillic"
+    },
+    "windows-1.0": {
+        "aliases": [
+            "windows-ansi-1.0",
+            "windows-1252-1.0"
+        ],
+        "filename": "manual/windows-1.0.txt"
+    },
+    "windows-2.0": {
+        "aliases": [
+            "windows-ansi-2.0",
+            "windows-1252-2.0"
+        ],
+        "filename": "manual/windows-2.0.txt"
+    },
+    "windows-3.1": {
+        "aliases": [
+            "windows-ansi-3.1",
+            "windows-1252-3.1"
+        ],
+        "filename": "manual/windows-3.1.txt"
+    },
+    "windows-1252": {
+        "aliases": [
+            "windows-ansi",
+            "ansi",
+            "ansinew",
+            "cp1252",
+            "ibm-1252"
+        ],
+        "filename": "microsoft/WINDOWS/CP1252.TXT",
+        "notes": "Windows Latin - Western Europe"
+    },
+    "windows-1253": {
+        "aliases": [
+            "greek-ansi",
+            "cp1253",
+            "ibm-1253"
+        ],
+        "filename": "microsoft/WINDOWS/CP1253.TXT",
+        "notes": "Windows Greek"
+    },
+    "windows-1254": {
+        "aliases": [
+            "cp1254",
+            "ibm-1254"
+        ],
+        "filename": "microsoft/WINDOWS/CP1254.TXT",
+        "notes": "Windows Latin - Turkish"
+    },
+    "windows-1255": {
+        "aliases": [
+            "cp1255",
+            "ibm-1255"
+        ],
+        "filename": "microsoft/WINDOWS/CP1255.TXT",
+        "notes": "Windows Hebrew"
+    },
+    "windows-1256": {
+        "aliases": [
+            "cp1256",
+            "ibm-1256"
+        ],
+        "filename": "microsoft/WINDOWS/CP1256.TXT",
+        "notes": "Windows Arabic"
+    },
+    "windows-1257": {
+        "aliases": [
+            "windows-baltic",
+            "cp1257",
+            "ibm-1257",
+            "lst-1590-3"
+        ],
+        "filename": "microsoft/WINDOWS/CP1257.TXT",
+        "notes": "Windows Latin - Baltic"
+    },
+    "windows-1258": {
+        "aliases": [
+            "cp1258",
+            "ibm-1258"
+        ],
+        "filename": "microsoft/WINDOWS/CP1258.TXT",
+        "notes": "Windows Latin - Vietnamese"
+    },
+    "cp437": {
+        "aliases": [
+            "oem-437",
+            "ibm-437",
+            "oem-us",
+            "pc-8",
+            "dos-latin-us"
+        ],
+        "filename": "microsoft/PC/CP437.TXT",
+        "overlays": [
+            "ibmgraph"
+        ]
+    },
+    "cp737": {
+        "aliases": [
+            "oem-737",
+            "ibm-737",
+            "dos-greek"
+        ],
+        "filename": "microsoft/PC/CP737.TXT",
+        "overlays": [
+            "ibmgraph"
+        ]
+    },
+    "cp775": {
+        "aliases": [
+            "oem-775",
+            "ibm-775",
+            "dos-baltic-rim",
+            "lst-1590-1"
+        ],
+        "filename": "microsoft/PC/CP775.TXT",
+        "overlays": [
+            "ibmgraph"
+        ]
+    },
+    "cp850": {
+        "aliases": [
+            "oem-850",
+            "ibm-850",
+            "dos-latin-1"
+        ],
+        "filename": "microsoft/PC/CP850.TXT",
+        "overlays": [
+            "ibmgraph"
+        ]
+    },
+    "cp852": {
+        "aliases": [
+            "oem-852",
+            "ibm-852",
+            "dos-latin-2"
+        ],
+        "filename": "microsoft/PC/CP852.TXT",
+        "overlays": [
+            "ibmgraph"
+        ]
+    },
+    "cp855": {
+        "aliases": [
+            "oem-855",
+            "ibm-855",
+            "dos-cyrillic"
+        ],
+        "filename": "microsoft/PC/CP855.TXT",
+        "overlays": [
+            "ibmgraph"
+        ]
+    },
+    "cp857": {
+        "aliases": [
+            "oem-857",
+            "ibm-857",
+            "dos-turkish"
+        ],
+        "filename": "microsoft/PC/CP857.TXT",
+        "overlays": [
+            "ibmgraph"
+        ]
+    },
+    "cp860": {
+        "aliases": [
+            "oem-860",
+            "ibm-860",
+            "dos-portuguese"
+        ],
+        "filename": "microsoft/PC/CP860.TXT",
+        "overlays": [
+            "ibmgraph"
+        ]
+    },
+    "cp861": {
+        "aliases": [
+            "oem-861",
+            "ibm-861",
+            "cp-is",
+            "dos-icelandic"
+        ],
+        "filename": "microsoft/PC/CP861.TXT",
+        "overlays": [
+            "ibmgraph"
+        ]
+    },
+    "cp862": {
+        "aliases": [
+            "oem-862",
+            "ibm-862",
+            "dos-hebrew"
+        ],
+        "filename": "microsoft/PC/CP862.TXT",
+        "overlays": [
+            "ibmgraph"
+        ]
+    },
+    "cp863": {
+        "aliases": [
+            "oem-863",
+            "ibm-863",
+            "dos-french-canada"
+        ],
+        "filename": "microsoft/PC/CP863.TXT",
+        "overlays": [
+            "ibmgraph"
+        ]
+    },
+    "ibm-864-graph": {
+        "filename": "misc/IBMGRAPH.TXT",
+        "range": "0-0x1f,0x7f",
+        "kwargs": {
+            "codepoint_column": 2,
+            "unicode_column": 0,
+            "ignore_errors": true
+        },
+        "notes": "a different ordering of the IBM graphics range specially for cp864"
+    },
+    "cp864": {
+        "aliases": [
+            "oem-864",
+            "ibm-864",
+            "dos-arabic"
+        ],
+        "filename": "microsoft/PC/CP864.TXT",
+        "overlays": [
+            "ibm-864-graph"
+        ]
+    },
+    "cp865": {
+        "aliases": [
+            "oem-865",
+            "ibm-865",
+            "dos-nordic"
+        ],
+        "filename": "microsoft/PC/CP865.TXT",
+        "overlays": [
+            "ibmgraph"
+        ]
+    },
+    "cp866": {
+        "aliases": [
+            "oem-866",
+            "ibm-866",
+            "dos-cyrillic-russian"
+        ],
+        "filename": "microsoft/PC/CP866.TXT",
+        "overlays": [
+            "ibmgraph"
+        ]
+    },
+    "cp869": {
+        "aliases": [
+            "oem-869",
+            "ibm-869",
+            "dos-greek2",
+            "pcl-greek8"
+        ],
+        "filename": "microsoft/PC/CP869.TXT",
+        "overlays": [
+            "ibmgraph"
+        ]
+    },
+    "ibm-874": {
+        "aliases": [
+            "ibm-9066",
+            "dos-thai"
+        ],
+        "filename": "microsoft/PC/CP874.TXT"
+    },
+    "cp037": {
+        "aliases": [
+            "ibm037",
+            "ebcdic-cp-us",
+            "ebcdic-cp-ca",
+            "ebcdic-cp-wt",
+            "ebcdic-cp-nl"
+        ],
+        "filename": "microsoft/EBCDIC/CP037.TXT"
+    },
+    "cp500": {
+        "aliases": [
+            "ibm500",
+            "ebcdic-international"
+        ],
+        "filename": "microsoft/EBCDIC/CP500.TXT"
+    },
+    "cp875": {
+        "aliases": [
+            "ibm875"
+        ],
+        "filename": "microsoft/EBCDIC/CP875.TXT"
+    },
+    "cp1026": {
+        "aliases": [
+            "ibm1026"
+        ],
+        "filename": "microsoft/EBCDIC/CP1026.TXT"
+    },
+    "mac-graph": {
+        "filename": "manual/mac-system.ucp",
+        "range": "0x11-0x14"
+    },
+    "overlay-ccy-db": {
+        "filename": "manual/currency-sign-0xdb.ucp",
+        "range": "0xdb"
+    },
+    "overlay-ccy-9c": {
+        "filename": "manual/currency-sign-0x9c.ucp",
+        "range": "0x9c"
+    },
+    "mac-roman": {
+        "aliases": [
+            "mac",
+            "macintosh",
+            "ibm-1275",
+            "windows-10000"
+        ],
+        "filename": "apple/ROMAN.TXT",
+        "overlays": [
+            "mac-graph",
+            "overlay-ccy-db"
+        ],
+        "notes": "microsoft's cp10000 table is pre-Euro and substitutes the capital Omega with the (equivalent) Ohm sign. 1985 mac-roman was undefined in the range 0xD9-0xFF inclusive: https://vintageapple.org/inside_o/pdf/Inside_Macintosh_Volume_I_1985.pdf#page=259"
+    },
+    "mac-japanese": {
+        "aliases": [
+            "windows-10001"
+        ],
+        "filename": "apple/JAPANESE.TXT"
+    },
+    "mac-traditional-chinese": {
+        "aliases": [
+            "mac-trad-chinese",
+            "mac-chinese-trad",
+            "windows-10002"
+        ],
+        "filename": "apple/CHINTRAD.TXT"
+    },
+    "mac-korean": {
+        "aliases": [
+            "windows-10003"
+        ],
+        "filename": "apple/KOREAN.TXT"
+    },
+    "mac-arabic": {
+        "aliases": [
+            "windows-10004"
+        ],
+        "filename": "apple/ARABIC.TXT"
+    },
+    "mac-hebrew": {
+        "aliases": [
+            "windows-10005"
+        ],
+        "filename": "apple/HEBREW.TXT"
+    },
+    "mac-greek": {
+        "aliases": [
+            "windows-10006"
+        ],
+        "filename": "apple/GREEK.TXT",
+        "overlays": [
+            "overlay-ccy-9c"
+        ]
+    },
+    "overlay-mac-cyrillic": {
+        "filename": "manual/mac-cyrillic-pre9.0.ucp",
+        "range": "0xa2,0xb6,0xff"
+    },
+    "mac-cyrillic": {
+        "aliases": [
+            "windows-10007"
+        ],
+        "filename": "apple/CYRILLIC.TXT",
+        "overlays": [
+            "overlay-mac-cyrillic"
+        ],
+        "notes": "A2, B6, FF changed after mac-os 9.0. see https://en.wikipedia.org/wiki/Mac_OS_Cyrillic_encoding"
+    },
+    "mac-devanagari": {
+        "filename": "apple/DEVANAGA.TXT"
+    },
+    "mac-gurmukhi": {
+        "filename": "apple/GURMUKHI.TXT"
+    },
+    "mac-gujarati": {
+        "filename": "apple/GUJARATI.TXT"
+    },
+    "mac-thai": {
+        "aliases": [
+            "windows-10021"
+        ],
+        "filename": "apple/THAI.TXT"
+    },
+    "mac-simplified-chinese": {
+        "aliases": [
+            "mac-simp-chinese",
+            "mac-chinese-simp",
+            "windows-10008"
+        ],
+        "filename": "apple/CHINSIMP.TXT"
+    },
+    "mac-centraleurope": {
+        "aliases": [
+            "mac-ce",
+            "mac-latin2",
+            "mac-centeuro",
+            "mac-east-eur-roman",
+            "mac-roman2",
+            "windows-10029"
+        ],
+        "filename": "apple/CENTEURO.TXT"
+    },
+    "mac-georgian": {
+        "filename": "evertype/GEORGIAN.TXT"
+    },
+    "mac-armenian": {
+        "filename": "evertype/ARMENIAN.TXT"
+    },
+    "mac-celtic": {
+        "filename": "apple/CELTIC.TXT",
+        "overlays": [
+            "overlay-ccy-db"
+        ]
+    },
+    "mac-croatian": {
+        "aliases": [
+            "windows-10082"
+        ],
+        "filename": "apple/CROATIAN.TXT",
+        "overlays": [
+            "overlay-ccy-db"
+        ]
+    },
+    "mac-dingbats": {
+        "filename": "apple/DINGBATS.TXT"
+    },
+    "mac-farsi": {
+        "filename": "apple/FARSI.TXT"
+    },
+    "mac-gaelic": {
+        "filename": "apple/GAELIC.TXT",
+        "overlays": [
+            "overlay-ccy-db"
+        ]
+    },
+    "mac-icelandic": {
+        "aliases": [
+            "windows-10079"
+        ],
+        "filename": "apple/ICELAND.TXT",
+        "overlays": [
+            "overlay-ccy-db"
+        ]
+    },
+    "mac-inuit": {
+        "filename": "apple/INUIT.TXT"
+    },
+    "mac-symbol": {
+        "aliases": [
+            "windows-symbol"
+        ],
+        "filename": "apple/SYMBOL.TXT"
+    },
+    "mac-romanian": {
+        "aliases": [
+            "windows-10010"
+        ],
+        "filename": "apple/ROMANIAN.TXT",
+        "overlays": [
+            "overlay-ccy-db"
+        ]
+    },
+    "mac-turkish": {
+        "aliases": [
+            "windows-10081"
+        ],
+        "filename": "apple/TURKISH.TXT"
+    },
+    "overlay-mac-ukrainian": {
+        "filename": "manual/mac-ukrainian-pre9.0.ucp",
+        "range": "0xa2,0xb6,0xff"
+    },
+    "mac-ukrainian": {
+        "aliases": [
+            "windows-10017"
+        ],
+        "filename": "apple/CYRILLIC.TXT",
+        "overlays": [
+            "overlay-mac-ukrainian"
+        ]
+    },
+    "koi8-r": {
+        "aliases": [
+            "cp878"
+        ],
+        "filename": "misc/KOI8-R.TXT",
+        "overlays": [
+            "ibmgraph"
+        ]
+    },
+    "koi8-u": {
+        "filename": "misc/KOI8-U.TXT",
+        "overlays": [
+            "ibmgraph"
+        ]
+    },
+    "cp424": {
+        "aliases": [
+            "ebcdic-hebrew"
+        ],
+        "filename": "misc/CP424.TXT"
+    },
+    "cp856": {
+        "aliases": [
+            "oem-856",
+            "ibm-856"
+        ],
+        "filename": "misc/CP856.TXT",
+        "overlays": [
+            "ibmgraph"
+        ],
+        "notes": "Hebrew"
+    },
+    "cp1006": {
+        "aliases": [
+            "ibm-1006"
+        ],
+        "filename": "misc/CP1006.TXT",
+        "notes": "Arabic - Urdu"
+    },
+    "iso-ir-68": {
+        "filename": "misc/APL-ISO-IR-68.TXT"
+    },
+    "kps-9566": {
+        "aliases": [
+            "iso-ir-202"
+        ],
+        "filename": "misc/KPS9566.TXT",
+        "notes": "Korean"
+    },
+    "kz-1048": {
+        "aliases": [
+            "strk1048-2002",
+            "rk-1048"
+        ],
+        "filename": "misc/KZ1048.TXT",
+        "notes": "Cyrillic - Kazakh"
+    },
+    "next": {
+        "aliases": [
+            "nextstep",
+            "next-multinational"
+        ],
+        "filename": "misc/NEXTSTEP.TXT",
+        "overlays": [
+            "ascii"
+        ],
+        "notes": "per NEXTSTEP.TXT, 7-bit range is taken identical to ascii. wikipedia suggests it's us-ascii-quotes"
+    },
+    "gsm-03.38": {
+        "aliases": [
+            "gsm"
+        ],
+        "filename": "misc/GSM0338.TXT"
+    },
+    "koi0": {
+        "aliases": [
+            "gost-13052"
+        ],
+        "filename": "czyborra/koi-0.txt"
+    },
+    "koi7": {
+        "aliases": [
+            "gost-19768-74-7"
+        ],
+        "filename": "czyborra/koi-7.txt"
+    },
+    "koi8-a": {
+        "aliases": [
+            "koi8",
+            "gost-19768-74-8"
+        ],
+        "filename": "czyborra/koi8-a.txt",
+        "overlays": [
+            "ascii"
+        ]
+    },
+    "koi8-b": {
+        "filename": "czyborra/koi8-b.txt",
+        "overlays": [
+            "ascii"
+        ]
+    },
+    "koi8-unified": {
+        "aliases": [
+            "koi8-f",
+            "koi8-uni"
+        ],
+        "filename": "czyborra/koi8-f.txt",
+        "overlays": [
+            "ascii"
+        ]
+    },
+    "koi8-e": {
+        "aliases": [
+            "iso-ir-111",
+            "ecma-cyrillic"
+        ],
+        "filename": "czyborra/koi8-e.txt",
+        "overlays": [
+            "ascii"
+        ]
+    },
+    "gost-19768-87": {
+        "filename": "czyborra/gost19768-87.txt",
+        "overlays": [
+            "ascii"
+        ]
+    },
+    "mik": {
+        "aliases": [
+            "bulgarian-mik",
+            "bulgaria-pc"
+        ],
+        "filename": "czyborra/bulgarian-mik.txt",
+        "overlays": [
+            "ascii",
+            "ibmgraph"
+        ]
+    },
+    "hp-roman8": {
+        "aliases": [
+            "ibm-1051",
+            "cp1051",
+            "roman8"
+        ],
+        "filename": "czyborra/hp-roman8.txt"
+    },
+    "tcvn5712-1": {
+        "aliases": [
+            "vscii-1",
+            "vscii",
+            "tcvn-1",
+            "iso-ir-180"
+        ],
+        "filename": "python/TCVN5712-1.TXT"
+    },
+    "tcvn5712-2": {
+        "aliases": [
+            "vscii-2",
+            "tcvn-2"
+        ],
+        "filename": "python/TCVN5712-2.TXT"
+    },
+    "tcvn5712-3": {
+        "aliases": [
+            "vscii-3",
+            "tcvn-3"
+        ],
+        "filename": "python/TCVN5712-3.TXT"
+    },
+    "alternativnyj-variant": {
+        "aliases": [
+            "alternativnyj",
+            "av"
+        ],
+        "filename": "mleisher/ALTVAR.TXT"
+    },
+    "armscii-7": {
+        "filename": "mleisher/ARMSCII-7.TXT"
+    },
+    "armscii-8": {
+        "filename": "mleisher/ARMSCII-8.TXT"
+    },
+    "armscii-8a": {
+        "filename": "mleisher/ARMSCII-8A.TXT"
+    },
+    "dec-mcs": {
+        "aliases": [
+            "dmcs",
+            "mcs",
+            "ibm-1100",
+            "cp1100"
+        ],
+        "filename": "mleisher/DECMCS.TXT"
+    },
+    "georgian-academy": {
+        "aliases": [
+            "georgian-ita"
+        ],
+        "filename": "mleisher/GEO-ITA.TXT"
+    },
+    "georgian-parliament": {
+        "aliases": [
+            "georgian-ps"
+        ],
+        "filename": "mleisher/GEO-PS.TXT"
+    },
+    "iran-system": {
+        "filename": "mleisher/IRANSYSTEM.TXT"
+    },
+    "koi8-ru": {
+        "filename": "mleisher/KOI8RU.TXT",
+        "overlays": [
+            "ibmgraph"
+        ]
+    },
+    "osnovnoj-variant": {
+        "aliases": [
+            "osnovnoj",
+            "ov"
+        ],
+        "filename": "mleisher/OSNOVAR.TXT"
+    },
+    "tis-620": {
+        "aliases": [
+            "tis620-0",
+            "iso-ir-166"
+        ],
+        "filename": "mleisher/TIS620.TXT",
+        "notes": "tis620-0 is an alias used in Xorg"
+    },
+    "amiga-1251": {
+        "aliases": [
+            "ami1251"
+        ],
+        "filename": "iana/Amiga-1251",
+        "format": "txt"
+    },
+    "paratype-154": {
+        "aliases": [
+            "ptcp-154",
+            "pt154",
+            "cyrillic-asian"
+        ],
+        "filename": "iana/PTCP154",
+        "format": "txt"
+    },
+    "suneu-greek": {
+        "filename": "xfonts/suneu-greek.enc",
+        "format": "txt",
+        "overlays": [
+            "ascii"
+        ],
+        "notes": "variant of iso8859-7"
+    },
+    "mule-lao": {
+        "aliases": [
+            "mulelao-1"
+        ],
+        "filename": "xfonts/mulelao-1.enc",
+        "format": "txt",
+        "overlays": [
+            "ascii"
+        ],
+        "notes": "multilingual emacs"
+    },
+    "arabic-digit": {
+        "aliases": [
+            "mulearabic-0"
+        ],
+        "filename": "xfonts/mulearabic-0.enc",
+        "format": "txt",
+        "notes": "multilingual emacs"
+    },
+    "arabic-1-column": {
+        "aliases": [
+            "mulearabic-1"
+        ],
+        "filename": "xfonts/mulearabic-1.enc",
+        "format": "txt",
+        "notes": "multilingual emacs"
+    },
+    "arabic-2-column": {
+        "aliases": [
+            "mulearabic-2"
+        ],
+        "filename": "xfonts/mulearabic-2.enc",
+        "format": "txt",
+        "notes": "multilingual emacs"
+    },
+    "mule-ethiopic": {
+        "filename": "emacs/MULE-ethiopic.map",
+        "format": "txt",
+        "notes": "multilingual emacs"
+    },
+    "mule-ipa": {
+        "filename": "emacs/MULE-ipa.map",
+        "format": "txt",
+        "notes": "multilingual emacs"
+    },
+    "mule-sisheng": {
+        "aliases": [
+            "sisheng"
+        ],
+        "filename": "emacs/MULE-sisheng.map",
+        "format": "txt",
+        "notes": "multilingual emacs"
+    },
+    "mule-is13194": {
+        "aliases": [
+            "mule-iscii"
+        ],
+        "filename": "emacs/MULE-is13194.map",
+        "format": "txt",
+        "notes": "multilingual emacs"
+    },
+    "mule-tibetan": {
+        "filename": "emacs/MULE-tibetan.map",
+        "format": "txt",
+        "notes": "multilingual emacs"
+    },
+    "mule-lviscii": {
+        "aliases": [
+            "viscii-lower"
+        ],
+        "filename": "emacs/MULE-lviscii.map",
+        "format": "txt",
+        "notes": "multilingual emacs"
+    },
+    "mule-uviscii": {
+        "aliases": [
+            "viscii-upper"
+        ],
+        "filename": "emacs/MULE-uviscii.map",
+        "format": "txt",
+        "notes": "multilingual emacs"
+    },
+    "coleco-adam-os7": {
+        "aliases": [
+            "adam-os7"
+        ],
+        "filename": "kreativekorp/ADAMOS7.TXT"
+    },
+    "coleco-adam-smartwriter": {
+        "aliases": [
+            "adam-smartwriter"
+        ],
+        "filename": "kreativekorp/ADAMSWTR.TXT"
+    },
+    "amstrad-cpc": {
+        "filename": "kreativekorp/AMSCPC.TXT"
+    },
+    "amstrad-cpm-plus": {
+        "aliases": [
+            "amstrad-pcw",
+            "zx-spectrum-plus3",
+            "zx-spectrum-3plus"
+        ],
+        "filename": "kreativekorp/AMSCPM.TXT"
+    },
+    "apple-ii": {
+        "aliases": [
+            "apple-ii-primary",
+            "apple-ii-0"
+        ],
+        "filename": "kreativekorp/APL2PRIM.TXT"
+    },
+    "apple-ii-alternate-1": {
+        "aliases": [
+            "apple-ii-1"
+        ],
+        "filename": "kreativekorp/APL2ALT1.TXT"
+    },
+    "apple-ii-alternate-2": {
+        "aliases": [
+            "apple-ii-2"
+        ],
+        "filename": "kreativekorp/APL2ALT2.TXT"
+    },
+    "apple-ii-chr": {
+        "filename": "kreativekorp/APL2ICHG.TXT"
+    },
+    "atascii": {
+        "filename": "kreativekorp/ATARI8VG.TXT"
+    },
+    "atascii-chr": {
+        "filename": "kreativekorp/ATARI8IG.TXT"
+    },
+    "atascii-international": {
+        "filename": "kreativekorp/ATARI8VI.TXT"
+    },
+    "atascii-international-chr": {
+        "filename": "kreativekorp/ATARI8II.TXT"
+    },
+    "atari-st": {
+        "filename": "kreativekorp/ATARISTV.TXT"
+    },
+    "trs80-coco-sg4-chr": {
+        "aliases": [
+            "coco-sg4-chr"
+        ],
+        "filename": "kreativekorp/COCOICHG.TXT"
+    },
+    "trs80-coco-sg4": {
+        "aliases": [
+            "coco-sg4",
+            "coco-semigraphics-4"
+        ],
+        "filename": "kreativekorp/COCOSGR4.TXT"
+    },
+    "trs80-coco-sg6": {
+        "aliases": [
+            "coco-sg6",
+            "coco-semigraphics-6"
+        ],
+        "filename": "kreativekorp/COCOSGR6.TXT"
+    },
+    "pet": {
+        "aliases": [
+            "pet-primary",
+            "pet-0"
+        ],
+        "filename": "kreativekorp/CPETVPRI.TXT"
+    },
+    "pet-alternate": {
+        "aliases": [
+            "pet-alt",
+            "pet-1"
+        ],
+        "filename": "kreativekorp/CPETVALT.TXT"
+    },
+    "pet-chr": {
+        "aliases": [
+            "pet-primary-chr",
+            "pet-0-chr"
+        ],
+        "filename": "kreativekorp/CPETIPRI.TXT"
+    },
+    "pet-alternate-chr": {
+        "aliases": [
+            "pet-alt-chr",
+            "pet-1-chr"
+        ],
+        "filename": "kreativekorp/CPETIALT.TXT"
+    },
+    "vic-20": {
+        "aliases": [
+            "vic",
+            "vic-primary",
+            "vic-0"
+        ],
+        "filename": "kreativekorp/CVICVPRI.TXT"
+    },
+    "vic-20-alternate": {
+        "aliases": [
+            "vic-alt",
+            "vic-1"
+        ],
+        "filename": "kreativekorp/CVICVALT.TXT"
+    },
+    "vic-20-chr": {
+        "aliases": [
+            "vic-chr",
+            "vic-primary-chr",
+            "vic-0-chr"
+        ],
+        "filename": "kreativekorp/CVICIPRI.TXT"
+    },
+    "vic-20-alternate-chr": {
+        "aliases": [
+            "vic-alt-chr",
+            "vic-1-chr"
+        ],
+        "filename": "kreativekorp/CVICIALT.TXT"
+    },
+    "c64": {
+        "aliases": [
+            "c64-primary",
+            "c64-0"
+        ],
+        "filename": "kreativekorp/C64VPRI.TXT"
+    },
+    "c64-alternate": {
+        "aliases": [
+            "c64-alt",
+            "c64-1"
+        ],
+        "filename": "kreativekorp/C64VALT.TXT"
+    },
+    "c64-chr": {
+        "aliases": [
+            "c64-primary-chr",
+            "c64-0-chr"
+        ],
+        "filename": "kreativekorp/C64IPRI.TXT"
+    },
+    "c64-alternate-chr": {
+        "aliases": [
+            "c64-alt-chr",
+            "c64-1-chr"
+        ],
+        "filename": "kreativekorp/C64IALT.TXT"
+    },
+    "minitel-g0": {
+        "aliases": [
+            "minitel-g2"
+        ],
+        "filename": "kreativekorp/MINITLG0.TXT"
+    },
+    "minitel-g1": {
+        "filename": "kreativekorp/MINITLG1.TXT"
+    },
+    "msx-international": {
+        "aliases": [
+            "msx"
+        ],
+        "filename": "kreativekorp/MSX.TXT"
+    },
+    "tangerine-oric-g0": {
+        "aliases": [
+            "oric-g0"
+        ],
+        "filename": "kreativekorp/ORICG0.TXT"
+    },
+    "tangerine-oric-g1": {
+        "aliases": [
+            "oric-g1"
+        ],
+        "filename": "kreativekorp/ORICG1.TXT"
+    },
+    "risc-os": {
+        "aliases": [
+            "acorn-risc-os",
+            "risc-os-latin1"
+        ],
+        "filename": "kreativekorp/RISCOSV.TXT"
+    },
+    "bbc-master": {
+        "aliases": [
+            "risc-os-bfont"
+        ],
+        "filename": "kreativekorp/RISCOSB.TXT"
+    },
+    "risc-os-eff": {
+        "filename": "kreativekorp/RISCEFF.TXT"
+    },
+    "sinclair-ql": {
+        "filename": "kreativekorp/SINCLRQL.TXT"
+    },
+    "teletext-g0": {
+        "aliases": [
+            "teletext"
+        ],
+        "filename": "kreativekorp/TELTXTG0.TXT"
+    },
+    "teletext-g1": {
+        "filename": "kreativekorp/TELTXTG1.TXT"
+    },
+    "teletext-g2": {
+        "filename": "kreativekorp/TELTXTG2.TXT"
+    },
+    "teletext-g3": {
+        "filename": "kreativekorp/TELTXTG3.TXT"
+    },
+    "ti-99-4a": {
+        "filename": "kreativekorp/TI994A.TXT"
+    },
+    "trs-80": {
+        "aliases": [
+            "trs-80-model1"
+        ],
+        "filename": "kreativekorp/TRSM1ORG.TXT"
+    },
+    "trs-80-revised": {
+        "aliases": [
+            "trs-80-model1-revised"
+        ],
+        "filename": "kreativekorp/TRSM1REV.TXT"
+    },
+    "trs-80-chr": {
+        "aliases": [
+            "trs-80-model1-chr"
+        ],
+        "filename": "kreativekorp/TRSM1ICH.TXT"
+    },
+    "trs-80-model3": {
+        "filename": "kreativekorp/TRSM3VIN.TXT"
+    },
+    "trs-80-model3-jp": {
+        "aliases": [
+            "trs-80-model3-katakana"
+        ],
+        "filename": "kreativekorp/TRSM3VJP.TXT"
+    },
+    "trs-80-model3-reverse": {
+        "filename": "kreativekorp/TRSM3VRV.TXT"
+    },
+    "trs-80-model4a": {
+        "aliases": [
+            "trs-80-model4a-primary",
+            "trs-80-model4a-0"
+        ],
+        "filename": "kreativekorp/TRSM4AVP.TXT"
+    },
+    "trs-80-model4a-alternate": {
+        "aliases": [
+            "trs-80-model4a-1"
+        ],
+        "filename": "kreativekorp/TRSM4AVA.TXT"
+    },
+    "trs-80-model4a-reverse": {
+        "filename": "kreativekorp/TRSM4AVR.TXT"
+    },
+    "zx80": {
+        "filename": "kreativekorp/ZX80.TXT"
+    },
+    "zx81": {
+        "filename": "kreativekorp/ZX81.TXT"
+    },
+    "zx-spectrum": {
+        "filename": "kreativekorp/ZXSPCTRM.TXT"
+    },
+    "zx-spectrum-desktop": {
+        "filename": "kreativekorp/ZXDESKTP.TXT"
+    },
+    "fzx-latin1": {
+        "filename": "kreativekorp/ZXFZXLT1.TXT"
+    },
+    "fzx-latin5": {
+        "filename": "kreativekorp/ZXFZXLT5.TXT"
+    },
+    "fzx-koi8": {
+        "filename": "kreativekorp/ZXFZXKOI.TXT"
+    },
+    "fzx-cp1252": {
+        "filename": "kreativekorp/ZXFZXSLT.TXT"
+    },
+    "windows-linedraw": {
+        "filename": "microsoft/PC/CP437.TXT",
+        "range": "0xb0-0xdf"
+    },
+    "hp-48": {
+        "aliases": [
+            "hp-rpl"
+        ],
+        "filename": "manual/hp48.txt"
+    },
+    "iso-2047": {
+        "filename": "manual/iso2047.txt",
+        "notes": "outdated C0 control symbols"
+    },
+    "control-pictures": {
+        "filename": "manual/c0-pictures.txt",
+        "notes": "unicode C0 control symbols"
+    },
+    "big5-eten": {
+        "aliases": [
+            "eten"
+        ],
+        "filename": "moztw/eten.txt"
+    },
+    "big5": {
+        "filename": "moztw/big5_2003-b2u.txt"
+    },
+    "adobe-standard": {
+        "filename": "adobe/stdenc.txt",
+        "format": "adobe"
+    },
+    "adobe-symbol": {
+        "filename": "adobe/symbol.txt",
+        "format": "adobe"
+    },
+    "adobe-dingbats": {
+        "filename": "adobe/zdingbat.txt",
+        "format": "adobe"
+    },
+    "iso646-ca": {
+        "aliases": [
+            "iso-ir-121",
+            "csa7-1"
+        ],
+        "filename": "dkuug/iso646-ca",
+        "format": "ucm"
+    },
+    "iso646-ca2": {
+        "aliases": [
+            "iso-ir-122",
+            "csa7-2"
+        ],
+        "filename": "dkuug/iso646-ca2",
+        "format": "ucm"
+    },
+    "iso646-cn": {
+        "aliases": [
+            "iso-ir-57",
+            "gbt-1988-80"
+        ],
+        "filename": "dkuug/iso646-cn",
+        "format": "ucm"
+    },
+    "iso646-de": {
+        "aliases": [
+            "iso-ir-21",
+            "din-66003"
+        ],
+        "filename": "dkuug/iso646-de",
+        "format": "ucm"
+    },
+    "iso646-dk": {
+        "aliases": [
+            "ds-2089"
+        ],
+        "filename": "dkuug/iso646-dk",
+        "format": "ucm"
+    },
+    "iso646-es": {
+        "aliases": [
+            "iso-ir-17"
+        ],
+        "filename": "dkuug/iso646-es",
+        "format": "ucm"
+    },
+    "iso646-es2": {
+        "aliases": [
+            "iso-ir-85"
+        ],
+        "filename": "dkuug/iso646-es2",
+        "format": "ucm"
+    },
+    "iso646-fr": {
+        "aliases": [
+            "iso-ir-69"
+        ],
+        "filename": "dkuug/iso646-fr",
+        "format": "ucm"
+    },
+    "iso646-gb": {
+        "aliases": [
+            "iso-ir-4",
+            "bs-4730"
+        ],
+        "filename": "dkuug/iso646-gb",
+        "format": "ucm"
+    },
+    "iso646-hu": {
+        "aliases": [
+            "iso-ir-86",
+            "msz7795-3"
+        ],
+        "filename": "dkuug/iso646-hu",
+        "format": "ucm"
+    },
+    "iso646-it": {
+        "aliases": [
+            "iso-ir-15",
+            "uni-0204-70"
+        ],
+        "filename": "dkuug/iso646-it",
+        "format": "ucm"
+    },
+    "iso646-jp": {
+        "aliases": [
+            "iso-ir-14",
+            "jiscii",
+            "jis-roman",
+            "ibm-895"
+        ],
+        "filename": "dkuug/iso646-jp",
+        "format": "ucm"
+    },
+    "iso646-kr": {
+        "filename": "dkuug/iso646-kr",
+        "format": "ucm"
+    },
+    "iso646-yu": {
+        "aliases": [
+            "iso-ir-141",
+            "yuscii-latin",
+            "croscii",
+            "sloscii",
+            "jus-i.b1.002"
+        ],
+        "filename": "dkuug/iso646-yu",
+        "format": "ucm"
+    },
+    "jis-x0201": {
+        "aliases": [
+            "jis-c-6220"
+        ],
+        "filename": "dkuug/jis_x0201",
+        "format": "ucm"
+    },
+    "x0201-7": {
+        "aliases": [
+            "iso-ir-13"
+        ],
+        "filename": "dkuug/x0201-7",
+        "format": "ucm"
+    },
+    "ruscii": {
+        "aliases": [
+            "ibm-1125",
+            "cp866u",
+            "cp866nav"
+        ],
+        "filename": "icu/ibm-1125_P100-1997.ucm",
+        "overlays": [
+            "ibmgraph"
+        ]
+    },
+    "cp720": {
+        "aliases": [
+            "ibm-720",
+            "transparent-asmo"
+        ],
+        "filename": "icu/ibm-720_P100-1997.ucm",
+        "overlays": [
+            "ibmgraph"
+        ]
+    },
+    "cp858": {
+        "aliases": [
+            "ibm-858",
+            "cp850-euro"
+        ],
+        "filename": "icu/ibm-858_P100-1997.ucm",
+        "overlays": [
+            "ibmgraph"
+        ]
+    },
+    "cp868": {
+        "aliases": [
+            "ibm-868",
+            "cp-ar",
+            "dos-urdu"
+        ],
+        "filename": "icu/ibm-868_P100-1995.ucm",
+        "overlays": [
+            "ibmgraph"
+        ]
+    },
+    "cp851": {
+        "aliases": [
+            "ibm-851",
+            "oem-851"
+        ],
+        "filename": "icu/ibm-851_P100-1995.ucm",
+        "overlays": [
+            "ibmgraph"
+        ]
+    },
+    "windows-936": {
+        "aliases": [
+            "ibm-1386",
+            "windows-gb2312",
+            "windows-gbk",
+            "gbk",
+            "gbk-0"
+        ],
+        "filename": "icu/windows-936-2000.ucm",
+        "notes": "glibc and many others use gbk as an alias of windows-936, though it's complicated"
+    },
+    "big5-hkscs": {
+        "aliases": [
+            "ibm-1375",
+            "big5hk",
+            "big5hkscs-0"
+        ],
+        "filename": "icu/ibm-1375_P100-2008.ucm"
+    },
+    "cp806": {
+        "aliases": [
+            "ibm-806",
+            "ibm-iscii-devanagari"
+        ],
+        "filename": "icu/ibm-806_P100-1998.ucm",
+        "overlays": [
+            "ibmgraph"
+        ]
+    },
+    "windows-1361": {
+        "aliases": [
+            "johab",
+            "ksc5601-1992-3"
+        ],
+        "filename": "icu/windows-1361-2000.ucm",
+        "notes": "Unix/BDF call the Johab encoding ksc5601.1992-3 but it's Annex 3, i.e. not the main form of ks-c-5601"
+    },
+    "ks-c-5601": {
+        "aliases": [
+            "ksc5601-1987",
+            "ksc5601-1992",
+            "ksc5601-1992-0",
+            "wansung"
+        ],
+        "filename": "icu/aix-KSC5601.1987_0-4.3.6.ucm"
+    },
+    "ibm-932": {
+        "filename": "icu/ibm-932_P120-1999.ucm",
+        "notes": "P12A variant has backslash, tilde; P120 has Yen, overline"
+    },
+    "cns-11643": {
+        "aliases": [
+            "csic"
+        ],
+        "filename": "icu/cns-11643-1992.ucm",
+        "Notes": "CNS11643 - note that this has plane 15 (2007 standard) encoded as plane 9. Planes 10-14 (2007) are not included."
+    },
+    "cp891": {
+        "aliases": [
+            "ibm-891"
+        ],
+        "filename": "ibm-cdra/037B34B0.UPMAP100",
+        "format": "ucm",
+        "notes": "SBCS range of ibm-926"
+    },
+    "cp926": {
+        "aliases": [
+            "ibm-926",
+            "cp934",
+            "ibm-934"
+        ],
+        "filename": "ibm-cdra/039E44B0.UPMAP101",
+        "format": "ucm",
+        "overlays": [
+            "ibm-891"
+        ]
+    },
+    "cp904": {
+        "aliases": [
+            "ibm-904"
+        ],
+        "filename": "ibm-cdra/038834B0.UPMAP100",
+        "format": "ucm",
+        "notes": "SBCS range of ibm-927"
+    },
+    "cp927": {
+        "aliases": [
+            "ibm-927",
+            "cp938",
+            "ibm-938"
+        ],
+        "filename": "ibm-cdra/039F34B0.UPMAP100",
+        "format": "ucm",
+        "overlays": [
+            "ibm-904"
+        ]
+    },
+    "dos-russian-support-3": {
+        "aliases": [
+            "rs3",
+            "russup3"
+        ],
+        "filename": "manual/russup3.ucp",
+        "overlays": [
+            "ascii",
+            "ibmgraph"
+        ]
+    },
+    "dos-russian-support-4-academic": {
+        "aliases": [
+            "rs4ac",
+            "russup4ac"
+        ],
+        "filename": "manual/russup4ac.ucp",
+        "overlays": [
+            "ascii",
+            "ibmgraph"
+        ]
+    },
+    "dos-russian-support-4": {
+        "aliases": [
+            "rs4",
+            "russup4na"
+        ],
+        "filename": "manual/russup4na.ucp",
+        "overlays": [
+            "ascii",
+            "ibmgraph"
+        ]
+    },
+    "dec-vt100": {
+        "aliases": [
+            "vt-100"
+        ],
+        "filename": "manual/dec-vt100.ucp",
+        "overlays": [
+            "ascii"
+        ]
+    },
+    "mazovia": {
+        "aliases": [
+            "cp667",
+            "cp790",
+            "cp991"
+        ],
+        "filename": "wikipedia/mazovia.html",
+        "overlays": [
+            "ascii",
+            "ibmgraph"
+        ]
+    },
+    "kamenicky": {
+        "aliases": [
+            "kamenick\u00fd",
+            "nec-867",
+            "keybcs2",
+            "dos-895"
+        ],
+        "filename": "wikipedia/kamenicky.html",
+        "overlays": [
+            "ascii",
+            "ibmgraph"
+        ]
+    },
+    "cwi-2": {
+        "aliases": [
+            "cwi",
+            "cp-hu",
+            "hucwi",
+            "hu8cwi2"
+        ],
+        "filename": "wikipedia/cwi2.html",
+        "overlays": [
+            "ascii",
+            "ibmgraph"
+        ]
+    },
+    "pascii": {
+        "filename": "wikipedia/pascii.html"
+    },
+    "cp853": {
+        "aliases": [
+            "ibm-853"
+        ],
+        "filename": "wikipedia/cp853.html",
+        "overlays": [
+            "ascii",
+            "ibmgraph"
+        ]
+    },
+    "brascii": {
+        "aliases": [
+            "abnt",
+            "star-3847"
+        ],
+        "filename": "wikipedia/brascii.html"
+    },
+    "abicomp": {
+        "aliases": [
+            "star-3848"
+        ],
+        "filename": "wikipedia/abicomp.html"
+    },
+    "dec-special": {
+        "aliases": [
+            "ibm-1090"
+        ],
+        "filename": "wikipedia/dec-special.html",
+        "notes": "this should be overlaid on ascii"
+    },
+    "dec-technical": {
+        "aliases": [
+            "dec-tcs",
+            "tcs"
+        ],
+        "filename": "wikipedia/dec-technical.html"
+    },
+    "lotus-international": {
+        "aliases": [
+            "lics"
+        ],
+        "filename": "wikipedia/lics.html"
+    },
+    "ventura-international": {
+        "aliases": [
+            "ventura"
+        ],
+        "filename": "wikipedia/ventura.html"
+    },
+    "wingdings": {
+        "aliases": [
+            "windows-wingdings"
+        ],
+        "filename": "wikipedia/wingdings.html"
+    },
+    "gem": {
+        "filename": "wikipedia/gem.html"
+    },
+    "wiscii": {
+        "aliases": [
+            "wang"
+        ],
+        "filename": "wikipedia/wiscii.html"
+    },
+    "mattel-aquarius": {
+        "filename": "wikipedia/mattel-aquarius.html"
+    },
+    "viscii": {
+        "aliases": [
+            "viscii1.1-1"
+        ],
+        "filename": "vietstd/viscii1.1.txt",
+        "kwargs": {
+            "codepoint_column": 0,
+            "unicode_column": 2,
+            "codepoint_base": 10
+        },
+        "overlays": [
+            "ascii"
+        ]
+    },
+    "jisx0208": {
+        "filename": "misc/JIS0208.TXT",
+        "kwargs": {
+            "codepoint_column": 1,
+            "unicode_column": 2
+        }
+    },
+    "ibm-ugl": {
+        "filename": "misc/ibm-ugl.txt",
+        "kwargs": {
+            "codepoint_column": 0,
+            "unicode_column": 3,
+            "comment": ";",
+            "codepoint_base": 10,
+            "inline_comments": false,
+            "ignore_errors": true
+        }
+    },
+    "windows-1252-c1": {
+        "filename": "microsoft/WINDOWS/CP1252.TXT",
+        "range": "0x80-0x9f",
+        "notes": "C1 range of windows-1252"
+    },
+    "ibm-1004": {
+        "aliases": [
+            "os2-1004",
+            "windows-extended"
+        ],
+        "filename": "wikipedia/windows-1252.html",
+        "kwargs": {
+            "table": 1
+        },
+        "range": "0-0x1f",
+        "overlays": [
+            "latin-1-glyphs",
+            "windows-1252-c1"
+        ],
+        "notes": "the name notwithstanding, an OS/2 codepage"
+    },
+    "windows-1252-msdos": {
+        "filename": "wikipedia/windows-1252.html",
+        "kwargs": {
+            "table": 2
+        },
+        "overlays": [
+            "latin-1-glyphs",
+            "windows-1252-c1"
+        ]
+    },
+    "palm-os": {
+        "filename": "wikipedia/windows-1252.html",
+        "kwargs": {
+            "table": 3
+        },
+        "overlays": [
+            "latin-1-glyphs",
+            "c0-controls"
+        ]
+    },
+    "pcl-ventura-international": {
+        "aliases": [
+            "pcl-ventura"
+        ],
+        "filename": "wikipedia/ventura.html",
+        "kwargs": {
+            "table": 1
+        }
+    },
+    "dashen": {
+        "filename": "misc/dashen-map.txt",
+        "kwargs": {
+            "unicode_column": 1,
+            "codepoint_column": 2,
+            "separator": "\t"
+        }
+    },
+    "freedos-30032": {
+        "filename": "freedos/30032.ucp"
+    },
+    "freedos-863": {
+        "filename": "freedos/863.ucp"
+    },
+    "freedos-771": {
+        "filename": "freedos/771.ucp"
+    },
+    "freedos-1125": {
+        "filename": "freedos/1125.ucp"
+    },
+    "freedos-872": {
+        "filename": "freedos/872.ucp"
+    },
+    "freedos-865": {
+        "filename": "freedos/865.ucp"
+    },
+    "freedos-774": {
+        "filename": "freedos/774.ucp"
+    },
+    "freedos-30014": {
+        "filename": "freedos/30014.ucp"
+    },
+    "freedos-849": {
+        "filename": "freedos/849.ucp"
+    },
+    "freedos-862": {
+        "filename": "freedos/862.ucp"
+    },
+    "freedos-30031": {
+        "filename": "freedos/30031.ucp"
+    },
+    "freedos-58152": {
+        "filename": "freedos/58152.ucp"
+    },
+    "freedos-778": {
+        "filename": "freedos/778.ucp"
+    },
+    "freedos-30000": {
+        "filename": "freedos/30000.ucp"
+    },
+    "freedos-30012": {
+        "filename": "freedos/30012.ucp"
+    },
+    "freedos-3012": {
+        "filename": "freedos/3012.ucp"
+    },
+    "freedos-1119": {
+        "filename": "freedos/1119.ucp"
+    },
+    "freedos-60853": {
+        "filename": "freedos/60853.ucp"
+    },
+    "freedos-30040": {
+        "filename": "freedos/30040.ucp"
+    },
+    "freedos-3021": {
+        "filename": "freedos/3021.ucp"
+    },
+    "freedos-30018": {
+        "filename": "freedos/30018.ucp"
+    },
+    "freedos-808": {
+        "filename": "freedos/808.ucp"
+    },
+    "freedos-1118": {
+        "filename": "freedos/1118.ucp"
+    },
+    "freedos-3846": {
+        "filename": "freedos/3846.ucp"
+    },
+    "freedos-30023": {
+        "filename": "freedos/30023.ucp"
+    },
+    "freedos-857": {
+        "filename": "freedos/857.ucp"
+    },
+    "freedos-30010": {
+        "filename": "freedos/30010.ucp"
+    },
+    "freedos-859": {
+        "filename": "freedos/859.ucp"
+    },
+    "freedos-30001": {
+        "filename": "freedos/30001.ucp"
+    },
+    "freedos-667": {
+        "filename": "freedos/667.ucp"
+    },
+    "freedos-850": {
+        "filename": "freedos/850.ucp"
+    },
+    "freedos-3845": {
+        "filename": "freedos/3845.ucp"
+    },
+    "freedos-30015": {
+        "filename": "freedos/30015.ucp"
+    },
+    "freedos-30019": {
+        "filename": "freedos/30019.ucp"
+    },
+    "freedos-772": {
+        "filename": "freedos/772.ucp"
+    },
+    "freedos-30024": {
+        "filename": "freedos/30024.ucp"
+    },
+    "freedos-860": {
+        "filename": "freedos/860.ucp"
+    },
+    "freedos-58210": {
+        "filename": "freedos/58210.ucp"
+    },
+    "freedos-848": {
+        "filename": "freedos/848.ucp"
+    },
+    "freedos-30016": {
+        "filename": "freedos/30016.ucp"
+    },
+    "freedos-777": {
+        "filename": "freedos/777.ucp"
+    },
+    "freedos-30009": {
+        "filename": "freedos/30009.ucp"
+    },
+    "freedos-668": {
+        "filename": "freedos/668.ucp"
+    },
+    "freedos-867": {
+        "filename": "freedos/867.ucp"
+    },
+    "freedos-30017": {
+        "filename": "freedos/30017.ucp"
+    },
+    "freedos-858": {
+        "filename": "freedos/858.ucp"
+    },
+    "freedos-737": {
+        "filename": "freedos/737.ucp"
+    },
+    "freedos-57781": {
+        "filename": "freedos/57781.ucp"
+    },
+    "freedos-30013": {
+        "filename": "freedos/30013.ucp"
+    },
+    "freedos-30025": {
+        "filename": "freedos/30025.ucp"
+    },
+    "freedos-30034": {
+        "filename": "freedos/30034.ucp"
+    },
+    "freedos-30005": {
+        "filename": "freedos/30005.ucp"
+    },
+    "freedos-30029": {
+        "filename": "freedos/30029.ucp"
+    },
+    "freedos-3848": {
+        "filename": "freedos/3848.ucp"
+    },
+    "freedos-30011": {
+        "filename": "freedos/30011.ucp"
+    },
+    "freedos-30039": {
+        "filename": "freedos/30039.ucp"
+    },
+    "freedos-30006": {
+        "filename": "freedos/30006.ucp"
+    },
+    "freedos-775": {
+        "filename": "freedos/775.ucp"
+    },
+    "freedos-30007": {
+        "filename": "freedos/30007.ucp"
+    },
+    "freedos-30028": {
+        "filename": "freedos/30028.ucp"
+    },
+    "freedos-856": {
+        "filename": "freedos/856.ucp"
+    },
+    "freedos-30030": {
+        "filename": "freedos/30030.ucp"
+    },
+    "freedos-864": {
+        "filename": "freedos/864.ucp"
+    },
+    "freedos-30020": {
+        "filename": "freedos/30020.ucp"
+    },
+    "freedos-61282": {
+        "filename": "freedos/61282.ucp"
+    },
+    "freedos-852": {
+        "filename": "freedos/852.ucp"
+    },
+    "freedos-869": {
+        "filename": "freedos/869.ucp"
+    },
+    "freedos-437": {
+        "filename": "freedos/437.ucp"
+    },
+    "freedos-59829": {
+        "filename": "freedos/59829.ucp"
+    },
+    "freedos-30003": {
+        "filename": "freedos/30003.ucp"
+    },
+    "freedos-991": {
+        "filename": "freedos/991.ucp"
+    },
+    "freedos-895": {
+        "filename": "freedos/895.ucp"
+    },
+    "freedos-1131": {
+        "filename": "freedos/1131.ucp"
+    },
+    "freedos-60258": {
+        "filename": "freedos/60258.ucp"
+    },
+    "freedos-30002": {
+        "filename": "freedos/30002.ucp"
+    },
+    "freedos-853": {
+        "filename": "freedos/853.ucp"
+    },
+    "freedos-1116": {
+        "filename": "freedos/1116.ucp"
+    },
+    "freedos-866": {
+        "filename": "freedos/866.ucp"
+    },
+    "freedos-855": {
+        "filename": "freedos/855.ucp"
+    },
+    "freedos-30004": {
+        "filename": "freedos/30004.ucp"
+    },
+    "freedos-30021": {
+        "filename": "freedos/30021.ucp"
+    },
+    "freedos-30026": {
+        "filename": "freedos/30026.ucp"
+    },
+    "freedos-1117": {
+        "filename": "freedos/1117.ucp"
+    },
+    "freedos-770": {
+        "filename": "freedos/770.ucp"
+    },
+    "freedos-30033": {
+        "filename": "freedos/30033.ucp"
+    },
+    "freedos-113": {
+        "filename": "freedos/113.ucp"
+    },
+    "freedos-59234": {
+        "filename": "freedos/59234.ucp"
+    },
+    "freedos-30027": {
+        "filename": "freedos/30027.ucp"
+    },
+    "freedos-861": {
+        "filename": "freedos/861.ucp"
+    },
+    "freedos-773": {
+        "filename": "freedos/773.ucp"
+    },
+    "freedos-851": {
+        "filename": "freedos/851.ucp"
+    },
+    "freedos-899": {
+        "filename": "freedos/899.ucp"
+    },
+    "freedos-30008": {
+        "filename": "freedos/30008.ucp"
+    },
+    "freedos-62306": {
+        "filename": "freedos/62306.ucp"
+    },
+    "freedos-790": {
+        "filename": "freedos/790.ucp"
+    },
+    "freedos-30022": {
+        "filename": "freedos/30022.ucp"
+    },
+    "freedos-58335": {
+        "filename": "freedos/58335.ucp"
+    }
+}

@@ -1,0 +1,8 @@
+# MS-DOS Korean
+# IBM-934 = IBM-891 (sbcs) + IBM-926 (dbcs)
+# https://web.archive.org/web/20101210051426/http://www-01.ibm.com/software/globalization/ccsid/ccsid934.html
+
+# MS-DOS Traditional Chinese
+# IBM-938 = IBM-904 (sbcs) + IBM-927 (dbcs)
+# https://web.archive.org/web/20141202002059/http://www-01.ibm.com/software/globalization/ccsid/ccsid938.html
+# "CCSID 948 is a superset of this CCSID."

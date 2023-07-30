@@ -14,8 +14,7 @@ from .font import Font, operations as _operations
 from .glyph import Glyph
 from .storage import load, save, loaders, savers
 from .magic import FileFormatError
-from .encoding import charmaps, encoder
-from .taggers import tagmaps
+from .encoding import encoder, encodings
 from .renderer import render
 from .chart import chart
 from .labels import Char, Codepoint, Tag

@@ -19,7 +19,7 @@ except ImportError:
     Image = None
 
 from ..basetypes import Coord, Bounds
-from ..encoding import charmaps
+from ..encoding import encodings
 from .. import streams
 from ..magic import FileFormatError
 from ..binary import int_to_bytes, bytes_to_int, ceildiv
@@ -679,7 +679,7 @@ def _create_bmfont(
     """Create a bmfont package."""
     # ensure codepoint/char values are set as appropriate
     encoding = font.encoding
-    if not charmaps.is_unicode(encoding):
+    if not encodings.is_unicode(encoding):
         font = font.label(codepoint_from=encoding)
     else:
         font = font.label(char_from=encoding)
@@ -763,7 +763,7 @@ def _convert_to_bmfont(
     # save images; create page table
     props['pages'] = pages
     # info section
-    if not charmaps.is_unicode(font.encoding):
+    if not encodings.is_unicode(font.encoding):
         # if encoding is unknown, call it OEM
         charset = _CHARSET_STR_REVERSE_MAP.get(
             font.encoding, _CHARSET_STR_REVERSE_MAP['']
@@ -786,7 +786,7 @@ def _convert_to_bmfont(
         'bold': font.weight == 'bold',
         'italic': font.slant in ('italic', 'oblique'),
         'charset': charset,
-        'unicode': charmaps.is_unicode(font.encoding),
+        'unicode': encodings.is_unicode(font.encoding),
         'stretchH': 100,
         'smooth': False,
         'aa': 1,
@@ -843,7 +843,7 @@ def _convert_to_bmfont(
 
 
 def _glyph_id(glyph, encoding):
-    if charmaps.is_unicode(encoding):
+    if encodings.is_unicode(encoding):
         char = glyph.char
         if len(char) > 1:
             logging.warning(
