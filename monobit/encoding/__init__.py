@@ -9,10 +9,10 @@ from pathlib import Path
 
 from .base import NotFoundError, EncodingName
 from .registry import EncodingRegistry
-from .charmaps import Charmap, Unicode, CharmapLoader
+from .charmaps import Charmap, Unicode, EncoderLoader
 from .base import Encoder
 from .indexers import Indexer
-from .taggers import Tagmap, LoadableTagmap
+from .taggers import Tagmap
 from .definitions import encodings
 from ..labels import to_labels
 
@@ -39,8 +39,6 @@ def encoder(initialiser):
     try:
         if format == 'tbl':
             return Indexer.load(filename)
-        if format == 'tagmap':
-            return LoadableTagmap(filename)
-        return CharmapLoader(filename, format=format)()
+        return EncoderLoader(filename, format=format)()
     except (EnvironmentError, NotFoundError):
         return None

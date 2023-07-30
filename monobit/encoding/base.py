@@ -91,3 +91,42 @@ class Encoder:
     def __repr__(self):
         """Representation."""
         return f"{type(self).__name__}(name='{self.name}')"
+
+
+class EncoderBuilder:
+    """Callable returning an Encoder and allowing for lazy composition."""
+
+    def __init__(self, callable):
+        self._callable = callable
+
+    def __call__(self):
+        return self._callable()
+
+    # delayed operations
+
+    def __or__(self, other):
+        """Return encoding overlaid with all characters defined in right-hand side."""
+        if isinstance(other, Encoder):
+            def delayed_or():
+                return self() | other
+        else:
+            def delayed_or():
+                return self() | other()
+        return EncoderBuilder(delayed_or)
+
+    def subset(self, codepoint_range):
+        """Return encoding only for given range of codepoints."""
+        def delayed_subset():
+            return self().subset(codepoint_range)
+        return EncoderBuilder(delayed_subset)
+
+
+# registry of charmap/tagmap file format readers
+encoding_readers = {}
+
+def register_reader(format, **default_kwargs):
+    """Decorator to register charmap reader."""
+    def decorator(reader):
+        encoding_readers[format] = (reader, default_kwargs)
+        return reader
+    return decorator

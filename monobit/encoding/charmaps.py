@@ -10,13 +10,15 @@ import unicodedata
 from pathlib import Path
 from html.parser import HTMLParser
 from importlib.resources import files
-from functools import cached_property
+from functools import cached_property, wraps, partial
 
 from ..binary import align, int_to_bytes
 from ..properties import reverse_dict
 from ..labels import Codepoint, Char, to_label, to_range
 from ..unicode import is_printable, is_fullwidth, unicode_name
-from .base import Encoder, NotFoundError
+from .base import (
+    Encoder, EncoderBuilder, NotFoundError, register_reader, encoding_readers
+)
 from . import tables
 
 
@@ -212,36 +214,8 @@ class Charmap(BaseCharmap):
         self._ord2chr = {**mapping}
 
 
-class EncoderBuilder:
-
-    def __init__(self, callable):
-        self._callable = callable
-
-    def __call__(self):
-        return self._callable()
-
-    # delayed operations
-
-    def __or__(self, other):
-        """Return encoding overlaid with all characters defined in right-hand side."""
-        if isinstance(other, Encoder):
-            def delayed_or():
-                return self() | other
-        else:
-            def delayed_or():
-                return self() | other()
-        return EncoderBuilder(delayed_or)
-
-    def subset(self, codepoint_range):
-        """Return encoding only for given range of codepoints."""
-        def delayed_subset():
-            return self().subset(codepoint_range)
-        return EncoderBuilder(delayed_subset)
-
-
-
-class CharmapLoader(EncoderBuilder):
-    """Lazily create new charmap from file."""
+class EncoderLoader(EncoderBuilder):
+    """Lazily create new encoder from file."""
 
     def __init__(self, filename, *, format=None, name='', **kwargs):
         if not name:
@@ -257,35 +231,31 @@ class CharmapLoader(EncoderBuilder):
             raise NotFoundError(f'Charmap file `{filename}` does not exist')
         format = format or path.suffix[1:].lower()
         try:
-            reader, format_kwargs = charmap_readers[format]
+            reader, format_kwargs = encoding_readers[format]
         except KeyError as exc:
             raise NotFoundError(f'Undefined charmap file format {format}.') from exc
-
-        def _load():
-            try:
-                data = path.read_bytes()
-            except EnvironmentError as exc:
-                raise NotFoundError(f'Could not load charmap file `{str(path)}`: {exc}')
-            if not data:
-                raise NotFoundError(f'No data in charmap file `{str(path)}`')
-            mapping = reader(data, **format_kwargs, **kwargs)
-            return Charmap(mapping, name=name)
-
-        super().__init__(_load)
+        super().__init__(partial(reader, name, path, **format_kwargs, **kwargs))
 
 
 ###############################################################################
 # charmap loaders
 
-# registry of charmap file format readers
-charmap_readers = {}
 
-def register_reader(format, **default_kwargs):
-    """Decorator to register charmap reader."""
-    def decorator(reader):
-        charmap_readers[format] = (reader, default_kwargs)
-        return reader
-    return decorator
+def _charmap_loader(fn):
+    """Decorator for the shared parts of charmap loaders."""
+
+    @wraps(fn)
+    def _load(name, path, *args, **kwargs):
+        try:
+            data = path.read_bytes()
+        except EnvironmentError as exc:
+            raise NotFoundError(f'Could not load charmap file `{str(path)}`: {exc}')
+        if not data:
+            raise NotFoundError(f'No data in charmap file `{str(path)}`')
+        mapping = fn(data, *args, **kwargs)
+        return Charmap(mapping, name=name)
+
+    return _load
 
 
 @register_reader('txt')
@@ -293,6 +263,7 @@ def register_reader(format, **default_kwargs):
 @register_reader('map')
 @register_reader('ucp', separator=':', joiner=',')
 @register_reader('adobe', separator='\t', joiner=None, codepoint_column=1, unicode_column=0)
+@_charmap_loader
 def _from_text_columns(
         data, *, comment='#', separator=None, joiner='+', codepoint_column=0, unicode_column=1,
         codepoint_base=16, unicode_base=16, inline_comments=True, ignore_errors=False,
@@ -356,6 +327,7 @@ def _from_text_columns(
 
 
 @register_reader('ucm')
+@_charmap_loader
 def _from_ucm_charmap(data):
     """Extract character mapping from icu ucm / linux charmap file data (as bytes)."""
     # only deals with sbcs
@@ -418,6 +390,7 @@ def _from_ucm_charmap(data):
 
 
 @register_reader('html')
+@_charmap_loader
 def _from_wikipedia(data, table=0, column=0, range=None):
     """
     Scrape charmap from table in Wikipedia.

@@ -8,12 +8,12 @@ licence: https://opensource.org/licenses/MIT
 import unicodedata
 from pathlib import Path
 from importlib.resources import files
-from functools import partial, cached_property
+from functools import partial, wraps, cached_property
 
 from ..unicode import unicode_name, is_printable
 from ..labels import to_label, Tag, Char, Codepoint
 from ..properties import reverse_dict
-from .base import NotFoundError, Encoder
+from .base import NotFoundError, Encoder, register_reader
 from . import tables
 
 
@@ -89,7 +89,7 @@ class CharTagger(Encoder):
 
 
 class FallbackTagger(Encoder):
-    """Algorithmically generatte tags."""
+    """Algorithmically generate tags."""
 
     def __init__(self, unmapped='glyph{count:04}'):
         """Set up mapping."""
@@ -99,13 +99,13 @@ class FallbackTagger(Encoder):
 
     def tag(self, *labels):
         """Get value from tagmap."""
-        self._pattern += 1
-        return self._pattern.format(
+        self._count += 1
+        return Tag(self._pattern.format(
             count=self._count,
             char=_get_char(labels),
             codepoint=_get_codepoint(labels),
             tag=_get_tag(labels),
-        )
+        ))
 
 
 class CodepointTagger(Encoder):
@@ -160,6 +160,10 @@ class BaseTagmap(Encoder):
     def mapping(self):
         return {**self._chr2tag}
 
+    def __or__(self, other):
+        """Return encoding overlaid with all characters defined in right-hand side."""
+        return Tagmap(mapping=self._chr2tag | other._chr2tag, name=f'{self.name}')
+
 
 class AdobeFallbackTagger(Encoder):
     """Fallback tagger following AGL conventions."""
@@ -202,33 +206,28 @@ class Tagmap(BaseTagmap):
         self._chr2tag = mapping
 
 
-class LoadableTagmap(BaseTagmap):
-    """Tag on the basis of a mapping table from a file."""
-
-    def __init__(self, filename, *, name='', fallback=None, **kwargs):
-        """Create new charmap from file."""
-        if not name:
-            name = Path(filename).stem
-        super().__init__(name=name, fallback=fallback)
-        try:
-            self._load_path = (files(tables) / filename)
-        except EnvironmentError as exc:
-            raise NotFoundError(f'Could not load tagmap file `{filename}`: {exc}')
-        if not self._load_path.exists():
-            raise NotFoundError(f'Charmap file `{filename}` does not exist')
-        self._load_kwargs = kwargs
-
-    @cached_property
-    def _chr2tag(self):
-        data = self._load_path.read_bytes()
-        if not data:
-            raise NotFoundError(f'No data in tagmap file `{self._load_path}`.')
-        return _read_tagmap(data, **self._load_kwargs)
-
-
 ###################################################################################################
 # tag map format readers
 
+def _tagmap_loader(fn):
+    """Decorator for the shared parts of tagmap loaders."""
+
+    @wraps(fn)
+    def _load(name, path, *args, fallback, **kwargs):
+        try:
+            data = path.read_bytes()
+        except EnvironmentError as exc:
+            raise NotFoundError(f'Could not load tagmap file `{str(path)}`: {exc}')
+        if not data:
+            raise NotFoundError(f'No data in tagmap file `{str(path)}`')
+        mapping = fn(data, *args, **kwargs)
+        return Tagmap(mapping, name=name, fallback=fallback)
+
+    return _load
+
+
+@register_reader('tagmap')
+@_tagmap_loader
 def _read_tagmap(data, separator=':', comment='#', joiner=',', tag_column=0, unicode_column=1):
     """Read a tag map from file data."""
     chr2tag = {}
