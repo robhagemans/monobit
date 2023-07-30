@@ -9,32 +9,12 @@ import logging
 from functools import partial
 
 from .base import normalise_name, NotFoundError
-from .base import Encoder
+from .base import Encoder, EncodingName
 from .charmaps import Charmap, Unicode
 
 
 class EncodingRegistry:
     """Register and retrieve charmaps."""
-
-    # replacement patterns for normalisation
-    # longest first to avoid partial match
-    _patterns = {
-        'microsoftcp': 'windows',
-        'microsoft': 'windows',
-        'msdoscp': 'oem',
-        'oemcp': 'oem',
-        'msdos': 'oem',
-        'ibmcp': 'ibm',
-        'apple': 'mac',
-        'macos': 'mac',
-        'doscp': 'oem',
-        'mscp': 'windows',
-        'dos': 'oem',
-        'pc': 'oem',
-        'ms': 'windows',
-        # mac-roman also known as x-mac-roman etc.
-        'x': '',
-    }
 
     def __init__(self):
         self._index = {}
@@ -47,15 +27,15 @@ class EncodingRegistry:
         else:
             aliases = names
         for name in aliases:
-            normname = self._normalise_for_match(name)
+            normname = EncodingName(name)
             if normname in self._index:
-                logging.warning(f"Redefining encoder '{name}'~'{normname}'")
+                logging.warning(f"Redefining encoder '{normname}'")
             self._index[normname] = len(self._encoders)
         self._encoders.append(encoder_or_callable)
 
     def _get_index(self, name):
         """Get index from registry by name; raise NotFoundError if not found."""
-        normname = self._normalise_for_match(name)
+        normname = EncodingName(name)
         try:
             return self._index[normname]
         except KeyError as exc:
@@ -77,29 +57,6 @@ class EncodingRegistry:
             encoder = encoder()
             self._encoders[index] = encoder
         return encoder
-
-
-    ## to EncodingName
-
-    @classmethod
-    def match(cls, name1, name2):
-        """Check if two names match."""
-        return cls._normalise_for_match(name1) == cls._normalise_for_match(name2)
-
-    @classmethod
-    def _normalise_for_match(cls, name):
-        """Further normalise names to base form."""
-        # all lowercase
-        name = name.lower()
-        # remove spaces, dashes and dots
-        for char in '._- ':
-            name = name.replace(char, '')
-        # try replacements
-        for start, replacement in cls._patterns.items():
-            if name.startswith(start):
-                name = replacement + name[len(start):]
-                break
-        return name
 
     ###
 
