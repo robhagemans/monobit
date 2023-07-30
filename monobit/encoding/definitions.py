@@ -11,9 +11,9 @@ from pathlib import Path
 from importlib.resources import files
 
 from .registry import EncodingRegistry
-from .charmaps import CharmapLoader, Unicode
+from .charmaps import Unicode, EncoderLoader
 from .taggers import (
-    LoadableTagmap, CharTagger, CodepointTagger,
+    Tagmap, CharTagger, CodepointTagger,
     UnicodeNameTagger, DescriptionTagger,
     FallbackTagger, AdobeFallbackTagger, SGMLFallbackTagger,
 )
@@ -23,7 +23,7 @@ from . import tables
 def register_charmaps(charmaps):
     """Register charmap files"""
     for _name, _dict in json.loads((files(tables) / 'charmaps.json').read_text()).items():
-        charmap = CharmapLoader(
+        charmap = EncoderLoader(
             name=_name, filename=_dict['filename'],
             format=_dict.get('format', None),
             **_dict.get('kwargs', {}),
@@ -47,30 +47,31 @@ register_charmaps(encodings)
 
 ###############################################################################
 
-# truetype mapping is adobe mapping *but* with .null for NUL
-# https://developer.apple.com/fonts/TrueType-Reference-Manual/RM06/Chap6post.html
-_truetype = LoadableTagmap(
-    'agl/aglfn.txt', name='truetype',
-    separator=';', unicode_column=0, tag_column=1,
-    fallback=AdobeFallbackTagger()
-)
-_truetype._chr2tag['\0'] = '.null'
-
-
 for tagmap in (
         CharTagger(),
         CodepointTagger(),
         UnicodeNameTagger(),
         DescriptionTagger(),
-        LoadableTagmap(
-            'agl/aglfn.txt', name='adobe',
-            separator=';', unicode_column=0, tag_column=1,
-            fallback=AdobeFallbackTagger()
-        ),
-        LoadableTagmap(
-            'misc/SGML.TXT', name='sgml', separator='\t', unicode_column=2,
-            fallback=SGMLFallbackTagger()
-        ),
-        _truetype,
     ):
     encodings[tagmap.name] = tagmap
+
+
+encodings['adobe'] = EncoderLoader(
+    'agl/aglfn.txt', name='adobe', format='tagmap',
+    separator=';', unicode_column=0, tag_column=1,
+    fallback=AdobeFallbackTagger()
+)
+
+encodings['sgml'] = EncoderLoader(
+    'misc/SGML.TXT', name='sgml', format='tagmap',
+    separator='\t', unicode_column=2,
+    fallback=SGMLFallbackTagger()
+)
+
+# truetype mapping is adobe mapping *but* with .null for NUL
+# https://developer.apple.com/fonts/TrueType-Reference-Manual/RM06/Chap6post.html
+encodings['truetype'] = EncoderLoader(
+    'agl/aglfn.txt', name='truetype', format='tagmap',
+    separator=';', unicode_column=0, tag_column=1,
+    fallback=AdobeFallbackTagger()
+) | Tagmap({'\0': '.null'})
