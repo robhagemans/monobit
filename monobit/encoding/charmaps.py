@@ -168,18 +168,38 @@ class Charmap(Encoder):
         bg = '\u2591'
         cps = range(256)
         cps = (((page, _c) if page else (_c,)) for _c in cps)
-        chars = (self.char(_cp) for _cp in cps)
-        chars = ((_c if is_printable(_c) else '\ufffd') for _c in chars)
-        chars = ((_c if is_fullwidth(_c) else ((_c + ' ') if _c else bg*2)) for _c in chars)
-        # deal with Nonspacing Marks while keeping table format
-        chars = ((' ' +_c if unicodedata.category(_c[:1]) == 'Mn' else _c) for _c in chars)
-        chars = [*chars]
+        chars = tuple(self.char(_cp) for _cp in cps)
+        rows = [(_r, chars[16*_r:16*(_r+1)]) for _r in range(16)]
+        # omit empty rows
+        for startr, chars in rows:
+            if any(chars):
+                break
+        for stopr, chars in rows[::-1]:
+            if any(chars):
+                break
+        rows = rows[startr:stopr+1]
+        def _reprchar(c):
+            if c:
+                if not is_printable(c):
+                    c = '\ufffd'
+                if not is_fullwidth(c):
+                    c += ' '
+                # deal with Nonspacing Marks while keeping table format
+                if unicodedata.category(c[:1]) == 'Mn':
+                    c = ' ' + c
+            else:
+                c = bg * 2
+            return c
+        rows = (
+            (_r, bg.join(_reprchar(_c) for _c in _chars))
+            for _r, _chars in rows
+        )
         return ''.join((
             '    ', ' '.join(f'_{_c:x}' for _c in range(16)), '\n',
             '  +', '-'*48, '-', '\n',
             '\n'.join(
-                ''.join((f'{_r:x}_|', bg, bg.join(chars[16*_r:16*(_r+1)]), bg))
-                for _r in range(16)
+                ''.join((f'{_r:x}_|', bg, _chars, bg))
+                for _r, _chars in rows
             )
         ))
 
