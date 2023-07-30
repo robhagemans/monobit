@@ -379,7 +379,7 @@ def save_dfont(fonts, outstream, resource_type, resample_encoding):
 
 def _get_family_id(name, encoding):
     """Generate a resource id based on the font's properties."""
-    script_code = reverse_dict(MAC_ENCODING).get(encoding, _FALLBACK_ENCODING)
+    script_code = reverse_dict(MAC_ENCODING).get(str(encoding), _FALLBACK_ENCODING)
     return _hash_to_id(name, script=script_code)
 
 

@@ -13,10 +13,50 @@ class NotFoundError(KeyError):
 
 class EncodingName(str):
 
+    # replacement patterns for normalisation
+    # longest first to avoid partial match
+    _patterns = {
+        'microsoftcp': 'windows',
+        'microsoft': 'windows',
+        'msdoscp': 'oem',
+        'oemcp': 'oem',
+        'msdos': 'oem',
+        'ibmcp': 'ibm',
+        'apple': 'mac',
+        'macos': 'mac',
+        'doscp': 'oem',
+        'mscp': 'windows',
+        'dos': 'oem',
+        'pc': 'oem',
+        'ms': 'windows',
+        # mac-roman also known as x-mac-roman etc.
+        'x': '',
+    }
+
     def __new__(cls, value=''):
         """Convert value to encoding name."""
         value = normalise_name(str(value))
         return super().__new__(cls, value)
+
+    def __eq__(self, other):
+        """Check if two names match."""
+        return self._normalise_for_match() == EncodingName(other)._normalise_for_match()
+
+    def __hash__(self):
+        return str.__hash__(self._normalise_for_match())
+
+    def _normalise_for_match(self):
+        """Further normalise names to base form."""
+        name = str(self)
+        # remove underscores, spaces, dashes and dots
+        for char in '-.':
+            name = name.replace(char, '')
+        # try replacements
+        for start, replacement in self._patterns.items():
+            if name.startswith(start):
+                name = replacement + name[len(start):]
+                break
+        return name
 
 
 def normalise_name(name=''):
