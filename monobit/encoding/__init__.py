@@ -9,7 +9,7 @@ from pathlib import Path
 
 from .base import NotFoundError, EncodingName
 from .registry import EncodingRegistry
-from .charmaps import Charmap, LoadableCharmap, Unicode
+from .charmaps import Charmap, Unicode, CharmapLoader
 from .base import Encoder
 from .indexers import Indexer
 from .taggers import Tagmap, LoadableTagmap
@@ -41,6 +41,6 @@ def encoder(initialiser):
             return Indexer.load(filename)
         if format == 'tagmap':
             return LoadableTagmap(filename)
-        return LoadableCharmap(filename, format=format)
+        return CharmapLoader(filename, format=format)()
     except (EnvironmentError, NotFoundError):
         return None

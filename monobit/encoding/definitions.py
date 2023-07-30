@@ -11,7 +11,7 @@ from pathlib import Path
 from importlib.resources import files
 
 from .registry import EncodingRegistry
-from .charmaps import LoadableCharmap, Unicode
+from .charmaps import CharmapLoader, Unicode
 from .taggers import (
     LoadableTagmap, CharTagger, CodepointTagger,
     UnicodeNameTagger, DescriptionTagger,
@@ -23,7 +23,7 @@ from . import tables
 def register_charmaps(charmaps):
     """Register charmap files"""
     for _name, _dict in json.loads((files(tables) / 'charmaps.json').read_text()).items():
-        charmap = LoadableCharmap(
+        charmap = CharmapLoader(
             name=_name, filename=_dict['filename'],
             format=_dict.get('format', None),
             **_dict.get('kwargs', {}),
@@ -32,20 +32,15 @@ def register_charmaps(charmaps):
             charmap = charmap.subset(_dict['range'])
         # overlays must be defined first
         for _overlay in _dict.get('overlays', ()):
-            charmap |= charmaps[_overlay]
-        charmaps[_name] = charmap
-        for _alias in _dict.get('aliases', ()):
-            charmaps[_alias] = charmap
+            charmap |= charmaps.getter(_overlay)
+        aliases = (_name, *_dict.get('aliases', ()))
+        charmaps[aliases] = charmap
 
 
 encodings = EncodingRegistry()
-# encodings.register(Indexer())
 
 # unicode aliases
-encodings['unicode'] = Unicode()
-encodings['ucs'] = encodings['unicode']
-encodings['iso10646'] = encodings['unicode']
-encodings['iso10646-1'] = encodings['unicode']
+encodings['unicode', 'ucs', 'iso10646', 'iso10646-1'] = Unicode()
 
 register_charmaps(encodings)
 
