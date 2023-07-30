@@ -212,49 +212,40 @@ class Charmap(BaseCharmap):
         self._ord2chr = {**mapping}
 
 
-class _LazyCharmap(BaseCharmap):
+class EncoderBuilder:
+
+    def __init__(self, callable):
+        self._callable = callable
+
+    def __call__(self):
+        return self._callable()
+
+    # delayed operations
 
     def __or__(self, other):
         """Return encoding overlaid with all characters defined in right-hand side."""
-        return _OverlaidCharmap(self, other)
+        if isinstance(other, Encoder):
+            def delayed_or():
+                return self() | other
+        else:
+            def delayed_or():
+                return self() | other()
+        return EncoderBuilder(delayed_or)
 
     def subset(self, codepoint_range):
         """Return encoding only for given range of codepoints."""
-        return _SubsetCharmap(self, codepoint_range)
+        def delayed_subset():
+            return self().subset(codepoint_range)
+        return EncoderBuilder(delayed_subset)
 
 
-class _OverlaidCharmap(_LazyCharmap):
 
-    def __init__(self, base, overlay):
-        super().__init__(name=base.name)
-        self._base = base
-        self._overlay = overlay
-
-    @cached_property
-    def _ord2chr(self):
-        return self._base._ord2chr | self._overlay._ord2chr
-
-
-class _SubsetCharmap(_LazyCharmap):
-
-    def __init__(self, base, codepoint_range):
-        super().__init__(name=base.name)
-        self._base = base
-        self._codepoint_range = codepoint_range
-
-    @cached_property
-    def _ord2chr(self):
-        return BaseCharmap.subset(self._base, self._codepoint_range)._ord2chr
-
-
-class LoadableCharmap(_LazyCharmap):
-    """Convert between unicode and ordinals using mapping from file."""
+class CharmapLoader(EncoderBuilder):
+    """Lazily create new charmap from file."""
 
     def __init__(self, filename, *, format=None, name='', **kwargs):
-        """Lazily create new charmap from file."""
         if not name:
             name = Path(filename).stem
-        super().__init__(name=name)
         filename = str(filename)
         # inputs that look like explicit paths used directly
         # otherwise it's relative to the tables package
@@ -269,21 +260,18 @@ class LoadableCharmap(_LazyCharmap):
             reader, format_kwargs = charmap_readers[format]
         except KeyError as exc:
             raise NotFoundError(f'Undefined charmap file format {format}.') from exc
-        self._load_reader = reader
-        self._load_path = path
-        self._load_kwargs = {**format_kwargs, **kwargs}
 
-    @cached_property
-    def _ord2chr(self):
-        """Create new charmap from file."""
-        try:
-            data = self._load_path.read_bytes()
-        except EnvironmentError as exc:
-            raise NotFoundError(f'Could not load charmap file `{str(self._load_path)}`: {exc}')
-        if not data:
-            raise NotFoundError(f'No data in charmap file `{str(self._load_path)}`.')
-        mapping = self._load_reader(data, **self._load_kwargs)
-        return mapping
+        def _load():
+            try:
+                data = path.read_bytes()
+            except EnvironmentError as exc:
+                raise NotFoundError(f'Could not load charmap file `{str(path)}`: {exc}')
+            if not data:
+                raise NotFoundError(f'No data in charmap file `{str(path)}`')
+            mapping = reader(data, **format_kwargs, **kwargs)
+            return Charmap(mapping, name=name)
+
+        super().__init__(_load)
 
 
 ###############################################################################
