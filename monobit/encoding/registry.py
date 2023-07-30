@@ -8,8 +8,7 @@ licence: https://opensource.org/licenses/MIT
 import logging
 from functools import partial
 
-from .base import normalise_name, NotFoundError
-from .base import Encoder, EncodingName
+from .base import Encoder, EncodingName, NotFoundError
 from .charmaps import Charmap, Unicode
 
 
@@ -66,8 +65,6 @@ class EncodingRegistry:
             return isinstance(self[name], Unicode)
         except NotFoundError:
             return False
-
-    normalise = staticmethod(normalise_name)
 
     def __iter__(self):
         """Iterate over names of registered charmaps."""

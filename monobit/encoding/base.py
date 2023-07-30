@@ -35,7 +35,7 @@ class EncodingName(str):
 
     def __new__(cls, value=''):
         """Convert value to encoding name."""
-        value = normalise_name(str(value))
+        value = cls._normalise_name(str(value))
         return super().__new__(cls, value)
 
     def __eq__(self, other):
@@ -44,6 +44,11 @@ class EncodingName(str):
 
     def __hash__(self):
         return str.__hash__(self._normalise_for_match())
+
+    @staticmethod
+    def _normalise_name(name=''):
+        """Replace encoding name with normalised variant for display."""
+        return name.lower().replace('_', '-').replace(' ', '-')
 
     def _normalise_for_match(self):
         """Further normalise names to base form."""
@@ -59,11 +64,6 @@ class EncodingName(str):
         return name
 
 
-def normalise_name(name=''):
-    """Replace encoding name with normalised variant for display."""
-    return name.lower().replace('_', '-').replace(' ', '-')
-
-
 
 class Encoder:
     """
@@ -74,7 +74,7 @@ class Encoder:
 
     def __init__(self, name):
         """Set encoder name."""
-        self.name = name
+        self.name = EncodingName(name)
 
     def char(self, *labels):
         """Convert labels to character, return empty string if missing."""
