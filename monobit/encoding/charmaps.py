@@ -16,7 +16,7 @@ from ..binary import align, int_to_bytes
 from ..properties import reverse_dict
 from ..labels import Codepoint, Char, to_label, to_range
 from ..unicode import is_printable, is_fullwidth, unicode_name
-from .base import Encoder, normalise_name, NotFoundError
+from .base import Encoder, NotFoundError
 from . import tables
 
 
@@ -67,7 +67,7 @@ class BaseCharmap(Encoder):
 
     def __init__(self, *, name=''):
         """Create charmap from a dictionary codepoint -> char."""
-        super().__init__(normalise_name(name))
+        super().__init__(name)
 
     @cached_property
     def _ord2chr(self):

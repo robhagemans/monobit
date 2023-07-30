@@ -13,7 +13,7 @@ from functools import partial, cached_property
 from ..unicode import unicode_name, is_printable
 from ..labels import to_label, Tag, Char, Codepoint
 from ..properties import reverse_dict
-from .base import NotFoundError, Encoder, normalise_name
+from .base import NotFoundError, Encoder
 from . import tables
 
 
@@ -127,7 +127,7 @@ class CodepointTagger(Encoder):
 class BaseTagmap(Encoder):
 
     def __init__(self, *, name='', fallback=None):
-        super().__init__(normalise_name(name))
+        super().__init__(name)
         self._fallback = fallback or FallbackTagger()
 
     @cached_property
