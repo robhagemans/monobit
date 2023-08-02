@@ -12,16 +12,16 @@ licence: https://opensource.org/licenses/MIT
 import logging
 from itertools import chain, accumulate
 
-from ...binary import bytes_to_bits
-from ...struct import bitfield, big_endian as be, little_endian as le
+from ...base.binary import bytes_to_bits
+from ...base.struct import bitfield, big_endian as be, little_endian as le
 from ...font import Font
 from ...glyph import Glyph, KernTable
 from ...storage import FileFormatError
 from ...labels import Char
 from ...encoding import EncodingName
 from ...raster import Raster
-from ...properties import Props
-from ...basetypes import NOT_SET
+from ...base import Props
+from ...base import NOT_SET
 
 
 from .fond import fixed_to_float

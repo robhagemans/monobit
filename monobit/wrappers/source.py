@@ -9,13 +9,13 @@ import string
 import logging
 from io import BytesIO
 
-from ..binary import ceildiv
+from ..base.binary import ceildiv
 from ..storage import loaders, savers, load_stream, save_stream
 from ..storage import Stream
 from ..font import Font
 from ..glyph import Glyph
 from ..storage import FileFormatError
-from ..basetypes import Coord
+from ..base import Coord
 
 
 def _int_from_c(cvalue):

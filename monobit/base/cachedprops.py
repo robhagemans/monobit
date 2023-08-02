@@ -1,5 +1,5 @@
 """
-monobit.cachedprops - defaultable, cached property sets with type conversion
+monobit.base.cachedprops - defaultable, cached property sets with type conversion
 
 (c) 2019--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

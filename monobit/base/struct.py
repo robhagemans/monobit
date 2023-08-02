@@ -1,5 +1,5 @@
 """
-monobit.struct - binary structures
+monobit.base.struct - binary structures
 
 (c) 2019--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

@@ -10,11 +10,11 @@ from io import BytesIO
 
 from ..storage import loaders, savers
 from ..storage import FileFormatError, Magic
-from ..struct import big_endian as be, bitfield
+from ..base.struct import big_endian as be, bitfield
 from ..glyph import Glyph
 from ..raster import Raster
 from ..font import Font
-from ..properties import Props, reverse_dict
+from ..base import Props, reverse_dict
 from ..encoding import EncodingName
 
 

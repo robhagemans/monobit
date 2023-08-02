@@ -8,9 +8,9 @@ licence: https://opensource.org/licenses/MIT
 import logging
 from itertools import zip_longest
 
-from .binary import ceildiv, reverse_by_group, bytes_to_bits
-from .basetypes import Bounds, Coord, NOT_SET
-from .blocks import matrix_to_blocks, blockstr
+from .base.binary import ceildiv, reverse_by_group, bytes_to_bits
+from .base import Bounds, Coord, NOT_SET
+from .base.blocks import matrix_to_blocks, blockstr
 
 
 

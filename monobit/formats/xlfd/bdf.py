@@ -7,7 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
-from ...binary import ceildiv
+from ...base.binary import ceildiv
 from ...storage import loaders, savers
 from ...storage import FileFormatError
 from ...font import Font, Coord

@@ -9,7 +9,7 @@ import logging
 
 from ...storage import loaders, savers
 from ...encoding import EncodingName
-from ...basetypes import NOT_SET
+from ...base import NOT_SET
 
 from .dfont import parse_resource_fork, save_dfont
 from .nfnt import extract_nfnt, convert_nfnt, create_nfnt

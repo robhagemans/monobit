@@ -11,8 +11,8 @@ See `LICENSE.md` in this package's directory.
 import string
 import logging
 
-from ...binary import align
-from ...struct import little_endian as le
+from ...base.binary import align
+from ...base.struct import little_endian as le
 from ...storage import FileFormatError
 from .mz import ALIGN_SHIFT
 from .fnt import create_fnt

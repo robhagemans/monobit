@@ -8,13 +8,13 @@ licence: https://opensource.org/licenses/MIT
 import logging
 from pathlib import Path
 
-from ..struct import big_endian as be
+from ..base.struct import big_endian as be
 from ..storage import loaders, savers
 from ..font import Font
 from ..glyph import Glyph
 from ..raster import Raster
 from ..storage import FileFormatError
-from ..binary import ceildiv, bytes_to_bits
+from ..base.binary import ceildiv, bytes_to_bits
 
 
 # editor font

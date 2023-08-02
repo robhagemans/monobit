@@ -10,13 +10,13 @@ import string
 import logging
 from itertools import accumulate
 
-from ..binary import ceildiv
-from ..struct import little_endian as le, sizeof
+from ..base.binary import ceildiv
+from ..base.struct import little_endian as le, sizeof
 from ..storage import loaders, savers
 from ..storage import FileFormatError, Magic
 from ..font import Font
 from ..glyph import Glyph
-from ..properties import Props
+from ..base import Props
 
 from .raw import load_bitmap
 

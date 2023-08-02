@@ -7,8 +7,8 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
-from ..binary import ceildiv
-from ..struct import bitfield, flag, little_endian as le
+from ..base.binary import ceildiv
+from ..base.struct import bitfield, flag, little_endian as le
 from ..storage import loaders, savers
 from ..font import Font
 from ..glyph import Glyph

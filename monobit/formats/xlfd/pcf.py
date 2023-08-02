@@ -8,15 +8,15 @@ licence: https://opensource.org/licenses/MIT
 import logging
 from itertools import accumulate
 
-from ...struct import big_endian as be, little_endian as le
+from ...base.struct import big_endian as be, little_endian as le
 from ...storage import loaders, savers
 from ...storage import FileFormatError
-from ...properties import Props
+from ...base import Props
 from ...font import Font
 from ...glyph import Glyph
 from ...raster import Raster
 from ...labels import Tag, Codepoint
-from ...binary import align, ceildiv
+from ...base.binary import align, ceildiv
 
 from .bdf import swidth_to_pixel, pixel_to_swidth
 from .xlfd import (

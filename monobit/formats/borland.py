@@ -12,7 +12,7 @@ from ..storage import loaders, savers
 from ..storage import FileFormatError
 from ..font import Font
 from ..glyph import Glyph
-from ..struct import little_endian as le, bitfield
+from ..base.struct import little_endian as le, bitfield
 from ..vector import StrokePath, StrokeMove
 
 

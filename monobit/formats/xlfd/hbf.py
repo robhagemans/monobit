@@ -12,7 +12,7 @@ from ...storage import loaders, savers
 from ...storage import FileFormatError
 from ...font import Font, Coord
 from ...glyph import Glyph
-from ...binary import ceildiv
+from ...base.binary import ceildiv
 
 from .bdf import read_props
 from .xlfd import parse_xlfd_properties, create_xlfd_properties

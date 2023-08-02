@@ -8,10 +8,10 @@ licence: https://opensource.org/licenses/MIT
 import logging
 from itertools import count
 
-from ..struct import bitfield, flag, big_endian as be
+from ..base.struct import bitfield, flag, big_endian as be
 from ..storage import loaders, savers
 from ..storage import FileFormatError
-from ..properties import Props
+from ..base import Props
 from ..font import Font
 from ..glyph import Glyph
 from ..raster import Raster

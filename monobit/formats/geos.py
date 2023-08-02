@@ -13,8 +13,8 @@ from ..storage import Stream
 from ..font import Font
 from ..glyph import Glyph
 from ..raster import Raster
-from ..struct import little_endian as le
-from ..binary import ceildiv, align
+from ..base.struct import little_endian as le
+from ..base.binary import ceildiv, align
 from ..storage import Magic
 
 

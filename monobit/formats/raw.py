@@ -9,13 +9,13 @@ import logging
 from itertools import zip_longest
 from pathlib import PurePath
 
-from ..binary import ceildiv, bytes_to_bits
+from ..base.binary import ceildiv, bytes_to_bits
 from ..storage import loaders, savers
 from ..font import Font
 from ..glyph import Glyph
 from ..raster import Raster
 from ..storage import FileFormatError, Regex, Glob
-from ..basetypes import Coord, NOT_SET
+from ..base import Coord, NOT_SET
 
 
 # patterns

@@ -8,13 +8,13 @@ licence: https://opensource.org/licenses/MIT
 import logging
 from itertools import accumulate
 
-from ..struct import bitfield, little_endian as le, big_endian as be, sizeof
-from ..properties import Props
+from ..base.struct import bitfield, little_endian as le, big_endian as be, sizeof
+from ..base import Props
 from ..storage import loaders, savers
 from ..font import Font
 from ..glyph import Glyph
 from ..storage import FileFormatError, Magic
-from ..binary import bytes_to_bits, ceildiv
+from ..base.binary import bytes_to_bits, ceildiv
 from ..raster import Raster
 
 

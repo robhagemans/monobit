@@ -12,7 +12,7 @@ from ..storage import loaders, savers
 from ..storage import FileFormatError
 from ..font import Font
 from ..glyph import Glyph
-from ..properties import Props, reverse_dict, extend_string
+from ..base import Props, reverse_dict, extend_string
 from ..encoding import encodings
 
 

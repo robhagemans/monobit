@@ -1,5 +1,5 @@
 """
-monobit.properties - property structures
+monobit.base.properties - property structures
 
 (c) 2019--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

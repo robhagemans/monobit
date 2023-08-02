@@ -21,9 +21,9 @@ import logging
 from ...storage import FileFormatError
 from ...glyph import Glyph
 from ...font import Font
-from ...properties import Props
-from ...struct import little_endian as le, bitfield
-from ...binary import ceildiv
+from ...base import Props
+from ...base.struct import little_endian as le, bitfield
+from ...base.binary import ceildiv
 
 
 GPI_MAGIC = b'\xfe\xff\xff\xff'

@@ -9,8 +9,8 @@ import logging
 from itertools import accumulate
 
 from ..sfnt import MAC_ENCODING, mac_style_name, to_postscript_name
-from ...binary import bytes_to_bits, align
-from ...struct import bitfield, big_endian as be, sizeof
+from ...base.binary import bytes_to_bits, align
+from ...base.struct import bitfield, big_endian as be, sizeof
 from ...glyph import Glyph
 
 

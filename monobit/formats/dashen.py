@@ -7,14 +7,13 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
-from ..binary import ceildiv
-from ..struct import little_endian as le
-from ..properties import Props
+from ..base.binary import ceildiv
+from ..base.struct import little_endian as le
+from ..base import Props
 from ..storage import loaders, savers
 from ..font import Font
 from ..glyph import Glyph
 from ..raster import Raster
-from ..properties import Props
 from ..storage import Magic, FileFormatError
 
 from .pcl import load_hppcl

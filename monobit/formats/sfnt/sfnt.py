@@ -15,7 +15,7 @@ from unicodedata import bidirectional
 from . import fonttools
 from .fonttools import check_fonttools
 
-from ...properties import Props
+from ...base import Props
 from ...font import Font
 from ...glyph import Glyph
 from ...raster import Raster

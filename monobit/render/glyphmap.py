@@ -10,9 +10,9 @@ try:
 except ImportError:
     Image = None
 
-from ..properties import Props
+from ..base import Props
 from ..raster import Raster
-from ..blocks import blockstr
+from ..base.blocks import blockstr
 
 
 class GlyphMap:

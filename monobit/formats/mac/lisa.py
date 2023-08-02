@@ -7,8 +7,8 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
-from ...struct import big_endian as be
-from ...binary import align
+from ...base.struct import big_endian as be
+from ...base.binary import align
 from ...storage import FileFormatError
 
 from .nfnt import extract_nfnt, convert_nfnt

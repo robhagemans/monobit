@@ -11,8 +11,8 @@ from ..storage import loaders, savers
 from ..font import Font
 from ..glyph import Glyph
 from ..labels import Char
-from ..struct import little_endian as le
-from ..binary import bytes_to_bits
+from ..base.struct import little_endian as le
+from ..base.binary import bytes_to_bits
 
 
 @loaders.register(
