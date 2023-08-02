@@ -11,9 +11,9 @@ licence: https://opensource.org/licenses/MIT
 import io
 import logging
 
-from ...binary import bytes_to_bits, align
-from ...struct import bitfield, little_endian as le
-from ... import struct
+from ...base.binary import bytes_to_bits, align
+from ...base.struct import bitfield, little_endian as le
+from ...base import struct
 from ...storage import loaders, savers
 from ...font import Font, Coord
 from ...glyph import Glyph, KernTable

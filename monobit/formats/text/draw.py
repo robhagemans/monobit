@@ -14,7 +14,7 @@ from ...glyph import Glyph
 from ...labels import Tag, Char
 from ...storage import FileFormatError
 from ...encoding import encodings
-from ...binary import align
+from ...base.binary import align
 
 
 ##############################################################################
@@ -142,7 +142,7 @@ def format_comment(comments, comment_char):
 ###############################################################################
 # mkwinfon .fd
 
-from ...properties import Props
+from ...base import Props
 from ..windows import WEIGHT_MAP, CHARSET_MAP
 
 

@@ -14,8 +14,8 @@ try:
 except ImportError:
     Image = None
 
-from ..basetypes import Coord, RGB
-from ..binary import ceildiv
+from ..base import Coord, RGB
+from ..base.binary import ceildiv
 from ..storage import loaders, savers
 from ..storage import FileFormatError
 from ..font import Font

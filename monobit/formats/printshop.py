@@ -12,9 +12,9 @@ from ..storage import loaders, savers
 from ..font import Font
 from ..glyph import Glyph
 from ..raster import Raster
-from .. import struct
-from ..struct import little_endian as le
-from ..binary import ceildiv
+from ..base import struct
+from ..base.struct import little_endian as le
+from ..base.binary import ceildiv
 
 # offset 0
 _HEADER = le.Struct(

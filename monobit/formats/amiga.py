@@ -9,13 +9,13 @@ import os
 import logging
 from pathlib import Path
 
-from ..binary import bytes_to_bits
+from ..base.binary import bytes_to_bits
 from ..storage import loaders, savers
 from ..storage import FileFormatError, Regex
 from ..font import Font, Coord
 from ..glyph import Glyph
-from ..struct import flag, bitfield, big_endian as be
-from ..properties import Props
+from ..base.struct import flag, bitfield, big_endian as be
+from ..base import Props
 
 
 @loaders.register(

@@ -7,9 +7,9 @@ licence: https://opensource.org/licenses/MIT
 
 from itertools import product
 
-from ..binary import ceildiv
-from ..properties import Props
-from ..basetypes import Coord
+from ..base.binary import ceildiv
+from ..base import Props
+from ..base import Coord
 from .glyphmap import GlyphMap
 
 

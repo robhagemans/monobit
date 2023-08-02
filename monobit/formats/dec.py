@@ -18,9 +18,9 @@ from ..storage import FileFormatError
 from ..font import Font
 from ..raster import Raster
 from ..glyph import Glyph
-from ..binary import ceildiv
-from ..basetypes import Coord
-from ..properties import reverse_dict
+from ..base.binary import ceildiv
+from ..base import Coord
+from ..base import reverse_dict
 
 
 @loaders.register(

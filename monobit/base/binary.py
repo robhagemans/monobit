@@ -1,5 +1,5 @@
 """
-monobit.binary - binary utilities
+monobit.base.binary - binary utilities
 
 (c) 2019--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

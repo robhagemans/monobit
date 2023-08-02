@@ -37,10 +37,10 @@ except ImportError:
         for c in normalize('NFC', text):
             yield c
 
-from ..binary import ceildiv
+from ..base.binary import ceildiv
 from ..labels import Char, Codepoint
 from ..raster import Raster
-from ..properties import Props
+from ..base import Props
 from ..glyph import Glyph
 from .glyphmap import GlyphMap
 

@@ -8,9 +8,9 @@ licence: https://opensource.org/licenses/MIT
 import logging
 from itertools import accumulate
 
-from ..binary import ceildiv
-from ..struct import bitfield, little_endian as le
-from ..properties import Props
+from ..base.binary import ceildiv
+from ..base.struct import bitfield, little_endian as le
+from ..base import Props
 from ..storage import loaders, savers
 from ..font import Font
 from ..glyph import Glyph

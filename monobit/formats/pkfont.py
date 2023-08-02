@@ -12,10 +12,10 @@ from ..storage import loaders, savers
 from ..font import Font
 from ..glyph import Glyph
 from ..raster import Raster
-from .. import struct
-from ..struct import big_endian as be, bitfield, sizeof
-from ..binary import ceildiv, align
-from ..properties import Props
+from ..base import struct
+from ..base.struct import big_endian as be, bitfield, sizeof
+from ..base.binary import ceildiv, align
+from ..base import Props
 from ..storage import Regex
 
 

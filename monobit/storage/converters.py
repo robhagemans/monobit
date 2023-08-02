@@ -15,9 +15,9 @@ from contextlib import contextmanager
 from ..constants import VERSION, CONVERTER_NAME
 from ..font import Font
 from ..pack import Pack
-from ..struct import StructError
-from ..scripting import scriptable, ScriptArgs, ARG_PREFIX
-from ..basetypes import Any
+from ..base.struct import StructError
+from ..base.scripting import scriptable, ScriptArgs, ARG_PREFIX
+from ..base import Any
 from .streams import Stream, StreamBase, KeepOpen, DirectoryStream
 from .magic import MagicRegistry, FileFormatError, maybe_text
 

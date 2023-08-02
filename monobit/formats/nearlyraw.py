@@ -9,7 +9,7 @@ import logging
 from ..storage import loaders, savers
 from ..glyph import Glyph
 from ..font import Font
-from ..struct import little_endian as le, bitfield
+from ..base.struct import little_endian as le, bitfield
 from ..storage import Magic, FileFormatError
 
 from .raw import load_bitmap, save_bitmap

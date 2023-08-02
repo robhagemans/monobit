@@ -15,7 +15,7 @@ from ..storage import FileFormatError
 from ..vector import StrokePath
 from ..font import Font
 from ..glyph import Glyph
-from ..properties import Props, reverse_dict
+from ..base import Props, reverse_dict
 from .windows import WEIGHT_MAP, WEIGHT_REVERSE_MAP
 
 

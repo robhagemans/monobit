@@ -8,8 +8,8 @@ monobit.formats.windows.mz - DOS MZ executable header
 See `LICENSE.md` in this package's directory.
 """
 
-from ...struct import little_endian as le
-from ...binary import ceildiv, align
+from ...base.struct import little_endian as le
+from ...base.binary import ceildiv, align
 
 
 # MZ header:

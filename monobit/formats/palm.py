@@ -7,8 +7,8 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
-from ..struct import big_endian as be
-from ..properties import Props
+from ..base.struct import big_endian as be
+from ..base import Props
 from ..storage import loaders, savers
 from ..font import Font
 from ..storage import FileFormatError, Magic

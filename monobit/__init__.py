@@ -21,6 +21,7 @@ from .labels import Char, Codepoint, Tag
 # ensure plugins get registered
 from . import formats
 from . import containers as _containers
+from . import wrappers as _wrappers
 
 
 _operations.update(_pack_operations)

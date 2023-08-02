@@ -10,10 +10,10 @@ from collections import Counter
 from itertools import accumulate
 from io import BytesIO
 
-from ...struct import big_endian as be
+from ...base.struct import big_endian as be
 from ...storage import FileFormatError
 from ...storage import Stream
-from ...properties import Props, reverse_dict
+from ...base import Props, reverse_dict
 from ...pack import Pack
 
 from ..sfnt import load_sfnt, save_sfnt, MAC_ENCODING, STYLE_MAP

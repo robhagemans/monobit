@@ -18,12 +18,12 @@ try:
 except ImportError:
     Image = None
 
-from ..basetypes import Coord, Bounds
+from ..base import Coord, Bounds
 from ..encoding import encodings
 from ..storage import FileFormatError
-from ..binary import int_to_bytes, bytes_to_int, ceildiv
-from ..struct import little_endian as le
-from ..properties import Props, reverse_dict
+from ..base.binary import int_to_bytes, bytes_to_int, ceildiv
+from ..base.struct import little_endian as le
+from ..base import Props, reverse_dict
 from ..storage import loaders, savers
 from ..font import Font, Coord
 from ..glyph import Glyph

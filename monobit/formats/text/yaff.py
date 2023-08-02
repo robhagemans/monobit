@@ -18,8 +18,8 @@ from ...font import Font, FontProperties
 from ...glyph import Glyph
 from ...raster import Raster
 from ...labels import Label, strip_matching
-from ...properties import Props
-from ...basetypes import Coord, passthrough
+from ...base import Props
+from ...base import Coord, passthrough
 from .draw import NonEmptyBlock, DrawComment, Empty, Unparsed, iter_blocks
 from .draw import format_comment
 

@@ -10,8 +10,8 @@ import logging
 from ..storage import loaders, savers
 from ..font import Font
 from ..glyph import Glyph
-from ..struct import big_endian as be, bitfield
-from ..properties import Props
+from ..base.struct import big_endian as be, bitfield
+from ..base import Props
 from ..vector import StrokePath
 
 

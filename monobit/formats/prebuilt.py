@@ -8,8 +8,8 @@ licence: https://opensource.org/licenses/MIT
 import logging
 from itertools import cycle
 
-from ..struct import bitfield, little_endian as le, big_endian as be
-from ..properties import Props
+from ..base.struct import bitfield, little_endian as le, big_endian as be
+from ..base import Props
 from ..storage import loaders, savers
 from ..font import Font
 from ..glyph import Glyph

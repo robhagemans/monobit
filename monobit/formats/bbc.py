@@ -7,7 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
-from ..properties import Props
+from ..base import Props
 from ..storage import loaders, savers
 from ..font import Font
 from ..glyph import Glyph

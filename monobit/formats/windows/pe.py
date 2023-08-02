@@ -10,7 +10,7 @@ See `LICENSE.md` in this package's directory.
 
 import logging
 
-from ...struct import little_endian as le
+from ...base.struct import little_endian as le
 from ...storage import FileFormatError
 
 

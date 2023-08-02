@@ -8,13 +8,13 @@ licence: https://opensource.org/licenses/MIT
 import logging
 
 from ...glyph import Glyph
-from ...binary import ceildiv
+from ...base.binary import ceildiv
 from ...storage import loaders, savers
-from ...properties import reverse_dict
+from ...base import reverse_dict
 from .sfnt import WEIGHT_MAP, SETWIDTH_MAP, NOTDEF_NAME, check_fonttools
 from .sfnt import load_sfnt, load_collection
 from ...labels import Tag
-from ...basetypes import to_number
+from ...base import to_number
 
 from . import fonttools
 from .fonttools import check_fonttools

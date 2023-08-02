@@ -95,7 +95,7 @@ def _load_macforks(parser, instream, format, **kwargs):
 from binascii import crc_hqx
 from itertools import zip_longest
 
-from ..struct import big_endian as be
+from ..base.struct import big_endian as be
 
 
 _BINHEX_CODES = (
@@ -182,7 +182,7 @@ def _parse_binhex(stream):
 # v2: https://files.stairways.com/other/macbinaryii-standard-info.txt
 # v2 defines additional fields inside an area zeroed in v1. we can ignore them.
 
-from ..binary import align
+from ..base.binary import align
 
 
 _MACBINARY_HEADER = be.Struct(
