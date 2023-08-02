@@ -1,5 +1,5 @@
 """
-monobit.magic - file type recognition
+monobit.storage.magic - file type recognition
 
 (c) 2019--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

@@ -1,5 +1,5 @@
 """
-monobit.streams - file stream tools
+monobit.storage.streams - file stream tools
 
 (c) 2019--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
