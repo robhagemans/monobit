@@ -1,5 +1,5 @@
 """
-monobit.chart - create font chart
+monobit.render.chart - create font chart
 
 (c) 2019--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -7,9 +7,9 @@ licence: https://opensource.org/licenses/MIT
 
 from itertools import product
 
-from .binary import ceildiv
-from .properties import Props
-from .basetypes import Coord
+from ..binary import ceildiv
+from ..properties import Props
+from ..basetypes import Coord
 from .glyphmap import GlyphMap
 
 

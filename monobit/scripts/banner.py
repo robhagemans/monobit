@@ -13,7 +13,7 @@ from codecs import escape_decode
 import monobit
 from monobit.scripting import wrap_main
 from monobit.basetypes import Coord, RGB
-from monobit.renderer import render
+from monobit.render import render
 from monobit.font import Font
 
 

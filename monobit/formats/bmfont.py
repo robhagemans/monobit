@@ -28,8 +28,7 @@ from ..storage import loaders, savers
 from ..font import Font, Coord
 from ..glyph import Glyph
 from ..labels import Codepoint, Char
-from ..chart import grid_map
-from ..glyphmap import GlyphMap
+from ..render import GlyphMap, grid_map
 
 from .windows import CHARSET_MAP, CHARSET_REVERSE_MAP
 
