@@ -15,8 +15,7 @@ from .glyph import Glyph
 from .storage import load, save, loaders, savers
 from .storage import FileFormatError
 from .encoding import encoder, encodings
-from .renderer import render
-from .chart import chart
+from .render import render, chart
 from .labels import Char, Codepoint, Tag
 
 # ensure plugins get registered

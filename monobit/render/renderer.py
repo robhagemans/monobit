@@ -1,5 +1,5 @@
 """
-monobit.renderer - render text to bitmaps using font
+monobit.render.renderer - render text to bitmaps using font
 
 (c) 2019--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -37,11 +37,11 @@ except ImportError:
         for c in normalize('NFC', text):
             yield c
 
-from .binary import ceildiv
-from .labels import Char, Codepoint
-from .raster import Raster
-from .properties import Props
-from .glyph import Glyph
+from ..binary import ceildiv
+from ..labels import Char, Codepoint
+from ..raster import Raster
+from ..properties import Props
+from ..glyph import Glyph
 from .glyphmap import GlyphMap
 
 

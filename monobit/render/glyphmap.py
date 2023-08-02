@@ -1,5 +1,5 @@
 """
-monobit.glyphmap - glyph maps
+monobit.render.glyphmap - glyph maps
 
 (c) 2019--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -10,9 +10,9 @@ try:
 except ImportError:
     Image = None
 
-from .properties import Props
-from .raster import Raster
-from .blocks import blockstr
+from ..properties import Props
+from ..raster import Raster
+from ..blocks import blockstr
 
 
 class GlyphMap:

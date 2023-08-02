@@ -20,7 +20,7 @@ from ..storage import loaders, savers
 from ..storage import FileFormatError
 from ..font import Font
 from ..glyph import Glyph
-from ..chart import chart, grid_traverser
+from ..render import chart, grid_traverser
 
 
 DEFAULT_IMAGE_FORMAT = 'png'
