@@ -10,7 +10,7 @@ import io
 import logging
 from pathlib import Path
 
-from ..streams import Stream, DirectoryStream
+from ..storage import Stream, DirectoryStream
 from .container import Container
 
 

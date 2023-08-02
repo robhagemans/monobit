@@ -8,7 +8,7 @@ except ImportError:
     ttLib = None
     loaded = False
 
-from ....magic import FileFormatError
+from ....storage import FileFormatError
 
 
 def register_extensions():

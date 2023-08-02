@@ -9,7 +9,7 @@ import logging
 from typing import NamedTuple
 
 from ..storage import loaders, savers
-from ..magic import FileFormatError
+from ..storage import FileFormatError
 from ..font import Font
 from ..glyph import Glyph
 from ..properties import Props, reverse_dict, extend_string

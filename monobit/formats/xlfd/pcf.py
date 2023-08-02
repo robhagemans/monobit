@@ -10,7 +10,7 @@ from itertools import accumulate
 
 from ...struct import big_endian as be, little_endian as le
 from ...storage import loaders, savers
-from ...magic import FileFormatError
+from ...storage import FileFormatError
 from ...properties import Props
 from ...font import Font
 from ...glyph import Glyph

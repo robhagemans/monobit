@@ -12,7 +12,7 @@ import logging
 import string
 
 from ...storage import loaders, savers
-from ...magic import FileFormatError
+from ...storage import FileFormatError
 from ...font import Font
 from ...glyph import Glyph
 from .draw import load_draw, DrawGlyph, DrawComment, Empty

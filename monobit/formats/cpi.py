@@ -13,7 +13,7 @@ from itertools import accumulate
 from ..binary import ceildiv
 from ..struct import little_endian as le, sizeof
 from ..storage import loaders, savers
-from ..magic import FileFormatError, Magic
+from ..storage import FileFormatError, Magic
 from ..font import Font
 from ..glyph import Glyph
 from ..properties import Props

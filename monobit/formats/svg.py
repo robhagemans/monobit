@@ -11,7 +11,7 @@ from math import ceil
 import xml.etree.ElementTree as etree
 
 from ..storage import loaders, savers
-from ..magic import FileFormatError
+from ..storage import FileFormatError
 from ..vector import StrokePath
 from ..font import Font
 from ..glyph import Glyph

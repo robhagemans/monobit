@@ -11,10 +11,10 @@ from io import BytesIO
 
 from ..binary import ceildiv
 from ..storage import loaders, savers, load_stream, save_stream
-from ..streams import Stream
+from ..storage import Stream
 from ..font import Font
 from ..glyph import Glyph
-from ..magic import FileFormatError
+from ..storage import FileFormatError
 from ..basetypes import Coord
 
 

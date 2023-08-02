@@ -13,7 +13,7 @@ from .pack import Pack, operations as _pack_operations
 from .font import Font, operations as _operations
 from .glyph import Glyph
 from .storage import load, save, loaders, savers
-from .magic import FileFormatError
+from .storage import FileFormatError
 from .encoding import encoder, encodings
 from .renderer import render
 from .chart import chart

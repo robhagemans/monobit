@@ -12,14 +12,14 @@ import shlex
 from pathlib import Path
 from contextlib import contextmanager
 
-from .constants import VERSION, CONVERTER_NAME
-from .font import Font
-from .pack import Pack
+from ..constants import VERSION, CONVERTER_NAME
+from ..font import Font
+from ..pack import Pack
+from ..struct import StructError
+from ..scripting import scriptable, ScriptArgs, ARG_PREFIX
+from ..basetypes import Any
 from .streams import Stream, StreamBase, KeepOpen, DirectoryStream
 from .magic import MagicRegistry, FileFormatError, maybe_text
-from .struct import StructError
-from .scripting import scriptable, ScriptArgs, ARG_PREFIX
-from .basetypes import Any
 
 
 DEFAULT_TEXT_FORMAT = 'yaff'

@@ -17,7 +17,7 @@ except ImportError:
 from ..basetypes import Coord, RGB
 from ..binary import ceildiv
 from ..storage import loaders, savers
-from ..magic import FileFormatError
+from ..storage import FileFormatError
 from ..font import Font
 from ..glyph import Glyph
 from ..chart import chart, grid_traverser

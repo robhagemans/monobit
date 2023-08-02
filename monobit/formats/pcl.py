@@ -9,7 +9,7 @@ import logging
 from io import BytesIO
 
 from ..storage import loaders, savers
-from ..magic import FileFormatError, Magic
+from ..storage import FileFormatError, Magic
 from ..struct import big_endian as be, bitfield
 from ..glyph import Glyph
 from ..raster import Raster

@@ -12,7 +12,7 @@ from ...storage import loaders, savers
 from ...font import Font
 from ...glyph import Glyph
 from ...labels import Tag, Char
-from ...magic import FileFormatError
+from ...storage import FileFormatError
 from ...encoding import encodings
 from ...binary import align
 

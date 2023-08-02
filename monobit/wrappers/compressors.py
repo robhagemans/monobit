@@ -11,8 +11,8 @@ from contextlib import contextmanager
 from importlib import import_module
 
 from ..storage import loaders, savers, load_stream, save_stream
-from ..streams import Stream
-from ..magic import FileFormatError
+from ..storage import Stream
+from ..storage import FileFormatError
 
 
 class Compressor:

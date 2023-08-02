@@ -15,7 +15,7 @@ from ..font import Font
 from ..glyph import Glyph
 from ..raster import Raster
 from ..properties import Props
-from ..magic import Magic, FileFormatError
+from ..storage import Magic, FileFormatError
 
 from .pcl import load_hppcl
 

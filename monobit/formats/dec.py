@@ -14,7 +14,7 @@ import shlex
 import logging
 
 from ..storage import loaders, savers
-from ..magic import FileFormatError
+from ..storage import FileFormatError
 from ..font import Font
 from ..raster import Raster
 from ..glyph import Glyph

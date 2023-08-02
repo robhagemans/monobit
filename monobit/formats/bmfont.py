@@ -20,8 +20,7 @@ except ImportError:
 
 from ..basetypes import Coord, Bounds
 from ..encoding import encodings
-from .. import streams
-from ..magic import FileFormatError
+from ..storage import FileFormatError
 from ..binary import int_to_bytes, bytes_to_int, ceildiv
 from ..struct import little_endian as le
 from ..properties import Props, reverse_dict

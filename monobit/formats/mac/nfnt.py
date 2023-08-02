@@ -16,7 +16,7 @@ from ...binary import bytes_to_bits
 from ...struct import bitfield, big_endian as be, little_endian as le
 from ...font import Font
 from ...glyph import Glyph, KernTable
-from ...magic import FileFormatError
+from ...storage import FileFormatError
 from ...labels import Char
 from ...encoding import EncodingName
 from ...raster import Raster

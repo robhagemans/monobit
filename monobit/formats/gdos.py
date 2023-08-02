@@ -13,7 +13,7 @@ from ..properties import Props
 from ..storage import loaders, savers
 from ..font import Font
 from ..glyph import Glyph
-from ..magic import FileFormatError, Magic
+from ..storage import FileFormatError, Magic
 from ..binary import bytes_to_bits, ceildiv
 from ..raster import Raster
 

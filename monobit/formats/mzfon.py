@@ -8,8 +8,8 @@ licence: https://opensource.org/licenses/MIT
 import logging
 
 from ..storage import loaders, savers
-from ..streams import Stream
-from ..magic import FileFormatError
+from ..storage import Stream
+from ..storage import FileFormatError
 
 from .windows.mz import MZ_HEADER, create_mz_stub
 from .windows.ne import create_ne, read_ne, NE_HEADER
