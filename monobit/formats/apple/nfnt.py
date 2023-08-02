@@ -1,5 +1,5 @@
 """
-monobit.formats.mac.nfnt - Mac FONT/NFNT fonts
+monobit.formats.apple.nfnt - Mac FONT/NFNT fonts
 
 (c) 2019--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

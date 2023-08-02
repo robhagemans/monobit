@@ -1,5 +1,5 @@
 """
-monobit.formats.palm - Palm OS databases and font resources
+monobit.formats.apple.palm - Palm OS databases and NFNT font resources
 
 (c) 2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -7,13 +7,13 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
-from ..base.struct import big_endian as be
-from ..base import Props
-from ..storage import loaders, savers
-from ..font import Font
-from ..storage import FileFormatError, Magic
+from ...base.struct import big_endian as be
+from ...base import Props
+from ...storage import loaders, savers
+from ...font import Font
+from ...storage import FileFormatError, Magic
 
-from .mac.nfnt import extract_nfnt, convert_nfnt
+from .nfnt import extract_nfnt, convert_nfnt
 
 
 # offset magic: b'FontFont' at offset 0x3c (type, creator fields)

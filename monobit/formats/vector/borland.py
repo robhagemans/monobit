@@ -1,5 +1,5 @@
 """
-monobit.formats.borland - Borland Graphics Interface .CHR files
+monobit.formats.vector.borland - Borland Graphics Interface .CHR files
 
 (c) 2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -8,12 +8,12 @@ licence: https://opensource.org/licenses/MIT
 import logging
 from itertools import accumulate
 
-from ..storage import loaders, savers
-from ..storage import FileFormatError
-from ..font import Font
-from ..glyph import Glyph
-from ..base.struct import little_endian as le, bitfield
-from ..vector import StrokePath, StrokeMove
+from ...storage import loaders, savers
+from ...storage import FileFormatError
+from ...font import Font
+from ...glyph import Glyph
+from ...base.struct import little_endian as le, bitfield
+from ...vector import StrokePath, StrokeMove
 
 
 _BGI_MAGIC = b'PK\b\bBGI '

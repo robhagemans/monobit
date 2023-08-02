@@ -1,5 +1,5 @@
 """
-monobit.formats.hurt - read Hershey fonts in Jim Hurt's format
+monobit.formats.vector.hurt - read Hershey fonts in Jim Hurt's format
 
 (c) 2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -7,12 +7,12 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
-from ..storage import loaders, savers
-from ..font import Font
-from ..glyph import Glyph
-from ..base.struct import big_endian as be, bitfield
-from ..base import Props
-from ..vector import StrokePath
+from ...storage import loaders, savers
+from ...font import Font
+from ...glyph import Glyph
+from ...base.struct import big_endian as be, bitfield
+from ...base import Props
+from ...vector import StrokePath
 
 
 @loaders.register(

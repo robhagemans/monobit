@@ -1,5 +1,5 @@
 """
-monobit.formats.svg - svg writer for vector fonts
+monobit.formats.vector.svg - svg writer for vector fonts
 
 (c) 2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -10,13 +10,13 @@ import logging
 from math import ceil
 import xml.etree.ElementTree as etree
 
-from ..storage import loaders, savers
-from ..storage import FileFormatError
-from ..vector import StrokePath
-from ..font import Font
-from ..glyph import Glyph
-from ..base import Props, reverse_dict
-from .windows import WEIGHT_MAP, WEIGHT_REVERSE_MAP
+from ...storage import loaders, savers
+from ...storage import FileFormatError
+from ...vector import StrokePath
+from ...font import Font
+from ...glyph import Glyph
+from ...base import Props, reverse_dict
+from ..windows import WEIGHT_MAP, WEIGHT_REVERSE_MAP
 
 
 _STYLE_MAP = {
