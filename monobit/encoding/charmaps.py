@@ -195,9 +195,9 @@ class Charmap(Encoder):
             for _r, _chars in rows
         )
         return ''.join((
-            '    ', ' '.join(f'_{_c:x}' for _c in range(16)), '\n',
-            '  +', '-'*48, '-', '\n',
-            '\n'.join(
+            '#     ', ' '.join(f'_{_c:x}' for _c in range(16)), '\n# ',
+            '  +', '-'*48, '-', '\n# ',
+            '\n# '.join(
                 ''.join((f'{_r:x}_|', bg, _chars, bg))
                 for _r, _chars in rows
             )
