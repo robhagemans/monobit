@@ -163,6 +163,11 @@ class Tagmap(Encoder):
         """Return encoding overlaid with all characters defined in right-hand side."""
         return Tagmap(mapping=self._chr2tag | other._chr2tag, name=f'{self.name}')
 
+    def table(self):
+        """Mapping table"""
+        return '\n'.join(
+            f'u+{ord(_k):04X}: "{_v}"' for _k, _v in self._chr2tag.items()
+        )
 
 class AdobeFallbackTagger(Encoder):
     """Fallback tagger following AGL conventions."""

@@ -717,7 +717,7 @@ class Font(HasProps):
     def __repr__(self):
         """Representation."""
         elements = (
-            f'glyphs=(...{len(self._glyphs)} glyphs...)' if self._glyphs else '',
+            f'glyphs=<{len(self._glyphs)} glyphs>' if self._glyphs else '',
             ',\n    '.join(
                 f'{_k}={repr(_v)}'
                 for _k, _v in self.get_properties().items()
