@@ -21,7 +21,7 @@ from ...glyph import Glyph
 from ...raster import Raster
 from ...labels import Tag, Char, Codepoint
 from ...storage import loaders, savers
-from ...magic import FileFormatError
+from ...storage import FileFormatError
 from ..windows import WEIGHT_MAP, CHARSET_MAP
 
 

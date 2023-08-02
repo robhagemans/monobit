@@ -9,7 +9,7 @@ import logging
 
 from ...binary import ceildiv
 from ...storage import loaders, savers
-from ...magic import FileFormatError
+from ...storage import FileFormatError
 from ...font import Font, Coord
 from ...raster import Raster
 from ...glyph import Glyph

@@ -12,8 +12,8 @@ import logging
 from pathlib import Path, PurePosixPath
 
 from .container import Container
-from ..streams import Stream, KeepOpen
-from ..magic import FileFormatError, Magic
+from ..storage import Stream, KeepOpen
+from ..storage import FileFormatError, Magic
 
 
 class TarContainer(Container):

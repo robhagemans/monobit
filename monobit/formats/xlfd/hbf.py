@@ -9,7 +9,7 @@ import logging
 from pathlib import Path
 
 from ...storage import loaders, savers
-from ...magic import FileFormatError
+from ...storage import FileFormatError
 from ...font import Font, Coord
 from ...glyph import Glyph
 from ...binary import ceildiv

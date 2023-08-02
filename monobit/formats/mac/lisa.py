@@ -9,7 +9,7 @@ import logging
 
 from ...struct import big_endian as be
 from ...binary import align
-from ...magic import FileFormatError
+from ...storage import FileFormatError
 
 from .nfnt import extract_nfnt, convert_nfnt
 

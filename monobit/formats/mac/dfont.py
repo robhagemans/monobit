@@ -11,8 +11,8 @@ from itertools import accumulate
 from io import BytesIO
 
 from ...struct import big_endian as be
-from ...magic import FileFormatError
-from ...streams import Stream
+from ...storage import FileFormatError
+from ...storage import Stream
 from ...properties import Props, reverse_dict
 from ...pack import Pack
 

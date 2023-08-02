@@ -18,7 +18,7 @@ notice for gpifont.c and gpifont.h:
 
 import logging
 
-from ...magic import FileFormatError
+from ...storage import FileFormatError
 from ...glyph import Glyph
 from ...font import Font
 from ...properties import Props

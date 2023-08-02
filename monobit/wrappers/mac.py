@@ -8,9 +8,9 @@ licence: https://opensource.org/licenses/MIT
 import logging
 import itertools
 
-from ..streams import Stream
+from ..storage import Stream
 from ..storage import loaders, load_stream
-from ..magic import FileFormatError, Magic
+from ..storage import FileFormatError, Magic
 
 
 @loaders.register(

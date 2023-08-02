@@ -11,7 +11,7 @@ from pathlib import Path
 
 from ..binary import bytes_to_bits
 from ..storage import loaders, savers
-from ..magic import FileFormatError, Regex
+from ..storage import FileFormatError, Regex
 from ..font import Font, Coord
 from ..glyph import Glyph
 from ..struct import flag, bitfield, big_endian as be

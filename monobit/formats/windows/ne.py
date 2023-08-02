@@ -13,7 +13,7 @@ import logging
 
 from ...binary import align
 from ...struct import little_endian as le
-from ...magic import FileFormatError
+from ...storage import FileFormatError
 from .mz import ALIGN_SHIFT
 from .fnt import create_fnt
 

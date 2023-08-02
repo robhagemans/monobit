@@ -9,7 +9,7 @@ import logging
 from itertools import accumulate
 
 from ..storage import loaders, savers
-from ..magic import FileFormatError
+from ..storage import FileFormatError
 from ..font import Font
 from ..glyph import Glyph
 from ..struct import little_endian as le, bitfield

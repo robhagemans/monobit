@@ -13,7 +13,7 @@ from ..storage import loaders, savers
 from ..font import Font
 from ..glyph import Glyph
 from ..raster import Raster
-from ..magic import FileFormatError
+from ..storage import FileFormatError
 from ..binary import ceildiv, bytes_to_bits
 
 

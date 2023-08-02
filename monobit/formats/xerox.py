@@ -10,7 +10,7 @@ from itertools import count
 
 from ..struct import bitfield, flag, big_endian as be
 from ..storage import loaders, savers
-from ..magic import FileFormatError
+from ..storage import FileFormatError
 from ..properties import Props
 from ..font import Font
 from ..glyph import Glyph

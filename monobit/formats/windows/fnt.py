@@ -18,7 +18,7 @@ from types import SimpleNamespace
 from ...binary import bytes_to_bits, ceildiv, align
 from ...struct import little_endian as le
 from ...properties import reverse_dict
-from ...magic import FileFormatError
+from ...storage import FileFormatError
 from ...properties import Props
 from ...font import Font
 from ...glyph import Glyph

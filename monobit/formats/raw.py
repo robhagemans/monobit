@@ -14,7 +14,7 @@ from ..storage import loaders, savers
 from ..font import Font
 from ..glyph import Glyph
 from ..raster import Raster
-from ..magic import FileFormatError, Regex, Glob
+from ..storage import FileFormatError, Regex, Glob
 from ..basetypes import Coord, NOT_SET
 
 

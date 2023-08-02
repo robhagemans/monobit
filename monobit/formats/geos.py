@@ -9,13 +9,13 @@ import logging
 from itertools import count
 
 from ..storage import loaders, savers
-from ..streams import Stream
+from ..storage import Stream
 from ..font import Font
 from ..glyph import Glyph
 from ..raster import Raster
 from ..struct import little_endian as le
 from ..binary import ceildiv, align
-from ..magic import Magic
+from ..storage import Magic
 
 
 @loaders.register(

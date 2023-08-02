@@ -12,7 +12,7 @@ this implementation leans heavily on Alexander Taylor's os2font
 import logging
 
 from ...storage import loaders, savers
-from ...magic import FileFormatError, Magic
+from ...storage import Magic
 from ...font import Font
 
 from .gpifont import convert_os2_font_resource, GPI_MAGIC, OS2FNT_SIGNATURE

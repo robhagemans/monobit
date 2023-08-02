@@ -11,8 +11,8 @@ import zipfile
 from pathlib import Path, PurePosixPath
 
 from .container import Container
-from ..streams import KeepOpen, Stream
-from ..magic import FileFormatError
+from ..storage import KeepOpen, Stream
+from ..storage import FileFormatError
 
 
 class ZipContainer(Container):
