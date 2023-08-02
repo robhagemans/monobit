@@ -1,5 +1,5 @@
 """
-monobit.containers.source - fonts embedded in C/Python/JS source files
+monobit.wrappers.source - binary files embedded in C/Python/JS source files
 
 (c) 2019--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

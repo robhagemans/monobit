@@ -1,5 +1,5 @@
 """
-monobit.containers.mac - Classic Mac OS resource & data fork containers
+monobit.wrappers.mac - Classic Mac OS resource & data fork containers
 
 (c) 2021--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
