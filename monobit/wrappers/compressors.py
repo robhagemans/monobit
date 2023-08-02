@@ -1,5 +1,5 @@
 """
-monobit.containers.compressors - single-file compression wrappers
+monobit.wrappers.compressors - single-file compression wrappers
 
 (c) 2021--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
