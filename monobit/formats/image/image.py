@@ -1,5 +1,5 @@
 """
-monobit.formats.image - fonts stored in image files
+monobit.formats.image.image - fonts stored in image files
 
 (c) 2019--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -14,13 +14,13 @@ try:
 except ImportError:
     Image = None
 
-from ..base import Coord, RGB
-from ..base.binary import ceildiv
-from ..storage import loaders, savers
-from ..storage import FileFormatError
-from ..font import Font
-from ..glyph import Glyph
-from ..render import chart, grid_traverser
+from ...base import Coord, RGB
+from ...base.binary import ceildiv
+from ...storage import loaders, savers
+from ...storage import FileFormatError
+from ...font import Font
+from ...glyph import Glyph
+from ...render import chart, grid_traverser
 
 
 DEFAULT_IMAGE_FORMAT = 'png'

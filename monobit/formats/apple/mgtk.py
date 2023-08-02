@@ -1,5 +1,5 @@
 """
-monobit.formats.mousegraphics - Apple II MouseGraphics ToolKit Font Format
+monobit.formats.apple.mgtk - Apple II MouseGraphics ToolKit Font Format
 
 (c) 2023 Kelvin Sherlock
 licence: https://opensource.org/licenses/MIT
@@ -7,12 +7,12 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
-from ..storage import loaders, savers
-from ..font import Font
-from ..glyph import Glyph
-from ..labels import Char
-from ..base.struct import little_endian as le
-from ..base.binary import bytes_to_bits
+from ...storage import loaders, savers
+from ...font import Font
+from ...glyph import Glyph
+from ...labels import Char
+from ...base.struct import little_endian as le
+from ...base.binary import bytes_to_bits
 
 
 @loaders.register(
