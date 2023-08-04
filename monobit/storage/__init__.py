@@ -9,3 +9,8 @@ from .converters import loaders, savers, load, save, load_stream, save_stream, l
 from .magic import FileFormatError, Regex, Glob, Magic
 from .streams import Stream, KeepOpen, DirectoryStream, get_stringio, get_bytesio
 from . import streams
+
+# ensure plugins get loaded
+from . import containers as _containers
+from . import formats as _formats
+from . import wrappers as _wrappers
