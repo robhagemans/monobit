@@ -15,8 +15,10 @@ from monobit.base.binary import align
 from monobit.base.struct import little_endian as le
 from monobit.storage import FileFormatError
 
-from .mz import ALIGN_SHIFT
 from .fnt import create_fnt
+
+# align on 16-byte (1<<4) boundaries
+ALIGN_SHIFT = 4
 
 
 ##############################################################################
