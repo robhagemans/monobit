@@ -11,10 +11,12 @@ from monobit.glyph import Glyph
 from monobit.base.binary import ceildiv
 from monobit.storage import loaders, savers
 from monobit.base import reverse_dict
-from .sfnt import WEIGHT_MAP, SETWIDTH_MAP, NOTDEF_NAME, check_fonttools
-from .sfnt import load_sfnt, load_collection
 from monobit.labels import Tag
 from monobit.base import to_number
+
+from .sfnt import WEIGHT_MAP, SETWIDTH_MAP, NOTDEF_NAME, check_fonttools
+from .sfnt import load_sfnt, load_collection
+from ..common import to_postscript_name
 
 from . import fonttools
 from .fonttools import check_fonttools
@@ -139,17 +141,6 @@ def _convert_to_os_2_props(font, _to_funits):
         achVendID=b'    ',
     )
     return props
-
-
-def to_postscript_name(name):
-    """Postscript name must be printable ascii, no [](){}<>/%, max 63 chars."""
-    ps_name = ''.join(
-        _c if _c.isalnum() and _c.isascii() else '-'
-        for _c in name
-    )
-    ps_name = ps_name[:63]
-    # expected to be Title-Cased (at least on Mac, see FontForge code comments)
-    return ps_name.title()
 
 
 def _convert_to_name_props(font):

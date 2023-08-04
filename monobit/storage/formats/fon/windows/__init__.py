@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.windows - Windows FON and FNT files
+monobit.storage.formats.fon.windows - Windows FON and FNT files
 
 `monobit.storage.formats.windows` is copyright 2019--2023 Rob Hagemans
 `mkwinfont` is copyright 2001 Simon Tatham. All rights reserved.
@@ -15,9 +15,6 @@ from monobit.storage import FileFormatError
 
 from .fnt import create_fnt
 from .fnt import convert_win_fnt_resource, FNT_MAGIC_1, FNT_MAGIC_2, FNT_MAGIC_3
-
-# used by other formats
-from .fnt import WEIGHT_MAP, WEIGHT_REVERSE_MAP, CHARSET_MAP, CHARSET_REVERSE_MAP
 
 
 @loaders.register(

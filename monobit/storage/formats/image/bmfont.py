@@ -30,7 +30,7 @@ from monobit.glyph import Glyph
 from monobit.labels import Codepoint, Char
 from monobit.render import GlyphMap, grid_map
 
-from ..windows import CHARSET_MAP, CHARSET_REVERSE_MAP
+from ..common import CHARSET_MAP, CHARSET_REVERSE_MAP
 
 
 # text/xml/binary format: https://www.angelcode.com/products/bmfont/doc/file_format.html

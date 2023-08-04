@@ -24,7 +24,7 @@ from monobit.base import Props
 from monobit.base import NOT_SET
 
 from .fond import fixed_to_float
-from ..sfnt import MAC_ENCODING
+from ..common import MAC_ENCODING
 
 
 # normalised names so we can test with `in`

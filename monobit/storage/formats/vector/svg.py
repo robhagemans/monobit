@@ -17,7 +17,7 @@ from monobit.font import Font
 from monobit.glyph import Glyph
 from monobit.base import Props, reverse_dict
 
-from ..windows import WEIGHT_MAP, WEIGHT_REVERSE_MAP
+from ..common import WEIGHT_MAP, WEIGHT_REVERSE_MAP
 
 
 _STYLE_MAP = {

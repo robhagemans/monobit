@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.mzfon - Windows and OS/2 FON files
+monobit.storage.formats.fon.mzfon - Windows and OS/2 FON files
 
 (c) 2019--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -11,6 +11,8 @@ from monobit.storage import loaders, savers
 from monobit.storage import Stream
 from monobit.storage import FileFormatError
 
+from monobit.storage.formats.sfnt import load_sfnt, SFNT_MAGIC
+
 from .windows.mz import MZ_HEADER, create_mz_stub
 from .windows.ne import create_ne, read_ne, NE_HEADER
 from .windows.pe import read_pe
@@ -21,7 +23,6 @@ from .windows.fnt import (
 from .os2.lx import read_lx
 from .os2.ne import read_os2_ne
 from .os2.gpifont import convert_os2_font_resource, GPI_MAGIC
-from .sfnt import load_sfnt, SFNT_MAGIC
 
 
 @loaders.register(
