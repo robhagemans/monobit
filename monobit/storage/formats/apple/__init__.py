@@ -5,22 +5,14 @@ monobit.storage.formats.apple - Mac OS and other Apple font formats
 licence: https://opensource.org/licenses/MIT
 """
 
-from importlib import import_module
-from pathlib import Path
-from importlib.resources import files
-
-# import all modules in this directory into module namespace
-globals().update({
-    Path(_file).stem: import_module('.' + Path(_file.name).stem, __package__)
-    for _file in files(__name__).iterdir()
-    if not _file.name.startswith('_')
-})
-
 import logging
 
 from monobit.storage import loaders, savers
 from monobit.encoding import EncodingName
 from monobit.base import NOT_SET
+from monobit.base import import_all
+
+import_all(__name__)
 
 from .dfont import parse_resource_fork, save_dfont
 from .nfnt import extract_nfnt, convert_nfnt, create_nfnt
