@@ -12,10 +12,10 @@ from html.parser import HTMLParser
 from importlib.resources import files
 from functools import cached_property, wraps, partial
 
-from ..binary import align, int_to_bytes
-from ..properties import reverse_dict
+from ..base.binary import align, int_to_bytes
+from ..base import reverse_dict
 from ..labels import Codepoint, Char, to_label, to_range
-from ..unicode import is_printable, is_fullwidth, unicode_name
+from .unicode import is_printable, is_fullwidth, unicode_name
 from .base import (
     Encoder, EncoderBuilder, NotFoundError, register_reader, encoding_readers
 )
@@ -195,9 +195,9 @@ class Charmap(Encoder):
             for _r, _chars in rows
         )
         return ''.join((
-            '    ', ' '.join(f'_{_c:x}' for _c in range(16)), '\n',
-            '  +', '-'*48, '-', '\n',
-            '\n'.join(
+            '#     ', ' '.join(f'_{_c:x}' for _c in range(16)), '\n# ',
+            '  +', '-'*48, '-', '\n# ',
+            '\n# '.join(
                 ''.join((f'{_r:x}_|', bg, _chars, bg))
                 for _r, _chars in rows
             )

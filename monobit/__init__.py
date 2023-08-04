@@ -13,15 +13,10 @@ from .pack import Pack, operations as _pack_operations
 from .font import Font, operations as _operations
 from .glyph import Glyph
 from .storage import load, save, loaders, savers
-from .magic import FileFormatError
+from .storage import FileFormatError
 from .encoding import encoder, encodings
-from .renderer import render
-from .chart import chart
+from .render import render, chart
 from .labels import Char, Codepoint, Tag
-
-# ensure plugins get registered
-from . import formats
-from . import containers as _containers
 
 
 _operations.update(_pack_operations)

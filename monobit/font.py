@@ -11,16 +11,16 @@ from itertools import chain
 from pathlib import PurePath
 from unicodedata import normalize
 
-from .scripting import scriptable, get_scriptables, Any
+from .base.scripting import scriptable, get_scriptables, Any
 from .glyph import Glyph
 from .raster import turn_method
-from .basetypes import Coord, Bounds, NOT_SET
-from .basetypes import to_int, Any
+from .base import Coord, Bounds, NOT_SET
+from .base import to_int, Any
 from .encoding import encoder, EncodingName, Encoder, Indexer, Charmap
 from .labels import Tag, Char, Codepoint, Label, to_label
-from .binary import ceildiv
-from .properties import extend_string
-from .cachedprops import HasProps, writable_property, checked_property
+from .base.binary import ceildiv
+from .base import extend_string
+from .base import HasProps, writable_property, checked_property
 
 
 ###############################################################################
@@ -717,7 +717,7 @@ class Font(HasProps):
     def __repr__(self):
         """Representation."""
         elements = (
-            f'glyphs=(...{len(self._glyphs)} glyphs...)' if self._glyphs else '',
+            f'glyphs=<{len(self._glyphs)} glyphs>' if self._glyphs else '',
             ',\n    '.join(
                 f'{_k}={repr(_v)}'
                 for _k, _v in self.get_properties().items()

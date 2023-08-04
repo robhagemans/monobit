@@ -8,7 +8,7 @@ licence: https://opensource.org/licenses/MIT
 import logging
 
 from .font import Font, FontProperties
-from .scripting import scriptable, get_scriptables
+from .base.scripting import scriptable, get_scriptables
 
 
 class Pack:

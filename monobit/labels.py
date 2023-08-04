@@ -8,10 +8,10 @@ licence: https://opensource.org/licenses/MIT
 from string import ascii_letters, digits
 from unicodedata import normalize
 from itertools import count
-from .binary import ceildiv, int_to_bytes, bytes_to_int
-from .scripting import to_int
-from .basetypes import CONVERTERS
-from .unicode import is_printable
+from .base.binary import ceildiv, int_to_bytes, bytes_to_int
+from .base.scripting import to_int
+from .base import CONVERTERS
+from .encoding.unicode import is_printable
 
 
 def is_enclosed(from_str, char):
