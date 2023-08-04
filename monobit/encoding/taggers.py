@@ -10,9 +10,9 @@ from pathlib import Path
 from importlib.resources import files
 from functools import partial, wraps, cached_property
 
-from ..unicode import unicode_name, is_printable
+from .unicode import unicode_name, is_printable
 from ..labels import to_label, Tag, Char, Codepoint
-from ..properties import reverse_dict
+from ..base import reverse_dict
 from .base import NotFoundError, Encoder, register_reader
 from . import tables
 
@@ -163,6 +163,11 @@ class Tagmap(Encoder):
         """Return encoding overlaid with all characters defined in right-hand side."""
         return Tagmap(mapping=self._chr2tag | other._chr2tag, name=f'{self.name}')
 
+    def table(self):
+        """Mapping table"""
+        return '\n'.join(
+            f'u+{ord(_k):04X}: "{_v}"' for _k, _v in self._chr2tag.items()
+        )
 
 class AdobeFallbackTagger(Encoder):
     """Fallback tagger following AGL conventions."""

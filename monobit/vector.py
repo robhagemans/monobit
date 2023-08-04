@@ -11,7 +11,7 @@ from functools import cached_property
 from itertools import accumulate
 from typing import NamedTuple
 
-from .basetypes import Coord, Bounds
+from .base import Coord, Bounds
 from .raster import Raster
 
 

@@ -11,7 +11,7 @@ from pathlib import Path
 from urllib.request import urlretrieve
 
 import monobit
-from monobit.streams import get_stringio
+from monobit.storage import get_stringio
 
 
 
