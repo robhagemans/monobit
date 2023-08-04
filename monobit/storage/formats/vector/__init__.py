@@ -5,14 +5,6 @@ monobit.storage.formats.vector - vector font formats
 licence: https://opensource.org/licenses/MIT
 """
 
-from importlib import import_module
-from pathlib import Path
-from importlib.resources import files
+from monobit.base import import_all
 
-
-# import all modules in this directory into module namespace
-globals().update({
-    Path(_file).stem: import_module('.' + Path(_file.name).stem, __package__)
-    for _file in files(__name__).iterdir()
-    if not _file.name.startswith('_')
-})
+import_all(__name__)

@@ -5,6 +5,5 @@ monobit.storage.formats.xlfd - formats based on X Logical Font Description
 licence: https://opensource.org/licenses/MIT
 """
 
-from .bdf import load_bdf, save_bdf
-from .hbf import load_hbf, save_hbf
-from .pcf import load_pcf
+from monobit.base import import_all
+import_all(__name__)
