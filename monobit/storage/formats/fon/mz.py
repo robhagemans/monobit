@@ -1,24 +1,18 @@
 """
 monobit.storage.formats.fon.windows.mz - DOS MZ executable header
 
-`monobit.storage.formats.windows` is copyright 2019--2023 Rob Hagemans
-`mkwinfont` is copyright 2001 Simon Tatham. All rights reserved.
-`dewinfont` is copyright 2001,2017 Simon Tatham. All rights reserved.
-
-See `LICENSE.md` in this package's directory.
+(c) 2019--2023 Rob Hagemans
+with code from `mkwinfon`, copyright 2001 Simon Tatham. All rights reserved.
+licence: https://opensource.org/licenses/MIT
 """
 
 from monobit.base.struct import little_endian as le
 from monobit.base.binary import ceildiv, align
 
 
-# MZ header:
-#   http://www.delorie.com/djgpp/doc/exe/
-#   https://wiki.osdev.org/MZ
-
 _STUB_MSG = b'This is a Windows font file.\r\n'
 
-# stub 16-bit DOS executable
+# stub 16-bit DOS executable from `mkwinfon`
 _STUB_CODE = bytes((
     0xBA, 0x0E, 0x00, # mov dx,0xe
     0x0E,             # push cs
@@ -33,6 +27,8 @@ _STUB_CODE = bytes((
 ALIGN_SHIFT = 4
 
 # DOS executable (MZ) header
+#   http://www.delorie.com/djgpp/doc/exe/
+#   https://wiki.osdev.org/MZ
 # 40h size of structure
 MZ_HEADER = le.Struct(
     # 00 Magic number

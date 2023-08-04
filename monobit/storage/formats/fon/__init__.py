@@ -6,4 +6,4 @@ licence: https://opensource.org/licenses/MIT
 """
 
 # ensure formats get registered
-from . import mzfon, windows, os2
+from . import fon, windows, os2
