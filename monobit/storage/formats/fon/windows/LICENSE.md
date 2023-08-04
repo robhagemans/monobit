@@ -1,6 +1,6 @@
 Copyright
 ---------
-`monobit.storage.formats.windows` is copyright 2019--2023 Rob Hagemans  
+`monobit.storage.formats.fon.windows` is copyright 2019--2023 Rob Hagemans  
 `mkwinfont` is copyright 2001 Simon Tatham. All rights reserved.  
 `dewinfont` is copyright 2001,2017 Simon Tatham. All rights reserved.  
 

@@ -143,7 +143,7 @@ def format_comment(comments, comment_char):
 # mkwinfon .fd
 
 from monobit.base import Props
-from ..windows import WEIGHT_MAP, CHARSET_MAP
+from ..common import WEIGHT_MAP, CHARSET_MAP
 
 
 FD_KEYS = {

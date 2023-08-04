@@ -22,7 +22,7 @@ from monobit.storage import FileFormatError
 
 from . import fonttools
 from .fonttools import check_fonttools
-from ..windows import WEIGHT_MAP, CHARSET_MAP
+from ..common import WEIGHT_MAP, CHARSET_MAP, MAC_ENCODING, STYLE_MAP, mac_style_name
 
 
 # errors that invalidate only one strike or resource, not the whole file
@@ -116,50 +116,6 @@ else:
 
 ###############################################################################
 # common encoding tables
-
-# shared with mac
-
-# based on:
-# [1] Apple Technotes (As of 2002)/te/te_02.html
-# [2] https://developer.apple.com/library/archive/documentation/mac/Text/Text-367.html#HEADING367-0
-MAC_ENCODING = {
-    0: 'mac-roman',
-    1: 'mac-japanese',
-    2: 'mac-trad-chinese',
-    3: 'mac-korean',
-    4: 'mac-arabic',
-    5: 'mac-hebrew',
-    6: 'mac-greek',
-    7: 'mac-cyrillic', # [1] russian
-    # 8: [2] right-to-left symbols
-    9: 'mac-devanagari',
-    10: 'mac-gurmukhi',
-    11: 'mac-gujarati',
-    21: 'mac-thai',
-    23: 'mac-georgian',
-    24: 'mac-armenian',
-    25: 'mac-simp-chinese', # [1] maldivian
-    29: 'mac-centraleurope', # [1] non-cyrillic slavic
-    # I don't have a codepage for the following Apple scripts
-    # - as Gurmukhi and Gujarati are ISCII-based
-    # perhaps we can infer the other ISCII scripts?
-    12: 'mac-oriya',
-    13: 'mac-bengali',
-    14: 'mac-tamil',
-    15: 'mac-telugu',
-    16: 'mac-kannada',
-    17: 'mac-malayalam',
-    18: 'mac-sinhalese',
-    19: 'mac-burmese',
-    20: 'mac-khmer',
-    22: 'mac-laotian',
-    26: 'mac-tibetan',
-    27: 'mac-mongolian',
-    28: 'mac-ethiopic', # [2] == geez
-    30: 'mac-vietnamese',
-    31: 'mac-sindhi', # [2] == ext-arabic
-    #32: [1] [2] 'uninterpreted symbols'
-}
 
 WIN_ENCODING = {
     # Symbol, but apparently not windows-symbol but any undefined encoding
@@ -701,23 +657,6 @@ def _convert_bloc_props(bloc, i_strike):
 
 ###############################################################################
 # 'head' or 'bhed' table
-
-# interpretation of head.macStyle flags
-STYLE_MAP = {
-    0: 'bold',
-    1: 'italic',
-    2: 'underline',
-    3: 'outline',
-    4: 'shadow',
-    5: 'condensed',
-    6: 'extended',
-}
-
-def mac_style_name(font_style):
-    """Get human-readable representation of font style."""
-    return ' '.join(
-        _tag for _bit, _tag in STYLE_MAP.items() if font_style & (1 << _bit)
-    )
 
 def _convert_head_props(head):
     """Convert font properties from head/bhed table."""

@@ -16,7 +16,8 @@ from monobit.storage import Stream
 from monobit.base import Props, reverse_dict
 from monobit.pack import Pack
 
-from ..sfnt import load_sfnt, save_sfnt, MAC_ENCODING, STYLE_MAP
+from ..common import MAC_ENCODING, STYLE_MAP
+from ..sfnt import load_sfnt, save_sfnt
 from .nfnt import (
     extract_nfnt, convert_nfnt,
     subset_for_nfnt, convert_to_nfnt, nfnt_data_to_bytes, generate_nfnt_header
