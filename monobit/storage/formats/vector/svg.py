@@ -10,12 +10,9 @@ import logging
 from math import ceil
 import xml.etree.ElementTree as etree
 
-from monobit.storage import loaders, savers
-from monobit.storage import FileFormatError
-from monobit.vector import StrokePath
-from monobit.font import Font
-from monobit.glyph import Glyph
+from monobit.storage import loaders, savers, FileFormatError
 from monobit.base import Props, reverse_dict
+from monobit.core import Font, Glyph, StrokePath
 
 from ..common import WEIGHT_MAP, WEIGHT_REVERSE_MAP
 

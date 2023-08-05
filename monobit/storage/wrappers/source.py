@@ -11,10 +11,8 @@ from io import BytesIO
 
 from monobit.base.binary import ceildiv
 from monobit.storage import loaders, savers, load_stream, save_stream
-from monobit.font import Font
-from monobit.storage import Stream
-from monobit.glyph import Glyph
-from monobit.storage import FileFormatError
+from monobit.storage import Stream, FileFormatError
+from monobit.core import Font, Glyph
 from monobit.base import Coord
 
 

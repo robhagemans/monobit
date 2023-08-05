@@ -10,10 +10,8 @@ from itertools import accumulate
 
 from monobit.storage import loaders, savers
 from monobit.storage import FileFormatError
-from monobit.font import Font
-from monobit.glyph import Glyph
 from monobit.base.struct import little_endian as le, bitfield
-from monobit.vector import StrokePath, StrokeMove
+from monobit.core import Font, Glyph, StrokePath, StrokeMove
 
 
 _BGI_MAGIC = b'PK\b\bBGI '

@@ -14,7 +14,7 @@ import monobit
 from monobit.base.scripting import wrap_main
 from monobit.base import Coord, RGB
 from monobit.render import render
-from monobit.font import Font
+from monobit.core import Font
 
 
 def unescape(text):

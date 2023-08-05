@@ -9,12 +9,10 @@ import logging
 from itertools import accumulate
 
 from monobit.base.struct import bitfield, little_endian as le
-from monobit.base import Props
-from monobit.storage import loaders, savers
-from monobit.font import Font
-from monobit.glyph import Glyph
-from monobit.storage import FileFormatError
 from monobit.base.binary import ceildiv
+from monobit.base import Props
+from monobit.storage import loaders, savers, FileFormatError
+from monobit.core import Font, Glyph
 
 from .raw import load_bitmap
 

@@ -1,5 +1,5 @@
 """
-monobit.font - representation of font
+monobit.core.font - representation of font
 
 (c) 2019--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -11,16 +11,17 @@ from itertools import chain
 from pathlib import PurePath
 from unicodedata import normalize
 
-from .base.scripting import scriptable, get_scriptables, Any
+from monobit.base.scripting import scriptable, get_scriptables, Any
+from monobit.base import Coord, Bounds, NOT_SET
+from monobit.base import to_int, Any
+from monobit.encoding import encoder, EncodingName, Encoder, Indexer, Charmap
+from monobit.base.binary import ceildiv
+from monobit.base import extend_string
+from monobit.base import HasProps, writable_property, checked_property
+
+from .labels import Tag, Char, Codepoint, Label, to_label
 from .glyph import Glyph
 from .raster import turn_method
-from .base import Coord, Bounds, NOT_SET
-from .base import to_int, Any
-from .encoding import encoder, EncodingName, Encoder, Indexer, Charmap
-from .labels import Tag, Char, Codepoint, Label, to_label
-from .base.binary import ceildiv
-from .base import extend_string
-from .base import HasProps, writable_property, checked_property
 
 
 ###############################################################################

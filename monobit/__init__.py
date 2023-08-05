@@ -9,17 +9,16 @@ import sys as _sys
 assert _sys.version_info >= (3, 9)
 
 from .constants import VERSION as __version__
-from .pack import Pack, operations as _pack_operations
-from .font import Font, operations as _operations
-from .glyph import Glyph
+from .core import Pack
+from .core import Font, operations as _operations
+from .core import Glyph
 from .storage import load, save, loaders, savers
 from .storage import FileFormatError
 from .encoding import encoder, encodings
 from .render import render, chart
-from .labels import Char, Codepoint, Tag
+from .core import Char, Codepoint, Tag
 
 
-_operations.update(_pack_operations)
 # inject font operations into main module namespace
 globals().update(_operations)
 

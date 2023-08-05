@@ -13,7 +13,7 @@ import logging
 
 from monobit.storage import loaders, savers
 from monobit.storage import Magic
-from monobit.font import Font
+from monobit.core import Font
 
 from .gpifont import convert_os2_font_resource, GPI_MAGIC, OS2FNT_SIGNATURE
 

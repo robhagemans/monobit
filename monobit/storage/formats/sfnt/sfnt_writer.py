@@ -7,11 +7,11 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
-from monobit.glyph import Glyph
+from monobit.core import Glyph
+from monobit.core import Tag
 from monobit.base.binary import ceildiv
 from monobit.storage import loaders, savers
 from monobit.base import reverse_dict
-from monobit.labels import Tag
 from monobit.base import to_number
 
 from .sfnt import WEIGHT_MAP, SETWIDTH_MAP, NOTDEF_NAME, check_fonttools

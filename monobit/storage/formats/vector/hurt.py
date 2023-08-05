@@ -8,11 +8,9 @@ licence: https://opensource.org/licenses/MIT
 import logging
 
 from monobit.storage import loaders, savers
-from monobit.font import Font
-from monobit.glyph import Glyph
+from monobit.core import Font, Glyph, StrokePath
 from monobit.base.struct import big_endian as be, bitfield
 from monobit.base import Props
-from monobit.vector import StrokePath
 
 
 @loaders.register(

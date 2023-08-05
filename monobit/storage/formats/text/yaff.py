@@ -14,10 +14,7 @@ from functools import cached_property
 
 from monobit.storage import loaders, savers
 from monobit.storage import FileFormatError
-from monobit.font import Font, FontProperties
-from monobit.glyph import Glyph
-from monobit.raster import Raster
-from monobit.labels import Label, strip_matching
+from monobit.core import Font, FontProperties, Glyph, Raster, Label, strip_matching
 from monobit.base import Props
 from monobit.base import Coord, passthrough
 

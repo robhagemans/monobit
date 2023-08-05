@@ -1,5 +1,5 @@
 """
-monobit.raster - bitmap raster
+monobit.core.raster - bitmap raster
 
 (c) 2019--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -8,10 +8,9 @@ licence: https://opensource.org/licenses/MIT
 import logging
 from itertools import zip_longest
 
-from .base.binary import ceildiv, reverse_by_group, bytes_to_bits
-from .base import Bounds, Coord, NOT_SET
-from .base.blocks import matrix_to_blocks, blockstr
-
+from monobit.base.binary import ceildiv, reverse_by_group, bytes_to_bits
+from monobit.base import Bounds, Coord, NOT_SET
+from monobit.base.blocks import matrix_to_blocks, blockstr
 
 
 # turn function for Raster, Glyph and Font

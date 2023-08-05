@@ -1,5 +1,5 @@
 """
-monobit.pack - collection of fonts
+monobit.core.pack - collection of fonts
 
 (c) 2019--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -7,8 +7,8 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
+from monobit.base.scripting import scriptable, get_scriptables
 from .font import Font, FontProperties
-from .base.scripting import scriptable, get_scriptables
 
 
 class Pack:

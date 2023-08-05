@@ -10,13 +10,11 @@ import string
 import logging
 from itertools import accumulate
 
+from monobit.base import Props
 from monobit.base.binary import ceildiv
 from monobit.base.struct import little_endian as le, sizeof
-from monobit.storage import loaders, savers
-from monobit.storage import FileFormatError, Magic
-from monobit.font import Font
-from monobit.glyph import Glyph
-from monobit.base import Props
+from monobit.storage import loaders, savers, FileFormatError, Magic
+from monobit.core import Font, Glyph
 
 from .raw import load_bitmap
 

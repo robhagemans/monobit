@@ -10,11 +10,8 @@ import logging
 from monobit.base.binary import ceildiv
 from monobit.base.struct import little_endian as le
 from monobit.base import Props
-from monobit.storage import loaders, savers
-from monobit.font import Font
-from monobit.glyph import Glyph
-from monobit.raster import Raster
-from monobit.storage import Magic, FileFormatError
+from monobit.storage import loaders, savers, Magic, FileFormatError
+from monobit.core import Font, Glyph, Raster
 
 from .pcl import load_hppcl
 

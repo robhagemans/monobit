@@ -9,13 +9,10 @@ import logging
 from itertools import accumulate
 
 from monobit.base.struct import bitfield, little_endian as le, big_endian as be, sizeof
-from monobit.base import Props
-from monobit.storage import loaders, savers
-from monobit.font import Font
-from monobit.glyph import Glyph
-from monobit.storage import FileFormatError, Magic
 from monobit.base.binary import bytes_to_bits, ceildiv
-from monobit.raster import Raster
+from monobit.base import Props
+from monobit.storage import loaders, savers, FileFormatError, Magic
+from monobit.core import Font, Glyph, Raster
 
 
 @loaders.register(

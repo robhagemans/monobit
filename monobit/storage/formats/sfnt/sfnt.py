@@ -13,10 +13,7 @@ import re
 from unicodedata import bidirectional
 
 from monobit.base import Props
-from monobit.font import Font
-from monobit.glyph import Glyph
-from monobit.raster import Raster
-from monobit.labels import Tag, Char, Codepoint
+from monobit.core import Font, Glyph, Raster, Tag, Char, Codepoint
 from monobit.storage import loaders, savers
 from monobit.storage import FileFormatError
 

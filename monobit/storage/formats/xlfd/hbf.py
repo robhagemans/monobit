@@ -8,10 +8,9 @@ licence: https://opensource.org/licenses/MIT
 import logging
 from pathlib import Path
 
-from monobit.storage import loaders, savers
-from monobit.storage import FileFormatError
-from monobit.font import Font, Coord
-from monobit.glyph import Glyph
+from monobit.storage import loaders, savers, FileFormatError
+from monobit.base import Coord
+from monobit.core import Font, Glyph
 from monobit.base.binary import ceildiv
 
 from .bdf import read_props

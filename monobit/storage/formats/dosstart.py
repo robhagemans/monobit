@@ -9,12 +9,8 @@ import logging
 import string
 from io import StringIO
 
-from monobit.storage import loaders, savers
-from monobit.storage import FileFormatError
-from monobit.font import Font
-from monobit.glyph import Glyph
-from monobit.raster import Raster
-from monobit.vector import StrokePath
+from monobit.storage import loaders, savers, FileFormatError
+from monobit.core import Font, Glyph, Raster, StrokePath
 
 
 @loaders.register(

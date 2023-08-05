@@ -8,13 +8,10 @@ licence: https://opensource.org/licenses/MIT
 import logging
 
 from monobit.base.binary import ceildiv
-from monobit.storage import loaders, savers
-from monobit.storage import FileFormatError
-from monobit.font import Font, Coord
-from monobit.raster import Raster
-from monobit.glyph import Glyph
+from monobit.storage import loaders, savers, FileFormatError
+from monobit.base import Coord
+from monobit.core import Font, Raster, Glyph, Char, Codepoint, Tag
 from monobit.encoding import encodings, NotFoundError
-from monobit.labels import Char, Codepoint, Tag
 
 from .xlfd import parse_xlfd_properties, create_xlfd_properties
 from .xlfd import create_xlfd_name, CUSTOM_PROP

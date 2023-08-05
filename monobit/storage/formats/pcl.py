@@ -8,12 +8,9 @@ licence: https://opensource.org/licenses/MIT
 import logging
 from io import BytesIO
 
-from monobit.storage import loaders, savers
-from monobit.storage import FileFormatError, Magic
+from monobit.storage import loaders, savers, FileFormatError, Magic
 from monobit.base.struct import big_endian as be, bitfield
-from monobit.glyph import Glyph
-from monobit.raster import Raster
-from monobit.font import Font
+from monobit.core import Glyph, Raster, Font
 from monobit.base import Props, reverse_dict
 from monobit.encoding import EncodingName
 

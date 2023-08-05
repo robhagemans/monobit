@@ -11,7 +11,7 @@ from importlib.resources import files
 from functools import partial, wraps, cached_property
 
 from .unicode import unicode_name, is_printable
-from ..labels import to_label, Tag, Char, Codepoint
+from ..core.labels import to_label, Tag, Char, Codepoint
 from ..base import reverse_dict
 from .base import NotFoundError, Encoder, register_reader
 from . import tables

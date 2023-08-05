@@ -1,5 +1,5 @@
 """
-monobit.glyph - representation of single glyph
+monobit.core.glyph - representation of single glyph
 
 (c) 2019--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -8,14 +8,15 @@ licence: https://opensource.org/licenses/MIT
 import logging
 from functools import cache
 
-from .encoding.unicode import is_graphical, is_blank
-from .labels import Codepoint, Char, Tag, to_label
+from monobit.encoding.unicode import is_graphical, is_blank
+from monobit.base import Props, extend_string
+from monobit.base import HasProps, checked_property, writable_property
+from monobit.base import Coord, Bounds, to_number, NOT_SET
+from monobit.base.scripting import scriptable
+
 from .raster import Raster, turn_method
-from .base import Props, extend_string
-from .base import HasProps, checked_property, writable_property
-from .base import Coord, Bounds, to_number, NOT_SET
-from .base.scripting import scriptable
 from .vector import StrokePath
+from .labels import Codepoint, Char, Tag, to_label
 
 
 ##############################################################################

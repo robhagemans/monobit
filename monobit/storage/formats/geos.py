@@ -8,12 +8,8 @@ licence: https://opensource.org/licenses/MIT
 import logging
 from itertools import count
 
-from monobit.storage import loaders, savers
-from monobit.storage import Stream
-from monobit.storage import Magic
-from monobit.font import Font
-from monobit.glyph import Glyph
-from monobit.raster import Raster
+from monobit.storage import loaders, savers, Stream, Magic
+from monobit.core import Font, Glyph, Raster
 from monobit.base.struct import little_endian as le
 from monobit.base.binary import ceildiv, align
 

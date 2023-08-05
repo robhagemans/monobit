@@ -14,10 +14,10 @@ import logging
 from monobit.base.binary import bytes_to_bits, align
 from monobit.base.struct import bitfield, little_endian as le
 from monobit.base import struct
+from monobit.base import Coord
 from monobit.storage import loaders, savers
-from monobit.font import Font, Coord
-from monobit.glyph import Glyph, KernTable
 from monobit.storage import FileFormatError
+from monobit.core import Font, Glyph, KernTable
 
 from .nfnt import convert_nfnt, extract_nfnt, create_nfnt
 from .dfont import NON_ROMAN_NAMES

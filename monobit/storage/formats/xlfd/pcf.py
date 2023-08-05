@@ -9,13 +9,9 @@ import logging
 from itertools import accumulate
 
 from monobit.base.struct import big_endian as be, little_endian as le
-from monobit.storage import loaders, savers
-from monobit.storage import FileFormatError
+from monobit.storage import loaders, savers, FileFormatError
 from monobit.base import Props
-from monobit.font import Font
-from monobit.glyph import Glyph
-from monobit.raster import Raster
-from monobit.labels import Tag, Codepoint
+from monobit.core import Font, Glyph, Raster, Tag, Codepoint
 from monobit.base.binary import align, ceildiv
 
 from .bdf import swidth_to_pixel, pixel_to_swidth

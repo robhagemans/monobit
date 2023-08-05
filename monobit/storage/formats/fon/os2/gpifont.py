@@ -19,8 +19,7 @@ notice for gpifont.c and gpifont.h:
 import logging
 
 from monobit.storage import FileFormatError
-from monobit.glyph import Glyph
-from monobit.font import Font
+from monobit.core import Font, Glyph
 from monobit.base import Props
 from monobit.base.struct import little_endian as le, bitfield
 from monobit.base.binary import ceildiv

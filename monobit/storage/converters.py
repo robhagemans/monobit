@@ -13,8 +13,7 @@ from pathlib import Path
 from contextlib import contextmanager
 
 from ..constants import VERSION, CONVERTER_NAME
-from ..font import Font
-from ..pack import Pack
+from ..core import Font, Pack
 from ..base.struct import StructError
 from ..base.scripting import scriptable, ScriptArgs, ARG_PREFIX
 from ..base import Any

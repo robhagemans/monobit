@@ -10,10 +10,8 @@ from itertools import accumulate
 
 from monobit.base.struct import bitfield, little_endian as le, big_endian as be
 from monobit.base import Props
-from monobit.storage import loaders, savers
-from monobit.font import Font
-from monobit.glyph import Glyph
-from monobit.storage import FileFormatError
+from monobit.storage import loaders, savers, FileFormatError
+from monobit.core import Font, Glyph
 
 
 @loaders.register(

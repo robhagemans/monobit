@@ -25,9 +25,7 @@ from monobit.base.binary import int_to_bytes, bytes_to_int, ceildiv
 from monobit.base.struct import little_endian as le
 from monobit.base import Props, reverse_dict
 from monobit.storage import loaders, savers
-from monobit.font import Font, Coord
-from monobit.glyph import Glyph
-from monobit.labels import Codepoint, Char
+from monobit.core import Font, Glyph, Codepoint, Char
 from monobit.render import GlyphMap, grid_map
 
 from ..common import CHARSET_MAP, CHARSET_REVERSE_MAP

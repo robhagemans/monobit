@@ -38,10 +38,10 @@ except ImportError:
             yield c
 
 from ..base.binary import ceildiv
-from ..labels import Char, Codepoint
-from ..raster import Raster
 from ..base import Props
-from ..glyph import Glyph
+from ..core import Char, Codepoint
+from ..core import Raster
+from ..core import Glyph
 from .glyphmap import GlyphMap
 
 
