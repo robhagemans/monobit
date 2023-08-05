@@ -103,6 +103,7 @@ Supported bitmap formats
 | Dashen                | `dashen`   | `.pft`                      |&check;|       |
 | DEC DRCS soft font    | `dec`      |                             |&check;|&check;|
 | DosStart!             | `dosstart` | `.dsf`                      |&check;|       |
+| EDWIN bitmap font     | `edwin`    | `.fnt`                      |&check;|&check;|
 | FZX font              | `fzx`      | `.fzx`                      |&check;|&check;|
 | Figlet font           | `figlet`   | `.flf`                      |&check;|&check;|
 | Windows or OS/2 font  | `mzfon`    | `.fon` `.exe` `.dll`        |&check;|&check; (16-bit Windows) |

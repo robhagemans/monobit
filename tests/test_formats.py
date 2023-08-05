@@ -1218,6 +1218,22 @@ class TestFormats(BaseTester):
                         self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
 
 
+    # EDWIN
+
+    def test_import_edwin(self):
+        """Test importing EDWIN files."""
+        font, *_ = monobit.load(self.font_path / '4x6.edwin.fnt', format='edwin')
+        self.assertEqual(len(font.glyphs), 127)
+
+    def test_export_edwin(self):
+        """Test exporting EDWIN files."""
+        fnt_file = self.temp_path / '4x6.fnt'
+        monobit.save(self.fixed4x6, fnt_file, format='edwin')
+        font, *_ = monobit.load(fnt_file, format='edwin')
+        self.assertEqual(len(font.glyphs), 127)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+
+
     # vector formats
 
     def test_import_hershey(self):
