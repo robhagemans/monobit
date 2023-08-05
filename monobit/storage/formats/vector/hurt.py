@@ -40,7 +40,7 @@ def load_hurt(
 ###############################################################################
 # the distribution format is described in the accompanying usenet messages
 # https://web.mit.edu/ghostscript/www/Hershey.htm
-# the format brings too mind FORTRAN77 and punch cards
+# the format brings to mind FORTRAN77 and punch cards
 # https://hackaday.com/2021/03/30/hershey-fonts-not-chocolate-the-origin-of-vector-lettering/
 # the *original* NTIS format seems to have been spelled-out numbers in a book
 
