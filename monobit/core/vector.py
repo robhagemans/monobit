@@ -1,5 +1,5 @@
 """
-monobit.vector - stroke font support
+monobit.core.vector - single-stroke vector font support
 
 (c) 2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -11,7 +11,8 @@ from functools import cached_property
 from itertools import accumulate
 from typing import NamedTuple
 
-from .base import Coord, Bounds
+from monobit.base import Coord, Bounds
+
 from .raster import Raster
 
 

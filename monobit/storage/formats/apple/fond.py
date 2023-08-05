@@ -10,7 +10,7 @@ from itertools import accumulate
 
 from monobit.base.binary import bytes_to_bits, align
 from monobit.base.struct import bitfield, big_endian as be, sizeof
-from monobit.glyph import Glyph
+from monobit.core import Glyph
 
 from ..common import MAC_ENCODING, mac_style_name, to_postscript_name
 

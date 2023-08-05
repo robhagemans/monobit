@@ -20,10 +20,7 @@ from monobit.base.struct import little_endian as le
 from monobit.base import reverse_dict
 from monobit.storage import FileFormatError
 from monobit.base import Props
-from monobit.font import Font
-from monobit.glyph import Glyph
-from monobit.raster import Raster
-from monobit.vector import StrokePath
+from monobit.core import Font, Glyph, Raster, StrokePath
 
 # tables used by other formats
 from ...common import (

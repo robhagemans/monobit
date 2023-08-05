@@ -14,8 +14,7 @@ try:
 except ImportError:
     reportlab = None
 
-from monobit.storage import savers
-from monobit.storage import FileFormatError
+from monobit.storage import savers, FileFormatError
 
 
 if reportlab:

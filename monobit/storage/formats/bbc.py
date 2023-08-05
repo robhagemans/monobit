@@ -8,10 +8,8 @@ licence: https://opensource.org/licenses/MIT
 import logging
 
 from monobit.base import Props
-from monobit.storage import loaders, savers
-from monobit.font import Font
-from monobit.glyph import Glyph
-from monobit.storage import FileFormatError
+from monobit.storage import loaders, savers, FileFormatError
+from monobit.core import Font, Glyph
 
 
 _BBC_VDU = b'\x17'

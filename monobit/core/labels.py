@@ -1,5 +1,5 @@
 """
-monobit.label - yaff representation of labels
+monobit.core.label - representation of labels
 
 (c) 2020--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -8,10 +8,11 @@ licence: https://opensource.org/licenses/MIT
 from string import ascii_letters, digits
 from unicodedata import normalize
 from itertools import count
-from .base.binary import ceildiv, int_to_bytes, bytes_to_int
-from .base.scripting import to_int
-from .base import CONVERTERS
-from .encoding.unicode import is_printable
+
+from monobit.base.binary import ceildiv, int_to_bytes, bytes_to_int
+from monobit.base.scripting import to_int
+from monobit.base import CONVERTERS
+from monobit.encoding.unicode import is_printable
 
 
 def is_enclosed(from_str, char):

@@ -10,12 +10,10 @@ import logging
 from pathlib import Path
 
 from monobit.base.binary import bytes_to_bits
-from monobit.storage import loaders, savers
-from monobit.storage import FileFormatError, Regex
-from monobit.font import Font, Coord
-from monobit.glyph import Glyph
+from monobit.storage import loaders, savers, FileFormatError, Regex
+from monobit.core import Font, Glyph
 from monobit.base.struct import flag, bitfield, big_endian as be
-from monobit.base import Props
+from monobit.base import Props, Coord
 
 
 @loaders.register(

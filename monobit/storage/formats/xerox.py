@@ -9,13 +9,9 @@ import logging
 from itertools import count
 
 from monobit.base.struct import bitfield, flag, big_endian as be
-from monobit.storage import loaders, savers
-from monobit.storage import FileFormatError
+from monobit.storage import loaders, savers, FileFormatError
 from monobit.base import Props
-from monobit.font import Font
-from monobit.glyph import Glyph
-from monobit.raster import Raster
-from monobit.labels import Tag
+from monobit.core import Font, Glyph, Raster, Tag
 
 
 @loaders.register(

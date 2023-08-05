@@ -11,10 +11,9 @@ licence: https://opensource.org/licenses/MIT
 import logging
 import string
 
-from monobit.storage import loaders, savers
-from monobit.storage import FileFormatError
-from monobit.font import Font
-from monobit.glyph import Glyph
+from monobit.storage import loaders, savers, FileFormatError
+from monobit.core import Font, Glyph
+
 from .draw import load_draw, DrawGlyph, DrawComment, Empty
 
 

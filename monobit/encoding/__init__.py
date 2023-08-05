@@ -14,7 +14,7 @@ from .base import Encoder
 from .indexers import Indexer
 from .taggers import Tagmap
 from .definitions import encodings
-from ..labels import to_labels
+from ..core.labels import to_labels
 
 
 def encoder(initialiser):

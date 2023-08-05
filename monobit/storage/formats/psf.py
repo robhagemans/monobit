@@ -9,10 +9,8 @@ import logging
 
 from monobit.base.binary import ceildiv
 from monobit.base.struct import bitfield, flag, little_endian as le
-from monobit.storage import loaders, savers
-from monobit.font import Font
-from monobit.glyph import Glyph
-from monobit.storage import FileFormatError
+from monobit.storage import loaders, savers, FileFormatError
+from monobit.core import Font, Glyph
 
 from .raw import load_bitmap
 

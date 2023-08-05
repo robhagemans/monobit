@@ -9,12 +9,9 @@ import logging
 from pathlib import Path
 
 from monobit.base.struct import big_endian as be
-from monobit.storage import loaders, savers
-from monobit.font import Font
-from monobit.glyph import Glyph
-from monobit.raster import Raster
-from monobit.storage import FileFormatError
 from monobit.base.binary import ceildiv, bytes_to_bits
+from monobit.storage import loaders, savers, FileFormatError
+from monobit.core import Font, Glyph, Raster
 
 
 # Daisy-Dot II

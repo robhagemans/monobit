@@ -14,7 +14,7 @@ from monobit.base.struct import big_endian as be
 from monobit.storage import FileFormatError
 from monobit.storage import Stream
 from monobit.base import Props, reverse_dict
-from monobit.pack import Pack
+from monobit.core import Pack
 
 from ..common import MAC_ENCODING, STYLE_MAP
 from ..sfnt import load_sfnt, save_sfnt

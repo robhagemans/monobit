@@ -8,7 +8,7 @@ licence: https://opensource.org/licenses/MIT
 import logging
 
 from monobit.encoding import encodings
-from monobit.labels import Char
+from monobit.core import Char
 
 
 # dot property namespace for unrecognised properties

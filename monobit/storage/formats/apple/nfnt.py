@@ -14,12 +14,9 @@ from itertools import chain, accumulate
 
 from monobit.base.binary import bytes_to_bits
 from monobit.base.struct import bitfield, big_endian as be, little_endian as le
-from monobit.font import Font
-from monobit.glyph import Glyph, KernTable
+from monobit.core import Font, Glyph, KernTable, Char, Raster
 from monobit.storage import FileFormatError
-from monobit.labels import Char
 from monobit.encoding import EncodingName
-from monobit.raster import Raster
 from monobit.base import Props
 from monobit.base import NOT_SET
 

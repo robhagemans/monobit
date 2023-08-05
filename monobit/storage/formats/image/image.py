@@ -18,8 +18,7 @@ from monobit.base import Coord, RGB
 from monobit.base.binary import ceildiv
 from monobit.storage import loaders, savers
 from monobit.storage import FileFormatError
-from monobit.font import Font
-from monobit.glyph import Glyph
+from monobit.core import Font, Glyph
 from monobit.render import chart, grid_traverser
 
 

@@ -10,7 +10,7 @@ import logging
 from monobit.base.struct import big_endian as be
 from monobit.base import Props
 from monobit.storage import loaders, savers
-from monobit.font import Font
+from monobit.core import Font
 from monobit.storage import FileFormatError, Magic
 
 from .nfnt import extract_nfnt, convert_nfnt

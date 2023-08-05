@@ -8,9 +8,7 @@ licence: https://opensource.org/licenses/MIT
 import logging
 
 from monobit.storage import loaders, savers
-from monobit.font import Font
-from monobit.glyph import Glyph
-from monobit.labels import Char
+from monobit.core import Font, Glyph, Char
 from monobit.base.struct import little_endian as le
 from monobit.base.binary import bytes_to_bits
 

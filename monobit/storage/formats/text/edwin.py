@@ -13,11 +13,8 @@ licence: https://opensource.org/licenses/MIT
 import logging
 import string
 
-from monobit.storage import loaders, savers
-from monobit.storage import FileFormatError
-from monobit.font import Font
-from monobit.glyph import Glyph
-from monobit.raster import Raster
+from monobit.storage import loaders, savers, FileFormatError
+from monobit.core import Font, Glyph, Raster
 from monobit.base.binary import ceildiv
 
 

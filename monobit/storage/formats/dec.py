@@ -13,11 +13,8 @@ licence: https://opensource.org/licenses/MIT
 import shlex
 import logging
 
-from monobit.storage import loaders, savers
-from monobit.storage import FileFormatError
-from monobit.font import Font
-from monobit.raster import Raster
-from monobit.glyph import Glyph
+from monobit.storage import loaders, savers, FileFormatError
+from monobit.core import Font, Raster, Glyph
 from monobit.base.binary import ceildiv
 from monobit.base import Coord
 from monobit.base import reverse_dict

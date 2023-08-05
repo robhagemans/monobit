@@ -9,9 +9,7 @@ import logging
 from itertools import count
 
 from monobit.storage import loaders, savers
-from monobit.font import Font
-from monobit.glyph import Glyph
-from monobit.raster import Raster
+from monobit.core import Font, Glyph, Raster
 from monobit.base import struct
 from monobit.base.struct import little_endian as le
 from monobit.base.binary import ceildiv

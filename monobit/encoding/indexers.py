@@ -6,7 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 from .base import Encoder
-from ..labels import to_labels
+from ..core.labels import to_labels
 
 
 class Indexer(Encoder):

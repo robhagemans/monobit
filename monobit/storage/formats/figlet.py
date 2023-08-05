@@ -8,11 +8,9 @@ licence: https://opensource.org/licenses/MIT
 import logging
 from typing import NamedTuple
 
-from monobit.storage import loaders, savers
-from monobit.storage import FileFormatError
-from monobit.font import Font
-from monobit.glyph import Glyph
+from monobit.storage import loaders, savers, FileFormatError
 from monobit.base import Props, reverse_dict, extend_string
+from monobit.core import Font, Glyph
 from monobit.encoding import encodings
 
 

@@ -8,15 +8,12 @@ licence: https://opensource.org/licenses/MIT
 import logging
 from itertools import count
 
-from monobit.storage import loaders, savers
-from monobit.font import Font
-from monobit.glyph import Glyph
-from monobit.raster import Raster
+from monobit.storage import loaders, savers, Regex
+from monobit.core import Font, Glyph, Raster
+from monobit.base import Props
 from monobit.base import struct
 from monobit.base.struct import big_endian as be, bitfield, sizeof
 from monobit.base.binary import ceildiv, align
-from monobit.base import Props
-from monobit.storage import Regex
 
 
 @loaders.register(
