@@ -179,8 +179,9 @@ def _read_section(instream, subsections, end):
         )
         props.append((keyword, sec_props))
         # we're combining all comments in one block
-        comments.append('')
-        comments.extend(sec_comments)
+        if sec_comments:
+            comments.append('')
+            comments.extend(sec_comments)
 
 def indexer(plane, code_range, b2_ranges, b3_ranges):
     """Generator to run through code range keeping to allowed low-bytes."""
