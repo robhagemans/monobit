@@ -15,7 +15,7 @@ from monobit.glyph import Glyph
 from monobit.base.binary import ceildiv
 
 from .bdf import read_props
-from .xlfd import parse_xlfd_properties, create_xlfd_properties
+from .xlfd import parse_xlfd_properties, create_xlfd_properties, CUSTOM_PROP
 from .xlfd import create_xlfd_name
 from ..text.yaff import globalise_glyph_metrics
 
@@ -267,7 +267,7 @@ def _parse_properties(hbf_props, x_props):
     for key, value in unparsed.items():
         logging.info(f'Unrecognised HBF property {key}={value}')
         # preserve as property
-        properties[key] = value
+        properties[f'{CUSTOM_PROP}.{key}'] = value
     for key, value in xlfd_props.items():
         if key in properties and properties[key] != value:
             logging.debug(
@@ -323,6 +323,7 @@ def _parse_hbf_properties(hbf_props):
         code_scheme, properties['encoding'],
         f'plane {plane}' if plane is not None else ''
     )
+    hbf_props.pop('CHARS', None)
     hbf_props.pop('HBF_END_FONT', None)
     # keep unparsed hbf props
     return properties, hbf_props, plane
