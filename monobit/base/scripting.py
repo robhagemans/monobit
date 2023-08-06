@@ -65,7 +65,6 @@ def scriptable(
 
         @wraps(func)
         def _scriptable_func(*args, **kwargs):
-            global _record
             # apply converters to argument
             conv_kwargs = {}
             for kwarg, value in kwargs.items():
@@ -82,24 +81,16 @@ def scriptable(
                 converter = CONVERTERS.get(_type, _type)
                 conv_kwargs[kwarg] = converter(value)
             # call wrapped function
-            _record, save = False, _record
             result = func(*args, **conv_kwargs)
-            _record = save
-            # update history tracker
-            if record and _record and result and not 'history' in kwargs:
-                history = script_args.get_history_item(*args, **kwargs)
-                try:
-                    result = tuple(
-                        _item.append(history=history)
-                        for _item in iter(result)
-                    )
-                except TypeError:
-                    result = result.append(history=history)
             return result
 
         _scriptable_func.script_args = script_args
         _scriptable_func.pack_operation = pack_operation
         _scriptable_func.__name__ = name
+
+        if record:
+            _scriptable_func = record_history(_scriptable_func)
+
         return _scriptable_func
 
 
@@ -146,21 +137,6 @@ class ScriptArgs:
             if arg.strip() in self._script_args:
                 self._script_docs[arg] = doc.strip()
 
-    def get_history_item(self, *args, **kwargs):
-        """Represent converter parameters."""
-        return ' '.join(
-            _e for _e in (
-                self.name.replace('_', '-'),
-                ' '.join(
-                    f'{ARG_PREFIX}{_k.replace("_", "-")}={shlex.join((str(_v),))}'
-                    for _k, _v in kwargs.items()
-                    # exclude non-operation parameters
-                    if _k.replace('-', '_') in self._script_args
-                ),
-            )
-            if _e
-        ).strip()
-
     def __iter__(self):
         """Iterate over argument, type, doc pairs."""
         return (
@@ -179,6 +155,48 @@ class ScriptArgs:
 
     def __contains__(self, arg):
         return arg in self._script_args
+
+
+###############################################################################
+# history recording
+
+def record_history(func):
+
+    @wraps(func)
+    def _recorded_func(*args, **kwargs):
+        global _record
+        # call wrapped function
+        _record, save = False, _record
+        result = func(*args, **kwargs)
+        _record = save
+        # update history tracker
+        if _record and result and not 'history' in kwargs:
+            history = _get_history_item(func.script_args, *args, **kwargs)
+            try:
+                result = type(result)(
+                    _item.append(history=history)
+                    for _item in iter(result)
+                )
+            except TypeError:
+                result = result.append(history=history)
+        return result
+
+    return _recorded_func
+
+def _get_history_item(script_args, *args, **kwargs):
+    """Represent converter parameters."""
+    return ' '.join(
+        _e for _e in (
+            script_args.name.replace('_', '-'),
+            ' '.join(
+                f'{ARG_PREFIX}{_k.replace("_", "-")}={shlex.join((str(_v),))}'
+                for _k, _v in kwargs.items()
+                # exclude non-operation parameters
+                if _k.replace('-', '_') in script_args
+            ),
+        )
+        if _e
+    ).strip()
 
 
 
