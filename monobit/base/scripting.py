@@ -40,7 +40,6 @@ def scriptable(
     Decorated functions get
     - a script_args record for argument parsing
     - automatic type conversion
-    - application of a font operation to all elements in a pack (unless pack_operation is set)
     - recorded history
 
     script_args: additional arguments not given in annotations
@@ -59,38 +58,24 @@ def scriptable(
     else:
         # called as @scriptable
         func, = args
-        name = func.__name__
-        script_args = script_args or {}
-        script_args = ScriptArgs(func, name=name, extra_args=script_args)
+        script_args = ScriptArgs(
+            func, name=func.__name__, extra_args=script_args or {},
+        )
 
-        @wraps(func)
+        wraps(func)
         def _scriptable_func(*args, **kwargs):
-            # apply converters to argument
-            conv_kwargs = {}
-            for kwarg, value in kwargs.items():
-                kwarg = kwarg.replace('-', '_')
-                # skip not-specified arguments
-                if value is NOT_SET:
-                    continue
-                try:
-                    _type, _ = script_args[kwarg]
-                except KeyError:
-                    if not wrapper:
-                        raise ArgumentError(name, kwarg) from None
-                    _type = Any
-                converter = CONVERTERS.get(_type, _type)
-                conv_kwargs[kwarg] = converter(value)
-            # call wrapped function
-            result = func(*args, **conv_kwargs)
-            return result
+            return func(*args, **kwargs)
 
         _scriptable_func.script_args = script_args
-        _scriptable_func.pack_operation = pack_operation
-        _scriptable_func.__name__ = name
-
+        _scriptable_func = convert_arguments(_scriptable_func)
+        if not wrapper:
+            _scriptable_func.script_args = script_args
+            _scriptable_func = check_arguments(_scriptable_func)
         if record:
+            _scriptable_func.script_args = script_args
             _scriptable_func = record_history(_scriptable_func)
-
+        _scriptable_func.script_args = script_args
+        _scriptable_func.pack_operation = pack_operation
         return _scriptable_func
 
 
@@ -102,6 +87,47 @@ def get_scriptables(cls):
         for _name, _func in vars(_cls).items()
         if not _name.startswith('_') and hasattr(_func, 'script_args')
     }
+
+
+def check_arguments(func):
+
+    @wraps(func)
+    def _checked_func(*args, **kwargs):
+        # rename argument provided with dashes
+        kwargs = {
+            _kwarg.replace('-', '_'): _value
+            for _kwarg, _value in kwargs.items()
+        }
+        for kwarg in kwargs:
+            if kwarg not in func.script_args:
+                raise ArgumentError(name, kwarg) from None
+        # call wrapped function
+        return func(*args, **kwargs)
+
+    return _checked_func
+
+
+def convert_arguments(func):
+
+    @wraps(func)
+    def _converted_func(*args, **kwargs):
+        # apply converters to argument
+        conv_kwargs = {}
+        for kwarg, value in kwargs.items():
+            # skip not-specified arguments
+            if value is NOT_SET:
+                continue
+            try:
+                _type, _ = func.script_args[kwarg]
+            except KeyError:
+                _type = Any
+            converter = CONVERTERS.get(_type, _type)
+            conv_kwargs[kwarg] = converter(value)
+        # call wrapped function
+        result = func(*args, **conv_kwargs)
+        return result
+
+    return _converted_func
 
 
 ###############################################################################
