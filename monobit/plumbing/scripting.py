@@ -6,11 +6,10 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import logging
-import shlex
 from functools import wraps, partial
 
 from ..base import Any, passthrough, to_int, CONVERTERS, NOT_SET
-from .args import ARG_PREFIX
+from .history import record_history
 
 
 class ArgumentError(TypeError):
@@ -24,8 +23,6 @@ class ArgumentError(TypeError):
 # mark functions for scripting
 # annotations give converters from string to desired type
 # docstings provide help text
-
-_record = True
 
 def scriptable(
         *args, script_args=None,
@@ -159,47 +156,3 @@ class ScriptArgs:
 
     def __contains__(self, arg):
         return arg in self._script_args
-
-
-###############################################################################
-# history recording
-
-def record_history(func):
-    """Ensure history gets recorded on a method call."""
-
-    @wraps(func)
-    def _recorded_func(*args, **kwargs):
-        global _record
-        # call wrapped function
-        _record, save = False, _record
-        result = func(*args, **kwargs)
-        _record = save
-        # update history tracker
-        if _record and result and not 'history' in kwargs:
-            history = _get_history_item(func.script_args, *args, **kwargs)
-            try:
-                result = type(result)(
-                    _item.append(history=history)
-                    for _item in iter(result)
-                )
-            except TypeError:
-                result = result.append(history=history)
-        return result
-
-    return _recorded_func
-
-
-def _get_history_item(script_args, *args, **kwargs):
-    """Represent converter parameters."""
-    return ' '.join(
-        _e for _e in (
-            script_args.name.replace('_', '-'),
-            ' '.join(
-                f'{ARG_PREFIX}{_k.replace("_", "-")}={shlex.join((str(_v),))}'
-                for _k, _v in kwargs.items()
-                # exclude non-operation parameters
-                if _k.replace('-', '_') in script_args
-            ),
-        )
-        if _e
-    ).strip()
