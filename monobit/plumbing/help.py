@@ -5,12 +5,12 @@ monobit.plumbing.help - contextual help
 licence: https://opensource.org/licenses/MIT
 """
 
+from ..storage import loaders, savers
 from .scripting import GLOBAL_ARG_PREFIX, ARG_PREFIX, FALSE_PREFIX
 
 
 # doc string alignment in usage text
 HELP_TAB = 25
-
 
 
 def get_argdoc(func, for_arg):
@@ -26,6 +26,7 @@ def get_argdoc(func, for_arg):
             return doc.strip()
     return ''
 
+
 def get_funcdoc(func):
     """Get documentation for function."""
     if not func.__doc__:
@@ -37,7 +38,6 @@ def get_funcdoc(func):
     return ''
 
 
-
 def _print_option_help(name, vartype, doc, tab, prefix, *, add_unsetter=True):
     if vartype == bool:
         print(f'{prefix}{name}\t{doc}'.expandtabs(tab))
@@ -45,6 +45,7 @@ def _print_option_help(name, vartype, doc, tab, prefix, *, add_unsetter=True):
             print(f'{prefix}{FALSE_PREFIX}{name}\tunset {prefix}{name}'.expandtabs(tab))
     else:
         print(f'{prefix}{name}=...\t{doc}'.expandtabs(tab))
+
 
 def print_help(command_args, usage, operations, global_options, context_help):
     print(usage)
@@ -84,3 +85,18 @@ def print_help(command_args, usage, operations, global_options, context_help):
                     doc = get_argdoc(context_func, name)
                     _print_option_help(name, vartype, doc, HELP_TAB, ARG_PREFIX)
                 print()
+
+
+def get_context_func(command, args, kwargs, **ignore):
+    if args:
+        file = args[0]
+    else:
+        file = kwargs.get('infile', '')
+    format = kwargs.get('format', '')
+    if command == 'load':
+        func, *_ = loaders.get_for(format=format)
+    else:
+        func, *_ = savers.get_for(format=format)
+    if func:
+        return func
+    return None
