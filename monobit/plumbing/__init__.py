@@ -7,4 +7,5 @@ licence: https://opensource.org/licenses/MIT
 
 from .scripting import *
 from .args import *
+from .history import *
 # can't import help due to circular dependency
