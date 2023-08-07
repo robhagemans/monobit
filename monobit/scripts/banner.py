@@ -11,7 +11,7 @@ import codecs
 from codecs import escape_decode
 
 import monobit
-from monobit.base.scripting import wrap_main
+from monobit.plumbing import wrap_main
 from monobit.base import Coord, RGB
 from monobit.render import render
 from monobit.core import Font

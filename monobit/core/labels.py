@@ -10,7 +10,7 @@ from unicodedata import normalize
 from itertools import count
 
 from monobit.base.binary import ceildiv, int_to_bytes, bytes_to_int
-from monobit.base.scripting import to_int
+from monobit.base import to_int
 from monobit.base import CONVERTERS
 from monobit.encoding.unicode import is_printable
 

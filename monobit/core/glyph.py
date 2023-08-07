@@ -12,7 +12,7 @@ from monobit.encoding.unicode import is_graphical, is_blank
 from monobit.base import Props, extend_string
 from monobit.base import HasProps, checked_property, writable_property
 from monobit.base import Coord, Bounds, to_number, NOT_SET
-from monobit.base.scripting import scriptable
+from monobit.plumbing.scripting import scriptable
 
 from .raster import Raster, turn_method
 from .vector import StrokePath

@@ -7,7 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
-from monobit.base.scripting import scriptable, get_scriptables
+from monobit.plumbing.scripting import scriptable, get_scriptables
 from .font import Font, FontProperties
 
 
