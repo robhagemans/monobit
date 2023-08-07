@@ -6,4 +6,3 @@ licence: https://opensource.org/licenses/MIT
 """
 
 from .scripting import *
-from .help import *
