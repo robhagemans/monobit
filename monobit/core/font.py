@@ -1500,8 +1500,7 @@ class Font(HasProps):
     @scriptable
     def shear(self, *, direction:str='right', pitch:Coord=None):
         """
-        Create a slant by dislocating diagonally, keeping
-        the horizontal baseline fixed.
+        Create a slant by dislocating diagonally, keeping the horizontal baseline fixed.
 
         direction: direction to move the top of the glyph (default: 'right').
         pitch: angle of the slant, given as (x, y) coordinate

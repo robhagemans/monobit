@@ -55,28 +55,27 @@ def scriptable(
             record=record, pack_operation=pack_operation,
             wrapper=wrapper,
         )
-    else:
-        # called as @scriptable
-        func, = args
-        script_args = ScriptArgs(
-            func, name=func.__name__, extra_args=script_args or {},
-        )
+    # called as @scriptable
+    func, = args
 
-        wraps(func)
-        def _scriptable_func(*args, **kwargs):
-            return func(*args, **kwargs)
+    @wraps(func)
+    def _scriptable_func(*args, **kwargs):
+        return func(*args, **kwargs)
 
+    script_args = ScriptArgs(
+        func, name=func.__name__, extra_args=script_args or {},
+    )
+    _scriptable_func.script_args = script_args
+    _scriptable_func = convert_arguments(_scriptable_func)
+    if not wrapper:
         _scriptable_func.script_args = script_args
-        _scriptable_func = convert_arguments(_scriptable_func)
-        if not wrapper:
-            _scriptable_func.script_args = script_args
-            _scriptable_func = check_arguments(_scriptable_func)
-        if record:
-            _scriptable_func.script_args = script_args
-            _scriptable_func = record_history(_scriptable_func)
+        _scriptable_func = check_arguments(_scriptable_func)
+    if record:
         _scriptable_func.script_args = script_args
-        _scriptable_func.pack_operation = pack_operation
-        return _scriptable_func
+        _scriptable_func = record_history(_scriptable_func)
+    _scriptable_func.script_args = script_args
+    _scriptable_func.pack_operation = pack_operation
+    return _scriptable_func
 
 
 def get_scriptables(cls):
@@ -90,6 +89,7 @@ def get_scriptables(cls):
 
 
 def check_arguments(func):
+    """Check if arguments to function are in the registered script args."""
 
     @wraps(func)
     def _checked_func(*args, **kwargs):
@@ -108,6 +108,7 @@ def check_arguments(func):
 
 
 def convert_arguments(func):
+    """Convert given arguments to the type in registered script args."""
 
     @wraps(func)
     def _converted_func(*args, **kwargs):
@@ -117,10 +118,7 @@ def convert_arguments(func):
             # skip not-specified arguments
             if value is NOT_SET:
                 continue
-            try:
-                _type, _ = func.script_args[kwarg]
-            except KeyError:
-                _type = Any
+            _type = func.script_args.get(kwarg, Any)
             converter = CONVERTERS.get(_type, _type)
             conv_kwargs[kwarg] = converter(value)
         # call wrapped function
@@ -143,50 +141,58 @@ class ScriptArgs:
         """Extract script name, arguments and docs."""
         self.name = name
         self._script_args = {}
-        self.doc = ''
-        docs = ()
         if func:
-            if func.__doc__:
-                docs = func.__doc__.splitlines()
-                docs = (_l.strip() for _l in docs)
             self.name = name or func.__name__
             self._script_args.update(func.__annotations__)
         self._script_args.update(extra_args or {})
-        self._script_docs = {_k: '' for _k in self._script_args}
-        self.doc = ''
-        for line in docs:
-            if not self.doc:
-                self.doc = line
-            if not line or ':' not in line:
-                continue
-            arg, doc = line.split(':', 1)
-            if arg.strip() in self._script_args:
-                self._script_docs[arg] = doc.strip()
+
+    def items(self):
+        """Iterate over argument, type pairs."""
+        return self._script_args.items()
+
+    def get(self, arg, default):
+        return self._script_args.get(arg, default)
 
     def __iter__(self):
-        """Iterate over argument, type, doc pairs."""
-        return (
-            (_arg,
-            self._script_args[_arg],
-            self._script_docs[_arg])
-            for _arg in self._script_args
-        )
+        """Iterate over arguments."""
+        return iter(self._script_args)
 
     def __getitem__(self, arg):
-        """Retrieve type, doc pair."""
-        return (
-            self._script_args[arg],
-            self._script_docs[arg]
-        )
+        return self._script_args[arg]
 
     def __contains__(self, arg):
         return arg in self._script_args
+
+
+def get_argdoc(func, for_arg):
+    """Get documentation for function argument."""
+    if not func.__doc__:
+        return ''
+    for line in func.__doc__.splitlines():
+        line = line.strip()
+        if not line or ':' not in line:
+            continue
+        arg, doc = line.split(':', 1)
+        if arg.strip() == for_arg:
+            return doc.strip()
+    return ''
+
+def get_funcdoc(func):
+    """Get documentation for function."""
+    if not func.__doc__:
+        return ''
+    for line in func.__doc__.splitlines():
+        line = line.strip()
+        if line:
+            return line
+    return ''
 
 
 ###############################################################################
 # history recording
 
 def record_history(func):
+    """Ensure history gets recorded on a method call."""
 
     @wraps(func)
     def _recorded_func(*args, **kwargs):
@@ -209,6 +215,7 @@ def record_history(func):
 
     return _recorded_func
 
+
 def _get_history_item(script_args, *args, **kwargs):
     """Represent converter parameters."""
     return ' '.join(
@@ -223,7 +230,6 @@ def _get_history_item(script_args, *args, **kwargs):
         )
         if _e
     ).strip()
-
 
 
 ###############################################################################
@@ -337,7 +343,7 @@ def print_help(command_args, usage, operations, global_options, context_help):
         print('========')
         print()
         for op, func in operations.items():
-            print(f'{op} '.ljust(HELP_TAB-1) + f' {func.script_args.doc}')
+            print(f'{op} '.ljust(HELP_TAB-1) + f' {get_funcdoc(func)}')
     else:
         print()
         print('Commands and their options')
@@ -348,14 +354,16 @@ def print_help(command_args, usage, operations, global_options, context_help):
             if not op:
                 continue
             func = ns.func
-            print(f'{op} '.ljust(HELP_TAB-1, '-') + f' {func.script_args.doc}')
-            for name, vartype, doc in func.script_args:
+            print(f'{op} '.ljust(HELP_TAB-1, '-') + f' {get_funcdoc(func)}')
+            for name, vartype in func.script_args.items():
+                doc = get_argdoc(func, name)
                 _print_option_help(name, vartype, doc, HELP_TAB, ARG_PREFIX)
             print()
             if op in context_help:
-                context_args = context_help[op]
-                print(f'{context_args.name} '.ljust(HELP_TAB-1, '-') + f' {func.script_args.doc}')
-                for name, vartype, doc in context_args:
+                context_func = context_help[op]
+                print(f'{context_func.__name__} '.ljust(HELP_TAB-1, '-') + f' {get_funcdoc(context_func)}')
+                for name, vartype in context_func.script_args.items():
+                    doc = get_argdoc(context_func, name)
                     _print_option_help(name, vartype, doc, HELP_TAB, ARG_PREFIX)
                 print()
 
