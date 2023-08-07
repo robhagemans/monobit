@@ -9,7 +9,7 @@ from types import SimpleNamespace as Namespace
 from pathlib import Path
 
 import monobit
-from monobit.base.scripting import (
+from monobit.plumbing import (
     wrap_main, parse_subcommands, print_help, argrecord, GLOBAL_ARG_PREFIX
 )
 
