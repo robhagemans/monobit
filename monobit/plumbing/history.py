@@ -27,7 +27,7 @@ def record_history(func):
         _record = save
         # update history tracker
         if _record and result and not 'history' in kwargs:
-            history = _get_history_item(func.script_args, *args, **kwargs)
+            history = _get_history_item(func, *args, **kwargs)
             try:
                 result = type(result)(
                     _item.append(history=history)
@@ -40,16 +40,16 @@ def record_history(func):
     return _recorded_func
 
 
-def _get_history_item(script_args, *args, **kwargs):
+def _get_history_item(func, *args, **kwargs):
     """Represent converter parameters."""
     return ' '.join(
         _e for _e in (
-            script_args.name.replace('_', '-'),
+            func.__name__.replace('_', '-'),
             ' '.join(
                 f'{ARG_PREFIX}{_k.replace("_", "-")}={shlex.join((str(_v),))}'
                 for _k, _v in kwargs.items()
                 # exclude non-operation parameters
-                if _k.replace('-', '_') in script_args
+                if _k.replace('-', '_') in func.script_args
             ),
         )
         if _e
