@@ -56,9 +56,7 @@ def scriptable(
     def _scriptable_func(*args, **kwargs):
         return func(*args, **kwargs)
 
-    script_args = ScriptArgs(
-        func, name=func.__name__, extra_args=script_args or {},
-    )
+    script_args = ScriptArgs(func, extra_args=script_args or {})
     _scriptable_func.script_args = script_args
     _scriptable_func = convert_arguments(_scriptable_func)
     if not wrapper:
@@ -129,14 +127,11 @@ class ScriptArgs:
     """Record of script arguments."""
 
     def __init__(
-            self, func=None, *,
-            name='', extra_args=None,
+            self, func=None, *, extra_args=None,
         ):
         """Extract script name, arguments and docs."""
-        self.name = name
         self._script_args = {}
         if func:
-            self.name = name or func.__name__
             self._script_args.update(func.__annotations__)
         self._script_args.update(extra_args or {})
 
