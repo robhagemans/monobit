@@ -47,7 +47,7 @@ def _get_context_help(rec):
     else:
         func, *_ = monobit.savers.get_for(format=format)
     if func:
-        return func.script_args
+        return func
     return None
 
 def help(command_args):
