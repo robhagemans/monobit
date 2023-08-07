@@ -6,3 +6,5 @@ licence: https://opensource.org/licenses/MIT
 """
 
 from .scripting import *
+from .args import *
+# can't import help due to circular dependency

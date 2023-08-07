@@ -6,7 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 from ..storage import loaders, savers
-from .scripting import GLOBAL_ARG_PREFIX, ARG_PREFIX, FALSE_PREFIX
+from .args import GLOBAL_ARG_PREFIX, ARG_PREFIX, FALSE_PREFIX
 
 
 # doc string alignment in usage text
