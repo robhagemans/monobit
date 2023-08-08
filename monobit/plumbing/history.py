@@ -49,7 +49,7 @@ def _get_history_item(func, *args, **kwargs):
                 f'{ARG_PREFIX}{_k.replace("_", "-")}={shlex.join((str(_v),))}'
                 for _k, _v in kwargs.items()
                 # exclude non-operation parameters
-                if _k.replace('-', '_') in func.script_args
+                if _k.replace('-', '_') in func.__annotations__
             ),
         )
         if _e

@@ -74,14 +74,14 @@ def print_help(command_args, usage, operations, global_options, context_help):
                 continue
             func = ns.func
             print(f'{op} '.ljust(HELP_TAB-1, '-') + f' {get_funcdoc(func)}')
-            for name, vartype in func.script_args.items():
+            for name, vartype in func.__annotations__.items():
                 doc = get_argdoc(func, name)
                 _print_option_help(name, vartype, doc, HELP_TAB, ARG_PREFIX)
             print()
             if op in context_help:
                 context_func = context_help[op]
                 print(f'{context_func.__name__} '.ljust(HELP_TAB-1, '-') + f' {get_funcdoc(context_func)}')
-                for name, vartype in context_func.script_args.items():
+                for name, vartype in context_func.__annotations__.items():
                     doc = get_argdoc(context_func, name)
                     _print_option_help(name, vartype, doc, HELP_TAB, ARG_PREFIX)
                 print()
