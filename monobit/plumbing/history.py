@@ -1,5 +1,5 @@
 """
-monobit.plumbing.scripting - scripting utilities
+monobit.plumbing.history - records history of objects
 
 (c) 2019--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
