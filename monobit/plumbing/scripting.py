@@ -24,6 +24,9 @@ class ArgumentError(TypeError):
 # annotations give converters from string to desired type
 # docstings provide help text
 
+scriptables = {}
+
+
 def scriptable(
         *args, script_args=None,
         record=True, pack_operation=False, wrapper=False,
@@ -56,27 +59,25 @@ def scriptable(
     def _scriptable_func(*args, **kwargs):
         return func(*args, **kwargs)
 
-    script_args = ScriptArgs(func, extra_args=script_args or {})
-    _scriptable_func.script_args = script_args
+    _scriptable_func.__annotations__.update(script_args or {})
     _scriptable_func = convert_arguments(_scriptable_func)
     if not wrapper:
-        _scriptable_func.script_args = script_args
         _scriptable_func = check_arguments(_scriptable_func)
     if record:
-        _scriptable_func.script_args = script_args
         _scriptable_func = record_history(_scriptable_func)
-    _scriptable_func.script_args = script_args
     _scriptable_func.pack_operation = pack_operation
+    # register the scriptable function
+    scriptables[_scriptable_func.__name__] = _scriptable_func
     return _scriptable_func
 
 
 def get_scriptables(cls):
-    """Get dict of functions marked as scriptable."""
+    """Get dict of scriptable methods on the given class."""
     return {
         _name: _func
         for _cls in (cls, *cls.__bases__)
         for _name, _func in vars(_cls).items()
-        if not _name.startswith('_') and hasattr(_func, 'script_args')
+        if not _name.startswith('_') and scriptables.get(_name, None) == _func
     }
 
 
@@ -91,7 +92,7 @@ def check_arguments(func):
             for _kwarg, _value in kwargs.items()
         }
         for kwarg in kwargs:
-            if kwarg not in func.script_args:
+            if kwarg not in func.__annotations__:
                 raise ArgumentError(func.__name__, kwarg) from None
         # call wrapped function
         return func(*args, **kwargs)
@@ -110,7 +111,7 @@ def convert_arguments(func):
             # skip not-specified arguments
             if value is NOT_SET:
                 continue
-            _type = func.script_args.get(kwarg, Any)
+            _type = func.__annotations__.get(kwarg, Any)
             converter = CONVERTERS.get(_type, _type)
             conv_kwargs[kwarg] = converter(value)
         # call wrapped function
@@ -118,36 +119,3 @@ def convert_arguments(func):
         return result
 
     return _converted_func
-
-
-###############################################################################
-# argument parsing
-
-class ScriptArgs:
-    """Record of script arguments."""
-
-    def __init__(
-            self, func=None, *, extra_args=None,
-        ):
-        """Extract script name, arguments and docs."""
-        self._script_args = {}
-        if func:
-            self._script_args.update(func.__annotations__)
-        self._script_args.update(extra_args or {})
-
-    def items(self):
-        """Iterate over argument, type pairs."""
-        return self._script_args.items()
-
-    def get(self, arg, default):
-        return self._script_args.get(arg, default)
-
-    def __iter__(self):
-        """Iterate over arguments."""
-        return iter(self._script_args)
-
-    def __getitem__(self, arg):
-        return self._script_args[arg]
-
-    def __contains__(self, arg):
-        return arg in self._script_args
