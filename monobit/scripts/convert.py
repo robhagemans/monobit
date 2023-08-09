@@ -17,8 +17,6 @@ from monobit.plumbing.help import get_context_func, print_help
 script_name = Path(sys.argv[0]).name
 
 operations = {
-    'load': monobit.load,
-    'save': monobit.save,
     'to': monobit.save,
     **monobit.operations
 }

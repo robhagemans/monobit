@@ -68,7 +68,3 @@ class Pack:
         """Iterate over subpacks with one value for a property."""
         for value in sorted(set(self.list_by(property))):
             yield value, self.select(**{property: value})
-
-
-# scriptable font/glyph operations
-operations = get_scriptables(Pack)

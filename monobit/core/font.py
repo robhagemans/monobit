@@ -1540,8 +1540,3 @@ class Font(HasProps):
                 return self._apply_to_all_glyphs(_func, **kwargs)
 
             locals()[_name] = _modify_glyphs
-
-
-
-# scriptable font/glyph operations
-operations = get_scriptables(Font)
