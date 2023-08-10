@@ -11,7 +11,7 @@ from itertools import chain
 from pathlib import PurePath
 from unicodedata import normalize
 
-from monobit.plumbing.scripting import scriptable, get_scriptables
+from monobit.plumbing.scripting import scriptable
 from monobit.base import Coord, Bounds, NOT_SET
 from monobit.base import to_int, Any
 from monobit.encoding import encoder, EncodingName, Encoder, Indexer, Charmap
@@ -1218,7 +1218,7 @@ class Font(HasProps):
     ##########################################################################
     # transformations
 
-    def _apply_to_all_glyphs(self, operation, **kwargs):
+    def for_all(self, operation, **kwargs):
         glyphs = tuple(
             operation(_g, **kwargs) for _g in self.glyphs
         )
@@ -1233,7 +1233,7 @@ class Font(HasProps):
 
         adjust_metrics: also reverse metrics (default: True)
         """
-        font = self._apply_to_all_glyphs(
+        font = self.for_all(
             Glyph.mirror, adjust_metrics=adjust_metrics
         )
         if not adjust_metrics:
@@ -1252,7 +1252,7 @@ class Font(HasProps):
 
         adjust_metrics: also reverse metrics (default: True)
         """
-        font = self._apply_to_all_glyphs(
+        font = self.for_all(
             Glyph.flip, adjust_metrics=adjust_metrics
         )
         if not adjust_metrics:
@@ -1271,7 +1271,7 @@ class Font(HasProps):
 
         adjust_metrics: also transpose metrics (default: True)
         """
-        font = self._apply_to_all_glyphs(
+        font = self.for_all(
             Glyph.transpose, adjust_metrics=adjust_metrics
         )
         if not adjust_metrics:
@@ -1306,7 +1306,7 @@ class Font(HasProps):
         top: number of rows to remove from top
         adjust_metrics: make the operation render-invariant (default: True)
         """
-        font = self._apply_to_all_glyphs(
+        font = self.for_all(
             Glyph.crop,
             left=left, bottom=bottom, right=right, top=top, adjust_metrics=adjust_metrics
         )
@@ -1332,7 +1332,7 @@ class Font(HasProps):
         top: number of rows to add on top
         adjust_metrics: make the operation render-invariant (default: True)
         """
-        font = self._apply_to_all_glyphs(
+        font = self.for_all(
             Glyph.expand,
             left=left, bottom=bottom, right=right, top=top,
             adjust_metrics=adjust_metrics
@@ -1352,7 +1352,7 @@ class Font(HasProps):
 
         adjust_metrics: make the operation render-invariant (default: True)
         """
-        font = self._apply_to_all_glyphs(
+        font = self.for_all(
             Glyph.reduce,
             adjust_metrics=adjust_metrics,
             create_vertical_metrics=self.has_vertical_metrics(),
@@ -1409,7 +1409,7 @@ class Font(HasProps):
         """
         if (factor_x, factor_y) == (1, 1):
             return self
-        font = self._apply_to_all_glyphs(
+        font = self.for_all(
             Glyph.stretch,
             factor_x=factor_x, factor_y=factor_y,
             adjust_metrics=adjust_metrics,
@@ -1436,7 +1436,7 @@ class Font(HasProps):
         """
         if (factor_x, factor_y) == (1, 1):
             return self
-        font = self._apply_to_all_glyphs(
+        font = self.for_all(
             Glyph.shrink,
             factor_x=factor_x, factor_y=factor_y,
             adjust_metrics=adjust_metrics,
@@ -1472,7 +1472,7 @@ class Font(HasProps):
         left = left or 0
         down = down or 0
         up = up or 0
-        return self._apply_to_all_glyphs(
+        return self.for_all(
             Glyph.smear,
             left=left, down=down, right=right, up=up,
             adjust_metrics=adjust_metrics,
@@ -1492,7 +1492,7 @@ class Font(HasProps):
             descent = self.underline_descent
         if thickness is None:
             thickness = self.underline_thickness
-        return self._apply_to_all_glyphs(
+        return self.for_all(
             Glyph.underline,
             descent=descent, thickness=thickness
         )
@@ -1508,7 +1508,7 @@ class Font(HasProps):
         """
         if pitch is None:
             pitch = self.italic_pitch
-        return self._apply_to_all_glyphs(
+        return self.for_all(
             Glyph.shear,
             direction=direction, pitch=pitch
         )
@@ -1523,20 +1523,7 @@ class Font(HasProps):
         """
         if thickness is None:
             thickness = self.outline_thickness
-        return self._apply_to_all_glyphs(
+        return self.for_all(
             Glyph.outline,
             thickness = thickness
         )
-
-
-    # inject remaining Glyph transformations into Font
-
-    for _name, _func in get_scriptables(Glyph).items():
-        if _name not in locals():
-
-            @scriptable
-            @wraps(_func)
-            def _modify_glyphs(self, _func=_func, **kwargs):
-                return self._apply_to_all_glyphs(_func, **kwargs)
-
-            locals()[_name] = _modify_glyphs
