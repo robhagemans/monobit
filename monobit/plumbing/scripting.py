@@ -71,16 +71,6 @@ def scriptable(
     return _scriptable_func
 
 
-def get_scriptables(cls):
-    """Get dict of scriptable methods on the given class."""
-    return {
-        _name: _func
-        for _cls in (cls, *cls.__bases__)
-        for _name, _func in vars(_cls).items()
-        if not _name.startswith('_') and scriptables.get(_name, None) == _func
-    }
-
-
 def check_arguments(func):
     """Check if arguments to function are in the registered script args."""
 
