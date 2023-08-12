@@ -8,9 +8,39 @@ licence: https://opensource.org/licenses/MIT
 from itertools import product
 
 from ..base.binary import ceildiv
-from ..base import Props
-from ..base import Coord
+from ..base import Props, Coord
+from ..core import Codepoint
+from ..storage import savers
+from ..plumbing import scriptable
 from .glyphmap import GlyphMap
+
+
+@savers.register(name='chart', wrapper=True)
+def save_chart(
+        fonts, outstream,
+        columns:int=32, margin:Coord=(0, 0), padding:Coord=(0, 0),
+        order:str='row-major', direction:Coord=(1, -1),
+        codepoint_range:tuple[Codepoint]=None, style:str='text',
+        **kwargs
+    ):
+    output = (
+        chart(
+            font, columns, margin, padding, order, direction, codepoint_range,
+        )
+        for font in fonts
+    )
+    if style == 'text':
+        outstream.text.write(
+            '\n\n'.join(_gm.as_text(**kwargs) for _gm in output)
+        )
+    elif style == 'blocks':
+        outstream.text.write(
+            '\n\n'.join(_gm.as_blocks(**kwargs) for _gm in output)
+        )
+    else:
+        raise ValueError(f"`style` must be one of 'text', 'blocks'; not {style!r}")
+
+
 
 
 def chart(
@@ -26,15 +56,15 @@ def chart(
         codepoints = font.get_codepoints()
         if not codepoints:
             raise ValueError('No codepoint labels found.')
-        codepoint_range = (
+        codepoint_range = range(
             # start at a codepoint that is a multple of the number of columns
             columns * (int(min(codepoints)) // columns),
-            int(max(codepoints))
+            int(max(codepoints))+1
         )
     # make contiguous
     glyphs = tuple(
         font.get_glyph(_codepoint, missing='empty')
-        for _codepoint in range(codepoint_range[0], codepoint_range[1]+1)
+        for _codepoint in codepoint_range
     )
     font = font.modify(glyphs)
     glyph_map = grid_map(

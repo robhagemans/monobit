@@ -95,6 +95,11 @@ def convert_arguments(func):
 
     @wraps(func)
     def _converted_func(*args, **kwargs):
+        # rename argument provided with dashes
+        kwargs = {
+            _kwarg.replace('-', '_'): _value
+            for _kwarg, _value in kwargs.items()
+        }
         # apply converters to argument
         conv_kwargs = {}
         for kwarg, value in kwargs.items():

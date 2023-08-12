@@ -426,7 +426,7 @@ class TestFormats(BaseTester):
     def test_export_png(self):
         """Test exporting image files."""
         file = self.temp_path / '4x6.png'
-        monobit.save(self.fixed4x6, file, codepoint_range=(0, 255))
+        monobit.save(self.fixed4x6, file, codepoint_range=range(256))
         font, *_ = monobit.load(file, cell=(4, 6))
         self.assertEqual(len(font.glyphs), 192)
         self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)

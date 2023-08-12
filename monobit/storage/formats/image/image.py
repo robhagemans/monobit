@@ -18,7 +18,7 @@ from monobit.base import Coord, RGB
 from monobit.base.binary import ceildiv
 from monobit.storage import loaders, savers
 from monobit.storage import FileFormatError
-from monobit.core import Font, Glyph
+from monobit.core import Font, Glyph, Codepoint
 from monobit.render import chart, grid_traverser
 
 
@@ -236,7 +236,7 @@ if Image:
             order:str='row-major',
             direction:Coord=Coord(1, -1),
             border:RGB=(32, 32, 32), paper:RGB=(0, 0, 0), ink:RGB=(255, 255, 255),
-            codepoint_range:Coord=None,
+            codepoint_range:tuple[Codepoint]=None,
         ):
         """
         Export font to grid-based image.
@@ -251,7 +251,7 @@ if Image:
         paper: background colour R,G,B 0--255 (default: 0,0,0)
         ink: foreground colour R,G,B 0--255 (default: 255,255,255)
         border: border colour R,G,B 0--255 (default 32,32,32)
-        codepoint_range: first and last codepoint to include (includes bounds and undefined codepoints; default: all codepoints)
+        codepoint_range: range of codepoints to include (includes bounds and undefined codepoints; default: all codepoints)
         """
         if len(fonts) > 1:
             raise FileFormatError('Can only save one font to image file.')
