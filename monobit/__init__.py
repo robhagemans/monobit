@@ -9,14 +9,11 @@ import sys as _sys
 assert _sys.version_info >= (3, 9)
 
 from .constants import VERSION as __version__
-from .core import Pack
-from .core import Font, operations as _operations
-from .core import Glyph
-from .storage import load, save, loaders, savers
-from .storage import FileFormatError
+from .core import Pack, Font, Glyph, Char, Codepoint, Tag
+from .storage import FileFormatError, load, save, loaders, savers
+from .plumbing import scriptables as _operations
 from .encoding import encoder, encodings
 from .render import render, chart
-from .core import Char, Codepoint, Tag
 
 
 # inject font operations into main module namespace

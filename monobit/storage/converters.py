@@ -15,7 +15,7 @@ from contextlib import contextmanager
 from ..constants import VERSION, CONVERTER_NAME
 from ..core import Font, Pack
 from ..base.struct import StructError
-from ..base.scripting import scriptable, ScriptArgs, ARG_PREFIX
+from ..plumbing import scriptable, ARG_PREFIX, convert_arguments, check_arguments
 from ..base import Any
 from .streams import Stream, StreamBase, KeepOpen, DirectoryStream
 from .magic import MagicRegistry, FileFormatError, maybe_text
@@ -265,7 +265,7 @@ class ConverterRegistry(MagicRegistry):
 
     def register(
             self, name='', magic=(), patterns=(),
-            linked=None, **kwargs
+            linked=None, wrapper=False,
         ):
         """
         Decorator to register font loader/saver.
@@ -278,11 +278,9 @@ class ConverterRegistry(MagicRegistry):
         register_magic = super().register
 
         def _decorator(original_func):
-            _func = scriptable(
-                original_func,
-                record=False,
-                **kwargs
-            )
+            _func = convert_arguments(original_func)
+            if not wrapper:
+                _func = check_arguments(_func)
             # register converter
             if linked:
                 format = name or linked.format

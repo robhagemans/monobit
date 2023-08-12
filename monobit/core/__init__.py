@@ -5,11 +5,9 @@ monobit.core - tools for working with monochrome bitmap fonts
 licence: https://opensource.org/licenses/MIT
 """
 
-from .pack import Pack, operations as _pack_operations
-from .font import Font, FontProperties, operations as _font_operations
+from .pack import Pack
+from .font import Font, FontProperties
 from .glyph import Glyph, KernTable
 from .raster import Raster
 from .labels import Label, Char, Codepoint, Tag, strip_matching
 from .vector import StrokePath, StrokeMove
-
-operations = _font_operations | _pack_operations
