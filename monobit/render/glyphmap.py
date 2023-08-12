@@ -10,9 +10,10 @@ try:
 except ImportError:
     Image = None
 
-from ..base import Props
+from ..base import Props, Coord
 from ..base.blocks import blockstr
 from ..core import Raster
+from ..plumbing import convert_arguments
 
 
 class GlyphMap:
@@ -143,7 +144,8 @@ class GlyphMap:
             ink=ink, paper=paper, border=border, start=start, end=end
         )
 
-    def as_blocks(self, resolution=(2, 2)):
+    @convert_arguments
+    def as_blocks(self, resolution:Coord=(2, 2)):
         """Convert glyph map to a string of quadrant block characters."""
         canvas = self.to_canvas(sheet=0)
         return canvas.as_blocks(resolution)
