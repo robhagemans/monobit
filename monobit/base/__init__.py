@@ -10,7 +10,6 @@ from .properties import reverse_dict, extend_string, Props
 from .cachedprops import HasProps, checked_property, writable_property
 from . import struct
 from . import binary
-from . import scripting
 from . import blocks
 
 

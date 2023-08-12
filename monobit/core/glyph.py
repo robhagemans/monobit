@@ -12,7 +12,7 @@ from monobit.encoding.unicode import is_graphical, is_blank
 from monobit.base import Props, extend_string
 from monobit.base import HasProps, checked_property, writable_property
 from monobit.base import Coord, Bounds, to_number, NOT_SET
-from monobit.base.scripting import scriptable
+from monobit.plumbing.scripting import scriptable
 
 from .raster import Raster, turn_method
 from .vector import StrokePath
@@ -566,7 +566,6 @@ class Glyph(HasProps):
 
     # orthogonal transformations
 
-    @scriptable
     def mirror(
             self, *,
             adjust_metrics:bool=True, create_vertical_metrics:bool=False,
@@ -591,7 +590,6 @@ class Glyph(HasProps):
                 )
         return self.modify(pixels, **new_metrics)
 
-    @scriptable
     def flip(
             self, *,
             adjust_metrics:bool=True, create_vertical_metrics:bool=False,
@@ -618,7 +616,6 @@ class Glyph(HasProps):
         # Font should adjust ascent <-> descent and global bearings
         return self.modify(pixels, **new_metrics)
 
-    @scriptable
     def transpose(self, *, adjust_metrics:bool=True):
         """
         Transpose glyph.
@@ -643,7 +640,6 @@ class Glyph(HasProps):
 
     # raster resizing
 
-    @scriptable
     def crop(
             self, left:int=0, bottom:int=0, right:int=0, top:int=0,
             *, adjust_metrics:bool=True, create_vertical_metrics:bool=False,
@@ -681,7 +677,6 @@ class Glyph(HasProps):
                 )
         return self.modify(pixels, **new_metrics)
 
-    @scriptable
     def expand(
             self, left:int=0, bottom:int=0, right:int=0, top:int=0,
             *, adjust_metrics:bool=True, create_vertical_metrics:bool=False,
@@ -720,7 +715,6 @@ class Glyph(HasProps):
                 )
         return self.modify(pixels, **new_metrics)
 
-    @scriptable
     def reduce(
             self, *,
             adjust_metrics:bool=True, create_vertical_metrics:bool=False,
@@ -740,7 +734,6 @@ class Glyph(HasProps):
 
     # scaling
 
-    @scriptable
     def stretch(
             self, factor_x:int=1, factor_y:int=1,
             *, adjust_metrics:bool=True, create_vertical_metrics:bool=False,
@@ -771,7 +764,6 @@ class Glyph(HasProps):
                 )
         return self.modify(pixels, **new_metrics)
 
-    @scriptable
     def shrink(
             self, factor_x:int=1, factor_y:int=1,
             *, adjust_metrics:bool=True, create_vertical_metrics:bool=False,
@@ -804,7 +796,6 @@ class Glyph(HasProps):
 
     # shear
 
-    @scriptable
     def shear(
             self, *, direction:str='right', pitch:Coord=(1, 1),
             create_vertical_metrics:bool=False,
@@ -859,7 +850,6 @@ class Glyph(HasProps):
 
     # ink effects
 
-    @scriptable
     def smear(
             self, *, left:int=0, down:int=0, right:int=1, up:int=0,
             adjust_metrics:bool=True, create_vertical_metrics:bool=False,
@@ -886,7 +876,6 @@ class Glyph(HasProps):
             left=left, right=right, up=up, down=down,
         ))
 
-    @scriptable
     def outline(self, *, thickness:int=1, create_vertical_metrics:bool=False):
         """
         Outline glyph.
@@ -900,7 +889,6 @@ class Glyph(HasProps):
         )
         return thicker.overlay(self, operator=lambda x: bool(sum(x) % 2))
 
-    @scriptable
     def underline(self, descent:int=1, thickness:int=1):
         """
         Add a line.
@@ -918,12 +906,10 @@ class Glyph(HasProps):
         bottom_height = top_height-thickness+1
         return work.modify(work._pixels.underline(top_height, bottom_height))
 
-    @scriptable
     def invert(self):
         """Reverse video."""
         return self.modify(self._pixels.invert())
 
-    @scriptable
     def roll(self, down:int=0, right:int=0):
         """
         Cycle rows and/or columns in raster.

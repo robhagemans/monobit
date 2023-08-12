@@ -7,7 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
-from monobit.base.scripting import scriptable, get_scriptables
+from monobit.plumbing.scripting import scriptable
 from .font import Font, FontProperties
 
 
@@ -68,7 +68,3 @@ class Pack:
         """Iterate over subpacks with one value for a property."""
         for value in sorted(set(self.list_by(property))):
             yield value, self.select(**{property: value})
-
-
-# scriptable font/glyph operations
-operations = get_scriptables(Pack)
