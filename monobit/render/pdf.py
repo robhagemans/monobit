@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.pdf - pdf chart output
+monobit.render.pdf - pdf chart output
 
 (c) 2019--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

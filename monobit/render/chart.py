@@ -57,7 +57,7 @@ def chart(
         if not codepoints:
             raise ValueError('No codepoint labels found.')
         codepoint_range = range(
-            # start at a codepoint that is a multple of the number of columns
+            # start at a codepoint that is a multiple of the number of columns
             columns * (int(min(codepoints)) // columns),
             int(max(codepoints))+1
         )
