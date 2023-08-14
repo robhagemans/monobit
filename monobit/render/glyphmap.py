@@ -135,7 +135,7 @@ class GlyphMap:
     def as_text(
             self, *,
             ink='@', paper='.', border='.',
-            start='', end='',
+            start='', end='\n',
             sheet=0,
         ):
         """Convert glyph map to text."""
@@ -186,7 +186,7 @@ class Canvas(Raster):
     def as_text(
             self, *,
             ink='@', paper='.', border='.',
-            start='', end=''
+            start='', end='\n'
         ):
         """Convert raster to text."""
         if not self.height:
