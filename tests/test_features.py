@@ -17,7 +17,8 @@ class TestFeatures(BaseTester):
 
     # vertical metrics
 
-    verttext=("""......................
+    verttext=("""\
+......................
 ......................
 ......@......@........
 .......@....@.........
@@ -39,7 +40,7 @@ class TestFeatures(BaseTester):
 ......................
 ......................
 ......................
-""" * 2).strip()
+""" * 2)
 
     def test_render_bdf_vertical(self):
         vert2, *_ = monobit.load(self.font_path / 'vertical.bdf')
@@ -73,7 +74,8 @@ class TestFeatures(BaseTester):
 .@....@.
 .@...@..
 @@@.@@@.
-........""")
+........
+""")
 
     def test_render_ltr_btt(self):
         text = monobit.render(self.fixed4x6, 't\n12', direction='l b f').as_text()
@@ -89,7 +91,8 @@ class TestFeatures(BaseTester):
 .@......
 .@......
 ..@.....
-........""")
+........
+""")
 
     def test_render_rtl_ttb(self):
         text = monobit.render(self.fixed4x6, 't\n12', direction='r t f').as_text()
@@ -105,7 +108,8 @@ class TestFeatures(BaseTester):
 ..@..@..
 .@...@..
 @@@.@@@.
-........""")
+........
+""")
 
     def test_render_rtl_btt(self):
         text = monobit.render(self.fixed4x6, 't\n12', direction='r b f').as_text()
@@ -121,7 +125,8 @@ class TestFeatures(BaseTester):
 .....@..
 .....@..
 ......@.
-........""")
+........
+""")
 
 
     def test_render_ttb_rtl(self):
@@ -138,7 +143,8 @@ class TestFeatures(BaseTester):
 ..@.....
 .@......
 @@@.....
-........""")
+........
+""")
 
 
     def test_render_ttb_ltr(self):
@@ -155,7 +161,8 @@ class TestFeatures(BaseTester):
 ......@.
 .....@..
 ....@@@.
-........""")
+........
+""")
 
 
     def test_render_btt_rtl(self):
@@ -172,7 +179,8 @@ class TestFeatures(BaseTester):
 .@...@..
 .@...@..
 @@@...@.
-........""")
+........
+""")
 
     def test_render_btt_ltr(self):
         text = monobit.render(self.fixed4x6, 't\n12', direction='b l f').as_text()
@@ -188,12 +196,13 @@ class TestFeatures(BaseTester):
 .@...@..
 .@...@..
 ..@.@@@.
-........""")
+........
+""")
 
 
     # proportional rendering
 
-    proptext="""
+    proptext="""\
 .@@....................@@...@@.................
 .@@....................@@......................
 @@@@@..@@@@@...@@@@@..@@@@@.@@.@@.@@@...@@@.@@.
@@ -202,7 +211,7 @@ class TestFeatures(BaseTester):
 .@@...@@...........@@..@@...@@.@@...@@..@@@@@@.
 ..@@@..@@@@@@.@@@@@@....@@@.@@.@@...@@......@@.
 ........................................@@@@@..
-""".strip()
+"""
 
     def test_render_amiga_proportional(self):
         prop1, *_ = monobit.load(self.font_path / 'wbfont.amiga/wbfont_prop.font')
@@ -267,7 +276,7 @@ class TestFeatures(BaseTester):
 
     # kerning
 
-    kerntext="""
+    kerntext="""\
 .......................
 ......@..@..@@@.@..@.@.
 ...........@...........
@@ -277,7 +286,7 @@ class TestFeatures(BaseTester):
 @@@...@..@.@....@..@.@.
 ......@.........@....@.
 ....@@........@@...@@..
-""".strip()
+"""
 
     def test_render_yaff_kerning(self):
         webby_mod1, *_ = monobit.load(self.font_path / 'webby-small-kerned.yaff')
@@ -311,13 +320,13 @@ class TestFeatures(BaseTester):
 
     # kerning and negative bearings using overlapping test font
 
-    testtext="""
+    testtext="""\
 ..@..
 ..@..
 @@@@@
 ..@..
 ..@..
-""".strip()
+"""
 
     def test_render_yaff_kerning_bearings(self):
         font, *_ = monobit.load(self.font_path / 'positioning.yaff')
@@ -360,13 +369,13 @@ class TestFeatures(BaseTester):
         text = monobit.render(font, '01234').as_text()
         assert_text_eq(text, self.testtext)
 
-    bearing_testtext="""
+    bearing_testtext="""\
 ..@..
 ..@..
 ..@..
 ..@..
 ..@..
-""".strip()
+"""
 
     def _render_bearings(self, format, **save_kwargs):
         font, *_ = monobit.load(self.font_path / 'positioning.yaff')
@@ -407,13 +416,13 @@ class TestFeatures(BaseTester):
 
     # vertical negative bearings
 
-    testvert = """
+    testvert = """\
 ....@
 ...@.
 ..@..
 .@...
 @....
-""".strip()
+"""
 
     def _render_vert_bearings(self, format, **save_kwargs):
         font, *_ = monobit.load(self.font_path / 'positioning.yaff')
@@ -444,7 +453,7 @@ class TestFeatures(BaseTester):
 00327:0000000000000818
 """
 
-    composed = """
+    composed = """\
 @@@@@@@@........@@@@@@@@@@@@@@@@........
 ........................................
 .@@..@@..@@..@@.........................
@@ -453,7 +462,7 @@ class TestFeatures(BaseTester):
 .@@..@@..@@..@@.........................
 ..@@@@@...@@@@@.....@...............@...
 ...@@..............@@..............@@...
-""".strip()
+"""
 
     def test_compose(self):
         file = get_stringio(self.unscii8_sample)
