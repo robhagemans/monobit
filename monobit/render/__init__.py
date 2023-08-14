@@ -8,3 +8,5 @@ licence: https://opensource.org/licenses/MIT
 from .renderer import render
 from .chart import chart, grid_traverser, grid_map
 from .glyphmap import GlyphMap
+
+from . import pdf
