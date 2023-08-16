@@ -109,8 +109,9 @@ class Char(str, Label):
     def __new__(cls, value=''):
         """Convert char or char sequence to char label."""
         if isinstance(value, Char):
+            return value
             # we don't want the redefined str() to be called on __new__ below
-            value = super().__str__(value)
+            # value = super().__str__(value)
         elif value is None:
             value = ''
         elif not isinstance(value, str):
@@ -143,7 +144,9 @@ class Codepoint(bytes, Label):
 
     def __new__(cls, value=b''):
         """Convert to codepoint label if possible."""
-        if isinstance(value, Codepoint) or isinstance(value, bytes):
+        if isinstance(value, Codepoint):
+            return value
+        elif isinstance(value, bytes):
             pass
         elif value is None:
             value = b''
