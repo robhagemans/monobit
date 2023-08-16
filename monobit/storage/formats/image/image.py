@@ -19,7 +19,7 @@ from monobit.base.binary import ceildiv
 from monobit.storage import loaders, savers
 from monobit.storage import FileFormatError
 from monobit.core import Font, Glyph, Codepoint
-from monobit.render import chart, grid_traverser
+from monobit.render import prepare_for_grid_map, grid_map, grid_traverser
 
 
 DEFAULT_IMAGE_FORMAT = 'png'
@@ -256,8 +256,9 @@ if Image:
         if len(fonts) > 1:
             raise FileFormatError('Can only save one font to image file.')
         font = fonts[0]
+        font = prepare_for_grid_map(font, columns, codepoint_range)
         font = font.stretch(*scale)
-        glyph_map = chart(font, columns, margin, padding, order, direction, codepoint_range)
+        glyph_map = grid_map(font, columns, margin, padding, order, direction)
         img, = glyph_map.to_images(
             border=border, paper=paper, ink=ink, transparent=False
         )

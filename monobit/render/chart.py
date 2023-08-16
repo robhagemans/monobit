@@ -23,11 +23,10 @@ def save_chart(
         codepoint_range:tuple[Codepoint]=None, style:str='text',
         **kwargs
     ):
+    fonts = (prepare_for_grid_map(_f, columns, codepoint_range) for _f in fonts)
     output = (
-        chart(
-            font, columns, margin, padding, order, direction, codepoint_range,
-        )
-        for font in fonts
+        grid_map(_f, columns, margin, padding, order, direction)
+        for _f in fonts
     )
     if style == 'text':
         outstream.text.write(
@@ -41,15 +40,8 @@ def save_chart(
         raise ValueError(f"`style` must be one of 'text', 'blocks'; not {style!r}")
 
 
-
-
-def chart(
-        font,
-        columns=32, margin=(0, 0), padding=(0, 0),
-        order='row-major', direction=(1, -1),
-        codepoint_range=None,
-    ):
-    """Create font chart matrix."""
+def prepare_for_grid_map(font, columns=32, codepoint_range=None):
+    """Resample and equalise font for grid representation."""
     font = font.equalise_horizontal()
     if not codepoint_range:
         try:
@@ -62,8 +54,7 @@ def chart(
             # empty sequence
             raise ValueError('No codepoint labels found.')
     font = font.resample(codepoint_range, missing='empty', relabel=False)
-    glyph_map = grid_map(font, columns, margin, padding, order, direction)
-    return glyph_map
+    return font
 
 
 def grid_map(
