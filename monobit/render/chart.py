@@ -50,26 +50,19 @@ def chart(
         codepoint_range=None,
     ):
     """Create font chart matrix."""
-    font = font.label(codepoint_from=font.encoding)
     font = font.equalise_horizontal()
     if not codepoint_range:
-        codepoints = font.get_codepoints()
-        if not codepoints:
+        try:
+            codepoint_range = range(
+                # start at a codepoint that is a multiple of the number of columns
+                columns * (int(min(font.get_codepoints())) // columns),
+                int(max(font.get_codepoints()))+1
+            )
+        except ValueError:
+            # empty sequence
             raise ValueError('No codepoint labels found.')
-        codepoint_range = range(
-            # start at a codepoint that is a multiple of the number of columns
-            columns * (int(min(codepoints)) // columns),
-            int(max(codepoints))+1
-        )
-    # make contiguous
-    glyphs = tuple(
-        font.get_glyph(_codepoint, missing='empty')
-        for _codepoint in codepoint_range
-    )
-    font = font.modify(glyphs)
-    glyph_map = grid_map(
-        font, columns, margin, padding, order, direction,
-    )
+    font = font.resample(codepoint_range, missing='empty', relabel=False)
+    glyph_map = grid_map(font, columns, margin, padding, order, direction)
     return glyph_map
 
 
