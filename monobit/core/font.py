@@ -896,11 +896,11 @@ class Font(HasProps):
                 if _indexer is not None
             ]):
             raise ValueError('get_index() takes exactly one parameter.')
-        if char is not None and not isinstance(char, Char):
+        if char is not None:
             label = Char(char)
-        elif codepoint is not None and not isinstance(codepoint, Codepoint):
+        elif codepoint is not None:
             label = Codepoint(codepoint)
-        elif tag is not None and not isinstance(tag, Tag):
+        elif tag is not None:
             label = Tag(tag)
         elif isinstance(label, Label):
             pass
