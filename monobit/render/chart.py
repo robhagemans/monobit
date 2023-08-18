@@ -6,6 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 from itertools import product
+from pathlib import Path
 
 from ..base.binary import ceildiv
 from ..base import Props, Coord
@@ -23,21 +24,25 @@ def save_chart(
         codepoint_range:tuple[Codepoint]=None, style:str='text',
         **kwargs
     ):
-    fonts = (prepare_for_grid_map(_f, columns, codepoint_range) for _f in fonts)
-    output = (
-        grid_map(_f, columns, margin, padding, order, direction)
-        for _f in fonts
-    )
+    font, *more_than_one = fonts
+    if more_than_one:
+        raise ValueError('Can only chart a single font.')
+    font = prepare_for_grid_map(font, columns, codepoint_range)
+    output = grid_map(font, columns, margin, padding, order, direction)
     if style == 'text':
-        outstream.text.write(
-            '\n\n'.join(_gm.as_text(**kwargs) for _gm in output)
-        )
+        outstream.text.write(output.as_text(**kwargs))
     elif style == 'blocks':
-        outstream.text.write(
-            '\n\n'.join(_gm.as_blocks(**kwargs) for _gm in output)
-        )
+        outstream.text.write(output.as_blocks(**kwargs))
+    elif style == 'image':
+        img = output.as_image(**kwargs)
+        try:
+            img.save(outstream, format=Path(outstream.name).suffix[1:])
+        except (KeyError, ValueError, TypeError):
+            img.save(outstream, format=DEFAULT_IMAGE_FORMAT)
     else:
-        raise ValueError(f"`style` must be one of 'text', 'blocks'; not {style!r}")
+        raise ValueError(
+            f"`style` must be one of 'text', 'blocks', 'image's; not {style!r}"
+        )
 
 
 def prepare_for_grid_map(font, columns=32, codepoint_range=None):
