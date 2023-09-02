@@ -19,11 +19,14 @@ from .glyphmap import GlyphMap
 @savers.register(name='chart', wrapper=True)
 def save_chart(
         fonts, outstream,
-        columns:int=32, margin:Coord=(0, 0), padding:Coord=(0, 0),
+        columns:int=16, margin:Coord=(0, 0), padding:Coord=(0, 0),
         order:str='row-major', direction:Coord=(1, -1),
         codepoint_range:tuple[Codepoint]=None, style:str='text',
         **kwargs
     ):
+    """
+    Export font to text- or image-based chart.
+    """
     font, *more_than_one = fonts
     if more_than_one:
         raise ValueError('Can only chart a single font.')

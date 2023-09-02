@@ -79,7 +79,7 @@ class GlyphMap:
             self, *, paper, ink, border, invert_y=False,
             transparent=True
         ):
-        """Draw images based on shhets in glyph map."""
+        """Draw images based on sheets in glyph map."""
         if not Image:
             raise ImportError('Rendering to image requires PIL module.')
         paper, ink, border = 0, 255, 32
