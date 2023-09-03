@@ -67,12 +67,10 @@ class GlyphMap:
         # note that this gives the bounds across *all* sheets
         _, min_x, min_y, max_x, max_y = self.get_bounds()
         # no +1 as bounds are inclusive
-        canvas = Canvas.blank(max_x - min_x, max_y - min_y)
+        canvas = _Canvas.blank(max_x - min_x, max_y - min_y)
         for entry in self._map:
             if entry.sheet == sheet:
-                canvas.blit(
-                    entry.glyph, entry.x - min_x, entry.y - min_y, operator=max
-                )
+                canvas.blit(entry.glyph, entry.x - min_x, entry.y - min_y)
         return canvas.stretch(self._scale_x, self._scale_y).turn(self._turns)
 
     def to_images(
@@ -151,7 +149,7 @@ class GlyphMap:
         return canvas.as_blocks(resolution)
 
 
-class Canvas(Raster):
+class _Canvas(Raster):
     """Mutable raster for glyph maps."""
 
     _inner = list
@@ -167,7 +165,7 @@ class Canvas(Raster):
         # setting 0 and 1 will make Raster init leave the input alone
         return cls(canvas, _0=0, _1=1)
 
-    def blit(self, raster, grid_x, grid_y, operator):
+    def blit(self, raster, grid_x, grid_y):
         """
         Draw a matrix onto a canvas
         (leaving exising ink in place, depending on operator).
@@ -180,7 +178,7 @@ class Canvas(Raster):
                 row = self._pixels[self.height - (grid_y + work_y) - 1]
                 for work_x, ink in enumerate(matrix[raster.height - work_y - 1]):
                     if 0 <= grid_x + work_x < self.width:
-                        row[grid_x + work_x] = operator(ink, row[grid_x + work_x])
+                        row[grid_x + work_x] = max(ink, row[grid_x + work_x])
         return self
 
     def as_text(
