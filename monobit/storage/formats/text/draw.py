@@ -21,18 +21,23 @@ from monobit.base.binary import align
     name='hexdraw',
     patterns=('*.draw',),
 )
-def load_hexdraw(instream, ink:str='#', paper:str='-', unicode:bool=True):
+def load_hexdraw(
+        instream, ink:str='#', paper:str='-', unicode:bool=True, base:int=16,
+    ):
     """
-    Load font from a hexdraw file.
+    Load font from a hexdraw or similar text-based file.
 
     ink: character used for inked/foreground pixels (default #)
     paper: character used for uninked/background pixels (default -)
     unicode: interpret codepoint as Unicode (default: True)
+    base: representational base for codepoint (default: 16 for hexadecimal)
     """
-    DrawGlyph.ink = ink
-    DrawGlyph.paper = paper
+    class CustomGlyph(DrawGlyph): pass
+    CustomGlyph.ink = ink
+    CustomGlyph.paper = paper
+    CustomGlyph.base = base
     return load_draw(
-        instream.text, blocktypes=(DrawGlyph, DrawComment, Empty),
+        instream.text, blocktypes=(CustomGlyph, DrawComment, Empty),
         unicode=unicode
     )
 
@@ -457,6 +462,9 @@ class DrawGlyph(NonEmptyBlock):
     paper = '-'
     ink = '#'
 
+    # base for codepoint. default: hexadecimal
+    base = 16
+
     def starts(self, line):
         return line and line[:1] in string.hexdigits
 
@@ -476,12 +484,15 @@ class DrawGlyph(NonEmptyBlock):
             labels=(self.convert_key(key),),
         )
 
-    @staticmethod
-    def convert_key(key):
+    @classmethod
+    def convert_key(cls, key):
         """Convert keys on input from .draw."""
         key = key.strip()
         try:
-            return Char(''.join(chr(int(_key, 16)) for _key in key.split(',')))
+            return Char(''.join(
+                chr(int(_key, cls.base))
+                for _key in key.split(',')
+            ))
         except (TypeError, ValueError):
             return Tag(key)
 
