@@ -75,13 +75,12 @@ class GlyphMap:
         return canvas.stretch(self._scale_x, self._scale_y).turn(self._turns)
 
     def to_images(
-            self, *, paper, ink, border, invert_y=False,
+            self, *, paper=0, ink=255, border=0, invert_y=False,
             transparent=True
         ):
-        """Draw images based on shhets in glyph map."""
+        """Draw greyscale images based on sheets in glyph map."""
         if not Image:
             raise ImportError('Rendering to image requires PIL module.')
-        paper, ink, border = 0, 255, 32
         last, min_x, min_y, max_x, max_y = self.get_bounds()
         # no +1 as bounds are inclusive
         width, height = max_x - min_x, max_y - min_y
@@ -110,7 +109,7 @@ class GlyphMap:
 
     def as_image(
             self, *,
-            ink=(255, 255, 255), paper=(0, 0, 0), border=(0, 0, 0),
+            ink=255, paper=0, border=0,
             sheet=0,
         ):
         """Convert glyph map to image."""
