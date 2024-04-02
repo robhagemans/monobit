@@ -76,18 +76,37 @@ class GlyphMap:
 
     def to_images(
             self, *, paper=0, ink=255, border=0, invert_y=False,
-            transparent=True
+            transparent=True, image_mode='L'
         ):
-        """Draw greyscale images based on sheets in glyph map."""
+        """Draw images based on sheets in glyph map."""
         if not Image:
             raise ImportError('Rendering to image requires PIL module.')
+        if image_mode not in ('L', 'RGB'):
+            raise ValueError("Only image_mode 'L' and 'RGB' are supported.")
+        for value, name in ((paper, 'paper'), (ink, 'ink'), (border, 'border')):
+            if image_mode == 'L':
+                if not isinstance(value, int):
+                    raise ValueError(f"'{name}' must be an 'int' for image_mode='L' mode, got '{type(value).__name__}'.")
+            else:
+                if transparent:
+                    raise ValueError(f"transparent=True is not supported for image_mode='RGB' mode.")
+                if not isinstance(value, tuple):
+                    raise ValueError(f"'{name}' must be a 'tuple' for image_mode='RGB' mode, got '{type(value).__name__}'.")
+                if len(value) != 3:
+                    raise ValueError(f"'{name}' must be a 3-tuple for image_mode='RGB' mode, got '{len(value)}' elements.")
+                if not all(isinstance(_v, int) for _v in value):
+                    raise ValueError(f"'{name}' must be a 3-tuple of 'int' for image_mode='RGB' mode, got '{type(value).__name__}'.")
+
         last, min_x, min_y, max_x, max_y = self.get_bounds()
         # no +1 as bounds are inclusive
         width, height = max_x - min_x, max_y - min_y
-        images = [Image.new('L', (width, height), border) for _ in range(last+1)]
+        images = [Image.new(image_mode, (width, height), border) for _ in range(last+1)]
         for entry in self._map:
-            charimg = Image.new('L', (entry.glyph.width, entry.glyph.height))
-            data = entry.glyph.as_bits(ink, paper)
+            charimg = Image.new(image_mode, (entry.glyph.width, entry.glyph.height))
+            if image_mode == 'L':
+                data = entry.glyph.as_bits(ink, paper)
+            else:
+                data = entry.glyph.as_bits_rgb(ink, paper)
             charimg.putdata(data)
             if invert_y:
                 target = (entry.x, entry.y)
@@ -113,7 +132,16 @@ class GlyphMap:
             sheet=0,
         ):
         """Convert glyph map to image."""
-        images = self.to_images(ink=ink, paper=paper, border=border)
+        images = self.to_images(ink=ink, paper=paper, border=border, image_mode='L')
+        return images[sheet]
+
+    def as_image_rgb(
+            self, *,
+            ink=(255,255,255), paper=(0,0,0), border=(0,0,0),
+            sheet=0,
+        ):
+        """Convert glyph map to image."""
+        images = self.to_images(ink=ink, paper=paper, border=border, image_mode='RGB', transparent=False)
         return images[sheet]
 
     def as_text(
