@@ -461,29 +461,32 @@ def parse_os2_font_resource(pBuffer):
     # read optional tables (kerning, panose)
     #
     ofs += pFont.pFontDef.ulSize
-    pRecord = GENERICRECORD.from_bytes(pBuffer, ofs)
-    if pFont.pMetrics.usKerningPairs and pRecord.Identity == SIG_OS2KERN:
-        pFont.pKerning = OS2KERNPAIRTABLE.from_bytes(pBuffer, ofs)
-        # Advance to the next record (whether OS2ADDMETRICS or OS2FONTEND).
-        # This is a guess; since the actual format, and thus size, of the
-        # kerning information is unclear (see remarks in gpifont.h), there is
-        # no guarantee this will work.  Fortunately, we've already parsed the
-        # important stuff.
-        ofs += (
-            OS2KERNPAIRTABLE.size
-            + pFont.pMetrics.usKerningPairs * OS2KERNINGPAIRS.size
-        )
+    if ofs >= len(pBuffer):
+        logging.debug('Offset to optional kerning table exceeds buffer length')
+    else:
         pRecord = GENERICRECORD.from_bytes(pBuffer, ofs)
-    if pRecord.Identity == SIG_OS2ADDMETRICS:
-        pFont.pPanose = OS2ADDMETRICS.from_bytes(pBuffer, ofs)
-        ofs += pRecord.ulSize
-        pRecord = GENERICRECORD.from_bytes(pBuffer, ofs)
-    # We set the pointer to the end signature, but there's really no need to
-    # use it for anything.  We check the Identity field to make sure it's
-    # valid (if we did miscalculate the kern table size above, then it could
-    # well be wrong) before setting the pointer.
-    if pRecord.Identity == SIG_OS2FONTEND:
-        pFont.pEnd = OS2FONTEND.from_bytes(pBuffer, ofs)
+        if pFont.pMetrics.usKerningPairs and pRecord.Identity == SIG_OS2KERN:
+            pFont.pKerning = OS2KERNPAIRTABLE.from_bytes(pBuffer, ofs)
+            # Advance to the next record (whether OS2ADDMETRICS or OS2FONTEND).
+            # This is a guess; since the actual format, and thus size, of the
+            # kerning information is unclear (see remarks in gpifont.h), there is
+            # no guarantee this will work.  Fortunately, we've already parsed the
+            # important stuff.
+            ofs += (
+                OS2KERNPAIRTABLE.size
+                + pFont.pMetrics.usKerningPairs * OS2KERNINGPAIRS.size
+            )
+            pRecord = GENERICRECORD.from_bytes(pBuffer, ofs)
+        if pRecord.Identity == SIG_OS2ADDMETRICS:
+            pFont.pPanose = OS2ADDMETRICS.from_bytes(pBuffer, ofs)
+            ofs += pRecord.ulSize
+            pRecord = GENERICRECORD.from_bytes(pBuffer, ofs)
+        # We set the pointer to the end signature, but there's really no need to
+        # use it for anything.  We check the Identity field to make sure it's
+        # valid (if we did miscalculate the kern table size above, then it could
+        # well be wrong) before setting the pointer.
+        if pRecord.Identity == SIG_OS2FONTEND:
+            pFont.pEnd = OS2FONTEND.from_bytes(pBuffer, ofs)
     return pFont
 
 

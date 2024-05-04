@@ -209,7 +209,7 @@ def _lx_unpack1(pBuf):
     cbPage = len(pBuf)
     if cbPage > 4096:
         return pBuf
-    ofIn  = 0;
+    ofIn = 0
     abOut = bytearray()
     while True:
         usReps = pBuf[ofIn] | (pBuf[ofIn+1] << 8)
@@ -240,7 +240,7 @@ def _lx_unpack2(pBuf):
     cbPage = len(pBuf)
     if cbPage > 4096:
         return pBuf
-    ofIn  = 0
+    ofIn = 0
     abOut = bytearray()
     while True:
         ulControl = int(le.uint16.from_bytes(pBuf, ofIn))
@@ -282,7 +282,7 @@ def _lx_unpack2(pBuf):
             # bits  3.. 2  +3 = length
             ulLen = (( ulControl >> 2 ) & 0x3 ) + 3
             _copy_byte_seq(abOut, -((ulControl >> 4) & 0xFFF), ulLen)
-            ofIn  += 2
+            ofIn += 2
         elif case_flag == 3:
             ulControl = int(le.uint32.from_bytes(pBuf, ofIn))
             # bits 23..21  = ?
@@ -293,7 +293,7 @@ def _lx_unpack2(pBuf):
             ulLen = (ulControl >> 2) & 0xF
             # memcpy( abOut + ofOut, pBuf + ofIn + 3, ulLen );
             abOut.extend(pBuf[ofIn+3 : ofIn+3+ulLen])
-            ofIn  += ulLen + 3
+            ofIn += ulLen + 3
             # copy (length2) bytes from previously-unpacked data
             ulLen = (ulControl >> 6) & 0x3F
             _copy_byte_seq(abOut, -((ulControl >> 12) & 0xFFF), ulLen)
@@ -302,7 +302,7 @@ def _lx_unpack2(pBuf):
     # It seems that the unpacked data will always be 4096 bytes, except for
     # the final page (which will be taken care of when the caller uses the
     # total object length to read the concatenated buffer).
-    return bytes(abOut)
+    return bytes(abOut).ljust(4096, b'\0')
 
 
 def _copy_byte_seq(target, source_offset, count):
