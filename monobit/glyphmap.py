@@ -12,7 +12,7 @@ except ImportError:
 
 from .properties import Props
 from .raster import Raster
-from .blocks import  blockstr
+from .blocks import blockstr
 
 
 class GlyphMap:
@@ -75,20 +75,34 @@ class GlyphMap:
         return canvas.stretch(self._scale_x, self._scale_y).turn(self._turns)
 
     def to_images(
-            self, *, paper, ink, border, invert_y=False,
-            transparent=True
+            self, *, paper=0, ink=255, border=0, invert_y=False,
+            transparent=True,
         ):
-        """Draw images based on shhets in glyph map."""
+        """Draw images based on sheets in glyph map."""
         if not Image:
             raise ImportError('Rendering to image requires PIL module.')
-        paper, ink, border = 0, 255, 32
+        if not(type(paper) == type(ink) == type(border)):
+            raise TypeError(
+                'paper, ink and border must be of the same type; '
+                f'got {type(paper)}, {type(ink)}, {type(border)}'
+            )
+        if isinstance(paper, int):
+            image_mode = 'L'
+        elif isinstance(paper, tuple) and len(paper) == 3:
+            image_mode = 'RGB'
+        else:
+            raise TypeError('paper, ink and border must be either int or RGB tuple')
         last, min_x, min_y, max_x, max_y = self.get_bounds()
         # no +1 as bounds are inclusive
         width, height = max_x - min_x, max_y - min_y
-        images = [Image.new('L', (width, height), border) for _ in range(last+1)]
+        images = [Image.new(image_mode, (width, height), border) for _ in range(last+1)]
         for entry in self._map:
-            charimg = Image.new('L', (entry.glyph.width, entry.glyph.height))
+            charimg = Image.new(image_mode, (entry.glyph.width, entry.glyph.height))
             data = entry.glyph.as_bits(ink, paper)
+            if image_mode == 'RGB':
+                # itertools grouper idiom, split in groups of 3 bytes
+                iterators = [iter(data)] * 3
+                data = tuple(zip(*iterators, strict=True))
             charimg.putdata(data)
             if invert_y:
                 target = (entry.x, entry.y)
@@ -110,7 +124,7 @@ class GlyphMap:
 
     def as_image(
             self, *,
-            ink=(255, 255, 255), paper=(0, 0, 0), border=(0, 0, 0),
+            ink=255, paper=0, border=0,
             sheet=0,
         ):
         """Convert glyph map to image."""

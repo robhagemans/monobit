@@ -532,7 +532,7 @@ class Glyph(HasProps):
         return self._pixels.as_vector(ink=ink, paper=paper)
 
     def as_bits(self, ink=1, paper=0):
-        """Return flat bits as bytes string."""
+        """Return flat bits as bytes string. Ink, paper may be of type int or RGB"""
         return self._pixels.as_bits(ink=ink, paper=paper)
 
     def as_byterows(self, *, align='left'):

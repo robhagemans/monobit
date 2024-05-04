@@ -234,12 +234,14 @@ class Raster:
 
     def as_bits(self, ink=1, paper=0):
         """Return flat bits as bytes string."""
+        if isinstance(ink, int) and isinstance(paper, int):
+            ink = (ink,)
+            paper = (paper,)
         return (
             ''.join(self._pixels).encode('latin-1')
-            .replace(self._1.encode('latin-1'), bytes((ink,)))
-            .replace(self._0.encode('latin-1'), bytes((paper,)))
+            .replace(self._1.encode('latin-1'), bytes(ink))
+            .replace(self._0.encode('latin-1'), bytes(paper))
         )
-
 
     @classmethod
     def from_bytes(

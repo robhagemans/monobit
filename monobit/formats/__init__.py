@@ -14,5 +14,5 @@ from importlib.resources import files
 globals().update({
     Path(_file).stem: import_module('.' + Path(_file.name).stem, __package__)
     for _file in files(__name__).iterdir()
-    if not _file.name.startswith('_')
+    if not _file.name.startswith('_') and not _file.name.startswith('.')
 })
