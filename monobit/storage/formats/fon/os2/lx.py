@@ -302,7 +302,7 @@ def _lx_unpack2(pBuf):
     # It seems that the unpacked data will always be 4096 bytes, except for
     # the final page (which will be taken care of when the caller uses the
     # total object length to read the concatenated buffer).
-    return bytes(abOut)
+    return bytes(abOut).ljust(4096, b'\0')
 
 
 def _copy_byte_seq(target, source_offset, count):
