@@ -22,7 +22,6 @@ _GIMMS_MAGIC = Magic.offset(4) + b'GIMM'
 @loaders.register(
     name='gimms',
     magic=(_GIMMS_MAGIC,),
-    patterns=('*.bin',),
 )
 def load_gimms(instream):
     """Read GIMMS.BIN font file."""
