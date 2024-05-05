@@ -267,6 +267,7 @@ Additionally, the fonts currently supported consist of straight line segments on
 | Borland Graphics Interface | `borland`  | `.chr`            |&check;|&check;|
 | Hershey fonts (Jim Hurt)   | `hurt`     | `.jhf`            |&check;|       |
 | DOSStart                   | `dosstart` | `.dsf`            |&check;|       |
+| GIMMS                      | `gimms`    | `.bin`            |&check;|       |
 
 
 Dependencies
