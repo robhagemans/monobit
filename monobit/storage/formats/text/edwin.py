@@ -67,9 +67,6 @@ def save_edwin(fonts, outstream):
             str(int.from_bytes(_r, 'big'))
             for _r in glyph.mirror().as_byterows(align='right')
         )
-        # print(list(glyph.pixels.as_byterows()))
-        # print(list(glyph.pixels.mirror().as_byterows()))
-
         outstream.write(
             f'{int(glyph.codepoint)}: {glyph.height} {glyph.width} '
         )
