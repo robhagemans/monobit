@@ -64,7 +64,6 @@ def _read_gimms_resource(instream):
         gimms_header = _HEADER.read_from(instream)
     except StructError:
         return None
-    print(gimms_header)
     if gimms_header.gimm != b'GIMM':
         raise FileFormatError(
             f'Not a GIMMS font: `GIMM` signature not found'
