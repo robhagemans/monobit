@@ -11,10 +11,10 @@ import codecs
 from codecs import escape_decode
 
 import monobit
-from monobit.scripting import wrap_main
-from monobit.basetypes import Coord, RGB
-from monobit.renderer import render
-from monobit.font import Font
+from monobit.plumbing import wrap_main
+from monobit.base import Coord, RGB
+from monobit.render import render
+from monobit.core import Font
 
 
 def unescape(text):

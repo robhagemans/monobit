@@ -9,23 +9,13 @@ import sys as _sys
 assert _sys.version_info >= (3, 9)
 
 from .constants import VERSION as __version__
-from .pack import Pack, operations as _pack_operations
-from .font import Font, operations as _operations
-from .glyph import Glyph
-from .storage import load, save, loaders, savers
-from .magic import FileFormatError
-from .encoding import charmaps, encoder
-from .taggers import tagmaps
-from .renderer import render
-from .chart import chart
-from .labels import Char, Codepoint, Tag
-
-# ensure plugins get registered
-from . import formats
-from . import containers as _containers
+from .core import Pack, Font, Glyph, Char, Codepoint, Tag
+from .storage import FileFormatError, load, save, loaders, savers
+from .plumbing import scriptables as _operations
+from .encoding import encoder, encodings
+from .render import render, chart
 
 
-_operations.update(_pack_operations)
 # inject font operations into main module namespace
 globals().update(_operations)
 

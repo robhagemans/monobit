@@ -9,15 +9,14 @@ from types import SimpleNamespace as Namespace
 from pathlib import Path
 
 import monobit
-from monobit.scripting import (
-    wrap_main, parse_subcommands, print_help, argrecord, GLOBAL_ARG_PREFIX
+from monobit.plumbing import (
+    wrap_main, parse_subcommands, argrecord, GLOBAL_ARG_PREFIX
 )
+from monobit.plumbing.help import get_context_func, print_help
 
 script_name = Path(sys.argv[0]).name
 
 operations = {
-    'load': monobit.load,
-    'save': monobit.save,
     'to': monobit.save,
     **monobit.operations
 }
@@ -36,29 +35,17 @@ usage = (
     + ' [to [OUTFILE] [SAVE-OPTIONS]]'
 )
 
-def _get_context_help(rec):
-    if rec.args:
-        file = rec.args[0]
-    else:
-        file = rec.kwargs.get('infile', '')
-    format = rec.kwargs.get('format', '')
-    if rec.command == 'load':
-        func, *_ = monobit.loaders.get_for(format=format)
-    else:
-        func, *_ = monobit.savers.get_for(format=format)
-    if func:
-        return func.script_args
-    return None
 
 def help(command_args):
     """Print the usage help message."""
     context_help = {
-        _rec.command: _get_context_help(_rec)
+        _rec.command: get_context_func(**vars(_rec))
         for _rec in command_args
         if _rec.command in ('load', 'save', 'to')
     }
     context_help = {_k: _v for _k, _v in context_help.items() if _v}
     print_help(command_args, usage, operations, global_options, context_help)
+
 
 def version():
     """Print the version string."""
