@@ -1272,6 +1272,19 @@ class TestFormats(BaseTester):
         font, *_ = monobit.load(file)
         self.assertEqual(len(font.glyphs), 95)
 
+    gimms = 'https://gtoal.com/vectrex/vector_fonts/gimms/'
+
+    def test_import_gimms(self):
+        """Test importing GIMMS files."""
+        file = ensure_asset(self.gimms, 'GIMMS.BIN')
+        fonts = monobit.load(file)
+        self.assertEqual(len(fonts), 31)
+        self.assertEqual(len(fonts[6].glyphs), 57)
+        self.assertEqual(
+            str(fonts[6].glyphs[29].path),
+            'm 5 9\nl -4 -9\nm 4 9\nl 4 -9\nm -6 3\nl 4 0\nm 3 -3'
+        )
+
     def test_export_svg(self):
         """Test exporting Hershey font in SVG format."""
         monobit.save(self.hershey, self.temp_path / 'hershey.svg')
