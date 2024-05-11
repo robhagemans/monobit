@@ -111,7 +111,7 @@ if Image:
                 raise ValueError('Either cell or table size must be specified.')
             cell_y = ceildiv(img.height, table_size.y*scale.y) - padding.y
         if not cell_x or not cell_y:
-            raise ValueError('Empty cell. Please sepcify larger cell size or smaller table size.')
+            raise ValueError('Empty cell. Please specify larger cell size or smaller table size.')
         logging.debug('Cell size %dx%d', cell_x, cell_y)
         cell = Coord(cell_x, cell_y)
         # work out image geometry
@@ -145,7 +145,7 @@ if Image:
         if len(colourset) > 3:
             raise FileFormatError(
                 f'More than three colours ({len(colourset)}) found in image. '
-                'Colour, greyscale and antialiased glyphs are not supported. '
+                'Colour, greyscale and antialiased glyphs are not supported.'
             )
         # three-colour mode - proportional width encoded with border colour
         elif len(colourset) == 3:
@@ -184,11 +184,16 @@ if Image:
         # check that cells are monochrome
         crops = tuple(tuple(_crop.getdata()) for _crop in crops)
         colourset = set.union(*(set(_data) for _data in crops))
-        if len(colourset) > 2:
+        if not colourset:
+            raise FileFormatError('Empty image.')
+        elif len(colourset) > 2:
             raise FileFormatError(
                 f'More than two colours ({len(colourset)}) found in image. '
                 'Colour, greyscale and antialiased glyphs are not supported. '
             )
+        elif len(colourset) == 1:
+            # only one colour - interpret as paper
+            return colourset.pop(), None
         colourfreq = Counter(_c for _data in crops for _c in _data)
         brightness = sorted((sum(_v for _v in _c), _c) for _c in colourset)
         if background == 'most-common':
