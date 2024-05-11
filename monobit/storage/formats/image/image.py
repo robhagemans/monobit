@@ -153,7 +153,15 @@ if Image:
             border = _get_border_colour(img, cell, margin, padding)
             # clip off border colour from cells
             crops = tuple(_crop_border(_crop, border) for _crop in crops)
+        return convert_crops_to_font(
+            enumerate(crops, first_codepoint), background, keep_empty
+        )
+
+    def convert_crops_to_font(enumerated_crops, background, keep_empty):
+        """Convert list of glyph images to font."""
+        enumerated_crops = tuple(enumerated_crops)
         # get pixels
+        _, crops = tuple(zip(*enumerated_crops))
         paper, ink = _identify_colours(crops, background)
         # convert to glyphs, set codepoints
         glyphs = tuple(
@@ -161,7 +169,7 @@ if Image:
                 tuple(_crop.getdata()), stride=_crop.width, _0=paper, _1=ink,
                 codepoint=_index,
             )
-            for _index, _crop in enumerate(crops, first_codepoint)
+            for _index, _crop in enumerated_crops
         )
         # drop empty glyphs
         if not keep_empty:
@@ -229,6 +237,40 @@ if Image:
                 break
         return image
 
+    @loaders.register(name='imageset')
+    def load_imageset(
+            instream,
+            background:str='most-common',
+            prefix:str='',
+            base:int=16,
+        ):
+        """
+        Extract font from per-glyph images.
+
+        background: determine background from "most-common" (default), "least-common", "brightest", "darkest", "top-left" colour
+        prefix: part of the image file name before the codepoint
+        base: radix of numerals in file name representing code point
+        """
+
+        # TODO: merge with consoleet
+
+        # this format consists of separate image files, without a manifest
+        # instream.where does not give the nearest enclosing container but the root where we're calling!
+        # we also can't use a directory as instream as it would be recursively read
+        container = instream.where
+        crops = []
+        for name in sorted(container):
+            if Path(name).parent != Path(instream.name).parent:
+                continue
+            with container.open(name, mode='r') as stream:
+                crop = Image.open(stream)
+                crop = crop.convert('RGB')
+                cp = int(Path(name).stem.removeprefix(prefix), base)
+                crops.append((cp, crop))
+        return convert_crops_to_font(crops, background, keep_empty=True)
+
+
+    ###########################################################################
 
     @savers.register(linked=load_image)
     def save_image(
