@@ -18,6 +18,7 @@ from monobit.base import Coord, RGB
 from monobit.base.binary import ceildiv
 from monobit.storage import loaders, savers
 from monobit.storage import FileFormatError
+from monobit.storage.converters import loop_load
 from monobit.core import Font, Glyph, Codepoint
 from monobit.render import prepare_for_grid_map, grid_map, grid_traverser
 
@@ -251,22 +252,13 @@ if Image:
         prefix: part of the image file name before the codepoint
         base: radix of numerals in file name representing code point
         """
+        def _load_image_glyph(stream):
+            crop = Image.open(stream)
+            crop = crop.convert('RGB')
+            cp = int(Path(stream.name).stem.removeprefix(prefix), base)
+            return (cp, crop)
 
-        # TODO: merge with consoleet
-
-        # this format consists of separate image files, without a manifest
-        # instream.where does not give the nearest enclosing container but the root where we're calling!
-        # we also can't use a directory as instream as it would be recursively read
-        container = instream.where
-        crops = []
-        for name in sorted(container):
-            if Path(name).parent != Path(instream.name).parent:
-                continue
-            with container.open(name, mode='r') as stream:
-                crop = Image.open(stream)
-                crop = crop.convert('RGB')
-                cp = int(Path(name).stem.removeprefix(prefix), base)
-                crops.append((cp, crop))
+        crops = loop_load(instream, _load_image_glyph)
         return convert_crops_to_font(crops, background, keep_empty=True)
 
 
