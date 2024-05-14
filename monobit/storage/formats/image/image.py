@@ -20,7 +20,9 @@ from monobit.storage import loaders, savers
 from monobit.storage import FileFormatError
 from monobit.storage.converters import loop_load
 from monobit.core import Font, Glyph, Codepoint
-from monobit.render import prepare_for_grid_map, grid_map, grid_traverser
+from monobit.render import (
+    prepare_for_grid_map, grid_map, grid_traverser, glyph_to_image
+)
 
 
 DEFAULT_IMAGE_FORMAT = 'png'
@@ -256,10 +258,44 @@ if Image:
             crop = Image.open(stream)
             crop = crop.convert('RGB')
             cp = int(Path(stream.name).stem.removeprefix(prefix), base)
+            # return codepoint, image pair to be parsed by convert_crops_to_font
             return (cp, crop)
 
         crops = loop_load(instream, _load_image_glyph)
         return convert_crops_to_font(crops, background, keep_empty=True)
+
+
+    @savers.register(linked=load_imageset)
+    def save_imageset(
+            fonts, outstream,
+            prefix:str='',
+            image_format:str='png',
+            paper:RGB=(0, 0, 0),
+            ink:RGB=(255, 255, 255),
+        ):
+        """
+        Export font to per-glyph images.
+
+        prefix: part of the image file name before the codepoint
+        image_format: image file format (default: png)
+        paper: background colour R,G,B 0--255 (default: 0,0,0)
+        ink: foreground colour R,G,B 0--255 (default: 255,255,255)
+        """
+        container = outstream.where
+        font, *more = fonts
+        if more:
+            raise FileFormatError('Can only save one font to image set.')
+        width = len(f'{int(max(font.get_codepoints())):x}')
+        for glyph in font.glyphs:
+            cp = f'{int(glyph.codepoint):x}'.zfill(width)
+            name = f'{prefix}{cp}.{image_format}'
+            with container.open(name, 'w') as imgfile:
+                img = glyph_to_image(glyph, paper, ink)
+                try:
+                    img.save(imgfile, format=image_format or Path(outfile).suffix[1:])
+                except (KeyError, ValueError, TypeError):
+                    img.save(imgfile, format=DEFAULT_IMAGE_FORMAT)
+
 
 
     ###########################################################################
@@ -267,14 +303,14 @@ if Image:
     @savers.register(linked=load_image)
     def save_image(
             fonts, outfile, *,
-            image_format:str='',
+            image_format:str='png',
             columns:int=32,
             margin:Coord=Coord(0, 0),
             padding:Coord=Coord(1, 1),
             scale:Coord=Coord(1, 1),
             order:str='row-major',
             direction:Coord=Coord(1, -1),
-            border:RGB=(32, 32, 32), paper:RGB=(0, 0, 0), ink:RGB=(255, 255, 255),
+            border:RGB=RGB(32, 32, 32), paper:RGB=RGB(0, 0, 0), ink:RGB=RGB(255, 255, 255),
             codepoint_range:tuple[Codepoint]=None,
         ):
         """
