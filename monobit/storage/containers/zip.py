@@ -105,7 +105,10 @@ class ZipContainer(Container):
 
     def is_dir(self, name):
         """Item at `name` is a directory."""
-        filename = str(PurePosixPath(self._root) / name)
+        root = PurePosixPath(self._root)
+        if root / name == root:
+            return True
+        filename = str(root / name)
         # zipinfo has an is_dir method, but really they are already distinguished by the slash
         try:
             zipinfo = self._zip.getinfo(filename + '/')
