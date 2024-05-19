@@ -92,7 +92,10 @@ class TarContainer(Container):
             try:
                 file = self._tarfile.extractfile(filename)
             except KeyError:
-                file = self._tarfile.extractfile(self._match_name(filename))
+                try:
+                    file = self._tarfile.extractfile(self._match_name(filename))
+                except KeyError as e:
+                    raise FileNotFoundError(e)
             if file is None:
                 raise IsADirectoryError(
                     f"Cannot open stream on '{filename}': is a directory."
@@ -114,8 +117,14 @@ class TarContainer(Container):
 
     def is_dir(self, name):
         """Item at `name` is a directory."""
-        filename = str(PurePosixPath(self._root) / name)
-        tarinfo = self._tarfile.getmember(filename)
+        root = PurePosixPath(self._root)
+        if root / name == root:
+            return True
+        filename = str(root / name)
+        try:
+            tarinfo = self._tarfile.getmember(filename)
+        except KeyError as e:
+            raise FileNotFoundError(e)
         return tarinfo.isdir()
 
 

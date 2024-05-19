@@ -116,7 +116,7 @@ class ZipContainer(Container):
             try:
                 zipinfo = self._zip.getinfo(filename)
             except KeyError:
-                pass
+                raise FileNotFoundError(f"'{name}' not found in zip container '{self.name}'.")
         return zipinfo.is_dir()
 
 
