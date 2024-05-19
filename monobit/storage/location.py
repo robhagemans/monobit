@@ -10,7 +10,7 @@ from .wrappers.compressors import WRAPPERS
 from .containers.container import CONTAINERS
 
 
-def resolve_location(stream_or_location, mode='r', format=''):
+def resolve_location(stream_or_location, mode='r'):
     """
     Point to given location, resolving nested containers and wrappers.
     """
@@ -20,11 +20,11 @@ def resolve_location(stream_or_location, mode='r', format=''):
         raise ValueError(f'No location provided.')
     if isinstance(stream_or_location, (str, Path)):
         location = Location.from_path(stream_or_location)
-        location = location.resolve(format)
+        location = location.resolve()
         return location
     # stream_or_location is a file-like object
     location = Location.from_stream(stream_or_location)
-    location = location.unwrap_stream(format)
+    location = location.unwrap_stream()
     return location
 
 
@@ -113,7 +113,7 @@ class Location:
         #     head /= head2
         return head, tail
 
-    def resolve(self, format=''):
+    def resolve(self):
         """
         Convert location to subpath on innermost container and open stream.
         """
@@ -121,22 +121,19 @@ class Location:
         if str(head) == '.':
             # no next node found, path is leaf
             return self
-        # get outermost element in compound format
-        new_format_spec, _, outer_format = format.rpartition('.')
         if self.container.is_dir(head):
             location = self
         else:
             # identify container/wrapper type on head
             stream = self.container.open(head, mode='r') #, mode, overwrite)
             location = self.from_stream(stream)
-            # FIXME may need multiple formats to unwrap
-            location = location.unwrap_stream(format=outer_format)
+            location = location.unwrap_stream()
         if not tail or str(tail) == '.':
             return location
         location = location.join(tail)
-        return location.resolve(format=new_format_spec)
+        return location.resolve()
 
-    def unwrap_stream(self, format=''):
+    def unwrap_stream(self):
         """
         Open one or more wrappers until an unwrapped stream is found.
         Returns Location object.
@@ -144,14 +141,14 @@ class Location:
         stream = self._target_stream
         while True:
             try:
-                unwrapped = _open_wrapper(stream, format=format)
+                unwrapped = _open_wrapper(stream)
             except FileFormatError:
                 # not a wrapper
                 break
             else:
                 stream = unwrapped
         try:
-            container = _open_container(stream, format=format)
+            container = _open_container(stream)
             return Location(container)
         except FileFormatError:
             pass
