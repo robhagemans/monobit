@@ -64,6 +64,13 @@ class Location:
             return self._target_stream
         return self.container.open(self.subpath, mode=mode)
 
+    def __enter__(self):
+        return self.open()
+
+    def __exit__(self,  exc_type, exc_val, exc_tb):
+        # FIXME should we close opened stream?
+        pass
+
     def is_dir(self):
         """Location points to a directory/container."""
         if self._target_stream is not None:
@@ -82,12 +89,19 @@ class Location:
         # FIXME keep parent links
         return Location(self.container, self.subpath / subpath)
 
-    def __enter__(self):
-        return self.open()
+    def walk(self):
+        """Recursively open locations."""
+        print('walking', vars(self))
+        if not self.is_dir():
+            yield self
+            return
+        for subpath in self.container.iter_sub(self.subpath):
+            location = self.join(subpath)
+            location = location.resolve()
+            yield from location.walk()
 
-    def __exit__(self,  exc_type, exc_val, exc_tb):
-        # FIXME should we close opened stream?
-        pass
+
+    ###########################################################################
 
     def _find_next_node(self):
         """Find the next node (container or file) in the path."""

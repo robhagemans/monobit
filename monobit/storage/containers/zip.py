@@ -63,13 +63,14 @@ class ZipContainer(Container):
         self._stream.close()
         super().close()
 
-    def __iter__(self):
-        """List contents."""
+    def iter_sub(self, prefix):
+        """List contents of a subpath."""
         return (
             str(PurePosixPath(_name).relative_to(self._root))
             for _name in self._zip.namelist()
             # exclude directories
             if not _name.endswith('/')
+            and PurePosixPath(_name).is_relative_to(PurePosixPath(self._root) / prefix)
         )
 
     def open(self, name, mode, overwrite=False):

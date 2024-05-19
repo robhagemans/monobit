@@ -66,13 +66,14 @@ class TarContainer(Container):
         super().close()
         self.closed = True
 
-    def __iter__(self):
-        """List contents."""
+    def iter_sub(self, prefix):
+        """List contents of a subpath."""
         # list regular files only, skip symlinks and dirs and block devices
         namelist = (
             _ti.name
             for _ti in self._tarfile.getmembers()
             if _ti.isfile()
+            and PurePosixPath(_ti.name).is_relative_to(PurePosixPath(self._root) / prefix)
         )
         return (
             str(PurePosixPath(_name).relative_to(self._root))

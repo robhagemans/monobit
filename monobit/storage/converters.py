@@ -24,6 +24,9 @@ from .location import resolve_location
 DEFAULT_TEXT_FORMAT = 'yaff'
 DEFAULT_BINARY_FORMAT = 'raw'
 
+loaders = ConverterRegistry('load', DEFAULT_TEXT_FORMAT, DEFAULT_BINARY_FORMAT)
+savers = ConverterRegistry('save', DEFAULT_TEXT_FORMAT)
+
 
 ##############################################################################
 # loading
@@ -101,21 +104,18 @@ def load_stream(instream, *, format='', subpath='', **kwargs):
     raise FileFormatError('Unable to read fonts from file')
 
 
-def load_all(container, *, format='', **kwargs):
+def load_all(root_location, *, format='', **kwargs):
     """Open container and load all fonts found in it into one pack."""
-    logging.info('Reading all from `%s`.', container.name)
+    logging.info('Reading all from `%s`.', root_location)
     packs = Pack()
-    names = list(container)
-    for name in container:
-        logging.debug('Trying `%s` on `%s`.', name, container.name)
-        stream = container.open(name, 'r')
+    for location in root_location.walk():
+        logging.debug('Trying `%s`.', location)
+        stream = location.open(mode='r')
         with stream:
             try:
-                pack = load_stream(
-                    stream, format=format, **kwargs
-                )
+                pack = load_stream(stream, format=format, **kwargs)
             except FileFormatError as exc:
-                logging.debug('Could not load `%s`: %s', name, exc)
+                logging.debug('Could not load `%s`: %s', location, exc)
             else:
                 packs += Pack(pack)
     return packs
@@ -244,8 +244,3 @@ def save_all(
             pass
         except FileFormatError as e:
             logging.error('Could not save `%s`: %s', filename, e)
-
-
-
-loaders = ConverterRegistry('load', DEFAULT_TEXT_FORMAT, DEFAULT_BINARY_FORMAT)
-savers = ConverterRegistry('save', DEFAULT_TEXT_FORMAT)
