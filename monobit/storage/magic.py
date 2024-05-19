@@ -10,7 +10,7 @@ from pathlib import Path
 from fnmatch import fnmatch
 import re
 
-from .streams import get_name, DirectoryStream
+from .streams import get_name #, DirectoryStream
 
 
 # number of bytes to read to check if something looks like text
@@ -84,9 +84,9 @@ class MagicRegistry:
         Get loader/saver function for this format.
         file must be a Stream or None
         """
-        if isinstance(file, DirectoryStream):
-            # directory 'stream'
-            return (self._names['dir'],)
+        # if isinstance(file, DirectoryStream):
+        #     # directory 'stream'
+        #     return (self._names['dir'],)
         if format:
             try:
                 converter = (self._names[format],)
@@ -122,7 +122,6 @@ class MagicRegistry:
             funcwrapper=lambda _:_
         ):
         """Decorator to register converter for file type."""
-
         def _decorator(converter):
             if not name:
                 raise ValueError('No registration name given')
@@ -144,7 +143,7 @@ class MagicRegistry:
                 )
             )
             ## glob patterns
-            for pattern in (*patterns, f'*.{name}'):
+            for pattern in tuple(set((*patterns, f'*.{name}'))):
                 self._patterns.append((to_pattern(pattern), converter))
             return funcwrapper(converter)
 
@@ -303,3 +302,52 @@ def to_pattern(obj):
     if isinstance(obj, Pattern):
         return obj
     return Glob(str(obj))
+
+
+
+
+##############################################################################
+# loader/saver registry
+
+from ..plumbing import convert_arguments, check_arguments
+
+
+class ConverterRegistry(MagicRegistry):
+    """Loader/Saver registry."""
+
+    def register(
+            self, name='', magic=(), patterns=(),
+            linked=None, wrapper=False,
+        ):
+        """
+        Decorator to register font loader/saver.
+
+        name: unique name of the format
+        magic: magic sequences for this format (no effect for savers)
+        patterns: filename patterns for this format
+        linked: loader/saver linked to saver/loader
+        """
+        register_magic = super().register
+
+        def _decorator(original_func):
+            _func = convert_arguments(original_func)
+            if not wrapper:
+                _func = check_arguments(_func)
+            # register converter
+            if linked:
+                format = name or linked.format
+                _func.magic = magic or linked.magic
+                _func.patterns = patterns or linked.patterns
+            else:
+                format = name
+                _func.magic = magic
+                _func.patterns = patterns
+            # register magic sequences
+            register_magic(
+                name=format,
+                magic=_func.magic,
+                patterns=_func.patterns,
+            )(_func)
+            return _func
+
+        return _decorator

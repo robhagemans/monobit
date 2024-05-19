@@ -10,7 +10,7 @@ import io
 import logging
 from pathlib import Path
 
-from ..streams import Stream, DirectoryStream
+from ..streams import Stream #, DirectoryStream
 from .container import Container
 
 
@@ -22,9 +22,9 @@ class Directory(Container):
         # if empty path, this refers to the whole filesystem
         if not path:
             self._path = Path('/')
-        elif isinstance(path, DirectoryStream):
-            # directory 'streams'
-            self._path = Path(path.path)
+        # elif isinstance(path, DirectoryStream):
+        #     # directory 'streams'
+        #     self._path = Path(path.path)
         elif isinstance(path, Directory):
             self._path = Path(path._path)
         else:
@@ -39,7 +39,7 @@ class Directory(Container):
         super().__init__(mode, str(self._path), ignore_case=ignore_case)
 
     def open(self, name, mode, overwrite=False):
-        """Open a stream in the container."""
+        """Open a stream or subcontainer in the container."""
         # mode in 'r', 'w'
         mode = mode[:1]
         pathname = Path(name)
@@ -56,9 +56,10 @@ class Directory(Container):
             )
         # return DirectoryStream if the path is a directory
         if filepath.is_dir():
-            return DirectoryStream(
-                filepath, name=str(pathname), mode=mode, where=self
-            )
+            raise ValueError()
+            # return DirectoryStream(
+            #     filepath, name=str(pathname), mode=mode, where=self
+            # )
         try:
             file = open(filepath, mode + 'b')
         except FileNotFoundError:

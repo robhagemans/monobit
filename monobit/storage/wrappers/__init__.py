@@ -5,5 +5,6 @@ monobit.storage.wrappers - compressor and other wrapper format converter plugins
 licence: https://opensource.org/licenses/MIT
 """
 
-from monobit.base import import_all
-import_all(__name__)
+# from monobit.base import import_all
+# import_all(__name__)
+from . import compressors

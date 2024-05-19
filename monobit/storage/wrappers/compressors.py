@@ -10,9 +10,12 @@ from pathlib import Path
 from contextlib import contextmanager
 from importlib import import_module
 
-from monobit.storage import loaders, savers, load_stream, save_stream
-from monobit.storage import Stream
-from monobit.storage import FileFormatError
+# from monobit.storage import loaders, savers, load_stream, save_stream
+from ..streams import Stream
+from ..magic import FileFormatError
+from ..magic import ConverterRegistry
+
+WRAPPERS = ConverterRegistry('__unused__')
 
 
 class Compressor:
@@ -51,13 +54,21 @@ class Compressor:
         return wrapped
 
     @classmethod
-    @contextmanager
-    def _translate_errors(cls):
-        """Context wrapper to convert library-specific errors to ours."""
-        try:
-            yield
-        except cls.error as e:
-            raise FileFormatError(e)
+    def open(cls, stream, mode='r'):
+        """Get the uncompressed stream."""
+        cls._ensure_imports()
+        if mode[:1] == 'r':
+            cls._check_magic(stream)
+        return cls._get_payload_stream(stream, mode)
+
+    # @classmethod
+    # @contextmanager
+    # def _translate_errors(cls):
+    #     """Context wrapper to convert library-specific errors to ours."""
+    #     try:
+    #         yield
+    #     except cls.error as e:
+    #         raise FileFormatError(e)
 
     @classmethod
     def _ensure_imports(cls):
@@ -69,49 +80,50 @@ class Compressor:
             cls.error = getattr(cls.compressor, cls.errorclass)
             cls.errorclass = ''
 
-    @classmethod
-    def load(cls, instream, payload:str='', **kwargs):
-        """
-        Load fonts from compressed stream.
-
-        payload: format of compressed font file.
-        """
-        cls._ensure_imports()
-        cls._check_magic(instream)
-        wrapped = cls._get_payload_stream(instream, 'r')
-        with cls._translate_errors():
-            with wrapped:
-                return load_stream(wrapped, format=payload, **kwargs)
-
-    @classmethod
-    def save(cls, fonts, outstream, payload:str='', **kwargs):
-        """
-        Save fonts to compressed stream.
-
-        payload: format of compressed font file.
-        """
-        cls._ensure_imports()
-        wrapped = cls._get_payload_stream(outstream, 'w')
-        with cls._translate_errors():
-            with wrapped:
-                return save_stream(fonts, wrapped, format=payload, **kwargs)
+    # @classmethod
+    # def load(cls, instream, payload:str='', **kwargs):
+    #     """
+    #     Load fonts from compressed stream.
+    #
+    #     payload: format of compressed font file.
+    #     """
+    #     cls._ensure_imports()
+    #     cls._check_magic(instream)
+    #     wrapped = cls._get_payload_stream(instream, 'r')
+    #     with cls._translate_errors():
+    #         with wrapped:
+    #             return load_stream(wrapped, format=payload, **kwargs)
+    #
+    # @classmethod
+    # def save(cls, fonts, outstream, payload:str='', **kwargs):
+    #     """
+    #     Save fonts to compressed stream.
+    #
+    #     payload: format of compressed font file.
+    #     """
+    #     cls._ensure_imports()
+    #     wrapped = cls._get_payload_stream(outstream, 'w')
+    #     with cls._translate_errors():
+    #         with wrapped:
+    #             return save_stream(fonts, wrapped, format=payload, **kwargs)
 
     @classmethod
     def register(cls):
-        loaders.register(
-            name=cls.name, magic=(cls.magic,), patterns=cls.patterns, wrapper=True
-        )(cls.load)
-        savers.register(
-            name=cls.name, magic=(cls.magic,), patterns=cls.patterns, wrapper=True
-        )(cls.save)
+        WRAPPERS.register(
+            name=cls.name, magic=(cls.magic,), patterns=cls.patterns
+        )(cls.open)
+        # loaders.register(
+        #     name=cls.name, magic=(cls.magic,), patterns=cls.patterns, wrapper=True
+        # )(cls.load)
+        # savers.register(
+        #     name=cls.name, magic=(cls.magic,), patterns=cls.patterns, wrapper=True
+        # )(cls.save)
 
 
 class GzipCompressor(Compressor):
     name  = 'gzip'
     module = 'gzip'
     errorclass = 'BadGzipFile'
-    #compressor = gzip
-    #error = gzip.BadGzipFile
     magic = b'\x1f\x8b'
     patterns = ('*.gz',)
 

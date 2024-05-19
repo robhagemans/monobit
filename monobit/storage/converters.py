@@ -15,36 +15,37 @@ from contextlib import contextmanager
 from ..constants import VERSION, CONVERTER_NAME
 from ..core import Font, Pack
 from ..base.struct import StructError
-from ..plumbing import scriptable, ARG_PREFIX, convert_arguments, check_arguments
+from ..plumbing import scriptable, ARG_PREFIX
 from ..base import Any
-from .streams import Stream, StreamBase, KeepOpen, DirectoryStream
-from .magic import MagicRegistry, FileFormatError, maybe_text
+from .streams import Stream, StreamBase, KeepOpen #, DirectoryStream
+from .magic import ConverterRegistry, FileFormatError, maybe_text
+from .location import open_location
 
 
 DEFAULT_TEXT_FORMAT = 'yaff'
 DEFAULT_BINARY_FORMAT = 'raw'
 
 
-@contextmanager
-def open_location(location, mode):
-    """Parse file specification, open stream."""
-    if mode not in ('r', 'w'):
-        raise ValueError(f"Unsupported mode '{mode}'.")
-    if not location:
-        raise ValueError(f'No location provided.')
-    if isinstance(location, str):
-        location = Path(location)
-    if isinstance(location, Path):
-        root = Path(location.root)
-        subpath = location.relative_to(root)
-        with DirectoryStream(root, mode) as stream:
-            yield stream, subpath
-    elif isinstance(location, StreamBase):
-        yield location, ''
-    else:
-        # we didn't open the file, so we don't own it
-        # we neeed KeepOpen for when the yielded object goes out of scope in the caller
-        yield Stream(KeepOpen(location), mode=mode), ''
+# @contextmanager
+# def open_location(location, mode):
+#     """Parse file specification, open stream."""
+#     if mode not in ('r', 'w'):
+#         raise ValueError(f"Unsupported mode '{mode}'.")
+#     if not location:
+#         raise ValueError(f'No location provided.')
+#     if isinstance(location, str):
+#         location = Path(location)
+#     if isinstance(location, Path):
+#         root = Path(location.root)
+#         subpath = location.relative_to(root)
+#         with DirectoryStream(root, mode) as stream:
+#             yield stream, subpath
+#     elif isinstance(location, StreamBase):
+#         yield location, ''
+#     else:
+#         # we didn't open the file, so we don't own it
+#         # we neeed KeepOpen for when the yielded object goes out of scope in the caller
+#         yield Stream(KeepOpen(location), mode=mode), ''
 
 
 ##############################################################################
@@ -59,8 +60,8 @@ def load(infile:Any='', *, format:str='', **kwargs):
     format: input format (default: infer from magic number or filename)
     """
     infile = infile or sys.stdin
-    with open_location(infile, 'r') as (stream, subpath):
-        return load_stream(stream, format=format, subpath=subpath, **kwargs)
+    with open_location(infile, 'r') as stream:
+        return load_stream(stream, format=format, **kwargs)
 
 
 def load_stream(instream, *, format='', subpath='', **kwargs):
@@ -191,10 +192,10 @@ def save(
         sys.stdout.reconfigure(errors='replace')
     if not pack:
         raise ValueError('No fonts to save')
-    with open_location(outfile, 'w') as (stream, subpath):
+    with open_location(outfile, 'w') as stream:
         save_stream(
             pack, stream,
-            format=format, subpath=subpath, overwrite=overwrite,
+            format=format, overwrite=overwrite,
             **kwargs
         )
     return pack_or_font
@@ -229,13 +230,13 @@ def save_stream(
         logging.info(
             'Saving `%s` on `%s` as %s.', subpath, outstream.name, saver.format
         )
-    # special case - saving to directory
-    # we need to create the dir before opening a stream,
-    # or the stream will be a regular file
-    if isinstance(outstream, DirectoryStream) and format == 'dir':
-        if not (Path(outstream.name) / subpath).exists():
-            os.makedirs(Path(outstream.name) / subpath, exist_ok=True)
-            overwrite = True
+    # # special case - saving to directory
+    # # we need to create the dir before opening a stream,
+    # # or the stream will be a regular file
+    # if isinstance(outstream, DirectoryStream) and format == 'dir':
+    #     if not (Path(outstream.name) / subpath).exists():
+    #         os.makedirs(Path(outstream.name) / subpath, exist_ok=True)
+    #         overwrite = True
     # update format name, removing the most recently found wrapper format
     if outer == saver.format:
         format = new_format
@@ -273,49 +274,6 @@ def save_all(
         except FileFormatError as e:
             logging.error('Could not save `%s`: %s', filename, e)
 
-
-##############################################################################
-# loader/saver registry
-
-class ConverterRegistry(MagicRegistry):
-    """Loader/Saver registry."""
-
-    def register(
-            self, name='', magic=(), patterns=(),
-            linked=None, wrapper=False,
-        ):
-        """
-        Decorator to register font loader/saver.
-
-        name: unique name of the format
-        magic: magic sequences for this format (no effect for savers)
-        patterns: filename patterns for this format
-        linked: loader/saver linked to saver/loader
-        """
-        register_magic = super().register
-
-        def _decorator(original_func):
-            _func = convert_arguments(original_func)
-            if not wrapper:
-                _func = check_arguments(_func)
-            # register converter
-            if linked:
-                format = name or linked.format
-                _func.magic = magic or linked.magic
-                _func.patterns = patterns or linked.patterns
-            else:
-                format = name
-                _func.magic = magic
-                _func.patterns = patterns
-            # register magic sequences
-            register_magic(
-                name=format,
-                magic=_func.magic,
-                patterns=_func.patterns,
-            )(_func)
-            return _func
-
-        return _decorator
 
 
 loaders = ConverterRegistry('load', DEFAULT_TEXT_FORMAT, DEFAULT_BINARY_FORMAT)
