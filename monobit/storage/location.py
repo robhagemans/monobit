@@ -18,41 +18,76 @@ def open_location(stream_or_location, mode='r', format=''):
         raise ValueError(f"Unsupported mode '{mode}'.")
     if not stream_or_location:
         raise ValueError(f'No location provided.')
-    if isinstance(stream_or_location, (str, Path, Location)):
-        location_spec = stream_or_location
-        if isinstance(location_spec, str):
-            location_spec = Path(location_spec)
-        if isinstance(location_spec, Path):
-            root = Path(location_spec.root)
-            subpath = location_spec.relative_to(root)
-            location = Location(Directory(root), subpath)
-        else:
-            location = location_spec
+    if isinstance(stream_or_location, (str, Path)):
+        location = Location.from_path(stream_or_location)
         location = location.resolve(format)
         return location
     # stream_or_location is a file-like object
-    if isinstance(stream_or_location, StreamBase):
-        stream = stream_or_location
-    else:
-        # we didn't open the file, so we don't own it
-        # we neeed KeepOpen for when the yielded object goes out of scope in the caller
-        stream = Stream(KeepOpen(stream_or_location), mode=mode)
-    location = Location()
+    location = Location.from_stream(stream_or_location)
     stream = location.unwrap_stream(stream, format)
     return stream
 
 
 class Location:
 
-    def __init__(self, container=None, subpath=''):
-        if container is None:
-            container = Directory()
+    def __init__(self, container, subpath=''):
+        # self.parent = None
         self.container = container
-        self.subpath = subpath
+        self.subpath = Path(subpath)
         self._open_streams = []
+        self._target_stream = None
+
+    @classmethod
+    def from_path(cls, path):
+        """Create from path-like or string."""
+        path = Path(path)
+        root = path.anchor or '.'
+        subpath = path.relative_to(root)
+        return cls(container=Directory(root), subpath=subpath)
+
+    @classmethod
+    def from_stream(cls, stream):
+        """Create from file-like object."""
+        location = cls(container=None, subpath='')
+        # FIXME track parent Location to stop open parent streams getting closed
+        if not isinstance(stream, StreamBase):
+            # we didn't open the file, so we don't own it
+            # we need KeepOpen for when the yielded object goes out of scope in the caller
+            stream = Stream(KeepOpen(stream), mode='r')
+        # FIXME: do we need KeepOpen for all streams?
+        location._target_stream = stream
+        return location
+
+    def open(self, mode='r'):
+        """Get open stream at location."""
+        if self._target_stream is not None:
+            return self._target_stream
+        return self.container.open(self.subpath, mode=mode)
+
+    def join(self, subpath):
+        """Get a location at the subpath."""
+        if self.subpath / subpath == self.subpath:
+            return self
+        if self._target_stream is not None:
+            raise ValueError(
+                f"Cannot open subpath '{subpath}' on stream `{self._target_stream}`."
+            )
+        logging.debug('joined to %s %s', self.container, self.subpath / subpath)
+        # FIXME keep parent links
+        return Location(self.container, self.subpath / subpath)
+
+    def __enter__(self):
+        return self.open()
+
+    def __exit__(self,  exc_type, exc_val, exc_tb):
+        # FIXME should we close opened stream?
+        pass
 
     def _find_next_node(self):
         """Find the next node (container or file) in the path."""
+        if self.container is None:
+            logging.debug(vars(self))
+            return '.', ''
         head, tail = _split_path(self.container, self.subpath)
         # if mode == 'w' and not head.suffixes:
         #     head2, tail = _split_path_suffix(tail)
@@ -75,22 +110,14 @@ class Location:
         stream = self.container.open(head, mode='r') #, mode, overwrite)
         self._open_streams.append(stream)
         # FIXME may need multiple formats to unwrap
-        stream_or_container = self.unwrap_stream(stream, format=outer_format)
-        if isinstance(stream_or_container, StreamBase):
-            if not tail or str(tail) == '.':
-                return stream_or_container
-            # not a container but we still have a subpath - error
-            raise FileFormatError(
-                f"Cannot resolve subpath '{tail}' "
-                f"on non-container stream '{stream_or_container.name}'"
-            )
-        location = Location(stream_or_container, subpath=tail)
+        location = self.unwrap_stream(stream, format=outer_format)
+        location = location.join(tail)
         return location.resolve(format=new_format_spec)
 
     def unwrap_stream(self, stream, format=''):
         """
         Open one or more wrappers until an unwrapped stream is found.
-        Returns Stream or Container object.
+        Returns Location object.
         """
         while True:
             try:
@@ -102,10 +129,13 @@ class Location:
                 self._open_streams.append(unwrapped)
                 stream = unwrapped
         try:
-            return _open_container(stream, format=format)
+            container = _open_container(stream, format=format)
+            return Location(container)
         except FileFormatError:
             pass
-        return stream
+        return self.from_stream(stream)
+
+
 
 
 def _open_wrapper(instream, *, format='', **kwargs):
@@ -159,6 +189,7 @@ def _split_path(container, path):
     """Pare back path until an existing ancestor is found."""
     path = Path(path)
     for head in (path, *path.parents):
+        logging.debug('exists %s in %s', head, container)
         if head in container:
             tail = path.relative_to(head)
             return head, tail
