@@ -22,9 +22,6 @@ class Directory(Container):
         # if empty path, this refers to the whole filesystem
         if not path:
             self._path = Path('/')
-        # elif isinstance(path, DirectoryStream):
-        #     # directory 'streams'
-        #     self._path = Path(path.path)
         elif isinstance(path, Directory):
             self._path = Path(path._path)
         else:
@@ -54,12 +51,10 @@ class Directory(Container):
                 f'Overwriting existing file {str(filepath)}'
                 ' requires -overwrite to be set'
             )
-        # return DirectoryStream if the path is a directory
         if filepath.is_dir():
-            raise ValueError()
-            # return DirectoryStream(
-            #     filepath, name=str(pathname), mode=mode, where=self
-            # )
+            raise IsADirectoryError(
+                f"Cannot open stream on '{filepath}': is a directory."
+            )
         try:
             file = open(filepath, mode + 'b')
         except FileNotFoundError:
@@ -69,6 +64,11 @@ class Directory(Container):
         # provide name relative to directory container
         stream = Stream(file, name=str(pathname), mode=mode, where=self)
         return stream
+
+    def is_dir(self, name):
+        """Item at `name` is a directory."""
+        filepath = self._path / pathname
+        return filepath.is_dir()
 
     def __iter__(self):
         """List contents."""

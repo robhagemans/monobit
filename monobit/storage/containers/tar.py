@@ -92,6 +92,10 @@ class TarContainer(Container):
                 file = self._tarfile.extractfile(filename)
             except KeyError:
                 file = self._tarfile.extractfile(self._match_name(filename))
+            if file is None:
+                raise IsADirectoryError(
+                    f"Cannot open stream on '{filename}': is a directory."
+                )
             # .name is not writeable, so we need to wrap
             return Stream(file, mode, name=name, where=self)
         else:
@@ -106,6 +110,12 @@ class TarContainer(Container):
                 logging.warning('Creating multiple files of the same name `%s`.', name)
             self._files.append(newfile)
             return newfile
+
+    def is_dir(self, name):
+        """Item at `name` is a directory."""
+        filename = str(PurePosixPath(self._root) / name)
+        tarinfo = self._tarfile.getmember(filename)
+        return tarinfo.isdir()
 
 
 TarContainer.register(

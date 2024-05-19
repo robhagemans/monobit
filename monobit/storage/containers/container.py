@@ -66,6 +66,10 @@ class Container:
         """Open a binary stream in the container."""
         raise NotImplementedError
 
+    def is_dir(self, name):
+        """Item at `name` is a directory."""
+        raise NotImplementedError
+
     def _match_name(self, filepath):
         """Find case insensitive match, if the case sensitive match doesn't."""
         if self._ignore_case:
@@ -74,18 +78,6 @@ class Container:
                 if name.lower() == str(filepath).lower():
                     return name
         raise FileNotFoundError(filepath)
-
-    # def _open_stream_at(self, path, mode, overwrite):
-    #     """Open stream recursively an container(s) given path."""
-    #     head, tail = find_next_node(self, path, mode)
-    #     if str(head) == '.':
-    #         # no next node found, path is leaf
-    #         # this'll raise a FileNotFoundError if we're reading
-    #         stream = self.open(tail, mode, overwrite)
-    #         tail = ''
-    #     else:
-    #         stream = self.open(head, mode, overwrite)
-    #     return stream, tail
 
     def unused_name(self, name):
         """Generate unique name for container file."""
@@ -99,37 +91,25 @@ class Container:
             if filename not in self:
                 return filename
 
-    @classmethod
-    def load(cls, instream, **kwargs):
-        """Load fonts from container."""
-        with cls(instream) as container:
-            # if not subpath:
-                return load_all(container, **kwargs)
-            # stream, subsubpath = container._open_stream_at(
-            #     subpath, mode='r', overwrite=False
-            # )
-            # with stream:
-            #     return load_stream(stream, subpath=subsubpath, **kwargs)
-
-    @classmethod
-    def save(
-            cls, fonts, outstream, *,
-            overwrite=False,
-            template:str='',
-            **kwargs
-        ):
-        """
-        Save fonts to container (directory or archive).
-
-        template: naming template for files in container
-        """
-        with cls(outstream, 'w') as container:
-            # if not subpath:
-                return save_all(
-                    fonts, container,
-                    template=template, overwrite=overwrite,
-                    **kwargs
-                )
+    # @classmethod
+    # def save(
+    #         cls, fonts, outstream, *,
+    #         overwrite=False,
+    #         template:str='',
+    #         **kwargs
+    #     ):
+    #     """
+    #     Save fonts to container (directory or archive).
+    #
+    #     template: naming template for files in container
+    #     """
+    #     with cls(outstream, 'w') as container:
+    #         # if not subpath:
+    #             return save_all(
+    #                 fonts, container,
+    #                 template=template, overwrite=overwrite,
+    #                 **kwargs
+    #             )
             # stream, subsubpath = container._open_stream_at(
             #     subpath, mode='w', overwrite=overwrite
             # )

@@ -85,6 +85,9 @@ class ZipContainer(Container):
                 file = self._zip.open(filename, mode)
             except KeyError:
                 file = self._zip.open(self._match_name(filename), mode)
+            # FIXME the above will raise FileNotFoundError on a bare directory name
+            # but open an empty file for directory name plus /
+            # we need IsADirectoryError
             return Stream(file, mode=mode, where=self, name=name)
         else:
             if filename in self and not overwrite:
@@ -98,6 +101,19 @@ class ZipContainer(Container):
                 logging.warning('Creating multiple files of the same name `%s`.', filename)
             self._files.append(newfile)
             return newfile
+
+    def is_dir(self, name):
+        """Item at `name` is a directory."""
+        filename = str(PurePosixPath(self._root) / name)
+        # zipinfo has an is_dir method, but really they are already distinguished by the slash
+        try:
+            zipinfo = self._zip.getinfo(filename + '/')
+        except KeyError:
+            try:
+                zipinfo = self._zip.getinfo(filename)
+            except KeyError:
+                pass
+        return zipinfo.is_dir()
 
 
 ZipContainer.register(
