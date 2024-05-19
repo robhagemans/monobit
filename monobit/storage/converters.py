@@ -168,21 +168,15 @@ def save(
         return save_all(
             pack, location, format=format, overwrite=overwrite, **kwargs
         )
-    with location.open() as stream:
-        save_stream(
-            pack, stream, format=format, overwrite=overwrite, **kwargs
-        )
+    with location.open(mode='w', overwrite=overwrite) as stream:
+        save_stream(pack, stream, format=format, **kwargs)
     return pack_or_font
 
 
-def save_stream(
-        pack, outstream, *,
-        format='', subpath='', overwrite=False,
-        **kwargs
-    ):
+def save_stream(pack, outstream, *, format='', **kwargs):
     """Save fonts to an open stream."""
-    new_format, _, outer = format.rpartition('.')
-    matching_savers = savers.get_for(outstream, format=outer)
+    format = format or DEFAULT_TEXT_FORMAT
+    matching_savers = savers.get_for(outstream, format=format)
     if not matching_savers:
         if format:
             raise ValueError(f'Format specification `{format}` not recognised')
@@ -198,12 +192,7 @@ def save_stream(
             f'({", ".join(_s.format for _s in matching_savers)})'
         )
     saver, *_ = matching_savers
-    if Path(subpath) == Path('.'):
-        logging.info('Saving `%s` as %s.', outstream.name, saver.format)
-    else:
-        logging.info(
-            'Saving `%s` on `%s` as %s.', subpath, outstream.name, saver.format
-        )
+    logging.info('Saving `%s` as %s.', outstream.name, saver.format)
     # # special case - saving to directory
     # # we need to create the dir before opening a stream,
     # # or the stream will be a regular file
@@ -211,25 +200,14 @@ def save_stream(
     #     if not (Path(outstream.name) / subpath).exists():
     #         os.makedirs(Path(outstream.name) / subpath, exist_ok=True)
     #         overwrite = True
-    # update format name, removing the most recently found wrapper format
-    if outer == saver.format:
-        format = new_format
-    # only provide subpath and format args if non-empty
-    if Path(subpath) != Path('.'):
-        kwargs['subpath'] = subpath
-        kwargs['overwrite'] = overwrite
-    if format:
-        kwargs['format'] = format
     saver(pack, outstream, **kwargs)
 
 
 def save_all(
-        pack, location, *,
-        format=DEFAULT_TEXT_FORMAT, template='',
-        overwrite=False,
-        **kwargs
+        pack, location, *, format='', template='', overwrite=False, **kwargs
     ):
     """Save fonts to a container."""
+    format = format or DEFAULT_TEXT_FORMAT
     logging.info('Writing all to `%s`.', location)
     for font in pack:
         if format and not template:
@@ -248,3 +226,5 @@ def save_all(
             pass
         except FileFormatError as e:
             logging.error('Could not save `%s`: %s', filename, e)
+        # FIXME - this needs to go somewhere else
+        new_location.container.close()

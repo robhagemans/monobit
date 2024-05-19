@@ -36,6 +36,9 @@ class Location:
         self.subpath = Path(subpath)
         self._target_stream = None
 
+    # __repr__
+    # __str__
+
     @classmethod
     def from_path(cls, path, *, mode='r'):
         """Create from path-like or string."""
