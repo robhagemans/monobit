@@ -20,11 +20,11 @@ def resolve_location(stream_or_location, mode='r'):
         raise ValueError(f'No location provided.')
     if isinstance(stream_or_location, (str, Path)):
         location = Location.from_path(stream_or_location)
-        location = location.resolve()
+        location = location._resolve()
         return location
     # stream_or_location is a file-like object
     location = Location.from_stream(stream_or_location)
-    location = location.unwrap_stream()
+    location = location._unwrap()
     return location
 
 
@@ -96,7 +96,7 @@ class Location:
         for path in self.container.iter_sub(self.subpath):
             subpath = Path(path).relative_to(self.subpath)
             location = self.join(subpath)
-            location = location.resolve()
+            location = location._resolve()
             yield from location.walk()
 
 
@@ -113,7 +113,7 @@ class Location:
         #     head /= head2
         return head, tail
 
-    def resolve(self):
+    def _resolve(self):
         """
         Convert location to subpath on innermost container and open stream.
         """
@@ -127,13 +127,13 @@ class Location:
             # identify container/wrapper type on head
             stream = self.container.open(head, mode='r') #, mode, overwrite)
             location = self.from_stream(stream)
-            location = location.unwrap_stream()
+            location = location._unwrap()
         if not tail or str(tail) == '.':
             return location
         location = location.join(tail)
-        return location.resolve()
+        return location._resolve()
 
-    def unwrap_stream(self):
+    def _unwrap(self):
         """
         Open one or more wrappers until an unwrapped stream is found.
         Returns Location object.
