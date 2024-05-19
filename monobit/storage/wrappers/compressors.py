@@ -10,7 +10,6 @@ from pathlib import Path
 from contextlib import contextmanager
 from importlib import import_module
 
-# from monobit.storage import loaders, savers, load_stream, save_stream
 from ..streams import Stream
 from ..magic import FileFormatError
 from ..magic import MagicRegistry

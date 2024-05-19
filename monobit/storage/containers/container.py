@@ -9,9 +9,6 @@ import logging
 import itertools
 from pathlib import Path
 
-# from ..converters import (
-#     loaders, savers, load_all, save_all, load_stream, save_stream
-# )
 from ..magic import MagicRegistry
 
 CONTAINERS = MagicRegistry('__unused__')
