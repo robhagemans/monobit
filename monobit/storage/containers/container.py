@@ -87,6 +87,7 @@ class Container:
                     return name
         raise FileNotFoundError(filepath)
 
+    # TODO: move to Location
     def unused_name(self, name):
         """Generate unique name for container file."""
         if name not in self:
@@ -98,37 +99,6 @@ class Container:
                 filename = '{}.{}'.format(filename, suffix)
             if filename not in self:
                 return filename
-
-    # @classmethod
-    # def save(
-    #         cls, fonts, outstream, *,
-    #         overwrite=False,
-    #         template:str='',
-    #         **kwargs
-    #     ):
-    #     """
-    #     Save fonts to container (directory or archive).
-    #
-    #     template: naming template for files in container
-    #     """
-    #     with cls(outstream, 'w') as container:
-    #         # if not subpath:
-    #             return save_all(
-    #                 fonts, container,
-    #                 template=template, overwrite=overwrite,
-    #                 **kwargs
-    #             )
-            # stream, subsubpath = container._open_stream_at(
-            #     subpath, mode='w', overwrite=overwrite
-            # )
-            # with stream:
-            #     if template:
-            #         kwargs['template'] = template
-            #     return save_stream(
-            #         fonts, stream,
-            #         subpath=subsubpath, overwrite=overwrite,
-            #         **kwargs
-            #     )
 
     @classmethod
     def register(cls, name, magic=(), patterns=()):

@@ -80,44 +80,11 @@ class Compressor:
             cls.error = getattr(cls.compressor, cls.errorclass)
             cls.errorclass = ''
 
-    # @classmethod
-    # def load(cls, instream, payload:str='', **kwargs):
-    #     """
-    #     Load fonts from compressed stream.
-    #
-    #     payload: format of compressed font file.
-    #     """
-    #     cls._ensure_imports()
-    #     cls._check_magic(instream)
-    #     wrapped = cls._get_payload_stream(instream, 'r')
-    #     with cls._translate_errors():
-    #         with wrapped:
-    #             return load_stream(wrapped, format=payload, **kwargs)
-    #
-    # @classmethod
-    # def save(cls, fonts, outstream, payload:str='', **kwargs):
-    #     """
-    #     Save fonts to compressed stream.
-    #
-    #     payload: format of compressed font file.
-    #     """
-    #     cls._ensure_imports()
-    #     wrapped = cls._get_payload_stream(outstream, 'w')
-    #     with cls._translate_errors():
-    #         with wrapped:
-    #             return save_stream(fonts, wrapped, format=payload, **kwargs)
-
     @classmethod
     def register(cls):
         WRAPPERS.register(
             name=cls.name, magic=(cls.magic,), patterns=cls.patterns
         )(cls.open)
-        # loaders.register(
-        #     name=cls.name, magic=(cls.magic,), patterns=cls.patterns, wrapper=True
-        # )(cls.load)
-        # savers.register(
-        #     name=cls.name, magic=(cls.magic,), patterns=cls.patterns, wrapper=True
-        # )(cls.save)
 
 
 class GzipCompressor(Compressor):
