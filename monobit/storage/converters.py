@@ -17,35 +17,12 @@ from ..core import Font, Pack
 from ..base.struct import StructError
 from ..plumbing import scriptable, ARG_PREFIX
 from ..base import Any
-from .streams import Stream, StreamBase, KeepOpen #, DirectoryStream
 from .magic import ConverterRegistry, FileFormatError, maybe_text
-from .location import open_location
+from .location import resolve_location
 
 
 DEFAULT_TEXT_FORMAT = 'yaff'
 DEFAULT_BINARY_FORMAT = 'raw'
-
-
-# @contextmanager
-# def open_location(location, mode):
-#     """Parse file specification, open stream."""
-#     if mode not in ('r', 'w'):
-#         raise ValueError(f"Unsupported mode '{mode}'.")
-#     if not location:
-#         raise ValueError(f'No location provided.')
-#     if isinstance(location, str):
-#         location = Path(location)
-#     if isinstance(location, Path):
-#         root = Path(location.root)
-#         subpath = location.relative_to(root)
-#         with DirectoryStream(root, mode) as stream:
-#             yield stream, subpath
-#     elif isinstance(location, StreamBase):
-#         yield location, ''
-#     else:
-#         # we didn't open the file, so we don't own it
-#         # we neeed KeepOpen for when the yielded object goes out of scope in the caller
-#         yield Stream(KeepOpen(location), mode=mode), ''
 
 
 ##############################################################################
@@ -56,19 +33,21 @@ def load(infile:Any='', *, format:str='', **kwargs):
     """
     Read font(s) from file.
 
-    infile: input file (default: stdin)
+    infile: input file or path (default: stdin)
     format: input format (default: infer from magic number or filename)
     """
     infile = infile or sys.stdin
-    with open_location(infile, 'r') as stream:
+    location = resolve_location(infile, 'r')
+    if location.is_dir():
+        return load_all(location, format=format, **kwargs)
+    with location.open() as stream:
         return load_stream(stream, format=format, **kwargs)
 
 
 def load_stream(instream, *, format='', subpath='', **kwargs):
     """Load fonts from open stream."""
-    new_format, _, outer = format.rpartition('.')
     # identify file type
-    fitting_loaders = loaders.get_for(instream, format=outer)
+    fitting_loaders = loaders.get_for(instream, format=format)
     if not fitting_loaders:
         message = f'Cannot load `{instream.name}`'
         if format:
@@ -79,14 +58,6 @@ def load_stream(instream, *, format='', subpath='', **kwargs):
     for loader in fitting_loaders:
         instream.seek(0)
         logging.info('Loading `%s` as %s', instream.name, loader.format)
-        # update format name, removing the most recently found wrapper format
-        if outer == loader.format:
-            format = new_format
-        # only provide subpath and format args if non-empty
-        if Path(subpath) != Path('.'):
-            kwargs['subpath'] = subpath
-        if format:
-            kwargs['format'] = format
         try:
             fonts = loader(instream, **kwargs)
         except (FileFormatError, StructError) as e:

@@ -10,9 +10,9 @@ from .wrappers.compressors import WRAPPERS
 from .containers.container import CONTAINERS
 
 
-def open_location(stream_or_location, mode='r', format=''):
+def resolve_location(stream_or_location, mode='r', format=''):
     """
-    Open stream on given location, resolving nested containers and wrappers.
+    Point to given location, resolving nested containers and wrappers.
     """
     if mode not in ('r', 'w'):
         raise ValueError(f"Unsupported mode '{mode}'.")
@@ -24,8 +24,8 @@ def open_location(stream_or_location, mode='r', format=''):
         return location
     # stream_or_location is a file-like object
     location = Location.from_stream(stream_or_location)
-    stream = location.unwrap_stream(stream, format)
-    return stream
+    location = location.unwrap_stream(stream, format)
+    return location
 
 
 class Location:
@@ -63,6 +63,12 @@ class Location:
         if self._target_stream is not None:
             return self._target_stream
         return self.container.open(self.subpath, mode=mode)
+
+    def is_dir(self):
+        """Location points to a directory/container."""
+        if self._target_stream is not None:
+            return False
+        return self.container.is_dir(self.subpath)
 
     def join(self, subpath):
         """Get a location at the subpath."""
