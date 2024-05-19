@@ -13,9 +13,9 @@ from importlib import import_module
 # from monobit.storage import loaders, savers, load_stream, save_stream
 from ..streams import Stream
 from ..magic import FileFormatError
-from ..magic import ConverterRegistry
+from ..magic import MagicRegistry
 
-WRAPPERS = ConverterRegistry('__unused__')
+WRAPPERS = MagicRegistry('__unused__')
 
 
 class Compressor:
@@ -84,7 +84,7 @@ class Compressor:
     def register(cls):
         WRAPPERS.register(
             name=cls.name, magic=(cls.magic,), patterns=cls.patterns
-        )(cls.open)
+        )(cls)
 
 
 class GzipCompressor(Compressor):

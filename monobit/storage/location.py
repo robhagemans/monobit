@@ -168,14 +168,14 @@ class Location:
 def _open_wrapper(instream, *, format='', mode='r', **kwargs):
     """Open wrapper on open stream."""
     # identify file type
-    fitting_loaders = WRAPPERS.get_for(instream, format=format)
+    fitting_classes = WRAPPERS.get_for(instream, format=format)
     last_error = None
-    for loader in fitting_loaders:
+    for cls in fitting_classes:
         instream.seek(0)
-        logging.info('Opening `%s` as wrapper format %s', instream.name, loader.format)
+        logging.info('Opening `%s` as wrapper format %s', instream.name, cls.format)
         try:
             # returns unwrapped stream
-            return loader(instream, mode=mode, **kwargs)
+            return cls.open(instream, mode=mode, **kwargs)
         except (FileFormatError, StructError) as e:
             logging.debug(e)
             last_error = e
@@ -191,14 +191,14 @@ def _open_wrapper(instream, *, format='', mode='r', **kwargs):
 def _open_container(instream, *, format='', mode='r', **kwargs):
     """Open container on open stream."""
     # identify file type
-    fitting_loaders = CONTAINERS.get_for(instream, format=format)
+    fitting_classes = CONTAINERS.get_for(instream, format=format)
     last_error = None
-    for loader in fitting_loaders:
+    for cls in fitting_classes:
         instream.seek(0)
-        logging.info('Opening `%s` as container format %s', instream.name, loader.format)
+        logging.info('Opening `%s` as container format %s', instream.name, cls.format)
         try:
             # returns container object
-            return loader(instream, mode=mode, **kwargs)
+            return cls(instream, mode=mode, **kwargs)
         except (FileFormatError, StructError) as e:
             logging.debug(e)
             last_error = e
