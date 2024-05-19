@@ -24,7 +24,7 @@ def resolve_location(stream_or_location, mode='r', format=''):
         return location
     # stream_or_location is a file-like object
     location = Location.from_stream(stream_or_location)
-    location = location.unwrap_stream(stream, format)
+    location = location.unwrap_stream(format)
     return location
 
 
@@ -34,7 +34,6 @@ class Location:
         # self.parent = None
         self.container = container
         self.subpath = Path(subpath)
-        self._open_streams = []
         self._target_stream = None
 
     @classmethod
@@ -128,17 +127,18 @@ class Location:
         new_format_spec, _, outer_format = format.rpartition('.')
         # identify container/wrapper type on head
         stream = self.container.open(head, mode='r') #, mode, overwrite)
-        self._open_streams.append(stream)
+        location = self.from_stream(stream)
         # FIXME may need multiple formats to unwrap
-        location = self.unwrap_stream(stream, format=outer_format)
+        location = location.unwrap_stream(format=outer_format)
         location = location.join(tail)
         return location.resolve(format=new_format_spec)
 
-    def unwrap_stream(self, stream, format=''):
+    def unwrap_stream(self, format=''):
         """
         Open one or more wrappers until an unwrapped stream is found.
         Returns Location object.
         """
+        stream = self._target_stream
         while True:
             try:
                 unwrapped = _open_wrapper(stream, format=format)
@@ -146,7 +146,6 @@ class Location:
                 # not a wrapper
                 break
             else:
-                self._open_streams.append(unwrapped)
                 stream = unwrapped
         try:
             container = _open_container(stream, format=format)
@@ -154,8 +153,6 @@ class Location:
         except FileFormatError:
             pass
         return self.from_stream(stream)
-
-
 
 
 def _open_wrapper(instream, *, format='', **kwargs):
