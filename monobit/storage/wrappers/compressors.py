@@ -54,7 +54,7 @@ class Compressor:
         return wrapped
 
     @classmethod
-    def open(cls, stream, mode='r'):
+    def open(cls, stream, mode:str='r'):
         """Get the uncompressed stream."""
         cls._ensure_imports()
         if mode[:1] == 'r':

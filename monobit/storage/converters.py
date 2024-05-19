@@ -163,11 +163,14 @@ def save(
         sys.stdout.reconfigure(errors='replace')
     if not pack:
         raise ValueError('No fonts to save')
-    with open_location(outfile, 'w') as stream:
+    location = resolve_location(outfile, mode='w')
+    if location.is_dir():
+        return save_all(
+            pack, location, format=format, overwrite=overwrite, **kwargs
+        )
+    with location.open() as stream:
         save_stream(
-            pack, stream,
-            format=format, overwrite=overwrite,
-            **kwargs
+            pack, stream, format=format, overwrite=overwrite, **kwargs
         )
     return pack_or_font
 
@@ -221,13 +224,13 @@ def save_stream(
 
 
 def save_all(
-        pack, container, *,
+        pack, location, *,
         format=DEFAULT_TEXT_FORMAT, template='',
         overwrite=False,
         **kwargs
     ):
     """Save fonts to a container."""
-    logging.info('Writing all to `%s`.', container.name)
+    logging.info('Writing all to `%s`.', location)
     for font in pack:
         if format and not template:
             # generate name from format
@@ -235,8 +238,9 @@ def save_all(
         # fill out template
         name = font.format_properties(template)
         # generate unique filename
-        filename = container.unused_name(name.replace(' ', '_'))
-        stream = container.open(filename, 'w', overwrite=overwrite)
+        filename = location.unused_name(name.replace(' ', '_'))
+        new_location = location.join(filename)
+        stream = new_location.open(mode='w', overwrite=overwrite)
         try:
             with stream:
                 save_stream(Pack(font), stream, format=format, **kwargs)

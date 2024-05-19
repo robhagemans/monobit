@@ -19,11 +19,11 @@ def resolve_location(stream_or_location, mode='r'):
     if not stream_or_location:
         raise ValueError(f'No location provided.')
     if isinstance(stream_or_location, (str, Path)):
-        location = Location.from_path(stream_or_location)
+        location = Location.from_path(stream_or_location, mode=mode)
         location = location._resolve()
         return location
     # stream_or_location is a file-like object
-    location = Location.from_stream(stream_or_location)
+    location = Location.from_stream(stream_or_location, mode=mode)
     location = location._unwrap()
     return location
 
@@ -37,31 +37,35 @@ class Location:
         self._target_stream = None
 
     @classmethod
-    def from_path(cls, path):
+    def from_path(cls, path, *, mode='r'):
         """Create from path-like or string."""
         path = Path(path)
         root = path.anchor or '.'
         subpath = path.relative_to(root)
-        return cls(container=Directory(root), subpath=subpath)
+        return cls(container=Directory(root, mode=mode), subpath=subpath)
 
     @classmethod
-    def from_stream(cls, stream):
+    def from_stream(cls, stream, *, mode='r'):
         """Create from file-like object."""
         location = cls(container=None, subpath='')
         # FIXME track parent Location to stop open parent streams getting closed
         if not isinstance(stream, StreamBase):
             # we didn't open the file, so we don't own it
             # we need KeepOpen for when the yielded object goes out of scope in the caller
-            stream = Stream(KeepOpen(stream), mode='r')
+            stream = Stream(KeepOpen(stream), mode=mode)
+        if stream.mode != mode:
+            raise ValueError(
+                f"Stream mode '{stream.mode}' not equal to mode '{mode}'"
+            )
         # FIXME: do we need KeepOpen for all streams?
         location._target_stream = stream
         return location
 
-    def open(self, mode='r'):
+    def open(self, mode='r', overwrite=False):
         """Get open stream at location."""
         if self._target_stream is not None:
             return self._target_stream
-        return self.container.open(self.subpath, mode=mode)
+        return self.container.open(self.subpath, mode=mode, overwrite=overwrite)
 
     def __enter__(self):
         return self.open()
@@ -99,25 +103,31 @@ class Location:
             location = location._resolve()
             yield from location.walk()
 
+    def unused_name(self, name):
+        if self._target_stream is not None:
+            raise ValueError('Cannot create name on stream.')
+        return self.container.unused_name(name)
+
 
     ###########################################################################
 
-    def _find_next_node(self):
+    def _find_next_node(self, mode):
         """Find the next node (container or file) in the path."""
         if self.container is None:
             logging.debug(vars(self))
             return '.', ''
         head, tail = _split_path(self.container, self.subpath)
-        # if mode == 'w' and not head.suffixes:
-        #     head2, tail = _split_path_suffix(tail)
-        #     head /= head2
+        if mode == 'w' and not head.suffixes:
+            head2, tail = _split_path_suffix(tail)
+            head /= head2
         return head, tail
 
     def _resolve(self):
         """
         Convert location to subpath on innermost container and open stream.
         """
-        head, tail = self._find_next_node()
+        mode = self.container.mode
+        head, tail = self._find_next_node(mode=mode)
         if str(head) == '.':
             # no next node found, path is leaf
             return self
@@ -125,8 +135,8 @@ class Location:
             location = self
         else:
             # identify container/wrapper type on head
-            stream = self.container.open(head, mode='r') #, mode, overwrite)
-            location = self.from_stream(stream)
+            stream = self.container.open(head, mode=mode) #, overwrite)
+            location = self.from_stream(stream, mode=mode)
             location = location._unwrap()
         if not tail or str(tail) == '.':
             return location
@@ -141,21 +151,21 @@ class Location:
         stream = self._target_stream
         while True:
             try:
-                unwrapped = _open_wrapper(stream)
+                unwrapped = _open_wrapper(stream, mode=stream.mode)
             except FileFormatError:
                 # not a wrapper
                 break
             else:
                 stream = unwrapped
         try:
-            container = _open_container(stream)
+            container = _open_container(stream, mode=stream.mode)
             return Location(container)
         except FileFormatError:
             pass
-        return self.from_stream(stream)
+        return self.from_stream(stream, mode=stream.mode)
 
 
-def _open_wrapper(instream, *, format='', **kwargs):
+def _open_wrapper(instream, *, format='', mode='r', **kwargs):
     """Open wrapper on open stream."""
     # identify file type
     fitting_loaders = WRAPPERS.get_for(instream, format=format)
@@ -165,7 +175,7 @@ def _open_wrapper(instream, *, format='', **kwargs):
         logging.info('Opening `%s` as wrapper format %s', instream.name, loader.format)
         try:
             # returns unwrapped stream
-            return loader(instream, **kwargs)
+            return loader(instream, mode=mode, **kwargs)
         except (FileFormatError, StructError) as e:
             logging.debug(e)
             last_error = e
@@ -178,7 +188,7 @@ def _open_wrapper(instream, *, format='', **kwargs):
     raise FileFormatError(message)
 
 
-def _open_container(instream, *, format='', **kwargs):
+def _open_container(instream, *, format='', mode='r', **kwargs):
     """Open container on open stream."""
     # identify file type
     fitting_loaders = CONTAINERS.get_for(instream, format=format)
@@ -188,7 +198,7 @@ def _open_container(instream, *, format='', **kwargs):
         logging.info('Opening `%s` as container format %s', instream.name, loader.format)
         try:
             # returns container object
-            return loader(instream, **kwargs)
+            return loader(instream, mode=mode, **kwargs)
         except (FileFormatError, StructError) as e:
             logging.debug(e)
             last_error = e
