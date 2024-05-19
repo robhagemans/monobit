@@ -10,8 +10,8 @@ import io
 import logging
 from pathlib import Path
 
-from ..streams import Stream #, DirectoryStream
-from .container import Container
+from ..streams import Stream
+from .container import Container, CONTAINERS
 
 
 class Directory(Container):
@@ -92,4 +92,4 @@ class Directory(Container):
         return f"{type(self).__name__}('{self._path}')"
 
 
-Directory.register(name='dir')
+CONTAINERS.register(name='dir')(Directory)

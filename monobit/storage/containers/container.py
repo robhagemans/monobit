@@ -99,7 +99,3 @@ class Container:
                 filename = '{}.{}'.format(filename, suffix)
             if filename not in self:
                 return filename
-
-    @classmethod
-    def register(cls, name, magic=(), patterns=()):
-        CONTAINERS.register(name, magic, patterns)(cls)
