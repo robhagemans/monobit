@@ -67,7 +67,7 @@ class Directory(Container):
 
     def is_dir(self, name):
         """Item at `name` is a directory."""
-        filepath = self._path / pathname
+        filepath = self._path / name
         return filepath.is_dir()
 
     def __iter__(self):

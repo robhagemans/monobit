@@ -90,11 +90,11 @@ class Location:
 
     def walk(self):
         """Recursively open locations."""
-        print('walking', vars(self))
         if not self.is_dir():
             yield self
             return
-        for subpath in self.container.iter_sub(self.subpath):
+        for path in self.container.iter_sub(self.subpath):
+            subpath = Path(path).relative_to(self.subpath)
             location = self.join(subpath)
             location = location.resolve()
             yield from location.walk()
@@ -117,19 +117,22 @@ class Location:
         """
         Convert location to subpath on innermost container and open stream.
         """
-        logging.debug('Resolving %s, %s', self.container, self.subpath)
         head, tail = self._find_next_node()
-        logging.debug('Head: %s  Tail: %s', head, tail)
         if str(head) == '.':
             # no next node found, path is leaf
             return self
         # get outermost element in compound format
         new_format_spec, _, outer_format = format.rpartition('.')
-        # identify container/wrapper type on head
-        stream = self.container.open(head, mode='r') #, mode, overwrite)
-        location = self.from_stream(stream)
-        # FIXME may need multiple formats to unwrap
-        location = location.unwrap_stream(format=outer_format)
+        if self.container.is_dir(head):
+            location = self
+        else:
+            # identify container/wrapper type on head
+            stream = self.container.open(head, mode='r') #, mode, overwrite)
+            location = self.from_stream(stream)
+            # FIXME may need multiple formats to unwrap
+            location = location.unwrap_stream(format=outer_format)
+        if not tail or str(tail) == '.':
+            return location
         location = location.join(tail)
         return location.resolve(format=new_format_spec)
 
