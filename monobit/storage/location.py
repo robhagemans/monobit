@@ -1,16 +1,16 @@
 import logging
 from pathlib import Path
 
-from monobit.storage.magic import FileFormatError, MagicRegistry
-from monobit.storage.containers.directory import Directory
-from monobit.base.struct import StructError
+from ..base.struct import StructError
+from .magic import FileFormatError, MagicRegistry
+from .containers.directory import Directory
 
 from .streams import StreamBase, Stream, KeepOpen
 from .wrappers.compressors import WRAPPERS
-from .containers.container import CONTAINERS
+from .containers.container import CONTAINERS, Container
 
 
-def resolve_location(stream_or_location, mode='r'):
+def open_location(stream_or_location, mode='r', overwrite=False):
     """
     Point to given location, resolving nested containers and wrappers.
     """
@@ -19,168 +19,234 @@ def resolve_location(stream_or_location, mode='r'):
     if not stream_or_location:
         raise ValueError(f'No location provided.')
     if isinstance(stream_or_location, (str, Path)):
-        location = Location.from_path(stream_or_location, mode=mode)
-        location = location._resolve()
-        return location
-    # stream_or_location is a file-like object
-    location = Location.from_stream(stream_or_location, mode=mode)
-    location = location._unwrap()
+        location = Location.from_path(
+            stream_or_location, mode=mode, overwrite=overwrite
+        )
+    else:
+        # stream_or_location is a file-like object
+        location = Location.from_stream(
+            stream_or_location, mode=mode, overwrite=overwrite
+        )
     return location
 
 
 class Location:
 
-    def __init__(self, container, subpath=''):
-        # self.parent = None
-        self.container = container
+    def __init__(self, *, root=None, subpath='', mode='r', overwrite=False):
+        # TODO rename subpath -> path
         self.subpath = Path(subpath)
-        self._target_stream = None
-        # other locations and streams to close
-        self._open_locations = []
-        self._open_streams = []
+        self.mode = mode
+        # TODO overwrite -> 'w' vs 'a' modes (on containers)
+        self.overwrite = overwrite
+        self.is_open = False
+        # container or stream on which we attch the subpath
+        # this object is NOT owned by us but externaly provided
+        # an further objects in the path will be ours to close
+        self._path_objects = [root]
+        # subpath from last object in path_objects
+        self._leafpath = self.subpath
 
-    # __repr__
+    def __repr__(self):
+        return str(vars(self))
+
     # __str__
 
     @classmethod
-    def from_path(cls, path, *, mode='r'):
+    def from_path(cls, path, *, mode='r', overwrite=False):
         """Create from path-like or string."""
         path = Path(path)
         root = path.anchor or '.'
         subpath = path.relative_to(root)
-        return cls(container=Directory(root, mode=mode), subpath=subpath)
+        return cls(
+            # Directory objects doesn't really need to be closed
+            # so it's OK that we won't close this one
+            root=Directory(root),
+            subpath=subpath,
+            mode=mode,
+            overwrite=overwrite,
+        )
 
     @classmethod
-    def from_stream(cls, stream, *, mode='r'):
+    def from_stream(cls, stream, *, subpath='', mode='r', overwrite=False):
         """Create from file-like object."""
-        location = cls(container=None, subpath='')
-        # FIXME track parent Location to stop open parent streams getting closed
         if not isinstance(stream, StreamBase):
-            # we didn't open the file, so we don't own it
-            # we need KeepOpen for when the yielded object goes out of scope in the caller
-            stream = Stream(KeepOpen(stream), mode=mode)
+            stream = Stream(stream, mode=mode)
         if stream.mode != mode:
             raise ValueError(
                 f"Stream mode '{stream.mode}' not equal to mode '{mode}'"
             )
-        # FIXME: do we need KeepOpen for all streams?
-        location._target_stream = stream
-        return location
-
-    def open(self, mode='r', overwrite=False):
-        """Get open stream at location."""
-        if self._target_stream is not None:
-            return self._target_stream
-        return self.container.open(self.subpath, mode=mode, overwrite=overwrite)
+        return cls(
+            root=stream,
+            subpath=subpath,
+            mode=mode,
+            overwrite=overwrite,
+        )
 
     def __enter__(self):
         return self.open()
 
-    def __exit__(self,  exc_type, exc_val, exc_tb):
-        # FIXME should we close opened stream?
-        pass
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+    def open(self):
+        """Resolve path, opening streams and containers as needed."""
+        self.is_open = True
+        self._resolve()
+        return self
 
     def close(self):
-        if self._target_stream is not None:
-            print('closing', self._target_stream)
-            self._target_stream.close()
-        if self.container is not None:
-            print('closing', self.container)
-            self.container.close()
-        for stream in self._open_streams:
-            stream.close()
-        for location in self._open_locations:
-            location.close()
+        # leave out the root object as we don't own it
+        while len(self._path_objects) > 1:
+            self._path_objects.pop().close()
+        self.is_open = False
+
+    @property
+    def _leaf(self):
+        leaf = self._path_objects[-1]
+        assert isinstance(leaf, (StreamBase, Container)), leaf
+        return leaf
+
+    @property
+    def root(self):
+        return self._path_objects[0]
+
+    def get_stream(self):
+        """Get open stream at location."""
+        if self.is_dir():
+            raise IsADirectoryError('Location {self} is a directory.')
+        return self._leaf
 
     def is_dir(self):
         """Location points to a directory/container."""
-        if self._target_stream is not None:
-            return False
-        return self.container.is_dir(self.subpath)
+        if not self.is_open:
+            raise ValueError('Location {self} is not open.')
+        return not isinstance(self._leaf, StreamBase)
 
     def join(self, subpath):
         """Get a location at the subpath."""
-        if self.subpath / subpath == self.subpath:
-            return self
-        if self._target_stream is not None:
-            raise ValueError(
-                f"Cannot open subpath '{subpath}' on stream `{self._target_stream}`."
-            )
-        logging.debug('joined to %s %s', self.container, self.subpath / subpath)
-        # FIXME keep parent links
-        return Location(self.container, self.subpath / subpath)
+        assert(self.is_dir())
+        return Location(
+            root=self._leaf,
+            subpath=self._leafpath / subpath,
+            mode=self.mode,
+            overwrite=self.overwrite,
+        )
 
     def walk(self):
         """Recursively open locations."""
         if not self.is_dir():
             yield self
             return
-        for path in self.container.iter_sub(self.subpath):
-            subpath = Path(path).relative_to(self.subpath)
+        container = self._leaf
+        for path in container.iter_sub(self._leafpath):
+            subpath = Path(path).relative_to(self._leafpath)
             location = self.join(subpath)
-            location = location._resolve()
-            yield from location.walk()
+            with location.open() as opened_location:
+                subs = list(opened_location.walk())
+                yield from subs
 
     def unused_name(self, name):
-        if self._target_stream is not None:
+        if not self.is_dir():
             raise ValueError('Cannot create name on stream.')
-        return self.container.unused_name(name)
+        container = self._leaf
+        return container.unused_name(name)
 
 
     ###########################################################################
-
-    def _find_next_node(self, mode):
-        """Find the next node (container or file) in the path."""
-        if self.container is None:
-            logging.debug(vars(self))
-            return '.', ''
-        head, tail = _split_path(self.container, self.subpath)
-        if mode == 'w' and not head.suffixes:
-            head2, tail = _split_path_suffix(tail)
-            head /= head2
-        return head, tail
 
     def _resolve(self):
         """
         Convert location to subpath on innermost container and open stream.
         """
-        mode = self.container.mode
-        head, tail = self._find_next_node(mode=mode)
-        if str(head) == '.':
-            # no next node found, path is leaf
-            return self
-        if self.container.is_dir(head):
-            location = self
+        if isinstance(self._leaf, StreamBase):
+            self._unwrap()
+        if isinstance(self._leaf, Container):
+            self._resolve_container()
+
+    def _resolve_container(self):
+        container = self._leaf
+        # find the innermost existing file (if reading)
+        # or file name with suffix (if writing)
+        head, tail = self._find_next_node()
+        if container.is_dir(head):   # also if head == '.'
+            # innermost existing/creatable is a subdirectory
+            if Path(tail) == Path('.'):
+                # we are a directory, nothing to open
+                return
+            else:
+                # tail subpath does not exist
+                if self.mode == 'r':
+                    raise FileNotFoundError(
+                        f"Subpath '{tail}' not found on container {container}."
+                    )
+                # new directory
+                return
         else:
-            # identify container/wrapper type on head
-            stream = self.container.open(head, mode=mode) #, overwrite)
-            location = self.from_stream(stream, mode=mode)
-            location = location._unwrap()
-        if not tail or str(tail) == '.':
-            return location
-        location = location.join(tail)
-        return location._resolve()
+            # head is a file. open it and recurse
+            stream = container.open(
+                head, mode=self.mode, overwrite=self.overwrite
+            )
+            self._path_objects.append(stream)
+            self._leafpath = tail
+            self._resolve()
+
+
+    def _find_next_node(self):
+        """Find the next existing node (container or file) in the path."""
+        head, tail = self._split_path(self._leaf, self._leafpath)
+        if self.mode == 'w' and not head.suffixes:
+            head2, tail = self._split_path_suffix(tail)
+            head /= head2
+        return head, tail
+
+    @staticmethod
+    def _split_path(container, path):
+        """Pare back path until an existing ancestor is found."""
+        path = Path(path)
+        for head in (path, *path.parents):
+            logging.debug('exists %s in %s', head, container)
+            if head in container:
+                tail = path.relative_to(head)
+                return head, tail
+        # nothing exists
+        return Path('.'), path
+
+    @staticmethod
+    def _split_path_suffix(path):
+        """Pare forward path until a suffix is found."""
+        for head in reversed((path, *path.parents)):
+            if head.suffixes:
+                tail = path.relative_to(head)
+                return head, tail
+        # no suffix
+        return path, Path('.')
+
 
     def _unwrap(self):
-        """
-        Open one or more wrappers until an unwrapped stream is found.
-        Returns Location object.
-        """
-        stream = self._target_stream
+        """Open one or more wrappers until an unwrapped stream is found."""
         while True:
+            stream = self._leaf
             try:
-                unwrapped = _open_wrapper(stream, mode=stream.mode)
+                unwrapped = _open_wrapper(stream, mode=self.mode)
             except FileFormatError:
                 # not a wrapper
                 break
             else:
+                self._path_objects.append(unwrapped)
                 stream = unwrapped
+        # check if innermost stream is a container
         try:
-            container = _open_container(stream, mode=stream.mode)
-            return Location(container)
+            self._path_objects.append(
+                _open_container(stream, mode=self.mode)
+            )
         except FileFormatError:
-            pass
-        return self.from_stream(stream, mode=stream.mode)
+            # innermost stream is a non-container stream.
+            if self._leafpath == Path('.'):
+                return
+            raise ValueError(
+                f"Cannot open subpath '{subpath}' "
+                f"on non-container stream {stream}'"
+            )
 
 
 def _open_wrapper(instream, *, format='', mode='r', **kwargs):
@@ -227,26 +293,3 @@ def _open_container(instream, *, format='', mode='r', **kwargs):
     if format:
         message += f': format specifier `{format}` not recognised'
     raise FileFormatError(message)
-
-
-
-def _split_path(container, path):
-    """Pare back path until an existing ancestor is found."""
-    path = Path(path)
-    for head in (path, *path.parents):
-        logging.debug('exists %s in %s', head, container)
-        if head in container:
-            tail = path.relative_to(head)
-            return head, tail
-    # nothing exists
-    return Path('.'), path
-
-
-def _split_path_suffix(path):
-    """Pare forward path until a suffix is found."""
-    for head in reversed((path, *path.parents)):
-        if head.suffixes:
-            tail = path.relative_to(head)
-            return head, tail
-    # no suffix
-    return path, Path('.')

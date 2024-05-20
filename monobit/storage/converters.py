@@ -18,7 +18,7 @@ from ..base.struct import StructError
 from ..plumbing import scriptable, ARG_PREFIX
 from ..base import Any
 from .magic import ConverterRegistry, FileFormatError, maybe_text
-from .location import resolve_location
+from .location import open_location
 
 
 DEFAULT_TEXT_FORMAT = 'yaff'
@@ -40,14 +40,11 @@ def load(infile:Any='', *, format:str='', **kwargs):
     format: input format (default: infer from magic number or filename)
     """
     infile = infile or sys.stdin
-    location = resolve_location(infile, 'r')
-    try:
+    with open_location(infile, mode='r') as location:
         if location.is_dir():
             return load_all(location, format=format, **kwargs)
-        with location.open() as stream:
-            return load_stream(stream, format=format, **kwargs)
-    finally:
-        location.close()
+        else:
+            return load_stream(location.get_stream(), format=format, **kwargs)
 
 
 def load_stream(instream, *, format='', subpath='', **kwargs):
@@ -113,14 +110,16 @@ def load_all(root_location, *, format='', **kwargs):
     packs = Pack()
     for location in root_location.walk():
         logging.debug('Trying `%s`.', location)
-        stream = location.open(mode='r')
-        with stream:
-            try:
-                pack = load_stream(stream, format=format, **kwargs)
-            except FileFormatError as exc:
-                logging.debug('Could not load `%s`: %s', location, exc)
-            else:
-                packs += Pack(pack)
+        try:
+            pack = load_stream(
+                location.get_stream(),
+                format=format,
+                **kwargs
+            )
+        except FileFormatError as exc:
+            logging.debug('Could not load `%s`: %s', location, exc)
+        else:
+            packs += Pack(pack)
     return packs
 
 
@@ -158,7 +157,6 @@ def save(
     format: font file format
     overwrite: if outfile is a path, allow overwriting existing file
     """
-    print('save', outfile, format, overwrite, kwargs)
     pack = Pack(pack_or_font)
     outfile = outfile or sys.stdout
     if outfile == sys.stdout:
@@ -167,23 +165,17 @@ def save(
         sys.stdout.reconfigure(errors='replace')
     if not pack:
         raise ValueError('No fonts to save')
-    location = resolve_location(outfile, mode='w')
-    try:
+    with open_location(outfile, mode='w', overwrite=overwrite) as location:
         if location.is_dir():
             return save_all(
                 pack, location, format=format, overwrite=overwrite, **kwargs
             )
-        with location.open(mode='w', overwrite=overwrite) as stream:
-            save_stream(pack, stream, format=format, **kwargs)
-    finally:
-        print('closing', vars(location))
-        location.close()
+        save_stream(pack, location.get_stream(), format=format, **kwargs)
     return pack_or_font
 
 
 def save_stream(pack, outstream, *, format='', **kwargs):
     """Save fonts to an open stream."""
-    print('save_stream', outstream, format, kwargs)
     format = format or DEFAULT_TEXT_FORMAT
     matching_savers = savers.get_for(outstream, format=format)
     if not matching_savers:
@@ -226,14 +218,16 @@ def save_all(
         name = font.format_properties(template)
         # generate unique filename
         filename = location.unused_name(name.replace(' ', '_'))
-        new_location = location.join(filename)
-        stream = new_location.open(mode='w', overwrite=overwrite)
         try:
-            with stream:
-                save_stream(Pack(font), stream, format=format, **kwargs)
+            with location.join(filename) as new_location:
+                save_stream(
+                    Pack(font),
+                    new_location.get_stream(),
+                    format=format,
+                    **kwargs
+                )
+        # TODO move handler to Location
         except BrokenPipeError:
             pass
         except FileFormatError as e:
             logging.error('Could not save `%s`: %s', filename, e)
-        # # FIXME - this needs to go somewhere else
-        # new_location.container.close()
