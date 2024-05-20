@@ -35,6 +35,9 @@ class Location:
         self.container = container
         self.subpath = Path(subpath)
         self._target_stream = None
+        # other locations and streams to close
+        self._open_locations = []
+        self._open_streams = []
 
     # __repr__
     # __str__
@@ -76,6 +79,18 @@ class Location:
     def __exit__(self,  exc_type, exc_val, exc_tb):
         # FIXME should we close opened stream?
         pass
+
+    def close(self):
+        if self._target_stream is not None:
+            print('closing', self._target_stream)
+            self._target_stream.close()
+        if self.container is not None:
+            print('closing', self.container)
+            self.container.close()
+        for stream in self._open_streams:
+            stream.close()
+        for location in self._open_locations:
+            location.close()
 
     def is_dir(self):
         """Location points to a directory/container."""

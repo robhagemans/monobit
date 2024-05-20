@@ -187,6 +187,8 @@ class Stream(StreamWrapper):
 
     def close(self):
         """Close stream, absorb errors."""
+        # if self.closed:
+        #     return
         # always close at wrapper level
         self.closed = True
         if self._textstream:

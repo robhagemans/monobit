@@ -80,7 +80,9 @@ class ZipContainer(Container):
         filename = str(PurePosixPath(self._root) / name)
         mode = mode[:1]
         # always open as binary
-        logging.debug('Opening file `%s` on zip container `%s`.', filename, self.name)
+        logging.debug(
+            'Opening file `%s` on zip container `%s`.', filename, self.name
+        )
         if mode == 'r':
             try:
                 file = self._zip.open(filename, mode)
@@ -116,7 +118,13 @@ class ZipContainer(Container):
             try:
                 zipinfo = self._zip.getinfo(filename)
             except KeyError:
-                raise FileNotFoundError(f"'{name}' not found in zip container '{self.name}'.")
+                if self.mode == 'w':
+                    # FIXME
+                    return False
+                else:
+                    raise FileNotFoundError(
+                        f"'{name}' not found in zip container '{self.name}'."
+                    ) from None
         return zipinfo.is_dir()
 
 

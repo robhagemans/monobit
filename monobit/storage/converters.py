@@ -41,10 +41,13 @@ def load(infile:Any='', *, format:str='', **kwargs):
     """
     infile = infile or sys.stdin
     location = resolve_location(infile, 'r')
-    if location.is_dir():
-        return load_all(location, format=format, **kwargs)
-    with location.open() as stream:
-        return load_stream(stream, format=format, **kwargs)
+    try:
+        if location.is_dir():
+            return load_all(location, format=format, **kwargs)
+        with location.open() as stream:
+            return load_stream(stream, format=format, **kwargs)
+    finally:
+        location.close()
 
 
 def load_stream(instream, *, format='', subpath='', **kwargs):
@@ -155,6 +158,7 @@ def save(
     format: font file format
     overwrite: if outfile is a path, allow overwriting existing file
     """
+    print('save', outfile, format, overwrite, kwargs)
     pack = Pack(pack_or_font)
     outfile = outfile or sys.stdout
     if outfile == sys.stdout:
@@ -164,17 +168,22 @@ def save(
     if not pack:
         raise ValueError('No fonts to save')
     location = resolve_location(outfile, mode='w')
-    if location.is_dir():
-        return save_all(
-            pack, location, format=format, overwrite=overwrite, **kwargs
-        )
-    with location.open(mode='w', overwrite=overwrite) as stream:
-        save_stream(pack, stream, format=format, **kwargs)
+    try:
+        if location.is_dir():
+            return save_all(
+                pack, location, format=format, overwrite=overwrite, **kwargs
+            )
+        with location.open(mode='w', overwrite=overwrite) as stream:
+            save_stream(pack, stream, format=format, **kwargs)
+    finally:
+        print('closing', vars(location))
+        location.close()
     return pack_or_font
 
 
 def save_stream(pack, outstream, *, format='', **kwargs):
     """Save fonts to an open stream."""
+    print('save_stream', outstream, format, kwargs)
     format = format or DEFAULT_TEXT_FORMAT
     matching_savers = savers.get_for(outstream, format=format)
     if not matching_savers:
@@ -226,5 +235,5 @@ def save_all(
             pass
         except FileFormatError as e:
             logging.error('Could not save `%s`: %s', filename, e)
-        # FIXME - this needs to go somewhere else
-        new_location.container.close()
+        # # FIXME - this needs to go somewhere else
+        # new_location.container.close()
