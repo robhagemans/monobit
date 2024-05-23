@@ -70,7 +70,10 @@ class Location:
     def from_stream(cls, stream, *, subpath='', mode='r', overwrite=False):
         """Create from file-like object."""
         if not isinstance(stream, StreamBase):
-            stream = Stream(stream, mode=mode)
+            # not clear why we need KeepOpen
+            # streams mysteriously get closed without it
+            # but KeepOpen.close() does not actually get called... :/
+            stream = Stream(KeepOpen(stream), mode=mode)
         if stream.mode != mode:
             raise ValueError(
                 f"Stream mode '{stream.mode}' not equal to mode '{mode}'"
