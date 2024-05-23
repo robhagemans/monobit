@@ -109,17 +109,18 @@ def load_all(root_location, *, format='', **kwargs):
     logging.info('Reading all from `%s`.', root_location)
     packs = Pack()
     for location in root_location.walk():
-        logging.debug('Trying `%s`.', location)
-        try:
-            pack = load_stream(
-                location.get_stream(),
-                format=format,
-                **kwargs
-            )
-        except FileFormatError as exc:
-            logging.debug('Could not load `%s`: %s', location, exc)
-        else:
-            packs += Pack(pack)
+        with location:
+            logging.debug('Trying `%s`.', location)
+            try:
+                pack = load_stream(
+                    location.get_stream(),
+                    format=format,
+                    **kwargs
+                )
+            except FileFormatError as exc:
+                logging.debug('Could not load `%s`: %s', location, exc)
+            else:
+                packs += Pack(pack)
     return packs
 
 

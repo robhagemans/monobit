@@ -113,13 +113,13 @@ class Location:
     def get_stream(self):
         """Get open stream at location."""
         if self.is_dir():
-            raise IsADirectoryError('Location {self} is a directory.')
+            raise IsADirectoryError(f'Location {self} is a directory.')
         return self._leaf
 
     def is_dir(self):
         """Location points to a directory/container."""
         if not self.is_open:
-            raise ValueError('Location {self} is not open.')
+            raise ValueError(f'Location {self} is not open.')
         return not isinstance(self._leaf, StreamBase)
 
     def join(self, subpath):
@@ -142,8 +142,7 @@ class Location:
             subpath = Path(path).relative_to(self._leafpath)
             location = self.join(subpath)
             with location.open() as opened_location:
-                subs = list(opened_location.walk())
-                yield from subs
+                yield from opened_location.walk()
 
     def unused_name(self, name):
         if not self.is_dir():
