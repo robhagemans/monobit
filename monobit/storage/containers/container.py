@@ -39,7 +39,13 @@ class Container:
 
     def __contains__(self, item):
         """Check if file is in container. Case sensitive if container/fs is."""
-        return any(str(item) == str(_item) for _item in iter(self))
+        if self._ignore_case:
+            return (
+                str(item).lower() in
+                (str(_item).lower() for _item in iter(self))
+            )
+        else:
+            return str(item) in iter(self)
 
     def __enter__(self):
         # we don't support nesting the same archive
@@ -78,10 +84,9 @@ class Container:
     def _match_name(self, filepath):
         """Find case insensitive match, if the case sensitive match doesn't."""
         if self._ignore_case:
-            for name in self:
-                logging.debug('trying %s', name)
-                if name.lower() == str(filepath).lower():
-                    return name
+            match = find_case_insensitive(filepath, iter(self))
+            if match is not None:
+                return match
         raise FileNotFoundError(filepath)
 
     # TODO: move to Location
@@ -96,3 +101,10 @@ class Container:
                 filename = '{}.{}'.format(filename, suffix)
             if filename not in self:
                 return filename
+
+def find_case_insensitive(filepath, iterator):
+    """Find case insensitive match."""
+    for name in iterator:
+        if str(name).lower() == str(filepath).lower():
+            return name
+    return None

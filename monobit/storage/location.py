@@ -206,7 +206,6 @@ class Location:
         """Pare back path until an existing ancestor is found."""
         path = Path(path)
         for head in (path, *path.parents):
-            logging.debug('exists %s in %s', head, container)
             if head in container:
                 tail = path.relative_to(head)
                 return head, tail

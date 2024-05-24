@@ -11,7 +11,7 @@ import logging
 from pathlib import Path
 
 from ..streams import Stream
-from .container import Container, CONTAINERS
+from .container import Container, CONTAINERS, find_case_insensitive
 
 
 class Directory(Container):
@@ -86,7 +86,23 @@ class Directory(Container):
 
     def __contains__(self, name):
         """File exists in container."""
-        return (self._path / name).exists()
+        if (self._path / name).exists():
+            return True
+        if not self._ignore_case:
+            return False
+        segments = Path(name).as_posix().split('/')
+        target = self._path
+        for segment in segments:
+            if not target.is_dir():
+                break
+            match = find_case_insensitive(target / segment, target.iterdir())
+            if match is None:
+                return False
+            target = match
+        else:
+            # no break in loop - last segemnt was matched
+            return True
+        return False
 
     def __repr__(self):
         return f"{type(self).__name__}('{self._path}')"
