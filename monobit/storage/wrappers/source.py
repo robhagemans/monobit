@@ -15,6 +15,8 @@ from ..magic import FileFormatError
 from .compressors import WRAPPERS
 
 
+###############################################################################
+
 def _int_from_c(cvalue):
     """Parse integer from C/Python/JS code."""
     cvalue = cvalue.strip()
@@ -47,10 +49,15 @@ def _int_from_basic(cvalue):
     return int(cvalue, 0)
 
 
-class _CodedBinaryWrapper:
+###############################################################################
 
-    delimiters = None
-    comment = None
+# TODO: should be container, with multiple identifiers
+# TODO: make arguments overridable for generic source writer
+
+
+class _CodedBinaryWrapper:
+    delimiters = '{}'
+    comment = '//'
     assign = '='
     int_conv = _int_from_c
     block_comment = ()
@@ -63,7 +70,6 @@ class _CodedBinaryWrapper:
     pre = ''
     post = ''
 
-    # TODO: should be container, with multiple identifiers
     @classmethod
     def open(cls, stream, mode:str='r'):
         if mode == 'r':
@@ -180,6 +186,7 @@ def _write_out_coded_binary(
     rawbytes = bytesio.getbuffer()
     outstream = outstream.text
 
+    #FIXME
     # if multiple fonts, build the identifier from first font name
     # identifier = fonts[0].format_properties(identifier_template)
     identifier = 'font'
@@ -286,29 +293,7 @@ class PascalCodedBinaryWrapper(_CodedBinaryWrapper):
     separator = ';'
 
 
-
-# @loaders.register(name='source', wrapper=True)
-# def load_source(
-#         infile, *,
-#         identifier:str='', delimiters:str='{}', comment:str='//', assign:str='=',
-#         format='',
-#         **kwargs
-#     ):
-#     """
-#     Extract font file encoded in source code.
-#
-#     identifier: text at start of line where encoded file starts (default: first delimiter)
-#     delimiters: pair of delimiters that enclose the file data (default: {})
-#     comment: string that introduces inline comment (default: //)
-#     """
-#     return _load_coded_binary(
-#         infile, identifier=identifier,
-#         delimiters=delimiters, comment=comment,
-#         format=format, assign=assign,
-#         **kwargs
-#     )
-
-
+###############################################################################
 
 @WRAPPERS.register(
     name='basic',
@@ -409,6 +394,27 @@ class WrappedWriterStream(Stream):
 
 ###############################################################################
 
+
+# @loaders.register(name='source', wrapper=True)
+# def load_source(
+#         infile, *,
+#         identifier:str='', delimiters:str='{}', comment:str='//', assign:str='=',
+#         format='',
+#         **kwargs
+#     ):
+#     """
+#     Extract font file encoded in source code.
+#
+#     identifier: text at start of line where encoded file starts (default: first delimiter)
+#     delimiters: pair of delimiters that enclose the file data (default: {})
+#     comment: string that introduces inline comment (default: //)
+#     """
+#     return _load_coded_binary(
+#         infile, identifier=identifier,
+#         delimiters=delimiters, comment=comment,
+#         format=format, assign=assign,
+#         **kwargs
+#     )
 #
 # @savers.register(linked=load_source, wrapper=True)
 # def save_source(
