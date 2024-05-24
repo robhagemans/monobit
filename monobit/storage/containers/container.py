@@ -28,7 +28,7 @@ class Container:
 
     def __iter__(self):
         """List contents."""
-        raise NotImplementedError
+        return self.iter_sub(prefix='')
 
     def iter_sub(self, prefix):
         """List contents of a subpath."""
@@ -73,14 +73,6 @@ class Container:
         """Item at `name` is a directory."""
         raise NotImplementedError
 
-    def __iter__(self):
-        """List contents."""
-        return self.iter_sub(prefix='')
-
-    def iter_sub(self, prefix):
-        """List contents of a subpath."""
-        raise NotImplementedError
-
     def _match_name(self, filepath):
         """Find case insensitive match, if the case sensitive match doesn't."""
         if self._ignore_case:
@@ -100,6 +92,7 @@ class Container:
                 filename = '{}.{}'.format(filename, suffix)
             if filename not in self:
                 return filename
+
 
 def find_case_insensitive(filepath, iterator):
     """Find case insensitive match."""
