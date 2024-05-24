@@ -14,6 +14,7 @@ from ..streams import Stream
 from ..magic import FileFormatError
 from ..magic import MagicRegistry
 
+#FIXME
 WRAPPERS = MagicRegistry('__unused__')
 
 
@@ -52,6 +53,7 @@ class Compressor:
         )
         return wrapped
 
+    #FIXME overwrite?
     @classmethod
     def open(cls, stream, mode:str='r'):
         """Get the uncompressed stream."""
@@ -60,6 +62,7 @@ class Compressor:
             cls._check_magic(stream)
         return cls._get_payload_stream(stream, mode)
 
+    #FIXME
     # @classmethod
     # @contextmanager
     # def _translate_errors(cls):

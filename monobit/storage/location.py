@@ -248,7 +248,8 @@ class Location:
                 f"on non-container stream {stream}'"
             )
 
-
+# TODO fix code repetition
+# TODO move with wrappers
 def _open_wrapper(instream, *, format='', mode='r', **kwargs):
     """Open wrapper on open stream."""
     # identify file type
@@ -271,7 +272,7 @@ def _open_wrapper(instream, *, format='', mode='r', **kwargs):
         message += f': format specifier `{format}` not recognised'
     raise FileFormatError(message)
 
-
+# TODO move with containers
 def _open_container(instream, *, format='', mode='r', **kwargs):
     """Open container on open stream."""
     # identify file type

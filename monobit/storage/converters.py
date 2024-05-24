@@ -195,6 +195,7 @@ def save_stream(pack, outstream, *, format='', **kwargs):
         )
     saver, *_ = matching_savers
     logging.info('Saving `%s` as %s.', outstream.name, saver.format)
+    #FIXME
     # # special case - saving to directory
     # # we need to create the dir before opening a stream,
     # # or the stream will be a regular file

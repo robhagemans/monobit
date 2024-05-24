@@ -84,6 +84,7 @@ class MagicRegistry:
         Get loader/saver function for this format.
         file must be a Stream or None
         """
+        #FIXME
         # if isinstance(file, DirectoryStream):
         #     # directory 'stream'
         #     return (self._names['dir'],)
