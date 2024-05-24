@@ -56,26 +56,39 @@ class _CodedBinaryWrapper:
     block_comment = ()
     separator = ''
 
-    # TODO: make class parameters overridable in open() call
+    # writer parameters
+    identifier_template = None
+    assign_template = None
+    bytes_per_line = 16
+    pre = ''
+    post = ''
+
     # TODO: should be container, with multiple identifiers
     @classmethod
-    def open(cls, infile, mode:str='r', *, identifier:str=''):
+    def open(cls, stream, mode:str='r'):
+        if mode == 'r':
+            return cls._open_read(stream)
+        elif mode == 'w':
+            return cls._open_write(stream)
+        raise ValueError(f"`mode` must be one of 'r' or 'w', not '{mode}'.")
+
+    @classmethod
+    def _open_read(cls, infile, *, identifier:str=''):
         """
         Extract binary file encoded in source code.
 
         identifier: text at start of line where encoded file starts. (default: first array literal)
         """
-        if mode == 'r':
-            found_identifier, coded_data = cls._get_payload(infile.text, identifier)
-            try:
-                data = bytes(
-                    cls.int_conv(_s) for _s in coded_data.split(',') if _s.strip()
-                )
-            except ValueError:
-                raise FileFormatError(
-                    f'Could not convert coded data for identifier {found_identifier}'
-                )
-            return Stream.from_data(data, mode='r', name=found_identifier)
+        found_identifier, coded_data = cls._get_payload(infile.text, identifier)
+        try:
+            data = bytes(
+                cls.int_conv(_s) for _s in coded_data.split(',') if _s.strip()
+            )
+        except ValueError:
+            raise FileFormatError(
+                f'Could not convert coded data for identifier {found_identifier}'
+            )
+        return Stream.from_data(data, mode='r', name=found_identifier)
 
     @classmethod
     def _get_payload(cls, instream, identifier):
@@ -127,71 +140,82 @@ class _CodedBinaryWrapper:
                 payload.append(line)
         return found_identifier, ''.join(payload)
 
+    @classmethod
+    def _open_write(cls, outfile):
+        return WrappedWriterStream(
+            outfile,
+            _write_out_coded_binary,
+            identifier_template=cls.identifier_template,
+            assign_template=cls.assign_template,
+            delimiters=cls.delimiters,
+            comment=cls.comment,
+            separator=cls.separator,
+            bytes_per_line=cls.bytes_per_line,
+            pre=cls.pre,
+            post=cls.post
+        )
+
+
+def _write_out_coded_binary(
+        bytesio, outstream, *,
+        identifier_template, assign_template, delimiters, comment, separator,
+        bytes_per_line=16, pre='', post=''
+    ):
+    """
+    Generate font file encoded as source code.
+
+    identifier_template: Template for the identifier. May include font properties.
+    assign_template: assignment operator. May include `identifier` and `bytesize` variable.
+    delimiters: Must contain two characters, building the opening and closing delimiters of the collection. E.g. []
+    comment: Line comment character(s).
+    separator: string to separate statements
+    bytes_per_line: number of encoded bytes in a source line
+    pre: string to write before output
+    post: string to write after output
+    """
+    if len(delimiters) < 2:
+        raise ValueError('A start and end delimiter must be given. E.g. []')
+    start_delimiter = delimiters[0]
+    end_delimiter = delimiters[1]
+    rawbytes = bytesio.getbuffer()
+    outstream = outstream.text
+
+    # if multiple fonts, build the identifier from first font name
+    # identifier = fonts[0].format_properties(identifier_template)
+    identifier = 'font'
+
+    # remove non-ascii
+    identifier = identifier.encode('ascii', 'ignore').decode('ascii')
+    identifier = ''.join(_c if _c.isalnum() else '_' for _c in identifier)
+    assign = assign_template.format(
+        identifier=identifier, bytesize=len(rawbytes)
+    )
+    # emit code
+    outstream.write(pre)
+    outstream.write(f'{assign}{start_delimiter}\n')
+    # grouper
+    args = [iter(rawbytes)] * bytes_per_line
+    groups = zip(*args)
+    lines = [
+        ', '.join(f'0x{_b:02x}' for _b in _group)
+        for _group in groups
+    ]
+    rem = len(rawbytes) % bytes_per_line
+    if rem:
+        lines.append(', '.join(f'0x{_b:02x}' for _b in rawbytes[-rem:]))
+    for i, line in enumerate(lines):
+        outstream.write(f'  {line}')
+        if i < len(lines) - 1:
+            outstream.write(',')
+        outstream.write('\n')
+    outstream.write(end_delimiter)
 
     #FIXME
-    def _save_coded_binary(
-            fonts, outstream,
-            identifier_template, assign_template, delimiters, comment, separator,
-            # block_comment is unused in writer but specified in arguments for reader
-            block_comment=None,
-            bytes_per_line=16, format='raw', distribute=True, **kwargs
-        ):
-        """
-        Generate font file encoded as source code.
+    # if count < len(packs) - 1:
+    #     outstream.write(separator)
 
-        identifier_template: Template for the identifier. May include font properties.
-        assign_template: assignment operator. May include `identifier` and `bytesize` variable.
-        delimiters: Must contain two characters, building the opening and closing delimiters of the collection. E.g. []
-        comment: Line comment character(s).
-        separator: string to separate statements
-        bytes_per_line: number of encoded bytes in a source line
-        distribute: save each font as a separate identifier (default: True)
-        format: format of payload
-        """
-        if len(delimiters) < 2:
-            raise ValueError('A start and end delimiter must be given. E.g. []')
-        outstream = outstream.text
-        start_delimiter = delimiters[0]
-        end_delimiter = delimiters[1]
-        if distribute:
-            packs = tuple((_font,) for _font in fonts)
-        else:
-            packs = (fonts,)
-        for count, fonts in enumerate(packs):
-            # get the raw data
-            bytesio = Stream(BytesIO(), mode='w')
-            save_stream(fonts, bytesio, format=format, **kwargs)
-            rawbytes = bytesio.getbuffer()
-            # if multiple fonts, build the identifier from first font name
-            identifier = fonts[0].format_properties(identifier_template)
-            # remove non-ascii
-            identifier = identifier.encode('ascii', 'ignore').decode('ascii')
-            identifier = ''.join(_c if _c.isalnum() else '_' for _c in identifier)
-            assign = assign_template.format(
-                identifier=identifier, bytesize=len(rawbytes)
-            )
-            # emit code
-            outstream.write(f'{assign}{start_delimiter}\n')
-            # grouper
-            args = [iter(rawbytes)] * bytes_per_line
-            groups = zip(*args)
-            lines = [
-                ', '.join(f'0x{_b:02x}' for _b in _group)
-                for _group in groups
-            ]
-            rem = len(rawbytes) % bytes_per_line
-            if rem:
-                lines.append(', '.join(f'0x{_b:02x}' for _b in rawbytes[-rem:]))
-            for i, line in enumerate(lines):
-                outstream.write(f'  {line}')
-                if i < len(lines) - 1:
-                    outstream.write(',')
-                outstream.write('\n')
-            outstream.write(end_delimiter)
-            if count < len(packs) - 1:
-                outstream.write(separator)
-            outstream.write('\n')
-        return fonts
+    outstream.write('\n')
+    outstream.write(post)
 
 
 ###############################################################################
@@ -206,6 +230,9 @@ class CCodedBinaryWrapper(_CodedBinaryWrapper):
     separator = ';'
     block_comment = ('/*','*/')
 
+    identifier_template = 'font_{name}'
+    assign_template = 'char {identifier}[{bytesize}] = '
+
 
 @WRAPPERS.register(
     name='json',
@@ -217,6 +244,11 @@ class JSONCodedBinaryWrapper(_CodedBinaryWrapper):
     separator = ','
     assign = ':'
 
+    identifier_template = 'font_{name}'
+    assign_template = '"{identifier}": '
+    pre = '{\n'
+    post = '}\n'
+
 
 @WRAPPERS.register(
     name='python',
@@ -226,6 +258,9 @@ class PythonCodedBinaryWrapper(_CodedBinaryWrapper):
     delimiters = '[]'
     comment = '#'
     separator = ''
+
+    identifier_template = 'font_{name}'
+    assign_template = '{identifier} = '
 
 
 @WRAPPERS.register(
@@ -308,16 +343,16 @@ class BASICCodedBinaryWrapper:
         return Stream.from_data(data, mode='r')
 
     @classmethod
-    def _open_write(
-            cls, outfile,
-            # *,
-            # line_number_start:int=1000, line_number_inc:int=10,
-            # bytes_per_line:int=8
-        ):
+    def _open_write(cls, outfile):
         return WrappedWriterStream(outfile, _write_out_basic)
 
 
-def _write_out_basic(bytesio, outfile):
+def _write_out_basic(
+        bytesio, outfile,
+        *,
+        line_number_start:int=1000, line_number_inc:int=10,
+        bytes_per_line:int=8
+    ):
     """
     Save to font file encoded in DATA lines in classic BASIC source code.
 
@@ -325,9 +360,6 @@ def _write_out_basic(bytesio, outfile):
     line_number_inc: increment between line numbers (default: 10)
     bytes_per_line: number of encoded bytes in a source line (default: 8)
     """
-    line_number_start = 1000
-    line_number_inc = 10
-    bytes_per_line = 8
     if (
             line_number_inc <= 0
             and line_number_start is not None and line_number_start > -1
@@ -358,10 +390,11 @@ def _write_out_basic(bytesio, outfile):
 
 class WrappedWriterStream(Stream):
 
-    def __init__(self, outfile, write_out):
+    def __init__(self, outfile, write_out, **kwargs):
         bytesio = BytesIO()
         self._outfile = outfile
         self._write_out = write_out
+        self._write_out_kwargs = kwargs
         super().__init__(bytesio, mode='w')
 
     def close(self):
@@ -369,76 +402,13 @@ class WrappedWriterStream(Stream):
         super().close()
 
     def flush(self):
-        self._write_out(self._stream, self._outfile)
+        self._write_out(self._stream, self._outfile, **self._write_out_kwargs)
 
 
 
 
 ###############################################################################
 
-# @savers.register(linked=load_c, wrapper=True)
-# def save_c(
-#         fonts, outstream,
-#         bytes_per_line:int=16, distribute:bool=True,
-#         format='raw',
-#         **kwargs
-#     ):
-#     """
-#     Save to font file encoded in C source code.
-#
-#     bytes_per_line: number of encoded bytes in a source line (default: 16)
-#     distribute: save each font as a separate identifier (default: True)
-#     """
-#     return _save_coded_binary(
-#         fonts, outstream, 'font_{name}', 'char {identifier}[{bytesize}] = ',
-#         format=format, bytes_per_line=bytes_per_line, distribute=distribute,
-#         **_C_PARAMS, **kwargs
-#     )
-#
-#
-# @savers.register(linked=load_python, wrapper=True)
-# def save_python(
-#         fonts, outstream,
-#         delimiters:str='[]',
-#         bytes_per_line:int=16, distribute:bool=True,
-#         format='raw',
-#         **kwargs
-#     ):
-#     """
-#     Save to font file encoded in Python source code.
-#
-#     delimiters: pair of delimiters that enclose the file data (default: [])
-#     bytes_per_line: number of encoded bytes in a source line (default: 16)
-#     distribute: save each font as a separate identifier (default: True)
-#     """
-#     return _save_coded_binary(
-#         fonts, outstream, 'font_{name}', '{identifier} = ',
-#         format=format, bytes_per_line=bytes_per_line, distribute=distribute,
-#         delimiters=delimiters, **_PY_PARAMS, **kwargs
-#     )
-#
-#
-# @savers.register(linked=load_json, wrapper=True)
-# def save_json(
-#         fonts, outstream,
-#         bytes_per_line:int=16, distribute:bool=True,
-#         format='raw',
-#         **kwargs
-#     ):
-#     """
-#     Save to font file encoded in JSON code.
-#
-#     bytes_per_line: number of encoded bytes in a source line (default: 16)
-#     distribute: save each font as a separate identifier (default: True)
-#     """
-#     outstream.text.write('{\n')
-#     fonts = _save_coded_binary(
-#         fonts, outstream, 'font_{name}', '"{identifier}": ',
-#         format=format, bytes_per_line=bytes_per_line, distribute=distribute,
-#         **_JS_PARAMS, **kwargs
-#     )
-#     outstream.text.write('}\n')
-#
 #
 # @savers.register(linked=load_source, wrapper=True)
 # def save_source(
