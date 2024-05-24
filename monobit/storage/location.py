@@ -1,3 +1,10 @@
+"""
+monobit.storage.location - archive, directory and wrapper traversal
+
+(c) 2019--2024 Rob Hagemans
+licence: https://opensource.org/licenses/MIT
+"""
+
 import logging
 from pathlib import Path
 

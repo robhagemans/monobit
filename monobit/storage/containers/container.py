@@ -1,7 +1,7 @@
 """
 monobit.storage.containers.container - base class for containers
 
-(c) 2021--2023 Rob Hagemans
+(c) 2021--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 

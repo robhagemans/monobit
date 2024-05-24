@@ -1,7 +1,7 @@
 """
 monobit.storage.containers.tar - tarfile container
 
-(c) 2021--2023 Rob Hagemans
+(c) 2021--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
