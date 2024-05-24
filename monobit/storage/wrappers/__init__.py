@@ -8,3 +8,4 @@ licence: https://opensource.org/licenses/MIT
 # from monobit.base import import_all
 # import_all(__name__)
 from . import compressors
+from . import source
