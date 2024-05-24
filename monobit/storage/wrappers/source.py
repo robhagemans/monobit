@@ -279,10 +279,18 @@ class PascalCodedBinaryWrapper(_CodedBinaryWrapper):
     name='basic',
     patterns=('*.bas',),
 )
-
 class BASICCodedBinaryWrapper:
 
-    def open(infile, mode:str='r'):
+    @classmethod
+    def open(cls, stream, mode:str='r'):
+        if mode == 'r':
+            return cls._open_read(stream)
+        elif mode == 'w':
+            return cls._open_write(stream)
+        raise ValueError(f"`mode` must be one of 'r' or 'w', not '{mode}'.")
+
+    @classmethod
+    def _open_read(cls, infile):
         """
         Extract font file encoded in DATA lines in classic BASIC source code.
         Tokenised BASIC files are not supported.
@@ -299,49 +307,70 @@ class BASICCodedBinaryWrapper:
         data = bytes(_int_from_basic(_s) for _s in coded_data)
         return Stream.from_data(data, mode='r')
 
-    # @savers.register(linked=load_basic, wrapper=True)
-    # def save_basic(
-    #         fonts, outfile, *,
-    #         line_number_start:int=1000, line_number_inc:int=10,
-    #         bytes_per_line:int=8, format='raw',
-    #         **kwargs
-    #     ):
-    #     """
-    #     Save to font file encoded in DATA lines in classic BASIC source code.
-    #
-    #     line_number_start: line number of first DATA line (-1 for no line numbers; default: 1000)
-    #     line_number_inc: increment between line numbers (default: 10)
-    #     bytes_per_line: number of encoded bytes in a source line (default: 8)
-    #     """
-    #     if (
-    #             line_number_inc <= 0
-    #             and line_number_start is not None and line_number_start > -1
-    #         ):
-    #         raise ValueError('line_number_inc must be > 0')
-    #     with Stream(BytesIO(), mode='w') as bytesio:
-    #         save_stream(fonts, bytesio, format=format, **kwargs)
-    #         rawbytes = bytes(bytesio.getbuffer())
-    #     # grouper
-    #     args = [iter(rawbytes)] * bytes_per_line
-    #     groups = zip(*args)
-    #     lines = [
-    #         ', '.join(f'&h{_b:02x}' for _b in _group)
-    #         for _group in groups
-    #     ]
-    #     rem = len(rawbytes) % bytes_per_line
-    #     if rem:
-    #         lines.append(', '.join(f'&h{_b:02x}' for _b in rawbytes[-rem:]))
-    #     outfile = outfile.text
-    #     if line_number_start is not None and line_number_start >= 0:
-    #         line_number = line_number_start
-    #     else:
-    #         line_number = None
-    #     for line in lines:
-    #         if line_number is not None:
-    #             outfile.write(f'{line_number} ')
-    #             line_number += line_number_inc
-    #         outfile.write(f'DATA {line}\n')
-    #     return fonts
+    @classmethod
+    def _open_write(
+            cls, outfile,
+            # *,
+            # line_number_start:int=1000, line_number_inc:int=10,
+            # bytes_per_line:int=8
+        ):
+        return WrappedWriterStream(outfile, _write_out_basic)
+
+
+def _write_out_basic(bytesio, outfile):
+    """
+    Save to font file encoded in DATA lines in classic BASIC source code.
+
+    line_number_start: line number of first DATA line (-1 for no line numbers; default: 1000)
+    line_number_inc: increment between line numbers (default: 10)
+    bytes_per_line: number of encoded bytes in a source line (default: 8)
+    """
+    line_number_start = 1000
+    line_number_inc = 10
+    bytes_per_line = 8
+    if (
+            line_number_inc <= 0
+            and line_number_start is not None and line_number_start > -1
+        ):
+        raise ValueError('line_number_inc must be > 0')
+    rawbytes = bytes(bytesio.getbuffer())
+    # grouper
+    args = [iter(rawbytes)] * bytes_per_line
+    groups = zip(*args)
+    lines = [
+        ', '.join(f'&h{_b:02x}' for _b in _group)
+        for _group in groups
+    ]
+    rem = len(rawbytes) % bytes_per_line
+    if rem:
+        lines.append(', '.join(f'&h{_b:02x}' for _b in rawbytes[-rem:]))
+    outfile = outfile.text
+    if line_number_start is not None and line_number_start >= 0:
+        line_number = line_number_start
+    else:
+        line_number = None
+    for line in lines:
+        if line_number is not None:
+            outfile.write(f'{line_number} ')
+            line_number += line_number_inc
+        outfile.write(f'DATA {line}\n')
+
+
+class WrappedWriterStream(Stream):
+
+    def __init__(self, outfile, write_out):
+        bytesio = BytesIO()
+        self._outfile = outfile
+        self._write_out = write_out
+        super().__init__(bytesio, mode='w')
+
+    def close(self):
+        self.flush()
+        super().close()
+
+    def flush(self):
+        self._write_out(self._stream, self._outfile)
+
 
 
 
