@@ -32,19 +32,18 @@ def open_location(stream_or_location, mode='r', overwrite=False):
 
 class Location:
 
-    def __init__(self, *, root=None, subpath='', mode='r', overwrite=False):
-        # TODO rename subpath -> path
-        self.subpath = Path(subpath)
+    def __init__(self, *, root=None, path='', mode='r', overwrite=False):
+        self.path = Path(path)
         self.mode = mode
         # TODO overwrite -> 'w' vs 'a' modes (on containers)
         self.overwrite = overwrite
         self.is_open = False
-        # container or stream on which we attch the subpath
+        # container or stream on which we attch the path
         # this object is NOT owned by us but externaly provided
         # an further objects in the path will be ours to close
         self._path_objects = [root]
         # subpath from last object in path_objects
-        self._leafpath = self.subpath
+        self._leafpath = self.path
 
     def __repr__(self):
         return str(vars(self))
@@ -61,7 +60,7 @@ class Location:
             # Directory objects doesn't really need to be closed
             # so it's OK that we won't close this one
             root=Directory(root),
-            subpath=subpath,
+            path=subpath,
             mode=mode,
             overwrite=overwrite,
         )
@@ -80,7 +79,7 @@ class Location:
             )
         return cls(
             root=stream,
-            subpath=subpath,
+            path=subpath,
             mode=mode,
             overwrite=overwrite,
         )
@@ -130,7 +129,7 @@ class Location:
         assert(self.is_dir())
         return Location(
             root=self._leaf,
-            subpath=self._leafpath / subpath,
+            path=self._leafpath / subpath,
             mode=self.mode,
             overwrite=self.overwrite,
         )

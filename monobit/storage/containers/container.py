@@ -89,7 +89,6 @@ class Container:
                 return match
         raise FileNotFoundError(filepath)
 
-    # TODO: move to Location
     def unused_name(self, name):
         """Generate unique name for container file."""
         if name not in self:
