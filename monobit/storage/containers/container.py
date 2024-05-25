@@ -11,7 +11,7 @@ from pathlib import Path
 
 from ..magic import MagicRegistry
 
-CONTAINERS = MagicRegistry('__unused__')
+CONTAINERS = MagicRegistry()
 
 
 class Container:

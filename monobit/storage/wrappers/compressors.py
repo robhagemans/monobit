@@ -14,8 +14,7 @@ from ..streams import Stream
 from ..magic import FileFormatError
 from ..magic import MagicRegistry
 
-#FIXME
-WRAPPERS = MagicRegistry('__unused__')
+WRAPPERS = MagicRegistry()
 
 
 class Compressor:

@@ -24,8 +24,8 @@ from .location import open_location
 DEFAULT_TEXT_FORMAT = 'yaff'
 DEFAULT_BINARY_FORMAT = 'raw'
 
-loaders = ConverterRegistry('load', DEFAULT_TEXT_FORMAT, DEFAULT_BINARY_FORMAT)
-savers = ConverterRegistry('save', DEFAULT_TEXT_FORMAT)
+loaders = ConverterRegistry(DEFAULT_TEXT_FORMAT, DEFAULT_BINARY_FORMAT)
+savers = ConverterRegistry(DEFAULT_TEXT_FORMAT)
 
 
 ##############################################################################

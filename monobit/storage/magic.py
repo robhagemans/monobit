@@ -66,12 +66,11 @@ def maybe_text(instream):
 class MagicRegistry:
     """Retrieve file converters through magic sequences and name patterns."""
 
-    def __init__(self, func_name, default_text='', default_binary=''):
+    def __init__(self, default_text='', default_binary=''):
         """Set up registry."""
         self._magic = []
         self._patterns = []
         self._names = {}
-        self._func_name = func_name
         self._default_text = default_text
         self._default_binary = default_binary
 
