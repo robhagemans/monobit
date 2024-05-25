@@ -373,7 +373,7 @@ class TestFormats(BaseTester):
         """Test importing c source files."""
         font, *_ = monobit.load(
             self.font_path / '4x6.c',
-            # identifier='char font_Fixed_Medium_6',
+            identifier='char font_Fixed_Medium_6',
             cell=(4, 6)
         )
         self.assertEqual(len(font.glyphs), 919)
@@ -1200,7 +1200,6 @@ class TestFormats(BaseTester):
             self.assertEqual(len(font.glyphs), 919)
             self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
 
-    @unittest.skip
     def test_export_pcf(self):
         """Test exporting PCF files"""
         for byte_order in ('big', 'little'):
