@@ -177,7 +177,6 @@ def save(
 
 def save_stream(pack, outstream, *, format='', **kwargs):
     """Save fonts to an open stream."""
-    format = format or DEFAULT_TEXT_FORMAT
     matching_savers = savers.get_for(outstream, format=format)
     if not matching_savers:
         if format:
