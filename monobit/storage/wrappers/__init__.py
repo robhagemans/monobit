@@ -10,3 +10,4 @@ licence: https://opensource.org/licenses/MIT
 from . import compressors
 from . import source
 from . import apple
+from . import binhex

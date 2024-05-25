@@ -14,7 +14,7 @@ from ..magic import FileFormatError, Magic
 from ..containers.container import CONTAINERS, Container
 
 
-class _MacFork(Container):
+class MacFork(Container):
 
     forknames = ('rsrc', 'data')
 
@@ -106,7 +106,7 @@ _APPLE_ENTRY_TYPES = {
 }
 
 
-class AppleContainer(_MacFork):
+class AppleContainer(MacFork):
 
     def _parse(self, stream):
         """Parse an AppleSingle or AppleDouble file."""
