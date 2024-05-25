@@ -47,7 +47,8 @@ def maybe_text(instream):
         return None
     if set(sample) & set(_NON_TEXT_BYTES):
         logging.debug(
-            'Found unexpected bytes: identifying unknown input stream as binary.'
+            'Found non-text-like bytes: '
+            f"input stream '{instream.name}' is likely binary."
         )
         return False
     try:
@@ -56,10 +57,13 @@ def maybe_text(instream):
         # need to ensure we ignore errors due to clipping inside a utf-8 sequence
         if err.reason != 'unexpected end of data':
             logging.debug(
-                'Found non-UTF8: identifying unknown input stream as binary.'
+                'Found non-UTF8 sequences:'
+                f"input stream '{instream.name}' is likely binary."
             )
             return False
-    logging.debug('Tentatively identifying unknown input stream as text.')
+    logging.debug(
+        f"input stream '{instream.name}' is likely text."
+    )
     return True
 
 
