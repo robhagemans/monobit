@@ -71,9 +71,14 @@ class _CodedBinaryWrapper:
     post = ''
 
     @classmethod
-    def open(cls, stream, mode:str='r'):
+    def open(cls, stream, mode:str='r', identifier:str=''):
+        """
+        Extract binary file encoded in source code.
+
+        identifier: text at start of line where encoded file starts. (default: first array literal)
+        """
         if mode == 'r':
-            return cls._open_read(stream)
+            return cls._open_read(stream, identifier=identifier)
         elif mode == 'w':
             return cls._open_write(stream)
         raise ValueError(f"`mode` must be one of 'r' or 'w', not '{mode}'.")

@@ -186,7 +186,7 @@ def save(
         if location.is_dir():
             return _save_all(
                 pack, location, format=format, overwrite=overwrite,
-                **location.argdoct
+                **location.argdict
             )
         _save_stream(
             pack, location.get_stream(), format=format, **location.argdict
