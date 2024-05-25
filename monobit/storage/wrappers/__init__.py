@@ -9,3 +9,4 @@ licence: https://opensource.org/licenses/MIT
 # import_all(__name__)
 from . import compressors
 from . import source
+from . import apple

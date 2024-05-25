@@ -32,10 +32,7 @@ class Container:
 
     def iter_sub(self, prefix):
         """List contents of a subpath."""
-        return (
-            _item for _item in self
-            if _item.startswith(str(prefix))
-        )
+        raise NotImplementedError()
 
     def __contains__(self, item):
         """Check if file is in container. Case sensitive if container/fs is."""
