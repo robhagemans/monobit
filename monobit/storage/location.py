@@ -17,7 +17,9 @@ from .wrappers.compressors import WRAPPERS
 from .containers.container import CONTAINERS, Container
 
 
-def open_location(stream_or_location, mode='r', overwrite=False):
+def open_location(
+        stream_or_location, mode='r', overwrite=False, container_format=''
+    ):
     """
     Point to given location, resolving nested containers and wrappers.
     """
@@ -26,20 +28,24 @@ def open_location(stream_or_location, mode='r', overwrite=False):
     if not stream_or_location:
         raise ValueError(f'No location provided.')
     if isinstance(stream_or_location, (str, Path)):
-        location = Location.from_path(
-            stream_or_location, mode=mode, overwrite=overwrite
+        return Location.from_path(
+            stream_or_location, mode=mode, overwrite=overwrite,
+            container_format=container_format,
         )
-    else:
-        # stream_or_location is a file-like object
-        location = Location.from_stream(
-            stream_or_location, mode=mode, overwrite=overwrite
-        )
-    return location
+    # assume stream_or_location is a file-like object
+    return Location.from_stream(
+        stream_or_location, mode=mode, overwrite=overwrite,
+        container_format=container_format,
+    )
 
 
 class Location:
 
-    def __init__(self, *, root=None, path='', mode='r', overwrite=False):
+    def __init__(
+            self, *,
+            root=None, path='', mode='r', overwrite=False,
+            container_format='',
+        ):
         self.path = Path(path)
         self.mode = mode
         # TODO overwrite -> 'w' vs 'a' modes (on containers)
@@ -51,6 +57,7 @@ class Location:
         self._path_objects = [root]
         # subpath from last object in path_objects
         self._leafpath = self.path
+        self._container_format = container_format.split('.')
 
     def __repr__(self):
         return str(vars(self))
@@ -58,7 +65,7 @@ class Location:
     # __str__
 
     @classmethod
-    def from_path(cls, path, *, mode='r', overwrite=False):
+    def from_path(cls, path, **kwargs):
         """Create from path-like or string."""
         path = Path(path)
         root = path.anchor or '.'
@@ -68,12 +75,11 @@ class Location:
             # so it's OK that we won't close this one
             root=Directory(root),
             path=subpath,
-            mode=mode,
-            overwrite=overwrite,
+            **kwargs
         )
 
     @classmethod
-    def from_stream(cls, stream, *, subpath='', mode='r', overwrite=False):
+    def from_stream(cls, stream, *, subpath='', mode='r', **kwargs):
         """Create from file-like object."""
         if not isinstance(stream, StreamBase):
             # not clear why we need KeepOpen
@@ -88,7 +94,7 @@ class Location:
             root=stream,
             path=subpath,
             mode=mode,
-            overwrite=overwrite,
+            **kwargs
         )
 
     def __enter__(self):
@@ -179,18 +185,24 @@ class Location:
         """Open one or more wrappers until an unwrapped stream is found."""
         while True:
             stream = self._leaf
+            if self._container_format:
+                format = self._container_format[-1]
+            else:
+                format = ''
             try:
-                unwrapped = _open_wrapper(stream, mode=self.mode)
+                unwrapped = _open_wrapper(stream, mode=self.mode, format=format)
             except FileFormatError:
                 # not a wrapper
                 break
             else:
+                if self._container_format:
+                    self._container_format.pop()
                 self._path_objects.append(unwrapped)
                 stream = unwrapped
         # check if innermost stream is a container
         try:
             self._path_objects.append(
-                _open_container(stream, mode=self.mode)
+                _open_container(stream, mode=self.mode, format=format)
             )
         except FileFormatError:
             # innermost stream is a non-container stream.
@@ -200,6 +212,8 @@ class Location:
                 f"Cannot open subpath '{subpath}' "
                 f"on non-container stream {stream}'"
             )
+        if self._container_format:
+            self._container_format.pop()
 
     def _resolve_container(self):
         container = self._leaf
@@ -264,7 +278,10 @@ class Location:
 def _open_wrapper(instream, *, format='', mode='r', **kwargs):
     """Open wrapper on open stream."""
     # identify file type
-    fitting_classes = WRAPPERS.get_for(instream, format=format)
+    try:
+        fitting_classes = WRAPPERS.get_for(instream, format=format)
+    except ValueError as e:
+        raise FileFormatError(e)
     last_error = None
     for cls in fitting_classes:
         instream.seek(0)
@@ -287,7 +304,10 @@ def _open_wrapper(instream, *, format='', mode='r', **kwargs):
 def _open_container(instream, *, format='', mode='r', **kwargs):
     """Open container on open stream."""
     # identify file type
-    fitting_classes = CONTAINERS.get_for(instream, format=format)
+    try:
+        fitting_classes = CONTAINERS.get_for(instream, format=format)
+    except ValueError as e:
+        raise FileFormatError(e)
     last_error = None
     for cls in fitting_classes:
         instream.seek(0)

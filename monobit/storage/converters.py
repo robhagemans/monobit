@@ -32,15 +32,18 @@ savers = ConverterRegistry('save', DEFAULT_TEXT_FORMAT)
 # loading
 
 @scriptable(wrapper=True, record=False)
-def load(infile:Any='', *, format:str='', **kwargs):
+def load(infile:Any='', *, format:str='', container_format:str='', **kwargs):
     """
     Read font(s) from file.
 
     infile: input file or path (default: stdin)
     format: input format (default: infer from magic number or filename)
+    container_format: container/wrapper formats separated by . (default: infer from magic number or filename)
     """
     infile = infile or sys.stdin
-    with open_location(infile, mode='r') as location:
+    with open_location(
+            infile, mode='r', container_format=container_format,
+        ) as location:
         if location.is_dir():
             return load_all(location, format=format, **kwargs)
         else:
@@ -149,13 +152,15 @@ def save(
         pack_or_font,
         outfile:Any='', *,
         format:str='', overwrite:bool=False,
+        container_format:str='',
         **kwargs
     ):
     """
     Write font(s) to file.
 
     outfile: output file or path (default: stdout)
-    format: font file format
+    format: font file format (default: infer from filename)
+    container_format: container/wrapper formats separated by . (default: infer from filename)
     overwrite: if outfile is a path, allow overwriting existing file
     """
     pack = Pack(pack_or_font)
@@ -166,7 +171,10 @@ def save(
         sys.stdout.reconfigure(errors='replace')
     if not pack:
         raise ValueError('No fonts to save')
-    with open_location(outfile, mode='w', overwrite=overwrite) as location:
+    with open_location(
+            outfile, mode='w', overwrite=overwrite,
+            container_format=container_format,
+        ) as location:
         if location.is_dir():
             return save_all(
                 pack, location, format=format, overwrite=overwrite, **kwargs
