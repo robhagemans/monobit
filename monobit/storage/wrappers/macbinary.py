@@ -1,32 +1,20 @@
 """
 monobit.storage.wrappers.macbinary - MacBinary containers
 
-(c) 2021--2023 Rob Hagemans
+(c) 2021--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
 import logging
 
-from monobit.storage import Stream
-from monobit.storage import loaders, load_stream
-from monobit.storage import FileFormatError, Magic
-from monobit.base.binary import align
 from monobit.base.struct import big_endian as be
+from monobit.base.binary import align
 
-from .apple import load_macforks
+from ..streams import Stream
+from ..magic import FileFormatError, Magic
+from ..containers.container import CONTAINERS, Container
 
-
-@loaders.register(
-    name='macbin',
-    magic=(
-        # FFILDMOV is a maybe
-        Magic.offset(65) + b'FFILDMOV',
-    ),
-    wrapper=True,
-)
-def load_macbin(instream, format='', **kwargs):
-    """MacBinary loader."""
-    return load_macforks(_parse_macbinary, instream, format, **kwargs)
+from .apple import MacFork
 
 
 ##############################################################################
@@ -95,20 +83,30 @@ _MACBINARY_HEADER = be.Struct(
     # *This is newly defined for MacBinary II.
 )
 
-def _parse_macbinary(stream):
-    """Parse a MacBinary file."""
-    data = stream.read()
-    header = _MACBINARY_HEADER.from_bytes(data)
-    ofs = 128
-    if header.old_version != 0:
-        raise FileFormatError(
-            'Not a MacBinary file: incorrect version field'
-            f' ({header.old_version}).'
-        )
-    if header.writer_version > 128:
-        ofs += align(header.second_header_length, 7)
-    data_fork = data[ofs:ofs+header.data_length]
-    ofs += align(header.data_length, 7)
-    rsrc_fork = data[ofs:ofs+header.rsrc_length]
-    name = header.filename.decode('mac-roman').strip()
-    return name, data_fork, rsrc_fork
+
+@CONTAINERS.register(
+    name='macbin',
+    magic=(
+        # FFILDMOV is a maybe
+        Magic.offset(65) + b'FFILDMOV',
+    ),
+)
+class MacBinary(MacFork):
+
+    def _parse(self, stream):
+        """Parse a MacBinary file."""
+        data = stream.read()
+        header = _MACBINARY_HEADER.from_bytes(data)
+        ofs = 128
+        if header.old_version != 0:
+            raise FileFormatError(
+                'Not a MacBinary file: incorrect version field'
+                f' ({header.old_version}).'
+            )
+        if header.writer_version > 128:
+            ofs += align(header.second_header_length, 7)
+        data_fork = data[ofs:ofs+header.data_length]
+        ofs += align(header.data_length, 7)
+        rsrc_fork = data[ofs:ofs+header.rsrc_length]
+        name = header.filename.decode('mac-roman').strip()
+        return name, data_fork, rsrc_fork
