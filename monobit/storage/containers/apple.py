@@ -1,5 +1,5 @@
 """
-monobit.storage.wrappers.apple - AppleSingle and AppleDouble containers
+monobit.storage.containers.apple - AppleSingle and AppleDouble containers
 
 (c) 2021--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

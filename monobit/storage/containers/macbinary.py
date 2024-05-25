@@ -1,5 +1,5 @@
 """
-monobit.storage.wrappers.macbinary - MacBinary containers
+monobit.storage.containers.macbinary - MacBinary containers
 
 (c) 2021--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
