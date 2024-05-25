@@ -288,7 +288,8 @@ def _open_wrapper(instream, *, format='', mode='r', **kwargs):
         raise FileFormatError(e)
     last_error = None
     for cls in fitting_classes:
-        instream.seek(0)
+        if mode == 'r':
+            instream.seek(0)
         logging.info('Opening `%s` as wrapper format %s', instream.name, cls.format)
         try:
             # returns unwrapped stream
@@ -314,7 +315,8 @@ def _open_container(instream, *, format='', mode='r', **kwargs):
         raise FileFormatError(e)
     last_error = None
     for cls in fitting_classes:
-        instream.seek(0)
+        if mode == 'r':
+            instream.seek(0)
         logging.info('Opening `%s` as container format %s', instream.name, cls.format)
         try:
             # returns container object
