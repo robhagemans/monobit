@@ -100,7 +100,11 @@ class Location:
     def open(self):
         """Resolve path, opening streams and containers as needed."""
         self.is_open = True
-        self._resolve()
+        try:
+            self._resolve()
+        except Exception:
+            self.close()
+            raise
         return self
 
     def close(self):
