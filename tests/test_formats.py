@@ -387,32 +387,32 @@ class TestFormats(BaseTester):
     def test_export_c(self):
         """Test exporting c source files."""
         file = self.temp_path  / '4x6.c'
-        monobit.save(self.fixed4x6, file)
-        font, *_ = monobit.load(file, cell=(4, 6), first_codepoint=31)
+        monobit.save(self.fixed4x6, file, format='raw')
+        font, *_ = monobit.load(file, format='raw', cell=(4, 6), first_codepoint=31)
         self.assertEqual(len(font.glyphs), 919)
         self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
     def test_export_py(self):
         """Test exporting Python source files."""
         file = self.temp_path  / '4x6.py'
-        monobit.save(self.fixed4x6, file)
-        font, *_ = monobit.load(file, cell=(4, 6), first_codepoint=31)
+        monobit.save(self.fixed4x6, file, format='raw')
+        font, *_ = monobit.load(file, format='raw', cell=(4, 6), first_codepoint=31)
         self.assertEqual(len(font.glyphs), 919)
         self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
     def test_export_json(self):
         """Test exporting JSON source files."""
         file = self.temp_path  / '4x6.json'
-        monobit.save(self.fixed4x6, file)
-        font, *_ = monobit.load(file, cell=(4, 6), first_codepoint=31)
+        monobit.save(self.fixed4x6, file, format='raw')
+        font, *_ = monobit.load(file, format='raw', cell=(4, 6), first_codepoint=31)
         self.assertEqual(len(font.glyphs), 919)
         self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
     def test_export_bas(self):
         """Test exporting BASIC source files."""
         file = self.temp_path  / '4x6.bas'
-        monobit.save(self.fixed4x6, file)
-        font, *_ = monobit.load(file, cell=(4, 6), first_codepoint=31)
+        monobit.save(self.fixed4x6, file, format='raw')
+        font, *_ = monobit.load(file, format='raw', cell=(4, 6), first_codepoint=31)
         self.assertEqual(len(font.glyphs), 919)
         self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
@@ -555,7 +555,7 @@ class TestFormats(BaseTester):
 
     def test_import_macbinary(self):
         """Test importing macbinary files."""
-        font, *_ = monobit.load(self.font_path / '4x6.bin', format='macbin')
+        font, *_ = monobit.load(self.font_path / '4x6.bin', container_format='macbin')
         self.assertEqual(len(font.glyphs), 195)
         self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 

@@ -53,7 +53,10 @@ class TestCharCell(BaseTester):
         assert self.fixed8x8.cell_size == (8, 8)
 
 
-    def _test_export_charcell_reduced(self, format, count=191, label=b'A', codepage=None, save_kwargs=None, **load_kwargs):
+    def _test_export_charcell_reduced(
+            self, format, container_format='', count=191, label=b'A', codepage=None,
+            save_kwargs=None, **load_kwargs
+        ):
         """Test exporting a reduced-raster character-cell font."""
         file = self.temp_path / 'testfont.fnt'
         save_kwargs = save_kwargs or {}
@@ -61,8 +64,8 @@ class TestCharCell(BaseTester):
         if codepage:
             font = font.modify(encoding=codepage)
             font = font.label(codepoint_from=codepage, overwrite=True)
-        monobit.save(font, file, format=format, **save_kwargs)
-        font, *_ = monobit.load(file, format=format, **load_kwargs)
+        monobit.save(font, file, format=format, container_format=container_format, **save_kwargs)
+        font, *_ = monobit.load(file, format=format, container_format=container_format, **load_kwargs)
         self.assertEqual(len(font.glyphs), count)
         assert_text_eq(font.get_glyph(label).as_text(), self.fixed8x8_A)
 
@@ -85,15 +88,15 @@ class TestCharCell(BaseTester):
 
     def test_export_c_r(self):
         """Test exporting c source files."""
-        self._test_export_charcell_reduced('c', first_codepoint=0x20)
+        self._test_export_charcell_reduced('raw', container_format='c', first_codepoint=0x20)
 
     def test_export_py_r(self):
         """Test exporting Python source files."""
-        self._test_export_charcell_reduced('python', first_codepoint=0x20)
+        self._test_export_charcell_reduced('raw', container_format='python', first_codepoint=0x20)
 
     def test_export_json_r(self):
         """Test exporting JSON source files."""
-        self._test_export_charcell_reduced('json', first_codepoint=0x20)
+        self._test_export_charcell_reduced('raw', container_format='json', first_codepoint=0x20)
 
     def test_export_png_r(self):
         """Test exporting image files."""
