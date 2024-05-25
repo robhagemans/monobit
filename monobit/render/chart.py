@@ -16,7 +16,7 @@ from ..plumbing import scriptable
 from .glyphmap import GlyphMap
 
 
-@savers.register(name='chart', wrapper=True)
+@savers.register(name='chart')
 def save_chart(
         fonts, outstream,
         columns:int=16, margin:Coord=(0, 0), padding:Coord=(0, 0),

@@ -17,15 +17,16 @@ from ..core import Font, Pack
 from ..base.struct import StructError
 from ..plumbing import scriptable, ARG_PREFIX
 from ..base import Any
-from .magic import ConverterRegistry, FileFormatError, maybe_text
+from .magic import MagicRegistry, FileFormatError, maybe_text
 from .location import open_location
+from ..plumbing import convert_arguments, check_arguments
 
 
 DEFAULT_TEXT_FORMAT = 'yaff'
 DEFAULT_BINARY_FORMAT = 'raw'
 
-loaders = ConverterRegistry(DEFAULT_TEXT_FORMAT, DEFAULT_BINARY_FORMAT)
-savers = ConverterRegistry(DEFAULT_TEXT_FORMAT)
+loaders = MagicRegistry(DEFAULT_TEXT_FORMAT, DEFAULT_BINARY_FORMAT)
+savers = MagicRegistry(DEFAULT_TEXT_FORMAT)
 
 
 ##############################################################################
@@ -64,6 +65,11 @@ def _load_stream(instream, *, format='', subpath='', **kwargs):
     for loader in fitting_loaders:
         instream.seek(0)
         logging.info('Loading `%s` as %s', instream.name, loader.format)
+
+        loader = convert_arguments(loader)
+        # if not wrapper:
+        loader = check_arguments(loader)
+
         try:
             fonts = loader(instream, **kwargs)
         except (FileFormatError, StructError) as e:
@@ -201,6 +207,11 @@ def _save_stream(pack, outstream, *, format='', **kwargs):
         )
     saver, *_ = matching_savers
     logging.info('Saving `%s` as %s.', outstream.name, saver.format)
+
+    saver = convert_arguments(saver)
+    # if not wrapper:
+    saver = check_arguments(saver)
+
     saver(pack, outstream, **kwargs)
 
 

@@ -113,24 +113,45 @@ class MagicRegistry:
                     pass
         return converter
 
-    def register(
-            self, name='', magic=(), patterns=(),
-            funcwrapper=lambda _:_
-        ):
-        """Decorator to register converter for file type."""
+    def register(self, name='', magic=(), patterns=(), linked=None):
+        """
+        Decorator to register converter for file type.
+
+        name: unique name of the format
+        magic: magic sequences for this format (no effect for savers)
+        patterns: filename patterns for this format
+        linked: earlier registration to take information from
+        """
+
         def _decorator(converter):
-            if not name:
-                raise ValueError('No registration name given')
-            if name in self._names:
-                raise ValueError(f'Registration name `{name}` already in use for {self._names[name]}')
-            if not isinstance(magic, (list, tuple)):
-                raise TypeError('Registration parameter `magic` must be list or tuple')
-            if not isinstance(patterns, (list, tuple)):
-                raise TypeError('Registration parameter `patterns` must be list or tuple')
+
             converter.format = name
-            self._names[name] = converter
+            converter.magic = magic
+            converter.patterns = patterns
+            if linked:
+                # take from linked registration
+                converter.format = converter.format or linked.format
+                converter.magic = converter.magic or linked.magic
+                converter.patterns = converter.patterns or linked.patterns
+
+            if not converter.format:
+                raise ValueError('No registration name given')
+            if converter.format in self._names:
+                raise ValueError(
+                    f'Registration name `{converter.format}` '
+                    f'already in use for {self._names[converter.format]}'
+                )
+            if not isinstance(magic, (list, tuple)):
+                raise TypeError(
+                    'Registration parameter `magic` must be list or tuple'
+                )
+            if not isinstance(patterns, (list, tuple)):
+                raise TypeError(
+                    'Registration parameter `patterns` must be list or tuple'
+                )
+            self._names[converter.format] = converter
             ## magic signatures
-            for sequence in magic:
+            for sequence in converter.magic:
                 self._magic.append((Magic(sequence), converter))
             # sort the magic registry long to short to manage conflicts
             self._magic = list(sorted(
@@ -139,9 +160,12 @@ class MagicRegistry:
                 )
             )
             ## glob patterns
-            for pattern in tuple(set((*patterns, f'*.{name}'))):
+            glob_patterns = tuple(set(
+                (*converter.patterns, f'*.{converter.format}')
+            ))
+            for pattern in glob_patterns:
                 self._patterns.append((to_pattern(pattern), converter))
-            return funcwrapper(converter)
+            return converter
 
         return _decorator
 
@@ -298,52 +322,3 @@ def to_pattern(obj):
     if isinstance(obj, Pattern):
         return obj
     return Glob(str(obj))
-
-
-
-
-##############################################################################
-# loader/saver registry
-
-from ..plumbing import convert_arguments, check_arguments
-
-
-class ConverterRegistry(MagicRegistry):
-    """Loader/Saver registry."""
-
-    def register(
-            self, name='', magic=(), patterns=(),
-            linked=None, wrapper=False,
-        ):
-        """
-        Decorator to register font loader/saver.
-
-        name: unique name of the format
-        magic: magic sequences for this format (no effect for savers)
-        patterns: filename patterns for this format
-        linked: loader/saver linked to saver/loader
-        """
-        register_magic = super().register
-
-        def _decorator(original_func):
-            _func = convert_arguments(original_func)
-            if not wrapper:
-                _func = check_arguments(_func)
-            # register converter
-            if linked:
-                format = name or linked.format
-                _func.magic = magic or linked.magic
-                _func.patterns = patterns or linked.patterns
-            else:
-                format = name
-                _func.magic = magic
-                _func.patterns = patterns
-            # register magic sequences
-            register_magic(
-                name=format,
-                magic=_func.magic,
-                patterns=_func.patterns,
-            )(_func)
-            return _func
-
-        return _decorator
