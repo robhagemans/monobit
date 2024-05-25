@@ -43,12 +43,14 @@ def load(infile:Any='', *, format:str='', container_format:str='', **kwargs):
     """
     infile = infile or sys.stdin
     with open_location(
-            infile, mode='r', container_format=container_format,
+            infile, mode='r', container_format=container_format, argdict=kwargs,
         ) as location:
         if location.is_dir():
-            return _load_all(location, format=format, **kwargs)
+            return _load_all(location, format=format, **location.argdict)
         else:
-            return _load_stream(location.get_stream(), format=format, **kwargs)
+            return _load_stream(
+                location.get_stream(), format=format, **location.argdict
+            )
 
 
 def _load_stream(instream, *, format='', subpath='', **kwargs):
@@ -179,12 +181,16 @@ def save(
     with open_location(
             outfile, mode='w', overwrite=overwrite,
             container_format=container_format,
+            argdict=kwargs,
         ) as location:
         if location.is_dir():
             return _save_all(
-                pack, location, format=format, overwrite=overwrite, **kwargs
+                pack, location, format=format, overwrite=overwrite,
+                **location.argdoct
             )
-        _save_stream(pack, location.get_stream(), format=format, **kwargs)
+        _save_stream(
+            pack, location.get_stream(), format=format, **location.argdict
+        )
     return pack_or_font
 
 

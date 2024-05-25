@@ -18,10 +18,10 @@ class MacFork(Container):
 
     forknames = ('rsrc', 'data')
 
-    def __init__(self, file, mode='r', name='', ignore_case=True):
+    def __init__(self, file, mode='r', name=''):
         if mode != 'r':
             raise ValueError('Writing onto Mac forks is not supported.')
-        super().__init__(mode, name, ignore_case)
+        super().__init__(mode, name)
         with Stream(file, mode) as stream:
             self.name, *forks = self._parse(stream)
         self.forks = dict(zip(self.forknames, forks))

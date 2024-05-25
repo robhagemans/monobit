@@ -54,7 +54,7 @@ class Compressor:
 
     #FIXME overwrite?
     @classmethod
-    def open(cls, stream, mode:str='r'):
+    def open(cls, stream, mode='r'):
         """Get the uncompressed stream."""
         cls._ensure_imports()
         if mode[:1] == 'r':

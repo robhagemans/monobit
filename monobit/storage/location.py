@@ -11,6 +11,7 @@ from pathlib import Path
 from ..base.struct import StructError
 from .magic import FileFormatError, MagicRegistry
 from .containers.directory import Directory
+from ..plumbing import take_arguments
 
 from .streams import StreamBase, Stream, KeepOpen
 from .wrappers.compressors import WRAPPERS
@@ -18,7 +19,8 @@ from .containers.container import CONTAINERS, Container
 
 
 def open_location(
-        stream_or_location, mode='r', overwrite=False, container_format=''
+        stream_or_location, mode='r', overwrite=False, container_format='',
+        argdict=None,
     ):
     """
     Point to given location, resolving nested containers and wrappers.
@@ -30,12 +32,12 @@ def open_location(
     if isinstance(stream_or_location, (str, Path)):
         return Location.from_path(
             stream_or_location, mode=mode, overwrite=overwrite,
-            container_format=container_format,
+            container_format=container_format, argdict=argdict,
         )
     # assume stream_or_location is a file-like object
     return Location.from_stream(
         stream_or_location, mode=mode, overwrite=overwrite,
-        container_format=container_format,
+        container_format=container_format, argdict=argdict,
     )
 
 
@@ -44,7 +46,7 @@ class Location:
     def __init__(
             self, *,
             root=None, path='', mode='r', overwrite=False,
-            container_format='',
+            container_format='', argdict=None,
         ):
         self.path = Path(path)
         self.mode = mode
@@ -58,6 +60,7 @@ class Location:
         # subpath from last object in path_objects
         self._leafpath = self.path
         self._container_format = container_format.split('.')
+        self.argdict = argdict
 
     def __repr__(self):
         return str(vars(self))
@@ -190,7 +193,9 @@ class Location:
             else:
                 format = ''
             try:
-                unwrapped = _open_wrapper(stream, mode=self.mode, format=format)
+                unwrapped = _open_wrapper(
+                    stream, mode=self.mode, format=format, argdict=self.argdict,
+                )
             except FileFormatError:
                 # not a wrapper
                 break
@@ -202,7 +207,9 @@ class Location:
         # check if innermost stream is a container
         try:
             self._path_objects.append(
-                _open_container(stream, mode=self.mode, format=format)
+                _open_container(
+                    stream, mode=self.mode, format=format, argdict=self.argdict,
+                )
             )
         except FileFormatError:
             # innermost stream is a non-container stream.
@@ -279,8 +286,9 @@ class Location:
 
 # TODO fix code repetition
 # TODO move with wrappers
-def _open_wrapper(instream, *, format='', mode='r', **kwargs):
+def _open_wrapper(instream, *, format='', mode='r', argdict=None):
     """Open wrapper on open stream."""
+    argdict = argdict or {}
     # identify file type
     try:
         fitting_classes = WRAPPERS.get_for(instream, format=format)
@@ -292,12 +300,18 @@ def _open_wrapper(instream, *, format='', mode='r', **kwargs):
             instream.seek(0)
         logging.info('Opening `%s` as wrapper format %s', instream.name, cls.format)
         try:
-            # returns unwrapped stream
-            return cls.open(instream, mode=mode, **kwargs)
+            kwargs = take_arguments(cls.open, argdict)
+            stream = cls.open(instream, mode=mode, **kwargs)
         except (FileFormatError, StructError) as e:
             logging.debug(e)
             last_error = e
             continue
+        else:
+            # remove used arguments
+            for kwarg in kwargs:
+                del argdict[kwarg]
+            # returns unwrapped stream
+            return stream
     if last_error:
         raise last_error
     message = f'Cannot open wrapper `{instream.name}`'
@@ -306,8 +320,9 @@ def _open_wrapper(instream, *, format='', mode='r', **kwargs):
     raise FileFormatError(message)
 
 # TODO move with containers
-def _open_container(instream, *, format='', mode='r', **kwargs):
+def _open_container(instream, *, format='', mode='r', argdict=None):
     """Open container on open stream."""
+    argdict = argdict or {}
     # identify file type
     try:
         fitting_classes = CONTAINERS.get_for(instream, format=format)
@@ -319,12 +334,18 @@ def _open_container(instream, *, format='', mode='r', **kwargs):
             instream.seek(0)
         logging.info('Opening `%s` as container format %s', instream.name, cls.format)
         try:
+            kwargs = take_arguments(cls.__init__, argdict)
             # returns container object
-            return cls(instream, mode=mode, **kwargs)
+            container = cls(instream, mode=mode, **argdict)
         except (FileFormatError, StructError) as e:
             logging.debug(e)
             last_error = e
             continue
+        else:
+            # remove used arguments
+            for kwarg in kwargs:
+                del argdict[kwarg]
+            return container
     if last_error:
         raise last_error
     message = f'Cannot open container `{instream.name}`'

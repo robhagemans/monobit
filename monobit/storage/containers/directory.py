@@ -17,7 +17,7 @@ from .container import Container, CONTAINERS, find_case_insensitive
 class Directory(Container):
     """Treat directory tree as a container."""
 
-    def __init__(self, path='', mode='r', ignore_case=True):
+    def __init__(self, path='', mode='r', ignore_case:bool=True):
         """Create directory wrapper."""
         # if empty path, this refers to the whole filesystem
         if not path:

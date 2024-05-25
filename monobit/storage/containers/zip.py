@@ -18,7 +18,7 @@ from ..magic import FileFormatError
 class ZipContainer(Container):
     """Zip-file wrapper."""
 
-    def __init__(self, file, mode='r', ignore_case=True):
+    def __init__(self, file, mode='r', ignore_case:bool=True):
         """Create wrapper."""
         # mode really should just be 'r' or 'w'
         mode = mode[:1]

@@ -17,7 +17,7 @@ CONTAINERS = MagicRegistry()
 class Container:
     """Base class for container types."""
 
-    def __init__(self, mode='r', name='', ignore_case=True):
+    def __init__(self, mode='r', name='', ignore_case:bool=False):
         self.mode = mode[:1]
         self.name = name
         self.refcount = 0

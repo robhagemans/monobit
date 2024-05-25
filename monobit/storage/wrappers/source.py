@@ -302,11 +302,27 @@ class PascalCodedBinaryWrapper(_CodedBinaryWrapper):
 class BASICCodedBinaryWrapper:
 
     @classmethod
-    def open(cls, stream, mode:str='r'):
+    def open(cls, stream, mode='r',
+            *,
+            line_number_start:int=1000, line_number_inc:int=10,
+            bytes_per_line:int=8
+        ):
+        """
+        Binary file encoded in DATA lines in classic BASIC source code. Options for save:
+
+        line_number_start: line number of first DATA line (-1 for no line numbers; default: 1000)
+        line_number_inc: increment between line numbers (default: 10)
+        bytes_per_line: number of encoded bytes in a source line (default: 8)
+        """
         if mode == 'r':
             return cls._open_read(stream)
         elif mode == 'w':
-            return cls._open_write(stream)
+            return cls._open_write(
+                stream,
+                line_number_start=line_number_start,
+                line_number_inc=line_number_inc,
+                bytes_per_line=bytes_per_line,
+            )
         raise ValueError(f"`mode` must be one of 'r' or 'w', not '{mode}'.")
 
     @classmethod
@@ -328,8 +344,8 @@ class BASICCodedBinaryWrapper:
         return Stream.from_data(data, mode='r')
 
     @classmethod
-    def _open_write(cls, outfile):
-        return WrappedWriterStream(outfile, _write_out_basic)
+    def _open_write(cls, outfile, **kwargs):
+        return WrappedWriterStream(outfile, _write_out_basic, **kwargs)
 
 
 def _write_out_basic(
