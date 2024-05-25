@@ -45,12 +45,12 @@ def load(infile:Any='', *, format:str='', container_format:str='', **kwargs):
             infile, mode='r', container_format=container_format,
         ) as location:
         if location.is_dir():
-            return load_all(location, format=format, **kwargs)
+            return _load_all(location, format=format, **kwargs)
         else:
-            return load_stream(location.get_stream(), format=format, **kwargs)
+            return _load_stream(location.get_stream(), format=format, **kwargs)
 
 
-def load_stream(instream, *, format='', subpath='', **kwargs):
+def _load_stream(instream, *, format='', subpath='', **kwargs):
     """Load fonts from open stream."""
     # identify file type
     fitting_loaders = loaders.get_for(instream, format=format)
@@ -107,7 +107,7 @@ def load_stream(instream, *, format='', subpath='', **kwargs):
     raise FileFormatError('Unable to read fonts from file')
 
 
-def load_all(root_location, *, format='', **kwargs):
+def _load_all(root_location, *, format='', **kwargs):
     """Open container and load all fonts found in it into one pack."""
     logging.info('Reading all from `%s`.', root_location)
     packs = Pack()
@@ -115,10 +115,9 @@ def load_all(root_location, *, format='', **kwargs):
         with location:
             logging.debug('Trying `%s`.', location)
             try:
-                pack = load_stream(
+                pack = _load_stream(
                     location.get_stream(),
                     format=format,
-                    **kwargs
                 )
             except FileFormatError as exc:
                 logging.debug('Could not load `%s`: %s', location, exc)
@@ -176,14 +175,14 @@ def save(
             container_format=container_format,
         ) as location:
         if location.is_dir():
-            return save_all(
+            return _save_all(
                 pack, location, format=format, overwrite=overwrite, **kwargs
             )
-        save_stream(pack, location.get_stream(), format=format, **kwargs)
+        _save_stream(pack, location.get_stream(), format=format, **kwargs)
     return pack_or_font
 
 
-def save_stream(pack, outstream, *, format='', **kwargs):
+def _save_stream(pack, outstream, *, format='', **kwargs):
     """Save fonts to an open stream."""
     matching_savers = savers.get_for(outstream, format=format)
     if not matching_savers:
@@ -202,18 +201,10 @@ def save_stream(pack, outstream, *, format='', **kwargs):
         )
     saver, *_ = matching_savers
     logging.info('Saving `%s` as %s.', outstream.name, saver.format)
-    #FIXME
-    # # special case - saving to directory
-    # # we need to create the dir before opening a stream,
-    # # or the stream will be a regular file
-    # if isinstance(outstream, DirectoryStream) and format == 'dir':
-    #     if not (Path(outstream.name) / subpath).exists():
-    #         os.makedirs(Path(outstream.name) / subpath, exist_ok=True)
-    #         overwrite = True
     saver(pack, outstream, **kwargs)
 
 
-def save_all(
+def _save_all(
         pack, location, *, format='', template='', overwrite=False, **kwargs
     ):
     """Save fonts to a container."""
@@ -229,7 +220,7 @@ def save_all(
         filename = location.unused_name(name.replace(' ', '_'))
         try:
             with location.join(filename) as new_location:
-                save_stream(
+                _save_stream(
                     Pack(font),
                     new_location.get_stream(),
                     format=format,
