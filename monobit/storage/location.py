@@ -171,9 +171,35 @@ class Location:
         Convert location to subpath on innermost container and open stream.
         """
         if isinstance(self._leaf, StreamBase):
-            self._unwrap()
+            self._resolve_wrappers()
         if isinstance(self._leaf, Container):
             self._resolve_container()
+
+    def _resolve_wrappers(self):
+        """Open one or more wrappers until an unwrapped stream is found."""
+        while True:
+            stream = self._leaf
+            try:
+                unwrapped = _open_wrapper(stream, mode=self.mode)
+            except FileFormatError:
+                # not a wrapper
+                break
+            else:
+                self._path_objects.append(unwrapped)
+                stream = unwrapped
+        # check if innermost stream is a container
+        try:
+            self._path_objects.append(
+                _open_container(stream, mode=self.mode)
+            )
+        except FileFormatError:
+            # innermost stream is a non-container stream.
+            if self._leafpath == Path('.'):
+                return
+            raise ValueError(
+                f"Cannot open subpath '{subpath}' "
+                f"on non-container stream {stream}'"
+            )
 
     def _resolve_container(self):
         container = self._leaf
@@ -232,32 +258,6 @@ class Location:
         # no suffix
         return path, Path('.')
 
-
-    def _unwrap(self):
-        """Open one or more wrappers until an unwrapped stream is found."""
-        while True:
-            stream = self._leaf
-            try:
-                unwrapped = _open_wrapper(stream, mode=self.mode)
-            except FileFormatError:
-                # not a wrapper
-                break
-            else:
-                self._path_objects.append(unwrapped)
-                stream = unwrapped
-        # check if innermost stream is a container
-        try:
-            self._path_objects.append(
-                _open_container(stream, mode=self.mode)
-            )
-        except FileFormatError:
-            # innermost stream is a non-container stream.
-            if self._leafpath == Path('.'):
-                return
-            raise ValueError(
-                f"Cannot open subpath '{subpath}' "
-                f"on non-container stream {stream}'"
-            )
 
 # TODO fix code repetition
 # TODO move with wrappers
