@@ -169,7 +169,7 @@ class _CodedBinaryWrapper:
 
 
 def _write_out_coded_binary(
-        bytesio, outstream, *,
+        rawbytes, outstream, *,
         identifier_template, assign_template, delimiters, comment, separator,
         bytes_per_line=16, pre='', post=''
     ):
@@ -189,7 +189,6 @@ def _write_out_coded_binary(
         raise ValueError('A start and end delimiter must be given. E.g. []')
     start_delimiter = delimiters[0]
     end_delimiter = delimiters[1]
-    rawbytes = bytesio.getbuffer()
     outstream = outstream.text
 
     #FIXME
@@ -348,22 +347,27 @@ class BASICCodedBinaryWrapper:
             coded_data.extend(values)
         data = bytes(_int_from_basic(_s) for _s in coded_data)
         # clip off outer extension .bas
-        if Path(infile.name).suffix.lower() == '.bas':
-            name = Path(infile.name).stem
+        name = _remove_suffix(infile.name, '.bas')
         return Stream.from_data(data, mode='r', name=name)
 
     @classmethod
     def _open_write(cls, outfile, **kwargs):
         # clip off outer extension .bas
-        if Path(outfile.name).suffix.lower() == '.bas':
-            name = Path(outfile.name).stem
+        name = _remove_suffix(outfile.name, '.bas')
         return WrappedWriterStream(
             outfile, _write_out_basic, name=name, **kwargs
         )
 
 
+def _remove_suffix(oldname, suffix):
+    """Case insensitive removesuffix"""
+    if Path(oldname).suffix.lower() == suffix:
+        return Path(oldname).stem
+    return oldname
+
+
 def _write_out_basic(
-        bytesio, outfile,
+        rawbytes, outfile,
         *,
         line_number_start:int=1000, line_number_inc:int=10,
         bytes_per_line:int=8
@@ -380,7 +384,6 @@ def _write_out_basic(
             and line_number_start is not None and line_number_start > -1
         ):
         raise ValueError('line_number_inc must be > 0')
-    rawbytes = bytes(bytesio.getbuffer())
     # grouper
     args = [iter(rawbytes)] * bytes_per_line
     groups = zip(*args)
@@ -413,13 +416,10 @@ class WrappedWriterStream(Stream):
         super().__init__(bytesio, name=name, mode='w')
 
     def close(self):
-        self.flush()
-        # we don't own the wrapped stream, don't close it
-        # super().close()
-
-    def flush(self):
-        self._write_out(self._stream, self._outfile, **self._write_out_kwargs)
-
+        if not self.closed:
+            rawbytes = bytes(self._stream.getbuffer())
+            self._write_out(rawbytes, self._outfile, **self._write_out_kwargs)
+        super().close()
 
 
 

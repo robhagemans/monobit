@@ -190,7 +190,6 @@ class Stream(StreamWrapper):
         # if self.closed:
         #     return
         # always close at wrapper level
-        self.closed = True
         if self._textstream:
             try:
                 self._textstream.close()
@@ -200,6 +199,7 @@ class Stream(StreamWrapper):
             super().close()
         except EnvironmentError:
             pass
+        self.closed = True
 
 
 ###############################################################################
