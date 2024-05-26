@@ -82,9 +82,9 @@ class TestContainers(BaseTester):
     def test_dir(self):
         """Test exporting to directory."""
         dir = self.temp_path / f'test4x6/4x6'
-        monobit.save(self.fixed4x6, dir, container_format='dir')
+        monobit.save(self.fixed4x6, dir)
         self.assertTrue(dir.is_dir())
-        fonts = monobit.load(dir, container_format='dir')
+        fonts = monobit.load(dir)
         self.assertEqual(len(fonts), 1)
 
     def test_recursive_tgz(self):

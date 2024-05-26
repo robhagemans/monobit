@@ -227,10 +227,10 @@ class Location:
         # find the innermost existing file (if reading)
         # or file name with suffix (if writing)
         head, tail = self._find_next_node()
-        is_dir = container.is_dir(head)
-        if self._container_format and self._container_format[-1] == 'dir':
-            self._container_format.pop()
-            is_dir = True
+        if self.mode == 'r':
+            is_dir = container.is_dir(head)
+        else:
+            is_dir = not head.suffixes
         if is_dir:
             # innermost existing/creatable is a subdirectory
             if Path(tail) == Path('.'):

@@ -118,13 +118,9 @@ class ZipContainer(Container):
             try:
                 zipinfo = self._zip.getinfo(filename)
             except KeyError:
-                if self.mode == 'w':
-                    # FIXME
-                    return False
-                else:
-                    raise FileNotFoundError(
-                        f"'{name}' not found in zip container '{self.name}'."
-                    ) from None
+                raise FileNotFoundError(
+                    f"'{name}' not found in zip container '{self.name}'."
+                ) from None
         return zipinfo.is_dir()
 
 

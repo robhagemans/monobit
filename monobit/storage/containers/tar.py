@@ -124,9 +124,6 @@ class TarContainer(Container):
         try:
             tarinfo = self._tarfile.getmember(filename)
         except KeyError as e:
-            if self.mode == 'w':
-                # FIXME
-                return False
             raise FileNotFoundError(e)
         return tarinfo.isdir()
 
