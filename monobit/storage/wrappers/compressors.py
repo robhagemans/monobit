@@ -61,7 +61,7 @@ class Compressor:
             cls._check_magic(stream)
         return cls._get_payload_stream(stream, mode)
 
-    #FIXME
+    #FIXME reintroduce
     # @classmethod
     # @contextmanager
     # def _translate_errors(cls):

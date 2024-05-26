@@ -50,7 +50,6 @@ class Location:
         ):
         self.path = Path(path)
         self.mode = mode
-        # TODO overwrite -> 'w' vs 'a' modes (on containers)
         self.overwrite = overwrite
         self.is_open = False
         # container or stream on which we attch the path

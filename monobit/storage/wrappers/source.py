@@ -52,8 +52,6 @@ def _int_from_basic(cvalue):
 
 ###############################################################################
 
-# TODO: should be container, with multiple identifiers
-
 class _CodedBinaryWrapperBase:
 
     @classmethod
