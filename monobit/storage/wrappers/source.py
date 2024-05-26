@@ -56,19 +56,7 @@ def _int_from_basic(cvalue):
 # TODO: make arguments overridable for generic source writer
 
 
-class _CodedBinaryWrapper:
-    delimiters = '{}'
-    comment = '//'
-    assign = '='
-    int_conv = _int_from_c
-    block_comment = ()
-    separator = ''
-
-    # writer parameters
-    assign_template = None
-    bytes_per_line = 16
-    pre = ''
-    post = ''
+class _CodedBinaryWrapperBase:
 
     @classmethod
     def open(cls, stream, mode:str='r', identifier:str=''):
@@ -230,11 +218,28 @@ def _write_out_coded_binary(
 
 ###############################################################################
 
+class _CodedBinaryWrapper(_CodedBinaryWrapperBase):
+    """Default parameters for coded binary."""
+    delimiters = '{}'
+    comment = '//'
+    assign = '='
+    int_conv = _int_from_c
+    block_comment = ()
+    separator = ''
+
+    # writer parameters
+    assign_template = None
+    bytes_per_line = 16
+    pre = ''
+    post = ''
+
+
 @WRAPPERS.register(
     name='c',
     patterns=('*.c', '*.cc', '*.cpp', '*.h')
 )
 class CCodedBinaryWrapper(_CodedBinaryWrapper):
+    """C source code wrapper."""
     delimiters = '{}'
     comment = '//'
     separator = ';'
@@ -248,9 +253,11 @@ class CCodedBinaryWrapper(_CodedBinaryWrapper):
     patterns=('*.js', '*.json',),
 )
 class JSONCodedBinaryWrapper(_CodedBinaryWrapper):
+    """JSON wrapper."""
     delimiters = '[]'
     comment = '//'
-    separator = ','
+    # JSON separator should only be written *between* multiple entries
+    # separator = ','
     assign = ':'
 
     assign_template = '"{identifier}": '
@@ -263,7 +270,21 @@ class JSONCodedBinaryWrapper(_CodedBinaryWrapper):
     patterns=('*.py',),
 )
 class PythonCodedBinaryWrapper(_CodedBinaryWrapper):
+    """Python source code wrapper, using lists."""
     delimiters = '[]'
+    comment = '#'
+    separator = ''
+
+    assign_template = '{identifier} = '
+
+
+@WRAPPERS.register(
+    name='python-tuple',
+    patterns=('*.py',),
+)
+class PythonTupleCodedBinaryWrapper(_CodedBinaryWrapper):
+    """Python source code wrapper, using tuples."""
+    delimiters = '()'
     comment = '#'
     separator = ''
 
@@ -273,20 +294,11 @@ class PythonCodedBinaryWrapper(_CodedBinaryWrapper):
 # writing not implemented for the below
 
 @WRAPPERS.register(
-    name='python-tuple',
-    patterns=('*.py',),
-)
-class PythonTupleCodedBinaryWrapper(_CodedBinaryWrapper):
-    delimiters = '()'
-    comment = '#'
-    separator = ''
-
-
-@WRAPPERS.register(
     name='pascal',
     patterns=('*.pas',),
 )
 class PascalCodedBinaryWrapper(_CodedBinaryWrapper):
+    """Pascal source code wrapper."""
     delimiters = '()'
     # pascal has block comments only
     comment = ''
@@ -302,6 +314,7 @@ class PascalCodedBinaryWrapper(_CodedBinaryWrapper):
     patterns=('*.bas',),
 )
 class BASICCodedBinaryWrapper:
+    """BASIC source code wrapper, using DATA lines."""
 
     @classmethod
     def open(cls, stream, mode='r',
