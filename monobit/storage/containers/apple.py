@@ -11,7 +11,7 @@ from pathlib import Path
 from monobit.base.struct import big_endian as be
 from ..streams import Stream
 from ..magic import FileFormatError, Magic
-from ..containers.container import CONTAINERS, Container
+from ..containers.container import containers, Container
 
 
 class MacFork(Container):
@@ -137,7 +137,7 @@ class AppleContainer(MacFork):
         return name, data_fork, rsrc_fork
 
 
-CONTAINERS.register(
+containers.register(
     name='apple1',
     magic=(
         _APPLESINGLE_MAGIC.to_bytes(4, 'big'),
@@ -145,7 +145,7 @@ CONTAINERS.register(
     patterns=('*.as',),
 )(AppleContainer)
 
-CONTAINERS.register(
+containers.register(
     name='apple2',
     magic=(
         _APPLEDOUBLE_MAGIC.to_bytes(4, 'big'),

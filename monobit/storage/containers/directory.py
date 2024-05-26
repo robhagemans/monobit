@@ -11,7 +11,7 @@ import logging
 from pathlib import Path
 
 from ..streams import Stream
-from .container import Container, CONTAINERS, find_case_insensitive
+from .container import Container, containers, find_case_insensitive
 
 
 class Directory(Container):
@@ -108,4 +108,4 @@ class Directory(Container):
         return f"{type(self).__name__}('{self._path}')"
 
 
-CONTAINERS.register(name='dir')(Directory)
+containers.register(name='dir')(Directory)

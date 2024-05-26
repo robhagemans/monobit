@@ -13,7 +13,7 @@ from pathlib import Path
 from monobit.base.binary import ceildiv
 from ..streams import Stream, KeepOpen
 from ..magic import FileFormatError
-from .compressors import WRAPPERS
+from ..base import wrappers
 
 
 ###############################################################################
@@ -267,7 +267,7 @@ class _CodedBinaryWrapper(_CodedBinaryWrapperBase):
     post = ''
 
 
-@WRAPPERS.register(
+@wrappers.register(
     name='c',
     patterns=('*.c', '*.cc', '*.cpp', '*.h')
 )
@@ -281,7 +281,7 @@ class CCodedBinaryWrapper(_CodedBinaryWrapper):
     assign_template = 'char {identifier}[{bytesize}] = '
 
 
-@WRAPPERS.register(
+@wrappers.register(
     name='json',
     patterns=('*.js', '*.json',),
 )
@@ -298,7 +298,7 @@ class JSONCodedBinaryWrapper(_CodedBinaryWrapper):
     post = '}\n'
 
 
-@WRAPPERS.register(
+@wrappers.register(
     name='python',
     patterns=('*.py',),
 )
@@ -311,7 +311,7 @@ class PythonCodedBinaryWrapper(_CodedBinaryWrapper):
     assign_template = '{identifier} = '
 
 
-@WRAPPERS.register(
+@wrappers.register(
     name='python-tuple',
     patterns=('*.py',),
 )
@@ -326,7 +326,7 @@ class PythonTupleCodedBinaryWrapper(_CodedBinaryWrapper):
 
 # writing not implemented for the below
 
-@WRAPPERS.register(
+@wrappers.register(
     name='pascal',
     patterns=('*.pas',),
 )
@@ -342,7 +342,7 @@ class PascalCodedBinaryWrapper(_CodedBinaryWrapper):
 
 ###############################################################################
 
-@WRAPPERS.register(
+@wrappers.register(
     name='basic',
     patterns=('*.bas',),
 )

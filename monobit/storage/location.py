@@ -9,13 +9,12 @@ import logging
 from pathlib import Path
 
 from ..base.struct import StructError
-from .magic import FileFormatError, MagicRegistry
-from .containers.directory import Directory
 from ..plumbing import take_arguments
-
+from .magic import FileFormatError, MagicRegistry
 from .streams import StreamBase, Stream, KeepOpen
-from .wrappers.compressors import WRAPPERS
-from .containers.container import CONTAINERS, Container
+from .base import wrappers, containers
+from .containers.directory import Directory
+from .containers.container import Container
 
 
 def open_location(
@@ -290,7 +289,7 @@ def _open_wrapper(instream, *, format='', mode='r', argdict=None):
     argdict = argdict or {}
     # identify file type
     try:
-        fitting_classes = WRAPPERS.get_for(instream, format=format)
+        fitting_classes = wrappers.get_for(instream, format=format)
     except ValueError as e:
         raise FileFormatError(e)
     last_error = None
@@ -324,7 +323,7 @@ def _open_container(instream, *, format='', mode='r', argdict=None):
     argdict = argdict or {}
     # identify file type
     try:
-        fitting_classes = CONTAINERS.get_for(instream, format=format)
+        fitting_classes = containers.get_for(instream, format=format)
     except ValueError as e:
         raise FileFormatError(e)
     last_error = None

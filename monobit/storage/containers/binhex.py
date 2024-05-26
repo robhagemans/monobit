@@ -12,7 +12,7 @@ from itertools import zip_longest
 from monobit.base.struct import big_endian as be
 from ..streams import Stream
 from ..magic import FileFormatError, Magic
-from ..containers.container import CONTAINERS, Container
+from ..containers.container import containers, Container
 
 from .apple import MacFork
 
@@ -38,7 +38,7 @@ _CRC = be.Struct(
 )
 
 
-@CONTAINERS.register(
+@containers.register(
     name='binhex',
     magic=(
         b'(This file must be converted',

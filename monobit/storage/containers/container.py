@@ -9,9 +9,7 @@ import logging
 import itertools
 from pathlib import Path
 
-from ..magic import MagicRegistry
-
-CONTAINERS = MagicRegistry()
+from ..base import containers
 
 
 class Container:

@@ -12,9 +12,8 @@ from importlib import import_module
 
 from ..streams import Stream
 from ..magic import FileFormatError
-from ..magic import MagicRegistry
+from ..base import wrappers
 
-WRAPPERS = MagicRegistry()
 
 
 class Compressor:
@@ -83,7 +82,7 @@ class Compressor:
 
     @classmethod
     def register(cls):
-        WRAPPERS.register(
+        wrappers.register(
             name=cls.name, magic=(cls.magic,), patterns=cls.patterns
         )(cls)
 

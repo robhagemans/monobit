@@ -20,13 +20,10 @@ from ..base import Any
 from .magic import MagicRegistry, FileFormatError, maybe_text
 from .location import open_location
 from ..plumbing import convert_arguments, check_arguments
-
-
-DEFAULT_TEXT_FORMAT = 'yaff'
-DEFAULT_BINARY_FORMAT = 'raw'
-
-loaders = MagicRegistry(DEFAULT_TEXT_FORMAT, DEFAULT_BINARY_FORMAT)
-savers = MagicRegistry(DEFAULT_TEXT_FORMAT)
+from .base import (
+    DEFAULT_TEXT_FORMAT, DEFAULT_BINARY_FORMAT,
+    loaders, savers
+)
 
 
 ##############################################################################

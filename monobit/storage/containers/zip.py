@@ -10,7 +10,7 @@ import logging
 import zipfile
 from pathlib import Path, PurePosixPath
 
-from .container import Container, CONTAINERS
+from .container import Container, containers
 from ..streams import KeepOpen, Stream
 from ..magic import FileFormatError
 
@@ -124,7 +124,7 @@ class ZipContainer(Container):
         return zipinfo.is_dir()
 
 
-CONTAINERS.register(
+containers.register(
     name='zip',
     magic=(b'PK\x03\x04',),
     patterns=('*.zip',),

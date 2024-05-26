@@ -12,7 +12,7 @@ from monobit.base.binary import align
 
 from ..streams import Stream
 from ..magic import FileFormatError, Magic
-from ..containers.container import CONTAINERS, Container
+from ..containers.container import containers, Container
 
 from .apple import MacFork
 
@@ -84,7 +84,7 @@ _MACBINARY_HEADER = be.Struct(
 )
 
 
-@CONTAINERS.register(
+@containers.register(
     name='macbin',
     magic=(
         # FFILDMOV is a maybe

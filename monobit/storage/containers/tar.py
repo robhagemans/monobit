@@ -11,7 +11,7 @@ import tarfile
 import logging
 from pathlib import Path, PurePosixPath
 
-from .container import Container, CONTAINERS
+from .container import Container, containers
 from ..streams import KeepOpen, Stream
 from ..magic import FileFormatError, Magic
 
@@ -128,7 +128,7 @@ class TarContainer(Container):
         return tarinfo.isdir()
 
 
-CONTAINERS.register(
+containers.register(
     name='tar',
     # maybe
     magic=(
