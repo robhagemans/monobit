@@ -65,7 +65,6 @@ class _CodedBinaryWrapper:
     separator = ''
 
     # writer parameters
-    identifier_template = None
     assign_template = None
     bytes_per_line = 16
     pre = ''
@@ -81,11 +80,11 @@ class _CodedBinaryWrapper:
         if mode == 'r':
             return cls._open_read(stream, identifier=identifier)
         elif mode == 'w':
-            return cls._open_write(stream)
+            return cls._open_write(stream, identifier=identifier)
         raise ValueError(f"`mode` must be one of 'r' or 'w', not '{mode}'.")
 
     @classmethod
-    def _open_read(cls, infile, *, identifier:str=''):
+    def _open_read(cls, infile, *, identifier):
         """
         Extract binary file encoded in source code.
 
@@ -100,7 +99,9 @@ class _CodedBinaryWrapper:
             raise FileFormatError(
                 f'Could not convert coded data for identifier {found_identifier}'
             )
-        return Stream.from_data(data, mode='r', name=found_identifier)
+        # name = _remove_suffix(infile.name, Path(infile.name).suffix)
+        name = found_identifier
+        return Stream.from_data(data, mode='r', name=name)
 
     @classmethod
     def _get_payload(cls, instream, identifier):
@@ -153,11 +154,13 @@ class _CodedBinaryWrapper:
         return found_identifier, ''.join(payload)
 
     @classmethod
-    def _open_write(cls, outfile):
+    def _open_write(cls, outfile, identifier):
+        name = _remove_suffix(outfile.name, Path(outfile.name).suffix)
         return WrappedWriterStream(
             outfile,
             _write_out_coded_binary,
-            identifier_template=cls.identifier_template,
+            name=name,
+            identifier=identifier or 'coded_binary',
             assign_template=cls.assign_template,
             delimiters=cls.delimiters,
             comment=cls.comment,
@@ -170,13 +173,13 @@ class _CodedBinaryWrapper:
 
 def _write_out_coded_binary(
         rawbytes, outstream, *,
-        identifier_template, assign_template, delimiters, comment, separator,
-        bytes_per_line=16, pre='', post=''
+        assign_template, delimiters, comment, separator,
+        bytes_per_line, pre, post, identifier='',
     ):
     """
     Generate font file encoded as source code.
 
-    identifier_template: Template for the identifier. May include font properties.
+    identifier: Identifier to use.
     assign_template: assignment operator. May include `identifier` and `bytesize` variable.
     delimiters: Must contain two characters, building the opening and closing delimiters of the collection. E.g. []
     comment: Line comment character(s).
@@ -190,11 +193,6 @@ def _write_out_coded_binary(
     start_delimiter = delimiters[0]
     end_delimiter = delimiters[1]
     outstream = outstream.text
-
-    #FIXME
-    # if multiple fonts, build the identifier from first font name
-    # identifier = fonts[0].format_properties(identifier_template)
-    identifier = 'font'
 
     # remove non-ascii
     identifier = identifier.encode('ascii', 'ignore').decode('ascii')
@@ -222,9 +220,9 @@ def _write_out_coded_binary(
         outstream.write('\n')
     outstream.write(end_delimiter)
 
-    #FIXME
-    # if count < len(packs) - 1:
-    #     outstream.write(separator)
+    # C must have a separator at end of statement,
+    # JSON must not have separator for last item in dict
+    # outstream.write(separator)
 
     outstream.write('\n')
     outstream.write(post)
@@ -242,7 +240,6 @@ class CCodedBinaryWrapper(_CodedBinaryWrapper):
     separator = ';'
     block_comment = ('/*','*/')
 
-    identifier_template = 'font_{name}'
     assign_template = 'char {identifier}[{bytesize}] = '
 
 
@@ -256,7 +253,6 @@ class JSONCodedBinaryWrapper(_CodedBinaryWrapper):
     separator = ','
     assign = ':'
 
-    identifier_template = 'font_{name}'
     assign_template = '"{identifier}": '
     pre = '{\n'
     post = '}\n'
@@ -271,9 +267,10 @@ class PythonCodedBinaryWrapper(_CodedBinaryWrapper):
     comment = '#'
     separator = ''
 
-    identifier_template = 'font_{name}'
     assign_template = '{identifier} = '
 
+
+# writing not implemented for the below
 
 @WRAPPERS.register(
     name='python-tuple',
