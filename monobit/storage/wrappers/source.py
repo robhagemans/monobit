@@ -8,9 +8,10 @@ licence: https://opensource.org/licenses/MIT
 import string
 import logging
 from io import BytesIO
+from pathlib import Path
 
 from monobit.base.binary import ceildiv
-from ..streams import Stream
+from ..streams import Stream, KeepOpen
 from ..magic import FileFormatError
 from .compressors import WRAPPERS
 
@@ -346,11 +347,19 @@ class BASICCodedBinaryWrapper:
             values = dataline.split(',')
             coded_data.extend(values)
         data = bytes(_int_from_basic(_s) for _s in coded_data)
-        return Stream.from_data(data, mode='r')
+        # clip off outer extension .bas
+        if Path(infile.name).suffix.lower() == '.bas':
+            name = Path(infile.name).stem
+        return Stream.from_data(data, mode='r', name=name)
 
     @classmethod
     def _open_write(cls, outfile, **kwargs):
-        return WrappedWriterStream(outfile, _write_out_basic, **kwargs)
+        # clip off outer extension .bas
+        if Path(outfile.name).suffix.lower() == '.bas':
+            name = Path(outfile.name).stem
+        return WrappedWriterStream(
+            outfile, _write_out_basic, name=name, **kwargs
+        )
 
 
 def _write_out_basic(
@@ -396,16 +405,17 @@ def _write_out_basic(
 
 class WrappedWriterStream(Stream):
 
-    def __init__(self, outfile, write_out, **kwargs):
+    def __init__(self, outfile, write_out, name='', **kwargs):
         bytesio = BytesIO()
         self._outfile = outfile
         self._write_out = write_out
         self._write_out_kwargs = kwargs
-        super().__init__(bytesio, mode='w')
+        super().__init__(bytesio, name=name, mode='w')
 
     def close(self):
         self.flush()
-        super().close()
+        # we don't own the wrapped stream, don't close it
+        # super().close()
 
     def flush(self):
         self._write_out(self._stream, self._outfile, **self._write_out_kwargs)

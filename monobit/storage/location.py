@@ -216,7 +216,7 @@ class Location:
             if self._leafpath == Path('.'):
                 return
             raise ValueError(
-                f"Cannot open subpath '{subpath}' "
+                f"Cannot open subpath '{self._leafpath}' "
                 f"on non-container stream {stream}'"
             )
         if self._container_format:
