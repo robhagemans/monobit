@@ -53,32 +53,70 @@ def _int_from_basic(cvalue):
 ###############################################################################
 
 # TODO: should be container, with multiple identifiers
-# TODO: make arguments overridable for generic source writer
-
 
 class _CodedBinaryWrapperBase:
 
     @classmethod
-    def open(cls, stream, mode:str='r', identifier:str=''):
+    def open(
+            cls, stream, mode='r',
+            identifier:str='',
+            delimiters:str='',
+            comment:str='',
+            # reader params
+            block_comment:str='',
+            assign:str='',
+            # writer params
+            assign_template:str='',
+            separator:str='',
+            bytes_per_line:int=16,
+            pre:str='',
+            post:str='',
+        ):
         """
         Extract binary file encoded in source code.
 
         identifier: text at start of line where encoded file starts. (default: first array literal)
+        delimiters: delimiter characters surrounding array definition. (use language default)
+        comment: comment character. (use language default)
+        block_comment: block comment character. (use language default)
+        assign: assignment character. (use language default)
+        separator: character separating statements. (use language default)
+        assign_template: format of assignemnt statement, used on write. (use language default)
+        bytes_per_line: number of bytes to write to one line. (default: 16)
+        pre: characters needed at start of file. (use language default)
+        post: characters needed at end of file. (use language default)
         """
+        kwargs = dict(
+            delimiters = delimiters or cls.delimiters,
+            comment = comment or cls.comment,
+        )
+        write_kwargs = dict(
+            assign_template = assign_template or cls.assign_template,
+            separator = separator or cls.separator,
+            bytes_per_line = bytes_per_line or cls.bytes_per_line,
+            pre = pre or cls.pre,
+            post = post or cls.post,
+        )
+        read_kwargs = dict(
+            block_comment = block_comment or cls.block_comment,
+            assign = assign or cls.assign,
+        )
         if mode == 'r':
-            return cls._open_read(stream, identifier=identifier)
+            return cls._open_read(
+                stream, identifier=identifier, **kwargs, **read_kwargs
+            )
         elif mode == 'w':
-            return cls._open_write(stream, identifier=identifier)
+            return cls._open_write(
+                stream, identifier=identifier, **kwargs, **write_kwargs
+            )
         raise ValueError(f"`mode` must be one of 'r' or 'w', not '{mode}'.")
 
     @classmethod
-    def _open_read(cls, infile, *, identifier):
-        """
-        Extract binary file encoded in source code.
-
-        identifier: text at start of line where encoded file starts. (default: first array literal)
-        """
-        found_identifier, coded_data = cls._get_payload(infile.text, identifier)
+    def _open_read(cls, infile, *, identifier, **kwargs):
+        """Open input stream on source wrapper."""
+        found_identifier, coded_data = cls._get_payload(
+            infile.text, identifier=identifier, **kwargs
+        )
         try:
             data = bytes(
                 cls.int_conv(_s) for _s in coded_data.split(',') if _s.strip()
@@ -91,30 +129,33 @@ class _CodedBinaryWrapperBase:
         name = found_identifier
         return Stream.from_data(data, mode='r', name=name)
 
-    @classmethod
-    def _get_payload(cls, instream, identifier):
+    @staticmethod
+    def _get_payload(
+        instream, *, identifier,
+        delimiters, comment, block_comment, assign,
+    ):
         """Find the identifier and get the part between delimiters."""
         def _strip_line(line):
-            if cls.comment:
-                line, _, _ = line.partition(cls.comment)
-            if cls.block_comment:
-                while cls.block_comment[0] in line:
-                    before, _, after = line.partition(cls.block_comment[0])
-                    _, _, after = after.partition(cls.block_comment[1])
+            if comment:
+                line, _, _ = line.partition(comment)
+            if block_comment:
+                while block_comment[0] in line:
+                    before, _, after = line.partition(block_comment[0])
+                    _, _, after = after.partition(block_comment[1])
                     line = before + after
             line = line.strip(' \r\n')
             return line
 
-        start, end = cls.delimiters
+        start, end = delimiters
         found_identifier = ''
         for line in instream:
             line = _strip_line(line)
-            if identifier in line and cls.assign in line:
+            if identifier in line and assign in line:
                 if identifier:
                     _, _, line = line.partition(identifier)
                     found_identifier = identifier
                 else:
-                    found_identifier, _, _ = line.partition(cls.assign)
+                    found_identifier, _, _ = line.partition(assign)
                     *_, found_identifier = found_identifier.strip().split()
             if found_identifier and start in line:
                 _, line = line.split(start)
@@ -142,20 +183,15 @@ class _CodedBinaryWrapperBase:
         return found_identifier, ''.join(payload)
 
     @classmethod
-    def _open_write(cls, outfile, identifier):
+    def _open_write(cls, outfile, *, identifier, **kwargs):
+        """Open output stream on source wrapper."""
         name = _remove_suffix(outfile.name, Path(outfile.name).suffix)
         return WrappedWriterStream(
             outfile,
             _write_out_coded_binary,
             name=name,
-            identifier=identifier or 'coded_binary',
-            assign_template=cls.assign_template,
-            delimiters=cls.delimiters,
-            comment=cls.comment,
-            separator=cls.separator,
-            bytes_per_line=cls.bytes_per_line,
-            pre=cls.pre,
-            post=cls.post
+            identifier=identifier or 'font',
+            **kwargs
         )
 
 
@@ -229,7 +265,6 @@ class _CodedBinaryWrapper(_CodedBinaryWrapperBase):
 
     # writer parameters
     assign_template = None
-    bytes_per_line = 16
     pre = ''
     post = ''
 
@@ -430,58 +465,3 @@ class WrappedWriterStream(Stream):
             rawbytes = bytes(self._stream.getbuffer())
             self._write_out(rawbytes, self._outfile, **self._write_out_kwargs)
         super().close()
-
-
-
-###############################################################################
-
-
-# @loaders.register(name='source', wrapper=True)
-# def load_source(
-#         infile, *,
-#         identifier:str='', delimiters:str='{}', comment:str='//', assign:str='=',
-#         format='',
-#         **kwargs
-#     ):
-#     """
-#     Extract font file encoded in source code.
-#
-#     identifier: text at start of line where encoded file starts (default: first delimiter)
-#     delimiters: pair of delimiters that enclose the file data (default: {})
-#     comment: string that introduces inline comment (default: //)
-#     """
-#     return _load_coded_binary(
-#         infile, identifier=identifier,
-#         delimiters=delimiters, comment=comment,
-#         format=format, assign=assign,
-#         **kwargs
-#     )
-#
-# @savers.register(linked=load_source, wrapper=True)
-# def save_source(
-#         fonts, outstream, *,
-#         identifier:str, assign:str='=', delimiters:str='{}', comment:str='//',
-#         separator:str=';',
-#         bytes_per_line:int=16, distribute:bool=True,
-#         format='raw',
-#         **kwargs
-#     ):
-#     """
-#     Save to font file encoded in source code.
-#
-#     identifier: text at start of line where file data starts (default: first delimiter)
-#     assign: assignment operator (default: =)
-#     delimiters: pair of delimiters that enclose the file data (default: {})
-#     comment: string that introduces inline comment (default: //)
-#     separator: string to separate statements (default: ;)
-#     bytes_per_line: number of encoded bytes in a source line (default: 16)
-#     distribute: save each font as a separate identifier (default: True)
-#     """
-#     return _save_coded_binary(
-#         fonts, outstream,
-#         identifier, f'{identifier} {assign} ', delimiters, comment,
-#         format=format, distribute=distribute, separator=separator,
-#         **kwargs
-#     )
-#
-#
