@@ -21,9 +21,10 @@ class Wrapper:
 
     name = ''
 
-    def __init__(self, stream, mode='r', name=''):
-        self.mode = mode[:1]
-        self.name = name
+    def __init__(self, stream, mode='r'):
+        self.mode = mode
+        if mode not in ('r', 'w'):
+            raise ValueError(f"`mode` must be one of 'r' or 'w', not '{mode}'.")
         self.refcount = 0
         self.closed = False
         # externally provided - don't close this on our side
@@ -34,7 +35,7 @@ class Wrapper:
     # FIXME confusing naming - open() a stream, vs. close() the archive
     def open(self):
         """Get the unwrapped stream. Name, mode are based on wrapper."""
-        name = Path(self.name).stem
+        name = Path(self._wrapped_stream.name).stem
         raise NotImplementedError
 
     # TODO - copied from compressor, re-use code

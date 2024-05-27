@@ -14,6 +14,7 @@ from monobit.base.binary import ceildiv
 from ..streams import Stream, KeepOpen
 from ..magic import FileFormatError
 from ..base import wrappers
+from .wrapper import Wrapper
 
 
 ###############################################################################
@@ -346,13 +347,14 @@ class PascalCodedBinaryWrapper(_CodedBinaryWrapper):
     name='basic',
     patterns=('*.bas',),
 )
-class BASICCodedBinaryWrapper:
+class BASICCodedBinaryWrapper(Wrapper):
     """BASIC source code wrapper, using DATA lines."""
 
-    @classmethod
-    def open(cls, stream, mode='r',
+    def __init__(
+            self, stream, mode='r',
             *,
-            line_number_start:int=1000, line_number_inc:int=10,
+            line_number_start:int=1000,
+            line_number_inc:int=10,
             bytes_per_line:int=8
         ):
         """
@@ -362,24 +364,22 @@ class BASICCodedBinaryWrapper:
         line_number_inc: increment between line numbers (default: 10)
         bytes_per_line: number of encoded bytes in a source line (default: 8)
         """
-        if mode == 'r':
-            return cls._open_read(stream)
-        elif mode == 'w':
-            return cls._open_write(
-                stream,
-                line_number_start=line_number_start,
-                line_number_inc=line_number_inc,
-                bytes_per_line=bytes_per_line,
-            )
-        raise ValueError(f"`mode` must be one of 'r' or 'w', not '{mode}'.")
+        self._line_number_start = line_number_start
+        self._line_number_inc = line_number_inc
+        self._bytes_per_line = bytes_per_line
+        super().__init__(stream, mode)
 
-    @classmethod
-    def _open_read(cls, infile):
+    def open(self):
+        if self.mode == 'r':
+            return self._open_read()
+        return cls._open_write()
+
+    def _open_read(self):
         """
-        Extract font file encoded in DATA lines in classic BASIC source code.
+        Extract binary file encoded in DATA lines in classic BASIC source code.
         Tokenised BASIC files are not supported.
         """
-        infile = infile.text
+        infile = self._wrapped_stream.text
         coded_data = []
         for line in infile:
             _, _, dataline = line.partition('DATA')
@@ -393,12 +393,19 @@ class BASICCodedBinaryWrapper:
         name = _remove_suffix(infile.name, '.bas')
         return Stream.from_data(data, mode='r', name=name)
 
-    @classmethod
-    def _open_write(cls, outfile, **kwargs):
+    def _open_write(self):
+        """
+        Write binary file encoded into DATA lines in classic BASIC source code.
+        Tokenised BASIC files are not supported.
+        """
+        outfile = self._wrapped_stream.text
         # clip off outer extension .bas
         name = _remove_suffix(outfile.name, '.bas')
         return WrappedWriterStream(
-            outfile, _write_out_basic, name=name, **kwargs
+            outfile, _write_out_basic, name=name,
+            line_number_start= self._line_number_start,
+            line_number_inc=self._line_number_inc,
+            bytes_per_line=self._bytes_per_line,
         )
 
 
@@ -412,16 +419,11 @@ def _remove_suffix(oldname, suffix):
 def _write_out_basic(
         rawbytes, outfile,
         *,
-        line_number_start:int=1000, line_number_inc:int=10,
+        line_number_start:int=1000,
+        line_number_inc:int=10,
         bytes_per_line:int=8
     ):
-    """
-    Save to font file encoded in DATA lines in classic BASIC source code.
-
-    line_number_start: line number of first DATA line (-1 for no line numbers; default: 1000)
-    line_number_inc: increment between line numbers (default: 10)
-    bytes_per_line: number of encoded bytes in a source line (default: 8)
-    """
+    """Output raw btes encoded into BASIC-format file."""
     if (
             line_number_inc <= 0
             and line_number_start is not None and line_number_start > -1
@@ -437,7 +439,6 @@ def _write_out_basic(
     rem = len(rawbytes) % bytes_per_line
     if rem:
         lines.append(', '.join(f'&h{_b:02x}' for _b in rawbytes[-rem:]))
-    outfile = outfile.text
     if line_number_start is not None and line_number_start >= 0:
         line_number = line_number_start
     else:
@@ -448,6 +449,8 @@ def _write_out_basic(
             line_number += line_number_inc
         outfile.write(f'DATA {line}\n')
 
+
+###############################################################################
 
 class WrappedWriterStream(Stream):
 

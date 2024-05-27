@@ -32,11 +32,11 @@ class Compressor(Wrapper):
     module = ''
     errorclass = ''
 
-    def __init__(self, stream, mode='r', name=''):
+    def __init__(self, stream, mode='r'):
         if mode == 'r':
             self._check_magic(stream)
         self._ensure_imports()
-        super().__init__(stream, mode, name)
+        super().__init__(stream, mode)
 
     # leave magic checks to MagicRegistry?
     # but we need to be able to raise FileFormatError
