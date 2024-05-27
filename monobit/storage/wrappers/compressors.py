@@ -13,10 +13,10 @@ from importlib import import_module
 from ..streams import Stream
 from ..magic import FileFormatError
 from ..base import wrappers
+from .wrapper import Wrapper
 
 
-
-class Compressor:
+class Compressor(Wrapper):
     """Base class for single-file compression helpers."""
 
     name = ''
@@ -32,13 +32,22 @@ class Compressor:
     module = ''
     errorclass = ''
 
+    def __init__(self, stream, mode='r', name=''):
+        if mode == 'r':
+            self._check_magic(stream)
+        self._ensure_imports()
+        super().__init__(stream, mode, name)
+
+    # leave magic checks to MagicRegistry?
+    # but we need to be able to raise FileFormatError
+    # i.e. would need to implement 'must have magic' on MagicRegistry
     @classmethod
     def _check_magic(cls, instream):
         """Check if the magic signature is correct."""
         magic = instream.peek(len(cls.magic))
         if cls.must_have_magic and not magic.startswith(cls.magic):
             raise FileFormatError(
-                f'Not a {cls.name}-compressed file'
+                f"Stream '{instream.name}' is not a `{cls.name}`-compressed file."
             )
 
     @classmethod
@@ -51,14 +60,12 @@ class Compressor:
         )
         return wrapped
 
-    #FIXME overwrite?
-    @classmethod
-    def open(cls, stream, mode='r'):
+    def open(self):
         """Get the uncompressed stream."""
-        cls._ensure_imports()
-        if mode[:1] == 'r':
-            cls._check_magic(stream)
-        return cls._get_payload_stream(stream, mode)
+        self._unwrapped_stream = self._get_payload_stream(
+            self._wrapped_stream, self.mode
+        )
+        return self._unwrapped_stream
 
     #FIXME reintroduce
     # @classmethod

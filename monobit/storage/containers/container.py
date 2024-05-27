@@ -60,6 +60,7 @@ class Container:
         """Close the archive."""
         self.closed = True
 
+    # TODO confusing naming - open() a stream, vs. close() the archive
     def open(self, name, mode, overwrite=False):
         """Open a binary stream in the container."""
         raise NotImplementedError

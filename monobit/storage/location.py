@@ -191,7 +191,7 @@ class Location:
             else:
                 format = ''
             try:
-                unwrapped = _open_wrapper(
+                wrapper_object = _open_wrapper(
                     stream, mode=self.mode, format=format, argdict=self.argdict,
                 )
             except FileFormatError:
@@ -200,6 +200,8 @@ class Location:
             else:
                 if self._container_format:
                     self._container_format.pop()
+                self._path_objects.append(wrapper_object)
+                unwrapped = wrapper_object.open()
                 self._path_objects.append(unwrapped)
                 stream = unwrapped
         # check if innermost stream is a container
@@ -299,7 +301,7 @@ def _open_wrapper(instream, *, format='', mode='r', argdict=None):
         logging.info('Opening `%s` as wrapper format %s', instream.name, cls.format)
         try:
             kwargs = take_arguments(cls.open, argdict)
-            stream = cls.open(instream, mode=mode, **kwargs)
+            wrapper_object = cls(instream, mode=mode, **kwargs)
         except (FileFormatError, StructError) as e:
             logging.debug(e)
             last_error = e
@@ -309,7 +311,7 @@ def _open_wrapper(instream, *, format='', mode='r', argdict=None):
             for kwarg in kwargs:
                 del argdict[kwarg]
             # returns unwrapped stream
-            return stream
+            return wrapper_object
     if last_error:
         raise last_error
     message = f'Cannot open wrapper `{instream.name}`'
