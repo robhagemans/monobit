@@ -53,11 +53,10 @@ def _int_from_basic(cvalue):
 
 ###############################################################################
 
-class _CodedBinaryWrapperBase:
+class _CodedBinaryWrapperBase(Wrapper):
 
-    @classmethod
-    def open(
-            cls, stream, mode='r',
+    def __init__(
+            self, stream, mode='r',
             identifier:str='',
             delimiters:str='',
             comment:str='',
@@ -85,40 +84,43 @@ class _CodedBinaryWrapperBase:
         pre: characters needed at start of file. (use language default)
         post: characters needed at end of file. (use language default)
         """
-        kwargs = dict(
-            delimiters = delimiters or cls.delimiters,
-            comment = comment or cls.comment,
-        )
-        write_kwargs = dict(
-            assign_template = assign_template or cls.assign_template,
-            separator = separator or cls.separator,
-            bytes_per_line = bytes_per_line or cls.bytes_per_line,
-            pre = pre or cls.pre,
-            post = post or cls.post,
-        )
-        read_kwargs = dict(
-            block_comment = block_comment or cls.block_comment,
-            assign = assign or cls.assign,
-        )
-        if mode == 'r':
-            return cls._open_read(
-                stream, identifier=identifier, **kwargs, **read_kwargs
-            )
-        elif mode == 'w':
-            return cls._open_write(
-                stream, identifier=identifier, **kwargs, **write_kwargs
-            )
-        raise ValueError(f"`mode` must be one of 'r' or 'w', not '{mode}'.")
+        cls = type(self)
+        # read & write
+        self.identifier = identifier or 'font'
+        self.delimiters = delimiters or cls.delimiters
+        self.comment = comment or cls.comment
+        # write
+        self.assign_template = assign_template or cls.assign_template
+        self.separator = separator or cls.separator
+        self.bytes_per_line = bytes_per_line or cls.bytes_per_line
+        self.pre = pre or cls.pre
+        self.post = post or cls.post
+        # read
+        self.block_comment = block_comment or cls.block_comment
+        self.assign = assign or cls.assign
+        super().__init__(stream, mode)
 
-    @classmethod
-    def _open_read(cls, infile, *, identifier, **kwargs):
+    def open(self):
+        if self.mode == 'r':
+            self._unwrapped_stream = self._open_read()
+        else:
+            self._unwrapped_stream = self._open_write()
+        return self._unwrapped_stream
+
+    def _open_read(self):
         """Open input stream on source wrapper."""
-        found_identifier, coded_data = cls._get_payload(
-            infile.text, identifier=identifier, **kwargs
+        infile = self._wrapped_stream
+        found_identifier, coded_data = self._get_payload(
+            infile.text, identifier=self.identifier,
+            delimiters=self.delimiters,
+            comment=self.comment,
+            block_comment=self.block_comment,
+            assign=self.assign,
         )
         try:
             data = bytes(
-                cls.int_conv(_s) for _s in coded_data.split(',') if _s.strip()
+                type(self).int_conv(_s)
+                for _s in coded_data.split(',') if _s.strip()
             )
         except ValueError:
             raise FileFormatError(
@@ -181,16 +183,22 @@ class _CodedBinaryWrapperBase:
                 payload.append(line)
         return found_identifier, ''.join(payload)
 
-    @classmethod
-    def _open_write(cls, outfile, *, identifier, **kwargs):
+    def _open_write(self):
         """Open output stream on source wrapper."""
-        name = _remove_suffix(outfile.name, Path(outfile.name).suffix)
+        outfile = self._wrapped_stream
+        name = Path(outfile.name).stem
         return WrappedWriterStream(
             outfile,
             _write_out_coded_binary,
             name=name,
-            identifier=identifier or 'font',
-            **kwargs
+            identifier=self.identifier,
+            assign_template=self.assign_template,
+            delimiters=self.delimiters,
+            comment=self.comment,
+            separator=self.separator,
+            bytes_per_line=self.bytes_per_line,
+            pre=self.pre,
+            post=self.post,
         )
 
 
@@ -371,8 +379,10 @@ class BASICCodedBinaryWrapper(Wrapper):
 
     def open(self):
         if self.mode == 'r':
-            return self._open_read()
-        return cls._open_write()
+            self._unwrapped_stream = self._open_read()
+        else:
+            self._unwrapped_stream = self._open_write()
+        return self._unwrapped_stream
 
     def _open_read(self):
         """

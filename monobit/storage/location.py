@@ -300,7 +300,7 @@ def _open_wrapper(instream, *, format='', mode='r', argdict=None):
             instream.seek(0)
         logging.info('Opening `%s` as wrapper format %s', instream.name, cls.format)
         try:
-            kwargs = take_arguments(cls.open, argdict)
+            kwargs = take_arguments(cls.__init__, argdict)
             wrapper_object = cls(instream, mode=mode, **kwargs)
         except (FileFormatError, StructError) as e:
             logging.debug(e)

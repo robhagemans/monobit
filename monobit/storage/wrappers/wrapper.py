@@ -38,7 +38,7 @@ class Wrapper:
         name = Path(self._wrapped_stream.name).stem
         raise NotImplementedError
 
-    # TODO - copied from compressor, re-use code
+    # TODO - copied from container, re-use code
     def __enter__(self):
         # we don't support nesting the same archive
         assert self.refcount == 0
@@ -46,7 +46,7 @@ class Wrapper:
         logging.debug('Entering archive %r', self)
         return self
 
-    # TODO - copied from compressor, re-use code
+    # TODO - copied from container, re-use code
     def __exit__(self, exc_type, exc_value, traceback):
         self.refcount -= 1
         if exc_type == BrokenPipeError:
@@ -54,7 +54,7 @@ class Wrapper:
         logging.debug('Exiting archive %r', self)
         self.close()
 
-    # TODO - copied from compressor, re-use code
+    # TODO - copied from container, re-use code
     def close(self):
         """Close the archive."""
         self.closed = True
