@@ -14,17 +14,6 @@ from .magic import FileFormatError
 class StreamHolder:
     """Container/wrapper base class."""
 
-    def __init__(self, stream, mode='r'):
-        self.mode = mode
-        if mode not in ('r', 'w'):
-            raise ValueError(f"`mode` must be one of 'r' or 'w', not '{mode}'.")
-        self.refcount = 0
-        self.closed = False
-        # externally provided - don't close this on our side
-        self._wrapped_stream = stream
-        # opened by us
-        self._unwrapped_stream = None
-
     # NOTE open() opens a stream, close() closes the container
 
     def open(self):
@@ -53,7 +42,17 @@ class StreamHolder:
 
 class Wrapper(StreamHolder):
     """Base class for single-stream wrappers."""
-    pass
+
+    def __init__(self, stream, mode='r'):
+        if mode not in ('r', 'w'):
+            raise ValueError(f"`mode` must be one of 'r' or 'w', not '{mode}'.")
+        self.mode = mode
+        self.refcount = 0
+        self.closed = False
+        # externally provided - don't close this on our side
+        self._wrapped_stream = stream
+        # opened by us
+        self._unwrapped_stream = None
 
 
 class Container(StreamHolder):
