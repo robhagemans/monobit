@@ -13,8 +13,8 @@ from ..plumbing import take_arguments
 from .magic import FileFormatError, MagicRegistry
 from .streams import StreamBase, Stream, KeepOpen
 from .base import wrappers, containers
+from .holders import Container
 from .containers.directory import Directory
-from .containers.container import Container
 
 
 def open_location(

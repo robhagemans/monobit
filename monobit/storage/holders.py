@@ -1,20 +1,63 @@
 """
-monobit.storage.containers.container - base class for containers
+monobit.storage.holders - base class for stream containers and wrappers
 
-(c) 2021--2024 Rob Hagemans
+(c) 2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
 import logging
-import itertools
 from pathlib import Path
 
-from ..base import containers
-from ..wrappers.wrapper import Wrapper
+from .magic import FileFormatError
 
 
-class Container(Wrapper):
-    """Base class for container types."""
+class StreamHolder:
+    """Container/wrapper base class."""
+
+    def __init__(self, stream, mode='r'):
+        self.mode = mode
+        if mode not in ('r', 'w'):
+            raise ValueError(f"`mode` must be one of 'r' or 'w', not '{mode}'.")
+        self.refcount = 0
+        self.closed = False
+        # externally provided - don't close this on our side
+        self._wrapped_stream = stream
+        # opened by us
+        self._unwrapped_stream = None
+
+    # NOTE open() opens a stream, close() closes the container
+
+    def open(self):
+        """Get the unwrapped stream. Name, mode are based on wrapper."""
+        name = Path(self._wrapped_stream.name).stem
+        raise NotImplementedError
+
+    def __enter__(self):
+        # we don't support nesting the same archive
+        assert self.refcount == 0
+        self.refcount += 1
+        logging.debug('Entering archive %r', self)
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.refcount -= 1
+        if exc_type == BrokenPipeError:
+            return True
+        logging.debug('Exiting archive %r', self)
+        self.close()
+
+    def close(self):
+        """Close the archive."""
+        self.closed = True
+
+
+class Wrapper(StreamHolder):
+    """Base class for single-stream wrappers."""
+    pass
+
+
+class Container(StreamHolder):
+    """Base class for multi-stream containers."""
 
     def __init__(self, mode='r', name='', ignore_case:bool=False):
         self.mode = mode[:1]

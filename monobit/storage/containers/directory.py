@@ -11,9 +11,11 @@ import logging
 from pathlib import Path
 
 from ..streams import Stream
-from .container import Container, containers, find_case_insensitive
+from ..holders import Container, find_case_insensitive
+from ..base import containers
 
 
+@containers.register(name='dir')
 class Directory(Container):
     """Treat directory tree as a container."""
 
@@ -106,6 +108,3 @@ class Directory(Container):
 
     def __repr__(self):
         return f"{type(self).__name__}('{self._path}')"
-
-
-containers.register(name='dir')(Directory)

@@ -11,10 +11,12 @@ from pathlib import Path
 from monobit.base.struct import big_endian as be
 from ..streams import Stream
 from ..magic import FileFormatError, Magic
-from ..containers.container import containers, Container
+from ..holders import Container
+from ..base import containers
 
 
 class MacFork(Container):
+    """Base class for Macintosh forks (2-stream containers)."""
 
     forknames = ('rsrc', 'data')
 

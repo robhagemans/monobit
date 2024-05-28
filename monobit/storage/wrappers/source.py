@@ -13,8 +13,8 @@ from pathlib import Path
 from monobit.base.binary import ceildiv
 from ..streams import Stream, KeepOpen
 from ..magic import FileFormatError
+from ..holders import Wrapper
 from ..base import wrappers
-from .wrapper import Wrapper
 
 
 ###############################################################################

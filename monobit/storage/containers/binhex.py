@@ -12,7 +12,8 @@ from itertools import zip_longest
 from monobit.base.struct import big_endian as be
 from ..streams import Stream
 from ..magic import FileFormatError, Magic
-from ..containers.container import containers, Container
+from ..holders import Container
+from ..base import containers
 
 from .apple import MacFork
 
