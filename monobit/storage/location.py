@@ -336,7 +336,7 @@ def _open_container(instream, *, format='', mode='r', argdict=None):
         try:
             kwargs = take_arguments(cls.__init__, argdict)
             # returns container object
-            container = cls(instream, mode=mode, **argdict)
+            container = cls(instream, mode=mode, **kwargs)
         except (FileFormatError, StructError) as e:
             logging.debug(e)
             last_error = e

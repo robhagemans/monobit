@@ -10,9 +10,10 @@ import itertools
 from pathlib import Path
 
 from ..base import containers
+from ..wrappers.wrapper import Wrapper
 
 
-class Container:
+class Container(Wrapper):
     """Base class for container types."""
 
     def __init__(self, mode='r', name='', ignore_case:bool=False):
@@ -42,25 +43,8 @@ class Container:
         else:
             return str(item) in iter(self)
 
-    def __enter__(self):
-        # we don't support nesting the same archive
-        assert self.refcount == 0
-        self.refcount += 1
-        logging.debug('Entering archive %r', self)
-        return self
+    # NOTE open() opens a stream, close() closes the container
 
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.refcount -= 1
-        if exc_type == BrokenPipeError:
-            return True
-        logging.debug('Exiting archive %r', self)
-        self.close()
-
-    def close(self):
-        """Close the archive."""
-        self.closed = True
-
-    # TODO confusing naming - open() a stream, vs. close() the archive
     def open(self, name, mode, overwrite=False):
         """Open a binary stream in the container."""
         raise NotImplementedError
