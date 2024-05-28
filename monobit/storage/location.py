@@ -191,8 +191,9 @@ class Location:
             else:
                 format = ''
             try:
-                wrapper_object = _open_wrapper(
-                    stream, mode=self.mode, format=format, argdict=self.argdict,
+                wrapper_object = _open_container_or_wrapper(
+                    wrappers, stream,
+                    mode=self.mode, format=format, argdict=self.argdict,
                 )
             except FileFormatError:
                 # not a wrapper
@@ -206,10 +207,9 @@ class Location:
                 stream = unwrapped
         # check if innermost stream is a container
         try:
-            self._path_objects.append(
-                _open_container(
-                    stream, mode=self.mode, format=format, argdict=self.argdict,
-                )
+            container_object = _open_container_or_wrapper(
+                containers, stream,
+                mode=self.mode, format=format, argdict=self.argdict,
             )
         except FileFormatError:
             # innermost stream is a non-container stream.
@@ -219,8 +219,10 @@ class Location:
                 f"Cannot open subpath '{self._leafpath}' "
                 f"on non-container stream {stream}'"
             )
-        if self._container_format:
-            self._container_format.pop()
+        else:
+            if self._container_format:
+                self._container_format.pop()
+            self._path_objects.append(container_object)
 
     def _resolve_container(self):
         container = self._leaf
@@ -284,24 +286,29 @@ class Location:
         return path, Path('.')
 
 
-# TODO fix code repetition
-# TODO move with wrappers
-def _open_wrapper(instream, *, format='', mode='r', argdict=None):
-    """Open wrapper on open stream."""
+def _open_container_or_wrapper(
+        registry, instream, *,
+        format='', mode='r', argdict=None
+    ):
+    """Open container or wrapper on open stream."""
     argdict = argdict or {}
     # identify file type
     try:
-        fitting_classes = wrappers.get_for(instream, format=format)
+        fitting_classes = registry.get_for(instream, format=format)
     except ValueError as e:
         raise FileFormatError(e)
     last_error = None
     for cls in fitting_classes:
         if mode == 'r':
             instream.seek(0)
-        logging.info('Opening `%s` as wrapper format %s', instream.name, cls.format)
+        logging.info(
+            "Opening stream '%s' as container format `%s`",
+            instream.name, cls.format
+        )
         try:
             kwargs = take_arguments(cls.__init__, argdict)
-            wrapper_object = cls(instream, mode=mode, **kwargs)
+            # returns container or wrapper object
+            container_wrapper = cls(instream, mode=mode, **kwargs)
         except (FileFormatError, StructError) as e:
             logging.debug(e)
             last_error = e
@@ -310,45 +317,10 @@ def _open_wrapper(instream, *, format='', mode='r', argdict=None):
             # remove used arguments
             for kwarg in kwargs:
                 del argdict[kwarg]
-            # returns unwrapped stream
-            return wrapper_object
+            return container_wrapper
     if last_error:
         raise last_error
-    message = f'Cannot open wrapper `{instream.name}`'
-    if format:
-        message += f': format specifier `{format}` not recognised'
-    raise FileFormatError(message)
-
-# TODO move with containers
-def _open_container(instream, *, format='', mode='r', argdict=None):
-    """Open container on open stream."""
-    argdict = argdict or {}
-    # identify file type
-    try:
-        fitting_classes = containers.get_for(instream, format=format)
-    except ValueError as e:
-        raise FileFormatError(e)
-    last_error = None
-    for cls in fitting_classes:
-        if mode == 'r':
-            instream.seek(0)
-        logging.info('Opening `%s` as container format %s', instream.name, cls.format)
-        try:
-            kwargs = take_arguments(cls.__init__, argdict)
-            # returns container object
-            container = cls(instream, mode=mode, **kwargs)
-        except (FileFormatError, StructError) as e:
-            logging.debug(e)
-            last_error = e
-            continue
-        else:
-            # remove used arguments
-            for kwarg in kwargs:
-                del argdict[kwarg]
-            return container
-    if last_error:
-        raise last_error
-    message = f'Cannot open container `{instream.name}`'
+    message = f"Cannot open container or wrapper on stream '{instream.name}'"
     if format:
         message += f': format specifier `{format}` not recognised'
     raise FileFormatError(message)
