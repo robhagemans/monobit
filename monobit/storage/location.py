@@ -61,9 +61,12 @@ class Location:
         self.argdict = argdict
 
     def __repr__(self):
-        return str(vars(self))
-
-    # __str__
+        """String representation."""
+        return (
+            f"<{type(self).__name__} "
+            f"root='{self._path_objects[0]}' path='{self.path}' mode='{self.mode}'"
+            f"{' [unresolved]' if not self.is_open else ''}>"
+        )
 
     @classmethod
     def from_path(cls, path, **kwargs):

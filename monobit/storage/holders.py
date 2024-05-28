@@ -54,6 +54,14 @@ class Wrapper(StreamHolder):
         # opened by us
         self._unwrapped_stream = None
 
+    def __repr__(self):
+        """String representation."""
+        return (
+            f"<{type(self).__name__} "
+            f"stream='{self._wrapped_stream}' mode='{self.mode}'"
+            f"{' [closed]' if self.closed else ''}>"
+        )
+
 
 class Container(StreamHolder):
     """Base class for multi-stream containers."""
@@ -66,6 +74,14 @@ class Container(StreamHolder):
         # ignore case on read - open any case insensitive match
         # case sensitivity of writing depends on file system
         self._ignore_case = ignore_case
+
+    def __repr__(self):
+        """String representation."""
+        return (
+            f"<{type(self).__name__} "
+            f"mode='{self.mode}' name='{self.name}'"
+            f"{' [closed]' if self.closed else ''}>"
+        )
 
     def __iter__(self):
         """List contents."""
