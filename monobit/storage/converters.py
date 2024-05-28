@@ -240,8 +240,5 @@ def _save_all(
                     format=format,
                     **kwargs
                 )
-        # TODO move handler to Location
-        except BrokenPipeError:
-            pass
         except FileFormatError as e:
             logging.error('Could not save `%s`: %s', filename, e)

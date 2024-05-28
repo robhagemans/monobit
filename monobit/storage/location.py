@@ -103,6 +103,8 @@ class Location:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
+        if exc_type == BrokenPipeError:
+            return True
 
     def open(self):
         """Resolve path, opening streams and containers as needed."""
@@ -117,7 +119,11 @@ class Location:
     def close(self):
         # leave out the root object as we don't own it
         while len(self._path_objects) > 1:
-            self._path_objects.pop().close()
+            outer = self._path_objects.pop()
+            try:
+                outer.close()
+            except Exception as exc:
+                logging.warning('Exception while closing %s: 5s', outer, exc)
         self.is_open = False
 
     @property
