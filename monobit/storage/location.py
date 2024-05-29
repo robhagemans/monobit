@@ -48,7 +48,7 @@ class Location:
         self.path = Path(path)
         self.mode = mode
         self.overwrite = overwrite
-        self.is_open = False
+        self.resolved = False
         # container or stream on which we attch the path
         # this object is NOT owned by us but externaly provided
         # an further objects in the path will be ours to close
@@ -63,7 +63,7 @@ class Location:
         return (
             f"<{type(self).__name__} "
             f"root='{self._path_objects[0]}' path='{self.path}' mode='{self.mode}'"
-            f"{' [unresolved]' if not self.is_open else ''}>"
+            f"{' [unresolved]' if not self.resolved else ''}>"
         )
 
     @classmethod
@@ -100,16 +100,16 @@ class Location:
         )
 
     def __enter__(self):
-        return self.open()
+        return self.resolve()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
         if exc_type == BrokenPipeError:
             return True
 
-    def open(self):
+    def resolve(self):
         """Resolve path, opening streams and containers as needed."""
-        self.is_open = True
+        self.resolved = True
         try:
             self._resolve()
         except Exception:
@@ -126,7 +126,7 @@ class Location:
                 outer.close()
             except Exception as exc:
                 logging.warning('Exception while closing %s: 5s', outer, exc)
-        self.is_open = False
+        self.resolved = False
 
     @property
     def _leaf(self):
@@ -147,7 +147,7 @@ class Location:
 
     def is_dir(self):
         """Location points to a directory/container."""
-        if not self.is_open:
+        if not self.resolved:
             raise ValueError(f'Location {self} is not open.')
         return not isinstance(self._leaf, StreamBase)
 
@@ -170,8 +170,8 @@ class Location:
         for path in container.iter_sub(self._leafpath):
             subpath = Path(path).relative_to(self._leafpath)
             location = self.join(subpath)
-            with location.open() as opened_location:
-                yield from opened_location.walk()
+            with location:
+                yield from location.walk()
 
     def unused_name(self, name):
         if not self.is_dir():
