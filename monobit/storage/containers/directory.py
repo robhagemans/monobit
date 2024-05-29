@@ -38,7 +38,7 @@ class Directory(Container):
         super().__init__(mode, str(self._path), ignore_case=ignore_case)
 
     def open(self, name, mode, overwrite=False):
-        """Open a stream or subcontainer in the container."""
+        """Open a stream in the directory."""
         # mode in 'r', 'w'
         mode = mode[:1]
         pathname = Path(name)

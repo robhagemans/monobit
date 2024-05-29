@@ -21,11 +21,9 @@ def open_location(
         stream_or_location, mode='r', overwrite=False, container_format='',
         argdict=None,
     ):
-    """
-    Point to given location, resolving nested containers and wrappers.
-    """
+    """Point to given location; may include nested containers and wrappers."""
     if mode not in ('r', 'w'):
-        raise ValueError(f"Unsupported mode '{mode}'.")
+        raise ValueError(f"Mode must be 'r' or 'w'; not '{mode}'.")
     if not stream_or_location:
         raise ValueError(f'No location provided.')
     if isinstance(stream_or_location, (str, Path)):
@@ -92,7 +90,7 @@ class Location:
             stream = Stream(KeepOpen(stream), mode=mode)
         if stream.mode != mode:
             raise ValueError(
-                f"Stream mode '{stream.mode}' not equal to mode '{mode}'"
+                f"Stream mode '{stream.mode}' not equal to location mode '{mode}'"
             )
         return cls(
             root=stream,
@@ -120,6 +118,7 @@ class Location:
         return self
 
     def close(self):
+        """Close objects we opened on path."""
         # leave out the root object as we don't own it
         while len(self._path_objects) > 1:
             outer = self._path_objects.pop()
@@ -131,6 +130,7 @@ class Location:
 
     @property
     def _leaf(self):
+        """Object (stream or container) at the end of path."""
         leaf = self._path_objects[-1]
         assert isinstance(leaf, (StreamBase, Container)), leaf
         return leaf
@@ -211,9 +211,9 @@ class Location:
                 if self._container_format:
                     self._container_format.pop()
                 self._path_objects.append(wrapper_object)
-                unwrapped = wrapper_object.open()
-                self._path_objects.append(unwrapped)
-                stream = unwrapped
+                unwrapped_stream = wrapper_object.open()
+                self._path_objects.append(unwrapped_stream)
+                stream = unwrapped_stream
         # check if innermost stream is a container
         try:
             container_object = _open_container_or_wrapper(
@@ -256,7 +256,7 @@ class Location:
                 # new directory
                 return
         else:
-            # head is a file. open it and recurse
+            # head points to a file. open it and recurse
             stream = container.open(
                 head, mode=self.mode, overwrite=self.overwrite
             )

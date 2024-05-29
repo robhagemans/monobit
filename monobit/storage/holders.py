@@ -25,14 +25,14 @@ class StreamHolder:
         # we don't support nesting the same archive
         assert self.refcount == 0
         self.refcount += 1
-        logging.debug('Entering archive %r', self)
+        logging.debug('Entering %r', self)
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.refcount -= 1
         if exc_type == BrokenPipeError:
             return True
-        logging.debug('Exiting archive %r', self)
+        logging.debug('Exiting %r', self)
         self.close()
 
     def close(self):
