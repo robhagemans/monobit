@@ -1,7 +1,7 @@
 """
 monobit.storage.converters - load and save fonts
 
-(c) 2019--2023 Rob Hagemans
+(c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -15,59 +15,45 @@ from contextlib import contextmanager
 from ..constants import VERSION, CONVERTER_NAME
 from ..core import Font, Pack
 from ..base.struct import StructError
-from ..plumbing import scriptable, ARG_PREFIX, convert_arguments, check_arguments
+from ..plumbing import scriptable, ARG_PREFIX
 from ..base import Any
-from .streams import Stream, StreamBase, KeepOpen, DirectoryStream
 from .magic import MagicRegistry, FileFormatError, maybe_text
-
-
-DEFAULT_TEXT_FORMAT = 'yaff'
-DEFAULT_BINARY_FORMAT = 'raw'
-
-
-@contextmanager
-def open_location(location, mode):
-    """Parse file specification, open stream."""
-    if mode not in ('r', 'w'):
-        raise ValueError(f"Unsupported mode '{mode}'.")
-    if not location:
-        raise ValueError(f'No location provided.')
-    if isinstance(location, str):
-        location = Path(location)
-    if isinstance(location, Path):
-        root = Path(location.root)
-        subpath = location.relative_to(root)
-        with DirectoryStream(root, mode) as stream:
-            yield stream, subpath
-    elif isinstance(location, StreamBase):
-        yield location, ''
-    else:
-        # we didn't open the file, so we don't own it
-        # we neeed KeepOpen for when the yielded object goes out of scope in the caller
-        yield Stream(KeepOpen(location), mode=mode), ''
+from .location import open_location
+from ..plumbing import convert_arguments, check_arguments
+from .base import (
+    DEFAULT_TEXT_FORMAT, DEFAULT_BINARY_FORMAT,
+    loaders, savers
+)
 
 
 ##############################################################################
 # loading
 
 @scriptable(wrapper=True, record=False)
-def load(infile:Any='', *, format:str='', **kwargs):
+def load(infile:Any='', *, format:str='', container_format:str='', **kwargs):
     """
     Read font(s) from file.
 
-    infile: input file (default: stdin)
+    infile: input file or path (default: stdin)
     format: input format (default: infer from magic number or filename)
+    container_format: container/wrapper formats separated by . (default: infer from magic number or filename)
     """
     infile = infile or sys.stdin
-    with open_location(infile, 'r') as (stream, subpath):
-        return load_stream(stream, format=format, subpath=subpath, **kwargs)
+    with open_location(
+            infile, mode='r', container_format=container_format, argdict=kwargs,
+        ) as location:
+        if location.is_dir():
+            return _load_all(location, format=format, **location.argdict)
+        else:
+            return _load_stream(
+                location.get_stream(), format=format, **location.argdict
+            )
 
 
-def load_stream(instream, *, format='', subpath='', **kwargs):
+def _load_stream(instream, *, format='', subpath='', **kwargs):
     """Load fonts from open stream."""
-    new_format, _, outer = format.rpartition('.')
     # identify file type
-    fitting_loaders = loaders.get_for(instream, format=outer)
+    fitting_loaders = loaders.get_for(instream, format=format)
     if not fitting_loaders:
         message = f'Cannot load `{instream.name}`'
         if format:
@@ -78,14 +64,11 @@ def load_stream(instream, *, format='', subpath='', **kwargs):
     for loader in fitting_loaders:
         instream.seek(0)
         logging.info('Loading `%s` as %s', instream.name, loader.format)
-        # update format name, removing the most recently found wrapper format
-        if outer == loader.format:
-            format = new_format
-        # only provide subpath and format args if non-empty
-        if Path(subpath) != Path('.'):
-            kwargs['subpath'] = subpath
-        if format:
-            kwargs['format'] = format
+
+        loader = convert_arguments(loader)
+        # if not wrapper:
+        loader = check_arguments(loader)
+
         try:
             fonts = loader(instream, **kwargs)
         except (FileFormatError, StructError) as e:
@@ -129,23 +112,24 @@ def load_stream(instream, *, format='', subpath='', **kwargs):
     raise FileFormatError('Unable to read fonts from file')
 
 
-def load_all(container, *, format='', **kwargs):
+def _load_all(root_location, *, format='', **kwargs):
     """Open container and load all fonts found in it into one pack."""
-    logging.info('Reading all from `%s`.', container.name)
+    logging.info('Reading all from `%s`.', root_location)
     packs = Pack()
-    names = list(container)
-    for name in container:
-        logging.debug('Trying `%s` on `%s`.', name, container.name)
-        stream = container.open(name, 'r')
-        with stream:
+    for location in root_location.walk():
+        with location:
+            logging.debug('Trying `%s`.', location)
             try:
-                pack = load_stream(
-                    stream, format=format, **kwargs
+                pack = _load_stream(
+                    location.get_stream(),
+                    format=format,
                 )
             except FileFormatError as exc:
-                logging.debug('Could not load `%s`: %s', name, exc)
+                logging.debug('Could not load `%s`: %s', location, exc)
             else:
                 packs += Pack(pack)
+    if not packs:
+        raise FileFormatError('Unable to read fonts from container.')
     return packs
 
 
@@ -174,13 +158,15 @@ def save(
         pack_or_font,
         outfile:Any='', *,
         format:str='', overwrite:bool=False,
+        container_format:str='',
         **kwargs
     ):
     """
     Write font(s) to file.
 
     outfile: output file or path (default: stdout)
-    format: font file format
+    format: font file format (default: infer from filename)
+    container_format: container/wrapper formats separated by . (default: infer from filename)
     overwrite: if outfile is a path, allow overwriting existing file
     """
     pack = Pack(pack_or_font)
@@ -191,23 +177,25 @@ def save(
         sys.stdout.reconfigure(errors='replace')
     if not pack:
         raise ValueError('No fonts to save')
-    with open_location(outfile, 'w') as (stream, subpath):
-        save_stream(
-            pack, stream,
-            format=format, subpath=subpath, overwrite=overwrite,
-            **kwargs
+    with open_location(
+            outfile, mode='w', overwrite=overwrite,
+            container_format=container_format,
+            argdict=kwargs,
+        ) as location:
+        if location.is_dir():
+            return _save_all(
+                pack, location, format=format, overwrite=overwrite,
+                **location.argdict
+            )
+        _save_stream(
+            pack, location.get_stream(), format=format, **location.argdict
         )
     return pack_or_font
 
 
-def save_stream(
-        pack, outstream, *,
-        format='', subpath='', overwrite=False,
-        **kwargs
-    ):
+def _save_stream(pack, outstream, *, format='', **kwargs):
     """Save fonts to an open stream."""
-    new_format, _, outer = format.rpartition('.')
-    matching_savers = savers.get_for(outstream, format=outer)
+    matching_savers = savers.get_for(outstream, format=format)
     if not matching_savers:
         if format:
             raise ValueError(f'Format specification `{format}` not recognised')
@@ -223,39 +211,21 @@ def save_stream(
             f'({", ".join(_s.format for _s in matching_savers)})'
         )
     saver, *_ = matching_savers
-    if Path(subpath) == Path('.'):
-        logging.info('Saving `%s` as %s.', outstream.name, saver.format)
-    else:
-        logging.info(
-            'Saving `%s` on `%s` as %s.', subpath, outstream.name, saver.format
-        )
-    # special case - saving to directory
-    # we need to create the dir before opening a stream,
-    # or the stream will be a regular file
-    if isinstance(outstream, DirectoryStream) and format == 'dir':
-        if not (Path(outstream.name) / subpath).exists():
-            os.makedirs(Path(outstream.name) / subpath, exist_ok=True)
-            overwrite = True
-    # update format name, removing the most recently found wrapper format
-    if outer == saver.format:
-        format = new_format
-    # only provide subpath and format args if non-empty
-    if Path(subpath) != Path('.'):
-        kwargs['subpath'] = subpath
-        kwargs['overwrite'] = overwrite
-    if format:
-        kwargs['format'] = format
+    logging.info('Saving `%s` as %s.', outstream.name, saver.format)
+
+    saver = convert_arguments(saver)
+    # if not wrapper:
+    saver = check_arguments(saver)
+
     saver(pack, outstream, **kwargs)
 
 
-def save_all(
-        pack, container, *,
-        format=DEFAULT_TEXT_FORMAT, template='',
-        overwrite=False,
-        **kwargs
+def _save_all(
+        pack, location, *, format='', template='', overwrite=False, **kwargs
     ):
     """Save fonts to a container."""
-    logging.info('Writing all to `%s`.', container.name)
+    format = format or DEFAULT_TEXT_FORMAT
+    logging.info('Writing all to `%s`.', location)
     for font in pack:
         if format and not template:
             # generate name from format
@@ -263,60 +233,14 @@ def save_all(
         # fill out template
         name = font.format_properties(template)
         # generate unique filename
-        filename = container.unused_name(name.replace(' ', '_'))
-        stream = container.open(filename, 'w', overwrite=overwrite)
+        filename = location.unused_name(name.replace(' ', '_'))
         try:
-            with stream:
-                save_stream(Pack(font), stream, format=format, **kwargs)
-        except BrokenPipeError:
-            pass
+            with location.join(filename) as new_location:
+                _save_stream(
+                    Pack(font),
+                    new_location.get_stream(),
+                    format=format,
+                    **kwargs
+                )
         except FileFormatError as e:
             logging.error('Could not save `%s`: %s', filename, e)
-
-
-##############################################################################
-# loader/saver registry
-
-class ConverterRegistry(MagicRegistry):
-    """Loader/Saver registry."""
-
-    def register(
-            self, name='', magic=(), patterns=(),
-            linked=None, wrapper=False,
-        ):
-        """
-        Decorator to register font loader/saver.
-
-        name: unique name of the format
-        magic: magic sequences for this format (no effect for savers)
-        patterns: filename patterns for this format
-        linked: loader/saver linked to saver/loader
-        """
-        register_magic = super().register
-
-        def _decorator(original_func):
-            _func = convert_arguments(original_func)
-            if not wrapper:
-                _func = check_arguments(_func)
-            # register converter
-            if linked:
-                format = name or linked.format
-                _func.magic = magic or linked.magic
-                _func.patterns = patterns or linked.patterns
-            else:
-                format = name
-                _func.magic = magic
-                _func.patterns = patterns
-            # register magic sequences
-            register_magic(
-                name=format,
-                magic=_func.magic,
-                patterns=_func.patterns,
-            )(_func)
-            return _func
-
-        return _decorator
-
-
-loaders = ConverterRegistry('load', DEFAULT_TEXT_FORMAT, DEFAULT_BINARY_FORMAT)
-savers = ConverterRegistry('save', DEFAULT_TEXT_FORMAT)

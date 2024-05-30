@@ -1,7 +1,7 @@
 """
 monobit.storage.containers.tar - tarfile container
 
-(c) 2021--2023 Rob Hagemans
+(c) 2021--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -11,7 +11,8 @@ import tarfile
 import logging
 from pathlib import Path, PurePosixPath
 
-from .container import Container
+from ..holders import Container
+from ..base import containers
 from ..streams import KeepOpen, Stream
 from ..magic import FileFormatError, Magic
 
@@ -19,7 +20,7 @@ from ..magic import FileFormatError, Magic
 class TarContainer(Container):
     """Tar-file wrapper."""
 
-    def __init__(self, file, mode='r', ignore_case=True):
+    def __init__(self, file, mode='r', ignore_case:bool=True):
         """Create wrapper."""
         # mode really should just be 'r' or 'w'
         mode = mode[:1]
@@ -66,13 +67,14 @@ class TarContainer(Container):
         super().close()
         self.closed = True
 
-    def __iter__(self):
-        """List contents."""
+    def iter_sub(self, prefix):
+        """List contents of a subpath."""
         # list regular files only, skip symlinks and dirs and block devices
         namelist = (
             _ti.name
             for _ti in self._tarfile.getmembers()
             if _ti.isfile()
+            and PurePosixPath(_ti.name).is_relative_to(PurePosixPath(self._root) / prefix)
         )
         return (
             str(PurePosixPath(_name).relative_to(self._root))
@@ -91,7 +93,14 @@ class TarContainer(Container):
             try:
                 file = self._tarfile.extractfile(filename)
             except KeyError:
-                file = self._tarfile.extractfile(self._match_name(filename))
+                try:
+                    file = self._tarfile.extractfile(self._match_name(filename))
+                except KeyError as e:
+                    raise FileNotFoundError(e)
+            if file is None:
+                raise IsADirectoryError(
+                    f"Cannot open stream on '{filename}': is a directory."
+                )
             # .name is not writeable, so we need to wrap
             return Stream(file, mode, name=name, where=self)
         else:
@@ -107,12 +116,24 @@ class TarContainer(Container):
             self._files.append(newfile)
             return newfile
 
+    def is_dir(self, name):
+        """Item at `name` is a directory."""
+        root = PurePosixPath(self._root)
+        if root / name == root:
+            return True
+        filename = str(root / name)
+        try:
+            tarinfo = self._tarfile.getmember(filename)
+        except KeyError as e:
+            raise FileNotFoundError(e)
+        return tarinfo.isdir()
 
-TarContainer.register(
+
+containers.register(
     name='tar',
     # maybe
     magic=(
         Magic.offset(257) + b'ustar',
     ),
     patterns=('*.tar',),
-)
+)(TarContainer)

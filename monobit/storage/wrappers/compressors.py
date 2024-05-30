@@ -1,7 +1,7 @@
 """
 monobit.storage.wrappers.compressors - single-file compression wrappers
 
-(c) 2021--2023 Rob Hagemans
+(c) 2021--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -10,12 +10,13 @@ from pathlib import Path
 from contextlib import contextmanager
 from importlib import import_module
 
-from monobit.storage import loaders, savers, load_stream, save_stream
-from monobit.storage import Stream
-from monobit.storage import FileFormatError
+from ..streams import Stream
+from ..magic import FileFormatError
+from ..holders import Wrapper
+from ..base import wrappers
 
 
-class Compressor:
+class Compressor(Wrapper):
     """Base class for single-file compression helpers."""
 
     name = ''
@@ -31,13 +32,22 @@ class Compressor:
     module = ''
     errorclass = ''
 
+    def __init__(self, stream, mode='r'):
+        if mode == 'r':
+            self._check_magic(stream)
+        self._ensure_imports()
+        super().__init__(stream, mode)
+
+    # leave magic checks to MagicRegistry?
+    # but we need to be able to raise FileFormatError
+    # i.e. would need to implement 'must have magic' on MagicRegistry
     @classmethod
     def _check_magic(cls, instream):
         """Check if the magic signature is correct."""
         magic = instream.peek(len(cls.magic))
         if cls.must_have_magic and not magic.startswith(cls.magic):
             raise FileFormatError(
-                f'Not a {cls.name}-compressed file'
+                f"Stream '{instream.name}' is not a `{cls.name}`-compressed file."
             )
 
     @classmethod
@@ -50,14 +60,22 @@ class Compressor:
         )
         return wrapped
 
-    @classmethod
-    @contextmanager
-    def _translate_errors(cls):
-        """Context wrapper to convert library-specific errors to ours."""
-        try:
-            yield
-        except cls.error as e:
-            raise FileFormatError(e)
+    def open(self):
+        """Get the uncompressed stream."""
+        self._unwrapped_stream = self._get_payload_stream(
+            self._wrapped_stream, self.mode
+        )
+        return self._unwrapped_stream
+
+    #FIXME reintroduce
+    # @classmethod
+    # @contextmanager
+    # def _translate_errors(cls):
+    #     """Context wrapper to convert library-specific errors to ours."""
+    #     try:
+    #         yield
+    #     except cls.error as e:
+    #         raise FileFormatError(e)
 
     @classmethod
     def _ensure_imports(cls):
@@ -70,48 +88,16 @@ class Compressor:
             cls.errorclass = ''
 
     @classmethod
-    def load(cls, instream, payload:str='', **kwargs):
-        """
-        Load fonts from compressed stream.
-
-        payload: format of compressed font file.
-        """
-        cls._ensure_imports()
-        cls._check_magic(instream)
-        wrapped = cls._get_payload_stream(instream, 'r')
-        with cls._translate_errors():
-            with wrapped:
-                return load_stream(wrapped, format=payload, **kwargs)
-
-    @classmethod
-    def save(cls, fonts, outstream, payload:str='', **kwargs):
-        """
-        Save fonts to compressed stream.
-
-        payload: format of compressed font file.
-        """
-        cls._ensure_imports()
-        wrapped = cls._get_payload_stream(outstream, 'w')
-        with cls._translate_errors():
-            with wrapped:
-                return save_stream(fonts, wrapped, format=payload, **kwargs)
-
-    @classmethod
     def register(cls):
-        loaders.register(
-            name=cls.name, magic=(cls.magic,), patterns=cls.patterns, wrapper=True
-        )(cls.load)
-        savers.register(
-            name=cls.name, magic=(cls.magic,), patterns=cls.patterns, wrapper=True
-        )(cls.save)
+        wrappers.register(
+            name=cls.name, magic=(cls.magic,), patterns=cls.patterns
+        )(cls)
 
 
 class GzipCompressor(Compressor):
     name  = 'gzip'
     module = 'gzip'
     errorclass = 'BadGzipFile'
-    #compressor = gzip
-    #error = gzip.BadGzipFile
     magic = b'\x1f\x8b'
     patterns = ('*.gz',)
 

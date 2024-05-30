@@ -187,8 +187,9 @@ class Stream(StreamWrapper):
 
     def close(self):
         """Close stream, absorb errors."""
+        # if self.closed:
+        #     return
         # always close at wrapper level
-        self.closed = True
         if self._textstream:
             try:
                 self._textstream.close()
@@ -198,25 +199,7 @@ class Stream(StreamWrapper):
             super().close()
         except EnvironmentError:
             pass
-
-
-class DirectoryStream(Stream):
-    """Fake stream to represent directory."""
-
-    def __init__(self, file, mode, *, name='', where=None):
-        name = name or str(file)
-        mode = mode[:1]
-        if isinstance(file, DirectoryStream):
-            file = file.name
-        if not isinstance(file, (str, Path)):
-            raise TypeError(
-                'DirectoryStream initialiser must be DirectoryStream, Path or str.'
-            )
-        # path is what should be used to open the actual directory
-        self.path = Path(file)
-        dummystream = open(os.devnull, mode + 'b')
-        # initialise wrapper
-        super().__init__(dummystream, mode=mode, name=name, where=where)
+        self.closed = True
 
 
 ###############################################################################

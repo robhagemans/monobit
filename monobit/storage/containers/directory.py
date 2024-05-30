@@ -1,7 +1,7 @@
 """
 monobit.storage.containers.directory - directory traversal
 
-(c) 2021--2023 Rob Hagemans
+(c) 2021--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -10,21 +10,20 @@ import io
 import logging
 from pathlib import Path
 
-from ..streams import Stream, DirectoryStream
-from .container import Container
+from ..streams import Stream
+from ..holders import Container, find_case_insensitive
+from ..base import containers
 
 
+@containers.register(name='dir')
 class Directory(Container):
     """Treat directory tree as a container."""
 
-    def __init__(self, path='', mode='r', ignore_case=True):
+    def __init__(self, path='', mode='r', ignore_case:bool=True):
         """Create directory wrapper."""
         # if empty path, this refers to the whole filesystem
         if not path:
             self._path = Path('/')
-        elif isinstance(path, DirectoryStream):
-            # directory 'streams'
-            self._path = Path(path.path)
         elif isinstance(path, Directory):
             self._path = Path(path._path)
         else:
@@ -39,7 +38,7 @@ class Directory(Container):
         super().__init__(mode, str(self._path), ignore_case=ignore_case)
 
     def open(self, name, mode, overwrite=False):
-        """Open a stream in the container."""
+        """Open a stream in the directory."""
         # mode in 'r', 'w'
         mode = mode[:1]
         pathname = Path(name)
@@ -54,10 +53,9 @@ class Directory(Container):
                 f'Overwriting existing file {str(filepath)}'
                 ' requires -overwrite to be set'
             )
-        # return DirectoryStream if the path is a directory
         if filepath.is_dir():
-            return DirectoryStream(
-                filepath, name=str(pathname), mode=mode, where=self
+            raise IsADirectoryError(
+                f"Cannot open stream on '{filepath}': is a directory."
             )
         try:
             file = open(filepath, mode + 'b')
@@ -68,6 +66,11 @@ class Directory(Container):
         # provide name relative to directory container
         stream = Stream(file, name=str(pathname), mode=mode, where=self)
         return stream
+
+    def is_dir(self, name):
+        """Item at `name` is a directory."""
+        filepath = self._path / name
+        return filepath.is_dir()
 
     def __iter__(self):
         """List contents."""
@@ -85,10 +88,23 @@ class Directory(Container):
 
     def __contains__(self, name):
         """File exists in container."""
-        return (self._path / name).exists()
+        if (self._path / name).exists():
+            return True
+        if not self._ignore_case:
+            return False
+        segments = Path(name).as_posix().split('/')
+        target = self._path
+        for segment in segments:
+            if not target.is_dir():
+                break
+            match = find_case_insensitive(target / segment, target.iterdir())
+            if match is None:
+                return False
+            target = match
+        else:
+            # no break in loop - last segemnt was matched
+            return True
+        return False
 
     def __repr__(self):
         return f"{type(self).__name__}('{self._path}')"
-
-
-Directory.register(name='dir')
