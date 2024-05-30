@@ -240,22 +240,13 @@ def _convert_mkwinfon(props, glyphs, comments):
 
 from pathlib import Path
 from monobit.storage.containers.directory import Directory
+from monobit.storage.converters import loop_load
 
-@loaders.register(
-    name='consoleet',
-)
+@loaders.register(name='consoleet')
 def load_clt(instream):
     """Load font from consoleet files."""
     # this format consists of separate image files, without a manifest
-    # instream.where does not give the nearest enclosing container but the root where we're calling!
-    # we also can't use a directory as instream as it would be recursively read
-    container = instream.where
-    glyphs = []
-    for name in sorted(container):
-        if Path(name).parent != Path(instream.name).parent:
-            continue
-        with container.open(name, mode='r') as stream:
-            glyphs.append(_read_clt_glyph(stream))
+    glyphs = loop_load(instream, _read_clt_glyph)
     return Font(glyphs, source_name=Path(instream.name).parent)
 
 def _read_clt_glyph(instream):

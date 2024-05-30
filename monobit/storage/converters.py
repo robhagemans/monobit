@@ -149,6 +149,23 @@ def load_all(container, *, format='', **kwargs):
     return packs
 
 
+def loop_load(instream, load_func):
+    """
+    Loop over files in enclosing container.
+    instream should point to a file *inside* the container, not the container file.
+    """
+    # instream.where does not give the nearest enclosing container but the root where we're calling!
+    # we also can't use a directory as instream as it would be recursively read
+    container = instream.where
+    glyphs = []
+    for name in sorted(container):
+        if Path(name).parent != Path(instream.name).parent:
+            continue
+        with container.open(name, mode='r') as stream:
+            glyphs.append(load_func(stream))
+    return glyphs
+
+
 ##############################################################################
 # saving
 

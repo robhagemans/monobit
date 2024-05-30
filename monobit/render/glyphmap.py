@@ -16,6 +16,37 @@ from ..core import Raster
 from ..plumbing import convert_arguments
 
 
+def glyph_to_image(glyph, paper, ink):
+    """Create image of single glyph."""
+    image_mode = _get_image_mode(paper, ink)
+    charimg = Image.new(image_mode, (glyph.width, glyph.height))
+    data = glyph.as_bits(ink, paper)
+    if image_mode == 'RGB':
+        # itertools grouper idiom, split in groups of 3 bytes
+        iterators = [iter(data)] * 3
+        data = tuple(zip(*iterators, strict=True))
+    charimg.putdata(data)
+    return charimg
+
+
+def _get_image_mode(*colourspec):
+    if not Image:
+        raise ImportError('Rendering to image requires PIL module.')
+    if len(set(type(_c) for _c in colourspec)) > 1:
+        raise TypeError(
+            'paper, ink and border must be of the same type; '
+            f'got {colourspec}'
+        )
+    paper, *_ = colourspec
+    if isinstance(paper, int):
+        image_mode = 'L'
+    elif isinstance(paper, tuple) and len(paper) == 3:
+        image_mode = 'RGB'
+    else:
+        raise TypeError('paper, ink and border must be either int or RGB tuple')
+    return image_mode
+
+
 class GlyphMap:
 
     def __init__(self, map=()):
@@ -78,31 +109,13 @@ class GlyphMap:
             transparent=True,
         ):
         """Draw images based on sheets in glyph map."""
-        if not Image:
-            raise ImportError('Rendering to image requires PIL module.')
-        if not(type(paper) == type(ink) == type(border)):
-            raise TypeError(
-                'paper, ink and border must be of the same type; '
-                f'got {type(paper)}, {type(ink)}, {type(border)}'
-            )
-        if isinstance(paper, int):
-            image_mode = 'L'
-        elif isinstance(paper, tuple) and len(paper) == 3:
-            image_mode = 'RGB'
-        else:
-            raise TypeError('paper, ink and border must be either int or RGB tuple')
+        image_mode = _get_image_mode(paper, ink, border)
         last, min_x, min_y, max_x, max_y = self.get_bounds()
         # no +1 as bounds are inclusive
         width, height = max_x - min_x, max_y - min_y
         images = [Image.new(image_mode, (width, height), border) for _ in range(last+1)]
         for entry in self._map:
-            charimg = Image.new(image_mode, (entry.glyph.width, entry.glyph.height))
-            data = entry.glyph.as_bits(ink, paper)
-            if image_mode == 'RGB':
-                # itertools grouper idiom, split in groups of 3 bytes
-                iterators = [iter(data)] * 3
-                data = tuple(zip(*iterators, strict=True))
-            charimg.putdata(data)
+            charimg = glyph_to_image(entry.glyph, paper, ink)
             if invert_y:
                 target = (entry.x, entry.y)
             else:
