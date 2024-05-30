@@ -12,7 +12,7 @@ import shlex
 from pathlib import Path
 from contextlib import contextmanager
 
-from ..constants import VERSION, CONVERTER_NAME
+from ..constants import MONOBIT
 from ..core import Font, Pack
 from ..base.struct import StructError
 from ..plumbing import scriptable
@@ -100,7 +100,7 @@ def _load_stream(instream, *, format='', **kwargs):
     loader_args = f' [{loader_args}]' if loader_args else ''
     return Pack(
         _font.modify(
-            converter=CONVERTER_NAME,
+            converter=MONOBIT,
             source_format=_font.source_format or f'{loader.format}{loader_args}',
             source_name=_font.source_name or filename
         )
