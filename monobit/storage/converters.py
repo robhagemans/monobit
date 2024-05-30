@@ -128,6 +128,8 @@ def _load_all(root_location, *, format='', **kwargs):
                 logging.debug('Could not load `%s`: %s', location, exc)
             else:
                 packs += Pack(pack)
+    if not packs:
+        raise FileFormatError('Unable to read fonts from container.')
     return packs
 
 
