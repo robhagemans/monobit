@@ -81,8 +81,15 @@ def _load_stream(instream, *, format='', **kwargs):
         raise FileFormatError(message)
     # convert font or pack to pack
     pack = Pack(fonts)
-    # set conversion properties
-    filename = Path(instream.name).name
+    pack = _annotate_fonts_with_source(
+        pack, instream.name, loader.format, kwargs
+    )
+    return pack
+
+
+def _annotate_fonts_with_source(pack, filename, format, loader_kwargs):
+    """Set source metadata on font pack."""
+    filename = Path(filename).name
     # if the source filename contains surrogate-escaped non-utf8 bytes
     # preserve the byte values as backslash escapes
     try:
@@ -95,13 +102,13 @@ def _load_stream(instream, *, format='', **kwargs):
     # source format argumets
     loader_args = ' '.join(
         f'{_k.replace("_", "-")}={shlex.join((str(_v),))}'
-        for _k, _v in kwargs.items()
+        for _k, _v in loader_kwargs.items()
     )
     loader_args = f' [{loader_args}]' if loader_args else ''
     return Pack(
         _font.modify(
             converter=MONOBIT,
-            source_format=_font.source_format or f'{loader.format}{loader_args}',
+            source_format=_font.source_format or f'{format}{loader_args}',
             source_name=_font.source_name or filename
         )
         for _font in pack
