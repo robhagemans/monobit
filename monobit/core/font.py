@@ -1079,11 +1079,11 @@ class Font(HasProps):
         codepoints: codepoints to include
         tags: tags to include
         """
-        labels = (
-            list(labels)
-            + [Char(_c) for _c in chars]
-            + [Codepoint(_c) for _c in codepoints]
-            + [Tag(_t) for _t in tags]
+        labels = chain(
+            labels,
+            (Char(_c) for _c in chars),
+            (Codepoint(_c) for _c in codepoints),
+            (Tag(_t) for _t in tags),
         )
         indices = set(
             self.get_index(_label, raise_missing=False, use_encoding=True)
@@ -1096,11 +1096,10 @@ class Font(HasProps):
     def resample(
             self, labels:tuple[Label]=(), *,
             chars:tuple[Char]=(), codepoints:tuple[Codepoint]=(), tags:tuple[Tag]=(),
-            encoding:encoder=None, missing:Any='default',
+            encoding:encoder=None, missing:Any='default', relabel:bool=True,
         ):
         """
         Return a (contiguous) sample of the font, filling in missing glyphs.
-        Changes the labels of the subsampled glyphs to those provided.
 
         labels: chars, codepoints or tags to include.
         chars: chars to include
@@ -1108,6 +1107,7 @@ class Font(HasProps):
         tags: tags to include
         encoding: encoding from which to sample all codepoints.
         missing: how to deal with missing glyphs. 'default', 'empty', 'raise', None, or a user-defined Glyph
+        relabel: change the labels of the subsampled glyphs to those provided. Default: True
         """
         nargs = sum(
             bool(_arg) for _arg in (labels, chars, codepoints, tags, encoding)
@@ -1121,24 +1121,26 @@ class Font(HasProps):
             chars = (Char(_c) for _c in chars)
             codepoints = (Codepoint(_c) for _c in codepoints)
             tags = (Tag(_t) for _t in tags)
-        labels = tuple(chain(labels, chars, codepoints, tags))
-        glyphs = (
-            self.get_glyph(_label, missing=missing, use_encoding=True)
+        labels = chain(labels, chars, codepoints, tags)
+        labelsglyphs = (
+            (_label, self.get_glyph(_label, missing=missing, use_encoding=True))
             for _label in labels
         )
-        glyphs, labels = zip(*(
-            (_g, _l) for _g, _l in zip(glyphs, labels) if _g is not None
+        # if missing=None, drop missing glyphs
+        labels, glyphs = zip(*(
+            (_l, _g) for _l, _g in labelsglyphs if _g is not None
         ))
         font = self.modify(glyphs)
-        # if missing=None, drop missing glyphs
-        glyphs = tuple(
-            _g.modify(labels=[_label])
-            for _g, _label in zip(glyphs, labels)
-        )
-        glyphs, references = font._relink_glyphs(glyphs)
-        font = font.modify(glyphs, **references)
-        if encoding:
-            font = font.label(codepoint_from=encoding, overwrite=True)
+        if relabel:
+            # relabel and relink glyphs
+            glyphs = tuple(
+                _g.modify(labels=[_label])
+                for _g, _label in zip(glyphs, labels)
+            )
+            glyphs, references = font._relink_glyphs(glyphs)
+            font = font.modify(glyphs, **references)
+            if encoding:
+                font = font.label(codepoint_from=encoding, overwrite=True)
         return font
 
 

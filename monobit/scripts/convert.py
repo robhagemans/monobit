@@ -87,10 +87,13 @@ def main():
                 logging.debug('Executing command `%s`', args.command)
                 operation = operations[args.command]
                 if operation == monobit.load:
+                    # no font/pack arg, pack return
                     fonts += operation(*args.args, **args.kwargs)
                 elif operation.pack_operation:
+                    # pack arg, pack return
                     fonts = operation(fonts, *args.args, **args.kwargs)
                 else:
+                    # font arg, font return
                     fonts = tuple(
                         operation(_font, *args.args, **args.kwargs)
                         for _font in fonts

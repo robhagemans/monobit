@@ -51,7 +51,8 @@ class TestEncoding(BaseTester):
 ...@@..............@@...
 ...@@..............@@...
 ..@@@@............@@@@..
-........................"""
+........................
+"""
 
     def test_generated_space(self):
         file = get_stringio(charcell)
@@ -67,7 +68,8 @@ class TestEncoding(BaseTester):
 ...@@......@@......@@...
 ...@@......@@......@@...
 ..@@@@...@@@@@@...@@@@..
-........................"""
+........................
+"""
 
     def test_defined_default(self):
         file = get_stringio(charcell)
@@ -83,7 +85,8 @@ class TestEncoding(BaseTester):
 ...@@...@@@@@@@@...@@...
 ...@@...@@@@@@@@...@@...
 ..@@@@..@@@@@@@@..@@@@..
-........@@@@@@@@........"""
+........@@@@@@@@........
+"""
 
     def test_generated_default(self):
         file = get_stringio(charcell)
@@ -101,7 +104,8 @@ class TestEncoding(BaseTester):
 ...@@...@@@@...@@...
 ...@@...@@@@...@@...
 ..@@@@..@@@@..@@@@..
-........@@@@........"""
+........@@@@........
+"""
 
     def test_generated_default_wordspace(self):
         file = get_stringio(charcell)

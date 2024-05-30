@@ -6,41 +6,63 @@ licence: https://opensource.org/licenses/MIT
 """
 
 from itertools import product
+from pathlib import Path
 
 from ..base.binary import ceildiv
-from ..base import Props
-from ..base import Coord
+from ..base import Props, Coord
+from ..core import Codepoint
+from ..storage import savers
+from ..plumbing import scriptable
 from .glyphmap import GlyphMap
 
 
-def chart(
-        font,
-        columns=32, margin=(0, 0), padding=(0, 0),
-        order='row-major', direction=(1, -1),
-        codepoint_range=None,
+@savers.register(name='chart', wrapper=True)
+def save_chart(
+        fonts, outstream,
+        columns:int=16, margin:Coord=(0, 0), padding:Coord=(0, 0),
+        order:str='row-major', direction:Coord=(1, -1),
+        codepoint_range:tuple[Codepoint]=None, style:str='text',
+        **kwargs
     ):
-    """Create font chart matrix."""
-    font = font.label(codepoint_from=font.encoding)
+    """
+    Export font to text- or image-based chart.
+    """
+    font, *more_than_one = fonts
+    if more_than_one:
+        raise ValueError('Can only chart a single font.')
+    font = prepare_for_grid_map(font, columns, codepoint_range)
+    output = grid_map(font, columns, margin, padding, order, direction)
+    if style == 'text':
+        outstream.text.write(output.as_text(**kwargs))
+    elif style == 'blocks':
+        outstream.text.write(output.as_blocks(**kwargs))
+    elif style == 'image':
+        img = output.as_image(**kwargs)
+        try:
+            img.save(outstream, format=Path(outstream.name).suffix[1:])
+        except (KeyError, ValueError, TypeError):
+            img.save(outstream, format=DEFAULT_IMAGE_FORMAT)
+    else:
+        raise ValueError(
+            f"`style` must be one of 'text', 'blocks', 'image's; not {style!r}"
+        )
+
+
+def prepare_for_grid_map(font, columns=32, codepoint_range=None):
+    """Resample and equalise font for grid representation."""
     font = font.equalise_horizontal()
     if not codepoint_range:
-        codepoints = font.get_codepoints()
-        if not codepoints:
+        try:
+            codepoint_range = range(
+                # start at a codepoint that is a multiple of the number of columns
+                columns * (int(min(font.get_codepoints())) // columns),
+                int(max(font.get_codepoints()))+1
+            )
+        except ValueError:
+            # empty sequence
             raise ValueError('No codepoint labels found.')
-        codepoint_range = (
-            # start at a codepoint that is a multple of the number of columns
-            columns * (int(min(codepoints)) // columns),
-            int(max(codepoints))
-        )
-    # make contiguous
-    glyphs = tuple(
-        font.get_glyph(_codepoint, missing='empty')
-        for _codepoint in range(codepoint_range[0], codepoint_range[1]+1)
-    )
-    font = font.modify(glyphs)
-    glyph_map = grid_map(
-        font, columns, margin, padding, order, direction,
-    )
-    return glyph_map
+    font = font.resample(codepoint_range, missing='empty', relabel=False)
+    return font
 
 
 def grid_map(
