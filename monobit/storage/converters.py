@@ -136,33 +136,30 @@ def _wrap_converter_func(loader):
 
 def _load_dir(location, *, format='', **kwargs):
     """Open container and load container format, or recurse over container."""
-    try:
-        return _load_container(location, format=format, **kwargs)
-    except FileFormatError:
-        pass
-    return _load_all(location, format=format, **kwargs)
+    return _load_container(location, format=format or 'all', **kwargs)
 
 
-def _load_container(container, *, format='', **kwargs):
+def _load_container(location, *, format='', **kwargs):
     """Load as a container format."""
     loaders = container_loaders.get_for(format=format)
     if not loaders:
         raise FileFormatError(f'Format specifier `{format}` not recognised.')
-    loader = _wrap_converter_func(loader)
-    logging.info("Loading '%s' as container format `%s`", container.name, loader.format)
-    fonts = loader(container, **kwargs)
+    loader = _wrap_converter_func(loaders[0])
+    logging.info("Loading '%s' as container format `%s`", location.path, loader.format)
+    fonts = loader(location, **kwargs)
     if not fonts:
         raise FileFormatError(
             "No fonts found in '{}' as format `{}`.".format(
-                container.name, loader.format
+                location.path, loader.format
             )
         )
     pack = _annotate_fonts_with_source(
-        fonts, container.name, loader.format, kwargs
+        fonts, location.path, loader.format, kwargs
     )
     return pack
 
 
+@container_loaders.register(name='all')
 def _load_all(root_location, *, format='', **kwargs):
     """Open container and load all fonts found in it into one pack."""
     logging.info('Reading all from `%s`.', root_location)
