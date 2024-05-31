@@ -43,7 +43,9 @@ def load(infile:Any='', *, format:str='', container_format:str='', **kwargs):
             infile, mode='r', container_format=container_format, argdict=kwargs,
         ) as location:
         if location.is_dir():
-            return _load_dir(location, format=format, **location.argdict)
+            return _load_container(
+                location, format=format or 'all', **location.argdict
+            )
         else:
             return _load_stream(
                 location.get_stream(), format=format, **location.argdict
@@ -132,11 +134,6 @@ def _wrap_converter_func(loader):
     loader = convert_arguments(loader)
     loader = check_arguments(loader)
     return loader
-
-
-def _load_dir(location, *, format='', **kwargs):
-    """Open container and load container format, or recurse over container."""
-    return _load_container(location, format=format or 'all', **kwargs)
 
 
 def _load_container(location, *, format='', **kwargs):
@@ -232,13 +229,13 @@ def save(
             argdict=kwargs,
         ) as location:
         if location.is_dir():
-            return _save_all(
-                pack, location, format=format, overwrite=overwrite,
-                **location.argdict
+            _save_container(
+                pack, location, format=format or 'all', **location.argdict
             )
-        _save_stream(
-            pack, location.get_stream(), format=format, **location.argdict
-        )
+        else:
+            _save_stream(
+                pack, location.get_stream(), format=format, **location.argdict
+            )
     return pack_or_font
 
 
@@ -262,13 +259,24 @@ def _save_stream(pack, outstream, *, format='', **kwargs):
     saver, *_ = matching_savers
     logging.info('Saving `%s` as %s.', outstream.name, saver.format)
     # apply wrappers to saver function
-    saver = convert_arguments(saver)
-    saver = check_arguments(saver)
+    saver = _wrap_converter_func(saver)
     saver(pack, outstream, **kwargs)
 
 
+def _save_container(pack, location, *, format, **kwargs):
+    savers = container_savers.get_for(format=format)
+    if not savers:
+        raise FileFormatError(f'Format specifier `{format}` not recognised.')
+    saver = _wrap_converter_func(savers[0])
+    logging.info(
+        "Saving '%s' as container format `%s`", location.path, saver.format
+    )
+    saver(pack, location, **kwargs)
+
+
+@container_savers.register(name='all')
 def _save_all(
-        pack, location, *, format='', template='', overwrite=False, **kwargs
+        pack, location, *, format='', template='', **kwargs
     ):
     """Save fonts to a container."""
     format = format or DEFAULT_TEXT_FORMAT

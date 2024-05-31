@@ -267,9 +267,9 @@ if Image:
         return convert_crops_to_font(crops, background, keep_empty=True)
 
 
-    @savers.register(linked=load_imageset)
+    @container_savers.register(linked=load_imageset)
     def save_imageset(
-            fonts, outstream,
+            fonts, container,
             prefix:str='',
             image_format:str='png',
             paper:RGB=(0, 0, 0),
@@ -283,7 +283,6 @@ if Image:
         paper: background colour R,G,B 0--255 (default: 0,0,0)
         ink: foreground colour R,G,B 0--255 (default: 255,255,255)
         """
-        container = outstream.where
         font, *more = fonts
         if more:
             raise FileFormatError('Can only save one font to image set.')
