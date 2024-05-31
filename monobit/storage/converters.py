@@ -22,7 +22,7 @@ from .location import open_location
 from ..plumbing import convert_arguments, check_arguments
 from .base import (
     DEFAULT_TEXT_FORMAT, DEFAULT_BINARY_FORMAT,
-    loaders, savers
+    loaders, savers, container_loaders, container_savers
 )
 
 
@@ -80,15 +80,16 @@ def _load_stream(instream, *, format='', **kwargs):
             message += 'tried formats: ' + ', '.join(tried_formats)
         raise FileFormatError(message)
     # convert font or pack to pack
-    pack = Pack(fonts)
     pack = _annotate_fonts_with_source(
-        pack, instream.name, loader.format, kwargs
+        fonts, instream.name, loader.format, kwargs
     )
     return pack
 
 
-def _annotate_fonts_with_source(pack, filename, format, loader_kwargs):
+def _annotate_fonts_with_source(fonts, filename, format, loader_kwargs):
     """Set source metadata on font pack."""
+    # convert font or pack to pack
+    pack = Pack(fonts)
     filename = Path(filename).name
     # if the source filename contains surrogate-escaped non-utf8 bytes
     # preserve the byte values as backslash escapes
@@ -122,19 +123,44 @@ def _iter_funcs_from_registry(registry, instream, format):
     """
     # identify file type
     fitting_loaders = registry.get_for(instream, format=format)
-    if not fitting_loaders:
-        return
     for loader in fitting_loaders:
-        # wrap loader function
-        loader = convert_arguments(loader)
-        loader = check_arguments(loader)
-        yield loader
+        yield _wrap_converter_func(loader)
     return
+
+
+def _wrap_converter_func(loader):
+    loader = convert_arguments(loader)
+    loader = check_arguments(loader)
+    return loader
 
 
 def _load_dir(location, *, format='', **kwargs):
     """Open container and load container format, or recurse over container."""
+    try:
+        return _load_container(location, format=format, **kwargs)
+    except FileFormatError:
+        pass
     return _load_all(location, format=format, **kwargs)
+
+
+def _load_container(container, *, format='', **kwargs):
+    """Load as a container format."""
+    loaders = container_loaders.get_for(format=format)
+    if not loaders:
+        raise FileFormatError(f'Format specifier `{format}` not recognised.')
+    loader = _wrap_converter_func(loader)
+    logging.info("Loading '%s' as container format `%s`", container.name, loader.format)
+    fonts = loader(container, **kwargs)
+    if not fonts:
+        raise FileFormatError(
+            "No fonts found in '{}' as format `{}`.".format(
+                container.name, loader.format
+            )
+        )
+    pack = _annotate_fonts_with_source(
+        fonts, container.name, loader.format, kwargs
+    )
+    return pack
 
 
 def _load_all(root_location, *, format='', **kwargs):
