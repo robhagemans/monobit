@@ -432,6 +432,21 @@ class TestFormats(BaseTester):
         self.assertEqual(len(font.glyphs), 192)
         self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
+    def test_import_imageset(self):
+        """Test importing imageset directories."""
+        font, *_ = monobit.load(self.font_path / '4x6.imageset', format='imageset')
+        self.assertEqual(len(font.glyphs), 919)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+
+    def test_export_imageset(self):
+        """Test exporting imageset directories."""
+        dir = self.temp_path / '4x6'
+        monobit.save(self.fixed4x6, dir, format='imageset')
+        font, *_ = monobit.load(dir, format='imageset')
+        self.assertEqual(len(font.glyphs), 919)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+
+
     # CPI
 
     def test_import_cpi_font(self):
