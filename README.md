@@ -120,6 +120,7 @@ Supported bitmap formats
 | Extended Hex          | `pcbasic`  | `.hex`                      |&check;|&check;|
 | hexdraw               | `hexdraw`  | `.draw`                     |&check;|&check;|
 | Bitmap image [P]      | `image`    | `.png` `.gif` `.bmp`        |&check;|&check;|
+| Set of Bitmap images [P] | `imageset` | `.png` `.gif` `.bmp`     |&check;|&check;|
 | Apple IIgs font       | `iigs`     | `.fon`                      |&check;|&check;|
 | Bare codepage         | `kbd`      | `.cp`                       |&check;|&check;|
 | REXXCOM Font Mania    | `mania`    | `.com`                      |&check;|       |
