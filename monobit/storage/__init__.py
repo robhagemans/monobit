@@ -5,7 +5,8 @@ monobit.storage - recognise files, traverse filesystems, load and save fonts
 licence: https://opensource.org/licenses/MIT
 """
 
-from .converters import loaders, savers, load, save
+from .base import loaders, savers
+from .converters import load, save
 from .magic import FileFormatError, Regex, Glob, Magic
 from .streams import Stream, KeepOpen, get_stringio, get_bytesio
 from . import streams

@@ -202,7 +202,7 @@ class TestFormats(BaseTester):
 
     def test_import_clt(self):
         """Test importing consoleet files."""
-        font, *_ = monobit.load(self.font_path / '4x6.clt' / '0000.txt', format='consoleet')
+        font, *_ = monobit.load(self.font_path / '4x6.clt', format='consoleet')
         self.assertEqual(len(font.glyphs), 919)
         self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 

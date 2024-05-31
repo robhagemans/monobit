@@ -160,7 +160,7 @@ def _load_container(location, *, format='', **kwargs):
 
 
 @container_loaders.register(name='all')
-def _load_all(root_location, *, format='', **kwargs):
+def load_all(root_location, *, format='', **kwargs):
     """Open container and load all fonts found in it into one pack."""
     logging.info('Reading all from `%s`.', root_location)
     packs = Pack()
@@ -181,17 +181,18 @@ def _load_all(root_location, *, format='', **kwargs):
     return packs
 
 
-def loop_load(instream, load_func):
+def loop_load(location, load_func):
     """
     Loop over files in enclosing container.
     instream should point to a file *inside* the container, not the container file.
     """
-    # instream.where does not give the nearest enclosing container but the root where we're calling!
-    # we also can't use a directory as instream as it would be recursively read
-    container = instream.where
+    # FIXME private member access
+    container = location._leaf
+    path = location._leafpath
     glyphs = []
-    for name in sorted(container):
-        if Path(name).parent != Path(instream.name).parent:
+    for name in container.iter_sub(path):
+        # FIXME iter_sub recurses, we just need one level
+        if Path(name).parent != path:
             continue
         with container.open(name, mode='r') as stream:
             glyphs.append(load_func(stream))

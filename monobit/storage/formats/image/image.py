@@ -16,7 +16,9 @@ except ImportError:
 
 from monobit.base import Coord, RGB
 from monobit.base.binary import ceildiv
-from monobit.storage import loaders, savers
+from monobit.storage.base import (
+    loaders, savers, container_loaders, container_savers
+)
 from monobit.storage import FileFormatError
 from monobit.storage.converters import loop_load
 from monobit.core import Font, Glyph, Codepoint
@@ -240,9 +242,9 @@ if Image:
                 break
         return image
 
-    @loaders.register(name='imageset')
+    @container_loaders.register(name='imageset')
     def load_imageset(
-            instream,
+            container,
             background:str='most-common',
             prefix:str='',
             base:int=16,
@@ -261,7 +263,7 @@ if Image:
             # return codepoint, image pair to be parsed by convert_crops_to_font
             return (cp, crop)
 
-        crops = loop_load(instream, _load_image_glyph)
+        crops = loop_load(container, _load_image_glyph)
         return convert_crops_to_font(crops, background, keep_empty=True)
 
 
