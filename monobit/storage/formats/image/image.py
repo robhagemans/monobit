@@ -244,7 +244,7 @@ if Image:
 
     @container_loaders.register(name='imageset')
     def load_imageset(
-            container,
+            location,
             background:str='most-common',
             prefix:str='',
             base:int=16,
@@ -263,13 +263,13 @@ if Image:
             # return codepoint, image pair to be parsed by convert_crops_to_font
             return (cp, crop)
 
-        crops = loop_load(container, _load_image_glyph)
+        crops = loop_load(location, _load_image_glyph)
         return convert_crops_to_font(crops, background, keep_empty=True)
 
 
     @container_savers.register(linked=load_imageset)
     def save_imageset(
-            fonts, container,
+            fonts, location,
             prefix:str='',
             image_format:str='png',
             paper:RGB=(0, 0, 0),
@@ -287,10 +287,13 @@ if Image:
         if more:
             raise FileFormatError('Can only save one font to image set.')
         width = len(f'{int(max(font.get_codepoints())):x}')
+        # FIXME this should be in Location
+        container = location._leaf
+        path = location._leafpath
         for glyph in font.glyphs:
             cp = f'{int(glyph.codepoint):x}'.zfill(width)
             name = f'{prefix}{cp}.{image_format}'
-            with container.open(name, 'w') as imgfile:
+            with container.open(path / name, 'w') as imgfile:
                 img = glyph_to_image(glyph, paper, ink)
                 try:
                     img.save(imgfile, format=image_format or Path(outfile).suffix[1:])

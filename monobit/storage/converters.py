@@ -187,7 +187,7 @@ def loop_load(location, load_func):
     container = location._leaf
     path = location._leafpath
     glyphs = []
-    for name in container.iter_sub(path):
+    for name in sorted(container.iter_sub(path)):
         # FIXME iter_sub recurses, we just need one level
         if Path(name).parent != path:
             continue
