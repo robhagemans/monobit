@@ -287,9 +287,7 @@ if Image:
         if more:
             raise FileFormatError('Can only save one font to image set.')
         width = len(f'{int(max(font.get_codepoints())):x}')
-        # FIXME this should be in Location
-        container = location._leaf
-        path = location._leafpath
+        container, path = location.get_container_and_subpath()
         for glyph in font.glyphs:
             cp = f'{int(glyph.codepoint):x}'.zfill(width)
             name = f'{prefix}{cp}.{image_format}'

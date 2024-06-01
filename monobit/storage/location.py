@@ -145,6 +145,12 @@ class Location:
             raise IsADirectoryError(f'Location {self} is a directory.')
         return self._leaf
 
+    def get_container_and_subpath(self):
+        """Get open container and subpath to location."""
+        if not self.is_dir():
+            raise NotADirectoryError(f'Location {self} is not a directory.')
+        return self._leaf, self._leafpath
+
     def is_dir(self):
         """Location points to a directory/container."""
         if not self.resolved:

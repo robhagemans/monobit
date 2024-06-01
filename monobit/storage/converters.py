@@ -183,9 +183,7 @@ def loop_load(location, load_func):
     Loop over files in enclosing container.
     instream should point to a file *inside* the container, not the container file.
     """
-    # FIXME private member access
-    container = location._leaf
-    path = location._leafpath
+    container, path = location.get_container_and_subpath()
     glyphs = []
     for name in sorted(container.iter_sub(path)):
         with container.open(name, mode='r') as stream:
