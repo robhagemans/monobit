@@ -209,12 +209,8 @@ class Location:
 
     def open(self, name, mode):
         """Open a binary stream in the container."""
-        if mode == 'w' and not self.overwrite and self.contains(name):
-            raise ValueError(
-                f'Overwriting existing file {name}'
-                ' requires -overwrite to be set'
-            )
         container, subpath = self._get_container_and_subpath()
+        self._check_overwrite(container, subpath / name, mode=mode)
         if container.is_dir(subpath / name):
             raise IsADirectoryError(
                 f"Cannot open stream on '{name}': is a directory."
@@ -237,6 +233,13 @@ class Location:
 
 
     ###########################################################################
+
+    def _check_overwrite(self, container, path, mode):
+        if mode == 'w' and not self.overwrite and container.contains(path):
+            raise ValueError(
+                f"Overwriting existing file '{path}'"
+                " requires -overwrite to be set"
+            )
 
     def _resolve(self):
         """
@@ -316,6 +319,7 @@ class Location:
                 return
         else:
             # head points to a file. open it and recurse
+            self._check_overwrite(container, head, mode=self.mode)
             stream = container.open(head, mode=self.mode)
             self._stream_objects.append(stream)
             self._leafpath = tail
