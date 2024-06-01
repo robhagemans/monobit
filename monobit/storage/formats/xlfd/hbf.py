@@ -28,7 +28,7 @@ def load_hbf(instream):
     """
     Load font from Hanzi Bitmap Format (HBF) file.
     """
-    where = instream.where
+    location = instream.where
     instream = instream.text
     (
         comments, hbf_props, x_props,
@@ -41,7 +41,7 @@ def load_hbf(instream):
     for name, value in x_props.items():
         logging.info('    %s: %s', name, value)
     glyphs = _read_hbf_glyphs(
-        instream, where, b2_ranges, b3_ranges, c_ranges, hbf_props
+        instream, location, b2_ranges, b3_ranges, c_ranges, hbf_props
     )
     # check number of characters, but don't break if no match
     # if nchars != len(glyphs):
@@ -213,7 +213,7 @@ def _convert_ranges(b2_ranges):
     )
     return b2_ranges
 
-def _read_hbf_glyphs(instream, where, b2_ranges, b3_ranges, c_ranges, props):
+def _read_hbf_glyphs(instream, location, b2_ranges, b3_ranges, c_ranges, props):
     """Read glyphs from bitmap files and index according to ranges."""
     width, height, _, _ = _split_hbf_ints(props['HBF_BITMAP_BOUNDING_BOX'])
     bytesize = height * ceildiv(width, 8)
@@ -229,7 +229,7 @@ def _read_hbf_glyphs(instream, where, b2_ranges, b3_ranges, c_ranges, props):
         code_range = _split_hbf_ints(code_range, sep='-')
         code_range = range(code_range[0], code_range[1]+1)
         offset = hbf_int(offset)
-        with where.open(filename, 'r') as bitmapfile:
+        with location.open(filename, 'r') as bitmapfile:
             # discard offset bytes
             bitmapfile.read(offset)
             for codepoint in indexer(plane, code_range, b2_ranges, b3_ranges):
@@ -330,13 +330,13 @@ def _parse_hbf_properties(hbf_props):
 ##############################################################################
 # hbf writer
 
-def _save_hbf(font, outstream, container, code_scheme):
+def _save_hbf(font, outstream, location, code_scheme):
     """Write one font to HBF."""
-    bitmap_name = container.unused_name(outstream.name + '.bin')
+    bitmap_name = location.unused_name(outstream.name + '.bin')
     hbf_props, bitmaps = _convert_to_hbf(font, bitmap_name, code_scheme)
     for name, value in hbf_props:
         logging.info('    %s: %s', name, value)
-    with container.open(bitmap_name, 'w') as binfile:
+    with location.open(bitmap_name, 'w') as binfile:
         for bitmap in bitmaps:
             binfile.write(bitmap)
     for name, value in hbf_props:
