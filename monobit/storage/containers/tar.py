@@ -11,13 +11,13 @@ import tarfile
 import logging
 from pathlib import Path, PurePosixPath
 
-from ..holders import Container
+from ..holders import Archive, match_case_insensitive
 from ..base import containers
 from ..streams import KeepOpen, Stream
 from ..magic import FileFormatError, Magic
 
 
-class TarContainer(Container):
+class TarContainer(Archive):
     """Tar-file wrapper."""
 
     def __init__(self, file, mode='r', ignore_case:bool=True):
@@ -39,7 +39,7 @@ class TarContainer(Container):
         else:
             # on read, only set root if it is a common parent
             self._root = ''
-            if all(Path(_item).is_relative_to(stem) for _item in iter(self)):
+            if all(Path(_item).is_relative_to(stem) for _item in self.list()):
                 self._root = stem
         # output files, to be written on close
         self._files = []
@@ -67,21 +67,10 @@ class TarContainer(Container):
         super().close()
         self.closed = True
 
-    def iter_sub(self, prefix):
-        """List contents of a subpath."""
+    def list(self):
+        """List full contents of archive."""
         # list regular files only, skip symlinks and dirs and block devices
-        namelist = (
-            _ti.name
-            for _ti in self._tarfile.getmembers()
-            if _ti.isfile()
-            and PurePosixPath(_ti.name).is_relative_to(PurePosixPath(self._root) / prefix)
-        )
-        return (
-            str(PurePosixPath(_name).relative_to(self._root))
-            for _name in namelist
-            # exclude directories
-            if not _name.endswith('/')
-        )
+        return self._tarfile.getnames()
 
     def open(self, name, mode, overwrite=False):
         """Open a stream in the container."""
@@ -93,10 +82,13 @@ class TarContainer(Container):
             try:
                 file = self._tarfile.extractfile(filename)
             except KeyError:
+                if not self._ignore_case:
+                    raise FileNotFoundError(f"'{filename}' not found on {self}")
+                filename = self.match_case_insensitive(filename, self.list())
                 try:
-                    file = self._tarfile.extractfile(self._match_name(filename))
+                    file = self._tarfile.extractfile(filename)
                 except KeyError as e:
-                    raise FileNotFoundError(e)
+                    raise FileNotFoundError(f"'{filename}' not found on {self}")
             if file is None:
                 raise IsADirectoryError(
                     f"Cannot open stream on '{filename}': is a directory."
@@ -104,7 +96,7 @@ class TarContainer(Container):
             # .name is not writeable, so we need to wrap
             return Stream(file, mode, name=name, where=self)
         else:
-            if name in self and not overwrite:
+            if self.contains(name) and not overwrite:
                 raise ValueError(
                     f'Overwriting existing file {str(name)}'
                     ' requires -overwrite to be set'

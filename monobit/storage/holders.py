@@ -83,23 +83,13 @@ class Container(StreamHolder):
             f"{' [closed]' if self.closed else ''}>"
         )
 
-    def __iter__(self):
-        """List contents."""
-        return self.iter_sub(prefix='')
-
     def iter_sub(self, prefix):
         """List contents of a subpath."""
         raise NotImplementedError()
 
-    def __contains__(self, item):
+    def contains(self, item):
         """Check if file is in container. Case sensitive if container/fs is."""
-        if self._ignore_case:
-            return (
-                str(item).lower() in
-                (str(_item).lower() for _item in iter(self))
-            )
-        else:
-            return str(item) in iter(self)
+        raise NotImplementedError()
 
     # NOTE open() opens a stream, close() closes the container
 
@@ -111,30 +101,46 @@ class Container(StreamHolder):
         """Item at `name` is a directory."""
         raise NotImplementedError
 
-    def _match_name(self, filepath):
-        """Find case insensitive match, if the case sensitive match doesn't."""
-        if self._ignore_case:
-            match = find_case_insensitive(filepath, iter(self))
-            if match is not None:
-                return match
-        raise FileNotFoundError(filepath)
-
     def unused_name(self, name):
         """Generate unique name for container file."""
-        if name not in self:
+        if not self.contains(name):
             return name
         stem, _, suffix = name.rpartition('.')
         for i in itertools.count():
             filename = '{}.{}'.format(stem, i)
             if suffix:
                 filename = '{}.{}'.format(filename, suffix)
-            if filename not in self:
+            if not self.contains(filename):
                 return filename
 
 
-def find_case_insensitive(filepath, iterator):
+def match_case_insensitive(filepath, iterator):
     """Find case insensitive match."""
     for name in iterator:
         if str(name).lower() == str(filepath).lower():
             return name
-    return None
+    raise FileNotFoundError(filepath)
+
+
+class Archive(Container):
+
+    def iter_sub(self, prefix):
+        """List contents of a subpath."""
+        return (
+            str(Path(_name).relative_to(self._root)) for _name in self.list()
+            if Path(_name).parent == Path(self._root) / prefix
+        )
+
+    def contains(self, item):
+        """Check if file is in container. Case sensitive if container/fs is."""
+        if self._ignore_case:
+            return (
+                str(Path(self._root) / item).lower() in
+                (str(_item).lower() for _item in self.list())
+            )
+        else:
+            return str(item) in self.list()
+
+    def list(self):
+        """List full contents of archive."""
+        raise NotImplementedError()

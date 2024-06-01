@@ -278,7 +278,7 @@ class Location:
         """Pare back path until an existing ancestor is found."""
         path = Path(path)
         for head in (path, *path.parents):
-            if head in container:
+            if container.contains(head):
                 tail = path.relative_to(head)
                 return head, tail
         # nothing exists

@@ -11,11 +11,11 @@ from pathlib import Path
 from monobit.base.struct import big_endian as be
 from ..streams import Stream
 from ..magic import FileFormatError, Magic
-from ..holders import Container
+from ..holders import Archive
 from ..base import containers
 
 
-class MacFork(Container):
+class MacFork(Archive):
     """Base class for Macintosh forks (2-stream containers)."""
 
     forknames = ('rsrc', 'data')
@@ -48,6 +48,9 @@ class MacFork(Container):
         """Item at `name` is a directory."""
         self._check_name(name)
         return Path(name) == Path('.')
+
+    def list(self):
+        return self.forknames
 
     def _check_name(self, name):
         if Path(name) != Path('.') and str(name) not in self.forks:

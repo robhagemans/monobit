@@ -10,13 +10,13 @@ import logging
 import zipfile
 from pathlib import Path, PurePosixPath
 
-from ..holders import Container
+from ..holders import Archive, match_case_insensitive
 from ..base import containers
 from ..streams import KeepOpen, Stream
 from ..magic import FileFormatError
 
 
-class ZipContainer(Container):
+class ZipContainer(Archive):
     """Zip-file wrapper."""
 
     def __init__(self, file, mode='r', ignore_case:bool=True):
@@ -41,7 +41,7 @@ class ZipContainer(Container):
         else:
             # on read, only set root if it is a common parent
             self._root = ''
-            if all(Path(_item).is_relative_to(stem) for _item in iter(self)):
+            if all(Path(_item).is_relative_to(stem) for _item in self.list()):
                 self._root = stem
         # output files, to be written on close
         self._files = []
@@ -64,15 +64,9 @@ class ZipContainer(Container):
         self._stream.close()
         super().close()
 
-    def iter_sub(self, prefix):
-        """List contents of a subpath."""
-        return (
-            str(PurePosixPath(_name).relative_to(self._root))
-            for _name in self._zip.namelist()
-            # exclude directories
-            if not _name.endswith('/')
-            and PurePosixPath(_name).is_relative_to(PurePosixPath(self._root) / prefix)
-        )
+    def list(self):
+        """List full contents of archive."""
+        return tuple(_name.removesuffix('/') for _name in self._zip.namelist())
 
     def open(self, name, mode, overwrite=False):
         """Open a stream in the container."""
@@ -88,13 +82,16 @@ class ZipContainer(Container):
             try:
                 file = self._zip.open(filename, mode)
             except KeyError:
-                file = self._zip.open(self._match_name(filename), mode)
+                if not self._ignore_case:
+                    raise FileNotFoundError(f"'{filename}' not found on {self}")
+                filename = self.match_case_insensitive(filename, self.list())
+                file = self._zip.open(filename, mode)
             # FIXME the above will raise FileNotFoundError on a bare directory name
             # but open an empty file for directory name plus /
             # we need IsADirectoryError
             return Stream(file, mode=mode, where=self, name=name)
         else:
-            if filename in self and not overwrite:
+            if self.contains(filename) and not overwrite:
                 raise ValueError(
                     f'Overwriting existing file {str(filename)}'
                     ' requires -overwrite to be set'
