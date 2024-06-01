@@ -52,19 +52,6 @@ class Container(StreamHolder):
         """Item at `name` is a directory."""
         raise NotImplementedError
 
-    # TODO move to Location
-    def unused_name(self, name):
-        """Generate unique name for container file."""
-        if not self.contains(name):
-            return name
-        stem, _, suffix = name.rpartition('.')
-        for i in itertools.count():
-            filename = '{}.{}'.format(stem, i)
-            if suffix:
-                filename = '{}.{}'.format(filename, suffix)
-            if not self.contains(filename):
-                return filename
-
 
 class Archive(Container):
     """Base class for multi-file archives."""

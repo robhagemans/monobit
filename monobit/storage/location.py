@@ -150,10 +150,6 @@ class Location:
         except IndexError:
             return self._path_objects[-1]
 
-    # @property
-    # def root(self):
-    #     return self._path_objects[0]
-
     def get_stream(self):
         """Get open stream at location."""
         if self.is_dir():
@@ -219,8 +215,17 @@ class Location:
         return stream
 
     def unused_name(self, name):
-        container, subpath = self._get_container_and_subpath()
-        return container.unused_name(subpath / name)
+        """Generate unique name for container file."""
+        if not self.contains(name):
+            return name
+        stem, _, suffix = name.rpartition('.')
+        for i in itertools.count():
+            filename = '{}.{}'.format(stem, i)
+            if suffix:
+                filename = '{}.{}'.format(filename, suffix)
+            if not self.contains(filename):
+                return filename
+
 
     ###########################################################################
 
