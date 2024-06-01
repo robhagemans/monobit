@@ -65,7 +65,6 @@ class TarContainer(Archive):
             logging.debug(e)
         self._stream.close()
         super().close()
-        self.closed = True
 
     def list(self):
         """List full contents of archive."""
