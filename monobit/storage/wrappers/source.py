@@ -5,6 +5,7 @@ monobit.storage.wrappers.source - binary files embedded in C/Python/JS source fi
 licence: https://opensource.org/licenses/MIT
 """
 
+import re
 import string
 import logging
 from io import BytesIO
@@ -13,8 +14,9 @@ from pathlib import Path
 from monobit.base.binary import ceildiv
 from ..streams import Stream, KeepOpen
 from ..magic import FileFormatError
-from ..base import wrappers
+from ..base import wrappers, containers
 from .wrappers import Wrapper
+from ..containers.containers import Archive
 
 
 ###############################################################################
@@ -53,11 +55,10 @@ def _int_from_basic(cvalue):
 
 ###############################################################################
 
-class _CodedBinaryWrapperBase(Wrapper):
+class _CodedBinaryWrapperBase(Archive):
 
     def __init__(
             self, stream, mode='r',
-            identifier:str='',
             delimiters:str='',
             comment:str='',
             # reader params
@@ -73,7 +74,6 @@ class _CodedBinaryWrapperBase(Wrapper):
         """
         Extract binary file encoded in source code.
 
-        identifier: text at start of line where encoded file starts. (default: first array literal)
         delimiters: delimiter characters surrounding array definition. (use language default)
         comment: comment character. (use language default)
         block_comment: block comment character. (use language default)
@@ -86,7 +86,6 @@ class _CodedBinaryWrapperBase(Wrapper):
         """
         cls = type(self)
         # read & write
-        self.identifier = identifier or 'font'
         self.delimiters = delimiters or cls.delimiters
         self.comment = comment or cls.comment
         # write
@@ -98,25 +97,36 @@ class _CodedBinaryWrapperBase(Wrapper):
         # read
         self.block_comment = block_comment or cls.block_comment
         self.assign = assign or cls.assign
-        super().__init__(stream, mode)
+        self._wrapped_stream = stream
+        self._coded_data = {}
+        super().__init__(mode)
 
-    def open(self):
-        if self.mode == 'r':
-            self._unwrapped_stream = self._open_read()
+    def is_dir(self, name):
+        """Item at `name` is a directory."""
+        return Path(name) == Path('.')
+
+    def list(self):
+        self._get_names_and_data()
+        return self._coded_data.keys()
+
+    def open(self, name, mode):
+        """Open a binary stream in the container."""
+        if mode == 'r':
+            return self._open_read(name)
         else:
-            self._unwrapped_stream = self._open_write()
-        return self._unwrapped_stream
+            return self._open_write(name)
 
-    def _open_read(self):
+    def _open_read(self, name):
         """Open input stream on source wrapper."""
         infile = self._wrapped_stream
-        found_identifier, coded_data = self._get_payload(
-            infile.text, identifier=self.identifier,
-            delimiters=self.delimiters,
-            comment=self.comment,
-            block_comment=self.block_comment,
-            assign=self.assign,
-        )
+        self._get_names_and_data()
+        name = str(name)
+        try:
+            coded_data = self._coded_data[name]
+        except KeyError:
+            raise FileNotFoundError(
+                f"No payload with identifier '{name}' found in file."
+            )
         try:
             data = bytes(
                 type(self).int_conv(_s)
@@ -124,69 +134,48 @@ class _CodedBinaryWrapperBase(Wrapper):
             )
         except ValueError:
             raise FileFormatError(
-                f'Could not convert coded data for identifier {found_identifier}'
+                f"Could not convert coded data for identifier '{name}'"
             )
-        # name = _remove_suffix(infile.name, Path(infile.name).suffix)
-        name = found_identifier
         return Stream.from_data(data, mode='r', name=name)
 
-    @staticmethod
-    def _get_payload(
-        instream, *, identifier,
-        delimiters, comment, block_comment, assign,
-    ):
-        """Find the identifier and get the part between delimiters."""
-        def _strip_line(line):
-            if comment:
-                line, _, _ = line.partition(comment)
-            if block_comment:
-                while block_comment[0] in line:
-                    before, _, after = line.partition(block_comment[0])
-                    _, _, after = after.partition(block_comment[1])
-                    line = before + after
-            line = line.strip(' \r\n')
-            return line
+    def _get_names_and_data(self):
+        """Find all identifiers with payload."""
+        if self._coded_data:
+            return
 
+        instream = self._wrapped_stream.text
+        identifier = ''
+        delimiters = self.delimiters
+        comment = self.comment
+        block_comment = self.block_comment
+        assign = self.assign
+
+        self._coded_data = {}
         start, end = delimiters
         found_identifier = ''
         for line in instream:
-            line = _strip_line(line)
+            line = _strip_line(line, comment, block_comment)
             if identifier in line and assign in line:
                 if identifier:
                     _, _, line = line.partition(identifier)
                     found_identifier = identifier
                 else:
                     found_identifier, _, _ = line.partition(assign)
+
                     *_, found_identifier = found_identifier.strip().split()
+                    found_identifier, *_ = re.split(r"\W+", found_identifier)
+
             if found_identifier and start in line:
                 _, line = line.split(start)
-                break
-        else:
-            raise FileFormatError(
-                f'No payload with identifier `{identifier}` found in file'
-            )
-        # special case: whole array in one line
-        if end in line:
-            line, _ = line.split(end, 1)
-            return line
-        # multi-line array
-        payload = [line]
-        for line in instream:
-            line = _strip_line(line)
-            if start in line:
-                _, line = line.split(start, 1)
-            if end in line:
-                line, _ = line.split(end, 1)
-                payload.append(line)
-                break
-            if line:
-                payload.append(line)
-        return found_identifier, ''.join(payload)
+                data = _get_payload(
+                    instream, line, start, end, comment, block_comment
+                )
+                self._coded_data[found_identifier] = data
 
-    def _open_write(self):
+    #FIXME needs to be updated
+    def _open_write(self, name):
         """Open output stream on source wrapper."""
         outfile = self._wrapped_stream
-        name = Path(outfile.name).stem
         return WrappedWriterStream(
             outfile,
             _write_out_coded_binary,
@@ -200,6 +189,38 @@ class _CodedBinaryWrapperBase(Wrapper):
             pre=self.pre,
             post=self.post,
         )
+
+
+def _strip_line(line, comment, block_comment):
+    if comment:
+        line, _, _ = line.partition(comment)
+    if block_comment:
+        while block_comment[0] in line:
+            before, _, after = line.partition(block_comment[0])
+            _, _, after = after.partition(block_comment[1])
+            line = before + after
+    line = line.strip(' \r\n')
+    return line
+
+
+def _get_payload(instream, line, start, end, comment, block_comment):
+    # special case: whole array in one line
+    if end in line:
+        line, _ = line.split(end, 1)
+        return line
+    # multi-line array
+    payload = [line]
+    for line in instream:
+        line = _strip_line(line, comment, block_comment)
+        if start in line:
+            _, line = line.split(start, 1)
+        if end in line:
+            line, _ = line.split(end, 1)
+            payload.append(line)
+            break
+        if line:
+            payload.append(line)
+    return ''.join(payload)
 
 
 def _write_out_coded_binary(
@@ -276,7 +297,7 @@ class _CodedBinaryWrapper(_CodedBinaryWrapperBase):
     post = ''
 
 
-@wrappers.register(
+@containers.register(
     name='c',
     patterns=('*.c', '*.cc', '*.cpp', '*.h')
 )
@@ -290,7 +311,7 @@ class CCodedBinaryWrapper(_CodedBinaryWrapper):
     assign_template = 'char {identifier}[{bytesize}] = '
 
 
-@wrappers.register(
+@containers.register(
     name='json',
     patterns=('*.js', '*.json',),
 )
@@ -307,7 +328,7 @@ class JSONCodedBinaryWrapper(_CodedBinaryWrapper):
     post = '}\n'
 
 
-@wrappers.register(
+@containers.register(
     name='python',
     patterns=('*.py',),
 )
@@ -320,7 +341,7 @@ class PythonCodedBinaryWrapper(_CodedBinaryWrapper):
     assign_template = '{identifier} = '
 
 
-@wrappers.register(
+@containers.register(
     name='python-tuple',
     patterns=('*.py',),
 )
@@ -335,7 +356,7 @@ class PythonTupleCodedBinaryWrapper(_CodedBinaryWrapper):
 
 # writing not implemented for the below
 
-@wrappers.register(
+@containers.register(
     name='pascal',
     patterns=('*.pas',),
 )

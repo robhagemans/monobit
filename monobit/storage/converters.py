@@ -166,8 +166,7 @@ def load_all(root_location, *, format='', **kwargs):
             logging.debug('Trying `%s`.', location)
             try:
                 pack = _load_stream(
-                    location.get_stream(),
-                    format=format,
+                    location.get_stream(), format=format, **kwargs
                 )
             except FileFormatError as exc:
                 logging.debug('Could not load `%s`: %s', location, exc)
