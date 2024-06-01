@@ -12,8 +12,8 @@ from importlib import import_module
 
 from ..streams import Stream
 from ..magic import FileFormatError
-from ..holders import Wrapper
 from ..base import wrappers
+from .wrappers import Wrapper
 
 
 class Compressor(Wrapper):
@@ -37,6 +37,12 @@ class Compressor(Wrapper):
             self._check_magic(stream)
         self._ensure_imports()
         super().__init__(stream, mode)
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        # convert library-specific errors to ours
+        if exc_type == self.error:
+            raise FileFormatEror(exc_value)
+        super().__exit__(exc_type, exc_value, traceback)
 
     # leave magic checks to MagicRegistry?
     # but we need to be able to raise FileFormatError
@@ -66,16 +72,6 @@ class Compressor(Wrapper):
             self._wrapped_stream, self.mode
         )
         return self._unwrapped_stream
-
-    #FIXME reintroduce
-    # @classmethod
-    # @contextmanager
-    # def _translate_errors(cls):
-    #     """Context wrapper to convert library-specific errors to ours."""
-    #     try:
-    #         yield
-    #     except cls.error as e:
-    #         raise FileFormatError(e)
 
     @classmethod
     def _ensure_imports(cls):

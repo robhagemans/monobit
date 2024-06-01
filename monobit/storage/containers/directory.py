@@ -9,10 +9,11 @@ import os
 import io
 import logging
 from pathlib import Path
+from collections import deque
 
 from ..streams import Stream
-from ..holders import Container, find_case_insensitive
 from ..base import containers
+from .containers import Container
 
 
 @containers.register(name='dir')
@@ -36,6 +37,9 @@ class Directory(Container):
             # exists, not the parents
             self._path.mkdir(parents=True, exist_ok=True)
         super().__init__(mode, str(self._path), ignore_case=ignore_case)
+
+    def __repr__(self):
+        return f"{type(self).__name__}('{self._path}')"
 
     def open(self, name, mode, overwrite=False):
         """Open a stream in the directory."""
@@ -61,10 +65,12 @@ class Directory(Container):
             file = open(filepath, mode + 'b')
         except FileNotFoundError:
             # match_name will raise FileNotFoundError if no match
-            filepath = self._path / self._match_name(name)
+            if not self._ignore_case:
+                raise
+            filepath = self._match_case_insensitive(filepath)
             file = open(filepath, mode + 'b')
         # provide name relative to directory container
-        stream = Stream(file, name=str(pathname), mode=mode, where=self)
+        stream = Stream(file, name=str(pathname), mode=mode)
         return stream
 
     def is_dir(self, name):
@@ -72,39 +78,38 @@ class Directory(Container):
         filepath = self._path / name
         return filepath.is_dir()
 
-    def __iter__(self):
-        """List contents."""
-        if not self._path:
-            raise ValueError('Will not walk over whole filesystem.')
-        return self.iter_sub('')
-
     def iter_sub(self, prefix):
         """List contents of a subpath."""
         return (
-            str((Path(_r) / _f).relative_to(self._path))
-            for _r, _, _files in os.walk(self._path / prefix)
-            for _f in _files
+            _path.relative_to(self._path)
+            for _path in (self._path / prefix).iterdir()
         )
 
-    def __contains__(self, name):
+    def _match_case_insensitive(self, path):
+        """Stepwise match per path element."""
+        segments = Path(path).as_posix().split('/')
+        segments = deque(segments)
+        matched_path = Path('.')
+        while True:
+            target = segments.popleft()
+            for name in self.iter_sub(matched_path):
+                if str(target).lower() == name.name.lower():
+                    matched_path /= name.name
+                    if not segments:
+                        return matched_path
+                    if self.is_dir(matched_path):
+                        break
+            else:
+                raise FileNotFoundError(f"'{path}' not found on {self}.")
+
+    def contains(self, name):
         """File exists in container."""
         if (self._path / name).exists():
             return True
         if not self._ignore_case:
             return False
-        segments = Path(name).as_posix().split('/')
-        target = self._path
-        for segment in segments:
-            if not target.is_dir():
-                break
-            match = find_case_insensitive(target / segment, target.iterdir())
-            if match is None:
-                return False
-            target = match
-        else:
-            # no break in loop - last segemnt was matched
-            return True
-        return False
-
-    def __repr__(self):
-        return f"{type(self).__name__}('{self._path}')"
+        try:
+            self._match_case_insensitive(name)
+        except FileNotFoundError:
+            return False
+        return True

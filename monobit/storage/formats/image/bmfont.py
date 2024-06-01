@@ -30,6 +30,7 @@ from monobit.render import GlyphMap, grid_map
 
 from ..common import CHARSET_MAP, CHARSET_REVERSE_MAP
 
+from monobit.storage.location import Location
 
 # text/xml/binary format: https://www.angelcode.com/products/bmfont/doc/file_format.html
 # json format: https://github.com/Jam3/load-bmfont/blob/master/json-spec.md
@@ -485,11 +486,10 @@ def _parse_binary(data):
         props['kernings'] = []
     return props
 
-def _extract(container, name, bmformat, info, common, pages, chars, kernings=(), outline=False):
+def _extract(location, name, bmformat, info, common, pages, chars, kernings=(), outline=False):
     """Extract glyphs."""
-    path = Path(name).parent
     image_files = {
-        int(_page['id']): container.open(path / _page['file'], 'r')
+        int(_page['id']): location.open(_page['file'], 'r')
         for _page in pages
     }
     sheets = {_id: Image.open(_file) for _id, _file in image_files.items()}
@@ -636,7 +636,8 @@ def _parse_bmfont_props(name, bmformat, imgformats, info, common):
 
 def _read_bmfont(infile, outline):
     """Read a bmfont from a container."""
-    container = infile.where
+    location = infile.where
+    assert isinstance(location, Location)
     magic = infile.peek(3)
     fontinfo = {}
     if magic.startswith(_BMF_MAGIC):
@@ -658,7 +659,7 @@ def _read_bmfont(infile, outline):
         else:
             logging.debug('found text: %s', fnt.name)
             fontinfo = _parse_text(data)
-    return _extract(container, infile.name, outline=outline, **fontinfo)
+    return _extract(location, infile.name, outline=outline, **fontinfo)
 
 
 
@@ -983,18 +984,17 @@ def _write_binary_descriptor(outfile, props):
 
 def _save_pages(outfile, font, sheets, image_format):
     """Save images and record names."""
-    container = outfile.where
-    basepath = Path(outfile.name).parent
-    path = basepath / font.family
+    location = outfile.where
+    path = font.family
     fontname = font.name.replace(' ', '_')
     pages = []
     for page_id, sheet in enumerate(sheets):
-        name = container.unused_name(f'{path}/{fontname}_{page_id}.{image_format}')
-        with container.open(name, 'w') as imgfile:
+        name = location.unused_name(f'{path}/{fontname}_{page_id}.{image_format}')
+        with location.open(name, 'w') as imgfile:
             sheet.save(imgfile, format=image_format)
         pages.append({
             'id': page_id,
-            'file': str(Path(name).relative_to(basepath)),
+            'file': str(name),
         })
     return pages
 

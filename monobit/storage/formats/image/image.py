@@ -16,7 +16,9 @@ except ImportError:
 
 from monobit.base import Coord, RGB
 from monobit.base.binary import ceildiv
-from monobit.storage import loaders, savers
+from monobit.storage.base import (
+    loaders, savers, container_loaders, container_savers
+)
 from monobit.storage import FileFormatError
 from monobit.storage.converters import loop_load
 from monobit.core import Font, Glyph, Codepoint
@@ -240,9 +242,9 @@ if Image:
                 break
         return image
 
-    @loaders.register(name='imageset')
+    @container_loaders.register(name='imageset')
     def load_imageset(
-            instream,
+            location,
             background:str='most-common',
             prefix:str='',
             base:int=16,
@@ -261,13 +263,13 @@ if Image:
             # return codepoint, image pair to be parsed by convert_crops_to_font
             return (cp, crop)
 
-        crops = loop_load(instream, _load_image_glyph)
+        crops = loop_load(location, _load_image_glyph)
         return convert_crops_to_font(crops, background, keep_empty=True)
 
 
-    @savers.register(linked=load_imageset)
+    @container_savers.register(linked=load_imageset)
     def save_imageset(
-            fonts, outstream,
+            fonts, location,
             prefix:str='',
             image_format:str='png',
             paper:RGB=(0, 0, 0),
@@ -281,7 +283,6 @@ if Image:
         paper: background colour R,G,B 0--255 (default: 0,0,0)
         ink: foreground colour R,G,B 0--255 (default: 255,255,255)
         """
-        container = outstream.where
         font, *more = fonts
         if more:
             raise FileFormatError('Can only save one font to image set.')
@@ -289,7 +290,7 @@ if Image:
         for glyph in font.glyphs:
             cp = f'{int(glyph.codepoint):x}'.zfill(width)
             name = f'{prefix}{cp}.{image_format}'
-            with container.open(name, 'w') as imgfile:
+            with location.open(name, 'w') as imgfile:
                 img = glyph_to_image(glyph, paper, ink)
                 try:
                     img.save(imgfile, format=image_format or Path(outfile).suffix[1:])

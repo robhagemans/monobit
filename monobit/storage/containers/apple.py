@@ -11,53 +11,8 @@ from pathlib import Path
 from monobit.base.struct import big_endian as be
 from ..streams import Stream
 from ..magic import FileFormatError, Magic
-from ..holders import Container
 from ..base import containers
-
-
-class MacFork(Container):
-    """Base class for Macintosh forks (2-stream containers)."""
-
-    forknames = ('rsrc', 'data')
-
-    def __init__(self, file, mode='r', name=''):
-        if mode != 'r':
-            raise ValueError('Writing onto Mac forks is not supported.')
-        super().__init__(mode, name)
-        with Stream(file, mode) as stream:
-            self.name, *forks = self._parse(stream)
-        self.forks = dict(zip(self.forknames, forks))
-
-    def iter_sub(self, prefix):
-        """List contents of a subpath."""
-        self._check_name(prefix)
-        if Path(prefix) != Path('.'):
-            raise NotADirectoryError(f"'{prefix}' is not a directory.")
-        return iter(self.forknames)
-
-    def open(self, name, mode, overwrite=False):
-        """Open a binary stream in the container."""
-        if mode != 'r':
-            raise ValueError('Writing onto Mac forks is not supported.')
-        if self.is_dir(name):
-            raise IsADirectoryError(f"'name' is a directory.")
-        fork = self.forks[str(name)]
-        return Stream.from_data(fork, mode='r', name=f'{self.name/name}')
-
-    def is_dir(self, name):
-        """Item at `name` is a directory."""
-        self._check_name(name)
-        return Path(name) == Path('.')
-
-    def _check_name(self, name):
-        if Path(name) != Path('.') and str(name) not in self.forks:
-            raise FileNotFoundError(
-                f"Mac container only contains {self.forknames}, not '{name}'."
-            )
-
-    def _parse(self, instream):
-        """Resource and data fork loader."""
-        raise NotImplementedError()
+from .containers import MacFork
 
 
 ##############################################################################
