@@ -70,7 +70,7 @@ class Directory(Container):
             filepath = self._match_case_insensitive(filepath)
             file = open(filepath, mode + 'b')
         # provide name relative to directory container
-        stream = Stream(file, name=str(pathname), mode=mode, where=self)
+        stream = Stream(file, name=str(pathname), mode=mode)
         return stream
 
     def is_dir(self, name):

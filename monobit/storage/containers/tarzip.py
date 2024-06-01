@@ -78,7 +78,7 @@ class ZipTarBase(Archive):
                     f"Cannot open stream on '{filename}': is a directory."
                 )
             # .name is not writeable, so we need to wrap
-            return Stream(file, mode, name=name, where=self)
+            return Stream(file, mode, name=name)
         else:
             if self.contains(name) and not overwrite:
                 raise ValueError(
@@ -86,7 +86,7 @@ class ZipTarBase(Archive):
                     ' requires -overwrite to be set'
                 )
             # stop BytesIO from being closed until we want it to be
-            newfile = Stream(KeepOpen(io.BytesIO()), mode=mode, name=name, where=self)
+            newfile = Stream(KeepOpen(io.BytesIO()), mode=mode, name=name)
             if name in self._files:
                 logging.warning('Creating multiple files of the same name `%s`.', name)
             self._files.append(newfile)

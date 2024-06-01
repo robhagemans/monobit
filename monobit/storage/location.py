@@ -58,8 +58,11 @@ class Location:
         else:
             self._path_objects = []
             self._stream_objects = [KeepOpen(root)]
-        # subpath from last object in path_objects
+        # subpath from last container in path_objects
+        self._container_subpath = self.path
+        # subpath from last object in path_objects or stream_objects
         self._leafpath = self.path
+        # format parameters
         self._container_format = container_format.split('.')
         self.argdict = argdict
 
@@ -155,15 +158,17 @@ class Location:
         """Get open stream at location."""
         if self.is_dir():
             raise IsADirectoryError(f'Location {self} is a directory.')
-        return self._stream_objects[-1]
+        stream = self._stream_objects[-1]
+        stream.where = self
+        return stream
 
     # directory (container) functionality
 
     def _get_container_and_subpath(self):
         """Get open container and subpath to location."""
         if not self.is_dir():
-            return self._path_objects[-1], self._leafpath.parent
-        return self._path_objects[-1], self._leafpath
+            return self._path_objects[-1], self._container_subpath.parent
+        return self._path_objects[-1], self._container_subpath
 
     def is_dir(self):
         """Location points to a directory/container."""
@@ -209,7 +214,9 @@ class Location:
     def open(self, name, mode, overwrite=False):
         """Open a binary stream in the container."""
         container, subpath = self._get_container_and_subpath()
-        return container.open(subpath/name, mode=mode, overwrite=overwrite)
+        stream = container.open(subpath/name, mode=mode, overwrite=overwrite)
+        stream.where = self
+        return stream
 
     def unused_name(self, name):
         container, subpath = self._get_container_and_subpath()
@@ -269,6 +276,7 @@ class Location:
             self._path_objects.extend(self._stream_objects)
             self._path_objects.append(container_object)
             self._stream_objects = []
+            self._container_subpath = self._leafpath
 
     def _resolve_container(self):
         container = self._leaf

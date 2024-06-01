@@ -170,16 +170,15 @@ def _convert_from_daisy(dd3_props, glyphs, version):
     return props
 
 
-def _parse_daisy_mag(data, name, container):
+def _parse_daisy_mag(data, name, location):
     """Read daisy-dot III magnified binary file and return glyphs."""
     _, dd3_props, glyphs = _parse_daisy3(data)
     # > total # of files = integer value of (height + l)/32. Add 1 if the
     # > division leaves a remainder.
     n_files = ceildiv(dd3_props.height+1, 32)
-    path = Path(name).parent
     for count in range(2, n_files+1):
         stream_name = f'{name[:-1]}{count}'
-        stream = container.open(path / stream_name, 'r')
+        stream = location.open(stream_name, 'r')
         data = stream.read()
         _, _, new_glyphs = _parse_daisy3(data)
         glyphs = tuple(

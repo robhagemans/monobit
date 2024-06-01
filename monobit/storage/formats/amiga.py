@@ -54,8 +54,7 @@ def load_amiga_fc(f):
         else:
             tags = ()
         # note case insensitive match on open (amiga os is case-insensitive
-        local_dir = Path(f.name).parent
-        with f.where.open(local_dir / name, 'r') as stream:
+        with f.where.open(name, 'r') as stream:
             pack.append(_load_amiga(stream, tags))
     return pack
 
