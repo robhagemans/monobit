@@ -52,6 +52,7 @@ class Container(StreamHolder):
         """Item at `name` is a directory."""
         raise NotImplementedError
 
+    # TODO move to Location
     def unused_name(self, name):
         """Generate unique name for container file."""
         if not self.contains(name):

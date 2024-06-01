@@ -145,7 +145,9 @@ class Location:
             raise IsADirectoryError(f'Location {self} is a directory.')
         return self._leaf
 
-    def get_container_and_subpath(self):
+    # directory (container) functionality
+
+    def _get_container_and_subpath(self):
         """Get open container and subpath to location."""
         if not self.is_dir():
             raise NotADirectoryError(f'Location {self} is not a directory.')
@@ -179,12 +181,27 @@ class Location:
             with location:
                 yield from location.walk()
 
-    def unused_name(self, name):
-        if not self.is_dir():
-            raise ValueError('Cannot create name on stream.')
-        container = self._leaf
-        return container.unused_name(name)
+    def iter_sub(self, prefix):
+        """List contents of a subpath."""
+        container, subpath = self._get_container_and_subpath()
+        return (
+            _path.relative_to(subpath)
+            for _path in container.iter_sub(subpath / prefix)
+        )
 
+    def contains(self, item):
+        """Check if file is in container. Case sensitive if container/fs is."""
+        container, subpath = self._get_container_and_subpath()
+        return container.contains(subpath / item)
+
+    def open(self, name, mode, overwrite=False):
+        """Open a binary stream in the container."""
+        container, subpath = self._get_container_and_subpath()
+        return container.open(subpath/name, mode=mode, overwrite=overwrite)
+
+    def unused_name(self, name):
+        container, subpath = self._get_container_and_subpath()
+        return container.unused_name(subpath / name)
 
     ###########################################################################
 

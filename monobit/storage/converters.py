@@ -183,10 +183,9 @@ def loop_load(location, load_func):
     Loop over files in enclosing container.
     instream should point to a file *inside* the container, not the container file.
     """
-    container, path = location.get_container_and_subpath()
     glyphs = []
-    for name in sorted(container.iter_sub(path)):
-        with container.open(name, mode='r') as stream:
+    for name in sorted(location.iter_sub('')):
+        with location.open(name, mode='r') as stream:
             glyphs.append(load_func(stream))
     return glyphs
 

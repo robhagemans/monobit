@@ -287,11 +287,10 @@ if Image:
         if more:
             raise FileFormatError('Can only save one font to image set.')
         width = len(f'{int(max(font.get_codepoints())):x}')
-        container, path = location.get_container_and_subpath()
         for glyph in font.glyphs:
             cp = f'{int(glyph.codepoint):x}'.zfill(width)
             name = f'{prefix}{cp}.{image_format}'
-            with container.open(path / name, 'w') as imgfile:
+            with location.open(name, 'w') as imgfile:
                 img = glyph_to_image(glyph, paper, ink)
                 try:
                     img.save(imgfile, format=image_format or Path(outfile).suffix[1:])
