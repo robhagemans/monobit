@@ -41,7 +41,7 @@ class Directory(Container):
     def __repr__(self):
         return f"{type(self).__name__}('{self._path}')"
 
-    def open(self, name, mode, overwrite=False):
+    def open(self, name, mode):
         """Open a stream in the directory."""
         # mode in 'r', 'w'
         mode = mode[:1]
@@ -52,11 +52,6 @@ class Directory(Container):
             (self._path / path).mkdir(parents=True, exist_ok=True)
         logging.debug("Opening file `%s` for mode '%s'.", name, mode)
         filepath = self._path / pathname
-        if mode == 'w' and not overwrite and filepath.exists():
-            raise ValueError(
-                f'Overwriting existing file {str(filepath)}'
-                ' requires -overwrite to be set'
-            )
         if filepath.is_dir():
             raise IsADirectoryError(
                 f"Cannot open stream on '{filepath}': is a directory."

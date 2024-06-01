@@ -44,7 +44,7 @@ class Container(StreamHolder):
 
     # NOTE open() opens a stream, close() closes the container
 
-    def open(self, name, mode, overwrite=False):
+    def open(self, name, mode):
         """Open a binary stream in the container."""
         raise NotImplementedError
 
@@ -99,7 +99,7 @@ class MacFork(Archive):
             raise NotADirectoryError(f"'{prefix}' is not a directory.")
         return iter(self.forknames)
 
-    def open(self, name, mode, overwrite=False):
+    def open(self, name, mode):
         """Open a binary stream in the container."""
         if mode != 'r':
             raise ValueError('Writing onto Mac forks is not supported.')

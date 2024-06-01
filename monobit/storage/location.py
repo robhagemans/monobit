@@ -207,10 +207,15 @@ class Location:
         container, subpath = self._get_container_and_subpath()
         return container.contains(subpath / item)
 
-    def open(self, name, mode, overwrite=False):
+    def open(self, name, mode):
         """Open a binary stream in the container."""
+        if mode == 'w' and not self.overwrite and self.contains(name):
+            raise ValueError(
+                f'Overwriting existing file {name}'
+                ' requires -overwrite to be set'
+            )
         container, subpath = self._get_container_and_subpath()
-        stream = container.open(subpath/name, mode=mode, overwrite=overwrite)
+        stream = container.open(subpath/name, mode=mode)
         stream.where = self
         return stream
 
@@ -307,9 +312,7 @@ class Location:
                 return
         else:
             # head points to a file. open it and recurse
-            stream = container.open(
-                head, mode=self.mode, overwrite=self.overwrite
-            )
+            stream = container.open(head, mode=self.mode)
             self._stream_objects.append(stream)
             self._leafpath = tail
             self._resolve()

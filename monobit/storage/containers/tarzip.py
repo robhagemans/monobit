@@ -56,7 +56,7 @@ class ZipTarBase(Archive):
         self._stream.close()
         super().close()
 
-    def open(self, name, mode, overwrite=False):
+    def open(self, name, mode):
         """Open a stream in the container."""
         filename = str(PurePosixPath(self._root) / name)
         mode = mode[:1]
@@ -80,11 +80,6 @@ class ZipTarBase(Archive):
             # .name is not writeable, so we need to wrap
             return Stream(file, mode, name=name)
         else:
-            if self.contains(name) and not overwrite:
-                raise ValueError(
-                    f'Overwriting existing file {str(name)}'
-                    ' requires -overwrite to be set'
-                )
             # stop BytesIO from being closed until we want it to be
             newfile = Stream(KeepOpen(io.BytesIO()), mode=mode, name=name)
             if name in self._files:
