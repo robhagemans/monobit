@@ -12,10 +12,8 @@ from monobit.base.binary import align
 
 from ..streams import Stream
 from ..magic import FileFormatError, Magic
-from ..holders import Container
 from ..base import containers
-
-from .apple import MacFork
+from .containers import MacFork
 
 
 ##############################################################################

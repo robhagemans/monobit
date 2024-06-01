@@ -10,7 +10,7 @@ import logging
 import zipfile
 from pathlib import Path, PurePosixPath
 
-from ..holders import Archive, match_case_insensitive
+from .containers import Archive, match_case_insensitive
 from ..base import containers
 from ..streams import KeepOpen, Stream
 from ..magic import FileFormatError

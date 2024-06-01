@@ -12,8 +12,8 @@ from pathlib import Path
 from collections import deque
 
 from ..streams import Stream
-from ..holders import Container
 from ..base import containers
+from .containers import Container
 
 
 @containers.register(name='dir')

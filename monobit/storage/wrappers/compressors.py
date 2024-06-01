@@ -12,8 +12,8 @@ from importlib import import_module
 
 from ..streams import Stream
 from ..magic import FileFormatError
-from ..holders import Wrapper
 from ..base import wrappers
+from .wrappers import Wrapper
 
 
 class Compressor(Wrapper):
