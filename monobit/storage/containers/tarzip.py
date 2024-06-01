@@ -24,7 +24,7 @@ class ZipTarBase(Archive):
         """Create wrapper."""
         # mode really should just be 'r' or 'w'
         mode = mode[:1]
-        super().__init__(mode, file.name, ignore_case=ignore_case)
+        super().__init__(mode, file.name)
         # reading zipfile needs a seekable stream, drain to buffer if needed
         self._stream = Stream(file, mode)
         # create the zipfile
@@ -40,6 +40,9 @@ class ZipTarBase(Archive):
                 self._root = stem
         # output files, to be written on close
         self._files = []
+        # ignore case on read - open any case insensitive match
+        # case sensitivity of writing depends on file system
+        self._ignore_case = ignore_case
 
     def close(self):
         """Close the archive, ignoring errors."""
@@ -102,6 +105,23 @@ class ZipTarBase(Archive):
                         pass
         raise FileNotFoundError(
             f"'{filename}' not found in archive {self}."
+        )
+
+    def contains(self, item):
+        """Check if file is in container. Case sensitive if container/fs is."""
+        if self._ignore_case:
+            return (
+                str(Path(self._root) / item).lower() in
+                (str(_item).lower() for _item in self.list())
+            )
+        else:
+            return str(item) in self.list()
+
+    def iter_sub(self, prefix):
+        """List contents of a subpath."""
+        return (
+            str(Path(_name).relative_to(self._root)) for _name in self.list()
+            if Path(_name).parent == Path(self._root) / prefix
         )
 
 

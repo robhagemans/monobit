@@ -36,7 +36,10 @@ class Directory(Container):
             # exist_ok raises FileExistsError only if the *target* already
             # exists, not the parents
             self._path.mkdir(parents=True, exist_ok=True)
-        super().__init__(mode, str(self._path), ignore_case=ignore_case)
+        # ignore case on read - open any case insensitive match
+        # case sensitivity of writing depends on file system
+        self._ignore_case = ignore_case
+        super().__init__(mode, str(self._path))
 
     def __repr__(self):
         return f"{type(self).__name__}('{self._path}')"
