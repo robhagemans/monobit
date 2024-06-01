@@ -99,7 +99,19 @@ class _CodedBinaryWrapperBase(Archive):
         self.assign = assign or cls.assign
         self._wrapped_stream = stream
         self._coded_data = {}
+        self._files = []
         super().__init__(mode)
+
+
+    def close(self):
+        """Close the archive, ignoring errors."""
+        if self.mode == 'w' and not self.closed:
+            for file in self._files:
+                self._write_out(file)
+                file.close()
+        self._wrapped_stream.close()
+        super().close()
+
 
     def is_dir(self, name):
         """Item at `name` is a directory."""
@@ -142,6 +154,8 @@ class _CodedBinaryWrapperBase(Archive):
         """Find all identifiers with payload."""
         if self._coded_data:
             return
+        if self.mode == 'w':
+            return
 
         instream = self._wrapped_stream.text
         identifier = ''
@@ -162,6 +176,7 @@ class _CodedBinaryWrapperBase(Archive):
                 else:
                     found_identifier, _, _ = line.partition(assign)
 
+                    # clean up identifier
                     *_, found_identifier = found_identifier.strip().split()
                     found_identifier, *_ = re.split(r"\W+", found_identifier)
 
@@ -172,15 +187,19 @@ class _CodedBinaryWrapperBase(Archive):
                 )
                 self._coded_data[found_identifier] = data
 
-    #FIXME needs to be updated
     def _open_write(self, name):
         """Open output stream on source wrapper."""
-        outfile = self._wrapped_stream
-        return WrappedWriterStream(
-            outfile,
-            _write_out_coded_binary,
-            name=name,
-            identifier=self.identifier,
+        newfile = Stream(KeepOpen(BytesIO()), mode='w', name=name)
+        if name in self._files:
+            logging.warning('Creating multiple files of the same name `%s`.', name)
+        self._files.append(newfile)
+        return newfile
+
+    def _write_out(self, file):
+        return _write_out_coded_binary(
+            file.getvalue(),
+            outstream=self._wrapped_stream,
+            identifier=str(file.name),
             assign_template=self.assign_template,
             delimiters=self.delimiters,
             comment=self.comment,
