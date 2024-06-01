@@ -6,6 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import logging
+import itertools
 from pathlib import Path
 
 from ..magic import FileFormatError
@@ -62,14 +63,6 @@ class Container(StreamHolder):
                 filename = '{}.{}'.format(filename, suffix)
             if not self.contains(filename):
                 return filename
-
-
-def match_case_insensitive(filepath, iterator):
-    """Find case insensitive match."""
-    for name in iterator:
-        if str(name).lower() == str(filepath).lower():
-            return name
-    raise FileNotFoundError(filepath)
 
 
 class Archive(Container):

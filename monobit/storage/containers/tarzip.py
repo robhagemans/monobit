@@ -12,7 +12,7 @@ import tarfile
 import time
 from pathlib import Path, PurePosixPath
 
-from .containers import Archive, match_case_insensitive
+from .containers import Archive
 from ..base import containers
 from ..streams import KeepOpen, Stream
 from ..magic import FileFormatError, Magic
@@ -61,14 +61,14 @@ class ZipTarBase(Archive):
         filename = str(PurePosixPath(self._root) / name)
         mode = mode[:1]
         # always open as binary
-        logging.debug('Opening file `%s` on tar container `%s`.', name, self.name)
+        logging.debug("Opening file '%s' on container %s.", name, self)
         if mode == 'r':
             try:
                 file = self._open_read(filename)
             except KeyError:
                 if not self._ignore_case:
                     raise FileNotFoundError(f"'{filename}' not found on {self}")
-                filename = self.match_case_insensitive(filename, self.list())
+                filename = match_case_insensitive(filename, self.list())
                 try:
                     file = self._open_read(filename)
                 except KeyError as e:
@@ -93,13 +93,33 @@ class ZipTarBase(Archive):
             return newfile
 
     def is_dir(self, name):
-        """Item at `name` is a directory."""
+        """Item at 'name' is a directory."""
         root = PurePosixPath(self._root)
         if root / name == root:
             return True
         filename = str(root / name)
-        return self._is_dir(filename)
+        try:
+            return self._is_dir(filename)
+        except KeyError:
+            # pass
+            if self._ignore_case:
+                filename = match_case_insensitive(filename, self.list())
+                if filename is not None:
+                    try:
+                        return self._is_dir(filename)
+                    except KeyError:
+                        pass
+        raise FileNotFoundError(
+            f"'{filename}' not found in archive {self}."
+        )
 
+
+def match_case_insensitive(filepath, iterator):
+    """Find case insensitive match."""
+    for name in iterator:
+        if str(name).lower() == str(filepath).lower():
+            return name
+    return None
 
 ###############################################################################
 
@@ -132,22 +152,22 @@ class ZipContainer(ZipTarBase):
         return tuple(_name.removesuffix('/') for _name in self._archive.namelist())
 
     def _open_read(self, filename):
-        return self._archive.open(filename, 'r')
-        # FIXME the above will raise FileNotFoundError on a bare directory name (KeyError?)
-        # but open an empty file for directory name plus /
-        # we need IsADirectoryError (return None like tarfile)
+        filename = filename.removesuffix('/')
+        try:
+            return self._archive.open(filename, 'r')
+        except KeyError:
+            # will raise KeyError if the dir also does not exist
+            zipinfo = self._archive.getinfo(filename + '/')
+            # return None for open() on directories (like tarfile does)
+            return None
 
     def _is_dir(self, filename):
         # zipinfo has an is_dir method, but really they are already distinguished by the slash
+        filename = filename.removesuffix('/')
         try:
             zipinfo = self._archive.getinfo(filename + '/')
         except KeyError:
-            try:
-                zipinfo = self._archive.getinfo(filename)
-            except KeyError:
-                raise FileNotFoundError(
-                    f"'{filename}' not found in archive {self}."
-                ) from None
+            zipinfo = self._archive.getinfo(filename)
         return zipinfo.is_dir()
 
 
@@ -187,10 +207,5 @@ class TarContainer(ZipTarBase):
         return self._archive.extractfile(filename)
 
     def _is_dir(self, filename):
-        try:
-            tarinfo = self._archive.getmember(filename)
-        except KeyError as e:
-            raise FileNotFoundError(
-                f"'{filename}' not found in archive {self}."
-            ) from None
+        tarinfo = self._archive.getmember(filename)
         return tarinfo.isdir()
