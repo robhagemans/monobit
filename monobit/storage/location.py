@@ -52,7 +52,12 @@ class Location:
         # container or stream on which we attch the path
         # this object is NOT owned by us but externaly provided
         # an further objects in the path will be ours to close
-        self._path_objects = [root]
+        if isinstance(root, Container):
+            self._path_objects = [root]
+            self._stream_objects = []
+        else:
+            self._path_objects = []
+            self._stream_objects = [KeepOpen(root)]
         # subpath from last object in path_objects
         self._leafpath = self.path
         self._container_format = container_format.split('.')
@@ -120,6 +125,12 @@ class Location:
     def close(self):
         """Close objects we opened on path."""
         # leave out the root object as we don't own it
+        while self._stream_objects:
+            outer = self._stream_objects.pop()
+            try:
+                outer.close()
+            except Exception as exc:
+                logging.warning('Exception while closing %s: 5s', outer, exc)
         while len(self._path_objects) > 1:
             outer = self._path_objects.pop()
             try:
@@ -131,33 +142,34 @@ class Location:
     @property
     def _leaf(self):
         """Object (stream or container) at the end of path."""
-        leaf = self._path_objects[-1]
-        assert isinstance(leaf, (StreamBase, Container)), leaf
-        return leaf
+        try:
+            return self._stream_objects[-1]
+        except IndexError:
+            return self._path_objects[-1]
 
-    @property
-    def root(self):
-        return self._path_objects[0]
+    # @property
+    # def root(self):
+    #     return self._path_objects[0]
 
     def get_stream(self):
         """Get open stream at location."""
         if self.is_dir():
             raise IsADirectoryError(f'Location {self} is a directory.')
-        return self._leaf
+        return self._stream_objects[-1]
 
     # directory (container) functionality
 
     def _get_container_and_subpath(self):
         """Get open container and subpath to location."""
         if not self.is_dir():
-            raise NotADirectoryError(f'Location {self} is not a directory.')
-        return self._leaf, self._leafpath
+            return self._path_objects[-1], self._leafpath.parent
+        return self._path_objects[-1], self._leafpath
 
     def is_dir(self):
         """Location points to a directory/container."""
         if not self.resolved:
             raise ValueError(f'Location {self} is not open.')
-        return not isinstance(self._leaf, StreamBase)
+        return not self._stream_objects
 
     def join(self, subpath):
         """Get a location at the subpath."""
@@ -233,9 +245,9 @@ class Location:
             else:
                 if self._container_format:
                     self._container_format.pop()
-                self._path_objects.append(wrapper_object)
+                self._stream_objects.append(wrapper_object)
                 unwrapped_stream = wrapper_object.open()
-                self._path_objects.append(unwrapped_stream)
+                self._stream_objects.append(unwrapped_stream)
                 stream = unwrapped_stream
         # check if innermost stream is a container
         try:
@@ -254,7 +266,9 @@ class Location:
         else:
             if self._container_format:
                 self._container_format.pop()
+            self._path_objects.extend(self._stream_objects)
             self._path_objects.append(container_object)
+            self._stream_objects = []
 
     def _resolve_container(self):
         container = self._leaf
@@ -283,10 +297,9 @@ class Location:
             stream = container.open(
                 head, mode=self.mode, overwrite=self.overwrite
             )
-            self._path_objects.append(stream)
+            self._stream_objects.append(stream)
             self._leafpath = tail
             self._resolve()
-
 
     def _find_next_node(self):
         """Find the next existing node (container or file) in the path."""
