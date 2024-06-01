@@ -48,14 +48,10 @@ class Directory(Container):
         pathname = Path(name)
         if mode == 'w':
             path = pathname.parent
-            logging.debug('Creating directory `%s`', self._path / path)
+            logging.debug("Creating directory '%s'", self._path / path)
             (self._path / path).mkdir(parents=True, exist_ok=True)
-        logging.debug("Opening file `%s` for mode '%s'.", name, mode)
+        logging.debug("Opening file '%s' for mode '%s'.", name, mode)
         filepath = self._path / pathname
-        if filepath.is_dir():
-            raise IsADirectoryError(
-                f"Cannot open stream on '{filepath}': is a directory."
-            )
         try:
             file = open(filepath, mode + 'b')
         except FileNotFoundError:

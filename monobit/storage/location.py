@@ -158,6 +158,12 @@ class Location:
         stream.where = self
         return stream
 
+    def is_dir(self):
+        """Location points to a directory/container."""
+        if not self.resolved:
+            raise ValueError(f'Location {self} is not open.')
+        return not self._stream_objects
+
     # directory (container) functionality
 
     def _get_container_and_subpath(self):
@@ -165,12 +171,6 @@ class Location:
         if not self.is_dir():
             return self._path_objects[-1], self._container_subpath.parent
         return self._path_objects[-1], self._container_subpath
-
-    def is_dir(self):
-        """Location points to a directory/container."""
-        if not self.resolved:
-            raise ValueError(f'Location {self} is not open.')
-        return not self._stream_objects
 
     def join(self, subpath):
         """Get a location at the subpath."""
@@ -215,7 +215,11 @@ class Location:
                 ' requires -overwrite to be set'
             )
         container, subpath = self._get_container_and_subpath()
-        stream = container.open(subpath/name, mode=mode)
+        if container.is_dir(subpath / name):
+            raise IsADirectoryError(
+                f"Cannot open stream on '{name}': is a directory."
+            )
+        stream = container.open(subpath / name, mode=mode)
         stream.where = self
         return stream
 
