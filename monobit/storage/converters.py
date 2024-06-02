@@ -44,7 +44,7 @@ def load(infile:Any='', *, format:str='', container_format:str='', **kwargs):
         ) as location:
         if location.is_dir():
             return _load_container(
-                location, format=format or 'all', **location.argdict
+                location, format=format, **location.argdict
             )
         else:
             return _load_stream(
@@ -137,31 +137,29 @@ def _wrap_converter_func(loader):
 
 
 def _load_container(location, *, format='', **kwargs):
-    """Load as a container format."""
+    """Load from a container."""
     try:
         loaders = container_loaders.get_for(format=format)
     except ValueError:
         loaders = None
     if not loaders:
-        loader = load_all
-        fonts = load_all(location, format=format, **kwargs)
+        pack = load_all(location, format=format, **kwargs)
+        spec_msg = 'all'
     else:
         loader = _wrap_converter_func(loaders[0])
         logging.info("Loading '%s' as container format `%s`", location.path, loader.format)
         fonts = loader(location, **kwargs)
-    if not fonts:
-        raise FileFormatError(
-            "No fonts found in '{}' as format `{}`.".format(
-                location.path, loader.format
-            )
+        spec_msg = f"as format {loader.format}"
+        pack = _annotate_fonts_with_source(
+            fonts, location.path, loader.format, kwargs
         )
-    pack = _annotate_fonts_with_source(
-        fonts, location.path, loader.format, kwargs
-    )
+    if not pack:
+        raise FileFormatError(
+            f"No fonts found in '{location.path}' while loading {spec_msg}."
+        )
     return pack
 
 
-@container_loaders.register(name='all')
 def load_all(root_location, *, format='', **kwargs):
     """Open container and load all fonts found in it into one pack."""
     logging.info('Reading all from `%s`.', root_location)
@@ -228,7 +226,7 @@ def save(
         ) as location:
         if location.is_dir():
             _save_container(
-                pack, location, format=format or 'all', **location.argdict
+                pack, location, format=format, **location.argdict
             )
         else:
             _save_stream(
@@ -262,12 +260,12 @@ def _save_stream(pack, outstream, *, format='', **kwargs):
 
 
 def _save_container(pack, location, *, format, **kwargs):
+    """Save font(s) to container."""
     try:
         savers = container_savers.get_for(format=format)
     except ValueError:
         savers = None
     if not savers:
-        saver = save_all
         save_all(pack, location, format=format, **kwargs)
     else:
         saver = _wrap_converter_func(savers[0])
@@ -277,7 +275,6 @@ def _save_container(pack, location, *, format, **kwargs):
         saver(pack, location, **kwargs)
 
 
-@container_savers.register(name='all')
 def save_all(
         pack, location, *, format='', template='', **kwargs
     ):
