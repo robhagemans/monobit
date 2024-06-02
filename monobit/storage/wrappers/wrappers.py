@@ -53,12 +53,9 @@ class FilterWrapper(Wrapper):
         else:
             outfile = self._wrapped_stream.text
             name = Path(self._wrapped_stream.name).stem
-            try:
-                self._unwrapped_stream = WrappedWriterStream(
-                    outfile, self.encode, name=name, **self.encode_kwargs
-                )
-            except NotImplementedError:
-                raise ValueError(f'Writing to {type(self)} not supported.')
+            self._unwrapped_stream = WrappedWriterStream(
+                outfile, self.encode, name=name, **self.encode_kwargs
+            )
         return self._unwrapped_stream
 
     def _open_write(self):

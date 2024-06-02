@@ -239,5 +239,10 @@ class WrappedWriterStream(Stream):
     def close(self):
         if not self.closed:
             rawbytes = bytes(self._stream.getbuffer())
-            self._write_out(rawbytes, self._outfile, **self._write_out_kwargs)
+            try:
+                self._write_out(rawbytes, self._outfile, **self._write_out_kwargs)
+            except Exception as exc:
+                logging.warning(
+                    f"Could not write to '{self._outfile.name}': {exc}"
+                )
         super().close()
