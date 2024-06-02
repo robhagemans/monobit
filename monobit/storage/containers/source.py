@@ -11,7 +11,7 @@ import logging
 from io import BytesIO
 from pathlib import Path
 
-from ..streams import Stream, KeepOpen
+from ..streams import Stream, KeepOpen, WrappedWriterStream
 from ..magic import FileFormatError
 from ..base import containers
 from ..containers.containers import Archive
@@ -215,22 +215,6 @@ def _clean_identifier(found_identifier):
 
 ###############################################################################
 # writer
-
-class WrappedWriterStream(Stream):
-
-    def __init__(self, outfile, write_out, name='', **kwargs):
-        bytesio = BytesIO()
-        self._outfile = outfile
-        self._write_out = write_out
-        self._write_out_kwargs = kwargs
-        super().__init__(bytesio, name=name, mode='w')
-
-    def close(self):
-        if not self.closed:
-            rawbytes = bytes(self._stream.getbuffer())
-            self._write_out(rawbytes, self._outfile, **self._write_out_kwargs)
-        super().close()
-
 
 def _write_out_coded_binary(
         rawbytes, outstream, *,

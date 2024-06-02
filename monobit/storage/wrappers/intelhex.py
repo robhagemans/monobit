@@ -11,7 +11,7 @@ from pathlib import Path
 from ..streams import Stream
 from ..magic import FileFormatError
 from ..base import wrappers
-from .wrappers import Wrapper
+from .wrappers import FilterWrapper
 from ..containers.source import WrappedWriterStream
 
 
@@ -21,21 +21,15 @@ from ..containers.source import WrappedWriterStream
         # '*.hex',
         '*.mcs', '*.int', '*.ihex', '*.ihe', '*.ihx'
     ),
-    magic=(b':0',), 
+    magic=(b':0',),
     # ends with b':00000001FF'
 )
-class IntelHexWrapper(Wrapper):
+class IntelHexWrapper(FilterWrapper):
     """Intel Hex format wrapper."""
 
-    def open(self):
-        if self.mode == 'r':
-            self._unwrapped_stream = self._open_read()
-        else:
-            raise ValueError('Writing to Intel Hex is not supported.')
-        return self._unwrapped_stream
-
-    def _open_read(self):
-        infile = self._wrapped_stream.text
+    @staticmethod
+    def decode(instream):
+        infile = instream.text
         datadict = {}
         checksum = 0
         size = 0
@@ -74,5 +68,4 @@ class IntelHexWrapper(Wrapper):
                     logging.warning(f'Ignoring unknown hex code {hexcode}.')
             except (IndexError, ValueError):
                 raise FileFormatError('Malformed Intel Hex file.')
-        name = Path(self._wrapped_stream.name).stem
-        return Stream.from_data(data, mode='r', name=name)
+        return data
