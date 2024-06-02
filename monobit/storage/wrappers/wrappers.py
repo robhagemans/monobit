@@ -52,17 +52,12 @@ class FilterWrapper(Wrapper):
         else:
             if type(self).encode == FilterWrapper.encode:
                 raise ValueError(f'Writing to {type(self)} not supported.')
-            outfile = self._wrapped_stream.text
+            outfile = self._wrapped_stream
             name = Path(self._wrapped_stream.name).stem
             self._unwrapped_stream = WrappedWriterStream(
                 outfile, self.encode, name=name, **self.encode_kwargs
             )
         return self._unwrapped_stream
-
-    def _open_write(self):
-        outfile = self._wrapped_stream.text
-        name = Path(self._wrapped_stream.name).stem
-        return WrappedWriterStream(outfile, self.encode, name=name, **kwargs)
 
     @staticmethod
     def encode(data, outstream, **kwargs):

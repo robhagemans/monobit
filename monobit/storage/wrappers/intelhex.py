@@ -11,6 +11,7 @@ from pathlib import Path
 from ..streams import Stream
 from ..magic import FileFormatError
 from ..base import wrappers
+from ...base.binary import ceildiv
 from .wrappers import FilterWrapper
 from ..containers.source import WrappedWriterStream
 
@@ -61,6 +62,7 @@ class IntelHexWrapper(FilterWrapper):
                     # end of file code
                     break
                 elif hexcode in ('02', '04'):
+                    # extended segment address / extended linear addresss
                     offset = int.from_bytes(payload, byteorder='big')
                 elif hexcode in ('03', '05'):
                     pass
@@ -69,3 +71,29 @@ class IntelHexWrapper(FilterWrapper):
             except (IndexError, ValueError):
                 raise FileFormatError('Malformed Intel Hex file.')
         return data
+
+    @staticmethod
+    def encode(data, outstream, *, chunk_size=32):
+        # split into groups of 32 bytes
+        outfile = outstream.text
+        ngroups = ceildiv(len(data), chunk_size)
+        # extended segment address 0
+        outfile.write(':020000040000FA\n')
+        for group in range(ngroups):
+            # in the last round this may be less than chunk_size long
+            payload = data[chunk_size*group : chunk_size*(group+1)]
+            sum_bytes = sum(payload)
+            # skip over empty chunks, except the last to ensure file length
+            if not sum_bytes and group < ngroups-1:
+                continue
+            offset = chunk_size * group
+            checksum = 0x100 - (
+                sum_bytes + len(payload)
+                + sum(offset.to_bytes(2, byteorder='big'))
+            ) % 0x100
+            outfile.write(
+                f':{len(payload):02X}{offset:04X}00'
+                f'{payload.hex().upper()}{checksum:02X}\n'
+            )
+        # end of file marker
+        outfile.write(':00000001FF\n')

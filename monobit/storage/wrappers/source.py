@@ -64,7 +64,7 @@ class BASICCodedBinaryWrapper(FilterWrapper):
 
     @staticmethod
     def encode(
-            rawbytes, outfile,
+            rawbytes, outstream,
             *,
             line_number_start,
             line_number_inc,
@@ -74,6 +74,7 @@ class BASICCodedBinaryWrapper(FilterWrapper):
         Write binary file encoded into DATA lines in classic BASIC source code.
         Tokenised BASIC files are not supported.
         """
+        outfile = outstream.text
         if (
                 line_number_inc <= 0
                 and line_number_start is not None and line_number_start > -1
