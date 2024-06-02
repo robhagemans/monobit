@@ -183,11 +183,14 @@ class _CodedBinaryWrapperBase(Archive):
                     found_identifier = identifier
                 else:
                     found_identifier, _, _ = line.partition(assign)
-
+                    logging.debug('Found assignement to `%s`', found_identifier)
                     # clean up identifier
+                    # take last element separated by whitespace e.g. char foo[123] -> foo[123]
                     *_, found_identifier = found_identifier.strip().split()
+                    # strip non-alnum at either end (e.g. "abc" -> abc)
+                    found_identifier = re.sub(r"^\W+|\W+$", "", found_identifier)
+                    # take first alphanum part (e.g. name[123 -> name)
                     found_identifier, *_ = re.split(r"\W+", found_identifier)
-
             if found_identifier and start in line:
                 _, line = line.split(start)
                 data = _get_payload(
