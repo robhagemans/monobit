@@ -138,12 +138,17 @@ def _wrap_converter_func(loader):
 
 def _load_container(location, *, format='', **kwargs):
     """Load as a container format."""
-    loaders = container_loaders.get_for(format=format)
+    try:
+        loaders = container_loaders.get_for(format=format)
+    except ValueError:
+        loaders = None
     if not loaders:
-        raise FileFormatError(f'Format specifier `{format}` not recognised.')
-    loader = _wrap_converter_func(loaders[0])
-    logging.info("Loading '%s' as container format `%s`", location.path, loader.format)
-    fonts = loader(location, **kwargs)
+        loader = load_all
+        fonts = load_all(location, format=format, **kwargs)
+    else:
+        loader = _wrap_converter_func(loaders[0])
+        logging.info("Loading '%s' as container format `%s`", location.path, loader.format)
+        fonts = loader(location, **kwargs)
     if not fonts:
         raise FileFormatError(
             "No fonts found in '{}' as format `{}`.".format(
@@ -257,18 +262,23 @@ def _save_stream(pack, outstream, *, format='', **kwargs):
 
 
 def _save_container(pack, location, *, format, **kwargs):
-    savers = container_savers.get_for(format=format)
+    try:
+        savers = container_savers.get_for(format=format)
+    except ValueError:
+        savers = None
     if not savers:
-        raise FileFormatError(f'Format specifier `{format}` not recognised.')
-    saver = _wrap_converter_func(savers[0])
-    logging.info(
-        "Saving '%s' as container format `%s`", location.path, saver.format
-    )
-    saver(pack, location, **kwargs)
+        saver = save_all
+        save_all(pack, location, format=format, **kwargs)
+    else:
+        saver = _wrap_converter_func(savers[0])
+        logging.info(
+            "Saving '%s' as container format `%s`", location.path, saver.format
+        )
+        saver(pack, location, **kwargs)
 
 
 @container_savers.register(name='all')
-def _save_all(
+def save_all(
         pack, location, *, format='', template='', **kwargs
     ):
     """Save fonts to a container."""
