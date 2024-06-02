@@ -21,7 +21,7 @@ from ..containers.containers import Archive
 
 ###############################################################################
 
-class _CodedBinaryWrapperBase(Archive):
+class _CodedBinaryContainer(Archive):
 
     def __init__(
             self, stream, mode='r',
@@ -301,7 +301,7 @@ def _int_from_c(cvalue):
     return int(cvalue, 0)
 
 
-class _CodedBinaryWrapper(_CodedBinaryWrapperBase):
+class _CodedBinary(_CodedBinaryContainer):
     """Default parameters for coded binary."""
     delimiters = '{}'
     comment = '//'
@@ -321,7 +321,7 @@ class _CodedBinaryWrapper(_CodedBinaryWrapperBase):
     name='c',
     patterns=('*.c', '*.cc', '*.cpp', '*.h')
 )
-class CCodedBinaryWrapper(_CodedBinaryWrapper):
+class CCodedBinary(_CodedBinary):
     """C source code wrapper."""
     delimiters = '{}'
     comment = '//'
@@ -338,7 +338,7 @@ class CCodedBinaryWrapper(_CodedBinaryWrapper):
     name='json',
     patterns=('*.js', '*.json',),
 )
-class JSONCodedBinaryWrapper(_CodedBinaryWrapper):
+class JSONCodedBinary(_CodedBinary):
     """JSON wrapper."""
     delimiters = '[]'
     comment = '//'
@@ -359,7 +359,7 @@ class JSONCodedBinaryWrapper(_CodedBinaryWrapper):
     name='python',
     patterns=('*.py',),
 )
-class PythonCodedBinaryWrapper(_CodedBinaryWrapper):
+class PythonCodedBinary(_CodedBinary):
     """Python source code wrapper, using lists."""
     delimiters = '[]'
     comment = '#'
@@ -372,7 +372,7 @@ class PythonCodedBinaryWrapper(_CodedBinaryWrapper):
     name='python-tuple',
     patterns=('*.py',),
 )
-class PythonTupleCodedBinaryWrapper(_CodedBinaryWrapper):
+class PythonTupleCodedBinary(_CodedBinary):
     """Python source code wrapper, using tuples."""
     delimiters = '()'
     comment = '#'
@@ -401,7 +401,7 @@ def _int_from_pascal(cvalue):
     name='pascal',
     patterns=('*.pas',),
 )
-class PascalCodedBinaryWrapper(_CodedBinaryWrapper):
+class PascalCodedBinary(_CodedBinary):
     """Pascal source code wrapper."""
     delimiters = '()'
     # pascal has block comments only
