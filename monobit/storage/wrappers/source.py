@@ -67,6 +67,7 @@ class _CodedBinaryWrapperBase(Archive):
             # writer params
             assign_template:str='',
             separator:str='',
+            final_separator:bool=None,
             bytes_per_line:int=16,
             pre:str='',
             post:str='',
@@ -79,6 +80,7 @@ class _CodedBinaryWrapperBase(Archive):
         block_comment: block comment character. (use language default)
         assign: assignment character. (use language default)
         separator: character separating statements. (use language default)
+        final_separator: separator is written on the last statement. (use language default)
         assign_template: format of assignemnt statement, used on write. (use language default)
         bytes_per_line: number of bytes to write to one line. (default: 16)
         pre: characters needed at start of file. (use language default)
@@ -91,6 +93,7 @@ class _CodedBinaryWrapperBase(Archive):
         # write
         self.assign_template = assign_template or cls.assign_template
         self.separator = separator or cls.separator
+        self.final_separator = final_separator or cls.final_separator
         self.bytes_per_line = bytes_per_line or cls.bytes_per_line
         self.pre = pre or cls.pre
         self.post = post or cls.post
@@ -106,9 +109,14 @@ class _CodedBinaryWrapperBase(Archive):
     def close(self):
         """Close the archive, ignoring errors."""
         if self.mode == 'w' and not self.closed:
-            for file in self._files:
+            self._wrapped_stream.text.write(self.pre)
+            for count, file in enumerate(self._files):
                 self._write_out(file)
                 file.close()
+                if self.final_separator or count < len(self._files) - 1:
+                    self._wrapped_stream.text.write(self.separator)
+                self._wrapped_stream.text.write('\n\n')
+            self._wrapped_stream.text.write(self.post)
         self._wrapped_stream.close()
         super().close()
 
@@ -203,7 +211,6 @@ class _CodedBinaryWrapperBase(Archive):
             assign_template=self.assign_template,
             delimiters=self.delimiters,
             comment=self.comment,
-            separator=self.separator,
             bytes_per_line=self.bytes_per_line,
             pre=self.pre,
             post=self.post,
@@ -244,7 +251,7 @@ def _get_payload(instream, line, start, end, comment, block_comment):
 
 def _write_out_coded_binary(
         rawbytes, outstream, *,
-        assign_template, delimiters, comment, separator,
+        assign_template, delimiters, comment,
         bytes_per_line, pre, post, identifier='',
     ):
     """
@@ -254,7 +261,6 @@ def _write_out_coded_binary(
     assign_template: assignment operator. May include `identifier` and `bytesize` variable.
     delimiters: Must contain two characters, building the opening and closing delimiters of the collection. E.g. []
     comment: Line comment character(s).
-    separator: string to separate statements
     bytes_per_line: number of encoded bytes in a source line
     pre: string to write before output
     post: string to write after output
@@ -272,7 +278,6 @@ def _write_out_coded_binary(
         identifier=identifier, bytesize=len(rawbytes)
     )
     # emit code
-    outstream.write(pre)
     outstream.write(f'{assign}{start_delimiter}\n')
     # grouper
     args = [iter(rawbytes)] * bytes_per_line
@@ -295,8 +300,7 @@ def _write_out_coded_binary(
     # JSON must not have separator for last item in dict
     # outstream.write(separator)
 
-    outstream.write('\n')
-    outstream.write(post)
+    # outstream.write('\n')
 
 
 ###############################################################################
@@ -309,6 +313,7 @@ class _CodedBinaryWrapper(_CodedBinaryWrapperBase):
     int_conv = _int_from_c
     block_comment = ()
     separator = ''
+    final_separator = True
 
     # writer parameters
     assign_template = None
@@ -339,7 +344,8 @@ class JSONCodedBinaryWrapper(_CodedBinaryWrapper):
     delimiters = '[]'
     comment = '//'
     # JSON separator should only be written *between* multiple entries
-    # separator = ','
+    separator = ','
+    final_separator = False
     assign = ':'
 
     assign_template = '"{identifier}": '
