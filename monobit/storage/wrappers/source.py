@@ -147,7 +147,7 @@ class _CodedBinaryContainer(Archive):
                     found_identifier = identifier
                 else:
                     found_identifier, _, _ = line.partition(assign)
-                    logging.debug('Found assignement to `%s`', found_identifier)
+                    logging.debug('Found assignment to `%s`', found_identifier)
                     # clean up identifier
                     # take last element separated by whitespace e.g. char foo[123] -> foo[123]
                     *_, found_identifier = found_identifier.strip().split()
@@ -181,6 +181,7 @@ class _CodedBinaryContainer(Archive):
             bytes_per_line=self.bytes_per_line,
             pre=self.pre,
             post=self.post,
+            conv_int=type(self).conv_int,
         )
 
 
@@ -237,10 +238,11 @@ class WrappedWriterStream(Stream):
             self._write_out(rawbytes, self._outfile, **self._write_out_kwargs)
         super().close()
 
+
 def _write_out_coded_binary(
         rawbytes, outstream, *,
         assign_template, delimiters, comment,
-        bytes_per_line, pre, post, identifier='',
+        bytes_per_line, pre, post, conv_int, identifier,
     ):
     """
     Generate font file encoded as source code.
@@ -252,13 +254,12 @@ def _write_out_coded_binary(
     bytes_per_line: number of encoded bytes in a source line
     pre: string to write before output
     post: string to write after output
+    conv_int: converter function for int values
     """
     if len(delimiters) < 2:
         raise ValueError('A start and end delimiter must be given. E.g. []')
-    start_delimiter = delimiters[0]
-    end_delimiter = delimiters[1]
+    start_delimiter, end_delimiter = delimiters
     outstream = outstream.text
-
     # remove non-ascii
     identifier = identifier.encode('ascii', 'ignore').decode('ascii')
     identifier = ''.join(_c if _c.isalnum() else '_' for _c in identifier)
@@ -271,12 +272,12 @@ def _write_out_coded_binary(
     args = [iter(rawbytes)] * bytes_per_line
     groups = zip(*args)
     lines = [
-        ', '.join(f'0x{_b:02x}' for _b in _group)
+        ', '.join(conv_int(_b) for _b in _group)
         for _group in groups
     ]
     rem = len(rawbytes) % bytes_per_line
     if rem:
-        lines.append(', '.join(f'0x{_b:02x}' for _b in rawbytes[-rem:]))
+        lines.append(', '.join(conv_int(_b) for _b in rawbytes[-rem:]))
     for i, line in enumerate(lines):
         outstream.write(f'  {line}')
         if i < len(lines) - 1:
@@ -300,6 +301,10 @@ def _int_from_c(cvalue):
     # 0x, 0b, decimals - like Python
     return int(cvalue, 0)
 
+def _int_to_c(value):
+    """Output hex number in C format."""
+    return f'0x{value:02x}'
+
 
 class _CodedBinary(_CodedBinaryContainer):
     """Default parameters for coded binary."""
@@ -307,6 +312,7 @@ class _CodedBinary(_CodedBinaryContainer):
     comment = '//'
     assign = '='
     int_conv = _int_from_c
+    conv_int = _int_to_c
     block_comment = ()
     separator = ''
     final_separator = True
@@ -506,12 +512,12 @@ def _write_out_basic(
     args = [iter(rawbytes)] * bytes_per_line
     groups = zip(*args)
     lines = [
-        ', '.join(f'&h{_b:02x}' for _b in _group)
+        ', '.join(int_to_basic(_b) for _b in _group)
         for _group in groups
     ]
     rem = len(rawbytes) % bytes_per_line
     if rem:
-        lines.append(', '.join(f'&h{_b:02x}' for _b in rawbytes[-rem:]))
+        lines.append(', '.join(int_to_basic(_b) for _b in rawbytes[-rem:]))
     if line_number_start is not None and line_number_start >= 0:
         line_number = line_number_start
     else:
@@ -521,6 +527,11 @@ def _write_out_basic(
             outfile.write(f'{line_number} ')
             line_number += line_number_inc
         outfile.write(f'DATA {line}\n')
+
+
+def int_to_basic(value):
+    """Output hex number in BASIC format."""
+    return f'&h{value:02x}'
 
 
 def _int_from_basic(cvalue):
