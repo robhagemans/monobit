@@ -44,13 +44,14 @@ class FilterWrapper(Wrapper):
 
     def open(self):
         if self.mode == 'r':
+            if type(self).decode == FilterWrapper.decode:
+                raise ValueError(f'Reading from {type(self)} not supported.')
             name = Path(self._wrapped_stream.name).stem
             data = self.decode(self._wrapped_stream, **self.decode_kwargs)
-            try:
-                self._unwrapped_stream = Stream.from_data(data, mode='r', name=name)
-            except NotImplementedError:
-                raise ValueError(f'Reading from {type(self)} not supported.')
+            self._unwrapped_stream = Stream.from_data(data, mode='r', name=name)
         else:
+            if type(self).encode == FilterWrapper.encode:
+                raise ValueError(f'Writing to {type(self)} not supported.')
             outfile = self._wrapped_stream.text
             name = Path(self._wrapped_stream.name).stem
             self._unwrapped_stream = WrappedWriterStream(
