@@ -243,10 +243,11 @@ archive, compression and encoding formats:
 | AppleDouble           | `apple2` | `.adf` `.rsrc`          |&check;|       |
 | MacBinary             | `macbin` | `.bin`                  |&check;|       |
 | BinHex 4.0            | `binhex` | `.hqx`                  |&check;|       |
+| Intel Hex             | `intel`  | `.ihex` `.ihx`          |&check;|       |
 | C or C++ coded binary | `c`      | `.c` `.cpp` `.cc` `.h`  |&check;|&check;|
 | JSON coded binary     | `json`   | `.json`                 |&check;|&check;|
 | Python coded binary   | `python` | `.py`                   |&check;|&check;|
-| Pascal coded binary   | `pascal` | `.pas`                  |&check;|       |
+| Pascal coded binary   | `pascal` | `.pas`                  |&check;|&check;|
 | BASIC coded binary    | `basic`  | `.bas`                  |&check;|&check;|
 
 

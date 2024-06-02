@@ -10,6 +10,7 @@ from pathlib import Path
 
 from ..magic import FileFormatError
 from ..holders import StreamHolder
+from ..streams import Stream, WrappedWriterStream
 
 
 class Wrapper(StreamHolder):
@@ -33,3 +34,40 @@ class Wrapper(StreamHolder):
             f"stream='{self._wrapped_stream}' mode='{self.mode}'"
             f"{' [closed]' if self.closed else ''}>"
         )
+
+
+class FilterWrapper(Wrapper):
+    """Simple i/o filter wrapper."""
+
+    decode_kwargs = {}
+    encode_kwargs = {}
+
+    def open(self):
+        if self.mode == 'r':
+            if type(self).decode == FilterWrapper.decode:
+                raise ValueError(f'Reading from {type(self)} not supported.')
+            name = Path(self._wrapped_stream.name).stem
+            data = self.decode(self._wrapped_stream, **self.decode_kwargs)
+            self._unwrapped_stream = Stream.from_data(data, mode='r', name=name)
+        else:
+            if type(self).encode == FilterWrapper.encode:
+                raise ValueError(f'Writing to {type(self)} not supported.')
+            outfile = self._wrapped_stream.text
+            name = Path(self._wrapped_stream.name).stem
+            self._unwrapped_stream = WrappedWriterStream(
+                outfile, self.encode, name=name, **self.encode_kwargs
+            )
+        return self._unwrapped_stream
+
+    def _open_write(self):
+        outfile = self._wrapped_stream.text
+        name = Path(self._wrapped_stream.name).stem
+        return WrappedWriterStream(outfile, self.encode, name=name, **kwargs)
+
+    @staticmethod
+    def encode(data, outstream, **kwargs):
+        raise NotImplementedError
+
+    @staticmethod
+    def decode(instream, **kwargs):
+        raise NotImplementedError

@@ -42,7 +42,7 @@ _FXX = Regex(r'.+\.f\d\d')
 
 @loaders.register(
     name='raw',
-    patterns=('*.814', '.car', '*.64c', '*.udg', '*.ch8', _FXX),
+    patterns=('*.814', '*.car', '*.64c', '*.udg', '*.ch8', _FXX),
 )
 def load_binary(
         instream, *,
