@@ -36,31 +36,25 @@ class Directory(Container):
             # exist_ok raises FileExistsError only if the *target* already
             # exists, not the parents
             self._path.mkdir(parents=True, exist_ok=True)
-        super().__init__(mode, str(self._path), ignore_case=ignore_case)
+        # ignore case on read - open any case insensitive match
+        # case sensitivity of writing depends on file system
+        self._ignore_case = ignore_case
+        super().__init__(mode, str(self._path))
 
     def __repr__(self):
         return f"{type(self).__name__}('{self._path}')"
 
-    def open(self, name, mode, overwrite=False):
+    def open(self, name, mode):
         """Open a stream in the directory."""
         # mode in 'r', 'w'
         mode = mode[:1]
         pathname = Path(name)
         if mode == 'w':
             path = pathname.parent
-            logging.debug('Creating directory `%s`', self._path / path)
+            logging.debug("Creating directory '%s'", self._path / path)
             (self._path / path).mkdir(parents=True, exist_ok=True)
-        logging.debug("Opening file `%s` for mode '%s'.", name, mode)
+        logging.debug("Opening file '%s' for mode '%s'.", name, mode)
         filepath = self._path / pathname
-        if mode == 'w' and not overwrite and filepath.exists():
-            raise ValueError(
-                f'Overwriting existing file {str(filepath)}'
-                ' requires -overwrite to be set'
-            )
-        if filepath.is_dir():
-            raise IsADirectoryError(
-                f"Cannot open stream on '{filepath}': is a directory."
-            )
         try:
             file = open(filepath, mode + 'b')
         except FileNotFoundError:

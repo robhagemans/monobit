@@ -17,14 +17,11 @@ from ..holders import StreamHolder
 class Container(StreamHolder):
     """Base class for multi-stream containers."""
 
-    def __init__(self, mode='r', name='', ignore_case:bool=False):
+    def __init__(self, mode='r', name=''):
         self.mode = mode[:1]
         self.name = name
         self.refcount = 0
         self.closed = False
-        # ignore case on read - open any case insensitive match
-        # case sensitivity of writing depends on file system
-        self._ignore_case = ignore_case
 
     def __repr__(self):
         """String representation."""
@@ -44,7 +41,7 @@ class Container(StreamHolder):
 
     # NOTE open() opens a stream, close() closes the container
 
-    def open(self, name, mode, overwrite=False):
+    def open(self, name, mode):
         """Open a binary stream in the container."""
         raise NotImplementedError
 
@@ -59,24 +56,17 @@ class Archive(Container):
     def iter_sub(self, prefix):
         """List contents of a subpath."""
         return (
-            str(Path(_name).relative_to(self._root)) for _name in self.list()
-            if Path(_name).parent == Path(self._root) / prefix
+            _name for _name in self.list()
+            if Path(_name).parent == Path(prefix)
         )
 
     def contains(self, item):
         """Check if file is in container. Case sensitive if container/fs is."""
-        if self._ignore_case:
-            return (
-                str(Path(self._root) / item).lower() in
-                (str(_item).lower() for _item in self.list())
-            )
-        else:
-            return str(item) in self.list()
+        return str(item) in self.list()
 
     def list(self):
         """List full contents of archive."""
         raise NotImplementedError()
-
 
 
 class MacFork(Archive):
@@ -99,7 +89,7 @@ class MacFork(Archive):
             raise NotADirectoryError(f"'{prefix}' is not a directory.")
         return iter(self.forknames)
 
-    def open(self, name, mode, overwrite=False):
+    def open(self, name, mode):
         """Open a binary stream in the container."""
         if mode != 'r':
             raise ValueError('Writing onto Mac forks is not supported.')

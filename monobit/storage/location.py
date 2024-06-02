@@ -158,6 +158,12 @@ class Location:
         stream.where = self
         return stream
 
+    def is_dir(self):
+        """Location points to a directory/container."""
+        if not self.resolved:
+            raise ValueError(f'Location {self} is not open.')
+        return not self._stream_objects
+
     # directory (container) functionality
 
     def _get_container_and_subpath(self):
@@ -165,12 +171,6 @@ class Location:
         if not self.is_dir():
             return self._path_objects[-1], self._container_subpath.parent
         return self._path_objects[-1], self._container_subpath
-
-    def is_dir(self):
-        """Location points to a directory/container."""
-        if not self.resolved:
-            raise ValueError(f'Location {self} is not open.')
-        return not self._stream_objects
 
     def join(self, subpath):
         """Get a location at the subpath."""
@@ -207,10 +207,15 @@ class Location:
         container, subpath = self._get_container_and_subpath()
         return container.contains(subpath / item)
 
-    def open(self, name, mode, overwrite=False):
+    def open(self, name, mode):
         """Open a binary stream in the container."""
         container, subpath = self._get_container_and_subpath()
-        stream = container.open(subpath/name, mode=mode, overwrite=overwrite)
+        self._check_overwrite(container, subpath / name, mode=mode)
+        if container.is_dir(subpath / name):
+            raise IsADirectoryError(
+                f"Cannot open stream on '{name}': is a directory."
+            )
+        stream = container.open(subpath / name, mode=mode)
         stream.where = self
         return stream
 
@@ -228,6 +233,13 @@ class Location:
 
 
     ###########################################################################
+
+    def _check_overwrite(self, container, path, mode):
+        if mode == 'w' and not self.overwrite and container.contains(path):
+            raise ValueError(
+                f"Overwriting existing file '{path}'"
+                " requires -overwrite to be set"
+            )
 
     def _resolve(self):
         """
@@ -307,9 +319,8 @@ class Location:
                 return
         else:
             # head points to a file. open it and recurse
-            stream = container.open(
-                head, mode=self.mode, overwrite=self.overwrite
-            )
+            self._check_overwrite(container, head, mode=self.mode)
+            stream = container.open(head, mode=self.mode)
             self._stream_objects.append(stream)
             self._leafpath = tail
             self._resolve()
