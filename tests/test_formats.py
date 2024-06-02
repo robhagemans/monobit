@@ -424,6 +424,13 @@ class TestFormats(BaseTester):
         self.assertEqual(len(font.glyphs), 919)
         self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
+    def test_import_intel(self):
+        """Test importing Intel Hex files."""
+        font, *_ = monobit.load(
+            self.font_path / '4x6.ihex', cell=(4, 6)
+        )
+        self.assertEqual(len(font.glyphs), 919)
+
     # Image
 
     def test_import_png(self):
