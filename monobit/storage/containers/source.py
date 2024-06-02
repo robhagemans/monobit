@@ -388,13 +388,14 @@ def _int_from_pascal(cvalue):
     cvalue = cvalue.strip()
     if cvalue.startswith('#'):
         # char literal
-        cvalue = cvalue[1:]
+        return int(cvalue[1:], 10)
     if cvalue.startswith('$'):
-        cvalue = '0x' + cvalue[1:]
-    return int(cvalue, 0)
+        return int(cvalue[1:], 16)
 
+def _int_to_pascal(value):
+    """Output hex number in Pascal format."""
+    return f'${value:02x}'
 
-# writing not implemented for the below
 
 @containers.register(
     name='pascal',
@@ -408,3 +409,7 @@ class PascalCodedBinary(_CodedBinary):
     block_comment = ('{','}')
     int_conv = _int_from_pascal
     separator = ';'
+
+    conv_int = _int_to_pascal
+    assign_template = '{identifier}: Array[1..{bytesize}] of Integer = '
+    pre = 'const\n\n'

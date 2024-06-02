@@ -246,7 +246,7 @@ archive, compression and encoding formats:
 | C or C++ coded binary | `c`      | `.c` `.cpp` `.cc` `.h`  |&check;|&check;|
 | JSON coded binary     | `json`   | `.json`                 |&check;|&check;|
 | Python coded binary   | `python` | `.py`                   |&check;|&check;|
-| Pascal coded binary   | `pascal` | `.pas`                  |&check;|       |
+| Pascal coded binary   | `pascal` | `.pas`                  |&check;|&check;|
 | BASIC coded binary    | `basic`  | `.bas`                  |&check;|&check;|
 
 
