@@ -21,40 +21,6 @@ from ..containers.containers import Archive
 
 ###############################################################################
 
-def _int_from_c(cvalue):
-    """Parse integer from C/Python/JS code."""
-    cvalue = cvalue.strip()
-    # C suffixes
-    while cvalue[-1:].lower() in ('u', 'l'):
-        cvalue = cvalue[:-1]
-    if cvalue.startswith('0') and cvalue[1:2] and cvalue[1:2] in string.digits:
-        # C / Python-2 octal 0777
-        cvalue = '0o' + cvalue[1:]
-    # 0x, 0b, decimals - like Python
-    return int(cvalue, 0)
-
-
-def _int_from_pascal(cvalue):
-    """Parse integer from Pascal code."""
-    cvalue = cvalue.strip()
-    if cvalue.startswith('#'):
-        # char literal
-        cvalue = cvalue[1:]
-    if cvalue.startswith('$'):
-        cvalue = '0x' + cvalue[1:]
-    return int(cvalue, 0)
-
-
-def _int_from_basic(cvalue):
-    """Parse integer from BASIC code."""
-    cvalue = cvalue.strip().lower()
-    if cvalue.startswith('&h'):
-        cvalue = '0x' + cvalue[2:]
-    return int(cvalue, 0)
-
-
-###############################################################################
-
 class _CodedBinaryWrapperBase(Archive):
 
     def __init__(
@@ -105,7 +71,6 @@ class _CodedBinaryWrapperBase(Archive):
         self._files = []
         super().__init__(mode)
 
-
     def close(self):
         """Close the archive, ignoring errors."""
         if self.mode == 'w' and not self.closed:
@@ -119,7 +84,6 @@ class _CodedBinaryWrapperBase(Archive):
             self._wrapped_stream.text.write(self.post)
         self._wrapped_stream.close()
         super().close()
-
 
     def is_dir(self, name):
         """Item at `name` is a directory."""
@@ -220,6 +184,9 @@ class _CodedBinaryWrapperBase(Archive):
         )
 
 
+###############################################################################
+# reader
+
 def _strip_line(line, comment, block_comment):
     if comment:
         line, _, _ = line.partition(comment)
@@ -251,6 +218,24 @@ def _get_payload(instream, line, start, end, comment, block_comment):
             payload.append(line)
     return ''.join(payload)
 
+
+###############################################################################
+# writer
+
+class WrappedWriterStream(Stream):
+
+    def __init__(self, outfile, write_out, name='', **kwargs):
+        bytesio = BytesIO()
+        self._outfile = outfile
+        self._write_out = write_out
+        self._write_out_kwargs = kwargs
+        super().__init__(bytesio, name=name, mode='w')
+
+    def close(self):
+        if not self.closed:
+            rawbytes = bytes(self._stream.getbuffer())
+            self._write_out(rawbytes, self._outfile, **self._write_out_kwargs)
+        super().close()
 
 def _write_out_coded_binary(
         rawbytes, outstream, *,
@@ -299,14 +284,22 @@ def _write_out_coded_binary(
         outstream.write('\n')
     outstream.write(end_delimiter)
 
-    # C must have a separator at end of statement,
-    # JSON must not have separator for last item in dict
-    # outstream.write(separator)
-
-    # outstream.write('\n')
-
 
 ###############################################################################
+# C
+
+def _int_from_c(cvalue):
+    """Parse integer from C/Python/JS code."""
+    cvalue = cvalue.strip()
+    # C suffixes
+    while cvalue[-1:].lower() in ('u', 'l'):
+        cvalue = cvalue[:-1]
+    if cvalue.startswith('0') and cvalue[1:2] and cvalue[1:2] in string.digits:
+        # C / Python-2 octal 0777
+        cvalue = '0o' + cvalue[1:]
+    # 0x, 0b, decimals - like Python
+    return int(cvalue, 0)
+
 
 class _CodedBinaryWrapper(_CodedBinaryWrapperBase):
     """Default parameters for coded binary."""
@@ -338,6 +331,9 @@ class CCodedBinaryWrapper(_CodedBinaryWrapper):
     assign_template = 'char {identifier}[{bytesize}] = '
 
 
+###############################################################################
+# JSON
+
 @containers.register(
     name='json',
     patterns=('*.js', '*.json',),
@@ -355,6 +351,9 @@ class JSONCodedBinaryWrapper(_CodedBinaryWrapper):
     pre = '{\n'
     post = '}\n'
 
+
+###############################################################################
+# Python
 
 @containers.register(
     name='python',
@@ -382,6 +381,20 @@ class PythonTupleCodedBinaryWrapper(_CodedBinaryWrapper):
     assign_template = '{identifier} = '
 
 
+###############################################################################
+# Pascal
+
+def _int_from_pascal(cvalue):
+    """Parse integer from Pascal code."""
+    cvalue = cvalue.strip()
+    if cvalue.startswith('#'):
+        # char literal
+        cvalue = cvalue[1:]
+    if cvalue.startswith('$'):
+        cvalue = '0x' + cvalue[1:]
+    return int(cvalue, 0)
+
+
 # writing not implemented for the below
 
 @containers.register(
@@ -399,6 +412,7 @@ class PascalCodedBinaryWrapper(_CodedBinaryWrapper):
 
 
 ###############################################################################
+# BASIC
 
 @wrappers.register(
     name='basic',
@@ -509,19 +523,9 @@ def _write_out_basic(
         outfile.write(f'DATA {line}\n')
 
 
-###############################################################################
-
-class WrappedWriterStream(Stream):
-
-    def __init__(self, outfile, write_out, name='', **kwargs):
-        bytesio = BytesIO()
-        self._outfile = outfile
-        self._write_out = write_out
-        self._write_out_kwargs = kwargs
-        super().__init__(bytesio, name=name, mode='w')
-
-    def close(self):
-        if not self.closed:
-            rawbytes = bytes(self._stream.getbuffer())
-            self._write_out(rawbytes, self._outfile, **self._write_out_kwargs)
-        super().close()
+def _int_from_basic(cvalue):
+    """Parse integer from BASIC code."""
+    cvalue = cvalue.strip().lower()
+    if cvalue.startswith('&h'):
+        cvalue = '0x' + cvalue[2:]
+    return int(cvalue, 0)
