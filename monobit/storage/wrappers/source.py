@@ -110,12 +110,12 @@ def _write_out_basic(
     args = [iter(rawbytes)] * bytes_per_line
     groups = zip(*args)
     lines = [
-        ', '.join(int_to_basic(_b) for _b in _group)
+        ', '.join(_int_to_basic(_b) for _b in _group)
         for _group in groups
     ]
     rem = len(rawbytes) % bytes_per_line
     if rem:
-        lines.append(', '.join(int_to_basic(_b) for _b in rawbytes[-rem:]))
+        lines.append(', '.join(_int_to_basic(_b) for _b in rawbytes[-rem:]))
     if line_number_start is not None and line_number_start >= 0:
         line_number = line_number_start
     else:
@@ -127,7 +127,7 @@ def _write_out_basic(
         outfile.write(f'DATA {line}\n')
 
 
-def int_to_basic(value):
+def _int_to_basic(value):
     """Output hex number in BASIC format."""
     return f'&h{value:02x}'
 

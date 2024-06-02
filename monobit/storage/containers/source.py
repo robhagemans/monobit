@@ -126,39 +126,23 @@ class _CodedBinaryContainer(Archive):
             return
         if self.mode == 'w':
             return
-
         instream = self._wrapped_stream.text
-        identifier = ''
-        delimiters = self.delimiters
-        comment = self.comment
-        block_comment = self.block_comment
-        assign = self.assign
-
+        start, end = self.delimiters
         self._coded_data = {}
-        start, end = delimiters
         found_identifier = ''
         for line in instream:
-            line = _strip_line(line, comment, block_comment)
-            if identifier in line and assign in line:
-                if identifier:
-                    _, _, line = line.partition(identifier)
-                    found_identifier = identifier
-                else:
-                    found_identifier, _, _ = line.partition(assign)
-                    logging.debug('Found assignment to `%s`', found_identifier)
-                    # clean up identifier
-                    # take last element separated by whitespace e.g. char foo[123] -> foo[123]
-                    *_, found_identifier = found_identifier.strip().split()
-                    # strip non-alnum at either end (e.g. "abc" -> abc)
-                    found_identifier = re.sub(r"^\W+|\W+$", "", found_identifier)
-                    # take first alphanum part (e.g. name[123 -> name)
-                    found_identifier, *_ = re.split(r"\W+", found_identifier)
+            line = _strip_line(line, self.comment, self.block_comment)
+            if self.assign in line:
+                found_identifier, _, _ = line.partition(self.assign)
+                logging.debug('Found assignment to `%s`', found_identifier)
+                found_identifier = _clean_identifier(found_identifier)
             if found_identifier and start in line:
                 _, line = line.split(start)
                 data = _get_payload(
-                    instream, line, start, end, comment, block_comment
+                    instream, line, start, end, self.comment, self.block_comment
                 )
                 self._coded_data[found_identifier] = data
+                found_identifier = ''
 
     def _open_write(self, name):
         """Open output stream on source wrapper."""
@@ -216,6 +200,17 @@ def _get_payload(instream, line, start, end, comment, block_comment):
         if line:
             payload.append(line)
     return ''.join(payload)
+
+
+def _clean_identifier(found_identifier):
+    """clean up identifier found in source code."""
+    # take last element separated by whitespace e.g. char foo[123] -> foo[123]
+    *_, found_identifier = found_identifier.strip().split()
+    # strip non-alnum at either end (e.g. "abc" -> abc)s
+    found_identifier = re.sub(r"^\W+|\W+$", "", found_identifier)
+    # take first alphanum part (e.g. name[123 -> name)
+    found_identifier, *_ = re.split(r"\W+", found_identifier)
+    return found_identifier
 
 
 ###############################################################################
