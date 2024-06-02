@@ -372,8 +372,7 @@ class TestFormats(BaseTester):
     def test_import_c(self):
         """Test importing c source files."""
         font, *_ = monobit.load(
-            self.font_path / '4x6.c',
-            identifier='char font_Fixed_Medium_6',
+            self.font_path / '4x6.c' / 'font_Fixed_Medium_6',
             cell=(4, 6)
         )
         self.assertEqual(len(font.glyphs), 919)
