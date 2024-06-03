@@ -13,7 +13,6 @@ from ..magic import FileFormatError
 from ..base import wrappers
 from ...base.binary import ceildiv
 from .wrappers import FilterWrapper
-from ..containers.source import WrappedWriterStream
 
 
 @wrappers.register(
