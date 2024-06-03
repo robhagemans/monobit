@@ -61,9 +61,12 @@ class IntelHexWrapper(FilterWrapper):
                 elif hexcode == '01':
                     # end of file code
                     break
-                elif hexcode in ('02', '04'):
-                    # extended segment address / extended linear addresss
-                    offset = int.from_bytes(payload, byteorder='big')
+                elif hexcode == '02':
+                    # extended segment address
+                    offset = int.from_bytes(payload, byteorder='big') << 4
+                elif hexcode == '04':
+                    # extended linear addresss
+                    offset = int.from_bytes(payload, byteorder='big') << 16
                 elif hexcode in ('03', '05'):
                     pass
                 else:
