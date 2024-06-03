@@ -169,6 +169,78 @@ class TestContainers(BaseTester):
         self.assertEqual(len(font.glyphs), 919)
 
 
+class TestWrappers(BaseTester):
+    """Test wrappers."""
+
+    # Source coded binary and textbin wrappers
+
+    def test_import_c(self):
+        """Test importing c source files."""
+        font, *_ = monobit.load(
+            self.font_path / '4x6.c' / 'font_Fixed_Medium_6',
+            cell=(4, 6)
+        )
+        self.assertEqual(len(font.glyphs), 919)
+
+    def test_import_bas(self):
+        """Test importing BASIC source files."""
+        font, *_ = monobit.load(
+            self.font_path / '4x6.bas', cell=(4, 6)
+        )
+        self.assertEqual(len(font.glyphs), 919)
+
+    def test_import_intel(self):
+        """Test importing Intel Hex files."""
+        font, *_ = monobit.load(
+            self.font_path / '4x6.ihex', cell=(4, 6)
+        )
+        self.assertEqual(len(font.glyphs), 919)
+
+    def _test_export_textbin(self, suffix, container_format=''):
+        file = self.temp_path  / '4x6.{suffix}]'
+        monobit.save(
+            self.fixed4x6, file, format='raw', container_format=container_format
+        )
+        font, *_ = monobit.load(
+            file, format='raw', cell=(4, 6), first_codepoint=31,
+            container_format=container_format
+        )
+        self.assertEqual(len(font.glyphs), 919)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+
+    def test_export_c(self):
+        """Test exporting c source files."""
+        self._test_export_textbin(suffix='c')
+
+    def test_export_py(self):
+        """Test exporting Python source files."""
+        self._test_export_textbin(suffix='py')
+
+    def test_export_json(self):
+        """Test exporting JSON source files."""
+        self._test_export_textbin(suffix='json')
+
+    def test_export_pas(self):
+        """Test exporting Pascal source files."""
+        self._test_export_textbin(suffix='pas')
+
+    def test_export_bas(self):
+        """Test exporting BASIC source files."""
+        self._test_export_textbin(suffix='bas')
+
+    def test_export_intel(self):
+        """Test exporting Intel Hex files."""
+        self._test_export_textbin(suffix='ihex')
+
+    def test_export_base64(self):
+        """Test exporting base64 files."""
+        self._test_export_textbin(suffix='b64', container_format='base64')
+
+    def test_export_quopri(self):
+        """Test exporting quoted-printable files."""
+        self._test_export_textbin(suffix='qp', container_format='quopri')
+
+
 class TestStreams(BaseTester):
     """Test stream i/o."""
 
