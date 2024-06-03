@@ -246,6 +246,7 @@ archive, compression and encoding formats:
 | Intel Hex             | `intel`  | `.ihex` `.ihx`          |&check;|&check;|
 | Base64                | `base64` |                         |&check;|&check;|
 | Quoted-printable      | `quopri` |                         |&check;|&check;|
+| UUEncode              | `uuencode`|                        |&check;|&check;|
 | C or C++ coded binary | `c`      | `.c` `.cpp` `.cc` `.h`  |&check;|&check;|
 | JSON coded binary     | `json`   | `.json`                 |&check;|&check;|
 | Python coded binary   | `python` | `.py`                   |&check;|&check;|

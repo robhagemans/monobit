@@ -240,6 +240,10 @@ class TestWrappers(BaseTester):
         """Test exporting quoted-printable files."""
         self._test_export_textbin(suffix='qp', container_format='quopri')
 
+    def test_export_uuencode(self):
+        """Test exporting uuencoded files."""
+        self._test_export_textbin(suffix='uu', container_format='uuencode')
+
 
 class TestStreams(BaseTester):
     """Test stream i/o."""
