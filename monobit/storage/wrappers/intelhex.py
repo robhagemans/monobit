@@ -11,8 +11,8 @@ from pathlib import Path
 from ..streams import Stream
 from ..magic import FileFormatError
 from ..base import wrappers
+from ...base.binary import ceildiv
 from .wrappers import FilterWrapper
-from ..containers.source import WrappedWriterStream
 
 
 @wrappers.register(
@@ -60,8 +60,12 @@ class IntelHexWrapper(FilterWrapper):
                 elif hexcode == '01':
                     # end of file code
                     break
-                elif hexcode in ('02', '04'):
-                    offset = int.from_bytes(payload, byteorder='big')
+                elif hexcode == '02':
+                    # extended segment address
+                    offset = int.from_bytes(payload, byteorder='big') << 4
+                elif hexcode == '04':
+                    # extended linear addresss
+                    offset = int.from_bytes(payload, byteorder='big') << 16
                 elif hexcode in ('03', '05'):
                     pass
                 else:
@@ -69,3 +73,38 @@ class IntelHexWrapper(FilterWrapper):
             except (IndexError, ValueError):
                 raise FileFormatError('Malformed Intel Hex file.')
         return data
+
+    @staticmethod
+    def encode(data, outstream, *, chunk_size=32):
+        # split into groups of 32 bytes
+        outfile = outstream.text
+        ngroups = ceildiv(len(data), chunk_size)
+        # current extended linear address
+        extended_address = -1
+        for group in range(ngroups):
+            # in the last round this may be less than chunk_size long
+            payload = data[chunk_size*group : chunk_size*(group+1)]
+            sum_bytes = sum(payload)
+            # skip over empty chunks, except the last to ensure file length
+            if not sum_bytes and group < ngroups-1:
+                continue
+            offset = chunk_size * group
+            offset_hi, offset_lo = divmod(offset, 0x10000)
+            if offset_hi > extended_address:
+                extended_address = offset_hi
+                ea_checksum = (
+                    0x100 - sum(offset_hi.to_bytes(2, byteorder='big'))
+                    - 0x02 - 0x04
+                ) % 0x100
+                outfile.write(f':02000004{offset_hi:04X}{ea_checksum:02X}\n')
+            checksum = (
+                0x100
+                - sum_bytes - len(payload)
+                - sum(offset_lo.to_bytes(2, byteorder='big'))
+            ) % 0x100
+            outfile.write(
+                f':{len(payload):02X}{offset_lo:04X}00'
+                f'{payload.hex().upper()}{checksum:02X}\n'
+            )
+        # end of file marker
+        outfile.write(':00000001FF\n')
