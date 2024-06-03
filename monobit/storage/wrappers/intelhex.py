@@ -80,8 +80,8 @@ class IntelHexWrapper(FilterWrapper):
         # split into groups of 32 bytes
         outfile = outstream.text
         ngroups = ceildiv(len(data), chunk_size)
-        # extended segment address 0
-        outfile.write(':020000040000FA\n')
+        # current extended linear address
+        extended_address = -1
         for group in range(ngroups):
             # in the last round this may be less than chunk_size long
             payload = data[chunk_size*group : chunk_size*(group+1)]
@@ -90,12 +90,21 @@ class IntelHexWrapper(FilterWrapper):
             if not sum_bytes and group < ngroups-1:
                 continue
             offset = chunk_size * group
-            checksum = 0x100 - (
-                sum_bytes + len(payload)
-                + sum(offset.to_bytes(2, byteorder='big'))
+            offset_hi, offset_lo = divmod(offset, 0x10000)
+            if offset_hi > extended_address:
+                extended_address = offset_hi
+                ea_checksum = (
+                    0x100 - sum(offset_hi.to_bytes(2, byteorder='big'))
+                    - 0x02 - 0x04
+                ) % 0x100
+                outfile.write(f':02000004{offset_hi:04X}{ea_checksum:02X}\n')
+            checksum = (
+                0x100
+                - sum_bytes - len(payload)
+                - sum(offset_lo.to_bytes(2, byteorder='big'))
             ) % 0x100
             outfile.write(
-                f':{len(payload):02X}{offset:04X}00'
+                f':{len(payload):02X}{offset_lo:04X}00'
                 f'{payload.hex().upper()}{checksum:02X}\n'
             )
         # end of file marker
