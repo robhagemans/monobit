@@ -36,21 +36,11 @@ class Compressor(Wrapper):
             raise FileFormatEror(exc_value)
         super().__exit__(exc_type, exc_value, traceback)
 
-    @classmethod
-    def _get_payload_stream(cls, stream, mode):
-        """Get the uncompressed stream."""
-        name = Path(stream.name).stem
-        wrapped = Stream(
-            cls.compressor.open(stream, mode=mode + 'b'),
-            mode=mode, name=name
-        )
-        return wrapped
-
     def open(self):
         """Get the uncompressed stream."""
-        self._unwrapped_stream = self._get_payload_stream(
-            self._wrapped_stream, self.mode
-        )
+        name = Path(self._wrapped_stream.name).stem
+        stream = self.compressor.open(self._wrapped_stream, mode=self.mode+'b')
+        self._unwrapped_stream = Stream(stream, mode=self.mode, name=name)
         return self._unwrapped_stream
 
     @classmethod
