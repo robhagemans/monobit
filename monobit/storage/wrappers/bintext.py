@@ -39,13 +39,14 @@ class Base64Wrapper(FilterWrapper):
         super().__init__(stream, mode)
 
     @staticmethod
-    def decode(instream):
+    def decode(instream, outstream):
         encoded_bytes = instream.read()
         data = base64.b64decode(encoded_bytes)
-        return data
+        outstream.write(data)
 
     @staticmethod
-    def encode(data, outstream, *, line_length):
+    def encode(instream, outstream, *, line_length):
+        data = instream.read()
         encoded_bytes = base64.b64encode(data)
         bytesio = BytesIO(encoded_bytes)
         while True:
@@ -75,16 +76,16 @@ class QuotedPrintableWrapper(FilterWrapper):
         super().__init__(stream, mode)
 
     @staticmethod
-    def decode(instream):
+    def decode(instream, outstream):
         encoded = instream.read()
         data = binascii.a2b_qp(encoded)
-        return data
+        outstream.write(data)
 
     @staticmethod
-    def encode(data, outstream, *, line_length):
+    def encode(instream, outstream, *, line_length):
         outstream = outstream.text
         # use quoprimime (undocumented?) to get the line breaks right
         # takes str input, use latin-1 to represent bytes as u+0000..u+00ff
-        data = data.decode('latin-1')
+        data = instream.read().decode('latin-1')
         encoded_str = quoprimime.body_encode(data, maxlinelen=line_length)
         outstream.write(encoded_str)

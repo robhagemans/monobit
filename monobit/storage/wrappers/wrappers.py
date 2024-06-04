@@ -44,45 +44,47 @@ class FilterWrapper(Wrapper):
     encode_kwargs = {}
 
     def open(self):
+        name = Path(self._wrapped_stream.name).stem
         if self.mode == 'r':
             if type(self).decode == FilterWrapper.decode:
                 raise ValueError(f'Reading from {type(self)} not supported.')
-            name = Path(self._wrapped_stream.name).stem
-            data = self.decode(self._wrapped_stream, **self.decode_kwargs)
+            with io.BytesIO() as outfile:
+                self.decode(self._wrapped_stream, outfile, **self.decode_kwargs)
+                data = outfile.getvalue()
             self._unwrapped_stream = Stream.from_data(data, mode='r', name=name)
         else:
             if type(self).encode == FilterWrapper.encode:
                 raise ValueError(f'Writing to {type(self)} not supported.')
-            outfile = self._wrapped_stream
-            name = Path(self._wrapped_stream.name).stem
             self._unwrapped_stream = _WrappedWriterStream(
-                outfile, self.encode, name=name, **self.encode_kwargs
+                self._wrapped_stream,
+                self.encode, name=name, **self.encode_kwargs
             )
         return self._unwrapped_stream
 
     @staticmethod
-    def encode(data, outstream, **kwargs):
+    def encode(instream, outstream, **kwargs):
         raise NotImplementedError
 
     @staticmethod
-    def decode(instream, **kwargs):
+    def decode(instream, outstream, **kwargs):
         raise NotImplementedError
 
 
 class _WrappedWriterStream(Stream):
 
     def __init__(self, outfile, write_out, name='', **kwargs):
-        bytesio = io.BytesIO()
         self._outfile = outfile
         self._write_out = write_out
         self._write_out_kwargs = kwargs
-        super().__init__(bytesio, name=name, mode='w')
+        stream = io.BytesIO()
+        super().__init__(stream, name=name, mode='w')
 
     def close(self):
         if not self.closed:
-            rawbytes = bytes(self._stream.getbuffer())
             try:
-                self._write_out(rawbytes, self._outfile, **self._write_out_kwargs)
+                data = self._stream.getvalue()
+                infile = Stream.from_data(data, mode='r', name=self.name)
+                self._write_out(infile, self._outfile, **self._write_out_kwargs)
             except Exception as exc:
                 logging.warning(
                     f"Could not write to '{self._outfile.name}': {exc}"

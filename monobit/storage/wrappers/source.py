@@ -45,26 +45,24 @@ class BASICCodedBinaryWrapper(FilterWrapper):
         super().__init__(stream, mode)
 
     @staticmethod
-    def decode(instream):
+    def decode(instream, outstream):
         """
         Extract binary file encoded in DATA lines in classic BASIC source code.
         Tokenised BASIC files are not supported.
         """
         infile = instream.text
-        coded_data = []
         for line in infile:
             _, _, dataline = line.partition('DATA')
             dataline = dataline.strip()
             if not dataline:
                 continue
             values = dataline.split(',')
-            coded_data.extend(values)
-        data = bytes(_int_from_basic(_s) for _s in coded_data)
-        return data
+            data = bytes(_int_from_basic(_s) for _s in values)
+            outstream.write(data)
 
     @staticmethod
     def encode(
-            rawbytes, outstream,
+            instream, outstream,
             *,
             line_number_start,
             line_number_inc,
@@ -80,21 +78,14 @@ class BASICCodedBinaryWrapper(FilterWrapper):
                 and line_number_start is not None and line_number_start > -1
             ):
             raise ValueError('line_number_inc must be > 0')
-        # grouper
-        args = [iter(rawbytes)] * bytes_per_line
-        groups = zip(*args)
-        lines = [
-            ', '.join(_int_to_basic(_b) for _b in _group)
-            for _group in groups
-        ]
-        rem = len(rawbytes) % bytes_per_line
-        if rem:
-            lines.append(', '.join(_int_to_basic(_b) for _b in rawbytes[-rem:]))
+        line_number = None
         if line_number_start is not None and line_number_start >= 0:
             line_number = line_number_start
-        else:
-            line_number = None
-        for line in lines:
+        while True:
+            data = instream.read(bytes_per_line)
+            if not data:
+                return
+            line = ', '.join(_int_to_basic(_b) for _b in data)
             if line_number is not None:
                 outfile.write(f'{line_number} ')
                 line_number += line_number_inc

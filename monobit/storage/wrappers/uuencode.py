@@ -46,7 +46,7 @@ class UUEncodeWrapper(FilterWrapper):
     """Quoted-printable format wrapper."""
 
     @staticmethod
-    def decode(in_file):
+    def decode(in_file, out_file):
         #
         # Read until a begin is encountered or we've exhausted the file
         #
@@ -63,6 +63,12 @@ class UUEncodeWrapper(FilterWrapper):
                     break
                 except ValueError:
                     pass
+        out_file.name = (
+            hdrfields[2]
+            .rstrip(b' \t\r\n\f')
+            .decode('ascii', 'replace')
+            .replace('\ufffd', '_')
+        )
         #
         # Main decoding loop
         #
@@ -75,18 +81,19 @@ class UUEncodeWrapper(FilterWrapper):
                 # Workaround for broken uuencoders by /Fredrik Lundh
                 nbytes = (((s[0]-32) & 63) * 4 + 5) // 3
                 data = binascii.a2b_uu(s[:nbytes])
-            output.append(data)
+            out_file.write(data)
             s = in_file.readline()
-        # note we're ignoring the filename
-        return b''.join(output)
 
     @staticmethod
-    def encode(in_data, out_file):
-        name = Path(out_file.name).stem
-        mode = 0o666
-        backtick = False
-        in_file = BytesIO(in_data)
-        out_file.write(('begin %o %s\n' % ((mode & 0o777), name)).encode("ascii"))
+    def encode(in_file, out_file, *, mode=0o666, backtick=False):
+        name = (
+            str(in_file.name)
+            .encode('ascii', 'replace')
+            .replace(b'?', b'_')
+        )
+        out_file.write(
+            (b'begin %o %s\n' % ((mode & 0o777), name))
+        )
         data = in_file.read(45)
         while len(data) > 0:
             out_file.write(binascii.b2a_uu(data, backtick=backtick))
