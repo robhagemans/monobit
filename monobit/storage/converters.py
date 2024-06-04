@@ -181,10 +181,7 @@ def load_all(root_location, *, format='', **kwargs):
 
 
 def loop_load(location, load_func):
-    """
-    Loop over files in enclosing container.
-    instream should point to a file *inside* the container, not the container file.
-    """
+    """Loop over per-glyph files in container."""
     glyphs = []
     for name in sorted(location.iter_sub('')):
         with location.open(name, mode='r') as stream:
