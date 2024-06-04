@@ -60,7 +60,7 @@ def _read_daisy(instream):
         return _parse_daisy3(data)
     elif data.startswith(_DDM_MAGIC):
         # multi-file format
-        return _parse_daisy_mag(data, instream.name, instream.where)
+        return _parse_daisy_mag(data, Path(instream.name).name, instream.where)
     raise FileFormatError(
         'Not a Daisy-Dot file: magic does not match either version'
     )
@@ -178,8 +178,8 @@ def _parse_daisy_mag(data, name, location):
     n_files = ceildiv(dd3_props.height+1, 32)
     for count in range(2, n_files+1):
         stream_name = f'{name[:-1]}{count}'
-        stream = location.open(stream_name, 'r')
-        data = stream.read()
+        with location.open(stream_name, 'r') as stream:
+            data = stream.read()
         _, _, new_glyphs = _parse_daisy3(data)
         glyphs = tuple(
             Glyph(
