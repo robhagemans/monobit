@@ -19,22 +19,14 @@ from .wrappers import Wrapper
 class Compressor(Wrapper):
     """Base class for single-file compression helpers."""
 
-    name = ''
-    format = ''
     compressor = None
     # error raised for bad format
     error = Exception
-    magic = b''
-    suffixes = ()
-    patterns = ()
-    must_have_magic = True
     # late import machinery
     module = ''
     errorclass = ''
 
     def __init__(self, stream, mode='r'):
-        if mode == 'r':
-            self._check_magic(stream)
         self._ensure_imports()
         super().__init__(stream, mode)
 
@@ -43,18 +35,6 @@ class Compressor(Wrapper):
         if exc_type == self.error:
             raise FileFormatEror(exc_value)
         super().__exit__(exc_type, exc_value, traceback)
-
-    # leave magic checks to MagicRegistry?
-    # but we need to be able to raise FileFormatError
-    # i.e. would need to implement 'must have magic' on MagicRegistry
-    @classmethod
-    def _check_magic(cls, instream):
-        """Check if the magic signature is correct."""
-        magic = instream.peek(len(cls.magic))
-        if cls.must_have_magic and not magic.startswith(cls.magic):
-            raise FileFormatError(
-                f"Stream '{instream.name}' is not a `{cls.name}`-compressed file."
-            )
 
     @classmethod
     def _get_payload_stream(cls, stream, mode):
@@ -75,7 +55,7 @@ class Compressor(Wrapper):
 
     @classmethod
     def _ensure_imports(cls):
-        """Late import compressor library."""
+        """Late import of compressor library."""
         if cls.module:
             cls.compressor = import_module(cls.module)
             cls.module = ''
@@ -83,49 +63,43 @@ class Compressor(Wrapper):
             cls.error = getattr(cls.compressor, cls.errorclass)
             cls.errorclass = ''
 
-    @classmethod
-    def register(cls):
-        wrappers.register(
-            name=cls.name, magic=(cls.magic,), patterns=cls.patterns
-        )(cls)
 
-
+@wrappers.register(
+    name='gzip',
+    magic=(b'\x1f\x8b',),
+    patterns=('*.gz',),
+)
 class GzipCompressor(Compressor):
-    name  = 'gzip'
     module = 'gzip'
     errorclass = 'BadGzipFile'
-    magic = b'\x1f\x8b'
-    patterns = ('*.gz',)
-
-GzipCompressor.register()
 
 
+@wrappers.register(
+    name='xz',
+    magic=(b'\xFD7zXZ\x00',),
+    patterns=('*.xz',),
+)
 class XZCompressor(Compressor):
-    name = 'xz'
     module = 'lzma'
     errorclass = 'LZMAError'
-    magic = b'\xFD7zXZ\x00'
-    patterns = ('*.xz',)
 
-XZCompressor.register()
 
-class LzmaCompressor(Compressor):
-    name = 'lzma'
-    module = 'lzma'
-    errorclass = 'LZMAError'
+@wrappers.register(
+    name='lzma',
     # the magic is a 'maybe'
-    magic = b'\x5d\0\0'
-    must_have_magic = False
-    patterns = ('*.lzma',)
+    magic=(b'\x5d\0\0',),
+    patterns=('*.lzma',),
+)
+class LzmaCompressor(Compressor):
+    module = 'lzma'
+    errorclass = 'LZMAError'
 
-LzmaCompressor.register()
 
-
+@wrappers.register(
+    name='bzip2',
+    magic=(b'BZh',),
+    patterns=('*.bz2',),
+)
 class Bzip2Compressor(Compressor):
-    name = 'bzip2'
     module = 'bz2'
     error = OSError
-    magic = b'BZh'
-    patterns = ('*.bz2',)
-
-Bzip2Compressor.register()
