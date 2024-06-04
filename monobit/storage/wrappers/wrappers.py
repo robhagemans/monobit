@@ -49,8 +49,10 @@ class FilterWrapper(Wrapper):
             if type(self).decode == FilterWrapper.decode:
                 raise ValueError(f'Reading from {type(self)} not supported.')
             with io.BytesIO() as outfile:
+                outfile.name = name
                 self.decode(self._wrapped_stream, outfile, **self.decode_kwargs)
                 data = outfile.getvalue()
+            name = outfile.name
             self._unwrapped_stream = Stream.from_data(data, mode='r', name=name)
         else:
             if type(self).encode == FilterWrapper.encode:
