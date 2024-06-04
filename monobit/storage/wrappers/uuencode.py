@@ -41,7 +41,11 @@ from ..base import wrappers
 from .wrappers import FilterWrapper
 
 
-@wrappers.register(name='uuencode')
+@wrappers.register(
+    name='uuencode',
+    magic=(b'begin ',),
+    # ends with 'end\n'
+)
 class UUEncodeWrapper(FilterWrapper):
     """Quoted-printable format wrapper."""
 
