@@ -133,13 +133,13 @@ class Location:
             try:
                 outer.close()
             except Exception as exc:
-                logging.warning('Exception while closing %s: 5s', outer, exc)
+                logging.warning('Exception while closing %s: %s', outer, exc)
         while len(self._path_objects) > 1:
             outer = self._path_objects.pop()
             try:
                 outer.close()
             except Exception as exc:
-                logging.warning('Exception while closing %s: 5s', outer, exc)
+                logging.warning('Exception while closing %s: %s', outer, exc)
         self.resolved = False
 
     @property
