@@ -5,12 +5,13 @@ monobit.storage.wrappers.wrappers - base class for single-file wrappers
 licence: https://opensource.org/licenses/MIT
 """
 
+import io
 import logging
 from pathlib import Path
 
 from ..magic import FileFormatError
 from ..holders import StreamHolder
-from ..streams import Stream, WrappedWriterStream
+from ..streams import Stream
 
 
 class Wrapper(StreamHolder):
@@ -54,7 +55,7 @@ class FilterWrapper(Wrapper):
                 raise ValueError(f'Writing to {type(self)} not supported.')
             outfile = self._wrapped_stream
             name = Path(self._wrapped_stream.name).stem
-            self._unwrapped_stream = WrappedWriterStream(
+            self._unwrapped_stream = _WrappedWriterStream(
                 outfile, self.encode, name=name, **self.encode_kwargs
             )
         return self._unwrapped_stream
@@ -66,3 +67,24 @@ class FilterWrapper(Wrapper):
     @staticmethod
     def decode(instream, **kwargs):
         raise NotImplementedError
+
+
+class _WrappedWriterStream(Stream):
+
+    def __init__(self, outfile, write_out, name='', **kwargs):
+        bytesio = io.BytesIO()
+        self._outfile = outfile
+        self._write_out = write_out
+        self._write_out_kwargs = kwargs
+        super().__init__(bytesio, name=name, mode='w')
+
+    def close(self):
+        if not self.closed:
+            rawbytes = bytes(self._stream.getbuffer())
+            try:
+                self._write_out(rawbytes, self._outfile, **self._write_out_kwargs)
+            except Exception as exc:
+                logging.warning(
+                    f"Could not write to '{self._outfile.name}': {exc}"
+                )
+        super().close()

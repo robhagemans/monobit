@@ -11,7 +11,7 @@ import logging
 from io import BytesIO
 from pathlib import Path
 
-from ..streams import Stream, KeepOpen, WrappedWriterStream
+from ..streams import Stream, KeepOpen
 from ..magic import FileFormatError
 from ..base import containers
 from ..containers.containers import Archive

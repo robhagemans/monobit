@@ -223,26 +223,3 @@ def get_name(stream):
     except AttributeError:
         # not all streams have one (e.g. BytesIO)
         return ''
-
-
-###############################################################################
-
-class WrappedWriterStream(Stream):
-
-    def __init__(self, outfile, write_out, name='', **kwargs):
-        bytesio = io.BytesIO()
-        self._outfile = outfile
-        self._write_out = write_out
-        self._write_out_kwargs = kwargs
-        super().__init__(bytesio, name=name, mode='w')
-
-    def close(self):
-        if not self.closed:
-            rawbytes = bytes(self._stream.getbuffer())
-            try:
-                self._write_out(rawbytes, self._outfile, **self._write_out_kwargs)
-            except Exception as exc:
-                logging.warning(
-                    f"Could not write to '{self._outfile.name}': {exc}"
-                )
-        super().close()

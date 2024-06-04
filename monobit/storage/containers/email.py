@@ -23,7 +23,7 @@ import mimetypes
 from pathlib import Path
 from io import BytesIO
 
-from ..streams import Stream, KeepOpen, WrappedWriterStream
+from ..streams import Stream, KeepOpen
 from ..magic import FileFormatError
 from ..base import containers
 from ..containers.containers import Archive
