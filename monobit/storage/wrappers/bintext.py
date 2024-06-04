@@ -8,8 +8,6 @@ licence: https://opensource.org/licenses/MIT
 import logging
 import base64
 import binascii
-# import quopri
-from email import quoprimime
 from io import BytesIO
 from pathlib import Path
 
@@ -63,15 +61,15 @@ class QuotedPrintableWrapper(FilterWrapper):
     def __init__(
             self, stream, mode='r',
             *,
-            line_length:int=76,
+            quote_tabs:bool=False,
         ):
         """
         Quoted-printable-encoded binary file.
 
-        line_length: length of each line of base64 encoded data (default: 76)
+        quote_tabs: encode tabs and spaces as QP (default: False)
         """
         self.encode_kwargs = dict(
-            line_length=line_length,
+            quote_tabs=quote_tabs,
         )
         super().__init__(stream, mode)
 
@@ -82,10 +80,7 @@ class QuotedPrintableWrapper(FilterWrapper):
         outstream.write(data)
 
     @staticmethod
-    def encode(instream, outstream, *, line_length):
-        outstream = outstream.text
-        # use quoprimime (undocumented?) to get the line breaks right
-        # takes str input, use latin-1 to represent bytes as u+0000..u+00ff
-        data = instream.read().decode('latin-1')
-        encoded_str = quoprimime.body_encode(data, maxlinelen=line_length)
-        outstream.write(encoded_str)
+    def encode(instream, outstream, *, quote_tabs):
+        data = instream.read()
+        encoded = binascii.b2a_qp(data, quotetabs=quote_tabs, istext=False)
+        outstream.write(encoded)
