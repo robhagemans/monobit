@@ -56,6 +56,7 @@ class _CodedBinaryContainer(Archive):
             comment=comment or cls.comment,
             block_comment=block_comment or cls.block_comment,
             assign=assign or cls.assign,
+            int_conv=cls.int_conv,
         )
         self.encode_kwargs = dict(
             delimiters=delimiters or cls.delimiters,
@@ -64,13 +65,13 @@ class _CodedBinaryContainer(Archive):
             bytes_per_line=bytes_per_line or cls.bytes_per_line,
             conv_int=cls.conv_int,
         )
-        # container writer parameter
+        # container writer parameters
         self.separator=separator or cls.separator
         self.final_separator=final_separator or cls.final_separator
         self.pre=pre or cls.pre
         self.post=post or cls.post
         self._wrapped_stream = stream
-        self._coded_data = {}
+        self._data = {}
         self._files = []
         super().__init__(mode)
 
@@ -79,6 +80,7 @@ class _CodedBinaryContainer(Archive):
         if self.mode == 'w' and not self.closed:
             self._wrapped_stream.text.write(self.pre)
             for count, file in enumerate(self._files):
+                file.seek(0)
                 self.encode(
                     instream=file,
                     outstream=self._wrapped_stream,
@@ -98,8 +100,8 @@ class _CodedBinaryContainer(Archive):
         return Path(name) == Path('.')
 
     def list(self):
-        self._get_names_and_data()
-        return self._coded_data.keys()
+        self._get_data()
+        return self._data.keys()
 
     def open(self, name, mode):
         """Open a binary stream in the container."""
@@ -110,49 +112,19 @@ class _CodedBinaryContainer(Archive):
 
     def _open_read(self, name):
         """Open input stream on source wrapper."""
-        infile = self._wrapped_stream
-        self._get_names_and_data()
+        self._get_data()
         name = str(name)
         try:
-            coded_data = self._coded_data[name]
+            data = self._data[name]
         except KeyError:
             raise FileNotFoundError(
                 f"No payload with identifier '{name}' found in file."
             )
-        try:
-            data = bytes(
-                type(self).int_conv(_s)
-                for _s in coded_data.split(',') if _s.strip()
-            )
-        except ValueError:
+        if not data:
             raise FileFormatError(
                 f"Could not convert coded data for identifier '{name}'"
             )
         return Stream.from_data(data, mode='r', name=name)
-
-    def _get_names_and_data(self):
-        """Find all identifiers with payload."""
-        if self._coded_data:
-            return
-        if self.mode == 'w':
-            return
-        instream = self._wrapped_stream.text
-        start, end = self.delimiters
-        self._coded_data = {}
-        found_identifier = ''
-        for line in instream:
-            line = _strip_line(line, self.comment, self.block_comment)
-            if self.assign in line:
-                found_identifier, _, _ = line.partition(self.assign)
-                logging.debug('Found assignment to `%s`', found_identifier)
-                found_identifier = _clean_identifier(found_identifier)
-            if found_identifier and start in line:
-                _, line = line.split(start)
-                data = _get_payload(
-                    instream, line, start, end, self.comment, self.block_comment
-                )
-                self._coded_data[found_identifier] = data
-                found_identifier = ''
 
     def _open_write(self, name):
         """Open output stream on source wrapper."""
@@ -161,6 +133,41 @@ class _CodedBinaryContainer(Archive):
             logging.warning('Creating multiple files of the same name `%s`.', name)
         self._files.append(newfile)
         return newfile
+
+    def _get_data(self):
+        if self.mode == 'w':
+            return
+        if self._data:
+            return
+        self._data = dict(
+            self.decode_all(self._wrapped_stream, **self.decode_kwargs)
+        )
+
+    ###########################################################################
+    # reader
+
+    def decode_all(
+            self, instream, *,
+            delimiters, comment, block_comment, assign, int_conv
+        ):
+        """Generator to decode all identifiers with payload."""
+        instream = instream.text
+        start, end = delimiters
+        found_identifier = ''
+        for line in instream:
+            line = _strip_line(line, comment, block_comment)
+            if assign in line:
+                found_identifier, _, _ = line.partition(assign)
+                logging.debug('Found assignment to `%s`', found_identifier)
+                found_identifier = _clean_identifier(found_identifier)
+            if found_identifier and start in line:
+                _, line = line.split(start)
+                data = _get_payload(
+                    instream, line, start, end,
+                    comment, block_comment, int_conv
+                )
+                yield found_identifier, data
+                found_identifier = ''
 
     ###############################################################################
     # writer
@@ -228,7 +235,7 @@ def _strip_line(line, comment, block_comment):
     return line
 
 
-def _get_payload(instream, line, start, end, comment, block_comment):
+def _get_payload(instream, line, start, end, comment, block_comment, int_conv):
     """Retrieve coded array as string."""
     # special case: whole array in one line
     if end in line:
@@ -246,7 +253,15 @@ def _get_payload(instream, line, start, end, comment, block_comment):
             break
         if line:
             payload.append(line)
-    return ''.join(payload)
+    try:
+        return bytes(
+            int_conv(_s) for _s in ''.join(payload).split(',') if _s.strip()
+        )
+    except ValueError:
+        logging.warning(
+            f"Could not convert coded data for identifier '{name}'"
+        )
+        return b''
 
 
 def _clean_identifier(found_identifier):
