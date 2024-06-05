@@ -44,7 +44,7 @@ class EmailContainer(Archive):
             subject:str='Files',
         ):
         """
-        files in email attachments.
+        Files in email attachments.
 
         sender: email From field
         recipient: email To field
