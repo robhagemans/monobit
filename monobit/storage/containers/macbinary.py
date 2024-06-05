@@ -92,7 +92,7 @@ _MACBINARY_HEADER = be.Struct(
 )
 class MacBinary(MacFork):
 
-    def _parse(self, stream):
+    def decode(self, stream):
         """Parse a MacBinary file."""
         data = stream.read()
         header = _MACBINARY_HEADER.from_bytes(data)

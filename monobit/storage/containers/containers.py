@@ -79,7 +79,7 @@ class MacFork(Archive):
             raise ValueError('Writing onto Mac forks is not supported.')
         super().__init__(mode, name)
         with Stream(file, mode) as stream:
-            self.name, *forks = self._parse(stream)
+            self.name, *forks = self.decode(stream)
         self.forks = dict(zip(self.forknames, forks))
 
     def iter_sub(self, prefix):
@@ -113,6 +113,6 @@ class MacFork(Archive):
                 f"Mac container only contains {self.forknames}, not '{name}'."
             )
 
-    def _parse(self, instream):
+    def decode(self, instream):
         """Resource and data fork loader."""
         raise NotImplementedError()

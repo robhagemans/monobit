@@ -48,7 +48,7 @@ _CRC = be.Struct(
 class BinHex(MacFork):
     """BinHex 4.0 loader."""
 
-    def _parse(self, stream):
+    def decode(self, stream):
         """Parse a BinHex 4.0 file."""
         front, binhex, *back = stream.text.read().split(':')
         if 'BinHex 4.0' not in front:

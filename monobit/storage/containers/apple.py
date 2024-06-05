@@ -65,7 +65,7 @@ _APPLE_ENTRY_TYPES = {
 
 class AppleContainer(MacFork):
 
-    def _parse(self, stream):
+    def decode(self, stream):
         """Parse an AppleSingle or AppleDouble file."""
         data = stream.read()
         header = _APPLE_HEADER.from_bytes(data)
