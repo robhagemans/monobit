@@ -67,9 +67,9 @@ class _CodedBinaryContainer(Archive):
         )
         # container writer parameters
         self.separator=separator or cls.separator
-        self.final_separator=final_separator or cls.final_separator
         self.pre=pre or cls.pre
         self.post=post or cls.post
+        # private fields
         self._wrapped_stream = stream
         self._data = {}
         self._files = []
@@ -88,9 +88,8 @@ class _CodedBinaryContainer(Archive):
                     **self.encode_kwargs
                 )
                 file.close()
-                if self.final_separator or count < len(self._files) - 1:
+                if count < len(self._files) - 1:
                     self._wrapped_stream.text.write(self.separator)
-                self._wrapped_stream.text.write('\n\n')
             self._wrapped_stream.text.write(self.post)
         self._wrapped_stream.close()
         super().close()
@@ -304,13 +303,12 @@ class _CodedBinary(_CodedBinaryContainer):
     int_conv = _int_from_c
     conv_int = _int_to_c
     block_comment = ()
-    separator = ''
-    final_separator = True
+    separator = '\n\n'
 
     # writer parameters
     assign_template = None
     pre = ''
-    post = ''
+    post = separator
 
 
 @containers.register(
@@ -321,10 +319,11 @@ class CCodedBinary(_CodedBinary):
     """C source code wrapper."""
     delimiters = '{}'
     comment = '//'
-    separator = ';'
+    separator = ';\n\n'
     block_comment = ('/*','*/')
 
     assign_template = 'char {identifier}[{bytesize}] = '
+    post = separator
 
 
 ###############################################################################
@@ -339,13 +338,12 @@ class JSONCodedBinary(_CodedBinary):
     delimiters = '[]'
     comment = '//'
     # JSON separator should only be written *between* multiple entries
-    separator = ','
-    final_separator = False
+    separator = ',\n\n'
     assign = ':'
 
     assign_template = '"{identifier}": '
     pre = '{\n'
-    post = '}\n'
+    post = '\n}\n'
 
 
 ###############################################################################
@@ -359,9 +357,10 @@ class PythonCodedBinary(_CodedBinary):
     """Python source code wrapper, using lists."""
     delimiters = '[]'
     comment = '#'
-    separator = ''
+    separator = '\n\n'
 
     assign_template = '{identifier} = '
+    post = separator
 
 
 @containers.register(
@@ -372,9 +371,10 @@ class PythonTupleCodedBinary(_CodedBinary):
     """Python source code wrapper, using tuples."""
     delimiters = '()'
     comment = '#'
-    separator = ''
+    separator = '\n\n'
 
     assign_template = '{identifier} = '
+    post = separator
 
 
 ###############################################################################
@@ -405,8 +405,9 @@ class PascalCodedBinary(_CodedBinary):
     comment = ''
     block_comment = ('{','}')
     int_conv = _int_from_pascal
-    separator = ';'
+    separator = ';\n\n'
 
     conv_int = _int_to_pascal
     assign_template = '{identifier}: Array[1..{bytesize}] of Integer = '
     pre = 'const\n\n'
+    post = separator
