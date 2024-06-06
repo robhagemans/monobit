@@ -7,10 +7,11 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 import itertools
+from io import BytesIO
 from pathlib import Path
 
 from ..magic import FileFormatError
-from ..streams import Stream
+from ..streams import Stream, KeepOpen
 from ..holders import StreamHolder
 
 
@@ -116,3 +117,83 @@ class MacFork(Archive):
     def decode(self, instream):
         """Resource and data fork loader."""
         raise NotImplementedError()
+
+
+class FlatFilterContainer(Archive):
+    def __init__(self, stream, mode='r'):
+        # private fields
+        self._wrapped_stream = stream
+        self._data = {}
+        self._files = []
+        super().__init__(mode)
+
+    def close(self):
+        """Close the archive, ignoring errors."""
+        if self.mode == 'w' and not self.closed:
+            data = {
+                str(_file.name): _file.getvalue()
+                for _file in self._files
+            }
+            self.encode_all(
+                data, self._wrapped_stream,
+                **self.encode_kwargs
+            )
+        self._wrapped_stream.close()
+        super().close()
+
+    def is_dir(self, name):
+        """Item at `name` is a directory."""
+        return Path(name) == Path('.')
+
+    def list(self):
+        self._get_data()
+        return self._data.keys()
+
+    def open(self, name, mode):
+        """Open a binary stream in the container."""
+        if mode == 'r':
+            return self._open_read(name)
+        else:
+            return self._open_write(name)
+
+    def _open_read(self, name):
+        """Open input stream on source wrapper."""
+        self._get_data()
+        name = str(name)
+        try:
+            data = self._data[name]
+        except KeyError:
+            raise FileNotFoundError(
+                f"No payload with identifier '{name}' found in file."
+            )
+        if not data:
+            raise FileFormatError(
+                f"Could not convert coded data for identifier '{name}'"
+            )
+        return Stream.from_data(data, mode='r', name=name)
+
+    def _open_write(self, name):
+        """Open output stream on source wrapper."""
+        if name in self._files:
+            raise FileExistsError(
+                f"Cannot create multiple files of the same name '{name}'"
+            )
+        newfile = Stream(KeepOpen(BytesIO()), mode='w', name=name)
+        self._files.append(newfile)
+        return newfile
+
+    def _get_data(self):
+        if self.mode == 'w':
+            return
+        if self._data:
+            return
+        self._data = self.decode_all(self._wrapped_stream, **self.decode_kwargs)
+
+    @classmethod
+    def decode_all(cls, instream):
+        """Generator to decode all identifiers with payload."""
+        raise NotImplementedError
+
+    @classmethod
+    def encode_all(cls, data, outstream):
+        raise NotImplementedError

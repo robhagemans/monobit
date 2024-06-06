@@ -8,18 +8,14 @@ licence: https://opensource.org/licenses/MIT
 import re
 import string
 import logging
-from io import BytesIO
 from pathlib import Path
 
-from ..streams import Stream, KeepOpen
 from ..magic import FileFormatError
 from ..base import containers
-from ..containers.containers import Archive
+from ..containers.containers import FlatFilterContainer
 
 
-###############################################################################
-
-class _CodedBinaryContainer(Archive):
+class _CodedBinaryContainer(FlatFilterContainer):
 
     def __init__(
             self, stream, mode='r',
@@ -50,6 +46,7 @@ class _CodedBinaryContainer(Archive):
         pre: characters needed at start of file. (use language default)
         post: characters needed at end of file. (use language default)
         """
+        super().__init__(stream, mode)
         cls = type(self)
         self.decode_kwargs = dict(
             delimiters=delimiters or cls.delimiters,
@@ -69,80 +66,13 @@ class _CodedBinaryContainer(Archive):
             pre=pre or cls.pre,
             post=post or cls.post,
         )
-        # private fields
-        self._wrapped_stream = stream
-        self._data = {}
-        self._files = []
-        super().__init__(mode)
-
-    def close(self):
-        """Close the archive, ignoring errors."""
-        if self.mode == 'w' and not self.closed:
-            data = {
-                str(_file.name): _file.getvalue()
-                for _file in self._files
-            }
-            self.encode_all(
-                data, self._wrapped_stream,
-                **self.encode_kwargs
-            )
-        self._wrapped_stream.close()
-        super().close()
-
-    def is_dir(self, name):
-        """Item at `name` is a directory."""
-        return Path(name) == Path('.')
-
-    def list(self):
-        self._get_data()
-        return self._data.keys()
-
-    def open(self, name, mode):
-        """Open a binary stream in the container."""
-        if mode == 'r':
-            return self._open_read(name)
-        else:
-            return self._open_write(name)
-
-    def _open_read(self, name):
-        """Open input stream on source wrapper."""
-        self._get_data()
-        name = str(name)
-        try:
-            data = self._data[name]
-        except KeyError:
-            raise FileNotFoundError(
-                f"No payload with identifier '{name}' found in file."
-            )
-        if not data:
-            raise FileFormatError(
-                f"Could not convert coded data for identifier '{name}'"
-            )
-        return Stream.from_data(data, mode='r', name=name)
-
-    def _open_write(self, name):
-        """Open output stream on source wrapper."""
-        if name in self._files:
-            raise FileExistsError(
-                f"Cannot create multiple files of the same name '{name}'"
-            )
-        newfile = Stream(KeepOpen(BytesIO()), mode='w', name=name)
-        self._files.append(newfile)
-        return newfile
-
-    def _get_data(self):
-        if self.mode == 'w':
-            return
-        if self._data:
-            return
-        self._data = self.decode_all(self._wrapped_stream, **self.decode_kwargs)
 
     ###########################################################################
     # reader
 
-    @staticmethod
+    @classmethod
     def decode_all(
-            instream, *,
+            cls, instream, *,
             delimiters, comment, block_comment, assign, int_conv
         ):
         """Generator to decode all identifiers with payload."""
