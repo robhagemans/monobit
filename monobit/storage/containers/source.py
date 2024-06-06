@@ -64,11 +64,11 @@ class _CodedBinaryContainer(Archive):
             assign_template=assign_template or cls.assign_template,
             bytes_per_line=bytes_per_line or cls.bytes_per_line,
             conv_int=cls.conv_int,
+            # container writer parameters
+            separator=separator or cls.separator,
+            pre=pre or cls.pre,
+            post=post or cls.post,
         )
-        # container writer parameters
-        self.separator=separator or cls.separator
-        self.pre=pre or cls.pre
-        self.post=post or cls.post
         # private fields
         self._wrapped_stream = stream
         self._data = {}
@@ -78,19 +78,14 @@ class _CodedBinaryContainer(Archive):
     def close(self):
         """Close the archive, ignoring errors."""
         if self.mode == 'w' and not self.closed:
-            self._wrapped_stream.text.write(self.pre)
-            for count, file in enumerate(self._files):
-                file.seek(0)
-                self.encode(
-                    instream=file,
-                    outstream=self._wrapped_stream,
-                    name=str(file.name),
-                    **self.encode_kwargs
-                )
-                file.close()
-                if count < len(self._files) - 1:
-                    self._wrapped_stream.text.write(self.separator)
-            self._wrapped_stream.text.write(self.post)
+            data = {
+                str(_file.name): _file.getvalue()
+                for _file in self._files
+            }
+            self.encode_all(
+                data, self._wrapped_stream,
+                **self.encode_kwargs
+            )
         self._wrapped_stream.close()
         super().close()
 
@@ -127,9 +122,11 @@ class _CodedBinaryContainer(Archive):
 
     def _open_write(self, name):
         """Open output stream on source wrapper."""
-        newfile = Stream(KeepOpen(BytesIO()), mode='w', name=name)
         if name in self._files:
-            logging.warning('Creating multiple files of the same name `%s`.', name)
+            raise FileExistsError(
+                f"Cannot create multiple files of the same name '{name}'"
+            )
+        newfile = Stream(KeepOpen(BytesIO()), mode='w', name=name)
         self._files.append(newfile)
         return newfile
 
@@ -138,21 +135,21 @@ class _CodedBinaryContainer(Archive):
             return
         if self._data:
             return
-        self._data = dict(
-            self.decode_all(self._wrapped_stream, **self.decode_kwargs)
-        )
+        self._data = self.decode_all(self._wrapped_stream, **self.decode_kwargs)
 
     ###########################################################################
     # reader
 
+    @staticmethod
     def decode_all(
-            self, instream, *,
+            instream, *,
             delimiters, comment, block_comment, assign, int_conv
         ):
         """Generator to decode all identifiers with payload."""
         instream = instream.text
         start, end = delimiters
         found_identifier = ''
+        data = {}
         for line in instream:
             line = _strip_line(line, comment, block_comment)
             if assign in line:
@@ -161,19 +158,38 @@ class _CodedBinaryContainer(Archive):
                 found_identifier = _clean_identifier(found_identifier)
             if found_identifier and start in line:
                 _, line = line.split(start)
-                data = _get_payload(
+                data[found_identifier] = _get_payload(
                     instream, line, start, end,
                     comment, block_comment, int_conv
                 )
-                yield found_identifier, data
                 found_identifier = ''
+        return data
 
     ###############################################################################
     # writer
 
-    @staticmethod
+    @classmethod
+    def encode_all(
+            cls, data, outstream, *,
+            pre, separator, post,
+            **kwargs
+        ):
+        outstream = outstream.text
+        outstream.write(pre)
+        for count, (name, filedata) in enumerate(data.items()):
+            cls.encode(
+                filedata,
+                outstream=outstream,
+                name=name,
+                **kwargs
+            )
+            if count < len(data) - 1:
+                outstream.write(separator)
+        outstream.write(post)
+
+    @classmethod
     def encode(
-            instream, outstream, *, name,
+            cls, rawbytes, outstream, *, name,
             assign_template, delimiters, comment,
             bytes_per_line, conv_int,
         ):
@@ -190,8 +206,6 @@ class _CodedBinaryContainer(Archive):
         if len(delimiters) < 2:
             raise ValueError('A start and end delimiter must be given. E.g. []')
         start_delimiter, end_delimiter = delimiters
-        rawbytes = instream.getvalue()
-        outstream = outstream.text
         # remove non-ascii
         identifier = name.encode('ascii', 'ignore').decode('ascii')
         identifier = ''.join(_c if _c.isalnum() else '_' for _c in identifier)
