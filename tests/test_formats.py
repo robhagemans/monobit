@@ -796,6 +796,14 @@ class TestFormats(BaseTester):
 @.............@
 """)
 
+    def test_import_daisy_mag(self):
+        """Test importing daisy-dot III Magnified files."""
+        font, *_ = monobit.load(
+            self.font_path / 'daisy' / 'big1.nlq',
+        )
+        # the space glyph should be generated
+        self.assertEqual(len(font.glyphs), 91)
+
     # BBC
 
     def test_import_bbc(self):

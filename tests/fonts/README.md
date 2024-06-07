@@ -27,6 +27,10 @@ Original sources:
 * `times.nlq` and `daisy.nlq`
   - distributed with Roy Goldman's Daisy-Dot III
   - in the public domain
+* `big1.nlq` and `big1.nl1`
+  - https://archive.org/details/a8b_abbuc_353_b
+  - distributed with FONTSPLIT.MAC by John McGowan 
+  - in the public domain  
 * `cmbx10.120pk`
   - https://www.ctan.org/pkg/cm
   - unmodified bitmap of the Computer Modern font created by Donald Knuth

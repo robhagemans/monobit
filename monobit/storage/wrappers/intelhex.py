@@ -28,7 +28,7 @@ class IntelHexWrapper(FilterWrapper):
     """Intel Hex format wrapper."""
 
     @staticmethod
-    def decode(instream):
+    def decode(instream, outstream):
         infile = instream.text
         datadict = {}
         checksum = 0
@@ -72,21 +72,24 @@ class IntelHexWrapper(FilterWrapper):
                     logging.warning(f'Ignoring unknown hex code {hexcode}.')
             except (IndexError, ValueError):
                 raise FileFormatError('Malformed Intel Hex file.')
-        return data
+        outstream.write(data)
 
     @staticmethod
-    def encode(data, outstream, *, chunk_size=32):
+    def encode(instream, outstream, *, chunk_size=32):
         # split into groups of 32 bytes
         outfile = outstream.text
-        ngroups = ceildiv(len(data), chunk_size)
         # current extended linear address
         extended_address = -1
-        for group in range(ngroups):
+        while True:
             # in the last round this may be less than chunk_size long
-            payload = data[chunk_size*group : chunk_size*(group+1)]
+            payload = instream.read(chunksize)
+            if not payload:
+                # end of file marker
+                outfile.write(':00000001FF\n')
+                return
             sum_bytes = sum(payload)
-            # skip over empty chunks, except the last to ensure file length
-            if not sum_bytes and group < ngroups-1:
+            # skip over null chunks, except the last to ensure file length
+            if not sum_bytes and len(payload) == chunksize:
                 continue
             offset = chunk_size * group
             offset_hi, offset_lo = divmod(offset, 0x10000)
@@ -106,5 +109,3 @@ class IntelHexWrapper(FilterWrapper):
                 f':{len(payload):02X}{offset_lo:04X}00'
                 f'{payload.hex().upper()}{checksum:02X}\n'
             )
-        # end of file marker
-        outfile.write(':00000001FF\n')

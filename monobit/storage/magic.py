@@ -74,6 +74,7 @@ class MagicRegistry:
         """Set up registry."""
         self._magic = []
         self._patterns = []
+        self._templates = []
         self._names = {}
         self._default_text = default_text
         self._default_binary = default_binary
@@ -117,13 +118,14 @@ class MagicRegistry:
                     pass
         return converter
 
-    def register(self, name='', magic=(), patterns=(), linked=None):
+    def register(self, name='', magic=(), patterns=(), template=(), linked=None):
         """
         Decorator to register converter for file type.
 
         name: unique name of the format
         magic: magic sequences for this format (no effect for savers)
         patterns: filename patterns for this format
+        template: template to generate filenames
         linked: earlier registration to take information from
         """
 
@@ -132,11 +134,13 @@ class MagicRegistry:
             converter.format = name
             converter.magic = magic
             converter.patterns = patterns
+            converter.template = template
             if linked:
                 # take from linked registration
                 converter.format = converter.format or linked.format
                 converter.magic = converter.magic or linked.magic
                 converter.patterns = converter.patterns or linked.patterns
+                converter.template = converter.template or linked.template
 
             if not converter.format:
                 raise ValueError('No registration name given')
@@ -164,11 +168,12 @@ class MagicRegistry:
                 )
             )
             ## glob patterns
-            glob_patterns = tuple(set(
-                (*converter.patterns, f'*.{converter.format}')
-            ))
-            for pattern in glob_patterns:
+            # glob_patterns = tuple(set(
+            #     (*converter.patterns, f'*.{converter.format}')
+            # ))
+            for pattern in converter.patterns:
                 self._patterns.append((to_pattern(pattern), converter))
+            self._templates.append((converter.template, converter))
             return converter
 
         return _decorator
@@ -201,6 +206,9 @@ class MagicRegistry:
 
     def get_template(self, format):
         """Get output filename template for format."""
+        for template, converter in self._templates:
+            if template and converter.format == format:
+                return template
         for pattern, converter in self._patterns:
             if converter.format == format:
                 template = pattern.generate('{name}')

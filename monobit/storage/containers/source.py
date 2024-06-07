@@ -1,5 +1,5 @@
 """
-monobit.storage.wrappers.source - binary files embedded in C/Python/JS source files
+monobit.storage.containers.source - binary files embedded in C/Python/JS source files
 
 (c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -8,18 +8,14 @@ licence: https://opensource.org/licenses/MIT
 import re
 import string
 import logging
-from io import BytesIO
 from pathlib import Path
 
-from ..streams import Stream, KeepOpen, WrappedWriterStream
 from ..magic import FileFormatError
 from ..base import containers
-from ..containers.containers import Archive
+from ..containers.containers import FlatFilterContainer
 
 
-###############################################################################
-
-class _CodedBinaryContainer(Archive):
+class _CodedBinaryContainer(FlatFilterContainer):
 
     def __init__(
             self, stream, mode='r',
@@ -50,127 +46,127 @@ class _CodedBinaryContainer(Archive):
         pre: characters needed at start of file. (use language default)
         post: characters needed at end of file. (use language default)
         """
+        super().__init__(stream, mode)
         cls = type(self)
-        # read & write
-        self.delimiters = delimiters or cls.delimiters
-        self.comment = comment or cls.comment
-        # write
-        self.assign_template = assign_template or cls.assign_template
-        self.separator = separator or cls.separator
-        self.final_separator = final_separator or cls.final_separator
-        self.bytes_per_line = bytes_per_line or cls.bytes_per_line
-        self.pre = pre or cls.pre
-        self.post = post or cls.post
-        # read
-        self.block_comment = block_comment or cls.block_comment
-        self.assign = assign or cls.assign
-        self._wrapped_stream = stream
-        self._coded_data = {}
-        self._files = []
-        super().__init__(mode)
+        self.decode_kwargs = dict(
+            delimiters=delimiters or cls.delimiters,
+            comment=comment or cls.comment,
+            block_comment=block_comment or cls.block_comment,
+            assign=assign or cls.assign,
+            int_conv=cls.int_conv,
+        )
+        self.encode_kwargs = dict(
+            delimiters=delimiters or cls.delimiters,
+            comment=comment or cls.comment,
+            assign_template=assign_template or cls.assign_template,
+            bytes_per_line=bytes_per_line or cls.bytes_per_line,
+            conv_int=cls.conv_int,
+            # container writer parameters
+            separator=separator or cls.separator,
+            pre=pre or cls.pre,
+            post=post or cls.post,
+        )
 
-    def close(self):
-        """Close the archive, ignoring errors."""
-        if self.mode == 'w' and not self.closed:
-            self._wrapped_stream.text.write(self.pre)
-            for count, file in enumerate(self._files):
-                self._write_out(file)
-                file.close()
-                if self.final_separator or count < len(self._files) - 1:
-                    self._wrapped_stream.text.write(self.separator)
-                self._wrapped_stream.text.write('\n\n')
-            self._wrapped_stream.text.write(self.post)
-        self._wrapped_stream.close()
-        super().close()
+    ###########################################################################
+    # reader
 
-    def is_dir(self, name):
-        """Item at `name` is a directory."""
-        return Path(name) == Path('.')
-
-    def list(self):
-        self._get_names_and_data()
-        return self._coded_data.keys()
-
-    def open(self, name, mode):
-        """Open a binary stream in the container."""
-        if mode == 'r':
-            return self._open_read(name)
-        else:
-            return self._open_write(name)
-
-    def _open_read(self, name):
-        """Open input stream on source wrapper."""
-        infile = self._wrapped_stream
-        self._get_names_and_data()
-        name = str(name)
-        try:
-            coded_data = self._coded_data[name]
-        except KeyError:
-            raise FileNotFoundError(
-                f"No payload with identifier '{name}' found in file."
-            )
-        try:
-            data = bytes(
-                type(self).int_conv(_s)
-                for _s in coded_data.split(',') if _s.strip()
-            )
-        except ValueError:
-            raise FileFormatError(
-                f"Could not convert coded data for identifier '{name}'"
-            )
-        return Stream.from_data(data, mode='r', name=name)
-
-    def _get_names_and_data(self):
-        """Find all identifiers with payload."""
-        if self._coded_data:
-            return
-        if self.mode == 'w':
-            return
-        instream = self._wrapped_stream.text
-        start, end = self.delimiters
-        self._coded_data = {}
+    @classmethod
+    def decode_all(
+            cls, instream, *,
+            delimiters, comment, block_comment, assign, int_conv
+        ):
+        """Generator to decode all identifiers with payload."""
+        instream = instream.text
+        start, end = delimiters
         found_identifier = ''
+        data = {}
         for line in instream:
-            line = _strip_line(line, self.comment, self.block_comment)
-            if self.assign in line:
-                found_identifier, _, _ = line.partition(self.assign)
+            line = _strip_line(line, comment, block_comment)
+            if assign in line:
+                found_identifier, _, _ = line.partition(assign)
                 logging.debug('Found assignment to `%s`', found_identifier)
                 found_identifier = _clean_identifier(found_identifier)
             if found_identifier and start in line:
                 _, line = line.split(start)
-                data = _get_payload(
-                    instream, line, start, end, self.comment, self.block_comment
+                data[found_identifier] = _get_payload(
+                    instream, line, start, end,
+                    comment, block_comment, int_conv
                 )
-                self._coded_data[found_identifier] = data
                 found_identifier = ''
+        return data
 
-    def _open_write(self, name):
-        """Open output stream on source wrapper."""
-        newfile = Stream(KeepOpen(BytesIO()), mode='w', name=name)
-        if name in self._files:
-            logging.warning('Creating multiple files of the same name `%s`.', name)
-        self._files.append(newfile)
-        return newfile
+    ###############################################################################
+    # writer
 
-    def _write_out(self, file):
-        return _write_out_coded_binary(
-            file.getvalue(),
-            outstream=self._wrapped_stream,
-            identifier=str(file.name),
-            assign_template=self.assign_template,
-            delimiters=self.delimiters,
-            comment=self.comment,
-            bytes_per_line=self.bytes_per_line,
-            pre=self.pre,
-            post=self.post,
-            conv_int=type(self).conv_int,
+    @classmethod
+    def encode_all(
+            cls, data, outstream, *,
+            pre, separator, post,
+            **kwargs
+        ):
+        outstream = outstream.text
+        outstream.write(pre)
+        for count, (name, filedata) in enumerate(data.items()):
+            cls.encode(
+                filedata,
+                outstream=outstream,
+                name=name,
+                **kwargs
+            )
+            if count < len(data) - 1:
+                outstream.write(separator)
+        outstream.write(post)
+
+    @classmethod
+    def encode(
+            cls, rawbytes, outstream, *, name,
+            assign_template, delimiters, comment,
+            bytes_per_line, conv_int,
+        ):
+        """
+        Generate font file encoded as source code.
+
+        name: Identifier to use.
+        assign_template: assignment operator. May include `identifier` and `bytesize` variable.
+        delimiters: Must contain two characters, building the opening and closing delimiters of the collection. E.g. []
+        comment: Line comment character(s).
+        bytes_per_line: number of encoded bytes in a source line
+        conv_int: converter function for int values
+        """
+        if len(delimiters) < 2:
+            raise ValueError('A start and end delimiter must be given. E.g. []')
+        start_delimiter, end_delimiter = delimiters
+        # remove non-ascii
+        identifier = name.encode('ascii', 'ignore').decode('ascii')
+        identifier = ''.join(_c if _c.isalnum() else '_' for _c in identifier)
+        assign = assign_template.format(
+            identifier=identifier, bytesize=len(rawbytes)
         )
+        # emit code
+        outstream.write(f'{assign}{start_delimiter}\n')
+        # grouper
+        args = [iter(rawbytes)] * bytes_per_line
+        groups = zip(*args)
+        lines = [
+            ', '.join(conv_int(_b) for _b in _group)
+            for _group in groups
+        ]
+        rem = len(rawbytes) % bytes_per_line
+        if rem:
+            lines.append(', '.join(conv_int(_b) for _b in rawbytes[-rem:]))
+        for i, line in enumerate(lines):
+            outstream.write(f'  {line}')
+            if i < len(lines) - 1:
+                outstream.write(',')
+            outstream.write('\n')
+        outstream.write(end_delimiter)
 
 
 ###############################################################################
-# reader
+# helper functions for reader
 
 def _strip_line(line, comment, block_comment):
+    """Strip comments. Handles inline but not multiline block comments."""
     if comment:
         line, _, _ = line.partition(comment)
     if block_comment:
@@ -182,7 +178,8 @@ def _strip_line(line, comment, block_comment):
     return line
 
 
-def _get_payload(instream, line, start, end, comment, block_comment):
+def _get_payload(instream, line, start, end, comment, block_comment, int_conv):
+    """Retrieve coded array as string."""
     # special case: whole array in one line
     if end in line:
         line, _ = line.split(end, 1)
@@ -199,7 +196,15 @@ def _get_payload(instream, line, start, end, comment, block_comment):
             break
         if line:
             payload.append(line)
-    return ''.join(payload)
+    try:
+        return bytes(
+            int_conv(_s) for _s in ''.join(payload).split(',') if _s.strip()
+        )
+    except ValueError:
+        logging.warning(
+            f"Could not convert coded data for identifier '{name}'"
+        )
+        return b''
 
 
 def _clean_identifier(found_identifier):
@@ -212,55 +217,6 @@ def _clean_identifier(found_identifier):
     found_identifier, *_ = re.split(r"\W+", found_identifier)
     return found_identifier
 
-
-###############################################################################
-# writer
-
-def _write_out_coded_binary(
-        rawbytes, outstream, *,
-        assign_template, delimiters, comment,
-        bytes_per_line, pre, post, conv_int, identifier,
-    ):
-    """
-    Generate font file encoded as source code.
-
-    identifier: Identifier to use.
-    assign_template: assignment operator. May include `identifier` and `bytesize` variable.
-    delimiters: Must contain two characters, building the opening and closing delimiters of the collection. E.g. []
-    comment: Line comment character(s).
-    bytes_per_line: number of encoded bytes in a source line
-    pre: string to write before output
-    post: string to write after output
-    conv_int: converter function for int values
-    """
-    if len(delimiters) < 2:
-        raise ValueError('A start and end delimiter must be given. E.g. []')
-    start_delimiter, end_delimiter = delimiters
-    outstream = outstream.text
-    # remove non-ascii
-    identifier = identifier.encode('ascii', 'ignore').decode('ascii')
-    identifier = ''.join(_c if _c.isalnum() else '_' for _c in identifier)
-    assign = assign_template.format(
-        identifier=identifier, bytesize=len(rawbytes)
-    )
-    # emit code
-    outstream.write(f'{assign}{start_delimiter}\n')
-    # grouper
-    args = [iter(rawbytes)] * bytes_per_line
-    groups = zip(*args)
-    lines = [
-        ', '.join(conv_int(_b) for _b in _group)
-        for _group in groups
-    ]
-    rem = len(rawbytes) % bytes_per_line
-    if rem:
-        lines.append(', '.join(conv_int(_b) for _b in rawbytes[-rem:]))
-    for i, line in enumerate(lines):
-        outstream.write(f'  {line}')
-        if i < len(lines) - 1:
-            outstream.write(',')
-        outstream.write('\n')
-    outstream.write(end_delimiter)
 
 
 ###############################################################################
@@ -291,13 +247,12 @@ class _CodedBinary(_CodedBinaryContainer):
     int_conv = _int_from_c
     conv_int = _int_to_c
     block_comment = ()
-    separator = ''
-    final_separator = True
+    separator = '\n\n'
 
     # writer parameters
     assign_template = None
     pre = ''
-    post = ''
+    post = separator
 
 
 @containers.register(
@@ -308,10 +263,11 @@ class CCodedBinary(_CodedBinary):
     """C source code wrapper."""
     delimiters = '{}'
     comment = '//'
-    separator = ';'
+    separator = ';\n\n'
     block_comment = ('/*','*/')
 
     assign_template = 'char {identifier}[{bytesize}] = '
+    post = separator
 
 
 ###############################################################################
@@ -326,13 +282,12 @@ class JSONCodedBinary(_CodedBinary):
     delimiters = '[]'
     comment = '//'
     # JSON separator should only be written *between* multiple entries
-    separator = ','
-    final_separator = False
+    separator = ',\n\n'
     assign = ':'
 
     assign_template = '"{identifier}": '
     pre = '{\n'
-    post = '}\n'
+    post = '\n}\n'
 
 
 ###############################################################################
@@ -346,9 +301,10 @@ class PythonCodedBinary(_CodedBinary):
     """Python source code wrapper, using lists."""
     delimiters = '[]'
     comment = '#'
-    separator = ''
+    separator = '\n\n'
 
     assign_template = '{identifier} = '
+    post = separator
 
 
 @containers.register(
@@ -359,9 +315,10 @@ class PythonTupleCodedBinary(_CodedBinary):
     """Python source code wrapper, using tuples."""
     delimiters = '()'
     comment = '#'
-    separator = ''
+    separator = '\n\n'
 
     assign_template = '{identifier} = '
+    post = separator
 
 
 ###############################################################################
@@ -392,8 +349,9 @@ class PascalCodedBinary(_CodedBinary):
     comment = ''
     block_comment = ('{','}')
     int_conv = _int_from_pascal
-    separator = ';'
+    separator = ';\n\n'
 
     conv_int = _int_to_pascal
     assign_template = '{identifier}: Array[1..{bytesize}] of Integer = '
     pre = 'const\n\n'
+    post = separator

@@ -79,6 +79,10 @@ class TestContainers(BaseTester):
         """Test importing/exporting compressed tar files."""
         self._test_container('tar.gz')
 
+    def test_email(self):
+        """Test importing/exporting MIME messages."""
+        self._test_container('eml')
+
     def test_dir(self):
         """Test exporting to directory."""
         dir = self.temp_path / f'test4x6/4x6'
