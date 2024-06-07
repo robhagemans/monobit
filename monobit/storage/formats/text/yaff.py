@@ -224,6 +224,8 @@ class YaffGlyph(YaffMultiline):
                 break
         else:
             i += 1
+        if not i:
+            raise FileFormatError('Malformed yaff file: expected glyph definition.')
         raster = lines[:i]
         properties = {}
         key = None
