@@ -97,3 +97,11 @@ class CabinetContainer(LibArchiveContainer):
 )
 class ISO9660Container(LibArchiveContainer):
     pass
+
+
+@containers.register(
+    name='lharc',
+    patterns=('*.lha', '*.lzh'),
+)
+class LHArcContainer(LibArchiveContainer):
+    pass
