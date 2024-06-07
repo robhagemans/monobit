@@ -122,6 +122,12 @@ class TestContainers(BaseTester):
         fonts = monobit.load(container_file)
         self.assertEqual(len(fonts), 3)
 
+    def test_recursive_cpio(self):
+        """Test recursively traversing CPIO container."""
+        container_file = self.font_path / 'fontdir.cpio'
+        fonts = monobit.load(container_file)
+        self.assertEqual(len(fonts), 3)
+
     def test_recursive_cab(self):
         """Test recursively traversing Cabinet container."""
         container_file = self.font_path / 'fontdir.cab'
@@ -133,6 +139,13 @@ class TestContainers(BaseTester):
         container_file = self.font_path / 'fontdir'
         fonts = monobit.load(container_file)
         self.assertEqual(len(fonts), 3)
+
+    @unittest.skip
+    def test_ar(self):
+        """Test recursively traversing AR container."""
+        container_file = self.font_path / 'twofonts.ar'
+        fonts = monobit.load(container_file)
+        self.assertEqual(len(fonts), 2)
 
     def test_empty(self):
         """Test empty container."""
@@ -196,6 +209,12 @@ class TestContainers(BaseTester):
         monobit.save(self.fixed4x6, file)
         font, *_ = monobit.load(file)
         self.assertEqual(len(font.glyphs), 919)
+
+    def test_deeplink_lha(self):
+        """Test deep linking into LHA container."""
+        file = self.font_path / 'wbfont.lha' / 'fonts' / 'wbfont_prop.font'
+        fonts = monobit.load(file)
+        self.assertEqual(len(fonts), 1)
 
 
 class TestWrappers(BaseTester):

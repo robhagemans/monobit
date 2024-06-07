@@ -105,3 +105,42 @@ class ISO9660Container(LibArchiveContainer):
 )
 class LHArcContainer(LibArchiveContainer):
     pass
+
+
+@containers.register(
+    name='cpio',
+    patterns=('*.cpio',),
+    magic=(
+        b'\x71\xC7',
+        b'\xC7\x71',
+        b'0707',
+    ),
+)
+class CPIOContainer(LibArchiveContainer):
+    pass
+
+
+@containers.register(
+    name='pax',
+    patterns=('*.pax',),
+)
+class PaxContainer(LibArchiveContainer):
+    pass
+
+
+@containers.register(
+    name='ar',
+    patterns=('*.ar',),
+    magic=(b'!<arch>\n',),
+)
+class ArContainer(LibArchiveContainer):
+    pass
+
+
+@containers.register(
+    name='xar',
+    patterns=('*.xar',),
+    magic=(b'xar!',),
+)
+class XArContainer(LibArchiveContainer):
+    pass

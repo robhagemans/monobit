@@ -239,6 +239,11 @@ archive, compression and encoding formats:
 | RAR [A]               | `rar`    | `.rar`                  |&check;|       |
 | 7-Zip [A]             | `7zip`   | `.7z`                   |&check;|       |
 | MS Cabinet [A]        | `cabinet`| `.cab`                  |&check;|       |
+| LHarc/LHA/LZH [A]     | `lharc`  | `.lha` `.lzh`           |&check;|       |
+| CPIO [A]              | `cpio`   | `.cpio`     `           |&check;|       |
+| PAX [A]               | `pax`    | `.pax`                  |&check;|       |
+| XAR [A]               | `xar`    | `.xar`                  |&check;|       |
+| AR [A]                | `ar`     | `.ar`                   |&check;|       |
 | GZip                  | `gzip`   | `.gz`                   |&check;|&check;|
 | BZip2                 | `bzip2`  | `.bz2`                  |&check;|&check;|
 | XZ/LZMA               | `lzma`   | `.xz` `.lzma`           |&check;|&check;|
