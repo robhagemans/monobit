@@ -236,6 +236,9 @@ archive, compression and encoding formats:
 |-----------------------|----------|-------------------------|-------|-------|
 | PKZip/WinZip          | `zip`    | `.zip`                  |&check;|&check;|
 | GNU tar               | `tar`    | `.tar` `.tgz`           |&check;|&check;|
+| RAR [A]               | `rar`    | `.rar`                  |&check;|       |
+| 7-Zip [A]             | `7zip`   | `.7z`                   |&check;|       |
+| MS Cabinet [A]        | `cabinet`| `.cab`                  |&check;|       |
 | GZip                  | `gzip`   | `.gz`                   |&check;|&check;|
 | BZip2                 | `bzip2`  | `.bz2`                  |&check;|&check;|
 | XZ/LZMA               | `lzma`   | `.xz` `.lzma`           |&check;|&check;|
@@ -253,6 +256,8 @@ archive, compression and encoding formats:
 | Python coded binary   | `python` | `.py`                   |&check;|&check;|
 | Pascal coded binary   | `pascal` | `.pas`                  |&check;|&check;|
 | BASIC coded binary    | `basic`  | `.bas`                  |&check;|&check;|
+
+[A] requires **libarchive**
 
 
 Stroke formats
@@ -283,6 +288,7 @@ Some formats require
 - **PIL** (`Pillow`)
 - **reportlab**
 - **fontTools**
+- **libarchive**
 
 The renderer additionally employs
 - **uniseg**
@@ -291,7 +297,7 @@ The renderer additionally employs
 
 All can be installed through Pip:
 
-    pip install Pillow reportlab fonttools uniseg python-bidi arabic-reshaper
+    pip install Pillow reportlab fonttools uniseg python-bidi arabic-reshaper libarchive-c
 
 Without these packages, some functionality may not be available.
 

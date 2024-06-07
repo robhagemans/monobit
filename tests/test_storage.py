@@ -103,6 +103,31 @@ class TestContainers(BaseTester):
         fonts = monobit.load(container_file)
         self.assertEqual(len(fonts), 3)
 
+    def test_recursive_rar(self):
+        """Test recursively traversing rar container."""
+        container_file = self.font_path / 'fontdir.rar'
+        fonts = monobit.load(container_file)
+        self.assertEqual(len(fonts), 3)
+
+    def test_recursive_7z(self):
+        """Test recursively traversing 7-zip container."""
+        container_file = self.font_path / 'fontdir.7z'
+        fonts = monobit.load(container_file)
+        self.assertEqual(len(fonts), 3)
+
+    @unittest.skip
+    def test_recursive_iso(self):
+        """Test recursively traversing ISO 9660 container."""
+        container_file = self.font_path / 'fontdir.iso'
+        fonts = monobit.load(container_file)
+        self.assertEqual(len(fonts), 3)
+
+    def test_recursive_cab(self):
+        """Test recursively traversing Cabinet container."""
+        container_file = self.font_path / 'fontdir.cab'
+        fonts = monobit.load(container_file)
+        self.assertEqual(len(fonts), 3)
+
     def test_recursive_dir(self):
         """Test recursively traversing directory."""
         container_file = self.font_path / 'fontdir'

@@ -63,7 +63,10 @@ class Archive(Container):
 
     def contains(self, item):
         """Check if file is in container. Case sensitive if container/fs is."""
-        return str(item) in self.list()
+        return (
+            str(item) in self.list() or
+            f'{item}/' in self.list()
+        )
 
     def list(self):
         """List full contents of archive."""
@@ -121,6 +124,7 @@ class MacFork(Archive):
 
 class FlatFilterContainer(Archive):
     def __init__(self, stream, mode='r'):
+        # TODO encode/decode kwargs
         # private fields
         self._wrapped_stream = stream
         self._data = {}
@@ -143,6 +147,7 @@ class FlatFilterContainer(Archive):
 
     def is_dir(self, name):
         """Item at `name` is a directory."""
+        # TODO extract names, raise filenotfound if not exists
         return Path(name) == Path('.')
 
     def list(self):
