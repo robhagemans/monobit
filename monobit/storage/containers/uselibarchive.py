@@ -147,3 +147,12 @@ class ArContainer(LibArchiveContainer):
 )
 class XArContainer(LibArchiveContainer):
     pass
+
+
+@containers.register(
+    name='warc',
+    patterns=('*.warc',),
+    magic=(b'WARC/',),
+)
+class WARCContainer(LibArchiveContainer):
+    pass
