@@ -88,10 +88,16 @@ class _CodedBinaryContainer(FlatFilterContainer):
                 found_identifier = _clean_identifier(found_identifier)
             if found_identifier and start in line:
                 _, line = line.split(start)
-                data[found_identifier] = _get_payload(
+                decoded_data = _get_payload(
                     instream, line, start, end,
                     comment, block_comment, int_conv
                 )
+                data[found_identifier] = decoded_data
+                if not decoded_data:
+                    logging.warning(
+                        "Could not decode data for identifier '%s'",
+                        found_identifier
+                    )
                 found_identifier = ''
         return data
 
@@ -201,9 +207,6 @@ def _get_payload(instream, line, start, end, comment, block_comment, int_conv):
             int_conv(_s) for _s in ''.join(payload).split(',') if _s.strip()
         )
     except ValueError:
-        logging.warning(
-            f"Could not convert coded data for identifier '{name}'"
-        )
         return b''
 
 
