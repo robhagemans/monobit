@@ -14,7 +14,6 @@ from contextlib import contextmanager
 
 from ..constants import MONOBIT
 from ..core import Font, Pack
-from ..base.struct import StructError
 from ..plumbing import scriptable
 from ..base import Any
 from .magic import MagicRegistry, FileFormatError, maybe_text
@@ -62,7 +61,7 @@ def _load_stream(instream, *, format='', **kwargs):
         logging.info("Loading '%s' as format `%s`", instream.name, loader.format)
         try:
             fonts = loader(instream, **kwargs)
-        except (FileFormatError, StructError) as e:
+        except FileFormatError as e:
             logging.debug(e)
             last_error = e
         else:
@@ -174,7 +173,7 @@ def load_all(root_location, *, format='', **kwargs):
                 pack = _load_stream(
                     location.get_stream(), format=format, **kwargs
                 )
-            except (FileFormatError, StructError) as exc:
+            except FileFormatError as exc:
                 logging.debug('Could not load `%s`: %s', location, exc)
             else:
                 packs += Pack(pack)

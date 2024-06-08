@@ -8,7 +8,6 @@ licence: https://opensource.org/licenses/MIT
 import logging
 from pathlib import Path
 
-from ..base.struct import StructError
 from ..plumbing import take_arguments
 from .magic import FileFormatError, MagicRegistry
 from .streams import StreamBase, Stream, KeepOpen
@@ -279,7 +278,7 @@ class Location:
                 containers, stream,
                 mode=self.mode, format=format, argdict=self.argdict,
             )
-        except (FileFormatError, StructError):
+        except FileFormatError:
             # innermost stream is a non-container stream.
             if self._leafpath == Path('.'):
                 return
@@ -378,7 +377,7 @@ def _open_container_or_wrapper(
             kwargs = take_arguments(cls.__init__, argdict)
             # returns container or wrapper object
             container_wrapper = cls(instream, mode=mode, **kwargs)
-        except (FileFormatError, StructError) as e:
+        except FileFormatError as e:
             logging.debug(e)
             last_error = e
             continue
