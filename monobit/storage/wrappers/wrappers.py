@@ -17,16 +17,19 @@ from ..streams import Stream
 class Wrapper(StreamHolder):
     """Base class for single-stream wrappers."""
 
-    def __init__(self, stream, mode='r'):
+    def __init__(self, stream, mode='r', encode_kwargs=None, decode_kwargs=None):
         if mode not in ('r', 'w'):
             raise ValueError(f"`mode` must be one of 'r' or 'w', not '{mode}'.")
         self.mode = mode
         self.refcount = 0
         self.closed = False
+        self.encode_kwargs = encode_kwargs or {}
+        self.decode_kwargs = decode_kwargs or {}
         # externally provided - don't close this on our side
         self._wrapped_stream = stream
         # opened by us
         self._unwrapped_stream = None
+
 
     def __repr__(self):
         """String representation."""
@@ -48,11 +51,7 @@ class FilterWrapper(Wrapper):
         if self.mode == 'r':
             if type(self).decode == FilterWrapper.decode:
                 raise ValueError(f'Reading from {type(self)} not supported.')
-            with io.BytesIO() as outfile:
-                outfile.name = name
-                self.decode(self._wrapped_stream, outfile, **self.decode_kwargs)
-                data = outfile.getvalue()
-            name = outfile.name
+            data = self.decode(self._wrapped_stream, **self.decode_kwargs)
             self._unwrapped_stream = Stream.from_data(data, mode='r', name=name)
         else:
             if type(self).encode == FilterWrapper.encode:
@@ -64,11 +63,11 @@ class FilterWrapper(Wrapper):
         return self._unwrapped_stream
 
     @staticmethod
-    def encode(instream, outstream, **kwargs):
+    def encode(data, outstream, **kwargs):
         raise NotImplementedError
 
     @staticmethod
-    def decode(instream, outstream, **kwargs):
+    def decode(instream, **kwargs):
         raise NotImplementedError
 
 
@@ -85,8 +84,7 @@ class _WrappedWriterStream(Stream):
         if not self.closed:
             try:
                 data = self._stream.getvalue()
-                infile = Stream.from_data(data, mode='r', name=self.name)
-                self._write_out(infile, self._outfile, **self._write_out_kwargs)
+                self._write_out(data, self._outfile, **self._write_out_kwargs)
             except Exception as exc:
                 logging.warning(
                     f"Could not write to '{self._outfile.name}': {exc}"

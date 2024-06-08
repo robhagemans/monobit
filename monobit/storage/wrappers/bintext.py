@@ -31,20 +31,21 @@ class Base64Wrapper(FilterWrapper):
 
         line_length: length of each line of base64 encoded data (default: 76)
         """
-        self.encode_kwargs = dict(
-            line_length=line_length,
+        super().__init__(
+            stream, mode,
+            encode_kwargs=dict(
+                line_length=line_length,
+            )
         )
-        super().__init__(stream, mode)
 
     @staticmethod
-    def decode(instream, outstream):
+    def decode(instream):
         encoded_bytes = instream.read()
         data = base64.b64decode(encoded_bytes)
-        outstream.write(data)
+        return data
 
     @staticmethod
-    def encode(instream, outstream, *, line_length):
-        data = instream.read()
+    def encode(data, outstream, *, line_length):
         encoded_bytes = base64.b64encode(data)
         bytesio = BytesIO(encoded_bytes)
         while True:
@@ -68,19 +69,20 @@ class QuotedPrintableWrapper(FilterWrapper):
 
         quote_tabs: encode tabs and spaces as QP (default: False)
         """
-        self.encode_kwargs = dict(
-            quote_tabs=quote_tabs,
+        super().__init__(
+            stream, mode,
+            encode_kwargs=dict(
+                quote_tabs=quote_tabs,
+            )
         )
-        super().__init__(stream, mode)
 
     @staticmethod
-    def decode(instream, outstream):
+    def decode(instream):
         encoded = instream.read()
         data = binascii.a2b_qp(encoded)
-        outstream.write(data)
+        return data
 
     @staticmethod
-    def encode(instream, outstream, *, quote_tabs):
-        data = instream.read()
+    def encode(data, outstream, *, quote_tabs):
         encoded = binascii.b2a_qp(data, quotetabs=quote_tabs, istext=False)
         outstream.write(encoded)
