@@ -109,13 +109,14 @@ class ZipTarBase(Archive):
 
     def contains(self, item):
         """Check if file is in container. Case sensitive if container/fs is."""
+        name = str(Path(self._root) / item)
         if self._ignore_case:
             return (
-                str(Path(self._root) / item).lower() in
+                name.lower() in
                 (str(_item).lower() for _item in self.list())
             )
         else:
-            return str(item) in self.list()
+            return name in self.list()
 
     def iter_sub(self, prefix):
         """List contents of a subpath."""
