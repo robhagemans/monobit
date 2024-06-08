@@ -83,12 +83,14 @@ def _load_stream(instream, *, format='', **kwargs):
         raise FileFormatError(message)
     # convert font or pack to pack
     pack = _annotate_fonts_with_source(
-        fonts, instream.name, loader.format, kwargs
+        fonts, instream.name, instream.where, loader.format, kwargs
     )
     return pack
 
 
-def _annotate_fonts_with_source(fonts, filename, format, loader_kwargs):
+def _annotate_fonts_with_source(
+        fonts, filename, location, format, loader_kwargs
+    ):
     """Set source metadata on font pack."""
     # convert font or pack to pack
     pack = Pack(fonts)
@@ -112,7 +114,8 @@ def _annotate_fonts_with_source(fonts, filename, format, loader_kwargs):
         _font.modify(
             converter=MONOBIT,
             source_format=_font.source_format or f'{format}{loader_args}',
-            source_name=_font.source_name or filename
+            source_name=_font.source_name or filename,
+            source_path=str(location.path),
         )
         for _font in pack
     )
@@ -151,7 +154,7 @@ def _load_container(location, *, format='', **kwargs):
         fonts = loader(location, **kwargs)
         spec_msg = f"as format {loader.format}"
         pack = _annotate_fonts_with_source(
-            fonts, location.path, loader.format, kwargs
+            fonts, location.path, location, loader.format, kwargs
         )
     if not pack:
         raise FileFormatError(
