@@ -30,18 +30,21 @@ class LibArchiveContainer(FlatFilterContainer):
     @classmethod
     def decode_all(cls, instream):
         data = {}
-        with libarchive.stream_reader(instream) as archive:
-            for entry in archive:
-                name = Path(str(entry)).as_posix()
-                if name == '.':
-                    continue
-                if entry.isdir:
-                    data[name + '/'] = b''
-                elif entry.isreg:
-                    data[name] = b''.join(list(entry.get_blocks()))
-                    for path in Path(name).parents:
-                        if path != Path('.'):
-                            data[f'{path}/'] = b''
+        try:
+            with libarchive.stream_reader(instream) as archive:
+                for entry in archive:
+                    name = Path(str(entry)).as_posix()
+                    if name == '.':
+                        continue
+                    if entry.isdir:
+                        data[name + '/'] = b''
+                    elif entry.isreg:
+                        data[name] = b''.join(list(entry.get_blocks()))
+                        for path in Path(name).parents:
+                            if path != Path('.'):
+                                data[f'{path}/'] = b''
+        except libarchive.ArchiveError as e:
+            raise FileFormatError(e) from e
         return data
 
     def is_dir(self, name):
