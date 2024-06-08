@@ -13,7 +13,7 @@ from monobit.base.binary import align
 from ..streams import Stream
 from ..magic import FileFormatError, Magic
 from ..base import containers
-from .containers import MacFork
+from .containers import FlatFilterContainer
 
 
 ##############################################################################
@@ -90,9 +90,9 @@ _MACBINARY_HEADER = be.Struct(
         Magic.offset(65) + b'FFILDMOV',
     ),
 )
-class MacBinary(MacFork):
+class MacBinary(FlatFilterContainer):
 
-    def decode(self, stream):
+    def decode_all(self, stream):
         """Parse a MacBinary file."""
         data = stream.read()
         header = _MACBINARY_HEADER.from_bytes(data)
@@ -108,4 +108,13 @@ class MacBinary(MacFork):
         ofs += align(header.data_length, 7)
         rsrc_fork = data[ofs:ofs+header.rsrc_length]
         name = header.filename.decode('mac-roman').strip()
-        return name, data_fork, rsrc_fork
+        if name:
+            return {
+                f'data/{name}': data_fork,
+                f'rsrc/{name}': rsrc_fork,
+            }
+        else:
+            return {
+                f'data': data_fork,
+                f'rsrc': rsrc_fork,
+            }

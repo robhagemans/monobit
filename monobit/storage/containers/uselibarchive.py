@@ -20,8 +20,6 @@ class LibArchiveContainer(FlatFilterContainer):
         ):
         """Container access using libarchive."""
         super().__init__(stream, mode)
-        self.encode_kwargs = {}
-        self.decode_kwargs = {}
 
     @classmethod
     def encode_all(cls, data, outstream):

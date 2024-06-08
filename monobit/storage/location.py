@@ -279,7 +279,7 @@ class Location:
                 containers, stream,
                 mode=self.mode, format=format, argdict=self.argdict,
             )
-        except FileFormatError:
+        except (FileFormatError, StructError):
             # innermost stream is a non-container stream.
             if self._leafpath == Path('.'):
                 return

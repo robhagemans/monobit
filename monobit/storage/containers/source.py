@@ -46,25 +46,27 @@ class _CodedBinaryContainer(FlatFilterContainer):
         pre: characters needed at start of file. (use language default)
         post: characters needed at end of file. (use language default)
         """
-        super().__init__(stream, mode)
         cls = type(self)
-        self.decode_kwargs = dict(
-            delimiters=delimiters or cls.delimiters,
-            comment=comment or cls.comment,
-            block_comment=block_comment or cls.block_comment,
-            assign=assign or cls.assign,
-            int_conv=cls.int_conv,
-        )
-        self.encode_kwargs = dict(
-            delimiters=delimiters or cls.delimiters,
-            comment=comment or cls.comment,
-            assign_template=assign_template or cls.assign_template,
-            bytes_per_line=bytes_per_line or cls.bytes_per_line,
-            conv_int=cls.conv_int,
-            # container writer parameters
-            separator=separator or cls.separator,
-            pre=pre or cls.pre,
-            post=post or cls.post,
+        super().__init__(
+            stream, mode,
+            decode_kwargs=dict(
+                delimiters=delimiters or cls.delimiters,
+                comment=comment or cls.comment,
+                block_comment=block_comment or cls.block_comment,
+                assign=assign or cls.assign,
+                int_conv=cls.int_conv,
+            ),
+            encode_kwargs=dict(
+                delimiters=delimiters or cls.delimiters,
+                comment=comment or cls.comment,
+                assign_template=assign_template or cls.assign_template,
+                bytes_per_line=bytes_per_line or cls.bytes_per_line,
+                conv_int=cls.conv_int,
+                # container writer parameters
+                separator=separator or cls.separator,
+                pre=pre or cls.pre,
+                post=post or cls.post,
+            )
         )
 
     ###########################################################################

@@ -13,7 +13,7 @@ from monobit.base.struct import big_endian as be
 from ..streams import Stream
 from ..magic import FileFormatError, Magic
 from ..base import containers
-from .containers import MacFork
+from .containers import FlatFilterContainer
 
 
 ###############################################################################
@@ -45,10 +45,10 @@ _CRC = be.Struct(
     ),
     patterns=('*.hqx',),
 )
-class BinHex(MacFork):
+class BinHex(FlatFilterContainer):
     """BinHex 4.0 loader."""
 
-    def decode(self, stream):
+    def decode_all(self, stream):
         """Parse a BinHex 4.0 file."""
         front, binhex, *back = stream.text.read().split(':')
         if 'BinHex 4.0' not in front:
@@ -107,4 +107,13 @@ class BinHex(MacFork):
             logging.error('CRC fault in data fork')
         if crc_hqx(rsrc, 0) != rc.crc:
             logging.error('CRC fault in resource fork')
-        return name, data, rsrc
+        if name:
+            return {
+                f'data/{name}': data,
+                f'rsrc/{name}': rsrc,
+            }
+        else:
+            return {
+                f'data': data,
+                f'rsrc': rsrc,
+            }

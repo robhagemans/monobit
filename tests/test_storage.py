@@ -10,7 +10,7 @@ import logging
 import glob
 
 import monobit
-from .base import BaseTester
+from .base import BaseTester, ensure_asset
 
 
 class TestCompressed(BaseTester):
@@ -35,7 +35,6 @@ class TestCompressed(BaseTester):
     def test_bz2(self):
         """Test importing/exporting bzip2 compressed files."""
         self._test_compressed('bz2')
-
 
     def _test_double(self, format):
         """Test doubly compressed files."""
@@ -215,6 +214,29 @@ class TestContainers(BaseTester):
         file = self.font_path / 'wbfont.lha' / 'fonts' / 'wbfont_prop.font'
         fonts = monobit.load(file)
         self.assertEqual(len(fonts), 1)
+
+
+class TestForks(BaseTester):
+
+    def test_import_macbinary(self):
+        """Test importing macbinary files."""
+        font, *_ = monobit.load(self.font_path / '4x6.bin', container_format='macbin')
+        self.assertEqual(len(font.glyphs), 195)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+
+    def test_import_hexbin(self):
+        """Test importing hexbin files."""
+        font, *_ = monobit.load(self.font_path / '4x6.hqx')
+        self.assertEqual(len(font.glyphs), 195)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+
+    macfonts = 'https://github.com/JohnDDuncanIII/macfonts/raw/master/Macintosh%20OS%201-6/Originals/'
+
+    def test_import_appledouble(self):
+        """Test importing appledouble files."""
+        file = ensure_asset(self.macfonts, 'Originals.zip')
+        font, *_ = monobit.load(file / '__MACOSX/._Times  9')
+        self.assertEqual(len(font.glyphs), 228)
 
 
 class TestWrappers(BaseTester):
