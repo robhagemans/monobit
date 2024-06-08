@@ -113,9 +113,14 @@ class ZipTarBase(Archive):
         if self._ignore_case:
             return (
                 name.lower() in
-                (str(_item).lower() for _item in self.list())
+                (str(_item).removesuffix('/').lower() for _item in self.list())
             )
         else:
+            return (
+                str(name) in self.list() or
+                f'{name}/' in self.list()
+            )
+
             return name in self.list()
 
     def iter_sub(self, prefix):
@@ -161,7 +166,7 @@ class ZipContainer(ZipTarBase):
 
     def list(self):
         """List full contents of archive."""
-        return tuple(_name.removesuffix('/') for _name in self._archive.namelist())
+        return tuple(self._archive.namelist())
 
     def _open_read(self, filename):
         filename = filename.removesuffix('/')
@@ -213,7 +218,10 @@ class TarContainer(ZipTarBase):
 
     def list(self):
         """List full contents of archive."""
-        return self._archive.getnames()
+        return tuple(
+            f'{_name}/' if self._is_dir(_name) else _name
+            for _name in self._archive.getnames()
+        )
 
     def _open_read(self, filename):
         return self._archive.extractfile(filename)
