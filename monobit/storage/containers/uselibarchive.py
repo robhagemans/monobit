@@ -6,6 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import libarchive
+from libarchive.entry import FileType
 from pathlib import Path
 
 from ..magic import FileFormatError
@@ -22,7 +23,12 @@ class LibArchiveContainer(FlatFilterContainer):
 
     @classmethod
     def encode_all(cls, data, outstream):
-        raise ValueError('Writing not supported.')
+        format = cls.libarchive_format
+        if not format:
+            raise ValueError(f'Writing not supported for this format.')
+        with libarchive.custom_writer(outstream.write, format) as archive:
+            for name, payload in data.items():
+                archive.add_file_from_memory(name, len(payload), payload)
 
     @classmethod
     def decode_all(cls, instream):
@@ -68,7 +74,7 @@ class RARContainer(LibArchiveContainer):
     ),
 )
 class SevenZipContainer(LibArchiveContainer):
-    pass
+    libarchive_format = '7zip'
 
 
 @containers.register(
@@ -87,7 +93,7 @@ class CabinetContainer(LibArchiveContainer):
     patterns=('*.iso',),
 )
 class ISO9660Container(LibArchiveContainer):
-    pass
+    libarchive_format = 'iso9660'
 
 
 @containers.register(
@@ -108,7 +114,7 @@ class LHArcContainer(LibArchiveContainer):
     ),
 )
 class CPIOContainer(LibArchiveContainer):
-    pass
+    libarchive_format = 'cpio'
 
 
 @containers.register(
@@ -116,7 +122,7 @@ class CPIOContainer(LibArchiveContainer):
     patterns=('*.pax',),
 )
 class PaxContainer(LibArchiveContainer):
-    pass
+    libarchive_format = 'pax'
 
 
 @containers.register(
@@ -125,7 +131,7 @@ class PaxContainer(LibArchiveContainer):
     magic=(b'!<arch>\n',),
 )
 class ArContainer(LibArchiveContainer):
-    pass
+    libarchive_format = 'ar'
 
 
 @containers.register(
@@ -134,7 +140,7 @@ class ArContainer(LibArchiveContainer):
     magic=(b'xar!',),
 )
 class XArContainer(LibArchiveContainer):
-    pass
+    libarchive_format = 'xar'
 
 
 @containers.register(
@@ -143,4 +149,4 @@ class XArContainer(LibArchiveContainer):
     magic=(b'WARC/',),
 )
 class WARCContainer(LibArchiveContainer):
-    pass
+    libarchive_format = 'warc'

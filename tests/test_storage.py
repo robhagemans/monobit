@@ -82,6 +82,34 @@ class TestContainers(BaseTester):
         """Test importing/exporting MIME messages."""
         self._test_container('eml')
 
+    def test_7zip(self):
+        """Test importing/exporting 7-zip files."""
+        self._test_container('7z')
+
+    def test_cpio(self):
+        """Test importing/exporting CPIO files."""
+        self._test_container('cpio')
+
+    def test_pax(self):
+        """Test importing/exporting PAX files."""
+        self._test_container('pax')
+
+    def test_xar(self):
+        """Test importing/exporting XAR files."""
+        self._test_container('xar')
+
+    def test_ar(self):
+        """Test importing/exporting AR files."""
+        self._test_container('ar')
+
+    def test_warc(self):
+        """Test importing/exporting WARC files."""
+        self._test_container('warc')
+
+    def test_iso9660(self):
+        """Test importing/exporting ISO9660 files."""
+        self._test_container('iso')
+
     def test_dir(self):
         """Test exporting to directory."""
         dir = self.temp_path / f'test4x6/4x6'
