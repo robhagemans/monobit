@@ -60,6 +60,7 @@ class Archive(Container):
 
     @property
     def root(self):
+        """Root directory for archive - elided on read, auto-added on write."""
         if not hasattr(self, '_root'):
             # on output, put all files in a directory with the same name as the archive (without suffix)
             stem = Path(self.name).stem
@@ -94,6 +95,8 @@ class Archive(Container):
 
 
 class FlatFilterContainer(Archive):
+    """Archive implementation based on filter logic."""
+
     def __init__(self, stream, mode='r', encode_kwargs=None, decode_kwargs=None):
         self.encode_kwargs = encode_kwargs or {}
         self.decode_kwargs = decode_kwargs or {}
@@ -130,6 +133,7 @@ class FlatFilterContainer(Archive):
         return False
 
     def list(self):
+        """List full contents of archive."""
         return tuple(self._data.keys())
 
     def open(self, name, mode):
@@ -164,12 +168,13 @@ class FlatFilterContainer(Archive):
         return newfile
 
     def _get_data(self):
+        """Read contents of archive into memory."""
         if self.mode == 'w':
             return
         if self._data:
             return
         self._data = self.decode_all(self._wrapped_stream, **self.decode_kwargs)
-        # create directory items if not present
+        # create directory items, if not present
         for name in list(self._data.keys()):
             if '/' in name:
                 for parent in Path(name).parents:
@@ -179,9 +184,10 @@ class FlatFilterContainer(Archive):
 
     @classmethod
     def decode_all(cls, instream):
-        """Generator to decode all identifiers with payload."""
+        """Generator to decode all files in readable archive."""
         raise NotImplementedError
 
     @classmethod
     def encode_all(cls, data, outstream):
+        """Generator to encode all files in writable archive."""
         raise NotImplementedError

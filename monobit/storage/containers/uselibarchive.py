@@ -14,10 +14,9 @@ from ..containers.containers import FlatFilterContainer
 
 
 class LibArchiveContainer(FlatFilterContainer):
+    """Container for formats supported by libarchive."""
 
-    def __init__(
-            self, stream, mode='r',
-        ):
+    def __init__(self, stream, mode='r'):
         """Container access using libarchive."""
         super().__init__(stream, mode)
 
@@ -27,6 +26,7 @@ class LibArchiveContainer(FlatFilterContainer):
 
     @classmethod
     def decode_all(cls, instream):
+        """Read all items from archive."""
         data = {}
         try:
             with libarchive.stream_reader(instream) as archive:
