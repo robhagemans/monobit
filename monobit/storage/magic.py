@@ -11,6 +11,7 @@ from fnmatch import fnmatch
 import re
 
 from .streams import get_name
+from ..base import FileFormatError
 
 
 # number of bytes to read to check if something looks like text
@@ -26,10 +27,6 @@ _NON_TEXT_BYTES = (
     # - bdf, bmfont are printable ascii [0x20--0x7e] plus 0x0a, 0x0d
     # - hex, draw have undefined range, but we can assume ascii or utf-8
 )
-
-
-class FileFormatError(Exception):
-    """Incorrect file format."""
 
 
 def maybe_text(instream):

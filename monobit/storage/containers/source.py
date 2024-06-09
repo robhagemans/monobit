@@ -46,25 +46,27 @@ class _CodedBinaryContainer(FlatFilterContainer):
         pre: characters needed at start of file. (use language default)
         post: characters needed at end of file. (use language default)
         """
-        super().__init__(stream, mode)
         cls = type(self)
-        self.decode_kwargs = dict(
-            delimiters=delimiters or cls.delimiters,
-            comment=comment or cls.comment,
-            block_comment=block_comment or cls.block_comment,
-            assign=assign or cls.assign,
-            int_conv=cls.int_conv,
-        )
-        self.encode_kwargs = dict(
-            delimiters=delimiters or cls.delimiters,
-            comment=comment or cls.comment,
-            assign_template=assign_template or cls.assign_template,
-            bytes_per_line=bytes_per_line or cls.bytes_per_line,
-            conv_int=cls.conv_int,
-            # container writer parameters
-            separator=separator or cls.separator,
-            pre=pre or cls.pre,
-            post=post or cls.post,
+        super().__init__(
+            stream, mode,
+            decode_kwargs=dict(
+                delimiters=delimiters or cls.delimiters,
+                comment=comment or cls.comment,
+                block_comment=block_comment or cls.block_comment,
+                assign=assign or cls.assign,
+                int_conv=cls.int_conv,
+            ),
+            encode_kwargs=dict(
+                delimiters=delimiters or cls.delimiters,
+                comment=comment or cls.comment,
+                assign_template=assign_template or cls.assign_template,
+                bytes_per_line=bytes_per_line or cls.bytes_per_line,
+                conv_int=cls.conv_int,
+                # container writer parameters
+                separator=separator or cls.separator,
+                pre=pre or cls.pre,
+                post=post or cls.post,
+            )
         )
 
     ###########################################################################
@@ -88,10 +90,16 @@ class _CodedBinaryContainer(FlatFilterContainer):
                 found_identifier = _clean_identifier(found_identifier)
             if found_identifier and start in line:
                 _, line = line.split(start)
-                data[found_identifier] = _get_payload(
+                decoded_data = _get_payload(
                     instream, line, start, end,
                     comment, block_comment, int_conv
                 )
+                data[found_identifier] = decoded_data
+                if not decoded_data:
+                    logging.warning(
+                        "Could not decode data for identifier '%s'",
+                        found_identifier
+                    )
                 found_identifier = ''
         return data
 
@@ -201,9 +209,6 @@ def _get_payload(instream, line, start, end, comment, block_comment, int_conv):
             int_conv(_s) for _s in ''.join(payload).split(',') if _s.strip()
         )
     except ValueError:
-        logging.warning(
-            f"Could not convert coded data for identifier '{name}'"
-        )
         return b''
 
 

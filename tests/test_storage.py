@@ -10,7 +10,7 @@ import logging
 import glob
 
 import monobit
-from .base import BaseTester
+from .base import BaseTester, ensure_asset
 
 
 class TestCompressed(BaseTester):
@@ -35,7 +35,6 @@ class TestCompressed(BaseTester):
     def test_bz2(self):
         """Test importing/exporting bzip2 compressed files."""
         self._test_compressed('bz2')
-
 
     def _test_double(self, format):
         """Test doubly compressed files."""
@@ -83,6 +82,34 @@ class TestContainers(BaseTester):
         """Test importing/exporting MIME messages."""
         self._test_container('eml')
 
+    def test_7zip(self):
+        """Test importing/exporting 7-zip files."""
+        self._test_container('7z')
+
+    def test_cpio(self):
+        """Test importing/exporting CPIO files."""
+        self._test_container('cpio')
+
+    def test_pax(self):
+        """Test importing/exporting PAX files."""
+        self._test_container('pax')
+
+    def test_xar(self):
+        """Test importing/exporting XAR files."""
+        self._test_container('xar')
+
+    def test_ar(self):
+        """Test importing/exporting AR files."""
+        self._test_container('ar')
+
+    def test_warc(self):
+        """Test importing/exporting WARC files."""
+        self._test_container('warc')
+
+    def test_iso9660(self):
+        """Test importing/exporting ISO9660 files."""
+        self._test_container('iso')
+
     def test_dir(self):
         """Test exporting to directory."""
         dir = self.temp_path / f'test4x6/4x6'
@@ -103,11 +130,49 @@ class TestContainers(BaseTester):
         fonts = monobit.load(container_file)
         self.assertEqual(len(fonts), 3)
 
+    def test_recursive_rar(self):
+        """Test recursively traversing rar container."""
+        container_file = self.font_path / 'fontdir.rar'
+        fonts = monobit.load(container_file)
+        self.assertEqual(len(fonts), 3)
+
+    def test_recursive_7z(self):
+        """Test recursively traversing 7-zip container."""
+        container_file = self.font_path / 'fontdir.7z'
+        fonts = monobit.load(container_file)
+        self.assertEqual(len(fonts), 3)
+
+    @unittest.skip
+    def test_recursive_iso(self):
+        """Test recursively traversing ISO 9660 container."""
+        container_file = self.font_path / 'fontdir.iso'
+        fonts = monobit.load(container_file)
+        self.assertEqual(len(fonts), 3)
+
+    def test_recursive_cpio(self):
+        """Test recursively traversing CPIO container."""
+        container_file = self.font_path / 'fontdir.cpio'
+        fonts = monobit.load(container_file)
+        self.assertEqual(len(fonts), 3)
+
+    def test_recursive_cab(self):
+        """Test recursively traversing Cabinet container."""
+        container_file = self.font_path / 'fontdir.cab'
+        fonts = monobit.load(container_file)
+        self.assertEqual(len(fonts), 3)
+
     def test_recursive_dir(self):
         """Test recursively traversing directory."""
         container_file = self.font_path / 'fontdir'
         fonts = monobit.load(container_file)
         self.assertEqual(len(fonts), 3)
+
+    @unittest.skip
+    def test_ar(self):
+        """Test recursively traversing AR container."""
+        container_file = self.font_path / 'twofonts.ar'
+        fonts = monobit.load(container_file)
+        self.assertEqual(len(fonts), 2)
 
     def test_empty(self):
         """Test empty container."""
@@ -171,6 +236,35 @@ class TestContainers(BaseTester):
         monobit.save(self.fixed4x6, file)
         font, *_ = monobit.load(file)
         self.assertEqual(len(font.glyphs), 919)
+
+    def test_deeplink_lha(self):
+        """Test deep linking into LHA container."""
+        file = self.font_path / 'wbfont.lha' / 'fonts' / 'wbfont_prop.font'
+        fonts = monobit.load(file)
+        self.assertEqual(len(fonts), 1)
+
+
+class TestForks(BaseTester):
+
+    def test_import_macbinary(self):
+        """Test importing macbinary files."""
+        font, *_ = monobit.load(self.font_path / '4x6.bin', container_format='macbin')
+        self.assertEqual(len(font.glyphs), 195)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+
+    def test_import_hexbin(self):
+        """Test importing hexbin files."""
+        font, *_ = monobit.load(self.font_path / '4x6.hqx')
+        self.assertEqual(len(font.glyphs), 195)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+
+    macfonts = 'https://github.com/JohnDDuncanIII/macfonts/raw/master/Macintosh%20OS%201-6/Originals/'
+
+    def test_import_appledouble(self):
+        """Test importing appledouble files."""
+        file = ensure_asset(self.macfonts, 'Originals.zip')
+        font, *_ = monobit.load(file / '__MACOSX/._Times  9')
+        self.assertEqual(len(font.glyphs), 228)
 
 
 class TestWrappers(BaseTester):

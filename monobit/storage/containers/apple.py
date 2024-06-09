@@ -12,7 +12,7 @@ from monobit.base.struct import big_endian as be
 from ..streams import Stream
 from ..magic import FileFormatError, Magic
 from ..base import containers
-from .containers import MacFork
+from .containers import FlatFilterContainer
 
 
 ##############################################################################
@@ -63,9 +63,9 @@ _APPLE_ENTRY_TYPES = {
 }
 
 
-class AppleContainer(MacFork):
+class AppleContainer(FlatFilterContainer):
 
-    def decode(self, stream):
+    def decode_all(self, stream):
         """Parse an AppleSingle or AppleDouble file."""
         data = stream.read()
         header = _APPLE_HEADER.from_bytes(data)
@@ -91,7 +91,16 @@ class AppleContainer(MacFork):
             if entry.entry_id == _ID_NAME:
                 name = data[entry.offset:entry.offset+entry.length]
                 name = name.decode('mac-roman')
-        return name, data_fork, rsrc_fork
+        if name:
+            return {
+                f'data/{name}': data_fork,
+                f'rsrc/{name}': rsrc_fork,
+            }
+        else:
+            return {
+                f'data': data_fork,
+                f'rsrc': rsrc_fork,
+            }
 
 
 containers.register(

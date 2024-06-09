@@ -519,26 +519,6 @@ class TestFormats(BaseTester):
         self.assertEqual(len(font.glyphs), 920)
         self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
 
-    def test_import_macbinary(self):
-        """Test importing macbinary files."""
-        font, *_ = monobit.load(self.font_path / '4x6.bin', container_format='macbin')
-        self.assertEqual(len(font.glyphs), 195)
-        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
-
-    def test_import_hexbin(self):
-        """Test importing hexbin files."""
-        font, *_ = monobit.load(self.font_path / '4x6.hqx')
-        self.assertEqual(len(font.glyphs), 195)
-        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
-
-    macfonts = 'https://github.com/JohnDDuncanIII/macfonts/raw/master/Macintosh%20OS%201-6/Originals/'
-
-    def test_import_appledouble(self):
-        """Test importing appledouble files."""
-        file = ensure_asset(self.macfonts, 'Originals.zip')
-        font, *_ = monobit.load(file / '__MACOSX/._Times  9')
-        self.assertEqual(len(font.glyphs), 228)
-
     def test_import_iigs(self):
         """Test importing Apple IIgs font files."""
         font, *_ = monobit.load(self.font_path / '4x6.iigs', format='iigs')

@@ -46,13 +46,15 @@ class EmailContainer(FlatFilterContainer):
         recipient: email To field
         subject: email Subject
         """
-        super().__init__(stream, mode)
-        self.encode_kwargs = dict(
-            sender=sender,
-            recipient=recipient,
-            subject=subject,
+        super().__init__(
+            stream, mode,
+            encode_kwargs=dict(
+                sender=sender,
+                recipient=recipient,
+                subject=subject,
+            ),
+            decode_kwargs={},
         )
-        self.decode_kwargs = {}
 
     @classmethod
     def encode_all(cls, data, outstream, *, subject, sender, recipient):
