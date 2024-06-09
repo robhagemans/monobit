@@ -54,15 +54,35 @@ class Container(StreamHolder):
 class Archive(Container):
     """Base class for multi-file archives."""
 
+    def __init__(self, file, mode='r'):
+        """Create archive object."""
+        super().__init__(mode, file.name)
+
+    @property
+    def root(self):
+        if not hasattr(self, '_root'):
+            # on output, put all files in a directory with the same name as the archive (without suffix)
+            stem = Path(self.name).stem
+            if self.mode == 'w':
+                self._root = stem
+            else:
+                # on read, only set root if it is a common parent
+                self._root = ''
+                if all(Path(_item).is_relative_to(stem) for _item in self.list()):
+                    self._root = stem
+        return self._root
+
     def iter_sub(self, prefix):
         """List contents of a subpath."""
-        return (
-            _name for _name in self.list()
-            if Path(_name).parent == Path(prefix)
+        subs = list(
+            str(Path(_name).relative_to(self.root)) for _name in self.list()
+            if Path(_name).parent == Path(self.root) / prefix
         )
+        return subs
 
     def contains(self, item):
         """Check if file is in container. Case sensitive if container/fs is."""
+        item = str(Path(self.root) / item)
         return (
             str(item) in self.list() or
             f'{item}/' in self.list()
@@ -81,7 +101,7 @@ class FlatFilterContainer(Archive):
         self._wrapped_stream = stream
         self._data = {}
         self._files = []
-        super().__init__(mode)
+        super().__init__(stream, mode)
         self._get_data()
 
     def close(self):
@@ -100,7 +120,8 @@ class FlatFilterContainer(Archive):
 
     def is_dir(self, name):
         """Item at `name` is a directory."""
-        if Path(name) == Path('.'):
+        name = Path(self.root) / name
+        if Path(name) == Path(self.root):
             return True
         if f'{name}/' in self._data:
             return True
@@ -109,10 +130,11 @@ class FlatFilterContainer(Archive):
         return False
 
     def list(self):
-        return self._data.keys()
+        return tuple(self._data.keys())
 
     def open(self, name, mode):
         """Open a binary stream in the container."""
+        name = Path(self.root) / name
         if mode == 'r':
             return self._open_read(name)
         else:

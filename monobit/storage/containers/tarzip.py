@@ -22,27 +22,16 @@ class ZipTarBase(Archive):
 
     def __init__(self, file, mode='r', ignore_case:bool=True):
         """Create wrapper."""
-        # mode really should just be 'r' or 'w'
-        mode = mode[:1]
-        super().__init__(mode, file.name)
         # reading zipfile needs a seekable stream, drain to buffer if needed
         self._stream = Stream(file, mode)
         # create the zipfile
         self._archive = self._create_archive(self._stream, mode)
-        # on output, put all files in a directory with the same name as the archive (without suffix)
-        stem = Path(self.name).stem
-        if mode == 'w':
-            self._root = stem
-        else:
-            # on read, only set root if it is a common parent
-            self._root = ''
-            if all(Path(_item).is_relative_to(stem) for _item in self.list()):
-                self._root = stem
         # output files, to be written on close
         self._files = []
         # ignore case on read - open any case insensitive match
         # case sensitivity of writing depends on file system
         self._ignore_case = ignore_case
+        super().__init__(file, mode)
 
     def close(self):
         """Close the archive, ignoring errors."""
@@ -61,7 +50,7 @@ class ZipTarBase(Archive):
 
     def open(self, name, mode):
         """Open a stream in the container."""
-        filename = str(PurePosixPath(self._root) / name)
+        filename = str(PurePosixPath(self.root) / name)
         mode = mode[:1]
         # always open as binary
         logging.debug("Opening file '%s' on container %s.", name, self)
@@ -88,10 +77,10 @@ class ZipTarBase(Archive):
 
     def is_dir(self, name):
         """Item at 'name' is a directory."""
-        root = PurePosixPath(self._root)
-        if root / name == root:
+        name = Path(self.root) / name
+        if Path(name) == Path(self.root):
             return True
-        filename = str(root / name)
+        filename = str(name)
         try:
             return self._is_dir(filename)
         except KeyError:
@@ -109,25 +98,12 @@ class ZipTarBase(Archive):
 
     def contains(self, item):
         """Check if file is in container. Case sensitive if container/fs is."""
-        name = str(Path(self._root) / item)
-        if self._ignore_case:
-            return (
-                name.lower() in
-                (str(_item).removesuffix('/').lower() for _item in self.list())
-            )
-        else:
-            return (
-                str(name) in self.list() or
-                f'{name}/' in self.list()
-            )
-
-            return name in self.list()
-
-    def iter_sub(self, prefix):
-        """List contents of a subpath."""
+        if not self._ignore_case:
+            return super().contains(item)
+        name = str(Path(self.root) / item)
         return (
-            str(Path(_name).relative_to(self._root)) for _name in self.list()
-            if Path(_name).parent == Path(self._root) / prefix
+            name.lower() in
+            (str(_item).removesuffix('/').lower() for _item in self.list())
         )
 
 
@@ -161,7 +137,7 @@ class ZipContainer(ZipTarBase):
     def _write_out(self, file):
         bytearray = file.getvalue()
         self._archive.writestr(
-            str(PurePosixPath(self._root) / file.name), bytearray
+            str(PurePosixPath(self.root) / file.name), bytearray
         )
 
     def list(self):
@@ -210,7 +186,7 @@ class TarContainer(ZipTarBase):
 
     def _write_out(self, file):
         name = file.name
-        tinfo = tarfile.TarInfo(str(PurePosixPath(self._root) / name))
+        tinfo = tarfile.TarInfo(str(PurePosixPath(self.root) / name))
         tinfo.mtime = time.time()
         tinfo.size = len(file.getvalue())
         file.seek(0)

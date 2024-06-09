@@ -45,16 +45,6 @@ class LibArchiveContainer(FlatFilterContainer):
             raise FileFormatError(e) from e
         return data
 
-    def is_dir(self, name):
-        """Item at `name` is a directory."""
-        if Path(name) == Path('.'):
-            return True
-        name = Path(name).as_posix() + '/'
-        for found in self.list():
-            if found.startswith(name):
-                return True
-        return False
-
 
 @containers.register(
     name='rar',
