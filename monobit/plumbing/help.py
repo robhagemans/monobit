@@ -5,7 +5,9 @@ monobit.plumbing.help - contextual help
 licence: https://opensource.org/licenses/MIT
 """
 
-from ..storage.base import loaders, savers, wrappers, containers
+from ..storage.base import (
+    loaders, savers, wrappers, containers, container_loaders, container_savers
+)
 from .args import GLOBAL_ARG_PREFIX, ARG_PREFIX, FALSE_PREFIX
 
 
@@ -95,9 +97,15 @@ def print_help(command_args, usage, operations, global_options):
 def _print_context_help(command, args, kwargs, **ignore):
     format = kwargs.get('format', '')
     if command == 'load':
-        func, *_ = loaders.get_for(format=format)
+        try:
+            func, *_ = container_loaders.get_for(format=format)
+        except ValueError:
+            func, *_ = loaders.get_for(format=format)
     else:
-        func, *_ = savers.get_for(format=format)
+        try:
+            func, *_ = container_savers.get_for(format=format)
+        except ValueError:
+            func, *_ = savers.get_for(format=format)
     if func:
         _print_section(f'{command} -format={format}', func)
     container_format = kwargs.get('container_format', '')
