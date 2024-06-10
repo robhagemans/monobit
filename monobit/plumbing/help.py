@@ -48,6 +48,10 @@ def _print_option_help(name, vartype, doc, tab, prefix, *, add_unsetter=True):
         print(f'{prefix}{name}=...\t{doc}'.expandtabs(tab))
 
 
+def _print_with_bar(name, doc):
+    print(f'{name} '.ljust(HELP_TAB-1, '-') + f' {doc}')
+
+
 def print_help(command_args, usage, operations, global_options):
     print(usage)
     print()
@@ -63,7 +67,7 @@ def print_help(command_args, usage, operations, global_options):
         print('========')
         print()
         for op, func in operations.items():
-            print(f'{op} '.ljust(HELP_TAB-1) + f' {get_funcdoc(func)}')
+            _print_with_bar(op, get_funcdoc(func))
     else:
         print()
         print('Commands and their options')
@@ -74,42 +78,52 @@ def print_help(command_args, usage, operations, global_options):
             if not op:
                 continue
             func = ns.func
-            print(f'{op} '.ljust(HELP_TAB-1, '-') + f' {get_funcdoc(func)}')
+            _print_with_bar(op, get_funcdoc(func))
             for name, vartype in func.__annotations__.items():
                 doc = get_argdoc(func, name)
                 _print_option_help(name, vartype, doc, HELP_TAB, ARG_PREFIX)
             print()
             if op in ('load', 'save', 'to'):
-                for context_func in _get_context_funcs(**vars(ns)):
-                    print(f'{context_func.__name__} '.ljust(HELP_TAB-1, '-') + f' {get_funcdoc(context_func)}')
-                    for name, vartype in context_func.__annotations__.items():
-                        doc = get_argdoc(context_func, name)
-                        _print_option_help(name, vartype, doc, HELP_TAB, ARG_PREFIX)
-                    print()
+                _print_context_help(**vars(ns))
 
 
-def _get_context_funcs(command, args, kwargs, **ignore):
+def _print_context_help(command, args, kwargs, **ignore):
     format = kwargs.get('format', '')
     if command == 'load':
         func, *_ = loaders.get_for(format=format)
     else:
         func, *_ = savers.get_for(format=format)
-    context_funcs = []
     if func:
-        context_funcs.append(func)
+        _print_with_bar(f'{command} -format={format}', get_funcdoc(func))
+        for name, vartype in func.__annotations__.items():
+            doc = get_argdoc(func, name)
+            _print_option_help(name, vartype, doc, HELP_TAB, ARG_PREFIX)
+        print()
     container_format = kwargs.get('container_format', '')
     try:
         wrapper_classes = wrappers.get_for(format=container_format)
-        wrapper_func = wrapper_classes[0].__init__
+        func = wrapper_classes[0].__init__
     except (ValueError, IndexError):
         pass
     else:
-        context_funcs.append(wrapper_func)
+        _print_with_bar(
+            f'-container-format={container_format}',
+            get_funcdoc(func),
+        )
+        for name, vartype in func.__annotations__.items():
+            doc = get_argdoc(func, name)
+            _print_option_help(name, vartype, doc, HELP_TAB, ARG_PREFIX)
+        print()
     try:
         container_classes = containers.get_for(format=container_format)
-        container_func = container_classes[0].__init__
+        func = container_classes[0].__init__
     except (ValueError, IndexError):
         pass
     else:
-        context_funcs.append(container_func)
-    return context_funcs
+        _print_with_bar(
+            f'-container-format={container_format}',
+            get_funcdoc(func),
+        )
+        for name, vartype in func.__annotations__.items():
+            doc = get_argdoc(func, name)
+            _print_option_help(name, vartype, doc, HELP_TAB, ARG_PREFIX)
