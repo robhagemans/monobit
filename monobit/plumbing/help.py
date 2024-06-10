@@ -52,6 +52,15 @@ def _print_with_bar(name, doc):
     print(f'{name} '.ljust(HELP_TAB-1, '-') + f' {doc}')
 
 
+def _print_section(section_name, func):
+    _print_with_bar(section_name, get_funcdoc(func))
+    for name, vartype in func.__annotations__.items():
+        doc = get_argdoc(func, name)
+        _print_option_help(name, vartype, doc, HELP_TAB, ARG_PREFIX)
+    print()
+
+
+
 def print_help(command_args, usage, operations, global_options):
     print(usage)
     print()
@@ -78,11 +87,7 @@ def print_help(command_args, usage, operations, global_options):
             if not op:
                 continue
             func = ns.func
-            _print_with_bar(op, get_funcdoc(func))
-            for name, vartype in func.__annotations__.items():
-                doc = get_argdoc(func, name)
-                _print_option_help(name, vartype, doc, HELP_TAB, ARG_PREFIX)
-            print()
+            _print_section(op, func)
             if op in ('load', 'save', 'to'):
                 _print_context_help(**vars(ns))
 
@@ -94,36 +99,21 @@ def _print_context_help(command, args, kwargs, **ignore):
     else:
         func, *_ = savers.get_for(format=format)
     if func:
-        _print_with_bar(f'{command} -format={format}', get_funcdoc(func))
-        for name, vartype in func.__annotations__.items():
-            doc = get_argdoc(func, name)
-            _print_option_help(name, vartype, doc, HELP_TAB, ARG_PREFIX)
-        print()
+        _print_section(f'{command} -format={format}', func)
     container_format = kwargs.get('container_format', '')
     try:
         wrapper_classes = wrappers.get_for(format=container_format)
         func = wrapper_classes[0].__init__
-    except (ValueError, IndexError):
+    except (ValueError, IndexError) as e:
+        print(e)
         pass
     else:
-        _print_with_bar(
-            f'-container-format={container_format}',
-            get_funcdoc(func),
-        )
-        for name, vartype in func.__annotations__.items():
-            doc = get_argdoc(func, name)
-            _print_option_help(name, vartype, doc, HELP_TAB, ARG_PREFIX)
-        print()
+        _print_section(f'-container-format={container_format}', func)
     try:
         container_classes = containers.get_for(format=container_format)
         func = container_classes[0].__init__
-    except (ValueError, IndexError):
+    except (ValueError, IndexError) as e:
+        print(e)
         pass
     else:
-        _print_with_bar(
-            f'-container-format={container_format}',
-            get_funcdoc(func),
-        )
-        for name, vartype in func.__annotations__.items():
-            doc = get_argdoc(func, name)
-            _print_option_help(name, vartype, doc, HELP_TAB, ARG_PREFIX)
+        _print_section(f'-container-format={container_format}', func)
