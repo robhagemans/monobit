@@ -5,7 +5,7 @@ monobit.plumbing.help - contextual help
 licence: https://opensource.org/licenses/MIT
 """
 
-from ..storage import loaders, savers, wrappers, containers
+from ..storage.base import loaders, savers, wrappers, containers
 from .args import GLOBAL_ARG_PREFIX, ARG_PREFIX, FALSE_PREFIX
 
 
