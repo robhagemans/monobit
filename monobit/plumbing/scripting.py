@@ -1,7 +1,7 @@
 """
 monobit.plumbing.scripting - scripting utilities
 
-(c) 2019--2023 Rob Hagemans
+(c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -76,11 +76,6 @@ def check_arguments(func):
 
     @wraps(func)
     def _checked_func(*args, **kwargs):
-        # rename argument provided with dashes
-        kwargs = {
-            _kwarg.replace('-', '_'): _value
-            for _kwarg, _value in kwargs.items()
-        }
         for kwarg in kwargs:
             if kwarg not in func.__annotations__:
                 raise ArgumentError(func.__name__, kwarg) from None
@@ -95,11 +90,6 @@ def convert_arguments(func):
 
     @wraps(func)
     def _converted_func(*args, **kwargs):
-        # rename argument provided with dashes
-        kwargs = {
-            _kwarg.replace('-', '_'): _value
-            for _kwarg, _value in kwargs.items()
-        }
         # apply converters to argument
         conv_kwargs = {}
         for kwarg, value in kwargs.items():
@@ -117,7 +107,7 @@ def convert_arguments(func):
 
 
 def take_arguments(func, argdict):
-    """Subset the argument dictionary with args tha occur in registered script args."""
+    """Subset the argument dictionary with args that occur in registered script args."""
     _types = {
         _key: func.__annotations__.get(_key, Any)
         for _key in func.__annotations__

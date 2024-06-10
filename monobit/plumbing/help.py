@@ -1,7 +1,7 @@
 """
 monobit.plumbing.help - contextual help
 
-(c) 2019--2023 Rob Hagemans
+(c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -104,16 +104,14 @@ def _print_context_help(command, args, kwargs, **ignore):
     try:
         wrapper_classes = wrappers.get_for(format=container_format)
         func = wrapper_classes[0].__init__
-    except (ValueError, IndexError) as e:
-        print(e)
+    except (ValueError, IndexError):
         pass
     else:
         _print_section(f'-container-format={container_format}', func)
     try:
         container_classes = containers.get_for(format=container_format)
         func = container_classes[0].__init__
-    except (ValueError, IndexError) as e:
-        print(e)
+    except (ValueError, IndexError):
         pass
     else:
         _print_section(f'-container-format={container_format}', func)
