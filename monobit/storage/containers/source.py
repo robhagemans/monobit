@@ -41,7 +41,7 @@ class _CodedBinaryContainer(FlatFilterContainer):
         assign: assignment character. (use language default)
         separator: character separating statements. (use language default)
         final_separator: separator is written on the last statement. (use language default)
-        assign_template: format of assignemnt statement, used on write. (use language default)
+        assign_template: format of assignment statement, used on write. (use language default)
         bytes_per_line: number of bytes to write to one line. (default: 16)
         pre: characters needed at start of file. (use language default)
         post: characters needed at end of file. (use language default)

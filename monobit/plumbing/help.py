@@ -1,11 +1,13 @@
 """
 monobit.plumbing.help - contextual help
 
-(c) 2019--2023 Rob Hagemans
+(c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
-from ..storage import loaders, savers
+from ..storage.base import (
+    loaders, savers, wrappers, containers, container_loaders, container_savers
+)
 from .args import GLOBAL_ARG_PREFIX, ARG_PREFIX, FALSE_PREFIX
 
 
@@ -39,6 +41,7 @@ def get_funcdoc(func):
 
 
 def _print_option_help(name, vartype, doc, tab, prefix, *, add_unsetter=True):
+    name = name.replace('_', '-')
     if vartype == bool:
         print(f'{prefix}{name}\t{doc}'.expandtabs(tab))
         if add_unsetter:
@@ -47,7 +50,20 @@ def _print_option_help(name, vartype, doc, tab, prefix, *, add_unsetter=True):
         print(f'{prefix}{name}=...\t{doc}'.expandtabs(tab))
 
 
-def print_help(command_args, usage, operations, global_options, context_help):
+def _print_with_bar(name, doc):
+    print(f'{name} '.ljust(HELP_TAB-1, '-') + f' {doc}')
+
+
+def _print_section(section_name, func):
+    _print_with_bar(section_name, get_funcdoc(func))
+    for name, vartype in func.__annotations__.items():
+        doc = get_argdoc(func, name)
+        _print_option_help(name, vartype, doc, HELP_TAB, ARG_PREFIX)
+    print()
+
+
+
+def print_help(command_args, usage, operations, global_options):
     print(usage)
     print()
     print('Options')
@@ -62,7 +78,7 @@ def print_help(command_args, usage, operations, global_options, context_help):
         print('========')
         print()
         for op, func in operations.items():
-            print(f'{op} '.ljust(HELP_TAB-1) + f' {get_funcdoc(func)}')
+            _print_with_bar(op, get_funcdoc(func))
     else:
         print()
         print('Commands and their options')
@@ -73,30 +89,37 @@ def print_help(command_args, usage, operations, global_options, context_help):
             if not op:
                 continue
             func = ns.func
-            print(f'{op} '.ljust(HELP_TAB-1, '-') + f' {get_funcdoc(func)}')
-            for name, vartype in func.__annotations__.items():
-                doc = get_argdoc(func, name)
-                _print_option_help(name, vartype, doc, HELP_TAB, ARG_PREFIX)
-            print()
-            if op in context_help:
-                context_func = context_help[op]
-                print(f'{context_func.__name__} '.ljust(HELP_TAB-1, '-') + f' {get_funcdoc(context_func)}')
-                for name, vartype in context_func.__annotations__.items():
-                    doc = get_argdoc(context_func, name)
-                    _print_option_help(name, vartype, doc, HELP_TAB, ARG_PREFIX)
-                print()
+            _print_section(op, func)
+            if op in ('load', 'save', 'to'):
+                _print_context_help(**vars(ns))
 
 
-def get_context_func(command, args, kwargs, **ignore):
-    if args:
-        file = args[0]
-    else:
-        file = kwargs.get('infile', '')
+def _print_context_help(command, args, kwargs, **ignore):
     format = kwargs.get('format', '')
     if command == 'load':
-        func, *_ = loaders.get_for(format=format)
+        try:
+            func, *_ = container_loaders.get_for(format=format)
+        except ValueError:
+            func, *_ = loaders.get_for(format=format)
     else:
-        func, *_ = savers.get_for(format=format)
+        try:
+            func, *_ = container_savers.get_for(format=format)
+        except ValueError:
+            func, *_ = savers.get_for(format=format)
     if func:
-        return func
-    return None
+        _print_section(f'{command} -format={format}', func)
+    container_format = kwargs.get('container_format', '')
+    try:
+        wrapper_classes = wrappers.get_for(format=container_format)
+        func = wrapper_classes[0].__init__
+    except (ValueError, IndexError):
+        pass
+    else:
+        _print_section(f'-container-format={container_format}', func)
+    try:
+        container_classes = containers.get_for(format=container_format)
+        func = container_classes[0].__init__
+    except (ValueError, IndexError):
+        pass
+    else:
+        _print_section(f'-container-format={container_format}', func)
