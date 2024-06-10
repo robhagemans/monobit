@@ -39,6 +39,7 @@ def get_funcdoc(func):
 
 
 def _print_option_help(name, vartype, doc, tab, prefix, *, add_unsetter=True):
+    name = name.replace('_', '-')
     if vartype == bool:
         print(f'{prefix}{name}\t{doc}'.expandtabs(tab))
         if add_unsetter:
