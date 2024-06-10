@@ -12,7 +12,7 @@ import monobit
 from monobit.plumbing import (
     wrap_main, parse_subcommands, argrecord, GLOBAL_ARG_PREFIX
 )
-from monobit.plumbing.help import get_context_func, print_help
+from monobit.plumbing.help import print_help
 
 script_name = Path(sys.argv[0]).name
 
@@ -38,13 +38,7 @@ usage = (
 
 def help(command_args):
     """Print the usage help message."""
-    context_help = {
-        _rec.command: get_context_func(**vars(_rec))
-        for _rec in command_args
-        if _rec.command in ('load', 'save', 'to')
-    }
-    context_help = {_k: _v for _k, _v in context_help.items() if _v}
-    print_help(command_args, usage, operations, global_options, context_help)
+    print_help(command_args, usage, operations, global_options)
 
 
 def version():

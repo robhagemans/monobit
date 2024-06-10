@@ -5,7 +5,7 @@ monobit.plumbing.help - contextual help
 licence: https://opensource.org/licenses/MIT
 """
 
-from ..storage import loaders, savers
+from ..storage import loaders, savers, wrappers, containers
 from .args import GLOBAL_ARG_PREFIX, ARG_PREFIX, FALSE_PREFIX
 
 
@@ -47,7 +47,7 @@ def _print_option_help(name, vartype, doc, tab, prefix, *, add_unsetter=True):
         print(f'{prefix}{name}=...\t{doc}'.expandtabs(tab))
 
 
-def print_help(command_args, usage, operations, global_options, context_help):
+def print_help(command_args, usage, operations, global_options):
     print(usage)
     print()
     print('Options')
@@ -78,25 +78,37 @@ def print_help(command_args, usage, operations, global_options, context_help):
                 doc = get_argdoc(func, name)
                 _print_option_help(name, vartype, doc, HELP_TAB, ARG_PREFIX)
             print()
-            if op in context_help:
-                context_func = context_help[op]
-                print(f'{context_func.__name__} '.ljust(HELP_TAB-1, '-') + f' {get_funcdoc(context_func)}')
-                for name, vartype in context_func.__annotations__.items():
-                    doc = get_argdoc(context_func, name)
-                    _print_option_help(name, vartype, doc, HELP_TAB, ARG_PREFIX)
-                print()
+            if op in ('load', 'save', 'to'):
+                for context_func in _get_context_funcs(**vars(ns)):
+                    print(f'{context_func.__name__} '.ljust(HELP_TAB-1, '-') + f' {get_funcdoc(context_func)}')
+                    for name, vartype in context_func.__annotations__.items():
+                        doc = get_argdoc(context_func, name)
+                        _print_option_help(name, vartype, doc, HELP_TAB, ARG_PREFIX)
+                    print()
 
 
-def get_context_func(command, args, kwargs, **ignore):
-    if args:
-        file = args[0]
-    else:
-        file = kwargs.get('infile', '')
+def _get_context_funcs(command, args, kwargs, **ignore):
     format = kwargs.get('format', '')
     if command == 'load':
         func, *_ = loaders.get_for(format=format)
     else:
         func, *_ = savers.get_for(format=format)
+    context_funcs = []
     if func:
-        return func
-    return None
+        context_funcs.append(func)
+    container_format = kwargs.get('container_format', '')
+    try:
+        wrapper_classes = wrappers.get_for(format=container_format)
+        wrapper_func = wrapper_classes[0].__init__
+    except (ValueError, IndexError):
+        pass
+    else:
+        context_funcs.append(wrapper_func)
+    try:
+        container_classes = containers.get_for(format=container_format)
+        container_func = container_classes[0].__init__
+    except (ValueError, IndexError):
+        pass
+    else:
+        context_funcs.append(container_func)
+    return context_funcs
