@@ -7,6 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 from pathlib import Path
+from collections import deque
 
 from ..plumbing import take_arguments
 from .magic import FileFormatError, MagicRegistry
@@ -326,32 +327,42 @@ class Location:
 
     def _find_next_node(self):
         """Find the next existing node (container or file) in the path."""
-        head, tail = self._split_path(self._leaf, self._leafpath)
+        head, tail = _match_case_insensitive(self._leaf, self._leafpath)
         if self.mode == 'w' and not head.suffixes:
-            head2, tail = self._split_path_suffix(tail)
+            head2, tail = _split_path_suffix(tail)
             head /= head2
         return head, tail
 
-    @staticmethod
-    def _split_path(container, path):
-        """Pare back path until an existing ancestor is found."""
-        path = Path(path)
-        for head in (path, *path.parents):
-            if container.contains(head):
-                tail = path.relative_to(head)
-                return head, tail
-        # nothing exists
-        return Path('.'), path
 
-    @staticmethod
-    def _split_path_suffix(path):
-        """Pare forward path until a suffix is found."""
-        for head in reversed((path, *path.parents)):
-            if head.suffixes:
-                tail = path.relative_to(head)
-                return head, tail
-        # no suffix
-        return path, Path('.')
+def _split_path_suffix(path):
+    """Pare forward path until a suffix is found."""
+    for head in reversed((path, *path.parents)):
+        if head.suffixes:
+            tail = path.relative_to(head)
+            return head, tail
+    # no suffix
+    return path, Path('.')
+
+
+def _match_case_insensitive(container, path):
+    """Stepwise match per path element."""
+    segments = Path(path).as_posix().split('/')
+    segments = deque(segments)
+    matched_path = Path('.')
+    while True:
+        target = segments.popleft()
+        #TODO try case-sensitive match first
+        for name in container.iter_sub(matched_path):
+            if str(target).lower() == Path(name).name.lower():
+                matched_path /= Path(name).name
+                if not segments:
+                    return matched_path, Path('.')
+                elif not container.is_dir(matched_path):
+                    return matched_path, Path(*segments)
+                break
+        else:
+            return matched_path, Path(target, *segments)
+
 
 
 def _open_container_or_wrapper(
