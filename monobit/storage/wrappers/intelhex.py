@@ -55,9 +55,6 @@ class IntelHexWrapper(FilterWrapper):
                         logging.warning('Incorrect payload length.')
                     datadict[address] = payload
                     size = max(size, address+len(payload))
-                    data = bytearray(size)
-                    for address, payload in datadict.items():
-                        data[address:address+len(payload)] = payload
                 elif hexcode == '01':
                     # end of file code
                     break
@@ -73,6 +70,9 @@ class IntelHexWrapper(FilterWrapper):
                     logging.warning(f'Ignoring unknown hex code {hexcode}.')
             except (IndexError, ValueError):
                 raise FileFormatError('Malformed Intel Hex file.')
+        data = bytearray(size)
+        for address, payload in datadict.items():
+            data[address:address+len(payload)] = payload
         return data
 
     @staticmethod
@@ -81,10 +81,11 @@ class IntelHexWrapper(FilterWrapper):
         outfile = outstream.text
         # current extended linear address
         extended_address = -1
+        offset = 0
         with BytesIO(data) as instream:
             while True:
                 # in the last round this may be less than chunk_size long
-                payload = instream.read(chunksize)
+                payload = instream.read(chunk_size)
                 if not payload:
                     # end of file marker
                     outfile.write(':00000001FF\n')
@@ -93,7 +94,6 @@ class IntelHexWrapper(FilterWrapper):
                 # skip over null chunks, except the last to ensure file length
                 if not sum_bytes and len(payload) == chunksize:
                     continue
-                offset = chunk_size * group
                 offset_hi, offset_lo = divmod(offset, 0x10000)
                 if offset_hi > extended_address:
                     extended_address = offset_hi
@@ -111,3 +111,4 @@ class IntelHexWrapper(FilterWrapper):
                     f':{len(payload):02X}{offset_lo:04X}00'
                     f'{payload.hex().upper()}{checksum:02X}\n'
                 )
+                offset += chunk_size
