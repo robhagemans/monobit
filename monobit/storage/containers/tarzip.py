@@ -11,6 +11,7 @@ import zipfile
 import tarfile
 import time
 from pathlib import Path, PurePosixPath
+from itertools import chain
 
 from .containers import Archive
 from ..base import containers
@@ -84,17 +85,8 @@ class ZipTarBase(Archive):
         try:
             return self._is_dir(filename)
         except KeyError:
-            # pass
-            if self._ignore_case:
-                filename = match_case_insensitive(filename, self.list())
-                if filename is not None:
-                    try:
-                        return self._is_dir(filename)
-                    except KeyError:
-                        pass
-        raise FileNotFoundError(
-            f"'{filename}' not found in archive {self}."
-        )
+            pass
+        raise FileNotFoundError(f"'{filename}' not found in archive {self}.")
 
     def contains(self, item):
         """Check if file is in container. Case sensitive if container/fs is."""
@@ -142,26 +134,35 @@ class ZipContainer(ZipTarBase):
 
     def list(self):
         """List full contents of archive."""
-        return tuple(self._archive.namelist())
+        # construct directory entries even if they are missing from the zip
+        ziplist = tuple(set(sum((
+            (_name, *(f'{_path}/' for _path in Path(_name).parents[:-1]))
+            for _name in self._archive.namelist()
+        ), ())))
+        return ziplist
 
     def _open_read(self, filename):
         filename = filename.removesuffix('/')
         try:
             return self._archive.open(filename, 'r')
         except KeyError:
-            # will raise KeyError if the dir also does not exist
-            zipinfo = self._archive.getinfo(filename + '/')
             # return None for open() on directories (like tarfile does)
-            return None
+            if filename + '/' in self.list():
+                return None
+            raise
 
     def _is_dir(self, filename):
         # zipinfo has an is_dir method, but really they are already distinguished by the slash
+        # and directory entries may be missing
         filename = filename.removesuffix('/')
-        try:
-            zipinfo = self._archive.getinfo(filename + '/')
-        except KeyError:
-            zipinfo = self._archive.getinfo(filename)
-        return zipinfo.is_dir()
+        ziplist = self.list()
+        if filename + '/' in ziplist:
+            return True
+        if filename in ziplist:
+            return False
+        raise FileNotFoundError(
+            f"'{filename}' not found in archive {self}."
+        )
 
 
 ###############################################################################
