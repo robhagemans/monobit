@@ -135,10 +135,10 @@ class ZipContainer(ZipTarBase):
     def list(self):
         """List full contents of archive."""
         # construct directory entries even if they are missing from the zip
-        ziplist = tuple(set(sum((
+        ziplist = tuple(set(chain(*(
             (_name, *(f'{_path}/' for _path in Path(_name).parents[:-1]))
             for _name in self._archive.namelist()
-        ), ())))
+        ))))
         return ziplist
 
     def _open_read(self, filename):
