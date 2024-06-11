@@ -355,12 +355,13 @@ def _match_case_insensitive(container, path):
         for name in container.iter_sub(matched_path):
             if str(target).lower() == Path(name).name.lower():
                 matched_path /= Path(name).name
-                if not segments:
-                    return matched_path, Path('.')
-                elif not container.is_dir(matched_path):
-                    return matched_path, Path(*segments)
-                break
+                if segments and container.is_dir(matched_path):
+                    # found match, more to go
+                    break
+                # no match, or no more to go
+                return matched_path, Path(*segments)
         else:
+            # no match
             return matched_path, Path(target, *segments)
 
 def _contains(container, path):
