@@ -78,32 +78,3 @@ class Directory(Container):
             _path.relative_to(self._path)
             for _path in (self._path / prefix).iterdir()
         )
-
-    def _match_case_insensitive(self, path):
-        """Stepwise match per path element."""
-        segments = Path(path).as_posix().split('/')
-        segments = deque(segments)
-        matched_path = Path('.')
-        while True:
-            target = segments.popleft()
-            for name in self.iter_sub(matched_path):
-                if str(target).lower() == name.name.lower():
-                    matched_path /= name.name
-                    if not segments:
-                        return matched_path
-                    if self.is_dir(matched_path):
-                        break
-            else:
-                raise FileNotFoundError(f"'{path}' not found on {self}.")
-
-    def contains(self, name):
-        """File exists in container."""
-        if (self._path / name).exists():
-            return True
-        if not self._ignore_case:
-            return False
-        try:
-            self._match_case_insensitive(name)
-        except FileNotFoundError:
-            return False
-        return True

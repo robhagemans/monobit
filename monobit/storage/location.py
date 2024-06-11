@@ -205,7 +205,7 @@ class Location:
     def contains(self, item):
         """Check if file is in container. Case sensitive if container/fs is."""
         container, subpath = self._get_container_and_subpath()
-        return container.contains(subpath / item)
+        return _contains(container, subpath / item)
 
     def open(self, name, mode):
         """Open a binary stream in the container."""
@@ -235,7 +235,7 @@ class Location:
     ###########################################################################
 
     def _check_overwrite(self, container, path, mode):
-        if mode == 'w' and not self.overwrite and container.contains(path):
+        if mode == 'w' and not self.overwrite and _contains(container, path):
             raise ValueError(
                 f"Overwriting existing file '{path}'"
                 " requires -overwrite to be set"
@@ -362,6 +362,11 @@ def _match_case_insensitive(container, path):
                 break
         else:
             return matched_path, Path(target, *segments)
+
+def _contains(container, path):
+    """Container contains file (case insensitive)."""
+    _, tail = _match_case_insensitive(container, path)
+    return tail == Path('.')
 
 
 

@@ -36,10 +36,6 @@ class Container(StreamHolder):
         """List contents of a subpath."""
         raise NotImplementedError()
 
-    def contains(self, item):
-        """Check if file is in container. Case sensitive if container/fs is."""
-        raise NotImplementedError()
-
     # NOTE open() opens a stream, close() closes the container
 
     def open(self, name, mode):
@@ -80,14 +76,6 @@ class Archive(Container):
             if Path(_name).parent == Path(self.root) / prefix
         )
         return subs
-
-    def contains(self, item):
-        """Check if file is in container. Case sensitive if container/fs is."""
-        item = str(Path(self.root) / item)
-        return (
-            str(item) in self.list() or
-            f'{item}/' in self.list()
-        )
 
     def list(self):
         """List full contents of archive."""
