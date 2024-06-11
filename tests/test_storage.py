@@ -295,7 +295,7 @@ class TestWrappers(BaseTester):
         self.assertEqual(len(font.glyphs), 919)
 
     def _test_export_textbin(self, suffix, container_format=''):
-        file = self.temp_path  / '4x6.{suffix}]'
+        file = self.temp_path / f'4x6.{suffix}'
         monobit.save(
             self.fixed4x6, file, format='raw', container_format=container_format
         )
