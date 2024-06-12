@@ -349,6 +349,10 @@ class TestWrappers(BaseTester):
         """Test exporting uuencoded files."""
         self._test_export_textbin(suffix='uu', container_format='uuencode')
 
+    def test_export_yencode(self):
+        """Test exporting yencoded files."""
+        self._test_export_textbin(suffix='yenc', container_format='yenc')
+
 
 class TestStreams(BaseTester):
     """Test stream i/o."""
