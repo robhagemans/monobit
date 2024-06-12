@@ -18,8 +18,8 @@ from .containers.directory import Directory
 
 
 def open_location(
-        stream_or_location, mode='r', overwrite=False, container_format='',
-        argdict=None,
+        stream_or_location, mode='r', overwrite=False, match_case=False,
+        container_format='', argdict=None,
     ):
     """Point to given location; may include nested containers and wrappers."""
     if mode not in ('r', 'w'):
@@ -28,12 +28,14 @@ def open_location(
         raise ValueError(f'No location provided.')
     if isinstance(stream_or_location, (str, Path)):
         return Location.from_path(
-            stream_or_location, mode=mode, overwrite=overwrite,
+            stream_or_location, mode=mode,
+            overwrite=overwrite, match_case=match_case,
             container_format=container_format, argdict=argdict,
         )
     # assume stream_or_location is a file-like object
     return Location.from_stream(
-        stream_or_location, mode=mode, overwrite=overwrite,
+        stream_or_location, mode=mode,
+        overwrite=overwrite, match_case=match_case,
         container_format=container_format, argdict=argdict,
     )
 
@@ -42,12 +44,13 @@ class Location:
 
     def __init__(
             self, *,
-            root=None, path='', mode='r', overwrite=False,
+            root=None, path='', mode='r', overwrite=False, match_case=False,
             container_format='', argdict=None,
         ):
         self.path = Path(path)
         self.mode = mode
         self.overwrite = overwrite
+        self.match_case = match_case
         self.resolved = False
         # container or stream on which we attch the path
         # this object is NOT owned by us but externaly provided
@@ -180,6 +183,7 @@ class Location:
             path=self._leafpath / subpath,
             mode=self.mode,
             overwrite=self.overwrite,
+            match_case=self.match_case,
         )
 
     def walk(self):
@@ -205,7 +209,7 @@ class Location:
     def contains(self, item):
         """Check if file is in container. Case sensitive if container/fs is."""
         container, subpath = self._get_container_and_subpath()
-        return _contains(container, subpath / item)
+        return _contains(container, subpath / item, self.match_case)
 
     def open(self, name, mode):
         """Open a binary stream in the container."""
@@ -235,7 +239,10 @@ class Location:
     ###########################################################################
 
     def _check_overwrite(self, container, path, mode):
-        if mode == 'w' and not self.overwrite and _contains(container, path):
+        if (
+                mode == 'w' and not self.overwrite
+                and _contains(container, path, self.match_case)
+            ):
             raise ValueError(
                 f"Overwriting existing file '{path}'"
                 " requires -overwrite to be set"
@@ -327,7 +334,7 @@ class Location:
 
     def _find_next_node(self):
         """Find the next existing node (container or file) in the path."""
-        head, tail = _match_case_insensitive(self._leaf, self._leafpath)
+        head, tail = _match_path(self._leaf, self._leafpath, self.match_case)
         if self.mode == 'w' and not head.suffixes:
             head2, tail = _split_path_suffix(tail)
             head /= head2
@@ -350,13 +357,14 @@ def _step_match(container, matched_path, target, match_case):
     for name in container.iter_sub(matched_path):
         found = Path(name).name
         if (found == target) or (
-                not match_case and found.lower() == target.lower()
+                (not match_case)
+                and found.lower() == target.lower()
             ):
             return found
     return ''
 
 
-def _match_case_insensitive(container, path):
+def _match_path(container, path, match_case):
     """Stepwise match per path element."""
     segments = Path(path).as_posix().split('/')
     segments = deque(segments)
@@ -365,7 +373,7 @@ def _match_case_insensitive(container, path):
         target = segments.popleft()
         # try case-sensitive match first, then case-insensitive
         match = _step_match(container, matched_path, target, match_case=True)
-        if not match:
+        if not match and not match_case:
             match = _step_match(container, matched_path, target, match_case=False)
         if match:
             matched_path /= match
@@ -377,9 +385,9 @@ def _match_case_insensitive(container, path):
         # no match this level
         return matched_path, Path(target, *segments)
 
-def _contains(container, path):
+def _contains(container, path, match_case):
     """Container contains file (case insensitive)."""
-    _, tail = _match_case_insensitive(container, path)
+    _, tail = _match_path(container, path, match_case)
     return tail == Path('.')
 
 
