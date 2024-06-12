@@ -344,6 +344,13 @@ def _split_path_suffix(path):
     return path, Path('.')
 
 
+def _step_match(container, matched_path, target):
+    for name in container.iter_sub(matched_path):
+        if str(target).lower() == Path(name).name.lower():
+            return Path(name).name
+    return ''
+
+
 def _match_case_insensitive(container, path):
     """Stepwise match per path element."""
     segments = Path(path).as_posix().split('/')
@@ -352,17 +359,16 @@ def _match_case_insensitive(container, path):
     while True:
         target = segments.popleft()
         #TODO try case-sensitive match first
-        for name in container.iter_sub(matched_path):
-            if str(target).lower() == Path(name).name.lower():
-                matched_path /= Path(name).name
-                if segments and container.is_dir(matched_path):
-                    # found match, more to go
-                    break
-                # no match, or no more to go
+        match = _step_match(container, matched_path, target)
+        if match:
+            matched_path /= match
+            if not segments or not container.is_dir(matched_path):
+                # found match this level, can't go deeper
                 return matched_path, Path(*segments)
-        else:
-            # no match
-            return matched_path, Path(target, *segments)
+            # found match this level, go to next
+            continue
+        # no match this level
+        return matched_path, Path(target, *segments)
 
 def _contains(container, path):
     """Container contains file (case insensitive)."""
