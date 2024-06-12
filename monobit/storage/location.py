@@ -344,10 +344,15 @@ def _split_path_suffix(path):
     return path, Path('.')
 
 
-def _step_match(container, matched_path, target):
+def _step_match(container, matched_path, target, match_case):
+    """One-step match for path element."""
+    target = str(target)
     for name in container.iter_sub(matched_path):
-        if str(target).lower() == Path(name).name.lower():
-            return Path(name).name
+        found = Path(name).name
+        if (found == target) or (
+                not match_case and found.lower() == target.lower()
+            ):
+            return found
     return ''
 
 
@@ -358,8 +363,10 @@ def _match_case_insensitive(container, path):
     matched_path = Path('.')
     while True:
         target = segments.popleft()
-        #TODO try case-sensitive match first
-        match = _step_match(container, matched_path, target)
+        # try case-sensitive match first, then case-insensitive
+        match = _step_match(container, matched_path, target, match_case=True)
+        if not match:
+            match = _step_match(container, matched_path, target, match_case=False)
         if match:
             matched_path /= match
             if not segments or not container.is_dir(matched_path):
