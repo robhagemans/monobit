@@ -29,17 +29,19 @@ from .base import (
 # loading
 
 @scriptable(wrapper=True, record=False)
-def load(infile:Any='', *, format:str='', container_format:str='', **kwargs):
+def load(infile:Any='', *, format:str='', container_format:str='', match_case:bool=False, **kwargs):
     """
     Read font(s) from file.
 
     infile: input file or path (default: stdin)
     format: input format (default: infer from magic number or filename)
     container_format: container/wrapper formats separated by . (default: infer from magic number or filename)
+    match_case: interpret path as case-sensitive (if file system supports it; default: False)
     """
     infile = infile or sys.stdin
     with open_location(
-            infile, mode='r', container_format=container_format, argdict=kwargs,
+            infile, mode='r', match_case=match_case,
+            container_format=container_format, argdict=kwargs,
         ) as location:
         if location.is_dir():
             return _load_container(

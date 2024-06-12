@@ -216,6 +216,13 @@ class TestContainers(BaseTester):
         fonts = monobit.load(str(file).upper())
         self.assertEqual(len(fonts), 1)
 
+    def test_deeplink_dir_case_sensitive(self):
+        """Test case sensitive deep linking into directory."""
+        file = self.font_path / 'fontdir' / 'SUBDIR' / '6x13.FON.bz2'
+        with self.assertRaises(FileNotFoundError):
+            fonts = monobit.load(str(file).upper(), match_case=True)
+            print(fonts)
+
     def test_nested_zip(self):
         """Test zipfile in zipfile."""
         fonts = monobit.load(self.font_path / 'zipinzip.zip')
