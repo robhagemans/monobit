@@ -46,56 +46,56 @@ class YEncodeContainer(FlatFilterContainer):
     """yEncoded format container."""
 
     @classmethod
-    def decode_all(cls, instream):
+    def decode_all(cls, file_in):
         data = {}
-        while instream.peek(1):
-            data |= cls._decode(instream)
-        return data
-
-    @classmethod
-    def _decode(cls, file_in):
-        head_crc = trail_crc = None
-        while True:
-            line = file_in.readline()
-            if line.startswith(b'=ybegin '):
-                metadata, name = line.split(b' name=')
-                name = name.rstrip().decode('ascii', 'replace')
-                header = _parse_header(metadata, '=ybegin ')
-                break
-            elif not line:
-                raise FileFormatError("No valid =ybegin header found.")
-        if file_in.peek(7).startswith(b'=ypart '):
-            line = file_in.readline().rstrip()
-            partheader = _parse_header(line, '=ypart ')
-        with BytesIO() as file_out:
-            try:
-                dec, dec_crc = yenc.decode(file_in, file_out, int(header.size))
-            except yenc.Error as e:
-                raise FileFormatError(e) from e
-            garbage	= False
-            for line in file_in.read().splitlines():
-                if line.startswith(b'=yend '):
-                    tailer = _parse_header(line, '=yend ')
+        while file_in.peek(1):
+            head_crc = trail_crc = None
+            while True:
+                line = file_in.readline()
+                if line.startswith(b'=ybegin '):
+                    metadata, name = line.split(b' name=')
+                    name = name.rstrip().decode('latin-1')
+                    header = _parse_header(metadata, '=ybegin ')
                     break
                 elif not line:
-                    continue
+                    raise FileFormatError("No valid =ybegin header found.")
+            if file_in.peek(7).startswith(b'=ypart '):
+                line = file_in.readline().rstrip()
+                part = _parse_header(line, '=ypart ')
+            else:
+                part = Props(begin=0, end=header.size)
+            with BytesIO() as file_out:
+                try:
+                    dec, dec_crc = yenc.decode(file_in, file_out, int(header.size))
+                except yenc.Error as e:
+                    raise FileFormatError(e) from e
+                garbage	= False
+                for line in file_in.read().splitlines():
+                    if line.startswith(b'=yend '):
+                        tailer = _parse_header(line, '=yend ')
+                        break
+                    elif not line:
+                        continue
+                    else:
+                        garbage = True
                 else:
-                    garbage = True
-            else:
-                logging.warning("Couldn't find =yend trailer")
-            if garbage:
-                logging.warning("Garbage before =yend trailer")
-            if head_crc:
-                tmp_crc = header.crc.lower()
-            elif trail_crc:
-                tmp_crc = tailer.crc.lower()
-            else:
-                tmp_crc = dec_crc
-            if tmp_crc != dec_crc:
-                logging.warning("CRC32 mismatch: header: %s dec: %s", tmp_crc, dec_crc)
-            return {
-                name: file_out.getvalue()
-            }
+                    logging.warning("Couldn't find =yend trailer")
+                if garbage:
+                    logging.warning("Garbage before =yend trailer")
+                if head_crc:
+                    tmp_crc = header.crc.lower()
+                elif trail_crc:
+                    tmp_crc = tailer.crc.lower()
+                else:
+                    tmp_crc = dec_crc
+                if tmp_crc != dec_crc:
+                    logging.warning(
+                        "CRC32 mismatch: header: %s dec: %s", tmp_crc, dec_crc
+                    )
+                if name not in data:
+                    data[name] = bytearray(int(header.size))
+                data[name][int(part.begin):int(part.end)] = file_out.getvalue()
+        return data
 
     @classmethod
     def encode_all(cls, data, outstream):
