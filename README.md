@@ -249,6 +249,7 @@ archive, compression and encoding formats:
 | GZip                  | `gzip`   | `.gz`                   |&check;|&check;|
 | BZip2                 | `bzip2`  | `.bz2`                  |&check;|&check;|
 | XZ/LZMA               | `lzma`   | `.xz` `.lzma`           |&check;|&check;|
+| Compress [Z]          | `compress`| `.Z`                   |&check;|&check;|
 | AppleSingle           | `apple1` | `.as`                   |&check;|       |
 | AppleDouble           | `apple2` | `.adf` `.rsrc`          |&check;|       |
 | MacBinary             | `macbin` | `.bin`                  |&check;|       |
@@ -268,6 +269,7 @@ archive, compression and encoding formats:
 
 [A] requires **libarchive**
 [Y] requires **python3-yenc**
+[Z] requires **ncompress**
 
 _Note that many of these currently require reading the full archive into memory, which may
 not be practicable with e.g ISO9660 or WARC files which can hold whole filesystems._
@@ -303,6 +305,7 @@ Some formats require
 - **fontTools**
 - **libarchive**
 - **python3-yenc**
+- **ncompress**
 
 The renderer additionally employs
 - **uniseg**
@@ -311,7 +314,7 @@ The renderer additionally employs
 
 All can be installed through Pip:
 
-    pip install Pillow reportlab fonttools uniseg python-bidi arabic-reshaper libarchive-c python3-yenc
+    pip install Pillow reportlab fonttools uniseg python-bidi arabic-reshaper libarchive-c python3-yenc ncompress
 
 Without these packages, some functionality may not be available.
 

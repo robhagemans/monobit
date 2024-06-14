@@ -36,6 +36,10 @@ class TestCompressed(BaseTester):
         """Test importing/exporting bzip2 compressed files."""
         self._test_compressed('bz2')
 
+    def test_compress(self):
+        """Test importing/exporting compress compressed files."""
+        self._test_compressed('Z')
+
     def _test_double(self, format):
         """Test doubly compressed files."""
         container_file = self.font_path / f'double.yaff.{format}'
