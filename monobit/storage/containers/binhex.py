@@ -139,8 +139,8 @@ class BinHex(FlatFilterContainer):
 
 _BINSCII_HEADER = le.Struct(
     # size fields are little-endian uint24, not supported by Struct
-    filesize='3s',
-    segstart='3s',
+    filesize=be.uint8 * 3,
+    segstart=be.uint8 * 3,
     acmode='byte',
     filetype='byte',
     auxtype='word',
@@ -150,7 +150,7 @@ _BINSCII_HEADER = le.Struct(
     cretime='word',
     moddate='word',
     modtime='word',
-    seglen='3s',
+    seglen=be.uint8 * 3,
     crc='word',
     filler='byte',
 )
