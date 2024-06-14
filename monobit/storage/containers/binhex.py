@@ -169,51 +169,56 @@ _BINSCII_SENTINEL = 'FiLeStArTfIlEsTaRt'
 class BinSCII(FlatFilterContainer):
     """BinSCII loader."""
 
-    # TODO multi-chunk files
-
     def decode_all(self, instream):
         """Parse a BinSCII file."""
         instream = instream.text
-        # locate binscii section sentinel
-        for line in instream:
-            if line.strip() == _BINSCII_SENTINEL:
+        output = {}
+        while True:
+            # locate binscii section sentinel
+            for line in instream:
+                if line.strip() == _BINSCII_SENTINEL:
+                    break
+            else:
                 break
-        else:
+            # encoding alphabet
+            encoding = instream.readline().strip()
+            codedict = {_c: _i for _i, _c in enumerate(encoding)}
+            # name and header
+            metadata = instream.readline().strip()
+            name_len = encoding.index(metadata[0]) + 1
+            name = metadata[1:16]
+            name = name[:name_len]
+            binsciidecode = partial(sixbitdecode, codedict=codedict, byteswap=True)
+            headerbytes = binsciidecode(metadata[16:16+36])
+            header = _BINSCII_HEADER.from_bytes(headerbytes)
+            # size fields are little-endian uint24, not supported by Struct
+            filesize = int.from_bytes(header.filesize, 'little')
+            segstart = int.from_bytes(header.segstart, 'little')
+            seglen = int.from_bytes(header.seglen, 'little')
+            logging.debug('binscii header: %s', header)
+            logging.debug('filesize=%d segstart=%d seglen=%d', filesize, segstart, seglen)
+            header_crc = crc_hqx(headerbytes[:-3], 0)
+            if header_crc != header.crc:
+                logging.warning(f"CRC failure while decoding '{name}'")
+            # data section
+            decoded = []
+            crcline = ''
+            for dataline in instream:
+                dataline = dataline.strip()
+                if len(dataline) != 64:
+                    crcline = dataline
+                    break
+                decoded.append(binsciidecode(dataline))
+            data = b''.join(decoded)
+            crc_bytes = binsciidecode(crcline)
+            crc_target = int.from_bytes(crc_bytes[:2], byteorder='little')
+            if crc_hqx(data, 0) != crc_target:
+                logging.warning(f"CRC failure while decoding '{name}'")
+            if name not in output:
+                output[name] = bytearray(filesize)
+            output[name][segstart:segstart+seglen] = data
+        if not output:
             raise FileFormatError(
                 f"No BinSCII section found in file '{instream.name}'."
             )
-        # encoding alphabet
-        encoding = instream.readline().strip()
-        codedict = {_c: _i for _i, _c in enumerate(encoding)}
-        # name and header
-        metadata = instream.readline().strip()
-        name_len = encoding.index(metadata[0]) + 1
-        name = metadata[1:16]
-        name = name[:name_len]
-        binsciidecode = partial(sixbitdecode, codedict=codedict, byteswap=True)
-        headerbytes = binsciidecode(metadata[16:16+36])
-        header = _BINSCII_HEADER.from_bytes(headerbytes)
-        # size fields are little-endian uint24, not supported by Struct
-        filesize = int.from_bytes(header.filesize, 'little')
-        segstart = int.from_bytes(header.segstart, 'little')
-        seglen = int.from_bytes(header.seglen, 'little')
-        logging.debug('binscii header: %s', header)
-        logging.debug('filesize=%d segstart=%d seglen=%d', filesize, segstart, seglen)
-        header_crc = crc_hqx(headerbytes[:-3], 0)
-        if header_crc != header.crc:
-            logging.warning(f"CRC failure while decoding '{name}'")
-        # data section
-        decoded = []
-        crcline = ''
-        for dataline in instream:
-            dataline = dataline.strip()
-            if len(dataline) != 64:
-                crcline = dataline
-                break
-            decoded.append(binsciidecode(dataline))
-        data = b''.join(decoded)
-        crc_bytes = binsciidecode(crcline)
-        crc_target = int.from_bytes(crc_bytes[:2], byteorder='little')
-        if crc_hqx(data, 0) != crc_target:
-            logging.warning(f"CRC failure while decoding '{name}'")
-        return {name: data}
+        return output
