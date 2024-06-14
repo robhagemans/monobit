@@ -83,6 +83,8 @@ class _WrappedWriterStream(Stream):
     def close(self):
         if not self.closed:
             try:
+                # write out text buffers
+                self.flush()
                 data = self._stream.getvalue()
                 self._write_out(data, self._outfile, **self._write_out_kwargs)
             except Exception as exc:
