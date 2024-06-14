@@ -1,6 +1,8 @@
 """
 monobit.storage.containers.yencode - yEncode format
 
+(c) 2024 Rob Hagemans
+
 with code from python3-yenc examples
 https://github.com/oe-mirrors/python3-yenc/
 
@@ -30,13 +32,8 @@ from binascii import crc32
 
 from ..magic import FileFormatError
 from ..base import containers
+from ...base import Props
 from .containers import FlatFilterContainer
-
-
-NAME_RE = re.compile(br"^.*? name=(.+?)$")
-LINE_RE = re.compile(br"^.*? line=(\d{3}) .*$")
-SIZE_RE = re.compile(br"^.*? size=(\d+) .*$")
-CRC32_RE = re.compile(br"^.*? crc32=(\w+)")
 
 
 @containers.register(
@@ -60,32 +57,25 @@ class YEncodeContainer(FlatFilterContainer):
         head_crc = trail_crc = None
         while True:
             line = file_in.readline()
-            if line.startswith(b"=ybegin "):
-                try:
-                    name, size = NAME_RE.match(line).group(1), int(SIZE_RE.match(line).group(1))
-                    m_obj = CRC32_RE.match(line)
-                    if m_obj:
-                        head_crc = m_obj.group(1)
-                except re.error as e:
-                    raise FileFormatError("Malformed =ybegin header.") from e
+            if line.startswith(b'=ybegin '):
+                metadata, name = line.split(b' name=')
+                name = name.rstrip().decode('ascii', 'replace')
+                header = _parse_header(metadata, '=ybegin ')
                 break
             elif not line:
                 raise FileFormatError("No valid =ybegin header found.")
+        if file_in.peek(7).startswith(b'=ypart '):
+            line = file_in.readline().rstrip()
+            partheader = _parse_header(line, '=ypart ')
         with BytesIO() as file_out:
             try:
-                dec, dec_crc = yenc.decode(file_in, file_out, size)
+                dec, dec_crc = yenc.decode(file_in, file_out, int(header.size))
             except yenc.Error as e:
                 raise FileFormatError(e) from e
             garbage	= False
-            for line in file_in.read().split(b"\r\n"):
-                if line.startswith(b"=yend "):
-                    try:
-                        size = int( SIZE_RE.match(line).group(1) )
-                        m_obj = CRC32_RE.match(line)
-                        if m_obj:
-                            trail_crc = m_obj.group(1)
-                    except re.error:
-                        logging.warning("Malformed =yend trailer")
+            for line in file_in.read().splitlines():
+                if line.startswith(b'=yend '):
+                    tailer = _parse_header(line, '=yend ')
                     break
                 elif not line:
                     continue
@@ -96,15 +86,15 @@ class YEncodeContainer(FlatFilterContainer):
             if garbage:
                 logging.warning("Garbage before =yend trailer")
             if head_crc:
-                tmp_crc = head_crc.decode("ascii").lower()
+                tmp_crc = header.crc.lower()
             elif trail_crc:
-                tmp_crc = trail_crc.decode("ascii").lower()
+                tmp_crc = tailer.crc.lower()
             else:
                 tmp_crc = dec_crc
             if tmp_crc != dec_crc:
                 logging.warning("CRC32 mismatch: header: %s dec: %s", tmp_crc, dec_crc)
             return {
-                name.decode('latin-1'): file_out.getvalue()
+                name: file_out.getvalue()
             }
 
     @classmethod
@@ -126,3 +116,14 @@ class YEncodeContainer(FlatFilterContainer):
                 raise FileFormatError(e) from e
         line = b"=yend size=%d crc32=%s\r\n" % (encoded, crc_out.encode('ascii'))
         file_out.write(line)
+
+
+def _parse_header(line, prefix):
+    try:
+        line = line.decode('ascii').removeprefix(prefix)
+        return Props(**dict(
+            _kv.split('=')
+            for _kv in line.split()
+        ))
+    except (ValueError, UnicodeError) as e:
+        raise FileFormatError(f'Malformed ={prefix} header.') from e
