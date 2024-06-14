@@ -26,9 +26,13 @@ https://github.com/oe-mirrors/python3-yenc/
 import logging
 from io import BytesIO
 from pathlib import Path
-import yenc
 import re
 from binascii import crc32
+
+try:
+    import yenc
+except ImportError:
+    yenc = None
 
 from ..magic import FileFormatError
 from ..base import containers
@@ -36,94 +40,95 @@ from ...base import Props
 from .containers import FlatFilterContainer
 
 
-@containers.register(
-    name='yenc',
-    patterns=('*.yenc',),
-    magic=(b'=ybegin ',),
-    # last line starts with '=yend '
-)
-class YEncodeContainer(FlatFilterContainer):
-    """yEncoded format container."""
+if yenc:
+    @containers.register(
+        name='yenc',
+        patterns=('*.yenc',),
+        magic=(b'=ybegin ',),
+        # last line starts with '=yend '
+    )
+    class YEncodeContainer(FlatFilterContainer):
+        """yEncoded format container."""
 
-    @classmethod
-    def decode_all(cls, file_in):
-        data = {}
-        while file_in.peek(1):
-            head_crc = trail_crc = None
-            while True:
-                line = file_in.readline()
-                if line.startswith(b'=ybegin '):
-                    metadata, name = line.split(b' name=')
-                    name = name.rstrip().decode('latin-1')
-                    header = _parse_header(metadata, '=ybegin ')
-                    break
-                elif not line:
-                    raise FileFormatError("No valid =ybegin header found.")
-            if file_in.peek(7).startswith(b'=ypart '):
-                line = file_in.readline().rstrip()
-                part = _parse_header(line, '=ypart ')
-            else:
-                part = Props(begin=0, end=header.size)
-            with BytesIO() as file_out:
-                try:
-                    dec, dec_crc = yenc.decode(file_in, file_out, int(header.size))
-                except yenc.Error as e:
-                    raise FileFormatError(e) from e
-                garbage	= False
-                for line in file_in.read().splitlines():
-                    if line.startswith(b'=yend '):
-                        tailer = _parse_header(line, '=yend ')
+        @classmethod
+        def decode_all(cls, file_in):
+            data = {}
+            while file_in.peek(1):
+                head_crc = trail_crc = None
+                while True:
+                    line = file_in.readline()
+                    if line.startswith(b'=ybegin '):
+                        metadata, name = line.split(b' name=')
+                        name = name.rstrip().decode('latin-1')
+                        header = _parse_header(metadata, '=ybegin ')
                         break
                     elif not line:
-                        continue
+                        raise FileFormatError("No valid =ybegin header found.")
+                if file_in.peek(7).startswith(b'=ypart '):
+                    line = file_in.readline().rstrip()
+                    part = _parse_header(line, '=ypart ')
+                else:
+                    part = Props(begin=0, end=header.size)
+                with BytesIO() as file_out:
+                    try:
+                        dec, dec_crc = yenc.decode(file_in, file_out, int(header.size))
+                    except yenc.Error as e:
+                        raise FileFormatError(e) from e
+                    garbage	= False
+                    for line in file_in.read().splitlines():
+                        if line.startswith(b'=yend '):
+                            tailer = _parse_header(line, '=yend ')
+                            break
+                        elif not line:
+                            continue
+                        else:
+                            garbage = True
                     else:
-                        garbage = True
-                else:
-                    logging.warning("Couldn't find =yend trailer")
-                if garbage:
-                    logging.warning("Garbage before =yend trailer")
-                if head_crc:
-                    tmp_crc = header.crc.lower()
-                elif trail_crc:
-                    tmp_crc = tailer.crc.lower()
-                else:
-                    tmp_crc = dec_crc
-                if tmp_crc != dec_crc:
-                    logging.warning(
-                        "CRC32 mismatch: header: %s dec: %s", tmp_crc, dec_crc
-                    )
-                if name not in data:
-                    data[name] = bytearray(int(header.size))
-                data[name][int(part.begin):int(part.end)] = file_out.getvalue()
-        return data
+                        logging.warning("Couldn't find =yend trailer")
+                    if garbage:
+                        logging.warning("Garbage before =yend trailer")
+                    if head_crc:
+                        tmp_crc = header.crc.lower()
+                    elif trail_crc:
+                        tmp_crc = tailer.crc.lower()
+                    else:
+                        tmp_crc = dec_crc
+                    if tmp_crc != dec_crc:
+                        logging.warning(
+                            "CRC32 mismatch: header: %s dec: %s", tmp_crc, dec_crc
+                        )
+                    if name not in data:
+                        data[name] = bytearray(int(header.size))
+                    data[name][int(part.begin):int(part.end)] = file_out.getvalue()
+            return data
 
-    @classmethod
-    def encode_all(cls, data, outstream):
-        for name, filedata in data.items():
-            cls._encode(filedata, outstream, name=name)
-            outstream.write(b'\r\n')
+        @classmethod
+        def encode_all(cls, data, outstream):
+            for name, filedata in data.items():
+                cls._encode(filedata, outstream, name=name)
+                outstream.write(b'\r\n')
 
-    @classmethod
-    def _encode(cls, filedata, file_out, *, name):
-        crc = b"%08x" % (0xFFFFFFFF & crc32(filedata))
-        size = len(filedata)
-        line = b"=ybegin line=128 size=%d crc32=%s name=%s\r\n"
-        file_out.write(line % (size, crc, name.encode('latin-1')))
-        with BytesIO(filedata) as file_in:
-            try:
-                encoded, crc_out = yenc.encode(file_in, file_out, size)
-            except Exception as e:
-                raise FileFormatError(e) from e
-        line = b"=yend size=%d crc32=%s\r\n" % (encoded, crc_out.encode('ascii'))
-        file_out.write(line)
+        @classmethod
+        def _encode(cls, filedata, file_out, *, name):
+            crc = b"%08x" % (0xFFFFFFFF & crc32(filedata))
+            size = len(filedata)
+            line = b"=ybegin line=128 size=%d crc32=%s name=%s\r\n"
+            file_out.write(line % (size, crc, name.encode('latin-1')))
+            with BytesIO(filedata) as file_in:
+                try:
+                    encoded, crc_out = yenc.encode(file_in, file_out, size)
+                except Exception as e:
+                    raise FileFormatError(e) from e
+            line = b"=yend size=%d crc32=%s\r\n" % (encoded, crc_out.encode('ascii'))
+            file_out.write(line)
 
 
-def _parse_header(line, prefix):
-    try:
-        line = line.decode('ascii').removeprefix(prefix)
-        return Props(**dict(
-            _kv.split('=')
-            for _kv in line.split()
-        ))
-    except (ValueError, UnicodeError) as e:
-        raise FileFormatError(f'Malformed ={prefix} header.') from e
+    def _parse_header(line, prefix):
+        try:
+            line = line.decode('ascii').removeprefix(prefix)
+            return Props(**dict(
+                _kv.split('=')
+                for _kv in line.split()
+            ))
+        except (ValueError, UnicodeError) as e:
+            raise FileFormatError(f'Malformed ={prefix} header.') from e
