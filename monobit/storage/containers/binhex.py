@@ -133,8 +133,12 @@ class BinHex(FlatFilterContainer):
 
 
 ###############################################################################
+# BinSCII
+# based on https://mirrors.apple2.org.za/ground.icaen.uiowa.edu/Mirrors/uni-kl/doc/binscii.format
+
 
 _BINSCII_HEADER = le.Struct(
+    # size fields are little-endian uint24, not supported by Struct
     filesize='3s',
     segstart='3s',
     acmode='byte',
@@ -151,18 +155,19 @@ _BINSCII_HEADER = le.Struct(
     filler='byte',
 )
 
+_BINSCII_SENTINEL = 'FiLeStArTfIlEsTaRt'
+
+
 @containers.register(
     name='binscii',
     magic=(
         # this can occur on any line, probably not the first...
-        b'FiLeStArTfIlEsTaRt',
+        _BINSCII_SENTINEL.encode('ascii'),
     ),
     patterns=('*.bsc', '*.bsq', '*.bns'),
 )
 class BinSCII(FlatFilterContainer):
     """BinSCII loader."""
-
-    # based on https://mirrors.apple2.org.za/ground.icaen.uiowa.edu/Mirrors/uni-kl/doc/binscii.format
 
     # TODO multi-chunk files
 
@@ -171,14 +176,16 @@ class BinSCII(FlatFilterContainer):
         instream = instream.text
         # locate binscii section sentinel
         for line in instream:
-            if line.strip() == 'FiLeStArTfIlEsTaRt':
+            if line.strip() == _BINSCII_SENTINEL:
                 break
         else:
             raise FileFormatError(
                 f"No BinSCII section found in file '{instream.name}'."
             )
+        # encoding alphabet
         encoding = instream.readline().strip()
         codedict = {_c: _i for _i, _c in enumerate(encoding)}
+        # name and header
         metadata = instream.readline().strip()
         name_len = encoding.index(metadata[0]) + 1
         name = metadata[1:16]
@@ -186,10 +193,16 @@ class BinSCII(FlatFilterContainer):
         binsciidecode = partial(sixbitdecode, codedict=codedict, byteswap=True)
         headerbytes = binsciidecode(metadata[16:16+36])
         header = _BINSCII_HEADER.from_bytes(headerbytes)
-        print(header)
+        # size fields are little-endian uint24, not supported by Struct
+        filesize = int.from_bytes(header.filesize, 'little')
+        segstart = int.from_bytes(header.segstart, 'little')
+        seglen = int.from_bytes(header.seglen, 'little')
+        logging.debug('binscii header: %s', header)
+        logging.debug('filesize=%d segstart=%d seglen=%d', filesize, segstart, seglen)
         header_crc = crc_hqx(headerbytes[:-3], 0)
         if header_crc != header.crc:
             logging.warning(f"CRC failure while decoding '{name}'")
+        # data section
         decoded = []
         crcline = ''
         for dataline in instream:
