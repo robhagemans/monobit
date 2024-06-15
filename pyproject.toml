@@ -16,6 +16,10 @@ dependencies = [
     "arabic-reshaper",
     "uniseg",
     "fonttools",
+    "libarchive-c",
+    "python3-yenc",
+    "ncompress",
+    "acefile"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",

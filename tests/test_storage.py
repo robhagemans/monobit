@@ -36,6 +36,10 @@ class TestCompressed(BaseTester):
         """Test importing/exporting bzip2 compressed files."""
         self._test_compressed('bz2')
 
+    def test_compress(self):
+        """Test importing/exporting compress compressed files."""
+        self._test_compressed('Z')
+
     def _test_double(self, format):
         """Test doubly compressed files."""
         container_file = self.font_path / f'double.yaff.{format}'
@@ -158,6 +162,12 @@ class TestContainers(BaseTester):
     def test_recursive_cab(self):
         """Test recursively traversing Cabinet container."""
         container_file = self.font_path / 'fontdir.cab'
+        fonts = monobit.load(container_file)
+        self.assertEqual(len(fonts), 3)
+
+    def test_recursive_ace(self):
+        """Test recursively traversing ACE container."""
+        container_file = self.font_path / 'fontdir.ace'
         fonts = monobit.load(container_file)
         self.assertEqual(len(fonts), 3)
 
@@ -348,6 +358,10 @@ class TestWrappers(BaseTester):
     def test_export_uuencode(self):
         """Test exporting uuencoded files."""
         self._test_export_textbin(suffix='uu', container_format='uuencode')
+
+    def test_export_yencode(self):
+        """Test exporting yencoded files."""
+        self._test_export_textbin(suffix='yenc', container_format='yenc')
 
 
 class TestStreams(BaseTester):

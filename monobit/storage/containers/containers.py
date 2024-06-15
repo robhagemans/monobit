@@ -77,6 +77,21 @@ class Archive(Container):
         )
         return subs
 
+    def is_dir(self, name):
+        """Item at 'name' is a directory."""
+        name = Path(self.root) / name
+        if Path(name) == Path(self.root):
+            return True
+        ziplist = self.list()
+        # str(Path) does not end in /
+        if f'{name}/' in ziplist:
+            return True
+        if f'{name}' in ziplist:
+            return False
+        raise FileNotFoundError(
+            f"File '{name}' not found in archive {self}."
+        )
+
     def list(self):
         """List full contents of archive."""
         raise NotImplementedError()
@@ -108,17 +123,6 @@ class FlatFilterContainer(Archive):
             )
         self._wrapped_stream.close()
         super().close()
-
-    def is_dir(self, name):
-        """Item at `name` is a directory."""
-        name = Path(self.root) / name
-        if Path(name) == Path(self.root):
-            return True
-        if f'{name}/' in self._data:
-            return True
-        if f'{name}' not in self._data:
-            raise FileNotFoundError(f"'{name}' not found in archive.")
-        return False
 
     def list(self):
         """List full contents of archive."""

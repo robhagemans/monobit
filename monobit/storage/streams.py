@@ -185,6 +185,15 @@ class Stream(StreamWrapper):
         """Delegate undefined attributes to wrapped stream."""
         return getattr(self._stream, attr)
 
+    def flush(self):
+        """Flush stream"""
+        if self._textstream:
+            try:
+                self._textstream.flush()
+            except EnvironmentError:
+                pass
+        self._stream.flush()
+
     def close(self):
         """Close stream, absorb errors."""
         # if self.closed:
