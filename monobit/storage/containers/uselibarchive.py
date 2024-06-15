@@ -10,7 +10,7 @@ from pathlib import Path
 try:
     import libarchive
     from libarchive.entry import FileType
-except importError:
+except ImportError:
     libarchive = None
 
 from ..magic import FileFormatError
@@ -29,6 +29,7 @@ if libarchive:
 
         @classmethod
         def encode_all(cls, data, outstream):
+            """Write all items to archive."""
             format = cls.libarchive_format
             if not format:
                 raise ValueError(f'Writing not supported for this format.')
