@@ -14,6 +14,7 @@ from functools import cached_property
 
 from monobit.storage import loaders, savers
 from monobit.storage import FileFormatError
+from monobit.storage.magic import Sentinel
 from monobit.core import Font, FontProperties, Glyph, Raster, Label, strip_matching
 from monobit.base import Props
 from monobit.base import Coord, passthrough
@@ -30,8 +31,8 @@ from .draw import format_comment
     magic=(
         # maybe, if multi-section
         b'---',
-        # maybe, if no global comments
-        b'yaff:',
+        # maybe
+        Sentinel(b'yaff:'),
     ),
     patterns=('*.yaff', '*.yaffs',),
 )

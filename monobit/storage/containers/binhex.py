@@ -12,7 +12,7 @@ from functools import partial
 
 from monobit.base.struct import big_endian as be, little_endian as le
 from ..streams import Stream
-from ..magic import FileFormatError, Magic
+from ..magic import FileFormatError, Magic, Sentinel
 from ..base import containers
 from .containers import FlatFilterContainer
 
@@ -162,7 +162,7 @@ _BINSCII_SENTINEL = 'FiLeStArTfIlEsTaRt'
     name='binscii',
     magic=(
         # this can occur on any line, probably not the first...
-        _BINSCII_SENTINEL.encode('ascii'),
+        Sentinel(_BINSCII_SENTINEL.encode('ascii')),
     ),
     patterns=('*.bsc', '*.bsq', '*.bns'),
 )
