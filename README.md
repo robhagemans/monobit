@@ -240,6 +240,7 @@ archive, compression and encoding formats:
 | 7-Zip [A]             | `7zip`   | `.7z`                   |&check;|&check;|
 | MS Cabinet [A]        | `cabinet`| `.cab`                  |&check;|       |
 | LHarc/LHA/LZH [A]     | `lharc`  | `.lha` `.lzh`           |&check;|       |
+| ACE [C]               | `ace`    | `.ace`                  |&check;|       |
 | ISO 9660 [A]          | `iso9660`| `.iso`                  |&check;|&check;|
 | WARC [A]              | `warc`   | `.warc`                 |&check;|&check;|
 | CPIO [A]              | `cpio`   | `.cpio`                 |&check;|&check;|
@@ -268,6 +269,7 @@ archive, compression and encoding formats:
 | BASIC coded binary    | `basic`  | `.bas`                  |&check;|&check;|
 
 [A] requires **libarchive**
+[C] requires **acefile**
 [Y] requires **python3-yenc**
 [Z] requires **ncompress**
 
@@ -306,6 +308,7 @@ Some formats require
 - **libarchive**
 - **python3-yenc**
 - **ncompress**
+- **acefile**
 
 The renderer additionally employs
 - **uniseg**
@@ -314,7 +317,7 @@ The renderer additionally employs
 
 All can be installed through Pip:
 
-    pip install Pillow reportlab fonttools uniseg python-bidi arabic-reshaper libarchive-c python3-yenc ncompress
+    pip install Pillow reportlab fonttools uniseg python-bidi arabic-reshaper libarchive-c python3-yenc ncompress acefile
 
 Without these packages, some functionality may not be available.
 

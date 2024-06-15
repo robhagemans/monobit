@@ -165,6 +165,12 @@ class TestContainers(BaseTester):
         fonts = monobit.load(container_file)
         self.assertEqual(len(fonts), 3)
 
+    def test_recursive_ace(self):
+        """Test recursively traversing ACE container."""
+        container_file = self.font_path / 'fontdir.ace'
+        fonts = monobit.load(container_file)
+        self.assertEqual(len(fonts), 3)
+
     def test_recursive_dir(self):
         """Test recursively traversing directory."""
         container_file = self.font_path / 'fontdir'
