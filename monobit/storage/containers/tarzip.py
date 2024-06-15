@@ -78,6 +78,15 @@ class ZipTarBase(Archive):
 class ZipContainer(ZipTarBase):
     """Zip-file wrapper."""
 
+    def __init__(self, file, mode='r', *, password:bytes=None):
+        """
+        Access Zip archive.
+
+        password: password for encrypted archive entries. Individual per-file passwords not supported.
+        """
+        super().__init__(file, mode)
+        self._pwd = password
+
     @staticmethod
     def _create_archive(stream, mode):
         try:
@@ -106,7 +115,7 @@ class ZipContainer(ZipTarBase):
     def _open_read(self, filename):
         filename = filename.removesuffix('/')
         try:
-            return self._archive.open(filename, 'r')
+            return self._archive.open(filename, 'r', pwd=self._pwd)
         except KeyError:
             # return None for open() on directories (like tarfile does)
             if filename + '/' in self.list():
@@ -126,6 +135,10 @@ class ZipContainer(ZipTarBase):
 )
 class TarContainer(ZipTarBase):
     """Tar-file wrapper."""
+
+    def __init__(self, file, mode='r'):
+        """Access Tar archive."""
+        super().__init__(file, mode)
 
     @staticmethod
     def _create_archive(stream, mode):
