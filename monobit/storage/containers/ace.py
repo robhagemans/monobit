@@ -5,6 +5,7 @@ monobit.storage.containers.ace - ace aechive reader
 licence: https://opensource.org/licenses/MIT
 """
 
+import logging
 from pathlib import Path
 
 try:
@@ -48,12 +49,17 @@ if acefile:
             try:
                 with acefile.open(instream) as archive:
                     for entry in archive:
+                        logging.debug(
+                            "ACE file '%s' entry '%s'",
+                            instream.name, entry.filename
+                        )
                         name = entry.filename
                         if name == '.':
                             continue
                         if entry.is_dir():
                             data[name + '/'] = b''
-                        data[name] = archive.read(entry, pwd=self._pwd)
+                        else:
+                            data[name] = archive.read(entry, pwd=self._pwd)
                         for path in Path(name).parents:
                             if path != Path('.'):
                                 data[f'{path}/'] = b''
