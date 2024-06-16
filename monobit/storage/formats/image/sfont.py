@@ -89,3 +89,47 @@ if Image:
             else:
                 width = length
         return Font(glyphs)
+
+
+    @savers.register(linked=load_sfont)
+    def save_sfont(fonts, outstream, *, image_format:str='png'):
+        """
+        Save font to SFont file.
+
+        image_format: format of the image file. Default: `png`
+        """
+        if len(fonts) > 1:
+            raise FileFormatError('Can only save one font to PILfont file.')
+        font, *_ = fonts
+        font = font.equalise_horizontal()
+        # font = font.subset(codepoints=_SFONT_RANGE)
+        glyphmap = GlyphMap()
+        glyphmap.append_glyph(Glyph(), 0, 0)
+        indicator = []
+        right = 0
+        x = 0
+        for cp in _SFONT_RANGE:
+            glyph = font.get_glyph(codepoint=cp)
+            left = -glyph.left_bearing
+            indicator_length = left
+            if cp > min(_SFONT_RANGE):
+                indicator_length += right + (right+left)%2 + 1
+            x += indicator_length
+            glyphmap.append_glyph(glyph, x, 0)
+            width = glyph.advance_width
+            x += width
+            indicator.extend((_INDICATOR_RGBA,) * indicator_length)
+            indicator.extend(((0, 0, 0, 0),) * width)
+            right = -glyph.right_bearing
+        if right:
+            indicator.append(_INDICATOR_RGBA * right)
+        glyphmap.append_glyph(Glyph(), x, 0)
+        glyph_image = glyphmap.as_image(
+            ink=(255, 255, 255, 255), paper=(0, 0, 0, 0), border=(0, 0, 0, 0)
+        )
+        image = Image.new(
+            glyph_image.mode, (glyph_image.width, glyph_image.height+1)
+        )
+        image.paste(glyph_image, (0, 1))
+        image.putdata(indicator)
+        image.save(outstream, format=image_format)
