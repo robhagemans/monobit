@@ -18,7 +18,7 @@ from ..plumbing import convert_arguments
 
 def glyph_to_image(glyph, paper, ink):
     """Create image of single glyph."""
-    image_mode = _get_image_mode(paper, ink)
+    image_mode = _get_image_mode(paper, ink, paper)
     charimg = Image.new(image_mode, (glyph.width, glyph.height))
     data = glyph.as_bits(ink, paper)
     if image_mode == 'RGB':
@@ -37,8 +37,10 @@ def _get_image_mode(*colourspec):
             'paper, ink and border must be of the same type; '
             f'got {colourspec}'
         )
-    paper, *_ = colourspec
-    if isinstance(paper, int):
+    paper, ink, border = colourspec
+    if paper == border == 0 and ink == 1:
+        image_mode = '1'
+    elif isinstance(paper, int):
         image_mode = 'L'
     elif isinstance(paper, tuple) and len(paper) == 3:
         image_mode = 'RGB'
