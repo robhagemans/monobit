@@ -143,6 +143,7 @@ Supported bitmap formats
 | PSF2AMS PSFCOM        | `psfcom`   | `.com`                      |&check;|       |
 | PSF2TXT               | `psf2txt`  | `.txt`                      |&check;|       |
 | Signum! 2             | `signum`   | `.e24` `.p9` `.p24` `.l30`  |&check;|       |
+| SFont                 | `sfont`    |                             |&check;|&check;|
 | SFNT embedded bitmap  | `sfnt`     | `.otb` `.ttf` `.otf` [F] [**] |&check;|&check; (OTB) |
 | SFNT collection       | `ttcf`     | `.otc` `.ttc` [F] [**]      |&check;|&check; (OTB) |
 | vfont                 | `vfont`    |                             |&check;|&check;|

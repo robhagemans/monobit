@@ -79,7 +79,7 @@ if Image:
                         Glyph.from_vector(
                             tuple(crop.getdata()),
                             stride=crop.width, _1=background,
-                            codepoint=min(_SFONT_RANGE) + i,
+                            codepoint=min(_SFONT_RANGE) + i//2,
                             left_bearing=-left,
                             right_bearing=-right,
                         ).invert()

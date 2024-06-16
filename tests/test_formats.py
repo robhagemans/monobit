@@ -409,6 +409,14 @@ class TestFormats(BaseTester):
         self.assertEqual(len(font.glyphs), 192)
         self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
+    def test_export_sfont(self):
+        """Test exporting SFont files."""
+        file = self.temp_path / '4x6.sfont'
+        monobit.save(self.fixed4x6, file, format='sfont')
+        font, *_ = monobit.load(file, format='sfont')
+        self.assertEqual(len(font.glyphs), 93)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+
 
     # CPI
 
