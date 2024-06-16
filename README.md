@@ -135,6 +135,7 @@ Supported bitmap formats
 | Optiks PCR Font       | `pcr`      | `.pcr`                      |&check;|       |
 | PCPaint, GRASP, ChiWriter | `pcpaint` | `.set` `.fnt`  `.sft` `.pft` `.eft` ... |&check;|  |
 | PDF chart [R]         | `pdf`      | `.pdf`                      |       |&check;|
+| PILfont [P]           \ `pilfont`  | `.pil` + `.pbm`             |&check;|&check;|
 | TeX PKFONT            | `pkfont`   | `.pk`                       |&check;|       |
 | Adobe Prebuilt Format | `prebuilt` | `.bepf` `.lepf`             |&check;|       |
 | The Print Shop        | `printshop`| `.pnf`                      |&check;|       |

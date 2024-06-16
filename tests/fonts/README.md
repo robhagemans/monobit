@@ -29,7 +29,7 @@ Original sources:
   - in the public domain
 * `big1.nlq` and `big1.nl1`
   - https://archive.org/details/a8b_abbuc_353_b
-  - distributed with FONTSPLIT.MAC by John McGowan 
+  - distributed with FONTSPLIT.MAC by John McGowan
   - in the public domain  
 * `cmbx10.120pk`
   - https://www.ctan.org/pkg/cm
@@ -68,6 +68,7 @@ Original sources:
 * `4x6.mgtk` was created by Kelvin Sherlock
 * `4x6*.pcf` were created from `4x6.bdf` using `bdftopcf`
 * `4x6.ihex` were created from `4x6.raw` using `srec_cat` (part of `srecord`)
+* `4x6.pil` and `4x6.pbm` were created from `4x6.bdf` using `pillow`
 * `8x16.hex` was created from `4x6.yaff` using `bittermelon`
 * `8x16.draw` was created from `8x16.hex` using `hexdraw`
 * `8x16-*.cpi` were created from `8x16.hex` through a PSF intermediate using `monobit` and `psftools`
