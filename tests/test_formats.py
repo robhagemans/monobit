@@ -906,6 +906,21 @@ class TestFormats(BaseTester):
         self.assertEqual(len(font.glyphs), 512)
         self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
 
+    udg = 'https://www.seasip.info/Unix/PSF/Amstrad/UDG/'
+
+    def test_import_udgcom(self):
+        """Test importing UDG .COM files."""
+        file = ensure_asset(self.udg, 'udg.zip')
+        font, *_ = monobit.load(file / 'charset1.com')
+        self.assertEqual(len(font.glyphs), 256)
+
+    letafont = 'https://www.seasip.info/Unix/PSF/Amstrad/Letafont/'
+
+    def test_import_letafont(self):
+        """Test importing LETAFONT .COM files."""
+        font, *_ = monobit.load(self.font_path / '8x8-letafont.com')
+        self.assertEqual(len(font.glyphs), 256)
+
     # TeX PKFONT
 
     def test_import_pkfont(self):
