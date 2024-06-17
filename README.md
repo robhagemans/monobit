@@ -96,17 +96,15 @@ Supported bitmap formats
 | X11/Adobe BDF         | `bdf`      | `.bdf`                      |&check;|&check;|
 | Xerox Alto BITBLT     | `bitblt`   | `.strike` `.ks`             |&check;|       |
 | AngelCode BMFont [P]  | `bmfont` | `.fnt` `.xml` `.json` + images|&check;|&check;|
-| Raw binary            | `raw`      | `.fnt` `.rom` [*]           |&check;|&check;|
-| Codepage Information  | `cpi`      | `.cpi`                      |&check;|&check;|
 | Consoleet / vfontas   | `consoleet`| `.txt`                      |&check;|       |
+| Codepage Information  | `cpi`      | `.cpi`                      |&check;|&check;|
 | Daisy-Dot             | `daisy`    | `.nlq` `.nl2` `.nl3` `.nl4` |&check;|       |
 | Dashen                | `dashen`   | `.pft`                      |&check;|       |
 | DEC DRCS soft font    | `dec`      |                             |&check;|&check;|
 | DosStart!             | `dosstart` | `.dsf`                      |&check;|       |
 | EDWIN bitmap font     | `edwin`    | `.fnt`                      |&check;|&check;|
-| FZX font              | `fzx`      | `.fzx`                      |&check;|&check;|
 | Figlet font           | `figlet`   | `.flf`                      |&check;|&check;|
-| Windows or OS/2 font  | `mzfon`    | `.fon` `.exe` `.dll`        |&check;|&check; (16-bit Windows) |
+| FZX font              | `fzx`      | `.fzx`                      |&check;|&check; (16-bit Windows) |
 | FONTX2                | `fontx`    | `.fnt`                      |&check;|&check;|
 | FONTEDIT              | `fontedit` | `.com`                      |&check;|       |
 | Fontraption           | `frapt`    | `.com`                      |&check;|       |
@@ -123,26 +121,27 @@ Supported bitmap formats
 | Set of Bitmap images [P] | `imageset` | `.png` `.gif` `.bmp`     |&check;|&check;|
 | Apple IIgs font       | `iigs`     | `.fon`                      |&check;|&check;|
 | Bare codepage         | `kbd`      | `.cp`                       |&check;|&check;|
-| LISA font library     | `lisa`     | `.bin`                      |&check;|       |
 | LETAFONT loader       | `letafont` | `.com`                      |&check;|       |
+| LISA font library     | `lisa`     | `.bin`                      |&check;|       |
 | REXXCOM Font Mania    | `mania`    | `.com`                      |&check;|       |
 | MacOS font            | `mac`      | `.dfont` `.suit`            |&check;|&check;|
 | mkwinfon text format  | `mkwinfon` | `.fd`                       |&check;|       |
-| X11 Portable Compiled Format |  `pcf` | `.pcf`                   |&check;|&check;|
-| Xerox Alto PrePress   | `prepress` | `.ac`                       |&check;|       |
-| PSF2AMS PSFCOM        | `psfcom`   | `.com`                      |&check;|       |
 | Bare NFNT resource    | `nfnt`     | `.f`                        |&check;|&check;|
+| Windows or OS/2 font  | `mzfon`    | `.fon` `.exe` `.dll`        |&check;|&check;|
 | Palm OS font (v1/NFNT)| `palm`     | `.pdb`                      |&check;|       |
-| Optiks PCR Font       | `pcr`      | `.pcr`                      |&check;|       |
+| X11 Portable Compiled Format |  `pcf` | `.pcf`                   |&check;|&check;|
 | PCPaint, GRASP, ChiWriter | `pcpaint` | `.set` `.fnt`  `.sft` `.pft` `.eft` ... |&check;|  |
+| Optiks PCR Font       | `pcr`      | `.pcr`                      |&check;|       |
 | PDF chart [R]         | `pdf`      | `.pdf`                      |       |&check;|
 | PILfont [P]           \ `pilfont`  | `.pil` + `.pbm`             |&check;|&check;|
 | TeX PKFONT            | `pkfont`   | `.pk`                       |&check;|       |
 | Adobe Prebuilt Format | `prebuilt` | `.bepf` `.lepf`             |&check;|       |
+| Xerox Alto PrePress   | `prepress` | `.ac`                       |&check;|       |
 | The Print Shop        | `printshop`| `.pnf`                      |&check;|       |
 | PC Screen Font        | `psf`      | `.psf` `.psfu`              |&check;|&check; (version 2) |
 | PSF2AMS PSFCOM        | `psfcom`   | `.com`                      |&check;|       |
 | PSF2TXT               | `psf2txt`  | `.txt`                      |&check;|       |
+| Raw binary            | `raw`      | `.fnt` `.rom` [*]           |&check;|&check;|
 | Signum! 2             | `signum`   | `.e24` `.p9` `.p24` `.l30`  |&check;|       |
 | SFont                 | `sfont`    |                             |&check;|&check;|
 | SFNT embedded bitmap  | `sfnt`     | `.otb` `.ttf` `.otf` [F] [**] |&check;|&check; (OTB) |
