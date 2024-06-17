@@ -215,6 +215,49 @@ def load_psfcom(instream, first_codepoint:int=0):
     return font
 
 
+@loaders.register(
+    name='letafont',
+    magic=(
+        bytes.fromhex('210e 0111 90e2 0164 08ed b0c3 90e2 2a01'),
+    ),
+    patterns=('*.com',),
+)
+def load_letafont(instream):
+    """Load a LETAFONT font."""
+    instream.read(44)
+    font = load_bitmap(
+        instream, width=8, height=8, count=256
+    )
+    font = font.modify(
+        source_format='Amstrad/Spectrum CP/M loader (LETAFONT)',
+        encoding='amstrad-cpm-plus',
+    )
+    font = font.label()
+    return font
+
+
+@loaders.register(
+    name='udg',
+    magic=(
+        bytes.fromhex('210e 0111 2ce2 0134 08ed b0c3 2ce2 2a01'),
+    ),
+    patterns=('*.com',),
+)
+def load_letafont(instream):
+    """Load a UDG .COM font."""
+    instream.read(114)
+    font = load_bitmap(
+        instream, width=8, height=8, count=256
+    )
+    font = font.modify(
+        source_format='Amstrad/Spectrum CP/M loader (UDG)',
+        encoding='amstrad-cpm-plus',
+    )
+    font = font.label()
+    return font
+
+
+
 ###############################################################################
 # XBIN font section
 # https://web.archive.org/web/20120204063040/http://www.acid.org/info/xbin/x_spec.htm

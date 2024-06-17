@@ -123,8 +123,9 @@ Supported bitmap formats
 | Set of Bitmap images [P] | `imageset` | `.png` `.gif` `.bmp`     |&check;|&check;|
 | Apple IIgs font       | `iigs`     | `.fon`                      |&check;|&check;|
 | Bare codepage         | `kbd`      | `.cp`                       |&check;|&check;|
-| REXXCOM Font Mania    | `mania`    | `.com`                      |&check;|       |
 | LISA font library     | `lisa`     | `.bin`                      |&check;|       |
+| LETAFONT loader       | `letafont` | `.com`                      |&check;|       |
+| REXXCOM Font Mania    | `mania`    | `.com`                      |&check;|       |
 | MacOS font            | `mac`      | `.dfont` `.suit`            |&check;|&check;|
 | mkwinfon text format  | `mkwinfon` | `.fd`                       |&check;|       |
 | X11 Portable Compiled Format |  `pcf` | `.pcf`                   |&check;|&check;|
@@ -146,6 +147,7 @@ Supported bitmap formats
 | SFont                 | `sfont`    |                             |&check;|&check;|
 | SFNT embedded bitmap  | `sfnt`     | `.otb` `.ttf` `.otf` [F] [**] |&check;|&check; (OTB) |
 | SFNT collection       | `ttcf`     | `.otc` `.ttc` [F] [**]      |&check;|&check; (OTB) |
+| UDG loader            | `udg`      | `.com`                      |&check;|       |
 | vfont                 | `vfont`    |                             |&check;|&check;|
 | Bare GEOS resource    | `vlir`     |                             |&check;|       |
 | Windows FNT resource  | `win`      | `.fnt`                      |&check;|&check;|
