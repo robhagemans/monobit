@@ -6,6 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import logging
+import itertools
 from pathlib import Path
 from collections import deque
 

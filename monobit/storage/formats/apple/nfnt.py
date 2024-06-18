@@ -193,14 +193,17 @@ def extract_nfnt(data, offset, endian='big', owt_loc_high=0, font_type=None):
     HeightEntry = height_entry_struct(base)
     # font type override (for IIgs)
     if font_type is not None:
-        data = font_type + data[2:]
+        data = font_type + data[offset+2:]
+        offset = 0
     # this is not in the header documentation but is is mentioned here:
     # https://www.kreativekorp.com/swdownload/lisa/AppleLisaFontFormat.pdf
-    compressed = data[offset+1] & 0x80
+    compressed = endian == 'big' and data[offset+1] & 0x80
     if compressed:
+        logging.debug('Uncompressing NFNT resource')
         data = _uncompress_nfnt(data, offset)
         offset = 0
     fontrec = NFNTHeader.from_bytes(data, offset)
+    logging.debug('FONT/NFNT header: %s', fontrec)
     if not (fontrec.rowWords and fontrec.widMax and fontrec.fRectWidth and fontrec.fRectHeight):
         logging.debug('Empty FONT/NFNT resource.')
         return dict(glyphs=(), fontrec=fontrec)

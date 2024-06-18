@@ -311,6 +311,18 @@ class TestWrappers(BaseTester):
         )
         self.assertEqual(len(font.glyphs), 919)
 
+    gsos_umich = (
+        'https://archive.org/download/2013.06.13.www.umich.edu/'
+        '2013.06.13.www.umich.edu.zip/'
+        'www.umich.edu%2F~archive%2Fapple2%2Fgs%2Fgsos%2Ffont%2Ffonts%2F'
+    )
+
+    def test_import_binscii(self):
+        """Test importing BinSCII files."""
+        file = ensure_asset(self.gsos_umich, 'programmer.8.bsc')
+        font, *_ = monobit.load(file, format='iigs')
+        self.assertEqual(len(font.glyphs), 224)
+
     def _test_export_textbin(self, suffix, container_format=''):
         file = self.temp_path / f'4x6.{suffix}'
         monobit.save(

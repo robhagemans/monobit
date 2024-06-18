@@ -468,7 +468,7 @@ class TestFormats(BaseTester):
         self.assertEqual(len(font.glyphs), 256)
         self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed8x16_A)
 
-    def test_export_cp(self):
+    def test_export_cp_drfont(self):
         """Test exporting bare DRFONT codepage."""
         fnt_file = self.temp_path / '8x16.cp'
         font = self.fixed8x16.modify(encoding='cp437')
