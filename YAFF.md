@@ -14,8 +14,8 @@
     .@@......@@..........................@@.
 
 
-The `yaff` font file format
-===========================
+The `yaff` font file format, version 1.0
+========================================
 
 Design aims
 -----------
@@ -46,6 +46,7 @@ In the spirit of human-friendliness, a short example is probably more informativ
 
     # the file starts with global properties
 
+    yaff: 1.0
     name: Test Roman 8px
     family: Test
     notice:
@@ -276,6 +277,13 @@ Recognised properties
 ---------------------
 
 The following are font properties `monobit` is aware of. Other properties may be defined as and when needed.
+To avoid clashing with future recognised properties, user-defined properties
+should either contain a `.` or start with `_`.
+
+##### `yaff` signature
+
+A property `yaff` may be given as the first property of the file. Its value
+should be the version of the `yaff` specification that the file adheres to.
 
 ##### Metrics
 
@@ -431,7 +439,8 @@ _Encoding parameters_ affect how text is converted into glyphs.
 ##### Deprecated properties
 
 The following properties are recognised for backward compatibility, but
-should not be used in new files:
+should not be used in new files. They are not allowed if the `yaff` version
+targeted is 1.0 or greater.
 
 Per-glyph:
 - `offset` (_x_ _y_ pair): equal to (`left-bearing`, `shift-up`).

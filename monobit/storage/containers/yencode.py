@@ -34,7 +34,7 @@ try:
 except ImportError:
     yenc = None
 
-from ..magic import FileFormatError
+from ..magic import FileFormatError, Sentinel
 from ..base import containers
 from ...base import Props
 from .containers import FlatFilterContainer
@@ -44,7 +44,7 @@ if yenc:
     @containers.register(
         name='yenc',
         patterns=('*.yenc',),
-        magic=(b'=ybegin ',),
+        magic=(Sentinel(b'=ybegin '),),
         # last line starts with '=yend '
     )
     class YEncodeContainer(FlatFilterContainer):

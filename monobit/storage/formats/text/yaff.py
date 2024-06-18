@@ -14,6 +14,7 @@ from functools import cached_property
 
 from monobit.storage import loaders, savers
 from monobit.storage import FileFormatError
+from monobit.storage.magic import Sentinel
 from monobit.core import Font, FontProperties, Glyph, Raster, Label, strip_matching
 from monobit.base import Props
 from monobit.base import Coord, passthrough
@@ -27,8 +28,12 @@ from .draw import format_comment
 
 @loaders.register(
     name='yaff',
-    # maybe, if multi-section
-    magic=(b'---',),
+    magic=(
+        # maybe, if multi-section
+        b'---',
+        # maybe
+        Sentinel(b'yaff:'),
+    ),
     patterns=('*.yaff', '*.yaffs',),
 )
 def load_yaff(instream, allow_empty:bool=False):
@@ -155,7 +160,10 @@ def _read_yaff(text_stream):
         elif isinstance(block, (YaffProperty, YaffPropertyOrGlyph)):
             key = block.get_key()
             value = block.get_value()
-            _set_property(font_props, key, value)
+            if key == 'yaff':
+                logging.debug("yaff signature found, version %s", value)
+            else:
+                _set_property(font_props, key, value)
             font_prop_comms[key] = '\n\n'.join(current_comment)
             current_comment = []
         if not glyphs and not font_props:

@@ -36,14 +36,14 @@ import binascii
 from io import BytesIO
 from pathlib import Path
 
-from ..magic import FileFormatError
+from ..magic import FileFormatError, Sentinel
 from ..base import containers
 from .containers import FlatFilterContainer
 
 
 @containers.register(
     name='uuencode',
-    magic=(b'begin ',),
+    magic=(Sentinel(b'begin '),),
     # ends with 'end\n'
 )
 class UUEncodeContainer(FlatFilterContainer):

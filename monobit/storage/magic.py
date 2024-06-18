@@ -157,7 +157,9 @@ class MagicRegistry:
             self._names[converter.format] = converter
             ## magic signatures
             for sequence in converter.magic:
-                self._magic.append((Magic(sequence), converter))
+                if isinstance(sequence, bytes):
+                    sequence = Magic(sequence)
+                self._magic.append((sequence, converter))
             # sort the magic registry long to short to manage conflicts
             self._magic = list(sorted(
                     self._magic,
@@ -215,7 +217,7 @@ class MagicRegistry:
 
 
 ###############################################################################
-# file format matchers
+# file signature matchers
 
 class Magic:
     """Match file contents against bytes mask."""
@@ -225,7 +227,7 @@ class Magic:
         if isinstance(value, Magic):
             self._mask = tuple(
                 (_item[0] + offset, _item[1])
-                for _item in  value._mask
+                for _item in value._mask
             )
         elif not isinstance(value, bytes):
             raise TypeError(
@@ -271,6 +273,31 @@ class Magic:
         """Represent offset in concatenated mask."""
         return cls(value=b'', offset=offset)
 
+
+class Sentinel:
+    """Match file contents against start-of-line sentinel."""
+
+    def __init__(self, value, length=256):
+        self._sentinel = value
+        self._peek_length = length
+
+    def __len__(self):
+        return len(self._sentinel)
+
+    def fits(self, instream):
+        """Binary stream has the sentinel."""
+        if instream.mode == 'w':
+            return False
+        buffer = instream.peek(self._peek_length)
+        return (
+            buffer.startswith(self._sentinel)
+            or b'\n' + self._sentinel in buffer
+            or b'\r' + self._sentinel in buffer
+        )
+
+
+###############################################################################
+# filename pattern matchers
 
 class Pattern:
     """Match filename against pattern."""
