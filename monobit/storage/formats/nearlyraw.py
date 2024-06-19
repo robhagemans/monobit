@@ -435,7 +435,7 @@ def load_writeon(instream):
 
 @savers.register(linked=load_writeon)
 def save_writeon(fonts, outstream):
-    """Load a Write On! font."""
+    """Save a Write On! font."""
     font, *extra = fonts
     if extra:
         raise ValueError('Can only save a single font to a Write On! file')

@@ -174,7 +174,7 @@ class Codepoint(bytes, Label):
 
     def __str__(self):
         """Convert codepoint label to str for yaff."""
-        return '0x' + self.hex()
+        return '0x' + self.hex() if self else ''
 
     def __lt__(self, other):
         """Order like ints."""
