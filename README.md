@@ -105,7 +105,7 @@ Supported bitmap formats
 | Dr. Halo / Dr. Genius | `drhalo`   | `.fon`                      |&check;|       |
 | EDWIN bitmap font     | `edwin`    | `.fnt`                      |&check;|&check;|
 | Figlet font           | `figlet`   | `.flf`                      |&check;|&check;|
-| FZX font              | `fzx`      | `.fzx`                      |&check;|&check; (16-bit Windows) |
+| FZX font              | `fzx`      | `.fzx`                      |&check;|&check;|
 | FONTX2                | `fontx`    | `.fnt`                      |&check;|&check;|
 | FONTEDIT              | `fontedit` | `.com`                      |&check;|       |
 | Fontraption           | `frapt`    | `.com`                      |&check;|       |
@@ -128,7 +128,7 @@ Supported bitmap formats
 | MacOS font            | `mac`      | `.dfont` `.suit`            |&check;|&check;|
 | mkwinfon text format  | `mkwinfon` | `.fd`                       |&check;|       |
 | Bare NFNT resource    | `nfnt`     | `.f`                        |&check;|&check;|
-| Windows or OS/2 font  | `mzfon`    | `.fon` `.exe` `.dll`        |&check;|&check;|
+| Windows or OS/2 font  | `mzfon`    | `.fon` `.exe` `.dll`        |&check;|&check; (16-bit Windows)|
 | Palm OS font (v1/NFNT)| `palm`     | `.pdb`                      |&check;|       |
 | X11 Portable Compiled Format |  `pcf` | `.pcf`                   |&check;|&check;|
 | PCPaint, GRASP, ChiWriter | `pcpaint` | `.set` `.fnt`  `.sft` `.pft` `.eft` ... |&check;|  |
