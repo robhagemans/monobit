@@ -151,6 +151,7 @@ Supported bitmap formats
 | vfont                 | `vfont`    |                             |&check;|&check;|
 | Bare GEOS resource    | `vlir`     |                             |&check;|       |
 | Windows FNT resource  | `win`      | `.fnt`                      |&check;|&check;|
+| Hercules Write On!    | `writeon`  | `.wof`                      |&check;|&check;|
 | XBIN font section     | `xbin`     | `.xb`                       |&check;|&check;|
 | monobit yaff          | `yaff`     | `.yaff`                     |&check;|&check;|
 

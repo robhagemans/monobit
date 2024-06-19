@@ -871,6 +871,17 @@ class TestFormats(BaseTester):
         font, *_ = monobit.load(file)
         self.assertEqual(len(font.glyphs), 256)
 
+    # Write On!
+
+    def test_export_writeon(self):
+        """Test exporting Wriite On! files."""
+        fnt_file = self.temp_path / '8x16.wof'
+        monobit.save(self.fixed4x6, fnt_file)
+        font, *_ = monobit.load(fnt_file)
+        self.assertEqual(len(font.glyphs), 128)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+
+
     # COM loaders
 
     def test_import_frapt(self):
