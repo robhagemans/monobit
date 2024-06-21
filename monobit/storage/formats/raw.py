@@ -18,19 +18,22 @@ from monobit.base import Coord, NOT_SET
 
 # patterns
 
-# CHET .814 - http://fileformats.archiveteam.org/wiki/CHET_font
+# CHET .814 .88 .914 - http://fileformats.archiveteam.org/wiki/CHET_font
 
-# .udg: https://www.seasip.info/Unix/PSF/Amstrad/UDG/index.html
+# .udg: 8x8 raw https://www.seasip.info/Unix/PSF/Amstrad/UDG/index.html
+
+
 
 # https://www.seasip.info/Unix/PSF/Amstrad/Genecar/index.html
 # GENECAR included three fonts in a format it calls .CAR. This is basically a
 # raw dump of the font, but using a 16×16 character cell rather than the usual 16×8.
 
-# height in suffix
-_FXX = Regex(r'.+\.f\d\d')
+# height in suffix, one or two digits after f or 8 or 9
+_FXX = Regex(r'.+\.[f89]\d\d?')
 
 # raw formats we can't easily recognise from suffix or magic
 
+# PRINTIT .fnt -> 8x16x192, 3072 bytes https://www.seasip.info/Unix/PSF/Amstrad/Printit/index.html
 # degas elite .fnt, 8x16x128, + flags, 2050 bytes https://temlib.org/AtariForumWiki/index.php/DEGAS_Elite_Font_file_format
 # warp 9 .fnt, 8x16x256 + flags, 4098 bytes https://temlib.org/AtariForumWiki/index.php/Warp9_Font_file_format
 # however not all have the extra word
@@ -42,7 +45,7 @@ _FXX = Regex(r'.+\.f\d\d')
 
 @loaders.register(
     name='raw',
-    patterns=('*.raw', '*.814', '*.car', '*.64c', '*.udg', '*.ch8', _FXX),
+    patterns=('*.raw', '*.car', '*.64c', '*.udg', '*.ch8', _FXX),
     template='{name}.f{cell_size.y:02}',
 )
 def load_binary(
@@ -68,14 +71,12 @@ def load_binary(
     """
     # determine cell size from filename, if not given
     if cell is NOT_SET:
-        if Glob('*.814').fits(instream):
-            width, height = 8, 14
-        elif Glob('*.car').fits(instream):
+        if Glob('*.car').fits(instream):
             width, height = 16, 16
         elif any(Glob(_pat).fits(instream) for _pat in ('*.64c', '*.udg', '*.ch8')):
             width, height = 8, 8
         elif _FXX.fits(instream):
-            # raw 8xN format with height in suffix
+            # raw 8xN or 9xN (encoded as 8xN) format with height in suffix
             width = 8
             suffix = PurePath(instream.name).suffix
             try:
