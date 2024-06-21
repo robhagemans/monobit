@@ -152,6 +152,7 @@ Supported bitmap formats
 | Bare GEOS resource    | `vlir`     |                             |&check;|       |
 | Windows FNT resource  | `win`      | `.fnt`                      |&check;|&check;|
 | Hercules Write On!    | `writeon`  | `.wof`                      |&check;|&check;|
+| Wyse-60 soft font     | `wyse`     |                             |&check;|       |
 | XBIN font section     | `xbin`     | `.xb`                       |&check;|&check;|
 | monobit yaff          | `yaff`     | `.yaff`                     |&check;|&check;|
 

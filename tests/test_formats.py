@@ -874,11 +874,28 @@ class TestFormats(BaseTester):
     # Write On!
 
     def test_export_writeon(self):
-        """Test exporting Wriite On! files."""
+        """Test exporting Write On! files."""
         fnt_file = self.temp_path / '8x16.wof'
         monobit.save(self.fixed4x6, fnt_file)
         font, *_ = monobit.load(fnt_file)
         self.assertEqual(len(font.glyphs), 128)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+
+    # Wyse
+
+    def test_import_wyse(self):
+        """Test importing Wyse-60 files."""
+        font, *_ = monobit.load(self.font_path / '4x6.wyse', format='wyse')
+        # only encoding codepoints < 0x0400 (4 banks)
+        self.assertEqual(len(font.glyphs), 512)
+
+    def test_export_wyse(self):
+        """Test exporting Wyse-60 files."""
+        fnt_file = self.temp_path / '8x16.wyse'
+        monobit.save(self.fixed4x6, fnt_file, format='wyse')
+        font, *_ = monobit.load(fnt_file)
+        # only encoding codepoints < 0x0400 (4 banks)
+        self.assertEqual(len(font.glyphs), 105)
         self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
 
