@@ -22,8 +22,6 @@ from monobit.base import Coord, NOT_SET
 
 # .udg: 8x8 raw https://www.seasip.info/Unix/PSF/Amstrad/UDG/index.html
 
-
-
 # https://www.seasip.info/Unix/PSF/Amstrad/Genecar/index.html
 # GENECAR included three fonts in a format it calls .CAR. This is basically a
 # raw dump of the font, but using a 16×16 character cell rather than the usual 16×8.
@@ -70,11 +68,14 @@ def load_binary(
     invert: use 0-bits as ink, 1-bits as paper (default: False)
     """
     # determine cell size from filename, if not given
+    encoding = None
     if cell is NOT_SET:
         if Glob('*.car').fits(instream):
             width, height = 16, 16
-        elif any(Glob(_pat).fits(instream) for _pat in ('*.64c', '*.udg', '*.ch8')):
+            encoding = 'amstread-cpm-plus'
+        if Glob('*.udg').fits(instream):
             width, height = 8, 8
+            encoding = 'amstread-cpm-plus'
         elif _FXX.fits(instream):
             # raw 8xN or 9xN (encoded as 8xN) format with height in suffix
             width = 8
@@ -84,16 +85,20 @@ def load_binary(
             except ValueError:
                 height = 8
         else:
+            # e.g. *.ch8
             width, height = 8, 8
     else:
         width, height = cell
     # get through the offset
     instream.read(offset)
-    return load_bitmap(
+    font = load_bitmap(
         instream, width, height, count, padding, align,
         strike_count, strike_bytes, first_codepoint,
         byte_order=byte_order, invert=invert
     )
+    if encoding:
+        font = font.label(char_from=encoding)
+    return font
 
 @savers.register(linked=load_binary)
 def save_binary(
