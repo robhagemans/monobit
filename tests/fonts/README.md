@@ -69,7 +69,7 @@ Original sources:
 * `4x6*.pcf` were created from `4x6.bdf` using `bdftopcf`
 * `4x6.ihex` were created from `4x6.raw` using `srec_cat` (part of `srecord`)
 * `4x6.pil` and `4x6.pbm` were created from `4x6.bdf` using `pillow`
-* `4x6.wyse` was created from `4x6.psf` using `psftools`
+* `4x6.wyse` and `4x6.wof` were created from `4x6.psf` using `psftools`
 * `8x16.hex` was created from `4x6.yaff` using `bittermelon`
 * `8x16.draw` was created from `8x16.hex` using `hexdraw`
 * `8x16-*.cpi` were created from `8x16.hex` through a PSF intermediate using `monobit` and `psftools`

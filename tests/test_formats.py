@@ -873,6 +873,11 @@ class TestFormats(BaseTester):
 
     # Write On!
 
+    def test_import_writeon(self):
+        """Test importing Write On! files."""
+        font, *_ = monobit.load(self.font_path / '4x6.wof')
+        self.assertEqual(len(font.glyphs), 919)
+
     def test_export_writeon(self):
         """Test exporting Write On! files."""
         fnt_file = self.temp_path / '8x16.wof'
