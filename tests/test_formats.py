@@ -892,9 +892,11 @@ class TestFormats(BaseTester):
     def test_export_wyse(self):
         """Test exporting Wyse-60 files."""
         fnt_file = self.temp_path / '8x16.wyse'
-        monobit.save(self.fixed4x6, fnt_file, format='wyse')
-        font, *_ = monobit.load(fnt_file)
         # only encoding codepoints < 0x0400 (4 banks)
+        # explicitly remove to avoid noisy warnings
+        font = self.fixed4x6.subset(codepoints=range(0x400))
+        monobit.save(font, fnt_file, format='wyse')
+        font, *_ = monobit.load(fnt_file)
         self.assertEqual(len(font.glyphs), 105)
         self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
