@@ -856,13 +856,12 @@ class Font(HasProps):
     def get_glyph(
             self, label=None, *,
             char=None, codepoint=None, tag=None,
-            missing='raise', use_encoding=True
+            missing='raise',
         ):
         """Get glyph by char, codepoint or tag; default if not present."""
         try:
             index = self.get_index(
                 label, tag=tag, char=char, codepoint=codepoint,
-                use_encoding=use_encoding,
             )
             return self.glyphs[index]
         except KeyError:
@@ -888,7 +887,7 @@ class Font(HasProps):
 
     def get_index(
             self, label=None, *, char=None, codepoint=None, tag=None,
-            use_encoding=True, raise_missing=True,
+            raise_missing=True,
         ):
         """Get index for given label, if defined."""
         if 1 != len([
@@ -1086,7 +1085,7 @@ class Font(HasProps):
             (Tag(_t) for _t in tags),
         )
         indices = set(
-            self.get_index(_label, raise_missing=False, use_encoding=True)
+            self.get_index(_label, raise_missing=False)
             for _label in labels
         )
         glyphs = (self._glyphs[_idx] for _idx in sorted(indices) if _idx > -1)
@@ -1123,7 +1122,7 @@ class Font(HasProps):
             tags = (Tag(_t) for _t in tags)
         labels = chain(labels, chars, codepoints, tags)
         labelsglyphs = (
-            (_label, self.get_glyph(_label, missing=missing, use_encoding=True))
+            (_label, self.get_glyph(_label, missing=missing))
             for _label in labels
         )
         # if missing=None, drop missing glyphs
