@@ -18,12 +18,12 @@ from ..plumbing import convert_arguments
 
 def glyph_to_image(glyph, paper, ink):
     """Create image of single glyph."""
-    image_mode = _get_image_mode(paper, ink)
+    image_mode = _get_image_mode(paper, ink, paper)
     charimg = Image.new(image_mode, (glyph.width, glyph.height))
     data = glyph.as_bits(ink, paper)
-    if image_mode == 'RGB':
-        # itertools grouper idiom, split in groups of 3 bytes
-        iterators = [iter(data)] * 3
+    if image_mode in ('RGB', 'RGBA'):
+        # itertools grouper idiom, split in groups of 3 or 4 bytes
+        iterators = [iter(data)] * len(image_mode)
         data = tuple(zip(*iterators, strict=True))
     charimg.putdata(data)
     return charimg
@@ -37,13 +37,17 @@ def _get_image_mode(*colourspec):
             'paper, ink and border must be of the same type; '
             f'got {colourspec}'
         )
-    paper, *_ = colourspec
-    if isinstance(paper, int):
+    paper, ink, border = colourspec
+    if paper == border == 0 and ink == 1:
+        image_mode = '1'
+    elif isinstance(paper, int):
         image_mode = 'L'
     elif isinstance(paper, tuple) and len(paper) == 3:
         image_mode = 'RGB'
+    elif isinstance(paper, tuple) and len(paper) == 4:
+        image_mode = 'RGBA'
     else:
-        raise TypeError('paper, ink and border must be either int or RGB tuple')
+        raise TypeError('paper, ink and border must be either int or RGB(A) tuple')
     return image_mode
 
 

@@ -29,7 +29,7 @@ Original sources:
   - in the public domain
 * `big1.nlq` and `big1.nl1`
   - https://archive.org/details/a8b_abbuc_353_b
-  - distributed with FONTSPLIT.MAC by John McGowan 
+  - distributed with FONTSPLIT.MAC by John McGowan
   - in the public domain  
 * `cmbx10.120pk`
   - https://www.ctan.org/pkg/cm
@@ -61,13 +61,15 @@ Original sources:
 * `4x6.yaff`, `4x6.fzx` were created from `4x6.bdf` using `monobit`
 * `4x6.c`, `4x6.c`, `4x6.iigs`, `4x6.sfp` were created from `4x6.yaff` using `monobit`
 * `4x6.dfont` and `4x6.bin` were created from `4x6.bdf` using `ufond` (part of `fondu`)
-* `8x8.bbc`, `4x6.vfont*`, `4x6-ams.com*`, `4x6.txt` were created from `4x6.psf` using `psftools` v1.1.1
+* `8x8.bbc`, `4x6.vfont*`, `4x6-ams.com`, `4x6.txt` were created from `4x6.psf` using `psftools` v1.1.1
 * `4x6.ttf` was created from `4x6.bdf` using `fonttosfnt`
 * `4x6.otb`, `4x6.sfnt.dfont` and `4x6.ffms.ttf` were created from `4x6.bdf` using FontForge
 * `4x6.clt` was created from `4x6.bdf` using `vfontas`
 * `4x6.mgtk` was created by Kelvin Sherlock
 * `4x6*.pcf` were created from `4x6.bdf` using `bdftopcf`
 * `4x6.ihex` were created from `4x6.raw` using `srec_cat` (part of `srecord`)
+* `4x6.pil` and `4x6.pbm` were created from `4x6.bdf` using `pillow`
+* `4x6.wyse` and `4x6.wof` were created from `4x6.psf` using `psftools`
 * `8x16.hex` was created from `4x6.yaff` using `bittermelon`
 * `8x16.draw` was created from `8x16.hex` using `hexdraw`
 * `8x16-*.cpi` were created from `8x16.hex` through a PSF intermediate using `monobit` and `psftools`
@@ -76,6 +78,7 @@ Original sources:
 * `8X16.XB`, `8X16-FRA.COM` and `8X16-TSR.COM` were created from `8x16.f16` using Fontraption
 * `8X16-FE.COM` was created from `8X16-FRA.COM` using `FONTEDIT`
 * `8X16-REX.COM` was created from `8X16-FRA.COM` using Font Mania 2.2
+* `8x8-letafont.com` was created from `8x16.f16` and a stub Letafont file
 
 
 ### Derivatives of `6x13`

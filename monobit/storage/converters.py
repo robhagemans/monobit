@@ -184,15 +184,6 @@ def load_all(root_location, *, format='', **kwargs):
     return packs
 
 
-def loop_load(location, load_func):
-    """Loop over per-glyph files in container."""
-    glyphs = []
-    for name in sorted(location.iter_sub('')):
-        with location.open(name, mode='r') as stream:
-            glyphs.append(load_func(stream))
-    return glyphs
-
-
 ##############################################################################
 # saving
 

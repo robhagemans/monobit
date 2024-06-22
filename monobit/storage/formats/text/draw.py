@@ -243,7 +243,7 @@ def _convert_mkwinfon(props, glyphs, comments):
 
 from pathlib import Path
 from monobit.storage.containers.directory import Directory
-from monobit.storage.converters import loop_load
+from ..image.image import loop_load
 
 @container_loaders.register(name='consoleet')
 def load_clt(location):

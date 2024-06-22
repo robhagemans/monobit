@@ -89,6 +89,7 @@ Supported bitmap formats
 
 | Format                | Short Name | Typical Extension           | Read  | Write |
 |-----------------------|------------|-----------------------------|-------|-------|
+| 64C                   | `64c`      | `.64c`                      |&check;|&check;|
 | Xerox Alto CONVERT    | `alto`     | `.al`                       |&check;|       |
 | Amiga Font Contents   | `amiga-fc` | `.font`                     |&check;|       |
 | Amiga font            | `amiga`    |                             |&check;|       |
@@ -96,17 +97,16 @@ Supported bitmap formats
 | X11/Adobe BDF         | `bdf`      | `.bdf`                      |&check;|&check;|
 | Xerox Alto BITBLT     | `bitblt`   | `.strike` `.ks`             |&check;|       |
 | AngelCode BMFont [P]  | `bmfont` | `.fnt` `.xml` `.json` + images|&check;|&check;|
-| Raw binary            | `raw`      | `.fnt` `.rom` [*]           |&check;|&check;|
-| Codepage Information  | `cpi`      | `.cpi`                      |&check;|&check;|
 | Consoleet / vfontas   | `consoleet`| `.txt`                      |&check;|       |
+| Codepage Information  | `cpi`      | `.cpi`                      |&check;|&check;|
 | Daisy-Dot             | `daisy`    | `.nlq` `.nl2` `.nl3` `.nl4` |&check;|       |
 | Dashen                | `dashen`   | `.pft`                      |&check;|       |
 | DEC DRCS soft font    | `dec`      |                             |&check;|&check;|
 | DosStart!             | `dosstart` | `.dsf`                      |&check;|       |
+| Dr. Halo / Dr. Genius | `drhalo`   | `.fon`                      |&check;|       |
 | EDWIN bitmap font     | `edwin`    | `.fnt`                      |&check;|&check;|
-| FZX font              | `fzx`      | `.fzx`                      |&check;|&check;|
 | Figlet font           | `figlet`   | `.flf`                      |&check;|&check;|
-| Windows or OS/2 font  | `mzfon`    | `.fon` `.exe` `.dll`        |&check;|&check; (16-bit Windows) |
+| FZX font              | `fzx`      | `.fzx`                      |&check;|&check;|
 | FONTX2                | `fontx`    | `.fnt`                      |&check;|&check;|
 | FONTEDIT              | `fontedit` | `.com`                      |&check;|       |
 | Fontraption           | `frapt`    | `.com`                      |&check;|       |
@@ -123,30 +123,37 @@ Supported bitmap formats
 | Set of Bitmap images [P] | `imageset` | `.png` `.gif` `.bmp`     |&check;|&check;|
 | Apple IIgs font       | `iigs`     | `.fon`                      |&check;|&check;|
 | Bare codepage         | `kbd`      | `.cp`                       |&check;|&check;|
-| REXXCOM Font Mania    | `mania`    | `.com`                      |&check;|       |
+| LETAFONT loader       | `letafont` | `.com`                      |&check;|       |
 | LISA font library     | `lisa`     | `.bin`                      |&check;|       |
+| REXXCOM Font Mania    | `mania`    | `.com`                      |&check;|       |
 | MacOS font            | `mac`      | `.dfont` `.suit`            |&check;|&check;|
 | mkwinfon text format  | `mkwinfon` | `.fd`                       |&check;|       |
-| X11 Portable Compiled Format |  `pcf` | `.pcf`                   |&check;|&check;|
-| Xerox Alto PrePress   | `prepress` | `.ac`                       |&check;|       |
-| PSF2AMS PSFCOM        | `psfcom`   | `.com`                      |&check;|       |
 | Bare NFNT resource    | `nfnt`     | `.f`                        |&check;|&check;|
+| Windows or OS/2 font  | `mzfon`    | `.fon` `.exe` `.dll`        |&check;|&check; (16-bit Windows)|
 | Palm OS font (v1/NFNT)| `palm`     | `.pdb`                      |&check;|       |
-| Optiks PCR Font       | `pcr`      | `.pcr`                      |&check;|       |
+| X11 Portable Compiled Format |  `pcf` | `.pcf`                   |&check;|&check;|
 | PCPaint, GRASP, ChiWriter | `pcpaint` | `.set` `.fnt`  `.sft` `.pft` `.eft` ... |&check;|  |
+| Optiks PCR Font       | `pcr`      | `.pcr`                      |&check;|       |
 | PDF chart [R]         | `pdf`      | `.pdf`                      |       |&check;|
+| PILfont [P]           \ `pilfont`  | `.pil` + `.pbm`             |&check;|&check;|
 | TeX PKFONT            | `pkfont`   | `.pk`                       |&check;|       |
 | Adobe Prebuilt Format | `prebuilt` | `.bepf` `.lepf`             |&check;|       |
+| Xerox Alto PrePress   | `prepress` | `.ac`                       |&check;|       |
 | The Print Shop        | `printshop`| `.pnf`                      |&check;|       |
 | PC Screen Font        | `psf`      | `.psf` `.psfu`              |&check;|&check; (version 2) |
 | PSF2AMS PSFCOM        | `psfcom`   | `.com`                      |&check;|       |
 | PSF2TXT               | `psf2txt`  | `.txt`                      |&check;|       |
+| Raw binary            | `raw`      | `.fnt` `.rom` [*]           |&check;|&check;|
 | Signum! 2             | `signum`   | `.e24` `.p9` `.p24` `.l30`  |&check;|       |
+| SFont                 | `sfont`    |                             |&check;|&check;|
 | SFNT embedded bitmap  | `sfnt`     | `.otb` `.ttf` `.otf` [F] [**] |&check;|&check; (OTB) |
 | SFNT collection       | `ttcf`     | `.otc` `.ttc` [F] [**]      |&check;|&check; (OTB) |
+| UDG loader            | `udg`      | `.com`                      |&check;|       |
 | vfont                 | `vfont`    |                             |&check;|&check;|
 | Bare GEOS resource    | `vlir`     |                             |&check;|       |
 | Windows FNT resource  | `win`      | `.fnt`                      |&check;|&check;|
+| Hercules Write On!    | `writeon`  | `.wof`                      |&check;|&check;|
+| Wyse-60 soft font     | `wyse`     |                             |&check;|       |
 | XBIN font section     | `xbin`     | `.xb`                       |&check;|&check;|
 | monobit yaff          | `yaff`     | `.yaff`                     |&check;|&check;|
 
@@ -161,8 +168,8 @@ Supported bitmap formats
 
 This is the most common format used on old platforms, often with the unhelpful suffix `.fnt`. As there is no metadata, it's up to you to specify the character-cell size. The most common, and default, size is 8x8 (CGA and many 8-bit platforms), followed by 8x16 (VGA) and 8x14 (EGA).
 
-- 8x8 raw files are also known as `.f08`, `.ch8`, `.64c`, `.chr`, `.udg`, and many others.
-- 8x14 raw files are also known as `.f14` or CHET `.814`.
+- 8x8 raw files are also known as `.f08`, `.ch8`, `.88`, `.chr`, `.udg`, and many others.
+- 8x14 raw files are also known as `.f14` or `.814`.
 - 8x16 raw files are also known as `.f16`, Warp 9 `.fnt` or Degas Elite `.fnt`
 - Genecar `.car` files are 16x16 raw files.
 - Harlekin III `.fnt` files are raw binaries with a 4096x8 pixel bitmap strike hosting 512 8x8 glyphs side by side. Extract with `-strike-width=512`.

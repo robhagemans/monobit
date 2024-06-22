@@ -20,7 +20,6 @@ from monobit.storage.base import (
     loaders, savers, container_loaders, container_savers
 )
 from monobit.storage import FileFormatError
-from monobit.storage.converters import loop_load
 from monobit.core import Font, Glyph, Codepoint
 from monobit.render import (
     prepare_for_grid_map, grid_map, grid_traverser, glyph_to_image
@@ -38,6 +37,15 @@ DEFAULT_IMAGE_FORMAT = 'png'
 # brightest         use brightest colour, by sum of RGB values
 # darkest           use darkest colour, by sum of RGB values
 # top-left          use colour of top-left pixel in first cell
+
+
+def loop_load(location, load_func):
+    """Loop over per-glyph files in container."""
+    glyphs = []
+    for name in sorted(location.iter_sub('')):
+        with location.open(name, mode='r') as stream:
+            glyphs.append(load_func(stream))
+    return glyphs
 
 
 if Image:

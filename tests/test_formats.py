@@ -396,6 +396,27 @@ class TestFormats(BaseTester):
         self.assertEqual(len(font.glyphs), 919)
         self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
+    def test_import_pilfont(self):
+        """Test importing PILfont files."""
+        font, *_ = monobit.load(self.font_path / '4x6.pil')
+        self.assertEqual(len(font.glyphs), 192)
+
+    def test_export_pilfont(self):
+        """Test exporting PILfont files."""
+        file = self.temp_path / '4x6.pil'
+        monobit.save(self.fixed4x6, file)
+        font, *_ = monobit.load(file)
+        self.assertEqual(len(font.glyphs), 192)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+
+    def test_export_sfont(self):
+        """Test exporting SFont files."""
+        file = self.temp_path / '4x6.sfont'
+        monobit.save(self.fixed4x6, file, format='sfont')
+        font, *_ = monobit.load(file, format='sfont')
+        self.assertEqual(len(font.glyphs), 93)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+
 
     # CPI
 
@@ -850,6 +871,50 @@ class TestFormats(BaseTester):
         font, *_ = monobit.load(file)
         self.assertEqual(len(font.glyphs), 256)
 
+    # Write On!
+
+    def test_import_writeon(self):
+        """Test importing Write On! files."""
+        font, *_ = monobit.load(self.font_path / '4x6.wof')
+        self.assertEqual(len(font.glyphs), 919)
+
+    def test_export_writeon(self):
+        """Test exporting Write On! files."""
+        fnt_file = self.temp_path / '8x16.wof'
+        monobit.save(self.fixed4x6, fnt_file)
+        font, *_ = monobit.load(fnt_file)
+        self.assertEqual(len(font.glyphs), 128)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+
+    # Wyse
+
+    def test_import_wyse(self):
+        """Test importing Wyse-60 files."""
+        font, *_ = monobit.load(self.font_path / '4x6.wyse', format='wyse')
+        # only encoding codepoints < 0x0400 (4 banks)
+        self.assertEqual(len(font.glyphs), 512)
+
+    def test_export_wyse(self):
+        """Test exporting Wyse-60 files."""
+        fnt_file = self.temp_path / '8x16.wyse'
+        # only encoding codepoints < 0x0400 (4 banks)
+        # explicitly remove to avoid noisy warnings
+        font = self.fixed4x6.subset(codepoints=range(0x400))
+        monobit.save(font, fnt_file, format='wyse')
+        font, *_ = monobit.load(fnt_file)
+        self.assertEqual(len(font.glyphs), 105)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+
+    # 64c
+
+    def test_export_64c(self):
+        """Test exporting 64c files."""
+        fnt_file = self.temp_path / '8x8.64c'
+        font = self.fixed4x6.expand(right=4, bottom=2, adjust_metrics=False)
+        monobit.save(font, fnt_file)
+        font, *_ = monobit.load(fnt_file)
+        self.assertEqual(len(font.glyphs), 919)
+
     # COM loaders
 
     def test_import_frapt(self):
@@ -884,6 +949,21 @@ class TestFormats(BaseTester):
         )
         self.assertEqual(len(font.glyphs), 512)
         self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
+
+    udg = 'https://www.seasip.info/Unix/PSF/Amstrad/UDG/'
+
+    def test_import_udgcom(self):
+        """Test importing UDG .COM files."""
+        file = ensure_asset(self.udg, 'udg.zip')
+        font, *_ = monobit.load(file / 'charset1.com')
+        self.assertEqual(len(font.glyphs), 256)
+
+    letafont = 'https://www.seasip.info/Unix/PSF/Amstrad/Letafont/'
+
+    def test_import_letafont(self):
+        """Test importing LETAFONT .COM files."""
+        font, *_ = monobit.load(self.font_path / '8x8-letafont.com')
+        self.assertEqual(len(font.glyphs), 256)
 
     # TeX PKFONT
 
