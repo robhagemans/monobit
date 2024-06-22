@@ -43,7 +43,7 @@ _FXX = Regex(r'.+\.[f89]\d\d?')
 
 @loaders.register(
     name='raw',
-    patterns=('*.raw', '*.car', '*.64c', '*.udg', '*.ch8', _FXX),
+    patterns=('*.raw', '*.car', '*.udg', '*.ch8', _FXX),
     template='{name}.f{cell_size.y:02}',
 )
 def load_binary(

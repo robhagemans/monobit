@@ -89,6 +89,7 @@ Supported bitmap formats
 
 | Format                | Short Name | Typical Extension           | Read  | Write |
 |-----------------------|------------|-----------------------------|-------|-------|
+| 64C                   | `64c`      | `.64c`                      |&check;|&check;|
 | Xerox Alto CONVERT    | `alto`     | `.al`                       |&check;|       |
 | Amiga Font Contents   | `amiga-fc` | `.font`                     |&check;|       |
 | Amiga font            | `amiga`    |                             |&check;|       |
@@ -167,8 +168,8 @@ Supported bitmap formats
 
 This is the most common format used on old platforms, often with the unhelpful suffix `.fnt`. As there is no metadata, it's up to you to specify the character-cell size. The most common, and default, size is 8x8 (CGA and many 8-bit platforms), followed by 8x16 (VGA) and 8x14 (EGA).
 
-- 8x8 raw files are also known as `.f08`, `.ch8`, `.64c`, `.chr`, `.udg`, and many others.
-- 8x14 raw files are also known as `.f14` or CHET `.814`.
+- 8x8 raw files are also known as `.f08`, `.ch8`, `.88`, `.chr`, `.udg`, and many others.
+- 8x14 raw files are also known as `.f14` or `.814`.
 - 8x16 raw files are also known as `.f16`, Warp 9 `.fnt` or Degas Elite `.fnt`
 - Genecar `.car` files are 16x16 raw files.
 - Harlekin III `.fnt` files are raw binaries with a 4096x8 pixel bitmap strike hosting 512 8x8 glyphs side by side. Extract with `-strike-width=512`.
