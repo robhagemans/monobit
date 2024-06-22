@@ -10,6 +10,7 @@ import logging
 from monobit.base.struct import big_endian as be
 from monobit.base.binary import align
 from monobit.storage import FileFormatError
+from monobit.storage import loaders, savers
 
 from .nfnt import extract_nfnt, convert_nfnt
 
@@ -28,7 +29,9 @@ _LISA_RSRC_RCD1 = be.Struct(
     fontMetricsEnd='uint32',
 )
 
-def _load_lisa(instream):
+
+@loaders.register(name='lisa')
+def load_lisa(instream):
     """Load a LISA font library."""
     header = _LISA_HEADER.read_from(instream)
     rsrc_rcds = []
