@@ -905,6 +905,15 @@ class TestFormats(BaseTester):
         self.assertEqual(len(font.glyphs), 105)
         self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
+    # 64c
+
+    def test_export_64c(self):
+        """Test exporting 64c files."""
+        fnt_file = self.temp_path / '8x8.64c'
+        font = self.fixed4x6.expand(right=4, bottom=2, adjust_metrics=False)
+        monobit.save(font, fnt_file)
+        font, *_ = monobit.load(fnt_file)
+        self.assertEqual(len(font.glyphs), 919)
 
     # COM loaders
 
