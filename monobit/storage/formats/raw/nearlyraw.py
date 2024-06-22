@@ -1,7 +1,7 @@
 """
-monobit.storage.formats.nearlyraw - almost raw binary font files
+monobit.storage.formats.raw.nearlyraw - almost raw binary font files
 
-(c) 2023 Rob Hagemans
+(c) 2023--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 

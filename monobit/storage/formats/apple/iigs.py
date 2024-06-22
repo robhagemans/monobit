@@ -15,14 +15,44 @@ from monobit.base.binary import bytes_to_bits, align
 from monobit.base.struct import bitfield, little_endian as le
 from monobit.base import struct
 from monobit.base import Coord
+from monobit.base import NOT_SET
 from monobit.storage import loaders, savers
 from monobit.storage import FileFormatError
 from monobit.core import Font, Glyph, KernTable
+from monobit.encoding import EncodingName
 
 from .nfnt import convert_nfnt, extract_nfnt, create_nfnt
 from .dfont import NON_ROMAN_NAMES
 
 
+@loaders.register(
+    name='iigs',
+    patterns=('*.fon',),
+)
+def load_iigs(instream):
+    """Load a IIgs font."""
+    return _load_iigs(instream)
+
+
+@savers.register(linked=load_iigs)
+def save_iigs(
+        fonts, outstream, version:int=None, resample_encoding:EncodingName=NOT_SET,
+    ):
+    """
+    Write font to a IIgs font file.
+
+    version: IIgs font format version (0x101, 0x105). Default: 0x101 unless needed for bitmap size.
+    resample_encoding: encoding to use for NFNT resources. Must be one of the `mac-` encodings. Default: use font's encoding.
+    """
+    if len(fonts) > 1:
+        logging.warning('IIgs font file can only store one font.')
+    font = fonts[0]
+    _save_iigs(
+        outstream, font, version=version, resample_encoding=resample_encoding
+    )
+
+
+###############################################################################
 # IIgs font file is essentially a little-endian MacOS FONT resource,
 # without the resource, plus an extra header.
 # Documented in the Apple IIgs Toolbox Reference Volume II, chapter 16-41

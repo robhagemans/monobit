@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.figlet - FIGlet .flf format
+monobit.storage.formats.text.figlet - FIGlet .flf format
 
 (c) 2021--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

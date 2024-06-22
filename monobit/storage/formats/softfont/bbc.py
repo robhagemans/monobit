@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.bbc - Acorn BBC vfont format
+monobit.storage.formats.softfont.bbc - Acorn BBC vfont format
 
 (c) 2022--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

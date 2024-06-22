@@ -1,7 +1,7 @@
 """
-monobit.storage.formats.apple - Mac OS and other Apple font formats
+monobit.storage.formats.softfonr - terminal softfonts
 
-(c) 2019--2023 Rob Hagemans
+(c) 2022--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 

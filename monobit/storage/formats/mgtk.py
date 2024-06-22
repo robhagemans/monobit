@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.apple.mgtk - Apple II MouseGraphics ToolKit Font Format
+monobit.storage.formats.mgtk - Apple II MouseGraphics ToolKit Font Format
 
 (c) 2023 Kelvin Sherlock
 licence: https://opensource.org/licenses/MIT
