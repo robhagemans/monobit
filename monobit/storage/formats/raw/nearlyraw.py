@@ -486,7 +486,7 @@ def load_64c(instream, charset:str='upper'):
     null = instream.read(1)
     unknown_flags = instream.read(1)
     if null != b'\0':
-        logging.warning(f'Non-null first byte %02x.', ord(null))
+        logging.warning(f'Non-null first byte %s.', null)
     font = load_bitmap(
         instream,
         width=8, height=8,
