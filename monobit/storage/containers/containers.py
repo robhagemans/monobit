@@ -126,7 +126,10 @@ class FlatFilterContainer(Archive):
 
     def list(self):
         """List full contents of archive."""
-        return tuple(self._data.keys())
+        return tuple(self._data.keys()) + tuple(
+            str(_file.name)
+            for _file in self._files
+        )
 
     def open(self, name, mode):
         """Open a binary stream in the container."""
