@@ -51,7 +51,7 @@ def load_binary(
         cell:Coord=NOT_SET, count:int=-1, offset:int=0, padding:int=0,
         align:str='left', byte_order:str='row-major',
         strike_count:int=1, strike_bytes:int=-1,
-        first_codepoint:int=0, invert:bool=False
+        first_codepoint:int=0, ink:int=1, msb:str='left',
     ):
     """
     Load character-cell font from binary bitmap.
@@ -65,7 +65,8 @@ def load_binary(
     align: alignment of strike row ('left' for most-, 'right' for least-significant; 'bit' for bit-aligned; default: 'left')
     byte_order: 'row-major' (default) or 'column-major' byte order (affect cell sizes wider than 8 pixels)
     first_codepoint: first code point in bitmap (default: 0)
-    invert: use 0-bits as ink, 1-bits as paper (default: False)
+    ink: bit-value to interpret as ink (0 or 1; default: 1)
+    msb: position of most-significant bit ('left' or 'right', default: 'left')
     """
     # determine cell size from filename, if not given
     encoding = None
@@ -94,7 +95,7 @@ def load_binary(
     font = load_bitmap(
         instream, width, height, count, padding, align,
         strike_count, strike_bytes, first_codepoint,
-        byte_order=byte_order, invert=invert
+        byte_order=byte_order, ink=ink, msb=msb,
     )
     if encoding:
         font = font.label(char_from=encoding)
@@ -125,7 +126,7 @@ def save_binary(
 def load_bitmap(
         instream, width, height, count=-1, padding=0, align='left',
         strike_count=1, strike_bytes=-1, first_codepoint=0, *,
-        byte_order='row-major', invert=False,
+        byte_order='row-major', ink=1, msb='left',
     ):
     """Load fixed-width font from bitmap."""
     if align == 'bit':
@@ -148,8 +149,10 @@ def load_bitmap(
         Glyph(_cell, codepoint=_index)
         for _index, _cell in enumerate(cells, first_codepoint)
     )
-    if invert:
+    if ink == 0:
         glyphs = (_g.invert() for _g in glyphs)
+    if msb.lower().startswith('r'):
+        glyphs = (_g.mirror() for _g in glyphs)
     return Font(glyphs)
 
 
