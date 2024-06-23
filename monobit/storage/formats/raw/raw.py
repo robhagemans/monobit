@@ -128,13 +128,19 @@ def load_bitmap(
         byte_order='row-major', invert=False,
     ):
     """Load fixed-width font from bitmap."""
-    data, count, cells_per_row, bytes_per_row, nrows = _extract_data_and_geometry(
-        instream, width, height, count, padding, strike_count, strike_bytes,
-    )
-    cells = _extract_cells(
-        data, width, height, align, cells_per_row, bytes_per_row, nrows,
-        byte_order=byte_order,
-    )
+    if align == 'bit':
+        data, count = _extract_data_and_geometry_bit_aligned(
+            instream, width, height, count, padding, strike_count, strike_bytes,
+        )
+        cells = _extract_cells_bit_aligned(data, width, height, count)
+    else:
+        data, count, cells_per_row, bytes_per_row, nrows = _extract_data_and_geometry(
+            instream, width, height, count, padding, strike_count, strike_bytes,
+        )
+        cells = _extract_cells(
+            data, width, height, align, cells_per_row, bytes_per_row, nrows,
+            byte_order=byte_order,
+        )
     # reduce to given count, if exceeded
     cells = cells[:count]
     # assign codepoints
@@ -210,6 +216,43 @@ def _extract_cells(
         )
         for _glyphrow in glyphrows
         for _i in range(cells_per_row)
+    )
+    return cells
+
+
+def _extract_data_and_geometry_bit_aligned(
+            instream, width, height, count, padding, strike_count, strike_bytes,
+    ):
+    if padding != 0:
+        raise ValueError(
+            'Nonzero padding not supported for bit-aligned binaries.'
+        )
+    if strike_count != 1:
+        raise ValueError(
+            'Strike count other than 1 not supported for bit-aligned binaries.'
+        )
+    if strike_bytes != -1:
+        raise ValueError(
+            'Strike bytes argument not supported for bit-aligned binaries.'
+        )
+    if count <= 0:
+        data = instream.read()
+        count = (8 * len(data)) // (width * height)
+    else:
+        data = instream.read(ceildiv(count*width*height, 8))
+    return data, count
+
+
+def _extract_cells_bit_aligned(data, width, height, count):
+    """Extract glyphs from bit-aligned bitmap strike."""
+    bitmap = Raster.from_bytes(data, width, align='bit')
+    # clip out glyphs
+    cells = tuple(
+        bitmap.crop(
+            top=_r*height,
+            bottom=bitmap.height - (_r+1)*height,
+        )
+        for _r in range(count)
     )
     return cells
 
