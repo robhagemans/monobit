@@ -313,6 +313,36 @@ class TestFormats(BaseTester):
         self.assertEqual(len(font.glyphs), 919)
         self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
+    def test_import_raw_inverted(self):
+        """Test importing inverted raw binary files."""
+        font, *_ = monobit.load(self.font_path / '4x6-inverted.raw', cell=(4, 6), ink=0)
+        self.assertEqual(len(font.glyphs), 919)
+
+    def test_export_raw_inverted(self):
+        """Test exporting raw binary files with wiide strike."""
+        fnt_file = self.temp_path / '4x6-inv.raw'
+        monobit.save(self.fixed4x6, fnt_file, format='raw', ink=0)
+        font, *_ = monobit.load(
+            fnt_file, format='raw', cell=(4, 6), first_codepoint=31, ink=0
+        )
+        self.assertEqual(len(font.glyphs), 919)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+
+    def test_import_raw_msb_right(self):
+        """Test importing raw binary files with most significant bit right."""
+        font, *_ = monobit.load(self.font_path / '4x6-bitaligned.raw', cell=(4, 6), align='bit')
+        self.assertEqual(len(font.glyphs), 919)
+
+    def test_export_raw_msb_right(self):
+        """Test exporting raw binary files with most significant bit right."""
+        fnt_file = self.temp_path / '4x6-msbr.raw'
+        monobit.save(self.fixed4x6, fnt_file, format='raw', msb='r')
+        font, *_ = monobit.load(
+            fnt_file, format='raw', cell=(4, 6), first_codepoint=31, msb='r'
+        )
+        self.assertEqual(len(font.glyphs), 919)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+
 
     # PDF chart
 
