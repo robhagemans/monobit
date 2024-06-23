@@ -278,13 +278,27 @@ def save_bitmap(
     font = font.equalise_horizontal()
     # get pixel rasters
     rasters = (_g.pixels for _g in font.glyphs)
-    # contruct rows (itertools.grouper recipe)
-    args = [iter(rasters)] * strike_count
-    grouped = zip_longest(*args, fillvalue=Glyph())
-    glyphrows = (
-        Raster.concatenate(*_row)
-        for _row in grouped
-    )
+    if align == 'bit':
+        if padding != 0:
+            raise ValueError(
+                'Nonzero padding not supported for bit-aligned binaries.'
+            )
+        if strike_count != 1:
+            raise ValueError(
+                'Strike count other than 1 not supported for bit-aligned binaries.'
+            )
+        # stack all vertically as if it were one row
+        # in case glyphs do not end on a byte boundary
+        bitmap = Raster.stack(*rasters)
+        glyphrows = (bitmap,)
+    else:
+        # contruct rows (itertools.grouper recipe)
+        args = [iter(rasters)] * strike_count
+        grouped = zip_longest(*args, fillvalue=Glyph())
+        glyphrows = (
+            Raster.concatenate(*_row)
+            for _row in grouped
+        )
     for glyphrow in glyphrows:
         outstream.write(glyphrow.as_bytes(align=align))
         outstream.write(b'\0' * padding)
