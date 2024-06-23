@@ -105,18 +105,22 @@ def load_binary(
 def save_binary(
         fonts, outstream, *,
         strike_count:int=1, align:str='left', padding:int=0,
+        ink:int=1, msb:str='left',
     ):
     """
-    Save character-cell fonts to binary bitmap.
+    Save character-cell fonts to binary bitmap. Multiple fonts will be saved consecutively.
 
     strike_count: number of glyphs in glyph row (<=0 for all; default: 1)
     align: alignment of strike row ('left' for most-, 'right' for least-significant; 'bit' for bit-aligned; default: 'left')
     padding: number of bytes between encoded glyph rows (default: 0)
+    ink: bit-value to interpret as ink (0 or 1; default: 1)
+    msb: position of most-significant bit ('left' or 'right', default: 'left')
     """
     for font in fonts:
         save_bitmap(
             outstream, font,
-            strike_count=strike_count, align=align, padding=padding
+            strike_count=strike_count, align=align, padding=padding,
+            ink=ink, msb=msb,
         )
 
 
@@ -266,13 +270,10 @@ def _extract_cells_bit_aligned(data, width, height, count):
 def save_bitmap(
         outstream, font, *,
         strike_count:int=1, align:str='left', padding:int=0,
+        ink:int=1, msb:str='left',
     ):
     """
     Save character-cell font to binary bitmap.
-
-    strike_count: number of glyphs in glyph row (<=0 for all; default: 1)
-    align: alignment of strike row ('left' for most-, 'right' for least-significant; 'bit' for bit-aligned; default: 'left')
-    padding: number of bytes between encoded glyph rows (default: 0)
     """
     if font.spacing != 'character-cell':
         raise FileFormatError(
@@ -303,5 +304,9 @@ def save_bitmap(
             for _row in grouped
         )
     for glyphrow in glyphrows:
+        if ink == 0:
+            glyphrow = glyphrow.invert()
+        if msb.lower().startswith('r'):
+            glyphrow = glyphrow.mirror()
         outstream.write(glyphrow.as_bytes(align=align))
         outstream.write(b'\0' * padding)
