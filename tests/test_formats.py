@@ -298,6 +298,22 @@ class TestFormats(BaseTester):
         self.assertEqual(len(font.glyphs), 919)
         self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
+    def test_import_raw_bitaligned(self):
+        """Test importing bit-aligned raw binary files."""
+        font, *_ = monobit.load(self.font_path / '4x6-bitaligned.raw', cell=(4, 6), align='bit')
+        self.assertEqual(len(font.glyphs), 919)
+
+    def test_export_raw_bitaligned(self):
+        """Test exporting raw binary files with wiide strike."""
+        fnt_file = self.temp_path / '4x6-bit.raw'
+        monobit.save(self.fixed4x6, fnt_file, format='raw', align='bit')
+        font, *_ = monobit.load(
+            fnt_file, format='raw', cell=(4, 6), first_codepoint=31, align='bit'
+        )
+        self.assertEqual(len(font.glyphs), 919)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+
+
     # PDF chart
 
     def test_export_pdf(self):
