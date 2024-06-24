@@ -512,3 +512,55 @@ def save_64c(fonts, outstream):
     # not an actual magic sequence. we also see \0\x20 \0\x30 \0\x48 \0\xc8
     outstream.write(b'\x00\x38')
     save_bitmap(outstream, font)
+
+
+###############################################################################
+# raw file with +3DOS header
+# https://area51.dev/sinclair/spectrum/3dos/fileheader/
+# see also https://github.com/oldherl/psftools/blob/master/tools/zxflib.c
+
+
+_PLUS3DOS_MAGIC = b'PLUS3DOS\x1a'
+_PLUS3DOS_HEADER = le.Struct(
+    signature='9s',
+    # absorb \x1a in signature
+    #eof='byte',
+    issue='byte',
+    version='byte',
+    file_size='uint32',
+    # +3 BASIC header
+    file_type='byte',
+    data_length='uint16',
+    # > For File Type 3 - CODE, Param 1 is the load address. Param 2 is unused
+    param_1='uint16',
+    param_2='uint16',
+    unused='byte',
+    # end of BASIC header
+    reserved=le.uint8 * 104,
+    checksum='byte',
+)
+@loaders.register(
+    name='plus3dos',
+    magic=(_PLUS3DOS_MAGIC,),
+)
+def load_plus3dos(instream):
+    """Load a 768-byte raw font with +3DOS header."""
+    header = _PLUS3DOS_HEADER.read_from(instream)
+    logging.debug(header)
+    if header.signature != _PLUS3DOS_MAGIC:
+        raise FileFormatError(
+            f'Not a +3DOS file: incorrect signature {header.signature}.'
+        )
+    if header.file_type != 3 or header.data_length != 768:
+        # file type 3 is CODE
+        logging.warning(
+            '+3DOS file may not be a font file: '
+            'file type %d != 3, data length %d != 768',
+            header.file_type, header.data_length
+    )
+    if sum(bytes(header)[:-1]) & 0xff != header.checksum:
+        logging.warning('+3DOS checksum failed.')
+    font = load_bitmap(instream, width=8, height=8, count=92, first_codepoint=32)
+    font = font.modify(source_format='+3DOS')
+    font = font.label(char_from='ascii')
+    return font
