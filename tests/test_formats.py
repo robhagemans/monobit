@@ -961,6 +961,16 @@ class TestFormats(BaseTester):
         font, *_ = monobit.load(fnt_file)
         self.assertEqual(len(font.glyphs), 919)
 
+    # +3DOS
+
+    def test_export_plus3dos(self):
+        """Test exporting plus3dos files."""
+        fnt_file = self.temp_path / '8x8.p3d'
+        font = self.fixed4x6.expand(right=4, bottom=2, adjust_metrics=False)
+        monobit.save(font, fnt_file, format='plus3dos')
+        font, *_ = monobit.load(fnt_file)
+        self.assertEqual(len(font.glyphs), 96)
+
     # COM loaders
 
     def test_import_frapt(self):
