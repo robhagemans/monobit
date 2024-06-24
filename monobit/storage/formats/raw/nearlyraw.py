@@ -562,7 +562,7 @@ def load_plus3dos(instream):
     )
     if sum(bytes(header)[:-1]) & 0xff != header.checksum:
         logging.warning('+3DOS checksum failed.')
-    font = load_bitmap(instream, width=8, height=8, count=92, first_codepoint=32)
+    font = load_bitmap(instream, width=8, height=8, count=96, first_codepoint=32)
     font = font.modify(source_format='+3DOS')
     font = font.label(char_from='ascii')
     return font
