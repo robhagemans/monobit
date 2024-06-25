@@ -16,6 +16,10 @@ from .raw import load_bitmap, save_bitmap
 
 ###############################################################################
 # Dr. Halo / Dr. Genius F*X*.FON
+# this covers the bitmap fonts only
+# most fonts included with Dr Halo are vector fonts
+# for which I have not yet deciphered the encoding
+
 
 _DRHALO_SIG = b'AH'
 
@@ -25,7 +29,7 @@ _DRHALO_SIG = b'AH'
     patterns=('*.fon',),
 )
 def load_drhalo(instream, first_codepoint:int=0):
-    """Load a Dr Halo / Dr Genius .FON font."""
+    """Load a Dr Halo / Dr Genius .FON bitmap font."""
     start = instream.read(16)
     if not start.startswith(_DRHALO_SIG):
         raise FileFormatError(
