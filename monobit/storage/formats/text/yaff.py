@@ -382,7 +382,22 @@ def _save_yaff(fonts, outstream):
             props['cell_size'] = font.cell_size
         else:
             props['bounding_box'] = font.bounding_box
-        props.update(font.get_properties())
+        # transfer font properties in defined order
+        font_props = font.get_properties()
+        for key in FontProperties.__annotations__:
+            if key in font_props:
+                props[key] = font_props.pop(key)
+        # transfer unrecognised properties
+        # move non-namespaced unrecognised properties into custom. namespace
+        for key, value in font_props.items():
+            if '.' in key or key.startswith('_') or key.startswith('-'):
+                props[key] = font_props[key]
+            else:
+                logging.debug(
+                    "Moving unrecognised property '%s' to 'custom' namespace",
+                    key
+                )
+                props[f'custom.{key}'] = font_props[key]
         global_metrics = globalise_glyph_metrics(font.glyphs)
         # keep only nonzero or non-default globalised properties
         props.update({
