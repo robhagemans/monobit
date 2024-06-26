@@ -15,7 +15,9 @@ from functools import cached_property
 from monobit.storage import loaders, savers
 from monobit.storage import FileFormatError
 from monobit.storage.magic import Sentinel
-from monobit.core import Font, FontProperties, Glyph, Raster, Label, strip_matching
+from monobit.core import (
+    Font, FontProperties, Glyph, Raster, Label, strip_matching, CUSTOM_NAMESPACE
+)
 from monobit.base import Props
 from monobit.base import Coord, passthrough
 
@@ -360,6 +362,27 @@ def globalise_glyph_metrics(glyphs):
     return properties
 
 
+def transfer_properties(font_props):
+    """Transfer properties in order, fix namespaces where needed."""
+    props = {}
+    for key in FontProperties.__annotations__:
+        if key in font_props:
+            props[key] = font_props.pop(key)
+    # transfer unrecognised properties
+    # move non-namespaced unrecognised properties into custom. namespace
+    for key, value in font_props.items():
+        if '.' in key or key.startswith('_') or key.startswith('-'):
+            props[key] = font_props[key]
+        else:
+            logging.debug(
+                "Moving unrecognised property '%s' to '%s' namespace",
+                key, CUSTOM_NAMESPACE
+            )
+            props[f'{CUSTOM_NAMESPACE}.{key}'] = font_props[key]
+    return props
+
+
+
 def _save_yaff(fonts, outstream):
     """Write fonts to a plaintext stream as yaff."""
     for number, font in enumerate(fonts):
@@ -382,7 +405,9 @@ def _save_yaff(fonts, outstream):
             props['cell_size'] = font.cell_size
         else:
             props['bounding_box'] = font.bounding_box
-        props.update(font.get_properties())
+        # transfer font properties in defined order
+        font_props = font.get_properties()
+        props |= transfer_properties(font_props)
         global_metrics = globalise_glyph_metrics(font.glyphs)
         # keep only nonzero or non-default globalised properties
         props.update({

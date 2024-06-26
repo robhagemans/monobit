@@ -85,15 +85,11 @@ def _load_stream(instream, *, format='', **kwargs):
     return pack
 
 
-def _annotate_fonts_with_source(
-        fonts, filename, location, format, loader_kwargs
-    ):
-    """Set source metadata on font pack."""
-    # convert font or pack to pack
-    pack = Pack(fonts)
-    filename = Path(filename).name
-    # if the source filename contains surrogate-escaped non-utf8 bytes
-    # preserve the byte values as backslash escapes
+def _sanitise_filesystem_name(filename):
+    """
+    If the source filename contains surrogate-escaped non-utf8 bytes
+    preserve the byte values as backslash escapes
+    """
     try:
         filename.encode('utf-8')
     except UnicodeError:
@@ -101,6 +97,17 @@ def _annotate_fonts_with_source(
             filename.encode('utf-8', 'surrogateescape')
             .decode('ascii', 'backslashreplace')
         )
+    return filename
+
+
+def _annotate_fonts_with_source(
+        fonts, filename, location, format, loader_kwargs
+    ):
+    """Set source metadata on font pack."""
+    # convert font or pack to pack
+    pack = Pack(fonts)
+    filename = _sanitise_filesystem_name(Path(filename).name)
+    filepath = _sanitise_filesystem_name(str(location.path))
     # source format argumets
     loader_args = ' '.join(
         f'{_k.replace("_", "-")}={shlex.join((str(_v),))}'
@@ -112,7 +119,7 @@ def _annotate_fonts_with_source(
             converter=MONOBIT,
             source_format=_font.source_format or f'{format}{loader_args}',
             source_name=_font.source_name or filename,
-            source_path=str(location.path),
+            source_path=_font.source_path or filepath,
         )
         for _font in pack
     )

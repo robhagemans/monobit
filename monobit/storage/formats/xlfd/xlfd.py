@@ -8,11 +8,7 @@ licence: https://opensource.org/licenses/MIT
 import logging
 
 from monobit.encoding import encodings
-from monobit.core import Char
-
-
-# dot property namespace for unrecognised properties
-CUSTOM_PROP = 'custom'
+from monobit.core import Char, CUSTOM_NAMESPACE
 
 
 ##############################################################################
@@ -603,7 +599,7 @@ def parse_xlfd_properties(x_props, xlfd_name, to_int=int):
     # keep unrecognised properties but in separate namespace
     # to avoid any clashes with yaff properties
     properties.update({
-        f'{CUSTOM_PROP}.{_k}'.lower(): from_quoted_string(_v)
+        f'{CUSTOM_NAMESPACE}.{_k}'.lower(): from_quoted_string(_v)
         for _k, _v in x_props.items()
     })
     return properties
@@ -725,7 +721,7 @@ def create_xlfd_properties(font):
     })
     # keep unknown properties
     xlfd_props.update({
-        _k.removeprefix(f'{CUSTOM_PROP}.'.upper()): _v
+        _k.removeprefix(f'{CUSTOM_NAMESPACE}.'.upper()): _v
         for _k, _v in unparsed.items()
         if not _k.startswith('XLFD.')
     })
