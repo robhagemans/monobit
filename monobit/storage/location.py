@@ -386,11 +386,11 @@ def _match_path(container, path, match_case):
         # no match this level
         return matched_path, Path(target, *segments)
 
+
 def _contains(container, path, match_case):
     """Container contains file (case insensitive)."""
     _, tail = _match_path(container, path, match_case)
     return tail == Path('.')
-
 
 
 def _open_container_or_wrapper(

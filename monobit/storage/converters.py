@@ -56,7 +56,6 @@ def load(infile:Any='', *, format:str='', container_format:str='', match_case:bo
 def _load_stream(instream, *, format='', **kwargs):
     """Load fonts from open stream."""
     tried_formats = []
-    last_error = None
     for loader in _iter_funcs_from_registry(loaders, instream, format):
         tried_formats.append(loader.format)
         instream.seek(0)
@@ -65,7 +64,6 @@ def _load_stream(instream, *, format='', **kwargs):
             fonts = loader(instream, **kwargs)
         except FileFormatError as e:
             logging.debug(e)
-            last_error = e
         else:
             if fonts:
                 break
@@ -74,8 +72,6 @@ def _load_stream(instream, *, format='', **kwargs):
                 instream.name, loader.format
             )
     else:
-        if last_error:
-            raise last_error
         message = f"Unable to read fonts from '{instream.name}': "
         if not tried_formats:
             message += f'format specifier `{format}` not recognised.'

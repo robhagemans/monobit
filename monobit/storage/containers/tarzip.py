@@ -62,7 +62,7 @@ class ZipTarBase(Archive):
         else:
             # stop BytesIO from being closed until we want it to be
             newfile = Stream(KeepOpen(io.BytesIO()), mode=mode, name=name)
-            if name in self._files:
+            if any(name == _file.name for _file in self._files):
                 logging.warning('Creating multiple files of the same name `%s`.', name)
             self._files.append(newfile)
             return newfile
@@ -110,6 +110,7 @@ class ZipContainer(ZipTarBase):
             (_name, *(f'{_path}/' for _path in Path(_name).parents[:-1]))
             for _name in self._archive.namelist()
         ))))
+        ziplist += tuple(str(PurePosixPath(self.root) / _file.name) for _file in self._files)
         return ziplist
 
     def _open_read(self, filename):
@@ -157,10 +158,13 @@ class TarContainer(ZipTarBase):
 
     def list(self):
         """List full contents of archive."""
-        return tuple(
+        tarlist = tuple(
             f'{_name}/' if self._is_dir(_name) else _name
             for _name in self._archive.getnames()
         )
+        tarlist += tuple(str(PurePosixPath(self.root) / _file.name) for _file in self._files)
+        return tarlist
+
 
     def _open_read(self, filename):
         return self._archive.extractfile(filename)
