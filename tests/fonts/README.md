@@ -59,7 +59,7 @@ Original sources:
 ### Derivatives of `4x6`
 
 * `4x6.yaff`, `4x6.fzx` were created from `4x6.bdf` using `monobit`
-* `4x6.c`, `4x6.c`, `4x6.iigs`, `4x6.sfp` were created from `4x6.yaff` using `monobit`
+* `4x6.c`, `4x6.c`, `4x6.iigs`, `4x6.sfp`, `4x6*.raw` were created from `4x6.yaff` using `monobit`
 * `4x6.dfont` and `4x6.bin` were created from `4x6.bdf` using `ufond` (part of `fondu`)
 * `8x8.bbc`, `4x6.vfont*`, `4x6-ams.com`, `4x6.txt` were created from `4x6.psf` using `psftools` v1.1.1
 * `4x6.ttf` was created from `4x6.bdf` using `fonttosfnt`

@@ -90,6 +90,7 @@ Supported bitmap formats
 | Format                | Short Name | Typical Extension           | Read  | Write |
 |-----------------------|------------|-----------------------------|-------|-------|
 | 64C                   | `64c`      | `.64c`                      |&check;|&check;|
+| +3DOS                 | `plus3dos` |                             |&check;|&check;|
 | Xerox Alto CONVERT    | `alto`     | `.al`                       |&check;|       |
 | Amiga Font Contents   | `amiga-fc` | `.font`                     |&check;|       |
 | Amiga font            | `amiga`    |                             |&check;|       |

@@ -849,7 +849,7 @@ class Font(HasProps):
         except KeyError:
             pass
         char = Char(normalize('NFD', char))
-        indices = (self.get_index(_c) for _c in char)
+        indices = (self.get_index(Char(_c)) for _c in char)
         indices = tuple(indices)
         return Glyph.overlay(*(self._glyphs[_i] for _i in indices))
 

@@ -30,7 +30,6 @@ class Wrapper(StreamHolder):
         # opened by us
         self._unwrapped_stream = None
 
-
     def __repr__(self):
         """String representation."""
         return (

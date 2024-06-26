@@ -51,7 +51,7 @@ def load_binary(
         cell:Coord=NOT_SET, count:int=-1, offset:int=0, padding:int=0,
         align:str='left', byte_order:str='row-major',
         strike_count:int=1, strike_bytes:int=-1,
-        first_codepoint:int=0, invert:bool=False
+        first_codepoint:int=0, ink:int=1, msb:str='left',
     ):
     """
     Load character-cell font from binary bitmap.
@@ -65,7 +65,8 @@ def load_binary(
     align: alignment of strike row ('left' for most-, 'right' for least-significant; 'bit' for bit-aligned; default: 'left')
     byte_order: 'row-major' (default) or 'column-major' byte order (affect cell sizes wider than 8 pixels)
     first_codepoint: first code point in bitmap (default: 0)
-    invert: use 0-bits as ink, 1-bits as paper (default: False)
+    ink: bit-value to interpret as ink (0 or 1; default: 1)
+    msb: position of most-significant bit ('left' or 'right', default: 'left')
     """
     # determine cell size from filename, if not given
     encoding = None
@@ -94,7 +95,7 @@ def load_binary(
     font = load_bitmap(
         instream, width, height, count, padding, align,
         strike_count, strike_bytes, first_codepoint,
-        byte_order=byte_order, invert=invert
+        byte_order=byte_order, ink=ink, msb=msb,
     )
     if encoding:
         font = font.label(char_from=encoding)
@@ -104,18 +105,22 @@ def load_binary(
 def save_binary(
         fonts, outstream, *,
         strike_count:int=1, align:str='left', padding:int=0,
+        ink:int=1, msb:str='left',
     ):
     """
-    Save character-cell fonts to binary bitmap.
+    Save character-cell fonts to binary bitmap. Multiple fonts will be saved consecutively.
 
     strike_count: number of glyphs in glyph row (<=0 for all; default: 1)
     align: alignment of strike row ('left' for most-, 'right' for least-significant; 'bit' for bit-aligned; default: 'left')
     padding: number of bytes between encoded glyph rows (default: 0)
+    ink: bit-value to interpret as ink (0 or 1; default: 1)
+    msb: position of most-significant bit ('left' or 'right', default: 'left')
     """
     for font in fonts:
         save_bitmap(
             outstream, font,
-            strike_count=strike_count, align=align, padding=padding
+            strike_count=strike_count, align=align, padding=padding,
+            ink=ink, msb=msb,
         )
 
 
@@ -125,16 +130,22 @@ def save_binary(
 def load_bitmap(
         instream, width, height, count=-1, padding=0, align='left',
         strike_count=1, strike_bytes=-1, first_codepoint=0, *,
-        byte_order='row-major', invert=False,
+        byte_order='row-major', ink=1, msb='left',
     ):
     """Load fixed-width font from bitmap."""
-    data, count, cells_per_row, bytes_per_row, nrows = _extract_data_and_geometry(
-        instream, width, height, count, padding, strike_count, strike_bytes,
-    )
-    cells = _extract_cells(
-        data, width, height, align, cells_per_row, bytes_per_row, nrows,
-        byte_order=byte_order,
-    )
+    if align == 'bit':
+        data, count = _extract_data_and_geometry_bit_aligned(
+            instream, width, height, count, padding, strike_count, strike_bytes,
+        )
+        cells = _extract_cells_bit_aligned(data, width, height, count)
+    else:
+        data, count, cells_per_row, bytes_per_row, nrows = _extract_data_and_geometry(
+            instream, width, height, count, padding, strike_count, strike_bytes,
+        )
+        cells = _extract_cells(
+            data, width, height, align, cells_per_row, bytes_per_row, nrows,
+            byte_order=byte_order,
+        )
     # reduce to given count, if exceeded
     cells = cells[:count]
     # assign codepoints
@@ -142,8 +153,10 @@ def load_bitmap(
         Glyph(_cell, codepoint=_index)
         for _index, _cell in enumerate(cells, first_codepoint)
     )
-    if invert:
+    if ink == 0:
         glyphs = (_g.invert() for _g in glyphs)
+    if msb.lower().startswith('r'):
+        glyphs = (_g.mirror() for _g in glyphs)
     return Font(glyphs)
 
 
@@ -214,19 +227,53 @@ def _extract_cells(
     return cells
 
 
+def _extract_data_and_geometry_bit_aligned(
+            instream, width, height, count, padding, strike_count, strike_bytes,
+    ):
+    if padding != 0:
+        raise ValueError(
+            'Nonzero padding not supported for bit-aligned binaries.'
+        )
+    if strike_count != 1:
+        raise ValueError(
+            'Strike count other than 1 not supported for bit-aligned binaries.'
+        )
+    if strike_bytes != -1:
+        raise ValueError(
+            'Strike bytes argument not supported for bit-aligned binaries.'
+        )
+    if count <= 0:
+        data = instream.read()
+        count = (8 * len(data)) // (width * height)
+    else:
+        data = instream.read(ceildiv(count*width*height, 8))
+    return data, count
+
+
+def _extract_cells_bit_aligned(data, width, height, count):
+    """Extract glyphs from bit-aligned bitmap strike."""
+    bitmap = Raster.from_bytes(data, width, align='bit')
+    # clip out glyphs
+    cells = tuple(
+        bitmap.crop(
+            top=_r*height,
+            bottom=bitmap.height - (_r+1)*height,
+        )
+        for _r in range(count)
+    )
+    return cells
+
+
 ###############################################################################
 # bitmap writer
 
 def save_bitmap(
         outstream, font, *,
         strike_count:int=1, align:str='left', padding:int=0,
+        ink:int=1, msb:str='left',
     ):
     """
     Save character-cell font to binary bitmap.
-
-    strike_count: number of glyphs in glyph row (<=0 for all; default: 1)
-    align: alignment of strike row ('left' for most-, 'right' for least-significant; 'bit' for bit-aligned; default: 'left')
-    padding: number of bytes between encoded glyph rows (default: 0)
     """
     if font.spacing != 'character-cell':
         raise FileFormatError(
@@ -235,13 +282,31 @@ def save_bitmap(
     font = font.equalise_horizontal()
     # get pixel rasters
     rasters = (_g.pixels for _g in font.glyphs)
-    # contruct rows (itertools.grouper recipe)
-    args = [iter(rasters)] * strike_count
-    grouped = zip_longest(*args, fillvalue=Glyph())
-    glyphrows = (
-        Raster.concatenate(*_row)
-        for _row in grouped
-    )
+    if align == 'bit':
+        if padding != 0:
+            raise ValueError(
+                'Nonzero padding not supported for bit-aligned binaries.'
+            )
+        if strike_count != 1:
+            raise ValueError(
+                'Strike count other than 1 not supported for bit-aligned binaries.'
+            )
+        # stack all vertically as if it were one row
+        # in case glyphs do not end on a byte boundary
+        bitmap = Raster.stack(*rasters)
+        glyphrows = (bitmap,)
+    else:
+        # contruct rows (itertools.grouper recipe)
+        args = [iter(rasters)] * strike_count
+        grouped = zip_longest(*args, fillvalue=Glyph())
+        glyphrows = (
+            Raster.concatenate(*_row)
+            for _row in grouped
+        )
     for glyphrow in glyphrows:
+        if ink == 0:
+            glyphrow = glyphrow.invert()
+        if msb.lower().startswith('r'):
+            glyphrow = glyphrow.mirror()
         outstream.write(glyphrow.as_bytes(align=align))
         outstream.write(b'\0' * padding)
